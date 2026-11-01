@@ -8,16 +8,18 @@
 // `workunit position <unit> auto|step` (3.3.6). Its screen is drawn by
 // projections/ready-to-build.cjs.
 //
-// - The screen shows once ready to build's checklist is closed and nothing
-//   has landed or been cut since, every engine item holding still
-//   (checklist.cjs, E12). It refuses a unit `enter specification` refuses
-//   (spec-entry.cjs) — one the project lacks, one not in progress, a
-//   quick-fix, a cross-cutting unit, topics not settled; a unit keeping the
-//   old spec's items, which never reaches this gate, the migration's cut for
-//   built units carrying it across (29.17); and a unit whose build has begun,
-//   the gate raised once per spec (11.8.1).
-// - It shows the short outline, the spec's areas; the phase cut, read from
-//   the manifest (11.S31); Claude's calls at the spec — the current
+// - The screen stands on the landed spec alone (spec-landed.cjs), refused
+//   while `spec.md` holds changes that have not landed. It shows once ready
+//   to build's checklist is closed and nothing has landed or been cut since,
+//   every engine item holding still (checklist.cjs, E12). It refuses a unit
+//   `enter specification` refuses (spec-entry.cjs) — one the project lacks,
+//   one not in progress, a quick-fix, a cross-cutting unit, topics not
+//   settled; a unit keeping the old spec's items, which never reaches this
+//   gate, the migration's cut for built units carrying it across (29.17);
+//   and a unit whose build has begun, the gate raised once per spec
+//   (11.8.1).
+// - It shows the short outline, the landed spec's areas; the phase cut, read
+//   from the manifest (11.S31); Claude's calls at the spec — the current
 //   decisions of Claude's made there — counted by kind; and every checklist
 //   item skipped. Each departure the person made among the spec's gap
 //   answers that this machine logged is asked its verdict there, one at a
@@ -38,7 +40,8 @@
 //   With no page open it takes no marks and writes no record (11.S22). Then
 //   it writes `build: {position}` on the unit's manifest — the first pick of
 //   the position, its record the gate's answer (E14) — concluding the spec
-//   (P7), and commits the manifest with the record, if any. It answers an
+//   (P7), and commits the manifest with the record, if any, a failed commit
+//   retried in the unit's scope, which holds both. It answers an
 //   epic's menu as what comes next (E7); a feature or a bugfix carries on,
 //   the linear menu being no handoff's target.
 // - A switch of position is stated intent (3.3.7): `workunit position`
@@ -60,7 +63,8 @@ const { buildBegun, itemTitle, phaseItems, topicTitles } = require('./derivation
 const { manifestOf } = require('./ledger-units.cjs');
 const { knownUnit, noUnit, unitClosure } = require('./topic-standing.cjs');
 const { specEntryRefusal } = require('./spec-entry.cjs');
-const { readSpec, specReading } = require('./spec-sections.cjs');
+const { specReading } = require('./spec-sections.cjs');
+const { readLandedSpec } = require('./spec-landed.cjs');
 const { readyClose } = require('./checklist.cjs');
 const { pageOpen, reviewStates, settleReview } = require('./spec-review.cjs');
 const { handedTag } = require('./topic-map.cjs');
@@ -164,7 +168,7 @@ function reviewCounts(cwd, unit) {
 function readyToBuildSurface(cwd, { dotpath: unit = '', page, calls }) {
   return refusing('render ready-to-build', () => {
     const ready = standing(cwd, unit);
-    const { headings } = specReading(readSpec(cwd, unit));
+    const { headings } = specReading(readLandedSpec(cwd, unit));
     const open = pageOpen(cwd, unit);
     return readyToBuildScreen({
       unit,
@@ -222,7 +226,7 @@ function readyToBuildYes(cwd, unit, position, marks) {
   /** @type {Record<string, unknown>} */
   const result = { unit, position, record: settled.record, committed: outcome.committed, next: nextAfterYes(manifest) };
   if (warnings.length > 0) result.warnings = warnings;
-  noteCommitOutcome(result, outcome, `${unit} --state`);
+  noteCommitOutcome(result, outcome, unit);
   return result;
 }
 

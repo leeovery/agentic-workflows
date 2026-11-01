@@ -34,6 +34,11 @@ describe('mechanical heartbeats: the self-referential rule', () => {
 
   const beatFile = (phase, topic) => statePath(dir, layout.cache('payments', phase, topic, 'presence'));
   const beaten = (phase, topic) => fs.existsSync(beatFile(phase, topic));
+  /** The epic's build begun, so a plan may be born. */
+  const building = () => {
+    writeState(dir, layout.manifest('payments'), JSON.stringify({ ...epicManifest(), build: { position: 'auto' } }, null, 2) + '\n');
+    commitAll(dir, 'the build begun');
+  };
 
   it('the session-cadence commit beats; the conclusion commit clears; --sweep suppresses', () => {
     writeState(dir, layout.doc('payments', 'investigation', 'topic-a'), '# Topic A\nprogress\n');
@@ -100,8 +105,8 @@ describe('mechanical heartbeats: the self-referential rule', () => {
     ok(dir, ['topic', 'mailbox', 'payments', 'topic-a'], { env: me });
     assert.ok(!beaten('discussion', 'topic-a'), 'a mailbox read never creates a heartbeat');
 
-    ok(dir, ['topic', 'start', 'payments', 'planning', 'topic-a'], { env: me });
-    assert.ok(beaten('planning', 'topic-a'), 'start opens the session\'s own topic');
+    ok(dir, ['topic', 'start', 'payments', 'investigation', 'topic-a'], { env: me });
+    assert.ok(beaten('investigation', 'topic-a'), 'start opens the session\'s own topic');
 
     writeState(dir, layout.mailbox('payments', 'topic-a', '001-first.md'), 'First\n');
     commitAll(dir, 'a delivered message');
@@ -143,6 +148,7 @@ describe('mechanical heartbeats: the self-referential rule', () => {
   });
 
   it('the close releases the slot, and every commit after it keeps it released', () => {
+    building();
     ok(dir, ['topic', 'start', 'payments', 'planning', 'topic-a']);
     assert.ok(beaten('planning', 'topic-a'), 'start opens the topic');
 

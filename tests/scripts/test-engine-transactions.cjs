@@ -1692,9 +1692,12 @@ describe('a plan is held while its specification is unsettled', () => {
     assert.strictEqual(engine(dir, ['topic', 'complete', 'payments', 'planning', 'refund-policy']).status, 'completed');
   });
 
-  it('no specification at all is the entry gate\'s business, not the engine\'s — the birth stands', () => {
+  it('no specification item at all is the one spec, its plan born only once ready to build\'s yes has begun the build (11.8.1)', () => {
     const m = epicManifest();
     writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    assert.strictEqual(engineFails(dir, ['topic', 'start', 'payments', 'planning', 'refund-policy']).error,
+      'planning can\'t start on "refund-policy" — payments\'s build has not begun; ready to build\'s yes begins it: render ready-to-build payments');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify({ ...m, build: { position: 'auto' } }, null, 2) + '\n');
     assert.strictEqual(engine(dir, ['topic', 'start', 'payments', 'planning', 'refund-policy']).created, true);
   });
 });

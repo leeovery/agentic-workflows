@@ -9,13 +9,17 @@
 // where the session can publish a page (11.S22, 11.S27), and, while the page
 // is open, its foot counting the review by the marks last stored (11.11.7);
 // a verdict asked of each call the person changed among the spec's gap
-// answers before the gate (16.10.11); the screen standing on ready to
-// build's close, voided by a land or a cut after it (E12), and refused for an
-// old spec's items, a build begun and a unit the spec's entry refuses;
+// answers before the gate (16.10.11); the screen standing on the landed
+// spec alone, the close, the screen and the yes refused while spec.md holds
+// changes that have not landed, and on ready to build's close, voided by a
+// land or a cut after it (E12), and refused for an old spec's items, a build
+// begun and a unit the spec's entry refuses;
 // `engine ready-to-build yes <unit> --position auto|step [--marks <file>]`,
 // writing `build: {position}` and committing it, the review settled on fresh
 // marks while the page is open and none written while it is not (11.S22,
-// 11.S25), no build before it (11.S13); the split — a decided topic
+// 11.S25), a failed commit retried in the unit's scope, no build before it
+// — no phase started, no planning or implementation item opened (11.S13);
+// the split — a decided topic
 // postponed while the spec is written, its lines then invented, and no
 // postpone once the build has begun (11.S18, 18.4.19); and `engine workunit
 // position <unit> auto|step`, the switch logged as a `position-switch` event
@@ -136,18 +140,16 @@ const closed = fixtureFrom('ready-to-build-closed-', (at) => {
 
 let dir = '';
 const config = useTempFolder('ready-to-build-config-');
+const PINNED = /** @type {string} */ (process.env.LEEWAY_CONFIG_DIR);
 
 /** Each test of the calling `describe` on a copy of `world`, its trust log its own. @param {() => string} world */
 function eachOn(world) {
-  /** @type {string|undefined} */
-  let pinned;
   beforeEach(() => {
     dir = world();
-    pinned = process.env.LEEWAY_CONFIG_DIR;
     process.env.LEEWAY_CONFIG_DIR = config();
   });
   afterEach(() => {
-    process.env.LEEWAY_CONFIG_DIR = pinned;
+    process.env.LEEWAY_CONFIG_DIR = PINNED;
     cleanupFixture(dir);
   });
 }
@@ -262,6 +264,13 @@ describe('the screen (11.8.8, 3.S18)', () => {
     assert.deepStrictEqual(pick('ready to build', 'a'), { kind: 'engine', argv: ['ready-to-build', 'yes', UNIT, '--position', 'auto', '--marks', file] });
   });
 
+  it('says the one line left passes without review', () => {
+    publish();
+    ok(dir, ['spec', 'marks', UNIT, '--file', readBack({ s1: { m: Object.fromEntries(['1-1-1', '1-1-2', '1-S2', '2-1-2'].map((id) => [id, { s: 'tick' }])) } })]);
+
+    assert.match(sectionOf(screen(), 'MENU: ready to build'), /^Your pick approves the outline and the phase cut, records the 4 lines you ticked on the review page and the 2 carrying Claude's tick that you let stand \(the other 1 passes without review\), and starts the build in that position\.$/m);
+  });
+
   it('says so where the person ticked nothing on the open page', () => {
     publish();
 
@@ -317,6 +326,42 @@ describe('the close the screen stands on (E12)', () => {
     assert.strictEqual(refused(['ready-to-build', 'yes', UNIT, '--position', 'auto']), `ready-to-build yes: ${voided}`);
     assert.match(refuses(dir, ['checklist', 'close', 'ready-to-build', UNIT]).error, /has items open: replacements-checked, review-settled, invariants-checked$/);
     assert.ok(closeReady(dir).closed > at);
+    assert.match(screen(), /=== MENU: ready to build /);
+  });
+
+  it('refuses to close over a spec.md holding changes that have not landed, and once landed closes over the landed text (11.8.1)', () => {
+    const edited = readState(dir, layout.unit(UNIT, 'spec.md')).replace('## 2. Refunds', '## 2. Refunds, whole');
+    writeState(dir, layout.unit(UNIT, 'spec.md'), edited);
+    for (const item of ['replacements-checked', 'review-settled', 'invariants-checked']) ok(dir, ['checklist', 'done', 'ready-to-build', UNIT, item]);
+
+    const unlanded = `${UNIT}'s spec has changes that haven't landed — land them: spec land ${UNIT}`;
+    assert.strictEqual(refused(['checklist', 'close', 'ready-to-build', UNIT]), `checklist close: ${unlanded}`);
+    assert.strictEqual(refused(['render', 'ready-to-build', UNIT]), `render ready-to-build: ${unlanded}`);
+    ok(dir, ['spec', 'land', UNIT]);
+    ok(dir, ['checklist', 'close', 'ready-to-build', UNIT]);
+    assert.match(sectionOf(screen(), 'DISPLAY: ready to build'), /\n {2}└─ 2 Refunds, whole\n/);
+    yes(['--position', 'auto']);
+    assert.strictEqual(stateGit(dir, ['status', '--porcelain', '--', layout.unit(UNIT, 'spec.md')]), '', 'the build reads the spec the state holds');
+  });
+
+  it('refuses the screen, the yes and a close again over changes made after the close that have not landed — never naming a land — and stands again once spec.md is the landed text (11.8.1)', () => {
+    closeReady(dir);
+    const file = layout.unit(UNIT, 'spec.md');
+    const landedText = readState(dir, file);
+    const unlanded = `${UNIT}'s spec has changes that haven't landed — land them: spec land ${UNIT}`;
+    const seen = [];
+    for (const disk of [landedText.replace('are taken.', 'are taken, and no other.'), null]) {
+      if (disk === null) fs.rmSync(statePath(dir, file));
+      else writeState(dir, file, disk);
+      seen.push([
+        refused(['render', 'ready-to-build', UNIT]),
+        refused(['ready-to-build', 'yes', UNIT, '--position', 'auto']),
+        refused(['checklist', 'close', 'ready-to-build', UNIT]),
+      ]);
+    }
+
+    assert.deepStrictEqual(seen, Array(2).fill([`render ready-to-build: ${unlanded}`, `ready-to-build yes: ${unlanded}`, `checklist close: ${unlanded}`]));
+    writeState(dir, file, landedText);
     assert.match(screen(), /=== MENU: ready to build /);
   });
 
@@ -384,6 +429,30 @@ describe('the yes (11.8.1, 11.8.6, E11)', () => {
     assert.strictEqual(refused(['topic', 'postpone', UNIT, 'refunds', '--horizon', 'next']), `postponing "refunds" is refused — ${UNIT}'s build has begun, so its map is closed: a decision that must change is settled in the build, and abandoning the work is the unit's cancel, through manage on the start menu`);
   });
 
+  it('opens no planning or implementation item before the yes, and both after it; a quick-fix\'s implementation and a unit keeping the old spec\'s items keep their door (11.8.1)', () => {
+    const before = ['planning', 'implementation'].map((phase) => refused(['topic', 'start', UNIT, phase, 'cards']));
+    createManifest(dir, 'tidy', { work_type: 'quick-fix' });
+    createManifest(dir, 'legacy', { work_type: 'feature', phases: { specification: { items: { legacy: { status: 'completed' } } } } });
+    commitAll(dir, 'a quick-fix and a unit on the old spec');
+    const kept = [ok(dir, ['topic', 'start', 'tidy', 'implementation', 'tidy']).created, ok(dir, ['topic', 'start', 'legacy', 'implementation', 'legacy']).created];
+    yes(['--position', 'auto']);
+
+    assert.deepStrictEqual(before, ['planning', 'implementation'].map((phase) => `${phase} can't start on "cards" — ${UNIT}'s build has not begun; ready to build's yes begins it: render ready-to-build ${UNIT}`));
+    assert.deepStrictEqual(kept, [true, true]);
+    assert.deepStrictEqual(['planning', 'implementation'].map((phase) => ok(dir, ['topic', 'start', UNIT, phase, 'cards']).created), [true, true]);
+  });
+
+  it('names the unit\'s own commit where its commit fails, which takes what the yes wrote, the review\'s record among it', () => {
+    publish();
+    fs.writeFileSync(path.join(dir, '.git', 'refs', 'heads', 'leeway-state.lock'), '');
+    const answer = yes(['--position', 'auto', '--marks', readBack({ s1: { m: { '1-1-1': { s: 'tick' } } } })]);
+    fs.rmSync(path.join(dir, '.git', 'refs', 'heads', 'leeway-state.lock'));
+
+    assert.deepStrictEqual([answer.committed, answer.note], [null, `commit pending — state saved; retry with: engine commit ${UNIT} -m "<message>"`]);
+    ok(dir, ['commit', UNIT, '-m', `ready-to-build(${UNIT}): auto`]);
+    assert.deepStrictEqual(touched(statePath(dir), 'HEAD'), [`M\t${layout.manifest(UNIT)}`, `A\t${layout.unit(UNIT, 'spec-review.json')}`].sort());
+  });
+
   it('takes no marks while no page is open, and refuses a position that is none of the build\'s and arguments of another shape, writing nothing', () => {
     assert.strictEqual(refused(['ready-to-build', 'yes', UNIT, '--position', 'auto', '--marks', statePath(dir, READ_BACK)]), `ready-to-build yes: ${UNIT}'s review page is not open, so the yes takes no marks — the build starts with no review recorded`);
     for (const args of [['--position', 'bounded'], [], ['--position', 'auto', '--force', 'yes']]) {
@@ -411,13 +480,21 @@ describe('the yes over an open review page (11.11.5, 11.11.8, 11.11.9)', () => {
     assert.deepStrictEqual([head(dir), readManifest(dir, UNIT).build, JSON.parse(readState(dir, layout.cache(UNIT, 'specification', 'marks.json')))], [before, undefined, marks]);
   });
 
-  it('settles the review on the fresh marks, committing its record with the build (11.S26)', () => {
+  it('settles the review on the fresh marks, committing its record with the build, and counts no trust from it (11.S26, 11.11.10)', () => {
     publish();
     const before = head(dir);
-    const answer = yes(['--position', 'step', '--marks', readBack({ s1: { m: { '1-1-1': { s: 'tick' } } } })]);
+    const trust = () => (fs.existsSync(trustLogPath()) ? fs.readFileSync(trustLogPath(), 'utf8') : '');
+    const trusted = trust();
+    const answered = { s: 'comment', t: { p1000: { by: 'p', x: 'Why refuse it?' }, c2000: { by: 'c', x: 'An unknown brand cannot be charged.' } } };
+    const answer = yes(['--position', 'step', '--marks', readBack({ s1: { m: { '1-1-1': { s: 'tick' }, '1-1-2': answered } } })]);
+    const { lines } = JSON.parse(readState(dir, answer.record));
 
     assert.strictEqual(answer.record, layout.unit(UNIT, 'spec-review.json'));
-    assert.strictEqual(JSON.parse(readState(dir, answer.record)).lines['1.1.1'].state, 'approved');
+    assert.deepStrictEqual(Object.fromEntries(Object.entries(lines).map(([number, { state }]) => [number, state])), {
+      '1.1.1': 'approved', '1.1.2': 'open', '1.S1': 'claudes-tick', '1.S2': 'passed', '2.1.1': 'claudes-tick', '2.1.2': 'passed', '2.S1': 'passed',
+    });
+    assert.deepStrictEqual(lines['1.1.2'].conversation.map((/** @type {{by: string, text: string}} */ { by, text }) => ({ by, text })), [{ by: 'person', text: 'Why refuse it?' }, { by: 'claude', text: 'An unknown brand cannot be charged.' }]);
+    assert.strictEqual(trust(), trusted, 'the yes logs nothing the trust counts read');
     assert.deepStrictEqual([touched(statePath(dir), 'HEAD'), stateGit(dir, ['rev-parse', 'HEAD~1']).trim()], [[`M\t${layout.manifest(UNIT)}`, `A\t${layout.unit(UNIT, 'spec-review.json')}`].sort(), before]);
   });
 });

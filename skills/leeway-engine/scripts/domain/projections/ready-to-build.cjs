@@ -81,8 +81,9 @@ function recordsReview({ ticked, claudes, other }) {
     ...(ticked > 0 ? [`the ${counted(ticked, 'line')} you ticked on the review page`] : []),
     ...(claudes > 0 ? [`the ${claudes} carrying Claude's tick that you let stand`] : []),
   ];
-  if (recorded.length === 0) return `records that you ticked no line on the review page (all ${counted(other, 'line')} pass without review)`;
-  return `records ${series(recorded, 'and')}${other > 0 ? ` (the other ${other} pass without review)` : ''}`;
+  const pass = other === 1 ? 'passes' : 'pass';
+  if (recorded.length === 0) return `records that you ticked no line on the review page (${other === 1 ? 'its one line' : `all ${counted(other, 'line')}`} ${pass} without review)`;
+  return `records ${series(recorded, 'and')}${other > 0 ? ` (the other ${other} ${pass} without review)` : ''}`;
 }
 
 /** What the pick does, said above the gate. @param {ReadyView} view */

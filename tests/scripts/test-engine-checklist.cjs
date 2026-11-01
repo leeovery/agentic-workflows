@@ -189,7 +189,7 @@ describe('the points of a unit\'s work, each its exact list (6.4.6–6.4.10, 6.S
         'phases-complete engine done: each phase in the cut has its scenarios, sections and relies-on',
         'invariants-checked claude open: every invariant names a check or says none can',
         'sections-drawn engine done: every section of the spec drawn on by at least one phase in the cut',
-        'assets-linked engine done: canonical assets linked',
+        'assets-linked engine done: canonical assets linked from spec.md — one gone or no longer needed set to reference: asset status <work-unit> <path> reference',
       ],
       start: [
         'tasks-written claude open: tasks written with their links',
@@ -426,6 +426,40 @@ describe('the engine\'s own items, worked out at each call (6.4.3)', () => {
     writeState(dir, layout.unit(UNIT, 'spec.md'), SPEC.replace('typed. [builder]', 'typed, as [the form](assets/form.png) shows. [builder]'));
 
     assert.deepStrictEqual([...seen, linked()], ['open', 'open', 'done']);
+  });
+
+  it('reads a spike\'s folder linked as canonical linked by a link to it, with or without its trailing slash, or to a file it holds, never by a link beside it (11.6.3)', () => {
+    const linked = () => itemState('assets-linked', 'ready-to-build', UNIT);
+    const at = `${UNIT}.discussion.cards`;
+    const write = (/** @type {string} */ verb, /** @type {string[]} */ flags, /** @type {object} */ content) => ok(dir, ['ledger', verb, at, ...flags], { env: SESSION, stdin: JSON.stringify({ by: 'claude', who_moved_whom: 'none', ...content }) }).id;
+    const decided = write('decide', ['--answers', write('ask', [], { text: 'How does the frame scroll?' })], { text: 'Smoothly.', why: 'The spike settled it.' });
+    const spike = ok(dir, ['asset', 'spike', UNIT, 'frame']).path;
+    writeState(dir, `${spike}/Frame.swift`, 'struct Frame {}\n');
+    writeState(dir, `${UNIT}/spikes/001-frameworks/notes.md`, 'notes\n');
+    ok(dir, ['asset', 'add', UNIT, spike, '--entry', decided, '--status', 'canonical'], { env: SESSION });
+    const seen = [linked()];
+    for (const target of ['spikes/001-frameworks/notes.md', 'spikes/001-frame', 'spikes/001-frame/', 'spikes/001-frame/Frame.swift']) {
+      writeState(dir, layout.unit(UNIT, 'spec.md'), SPEC.replace('typed. [builder]', `typed, as [the spike](${target}) shows. [builder]`));
+      seen.push(linked());
+    }
+
+    assert.deepStrictEqual(seen, ['open', 'open', 'done', 'done', 'done']);
+  });
+
+  it('keeps a canonical file gone from disk open however the spec links it, until it is set to reference, as its text says (11.6.3)', () => {
+    const linked = () => itemState('assets-linked', 'ready-to-build', UNIT);
+    const at = `${UNIT}.discussion.cards`;
+    const write = (/** @type {string} */ verb, /** @type {string[]} */ flags, /** @type {object} */ content) => ok(dir, ['ledger', verb, at, ...flags], { env: SESSION, stdin: JSON.stringify({ by: 'claude', who_moved_whom: 'none', ...content }) }).id;
+    const decided = write('decide', ['--answers', write('ask', [], { text: 'What does the form look like?' })], { text: 'As drawn.', why: 'The mockup settled it.' });
+    writeState(dir, layout.assets(UNIT, 'form.png'), 'form\n');
+    ok(dir, ['asset', 'add', UNIT, layout.assets(UNIT, 'form.png'), '--entry', decided, '--status', 'canonical'], { env: SESSION });
+    writeState(dir, layout.unit(UNIT, 'spec.md'), SPEC.replace('typed. [builder]', 'typed, as [the form](assets/form.png) shows. [builder]'));
+    fs.rmSync(statePath(dir, layout.assets(UNIT, 'form.png')));
+    const gone = linked();
+    ok(dir, ['asset', 'status', UNIT, layout.assets(UNIT, 'form.png'), 'reference'], { env: SESSION });
+
+    assert.deepStrictEqual([gone, linked()], ['open', 'done']);
+    assert.match(ok(dir, ['checklist', 'show', 'ready-to-build', UNIT]).items.find((/** @type {{key: string}} */ item) => item.key === 'assets-linked').text, /set to reference: asset status <work-unit> <path> reference$/);
   });
 
   it('reads what a phase relies on as done once an earlier phase\'s close is recorded and another unit is completed, never cancelled (12.6.3)', () => {

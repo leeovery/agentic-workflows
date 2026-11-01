@@ -32,7 +32,7 @@ const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('.
 const { syncKnowledge } = require('./knowledge/sync.cjs');
 const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 const {
-  phaseItems, itemOf, computeTopicLifecycle, computeNextAction, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES, lifecyclePhrase, topicTitle,
+  buildBegun, phaseItems, itemOf, computeTopicLifecycle, computeNextAction, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES, lifecyclePhrase, topicTitle,
   awaitedExperiments, waits, settleItemStatus,
   sourceRows, sourceRow, openSources, specUnsettled, specUnsettledPhrase, UNIT_PHASES, unitItems, discoveryUnitExists, unitLocks, lockingSpecsPhrase, promotedRefusal, deliveryStarted,
   specIncorporations, cancelPlan, postponePlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases, briefFile, topicDir, topicKey, noTopicRefusal, topicTitles, goesBy,
@@ -183,6 +183,18 @@ function assertSpecSettled(manifest, phase, topic, verb) {
   );
 }
 
+// No build before ready to build's yes (11.8.1): a unit writing the one spec
+// opens no planning or implementation item until the yes begins its build.
+// A unit keeping the old spec's items keeps the old door (29.17).
+
+/** @param {Record<string, any>} manifest @param {string} phase @param {string} topic */
+function assertBuildBegun(manifest, phase, topic) {
+  if (phase !== 'planning' && phase !== 'implementation') return;
+  const pipeline = WORK_TYPE_PIPELINES[/** @type {keyof typeof WORK_TYPE_PIPELINES} */ (manifest.work_type)] ?? [];
+  if (!pipeline.includes('specification') || phaseItems(manifest, 'specification').length > 0 || buildBegun(manifest)) return;
+  throw new Error(`${phase} can't start on "${topic}" — ${manifest.name}'s build has not begun; ready to build's yes begins it: render ready-to-build ${manifest.name}`);
+}
+
 // The map decides whether a topic's discussion can be born — the same join
 // the epic menu renders its rows from, so the engine is never the permissive
 // path around it. The gate is on birth alone: an in-progress item resumes
@@ -214,9 +226,10 @@ function assertMapAllowsStart(manifest, phase, topic, existing) {
  * (init-phase semantics), or set an existing item back to `in-progress`.
  * A completed item must go through reopen — resuming is not starting — and
  * a cancelled item through reactivate. On an epic the discovery map gates
- * the birth (see assertMapAllowsStart). A proposed grouping's start records
- * the started specifications it incorporates (specIncorporations). No git
- * commit.
+ * the birth (see assertMapAllowsStart), and on a unit writing the one spec
+ * ready to build's yes gates a build phase's (see assertBuildBegun). A
+ * proposed grouping's start records the started specifications it
+ * incorporates (specIncorporations). No git commit.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} phase
@@ -245,7 +258,10 @@ function startTopic(cwd, workUnit, phase, topic) {
     } else if (existing && existing.status === 'promoted') {
       throw new Error(promotedRefusal(phase, topic, existing));
     }
-    if (!existing || existing.status === 'unstarted') assertSpecSettled(manifest, phase, topic, 'start');
+    if (!existing || existing.status === 'unstarted') {
+      assertSpecSettled(manifest, phase, topic, 'start');
+      assertBuildBegun(manifest, phase, topic);
+    }
     assertMapAllowsStart(manifest, phase, topic, existing);
 
     let created = false;

@@ -49,12 +49,14 @@
 // or a question opened on it — asked there, or moved to it — after the
 // close voids it, as the yes taking it does, so the topic is worked afresh
 // and closed again before its gate shows again, every engine item holding
-// still. A decision changed since voids nothing. Ready to build's close
-// keeps `spec_hash` and `cut_hash`, what `spec.md` and the cut held as it
-// closed, and its gate stands on a close neither has changed since
-// (`readyClose`): a land or a cut after it voids it (E12), and so does any
-// engine item failing now, so the checklist is worked afresh and closed
-// again before the gate shows again. A skip shows on the screen
+// still. A decision changed since voids nothing. Ready to build stands on
+// the landed spec alone (spec-landed.cjs): its close is refused while
+// `spec.md` holds changes that have not landed, and keeps `spec_hash` and
+// `cut_hash`, what the landed spec and the cut held as it closed; its gate
+// stands on a close neither has changed since (`readyClose`): a land or a
+// cut after it voids it (E12), and so does any engine item failing now, so
+// the checklist is worked afresh and closed again before the gate shows
+// again. A skip shows on the screen
 // of the next authority gate over its work (6.4.5): decided's, ready to
 // build's and finish's each their own, and finish's every phase start's and
 // close's too, as each record keeps them. An engine item is never marked or
@@ -68,15 +70,15 @@
 // ---------------------------------------------------------------------------
 
 const crypto = require('crypto');
-const fs = require('fs');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, readProjectManifest, writeProjectManifestAtomic, withProjectLock } = require('../kernel/manifest.cjs');
 const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { hasTopic, manifestOf, liveness, finishedUnits, liveTopics } = require('./ledger-units.cjs');
 const { ID_FACTS, foldLedger, mapOf } = require('./ledger-fold.cjs');
-const { SPEC_FILE, specPath, readSpec, specSections, specStatements } = require('./spec-sections.cjs');
+const { SPEC_FILE, readSpec, specSections, specStatements } = require('./spec-sections.cjs');
 const { topicsSettled } = require('./spec-standing.cjs');
 const { inventedLines } = require('./spec-trace.cjs');
+const { readLandedSpec } = require('./spec-landed.cjs');
 const { sweepTaken } = require('./sweep.cjs');
 const { reviewSettled } = require('./spec-passes.cjs');
 const { mailboxDepth, buildBegun } = require('./derivations.cjs');
@@ -210,20 +212,19 @@ function statementsTraced({ cwd, unit, warnings }) {
 /** The review's last pass changed nothing (11.7.6): as spec-passes.cjs settles it. @param {Named} named */
 const reviewed = ({ cwd, unit, warnings }) => reviewSettled(cwd, /** @type {string} */ (unit), warnings);
 
-/** Every file the unit's current entries link as canonical linked from its spec (11.6.3). @param {Named} named */
+/** Every file or folder the unit's current entries link as canonical linked from its spec, a folder by a link to it or to what it holds (11.6.3). @param {Named} named */
 function assetsLinked({ cwd, unit, warnings }) {
   const root = stateRoot(cwd);
-  const linked = new Set(logLinks(root, [`${unit}/${SPEC_FILE}`]));
-  return canonicalAssets(root, /** @type {string} */ (unit), warnings).every((asset) => linked.has(asset));
+  const links = logLinks(root, [`${unit}/${SPEC_FILE}`]);
+  return canonicalAssets(root, /** @type {string} */ (unit), warnings).every((asset) => links.some((link) => link === asset || link.startsWith(`${asset}/`)));
 }
 
 /** A text's fingerprint. @param {string} text */
 const hashOf = (text) => crypto.createHash('sha256').update(text).digest('hex').slice(0, 12);
 
-/** What the unit's spec and its cut hold now, as ready to build's close keeps them; the spec's null where it has none. @param {string} cwd @param {string} unit @param {Record<string, any>} manifest */
+/** What the unit's landed spec and its cut hold now, as ready to build's close keeps them, refused while the spec on disk is not the landed one. @param {string} cwd @param {string} unit @param {Record<string, any>} manifest */
 function specAndCut(cwd, unit, manifest) {
-  const spec = specPath(cwd, unit);
-  return { spec_hash: fs.existsSync(spec) ? hashOf(fs.readFileSync(spec, 'utf8')) : null, cut_hash: hashOf(JSON.stringify(manifest.cut ?? null)) };
+  return { spec_hash: hashOf(readLandedSpec(cwd, unit)), cut_hash: hashOf(JSON.stringify(manifest.cut ?? null)) };
 }
 
 /** What the phase relies on is done: each earlier phase's close recorded, each other unit completed (12.6.2, 12.6.3). @param {Named} named */
@@ -306,7 +307,7 @@ const POINTS = Object.freeze({
       { key: 'phases-complete', text: 'each phase in the cut has its scenarios, sections and relies-on', check: phasesComplete },
       { key: 'invariants-checked', text: 'every invariant names a check or says none can' },
       { key: 'sections-drawn', text: 'every section of the spec drawn on by at least one phase in the cut', check: sectionsDrawn },
-      { key: 'assets-linked', text: 'canonical assets linked', check: assetsLinked },
+      { key: 'assets-linked', text: 'canonical assets linked from spec.md — one gone or no longer needed set to reference: asset status <work-unit> <path> reference', check: assetsLinked },
     ],
     shows: ownSkips,
     seals: ({ cwd, unit, manifest }) => specAndCut(cwd, /** @type {string} */ (unit), manifest),
@@ -497,17 +498,19 @@ function mark(checklist, key, state, reason) {
 }
 
 /**
- * Record the checklist's close, refused while any item is open (6.4.4),
- * then do what its point's close does beyond.
+ * Record the checklist's close, refused where what its point keeps cannot be
+ * read, then while any item is open (6.4.4); then do what its point's close
+ * does beyond.
  * @param {Named} checklist
  */
 function close(checklist) {
   const at = new Date().toISOString();
   const answer = changeRecord(checklist, 'closed', (record, fresh) => {
+    const sealed = POINTS[checklist.point].seals?.(fresh);
     const open = itemStates(fresh).filter((item) => item.state === 'open').map((item) => item.key);
     if (open.length > 0) throw new Error(`${nameOf(checklist)} has items open: ${open.join(', ')}`);
     record.closed = at;
-    Object.assign(record, POINTS[checklist.point].seals?.(fresh));
+    Object.assign(record, sealed);
   }, { ...answering(checklist), closed: at });
   POINTS[checklist.point].closes?.(checklist);
   return answer;
@@ -569,10 +572,11 @@ function decidedClose(cwd, unit, topic) {
 
 /**
  * The close ready to build's gate stands on (E12): the record's close, and
- * the skips it shows (6.4.5), each marked before it. Refused while the
- * checklist is open: closed never; `spec.md` or the cut changed since the
- * close — a land or a cut after it — each worked afresh and closed again; or
- * an item the engine checks failing now.
+ * the skips it shows (6.4.5), each marked before it. Refused while
+ * `spec.md` holds changes that have not landed, and while the checklist is
+ * open: closed never; the landed spec or the cut changed since the close — a
+ * land or a cut after it — each worked afresh and closed again; or an item
+ * the engine checks failing now.
  * @param {string} cwd @param {string} unit
  * @returns {{closed: string, skips: Skip[], warnings: string[]}}
  */
@@ -580,9 +584,9 @@ function readyClose(cwd, unit) {
   const checklist = named(cwd, 'ready-to-build', [unit]);
   const name = nameOf(checklist);
   const record = recordAt(checklist.manifest, checklist.path);
+  const now = specAndCut(cwd, unit, checklist.manifest);
   const closedAt = record?.closed;
   if (record === undefined || closedAt === undefined) throw new Error(`${name} is open — its items are worked, then it is closed: checklist close ready-to-build ${unit}`);
-  const now = specAndCut(cwd, unit, checklist.manifest);
   if (record.spec_hash !== now.spec_hash) throw new Error(`${name} was closed before ${unit}'s spec changed — a land after the close voids it, so its items are worked afresh and it is closed again`);
   if (record.cut_hash !== now.cut_hash) throw new Error(`${name} was closed before ${unit}'s spec was cut again — a cut after the close voids it, so its items are worked afresh and it is closed again`);
   return standingClose(checklist, record, closedAt);
