@@ -6,6 +6,7 @@ Where no spec is written yet, write it whole. Where one is, rewrite from what is
 
 - **Written since your last brief** — what each entry changes.
 - **The review's findings** — each review pass's report waiting for you. A `rewrite` finding is yours to make, as it says, from the entries it names; a `gap` or a `fact` finding comes back to you as entries once it is settled, so leave it.
+- **The wording agreed** — each change the person agreed on their review of the spec, naming its line: reword the line as it says, citing what it cited.
 - **Lines that do not trace** — re-cite each to the entries it comes from, or drop it.
 - **The refusal** — the spec you last wrote was refused for it: answer every fault.
 
@@ -90,6 +91,10 @@ A gap is a detail the build would meet that no entry decides, two entries that c
 # The review's findings
 
 {{review-findings}}
+
+# The wording agreed
+
+{{wording-changes}}
 
 # Lines that do not trace
 

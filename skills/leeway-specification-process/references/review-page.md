@@ -32,7 +32,17 @@ Answer each comment beneath its line, as it stands when read. While you answer, 
 
 ## An Agreed Change
 
-A tick on a line you answered is the person agreeing your last answer. Where the answer changes the spec, it lands at the spec as the person's decision, as a change asked for at ready to build does (**[ready-to-build.md](ready-to-build.md)**); the writer rewrites from it, its land goes through the review's next pass, and the cut is made again. The page takes the person's tick off a line whose wording changed, for them to tick again: never write it back.
+A tick on a line you answered is the person agreeing your last answer. Where the answer changes the spec, the writer makes the change, its land goes through the review's next pass, and the cut is made again:
+
+- **Wording alone** — the line says what it said, better: it never touches the ledger. Write each such change agreed, one a line, naming the line by its number and giving the wording agreed, to `.leeway/.cache/{work_unit}/specification/wording.md`, and brief the writer with it — every writer's brief until the spec lands, a refused land's among them:
+
+  ```bash
+  node .claude/skills/leeway-engine/scripts/engine.cjs brief spec-writer {work_unit} --wording .leeway/.cache/{work_unit}/specification/wording.md
+  ```
+
+- **What the product does** — the answer decides something: it lands at the spec as the person's decision, as a change asked for at ready to build does (**[ready-to-build.md](ready-to-build.md)**), and the writer rewrites from it.
+
+The page takes the person's tick off a line whose wording changed, for them to tick again: never write it back.
 
 ## Pushing a Change
 

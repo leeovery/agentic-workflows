@@ -8,7 +8,8 @@
 // settling it, the spec cut into phases through the cut's corridor, the cut
 // staged taken with no file named, and ready to build closed, its review
 // row building the page, published, its marks read back to the file the
-// publishing names, the wording agreed re-landed onto the open page — the
+// publishing names, the wording agreed briefed to the writer and re-landed
+// onto the open page — the
 // close voided and the review reopened until a pass on the re-land and the
 // checklist closed again — the marks read back and stored before the screen
 // is drawn, then the pick taking them read back fresh, the build begun and
@@ -89,8 +90,9 @@ describe('pipeline simulation: epic, the spec', () => {
     const { read_back: readBack } = sim.run(['spec', 'published', wu, 'https://claude.ai/public/artifacts/ledgerly']);
     /** The page's marks, read back to the file the publishing named. @param {Record<string, unknown>} marks */
     const readBackAs = (marks) => fs.writeFileSync(readBack, JSON.stringify(marks));
-    // The person comments; Claude answers beneath the line and the wording
-    // agreed lands, the open page brought up to it.
+    // The person comments; Claude answers beneath the line, and the wording
+    // agreed goes to the writer, never the ledger, and lands, the open page
+    // brought up to it.
     readBackAs({ s1: { m: { '1-1-1': { s: 'comment', t: { p1000: { by: 'p', x: 'Say it holds?' } } } } } });
     const marks = sim.run(['spec', 'marks', wu, '--file', readBack]);
     assert.deepStrictEqual(marks.waiting.map(({ number }) => number), ['1.1.1']);
@@ -98,6 +100,9 @@ describe('pipeline simulation: epic, the spec', () => {
     for (const { collection, doc_id: doc, file_path: file } of batches.flatMap((/** @type {string} */ batch) => JSON.parse(fs.readFileSync(batch, 'utf8')))) {
       sim.write(`${store}/${collection}/${doc}.json`, fs.readFileSync(file, 'utf8'));
     }
+    const wording = `.leeway/.cache/${wu}/specification/wording.md`;
+    sim.write(wording, '1.1.1: It settles as alpha decided, and holds.\n');
+    sim.run(['brief', 'spec-writer', wu, '--wording', wording]);
     spec('It settles as alpha decided, and holds.');
     sim.run(['spec', 'land', wu]);
     const pushed = sim.run(['spec', 'push', wu, '--reason', 'Alpha holds once settled.', '--store', path.join(sim.dir, store), '--from', '1.1.1']);

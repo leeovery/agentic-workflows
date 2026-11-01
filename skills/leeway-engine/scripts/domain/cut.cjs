@@ -27,7 +27,9 @@
 // `.cache/{unit}/specification/cut.json`, where the cut's agent writes it,
 // and the file a cut given none takes; what the cut would refuse of it, read
 // without writing, is the refusal a fresh brief carries back to the agent
-// (brief-records.cjs).
+// (brief-records.cjs). A cut landed keeps the ledger's mark beside it
+// (spec-passes.cjs), so the agent's next brief carries the decisions made
+// at the spec since — what the person asked of the cut among them.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -41,6 +43,7 @@ const { manifestOf } = require('./ledger-units.cjs');
 const { readSpec, specSections, specScenarios, SPEC_FILE } = require('./spec-sections.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { phaseStarted } = require('./checklist.cjs');
+const { recordCut } = require('./spec-passes.cjs');
 
 /** @typedef {{name: string, goal: string, scenarios: string[], sections: string[], relies_on: Array<number|string>}} Phase */
 
@@ -236,6 +239,7 @@ function writeCut(cwd, unit, file) {
   });
   /** @type {string[]} */
   const warnings = [];
+  recordCut(cwd, unit, warnings);
   const outcome = commitStateTail(cwd, `${unit}/manifest.json`, `cut(${unit}): ${phases === 1 ? '1 phase' : `${phases} phases`}`, warnings);
   /** @type {{unit: string, phases: number, committed: string|null, warnings?: string[], note?: string}} */
   const result = { unit, phases, committed: outcome.committed };

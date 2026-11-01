@@ -4,9 +4,9 @@
 // Domain ring: the spec's loop (11.7.6, 11.S11, E3, E4) — the writer writes,
 // the spec lands, a pass of its reviewer reviews what changed, and its report
 // goes back to the writer through the records; the review stops when a pass
-// changes nothing. Read by the land (spec-land.cjs), the reviewer's and the
-// writer's briefs (brief-records.cjs) and ready to build's `review-settled`
-// (checklist.cjs).
+// changes nothing. Read by the land (spec-land.cjs), the cut (cut.cjs), the
+// reviewer's, the writer's and the cut's briefs (brief-records.cjs) and
+// ready to build's `review-settled` (checklist.cjs).
 //
 // What changed, one comparison (`changedSince`): a section's own text is the
 // title and introduction, everything before the first area; a part's text;
@@ -45,6 +45,9 @@
 //   (`landed.json`) — and commits the pending take (`taken.json`), a land
 //   of the spec unchanged among them; it answers what changed since the
 //   spec the state branch held.
+// - `cut` keeps the ledger's mark at the cut it lands (`cut-landed.json`):
+//   the cut's brief draws every current decision made at the unit's own
+//   level at the spec since — every one before any cut (`cutRequests`).
 // - The reviewer's brief binds its pass to the last land, and reads what
 //   changed since the land the latest reported pass reviewed — every
 //   section where none has; with nothing changed it names what waits.
@@ -199,6 +202,34 @@ function recordTaking(cwd, unit, warnings) {
   keep(kept(cwd, unit, 'taking.json'), taking);
 }
 
+/**
+ * Keep the ledger's mark as a cut lands on the unit's manifest: the cut's
+ * next brief reads the decisions made at the spec since against it.
+ * @param {string} cwd @param {string} unit @param {string[]} warnings
+ */
+function recordCut(cwd, unit, warnings) {
+  keep(kept(cwd, unit, 'cut-landed.json'), { ledger_mark: markOf(ledgerFacts(cwd, warnings)) });
+}
+
+/**
+ * The current decisions made at the unit's own level at the spec since the
+ * cut on its manifest landed — every one where this checkout keeps no
+ * cut's land — by id, in the ledger's order: what the person asked of the
+ * cut among them (11.11.6).
+ * @param {string} cwd @param {string} unit @param {string[]} warnings @returns {string[]}
+ */
+function cutRequests(cwd, unit, warnings) {
+  const read = readKept(kept(cwd, unit, 'cut-landed.json'));
+  const landed = isObject(read) && Object.hasOwn(read, 'ledger_mark');
+  return withUnitEntries(cwd, unit, warnings, ({ folded, entries: current }) => {
+    const since = landed ? lineOf(folded.facts, read.ledger_mark) : 0;
+    return [...current.keys()].filter((id) => {
+      const made = factsOf(folded, id);
+      return made.unit === unit && made.phase === UNIT_PHASE && made.kind === 'decision' && made.place.number > since;
+    });
+  });
+}
+
 /** Whether a pass declined a finding: acknowledged with it, then incorporated. @param {Pass} pass @param {string} id */
 const declined = (pass, id) => pass.status === 'incorporated' && pass.acknowledged.includes(id);
 
@@ -327,5 +358,5 @@ function reviewSettled(cwd, unit, warnings) {
 }
 
 module.exports = {
-  ownTexts, printOf, changedSince, recordLand, lastLand, recordTaking, outstanding, reviewedSpec, sectionsToReview, waitingGaps, waitingOn, reviewSettled,
+  ownTexts, printOf, changedSince, recordLand, lastLand, recordTaking, recordCut, cutRequests, outstanding, reviewedSpec, sectionsToReview, waitingGaps, waitingOn, reviewSettled,
 };

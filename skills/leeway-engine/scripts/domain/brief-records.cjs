@@ -92,6 +92,11 @@
 //                  says it, read without writing (cut.cjs); none recorded
 //                  where nothing is staged or the cut would land
 //   cut-to         where the agent writes the cut: the unit's staged cut
+//   cut-requests   the unit's current decisions made at its own level at
+//                  the spec since the cut on its manifest landed — every
+//                  one before any cut (spec-passes.cjs) — verbatim, each
+//                  with where it stands and what it replaced: what the
+//                  person asked of the cut among them
 //
 // The sweep's records, each of the unit the brief is for (11.2.2), with the
 // product record and the names struck, above:
@@ -131,6 +136,10 @@
 //   review-findings the report of each pass waiting for the writer,
 //                  verbatim; the writer's brief keeps what it took, a take
 //                  the next land commits (spec-passes.cjs)
+//   wording-changes the wording the person agreed on the review page, the
+//                  file `--wording` names verbatim, one change a line, each
+//                  naming its line (11.11); none recorded where no file is
+//                  named
 //   spec-to        where the writer writes: the unit's `spec.md`
 //   changed-sections the spec's path, then the sections the review's pass
 //                  reads, each verbatim, the title and introduction one of
@@ -239,7 +248,7 @@ const { inventedLines } = require('./spec-trace.cjs');
 const { specSources } = require('./spec-entry.cjs');
 const { landRefusal, unitRefusal } = require('./spec-land.cjs');
 const {
-  ownTexts, recordTaking, outstanding, reviewedSpec, sectionsToReview, waitingGaps, waitingOn,
+  ownTexts, recordTaking, outstanding, cutRequests, reviewedSpec, sectionsToReview, waitingGaps, waitingOn,
 } = require('./spec-passes.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { specReferenceOf } = require('./task-file.cjs');
@@ -980,21 +989,41 @@ const drawCanonicalAssets = (filling, warnings) => listed(sourcesOf(filling, war
 /** @param {Filling} filling */
 const drawBuilderCalls = (filling) => listed(builderCalls(filling.cwd, unitOf(filling)).map(({ call, why }) => `- ${indented(call)}\n  Why: ${indented(why)}`));
 
-/** @param {Filling} filling @param {string[]} warnings */
-function drawChangedEntries(filling, warnings) {
-  const waiting = new Set(outstanding(filling.cwd, unitOf(filling), warnings).entries);
+/**
+ * The unit's entries `ids` names, in the ledger's order, each with where it
+ * stands and what it replaced.
+ * @param {Filling} filling @param {string[]} warnings @param {string[]} ids
+ */
+function entriesStanding(filling, warnings, ids) {
+  const named = new Set(ids);
   const manifest = unitManifest(filling);
   const { entries, short } = unitView(filling, warnings);
-  return listed([...entries].filter(([id]) => waiting.has(id)).map(([, entry]) => {
+  return listed([...entries].filter(([id]) => named.has(id)).map(([, entry]) => {
     const replaced = typeof entry.line.replaces === 'string' ? `, replacing ${short(entry.line.replaces)}` : '';
     return entryLine(entry, `, ${placeInLine(manifest, entry.stands)}${replaced}`);
   }));
 }
 
 /** @param {Filling} filling @param {string[]} warnings */
+const drawChangedEntries = (filling, warnings) => entriesStanding(filling, warnings, outstanding(filling.cwd, unitOf(filling), warnings).entries);
+
+/** @param {Filling} filling @param {string[]} warnings */
+const drawCutRequests = (filling, warnings) => entriesStanding(filling, warnings, cutRequests(filling.cwd, unitOf(filling), warnings));
+
+/** @param {Filling} filling @param {string[]} warnings */
 function drawReviewFindings(filling, warnings) {
   const { passes } = outstanding(filling.cwd, unitOf(filling), warnings);
   return passes.length === 0 ? NONE : passes.map(({ file }) => fs.readFileSync(file, 'utf8').trim()).join('\n\n');
+}
+
+/** @param {Filling} filling */
+function drawWordingChanges({ cwd, given }) {
+  if (given.wording === undefined) return NONE;
+  const file = path.resolve(cwd, given.wording);
+  if (!fs.statSync(file, { throwIfNoEntry: false })?.isFile()) throw new Error(`brief: --wording names no file — ${file}`);
+  const text = fs.readFileSync(file, 'utf8').trim();
+  if (text === '') throw new Error(`brief: --wording names an empty file — ${file}`);
+  return text;
 }
 
 /** What the writer's brief carried, pending until the spec's land takes it. @param {Filling} filling @param {string[]} warnings */
@@ -1122,6 +1151,7 @@ const RECORDS = Object.freeze({
   'relies-on-graph': { of: 'unit', draw: drawReliesOnGraph },
   'cut-refusal': { of: 'unit', draw: drawCutRefusal },
   'cut-to': { of: 'unit', draw: drawCutTo },
+  'cut-requests': { of: 'unit', draw: drawCutRequests },
   'unit-records': { of: 'unit', draw: drawUnitRecords },
   'sweep-refusal': { of: 'unit', draw: drawSweepRefusal },
   'sweep-to': { of: 'unit', draw: drawSweepTo },
@@ -1129,6 +1159,7 @@ const RECORDS = Object.freeze({
   'canonical-assets': { of: 'unit', draw: drawCanonicalAssets },
   'builder-calls': { of: 'unit', draw: drawBuilderCalls },
   'changed-entries': { of: 'unit', draw: drawChangedEntries },
+  'wording-changes': { of: 'unit', flags: [{ name: 'wording', value: 'file', optional: true }], draw: drawWordingChanges },
   'review-findings': { of: 'unit', draw: drawReviewFindings, bind: takeFindings },
   'land-refusal': { of: 'unit', draw: drawLandRefusal },
   'spec-to': { of: 'unit', draw: drawSpecTo },

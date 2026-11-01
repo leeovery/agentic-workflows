@@ -11,10 +11,12 @@
 // topic's entries under its title, then the unit's own, then those it made
 // standing in another unit, each topic's log, the canonical assets, the
 // sweep's calls, what waits for it — the entries made at the spec since the
-// last take a land committed, a gap's answer among them (11.S20) — the lines
+// last take a land committed, a gap's answer among them (11.S20) — the
+// wording the person agreed, the file `--wording` names verbatim, the lines
 // that do not trace and what the land refuses of the spec as written; its
 // template's example read by the spec's own grammar; refused for a unit the
-// land refuses, and while a gap put to the person is open. The land keeps
+// land refuses, a wording file that is none or is empty, and while a gap put
+// to the person is open. The land keeps
 // the print of what it landed — each section's own text hashed, the title
 // and introduction one of them — a section's changing alone with it, and
 // blank lines between sections changing none (E4). The reviewer's brief, for
@@ -54,6 +56,8 @@ const { specStatements } = require(path.join(SCRIPTS, 'domain/spec-sections.cjs'
 const { specEntryRefusal } = require(path.join(SCRIPTS, 'domain/spec-entry.cjs'));
 
 const LANDED = layout.cache(UNIT, 'specification', 'landed.json');
+const WORDING = layout.cache(UNIT, 'specification', 'wording.md');
+const AGREED = 'The wording agreed';
 
 const dir = useSpecReviewWorld();
 const { write, full, entries: ledgerLines } = ledgerHelpers(dir);
@@ -78,6 +82,7 @@ describe('the spec writer\'s brief (11.1.5, 11.3.2, 11.S2)', () => {
       'builder-calls': 'None recorded.',
       'changed-entries': 'None recorded.',
       'review-findings': 'None recorded.',
+      'wording-changes': 'None recorded.',
       'invented-lines': 'None recorded.',
       'land-refusal': 'None recorded.',
     })}`);
@@ -91,6 +96,15 @@ describe('the spec writer\'s brief (11.1.5, 11.3.2, 11.S2)', () => {
     }));
 
     assert.strictEqual(section(issued(['spec-writer', UNIT]).brief, 'The builder\'s calls'), '- The retry interval.\n  Why: The person would leave it.');
+  });
+
+  it('the wording the person agreed on the review page: the file `--wording` names, verbatim, nothing written since — none recorded without it', () => {
+    const agreed = ['2.1.1: A refund reaches the card the moment it is asked for.', '2.1.2: The card holder sees the refund on their statement.'].join('\n');
+    const file = writeState(dir(), WORDING, `${agreed}\n`);
+    const { brief } = issued(['spec-writer', UNIT, '--wording', file]);
+
+    assert.deepStrictEqual([section(brief, AGREED), section(brief, 'Written since your last brief')], [agreed, 'None recorded.']);
+    assert.strictEqual(section(issued(['spec-writer', UNIT]).brief, AGREED), 'None recorded.');
   });
 
   it('its template\'s example is a spec the land\'s grammar reads: its statements, a screen and a scenario', () => {
@@ -152,6 +166,17 @@ describe('the spec writer\'s brief refused, nothing stored', () => {
     assert.deepStrictEqual([unsettled, refusedUnissued(['spec-writer', UNIT])], [
       `brief: ${open}`,
       `brief: ${UNIT}'s spec is concluded, and a concluded spec is never corrected — a later change replaces its entry on the ledger`,
+    ]);
+  });
+
+  it('a wording file that is none, or is empty', () => {
+    const missing = statePath(dir(), WORDING);
+    const none = refusedUnissued(['spec-writer', UNIT, '--wording', missing]);
+    writeState(dir(), WORDING, '\n');
+
+    assert.deepStrictEqual([none, refusedUnissued(['spec-writer', UNIT, '--wording', missing])], [
+      `brief: --wording names no file — ${missing}`,
+      `brief: --wording names an empty file — ${missing}`,
     ]);
   });
 

@@ -40,6 +40,8 @@ Write it as JSON, exactly this shape and nothing else:
 
 Where a cut is already at the path below, it is the one staged, and the refusal below lists the faults `cut` refuses it for: read it first, then amend it, every fault answered.
 
+The decisions under "Decided at the spec since the cut" were made after the cut on the unit landed, the person's changes to it among them: cut from them. A phase one moves, splits, merges or reorders is cut as it decides; one bearing on no phase leaves the cut as it stands.
+
 # The spec's outline
 
 {{spec-outline}}
@@ -51,6 +53,10 @@ Where a cut is already at the path below, it is the one staged, and the refusal 
 # What the spec's parts rely on
 
 {{relies-on-graph}}
+
+# Decided at the spec since the cut
+
+{{cut-requests}}
 
 # The staged cut's refusal
 

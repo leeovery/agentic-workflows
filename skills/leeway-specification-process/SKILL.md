@@ -46,7 +46,7 @@ The person meets this phase at approve the map after the sweep, at a gap the mat
 
 ## Doors
 
-- An agent → `brief sweep|spec-writer|phase-cut {work_unit}`; a review pass → `agent dispatch {work_unit} specification {work_unit} --kind spec-review`, then `brief spec-reviewer {work_unit} --agent {id}`; then the Agent call with the agent and the pointer `brief` answers. A pass's report → `agent scan|ack|surface|incorporate {work_unit} specification {work_unit}`.
+- An agent → `brief sweep|spec-writer|phase-cut {work_unit}`, the writer with the wording the person agreed `--wording {file}`; a review pass → `agent dispatch {work_unit} specification {work_unit} --kind spec-review`, then `brief spec-reviewer {work_unit} --agent {id}`; then the Agent call with the agent and the pointer `brief` answers. A pass's report → `agent scan|ack|surface|incorporate {work_unit} specification {work_unit}`.
 - The sweep's report → `sweep take {work_unit}`; its candidates → `render approve-map {work_unit} --sweep`, `approve-map strike|unstrike {work_unit} {n}`.
 - The spec → `spec land {work_unit}`.
 - A gap → `ledger ask {work_unit}.specification`, then `raise {work_unit}.specification --answers {id}`, or `--replaces {id} --reason {reason}` where it changes a decision; the person's own decision → `ledger decide|replace {work_unit}.specification`; a fact shown wrong → `ledger replace {work_unit}.specification --reason was-wrong`; what relied on it → `ledger affected {work_unit} {topic}`, `ledger hold`.

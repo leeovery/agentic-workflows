@@ -25,7 +25,10 @@
 // cut given no file takes, refused by `cut`, and the fresh brief carrying
 // that refusal, verbatim, until the cut lands on the manifest and none is
 // recorded (11.S5); nothing staged refused, naming where the agent writes
-// it; every refusal of the
+// it; the decisions made at the spec since the cut landed — every one
+// before any cut — drawn with where each stands, the person's changes to
+// the cut among them, never a question or a finding made there, or a
+// decision made in a topic; every refusal of the
 // brief storing none, a cancelled unit's among them.
 //
 // Layer: verb. Worlds, each built once and copied: a project with two
@@ -350,6 +353,8 @@ function section(brief, heading) {
 const staged = (phases) => writeState(dir, STAGED, JSON.stringify({ phases }));
 
 const GRAPH = 'What the spec\'s parts rely on';
+const REQUESTS = 'Decided at the spec since the cut';
+const AT_SPEC = `${EPIC}.specification`;
 const WHOLE = phase('Whole refunds', { scenarios: ['1.S1', '2.S1'], sections: ['1.1', '1.2', '2.1'] });
 const PART = phase('Part refunds', { scenarios: ['2.S2'], sections: ['1.2', '2.1', '2.2'], relies_on: [1] });
 
@@ -373,6 +378,7 @@ describe('the cut\'s corridor (11.5.1, 11.5.6, 11.S5, 11.S7)', () => {
         '- 2.S2, of §2 Refunds: Given a charge, when part of it is refunded, then the rest stands. (2.2.1)',
       ].join('\n'),
       'relies-on-graph': section(brief, GRAPH),
+      'cut-requests': 'None recorded.',
       'cut-refusal': 'None recorded.',
       'cut-to': `\`${statePath(dir, STAGED)}\``,
     })}`);
@@ -407,6 +413,25 @@ describe('the cut\'s corridor (11.5.1, 11.5.6, 11.S5, 11.S7)', () => {
     assert.deepStrictEqual(readManifest(dir, EPIC).cut, { phases: [WHOLE, PART] });
     assert.strictEqual(readState(dir, layout.unit(EPIC, SPEC_FILE)), shopSpec());
     assert.strictEqual(section(briefed().brief, 'The staged cut\'s refusal'), 'None recorded.');
+  });
+
+  it('draws the decisions made at the spec since the cut landed — every one before any cut — each with where it stands and what it replaced: the person\'s changes to the cut among them; never a question or a finding made there, or a decision made in a topic', () => {
+    const { write } = ledgerHelpers(() => dir);
+    const requests = () => section(briefed().brief, REQUESTS);
+    const asked = write('ask', AT_SPEC, [], { ...PERSON, text: 'Which refunds come first?' }).id;
+    const first = write('decide', AT_SPEC, ['--answers', asked], { ...PERSON, text: 'Part refunds are built before whole ones.', why: 'They are asked for most.' }).id;
+    write('find', AT_SPEC, [], { ...MADE, text: 'Refunds post nightly.', how: 'read in the code', known: 'read' });
+    const topicAsked = write('ask', `${EPIC}.discussion.refunds`, [], { ...PERSON, text: 'Are refunds emailed?' }).id;
+    write('decide', `${EPIC}.discussion.refunds`, ['--answers', topicAsked], { ...PERSON, text: 'Refunds are emailed.', why: 'The card holder asks.' });
+
+    assert.strictEqual(requests(), `- ${first} decision, the unit's own: Part refunds are built before whole ones.`);
+
+    staged([WHOLE, PART]);
+    ok(dir, ['cut', EPIC]);
+    assert.strictEqual(requests(), 'None recorded.');
+
+    const fee = write('replace', AT_SPEC, ['--replaces', made.fee, '--reason', 'changed-mind'], { ...PERSON, drops: ['No fee'], text: 'A refund costs a pound.', why: 'The bank charges one.' }).id;
+    assert.strictEqual(requests(), `- ${fee} decision, Refunds (refunds), replacing ${made.fee}: A refund costs a pound.`);
   });
 
   it('a cut given no file with nothing staged refuses, naming where the cut\'s agent writes it, and writes nothing', () => {
