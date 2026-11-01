@@ -195,48 +195,15 @@ describe('queryStore', () => {
     assert.strictEqual(boosted[0].work_unit, 'old');
   });
 
-  it('never decays a specification, however far the clock has moved past its unit', async () => {
-    const specDb = store.createStore();
-    for (const d of [doc('old', 1, 'Token refresh follows the rate window.'), doc('new', 1, 'Token refresh follows the rate window.')]) {
-      store.insertDocument(specDb, { ...d, embedding: stub.embed(d.content) });
-    }
-    const spec = { ...doc('old', 2, 'Token refresh follows the rate window.'), id: 'old-specification-old-001', phase: 'specification' };
-    store.insertDocument(specDb, { ...spec, embedding: stub.embed(spec.content) });
-    const workUnits = [
-      { name: 'old', status: 'completed', completed_at: '2026-01-01', work_type: 'feature' },
-      { name: 'new', status: 'completed', completed_at: '2026-06-01', work_type: 'feature' },
-    ];
-    const results = await query(specDb, { terms: ['token'], workUnits });
-    assert.deepStrictEqual(results.map((r) => [r.work_unit, r.phase, r.scoring.decay === 1]).sort(), [
-      ['new', 'investigation', true], ['old', 'investigation', false], ['old', 'specification', true],
-    ]);
-  });
-
   describe('the reopened marker', () => {
     const INVESTIGATION = 'ledger-investigation-ledger-001';
-    const SPECIFICATION = 'ledger-specification-ledger-001';
     const IMPORT = 'ledger-imports-notes-001';
     const UNLISTED = 'orphan-investigation-orphan-001';
     let ledgerDb;
 
-    /**
-     * The ledger unit's manifest, its investigation at `status` and the
-     * specification sourcing it concluded — staled by a reopen's hop.
-     * @param {string} status
-     */
+    /** The ledger unit's manifest, its investigation at `status`. @param {string} status */
     function ledger(status) {
-      const stale = status === 'in-progress';
-      return [{
-        name: 'ledger', work_type: 'feature', status: 'in-progress',
-        phases: {
-          investigation: { items: { ledger: { status } } },
-          specification: { items: { ledger: {
-            status: 'completed',
-            sources: { ledger: { status: stale ? 'stale' : 'incorporated' } },
-            ...(stale ? { reconcile_needed: 'investigation' } : {}),
-          } } },
-        },
-      }];
+      return [{ name: 'ledger', work_type: 'feature', status: 'in-progress', phases: { investigation: { items: { ledger: { status } } } } }];
     }
 
     /** Each result's marker by chunk id, and the ranking, the investigation at `status`. @param {string} status */
@@ -250,7 +217,6 @@ describe('queryStore', () => {
       const investigation = doc('ledger', 1, 'Receipts reconcile nightly.');
       for (const d of [
         investigation,
-        { ...investigation, id: SPECIFICATION, phase: 'specification', source_file: 'ledger/specification/ledger/specification.md' },
         { ...investigation, id: IMPORT, phase: 'imports', topic: 'notes', source_file: 'ledger/imports/notes.md' },
         doc('orphan', 1, 'Receipts reconcile nightly.'),
       ]) {
@@ -262,10 +228,6 @@ describe('queryStore', () => {
       assert.strictEqual((await queried('in-progress')).reopened[INVESTIGATION], true);
     });
 
-    it('leaves the specification sourced from the reopened investigation unmarked: its own item is still concluded', async () => {
-      assert.strictEqual((await queried('in-progress')).reopened[SPECIFICATION], false);
-    });
-
     it('never marks a result with no item of its own: an import, or a unit no manifest names', async () => {
       const { reopened } = await queried('in-progress');
       assert.deepStrictEqual([reopened[IMPORT], reopened[UNLISTED]], [false, false]);
@@ -274,95 +236,8 @@ describe('queryStore', () => {
     it('drops the marker once the topic completes again, and ranks alike either way', async () => {
       const reopened = await queried('in-progress');
       const concluded = await queried('completed');
-      assert.deepStrictEqual(concluded.reopened, { [INVESTIGATION]: false, [SPECIFICATION]: false, [IMPORT]: false, [UNLISTED]: false });
+      assert.deepStrictEqual(concluded.reopened, { [INVESTIGATION]: false, [IMPORT]: false, [UNLISTED]: false });
       assert.deepStrictEqual(reopened.ranking, concluded.ranking);
-    });
-  });
-
-  describe('the topic order', () => {
-    /**
-     * A chunk of the `auth` epic: `phase`'s record of `topic`.
-     * @param {string} phase @param {string} topic @param {string} content
-     */
-    function record(phase, topic, content) {
-      return { ...doc('auth', 1, content), id: `auth-${phase}-${topic}-001`, work_type: 'epic', phase, topic };
-    }
-
-    /**
-     * The `auth` unit: the `session` and `billing` investigations concluded,
-     * and the specifications at `specs` sourcing the `session` one.
-     * @param {Record<string, string>} specs  name → status
-     */
-    function auth(specs) {
-      const specification = Object.fromEntries(Object.entries(specs).map(([name, status]) =>
-        [name, { status, sources: { session: { status: 'incorporated' } } }]));
-      return [{
-        name: 'auth', work_type: 'bugfix', status: 'in-progress',
-        phases: {
-          investigation: { items: { session: { status: 'completed' }, billing: { status: 'completed' } } },
-          specification: { items: specification },
-        },
-      }];
-    }
-
-    /** Each result as phase:topic, best first. @param {any} topicDb @param {string[]} terms @param {object[]} workUnits */
-    async function placed(topicDb, terms, workUnits) {
-      return (await query(topicDb, { terms, workUnits })).map((r) => `${r.phase}:${r.topic}`);
-    }
-
-    /** Shorter text scores higher: the session investigation best by score, then billing's, then the specification. */
-    function storeOf() {
-      const topicDb = store.createStore();
-      for (const d of [
-        record('investigation', 'session', 'Tokens.'),
-        record('investigation', 'billing', 'Tokens expire.'),
-        record('specification', 'core', 'Tokens expire nightly now.'),
-      ]) {
-        store.insertDocument(topicDb, d);
-      }
-      return topicDb;
-    }
-
-    it("heads a topic with the specification its sources name, then its investigation, in the places they hold", async () => {
-      assert.deepStrictEqual(await placed(storeOf(), ['tokens'], auth({ core: 'completed' })), [
-        'specification:core', 'investigation:billing', 'investigation:session',
-      ]);
-    });
-
-    it('leaves the places as scored where no specification sources the topic', async () => {
-      assert.deepStrictEqual(await placed(storeOf(), ['tokens'], auth({})), [
-        'investigation:session', 'investigation:billing', 'specification:core',
-      ]);
-    });
-
-    it('lets no superseded specification head a topic, whatever its manifest order', async () => {
-      assert.deepStrictEqual(await placed(storeOf(), ['tokens'], auth({ legacy: 'superseded', core: 'completed' })), [
-        'specification:core', 'investigation:billing', 'investigation:session',
-      ]);
-    });
-
-    it("heads a decided topic's record with the specification sourcing its discussion, and leaves a record no specification sources as scored", async () => {
-      const topicDb = store.createStore();
-      for (const d of [record('record', 'session', 'Tokens.'), record('record', 'billing', 'Tokens expire.'), record('specification', 'core', 'Tokens expire nightly now.')]) {
-        store.insertDocument(topicDb, d);
-      }
-      const epic = (/** @type {Record<string, any>} */ specification) => [{
-        name: 'auth', work_type: 'epic', status: 'in-progress',
-        phases: { discussion: { items: { session: { status: 'completed' }, billing: { status: 'completed' } } }, specification: { items: specification } },
-      }];
-      assert.deepStrictEqual(await placed(topicDb, ['tokens'], epic({ core: { status: 'completed', sources: { session: { status: 'incorporated' } } } })), [
-        'specification:core', 'record:billing', 'record:session',
-      ]);
-      assert.deepStrictEqual(await placed(topicDb, ['tokens'], epic({})), ['record:session', 'record:billing', 'specification:core']);
-    });
-
-    it("orders a topic's records only where they kept the same framing", async () => {
-      const topicDb = store.createStore();
-      store.insertDocument(topicDb, record('investigation', 'session', 'Tokens.'));
-      store.insertDocument(topicDb, record('specification', 'core', 'Grace applies to every renewed login.'));
-      assert.deepStrictEqual(await placed(topicDb, ['tokens', 'grace'], auth({ core: 'completed' })), [
-        'investigation:session', 'specification:core',
-      ]);
     });
   });
 

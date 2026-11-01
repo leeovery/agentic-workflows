@@ -345,7 +345,7 @@ async function fill(root) {
       shortfall = messageOf(err);
     }
     const pruning = pruneTest(cfg, workUnits);
-    return await fillVectors(files, cfg, embedder, (chunk) => !(pruning && pruning.prunes(chunk.work_unit, chunk.phase)), { shortfall });
+    return await fillVectors(files, cfg, embedder, (chunk) => !(pruning && pruning.prunes(chunk.work_unit)), { shortfall });
   } finally {
     release();
   }

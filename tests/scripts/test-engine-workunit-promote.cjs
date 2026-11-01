@@ -9,7 +9,7 @@ const os = require('os');
 const path = require('path');
 
 const {
-  git, stateGit, okSections, refuses, output, keywordOnlyKnowledge, unreadableKnowledge, indexedFiles, commitAll, setupFixtureAt,
+  git, stateGit, okSections, refuses, output, keywordOnlyKnowledge, unreadableKnowledge, hasStore, indexedFiles, commitAll, setupFixtureAt,
 } = require('./engine-harness.cjs');
 
 function writeFile(dir, rel, content) {
@@ -87,11 +87,6 @@ engine.lastSections = '';
 /** Run the engine expecting failure; returns the parsed stderr JSON. */
 const engineFails = (fix, args, env = {}) => refuses(fix.project, args, { env });
 
-/** Index each file as it stands, so the store holds chunks a transaction can remove. */
-function indexFiles(fix, files) {
-  for (const file of files) output(fix.project, ['knowledge', 'index', path.join(fix.project, '.leeway', file)]);
-}
-
 /** Where a path in the promoted unit lands, absolute, as the response names it. @param {string} rel */
 function inUnit(fix, rel) {
   return path.join(fix.project, '.leeway', 'caching', rel);
@@ -139,7 +134,6 @@ describe('engine workunit promote — happy path', () => {
 
   it('moves the spec and source discussions, completes the cc unit, marks promoted, commits all three pathspecs once', () => {
     fix = setupFixture();
-    indexFiles(fix, ['payments/specification/caching-strategy/specification.md']);
     writeFile(fix.project, 'unrelated.txt', 'outside the scope\n');
     const codeHead = git(fix.project, ['rev-parse', 'HEAD']);
     const stateCommits = Number(stateGit(fix.project, ['rev-list', '--count', 'HEAD']));
@@ -259,16 +253,14 @@ describe('engine workunit promote — happy path', () => {
     assert.ok(staged.includes('manifest.json'), 'project manifest staged');
     assert.match(git(fix.project, ['status', '--porcelain']), /\?\? unrelated\.txt/);
 
-    // KB: the moved spec indexed at its cc identity, the epic's old chunks
-    // removed; a log is never indexed, moved or not.
-    assert.deepStrictEqual(indexedFiles(fix.project), ['caching/specification/caching/specification.md']);
+    // KB: neither the spec nor a log is indexed, moved or not (11.1.2).
+    assert.strictEqual(hasStore(fix.project), false);
   });
 
   it('spec without sources: only the spec moves — no discussion phase in the cc unit', () => {
     const epic = epicManifest();
     delete epic.phases.specification.items['caching-strategy'].sources;
     fix = setupFixture({ epic });
-    indexFiles(fix, ['payments/specification/caching-strategy/specification.md']);
     const res = engine(fix, PROMOTE);
 
     assert.deepStrictEqual(res.discussions, []);
@@ -277,7 +269,6 @@ describe('engine workunit promote — happy path', () => {
     assert.deepStrictEqual(readManifest(fix, 'caching').phases, {
       specification: { items: { caching: { status: 'completed', date: today() } } },
     });
-    assert.deepStrictEqual(indexedFiles(fix.project), ['caching/specification/caching/specification.md']);
   });
 
   it('a source without a discussion file is not a discussion — skipped, never refused', () => {
@@ -300,19 +291,6 @@ describe('engine workunit promote — happy path', () => {
       'ttl-policy': 'completed',
       'fee-model': 'completed',
     });
-  });
-
-  it('KB failures are warnings, never blocks — the promotion still lands and commits', () => {
-    fix = setupFixture();
-    unreadableKnowledge(fix.project);
-    const res = engine(fix, PROMOTE);
-
-    assert.strictEqual(res.warnings.length, 2, res.warnings.join('\n'));
-    assert.match(res.warnings[0], /^knowledge index \(specification\/caching\) failed: loadStore: corrupted store file at /);
-    assert.match(res.warnings[1], /^knowledge remove \(specification\/caching-strategy\) failed: loadStore: corrupted store file at /);
-    assert.strictEqual(res.committed, shortHead(fix));
-    assert.strictEqual(readManifest(fix, 'caching').status, 'completed');
-    assert.strictEqual(readManifest(fix, 'payments').phases.specification.items['caching-strategy'].status, 'promoted');
   });
 });
 
@@ -499,6 +477,18 @@ describe('engine workunit promote — the import carry', () => {
     assert.deepStrictEqual(res.imports.map((i) => i.path), [
       inUnit(fix, 'imports/spec-linked.md'), inUnit(fix, 'imports/diagram.png'), inUnit(fix, 'imports/attached.md'),
     ]);
+    assert.strictEqual(readManifest(fix, 'caching').status, 'completed');
+  });
+
+  it('a carried import the knowledge base cannot index is a warning, never a block — the promotion still lands and commits', () => {
+    setupCarrying();
+    unreadableKnowledge(fix.project);
+    const res = engine(fix, PROMOTE);
+
+    assert.strictEqual(res.warnings.length, 2, res.warnings.join('\n'));
+    assert.match(res.warnings[0], /^knowledge index \(imports\/spec-linked\.md\) failed: loadStore: corrupted store file at /);
+    assert.match(res.warnings[1], /^knowledge index \(imports\/attached\.md\) failed: loadStore: corrupted store file at /);
+    assert.strictEqual(res.committed, shortHead(fix));
     assert.strictEqual(readManifest(fix, 'caching').status, 'completed');
   });
 

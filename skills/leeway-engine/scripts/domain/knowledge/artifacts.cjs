@@ -19,7 +19,8 @@
 // checkout does, and never carries the state directory's name.
 //
 // A log is never indexed (8.14.7, 9.2.2): discovery's sessions, the
-// product's among them, are reached through the pointers into them.
+// product's among them, are reached through the pointers into them. Nor is
+// the spec (11.1.2): the records it is drawn from are indexed in its place.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -32,7 +33,7 @@ const { messageOf } = require('../../kernel/call.cjs');
 const { isIndexableImport, importArtifact } = require('../import-landing.cjs');
 
 const ANALYSIS_PATH = /^([^/]+)\/\.state\/(.+)$/;
-const PHASE_PATH = /^([^/]+)\/(investigation|specification|imports|seeds)\/(.+)$/;
+const PHASE_PATH = /^([^/]+)\/(investigation|imports|seeds)\/(.+)$/;
 
 /** The phase a record's chunks carry. */
 const RECORD_PHASE = 'record';
@@ -48,11 +49,10 @@ const UNIT_RECORD = '.unit';
  */
 const INDEXED_ARTIFACTS = {
   investigation: (wu, topic) => `${wu}/investigation/${topic}.md`,
-  specification: (wu, topic) => `${wu}/specification/${topic}/specification.md`,
 };
 
 /** Every phase a chunk can carry — each has a chunking config. */
-const INDEXED_PHASES = ['investigation', 'specification', 'imports', 'seeds', 'analysis', RECORD_PHASE];
+const INDEXED_PHASES = ['investigation', 'imports', 'seeds', 'analysis', RECORD_PHASE];
 
 // The indexable files under `{wu}/.state/`, each basename mapped
 // to its topic — the directory also holds operational state that must never
@@ -192,22 +192,12 @@ function analysisIdentity(workUnit, rest) {
 }
 
 /**
- * A phase artifact's topic from the path beneath its phase directory: a
- * specification's folder, or every other phase's flat `{topic}.md`.
+ * A phase artifact's topic from the path beneath its phase directory, a flat
+ * `{topic}.md`.
  * @param {string} phase @param {string} rest @param {string} filePath
  * @returns {string}
  */
 function phaseTopic(phase, rest, filePath) {
-  if (phase === 'specification') {
-    const specMatch = /^([^/]+)\/specification\.md$/.exec(rest);
-    if (!specMatch) {
-      throw new UserError(
-        `Unexpected specification path structure: ${rest}\n` +
-          'Expected: {work_unit}/specification/{topic}/specification.md'
-      );
-    }
-    return specMatch[1];
-  }
   const flatMatch = /^([^/]+)\.md$/.exec(rest);
   if (!flatMatch) {
     if (phase === 'imports' && isNonMarkdownImport(rest)) throw nonMarkdownImportError(filePath);

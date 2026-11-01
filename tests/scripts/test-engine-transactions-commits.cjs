@@ -419,16 +419,14 @@ describe('engine commit --plan — hardening', () => {
 });
 
 // Each transaction's knowledge change against a real keyword-only store that
-// also holds chunks the change must leave alone — a sibling topic, the same
-// topic's other phase, another work unit — so a change that wiped too much
-// fails as surely as one that took too little.
+// also holds chunks the change must leave alone — another work unit's — so a
+// change that wiped too much fails as surely as one that took too little.
 describe('the transactions\' knowledge changes — a real store, its other chunks alongside', () => {
-  const SPEC = 'payments/specification/session-model/specification.md';
-  const OTHER_SPEC = 'payments/specification/fee-model/specification.md';
-  const OTHER_UNIT = 'billing/specification/billing/specification.md';
+  const IMPORT = 'payments/imports/notes.md';
+  const OTHER_UNIT = 'billing/imports/rates.md';
   // An epic with a topic still in discussion, a specification in progress
   // and one completed, each from its own discussion; and a finished
-  // cross-cutting unit beside it.
+  // cross-cutting unit beside it. Each unit holds one indexed import.
   const indexedWorld = world((dir) => {
     writeFile(dir, '.leeway/payments/manifest.json', json({
       name: 'payments', work_type: 'epic', status: 'in-progress',
@@ -442,15 +440,17 @@ describe('the transactions\' knowledge changes — a real store, its other chunk
           },
         },
       },
+      imports: [{ path: 'imports/notes.md', imported_at: '2026-01-01T00:00:00Z', origin: 'discovery' }],
     }));
     writeFile(dir, '.leeway/billing/manifest.json', json({
       name: 'billing', work_type: 'cross-cutting', status: 'in-progress',
       phases: { discussion: { items: { billing: { status: 'completed' } } }, specification: { items: { billing: { status: 'completed' } } } },
+      imports: [{ path: 'imports/rates.md', imported_at: '2026-01-01T00:00:00Z', origin: 'discovery' }],
     }));
-    for (const file of [SPEC, OTHER_SPEC, OTHER_UNIT]) writeFile(dir, `.leeway/${file}`, `# ${path.basename(file, '.md')}\n\nIts decision.\n`);
+    for (const file of [IMPORT, OTHER_UNIT]) writeFile(dir, `.leeway/${file}`, `# ${path.basename(file, '.md')}\n\nIts notes.\n`);
     commitAll(dir, 'init');
     harness.keywordOnlyKnowledge(dir);
-    for (const file of [SPEC, OTHER_SPEC, OTHER_UNIT]) harness.output(dir, ['knowledge', 'index', path.join(dir, '.leeway', file)]);
+    for (const file of [IMPORT, OTHER_UNIT]) harness.output(dir, ['knowledge', 'index', path.join(dir, '.leeway', file)]);
   });
   let dir;
   beforeEach(() => { dir = indexedWorld(); });
@@ -460,24 +460,20 @@ describe('the transactions\' knowledge changes — a real store, its other chunk
 
   it('a Discovery-unit cancel leaves the store as it stands — a conversation indexes no artifact', () => {
     assert.deepStrictEqual(engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'auth-flow']).warnings, []);
-    assert.deepStrictEqual(indexed(), [OTHER_UNIT, OTHER_SPEC, SPEC]);
+    assert.deepStrictEqual(indexed(), [OTHER_UNIT, IMPORT]);
   });
 
-  it('a Definition-unit cancel takes the specification alone', () => {
-    assert.deepStrictEqual(engine(dir, ['topic', 'cancel', 'payments', 'specification', 'session-model']).warnings, []);
-    assert.deepStrictEqual(indexed(), [OTHER_UNIT, OTHER_SPEC]);
-  });
-
-  it('a supersede takes the superseded specification alone', () => {
+  it('a supersede and a Definition-unit cancel leave the store as they stand — a spec is never indexed (11.1.2)', () => {
     assert.deepStrictEqual(engine(dir, ['topic', 'supersede', 'payments', 'specification', 'session-model', '--by', 'fee-model']).warnings, []);
-    assert.deepStrictEqual(indexed(), [OTHER_UNIT, OTHER_SPEC]);
+    assert.deepStrictEqual(engine(dir, ['topic', 'cancel', 'payments', 'specification', 'fee-model']).warnings, []);
+    assert.deepStrictEqual(indexed(), [OTHER_UNIT, IMPORT]);
   });
 
-  it('a work-unit cancel takes the unit\'s chunks, and a reactivate brings back its completed artifacts — another unit\'s untouched', () => {
+  it('a work-unit cancel takes the unit\'s chunks, and a reactivate brings back its artifacts — another unit\'s untouched', () => {
     assert.deepStrictEqual(engine(dir, ['workunit', 'cancel', 'payments']).warnings, []);
     assert.deepStrictEqual(indexed(), [OTHER_UNIT]);
     assert.deepStrictEqual(engine(dir, ['workunit', 'reactivate', 'payments']).warnings, []);
-    assert.deepStrictEqual(indexed(), [OTHER_UNIT, OTHER_SPEC]);
+    assert.deepStrictEqual(indexed(), [OTHER_UNIT, IMPORT]);
   });
 
   it('a work-unit complete leaves the store as it stands', () => {
@@ -488,8 +484,8 @@ describe('the transactions\' knowledge changes — a real store, its other chunk
 
   it('a work-unit complete over a cancelled, finished unit re-indexes it — another unit\'s untouched', () => {
     engine(dir, ['workunit', 'cancel', 'billing']);
-    assert.ok(!indexed().includes(OTHER_UNIT));
+    assert.deepStrictEqual(indexed(), [IMPORT]);
     assert.deepStrictEqual(engine(dir, ['workunit', 'complete', 'billing', '-m', 'workflow(billing): complete']).warnings, []);
-    assert.deepStrictEqual(indexed(), [OTHER_UNIT, OTHER_SPEC, SPEC]);
+    assert.deepStrictEqual(indexed(), [OTHER_UNIT, IMPORT]);
   });
 });

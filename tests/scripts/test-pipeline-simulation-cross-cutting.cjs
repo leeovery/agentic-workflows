@@ -72,20 +72,20 @@ describe('pipeline simulation: cross-cutting', () => {
     sim.refuses(['render', 'cross-cutting-references', '--file', refs],
       /"error-envelope" is not a cross-cutting work unit with a completed specification/);
 
-    // Once the spec lands there is nothing left to warn a plan about — the
-    // knowledge query surfaces it, and the plan references it instead.
+    // Once the spec lands there is nothing left to warn a plan about: the
+    // plan references it instead.
     sim.write(`.leeway/${cc}/specification/${cc}/specification.md`,
       `# Spec — ${cc}\n\n## Envelope\n\nEvery error leaves in one envelope: a code, a message, and a trace id.\n`);
     assert.match(sim.render(['step-opening', `${cc}.specification.${cc}`, '--step', 'conclude'], { expect: 'content' }),
       /> Wrapping up\. Final assessment, sign-off, and closure — the pipeline completes here\./, 'a cross-cutting specification is terminal');
     sim.run(['topic', 'complete', cc, 'specification', cc]);
-    // cross-cutting-context D: the query filtered to completed cross-cutting
-    // specifications finds it, and nothing of the unit's discussion record.
+    // cross-cutting-context D: the query filtered to cross-cutting
+    // specifications finds nothing — the spec is never indexed (11.1.2) — and
+    // nothing of the unit's discussion record.
     const surfaced = await sim.engineAsync(['knowledge', 'query', 'one error envelope for every failure',
       '--work-type', 'cross-cutting', '--phase', 'specification', '--limit', '10']);
     assert.strictEqual(surfaced.code, 0, surfaced.stderr);
-    assert.match(surfaced.stdout, /^\[specification \| error-envelope\/error-envelope \| high \| \d{4}-\d{2}-\d{2}\]$/m);
-    assert.doesNotMatch(surfaced.stdout, /^\[record \|/m);
+    assert.match(surfaced.stdout, /^\[0 results\]$/m);
     sim.refuses(['render', 'cross-cutting-gate', '--file', units],
       /"error-envelope" is not a cross-cutting work unit with a specification in progress/);
     assert.match(sim.render(['cross-cutting-references', '--file', refs], { expect: 'content' }),

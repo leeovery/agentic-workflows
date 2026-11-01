@@ -257,20 +257,20 @@ async function fakeEndpoint(dimensions) {
 }
 
 /**
- * A feature with two completed specifications, in a fresh directory under
+ * A bugfix with two completed investigations, in a fresh directory under
  * `parent`, configured to embed with the provider `identity` names.
  * @param {string} parent @param {Record<string, any>} identity
  */
-function specifiedProject(parent, identity) {
+function investigatedProject(parent, identity) {
   const root = setupFixtureAt(fs.mkdtempSync(path.join(parent, 'project-')));
   const topics = ['refresh', 'revocation'];
-  writeJson(statePath(root, 'manifest.json'), { work_units: { auth: { work_type: 'feature' } } });
+  writeJson(statePath(root, 'manifest.json'), { work_units: { auth: { work_type: 'bugfix' } } });
   writeJson(statePath(root, 'auth', 'manifest.json'), {
-    name: 'auth', work_type: 'feature', status: 'in-progress', created: '2026-01-01',
-    phases: { specification: { items: Object.fromEntries(topics.map((topic) => [topic, { status: 'completed' }])) } },
+    name: 'auth', work_type: 'bugfix', status: 'in-progress', created: '2026-01-01',
+    phases: { investigation: { items: Object.fromEntries(topics.map((topic) => [topic, { status: 'completed' }])) } },
   });
   for (const topic of topics) {
-    writeFile(statePath(root, 'auth', 'specification', topic, 'specification.md'), `# ${topic}\n\nThe ${topic} decision.\n`);
+    writeFile(statePath(root, 'auth', 'investigation', `${topic}.md`), `# ${topic}\n\nThe ${topic} decision.\n`);
   }
   writeJson(knowledgeFiles(statePath(root)).config, { knowledge: identity });
   return root;
@@ -329,11 +329,11 @@ describe('knowledge eval — the embedding cache', () => {
     const endpoint = await fakeEndpoint(8);
     const cache = embeddings.embeddingCache(cacheDir, endpoint.identity);
     try {
-      await knowledgeEval.runKnowledge(specifiedProject(scratch, endpoint.identity), ['index'], cacheDir);
+      await knowledgeEval.runKnowledge(investigatedProject(scratch, endpoint.identity), ['index'], cacheDir);
       assert.strictEqual(endpoint.texts.length, 2);
       assert.ok(endpoint.texts.every((text) => cache.read(text) !== null), 'every text embedded is cached');
 
-      const rebuilt = specifiedProject(scratch, endpoint.identity);
+      const rebuilt = investigatedProject(scratch, endpoint.identity);
       await knowledgeEval.runKnowledge(rebuilt, ['index'], cacheDir);
       assert.strictEqual(endpoint.texts.length, 2, 'the rebuild sent the endpoint nothing');
       assert.strictEqual(store.readMetadata(knowledgeFiles(statePath(rebuilt)).metadata).provider, 'openai-compatible');

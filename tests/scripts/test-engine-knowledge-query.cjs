@@ -18,7 +18,7 @@ const assert = require('node:assert');
 
 const { fixtureFrom, call } = require('./engine-harness.cjs');
 const { cleanupFixture, statePath, createFile } = require('./discovery-test-utils.cjs');
-const { ENGINE_COMMAND, KEYWORD_ONLY, STUB, engineKnowledge, knowledgeDoor, refuseLaunches, knowledgeUnit, configureKnowledge, knowledgeAt } = require('./knowledge-harness.cjs');
+const { ENGINE_COMMAND, KEYWORD_ONLY, STUB, engineKnowledge, knowledgeDoor, refuseLaunches, knowledgeUnit, setItems, configureKnowledge, knowledgeAt } = require('./knowledge-harness.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { conversationDir, conversationsRoot } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
@@ -26,15 +26,15 @@ const { lastQuery } = require(path.join(SCRIPTS, 'domain/knowledge/last-query.cj
 
 const CHOSEN_NOTE = '[keyword-only mode — configure embedding provider for semantic search]';
 
-/** Two features and an epic's two specifications, every file indexed keyword-only, each naming the token. */
+/** Two features and an epic's two topics' records, every file indexed keyword-only, each naming the token. */
 const indexedWorld = fixtureFrom('kb-query-door-', (root) => {
   configureKnowledge(root, KEYWORD_ONLY);
   const files = {
     'auth/investigation/auth.md': 'Token refresh design for auth.',
-    'auth/specification/auth/specification.md': 'Token refresh requirements for auth.',
+    '.knowledge/records/auth/auth.md': 'Token refresh decided for auth.',
     'data/investigation/data.md': 'Token storage design for data.',
-    'payments/specification/billing/specification.md': 'Token billing requirements.',
-    'payments/specification/invoicing/specification.md': 'Token invoicing requirements.',
+    '.knowledge/records/payments/billing.md': 'Token billing decided.',
+    '.knowledge/records/payments/invoicing.md': 'Token invoicing decided.',
   };
   knowledgeUnit(root, 'auth', 'feature');
   knowledgeUnit(root, 'data', 'feature');
@@ -94,10 +94,18 @@ describe('engine knowledge query', () => {
   it('keeps only what each filter flag names: --phase, --work-type as a comma list, --work-unit and --topic', async () => {
     const filtered = async (/** @type {string[]} */ flags) => hits((await query('token', ...flags)).stdout).sort();
     assert.deepStrictEqual(await filtered(['--phase', 'investigation']), ['investigation auth/auth', 'investigation data/data']);
-    assert.deepStrictEqual(await filtered(['--work-type', 'epic']), ['specification payments/billing', 'specification payments/invoicing']);
+    assert.deepStrictEqual(await filtered(['--work-type', 'epic']), ['record payments/billing', 'record payments/invoicing']);
     assert.strictEqual((await filtered(['--work-type', 'feature,epic'])).length, 5);
-    assert.deepStrictEqual(await filtered(['--work-unit', 'auth']), ['investigation auth/auth', 'specification auth/auth']);
-    assert.deepStrictEqual(await filtered(['--topic', 'billing']), ['specification payments/billing']);
+    assert.deepStrictEqual(await filtered(['--work-unit', 'auth']), ['investigation auth/auth', 'record auth/auth']);
+    assert.deepStrictEqual(await filtered(['--topic', 'billing']), ['record payments/billing']);
+  });
+
+  it('11.S16: returns a completed topic\'s record and never its concluded spec', async () => {
+    setItems(root, 'auth', { specification: ['auth'] });
+    createFile(statePath(root), 'auth/specification/auth/specification.md', '# Specification\n\nToken refresh specified for auth.\n');
+    assert.strictEqual((await knowledge('index')).code, 0);
+    const found = hits((await query('token', '--work-unit', 'auth', '--phase', 'record,specification')).stdout);
+    assert.deepStrictEqual(found, ['record auth/auth']);
   });
 
   it('--limit cuts the results to its number', async () => {

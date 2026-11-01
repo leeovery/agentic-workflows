@@ -8,7 +8,7 @@
 // still — decay tracks how far the project has moved past a unit, not how
 // many months have passed. Ranking turns it into a retrievability
 // R = 0.9^(progressElapsed / S) that down-ranks a chunk; compact prunes a
-// unit's non-spec chunks once R falls below `decay_prune_below`. Derived
+// unit's chunks once R falls below `decay_prune_below`. Derived
 // entirely from the manifests' completion state.
 // ---------------------------------------------------------------------------
 
@@ -120,16 +120,15 @@ function progressClockOf(workUnits, weights) {
 }
 
 /**
- * How far the clock has moved past a chunk, by its unit and phase: the
- * unit's progressElapsed — 0 for a unit the clock has not moved past — and
- * 0 always for a specification, which never decays.
+ * How far the clock has moved past a chunk's unit: its progressElapsed, 0
+ * for a unit the clock has not moved past.
  * @param {Array<Record<string, any>>} workUnits  the manifest list the clock is built from
  * @param {Record<string, number>} weights
- * @returns {(workUnit: string, phase: string) => number}
+ * @returns {(workUnit: string) => number}
  */
 function progressElapsed(workUnits, weights) {
   const clock = progressClockOf(workUnits, weights);
-  return (workUnit, phase) => (phase === 'specification' ? 0 : clock.get(workUnit) || 0);
+  return (workUnit) => clock.get(workUnit) || 0;
 }
 
 /** @param {Record<string, any>|null} cfg @returns {number} */
@@ -140,15 +139,15 @@ function resolveStability(cfg) {
 /**
  * @typedef {object} Pruning
  * @property {number} floor
- * @property {(workUnit: string, phase: string) => boolean} prunes
+ * @property {(workUnit: string) => boolean} prunes
  */
 
 /**
  * Compact's prune test — the one rule compact removes by and an index skips
- * by: a unit's non-spec chunks are pruned once its retrievability has decayed
- * below `decay_prune_below`. A unit the clock has not moved past — in
- * progress, undateable, the frontier — never is, and specifications never
- * decay. Null when `decay_prune_below` is false.
+ * by: a unit's chunks are pruned once its retrievability has decayed below
+ * `decay_prune_below`. A unit the clock has not moved past — in progress,
+ * undateable, the frontier — never is. Null when `decay_prune_below` is
+ * false.
  * @param {Record<string, any>|null} cfg
  * @param {Array<Record<string, any>>} workUnits  the manifest list the clock is built from
  * @returns {Pruning|null}
@@ -160,8 +159,8 @@ function pruneTest(cfg, workUnits) {
   const elapsedOf = progressElapsed(workUnits, resolveDecayWeights(cfg));
   return {
     floor,
-    prunes: (workUnit, phase) => {
-      const elapsed = elapsedOf(workUnit, phase);
+    prunes: (workUnit) => {
+      const elapsed = elapsedOf(workUnit);
       return elapsed > 0 && retrievability(elapsed, stability) < floor;
     },
   };

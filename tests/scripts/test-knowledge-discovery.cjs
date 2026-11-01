@@ -3,7 +3,7 @@
 // Pins the bulk-discovery artifact SET on a rich fixture: discoverArtifacts()
 // yields exactly the completed artifacts below, every path state-relative —
 // and never a log, discovery's or the product's, nor a file the product's
-// conversation keeps (8.14.7, 9.2.2).
+// conversation keeps (8.14.7, 9.2.2), nor a spec (11.1.2).
 
 require('./hermetic-env.cjs');
 
@@ -50,8 +50,7 @@ function buildFixture(root) {
         chargebacks: { status: 'pending' },      // not completed → excluded
       } },
       specification: { items: {
-        ledger: { status: 'completed' },
-        refunds: { status: 'in-progress' },       // not completed → excluded
+        ledger: { status: 'completed' },          // completed, but never indexed (11.1.2)
       } },
       planning: { items: {
         ledger: { status: 'completed' },          // completed, but not an indexed phase → excluded
@@ -75,7 +74,8 @@ function buildFixture(root) {
   writeFile(path.join(wf, '.knowledge', 'records', 'payments', 'ledger.md'), '# Ledger\n');
   writeFile(path.join(wf, '.knowledge', 'records', 'payments', 'refunds.md'), '# Refunds\n');
   writeFile(path.join(wf, '.knowledge', 'records', 'payments.md'), '# Payments\n');
-  writeFile(path.join(wf, 'payments', 'specification', 'ledger', 'specification.md'), '# Spec\n');
+  writeFile(path.join(wf, 'payments', 'specification', 'ledger', 'specification.md'), '# Spec — never indexed\n');
+  writeFile(path.join(wf, 'payments', 'spec.md'), '# The unit\'s spec — never indexed\n');
   writeFile(path.join(wf, 'payments', 'planning', 'ledger', 'planning.md'), '# Plan — unindexed phase, never discovered\n');
   writeFile(path.join(wf, 'payments', 'imports', 'oauth-notes.md'), '# OAuth\n');
   writeFile(path.join(wf, 'payments', 'imports', 'dockset-05.jpeg'), 'binary-ish\n');
@@ -98,7 +98,7 @@ function buildFixture(root) {
   });
   writeFile(path.join(wf, 'auth-flow', 'topics', 'auth-flow', 'log.md'), '# the conversation, never indexed\n');
   writeFile(path.join(wf, '.knowledge', 'records', 'auth-flow', 'auth-flow.md'), '# D\n');
-  writeFile(path.join(wf, 'auth-flow', 'specification', 'auth-flow', 'specification.md'), '# S\n');
+  writeFile(path.join(wf, 'auth-flow', 'specification', 'auth-flow', 'specification.md'), '# S — never indexed\n');
   writeFile(path.join(wf, 'auth-flow', 'imports', 'prior-art.md'), '# PA\n');
   writeFile(path.join(wf, 'auth-flow', 'discovery', 'session-001.md'), '# a log, never indexed\n');
 
@@ -142,7 +142,6 @@ function buildFixture(root) {
 const EXPECTED = [
   { workUnit: 'auth-flow', phase: 'imports', topic: 'prior-art', file: 'auth-flow/imports/prior-art.md' },
   { workUnit: 'auth-flow', phase: 'record', topic: 'auth-flow', file: '.knowledge/records/auth-flow/auth-flow.md' },
-  { workUnit: 'auth-flow', phase: 'specification', topic: 'auth-flow', file: 'auth-flow/specification/auth-flow/specification.md' },
   { workUnit: 'login-timeout', phase: 'investigation', topic: 'login-timeout', file: 'login-timeout/investigation/login-timeout.md' },
   { workUnit: 'login-timeout', phase: 'seeds', topic: 'bug-report', file: 'login-timeout/seeds/bug-report.md' },
   { workUnit: 'payments', phase: 'analysis', topic: 'gap-analysis', file: 'payments/.state/discovery-gap-analysis.md' },
@@ -151,7 +150,6 @@ const EXPECTED = [
   { workUnit: 'payments', phase: 'record', topic: 'ledger', file: '.knowledge/records/payments/ledger.md' },
   { workUnit: 'payments', phase: 'record', topic: 'refunds', file: '.knowledge/records/payments/refunds.md' },
   { workUnit: 'payments', phase: 'seeds', topic: 'original-idea', file: 'payments/seeds/original-idea.md' },
-  { workUnit: 'payments', phase: 'specification', topic: 'ledger', file: 'payments/specification/ledger/specification.md' },
 ];
 
 function normalise(items) {

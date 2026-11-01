@@ -253,7 +253,6 @@ describe('engine topic cancel — the specification unit', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   it('takes the specification and its plan, stashing statuses and the build order, and leaves the sources alone', () => {
-    harness.unreadableKnowledge(dir);
     const res = engine(dir, ['topic', 'cancel', 'payments', 'specification', 'session-model']);
     assert.deepStrictEqual(res, {
       ok: true, topic: 'session-model', phase: 'specification', status: 'cancelled', discarded: [], abandoned: [], released_waits: [],
@@ -261,9 +260,8 @@ describe('engine topic cancel — the specification unit', () => {
         { phase: 'specification', previous_status: 'in-progress' },
         { phase: 'planning', previous_status: 'in-progress' },
       ],
-      closed_agents: [], committed: shortHead(dir), warnings: [res.warnings[0]], next: { kind: 'continue' },
+      closed_agents: [], committed: shortHead(dir), warnings: [], next: { kind: 'continue' },
     });
-    assert.match(res.warnings[0], /^knowledge remove failed: loadStore: corrupted store file at /);
     const m = readManifest(dir, 'payments');
     assert.deepStrictEqual(m.phases.specification.items['session-model'],
       { status: 'cancelled', previous_status: 'in-progress', previous_order: 1, sources: { 'session-model': { status: 'incorporated' } } });

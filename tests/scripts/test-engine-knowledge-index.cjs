@@ -48,7 +48,6 @@ describe('engine knowledge index <file>', () => {
     knowledgeUnit(root, 'login', 'bugfix');
     const artifacts = [
       ['.knowledge/records/auth/auth.md', 'auth', 'bugfix', 'record', 'auth', 'high'],
-      ['auth/specification/auth/specification.md', 'auth', 'bugfix', 'specification', 'auth', 'high'],
       ['login/investigation/login.md', 'login', 'bugfix', 'investigation', 'login', 'medium'],
       ['payments/imports/seed-conversation.md', 'payments', 'epic', 'imports', 'seed-conversation', 'low'],
       ['login/seeds/2026-05-30-login.md', 'login', 'bugfix', 'seeds', '2026-05-30-login', 'low'],
@@ -156,6 +155,8 @@ describe('engine knowledge index <file>', () => {
       for (const [rel, said] of [
         ['auth/planning/auth/planning.md', 'Cannot derive identity from path: auth/planning/auth/planning.md\nExpected path matching: {work_unit}/{phase}/...'],
         ['auth/discussion/auth.md', 'Cannot derive identity from path: auth/discussion/auth.md\nExpected path matching: {work_unit}/{phase}/...'],
+        ['auth/specification/auth/specification.md', 'Cannot derive identity from path: auth/specification/auth/specification.md\nExpected path matching: {work_unit}/{phase}/...'],
+        ['auth/spec.md', 'Cannot derive identity from path: auth/spec.md\nExpected path matching: {work_unit}/{phase}/...'],
         ['auth/topics/auth/log.md', 'Cannot derive identity from path: auth/topics/auth/log.md\nExpected path matching: {work_unit}/{phase}/...'],
         ['auth/discovery/session-001.md', 'Cannot derive identity from path: auth/discovery/session-001.md\nExpected path matching: {work_unit}/{phase}/...'],
         ['.product/sessions/session-001.md', 'Cannot derive identity from path: .product/sessions/session-001.md\nExpected path matching: {work_unit}/{phase}/...'],

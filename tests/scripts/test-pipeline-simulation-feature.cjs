@@ -313,16 +313,16 @@ describe('pipeline simulation: feature', () => {
       'bounded auto holds while the phase stays open for the consolidation pass');
     // B's spec-defect settle, before any proposal is staged: a record-settled
     // correction lands on the same unit's concluded spec — in-place edit +
-    // corrigendum, re-index through the engine's knowledge door — then the
-    // same-unit route's scoped commit (--sweep leaves the spec topic's
-    // presence untouched), with the work unit still in-progress and
+    // corrigendum, its re-index refused, the spec never indexed (11.1.2) —
+    // then the same-unit route's scoped commit (--sweep leaves the spec
+    // topic's presence untouched), with the work unit still in-progress and
     // implementation live.
     const correctedSpec = `.leeway/${wu}/specification/${wu}/specification.md`;
     sim.write(correctedSpec,
       `# Spec — ${wu}\n\n## Corrigenda\n\n> **Corrigendum 2026-01-01** (from \`implementation/${wu}\`): "intent.js" — corrected: payment-intent.js.\n`);
     const reindex = sim.engine(['knowledge', 'index', correctedSpec]);
-    assert.strictEqual(reindex.code, 0, reindex.stderr);
-    assert.match(reindex.stdout, new RegExp(`^Indexed \\d+ chunks from ${literal(path.join(sim.dir, correctedSpec))}\\n$`));
+    assert.deepStrictEqual([reindex.code, reindex.stdout], [1, '']);
+    assert.match(reindex.stderr, /^Error: Cannot derive identity from path: /);
     sim.run(['commit', wu, '-m', `specification(${wu}): corrigendum from implementation/${wu}`,
       '--topic', `specification/${wu}`, '--sweep']);
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`,

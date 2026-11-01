@@ -891,21 +891,12 @@ function cmdResolve(cwd, args, out) {
 
   // Validate that the work unit exists by reading its manifest.
   readManifest(cwd, workUnit);
-  const wuDir = path.join(stateRoot(cwd), workUnit);
 
   if (!topic) {
     fail(`resolve for ${phase} requires 3 segments: <work_unit>.${phase}.<topic>`);
   }
 
-  if (phase === 'investigation') {
-    out(path.join(wuDir, 'investigation', topic + '.md') + '\n');
-    return;
-  }
-
-  if (phase === 'specification') {
-    out(path.join(wuDir, 'specification', topic, 'specification.md') + '\n');
-    return;
-  }
+  out(path.join(stateRoot(cwd), INDEXED_ARTIFACTS[phase](workUnit, topic)) + '\n');
 }
 
 // ---------------------------------------------------------------------------

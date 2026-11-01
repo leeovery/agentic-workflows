@@ -48,20 +48,20 @@ describe('engine knowledge remove, compact and rebuild', () => {
     it('takes a unit\'s chunks in every phase, and leaves every other unit\'s', async () => {
       knowledgeUnit(root, 'mixed', 'epic');
       knowledgeUnit(root, 'kept', 'feature');
-      await indexed('mixed/investigation/mixed.md', 'mixed/specification/mixed/specification.md', 'mixed/imports/seed.md',
+      await indexed('mixed/investigation/mixed.md', 'mixed/imports/seed.md',
         'mixed/seeds/origin.md', 'mixed/.state/discovery-gap-analysis.md', 'kept/investigation/kept.md');
-      assert.deepStrictEqual(await knowledge('remove', '--work-unit', 'mixed'), { code: 0, stdout: 'Removed 5 chunks for mixed (all phases)\n', stderr: '' });
+      assert.deepStrictEqual(await knowledge('remove', '--work-unit', 'mixed'), { code: 0, stdout: 'Removed 4 chunks for mixed (all phases)\n', stderr: '' });
       assert.deepStrictEqual(identities(), ['kept/investigation/kept']);
     });
 
     it('narrows to a phase, and to a topic within it', async () => {
       knowledgeUnit(root, 'payments', 'epic');
-      await indexed('payments/investigation/billing.md', 'payments/specification/billing/specification.md', 'payments/specification/invoicing/specification.md');
+      await indexed('payments/investigation/billing.md', 'payments/imports/billing.md', 'payments/imports/invoicing.md');
       assert.strictEqual((await knowledge('remove', '--work-unit', 'payments', '--phase', 'investigation')).stdout, 'Removed 1 chunks for payments/investigation\n');
-      assert.deepStrictEqual(identities(), ['payments/specification/billing', 'payments/specification/invoicing']);
-      assert.strictEqual((await knowledge('remove', '--work-unit', 'payments', '--phase', 'specification', '--topic', 'billing')).stdout,
-        'Removed 1 chunks for payments/specification/billing\n');
-      assert.deepStrictEqual(identities(), ['payments/specification/invoicing']);
+      assert.deepStrictEqual(identities(), ['payments/imports/billing', 'payments/imports/invoicing']);
+      assert.strictEqual((await knowledge('remove', '--work-unit', 'payments', '--phase', 'imports', '--topic', 'billing')).stdout,
+        'Removed 1 chunks for payments/imports/billing\n');
+      assert.deepStrictEqual(identities(), ['payments/imports/invoicing']);
     });
 
     it('--dry-run says what it would remove and removes nothing', async () => {
@@ -124,39 +124,39 @@ describe('engine knowledge remove, compact and rebuild', () => {
 
   describe('compact', () => {
     // S0 3 and a 0.95 floor: a unit two completions behind is at R ≈ 0.931,
-    // below the floor.
+    // below the floor; the last completed, the frontier, is never pruned.
     beforeEach(async () => {
       configureKnowledge(root, { ...KEYWORD_ONLY, decay_prune_below: 0.95, decay_base_stability: 3 });
       for (const [unit, date] of [['buried', '2024-01-01'], ['newer1', '2024-06-01'], ['newer2', '2024-12-01']]) {
         knowledgeUnit(root, unit, 'feature');
         completeUnit(root, unit, date);
       }
-      await indexed('buried/investigation/buried.md', 'buried/specification/buried/specification.md');
+      await indexed('buried/investigation/buried.md', 'buried/imports/seed.md', 'newer2/investigation/newer2.md');
     });
 
-    it('prunes the non-specification chunks of a unit the clock has passed below the floor', async () => {
+    it('prunes every chunk of a unit the clock has passed below the floor, whatever its phase, and leaves the frontier\'s', async () => {
       assert.deepStrictEqual(await knowledge('compact'), {
-        code: 0, stdout: 'Compacted: removed 1 chunks from 1 work units (retrievability < 0.95)\n  • buried: 1 chunks (investigation)\n', stderr: '',
+        code: 0, stdout: 'Compacted: removed 2 chunks from 1 work units (retrievability < 0.95)\n  • buried: 2 chunks (investigation, imports)\n', stderr: '',
       });
-      assert.deepStrictEqual(identities(), ['buried/specification/buried']);
+      assert.deepStrictEqual(identities(), ['newer2/investigation/newer2']);
     });
 
     it('--dry-run prints the plan, marked, and removes nothing', async () => {
       assert.strictEqual((await knowledge('compact', '--dry-run')).stdout,
-        '[dry-run] Compacted: removed 1 chunks from 1 work units (retrievability < 0.95)\n  • buried: 1 chunks (investigation)\n');
-      assert.deepStrictEqual(identities(), ['buried/investigation/buried', 'buried/specification/buried']);
+        '[dry-run] Compacted: removed 2 chunks from 1 work units (retrievability < 0.95)\n  • buried: 2 chunks (investigation, imports)\n');
+      assert.deepStrictEqual(identities(), ['buried/imports/seed', 'buried/investigation/buried', 'newer2/investigation/newer2']);
     });
 
     it('prunes nothing at a floor of 0, which no retrievability falls below', async () => {
       configureKnowledge(root, { ...KEYWORD_ONLY, decay_prune_below: 0, decay_base_stability: 3 });
       assert.deepStrictEqual(await knowledge('compact'), { code: 0, stdout: '', stderr: '' });
-      assert.deepStrictEqual(identities(), ['buried/investigation/buried', 'buried/specification/buried']);
+      assert.deepStrictEqual(identities(), ['buried/imports/seed', 'buried/investigation/buried', 'newer2/investigation/newer2']);
     });
 
     it('says compaction is disabled where decay_prune_below is false, and removes nothing', async () => {
       configureKnowledge(root, { ...KEYWORD_ONLY, decay_prune_below: false });
       assert.deepStrictEqual(await knowledge('compact'), { code: 0, stdout: 'Compaction disabled\n', stderr: '' });
-      assert.deepStrictEqual(identities(), ['buried/investigation/buried', 'buried/specification/buried']);
+      assert.deepStrictEqual(identities(), ['buried/imports/seed', 'buried/investigation/buried', 'newer2/investigation/newer2']);
     });
   });
 

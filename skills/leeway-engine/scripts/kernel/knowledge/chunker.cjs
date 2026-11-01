@@ -10,9 +10,7 @@
 // enclosing the line its text starts on, outermost first.
 //
 // The algorithm is the same for every phase — only the config parameters
-// change. See the `chunk()` function for the execution order; the order
-// matters and resolves ambiguity between `keep_whole_below` (whole-file
-// gate) and `special_sections` (split-time behaviour).
+// change. See the `chunk()` function for the execution order.
 //
 // Every chunk is at most MAX_CHUNK_CHARS. A piece over the budget splits at
 // the next heading level present inside it, level by level; a piece with no
@@ -60,7 +58,6 @@ function chunk(markdown, config) {
     primary_level: primaryLevel = 2,
     fallback_level: fallbackLevel = 3,
     keep_whole_below: keepWholeBelow = 50,
-    special_sections: specialSections = {},
     strip_frontmatter: stripFrontmatter = true,
     skip_empty_sections: skipEmptySections = true,
   } = config;
@@ -77,7 +74,6 @@ function chunk(markdown, config) {
   const whole = { startLine: 0, endLine: doc.lines.length - 1, headed: false };
 
   // 2. Whole-file gate: below keep_whole_below lines the file is one piece.
-  //    Do NOT proceed to heading parsing or special_sections.
   if (doc.lines.length < keepWholeBelow) return fit(whole);
 
   // 3. Split level: primary -> fallback -> whole file.
@@ -88,28 +84,12 @@ function chunk(markdown, config) {
 
   // 4. Build sections at splitLevel with source line ranges. Content before
   //    the first splitLevel heading (typically an H1 title + intro) becomes
-  //    the first section, with the H1 line used as its heading text.
+  //    the first section.
   const sections = buildSections(doc.lines, doc.headings, splitLevel);
 
-  // 5. Expand sections by applying sub-level special_sections rules. Any
-  //    heading inside a regular section whose text matches a special_sections
-  //    entry (at any level, not just the split level) is carved out of its
-  //    parent and emitted with its own action. If the parent itself matches
-  //    at the split level, the parent's action wins and no sub-carving
-  //    happens — "Discussion Map as H2" stays one chunk while it fits the
-  //    budget.
-  const items = expandSubLevelSpecials(
-    sections,
-    doc.lines,
-    splitLevel,
-    specialSections,
-    doc.headings
-  );
-
-  // 6. Apply special_sections segment rules (merge-up / skip), then fit each
-  //    segment to the budget.
-  return buildSegments(items, doc.lines)
-    .filter((seg) => !(skipEmptySections && isEmptyPiece(doc, seg)))
+  // 5. Fit each section to the budget.
+  return sections
+    .filter((section) => !(skipEmptySections && isEmptyPiece(doc, section)))
     .flatMap(fit);
 }
 
@@ -277,11 +257,12 @@ function parseDocument(body) {
 
 /**
  * Build a flat list of sections split at `splitLevel`. Each section carries
- * its source line range ({ startLine, endLine }).
+ * its source line range ({ startLine, endLine }) and whether it opens on its
+ * own heading line (`headed`).
  *
  * Content before the first splitLevel heading — typically an H1 title and
- * any intro text — becomes the first section. The H1 line is recorded as
- * the section's heading so it travels with the chunk as a semantic anchor.
+ * any intro text — becomes the first section, headed where the H1 opens the
+ * file.
  */
 function buildSections(lines, headings, splitLevel) {
   const splitIndices = headings
@@ -297,12 +278,7 @@ function buildSections(lines, headings, splitLevel) {
   if (firstSplitLine > 0) {
     const h1 = headings.find((h) => h.level === 1 && h.line < firstSplitLine);
     if (lines.slice(0, firstSplitLine).some((line) => !isBlank(line))) {
-      sections.push({
-        heading: h1 ? h1.text : '',
-        headingLine: h1 ? lines[h1.line] : '',
-        startLine: 0,
-        endLine: firstSplitLine - 1,
-      });
+      sections.push({ startLine: 0, endLine: firstSplitLine - 1, headed: h1 !== undefined && h1.line === 0 });
     }
   }
 
@@ -311,10 +287,9 @@ function buildSections(lines, headings, splitLevel) {
     const end =
       i + 1 < splitIndices.length ? splitIndices[i + 1] - 1 : lines.length - 1;
     sections.push({
-      heading: /** @type {RegExpExecArray} */ (HEADING_RE.exec(lines[start]))[2].trim(),
-      headingLine: lines[start],
       startLine: start,
       endLine: end,
+      headed: true,
     });
   }
 
@@ -322,167 +297,9 @@ function buildSections(lines, headings, splitLevel) {
 }
 
 /**
- * Expand a section list by applying sub-level special_sections rules.
- *
- * Precedence rule: if a split-level section's heading is itself in
- * special_sections, that match wins and the section is emitted whole with
- * the configured action. No sub-carving — "Discussion Map as an H2" stays
- * one chunk regardless of any nested H3s, while it fits the budget.
- *
- * Otherwise, scan the section for sub-level headings (H3+, below the
- * split level) whose text matches special_sections. Each match is carved
- * out of its parent at its natural boundary (from the sub-heading line to
- * the next heading at the same or higher level, bounded by the parent
- * section's end). The parent's remaining content is emitted as one or
- * more regular pieces around each carved-out sub-section.
- *
- * Each emitted item is `{ action, startLine, endLine, heading, headingLine }`
- * with line ranges pointing into the original source line array.
- *
- * Note: sub-level matching only handles `own-chunk` and `skip`. `merge-up`
- * is a split-level concept — it attaches a whole section to its
- * predecessor, which does not have a meaningful interpretation at
- * sub-level granularity, so sub-level merge-up entries are treated as
- * regular sub-headings and left inside the parent chunk.
- */
-function expandSubLevelSpecials(
-  sections,
-  lines,
-  splitLevel,
-  specialSections,
-  allHeadings
-) {
-  const result = [];
-
-  for (const section of sections) {
-    const trimmedHeading = section.heading ? section.heading.trim() : '';
-    const topAction = specialSections[trimmedHeading];
-
-    if (topAction) {
-      // Top-level match wins — emit the whole section with the top action.
-      result.push({
-        action: topAction,
-        startLine: section.startLine,
-        endLine: section.endLine,
-        heading: section.heading,
-        headingLine: section.headingLine,
-      });
-      continue;
-    }
-
-    // Scan for sub-level matches within this section's line range. Exclude
-    // H1 (already absorbed into the first section) and the split level
-    // itself (those are already section boundaries).
-    const subMatches = allHeadings.filter((h) => {
-      if (h.line <= section.startLine) return false;
-      if (h.line > section.endLine) return false;
-      if (h.level === 1) return false;
-      if (h.level === splitLevel) return false;
-      const action = specialSections[h.text];
-      return action === 'own-chunk' || action === 'skip';
-    });
-
-    if (subMatches.length === 0) {
-      result.push({
-        action: 'regular',
-        startLine: section.startLine,
-        endLine: section.endLine,
-        heading: section.heading,
-        headingLine: section.headingLine,
-      });
-      continue;
-    }
-
-    // For each sub-match, find its natural end line: the next heading at
-    // the same or higher level, bounded by the parent section's end.
-    const subRanges = subMatches.map((h) => {
-      let end = section.endLine;
-      for (const other of allHeadings) {
-        if (other.line <= h.line) continue;
-        if (other.line > section.endLine) break;
-        if (other.level <= h.level) {
-          end = other.line - 1;
-          break;
-        }
-      }
-      return {
-        action: specialSections[h.text],
-        startLine: h.line,
-        endLine: end,
-        heading: h.text,
-        headingLine: lines[h.line],
-      };
-    });
-
-    // Emit pieces: regular "before" chunks, each carved sub-match, and a
-    // trailing remainder chunk if any content follows the last sub-match.
-    let cursor = section.startLine;
-    let isFirstPiece = true;
-    for (const sub of subRanges) {
-      if (sub.startLine > cursor) {
-        result.push({
-          action: 'regular',
-          startLine: cursor,
-          endLine: sub.startLine - 1,
-          // The first piece inherits the parent section's heading as its
-          // semantic anchor. Subsequent pieces have no heading (they're
-          // mid-section content fragments) and will be dropped by
-          // skip_empty_sections if they consist only of whitespace.
-          heading: isFirstPiece ? section.heading : '',
-          headingLine: isFirstPiece ? section.headingLine : '',
-        });
-        isFirstPiece = false;
-      }
-      result.push({
-        action: sub.action,
-        startLine: sub.startLine,
-        endLine: sub.endLine,
-        heading: sub.heading,
-        headingLine: sub.headingLine,
-      });
-      cursor = sub.endLine + 1;
-    }
-    if (cursor <= section.endLine) {
-      result.push({
-        action: 'regular',
-        startLine: cursor,
-        endLine: section.endLine,
-        heading: '',
-        headingLine: '',
-      });
-    }
-  }
-
-  return result;
-}
-
-/**
- * Apply the segment actions — `skip` drops an item, `merge-up` extends the
- * previous segment to the item's end (a first-section merge-up stands as its
- * own segment) — and reduce each survivor to its line range plus whether
- * that range opens on its own heading line.
- */
-function buildSegments(items, lines) {
-  const segments = [];
-  for (const item of items) {
-    if (item.action === 'skip') continue;
-    if (item.action === 'merge-up' && segments.length > 0) {
-      segments[segments.length - 1].endLine = item.endLine;
-      continue;
-    }
-    segments.push({
-      startLine: item.startLine,
-      endLine: item.endLine,
-      headed: Boolean(item.headingLine) && lines[item.startLine] === item.headingLine,
-    });
-  }
-  return segments;
-}
-
-/**
  * A piece is empty when nothing but whitespace follows its own heading line.
- * Used to drop pieces that sub-level extraction and heading splits leave
- * behind (e.g. `## Parent` with no intro text before the first sub-section).
+ * Used to drop pieces that heading splits leave behind (e.g. `## Parent`
+ * with no intro text before the first sub-section).
  */
 function isEmptyPiece(doc, piece) {
   const bodyStart = piece.headed ? piece.startLine + 1 : piece.startLine;

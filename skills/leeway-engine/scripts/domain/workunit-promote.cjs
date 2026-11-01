@@ -31,7 +31,6 @@ const {
 } = require('../kernel/manifest.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { syncKnowledge } = require('./knowledge/sync.cjs');
-const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 const { assertLegalWorkUnitName } = require('./workunit-create.cjs');
 const { copyImports, isIndexableImport, importArtifact, importLinkPattern } = require('./import-landing.cjs');
 const { todayStamp } = require('./dates.cjs');
@@ -133,8 +132,8 @@ function planImportCarry(cwd, workUnit, specDir, sources, entries) {
  * moved source attached (entries unchanged, the epic keeping its own), mark
  * the epic's spec item and each moved discussion's item
  * `status: promoted` + `promoted_to`, carry every roadmap source at the moved
- * material to its cc path, sync the knowledge base (moved artifacts indexed
- * at their cc identities, the epic's old chunks removed — warn-don't-block),
+ * material to its cc path, index the carried imports at their cc identities
+ * (warn-don't-block),
  * and land ONE commit staging the epic, the cc unit, and the project
  * manifest.
  * @param {string} cwd project root
@@ -288,8 +287,7 @@ function promoteWorkUnit(cwd, workUnit, topic, { to, description }) {
     return rewritten;
   });
 
-  // KB: index the moved artifacts at their cc identities, drop the epic's old
-  // chunks.
+  // KB: index the carried imports at their cc identities.
   /** @type {string[]} */
   const warnings = [];
   for (const rel of missingImports) {
@@ -298,8 +296,6 @@ function promoteWorkUnit(cwd, workUnit, topic, { to, description }) {
   syncKnowledge(cwd, [
     ...importCarry.filter((c) => isIndexableImport(c.basename))
       .map((carried) => ({ index: importArtifact(to, carried.basename), label: `knowledge index (imports/${carried.basename})` })),
-    { index: INDEXED_ARTIFACTS.specification(to, to), label: `knowledge index (specification/${to})` },
-    { remove: { workUnit, phase: 'specification', topic }, label: `knowledge remove (specification/${topic})` },
   ], warnings);
 
   const outcome = commitStateTail(

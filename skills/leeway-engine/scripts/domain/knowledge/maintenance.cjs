@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: the store's upkeep — removing an identity's chunks, and
-// compaction: a pure storage backstop that prunes a unit's non-spec chunks
+// compaction: a pure storage backstop that prunes a unit's chunks
 // once their retrievability has decayed below `decay_prune_below`, by which
 // point ranking no longer reaches them.
 // ---------------------------------------------------------------------------
@@ -83,7 +83,7 @@ function planCompaction(root, cfg, workUnits) {
   /** @type {Map<string, {work_unit: string, phase: string, topic: string}>} */
   const identities = new Map();
   for (const { work_unit, phase, topic } of chunks) {
-    if (!pruning.prunes(work_unit, phase)) continue;
+    if (!pruning.prunes(work_unit)) continue;
     let removal = byUnit.get(work_unit);
     if (!removal) {
       removal = { workUnit: work_unit, count: 0, phases: new Set() };

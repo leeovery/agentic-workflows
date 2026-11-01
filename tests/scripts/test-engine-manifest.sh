@@ -1993,12 +1993,14 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: resolve specification file path${NC}"
+echo -e "${YELLOW}Test: resolve refuses specification, which is never indexed${NC}"
 setup_fixture
 create_wu auth-flow feature "Auth"
-output=$(run_cli_stdout resolve auth-flow.specification.auth-flow)
+exit_code=$(run_cli_exit_code resolve auth-flow.specification.auth-flow)
+output=$(run_cli resolve auth-flow.specification.auth-flow 2>&1 || true)
 
-assert_contains "$output" "auth-flow/specification/auth-flow/specification.md" "Resolves spec path with nested topic dir"
+assert_equals "$exit_code" "1" "Specification exits 1"
+assert_contains "$output" 'Phase "specification" is not indexed' "Error names specification not indexed"
 
 echo ""
 
