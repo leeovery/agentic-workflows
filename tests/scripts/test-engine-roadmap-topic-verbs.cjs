@@ -175,13 +175,13 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     assert.strictEqual(epicText(), before, 'the topic is where the plan found it');
   });
 
-  it('the landing refuses a name a peer took between the plan and the project lock — a birth never overwrites', () => {
+  it('the landing refuses a name a peer took between the plan and the project lock — a birth, under the name the topic goes by, never overwrites', () => {
     // The verb's plan reads the roadmap before the project lock is taken;
     // this item lands in the window after it.
     runOk(dir, ['add', 'ordering', '--horizon', 'mvp', '--summary', 'somebody else\'s', '--origin', 'harvest']);
     const before = projectManifestText(dir);
     assert.throws(
-      () => postponeToRoadmap(dir, 'mvp', 'ordering', { horizon: 'next', summary: 'Customers order', sources: [] }),
+      () => postponeToRoadmap(dir, 'mvp', 'order-flow', { goes: 'ordering', horizon: 'next', summary: 'Customers order', sources: [] }),
       /a roadmap item named "ordering" \(horizon "mvp"\) is not this topic's — rename or remove it on the roadmap first/,
     );
     assert.strictEqual(projectManifestText(dir), before, 'the peer\'s item stands, untouched');

@@ -33,7 +33,7 @@ const {
   phaseItems, itemOf, computeTopicLifecycle, computeNextAction, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES, lifecyclePhrase, topicTitle,
   awaitedExperiments, waits, settleItemStatus,
   sourceRows, sourceRow, openSources, specUnsettled, specUnsettledPhrase, UNIT_PHASES, unitItems, discoveryUnitExists, unitLocks, lockingSpecsPhrase, promotedRefusal, deliveryStarted,
-  specIncorporations, cancelPlan, postponePlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases, briefFile, topicDir, topicKey, noTopicRefusal,
+  specIncorporations, cancelPlan, postponePlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases, briefFile, topicDir, topicKey, noTopicRefusal, topicTitles, goesBy,
 } = require('./derivations.cjs');
 const { buildOrderLive } = require('./build-order.cjs');
 const { revertJoins, postponeToRoadmap } = require('./roadmap.cjs');
@@ -1187,7 +1187,7 @@ function postponeTopic(cwd, workUnit, said, { horizon } = {}) {
       stashOrder(row);
     }
 
-    const roadmap = postponeToRoadmap(cwd, workUnit, topic, { horizon, summary, sources });
+    const roadmap = postponeToRoadmap(cwd, workUnit, topic, { goes: goesBy(topicTitles(manifest), topic), horizon, summary, sources });
     saveWorkUnitManifest(cwd, workUnit, manifest);
     return { topic, postponed, discarded: plan.discards, roadmap };
   });

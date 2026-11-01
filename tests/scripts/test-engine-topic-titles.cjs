@@ -248,6 +248,18 @@ describe('every other verb, render and entry that names a topic takes its title,
       const { topic, next } = ok(dir, ['topic', 'postpone', UNIT, NAME, '--horizon', 'later'], { env: SESSION });
       return `${topic} ${next.kind}`;
     }, `${KEY} handoff`],
+    ['topic postpone, its roadmap item and its return', () => {
+      without(dir, 'specification', 'experiment');
+      ok(dir, ['topic', 'postpone', UNIT, NAME, '--horizon', 'later']);
+      const { roadmap } = JSON.parse(fs.readFileSync(statePath(dir, 'manifest.json'), 'utf8'));
+      const back = ok(dir, ['roadmap', 'pull-forward', NAME, '--into', UNIT]);
+      return [Object.keys(roadmap.items).join(), roadmap.items[NAME]?.postponed_from.topic, back.topic, readManifest(dir, UNIT).phases.discovery.items[KEY].postponed === true].join(' ');
+    }, `${NAME} ${KEY} ${KEY} false`],
+    ['render postpone-gate, beside a roadmap item of its title\'s name', () => {
+      without(dir, 'specification', 'experiment');
+      ok(dir, ['roadmap', 'add', NAME, '--horizon', 'later', '--summary', 'Not this topic']);
+      return refusedPristine(dir, ['render', 'postpone-gate', `${UNIT}.discovery.${NAME}`, '--horizon', 'later']).error;
+    }, `render postpone-gate: a roadmap item named "${NAME}" (horizon "later") is not this topic's — rename or remove it on the roadmap first`],
     ['render approve-map, its yes', () => {
       const staged = writeState(dir, layout.cache('scratch', 'approve-map.json'), JSON.stringify({ topics: [{ name: NAME }, { name: 'space-homing' }, { name: 'sync' }] }));
       return ok(dir, answered(['approve-map', UNIT, '--file', staged], 'approve the map', 'y')).topics.join();

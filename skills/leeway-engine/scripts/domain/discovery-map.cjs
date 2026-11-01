@@ -65,7 +65,7 @@ const { moveWaitingToInbox } = require('./mail.cjs');
  * @property {string} [source]           add: the provenance written
  * @property {string} [brief]            add/brief: the brief, absolute
  * @property {string} [from_roadmap]     add: the roadmap item the topic took in
- * @property {{work_unit: string, topic: string}} [prior]  add/set-prior: the epic the topic's earlier record sits in
+ * @property {{work_unit: string, topic: string}} [prior]  add: the epic the topic's earlier record sits in
  * @property {boolean} [re_added]        add, rename: a name struck from the map, taken back
  * @property {{name: string, title: string, from_roadmap?: string}[]} [added]  add-batch
  * @property {string[]} [readded]        add-batch: the names struck from the map, added back
@@ -793,15 +793,12 @@ function rewriteBrief(cwd, workUnit, said, draft) {
 function sequenceMap(cwd, workUnit, orders) {
   const { ordered, titles } = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
-    const items = discoveryItems(manifest);
     const entries = Object.entries(orders).map(([said, order]) => /** @type {[string, number]} */ ([topicKey(manifest, said), order]));
     if (entries.length === 0) {
       throw new Error('no {topic}={order} assignments given');
     }
     for (const [topic, order] of entries) {
-      if (!items[topic] || typeof items[topic] !== 'object') {
-        throw new Error(noTopicRefusal(manifest, topic));
-      }
+      mapItem(manifest, topic);
       if (!Number.isInteger(order) || order < 1) {
         throw new Error(`order for "${topic}" must be a positive integer (got ${JSON.stringify(order)})`);
       }
@@ -814,7 +811,7 @@ function sequenceMap(cwd, workUnit, orders) {
       }
     }
     for (const [topic, order] of entries) {
-      items[topic].order = order;
+      mapItem(manifest, topic).order = order;
     }
     saveWorkUnitManifest(cwd, workUnit, manifest);
     return { ordered: Object.fromEntries(entries), titles: Object.fromEntries(entries.map(([topic]) => [topic, topicTitle(manifest, topic)])) };

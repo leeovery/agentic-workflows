@@ -220,7 +220,7 @@ describe('topic edit', () => {
 
   it('refuses an edit naming no field, or no topic on the map, writing nothing', () => {
     assert.strictEqual(refusedPristine(dir, ['topic', 'edit', UNIT, 'decided-topic']).error, 'Usage: engine topic edit <work-unit> <name> [--summary <text>] [--description <text>]');
-    assert.strictEqual(refusedPristine(dir, ['topic', 'edit', UNIT, 'ghost', '--summary', 'S']).error, 'no topic "ghost" — the map\'s topics are fresh-topic, discussing-topic, decided-topic, cancelled-topic, postponed-topic, mailed-topic');
+    assert.strictEqual(refusedPristine(dir, ['topic', 'edit', UNIT, 'ghost', '--summary', 'S']).error, 'no topic "ghost" — the map\'s topics are fresh-topic, discussing-topic, decided-topic, mailed-topic');
   });
 });
 
@@ -463,13 +463,18 @@ describe('topic order (8.6.2)', () => {
     for (const [pairs, refusal] of [
       [['fresh-topic=1', 'cancelled-topic=2'], '"cancelled-topic" takes no order — it is cancelled and stays on the map as record'],
       [['fresh-topic=1', 'postponed-topic=2'], '"postponed-topic" takes no order — it is postponed and waits on the roadmap'],
-      [['fresh-topic=1', 'ghost=2'], 'no topic "ghost" — the map\'s topics are fresh-topic, discussing-topic, decided-topic, cancelled-topic, postponed-topic, mailed-topic'],
+      [['fresh-topic=1', 'ghost=2'], 'no topic "ghost" — the map\'s topics are fresh-topic, discussing-topic, decided-topic, mailed-topic'],
       [['fresh-topic=0'], 'bad assignment "fresh-topic=0" (expected {topic}={order}, order a positive integer)'],
       [['fresh-topic=1', 'fresh-topic=2'], 'topic "fresh-topic" assigned twice'],
       [[], 'Usage: engine topic order <work-unit> <topic>=<n> [<topic>=<n> …]'],
     ]) {
       assert.strictEqual(refusedPristine(dir, ['topic', 'order', UNIT, ...pairs]).error, refusal);
     }
+  });
+
+  it('refuses on an epic whose map holds nothing as every map verb does', () => {
+    createManifest(dir, 'bare', { name: 'bare', work_type: 'epic', status: 'in-progress', phases: {} });
+    assert.strictEqual(refusedPristine(dir, ['topic', 'order', 'bare', 'ghost=1']).error, 'no topic "ghost" — the map has no live topics');
   });
 });
 

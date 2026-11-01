@@ -1288,7 +1288,7 @@ function revertJoins(cwd, workUnit, { topic } = {}) {
  * The postpone's roadmap half: the item that waits for the topic. An item
  * joined to `{workUnit, topic}` **re-waits** — the join deleted, the chosen
  * horizon taken, its own name and origin left as they were; otherwise one is
- * **born** under the topic's name with origin `postpone:{workUnit}` — or
+ * **born** under the name the topic goes by with origin `postpone:{workUnit}` — or
  * refuses, when that name is taken: nothing on the roadmap is ever
  * overwritten, and the plan's clash lock is read again here because the plan
  * ran before the project lock was taken. Either way the item records
@@ -1298,21 +1298,21 @@ function revertJoins(cwd, workUnit, { topic } = {}) {
  * order every other cross-boundary verb keeps — and **no commit**: the
  * postpone transaction stages the project manifest alongside the epic's.
  * @param {string} cwd @param {string} workUnit @param {string} topic
- * @param {{horizon: string, summary: string, sources: string[]}} opts
+ * @param {{goes: string, horizon: string, summary: string, sources: string[]}} opts  `goes` the name the topic goes by
  * @returns {PostponeLanding}
  */
-function postponeToRoadmap(cwd, workUnit, topic, { horizon, summary, sources }) {
+function postponeToRoadmap(cwd, workUnit, topic, { goes, horizon, summary, sources }) {
   assertLegalName('horizon', horizon);
   validateSummary(summary);
   validateSources(sources);
   return transactProject(cwd, (manifest) => {
     const bornMap = !hasRoadmapNode(manifest);
     const roadmap = ensureRoadmap(manifest);
-    const target = postponeTarget(manifest, workUnit, topic);
+    const target = postponeTarget(manifest, workUnit, topic, goes);
     if (!target.joined) {
       // Read again under the project lock: the plan's clash check ran before
       // the epic write, and a name a peer took since must refuse, never overwrite.
-      if (target.item !== undefined) throw new Error(postponeClashPhrase(topic, target.item));
+      if (target.item !== undefined) throw new Error(postponeClashPhrase(target.name, target.item));
       assertLegalName('item', target.name);
     }
     const bornHorizon = ensureHorizon(roadmap, horizon);

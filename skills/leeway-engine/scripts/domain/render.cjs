@@ -3965,15 +3965,16 @@ function workUnitCancel(cwd, dotpath) {
  * @param {import('./derivations.cjs').PostponePlan} plan @param {string} horizon
  * @param {Record<string, any>|null} project  the project manifest, the gate's one read
  * @param {string} name  the topic as screens title it
+ * @param {string} goesAs  the name the topic goes by
  * @returns {string}
  */
-function postponeStatement(workUnit, topic, plan, horizon, project, name) {
+function postponeStatement(workUnit, topic, plan, horizon, project, name, goesAs) {
   const goes = plan.items.length === 0
     ? `Postponing **${name}** sets it aside — nothing has started, so only the map row is marked.`
     : `Postponing **${name}** marks its ${listJoin(plan.items.map(({ phase, item }) => `${phase} [${item.status}]`))} postponed — its record stays on disk and comes back with the pull.`;
   const roadmap = project && hasRoadmapNode(project) ? project.roadmap : null;
   const horizons = roadmap && Array.isArray(roadmap.horizons) ? roadmap.horizons : [];
-  const target = postponeTarget(project, workUnit, topic);
+  const target = postponeTarget(project, workUnit, topic, goesAs);
   const flag = roadmap && !horizons.includes(horizon) ? ' (new)' : '';
   const lands = target.joined
     ? `Its own item **${titlecase(target.name)}** re-waits under "${horizon}"${flag}.`
@@ -4004,7 +4005,7 @@ function postponeGate(cwd, { dotpath, horizon }) {
   return section(
     'MENU: postpone gate',
     MENU_INSTRUCTION,
-    menu(postponeStatement(workUnit, topic, plan, /** @type {string} */ (horizon), project, topicTitle(manifest, topic)), [
+    menu(postponeStatement(workUnit, topic, plan, /** @type {string} */ (horizon), project, topicTitle(manifest, topic), goesBy(topicTitles(manifest), topic)), [
       cmdOption('y', 'yes', 'Postpone it', { next: { kind: 'engine', argv: ['topic', 'postpone', workUnit, topic, '--horizon', /** @type {string} */ (horizon)] } }),
       cmdOption('n', 'no', 'Keep it here', { next: { kind: 'continue' } }),
       promptOption('Comment', 'Tell me what to change (the horizon)', { next: { kind: 'continue' } }),
