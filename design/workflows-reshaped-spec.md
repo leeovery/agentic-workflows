@@ -740,10 +740,10 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 - `.inbox/`: one file per capture, `{ideas,bugs,quickfixes}/{YYYY-MM-DD}--{slug}.md`, as today; an archived item moves to `.inbox/.archived/{kind}/`, its name kept, and the unit that closed it is recorded on the project manifest (18.6.4);
 - `.product/`: the product's conversation (8.2.7), its logs `sessions/session-NNN.md`, every session before a work-type commit among them (8.14.3); each note an inbox item brought onto the roadmap, `notes/{YYYY-MM-DD}--{slug}.md`, its inbox name kept (18.8.15); `spikes/` and `assets/` (4.11.12). The roadmap's items themselves are on the project manifest;
 - `.state/migrations`: each migration applied, its id on a line of its own (4.7.4);
-- a unit's `seeds/`: each seed's file under its name normalised as every inbox seed's has always been, a double dash folded to one, an inbox item or a roadmap item's note. The unit's manifest records each seed's source and, for a roadmap item, the item as it stood, its horizon included, so cancelling the work can put it back (18.8.20);
+- a unit's `seeds/`: each seed's file under its name normalised as every inbox seed's has always been, a double dash folded to one, an inbox item or a roadmap item's note. The unit's manifest records each seed's source and no copy of a roadmap item as it stood: the item stays on the project manifest, joined to the work, so cancelling the work can put it back by undoing the join on the live item, as renamed or merged since (18.8.20);
 - no unit has a `.state/`: nothing writes one once tracking and analysis files go (4.10.3).
 
-[Claude's sort, B20; the inner layouts, Claude's proposal; the inbox's names as today; `.product/`, ruled by the person 2026-10-26; Claude's derivation, 29.12 slice 12.6: seeds land as today]
+[Claude's sort, B20; the inner layouts, Claude's proposal; the inbox's names as today; `.product/`, ruled by the person 2026-10-26; Claude's derivation, 29.12 slice 12.6: seeds land as today; Claude's derivation, 29.12's phase review: as built]
 
 4.11.17 The whole layout, as one tree: every path the workflows write under `.leeway/` and at user level is in it, each entry naming the line that sets it. The files the workflows own in the code tree are 6.3.15's. [Layout on disk; ruled by the person 2026-10-17; every place prescribed, asked by the person 2026-10-22; the tree drawn, Claude's proposal; Claude's derivation 2026-10-25: the tree draws `.leeway/` and user level, and 6.3.15 names the code tree's files; Claude's derivation 2026-10-28: the trust log's lock and a conversation's gate and pending event are user-level paths too; Claude's derivation 2026-10-30: the one-decision check's log, and a letter per reviewer (29.9)]
 
@@ -824,6 +824,8 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
     └── the conversation's other files, as today
 ```
 
+4.11.18 The unit's manifest keeps no status for the spec. The spec is written once `spec.md` exists, and concluded once ready to build's yes has begun the build, which records the build's position on the manifest (3.3). [Claude's proposal, 29.13 planning]
+
 ## 4-S. Scenarios for §4
 
 4.S1 Given a project with a remote and its state worktree at `.leeway/` on `leeway-state`, when a session working in a code worktree runs a verb that writes state, then the write lands in the one `.leeway/` found through the common git directory, no `.leeway/` appears in the code worktree, the engine's response carries absolute paths, the state branch gains a commit that is pushed, and the default branch gains no commit. (4.1.1, 4.1.2, 4.1.4, 4.1.8, 4.2.1, 4.2.2, 4.3.2)
@@ -890,7 +892,7 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 
 4.S34 Given an idea captured, when a finishing unit closes it, then it moves from `.inbox/ideas/` to `.inbox/.archived/ideas/` under the same name and the project manifest records the unit; given an inbox bug put on the roadmap, then its note is in `.product/notes/` under its inbox name and the item is on the project manifest. (4.11.16, 18.6.4, 18.8.15)
 
-4.S35 Given work started from an inbox idea and a roadmap item with a note, when the unit's folder is listed, then `seeds/` holds both files under their names normalised as every inbox seed's has always been, a double dash folded to one, and the unit's manifest records each seed's source and the roadmap item as it stood, its horizon included; when the work is cancelled, then the item is back on that horizon. (4.11.16, 18.8.20)
+4.S35 Given work started from an inbox idea and a roadmap item with a note, when the unit's folder is listed, then `seeds/` holds both files under their names normalised as every inbox seed's has always been, a double dash folded to one, and the unit's manifest records each seed's source and no copy of the roadmap item; when the work is cancelled, then the item, as renamed or merged since, is back on its horizon. (4.11.16, 18.8.20)
 
 4.S36 Given work on one machine pushed to the remote, when boot runs on another machine whose state branch is behind, then before anything writes state the branch fast-forwards to the remote's tip and no merge commit is made; given a clone holding state commits a failed push left behind, with the remote not moved, when boot runs, then they are pushed. (4.7.8, 4.3.3)
 
@@ -3713,8 +3715,7 @@ through the menus would. [R13, plan 3.4; ruled by the person 2026-10-16]
 
 10.3.2 The command opens any topic by name, not only for mail. [R13]
 
-10.3.3 Every send's report ends with that command for the target, to paste in
-another pane now or use later. [R13, plan 3.4]
+10.3.3 Every send's report ends with that command for the target, to paste in another pane now or use later. The sweep's sends draw no report (8.10.9). [R13, plan 3.4; Claude's derivation, 29.13 planning: 8.10.9]
 
 10.3.4 Screen: the send report. It says where the message landed and ends with
 `/leeway {work unit} {topic}` for the target. The rest of what it
@@ -3987,8 +3988,7 @@ ask rule sends it (§16). [R14; ruled by the person 2026-10-13]
 11.7.3 A gap that reaches the person is put in product terms, never by spec
 section number. [R14; ruled by the person 2026-10-13]
 
-11.7.4 Each gap's answer is written as an entry in the topic it belongs to, so
-the record stays the source. [R14; ruled by the person 2026-10-13]
+11.7.4 Each gap's answer is written as an entry at the unit's level, at the spec, with no topic (4.11.2, 5.2.3), so the record stays the source; where the answer replaces an earlier entry, the replacement stands where that entry's chain began, on its topic (5.6.16). [R14; ruled by the person 2026-10-13; Claude's proposal, 29.13 planning: a topic exists only before the spec]
 
 11.7.5 Gaps found at the spec are gaps discussion missed; the measures show
 where they arise (§17). [R14; R36]
@@ -4132,6 +4132,8 @@ checklist (§6), the drivers checking their needs (see
 §7 Tasks, landing and their drivers), and, at the first ready to build, the
 project's environment setup and linters (§22). [plan 6.4; plan 9.2; R34]
 
+11.8.8 Screen: ready to build for an epic or a bugfix. It is the feature's screen (11.8.2) without the parts that belong to the feature's decided (11.8.5): WHAT YOU DECIDED and FOR THE PRODUCT RECORD go, the title reads "{Title} — ready to build", the foot's pick approves the outline and the phase cut and starts the build, and Comment asks for a change to the outline or the phase cut. [Claude's proposal, 29.13 planning]
+
 ### 11.9 A concluded spec is never corrected
 
 11.9.1 A concluded spec is never corrected. A later change replaces the entry
@@ -4154,13 +4156,7 @@ O39]
 topics linked within, with little between. [Open, One build across an epic;
 ruled by the person 2026-10-14]
 
-11.10.3 A split moves decided topics, with their records, or part of a topic's
-questions as a new topic, to a next epic on the roadmap; the project ledger
-keeps every link working. The topics that move go to the roadmap as
-postponements through discovery, on a horizon the person names. [Open, One
-build across an epic; ruled by the person 2026-10-14; Claude's derivation, O39;
-11.2.1, 18.4.19; Claude's derivation 2026-10-25: the split comes at the
-outline, when every topic is decided]
+11.10.3 A split moves whole decided topics, with their records, to a next epic on the roadmap; the project ledger keeps every link working. A topic too large to build whole is split before it is decided, by a new topic that some of its questions move to (9.5.4). The topics that move go to the roadmap postponed, as discovery postpones a topic, on a horizon the person names: the move alone, with no return to discovery's conversation, whose row has left the menu (18.4.19). [Open, One build across an epic; ruled by the person 2026-10-14; Claude's derivation, O39; 11.2.1, 18.4.19; Claude's derivation 2026-10-25: the split comes at the outline, when every topic is decided; Claude's proposal, 29.13 planning]
 
 11.10.4 Discovery shapes an epic by judgement, never a formula. The roadmap is
 the level above: its epics are the versions, and no new layer is added (§8, §18). [Open, One build across an epic; ruled by
@@ -4203,19 +4199,7 @@ brings no other Claude in: the review is between the person and the session
 alone. [ruled by the person 2026-10-22; reading on request, Claude's
 derivation]
 
-11.11.6 An agreed answer that changes what the spec decides is written as an
-entry in the topic it belongs to, decided by the person, and the spec is
-rewritten from it, as a gap's answer is (11.7.4); an answer that changes only
-the wording changes the spec. The change reaches the page open in front of the
-person, every mark kept, without republishing it (11.11.17), but a tick agrees
-a line as it is worded: a line whose wording has changed since its tick, by a
-change the person agreed to or any other, reads unticked and marked changed,
-showing the wording they ticked beside the new with the words that differ
-marked, until they tick the new wording. A change to a line's sources alone
-keeps its tick. [Claude's derivation; a tick holds the wording, ruled by the
-person 2026-10-22; reaching the open page, and the wording ticked shown beside
-the new, the page as the person has used it since 2026-10-22, Claude's
-proposal]
+11.11.6 An agreed answer that changes what the spec decides is written as an entry at the unit's level, at the spec, with no topic, decided by the person, and the spec is rewritten from it, as a gap's answer is (11.7.4); where the answer replaces an earlier entry, the replacement stands where that entry's chain began, on its topic (5.6.16). An answer that changes only the wording changes the spec. The change reaches the page open in front of the person, every mark kept, without republishing it (11.11.17), but a tick agrees a line as it is worded: a line whose wording has changed since its tick, by a change the person agreed to or any other, reads unticked and marked changed, showing the wording they ticked beside the new with the words that differ marked, until they tick the new wording. A change to a line's sources alone keeps its tick. [Claude's derivation; a tick holds the wording, ruled by the person 2026-10-22; reaching the open page, and the wording ticked shown beside the new, the page as the person has used it since 2026-10-22, Claude's proposal; Claude's proposal, 29.13 planning: a topic exists only before the spec]
 
 11.11.7 Picking the build's position ends the review. Each ticked line is
 recorded as approved by the person; a line carrying Claude's tick (11.11.15)
@@ -4359,7 +4343,7 @@ then the spec links it. (11.6.3)
 
 11.S10 Given the spec's review finds two topics' records contradicting each
 other, when the matrix makes it Claude's call, then the answer is written as
-a ledger entry in the topic it belongs to and the person is not asked; when
+a ledger entry at the unit's level, with no topic, and the person is not asked; when
 the ask rule sends it to the person, then it is put in product terms with no
 spec section numbers. (11.7.1, 11.7.2, 11.7.3, 11.7.4)
 
@@ -4393,12 +4377,7 @@ base is queried, then the record can be returned and the spec never is.
 then nothing refuses it for its size and no job reads the whole spec at once.
 (11.3.6, 11.10.1)
 
-11.S18 Given an epic whose outline at ready to build has grown unwieldy, when
-Claude sees it, then Claude raises the split as a question to the person; when
-the person takes the split, then decided topics with their records (or part of
-a topic's questions, as a new topic) go to the roadmap as postponements through
-discovery, on the horizon the person names, toward a next epic, and every
-ledger link still resolves. (11.10.1, 11.10.2, 11.10.3)
+11.S18 Given an epic whose outline at ready to build has grown unwieldy, when Claude sees it, then Claude raises the split as a question to the person; when the person takes the split, then whole decided topics with their records go to the roadmap postponed, as discovery postpones a topic, on the horizon the person names, toward a next epic, with no return to discovery's conversation, and every ledger link still resolves. (11.10.1, 11.10.2, 11.10.3)
 
 11.S19 Given a bugfix whose investigation has concluded, when its spec is
 written, then it has the same shape as any spec, its phase cut on the unit's
@@ -4428,8 +4407,7 @@ on Claude's calls are marked, and each section shows its progress. (11.11.2,
 11.S24 Given a comment left on a line, when the person picks the review row or
 says so in the conversation, then Claude answers it beneath the line; given
 the person then ticks that line and the answer changes what the spec decides,
-then the answer is written as an entry decided by the person in the topic it
-belongs to, the spec is rewritten from it, and the change reaches the open
+then the answer is written as an entry decided by the person at the unit's level, with no topic, the spec is rewritten from it, and the change reaches the open
 page with every mark kept and every number unchanged. (11.11.3, 11.11.4,
 11.11.5, 11.11.6)
 
@@ -4473,15 +4451,7 @@ each and the cut on the unit's manifest is unchanged; when each scenario is
 placed in exactly one phase, then the cut is written to the unit's manifest and
 ready to build shows it from there. (11.5.8, 11.5.9, 11.5.10)
 
-11.S32 Given a spec whose 3.2.1 restates a decision the person made, 3.2.2
-rests on a call of Claude's, 3.2.3 is left to the builder, and 3.2.4 restates
-a decision of the person's whose question was marked hard to undo, when the
-review page opens, then 3.2.1 and 3.2.3 carry Claude's tick, each with its
-reason beneath its source, 3.2.2 and 3.2.4 are open with their reasons, and
-the step to the earliest line waiting on the person passes 3.2.1 and 3.2.3 by;
-when the person taps 3.2.1, the tick is theirs, and when they tap it again it
-is unticked and Claude's tick does not come back. (11.11.4, 11.11.15,
-11.11.16)
+11.S32 Given a spec whose 3.2.1 restates a decision the person made, 3.2.2 rests on a call of Claude's, and 3.2.3 is left to the builder, when the review page opens, then 3.2.1 and 3.2.3 carry Claude's tick, each with its reason beneath its source, 3.2.2 is open with its reason, and the step to the earliest line waiting on the person passes 3.2.1 and 3.2.3 by; when the person taps 3.2.1, the tick is theirs, and when they tap it again it is unticked and Claude's tick does not come back. (11.11.4, 11.11.15, 11.11.16)
 
 11.S33 Given the page open, when an agreed answer rewords 3.2.2, which the
 person had ticked, and removes 3.2.5, then the open page shows the change
@@ -4503,6 +4473,8 @@ untouched, when the person picks a position, then `spec-review.json` holds the
 214 as approved explicitly, the 790 as Claude's tick let stand, the changed
 line as changed since its tick and not ticked again, and the rest as passed
 without review. (11.11.7, 11.11.9)
+
+11.S36 Given a spec whose 3.2.4 restates a decision of the person's whose question was marked hard to undo, when the review page opens, then 3.2.4 is open, its reason saying its question was marked hard to undo, and the step to the earliest line waiting on the person stops at it. (11.11.4, 11.11.15, 16.11.7)
 
 ## 12. The build
 
@@ -6977,7 +6949,7 @@ Ask          → Ask a question about this work unit
 
 18.4.5 Starting a topic is "Start", with no routing (§8). [R17, R10]
 
-18.4.6 Once every topic is decided, the menu offers the spec; then it shows the build's phase N of M; then the review — in place of the plan rows. No spec row and no ready-to-build row shows while any topic is undecided (18.5). [R17, plan 3.11]
+18.4.6 Once every topic is decided, cancelled or postponed, the menu offers the spec; then it shows the build's phase N of M; then the review — in place of the plan rows. No spec row and no ready-to-build row shows while any topic is neither decided, cancelled nor postponed (18.5). [R17, plan 3.11; Claude's derivation, 29.13 planning]
 
 18.4.7 The recommended row comes first, in the foundations-first order (§8). [R17, R41]
 
@@ -7003,10 +6975,10 @@ Ask          → Ask a question about this work unit
 - the phase the epic is in, as the heading, with the epic's tally beneath it: its topics, then how many are decided, in progress, not started, cancelled and postponed, a count of none left out;
 - what waits on the person, each row with its door: an authority gate waiting (start this work, approve the map, decided, ready to build, finish), a builder's question raised mid-phase, a decided topic with an entry relying on a replaced answer ("Note Window: a decision it relies on changed"), its door opening the topic (10.2.6), verdicts waiting;
 - the topics by what they need — in progress, decided (listed with no key), in session (struck through when in session elsewhere), mail waiting, experiments waiting — with no count of a topic's questions, and "Start" on a topic not yet started; then the topics set aside, cancelled and postponed (a postponed one with its horizon), listed with no key, as decided topics are;
-- once every topic is decided: the spec row; during the build, the build's phase N of M; then the review;
+- once every topic is decided, cancelled or postponed: the spec row; during the build, the build's phase N of M; then the review;
 - before the spec, the discovery row, key d, saying what it is for (18.4.19);
 - h help (18.9); b back.
-The recommended row comes first, in the foundations-first order. Variants drawn in the spec: in discussion with topics still open; every topic decided (the spec row offered); during the build (phase N of M); in the review. Row wording, the discovery row's included, is drawn by Claude in the spec (18.10.8). [R17, plan 3.11; the person 2026-10-14, 2026-10-15 and 2026-10-19; key d agreed with the person 2026-10-14; Claude's derivation, O69, O94, T2]
+The recommended row comes first, in the foundations-first order. Variants drawn in the spec: in discussion with topics still open; every topic decided (the spec row offered); during the build (phase N of M); in the review. Row wording, the discovery row's included, is drawn by Claude in the spec (18.10.8). [R17, plan 3.11; the person 2026-10-14, 2026-10-15 and 2026-10-19; key d agreed with the person 2026-10-14; Claude's derivation, O69, O94, T2; Claude's derivation, 29.13 planning]
 
 Screen, drawn by Claude: the epic menu in discussion, with topics still open, a decided topic waiting because a decision it relies on changed, and topics set aside. [Claude's derivation, O94]
 
@@ -7132,7 +7104,7 @@ b/back → Back to the start menu
 
 18.4.18 A decided topic is listed on the menu with no key, since reopening it is discovery's (18.4.9), except while it waits under 10.2.6, when it is a row with its door among what waits (18.4.2). Cancelled and postponed topics are listed after the live ones with no key, a postponed one with its horizon, as the board's epic tab shows the topics set aside (§20). [R17; the person 2026-10-14 and 2026-10-15; Claude's derivation, O69]
 
-18.4.19 From the spec on, an epic's map is closed: the discovery row leaves the menu, and no topic is added, cancelled, postponed, pulled forward, reactivated or reopened. A topic exists only before the spec (4.11.2), and a decision that must change is settled in the phase the epic is in (12.15.4). A split the person agrees at the outline moves topics as 11.10.3 says, before ready to build's yes. Archiving the roadmap item that holds a postponed topic still cancels that topic's row (18.8.17). Abandoning the work is the unit's cancel through manage (18.3.4). [record 3036–3037, 3755–3760; R17; Claude's derivation, T2; 18.8.17]
+18.4.19 From the spec's first writing, an epic's map is closed: the discovery row leaves the menu, and no topic is added, cancelled, postponed, pulled forward, reactivated or reopened. The sweep before the spec, and the approve the map that follows it, come before that writing (8.10.9). A topic exists only before the spec (4.11.2), and a decision that must change is settled in the phase the epic is in (12.15.4). A split the person agrees at the outline still moves topics as 11.10.3 says, until ready to build's yes. Archiving the roadmap item that holds a postponed topic still cancels that topic's row (18.8.17). Abandoning the work is the unit's cancel through manage (18.3.4). [record 3036–3037, 3755–3760; R17; Claude's derivation, T2; 18.8.17; Claude's derivation, 29.13 planning]
 
 18.4.20 A cancel or postpone of the topic, asked for inside its own session, is made there as the discovery row makes it (18.4.9): Claude commits the sitting, settles the topic's running agents (9.7.8) and makes the change, cancelling confirmed and postponing reported in one line, and the session moves to the epic's menu (24.1.2). A feature's, bugfix's or quick-fix's cancel, asked for inside its session, is made there the same way as manage's (18.3.4), confirmed, and the session moves to the start menu. A single question put off for later stays in the conversation (9.5.4). [R17; Claude's derivation, T19; made in the session for every type as today, Claude's derivation 2026-10-25]
 
@@ -7570,7 +7542,7 @@ Ask    → Ask anything about triage or the inbox
 
 18.S54 Given a completed feature, when the person reopens its decision through manage, then it is brought back; given a completed epic, manage offers no reopen. (18.3.6)
 
-18.S55 Given an epic whose spec has started, when its menu shows, then it carries no discovery row, and no topic can be added, cancelled, postponed, pulled forward, reactivated or reopened, save that archiving the roadmap item holding a postponed topic cancels that topic's row; given the person agrees a split at the outline, topics move as 11.10.3 says, before ready to build's yes. (18.4.19, 18.4.17, 8.6.5, 18.8.17)
+18.S55 Given an epic whose spec has been written, when its menu shows, then it carries no discovery row, and no topic can be added, cancelled, postponed, pulled forward, reactivated or reopened, save that archiving the roadmap item holding a postponed topic cancels that topic's row; given the person agrees a split at the outline, topics move as 11.10.3 says, before ready to build's yes. (18.4.19, 18.4.17, 8.6.5, 18.8.17)
 
 18.S56 Given a topic in session, when the person asks inside it to postpone the topic, then Claude commits the sitting, settles the topic's running agents, postpones the topic as the discovery row does and reports it in one line, and the session moves to the epic's menu; given a feature in session, when the person asks inside it to cancel the feature, then Claude confirms, cancels it as manage does, and the session moves to the start menu; given a single question put off for later, it stays in the conversation. (18.4.20, 9.7.8, 9.5.4, 18.4.9, 18.3.4)
 
@@ -10109,9 +10081,9 @@ Screen, drawn by Claude: the guard's refusal, uncommitted changes under .workflo
 
 21.6.9 The entries the directive marks product-wide start the product record (§8). [R37]
 
-21.6.10 The records directive asks nothing per entry. At its end it raises what no log settles, one point at a time, each answered or left open (§16). The points to raise are marked in the carried record, and the directive's check lists those still to raise, so a session that lost its context raises none twice and misses none. A point on a topic never started is not raised at the directive's end: it stays an open question on that topic, for its discussion to open with. [R38; ruled by the person 2026-10-17; Claude's derivation, 29.11 slice 11.15; Claude's proposal, 29.12 slice 12.4]
+21.6.10 The records directive asks nothing per entry. At its end it raises what no log settles, one point at a time, each answered or left open (§16). The points to raise are marked in the carried record, and the directive's check lists those still to raise, so a session that lost its context raises none twice and misses none. A point on a topic never started is not raised at the directive's end: it stays an open question on that topic, for its discussion to open with. A point on a cancelled or postponed topic, or in a cancelled unit, is not raised either: it stays an open question on that topic until the topic, or its unit, returns (5.8.17). [R38; ruled by the person 2026-10-17; Claude's derivation, 29.11 slice 11.15; Claude's proposal, 29.12 slice 12.4; Claude's derivation, 29.11: as built]
 
-21.6.11 Screen: the records directive's closing raises. After the directive's work, each point no log settles on a topic that has started is raised to the person one at a time; each is answered or left open. A never-started topic's points stay open for its discussion (21.6.10). [R38, R24; Claude's derivation, 29.12 slice 12.4]
+21.6.11 Screen: the records directive's closing raises. After the directive's work, each point no log settles on a live topic that has started is raised to the person one at a time; each is answered or left open. A never-started topic's points stay open for its discussion, and a cancelled or postponed topic's until it returns (21.6.10). [R38, R24; Claude's derivation, 29.12 slice 12.4; Claude's derivation, 29.11: as built]
 
 21.6.12 A never-started epic topic's record is carried at its discovery place — its unit, phase `discovery`, the topic — and holds its questions and findings only, nothing decided, since nothing in discovery is a decision (8.3.4). [Claude's proposal, 29.12 slice 12.4]
 
@@ -10325,7 +10297,7 @@ Screen, drawn by Claude: boot's refusal past an unfinished directive. [Claude's 
 
 21.S24 Given entries the records directive marks product-wide, when the migration finishes, then the product record holds them. (21.6.9)
 
-21.S25 Given a point no log settles on a topic that has started, when the records directive ends, then it is raised to the person on its own, after the rest of the work, and the person answers it or leaves it open; no per-entry question was asked. Given a point on a topic never started, then it is not raised, and stays open for that topic's discussion. (21.6.10, 21.6.11, 21.10.8)
+21.S25 Given a point no log settles on a live topic that has started, when the records directive ends, then it is raised to the person on its own, after the rest of the work, and the person answers it or leaves it open; no per-entry question was asked. Given a point on a topic never started, then it is not raised, and stays open for that topic's discussion. Given a point on a cancelled or postponed topic, then it is not raised, and is an open question on that topic once the topic returns. (21.6.10, 21.6.11, 21.10.8)
 
 21.S26 Given a cross-cutting unit with a spec, when the cut-and-merges directive runs, then the spec's rules are product-wide entries, the unit leaves the registry, and its spec and its topics' logs sit in `.product/assets/` as reference. (21.7.3, 21.7.5, 19.6.7)
 
@@ -11093,7 +11065,7 @@ the mod, the skill is invoked inline. [plan 9.6; Claude's]
   bugfix, its investigation; for an epic, the conversation goes on to shape
   the topics, and approve the map hands off to the epic's menu, where the
   person picks the topic to work;
-- an epic's topic decided, into the next topic or the spec;
+- an epic's topic decided, onto the epic's menu, the next topic marked next (8.8.13); only the last topic decided goes straight into the spec;
 - a feature's topic, once nothing of the person's is open on it and its
   closing pass has run, into its spec (11.2.1);
 - ready to build, into the build; for a feature, the one screen that also
@@ -11111,7 +11083,7 @@ the mod, the skill is invoked inline. [plan 9.6; Claude's]
 
 [plan 9.6; Claude's; R11, R20, record 872–874, 1946; Claude's derivation,
 O22, O89, T14; the feature's spec and the in-session cancel, Claude's
-derivation 2026-10-25: 11.2.1, 18.4.20]
+derivation 2026-10-25: 11.2.1, 18.4.20; Claude's derivation, 29.13 planning: 8.8.13]
 
 24.1.3 Nothing hands off inside a build, a quick-fix or a topic (an
 experiment's spawn leaves the topic: 24.1.2). [plan 9.6; Claude's; Claude's
@@ -11182,9 +11154,7 @@ first topic. (24.1.1, 24.1.2)
 24.S2 Given the same move where the mod does not run, then the first topic's
 skill is invoked inline. (24.1.1)
 
-24.S3 Given an epic topic the person declares decided, when other topics
-remain, then the move goes into the next topic; when it was the last topic,
-then the move goes into the spec. (24.1.2)
+24.S3 Given an epic topic the person declares decided, when other topics remain, then the move goes onto the epic's menu, the next topic marked next; when it was the last topic, then the move goes into the spec. (24.1.2, 8.8.13)
 
 24.S4 Given a spec whose ready to build the person passes, then the move
 goes into the build. (24.1.2)
@@ -11891,11 +11861,11 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.13.3 The sweep across every record before the spec is written comes with it (8.10.3, 8.10.4, 8.10.8, 8.10.9). [plan 3.3]
 
-29.13.4 Draws on: §11, §18.5, §3.3, §8.8, §8.10, §24.1, §26.5. [R14; Claude's derivation]
+29.13.4 Draws on: §11, §18.5, §3.3, §8.8, §8.10, §24.1, §26.5, §4.11, §18.4, §10.3. [R14; Claude's derivation; Claude's derivation, 29.13 planning: the spec's state, the spec row, the map's close and the sweep's sends (4.11.18, 18.4.6, 18.4.19, 10.3.3)]
 
 29.13.5 Relies on: 29.2 to 29.8, 29.11, 29.12. [R14; Claude's derivation]
 
-29.13.6 Proven by: 3.S18, 8.S33, 8.S43, 8.S50, 11.S1, 11.S2, 11.S3, 11.S4, 11.S5, 11.S7, 11.S8, 11.S9, 11.S11, 11.S12, 11.S13, 11.S15, 11.S16, 11.S18, 11.S20, 11.S21, 11.S22, 11.S23, 11.S24, 11.S25, 11.S26, 11.S27, 18.S21, 24.S3, 11.S28, 11.S29, 11.S30, 11.S31, 11.S32, 11.S33, 11.S34, 11.S35 (36). [R14; Claude's derivation]
+29.13.6 Proven by: 3.S18, 8.S33, 8.S43, 8.S50, 11.S1, 11.S2, 11.S3, 11.S4, 11.S5, 11.S7, 11.S9, 11.S11, 11.S12, 11.S13, 11.S15, 11.S16, 11.S18, 11.S20, 11.S21, 11.S22, 11.S23, 11.S24, 11.S25, 11.S26, 11.S27, 18.S21, 24.S3, 11.S28, 11.S29, 11.S30, 11.S31, 11.S32, 11.S33, 11.S34, 11.S35 (35). [R14; Claude's derivation]
 
 29.13.7 The person's review of the spec, offered at ready to build, comes with it (11.11). [ruled by the person 2026-10-22]
 
@@ -11985,11 +11955,11 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.19.3 The rule ships calibrated to ask what is asked today, and loosens only as evidence supports (1.3.4). [plan 1.3]
 
-29.19.4 Draws on: §16, §17.1 to §17.3, §1.3, §2.11, §3.2, §3.3, §4.11, §5.1, §6.6, §8.8, §9.6, §9.8, §11.7, §15.12, §18.4, §19.4, §26.3, §27.2, §5.3, §9.7, §18.10, §5.5, §12.9, §12.15. [R14; Claude's derivation]
+29.19.4 Draws on: §16, §17.1 to §17.3, §1.3, §2.11, §3.2, §3.3, §4.11, §5.1, §6.6, §8.8, §9.6, §9.8, §11.7, §15.12, §18.4, §19.4, §26.3, §27.2, §5.3, §9.7, §18.10, §5.5, §12.9, §12.15, §11.11. [R14; Claude's derivation; Claude's derivation, 29.13 planning: 11.S36, proven here, reads 11.11.15]
 
 29.19.5 Relies on: 29.3 to 29.5, 29.8, 29.11 to 29.18. [R14; Claude's derivation]
 
-29.19.6 Proven by: 1.S2, 1.S3, 3.S4, 3.S7, 3.S8, 3.S9, 3.S11, 3.S13, 3.S14, 3.S15, 4.S27, 5.S27, 6.S19, 8.S22, 9.S21, 9.S24, 9.S45, 9.S47, 11.S10, 15.S19, 16.S1, 16.S2, 16.S3, 16.S5, 16.S11, 16.S12, 16.S13, 16.S14, 16.S15, 16.S16, 16.S17, 16.S18, 16.S19, 16.S20, 16.S21, 16.S22, 16.S23, 16.S24, 16.S25, 16.S26, 16.S27, 16.S28, 16.S29, 16.S37, 16.S38, 16.S39, 16.S40, 16.S42, 16.S43, 16.S45, 16.S46, 16.S47, 16.S48, 16.S49, 16.S50, 16.S51, 16.S52, 16.S53, 16.S54, 16.S55, 16.S56, 16.S57, 16.S58, 16.S59, 16.S60, 16.S62, 16.S63, 16.S64, 16.S65, 16.S66, 16.S67, 16.S68, 16.S70, 16.S71, 16.S72, 17.S1, 17.S8, 18.S17, 18.S41, 19.S17, 26.S9, 27.S2, 6.S24, 16.S69 (84). [R14; Claude's derivation; Claude's derivation 2026-10-30: 9.S21 is here for its count of Claude's calls by kind, which needs the labeller; its verdict block and product lines are 29.11's (16.S33, 16.S34, 8.S25); Claude's proposal: 16.S75 goes to 29.11 (29.11.14)]
+29.19.6 Proven by: 1.S2, 1.S3, 3.S4, 3.S7, 3.S8, 3.S9, 3.S11, 3.S13, 3.S14, 3.S15, 4.S27, 5.S27, 6.S19, 8.S22, 9.S21, 9.S24, 9.S45, 9.S47, 11.S10, 15.S19, 16.S1, 16.S2, 16.S3, 16.S5, 16.S11, 16.S12, 16.S13, 16.S14, 16.S15, 16.S16, 16.S17, 16.S18, 16.S19, 16.S20, 16.S21, 16.S22, 16.S23, 16.S24, 16.S25, 16.S26, 16.S27, 16.S28, 16.S29, 16.S37, 16.S38, 16.S39, 16.S40, 16.S42, 16.S43, 16.S45, 16.S46, 16.S47, 16.S48, 16.S49, 16.S50, 16.S51, 16.S52, 16.S53, 16.S54, 16.S55, 16.S56, 16.S57, 16.S58, 16.S59, 16.S60, 16.S62, 16.S63, 16.S64, 16.S65, 16.S66, 16.S67, 16.S68, 16.S70, 16.S71, 16.S72, 17.S1, 17.S8, 18.S17, 18.S41, 19.S17, 26.S9, 27.S2, 6.S24, 16.S69, 11.S36 (85). [R14; Claude's derivation; Claude's derivation 2026-10-30: 9.S21 is here for its count of Claude's calls by kind, which needs the labeller; its verdict block and product lines are 29.11's (16.S33, 16.S34, 8.S25); Claude's proposal: 16.S75 goes to 29.11 (29.11.14); Claude's derivation, 29.13 planning: 11.S36 needs the labeller's hard-to-undo mark (16.11.7)]
 
 29.19.7 An automatic step's response carrying the `next` of the row it ran comes with it (6.6.14). [Claude's derivation 2026-10-30, 29.10's review]
 
@@ -11999,11 +11969,11 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.20.2 Then the test project's run (1.4.6), the merge into `main`, and the person's release (1.7.6). [plan 11.5; Claude's proposal; ruled by the person 2026-10-22]
 
-29.20.3 Draws on: §1.2 to §1.4, §1.7, §2.2, §2.4, §2.10, §6.1, §7.2, §9.4, §12.13, §17.1, §17.2, §21.12, §25, §26.2, §8. [R14; Claude's derivation; Claude's derivation 2026-10-28: 7.S12, 12.S47 and 17.S5, moved here, cite them; Claude's derivation, 29.12 planning: the walk-only scenarios of §8, moved here, cite it]
+29.20.3 Draws on: §1.2 to §1.4, §1.7, §2.2, §2.4, §2.10, §6.1, §7.2, §9.4, §12.13, §17.1, §17.2, §21.12, §25, §26.2, §8, §11.6. [R14; Claude's derivation; Claude's derivation 2026-10-28: 7.S12, 12.S47 and 17.S5, moved here, cite them; Claude's derivation, 29.12 planning: the walk-only scenarios of §8, moved here, cite it; Claude's derivation, 29.13 planning: 11.S8, moved here, cites it]
 
 29.20.4 Relies on: 29.2 to 29.19. [R14; Claude's derivation]
 
-29.20.5 Proven by: 1.S1, 1.S4, 1.S5, 1.S6, 1.S7, 1.S11, 1.S12, 1.S13, 1.S15, 21.S39, 21.S40, 21.S41, 21.S42, 2.S4, 2.S5, 2.S6, 2.S7, 2.S12, 2.S14, 2.S16, 6.S1, 6.S2, 7.S12, 9.S14, 12.S47, 17.S5, 25.S1, 25.S2, 25.S3, 25.S4, 25.S5, 25.S7, 25.S8, 25.S9, 25.S13, 2.S15, 8.S5, 8.S6, 8.S7, 8.S45, 8.S55, 8.S58, 8.S66, 8.S68 (44). [R14; Claude's derivation; Claude's derivation 2026-10-30: 2.S15 is a walk's alone (29.1.11); Claude's derivation, 29.12 planning: walk-only scenarios (29.1.11)]
+29.20.5 Proven by: 1.S1, 1.S4, 1.S5, 1.S6, 1.S7, 1.S11, 1.S12, 1.S13, 1.S15, 21.S39, 21.S40, 21.S41, 21.S42, 2.S4, 2.S5, 2.S6, 2.S7, 2.S12, 2.S14, 2.S16, 6.S1, 6.S2, 7.S12, 9.S14, 12.S47, 17.S5, 25.S1, 25.S2, 25.S3, 25.S4, 25.S5, 25.S7, 25.S8, 25.S9, 25.S13, 2.S15, 8.S5, 8.S6, 8.S7, 8.S45, 8.S55, 8.S58, 8.S66, 8.S68, 11.S8 (45). [R14; Claude's derivation; Claude's derivation 2026-10-30: 2.S15 is a walk's alone (29.1.11); Claude's derivation, 29.12 planning: walk-only scenarios (29.1.11); Claude's derivation, 29.13 planning: 11.S8 is a walk's alone (29.1.11)]
 
 29.20.6 Once step 3 is built, the person tests the rebuilt workflows by hand, and what that finds is fixed in the prose, the code and their tests. Then the prose tests are rewritten, scoped with the person: as few cases as cover what the code's tests cannot — whether the prose gets the model to use the machinery, the run end to end, and each phase's context before its first question (2.10) — and none where those are covered otherwise. The harness's adaptation comes with them: worlds holding the state branch as a worktree, invariants over the ledger, and each walk's context before its first question recorded (25.1, 25.3). Then they run, as the clean baseline, best effort: before the release or after it, and nothing in the build relies on them. A short walk of each phase to its first question measures its context, reported to the person at the end (1.4.5). [ruled by the person 2026-10-27; plan 9.5; ruled by the person 2026-10-28: the budget is a report at the end, no release condition; Claude's derivation 2026-10-28: step 4 holds the release (29.1.7), so "after the build" read as after it]
 
@@ -12015,7 +11985,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.S1 Given the cut, when the release is built, then its phases are built in the order 29.2 to 29.20, and no phase starts before the phases it relies on are built. (29.1.7, 29.1.8)
 
-29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 873 listed are the 873 in §1 to §28. (29.1.10)
+29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 874 listed are the 874 in §1 to §28. (29.1.10)
 
 29.S3 Given a scenario observing what two phases build, when the cut places it, then it is listed under the later of the two. (29.1.10)
 
