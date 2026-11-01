@@ -280,6 +280,20 @@ function specSections(text) {
   return sections;
 }
 
+/** Where a spec's body begins, the row of its first area; -1 where it has none. @param {string[]} lines */
+const bodyAt = (lines) => lines.findIndex((line) => BODY.test(line));
+
+/**
+ * A spec's title and introduction: every row before its first area, the
+ * blank lines before that area left out — the whole text where it has none.
+ * @param {string} text @returns {string}
+ */
+function specIntroduction(text) {
+  const lines = rowsOf(text);
+  const body = bodyAt(lines);
+  return (body === -1 ? lines : lines.slice(0, body)).join('\n').trimEnd();
+}
+
 /**
  * Each area's block of scenarios in a spec's text, by the area's number:
  * from its heading, `## N-S. …`, to the next heading at level two or above.
@@ -607,7 +621,7 @@ function specReading(text) {
   } catch (err) {
     reading.faults.push(messageOf(err));
   }
-  const body = lines.findIndex((line) => BODY.test(line));
+  const body = bodyAt(lines);
   if (body === -1) reading.faults.push('the spec has no area — an area is a heading ## N. Title');
   else for (const block of blocksOf(lines, body)) readBlock(reading, block);
   const read = reading.opened.map((opened) => finished(reading, opened));
@@ -677,4 +691,5 @@ function readCitedSections(cwd, unit, reference) {
 
 module.exports = {
   SPEC_FILE, specPath, readSpec, headingLevels, citedSections, specSections, scenarioBlocks, specReading, specStatements, specScenarios, sectionsCited, readCitedSections,
+  specIntroduction,
 };

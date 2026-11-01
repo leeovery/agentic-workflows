@@ -44,8 +44,10 @@
 // closed, a topic set aside (5.8.17), and a record it cannot read. Once
 // every record is drawn, what a record binds is bound — the dispatch a
 // question's brief is for, to that question (brief-records.cjs) — before
-// the brief is stored. It runs under the writer lock: reading the task may
-// commit the tracker's set-up (task-verbs.cjs).
+// the brief is stored; where a record or a binding refuses the brief, what a
+// record closes on a refusal is closed — a spec review's dispatch bound to
+// no land. It runs under the writer lock: reading the task may commit the
+// tracker's set-up (task-verbs.cjs).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -266,6 +268,23 @@ function unendedTask(cwd, ref, warnings) {
 }
 
 /**
+ * Each record drawn for `filling`, by its slot, then what each binds bound;
+ * where either refuses the brief, what each closes on a refusal closed.
+ * @param {Filling} filling @param {readonly string[]} records @param {string[]} warnings
+ * @returns {Record<string, string>}
+ */
+function drawnRecords(filling, records, warnings) {
+  try {
+    const drawn = Object.fromEntries(records.map((record) => [record, RECORDS[record].draw(filling, warnings)]));
+    for (const record of records) RECORDS[record].bind?.(filling, warnings);
+    return drawn;
+  } catch (err) {
+    for (const record of records) RECORDS[record].refused?.(filling);
+    throw err;
+  }
+}
+
+/**
  * `brief <role> [<unit> <task>|<unit> <topic>|<unit>]`: the role's brief filled from its records
  * and stored in the calling conversation's folder. Answers its id, its
  * role, the agent it is dispatched as and the pointer the dispatch carries;
@@ -286,10 +305,7 @@ function issueBrief(cwd, [role, ...rest]) {
     if (place !== null) liveTopic(cwd, place);
     else if (ref === null && unit !== null) knownUnit(stateRoot(cwd), unit);
     const { task, committed } = ref === null ? { task: null, committed: undefined } : unendedTask(cwd, ref, warnings);
-    /** @type {Filling} */
-    const filling = { cwd, role, ref, task, place, unit, given, session };
-    const drawn = Object.fromEntries(records.map((record) => [record, RECORDS[record].draw(filling, warnings)]));
-    for (const record of records) RECORDS[record].bind?.(filling, warnings);
+    const drawn = drawnRecords({ cwd, role, ref, task, place, unit, given, session }, records, warnings);
     const id = newId();
     storeBrief(session, id, `Brief ${id} — ${whose}${forWhat(ref, place, unit)}\n\n${filled(template, drawn)}`, {
       role, agent, unit, task: ref === null ? null : shownTask(ref), topic: place === null ? null : place.topic,

@@ -3,8 +3,9 @@
 // ---------------------------------------------------------------------------
 // The pipeline simulation's epic scenarios on the spec's side: with the
 // other topic postponed, the last decided going into the spec, entered at
-// the unit, the spec landed citing what was decided, its review page built
-// and published, its marks read back, a re-land planned for the open page,
+// the unit, the spec written from the writer's brief and landed citing what
+// was decided, its review's one pass settling it, its review page built and
+// published, its marks read back, a re-land planned for the open page,
 // and the spec cut into phases through the cut's corridor; and, with both
 // topics decided, the sweep before the spec is written — briefed and taken,
 // its message reopening a decided topic and its candidates taken or struck
@@ -45,7 +46,7 @@ describe('pipeline simulation: epic, the spec', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('epic: with the other topic postponed, the last decided goes into the spec, entered at the unit, the spec lands citing what was decided, its review page is built, its marks are read back, a re-land is planned for the open page, and it is cut into phases (24.S3, 11.S1, 11.S3, 11.S5, 11.S33)', () => {
+  it('epic: with the other topic postponed, the last decided goes into the spec, entered at the unit, the writer\'s spec lands citing what was decided, the review\'s one pass settles it, its review page is built, its marks are read back, a re-land is planned for the open page, and it is cut into phases (24.S3, 11.S1, 11.S2, 11.S3, 11.S11, 11.S5, 11.S33)', () => {
     const wu = 'ledgerly';
     mappedEpic(sim, wu, ['alpha', 'beta']);
     sim.run(['topic', 'postpone', wu, 'beta', '--horizon', 'next']);
@@ -59,9 +60,17 @@ describe('pipeline simulation: epic, the spec', () => {
       '### 1.1 What alpha decided', '', `1.1.1 ${statement} [${decision.id}]`, '',
       '## 1-S. Scenarios for §1', '', '1.S1 Given the epic, when it settles, then it holds as alpha decided. (1.1.1)', '',
     ].join('\n'));
+    sim.run(['brief', 'spec-writer', wu]);
     spec('It settles as alpha decided.');
     const landed = sim.run(['spec', 'land', wu]);
     assert.deepStrictEqual([landed.statements, landed.invented], [1, []]);
+    const pass = sim.run(['agent', 'dispatch', wu, 'specification', wu, '--kind', 'spec-review']);
+    sim.run(['brief', 'spec-reviewer', wu, '--agent', pass.id]);
+    fs.writeFileSync(pass.file, '# Spec Review — spec-review-001\n\n## Findings\n\nNone identified.\n');
+    sim.run(['agent', 'scan', wu, 'specification', wu]);
+    sim.run(['agent', 'ack', wu, 'specification', wu, pass.id, '--clean']);
+    const ready = JSON.parse(sim.read(['checklist', 'show', 'ready-to-build', wu]));
+    assert.strictEqual(ready.items.find((/** @type {{key: string}} */ item) => item.key === 'review-settled').state, 'done');
     const { batches } = sim.run(['spec', 'page', wu]);
     sim.run(['spec', 'published', wu, 'https://claude.ai/public/artifacts/ledgerly']);
     const marks = sim.run(['spec', 'marks', wu, '--file', sim.write(`.leeway/.cache/${wu}/specification/read-back.json`, { s1: { m: { '1-1-1': { s: 'comment', t: { p1000: { by: 'p', x: 'Why alpha?' } } } } } })]);

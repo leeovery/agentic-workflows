@@ -29,6 +29,9 @@
 // statement and screen of `spec.md` traced to the ledger (spec-trace.cjs), a
 // spec its grammar cannot read failing it; every part of `spec.md` drawn on
 // by a phase, directly or through its area, an area with no parts whole;
+// the review's last pass reported on `spec.md`'s print as it stands, no pass
+// in flight, no gap it found waiting on the person and nothing it left
+// waiting, for the writer or to be surfaced (spec-passes.cjs);
 // what a phase relies on done — an earlier phase's close recorded, another
 // unit completed; and a directive's check passing (directives.cjs).
 // An item applies only where the unit has its step: the sweep between
@@ -63,6 +66,7 @@ const { readSpec, specSections, specStatements } = require('./spec-sections.cjs'
 const { topicsSettled } = require('./spec-standing.cjs');
 const { inventedLines } = require('./spec-trace.cjs');
 const { sweepTaken } = require('./sweep.cjs');
+const { reviewSettled } = require('./spec-passes.cjs');
 const { mailboxDepth } = require('./derivations.cjs');
 const { directiveOf, checkDirective, recordDirective } = require('./directives.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
@@ -189,6 +193,9 @@ function statementsTraced({ cwd, unit, warnings }) {
   return inventedLines(cwd, /** @type {string} */ (unit), lines, warnings).length === 0;
 }
 
+/** The review's last pass changed nothing (11.7.6): as spec-passes.cjs settles it. @param {Named} named */
+const reviewed = ({ cwd, unit, warnings }) => reviewSettled(cwd, /** @type {string} */ (unit), warnings);
+
 /** What the phase relies on is done: each earlier phase's close recorded, each other unit completed (12.6.2, 12.6.3). @param {Named} named */
 function reliedOnDone({ cwd, manifest, phase }) {
   const finished = finishedUnits(stateRoot(cwd));
@@ -264,7 +271,7 @@ const POINTS = Object.freeze({
       { key: 'sweep-run', text: 'the sweep between topics run, where the unit has more than one topic', check: sweepRun, applies: moreThanOneTopic },
       { key: 'replacements-checked', text: 'the spec has checked each replacement against what it replaced' },
       { key: 'statements-traced', text: 'every statement traced', check: statementsTraced },
-      { key: 'review-settled', text: 'the review\'s last pass changed nothing' },
+      { key: 'review-settled', text: 'the review\'s last pass changed nothing', check: reviewed },
       { key: 'phases-complete', text: 'each phase in the cut has its scenarios, sections and relies-on', check: phasesComplete },
       { key: 'invariants-checked', text: 'every invariant names a check or says none can' },
       { key: 'sections-drawn', text: 'every section of the spec drawn on by at least one phase in the cut', check: sectionsDrawn },

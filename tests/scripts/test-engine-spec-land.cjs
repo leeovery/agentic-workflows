@@ -8,11 +8,13 @@
 // topic or at its own level, or made there of another unit's; a builder's
 // line citing a "don't care" decision, or none — is committed alone on the
 // state branch with the files it links in the assets, answering its
-// statements, none invented, and every section changed (11.S3); a statement
+// statements, none invented, and every section changed, the title and
+// introduction among them (11.S3); a statement
 // or a screen that does not trace — a question cited among the reasons — is
 // listed with why and refuses nothing (11.S4's mechanical half, 11.4.2); a
-// later land answers the sections changed since the last — an area's with
-// its scenarios, and those removed — and one with nothing changed commits
+// later land answers the sections changed since the last, each by its own
+// text — an area's with its scenarios and without its parts, a part's
+// alone, and those removed — and one with nothing changed commits
 // nothing; and each refusal — no unit, a concluded spec (11.9.1), a unit
 // `enter specification` refuses, a quick-fix, an epic whose sweep is not
 // taken (8.10.3), no `spec.md`, a spec its
@@ -147,7 +149,7 @@ describe('a spec landed (11.4.1, 11.4.3, 11.S3)', () => {
     ]));
     const answer = land();
 
-    assert.deepStrictEqual(answer, { ok: true, unit: UNIT, statements: 5, invented: [], changed: ['1', '1.1', '2', '2.1'], committed: answer.committed });
+    assert.deepStrictEqual(answer, { ok: true, unit: UNIT, statements: 5, invented: [], changed: ['introduction', '1', '1.1', '2', '2.1'], committed: answer.committed });
     assert.deepStrictEqual([lastMessage(dir), stateTouched()], [`spec(${UNIT}): landed`, [`A\t${layout.unit(UNIT, 'assets', 'flow.md')}`, `A\t${SPEC}`]]);
     assert.strictEqual(stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(), answer.committed);
   });
@@ -182,7 +184,7 @@ describe('a spec landed (11.4.1, 11.4.3, 11.S3)', () => {
     assert.deepStrictEqual([answer.statements, typeof answer.committed, stateTouched()], [10, 'string', [`A\t${SPEC}`]]);
   });
 
-  it('answers at a later land the sections changed since the last — an area\'s with its scenarios, then those removed — and commits nothing where nothing changed', () => {
+  it('answers at a later land the sections changed since the last — an area\'s with its scenarios, a part\'s alone, then those removed — and commits nothing where nothing changed', () => {
     const once = (/** @type {string} */ written) => written.replace('then the card is charged.', 'then the card is charged once.');
     writeSpec(spec([`1.1.1 Visa and Mastercard. [${made.cards}]`]));
     land();
@@ -196,7 +198,7 @@ describe('a spec landed (11.4.1, 11.4.3, 11.S3)', () => {
     const removed = land();
 
     assert.deepStrictEqual([unchanged.committed, unchanged.note, unchanged.changed], [null, 'nothing to commit', []]);
-    assert.deepStrictEqual([scenario.changed, part, touchedByPart, removed.changed], [['1'], ['2', '2.1'], [`M\t${SPEC}`], ['2', '2.1']]);
+    assert.deepStrictEqual([scenario.changed, part, touchedByPart, removed.changed], [['1'], ['2.1'], [`M\t${SPEC}`], ['2', '2.1']]);
   });
 });
 

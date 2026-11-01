@@ -11,7 +11,7 @@
 // call and never kept or marked — the person's questions on the ledger's map
 // (6.S13), mail waiting, the unit's topics settled, the sweep run, every statement and
 // screen of `spec.md` traced, the cut against `spec.md`, what a phase
-// relies on;
+// relies on — the review settled is test-engine-spec-review-settled.cjs's;
 // the close refused while an item is open (6.S26), and a mark from before
 // the last close never counting toward the next; finish showing every phase
 // start's and close's skips, read from the manifest by another conversation
@@ -182,7 +182,7 @@ describe('the points of a unit\'s work, each its exact list (6.4.6–6.4.10, 6.S
         'sweep-run engine open: the sweep between topics run, where the unit has more than one topic',
         'replacements-checked claude open: the spec has checked each replacement against what it replaced',
         'statements-traced engine done: every statement traced',
-        'review-settled claude open: the review\'s last pass changed nothing',
+        'review-settled engine open: the review\'s last pass changed nothing',
         'phases-complete engine done: each phase in the cut has its scenarios, sections and relies-on',
         'invariants-checked claude open: every invariant names a check or says none can',
         'sections-drawn engine done: every section of the spec drawn on by at least one phase in the cut',
@@ -349,12 +349,12 @@ describe('the engine\'s own items, worked out at each call (6.4.3)', () => {
     seen.push(engines());
 
     assert.deepStrictEqual(seen, [
-      ['topics-settled open', 'sweep-run open', 'statements-traced done', 'phases-complete done', 'sections-drawn open'],
-      ['topics-settled open', 'sweep-run open', 'statements-traced done', 'phases-complete done', 'sections-drawn done'],
-      ['topics-settled open', 'sweep-run open', 'statements-traced done', 'phases-complete open', 'sections-drawn done'],
-      ['topics-settled open', 'sweep-run open', 'statements-traced done', 'phases-complete open', 'sections-drawn done'],
+      ['topics-settled open', 'sweep-run open', 'statements-traced done', 'review-settled open', 'phases-complete done', 'sections-drawn open'],
+      ['topics-settled open', 'sweep-run open', 'statements-traced done', 'review-settled open', 'phases-complete done', 'sections-drawn done'],
+      ['topics-settled open', 'sweep-run open', 'statements-traced done', 'review-settled open', 'phases-complete open', 'sections-drawn done'],
+      ['topics-settled open', 'sweep-run open', 'statements-traced done', 'review-settled open', 'phases-complete open', 'sections-drawn done'],
     ]);
-    assert.deepStrictEqual(engineItems('ready-to-build', 'solo'), ['topics-settled open', 'statements-traced open', 'phases-complete open', 'sections-drawn open']);
+    assert.deepStrictEqual(engineItems('ready-to-build', 'solo'), ['topics-settled open', 'statements-traced open', 'review-settled open', 'phases-complete open', 'sections-drawn open']);
   });
 
   it('reads the unit\'s topics as settled once every live topic is decided — a topic under discussion open, one cancelled or postponed no longer live (11.2.1, 6.4.7)', () => {
@@ -432,7 +432,7 @@ describe('the close, refused while any item is open (6.4.4, 6.S26)', () => {
   it('refuses ready to build\'s close while the cut leaves a section undrawn, naming every item open', () => {
     cut(dir, [{ ...CARDS, sections: ['1.1'] }, REFUNDS]);
 
-    assert.strictEqual(refused(['close', 'ready-to-build', UNIT]), 'checklist close: ready-to-build has items open: topics-settled, sweep-run, sections-drawn, assets-linked');
+    assert.strictEqual(refused(['close', 'ready-to-build', UNIT]), 'checklist close: ready-to-build has items open: topics-settled, sweep-run, review-settled, sections-drawn, assets-linked');
   });
 
   it('counts no mark made before the last close toward the next: a topic reopened by mail closes again on its marks made since (10.2.7)', () => {

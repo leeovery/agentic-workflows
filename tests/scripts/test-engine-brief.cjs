@@ -465,6 +465,7 @@ describe('the refusals, nothing written and no brief stored', () => {
       'perspective <unit> <topic> --question <id> --agent <id>', 'synthesis <unit> <topic> --agent <id>', 'discussion-reviewer <unit> <topic> --agent <id>',
       'closing-pass-reader <unit> <topic> --agent <id>', 'plain-search',
       'migration-topic --topic <unit.phase.topic> --directive <id>', 'migration-verifier --topic <unit.phase.topic> --directive <id>', 'phase-cut <unit>', 'sweep <unit>',
+      'spec-writer <unit>', 'spec-reviewer <unit> --agent <id>',
     ].map((line) => `engine brief ${line.replace(/[|[\]]/g, '\\$&')}`).join(' \\| ')}$`);
     const [, , , ...reports] = fixArgs();
     for (const args of [
@@ -497,6 +498,8 @@ describe('the refusals, nothing written and no brief stored', () => {
       'migration-verifier': migrated,
       'phase-cut': [UNIT],
       sweep: [UNIT],
+      'spec-writer': [UNIT],
+      'spec-reviewer': [UNIT, '--agent', 'spec-review-001'],
     };
     for (const role of Object.keys(ROLES)) {
       for (const [flag, value] of [['--note', 'be quick'], ...(role === 'reviewer' ? [] : [['--base', 'main']]), ...(role === 'fix' ? [] : [['--report-a', 'a.md']])]) {
