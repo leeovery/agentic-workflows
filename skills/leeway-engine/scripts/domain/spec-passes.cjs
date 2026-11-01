@@ -1,0 +1,280 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Domain ring: the spec's loop (11.7.6, 11.S11, E3, E4) — the writer writes,
+// the spec lands, a pass of its reviewer reviews what changed, and its report
+// goes back to the writer through the records; the review stops when a pass
+// changes nothing. Read by the land (spec-land.cjs), the reviewer's and the
+// writer's briefs (brief-records.cjs) and ready to build's `review-settled`
+// (checklist.cjs).
+//
+// What changed, one comparison (`changedSince`): a section's own text is the
+// title and introduction, everything before the first area; a part's text;
+// an area's from its heading to its first part, with its block of
+// scenarios. Its print is the SHA-256 of that text, by address; a section
+// changed where its print differs or is new, and one gone where it is no
+// longer there. A section's order, and the blank lines between sections,
+// change none (E4).
+//
+// What waits for the writer, one function (`outstanding`): every entry made
+// at the unit's own level at the spec after the ledger's mark at the
+// writer's last brief — after the first land's, before any brief — and
+// every reported pass neither acknowledged clean (`ack --clean`) nor among
+// those the writer's last brief took.
+//
+// The loop's states, and what reads them:
+// - `spec land` keeps the land: each section's print, an order-free digest
+//   of them identifying it, and the ledger's mark at the first land
+//   (`.cache/{unit}/specification/landed.json`); it answers what changed
+//   since the spec the state branch held.
+// - The reviewer's brief binds its pass to the last land, and reads what
+//   changed since the land the latest reported pass reviewed — every
+//   section where none has; with nothing changed it names what waits.
+// - The writer's brief draws what waits for it — the entries, and each
+//   report verbatim — and keeps the ledger's mark and every pass reported
+//   by then (`.cache/{unit}/specification/taken.json`).
+// - A gap waits while a question asked at the unit's own level at the spec
+//   is open (11.7.2); it holds the writer's brief until the person answers.
+// - The review has settled where (a) the latest reported pass reviewed the
+//   spec as it stands — nothing changed since its land — (c) no gap waits,
+//   and (d) nothing waits for the writer. A writer taking the findings and
+//   changing nothing settles it; one changing a section sends it to a pass.
+// ---------------------------------------------------------------------------
+
+const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
+const { statePath, stateRoot } = require('../kernel/state-root.cjs');
+const { writeJsonAtomic, isObject } = require('../kernel/manifest-io.cjs');
+const { specSections, scenarioBlocks, specIntroduction, readSpec } = require('./spec-sections.cjs');
+const { ID_FACTS, foldLedger, factsOf, questionStands } = require('./ledger-fold.cjs');
+const { markOf, lineOf } = require('./ledger-moves.cjs');
+const { withUnitEntries } = require('./unit-entries.cjs');
+const { UNIT_PHASE, reviewPasses } = require('./agent-state.cjs');
+
+/** The address of a spec's title and introduction among its sections. */
+const INTRODUCTION = 'introduction';
+
+/** A spec's print: each section's hash by address, and an order-free digest of them. @typedef {{digest: string, sections: Record<string, string>}} Print */
+/** What a land keeps: the print of the spec it landed, and the ledger's mark at the first land. @typedef {Print & {first_mark: string|null}} Landed */
+/** What a writer's brief keeps: the ledger's mark as it was issued, and every pass reported by then. @typedef {{ledger_mark: string|null, passes: string[]}} Taken */
+/** @typedef {ReturnType<typeof reviewPasses>[number]} Pass */
+/** What waits for the writer: the entries' full ids, and the passes, each in order. @typedef {{entries: string[], passes: Pass[]}} Outstanding */
+
+/** @param {string} text */
+const hashOf = (text) => crypto.createHash('sha256').update(text).digest('hex');
+
+/** Where a unit's spec keeps `file`. @param {string} cwd @param {string} unit @param {string} file */
+const kept = (cwd, unit, file) => statePath(cwd, '.cache', unit, UNIT_PHASE, file);
+
+/** @param {string} file @param {unknown} record */
+function keep(file, record) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  writeJsonAtomic(file, record);
+}
+
+/** `file` read as JSON, null where it is missing or does not read. @param {string} file @returns {unknown} */
+function readKept(file) {
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+/** The ledger's facts, by id. @param {string} cwd @param {string[]} warnings */
+const ledgerFacts = (cwd, warnings) => foldLedger(stateRoot(cwd), ID_FACTS, warnings);
+
+/**
+ * Each section's own text, by address, in the spec's order: the title and
+ * introduction; a part's text; an area's to its first part, with its block
+ * of scenarios after it.
+ * @param {string} text @returns {Map<string, string>}
+ */
+function ownTexts(text) {
+  const sections = [...specSections(text).values()];
+  const scenarios = scenarioBlocks(text);
+  return new Map([[INTRODUCTION, specIntroduction(text)], ...sections.map(({ address, level, text: whole }) => {
+    if (level === 3) return /** @type {[string, string]} */ ([address, whole]);
+    const first = sections.find((part) => part.level === 3 && part.address.startsWith(`${address}.`));
+    const own = first === undefined ? whole : whole.slice(0, whole.indexOf(`\n${first.text}`)).trimEnd();
+    return /** @type {[string, string]} */ ([address, scenarios.has(address) ? `${own}\n\n${scenarios.get(address)}` : own]);
+  })]);
+}
+
+/** Each section's print, by address, in the spec's order. @param {string} text */
+const sectionPrints = (text) => new Map([...ownTexts(text)].map(([address, own]) => [address, hashOf(own)]));
+
+/** A spec's print. @param {string} text @returns {Print} */
+function printOf(text) {
+  const prints = sectionPrints(text);
+  return { digest: hashOf(JSON.stringify([...prints].sort(([a], [b]) => a.localeCompare(b)))), sections: Object.fromEntries(prints) };
+}
+
+/** Addresses in the spec's order, each number compared as a number. @param {string} a @param {string} b */
+function byAddress(a, b) {
+  const [x, y] = [a, b].map((address) => address.split('.').map(Number));
+  return x[0] - y[0] || (x[1] ?? 0) - (y[1] ?? 0);
+}
+
+/**
+ * The sections of `text` changed since the print `before`: each whose print
+ * differs or that it lacked, in the spec's order — every one where `before`
+ * holds none — then each it held that `text` does not.
+ * @param {Record<string, string>} before @param {string} text
+ * @returns {{changed: string[], removed: string[]}}
+ */
+function changedSince(before, text) {
+  const now = sectionPrints(text);
+  return {
+    changed: [...now].filter(([address, print]) => before[address] !== print).map(([address]) => address),
+    removed: Object.keys(before).filter((address) => !now.has(address)).sort(byAddress),
+  };
+}
+
+/** Whether `text` reads as the print `before`, nothing changed and nothing gone. @param {Record<string, string>} before @param {string} text */
+function unchangedSince(before, text) {
+  const { changed, removed } = changedSince(before, text);
+  return changed.length === 0 && removed.length === 0;
+}
+
+/**
+ * The last land's record, null where this checkout keeps none or it does
+ * not read as one — a land since keeps it afresh.
+ * @param {string} cwd @param {string} unit @returns {Landed|null}
+ */
+function lastLand(cwd, unit) {
+  const read = readKept(kept(cwd, unit, 'landed.json'));
+  return isObject(read) && typeof read.digest === 'string' && isObject(read.sections) ? /** @type {Landed} */ (read) : null;
+}
+
+/**
+ * Keep the print of the spec just landed, with the ledger's mark at the
+ * first land; what a landing the ledger's read finished said pushed to
+ * `warnings`.
+ * @param {string} cwd @param {string} unit @param {string} text @param {string[]} warnings
+ */
+function recordLand(cwd, unit, text, warnings) {
+  const first = lastLand(cwd, unit);
+  /** @type {Landed} */
+  const landed = { ...printOf(text), first_mark: first === null ? markOf(ledgerFacts(cwd, warnings)) : first.first_mark };
+  keep(kept(cwd, unit, 'landed.json'), landed);
+}
+
+/** What the writer's last brief took, null where none is kept. @param {string} cwd @param {string} unit @returns {Taken|null} */
+function lastTaken(cwd, unit) {
+  const read = readKept(kept(cwd, unit, 'taken.json'));
+  return isObject(read) && Array.isArray(read.passes) ? /** @type {Taken} */ (read) : null;
+}
+
+/** The passes whose report is in, in the order they were dispatched. @param {string} cwd @param {string} unit */
+const reportedPasses = (cwd, unit) => reviewPasses(cwd, unit).filter(({ reported }) => reported);
+
+/** The latest pass whose report is in, or none. @param {string} cwd @param {string} unit @returns {Pass|undefined} */
+const latestReported = (cwd, unit) => reportedPasses(cwd, unit).pop();
+
+/**
+ * Keep what a writer's brief takes: the ledger's mark, and every pass
+ * reported by then.
+ * @param {string} cwd @param {string} unit @param {string[]} warnings
+ */
+function recordTaken(cwd, unit, warnings) {
+  /** @type {Taken} */
+  const taken = { ledger_mark: markOf(ledgerFacts(cwd, warnings)), passes: reportedPasses(cwd, unit).map(({ id }) => id) };
+  keep(kept(cwd, unit, 'taken.json'), taken);
+}
+
+/**
+ * What waits for the writer: every entry made at the unit's own level at
+ * the spec after the mark the writer's last brief kept — the first land's
+ * before any brief, none before either — and every reported pass neither
+ * acknowledged clean nor taken by that brief.
+ * @param {string} cwd @param {string} unit @param {string[]} warnings @returns {Outstanding}
+ */
+function outstanding(cwd, unit, warnings) {
+  const taken = lastTaken(cwd, unit);
+  const land = taken === null ? lastLand(cwd, unit) : null;
+  const facts = ledgerFacts(cwd, warnings);
+  const since = taken !== null ? lineOf(facts, taken.ledger_mark) : land !== null ? lineOf(facts, land.first_mark) : Infinity;
+  const entries = [...facts].filter(([, made]) => made.unit === unit && made.phase === UNIT_PHASE && made.place.number > since).map(([id]) => id);
+  const passes = reportedPasses(cwd, unit).filter(({ id, clean }) => !clean && !(taken?.passes.includes(id) ?? false));
+  return { entries, passes };
+}
+
+/**
+ * The land a pass of the unit's review is issued on, and the spec's text:
+ * the spec as it last landed. Refused where this checkout holds no land of
+ * it, or `spec.md` reads otherwise than it landed.
+ * @param {string} cwd @param {string} unit @returns {{land: Landed, text: string}}
+ */
+function reviewedSpec(cwd, unit) {
+  const text = readSpec(cwd, unit);
+  const land = lastLand(cwd, unit);
+  if (land === null) throw new Error(`brief: this checkout holds no land of ${unit}'s spec — a land is kept in the checkout's own cache, so engine spec land ${unit} lands it here before its review`);
+  if (!unchangedSince(land.sections, text)) throw new Error(`brief: ${unit}'s spec.md has changed since it landed — engine spec land ${unit} lands it before its review`);
+  return { land, text };
+}
+
+/**
+ * The sections a pass reads of the spec's `text`: those changed since the
+ * land the latest reported pass reviewed — every one where none has
+ * reported — with that pass's id, null where none has.
+ * @param {string} cwd @param {string} unit @param {string} text
+ * @returns {{changed: string[], removed: string[], since: string|null}}
+ */
+function sectionsToReview(cwd, unit, text) {
+  const last = latestReported(cwd, unit);
+  return { ...changedSince(last?.land.sections ?? {}, text), since: last?.id ?? null };
+}
+
+/**
+ * The gaps waiting on the person: the current questions asked at the unit's
+ * own level at the spec and still open, by short id, in the ledger's order.
+ * @param {string} cwd @param {string} unit @param {string[]} warnings
+ * @returns {string[]}
+ */
+function waitingGaps(cwd, unit, warnings) {
+  return withUnitEntries(cwd, unit, warnings, ({ folded, entries }) => [...entries].flatMap(([id, { short, kind, stands }]) => {
+    const asked = kind === 'question' && stands.unit === unit && stands.topic === null && factsOf(folded, id).phase === UNIT_PHASE;
+    return asked && questionStands(folded, id) === 'open' ? [short] : [];
+  }));
+}
+
+/**
+ * What the review waits on, past a pass that reviewed the spec as it
+ * stands, said as the way on; null where nothing waits: a gap waiting on
+ * the person, then what waits for the writer.
+ * @param {string} cwd @param {string} unit @param {string[]} warnings @returns {string|null}
+ */
+function waitingOn(cwd, unit, warnings) {
+  const gaps = waitingGaps(cwd, unit, warnings);
+  if (gaps.length > 0) return `${gaps.length === 1 ? `the gap ${gaps[0]}, asked at the spec, waits` : `the gaps ${gaps.join(', ')}, asked at the spec, wait`} on the person, and the writer's brief follows the answer`;
+  const { entries, passes } = outstanding(cwd, unit, warnings);
+  const waiting = [
+    ...(passes.length === 0 ? [] : [`the report of ${passes.map(({ id }) => id).join(', ')}`]),
+    ...(entries.length === 0 ? [] : [`${entries.length} ${entries.length === 1 ? 'entry' : 'entries'} made at the spec`]),
+  ];
+  return waiting.length === 0 ? null : `the writer's brief carries what waits for it: ${waiting.join(', and ')}`;
+}
+
+/**
+ * Whether the unit's review has settled: the latest pass that reported
+ * reviewed the spec as it stands, and nothing waits on the person or for
+ * the writer.
+ * @param {string} cwd @param {string} unit @param {string[]} warnings
+ */
+function reviewSettled(cwd, unit, warnings) {
+  const latest = latestReported(cwd, unit);
+  if (latest === undefined) return false;
+  let unchanged;
+  try {
+    unchanged = unchangedSince(latest.land.sections, readSpec(cwd, unit));
+  } catch {
+    return false;
+  }
+  return unchanged && waitingOn(cwd, unit, warnings) === null;
+}
+
+module.exports = {
+  ownTexts, printOf, changedSince, recordLand, lastLand, recordTaken, outstanding, reviewedSpec, sectionsToReview, waitingGaps, waitingOn, reviewSettled,
+};

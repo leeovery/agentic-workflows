@@ -29,6 +29,13 @@
 // the topic's moves since the last review's mark (9.8.14), and a gap review
 // has run since the topic's last decision where a review or a closing pass
 // dispatched after it has reported (9.9.6).
+//
+// A unit's own dispatches — the spec's, which is the unit's — keep their
+// store at the unit's spec, `.cache/{wu}/specification/{wu}/`, the place the
+// spec's entry reads for the agents it was left with. A spec review's row is
+// bound, as its brief is issued, to the land of the spec it reviews
+// (spec-passes.cjs), `land` on its row; it is clean only where `ack --clean`
+// marked it so — a report incorporated unread is not.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -50,6 +57,7 @@ const AGENT_KINDS = [
   'root-cause-validation',
   'fix-validation',
   'closing-pass',
+  'spec-review',
 ];
 
 const AGENT_STATUSES = ['in-flight', 'pending', 'acknowledged', 'incorporated'];
@@ -587,7 +595,8 @@ function scanAgents(cwd, workUnit, phase, topic) {
 
 /**
  * Acknowledge a pending row: record the finding ids read from the content
- * file. An empty list is legal — a clean report incorporates immediately.
+ * file. An empty list is legal — a clean report incorporates immediately,
+ * marked `clean`, the one mark of a report read and found clean.
  * @param {string} cwd @param {string} workUnit @param {string} phase
  * @param {string} topic @param {string} id @param {{findings: string[]}} opts
  */
@@ -612,6 +621,7 @@ function ackAgent(cwd, workUnit, phase, topic, id, { findings }) {
     }
     row.findings = findings;
     row.status = findings.length === 0 ? 'incorporated' : 'acknowledged';
+    if (findings.length === 0) row.clean = true;
     saveState(cwd, workUnit, phase, topic, state);
     return { work_unit: workUnit, phase, topic, ...publicRow(row) };
   });
@@ -700,14 +710,17 @@ function closeInFlight(cwd, workUnit, phase, topic) {
   });
 }
 
+/** The phase whose store keeps a unit's own dispatches, at the unit as its topic. */
+const UNIT_PHASE = 'specification';
+
 /**
- * A discussion topic's rows as a brief reads them, in the order they were
- * dispatched: each in scan's public shape, with the report its agent writes.
- * @param {string} cwd @param {string} workUnit @param {string} topic
+ * A store's rows as a brief reads them, in the order they were dispatched:
+ * each in scan's public shape, with the report its agent writes.
+ * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
  */
-function dispatchedRows(cwd, workUnit, topic) {
-  const dir = agentDir(cwd, workUnit, 'discussion', topic);
-  return agentRows(cwd, workUnit, 'discussion', topic).map((row) => ({ ...row, file: path.join(dir, `${row.id}.md`) }));
+function dispatchedRows(cwd, workUnit, phase, topic) {
+  const dir = agentDir(cwd, workUnit, phase, topic);
+  return agentRows(cwd, workUnit, phase, topic).map((row) => ({ ...row, file: path.join(dir, `${row.id}.md`) }));
 }
 
 /**
@@ -729,8 +742,52 @@ function bindQuestion(cwd, workUnit, topic, id, question) {
   });
 }
 
+/** @typedef {import('./spec-passes.cjs').Landed} Landed */
+
+/**
+ * A spec review's dispatch bound to the land of the spec its brief is
+ * issued on. Refused where the row was bound to a land of another print: a
+ * pass reviews the spec it was first briefed on.
+ * @param {string} cwd @param {string} workUnit @param {string} id @param {Landed} land
+ */
+function bindSpec(cwd, workUnit, id, land) {
+  io.withWorkUnitLock(stateRoot(cwd), workUnit, () => {
+    const state = loadState(cwd, workUnit, UNIT_PHASE, workUnit);
+    const row = requireRow(state, UNIT_PHASE, workUnit, id);
+    if (row.land !== undefined) {
+      if (row.land.digest === land.digest) return;
+      throw new Error(`brief: ${id} was briefed on another landing of the spec — a pass reviews the spec it was first briefed on, so dispatch another`);
+    }
+    row.land = land;
+    saveState(cwd, workUnit, UNIT_PHASE, workUnit, state);
+  });
+}
+
+/**
+ * The unit's review passes, in the order they were dispatched: each spec
+ * review bound to a land, with its report's file, whether the report is in,
+ * and whether it was acknowledged clean. Read as a derivation reads,
+ * tolerant of the store.
+ * @param {string} cwd @param {string} workUnit
+ * @returns {{id: string, land: Landed, file: string, reported: boolean, clean: boolean}[]}
+ */
+function reviewPasses(cwd, workUnit) {
+  const dir = agentDir(cwd, workUnit, UNIT_PHASE, workUnit);
+  return derivationRows(dir)
+    .filter((row) => row.kind === 'spec-review' && row.land !== undefined)
+    .sort((a, b) => String(a.created).localeCompare(String(b.created)) || a.id.localeCompare(b.id))
+    .map((row) => ({
+      id: row.id,
+      land: row.land,
+      file: path.join(dir, `${row.id}.md`),
+      reported: contentFileExists(row, cwd, workUnit),
+      clean: row.clean === true,
+    }));
+}
+
 module.exports = {
   AGENT_KINDS,
+  UNIT_PHASE,
   AGENT_STATUSES,
   dispatchAgent,
   scanAgents,
@@ -747,4 +804,6 @@ module.exports = {
   gapReviewSince,
   dispatchedRows,
   bindQuestion,
+  bindSpec,
+  reviewPasses,
 };

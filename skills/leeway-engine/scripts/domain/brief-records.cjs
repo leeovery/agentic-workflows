@@ -110,6 +110,45 @@
 //   sweep-to       where the agent writes its report: the unit's sweep
 //                  report (sweep.cjs)
 //
+// The spec's records, each of the unit the brief is for, with its records,
+// above, from its entries (unit-entries.cjs), its `spec.md` read by the
+// spec's one grammar (spec-sections.cjs) and its loop (spec-passes.cjs):
+//
+//   topic-logs     the path of each live topic's log, a bugfix's its
+//                  investigation, as the spec's entry reads them
+//                  (spec-entry.cjs)
+//   canonical-assets the path of each file the unit's current entries link
+//                  as canonical (11.6.3)
+//   builder-calls  the calls the sweep left to the builder (sweep.cjs),
+//                  each with why
+//   changed-entries the unit's current entries waiting for the writer —
+//                  made at its own level at the spec since the writer's last
+//                  brief (spec-passes.cjs) — each with where it stands, as
+//                  unit-records heads it, and what it replaced
+//   land-refusal   what `spec land` refuses of `spec.md` as written, as it
+//                  says it (spec-land.cjs); none recorded where none is
+//                  written or it would land
+//   review-findings the report of each pass waiting for the writer,
+//                  verbatim; the writer's brief keeps what it took
+//                  (spec-passes.cjs)
+//   spec-to        where the writer writes: the unit's `spec.md`
+//   changed-sections the spec's path, then the sections the review's pass
+//                  reads, each verbatim, the title and introduction one of
+//                  them, an area's own text without its parts: every one at
+//                  the first pass, then those changed since the last pass
+//                  reported, and those gone; the dispatch `--agent` names is
+//                  bound to the land it reviews
+//   invented-lines each statement and screen of `spec.md` that does not
+//                  trace, with why (spec-trace.cjs); none recorded where
+//                  none is written or its grammar refuses it
+//   measured-findings each of the unit's current findings recording the
+//                  command that measured it, with its result
+//   product-cites  each product-wide entry of the unit the spec cites, with
+//                  the lines citing it
+//   unit-report-to where the agent writes its report: the file of the
+//                  dispatch `--agent` names in the unit's agent store, of the
+//                  kind its role is briefed for and still in flight
+//
 // The plain-search helper's one record is the conversation's (22.6.10):
 //
 //   knowledge-query the conversation's last `knowledge query`, as it kept
@@ -157,9 +196,12 @@
 // or another than its pair; a dive of no kind, a read naming no file, another
 // kind naming one; a conversation that has run no knowledge query; a
 // directive the migrations lack, a migrated topic its unit lacks, a composed
-// record missing or empty; a unit with no spec, or one its grammar refuses.
-// Nothing else of the project reaches a brief — its CLAUDE.md and its skills
-// reach the agent without it (6.5.5).
+// record missing or empty; a unit with no spec, or one its grammar refuses;
+// a unit the land refuses, or whose spec waits on a gap put to the person,
+// for its writer; and for its reviewer, a spec that has not landed as
+// written, one unchanged since a pass reported, and a dispatch bound to
+// another landing. Nothing else of the project reaches a brief — its
+// CLAUDE.md and its skills reach the agent without it (6.5.5).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -177,7 +219,9 @@ const { resolveId } = require('./ledger-ids.cjs');
 const { manifestOf, liveTopics } = require('./ledger-units.cjs');
 const { topicLog } = require('./topic-log.cjs');
 const { dismissedNames, topicTitle } = require('./derivations.cjs');
-const { dispatchedRows, gapReviewSince, bindQuestion } = require('./agent-state.cjs');
+const {
+  UNIT_PHASE, dispatchedRows, gapReviewSince, bindQuestion, bindSpec,
+} = require('./agent-state.cjs');
 const { lastQuery } = require('./knowledge/last-query.cjs');
 const { ROLES } = require('./brief-names.cjs');
 const {
@@ -185,9 +229,15 @@ const {
 } = require('./spec-sections.cjs');
 const { withUnitEntries, unitEntries } = require('./unit-entries.cjs');
 const { specTopics } = require('./spec-standing.cjs');
-const { sweepPath } = require('./sweep.cjs');
+const { sweepPath, builderCalls } = require('./sweep.cjs');
 const { sweepRefusal } = require('./sweep-take.cjs');
 const { stagedCutPath, stagedCutRefusal } = require('./cut.cjs');
+const { inventedLines } = require('./spec-trace.cjs');
+const { specSources } = require('./spec-entry.cjs');
+const { landRefusal, unitRefusal } = require('./spec-land.cjs');
+const {
+  ownTexts, recordTaken, outstanding, reviewedSpec, sectionsToReview, waitingGaps, waitingOn,
+} = require('./spec-passes.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { specReferenceOf } = require('./task-file.cjs');
 const { taskName } = require('./task-id.cjs');
@@ -483,18 +533,31 @@ function drawDismissed(filling) {
 }
 
 /**
- * The dispatch `--agent` names in the topic's agent store, refused where the
- * store lacks it, it is of another kind than its role is briefed for, or it
- * is no longer in flight; and every row of the store.
+ * The agent store a brief's dispatch is in, and how a refusal names it: the
+ * topic's discussion store, or for a unit's role the unit's own.
+ * @param {Filling} filling @returns {{unit: string, phase: string, topic: string, where: string}}
+ */
+function storeOf(filling) {
+  if (filling.place !== null) return { ...filling.place, phase: 'discussion', where: `${filling.place.unit}/${filling.place.topic}` };
+  const unit = unitOf(filling);
+  return { unit, phase: UNIT_PHASE, topic: unit, where: `${unit}'s spec` };
+}
+
+/**
+ * The dispatch `--agent` names in its agent store, refused where the store
+ * lacks it, it is of another kind than its role is briefed for, or it is no
+ * longer in flight; and every row of the store.
  * @param {Filling} filling
  */
 function dispatchOf(filling) {
-  const { unit, topic } = placeOf(filling);
+  const {
+    unit, phase, topic, where,
+  } = storeOf(filling);
   const { kind } = ROLES[filling.role];
   const id = filling.given.agent;
-  const rows = dispatchedRows(filling.cwd, unit, topic);
+  const rows = dispatchedRows(filling.cwd, unit, phase, topic);
   const row = rows.find((dispatched) => dispatched.id === id);
-  if (row === undefined) throw new Error(`brief: ${unit}/${topic} has no agent ${id} — \`engine agent dispatch\` records one, and --agent names the id it answers`);
+  if (row === undefined) throw new Error(`brief: ${where} has no agent ${id} — \`engine agent dispatch\` records one, and --agent names the id it answers`);
   if (row.kind !== kind) throw new Error(`brief: ${id} is a ${row.kind} dispatch, and the ${filling.role}'s brief is for a ${kind}`);
   if (row.status !== 'in-flight') throw new Error(`brief: ${id} is ${row.status} — a brief is issued for a dispatch still in flight`);
   return { row, rows };
@@ -820,26 +883,39 @@ function placeKey(unit, { unit: on, topic }) {
   return topic === null ? UNIT_OWN : topic;
 }
 
+/** A topic's heading among the unit's records: its title, its key in brackets. @param {Record<string, any>} manifest @param {string} topic */
+const headed = (manifest, topic) => `${topicTitle(manifest, topic)} (${topic})`;
+
+/**
+ * The heading an entry of the unit's is drawn under: its topic's, the unit's
+ * own level, or the other unit's place it stands on, made here.
+ * @param {Record<string, any>} manifest @param {import('./ledger-fold.cjs').Standing} stands
+ */
+function placeHeading(manifest, stands) {
+  const key = placeKey(manifest.name, stands);
+  return key === UNIT_OWN || stands.unit !== manifest.name ? key : headed(manifest, key);
+}
+
 /**
  * An entry as a unit's records draw it, `- {short id} {kind}: {text}`, a
- * "don't care" decision's kind marked so, the builder's to make (P2).
- * @param {import('./unit-entries.cjs').UnitEntry} entry
+ * "don't care" decision's kind marked so, the builder's to make (P2), and
+ * what `about` says of it after its kind.
+ * @param {import('./unit-entries.cjs').UnitEntry} entry @param {string} [about]
  */
-function entryLine({ short, kind, line }) {
+function entryLine({ short, kind, line }, about = '') {
   const marked = kind === 'decision' && line.given === 'dont-care' ? 'decision, don\'t care' : kind;
-  return `- ${short} ${marked}: ${indented(String(line.text))}`;
+  return `- ${short} ${marked}${about}: ${indented(String(line.text))}`;
 }
 
 /** @param {Filling} filling @param {string[]} warnings */
 function drawUnitRecords(filling, warnings) {
   const unit = unitOf(filling);
   const manifest = readWorkUnitManifest(stateRoot(filling.cwd), unit);
-  const headed = (/** @type {string} */ topic) => `${topicTitle(manifest, topic)} (${topic})`;
   /** @type {Map<string, {heading: string, lines: string[]}>} */
-  const places = new Map([...specTopics(manifest), UNIT_OWN].map((key) => [key, { heading: key === UNIT_OWN ? key : headed(key), lines: [] }]));
+  const places = new Map([...specTopics(manifest), UNIT_OWN].map((key) => [key, { heading: key === UNIT_OWN ? key : headed(manifest, key), lines: [] }]));
   for (const entry of unitEntries(filling.cwd, unit, warnings).values()) {
     const key = placeKey(unit, entry.stands);
-    if (!places.has(key)) places.set(key, { heading: entry.stands.unit === unit ? headed(key) : key, lines: [] });
+    if (!places.has(key)) places.set(key, { heading: placeHeading(manifest, entry.stands), lines: [] });
     /** @type {{heading: string, lines: string[]}} */ (places.get(key)).lines.push(entryLine(entry));
   }
   return [...places.values()].map(({ heading, lines }) => `## ${heading}\n\n${listed(lines)}`).join('\n\n');
@@ -853,6 +929,144 @@ function drawSweepTo(filling) {
 /** @param {Filling} filling */
 function drawSweepRefusal(filling) {
   return sweepRefusal(filling.cwd, unitOf(filling)) ?? NONE;
+}
+
+/** @typedef {import('./unit-entries.cjs').UnitEntry} UnitEntry */
+
+/**
+ * `read`, read once a fill, every record drawing on it after the first
+ * taking what it read.
+ * @template T @param {(filling: Filling, warnings: string[]) => T} read @returns {(filling: Filling, warnings: string[]) => T}
+ */
+function oncePerFill(read) {
+  /** @type {WeakMap<Filling, T>} */
+  const known = new WeakMap();
+  return (filling, warnings) => {
+    if (!known.has(filling)) known.set(filling, read(filling, warnings));
+    return /** @type {T} */ (known.get(filling));
+  };
+}
+
+/** The unit's entries and the folded ledger. */
+const unitView = oncePerFill((filling, warnings) => withUnitEntries(filling.cwd, unitOf(filling), warnings, (read) => read));
+
+/** The unit's manifest, for a unit's record. @param {Filling} filling @returns {Record<string, any>} */
+const unitManifest = (filling) => /** @type {Record<string, any>} */ (manifestOf(stateRoot(filling.cwd), unitOf(filling)));
+
+/** What carries the spec on, as its entry reads it (spec-entry.cjs). */
+const sourcesOf = oncePerFill((filling, warnings) => specSources(filling.cwd, unitManifest(filling), warnings));
+
+/** @param {Filling} filling @param {string[]} warnings */
+const drawTopicLogs = (filling, warnings) => listed(sourcesOf(filling, warnings).logs.map((log) => `- \`${log}\``));
+
+/** @param {Filling} filling @param {string[]} warnings */
+const drawCanonicalAssets = (filling, warnings) => listed(sourcesOf(filling, warnings).assets.map((asset) => `- \`${asset}\``));
+
+/** @param {Filling} filling */
+const drawBuilderCalls = (filling) => listed(builderCalls(filling.cwd, unitOf(filling)).map(({ call, why }) => `- ${indented(call)}\n  Why: ${indented(why)}`));
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawChangedEntries(filling, warnings) {
+  const waiting = new Set(outstanding(filling.cwd, unitOf(filling), warnings).entries);
+  const manifest = unitManifest(filling);
+  const { entries, short } = unitView(filling, warnings);
+  return listed([...entries].filter(([id]) => waiting.has(id)).map(([, entry]) => {
+    const replaced = typeof entry.line.replaces === 'string' ? `, replacing ${short(entry.line.replaces)}` : '';
+    return entryLine(entry, `, ${placeHeading(manifest, entry.stands)}${replaced}`);
+  }));
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawReviewFindings(filling, warnings) {
+  const { passes } = outstanding(filling.cwd, unitOf(filling), warnings);
+  return passes.length === 0 ? NONE : passes.map(({ file }) => fs.readFileSync(file, 'utf8').trim()).join('\n\n');
+}
+
+/** What the writer's brief carried, kept for the review's settling. @param {Filling} filling @param {string[]} warnings */
+const takeFindings = (filling, warnings) => recordTaken(filling.cwd, unitOf(filling), warnings);
+
+/** @param {Filling} filling */
+const drawLandRefusal = (filling) => landRefusal(filling.cwd, unitOf(filling)) ?? NONE;
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawSpecTo(filling, warnings) {
+  const unit = unitOf(filling);
+  const refused = unitRefusal(filling.cwd, unit);
+  if (refused !== null) throw new Error(`brief: ${refused}`);
+  const waiting = waitingGaps(filling.cwd, unit, warnings);
+  if (waiting.length > 0) {
+    throw new Error(`brief: ${unit}'s spec waits on the person — ${waiting.length === 1 ? `the gap ${waiting[0]}, asked at the spec, is` : `the gaps ${waiting.join(', ')}, asked at the spec, are`} open, and its rewrite waits for the answer`);
+  }
+  return `\`${specPath(filling.cwd, unit)}\``;
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawChangedSections(filling, warnings) {
+  const unit = unitOf(filling);
+  const { text } = reviewedSpec(filling.cwd, unit);
+  const { changed, removed, since } = sectionsToReview(filling.cwd, unit, text);
+  if (since !== null && changed.length === 0 && removed.length === 0) {
+    throw new Error(`brief: ${unit}'s spec has not changed since pass ${since}, whose report is in, so a pass has nothing to read — ${waitingOn(filling.cwd, unit, warnings) ?? 'its review has settled'}`);
+  }
+  const own = ownTexts(text);
+  return [
+    `The spec: \`${specPath(filling.cwd, unit)}\``,
+    since === null ? 'Every section — the review\'s first pass:' : `The sections changed since ${since}, the last pass reported:`,
+    ...changed.map((address) => own.get(address)),
+    ...removed.map((address) => `§${address} is no longer in the spec.`),
+  ].join('\n\n');
+}
+
+/** The dispatch `--agent` names bound to the spec its pass reviews. @param {Filling} filling */
+function bindPass(filling) {
+  const unit = unitOf(filling);
+  bindSpec(filling.cwd, unit, filling.given.agent, reviewedSpec(filling.cwd, unit).land);
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawInventedLines(filling, warnings) {
+  const unit = unitOf(filling);
+  /** @type {Line[]} */
+  let lines;
+  try {
+    lines = specStatements(readSpec(filling.cwd, unit));
+  } catch {
+    return NONE;
+  }
+  const invented = inventedLines(filling.cwd, unit, lines, warnings);
+  return listed(invented.map(({ number, why }) => `- ${number}: ${indented(why)}`));
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawMeasuredFindings(filling, warnings) {
+  const measured = [...unitView(filling, warnings).entries.values()].filter(({ kind, line }) => kind === 'finding' && typeof line.command === 'string');
+  return listed(measured.map(({ short, line }) => [
+    `- ${short}: ${indented(String(line.text))}`,
+    `  Its result: ${indented(String(line.result))}`,
+    '  Its command:',
+    '',
+    `  ${indented(fenced('', String(line.command)))}`,
+  ].join('\n')));
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawProductCites(filling, warnings) {
+  const { folded, entries } = unitView(filling, warnings);
+  /** @type {Map<string, string[]>} */
+  const cited = new Map();
+  for (const { kind, number, cites } of unitSpec(filling).lines) {
+    if (kind !== 'statement' && kind !== 'screen') continue;
+    for (const cite of cites) {
+      let id;
+      try {
+        id = resolveId(cite, folded.facts.keys());
+      } catch {
+        continue;
+      }
+      if (entries.get(id)?.line.product_wide === true) cited.set(id, [...(cited.get(id) ?? []), number]);
+    }
+  }
+  return listed([...cited].map(([id, numbers]) => `${entryLine(/** @type {UnitEntry} */ (entries.get(id)))}\n  Cited by ${numbers.join(', ')}`));
 }
 
 /** Every record, by the slot that draws it. @type {Readonly<Record<string, BriefRecord>>} */
@@ -890,6 +1104,18 @@ const RECORDS = Object.freeze({
   'unit-records': { of: 'unit', draw: drawUnitRecords },
   'sweep-refusal': { of: 'unit', draw: drawSweepRefusal },
   'sweep-to': { of: 'unit', draw: drawSweepTo },
+  'topic-logs': { of: 'unit', draw: drawTopicLogs },
+  'canonical-assets': { of: 'unit', draw: drawCanonicalAssets },
+  'builder-calls': { of: 'unit', draw: drawBuilderCalls },
+  'changed-entries': { of: 'unit', draw: drawChangedEntries },
+  'review-findings': { of: 'unit', draw: drawReviewFindings, bind: takeFindings },
+  'land-refusal': { of: 'unit', draw: drawLandRefusal },
+  'spec-to': { of: 'unit', draw: drawSpecTo },
+  'changed-sections': { of: 'unit', flags: [AGENT], draw: drawChangedSections, bind: bindPass },
+  'invented-lines': { of: 'unit', draw: drawInventedLines },
+  'measured-findings': { of: 'unit', draw: drawMeasuredFindings },
+  'product-cites': { of: 'unit', draw: drawProductCites },
+  'unit-report-to': { of: 'unit', flags: [AGENT], draw: drawReportTo },
 });
 
 module.exports = { RECORDS, DIVE_KINDS };

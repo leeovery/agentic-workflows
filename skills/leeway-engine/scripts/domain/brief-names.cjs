@@ -33,8 +33,9 @@ const OURS = 'leeway-';
 /**
  * Each role: the agent it is dispatched as, named `{OURS}…`, whose brief
  * its first line says it is, the records its brief draws on, by their
- * slots, and, for a role whose agent writes its report into the topic's
- * agent store, the kind of dispatch it is briefed for (agent-state.cjs).
+ * slots, and, for a role whose agent writes its report into an agent store
+ * — its topic's, or for a unit's role the unit's — the kind of dispatch it
+ * is briefed for (agent-state.cjs).
  * @type {Readonly<Record<string, {agent: string, whose: string, records: readonly string[], kind?: string}>>}
  */
 const ROLES = Object.freeze({
@@ -65,6 +66,17 @@ const ROLES = Object.freeze({
   'migration-verifier': { agent: 'leeway-migration-verifier', whose: 'the migration verifier\'s', records: ['migrated-topic', 'composed-record', 'directive'] },
   'phase-cut': { agent: 'leeway-phase-cut', whose: 'the phase cut\'s', records: ['spec-outline', 'spec-scenarios', 'relies-on-graph', 'cut-refusal', 'cut-to'] },
   sweep: { agent: 'leeway-sweep', whose: 'the sweep\'s', records: ['unit-records', 'product-record', 'dismissed', 'sweep-refusal', 'sweep-to'] },
+  'spec-writer': {
+    agent: 'leeway-spec-writer',
+    whose: 'the spec writer\'s',
+    records: ['spec-to', 'unit-records', 'topic-logs', 'canonical-assets', 'builder-calls', 'changed-entries', 'review-findings', 'invented-lines', 'land-refusal'],
+  },
+  'spec-reviewer': {
+    agent: 'leeway-spec-reviewer',
+    whose: 'the spec reviewer\'s',
+    kind: 'spec-review',
+    records: ['changed-sections', 'invented-lines', 'measured-findings', 'product-cites', 'unit-records', 'unit-report-to'],
+  },
 });
 
 /** Where a conversation keeps a brief. @param {string} session @param {string} id */
