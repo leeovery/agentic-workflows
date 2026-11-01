@@ -1,6 +1,6 @@
 # Knowledge Usage
 
-*Shared reference. Loaded by the investigation, scoping, planning, implementation, and review processing skills; by `contextual-query.md` for **B**, **C** and **D**, and planning's `cross-cutting-context.md` for **C** and **D**; by `reading-the-mailbox.md` for **G**; and consulted for **B** by the epic menu's `analysis-flow.md`.*
+*Shared reference. Loaded by the investigation, scoping, planning, implementation, and review processing skills; by `contextual-query.md` for **B**, **C** and **D**, and planning's `cross-cutting-context.md` for **C** and **D**; and by `reading-the-mailbox.md` for **G**.*
 
 ---
 

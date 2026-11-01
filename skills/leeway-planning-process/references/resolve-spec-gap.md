@@ -36,11 +36,7 @@ Pick by first match:
 
 #### If the record settles it, or a defensible derivation pins it
 
-A measurement, a convention, a sibling decision, or another section of the specification yields the answer — or first principles over the decisions the record made whittle the fork to one answer you stand behind. The correction route verifies the ground and lands it:
-
-→ Load **[../../leeway-shared/references/correcting-historical-artifacts.md](../../leeway-shared/references/correcting-historical-artifacts.md)** for **B. This Work Unit's Specification** with specification path = `.workflows/{work_unit}/specification/{topic}/specification.md`, correcting_phase = `{phase}/{topic}`.
-
-Read the verdict it returns.
+A measurement, a convention, a sibling decision, or another section of the specification yields the answer — or first principles over the decisions the record made whittle the fork to one answer you stand behind.
 
 **If it landed the correction** — its record-settled or derivation arm:
 
@@ -158,9 +154,7 @@ Pick by first match:
 
 #### If the specification has no sources
 
-The decision the user just made is the landed change that settles the specification, and the correction route classifies it record-settled on that ground. Nothing lands in a source document — there is none:
-
-→ Load **[../../leeway-shared/references/correcting-historical-artifacts.md](../../leeway-shared/references/correcting-historical-artifacts.md)** for **B. This Work Unit's Specification** with specification path = `.workflows/{work_unit}/specification/{topic}/specification.md`, correcting_phase = `implementation/{topic}`.
+The decision the user just made is the landed change that settles the specification. Nothing lands in a source document — there is none.
 
 **If it landed the correction:**
 
@@ -186,9 +180,7 @@ No row holds `{doc}`.
 
 → Load **[../../leeway-shared/references/landing-a-resolution.md](../../leeway-shared/references/landing-a-resolution.md)** with work_unit = `{work_unit}`, topic = `{topic}`, doc = `{doc}`, source_phase = `{source_phase}`, resolution = `{the decision the user settled, carrying what it turns on}`.
 
-The document now carries the decision, and that decision is the record that settles the specification — the correction route classifies it record-settled, the corrigendum citing it:
-
-→ Load **[../../leeway-shared/references/correcting-historical-artifacts.md](../../leeway-shared/references/correcting-historical-artifacts.md)** for **B. This Work Unit's Specification** with specification path = `.workflows/{work_unit}/specification/{topic}/specification.md`, correcting_phase = `{phase}/{topic}`.
+The document now carries the decision, and that decision is the record that settles the specification.
 
 **If it landed the correction:**
 

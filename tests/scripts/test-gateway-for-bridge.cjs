@@ -133,7 +133,7 @@ describe('leeway-bridge discovery', () => {
       },
     });
     createFile(dir, '.leeway/full/topics/full/log.md', '');
-    createFile(dir, '.leeway/full/specification/full/specification.md', '');
+    createFile(dir, '.leeway/full/spec.md', '');
     const r = discover(dir, 'full');
     assert.strictEqual(r.phases.discussion.exists, true);
     assert.strictEqual(r.phases.specification.exists, true);
@@ -257,18 +257,19 @@ describe('leeway-bridge format', () => {
       phases: {
         discussion: { items: { auth: { status: 'completed' } } },
         specification: { items: { auth: { status: 'completed' } } },
-        planning: { items: { auth: { status: 'in-progress' } } },
+        planning: { items: { auth: { status: 'completed' } } },
+        implementation: { items: { auth: { status: 'in-progress' } } },
       },
     });
     const out = format(discover(dir, 'auth'));
     assert.strictEqual(out, [
       '=== auth (feature) ===',
-      'next_phase: planning',
-      'completed_phases: discussion, specification',
+      'next_phase: implementation',
+      'completed_phases: discussion, specification, planning',
       'reconcile_pending: (none)',
-      'revisitable_phases: specification',
-      'next_route: /leeway-planning-process feature auth',
-      'revisit_routes: /leeway-specification-process feature auth',
+      'revisitable_phases: planning',
+      'next_route: /leeway-implementation-process feature auth',
+      'revisit_routes: /leeway-planning-process feature auth',
       '',
     ].join('\n'));
   });
@@ -345,22 +346,6 @@ describe('leeway-bridge format', () => {
     assert.match(out, /^reconcile_pending: specification\/moved \(discussion\)$/m);
   });
 
-  it('a specification staled with no flag surfaces the same way — the bridge never reads done past a moving record', () => {
-    createManifest(dir, 'staled', {
-      work_type: 'feature',
-      phases: {
-        discussion: { items: { staled: { status: 'completed' } } },
-        specification: { items: { staled: { status: 'completed', sources: { staled: { status: 'stale' } } } } },
-        planning: { items: { staled: { status: 'completed' } } },
-        implementation: { items: { staled: { status: 'completed' } } },
-        review: { items: { staled: { status: 'completed' } } },
-      },
-    });
-    const out = format(discover(dir, 'staled'));
-    assert.match(out, /^next_phase: specification$/m);
-    assert.match(out, /^reconcile_pending: specification\/staled \(true\)$/m);
-  });
-
   it('epic dump carries no revisitable line, no routes and no section', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
@@ -372,7 +357,7 @@ describe('leeway-bridge format', () => {
     assert.ok(!out.includes('MENU: revisit phases'));
   });
 
-  it('a bugfix\'s routes name the skill each phase is entered through', () => {
+  it('a bugfix\'s routes name the skill each phase is entered through — the concluded spec never a revisit', () => {
     createManifest(dir, 'stall', {
       work_type: 'bugfix',
       phases: {
@@ -382,7 +367,7 @@ describe('leeway-bridge format', () => {
     });
     const out = format(discover(dir, 'stall'));
     assert.match(out, /^next_route: \/leeway-planning-process bugfix stall$/m);
-    assert.match(out, /^revisit_routes: \/leeway-investigation-process bugfix stall, \/leeway-specification-process bugfix stall$/m);
+    assert.match(out, /^revisit_routes: \/leeway-investigation-process bugfix stall$/m);
   });
 
   it('a promoted unit routes to its moved discussions by name — the discussion in flight, then the specification\'s reconcile', () => {

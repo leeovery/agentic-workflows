@@ -1,6 +1,6 @@
 # Postponing the Topic
 
-*Shared reference. Loaded by the `## Postponing the Topic` section on the investigation, scoping, specification, planning, implementation, and review processing skills, by discovery's map operations, by the epic menu's postpone sub-view, and by the gap-analysis approval gate.*
+*Shared reference. Loaded by the `## Postponing the Topic` section on the investigation, scoping, planning, implementation, and review processing skills, by discovery's map operations, by the epic menu's postpone sub-view, and by the gap-analysis approval gate.*
 
 ---
 
@@ -59,7 +59,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs render postpone-gate {work_
 
 #### If the call refuses
 
-The unit cannot be postponed, and the refusal names what holds it — a started specification sourcing its discussion, a live experiment record, a roadmap item already holding the name. Surface the engine's error verbatim in one line; nothing was written.
+The unit cannot be postponed, and the refusal names what holds it — the build begun, a live experiment record, a roadmap item already holding the name. Surface the engine's error verbatim in one line; nothing was written.
 
 → Return to caller.
 
@@ -103,7 +103,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs agent incorporate {work_uni
 
 Rows in any other status stay as they are, and a scan holding no `in_flight` row needs none of this.
 
-Either way, run the postpone — one command takes the unit (the map row marked, the live discussion item under its name stashed and postponed, any proposed grouping over its discussion discarded, the experiment series left as it stands), births or re-waits the roadmap item under the horizon, and commits both manifests:
+Either way, run the postpone — one command takes the unit (the map row marked, the live discussion item under its name stashed and postponed, the experiment series left as it stands), births or re-waits the roadmap item under the horizon, and commits both manifests:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs topic postpone {work_unit} {name} --horizon "{horizon}"
@@ -117,7 +117,7 @@ Surface the engine's error verbatim in one line — nothing was written.
 
 #### Otherwise
 
-Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section, each verbatim per its marker — adding `--warn` when the response's `warnings` is non-empty. When the response's `discarded` is non-empty, tell the user in one line which proposed grouping(s) went with the topic; when its `roadmap.reverted_join` is true, say in one line that the topic's own roadmap item is waiting again rather than a new one standing beside it:
+Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section, each verbatim per its marker — adding `--warn` when the response's `warnings` is non-empty. When its `roadmap.reverted_join` is true, say in one line that the topic's own roadmap item is waiting again rather than a new one standing beside it:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs render topic-receipt {work_unit}.discovery.{name} --verb postpone [--warn]

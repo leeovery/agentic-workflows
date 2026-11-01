@@ -1,9 +1,8 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The render catalogue's surfaces (domain/render.cjs) for specification and
-// planning's entry. They go with the specification phase (29.13), which
-// removes their callers.
+// The render catalogue's surfaces (domain/render.cjs) for planning's entry:
+// the plan-context gate and the cross-cutting gate and references.
 //
 // Layer: verb. World: the project world (setupFixture), a copied git project,
 // its manifests and payloads written per test; the domain's renderSurface is
@@ -18,110 +17,6 @@ const assert = require('node:assert');
 
 const { DOTS } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
 const { renderSurface, NB, setup, teardown, writeManifest, writePayload } = require('./render-surfaces-world.cjs');
-
-describe('render spec-review-gate', () => {
-  let dir;
-  beforeEach(() => {
-    dir = setup();
-    writeManifest(dir, 'pay', { phases: { specification: { items: { portal: { status: 'in-progress' } } } } });
-  });
-  afterEach(() => teardown(dir));
-
-  it('continue variant renders the escape-hatch menu', () => {
-    const out = renderSurface(dir, 'spec-review-gate', { dotpath: 'pay.specification.portal', variant: 'continue' });
-    assert.ok(out.includes('=== MENU: spec review continue gate'));
-    assert.ok(out.includes('**`◆ Continue with review?`**'));
-    assert.ok(/\*\*`y\/yes`\*\* +→ Continue review/.test(out));
-    assert.ok(/\*\*`s\/skip`\*\* +→ Skip review, proceed to completion/.test(out));
-  });
-
-  it('reloop variant renders the another-cycle menu', () => {
-    const out = renderSurface(dir, 'spec-review-gate', { dotpath: 'pay.specification.portal', variant: 'reloop' });
-    assert.ok(out.includes('=== MENU: spec review reloop gate'));
-    assert.ok(out.includes('**`◆ Run another review cycle?`**'));
-    assert.ok(/\*\*`y\/yes`\*\* +→ Run another review cycle \(all three phases\)/.test(out));
-    assert.ok(/\*\*`p\/proceed`\*\* +→ Proceed to completion/.test(out));
-  });
-
-  it('rejects a missing or unknown variant and a non-specification address', () => {
-    assert.throws(() => renderSurface(dir, 'spec-review-gate', { dotpath: 'pay.specification.portal' }), /--variant must be "continue" or "reloop"/);
-    assert.throws(() => renderSurface(dir, 'spec-review-gate', { dotpath: 'pay.specification.portal', variant: 'again' }), /--variant must be "continue" or "reloop"/);
-    writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress' } } } } });
-    assert.throws(() => renderSurface(dir, 'spec-review-gate', { dotpath: 'pay.planning.portal', variant: 'reloop' }), /address must be <work_unit>\.specification\.<topic>/);
-  });
-});
-
-describe('render spec-completion-gate', () => {
-  let dir;
-  beforeEach(() => {
-    dir = setup();
-    writeManifest(dir, 'pay', { phases: { specification: { items: { portal: { status: 'in-progress' } } } } });
-  });
-  afterEach(() => teardown(dir));
-
-  const ASSESSMENT_MENU = [
-    "=== MENU: spec assessment gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-    DOTS,
-    '**`◆ Confirm this assessment?`**',
-    '',
-    '**`y/yes`**   → Confirm assessment',
-    '**Comment** → Suggest a different classification',
-    '',
-  ];
-  const assess = (payload) => renderSurface(dir, 'spec-completion-gate', {
-    dotpath: 'pay.specification.portal', variant: 'assessment', file: writePayload(dir, 'assessment.json', payload),
-  });
-
-  it('assessment variant renders a cross-cutting verdict and its wrapped rationale above the confirm menu', () => {
-    assert.strictEqual(assess({
-      cross_cutting: true,
-      rationale: 'It defines a caching strategy that will inform how multiple features handle data retrieval, rather than being a standalone piece of functionality to build.',
-    }), [
-      '=== DISPLAY: cross-cutting assessment (emit verbatim as a text code block (```text fence)) ===',
-      'Cross-Cutting Assessment',
-      '',
-      'This specification appears to be cross-cutting.',
-      '',
-      'It defines a caching strategy that will inform how multiple',
-      'features handle data retrieval, rather than being a standalone',
-      'piece of functionality to build.',
-      '',
-      ...ASSESSMENT_MENU,
-    ].join('\n'));
-  });
-
-  it('assessment variant renders the directly plannable verdict', () => {
-    const out = assess({ cross_cutting: false, rationale: 'It builds the refund endpoint.' });
-    assert.match(out, /^Cross-Cutting Assessment\n\nThis specification is directly plannable — no cross-cutting promotion needed\.\n\nIt builds the refund endpoint\.\n$/m);
-    assert.ok(out.endsWith(ASSESSMENT_MENU.join('\n')));
-  });
-
-  it('assessment variant refuses a missing payload, a verdict that is not a boolean, and an empty rationale; signoff takes no payload', () => {
-    assert.throws(() => renderSurface(dir, 'spec-completion-gate', { dotpath: 'pay.specification.portal', variant: 'assessment' }),
-      /--variant assessment takes --file <payload\.json>/);
-    assert.throws(() => assess({ cross_cutting: 'yes', rationale: 'r' }), /"cross_cutting" must be true or false/);
-    assert.throws(() => assess({ rationale: 'r' }), /"cross_cutting" must be true or false/);
-    assert.throws(() => assess({ cross_cutting: true, rationale: '  ' }), /"rationale" must be a non-empty string/);
-    assert.throws(() => renderSurface(dir, 'spec-completion-gate', {
-      dotpath: 'pay.specification.portal', variant: 'signoff', file: writePayload(dir, 'assessment.json', { cross_cutting: true, rationale: 'r' }),
-    }), /--variant signoff takes no --file/);
-  });
-
-  it('signoff variant renders the conclude consent', () => {
-    const out = renderSurface(dir, 'spec-completion-gate', { dotpath: 'pay.specification.portal', variant: 'signoff' });
-    assert.ok(out.includes('=== MENU: spec signoff gate'));
-    assert.ok(out.includes('**`◆ Ready to conclude?`**'));
-    assert.ok(/\*\*`y\/yes`\*\* +→ Conclude specification and mark as completed/.test(out));
-    assert.ok(/\*\*Comment\*\* +→ Add context before concluding/.test(out));
-  });
-
-  it('rejects a missing or unknown variant and a non-specification address', () => {
-    assert.throws(() => renderSurface(dir, 'spec-completion-gate', { dotpath: 'pay.specification.portal' }), /--variant must be "assessment" or "signoff"/);
-    assert.throws(() => renderSurface(dir, 'spec-completion-gate', { dotpath: 'pay.specification.portal', variant: 'sign-off' }), /--variant must be "assessment" or "signoff"/);
-    writeManifest(dir, 'pay', { phases: { discussion: { items: { portal: { status: 'in-progress' } } } } });
-    assert.throws(() => renderSurface(dir, 'spec-completion-gate', { dotpath: 'pay.discussion.portal', variant: 'signoff' }), /address must be <work_unit>\.specification\.<topic>/);
-  });
-});
 
 describe('render plan-context-gate', () => {
   let dir;

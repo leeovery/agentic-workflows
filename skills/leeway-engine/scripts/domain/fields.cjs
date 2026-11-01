@@ -507,12 +507,10 @@ function heldItemAt(manifest, segments) {
 
 /**
  * The refusal every write onto a held item makes, naming the way out: the
- * reactivate for a cancelled item, addressed by the unit that frees it —
- * `discovery` for a discussion item, `specification` for a
- * specification or plan; a phase outside the two stages names the verb
- * alone — the roadmap for a postponed one, whose way back is the pull, and
- * for a promoted one the transitions' own refusal, naming the unit it moved
- * to.
+ * reactivate for a cancelled item, addressed by its topic for a discussion
+ * item and naming the verb alone for any other phase; the roadmap for a
+ * postponed one, whose way back is the pull; and for a promoted one the
+ * transitions' own refusal, naming the unit it moved to.
  * @param {string} workUnit @param {{phase: string, topic: string, item: Record<string, any>}} target
  */
 function refuseHeld(workUnit, { phase, topic, item }) {
@@ -520,18 +518,15 @@ function refuseHeld(workUnit, { phase, topic, item }) {
     fail(`${phase} item "${topic}" is postponed — pull it forward from the roadmap instead`);
   }
   if (item.status === 'promoted') fail(promotedRefusal(phase, topic, item));
-  const stage = Object.keys(UNIT_PHASES).find((s) => UNIT_PHASES[/** @type {keyof typeof UNIT_PHASES} */ (s)].includes(phase));
-  const verb = stage ? `engine topic reactivate ${workUnit} ${stage} ${topic}` : 'engine topic reactivate';
+  const verb = UNIT_PHASES.discovery.includes(phase) ? `engine topic reactivate ${workUnit} discovery ${topic}` : 'engine topic reactivate';
   fail(`${phase} item "${topic}" is cancelled — reactivate it instead (${verb})`);
 }
 
 /**
  * A held phase item — cancelled, postponed or promoted — takes no status
  * write: every transition already refuses one, and the field surface must not
- * be the permissive path around them. A grouping analysis re-run over a held
- * specification's freed sources can pick the held item's key, and a
- * `status: proposed` landing there would merge onto its stash. Read inside
- * the lock, like the experiment targets.
+ * be the permissive path around them — a status landing there would merge
+ * onto its stash. Read inside the lock, like the experiment targets.
  * @param {any} manifest @param {string[]} segments @param {string} workUnit
  */
 function assertNotHeld(manifest, segments, workUnit) {
@@ -543,8 +538,8 @@ function assertNotHeld(manifest, segments, workUnit) {
 
 /**
  * A held phase item takes no delete either — the whole item or any field of
- * it: a reconcile's `delete items.{name}` over a held specification would
- * erase the stash with the item.
+ * it: a reconcile's `delete items.{name}` over a held item would erase the
+ * stash with the item.
  * @param {any} manifest @param {string[]} segments @param {string} workUnit
  */
 function assertNotHeldDelete(manifest, segments, workUnit) {

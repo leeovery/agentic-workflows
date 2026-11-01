@@ -504,16 +504,16 @@ echo ""
 echo -e "${YELLOW}Test: set refuses a status write onto a cancelled item — reactivate owns that path${NC}"
 setup_fixture
 create_wu cancelled-item epic "Cancelled"
-run_cli set cancelled-item.specification.dropped status cancelled >/dev/null 2>&1
-assert_exit_code 1 "single set refused" set cancelled-item.specification.dropped status proposed
-assert_exit_code 1 "batch set refused" set cancelled-item.specification.dropped status=proposed order=1
-output=$(run_cli set cancelled-item.specification.dropped status proposed || true)
-assert_contains "$output" 'is cancelled — reactivate it instead (engine topic reactivate cancelled-item specification dropped)' "refusal names the reactivate by its unit"
-assert_exit_code 1 "field delete refused" delete cancelled-item.specification.dropped status
-assert_exit_code 1 "item delete refused" delete cancelled-item.specification items.dropped
-output=$(run_cli delete cancelled-item.specification items.dropped || true)
-assert_contains "$output" 'is cancelled — reactivate it instead (engine topic reactivate cancelled-item specification dropped)' "delete refusal names the reactivate too"
-output=$(run_cli_stdout get cancelled-item.specification.dropped status)
+run_cli set cancelled-item.discussion.dropped status cancelled >/dev/null 2>&1
+assert_exit_code 1 "single set refused" set cancelled-item.discussion.dropped status in-progress
+assert_exit_code 1 "batch set refused" set cancelled-item.discussion.dropped status=in-progress previous_status=completed
+output=$(run_cli set cancelled-item.discussion.dropped status in-progress || true)
+assert_contains "$output" 'is cancelled — reactivate it instead (engine topic reactivate cancelled-item discovery dropped)' "refusal names the reactivate by its unit"
+assert_exit_code 1 "field delete refused" delete cancelled-item.discussion.dropped status
+assert_exit_code 1 "item delete refused" delete cancelled-item.discussion items.dropped
+output=$(run_cli delete cancelled-item.discussion items.dropped || true)
+assert_contains "$output" 'is cancelled — reactivate it instead (engine topic reactivate cancelled-item discovery dropped)' "delete refusal names the reactivate too"
+output=$(run_cli_stdout get cancelled-item.discussion.dropped status)
 assert_equals "$output" "cancelled" "the item stays cancelled"
 
 echo ""
@@ -532,21 +532,6 @@ output=$(run_cli delete postponed-item.discussion items.shelved || true)
 assert_contains "$output" 'is postponed — pull it forward from the roadmap instead' "delete refusal names the roadmap too"
 output=$(run_cli_stdout get postponed-item.discussion.shelved status)
 assert_equals "$output" "postponed" "the item stays postponed"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: set and delete refuse a promoted item — it continues in its cross-cutting unit${NC}"
-setup_fixture
-create_wu promoted-item epic "Promoted"
-run_cli set promoted-item.discussion.fees status=promoted promoted_to=fees-cc >/dev/null 2>&1
-assert_exit_code 1 "status write refused" set promoted-item.discussion.fees status completed
-output=$(run_cli set promoted-item.discussion.fees status completed || true)
-assert_contains "$output" 'is promoted (to ..fees-cc..) — promotion is terminal; continue it from the cross-cutting work unit' "refusal names the unit"
-assert_exit_code 1 "item delete refused" delete promoted-item.discussion items.fees
-output=$(run_cli_stdout get promoted-item.discussion.fees status)
-assert_equals "$output" "promoted" "the item stays promoted"
 
 echo ""
 
@@ -1609,14 +1594,12 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: superseded accepted as valid status for specification${NC}"
+echo -e "${YELLOW}Test: the old spec's grouping statuses are refused for specification${NC}"
 setup_fixture
-create_wu supersede-spec epic "Supersede spec"
-run_cli set supersede-spec.specification.broad-topic status in-progress >/dev/null 2>&1
-run_cli set supersede-spec.specification.broad-topic status superseded >/dev/null 2>&1
-output=$(run_cli_stdout get supersede-spec.specification.broad-topic status)
-
-assert_equals "$output" "superseded" "Specification accepts superseded status"
+create_wu grouping-spec epic "Grouping spec"
+assert_exit_code 1 "proposed rejected" set grouping-spec.specification.auth-flow status proposed
+assert_exit_code 1 "superseded rejected" set grouping-spec.specification.auth-flow status superseded
+assert_exit_code 1 "promoted rejected" set grouping-spec.specification.auth-flow status promoted
 
 echo ""
 
@@ -1693,22 +1676,6 @@ assert_equals "$prev" "in-progress" "previous_status stays for the reactivate to
 
 echo ""
 
-# ============================================================================
-# PROPOSED STATUS TESTS (spec groupings)
-# ============================================================================
-
-echo -e "${YELLOW}Test: proposed accepted as valid status for specification${NC}"
-setup_fixture
-create_wu prop-spec epic "Proposed spec"
-run_cli set prop-spec.specification.auth-flow status proposed >/dev/null 2>&1
-output=$(run_cli_stdout get prop-spec.specification.auth-flow status)
-
-assert_equals "$output" "proposed" "Specification accepts proposed status"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
 echo -e "${YELLOW}Test: bogus specification status rejected${NC}"
 setup_fixture
 create_wu bogus-spec epic "Bogus"
@@ -1719,63 +1686,15 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: re-upserting proposed status is idempotent${NC}"
-setup_fixture
-create_wu flip-spec epic "Flip"
-run_cli set flip-spec.specification.auth-flow status proposed >/dev/null 2>&1
-run_cli set flip-spec.specification.auth-flow status proposed >/dev/null 2>&1
-output=$(run_cli_stdout get flip-spec.specification.auth-flow status)
-assert_equals "$output" "proposed" "Second proposed write leaves the item proposed"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: upsert proposed item builds the exact shape${NC}"
-setup_fixture
-create_wu upsert-spec epic "Upsert"
-run_cli set upsert-spec.specification.auth-flow status proposed >/dev/null 2>&1
-run_cli set upsert-spec.specification.auth-flow sources.auth-design.status pending >/dev/null 2>&1
-run_cli set upsert-spec.specification.auth-flow sources.session-mgmt.status pending >/dev/null 2>&1
-status=$(run_cli_stdout get upsert-spec.specification.auth-flow status)
-src1=$(run_cli_stdout get upsert-spec.specification.auth-flow sources.auth-design.status)
-src2=$(run_cli_stdout get upsert-spec.specification.auth-flow sources.session-mgmt.status)
-rc_exists=$(run_cli_stdout exists upsert-spec.specification.auth-flow review_cycle)
-
-assert_equals "$status" "proposed" "Proposed item status set"
-assert_equals "$src1" "pending" "First source pending"
-assert_equals "$src2" "pending" "Second source pending"
-assert_equals "$rc_exists" "false" "Proposed item carries no review_cycle (invariant)"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: delete whole proposed spec item${NC}"
+echo -e "${YELLOW}Test: delete a whole spec item${NC}"
 setup_fixture
 create_wu del-spec epic "Delete"
-run_cli set del-spec.specification.auth-flow status proposed >/dev/null 2>&1
+run_cli set del-spec.specification.auth-flow status in-progress >/dev/null 2>&1
 run_cli set del-spec.specification.auth-flow sources.auth-design.status pending >/dev/null 2>&1
 run_cli delete del-spec.specification items.auth-flow >/dev/null 2>&1
 exists_after=$(run_cli_stdout exists del-spec.specification.auth-flow)
 
-assert_equals "$exists_after" "false" "Whole proposed item removed by delete items.{topic}"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: flip proposed to in-progress preserves sources${NC}"
-setup_fixture
-create_wu flip2-spec epic "Flip2"
-run_cli set flip2-spec.specification.auth-flow status proposed >/dev/null 2>&1
-run_cli set flip2-spec.specification.auth-flow sources.auth-design.status pending >/dev/null 2>&1
-run_cli set flip2-spec.specification.auth-flow status in-progress >/dev/null 2>&1
-status=$(run_cli_stdout get flip2-spec.specification.auth-flow status)
-src=$(run_cli_stdout get flip2-spec.specification.auth-flow sources.auth-design.status)
-
-assert_equals "$status" "in-progress" "Flip sets in-progress"
-assert_equals "$src" "pending" "Flip preserves source rows"
+assert_equals "$exists_after" "false" "Whole item removed by delete items.{topic}"
 
 echo ""
 

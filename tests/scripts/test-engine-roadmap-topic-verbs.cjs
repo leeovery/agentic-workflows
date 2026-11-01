@@ -37,7 +37,6 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
           loyalty: { source: 'discovery', order: 3 },
         } },
         discussion: { items: { ordering: { status: 'in-progress' }, menus: { status: 'completed' } } },
-        specification: { items: { grp: { status: 'proposed', sources: { ordering: { status: 'pending' } } } } },
       },
     });
     for (const rel of ['topics/ordering/brief.md', 'topics/ordering/log.md']) {
@@ -77,7 +76,6 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     assert.deepStrictEqual(res.postponed, [
       { phase: 'discussion', previous_status: 'in-progress' },
     ]);
-    assert.deepStrictEqual(res.discarded, ['grp']);
     assert.deepStrictEqual(res.roadmap, { name: 'ordering', horizon: 'next', born_map: true, born_horizon: true, reverted_join: false });
 
     assert.deepStrictEqual(readProject(dir).roadmap, {
@@ -96,7 +94,6 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
       { source: 'discovery', summary: 'Customers order', postponed: true, previous_order: 1 });
     assert.strictEqual(m.phases.discussion.items.ordering.status, 'postponed');
     assert.strictEqual(m.phases.discussion.items.ordering.previous_status, 'in-progress');
-    assert.strictEqual(m.phases.specification.items.grp, undefined, 'the proposed grouping is discarded, never stashed');
 
     assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'workflow(mvp): postpone ordering → next');
     const staged = stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');

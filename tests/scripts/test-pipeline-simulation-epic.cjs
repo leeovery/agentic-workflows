@@ -28,7 +28,7 @@ const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/script
 const { epicMenu } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
 const { drawLabel } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
 const {
-  Sim, mapTopics, sessionLog, send, decideTopic, discussed, mappedEpic, arrive, menuEntry, enterEntry, handoff, arriveAtEpicMenu, epicPick, startNew, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, carryOn, presenceRow,
+  Sim, mapTopics, sessionLog, send, decideTopic, discussed, mappedEpic, arrive, menuEntry, enterEntry, handoff, arriveAtEpicMenu, epicPick, startNew, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, carryOn, presenceRow, keptOldSpec,
 } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: epic', () => {
@@ -199,10 +199,7 @@ describe('pipeline simulation: epic', () => {
     const wu = 'wrapup';
     mappedEpic(sim, wu, ['alpha']);
     discussed(sim, wu, 'alpha');
-    sim.run(['topic', 'start', wu, 'specification', 'alpha']);
-    sim.run(['manifest', 'set', `${wu}.specification.alpha`, 'sources.alpha.status', 'incorporated']);
-    sim.write(`.leeway/${wu}/specification/alpha/specification.md`, '# Spec — Alpha\n');
-    sim.run(['topic', 'complete', wu, 'specification', 'alpha']);
+    keptOldSpec(sim, wu, 'alpha');
     sim.run(['build-order', 'sequence', wu, 'alpha=1']);
     sim.run(['topic', 'start', wu, 'planning', 'alpha']);
     sim.run(['manifest', 'set', `${wu}.planning.alpha`, 'format=local-markdown', 'task_map.alpha-1-1=alpha-1-1', 'storage_paths=[]']);

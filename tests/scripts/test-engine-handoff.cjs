@@ -17,7 +17,7 @@ const assert = require('node:assert');
 const { output, refuses } = require('./engine-harness.cjs');
 const { setupFixture, cleanupFixture, createManifest, createFile, readManifest, writeState, layout } = require('./discovery-test-utils.cjs');
 const { auditMarkers } = require('./gate-audit.cjs');
-const { VALID_WORK_TYPES, WORK_TYPE_PIPELINES, PAUSING_PHASES } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
+const { VALID_WORK_TYPES, WORK_TYPE_PIPELINES, WAITING_PHASES } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
 const { HANDOFF_TARGETS, OPENING_SKILLS } = require('../../skills/leeway-engine/scripts/domain/handoff.cjs');
 
 const ANNOUNCED = { LEEWAY_HANDOFF: '1' };
@@ -151,7 +151,7 @@ describe('engine handoff — the composed answer for every target', () => {
   });
 
   it('the epic menu takes a pause from every phase its paused banner names', () => {
-    for (const phase of PAUSING_PHASES) {
+    for (const phase of WAITING_PHASES) {
       assert.strictEqual(payloadOf(carried(dir, ['leeway-continue-epic', 'fumi', phase, 'paused'])).args,
         `fumi ${phase} paused`);
     }
@@ -163,7 +163,7 @@ describe('engine handoff — the composed answer for every target', () => {
     assert.strictEqual(payloadOf(carried(dir, ['leeway-discovery', 'none', 'fumi', 'none'])).args, 'none fumi "none"');
   });
 
-  it('the skill each phase is entered through takes each work type its pipeline holds — the line names the phase and the topic, else the unit; the spec, entered at the unit, an epic\'s with no topic, a topic named travelling on and naming nothing (4.11.2)', () => {
+  it('the skill each phase is entered through takes each work type its pipeline holds — the line names the phase and the topic, else the unit; the spec, entered at the unit, an epic\'s with no topic, and refusing a topic (4.11.2)', () => {
     for (const type of VALID_WORK_TYPES) {
       const unit = `${type}-unit`;
       createManifest(dir, unit, { work_type: type });
@@ -175,8 +175,12 @@ describe('engine handoff — the composed answer for every target', () => {
           assert.strictEqual(inline(dir, [skill, type, unit]),
             inlineAnswer(skill, `${type} ${unit}`, `→ ${name} · ${unit}`), `${skill} ${type}`);
         }
-        assert.strictEqual(inline(dir, [skill, type, unit, 'checkout']),
-          inlineAnswer(skill, `${type} ${unit} checkout`, `→ ${name} · ${atUnit ? unit : 'checkout'}`), `${skill} ${type} with a topic`);
+        if (atUnit) {
+          refused(dir, [skill, type, unit, 'checkout'], new RegExp(`^Usage: engine handoff ${skill} <[^>]+> <work-unit>$`));
+        } else {
+          assert.strictEqual(inline(dir, [skill, type, unit, 'checkout']),
+            inlineAnswer(skill, `${type} ${unit} checkout`, `→ ${name} · checkout`), `${skill} ${type} with a topic`);
+        }
       }
     }
   });
@@ -411,9 +415,9 @@ describe('engine handoff — refusals', () => {
   });
 
   it('the epic menu refuses a pause from a phase its paused banner cannot name', () => {
-    for (const phase of EPIC_PHASES.filter((p) => !PAUSING_PHASES.includes(p))) {
+    for (const phase of EPIC_PHASES.filter((p) => !WAITING_PHASES.includes(p))) {
       refused(dir, ['leeway-continue-epic', 'fumi', phase, 'paused'],
-        new RegExp(`^the phase that paused must be one of ${PAUSING_PHASES.join('\\|')} — got "${phase}"$`));
+        new RegExp(`^the phase that paused must be one of ${WAITING_PHASES.join('\\|')} — got "${phase}"$`));
     }
   });
 

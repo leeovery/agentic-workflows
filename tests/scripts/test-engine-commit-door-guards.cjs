@@ -60,8 +60,8 @@ describe('mechanical heartbeats: the self-referential rule', () => {
   });
 
   it('--sweep leaves a live peer\'s hold as it found it — neither stamped nor cleared', () => {
-    // The spec-side resolution edits and reindexes another phase's document;
-    // a peer that is alive but idle still holds it.
+    // A resolution landed from elsewhere edits and reindexes another phase's
+    // document; a peer that is alive but idle still holds it.
     const peer = beatFile('investigation', 'topic-b');
     fs.mkdirSync(path.dirname(peer), { recursive: true });
     fs.writeFileSync(peer, JSON.stringify({ pid: 1, pid_start: null, session_id: 'peer' }) + '\n');
@@ -75,11 +75,11 @@ describe('mechanical heartbeats: the self-referential rule', () => {
       'and this session\'s identity is never stamped over the peer\'s');
   });
 
-  it('--sweep outranks the terminal-status release too — the live spec-side case', () => {
-    // The document a spec sources is `completed`, and its own session may be
-    // sitting in it idle-but-alive (a reopen, a correction round). Terminal
-    // status releases a slot this session holds; it must never release one
-    // this session is only visiting.
+  it('--sweep outranks the terminal-status release too — a completed topic another session sits in', () => {
+    // The document a resolution lands in is `completed`, and its own session
+    // may be sitting in it idle-but-alive. Terminal status releases a slot
+    // this session holds; it must never release one this session is only
+    // visiting.
     ok(dir, ['topic', 'start', 'payments', 'investigation', 'topic-b']);
     ok(dir, ['topic', 'complete', 'payments', 'investigation', 'topic-b']);
     const peer = beatFile('investigation', 'topic-b');
@@ -177,15 +177,16 @@ describe('mechanical heartbeats: the self-referential rule', () => {
   });
 
   it('a reopened item beats again', () => {
-    ok(dir, ['topic', 'start', 'payments', 'specification', 'topic-a']);
-    writeState(dir, layout.spec('payments', 'topic-a'), '# Spec\n');
-    ok(dir, ['topic', 'complete', 'payments', 'specification', 'topic-a']);
-    assert.ok(!beaten('specification', 'topic-a'), 'closed and released');
+    building();
+    ok(dir, ['topic', 'start', 'payments', 'planning', 'topic-a']);
+    writeState(dir, layout.plan('payments', 'topic-a'), '# Plan\n');
+    ok(dir, ['topic', 'complete', 'payments', 'planning', 'topic-a']);
+    assert.ok(!beaten('planning', 'topic-a'), 'closed and released');
 
-    ok(dir, ['topic', 'reopen', 'payments', 'specification', 'topic-a']);
-    writeState(dir, layout.spec('payments', 'topic-a'), '# Spec\nreopened\n');
-    ok(dir, ['commit', 'payments', '-m', 'spec(payments/topic-a): reconcile', '--topic', 'specification/topic-a']);
-    assert.ok(beaten('specification', 'topic-a'), 'a live item\'s cadence commit is its heartbeat again');
+    ok(dir, ['topic', 'reopen', 'payments', 'planning', 'topic-a']);
+    writeState(dir, layout.plan('payments', 'topic-a'), '# Plan\nreopened\n');
+    ok(dir, ['commit', 'payments', '-m', 'planning(payments/topic-a): reconcile', '--topic', 'planning/topic-a']);
+    assert.ok(beaten('planning', 'topic-a'), 'a live item\'s cadence commit is its heartbeat again');
   });
 
   it('a --topic commit on a topic with no manifest item neither beats nor clears', () => {

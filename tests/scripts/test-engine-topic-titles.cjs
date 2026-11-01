@@ -136,8 +136,6 @@ describe('a started topic renamed goes by its title on every screen that names i
     ['the wait for agents', () => shown('wait-agents', { dotpath: `${UNIT}.${KEY}` }), `Still running on ${TITLE}: 1 deep dive.`],
     ['the experiment register', () => shown('experiment-register', { dotpath: `${UNIT}.experiment.${KEY}` }), `Experiments — ${TITLE} (1 experiment)`],
     ['a paused discussion', () => shown('phase-paused', { dotpath: UNIT, phase: 'discussion' }), `"${TITLE}" awaits experiment evidence (E1)`],
-    ['a paused specification', () => shown('phase-paused', { dotpath: UNIT, phase: 'specification' }), `"Windows" awaits the ${NAME} discussion`],
-    ['the entry gate', () => shown('entry-gate', { dotpath: `${UNIT}.specification.windows` }), `Sources for "Windows" are not concluded: ${NAME}`],
     ['the resume gate', () => shown('resume-gate', { dotpath: `${UNIT}.discussion.${KEY}` }), `Found existing discussion for **${TITLE}**.`],
     ['the raise screen', () => raiseScreenOf(dir, /** @type {any} */ (SEAL)), `Fumi · ${TITLE}`],
     ['the epic dashboard\'s map', () => epicDashboard(UNIT, epic().detail), `├─ ◐ ${TITLE}`],
@@ -296,28 +294,20 @@ describe('every other verb, render and entry that names a topic takes its title,
   });
 });
 
-describe('a specification sharing the renamed topic\'s key goes by its own name (8.8.17)', () => {
+describe('the hand into the spec names the unit it is entered at (8.8.17)', () => {
   /** @type {string} */
   let dir;
-  beforeEach(() => {
-    dir = world();
-    const manifest = readManifest(dir, UNIT);
-    manifest.phases.specification.items[KEY] = { status: 'in-progress', sources: { [KEY]: { status: 'incorporated' } } };
-    createManifest(dir, UNIT, manifest);
-  });
+  beforeEach(() => { dir = world(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  /** The line a hand into `skill` at the topic shows. @param {string} skill */
-  const handLine = (skill) => output(dir, ['handoff', skill, 'epic', UNIT, KEY]).split('\n').find((line) => line.startsWith('→ '));
+  /** The line a hand into a skill shows. @param {string[]} args */
+  const handLine = (...args) => output(dir, ['handoff', ...args]).split('\n').find((line) => line.startsWith('→ '));
 
   it('the hand into the spec names the unit it is entered at, the hand into the topic\'s discussion by the title', () => {
-    assert.deepStrictEqual([handLine('leeway-specification-process'), handLine('leeway-discussion-process')], [`→ Specification · ${UNIT}`, `→ Discussion · ${NAME}`]);
+    assert.deepStrictEqual([handLine('leeway-specification-process', 'epic', UNIT), handLine('leeway-discussion-process', 'epic', UNIT, KEY)],
+      [`→ Specification · ${UNIT}`, `→ Discussion · ${NAME}`]);
   });
 
-  it('a message it sends names it by its own name', () => {
-    const sent = sendIn(dir, 'space-homing', KEY, 'frame');
-    assert.match(fs.readFileSync(sent.message_path, 'utf8'), /^From Note Window · /m);
-  });
 });
 
 describe('every screen names a topic through one helper', () => {
@@ -355,7 +345,6 @@ describe('every screen names a topic through one helper', () => {
       'projections/wait.cjs › phasePaused › workUnit',
       'projections/workunit.cjs › workUnitMenu › unit.name',
       'projections/workunit.cjs › workUnitTitle › unit.name',
-      'render.cjs › entryGate › manifest.name || topic',
       'render.cjs › epicAllDoneGate › workUnit',
       'render.cjs › nextPhaseGate › workUnit',
       'render.cjs › phaseCompleted › workUnit',
@@ -381,24 +370,12 @@ describe('every screen names a topic through one helper', () => {
       'render.cjs › resolveWorkUnit › String(manifest.work_type || \'\')',
     ],
     'a specification, a plan or a build, named for itself': [
-      'epic-detail.cjs › discoveryLockReason › <passed>',
-      'projections/epic.cjs › displayRecommendation › owner.name',
-      'projections/epic.cjs › entryHoldClause › topic',
       'projections/epic.cjs › epicUnblockMenu › item.name',
       'projections/epic.cjs › plansNotReadyBlock › p.name',
-      'projections/specification.cjs › itemBlock › row.name',
-      'projections/specification.cjs › rowLabel › row.name',
-      'projections/specification.cjs › specificationCompletedMenu › row.name',
-      'projections/specification.cjs › specificationConfirmation › c.name',
-      'projections/specification.cjs › specificationMenu › row.name',
       'projections/start.cjs › planTopicsPick › t.name',
       'projections/surfaces.cjs › autoSelectLine › name',
-      'projections/transactions.cjs › promoteReceipt › topic',
       'render.cjs › aheadPhrase › a.name',
       'render.cjs › codeGate › h.topic',
-      'render.cjs › constructionGate › topic',
-      'render.cjs › discardedGroupingsClause › n',
-      'render.cjs › entryGate › String(item.superseded_by || \'\')',
       'render.cjs › entryGate › String(spec.superseded_by || \'\')',
       'render.cjs › epicSoftGate › topic',
       'render.cjs › externalDependencyGate › dep.name',
@@ -408,7 +385,6 @@ describe('every screen names a topic through one helper', () => {
       'render.cjs › missingDependencies › dep.name',
       'render.cjs › planSummary › topic',
       'render.cjs › reviewPresentation › p.topic',
-      'render.cjs › specificationCancelStatement › spec',
     ],
     'a bugfix\'s investigation, the unit itself': [
       'render.cjs › fixDirection › topic',

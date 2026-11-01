@@ -207,26 +207,12 @@ describe('sequence re-checks the live set it writes against', () => {
     assert.strictEqual(readManifest(dir, 'portal').phases.specification.items.auth.order, undefined, 'nothing was written');
   });
 
-  it('a flag raised after the pass wrote is not swallowed by it', () => {
-    const m0 = readManifest(dir, 'portal');
-    m0.phases.specification.build_order_stale = true;
-    writeManifest(dir, 'portal', m0);
-
-    engine(dir, ['build-order', 'sequence', 'portal', ...asArgs(computeOrders(dir))]);
-    assert.strictEqual(readManifest(dir, 'portal').phases.specification.build_order_stale, undefined,
-      'the flag this pass read is the flag it clears');
-
-    // A completion landing after that hold sets the flag again; the finished
-    // pass cannot have cleared a flag it never read.
-    engine(dir, ['topic', 'complete', 'portal', 'specification', 'auth']);
-    assert.strictEqual(readManifest(dir, 'portal').phases.specification.build_order_stale, true,
-      'the later completion still asks for a re-sequence');
-  });
-
   it('a status change that leaves the set intact still applies', () => {
     const computed = computeOrders(dir);
     // in-progress → completed keeps a topic live: same membership, same write.
-    engine(dir, ['topic', 'complete', 'portal', 'specification', 'auth']);
+    const m = readManifest(dir, 'portal');
+    m.phases.specification.items.auth.status = 'completed';
+    writeManifest(dir, 'portal', m);
 
     const res = engine(dir, ['build-order', 'sequence', 'portal', ...asArgs(computed)]);
     assert.strictEqual(res.ok, true);
@@ -244,98 +230,6 @@ describe('sequence idempotence', () => {
     const res = engine(dir, ['build-order', 'sequence', 'portal', 'auth=1', 'billing=2', 'reports=3']);
     assert.strictEqual(res.committed, null);
     assert.match(res.note || '', /nothing to commit/);
-  });
-});
-
-describe('build_order_stale — set by spec completion, epic-only', () => {
-  let dir;
-  beforeEach(() => { dir = setupGitFixture(); setupEpic(dir); });
-  afterEach(() => { cleanupFixture(dir); });
-
-  it('completing an epic specification sets the flag', () => {
-    engine(dir, ['topic', 'complete', 'portal', 'specification', 'auth']);
-    assert.strictEqual(readManifest(dir, 'portal').phases.specification.build_order_stale, true);
-  });
-
-  it('completing a feature specification does not', () => {
-    writeManifest(dir, 'feat', {
-      name: 'feat', work_type: 'feature', status: 'in-progress',
-      phases: { specification: { items: { feat: { status: 'in-progress', sources: { feat: { status: 'incorporated' } } } } } },
-    });
-    commitAll(dir, 'feat');
-    engine(dir, ['topic', 'complete', 'feat', 'specification', 'feat']);
-    assert.strictEqual(readManifest(dir, 'feat').phases.specification.build_order_stale, undefined);
-  });
-
-  it('completing another epic phase does not', () => {
-    const m = readManifest(dir, 'portal');
-    m.phases.planning = { items: { reports: { status: 'in-progress' } } };
-    writeManifest(dir, 'portal', m);
-    commitAll(dir, 'extra');
-    engine(dir, ['topic', 'complete', 'portal', 'planning', 'reports']);
-    assert.strictEqual(readManifest(dir, 'portal').phases.specification.build_order_stale, undefined);
-  });
-});
-
-describe('spec-side order stash on cancel / restore on reactivate', () => {
-  let dir;
-  beforeEach(() => {
-    dir = setupGitFixture();
-    setupEpic(dir);
-    engine(dir, ['build-order', 'sequence', 'portal', 'auth=1', 'billing=2', 'reports=3']);
-  });
-  afterEach(() => { cleanupFixture(dir); });
-
-  it('a direct spec cancel stashes the order; reactivate restores it', () => {
-    engine(dir, ['topic', 'cancel', 'portal', 'specification', 'auth']);
-    let auth = readManifest(dir, 'portal').phases.specification.items.auth;
-    assert.strictEqual(auth.order, undefined);
-    assert.strictEqual(auth.previous_order, 1);
-
-    engine(dir, ['topic', 'reactivate', 'portal', 'specification', 'auth']);
-    auth = readManifest(dir, 'portal').phases.specification.items.auth;
-    assert.strictEqual(auth.order, 1);
-    assert.strictEqual(auth.previous_order, undefined);
-  });
-
-  it('a taken number is not restored — the stash drops and the flag flips', () => {
-    engine(dir, ['topic', 'cancel', 'portal', 'specification', 'auth']);
-    // Live set renumbered contiguously while auth was out — billing now holds 1.
-    engine(dir, ['build-order', 'sequence', 'portal', 'billing=1', 'reports=2']);
-    engine(dir, ['topic', 'reactivate', 'portal', 'specification', 'auth']);
-
-    const m = readManifest(dir, 'portal');
-    const items = m.phases.specification.items;
-    assert.strictEqual(items.auth.order, undefined, 'stale number not restored over billing');
-    assert.strictEqual(items.auth.previous_order, undefined, 'stash dropped');
-    assert.strictEqual(items.billing.order, 1, 'no collision');
-    assert.strictEqual(computeBuildOrderNeedsSequencing(m), true, 'flag catches the unordered live topic');
-  });
-
-  it('a terminal sibling squatting on the number does not veto the restore', () => {
-    engine(dir, ['topic', 'cancel', 'portal', 'specification', 'auth']);
-    engine(dir, ['topic', 'supersede', 'portal', 'specification', 'reports', '--by', 'billing']);
-    const m0 = readManifest(dir, 'portal');
-    m0.phases.specification.items.reports.order = 1;
-    writeManifest(dir, 'portal', m0);
-    commitAll(dir, 'squat');
-
-    engine(dir, ['topic', 'reactivate', 'portal', 'specification', 'auth']);
-    const items = readManifest(dir, 'portal').phases.specification.items;
-    assert.strictEqual(items.auth.order, 1, 'restored over the terminal squatter');
-  });
-
-  it('a started spec locks its source topic; the spec cancel stashes the order and frees the topic', () => {
-    // auth spec is in-progress and sources the auth discussion.
-    assert.match(engineFails(dir, ['topic', 'cancel', 'portal', 'discovery', 'auth']).error,
-      /refused while the specification "auth" sources its discussion — cancel the specification first/);
-    const res = engine(dir, ['topic', 'cancel', 'portal', 'specification', 'auth']);
-    assert.deepStrictEqual(res.cancelled, [{ phase: 'specification', previous_status: 'in-progress' }]);
-    const auth = readManifest(dir, 'portal').phases.specification.items.auth;
-    assert.strictEqual(auth.status, 'cancelled');
-    assert.strictEqual(auth.order, undefined);
-    assert.strictEqual(auth.previous_order, 1);
-    assert.strictEqual(engine(dir, ['topic', 'cancel', 'portal', 'discovery', 'auth']).status, 'cancelled', 'the source is free once the spec is gone');
   });
 });
 

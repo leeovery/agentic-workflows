@@ -18,7 +18,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { DOTS, CONTINUE_CLAUSE, bulletRow } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
+const { DOTS, CONTINUE_CLAUSE } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
 const { renderSurface, unwrap, NB, setup, teardown, writeManifest, writePayload } = require('./render-surfaces-world.cjs');
 
 describe('phase-paused — the epic menu\'s banner for a phase leaving on a pause', () => {
@@ -67,7 +67,7 @@ describe('phase-paused — the epic menu\'s banner for a phase leaving on a paus
       `${HEADER}\nDiscussion paused for "Pay".\n`);
   });
 
-  it('a paused plan names the specification it awaits', () => {
+  it('a paused plan awaits nothing — its hold on its specification went with the old spec', () => {
     writeManifest(dir, 'pay', {
       work_type: 'feature',
       phases: {
@@ -76,68 +76,15 @@ describe('phase-paused — the epic menu\'s banner for a phase leaving on a paus
       },
     });
     assert.strictEqual(renderSurface(dir, 'phase-paused', { dotpath: 'pay', phase: 'planning' }),
-      `${HEADER}\nPlanning paused for "Pay" — awaiting its specification (back in progress).\n`);
-  });
-
-  it('a paused specification names the sources it routed a gap into — reopened, or opened and parked', () => {
-    writeManifest(dir, 'fumi', {
-      phases: {
-        discussion: {
-          items: {
-            'note-window': { status: 'in-progress' },
-            sync: { status: 'unstarted' },
-            layout: { status: 'completed' },
-          },
-        },
-        specification: {
-          items: {
-            windows: {
-              status: 'in-progress',
-              sources: {
-                'note-window': { status: 'stale' },
-                sync: { status: 'pending' },
-                layout: { status: 'pending' },
-              },
-            },
-            panes: { status: 'in-progress', sources: { layout: { status: 'incorporated' } } },
-          },
-        },
-      },
-    });
-    assert.strictEqual(renderSurface(dir, 'phase-paused', { dotpath: 'fumi', phase: 'specification' }),
-      `${HEADER}\nSpecification paused for "Fumi" — "Windows" awaits the note-window and sync discussions.\n`,
-      'a source still to extract whose discussion has concluded is the specification\'s own work, never a wait');
-  });
-
-  it('a linear specification names the record it awaits by its phase — a bugfix\'s investigation', () => {
-    writeManifest(dir, 'crash-fix', {
-      work_type: 'bugfix',
-      phases: {
-        investigation: { items: { 'crash-fix': { status: 'in-progress' } } },
-        specification: { items: { 'crash-fix': { status: 'in-progress', sources: { 'crash-fix': { status: 'stale' } } } } },
-      },
-    });
-    assert.strictEqual(renderSurface(dir, 'phase-paused', { dotpath: 'crash-fix', phase: 'specification' }),
-      `${HEADER}\nSpecification paused for "Crash Fix" — awaiting the crash-fix investigation.\n`);
-  });
-
-  it('a specification whose routed work has concluded renders the bare line', () => {
-    writeManifest(dir, 'fumi', {
-      phases: {
-        discussion: { items: { 'note-window': { status: 'completed' } } },
-        specification: { items: { windows: { status: 'in-progress', sources: { 'note-window': { status: 'stale' } } } } },
-      },
-    });
-    assert.strictEqual(renderSurface(dir, 'phase-paused', { dotpath: 'fumi', phase: 'specification' }),
-      `${HEADER}\nSpecification paused for "Fumi".\n`);
+      `${HEADER}\nPlanning paused for "Pay".\n`);
   });
 
   it('is loud on a missing phase, a phase that never pauses, a dotted address, and an unknown unit', () => {
     writeManifest(dir, 'pay', { phases: { discussion: { items: { pay: { status: 'in-progress' } } } } });
     assert.throws(() => renderSurface(dir, 'phase-paused', { dotpath: 'pay' }), /--phase is required/);
-    for (const phase of ['research', 'implementation']) {
+    for (const phase of ['research', 'specification', 'implementation']) {
       assert.throws(() => renderSurface(dir, 'phase-paused', { dotpath: 'pay', phase }),
-        new RegExp(`--phase must be <discussion\\|planning\\|specification> — the phases that pause; got "${phase}"`));
+        new RegExp(`--phase must be <discussion\\|planning> — the phases that pause; got "${phase}"`));
     }
     assert.throws(() => renderSurface(dir, 'phase-paused', { dotpath: 'pay.discussion.pay', phase: 'discussion' }), /must be a bare <work_unit>/);
     assert.throws(() => renderSurface(dir, 'phase-paused', { dotpath: 'nope', phase: 'discussion' }), /work unit "nope" not found/);
@@ -205,6 +152,8 @@ describe('epic-soft-gate', () => {
     orderedEpic();
     assert.throws(() => renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay', action: 'start_planing', topic: 'billing' }),
       /unknown --action "start_planing"/);
+    assert.throws(() => renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay', action: 'start_specification' }),
+      /unknown --action "start_specification"/, 'the spec is entered at the unit, never started at a topic');
     // A plan can legitimately outlive its spec (cancelled/superseded/promoted)
     // — the advisory gate must pass, never crash a routine menu selection.
     writeManifest(dir, 'outlived', {
@@ -244,36 +193,11 @@ describe('epic-soft-gate', () => {
     assert.strictEqual(renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay', action: 'start_planning', topic: 'billing' }), '');
   });
 
-  it('the specification row counts the discussions the grouping reads', () => {
-    orderedEpic();
-    const out = renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay', action: 'start_specification' });
-    assert.match(out, /1 of 2 discussions still in-progress/);
-    assert.match(out, /re-analyse if you revisit later/);
-  });
-
   it('a discussion entry carries no gate', () => {
     orderedEpic();
     for (const action of ['start_discussion', 'continue_discussion']) {
       assert.strictEqual(renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay', action, topic: 'auth' }), '', action);
     }
-  });
-
-  it('parked and terminal discussions never inflate the specification count', () => {
-    writeManifest(dir, 'stubs', {
-      phases: {
-        discussion: {
-          items: {
-            auth: { status: 'in-progress' },
-            billing: { status: 'completed' },
-            parked: { status: 'unstarted' },
-            gone: { status: 'cancelled' },
-            moved: { status: 'promoted', promoted_to: 'cc' },
-          },
-        },
-      },
-    });
-    assert.match(renderSurface(dir, 'epic-soft-gate', { dotpath: 'stubs', action: 'start_specification' }),
-      /1 of 2 discussions still in-progress/);
   });
 
   it('requires --action always and --topic for the order rows', () => {
@@ -393,224 +317,6 @@ describe('render inbox-content and the archived item receipts', () => {
     const ghost = '.leeway/.inbox/.archived/ideas/2026-06-09--ghost.md';
     assert.throws(() => renderSurface(dir, 'inbox-delete-receipt', { dotpath: undefined, path: ghost }),
       /render inbox-delete-receipt: git holds no deleted file at "\.leeway\/\.inbox\/\.archived\/ideas\/2026-06-09--ghost\.md"/);
-  });
-});
-
-describe('render spec-confirm-gate', () => {
-  let dir;
-  beforeEach(() => { dir = setup(); });
-  afterEach(() => teardown(dir));
-
-  const DISPLAY_HEAD = '=== DISPLAY: spec confirmation (emit verbatim as a text code block (```text fence), directly above the menu) ===';
-  const MENU_HEAD = "=== MENU: spec confirm gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===";
-  const ASK = [DOTS, '**`◆ Proceed?`**', '', '**`y/yes`**', '**`n/no`**', ''];
-  const completed = { status: 'completed' };
-  const unit = (specification, discussion = { 'auth-flow': completed, billing: completed, refunds: completed }) =>
-    writeManifest(dir, 'pay', { phases: { discussion: { items: discussion }, specification: { items: specification } } });
-  const render = (topic) => renderSurface(dir, 'spec-confirm-gate', { dotpath: `pay.specification.${topic}` });
-  const single = (topic) => renderSurface(dir, 'spec-confirm-gate', { dotpath: `pay.specification.${topic}`, single: '1' });
-  const unify = (topic) => renderSurface(dir, 'spec-confirm-gate', { dotpath: `pay.specification.${topic}`, unify: '1' });
-
-  it('a start that incorporates a started specification: the covered source marked, the supersession', () => {
-    unit({
-      payments: { status: 'proposed', sources: { 'auth-flow': { status: 'pending' }, billing: { status: 'pending' } } },
-      'auth-flow': { status: 'completed', sources: { 'auth-flow': { status: 'incorporated' } } },
-    });
-    assert.strictEqual(render('payments'), [
-      DISPLAY_HEAD,
-      'Creating specification: Payments',
-      '',
-      'Sources:',
-      '  • auth-flow (has individual spec — will be incorporated)',
-      '  • billing',
-      '',
-      `Output: ${dir}/.leeway/pay/specification/payments/specification.md`,
-      '',
-      'After completion:',
-      `  ${dir}/.leeway/pay/specification/auth-flow/specification.md → marked as superseded`,
-      '',
-      MENU_HEAD,
-      ...ASK,
-    ].join('\n'));
-  });
-
-  it('a plain start answers empty — the pick showed everything it does', () => {
-    unit({
-      payments: { status: 'proposed', sources: { 'auth-flow': { status: 'pending' }, billing: { status: 'pending' } } },
-      gone: { status: 'superseded', superseded_by: 'payments', sources: { billing: { status: 'incorporated' } } },
-    });
-    assert.strictEqual(render('payments'), '');
-  });
-
-  it('a continue or a refine answers empty — even one whose start incorporated a specification still live', () => {
-    unit({
-      core: { status: 'in-progress', incorporates: ['old'], sources: { 'auth-flow': { status: 'incorporated' }, billing: { status: 'pending' } } },
-      old: { status: 'completed', sources: { billing: { status: 'incorporated' } } },
-      done: { status: 'completed', sources: { refunds: { status: 'incorporated' } } },
-      moved: { status: 'completed', sources: { refunds: { status: 'stale' } } },
-    });
-    for (const topic of ['core', 'old', 'done', 'moved']) assert.strictEqual(render(topic), '', topic);
-  });
-
-  it('a proposed grouping keeps every source it names, a gone discussion included', () => {
-    unit({
-      payments: { status: 'proposed', sources: { phantom: { status: 'pending' }, billing: { status: 'pending' } } },
-      billing: { status: 'in-progress', sources: { billing: { status: 'pending' } } },
-    });
-    assert.match(render('payments'), /Sources:\n {2}• phantom\n {2}• billing \(has individual spec — will be incorporated\)\n/);
-  });
-
-  it('--unify: the unify always confirms, listing every started specification it incorporates — or none', () => {
-    unit({
-      unified: { status: 'proposed', sources: { 'auth-flow': { status: 'pending' }, billing: { status: 'pending' } } },
-      'auth-flow': { status: 'completed', sources: { 'auth-flow': { status: 'incorporated' } } },
-      billing: { status: 'in-progress', sources: { billing: { status: 'pending' } } },
-    });
-    assert.strictEqual(unify('unified'), [
-      DISPLAY_HEAD,
-      'Creating specification: Unified',
-      '',
-      'Sources:',
-      '  • auth-flow',
-      '  • billing',
-      '',
-      'Existing specifications to incorporate:',
-      // An absolute path wraps wherever the fixture's temp folder puts the
-      // break: the bullet's own wrap lays the rows out.
-      ...bulletRow(`${dir}/.leeway/pay/specification/auth-flow/specification.md → will be superseded`),
-      ...bulletRow(`${dir}/.leeway/pay/specification/billing/specification.md → will be superseded`),
-      '',
-      `Output: ${dir}/.leeway/pay/specification/unified/specification.md`,
-      '',
-      MENU_HEAD,
-      ...ASK,
-    ].join('\n'));
-    unit({ unified: { status: 'proposed', sources: { 'auth-flow': { status: 'pending' } } } });
-    const alone = unify('unified');
-    assert.match(alone, /Creating specification: Unified\n\nSources:\n {2}• auth-flow\n\nOutput: /);
-    assert.doesNotMatch(alone, /Existing specifications to incorporate/);
-  });
-
-  it('a grouping named `unified` started plainly is a plain start — empty', () => {
-    unit({ unified: { status: 'proposed', sources: { 'auth-flow': { status: 'pending' }, billing: { status: 'pending' } } } });
-    assert.strictEqual(render('unified'), '');
-  });
-
-  it('a started `unified` is a continue like any other — empty', () => {
-    unit({ unified: { status: 'in-progress', sources: { 'auth-flow': { status: 'pending' } } } });
-    assert.strictEqual(render('unified'), '');
-  });
-
-  describe('--single: the single-discussion path picks nothing, so the confirm is always drawn', () => {
-    it('with no item yet, a create of the lone completed discussion', () => {
-      unit({}, { 'auth-flow': completed, billing: { status: 'in-progress' }, refunds: { status: 'cancelled' } });
-      assert.strictEqual(single('pay'), [
-        DISPLAY_HEAD,
-        'Creating specification: Pay',
-        '',
-        'Sources:',
-        '  • auth-flow',
-        '',
-        `Output: ${dir}/.leeway/pay/specification/pay/specification.md`,
-        '',
-        MENU_HEAD,
-        ...ASK,
-      ].join('\n'));
-      unit({});
-      assert.throws(() => single('pay'),
-        /no specification "pay" — the single-discussion confirm reads the lone completed discussion, and "pay" has 3/);
-    });
-
-    it('a plain start the bare call answers empty for', () => {
-      unit({ payments: { status: 'proposed', sources: { 'auth-flow': { status: 'pending' } } } });
-      assert.strictEqual(render('payments'), '');
-      assert.match(single('payments'), /^=== DISPLAY: spec confirmation .*\nCreating specification: Payments\n\nSources:\n {2}• auth-flow\n\nOutput: /);
-    });
-
-    it('a continue: each extraction state its own block', () => {
-      unit({
-        core: {
-          status: 'in-progress',
-          sources: { 'auth-flow': { status: 'incorporated' }, billing: { status: 'pending' }, refunds: { status: 'stale' } },
-        },
-      });
-      assert.strictEqual(single('core'), [
-        DISPLAY_HEAD,
-        'Continuing specification: Core',
-        '',
-        `Existing: ${dir}/.leeway/pay/specification/core/specification.md [in-progress]`,
-        '',
-        'Sources to extract:',
-        '  • billing [pending]',
-        '',
-        'Sources re-decided since extraction (reconcile):',
-        '  • refunds [stale]',
-        '',
-        'Previously extracted (for reference):',
-        '  • auth-flow',
-        '',
-        MENU_HEAD,
-        ...ASK,
-      ].join('\n'));
-    });
-
-    it('a continue leaves out a block with nothing in it, and lists every source when all are extracted', () => {
-      unit({ core: { status: 'in-progress', sources: { 'auth-flow': { status: 'pending' }, billing: { status: 'pending' } } } });
-      const pending = single('core');
-      assert.match(pending, /Sources to extract:\n {2}• auth-flow \[pending\]\n {2}• billing \[pending\]\n\n=== MENU/);
-      assert.doesNotMatch(pending, /re-decided|Previously extracted/);
-      unit({ core: { status: 'in-progress', sources: { 'auth-flow': { status: 'incorporated' }, ghost: { status: 'pending' } } } });
-      const extracted = single('core');
-      assert.ok(extracted.includes(`Existing: ${dir}/.leeway/pay/specification/core/specification.md [in-progress]\n\nAll sources extracted:\n  • auth-flow\n\n=== MENU`), extracted);
-      assert.doesNotMatch(extracted, /ghost/, 'a started specification leaves out a source whose discussion item is gone');
-    });
-
-    it('a completed specification with sources left to extract is a continue that names them as new', () => {
-      unit({ core: { status: 'completed', sources: { 'auth-flow': { status: 'incorporated' }, refunds: { status: 'pending' } } } });
-      const out = single('core');
-      assert.ok(out.includes(`Continuing specification: Core\n\nExisting: ${dir}/.leeway/pay/specification/core/specification.md [completed]`), out);
-      assert.match(out, /New sources to extract:\n {2}• refunds \[pending\]\n\nPreviously extracted \(for reference\):\n {2}• auth-flow/);
-    });
-
-    it('a refine: every source extracted, and the menu opens on where a change of decision belongs', () => {
-      unit({ core: { status: 'completed', sources: { 'auth-flow': { status: 'incorporated' } } } });
-      assert.strictEqual(single('core'), [
-        DISPLAY_HEAD,
-        'Refining specification: Core',
-        '',
-        `Existing: ${dir}/.leeway/pay/specification/core/specification.md [completed]`,
-        '',
-        'All sources extracted:',
-        '  • auth-flow',
-        '',
-        MENU_HEAD,
-        DOTS,
-        'A refinement is for factual corrections and sharpening. A change of decision belongs in the source discussion — reopen that discussion instead; the moment it reopens, this specification is flagged to reconcile against the re-decision.',
-        '',
-        ...ASK.slice(1),
-      ].join('\n'));
-    });
-
-    it('refuses a closed specification as the bare call does', () => {
-      unit({ old: { status: 'superseded', superseded_by: 'core', sources: { refunds: { status: 'incorporated' } } } });
-      assert.throws(() => single('old'), /"old" is superseded — there is nothing to confirm/);
-    });
-  });
-
-  it('refuses an item it cannot confirm, and an address that is not a specification topic', () => {
-    unit({
-      old: { status: 'superseded', superseded_by: 'core', sources: { refunds: { status: 'incorporated' } } },
-      parked: { status: 'cancelled', sources: { refunds: { status: 'incorporated' } } },
-    });
-    assert.throws(() => render('old'), /"old" is superseded — there is nothing to confirm/);
-    assert.throws(() => render('parked'), /"parked" is cancelled — there is nothing to confirm/);
-    assert.throws(() => render('ghost'), /no specification "ghost" — the confirm reads the item the pick names/);
-    assert.throws(() => renderSurface(dir, 'spec-confirm-gate', { dotpath: 'pay.planning.core' }),
-      /address must be <work_unit>\.specification\.<topic>, got phase "planning"/);
-    assert.throws(() => renderSurface(dir, 'spec-confirm-gate', { dotpath: 'pay' }),
-      /address must be <work_unit>\.<phase>\.<topic>/);
-    assert.throws(() => renderSurface(dir, 'spec-confirm-gate', { dotpath: 'ghost.specification.core' }),
-      /work unit "ghost" not found/);
   });
 });
 

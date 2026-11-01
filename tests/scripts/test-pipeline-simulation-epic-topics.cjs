@@ -1,10 +1,9 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The pipeline simulation's epic topic lifecycle: a topic cancelled at
-// each stage, a later stage locking the earlier; and the holds a cancel, a
-// postpone, a specification cancel or a reactivate releases, or leaves
-// standing. A topic postponed to the roadmap and pulled back is
+// The pipeline simulation's epic topic lifecycle: a topic cancelled before
+// and after its discussion starts; and the holds a cancel, a postpone or a
+// reactivate releases, or leaves standing. A topic postponed to the roadmap and pulled back is
 // test-pipeline-simulation-epic-postpone.cjs.
 //
 // Layer: simulation. World: the project every scenario starts from
@@ -23,7 +22,7 @@ const ROOT = path.join(__dirname, '../..');
 const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
 const { epicMenu, epicCancelMenu } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
 const {
-  Sim, mapTopics, sessionLog, sendArgv, mappedEpic, presenceRow, arriveAtEpicMenu, askedOn, enterEntry, decideTopic, discussed,
+  Sim, mapTopics, sessionLog, sendArgv, mappedEpic, presenceRow, arriveAtEpicMenu, askedOn, enterEntry, decideTopic,
 } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: epic-topics', () => {
@@ -31,7 +30,7 @@ describe('pipeline simulation: epic-topics', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('epic topic cancel: one unit per stage, a later stage locking the earlier, waits released before the holders close', () => {
+  it('epic topic cancel: never started and started, waits released before the holders close', () => {
     const wu = 'cuts';
     sim.run(['workunit', 'create', wu, 'epic', '--description', 'Cancel units', '--session-log-file', sessionLog(sim, wu)]);
     mapTopics(sim, wu, [
@@ -44,7 +43,6 @@ describe('pipeline simulation: epic-topics', () => {
     sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): shape the map`]);
     const detail = () => EPIC_GATEWAY.discover(sim.dir, wu);
     const pickable = () => epicCancelMenu(detail()).keys.filter((k) => k.action === 'cancel').map((k) => `${k.phase}/${k.topic}`);
-    const locked = () => detail().cancellable.filter((u) => u.locked !== undefined).map((u) => `${u.stage}/${u.name}: ${u.locked}`);
     const cancelledUnits = () => detail().cancelled.map((u) => `${u.stage}/${u.name}`);
     const menuOptions = () => epicMenu(wu, detail()).keys.filter((k) => ['cancel_topic', 'reactivate_topic'].includes(k.action)).map((k) => k.key);
 
@@ -55,7 +53,7 @@ describe('pipeline simulation: epic-topics', () => {
     assert.match(sim.render(['cancel-gate', `${wu}.discovery.export`], { expect: 'content' }),
       /Cancelling \*\*Export\*\* takes it off the board — nothing has started, so only the map row is marked; it can be reactivated later\./);
     const marked = sim.run(['topic', 'cancel', wu, 'discovery', 'export']);
-    assert.deepStrictEqual([marked.cancelled, marked.discarded, marked.abandoned, marked.released_waits], [[], [], [], []]);
+    assert.deepStrictEqual([marked.cancelled, marked.abandoned, marked.released_waits], [[], [], []]);
     assert.deepStrictEqual(sim.manifest(wu).phases.discovery.items.export,
       { source: 'discovery', summary: 'Data export', cancelled: true, previous_order: 1 });
     assert.match(sim.render(['topic-receipt', `${wu}.discovery.export`, '--verb', 'cancel'], { expect: 'content' }), /Cancelled "Export"\./);
@@ -69,9 +67,9 @@ describe('pipeline simulation: epic-topics', () => {
     assert.match(sim.render(['topic-receipt', `${wu}.discovery.export`, '--verb', 'reactivate'], { expect: 'content' }), /Reactivated "Export"\.\n/);
     assert.deepStrictEqual(cancelledUnits(), []);
 
-    // A started topic: a discussion in flight with a spawned experiment, a
-    // message waiting in its mailbox, and a proposed grouping over its
-    // discussion. The cancel takes all of it in one write — the wait
+    // A started topic: a discussion in flight with a spawned experiment and
+    // a message waiting in its mailbox. The cancel takes all of it in one
+    // write — the wait
     // released first, so the flag lands on the holder while it is still
     // live.
     enterEntry(sim, wu, 'discussion', 'auth');
@@ -82,25 +80,20 @@ describe('pipeline simulation: epic-topics', () => {
     assert.strictEqual(e1.id, 'E1');
     sim.write('.leeway/.cache/scratch/message-scratch.md', 'Token lifetime\n\nHow long?\n');
     sim.run(['topic', 'send', wu, 'auth', '--from', 'billing', '--content', '.leeway/.cache/scratch/message-scratch.md', '--slug', 'token-lifetime']);
-    sim.run(['manifest', 'apply', wu, '--file', sim.write(`.leeway/.cache/${wu}/specification/grouping-ops.json`,
-      [{ op: 'set', path: `${wu}.specification.grouping`, fields: { status: 'proposed', sources: { auth: { status: 'pending' } } } }])]);
-    assert.deepStrictEqual(locked(), [], 'a proposed grouping never locks');
     assert.match(sim.render(['cancel-gate', `${wu}.discovery.auth`], { expect: 'content' }).replace(/\n\u00a0+/g, ' '),
-      /Cancelling \*\*Auth\*\* marks its discussion \[in-progress\] cancelled — it can be reactivated later\. 1 open experiment \(E1\) ends abandoned on the register\. The proposed grouping \*\*Grouping\*\* is discarded — the next grouping analysis rebuilds from the new world\./);
+      /Cancelling \*\*Auth\*\* marks its discussion \[in-progress\] cancelled — it can be reactivated later\. 1 open experiment \(E1\) ends abandoned on the register\./);
     const taken = sim.run(['topic', 'cancel', wu, 'discovery', 'auth']);
     assert.deepStrictEqual(taken.cancelled, [{ phase: 'discussion', previous_status: 'in-progress' }]);
     assert.deepStrictEqual(taken.released_waits, [{ phase: 'discussion', released: ['E1'], remaining: [] }]);
     assert.deepStrictEqual(taken.abandoned, ['E1']);
-    assert.deepStrictEqual(taken.discarded, ['grouping']);
     // Its waiting message went to the inbox as an idea, and the receipt says so.
     assert.deepStrictEqual([taken.inbox.length, JSON.parse(sim.read(['topic', 'mailbox', wu, 'auth'])).count], [1, 0]);
     assert.match(sim.render(['topic-receipt', `${wu}.discovery.auth`, '--verb', 'cancel', '--inbox', String(taken.inbox.length)], { expect: 'content' }),
       /Cancelled "Auth"\. Its 1 waiting message went to the inbox as an idea\./);
-    let m = sim.manifest(wu);
+    const m = sim.manifest(wu);
     assert.deepStrictEqual(m.phases.discussion.items.auth, { status: 'cancelled', previous_status: 'in-progress' });
     assert.strictEqual(m.phases.experiment.items.auth.status, 'completed', 'the series settles over its abandoned record');
     assert.strictEqual(m.phases.experiment.items.auth.experiments.E1.reason, 'topic cancelled');
-    assert.strictEqual(m.phases.specification.items.grouping, undefined, 'the proposed grouping is discarded, never cancelled');
     assert.strictEqual(m.phases.discovery.items.auth.cancelled, true);
     assert.ok(!epicMenu(wu, detail()).keys.some((k) => k.action === 'continue_experiment'), 'no live record, no laboratory row');
     assert.deepStrictEqual(cancelledUnits(), ['discovery/auth']);
@@ -118,104 +111,6 @@ describe('pipeline simulation: epic-topics', () => {
     sim.run(['ledger', 'decide', `${wu}.discussion.auth`, '--answers', latency], null, JSON.stringify({ ...claudes, text: 'Under 200 ms.', why: 'The abandoned experiment left the budget as it stood.' }));
     decideTopic(sim, wu, 'auth');
 
-    // The Definition stage: roles specified and planned; billing specified,
-    // planned, and under implementation.
-    for (const topic of ['billing', 'roles']) {
-      discussed(sim, wu, topic);
-      sim.run(['topic', 'start', wu, 'specification', topic]);
-      sim.run(['manifest', 'set', `${wu}.specification.${topic}`, `sources.${topic}.status`, 'incorporated']);
-      sim.write(`.leeway/${wu}/specification/${topic}/specification.md`, `# Spec — ${topic}\n`);
-      sim.run(['topic', 'complete', wu, 'specification', topic]);
-      sim.run(['topic', 'start', wu, 'planning', topic]);
-      sim.run(['topic', 'complete', wu, 'planning', topic]);
-    }
-    sim.run(['build-order', 'sequence', wu, 'roles=1', 'billing=2']);
-    sim.run(['topic', 'start', wu, 'implementation', 'billing']);
-
-    // The locks: a started specification holds its source topic, code holds
-    // the specification. Both rows stay on the menu, keyless with the reason.
-    assert.deepStrictEqual(locked(), [
-      'discovery/billing: locked by specification "Billing" — cancel it first',
-      'discovery/roles: locked by specification "Roles" — cancel it first',
-      'specification/billing: implementation started — fix forward',
-    ]);
-    assert.deepStrictEqual(pickable(), ['discovery/auth', 'discovery/export', 'specification/roles']);
-    sim.refuses(['topic', 'cancel', wu, 'discovery', 'roles'], /refused while the specification "roles" sources its discussion — cancel the specification first/);
-    sim.refuses(['topic', 'cancel', wu, 'specification', 'billing'], /"billing" is locked — implementation has started/);
-    sim.refuses(['render', 'cancel-gate', `${wu}.specification.billing`], /is locked — implementation has started/);
-
-    // The specification unit's cancel takes its plan and its build order,
-    // frees the source, and flips the sequencing flag; the freed source then
-    // cancels with nothing to discard.
-    assert.match(sim.render(['cancel-gate', `${wu}.specification.roles`], { expect: 'content' }).replace(/\n\u00a0+/g, ' '),
-      /Cancelling \*\*Roles\*\* marks the specification and its plan cancelled and frees its source discussion \(Roles\) to be regrouped or cancelled; it can be reactivated later\./);
-    const specCut = sim.run(['topic', 'cancel', wu, 'specification', 'roles']);
-    assert.deepStrictEqual(specCut.cancelled, [
-      { phase: 'specification', previous_status: 'completed' },
-      { phase: 'planning', previous_status: 'completed' },
-    ]);
-    m = sim.manifest(wu);
-    assert.strictEqual(m.phases.specification.items.roles.previous_order, 1);
-    assert.strictEqual(m.phases.specification.items.roles.order, undefined);
-    assert.strictEqual(m.phases.planning.items.roles.status, 'cancelled');
-    assert.strictEqual(m.phases.discussion.items.roles.status, 'completed', 'the source discussion is untouched');
-    assert.ok(detail().unaccounted_discussions.includes('roles'), 'the freed source reads unaccounted again');
-    assert.strictEqual(detail().build_order_needs_sequencing, true);
-    assert.match(sim.render(['topic-receipt', `${wu}.specification.roles`, '--verb', 'cancel'], { expect: 'content' }), /Cancelled "Roles"\./);
-    // Its start refuses it in the red register, naming the reactivate.
-    assert.match(sim.render(['entry-gate', `${wu}.specification.roles`, '--own'], { expect: 'content' }),
-      /⚑ "Roles" is cancelled[\s\S]*> Reactivate it from the epic menu \(`e\/reactivate`\)\./);
-
-    // The cancelled key stays reserved: a grouping lands under a new name
-    // and takes the freed source; under the cancelled name it is refused
-    // with nothing written, and so is a delete of the cancelled item.
-    const manifestBytes = () => fs.readFileSync(path.join(sim.dir, '.leeway', wu, 'manifest.json'), 'utf8');
-    const groupingOps = (name, status) => sim.write(`.leeway/.cache/${wu}/specification/${name}-${status}-ops.json`,
-      [{ op: 'set', path: `${wu}.specification.${name}`, fields: { status, sources: { roles: { status: 'pending' } } } }]);
-    sim.run(['manifest', 'apply', wu, '--file', groupingOps('roles-v2', 'proposed')]);
-    assert.ok(!detail().unaccounted_discussions.includes('roles'), 'the new grouping accounts for the freed source');
-    const reserved = manifestBytes();
-    sim.refuses(['manifest', 'apply', wu, '--file', groupingOps('roles', 'proposed')],
-      /^specification item "roles" is cancelled — reactivate it instead \(engine topic reactivate cuts specification roles\)$/);
-    sim.refuses(['manifest', 'apply', wu, '--file', sim.write(`.leeway/.cache/${wu}/specification/drop-ops.json`,
-      [{ op: 'delete', path: `${wu}.specification`, field: 'items.roles' }])], /specification item "roles" is cancelled — reactivate it instead/);
-    sim.refuses(['manifest', 'delete', `${wu}.specification.roles`, 'previous_order'], /specification item "roles" is cancelled — reactivate it instead/);
-    assert.strictEqual(manifestBytes(), reserved, 'the refusals wrote nothing');
-
-    // The freed source cancels, taking the proposed grouping over it.
-    const freed = sim.run(['topic', 'cancel', wu, 'discovery', 'roles']);
-    assert.deepStrictEqual([freed.cancelled, freed.discarded], [[{ phase: 'discussion', previous_status: 'completed' }], ['roles-v2']]);
-    assert.strictEqual(sim.manifest(wu).phases.specification.items['roles-v2'], undefined);
-    assert.deepStrictEqual(cancelledUnits(), ['discovery/roles', 'specification/roles']);
-
-    // The specification cannot return over a cancelled source, nor over a
-    // source another started specification has taken since; the reactivate
-    // menu carries each hold on the row. Once both clear it returns with
-    // its plan and its build order, discarding the proposed grouping over
-    // its source.
-    const specLock = () => detail().cancelled.find((u) => u.stage === 'specification' && u.name === 'roles').locked;
-    sim.refuses(['topic', 'reactivate', wu, 'specification', 'roles'],
-      /^reactivating "roles" is refused while its source "roles" is cancelled — reactivate the topic first$/);
-    assert.strictEqual(specLock(), 'locked — its source "Roles" is cancelled; reactivate the topic first');
-    sim.run(['topic', 'reactivate', wu, 'discovery', 'roles']);
-    sim.run(['manifest', 'apply', wu, '--file', groupingOps('roles-v2', 'in-progress')]);
-    sim.refuses(['topic', 'reactivate', wu, 'specification', 'roles'],
-      /^reactivating "roles" is refused while the specification "roles-v2" sources "roles" — regroup the discussions from the menu \(s\/spec\)$/);
-    assert.strictEqual(specLock(), 'locked — the specification "Roles V2" now sources "Roles"; regroup the discussions from the menu (s/spec)');
-    sim.run(['topic', 'cancel', wu, 'specification', 'roles-v2']);
-    sim.run(['manifest', 'apply', wu, '--file', groupingOps('roles-v3', 'proposed')]);
-    assert.strictEqual(specLock(), undefined, 'a cancelled sibling and a proposed grouping hold nothing');
-    const specBack = sim.run(['topic', 'reactivate', wu, 'specification', 'roles']);
-    assert.deepStrictEqual(specBack.restored, [{ phase: 'specification', status: 'completed' }, { phase: 'planning', status: 'completed' }]);
-    assert.deepStrictEqual(specBack.discarded, ['roles-v3']);
-    assert.strictEqual(sim.manifest(wu).phases.specification.items['roles-v3'], undefined, 'the proposed grouping is gone, never cancelled');
-    assert.strictEqual(sim.manifest(wu).phases.specification.items.roles.order, 1);
-    assert.match(sim.render(['topic-receipt', `${wu}.specification.roles`, '--verb', 'reactivate'], { expect: 'content' }),
-      /Reactivated "Roles"\. Restored specification \[completed\] · planning \[completed\]\./);
-    sim.render(['entry-gate', `${wu}.specification.roles`, '--own'], { expect: 'empty' });
-    assert.deepStrictEqual(cancelledUnits(), ['specification/roles-v2']);
-    assert.strictEqual(detail().cancelled[0].locked, 'locked — the specification "Roles" now sources "Roles"; regroup the discussions from the menu (s/spec)');
-
     // A cancelled map row takes no message — the backstop for a peer closing
     // the target under a landing.
     sim.run(['topic', 'cancel', wu, 'discovery', 'export']);
@@ -223,28 +118,24 @@ describe('pipeline simulation: epic-topics', () => {
       'a cancelled topic\'s message goes to the inbox as an idea');
     sim.run(['topic', 'reactivate', wu, 'discovery', 'export']);
 
-    // A cancel that would take nothing refuses: an off-map topic whose only
-    // item is promoted, a specification carrying no status.
-    sim.run(['manifest', 'set', `${wu}.discussion.ghost`, 'status=promoted', 'promoted_to=elsewhere']);
-    sim.refuses(['topic', 'cancel', wu, 'discovery', 'ghost'], /^"ghost" has nothing to cancel — no live item under its name and no map row$/);
-    sim.run(['manifest', 'set', `${wu}.specification.blank`, 'sources.roles.status', 'pending']);
-    sim.refuses(['topic', 'cancel', wu, 'specification', 'blank'], /^specification "blank" has nothing to cancel — it carries no status$/);
-    sim.run(['manifest', 'delete', `${wu}.specification`, 'items.blank']);
 
     // A stash-less cancelled item returns to never-attempted.
     sim.run(['manifest', 'set', `${wu}.discussion.stale`, 'status', 'cancelled']);
-    assert.deepStrictEqual(cancelledUnits(), ['discovery/stale', 'specification/roles-v2']);
+    assert.deepStrictEqual(cancelledUnits(), ['discovery/stale']);
     const revived = sim.run(['topic', 'reactivate', wu, 'discovery', 'stale']);
     assert.deepStrictEqual(revived.restored, [{ phase: 'discussion', status: null }]);
     assert.deepStrictEqual(sim.manifest(wu).phases.discussion.items.stale, {});
+    // A cancel that would take nothing refuses: an off-map topic with no
+    // live item.
+    sim.refuses(['topic', 'cancel', wu, 'discovery', 'stale'], /^"stale" has nothing to cancel — no live item under its name and no map row$/);
     sim.run(['manifest', 'delete', `${wu}.discussion`, 'items.stale']);
 
     // There is no phase-level cancel and no cascade.
-    for (const phase of ['discussion', 'experiment', 'planning', 'implementation', 'review']) {
-      sim.refuses(['topic', 'cancel', wu, phase, 'billing'], /^cancel is topic-level per stage — discovery/);
-      sim.refuses(['topic', 'reactivate', wu, phase, 'billing'], /^reactivate is topic-level per stage — discovery/);
+    for (const phase of ['discussion', 'experiment', 'specification', 'planning', 'implementation', 'review']) {
+      sim.refuses(['topic', 'cancel', wu, phase, 'billing'], /^cancel is topic-level — discovery/);
+      sim.refuses(['topic', 'reactivate', wu, phase, 'billing'], /^reactivate is topic-level — discovery/);
     }
-    sim.refuses(['topic', 'cancel', wu, 'discovery', 'export', '--cascade'], /Usage: engine topic cancel <work-unit> <discovery\|specification> <topic>/);
+    sim.refuses(['topic', 'cancel', wu, 'discovery', 'export', '--cascade'], /Usage: engine topic cancel <work-unit> discovery <topic>/);
   });
 
   it('a discovery cancel from inside the conversation releases its own holds, and leaves a peer\'s standing', () => {
@@ -295,26 +186,6 @@ describe('pipeline simulation: epic-topics', () => {
     // terminal, so the commit releases the slot instead of re-taking it.
     peer.run(['commit', wu, '-m', `discussion(${wu}/beta): last words`, '--topic', 'discussion/beta']);
     assert.deepStrictEqual(sim.run(['presence', 'scan', wu]).sessions, []);
-  });
-
-  it('a specification cancel releases the calling session\'s specification and planning holds', () => {
-    const wu = 'cutsplan';
-    mappedEpic(sim, wu, ['gamma']);
-    sim.run(['topic', 'start', wu, 'specification', 'gamma']);
-    sim.write(`.leeway/${wu}/specification/gamma/specification.md`, '# Spec — gamma\n');
-    // A plan is born on a settled record alone, so the specification
-    // concludes before the plan opens beneath it.
-    sim.run(['topic', 'complete', wu, 'specification', 'gamma']);
-    sim.run(['topic', 'start', wu, 'planning', 'gamma']);
-    assert.strictEqual(presenceRow(sim.run(['presence', 'scan', wu]), 'planning', 'gamma').held, true);
-
-    const taken = sim.run(['topic', 'cancel', wu, 'specification', 'gamma']);
-    assert.deepStrictEqual(taken.cancelled, [
-      { phase: 'specification', previous_status: 'completed' },
-      { phase: 'planning', previous_status: 'in-progress' },
-    ]);
-    assert.deepStrictEqual(sim.run(['presence', 'scan', wu]).sessions, [],
-      'both units of the Definition stage release together');
   });
 
   it('a cancel from the epic menu — a session owning nothing on the unit — touches no row', () => {

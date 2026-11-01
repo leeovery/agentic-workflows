@@ -103,7 +103,7 @@ describe('workunit projections: status display', () => {
     assert.strictEqual(keys[0].label, 'Proceed to experiment');
   });
 
-  it('feature: neither the experiment phase nor the decided discussion is a revisit candidate', () => {
+  it('feature: neither the experiment phase, the decided discussion nor the concluded spec is a revisit candidate', () => {
     createManifest(dir, 'pay', {
       phases: {
         experiment: { items: { pay: { status: 'completed', experiments: { E1: { slug: 'x', status: 'concluded', verdict: 'held' } } } } },
@@ -113,8 +113,8 @@ describe('workunit projections: status display', () => {
       },
     });
     const { keys } = workUnitMenu('feature', unitOf(dir, 'feature', 'pay'));
-    assert.deepStrictEqual(keys.filter((k) => k.action === 'revisit_phase').map((k) => k.phase), ['specification'],
-      'a concluded verdict stands — a new spawn reopens the series — and a decided discussion reopens by a message');
+    assert.deepStrictEqual(keys.filter((k) => k.action === 'revisit_phase').map((k) => k.phase), [],
+      'a concluded verdict stands — a new spawn reopens the series — a decided discussion reopens by a message, and a concluded spec is never corrected');
   });
 
   it('feature: a decided discussion alone behind the next phase offers no revisit — a lone continue, no menu', () => {
@@ -153,34 +153,6 @@ describe('workunit projections: status display', () => {
     const menu = workUnitMenu('feature', unit);
     assert.strictEqual(menu.keys[0].route, '/leeway-specification-process feature auth-flow');
     assert.match(workUnitData('feature', unit, menu), /^reconcile_pending: specification \(discussion\)$/m);
-  });
-
-  it('feature: a completed specification staled with no flag cues the same way — one reading for the route and the display', () => {
-    createManifest(dir, 'auth-flow', {
-      phases: {
-        discussion: { items: { 'auth-flow': { status: 'in-progress' } } },
-        specification: { items: { 'auth-flow': { status: 'completed', sources: { 'auth-flow': { status: 'stale' } } } } },
-        planning: { items: { 'auth-flow': { status: 'completed' } } },
-      },
-    });
-    const unit = unitOf(dir, 'feature', 'auth-flow');
-    assert.match(workUnitStatus('feature', unit), /✓ Specification +\[completed · input moved\]/);
-    assert.match(workUnitStatus('feature', unit), /⚑ Specification input moved — reconcile at next entry\./,
-      'a staled row names no revised upstream, so the line takes the general voice');
-    assert.strictEqual(unit.next_phase, 'discussion', 'the earliest in-flight phase still owns the next action');
-    const menu = workUnitMenu('feature', unit);
-    assert.match(workUnitData('feature', unit, menu), /^reconcile_pending: specification \(true\)$/m);
-    // Re-incorporating the row settles the record: no cue, no ⚑, no row.
-    createManifest(dir, 'auth-flow', {
-      phases: {
-        discussion: { items: { 'auth-flow': { status: 'in-progress' } } },
-        specification: { items: { 'auth-flow': { status: 'completed', sources: { 'auth-flow': { status: 'incorporated' } } } } },
-        planning: { items: { 'auth-flow': { status: 'completed' } } },
-      },
-    });
-    const settled = unitOf(dir, 'feature', 'auth-flow');
-    assert.doesNotMatch(workUnitStatus('feature', settled), /input moved/);
-    assert.match(workUnitData('feature', settled, workUnitMenu('feature', settled)), /^reconcile_pending: \(none\)$/m);
   });
 
   it('bugfix: completed investigation and a ready next phase', () => {
@@ -320,27 +292,28 @@ describe('workunit projections: menu', () => {
       phases: {
         discussion: { items: { 'auth-flow': { status: 'completed' } } },
         specification: { items: { 'auth-flow': { status: 'completed' } } },
-        planning: { items: { 'auth-flow': { status: 'in-progress' } } },
+        planning: { items: { 'auth-flow': { status: 'completed' } } },
+        implementation: { items: { 'auth-flow': { status: 'in-progress' } } },
       },
     });
     const menu = workUnitMenu('feature', unitOf(dir, 'feature', 'auth-flow'));
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
-      'Continuing "Auth Flow" — *planning (in-progress)*.',
+      'Continuing "Auth Flow" — *implementation (in-progress)*.',
       '',
       '**`◆ Proceed?`**',
       '',
-      '**`y/yes`**     → Proceed to planning',
+      '**`y/yes`**     → Proceed to implementation',
       '**`r/revisit`** → Revisit an earlier phase',
       '**`b/back`**    → Return to the start menu',
     ].join('\n'));
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.topic, k.phase || null, k.route]),
       [
-        ['y', 'continue', 'auth-flow', null, '/leeway-planning-process feature auth-flow'],
+        ['y', 'continue', 'auth-flow', null, '/leeway-implementation-process feature auth-flow'],
         ['r', 'revisit', 'auth-flow', null, null],
         ['b', 'back', 'auth-flow', null, null],
-        ['1', 'revisit_phase', 'auth-flow', 'specification', '/leeway-specification-process feature auth-flow'],
+        ['1', 'revisit_phase', 'auth-flow', 'planning', '/leeway-planning-process feature auth-flow'],
       ]
     );
   });
@@ -425,7 +398,7 @@ describe('workunit projections: menu', () => {
     );
   });
 
-  it('feature: finalising unit gates on finalise, with every completed phase but the decided discussion revisitable', () => {
+  it('feature: finalising unit gates on finalise, with every completed phase but the decided discussion and the concluded spec revisitable', () => {
     createManifest(dir, 'auth-flow', {
       phases: {
         discussion: { items: { 'auth-flow': { status: 'completed' } } },
@@ -452,10 +425,9 @@ describe('workunit projections: menu', () => {
         ['y', 'finalise', null, null],
         ['r', 'revisit', null, null],
         ['b', 'back', null, null],
-        ['1', 'revisit_phase', 'specification', '/leeway-specification-process feature auth-flow'],
-        ['2', 'revisit_phase', 'planning', '/leeway-planning-process feature auth-flow'],
-        ['3', 'revisit_phase', 'implementation', '/leeway-implementation-process feature auth-flow'],
-        ['4', 'revisit_phase', 'review', '/leeway-review-process feature auth-flow'],
+        ['1', 'revisit_phase', 'planning', '/leeway-planning-process feature auth-flow'],
+        ['2', 'revisit_phase', 'implementation', '/leeway-implementation-process feature auth-flow'],
+        ['3', 'revisit_phase', 'review', '/leeway-review-process feature auth-flow'],
       ]
     );
   });
@@ -481,7 +453,7 @@ describe('workunit projections: menu', () => {
     assert.strictEqual(menu.rendered, '');
   });
 
-  it('cross-cutting: the decided discussion is no revisit — ready for specification, a lone continue; finalising, the specification alone', () => {
+  it('cross-cutting: neither the decided discussion nor the spec is a revisit — ready for specification, a lone continue; finalising, the finalise and the way back alone', () => {
     createManifest(dir, 'caching', {
       work_type: 'cross-cutting',
       phases: {
@@ -503,12 +475,7 @@ describe('workunit projections: menu', () => {
     const finalising = workUnitMenu('cross-cutting', unitOf(dir, 'cross-cutting', 'caching'));
     assert.deepStrictEqual(
       finalising.keys.map((k) => [k.key, k.action, k.phase || null, k.route]),
-      [
-        ['y', 'finalise', null, null],
-        ['r', 'revisit', null, null],
-        ['b', 'back', null, null],
-        ['1', 'revisit_phase', 'specification', '/leeway-specification-process cross-cutting caching'],
-      ]
+      [['y', 'finalise', null, null], ['b', 'back', null, null]],
     );
   });
 });
@@ -536,16 +503,11 @@ describe('workunit projections: a promoted unit routes to its moved discussions 
     return unitOf(dir, 'cross-cutting', 'fees');
   }
 
-  it('offers no revisit into a moved discussion — the specification alone, by the unit', () => {
+  it('offers no revisit into a moved discussion, nor into the spec', () => {
     const menu = workUnitMenu('cross-cutting', promoted());
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.topic, k.phase || null, k.route]),
-      [
-        ['y', 'finalise', 'fees', null, null],
-        ['r', 'revisit', 'fees', null, null],
-        ['b', 'back', 'fees', null, null],
-        ['1', 'revisit_phase', 'fees', 'specification', '/leeway-specification-process cross-cutting fees'],
-      ]
+      [['y', 'finalise', 'fees', null, null], ['b', 'back', 'fees', null, null]],
     );
   });
 
@@ -584,10 +546,8 @@ describe('workunit projections: a promoted unit routes to its moved discussions 
       },
     });
     const unit = unitOf(dir, 'cross-cutting', 'naming');
-    assert.deepStrictEqual(unit.revisit, ['specification']);
-    assert.deepStrictEqual(workUnitMenu('cross-cutting', unit).keys.filter((k) => k.route).map((k) => k.route), [
-      '/leeway-specification-process cross-cutting naming',
-    ]);
+    assert.deepStrictEqual(unit.revisit, []);
+    assert.deepStrictEqual(workUnitMenu('cross-cutting', unit).keys.map((k) => [k.key, k.action, k.topic]), [['y', 'finalise', 'naming'], ['b', 'back', 'naming']]);
   });
 });
 
@@ -601,7 +561,8 @@ describe('workunit projections: data body', () => {
       phases: {
         discussion: { items: { 'auth-flow': { status: 'completed' } } },
         specification: { items: { 'auth-flow': { status: 'completed' } } },
-        planning: { items: { 'auth-flow': { status: 'in-progress' } } },
+        planning: { items: { 'auth-flow': { status: 'completed' } } },
+        implementation: { items: { 'auth-flow': { status: 'in-progress' } } },
       },
       seeds: [{ path: 'seeds/2026-03-18-login-timeout.md', source: 'inbox:bug' }],
     });
@@ -610,20 +571,20 @@ describe('workunit projections: data body', () => {
     assert.strictEqual(workUnitData('feature', unit, menu), [
       'work_unit: auth-flow',
       'work_type: feature',
-      'next_phase: planning',
-      'phase_label: planning (in-progress)',
+      'next_phase: implementation',
+      'phase_label: implementation (in-progress)',
       'finalising: false',
-      'completed_phases: discussion, specification',
+      'completed_phases: discussion, specification, planning',
       'reconcile_pending: (none)',
       'mail_waiting: (none)',
       'revisit_available: true',
       'seeds_count: 1',
       'imports_count: 0',
       'ACTIONS (key  word  action  topic  → route):',
-      '  y  yes  continue  auth-flow  → /leeway-planning-process feature auth-flow',
+      '  y  yes  continue  auth-flow  → /leeway-implementation-process feature auth-flow',
       '  r  revisit  revisit  auth-flow  → (internal)',
       '  b  back  back  auth-flow  → (internal)',
-      '  1  —  revisit_phase  auth-flow  → /leeway-specification-process feature auth-flow',
+      '  1  —  revisit_phase  auth-flow  → /leeway-planning-process feature auth-flow',
     ].join('\n'));
   });
 
@@ -694,21 +655,22 @@ describe('workunit projections: revisit phases section', () => {
       phases: {
         discussion: { items: { 'auth-flow': { status: 'completed' } } },
         specification: { items: { 'auth-flow': { status: 'completed' } } },
-        planning: { items: { 'auth-flow': { status: 'in-progress' } } },
+        planning: { items: { 'auth-flow': { status: 'completed' } } },
+        implementation: { items: { 'auth-flow': { status: 'in-progress' } } },
       },
     });
     const unit = unitOf(dir, 'feature', 'auth-flow');
-    assert.deepStrictEqual(unit.revisit, ['specification']);
+    assert.deepStrictEqual(unit.revisit, ['planning']);
   });
 
   it('pins the labelled section byte-for-byte', () => {
-    assert.strictEqual(revisitPhasesSection(['specification', 'planning']), [
+    assert.strictEqual(revisitPhasesSection(['planning', 'implementation']), [
       "=== MENU: revisit phases (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       '· · · · · · · · · · · ·',
       '**`◆ Which phase would you like to revisit?`**',
       '',
-      '**`1`**      → Specification — *completed*',
-      '**`2`**      → Planning — *completed*',
+      '**`1`**      → Planning — *completed*',
+      '**`2`**      → Implementation — *completed*',
       '**`b/back`** → Return to the previous menu',
       '',
     ].join('\n'));

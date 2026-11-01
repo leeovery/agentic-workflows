@@ -5,8 +5,9 @@ const engine = require('../../leeway-engine/scripts/lib.cjs');
 const { TERMINAL_STATUSES } = require('../../leeway-engine/scripts/kernel/manifest-schema.cjs');
 const { loadManifest, fileExists, listFiles, listDirs } = engine.reads;
 const { stateRoot } = engine.state;
-const { phaseStatus, phaseItems, computeNextPhase, inputMoved, movedFrom } = engine.derivations;
+const { phaseStatus, phaseItems, computeNextPhase, movedFrom } = engine.derivations;
 const { seriesDir } = require('../../leeway-engine/scripts/domain/experiment-paths.cjs');
+const { specPath } = require('../../leeway-engine/scripts/domain/spec-sections.cjs');
 
 const ALL_PHASES = engine.schema.VALID_PHASES.filter((p) => p !== 'discovery');
 
@@ -22,7 +23,7 @@ function phaseFileExists(cwd, workUnit, phase, manifest) {
     case 'discussion':     return anyTopic(cwd, workUnit, (topic) => fileExists(path.join(stateRoot(cwd), workUnit, 'topics', topic, 'log.md')));
     case 'investigation':  return listFiles(dir, '.md').length > 0;
     case 'scoping':        return phaseStatus(manifest, phase) !== null;
-    case 'specification':  return listDirs(dir).some(d => fileExists(path.join(dir, d, 'specification.md')));
+    case 'specification':  return fileExists(specPath(cwd, workUnit));
     case 'planning':       return phaseStatus(manifest, phase) !== null;
     case 'implementation': return phaseStatus(manifest, phase) !== null;
     default: return false;
@@ -51,7 +52,7 @@ function discover(cwd, workUnit) {
   for (const phase of ALL_PHASES) {
     for (const item of phaseItems(manifest, phase)) {
       if (!TERMINAL_STATUSES.includes(item.status)
-          && (item.reconcile_needed !== undefined || inputMoved(manifest, phase, item))) {
+          && item.reconcile_needed !== undefined) {
         reconcile_pending.push(`${phase}/${item.name} (${movedFrom(item)})`);
       }
     }

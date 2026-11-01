@@ -450,51 +450,14 @@ describe('render finding', () => {
     assert.ok(!out.includes('MENU: finding'));
   });
 
-  it('a settled finding at the specification is display-only — its batch screen is the gate', () => {
-    for (const mode of ['gated', 'auto']) {
-      writeManifest(dir, 'pay', { phases: { specification: { items: { portal: { status: 'in-progress', finding_gate_mode: mode } } } } });
-      const file = writePayload(dir, `sb-${mode}.json`, {
-        ...settled,
-        diff: { current: ['old'], proposed: ['new'] },
-      });
-      const out = renderSurface(dir, 'finding', { dotpath: 'pay.specification.portal', file });
-      assert.ok(out.includes('=== DISPLAY: finding (emit verbatim as markdown (not a code block)) ==='), `${mode}: the expansion still shows the report`);
-      assert.ok(out.includes('=== DISPLAY: diff ('), `${mode}: the diff rides along — the expansion is problem, call, and change`);
-      assert.ok(!out.includes('DISPLAY: finding wording'), `${mode}: a diff finding has no wording to show`);
-      assert.ok(!out.includes('MENU: finding'), `${mode}: the batch already asked`);
-      assert.ok(!out.includes('finding auto-approved'), `${mode}: the batch already said what landed`);
-    }
-  });
-
-  it('a settled finding at the specification shows its whole wording — the expansion is the ask', () => {
-    writeManifest(dir, 'pay', { phases: { specification: { items: { portal: { status: 'in-progress', finding_gate_mode: 'gated' } } } } });
-    const file = writePayload(dir, 'sw.json', {
-      ...settled,
-      content: { label: 'Proposed Addition', lines: ['## Delivery', '', 'Retries are bounded at four attempts.'] },
-    });
-    const out = renderSurface(dir, 'finding', { dotpath: 'pay.specification.portal', file });
-    assert.ok(out.includes('=== DISPLAY: finding (emit verbatim as markdown (not a code block)) ==='), 'the report leads');
-    assert.ok(out.endsWith('=== DISPLAY: finding wording (emit verbatim as markdown (not a code block)) ===\n**Proposed Addition**\n\n## Delivery\n\nRetries are bounded at four attempts.\n'),
-      `the wording closes the expansion: ${out}`);
-    assert.ok(!out.includes('MENU: finding'), 'the batch screen is the gate — the expansion asks nothing');
-    assert.ok(!/`v\/view`/.test(out), 'there is no row left to ask the wording with');
-  });
-
-  it('--view full at the specification returns the wording alone', () => {
-    writeManifest(dir, 'pay', { phases: { specification: { items: { portal: { status: 'in-progress', finding_gate_mode: 'gated' } } } } });
-    const file = writePayload(dir, 'sv.json', { ...settled, content: { label: 'Proposed Addition', lines: ['Retries are bounded at four attempts.'] } });
-    const out = renderSurface(dir, 'finding', { dotpath: 'pay.specification.portal', file, view: 'full' });
-    assert.strictEqual(out, '=== DISPLAY: finding wording (emit verbatim as markdown (not a code block)) ===\n**Proposed Addition**\n\nRetries are bounded at four attempts.\n');
-  });
-
   it('a choice stops over auto, numbers its options recommended-first, and offers no a/auto row', () => {
-    writeManifest(dir, 'pay', { phases: { specification: { items: { portal: { status: 'in-progress', finding_gate_mode: 'auto' } } } } });
+    writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress', finding_gate_mode: 'auto' } } } } });
     const file = writePayload(dir, 'f.json', {
       ...base,
       move: 'choice',
       options: [{ summary: 'Hold the queue slot and keep retrying' }, { summary: 'Bound retries at four, then dead-letter', recommended: true }],
     });
-    const out = renderSurface(dir, 'finding', { dotpath: 'pay.specification.portal', file });
+    const out = renderSurface(dir, 'finding', { dotpath: 'pay.planning.portal', file });
     assert.ok(out.includes('=== MENU: finding choice'), 'auto never decides what only the user can');
     assert.ok(!out.includes('finding auto-approved'));
     assert.ok(unwrap(out).includes('**Auto is on — stopping anyway:** this is one of the calls auto never makes for you.'),
@@ -539,12 +502,9 @@ describe('render finding', () => {
       [{ ...settled, total: 0 }, /"total" must be an integer/],
       [{ ...settled, meta: [['x']] }, /"meta" must be an array of \[label, value\] pairs/],
       [{ ...settled, problem: ' ' }, /"problem" must be a non-empty string/],
-      [{ ...base, move: 'route' }, /a "route" finding goes to resolve-source-incoherence and never renders at the gate/],
       [{ ...base }, /"move" must be one of settled\/choice/],
       [{ ...base, move: 'apply' }, /"move" must be one of settled\/choice/],
       [{ ...base, move: 'decide' }, /"move" must be one of settled\/choice/],
-      [{ ...settled, category: 'source-defect' }, /"source-defect" findings route via resolve-source-incoherence and never render at the gate/],
-      [{ ...settled, category: 'unsourced-decision' }, /"unsourced-decision" findings route via resolve-source-incoherence/],
       [{ ...settled, category: 'severity' }, /unknown category "severity"/],
       [{ ...base, move: 'settled' }, /a "settled" finding must carry a "proposal"/],
       [{ ...settled, options: [{ summary: 'a' }, { summary: 'b' }] }, /a "settled" finding carries no "options"/],
@@ -884,229 +844,6 @@ describe('render proposed-task', () => {
       /"decision" must be an object carrying "question" and "options"/);
   });
 
-  it('incoherence-gate conflict: payload-driven display then the menu, recommended side first, byte-exact', () => {
-    const file = writePayload(dir, 'ig.json', {
-      doc: 'synonym-handling',
-      lane: 'review',
-      title: 'Expansion freshness rests on a stream that will not be built',
-      context: 'The two decisions cannot both be implemented.',
-      quotes: [
-        { doc: 'behavioural-ranking', section: 'Signal Ingestion · Decision', quote: 'No live signal stream will be built.' },
-        { doc: 'synonym-handling', section: 'Expansion Source · Decision', quote: 'Reading the live click-signal stream at query time.' },
-      ],
-      stakes: 'A spec extracting both sides describes a panel the record cannot produce.',
-      sides: [
-        { summary: 'Live click-signal stream at query time' },
-        { summary: 'Batch-derived expansion, daily refresh', recommended: true },
-      ],
-    });
-    const out = renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file, variant: 'conflict' });
-    assert.strictEqual(out, [
-      '=== DISPLAY: incoherence conflict (emit verbatim as markdown (not a code block)) ===',
-      '**Conflict — Expansion freshness rests on a stream that will not be built**',
-      '',
-      '- **behavioural-ranking · Signal Ingestion · Decision**: "No live signal stream will be built."',
-      '- **synonym-handling · Expansion Source · Decision**: "Reading the live click-signal stream at query time."',
-      '',
-      '**Details**: The two decisions cannot both be implemented.',
-      '',
-      'A spec extracting both sides describes a panel the record cannot produce.',
-      '',
-      "=== MENU: incoherence conflict (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      '· · · · · · · · · · · ·',
-      '**`◆ Which decision stands?`**',
-      '',
-      '**`1`**       → Batch-derived expansion, daily refresh (recommended)',
-      '**`2`**       → Live click-signal stream at query time',
-      "**Comment** → Tell me what you're thinking; we'll work it through",
-      '',
-    ].join('\n'));
-  });
-
-  it('incoherence-gate gap-route: the raise plus its acknowledgement gate, byte-exact; held-doc keeps its menu', () => {
-    const file = writePayload(dir, 'ig2.json', {
-      lane: 'review',
-      doc: 'synonym-handling',
-      title: 'Ranking interaction is undecided',
-      context: 'Neither source decides how expanded matches rank.',
-      quotes: [{ doc: 'behavioural-ranking', section: 'Scoring · Decision', quote: 'Score blending is out of scope.' }],
-      stakes: 'The ranking chapter cannot be written until this is decided.',
-    });
-    const gap = renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file, variant: 'gap-route' });
-    assert.strictEqual(gap, [
-      '=== DISPLAY: incoherence gap (emit verbatim as markdown (not a code block)) ===',
-      '**Gap — Ranking interaction is undecided**',
-      '',
-      '- **behavioural-ranking · Scoring · Decision**: "Score blending is out of scope."',
-      '',
-      '**Details**: Neither source decides how expanded matches rank.',
-      '',
-      'The ranking chapter cannot be written until this is decided.',
-      '',
-      "=== MENU: incoherence gap (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      '· · · · · · · · · · · ·',
-      'The gap needs the room. Reopening "synonym-handling" with it pauses this specification until the answer lands; the map offers two other homes.',
-      '',
-      '**`◆ Reopen it?`**',
-      '',
-      '**`y/yes`**     → Reopen "synonym-handling" with the gap and pause here',
-      '**`t/topic`**   → Open a new topic on the map for it — this',
-      `${NB(12)}specification waits for it to conclude`,
-      "**`r/roadmap`** → Park it on the roadmap — outside this specification's",
-      `${NB(12)}scope`,
-      "**Comment**   → Tell me what you're thinking before it moves",
-      '',
-    ].join('\n'));
-    const docOnly = writePayload(dir, 'ig2b.json', { doc: 'synonym-handling', lane: 'review' });
-    const held = renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: docOnly, variant: 'held-doc' });
-    assert.ok(held.includes('MENU: incoherence held doc'));
-    assert.ok(held.includes('**`◆ How do you want to continue?`**'));
-    assert.ok(/\*\*`n\/next`\*\* +→ Send the resolution to its mailbox and carry on here/.test(unwrap(held)), held);
-    assert.ok(/\*\*`s\/stop`\*\* +→ Stop here/.test(held));
-    assert.ok(unwrap(held).includes('"synonym-handling" is open in another session, so the fix belongs there; this topic waits for it.'),
-      `no holder found at render time — the gate names no age: ${held}`);
-  });
-
-  it('incoherence-gate gap-route: the map destinations are the epic\'s — a linear work unit keeps the reopen alone', () => {
-    writeManifest(dir, 'solo', {
-      work_type: 'feature',
-      phases: { implementation: { items: { solo: { status: 'in-progress' } } } },
-    });
-    const file = writePayload(dir, 'ig3.json', { lane: 'review', doc: 'solo', title: 't', context: 'c' });
-    const linear = unwrap(renderSurface(dir, 'incoherence-gate', { dotpath: 'solo.implementation.solo', file, variant: 'gap-route' }));
-    assert.ok(linear.includes('Routing this to "solo" — it reopens with the gap, and this specification pauses until the answer lands.'),
-      'one home is a statement, not a fork');
-    assert.ok(/\*\*`◆ Proceed\?`\*\*/.test(linear));
-    assert.ok(/\*\*`y\/yes`\*\* +→ Land the gap and pause here/.test(linear));
-    assert.ok(!linear.includes('`t/topic`'), 'a feature has no map to open a topic on');
-    assert.ok(!linear.includes('`r/roadmap`'), 'the park is the map\'s neighbour, offered where the map is');
-    const epic = unwrap(renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file, variant: 'gap-route' }));
-    assert.ok(epic.includes('The gap needs the room. Reopening "solo" with it pauses this specification until the answer lands; the map offers two other homes.'),
-      'three homes make it a fork — and the reopen names its cost');
-    assert.ok(/\*\*`◆ Reopen it\?`\*\*/.test(epic));
-    assert.ok(epic.includes('**`y/yes`**     → Reopen "solo" with the gap and pause here'));
-    assert.ok(epic.includes('**`t/topic`**   → Open a new topic on the map for it — this specification waits for it to conclude'));
-    assert.ok(epic.includes('**`r/roadmap`** → Park it on the roadmap — outside this specification\'s scope'));
-  });
-
-  it('incoherence-gate held-doc names the holder\'s last-active age, however long idle', () => {
-    const peer = path.join(dir, '.leeway', '.cache', 'pay', 'discussion', 'synonym-handling', 'presence');
-    fs.mkdirSync(path.dirname(peer), { recursive: true });
-    fs.writeFileSync(peer, JSON.stringify({ pid: 1, pid_start: null, session_id: 'peer' }) + '\n');
-    const idle = new Date(Date.now() - 3 * 3600 * 1000);
-    fs.utimesSync(peer, idle, idle);
-    const file = writePayload(dir, 'ig2c.json', { doc: 'synonym-handling', lane: 'review' });
-    const held = renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file, variant: 'held-doc' });
-    assert.ok(unwrap(held).includes('"synonym-handling" is open in another session — last active 3h ago — so the fix belongs there; this topic waits for it.'), held);
-  });
-
-  it('the incoherence stops announce over their own lane\'s auto — and stay silent over the other lane\'s', () => {
-    writeManifest(dir, 'pay', { phases: { specification: { items: { portal: {
-      status: 'in-progress', finding_gate_mode: 'auto', construction_gate_mode: 'gated',
-    } } } } });
-    const cited = [{ doc: 'd', section: 's', quote: 'q' }];
-    const conflict = writePayload(dir, 'al1.json', { doc: 'x', lane: 'review', title: 't', context: 'c', quotes: cited, sides: [{ summary: 'a' }, { summary: 'b' }] });
-    const out = renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.specification.portal', file: conflict, variant: 'conflict' });
-    assert.ok(unwrap(out).includes('**Auto is on — stopping anyway:** this is one of the calls auto never makes for you.'));
-    // The same stop called from the construction lane is not overriding anything.
-    const conflictC = writePayload(dir, 'al2.json', { doc: 'x', lane: 'construction', title: 't', context: 'c', quotes: cited, sides: [{ summary: 'a' }, { summary: 'b' }] });
-    const outC = renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.specification.portal', file: conflictC, variant: 'conflict' });
-    assert.ok(!outC.includes('Auto is on'), 'a construction-lane stop does not announce the findings walk\'s auto');
-    const gap = writePayload(dir, 'al3.json', { doc: 'x', lane: 'review', title: 't', context: 'c' });
-    assert.ok(unwrap(renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.specification.portal', file: gap, variant: 'gap-route' })).includes('Auto is on — stopping anyway'));
-    const held = writePayload(dir, 'al4.json', { doc: 'x', lane: 'review' });
-    assert.ok(unwrap(renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.specification.portal', file: held, variant: 'held-doc' })).includes('Auto is on — stopping anyway'));
-  });
-
-  it('resurface-gate announces over construction auto only — it is construction-lane machinery', () => {
-    writeManifest(dir, 'pay', { phases: { specification: { items: { portal: {
-      status: 'in-progress', finding_gate_mode: 'auto', construction_gate_mode: 'gated',
-    } } } } });
-    const payload = { section: 'S', diff: { current: ['old'], proposed: ['new'] } };
-    const quiet = renderSurface(dir, 'resurface-gate', { dotpath: 'pay.specification.portal', file: writePayload(dir, 'rs1.json', payload) });
-    assert.ok(!quiet.includes('Auto is on'), 'findings auto is not resurface-gate\'s lane');
-    writeManifest(dir, 'pay', { phases: { specification: { items: { portal: {
-      status: 'in-progress', finding_gate_mode: 'gated', construction_gate_mode: 'auto',
-    } } } } });
-    const loud = renderSurface(dir, 'resurface-gate', { dotpath: 'pay.specification.portal', file: writePayload(dir, 'rs2.json', payload) });
-    assert.ok(unwrap(loud).includes('**Auto is on — stopping anyway:** this is one of the calls auto never makes for you.'));
-  });
-
-  it('a payload without a legal lane is refused by name', () => {
-    const cited = [{ doc: 'd', section: 's', quote: 'q' }];
-    const badLane = writePayload(dir, 'al5.json', { doc: 'x', lane: 'planning', title: 't', context: 'c', quotes: cited, sides: [{ summary: 'a' }, { summary: 'b' }] });
-    assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: badLane, variant: 'conflict' }),
-      /"lane" must be "construction" or "review"/);
-    const noLane = writePayload(dir, 'al6.json', { doc: 'x', title: 't', context: 'c', quotes: cited, sides: [{ summary: 'a' }, { summary: 'b' }] });
-    assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: noLane, variant: 'conflict' }),
-      /"lane" must be "construction" or "review"/);
-  });
-
-  it('a conflict must quote the documents it collides — composed sides are refused', () => {
-    const noQuotes = writePayload(dir, 'igq.json', { doc: 'x', lane: 'review', title: 't', context: 'c', sides: [{ summary: 'a' }, { summary: 'b' }] });
-    assert.throws(
-      () => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: noQuotes, variant: 'conflict' }),
-      /a conflict must quote the sides it collides — sides you would compose yourself are not documented, and belong in a conversation, not this gate/,
-    );
-    const empty = writePayload(dir, 'igq2.json', { doc: 'x', lane: 'review', title: 't', context: 'c', quotes: [], sides: [{ summary: 'a' }, { summary: 'b' }] });
-    assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: empty, variant: 'conflict' }), /"quotes" must be a non-empty array when present/);
-    // gap-route keeps quotes optional: a gap has no collision to cite.
-    const gap = writePayload(dir, 'igq3.json', { doc: 'x', lane: 'review', title: 't', context: 'c' });
-    assert.ok(renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: gap, variant: 'gap-route' }).includes('MENU: incoherence gap'));
-  });
-
-  it('incoherence-gate validates loudly: variant, doc, sides floor, single recommended', () => {
-    const cited = [{ doc: 'd', section: 's', quote: 'q' }];
-    const file = writePayload(dir, 'ig3.json', { doc: 'x', lane: 'review', title: 't', context: 'c', quotes: cited, sides: [{ summary: 'a' }, { summary: 'b' }] });
-    assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file }), /--variant must be/);
-    const noDoc = writePayload(dir, 'ig4.json', { lane: 'review', title: 't', context: 'c', quotes: cited, sides: [{ summary: 'a' }, { summary: 'b' }] });
-    assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: noDoc, variant: 'conflict' }), /"doc" must be a non-empty string/);
-    const oneSide = writePayload(dir, 'ig5.json', { doc: 'x', lane: 'review', title: 't', context: 'c', quotes: cited, sides: [{ summary: 'a' }] });
-    assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: oneSide, variant: 'conflict' }), /at least 2 entries/);
-    const twoRec = writePayload(dir, 'ig6.json', { doc: 'x', lane: 'review', title: 't', context: 'c', quotes: cited, sides: [{ summary: 'a', recommended: true }, { summary: 'b', recommended: true }] });
-    assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: twoRec, variant: 'conflict' }), /at most one side/);
-    const nlSide = writePayload(dir, 'ig6b.json', { doc: 'x', lane: 'review', title: 't', context: 'c', quotes: cited, sides: [{ summary: 'a' }, { summary: 'b\nfake row' }] });
-    assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: nlSide, variant: 'conflict' }), /a side is one menu row — sides\[1\]\.summary must be a single line/);
-    const noTitle = writePayload(dir, 'ig7.json', { doc: 'x', lane: 'review', context: 'c', sides: [{ summary: 'a' }, { summary: 'b' }] });
-    assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: noTitle, variant: 'gap-route' }), /"title" must be a non-empty string/);
-    const badQuote = writePayload(dir, 'ig8.json', { doc: 'x', lane: 'review', title: 't', context: 'c', quotes: [{ doc: 'a', section: 's' }] });
-    assert.throws(() => renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: badQuote, variant: 'gap-route' }), /quotes\[0\] must carry doc, section, and quote/);
-  });
-
-  it('resurface-gate: header, diff fence, and the always-gated menu; --view full swaps the body and drops the view option', () => {
-    const file = writePayload(dir, 'rs.json', {
-      section: 'Expansion Source',
-      diff: { context_above: ['ctx above'], current: ['old line'], proposed: ['new line'], context_below: ['ctx below'] },
-      full: ['Full updated section body'],
-    });
-    const out = renderSurface(dir, 'resurface-gate', { dotpath: 'pay.implementation.portal', file });
-    assert.ok(out.includes('=== DISPLAY: resurfacing (emit verbatim as markdown (not a code block)) ===\n**Resurfacing: Expansion Source**'));
-    assert.ok(out.includes('=== DISPLAY: resurfacing diff (emit verbatim as a diff code block (```diff fence)) ===\n ctx above\n-old line\n+new line\n ctx below'));
-    assert.ok(out.includes('**`◆ Record this to the specification verbatim?`**'));
-    assert.ok(/\*\*`v\/view full`\*\* +→ Show the full updated section/.test(out));
-    const full = renderSurface(dir, 'resurface-gate', { dotpath: 'pay.implementation.portal', file, view: 'full' });
-    assert.ok(full.includes('**Resurfacing: Expansion Source** — full updated section\n\nFull updated section body'));
-    assert.ok(!full.includes('view full'), 'the full view drops the view option');
-    const noDiff = writePayload(dir, 'rs2.json', { section: 'X' });
-    assert.throws(() => renderSurface(dir, 'resurface-gate', { dotpath: 'pay.implementation.portal', file: noDiff }), /"diff" is required/);
-    const emptyDiff = writePayload(dir, 'rs3.json', { section: 'X', diff: { current: [], proposed: [] } });
-    assert.throws(() => renderSurface(dir, 'resurface-gate', { dotpath: 'pay.implementation.portal', file: emptyDiff }), /at least one current\/proposed line/);
-  });
-
-  it('construction-gate: reads the manifest gate mode — menu when gated, announcement when auto', () => {
-    const gated = renderSurface(dir, 'construction-gate', { dotpath: 'pay.implementation.portal' });
-    assert.ok(gated.includes('MENU: construction gate'));
-    assert.ok(gated.includes('**`◆ Record this to the specification verbatim?`**'));
-    assert.ok(/\*\*`a\/auto`\*\* +→ Approve this and all remaining topics automatically/.test(unwrap(gated)));
-    const m = JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'pay', 'manifest.json'), 'utf8'));
-    m.phases.implementation.items.portal.construction_gate_mode = 'auto';
-    fs.writeFileSync(path.join(dir, '.leeway', 'pay', 'manifest.json'), JSON.stringify(m, null, 2));
-    const auto = renderSurface(dir, 'construction-gate', { dotpath: 'pay.implementation.portal' });
-    assert.ok(auto.includes('DISPLAY: construction auto-approved'));
-    assert.ok(auto.includes('Portal — auto-approved. Recording to the specification.'));
-    assert.ok(!auto.includes('MENU:'));
-  });
-
   it('renders the ad hoc shape: no severity/sources, placement lines present', () => {
     const adhoc = {
       current: 1, total: 1, title: 'Fix login redirect',
@@ -1369,14 +1106,6 @@ describe('review fixes — gap coverage', () => {
     assert.ok(out.includes('=== DISPLAY: diff ('));
     assert.ok(!/frame/.test(out), 'no frame sections survive the D8 retirement');
     assert.ok(out.includes('DISPLAY: finding auto-approved'));
-    assert.ok(!out.includes('MENU: finding gate'));
-  });
-
-  it('finding diff × a batched address renders the fence and stops there', () => {
-    const file = writePayload(dir, 'f.json', { ...base, diff: { current: [], proposed: ['new line'] } });
-    const out = renderSurface(dir, 'finding', { dotpath: 'pay.specification.portal', file });
-    assert.ok(out.includes('=== DISPLAY: diff ('));
-    assert.ok(!out.includes('DISPLAY: finding auto-approved'));
     assert.ok(!out.includes('MENU: finding gate'));
   });
 

@@ -15,8 +15,8 @@
 // their commit takes the topic's log.
 //
 // Layer: verb. World, built once and copied: an epic, `fumi`, its discussions
-// of `licence` and `onboarding` under way, a specification of `licence` under
-// way, and a roadmap with two horizons; and a feature, `solo`. Each test's
+// of `licence` and `onboarding` under way, and a roadmap with two horizons;
+// and a feature, `solo`. Each test's
 // conversation has its own system config.
 // ---------------------------------------------------------------------------
 
@@ -43,7 +43,6 @@ const world = fixtureFrom('topic-leave-', (dir) => {
     phases: {
       discovery: { items: { licence: row(1), onboarding: row(2) } },
       discussion: { items: { licence: { status: 'in-progress' }, onboarding: { status: 'in-progress' } } },
-      specification: { items: { pricing: { status: 'in-progress', sources: {} } } },
     },
   });
   createManifest(dir, SOLO, { phases: { discussion: { items: { [SOLO]: { status: 'in-progress' } } } } });
@@ -99,18 +98,17 @@ describe('the gates lead to the verbs', () => {
     assert.match(refusedPristine(dir, ['render', 'horizon-pick', `${EPIC}.discussion.licence`]).error, /address must be <work_unit>\.discovery\.<topic>, got phase "discussion"$/);
   });
 
-  it('the cancel gate\'s yes runs the cancel of an epic\'s unit, at either stage; no carries on', () => {
+  it('the cancel gate\'s yes runs the cancel of an epic\'s topic; no carries on', () => {
     assert.deepStrictEqual(answered(['cancel-gate', `${EPIC}.discovery.licence`], 'cancel gate', ['--pick', 'y']), { kind: 'engine', argv: ['topic', 'cancel', EPIC, 'discovery', 'licence'] });
-    assert.deepStrictEqual(answered(['cancel-gate', `${EPIC}.specification.pricing`], 'cancel gate', ['--pick', 'y']), { kind: 'engine', argv: ['topic', 'cancel', EPIC, 'specification', 'pricing'] });
     assert.deepStrictEqual(answered(['cancel-gate', `${EPIC}.discovery.licence`], 'cancel gate', ['--pick', 'n']), CONTINUE);
   });
 
-  it('a single-topic unit\'s cancel gate confirms the whole unit, its yes the unit\'s cancel; an epic is addressed by its unit', () => {
+  it('a single-topic unit\'s cancel gate confirms the whole unit, its yes the unit\'s cancel; an epic is addressed by its topic', () => {
     const gate = output(dir, ['render', 'cancel-gate', SOLO], { env: ENV() });
     assert.match(gate, /Cancelling \*\*Solo\*\* calls off the whole feature — it stops where it stands, and can be reactivated later\./);
     assert.deepStrictEqual(run(['gate', 'cancel gate', '--pick', 'y']).next, { kind: 'engine', argv: ['workunit', 'cancel', SOLO] });
     assert.deepStrictEqual(answered(['cancel-gate', SOLO], 'cancel gate', ['--pick', 'n']), CONTINUE);
-    assert.match(refusedPristine(dir, ['render', 'cancel-gate', EPIC]).error, /"fumi" is an epic — address the unit to cancel/);
+    assert.match(refusedPristine(dir, ['render', 'cancel-gate', EPIC]).error, /"fumi" is an epic — address the topic to cancel, <work_unit>\.discovery\.<topic>$/);
   });
 });
 

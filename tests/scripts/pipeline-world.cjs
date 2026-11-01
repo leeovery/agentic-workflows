@@ -358,8 +358,8 @@ function carryOn(sim, identity = null) {
   return answer;
 }
 
-// Shared phase walk used by the linear pipelines: specification → planning →
-// implementation (→ review), with the bookkeeping each phase records.
+// Shared phase walk used by the linear pipelines: planning → implementation
+// (→ review), with the bookkeeping each phase records.
 // Every place labels itself on arrival: a navigation skill, the bridge and
 // the roadmap label the place alone (`arrive`), and every
 // phase skill's Step 0 records its place before anything else
@@ -712,10 +712,17 @@ function workTheSet(sim, paths) {
   return toDiscovery(sim, set.set_type, set.items.map((/** @type {{path: string}} */ item) => item.path).join(','));
 }
 
+// Planning reads the old spec's item until the build is rewired (29.14): a
+// delivery walk gives the unit the item a unit whose building began under
+// the old spec keeps (29.17), with its spec where that spec stands.
+/** @param {Sim} sim @param {string} wu @param {string} topic */
+function keptOldSpec(sim, wu, topic) {
+  sim.run(['manifest', 'set', `${wu}.specification.${topic}`, 'status', 'completed']);
+  sim.write(`.leeway/${wu}/specification/${topic}/specification.md`, `# Spec — ${topic}\n`);
+}
+
 function walkToLiveImplementation(sim, wu, topic) {
-  handoffEntry(sim, wu, 'specification', topic);
-  sim.run(['topic', 'start', wu, 'specification', topic]);
-  sim.run(['topic', 'complete', wu, 'specification', topic]);
+  keptOldSpec(sim, wu, topic);
   handoffEntry(sim, wu, 'planning', topic);
   sim.run(['topic', 'start', wu, 'planning', topic]);
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`,
@@ -748,38 +755,9 @@ function walkDeliveryPhasesToImplementation(sim, wu, topic) {
   sim.run(['topic', 'complete', wu, 'implementation', topic]);
 }
 
-function walkDeliveryPhases(sim, wu, topic, { sources }) {
-  // Specification. Its start fetches the source gate before any status read;
-  // one already under way resumes, and over no file it initialises as a
-  // first start does. Session setup and the completion each read what the
-  // specification incorporates — nothing, for a single topic. The source
-  // gate holds engine-side: completion refuses while any row is still
-  // pending, then clears once every row incorporates.
-  bridgeTo(sim, wu, 'specification');
-  sim.render(['entry-gate', `${wu}.specification.${topic}`], { expect: 'empty' });
-  handoffEntry(sim, wu, 'specification', topic);
-  const status = sim.read(['manifest', 'get', `${wu}.specification.${topic}`, 'status']);
-  if (status === 'in-progress') {
-    sim.render(['phase-note', `${wu}.specification.${topic}`, '--verb', 'Resuming'], { expect: 'content' });
-    assert.strictEqual(sim.read(['manifest', 'get', `${wu}.specification.${topic}`, 'reconcile_needed']), '', 'no input moved beneath it');
-  } else {
-    assert.strictEqual(status, '', 'no specification item — a first start');
-  }
-  sim.run(['topic', 'start', wu, 'specification', topic]);
-  for (const s of sources) {
-    sim.run(['manifest', 'set', `${wu}.specification.${topic}`, `sources.${s}.status`, 'pending']);
-  }
-  assert.deepStrictEqual(sim.run(['topic', 'incorporations', wu, topic]).incorporations, []);
-  sim.refuses(['topic', 'complete', wu, 'specification', topic], /unresolved source rows/);
-  for (const s of sources) {
-    sim.run(['manifest', 'set', `${wu}.specification.${topic}`, `sources.${s}.status`, 'incorporated']);
-  }
-  sim.write(`.leeway/${wu}/specification/${topic}/specification.md`, `# Spec — ${topic}\n`);
-  sim.run(['commit', wu, '-m', `spec(${wu}): construct`, '--topic', `specification/${topic}`]);
-  assert.match(sim.render(['step-opening', `${wu}.specification.${topic}`, '--step', 'conclude'], { expect: 'content' }),
-    /□ Conclude[\s\S]*> Wrapping up\. Final assessment, sign-off, and handover to the planning phase\./);
-  sim.run(['topic', 'complete', wu, 'specification', topic]);
-  assert.deepStrictEqual(sim.run(['topic', 'incorporations', wu, topic]).incorporations, []);
+/** @param {Sim} sim @param {string} wu @param {string} topic */
+function walkDeliveryPhases(sim, wu, topic) {
+  keptOldSpec(sim, wu, topic);
 
   // Planning. A fresh plan opens on the context offer (initialize-plan A),
   // which the plan's own birth closes — a plan under way reconciles instead.
@@ -1125,6 +1103,30 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   sim.run(['commit', wu, '-m', `review(${wu}): complete review phase`, '--topic', `review/${topic}`]);
 }
 
+// The spec's corridor as the skill runs it (11.3–11.8): entered at the unit,
+// written from the writer's brief citing a decision of each live topic,
+// landed, reviewed and cut, and ready to build's pick beginning the build in
+// the position picked — no construction, finding, re-loop or sign-off gate
+// on the way (11.8.4). Answers what the pick ran.
+/** @param {Sim} sim @param {string} wu @param {string[]} topics @param {'s'|'a'} [position] */
+function specToBuild(sim, wu, topics, position = 's') {
+  specEntry(sim, wu, topics);
+  sim.run(['brief', 'spec-writer', wu]);
+  const statements = topics.map((topic, i) => {
+    const [decision] = JSON.parse(sim.read(['ledger', 'record', wu, topic])).decisions;
+    return `1.1.${i + 1} ${topic} holds as decided. [${decision.id}]`;
+  });
+  sim.write(`.leeway/${wu}/spec.md`, [
+    `# ${wu}`, '', '## 1. The work', '', '### 1.1 As decided', '', ...statements.flatMap((s) => [s, '']),
+    '## 1-S. Scenarios for §1', '', '1.S1 Given the work, when it runs, then it holds as decided. (1.1.1)', '',
+  ].join('\n'));
+  assert.deepStrictEqual(sim.run(['spec', 'land', wu]).invented, []);
+  specReviewed(sim, wu);
+  cutTheSpec(sim, wu, [{ name: 'The work', goal: 'The work holds as decided.', scenarios: ['1.S1'], sections: ['1'], relies_on: [] }]);
+  assert.doesNotMatch(readyToBuild(sim, wu), /construction gate|finding gate|sign-off|another cycle/i);
+  return sim.run(answerGate(sim, 'ready to build', '--pick', position).next.argv);
+}
+
 // The review of the spec's last land (11.7): a pass dispatched and briefed,
 // its clean report written where the dispatch said, taken in by the scan and
 // acknowledged clean.
@@ -1195,5 +1197,5 @@ function literal(text) {
 }
 
 module.exports = {
-  Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, writePhaseTasks, specReviewed, cutTheSpec, readyToBuild,
+  Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, writePhaseTasks, specReviewed, cutTheSpec, readyToBuild, specToBuild, keptOldSpec,
 };

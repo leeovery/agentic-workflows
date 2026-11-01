@@ -38,26 +38,20 @@ describe('pipeline simulation: epic postpone', () => {
       { name: 'fresh-one', summary: 'Nothing started' },
       { name: 'talking', summary: 'Discussion under way' },
       { name: 'decided', summary: 'Discussion concluded' },
-      { name: 'specd', summary: 'Specified already' },
+      { name: 'stays', summary: 'Concluded, staying on the map' },
     ]);
-    sim.run(['topic', 'order', wu, 'fresh-one=1', 'talking=2', 'decided=3', 'specd=4']);
+    sim.run(['topic', 'order', wu, 'fresh-one=1', 'talking=2', 'decided=3', 'stays=4']);
     sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): shape the map`]);
     const detail = () => EPIC_GATEWAY.discover(sim.dir, wu);
     const postponable = () => epicPostponeMenu(detail()).keys.filter((k) => k.action === 'postpone').map((k) => k.topic);
     const pullable = () => epicPullForwardMenu(detail()).keys.filter((k) => k.action === 'pull-forward').map((k) => [k.topic, k.item]);
     const menuActions = () => epicMenu(wu, detail()).keys.map((k) => k.action);
 
-    for (const topic of ['decided', 'specd']) discussed(sim, wu, topic);
+    for (const topic of ['decided', 'stays']) discussed(sim, wu, topic);
     enterEntry(sim, wu, 'discussion', 'talking');
-    sim.run(['topic', 'start', wu, 'specification', 'specd']);
-    sim.run(['manifest', 'set', `${wu}.specification.specd`, 'sources.specd.status', 'incorporated']);
 
-    // Every Discovery unit is offered; the spec'd one is locked with its reason.
-    assert.deepStrictEqual(postponable(), ['decided', 'talking', 'fresh-one']);
-    assert.strictEqual(detail().postponable.find((u) => u.name === 'specd').locked,
-      'postponing "specd" is refused while the specification "specd" sources its discussion — a topic past specification is past "not yet"');
-    sim.refuses(['topic', 'postpone', wu, 'specd', '--horizon', 'next'], /a topic past specification is past "not yet"/);
-    sim.refuses(['render', 'postpone-gate', `${wu}.discovery.specd`, '--horizon', 'next'], /a topic past specification is past "not yet"/);
+    // Every Discovery unit is offered.
+    assert.deepStrictEqual(postponable(), ['decided', 'stays', 'talking', 'fresh-one']);
 
     // The map is born at the first postpone; the second takes a new horizon.
     assert.strictEqual(sim.run(['roadmap', 'state']).exists, false);
@@ -90,13 +84,12 @@ describe('pipeline simulation: epic postpone', () => {
     assert.strictEqual(derivations.phaseStatus(sim.manifest(wu), 'discussion'), 'completed', 'the postponed conversation under way no longer holds the phase in progress');
     assert.strictEqual(d.needs_sequencing, false, 'a postponed row carries no order and asks for none');
     assert.strictEqual(d.convergence_state, 'settled', 'a topic that has left holds convergence open no more than a cancelled one');
-    assert.deepStrictEqual(d.postponable.map((u) => u.name), ['specd'], 'a postponed unit leaves the postpone list');
-    assert.deepStrictEqual(postponable(), [], 'and the one unit left is locked, so nothing is pickable');
+    assert.deepStrictEqual(d.postponable.map((u) => u.name), ['stays'], 'a postponed unit leaves the postpone list');
     assert.ok(!d.cancellable.some((u) => u.name === 'fresh-one'), 'a postponed unit leaves the cancel list too');
     // The gap analysis reads the decided discussions' records: the postponed
     // one drops out of its input set.
     assert.deepStrictEqual(derivations.collectAnalysisInputs(sim.manifest(wu), path.join(sim.dir, '.leeway'), 'gap-analysis')
-      .map((f) => path.basename(f)), ['specd.md']);
+      .map((f) => path.basename(f)), ['stays.md']);
 
     // The roadmap owns it: cancel and reactivate refuse, a send lands.
     sim.refuses(['topic', 'cancel', wu, 'discovery', 'decided'], /"decided" is postponed — the roadmap owns it/);

@@ -424,21 +424,15 @@ describe('engine commit --plan — hardening', () => {
 describe('the transactions\' knowledge changes — a real store, its other chunks alongside', () => {
   const IMPORT = 'payments/imports/notes.md';
   const OTHER_UNIT = 'billing/imports/rates.md';
-  // An epic with a topic still in discussion, a specification in progress
-  // and one completed, each from its own discussion; and a finished
-  // cross-cutting unit beside it. Each unit holds one indexed import.
+  // An epic with a topic still in discussion and two decided; and a
+  // finished cross-cutting unit beside it. Each unit holds one indexed
+  // import.
   const indexedWorld = world((dir) => {
     writeFile(dir, '.leeway/payments/manifest.json', json({
       name: 'payments', work_type: 'epic', status: 'in-progress',
       phases: {
         discovery: { items: { 'auth-flow': { source: 'discovery', order: 1 }, 'session-model': { source: 'discovery', order: 2 }, 'fee-model': { source: 'discovery', order: 3 } } },
         discussion: { items: { 'auth-flow': { status: 'in-progress' }, 'session-model': { status: 'completed' }, 'fee-model': { status: 'completed' } } },
-        specification: {
-          items: {
-            'session-model': { status: 'in-progress', order: 1, sources: { 'session-model': { status: 'incorporated' } } },
-            'fee-model': { status: 'completed', order: 2, sources: { 'fee-model': { status: 'incorporated' } } },
-          },
-        },
       },
       imports: [{ path: 'imports/notes.md', imported_at: '2026-01-01T00:00:00Z', origin: 'discovery' }],
     }));
@@ -460,12 +454,6 @@ describe('the transactions\' knowledge changes — a real store, its other chunk
 
   it('a Discovery-unit cancel leaves the store as it stands — a conversation indexes no artifact', () => {
     assert.deepStrictEqual(engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'auth-flow']).warnings, []);
-    assert.deepStrictEqual(indexed(), [OTHER_UNIT, IMPORT]);
-  });
-
-  it('a supersede and a Definition-unit cancel leave the store as they stand — a spec is never indexed (11.1.2)', () => {
-    assert.deepStrictEqual(engine(dir, ['topic', 'supersede', 'payments', 'specification', 'session-model', '--by', 'fee-model']).warnings, []);
-    assert.deepStrictEqual(engine(dir, ['topic', 'cancel', 'payments', 'specification', 'fee-model']).warnings, []);
     assert.deepStrictEqual(indexed(), [OTHER_UNIT, IMPORT]);
   });
 

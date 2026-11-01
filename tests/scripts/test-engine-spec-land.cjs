@@ -20,7 +20,9 @@
 // taken (8.10.3), no `spec.md`, a spec its
 // grammar refuses, a commit git refuses, an argv of another shape — writes
 // and commits nothing, the file left as written (the grammar's own faults
-// are test-spec-sections.cjs's). The unit's entries: the current entries
+// are test-spec-sections.cjs's); a later change to an entry a concluded spec
+// cites writes the ledger alone — no corrigendum, the spec never indexed,
+// what relied on the old entry affected (11.S15). The unit's entries: the current entries
 // placed in it, by id, each with its short id, kind, standing and line.
 //
 // Layer: verb. World, built once and copied: an epic, `payments`, its topics
@@ -49,6 +51,7 @@ const { MADE, ledgerHelpers } = require('./ledger-world.cjs');
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { unitEntries } = require(path.join(SCRIPTS, 'domain/unit-entries.cjs'));
 const { specEntryRefusal } = require(path.join(SCRIPTS, 'domain/spec-entry.cjs'));
+const { discoverArtifacts, readManifests } = require(path.join(SCRIPTS, 'domain/knowledge/artifacts.cjs'));
 
 const UNIT = 'payments';
 const SPEC = layout.unit(UNIT, 'spec.md');
@@ -215,6 +218,26 @@ describe('a land refused, spec.md left as written and nothing committed (11.9.1)
     commitAll(dir, 'concluded');
 
     assert.strictEqual(refused(), `spec land: ${UNIT}'s spec is concluded, and a concluded spec is never corrected — a later change replaces its entry on the ledger`);
+  });
+
+  it('a later change replacing an entry a concluded spec cites leaves spec.md as written, with no corrigendum and no index entry — the ledger holds the replacement, and what relied on the old entry is affected (11.S15)', () => {
+    const { write } = ledgerHelpers(() => dir);
+    const relying = write('find', `${UNIT}.discussion.cards`, ['--relies-on', made.cards], { ...MADE, text: 'Mastercard needs its own logo.', how: 'read in the code', known: 'read' }).id;
+    writeSpec(spec([`1.1.1 Visa and Mastercard. [${made.cards}]`]));
+    land();
+    payments(dir, { wallets: 'in-progress', disputes: 'in-progress' }, { wallets: { postponed: true }, disputes: { cancelled: true } }, { build: { position: 'auto' } });
+    commitAll(dir, 'concluded');
+    const written = readState(dir, SPEC);
+
+    const replacement = write('replace', 'billing.discussion.billing', ['--replaces', made.cards, '--reason', 'changed-mind'],
+      { ...PERSON, drops: ['Mastercard'], text: 'Visa alone, again.', why: 'Why: Mastercard fees.' }).id;
+
+    assert.strictEqual(refused(), `spec land: ${UNIT}'s spec is concluded, and a concluded spec is never corrected — a later change replaces its entry on the ledger`);
+    assert.deepStrictEqual([readState(dir, SPEC), stateTouched()], [written, ['M\t.ledger.jsonl']], 'the change wrote the ledger alone — spec.md as written, no corrigendum');
+    const indexed = discoverArtifacts(statePath(dir), readManifests(statePath(dir))).filter(({ workUnit }) => workUnit === UNIT);
+    assert.deepStrictEqual(indexed.map(({ phase }) => phase), ['record', 'record', 'record'], 'the unit\'s records are indexed, never its spec');
+    assert.deepStrictEqual(lineOf(replacement).replaces, full(made.cards));
+    assert.deepStrictEqual(ok(dir, ['ledger', 'affected', UNIT]).affected.map((/** @type {{id: string}} */ e) => e.id), [relying]);
   });
 
   it('refuses, in its words, a unit enter specification refuses: a topic not yet settled, and a quick-fix', () => {

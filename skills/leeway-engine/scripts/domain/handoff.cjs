@@ -23,7 +23,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { VALID_WORK_TYPES, WORK_TYPE_PIPELINES, PAUSING_PHASES, NO_ARGUMENT, assertLegalName } = require('../kernel/manifest-schema.cjs');
+const { VALID_WORK_TYPES, WORK_TYPE_PIPELINES, WAITING_PHASES, NO_ARGUMENT, assertLegalName } = require('../kernel/manifest-schema.cjs');
 const { loadWorkUnitManifest, readProjectManifest } = require('../kernel/manifest.cjs');
 const { EPIC_DETAIL_PHASES } = require('./epic-detail.cjs');
 const { parseInboxPaths, ROADMAP_SEED } = require('./inbox.cjs');
@@ -122,8 +122,7 @@ function at(place, name = null) {
 
 /**
  * Whether the phase is entered at the work unit, whatever its type, as its
- * row of the entry says (4.11.2): a topic named travels on, and names
- * nothing.
+ * row of the entry says (4.11.2).
  * @param {string} phase
  */
 function enteredAtUnit(phase) {
@@ -133,24 +132,24 @@ function enteredAtUnit(phase) {
 }
 
 /**
- * A phase's skill: the work type it serves, a work unit of that type, and the
- * topic — a legal name, which need not exist. An epic names its topic where
- * the phase is entered at one; a single-topic unit's topic is the unit
- * itself.
+ * A phase's skill: the work type it serves, a work unit of that type, and,
+ * where the phase is entered at a topic, the topic — a legal name, which need
+ * not exist. An epic names its topic there; a single-topic unit's topic is
+ * the unit itself. A phase entered at the unit takes no topic.
  * @param {string} phase @returns {Target}
  */
 function phaseTarget(phase) {
   const served = VALID_WORK_TYPES.filter((type) => WORK_TYPE_PIPELINES[type].includes(phase));
   return {
-    usage: `<${served.join('|')}> <work-unit> [<topic>]`,
-    counts: [2, 3],
+    get usage() { return `<${served.join('|')}> <work-unit>${enteredAtUnit(phase) ? '' : ' [<topic>]'}`; },
+    get counts() { return enteredAtUnit(phase) ? [2] : [2, 3]; },
     check: (cwd, [type, unit, topic]) => {
       assertOneOf('the work type', type, served);
       if (type === 'epic' && topic === undefined && !enteredAtUnit(phase)) throw new Error(`an epic enters ${phase} at a topic`);
       assertWorkUnit(cwd, unit, type);
       if (topic !== undefined) assertLegalName('topic', topic);
     },
-    where: (cwd, [, unit, topic]) => at(titlecase(phase), topic === undefined || enteredAtUnit(phase) ? unit : itemName(topicTitles(loadWorkUnitManifest(cwd, unit)), phase, topic)),
+    where: (cwd, [, unit, topic]) => at(titlecase(phase), topic === undefined ? unit : itemName(topicTitles(loadWorkUnitManifest(cwd, unit)), phase, topic)),
   };
 }
 
@@ -187,7 +186,7 @@ const TARGETS = {
       if (phase !== undefined) {
         assertOneOf('the phase', phase, EPIC_DETAIL_PHASES);
         assertOneOf('the outcome', outcome, OUTCOMES);
-        if (outcome === 'paused') assertOneOf('the phase that paused', phase, PAUSING_PHASES);
+        if (outcome === 'paused') assertOneOf('the phase that paused', phase, WAITING_PHASES);
       }
       assertWorkUnit(cwd, unit, 'epic');
     },
@@ -278,4 +277,4 @@ function handoffSections(handoff) {
   ].join('');
 }
 
-module.exports = { resolveHandoff, handoffSections, phaseSkill, HANDOFF_TARGETS, OPENING_SKILLS, TOPIC_HANDOFF_USAGE, topicHandoff };
+module.exports = { resolveHandoff, handoffSections, phaseSkill, enteredAtUnit, HANDOFF_TARGETS, OPENING_SKILLS, TOPIC_HANDOFF_USAGE, topicHandoff };

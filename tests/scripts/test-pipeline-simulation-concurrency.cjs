@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The pipeline simulation's concurrent sessions on one checkout, interleaved:
-// a specification session and a discussion whose commits stay confined, the
+// a planning session and a discussion whose commits stay confined, the
 // discussion's log riding along with every state commit; the code slot
 // taken at its entry and held through its commits; a dead peer's leavings
 // swept; and the terminal clears that free a finished topic's slot.
@@ -23,7 +23,7 @@ const { spawnSync } = require('child_process');
 const ROOT = path.join(__dirname, '../..');
 const { git, stateGit } = require('./engine-harness.cjs');
 const { STATE_DIR_NAME } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
-const { Sim, mappedEpic, handoff, decideTopic, discussed } = require('./pipeline-world.cjs');
+const { Sim, mappedEpic, handoff, decideTopic, discussed, keptOldSpec } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: concurrency', () => {
   let sim;
@@ -48,12 +48,12 @@ describe('pipeline simulation: concurrency', () => {
     // --- the map both sessions inherit -------------------------------------
     mappedEpic(sim, wu, ['ingest', 'ranking', 'metrics', 'dispatch']);
 
-    // ingest is discussed and ready to specify; dispatch is built out to the
+    // ingest is specified and ready to plan; dispatch is built out to the
     // edge of implementation. Both were finished before this scenario opens.
     discussed(sim, wu, 'ingest', { question: 'How do events arrive?', answer: 'Batch intake.' });
+    keptOldSpec(sim, wu, 'ingest');
     discussed(sim, wu, 'dispatch');
-    sim.run(['topic', 'start', wu, 'specification', 'dispatch']);
-    sim.run(['topic', 'complete', wu, 'specification', 'dispatch']);
+    keptOldSpec(sim, wu, 'dispatch');
     sim.run(['topic', 'start', wu, 'planning', 'dispatch']);
     sim.run(['manifest', 'set', `${wu}.planning.dispatch`,
       'format=local-markdown', 'task_list_gate_mode=gated', 'author_gate_mode=gated',
@@ -74,12 +74,12 @@ describe('pipeline simulation: concurrency', () => {
       return res.pid;
     };
 
-    const specSession = sim.session('spec-session', process.ppid);
+    const planSession = sim.session('plan-session', process.ppid);
     const talkSession = sim.session('discussion-session', 1);
     const codeSession = sim.session('code-session');
     const secondCoder = sim.session('review-session', reapedPid());
 
-    const SPEC_FILE = `.leeway/${wu}/specification/ingest/specification.md`;
+    const PLAN_FILE = `.leeway/${wu}/planning/ingest/planning.md`;
     const TALK_FILE = `.leeway/${wu}/topics/ranking/log.md`;
     const CODE_FILE = 'src/relay/dispatch.js';
     const lines = (out) => out.split('\n').filter(Boolean);
@@ -104,62 +104,61 @@ describe('pipeline simulation: concurrency', () => {
         assert.ok(!paths.includes(f), `[${label}] swept a peer's path: ${f}`);
       }
     };
-    const specScope = [`.leeway/${wu}/specification/ingest`, `.leeway/${wu}/manifest.json`];
+    const planScope = [`.leeway/${wu}/planning/ingest`, `.leeway/${wu}/manifest.json`];
     const talkScope = [TALK_FILE, `${STATE_DIR_NAME}/.ledger.jsonl`, `.leeway/${wu}/topics/ranking/mail`, `.leeway/${wu}/manifest.json`];
     const claudes = { by: 'claude', who_moved_whom: 'none' };
     /** A question the discussion session asks, its commit the ledger's own. @param {string} text */
     const talkAsks = (text) => talkSession.run(['ledger', 'ask', `${wu}.discussion.ranking`], JSON.stringify({ ...claudes, text })).id;
 
     // --- B1 · A1 · A2 · B2: a document session and a discussion, alternating
-    // A: a specification session on ingest. B: a discussion session on
+    // A: a planning session on ingest. B: a discussion session on
     // ranking, whose writes are the ledger's, each committing itself. Neither
     // knows the other exists; neither commit takes the other's document —
     // save B's log, which rides along with every state commit.
-    specSession.run(['topic', 'start', wu, 'specification', 'ingest']);
+    planSession.run(['topic', 'start', wu, 'planning', 'ingest']);
     talkSession.run(['enter', 'discussion', wu, 'ranking']);
 
-    specSession.write(SPEC_FILE, '# Specification — Ingest\n\n## Requirements\n\n- Batch intake.\n');
-    specSession.run(['manifest', 'set', `${wu}.specification.ingest`, 'sources.ingest.status', 'pending']);
+    planSession.write(PLAN_FILE, '# Plan — Ingest\n\n## Phases\n\n- Batch intake.\n');
     talkSession.write(TALK_FILE, '# Discussion — Ranking\n\n## Context\n\nOrdering under replay.\n');
 
     // B's question lands with A's half-written document sitting dirty beside it.
     const replayOrder = talkAsks('What orders a replay?');
-    confined('B1', talkScope, [SPEC_FILE]);
-    assert.ok(dirty().includes(SPEC_FILE), "the peer's uncommitted document survives B's commit");
+    confined('B1', talkScope, [PLAN_FILE]);
+    assert.ok(dirty().includes(PLAN_FILE), "the peer's uncommitted document survives B's commit");
 
     // A commits next, and B's log is already landed — so A's confinement is
     // proven by what its commit does NOT reach for, not by what is dirty.
-    specSession.run(['commit', wu, '-m', `spec(${wu}/ingest): construct`, '--topic', 'specification/ingest']);
-    confined('A1', specScope, [TALK_FILE]);
+    planSession.run(['commit', wu, '-m', `plan(${wu}/ingest): phases`, '--topic', 'planning/ingest']);
+    confined('A1', planScope, [TALK_FILE]);
 
     // Round two, both sessions still live, both amending their own document:
     // A's commit carries B's changed log along, and nothing else of B's.
-    specSession.write(SPEC_FILE, '# Specification — Ingest\n\n## Requirements\n\n- Batch intake.\n- Replay is idempotent.\n');
+    planSession.write(PLAN_FILE, '# Plan — Ingest\n\n## Phases\n\n- Batch intake.\n- Replay is idempotent.\n');
     talkSession.write(TALK_FILE, '# Discussion — Ranking\n\n## Context\n\nOrdering under replay.\n\n## Decisions\n\n- Order by sequence number.\n');
-    specSession.run(['commit', wu, '-m', `spec(${wu}/ingest): idempotent replay`, '--topic', 'specification/ingest']);
-    confined('A2', [...specScope, TALK_FILE], []);
+    planSession.run(['commit', wu, '-m', `plan(${wu}/ingest): idempotent replay`, '--topic', 'planning/ingest']);
+    confined('A2', [...planScope, TALK_FILE], []);
     assert.ok(committedPaths(true).includes(TALK_FILE), "every changed log rides along with a state commit, the peer's among them");
     talkSession.run(['ledger', 'decide', `${wu}.discussion.ranking`, '--answers', replayOrder],
       JSON.stringify({ ...claudes, text: 'The sequence number.', why: 'Replay must reproduce the original order.' }));
-    confined('B2', talkScope, [SPEC_FILE]);
+    confined('B2', talkScope, [PLAN_FILE]);
 
     // Both artifacts survive intact — each holds its own session's words, and
     // neither lost a write to the other's commit.
-    assert.match(fs.readFileSync(path.join(sim.dir, SPEC_FILE), 'utf8'), /Replay is idempotent/);
+    assert.match(fs.readFileSync(path.join(sim.dir, PLAN_FILE), 'utf8'), /Replay is idempotent/);
     assert.match(fs.readFileSync(path.join(sim.dir, TALK_FILE), 'utf8'), /Order by sequence number/);
-    assert.deepStrictEqual(dirty().filter((p) => p === SPEC_FILE || p === TALK_FILE), [],
+    assert.deepStrictEqual(dirty().filter((p) => p === PLAN_FILE || p === TALK_FILE), [],
       'both sessions committed their own work in full');
 
     // --- presence through the interleave -----------------------------------
     const rowOf = (scan, phase, topic) => scan.sessions.find((r) => r.phase === phase && r.topic === topic);
     const interleaved = sim.run(['presence', 'scan', wu]);
-    const specRow = rowOf(interleaved, 'specification', 'ingest');
+    const planRow = rowOf(interleaved, 'planning', 'ingest');
     const talkRow = rowOf(interleaved, 'discussion', 'ranking');
-    assert.strictEqual(specRow.session_id, 'spec-session', "A's heartbeat carries A's identity");
+    assert.strictEqual(planRow.session_id, 'plan-session', "A's heartbeat carries A's identity");
     assert.strictEqual(talkRow.session_id, 'discussion-session', "B's heartbeat carries B's identity");
-    assert.ok(specRow.held && talkRow.held, 'both document sessions read held');
+    assert.ok(planRow.held && talkRow.held, 'both document sessions read held');
     assert.strictEqual(interleaved.held_sources, 1,
-      'only the discussion counts as a source — a held spec session defers no analysis');
+      'only the discussion counts as a source — a held planning session defers no analysis');
     assert.ok(sim.sections.includes('=== DISPLAY: presence deferral') && sim.sections.replace(/\n +/g, ' ').includes('discussion/ranking (last active'),
       `the deferral section rides the scan the dispatch prose reads it from: ${sim.sections}`);
 
@@ -183,7 +182,7 @@ describe('pipeline simulation: concurrency', () => {
     assert.deepStrictEqual(firstCode.left_dirty, [], 'the task committed everything it touched');
     assert.strictEqual(JSON.parse(fs.readFileSync(codeSlot, 'utf8')).session_id, 'code-session',
       'the cadence commit keeps the hold alive');
-    confined('C1', [CODE_FILE], [SPEC_FILE, TALK_FILE]);
+    confined('C1', [CODE_FILE], [PLAN_FILE, TALK_FILE]);
 
     // A second code entrant — a different session, a different pid — is
     // gated; the holder reading the same surface is not gated against itself.
@@ -207,14 +206,14 @@ describe('pipeline simulation: concurrency', () => {
     assert.ok(dirty().includes(CODE_FILE), "the code session's dirt survives a doc session's commit");
 
     // Now the reverse, with a document session's dirt sitting on the tree.
-    specSession.write(SPEC_FILE, '# Specification — Ingest\n\n## Requirements\n\n- Batch intake.\n- Replay is idempotent.\n- Ties break on arrival.\n');
+    planSession.write(PLAN_FILE, '# Plan — Ingest\n\n## Phases\n\n- Batch intake.\n- Replay is idempotent.\n- Ties break on arrival.\n');
     const secondCode = codeSession.run(['commit', '--paths', CODE_FILE, '-m', 'feat(relay): ordered dispatch',
       '--for', wu, 'implementation/dispatch']);
-    confined('C2', [CODE_FILE], [SPEC_FILE, TALK_FILE]);
+    confined('C2', [CODE_FILE], [PLAN_FILE, TALK_FILE]);
     assert.deepStrictEqual(secondCode.left_dirty, ['src/relay/sink.js'],
       'the forgotten code path comes back, and nothing under .leeway ever does');
-    assert.ok(dirty().includes(SPEC_FILE), "the doc session's dirt is not the code session's to commit");
-    specSession.run(['commit', wu, '-m', `spec(${wu}/ingest): tie-break`, '--topic', 'specification/ingest']);
+    assert.ok(dirty().includes(PLAN_FILE), "the doc session's dirt is not the code session's to commit");
+    planSession.run(['commit', wu, '-m', `plan(${wu}/ingest): tie-break`, '--topic', 'planning/ingest']);
     codeSession.run(['commit', '--paths', 'src/relay/sink.js', '-m', 'chore(relay): the rest',
       '--for', wu, 'implementation/dispatch']);
 
@@ -239,7 +238,7 @@ describe('pipeline simulation: concurrency', () => {
     talkSession.run(['commit', wu, '--topic', 'discussion/metrics', '--sweep',
       '-m', `chore(${wu}/metrics): sweep session leavings`]);
     confined('sweep', [ghostLog, `.leeway/${wu}/topics/metrics/mail`, `.leeway/${wu}/manifest.json`],
-      [SPEC_FILE, TALK_FILE, CODE_FILE]);
+      [PLAN_FILE, TALK_FILE, CODE_FILE]);
     assert.ok(!dirty().includes(ghostLog), "the dead session's log is committed");
 
     // The sweeper never stamps its identity on the topic it just cleaned —
@@ -267,7 +266,7 @@ describe('pipeline simulation: concurrency', () => {
       '-m', `discussion(${wu}): ranking decided`]);
     assert.strictEqual(rowOf(sim.run(['presence', 'scan', wu]), 'discussion', 'ranking'), undefined,
       'the terminal commit leaves the heartbeat dropped');
-    assert.ok(rowOf(sim.run(['presence', 'scan', wu]), 'specification', 'ingest'),
+    assert.ok(rowOf(sim.run(['presence', 'scan', wu]), 'planning', 'ingest'),
       "and leaves every peer session's hold standing");
 
     // --- the code slot's release -------------------------------------------

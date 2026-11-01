@@ -24,12 +24,12 @@ const path = require('path');
 const { loadAllManifests, loadManifest, loadProjectManifest } = require('./reads.cjs');
 const { signpost, wrap } = require('../kernel/render.cjs');
 const { displayWidth } = require('../kernel/terminal.cjs');
-const { TREE_WIDTH, titlecase, tag, WORKLIST_GLYPH, DISCOVERY_GLYPH, discoveryLifecycleLabel } = require('./conventions.cjs');
-const { section, titleSection, dataSection, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, timedInstruction, menu, menuFrame, MENU_GLYPH, cmdOption, bareOption, promptOption, callout, indentedBody, bulletRow, autoSelectLine, subDetail, treeList, emitAs, STOP_CLAUSE, MENU_INSTRUCTION, AUTO_GATE_CLAUSE } = require('./projections/surfaces.cjs');
+const { TREE_WIDTH, titlecase, tag, WORKLIST_GLYPH } = require('./conventions.cjs');
+const { section, titleSection, dataSection, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, timedInstruction, menu, menuFrame, MENU_GLYPH, cmdOption, promptOption, callout, indentedBody, bulletRow, autoSelectLine, subDetail, treeList, emitAs, STOP_CLAUSE, MENU_INSTRUCTION, AUTO_GATE_CLAUSE } = require('./projections/surfaces.cjs');
 const { buildOrderLive } = require('./build-order.cjs');
 const { worklist, escapeMarkdown } = require('./projections/worklist.cjs');
 const { blockedTasksDisplay, blockedTasksMenu, taskGateSection, fixGateSection, cycleLimitDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
-const { workunitReceipt, topicReceipt, absorbSummary, absorbReceipt, promoteReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, inboxRestoreReceipt, inboxDeleteReceipt } = require('./projections/transactions.cjs');
+const { workunitReceipt, topicReceipt, absorbSummary, absorbReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, inboxRestoreReceipt, inboxDeleteReceipt } = require('./projections/transactions.cjs');
 const { absorbTargetMenu, absorbConfirmGate, planTopicsPick, archivedActions, archivedDeleteGate, inboxContent, completedActions } = require('./projections/start.cjs');
 const { archivedItem, inboxItems, liveItem, deletedItemTitle } = require('./inbox-set.cjs');
 const { sourceLines } = require('../kernel/knowledge/chunker.cjs');
@@ -43,9 +43,8 @@ const { readMetadata } = require('../kernel/knowledge/store.cjs');
 const { ENGINE_COMMAND, messageOf } = require('../kernel/call.cjs');
 const { projectRepos, projectDirtyEntries, projectPathsTouchedBySubject } = require('../kernel/repos.cjs');
 const { githubSquashNested } = require('./github-setup.cjs');
-const { heldCodeSessions, heldDocument, beatQuietly, fmtAge, CODE_PHASES } = require('./presence.cjs');
+const { heldCodeSessions, beatQuietly, fmtAge, CODE_PHASES } = require('./presence.cjs');
 const { roadmapState, hasRoadmapNode, validateKind, markedKind, planRoadmapBatch, DEFAULT_KIND } = require('./roadmap.cjs');
-const { agentRows, latestReview } = require('./agent-state.cjs');
 const {
   roadmapMapView,
   roadmapAddGate,
@@ -54,16 +53,15 @@ const {
 } = require('./projections/roadmap.cjs');
 const { revisitPhasesSection } = require('./projections/workunit.cjs');
 const { experimentRegister, experimentApprovalGate, experimentPick, experimentNextGate, experimentSpawnGate } = require('./projections/experiment.cjs');
-const { waitGate, phasePaused, owedWaits, owedSources } = require('./projections/wait.cjs');
-const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, WAITING_PHASES, PAUSING_PHASES, TERMINAL_STATUSES, TOPIC_PHASES } = require('../kernel/manifest-schema.cjs');
+const { phasePaused, owedWaits } = require('./projections/wait.cjs');
+const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, WAITING_PHASES, TOPIC_PHASES } = require('../kernel/manifest-schema.cjs');
 const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, phaseTargets } = require('./workunit-detail.cjs');
 const {
   phaseItems, computeNextPhase, computeTopicLifecycle, awaitedExperiments, waits, itemOf,
-  sourceRows, OPEN_SOURCE_STATUSES, specSourcePhase, awaitedSources, specUnsettled, specUnsettledPhrase, UNIT_PHASES, liveUnitItems, discoveryUnitExists, unitLocks, unitLockNames, ownNamedItems, deliveryStarted, cancelPlan,
-  postponePlan, postponeTarget, postponedItem, openExperiments, mailboxFiles, computeAnalysisCacheStatus,
+  UNIT_PHASES, liveUnitItems, discoveryUnitExists, cancelPlan,
+  postponePlan, postponeTarget, postponedItem, openExperiments, mailboxFiles,
   topicTitle, topicTitles, titled, itemTitle, goesBy, dismissedNames, topicKey, noTopicRefusal, briefFile,
 } = require('./derivations.cjs');
-const { discoverySpec, specConfirmation } = require('./specification.cjs');
 const { sendReportOf } = require('./mail.cjs');
 const { mapSurface } = require('./topic-map.cjs');
 const { decidedSurface, decidedStrikeSurface, waitAgentsSurface } = require('./decided.cjs');
@@ -71,7 +69,6 @@ const { startThisWorkSurface } = require('./start-this-work.cjs');
 const { approveMapSurface, approveMapStrikeSurface } = require('./approve-map.cjs');
 const { readyToBuildSurface } = require('./ready-to-build.cjs');
 const { discoveryMapScreen } = require('./projections/discovery-map.cjs');
-const { specificationConfirmation } = require('./projections/specification.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
 const { gateOf, counterOf, FIX_THRESHOLD, CYCLE_LIMIT } = require('./tasks.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
@@ -594,39 +591,6 @@ function proposedTask(cwd, args) {
 }
 
 // ---------------------------------------------------------------------------
-// spec-review-gate — the review loop's two gates, variant-keyed and
-// payload-less: the options are static, the state that picks the variant
-// (cycle count, gate mode, finding statuses) lives with the caller.
-//   continue — the cycle-count escape hatch: keep reviewing or skip out
-//   reloop   — after findings: another full cycle or proceed to completion
-// ---------------------------------------------------------------------------
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, variant?: string}} args
- * @returns {string}
- */
-function specReviewGate(cwd, { dotpath, variant }) {
-  if (variant === undefined || !['continue', 'reloop'].includes(variant)) {
-    throw new Error('render spec-review-gate: --variant must be "continue" or "reloop"');
-  }
-  const { phase } = resolveAddress(cwd, dotpath, 'spec-review-gate');
-  if (phase !== 'specification') {
-    throw new Error(`render spec-review-gate: address must be <work_unit>.specification.<topic>, got phase "${phase}"`);
-  }
-  if (variant === 'continue') {
-    return section('MENU: spec review continue gate', MENU_INSTRUCTION, menu('', [
-      cmdOption('y', 'yes', 'Continue review'),
-      cmdOption('s', 'skip', 'Skip review, proceed to completion'),
-    ], { question: 'Continue with review?' }));
-  }
-  return section('MENU: spec review reloop gate', MENU_INSTRUCTION, menu('', [
-    cmdOption('y', 'yes', 'Run another review cycle (all three phases)'),
-    cmdOption('p', 'proceed', 'Proceed to completion'),
-  ], { question: 'Run another review cycle?' }));
-}
-
-// ---------------------------------------------------------------------------
 // convergence-diagnostic — the review/fix escalation diagnostic. The judgment
 // (trend classification, finding titles, root-cause hypotheses) rides as the
 // payload; the arithmetic (counts from the arrays, review growth) and the
@@ -634,7 +598,7 @@ function specReviewGate(cwd, { dotpath, variant }) {
 // prose fires by mood.
 // ---------------------------------------------------------------------------
 
-const CONVERGENCE_LOOPS = { fix: 'Fix Loop', analysis: 'Analysis', 'planning-review': 'Plan Review', 'spec-review': 'Spec Review' };
+const CONVERGENCE_LOOPS = { fix: 'Fix Loop', analysis: 'Analysis', 'planning-review': 'Plan Review' };
 const CONVERGENCE_TRENDS = {
   churning: 'Findings resolve but are replaced at the same rate — the edits are generating the next cycle\'s findings.',
   converging: 'Resolved findings outnumber new ones — the cycles are closing ground.',
@@ -642,11 +606,6 @@ const CONVERGENCE_TRENDS = {
   diverging: 'New findings outnumber resolved ones — the fixes are introducing new issues.',
 };
 const CONVERGENCE_GROWTH = {
-  'spec-review': {
-    document: 'construction',
-    churn: 'The cycles are adding words while findings churn — the review is writing rules the record never decided. A finding adds what a source states or removes what is wrong; anything else is a decision nobody made.',
-    note: 'Growth is the loop working only where each addition traces to a source; growth from review-authored rules is the review deciding for the user.',
-  },
   'planning-review': {
     document: 'plan',
     churn: 'The cycles are adding words while findings churn — the review is writing mechanism the specification never decided. A finding restates a behaviour the record decides and the criterion that proves it, or removes what is wrong; a corrected mechanism is the builder\'s.',
@@ -687,7 +646,7 @@ function convergenceDiagnostic(cwd, { dotpath, file }) {
   const recurring = findings(p.recurring, 'recurring', ['title', 'cycles', 'hypothesis']);
   const fresh = findings(p.new, 'new', ['title']);
 
-  const multi = p.loop_type === 'spec-review' || p.loop_type === 'planning-review';
+  const multi = p.loop_type === 'planning-review';
   if (multi) {
     if (!Array.isArray(p.stream_counts) || p.stream_counts.length < 2) {
       throw new Error(`render convergence-diagnostic: "${p.loop_type}" carries "stream_counts" — one {label, count} per tracking stream`);
@@ -703,7 +662,7 @@ function convergenceDiagnostic(cwd, { dotpath, file }) {
   const hasGrowth = p.review_baseline_words !== undefined || p.live_words !== undefined;
   if (hasGrowth) {
     if (!multi) {
-      throw new Error('render convergence-diagnostic: document growth belongs to spec-review and planning-review — omit the word counts');
+      throw new Error('render convergence-diagnostic: document growth belongs to planning-review — omit the word counts');
     }
     if (!Number.isInteger(p.review_baseline_words) || !Number.isInteger(p.live_words) || p.review_baseline_words < 0 || p.live_words < 0) {
       throw new Error('render convergence-diagnostic: "review_baseline_words" and "live_words" travel together as non-negative integers');
@@ -745,64 +704,6 @@ function convergenceDiagnostic(cwd, { dotpath, file }) {
   parts.push(flags.join('\n'));
 
   return section('DISPLAY: convergence diagnostic', emitAs('text'), parts.join('\n\n'));
-}
-
-// ---------------------------------------------------------------------------
-// spec-completion-gate — the conclusion flow's two consent gates.
-//   assessment — the epic cross-cutting assessment above its confirm; the
-//                verdict and its rationale are the session's judgment, so
-//                they ride a payload {cross_cutting, rationale}
-//   signoff    — the final conclude consent, payload-less
-// ---------------------------------------------------------------------------
-
-/**
- * @param {string} cwd @param {string} file
- * @returns {string}
- */
-function crossCuttingAssessment(cwd, file) {
-  const p = readJsonPayload(cwd, file, 'spec-completion-gate');
-  if (typeof p.cross_cutting !== 'boolean') throw new Error('render spec-completion-gate: "cross_cutting" must be true or false');
-  if (!isFilled(p.rationale)) throw new Error('render spec-completion-gate: "rationale" must be a non-empty string');
-  const verdict = p.cross_cutting
-    ? 'This specification appears to be cross-cutting.'
-    : 'This specification is directly plannable — no cross-cutting promotion needed.';
-  return section('DISPLAY: cross-cutting assessment', emitAs('text'), [
-    'Cross-Cutting Assessment',
-    '',
-    verdict,
-    '',
-    ...indentedBody([p.rationale], { indent: '' }),
-  ].join('\n'));
-}
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, variant?: string, file?: string}} args
- * @returns {string}
- */
-function specCompletionGate(cwd, { dotpath, variant, file }) {
-  if (variant === undefined || !['assessment', 'signoff'].includes(variant)) {
-    throw new Error('render spec-completion-gate: --variant must be "assessment" or "signoff"');
-  }
-  const { phase } = resolveAddress(cwd, dotpath, 'spec-completion-gate');
-  if (phase !== 'specification') {
-    throw new Error(`render spec-completion-gate: address must be <work_unit>.specification.<topic>, got phase "${phase}"`);
-  }
-  if (variant === 'assessment') {
-    if (!file) throw new Error('render spec-completion-gate: --variant assessment takes --file <payload.json> — the assessment it confirms');
-    return [
-      crossCuttingAssessment(cwd, file),
-      section('MENU: spec assessment gate', MENU_INSTRUCTION, menu('', [
-        cmdOption('y', 'yes', 'Confirm assessment'),
-        promptOption('Comment', 'Suggest a different classification'),
-      ], { question: 'Confirm this assessment?' })),
-    ].join('\n');
-  }
-  if (file) throw new Error('render spec-completion-gate: --variant signoff takes no --file');
-  return section('MENU: spec signoff gate', MENU_INSTRUCTION, menu('', [
-    cmdOption('y', 'yes', 'Conclude specification and mark as completed'),
-    promptOption('Comment', 'Add context before concluding'),
-  ], { question: 'Ready to conclude?' }));
 }
 
 // ---------------------------------------------------------------------------
@@ -1427,217 +1328,9 @@ function linters(cwd, { dotpath, file, variant }) {
   ].join('\n');
 }
 
-// ---------------------------------------------------------------------------
-// incoherence-gate — the Resolve Source Incoherence raises (spec construction
-// and the review findings walk). Three variants; the stops here override the
-// calling flow's auto mode by design, so no --gate flag exists.
-//   conflict  — the settle-it-here menu: one numbered option per documented
-//               side (recommended first) plus Comment — classification is
-//               Claude's, the menu offers only the documented sides
-//   gap-route — the gap raise plus its gate (no "no" — an objection arrives
-//               as Comment and drops into the settleable exchange): a linear
-//               work unit has one home for the gap, so the menu states the
-//               routing intent and confirms it; an epic has three — the
-//               reopen, a new topic on the map, the roadmap — so it asks the
-//               fork
-//   held-doc  — the fallback when another session holds the owning document
-// The raise body takes the finding idiom: bold head, one meta bullet per
-// cited quote, a labelled context paragraph, stakes beneath.
-// ---------------------------------------------------------------------------
-
 // A stop that fires despite the user's auto opt-in says so, in one voice —
 // the announcement is engine-rendered so it cannot vary with the session.
 const AUTO_OVERRIDE_LINE = "**Auto is on — stopping anyway:** this is one of the calls auto never makes for you.";
-
-// The two gates are independent opt-ins: construction's chunk approvals and
-// the findings walk. A stop announces only against its own flow's mode — an
-// auto set for the other gate is not being overridden.
-const LANE_GATE_FIELDS = { construction: 'construction_gate_mode', review: 'finding_gate_mode' };
-
-/** Whether the named lane's gate mode holds auto at this item. @param {any} item @param {string} lane */
-const laneHoldsAuto = (item, lane) => item[LANE_GATE_FIELDS[lane]] === 'auto';
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, file?: string, variant?: string}} args
- * @returns {string}
- */
-function incoherenceGate(cwd, args) {
-  const { dotpath, file, variant } = args;
-  if (variant === undefined || !['conflict', 'gap-route', 'held-doc'].includes(variant)) {
-    throw new Error('render incoherence-gate: --variant must be "conflict", "gap-route", or "held-doc"');
-  }
-  if (!file) throw new Error('render incoherence-gate: --file <payload.json> is required');
-  const { workUnit, phase, topic, manifest } = resolveAddress(cwd, dotpath, 'incoherence-gate');
-  const p = readJsonPayload(cwd, file, 'incoherence-gate');
-  if (!isFilled(p.doc)) throw new Error('render incoherence-gate: "doc" must be a non-empty string');
-  if (!Object.hasOwn(LANE_GATE_FIELDS, p.lane)) {
-    throw new Error('render incoherence-gate: "lane" must be "construction" or "review" — the announcement keys on the calling flow\'s own gate mode');
-  }
-  const overAuto = laneHoldsAuto(itemOf(manifest, phase, topic) || {}, p.lane);
-
-  if (variant === 'conflict' || variant === 'gap-route') {
-    if (!isFilled(p.title)) throw new Error('render incoherence-gate: "title" must be a non-empty string');
-    if (!isFilled(p.context)) throw new Error('render incoherence-gate: "context" must be a non-empty string');
-    if (p.quotes !== undefined) {
-      if (!Array.isArray(p.quotes) || p.quotes.length === 0) throw new Error('render incoherence-gate: "quotes" must be a non-empty array when present');
-      p.quotes.forEach((/** @type {{doc?: string, section?: string, quote?: string}} */ q, /** @type {number} */ i) => {
-        if (!q || typeof q !== 'object' || !isFilled(q.doc) || !isFilled(q.section) || !isFilled(q.quote)) {
-          throw new Error(`render incoherence-gate: quotes[${i}] must carry doc, section, and quote`);
-        }
-      });
-    }
-    if (p.stakes !== undefined && !isFilled(p.stakes)) throw new Error('render incoherence-gate: "stakes" must be a non-empty string when present');
-    const head = variant === 'conflict' ? 'Conflict' : 'Gap';
-    const body = [`**${head} — ${p.title}**`];
-    if (p.quotes) {
-      body.push('');
-      for (const q of p.quotes) body.push(`- **${q.doc} · ${q.section}**: "${q.quote}"`);
-    }
-    body.push('', `**Details**: ${p.context}`);
-    if (p.stakes) body.push('', p.stakes);
-
-    if (variant === 'conflict') {
-      // A conflict is documents colliding, and the sides are quoted from
-      // them — never composed here. Without a quote there is nothing to
-      // collide, and the shape would dress a point no source decides as a
-      // choice the record already framed. That belongs in the
-      // no-sides-documented branch, as a question.
-      if (!Array.isArray(p.quotes) || p.quotes.length === 0) {
-        throw new Error('render incoherence-gate: a conflict must quote the sides it collides — sides you would compose yourself are not documented, and belong in a conversation, not this gate');
-      }
-      if (!Array.isArray(p.sides) || p.sides.length < 2) {
-        throw new Error('render incoherence-gate: "sides" must carry at least 2 entries');
-      }
-      p.sides.forEach((/** @type {{summary?: string, recommended?: boolean}} */ s, /** @type {number} */ i) => {
-        if (!s || typeof s !== 'object' || !isFilled(s.summary)) {
-          throw new Error(`render incoherence-gate: sides[${i}].summary must be a non-empty string`);
-        }
-      });
-      const options = recommendedMenuRows(p.sides, 'render incoherence-gate: at most one side may be recommended');
-      const display = section('DISPLAY: incoherence conflict', emitAs('markdown'), body.join('\n'));
-      options.push(promptOption('Comment', 'Tell me what you\'re thinking; we\'ll work it through'));
-      return [display, section('MENU: incoherence conflict', MENU_INSTRUCTION,
-        menu(overAuto ? AUTO_OVERRIDE_LINE : '', options, { question: 'Which decision stands?' }))].join('\n');
-    }
-    const gap = manifest.work_type === 'epic'
-      ? {
-        statement: `The gap needs the room. Reopening "${p.doc}" with it pauses this specification until the answer lands; the map offers two other homes.`,
-        question: 'Reopen it?',
-        rows: [
-          cmdOption('y', 'yes', { head: `Reopen "${p.doc}" with the gap and pause here` }),
-          cmdOption('t', 'topic', 'Open a new topic on the map for it — this specification waits for it to conclude'),
-          cmdOption('r', 'roadmap', "Park it on the roadmap — outside this specification's scope"),
-        ],
-      }
-      : {
-        statement: `Routing this to "${p.doc}" — it reopens with the gap, and this specification pauses until the answer lands.`,
-        question: 'Proceed?',
-        rows: [cmdOption('y', 'yes', 'Land the gap and pause here')],
-      };
-    return [
-      section('DISPLAY: incoherence gap', emitAs('markdown'), body.join('\n')),
-      section('MENU: incoherence gap', MENU_INSTRUCTION, menu(
-        `${overAuto ? `${AUTO_OVERRIDE_LINE}\n\n` : ''}${gap.statement}`,
-        [...gap.rows, promptOption('Comment', 'Tell me what you\'re thinking before it moves')],
-        { question: gap.question },
-      )),
-    ].join('\n');
-  }
-  const holder = heldDocument(cwd, workUnit, p.doc);
-  const lastActive = holder ? ` — last active ${fmtAge(holder.age_seconds)} ago —` : ',';
-  return section('MENU: incoherence held doc', MENU_INSTRUCTION, menu(
-    `${overAuto ? `${AUTO_OVERRIDE_LINE}\n\n` : ''}"${p.doc}" is open in another session${lastActive} so the fix belongs there; this topic waits for it.`,
-    [
-      cmdOption('n', 'next', 'Send the resolution to its mailbox and carry on here'),
-      cmdOption('s', 'stop', 'Stop here; re-enter after that session lands it'),
-    ],
-    { question: 'How do you want to continue?' },
-  ));
-}
-
-// ---------------------------------------------------------------------------
-// resurface-gate — spec construction's Context Resurfacing gate: a diff over
-// already-approved specification content plus its approval menu. Always
-// gated — it changes blessed content, so construction auto never applies.
-// `--view full` re-presents the full updated section (from the payload's
-// `full` lines) with the menu minus the view option.
-// ---------------------------------------------------------------------------
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, file?: string, view?: string}} args
- * @returns {string}
- */
-function resurfaceGate(cwd, args) {
-  const { dotpath, file, view } = args;
-  if (view !== undefined && view !== 'full') throw new Error('render resurface-gate: --view only accepts "full"');
-  if (!file) throw new Error('render resurface-gate: --file <payload.json> is required');
-  const { phase: rsPhase, topic: rsTopic, manifest: rsManifest } = resolveAddress(cwd, dotpath, 'resurface-gate');
-  const p = readJsonPayload(cwd, file, 'resurface-gate');
-  if (!isFilled(p.section)) throw new Error('render resurface-gate: "section" must be a non-empty string');
-
-  const parts = [];
-  const rsOverAuto = laneHoldsAuto(itemOf(rsManifest, rsPhase, rsTopic) || {}, 'construction');
-  const menuOptions = [cmdOption('y', 'yes', 'Apply changes to specification')];
-
-  if (view === 'full') {
-    const lines = stringLines(p.full, 'resurface-gate', 'full');
-    if (lines.length === 0) throw new Error('render resurface-gate: "full" must be non-empty for --view full');
-    parts.push(section('DISPLAY: resurfacing full', emitAs('markdown'),
-      [`**Resurfacing: ${p.section}** — full updated section`, '', ...lines].join('\n')));
-  } else {
-    if (!p.diff || typeof p.diff !== 'object') throw new Error('render resurface-gate: "diff" is required');
-    const body = [
-      ...stringLines(p.diff.context_above || [], 'resurface-gate', 'diff.context_above').map((l) => ` ${l}`),
-      ...stringLines(p.diff.current || [], 'resurface-gate', 'diff.current').map((l) => `-${l}`),
-      ...stringLines(p.diff.proposed || [], 'resurface-gate', 'diff.proposed').map((l) => `+${l}`),
-      ...stringLines(p.diff.context_below || [], 'resurface-gate', 'diff.context_below').map((l) => ` ${l}`),
-    ];
-    if ((p.diff.current || []).length + (p.diff.proposed || []).length === 0) {
-      throw new Error('render resurface-gate: "diff" must carry at least one current/proposed line');
-    }
-    parts.push(section('DISPLAY: resurfacing', emitAs('markdown'), `**Resurfacing: ${p.section}**`));
-    parts.push(section('DISPLAY: resurfacing diff', emitAs('diff'), body.join('\n')));
-    if (stringLines(p.full || [], 'resurface-gate', 'full').length > 0) {
-      menuOptions.push(cmdOption('v', 'view full', 'Show the full updated section, then decide'));
-    }
-  }
-  menuOptions.push(promptOption('Tell me what to change', 'Revise before recording'));
-  parts.push(section('MENU: resurface gate', MENU_INSTRUCTION,
-    menu(rsOverAuto ? AUTO_OVERRIDE_LINE : '', menuOptions, { question: 'Record this to the specification verbatim?' })));
-  return parts.join('\n');
-}
-
-// ---------------------------------------------------------------------------
-// construction-gate — spec construction's per-topic approval. The draft
-// presentation stays with the flow (artifact content, presented verbatim);
-// this surface owns the state-branching moment after it: the gate mode is
-// read from the manifest's construction_gate_mode at the dotpath, answering
-// with the approval menu when gated and the auto announcement when auto.
-// ---------------------------------------------------------------------------
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string}} args
- * @returns {string}
- */
-function constructionGate(cwd, { dotpath }) {
-  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'construction-gate');
-  const item = (((manifest.phases || {})[phase] || {}).items || {})[topic] || {};
-  if (item.construction_gate_mode === 'auto') {
-    return section(
-      'DISPLAY: construction auto-approved',
-      timedInstruction('text', 'after logging the content', AUTO_GATE_CLAUSE),
-      `${titlecase(topic)} — auto-approved. Recording to the specification.`,
-    );
-  }
-  return section('MENU: construction gate', MENU_INSTRUCTION, menu('', [
-    cmdOption('y', 'yes', 'Add exactly as shown, no modifications'),
-    cmdOption('a', 'auto', 'Approve this and all remaining topics automatically'),
-    promptOption('Tell me what to change', 'Revise before recording'),
-  ], { question: 'Record this to the specification verbatim?' }));
-}
 
 /**
  * @param {string} cwd
@@ -1797,10 +1490,9 @@ function phaseTree(cwd, args) {
 }
 
 // ---------------------------------------------------------------------------
-// findings-summary / finding — the review-findings loop shared by the
-// planning and specification review flows. Findings live in markdown tracking
-// files, which the model reads (the engine never parses markdown) and hands
-// over as a JSON payload; the gate mode is manifest state at the address.
+// findings-summary / finding — the planning review's findings loop. Findings
+// live in markdown tracking files, which the model reads (the engine never
+// parses markdown) and hands over as a JSON payload; the gate mode is manifest state at the address.
 // A finding is report-class content: it leads with what is wrong in the
 // terms the user cares about, and the artifact text is the payload of the
 // fix rather than its explanation. A short diff renders in place as one
@@ -1845,7 +1537,7 @@ function stringLines(v, surface, field) {
 
 /**
  * The recommended-first menu rows shared by proposed-task's decision, the
- * incoherence conflict, and the choice finding: at most one entry marked
+ * executor's block and the choice finding: at most one entry marked
  * (the caller owns the error text), the marked one first, "(recommended)"
  * as its suffix. A side is one menu row, so a newline in any summary is
  * refused here — the single home where model-authored sides become rows.
@@ -2065,12 +1757,6 @@ function backlogGate(cwd, { dotpath, file }) {
 // the questions and the option sets are fixed here, so a gate reads the same
 // whichever flow raised it and at any width.
 // ---------------------------------------------------------------------------
-
-// A bare yes/no pair — no labels, because the question above them already
-// says what yes means (CONVENTIONS.md: The Design System, Menus). Composed
-// per render, as every option set is: a row records itself where it is
-// built.
-const yesNo = () => [bareOption('y', 'yes'), bareOption('n', 'no')];
 
 // candidate-gate — the analysis approval gate's per-candidate stop. The
 // candidate's own fields are judgment content staged by the analysis; the
@@ -2391,21 +2077,19 @@ function experimentSpawnGateSurface(cwd, { dotpath, id }) {
 const WAIT_GATE_PHASES = WAITING_PHASES.filter((phase) => phase !== 'discussion');
 
 /**
- * The blocked-conclusion gate over every wait the item holds — the
- * specification a plan stands on. Empty when nothing is owed: the
- * calling flow branches on the response, so one fetch stands in for the
- * read-then-render pair.
+ * The blocked-conclusion gate over a plan: empty, since a plan holds no wait
+ * — its hold on its specification went with the old spec. Planning's
+ * conclusion still fetches it until planning itself goes (29.14).
  * @param {string} cwd
  * @param {{dotpath: string}} args
- * @returns {string} the gate's sections, or '' when nothing blocks conclusion
+ * @returns {string}
  */
 function waitGateSurface(cwd, { dotpath }) {
   const { phase, topic, manifest } = resolvePhaseItem(cwd, dotpath, 'wait-gate', WAIT_GATE_PHASES, 'the waiting item itself');
   if (!itemOf(manifest, phase, topic)) {
     throw new Error(`render wait-gate: no ${phase} item "${topic}" — nothing to hold shut`);
   }
-  const blocking = waits(manifest, phase, topic);
-  return blocking.length === 0 ? '' : waitGate(blocking, manifest.work_type === 'epic');
+  return '';
 }
 
 // summary-backfill-gate — the epic's provenance recovery. The topics it
@@ -3076,9 +2760,8 @@ function planFormatGate(cwd, { variant, file }) {
   ));
 }
 
-// plan-review-gate — the plan review loop's two gates, the sibling of
-// spec-review-gate: continue = the cycle-count escape hatch, reloop = another
-// full round of both reviews.
+// plan-review-gate — the plan review loop's two gates: continue = the
+// cycle-count escape hatch, reloop = another full round of both reviews.
 
 /**
  * @param {string} cwd
@@ -3188,212 +2871,22 @@ function complexityGate(cwd, { dotpath, file }) {
   ].join('\n');
 }
 
-// correction-gate — the consent stop before editing another work unit's
-// completed specification. The path is the address's own, derived here so the
-// gate can never name a file the correction protocol would not touch; the
-// owning unit must be completed, which is the one state the protocol edits.
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string}} args
- * @returns {string}
- */
-function correctionGate(cwd, { dotpath }) {
-  const { workUnit, phase, topic, manifest } = resolveAddress(cwd, dotpath, 'correction-gate');
-  if (phase !== 'specification') {
-    throw new Error(`render correction-gate: address must be <work_unit>.specification.<topic>, got phase "${phase}"`);
-  }
-  if (manifest.status !== 'completed') {
-    throw new Error(`render correction-gate: "${workUnit}" is "${manifest.status}" — the corrigendum protocol serves completed work units`);
-  }
-  const specPath = statePath(cwd, workUnit, 'specification', topic, 'specification.md');
-  return section('MENU: correction gate', MENU_INSTRUCTION, menu(
-    `Correcting ${specPath}.`,
-    [
-      cmdOption('y', 'yes', 'Edit in place + corrigendum + knowledge re-index'),
-      cmdOption('v', 'view', 'Show the full correction list'),
-      cmdOption('n', 'no', 'Leave the specification as-is'),
-    ],
-    { question: 'Apply the correction protocol?' },
-  ));
-}
-
-// analysis-proceed-gate — the epic specification menu's consent before the
-// grouping analysis runs. The signpost above it says first that the cached
-// analysis is outdated where the discussions have moved since it ran; the
-// ask does not differ.
-
-const ANALYSIS_STALE = 'Analysis outdated — discussions have changed since the last grouping analysis.';
-const ANALYSIS_PROMPT = 'Your discussions will be analyzed for natural groupings, each one a proposed specification you can start when ready. Results are cached and reused until discussions change.';
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string}} args
- * @returns {string}
- */
-function analysisProceedGate(cwd, { dotpath }) {
-  const { manifest } = resolveWorkUnit(cwd, dotpath, 'analysis-proceed-gate');
-  const analysis = computeAnalysisCacheStatus(manifest, stateRoot(cwd), 'grouping-analysis');
-  const stale = analysis.stamped && analysis.status !== 'valid';
-  return [
-    section('DISPLAY: analysis prompt', emitAs('markdown'), `> ${stale ? `${ANALYSIS_STALE} ` : ''}${ANALYSIS_PROMPT}`),
-    section('MENU: analysis proceed gate', MENU_INSTRUCTION, menu('', yesNo(), { question: 'Proceed with analysis?' })),
-  ].join('\n');
-}
-
-// spec-confirm-gate — the consent before a specification's entry. After a
-// menu pick it is drawn only where the start does what the pick did not
-// show: incorporate a started specification, which its completion
-// supersedes, or unify every grouping (`--unify`, the selection the
-// groupings menu's unify made) — empty otherwise, as the soft gate answers
-// empty on pass. The single-discussion path (`--single`) picks nothing, so
-// it is always drawn: a create — of the lone completed discussion where no
-// item exists yet — a continue, or a refine.
-
-const SPEC_CONFIRMABLE = ['proposed', 'in-progress', 'completed'];
-const REFINE_NOTE = 'A refinement is for factual corrections and sharpening. A change of decision belongs in the source discussion — reopen that discussion instead; the moment it reopens, this specification is flagged to reconcile against the re-decision.';
-
-/**
- * The single-discussion path's grouping before its item exists: the lone
- * completed discussion under the name the path proceeds with.
- * @param {object} manifest @param {string} workUnit @param {string} topic
- * @returns {import('./specification.cjs').DiscoverySpec}
- */
-function loneDiscussionGrouping(manifest, workUnit, topic) {
-  const completed = phaseItems(manifest, 'discussion').filter((d) => d.status === 'completed');
-  if (completed.length !== 1) {
-    throw new Error(`render spec-confirm-gate: no specification "${topic}" — the single-discussion confirm reads the lone completed discussion, and "${workUnit}" has ${completed.length}`);
-  }
-  return {
-    name: topic,
-    status: 'proposed',
-    sources: [{ name: completed[0].name, status: 'pending', discussion_status: 'completed' }],
-    has_pending_sources: true,
-  };
-}
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, single?: string, unify?: string}} args
- * @returns {string}
- */
-function specConfirmGate(cwd, { dotpath, single, unify }) {
-  const { workUnit, phase, topic, manifest } = resolveAddress(cwd, dotpath, 'spec-confirm-gate');
-  if (phase !== 'specification') {
-    throw new Error(`render spec-confirm-gate: address must be <work_unit>.specification.<topic>, got phase "${phase}"`);
-  }
-  const item = itemOf(manifest, 'specification', topic);
-  if (!item && !single) throw new Error(`render spec-confirm-gate: no specification "${topic}" — the confirm reads the item the pick names`);
-  const spec = item ? discoverySpec(manifest, topic, item) : loneDiscussionGrouping(manifest, workUnit, topic);
-  if (!SPEC_CONFIRMABLE.includes(spec.status)) {
-    throw new Error(`render spec-confirm-gate: "${topic}" is ${spec.status} — there is nothing to confirm`);
-  }
-  const { variant, sources, supersedes } = specConfirmation(manifest, spec, { unify: Boolean(unify) });
-  const drawn = single || variant === 'unify' || (variant === 'create' && supersedes.length > 0);
-  if (!drawn) return '';
-
-  return [
-    section('DISPLAY: spec confirmation', emitAs('text', ', directly above the menu'), specificationConfirmation({
-      variant, state_root: stateRoot(cwd), work_unit: workUnit, name: topic, status: spec.status, sources, supersedes, titles: topicTitles(manifest),
-    })),
-    section('MENU: spec confirm gate', MENU_INSTRUCTION, menu(variant === 'refine' ? REFINE_NOTE : '', yesNo(), { question: 'Proceed?' })),
-  ].join('\n');
-}
-
-// finding-batch — the specification's settled calls, the calls its review
-// has made, presented for a scan before they land; every other door walks
-// its calls one at a time through `render finding`. The payload carries only
-// judgment content, so the screen is one call and the prose holds no
-// template. A screen holds at most BATCH_MAX items — a longer batch renders
-// over successive screens, each approved on its own.
-//
-// It is the one screen a gate mode reaches: it carries the row that sets the
-// mode, and under auto it renders as a display of what is landing, with no
-// menu — a scan the user opted out of is a screen with nothing on it to do.
-
-const BATCH_MAX = 5;
-
-/** A confirm's remainder tail — how many wait beyond this screen. @param {number} more */
-const moreTail = (more) => (more > 0 ? ` (${more} more after this)` : '');
-
-// The phase that batches its review's calls; `render finding` reads it too,
-// to say whether a settled finding carries its own gate.
-const SETTLED_BATCH_PHASE = 'specification';
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, file?: string}} args
- * @returns {string}
- */
-function findingBatch(cwd, { dotpath, file }) {
-  if (!file) throw new Error('render finding-batch: --file <payload.json> is required');
-  const { manifest, phase, topic } = resolveAddress(cwd, dotpath, 'finding-batch');
-  if (phase !== SETTLED_BATCH_PHASE) {
-    throw new Error(`render finding-batch: only a specification batches its review's calls — ${phase} walks each through render finding`);
-  }
-  const p = readJsonPayload(cwd, file, 'finding-batch');
-  if (!Array.isArray(p.items) || p.items.length === 0) {
-    throw new Error('render finding-batch: "items" must be a non-empty array of {title, detail}');
-  }
-  if (p.items.length > BATCH_MAX) {
-    throw new Error(`render finding-batch: a screen holds at most ${BATCH_MAX} items (${p.items.length} given) — render the batch over successive screens`);
-  }
-  const more = p.remaining === undefined ? 0 : p.remaining;
-  if (!Number.isInteger(more) || more < 0) {
-    throw new Error('render finding-batch: "remaining" must be a non-negative integer — the count of settled findings beyond the screen');
-  }
-  p.items.forEach((it, i) => {
-    for (const field of ['title', 'detail']) {
-      if (!isFilled(it[field])) throw new Error(`render finding-batch: item ${i + 1} is missing "${field}"`);
-    }
-  });
-  const count = p.items.length;
-  const body = worklist({
-    intro: count === 1
-      ? "This one is a call I've made, with what it rests on named beside it."
-      : "Each of these is a call I've made, with what it rests on named beside it.",
-    items: p.items.map((it) => ({ title: it.title, note: it.detail })),
-  });
-  if (laneHoldsAuto(itemOf(manifest, phase, topic) || {}, 'review')) {
-    // The landings follow the line, so it speaks in the present.
-    return section('DISPLAY: finding batch auto-approved', AUTO_GATE_MARKDOWN_INSTRUCTION,
-      `${body}\n\n${count === 1 ? 'Documenting it' : `Documenting all ${count}`} [auto].`);
-  }
-  return [
-    section('DISPLAY: finding batch', emitAs('markdown'), body),
-    section(
-      'MENU: finding batch',
-      MENU_INSTRUCTION,
-      menu('', [
-        cmdOption('y', 'yes', `${count === 1 ? 'Document it' : `Document all ${count}`} and move on${moreTail(more)}`),
-        cmdOption('a', 'auto', 'Document this screen and every remaining settled finding automatically'),
-        promptOption('Discuss', "Say discuss and a number — I'll raise it after the rest land"),
-        promptOption('Ask', 'Tell me a number to expand'),
-      ], { question: count === 1 ? 'Document it?' : 'Document them?' }),
-    ),
-  ].join('\n');
-}
-
 // The finding payload's category vocabulary — metadata carried into the
-// presentation, never the thing that picks its shape. The two source-lane
-// categories (Source defect, Unsourced decision) route via
-// resolve-source-incoherence before any render, so their arrival at this
-// surface is a caller bug and refuses by name.
+// presentation, never the thing that picks its shape.
 const FINDING_CATEGORIES = ['enhancement', 'new-topic', 'gap', 'duplication', 'contradiction'];
-const ROUTED_CATEGORIES = ['source-defect', 'unsourced-decision'];
 
 // The move owed — what the user has to do about the finding, which is the
 // only question that determines its shape. `settled`: the call is made and
 // what it rests on is named, so nothing here needs the user — it applies
-// without a stop wherever the gate is off, and at the specification, where
-// the batch screen is its gate, it renders as a report and nothing else.
-// `choice`: real options exist and picking is the user's, so the finding
-// proposes nothing and the stop overrides `auto` — the stays-gated rule is
-// that a choice exists, never a category. `route` belongs to
-// resolve-source-incoherence and refuses here by name.
+// without a stop wherever the gate is off. `choice`: real options exist and
+// picking is the user's, so the finding proposes nothing and the stop
+// overrides `auto` — the stays-gated rule is that a choice exists, never a
+// category.
 const FINDING_MOVES = ['settled', 'choice'];
 
 /**
+ * A finding of the plan's review — the plan's alone: the spec raises no
+ * finding gate (11.8.4).
  * @param {string} cwd
  * @param {{dotpath: string, file?: string, view?: string}} args
  * @returns {string}
@@ -3401,7 +2894,7 @@ const FINDING_MOVES = ['settled', 'choice'];
 function finding(cwd, { dotpath, file, view }) {
   if (view !== undefined && view !== 'full') throw new Error('render finding: --view only accepts "full"');
   if (!file) throw new Error('render finding: --file <payload.json> is required');
-  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'finding');
+  const { phase, topic, manifest } = resolvePhaseItem(cwd, dotpath, 'finding', ['planning'], 'the plan under review');
   const p = readJsonPayload(cwd, file, 'finding');
 
   if (!Number.isInteger(p.n) || p.n < 1) throw new Error('render finding: "n" must be a positive integer');
@@ -3413,16 +2906,10 @@ function finding(cwd, { dotpath, file, view }) {
   if (!isFilled(p.problem)) {
     throw new Error('render finding: "problem" must be a non-empty string — what is wrong, in the terms the user cares about');
   }
-  if (p.move === 'route') {
-    throw new Error('render finding: a "route" finding goes to resolve-source-incoherence and never renders at the gate');
-  }
   if (!FINDING_MOVES.includes(p.move)) {
     throw new Error(`render finding: "move" must be one of ${FINDING_MOVES.join('/')} — the move owed picks the shape, not the category`);
   }
   if (p.category !== undefined && !FINDING_CATEGORIES.includes(p.category)) {
-    if (ROUTED_CATEGORIES.includes(p.category)) {
-      throw new Error(`render finding: "${p.category}" findings route via resolve-source-incoherence and never render at the gate`);
-    }
     throw new Error(`render finding: unknown category "${p.category}" (expected ${FINDING_CATEGORIES.join('/')})`);
   }
 
@@ -3434,10 +2921,7 @@ function finding(cwd, { dotpath, file, view }) {
     if (view) throw new Error('render finding: --view serves a settled finding\'s wording; a choice proposes none');
     return findingChoice(p, head, itemOf(manifest, phase, topic) || {});
   }
-  return findingSettled(p, head, itemOf(manifest, phase, topic) || {}, {
-    view: view === 'full',
-    batched: phase === SETTLED_BATCH_PHASE,
-  });
+  return findingSettled(p, head, itemOf(manifest, phase, topic) || {}, view === 'full');
 }
 
 /**
@@ -3475,14 +2959,11 @@ function findingChoice(p, head, item) {
  * A settled call: the body carries what determined it, a short diff renders
  * in place, and whole proposed content is held behind `v/view` rather than
  * dumped — the finding is a report, and the artifact text is the payload of
- * the fix, not its explanation. Where the phase batches its calls the gate
- * is the batch screen and this render is its `ask N` expansion: no menu, and
- * the wording rides the report, the expansion being the ask `v/view` would
- * otherwise answer.
- * @param {any} p @param {string[]} head @param {any} item
- * @param {{view: boolean, batched: boolean}} mode @returns {string}
+ * the fix, not its explanation.
+ * @param {any} p @param {string[]} head @param {any} item @param {boolean} view
+ * @returns {string}
  */
-function findingSettled(p, head, item, { view, batched }) {
+function findingSettled(p, head, item, view) {
   if (!isFilled(p.proposal)) {
     throw new Error('render finding: a "settled" finding must carry a "proposal" — the call and what determined it');
   }
@@ -3524,7 +3005,7 @@ function findingSettled(p, head, item, { view, batched }) {
   // re-rendering it whole is how one finding comes to fill a screen twice.
   if (view) {
     if (!p.content) throw new Error('render finding: --view needs "content" — a diff finding shows its change in place');
-    return batched ? wording() : [wording(), gateMenu(false)].join('\n');
+    return [wording(), gateMenu(false)].join('\n');
   }
 
   head.push('', p.proposal);
@@ -3542,15 +3023,8 @@ function findingSettled(p, head, item, { view, batched }) {
     }
     parts.push(section('DISPLAY: diff', emitAs('diff'), body.join('\n')));
   }
-  // At a walked gate whole-section content waits for `v/view` — source read
-  // aloud is what buried the report. A batched address has no such row: the
-  // expansion is the user asking to see the finding, so the wording comes
-  // with it, as markdown rather than as a wall of syntax.
-  if (batched) {
-    if (p.content) parts.push(wording());
-    return parts.join('\n');
-  }
-
+  // Whole-section content waits for `v/view` — source read aloud is what
+  // buried the report.
   if (item.finding_gate_mode === 'auto') {
     parts.push(section(
       'DISPLAY: finding auto-approved',
@@ -3725,10 +3199,9 @@ function phaseCompleted(cwd, { dotpath, phase, paths }) {
 /**
  * The epic menu's paused banner — `phase-completed`'s sibling for a phase
  * leaving on a pause. Derived, never told: the phase's in-progress items
- * still awaiting something, each named with what it awaits — a conversation
- * or a plan its waits, a specification the sources it routed a gap into. A
- * peer can land what was awaited between the pause and the banner, so no
- * holder left renders the bare line rather than refusing.
+ * still awaiting something, each named with what it awaits. A peer can land
+ * what was awaited between the pause and the banner, so no holder left
+ * renders the bare line rather than refusing.
  * @param {string} cwd
  * @param {{dotpath: string, phase?: string}} args
  * @returns {string}
@@ -3736,17 +3209,13 @@ function phaseCompleted(cwd, { dotpath, phase, paths }) {
 function phasePausedSurface(cwd, { dotpath, phase }) {
   const { workUnit, manifest } = resolveWorkUnit(cwd, dotpath, 'phase-paused');
   if (!isFilled(phase)) throw new Error('render phase-paused: --phase is required');
-  if (!PAUSING_PHASES.includes(phase)) {
-    throw new Error(`render phase-paused: --phase must be <${PAUSING_PHASES.join('|')}> — the phases that pause; got "${phase}"`);
+  if (!WAITING_PHASES.includes(phase)) {
+    throw new Error(`render phase-paused: --phase must be <${WAITING_PHASES.join('|')}> — the phases that pause; got "${phase}"`);
   }
   const titles = topicTitles(manifest);
-  /** @type {(topic: string) => string} */
-  const owed = phase === 'specification'
-    ? (topic) => owedSources(awaitedSources(manifest, topic).map((name) => goesBy(titles, name)), specSourcePhase(manifest.work_type))
-    : (topic) => owedWaits(waits(manifest, phase, topic));
   const holders = phaseItems(manifest, phase)
     .filter((item) => item.status === 'in-progress')
-    .map((item) => ({ topic: item.name, title: itemTitle(titles, phase, item.name), owed: owed(item.name) }))
+    .map((item) => ({ topic: item.name, title: itemTitle(titles, phase, item.name), owed: owedWaits(waits(manifest, phase, item.name)) }))
     .filter((holder) => holder.owed !== '');
   return phasePaused(phase, workUnit, holders);
 }
@@ -3814,8 +3283,7 @@ function listJoin(parts) {
 /**
  * The cancel gate's statement over a Discovery unit — exactly what the
  * cancel takes: the map row alone for a never-started topic; otherwise the
- * items by phase, the open experiment records that end abandoned, and any
- * proposed grouping discarded.
+ * items by phase and the open experiment records that end abandoned.
  * @param {object} manifest @param {string} topic
  */
 function discoveryCancelStatement(manifest, topic) {
@@ -3829,12 +3297,8 @@ function discoveryCancelStatement(manifest, topic) {
   if (lifecycle === 'postponed') {
     throw new Error(`render cancel-gate: "${topic}" is postponed — the roadmap owns it; remove its item there to cancel it, or pull it forward first`);
   }
-  const locking = unitLocks(manifest, topic);
-  if (locking.length > 0) {
-    throw new Error(`render cancel-gate: "${topic}" is locked by the specification sourcing its discussion (${unitLockNames(locking)}) — the menu never offers it`);
-  }
   const name = topicTitle(manifest, topic);
-  const plan = cancelPlan(manifest, 'discovery', topic);
+  const plan = cancelPlan(manifest, topic);
   if (plan.items.length === 0) {
     if (!itemOf(manifest, 'discovery', topic)) {
       throw new Error(`render cancel-gate: "${topic}" has nothing to cancel — no live item under its name and no map row, so the menu never offers it`);
@@ -3847,61 +3311,13 @@ function discoveryCancelStatement(manifest, topic) {
     const one = experiments.length === 1;
     parts.push(`${experiments.length} open experiment${one ? '' : 's'} (${experiments.join(', ')}) end${one ? 's' : ''} abandoned on the register.`);
   }
-  const discarded = discardedGroupingsClause(plan.discards);
-  if (discarded) parts.push(discarded);
   return parts.join(' ');
 }
 
 /**
- * The proposed groupings a unit gate names as discarded, or '' when it
- * discards none — the sentence the cancel and the postpone share.
- * @param {string[]} discards
- * @returns {string}
- */
-function discardedGroupingsClause(discards) {
-  if (discards.length === 0) return '';
-  const named = discards.map((n) => `**${titlecase(n)}**`);
-  const one = named.length === 1;
-  return `The proposed grouping${one ? '' : 's'} ${listJoin(named)} ${one ? 'is' : 'are'} discarded — the next grouping analysis rebuilds from the new world.`;
-}
-
-/**
- * The cancel gate's statement over a Definition unit — the specification
- * and its plan, and the source discussions the cancel frees.
- * @param {object} manifest @param {string} spec
- */
-function specificationCancelStatement(manifest, spec) {
-  const item = itemOf(manifest, 'specification', spec);
-  if (!item) throw new Error(`render cancel-gate: no specification item "${spec}"`);
-  if (item.status === 'proposed') {
-    throw new Error(`render cancel-gate: "${spec}" is a proposed grouping — not started, so the menu never offers it`);
-  }
-  if (item.status === 'cancelled') {
-    throw new Error(`render cancel-gate: "${spec}" is already cancelled — the menu never offers it`);
-  }
-  if (TERMINAL_STATUSES.includes(item.status)) {
-    throw new Error(`render cancel-gate: "${spec}" is ${item.status} — the menu never offers it`);
-  }
-  if (deliveryStarted(manifest, spec)) {
-    throw new Error(`render cancel-gate: "${spec}" is locked — implementation has started, so the menu never offers it`);
-  }
-  const plan = cancelPlan(manifest, 'specification', spec);
-  if (plan.items.length === 0) {
-    throw new Error(`render cancel-gate: "${spec}" has nothing to cancel — it carries no status, so the menu never offers it`);
-  }
-  const withPlan = plan.items.some(({ phase }) => phase === 'planning');
-  const titles = topicTitles(manifest);
-  const sources = sourceRows(item.sources).map(([n]) => titled(titles, n));
-  const frees = sources.length > 0
-    ? ` and frees its source discussion${sources.length === 1 ? '' : 's'} (${sources.join(', ')}) to be regrouped or cancelled`
-    : '';
-  return `Cancelling **${titlecase(spec)}** marks the specification${withPlan ? ' and its plan' : ''} cancelled${frees}; it can be reactivated later.`;
-}
-
-/**
- * The cancel confirm over one unit — `<wu>.discovery.<topic>` or
- * `<wu>.specification.<spec>` of an epic, or a single-topic unit by its bare
- * name — fetched by the epic menu and by a session cancelling its own topic.
+ * The cancel confirm over one unit — `<wu>.discovery.<topic>` of an epic, or
+ * a single-topic unit by its bare name — fetched by the epic menu and by a
+ * session cancelling its own topic.
  * The statement names exactly what the cancel takes and stays context; the
  * short question takes the glyph. Yes runs the cancel, `topic cancel` or
  * `workunit cancel`; no carries on. A locked or already-cancelled unit
@@ -3930,12 +3346,9 @@ function cancelGate(cwd, { dotpath }) {
 function epicUnitCancel(cwd, dotpath) {
   const { workUnit, phase, topic, manifest } = resolveAddress(cwd, dotpath, 'cancel-gate');
   if (!(phase in UNIT_PHASES)) {
-    throw new Error(`render cancel-gate: address must be <work_unit>.discovery.<topic> or <work_unit>.specification.<spec>, got phase "${phase}"`);
+    throw new Error(`render cancel-gate: address must be <work_unit>.discovery.<topic>, got phase "${phase}"`);
   }
-  const statement = phase === 'discovery'
-    ? discoveryCancelStatement(manifest, topic)
-    : specificationCancelStatement(manifest, topic);
-  return { statement, cancel: ['topic', 'cancel', workUnit, phase, topic] };
+  return { statement: discoveryCancelStatement(manifest, topic), cancel: ['topic', 'cancel', workUnit, phase, topic] };
 }
 
 /**
@@ -3947,7 +3360,7 @@ function epicUnitCancel(cwd, dotpath) {
 function workUnitCancel(cwd, dotpath) {
   const { workUnit, manifest, typeLabel } = resolveWorkUnit(cwd, dotpath, 'cancel-gate');
   if (manifest.work_type === 'epic') {
-    throw new Error(`render cancel-gate: "${workUnit}" is an epic — address the unit to cancel, <work_unit>.discovery.<topic> or <work_unit>.specification.<spec>`);
+    throw new Error(`render cancel-gate: "${workUnit}" is an epic — address the topic to cancel, <work_unit>.discovery.<topic>`);
   }
   if (manifest.status !== 'in-progress') {
     throw new Error(`render cancel-gate: "${workUnit}" is ${manifest.status} — only work in progress is cancelled`);
@@ -3960,8 +3373,8 @@ function workUnitCancel(cwd, dotpath) {
 
 /**
  * The postpone gate's statement in two halves: what goes — the map row alone
- * for a never-started topic, otherwise the items by phase, with any proposed
- * grouping discarded — and where it lands, in the park gate's shape.
+ * for a never-started topic, otherwise the items by phase — and where it
+ * lands, in the park gate's shape.
  * @param {string} workUnit @param {string} topic
  * @param {import('./derivations.cjs').PostponePlan} plan @param {string} horizon
  * @param {Record<string, any>|null} project  the project manifest, the gate's one read
@@ -3980,7 +3393,7 @@ function postponeStatement(workUnit, topic, plan, horizon, project, name, goesAs
   const lands = target.joined
     ? `Its own item **${titlecase(target.name)}** re-waits under "${horizon}"${flag}.`
     : `It waits on the roadmap under "${horizon}"${flag}, until it is pulled into work.`;
-  return [goes, discardedGroupingsClause(plan.discards), lands, ...(roadmap ? [] : ['The roadmap is created with it.'])]
+  return [goes, lands, ...(roadmap ? [] : ['The roadmap is created with it.'])]
     .filter(Boolean).join(' ');
 }
 
@@ -4033,11 +3446,10 @@ function epicAllDoneGate(cwd, { dotpath }) {
 
 // ---------------------------------------------------------------------------
 // epic-soft-gate — the epic menu's advisory phase gates, one surface for the
-// whole table. Empty when the selection raises no concern. The specification
-// row counts the discussions the grouping analysis will read; the planning
-// and implementation rows read the build order and name the topics sitting
-// ahead of the selection. Discussion entries carry no gate. Advisory always:
-// the menu offers proceed-anyway, never a refusal.
+// whole table. Empty when the selection raises no concern. The planning and
+// implementation rows read the build order and name the topics sitting ahead
+// of the selection. Discussion entries carry no gate. Advisory always: the
+// menu offers proceed-anyway, never a refusal.
 // ---------------------------------------------------------------------------
 
 const { SOFT_GATE_ACTIONS } = require('./projections/epic.cjs');
@@ -4085,29 +3497,19 @@ function epicSoftGate(cwd, { dotpath, action, topic }) {
   }
 
   let message = null;
-  let advisory = 'The system will re-analyse if you revisit later — proceeding now is safe, but may require rework.';
+  const advisory = 'The build order is advisory — proceeding now is safe; the gate only names what sits ahead.';
 
-  if (action === 'start_specification') {
-    // The discussions the grouping analysis reads: in-progress and completed.
-    // A parked stub or a terminal item never reaches it, so never counts.
-    const read = phaseItems(manifest, 'discussion').filter((i) => i.status === 'in-progress' || i.status === 'completed');
-    const inProgress = read.filter((i) => i.status === 'in-progress').length;
-    if (read.length > 0 && inProgress > 0) {
-      message = `${inProgress} of ${read.length} discussions still in-progress. Later conclusions may reshape this grouping.`;
-    }
-  } else if (action === 'start_planning' || action === 'continue_planning') {
+  if (action === 'start_planning' || action === 'continue_planning') {
     if (!isFilled(topic)) throw new Error(`render epic-soft-gate: --topic is required for ${action}`);
     const ahead = buildOrderAhead(manifest, topic, 'planning');
     if (ahead.length > 0) {
       message = `You're about to plan "${titlecase(topic)}" — ${aheadPhrase(ahead)} ${ahead.length === 1 ? 'is' : 'are'} ahead of it in the build order and unplanned.`;
-      advisory = 'The build order is advisory — proceeding now is safe; the gate only names what sits ahead.';
     }
   } else if (action === 'start_implementation' || action === 'continue_implementation') {
     if (!isFilled(topic)) throw new Error(`render epic-soft-gate: --topic is required for ${action}`);
     const ahead = buildOrderAhead(manifest, topic, 'implementation');
     if (ahead.length > 0) {
       message = `You're about to implement "${titlecase(topic)}" — ${aheadPhrase(ahead)} ${ahead.length === 1 ? 'is' : 'are'} ahead of it in the build order and unbuilt.`;
-      advisory = 'The build order is advisory — proceeding now is safe; the gate only names what sits ahead.';
     }
   }
 
@@ -4182,13 +3584,6 @@ function doNowCount(cwd, workUnit, topic) {
 
 /** @type {Record<string, {phases: string[], open: (ctx: StepContext) => {name: string, signpost: string}}>} */
 const STEP_OPENINGS = {
-  conclude: {
-    phases: ['specification'],
-    open: ({ manifest }) => ({
-      name: 'Conclude',
-      signpost: `Wrapping up. Final assessment, sign-off, and ${manifest.work_type === 'cross-cutting' ? 'closure — the pipeline completes here' : 'handover to the planning phase'}.`,
-    }),
-  },
   consolidation: {
     phases: ['implementation'],
     open: ({ manifest, topic }) => {
@@ -4298,39 +3693,13 @@ function blocker(fact, guidance) {
 
 /**
  * @param {string} cwd
- * @param {{dotpath: string, own?: string}} args
+ * @param {{dotpath: string}} args
  * @returns {string} blocker sections, or '' when the entry is clear
  */
-function entryGate(cwd, { dotpath, own }) {
+function entryGate(cwd, { dotpath }) {
   const { workUnit, phase, topic, manifest } = resolveAddress(cwd, dotpath, 'entry-gate');
   const titles = topicTitles(manifest);
   const t = itemTitle(titles, phase, topic);
-
-  if (own) {
-    // --own checks the specification's OWN terminal statuses where it
-    // starts, not its prerequisites — the start's own routing handles the
-    // live ones.
-    if (phase !== 'specification') {
-      throw new Error(`render entry-gate: --own is only supported for specification, got "${phase}"`);
-    }
-    const item = itemOf(manifest, phase, topic) || {};
-    if (item.status === 'cancelled') {
-      return blocker(`"${t}" is cancelled`, 'Reactivate it from the epic menu (`e/reactivate`).');
-    }
-    if (item.status === 'promoted') {
-      return blocker(
-        `"${t}" was promoted to the cross-cutting work unit "${String(item.promoted_to || '')}"`,
-        'Continue it from that work unit.',
-      );
-    }
-    if (item.status === 'superseded') {
-      return blocker(
-        `The specification for "${t}" was consolidated into "${titlecase(String(item.superseded_by || ''))}"`,
-        'Work on that specification instead.',
-      );
-    }
-    return '';
-  }
 
   if (phase === 'planning') {
     const spec = itemOf(manifest, 'specification', topic);
@@ -4363,19 +3732,6 @@ function entryGate(cwd, { dotpath, own }) {
       return blocker(
         `"${t}" was promoted to the cross-cutting work unit "${String(spec.promoted_to || '')}"`,
         'Cross-cutting specifications inform other plans — they are not planned directly.',
-      );
-    }
-    // A specification reading `completed` can still be a record in motion —
-    // its input moved, or a source row is not yet extracted or has moved
-    // beneath the extraction — and a plan built from one is built from a
-    // document about to change.
-    const unsettled = specUnsettled(manifest, topic);
-    if (unsettled) {
-      return blocker(
-        `Entry blocked — the specification for "${t}" is unsettled (${specUnsettledPhrase(unsettled)})`,
-        manifest.work_type === 'epic'
-          ? 'Return to the epic menu — the specification is the way in: its row, or c/completed while it still reads completed.'
-          : 'Continue the work unit — the specification is its next step.',
       );
     }
     return '';
@@ -4421,79 +3777,7 @@ function entryGate(cwd, { dotpath, own }) {
     return '';
   }
 
-  if (phase === 'specification') {
-    const wu = titlecase(manifest.name || topic);
-    const workType = manifest.work_type;
-    if (workType === 'bugfix') {
-      const inv = itemOf(manifest, 'investigation', topic);
-      if (!inv) {
-        return blocker(
-          `No investigation found for "${wu}"`,
-          'A completed investigation is required before specification can begin.',
-        );
-      }
-      if (inv.status !== 'completed') {
-        return blocker(
-          `The investigation for "${wu}" is not yet completed`,
-          'The investigation must be completed before specification can begin.',
-        );
-      }
-      return '';
-    }
-    if (workType === 'epic') {
-      const items = ((manifest.phases || {}).discussion || {}).items || {};
-      const names = Object.keys(items);
-      if (names.length === 0) {
-        return blocker(
-          `No discussions found for "${wu}"`,
-          'At least one completed discussion is required before specification can begin.',
-        );
-      }
-      if (!names.some((n) => items[n] && items[n].status === 'completed')) {
-        return blocker(
-          `No completed discussions found for "${wu}"`,
-          'At least one completed discussion is required before specification can begin. Run /leeway to continue an in-progress discussion.',
-        );
-      }
-      // The topic's own sources must be settled: a source discussion back
-      // in-progress (a gap routed into it), or one the gap exit opened as a
-      // new topic and parked, blocks this spec until it concludes.
-      // sourceRows decodes the map and legacy array forms.
-      const spec = itemOf(manifest, 'specification', topic);
-      const open = sourceRows(spec && spec.sources)
-        .map(([n]) => n)
-        .filter((n) => n && items[n] && OPEN_SOURCE_STATUSES.includes(items[n].status));
-      if (open.length > 0) {
-        return blocker(
-          `Sources for "${t}" are not concluded: ${open.map((n) => goesBy(titles, n)).join(', ')}`,
-          'A specification cannot be built from a record still open — conclude the discussion(s), then re-enter this specification.',
-        );
-      }
-      return '';
-    }
-    // feature / cross-cutting: the topic's own discussion — or, where the
-    // discussions carry names of their own (a promoted unit's moved ones),
-    // each of them.
-    const own = ownNamedItems(manifest, 'discussion');
-    for (const name of own.length > 0 ? own.map((i) => i.name) : [topic]) {
-      const disc = itemOf(manifest, 'discussion', name);
-      if (!disc) {
-        return blocker(
-          `No discussion found for "${wu}"`,
-          'A completed discussion is required before specification can begin.',
-        );
-      }
-      if (disc.status !== 'completed') {
-        return blocker(
-          `The discussion for "${titled(titles, name)}" is not yet completed`,
-          'The discussion must be completed before specification can begin.',
-        );
-      }
-    }
-    return '';
-  }
-
-  throw new Error(`render entry-gate: no prerequisite rules for phase "${phase}" (discussion|planning|implementation|review|specification)`);
+  throw new Error(`render entry-gate: no prerequisite rules for phase "${phase}" (planning|implementation|review)`);
 }
 
 // ---------------------------------------------------------------------------
@@ -4836,35 +4120,17 @@ function workunitReceiptSurface(cwd, args) {
 }
 
 /**
- * Whether a cancel unit reads cancelled: the map lifecycle for a Discovery
- * unit, the specification's own status for a Definition unit. Loud when the
- * unit does not exist.
- * @param {object} manifest @param {'discovery'|'specification'} stage @param {string} name
- */
-function unitCancelled(manifest, stage, name) {
-  if (stage === 'discovery') {
-    if (!discoveryUnitExists(manifest, name)) {
-      throw new Error(`render topic-receipt: ${noTopicRefusal(manifest, name)}`);
-    }
-    return computeTopicLifecycle(manifest, name).lifecycle === 'cancelled';
-  }
-  const item = itemOf(manifest, 'specification', name);
-  if (!item) throw new Error(`render topic-receipt: no specification item "${name}"`);
-  return item.status === 'cancelled';
-}
-
-/**
- * The statuses a unit's live items stand at — what a reactivate or a pull
+ * The statuses a topic's live items stand at — what a reactivate or a pull
  * forward returned them to.
- * @param {object} manifest @param {'discovery'|'specification'} stage @param {string} name
+ * @param {object} manifest @param {string} name
  */
-function unitStatuses(manifest, stage, name) {
-  return liveUnitItems(manifest, stage, name).map(({ phase, item }) => ({ phase, status: item.status }));
+function unitStatuses(manifest, name) {
+  return liveUnitItems(manifest, 'discovery', name).map(({ phase, item }) => ({ phase, status: item.status }));
 }
 
 /**
- * The Discovery unit a postpone-side receipt addresses, refused when the
- * dotpath names another stage or no unit of the name.
+ * The Discovery unit a unit receipt addresses, refused when the dotpath
+ * names another phase or no unit of the name.
  * @param {object} manifest @param {string} phase @param {string} topic @param {string} verb
  */
 function assertDiscoveryUnitAddress(manifest, phase, topic, verb) {
@@ -4878,9 +4144,8 @@ function assertDiscoveryUnitAddress(manifest, phase, topic, verb) {
 
 /**
  * The topic receipts. `complete` addresses the phase item; `cancel`,
- * `reactivate`, `postpone` and `restore` address the unit —
- * `<wu>.discovery.<topic>` or `<wu>.specification.<spec>` — and read its
- * state after the verb ran.
+ * `reactivate`, `postpone` and `restore` address the unit,
+ * `<wu>.discovery.<topic>`, and read its state after the verb ran.
  * @param {string} cwd @param {{dotpath: string, verb?: string, warn?: string, inbox?: string}} args @returns {string}
  */
 function topicReceiptSurface(cwd, args) {
@@ -4897,16 +4162,6 @@ function topicReceiptSurface(cwd, args) {
     }
     return topicReceipt(verb, name, { warn });
   }
-  if (verb === 'supersede') {
-    if (phase !== 'specification') {
-      throw new Error(`render topic-receipt: --verb supersede addresses a specification — <work_unit>.specification.<spec>, got phase "${phase}"`);
-    }
-    const item = itemOf(manifest, phase, topic);
-    if (!item || item.status !== 'superseded') {
-      throw new Error(`render topic-receipt: "${topic}" is not superseded — the supersede has not run`);
-    }
-    return topicReceipt(verb, name, { warn });
-  }
   if (verb === 'postpone') {
     assertDiscoveryUnitAddress(manifest, phase, topic, verb);
     if (computeTopicLifecycle(manifest, topic).lifecycle !== 'postponed') {
@@ -4920,16 +4175,13 @@ function topicReceiptSurface(cwd, args) {
     if (computeTopicLifecycle(manifest, topic).lifecycle === 'postponed') {
       throw new Error(`render topic-receipt: "${topic}" is still postponed — the pull forward has not run`);
     }
-    return topicReceipt(verb, name, { warn, restored: unitStatuses(manifest, 'discovery', topic) });
+    return topicReceipt(verb, name, { warn, restored: unitStatuses(manifest, topic) });
   }
   if (verb !== 'cancel' && verb !== 'reactivate') {
-    throw new Error(`render topic-receipt: --verb must be complete, supersede, cancel, reactivate, postpone, or restore, got "${verb}"`);
+    throw new Error(`render topic-receipt: --verb must be complete, cancel, reactivate, postpone, or restore, got "${verb}"`);
   }
-  if (!(phase in UNIT_PHASES)) {
-    throw new Error(`render topic-receipt: --verb ${verb} addresses a unit — <work_unit>.discovery.<topic> or <work_unit>.specification.<spec>, got phase "${phase}"`);
-  }
-  const stage = /** @type {'discovery'|'specification'} */ (phase);
-  const cancelled = unitCancelled(manifest, stage, topic);
+  assertDiscoveryUnitAddress(manifest, phase, topic, verb);
+  const cancelled = computeTopicLifecycle(manifest, topic).lifecycle === 'cancelled';
   if (verb === 'cancel') {
     if (!cancelled) throw new Error(`render topic-receipt: "${topic}" is not cancelled — the cancel has not run`);
     return topicReceipt(verb, name, { warn, inbox });
@@ -4937,7 +4189,7 @@ function topicReceiptSurface(cwd, args) {
   if (cancelled) {
     throw new Error(`render topic-receipt: "${topic}" is still cancelled — the reactivate has not run`);
   }
-  return topicReceipt(verb, name, { warn, restored: unitStatuses(manifest, stage, topic) });
+  return topicReceipt(verb, name, { warn, restored: unitStatuses(manifest, topic) });
 }
 
 /**
@@ -5015,27 +4267,6 @@ function absorbContinuationSurface(cwd, args) {
     throw new Error("render absorb-continuation: --feature is required — the absorbed feature's name");
   }
   return absorbContinuationMenu(/** @type {string} */ (args.feature), workUnit);
-}
-
-/** @param {string} cwd @param {{dotpath: string, to?: string, imports?: string, warn?: string}} args @returns {string} */
-function promoteReceiptSurface(cwd, args) {
-  const { workUnit, phase, topic, manifest } = resolveAddress(cwd, args.dotpath, 'promote-receipt');
-  if (phase !== 'specification') {
-    throw new Error(`render promote-receipt: address must be <work_unit>.specification.<topic>, got phase "${phase}"`);
-  }
-  if (!args.to) throw new Error('render promote-receipt: --to is required');
-  const item = itemOf(manifest, 'specification', topic);
-  if (!item || item.status !== 'promoted') {
-    throw new Error(`render promote-receipt: "${topic}" is not "promoted" — the promotion has not run`);
-  }
-  let imports = 0;
-  if (args.imports !== undefined) {
-    imports = Number(args.imports);
-    if (!Number.isInteger(imports) || imports < 0) {
-      throw new Error(`render promote-receipt: --imports must be a carried import count, got "${args.imports}"`);
-    }
-  }
-  return promoteReceipt(workUnit, topic, args.to, { warn: args.warn === '1', imports });
 }
 
 // import-reprompt — the re-prompt after a landing refused on `missing_imports`.
@@ -5613,12 +4844,9 @@ const SURFACES = {
   'task-list': taskList,
   'plan-progress': planProgress,
   'findings-summary': findingsSummary,
-  'finding-batch': findingBatch,
   'finding': finding,
   'review-presentation': reviewPresentation,
   'review-gate': reviewGate,
-  'spec-review-gate': specReviewGate,
-  'spec-completion-gate': specCompletionGate,
   'convergence-diagnostic': convergenceDiagnostic,
   'hypothesis-board': hypothesisBoard,
   'findings-signoff-gate': findingsSignoffGate,
@@ -5654,13 +4882,7 @@ const SURFACES = {
   'plan-review-gate': planReviewGate,
   'scoping-questions': scopingQuestions,
   'complexity-gate': complexityGate,
-  'correction-gate': correctionGate,
-  'analysis-proceed-gate': analysisProceedGate,
-  'spec-confirm-gate': specConfirmGate,
   'proposed-task': proposedTask,
-  'incoherence-gate': incoherenceGate,
-  'resurface-gate': resurfaceGate,
-  'construction-gate': constructionGate,
   'tasks-overview': tasksOverview,
   'author-task-gate': authorTaskGate,
   'phase-tree': phaseTree,
@@ -5688,7 +4910,6 @@ const SURFACES = {
   'absorb-summary': absorbSummarySurface,
   'absorb-receipt': absorbReceiptSurface,
   'absorb-continuation': absorbContinuationSurface,
-  'promote-receipt': promoteReceiptSurface,
   'import-reprompt': importRepromptSurface,
   'pivot-continuation': pivotContinuation,
   'absorb-target': absorbTarget,

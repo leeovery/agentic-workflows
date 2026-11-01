@@ -10,8 +10,10 @@
 // (11.S22, 11.S27), and, while the page is open, its foot counting the
 // review by the marks last stored (11.11.7); a verdict asked of each call
 // the person changed among the spec's gap answers before the gate
-// (16.10.11); and the units that never come to it — an old spec's items, a
-// unit the spec's entry refuses. Every refusal writes and commits nothing.
+// (16.10.11); no construction, finding, re-loop or sign-off gate left to
+// raise before it (11.S12); and the units that never come to it — an old
+// spec's items, a unit the spec's entry refuses. Every refusal writes and
+// commits nothing.
 //
 // Layer: verb. World: the ready to build world closed
 // (ready-to-build-world.cjs), copied for each test.
@@ -25,6 +27,7 @@ const { ok, sectionOf, statePath, layout, readState, readManifest, commitAll } =
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { MADE } = require('./ledger-world.cjs');
 const { NB, unwrap } = require('./render-surfaces-world.cjs');
+const { renderSurface } = require('../../skills/leeway-engine/scripts/domain/render.cjs');
 const { UNIT, SESSION, SPEC_AT, READ_BACK, CARDS, REFUNDS, write, answered, written, cut, closeReady, closed, useReadyWorld, readyHelpers } = require('./ready-to-build-world.cjs');
 
 const dir = useReadyWorld(closed);
@@ -145,6 +148,17 @@ describe('a verdict on each call the person changed among the spec\'s gap answer
     assert.deepStrictEqual([argv[2].startsWith(changed), argv.filter((_, at) => at !== 2)], [true, ['verdict', 'give', 'fix', '--at', 'ready-to-build']]);
     ok(dir(), ['verdict', 'give', changed, 'fix', '--at', 'ready-to-build'], { env: SESSION });
     assert.match(screen(), /=== MENU: ready to build /);
+  });
+});
+
+describe('nothing raised before it (11.8.4, 11.S12)', () => {
+  it('leaves no construction, finding, re-loop or sign-off gate to raise at the spec — the finding gate is the plan review\'s alone', () => {
+    const at = { dotpath: `${UNIT}.specification.${UNIT}`, file: 'finding.json' };
+    for (const surface of ['construction-gate', 'finding-batch', 'spec-review-gate', 'spec-completion-gate']) {
+      assert.throws(() => renderSurface(dir(), surface, at), new RegExp(`^Error: render: unknown surface "${surface}"`), surface);
+    }
+    assert.throws(() => renderSurface(dir(), 'finding', at),
+      /^Error: render finding: address must be <work_unit>\.<planning>\.<topic> — the plan under review; got phase "specification"$/);
   });
 });
 

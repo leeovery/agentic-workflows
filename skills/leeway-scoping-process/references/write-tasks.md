@@ -59,7 +59,7 @@ Load the chosen format's **[authoring.md](../../leeway-planning-process/referenc
 
 **Do not include acceptance criteria.** Mechanical changes are verified by test baselines and completeness checks, not acceptance criteria.
 
-**No task edits another work unit's artifact under `.workflows/`** — the executor writes code and tests alone. A completed unit's specification the fix shows wrong is corrected here, through **[correcting-historical-artifacts.md](../../leeway-shared/references/correcting-historical-artifacts.md)**, never folded into a task; another unit's non-spec artifacts are superseded by current work, never corrected.
+**No task edits another work unit's artifact under `.workflows/`** — the executor writes code and tests alone. Another unit's artifacts are superseded by current work, never corrected.
 
 ## C. Register Plan in Manifest
 

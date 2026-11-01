@@ -16,7 +16,7 @@ const { renderTree } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, titlecase, title, materialBlock } = require('../conventions.cjs');
 const { menu, menuFrame, cmdOption, actionsTable, section, MENU_INSTRUCTION } = require('./surfaces.cjs');
 const { typeConfig } = require('../workunit-detail.cjs');
-const { phaseSkill } = require('../handoff.cjs');
+const { phaseSkill, enteredAtUnit } = require('../handoff.cjs');
 
 /** @typedef {import('../workunit-detail.cjs').WorkUnitEntry} WorkUnitEntry */
 /** @typedef {import('../workunit-detail.cjs').WorkUnitTypeConfig} WorkUnitTypeConfig */
@@ -35,13 +35,14 @@ const { phaseSkill } = require('../handoff.cjs');
 /**
  * The route a phase of a single-topic unit is entered by — `$0` = the type's
  * work_type value, `$1` = work_unit, `$2` = the item it names where it names
- * one — the route the menu's continue and revisit rows carry.
+ * one and the phase is entered at a topic — the route the menu's continue
+ * and revisit rows carry.
  * @param {string} type  a WORK_UNIT_TYPES key
  * @param {string} phase @param {string} workUnit @param {string|null} [topic]
  * @returns {string}
  */
 function phaseRoute(type, phase, workUnit, topic = null) {
-  return [`/${phaseSkill(phase)}`, typeConfig(type).workType, workUnit, ...(topic === null ? [] : [topic])].join(' ');
+  return [`/${phaseSkill(phase)}`, typeConfig(type).workType, workUnit, ...(topic === null || enteredAtUnit(phase) ? [] : [topic])].join(' ');
 }
 
 // computeNextPhase's label vocabulary discriminates the next phase's state:

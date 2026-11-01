@@ -3,9 +3,10 @@
 // ---------------------------------------------------------------------------
 // The pipeline simulation's backwards walk: a feature's decided discussion,
 // which the bridge offers no revisit into, reopened by a message sent to it
-// and decided again after its specification exists; then, the pipeline run
-// out, each reopen of the hop family landing its staleness one hop
-// downstream, until every flag is cleared and the pipeline reads done.
+// while its spec is entered but not yet written, and decided again; past its
+// spec no message reaches it and the spec is never reopened; then, the
+// pipeline run out, each reopen of the hop family landing its staleness one
+// hop downstream, until every flag is cleared and the pipeline reads done.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -20,7 +21,7 @@ const assert = require('node:assert');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
 const BRIDGE = require(path.join(ROOT, 'skills/leeway-bridge/scripts/gateway.cjs'));
-const { Sim, startUnit, discussed, arrive, handoffEntry, send, walkDeliveryPhases } = require('./pipeline-world.cjs');
+const { Sim, startUnit, discussed, arrive, send, sendArgv, specEntry, specToBuild, walkDeliveryPhases } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: backwards', () => {
   let sim;
@@ -43,53 +44,27 @@ describe('pipeline simulation: backwards', () => {
     sim.refuses(['enter', 'discussion', wu], /is decided — it reopens/);
     sim.refuses(['topic', 'reopen', wu, 'discussion', wu], /^a decided discussion reopens through a message sent to it/);
 
-    // A message reopens it after downstream exists: the spec keeps its state, derivations hold.
-    sim.render(['entry-gate', `${wu}.specification.${wu}`], { expect: 'empty' });
-    handoffEntry(sim, wu, 'specification', wu);
-    assert.strictEqual(sim.read(['manifest', 'get', `${wu}.specification.${wu}`, 'status']), '', 'no specification item — a first start');
-    sim.run(['topic', 'start', wu, 'specification', wu]);
+    // A message reopens it once the spec is entered and before it is written:
+    // the spec waits for the topic again, and takes it once re-decided.
+    specEntry(sim, wu, [wu]);
     assert.strictEqual(send(sim, wu, wu, wu, 'a-first-gap').reopened, true);
     assert.strictEqual(sim.manifest(wu).phases.discussion.items[wu].status, 'in-progress');
+    sim.refuses(['enter', 'specification', wu], /^revisit's spec waits until its topic is decided/);
     discussed(sim, wu, wu);
-    assert.strictEqual(sim.manifest(wu).phases.specification.items[wu].status, 'in-progress');
+    specToBuild(sim, wu, [wu]);
+    assert.ok(!('specification' in sim.manifest(wu).phases), 'the one spec keeps no items');
+
+    // Past its spec no message reaches the topic, and the spec is never
+    // reopened: a change is settled in the spec (11.9.1).
+    sim.refuses(sendArgv(sim, wu, wu, wu, 'a-late-gap'), /^revisit has its spec — a topic exists only before it/);
+    sim.refuses(['topic', 'reopen', wu, 'specification', wu], /^revisit's spec keeps no items — it is entered at the work unit/);
 
     // Run the pipeline out, then walk the hop family backwards: staleness
     // lands at each reopen, one hop downstream, value = the upstream phase.
-    walkDeliveryPhases(sim, wu, wu, { sources: [wu] });
+    walkDeliveryPhases(sim, wu, wu);
+    let ro;
 
-    // discussion → specification (reverse join), the message's landing the
-    // reopen: flag + stale source row.
-    let ro = send(sim, wu, wu, wu, 'a-second-gap');
-    assert.strictEqual(ro.reconcile_flagged, true);
-    assert.deepStrictEqual(ro.sources_staled, [wu]);
-    discussed(sim, wu, wu);
-    // Re-completion clears nothing: the flag waits for the entry advisory,
-    // the stale row for the spec's own reconciliation.
-    let spec = sim.manifest(wu).phases.specification.items[wu];
-    assert.strictEqual(spec.reconcile_needed, 'discussion');
-    assert.strictEqual(spec.sources[wu].status, 'stale');
-    // The read side never routes forward past the flag: the bridge's next
-    // phase is the flagged spec, not done — the terminal branch stays untaken.
-    const bridged = BRIDGE.discover(sim.dir, wu);
-    assert.strictEqual(bridged.next_phase, 'specification');
-    assert.deepStrictEqual(bridged.reconcile_pending, [`specification/${wu} (discussion)`]);
-    sim.run(['manifest', 'delete', `${wu}.specification.${wu}`, 'reconcile_needed']);
-    // The flag is not the whole signal: a source row still reading stale is
-    // the specification moving with no flag and no reopen, and the walk stops
-    // there rather than handing the plan a document about to change.
-    assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'specification');
-    sim.run(['manifest', 'set', `${wu}.specification.${wu}`, `sources.${wu}.status`, 'incorporated']);
-    assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'done', 'every row incorporated: the record has stopped moving');
-
-    // specification → planning: the pipeline hop, same-named item.
-    ro = sim.run(['topic', 'reopen', wu, 'specification', wu]);
-    assert.deepStrictEqual(ro.reconcile_flagged, [{ phase: 'planning', topic: wu }]);
-    assert.strictEqual(ro.sources_staled, undefined);
-    assert.strictEqual(sim.manifest(wu).phases.planning.items[wu].reconcile_needed, 'specification');
-    sim.run(['topic', 'complete', wu, 'specification', wu]);
-    sim.run(['manifest', 'delete', `${wu}.planning.${wu}`, 'reconcile_needed']);
-
-    // planning → implementation.
+    // planning → implementation: the pipeline hop, same-named item.
     ro = sim.run(['topic', 'reopen', wu, 'planning', wu]);
     assert.deepStrictEqual(ro.reconcile_flagged, [{ phase: 'implementation', topic: wu }]);
     assert.strictEqual(sim.manifest(wu).phases.implementation.items[wu].reconcile_needed, 'planning');

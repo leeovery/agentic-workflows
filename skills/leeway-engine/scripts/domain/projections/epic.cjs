@@ -10,7 +10,7 @@
 // Layout goes through the kernel renderer — no character arithmetic here.
 // ---------------------------------------------------------------------------
 
-const { signpost, renderTree, wrap, wrapWithPrefix } = require('../../kernel/render.cjs');
+const { signpost, renderTree, wrapWithPrefix } = require('../../kernel/render.cjs');
 const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES } = require('../../kernel/manifest-schema.cjs');
 const { heldStatement } = require('./enter.cjs');
 const { CONVERSATION_ACTIONS, titled, itemTitle } = require('../derivations.cjs');
@@ -48,7 +48,6 @@ const { phaseSkill } = require('../handoff.cjs');
  * @property {boolean} [recommended]
  * @property {boolean} [input_moved]   the entry's item (or its source item) carries a live reconcile flag
  * @property {boolean} [in_session]    a held session elsewhere occupies this topic's phase
- * @property {string[]} [blocked_by]   what holds the entry's item shut where its phase starts — carried only by a held row, the one blocked row the menu offers; the in-session gate names it
  * @property {number} [session_age]    that session's last-active age in seconds
  * @property {{work_unit: string, phase: string, topic: string}} [session_holder] the held code row taking the slot, when it is not this entry's own topic
  * @property {boolean} [code_session]  the hold is the checkout's code slot — gated where the phase starts, never by this menu
@@ -59,6 +58,11 @@ const { phaseSkill } = require('../handoff.cjs');
 const EPIC_PIPELINE = WORK_TYPE_PIPELINES.epic;
 
 const BUILD_PHASES = EPIC_PIPELINE.slice(EPIC_PIPELINE.indexOf('specification'));
+
+// The spec is the unit's one `s` row (18.4.6): a unit keeping the old spec's
+// items shows them in its tree, never as rows.
+const ROW_PHASES = EPIC_PIPELINE.filter((p) => p !== 'specification' && !DERIVED_PHASES.includes(p));
+const BUILD_ROW_PHASES = BUILD_PHASES.filter((p) => ROW_PHASES.includes(p));
 
 // The three-D stage each pipeline phase renders under. STAGES groups the epic
 // pipeline in order by this labelling, so the dividers can never hold a phase
@@ -85,8 +89,6 @@ const STATUS_ORDER = ['proposed', 'unstarted', 'in-progress', 'completed', 'canc
 const ACTION_PHASE = {
   ...Object.fromEntries(Object.entries(CONVERSATION_ACTIONS).flatMap(([phase, actions]) => actions.map((a) => [a, phase]))),
   continue_experiment: 'experiment',
-  start_specification: 'specification',
-  continue_specification: 'specification',
   start_planning: 'planning',
   continue_planning: 'planning',
   start_implementation: 'implementation',
@@ -102,10 +104,10 @@ const ACTION_PHASE = {
 const SOFT_GATE_ACTIONS = [
   ...Object.keys(ACTION_PHASE),
   'continue_discovery',
+  'enter_specification',
 ];
 
 const START_GATE = {
-  start_specification: 'can_start_specification',
   start_planning: 'can_start_planning',
   start_implementation: 'can_start_implementation',
   start_review: 'can_start_review',
@@ -148,11 +150,11 @@ function displayOrder(phase, items) {
   return [...items.filter((i) => i.status === 'proposed'), ...items.filter((i) => i.status !== 'proposed')];
 }
 
-/** The tree tag one build/flat-phase item carries — a completed item with a live reconcile flag reads `input moved` ahead of a hold, a held or dep-blocked one `blocked`. @param {PhaseEntry} item */
+/** The tree tag one build/flat-phase item carries — a completed item with a live reconcile flag reads `input moved`, a dep-blocked one `blocked`. @param {PhaseEntry} item */
 function statusTag(item) {
   if (item.status === 'completed' && item.reconcile_needed !== undefined) return 'completed · input moved';
   const depBlocked = Array.isArray(item.deps_blocking) && item.deps_blocking.length > 0;
-  return item.blocked_by !== undefined || depBlocked ? `${item.status} · blocked` : item.status;
+  return depBlocked ? `${item.status} · blocked` : item.status;
 }
 
 /** Build the tree nodes for one build/flat phase. @param {string} phase @param {PhaseEntry[]} items @param {Record<string, string>} titles */
@@ -297,33 +299,15 @@ function inSessionCue(age) {
 /** First-matching recommendation for the no-map dashboard, or null. @param {EpicDetail} detail */
 function displayRecommendation(detail) {
   const discussion = detail.phases.discussion || [];
-  const spec = detail.phases.specification || [];
   const plan = detail.phases.planning || [];
 
   const inProgressPhases = new Set(detail.in_progress.map((i) => i.phase));
   if (inProgressPhases.size > 1) return null;
   if (discussion.some((i) => i.status === 'in-progress') && discussion.some((i) => i.status === 'completed')) {
-    return 'Conclude the remaining discussions to unlock specification — the grouping analysis reads the settled record.';
-  }
-  const proposed = spec.filter((i) => i.status === 'proposed');
-  if (proposed.length > 0) {
-    return `${proposed.length} analyzed grouping(s) ready to specify. Start them before planning to surface cross-cutting dependencies.`;
-  }
-  if (discussion.length > 0 && discussion.every((i) => i.status === 'completed') && spec.length === 0) {
-    return 'All discussions are completed. Specification will analyze and group them.';
-  }
-  if (spec.some((i) => i.status === 'completed') && spec.some((i) => i.status === 'in-progress')) {
-    return 'Completing all specifications before planning helps identify cross-cutting dependencies.';
+    return 'Conclude the remaining discussions — the spec is written once every topic is decided.';
   }
   if (plan.some((i) => i.status === 'completed') && plan.some((i) => i.status === 'in-progress')) {
     return 'Completing all plans before implementation helps surface task dependencies across plans.';
-  }
-  for (const name of detail.reopened_discussions) {
-    const owner = spec.find((s) => (s.sources || []).some((src) => sourceName(src) === name));
-    if (owner) {
-      return `${titlecase(owner.name)} specification sources the reopened ${titled(detail.titles, name)} discussion. `
-        + 'Once that discussion concludes, the specification will need revisiting to extract new content.';
-    }
   }
   return null;
 }
@@ -458,31 +442,10 @@ const CUE_RECONCILE =
   + '                              this item last moved; the item\'s entry\n'
   + '                              flow reconciles it';
 
-const CUE_BLOCKED =
-  '    blocked (specification) — a source discussion is back\n'
-  + '                              in-progress; re-conclude it and the\n'
-  + '                              item returns to the menu';
-
-// Two different causes tag a planning row `· blocked`, and the key explains
-// a rendered tag, not a field — so they share one term and stack their
-// explanations beneath it, the upstream hold before the dependency.
-const CUE_PLAN_TERM = '    blocked (planning)      ';
-
-const PLAN_BLOCKED_CAUSES = [
-  'its specification is unsettled; settle\n'
-  + '                              it and the item returns to the menu',
-  'implementation waits on another plan;\n'
+const CUE_PLAN_BLOCKED =
+  '    blocked (planning)      — implementation waits on another plan;\n'
   + '                              the ⚑ list names the dependency,\n'
-  + '                              u/unblock is the override',
-];
-
-/** @param {boolean[]} fired  one flag per cause, in PLAN_BLOCKED_CAUSES order */
-function cuePlanBlocked(fired) {
-  return PLAN_BLOCKED_CAUSES
-    .filter((_, i) => fired[i])
-    .map((cause, i) => `${i === 0 ? CUE_PLAN_TERM : ' '.repeat(CUE_PLAN_TERM.length)}— ${cause}`)
-    .join('\n');
-}
+  + '                              u/unblock is the override';
 
 /**
  * Section B — the Key block, showing only categories present in the display
@@ -505,17 +468,11 @@ function epicKey(detail) {
   const cuePhases = hasMap ? BUILD_PHASES : Object.keys(detail.phases);
   const anyFlagged = cuePhases.some((p) => (detail.phases[p] || [])
     .some((i) => i.status === 'completed' && i.reconcile_needed !== undefined));
-  // The cue follows the rendered tag, not the field: a held item whose tag
-  // reads `input moved` earns the reconcile cue, not this one.
-  const blockedAny = (/** @type {string} */ phase) => cuePhases.includes(phase)
-    && (detail.phases[phase] || []).some((i) => i.blocked_by !== undefined && statusTag(i).endsWith('· blocked'));
   const blocks = [];
   if (!hasMap || BUILD_PHASES.some((p) => (detail.phases[p] || []).length > 0)) blocks.push(KEY_STATUS);
   const cueLines = [];
   if (anyFlagged) cueLines.push(CUE_RECONCILE);
-  if (blockedAny('specification')) cueLines.push(CUE_BLOCKED);
-  const planCauses = [blockedAny('planning'), anyBlocked];
-  if (planCauses.some(Boolean)) cueLines.push(cuePlanBlocked(planCauses));
+  if (anyBlocked) cueLines.push(CUE_PLAN_BLOCKED);
   if (cueLines.length > 0) blocks.push('  Cue:\n' + cueLines.join('\n'));
   if (anyBlocked) blocks.push(KEY_BLOCKING);
   if (blocks.length === 0) return '';
@@ -601,18 +558,10 @@ function experimentEntries(workUnit, detail) {
   return out;
 }
 
-// A blocked item is not actionable — no menu row; the display tree carries
-// its blocked state. A live session's hold is the one exception: its row
-// stands, struck through, so the menu never hides a session that is open.
-/** @param {string} phase @param {PhaseEntry} item @param {PresenceRow[]} held */
-function rowStands(phase, item, held) {
-  return item.blocked_by === undefined || heldRow(held, phase, item.name) !== undefined;
-}
-
-/** Continue entries for one phase's in-progress items. @param {string} workUnit @param {EpicDetail} detail @param {string} phase @param {PresenceRow[]} held @returns {MenuKey[]} */
-function continueEntries(workUnit, detail, phase, held) {
+/** Continue entries for one phase's in-progress items. @param {string} workUnit @param {EpicDetail} detail @param {string} phase @returns {MenuKey[]} */
+function continueEntries(workUnit, detail, phase) {
   return (detail.phases[phase] || [])
-    .filter((item) => item.status === 'in-progress' && rowStands(phase, item, held))
+    .filter((item) => item.status === 'in-progress')
     .map((item) => ({
       key: '',
       action: `continue_${phase}`,
@@ -620,7 +569,6 @@ function continueEntries(workUnit, detail, phase, held) {
       route: topicRoute(`continue_${phase}`, workUnit, item.name),
       label: continueLabel(phase, item, detail.titles),
       ...(item.reconcile_needed !== undefined ? { input_moved: true } : {}),
-      ...(item.blocked_by !== undefined ? { blocked_by: item.blocked_by } : {}),
     }));
 }
 
@@ -638,12 +586,9 @@ function startEntries(workUnit, detail, phase) {
     const srcPhase = EPIC_PIPELINE[EPIC_PIPELINE.indexOf(phase) - 1];
     const srcItem = srcPhase ? (detail.phases[srcPhase] || []).find((i) => i.name === n.name) : undefined;
     const srcFlagged = srcItem !== undefined && srcItem.reconcile_needed !== undefined;
-    // A blocked start is not actionable — no menu row, either way. A
-    // dep-blocked implementation start shows its state in the ⚑
-    // plans-not-ready block and the tree cue, with u/unblock the escape
-    // hatch; a planning start held on an unsettled specification has
-    // neither, and the specification's own tree row — its open source rows,
-    // its input-moved tag — is what carries the state.
+    // A dep-blocked implementation start is not actionable — no menu row; it
+    // shows its state in the ⚑ plans-not-ready block and the tree cue, with
+    // u/unblock the escape hatch.
     if (n.blocked) continue;
     /** @type {MenuKey} */
     const entry = {
@@ -663,13 +608,11 @@ function startEntries(workUnit, detail, phase) {
 function commandOptions(workUnit, detail, hasMap) {
   /** @type {MenuKey[]} */
   const opts = [];
-  if (detail.gating.can_start_specification) {
-    const desc = detail.unaccounted_discussions.length > 0
-      ? `${detail.unaccounted_discussions.length} discussion(s) not yet grouped`
-      : 'review or regroup specifications';
+  if (detail.spec_row !== null) {
     opts.push({
-      key: 's', word: 'spec', action: 'analyze_discussions', topic: null, route: null,
-      label: { head: 'Analyze / regroup discussions', tail: desc },
+      key: 's', word: 'spec', action: 'enter_specification', topic: null,
+      route: `/leeway-specification-process epic ${workUnit}`,
+      label: detail.spec_row === 'start' ? 'Start the specification' : 'Continue the specification',
     });
   }
   // Discovery is reachable in EVERY map state: with a map it refines the
@@ -696,14 +639,14 @@ function commandOptions(workUnit, detail, hasMap) {
     label: hasMap ? 'Start a discussion on a new topic' : 'Start new discussion',
   });
   if (hasMap && !detail.active_session) opts.push(discoveryOpt);
-  if (detail.completed.some((i) => i.blocked_by === undefined)) {
+  if (detail.completed.length > 0) {
     opts.push({ key: 'c', word: 'completed', action: 'resume_completed', topic: null, route: null, label: 'Resume a completed topic' });
   }
-  // Every unit shows, locked ones included: a user reaching for a cancel
-  // that is refused must see the row and its reason, never an absent option.
   if (detail.cancellable.length > 0) {
     opts.push({ key: 'a', word: 'cancel', action: 'cancel_topic', topic: null, route: null, label: 'Cancel a topic' });
   }
+  // Every unit shows, locked ones included: a user reaching for a postpone
+  // that is refused must see the row and its reason, never an absent option.
   if (detail.postponable.length > 0) {
     opts.push({ key: 'p', word: 'postpone', action: 'postpone_topic', topic: null, route: null, label: 'Postpone a topic to the roadmap' });
   }
@@ -743,7 +686,7 @@ function liveItems(detail, phase) {
  * @returns {MenuKey|null}
  */
 function pickRecommendation(detail, numbered, options, hasMap) {
-  const sOption = options.find((o) => o.action === 'analyze_discussions');
+  const sOption = options.find((o) => o.action === 'enter_specification');
 
   // An interrupted discovery session outranks every other recommendation —
   // the user left mid-thought and the resume gate is waiting.
@@ -777,8 +720,7 @@ function pickRecommendation(detail, numbered, options, hasMap) {
     if (build) return build;
     // With a flagged completed item and nothing else to start, the reconcile
     // route IS the recommendation — resuming the flagged item clears the flag.
-    // A held item is no route: its flag clears at the entry its hold releases.
-    if (detail.completed.some((i) => i.reconcile_needed !== undefined && i.blocked_by === undefined)) {
+    if (detail.completed.some((i) => i.reconcile_needed !== undefined)) {
       const cOption = options.find((o) => o.action === 'resume_completed');
       if (cOption) { cOption.recommended = true; return null; }
     }
@@ -793,18 +735,13 @@ function pickRecommendation(detail, numbered, options, hasMap) {
     if (discoveryOpt) discoveryOpt.recommended = true;
     return null;
   }
-  // Same rule as the settled branch: a struck row is never the
-  // recommendation, or the display argues with itself.
-  const proposedEntry = numbered.find((e) => e.action === 'start_specification' && !e.in_session);
-  if (proposedEntry) return proposedEntry;
-
-  const discussion = detail.phases.discussion || [];
-  if (discussion.length > 0 && discussion.every((i) => i.status === 'completed')
-      && (detail.phases.specification || []).length === 0 && sOption) {
+  if (sOption) {
     sOption.recommended = true;
     return null;
   }
 
+  // Same rule as the settled branch: a struck row is never the
+  // recommendation, or the display argues with itself.
   const specs = liveItems(detail, 'specification');
   const planEntry = numbered.find((e) => e.action === 'start_planning' && !e.input_moved && !e.in_session);
   if (specs.length > 0 && specs.every((i) => i.status === 'completed') && planEntry) return planEntry;
@@ -874,21 +811,19 @@ function menuEntries(workUnit, detail, opts) {
       if (row.next_action) numbered.push(discoveryEntry(workUnit, row, row.next_action));
     }
     // Build-phase entries by pipeline position — continues, then gated starts.
-    for (const phase of BUILD_PHASES) {
-      numbered.push(...continueEntries(workUnit, detail, phase, held));
+    for (const phase of BUILD_ROW_PHASES) {
+      numbered.push(...continueEntries(workUnit, detail, phase));
       numbered.push(...startEntries(workUnit, detail, phase));
     }
   } else {
     // Continue items — any in-progress item in any phase, pipeline order.
     // Derived phases are skipped: their topic rows above already carry the
     // series, and a generic item row would double it.
-    for (const phase of EPIC_PIPELINE) {
-      if (DERIVED_PHASES.includes(phase)) continue;
-      numbered.push(...continueEntries(workUnit, detail, phase, held));
+    for (const phase of ROW_PHASES) {
+      numbered.push(...continueEntries(workUnit, detail, phase));
     }
-    // Next-phase-ready items — specification first, then planning,
-    // implementation, review.
-    for (const phase of BUILD_PHASES) {
+    // Next-phase-ready items — planning, implementation, review.
+    for (const phase of BUILD_ROW_PHASES) {
       numbered.push(...startEntries(workUnit, detail, phase));
     }
   }
@@ -953,24 +888,12 @@ function epicMenu(workUnit, detail, opts = {}) {
   return { keys: [...numbered, ...options], rendered: menuFrame(lines) };
 }
 
-// A struck row is the one blocked row the menu offers, so its gate also
-// names what holds the entry shut — a yes here would otherwise meet the
-// phase's own refusal blind.
-/** @param {string} phase @param {string} topic @param {string[]|undefined} by @param {Record<string, string>} titles */
-function entryHoldClause(phase, topic, by, titles) {
-  if (by === undefined) return '';
-  const what = phase === 'planning' ? `the specification for "${titlecase(topic)}" is unsettled`
-    : `its sources are not concluded (${by.map((source) => titled(titles, source)).join(', ')})`;
-  return ` Its entry is also held shut — ${what} — so proceeding meets that gate next.`;
-}
-
 /**
  * Labelled confirm-gate section for one menu entry a held session occupies —
  * served by the gateway's `in-session-gate` verb, fetched by the flow at the
  * gate that displays it. Never blocks: the machine can verify that a process
  * still runs, never that its session still matters, so the gate states the
- * fact, names the consequence (and the entry hold, on a blocked row) and the
- * release, and lets the user decide. Document phases only — a code entry's
+ * fact, names the consequence and the release, and lets the user decide. Document phases only — a code entry's
  * hold is the checkout's one slot, and the `code-gate` surface at the entry
  * skill owns that conversation, so the user meets one gate per attempt.
  * @param {string} workUnit  this epic — the holder of the topic this entry would open
@@ -985,7 +908,7 @@ function epicInSessionGate(workUnit, entry, titles) {
     `MENU: in-session gate — ${entry.key}`,
     MENU_INSTRUCTION,
     menuFrame([
-      heldStatement({ unit: workUnit, phase, place: topic, title: itemTitle(titles, phase, topic), ageSeconds: entry.session_age ?? 0 }, entryHoldClause(phase, topic, entry.blocked_by, titles)),
+      heldStatement({ unit: workUnit, phase, place: topic, title: itemTitle(titles, phase, topic), ageSeconds: entry.session_age ?? 0 }),
       '',
       '**`◆ Proceed anyway?`**',
       '',
@@ -1115,10 +1038,7 @@ function pipelineOrdered(items) {
  * @returns {{keys: SubViewKey[], title: string, display: string, rendered: string}}
  */
 function epicCompletedMenu(workUnit, detail) {
-  // A blocked item is not actionable — no resume row; it returns once its
-  // entry hold releases. No session sits in a completed item, so the main
-  // menu's held-row exception never applies here.
-  const rows = pipelineOrdered(detail.completed.filter((item) => item.blocked_by === undefined)).map((item) => {
+  const rows = pipelineOrdered(detail.completed).map((item) => {
     const flagged = item.reconcile_needed !== undefined;
     return {
       phase: item.phase,
@@ -1135,12 +1055,12 @@ function epicCompletedMenu(workUnit, detail) {
 // words the user sees. The key's `phase` stays the stage itself: it is the
 // verb's positional argument.
 /** @type {Record<UnitStage, string>} */
-const UNIT_GROUP = { discovery: 'Topics', specification: 'Specifications' };
+const UNIT_GROUP = { discovery: 'Topics' };
 
 // The phases whose holds cue a unit's row — the laboratory counted with its
-// topic, the plan with its specification.
+// topic.
 /** @type {Record<UnitStage, string[]>} */
-const UNIT_PRESENCE_PHASES = { discovery: ['discussion', 'experiment'], specification: ['specification', 'planning'] };
+const UNIT_PRESENCE_PHASES = { discovery: ['discussion', 'experiment'] };
 
 /**
  * One unit sub-view row: the title with its tag and tail, the in-session cue
@@ -1185,8 +1105,7 @@ function unitReturns(unit) {
 
 /**
  * Section F — the Cancelled Topics list and pick menu, each row naming what
- * a reactivate returns, a specification whose sources are unavailable shown
- * keyless with its reason. No routes — the flow runs the reactivate
+ * a reactivate returns. No routes — the flow runs the reactivate
  * transaction.
  * @param {EpicDetail} detail
  * @param {{presence?: PresenceRow[]}} [opts]

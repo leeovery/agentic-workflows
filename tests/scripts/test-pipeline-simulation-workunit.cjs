@@ -3,8 +3,8 @@
 // ---------------------------------------------------------------------------
 // The pipeline simulation's work-unit lifecycle: complete, reactivate,
 // cancel and reactivate; a feature pivoted to an epic; a feature absorbed
-// into an epic; reference imports re-homed by absorb and carried by
-// promote; and the guards holding mid-pipeline.
+// into an epic; reference imports re-homed by absorb; and the guards
+// holding mid-pipeline.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -22,7 +22,7 @@ const ROOT = path.join(__dirname, '../..');
 const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
 const { epicDashboard } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
 const { stateGit } = require('./engine-harness.cjs');
-const { Sim, sessionLog, menuEntry, handoffEntry, enterEntry, discussed } = require('./pipeline-world.cjs');
+const { Sim, sessionLog, menuEntry, enterEntry, discussed } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: workunit', () => {
   let sim;
@@ -117,7 +117,7 @@ describe('pipeline simulation: workunit', () => {
       /MENU: absorb continuation/, 'the continuation menu renders from the post-absorb state');
   });
 
-  it('reference imports: a discussion lands files, absorb re-homes them over a collision, promote carries what the spec links and the discussion attached', () => {
+  it('reference imports: a discussion lands files, absorb re-homes them over a collision', () => {
     const feat = 'ledger';
     sim.run(['workunit', 'create', feat, 'feature', '--description', 'Ledger', '--session-log-file', sessionLog(sim, feat)]);
 
@@ -160,31 +160,6 @@ describe('pipeline simulation: workunit', () => {
     assert.match(sim.render(['absorb-receipt', epic, '--topic', topic, '--moved', 'imports',
       '--renamed', renamedArg], { expect: 'content' }),
     /• Renamed: dockset-05\.png → dockset-05-2\.png \(links rewritten\)/);
-
-    // The topic is decided in the epic; its spec links the material it rests
-    // on, and promotion carries into the cross-cutting unit what the spec
-    // links and what its moved discussion attached, leaving the epic's own
-    // behind.
-    menuEntry(sim, epic);
-    discussed(sim, epic, topic);
-    handoffEntry(sim, epic, 'specification', topic);
-    sim.run(['topic', 'start', epic, 'specification', topic]);
-    sim.run(['manifest', 'set', `${epic}.specification.${topic}`, `sources.${topic}.status`, 'incorporated']);
-    sim.write(`.leeway/${epic}/specification/${topic}/specification.md`,
-      `# Spec — ${topic}\n\n![the fifth onboarding screen](../../imports/dockset-05-2.png)\n`);
-    sim.run(['commit', epic, '-m', `spec(${epic}): construct`, '--topic', `specification/${topic}`]);
-    sim.run(['topic', 'complete', epic, 'specification', topic]);
-
-    const promoted = sim.run(['workunit', 'promote', epic, topic, '--to', 'onboarding-cc', '--description', 'Onboarding, project-wide']);
-    assert.deepStrictEqual(promoted.imports, [
-      { path: path.join(sim.dir, '.leeway/onboarding-cc/imports/dockset-05-2.png'), origin: `discussion/${topic}` },
-      { path: path.join(sim.dir, '.leeway/onboarding-cc/imports/onboarding.md'), origin: `discussion/${topic}` },
-    ]);
-    assert.deepStrictEqual(sim.manifest('onboarding-cc').imports.map((e) => e.path), ['imports/dockset-05-2.png', 'imports/onboarding.md']);
-    assert.ok(fs.existsSync(path.join(sim.dir, '.leeway/onboarding-cc/imports/dockset-05-2.png')));
-    // A copy, not a move — the epic keeps every file and entry it had.
-    assert.strictEqual(sim.manifest(epic).imports.length, 3);
-    assert.ok(fs.existsSync(path.join(sim.dir, `.leeway/${epic}/imports/dockset-05-2.png`)));
   });
 
   it('guards hold mid-pipeline: shadow fields, empty segments, a name already taken, bad statuses', () => {

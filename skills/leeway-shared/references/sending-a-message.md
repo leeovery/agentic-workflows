@@ -1,12 +1,12 @@
 # Sending a Message
 
-*Shared reference. Loaded by `leeway-specification-process`, `leeway-planning-process`, and `leeway-implementation-process` when a gap or a resolution must be sent to a source discussion.*
+*Shared reference. Loaded by `leeway-planning-process` and `leeway-implementation-process` when a gap or a resolution must be sent to a source discussion.*
 
 ---
 
 Sends a message to a target topic's **mailbox** — one engine-numbered file per message, installed and committed by the engine — so the target raises it when its phase next runs. Epic-only — single-topic work types (feature, bugfix, quick-fix) have no second topic to send to; their callers ignore the point, surface it to the inbox, or pivot to an epic, and never load this reference.
 
-The caller has already resolved and confirmed the target, and confirmed it is a **different** topic from the current one (a point that belongs to the current topic is its own work, not a message) — except that a specification, planning, or implementation sender's target is a source discussion, a different phase item even when it shares the sender's own topic name. The delivery is a self-committing engine transaction — the message file and manifest land action-scoped under the send's commit message; the caller commits nothing for the delivery itself. (`topic reactivate` in **D** likewise commits itself.)
+The caller has already resolved and confirmed the target, and confirmed it is a **different** topic from the current one (a point that belongs to the current topic is its own work, not a message) — except that a planning or implementation sender's target is a source discussion, a different phase item even when it shares the sender's own topic name. The delivery is a self-committing engine transaction — the message file and manifest land action-scoped under the send's commit message; the caller commits nothing for the delivery itself. (`topic reactivate` in **D** likewise commits itself.)
 
 ## Parameters
 
@@ -16,7 +16,7 @@ The caller provides these via context before loading:
 - `target` — the destination topic the message belongs to (an existing map name, or a new kebab-case name the caller derived).
 - `message` — the message as a short title, plus the full context discussed about it.
 - `origin` — the topic the message surfaced in (the current session's topic).
-- `phase` — the current session's phase, `specification`, `planning`, or `implementation`.
+- `phase` — the current session's phase, `planning` or `implementation`.
 - `date` — today's date.
 
 After return, the caller reads these from conversation memory:
@@ -110,7 +110,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs render send-report {work_un
 
 **Otherwise:**
 
-Set `landed_topic = {target}` and `result = landed`. When the response carries `reconcile_flagged` or `sources_staled`, the delivery marked downstream work to reconcile — the specification(s) sourcing the target, named in `sources_staled`, whose extracted rows are now `stale` (`sources_staled` can arrive alone when the spec already carried a flag). The caller's landing line should say which.
+Set `landed_topic = {target}` and `result = landed`.
 
 → Return to caller.
 
