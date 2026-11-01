@@ -16,11 +16,13 @@
 // those lost with a process that no longer runs (9.7.8).
 //
 // The spec's standing and its refusal are answered here too, for every verb
-// that holds the spec to them.
+// that holds the spec to them; the refusal holds the unit first to the rule
+// every entry does (topic-standing.cjs) — one this project has, in progress.
 // ---------------------------------------------------------------------------
 
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
-const { specStanding, specEntryRefusal, entryRefusal, specSources } = require('./spec-standing.cjs');
+const { specStanding, entryRefusal, specSources } = require('./spec-standing.cjs');
+const { knownUnit, noUnit, unitClosure } = require('./topic-standing.cjs');
 const { canonicalAssets } = require('./ledger-read.cjs');
 const { agentsLeft } = require('./agent-state.cjs');
 
@@ -57,5 +59,17 @@ const SPECIFICATION = Object.freeze({
   questions: () => [],
   reads: specReads,
 });
+
+/**
+ * Why the unit cannot enter its spec, with its way on, or null where it
+ * may: a unit this project lacks or one not in progress, then the spec's
+ * own refusal.
+ * @param {string} cwd @param {string} unit @returns {string|null}
+ */
+function specEntryRefusal(cwd, unit) {
+  const manifest = knownUnit(cwd, unit);
+  if (manifest === null) return noUnit(unit);
+  return unitClosure(manifest) ?? entryRefusal(manifest);
+}
 
 module.exports = { SPECIFICATION, specStanding, specEntryRefusal };

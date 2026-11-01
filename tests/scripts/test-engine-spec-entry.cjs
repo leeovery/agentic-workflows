@@ -8,8 +8,10 @@
 // postponed, each named, let in once they are postponed to the roadmap
 // (11.S1, 18.S21, 18.5.2); a feature's topic not yet decided, a bugfix's
 // investigation not yet concluded; a quick-fix (11.1.6) and a cross-cutting
-// concern (19.6.1); a topic named. What it writes: nothing but where the
-// conversation is working (4.11.2), starting nothing and committing nothing.
+// concern (19.6.1); a topic named; and, for every verb that holds the spec
+// to its refusal, a unit not in progress. What it writes: nothing but where
+// the conversation is working (4.11.2), starting nothing and committing
+// nothing.
 // What it reads: each live topic's record and log — a bugfix's its
 // investigation — and the files the unit's current entries link as
 // canonical (11.6.3); once the spec is written, the spec and the cut; and
@@ -172,8 +174,16 @@ describe('what cannot enter the spec is refused, naming the way on, and nothing 
   it('answers the refusal for any verb that holds the spec to it: a quick-fix\'s its own, a unit the project lacks, and none where the unit may enter', () => {
     assert.deepStrictEqual([specEntryRefusal(dir, 'tweak'), specEntryRefusal(dir, 'nowhere'), specEntryRefusal(dir, 'ready')], [
       'tweak is a quick-fix, which writes no spec — its scoping is its spec and its plan in one',
-      'there is no work unit "nowhere"',
+      'there is no work unit "nowhere" — the start menu lists the work in progress',
       null,
+    ]);
+  });
+
+  it('answers the refusal of a unit not in progress, which its settled topics would let in: a cancelled one reactivated first, a completed one closed to new work', () => {
+    for (const [unit, status] of [['ready', 'cancelled'], ['tally', 'completed']]) createManifest(dir, unit, { ...readManifest(dir, unit), status });
+    assert.deepStrictEqual([specEntryRefusal(dir, 'ready'), specEntryRefusal(dir, 'tally')], [
+      'ready is cancelled — reactivating it comes first',
+      'tally is completed — new work starts from the start menu',
     ]);
   });
 });

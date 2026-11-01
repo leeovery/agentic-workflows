@@ -3,7 +3,8 @@
 // ---------------------------------------------------------------------------
 // Domain ring: whether a unit's topic can still take work — the one rule the
 // entry (enter.cjs), the handoff into a topic (handoff.cjs) and a message
-// sent to one (mail.cjs) all hold it to, each refusal naming the way on.
+// sent to one (mail.cjs) all hold it to, each refusal naming the way on; the
+// spec's refusal (spec-entry.cjs) holds the unit to its first part.
 // - The unit: one this project has, in progress — a cancelled unit
 //   reactivated first, a completed one closed to new work.
 // - Its phase: one its work type's pipeline holds.
@@ -36,14 +37,29 @@ const { specStanding } = require('./spec-standing.cjs');
  * @typedef {{cwd: string, phase: string, unit: string, topic?: string, manifest: Record<string, any>}} Standing
  */
 
+/** The unit's manifest, or null where this project has no unit by that name. @param {string} cwd @param {string} unit */
+function knownUnit(cwd, unit) {
+  return workUnitNameRefusal(unit) === null ? manifestOf(stateRoot(cwd), unit) : null;
+}
+
+/** The refusal of a unit this project lacks. @param {string} unit */
+const noUnit = (unit) => `there is no work unit "${unit}" — the start menu lists the work in progress`;
+
 /**
- * Refuses a unit not in progress: a cancelled one reactivated first, a
- * completed one closed to new work.
- * @param {Record<string, any>} manifest
+ * Why a unit is not in progress, with its way on — a cancelled one
+ * reactivated first, a completed one closed to new work — or null where it
+ * is.
+ * @param {Record<string, any>} manifest @returns {string|null}
  */
+function unitClosure(manifest) {
+  if (manifest.status === 'cancelled') return `${manifest.name} is cancelled — reactivating it comes first`;
+  return manifest.status === 'in-progress' ? null : `${manifest.name} is ${manifest.status} — new work starts from the start menu`;
+}
+
+/** Refuses a unit not in progress. @param {Record<string, any>} manifest */
 function assertInProgress(manifest) {
-  if (manifest.status === 'cancelled') throw new Error(`${manifest.name} is cancelled — reactivating it comes first`);
-  if (manifest.status !== 'in-progress') throw new Error(`${manifest.name} is ${manifest.status} — new work starts from the start menu`);
+  const closure = unitClosure(manifest);
+  if (closure !== null) throw new Error(closure);
 }
 
 /**
@@ -52,8 +68,8 @@ function assertInProgress(manifest) {
  * @param {string} cwd @param {string} unit @returns {Record<string, any>}
  */
 function unitInProgress(cwd, unit) {
-  const manifest = workUnitNameRefusal(unit) === null ? manifestOf(stateRoot(cwd), unit) : null;
-  if (manifest === null) throw new Error(`there is no work unit "${unit}" — the start menu lists the work in progress`);
+  const manifest = knownUnit(cwd, unit);
+  if (manifest === null) throw new Error(noUnit(unit));
   assertInProgress(manifest);
   return manifest;
 }
@@ -224,4 +240,4 @@ function assertEnterable(cwd, phase, manifest, topic) {
   if (refusal !== null) throw new Error(refusal);
 }
 
-module.exports = { assertInProgress, unitInProgress, assertPhaseHeld, holdsTopic, topicClosure, phaseStanding, discoveryStanding, assertEnterable };
+module.exports = { knownUnit, noUnit, unitClosure, assertInProgress, unitInProgress, assertPhaseHeld, holdsTopic, topicClosure, phaseStanding, discoveryStanding, assertEnterable };

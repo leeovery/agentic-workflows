@@ -81,8 +81,9 @@ const OPEN_TOPIC = Object.freeze({
 });
 
 /**
- * Why the unit cannot enter its spec, or null where it can: a quick-fix or
- * a cross-cutting concern, which write none, or a topic not yet settled.
+ * Why the unit, in progress, cannot enter its spec, or null where it can: a
+ * quick-fix or a cross-cutting concern, which write none, or a topic not yet
+ * settled.
  * @param {Record<string, any>} manifest @returns {string|null}
  */
 function entryRefusal(manifest) {
@@ -95,16 +96,6 @@ function entryRefusal(manifest) {
   const titles = topicTitles(manifest);
   const names = open.map((topic) => `"${goesBy(titles, topic)}"`).join(', ');
   return `${unit}'s spec waits until every topic is decided, cancelled or postponed — still open: ${names}; work them from the epic's menu, or postpone them to the roadmap`;
-}
-
-/**
- * Why `enter specification` refuses the unit, with its way on, or null
- * where it may enter.
- * @param {string} cwd @param {string} unit @returns {string|null}
- */
-function specEntryRefusal(cwd, unit) {
-  const manifest = manifestOf(stateRoot(cwd), unit);
-  return manifest === null ? `there is no work unit "${unit}"` : entryRefusal(manifest);
 }
 
 /**
@@ -126,4 +117,4 @@ function specSources(cwd, manifest) {
   };
 }
 
-module.exports = { specStanding, specEntryRefusal, entryRefusal, unsettledTopics, specSources };
+module.exports = { specStanding, entryRefusal, unsettledTopics, specSources };
