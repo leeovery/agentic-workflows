@@ -58,6 +58,7 @@ const { RECORDS } = require('./brief-records.cjs');
 const { ROLES, briefPath, issuedPath, pointerOf } = require('./brief-names.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { hasTopic, manifestOf, liveness } = require('./ledger-units.cjs');
+const { unitClosure } = require('./topic-standing.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** @typedef {import('./brief-records.cjs').Filling} Filling */
@@ -158,8 +159,7 @@ function argumentsOf(role, args) {
 function knownUnit(root, unit) {
   const manifest = manifestOf(root, unit);
   if (manifest === null) throw new Error(`Work unit "${unit}" not found`);
-  const dead = liveness(root)(unit, null);
-  if (dead !== null) throw new Error(`brief: ${unit} is set aside — ${dead}`);
+  if (liveness(root)(unit, null) !== null) throw new Error(`brief: ${unitClosure(manifest)}`);
   return manifest;
 }
 

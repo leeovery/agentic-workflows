@@ -412,7 +412,7 @@ describe('the cut\'s corridor (11.5.1, 11.5.6, 11.S5, 11.S7)', () => {
     assert.strictEqual(refusedBrief(['phase-cut', 'ledger']), 'Work unit "ledger" not found');
     const live = readState(dir, layout.manifest(EPIC));
     writeState(dir, layout.manifest(EPIC), JSON.stringify({ ...JSON.parse(live), status: 'cancelled' }));
-    assert.strictEqual(refusedBrief(['phase-cut', EPIC]), `brief: ${EPIC} is set aside — ${EPIC} is cancelled`);
+    assert.strictEqual(refusedBrief(['phase-cut', EPIC]), `brief: ${EPIC} is cancelled — reactivating it comes first`);
     writeState(dir, layout.manifest(EPIC), live);
     assert.strictEqual(refusedBrief(['phase-cut', 'billing']), 'billing has no spec — its folder holds no spec.md');
     writeState(dir, layout.unit(EPIC, SPEC_FILE), shopSpec().replace('## 2. Refunds', '## 2. Refunds\n\nRefunds are kept.'));
