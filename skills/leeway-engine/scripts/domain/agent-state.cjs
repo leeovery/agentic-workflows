@@ -766,10 +766,10 @@ function bindSpec(cwd, workUnit, id, land) {
 /**
  * The unit's review passes, in the order they were dispatched: each spec
  * review bound to a land, with its report's file, whether the report is in,
- * and whether it was acknowledged clean. Read as a derivation reads,
- * tolerant of the store.
+ * whether it was acknowledged clean, its status and the findings it
+ * surfaced. Read as a derivation reads, tolerant of the store.
  * @param {string} cwd @param {string} workUnit
- * @returns {{id: string, land: Landed, file: string, reported: boolean, clean: boolean}[]}
+ * @returns {{id: string, land: Landed, file: string, reported: boolean, clean: boolean, status: string, surfaced: string[]}[]}
  */
 function reviewPasses(cwd, workUnit) {
   const dir = agentDir(cwd, workUnit, UNIT_PHASE, workUnit);
@@ -782,6 +782,8 @@ function reviewPasses(cwd, workUnit) {
       file: path.join(dir, `${row.id}.md`),
       reported: contentFileExists(row, cwd, workUnit),
       clean: row.clean === true,
+      status: row.status,
+      surfaced: Array.isArray(row.surfaced) ? row.surfaced : [],
     }));
 }
 

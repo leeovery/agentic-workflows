@@ -27,10 +27,14 @@
 // for a spec written since it landed, one unchanged since a pass reported —
 // naming what waits — and a dispatch of another kind or bound to another
 // landing. The review settles (a) once the latest reported pass reviewed
-// the spec as it stands, (c) with no gap waiting and (d) nothing waiting for
-// the writer; an entry at another unit's spec, or on a topic, waits for no
-// one. A fact the review shows wrong, replaced at the spec,
-// stands on its topic and affects what relied on it (11.S21).
+// the spec as it stands, (c) with no gap waiting and (d) nothing waiting:
+// for the writer, the entries made at the spec and the `rewrite` findings
+// since the last take a land committed — a brief again before a land
+// carrying all of it — and to be surfaced, each `gap` or `fact` finding; an
+// entry at another unit's spec, on a topic or replaced since, or an asset
+// linked at the spec, waits for no one. A fact the review shows wrong,
+// replaced at the spec, stands on its topic and affects what relied on it
+// (11.S21).
 //
 // Layer: verb. World, built once and copied: an epic, `payments`, its topics
 // `cards` (titled "card form") and `refunds` decided, each with its log; on
@@ -204,6 +208,14 @@ const dispatchReview = () => ok(dir, ['agent', 'dispatch', UNIT, 'specification'
 
 const CLEAN = '# Spec Review\n\n## Findings\n\nNone identified.';
 const FOUND = '# Spec Review\n\n## Findings\n\n### F1: refunds are not instant\n\n**Lane:** rewrite\n\n2.1.2 cites nothing.';
+const LANED = [
+  '# Spec Review', '', '## Findings', '',
+  '### F1: is a refund split?', '', '**Lane:** gap', '', 'No entry decides it.', '',
+  '### F2: a charge is slower', '', '**Lane:** fact', '', 'The bench gives 450 ms.',
+].join('\n');
+
+/** The way on where what waits is the writer's. */
+const WRITER = 'the writer\'s brief carries what waits for it, and the spec\'s land takes it: ';
 
 /** A pass's report written, so it is in. @param {{file: string}} pass @param {string} [report] */
 const reportIn = ({ file }, report = CLEAN) => fs.writeFileSync(file, `${report}\n`);
@@ -312,8 +324,8 @@ describe('the spec writer\'s brief (11.1.5, 11.3.2, 11.S2)', () => {
 
     assert.deepStrictEqual([line.unit, line.topic, line.phase], [UNIT, null, 'specification']);
     assert.strictEqual(section(brief, 'Written since your last brief'), [
-      `- ${asked} question, The unit's own: Why is a refund never split?`,
-      `- ${answer} decision, The unit's own: A split refund confuses the bank.`,
+      `- ${asked} question, the unit's own: Why is a refund never split?`,
+      `- ${answer} decision, the unit's own: A split refund confuses the bank.`,
       `- ${faster} finding, Card Form (cards), replacing ${made.speed}: A charge takes 450 ms.`,
     ].join('\n'));
     assert.strictEqual(section(brief, 'The records'), RECORDS([`- ${asked} question: Why is a refund never split?`, `- ${answer} decision: A split refund confuses the bank.`])
@@ -396,7 +408,7 @@ describe('the spec reviewer\'s brief (11.7.1, 11.7.8, 11.7.9)', () => {
       'unit-records': RECORDS(),
       'unit-report-to': `\`${pass.file}\``,
     })}`);
-    assert.deepStrictEqual(reviewPasses(dir, UNIT), [{ id: pass.id, land: landed, file: pass.file, reported: false, clean: false }]);
+    assert.deepStrictEqual(reviewPasses(dir, UNIT), [{ id: pass.id, land: landed, file: pass.file, reported: false, clean: false, status: 'in-flight', surfaced: [] }]);
   });
 
   it('11.S11: once a pass has reported, the next reads only the two sections changed since, a bracket\'s edit among them', () => {
@@ -487,7 +499,7 @@ describe('the spec reviewer\'s brief refused, nothing stored', () => {
 });
 
 describe('review-settled (6.4.7, 11.7.6, 11.S11, E3)', () => {
-  it('(a): holds once the latest reported pass reviewed the spec as it stands — open before any pass, while the first runs, once a section changes, landed or not, and while the pass on it was abandoned unreported; blank lines, and areas and parts moved, change nothing, a pass refused as having nothing to read; an entry at another unit\'s spec, or on a topic, leaves it so', () => {
+  it('(a): holds once the latest reported pass reviewed the spec as it stands — open before any pass, while the first runs, once a section changes, landed or not, and while the pass on it was abandoned unreported; blank lines, and areas and parts moved, change nothing, a pass refused as having nothing to read; an entry made at another unit\'s spec, though it stands on this one, or on a topic, leaves it so', () => {
     const states = [reviewSettled()];
     writeSpec(spec());
     land();
@@ -512,7 +524,7 @@ describe('review-settled (6.4.7, 11.7.6, 11.S11, E3)', () => {
     unread(abandoned);
     states.push(reviewSettled());
     cleanPass();
-    write('find', 'billing.specification', [], { ...MADE, text: 'Invoices go out monthly.', how: 'read in the code', known: 'read' });
+    write('replace', 'billing.specification', ['--replaces', made.posted, '--reason', 'was-wrong'], { ...MADE, drops: ['a day'], text: 'A refund posts within two days.', how: 'read in the code', known: 'read' });
     write('find', CARDS, [], { ...MADE, text: 'Amex is asked for.', how: 'read in the support tickets', known: 'documented' });
     states.push(reviewSettled());
 
@@ -540,7 +552,7 @@ describe('review-settled (6.4.7, 11.7.6, 11.S11, E3)', () => {
     assert.deepStrictEqual([edited, reviewSettled()], ['open', 'done']);
   });
 
-  it('(c) and (d): a gap waiting holds it open though nothing waits for the writer, and its answer waits for the writer\'s brief; an entry made while the writer writes waits for its next brief, past the land and a clean pass', () => {
+  it('(c) and (d): a gap waiting holds it open though nothing waits for the writer, and its answer waits for the writer\'s brief and the land after it, a brief again before the land carrying it again; an entry made while the writer writes waits for its next brief, past the land and a clean pass', () => {
     const gap = write('ask', AT_SPEC, [], { ...MADE, text: 'Is a refund ever split?' }).id;
     writeSpec(spec());
     land();
@@ -549,7 +561,10 @@ describe('review-settled (6.4.7, 11.7.6, 11.S11, E3)', () => {
     const answer = write('decide', AT_SPEC, ['--answers', gap], { ...PERSON, text: 'Never.', why: 'The bank matches one refund to one charge.' }).id;
     const answered = [reviewSettled(), nothingToRead()];
     const taken = section(issued(['spec-writer', UNIT]).brief, 'Written since your last brief');
+    const pending = [reviewSettled(), section(issued(['spec-writer', UNIT]).brief, 'Written since your last brief')];
+    land();
     const settled = reviewSettled();
+    issued(['spec-writer', UNIT]);
     const asked = write('ask', AT_SPEC, [], { ...MADE, text: 'Is a refund ever partial?' }).id;
     const own = write('decide', AT_SPEC, ['--answers', asked], { ...MADE, given: 'own', text: 'Never.', why: 'A refund returns the whole charge.' }).id;
     writeSpec(spec({ instant: '2.1.2 Refunds are instant, and whole.' }));
@@ -557,14 +572,58 @@ describe('review-settled (6.4.7, 11.7.6, 11.S11, E3)', () => {
     cleanPass();
     const writing = reviewSettled();
     const next = section(issued(['spec-writer', UNIT]).brief, 'Written since your last brief');
+    land();
 
     assert.deepStrictEqual(waiting, ['open', unchangedSince(first, `the gap ${gap}, asked at the spec, waits on the person, and the writer's brief follows the answer`)]);
-    assert.deepStrictEqual(answered, ['open', unchangedSince(first, 'the writer\'s brief carries what waits for it: 1 entry made at the spec')]);
-    assert.deepStrictEqual([taken, settled], [`- ${answer} decision, The unit's own: Never.`, 'done']);
-    assert.deepStrictEqual([writing, next, reviewSettled()], ['open', [`- ${asked} question, The unit's own: Is a refund ever partial?`, `- ${own} decision, The unit's own: Never.`].join('\n'), 'done']);
+    assert.deepStrictEqual(answered, ['open', unchangedSince(first, `${WRITER}1 entry made at the spec`)]);
+    assert.strictEqual(taken, `- ${answer} decision, the unit's own: Never.`);
+    assert.deepStrictEqual([pending, settled], [['open', taken], 'done']);
+    assert.deepStrictEqual([writing, next, reviewSettled()], ['open', [`- ${asked} question, the unit's own: Is a refund ever partial?`, `- ${own} decision, the unit's own: Never.`].join('\n'), 'done']);
   });
 
-  it('(d): every reported pass neither acknowledged clean nor taken waits for the writer — one incorporated unread beside a later clean one, and one reported after it was abandoned; the writer\'s brief carries each verbatim with the lines that do not trace, a writer changing nothing settling it and one changing a section sending it to another pass', () => {
+  it('(d): only a current entry made at the spec waits — the writer shown what the way on counts, each with where it stands, never an entry replaced since or an asset linked', () => {
+    writeSpec(spec());
+    land();
+    const first = cleanPass();
+    const found = write('find', AT_SPEC, [], { ...MADE, text: 'A refund posts within a day.', how: 'read in the code', known: 'read' }).id;
+    const later = write('replace', AT_SPEC, ['--replaces', found, '--reason', 'was-wrong'], { ...MADE, drops: ['a day'], text: 'A refund posts within two days.', how: 'read in the code', known: 'read' }).id;
+    const tax = write('replace', AT_SPEC, ['--replaces', made.tax, '--reason', 'was-wrong'], { ...PERSON, drops: ['line'], text: 'Per invoice.', why: 'The invoice is taxed whole.' }).id;
+    const waiting = nothingToRead();
+    const drawn = section(issued(['spec-writer', UNIT]).brief, 'Written since your last brief');
+    land();
+    const taken = reviewSettled();
+    writeState(dir, layout.assets(UNIT, 'posting.md'), '# Posting\n');
+    ok(dir, ['asset', 'add', UNIT, layout.assets(UNIT, 'posting.md'), '--entry', later, '--status', 'canonical'], { env: SESSION });
+
+    assert.strictEqual(waiting, unchangedSince(first, `${WRITER}2 entries made at the spec`));
+    assert.strictEqual(drawn, [
+      `- ${later} finding, the unit's own, replacing ${found}: A refund posts within two days.`,
+      `- ${tax} decision, made here, standing on billing/invoices, replacing ${made.tax}: Per invoice.`,
+    ].join('\n'));
+    assert.deepStrictEqual([taken, reviewSettled()], ['done', 'done']);
+  });
+
+  it('(d): a gap or a fact finding waits to be surfaced, never for the writer, its brief and the land after it leaving it, until the store raises it or the pass\'s incorporation declines it', () => {
+    writeSpec(spec());
+    land();
+    const pass = dispatchReview();
+    issued(['spec-reviewer', UNIT, '--agent', pass.id]);
+    reportIn(pass, LANED);
+    acked(pass, ['F1', 'F2']);
+    const brief = section(issued(['spec-writer', UNIT]).brief, 'The review\'s findings');
+    land();
+    const surfacing = [reviewSettled(), nothingToRead()];
+    ok(dir, ['agent', 'surface', UNIT, 'specification', UNIT, pass.id, 'F1']);
+    const raised = [reviewSettled(), nothingToRead()];
+    unread(pass);
+
+    assert.strictEqual(brief, 'None recorded.');
+    assert.deepStrictEqual(surfacing, ['open', unchangedSince(pass, `the review's findings wait to be surfaced: the gap F1 of ${pass.id} raised, the fact F2 of ${pass.id} replaced`)]);
+    assert.deepStrictEqual(raised, ['open', unchangedSince(pass, `the review's findings wait to be surfaced: the fact F2 of ${pass.id} replaced`)]);
+    assert.strictEqual(reviewSettled(), 'done');
+  });
+
+  it('(d): every reported pass with a rewrite finding, neither acknowledged clean nor taken, waits for the writer — one incorporated unread beside a later one acknowledged clean though its report holds a finding, and one reported after it was abandoned; the writer\'s brief carries each verbatim with the lines that do not trace, a brief again before a land settling nothing and carrying it again, a writer landing the spec unchanged settling it and one changing a section sending it to another pass', () => {
     writeSpec(spec());
     land();
     const [found, clean] = [dispatchReview(), dispatchReview()];
@@ -573,10 +632,12 @@ describe('review-settled (6.4.7, 11.7.6, 11.S11, E3)', () => {
     reportIn(found, FOUND);
     ok(dir, ['agent', 'scan', UNIT, 'specification', UNIT]);
     unread(found);
-    reportIn(clean);
+    reportIn(clean, FOUND);
     acked(clean);
     const beside = [reviewSettled(), nothingToRead()];
     const { brief } = issued(['spec-writer', UNIT]);
+    const unlanded = [reviewSettled(), section(issued(['spec-writer', UNIT]).brief, 'The review\'s findings')];
+    land();
     const taken = reviewSettled();
     writeSpec(spec({ instant: '2.1.2 Refunds are instant, always.' }));
     land();
@@ -587,9 +648,11 @@ describe('review-settled (6.4.7, 11.7.6, 11.S11, E3)', () => {
     reportIn(late, FOUND);
     const reported = reviewSettled();
     const again = section(issued(['spec-writer', UNIT]).brief, 'The review\'s findings');
+    land();
 
-    assert.deepStrictEqual(beside, ['open', unchangedSince(clean, `the writer's brief carries what waits for it: the report of ${found.id}`)]);
+    assert.deepStrictEqual(beside, ['open', unchangedSince(clean, `${WRITER}the report of ${found.id}`)]);
     assert.deepStrictEqual([section(brief, 'The review\'s findings'), section(brief, 'Lines that do not trace')], [FOUND, '- 2.1.2: cites no entry']);
+    assert.deepStrictEqual(unlanded, ['open', FOUND]);
     assert.deepStrictEqual([taken, changed, reported, again, reviewSettled()], ['done', 'open', 'open', FOUND, 'done']);
   });
 

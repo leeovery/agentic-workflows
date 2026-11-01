@@ -30,7 +30,8 @@
 // commits `spec.md`, with each file it links that is on disk in a unit's or
 // the product's assets or spikes (log-links.cjs), pushed. Once committed, it
 // keeps the print of the spec it landed, with the ledger's mark at the first
-// land, for the spec's loop (spec-passes.cjs).
+// land, and commits the writer's pending take, for the spec's loop
+// (spec-passes.cjs) — a land of the spec unchanged among them.
 //
 // What it would refuse of `spec.md` as written is answered without landing,
 // for the writer's brief: none where no `spec.md` is written.

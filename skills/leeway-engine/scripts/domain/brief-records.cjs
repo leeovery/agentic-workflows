@@ -122,15 +122,15 @@
 //   builder-calls  the calls the sweep left to the builder (sweep.cjs),
 //                  each with why
 //   changed-entries the unit's current entries waiting for the writer —
-//                  made at its own level at the spec since the writer's last
-//                  brief (spec-passes.cjs) — each with where it stands, as
-//                  unit-records heads it, and what it replaced
+//                  made at its own level at the spec since the last take a
+//                  land committed (spec-passes.cjs) — each with where it
+//                  stands and what it replaced
 //   land-refusal   what `spec land` refuses of `spec.md` as written, as it
 //                  says it (spec-land.cjs); none recorded where none is
 //                  written or it would land
 //   review-findings the report of each pass waiting for the writer,
-//                  verbatim; the writer's brief keeps what it took
-//                  (spec-passes.cjs)
+//                  verbatim; the writer's brief keeps what it took, a take
+//                  the next land commits (spec-passes.cjs)
 //   spec-to        where the writer writes: the unit's `spec.md`
 //   changed-sections the spec's path, then the sections the review's pass
 //                  reads, each verbatim, the title and introduction one of
@@ -236,7 +236,7 @@ const { inventedLines } = require('./spec-trace.cjs');
 const { specSources } = require('./spec-entry.cjs');
 const { landRefusal, unitRefusal } = require('./spec-land.cjs');
 const {
-  ownTexts, recordTaken, outstanding, reviewedSpec, sectionsToReview, waitingGaps, waitingOn,
+  ownTexts, recordTaking, outstanding, reviewedSpec, sectionsToReview, waitingGaps, waitingOn,
 } = require('./spec-passes.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { specReferenceOf } = require('./task-file.cjs');
@@ -897,6 +897,16 @@ function placeHeading(manifest, stands) {
 }
 
 /**
+ * Where an entry of the unit's stands, said within a line: its topic's
+ * heading as it reads, any other place's begun in lower case.
+ * @param {Record<string, any>} manifest @param {import('./ledger-fold.cjs').Standing} stands
+ */
+function placeInLine(manifest, stands) {
+  const heading = placeHeading(manifest, stands);
+  return stands.unit === manifest.name && stands.topic !== null ? heading : `${heading[0].toLowerCase()}${heading.slice(1)}`;
+}
+
+/**
  * An entry as a unit's records draw it, `- {short id} {kind}: {text}`, a
  * "don't care" decision's kind marked so, the builder's to make (P2), and
  * what `about` says of it after its kind.
@@ -972,7 +982,7 @@ function drawChangedEntries(filling, warnings) {
   const { entries, short } = unitView(filling, warnings);
   return listed([...entries].filter(([id]) => waiting.has(id)).map(([, entry]) => {
     const replaced = typeof entry.line.replaces === 'string' ? `, replacing ${short(entry.line.replaces)}` : '';
-    return entryLine(entry, `, ${placeHeading(manifest, entry.stands)}${replaced}`);
+    return entryLine(entry, `, ${placeInLine(manifest, entry.stands)}${replaced}`);
   }));
 }
 
@@ -982,8 +992,8 @@ function drawReviewFindings(filling, warnings) {
   return passes.length === 0 ? NONE : passes.map(({ file }) => fs.readFileSync(file, 'utf8').trim()).join('\n\n');
 }
 
-/** What the writer's brief carried, kept for the review's settling. @param {Filling} filling @param {string[]} warnings */
-const takeFindings = (filling, warnings) => recordTaken(filling.cwd, unitOf(filling), warnings);
+/** What the writer's brief carried, pending until the spec's land takes it. @param {Filling} filling @param {string[]} warnings */
+const takeFindings = (filling, warnings) => recordTaking(filling.cwd, unitOf(filling), warnings);
 
 /** @param {Filling} filling */
 const drawLandRefusal = (filling) => landRefusal(filling.cwd, unitOf(filling)) ?? NONE;
