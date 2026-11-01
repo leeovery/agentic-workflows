@@ -7,7 +7,8 @@
 // exit 2 and the reason on stderr, a path the layout has no place for (6.S4)
 // and a file only the engine writes — the manifests, a unit's
 // spec-review.json and the ledger — naming the verb that writes it where
-// one does, with the mod or without (6.S5, 5.S7); a place in the layout
+// one does, with the mod or without (6.S5, 5.S7); a unit's spec.md once the
+// spec is concluded (11.9.1); a place in the layout
 // passes, whatever its kind, and in another case where the filesystem
 // ignores case (the places themselves are test-engine-layout.cjs's). The
 // ledger stands for every refusal in the state, reached by any route — from
@@ -44,6 +45,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
+const { createManifest } = require('./discovery-test-utils.cjs');
 
 const { STATE_DIR_NAME, statePath, layout } = harness;
 const { ignoresCase } = require('../../skills/leeway-engine/scripts/kernel/state-root.cjs');
@@ -160,6 +162,19 @@ describe('the layout, held (6.2.1, 6.2.3)', () => {
   it('6.S5: an Edit of the project manifest, a unit\'s manifest, its spec-review.json and the ledger is refused, each naming the engine verb that writes it where one does — with the mod off and on', () => {
     for (const [mod, env] of Object.entries(SURFACES)) {
       for (const [rel, reason] of Object.entries(ENGINE_FILES)) assertRefused(guard(dir, path.join(root, rel), { env, tool: 'Edit' }), `${rel}, ${mod}`, reason);
+    }
+  });
+
+  it('11.9.1: a Write or Edit of a unit\'s spec.md is refused once its spec is concluded — the build begun on it — and goes through while it is only written', () => {
+    const spec = path.join(root, layout.unit('pay', 'spec.md'));
+    createManifest(dir, 'pay', {});
+    fs.writeFileSync(spec, '## 1. Cards\n');
+    const written = guard(dir, spec, { tool: 'Edit' });
+    createManifest(dir, 'pay', { build: { position: 'auto' } });
+
+    assertAllowed(written, 'a written spec');
+    for (const tool of ['Write', 'Edit']) {
+      assertRefused(guard(dir, spec, { tool }), `a concluded spec, ${tool}`, `${STATE_DIR_NAME}/${layout.unit('pay', 'spec.md')} is pay's concluded spec, never corrected — a later change replaces its entry on the ledger`);
     }
   });
 

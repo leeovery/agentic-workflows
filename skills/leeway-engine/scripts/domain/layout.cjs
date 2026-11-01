@@ -75,6 +75,9 @@ const engineFile = (path, sets, what, verb) => Object.freeze({ kind: 'engine', p
 /** @param {string} retires @param {PlaceKind} kind @param {string} path @returns {Place} */
 const todays = (retires, kind, path) => Object.freeze({ kind, path, retires });
 
+/** A unit's spec, which the layout hook keeps closed once it is concluded (layout-hook.cjs). */
+const SPEC_PLACE = '{unit}/spec.md';
+
 /** 4.11's places, the tracker's store aside. @type {readonly Place[]} */
 const LAYOUT = Object.freeze([
   place('file', '.git', '4.1.2'),
@@ -103,7 +106,7 @@ const LAYOUT = Object.freeze([
   place('free', '{unit}/topics/{topic}/experiments/E{n}-{slug}/E{n}.{m}-{slug}/data', '4.11.15'),
   place('free', '{unit}/assets', '4.11.5'),
   place('free', '{unit}/spikes/{NNN}-{slug}', '9.10.10'),
-  place('file', '{unit}/spec.md', '4.11.5'),
+  place('file', SPEC_PLACE, '4.11.5'),
   engineFile('{unit}/spec-review.json', '4.11.5', 'a unit\'s record of the person\'s review of its spec'),
   place('file', '{unit}/summary.md', '4.11.6'),
   place('log', '{unit}/build/log.md', '4.11.5'),
@@ -248,4 +251,4 @@ function engineRefusal(at, rel) {
   return `${at.what} (${rel}) changes only through the engine's commands${at.verb === undefined ? '' : ` — engine ${at.verb}`}`;
 }
 
-module.exports = { LAYOUT, TODAY, PRODUCT_DIR, PRODUCT_SESSIONS, ASSET_HOMES, SPIKE_HOMES, AS_WRITTEN, IN_LOWER_CASE, folding, layoutPlace, assetHome, engineRefusal };
+module.exports = { LAYOUT, TODAY, SPEC_PLACE, PRODUCT_DIR, PRODUCT_SESSIONS, ASSET_HOMES, SPIKE_HOMES, AS_WRITTEN, IN_LOWER_CASE, folding, layoutPlace, assetHome, engineRefusal };

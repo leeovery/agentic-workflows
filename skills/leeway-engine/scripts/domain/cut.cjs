@@ -13,9 +13,10 @@
 // holds each phase to having its own (6.4.7).
 //
 // It refuses, naming each fault and writing nothing (11.5.9): a unit with no
-// `spec.md`; a file of another shape; a scenario or a section the spec
-// lacks; a scenario placed in two phases or in none; a phase relying on
-// itself or one after it, its own unit, or another unit the project lacks.
+// `spec.md`, or one its lines refuse (spec-sections.cjs); a file of another
+// shape; a scenario or a section the spec lacks; a scenario placed in two
+// phases or in none; a phase relying on itself or one after it, its own
+// unit, or another unit the project lacks.
 // A second cut replaces the whole cut until a phase has started — its
 // start's checklist closed (6.4.8, 6.4.12) — and once one has, it keeps
 // every phase to the last started as it stands, changing only those after.

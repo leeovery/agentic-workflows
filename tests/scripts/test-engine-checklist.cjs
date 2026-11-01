@@ -9,8 +9,9 @@
 // topic; Claude's items marked in its own order, one skipped with its
 // reason, and the close (2.S2); the engine's own items worked out at each
 // call and never kept or marked — the person's questions on the ledger's map
-// (6.S13), mail waiting, the unit's topics settled, the cut against
-// `spec.md`, what a phase relies on;
+// (6.S13), mail waiting, the unit's topics settled, every statement and
+// screen of `spec.md` traced, the cut against `spec.md`, what a phase
+// relies on;
 // the close refused while an item is open (6.S26), and a mark from before
 // the last close never counting toward the next; finish showing every phase
 // start's and close's skips, read from the manifest by another conversation
@@ -20,7 +21,8 @@
 //
 // Layer: verb. Worlds, each built once and copied: a project with an epic,
 // `payments`, of two topics under discussion, its `spec.md` (area 1 with
-// parts 1.1 and 1.2, area 2; scenarios 1.S1 and 2.S1) and its cut written by
+// parts 1.1 and 1.2, each a statement of the builder's, area 2; scenarios
+// 1.S1 and 2.S1) and its cut written by
 // the verb, two phases, the first relying on another unit, `billing`, the
 // second on the first; `billing`, under way; and a feature of one topic,
 // `solo`, with no cut. And the same project with three checklists marked
@@ -47,10 +49,12 @@ const SESSION = Object.freeze({ CLAUDE_CODE_SESSION_ID: 'session-1' });
 
 const SPEC = [
   '# Payments', '',
-  '## 1. Cards', 'A card is taken once.', '',
-  '### 1.1 The form', '1.S1 Given a card form, when the number is typed, then it is checked.', '',
-  '### 1.2 The receipt', 'A receipt names its charge.', '',
-  '## 2. Refunds', '2.S1 Given a charge, when it is refunded, then the card is credited.', '',
+  '## 1. Cards', '',
+  '### 1.1 The form', '', '1.1.1 The number is checked as it is typed. [builder]', '',
+  '### 1.2 The receipt', '', '1.2.1 A receipt names its charge. [builder]', '',
+  '## 1-S. Scenarios for §1', '', '1.S1 Given a card form, when the number is typed, then it is checked. (1.1.1)', '',
+  '## 2. Refunds', '',
+  '## 2-S. Scenarios for §2', '', '2.S1 Given a charge, when it is refunded, then its receipt names it. (1.2.1)', '',
 ].join('\n');
 
 /** @typedef {{name: string, goal: string, scenarios: string[], sections: string[], relies_on: Array<number|string>}} Phase */
@@ -177,7 +181,7 @@ describe('the points of a unit\'s work, each its exact list (6.4.6–6.4.10, 6.S
         'topics-settled engine open: every topic decided, cancelled or postponed, a feature\'s one topic being decided by this same screen',
         'sweep-run claude open: the sweep between topics run, where the unit has more than one topic',
         'replacements-checked claude open: the spec has checked each replacement against what it replaced',
-        'statements-traced claude open: every statement traced',
+        'statements-traced engine done: every statement traced',
         'review-settled claude open: the review\'s last pass changed nothing',
         'phases-complete engine done: each phase in the cut has its scenarios, sections and relies-on',
         'invariants-checked claude open: every invariant names a check or says none can',
@@ -345,12 +349,12 @@ describe('the engine\'s own items, worked out at each call (6.4.3)', () => {
     seen.push(engines());
 
     assert.deepStrictEqual(seen, [
-      ['topics-settled open', 'phases-complete done', 'sections-drawn open'],
-      ['topics-settled open', 'phases-complete done', 'sections-drawn done'],
-      ['topics-settled open', 'phases-complete open', 'sections-drawn done'],
-      ['topics-settled open', 'phases-complete open', 'sections-drawn done'],
+      ['topics-settled open', 'statements-traced done', 'phases-complete done', 'sections-drawn open'],
+      ['topics-settled open', 'statements-traced done', 'phases-complete done', 'sections-drawn done'],
+      ['topics-settled open', 'statements-traced done', 'phases-complete open', 'sections-drawn done'],
+      ['topics-settled open', 'statements-traced done', 'phases-complete open', 'sections-drawn done'],
     ]);
-    assert.deepStrictEqual(engineItems('ready-to-build', 'solo'), ['topics-settled open', 'phases-complete open', 'sections-drawn open']);
+    assert.deepStrictEqual(engineItems('ready-to-build', 'solo'), ['topics-settled open', 'statements-traced open', 'phases-complete open', 'sections-drawn open']);
   });
 
   it('reads the unit\'s topics as settled once every live topic is decided — a topic under discussion open, one cancelled or postponed no longer live (11.2.1, 6.4.7)', () => {
@@ -361,6 +365,17 @@ describe('the engine\'s own items, worked out at each call (6.4.3)', () => {
     refundsCancelled();
 
     assert.deepStrictEqual([...seen, settled()], ['open', 'open', 'done']);
+  });
+
+  it('reads every statement and screen of spec.md traced to the ledger as done, a statement or a screen that is not as open, and a spec its grammar cannot read as open (11.4.1, 11.4.5)', () => {
+    const traced = () => itemState('statements-traced', 'ready-to-build', UNIT);
+    const seen = [traced()];
+    for (const said of ['typed.', 'typed. [builder]\n\nScreen: the form, drawn.', 'typed. [see below]']) {
+      writeState(dir, layout.unit(UNIT, 'spec.md'), SPEC.replace('typed. [builder]', said));
+      seen.push(traced());
+    }
+
+    assert.deepStrictEqual(seen, ['done', 'open', 'open', 'open']);
   });
 
   it('reads what a phase relies on as done once an earlier phase\'s close is recorded and another unit is completed, never cancelled (12.6.3)', () => {
