@@ -10,13 +10,15 @@
 //
 // What carries the spec on, read alike by its entry and its recovery note
 // (position.cjs): each live topic's record, by its engine call, and its log
-// — a bugfix's its investigation; the files the unit's current entries link
+// — a bugfix's its investigation — then the unit's own record, the gaps
+// asked at the spec and their answers; the files the unit's current entries link
 // as canonical, which the spec links (11.6.3); once the spec is written, the
 // spec; the cut, by its call, once the manifest holds one; and while the
 // person's review page is open, its address and the file its marks are read
-// back to (spec-review.cjs). The entry adds the reports of the agents the
-// spec was left with, landed since, and those lost with a process that no
-// longer runs (9.7.8).
+// back to (spec-review.cjs). The entry adds approve the map, by its call,
+// while the sweep's candidates wait on the person (sweep.cjs, 8.10.9), and
+// the reports of the agents the spec was left with, landed since, and those
+// lost with a process that no longer runs (9.7.8).
 //
 // The spec's standing and its refusal are answered here too, for every verb
 // that holds the spec to them; the refusal holds the unit first to the rule
@@ -36,6 +38,7 @@ const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 const { canonicalAssets } = require('./ledger-read.cjs');
 const { agentsLeft } = require('./agent-state.cjs');
 const { openPage } = require('./spec-review.cjs');
+const { candidatesWaiting } = require('./sweep.cjs');
 
 /** @typedef {import('./enter.cjs').Entry} Entry */
 /** @typedef {import('./enter.cjs').Entering} Entering */
@@ -51,7 +54,7 @@ const PHASE = 'specification';
 
 /**
  * What carries the unit's spec on: each live topic's record call and its log
- * on disk; the files its current entries link as canonical; the spec, once
+ * on disk, then the unit's own record call; the files its current entries link as canonical; the spec, once
  * written; the cut's call, once the manifest holds a cut; and the review
  * page, while it is open. What a read of the ledger said on the way is
  * pushed to `warnings`.
@@ -63,7 +66,7 @@ function specSources(cwd, manifest, warnings) {
   const topics = specTopics(manifest);
   const logOf = manifest.work_type === 'bugfix' ? INDEXED_ARTIFACTS.investigation : topicLog;
   return {
-    records: topics.map((topic) => recordCall(unit, topic)),
+    records: [...topics.map((topic) => recordCall(unit, topic)), `${ENGINE_COMMAND} ledger record ${unit}`],
     logs: topics.map((topic) => statePath(cwd, logOf(unit, topic))).filter((log) => fs.existsSync(log)),
     assets: canonicalAssets(stateRoot(cwd), unit, warnings).map((asset) => statePath(cwd, asset)),
     spec: [specPath(cwd, unit)].filter((spec) => fs.existsSync(spec)),
@@ -89,6 +92,7 @@ function specReads({ cwd, unit, manifest, notes }) {
     ...spec.map(as('spec')),
     ...cut.map(asCall('cut')),
     ...(page === null ? [] : [as('review page')(page.url), as('read back')(page.readBack)]),
+    ...(candidatesWaiting(cwd, manifest).length === 0 ? [] : [asCall('approve the map')(`${ENGINE_COMMAND} render approve-map ${unit} --sweep`)]),
     ...agents.landed.map(({ file }) => as('landed')(file)),
     ...agents.lost.map(as('lost')),
   ];

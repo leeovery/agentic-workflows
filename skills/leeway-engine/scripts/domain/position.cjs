@@ -248,7 +248,7 @@ function dropPosition(sessionId) {
 // product's conversation its open log (24.2.8, 8.14.6) — the latest on disk
 // where none is open; specification's, at the unit whatever topic its place
 // names, what its entry reads to carry it on — each live topic's record and
-// log, the canonical assets, then the spec once written and the cut once cut,
+// log, the unit's own record, the canonical assets, then the spec once written and the cut once cut,
 // and while the person's review page is open, its address and where its
 // marks are read back to (spec-entry.cjs), the spec keeping no log. Every
 // other phase's note sends

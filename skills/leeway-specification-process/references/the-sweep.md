@@ -16,9 +16,19 @@ Then take the report in:
 node .claude/skills/leeway-engine/scripts/engine.cjs sweep take {work_unit}
 ```
 
-A refused take is the agent's to answer: brief it again — the fresh brief carries the refusal — and call it again. The take sends each of the sweep's messages to its topic and stages each candidate, and neither reaches a screen. Where its `reopened` names topics, say in a line that the sweep's messages reopened them, each waiting in its topic for the person. Then follow its `next`:
-- **Approve the map**, drawn with the candidates: emit its sections verbatim per their markers. The answer goes to `gate`; follow its `next`, and then the `next` of what it ran — the yes's is the epic's menu where a topic is no longer decided, else the spec carrying on.
+A refused take is the agent's to answer: brief it again — the fresh brief carries the refusal — and call it again. A refused brief names the way on: take it. The take sends each of the sweep's messages to its topic and stages each candidate, and neither reaches a screen. Where its `reopened` names topics, say in a line that the sweep's messages reopened them, each waiting in its topic for the person. Then follow its `next`:
+- **Approve the map**, with the candidates: **Approve the Map**.
 - **The epic's menu**, where a message reopened a topic: the spec waits until it is decided again.
 - **Carry on**, nothing found: the spec is written next.
 
-Keep shaping takes the person's word back into the conversation. A candidate they would not take is struck. A change to the map itself — a topic added, or the order — is staged as the map, every live topic in its order, with `render approve-map {work_unit} --file .leeway/.cache/{work_unit}/specification/approve-map-payload.json`, which carries the sweep's candidates and their strikes over; a refusal names what to fix.
+## Approve the Map
+
+The sweep's candidates wait on the person until approve the map answers them, and the spec waits with them. Draw it — the take's `next`, or the entry's `approve the map` call — emitting its sections verbatim per their markers:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs render approve-map {work_unit} --sweep
+```
+
+The answer goes to `gate`; follow its `next`, and then the `next` of what it ran — the yes's is the epic's menu where a topic is no longer decided, else the spec carrying on.
+
+Keep shaping takes the person's word back into the conversation. A candidate they would not take is struck. A change to the map itself — a topic added, or the order — is staged as the map is in discovery, the sweep's candidates and their strikes carried over: load **[approving-the-map.md](../../leeway-discovery/references/approving-the-map.md)** and follow its instructions as written, from **The Topics**, with home = `{work_unit}`.

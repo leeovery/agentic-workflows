@@ -36,10 +36,10 @@ A label in `horizons`, or a new one in their own words — "under Next", "that's
 
 #### Otherwise
 
-The instruction says put it aside and no more — "backlog it", "later", "not now", none of them a label in `horizons` (a horizon called Later makes "later" a placement under the first branch). Only the user can say where it waits, so ask. Write `{"title": "…"}` — its short title — to `.workflows/.cache/{work_unit}/{phase}/{topic}/backlog.json` with the Write tool, never a shell heredoc or redirect, then render the gate:
+The instruction says put it aside and no more — "backlog it", "later", "not now", none of them a label in `horizons` (a horizon called Later makes "later" a placement under the first branch). Only the user can say where it waits, so ask. Write `{"title": "…"}` — its short title — to `.leeway/.cache/{work_unit}/{phase}/{topic}/backlog.json` with the Write tool, never a shell heredoc or redirect, then render the gate:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render backlog-gate {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/backlog.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render backlog-gate {work_unit}.{phase}.{topic} --file .leeway/.cache/{work_unit}/{phase}/{topic}/backlog.json
 ```
 
 Emit the call's MENU section verbatim per its marker.
@@ -64,13 +64,14 @@ Emit the call's MENU section verbatim per its marker.
 
 **The item** — a kebab-case `{name}`, a one-line `{summary}`, and its `{kind}`: `bug` for something broken, `quick-fix` for a small mechanical change, `idea` for anything else. An idea is at capability grain — one capability the user would move around a roadmap as one thing; a bug or a quick-fix is the one fix it is. Either way it is said in the product's terms rather than this phase's mechanism.
 
-**The source** — the record this session is writing, relative to `.workflows/`:
+**The source** — the record this session is writing, relative to `.leeway/`:
 
 | `{phase}` | `{source}` |
 | --- | --- |
 | `investigation` | `{work_unit}/investigation/{topic}.md` |
 | `planning` | `{work_unit}/planning/{topic}/planning.md` |
-| `scoping`, `specification`, `implementation`, `review` | `{work_unit}/specification/{topic}/specification.md` |
+| `specification` | `{work_unit}/spec.md` |
+| `scoping`, `implementation`, `review` | `{work_unit}/specification/{topic}/specification.md` |
 
 A source is recorded only once it is on disk. Before this session's record exists (a scoping or specification session before its first write, a planning session before `planning.md`), the park carries none: both calls below leave `[--source {source}]` out.
 

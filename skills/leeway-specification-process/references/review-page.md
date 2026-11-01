@@ -32,7 +32,7 @@ Answer each comment beneath its line, as it stands when read. While you answer, 
 
 ## An Agreed Change
 
-A tick on a line you answered is the person agreeing your last answer. Where the answer changes the spec, the writer makes the change, its land goes through the review's next pass, and the cut is made again:
+A tick on a line you answered is the person agreeing your last answer. Where the answer changes the spec, the writer makes the change, its land goes through the review's next pass, and where `phases-complete` is open again the cut is made again:
 
 - **Wording alone** — the line says what it said, better: it never touches the ledger. Write each such change agreed, one a line, naming the line by its number and giving the wording agreed, to `.leeway/.cache/{work_unit}/specification/wording.md`, and brief the writer with it — every writer's brief until the spec lands, a refused land's among them:
 

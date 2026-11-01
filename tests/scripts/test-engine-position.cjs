@@ -466,7 +466,7 @@ describe('conversation position', () => {
     }), 'the log\'s last line naming another, this conversation\'s is owed again');
   });
 
-  it('a specification carries its recovery whole, at the unit: each live topic\'s record and its log, the files linked canonical, then the spec once written and the cut once cut, and the review page while it is open, and no log of its own (24.2.6)', () => {
+  it('a specification carries its recovery whole, at the unit: each live topic\'s record and its log, the unit\'s own record, the files linked canonical, then the spec once written and the cut once cut, and the review page while it is open, and no log of its own (24.2.6)', () => {
     install('leeway-specification-process');
     workUnit('pay', 'epic', {
       discovery: { items: { ledger: { order: 1 }, refunds: { order: 2, cancelled: true } } },
@@ -497,9 +497,9 @@ describe('conversation position', () => {
     write('.leeway/.cache/pay/specification/published.json', JSON.stringify({ url, at: '2026-11-01T00:00:00.000Z' }));
     const open = reads();
 
-    assert.deepStrictEqual([unwritten.place, unwritten.files, unwritten.text], ['pay › specification', [abs(log), abs(asset)], specNote(['ledger record pay ledger'], [log, asset])]);
-    assert.deepStrictEqual([written.files, written.text], [[abs(log), abs(asset), abs(spec)], specNote(['ledger record pay ledger', 'manifest get pay cut'], [log, asset, spec])]);
-    assert.strictEqual(open.text, specNote(['ledger record pay ledger', 'manifest get pay cut'], [log, asset, spec], [
+    assert.deepStrictEqual([unwritten.place, unwritten.files, unwritten.text], ['pay › specification', [abs(log), abs(asset)], specNote(['ledger record pay ledger', 'ledger record pay'], [log, asset])]);
+    assert.deepStrictEqual([written.files, written.text], [[abs(log), abs(asset), abs(spec)], specNote(['ledger record pay ledger', 'ledger record pay', 'manifest get pay cut'], [log, asset, spec])]);
+    assert.strictEqual(open.text, specNote(['ledger record pay ledger', 'ledger record pay', 'manifest get pay cut'], [log, asset, spec], [
       `The review page is open at ${url}; its marks are read back into ${abs('.leeway/.cache/pay/specification/read-back.json')}.`,
     ]), 'while the review page is open, the note names its address and the file its marks are read back to');
   });

@@ -5,7 +5,9 @@
 // `readyClose`; ready-to-build.cjs): the landed spec alone, the close, the
 // screen and the yes refused while spec.md holds changes that have not
 // landed (11.8.1); ready to build's checklist closed, voided by a land or a
-// cut after it (E12); and an engine item failing since the close — the
+// cut after it (E12); phases-complete open while the cut no longer holds
+// against the spec landed since (11.5.9); and an engine item failing since
+// the close — the
 // split, a decided topic postponed while the spec is written, its lines then
 // invented (11.S18). Every refusal writes and commits nothing.
 //
@@ -18,7 +20,7 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
-const { ok, refuses, sectionOf, statePath, layout, writeState, readState, readManifest, stateGit } = require('./engine-harness.cjs');
+const { ok, output, refuses, sectionOf, statePath, layout, writeState, readState, readManifest, stateGit } = require('./engine-harness.cjs');
 const { UNIT, SESSION, CARDS, REFUNDS, cut, reviewPass, landReviewed, closeReady, landed, useReadyWorld, readyHelpers } = require('./ready-to-build-world.cjs');
 
 const dir = useReadyWorld(landed);
@@ -87,6 +89,21 @@ describe('the close the screen stands on (E12)', () => {
     cut(dir(), [{ ...CARDS, goal: 'Cards, sooner.' }, REFUNDS]);
 
     assert.strictEqual(refused(['ready-to-build', 'yes', UNIT, '--position', 'auto']), `ready-to-build yes: ready-to-build was closed before ${UNIT}'s spec was cut again — a cut after the close voids it, so its items are worked afresh and it is closed again`);
+  });
+
+  it('holds phases-complete open while the cut no longer holds against the spec landed since — a re-land adding a scenario no phase places — until the cut places it (11.5.9)', () => {
+    closeReady(dir());
+    const file = layout.unit(UNIT, 'spec.md');
+    writeState(dir(), file, `${readState(dir(), file)}\n2.S2 Given a refund, when it is asked for twice, then the second is refused. (2.1.1)\n`);
+    landReviewed(dir());
+    const phasesComplete = () => JSON.parse(output(dir(), ['checklist', 'show', 'ready-to-build', UNIT])).items.find((/** @type {{key: string}} */ item) => item.key === 'phases-complete').state;
+    for (const item of ['replacements-checked', 'invariants-checked']) ok(dir(), ['checklist', 'done', 'ready-to-build', UNIT, item]);
+
+    assert.deepStrictEqual([phasesComplete(), refuses(dir(), ['checklist', 'close', 'ready-to-build', UNIT]).error], ['open', `checklist close: ready-to-build has items open: phases-complete`]);
+    cut(dir(), [CARDS, { ...REFUNDS, scenarios: ['2.S1', '2.S2'] }]);
+    assert.strictEqual(phasesComplete(), 'done');
+    closeReady(dir());
+    assert.match(screen(), /=== MENU: ready to build /);
   });
 
   it('refuses while an item the engine checks fails since the close: a decided topic postponed for a split leaves the lines citing it invented, so the spec is written again (11.10.3, 11.S18)', () => {

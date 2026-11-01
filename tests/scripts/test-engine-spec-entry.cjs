@@ -16,8 +16,9 @@
 // record and log — a bugfix's its investigation — and the files the unit's
 // current entries link as canonical (11.6.3); once the spec is written, the
 // spec and the cut, and while the review page is open, its address and the
-// file its marks are read back to; and the agents the spec was left with,
-// landed or lost (9.7.8). And the spec's standing, none, written or concluded (P7). The
+// file its marks are read back to; then the unit's own record; approve the
+// map while the sweep's candidates wait on the person (8.10.9); and the
+// agents the spec was left with, landed or lost (9.7.8). And the spec's standing, none, written or concluded (P7). The
 // settled rule as topics-settled reads it is test-engine-checklist.cjs's,
 // the move after a topic is decided test-engine-decided-yes.cjs's, every
 // door past the spec test-engine-past-spec.cjs's, and the recovery note
@@ -144,8 +145,8 @@ const data = (lines) => `=== DATA (reason from this — never display or parse t
 /** A path in the state, absolute. @param {string} rel */
 const at = (rel) => statePath(dir, rel);
 
-/** A topic's record call, as the DATA names it. @param {string} unit @param {string} topic */
-const record = (unit, topic) => `record: \`${ENGINE} ledger record ${unit} ${topic}\``;
+/** Each topic's record call, then the unit's own, as the DATA names them. @param {string} unit @param {...string} topics */
+const records = (unit, ...topics) => [...topics.map((topic) => `record: \`${ENGINE} ledger record ${unit} ${topic}\``), `record: \`${ENGINE} ledger record ${unit}\``];
 
 beforeEach(() => {
   dir = world();
@@ -215,16 +216,16 @@ describe('the entry writes nothing but where the conversation is working (4.11.2
 });
 
 describe('what the spec reads at its entry', () => {
-  it('each live topic\'s record and its log, and the files its current entries link as canonical — none of a reference link, none of a cancelled topic\'s — with no log of its own', () => {
+  it('each live topic\'s record and its log, the unit\'s own record, and the files its current entries link as canonical — none of a reference link, none of a cancelled topic\'s — with no log of its own', () => {
     assert.strictEqual(enter('ready').sections, data([
-      record('ready', 'alpha'), record('ready', 'beta'),
+      ...records('ready', 'alpha', 'beta'),
       `topic log: ${at(layout.doc('ready', 'discussion', 'alpha'))}`,
       `asset: ${at(layout.assets('ready', 'design.png'))}`,
     ]));
   });
 
   it('a bugfix\'s topic log is its investigation', () => {
-    assert.strictEqual(enter('fixed').sections, data([record('fixed', 'fixed'), `topic log: ${at(layout.doc('fixed', 'investigation', 'fixed'))}`]));
+    assert.strictEqual(enter('fixed').sections, data([...records('fixed', 'fixed'), `topic log: ${at(layout.doc('fixed', 'investigation', 'fixed'))}`]));
   });
 
   it('once the spec is written, the spec and, once cut, the cut; and the agents the spec was left with, landed or lost with a process gone (9.7.8)', () => {
@@ -235,7 +236,7 @@ describe('what the spec reads at its entry', () => {
     fs.writeFileSync(landed.file, '# Findings\n');
 
     assert.strictEqual(enter('ready').sections, data([
-      record('ready', 'alpha'), record('ready', 'beta'),
+      ...records('ready', 'alpha', 'beta'),
       `topic log: ${at(layout.doc('ready', 'discussion', 'alpha'))}`,
       `asset: ${at(layout.assets('ready', 'design.png'))}`,
       `spec: ${at(layout.unit('ready', 'spec.md'))}`,
@@ -251,13 +252,31 @@ describe('what the spec reads at its entry', () => {
     writeState(dir, layout.cache('ready', 'specification', 'published.json'), JSON.stringify({ url, at: '2026-11-01T00:00:00.000Z' }));
 
     assert.strictEqual(enter('ready').sections, data([
-      record('ready', 'alpha'), record('ready', 'beta'),
+      ...records('ready', 'alpha', 'beta'),
       `topic log: ${at(layout.doc('ready', 'discussion', 'alpha'))}`,
       `asset: ${at(layout.assets('ready', 'design.png'))}`,
       `spec: ${at(layout.unit('ready', 'spec.md'))}`,
       `review page: ${url}`,
       `read back: ${at(layout.cache('ready', 'specification', 'read-back.json'))}`,
     ]));
+  });
+});
+
+describe('the sweep\'s calls waiting on the person (8.10.9)', () => {
+  it('approve the map, by its call, while a candidate the sweep took is neither on the map nor struck from it', () => {
+    const candidate = (/** @type {string} */ name) => ({ name, reason: `Nothing decides ${name}.`, brief: `# ${name}\n` });
+    writeState(dir, layout.unit('ready', 'sweep-taken.json'), JSON.stringify({ taken: '2026-11-01T00:00:00.000Z', messages: [], candidates: [candidate('alpha'), candidate('wallets')] }));
+    const waiting = enter('ready').sections;
+    const manifest = readManifest(dir, 'ready');
+    createManifest(dir, 'ready', { ...manifest, phases: { ...manifest.phases, discovery: { ...manifest.phases.discovery, dismissed: ['wallets'] } } });
+
+    assert.strictEqual(waiting, data([
+      ...records('ready', 'alpha', 'beta'),
+      `topic log: ${at(layout.doc('ready', 'discussion', 'alpha'))}`,
+      `asset: ${at(layout.assets('ready', 'design.png'))}`,
+      `approve the map: \`${ENGINE} render approve-map ready --sweep\``,
+    ]));
+    assert.ok(!enter('ready').sections.includes('approve the map'), 'struck, the last candidate waits no longer');
   });
 });
 

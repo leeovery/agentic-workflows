@@ -16,7 +16,8 @@
 // that do not trace and what the land refuses of the spec as written; its
 // template's example read by the spec's own grammar; refused for a unit the
 // land refuses, a wording file that is none or is empty, and while a gap put
-// to the person is open. The land keeps
+// to the person is open, naming the raise that puts it to them again from a
+// new conversation. The land keeps
 // the print of what it landed — each section's own text hashed, the title
 // and introduction one of them — a section's changing alone with it, and
 // blank lines between sections changing none (E4). The reviewer's brief, for
@@ -45,7 +46,7 @@ const path = require('path');
 const {
   ok, refusedPristine, statePath, readState, layout, writeState, commitAll,
 } = require('./engine-harness.cjs');
-const { ledgerHelpers } = require('./ledger-world.cjs');
+const { ledgerHelpers, answeredRaise } = require('./ledger-world.cjs');
 const {
   UNIT, SPEC, SESSION_ID, PERSON, MADE, AT_SPEC, CARDS, STORE, TEMPLATES, made, payments, useSpecReviewWorld, specReviewHelpers, RECORDS, filledTemplate, section, spaced,
 } = require('./spec-review-world.cjs');
@@ -180,12 +181,12 @@ describe('the spec writer\'s brief refused, nothing stored', () => {
     ]);
   });
 
-  it('a rewrite while a gap put to the person waits, until it is answered', () => {
+  it('a rewrite while a gap put to the person waits, naming the raise that puts it to them again — which a new conversation draws, and whose answer lets the rewrite on', async () => {
     const asked = write('ask', AT_SPEC, [], { ...MADE, text: 'Is a refund ever split?' }).id;
     const waiting = refusedUnissued(['spec-writer', UNIT]);
-    write('decide', AT_SPEC, ['--answers', asked], { ...PERSON, text: 'Never.', why: 'The bank matches one refund to one charge.' });
+    await answeredRaise(dir(), AT_SPEC, asked, { lean: 'Never.', other: 'When the bank allows it.', key: '1', env: { CLAUDE_CODE_SESSION_ID: 'spec-review-resumed' } });
 
-    assert.strictEqual(waiting, `brief: ${UNIT}'s spec waits on the person — the gap ${asked}, asked at the spec, is open, and its rewrite waits for the answer`);
+    assert.strictEqual(waiting, `brief: ${UNIT}'s rewrite waits for the answer — the gap ${asked}, asked at the spec, waits on the person — engine raise ${UNIT}.specification --answers ${asked} puts it to them again, in this conversation or a new one`);
     assert.strictEqual(issued(['spec-writer', UNIT]).res.role, 'spec-writer');
   });
 });

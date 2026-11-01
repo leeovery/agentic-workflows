@@ -16,7 +16,9 @@
 // `spec.md`, or one its lines refuse (spec-sections.cjs); a file of another
 // shape; a scenario or a section the spec lacks; a scenario placed in two
 // phases or in none; a phase relying on itself or one after it, its own
-// unit, or another unit the project lacks.
+// unit, or another unit the project lacks. The same checks of the cut on
+// the manifest, against the spec as it stands, hold ready to build's
+// phases-complete (`cutHolds`, checklist.cjs).
 // A second cut replaces the whole cut until a phase has started — its
 // start's checklist closed (6.4.8, 6.4.12) — and once one has, it keeps
 // every phase to the last started as it stands, changing only those after.
@@ -46,6 +48,7 @@ const { phaseStarted } = require('./checklist.cjs');
 const { recordCut } = require('./spec-passes.cjs');
 
 /** @typedef {{name: string, goal: string, scenarios: string[], sections: string[], relies_on: Array<number|string>}} Phase */
+/** What a phase places and draws on, which the spec and the project hold it to. @typedef {Pick<Phase, 'scenarios'|'sections'|'relies_on'>} Placing */
 
 const CUT_USAGE = 'cut <work-unit> [--file <cut.json>]';
 
@@ -127,7 +130,7 @@ function specOf(cwd, unit) {
  * The faults of the cut against the spec: each scenario or section a phase
  * names that the spec lacks, and each scenario of the spec placed in two
  * phases or in none, in the spec's order.
- * @param {Phase[]} phases @param {Spec} spec
+ * @param {Placing[]} phases @param {Spec} spec
  */
 function specFaults(phases, { scenarios, sections }) {
   const lacking = phases.flatMap(({ scenarios: placed, sections: drawn }, at) => [
@@ -145,7 +148,7 @@ function specFaults(phases, { scenarios, sections }) {
 /**
  * The faults in what each phase relies on: an earlier phase by its number,
  * another unit the project holds by its name.
- * @param {Phase[]} phases @param {string} root @param {string} unit
+ * @param {Placing[]} phases @param {string} root @param {string} unit
  */
 function reliesFaults(phases, root, unit) {
   return phases.flatMap(({ relies_on: on }, at) => on.flatMap((relied) => {
@@ -191,6 +194,27 @@ function stagedCutPath(cwd, unit) {
 }
 
 /**
+ * The faults of `phases` against the unit's spec and the project, as `cut`
+ * names them.
+ * @param {string} cwd @param {string} unit @param {Placing[]} phases @param {Spec} spec
+ */
+const againstSpec = (cwd, unit, phases, spec) => [...specFaults(phases, spec), ...reliesFaults(phases, stateRoot(cwd), unit)];
+
+/**
+ * Whether `phases` — the cut on the unit's manifest — still holds against
+ * its spec as it stands: what `cut` checks of a cut, read without writing,
+ * so a land since that adds or drops a scenario or a section opens it.
+ * @param {string} cwd @param {string} unit @param {Placing[]} phases
+ */
+function cutHolds(cwd, unit, phases) {
+  try {
+    return againstSpec(cwd, unit, phases, specOf(cwd, unit)).length === 0;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * The cut in `file`, checked against the unit's spec and the cut on its
  * manifest, and that manifest. Refuses, naming every fault.
  * @param {string} cwd @param {string} unit @param {string} file absolute
@@ -200,7 +224,7 @@ function checkedCut(cwd, unit, file) {
   const spec = specOf(cwd, unit);
   const cut = phasesIn(file);
   const manifest = loadWorkUnitManifest(cwd, unit);
-  const faults = [...specFaults(cut, spec), ...reliesFaults(cut, stateRoot(cwd), unit), ...startedFaults(manifest, cut)];
+  const faults = [...againstSpec(cwd, unit, cut, spec), ...startedFaults(manifest, cut)];
   if (faults.length > 0) refuse(faults);
   return { cut, manifest };
 }
@@ -248,4 +272,4 @@ function writeCut(cwd, unit, file) {
   return result;
 }
 
-module.exports = { CUT_USAGE, writeCut, stagedCutPath, stagedCutRefusal };
+module.exports = { CUT_USAGE, writeCut, stagedCutPath, stagedCutRefusal, cutHolds };

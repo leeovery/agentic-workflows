@@ -113,7 +113,9 @@
 //                  it says it, read without writing (sweep-take.cjs); none
 //                  recorded where no report is written or it would be taken
 //   sweep-to       where the agent writes its report: the unit's sweep
-//                  report (sweep.cjs)
+//                  report (sweep.cjs); refused once the sweep is taken, one
+//                  sweep for the spec, naming approve the map where its
+//                  candidates wait on the person
 //
 // The spec's records, each of the unit the brief is for, with its records,
 // above, from its entries (unit-entries.cjs), its `spec.md` read by the
@@ -241,14 +243,14 @@ const {
 } = require('./spec-sections.cjs');
 const { withUnitEntries, unitEntries } = require('./unit-entries.cjs');
 const { specTopics } = require('./spec-standing.cjs');
-const { sweepPath, builderCalls } = require('./sweep.cjs');
+const { sweepPath, builderCalls, sweepTaken, sweepWait } = require('./sweep.cjs');
 const { sweepRefusal } = require('./sweep-take.cjs');
 const { stagedCutPath, stagedCutRefusal } = require('./cut.cjs');
 const { inventedLines } = require('./spec-trace.cjs');
 const { specSources } = require('./spec-entry.cjs');
 const { landRefusal, unitRefusal } = require('./spec-land.cjs');
 const {
-  ownTexts, recordTaking, outstanding, cutRequests, reviewedSpec, sectionsToReview, waitingGaps, waitingOn,
+  ownTexts, recordTaking, outstanding, cutRequests, reviewedSpec, sectionsToReview, waitingGaps, gapsWaiting, waitingOn,
 } = require('./spec-passes.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { specReferenceOf } = require('./task-file.cjs');
@@ -947,7 +949,12 @@ function drawUnitRecords(filling, warnings) {
 
 /** @param {Filling} filling */
 function drawSweepTo(filling) {
-  return `\`${sweepPath(filling.cwd, unitOf(filling))}\``;
+  const unit = unitOf(filling);
+  if (sweepTaken(filling.cwd, unit)) {
+    const wait = sweepWait(filling.cwd, unitManifest(filling));
+    throw new Error(`brief: ${unit}'s sweep is taken already — one sweep for the spec (8.10.3)${wait === null ? '' : `; ${wait}`}`);
+  }
+  return `\`${sweepPath(filling.cwd, unit)}\``;
 }
 
 /** @param {Filling} filling */
@@ -1038,9 +1045,7 @@ function drawSpecTo(filling, warnings) {
   const refused = unitRefusal(filling.cwd, unit);
   if (refused !== null) throw new Error(`brief: ${refused}`);
   const waiting = waitingGaps(filling.cwd, unit, warnings);
-  if (waiting.length > 0) {
-    throw new Error(`brief: ${unit}'s spec waits on the person — ${waiting.length === 1 ? `the gap ${waiting[0]}, asked at the spec, is` : `the gaps ${waiting.join(', ')}, asked at the spec, are`} open, and its rewrite waits for the answer`);
-  }
+  if (waiting.length > 0) throw new Error(`brief: ${unit}'s rewrite waits for the answer — ${gapsWaiting(unit, waiting)}`);
   return `\`${specPath(filling.cwd, unit)}\``;
 }
 

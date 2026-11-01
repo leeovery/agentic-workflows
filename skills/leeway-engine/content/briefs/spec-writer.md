@@ -10,7 +10,7 @@ Where no spec is written yet, write it whole. Where one is, rewrite from what is
 - **Lines that do not trace** — re-cite each to the entries it comes from, or drop it.
 - **The refusal** — the spec you last wrote was refused for it: answer every fault.
 
-A finding the records show is wrong, or already answered, you leave: changing nothing is an answer.
+A finding the records contradict, or one already answered, you leave, saying why in your status: changing nothing is an answer.
 
 ## What a statement says
 

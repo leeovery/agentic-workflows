@@ -301,6 +301,17 @@ function waitingGaps(cwd, unit, warnings) {
 }
 
 /**
+ * The gaps waiting on the person, with the move that puts each to them
+ * again from any conversation: a raise, sealed afresh where it is drawn.
+ * @param {string} unit @param {string[]} gaps
+ */
+function gapsWaiting(unit, gaps) {
+  const one = gaps.length === 1;
+  const which = one ? `the gap ${gaps[0]}, asked at the spec, waits` : `the gaps ${gaps.join(', ')}, asked at the spec, wait`;
+  return `${which} on the person — engine raise ${unit}.specification --answers ${one ? gaps[0] : '{id}'} puts ${one ? 'it' : 'each'} to them again, in this conversation or a new one`;
+}
+
+/**
  * A finding's way to surfacing, its pass acknowledged first where it is not.
  * @param {Finding} finding @param {number} at @param {Finding[]} all
  */
@@ -325,7 +336,7 @@ const IN_FLIGHT = Object.freeze({
  */
 function waitingOn(cwd, unit, warnings) {
   const gaps = waitingGaps(cwd, unit, warnings);
-  if (gaps.length > 0) return `${gaps.length === 1 ? `the gap ${gaps[0]}, asked at the spec, waits` : `the gaps ${gaps.join(', ')}, asked at the spec, wait`} on the person, and the writer's brief follows the answer`;
+  if (gaps.length > 0) return `${gapsWaiting(unit, gaps)}; the writer's brief follows the answer`;
   const { entries, passes, surface } = outstanding(cwd, unit, warnings);
   const forWriter = [
     ...(passes.length === 0 ? [] : [`the report of ${passes.map(({ id }) => id).join(', ')}`]),
@@ -358,5 +369,5 @@ function reviewSettled(cwd, unit, warnings) {
 }
 
 module.exports = {
-  ownTexts, printOf, changedSince, recordLand, lastLand, recordTaking, recordCut, cutRequests, outstanding, reviewedSpec, sectionsToReview, waitingGaps, waitingOn, reviewSettled,
+  ownTexts, printOf, changedSince, recordLand, lastLand, recordTaking, recordCut, cutRequests, outstanding, reviewedSpec, sectionsToReview, waitingGaps, gapsWaiting, waitingOn, reviewSettled,
 };

@@ -115,7 +115,7 @@ describe('review-settled (6.4.7, 11.7.6, 11.S11, E3)', () => {
     const next = section(issued(['spec-writer', UNIT]).brief, 'Written since your last brief');
     land();
 
-    assert.deepStrictEqual(waiting, ['open', unchangedSince(first, `the gap ${gap}, asked at the spec, waits on the person, and the writer's brief follows the answer`)]);
+    assert.deepStrictEqual(waiting, ['open', unchangedSince(first, `the gap ${gap}, asked at the spec, waits on the person — engine raise ${UNIT}.specification --answers ${gap} puts it to them again, in this conversation or a new one; the writer's brief follows the answer`)]);
     assert.deepStrictEqual(answered, ['open', unchangedSince(first, `${WRITER}1 entry made at the spec`)]);
     assert.strictEqual(taken, `- ${answer} decision, the unit's own: Never.`);
     assert.deepStrictEqual([pending, settled], [['open', taken], 'done']);

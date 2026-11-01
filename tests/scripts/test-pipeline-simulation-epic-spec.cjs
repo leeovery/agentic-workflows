@@ -62,7 +62,8 @@ describe('pipeline simulation: epic, the spec', () => {
     handoff(sim, [`/${next.skill}`, ...next.args].join(' '));
     specEntry(sim, wu, ['alpha']);
     const ready = () => Object.fromEntries(JSON.parse(sim.read(['checklist', 'show', 'ready-to-build', wu])).items.map((/** @type {{key: string, state: string}} */ item) => [item.key, item.state]));
-    assert.deepStrictEqual([ready()['topics-settled'], ready()['statements-traced'], ready()['sweep-run']], ['done', 'open', undefined], 'one live topic owes no sweep, so the writer goes first');
+    const entered = ready();
+    assert.deepStrictEqual([entered['topics-settled'], entered['statements-traced'], entered['sweep-run']], ['done', 'open', undefined], 'one live topic owes no sweep, so the writer goes first');
     const [decision] = JSON.parse(sim.read(['ledger', 'record', wu, 'alpha'])).decisions;
     const spec = (/** @type {string} */ statement) => sim.write(`.leeway/${wu}/spec.md`, [
       '# Ledgerly', '', '## 1. Settling', '',
