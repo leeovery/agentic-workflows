@@ -184,7 +184,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     }
     // Checked before anything moves: the map add at the end refuses an epic
     // past its spec too.
-    assertBeforeSpec(cwd, into);
+    assertBeforeSpec(cwd, epicManifest, 'absorbInto');
     // The topic is substituted into every re-aimed import origin.
     if (!isPlainName(topic)) {
       throw new Error(`"${topic}" is not a legal topic name — dots, slashes, and surrounding whitespace break manifest addressing`);
@@ -200,7 +200,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     if (!fs.existsSync(discussionSrc)) {
       throw new Error(`discussion log missing on disk: ${discussionSrc}`);
     }
-    assertBeforeSpec(cwd, feature);
+    assertBeforeSpec(cwd, featureManifest, 'ownWork');
 
     // A feature's phase items are single and self-named — discussion and
     // experiment alike. A foreign-named item refuses rather

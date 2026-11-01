@@ -27,7 +27,7 @@ const { PRODUCT, WORK_TYPE_PIPELINES, illegalNameReason, workUnitNameRefusal } =
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { hasTopic, manifestOf } = require('./ledger-units.cjs');
 const { computeNextPhase, computeTopicLifecycle, itemOf, postponedStillWaits } = require('./derivations.cjs');
-const { pastItsSpec, pastSpecRefusal } = require('./spec-standing.cjs');
+const { pastSpecRefusal } = require('./spec-standing.cjs');
 
 /**
  * Where a topic stands as it is checked: the unit's manifest as it stood on
@@ -125,7 +125,7 @@ function topicStanding({ cwd, phase, unit, topic, manifest }) {
   if (topic === undefined) return `an epic enters ${phase} at one of its topics — name the topic: engine enter ${phase} ${unit} <topic>`;
   const illegal = illegalNameReason('topic', topic);
   if (illegal !== null) return `${illegal}; ${topicsNamed(manifest)}`;
-  const past = pastSpecRefusal(cwd, unit);
+  const past = pastSpecRefusal(cwd, manifest, 'change');
   if (past !== null) return past;
   return holdsTopic(manifest, topic) ? null : `${unit} has no topic "${topic}" — ${topicsNamed(manifest)}`;
 }
@@ -209,9 +209,7 @@ function discoveryStanding({ cwd, unit, manifest }) {
   if (manifest.work_type !== 'epic') {
     return `${unit} is a ${manifest.work_type} — its discovery ended at start this work, and reopening its decision goes through manage on the start menu`;
   }
-  return pastItsSpec(cwd, unit)
-    ? `${unit} has its spec, so its map is closed — talk about it belongs in the product's conversation, where what comes of it lands as roadmap items: engine enter discovery ${PRODUCT}`
-    : null;
+  return pastSpecRefusal(cwd, manifest, 'newWork');
 }
 
 /**

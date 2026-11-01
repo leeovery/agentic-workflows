@@ -548,8 +548,8 @@ function reopenTopic(cwd, workUnit, phase, topic) {
     throw new Error('a decided discussion reopens through a message sent to it (topic send), never topic reopen');
   }
   return withWorkUnitLock(cwd, workUnit, () => {
-    if (TOPIC_PHASES.includes(phase)) assertBeforeSpec(cwd, workUnit);
     const manifest = loadWorkUnitManifest(cwd, workUnit);
+    if (TOPIC_PHASES.includes(phase)) assertBeforeSpec(cwd, manifest, 'change');
     const item = phaseItem(manifest, phase, topic);
     if (item.status === 'cancelled') {
       throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
@@ -968,8 +968,8 @@ function cancelSpecificationUnit(manifest, spec) {
 function cancelTopic(cwd, workUnit, phase, said) {
   const stage = assertUnitStage('cancel', phase);
   const { mail, topic, ...taken } = withWorkUnitLock(cwd, workUnit, () => {
-    if (stage === 'discovery') assertBeforeSpec(cwd, workUnit);
     const manifest = loadWorkUnitManifest(cwd, workUnit);
+    if (stage === 'discovery') assertBeforeSpec(cwd, manifest, 'cancel');
     const topic = stage === 'discovery' ? topicKey(manifest, said) : said;
     const outcome = stage === 'discovery'
       ? cancelDiscoveryUnit(manifest, topic)
@@ -1101,8 +1101,8 @@ function reactivateSpecificationUnit(manifest, spec) {
 function reactivateTopic(cwd, workUnit, phase, said) {
   const stage = assertUnitStage('reactivate', phase);
   const { topic, ...returned } = withWorkUnitLock(cwd, workUnit, () => {
-    if (stage === 'discovery') assertBeforeSpec(cwd, workUnit);
     const manifest = loadWorkUnitManifest(cwd, workUnit);
+    if (stage === 'discovery') assertBeforeSpec(cwd, manifest, 'change');
     const topic = stage === 'discovery' ? topicKey(manifest, said) : said;
     const outcome = stage === 'discovery'
       ? reactivateDiscoveryUnit(manifest, topic)

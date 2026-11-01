@@ -50,10 +50,10 @@ function manageDetail(cwd, workUnit) {
   if (!manifest) return null;
 
   const workType = manifest.work_type || 'feature';
-  const hasSpec = pastItsSpec(cwd, workUnit);
+  const hasSpec = pastItsSpec(cwd, manifest);
   const hasDiscussion = phasePresent(manifest, 'discussion');
   const availableEpics = loadActiveManifests(cwd)
-    .filter((m) => m.work_type === 'epic' && m.name !== workUnit && !pastItsSpec(cwd, m.name))
+    .filter((m) => m.work_type === 'epic' && m.name !== workUnit && !pastItsSpec(cwd, m))
     .map((m) => m.name);
 
   return {

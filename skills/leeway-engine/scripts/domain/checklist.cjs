@@ -23,11 +23,12 @@
 // never kept (6.4.3), so it never goes stale: the person's questions open on
 // the topic's map (the ledger's fold); mail waiting in the topic's
 // `topics/{topic}/mail/`; the unit's topics settled, one live at least and
-// every live one decided (spec-standing.cjs); each phase of the cut naming its scenarios and
-// its sections, what it relies on maybe nothing; every part of `spec.md`
-// drawn on by a phase, directly or through its area, an area with no parts
-// whole; what a phase relies on done — an earlier phase's close recorded,
-// another unit completed; and a directive's check passing (directives.cjs).
+// every live one decided (spec-standing.cjs); each phase of the cut naming
+// its scenarios and its sections, what it relies on maybe nothing; every
+// part of `spec.md` drawn on by a phase, directly or through its area, an
+// area with no parts whole; what a phase relies on done — an earlier phase's
+// close recorded, another unit completed; and a directive's check passing
+// (directives.cjs).
 // An item applies only where the unit has its step: the sweep between
 // topics where it has more than one live topic.
 //
@@ -38,12 +39,13 @@
 // or a question opened on it — asked there, or moved to it — after the
 // close voids it, as the yes taking it does, so the topic is worked afresh
 // and closed again before its gate shows again, every engine item holding
-// still. A decision changed since voids nothing. A skip shows on the screen of the next
-// authority gate over its work (6.4.5): decided's, ready to build's and
-// finish's each their own, and finish's every phase start's and close's too,
-// as each record keeps them. An engine item is never marked or skipped, so
-// a directive's check must pass (6.4.5); the directive's close records the
-// directive in the migrations record, the one way it is recorded.
+// still. A decision changed since voids nothing. A skip shows on the screen
+// of the next authority gate over its work (6.4.5): decided's, ready to
+// build's and finish's each their own, and finish's every phase start's and
+// close's too, as each record keeps them. An engine item is never marked or
+// skipped, so a directive's check must pass (6.4.5); the directive's close
+// records the directive in the migrations record, the one way it is
+// recorded.
 //
 // `show` reads and takes no lock. `done`, `skip` and `close` write under the
 // writer lock (engine.cjs) and commit the manifest they wrote alone, pushed;

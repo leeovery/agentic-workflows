@@ -251,7 +251,7 @@ function pivotWorkUnit(cwd, workUnit) {
     }
     // The map add runs mid-transaction — prove it can succeed before flipping
     // anything.
-    assertBeforeSpec(cwd, workUnit);
+    assertBeforeSpec(cwd, loaded, 'ownWork');
     const phases = loaded.phases && typeof loaded.phases === 'object' ? loaded.phases : {};
     const discovery = phases.discovery && typeof phases.discovery === 'object' ? phases.discovery : {};
     const items = discovery.items && typeof discovery.items === 'object' ? discovery.items : {};

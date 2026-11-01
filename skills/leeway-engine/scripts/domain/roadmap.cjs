@@ -1123,7 +1123,7 @@ function pullForwardItem(cwd, name, { into, forceDismissed = false } = {}) {
   if (unit.status !== 'in-progress') {
     throw new Error(`work unit "${into}" is ${unit.status} — items pull into active work only`);
   }
-  assertBeforeSpec(cwd, into);
+  assertBeforeSpec(cwd, unit, 'pull');
 
   const from = itemPostponedFrom(preItem);
   const mapItems = (unit.phases && unit.phases.discovery && unit.phases.discovery.items) || {};
