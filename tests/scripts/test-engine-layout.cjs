@@ -62,6 +62,7 @@ const DRAWN = Object.freeze({
   'pay/spikes/001-checkout/round-1/index.html': 'free {unit}/spikes/{NNN}-{slug}',
   'pay/spec.md': 'file {unit}/spec.md',
   'pay/spec-review.json': 'engine {unit}/spec-review.json',
+  'pay/sweep-taken.json': 'engine {unit}/sweep-taken.json',
   'pay/summary.md': 'file {unit}/summary.md',
   'pay/build/log.md': 'log {unit}/build/log.md',
   'pay/build/notes.md': 'file {unit}/build/notes.md',
@@ -112,7 +113,7 @@ const OUTSIDE = Object.freeze([
 const named = (at) => (at === null ? null : `${at.kind} ${at.path}`);
 
 describe('4.11\'s places (4.11.17)', () => {
-  it('every place the tree draws holds its sample, of its kind — the engine\'s alone the manifests, the ledger, spec-review.json (6.2.3) and a topic\'s brief (8.7.6) — and every place has one', () => {
+  it('every place the tree draws holds its sample, of its kind — the engine\'s alone the manifests, the ledger, spec-review.json (6.2.3), sweep-taken.json (8.10.3) and a topic\'s brief (8.7.6) — and every place has one', () => {
     assert.deepStrictEqual(Object.fromEntries(Object.keys(DRAWN).map((rel) => [rel, named(layoutPlace(rel))])), DRAWN);
     assert.deepStrictEqual(new Set(Object.values(DRAWN)), new Set(LAYOUT.map(named)));
   });

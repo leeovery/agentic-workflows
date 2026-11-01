@@ -2,30 +2,34 @@
 
 // ---------------------------------------------------------------------------
 // The sweep before the spec (leeway-engine/scripts/domain/sweep.cjs, its
-// brief's records in domain/brief-records.cjs, the map after it in
-// domain/approve-map.cjs): `brief sweep <unit>`, the sweep's own named agent
-// briefed for the unit with every live topic's entries and the unit's own,
-// the product record, the names struck, the refusal and where its report
-// goes (8.S43, 26.5.1); its report read whole or refused, naming every fault
-// — a report of another shape, a message to a topic that is not live, a
-// candidate as add-batch refuses one — and that refusal carried into the
-// next brief; `render approve-map <unit> --sweep`, the map as it stands with
-// every topic ticked and the sweep's candidates below it, each with its
-// reason, and nothing of its messages or the calls it left to the builder
-// (8.8.4, 8.S50); the strike, at once for one candidate and through a pick
-// for several (P8), and its undoing; the yes landing the candidates standing
-// as topics with their briefs and the struck names as the person's answer,
-// then the epic's menu where a topic is no longer decided — a candidate
-// taken, or a topic a message from the spec reopened — and the spec
-// carrying on otherwise (P10); each refusal writing nothing, the map closed
-// once spec.md is written among them (P3).
+// take domain/sweep-take.cjs, its brief's records in
+// domain/brief-records.cjs, the map after it in domain/approve-map.cjs):
+// `brief sweep <unit>`, the sweep's own named agent briefed for the unit
+// with every live topic's entries and the unit's own, a "don't care"
+// decision marked, the product record, the names struck, the refusal and
+// where its report goes (8.S43, 26.5.1); `sweep take <unit>`, its report
+// read whole and held to the unit before anything goes — a report of
+// another shape, a message to a topic that is not live, a candidate as
+// add-batch refuses one — that refusal carried into the next brief; its
+// messages sent from the unit's spec, reopening the topics they reach and
+// never sent twice, the sweep taken recorded and committed, its candidates
+// staged, and what comes next: approve the map, the epic's menu, or the spec
+// carrying on (8.10.3, 8.10.5, P10); refused past the spec (P3) and once
+// taken; `render approve-map <unit> --sweep`, the map as it stands with
+// every topic ticked and the candidates below it, each with its reason, and
+// nothing of the messages or the builder's calls (8.8.4, 8.S50); the strike,
+// at once for one candidate and through a pick for several (P8), and its
+// undoing; Claude's map restaged after the take keeping the candidates; the
+// yes landing the candidates standing as topics with their briefs and the
+// struck names as the person's answer; each refusal writing nothing.
 //
 // Layer: verb. World, built once and copied: an epic, `fumi`, its topics
 // `note-model` and `storage-and-sync` decided, each with a question and its
 // decision written through the ledger's verbs — storage's decision over two
-// lines — `widgets` postponed, `dock-badge` struck from the map, and a
-// finding at its discovery; a feature, `billing`, whose decision `fumi`
-// replaced at its spec; the roadmap holding a waiting idea, `note-sync`.
+// lines, a "don't care" decision of Claude's on note-model — `widgets`
+// postponed, `dock-badge` struck from the map, and a finding at its
+// discovery; a feature, `billing`, whose decision `fumi` replaced at its
+// spec; the roadmap holding a waiting idea, `note-sync`.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -44,11 +48,13 @@ const { gatesHelpers } = require('./discovery-gates-world.cjs');
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { BRIEFS, briefPath, issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
+const { builderCalls } = require(path.join(SCRIPTS, 'domain/sweep.cjs'));
 
 const UNIT = 'fumi';
 const SESSION_ID = SESSION.CLAUDE_CODE_SESSION_ID;
 const PERSON = Object.freeze({ by: 'person', who_moved_whom: 'none' });
 const REPORT = layout.cache(UNIT, 'specification', 'sweep.json');
+const TAKEN = layout.unit(UNIT, 'sweep-taken.json');
 const STAGED = layout.cache(UNIT, 'discovery', UNIT, 'approve-map.json');
 
 /** A topic on the map, set aside as `aside` says. @param {number} order @param {Record<string, boolean>} [aside] */
@@ -74,9 +80,11 @@ const world = fixtureFrom('sweep-', (dir) => {
   commitAll(dir, 'init');
   const { write } = ledgerHelpers(() => dir);
   const ask = (/** @type {string} */ topic, /** @type {string} */ text, unit = UNIT) => write('ask', `${unit}.discussion.${topic}`, [], { ...PERSON, text }).id;
-  const decide = (/** @type {string} */ topic, /** @type {string} */ question, /** @type {string} */ text, unit = UNIT) => write('decide', `${unit}.discussion.${topic}`, ['--answers', question], { ...PERSON, text, why: 'Because.' }).id;
+  const decide = (/** @type {string} */ topic, /** @type {string} */ question, /** @type {string} */ text, unit = UNIT, by = PERSON) => write('decide', `${unit}.discussion.${topic}`, ['--answers', question], { ...by, text, why: 'Because.' }).id;
   made.kind = ask('note-model', 'What is a note?');
   made.text = decide('note-model', made.kind, 'Plain text with a title.');
+  made.font = ask('note-model', 'Which font does a note show?');
+  made.system = decide('note-model', made.font, 'The system font.', UNIT, { ...MADE, given: 'dont-care' });
   made.where = ask('storage-and-sync', 'Where do notes live?');
   made.folder = decide('storage-and-sync', made.where, 'A folder the person picks.\nEach note one file.');
   made.files = write('find', `${UNIT}.discovery`, [], { ...MADE, text: 'Notes are files on disk today.', how: 'read in the code', known: 'read' }).id;
@@ -101,16 +109,16 @@ const candidate = (name, reason) => ({ name, reason, brief: `# ${name}\n\nWhat i
 
 const BACKUPS = candidate('backing-up-notes', 'Storage and sync keeps every note as a file in a folder you choose, and no topic decides what happens when that folder is lost or restored.');
 const EXPORT = candidate('exporting-notes', 'No topic decides how notes leave Fumi.');
+const TITLE_REQUIRED = Object.freeze({ topic: 'note-model', text: 'A title is required\n\nStorage names each file by its title.' });
+const CALLS = Object.freeze([{ call: 'The file extension', why: 'The person would leave it.' }]);
 
-/** The sweep's report written, its parts as given. @param {Record<string, unknown>} [parts] */
+/** The sweep's report written, its parts as given: one candidate, no message, by default. @param {Record<string, unknown>} [parts] */
 function report(parts = {}) {
-  writeState(dir, REPORT, JSON.stringify({
-    candidates: [BACKUPS],
-    messages: [{ topic: 'note-model', text: 'A title is required\n\nStorage names each file by its title.' }],
-    builder_calls: [{ call: 'The file extension', why: 'The person would leave it.' }],
-    ...parts,
-  }));
+  writeState(dir, REPORT, JSON.stringify({ candidates: [BACKUPS], messages: [], builder_calls: CALLS, ...parts }));
 }
+
+/** The sweep taken: its answer. */
+const take = () => ok(dir, ['sweep', 'take', UNIT], { env: SESSION });
 
 /** The brief issued for the unit, as stored: its answer and its text. */
 function briefed() {
@@ -127,14 +135,20 @@ function part(text, heading) {
   return (next === -1 ? body : body.slice(0, next)).trimEnd();
 }
 
-/** The map after the sweep, staged and drawn. */
+/** The map after the sweep, staged from the sweep taken and drawn. */
 const swept = () => output(dir, ['render', 'approve-map', UNIT, '--sweep'], { env: SESSION });
 
 /** The refusal of `args`, nothing written or committed. @param {string[]} args */
 const refused = (args) => refusedPristine(dir, args, { env: SESSION }).error;
 
+/** The messages waiting in a topic's mailbox, by name. @param {string} topic */
+const mailOf = (topic) => {
+  const folder = statePath(dir, UNIT, 'topics', topic, 'mail');
+  return fs.existsSync(folder) ? fs.readdirSync(folder).sort() : [];
+};
+
 describe('the sweep\'s brief (8.10.8, 8.S43, 26.5.1)', () => {
-  it('names its agent, and fills its template for the unit: every live topic\'s entries under its title, then the unit\'s own, each by short id and kind, the product record, the names struck, no refusal, and where the report goes', () => {
+  it('names its agent, and fills its template for the unit: every live topic\'s entries under its title, a "don\'t care" decision marked, then the unit\'s own and what was made here on another unit\'s place, each by short id and kind, the product record, the names struck, no refusal, and where the report goes', () => {
     const { res, text } = briefed();
 
     assert.deepStrictEqual([res.role, res.agent, res.pointer], ['sweep', 'leeway-sweep', `brief:${res.id}`]);
@@ -143,7 +157,9 @@ describe('the sweep\'s brief (8.10.8, 8.S43, 26.5.1)', () => {
     assert.strictEqual(part(text, 'This work\'s records'), [
       '## Note Model (note-model)', '',
       `- ${made.kind} question: What is a note?`,
-      `- ${made.text} decision: Plain text with a title.`, '',
+      `- ${made.text} decision: Plain text with a title.`,
+      `- ${made.font} question: Which font does a note show?`,
+      `- ${made.system} decision, don't care: The system font.`, '',
       '## Storage And Sync (storage-and-sync)', '',
       `- ${made.where} question: Where do notes live?`,
       `- ${made.folder} decision: A folder the person picks.`,
@@ -159,9 +175,9 @@ describe('the sweep\'s brief (8.10.8, 8.S43, 26.5.1)', () => {
     assert.strictEqual(part(text, 'Where the report goes'), `\`${statePath(dir, REPORT)}\``);
   });
 
-  it('carries what the map after the sweep refuses of the last report into the next brief, as the map says it', () => {
+  it('carries what the take refuses of the last report into the next brief, as the take says it', () => {
     report({ candidates: [candidate('dock-badge', 'A badge on the dock.')] });
-    const refusal = refused(['render', 'approve-map', UNIT, '--sweep']).replace(/^render approve-map: /, '');
+    const refusal = refused(['sweep', 'take', UNIT]).replace(/^sweep take: /, '');
 
     assert.strictEqual(part(briefed().text, 'The refusal'), refusal);
   });
@@ -173,7 +189,16 @@ describe('the sweep\'s brief (8.10.8, 8.S43, 26.5.1)', () => {
   });
 });
 
-describe('the sweep\'s report, taken in whole (8.10.5)', () => {
+describe('the builder\'s calls, for the spec\'s writer', () => {
+  it('reads the calls the sweep left to the builder from its report alone, and none where no report is written', () => {
+    const before = builderCalls(dir, UNIT);
+    report({ messages: [TITLE_REQUIRED] });
+
+    assert.deepStrictEqual([before, builderCalls(dir, UNIT)], [[], CALLS]);
+  });
+});
+
+describe('sweep take: the report held to the unit before anything goes (8.10.5)', () => {
   it('refuses a report that does not read, naming every fault: another shape, a part missing or not a list, an item missing a field or holding another, an empty text, a message opening on a blank line', () => {
     writeState(dir, REPORT, JSON.stringify({
       candidates: [{ name: 'backups', reason: '' }, 'export'],
@@ -182,29 +207,30 @@ describe('the sweep\'s report, taken in whole (8.10.5)', () => {
       extra: true,
     }));
 
-    assert.strictEqual(refused(['render', 'approve-map', UNIT, '--sweep']), [
-      `render approve-map: the sweep's report, ${statePath(dir, REPORT)}, does not read —`,
+    assert.strictEqual(refused(['sweep', 'take', UNIT]), [
+      `sweep take: the sweep's report, ${statePath(dir, REPORT)}, does not read —`,
       'it holds extra, which the report has not — it is {candidates, messages, builder_calls}',
       'candidate 1 has no brief',
       'candidate 1\'s reason is a non-empty string',
       'candidate 2 is {name, reason, brief, from_roadmap?}',
-      'message 1 holds slug, which a message has not — it is {topic, text}',
+      'message 1 holds slug, which a message has not — it is {topic, text, sent?}',
       'message 1\'s text opens on a blank line — a message\'s first line is its title',
       'builder_calls is a list',
     ].join('\n'));
     writeState(dir, REPORT, '{');
-    assert.strictEqual(refused(['render', 'approve-map', UNIT, '--sweep']), `render approve-map: the sweep's report, ${statePath(dir, REPORT)}, is not JSON`);
+    assert.strictEqual(refused(['sweep', 'take', UNIT]), `sweep take: the sweep's report, ${statePath(dir, REPORT)}, is not JSON`);
   });
 
-  it('refuses a message to a topic that is not live — set aside or none of the unit\'s — naming each', () => {
-    report({ messages: [{ topic: 'widgets', text: 'Widgets\n\nMore.' }, { topic: 'Note Model', text: 'Title\n\nBody.' }, { topic: 'sharing', text: 'Sharing\n\nBody.' }] });
+  it('refuses a message to a topic that is not live — postponed, or none of the unit\'s — naming each, before any message is sent', () => {
+    report({ messages: [TITLE_REQUIRED, { topic: 'widgets', text: 'Widgets\n\nMore.' }, { topic: 'Note Model', text: 'Title\n\nBody.' }, { topic: 'sharing', text: 'Sharing\n\nBody.' }] });
 
-    assert.strictEqual(refused(['render', 'approve-map', UNIT, '--sweep']), [
-      'render approve-map: the sweep\'s messages do not hold —',
-      'message 1 goes to "widgets", which is postponed — a message goes to a live topic',
-      'message 2: no topic "Note Model" — the map\'s topics are note-model, storage-and-sync',
-      'message 3: no topic "sharing" — the map\'s topics are note-model, storage-and-sync',
+    assert.strictEqual(refused(['sweep', 'take', UNIT]), [
+      'sweep take: the sweep\'s messages do not hold —',
+      'message 2 goes to "widgets", which is postponed — a message goes to a live topic',
+      'message 3: no topic "Note Model" — the map\'s topics are note-model, storage-and-sync',
+      'message 4: no topic "sharing" — the map\'s topics are note-model, storage-and-sync',
     ].join('\n'));
+    assert.deepStrictEqual(mailOf('note-model'), []);
   });
 
   it('refuses a candidate as add-batch refuses one: a name that is no topic\'s, one on the map, one struck from it, the twin of a waiting roadmap item it does not take in, and a name twice', () => {
@@ -212,23 +238,91 @@ describe('the sweep\'s report, taken in whole (8.10.5)', () => {
       candidate('Backups', 'Why.'), candidate('note-model', 'Why.'), candidate('dock-badge', 'Why.'), candidate('note-sync', 'Why.'),
     ].map((given) => {
       report({ candidates: [given] });
-      return refused(['render', 'approve-map', UNIT, '--sweep']);
+      return refused(['sweep', 'take', UNIT]);
     });
     report({ candidates: [BACKUPS, BACKUPS] });
 
-    assert.deepStrictEqual([...refusals, refused(['render', 'approve-map', UNIT, '--sweep'])], [
-      'render approve-map: the sweep\'s candidates: "Backups" is not a topic name — a lowercase slug of letters, digits and hyphens, since it names the topic\'s folder',
-      'render approve-map: the sweep\'s candidates: "note-model" is already on the map — nothing was added; edit it, or pick a different name',
-      'render approve-map: the sweep\'s candidates: "dock-badge" was previously dismissed from this map — nothing was added; it is the person\'s answer, so the sweep never proposes it again (8.10.11)',
-      'render approve-map: the sweep\'s candidates: "note-sync" would stand beside the waiting roadmap item of its name — take it in with "from_roadmap": "note-sync", or name the topic apart',
-      'render approve-map: the sweep\'s candidates: "backing-up-notes" appears more than once in the batch',
+    assert.deepStrictEqual([...refusals, refused(['sweep', 'take', UNIT])], [
+      'sweep take: the sweep\'s candidates: "Backups" is not a topic name — a lowercase slug of letters, digits and hyphens, since it names the topic\'s folder',
+      'sweep take: the sweep\'s candidates: "note-model" is already on the map — nothing was added; edit it, or pick a different name',
+      'sweep take: the sweep\'s candidates: "dock-badge" was previously dismissed from this map — nothing was added; it is the person\'s answer, so the sweep never proposes it again (8.10.11)',
+      'sweep take: the sweep\'s candidates: "note-sync" would stand beside the waiting roadmap item of its name — take it in with "from_roadmap": "note-sync", or name the topic apart',
+      'sweep take: the sweep\'s candidates: "backing-up-notes" appears more than once in the batch',
     ]);
+  });
+});
+
+describe('sweep take: what it sends, records and stages, and where it goes next (8.10.3, 8.10.9, P10)', () => {
+  it('takes the empty sweep: records it taken, committed, and the spec carries on', () => {
+    report({ candidates: [], builder_calls: [] });
+    const res = take();
+
+    assert.deepStrictEqual(res, { ok: true, unit: UNIT, sent: [], reopened: [], candidates: [], committed: res.committed, next: { kind: 'continue' } });
+    assert.deepStrictEqual(JSON.parse(readState(dir, TAKEN)), { taken: JSON.parse(readState(dir, TAKEN)).taken, messages: [], candidates: [] });
+    assert.deepStrictEqual([lastMessage(dir), touched(statePath(dir), 'HEAD')], [`sweep(${UNIT}): taken`, [`A\t${TAKEN}`]]);
+    assert.strictEqual(fs.existsSync(statePath(dir, STAGED)), false);
+  });
+
+  it('sends each message from the unit\'s spec, reopening the decided topic it reaches, marks it sent in the report and records it — then the epic\'s menu, a topic no longer decided', () => {
+    report({ candidates: [], messages: [TITLE_REQUIRED] });
+    const res = take();
+    const message = layout.unit(UNIT, 'topics', 'note-model', 'mail', '001-a-title-is-required.md');
+
+    assert.deepStrictEqual(res, {
+      ok: true, unit: UNIT, sent: [{ topic: 'note-model', message: statePath(dir, message) }], reopened: ['note-model'], candidates: [], committed: res.committed,
+      next: { kind: 'handoff', skill: 'leeway-continue-epic', args: [UNIT] },
+    });
+    assert.match(readState(dir, message), /^A title is required\nFrom Specification · .*\n\nStorage names each file by its title\.\n$/);
+    assert.deepStrictEqual([JSON.parse(readState(dir, REPORT)).messages, JSON.parse(readState(dir, TAKEN)).messages], [[{ ...TITLE_REQUIRED, sent: message }], [{ topic: 'note-model', message }]]);
+    assert.strictEqual(readManifest(dir, UNIT).phases.discussion.items['note-model'].status, 'in-progress');
+  });
+
+  it('stages the candidates, recorded whole, and goes on to approve the map', () => {
+    report({ candidates: [BACKUPS, EXPORT] });
+    const res = take();
+
+    assert.deepStrictEqual([res.candidates, res.next], [['backing-up-notes', 'exporting-notes'], { kind: 'engine', argv: ['render', 'approve-map', UNIT, '--sweep'] }]);
+    assert.deepStrictEqual(JSON.parse(readState(dir, TAKEN)).candidates, [BACKUPS, EXPORT]);
+    assert.deepStrictEqual(JSON.parse(readState(dir, STAGED)).candidates, [{ ...BACKUPS, struck: false }, { ...EXPORT, struck: false }]);
+  });
+
+  it('never sends a message twice: one marked sent by a take killed part-way is passed over, and once taken the sweep is refused, sending nothing', () => {
+    const marked = layout.unit(UNIT, 'topics', 'note-model', 'mail', '001-sent-before.md');
+    report({ candidates: [], messages: [{ ...TITLE_REQUIRED, sent: marked }, { topic: 'storage-and-sync', text: 'Titles name files\n\nBody.' }] });
+    const res = take();
+
+    assert.deepStrictEqual([res.sent.map(({ topic }) => topic), mailOf('note-model'), mailOf('storage-and-sync')], [['storage-and-sync'], [], ['001-titles-name-files.md']]);
+    assert.strictEqual(refused(['sweep', 'take', UNIT]), `sweep take: ${UNIT}'s sweep is taken already — one sweep for the spec (8.10.3)`);
+  });
+
+  it('refuses past the spec, whose map is closed (P3); with no report; before every live topic is decided; and for one live topic alone — sending nothing', () => {
+    report({ messages: [TITLE_REQUIRED] });
+    writeState(dir, layout.unit(UNIT, 'spec.md'), '# Fumi\n');
+    const pastSpec = refused(['sweep', 'take', UNIT]);
+    fs.rmSync(statePath(dir, layout.unit(UNIT, 'spec.md')));
+    fs.rmSync(statePath(dir, REPORT));
+    const unwritten = refused(['sweep', 'take', UNIT]);
+    report({ messages: [TITLE_REQUIRED] });
+    ok(dir, ['manifest', 'set', `${UNIT}.discussion.note-model`, 'status', 'in-progress']);
+    const undecided = refused(['sweep', 'take', UNIT]);
+    ok(dir, ['topic', 'postpone', UNIT, 'note-model', '--horizon', 'next']);
+    const alone = refused(['sweep', 'take', UNIT]);
+
+    assert.deepStrictEqual([pastSpec, unwritten, undecided, alone, refused(['sweep', 'run', UNIT])], [
+      `sweep take: ${UNIT} has its spec, so its map is closed — the sweep runs before the spec is written, and what it would find now is settled in the spec`,
+      `sweep take: ${UNIT} has no sweep report — the sweep writes it, briefed by engine brief sweep ${UNIT}`,
+      `sweep take: ${UNIT}'s live topics are not every one decided — the sweep reads them once they are (8.10.3)`,
+      `sweep take: ${UNIT} has one live topic — a sweep reads between topics, so there is none to take`,
+      'Usage: engine sweep take <work-unit>',
+    ]);
+    assert.deepStrictEqual(mailOf('note-model'), []);
   });
 });
 
 describe('approve the map after the sweep (8.8.4, 8.10.9, 8.S50)', () => {
   it('draws the map as it stands, every topic ticked, and the candidate below it with its reason — nothing of the messages or the builder\'s calls — staging it and changing nothing else', () => {
     report();
+    take();
     const before = readManifest(dir, UNIT);
     const out = swept();
 
@@ -263,8 +357,18 @@ describe('approve the map after the sweep (8.8.4, 8.10.9, 8.S50)', () => {
     ]);
   });
 
+  it('draws a topic a message from the spec reopened undecided, and the yes then goes to the epic\'s menu (10.2.7, P10)', () => {
+    report({ messages: [TITLE_REQUIRED] });
+    take();
+    assert.match(sectionOf(swept(), 'DISPLAY: approve the map'), /^THE MAP \(2 topics, 1 decided\)\n {2}├─ ◐ 1\. Note Model\n {2}└─ ✓ 2\. Storage And Sync$/m);
+    ok(dir, ['approve-map', 'strike', UNIT, '1']);
+
+    assert.deepStrictEqual(ok(dir, ['approve-map', 'yes', UNIT]).next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [UNIT] });
+  });
+
   it('strikes one of several through a pick, marks it struck, and keeps the strike through a restage; unstrike undoes it (P8)', () => {
     report({ candidates: [BACKUPS, EXPORT] });
+    take();
     swept();
     assert.deepStrictEqual(answer('approve the map', 's'), { kind: 'engine', argv: ['render', 'approve-map-strike', UNIT] });
     const pick = output(dir, ['render', 'approve-map-strike', UNIT], { env: SESSION });
@@ -287,8 +391,22 @@ describe('approve the map after the sweep (8.8.4, 8.10.9, 8.S50)', () => {
     assert.match(sectionOf(output(dir, ['render', 'approve-map', UNIT], { env: SESSION }), 'MENU: approve the map'), /^Your yes puts the two candidates on the map as topics, and the specification waits until they are decided\.$/m);
   });
 
+  it('keeps the candidates and their strikes when Keep shaping restages Claude\'s map, and refuses a topic of it named as a candidate', () => {
+    report({ candidates: [BACKUPS, EXPORT] });
+    take();
+    ok(dir, ['approve-map', 'strike', UNIT, '2']);
+    const map = { topics: [{ name: 'storage-and-sync' }, { name: 'note-model' }] };
+    const out = output(dir, ['render', 'approve-map', UNIT, '--file', scratch(JSON.stringify(map), 'json')], { env: SESSION });
+
+    assert.match(sectionOf(out, 'DISPLAY: approve the map'), /^ {2}├─ ✓ 1\. Storage And Sync\n {2}└─ ✓ 2\. Note Model\n\nFOUND BY THE SWEEP \(2 candidates, yours to take or strike\)\n {2}├─ ○ Backing Up Notes\n[\s\S]* {2}└─ ⊘ Exporting Notes +\[struck\]$/m);
+    assert.deepStrictEqual(JSON.parse(readState(dir, STAGED)).candidates, [{ ...BACKUPS, struck: false }, { ...EXPORT, struck: true }]);
+    const clash = { topics: [...map.topics, { name: 'exporting-notes', summary: 'Export', brief: scratch('# Export\n') }] };
+    assert.strictEqual(refused(['render', 'approve-map', UNIT, '--file', scratch(JSON.stringify(clash), 'json')]), 'render approve-map: "exporting-notes" is staged as a candidate of the sweep\'s — name the topic apart');
+  });
+
   it('the yes lands the candidate standing as a topic with its brief, after the map\'s topics, its reason its summary and its source the sweep, and the struck one as the person\'s answer — then the epic\'s menu, the map no longer every one decided', () => {
     report({ candidates: [BACKUPS, EXPORT] });
+    take();
     swept();
     ok(dir, ['approve-map', 'strike', UNIT, '2']);
     const res = run(answer('approve the map', 'y'));
@@ -313,17 +431,28 @@ describe('approve the map after the sweep (8.8.4, 8.10.9, 8.S50)', () => {
     assert.deepStrictEqual([fs.existsSync(statePath(dir, STAGED)), fs.existsSync(statePath(dir, REPORT))], [false, true], 'the report stays for the spec\'s writer');
   });
 
-  it('the yes lands a candidate taking in a waiting roadmap item joined to it, its source the sweep and the item, the item leaving the waiting roadmap (8.1.6)', () => {
+  it('the yes joins a candidate taking in a waiting roadmap item to it, its source the sweep and the item, the item leaving the waiting roadmap (8.1.6)', () => {
     report({ candidates: [{ ...candidate('note-sync', 'No topic decides how notes reach another Mac.'), from_roadmap: 'note-sync' }] });
-    swept();
+    take();
     const res = ok(dir, ['approve-map', 'yes', UNIT]);
 
     assert.deepStrictEqual([res.candidates, readManifest(dir, UNIT).phases.discovery.items['note-sync'].source, readManifest(dir, '.').roadmap.items['note-sync'].pulled_to],
       [['note-sync'], 'sweep,roadmap:note-sync', { work_unit: UNIT, topic: 'note-sync' }]);
   });
 
+  it('the yes leaves the roadmap item a struck candidate would take in waiting, its name the person\'s answer', () => {
+    report({ candidates: [{ ...candidate('note-sync', 'No topic decides how notes reach another Mac.'), from_roadmap: 'note-sync' }] });
+    take();
+    ok(dir, ['approve-map', 'strike', UNIT, '1']);
+    ok(dir, ['approve-map', 'yes', UNIT]);
+    const { discovery } = readManifest(dir, UNIT).phases;
+
+    assert.deepStrictEqual([readManifest(dir, '.').roadmap.items['note-sync'].pulled_to, discovery.items['note-sync'], discovery.dismissed], [undefined, undefined, ['dock-badge', 'note-sync']]);
+  });
+
   it('the yes with every candidate struck adds nothing, and the spec carries on', () => {
     report();
+    take();
     swept();
     run(answer('approve the map', 's'));
     assert.match(sectionOf(swept(), 'MENU: approve the map'), /^Your yes leaves the map as it is\.\n[\s\S]*→ Approve it — no candidate becomes a topic$/m);
@@ -332,21 +461,9 @@ describe('approve the map after the sweep (8.8.4, 8.10.9, 8.S50)', () => {
     assert.deepStrictEqual([res.candidates, res.struck, res.next, readManifest(dir, UNIT).phases.discovery.dismissed], [[], ['backing-up-notes'], { kind: 'continue' }, ['dock-badge', 'backing-up-notes']]);
   });
 
-  it('a topic a message from the spec reopened stands undecided on the screen, and the yes then goes to the epic\'s menu (10.2.7, P10)', () => {
-    report();
-    const sent = ok(dir, ['topic', 'send', UNIT, 'note-model', '--from', `${UNIT}.specification`, '--content', scratch('A title is required\n\nStorage names each file by its title.\n'), '--slug', 'title-required']);
-    assert.strictEqual(sent.reopened, true);
-    assert.match(fs.readFileSync(sent.message_path, 'utf8'), /^A title is required\nFrom Specification · /);
-    const out = sectionOf(swept(), 'DISPLAY: approve the map');
-    assert.match(out, /^THE MAP \(2 topics, 1 decided\)\n {2}├─ ◐ 1\. Note Model\n {2}└─ ✓ 2\. Storage And Sync$/m);
-    ok(dir, ['approve-map', 'strike', UNIT, '1']);
-
-    assert.deepStrictEqual(ok(dir, ['approve-map', 'yes', UNIT]).next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [UNIT] });
-  });
-
   it('checks the candidates standing again at the yes: one a waiting roadmap item of its name now stands beside refuses, writing nothing; struck, it lands nothing and refuses nothing', () => {
     report();
-    swept();
+    take();
     ok(dir, ['roadmap', 'add', 'backing-up-notes', '--horizon', 'later', '--summary', 'Backups']);
 
     assert.strictEqual(refused(['approve-map', 'yes', UNIT]), 'approve-map yes: the sweep\'s candidates: "backing-up-notes" would stand beside the waiting roadmap item of its name — take it in with "from_roadmap": "backing-up-notes", or name the topic apart');
@@ -356,24 +473,27 @@ describe('approve the map after the sweep (8.8.4, 8.10.9, 8.S50)', () => {
 });
 
 describe('approve the map after the sweep, refused — nothing written', () => {
-  it('refuses a unit with no sweep report, one whose report holds no candidate, and --file beside --sweep', () => {
-    assert.strictEqual(refused(['render', 'approve-map', UNIT, '--sweep']), `render approve-map: ${UNIT} has no sweep report — the sweep writes it, briefed by engine brief sweep ${UNIT}`);
+  it('refuses a sweep not taken, one that found no candidate, and --file beside --sweep', () => {
+    report();
+    assert.strictEqual(refused(['render', 'approve-map', UNIT, '--sweep']), `render approve-map: ${UNIT}'s sweep is not taken — engine sweep take ${UNIT} takes its report in`);
     report({ candidates: [] });
+    take();
     assert.strictEqual(refused(['render', 'approve-map', UNIT, '--sweep']), 'render approve-map: the sweep found no candidate holding the person\'s call — nothing comes to the map, so there is nothing to approve');
     assert.strictEqual(refused(['render', 'approve-map', UNIT, '--sweep', '--file', scratch('{}', 'json')]), 'render approve-map: --file stages Claude\'s map and --sweep the map after the sweep — one or the other');
   });
 
   it('keeps the map closed once spec.md is written: the after-sweep map refuses, its candidates landing nowhere (P3)', () => {
     report();
+    take();
     writeState(dir, layout.unit(UNIT, 'spec.md'), '# Fumi\n');
 
     assert.strictEqual(refused(['render', 'approve-map', UNIT, '--sweep']), `render approve-map: ${UNIT} has its spec, so its map is closed — talk about it belongs in the product's conversation, where what comes of it lands as roadmap items: engine enter discovery product`);
   });
 
   it('refuses a strike with nothing staged, with no candidate staged, of a number there is not, and twice; and the pick with fewer than two standing', () => {
-    assert.strictEqual(refused(['approve-map', 'strike', UNIT, '1']), `approve-map strike: nothing is staged for ${UNIT} — render approve-map ${UNIT} --file <payload.json> stages the map`);
+    assert.strictEqual(refused(['approve-map', 'strike', UNIT, '1']), `approve-map strike: nothing is staged for ${UNIT} — engine sweep take ${UNIT} stages the sweep's candidates`);
     report();
-    swept();
+    take();
     assert.strictEqual(refused(['approve-map', 'strike', UNIT, '2']), 'approve-map strike: there is no candidate 2 — the candidates are 1 to 1');
     assert.strictEqual(refused(['approve-map', 'unstrike', UNIT, '1']), 'approve-map unstrike: "backing-up-notes" is not struck');
     assert.strictEqual(refused(['render', 'approve-map-strike', UNIT]), 'render approve-map-strike: the pick is for more than one candidate standing — the screen strikes a lone one itself');

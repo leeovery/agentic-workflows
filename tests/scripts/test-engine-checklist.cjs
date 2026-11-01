@@ -367,15 +367,16 @@ describe('the engine\'s own items, worked out at each call (6.4.3)', () => {
     assert.deepStrictEqual([...seen, settled()], ['open', 'open', 'done']);
   });
 
-  it('reads the sweep run once the unit has a sweep report that reads — open with none, open for one that does not read — one sweep per spec (8.10.3, 8.S33)', () => {
+  it('reads the sweep run once its report is taken — open with none, open for a report in the cache alone — from the record committed, which a cleared cache leaves standing; one sweep for the spec (8.10.3, 8.S33)', () => {
     const swept = () => itemState('sweep-run', 'ready-to-build', UNIT);
-    const report = layout.cache(UNIT, 'specification', 'sweep.json');
     const seen = [swept()];
-    writeState(dir, report, JSON.stringify({ candidates: [], messages: [] }));
+    writeState(dir, layout.cache(UNIT, 'specification', 'sweep.json'), JSON.stringify({ candidates: [], messages: [], builder_calls: [] }));
     seen.push(swept());
-    writeState(dir, report, JSON.stringify({ candidates: [], messages: [], builder_calls: [] }));
+    writeState(dir, layout.unit(UNIT, 'sweep-taken.json'), JSON.stringify({ taken: '2026-11-01T00:00:00.000Z', messages: [], candidates: [] }));
+    seen.push(swept());
+    fs.rmSync(statePath(dir, layout.cache(UNIT)), { recursive: true, force: true });
 
-    assert.deepStrictEqual([...seen, swept()], ['open', 'open', 'done']);
+    assert.deepStrictEqual([...seen, swept()], ['open', 'open', 'done', 'done']);
   });
 
   it('reads every statement and screen of spec.md traced to the ledger as done, a statement or a screen that is not as open, and a spec its grammar cannot read as open (11.4.1, 11.4.5)', () => {

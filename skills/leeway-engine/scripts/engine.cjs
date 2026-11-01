@@ -81,6 +81,7 @@ const { CHECKLIST_USAGE, runChecklistVerb } = require('./domain/checklist.cjs');
 const { DECIDED_USAGE, runDecidedVerb } = require('./domain/decided.cjs');
 const { runStartThisWorkVerb } = require('./domain/start-this-work.cjs');
 const { APPROVE_MAP_USAGE, runApproveMapVerb } = require('./domain/approve-map.cjs');
+const { SWEEP_USAGE, runSweepVerb } = require('./domain/sweep-take.cjs');
 const { MIGRATE_USAGE, runMigrateVerb } = require('./domain/directives.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, clearOwnQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { arriveAt, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
@@ -291,6 +292,7 @@ ${CHECKLIST_USAGE.replace(/^/gm, '  ')}
 ${DECIDED_USAGE.replace(/^/gm, '  ')}
   start-this-work yes
 ${APPROVE_MAP_USAGE.replace(/^/gm, '  ')}
+  ${SWEEP_USAGE}
   ${MIGRATE_USAGE}
   inbox archive <path> [<path> …]
   inbox restore <path> [<path> …]
@@ -1422,6 +1424,21 @@ function runApproveMap(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
+// sweep — the sweep's report taken in once, before the spec: its messages
+// sent, the sweep taken recorded, its candidates staged
+// (domain/sweep-take.cjs).
+// ---------------------------------------------------------------------------
+
+/** @param {Call} call @param {string[]} argv */
+function runSweep(call, argv) {
+  try {
+    respond(call, runSweepVerb(call.cwd, argv));
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // migrate — a directive of the migration checked (domain/directives.cjs).
 // ---------------------------------------------------------------------------
 
@@ -2435,6 +2452,7 @@ const COMMANDS = Object.freeze({
   decided: runDecided,
   'start-this-work': runStartThisWork,
   'approve-map': runApproveMap,
+  sweep: runSweep,
 });
 
 // Every command dispatched runs whole under the writer lock, its writes and

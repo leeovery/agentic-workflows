@@ -37,21 +37,21 @@
 // - What comes next is the epic's menu, the first topic in the map's order
 //   marked next there (8.8.13).
 //
-// After the sweep before the spec (8.8.4, 8.10.9), `render approve-map
-// <unit> --sweep` stages the map from the sweep's report (sweep.cjs): every
-// live topic in its order, each marked decided or not, and the sweep's
-// candidates below them, each with its reason, to be taken or struck. The
-// report is taken in whole, refused naming its faults where it could not
-// be: a message to a topic that is not a live topic of the unit, and a
-// candidate as `topic add-batch` refuses one — a name that is no topic's, or
-// one on the map, struck from it before (8.10.11), or beside a waiting
-// roadmap item it does not take in (8.1.6) — and a report with no candidate
-// is refused, as there is nothing to approve. `sweepRefusal` answers the
-// same, read without writing, for the sweep's next brief. The candidates
-// add topics and never rename one; the map is the map as it stands. A
-// restage keeps the strike of every candidate it still names.
-// `approve-map strike <unit> <n>` strikes the n-th candidate in the staged
-// payload alone, answering the screen again as what comes next, and
+// After the sweep before the spec (8.8.4, 8.10.9), the candidates come from
+// the sweep taken (`sweep take`, sweep-take.cjs), which stages them, and
+// `render approve-map <unit> --sweep` stages them again from its record
+// (sweep.cjs): every live topic in its order, each marked decided or not,
+// and the candidates below them, each with its reason, to be taken or
+// struck. It is refused where the sweep is not taken, where it found no
+// candidate, there being nothing to approve, and for a candidate standing
+// as `topic add-batch` refuses one — on the map now, or beside a waiting
+// roadmap item it does not take in — as the yes refuses it. The candidates
+// add topics and never rename one. A restage keeps the strike of every
+// candidate it still names, and Claude's map staged with `--file` after the
+// take carries the candidates staged and their strikes over, a topic named
+// as a candidate refused. `approve-map strike <unit> <n>` strikes the n-th
+// candidate in the staged payload alone, answering the screen again as
+// what comes next, and
 // `approve-map unstrike <unit> <n>` undoes it; with more than one standing,
 // the screen's strike goes through `render approve-map-strike <unit>`, the
 // pick (P8). The yes checks the candidates not struck as their landing
@@ -67,14 +67,13 @@ const fs = require('fs');
 const { loadWorkUnitManifest, saveWorkUnitManifest, readProjectManifest, writeProjectManifestAtomic, withProjectLock } = require('../kernel/manifest.cjs');
 const { assertLegalName } = require('../kernel/manifest-schema.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
-const { messageOf } = require('../kernel/call.cjs');
 const { unitInProgress, discoveryStanding } = require('./topic-standing.cjs');
-const { computeTopicLifecycle, CLOSED_LIFECYCLES, dismissedNames, itemOf, topicKey, topicTitle, roadmapItems, itemJoin, briefFile, noTopicRefusal } = require('./derivations.cjs');
+const { computeTopicLifecycle, CLOSED_LIFECYCLES, dismissedNames, itemOf, topicKey, topicTitle, roadmapItems, itemJoin, briefFile } = require('./derivations.cjs');
 const {
   topicNameRefusal, draftIn, writeBrief, addBatchTo, checkBatchEntries, discoveryItems, roadmapRefusal, entryTakeIn, dismiss,
 } = require('./discovery-map.cjs');
 const { topicsSettled } = require('./spec-standing.cjs');
-const { readSweep } = require('./sweep.cjs');
+const { readTaken } = require('./sweep.cjs');
 const {
   DEFAULT_KIND, becomesTopic, validateKind, joinToTopic, ensureRoadmap, ensureHorizon, validateSummary, validateSources, requireSourcesOnDisk,
 } = require('./roadmap.cjs');
@@ -317,75 +316,41 @@ function checkCandidates(cwd, unit, manifest, candidates) {
   addBatchTo(structuredClone(manifest), entries, CANDIDATES, { reAdd: STRUCK_BEFORE });
 }
 
-/**
- * The faults of the sweep's messages: each goes to a live topic of the
- * unit, named by its key or its title.
- * @param {Record<string, any>} manifest @param {import('./sweep.cjs').SweepMessage[]} messages
- * @returns {string[]}
- */
-function messageFaults(manifest, messages) {
-  return messages.flatMap(({ topic: said }, at) => {
-    const key = topicKey(manifest, said);
-    if (!itemOf(manifest, 'discovery', key)) return [`message ${at + 1}: ${noTopicRefusal(manifest, said)}`];
-    return isLive(manifest, key) ? [] : [`message ${at + 1} goes to "${said}", which is ${computeTopicLifecycle(manifest, key).lifecycle} — a message goes to a live topic`];
-  });
-}
-
-/**
- * The sweep's report held to the unit as it stands, refused naming its
- * faults: a message to a topic that is not live, then a candidate that
- * could not land.
- * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {import('./sweep.cjs').SweepReport} report
- */
-function checkReport(cwd, unit, manifest, report) {
-  const faults = messageFaults(manifest, report.messages);
-  if (faults.length > 0) throw new Error(`the sweep's messages do not hold —\n${faults.join('\n')}`);
-  checkCandidates(cwd, unit, manifest, report.candidates);
-}
-
-/**
- * What the map after the sweep refuses of the unit's sweep report, as it
- * says it, read without writing: null where no report is written or it
- * would be taken in.
- * @param {string} cwd @param {string} unit
- * @returns {string|null}
- */
-function sweepRefusal(cwd, unit) {
-  try {
-    const report = readSweep(cwd, unit);
-    if (report !== null) checkReport(cwd, unit, loadWorkUnitManifest(cwd, unit), report);
-    return null;
-  } catch (err) {
-    return messageOf(err);
-  }
-}
-
 /** The payload staged for the unit, or null where none is. @param {string} cwd @param {string} unit @returns {Staged|null} */
 function stagedOrNone(cwd, unit) {
   const file = stagedFile(cwd, unit);
   return fs.existsSync(file) ? /** @type {Staged} */ (stagedAt(file, nothingStaged(unit))) : null;
 }
 
+/** The candidates standing, none of them struck. @param {StagedCandidate[]} candidates */
+const standing = (candidates) => candidates.filter(({ struck }) => !struck);
+
 /**
- * The map after the sweep: every live topic in its order, and the sweep's
- * candidates, each struck where the candidate of its name staged before
- * was. Refused where the unit has no sweep report, it is not taken in, or
- * it holds no candidate.
+ * The map after the sweep: every live topic in its order, and the sweep
+ * taken's candidates, each struck where the candidate of its name staged
+ * before was. Refused where the sweep is not taken, it found no candidate,
+ * or a candidate standing could not land.
  * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest
  * @returns {Staged}
  */
 function sweptMap(cwd, unit, manifest) {
-  const report = readSweep(cwd, unit);
-  if (report === null) throw new Error(`${unit} has no sweep report — the sweep writes it, briefed by engine brief sweep ${unit}`);
-  checkReport(cwd, unit, manifest, report);
-  if (report.candidates.length === 0) throw new Error('the sweep found no candidate holding the person\'s call — nothing comes to the map, so there is nothing to approve');
+  const taken = readTaken(cwd, unit);
+  if (taken === null) throw new Error(`${unit}'s sweep is not taken — engine sweep take ${unit} takes its report in`);
+  if (taken.candidates.length === 0) throw new Error('the sweep found no candidate holding the person\'s call — nothing comes to the map, so there is nothing to approve');
   const struck = new Set((stagedOrNone(cwd, unit)?.candidates ?? []).filter((candidate) => candidate.struck).map(({ name }) => name));
-  return {
-    topics: liveInOrder(manifest).map((name) => ({ name })),
-    parks: [],
-    binds: [],
-    candidates: report.candidates.map((candidate) => ({ ...candidate, struck: struck.has(candidate.name) })),
-  };
+  const candidates = taken.candidates.map((candidate) => ({ ...candidate, struck: struck.has(candidate.name) }));
+  checkCandidates(cwd, unit, manifest, standing(candidates));
+  return { topics: liveInOrder(manifest).map((name) => ({ name })), parks: [], binds: [], candidates };
+}
+
+/**
+ * Stage the map after the sweep for the unit, as `render approve-map
+ * --sweep` stages it.
+ * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest
+ * @returns {Staged}
+ */
+function stageSwept(cwd, unit, manifest) {
+  return stage(stagedFile(cwd, unit), sweptMap(cwd, unit, manifest));
 }
 
 /**
@@ -393,9 +358,22 @@ function sweptMap(cwd, unit, manifest) {
  * @param {string} cwd @param {string} unit @returns {{staged: Staged, candidates: StagedCandidate[]}}
  */
 function stagedCandidates(cwd, unit) {
-  const staged = /** @type {Staged} */ (stagedAt(stagedFile(cwd, unit), nothingStaged(unit)));
+  const staged = /** @type {Staged} */ (stagedAt(stagedFile(cwd, unit), `nothing is staged for ${unit} — engine sweep take ${unit} stages the sweep's candidates`));
   if (staged.candidates === undefined) throw new Error(`no candidate of the sweep's is staged for ${unit} — render approve-map ${unit} --sweep stages them`);
   return { staged, candidates: staged.candidates };
+}
+
+/**
+ * Claude's map staged after the sweep: the candidates staged carried over
+ * with their strikes, refused where a topic of the map is named as one.
+ * @param {Staged} map @param {StagedCandidate[]|undefined} candidates
+ * @returns {Staged}
+ */
+function withCandidates(map, candidates) {
+  if (candidates === undefined) return map;
+  const named = candidates.find(({ name }) => map.topics.some((topic) => topic.name === name));
+  if (named !== undefined) throw new Error(`"${named.name}" is staged as a candidate of the sweep's — name the topic apart`);
+  return { ...map, candidates };
 }
 
 /**
@@ -460,21 +438,25 @@ function sweptView(unit, manifest, { topics, candidates = [] }) {
 }
 
 /**
- * The payload the screen draws: the map after the sweep staged from its
- * report, Claude's staged from `file`, or either read back as staged.
+ * The payload the screen draws: the map after the sweep staged from the
+ * sweep taken, Claude's staged from `file` with any candidates staged
+ * carried over, or either read back as staged.
  * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {{file?: string, sweep?: string}} args
  * @returns {Staged}
  */
 function stagedFrom(cwd, unit, manifest, { file, sweep }) {
-  if (sweep !== undefined) return stage(stagedFile(cwd, unit), sweptMap(cwd, unit, manifest));
-  if (file !== undefined) return stage(stagedFile(cwd, unit), checked(cwd, unit, manifest, readPayload(cwd, file)));
+  if (sweep !== undefined) return stageSwept(cwd, unit, manifest);
+  if (file !== undefined) {
+    const map = checked(cwd, unit, manifest, readPayload(cwd, file));
+    return stage(stagedFile(cwd, unit), withCandidates(map, stagedOrNone(cwd, unit)?.candidates));
+  }
   return /** @type {Staged} */ (stagedAt(stagedFile(cwd, unit), nothingStaged(unit)));
 }
 
 /**
  * `render approve-map <unit> [--file <payload.json> | --sweep]`: the screen,
  * Claude's payload staged from `--file`, the map after the sweep staged from
- * its report with `--sweep`, or either read back as staged.
+ * the sweep taken with `--sweep`, or either read back as staged.
  * @param {string} cwd @param {{dotpath?: string, file?: string, sweep?: string}} args
  * @returns {string}
  */
@@ -497,7 +479,7 @@ function approveMapStrikeSurface(cwd, { dotpath: unit = '' }) {
   return refusing('render approve-map-strike', () => {
     const manifest = openMap(cwd, unit);
     const { candidates } = stagedCandidates(cwd, unit);
-    if (candidates.filter(({ struck }) => !struck).length < 2) throw new Error('the pick is for more than one candidate standing — the screen strikes a lone one itself');
+    if (standing(candidates).length < 2) throw new Error('the pick is for more than one candidate standing — the screen strikes a lone one itself');
     return sweptStrikePick({ unit, candidates: candidates.map(({ name, struck }) => ({ title: topicTitle(manifest, name), struck })) });
   });
 }
@@ -513,7 +495,7 @@ function approveMapStrikeSurface(cwd, { dotpath: unit = '' }) {
 function landOnRoadmap(project, unit, { topics, parks, binds, candidates = [] }) {
   /** @type {Record<string, {work_unit: string, topic: string}>} */
   const priors = {};
-  const taking = [...topics, ...candidates.filter(({ struck }) => !struck)];
+  const taking = [...topics, ...standing(candidates)];
   const joins = [...taking.flatMap(({ name, from_roadmap: item }) => (item === undefined ? [] : [{ item, topic: name }])), ...binds];
   for (const { item, topic } of joins) {
     const prior = joinToTopic(project, unit, item, topic);
@@ -539,7 +521,7 @@ function landOnRoadmap(project, unit, { topics, parks, binds, candidates = [] })
 function landOnMap(manifest, { topics, candidates = [] }, priors) {
   const added = topics.filter(({ brief }) => brief !== undefined);
   if (added.length > 0) addBatchTo(manifest, added.map(({ name, summary, description, from_roadmap: fromRoadmap }) => ({ name, summary: /** @type {string} */ (summary), description, from_roadmap: fromRoadmap })), 'approve-map yes');
-  const taken = candidates.filter(({ struck }) => !struck);
+  const taken = standing(candidates);
   if (taken.length > 0) addBatchTo(manifest, candidateEntries(taken), 'approve-map yes', { source: SWEEP_SOURCE });
   const struck = candidates.filter((candidate) => candidate.struck).map(({ name }) => name);
   if (struck.length > 0) dismiss(manifest, struck);
@@ -591,7 +573,7 @@ function stagedForYes(cwd, unit, manifest) {
   const { candidates, ...map } = /** @type {Staged} */ (stagedAt(stagedFile(cwd, unit), nothingStaged(unit)));
   const staged = checked(cwd, unit, manifest, map);
   if (candidates === undefined) return staged;
-  checkCandidates(cwd, unit, manifest, candidates.filter(({ struck }) => !struck));
+  checkCandidates(cwd, unit, manifest, standing(candidates));
   return { ...staged, candidates };
 }
 
@@ -617,7 +599,7 @@ const withNewline = (text) => (text.endsWith('\n') ? text : `${text}\n`);
 function approveMapYes(cwd, unit) {
   const staged = stagedForYes(cwd, unit, openMap(cwd, unit));
   const candidates = staged.candidates ?? [];
-  const taken = candidates.filter(({ struck }) => !struck);
+  const taken = standing(candidates);
   const drafts = staged.topics.flatMap(({ name, brief }) => (brief === undefined ? [] : [{ name, ...draftIn(cwd, brief, `"${name}"'s brief`) }]));
   /** @type {Map<string, string>} */
   const briefs = new Map(drafts.map(({ name, content }) => [name, content]));
@@ -677,4 +659,4 @@ function runApproveMapVerb(cwd, [verb, ...args]) {
   throw new Error(`Usage: ${APPROVE_MAP_USAGE.split('\n').map((line) => `engine ${line}`).join(' | ')}`);
 }
 
-module.exports = { APPROVE_MAP_USAGE, runApproveMapVerb, approveMapSurface, approveMapStrikeSurface, sweepRefusal };
+module.exports = { APPROVE_MAP_USAGE, runApproveMapVerb, approveMapSurface, approveMapStrikeSurface, openMap, isLive, checkCandidates, stageSwept };

@@ -101,12 +101,12 @@
 //                  brackets after it, then the unit's own — those at its
 //                  level — then any made there standing on another unit's
 //                  place; each one list item, `{short id} {kind}: {text}`,
-//                  every line after its first indented; none recorded
-//                  under a heading with none
-//   sweep-refusal  what the map after the sweep refuses of the unit's sweep
-//                  report, as it says it, read without writing
-//                  (approve-map.cjs); none recorded where no report is
-//                  written or it would be taken in
+//                  a "don't care" decision's kind `decision, don't care`
+//                  (P2), every line after its first indented; none
+//                  recorded under a heading with none
+//   sweep-refusal  what `sweep take` refuses of the unit's sweep report, as
+//                  it says it, read without writing (sweep-take.cjs); none
+//                  recorded where no report is written or it would be taken
 //   sweep-to       where the agent writes its report: the unit's sweep
 //                  report (sweep.cjs)
 //
@@ -186,7 +186,7 @@ const {
 const { withUnitEntries, unitEntries } = require('./unit-entries.cjs');
 const { specTopics } = require('./spec-standing.cjs');
 const { sweepPath } = require('./sweep.cjs');
-const { sweepRefusal } = require('./approve-map.cjs');
+const { sweepRefusal } = require('./sweep-take.cjs');
 const { stagedCutPath, stagedCutRefusal } = require('./cut.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { specReferenceOf } = require('./task-file.cjs');
@@ -820,6 +820,16 @@ function placeKey(unit, { unit: on, topic }) {
   return topic === null ? UNIT_OWN : topic;
 }
 
+/**
+ * An entry as a unit's records draw it, `- {short id} {kind}: {text}`, a
+ * "don't care" decision's kind marked so, the builder's to make (P2).
+ * @param {import('./unit-entries.cjs').UnitEntry} entry
+ */
+function entryLine({ short, kind, line }) {
+  const marked = kind === 'decision' && line.given === 'dont-care' ? 'decision, don\'t care' : kind;
+  return `- ${short} ${marked}: ${indented(String(line.text))}`;
+}
+
 /** @param {Filling} filling @param {string[]} warnings */
 function drawUnitRecords(filling, warnings) {
   const unit = unitOf(filling);
@@ -827,10 +837,10 @@ function drawUnitRecords(filling, warnings) {
   const headed = (/** @type {string} */ topic) => `${topicTitle(manifest, topic)} (${topic})`;
   /** @type {Map<string, {heading: string, lines: string[]}>} */
   const places = new Map([...specTopics(manifest), UNIT_OWN].map((key) => [key, { heading: key === UNIT_OWN ? key : headed(key), lines: [] }]));
-  for (const { short, kind, stands, line } of unitEntries(filling.cwd, unit, warnings).values()) {
-    const key = placeKey(unit, stands);
-    if (!places.has(key)) places.set(key, { heading: stands.unit === unit ? headed(key) : key, lines: [] });
-    /** @type {{heading: string, lines: string[]}} */ (places.get(key)).lines.push(`- ${short} ${kind}: ${indented(String(line.text))}`);
+  for (const entry of unitEntries(filling.cwd, unit, warnings).values()) {
+    const key = placeKey(unit, entry.stands);
+    if (!places.has(key)) places.set(key, { heading: entry.stands.unit === unit ? headed(key) : key, lines: [] });
+    /** @type {{heading: string, lines: string[]}} */ (places.get(key)).lines.push(entryLine(entry));
   }
   return [...places.values()].map(({ heading, lines }) => `## ${heading}\n\n${listed(lines)}`).join('\n\n');
 }

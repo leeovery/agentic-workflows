@@ -14,8 +14,8 @@
 //   free    a folder whose contents are named by whoever fills it: the
 //           assets, a spike, the seeds, an experiment's data, the cache;
 //   engine  a file only the engine writes — the manifests, the ledger, a
-//           topic's brief, the record of the person's review of the spec —
-//           with what it is and the verb that writes it, where one does;
+//           topic's brief, the record of the person's review of the spec,
+//           the record of the sweep taken — with what it is and the verb that writes it, where one does;
 //   log     a log a session writes to, which a state commit takes along
 //           (6.3.2).
 // A path's names are literal but for its placeholders: `{unit}` a unit's
@@ -108,6 +108,7 @@ const LAYOUT = Object.freeze([
   place('free', '{unit}/spikes/{NNN}-{slug}', '9.10.10'),
   place('file', SPEC_PLACE, '4.11.5'),
   engineFile('{unit}/spec-review.json', '4.11.5', 'a unit\'s record of the person\'s review of its spec'),
+  engineFile('{unit}/sweep-taken.json', '8.10.3', 'a unit\'s record of the sweep taken before its spec', 'sweep take'),
   place('file', '{unit}/summary.md', '4.11.6'),
   place('log', '{unit}/build/log.md', '4.11.5'),
   place('file', '{unit}/build/notes.md', '4.11.5'),

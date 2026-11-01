@@ -2,7 +2,8 @@
 
 // ---------------------------------------------------------------------------
 // The pipeline simulation's world (tests/README.md §11): the project every
-// scenario starts from, made once per process and copied for each; `Sim`,
+// scenario starts from, made once per process and copied for each, and a
+// scenario file's own world built through the verbs once (`worldFrom`); `Sim`,
 // which drives the engine through its in-process entry rather than a
 // process per call — the same argv, the same answers (stdout, stderr and an
 // exit code), a thousandth of the start-up — and has the oracle
@@ -34,6 +35,7 @@ const { epicMenu } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domai
 const { startMenu } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/start.cjs'));
 const { skillAt } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/position.cjs'));
 const { initRepo, fixtureFrom, cleanupFixture, git, stateGit } = require('./engine-harness.cjs');
+const { copyWorld, templateFolder } = require('./discovery-test-utils.cjs');
 const { STATE_DIR_NAME, statePath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
 
 const { shellWords, auditState, auditGatePayload, auditTrust, trustLines, auditGateAnswer } = require('./pipeline-oracle.cjs');
@@ -69,10 +71,11 @@ const simWorld = fixtureFrom('pipeline-sim-', (dir) => {
 });
 
 class Sim {
-  constructor() {
+  /** @param {() => string} [world] the project the sim starts from, copied for it: the one every scenario starts from, or a scenario file's own (`worldFrom`) */
+  constructor(world = simWorld) {
     // A project with its state worktree at `.leeway/`, which ignores the
     // cache and the checkout's own knowledge directory.
-    this.dir = simWorld();
+    this.dir = world();
     // The system config directory sits beside the project, as a real one
     // does: the conversation folders the sim's calls mark live there.
     this.configDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pipeline-sim-config-'));
@@ -295,6 +298,26 @@ function sendArgv(sim, wu, topic, from, slug = 'a-message') {
 /** Send one message to a topic from `from`. */
 function send(sim, wu, topic, from, slug) {
   return sim.run(sendArgv(sim, wu, topic, from, slug));
+}
+
+// A scenario file's own world (tests/README.md §3): built once per process
+// through the verbs by `build`, on a sim of its own whose every presence it
+// sweeps at the end, so the copies hold nothing a session holds; then
+// copied for each sim made from it, `new Sim(world)`.
+/** @param {string} prefix the template's temp-directory prefix @param {(sim: Sim) => void} build @returns {() => string} */
+function worldFrom(prefix, build) {
+  /** @type {string|null} */
+  let made = null;
+  return () => {
+    if (made === null) {
+      const sim = new Sim();
+      build(sim);
+      for (let n = 0; n <= sim.conversations; n += 1) sim.run(['presence', 'cleanup', n === 0 ? 'sim-session' : `sim-session-${n}`]);
+      made = copyWorld(sim.dir, templateFolder(`${prefix}template-`));
+      sim.destroy();
+    }
+    return copyWorld(made, fs.mkdtempSync(path.join(os.tmpdir(), prefix)));
+  };
 }
 
 // An epic started at its gate and its map of the named topics, each with its
@@ -1146,5 +1169,5 @@ function literal(text) {
 }
 
 module.exports = {
-  Sim, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, writePhaseTasks, cutTheSpec,
+  Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, writePhaseTasks, cutTheSpec,
 };

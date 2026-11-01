@@ -66,15 +66,16 @@ function pastItsSpec(cwd, manifest) {
   return standingOf(cwd, manifest.name, manifest) !== 'none';
 }
 
-/** @typedef {'change'|'newWork'|'pull'|'absorbInto'|'ownWork'|'cancel'} SpecDoor */
+/** @typedef {'change'|'newWork'|'pull'|'absorbInto'|'ownWork'|'cancel'|'sweep'} SpecDoor */
 
 /**
  * The refusal past the spec at each door, naming the way on from what the
  * person was doing there (18.4.19): a change to a topic is settled in the
  * spec; new work lands on the roadmap from the product's conversation; a
  * roadmap item, or a feature, goes into an epic still before its spec, or on
- * as work of its own; and a cancel settles its decision in the phase the
- * epic is in (12.15.4), or cancels the unit (18.3.4).
+ * as work of its own; a cancel settles its decision in the phase the epic
+ * is in (12.15.4), or cancels the unit (18.3.4); and what a sweep would find
+ * is settled in the spec (8.10.3).
  * @type {Readonly<Record<SpecDoor, (unit: string) => string>>}
  */
 const PAST_SPEC = Object.freeze({
@@ -84,6 +85,7 @@ const PAST_SPEC = Object.freeze({
   absorbInto: (unit) => `${unit} has its spec, so its map is closed — absorb the feature into an epic still before its spec, or keep it as work of its own`,
   ownWork: (unit) => `${unit} has its spec — it carries on as work of its own`,
   cancel: (unit) => `${unit} has its spec — a decision that must change is settled in the phase the epic is in, and abandoning the work is the unit's cancel, through manage on the start menu`,
+  sweep: (unit) => `${unit} has its spec, so its map is closed — the sweep runs before the spec is written, and what it would find now is settled in the spec`,
 });
 
 /**

@@ -12,7 +12,9 @@
 // unit the project lacks; a concluded spec — the build begun on it — which is
 // never corrected (11.9.1); a unit `enter specification` refuses, in its
 // words (spec-entry.cjs) — one not in progress, a topic not yet settled, a
-// quick-fix, a cross-cutting unit; a unit with no `spec.md`; a spec its
+// quick-fix, a cross-cutting unit; an epic owing the sweep before its spec,
+// more than one of its topics live, whose sweep is not taken (sweep.cjs,
+// 8.10.3); a unit with no `spec.md`; a spec its
 // grammar cannot read (spec-sections.cjs, `specStatements`), naming every
 // fault, one per line; while the person's review page is open, a number the
 // page holds changed (spec-review.cjs, 11.11.3); and a commit git refuses. A
@@ -40,6 +42,7 @@ const { inventedLines } = require('./spec-trace.cjs');
 const { logLinks } = require('./log-links.cjs');
 const { commitStateScoped, noteCommitOutcome } = require('./commit.cjs');
 const { heldNumberFaults, holdNumbers } = require('./spec-review.cjs');
+const { sweepApplies, sweepTaken } = require('./sweep.cjs');
 
 const SPEC_USAGE = 'spec land <work-unit>';
 
@@ -61,9 +64,14 @@ function refuse(reason) {
  * @param {string} cwd @param {string} unit @returns {string|null}
  */
 function unitRefusal(cwd, unit) {
-  if (workUnitNameRefusal(unit) !== null || manifestOf(stateRoot(cwd), unit) === null) return `there is no work unit "${unit}"`;
+  const manifest = workUnitNameRefusal(unit) === null ? manifestOf(stateRoot(cwd), unit) : null;
+  if (manifest === null) return `there is no work unit "${unit}"`;
   if (specStanding(cwd, unit) === 'concluded') return `${unit}'s spec is concluded, and a concluded spec is never corrected — a later change replaces its entry on the ledger`;
-  return specEntryRefusal(cwd, unit);
+  const entry = specEntryRefusal(cwd, unit);
+  if (entry !== null) return entry;
+  return sweepApplies(manifest) && !sweepTaken(cwd, unit)
+    ? `${unit}'s sweep is not taken — it runs before the spec lands: engine brief sweep ${unit}, then engine sweep take ${unit}`
+    : null;
 }
 
 /** Each section's text by address, an area's with its block of scenarios after it. @param {string} text @returns {Map<string, string>} */
