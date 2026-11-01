@@ -14,10 +14,11 @@
 // words (spec-entry.cjs) — one not in progress, a topic not yet settled, a
 // quick-fix, a cross-cutting unit; a unit with no `spec.md`; a spec its
 // grammar cannot read (spec-sections.cjs, `specStatements`), naming every
-// fault, one per line; and a commit git refuses. A statement or a screen
-// that does not trace refuses nothing: the land answers it, with why
-// (spec-trace.cjs), for the spec's review to take up (11.4.2), and ready to
-// build's `statements-traced` stays open while one does.
+// fault, one per line; while the person's review page is open, a number the
+// page holds changed (spec-review.cjs, 11.11.3); and a commit git refuses. A
+// statement or a screen that does not trace refuses nothing: the land answers
+// it, with why (spec-trace.cjs), for the spec's review to take up (11.4.2),
+// and ready to build's `statements-traced` stays open while one does.
 //
 // It answers how many statements the spec holds, each invented line, and
 // the sections changed since the last land: each area and part whose text
@@ -38,6 +39,7 @@ const { specStanding, specEntryRefusal } = require('./spec-entry.cjs');
 const { inventedLines } = require('./spec-trace.cjs');
 const { logLinks } = require('./log-links.cjs');
 const { commitStateScoped, noteCommitOutcome } = require('./commit.cjs');
+const { heldNumberFaults, holdNumbers } = require('./spec-review.cjs');
 
 const SPEC_USAGE = 'spec land <work-unit>';
 
@@ -111,11 +113,15 @@ function landSpec(cwd, unit) {
   const lines = refusing(() => specStatements(text));
   const root = stateRoot(cwd);
   const rel = `${unit}/${SPEC_FILE}`;
+  const landed = isolatedGit(root).tryRun(['show', `HEAD:${rel}`]);
+  const held = heldNumberFaults(cwd, unit, landed, lines);
+  if (held.length > 0) refuse(held.join('\n'));
   /** @type {string[]} */
   const warnings = [];
   const invented = inventedLines(cwd, unit, lines, warnings);
-  const changed = changedSections(isolatedGit(root).tryRun(['show', `HEAD:${rel}`]), text);
+  const changed = changedSections(landed, text);
   const outcome = refusing(() => commitStateScoped(cwd, rel, `spec(${unit}): landed`, { kept: logLinks(root, [rel]) }));
+  holdNumbers(cwd, unit, landed, lines);
   /** @type {Landed} */
   const result = { unit, statements: lines.filter(({ kind }) => kind === 'statement').length, invented, changed, committed: outcome.committed };
   warnings.push(...outcome.warnings);

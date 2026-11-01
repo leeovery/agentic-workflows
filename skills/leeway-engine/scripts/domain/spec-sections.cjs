@@ -46,6 +46,8 @@
 //   parentheses, `(1.1.1, 1.2.3)`.
 // - A line's wording is its blocks, its number and its bracket aside, each
 //   block not fenced on one line.
+// Its headings are kept in its order beside its lines: each area's, each
+// block of scenarios', and each part's, numbered or not.
 // A spec is refused, naming every fault: one with no title, no area or no
 // statement; one its sections refuse; a heading not standing alone, or a
 // second title; a heading at level two that is neither an area nor its
@@ -135,13 +137,21 @@ const DRAWS_ON = new RegExp(`\\(\\s*(${STATEMENT_NUMBER}(?:\\s*,\\s*${STATEMENT_
  * the text it opens on, from 1, its wording, and its bracket's contents as
  * written, null where it has none; the entries its bracket cites by short
  * id and whether it is the builder's; the line a screen or a note follows,
- * null for the others; and the statements a scenario draws on.
+ * null for the others; the statements a scenario draws on; and its blocks,
+ * its bracket taken off.
  * @typedef {{
  *   kind: 'statement'|'scenario'|'screen'|'note', number: string, line: number, wording: string, bracket: string|null,
- *   cites: string[], builder: boolean, of: string|null, drawsOn: string[],
+ *   cites: string[], builder: boolean, of: string|null, drawsOn: string[], parts: Part[],
  * }} Line
  */
-/** A spec's lines in its order, and the faults that refuse it. @typedef {{lines: Line[], faults: string[]}} SpecReading */
+/**
+ * A heading of the spec's body: an area's, `## N. Title`, its block of
+ * scenarios', `## N-S. Title`, or a part's, `### …`; its number — the area's,
+ * or the part's `N.M`, null for a part with none — what follows its number,
+ * a part's whole text after its marks, and the line of the text it stands on.
+ * @typedef {{kind: 'area'|'scenarios'|'part', number: string|null, title: string, line: number}} Heading
+ */
+/** A spec's lines and headings in its order, and the faults that refuse it. @typedef {{lines: Line[], headings: Heading[], faults: string[]}} SpecReading */
 
 /** A unit's spec. @param {string} cwd @param {string} unit */
 function specPath(cwd, unit) {
@@ -330,12 +340,12 @@ function blocksOf(lines, from) {
  * A spec's body as it is read: its text's lines; where the reading stands —
  * the area, the part, the area whose scenarios it is in, the last statement
  * or scenario, which a screen follows, and the line whose blocks it is
- * gathering; the lines opened; each statement's and scenario's text line by
- * its number; each line's screens and each place's notes counted; and the
- * faults found.
+ * gathering; the lines opened and the headings read; each statement's and
+ * scenario's text line by its number; each line's screens and each place's
+ * notes counted; and the faults found.
  * @typedef {{
  *   lines: string[], area: string|null, part: string|null, scenariosOf: string|null, last: string|null, open: Opened|null,
- *   opened: Opened[], given: Map<string, number>, counted: Map<string, number>, faults: string[],
+ *   opened: Opened[], headings: Heading[], given: Map<string, number>, counted: Map<string, number>, faults: string[],
  * }} Reading
  */
 
@@ -395,7 +405,8 @@ function readArea(reading, at, text) {
     reading.faults.push(`the heading on line ${at + 1} is neither an area, ## N. Title, nor its scenarios, ## N-S. Scenarios for §N`);
     return;
   }
-  const [, number, scenarios] = heading;
+  const [, number, scenarios, title] = heading;
+  reading.headings.push({ kind: scenarios === undefined ? 'area' : 'scenarios', number, title, line: at + 1 });
   if (scenarios === undefined) {
     Object.assign(reading, { area: number, scenariosOf: null, last: null });
     return;
@@ -405,9 +416,11 @@ function readArea(reading, at, text) {
   reading.scenariosOf = number;
 }
 
-/** A heading at level three: a part's, or a heading with no number. @param {Reading} reading @param {string} text */
-function readPart(reading, text) {
-  Object.assign(reading, { open: null, part: NUMBERED[1].pattern.exec(text)?.[1] ?? null });
+/** A heading at level three: a part's, or a heading with no number. @param {Reading} reading @param {number} at @param {string} text */
+function readPart(reading, at, text) {
+  const part = NUMBERED[1].pattern.exec(text)?.[1] ?? null;
+  reading.headings.push({ kind: 'part', number: part, title: text.slice('### '.length), line: at + 1 });
+  Object.assign(reading, { open: null, part });
 }
 
 /** A statement or a scenario opened, its place and its number checked. @param {Reading} reading @param {number} at @param {string} text @param {string} number */
@@ -470,7 +483,7 @@ function readBlock(reading, block) {
   headingFaults(reading, block);
   blankLineFaults(reading, block);
   if (text.startsWith('## ')) return readArea(reading, block.at, text);
-  if (text.startsWith('### ')) return readPart(reading, text);
+  if (text.startsWith('### ')) return readPart(reading, block.at, text);
   const numbered = LINE.exec(text);
   if (numbered !== null) return readNumbered(reading, block.at, text, numbered[1]);
   if (SCREEN.test(text) && reading.last !== null) return readScreen(reading, block.at, text);
@@ -561,7 +574,7 @@ function finished(reading, opened) {
   const { parts: gathered, ...line } = opened;
   const { parts, bracket } = bracketOff(gathered);
   const wording = parts.map(({ kind, text }) => (kind === 'text' ? oneLine(text) : text)).join('\n');
-  return { ...line, wording, bracket, ...SOURCES[opened.kind](reading, opened, parts, bracket) };
+  return { ...line, wording, bracket, ...SOURCES[opened.kind](reading, opened, parts, bracket), parts };
 }
 
 /**
@@ -578,15 +591,15 @@ function wholeFaults(lines) {
 }
 
 /**
- * A spec's lines, in its order, as its page reads them, and every fault
- * that refuses it.
+ * A spec's lines and headings, in its order, as its page reads them, and
+ * every fault that refuses it.
  * @param {string} text @returns {SpecReading}
  */
 function specReading(text) {
   const lines = rowsOf(text);
   /** @type {Reading} */
   const reading = {
-    lines, area: null, part: null, scenariosOf: null, last: null, open: null, opened: [], given: new Map(), counted: new Map(), faults: [],
+    lines, area: null, part: null, scenariosOf: null, last: null, open: null, opened: [], headings: [], given: new Map(), counted: new Map(), faults: [],
   };
   if (!lines[0].startsWith('# ')) reading.faults.push('the spec does not open with its title — its first line is # Title');
   try {
@@ -598,7 +611,7 @@ function specReading(text) {
   if (body === -1) reading.faults.push('the spec has no area — an area is a heading ## N. Title');
   else for (const block of blocksOf(lines, body)) readBlock(reading, block);
   const read = reading.opened.map((opened) => finished(reading, opened));
-  return { lines: read, faults: [...reading.faults, ...wholeFaults(read)] };
+  return { lines: read, headings: reading.headings, faults: [...reading.faults, ...wholeFaults(read)] };
 }
 
 /**

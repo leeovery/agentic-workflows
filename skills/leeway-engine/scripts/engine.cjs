@@ -75,6 +75,7 @@ const { LAND_USAGE, landOpen, landChain, landPhase, landFinish } = require('./do
 const { BRIEF_USAGE, issueBrief } = require('./domain/brief.cjs');
 const { CUT_USAGE, writeCut } = require('./domain/cut.cjs');
 const { SPEC_USAGE, landSpec } = require('./domain/spec-land.cjs');
+const { MARKS_USAGE, storeMarks } = require('./domain/spec-review.cjs');
 const { CHECKLIST_USAGE, runChecklistVerb } = require('./domain/checklist.cjs');
 const { DECIDED_USAGE, runDecidedVerb } = require('./domain/decided.cjs');
 const { runStartThisWorkVerb } = require('./domain/start-this-work.cjs');
@@ -281,6 +282,7 @@ ${BRIEF_USAGE.replace(/^/gm, '  ')}
   brief guard                        (hook before Agent and SendMessage; its JSON on stdin)
   ${CUT_USAGE}
   ${SPEC_USAGE}
+  ${MARKS_USAGE}
 ${CHECKLIST_USAGE.replace(/^/gm, '  ')}
 ${DECIDED_USAGE.replace(/^/gm, '  ')}
   start-this-work yes
@@ -1319,7 +1321,9 @@ function runCut(call, argv) {
 
 // ---------------------------------------------------------------------------
 // spec — a unit's spec.md landed: checked, traced against the ledger and
-// committed (domain/spec-land.cjs).
+// committed (domain/spec-land.cjs); and the marks read back from its review
+// page stored, answering the comments waiting for Claude
+// (domain/spec-review.cjs).
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */
@@ -1327,6 +1331,11 @@ function runSpec(call, argv) {
   const [verb, ...rest] = argv;
   const { opts, positional } = parseArgs(rest);
   try {
+    if (verb === 'marks') {
+      if (positional.length !== 1 || Object.keys(opts).join() !== 'file' || !opts.file) throw new Error(`Usage: engine ${MARKS_USAGE}`);
+      respond(call, storeMarks(call.cwd, positional[0], opts.file));
+      return;
+    }
     if (verb !== 'land' || positional.length !== 1 || Object.keys(opts).length > 0) throw new Error(`Usage: engine ${SPEC_USAGE}`);
     respond(call, landSpec(call.cwd, positional[0]));
   } catch (err) {
