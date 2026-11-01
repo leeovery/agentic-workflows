@@ -23,11 +23,12 @@
 // once, a part whose own area is drawn left to the area, which holds it.
 //
 // The spec's lines (11.4.5, 11.11.3) are read as its review page reads them
-// (`specStatements`), so the page, the trace and the cut agree on each. The
-// spec opens with its title, `# Title`, and what comes before its first
-// area — a contents section, `## Contents`, among it — is its introduction.
-// The rest is read in blocks split on blank lines, a fenced block — opened
-// and closed by a line opening ``` — kept whole:
+// (`specStatements`), so the page, the trace and the cut agree on each, its
+// rows split at `\n`, `\r\n` or `\r`. The spec opens with its title,
+// `# Title`, and what comes before its first area — a contents section,
+// `## Contents`, among it — is its introduction. The rest is read in blocks
+// split on blank lines, a fenced block — opened and closed by a line opening
+// ``` — kept whole:
 // - A block opening with a number and a space starts a line: `N.M.K `, a
 //   statement, in the part `### N.M`; or `N.Sk `, a scenario, in its area's
 //   block of scenarios, `## N-S. …`, after the area.
@@ -41,7 +42,8 @@
 //   `[builder: Ab12Cd]`, the builder's, citing the "don't care" entry it
 //   rests on; or `[builder]` alone, a call the builder was left with no entry
 //   (11.4.4). One with none cites nothing. A scenario's source is the
-//   statements it draws on, closing it in parentheses, `(1.1.1, 1.2.3)`.
+//   statements it draws on, closing its last block that is not fenced in
+//   parentheses, `(1.1.1, 1.2.3)`.
 // - A line's wording is its blocks, its number and its bracket aside, each
 //   block not fenced on one line.
 // A spec is refused, naming every fault: one with no title, no area or no
@@ -50,10 +52,14 @@
 // scenarios; a block of scenarios after another area; a statement outside
 // its part or a scenario outside its area's block; a line numbered twice; a
 // note, a block after a heading opening no line; a screen straight after a
-// heading; a block opening with a number the grammar does not read, `1.1.1.`
-// or `- 1.1.1`; a line opening straight after another's source, a blank line
-// left out; a bracket that is not one of the three, or one on a scenario; a
-// scenario drawing on a statement the spec lacks; and a fence left open.
+// heading; a block reading as a line — ending in a source bracket, or for a
+// scenario's number in its statements — that opens with a number the
+// grammar does not read, `1.1.1.` or `- 1.1.1`, where one ending otherwise
+// is the text of the line it follows; a line opening straight after
+// another's source, a blank line left out; a bracket that is not one of the
+// three, or one closing an earlier block than the line's last; a bracket on
+// a scenario, or a scenario closing on no statements; a scenario drawing on
+// a statement the spec lacks; and a fence left open.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -212,6 +218,9 @@ function specFencedLines(lines) {
   });
 }
 
+/** A spec's rows, split at each newline as its page reads one: `\n`, `\r\n` or `\r`. @param {string} text */
+const rowsOf = (text) => text.split(/\r\n?|\n/);
+
 /** A line's heading level, 0 for a line that is no heading. @param {string} line */
 const levelOf = (line) => HEADING.exec(line)?.[1].length ?? 0;
 
@@ -242,7 +251,7 @@ function sectionEnd(levels, at, level) {
  * @param {string} text @returns {Map<string, Section>}
  */
 function specSections(text) {
-  const lines = text.split('\n');
+  const lines = rowsOf(text);
   const levels = levelsOf(lines, specFencedLines(lines));
   /** @type {Map<string, Section>} */
   const sections = new Map();
@@ -267,7 +276,7 @@ function specSections(text) {
  * @param {string} text @returns {Map<string, string>}
  */
 function scenarioBlocks(text) {
-  const lines = text.split('\n');
+  const lines = rowsOf(text);
   const levels = levelsOf(lines, specFencedLines(lines));
   /** @type {Map<string, string>} */
   const blocks = new Map();
@@ -432,10 +441,23 @@ function readNote(reading, at, part) {
   openLine(reading, { kind: 'note', number: nextNumber(reading, reading.last ?? reading.area ?? '0', 'note'), line: at + 1, of: reading.last, parts: [part] });
 }
 
-/** A block that is neither a heading nor opens a line or a screen: the open line's, or a note. @param {Reading} reading @param {Block} block @param {Part} part */
+/**
+ * Whether a block opening with a number the grammar does not read, `miss`,
+ * reads as a line: it ends in a source bracket, or, for a scenario's number,
+ * in the statements a scenario draws on.
+ * @param {string} text @param {string} miss
+ */
+const readsAsLine = (text, miss) => SOURCE.test(text) || (/\d\.S\d/.test(miss) && DRAWS_ON.test(text));
+
+/**
+ * A block that is neither a heading nor opens a line or a screen: the open
+ * line's, or a note; a fault where it reads as a line opening with a number
+ * the grammar does not read.
+ * @param {Reading} reading @param {Block} block @param {Part} part
+ */
 function readOwned(reading, { at, closed }, part) {
   const miss = part.kind === 'text' ? NEAR_MISS.exec(part.text) : null;
-  if (miss !== null) reading.faults.push(`line ${at + 1} opens "${miss[0].trim()}", a number the spec does not read — a numbered line opens N.M.K or N.Sk and a space`);
+  if (miss !== null && readsAsLine(part.text, miss[0])) reading.faults.push(`line ${at + 1} opens "${miss[0].trim()}", a number the spec does not read — a numbered line opens N.M.K or N.Sk and a space`);
   if (!closed) reading.faults.push(`the fenced block opened on line ${at + 1} is never closed`);
   if (reading.open === null) readNote(reading, at, part);
   else reading.open.parts.push(part);
@@ -491,33 +513,55 @@ function bracketOff(parts) {
   return { parts: parts.flatMap((part, at) => (at !== last ? [part] : rest.trim() === '' ? [] : [{ kind: 'text', text: rest }])), bracket: source[1] };
 }
 
+/** A source citing nothing and drawing on nothing, fresh lists for each line. @returns {Pick<Line, 'cites'|'builder'|'drawsOn'>} */
+const noSource = () => ({ cites: [], builder: false, drawsOn: [] });
+
 /**
- * A line's source as the grammar reads it, a fault for a bracket that is
- * none of its line's forms: a statement's or a screen's one of the three, a
- * scenario's its statements in parentheses, never a bracket.
+ * A scenario's source: the statements its last block that is not fenced
+ * closes on, in parentheses; a fault where it carries a bracket, or closes
+ * on none.
  * @param {Reading} reading @param {Opened} line @param {Part[]} parts @param {string|null} bracket
  * @returns {Pick<Line, 'cites'|'builder'|'drawsOn'>}
  */
-function sourceRead(reading, { kind, number, line }, parts, bracket) {
-  const none = { cites: [], builder: false, drawsOn: [] };
-  if (kind === 'note') return none;
-  if (kind === 'scenario') {
-    if (bracket !== null) reading.faults.push(`scenario ${number} on line ${line} ends in [${bracket}] — a scenario's source is the statements it draws on, in parentheses`);
-    const drawsOn = DRAWS_ON.exec(parts[lastText(parts)]?.text ?? '');
-    return { ...none, drawsOn: drawsOn === null ? [] : drawsOn[1].split(',').map((drawn) => drawn.trim()) };
+function scenarioSource(reading, { number, line }, parts, bracket) {
+  if (bracket !== null) reading.faults.push(`scenario ${number} on line ${line} ends in [${bracket}] — a scenario's source is the statements it draws on, in parentheses`);
+  const drawsOn = DRAWS_ON.exec(parts[lastText(parts)]?.text ?? '');
+  if (drawsOn === null) {
+    reading.faults.push(`scenario ${number} on line ${line} closes on no statements — a scenario ends in the statements it draws on, (N.M.K, …)`);
+    return noSource();
   }
-  const source = bracket === null ? none : sourceOf(bracket);
-  if (source !== null) return { ...none, ...source };
-  reading.faults.push(`${kind} ${number} on line ${line} ends in [${bracket}], which is no source bracket — [id, id, …], [builder: id] or [builder]`);
-  return none;
+  return { ...noSource(), drawsOn: drawsOn[1].split(',').map((drawn) => drawn.trim()) };
 }
+
+/**
+ * A statement's or a screen's source: what its bracket cites; a fault for a
+ * bracket of none of the three forms, or, where its last block that is not
+ * fenced has none, for one closing an earlier block.
+ * @param {Reading} reading @param {Opened} line @param {Part[]} parts @param {string|null} bracket
+ * @returns {Pick<Line, 'cites'|'builder'|'drawsOn'>}
+ */
+function citedSource(reading, { kind, number, line }, parts, bracket) {
+  if (bracket === null) {
+    if (parts.slice(0, lastText(parts)).some((part) => part.kind === 'text' && SOURCE.test(part.text))) {
+      reading.faults.push(`${kind} ${number} on line ${line}: its bracket closes an earlier block — the bracket closes the line's last text block`);
+    }
+    return noSource();
+  }
+  const source = sourceOf(bracket);
+  if (source !== null) return { ...noSource(), ...source };
+  reading.faults.push(`${kind} ${number} on line ${line} ends in [${bracket}], which is no source bracket — [id, id, …], [builder: id] or [builder]`);
+  return noSource();
+}
+
+/** How each kind of line's source is read. @type {Readonly<Record<Line['kind'], (reading: Reading, line: Opened, parts: Part[], bracket: string|null) => Pick<Line, 'cites'|'builder'|'drawsOn'>>>} */
+const SOURCES = Object.freeze({ statement: citedSource, screen: citedSource, scenario: scenarioSource, note: noSource });
 
 /** A line read whole: its wording and its source. @param {Reading} reading @param {Opened} opened @returns {Line} */
 function finished(reading, opened) {
   const { parts: gathered, ...line } = opened;
   const { parts, bracket } = bracketOff(gathered);
   const wording = parts.map(({ kind, text }) => (kind === 'text' ? oneLine(text) : text)).join('\n');
-  return { ...line, wording, bracket, ...sourceRead(reading, opened, parts, bracket) };
+  return { ...line, wording, bracket, ...SOURCES[opened.kind](reading, opened, parts, bracket) };
 }
 
 /**
@@ -539,7 +583,7 @@ function wholeFaults(lines) {
  * @param {string} text @returns {SpecReading}
  */
 function specReading(text) {
-  const lines = text.split('\n');
+  const lines = rowsOf(text);
   /** @type {Reading} */
   const reading = {
     lines, area: null, part: null, scenariosOf: null, last: null, open: null, opened: [], given: new Map(), counted: new Map(), faults: [],
