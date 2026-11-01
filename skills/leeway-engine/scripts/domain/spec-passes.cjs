@@ -22,7 +22,8 @@
 // report read again; a pass refused, or abandoned in flight, is ignored
 // whole, its report never read, whenever it lands. A pass still in flight,
 // bound to a land, holds the review until its report is taken in or it is
-// abandoned.
+// abandoned — one whose agent returned without writing its report reads as
+// running while Claude's process lives, so the way on names abandoning it.
 //
 // What waits, one function (`outstanding`):
 // - for the writer: every current entry made at the unit's own level at the
@@ -280,7 +281,7 @@ function surfacing({ pass, id, lane, acknowledged }, at, all) {
 /** A pass in flight's way on, by where it stands. @type {Readonly<Record<'landed'|'running'|'lost', (id: string) => string>>} */
 const IN_FLIGHT = Object.freeze({
   landed: (id) => `${id}'s report is in, and agent scan takes it in`,
-  running: (id) => `${id} is still running, and the review waits for its report`,
+  running: (id) => `${id} is still running, and the review waits for its report — if its agent has returned without writing its report, agent incorporate abandons it, and another pass is dispatched`,
   lost: (id) => `${id} was lost with the process that dispatched it, and agent incorporate abandons it`,
 });
 

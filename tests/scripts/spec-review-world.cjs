@@ -17,7 +17,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  ok, refusedPristine, layout, writeState, commitAll, fixtureFrom, cleanupFixture,
+  ok, refuses, refusedPristine, treeSnapshot, head, layout, writeState, commitAll, fixtureFrom, cleanupFixture,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { ledgerHelpers } = require('./ledger-world.cjs');
@@ -35,6 +35,8 @@ const PERSON = Object.freeze({ by: 'person', who_moved_whom: 'none' });
 const MADE = Object.freeze({ by: 'claude', who_moved_whom: 'none' });
 const AT_SPEC = `${UNIT}.specification`;
 const [CARDS, REFUNDS] = ['cards', 'refunds'].map((topic) => `${UNIT}.discussion.${topic}`);
+/** The unit's agent store, its spec's. */
+const STORE = layout.cache(UNIT, 'specification', UNIT, 'state.json');
 
 const CLEAN = '# Spec Review\n\n## Findings\n\nNone identified.';
 const FOUND = '# Spec Review\n\n## Findings\n\n### F1: refunds are not instant\n\n**Lane:** rewrite\n\n2.1.2 cites nothing.';
@@ -147,6 +149,18 @@ function section(brief, heading, next) {
 const spaced = (text) => text.replace(/\n\n#/g, '\n\n\n#');
 
 /**
+ * The unit's agent store as a brief refused for `args` leaves it: the
+ * dispatch a reviewer's names closed where it is a spec review in flight
+ * bound to no land, every other row as it was.
+ * @param {{agents: Record<string, any>}} state @param {string[]} args
+ */
+function closedOn(state, args) {
+  const row = args[0] === 'spec-reviewer' ? state.agents[args[args.indexOf('--agent') + 1]] : undefined;
+  if (row?.kind === 'spec-review' && row.status === 'in-flight' && row.land === undefined) row.status = 'incorporated';
+  return state;
+}
+
+/**
  * The suites' helpers, over the project `dir()` names.
  * @param {() => string} dir
  */
@@ -184,11 +198,19 @@ function specReviewHelpers(dir) {
     return fs.existsSync(folder) ? fs.readdirSync(folder) : [];
   };
 
-  /** A brief refused, nothing written and no brief stored: its error. @param {string[]} args */
+  /**
+   * A brief refused, no brief stored and nothing written or committed but,
+   * for a reviewer's, its dispatch closed where it is a spec review in flight
+   * bound to no land: its error.
+   * @param {string[]} args
+   */
   function refusedUnissued(args) {
-    const before = stored();
-    const { error } = refusedPristine(dir(), ['brief', ...args], { env: SESSION });
-    assert.deepStrictEqual(stored(), before);
+    const before = { tree: treeSnapshot(dir()), head: head(dir()), briefs: stored() };
+    const { error } = refuses(dir(), ['brief', ...args], { env: SESSION });
+    const { [STORE]: store, ...tree } = treeSnapshot(dir());
+    const { [STORE]: was, ...untouched } = before.tree;
+    assert.deepStrictEqual({ tree, head: head(dir()), briefs: stored() }, { tree: untouched, head: before.head, briefs: before.briefs });
+    assert.deepStrictEqual(store === undefined ? store : JSON.parse(store), was === undefined ? was : closedOn(JSON.parse(was), args));
     return error;
   }
 
@@ -237,6 +259,6 @@ function specReviewHelpers(dir) {
 const unchangedSince = ({ id }, way) => `brief: ${UNIT}'s spec has not changed since pass ${id}, whose report is in, so a pass has nothing to read — ${way}`;
 
 module.exports = {
-  UNIT, SPEC, SESSION_ID, SESSION, PERSON, MADE, AT_SPEC, CARDS, FOUND, LANED, WRITER, OWNER, TEMPLATES,
+  UNIT, SPEC, SESSION_ID, SESSION, PERSON, MADE, AT_SPEC, CARDS, STORE, FOUND, LANED, WRITER, OWNER, TEMPLATES,
   made, payments, useSpecReviewWorld, specReviewHelpers, RECORDS, filledTemplate, section, spaced, unchangedSince,
 };

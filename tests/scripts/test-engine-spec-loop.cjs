@@ -8,9 +8,11 @@
 // the introduction, an area added, removed or moved, and landed or left
 // written; a pass dispatched, briefed and reported, clean or with findings
 // in each lane, its findings' text quoting headings in fenced blocks or not,
-// its report malformed, or abandoned in flight and reporting late with gap
-// and fact findings; a pass left running, its owner alive or lost, then
-// reporting or abandoned; its report acknowledged with its findings,
+// or code inline, its report malformed — a fence among them left open as its
+// block quote ends — or abandoned in flight and reporting late with gap and
+// fact findings; a pass left running, its owner alive or lost, then
+// reporting or abandoned, or its agent returned without writing its report,
+// then abandoned; its report acknowledged with its findings,
 // acknowledged clean though it holds some or incorporated before its
 // acknowledgement, each refused; incorporated once acknowledged; a finding
 // surfaced; an entry made at the spec, an asset linked to one, a gap asked
@@ -36,7 +38,8 @@
 // - Never stuck: where it is open, the way on names an action the walk
 //   takes, and taken, the store accepts it; followed, it settles. A pass in
 //   flight it names as running is one the walk left running with its owner
-//   alive, and one it names as lost, one whose owner is not.
+//   alive — its way out taken where its agent returned without its report —
+//   and one it names as lost, one whose owner is not.
 //
 // The walks' coverage is pinned: across the seeds, every event occurs, and
 // the review settles before the walk is drained.
@@ -80,10 +83,11 @@ const LATE = Object.freeze([['gap', 'fact'], ['rewrite', 'gap', 'fact']]);
 const OWNERS = Object.freeze({ alive: Object.freeze({ CLAUDE_PID: String(process.pid) }), lost: Object.freeze({ CLAUDE_PID: undefined }) });
 /** A finding's lines: its heading, its lane line and its text. @param {string} heading @param {string} lane @param {string[]} [text] */
 const finding = (heading, lane, text = ['The spec and the records part here.']) => [heading, '', lane, '', ...text];
-/** Each way a report's finding is written in the grammar: plainly, or with a measurement and a section quoted, fenced. @type {readonly ((id: string, lane: string) => string[])[]} */
+/** Each way a report's finding is written in the grammar: plainly, with a measurement and a section quoted, fenced, or with code inline. @type {readonly ((id: string, lane: string) => string[])[]} */
 const WELL_FORMED = Object.freeze([
   (id, lane) => finding(`### ${id}: a ${lane} finding`, `**Lane:** ${lane}`),
   (id, lane) => finding(`### ${id}: a ${lane} finding`, `**Lane:** ${lane}`, ['Re-run:', '', '```sh', '# count the tables', 'ls tables | wc -l', '```', '', '```markdown', '## 2. Refunds', '', '### 2.1 Where', '```']),
+  (id, lane) => finding(`### ${id}: a ${lane} finding`, `**Lane:** ${lane}`, ['```npm test```', '', '```ls``` is run']),
 ]);
 /** Each way a report's finding is written outside the grammar. @type {readonly ((id: string, lane: string) => string[])[]} */
 const MALFORMED = Object.freeze([
@@ -93,22 +97,25 @@ const MALFORMED = Object.freeze([
   (id, lane) => finding(`#### ${id}: a ${lane} finding`, `**Lane:** ${lane}`),
   (id, lane) => finding(`### ${id}: a ${lane} finding`, `**Lane:** ${lane}`, ['The spec reads:', '', '## 2. Refunds']),
   (id, lane) => finding(`### ${id}: a ${lane} finding`, `**Lane:** ${lane}`, ['Re-run:', '', '```sh', '# count the tables']),
+  (id, lane) => finding(`### ${id}: a ${lane} finding`, `**Lane:** ${lane}`, ['Re-run:', '', '> ```sh', '> # count the tables']),
 ]);
 /** Every event a walk takes, pinned to occur across the seeds. */
 const EVENTS = Object.freeze([
   'writer brief', 'writer brief, landed', 'land', 'spec: a statement edited', 'spec: the introduction edited', 'spec: an area added',
   'spec: an area removed', 'spec: areas moved', 'pass', 'pass, its report malformed', 'pass abandoned, reporting late', 'pass left running',
-  'pass lost with its owner', 'a pass in flight reports', 'a pass in flight abandoned', 'ack', 'ack --clean, refused',
+  'pass lost with its owner', 'pass returned without its report', 'a pass in flight reports', 'a pass in flight abandoned', 'ack', 'ack --clean, refused',
   'incorporate before its ack, refused', 'incorporate', 'surface', 'entry at the spec', 'asset linked to an entry at the spec', 'gap asked',
   'gap answered', 'the way on taken',
 ]);
 /**
  * The walks' seeds, chosen among sixty: together they take every event, one settles before it is drained, and each of the
- * loop's holes put back fails one — a finding's fenced text read as headings, the section ended at one (35, 48), a pass in
- * flight holding nothing (5, 48), a take marked at the land (35), every event at the spec counted (2), a surfaced finding
- * waiting still (35), an acknowledgement before the report's ids or none (35).
+ * loop's holes put back fails one — a fence opened at inline code (2, 5), one closed unrefused as its block quote ends (42),
+ * a finding's fenced text read as headings (30), the section ended at one (10, 42), a running pass with no way out (1, 5,
+ * 42), a pass in flight holding nothing (2, 5), a report outside the grammar taken in (1, 42), a take marked at the land
+ * (10), every event at the spec counted (30), a surfaced finding waiting still (2, 30, 42), a pass closed in flight taken in
+ * as it reports (1, 42), an acknowledgement before the report's ids or none (2). No five do.
  */
-const SEEDS = Object.freeze([1, 2, 5, 35, 48]);
+const SEEDS = Object.freeze([1, 2, 5, 10, 30, 42]);
 const STEPS = 12;
 /** The most steps a drained walk follows the way on before it must have settled. */
 const DRAIN = 16;
@@ -203,16 +210,17 @@ function reviewable() {
 
 /**
  * A pass as the walk performed it: its report's file; its findings' lanes;
- * `running` while the walk left it in flight, its owner alive or lost;
- * `taken` once the walk wrote its report in the grammar, `ignored` once it
- * wrote it outside or abandoned the pass; the ids the walk acknowledged it
- * with, null before, and surfaced; whether it is closed, and whether the
- * walk closed it after its acknowledgement, declining what it did not
- * surface; and the spec it reviewed.
- * @typedef {{id: string, file: string, lanes: string[], state: 'running'|'taken'|'ignored', owner: 'alive'|'lost', acknowledged: Set<string>|null, surfaced: Set<string>, closed: boolean, declined: boolean, reviewed: string}} Pass
+ * `running` while the walk left it in flight, its owner alive or lost, and
+ * whether its agent returned without writing its report; `taken` once the
+ * walk wrote its report in the grammar, `ignored` once it wrote it outside
+ * or abandoned the pass; the ids the walk acknowledged it with, null before,
+ * and surfaced; whether it is closed, and whether the walk closed it after
+ * its acknowledgement, declining what it did not surface; and the spec it
+ * reviewed.
+ * @typedef {{id: string, file: string, lanes: string[], state: 'running'|'taken'|'ignored', owner: 'alive'|'lost', returned: boolean, acknowledged: Set<string>|null, surfaced: Set<string>, closed: boolean, declined: boolean, reviewed: string}} Pass
  */
 
-/** @typedef {'pass'|'malformed'|'abandoned'|'running'|'lost'} Dispatch how the walk dispatches a pass, and what becomes of its report */
+/** @typedef {'pass'|'malformed'|'abandoned'|'running'|'lost'|'returned'} Dispatch how the walk dispatches a pass, and what becomes of its report */
 
 /** @typedef {[string, () => void, string?]} Step an event's name, what it does, and the pass it is on */
 
@@ -292,14 +300,16 @@ class Walk {
 
   /** @param {Dispatch} kind @param {readonly string[]} [lanes] */
   review(kind, lanes) {
-    const owner = kind === 'running' ? 'alive' : 'lost';
+    const owner = kind === 'running' || kind === 'returned' ? 'alive' : 'lost';
     const { id, file } = ok(dir, ['agent', 'dispatch', ...STORE, '--kind', 'spec-review'], { env: OWNERS[owner] });
     ok(dir, ['brief', 'spec-reviewer', UNIT, '--agent', id], { env: SESSION });
     const given = [...(lanes ?? this.pick(kind === 'malformed' ? LANES.slice(2) : kind === 'abandoned' ? LATE : LANES))];
     /** @type {Pass} */
-    const pass = { id, file, lanes: given, state: 'running', owner, acknowledged: null, surfaced: new Set(), closed: false, declined: false, reviewed: this.landed };
+    const pass = {
+      id, file, lanes: given, state: 'running', owner, returned: kind === 'returned', acknowledged: null, surfaced: new Set(), closed: false, declined: false, reviewed: this.landed,
+    };
     this.passes.push(pass);
-    if (kind === 'running' || kind === 'lost') return;
+    if (kind === 'running' || kind === 'lost' || kind === 'returned') return;
     if (kind === 'abandoned') this.abandon(pass);
     this.report(pass, kind === 'malformed');
   }
@@ -402,8 +412,9 @@ class Walk {
     const named = waitingOn(dir, UNIT, []);
     if (named === null) return issuable ? ['pass', () => this.review('pass', [])] : null;
     if (/waits? on the person/.test(named)) return this.gap === null ? null : ['gap answered', () => this.answer()];
-    const running = /^(\S+) is still running, and the review waits for its report(?:;|$)/.exec(named);
+    const running = /^(\S+) is still running, and the review waits for its report — if its agent has returned without writing its report, agent incorporate abandons it, and another pass is dispatched(?:;|$)/.exec(named);
     const awaited = running === null ? undefined : this.inFlight(running[1], 'alive');
+    if (awaited?.returned) return ['a pass in flight abandoned', () => this.abandon(awaited), awaited.id];
     if (running !== null) return awaited === undefined ? null : ['a pass in flight reports', () => this.report(awaited), awaited.id];
     const lost = /^(\S+) was lost with the process that dispatched it, and agent incorporate abandons it(?:;|$)/.exec(named);
     const left = lost === null ? undefined : this.inFlight(lost[1], 'lost');
@@ -439,8 +450,9 @@ class Walk {
       issuable ? ['pass abandoned, reporting late', () => this.review('abandoned')] : null,
       issuable ? ['pass left running', () => this.review('running')] : null,
       issuable ? ['pass lost with its owner', () => this.review('lost')] : null,
+      issuable ? ['pass returned without its report', () => this.review('returned')] : null,
       ...running.flatMap((pass) => /** @type {Step[]} */ ([
-        ['a pass in flight reports', () => this.report(pass), pass.id],
+        ...(pass.returned ? [] : /** @type {Step[]} */ ([['a pass in flight reports', () => this.report(pass), pass.id]])),
         ['a pass in flight abandoned', () => this.abandon(pass), pass.id],
       ])),
       ...unacknowledged.flatMap((pass) => /** @type {Step[]} */ ([

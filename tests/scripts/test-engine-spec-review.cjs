@@ -45,7 +45,7 @@ const {
 } = require('./engine-harness.cjs');
 const { ledgerHelpers } = require('./ledger-world.cjs');
 const {
-  UNIT, SPEC, SESSION_ID, PERSON, MADE, AT_SPEC, CARDS, TEMPLATES, made, payments, useSpecReviewWorld, specReviewHelpers, RECORDS, filledTemplate, section, spaced,
+  UNIT, SPEC, SESSION_ID, PERSON, MADE, AT_SPEC, CARDS, STORE, TEMPLATES, made, payments, useSpecReviewWorld, specReviewHelpers, RECORDS, filledTemplate, section, spaced,
 } = require('./spec-review-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
@@ -54,7 +54,6 @@ const { specStatements } = require(path.join(SCRIPTS, 'domain/spec-sections.cjs'
 const { specEntryRefusal } = require(path.join(SCRIPTS, 'domain/spec-entry.cjs'));
 
 const LANDED = layout.cache(UNIT, 'specification', 'landed.json');
-const STORE = layout.cache(UNIT, 'specification', UNIT, 'state.json');
 
 const dir = useSpecReviewWorld();
 const { write, full, entries: ledgerLines } = ledgerHelpers(dir);

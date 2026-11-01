@@ -14,10 +14,12 @@
 // its findings is declined: never incorporated between its report and its
 // acknowledgement, which names exactly the findings its report was taken in
 // with; each `gap` or `fact` finding then waits to be surfaced until raised
-// or declined. A pass in flight holds the review — running, waited for; lost
-// with the process that dispatched it, abandoned; its report on disk, taken
-// in by a scan — and a pass abandoned in flight is ignored whole, whenever
-// it reports.
+// or declined. A pass in flight holds the review — running, waited for, the
+// way on naming its way out where its agent returned without its report;
+// lost with the process that dispatched it, abandoned; its report on disk,
+// taken in by a scan — and a pass abandoned in flight is ignored whole,
+// whenever it reports. A reviewer's brief refused closes its dispatch where
+// it is bound to no land, so no reader of the store lists it in flight.
 //
 // Layer: verb. World: spec-review-world.cjs's.
 // ---------------------------------------------------------------------------
@@ -35,16 +37,19 @@ const {
 } = require('./spec-review-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
-const { reportedPasses } = require(path.join(SCRIPTS, 'domain/agent-state.cjs'));
+const { reportedPasses, runningAgents, agentsLeft } = require(path.join(SCRIPTS, 'domain/agent-state.cjs'));
 
 const dir = useSpecReviewWorld();
 const { write } = ledgerHelpers(dir);
 const {
-  spec, writeSpec, land, issued, dispatchReview, reportIn, scan, acked, cleanPass, reviewSettled, unread, storeRefusal, nothingToRead,
+  spec, writeSpec, land, issued, refusedUnissued, dispatchReview, reportIn, scan, acked, cleanPass, reviewSettled, unread, storeRefusal, nothingToRead,
 } = specReviewHelpers(dir);
 
 /** What the way on names of a pass's two findings, LANED's, waiting to be surfaced. @param {{id: string}} pass */
 const laned = ({ id }) => `the gap F1 of ${id} raised, the fact F2 of ${id} replaced`;
+
+/** What the way on names of a pass whose agent runs, its way out among it. @param {{id: string}} pass */
+const stillRunning = ({ id }) => `${id} is still running, and the review waits for its report — if its agent has returned without writing its report, agent incorporate abandons it, and another pass is dispatched`;
 
 describe('a pass of the spec\'s review in the store (11.7.1, 11.7.2, 11.7.6)', () => {
   it('a pass is read before any finding is declined — its incorporation refused once its report is in, scanned or not, until it is acknowledged, with exactly its report\'s findings, --clean refused while it holds any; the way on naming the acknowledgement first', () => {
@@ -118,7 +123,7 @@ describe('a pass of the spec\'s review in the store (11.7.1, 11.7.2, 11.7.6)', (
     const states = [reviewSettled(), reportedPasses(dir(), UNIT)];
     const closed = dispatchReview();
     issued(['spec-reviewer', UNIT, '--agent', closed.id]);
-    reportIn(closed, LANED.replace('No entry decides it.', '```sh\n# count the tables'));
+    reportIn(closed, LANED.replace('The bench gives 450 ms.', '```sh\n# count the tables'));
     const { refusal } = ok(dir(), ['agent', 'incorporate', UNIT, 'specification', UNIT, closed.id]);
     const next = dispatchReview();
     const carried = section(issued(['spec-reviewer', UNIT, '--agent', next.id]).brief, 'Reports refused');
@@ -127,7 +132,7 @@ describe('a pass of the spec\'s review in the store (11.7.1, 11.7.2, 11.7.6)', (
     writeSpec(spec({ instant: '2.1.2 Refunds are instant, always.' }));
     land();
     const after = section(issued(['spec-reviewer', UNIT, '--agent', dispatchReview().id]).brief, 'Reports refused');
-    const faults = ['line 5: F1\'s next line is its lane, `**Lane:** rewrite`, `gap` or `fact`, the bare word', 'line 9 opens a fenced block that is never closed'];
+    const faults = ['line 5: F1\'s next line is its lane, `**Lane:** rewrite`, `gap` or `fact`, the bare word', 'line 15 opens a fenced block that is never closed'];
     const way = (/** @type {string} */ id, /** @type {string} */ fault) => `${id}'s report does not read as a spec review: ${fault} — it is set aside unread; dispatch another pass, and its brief carries this refusal`;
 
     assert.deepStrictEqual([refused, refusal], [[{ id: pass.id, refusal: way(pass.id, faults[0]) }], way(closed.id, faults[1])]);
@@ -155,7 +160,7 @@ describe('a pass of the spec\'s review in the store (11.7.1, 11.7.2, 11.7.6)', (
     assert.strictEqual(reviewSettled(), 'done');
   });
 
-  it('a pass in flight holds the review though a later pass reviewed the spec as it stands and reported clean — one running, waited for; one lost with the process that dispatched it, abandoned; one whose report is on disk, taken in by a scan — and a dispatch never briefed holds nothing', () => {
+  it('a pass in flight holds the review though a later pass reviewed the spec as it stands and reported clean — one running, waited for; one lost with the process that dispatched it, abandoned; one whose report is on disk, taken in by a scan — and a dispatch whose brief was refused holds nothing', () => {
     writeSpec(spec());
     land();
     const running = dispatchReview(OWNER.running);
@@ -173,11 +178,46 @@ describe('a pass of the spec\'s review in the store (11.7.1, 11.7.2, 11.7.6)', (
     reportIn(running);
     const landed = [reviewSettled(), nothingToRead()];
     acked(running);
-    const waitFor = `${running.id} is still running, and the review waits for its report`;
 
-    assert.deepStrictEqual(flying, ['open', unchangedSince(later, `${waitFor}; ${lost.id} was lost with the process that dispatched it, and agent incorporate abandons it`)]);
-    assert.deepStrictEqual(runs, ['open', unchangedSince(later, waitFor)]);
+    assert.deepStrictEqual(flying, ['open', unchangedSince(later, `${stillRunning(running)}; ${lost.id} was lost with the process that dispatched it, and agent incorporate abandons it`)]);
+    assert.deepStrictEqual(runs, ['open', unchangedSince(later, stillRunning(running))]);
     assert.deepStrictEqual(landed, ['open', unchangedSince(later, `${running.id}'s report is in, and agent scan takes it in`)]);
     assert.strictEqual(reviewSettled(), 'done');
+  });
+
+  it('a pass whose agent returned without writing its report reads as running while the process that dispatched it lives, and the way on, the refusal of a pass with nothing to read among it, names the way out — agent incorporate abandons it; followed, the review settles', () => {
+    writeSpec(spec());
+    land();
+    const returned = dispatchReview(OWNER.running);
+    issued(['spec-reviewer', UNIT, '--agent', returned.id]);
+    const later = cleanPass();
+    const held = [reviewSettled(), nothingToRead()];
+    unread(returned);
+
+    assert.deepStrictEqual(held, ['open', unchangedSince(later, stillRunning(returned))]);
+    assert.strictEqual(reviewSettled(), 'done');
+  });
+
+  it('a reviewer\'s brief refused closes its dispatch where it is bound to no land, so no reader of the store lists it in flight — its owner running or lost; one bound to a land, its brief again refused on another, stays in flight', () => {
+    writeSpec(spec());
+    land();
+    cleanPass();
+    const running = dispatchReview(OWNER.running);
+    refusedUnissued(['spec-reviewer', UNIT, '--agent', running.id]);
+    const lost = dispatchReview();
+    refusedUnissued(['spec-reviewer', UNIT, '--agent', lost.id]);
+    writeSpec(spec({ instant: '2.1.2 Refunds are instant, always.' }));
+    land();
+    const bound = dispatchReview(OWNER.running);
+    issued(['spec-reviewer', UNIT, '--agent', bound.id]);
+    writeSpec(spec({ instant: '2.1.2 Refunds are instant, and whole.' }));
+    land();
+    const elsewhere = refusedUnissued(['spec-reviewer', UNIT, '--agent', bound.id]);
+
+    assert.match(elsewhere, /was briefed on another landing of the spec/);
+    assert.deepStrictEqual(
+      [scan().in_flight.map((/** @type {{id: string}} */ { id }) => id), runningAgents(dir(), UNIT, 'specification', UNIT), agentsLeft(dir(), UNIT, 'specification', UNIT)],
+      [[bound.id], [{ id: bound.id, kind: 'spec-review' }], { landed: [], lost: [] }],
+    );
   });
 });

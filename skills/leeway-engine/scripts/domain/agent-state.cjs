@@ -34,11 +34,12 @@
 // store at the unit's spec, `.cache/{wu}/specification/{wu}/`, the place the
 // spec's entry reads for the agents it was left with. A spec review's row is
 // bound, as its brief is issued, to the land of the spec it reviews
-// (spec-passes.cjs), `land` on its row. Its report is taken in only as it
-// reads (spec-report.cjs), the findings it read kept on its row,
-// `report_findings`, which every later read takes in place of the report:
-// one that does not read is refused where it would be taken in, the refusal
-// on its row, `refused`, and the row closed, never reported. It is
+// (spec-passes.cjs), `land` on its row; one whose brief is refused before it
+// is bound is closed, so no reader lists it in flight. Its report is taken
+// in only as it reads (spec-report.cjs), the findings it read kept on its
+// row, `report_findings`, which every later read takes in place of the
+// report: one that does not read is refused where it would be taken in, the
+// refusal on its row, `refused`, and the row closed, never reported. It is
 // acknowledged with exactly the findings its report was taken in with, and
 // never incorporated between its report and that acknowledgement, so a
 // finding is declined only where its pass was acknowledged with it and then
@@ -825,6 +826,23 @@ function bindSpec(cwd, workUnit, id, land) {
   });
 }
 
+/**
+ * Close the unit's spec review `id` where its brief was refused before it
+ * was bound to a land: no agent was sent on it, so no reader of the store
+ * lists it in flight. One bound to a land, of another kind or no longer in
+ * flight is left as it is.
+ * @param {string} cwd @param {string} workUnit @param {string} id
+ */
+function closeUnbriefed(cwd, workUnit, id) {
+  io.withWorkUnitLock(stateRoot(cwd), workUnit, () => {
+    const state = loadState(cwd, workUnit, UNIT_PHASE, workUnit);
+    const row = state.agents[id];
+    if (row?.kind !== 'spec-review' || row.status !== 'in-flight' || row.land !== undefined) return;
+    row.status = 'incorporated';
+    saveState(cwd, workUnit, UNIT_PHASE, workUnit, state);
+  });
+}
+
 /** @typedef {import('./spec-report.cjs').ReportFinding} ReportFinding */
 
 /** Whether a spec review's report was taken in. @param {any} row */
@@ -862,7 +880,9 @@ function reportedPasses(cwd, workUnit) {
 /**
  * The unit's review passes still in flight, bound to a land, in the order
  * they were dispatched: each with its report on disk for a scan to take in,
- * its agent running, or lost with the process that dispatched it.
+ * its agent running, or lost with the process that dispatched it. A
+ * dispatch bound to none has had no brief, its own among them while it is
+ * drawn, so no agent was sent on it.
  * @param {string} cwd @param {string} workUnit @returns {{id: string, stands: 'landed'|'running'|'lost'}[]}
  */
 function passesInFlight(cwd, workUnit) {
@@ -905,6 +925,7 @@ module.exports = {
   dispatchedRows,
   bindQuestion,
   bindSpec,
+  closeUnbriefed,
   reportedPasses,
   passesInFlight,
   refusedReports,

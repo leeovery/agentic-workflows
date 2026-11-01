@@ -5,9 +5,13 @@
 // which the agent store takes a pass's report in (agent-state.cjs).
 //
 // A line inside a fenced block — opened by a run of three or more backticks
-// or tildes, closed by a bare run of the same at least as long — is text,
-// whatever it holds, its markers among them; a fence never closed does not
-// read. Of the lines outside one, the first `## Findings` opens the report's
+// or tildes, the text after a backtick run holding no backtick, as in
+// markdown, and closed by a bare run of the same at least as long within
+// the block quote or list item it opened in — is text, its markers among
+// them. A fence never closed does not read, nor one whose block quote or
+// list item ends first, nor a line inside one that reads as a finding's
+// heading, so a fence opened where none was meant never hides a finding.
+// Of the lines outside one, the first `## Findings` opens the report's
 // Findings section, which runs to the report's end: the reviewer's template
 // places nothing after it. It reads `None identified.` alone, or holds its
 // findings, each opening `### F{n}: {label}`, numbered F1, F2, … in order,
@@ -15,54 +19,102 @@
 // word, then its text. Anything else does not read: a report with no
 // `## Findings`, an empty one, a line before the first finding, a finding
 // numbered out of order or with its lane missing or written otherwise, a
-// finding's heading before the section, and within it any other line
-// markdown may read as a heading, in a block quote or a list item among
-// them — never the section's end.
+// lane on any other line, a finding's heading before the section, and
+// within it any other line markdown may read as a heading, in a block
+// quote or a list item among them — never the section's end.
 // ---------------------------------------------------------------------------
 
 const { messageOf } = require('../kernel/call.cjs');
 
 /** @typedef {{id: string, lane: string}} ReportFinding */
 /** A line of a report: its text, its end trimmed, its number, and whether a fence holds it. @typedef {{line: string, number: number, fenced: boolean}} ReportLine */
+/** The block quotes a fence opened in, and the indent its list item's lines take within them. @typedef {{quotes: number, indent: number}} Container */
+/** A fence open: the run that opened it, its line, and the container it opened in, null where none. @typedef {{run: string, number: number, container: Container|null}} Fence */
 
 const NO_FINDING = 'None identified.';
 const SECTION = '## Findings';
 const FINDING = /^### (F\d+)(?::\s.*)?$/;
 const LANE = /^\*\*Lane:\*\* (rewrite|gap|fact)$/;
+const LANE_LINE = /^\*\*Lane:\*\*/;
 /** What may open a line before its heading or its fence: a block quote's marker, a list item's, and spaces. */
 const CONTAINERS = /^(?:\s*(?:>|[-*+](?=\s)|\d{1,9}[.)](?=\s)))*\s*/;
 const HEADING = /^#+(?:\s|$)/;
 const FINDING_HEADING = /^#+\s+F\d/;
-const FENCE = /^(`{3,}|~{3,})(.*)$/;
+const FENCE = /^(`{3,}(?=[^`]*$)|~{3,})(.*)$/;
+const QUOTE = /^\s*> ?/;
+const LIST_MARKER = /[-*+]|\d[.)]/;
 
 /** A line bare of what may open it. @param {string} line */
 const bare = (line) => line.replace(CONTAINERS, '');
 
-/** The run of backticks or tildes a line opens a fence with, null where it opens none. @param {string} line @returns {string|null} */
-const fenceOpened = (line) => FENCE.exec(bare(line))?.[1] ?? null;
+/**
+ * The block quote or list item a line opens inside, null where it opens in
+ * none: spaces alone are no container.
+ * @param {string} line @returns {Container|null}
+ */
+function containerOf(line) {
+  const prefix = line.slice(0, line.length - bare(line).length);
+  const quotes = prefix.split('>').length - 1;
+  const after = prefix.slice(prefix.lastIndexOf('>') + 1);
+  const item = quotes === 0 ? after : after.replace(/^ /, '');
+  const listed = LIST_MARKER.test(item);
+  return quotes === 0 && !listed ? null : { quotes, indent: listed ? item.length : 0 };
+}
 
-/** Whether a line closes the fence `run` opened. @param {string} line @param {string} run */
-function fenceCloses(line, run) {
-  const marker = FENCE.exec(bare(line));
-  return marker !== null && marker[1][0] === run[0] && marker[1].length >= run.length && marker[2] === '';
+/** The fence a line opens, null where it opens none. @param {string} line @param {number} number @returns {Fence|null} */
+function opening(line, number) {
+  const run = FENCE.exec(bare(line))?.[1];
+  return run === undefined ? null : { run, number, container: containerOf(line) };
+}
+
+/**
+ * A line inside a container, bare of it; null where the line ends it — a
+ * block quote's marker missing, or a list item's indent short on a line
+ * not blank.
+ * @param {string} line @param {Container} container @returns {string|null}
+ */
+function within(line, { quotes, indent }) {
+  let rest = line;
+  for (let depth = 0; depth < quotes; depth += 1) {
+    const quote = QUOTE.exec(rest);
+    if (quote === null) return null;
+    rest = rest.slice(quote[0].length);
+  }
+  if (rest.trim() === '') return '';
+  return rest.length - rest.trimStart().length >= indent ? rest.slice(indent) : null;
+}
+
+/**
+ * The fence still open after a line inside it, null where the line closes
+ * it; refused where the line ends the container it opened in, or reads as
+ * a finding's heading.
+ * @param {Fence} fence @param {string} line @param {number} number @returns {Fence|null}
+ */
+function held(fence, line, number) {
+  const rest = fence.container === null ? line : within(line, fence.container);
+  if (rest === null) throw new Error(`line ${number} ends the block quote or list item line ${fence.number} opens a fenced block in, the block never closed`);
+  const marker = FENCE.exec(rest.trimStart());
+  if (marker !== null && marker[1][0] === fence.run[0] && marker[1].length >= fence.run.length && marker[2] === '') return null;
+  if (FINDING.test(bare(line))) throw new Error(`line ${number}, \`${line}\`: a finding's heading inside the fenced block line ${fence.number} opens — a fenced block never holds one`);
+  return fence;
 }
 
 /**
  * Each line of a report, with its number and whether a fence holds it;
- * refused where a fence is never closed.
+ * refused where a fence does not read.
  * @param {string} text @returns {ReportLine[]}
  */
 function reportLines(text) {
   /** @type {ReportLine[]} */
   const lines = [];
-  /** @type {{run: string, number: number}|null} */
+  /** @type {Fence|null} */
   let fence = null;
   for (const [at, raw] of text.split('\n').entries()) {
     const line = raw.trimEnd();
-    const opened = fence === null ? fenceOpened(line) : null;
-    lines.push({ line, number: at + 1, fenced: fence !== null || opened !== null });
-    if (opened !== null) fence = { run: opened, number: at + 1 };
-    else if (fence !== null && fenceCloses(line, fence.run)) fence = null;
+    const number = at + 1;
+    const opened = fence === null ? opening(line, number) : null;
+    lines.push({ line, number, fenced: fence !== null || opened !== null });
+    fence = opened ?? (fence === null ? null : held(fence, line, number));
   }
   if (fence !== null) throw new Error(`line ${fence.number} opens a fenced block that is never closed`);
   return lines;
@@ -82,6 +134,18 @@ function findingsSection(lines) {
 }
 
 /**
+ * Refused where a line of the Findings section opening no finding is no
+ * finding's text: a heading, a lane on any line but its finding's next, or
+ * a line before the first finding.
+ * @param {ReportLine} at @param {ReportLine|undefined} previous @param {number} found
+ */
+function requireText({ line, number, fenced }, previous, found) {
+  if (!fenced && HEADING.test(bare(line))) throw new Error(`line ${number}, \`${line}\`: the \`${SECTION}\` section runs to the report's end, and a heading in it opens a finding, \`### F{n}: {label}\` — a heading its text quotes sits in a fenced block`);
+  if (!fenced && LANE_LINE.test(bare(line)) && !FINDING.test(previous?.line ?? '')) throw new Error(`line ${number}, \`${line}\`: a lane is the line after its finding's heading, \`### F{n}: {label}\`, and no other`);
+  if (found === 0) throw new Error(`line ${number}: the \`${SECTION}\` section holds findings, each opening \`### F{n}: {label}\`, or reads \`${NO_FINDING}\` alone`);
+}
+
+/**
  * Each finding of a spec review's report, with its lane, in order; none
  * where it reads `None identified.`. Refused, with what does not read and
  * where, for a report outside the grammar.
@@ -93,13 +157,13 @@ function reportFindings(text) {
   if (section.length === 1 && section[0].line === NO_FINDING) return [];
   /** @type {ReportFinding[]} */
   const findings = [];
-  section.forEach(({ line, number, fenced }, i) => {
-    const heading = fenced ? null : FINDING.exec(line);
+  section.forEach((at, i) => {
+    const heading = at.fenced ? null : FINDING.exec(at.line);
     if (heading === null) {
-      if (!fenced && HEADING.test(bare(line))) throw new Error(`line ${number}, \`${line}\`: the \`${SECTION}\` section runs to the report's end, and a heading in it opens a finding, \`### F{n}: {label}\` — a heading its text quotes sits in a fenced block`);
-      if (findings.length === 0) throw new Error(`line ${number}: the \`${SECTION}\` section holds findings, each opening \`### F{n}: {label}\`, or reads \`${NO_FINDING}\` alone`);
+      requireText(at, section[i - 1], findings.length);
       return;
     }
+    const { number } = at;
     const id = `F${findings.length + 1}`;
     if (heading[1] !== id) throw new Error(`line ${number}: ${heading[1]} where ${id} comes next — findings are numbered F1, F2, … in order`);
     const lane = LANE.exec(section[i + 1]?.line ?? '');

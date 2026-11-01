@@ -137,7 +137,8 @@
 //                  them, an area's own text without its parts: every one at
 //                  the first pass, then those changed since the last pass
 //                  reported, and those gone; the dispatch `--agent` names is
-//                  bound to the land it reviews
+//                  bound to the land it reviews, and closed where the brief
+//                  is refused before it is bound
 //   invented-lines each statement and screen of `spec.md` that does not
 //                  trace, with why (spec-trace.cjs); none recorded where
 //                  none is written or its grammar refuses it
@@ -222,7 +223,7 @@ const { manifestOf, liveTopics } = require('./ledger-units.cjs');
 const { topicLog } = require('./topic-log.cjs');
 const { dismissedNames, topicTitle } = require('./derivations.cjs');
 const {
-  UNIT_PHASE, dispatchedRows, gapReviewSince, bindQuestion, bindSpec, refusedReports,
+  UNIT_PHASE, dispatchedRows, gapReviewSince, bindQuestion, bindSpec, closeUnbriefed, refusedReports,
 } = require('./agent-state.cjs');
 const { lastQuery } = require('./knowledge/last-query.cjs');
 const { ROLES } = require('./brief-names.cjs');
@@ -275,10 +276,12 @@ const { topicPlace, recordsRules, composedPath, findingsPath, refusedPath } = re
 
 /**
  * A record: whether it is a task's, a topic's, a unit's or none's, the
- * flags it takes, its drawn form, and what it binds once every record of
- * the brief is drawn; what a read said on the way pushed to `warnings`.
+ * flags it takes, its drawn form, what it binds once every record of the
+ * brief is drawn, and what it closes where the brief is refused; what a
+ * read said on the way pushed to `warnings`.
  * @typedef {{
  *   of: 'task'|'topic'|'unit'|null, flags?: BriefFlag[], draw: (filling: Filling, warnings: string[]) => string, bind?: (filling: Filling, warnings: string[]) => void,
+ *   refused?: (filling: Filling) => void,
  * }} BriefRecord
  */
 
@@ -1035,6 +1038,9 @@ function bindPass(filling) {
   bindSpec(filling.cwd, unit, filling.given.agent, reviewedSpec(filling.cwd, unit).land);
 }
 
+/** The dispatch `--agent` names closed where its brief is refused before it is bound: no agent is sent on it. @param {Filling} filling */
+const closePass = (filling) => closeUnbriefed(filling.cwd, unitOf(filling), filling.given.agent);
+
 /** @param {Filling} filling @param {string[]} warnings */
 function drawInventedLines(filling, warnings) {
   const unit = unitOf(filling);
@@ -1126,7 +1132,7 @@ const RECORDS = Object.freeze({
   'review-findings': { of: 'unit', draw: drawReviewFindings, bind: takeFindings },
   'land-refusal': { of: 'unit', draw: drawLandRefusal },
   'spec-to': { of: 'unit', draw: drawSpecTo },
-  'changed-sections': { of: 'unit', flags: [AGENT], draw: drawChangedSections, bind: bindPass },
+  'changed-sections': { of: 'unit', flags: [AGENT], draw: drawChangedSections, bind: bindPass, refused: closePass },
   'invented-lines': { of: 'unit', draw: drawInventedLines },
   'measured-findings': { of: 'unit', draw: drawMeasuredFindings },
   'product-cites': { of: 'unit', draw: drawProductCites },
