@@ -6,10 +6,10 @@
 // message raised and answered through the topic's one mailbox; a topic
 // landed in discovery started from its own row; the last topic decided
 // going into the spec, entered at the unit, the spec landed citing what was
-// decided, its review page built, its marks read back, a re-land planned for
-// the open page, and the spec cut into phases through the cut's corridor; an
-// arrival that backfills; and the last review handing off to the menu. The
-// map's own lifecycle is
+// decided, its review page built and published, its marks read back, a
+// re-land planned for the open page, and the spec cut into phases through the
+// cut's corridor; an arrival that backfills; and the last review handing off
+// to the menu. The map's own lifecycle is
 // test-pipeline-simulation-epic-map.cjs; a discussion walked backwards,
 // test-pipeline-simulation-backwards.cjs.
 //
@@ -172,6 +172,7 @@ describe('pipeline simulation: epic', () => {
     const landed = sim.run(['spec', 'land', wu]);
     assert.deepStrictEqual([landed.statements, landed.invented], [1, []]);
     const { batches } = sim.run(['spec', 'page', wu]);
+    sim.run(['spec', 'published', wu, 'https://claude.ai/public/artifacts/ledgerly']);
     const marks = sim.run(['spec', 'marks', wu, '--file', sim.write(`.leeway/.cache/${wu}/specification/read-back.json`, { s1: { m: { '1-1-1': { s: 'comment', t: { p1000: { by: 'p', x: 'Why alpha?' } } } } } })]);
     assert.deepStrictEqual(marks.waiting.map(({ number }) => number), ['1.1.1']);
     const store = `.leeway/.cache/${wu}/specification/store`;
@@ -180,7 +181,8 @@ describe('pipeline simulation: epic', () => {
     }
     spec('It settles as alpha decided, and holds.');
     sim.run(['spec', 'land', wu]);
-    sim.run(['spec', 'push', wu, '--reason', 'Alpha holds once settled.', '--store', path.join(sim.dir, store), '--from', '1.1.1']);
+    const pushed = sim.run(['spec', 'push', wu, '--reason', 'Alpha holds once settled.', '--store', path.join(sim.dir, store), '--from', '1.1.1']);
+    assert.deepStrictEqual(pushed.change.reworded, ['1-1-1']);
     // The cut's corridor: a cut `cut` refuses goes back to the agent in a
     // fresh brief, and the one it writes again lands on the manifest.
     const settle = { name: 'Settling', goal: 'The epic settles as alpha decided.', scenarios: ['1.S1'], sections: ['1.1'], relies_on: [] };

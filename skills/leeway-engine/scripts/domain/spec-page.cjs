@@ -29,39 +29,46 @@
 // without `f`, keys sorted.
 //
 // `spec page <unit>` writes the page and the store's first writes to
-// `.cache/{unit}/specification/page/`, which opens the page (spec-review.cjs:
-// its numbers held from then on). `spec push <unit> --reason <line> --store
-// <dir> [--from <ids>]`, after a re-land, plans the writes that bring the
-// change to the open page without republishing (11.11.17), into the page's
-// next `push-<k>/`: one numbered change, its reason, the lines whose
-// conversations led to it, and the lines it added, reworded and removed;
-// each reworded line's last wording appended to its history; each removed
-// line kept where it stood; and Claude's ticks redrawn. It writes only the
-// documents that differ from the store's, the history first, then the
-// change, the areas, and the index last, so a push that stops part way is
-// planned again from the same listing and finishes the change it started:
-// until the index lands, the store's newest change is numbered past the
-// index's `c`. A write to a document the store already holds takes the
-// version its listing gave, `if_version`: the answer names each.
+// `.cache/{unit}/specification/page/`. `spec published <unit> <url>` records
+// that Claude published it, which opens the page (spec-review.cjs: its
+// numbers held, its marks read back, from then on); a page built and never
+// published is not open. `spec push <unit> --store <dir> [--reason <line>]
+// [--from <ids>]`, after a re-land, plans the writes that bring the change
+// to the open page without republishing (11.11.17), into the page's next
+// `push-<k>/`, and answers the page's address: one numbered change, its
+// reason, the lines whose conversations led to it, and the lines it added,
+// reworded and removed; each reworded line's last wording appended to its
+// history; each removed line kept where it stood, an area that loses every
+// line kept with its removed lines alone, counted 0 in the index; and
+// Claude's ticks redrawn. It writes only the documents that differ from the
+// store's, the history first, then the change, the areas, and the index
+// last, so a push that stops part way is planned again from the same listing
+// and finishes the change it started: until the index lands, the store's
+// newest change is numbered past the index's `c`. A write to a document the
+// store already holds takes the version its listing gave, `if_version`: the
+// answer names each.
 //
-// Each refuses, its refusal opening `spec page: ` or `spec push: `, writing
-// nothing: a unit the project lacks; one with no spec; a concluded spec,
-// whose review ended when the build began; a spec its grammar cannot read;
-// and a document over the store's limit. `spec push` refuses too: a unit
-// with no page built; a store listing that is not a folder; a line in
-// `--from` neither the spec nor the store holds; and a push changing lines
-// with no reason given.
+// Each refuses, its refusal opening `spec page: `, `spec published: ` or
+// `spec push: `, writing nothing: a unit the project lacks; one with no
+// spec; a concluded spec, whose review ended when the build began. `spec
+// page` and `spec push` refuse a spec its grammar cannot read, and a
+// document over the store's limit. `spec published` and `spec push` refuse a
+// unit with no page built, and `spec published` an address that is no URL.
+// `spec push` refuses too: a page not published; a store listing that is not
+// a folder; a line in `--from` neither the spec nor the store holds; and a
+// push changing lines with no reason given.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
 const { messageOf } = require('../kernel/call.cjs');
-const { isObject } = require('../kernel/manifest-io.cjs');
+const { isObject, writeJsonAtomic } = require('../kernel/manifest-io.cjs');
 const { fingerprint, specPage } = require('./spec-page-model.cjs');
-const { pageDir, pageRefusal } = require('./spec-review.cjs');
+const { pageDir, pageRefusal, publishedFile, publishedPage } = require('./spec-review.cjs');
 
 const PAGE_USAGE = 'spec page <work-unit>';
-const PUSH_USAGE = 'spec push <work-unit> --reason <line> --store <dir> [--from <ids>]';
+const PUBLISHED_USAGE = 'spec published <work-unit> <url>';
+const PUSH_USAGE = 'spec push <work-unit> --store <dir> [--reason <line>] [--from <ids>]';
 
 const TEMPLATE = path.join(__dirname, '..', '..', 'content', 'spec-page', 'page.html');
 
@@ -240,7 +247,10 @@ function step(prev, areas, history, { n, at, why, from, when }) {
       changed.removed.push(item.id);
       keep.set(item.id, removedItem(item, n));
     }
-    if (!(doc in areas)) continue;
+    if (!(doc in areas)) {
+      if (keep.size > 0) merged[doc] = withF({ items: placed(old, [], keep) });
+      continue;
+    }
     for (const item of areas[doc].items) {
       if (!isLine(item) || prev === null) continue;
       const was = oldLines.get(item.id);
@@ -302,7 +312,10 @@ function planned(page, store, { at, why, from }) {
   }
   if (change !== null) changes.set(change.n, change);
   const lastC = change?.n ?? (seeded ? store.spec.index.c ?? 0 : 0);
-  const storedIndex = withF({ ...index, c: lastC });
+  const titled = new Map((store.spec.index?.sections ?? []).map((/** @type {{num: number, title: string}} */ { num, title }) => [num, title]));
+  const emptied = Object.keys(stepped.merged).filter((doc) => !(doc in areas)).map((doc) => ({ num: Number(doc.slice(1)), title: titled.get(Number(doc.slice(1))) ?? '', count: 0 }));
+  const sections = [.../** @type {{num: number, title: string, count: number}[]} */ (index.sections), ...emptied].sort((a, b) => a.num - b.num);
+  const storedIndex = withF({ ...index, sections, c: lastC });
   const write = (/** @type {Collection} */ collection, /** @type {string} */ doc, /** @type {Record<string, unknown>} */ body) => ({ collection, doc, body });
   const ticks = assessDocs(page, store.assess, at);
   return {
@@ -395,6 +408,25 @@ function buildPage(cwd, unit) {
   }
 }
 
+/**
+ * Record that Claude published the unit's page, which opens it: its address
+ * and when, beside the page and outside it.
+ * @param {string} cwd @param {string} unit @param {string} url
+ */
+function recordPublished(cwd, unit, url) {
+  try {
+    const refused = pageRefusal(cwd, unit);
+    if (refused !== null) throw new Error(refused);
+    if (!fs.existsSync(pageDir(cwd, unit))) throw new Error(`${unit} has no review page built — build it with spec page ${unit}`);
+    if (!/^https?:\/\/\S+$/.test(url)) throw new Error(`${url} is no page's address — give the artifact's URL`);
+    const published = { url, at: now() };
+    writeJsonAtomic(publishedFile(cwd, unit), published);
+    return { unit, ...published };
+  } catch (err) {
+    throw new Error(`spec published: ${messageOf(err)}`);
+  }
+}
+
 /** The page's next push folder. @param {string} dir */
 function nextPush(dir) {
   const taken = fs.readdirSync(dir).map((name) => /^push-([0-9]+)$/.exec(name)).filter((m) => m !== null).map((m) => Number(/** @type {RegExpExecArray} */ (m)[1]));
@@ -405,24 +437,27 @@ function nextPush(dir) {
  * Plan the writes that bring a re-landed spec to the unit's open page,
  * recording what changed as one change.
  * @param {string} cwd @param {string} unit
- * @param {{reason: string, store: string, from?: string}} given the store's listing, absolute or from cwd
+ * @param {{store: string, reason?: string, from?: string}} given the store's listing, absolute or from cwd
  */
-function pushPage(cwd, unit, { reason, store, from = '' }) {
+function pushPage(cwd, unit, { store, reason = '', from = '' }) {
   try {
     const page = pageFor(cwd, unit);
     const dir = pageDir(cwd, unit);
     if (!fs.existsSync(dir)) throw new Error(`${unit} has no review page built — build it with spec page ${unit}`);
+    const published = publishedPage(cwd, unit);
+    if (published === null) throw new Error(`${unit}'s review page is not published — publish it, then record it with spec published ${unit} <url>`);
     const root = path.resolve(cwd, store);
     if (!fs.existsSync(root) || !fs.statSync(root).isDirectory()) throw new Error(`${store} is no folder — save the store's spec, history, changes and assess collections into it with ArtifactData's list and out_dir`);
     const listing = listingOf(root);
     const why = reason.split(/\s+/).filter(Boolean).join(' ');
     const { writes, change, resumed } = planned(page, listing, { at: now(), why, from: from.split(',').filter((id) => id.trim() !== '').map(asId) });
     checkSizes(writes);
-    if (writes.length === 0) return { unit, change, resumed, batches: [], existing: [], note: 'the store already holds this spec: nothing to write' };
-    return { unit, change, resumed, ...writeBatches(nextPush(dir), writes, listing) };
+    const { url } = published;
+    if (writes.length === 0) return { unit, url, change, resumed, batches: [], existing: [], note: 'the store already holds this spec: nothing to write' };
+    return { unit, url, change, resumed, ...writeBatches(nextPush(dir), writes, listing) };
   } catch (err) {
     throw new Error(`spec push: ${messageOf(err)}`);
   }
 }
 
-module.exports = { PAGE_USAGE, PUSH_USAGE, CAPABILITIES, buildPage, pushPage };
+module.exports = { PAGE_USAGE, PUBLISHED_USAGE, PUSH_USAGE, CAPABILITIES, buildPage, recordPublished, pushPage };

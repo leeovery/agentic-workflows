@@ -29,8 +29,11 @@
 // comments waiting and writes the record from them, in one call
 // (`settleReview`).
 //
-// The page is open while the unit holds stored marks or a page built for it
-// (`.cache/{unit}/specification/page/`). While it is, a number never changes
+// The page is open once Claude has recorded its publishing (`spec
+// published`, spec-page.cjs), the artifact's address and when kept at
+// `.cache/{unit}/specification/published.json`, beside the page Claude built
+// and outside it, so a page built again never closes it; marks are stored
+// only from a page published. While it is, a number never changes
 // (11.11.3). Every number it holds is kept with its last wording in
 // `.cache/{unit}/specification/held.json`, which each land adds to: the
 // numbers of the spec the state branch holds and of the stored marks with
@@ -48,8 +51,9 @@
 // state and its conversation, `{"lines": {"<number>": {state, conversation:
 // [{by: person|claude, at, text}]}}}`: `approved`, ticked on its wording;
 // `approved-after-comment`, ticked with a conversation; `claudes-tick`,
-// carrying Claude's tick the person let stand — neither ticked nor unticked
-// on its wording, no conversation open (11.11.16); `open`, its conversation
+// carrying Claude's tick the person let stand — neither ticked on its
+// wording nor ever unticked, whatever wording the untick held, no
+// conversation open (11.11.16); `open`, its conversation
 // open, answered or not; `changed`, ticked on a wording it no longer has;
 // `passed`, passed without review; and `removed`, a line the spec no longer
 // holds that the person ticked or commented on. A tick with no fingerprint
@@ -111,10 +115,16 @@ const pageDir = (cwd, unit) => path.join(pageCache(cwd, unit), 'page');
 /** Where the numbers the unit's open page holds are kept. @param {string} cwd @param {string} unit */
 const heldFile = (cwd, unit) => path.join(pageCache(cwd, unit), 'held.json');
 
-/** Whether the unit's review page is open: marks stored, or a page built. @param {string} cwd @param {string} unit */
+/** Where the unit's page's publishing is recorded. @param {string} cwd @param {string} unit */
+const publishedFile = (cwd, unit) => path.join(pageCache(cwd, unit), 'published.json');
+
+/** Whether the unit's review page is open: its publishing recorded. @param {string} cwd @param {string} unit */
 function pageOpen(cwd, unit) {
-  return fs.existsSync(marksFile(cwd, unit)) || fs.existsSync(pageDir(cwd, unit));
+  return fs.existsSync(publishedFile(cwd, unit));
 }
+
+/** The unit's page as published: its address and when, or null where it is not. @param {string} cwd @param {string} unit @returns {{url: string, at: string}|null} */
+const publishedPage = (cwd, unit) => cached(publishedFile(cwd, unit), null);
 
 /** A line's number from its id: dashes back to dots, a screen's tail kept. @param {string} id */
 function numberOf(id) {
@@ -217,7 +227,7 @@ function reviewedLine(page, { id, section, h, line }, mark) {
   if (changed) state = 'changed';
   else if (mark.s === 'tick') state = conversation.length > 0 ? 'approved-after-comment' : 'approved';
   else if (mark.s === 'comment') state = 'open';
-  else if (page.ticks.get(id)?.v === 'soft' && mark.h !== h) state = 'claudes-tick';
+  else if (page.ticks.get(id)?.v === 'soft' && !mark.h) state = 'claudes-tick';
   return { id, number: line.number, section, wording: line.wording, state, conversation, waiting: talking && conversation.at(-1)?.by === 'person' };
 }
 
@@ -295,6 +305,7 @@ function pageRefusal(cwd, unit) {
 function stored(cwd, unit, file) {
   const refused = pageRefusal(cwd, unit);
   if (refused !== null) throw new Error(refused);
+  if (!pageOpen(cwd, unit)) throw new Error(`${unit}'s review page is not published — publish it, record it with spec published ${unit} <url>, then read its marks back`);
   const marks = marksIn(path.resolve(cwd, file));
   const reviewed = reviewOf(specPage(cwd, unit), marks);
   fs.mkdirSync(pageCache(cwd, unit), { recursive: true });
@@ -400,5 +411,5 @@ function holdNumbers(cwd, unit, landed, lines) {
 }
 
 module.exports = {
-  MARKS_USAGE, REVIEW_FILE, marksFile, pageDir, pageOpen, pageRefusal, storeMarks, reviewStates, commentsWaiting, writeSpecReview, settleReview, heldNumberFaults, holdNumbers,
+  MARKS_USAGE, REVIEW_FILE, marksFile, pageDir, publishedFile, publishedPage, pageOpen, pageRefusal, storeMarks, reviewStates, commentsWaiting, writeSpecReview, settleReview, heldNumberFaults, holdNumbers,
 };

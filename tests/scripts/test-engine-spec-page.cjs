@@ -6,16 +6,21 @@
 // data and the store's first writes — every line with its tick and flags,
 // each screen after its line, each area's count, Claude's tick on each line
 // as the page's model draws it, and the page declaring `db` alone (11.11.2,
-// 11.11.3, 11.11.5, 11.11.13, 11.11.15, 11.S23, 11.S32); and `engine spec
-// push <unit> --reason --store [--from]`, planning what a re-land changed
-// for the open page against the store's listing — one numbered change with
-// its reason and the lines that led to it, earlier wordings kept oldest
-// first, a removed line kept where it stood, a line brought back, a change
-// to sources alone recording none, a push that stopped finished, and the
-// documents the store holds named for `if_version` (11.11.6, 11.11.17,
-// 11.S28, 11.S33); and each refusal writing nothing.
+// 11.11.3, 11.11.5, 11.11.13, 11.11.15, 11.S23, 11.S32); `engine spec
+// published <unit> <url>`, which opens the page; `engine spec push <unit>
+// --store [--reason] [--from]`, planning what a re-land changed for the open
+// page against the store's listing — one numbered change with its reason
+// and the lines that led to it, earlier wordings kept oldest first, a
+// removed line kept where it stood, an area emptied and brought back, a line
+// brought back, a change to sources alone recording none, a push that
+// stopped finished, and the documents the store holds named for
+// `if_version` (11.11.6, 11.11.17, 11.S28, 11.S33); each refusal writing
+// nothing; and the page's own rules, its state functions run from the
+// template: Claude's tick never over a line changed since the person's tick,
+// the person's untick holding on any wording, and To do the lines waiting
+// on the person (11.11.4, 11.11.6, 11.11.16, 11.11.19).
 //
-// Layer: verb. World, built once and copied: an epic, `payments`, its one
+// Layer: verb; the page's rules, unit. World, built once and copied: an epic, `payments`, its one
 // topic `cards` decided, its entries written through the ledger's verbs — a
 // decision of the person's, a call of Claude's, a "don't care" decision and
 // a finding — and its spec landed citing them.
@@ -28,6 +33,7 @@ const assert = require('node:assert');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const vm = require('vm');
 const {
   ok, refusedPristine, statePath, layout, writeState, commitAll, fixtureFrom, cleanupFixture, withFrozenClock, FROZEN_AT,
 } = require('./engine-harness.cjs');
@@ -42,7 +48,9 @@ const SPEC = layout.unit(UNIT, 'spec.md');
 const PAGE = layout.cache(UNIT, 'specification', 'page');
 const PERSON = Object.freeze({ by: 'person', who_moved_whom: 'none' });
 const AT = FROZEN_AT.replace(/\.[0-9]{3}Z$/, 'Z');
-const TITLE = 'Payments & <Refunds>';
+const TITLE = "Payments & <Refunds> $' $&";
+const URL = 'https://claude.ai/public/artifacts/0123';
+const TEMPLATE = path.join(SCRIPTS, '../content/spec-page/page.html');
 
 /** The epic's manifest, its one topic's discussion as `status` gives it. @param {string} dir @param {string} status @param {Record<string, unknown>} [more] */
 function payments(dir, status, more = {}) {
@@ -63,17 +71,17 @@ const STATEMENTS = () => [
   `1.1.3 Corners are ten points. [builder: ${made.radius}]`,
   `Screen: the form. [${made.taken}, ${made.brand}]`,
   '```text\nCARD  ____ ____\n```',
-  `1.1.4 The form shows the card's brand. [${made.brand}]`,
+  `1.1.4 The form shows the card's brand, $& and $' as typed. [${made.brand}]`,
   `1.1.5 A declined card is refused. [${made.taken}]`,
 ];
 
-/** The spec, its first part's statements as given. @param {string[]} statements */
-function spec(statements) {
+/** The spec, its first part's statements as given, with or without its second area. @param {string[]} statements @param {boolean} [refunds] */
+function spec(statements, refunds = true) {
   return [
     `# ${TITLE}`, '', 'How to read it.', '', '## 1. Cards', '', '### 1.1 The form', '', ...statements.flatMap((line) => [line, '']),
     '## 1-S. Scenarios for §1', '',
     '1.S1 Given a form, when it is sent, then the card is charged. (1.1.1, 1.1.3)', '',
-    '## 2. Refunds', '', '### 2.1 Whole', '', '2.1.1 A refund goes back to the card. [builder]', '',
+    ...(refunds ? ['## 2. Refunds', '', '### 2.1 Whole', '', '2.1.1 A refund goes back to the card. [builder]', ''] : []),
   ].join('\n');
 }
 
@@ -104,6 +112,13 @@ const frozen = (args) => withFrozenClock(() => ok(dir, args));
 /** The page built: its answer. */
 const build = () => frozen(['spec', 'page', UNIT]);
 
+/** The page built and published: its first writes. */
+function opened() {
+  const { batches } = build();
+  frozen(['spec', 'published', UNIT, URL]);
+  return batches;
+}
+
 /** A JSON file. @param {string} file */
 const json = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
 
@@ -126,9 +141,9 @@ function listing(...planned) {
   return root;
 }
 
-/** The spec re-landed, its first part's statements as given. @param {string[]} statements */
-function reland(statements) {
-  writeState(dir, SPEC, spec(statements));
+/** The spec re-landed, its first part's statements as given. @param {string[]} statements @param {boolean} [refunds] */
+function reland(statements, refunds = true) {
+  writeState(dir, SPEC, spec(statements, refunds));
   ok(dir, ['spec', 'land', UNIT]);
 }
 
@@ -164,8 +179,9 @@ describe('spec page: the page and its first writes (11.11.2, 11.11.13, 11.S23)',
     const { page, batches } = build();
     const html = fs.readFileSync(page, 'utf8');
     const data = /<script type="application\/json" id="spec-data">(.*)<\/script>/.exec(html)?.[1] ?? '';
-    const template = fs.readFileSync(path.join(SCRIPTS, '../content/spec-page/page.html'), 'utf8');
-    assert.strictEqual(html, template.replaceAll('%%TITLE%%', 'Payments &amp; &lt;Refunds&gt;').replace('%%DATA%%', data));
+    const template = fs.readFileSync(TEMPLATE, 'utf8');
+    assert.strictEqual(html, template.replaceAll('%%TITLE%%', () => 'Payments &amp; &lt;Refunds&gt; $&#x27; $&amp;').replace('%%DATA%%', () => data));
+    assert.ok(data.includes("$& and $' as typed"), 'a replacement pattern in the data is kept as written');
     assert.ok(!data.includes('<'), 'a < in the data is escaped, so it never closes its script');
     const docs = docsOf(batches);
     const { c: _c, f: _f, ...index } = docs['spec/index'];
@@ -211,18 +227,11 @@ describe('spec page: the page and its first writes (11.11.2, 11.11.13, 11.S23)',
   });
 
   it('the first writes: the areas, the index, the ticks, then the status line empty; no history and no change yet', () => {
-    assert.deepStrictEqual(writesOf(build().batches).map(({ op, to }) => `${op} ${to}`), [
+    const writes = writesOf(build().batches);
+    assert.deepStrictEqual(writes.map(({ op, to }) => `${op} ${to}`), [
       'set spec/s1', 'set spec/s2', 'set spec/index', 'set assess/s1', 'set assess/s2', 'set live/status',
     ]);
-    assert.deepStrictEqual(docsOf(build().batches)['live/status'], { x: '', at: AT });
-  });
-
-  it('a page built opens it: a number it holds is never given to another line (11.11.3)', () => {
-    build();
-    const statements = STATEMENTS();
-    writeState(dir, SPEC, spec([...statements.slice(0, 6), statements[6].replace('1.1.5', '1.1.6')]));
-    const { error } = refusedPristine(dir, ['spec', 'land', UNIT]);
-    assert.match(error, /1\.1\.6 now holds the wording 1\.1\.5 held/);
+    assert.deepStrictEqual(writes.at(-1)?.body, { x: '', at: AT });
   });
 
   it('writes in batches of at most 40', () => {
@@ -255,22 +264,54 @@ describe('spec page: refusals', () => {
   });
 });
 
+describe('spec published: the page opened once Claude records its publishing', () => {
+  it('records the address and when, beside the page, and answers both', () => {
+    build();
+    assert.deepStrictEqual(frozen(['spec', 'published', UNIT, URL]), { ok: true, unit: UNIT, url: URL, at: AT });
+    assert.deepStrictEqual(json(statePath(dir, layout.cache(UNIT, 'specification', 'published.json'))), { url: URL, at: AT });
+  });
+
+  it('a page published holds its numbers, and building it again keeps it open (11.11.3)', () => {
+    opened();
+    build();
+    const statements = STATEMENTS();
+    writeState(dir, SPEC, spec([...statements.slice(0, 6), statements[6].replace('1.1.5', '1.1.6')]));
+    assert.match(refusedPristine(dir, ['spec', 'land', UNIT]).error, /1\.1\.6 now holds the wording 1\.1\.5 held/);
+  });
+
+  it('a page built and never published is not open: it holds no number', () => {
+    build();
+    const statements = STATEMENTS();
+    reland([...statements.slice(0, 6), statements[6].replace('1.1.5', '1.1.6')]);
+  });
+
+  it('refuses a unit with no page built, writing nothing', () => {
+    assert.match(refusedPristine(dir, ['spec', 'published', UNIT, URL]).error, /^spec published: payments has no review page built — build it with spec page payments$/);
+  });
+
+  it('refuses an address that is no URL, and arguments of another shape, writing nothing', () => {
+    build();
+    assert.match(refusedPristine(dir, ['spec', 'published', UNIT, 'auto']).error, /^spec published: auto is no page's address — give the artifact's URL$/);
+    assert.match(refusedPristine(dir, ['spec', 'published', UNIT]).error, /^Usage: engine spec published <work-unit> <url>$/);
+  });
+});
+
 describe('spec push: a re-land brought to the open page (11.11.6, 11.11.17, 11.S33)', () => {
-  /** The page built and seeded, then 1.1.2 reworded, 1.1.5 removed and 1.1.6 added. */
+  /** The page published and seeded, then 1.1.2 reworded, 1.1.5 removed and 1.1.6 added. */
   function changed() {
-    const seed = build().batches;
+    const seed = opened();
     const statements = STATEMENTS();
     reland([statements[0], statements[1].replace('refused', 'asked about'), ...statements.slice(2, 6), `1.1.6 A card is saved. [${made.taken}]`]);
     return seed;
   }
 
-  it('one numbered change, its reason and the lines that led to it, each write planned in order, the documents held named', () => {
+  it('one numbered change, its reason and the lines that led to it, each write planned in order, the documents held named, the page\'s address answered', () => {
     const seed = changed();
     const answer = push(listing(seed), ['--from', '1.1.2,1-1-5']);
     const change = { n: 1, at: AT, why: 'Unknown brands are asked about.', from: ['1-1-2', '1-1-5'], added: ['1-1-6'], reworded: ['1-1-2'], removed: ['1-1-5'] };
     const out = statePath(dir, PAGE, 'push-1');
     assert.deepStrictEqual(answer, {
-      ok: true, unit: UNIT, change, resumed: false, batches: [path.join(out, 'batch-1.json')], existing: ['spec/s1', 'spec/index', 'assess/s1'],
+      ok: true, unit: UNIT, url: URL, change, resumed: false, batches: [path.join(out, 'batch-1.json')], existing: ['spec/s1', 'spec/index', 'assess/s1'],
     });
     assert.deepStrictEqual(writesOf(answer.batches).map(({ to }) => to), ['history/s1', 'changes/c1', 'spec/s1', 'spec/index', 'assess/s1']);
     assert.deepStrictEqual(docsOf(answer.batches)['changes/c1'], change);
@@ -291,6 +332,20 @@ describe('spec push: a re-land brought to the open page (11.11.6, 11.11.17, 11.S
     const { items } = docsOf(push(listing(seed)).batches)['spec/s1'];
     assert.deepStrictEqual(items.map((/** @type {{k: string, id?: string}} */ { k, id }) => id ?? k), ['h3', '1-1-1', '1-1-2', '1-1-3', '1-1-3-scr1', '1-1-4', '1-1-5', '1-1-6', 'h2s', '1-S1']);
     assert.deepStrictEqual(itemIn({ items }, '1-1-5'), { k: 'removed', id: '1-1-5', num: '1.1.5', kind: 'statement', parts: was.parts, src: was.src, c: 1 });
+  });
+
+  it('an area that loses every line keeps them, removed, counted 0; brought back, its lines are added again with their history', () => {
+    const seed = opened();
+    reland(STATEMENTS(), false);
+    const first = push(listing(seed)).batches;
+    const emptied = docsOf(first);
+    const was = itemIn(docsOf(seed)['spec/s2'], '2-1-1');
+    assert.deepStrictEqual([emptied['changes/c1'].removed, emptied['spec/s2'].items], [['2-1-1'], [{ k: 'removed', id: '2-1-1', num: '2.1.1', kind: 'statement', parts: was.parts, src: was.src, c: 1 }]]);
+    assert.deepStrictEqual(emptied['spec/index'].sections, [{ num: 1, title: 'Cards', count: 7 }, { num: 2, title: 'Refunds', count: 0 }]);
+    reland(STATEMENTS());
+    const back = docsOf(push(listing(seed, first)).batches);
+    assert.deepStrictEqual([back['changes/c2'].added, itemIn(back['spec/s2'], '2-1-1').k, back['spec/index'].sections[1].count], [['2-1-1'], 'line', 1]);
+    assert.deepStrictEqual(back['history/s2'].lines['2-1-1'], [{ h: was.h, at: AT, parts: was.parts, c: 1 }]);
   });
 
   it('the earlier wordings run oldest first across changes, and Changes holds each', () => {
@@ -314,11 +369,11 @@ describe('spec push: a re-land brought to the open page (11.11.6, 11.11.17, 11.S
     assert.deepStrictEqual(docs['history/s1'].lines['1-1-5'], [{ h: itemIn(docsOf(seed)['spec/s1'], '1-1-5').h, at: AT, parts: removed.parts, c: 1 }]);
   });
 
-  it('a change to sources alone records no change: the line keeps its fingerprint (11.S28)', () => {
-    const seed = build().batches;
+  it('a change to sources alone records no change and needs no reason: the line keeps its fingerprint (11.S28)', () => {
+    const seed = opened();
     const statements = STATEMENTS();
     reland([statements[0].replace(`[${made.taken}]`, `[${made.taken}, ${made.brand}]`), ...statements.slice(1)]);
-    const answer = push(listing(seed));
+    const answer = frozen(['spec', 'push', UNIT, '--store', listing(seed)]);
     assert.deepStrictEqual([answer.change, writesOf(answer.batches).map(({ to }) => to)], [null, ['spec/s1']]);
     assert.strictEqual(itemIn(docsOf(answer.batches)['spec/s1'], '1-1-1').h, itemIn(docsOf(seed)['spec/s1'], '1-1-1').h);
   });
@@ -333,14 +388,13 @@ describe('spec push: a re-land brought to the open page (11.11.6, 11.11.17, 11.S
   });
 
   it('a store already holding the spec has nothing to write, each tick keeping when it was made', () => {
-    const seed = build().batches;
-    const store = listing(seed);
+    const store = listing(opened());
     const ticks = path.join(store, 'assess', 's1.json');
     const held = json(ticks);
     for (const tick of Object.values(held.lines)) tick.at = '2025-01-01T00:00:00Z';
     fs.writeFileSync(ticks, JSON.stringify(held));
     assert.deepStrictEqual(push(store), {
-      ok: true, unit: UNIT, change: null, resumed: false, batches: [], existing: [], note: 'the store already holds this spec: nothing to write',
+      ok: true, unit: UNIT, url: URL, change: null, resumed: false, batches: [], existing: [], note: 'the store already holds this spec: nothing to write',
     });
   });
 });
@@ -348,27 +402,93 @@ describe('spec push: a re-land brought to the open page (11.11.6, 11.11.17, 11.S
 describe('spec push: refusals', () => {
   it('refuses a unit with no page built, writing nothing', () => {
     fs.mkdirSync(path.join(dir, 'store'));
-    assert.match(refusedPristine(dir, ['spec', 'push', UNIT, '--reason', 'x', '--store', path.join(dir, 'store')]).error, /^spec push: payments has no review page built — build it with spec page payments$/);
+    assert.match(refusedPristine(dir, ['spec', 'push', UNIT, '--store', path.join(dir, 'store')]).error, /^spec push: payments has no review page built — build it with spec page payments$/);
+  });
+
+  it('refuses a page not published, writing nothing', () => {
+    const store = listing(build().batches);
+    assert.match(refusedPristine(dir, ['spec', 'push', UNIT, '--store', store]).error, /^spec push: payments's review page is not published — publish it, then record it with spec published payments <url>$/);
   });
 
   it('refuses a listing that is no folder, writing nothing', () => {
-    build();
-    assert.match(refusedPristine(dir, ['spec', 'push', UNIT, '--reason', 'x', '--store', 'nowhere']).error, /^spec push: nowhere is no folder — save the store's spec, history, changes and assess collections into it/);
+    opened();
+    assert.match(refusedPristine(dir, ['spec', 'push', UNIT, '--store', 'nowhere']).error, /^spec push: nowhere is no folder — save the store's spec, history, changes and assess collections into it/);
   });
 
   it('refuses a line in --from the spec does not have, writing nothing', () => {
-    const store = listing(build().batches);
+    const store = listing(opened());
     assert.match(refusedPristine(dir, ['spec', 'push', UNIT, '--reason', 'x', '--store', store, '--from', '1.1.1,9.9.9']).error, /^spec push: --from names lines the spec does not have: 9-9-9$/);
   });
 
   it('refuses a push changing lines with no reason, writing nothing', () => {
-    const store = listing(build().batches);
+    const store = listing(opened());
     const statements = STATEMENTS();
     reland([statements[0].replace('taken', 'accepted'), ...statements.slice(1)]);
-    assert.match(refusedPristine(dir, ['spec', 'push', UNIT, '--reason', ' ', '--store', store]).error, /^spec push: this push changes lines \(1 reworded\): say why with --reason "<one line>"$/);
+    assert.match(refusedPristine(dir, ['spec', 'push', UNIT, '--store', store]).error, /^spec push: this push changes lines \(1 reworded\): say why with --reason "<one line>"$/);
   });
 
-  it('refuses without its reason or its listing', () => {
-    assert.match(refusedPristine(dir, ['spec', 'push', UNIT, '--reason', 'x']).error, /^Usage: engine spec push <work-unit> --reason <line> --store <dir> \[--from <ids>\]$/);
+  it('refuses without its listing', () => {
+    assert.match(refusedPristine(dir, ['spec', 'push', UNIT, '--reason', 'x']).error, /^Usage: engine spec push <work-unit> --store <dir> \[--reason <line>\] \[--from <ids>\]$/);
+  });
+});
+
+describe('the page\'s own rules, its state functions run from the template (11.11.4, 11.11.6, 11.11.16, 11.11.19)', () => {
+  const NAMES = ['thread', 'lastBy', 'yourTurn', 'needsYou', 'assessOf', 'view', 'matches'];
+  const SOFT = Object.freeze({ v: 'soft', why: 'Restates your decision.' });
+
+  /** A function's declaration in the page's script, braces counted to its end. @param {string} html @param {string} name */
+  function declared(html, name) {
+    const start = html.indexOf(`function ${name}(`);
+    let depth = 0;
+    for (let i = html.indexOf('{', start); i < html.length; i++) {
+      if (html[i] === '{') depth += 1;
+      else if (html[i] === '}' && --depth === 0) return html.slice(start, i + 1);
+    }
+    throw new Error(`no function ${name} in the page`);
+  }
+
+  /** The page's state functions over one line, `1-1-1`, its wording's fingerprint `now`, carrying Claude's tick. @returns {any} */
+  function page() {
+    const context = vm.createContext({
+      byId: new Map([['1-1-1', { dataset: { id: '1-1-1', h: 'now', flags: '' } }]]),
+      assess: { '1-1-1': { ...SOFT, h: 'now' } },
+      state: {},
+      filter: 'all',
+    });
+    vm.runInContext(NAMES.map((name) => declared(fs.readFileSync(TEMPLATE, 'utf8'), name)).join('\n'), context);
+    return context;
+  }
+
+  /** The line as the page settles it from a stored mark: Claude's tick shown, changed, and whether it waits on the person. @param {Record<string, unknown>|undefined} mark */
+  function settled(mark) {
+    const context = page();
+    const m = context.view('1-1-1', mark);
+    return { soft: Boolean(m.soft), changed: Boolean(m.changed), waits: context.needsYou(m) };
+  }
+
+  it('a line nobody marked shows Claude\'s tick and waits on nobody', () => {
+    assert.deepStrictEqual(settled(undefined), { soft: true, changed: false, waits: false });
+  });
+
+  it('Claude\'s tick never shows on a line changed since the person ticked it: it reads changed and waits on them (11.11.6, 11.11.4)', () => {
+    assert.deepStrictEqual(settled({ s: 'tick', h: 'before' }), { soft: false, changed: true, waits: true });
+  });
+
+  it('the person\'s untick holds against Claude\'s tick whatever wording it held (11.11.16)', () => {
+    assert.deepStrictEqual([settled({ s: '', h: 'now' }), settled({ s: '', h: 'before' })], [
+      { soft: false, changed: false, waits: true }, { soft: false, changed: false, waits: true },
+    ]);
+  });
+
+  it('To do shows every line waiting on the person — one Claude answered, one changed with its conversation — and none carrying a tick (11.11.19)', () => {
+    const context = page();
+    context.filter = 'todo';
+    const shown = (/** @type {Record<string, unknown>|undefined} */ mark) => {
+      context.state = { '1-1-1': context.view('1-1-1', mark) };
+      return context.matches({ dataset: { id: '1-1-1', flags: '' } });
+    };
+    const answered = { s: 'comment', t: { p1000: { by: 'p', x: 'Why?' }, c2000: { by: 'c', x: 'Your decision.' } } };
+    const talkedThenChanged = { s: 'tick', h: 'before', t: { p1000: { by: 'p', x: 'Why?' } } };
+    assert.deepStrictEqual([shown(answered), shown(talkedThenChanged), shown(undefined), shown({ s: 'tick', h: 'now' })], [true, true, false, false]);
   });
 });

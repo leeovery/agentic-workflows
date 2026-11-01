@@ -743,7 +743,7 @@ mark.sc.add { background: var(--add-bg); }
   }
 
   // a tick agrees the line as worded: one whose wording has changed since (its h no longer the line's) reads as no tick.
-  // Claude's soft tick shows where the person has neither ticked nor unticked this wording and no conversation is open.
+  // Claude's soft tick shows where the person has not ticked the line, its tick not since changed, nor ever unticked it, and no conversation is open.
   function view(id, stored) {
     const el = byId.get(id);
     const m = Object.assign({}, stored);
@@ -752,8 +752,8 @@ mark.sc.add { background: var(--add-bg); }
       m.changed = true;
     }
     const a = assessOf(id);
-    const unticked = !!el && !!stored && stored.s !== 'tick' && !!stored.h && stored.h === el.dataset.h;
-    if (a && a.v === 'soft' && m.s !== 'tick' && m.s !== 'comment' && !unticked) m.soft = true;
+    const unticked = !!stored && stored.s !== 'tick' && !!stored.h;
+    if (a && a.v === 'soft' && m.s !== 'tick' && m.s !== 'comment' && !unticked && !m.changed) m.soft = true;
     return m;
   }
 
@@ -921,7 +921,7 @@ mark.sc.add { background: var(--add-bg); }
     const m = state[el.dataset.id] || {};
     const flags = el.dataset.flags;
     switch (filter) {
-      case 'todo': return !m.s && !m.soft;
+      case 'todo': return needsYou(m);
       case 'soft': return !!m.soft;
       case 'comments': return m.s === 'comment';
       case 'replies': return yourTurn(m);
