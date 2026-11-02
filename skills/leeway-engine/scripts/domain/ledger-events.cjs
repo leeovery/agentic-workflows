@@ -67,11 +67,25 @@
 //   holds. It is no entry and is never replaced: for an entry and a path,
 //   the latest live status stands, and apart from it the latest live lift,
 //   which no status after it undoes (ledger-fold.cjs).
+// - parked (version 3): a question the build needs the person for, parked
+//   with the task it holds (12.13.4; raise.cjs): what it is about — the
+//   question it answers, or the decision a replacement would replace with
+//   the reason and the cause — and what its answer relies on; the task it
+//   parks, as screens show it; its number in its unit, `Q{number}`, the
+//   engine's, minted as it parks and never reused (questions.cjs); and the
+//   call sealed, so it is raised as it was put whenever the person is ready,
+//   in whatever conversation: Claude's call as the raise took it, the rows
+//   the one-decision check judged one rule, and why it asks, the decision
+//   point's reason. It names no maker, is no entry and is never replaced:
+//   it waits while what it is about stands open (questions.cjs).
 //
 // From version 2 every entry may cite where it came from (21.6.3, 21.6.4):
 // sections of files — a topic's log, a spec — each by its path from the
 // state root and its heading. Every path is written plain, so one file is
-// one path: relative, no part of it empty, `.` or `..`.
+// one path: relative, no part of it empty, `.` or `..`. From version 3 every
+// entry names the task it was made for, where it was made in the build
+// (12.12.5), as screens show it, `{phase}.{n}`; null elsewhere, and on a
+// line before version 3.
 //
 // The engine assigns every link; it constrains links and identity, never
 // content (5.1.8). Lines are written with their fields in the schema's
@@ -89,7 +103,8 @@
 
 const { isObject } = require('../kernel/manifest-io.cjs');
 const { PRODUCT } = require('../kernel/manifest-schema.cjs');
-const { type, TEXT, ID, FLAG, TIME, VERSION, KINDS, oneOf, nullable, listOf, field, event, readFields } = require('./event-fields.cjs');
+const { type, TEXT, ID, FLAG, TIME, VERSION, COUNT, LINE, KEY, KINDS, oneOf, nullable, listOf, shaped, field, event, readFields } = require('./event-fields.cjs');
+const { isShownTask } = require('./task-id.cjs');
 
 const LEDGER = '.ledger.jsonl';
 
@@ -121,6 +136,25 @@ function sinceTwo(value) {
 
 /** What an entry cites (21.6.3). */
 const CITES = field('cites', listOf(CITE), sinceTwo([]));
+
+const TASK = type('a task, as screens show it: {phase}.{n}', isShownTask);
+
+/** The task an entry was made for, in the build (12.12.5). */
+const FOR_TASK = field('task', nullable(TASK), { version: 3, default: null });
+
+/** What a raise's row holds (raise.cjs). */
+const ROW_FIELDS = Object.freeze({ key: KEY, name: LINE, text: LINE, notice: LINE });
+
+/** What Claude's call holds, as a raise takes it (raise.cjs). */
+const CALL_FIELDS = Object.freeze({
+  question: LINE,
+  rows: listOf(shaped(`a row, {${Object.keys(ROW_FIELDS).join(', ')}}`, ROW_FIELDS)),
+  lean: KEY,
+  why: LINE,
+  sort: oneOf('one', 'several'),
+  mechanism: TEXT,
+  product_wide: FLAG,
+});
 
 /** What opens a move's `to` that names an item of the roadmap, not a topic (9.5.4). */
 const ROADMAP = 'roadmap:';
@@ -156,6 +190,7 @@ const CONTENT = {
     field('part_of', nullable(ID)),
     field('relies_on', listOf(ID)),
     CITES,
+    FOR_TASK,
   ],
   finding: [
     field('text', TEXT),
@@ -166,6 +201,7 @@ const CONTENT = {
     field('command', nullable(TEXT), sinceTwo(null)),
     field('result', nullable(TEXT), sinceTwo(null)),
     CITES,
+    FOR_TASK,
   ],
   decision: [
     field('answers', ID),
@@ -181,12 +217,28 @@ const CONTENT = {
     field('unchecked', FLAG),
     field('given', oneOf(...GIVEN), sinceTwo('own')),
     CITES,
+    FOR_TASK,
   ],
 };
 
+/**
+ * Why a parked question's fields disagree, or null where they keep together:
+ * it answers a question or proposes a replacement, one and not both; the
+ * reason and the cause are a replacement's alone, its reason given; its
+ * call leans to a row it holds.
+ * @param {Record<string, any>} parked
+ * @returns {string|null}
+ */
+function parkHolds({ question, replaces, reason, cause, call }) {
+  if ((question === null) === (replaces === null)) return 'a parked question answers a question or proposes a replacement, one and not both';
+  if ((replaces === null) !== (reason === null)) return 'a replacement proposed gives its reason, and only a replacement does';
+  if (cause !== null && replaces === null) return 'only a replacement proposed has a cause';
+  return call.rows.some((/** @type {{key: string}} */ row) => row.key === call.lean) ? null : `its call leans to ${call.lean}, a row it does not hold`;
+}
+
 /** @type {Schema} */
 const SCHEMA = {
-  version: 2,
+  version: 3,
   events: {
     asked: event([...made([...PEOPLE, 'review']), ...CONTENT.question]),
     found: event([...made(PEOPLE), ...CONTENT.finding]),
@@ -216,6 +268,18 @@ const SCHEMA = {
       2,
       ({ status, into }) => (status === null && into === null ? 'an asset link gives a status, a lift into the project, or both' : null),
     ),
+    parked: event([
+      field('question', nullable(ID)),
+      field('replaces', nullable(ID)),
+      field('reason', nullable(oneOf(...REASONS))),
+      field('cause', nullable(ID)),
+      field('relies_on', listOf(ID)),
+      field('task', TASK),
+      field('number', COUNT),
+      field('call', shaped(`a call, {${Object.keys(CALL_FIELDS).join(', ')}}`, CALL_FIELDS)),
+      field('rows_judged', listOf(KEY)),
+      field('why_asking', LINE),
+    ], 3, parkHolds),
   },
 };
 
@@ -226,7 +290,7 @@ const ENTRY_EVENTS = Object.freeze({ asked: 'question', found: 'finding', decide
 
 /**
  * The kind of entry an event is, or null for an event that is no entry: a
- * confirmation, a move, a merge, a check, a keep or an asset.
+ * confirmation, a move, a merge, a check, a keep, an asset or a park.
  * @param {Record<string, unknown>} event
  * @returns {EntryKind|null}
  */
@@ -366,5 +430,5 @@ function parseEntry(line, number, schema = SCHEMA) {
 }
 
 module.exports = {
-  LEDGER, LEDGER_VERSION, SCHEMA, HEADER, REASONS, ROADMAP, PRODUCT, ASSET_STATUSES, isPlainPath, LedgerLineError, LedgerNewer, entryKind, decidedBy, claudesCall, roadmapItemOf, eventFields, linkFields, validEvent, parseEntry,
+  LEDGER, LEDGER_VERSION, SCHEMA, HEADER, REASONS, ROADMAP, PRODUCT, ASSET_STATUSES, ROW_FIELDS, CALL_FIELDS, isPlainPath, LedgerLineError, LedgerNewer, entryKind, decidedBy, claudesCall, roadmapItemOf, eventFields, linkFields, validEvent, parseEntry,
 };

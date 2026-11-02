@@ -1,0 +1,67 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// The pipeline simulation's scenario of the build's questions: a task
+// parking on a question only the person can answer while the others carry
+// on, the questions waiting listed, one drawn when the person is ready and
+// answered for its task, another set aside and still waiting, and Claude's
+// calls made for a task — each landing in the ledger and the trust log as
+// the command that writes it.
+//
+// Layer: simulation. World: the project every scenario starts from
+// (pipeline-world.cjs), a copy per scenario; each replays the engine calls
+// the skill prose makes, in prose order, and the oracle
+// (pipeline-oracle.cjs) audits the whole state after every mutation.
+// ---------------------------------------------------------------------------
+
+require('./hermetic-env.cjs');
+
+const { describe, it, beforeEach, afterEach } = require('node:test');
+const assert = require('node:assert');
+const { Sim, sessionLog, startNew, writePhaseTasks } = require('./pipeline-world.cjs');
+const { leaningCall } = require('./ledger-world.cjs');
+
+describe('pipeline simulation: the build\'s questions', () => {
+  let sim;
+  beforeEach(() => { sim = new Sim(); });
+  afterEach(() => { sim.destroy(); });
+
+  it('a task parks on a question while the others carry on; the questions waiting listed oldest first; one drawn and answered for its task, which builds again; another set aside, still waiting, until a decision answers it; Claude\'s calls made for a task', async () => {
+    const wu = 'ledger';
+    startNew(sim, 'feature');
+    sim.run(['workunit', 'create', wu, 'feature', '--description', 'A ledger', '--session-log-file', sessionLog(sim, wu)]);
+    writePhaseTasks(sim, wu, 1, 'The ledger', [{ title: 'Write the ledger' }, { title: 'Read the ledger' }, { title: 'Fold the ledger' }]);
+    const build = `${wu}.implementation`;
+    const made = { by: 'claude', who_moved_whom: 'none' };
+    /** A question asked for `task`: its short id. @param {string} text @param {string} task */
+    const asked = (text, task) => sim.run(['ledger', 'ask', build, '--task', task], null, JSON.stringify({ ...made, text })).id;
+    /** Claude's call on the question `id`, asking `text`, raised for `task` — which the person must answer: its answer. @param {string} id @param {string} text @param {string} task */
+    const raised = (id, text, task) => sim.runAsync(['raise', build, '--answers', id, '--parks', task], null, JSON.stringify({ ...leaningCall('Yes.', 'No.'), question: text }));
+
+    const locking = asked('Does a read lock the ledger?', '1.1');
+    const parked = await raised(locking, 'Does a read lock the ledger?', '1.1');
+    assert.deepStrictEqual([parked.decision, parked.parked, parked.task], ['ask', 'Q1', '1.1'], 'the question parks its task, numbered');
+    assert.strictEqual(parked.line, 'Task 1.1 parks on Q1, waiting for you: Does a read lock the ledger? The other tasks carry on.');
+    const ordering = asked('Does a fold keep the ledger\'s order?', '1.2');
+    await raised(ordering, 'Does a fold keep the ledger\'s order?', '1.2');
+
+    const waiting = () => sim.run(['raise', 'waiting', wu]).waiting.map((/** @type {{question: string, parks: string}} */ q) => [q.question, q.parks]);
+    assert.deepStrictEqual(waiting(), [['Q1', '1.1'], ['Q2', '1.2']], 'the questions waiting, oldest first, with the tasks they park');
+
+    // Claude carries on with the task nothing parks, its calls made for it.
+    const folding = asked('Does a fold read the whole ledger?', '1.3');
+    sim.run(['ledger', 'decide', build, '--answers', folding, '--task', '1.3'], null, JSON.stringify({ ...made, text: 'A fold reads it whole.', why: 'Every event counts.' }));
+
+    // The person, ready, takes Q1: drawn from its park, answered against the lean.
+    const drawn = sim.run(['raise', 'draw', wu, 'Q1']);
+    assert.deepStrictEqual([drawn.question, drawn.parks], ['Q1', '1.1'], 'the question is drawn from its park');
+    const answered = sim.run(['raise', 'answer', drawn.raise, '--pick', '2'], null, JSON.stringify({ why: 'Readers never wait on a writer.' }));
+    assert.strictEqual(answered.receipt, 'Q1 answered · task 1.1 builds again · 1 waiting on you');
+
+    // Q2 set aside stays waiting, until the person decides it unprompted.
+    assert.strictEqual(sim.run(['raise', 'aside', wu, 'Q2']).receipt, 'Q2 set aside · still waiting · 1 waiting on you');
+    assert.deepStrictEqual(waiting(), [['Q2', '1.2']], 'a question set aside still waits');
+    sim.run(['ledger', 'decide', build, '--answers', ordering, '--task', '1.2'], null, JSON.stringify({ by: 'person', text: 'A fold keeps the order.', why: 'Order is the history.' }));
+    assert.deepStrictEqual(waiting(), [], 'a question answered any way waits no longer');
+  });
+});

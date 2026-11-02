@@ -38,7 +38,7 @@ const { useWorld, machinesSharing, blobId, commitUnpushed, pushFailing, entry, l
 const world = useWorld();
 
 describe('the ledger through a catch-up', () => {
-  const ASKED = { event: 'asked', unit: 'fumi', topic: 'a', phase: 'discussion', session: 's1', by: 'claude', who_moved_whom: 'none', part_of: null, relies_on: [], cites: [] };
+  const ASKED = { event: 'asked', unit: 'fumi', topic: 'a', phase: 'discussion', session: 's1', by: 'claude', who_moved_whom: 'none', part_of: null, relies_on: [], cites: [], task: null };
 
   /** A ledger line of a question asked. @param {string} text */
   function askedLine(text) {

@@ -247,7 +247,7 @@ describe('the seal (P1, P6)', () => {
     assert.deepStrictEqual(Object.keys(seals()), [res.raise]);
     assert.ok(!Number.isNaN(Date.parse(sealed.at)), `when it was shown is no time: ${sealed.at}`);
     assert.deepStrictEqual(sealed, {
-      v: 1,
+      v: 2,
       id: res.raise,
       menu: `raise — ${res.raise}`,
       place: { unit: 'fumi', phase: 'discussion', topic: 'note-window' },
@@ -261,6 +261,7 @@ describe('the seal (P1, P6)', () => {
       at: sealed.at,
       answered: null,
       didnt_follow: 0,
+      parks: null,
     });
   });
 
@@ -297,7 +298,7 @@ describe('the seal (P1, P6)', () => {
 
   it('a seal of another version is never matched, nor drawn by raise show, and stays as written', async () => {
     const first = await draw();
-    const newer = { ...seals()[first.res.raise], v: 2 };
+    const newer = { ...seals()[first.res.raise], v: 3 };
     fs.writeFileSync(inFolder('raise-shown.json'), JSON.stringify({ [first.res.raise]: newer }));
 
     const again = await draw();
@@ -444,7 +445,7 @@ describe('the draw\'s refusals, drawing and sealing nothing', () => {
 
   it('argv ledger decide would not take, in the raise\'s own words', async () => {
     assert.strictEqual(await refusedDraw([NOTE], JSON.stringify(CALL)),
-      'raise needs --answers <id> — Usage: engine raise <work-unit>.<phase>[.<topic>] --answers <id> [--relies-on <id> …]   (the call as JSON on stdin)');
+      'raise needs --answers <id> — Usage: engine raise <work-unit>.<phase>[.<topic>] --answers <id> [--relies-on <id> …] [--parks <phase>.<n>]   (the call as JSON on stdin)');
   });
 
   it('a place ledger decide would refuse', async () => {

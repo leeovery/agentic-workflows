@@ -44,6 +44,8 @@ const { shellWords, auditState, auditGatePayload, auditTrust, trustLines, auditG
 // The topic family's map verbs, which answer their one-line report after
 // their JSON (8.8.7).
 const MAP_VERBS = Object.freeze(['add', 'add-batch', 'edit', 'rename', 'remove', 'order', 'brief']);
+// The raise commands that draw nothing: an answer, a question set aside, the questions waiting.
+const RAISE_ANSWERS = Object.freeze(['answer', 'aside', 'waiting']);
 
 const simWorld = fixtureFrom('pipeline-sim-', (dir) => {
   // This checkout's knowledge setup: keyword-only, pinned as setup records
@@ -117,12 +119,13 @@ class Sim {
   // surfaces fetched at their display point. The section-bearing commands
   // left are presence, whose scan is a read-only snapshot whose deferral
   // advisory rides the dump, the view-family pattern; a raise's draw and
-  // show — every raise command but its answer — whose sections are the
-  // screen the raise is drawn as; and the entry, whose sections are what
+  // show — every raise command but its answer, an aside and the questions
+  // waiting — whose sections are the screen the raise is drawn as, none
+  // where it parks its task or proceeds; and the entry, whose sections are what
   // the phase reads on arrival.
   /** @param {string[]} args */
   static carriesSections([group, verb]) {
-    return group === 'presence' || group === 'enter' || (group === 'raise' && verb !== 'answer') || (group === 'topic' && MAP_VERBS.includes(verb));
+    return group === 'presence' || group === 'enter' || (group === 'raise' && !RAISE_ANSWERS.includes(verb)) || (group === 'topic' && MAP_VERBS.includes(verb));
   }
 
   /**

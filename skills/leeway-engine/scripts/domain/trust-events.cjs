@@ -80,7 +80,7 @@
 // ---------------------------------------------------------------------------
 
 const {
-  type, TEXT, ID, FLAG, TIME, VERSION, KINDS, oneOf, nullable, field, event, addedIn, readFields,
+  type, TEXT, ID, FLAG, TIME, VERSION, KEY, KINDS, oneOf, nullable, field, event, addedIn, readFields,
 } = require('./event-fields.cjs');
 const { KEBAB_SLUG_PATTERN, BUILD_POSITIONS } = require('../kernel/manifest-schema.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
@@ -89,8 +89,6 @@ const { isObject } = require('../kernel/manifest-io.cjs');
 /** @typedef {import('./event-fields.cjs').Schema} Schema */
 
 const KIND = nullable(oneOf(...KINDS));
-// A row's or an option's key: a letter, a number or a word, never a sentence.
-const KEY = type('a key: letters, digits, - and _, up to 24 of them', (v) => typeof v === 'string' && /^[A-Za-z0-9][A-Za-z0-9_-]{0,23}$/.test(v));
 // A gate's name, as the engine's menus name their gates: a few lowercase words.
 const GATE = type('a gate\'s name: up to five lowercase words, 40 characters at most', (v) => typeof v === 'string' && v.length <= 40
   && /^[a-z0-9]+(?:-[a-z0-9]+)*(?: [a-z0-9]+(?:-[a-z0-9]+)*){0,4}$/.test(v));

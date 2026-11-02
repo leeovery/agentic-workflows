@@ -3,8 +3,10 @@
 // ---------------------------------------------------------------------------
 // Domain ring: a raise's screen (16.9.2) — one MENU, drawn from the raise's
 // seal alone (raise.cjs), read cold and product first: where the question
-// stands, the question, Claude's lean, what the person would notice with
-// each row, why it asks, and, with the toggle on, the mechanism; then the
+// stands — for a question waiting in the build, its number and the task it
+// parks besides (16.9.5) — the question, Claude's lean, what the person
+// would notice with each row, why it asks, and, with the toggle on, the
+// mechanism; then the
 // rows, the lean recommended, the toggle, "I don't follow" and a comment.
 // A raise on a replacement draws Claude's proposals, then the row its seal
 // holds for keeping the entry as it stands, never recommended. A fact draws
@@ -21,6 +23,7 @@ const { section, menu, cmdOption, promptOption, MENU_INSTRUCTION } = require('./
 const { escapeMarkdown } = require('./worklist.cjs');
 const { titlecase } = require('../conventions.cjs');
 const { titled } = require('../derivations.cjs');
+const { numbered } = require('../questions.cjs');
 
 /** @typedef {import('../raise.cjs').Seal} Seal */
 /** @typedef {import('./surfaces.cjs').Next} Next */
@@ -63,11 +66,17 @@ function asking({ fact }) {
 
 /**
  * Where the question stands: its unit, and its topic where it has one of its
- * own, by the name it goes by.
- * @param {Seal['place']} place @param {Record<string, string>} titles
+ * own, by the name it goes by; a question waiting in the build, by its
+ * number before them and the task it parks after.
+ * @param {Seal} seal @param {Record<string, string>} titles
  */
-function header({ unit, topic }, titles) {
-  return [titlecase(unit), ...(topic === null || topic === unit ? [] : [titled(titles, topic)])].join(' · ');
+function header({ place: { unit, topic }, parks }, titles) {
+  return [
+    ...(parks === null ? [] : [numbered(parks.number)]),
+    titlecase(unit),
+    ...(topic === null || topic === unit ? [] : [titled(titles, topic)]),
+    ...(parks === null ? [] : [`parks task ${parks.task}`]),
+  ].join(' · ');
 }
 
 /**
@@ -78,11 +87,11 @@ function header({ unit, topic }, titles) {
  * @returns {string[]}
  */
 function statement(seal, technical, titles) {
-  const { place, call, reason } = seal;
+  const { call, reason } = seal;
   const lean = call.rows.find((row) => row.key === leanOf(seal));
   const rows = drawnRows(seal);
   return [
-    header(place, titles),
+    header(seal, titles),
     '',
     escapeMarkdown(call.question),
     '',

@@ -749,6 +749,8 @@ function auditCopies(root, events, shownAt, placed, full, ctx) {
 // naming the line, for each of the person's
 // answers to the lean a raise sealed — an entry, or a keep of the decision
 // Claude proposed to replace — beside the raises the person did not follow;
+// each answered blocking the build where its answer is made in one of the
+// build's phases, and saying nothing of it elsewhere (16.4.7);
 // none of them for anything else; and nothing left waiting in a
 // conversation, as no append fails. Every verdict names a departure the
 // trust log holds — a raise answered against the lean, a keep among them,
@@ -784,6 +786,10 @@ function auditTrust(sim, label, ran = []) {
   assert.deepStrictEqual(ofType('raise').filter((e) => !e.didnt_follow).map((e) => e.entry).sort(),
     entries.filter((e) => (isDecision(e) && e.by === 'person' && e.sealed !== null) || isKeep(e)).map((e) => e.id).sort(),
     ctx('the trust log does not hold one raise for each of the person\'s answers to the lean a raise sealed, and no other'));
+  for (const raise of ofType('raise').filter((e) => !e.didnt_follow)) {
+    assert.strictEqual(raise.blocked_build, schema.BUILD_PHASES.includes(byId.get(raise.entry).phase) ? true : null,
+      ctx(`the raise ${raise.id} does not block the build exactly where its answer is made in one of the build's phases`));
+  }
   const conversations = path.join(sim.configDir, 'conversations');
   const waiting = fs.existsSync(conversations) ? fs.readdirSync(conversations).filter((name) => fs.existsSync(path.join(conversations, name, PENDING))) : [];
   assert.deepStrictEqual(waiting, [], ctx('an event waits in a conversation, though no append failed'));

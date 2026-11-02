@@ -7,10 +7,11 @@
 // for a refusal, and the test of it; a field a release after a stream's
 // first added names that version and the default a line written before it
 // takes. An event's line is read against the fields its version holds, in
-// their order, and nothing else. The kinds of question (16.11.3) are named
-// here too, since both streams carry them.
+// their order, and nothing else. The kinds of question (16.11.3) and a
+// row's key are named here too, since both streams carry them.
 // ---------------------------------------------------------------------------
 
+const { isObject } = require('../kernel/manifest-io.cjs');
 const { isId } = require('./ledger-ids.cjs');
 
 /**
@@ -44,6 +45,10 @@ const ID = { ...type('an entry id', isId), names: /** @type {const} */ ('one') }
 const FLAG = type('true or false', (v) => typeof v === 'boolean');
 const TIME = type('a UTC time', (v) => typeof v === 'string' && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?Z$/.test(v) && !Number.isNaN(Date.parse(v)));
 const VERSION = type('a schema version', (v) => Number.isInteger(v) && /** @type {number} */ (v) >= 1);
+const COUNT = type('a whole number from 1', (v) => Number.isInteger(v) && /** @type {number} */ (v) >= 1);
+const LINE = type('one line of text', (v) => TEXT.test(v) && !/[\r\n]/.test(/** @type {string} */ (v)));
+// A row's or an option's key: a letter, a number or a word, never a sentence.
+const KEY = type('a key: letters, digits, - and _, up to 24 of them', (v) => typeof v === 'string' && /^[A-Za-z0-9][A-Za-z0-9_-]{0,23}$/.test(v));
 
 /** @param {...string} values @returns {Type} */
 function oneOf(...values) {
@@ -58,6 +63,17 @@ function nullable(item) {
 /** @param {Type} item @returns {Type} */
 function listOf(item) {
   return { ...type(`a list of ${item.is}`, (v) => Array.isArray(v) && v.every(item.test)), ...(item.names === undefined ? {} : { names: 'many' }) };
+}
+
+/**
+ * An object holding `fields` and nothing else, each of its type.
+ * @param {string} is @param {Readonly<Record<string, Type>>} fields
+ * @returns {Type}
+ */
+function shaped(is, fields) {
+  const names = Object.keys(fields);
+  return type(is, (v) => isObject(v) && Object.keys(v).length === names.length
+    && names.every((name) => Object.hasOwn(v, name) && fields[name].test(v[name])));
 }
 
 /**
@@ -115,4 +131,4 @@ function readFields(value, fields, v, name) {
   return { event };
 }
 
-module.exports = { type, TEXT, ID, FLAG, TIME, VERSION, KINDS, oneOf, nullable, listOf, field, event, addedIn, readFields };
+module.exports = { type, TEXT, ID, FLAG, TIME, VERSION, COUNT, LINE, KEY, KINDS, oneOf, nullable, listOf, shaped, field, event, addedIn, readFields };

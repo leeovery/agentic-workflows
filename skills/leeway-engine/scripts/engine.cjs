@@ -67,7 +67,8 @@ const { VERDICT_USAGE, runVerdictVerb } = require('./domain/verdict.cjs');
 const { followingLiveness } = require('./domain/ledger-copies.cjs');
 const { answerGithubRule, answerGithubSquash } = require('./domain/github-setup.cjs');
 const { answerGate, recordGateShown } = require('./domain/gate.cjs');
-const { RAISE_USAGE, drawRaise, showRaise, answerRaise, raiseWaits, raiseScreenOf } = require('./domain/raise.cjs');
+const { RAISE_USAGE, drawRaise, drawParked, showRaise, answerRaise, raiseWaits, raiseScreenOf } = require('./domain/raise.cjs');
+const { numbered, waitingQuestions, asideQuestions } = require('./domain/questions.cjs');
 const { openGate } = require('./domain/projections/surfaces.cjs');
 const { mapReceipt } = require('./domain/projections/transactions.cjs');
 const { LAND_USAGE, landOpen, landChain, landPhase, landFinish } = require('./domain/landing.cjs');
@@ -1741,9 +1742,11 @@ function runGate(call, argv) {
 // conversation and drawn (domain/raise.cjs, its screen
 // domain/projections/raise.cjs), or, where it proceeds, landed as Claude's —
 // answering once its rows' one-decision checks have; with --fact, a fact
-// only the person holds, always sealed and drawn; `show` draws a sealed
-// raise again; `answer` records the person's answer to it, a keep of the
-// decision among them.
+// only the person holds, always sealed and drawn; in the build, parking its
+// task where it asks; `show` draws a sealed raise again; `answer` records
+// the person's answer to it, a keep of the decision among them; `draw`
+// raises a question waiting in the build, `aside` sets questions aside and
+// `waiting` lists a unit's (domain/questions.cjs).
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */
@@ -1752,6 +1755,10 @@ async function runRaiseDraw(call, argv) {
     const drawn = await drawRaise(call.cwd, argv, call.stdin);
     if (drawn.decision === 'proceed') {
       respond(call, { decision: drawn.decision, reason: drawn.reason, ...drawn.landed });
+      return;
+    }
+    if ('parked' in drawn) {
+      respond(call, drawn);
       return;
     }
     const { decision, reason, seal, redrawn, warnings } = drawn;
@@ -1771,12 +1778,25 @@ function runRaiseShow(call, argv) {
   respondSections(call, screen);
 }
 
+/** @param {Call} call @param {string[]} argv */
+function runRaiseDrawParked(call, argv) {
+  const { seal, redrawn, warnings } = drawParked(call.cwd, argv);
+  const screen = raiseScreenOf(call.cwd, seal);
+  const { number, task } = /** @type {import('./domain/questions.cjs').Parks} */ (seal.parks);
+  respond(call, { raise: seal.id, question: numbered(number), parks: task, redrawn, ...(warnings.length > 0 ? { warnings } : {}) });
+  respondSections(call, screen);
+}
+
 /** @param {Call} call @param {string[]} argv @returns {void|Promise<void>} */
 function runRaise(call, argv) {
   if (raiseWaits(argv)) return runRaiseDraw(call, argv);
+  const [sub, ...rest] = argv;
   try {
-    if (argv[0] === 'answer') respond(call, answerRaise(call.cwd, argv.slice(1), call.stdin));
-    else runRaiseShow(call, argv.slice(1));
+    if (sub === 'answer') respond(call, answerRaise(call.cwd, rest, call.stdin));
+    else if (sub === 'draw') runRaiseDrawParked(call, rest);
+    else if (sub === 'aside') respond(call, asideQuestions(call.cwd, rest));
+    else if (sub === 'waiting') respond(call, waitingQuestions(call.cwd, rest));
+    else runRaiseShow(call, rest);
   } catch (err) {
     failJson(call, err);
   }

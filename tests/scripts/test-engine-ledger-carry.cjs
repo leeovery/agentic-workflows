@@ -82,18 +82,18 @@ describe('a topic\'s record carried (21.6, 21.10.9)', () => {
     const res = carry(LICENSING, [QUESTION, DECISION, FINDING]);
     const entries = ledgerEntries(statePath(dir));
     const [q, d, , f] = entries;
-    const tags = { v: 2, unit: 'fumi', topic: 'licensing', phase: 'discussion', session: SESSION.CLAUDE_CODE_SESSION_ID };
+    const tags = { v: 3, unit: 'fumi', topic: 'licensing', phase: 'discussion', session: SESSION.CLAUDE_CODE_SESSION_ID };
 
     assert.deepStrictEqual(res, { ok: true, carried: 3, ids: { q1: q.id.slice(0, res.ids.q1.length), d1: d.id.slice(0, res.ids.d1.length), f1: f.id.slice(0, res.ids.f1.length) }, committed: null, note: 'held for the migration\'s commit' });
     assert.deepStrictEqual(lines(), [
-      { ...tags, event: 'asked', by: 'person', who_moved_whom: 'none', text: QUESTION.text, part_of: null, relies_on: [], cites: QUESTION.cites },
+      { ...tags, event: 'asked', by: 'person', who_moved_whom: 'none', text: QUESTION.text, part_of: null, relies_on: [], cites: QUESTION.cites, task: null },
       {
         ...tags, event: 'decided', by: 'claude', who_moved_whom: 'none', answers: q.id, text: 'Fourteen days.', why: 'The person set it.', rules_out: [], relies_on: [], product_wide: false,
-        sealed: null, alternatives: [], evidence: [], kind: null, unchecked: true, given: 'carried', cites: DECISION.cites,
+        sealed: null, alternatives: [], evidence: [], kind: null, unchecked: true, given: 'carried', cites: DECISION.cites, task: null,
       },
       { ...tags, event: 'asset', entry: d.id, path: 'fumi/assets/pricing.md', status: 'reference', into: null },
       {
-        ...tags, event: 'found', by: 'claude', who_moved_whom: 'none', text: FINDING.text, how: FINDING.how, relies_on: [d.id], product_wide: true, known: 'read', command: null, result: null, cites: FINDING.cites,
+        ...tags, event: 'found', by: 'claude', who_moved_whom: 'none', text: FINDING.text, how: FINDING.how, relies_on: [d.id], product_wide: true, known: 'read', command: null, result: null, cites: FINDING.cites, task: null,
       },
     ]);
     assert.deepStrictEqual(kept('fumi', 'licensing'), {

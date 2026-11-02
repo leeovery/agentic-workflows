@@ -14,7 +14,8 @@
 // call or carrying Claude's sealed answer (ledger-verdicts.cjs); the unit,
 // topic and phase it was written in; the first entry of its chain; its
 // links, an asset link's path and whether it gives a status or a lift among
-// them; every entry linking back to it — the replacements naming it, the
+// them; the task it was made for, in the build, and a parked question's
+// number; every entry linking back to it — the replacements naming it, the
 // merges that took it as a duplicate, the confirmations that it still
 // holds, the person's keeps of it against Claude's proposed replacement,
 // which change nothing current, the asset links giving a file a status or a
@@ -180,6 +181,8 @@ const { PRODUCT, entryKind, claudesCall, roadmapItemOf } = require('./ledger-eve
  *   path: string|null,
  *   gives_status: boolean,
  *   lifts: boolean,
+ *   task: string|null,
+ *   number: number|null,
  *   replaced_by: readonly string[],
  *   merged_by: readonly string[],
  *   answered_by: readonly string[],
@@ -276,6 +279,8 @@ const ID_FACTS = {
       path: event.event === 'asset' ? idOrNull(event.path) : null,
       gives_status: event.event === 'asset' && event.status !== null,
       lifts: event.event === 'asset' && event.into !== null,
+      task: typeof event.task === 'string' ? event.task : null,
+      number: event.event === 'parked' ? /** @type {number} */ (event.number) : null,
       replaced_by: NONE,
       merged_by: NONE,
       answered_by: NONE,

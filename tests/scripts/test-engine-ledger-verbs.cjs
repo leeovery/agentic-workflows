@@ -53,7 +53,7 @@ describe('the write verbs (6.1.4)', () => {
     const res = write('ask', NOTE, ['--part-of', parent, '--relies-on', finding], { by: 'person', who_moved_whom: 'none', text: 'Does a note snap to the grid?' });
 
     const id = assertLast('asked', AT_NOTE, {
-      by: 'person', who_moved_whom: 'none', text: 'Does a note snap to the grid?', part_of: full(parent), relies_on: [full(finding)], cites: [],
+      by: 'person', who_moved_whom: 'none', text: 'Does a note snap to the grid?', part_of: full(parent), relies_on: [full(finding)], cites: [], task: null,
     });
     assertAnswered(res, id);
   });
@@ -63,7 +63,7 @@ describe('the write verbs (6.1.4)', () => {
 
     const id = assertLast('found', AT_NOTE, {
       by: 'claude', who_moved_whom: 'none', text: 'CKSyncEngine ships from macOS 14.', how: 'Apple\'s documentation', relies_on: [], product_wide: true,
-      known: 'documented', command: null, result: null, cites: [],
+      known: 'documented', command: null, result: null, cites: [], task: null,
     });
     assertAnswered(res, id);
   });
@@ -80,7 +80,7 @@ describe('the write verbs (6.1.4)', () => {
     const id = assertLast('decided', AT_NOTE, {
       by: 'person', who_moved_whom: 'none', answers: full(question), text: 'A near-frameless floating note.', why: 'Notes are furniture on the desk.',
       rules_out: ['a title bar', 'a dock icon'], relies_on: [full(finding)], product_wide: false, sealed: null, alternatives: [], evidence: [], kind: 'look', unchecked: true,
-      given: 'own', cites: [],
+      given: 'own', cites: [], task: null,
     });
     assertAnswered(res, id);
     assert.strictEqual(entries().length, 3, 'one line appended per write');
@@ -104,7 +104,7 @@ describe('the write verbs (6.1.4)', () => {
     assertLast('decided', AT_NOTE, {
       ...MADE, answers: full(question), text: 'Notes float above every Space.', why: 'A note follows the person.',
       rules_out: [], relies_on: [], product_wide: false, sealed: null, alternatives: ['one Space per note'], evidence: ['the spike'], kind: null, unchecked: true,
-      given: 'own', cites: [],
+      given: 'own', cites: [], task: null,
     });
   });
 
@@ -120,7 +120,7 @@ describe('the write verbs (6.1.4)', () => {
     const id = assertLast('replaced', AT_NOTE, {
       by: 'person', who_moved_whom: 'person-moved-claude', replaces: full(old), reason: 'changed-mind', cause: null, drops: ['a near-frameless window'], of: 'decision',
       answers: full(question), text: 'A frameless surface.', why: 'Lighter on the desk.', rules_out: ['a border'], relies_on: [],
-      product_wide: false, sealed: null, alternatives: [], evidence: [], kind: null, unchecked: true, given: 'own', cites: [],
+      product_wide: false, sealed: null, alternatives: [], evidence: [], kind: null, unchecked: true, given: 'own', cites: [], task: null,
     });
     assertAnswered(res, id);
     assert.deepStrictEqual(rawLines().slice(0, -1), before);
@@ -134,13 +134,13 @@ describe('the write verbs (6.1.4)', () => {
     write('replace', NOTE, ['--replaces', child, '--reason', 'new-fact', '--cause', finding], { ...MADE, drops: ['Spaces'], text: 'Which display does a new note open on?' });
     assertLast('replaced', AT_NOTE, {
       ...MADE, replaces: full(child), reason: 'new-fact', cause: full(finding), drops: ['Spaces'], of: 'question',
-      text: 'Which display does a new note open on?', part_of: full(parent), relies_on: [], cites: [],
+      text: 'Which display does a new note open on?', part_of: full(parent), relies_on: [], cites: [], task: null,
     });
 
     write('replace', NOTE, ['--replaces', finding, '--reason', 'was-wrong', '--relies-on', parent], { ...MADE, drops: ['across restarts'], text: 'Spaces keep their ids within a login.', how: 'a second spike', known: 'spike' });
     assertLast('replaced', AT_NOTE, {
       ...MADE, replaces: full(finding), reason: 'was-wrong', cause: null, drops: ['across restarts'], of: 'finding',
-      text: 'Spaces keep their ids within a login.', how: 'a second spike', relies_on: [full(parent)], product_wide: false, known: 'spike', command: null, result: null, cites: [],
+      text: 'Spaces keep their ids within a login.', how: 'a second spike', relies_on: [full(parent)], product_wide: false, known: 'spike', command: null, result: null, cites: [], task: null,
     });
   });
 

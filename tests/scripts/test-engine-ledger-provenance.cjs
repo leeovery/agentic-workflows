@@ -218,7 +218,7 @@ describe('a ledger version 1 wrote (5.7.2)', () => {
       const expected = JSON.parse(JSON.stringify(projections(written)), (key, value) => (key === 'known' ? null : value));
       const copied = fs.readFileSync(statePath(written, NOTE_COPY), 'utf8').replace('How it is known: read, the person said so', 'How it is known: the person said so');
       const v1 = there.rawLines().map((raw) => {
-        const { given: _given, known: _known, command: _command, result: _result, cites: _cites, ...fields } = JSON.parse(raw);
+        const { given: _given, known: _known, command: _command, result: _result, cites: _cites, task: _task, ...fields } = JSON.parse(raw);
         return `${JSON.stringify({ ...fields, v: 1 })}\n`;
       });
       keywordOnlyKnowledge(dir);
