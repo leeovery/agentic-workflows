@@ -18,7 +18,10 @@
 // messages Claude Code writes itself — a subagent's where the command runs
 // in the worktree of one still at work, the deepest where worktrees nest,
 // its record's model before its transcript names one; else the
-// conversation's.
+// conversation's. And the position's one read, `readPosition`, with the
+// tasks in flight the commit door and the hook before Bash check a commit
+// against: every task in flight with its builder's and its pair's agent ids,
+// what does not read as its field left out.
 //
 
 require('./hermetic-env.cjs');
@@ -30,7 +33,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const harness = require('./engine-harness.cjs');
-const { tidyConversations, callerModel } = require('../../skills/leeway-engine/scripts/domain/conversation.cjs');
+const { tidyConversations, callerModel, readPosition, tasksInFlight, positionPath } = require('../../skills/leeway-engine/scripts/domain/conversation.cjs');
 
 const SKILLS = path.resolve(__dirname, '..', '..', 'skills');
 
@@ -310,8 +313,74 @@ describe('engine conversation end', () => {
   it('refuses an argument loudly — an authoring bug, never a silent no-op', () => {
     assert.match(harness.refuses(dir, ['conversation', 'end', 'sess-1']).error, /^Usage: engine conversation end$/);
     for (const args of [['conversation', 'begin'], ['conversation']]) {
-      assert.match(harness.refuses(dir, args).error, /^Usage: engine conversation <end\|position\|executor> …$/, args.join(' '));
+      assert.match(harness.refuses(dir, args).error, /^Usage: engine conversation <end\|position\|builder> …$/, args.join(' '));
     }
+  });
+});
+
+describe('the position, read in one place (4.11.14, 24.2.4)', () => {
+  /** @type {string|undefined} */
+  let pinnedConfig;
+  beforeEach(() => {
+    config = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-conversation-config-'));
+    pinnedConfig = process.env.LEEWAY_CONFIG_DIR;
+    process.env.LEEWAY_CONFIG_DIR = config;
+  });
+  afterEach(() => {
+    process.env.LEEWAY_CONFIG_DIR = pinnedConfig;
+    fs.rmSync(config, { recursive: true, force: true });
+  });
+
+  /** The conversation `id`'s position file holding `value`, as JSON. @param {string} id @param {unknown} value */
+  function stored(id, value) {
+    fs.mkdirSync(folder(id), { recursive: true });
+    fs.writeFileSync(positionPath(id), JSON.stringify(value));
+  }
+
+  const BUILDING = { name: 'pay', phase: 'implementation', topic: 'pay' };
+
+  it('reads every task in flight, each with its builder and its pair — and the commit door\'s and the hook\'s read, each with its unit', () => {
+    const tasks = [
+      { task: '1.1', builder: 'aa76bd7f82a2ef3e4', reviewers: ['r1', 'r2'] },
+      { task: '1.2', builder: null, reviewers: [] },
+      { task: '2.1', builder: 'b2', reviewers: ['r3'] },
+    ];
+    stored('sess-1', { ...BUILDING, tasks });
+
+    assert.deepStrictEqual(readPosition('sess-1'), { ...BUILDING, tasks });
+    assert.deepStrictEqual(tasksInFlight('sess-1'), tasks.map((task) => ({ unit: 'pay', ...task })));
+  });
+
+  it('leaves out what does not read as its field — a task that is no `{phase}.{n}`, an agent id that is none, a field it does not hold — and `tasks` with none left', () => {
+    stored('sess-1', {
+      ...BUILDING,
+      task: '1.9',
+      executor: 'aa76bd7f82a2ef3e4',
+      tasks: [
+        { task: '1.1', builder: 'a b', reviewers: ['r1', '../x', 7, 'r2'] },
+        { task: '1-2', builder: 'b2', reviewers: [] },
+        { task: 3, builder: 'b3', reviewers: [] },
+        'task 1.4',
+        null,
+        { task: '1.5', builder: ['b5'], reviewers: 'r5' },
+      ],
+    });
+    assert.deepStrictEqual(readPosition('sess-1'), {
+      ...BUILDING,
+      tasks: [{ task: '1.1', builder: null, reviewers: ['r1', 'r2'] }, { task: '1.5', builder: null, reviewers: [] }],
+    });
+
+    stored('sess-2', { ...BUILDING, task: '1.1', executor: 'aa76bd7f82a2ef3e4' });
+    stored('sess-3', { ...BUILDING, tasks: [{ task: '' }] });
+    assert.deepStrictEqual([readPosition('sess-2'), tasksInFlight('sess-2')], [BUILDING, []], 'a single task field is no task in flight');
+    assert.deepStrictEqual(readPosition('sess-3'), BUILDING, 'no task left to read');
+  });
+
+  it('none where no place is named — no file, one that is no JSON, one naming no work unit — and so no task in flight', () => {
+    stored('sess-1', { phase: 'implementation', topic: 'pay', tasks: [{ task: '1.1', builder: null, reviewers: [] }] });
+    fs.mkdirSync(folder('sess-2'), { recursive: true });
+    fs.writeFileSync(positionPath('sess-2'), '{"name": "pay"');
+    for (const id of ['sess-1', 'sess-2', 'sess-none']) assert.deepStrictEqual([readPosition(id), tasksInFlight(id)], [null, []], id);
   });
 });
 

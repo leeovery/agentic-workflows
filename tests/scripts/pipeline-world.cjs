@@ -741,7 +741,7 @@ function walkDeliveryPhasesToImplementation(sim, wu, topic) {
   walkToLiveImplementation(sim, wu, topic);
   sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`, '--topic', `implementation/${topic}`]);
   sim.run(['task', 'start', wu, topic, `${topic}-1-1`]);
-  assert.deepStrictEqual(carryOn(sim).position, { name: wu, phase: 'implementation', topic, task: '1.1' },
+  assert.deepStrictEqual(carryOn(sim).position, { name: wu, phase: 'implementation', topic, tasks: [{ task: '1.1', builder: null, reviewers: [] }] },
     'task start puts the task in flight on the position');
   // Phase boundary: the completion defers its flag, the consolidation pass
   // finds nothing, and the re-record closes the phase (consolidation-pass.md F).
@@ -901,17 +901,18 @@ function walkDeliveryPhases(sim, wu, topic) {
   assert.strictEqual(sim.run(['task', 'start', wu, topic, `${topic}-1-1`]).do_banking, true,
     'the first plan task banks — the deposits below are made while its phase is still open');
   const onTask = carryOn(sim);
-  assert.deepStrictEqual(onTask.position, { name: wu, phase: 'implementation', topic, task: '1.1' });
+  assert.deepStrictEqual(onTask.position, { name: wu, phase: 'implementation', topic, tasks: [{ task: '1.1', builder: null, reviewers: [] }] });
   assert.strictEqual(onTask.skill, path.join(sim.dir, '.claude/skills/leeway-implementation-process/SKILL.md'));
   assert.match(onTask.text, new RegExp(`^The conversation was just compacted\\. This conversation is working in the implementation of .*, on task 1\\.1 \\(internal id \`${topic}-1-1\`\\)\\.`));
-  // The executor's dispatch: the gate mod hands the engine its agent id, which
-  // rides on the position with the task — through the recovery steps' re-run
-  // of `task start` — so the note names the agent the later rounds continue.
-  assert.strictEqual(sim.run(['conversation', 'executor', sim.env.CLAUDE_CODE_SESSION_ID, 'aa76bd7f82a2ef3e4']).recorded, true);
+  // The executor's dispatch: the gate mod hands the engine its agent id, the
+  // builder of the one task in flight, which rides on the position with the
+  // task — through the recovery steps' re-run of `task start` — so the note
+  // names the agent the later rounds continue.
+  assert.strictEqual(sim.run(['conversation', 'builder', sim.env.CLAUDE_CODE_SESSION_ID, 'aa76bd7f82a2ef3e4']).recorded, true);
   sim.run(['task', 'start', wu, topic, `${topic}-1-1`]);
   const withExecutor = carryOn(sim);
-  assert.strictEqual(withExecutor.position.executor, 'aa76bd7f82a2ef3e4', 'the recovery re-run of task start keeps the executor');
-  assert.match(withExecutor.text, new RegExp(`, on task 1\\.1 \\(internal id \`${topic}-1-1\`\\), its executor agent \`aa76bd7f82a2ef3e4\`\\.`));
+  assert.strictEqual(withExecutor.position.tasks[0].builder, 'aa76bd7f82a2ef3e4', 'the recovery re-run of task start keeps the executor');
+  assert.match(withExecutor.text, new RegExp(`, on task 1\\.1 \\(internal id \`${topic}-1-1\`\\), its builder agent \`aa76bd7f82a2ef3e4\`\\.`));
   // The loop's two stops: an executor that comes back blocked or failed
   // (task-loop C), and the analysis loop's checkpoint over files
   // implementation never wrote.

@@ -12,6 +12,7 @@
 // `brief-refusals.jsonl` in the system config directory.
 // ---------------------------------------------------------------------------
 
+const fs = require('fs');
 const path = require('path');
 const { conversationDir } = require('./conversation.cjs');
 
@@ -24,8 +25,11 @@ const BRIEF_REFUSALS = 'brief-refusals.jsonl';
 /** What a dispatch carries in place of its brief, before the brief's id. */
 const POINTER = 'brief:';
 
+/** A brief's id, as `newId` mints one. */
+const ID = '[0-9A-Za-z]+';
+
 /** A pointer anywhere in a text, its id captured. */
-const POINTED = new RegExp(`${POINTER}([0-9A-Za-z]+)`);
+const POINTED = new RegExp(`${POINTER}(${ID})`);
 
 /** How the workflows' agents are named: the hook acts on every agent so named, and on no other. */
 const OURS = 'leeway-';
@@ -101,4 +105,24 @@ function pointedId(text) {
   return POINTED.exec(text)?.[1] ?? null;
 }
 
-module.exports = { OURS, POINTER, ROLES, BRIEFS, BRIEF_REFUSALS, briefPath, issuedPath, pointerOf, pointedId };
+/** Whether a value reads as a brief's id. @param {unknown} value @returns {value is string} */
+function isBriefId(value) {
+  return typeof value === 'string' && new RegExp(`^${ID}$`).test(value);
+}
+
+/**
+ * The record of whose the brief `id` is, as the conversation `session`
+ * stored it beside the brief; null where it stored none, or it names no
+ * agent.
+ * @param {string} session @param {string} id @returns {Issued|null}
+ */
+function issuedOf(session, id) {
+  try {
+    const issued = JSON.parse(fs.readFileSync(issuedPath(session, id), 'utf8'));
+    return issued !== null && typeof issued === 'object' && typeof issued.agent === 'string' ? issued : null;
+  } catch {
+    return null;
+  }
+}
+
+module.exports = { OURS, POINTER, ROLES, BRIEFS, BRIEF_REFUSALS, briefPath, issuedPath, pointerOf, pointedId, isBriefId, issuedOf };

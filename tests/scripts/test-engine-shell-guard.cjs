@@ -14,19 +14,21 @@
 // moved or removed, `.leeway` removed, the state branch deleted here or on
 // the remote or force-pushed, by every spelling Claude writes, in a project
 // with a remote and one without (4.S7); a raw `git commit` during a build,
-// the task in flight read from the conversation stdin names (6.S11, 6.S22),
-// and in the state worktree at any time; a command naming a file at user
-// level the layout hook refuses Claude's writes to; and a command writing,
-// by any form a shell writes with, to a file in the state only the engine
-// writes, for the layout hook's reason (2.S1). Input it cannot read passes.
+// the tasks in flight read from the conversation stdin names, each with its
+// door (6.S11, 6.S22, 12.S21), and in the state worktree at any time; a
+// command naming a file at user level the layout hook refuses Claude's
+// writes to; and a command writing, by any form a shell writes with, to a
+// file in the state only the engine writes, for the layout hook's reason
+// (2.S1). Input it cannot read passes.
 // A pass never runs git, and the position is read for a commit alone. At
 // the shell door each guard answers before the engine loads anything but
 // its own module, the shell guard's modules pinned one by one, and the
 // layout guard's for a write into the state (E5).
 //
 // Layer: verb, and process for the shell door. World: a project with a unit
-// and a task started in one conversation, a code worktree beside it; a
-// project with a bare remote and one without, for the state's refusals.
+// and two tasks, one started in one conversation and both in another, a
+// code worktree beside it; a project with a bare remote and one without,
+// for the state's refusals.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -52,6 +54,7 @@ const IGNORES_CASE = ignoresCase(fs.realpathSync(os.tmpdir()));
 
 const UNIT = 'pay';
 const BUILDING = 'building-session';
+const PARALLEL = 'parallel-session';
 const IDLE = 'idle-session';
 const PLACED = 'placed-session';
 const NAMELESS = 'nameless-session';
@@ -106,6 +109,7 @@ const unitWorld = fixtureFrom('shell-guard-', (dir) => {
   const file = path.join(dir, '..', 'task.md');
   fs.writeFileSync(file, TASK);
   ok(dir, ['task', 'create', UNIT, '1', '--file', file]);
+  ok(dir, ['task', 'create', UNIT, '1', '--file', file]);
 });
 
 /** @type {string} */ let dir;
@@ -118,12 +122,13 @@ before(() => {
   scratch.push(dir, path.dirname(worktree));
   git(dir, ['worktree', 'add', '-q', '-b', 'card', worktree]);
   ok(dir, ['task', 'start', UNIT, '1.1'], { env: { CLAUDE_CODE_SESSION_ID: BUILDING } });
+  for (const task of ['1.1', '1.2']) ok(dir, ['task', 'start', UNIT, task], { env: { CLAUDE_CODE_SESSION_ID: PARALLEL } });
   ok(dir, ['session', 'label', UNIT], { env: { CLAUDE_CODE_SESSION_ID: PLACED } });
 });
 
 after(() => {
   for (const at of scratch) cleanupFixture(at);
-  for (const session of [BUILDING, IDLE, PLACED, NAMELESS]) fs.rmSync(path.join(CONFIG, 'conversations', session), { recursive: true, force: true });
+  for (const session of [BUILDING, PARALLEL, IDLE, PLACED, NAMELESS]) fs.rmSync(path.join(CONFIG, 'conversations', session), { recursive: true, force: true });
 });
 
 /**
@@ -311,6 +316,12 @@ describe('raw commits (6.3.7, 6.3.12, 12.9.8)', () => {
     for (const command of commands) assertRefused(guard(worktree, command, { session: BUILDING }), BUILD_COMMIT, command);
   });
 
+  it('12.S21, 2.S3: with several tasks in flight, as builders work side by side, a raw git commit in any builder\'s worktree is refused, naming each task and its door', () => {
+    const doors = ['1.1', '1.2'].map((task) => `\`engine commit --paths <file>… --task ${UNIT} ${task} -m "<message>"\``).join(' or ');
+    assertRefused(guard(worktree, 'git commit -am "Take the card"', { session: PARALLEL }),
+      `a raw git commit is refused while task 1.1 of ${UNIT}, task 1.2 of ${UNIT} are in flight — the build commits through the commit door: ${doors}`, 'two in flight');
+  });
+
   it('a raw commit is found wherever the text runs one — in a loop, in a conditional, in a substitution alone, by git\'s path', () => {
     for (const command of [
       'for f in a.js b.js; do git add "$f"; git commit -m "$f"; done',
@@ -348,7 +359,7 @@ describe('raw commits (6.3.7, 6.3.12, 12.9.8)', () => {
 
   it('out of a build a raw commit runs: no position, a position naming no task, or a task naming no unit', () => {
     fs.mkdirSync(path.dirname(positionPath(NAMELESS)), { recursive: true });
-    fs.writeFileSync(positionPath(NAMELESS), JSON.stringify({ phase: 'implementation', topic: UNIT, task: '1.1' }));
+    fs.writeFileSync(positionPath(NAMELESS), JSON.stringify({ phase: 'implementation', topic: UNIT, tasks: [{ task: '1.1', builder: null, reviewers: [] }] }));
     assertPassed(guard(worktree, 'git commit -m x', { session: IDLE }), 'no position');
     assertPassed(guard(worktree, 'git commit -m x', { session: PLACED }), 'at a place, no task');
     assertPassed(guard(worktree, 'git commit -m x', { session: NAMELESS }), 'a task, no unit');

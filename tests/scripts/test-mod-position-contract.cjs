@@ -7,8 +7,9 @@
 // and both name the record of the notes handed up alike; the gate mod's
 // spinner reads the position file the engine keeps, by its name and keys,
 // again after the entry and each task verb the engine moves it with;
-// and the gate mod records the executor the implementation dispatches
-// through the verb the engine answers, which the note then names.
+// and the gate mod records each task's builder and reviewers, the brief
+// named by the pointer the engine issues, and the plan's executor, through
+// the verb the engine answers, which the note then names.
 // Each literal is read off the mod's source — a mod cannot import the engine
 // — and held against a real answer.
 
@@ -22,6 +23,9 @@ const path = require('path');
 const harness = require('./engine-harness.cjs');
 const { PROJECT_IDENTITIES, VALID_PHASES } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
 const { TASK_VERBS } = require('../../skills/leeway-engine/scripts/domain/task-verbs.cjs');
+const { POINTER, ROLES, pointerOf } = require('../../skills/leeway-engine/scripts/domain/brief-names.cjs');
+const { storeBrief } = require('../../skills/leeway-engine/scripts/domain/brief.cjs');
+const { newId } = require('../../skills/leeway-engine/scripts/domain/ledger-ids.cjs');
 
 const ROOT = path.join(__dirname, '..', '..');
 
@@ -98,21 +102,27 @@ describe('the mods read conversation position as the engine writes it', () => {
     assert.strictEqual(json.text, json.text.trim(), 'the note is the key the row\'s trimmed text finds');
   });
 
-  it('the spinner reads the position file the engine writes, by the keys it writes, the task in flight as `{phase}.{task}`', () => {
+  it('the spinner reads the position file the engine writes, by the keys it writes, each task in flight as `{phase}.{n}` with its agents', () => {
     fs.writeFileSync(path.join(dir, '.leeway/pay/manifest.json'), JSON.stringify({
       name: 'pay', work_type: 'epic', status: 'in-progress',
       phases: { implementation: { items: { ledger: { status: 'in-progress', current_task: null, fix_attempts: 0 } } } },
     }));
     harness.ok(dir, ['task', 'start', 'pay', 'ledger', 'ledger-2-3'], { env: env() });
+    harness.ok(dir, ['conversation', 'builder', 'sess-1', 'aa76bd7f82a2ef3e4'], { env: env() });
     const file = path.join(config, 'conversations', 'sess-1', literal('skills/leeway-gates/hooks/folder.ts', 'POSITION'));
     assert.ok(fs.existsSync(file), 'the engine keeps the position under the name the mod reads');
     const written = JSON.parse(fs.readFileSync(file, 'utf8'));
-    assert.deepStrictEqual(written, { name: 'pay', phase: 'implementation', topic: 'ledger', task: '2.3' });
-    const type = /export type Position = \{([^}]*)\}/.exec(source('skills/leeway-gates/hooks/position.ts'));
-    assert.ok(type, 'the spinner declares the position it reads');
-    const keys = [...type[1].matchAll(/(\w+)\??: string/g)].map((m) => m[1]);
-    assert.deepStrictEqual(Object.keys(written).sort(), [...keys].sort(), 'the spinner reads every key the engine writes');
-    assert.match(source('skills/leeway-gates/hooks/position.ts'), /`\$\{word\} task \$\{task\}`/, 'the spinner says the task as the engine writes it');
+    assert.deepStrictEqual(written, { name: 'pay', phase: 'implementation', topic: 'ledger', tasks: [{ task: '2.3', builder: 'aa76bd7f82a2ef3e4', reviewers: [] }] });
+    /** The keys a type the mod declares names. @param {string} name */
+    const keysOf = (name) => {
+      const type = new RegExp(`export type ${name} = \\{([^}]*)\\}`).exec(source('skills/leeway-gates/hooks/position.ts'));
+      assert.ok(type, `the spinner declares the ${name} it reads`);
+      return [...type[1].matchAll(/(\w+)\??: /g)].map((m) => m[1]).sort();
+    };
+    assert.deepStrictEqual(Object.keys(written).sort(), keysOf('Position'), 'the spinner reads every key the engine writes');
+    assert.deepStrictEqual(Object.keys(written.tasks[0]).sort(), keysOf('InFlight'), 'and every key of a task in flight');
+    assert.match(source('skills/leeway-gates/hooks/position.ts'), /`task \$\{task\}`/, 'the spinner says the one task as the engine writes it');
+    assert.match(source('skills/leeway-gates/hooks/position.ts'), /`\$\{tasks\.length\} tasks`/, 'and several by their count');
   });
 
   it('the spinner reads the position again after each task verb that moves it — the tracker\'s start, done and close, and the plan\'s complete', () => {
@@ -152,23 +162,34 @@ describe('the mods read conversation position as the engine writes it', () => {
     assert.deepStrictEqual(words('PLACE_WORDS'), [...PROJECT_IDENTITIES].sort());
   });
 
-  it('the gate mod records the executor the implementation dispatches, through the verb the engine answers', () => {
-    const type = literal('skills/leeway-gates/hooks/executor.ts', 'EXECUTOR');
-    assert.ok(fs.existsSync(path.join(ROOT, 'agents', `${type}.md`)), `the workflows ship the agent "${type}"`);
-    assert.ok(source('skills/leeway-implementation-process/references/invoke-executor.md').includes(`\`${type}\``),
+  it('the gate mod records the agents a build dispatches, the brief named by the pointer the engine issues, and the plan\'s executor, through the verb the engine answers', () => {
+    const builder = 'skills/leeway-gates/hooks/builder.ts';
+    assert.deepStrictEqual([literal(builder, 'BUILDER'), literal(builder, 'REVIEWER')], [ROLES.builder.agent, ROLES.reviewer.agent], 'the agents the builder\'s and the reviewer\'s briefs are issued for');
+    assert.strictEqual(literal(builder, 'POINTER'), POINTER);
+    const pointed = /const POINTED = new RegExp\(`\^\$\{POINTER\}(.+)\$`\)/.exec(source(builder));
+    assert.ok(pointed, 'the gate mod reads the brief\'s id off the pointer');
+    const id = newId();
+    assert.strictEqual(new RegExp(`^${POINTER}${pointed[1]}$`).exec(pointerOf(id))?.[1], id, 'the gate mod reads the id off the pointer the engine issues');
+    const executor = literal(builder, 'EXECUTOR');
+    assert.ok(fs.existsSync(path.join(ROOT, 'agents', `${executor}.md`)), `the workflows ship the agent "${executor}"`);
+    assert.ok(source('skills/leeway-implementation-process/references/invoke-executor.md').includes(`\`${executor}\``),
       'the implementation dispatches the agent the mod watches for');
-    const call = /\['node', `\$\{root\}\/\$\{ENGINE\}`, '(\w+)', '(\w+)', await \$\.session\.id\(\), agentId\]/.exec(source('skills/leeway-gates/hooks/executor.ts'));
-    assert.ok(call, 'the gate mod runs the engine with the session id and the agent id');
+    const call = /\['node', `\$\{root\}\/\$\{ENGINE\}`, '(\w+)', '(\w+)', await \$\.session\.id\(\), agentId, \.\.\.brief\]/.exec(source(builder));
+    assert.ok(call, 'the gate mod runs the engine with the session id, the agent id and the brief');
+    assert.match(source(builder), /\['--brief', id\]/, 'the brief is handed as the engine takes it');
     const engine = literal('skills/leeway-gates/hooks/folder.ts', 'ENGINE');
     assert.ok(engine.startsWith('.claude/') && fs.existsSync(path.join(ROOT, engine.slice('.claude/'.length))), `the gate mod runs the engine where a project installs it (${engine})`);
+    const file = path.join(config, 'conversations', 'sess-1', literal('skills/leeway-gates/hooks/folder.ts', 'POSITION'));
+
     fs.writeFileSync(path.join(dir, '.leeway/pay/manifest.json'), JSON.stringify({
       name: 'pay', work_type: 'epic', status: 'in-progress',
-      phases: { implementation: { items: { ledger: { status: 'in-progress', current_task: null, fix_attempts: 0 } } } },
+      phases: { implementation: { items: { pay: { status: 'in-progress', current_task: null, fix_attempts: 0 } } } },
     }));
-    harness.ok(dir, ['task', 'start', 'pay', 'ledger', 'ledger-2-3'], { env: env() });
+    harness.ok(dir, ['task', 'start', 'pay', 'pay', 'pay-1-1'], { env: env() });
+    harness.withEnv({ LEEWAY_CONFIG_DIR: config }, () => storeBrief('sess-1', id, `Brief ${id}\n`, { role: 'reviewer', agent: ROLES.reviewer.agent, unit: 'pay', task: '1.1', topic: null }));
+    assert.deepStrictEqual(harness.ok(dir, [call[1], call[2], 'sess-1', 'ab12cd34', '--brief', id], { env: env() }), { ok: true, recorded: true });
     assert.deepStrictEqual(harness.ok(dir, [call[1], call[2], 'sess-1', 'aa76bd7f82a2ef3e4'], { env: env() }), { ok: true, recorded: true });
-    const file = path.join(config, 'conversations', 'sess-1', literal('skills/leeway-gates/hooks/folder.ts', 'POSITION'));
-    assert.strictEqual(JSON.parse(fs.readFileSync(file, 'utf8')).executor, 'aa76bd7f82a2ef3e4');
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(file, 'utf8')).tasks, [{ task: '1.1', builder: 'aa76bd7f82a2ef3e4', reviewers: ['ab12cd34'] }]);
   });
 
   it('the rows mod knows the note by the words the engine opens it with', () => {

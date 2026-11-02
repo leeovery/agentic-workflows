@@ -3,12 +3,19 @@
  * folder (domain/position.cjs), and the word the spinner says for it.
  */
 
-/** Where the conversation is working: a work unit, its phase and topic, the task in flight. */
+/** A task in flight: its `{phase}.{n}`, and the agent ids of its builder and its reviewers. */
+export type InFlight = {
+  task: string
+  builder: string | null
+  reviewers: string[]
+}
+
+/** Where the conversation is working: a work unit, its phase and topic, every task in flight there. */
 export type Position = {
   name: string
   phase?: string
   topic?: string
-  task?: string
+  tasks?: InFlight[]
 }
 
 /** What each phase's work is, as the spinner says it. */
@@ -47,15 +54,29 @@ export function positionOf(text: string): Position | null {
 }
 
 /**
- * The spinner's word for a position: its phase's work, the task in flight
- * with it; a project-level place's own; none at a work unit's menu.
+ * What a build's word says of its tasks in flight: the one by its number,
+ * several by their count; nothing where none is.
+ */
+function inFlightWords(tasks: unknown): string | null {
+  if (!Array.isArray(tasks) || tasks.length === 0) {
+    return null
+  }
+
+  const [{ task }] = tasks as InFlight[]
+
+  return tasks.length === 1 ? `task ${task}` : `${tasks.length} tasks`
+}
+
+/**
+ * The spinner's word for a position: its phase's work, a build's tasks in
+ * flight with it; a project-level place's own; none at a work unit's menu.
  */
 export function wordFor(position: Position | null): string | null {
   if (position === null) {
     return null
   }
 
-  const { name, phase, task } = position
+  const { name, phase, tasks } = position
 
   if (phase === undefined) {
     return PLACE_WORDS.get(name) ?? null
@@ -67,7 +88,7 @@ export function wordFor(position: Position | null): string | null {
     return null
   }
 
-  return phase === 'implementation' && typeof task === 'string'
-    ? `${word} task ${task}`
-    : word
+  const inFlight = phase === 'implementation' ? inFlightWords(tasks) : null
+
+  return inFlight === null ? word : `${word} ${inFlight}`
 }

@@ -16,16 +16,18 @@
 //   workflow       the mark that the conversation runs the workflows, which
 //                  the gate mod reads to set the workflow harness, to say the
 //                  phase in its spinner, to answer a compaction and to
-//                  record the task's executor — written by every engine and
-//                  gateway call that carries a session id, run in a project
-//                  whose state already exists
+//                  record each task's builder and reviewers — written by
+//                  every engine and gateway call that carries a session id,
+//                  run in a project whose state already exists
 //   transcript     the conversation's transcript path, written as it ends by
 //                  the SessionEnd hook
-//   position.json  where in the workflows the conversation is working, the
-//                  task in flight with it in implementation and that task's
-//                  executor (position.cjs) — what the tmux label's resume
-//                  re-applies, the gate mod's spinner says, and `conversation
-//                  position` names files for
+//   position.json  where in the workflows the conversation is working, and
+//                  in implementation every task in flight with its builder's
+//                  agent id and its pair's (position.cjs), written under the
+//                  lock beside it — what the tmux label's resume re-applies,
+//                  the gate mod's spinner says, the commit door and the hook
+//                  before Bash check a commit against, and `conversation
+//                  position` names files for; read here alone (`readPosition`)
 //   trust-pending.jsonl
 //                  the trust log's events waiting in the conversation
 //                  (trust-log.cjs): those it could not append, for its next
@@ -139,21 +141,71 @@ function positionPath(sessionId) {
 }
 
 /**
- * The tasks in flight in the conversation `sessionId` — each its unit and
- * the task's `{phase}.{n}` — as its position records them; none where it
- * records none, or the position cannot be read. The position holds one
- * today. The one read of the position that loads nothing of position.cjs's,
- * for the hook before Bash, which stands before every shell command
- * (shell-guard.cjs), and the commit door (commit-task.cjs).
- * @param {string} sessionId @returns {{unit: string, task: string}[]}
+ * A task in flight: its `{phase}.{n}`, the agent id of its builder once one
+ * is dispatched, and those of its reviewers, the pair the later rounds go
+ * back to.
+ * @typedef {{task: string, builder: string|null, reviewers: string[]}} InFlight
+ */
+
+/**
+ * Where a conversation is working: a work unit, or a project identity; its
+ * phase and topic; and, in implementation, every task in flight there.
+ * @typedef {object} Position
+ * @property {string} name
+ * @property {string} [phase]
+ * @property {string} [topic]
+ * @property {InFlight[]} [tasks]
+ */
+
+/** Whether a value reads as an agent id. @param {unknown} value @returns {value is string} */
+function isAgentId(value) {
+  return typeof value === 'string' && /^[A-Za-z0-9_-]+$/.test(value);
+}
+
+/** A stored task in flight, or null where it does not read as one. @param {unknown} stored @returns {InFlight|null} */
+function inFlightOf(stored) {
+  if (stored === null || typeof stored !== 'object') return null;
+  const { task, builder, reviewers } = /** @type {Record<string, unknown>} */ (stored);
+  if (typeof task !== 'string' || !/^\d+\.\d+$/.test(task)) return null;
+  return { task, builder: isAgentId(builder) ? builder : null, reviewers: Array.isArray(reviewers) ? reviewers.filter(isAgentId) : [] };
+}
+
+/**
+ * The position recorded for the conversation `sessionId`, as its fields
+ * read — a task in flight, or an agent id, that does not read as one left
+ * out; null where none is recorded, or it names no place. The one read of
+ * the file: it loads nothing of position.cjs's, for the hook before Bash,
+ * which stands before every shell command (shell-guard.cjs).
+ * @param {string} sessionId @returns {Position|null}
+ */
+function readPosition(sessionId) {
+  let stored;
+  try {
+    stored = JSON.parse(fs.readFileSync(positionPath(sessionId), 'utf8'));
+  } catch {
+    return null;
+  }
+  if (stored === null || typeof stored !== 'object' || typeof stored.name !== 'string') return null;
+  const { name, phase, topic, tasks } = stored;
+  const inFlight = Array.isArray(tasks) ? tasks.map(inFlightOf).filter(/** @returns {t is InFlight} */ (t) => t !== null) : [];
+  return {
+    name,
+    ...(typeof phase === 'string' ? { phase } : {}),
+    ...(typeof topic === 'string' ? { topic } : {}),
+    ...(inFlight.length > 0 ? { tasks: inFlight } : {}),
+  };
+}
+
+/**
+ * The tasks in flight in the conversation `sessionId`, each with the unit
+ * its position names — what the commit door (commit-task.cjs) and the hook
+ * before Bash check a commit against.
+ * @param {string} sessionId @returns {(InFlight & {unit: string})[]}
  */
 function tasksInFlight(sessionId) {
-  try {
-    const { name, task } = JSON.parse(fs.readFileSync(positionPath(sessionId), 'utf8'));
-    return typeof name === 'string' && typeof task === 'string' && task !== '' ? [{ unit: name, task }] : [];
-  } catch {
-    return [];
-  }
+  const position = readPosition(sessionId);
+  if (position === null) return [];
+  return (position.tasks ?? []).map((task) => ({ unit: position.name, ...task }));
 }
 
 /**
@@ -410,4 +462,4 @@ function tidyConversations(keeps = () => false) {
   }
 }
 
-module.exports = { conversationsRoot, conversationDir, positionPath, tasksInFlight, isMarked, markConversation, endConversation, claudeProjectsDir, runningTranscript, callerModel, subagentType, tidyConversations };
+module.exports = { conversationsRoot, conversationDir, positionPath, isAgentId, readPosition, tasksInFlight, isMarked, markConversation, endConversation, claudeProjectsDir, runningTranscript, callerModel, subagentType, tidyConversations };

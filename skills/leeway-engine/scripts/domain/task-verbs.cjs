@@ -14,9 +14,10 @@
 // gives one (21.5.21). A link holds a task after one of its own phase's or
 // an earlier phase's, still unfinished, and only a task not yet ended is
 // linked (12.6.4); ready answers every task waiting with nothing before it
-// (7.1.5); start puts the task in flight on the conversation's position — a
-// task already started is put there again — and done and close take it off
-// (6.3.3); close ends a task without it being done, with a reason, and
+// (7.1.5); start puts the task in flight on the conversation's position,
+// beside any others in flight there — a task already in flight kept as it
+// stands, its builder and reviewers with it — and done and close take it off
+// (6.3.3, 24.2.4); close ends a task without it being done, with a reason, and
 // frees what waits on it as done does (7.1.12). The verbs refuse in the
 // engine's words: a tool the driver needs missing or failing, a phase not
 // written, a task the tracker lacks or already holds, a task already ended.
@@ -394,12 +395,12 @@ function moving(verb, move, settle) {
   };
 }
 
-/** Takes the task off the position, where it is the one in flight. @param {string} cwd @param {TaskRef} ref */
+/** Takes the task off the position, where it is one in flight. @param {string} cwd @param {TaskRef} ref */
 function offPosition(cwd, ref) {
   clearTask(ref.unit, ref.unit, taskId(ref));
 }
 
-/** `task start`: in progress — where it is not already — and in flight on the position. */
+/** `task start`: in progress — where it is not already — and in flight on the position beside any others. */
 const startTask = moving('start', (driver, root, ref) => {
   if (refuseEnded(driver, root, ref, 'only a task not yet ended is started') !== 'in-progress') driver.start(root, ref);
 }, (cwd, ref) => recordTask(cwd, ref.unit, ref.unit, taskId(ref)));
