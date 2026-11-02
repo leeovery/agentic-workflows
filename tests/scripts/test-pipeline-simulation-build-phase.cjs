@@ -45,12 +45,12 @@ const builtWorld = worldFrom('pipeline-build-phase-', (sim) => {
   specToBuild(sim, WU, [WU], 'a');
 });
 
-/**
- * The file a brief names under its heading `heading`, read from the brief the
- * conversation stored. @param {Sim} sim @param {{id: string}} res @param {string} heading
- */
+/** A brief as the conversation stored it. @param {Sim} sim @param {{id: string}} res */
+const briefOf = (sim, res) => withEnv({ LEEWAY_CONFIG_DIR: sim.configDir }, () => fs.readFileSync(briefPath(sim.env.CLAUDE_CODE_SESSION_ID, res.id), 'utf8'));
+
+/** The file a brief names under its heading `heading`. @param {Sim} sim @param {{id: string}} res @param {string} heading */
 function placeIn(sim, res, heading) {
-  const brief = withEnv({ LEEWAY_CONFIG_DIR: sim.configDir }, () => fs.readFileSync(briefPath(sim.env.CLAUDE_CODE_SESSION_ID, res.id), 'utf8'));
+  const brief = briefOf(sim, res);
   return /`([^`]+)`/.exec(brief.slice(brief.indexOf(`# ${heading}\n`)))?.[1] ?? '';
 }
 
@@ -76,7 +76,7 @@ describe('pipeline simulation: a phase of the cut', () => {
     fs.rmSync(builders, { recursive: true, force: true });
   });
 
-  it('the task writer briefed from the cut writes the phase\'s tasks; the builder, in its task\'s worktree, builds the verify setup and proves the task\'s scenario by running it; the pair\'s reports, the account and the consolidation report land where their readers find them; the phase review reads the runs and the survivors at the phase\'s HEAD', () => {
+  it('the task writer briefed from the cut writes the phase\'s tasks; the builder, in its task\'s worktree, builds the verify setup and proves the task\'s scenario by running it; the pair\'s reports, the account and the consolidation report land where their readers find them; the phase review reads the runs and the survivors at the phase\'s tips', () => {
     const wu = WU;
     assert.strictEqual(sim.run(['brief', 'task-writer', wu, '1']).agent, 'leeway-task-writer');
     writePhaseTasks(sim, wu, 1, 'The work', [{ title: 'Write the ledger' }]);
@@ -115,15 +115,15 @@ describe('pipeline simulation: a phase of the cut', () => {
     assert.deepStrictEqual(sim.run(['task', 'account', wu, '1.1']).rounds, 1, 'the account and the round\'s reports are read where the agents wrote them');
     sim.run(['task', 'done', wu, '1.1']);
 
-    // The phase's end: the tool run once from the checkout holding the
-    // phase's commits, the consolidation agent's report, then the pair.
-    const head = git(tree, ['rev-parse', 'HEAD']).trim();
+    // The phase's end: the tool run once from a checkout at the phase's
+    // tips, the consolidation agent's report, then the pair.
     assert.deepStrictEqual(sim.runIn(tree, ['verify', 'mutants', wu, '1']).survivors, [], 'the mutation tool runs once, before the pair is briefed');
     const consolidation = placeIn(sim, sim.run(['brief', 'consolidation', wu, '1', '--base', 'main']), 'Where the report goes');
     landed(consolidation, '## The notes\n\n- Note 1: dropped — the ledger checks its hash on read.\n');
     assert.deepStrictEqual(consolidationFaults(sim.dir, wu, 1), [], 'the report is read where the agent wrote it, its note taken');
     for (const letter of ['a', 'b']) {
-      const review = sim.run(['brief', 'phase-review', wu, '1', '--base', 'main', '--head', head, '--letter', letter]);
+      const review = sim.run(['brief', 'phase-review', wu, '1', '--base', 'main', '--letter', letter]);
+      assert.ok(briefOf(sim, review).includes('# Its scenarios\' runs, at the phase\'s tips\n\n- 1.S1: proven\n'), 'the run from the task\'s worktree proves the scenario at the phase\'s tips');
       landed(placeIn(sim, review, 'Where your report goes'), PASSED);
     }
     assert.deepStrictEqual(['a', 'b'].map((letter) => fs.existsSync(path.join(sim.dir, `.leeway/${wu}/build/phases/phase-1/review-${letter}.md`))), [true, true]);

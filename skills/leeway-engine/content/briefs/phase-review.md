@@ -26,7 +26,7 @@
 
 {{phase-scratch-layout}}
 
-# Its scenarios' runs, at the phase's HEAD
+# Its scenarios' runs, at the phase's tips
 
 {{recorded-runs}}
 
@@ -51,7 +51,7 @@ Every task of the phase has passed its own review. Review the phase's whole chan
 - what should be consolidated across its tasks;
 - where the phase meets what it relies on from earlier phases, so a fault between phases is found now, before more is built on it.
 
-A scenario its runs leave "not proven", or "named, not run", at the phase's HEAD is a finding, and reads so in your report, in those words.
+A scenario its runs leave "not proven", or "named, not run", at the phase's tips is a finding, and reads so in your report, in those words.
 
 Every criterion has a test, and the tests must catch a break. A mutant that survived in code a criterion covers is a finding. Where the verify setup names no mutation tool, break the riskiest line of each criterion's code in that scratch worktree, never the phase's: a break the tests do not catch is a finding.
 

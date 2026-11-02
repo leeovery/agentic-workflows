@@ -7,7 +7,8 @@
 // and the verb answers what survived on them, read whatever the tool's exit
 // code, each survivor's path read as the project's, a survivor on none of the
 // changed files refused — writing nothing but the survivors, left in the
-// unit's cache for the HEAD it ran at (15.S9, 15.6.3, 15.6.6).
+// unit's cache under the HEAD it ran at in every repository (15.S9, 15.6.3,
+// 15.6.6).
 //
 // Layer: git. World: verify-world.cjs's, the setup recorded.
 // ---------------------------------------------------------------------------
@@ -16,6 +17,7 @@ require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const {
@@ -50,7 +52,7 @@ describe('verify mutants: the mutation tool over a phase\'s lines (15.6.3, 15.6.
   /** The survivors the tool reports, written for it. @param {unknown} survivors */
   const surviving = (survivors) => steering(dir, 'survivors.json', JSON.stringify(survivors));
 
-  it('15.S9: the tool is handed the lines the phase\'s commits changed in every repository, as they stand at HEAD, and the verb answers the survivors on them alone — a path given from `./`, absolute or nested read as the project\'s — whatever the tool\'s exit code, writing nothing but the survivors, left in the unit\'s cache for the HEAD it ran at', () => {
+  it('15.S9: the tool is handed the lines the phase\'s commits changed in every repository, as they stand at HEAD, and the verb answers the survivors on them alone — a path given from `./`, absolute or nested read as the project\'s — whatever the tool\'s exit code, writing nothing but the survivors, left in the unit\'s cache under the HEAD it ran at in every repository', () => {
     phaseWork();
     surviving([
       { path: './src/card.js', line: 2, mutant: 'string "visa" → ""' },
@@ -74,8 +76,9 @@ describe('verify mutants: the mutation tool over a phase\'s lines (15.6.3, 15.6.
       { path: 'src/form.js', lines: [[1, 2]] },
       { path: 'lib/x.js', lines: [[2, 2]] },
     ]);
-    const at = git(dir, ['rev-parse', 'HEAD']).trim();
-    const cached = { [`.cache/${UNIT}/build/mutants/phase-1/${at}.json`]: `${JSON.stringify({ head: at, survivors }, null, 2)}\n` };
+    const commits = [{ repo: '.', commit: git(dir, ['rev-parse', 'HEAD']).trim() }, { repo: 'lib', commit: git(path.join(dir, 'lib'), ['rev-parse', 'HEAD']).trim() }];
+    const key = crypto.createHash('sha256').update(JSON.stringify(commits)).digest('hex').slice(0, 16);
+    const cached = { [`.cache/${UNIT}/build/mutants/phase-1/${key}.json`]: `${JSON.stringify({ commits, survivors }, null, 2)}\n` };
     assert.deepStrictEqual({ tree: treeSnapshot(dir), head: head(dir) }, { ...before, tree: { ...before.tree, ...cached } });
   });
 

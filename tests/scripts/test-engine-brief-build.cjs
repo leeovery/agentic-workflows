@@ -194,14 +194,14 @@ describe('the build\'s templates', () => {
     assert.strictEqual(readTaskText(task.replace(/\{feat[^}]*\}/, 'fix').replace(/\{[^}]*\}/g, 'x')).type, 'fix');
   });
 
-  it('15.S5, 15.S9, 15.S10, 13.S9: the template makes a scenario not proven at the HEAD and a mutant that survived in a criterion\'s code findings, breaks the riskiest line in a scratch worktree where no tool exists, and carries the task reviewer\'s stance, call, report, comment and reference rules word for word', () => {
+  it('15.S5, 15.S9, 15.S10, 13.S9: the template makes a scenario not proven at the phase\'s tips and a mutant that survived in a criterion\'s code findings, breaks the riskiest line in a scratch worktree where no tool exists, and carries the task reviewer\'s stance, call, report, comment and reference rules word for word', () => {
     const words = template('phase-review');
     const from = (/** @type {string} */ text) => text.slice(text.indexOf('# A failed review'));
 
     for (const rule of [
       'A mutant that survived in code a criterion covers is a finding.',
       'Where the verify setup names no mutation tool, break the riskiest line of each criterion\'s code in that scratch worktree, never the phase\'s: a break the tests do not catch is a finding.',
-      'A scenario its runs leave "not proven", or "named, not run", at the phase\'s HEAD is a finding, and reads so in your report, in those words.',
+      'A scenario its runs leave "not proven", or "named, not run", at the phase\'s tips is a finding, and reads so in your report, in those words.',
     ]) assert.ok(words.includes(rule), rule);
     assert.ok(words.includes('where the phase meets what it relies on from earlier phases'), words);
     assert.strictEqual(from(words), from(template('reviewer')).replace('Review the task as a professional would', 'Review the phase as a professional would'));
@@ -294,7 +294,7 @@ describe('the refusals, nothing written and no brief stored', () => {
   useWorld((at) => { dir = at; });
 
   it('arguments of another shape, a unit the project lacks, a unit whose build has not begun, and a phase its cut lacks', () => {
-    for (const args of [['task-writer', UNIT], ['task-writer', UNIT, '1', 'more'], ['consolidation', UNIT, '1'], ['phase-review', UNIT, '--base', 'main', '--head', 'main', '--letter', 'a'], ['phase-review', UNIT, '1', '--base', 'main', '--letter', 'a']]) refusedUnissued(args, /^Usage: /);
+    for (const args of [['task-writer', UNIT], ['task-writer', UNIT, '1', 'more'], ['consolidation', UNIT, '1'], ['phase-review', UNIT, '--base', 'main', '--letter', 'a'], ['phase-review', UNIT, '1', '--base', 'main']]) refusedUnissued(args, /^Usage: /);
     refusedUnissued(['task-writer', UNIT, 'one'], /^task-id: "one" is not a phase/);
     refusedUnissued(['task-writer', 'nope', '1'], /^Work unit "nope" not found$/);
     refusedUnissued(['task-writer', 'draft', '1'], /^brief: draft's build has not begun — a phase is briefed once ready to build's yes begins it$/);
@@ -302,7 +302,7 @@ describe('the refusals, nothing written and no brief stored', () => {
   });
 
   it('a phase not written, whose tasks and range the consolidation and the phase review draw', () => {
-    for (const args of [['consolidation', UNIT, '3', '--base', 'main'], ['phase-review', UNIT, '3', '--base', 'main', '--head', 'main', '--letter', 'a']]) refusedUnissued(args, /^phase 3 of pay is not written — its tasks are written as it starts$/);
+    for (const args of [['consolidation', UNIT, '3', '--base', 'main'], ['phase-review', UNIT, '3', '--base', 'main', '--letter', 'a']]) refusedUnissued(args, /^phase 3 of pay is not written — its tasks are written as it starts$/);
   });
 
   it('a cut naming a section or a scenario the spec lacks', () => {
@@ -317,25 +317,24 @@ describe('the refusals, nothing written and no brief stored', () => {
   });
 
   it('a range\'s base no repository holding the phase\'s work has, tasks that are no one stack, and a phase no repository holds work on', () => {
-    refusedUnissued(['phase-review', UNIT, '1', '--base', 'trunk', '--head', 'main', '--letter', 'a'], /^the base trunk is no local branch in any repository holding phase 1 of pay's tasks$/);
+    refusedUnissued(['phase-review', UNIT, '1', '--base', 'trunk', '--letter', 'a'], /^the base trunk is no local branch in any repository holding phase 1 of pay's tasks$/);
     git(dir, ['branch', '-f', branchOf(1, 4), 'main']);
     commitFile(dir, 'src/aside.js');
     git(dir, ['branch', '-f', branchOf(1, 4), 'HEAD']);
     git(dir, ['reset', '-q', '--hard', 'HEAD~1']);
     refusedUnissued(['consolidation', UNIT, '1', '--base', 'main'], new RegExp(`^phase 1 of pay's tasks are no one stack in the project's repository — ${branchOf(1, 1)}, ${branchOf(1, 2)}, ${branchOf(1, 4)} each hold work another lacks`));
     git(dir, ['branch', '-D', branchOf(2, 1)]);
-    refusedUnissued(['phase-review', UNIT, '2', '--base', 'main', '--head', 'main', '--letter', 'a'], /^no repository of the project holds work on phase 2 of pay's tasks$/);
+    refusedUnissued(['phase-review', UNIT, '2', '--base', 'main', '--letter', 'a'], /^no repository of the project holds work on phase 2 of pay's tasks$/);
   });
 
-  it('a head that is no commit of the project\'s repository, a mutation tool not yet run over the phase at the head, and no verify setup recorded', () => {
-    const at = (/** @type {string} */ head) => ['phase-review', UNIT, '2', '--base', 'main', '--head', head, '--letter', 'a'];
-    for (const head of ['nope', '-x']) refusedUnissued(at(head), new RegExp(`^${head} is no commit of the project's repository — the phase's runs are read at its HEAD there$`));
+  it('a mutation tool not yet run over the phase at its tips, and no verify setup recorded', () => {
+    const phaseReview = ['phase-review', UNIT, '2', '--base', 'main', '--letter', 'a'];
     const tip = tipOf(dir, branchOf(2, 1));
-    refusedUnissued(at(branchOf(2, 1)), new RegExp(`^the mutation tool has not run over phase 2 of pay at ${tip} — engine verify mutants pay 2, run from the checkout at that HEAD, runs it$`));
+    refusedUnissued(phaseReview, new RegExp(`^the mutation tool has not run over phase 2 of pay at its tips — the project's repository at ${tip} — engine verify mutants pay 2, run from a checkout at those tips, runs it$`));
     const project = JSON.parse(readState(dir, layout.projectManifest));
     writeState(dir, layout.projectManifest, JSON.stringify({ ...project, environment: { linters: LINTERS } }, null, 2));
     commitAll(dir, 'no verify setup');
-    refusedUnissued(at(branchOf(2, 1)), /^the project has no verify setup recorded — /);
+    refusedUnissued(phaseReview, /^the project has no verify setup recorded — /);
   });
 });
 

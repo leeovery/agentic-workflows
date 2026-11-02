@@ -5,8 +5,10 @@
 // records domain/brief-records.cjs, content/briefs/): the phase review's,
 // the reviewer's second template — the phase, its sections, its tasks'
 // criteria, what it relies on, the decided calls, its range, its scenarios'
-// runs read at the phase's HEAD (15.S5, 15.S18), what `verify mutants` left
-// of the tool's survivors for that HEAD (15.S9), the linters (12.11.2), a
+// runs read at the phase's tip in every repository holding its work, a
+// clone's among them (15.S5, 15.S18, 12.7.10), what `verify mutants` left of
+// the tool's survivors run at those tips, refused where a commit has landed
+// in the clone since (15.S9), the linters (12.11.2), a
 // setup with no tool said so (15.S10); where each reviewer's report goes
 // (13.5.9) — a task's reviewer's file of the round under review, read from
 // the reports on disk so it holds across a `/clear`, refused once written
@@ -32,6 +34,8 @@ const {
   AREA_2,
   TASKS,
   branchOf,
+  commitFile,
+  tipOf,
   surviving,
   withoutMutationTool,
   RUNS,
@@ -64,21 +68,33 @@ const NOT_READ = 'its last heading at level one or two is not `## Findings`; its
 describe('the phase review\'s brief, the reviewer\'s second template (12.11.2, 6.5.2)', () => {
   useWorld((at) => { dir = at; });
 
+  /** The project's checkout, and the clone nested in it, each at the branch given. @param {string} project @param {string} [nested] */
+  function checkedOut(project, nested = 'main') {
+    git(dir, ['checkout', '-q', project]);
+    git(path.join(dir, NESTED), ['checkout', '-q', nested]);
+  }
+
+  /** Each repository holding phase `phase`'s work checked out at its tip there. @param {number} phase */
+  const atTips = (phase) => (phase === 1 ? checkedOut(branchOf(1, 4), branchOf(1, 1)) : checkedOut(branchOf(2, 1)));
+
+  /** The phase review's brief for phase `phase` by reviewer `letter`. @param {number} phase @param {string} [letter] */
+  const phaseReview = (phase, letter = 'a') => issued(['phase-review', UNIT, String(phase), '--base', 'main', '--letter', letter]);
+
   /**
-   * The phase review's brief for phase `phase` by reviewer `letter`, its runs read at `tip` and the mutation tool run over the phase from the checkout there first.
-   * @param {number} phase @param {string} tip @param {string} [letter]
+   * The phase review's brief for phase `phase` by reviewer `letter`, the mutation tool run over the phase from a checkout at its tips first.
+   * @param {number} phase @param {string} [letter]
    */
-  function reviewedAt(phase, tip, letter = 'a') {
-    git(dir, ['checkout', '-q', tip]);
+  function reviewedAtTips(phase, letter = 'a') {
+    atTips(phase);
     ok(dir, ['verify', 'mutants', UNIT, String(phase)]);
-    return issued(['phase-review', UNIT, String(phase), '--base', 'main', '--head', tip, '--letter', letter]);
+    return phaseReview(phase, letter);
   }
 
   /** A run of RUNS drawn as a brief draws it. @param {number} at its place in RUNS */
   const runDrawn = (at) => `  - ${RUNS[at][1]}, recorded ${RUNS[at][3]}: ${pathDrawn(runFiles[at])}`;
 
-  it('the phase, its sections, each of its tasks\' criteria but a closed one\'s, what it relies on, the decided calls, its range, its scenarios\' runs at its HEAD, what survived the mutation tool and the linters — dispatched as the reviewer', () => {
-    const { res, brief, whose } = reviewedAt(2, branchOf(2, 1));
+  it('the phase, its sections, each of its tasks\' criteria but a closed one\'s, what it relies on, the decided calls, its range, its scenarios\' runs at its tips, what survived the mutation tool and the linters — dispatched as the reviewer', () => {
+    const { res, brief, whose } = reviewedAtTips(2);
 
     assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'phase-review', agent: 'leeway-reviewer', pointer: `brief:${res.id}` });
     assert.deepStrictEqual(whose, { role: 'phase-review', agent: 'leeway-reviewer', unit: UNIT, task: null, topic: null });
@@ -101,39 +117,63 @@ describe('the phase review\'s brief, the reviewer\'s second template (12.11.2, 6
     })}`);
   });
 
-  it('15.S5, 15.S18: the runs are read at the phase\'s HEAD — a run at a commit beyond it never counts, so a scenario whose only run there failed reads not proven, one with none not proven, and one only skipped named, not run', () => {
+  it('15.S5, 15.S18, 12.7.10: the runs are read at the phase\'s tip in every repository holding its work — a run beyond the project\'s tip never counts, nor 1.2\'s builder\'s later pass at the clone\'s code from before 1.1 landed there, the project\'s commit the tip\'s; so a scenario whose only run there failed reads not proven, and one only skipped named, not run', () => {
     withoutMutationTool();
-    const second = issued(['phase-review', UNIT, '2', '--base', 'main', '--head', branchOf(1, 4), '--letter', 'a']);
-    const first = issued(['phase-review', UNIT, '1', '--base', 'main', '--head', branchOf(1, 4), '--letter', 'a']);
+    const lib = path.join(dir, NESTED);
+    const tips = { '.': tipOf(dir, branchOf(1, 4)), [NESTED]: tipOf(lib, branchOf(1, 1)) };
+    const before = git(lib, ['commit-tree', 'main^{tree}', '-p', 'main', '-m', '1.2, branched before 1.1 landed']).trim();
+    const runs = /** @type {Array<[string, Record<string, string>, string]>} */ ([
+      ['fail', tips, '2026-11-02T10:00:00.000Z'],
+      ['pass', { ...tips, '.': tipOf(dir, branchOf(2, 1)) }, '2026-11-02T11:00:00.000Z'],
+      ['pass', { ...tips, [NESTED]: before }, '2026-11-02T12:00:00.000Z'],
+    ]);
+    runs.forEach(([verdict, commits, at], i) => writeState(dir, layout.run(UNIT, '1.S1', `00${i + 1}`), JSON.stringify({
+      verdict, unfixed: false, at, checkout: dir, commits: Object.entries(commits).map(([repo, commit]) => ({ repo, commit })), task: '1.2', evidence: [], recordings: [],
+    })));
 
-    assert.ok(second.brief.includes(`# Its scenarios' runs, at the phase's HEAD\n\n- 2.S1: not proven\n${runDrawn(1)}\n\n#`), second.brief);
-    assert.ok(first.brief.includes(`# Its scenarios' runs, at the phase's HEAD\n\n- 1.S1: not proven\n- 1.S2: named, not run\n${runDrawn(0)}\n\n#`), first.brief);
+    const { brief } = phaseReview(1);
+
+    const failed = `  - fail, recorded ${runs[0][2]}: ${pathDrawn(layout.run(UNIT, '1.S1', '001'))}`;
+    assert.ok(brief.includes(`# Its scenarios' runs, at the phase's tips\n\n- 1.S1: not proven\n${failed}\n- 1.S2: named, not run\n${runDrawn(0)}\n\n#`), brief);
   });
 
-  it('15.S9: what `verify mutants` left alive on the lines the phase changed, at the phase\'s HEAD, reaches the pair — none of what it left on lines the phase never changed, nor what it left at another HEAD — and the brief never runs the tool', () => {
-    git(dir, ['checkout', '-q', branchOf(1, 2)]);
+  it('15.S9: what `verify mutants` left alive on the lines the phase changed, run at the phase\'s tip in every repository, reaches the pair wherever the checkout stands — none of what it left on lines the phase never changed, nor what it left at other code, the clone behind its tip among it — and the brief never runs the tool', () => {
+    checkedOut(branchOf(1, 2), branchOf(1, 1));
     surviving([{ path: 'src/card.js', line: 1, mutant: 'left at another HEAD' }]);
     ok(dir, ['verify', 'mutants', UNIT, '1']);
-    surviving([{ path: 'src/check.js', line: 1, mutant: '1 → 0' }, { path: 'src/card.js', line: 2, mutant: 'a line the phase never wrote' }]);
-    git(dir, ['checkout', '-q', branchOf(1, 4)]);
+    checkedOut(branchOf(1, 4));
+    surviving([{ path: 'src/check.js', line: 1, mutant: 'left with the clone behind its tip' }]);
     ok(dir, ['verify', 'mutants', UNIT, '1']);
+    atTips(1);
+    surviving([{ path: 'src/check.js', line: 1, mutant: '1 → 0' }, { path: 'src/card.js', line: 2, mutant: 'a line the phase never wrote' }]);
+    ok(dir, ['verify', 'mutants', UNIT, '1']);
+    checkedOut('main');
     surviving([{ path: 'src/check.js', line: 1, mutant: 'the brief ran the tool' }]);
 
-    const { brief } = issued(['phase-review', UNIT, '1', '--base', 'main', '--head', branchOf(1, 4), '--letter', 'a']);
+    const { brief } = phaseReview(1);
 
     assert.ok(brief.includes('# What survived the mutation tool\n\n- src/check.js:1 — 1 → 0\n\n#'), brief);
+  });
+
+  it('12.7.10: a commit landing only in the clone after `verify mutants` ran — a nit fixed on 1.1\'s branch there, the project\'s commit unmoved — leaves nothing run at the phase\'s tips: the brief refuses, naming `verify mutants` run at them', () => {
+    atTips(1);
+    ok(dir, ['verify', 'mutants', UNIT, '1']);
+    const lib = path.join(dir, NESTED);
+    commitFile(lib, 'card/nit.js', `${UNIT}-1-1`);
+
+    refusedUnissued(['phase-review', UNIT, '1', '--base', 'main', '--letter', 'a'], new RegExp(`^the mutation tool has not run over phase 1 of pay at its tips — the project's repository at ${tipOf(dir, branchOf(1, 4))}, ${NESTED} at ${tipOf(lib, branchOf(1, 1))} — engine verify mutants pay 1, run from a checkout at those tips, runs it$`));
   });
 
   it('15.S10: a setup naming no mutation tool says so, and the template has each reviewer break the riskiest line instead', () => {
     withoutMutationTool();
 
-    const { brief } = issued(['phase-review', UNIT, '2', '--base', 'main', '--head', branchOf(2, 1), '--letter', 'a']);
+    const { brief } = phaseReview(2);
 
     assert.ok(brief.includes('# What survived the mutation tool\n\nThe verify setup names no mutation tool.\n\n#'), brief);
   });
 
   it('the criteria leave a closed task out and carry each addition', () => {
-    const { brief } = reviewedAt(1, branchOf(1, 4));
+    const { brief } = reviewedAtTips(1);
     const criteria = (/** @type {number} */ n) => `## 1.${n} ${TASKS[1][n - 1][0]}\n\n- Given a card, when ${TASKS[1][n - 1][0].toLowerCase()} runs, then it answers.`;
 
     assert.ok(brief.includes(`# Its tasks' criteria\n\n${criteria(1)}\n\n${criteria(2)}\n\n### Added by the person\n\nThe receipt is emailed.\n\n${criteria(4)}\n\n# What it relies on\n\nNone recorded.\n`), brief);
@@ -199,7 +239,7 @@ describe('where a reviewer\'s report goes (13.5.9)', () => {
 
   it('a phase\'s reviewer writes to its letter\'s file beside the consolidation, a report there that does not read named as the one it replaces, refused once one that reads is written', () => {
     withoutMutationTool();
-    const phaseReview = ['phase-review', UNIT, '1', '--base', 'main', '--head', branchOf(1, 4), '--letter', 'b'];
+    const phaseReview = ['phase-review', UNIT, '1', '--base', 'main', '--letter', 'b'];
     const first = 'brief-build-phase-review';
     const elsewhere = () => placeIn(ok(dir, ['brief', ...phaseReview], { env: { CLAUDE_CODE_SESSION_ID: first } }), first);
     try {

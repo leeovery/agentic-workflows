@@ -248,17 +248,17 @@
 //                  stack's tip there, a clone holding none at the branch
 //                  it lands on
 //   recorded-runs  each scenario the phase holds, by id with what its runs
-//                  of the change prove read at the project's commit
-//                  `--head` names (runs.cjs) — the phase's HEAD, so the
-//                  runs at the commit nearest it decide (15.3.5) — then
-//                  each run counted, its verdict, when it was recorded and
-//                  its file
+//                  of the change prove read at the phase's tips — the
+//                  stack's tip in each repository holding its work, as
+//                  phase-diff-range picks it — so the runs nearest them
+//                  decide (runs.cjs, 15.3.5); then each run counted, its
+//                  verdict, when it was recorded and its file
 //   mutants        what survived the verify setup's mutation tool on the
 //                  lines the phase changed, each by its path and line with
 //                  its mutant, as `verify mutants` left it in the unit's
-//                  cache for the commit `--head` names (verify.cjs, 15.6.3);
-//                  that none survived; or that the setup names no mutation
-//                  tool. The brief never runs the tool
+//                  cache run at the phase's tips (verify.cjs, 15.6.3); that
+//                  none survived; or that the setup names no mutation tool.
+//                  The brief never runs the tool
 //   phase-report-to where the reviewer `--letter` names writes its report
 //                  of the phase review: the phase's `review-{letter}.md`,
 //                  likewise
@@ -307,9 +307,9 @@
 // repository holding it has as a local branch, a phase's sections or
 // scenarios the spec lacks, a phase not yet written whose tasks or range a
 // record draws, a task of it with no type, its tasks held as no one stack in
-// a repository, no repository holding work on them, a head that is no
-// commit of the project's repository, no verify setup recorded, a tool that
-// has not run over the phase at the head, a letter none of the reviewers',
+// a repository, no repository holding work on them, no verify setup
+// recorded, a tool that has not run over the phase at its tips, a letter
+// none of the reviewers',
 // a report already written for its round that reads, a task whose review
 // passed — a task with no review
 // round's reports, a round missing a reviewer's report or holding one
@@ -331,9 +331,9 @@
 const fs = require('fs');
 const path = require('path');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
-const { git, tryGit } = require('../kernel/git.cjs');
+const { git } = require('../kernel/git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
-const { projectRepos } = require('../kernel/repos.cjs');
+const { projectRepos, repoName } = require('../kernel/repos.cjs');
 const { linters, verifySetup } = require('./environment.cjs');
 const { readShown, readLedgerVerb } = require('./ledger-read.cjs');
 const {
@@ -390,6 +390,7 @@ const { topicPlace, recordsRules, composedPath, findingsPath, refusedPath } = re
 /** @typedef {import('./drivers.cjs').TaskRow} TaskRow */
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** @typedef {import('../kernel/repos.cjs').Repo} Repo */
+/** @typedef {import('./runs.cjs').RepoCommit} RepoCommit */
 
 /** A discussion topic of a unit. @typedef {{unit: string, topic: string}} TopicPlace */
 
@@ -1484,10 +1485,10 @@ function stackTip(repo, held, what) {
 
 /**
  * The project's repositories and the stack's tip in each holding work on the
- * branch of a task of the phase not closed; refused where none does.
- * @param {Filling} filling @returns {{repos: Repo[], tips: Map<Repo, string>, what: string}}
+ * branch of a task of the phase not closed, read once a fill; refused where
+ * none does.
  */
-function phaseHolding(filling) {
+const phaseHolding = oncePerFill(/** @param {Filling} filling @returns {{repos: Repo[], tips: Map<Repo, string>, what: string}} */ (filling) => {
   const { unit, phase } = phaseOf(filling);
   const what = phaseName(unit, phase);
   const named = writtenPhase(filling).filter(({ status }) => status !== 'closed').map((task) => {
@@ -1499,47 +1500,45 @@ function phaseHolding(filling) {
   const holding = repos.map((repo) => ({ repo, on: named.filter((_, at) => held[at].includes(repo)) })).filter(({ on }) => on.length > 0);
   if (holding.length === 0) throw new Error(`no repository of the project holds work on ${what}'s tasks`);
   return { repos, tips: new Map(holding.map(({ repo, on }) => [repo, stackTip(repo, on, what)])), what };
-}
+});
 
-/** @param {Filling} filling */
-function drawPhaseDiffRange(filling) {
-  const { tips, what } = phaseHolding(filling);
+/** @param {Filling} filling @param {string[]} warnings */
+function drawPhaseDiffRange(filling, warnings) {
+  const { tips, what } = phaseHolding(filling, warnings);
   const holding = [...tips.keys()];
   const bases = basesOf(filling.cwd, holding, filling.given.base, `${what}'s tasks`);
   return holding.map((repo, at) => rangeIn(repo, bases[at], /** @type {string} */ (tips.get(repo)))).join('\n\n');
 }
 
-/** @param {Filling} filling */
-function drawPhaseScratchLayout(filling) {
-  const { repos, tips } = phaseHolding(filling);
+/** @param {Filling} filling @param {string[]} warnings */
+function drawPhaseScratchLayout(filling, warnings) {
+  const { repos, tips } = phaseHolding(filling, warnings);
   return layoutOf(repos, tips, (repo) => onBranch(repo, landsOn(filling.cwd, repo), 'the branch it lands on'));
 }
 
 /**
- * The project's commit `--head` names, in full; refused where it names none.
- * @param {Filling} filling
+ * The phase's tip in each repository holding its work, each by the commit
+ * its stack's tip is at, as a run names its commits.
+ * @param {Filling} filling @param {string[]} warnings @returns {RepoCommit[]}
  */
-function headOf(filling) {
-  const { head } = filling.given;
-  const commit = tryGit(codeRoot(filling.cwd), ['rev-parse', '--verify', '--quiet', `${head}^{commit}`]);
-  if (commit === null) throw new Error(`${head} is no commit of the project's repository — the phase's runs are read at its HEAD there`);
-  return commit.trim();
+function phaseTips(filling, warnings) {
+  return [...phaseHolding(filling, warnings).tips].map(([repo, tip]) => ({ repo: repoName(repo), commit: git(repo.path, ['rev-parse', `refs/heads/${tip}`]).trim() }));
 }
 
-/** @param {Filling} filling */
-function drawRecordedRuns(filling) {
+/** @param {Filling} filling @param {string[]} warnings */
+function drawRecordedRuns(filling, warnings) {
   const { unit, phase } = phaseOf(filling);
-  const head = headOf(filling);
+  const tips = phaseTips(filling, warnings);
   return cutOf(filling)[phase - 1].scenarios.map((scenario) => {
-    const { standing, runs } = runsOf(filling.cwd, unit, scenario, head);
+    const { standing, runs } = runsOf(filling.cwd, unit, scenario, tips);
     return [`- ${scenario}: ${standing}`, ...runs.map((run) => `  - ${run.verdict}, recorded ${run.at}: \`${statePath(filling.cwd, run.file)}\``)].join('\n');
   }).join('\n');
 }
 
-/** @param {Filling} filling */
-function drawMutants(filling) {
+/** @param {Filling} filling @param {string[]} warnings */
+function drawMutants(filling, warnings) {
   const { unit, phase } = phaseOf(filling);
-  const survivors = cachedSurvivors(filling.cwd, unit, phase, headOf(filling));
+  const survivors = cachedSurvivors(filling.cwd, unit, phase, phaseTips(filling, warnings));
   if (survivors === null) return 'The verify setup names no mutation tool.';
   return survivors.length === 0 ? 'None survived.' : survivors.map(({ path: at, line, mutant }) => `- ${at}:${line} — ${mutant}`).join('\n');
 }
@@ -1604,9 +1603,6 @@ function drawConsolidationTo(filling) {
 
 /** The flag naming the branch a range is read from. @type {BriefFlag} */
 const BASE = Object.freeze({ name: 'base', value: 'branch' });
-
-/** The flag naming the commit a phase's runs are read at. @type {BriefFlag} */
-const HEAD = Object.freeze({ name: 'head', value: 'commit' });
 
 /** The flag naming the reviewer a report is written by. @type {BriefFlag} */
 const LETTER = Object.freeze({ name: 'letter', value: REVIEWER_LETTERS.join('|') });
@@ -1680,8 +1676,8 @@ const RECORDS = Object.freeze({
   'relied-on': { of: 'phase', draw: drawReliedOn },
   'phase-diff-range': { of: 'phase', flags: [BASE], draw: drawPhaseDiffRange },
   'phase-scratch-layout': { of: 'phase', draw: drawPhaseScratchLayout },
-  'recorded-runs': { of: 'phase', flags: [HEAD], draw: drawRecordedRuns },
-  mutants: { of: 'phase', flags: [HEAD], draw: drawMutants },
+  'recorded-runs': { of: 'phase', draw: drawRecordedRuns },
+  mutants: { of: 'phase', draw: drawMutants },
   'phase-report-to': { of: 'phase', flags: [LETTER], draw: drawPhaseReportTo },
   'consolidation-to': { of: 'phase', draw: drawConsolidationTo },
 });
