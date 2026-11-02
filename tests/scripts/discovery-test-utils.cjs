@@ -274,6 +274,8 @@ const layout = Object.freeze({
   imports: (unit, ...segments) => [unit, 'imports', ...segments].join('/'),
   /** A unit's analysis file. @param {string} unit @param {string} name */
   unitState: (unit, name) => `${unit}/.state/${name}`,
+  /** A scenario's verification run, or its runs folder. @param {string} unit @param {string} scenario @param {string} [number] zero-padded */
+  run: (unit, scenario, number) => `${unit}/build/runs/${scenario}${number === undefined ? '' : `/run-${number}.json`}`,
 });
 
 /**

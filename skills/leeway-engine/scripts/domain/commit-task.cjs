@@ -17,12 +17,10 @@
 // - The project's checks run before the commit (15.8.3): its tests,
 //   `environment.run.tests`, then each of its linters, `environment.linters`
 //   (environment.cjs), in that order, each by `sh -c` in the code root of the
-//   calling checkout, its output and errors captured to one file whatever
-//   their length, with no timeout of the engine's own. The first that fails
-//   refuses the commit, naming it, its exit code and its output's last
-//   lines; one killed by a signal exits as the shell reports it, 128 and the
-//   signal's number. The door runs them before any lock is taken, so a check
-//   may run the engine.
+//   calling checkout, as a project's command runs (kernel/shell-command.cjs).
+//   The first that fails refuses the commit, naming it, its exit code and
+//   its output's last lines. The door runs them before any lock is taken, so
+//   a check may run the engine.
 // - The message is Claude's with a trailer naming the task's id
 //   (task-id.cjs), `Leeway-Task: {id}` — never landing's `Task:` line, which
 //   the landing drivers read as the task landed (landing-names.cjs). It joins
@@ -32,14 +30,11 @@
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
-const os = require('os');
-const path = require('path');
-const { spawnSync } = require('child_process');
 const { handedSession } = require('../kernel/process.cjs');
 const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
-const { fileLinesBackward } = require('../kernel/file-stream.cjs');
+const { runShellCommand, tailText } = require('../kernel/shell-command.cjs');
 const { tasksInFlight } = require('./conversation.cjs');
 const { parseShownTask, shownTask, taskId, taskName } = require('./task-id.cjs');
 const environment = require('./environment.cjs');
@@ -53,9 +48,6 @@ const TRAILER = 'Leeway-Task';
 
 /** A trailer's line, as git reads one: a token of letters, digits and hyphens, a colon, and its value. */
 const TRAILER_LINE = /^[A-Za-z0-9-]+:[ \t]*\S/;
-
-/** How many of a failed check's last lines its refusal carries. */
-const TAIL_LINES = 40;
 
 /** Starting a task, as its way on says it. @param {string} unit @param {string} shown */
 const startCall = (unit, shown) => `\`engine task start ${unit} ${shown}\``;
@@ -99,50 +91,10 @@ function checksOf(cwd) {
   return [...(tests === null ? [] : [{ name: 'tests', command: tests }]), ...environment.linters(cwd)];
 }
 
-/**
- * A file's last lines, at most `TAIL_LINES`, in their order.
- * @param {string} file @returns {string[]}
- */
-function lastLines(file) {
-  /** @type {string[]} */
-  const lines = [];
-  for (const line of fileLinesBackward(file)) {
-    lines.unshift(line);
-    if (lines.length === TAIL_LINES) break;
-  }
-  return lines;
-}
-
-/**
- * One check run by `sh -c` in `root`, its output and its errors written to
- * one file: its exit code, and its output's last lines.
- * @param {string} root @param {string} command
- * @returns {{exit: number, tail: string[]}}
- */
-function runCheck(root, command) {
-  const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'leeway-check-'));
-  const file = path.join(folder, 'output');
-  try {
-    const fd = fs.openSync(file, 'w');
-    let result;
-    try {
-      result = spawnSync('sh', ['-c', command], { cwd: root, stdio: ['ignore', fd, fd] });
-    } finally {
-      fs.closeSync(fd);
-    }
-    if (result.error !== undefined) throw result.error;
-    const exit = result.status ?? 128 + os.constants.signals[/** @type {NodeJS.Signals} */ (result.signal)];
-    return { exit, tail: exit === 0 ? [] : lastLines(file) };
-  } finally {
-    fs.rmSync(folder, { recursive: true, force: true });
-  }
-}
-
 /** A failed check's refusal. @param {Check} check @param {number} exit @param {string[]} tail */
 function checkFailed({ name }, exit, tail) {
-  const output = tail.length === 0 ? 'It wrote nothing.' : `The last of its output, ${TAIL_LINES} lines at most:\n${tail.join('\n')}`;
   return `commit --task: the check "${name}" failed with exit ${exit}, so nothing was committed — fix what it reports and commit again; `
-    + `the Bash tool stops a call at two minutes unless given a longer timeout, so give the commit's call one where the checks run long. ${output}`;
+    + `the Bash tool stops a call at two minutes unless given a longer timeout, so give the commit's call one where the checks run long. ${tailText(tail)}`;
 }
 
 /**
@@ -155,7 +107,7 @@ function runChecks(cwd) {
   /** @type {CheckRun[]} */
   const ran = [];
   for (const check of checksOf(cwd)) {
-    const { exit, tail } = runCheck(root, check.command);
+    const { exit, tail } = runShellCommand(root, check.command);
     if (exit !== 0) throw new Error(checkFailed(check, exit, tail));
     ran.push({ name: check.name, exit });
   }

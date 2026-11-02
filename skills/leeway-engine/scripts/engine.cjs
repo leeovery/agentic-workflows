@@ -82,6 +82,7 @@ const { DECIDED_USAGE, runDecidedVerb } = require('./domain/decided.cjs');
 const { runStartThisWorkVerb } = require('./domain/start-this-work.cjs');
 const { APPROVE_MAP_USAGE, runApproveMapVerb } = require('./domain/approve-map.cjs');
 const { SWEEP_USAGE, runSweepVerb } = require('./domain/sweep-take.cjs');
+const { VERIFY_USAGE, runVerifyVerb } = require('./domain/verify.cjs');
 const { READY_TO_BUILD_USAGE, POSITION_USAGE, runReadyToBuildVerb, runPositionVerb } = require('./domain/ready-to-build.cjs');
 const { MIGRATE_USAGE, runMigrateVerb } = require('./domain/directives.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, clearOwnQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
@@ -295,6 +296,7 @@ ${DECIDED_USAGE.replace(/^/gm, '  ')}
 ${APPROVE_MAP_USAGE.replace(/^/gm, '  ')}
   ${SWEEP_USAGE}
   ${READY_TO_BUILD_USAGE}
+${VERIFY_USAGE.replace(/^/gm, '  ')}
   ${MIGRATE_USAGE}
   inbox archive <path> [<path> …]
   inbox restore <path> [<path> …]
@@ -1403,6 +1405,22 @@ function runReadyToBuild(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
+// verify — a scenario of the cut run through the verify setup and its run
+// recorded, the setup recorded once it runs end to end, and the mutation
+// tool run over a phase's lines (domain/verify.cjs).
+// ---------------------------------------------------------------------------
+
+/** @param {Call} call @param {string[]} argv */
+function runVerify(call, argv) {
+  const { opts, positional } = parseArgs(argv);
+  try {
+    respond(call, runVerifyVerb(call.cwd, positional, opts));
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // migrate — a directive of the migration checked (domain/directives.cjs).
 // ---------------------------------------------------------------------------
 
@@ -2435,15 +2453,18 @@ const COMMANDS = Object.freeze({
   'approve-map': runApproveMap,
   sweep: runSweep,
   'ready-to-build': runReadyToBuild,
+  verify: runVerify,
 });
 
 // Every command dispatched runs whole under the writer lock, its writes and
 // its commit one hold, so no peer's write lands between them — a command
 // added later included — but the ones named here, `*` for every sub-verb or
 // the sub-verbs alone. None of them writes what a state commit takes but
-// `boot`, `ledger`, `asset`, `raise` and `enter`, and none but they waits on
-// the lock: `knowledge` writes the store the state ignores, under a lock of
-// its own;
+// `boot`, `ledger`, `asset`, `raise`, `enter` and `verify`, and none but
+// they waits on the lock: `knowledge` writes the store the state ignores,
+// under a lock of its own; `verify` holds it around a run's record or the
+// setup's and the commit alone, so the product's parts, which run for
+// minutes, hold no peer up and may run the engine;
 // `boot` holds the writer lock around each state write it makes and no
 // longer, so its knowledge pass never holds a peer up; a `ledger` write
 // holds it around its read of the ledger, the append and the commit alone,
@@ -2488,6 +2509,7 @@ const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */
   brief: ['guard'],
   checklist: ['show'],
   migrate: ['check'],
+  verify: '*',
 }));
 
 /** @param {string[]} argv @returns {boolean} */

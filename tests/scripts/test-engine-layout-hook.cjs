@@ -6,7 +6,7 @@
 // its JSON on stdin as Claude Code sends it. In the state it refuses, with
 // exit 2 and the reason on stderr, a path the layout has no place for (6.S4)
 // and a file only the engine writes — the manifests, a unit's
-// spec-review.json and the ledger — naming the verb that writes it where
+// spec-review.json, a verification run and the ledger — naming the verb that writes it where
 // one does, with the mod or without (6.S5, 5.S7); a unit's spec.md once the
 // spec is concluded (11.9.1); a place in the layout
 // passes, whatever its kind, and in another case where the filesystem
@@ -118,6 +118,7 @@ const ENGINE_FILES = Object.freeze({
   [layout.projectManifest]: 'the project manifest (manifest.json) changes only through the engine\'s commands — engine manifest set|push|pull|delete',
   [layout.manifest('pay')]: 'a unit\'s manifest (pay/manifest.json) changes only through the engine\'s commands — engine manifest set|push|pull|delete|apply',
   [layout.unit('pay', 'spec-review.json')]: 'a unit\'s record of the person\'s review of its spec (pay/spec-review.json) changes only through the engine\'s commands',
+  [layout.run('pay', '3.S2', '001')]: 'a verification run (pay/build/runs/3.S2/run-001.json) changes only through the engine\'s commands — engine verify',
   [layout.ledger]: ledgerReason(),
 });
 
@@ -159,7 +160,7 @@ describe('the layout, held (6.2.1, 6.2.3)', () => {
     }
   });
 
-  it('6.S5: an Edit of the project manifest, a unit\'s manifest, its spec-review.json and the ledger is refused, each naming the engine verb that writes it where one does — with the mod off and on', () => {
+  it('6.S5: an Edit of the project manifest, a unit\'s manifest, its spec-review.json, a verification run (6.2.3, 15.4.2) and the ledger is refused, each naming the engine verb that writes it where one does — with the mod off and on', () => {
     for (const [mod, env] of Object.entries(SURFACES)) {
       for (const [rel, reason] of Object.entries(ENGINE_FILES)) assertRefused(guard(dir, path.join(root, rel), { env, tool: 'Edit' }), `${rel}, ${mod}`, reason);
     }
