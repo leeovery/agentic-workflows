@@ -4,7 +4,9 @@
 // Domain ring: the `task` verbs, the only way anything in the workflows
 // touches a tracker (7.1.2), through the project's task driver (drivers.cjs);
 // a verb of another kind that needs a task reads it as `task show` does
-// (`trackedTask`), as `land open` reads its type and title.
+// (`trackedTask`), as `land open` reads its type and title, and one that
+// needs a unit's phases reads each one's list, and its own phase's tasks
+// whole (`trackedPhases`).
 // A unit's phases are written into the tracker as each starts, so it holds
 // only those (7.4.1); a task is made from the task template in a file, one
 // call per task (7.1.3, 12.5.3), and its id is the engine's (task-id.cjs),
@@ -65,6 +67,7 @@ const { layOutTask, takeWorktreeApart } = require('./task-worktree.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskDriver} TaskDriver */
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
+/** @typedef {import('./drivers.cjs').TaskRow} TaskRow */
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 
 /** Where a task stands once it has ended, done or not. */
@@ -388,6 +391,22 @@ function trackedTask(cwd, ref, lacking) {
   return withTracker(cwd, ref.unit, null, (driver, root) => taskIn(driver, root, ref, lacking));
 }
 
+/**
+ * Each of the unit's phases from 1 to `last` as the tracker holds it, read
+ * as any read is: a phase written as the list of its tasks, in order, null
+ * for one not written; and phase `last`'s tasks whole, null where it is not
+ * written — one read of each task of that phase alone.
+ * @param {string} cwd @param {string} unit @param {number} last
+ * @returns {{phases: (TaskRow[]|null)[], written: TaskDetail[]|null, committed?: string|null, warnings?: string[]}}
+ */
+function trackedPhases(cwd, unit, last) {
+  requireUnit(cwd, unit);
+  return withTracker(cwd, unit, null, (driver, root) => {
+    const phases = Array.from({ length: last }, (_, at) => driver.list(root, unit, at + 1));
+    return { phases, written: phases[last - 1]?.map((row) => taskIn(driver, root, row.ref)) ?? null };
+  });
+}
+
 /** `task show`: the task whole, what was added to it among it. @param {string} cwd @param {string} unit @param {string} given */
 function showTask(cwd, unit, given) {
   const ref = parseShownTask(unit, given);
@@ -516,4 +535,4 @@ function runTaskVerb(cwd, verb, positional, opts) {
   return run(cwd, positional, ...values, .../** @type {string[]} */ (given));
 }
 
-module.exports = { TASK_VERBS, ENDED, runTaskVerb, trackedTask, phaseWritten, givenText };
+module.exports = { TASK_VERBS, ENDED, runTaskVerb, trackedTask, trackedPhases, phaseWritten, givenText };

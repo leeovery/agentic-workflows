@@ -6,7 +6,8 @@
 // commits changed in every repository of the checkout, as they stand at HEAD,
 // and the verb answers what survived on them, read whatever the tool's exit
 // code, each survivor's path read as the project's, a survivor on none of the
-// changed files refused — writing nothing (15.S9, 15.6.3, 15.6.6).
+// changed files refused — writing nothing but the survivors, left in the
+// unit's cache for the HEAD it ran at (15.S9, 15.6.3, 15.6.6).
 //
 // Layer: git. World: verify-world.cjs's, the setup recorded.
 // ---------------------------------------------------------------------------
@@ -17,7 +18,9 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { ok, refusedPristine, commitCode, initRepo, cleanupFixture, createFile, treeSnapshot, head } = require('./engine-harness.cjs');
+const {
+  ok, refusedPristine, commitCode, initRepo, cleanupFixture, createFile, treeSnapshot, head, git,
+} = require('./engine-harness.cjs');
 const { UNIT, SETUP, steer, steering, setupArgs, world } = require('./verify-world.cjs');
 
 /** @type {string} */ let dir;
@@ -47,7 +50,7 @@ describe('verify mutants: the mutation tool over a phase\'s lines (15.6.3, 15.6.
   /** The survivors the tool reports, written for it. @param {unknown} survivors */
   const surviving = (survivors) => steering(dir, 'survivors.json', JSON.stringify(survivors));
 
-  it('15.S9: the tool is handed the lines the phase\'s commits changed in every repository, as they stand at HEAD, and the verb answers the survivors on them alone — a path given from `./`, absolute or nested read as the project\'s — writing nothing, whatever the tool\'s exit code', () => {
+  it('15.S9: the tool is handed the lines the phase\'s commits changed in every repository, as they stand at HEAD, and the verb answers the survivors on them alone — a path given from `./`, absolute or nested read as the project\'s — whatever the tool\'s exit code, writing nothing but the survivors, left in the unit\'s cache for the HEAD it ran at', () => {
     phaseWork();
     surviving([
       { path: './src/card.js', line: 2, mutant: 'string "visa" → ""' },
@@ -60,17 +63,20 @@ describe('verify mutants: the mutation tool over a phase\'s lines (15.6.3, 15.6.
 
     const res = ok(dir, ['verify', 'mutants', UNIT, '1']);
 
-    assert.deepStrictEqual(res, { ok: true, unit: UNIT, phase: 1, survivors: [
+    const survivors = [
       { path: 'src/card.js', line: 2, mutant: 'string "visa" → ""' },
       { path: 'src/form.js', line: 1, mutant: 'removed' },
       { path: 'lib/x.js', line: 2, mutant: 'y → z' },
-    ] });
+    ];
+    assert.deepStrictEqual(res, { ok: true, unit: UNIT, phase: 1, survivors });
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(steer(dir), 'changed.json'), 'utf8')), [
       { path: 'src/card.js', lines: [[2, 3]] },
       { path: 'src/form.js', lines: [[1, 2]] },
       { path: 'lib/x.js', lines: [[2, 2]] },
     ]);
-    assert.deepStrictEqual({ tree: treeSnapshot(dir), head: head(dir) }, before);
+    const at = git(dir, ['rev-parse', 'HEAD']).trim();
+    const cached = { [`.cache/${UNIT}/build/mutants/phase-1/${at}.json`]: `${JSON.stringify({ head: at, survivors }, null, 2)}\n` };
+    assert.deepStrictEqual({ tree: treeSnapshot(dir), head: head(dir) }, { ...before, tree: { ...before.tree, ...cached } });
   });
 
   it('a survivor naming none of the files the phase changed — another phase\'s, or a nested repository\'s path from its own root — is refused, naming each and the path\'s form', () => {

@@ -60,7 +60,9 @@
 //   alone (log-links.cjs, 9.10.11). The files the
 //   person's tools leave beside the state's — an operating system's folder
 //   metadata, an editor's swap files, backups and locks — are neither
-//   refused nor committed. A merge's landing is no verb's commit, and is
+//   refused nor committed, and nor is an agent's staging of a file place, a
+//   `.txt` beside it waiting on its rename (layout.cjs, `stagedPlace`, the
+//   layout hook's own rule), so one agent mid-write holds up no commit. A merge's landing is no verb's commit, and is
 //   never checked.
 // - Its `.gitignore`: written whole at the orphan's first commit; the task
 //   driver's local files are added to it later, as its store is made.
@@ -79,7 +81,7 @@ const { isolatedGit, gitfileTarget, realpathOrSelf } = require('../kernel/isolat
 const { GitError, literally } = require('../kernel/git.cjs');
 const { STATE_BRANCH, BRANCH_REF } = require('../kernel/state-root.cjs');
 const { WRITER_LOCK, jsonText, writeTextAtomic, withWriterLock, withStateLockFile } = require('../kernel/manifest-io.cjs');
-const { folding, layoutPlace } = require('./layout.cjs');
+const { folding, layoutPlace, stagedPlace } = require('./layout.cjs');
 const { logLinks } = require('./log-links.cjs');
 const { withPrivateIndex } = require('./state-merge-paths.cjs');
 const { alignIndex } = require('./state-merge-worktree.cjs');
@@ -775,9 +777,9 @@ function changedAt(git, head, spec, change) {
 
 /**
  * A path whose file in the state worktree differs from HEAD, named from the
- * root: whether it is gone from the working tree, and its place in the
- * layout, null where it has none.
- * @typedef {{rel: string, gone: boolean, at: import('./layout.cjs').Place|null}} PlacedChange
+ * root: whether it is gone from the working tree, its place in the layout,
+ * null where it has none, and whether it is a file place's staging.
+ * @typedef {{rel: string, gone: boolean, at: import('./layout.cjs').Place|null, staging: boolean}} PlacedChange
  */
 
 /**
@@ -794,7 +796,8 @@ function placedChanges({ git, root }) {
     .filter((entry) => entry !== '' && !SIDECAR_NAME.test(path.posix.basename(entry.slice(3))))
     .map((entry) => {
       const rel = entry.slice(3);
-      return { rel, gone: entry[1] === 'D' || entry.startsWith('D '), at: layoutPlace(rel, fold) };
+      const at = layoutPlace(rel, fold);
+      return { rel, gone: entry[1] === 'D' || entry.startsWith('D '), at, staging: at === null && stagedPlace(rel, fold) !== null };
     });
 }
 
@@ -804,7 +807,7 @@ function placedChanges({ git, root }) {
  * @param {string} root @param {PlacedChange[]} changes
  */
 function refuseOutsideLayout(root, changes) {
-  const strays = changes.filter(({ at, gone }) => at === null && !gone).map(({ rel }) => rel);
+  const strays = changes.filter(({ at, gone, staging }) => at === null && !gone && !staging).map(({ rel }) => rel);
   if (strays.length === 0) return;
   const it = strays.length === 1 ? 'it' : 'each';
   throw new Error(`the state at ${root} holds ${strays.join(', ')}, outside the workflows' layout — nothing committed; remove ${it}, or move ${it} into the layout`);
@@ -822,14 +825,15 @@ function refuseOutsideLayout(root, changes) {
  * and the private index is cleared before and after. A file given a change
  * is committed as the change makes it of HEAD's, whatever the working tree
  * holds. The files the person's tools leave beside the state's are never
- * staged. Of `kept`, what is on disk is staged as additions and edits
- * alone — a folder's new files with them — never a removal. Null where the
- * tree comes out as HEAD's.
+ * staged, nor is `staging`, the file places' staged `.txt`s. Of `kept`,
+ * what is on disk is staged as additions and edits alone — a folder's new
+ * files with them — never a removal. Null where the tree comes out as HEAD's.
  * @param {OpenWorktree} worktree @param {HeadAt} at @param {string[]} specs @param {string} message
- * @param {Record<string, Change>} changes @param {string[]} kept
+ * @param {Record<string, Change>} changes @param {string[]} kept @param {string[]} staging
  * @returns {string|null}
  */
-function commitPaths(worktree, { commit: head, tree: headTree }, specs, message, changes, kept) {
+function commitPaths(worktree, { commit: head, tree: headTree }, specs, message, changes, kept, staging) {
+  const heldOut = [...SIDECARS_HELD_OUT, ...staging.map((rel) => `:(exclude,literal)${rel}`)];
   const { git, root, index, gitDir } = worktree;
   const changed = Object.entries(changes).flatMap(([spec, change]) => {
     const text = changedAt(git, head, spec, change);
@@ -842,10 +846,10 @@ function commitPaths(worktree, { commit: head, tree: headTree }, specs, message,
     const gone = specs.filter((spec) => spec !== '.' && !onDisk(path.join(root, spec)));
     const known = gone.length === 0 ? [] : git.run(['ls-files', '-z', '--', ...literally(gone)], { env }).split('\0').filter((file) => file !== '');
     const stageable = specs.filter((spec) => !gone.includes(spec) || known.some((file) => file === spec || file.startsWith(`${spec}/`)));
-    if (stageable.length > 0) git.run(['add', '--all', '--', ...literally(stageable), ...SIDECARS_HELD_OUT], { env });
+    if (stageable.length > 0) git.run(['add', '--all', '--', ...literally(stageable), ...heldOut], { env });
     const present = kept.filter((spec) => onDisk(path.join(root, spec)));
     if (present.length > 0) {
-      git.run(['add', '--ignore-removal', '--pathspec-from-file=-', '--pathspec-file-nul'], { env, input: [...literally(present), ...SIDECARS_HELD_OUT].join('\0') });
+      git.run(['add', '--ignore-removal', '--pathspec-from-file=-', '--pathspec-file-nul'], { env, input: [...literally(present), ...heldOut].join('\0') });
     }
     for (const { spec, text } of changed) {
       const blob = git.run(['hash-object', '-w', '--stdin'], { input: text }).trim();
@@ -945,7 +949,8 @@ function commitHere(root, paths, message, { contents = {}, kept = [] } = {}) {
   refuseOutsideLayout(root, changes);
   const logs = changes.filter(({ at }) => at?.kind === 'log').map(({ rel }) => rel);
   const keeps = [...keptSpecs, ...logLinks(root, logs)];
-  const commit = commitPaths(worktree, recorded ? headAt(worktree.git) : worktree.at, [...specs, ...logs], message, given, keeps);
+  const staging = changes.filter((change) => change.staging).map(({ rel }) => rel);
+  const commit = commitPaths(worktree, recorded ? headAt(worktree.git) : worktree.at, [...specs, ...logs], message, given, keeps, staging);
   return { commit, warnings: [...landed, ...alignIndex(worktree.git, STATE_BRANCH, 'HEAD', [...taken, ...logs, ...keeps])] };
 }
 

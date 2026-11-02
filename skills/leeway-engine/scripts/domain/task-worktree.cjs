@@ -240,18 +240,30 @@ function heldIn(repos, repo) {
 }
 
 /**
+ * The commit a submodule's holder, laid out at `commit` in the folder `at`,
+ * points it at — its own checkout's where that points it nowhere, as a
+ * checkout of that commit lays it out.
+ * @param {Repo[]} repos @param {Repo} repo @param {string} at @param {string} commit
+ * @returns {string}
+ */
+function pointedAt(repos, repo, at, commit) {
+  const { holder, folder } = heldIn(repos, repo);
+  const [pointers] = lg.pointersAt(holder.path, [commit], [`${holder.dir === '' ? lg.prefixOf(at) : ''}${folder}`]);
+  return [...pointers.values()][0] ?? commitOf(repo.path, 'HEAD');
+}
+
+/**
  * The commit a child repository's branch is made at: for a submodule, the
- * commit its holder's laid-out commit points it at — its own checkout's
- * where that points it nowhere; for a clone, the branch it lands on.
+ * commit its holder's laid-out commit points it at; for a clone, the branch
+ * it lands on.
  * @param {Repo[]} repos @param {Repo} repo @param {Map<string, Part>} parts each laid out before it, by folder
  * @returns {string}
  */
 function startOf(repos, repo, parts) {
-  const { holder, folder, submodule } = heldIn(repos, repo);
+  const { holder, submodule } = heldIn(repos, repo);
   if (!submodule) return commitOf(repo.path, `refs/heads/${lg.defaultBranch(repo.path, nestedRemoteName(repo.path), true)}`);
   const { at, commit } = /** @type {Part} */ (parts.get(holder.dir));
-  const [pointers] = lg.pointersAt(holder.path, [commit], [`${holder.dir === '' ? lg.prefixOf(at) : ''}${folder}`]);
-  return [...pointers.values()][0] ?? commitOf(repo.path, 'HEAD');
+  return pointedAt(repos, repo, at, commit);
 }
 
 /**
@@ -370,4 +382,4 @@ function takeWorktreeApart(cwd, ref, verb, read) {
   });
 }
 
-module.exports = { layOutTask, takeWorktreeApart };
+module.exports = { layOutTask, takeWorktreeApart, heldIn, pointedAt };

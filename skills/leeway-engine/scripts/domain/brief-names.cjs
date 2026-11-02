@@ -4,8 +4,11 @@
 // Domain ring: what a brief is called (6.5), shared by its fill (brief.cjs)
 // and the hook before Agent and SendMessage (brief-guard.cjs). Each role
 // names the agent it is dispatched as, whose brief its first line says it
-// is, and the records its brief draws on (6.5.4, 6.5.11). A brief is kept
-// in the folder of the conversation that issued it (conversation.cjs):
+// is, and the records its brief draws on (6.5.4, 6.5.11): the reviewer's
+// agent is dispatched for a task and for a phase's review, each with its
+// own template (6.5.2), and the builder's for a task and its fix rounds. A
+// brief is kept in the folder of the conversation that issued it
+// (conversation.cjs):
 // `briefs/{id}.md`, what the agent is handed, and beside it `{id}.json`,
 // whose it is, `{role, agent, unit, task, topic}`. A dispatch carries it
 // by its pointer, `brief:{id}`, alone; the hook's refusals are appended to
@@ -43,8 +46,8 @@ const OURS = 'leeway-';
  * @type {Readonly<Record<string, {agent: string, whose: string, records: readonly string[], kind?: string}>>}
  */
 const ROLES = Object.freeze({
-  builder: { agent: 'leeway-builder', whose: 'the builder\'s', records: ['task', 'spec-sections', 'decided-calls', 'linters'] },
-  reviewer: { agent: 'leeway-reviewer', whose: 'the reviewer\'s', records: ['task', 'spec-sections', 'decided-calls', 'diff-range', 'linters'] },
+  builder: { agent: 'leeway-builder', whose: 'the builder\'s', records: ['task', 'spec-sections', 'decided-calls', 'linters', 'account-to', 'setup-to'] },
+  reviewer: { agent: 'leeway-reviewer', whose: 'the reviewer\'s', records: ['task', 'spec-sections', 'decided-calls', 'diff-range', 'scratch-layout', 'linters', 'round-report-to'] },
   fix: { agent: 'leeway-builder', whose: 'the fix round\'s', records: ['reports'] },
   'product-researcher': { agent: 'leeway-product-researcher', whose: 'the product researcher\'s', records: [] },
   'deep-dive': {
@@ -80,6 +83,17 @@ const ROLES = Object.freeze({
     whose: 'the spec reviewer\'s',
     kind: 'spec-review',
     records: ['changed-sections', 'invented-lines', 'measured-findings', 'product-cites', 'unit-records', 'builder-calls', 'report-refusal', 'unit-report-to'],
+  },
+  'task-writer': {
+    agent: 'leeway-task-writer',
+    whose: 'the task writer\'s',
+    records: ['cut-phase', 'phase-sections', 'phase-scenarios', 'held-notes', 'written-tasks', 'earlier-tasks', 'build-calls', 'affected-entries', 'task-files-to'],
+  },
+  consolidation: {
+    agent: 'leeway-consolidation', whose: 'the consolidation agent\'s', records: ['phase-notes', 'phase-tasks', 'phase-diff-range', 'consolidation-to', 'task-files-to'],
+  },
+  'phase-review': {
+    agent: 'leeway-reviewer', whose: 'the phase review\'s', records: ['cut-phase', 'phase-sections', 'phase-criteria', 'relied-on', 'decided-calls', 'phase-diff-range', 'phase-scratch-layout', 'recorded-runs', 'mutants', 'linters', 'phase-report-to'],
   },
 });
 

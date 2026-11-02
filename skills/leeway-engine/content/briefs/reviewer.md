@@ -14,9 +14,17 @@
 
 {{diff-range}}
 
+# Laying out your scratch worktree
+
+{{scratch-layout}}
+
 # The linters
 
 {{linters}}
+
+# Where your report goes
+
+{{round-report-to}}
 
 # A failed review
 
@@ -68,6 +76,8 @@ Your report ends in its findings, then its verdict. The findings are its last se
 
 Verdict: fail
 ```
+
+Write the whole report to the file under "Where your report goes". Your final message then holds only the report's nits, each as the report words it, and its verdict line, and nothing else.
 
 # Comments are never the standard
 

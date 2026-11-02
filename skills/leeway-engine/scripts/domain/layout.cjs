@@ -21,6 +21,11 @@
 //           it, where one does;
 //   log     a log a session writes to, which a state commit takes along
 //           (6.3.2).
+// A `file` place's `.txt` beside it is its staging (`stagedPlace`): an
+// agent writes the `.txt`, then renames it to the place — the two-step write
+// every subagent uses, since the harness blocks a report-shaped `.md` a
+// subagent writes. A `.txt` beside no file place has none.
+//
 // A path's names are literal but for its placeholders: `{unit}` a unit's
 // name, `{slug}` a kebab-case slug; `{area}` an area of the spec by its
 // number and slug, `{n}-{slug}`, so no area's report is named as the tests'
@@ -242,6 +247,20 @@ function layoutPlace(rel, fold = AS_WRITTEN) {
 }
 
 /**
+ * The file place a `.txt` beside it stages, or null where `rel` is no `.txt`
+ * beside a file place: a subagent writes `X.txt`, then renames it to `X.md`,
+ * since the harness blocks a report-shaped `.md` a subagent writes, and the
+ * rename lands the file whole.
+ * @param {string} rel @param {Fold} [fold]
+ * @returns {Place|null}
+ */
+function stagedPlace(rel, fold = AS_WRITTEN) {
+  if (!fold(rel).endsWith('.txt')) return null;
+  const at = layoutPlace(`${rel.slice(0, -'.txt'.length)}.md`, fold);
+  return at?.kind === 'file' ? at : null;
+}
+
+/**
  * The home of `ASSET_HOMES` the state-relative path `rel` sits below, or is
  * — a spike's folder itself — or null.
  * @param {string} rel @param {Fold} [fold]
@@ -265,4 +284,4 @@ function engineRefusal(at, rel) {
   return `${at.what} (${rel}) changes only through the engine's commands${at.verb === undefined ? '' : ` — engine ${at.verb}`}`;
 }
 
-module.exports = { LAYOUT, TODAY, SPEC_PLACE, PRODUCT_DIR, PRODUCT_SESSIONS, ASSET_HOMES, SPIKE_HOMES, AS_WRITTEN, IN_LOWER_CASE, folding, layoutPlace, assetHome, engineRefusal };
+module.exports = { LAYOUT, TODAY, SPEC_PLACE, PRODUCT_DIR, PRODUCT_SESSIONS, ASSET_HOMES, SPIKE_HOMES, AS_WRITTEN, IN_LOWER_CASE, folding, layoutPlace, stagedPlace, assetHome, engineRefusal };

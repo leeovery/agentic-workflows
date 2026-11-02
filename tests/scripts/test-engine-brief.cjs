@@ -266,7 +266,9 @@ function drawnForTakeACard() {
     `- ${calls.claude}, Claude's: A card is tokenised.\n  Its number is never kept.\n  Why: No card number is kept.\n  The audit stays small.`,
     `- ${calls.person}, the person's: Refunds through the API.\n  Why: They come weekly now.`,
   ].join('\n');
-  return { task, 'spec-sections': `${REFUNDS}\n\n${FORM}`, 'decided-calls': decisions, linters: '- eslint: npx eslint .\n- tsc: npx tsc --noEmit' };
+  return {
+    task, 'spec-sections': `${REFUNDS}\n\n${FORM}`, 'decided-calls': decisions, linters: '- eslint: npx eslint .\n- tsc: npx tsc --noEmit', 'account-to': `\`${statePath(dir, 'pay/build/tasks/1.1.md')}\``, 'setup-to': `\`${statePath(dir, '.cache/pay/build/verify-setup.json')}\`\n\nNo verify setup is recorded yet.`,
+  };
 }
 
 /**
@@ -303,6 +305,7 @@ describe('the builder\'s brief (6.5.1–6.5.5, 6.S15)', () => {
     assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'builder', agent: 'leeway-builder', pointer: `brief:${res.id}` });
     assert.strictEqual(brief, `Brief ${res.id} — the builder's, for pay task 1.1\n\n${filledTemplate('builder', drawnForTakeACard())}`);
     assert.ok(!brief.includes(PROJECT_WORDS) && !brief.includes('Prefer tabs.'), 'nothing of CLAUDE.md or a skill reaches the brief');
+    assert.doesNotMatch(brief, /\.claude\/skills\/(?!leeway-engine\/)/, 'no project skill\'s path reaches the brief, the engine\'s alone named as installed (15.10.2)');
     assert.deepStrictEqual(stored(), [`${res.id}.json`, `${res.id}.md`]);
   });
 
@@ -383,35 +386,37 @@ describe('the reviewer\'s brief (13.2.2, 13.11.5)', () => {
   useWorld(unitWorld);
 
   it('a task whose branch is in two repositories: the builder\'s records, the task\'s additions among them, then the range and its stat in each, the project\'s own first — and no line of the diff', () => {
-    const { res, brief } = issued(['reviewer', UNIT, '1.1', '--base', 'main']);
+    const { res, brief } = issued(['reviewer', UNIT, '1.1', '--base', 'main', '--letter', 'a']);
 
     assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'reviewer', agent: 'leeway-reviewer', pointer: `brief:${res.id}` });
     const ranges = takeACardRanges('main', 'main');
-    assert.strictEqual(brief, `Brief ${res.id} — the reviewer's, for pay task 1.1\n\n${filledTemplate('reviewer', { ...drawnForTakeACard(), 'diff-range': ranges })}`);
+    const laid = `- the project's repository: \`${PAY_BRANCH}\` — the range's tip there\n- \`${NESTED}\`: \`${PAY_BRANCH}\` — the range's tip there`;
+    assert.strictEqual(brief, `Brief ${res.id} — the reviewer's, for pay task 1.1\n\n${filledTemplate('reviewer', { ...drawnForTakeACard(), 'diff-range': ranges, 'scratch-layout': laid, 'round-report-to': `\`${statePath(dir, roundAt('1.1', 2, 'a'))}\`` })}`);
     assert.ok(!brief.includes(CHANGED), 'the diff\'s text reaches no brief');
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'reviewer', agent: 'leeway-reviewer', unit: UNIT, task: '1.1', topic: null });
   });
 
   it('a task whose branch holds work in the project\'s repository alone: its range there, a path past 80 columns drawn whole, and none in a repository naming the branch with nothing on it', () => {
-    const { brief } = issued(['reviewer', 'refund', '1.1', '--base', 'main']);
+    const { brief } = issued(['reviewer', 'refund', '1.1', '--base', 'main', '--letter', 'a']);
 
-    assert.ok(brief.includes(`# The diff's range\n\n${rangeDrawn('the project\'s repository', REFUND_BRANCH, DEEP)}\n\n# The linters\n`), brief);
+    assert.ok(brief.includes(`# The diff's range\n\n${rangeDrawn('the project\'s repository', REFUND_BRANCH, DEEP)}\n\n# Laying out your scratch worktree\n\n`
+      + `- the project's repository: \`${REFUND_BRANCH}\` — the range's tip there\n- \`${NESTED}\`: \`${REFUND_BRANCH}\` — the task's branch\n\n# The linters\n`), brief);
   });
 
   it('a base a repository lacks is its own default branch there: a stack\'s base in the project\'s repository alone, and a nested repository whose default is master', () => {
     git(dir, ['branch', 'pay-stack', 'main']);
-    const stacked = issued(['reviewer', UNIT, '1.1', '--base', 'pay-stack']).brief;
+    const stacked = issued(['reviewer', UNIT, '1.1', '--base', 'pay-stack', '--letter', 'a']).brief;
     git(path.join(dir, NESTED), ['branch', '-m', 'main', 'master']);
-    const master = issued(['reviewer', UNIT, '1.1', '--base', 'main']).brief;
+    const master = issued(['reviewer', UNIT, '1.1', '--base', 'main', '--letter', 'a']).brief;
 
     assert.ok(stacked.includes(`# The diff's range\n\n${takeACardRanges('pay-stack', 'main')}\n\n`), stacked);
     assert.ok(master.includes(`# The diff's range\n\n${takeACardRanges('main', 'master')}\n\n`), master);
   });
 
   it('a range with nothing in it says so', () => {
-    const { brief } = issued(['reviewer', 'refund', '1.1', '--base', REFUND_BRANCH]);
+    const { brief } = issued(['reviewer', 'refund', '1.1', '--base', REFUND_BRANCH, '--letter', 'a']);
 
-    assert.ok(brief.includes(`# The diff's range\n\n## In the project's repository: \`${REFUND_BRANCH}...${REFUND_BRANCH}\`\n\nNothing changed in the range.\n\n# The linters\n`), brief);
+    assert.ok(brief.includes(`# The diff's range\n\n## In the project's repository: \`${REFUND_BRANCH}...${REFUND_BRANCH}\`\n\nNothing changed in the range.\n\n# Laying out your scratch worktree\n\n`), brief);
   });
 
   it('13.S20: the template carries the stance on a failed review (13.5.7), a call on every finding, when it is serious, with the edge list, and what a nit is (13.4.1, 13.4.5, 13.6), judges against the brief and the design, never the comments (13.9.1), returns a wrong comment as a nit (13.9.3), and a workflows reference in the work too (13.11.14)', () => {
@@ -487,12 +492,13 @@ describe('the refusals, nothing written and no brief stored', () => {
 
   it('a role it does not know, and arguments of another shape for each role: a flag it takes missing, given twice or given no value', () => {
     const usage = new RegExp(`^Usage: ${[
-      'builder <unit> <task>', 'reviewer <unit> <task> --base <branch>', 'fix <unit> <task>', 'product-researcher',
+      'builder <unit> <task>', 'reviewer <unit> <task> --base <branch> --letter <a|b>', 'fix <unit> <task>', 'product-researcher',
       'deep-dive <unit> <topic> --question <id> --agent <id> --kind <survey|read|feasibility|landscape|verify> [--path <file>]',
       'perspective <unit> <topic> --question <id> --agent <id>', 'synthesis <unit> <topic> --agent <id>', 'discussion-reviewer <unit> <topic> --agent <id>',
       'closing-pass-reader <unit> <topic> --agent <id>', 'plain-search',
       'migration-topic --topic <unit.phase.topic> --directive <id>', 'migration-verifier --topic <unit.phase.topic> --directive <id>', 'phase-cut <unit>', 'sweep <unit>',
       'spec-writer <unit> [--wording <file>]', 'spec-reviewer <unit> --agent <id>',
+      'task-writer <unit> <N>', 'consolidation <unit> <N> --base <branch>', 'phase-review <unit> <N> --base <branch> --head <commit> --letter <a|b>',
     ].map((line) => `engine brief ${line.replace(/[|[\]]/g, '\\$&')}`).join(' \\| ')}$`);
     for (const args of [
       [], ['scribe', UNIT, '1.1'], ['builder'], ['builder', UNIT], ['builder', UNIT, '1.1', 'more'], ['product-researcher', UNIT],
@@ -511,7 +517,7 @@ describe('the refusals, nothing written and no brief stored', () => {
     const migrated = ['--topic', `${UNIT}.discussion.cards`, '--directive', '079-records'];
     const taking = {
       builder: [UNIT, '1.1'],
-      reviewer: [UNIT, '1.1', '--base', 'main'],
+      reviewer: [UNIT, '1.1', '--base', 'main', '--letter', 'a'],
       fix: FIX.slice(1),
       'product-researcher': [],
       'deep-dive': [...asked, ...dispatched.slice(2), '--kind', 'survey'],
@@ -526,9 +532,12 @@ describe('the refusals, nothing written and no brief stored', () => {
       sweep: [UNIT],
       'spec-writer': [UNIT],
       'spec-reviewer': [UNIT, '--agent', 'spec-review-001'],
+      'task-writer': [UNIT, '1'],
+      consolidation: [UNIT, '1', '--base', 'main'],
+      'phase-review': [UNIT, '1', '--base', 'main', '--head', 'main', '--letter', 'a'],
     };
     for (const role of Object.keys(ROLES)) {
-      for (const [flag, value] of [['--note', 'be quick'], ...(role === 'reviewer' ? [] : [['--base', 'main']]), ['--report-a', 'a.md']]) {
+      for (const [flag, value] of [['--note', 'be quick'], ...(taking[role].includes('--base') ? [] : [['--base', 'main']]), ['--report-a', 'a.md']]) {
         refusedUnissued([role, ...taking[role], flag, value], new RegExp(`^brief: the ${role}'s brief takes no ${flag} `));
       }
     }
@@ -538,9 +547,9 @@ describe('the refusals, nothing written and no brief stored', () => {
 
   it('a reviewer\'s base no repository holding the task\'s branch has as a local branch, and a task whose branch no repository holds', () => {
     const holding = `task 1\\.1 of pay's branch, ${PAY_BRANCH}`;
-    refusedUnissued(['reviewer', UNIT, '1.1', '--base', 'trunk'], new RegExp(`^the base trunk is no local branch in any repository holding ${holding}$`));
+    refusedUnissued(['reviewer', UNIT, '1.1', '--base', 'trunk', '--letter', 'a'], new RegExp(`^the base trunk is no local branch in any repository holding ${holding}$`));
     git(dir, ['branch', '-D', REFUND_BRANCH]);
-    refusedUnissued(['reviewer', 'refund', '1.1', '--base', 'main'], new RegExp(`^no repository of the project holds work on task 1\\.1 of refund's branch, ${REFUND_BRANCH}$`));
+    refusedUnissued(['reviewer', 'refund', '1.1', '--base', 'main', '--letter', 'a'], new RegExp(`^no repository of the project holds work on task 1\\.1 of refund's branch, ${REFUND_BRANCH}$`));
   });
 
   it('a fix round for a task with no round\'s reports, a round missing a reviewer\'s report, and one holding a report that does not read', () => {
@@ -549,7 +558,7 @@ describe('the refusals, nothing written and no brief stored', () => {
     refusedUnissued([...FIX], /^round 2 of task 1\.1 of pay has no report from reviewer a — pay\/build\/tasks\/1\.1\/round-2-a\.md$/);
     writeState(dir, roundAt('1.1', 2, 'a'), reportOf('bug'));
     writeState(dir, roundAt('1.1', 2, 'b'), 'Verdict: fail\n\n- The receipt omits the amount.\n');
-    refusedUnissued([...FIX], /^pay\/build\/tasks\/1\.1\/round-2-b\.md does not read as a reviewer's report — its last heading at level one or two is not `## Findings`; its last line is not `Verdict: pass` or `Verdict: fail`$/);
+    refusedUnissued([...FIX], /^pay\/build\/tasks\/1\.1\/round-2-b\.md does not read as a reviewer's report — its last heading at level one or two is not `## Findings`; its last line is not `Verdict: pass` or `Verdict: fail`; brief reviewer b again, and its report replaces it$/);
   });
 
   it('13.S4: a fix round after a round of nits alone, which passes and sends nothing back to the builder', () => {
@@ -600,24 +609,21 @@ describe('the templates and the store', () => {
     for (const [role, { agent }] of Object.entries(ROLES)) assert.ok(agent.startsWith(OURS) && agent.length > OURS.length, `${role}: ${agent}`);
   });
 
-  it('every role\'s agent is a definition on the roster fixing Opus at medium (26.4.1, 26.5.3) — but the build\'s, whose definitions its phase writes', () => {
-    const roles = Object.entries(ROLES);
-    const written = roles.filter(([, { agent }]) => fs.existsSync(path.join(AGENTS, `${agent}.md`)));
-
-    assert.deepStrictEqual(roles.filter((role) => !written.includes(role)).map(([role]) => role), ['builder', 'reviewer', 'fix']);
-    for (const [role, { agent }] of written) {
+  it('every role\'s agent is a definition on the roster fixing Opus at medium (26.4.1, 26.5.3)', () => {
+    for (const [role, { agent }] of Object.entries(ROLES)) {
+      assert.ok(fs.existsSync(path.join(AGENTS, `${agent}.md`)), `${role}: ${agent}`);
       const frontmatter = /^---\n([\s\S]*?)\n---\n/.exec(fs.readFileSync(path.join(AGENTS, `${agent}.md`), 'utf8'))?.[1] ?? '';
       assert.deepStrictEqual(['name', 'model', 'effort'].map((key) => new RegExp(`^${key}: (.*)$`, 'm').exec(frontmatter)?.[1]), [agent, 'opus', 'medium'], role);
     }
   });
 
   it('a template is refused for a slot not alone on its line, one no record answers, one its role does not draw on, and a record\'s slot missing or twice', () => {
-    const builder = '{{task}}\n{{spec-sections}}\n{{decided-calls}}\n{{linters}}\n';
+    const builder = '{{task}}\n{{spec-sections}}\n{{decided-calls}}\n{{linters}}\n{{account-to}}\n{{setup-to}}\n';
     assert.strictEqual(templateOf('builder', builder), builder);
     assert.throws(() => templateOf('builder', `${builder}See {{task}} above.\n`), /"See \{\{task\}\} above\." holds a slot that is not alone on its line; task's slot is there 2 times$/);
     assert.throws(() => templateOf('builder', `${builder}{{diff}}\n`), /the builder's template is refused — \{\{diff\}\} is no record$/);
     assert.throws(() => templateOf('product-researcher', '{{linters}}\n'), /the product-researcher's brief draws on no linters$/);
-    assert.throws(() => templateOf('builder', '{{task}}\n{{spec-sections}}\n{{linters}}\n'), /— no slot for decided-calls$/);
+    assert.throws(() => templateOf('builder', '{{task}}\n{{spec-sections}}\n{{linters}}\n{{account-to}}\n{{setup-to}}\n'), /— no slot for decided-calls$/);
   });
 
   it('a brief and its record are never stored over another\'s', () => {

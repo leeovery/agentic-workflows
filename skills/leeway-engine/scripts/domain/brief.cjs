@@ -2,20 +2,23 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: a brief filled and issued (6.5) — `brief <role> [<unit>
-// <task>|<unit> <topic>|<unit>] [--{flag} <value> …]`, the only way the
+// <task>|<unit> <N>|<unit> <topic>|<unit>] [--{flag} <value> …]`, the only way the
 // workflows hand one of their own agents its brief (6.5.1). Each role names
 // its template, the agent it is dispatched as — the fix round's, the builder
 // it is sent to — and the records its brief draws on (6.5.4, 6.5.11,
 // brief-names.cjs); a role whose records include a task's takes the unit
-// and the task, one whose records include a topic's takes the unit and the
-// topic, one whose records include a unit's — and no task's or topic's —
-// takes the unit alone, any other none; a unit's record is drawn for the
-// unit of a task's or a topic's brief alike. A role takes each flag its records name, every one of them but a
-// flag a record holds optional, once, and no other:
-// `--base <branch>`, `--question <id>`, `--agent <id>`, `--kind
-// <kind>`, a read dive's `--path <file>`, the migration's
-// `--directive <id>` and `--topic <unit.phase.topic>`; a flag carries a
-// name, an id or a path, so no free text reaches a brief (6.5.6).
+// and the task, one whose records include a build phase's — and no task's —
+// takes the unit and the phase's number in its cut, one whose records
+// include a topic's takes the unit and the topic, one whose records include
+// a unit's — and no task's, phase's or topic's — takes the unit alone, any
+// other none; a unit's record is drawn for the unit of a task's, a phase's
+// or a topic's brief alike. A role takes each flag its records name, every
+// one of them but a flag a record holds optional, once, and no other:
+// `--base <branch>`, a phase review's `--head <commit>`, a reviewer's
+// `--letter <a|b>`, `--question <id>`, `--agent <id>`, `--kind <kind>`, a
+// read dive's `--path <file>`, the migration's `--directive <id>` and
+// `--topic <unit.phase.topic>`; a flag carries a name, an id or a path, so
+// no free text reaches a brief (6.5.6).
 //
 // A template is markdown in the engine's content (`content/briefs/{role}.md`,
 // 6.5.2): the template's own words, and a slot, `{{record}}` alone on its
@@ -32,22 +35,25 @@
 // beside it, so it is never seen half written and never written over
 // another, the record first, so a brief always has its record; both go with
 // the folder (conversation.cjs). The brief's first line names it, `Brief
-// {id} — the builder's, for {unit} task {N.M}`, `… for {unit} topic
-// {topic}`, or `… for {unit}`.
+// {id} — the builder's, for {unit} task {N.M}`, `… for {unit} phase {N}`,
+// `… for {unit} topic {topic}`, or `… for {unit}`.
 // The dispatch carries the brief's pointer, `brief:{id}`, alone, and the
 // hook before Agent and SendMessage hands the agent the stored brief
 // (brief-guard.cjs).
 //
 // It refuses no session id, a role it does not know, arguments of another
 // shape, a unit, a task or a topic the project lacks, a unit set aside
-// where its role takes the unit alone or a topic, a task done or
-// closed, a topic set aside (5.8.17), and a record it cannot read. Once
+// where its role takes the unit alone, a phase or a topic, a task done or
+// closed, a topic set aside (5.8.17), a phase for a unit whose build has
+// not begun or one its cut lacks, and a record it cannot read. A phase's
+// brief reads the list of each of the unit's phases to it from the
+// tracker, once, and its own phase's tasks whole (task-verbs.cjs). Once
 // every record is drawn, what a record binds is bound — the dispatch a
 // question's brief is for, to that question (brief-records.cjs) — before
 // the brief is stored; where a record or a binding refuses the brief, what a
 // record closes on a refusal is closed — a spec review's dispatch bound to
-// no land. It runs under the writer lock: reading the task may commit the
-// tracker's set-up (task-verbs.cjs).
+// no land. It runs under the writer lock: reading the task or the phases
+// may commit the tracker's set-up (task-verbs.cjs).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -55,8 +61,9 @@ const path = require('path');
 const { handedSession } = require('../kernel/process.cjs');
 const { newId } = require('./ledger-ids.cjs');
 const { carrying } = require('./ledger.cjs');
-const { trackedTask, ENDED } = require('./task-verbs.cjs');
-const { parseShownTask, shownTask, taskName } = require('./task-id.cjs');
+const { trackedTask, trackedPhases, ENDED } = require('./task-verbs.cjs');
+const { parseShownTask, parsePhase, shownTask, taskName } = require('./task-id.cjs');
+const { buildBegun } = require('./derivations.cjs');
 const { RECORDS } = require('./brief-records.cjs');
 const { ROLES, briefPath, issuedPath, pointerOf } = require('./brief-names.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
@@ -76,13 +83,13 @@ const TEMPLATES_DIR = path.join(__dirname, '..', '..', 'content', 'briefs');
 /** A slot, `{{record}}`. */
 const SLOT = /\{\{([^{}]*)\}\}/g;
 
-/** The places a brief is filled for, each narrower than the next: a task's and a topic's are each in a unit. */
-const PLACES = /** @type {const} */ (['task', 'topic', 'unit']);
+/** The places a brief is filled for, each narrower than the next: a task is in a phase, and a phase and a topic each in a unit. */
+const PLACES = /** @type {const} */ (['task', 'phase', 'topic', 'unit']);
 
 /**
  * What a role's brief is filled for: the narrowest place its records are
- * of — a task, a topic, a unit — or none.
- * @param {string} role @returns {'task'|'topic'|'unit'|null}
+ * of — a task, a phase, a topic, a unit — or none.
+ * @param {string} role @returns {'task'|'phase'|'topic'|'unit'|null}
  */
 function placeOfRole(role) {
   const places = ROLES[role].records.map((record) => RECORDS[record].of);
@@ -100,7 +107,9 @@ function flagsOf(role) {
 }
 
 /** The positional arguments a brief for each place takes. */
-const PLACE_ARGS = Object.freeze({ task: ['<unit>', '<task>'], topic: ['<unit>', '<topic>'], unit: ['<unit>'] });
+const PLACE_ARGS = Object.freeze({
+  task: ['<unit>', '<task>'], phase: ['<unit>', '<N>'], topic: ['<unit>', '<topic>'], unit: ['<unit>'],
+});
 
 /** The verb's usage, a line per role. */
 const BRIEF_USAGE = Object.keys(ROLES).map((role) => {
@@ -127,11 +136,11 @@ function flagNamed(role, arg) {
 }
 
 /**
- * A role's arguments: its unit and its task or topic, where it takes them,
- * and each flag it takes, given once with its value. A flag it does not
- * take is refused as such, any other shape by the usage.
+ * A role's arguments: its unit and its task, phase or topic, where it takes
+ * them, and each flag it takes, given once with its value. A flag it does
+ * not take is refused as such, any other shape by the usage.
  * @param {string} role @param {string[]} args
- * @returns {{ref: TaskRef|null, place: TopicPlace|null, unit: string|null, given: Record<string, string>}}
+ * @returns {{ref: TaskRef|null, phase: number|null, place: TopicPlace|null, unit: string|null, given: Record<string, string>}}
  */
 function argumentsOf(role, args) {
   const required = flagsOf(role).filter(({ optional }) => !optional).map(({ name }) => name);
@@ -155,6 +164,7 @@ function argumentsOf(role, args) {
   const [unit, named] = positional;
   return {
     ref: of === 'task' ? parseShownTask(unit, named) : null,
+    phase: of === 'phase' ? parsePhase(named) : null,
     place: of === 'topic' ? { unit, topic: named } : null,
     unit: unit ?? null,
     given,
@@ -167,6 +177,19 @@ function knownUnit(root, unit) {
   if (manifest === null) throw new Error(`Work unit "${unit}" not found`);
   if (liveness(root)(unit, null) !== null) throw new Error(`brief: ${unitClosure(manifest)}`);
   return manifest;
+}
+
+/**
+ * The phase of the cut a brief is filled for, refused where the project
+ * lacks its unit, the unit is set aside, its build has not begun or its cut
+ * lacks the phase.
+ * @param {string} cwd @param {string} unit @param {number} phase
+ */
+function cutPhase(cwd, unit, phase) {
+  const manifest = knownUnit(stateRoot(cwd), unit);
+  if (!buildBegun(manifest)) throw new Error(`brief: ${unit}'s build has not begun — a phase is briefed once ready to build's yes begins it`);
+  const phases = manifest.cut?.phases ?? [];
+  if (phase > phases.length) throw new Error(`brief: ${unit}'s cut has no phase ${phase} — its phases are 1 to ${phases.length}`);
 }
 
 /**
@@ -248,9 +271,14 @@ function storeBrief(session, id, text, issued) {
   linkWhole(briefPath(session, id), text);
 }
 
-/** What a brief's first line says it is for: its task, its topic, its unit, or nothing. @param {TaskRef|null} ref @param {TopicPlace|null} place @param {string|null} unit */
-function forWhat(ref, place, unit) {
+/**
+ * What a brief's first line says it is for: its task, its phase, its topic,
+ * its unit, or nothing.
+ * @param {TaskRef|null} ref @param {number|null} phase @param {TopicPlace|null} place @param {string|null} unit
+ */
+function forWhat(ref, phase, place, unit) {
   if (ref !== null) return `, for ${ref.unit} task ${shownTask(ref)}`;
+  if (phase !== null) return `, for ${unit} phase ${phase}`;
   if (place !== null) return `, for ${place.unit} topic ${place.topic}`;
   return unit === null ? '' : `, for ${unit}`;
 }
@@ -265,6 +293,18 @@ function unendedTask(cwd, ref, warnings) {
   warnings.push(...read);
   if (ENDED.includes(task.status)) throw new Error(`brief: ${taskName(ref)} is ${task.status} — a brief is issued for a task not yet ended`);
   return { task, committed };
+}
+
+/**
+ * The list of each of the unit's phases to `phase`, that phase's tasks
+ * whole, and what their read committed; what the read warned of pushed to
+ * `warnings`.
+ * @param {string} cwd @param {string} unit @param {number} phase @param {string[]} warnings
+ */
+function trackedTo(cwd, unit, phase, warnings) {
+  const { committed, warnings: read = [], phases, written } = trackedPhases(cwd, unit, phase);
+  warnings.push(...read);
+  return { phases, written, committed };
 }
 
 /**
@@ -285,16 +325,18 @@ function drawnRecords(filling, records, warnings) {
 }
 
 /**
- * `brief <role> [<unit> <task>|<unit> <topic>|<unit>]`: the role's brief filled from its records
+ * `brief <role> [<unit> <task>|<unit> <N>|<unit> <topic>|<unit>]`: the role's brief filled from its records
  * and stored in the calling conversation's folder. Answers its id, its
  * role, the agent it is dispatched as and the pointer the dispatch carries;
- * where reading the task committed the tracker's set-up, that commit, and
- * what any read warned of.
+ * where reading the task or the phases committed the tracker's set-up, that
+ * commit, and what any read warned of.
  * @param {string} cwd @param {string[]} args
  */
 function issueBrief(cwd, [role, ...rest]) {
   if (role === undefined || !Object.hasOwn(ROLES, role)) usage();
-  const { ref, place, unit, given } = argumentsOf(role, rest);
+  const {
+    ref, phase, place, unit, given,
+  } = argumentsOf(role, rest);
   const session = handedSession();
   if (session === null) throw new Error('brief: no conversation to issue it in — Claude Code hands every command it runs a session id, and this one has none');
   const { agent, whose, records } = ROLES[role];
@@ -303,11 +345,17 @@ function issueBrief(cwd, [role, ...rest]) {
   const warnings = [];
   try {
     if (place !== null) liveTopic(cwd, place);
+    else if (phase !== null) cutPhase(cwd, /** @type {string} */ (unit), phase);
     else if (ref === null && unit !== null) knownUnit(stateRoot(cwd), unit);
-    const { task, committed } = ref === null ? { task: null, committed: undefined } : unendedTask(cwd, ref, warnings);
-    const drawn = drawnRecords({ cwd, role, ref, task, place, unit, given, session }, records, warnings);
+    const { task, committed: taskCommitted } = ref === null ? { task: null, committed: undefined } : unendedTask(cwd, ref, warnings);
+    const { phases, written, committed } = phase === null
+      ? { phases: null, written: null, committed: taskCommitted }
+      : trackedTo(cwd, /** @type {string} */ (unit), phase, warnings);
+    const drawn = drawnRecords({
+      cwd, role, ref, task, phase, phases, written, place, unit, given, session,
+    }, records, warnings);
     const id = newId();
-    storeBrief(session, id, `Brief ${id} — ${whose}${forWhat(ref, place, unit)}\n\n${filled(template, drawn)}`, {
+    storeBrief(session, id, `Brief ${id} — ${whose}${forWhat(ref, phase, place, unit)}\n\n${filled(template, drawn)}`, {
       role, agent, unit, task: ref === null ? null : shownTask(ref), topic: place === null ? null : place.topic,
     });
     return { id, role, agent, pointer: pointerOf(id), ...(committed === undefined ? {} : { committed }), ...(warnings.length > 0 ? { warnings } : {}) };

@@ -43,6 +43,7 @@ const { processStartTime } = require(path.join(SCRIPTS, 'kernel/process.cjs'));
 const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { FOREIGN_TASK } = require(path.join(SCRIPTS, 'domain/task-id.cjs'));
 const { readTaskText } = require(path.join(SCRIPTS, 'domain/task-file.cjs'));
+const { trackedPhases } = require(path.join(SCRIPTS, 'domain/task-verbs.cjs'));
 const UNIT = 'pay';
 const SESSION_ID = 'task-verbs-session';
 const SESSION = Object.freeze({ CLAUDE_CODE_SESSION_ID: SESSION_ID });
@@ -432,6 +433,23 @@ describe('task link, ready, list and show (7.1.5, 12.6.4)', () => {
     ok(dir, ['task', 'ready', UNIT]);
     assert.strictEqual(head(dir), tip);
     assert.deepStrictEqual(stateGit(dir, ['status', '--porcelain']).split('\n').filter(Boolean), DRIVER.storeFiles().map((file) => ` M ${file}`));
+  });
+});
+
+describe('the phases a build phase\'s brief reads (12.5, 12.11.2)', () => {
+  beforeEach(() => { dir = inFolder(phasedWorld); });
+
+  it('each phase to the one asked as its list alone — number, title and where it stands — that phase\'s tasks whole, and null for a phase not written', () => {
+    ok(dir, ['task', 'phase', UNIT, '2', '--title', 'The screen']);
+    create(dir, 'Show the ledger', '2');
+
+    const { phases, written } = trackedPhases(dir, UNIT, 3);
+
+    assert.deepStrictEqual(phases.map((rows) => rows?.map((row) => Object.keys(row).sort()) ?? null), [
+      [['ref', 'status', 'title'], ['ref', 'status', 'title'], ['ref', 'status', 'title']], [['ref', 'status', 'title']], null,
+    ]);
+    assert.strictEqual(written, null);
+    assert.deepStrictEqual(trackedPhases(dir, UNIT, 2).written?.map(({ title, text }) => [title, text]), [['Show the ledger', template('Show the ledger').trim()]]);
   });
 });
 
