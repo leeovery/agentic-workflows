@@ -30,8 +30,8 @@
 //   asks parks its task instead (raise.cjs): its `parked` line is landed
 //   the same way, its place read again and its links checked under the
 //   lock, and its number the raise's to mint there. A task closed in the
-//   build is taken off its questions by an `unparked` line, landed the same
-//   way (task-verbs.cjs). While a question waits
+//   build is taken off its questions by an `unparked` line naming the parks
+//   it is taken off, landed the same way (task-parks.cjs). While a question waits
 //   in the build, `decide` on it and `replace` of the decision it would
 //   replace are refused under the lock, naming its raise: the person
 //   answers it there alone (questions.cjs).
@@ -441,8 +441,15 @@ const PARK = writeOf('parked', [
   TASK,
 ], { checkLinked: causeChecked('replaces') });
 
-/** A task closed in the build, taken off its questions: `task close` alone writes it (task-verbs.cjs), so no verb takes it. */
-const UNPARK = writeOf('unparked', [{ ...TASK, required: true }]);
+/**
+ * A task closed in the build, taken off the questions parking it, naming
+ * the parks it is taken off: `task close` alone writes it (task-parks.cjs),
+ * so no verb takes it.
+ */
+const UNPARK = writeOf('unparked', [
+  { ...TASK, required: true },
+  { field: 'parks', shown: '<id>', required: true, many: true, names: names('a park', (f) => f.event === 'parked'), current: false, owner: null },
+]);
 
 /** The writes a raise lands through, by how it lands. @type {Readonly<Record<Lands, Write>>} */
 const RAISED = Object.freeze({ decide: WRITES.decide, replace: WRITES.replace, keep: KEEP, ask: WRITES.ask, park: PARK, unpark: UNPARK });

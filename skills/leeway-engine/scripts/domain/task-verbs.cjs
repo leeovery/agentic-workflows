@@ -468,13 +468,6 @@ function ending(rule, after = () => ({})) {
   };
 }
 
-/** A task's questions as it closes: taken off each parking it, answered as `unparked` where any was. @param {string} cwd @param {TaskRef} ref @param {string} verb */
-function unparking(cwd, ref, verb) {
-  /** @type {string[]} */
-  const warnings = [];
-  const unparked = parks().takeOff(cwd, ref, `task ${verb}`, warnings);
-  return { ...(unparked.length > 0 ? { unparked } : {}), ...(warnings.length > 0 ? { warnings } : {}) };
-}
 
 /** `task start`: in progress — where it is not already — and in flight on the position beside any others. */
 const startTask = moving('start', (driver, root, ref) => {
@@ -496,11 +489,18 @@ const doneTask = moving('done', (driver, root, ref) => {
   return ending(DONE_RULE)(cwd, ref, verb);
 });
 
-/** `task close`: its worktree taken apart, then off every question parking it, then closed without being done, its reason kept, and off the position. */
+/**
+ * `task close`: where a question parks it, refused with no session before
+ * anything moves; its worktree taken apart, then off every question parking
+ * it, then closed without being done, its reason kept, and off the position.
+ */
 const closeTask = moving('close', (driver, root, ref, reason) => {
   refuseEnded(driver, root, ref, CLOSE_RULE);
   driver.close(root, ref, reason);
-}, ending(CLOSE_RULE, unparking));
+}, (cwd, ref, verb) => {
+  const parking = parks().parkingOf(cwd, ref, `task ${verb}`);
+  return ending(CLOSE_RULE, () => parks().takeOff(cwd, ref, `task ${verb}`, parking))(cwd, ref, verb);
+});
 
 /**
  * `task worktree`: the task's worktree laid out where the call is made

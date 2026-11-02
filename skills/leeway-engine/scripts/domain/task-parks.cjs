@@ -14,10 +14,13 @@
 //   raise, `raise draw <unit> Q{n}`.
 // - `task close` ends a task whatever waits on it, taking it off every
 //   question parking it: an `unparked` line in the ledger (ledger-events.cjs)
-//   under the conversation's session, landed and committed as a park is,
-//   before the tracker moves — so a close the tracker then refuses, run
+//   naming the parks it is taken off, tagged with the build's phase the
+//   task was parked in, under the conversation's session — refused, before
+//   anything moves, where it has none — landed and committed as a park is,
+//   before the tracker moves; so a close the tracker then refuses, run
 //   again, finds it taken off already and writes nothing more. A question it
-//   leaves parking nothing still waits.
+//   leaves parking nothing still waits; the task reopened and parked again
+//   parks again.
 // ---------------------------------------------------------------------------
 
 const { handedSession } = require('../kernel/process.cjs');
@@ -26,7 +29,7 @@ const { withStateLock } = require('./state-worktree.cjs');
 const { parseShownTask, shownTask, taskName } = require('./task-id.cjs');
 const { trackedTask, ENDED } = require('./task-verbs.cjs');
 const { landRaised } = require('./ledger-write.cjs');
-const { parkedTasksOf } = require('./questions.cjs');
+const { parkedTasksOf, parkingTask } = require('./questions.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 
@@ -59,25 +62,38 @@ function refuseParked(cwd, ref, said) {
   throw new Error(`${said}: ${taskName(ref)} waits on ${names.join(', ')}, parked for the person — they answer ${names.length === 1 ? 'it' : 'each'} through its raise: ${draws}`);
 }
 
+/** @typedef {{names: string[], parks: string[], phase: string|null}} Parking */
+
 /**
- * The task taken off every question waiting that parks it, in the words of
- * `said`: the numbers of those it was taken off, none where none parks it;
- * any warnings the landing gave pushed to `warnings`. Refuses where one
- * does and the call has no session to tag the ledger's line with.
- * @param {string} cwd @param {TaskRef} ref @param {string} said @param {string[]} warnings
- * @returns {string[]}
+ * Where a task about to close waits (questions.cjs, `parkingTask`), read
+ * before anything moves: refused, in the words of `said`, where a question
+ * parks it and the call has no session to tag the ledger's line with.
+ * @param {string} cwd @param {TaskRef} ref @param {string} said
+ * @returns {Parking}
  */
-function takeOff(cwd, ref, said, warnings) {
-  const task = shownTask(ref);
-  const names = parkedOf(cwd, ref.unit).get(task) ?? [];
-  if (names.length === 0) return [];
-  if (handedSession() === null) {
-    throw new Error(`${said}: ${taskName(ref)} is parked on ${names.join(', ')}, and taking it off is written to the ledger under the conversation's session — Claude Code hands every command it runs one, and this one has none`);
+function parkingOf(cwd, ref, said) {
+  const parking = parkingTask(stateRoot(cwd), ref.unit, shownTask(ref), []);
+  if (parking.names.length > 0 && handedSession() === null) {
+    throw new Error(`${said}: ${taskName(ref)} is parked on ${parking.names.join(', ')}, and taking it off is written to the ledger under the conversation's session — Claude Code hands every command it runs one, and this one has none`);
   }
-  landRaised(cwd, {
-    said, place: { unit: ref.unit, phase: 'implementation', topic: null }, lands: 'unpark', linked: { task }, content: {}, id: null, logs: null, checkRead: () => {},
-  }, warnings);
-  return names;
+  return parking;
 }
 
-module.exports = { checkParkable, refuseParked, takeOff, parkedOf };
+/**
+ * The task taken off the parks `parking` names, in the words of `said`:
+ * the numbers of the questions it was taken off, as `unparked`, and any
+ * warnings the landing gave; nothing where none parks it.
+ * @param {string} cwd @param {TaskRef} ref @param {string} said @param {Parking} parking
+ * @returns {{unparked?: string[], warnings?: string[]}}
+ */
+function takeOff(cwd, ref, said, { names, parks, phase }) {
+  if (names.length === 0) return {};
+  /** @type {string[]} */
+  const warnings = [];
+  landRaised(cwd, {
+    said, place: { unit: ref.unit, phase: /** @type {string} */ (phase), topic: null }, lands: 'unpark', linked: { task: shownTask(ref), parks }, content: {}, id: null, logs: null, checkRead: () => {},
+  }, warnings);
+  return { unparked: names, ...(warnings.length > 0 ? { warnings } : {}) };
+}
+
+module.exports = { checkParkable, refuseParked, parkingOf, takeOff, parkedOf };

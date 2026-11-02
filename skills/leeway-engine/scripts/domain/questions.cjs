@@ -11,8 +11,8 @@
 //   a replacement would replace — each a task that met it while it waited
 //   and joined it, its line holding the first park's sealed call, copied
 //   under the writer lock. It goes by its first park, which it is drawn
-//   from, and parks every task its parks name but a task closed since,
-//   taken off it by an `unparked` line of its unit: a park made outside any
+//   from, and parks every task its parks name but where a close has taken
+//   the task off that park, an `unparked` line naming it: a park made outside any
 //   task — the task writer's, the consolidation agent's or the phase
 //   review's (12.5.5) — names none, and a question parking nothing waits as
 //   any other, nothing waiting on it. What it asks is Claude's
@@ -127,27 +127,10 @@ function parkedTasks(tasks) {
   return tasks.length === 1 ? `task ${tasks[0]}` : `task ${tasks[0]} and ${tasks.length - 1} more`;
 }
 
-/**
- * The tasks taken off their questions in each unit, `{unit} {task}`, read
- * once for a ledger folded.
- * @type {WeakMap<Map<string, import('./ledger-fold.cjs').IdFacts>, Set<string>>}
- */
-const TAKEN_OFF = new WeakMap();
-
-/** Whether `task` of `unit` is taken off its questions. @param {Folded} read @param {string} unit @param {string} task */
-function takenOff(read, unit, task) {
-  let off = TAKEN_OFF.get(read.facts);
-  if (off === undefined) {
-    off = new Set([...read.facts.values()].filter((facts) => facts.event === 'unparked').map((facts) => `${facts.unit} ${facts.task}`));
-    TAKEN_OFF.set(read.facts, off);
-  }
-  return off.has(`${unit} ${task}`);
-}
-
-/** The task the park `id` parks, or null: none named, or taken off since. @param {Folded} read @param {string} id */
+/** The task the park `id` parks, or null: none named, or a close took it off this park. @param {Folded} read @param {string} id */
 function taskOf(read, id) {
-  const { unit, task } = factsOf(read, id);
-  return task === null || takenOff(read, unit, task) ? null : task;
+  const { task, unparked_by: unparkedBy } = factsOf(read, id);
+  return unparkedBy.length > 0 ? null : task;
 }
 
 /** The parks made in `unit`, live or not, in the ledger's order. @param {Folded} read @param {string} unit @returns {string[]} */
@@ -376,14 +359,14 @@ function parkedUnder(read, entryAt, unit, subject, sealed) {
 
 /**
  * The question of `unit` the park `park` is one of, read now: its number,
- * and what it asks now.
+ * what it asks now, and the tasks it parks.
  * @param {string} cwd @param {string} unit @param {string} park @param {string[]} warnings
- * @returns {{name: string, asks: string}}
+ * @returns {{name: string, asks: string, tasks: string[]}}
  */
 function parkedQuestion(cwd, unit, park, warnings) {
   return readQuestions(/** @type {string} */ (findStateRoot(cwd)), warnings, (read, entryAt) => {
     const question = /** @type {Question} */ (questionsOf(read, parksOf(read, unit)).find((q) => q.parks.includes(park)));
-    return { name: numbered(question.number), asks: askedNow(read, entryAt, entryAt(factsOf(read, question.park).place)).asks };
+    return { name: numbered(question.number), asks: askedNow(read, entryAt, entryAt(factsOf(read, question.park).place)).asks, tasks: question.tasks };
   });
 }
 
@@ -589,7 +572,22 @@ function parkedTasksOf(root, unit, warnings) {
   });
 }
 
+/**
+ * Where `task` of `unit` waits: the numbers of the questions waiting that
+ * park it, oldest first, the parks of theirs naming it, and the build's
+ * phase the first of those was made in; none, where none parks it.
+ * @param {string} root @param {string} unit @param {string} task @param {string[]} warnings
+ * @returns {{names: string[], parks: string[], phase: string|null}}
+ */
+function parkingTask(root, unit, task, warnings) {
+  return readQuestions(root, warnings, (read) => {
+    const holding = waitingOf(read, unit).filter((question) => question.tasks.includes(task));
+    const parks = holding.flatMap((question) => question.parks.filter((id) => taskOf(read, id) === task));
+    return { names: holding.map((question) => numbered(question.number)), parks, phase: parks.length === 0 ? null : factsOf(read, parks[0]).phase };
+  });
+}
+
 module.exports = {
   DISCUSSING, WAITING_USAGE, ASIDE_USAGE, numbered, parkedTasks, waitingOn, parkedUnder, parkedQuestion, checkUnparked, waitingQuestions, asideQuestions, foundPark, answeredReceipt,
-  explainedReceipt, checkAnswerable, answerable, parkedTasksOf,
+  explainedReceipt, checkAnswerable, answerable, parkedTasksOf, parkingTask,
 };

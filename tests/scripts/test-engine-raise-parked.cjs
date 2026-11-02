@@ -9,31 +9,31 @@
 // sealing nothing (12.S30); a task meeting a question waiting joining it;
 // a call made outside any task — the task writer's, the consolidation
 // agent's or the phase review's — waiting parking none (12.5.5, 12.S8); a
-// call that proceeds landed for its task, or none (12.S11); `raise waiting`, the
+// call that proceeds landed for its task, or none (12.S11); a fact only the
+// person holds parking as any question asking does, never proceeding, and
+// answered as a fact (16.3.8); `raise waiting`, the
 // projection every surface reads; what ends a wait, and its answer through
 // its raise alone; `raise draw`, the question raised in full from its park
 // in any conversation, as it is worded now (12.S33's code half, 12.S34); the
 // person's answer carrying the task, its trust log event blocking the build,
 // and the receipt of what it freed (12.S35, 20.S6); `raise aside`, several
 // set aside with one receipt (12.13.17); a question waiting no longer
-// refused (20.S7); a parked task and the tracker agreeing — a task parked
-// only while the tracker holds it unended, never ready, done nor its
-// account taken while parked, and taken off its questions as it closes
-// (13.4.6); `--task` on the ledger's writes in the build (12.12.5);
-// and no questions page (27.S6).
+// refused (20.S7); `--task` on the ledger's writes in the build (12.12.5);
+// and no questions page (27.S6). A parked task against the tracker is
+// test-engine-task-parks.cjs's.
 //
 // Layer: verb. World: the ledger suites' unit with questions asked and a
-// decision made in its build, and a feature beside it, each with its build's
-// phase written in the tracker — the unit's 2.1 closed and 2.2 to 2.5 open,
-// the feature's 1.1 — built once and copied for each test; each test
-// keeps its conversations and the trust log in a config folder of its own.
-// The separate call is the stub binary, unarmed: no login, so every row is
-// drawn unjudged.
+// decision made in its build, and a feature beside it, built once and copied
+// for each test; each test keeps its conversations and the trust log in a
+// config folder of its own. The world has no tracker, so the check that the
+// tracker holds the task a raise parks, test-engine-task-parks.cjs's, is
+// passed over here. The separate call is the stub binary, unarmed: no
+// login, so every row is drawn unjudged.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
 
-const { describe, it, beforeEach, afterEach } = require('node:test');
+const { describe, it, beforeEach, afterEach, mock } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
@@ -50,6 +50,8 @@ const { DISCUSSING } = require(path.join(SCRIPTS, 'domain/questions.cjs'));
 const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 const { SURFACES } = require(path.join(SCRIPTS, 'domain/render.cjs'));
 const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
+
+mock.method(require(path.join(SCRIPTS, 'domain/task-parks.cjs')), 'checkParkable', () => {});
 
 const EVERY_CALL_ASKS = 'Every call comes to you for now: the counts that would let me decide aren\'t built yet.';
 const BUILD = `${UNIT}.implementation`;
@@ -83,30 +85,9 @@ const FRAMED = Object.freeze({
 /** What the world holds, by name: each question's and the decision's short id. */
 const made = { where: '', size: '', title: '', frame: '', frameless: '', minted: '' };
 
-/**
- * Phase `phase` of `unit` written in the tracker, holding a task for each
- * title, in order.
- * @param {string} at @param {string} unit @param {number} phase @param {string[]} titles
- */
-function tracked(at, unit, phase, titles) {
-  ok(at, ['task', 'phase', unit, String(phase), '--title', `Phase ${phase}`]);
-  const file = path.join(at, '..', `${path.basename(at)}-task.md`);
-  for (const title of titles) {
-    fs.writeFileSync(file, [
-      `# ${title}`, '', '## Type', 'feat', '', '## Problem', `${title} is missing.`, '', '## Solution', `Add ${title.toLowerCase()}.`, '',
-      '## Outcome', `${title} works.`, '', '## Acceptance scenarios', `- Given a note, when ${title.toLowerCase()} runs, then it answers.`, '', '## Spec reference', '§12', '',
-    ].join('\n'));
-    ok(at, ['task', 'create', unit, String(phase), '--file', file]);
-  }
-  fs.rmSync(file);
-}
-
 const world = fixtureFrom('raise-parked-', (template) => {
   createManifest(template, UNIT, { work_type: 'epic', phases: PHASES });
   createManifest(template, MINT, { work_type: 'feature', phases: {} });
-  tracked(template, UNIT, 2, ['Open a note', 'Size a note', 'Place a note', 'Title a note', 'Frame a note']);
-  tracked(template, MINT, 1, ['Mint a note']);
-  ok(template, ['task', 'close', UNIT, '2.1', '--reason', 'Folded into 2.3.']);
   const { write } = ledgerHelpers(() => template);
   /** @param {string} at @param {string} text */
   const ask = (at, text) => write('ask', at, [], { ...MADE, text }).id;
@@ -145,6 +126,23 @@ const cleared = () => conversation({ CLAUDE_CODE_SESSION_ID: CLEARED });
  */
 function park(question, task, { at = BUILD, call = CALL, flags = [], env = conversation() } = {}) {
   return okSectionsAsync(dir, ['raise', at, '--answers', question, '--parks', task, ...flags], { env, stdin: JSON.stringify(call) });
+}
+
+/** A fact only the person holds: which account a new note syncs to. */
+const FACT = Object.freeze({
+  question: 'Which iCloud account does a new note sync to?',
+  rows: [{ key: '1', name: 'Personal', text: 'The personal account', notice: 'notes sync to your own devices' }],
+  mechanism: 'The container the sync engine is given.',
+  product_wide: false,
+});
+
+/**
+ * A fact raised in the build on `question`, for `task` where one is given:
+ * its response and whatever it drew.
+ * @param {string} question @param {string|null} task @param {string} [at]
+ */
+function parkFact(question, task, at = BUILD) {
+  return okSectionsAsync(dir, ['raise', at, '--answers', question, '--fact', ...(task === null ? [] : ['--parks', task])], { env: conversation(), stdin: JSON.stringify(FACT) });
 }
 
 /**
@@ -350,6 +348,29 @@ describe('a question parked in the build (12.13.2–12.13.4, 12.13.9, 12.S28, 12
     assert.deepStrictEqual([again.parked, again.task, again.already, again.committed, ledgerText()], ['Q1', null, true, null, text]);
     assert.strictEqual((await park(made.where, '2.3')).res.parked, 'Q1');
     assert.deepStrictEqual(waiting().map((/** @type {{parks: string[]}} */ q) => q.parks), [['2.3']]);
+    assert.strictEqual((await outsideTask(made.where)).res.line, 'Q1 waits for you, parking task 2.3: When you make a new note, where should its window open? The build carries on.');
+  });
+
+  it('16.3.8: a fact only the person holds parks in the build as any question asking does, with its task or with none — never meeting the decision point, sealed as the ledger holds a fact, with no lean — listed waiting, its screen a fact\'s', async (t) => {
+    const decide = t.mock.method(decisionPoint, 'decide', () => ({ decision: 'proceed', reason: 'Your calls on this kind land.' }));
+
+    const { res, sections } = await parkFact(made.where, '2.3');
+
+    assert.deepStrictEqual([res, sections], [{
+      ok: true, decision: 'ask', reason: 'Only you know this: it\'s a fact I can\'t check.', parked: 'Q1', task: '2.3', id: res.id, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(),
+      line: 'Task 2.3 parks on Q1, waiting for you: Which iCloud account does a new note sync to? The other tasks carry on.',
+    }, '']);
+    assert.deepStrictEqual(lastEntry(), {
+      ...parkedLine({ why_asking: 'Only you know this: it\'s a fact I can\'t check.' }),
+      call: { question: FACT.question, rows: FACT.rows, lean: null, why: null, sort: null, mechanism: FACT.mechanism, product_wide: false }, id: full(res.id),
+    });
+    assert.strictEqual((await parkFact(made.size, null, REVIEW)).res.parked, 'Q2');
+    assert.strictEqual(decide.mock.callCount(), 0, 'a fact met the decision point');
+    assert.deepStrictEqual(waiting().map((/** @type {{question: string, asks: string, parks: string[]}} */ q) => [q.question, q.asks, q.parks]), [['Q1', FACT.question, ['2.3']], ['Q2', FACT.question, []]]);
+    const drawn = draw('Q1');
+    assert.strictEqual(seals()?.[drawn.res.raise].fact, true);
+    assert.deepStrictEqual(seals()?.[drawn.res.raise].call, { ...FACT });
+    assert.ok(drawn.sections.includes('Q1 · Fumi · parks task 2.3\n') && drawn.sections.includes('What\'s the answer?') && !drawn.sections.includes('I lean'), drawn.sections);
   });
 
   it('a replacement proposed in the build parks its task too, the decision it would replace, the reason and the cause on the line', async () => {
@@ -370,14 +391,9 @@ describe('a question parked in the build (12.13.2–12.13.4, 12.13.9, 12.S28, 12
     assert.deepStrictEqual(waiting(), []);
   });
 
-  it('refuses, writing and sealing nothing: a task named elsewhere, one the tracker lacks or that has ended, a fact at a build place — a question there never stands as a gate — --task, a task not as screens show one, and --parks twice', async () => {
+  it('refuses, writing and sealing nothing: a task named elsewhere, --task, a task not as screens show one, and --parks twice', async () => {
     const note = write('ask', `${UNIT}.discussion.note-window`, [], { ...MADE, text: 'Is a note a window?' }).id;
-    const fact = { question: 'Who signs?', rows: [], mechanism: 'Outside.', product_wide: false };
     assert.match(await refusedPark([`${UNIT}.discussion.note-window`, '--answers', note, '--parks', '2.3']), /^raise --parks parks a task in the build, and discussion is none of its phases — implementation or review$/);
-    assert.strictEqual(await refusedPark([BUILD, '--answers', made.where, '--parks', '2.6']), 'raise: --parks names task 2.6 of fumi, which the tracker does not hold — a question parks a task the tracker holds');
-    assert.strictEqual(await refusedPark([BUILD, '--answers', made.where, '--parks', '2.1']), 'raise: --parks names task 2.1 of fumi, which is closed — a question parks only a task not yet ended');
-    assert.match(await refusedPark([BUILD, '--answers', made.where, '--parks', '2.3', '--fact'], fact), /^raise --fact takes no --parks/);
-    assert.match(await refusedPark([REVIEW, '--answers', made.where, '--fact'], fact), /^raise --fact at fumi\.review: a fact always asks, and in the build a question waits for the person, never as a gate/);
     assert.match(await refusedPark([BUILD, '--answers', made.where, '--task', '2.3']), /^raise takes no --task — a raise in the build names its task with --parks <phase>\.<n>/);
     assert.match(await refusedPark([BUILD, '--answers', made.where, '--parks', 'task-3']), /^raise: --parks takes the task it parks, as screens show it, <phase>\.<n> — not "task-3"$/);
     assert.match(await refusedPark([BUILD, '--answers', made.where, '--parks', '2.3', '--parks', '2.4']), /^raise takes --parks once/);
@@ -551,6 +567,18 @@ describe('the answer and its receipt (12.13.15, 12.13.16, 20.6.9, 12.S35, 20.S6)
     assert.strictEqual(drawnAndPicked('Q1').receipt, 'Q1 answered · task 2.3 builds again · nothing waiting on you');
   });
 
+  it('16.3.8: a fact parked is answered as a fact — the person\'s decision for its task, sealing no lean, nothing in the trust log, "I don\'t follow" counted on the seal alone — and answers the receipt', async () => {
+    await parkFact(made.where, '2.3');
+    const { raise } = draw('Q1').res;
+
+    assert.strictEqual(answer(raise, ['--didnt-follow'], null).receipt, 'Q1 still open, explained again · still waiting · 1 waiting on you');
+    const res = answer(raise, ['--own'], { text: 'The work account.', why: 'Notes are for work.' });
+
+    assert.strictEqual(res.receipt, 'Q1 answered · task 2.3 builds again · nothing waiting on you');
+    assert.deepStrictEqual([lastEntry().event, lastEntry().by, lastEntry().task, lastEntry().sealed, lastEntry().who_moved_whom], ['decided', 'person', '2.3', null, 'none']);
+    assert.deepStrictEqual([logged(), seals()?.[raise].didnt_follow], [[], 1]);
+  });
+
   it('an answer to a question parking no task frees nothing, its receipt saying so, and lands for none', async () => {
     await outsideTask(made.where);
 
@@ -675,52 +703,6 @@ describe('its answer through its raise alone (12.13.5, 12.13.16, 16.4.7, 5.3.10)
       [raiseNamed('raise answer'), raiseNamed('raise answer'), ...Array(3).fill(raiseNamed('raise answer', 'task 2.4', 'Q2'))],
     );
     assert.deepStrictEqual([logged(), JSON.stringify(seals())], [[], sealed]);
-  });
-});
-
-describe('a parked task and the tracker agree (13.4.6)', () => {
-  /** The tasks of phase 2 task ready answers. */
-  const ready = () => ok(dir, ['task', 'ready', UNIT, '2']).tasks.map((/** @type {{task: string}} */ t) => t.task);
-
-  it('task ready leaves out a task a question waiting parks, and answers it again once the question is answered', async () => {
-    await park(made.where, '2.3');
-
-    assert.deepStrictEqual(ready(), ['2.2', '2.4', '2.5']);
-    drawnAndPicked('Q1');
-    assert.deepStrictEqual(ready(), ['2.2', '2.3', '2.4', '2.5']);
-  });
-
-  it('task done refuses a task a question waiting parks, naming each question\'s raise, moving and writing nothing; answered, it is done', async () => {
-    await park(made.where, '2.3');
-    await park(made.size, '2.3');
-    const waits = 'task 2.3 of fumi waits on Q1, Q2, parked for the person — they answer each through its raise: raise draw fumi Q1, raise draw fumi Q2';
-
-    assert.strictEqual(refusedPristine(dir, ['task', 'done', UNIT, '2.3'], { env: conversation() }).error, `task done: ${waits}`);
-    drawnAndPicked('Q1');
-    drawnAndPicked('Q2');
-    assert.strictEqual(ok(dir, ['task', 'done', UNIT, '2.3'], { env: conversation() }).task, '2.3');
-  });
-
-  it('task close ends a task whatever waits on it, taking it off every question parking it — one parking another task too, one left parking none, which still waits — so raise waiting, a screen and a receipt never name it again; a task no question parks closes writing nothing to the ledger', async () => {
-    await park(made.where, '2.3');
-    await park(made.where, '2.4');
-    await park(made.size, '2.3');
-    assert.strictEqual(refusedPristine(dir, ['task', 'close', UNIT, '2.3', '--reason', 'Folded into 2.4.'], { env: conversation({ CLAUDE_CODE_SESSION_ID: undefined }) }).error,
-      'task close: task 2.3 of fumi is parked on Q1, Q2, and taking it off is written to the ledger under the conversation\'s session — Claude Code hands every command it runs one, and this one has none');
-
-    const closed = ok(dir, ['task', 'close', UNIT, '2.3', '--reason', 'Folded into 2.4.'], { env: conversation() });
-
-    assert.deepStrictEqual([closed.task, closed.unparked], ['2.3', ['Q1', 'Q2']]);
-    const { id: _id, ...line } = lastEntry();
-    assert.deepStrictEqual(line, { v: 1, event: 'unparked', unit: UNIT, topic: null, phase: 'implementation', session: SESSION, task: '2.3' });
-    assert.deepStrictEqual(waiting().map((/** @type {{question: string, parks: string[]}} */ q) => [q.question, q.parks]), [['Q1', ['2.4']], ['Q2', []]]);
-    const { res, sections } = draw('Q2');
-    assert.deepStrictEqual([res.parks, sections.split('\n')[2]], [[], 'Q2 · Fumi']);
-    assert.strictEqual(answer(res.raise, ['--pick', '1']).receipt, 'Q2 answered · no task waited on it · 1 waiting on you');
-    assert.strictEqual(drawnAndPicked('Q1').receipt, 'Q1 answered · task 2.4 builds again · nothing waiting on you');
-    const text = ledgerText();
-    assert.strictEqual(ok(dir, ['task', 'close', UNIT, '2.5', '--reason', 'Not needed.'], { env: conversation() }).unparked, undefined);
-    assert.strictEqual(ledgerText(), text);
   });
 });
 

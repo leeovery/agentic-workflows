@@ -19,7 +19,7 @@
 // merges that took it as a duplicate, the confirmations that it still
 // holds, the person's keeps of it against Claude's proposed replacement,
 // which change nothing current, the asset links giving a file a status or a
-// lift beside it, and on the first entry of a question's chain, the answers
+// lift beside it, the closes that took a park's task off it, and on the first entry of a question's chain, the answers
 // to, the parts of (5.3.11), the merges of and the moves of any wording; and
 // where its line sits, so a read shows an entry by reading that one line
 // again.
@@ -192,11 +192,12 @@ const { PRODUCT, entryKind, claudesCall, roadmapItemOf } = require('./ledger-eve
  *   holds: readonly string[],
  *   kept: readonly string[],
  *   assets: readonly string[],
+ *   unparked_by: readonly string[],
  *   late_check: 'one'|'several'|null,
  * }} IdFacts
  */
 
-/** A list of the ids linking back to an id. @typedef {'replaced_by'|'merged_by'|'answered_by'|'merges'|'moves'|'parts'|'holds'|'kept'|'assets'} BackLinks */
+/** A list of the ids linking back to an id. @typedef {'replaced_by'|'merged_by'|'answered_by'|'merges'|'moves'|'parts'|'holds'|'kept'|'assets'|'unparked_by'} BackLinks */
 
 /** Why an entry of a unit and topic is not live, null where it is (ledger-units.cjs). @typedef {(unit: string, topic: string|null) => string|null} Liveness */
 
@@ -290,6 +291,7 @@ const ID_FACTS = {
       holds: NONE,
       kept: NONE,
       assets: NONE,
+      unparked_by: NONE,
       late_check: null,
     });
     if (kind === 'decision') linkBack(facts, chainRoot(facts, event.answers), 'answered_by', id);
@@ -298,6 +300,7 @@ const ID_FACTS = {
     if (event.event === 'still-holds') linkBack(facts, event.entry, 'holds', id);
     if (event.event === 'kept') linkBack(facts, event.entry, 'kept', id);
     if (event.event === 'asset') linkBack(facts, event.entry, 'assets', id);
+    if (event.event === 'unparked') for (const park of /** @type {string[]} */ (event.parks)) linkBack(facts, park, 'unparked_by', id);
     if (event.event === 'moved') linkBack(facts, chainRoot(facts, event.question), 'moves', id);
     if (event.event === 'merged') {
       linkBack(facts, chainRoot(facts, event.question), 'merges', id);

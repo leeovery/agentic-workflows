@@ -164,8 +164,8 @@ describe('the events and their schemas', () => {
     appendEntry(root, { event: 'checked', ...TAGS, entry: d, rules: 'one' }, []);
     appendEntry(root, { event: 'kept', ...TAGS, by: 'person', who_moved_whom: 'person-moved-claude', entry: r, reason: 'new-fact', cause: f, why: 'They float every note.', sealed: 'A floating panel.' }, []);
     appendEntry(root, { event: 'asset', ...TAGS, entry: r, path: 'fumi/assets/note-window.png', status: 'canonical', into: null }, []);
-    appendEntry(root, parked(q), []);
-    appendEntry(root, { event: 'unparked', ...TAGS, topic: null, phase: 'implementation', task: '2.3' }, []);
+    const parkedId = /** @type {string} */ (appendEntry(root, parked(q), []).id);
+    appendEntry(root, { event: 'unparked', ...TAGS, topic: null, phase: 'implementation', task: '2.3', parks: [parkedId] }, []);
 
     const text = ledgerText(root);
     assert.ok(text.endsWith('\n') && !text.includes('\r'), 'a line ends with LF alone');
@@ -182,7 +182,7 @@ describe('the events and their schemas', () => {
       [...HEADER, ...BY, 'entry', 'reason', 'cause', 'why', 'sealed'],
       [...HEADER, 'entry', 'path', 'status', 'into'],
       [...HEADER, 'question', 'replaces', 'reason', 'cause', 'relies_on', 'task', 'number', 'call', 'rows_judged', 'why_asking'],
-      [...HEADER, 'task'],
+      [...HEADER, 'task', 'parks'],
     ]);
     assert.deepStrictEqual(Object.keys(SCHEMA.events).sort(), ['asked', 'asset', 'checked', 'decided', 'found', 'kept', 'merged', 'moved', 'parked', 'replaced', 'still-holds', 'unparked']);
   });
@@ -198,9 +198,12 @@ describe('the events and their schemas', () => {
     assert.throws(() => validEvent(unexplained), { message: 'the kept event needs why' });
   });
 
-  it('holds a park to its shape: a question answered or a replacement proposed, one and not both, the reason and cause a replacement\'s alone; a task as screens show it, or none, a number from 1, and the call sealed whole, leaning to a row it holds; a task taken off its questions names the task', () => {
+  it('holds a park to its shape: a question answered or a replacement proposed, one and not both, the reason and cause a replacement\'s alone; a task as screens show it, or none, a number from 1, and the call sealed whole, leaning to a row it holds — or a fact\'s, answering a question, with no lean, why or sort; a task taken off its questions names the task and the parks', () => {
     const park = { v: LEDGER_VERSION, id: newId(), at: AT, ...parked(newId()) };
-    const unparked = { v: LEDGER_VERSION, id: newId(), event: 'unparked', ...TAGS, topic: null, phase: 'implementation', at: AT, task: '2.3' };
+    const fact = { ...park, call: { ...park.call, rows: [], lean: null, why: null, sort: null } };
+    const unparked = { v: LEDGER_VERSION, id: newId(), event: 'unparked', ...TAGS, topic: null, phase: 'implementation', at: AT, task: '2.3', parks: [newId()] };
+    assert.deepStrictEqual(validEvent(fact), fact);
+    assert.deepStrictEqual(validEvent(unparked), unparked);
     const replacing = { ...park, question: null, replaces: newId(), reason: 'was-wrong' };
     assert.deepStrictEqual(validEvent(park), park);
     assert.deepStrictEqual(validEvent(replacing), replacing);
@@ -216,7 +219,10 @@ describe('the events and their schemas', () => {
       [{ ...park, call: { ...park.call, said: 'more' } }, /its call is not a call/],
       [{ ...park, task: '2' }, /its task is not a task, as screens show it: \{phase\}\.\{n\}/],
       [{ ...park, number: 0 }, /its number is not a whole number from 1/],
+      [{ ...fact, call: { ...fact.call, why: 'A note follows the person.' } }, /its call has a lean, a why and a sort, or, a fact, none of them/],
+      [{ ...fact, question: null, replaces: newId(), reason: 'was-wrong' }, /a fact parked answers a question, never proposes a replacement/],
       [{ ...unparked, task: null }, /its task is not a task, as screens show it: \{phase\}\.\{n\}/],
+      [{ ...unparked, parks: [] }, /a task taken off its questions names the parks it is taken off/],
     ];
     for (const [value, message] of cases) assert.throws(() => validEvent(value), (err) => err instanceof LedgerLineError && message.test(err.message), `${JSON.stringify(value)} was not refused as ${message}`);
   });
