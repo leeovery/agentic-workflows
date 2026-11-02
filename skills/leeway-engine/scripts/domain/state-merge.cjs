@@ -287,7 +287,7 @@ function planMerge(state, sides, stop, scope = () => true) {
   const merged = mergeTrees(state, sides.base === null ? new Map() : entries(sides.base), local, entries(sides.remote), picksOf(stop, false));
   const committed = merged.conflicts.map((c) => ({ ...c, uncommitted: false }));
   const working = () => scoped(listedOnce(state, `working ${sides.local}`, () => workingEntries(state, sides.local)), scope);
-  const worktree = committed.some(open) ? null : planWorktree(state, local, merged.entries, working(), picksOf(stop, true));
+  const worktree = committed.some(open) ? null : planWorktree(state, local, merged.entries, working(), picksOf(stop, true), merged.numbered);
   return {
     local,
     target: merged.entries,

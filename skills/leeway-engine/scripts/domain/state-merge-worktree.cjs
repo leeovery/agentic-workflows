@@ -13,11 +13,13 @@
 //   the merge's copy the remote's side, and the working copy this
 //   machine's. The result stays uncommitted. A field of a manifest or the
 //   tracker's store the two changed to different values stops the catch-up
-//   for the person's pick, as one on the branch does. Where the merge's
-//   notes number the working tree's otherwise, each consolidation report it
-//   holds uncommitted is carried with them as the branch's are, renumbered
-//   or set aside. An uncommitted path the move leaves alone stays byte for
-//   byte as it is.
+//   for the person's pick, as one on the branch does. The working tree's
+//   notes take the numbers the branch's merge gave the committed ones, its
+//   uncommitted notes placed after, so a note has one number in both.
+//   Where the merge's notes number the working tree's otherwise, each
+//   consolidation report it holds uncommitted is carried with them as the
+//   branch's are, renumbered or set aside. An uncommitted path the move
+//   leaves alone stays byte for byte as it is.
 // - No file is written, replaced or removed over bytes other than those it
 //   was merged from: each is checked just before, with no git call between
 //   the check and the write. One another session wrote meanwhile is merged
@@ -99,17 +101,19 @@ function workingEntries(ctx, local) {
 /**
  * Work out the working tree's move from this clone's tip to the merge's
  * tree: the runs it holds uncommitted under numbers the merge's runs hold
- * moved after them, its reports carried to the numbers its notes take in
- * the merge's, each path the move changes, or a report carried, merged with
+ * moved after them, its notes placed among the merge's — the committed ones
+ * at the numbers the merge gave them (`numbered`) — and its reports carried
+ * with them, each path the move changes, or a report carried, merged with
  * what the working tree holds, then each file-against-folder clash with an
  * uncommitted path separated.
  * @param {WorktreeContext} ctx @param {Entries} local @param {Entries} target @param {Entries} working @param {PickOf} pickOf
+ * @param {import('./state-merge-paths.cjs').Numbered} numbered
  * @returns {WorktreePlan}
  */
-function planWorktree(ctx, local, target, working, pickOf) {
+function planWorktree(ctx, local, target, working, pickOf, numbered) {
   const dirty = changedPaths(local, working);
   const runs = placeRuns(local, working, target);
-  const carried = placeNotes(ctx, local, runs.entries, target, pickOf);
+  const carried = placeNotes(ctx, local, runs.entries, target, pickOf, numbered);
   /** @type {Steps} */
   const steps = { removes: [], moves: [...runs.moves, ...carried.moves], writes: [] };
   /** @type {PathConflict[]} */

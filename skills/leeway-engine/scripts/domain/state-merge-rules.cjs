@@ -44,13 +44,16 @@
 //   tree merges (state-merge-paths.cjs).
 // - A unit's notes for later (`{unit}/build/notes.md`) merge by note
 //   (`notesMerged`): the remote's stand at their numbers; each of this
-//   machine's the remote holds alike — the same text, held for the same
-//   phase or none — is that one; and the rest follow the remote's highest,
-//   in this machine's order, each still held for its phase. A phase's
-//   consolidation report (`{unit}/build/phases/phase-{N}/consolidation.md`)
-//   names notes by number, so this machine's are renamed with them before
-//   the tree merges (state-merge-paths.cjs); one that cannot be is set
-//   aside, a notice the person acknowledges.
+//   machine's its ancestor holds alike at its number is settled, at the
+//   number the merge gave the ancestor's (`notesSettled`); each other the
+//   remote holds alike — the same text, held for the same phase or none —
+//   is that one, at its own number first, then anywhere; and the rest
+//   follow the remote's highest, in this machine's order, each still held
+//   for its phase. A phase's consolidation report
+//   (`{unit}/build/phases/phase-{N}/consolidation.md`) names notes by
+//   number, so this machine's are renamed with them before the tree merges
+//   (state-merge-paths.cjs); one that cannot be is set aside, a notice the
+//   person acknowledges.
 // - Any other JSON file is kept whole, never merged line by line: a text
 //   merge of JSON can leave neither side's data.
 // ---------------------------------------------------------------------------
@@ -171,26 +174,38 @@ function consolidationOf(file) {
   return report === null ? null : { unit: report[1], phase: Number(report[2]) };
 }
 
+/** Whether two notes are one: the same text, held for the same phase or none. @param {Note} a @param {Note|undefined} b */
+function alike(a, b) {
+  return b !== undefined && a.phase === b.phase && a.text === b.text;
+}
+
 /**
- * This machine's notes placed among the remote's (the header's): each one's
- * number in the merge, and those written after the remote's, numbered so.
- * @param {Note[]} local @param {Note[]} remote
+ * This machine's notes its ancestor holds alike at their numbers, each at
+ * the number the merge gave the ancestor's (`prior`), its own where none.
+ * @param {Note[]} local @param {Note[]} ancestor @param {Map<number, number>} [prior]
+ * @returns {Map<number, number>}
+ */
+function notesSettled(local, ancestor, prior = new Map()) {
+  return new Map(local.filter((mine) => alike(mine, ancestor[mine.note - 1])).map(({ note }) => [note, prior.get(note) ?? note]));
+}
+
+/**
+ * This machine's notes placed among the remote's (the header's), those
+ * `settled` where it says: each one's number in the merge, and those
+ * written after the remote's, numbered so.
+ * @param {Note[]} local @param {Note[]} remote @param {Map<number, number>} settled
  * @returns {{at: Map<number, number>, added: Note[]}}
  */
-function notesMerged(local, remote) {
-  const alike = (/** @type {Note} */ a, /** @type {Note} */ b) => a.phase === b.phase && a.text === b.text;
-  /** @type {Map<number, number>} */
-  const at = new Map();
-  const matched = new Set();
+function notesMerged(local, remote, settled) {
+  const at = new Map(settled);
+  const matched = new Set(settled.values());
   const take = (/** @type {Note} */ mine, /** @type {Note|undefined} */ theirs) => {
-    if (theirs === undefined || matched.has(theirs.note) || !alike(mine, theirs)) return;
+    if (at.has(mine.note) || theirs === undefined || matched.has(theirs.note) || !alike(mine, theirs)) return;
     at.set(mine.note, theirs.note);
     matched.add(theirs.note);
   };
   for (const mine of local) take(mine, remote[mine.note - 1]);
-  for (const mine of local) {
-    if (!at.has(mine.note)) take(mine, remote.find((theirs) => !matched.has(theirs.note) && alike(mine, theirs)));
-  }
+  for (const mine of local) take(mine, remote.find((theirs) => !matched.has(theirs.note) && alike(mine, theirs)));
   const rest = local.filter(({ note }) => !at.has(note));
   rest.forEach(({ note }, i) => at.set(note, remote.length + i + 1));
   return { at, added: rest.map((mine) => ({ ...mine, note: /** @type {number} */ (at.get(mine.note)) })) };
@@ -469,6 +484,7 @@ module.exports = {
   runNumber,
   runRenumbered,
   consolidationOf,
+  notesSettled,
   notesMerged,
   linesToAdd,
   entryId,

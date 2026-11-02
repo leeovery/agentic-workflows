@@ -17,11 +17,11 @@
 // lacks, and a phase written in the tracker already, whose finds are tasks
 // in it. It runs under the writer lock (engine.cjs); a commit git refuses is
 // a warning, the note written. A notes file holding anything but notes
-// numbered from 1 refuses every read of it, naming the fault and how it is
-// put right: by hand, since only the engine writes it, the next note
-// committing it. A second clone's merge keeps them so, placing each
-// machine's notes by note and renaming this machine's consolidation reports
-// with them (4.7, state-merge-paths.cjs, `renumberedReport`).
+// numbered from 1 refuses every read of it, naming the fault and how the
+// person puts it right by hand, the next note committing it. A second
+// clone's merge keeps them so, placing each machine's notes by note and
+// renaming this machine's consolidation reports with them (4.7,
+// state-merge-paths.cjs, `renumberedReport`).
 //
 // At a phase's end the consolidation agent reads the notes it has to take —
 // those held for no phase that no other phase's report took, whatever their
@@ -70,7 +70,7 @@ const NOTE_SHAPED = new RegExp(`^${BULLET}[*_]*notes?(?![\\w-])`, 'i');
 const THE_NOTES = '## The notes';
 const GRAMMAR = 'each item reads `- Note {k}: dropped — {why}` or `- Note {k}[, Note {k}…]: a task — {title}`';
 const PHASE_FOLDER = /^phase-([1-9][0-9]*)$/;
-const PUT_RIGHT = 'the engine writes its notes, through task note, so they are put right by hand: each under its heading, `## Note {k}` or `## Note {k}, for phase {N}`, numbered from 1 in the order they stand; the next note commits the file';
+const PUT_RIGHT = 'the engine writes its notes, through task note, and the person puts the file right by hand: each note under its heading, `## Note {k}` or `## Note {k}, for phase {N}`, numbered from 1 in the order they stand; the next note commits the file';
 
 /** @param {string} reason @returns {never} */
 function refuse(reason) {
@@ -125,7 +125,8 @@ function notesOf(text) {
 
 /**
  * The unit's notes, in order; none before the first. Refused where the file
- * holds anything but notes numbered from 1, saying how it is put right.
+ * holds anything but notes numbered from 1, saying how the person puts it
+ * right.
  * @param {string} cwd @param {string} unit @returns {Note[]}
  */
 function readNotes(cwd, unit) {
