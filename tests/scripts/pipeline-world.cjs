@@ -1131,16 +1131,29 @@ function specToBuild(sim, wu, topics, position = 's') {
   return sim.run(answerGate(sim, 'ready to build', '--pick', position).next.argv);
 }
 
-// The review of the spec's last land (11.7): a pass dispatched and briefed,
-// its clean report written where the dispatch said, taken in by the scan and
-// acknowledged clean.
-/** @param {Sim} sim @param {string} wu @returns {{id: string, file: string}} the pass */
-function specReviewed(sim, wu) {
+// The review of the spec's last land (11.7), as writing-and-review.md runs
+// it: a pass dispatched and briefed, its report written where the dispatch
+// said — clean, or holding `findings`, each by its lane, a gap or a fact
+// the record already answers declined — taken in by the scan and
+// acknowledged with every finding it holds; each finding but a rewrite or
+// one declined surfaced; and the pass incorporated, whatever closed it
+// first.
+/**
+ * @param {Sim} sim @param {string} wu @param {{lane: 'rewrite'|'gap'|'fact', declined?: boolean}[]} [findings]
+ * @returns {{id: string, file: string}} the pass
+ */
+function specReviewed(sim, wu, findings = []) {
   const pass = sim.run(['agent', 'dispatch', wu, 'specification', wu, '--kind', 'spec-review']);
   sim.run(['brief', 'spec-reviewer', wu, '--agent', pass.id]);
-  fs.writeFileSync(pass.file, `# Spec Review — ${pass.id}\n\n## Findings\n\nNone identified.\n`);
+  const body = findings.length === 0 ? 'None identified.' : findings.map(({ lane }, at) => `### F${at + 1}: a ${lane} finding\n\n**Lane:** ${lane}\n\nWhat the pass found.`).join('\n\n');
+  fs.writeFileSync(pass.file, `# Spec Review — ${pass.id}\n\n## Findings\n\n${body}\n`);
   sim.run(['agent', 'scan', wu, 'specification', wu]);
-  sim.run(['agent', 'ack', wu, 'specification', wu, pass.id, '--clean']);
+  const ids = findings.map((_, at) => `F${at + 1}`);
+  sim.run(['agent', 'ack', wu, 'specification', wu, pass.id, ...(ids.length === 0 ? ['--clean'] : ['--findings', ids.join(',')])]);
+  for (const [at, { lane, declined }] of findings.entries()) {
+    if (lane !== 'rewrite' && !declined) sim.run(['agent', 'surface', wu, 'specification', wu, pass.id, ids[at]]);
+  }
+  sim.run(['agent', 'incorporate', wu, 'specification', wu, pass.id]);
   return pass;
 }
 

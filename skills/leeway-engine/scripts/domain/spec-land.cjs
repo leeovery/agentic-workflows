@@ -84,17 +84,11 @@ function unitRefusal(cwd, unit) {
 /**
  * The sections changed since `landed`, the spec the state branch holds:
  * each of `text`'s changed, in the spec's order, then each of its that
- * `text` lacks — every one of `text`'s where it holds none, or one its
- * sections cannot read.
+ * `text` lacks — every one of `text`'s where it holds none.
  * @param {string|null} landed @param {string} text @returns {string[]}
  */
 function changedSections(landed, text) {
-  /** @type {Record<string, string>} */
-  let before = {};
-  try {
-    if (landed !== null) before = printOf(landed).sections;
-  } catch { /* a spec committed by another route than the land: every section changed */ }
-  const { changed, removed } = changedSince(before, text);
+  const { changed, removed } = changedSince(landed === null ? {} : printOf(landed).sections, text);
   return [...changed, ...removed];
 }
 

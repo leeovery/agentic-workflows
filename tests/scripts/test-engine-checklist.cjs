@@ -22,8 +22,9 @@
 // every refusal writing nothing.
 //
 // Layer: verb. Worlds, each built once and copied: a project with an epic,
-// `payments`, of two topics under discussion, its `spec.md` (area 1 with
-// parts 1.1 and 1.2, each a statement of the builder's, area 2; scenarios
+// `payments`, of two topics under discussion, a "don't care" decision on
+// `cards`, its `spec.md` (area 1 with parts 1.1 and 1.2, each a statement
+// of the builder's citing that decision, area 2; scenarios
 // 1.S1 and 2.S1) and its cut written by
 // the verb, two phases, the first relying on another unit, `billing`, the
 // second on the first, its build begun; `billing`, under way; and a feature
@@ -45,19 +46,27 @@ const {
   ok, refusedPristine, statePath, layout, writeState, readManifest, commitAll, stateGit, fixtureFrom, cleanupFixture, lockAttempts, holdLock,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
+const { MADE, ledgerHelpers } = require('./ledger-world.cjs');
 
 const UNIT = 'payments';
 const SESSION = Object.freeze({ CLAUDE_CODE_SESSION_ID: 'session-1' });
 
-const SPEC = [
+/** The builder's bracket in the project at `at`, citing its "don't care" decision. @param {string} at */
+const builders = (at) => `[builder: ${ledgerHelpers(() => at).entries().find((entry) => entry.given === 'dont-care').id}]`;
+
+/** The unit's spec in the project at `at`, its statements the builder's. @param {string} at */
+const specIn = (at) => [
   '# Payments', '',
   '## 1. Cards', '',
-  '### 1.1 The form', '', '1.1.1 The number is checked as it is typed. [builder]', '',
-  '### 1.2 The receipt', '', '1.2.1 A receipt names its charge. [builder]', '',
+  '### 1.1 The form', '', `1.1.1 The number is checked as it is typed. ${builders(at)}`, '',
+  '### 1.2 The receipt', '', `1.2.1 A receipt names its charge. ${builders(at)}`, '',
   '## 1-S. Scenarios for §1', '', '1.S1 Given a card form, when the number is typed, then it is checked. (1.1.1)', '',
   '## 2. Refunds', '',
   '## 2-S. Scenarios for §2', '', '2.S1 Given a charge, when it is refunded, then its receipt names it. (1.2.1)', '',
 ].join('\n');
+
+/** The unit's spec, its first statement's text and bracket as `said` gives. @param {string} said */
+const typed = (said) => specIn(dir).replace(`typed. ${builders(dir)}`, said);
 
 /** @typedef {{name: string, goal: string, scenarios: string[], sections: string[], relies_on: Array<number|string>}} Phase */
 
@@ -111,10 +120,14 @@ function project(dir) {
     },
     build: { position: 'auto' },
   });
-  writeState(dir, layout.unit(UNIT, 'spec.md'), SPEC);
   createManifest(dir, 'billing', {});
   createManifest(dir, 'solo', { phases: { discussion: { items: { solo: { status: 'in-progress' } } } } });
   commitAll(dir, 'init');
+  const { write } = ledgerHelpers(() => dir);
+  const radius = write('ask', `${UNIT}.discussion.cards`, [], { ...MADE, text: 'What radius are the corners?' }).id;
+  write('decide', `${UNIT}.discussion.cards`, ['--answers', radius], { ...MADE, given: 'dont-care', text: 'Ten points.', why: 'Any radius serves.' });
+  writeState(dir, layout.unit(UNIT, 'spec.md'), specIn(dir));
+  commitAll(dir, 'spec written');
   cut(dir, [CARDS, REFUNDS]);
 }
 
@@ -393,7 +406,7 @@ describe('the engine\'s own items, worked out at each call (6.4.3)', () => {
     const seen = [swept()];
     writeState(dir, layout.cache(UNIT, 'specification', 'sweep.json'), JSON.stringify({ candidates: [], messages: [], builder_calls: [] }));
     seen.push(swept());
-    writeState(dir, layout.unit(UNIT, 'sweep-taken.json'), JSON.stringify({ taken: '2026-11-01T00:00:00.000Z', messages: [], candidates: [] }));
+    writeState(dir, layout.unit(UNIT, 'sweep-taken.json'), JSON.stringify({ candidates: [], builder_calls: [] }));
     seen.push(swept());
     fs.rmSync(statePath(dir, layout.cache(UNIT)), { recursive: true, force: true });
 
@@ -403,8 +416,8 @@ describe('the engine\'s own items, worked out at each call (6.4.3)', () => {
   it('reads every statement and screen of spec.md traced to the ledger as done, a statement or a screen that is not as open, and a spec its grammar cannot read as open (11.4.1, 11.4.5)', () => {
     const traced = () => itemState('statements-traced', 'ready-to-build', UNIT);
     const seen = [traced()];
-    for (const said of ['typed.', 'typed. [builder]\n\nScreen: the form, drawn.', 'typed. [see below]']) {
-      writeState(dir, layout.unit(UNIT, 'spec.md'), SPEC.replace('typed. [builder]', said));
+    for (const said of ['typed.', `typed. ${builders(dir)}\n\nScreen: the form, drawn.`, 'typed. [see below]']) {
+      writeState(dir, layout.unit(UNIT, 'spec.md'), typed(said));
       seen.push(traced());
     }
 
@@ -421,9 +434,9 @@ describe('the engine\'s own items, worked out at each call (6.4.3)', () => {
       ok(dir, ['asset', 'add', UNIT, layout.assets(UNIT, file), '--entry', decided, '--status', status], { env: SESSION });
     }
     const seen = [linked()];
-    writeState(dir, layout.unit(UNIT, 'spec.md'), SPEC.replace('typed. [builder]', 'typed, as [the form](../form.png) shows. [builder]'));
+    writeState(dir, layout.unit(UNIT, 'spec.md'), typed(`typed, as [the form](../form.png) shows. ${builders(dir)}`));
     seen.push(linked());
-    writeState(dir, layout.unit(UNIT, 'spec.md'), SPEC.replace('typed. [builder]', 'typed, as [the form](assets/form.png) shows. [builder]'));
+    writeState(dir, layout.unit(UNIT, 'spec.md'), typed(`typed, as [the form](assets/form.png) shows. ${builders(dir)}`));
 
     assert.deepStrictEqual([...seen, linked()], ['open', 'open', 'done']);
   });
@@ -439,7 +452,7 @@ describe('the engine\'s own items, worked out at each call (6.4.3)', () => {
     ok(dir, ['asset', 'add', UNIT, spike, '--entry', decided, '--status', 'canonical'], { env: SESSION });
     const seen = [linked()];
     for (const target of ['spikes/001-frameworks/notes.md', 'spikes/001-frame', 'spikes/001-frame/', 'spikes/001-frame/Frame.swift']) {
-      writeState(dir, layout.unit(UNIT, 'spec.md'), SPEC.replace('typed. [builder]', `typed, as [the spike](${target}) shows. [builder]`));
+      writeState(dir, layout.unit(UNIT, 'spec.md'), typed(`typed, as [the spike](${target}) shows. ${builders(dir)}`));
       seen.push(linked());
     }
 
@@ -453,7 +466,7 @@ describe('the engine\'s own items, worked out at each call (6.4.3)', () => {
     const decided = write('decide', ['--answers', write('ask', [], { text: 'What does the form look like?' })], { text: 'As drawn.', why: 'The mockup settled it.' });
     writeState(dir, layout.assets(UNIT, 'form.png'), 'form\n');
     ok(dir, ['asset', 'add', UNIT, layout.assets(UNIT, 'form.png'), '--entry', decided, '--status', 'canonical'], { env: SESSION });
-    writeState(dir, layout.unit(UNIT, 'spec.md'), SPEC.replace('typed. [builder]', 'typed, as [the form](assets/form.png) shows. [builder]'));
+    writeState(dir, layout.unit(UNIT, 'spec.md'), typed(`typed, as [the form](assets/form.png) shows. ${builders(dir)}`));
     fs.rmSync(statePath(dir, layout.assets(UNIT, 'form.png')));
     const gone = linked();
     ok(dir, ['asset', 'status', UNIT, layout.assets(UNIT, 'form.png'), 'reference'], { env: SESSION });

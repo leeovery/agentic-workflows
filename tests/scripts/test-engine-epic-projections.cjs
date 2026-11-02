@@ -520,6 +520,7 @@ describe('epic projections: menu', () => {
       postponed: [],
       cancelled: [],
       spec_row: null,
+      map_closed: false,
       next_phase_ready: [
         { name: 'billing', action: 'start_review', label: 'implementation completed' },
         { name: 'user-profiles', action: 'start_planning', label: 'spec completed' },
@@ -773,6 +774,19 @@ describe('epic projections: the spec row (18.4.6)', () => {
 
   it('is gone once the build has begun', () => {
     assert.deepStrictEqual(specRow(settled({}, { build: { position: 'auto' } })), []);
+  });
+
+  it('leaves the closed map\'s rows off the menu once spec.md is written — no discovery, new topic, cancel, postpone, reactivate or pull forward — the spec and completed rows standing (18.4.19)', () => {
+    fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify({
+      work_units: {},
+      roadmap: { horizons: ['next', 'later'], items: { later: { horizon: 'later', summary: 's', origin: 'postpone:v1', postponed_from: { work_unit: 'v1', topic: 'later' } } } },
+    }, null, 2));
+    const keys = () => epicMenu('v1', settled()).keys.map((k) => k.key);
+    const before = keys();
+    fs.mkdirSync(path.join(dir, '.leeway', 'v1'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.leeway', 'v1', 'spec.md'), '# V1\n');
+
+    assert.deepStrictEqual([before, keys()], [['s', 'd', 'i', 'c', 'a', 'p', 'e', 'f', 'b'], ['s', 'c', 'b']]);
   });
 });
 
@@ -1288,11 +1302,12 @@ describe('epic projections: selection sub-views', () => {
     // withdrawing the option would hide the reason with it.
     const locked = detailFor(dir, 'v2', {
       work_type: 'epic',
-      build: { position: 'auto' },
       phases: {
-        discussion: { items: { auth: { status: 'completed' } } },
+        discussion: { items: { auth: { status: 'in-progress' } } },
+        experiment: { items: { auth: { status: 'in-progress', experiments: { E1: { slug: 'x', status: 'running' } } } } },
       },
     });
+    assert.ok(locked.postponable[0].locked, 'its live experiment locks the topic');
     assert.deepStrictEqual(options(locked), ['Postpone a topic to the roadmap']);
     // A map whose every row has gone to the roadmap has nothing left to
     // postpone — the empty state, and no option.

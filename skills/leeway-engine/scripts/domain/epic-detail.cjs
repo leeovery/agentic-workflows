@@ -178,6 +178,8 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {NextPhaseEntry[]} next_phase_ready
  * @property {'start'|'continue'|null} spec_row  the spec the menu offers — to start, or to carry on once written; null
  *                             while a topic is open, once the build has begun, and on a unit keeping the old spec's items
+ * @property {boolean} map_closed  the unit is past its spec, so its map is closed (18.4.19): no topic is added, cancelled,
+ *                             postponed, pulled forward or reactivated, nor the map talked over in discovery
  * @property {MapRow[]} discovery_map
  * @property {Record<string, string>} titles  the titles a rename gave started topics, by key (derivations' `topicTitles`)
  * @property {string|null} active_session  in-progress discovery session number, or null
@@ -537,6 +539,7 @@ function epicDetail(cwd, manifest) {
     postponed: postponedTopics(manifest, discoveryMap, project),
     next_phase_ready: nextPhaseReady,
     spec_row: specRow(cwd, manifest),
+    map_closed: pastItsSpec(cwd, manifest),
     discovery_map: discoveryMap,
     titles: topicTitles(manifest),
     active_session: (manifest.phases && manifest.phases.discovery && typeof manifest.phases.discovery.active_session === 'string')

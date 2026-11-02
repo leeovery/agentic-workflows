@@ -6,7 +6,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
+const { setupFixture, cleanupFixture, createManifest, writeState, layout } = require('./discovery-test-utils.cjs');
 const { activeWorkUnit } = require('../../skills/leeway-engine/scripts/domain/workunit-detail.cjs');
 const { view } = require('../../skills/leeway-continue-linear/scripts/gateway.cjs');
 
@@ -71,6 +71,15 @@ describe('leeway-continue-linear discovery', () => {
     const { unit } = activeWorkUnit(dir, 'auth');
     assert.strictEqual(unit.phase_label, 'specification (in-progress)');
     assert.deepStrictEqual(unit.completed_phases, ['discussion']);
+  });
+
+  it('reads the one spec in progress once its spec.md is written, ready for it before, as another phase in progress reads', () => {
+    createManifest(dir, 'auth', { work_type: 'feature', phases: { discussion: { items: { auth: { status: 'completed' } } } } });
+    const before = activeWorkUnit(dir, 'auth').unit;
+    writeState(dir, layout.unit('auth', 'spec.md'), '# Auth\n');
+    const { unit } = activeWorkUnit(dir, 'auth');
+
+    assert.deepStrictEqual([before.phase_label, unit.next_phase, unit.phase_label, unit.in_progress_phases], ['ready for specification', 'specification', 'specification (in-progress)', ['specification']]);
   });
 
   it('returns multiple completed phases in pipeline order', () => {

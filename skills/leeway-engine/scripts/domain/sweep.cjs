@@ -18,24 +18,27 @@
 //   `{topic, text}`: the topic, by its name or title, and the message, its
 //   first line its title; `sent`, the message's path in the state, is the
 //   take's mark that it went, so a take run again sends it never twice;
-// - `builder_calls`, the calls the person would leave, each `{call, why}`,
-//   kept here for the spec's writer (`builderCalls`).
+// - `builder_calls`, the calls the person would leave, each `{call, why}`.
 // The report reads where it holds that shape and nothing else, each text
-// non-empty; it is read whole or refused, naming every fault. The cache is
-// local: a report a cleanse takes, the builder's calls with it, is written
-// again by the next sweep.
+// non-empty; it is read whole or refused, naming every fault. Once taken,
+// nothing reads it again.
 //
 // `sweep take` (sweep-take.cjs) takes the report in once, and records what
-// it took in the unit's state, `{unit}/sweep-taken.json`, committed: when,
-// each message sent by topic and path, and the candidates whole, which the
-// map after the sweep is drawn from (approve-map.cjs). One sweep for the
-// spec: the record standing is the sweep run, never the cache. A candidate
-// waits on the person until approve the map answers it — taken onto the
-// map or struck from it, each on the unit's manifest (`candidatesWaiting`).
-// The sweep's step is done once it is taken and no candidate waits: ready to
-// build's sweep-run (checklist.cjs), and the spec's land and the writer's
-// brief, refused until then (`sweepWait`), read it. The sweep is owed by an
-// epic with more than one live topic (`sweepApplies`).
+// it took in the unit's state, `{unit}/sweep-taken.json`, committed: the
+// candidates whole, which the map after the sweep is drawn from
+// (approve-map.cjs), and the builder's calls, each given its id, `call-N`
+// in the report's order — a form no ledger id takes, which holds letters and
+// digits alone (ledger-ids.cjs) — by which a spec line left to the builder
+// cites the call (11.4.4): the spec's writer is briefed with them, and its
+// trace resolves a builder's cite against them (`builderCalls`). One sweep
+// for the spec: the record standing is the sweep run, never the cache. A
+// candidate waits on the person until approve the map answers it — taken
+// onto the map or struck from it, each on the unit's manifest
+// (`candidatesWaiting`). The sweep's step is done once it is taken and no
+// candidate waits: ready to build's sweep-run (checklist.cjs), and the
+// spec's land and the writer's brief, refused until then (`sweepWait`), read
+// it. The sweep is owed by an epic with more than one live topic
+// (`sweepApplies`).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -47,8 +50,9 @@ const { dismissedNames } = require('./derivations.cjs');
 /** @typedef {{name: string, reason: string, brief: string, from_roadmap?: string}} SweepCandidate */
 /** @typedef {{topic: string, text: string, sent?: string}} SweepMessage */
 /** @typedef {{call: string, why: string}} BuilderCall */
+/** A builder's call as the sweep taken records it, with its id. @typedef {BuilderCall & {id: string}} RecordedCall */
 /** @typedef {{candidates: SweepCandidate[], messages: SweepMessage[], builder_calls: BuilderCall[]}} SweepReport */
-/** @typedef {{taken: string, messages: {topic: string, message: string}[], candidates: SweepCandidate[]}} SweepTaken */
+/** @typedef {{candidates: SweepCandidate[], builder_calls: RecordedCall[]}} SweepTaken */
 
 /**
  * Each part of the report: the fields each of its items holds, and those an item may leave out.
@@ -65,6 +69,12 @@ const PART_NAMES = /** @type {Array<keyof SweepReport>} */ (Object.keys(PARTS));
 
 /** The record of the sweep taken, state-relative. @param {string} unit */
 const takenRel = (unit) => `${unit}/sweep-taken.json`;
+
+/** A builder's call's id, by its place in the report. @param {number} at */
+const callId = (at) => `call-${at + 1}`;
+
+/** Whether a cite has a builder's call's form, which no ledger id has. @param {string} cite */
+const isCallId = (cite) => /^call-[1-9][0-9]*$/.test(cite);
 
 /** Where the sweep's agent writes its report for a unit. @param {string} cwd @param {string} unit */
 function sweepPath(cwd, unit) {
@@ -134,11 +144,6 @@ function readSweep(cwd, unit) {
   return /** @type {SweepReport} */ (report);
 }
 
-/** The calls the sweep left to the builder, for the spec's writer; none where no report is written. @param {string} cwd @param {string} unit @returns {BuilderCall[]} */
-function builderCalls(cwd, unit) {
-  return readSweep(cwd, unit)?.builder_calls ?? [];
-}
-
 /** Where the record of the unit's sweep taken stands. @param {string} cwd @param {string} unit */
 function takenPath(cwd, unit) {
   return statePath(cwd, takenRel(unit));
@@ -148,6 +153,11 @@ function takenPath(cwd, unit) {
 function readTaken(cwd, unit) {
   const file = takenPath(cwd, unit);
   return fs.existsSync(file) ? /** @type {SweepTaken} */ (JSON.parse(fs.readFileSync(file, 'utf8'))) : null;
+}
+
+/** The calls the sweep left to the builder, each with its id, as the sweep taken records them; none before it is taken, or where no sweep is owed. @param {string} cwd @param {string} unit @returns {RecordedCall[]} */
+function builderCalls(cwd, unit) {
+  return readTaken(cwd, unit)?.builder_calls ?? [];
 }
 
 /** Whether the unit's sweep is taken. @param {string} cwd @param {string} unit */
@@ -185,4 +195,4 @@ function sweepWait(cwd, manifest) {
   return waiting.length === 0 ? null : `${unit}'s sweep found calls waiting on the person — ${waiting.join(', ')} — taken or struck at approve the map: engine render approve-map ${unit} --sweep`;
 }
 
-module.exports = { takenRel, sweepPath, readSweep, builderCalls, takenPath, readTaken, sweepTaken, sweepApplies, candidatesWaiting, sweepWait };
+module.exports = { takenRel, callId, isCallId, sweepPath, readSweep, builderCalls, takenPath, readTaken, sweepTaken, sweepApplies, candidatesWaiting, sweepWait };

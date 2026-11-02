@@ -41,9 +41,9 @@ const { MADE, ledgerHelpers } = require('./ledger-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { specPage, lineTicks, HARD_TO_UNDO } = require(path.join(SCRIPTS, 'domain/spec-page-model.cjs'));
-const { writeSpecReview, commentsWaiting, settleReview } = require(path.join(SCRIPTS, 'domain/spec-review.cjs'));
+const { settleReview } = require(path.join(SCRIPTS, 'domain/spec-review.cjs'));
 const { specReading } = require(path.join(SCRIPTS, 'domain/spec-sections.cjs'));
-const { withUnitEntries } = require(path.join(SCRIPTS, 'domain/unit-entries.cjs'));
+const { withTraceView } = require(path.join(SCRIPTS, 'domain/spec-trace.cjs'));
 const { trustLogPath } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 
 const UNIT = 'payments';
@@ -142,6 +142,12 @@ function storeMarks(marks) {
   return ok(dir, ['spec', 'marks', UNIT, '--file', marksFile(marks)]);
 }
 
+/** The review settled on marks handed in, the page published first: its answer. @param {Record<string, unknown>} marks */
+function settle(marks) {
+  publish();
+  return settleReview(dir, UNIT, marksFile(marks, 'handed.json'));
+}
+
 /** The record as written. */
 const record = () => JSON.parse(readState(dir, RECORD));
 
@@ -152,7 +158,7 @@ const said = (by, ms, text) => ({ by, at: new Date(ms).toISOString(), text });
 const flagged = (flag) => specPage(dir, UNIT).sections.flatMap(({ items }) => items).flatMap((item) => (item.k === 'line' && item.flags.includes(flag) ? [item.id] : []));
 
 describe('Claude\'s tick, drawn from the entries each line cites (11.11.15, 11.S32)', () => {
-  it('11.S32: a line restating the person\'s decision, resting on a finding, or the builder\'s carries the tick with its reason; one resting on a call of Claude\'s, alone or beside the person\'s, on a decision carried over, or citing a question stays open with its reason; a scenario takes its tick from its statements', () => {
+  it('11.S32: a line restating the person\'s decision, resting on a finding, or the builder\'s carries the tick with its reason; one resting on a call of Claude\'s, alone or beside the person\'s, on a decision carried over, citing a question, or marked the builder\'s citing nothing stays open with its reason; a scenario takes its tick from its statements', () => {
     const { ticks } = specPage(dir, UNIT);
 
     assert.deepStrictEqual(Object.fromEntries(ticks), {
@@ -167,17 +173,17 @@ describe('Claude\'s tick, drawn from the entries each line cites (11.11.15, 11.S
       '1-1-8': { v: 'soft', why: BUILDERS },
       '1-S1': { v: 'soft', why: 'Draws on 1.1.1 and 1.1.3, each carrying Claude\'s tick' },
       '1-S2': { v: 'open', why: 'Draws on 1.1.2, which waits on you' },
-      '2-1-1': { v: 'soft', why: BUILDERS },
+      '2-1-1': { v: 'open', why: 'Traces to no entry: cites no entry — a builder\'s line cites the "don\'t care" decision it rests on' },
     });
   });
 
-  it('flags the statements and screens resting on a call of Claude\'s, and those left to the builder by their bracket or by a "don\'t care" cited — a scenario taking none of its statements\' flags (11.11.2)', () => {
-    assert.deepStrictEqual([flagged('claude'), flagged('builder')], [['1-1-2', '1-1-6'], ['1-1-3', '1-1-8', '2-1-1']]);
+  it('flags the statements and screens resting on a call of Claude\'s, and those left to the builder by a cite that traces — a bare builder\'s bracket, which does not, flagging nothing, and a scenario taking none of its statements\' flags (11.11.2)', () => {
+    assert.deepStrictEqual([flagged('claude'), flagged('builder')], [['1-1-2', '1-1-6'], ['1-1-3', '1-1-8']]);
   });
 
   it('11.S36\'s drawn half: a line restating the person\'s decision marked hard to undo stays open, its reason saying its question was; unmarked, it carries the tick (P8)', () => {
     const { lines } = specReading(readState(dir, SPEC));
-    const marked = withUnitEntries(dir, UNIT, [], (view) => {
+    const marked = withTraceView(dir, UNIT, [], (view) => {
       const decision = /** @type {{line: Record<string, unknown>}} */ (view.entries.get(full(made.taken)));
       const unmarked = lineTicks(view, lines).ticks.get('1.1.1');
       decision.line[HARD_TO_UNDO] = true;
@@ -219,17 +225,12 @@ describe('the page\'s marks stored, answering the comments waiting for Claude (1
       ],
     });
     assert.deepStrictEqual(JSON.parse(readState(dir, MARKS)), { s1: { m: marks.s1.data.m }, s2: marks.s2 });
-    assert.deepStrictEqual(commentsWaiting(dir, UNIT).map(({ number }) => number), ['1.1.1', '2.1.1']);
   });
 
   it('a tick on a wording since changed, its conversation the person\'s last, waits for Claude as an open conversation does', () => {
-    storeMarks({ s1: { m: { '1-1-1': { s: 'tick', h: 'aaaaaaaaaaaa', t: message('p', 1000, 'Ticked, but why?') } } } });
+    const { waiting } = settle({ s1: { m: { '1-1-1': { s: 'tick', h: 'aaaaaaaaaaaa', t: message('p', 1000, 'Ticked, but why?') } } } });
 
-    assert.deepStrictEqual(commentsWaiting(dir, UNIT).map(({ number }) => number), ['1.1.1']);
-  });
-
-  it('answers no comment waiting while no marks are stored', () => {
-    assert.deepStrictEqual(commentsWaiting(dir, UNIT), []);
+    assert.deepStrictEqual(waiting.map(({ number }) => number), ['1.1.1']);
   });
 });
 
@@ -307,7 +308,9 @@ describe('marks refused, nothing stored', () => {
 
 describe('the review\'s record (11.11.7, 11.11.9)', () => {
   it('11.S26: the ticked lines approved explicitly, the comment answered but not ticked open and left as written with its conversation, the rest — carrying no tick of Claude\'s — passed without review; the trust log untouched', () => {
-    storeMarks({
+    const trust = () => (fs.existsSync(trustLogPath()) ? fs.readFileSync(trustLogPath(), 'utf8') : null);
+    const before = trust();
+    const settled = settle({
       s1: {
         m: {
           '1-1-2': { s: 'tick', h: hOf('1-1-2') },
@@ -315,12 +318,9 @@ describe('the review\'s record (11.11.7, 11.11.9)', () => {
         },
       },
     });
-    const trust = () => (fs.existsSync(trustLogPath()) ? fs.readFileSync(trustLogPath(), 'utf8') : null);
-    const before = trust();
-    const written = writeSpecReview(dir, UNIT);
     const { lines } = record();
 
-    assert.strictEqual(written, RECORD);
+    assert.deepStrictEqual(settled, { waiting: [], record: RECORD });
     assert.deepStrictEqual([lines['1.1.2'], lines['1.1.6'], lines['1.1.5'], lines['1.S2']], [
       { state: 'approved', conversation: [] },
       { state: 'open', conversation: [said('person', 1000, 'Both?'), said('claude', 2000, 'Both.')] },
@@ -331,21 +331,20 @@ describe('the review\'s record (11.11.7, 11.11.9)', () => {
   });
 
   it('11.S35: holds every line by number, a screen\'s included, in one state — approved, approved after a comment, Claude\'s tick let stand, open, changed since its tick, passed without review — and a line removed after its tick as removed, with its conversation; a tick with no fingerprint stands, and the person\'s untick holds against Claude\'s tick whatever wording it held (11.11.16)', () => {
-    storeMarks({
+    settle({
       s1: {
         m: {
           '1-1-1': { s: 'tick', h: hOf('1-1-1'), t: { ...message('p', 1000, 'Amex?'), ...message('c', 2000, 'Not decided.') } },
           '1-1-2': { s: 'tick' },
           '1-1-3': { s: '', h: hOf('1-1-3') },
           '1-1-4': { s: 'tick', h: 'aaaaaaaaaaaa' },
-          '1-1-5': { s: 'comment', t: message('p', 3000, 'Typed how?') },
+          '1-1-5': { s: 'comment', t: { ...message('p', 3000, 'Typed how?'), ...message('c', 3500, 'Not decided.') } },
           '1-1-9': { s: 'tick', h: 'bbbbbbbbbbbb', t: message('p', 4000, 'Gone?') },
           '1-1-10': { s: '', h: 'cccccccccccc' },
         },
       },
       s2: { m: { '2-1-1': { s: '', h: 'dddddddddddd' } } },
     });
-    writeSpecReview(dir, UNIT);
 
     assert.deepStrictEqual(record(), {
       lines: {
@@ -354,7 +353,7 @@ describe('the review\'s record (11.11.7, 11.11.9)', () => {
         '1.1.3': { state: 'passed', conversation: [] },
         '1.1.3-scr1': { state: 'claudes-tick', conversation: [] },
         '1.1.4': { state: 'changed', conversation: [] },
-        '1.1.5': { state: 'open', conversation: [said('person', 3000, 'Typed how?')] },
+        '1.1.5': { state: 'open', conversation: [said('person', 3000, 'Typed how?'), said('claude', 3500, 'Not decided.')] },
         '1.1.6': { state: 'passed', conversation: [] },
         '1.1.7': { state: 'passed', conversation: [] },
         '1.1.8': { state: 'claudes-tick', conversation: [] },
@@ -367,25 +366,21 @@ describe('the review\'s record (11.11.7, 11.11.9)', () => {
   });
 
   it('11.S28\'s code half: a tick stands across a land changing the line\'s sources alone, and reads changed once its wording changes', () => {
-    storeMarks({ s1: { m: { '1-1-1': { s: 'tick', h: hOf('1-1-1') }, '1-1-4': { s: 'tick', h: hOf('1-1-4') } } } });
+    const marks = { s1: { m: { '1-1-1': { s: 'tick', h: hOf('1-1-1') }, '1-1-4': { s: 'tick', h: hOf('1-1-4') } } } };
+    publish();
     const [taken, ...rest] = STATEMENTS();
     writeState(dir, SPEC, spec([taken.replace(`[${made.taken}]`, `[${made.taken}, ${made.brand}]`), ...rest.map((line) => line.replace('the card\'s brand', 'the brand'))]));
     ok(dir, ['spec', 'land', UNIT]);
-    writeSpecReview(dir, UNIT);
+    settleReview(dir, UNIT, marksFile(marks));
 
     assert.deepStrictEqual([record().lines['1.1.1'].state, record().lines['1.1.4'].state], ['approved', 'changed']);
   });
 
-  it('11.S22: writes no record where the person did not take the review — a page built, never published — and one, every line passed or Claude\'s, where the page was published and nothing marked', () => {
-    ok(dir, ['spec', 'page', UNIT]);
-    const none = writeSpecReview(dir, UNIT);
-    const absent = fs.existsSync(statePath(dir, RECORD));
-    publish();
-    writeSpecReview(dir, UNIT);
+  it('11.S22: writes a record, every line passed or Claude\'s, where the page was published and nothing marked', () => {
+    settle({});
 
-    assert.deepStrictEqual([none, absent], [null, false]);
     assert.deepStrictEqual(Object.values(record().lines).map(({ state }) => state), [
-      'claudes-tick', 'passed', 'claudes-tick', 'claudes-tick', 'claudes-tick', 'passed', 'passed', 'passed', 'claudes-tick', 'claudes-tick', 'passed', 'claudes-tick',
+      'claudes-tick', 'passed', 'claudes-tick', 'claudes-tick', 'claudes-tick', 'passed', 'passed', 'passed', 'claudes-tick', 'claudes-tick', 'passed', 'passed',
     ]);
   });
 });

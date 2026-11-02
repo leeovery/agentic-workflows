@@ -41,7 +41,6 @@ require('./hermetic-env.cjs');
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
-const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const {
@@ -56,6 +55,7 @@ const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { specStatements } = require(path.join(SCRIPTS, 'domain/spec-sections.cjs'));
 const { specEntryRefusal } = require(path.join(SCRIPTS, 'domain/spec-entry.cjs'));
+const { fingerprint } = require(path.join(SCRIPTS, 'kernel/fingerprint.cjs'));
 
 const LANDED = layout.cache(UNIT, 'specification', 'landed.json');
 const WORDING = layout.cache(UNIT, 'specification', 'wording.md');
@@ -67,8 +67,6 @@ const {
   spec, writeSpec, land, issued, refusedUnissued, dispatchReview, reportIn, scan, unread,
 } = specReviewHelpers(dir);
 
-/** @param {string} text */
-const sha = (text) => crypto.createHash('sha256').update(text).digest('hex');
 
 describe('the spec writer\'s brief (11.1.5, 11.3.2, 11.S2)', () => {
   it('11.S2: one brief for the unit, from its records alone — where the spec goes, each live topic\'s entries under its title, a "don\'t care" decision marked so, those made here standing on another unit under where they stand, each topic\'s log and the canonical assets — and nothing recorded to rewrite from or answer', () => {
@@ -85,19 +83,10 @@ describe('the spec writer\'s brief (11.1.5, 11.3.2, 11.S2)', () => {
       'changed-entries': 'None recorded.',
       'review-findings': 'None recorded.',
       'wording-changes': 'None recorded.',
+      'held-numbers': 'None recorded.',
       'invented-lines': 'None recorded.',
       'land-refusal': 'None recorded.',
     })}`);
-  });
-
-  it('the calls the sweep left to the builder, each with why — never its candidates or its messages', () => {
-    writeState(dir(), layout.cache(UNIT, 'specification', 'sweep.json'), JSON.stringify({
-      candidates: [{ name: 'wallets', reason: 'Nothing decides the wallets.', brief: '# Wallets\n' }],
-      messages: [{ topic: 'cards', text: 'Refunds settled the card.' }],
-      builder_calls: [{ call: 'The retry interval.', why: 'The person would leave it.' }],
-    }));
-
-    assert.strictEqual(section(issued(['spec-writer', UNIT]).brief, 'The builder\'s calls'), '- The retry interval.\n  Why: The person would leave it.');
   });
 
   it('the wording the person agreed on the review page: the file `--wording` names, verbatim, nothing written since — none recorded without it', () => {
@@ -107,6 +96,35 @@ describe('the spec writer\'s brief (11.1.5, 11.3.2, 11.S2)', () => {
 
     assert.deepStrictEqual([section(brief, AGREED), section(brief, 'Written since your last brief')], [agreed, 'None recorded.']);
     assert.strictEqual(section(issued(['spec-writer', UNIT]).brief, AGREED), 'None recorded.');
+  });
+
+  it('the numbers the open review page holds (11.11.3): the rule they keep, and each place\'s numbers with its next free one, from the record the land checks — none while no page is open', () => {
+    writeSpec(spec());
+    land();
+    const closed = section(issued(['spec-writer', UNIT]).brief, 'The numbers held');
+    ok(dir(), ['spec', 'page', UNIT]);
+    ok(dir(), ['spec', 'published', UNIT, 'https://claude.ai/public/artifacts/0123']);
+
+    assert.strictEqual(closed, 'None recorded.');
+    assert.strictEqual(section(issued(['spec-writer', UNIT]).brief, 'The numbers held'), [
+      'The person\'s review page is open, so these numbers are held: every line keeps its number; a line added takes the next free number at the end of its part — and a scenario or a screen added, at the end of its area\'s scenarios or its line\'s screens — and a number removed is never given to another line.',
+      '',
+      '- 1.1.1, 1.1.2 · next free 1.1.3',
+      '- 1.2.1 · next free 1.2.2',
+      '- 1.S1 · next free 1.S2',
+      '- 2.1.1, 2.1.2 · next free 2.1.3',
+    ].join('\n'));
+  });
+
+  it('a number removed while the review page is open stays held, so the next free number is past it (11.11.3)', () => {
+    writeSpec(spec({ more: [`2.1.3 A refund names its charge. [${made.where}]`, ''] }));
+    land();
+    ok(dir(), ['spec', 'page', UNIT]);
+    ok(dir(), ['spec', 'published', UNIT, 'https://claude.ai/public/artifacts/0123']);
+    writeSpec(spec());
+    land();
+
+    assert.ok(section(issued(['spec-writer', UNIT]).brief, 'The numbers held').endsWith('\n- 2.1.1, 2.1.2, 2.1.3 · next free 2.1.4'));
   });
 
   it('the land committing a take retires the wording file it carried where unchanged since the brief; one written to since stays, holding an agreement no brief carried', () => {
@@ -220,7 +238,7 @@ describe('the land\'s record (E4)', () => {
     refusedPristine(dir(), ['spec', 'land', UNIT]);
 
     assert.deepStrictEqual(Object.keys(first.sections).sort(), ['1', '1.1', '1.2', '2', '2.1', 'introduction']);
-    assert.deepStrictEqual([first.sections.introduction, first.sections['1.2']], [sha('# Payments'), sha(`### 1.2 The charge\n\n1.2.1 A charge is one request, and takes 300 ms. [${made.one}, ${made.speed}]`)]);
+    assert.deepStrictEqual([first.sections.introduction, first.sections['1.2']], [fingerprint('# Payments'), fingerprint(`### 1.2 The charge\n\n1.2.1 A charge is one request, and takes 300 ms. [${made.one}, ${made.speed}]`)]);
     assert.deepStrictEqual([first.first_mark, second.first_mark], [mark, mark]);
     assert.deepStrictEqual([Object.keys(first.sections).filter((address) => first.sections[address] !== second.sections[address]), answer.changed], [['1.2'], ['1.2']]);
     assert.notStrictEqual(first.digest, second.digest);
@@ -252,6 +270,7 @@ describe('the spec reviewer\'s brief (11.7.1, 11.7.8, 11.7.9)', () => {
       'measured-findings': `- ${made.speed}: A charge takes 300 ms.\n  Its result: 300 ms\n  Its command:\n\n  \`\`\`\n  npm run bench -- charge\n  \`\`\``,
       'product-cites': `- ${made.where} decision: Back to the card.\n  Cited by 2.1.1`,
       'unit-records': RECORDS(),
+      'builder-calls': 'None recorded.',
       'report-refusal': 'None recorded.',
       'unit-report-to': `\`${pass.file}\``,
     })}`);

@@ -74,7 +74,7 @@
 //   topic it added counts and one set aside meanwhile does not: an epic
 //   whose every live topic is now decided goes into its spec, at the unit,
 //   any other epic to its menu, where the person picks the next topic
-//   (24.1.2, 8.8.13); a unit of one topic into today's specification
+//   (24.1.2, 8.8.13); a unit of one topic into its spec, at the unit
 //   (9.7.6 waits on 29.15).
 // - `decided strike <n>` strikes the n-th candidate, numbered as the screen
 //   shows them, in the staged payload alone, and answers the screen again
@@ -547,8 +547,8 @@ function waitAgentsSurface(cwd, { dotpath }) {
 
 /**
  * What comes after a topic is decided: an epic's spec once its every live
- * topic is decided, else its menu; else, until a feature's decided is its
- * ready to build (29.15), today's specification.
+ * topic is decided, else its menu; a unit of one topic's spec, until a
+ * feature's decided is its ready to build (29.15).
  * @param {Record<string, any>} manifest as the yes saved it @param {string} unit
  * @returns {import('./projections/surfaces.cjs').Next}
  */

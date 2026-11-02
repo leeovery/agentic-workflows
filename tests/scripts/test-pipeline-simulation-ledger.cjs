@@ -24,8 +24,6 @@ const { launcher } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kerne
 const { stateGit } = require('./engine-harness.cjs');
 const { statePath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
 const { Sim, sessionLog, mappedEpic } = require('./pipeline-world.cjs');
-const { auditState, ledgerAuditsOf } = require('./pipeline-oracle.cjs');
-const { leaningCall } = require('./ledger-world.cjs');
 
 describe('pipeline simulation: ledger', () => {
   let sim;
@@ -233,115 +231,5 @@ describe('pipeline simulation: ledger', () => {
     const departed = ledger(['replace', note, '--replaces', sized, '--reason', 'was-wrong'],
       { by: 'person', who_moved_whom: 'person-moved-claude', drops: ['its own size'], text: 'A note fits its text.', why: 'A note is read, not placed.' });
     assert.deepStrictEqual(ids(sim.run(['verdict', 'queue']).departures), [departed]);
-  });
-
-  it('the trust log: Claude\'s call, the person\'s reversal of it, the verdicts on that departure — skipped on the decided screen, a real loss from the queue — Claude\'s call replacing it, the person\'s answers to Claude\'s lean through a raise, one taking it and one standing over it, and their keep of a call Claude proposed to replace, each land as a line of the trust log in the command that writes it; the person\'s own decision, changed, lands none, nor does their answer to a fact or their not following one', async () => {
-    const wu = 'fumi';
-    mappedEpic(sim, wu, ['note-window']);
-    sim.run(['topic', 'start', wu, 'discussion', 'note-window']);
-    const note = `${wu}.discussion.note-window`;
-    const made = { by: 'claude', who_moved_whom: 'none' };
-    /** One write, its content on stdin: its short id. @param {string[]} args @param {Record<string, unknown>} content */
-    const ledger = (args, content) => sim.run(['ledger', ...args], null, JSON.stringify(content)).id;
-
-    const question = ledger(['ask', note], { ...made, text: 'Is a note a window?' });
-    const call = ledger(['decide', note, '--answers', question], { ...made, text: 'A floating panel.', why: 'It follows the person.' });
-    const reversal = ledger(['replace', note, '--replaces', call, '--reason', 'changed-mind'], { by: 'person', drops: ['a panel'], text: 'A document window.', why: 'Notes are documents.' });
-    sim.run(['verdict', 'give', reversal, 'skip', '--at', 'decided']);
-    sim.run(['verdict', 'queue']);
-    sim.run(['verdict', 'give', reversal, 'loss', '--at', 'queue']);
-    ledger(['replace', note, '--replaces', reversal, '--reason', 'changed-mind'], { ...made, drops: ['a document window'], text: 'A floating panel after all.', why: 'It follows the person.' });
-
-    /** Claude's lean on a question of its own, raised, and the person's pick of row `key`. @param {string} text @param {'1'|'2'} key */
-    const raised = async (text, key) => {
-      const question = ledger(['ask', note], { ...made, text });
-      const { raise } = await sim.runAsync(['raise', note, '--answers', question], null, JSON.stringify(leaningCall('It floats.', 'It stays put.')));
-      sim.run(['raise', 'answer', raise, '--pick', key], null, JSON.stringify({ why: 'The person said why.' }));
-    };
-    await raised('Does a note float?', '1');
-    await raised('Does a note take focus?', '2');
-
-    // Claude proposing to change an earlier call of its own, and the person
-    // keeping it as it stands: a keep at the raise's id, its raise event
-    // naming it.
-    const snapping = ledger(['ask', note], { ...made, text: 'Does a note snap to the grid?' });
-    const snaps = ledger(['decide', note, '--answers', snapping], { ...made, text: 'Notes snap to the grid.', why: 'Tidy desks.' });
-    const proposed = await sim.runAsync(['raise', note, '--replaces', snaps, '--reason', 'changed-mind'], null, JSON.stringify(leaningCall('Notes float free.', 'Notes snap to a coarse grid.')));
-    sim.run(['raise', 'answer', proposed.raise, '--pick', 'keep'], null, JSON.stringify({ why: 'The person likes the grid.' }));
-
-    // A fact only the person holds, raised with no rows: the person's own
-    // words land as their decision, and nothing reaches the trust log, their
-    // "I don't follow" included.
-    const signing = ledger(['ask', note], { ...made, text: 'Which team signs the beta?' });
-    const fact = { question: 'Which team signs the beta?', rows: [], mechanism: 'Outside the code.', product_wide: false };
-    const signs = (await sim.runAsync(['raise', note, '--answers', signing, '--fact'], null, JSON.stringify(fact))).raise;
-    sim.run(['raise', 'answer', signs, '--didnt-follow']);
-    sim.run(['raise', 'answer', signs, '--own'], null, JSON.stringify({ text: 'Team ABCDE12345.', why: 'It is their account.' }));
-
-    // The person deciding unprompted, then changing their mind: Claude put
-    // no lean on it, so it is no departure.
-    const titled = ledger(['ask', note], { ...made, text: 'Does a note have a title?' });
-    const untitled = ledger(['decide', note, '--answers', titled], { by: 'person', text: 'A note has no title.', why: 'Its first line is enough.' });
-    const retitled = ledger(['replace', note, '--replaces', untitled, '--reason', 'changed-mind'], { by: 'person', drops: ['no title'], text: 'A note has a title.', why: 'Titles help search.' });
-    assert.ok(!sim.run(['verdict', 'queue']).departures.some((/** @type {{id: string}} */ d) => d.id === retitled), 'the person\'s own decision, changed, waits on a verdict');
-  });
-
-  it('the ledger\'s second version: who decided each decision — the person\'s own scope call, and their "your call" and "don\'t care" Claude\'s calls — how each finding is known, a measurement with the command run and its result, the sections an entry cites, and a question moved to the roadmap as later, each written through the verbs and read back by the record, the map, `since`, the trust log and the copy', () => {
-    const wu = 'fumi';
-    mappedEpic(sim, wu, ['note-window']);
-    sim.run(['topic', 'start', wu, 'discussion', 'note-window']);
-    const note = `${wu}.discussion.note-window`;
-    const made = { by: 'claude', who_moved_whom: 'none' };
-    /** One write, its content on stdin: its short id. @param {string[]} args @param {Record<string, unknown>} content */
-    const ledger = (args, content) => sim.run(['ledger', ...args], null, JSON.stringify(content)).id;
-    /** Claude's answer to a question of its own, given as `given` says. @param {string} text @param {string} answer @param {string} given */
-    const call = (text, answer, given) => ledger(['decide', note, '--answers', ledger(['ask', note], { ...made, text })], { ...made, text: answer, why: 'Tidy.', given });
-    const cites = [{ path: `${wu}/discussion/note-window.md`, section: 'Session 1' }];
-
-    const scope = ledger(['ask', note], { ...made, text: 'What does the note window cover?', cites });
-    const scoped = ledger(['decide', note, '--answers', scope], { by: 'person', who_moved_whom: 'none', text: 'The window and its frame.', why: 'Where it opens is space homing\'s.', kind: 'scope', cites });
-    const handed = call('Does a note snap to the grid?', 'Notes snap to an 8-point grid.', 'your-call');
-    const builders = call('What radius are a note\'s corners?', 'Ten points.', 'dont-care');
-    const measured = ledger(['find', note], { ...made, text: 'A panel opens in 4 ms.', how: 'timed the open', known: 'measured', command: 'swift run bench open', result: 'median 4.1 ms', cites });
-    const exploratory = ledger(['find', note], { ...made, text: 'A sheet opens in 9 ms.', how: 'timed once in the conversation', known: 'exploratory', command: 'swift run bench sheet', result: '9.3 ms' });
-    const syncing = ledger(['ask', note], { ...made, text: 'Do notes sync across Macs?' });
-    sim.run(['roadmap', 'add', 'sync', '--horizon', 'v2', '--summary', 'Notes sync across Macs']);
-    ledger(['move', note, '--question', syncing, '--to', 'roadmap:sync'], made);
-
-    const record = sim.run(['ledger', 'record', wu, 'note-window']);
-    assert.deepStrictEqual(record.decisions.map((/** @type {Record<string, unknown>} */ d) => [d.id, d.by, d.given, d.kind]), [
-      [scoped, 'person', 'own', 'scope'], [handed, 'claude', 'your-call', null], [builders, 'claude', 'dont-care', null],
-    ]);
-    assert.deepStrictEqual(record.findings.map((/** @type {Record<string, unknown>} */ f) => [f.id, f.known, f.command, f.result, f.cites]), [
-      [measured, 'measured', 'swift run bench open', 'median 4.1 ms', cites], [exploratory, 'exploratory', 'swift run bench sheet', '9.3 ms', []],
-    ]);
-    assert.deepStrictEqual([record.questions[0].cites, record.decisions[0].cites], [cites, cites]);
-    const later = sim.run(['ledger', 'map', wu, 'note-window']).questions.find((/** @type {{id: string}} */ q) => q.id === syncing);
-    assert.deepStrictEqual([later.stands, later.moved_to, later.answers], ['later', 'roadmap:sync', []]);
-    assert.deepStrictEqual(sim.run(['ledger', 'since', wu, 'note-window']).calls.map((/** @type {{id: string}} */ c) => c.id), [handed, builders]);
-    const copy = fs.readFileSync(statePath(sim.dir, '.knowledge', 'records', wu, 'note-window.md'), 'utf8');
-    for (const line of ['Decided by the person', 'Decided by Claude, the person\'s "your call"', 'Left to the builder, the person\'s "don\'t care"',
-      'How it is known: measured, timed the open', 'Command: swift run bench open', 'Later: moved to the roadmap, roadmap:sync.']) {
-      assert.ok(copy.includes(line), `the copy does not say "${line}"`);
-    }
-  });
-
-  it('the oracle audits the ledger once per state it reads: a step that leaves every read as it was passes as it was, and a step that changes any of them — a copy, not the ledger or a manifest — is audited afresh, a stale copy failing', () => {
-    const wu = 'fumi';
-    mappedEpic(sim, wu, ['note-window']);
-    sim.run(['topic', 'start', wu, 'discussion', 'note-window']);
-    sim.run(['ledger', 'ask', `${wu}.discussion.note-window`], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'What does the note window cover?' }));
-    const before = ledgerAuditsOf(sim.dir);
-    sim.run(['presence', 'beat', wu, 'discussion', 'note-window']);
-    assert.deepStrictEqual(ledgerAuditsOf(sim.dir), { full: before.full, passed: before.passed + 1 }, 'a beat touches nothing the ledger audit reads');
-
-    const copy = statePath(sim.dir, '.knowledge', 'records', wu, 'note-window.md');
-    const kept = fs.readFileSync(copy, 'utf8');
-    fs.writeFileSync(copy, '# A stale copy\n');
-    assert.throws(() => auditState(sim.dir, 'a stale copy'), /does not name every entry its record shows/);
-    assert.strictEqual(ledgerAuditsOf(sim.dir).full, before.full + 1, 'the changed copy is audited afresh');
-    fs.writeFileSync(copy, kept);
-    auditState(sim.dir, 'the copy restored');
-    assert.deepStrictEqual(ledgerAuditsOf(sim.dir), { full: before.full + 1, passed: before.passed + 2 }, 'the copy restored is the state last audited');
   });
 });

@@ -38,7 +38,7 @@ Once the pass reports, `agent scan {work_unit} specification {work_unit}` takes 
 - **gap** — re-derive it from the record; one it holds is a gap (**Gaps**). Once raised, surface it by its label in the report, `{finding}`: `agent surface {work_unit} specification {work_unit} {dispatch_id} {finding}`, adding `--replaces {decision_id} --reason {reason}` where it was raised as that decision's replacement — no question stands for it on the ledger, so the surfacing holds the writer until the person's call lands.
 - **fact** — re-derive it from the record: a measurement or the code shows a finding on the ledger wrong. Replace that entry, `ledger replace {work_unit}.specification --replaces {entry_id} --reason was-wrong`, a finding's content with the new result on stdin — the replacement stands on the entry's topic. Then confirm each decision relying on it (`ledger hold`) or replace it, a decision of the person's through `raise --replaces`, and surface the report's finding.
 
-A gap or a fact the record shows wrong, or already answers, is declined: left unsurfaced. Once the rest are surfaced, `agent incorporate {work_unit} specification {work_unit} {dispatch_id}` closes the pass.
+A gap or a fact the record shows wrong, or already answers, is declined: left unsurfaced. Once the rest are surfaced, `agent incorporate {work_unit} specification {work_unit} {dispatch_id}` closes the pass, whatever it held.
 
 Then the writer goes again with what waits for it — the rewrites, and the entries written at the spec since its last brief — and its land takes the next pass. The review has settled once a pass changes nothing and nothing waits: `review-settled` holds.
 

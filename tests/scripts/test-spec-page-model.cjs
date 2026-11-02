@@ -23,7 +23,8 @@ const path = require('path');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { specReading } = require(path.join(SCRIPTS, 'domain/spec-sections.cjs'));
-const { pageOf, lineId, fingerprint } = require(path.join(SCRIPTS, 'domain/spec-page-model.cjs'));
+const { pageOf, lineId } = require(path.join(SCRIPTS, 'domain/spec-page-model.cjs'));
+const { fingerprint } = require(path.join(SCRIPTS, 'kernel/fingerprint.cjs'));
 
 const SPEC = [
   '# Payments', '', 'What the spec covers.', '', '## Contents', '', '- §1 Cards', '',
@@ -31,8 +32,8 @@ const SPEC = [
   '1.1.1 The number is checked   as it is typed,', 'as it is entered. [Ab12Cd, Ef34Gh]', '',
   '1.1.2 The form shows:', '', '- the number;', '- the expiry.', '', '```text', 'Card number  ____', '```', '',
   'Its fields keep their order. [builder: Gh56Ij]', '',
-  'Screen: the form, filled. [builder]', '', '```text', 'Card number  4242', '```', '',
-  '### 1.2 The receipt', '', '1.2.1 A receipt names its charge. [builder]', '',
+  'Screen: the form, filled. [builder: Gh56Ij]', '', '```text', 'Card number  4242', '```', '',
+  '### 1.2 The receipt', '', '1.2.1 A receipt names its charge. [builder: Gh56Ij]', '',
   '## 1-S. Scenarios for §1', '', '1.S1 Given a form, when the number is typed, then it is checked. (1.1.1, 1.1.2)', '',
   '## 2. Refunds', '', '### 2.1 Whole', '', '2.1.1 A refund goes back to the card. [Ab12Cd]', '',
 ].join('\n');
@@ -63,14 +64,14 @@ describe('the review page\'s model of a spec (11.11.2, 11.11.3)', () => {
             {
               k: 'line', id: '1-1-2', num: '1.1.2', kind: 'statement',
               parts: [['text', 'The form shows:'], ['text', '- the number;\n- the expiry.'], ['fence', '```text\nCard number  ____\n```'], ['text', 'Its fields keep their order.']],
-              src: 'builder: Gh56Ij', flags: ['builder', 'screen'], h: '2e0d9b63f690',
+              src: 'builder: Gh56Ij', flags: ['screen'], h: '2e0d9b63f690',
             },
             {
-              k: 'line', id: '1-1-2-scr1', num: 'screen', kind: 'screen', after: '1.1.2', parts: [['text', 'Screen: the form, filled.'], ['fence', '```text\nCard number  4242\n```']], src: 'builder', flags: ['builder', 'screen'], h: 'd5f3ad4a699b',
+              k: 'line', id: '1-1-2-scr1', num: 'screen', kind: 'screen', after: '1.1.2', parts: [['text', 'Screen: the form, filled.'], ['fence', '```text\nCard number  4242\n```']], src: 'builder: Gh56Ij', flags: ['screen'], h: 'd5f3ad4a699b',
             },
             { k: 'h3', t: '1.2 The receipt' },
             {
-              k: 'line', id: '1-2-1', num: '1.2.1', kind: 'statement', parts: [['text', 'A receipt names its charge.']], src: 'builder', flags: ['builder'], h: 'fcdaee6839bc',
+              k: 'line', id: '1-2-1', num: '1.2.1', kind: 'statement', parts: [['text', 'A receipt names its charge.']], src: 'builder: Gh56Ij', flags: [], h: 'fcdaee6839bc',
             },
             { k: 'h2s', t: 'Scenarios for §1' },
             {
@@ -98,11 +99,13 @@ describe('the review page\'s model of a spec (11.11.2, 11.11.3)', () => {
     assert.deepStrictEqual([lineId('16.3.7'), lineId('16.S69'), lineId('3.2.1-scr2')], ['16-3-7', '16-S69', '3-2-1-scr2']);
   });
 
-  it('flags a line as the ledger draws it — resting on a call of Claude\'s first, then left to the builder — before a screen', () => {
-    const drawn = { calls: new Set(['1.1.1', '1.1.2']), builders: new Set(['2.1.1']) };
-    const items = page(SPEC, drawn).sections.flatMap(({ items: area }) => area).flatMap((item) => (item.k === 'line' ? [[item.id, item.flags]] : []));
+  it('flags a line as the ledger draws it — resting on a call of Claude\'s first, then left to the builder — before a screen; a builder\'s bracket whose trace did not hold flags nothing', () => {
+    const drawn = { calls: new Set(['1.1.1', '1.1.2']), builders: new Set(['1.1.2', '2.1.1']) };
+    const items = new Map(page(SPEC, drawn).sections.flatMap(({ items: area }) => area).flatMap((item) => (item.k === 'line' ? [[item.id, item.flags]] : [])));
 
-    assert.deepStrictEqual([items[0], items[1], items.at(-1)], [['1-1-1', ['claude']], ['1-1-2', ['claude', 'builder', 'screen']], ['2-1-1', ['builder']]]);
+    assert.deepStrictEqual(['1-1-1', '1-1-2', '1-2-1', '2-1-1'].map((id) => [id, items.get(id)]), [
+      ['1-1-1', ['claude']], ['1-1-2', ['claude', 'builder', 'screen']], ['1-2-1', []], ['2-1-1', ['builder']],
+    ]);
   });
 
   it('a line\'s fingerprint holds its wording: a change to its sources alone or to how it wraps keeps it, a change of wording does not (11.11.6, 11.S28)', () => {
@@ -110,7 +113,7 @@ describe('the review page\'s model of a spec (11.11.2, 11.11.3)', () => {
 
     assert.strictEqual(was, fingerprint('The form shows the card.'));
     assert.strictEqual(hOf(['1.1.1 The form shows the card. [Ef34Gh, Ij56Kl]']), was);
-    assert.strictEqual(hOf(['1.1.1 The form shows', 'the   card. [builder]']), was);
+    assert.strictEqual(hOf(['1.1.1 The form shows', 'the   card. [builder: Gh56Ij]']), was);
     assert.notStrictEqual(hOf(['1.1.1 The form shows the cards. [Ab12Cd]']), was);
   });
 });

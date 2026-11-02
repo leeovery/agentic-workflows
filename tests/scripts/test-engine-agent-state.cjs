@@ -321,7 +321,7 @@ describe('engine agent — lifecycle store', () => {
       'created rides every row for freshness checks');
   });
 
-  it('incorporate closes from any live state: pending set-members and abandoned in-flight rows', () => {
+  it('incorporate closes from any live state: pending set-members and abandoned in-flight rows; a row closed already answered as its close left it, nothing written', () => {
     const pair = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective', '--label', 'common-path', '--label', 'tail-risk']);
     for (const a of pair.agents) writeContent(dir, a.file);
     runJson(dir, ['scan', 'pay', 'discussion', 'alpha']);
@@ -331,7 +331,10 @@ describe('engine agent — lifecycle store', () => {
     const b = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']);
     const abandoned = runJson(dir, ['incorporate', 'pay', 'discussion', 'alpha', b.id]);
     assert.strictEqual(abandoned.status, 'incorporated', 'stale in-flight row abandoned');
-    assert.match(runFails(dir, ['incorporate', 'pay', 'discussion', 'alpha', b.id]).error, /already incorporated/);
+    const store = path.join(dir, '.leeway', '.cache', 'pay', 'discussion', 'alpha', 'state.json');
+    const kept = fs.readFileSync(store, 'utf8');
+    assert.deepStrictEqual(runJson(dir, ['incorporate', 'pay', 'discussion', 'alpha', b.id]), abandoned);
+    assert.strictEqual(fs.readFileSync(store, 'utf8'), kept, 'closing a closed row wrote the store');
   });
 
   it('incorporate is the skip-all exit and keeps the unsurfaced record honest', () => {

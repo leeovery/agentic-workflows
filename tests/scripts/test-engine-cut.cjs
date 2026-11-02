@@ -65,10 +65,10 @@ const UNIT = 'payments';
 
 const SPEC = [
   '# Payments', '',
-  '## 1. Cards', '', '### 1.1 The form', '', '1.1.1 A card is taken once. [builder]', '',
+  '## 1. Cards', '', '### 1.1 The form', '', '1.1.1 A card is taken once. [builder: call-1]', '',
   '## 1-S. Scenarios for §1', '', '1.S1 Given a card form, when the number is typed, then it is checked. (1.1.1)', '',
-  '## 2. Receipts', '', '### 2.1 The charge', '', '2.1.1 A receipt names its charge. [builder]', '',
-  '## 3. Refunds', '', '### 3.1 The charge', '', '3.1.1 A refund names its charge. [builder]', '',
+  '## 2. Receipts', '', '### 2.1 The charge', '', '2.1.1 A receipt names its charge. [builder: call-1]', '',
+  '## 3. Refunds', '', '### 3.1 The charge', '', '3.1.1 A refund names its charge. [builder: call-1]', '',
   '## 3-S. Scenarios for §3', '',
   '3.S1 Given a charge, when it is refunded whole, then the card is credited. (3.1.1)', '',
   '3.S2 Given a charge, when part of it is refunded, then the rest stands. (3.1.1)', '',
@@ -291,7 +291,7 @@ const shopSpec = () => [
   '## 1. Cards', '',
   '### 1.1 The form', '', `1.1.1 The form takes Visa and Mastercard. [${made.cards}]`, '',
   '### 1.2 The brand', '', `1.2.1 The form shows the card's brand. [${made.brand}]`, '',
-  '### 1.3 The corners', '', '1.3.1 The corners are rounded. [builder]', '',
+  '### 1.3 The corners', '', '1.3.1 The corners are rounded. [builder: call-1]', '',
   '## 1-S. Scenarios for §1', '', '1.S1 Given a card form, when a Visa is typed, then its brand shows. (1.1.1, 1.2.1)', '',
   '## 2. Refunds', '',
   '### 2.1 Whole', '', `2.1.1 A refund goes back to the card. [${made.refunds}]`, '', `2.1.2 A refund costs nothing. [${made.fee}]`, '',
@@ -385,7 +385,7 @@ describe('the cut\'s corridor (11.5.1, 11.5.6, 11.S5, 11.S7)', () => {
   });
 
   it('a part relies on another where a line of it cites an entry relying on one a line of the other cites, in its current form or through entries no line cites, each link between them joined, the parts it relies on in the spec\'s order — none within a part, from a part citing nothing, or to another unit', () => {
-    writeState(dir, layout.unit(EPIC, SPEC_FILE), shopSpec().replace('[builder]', `[builder]\n\n1.3.2 Each charge is on the invoice. [${made.invoice}]`));
+    writeState(dir, layout.unit(EPIC, SPEC_FILE), shopSpec().replace('[builder: call-1]', `[builder: call-1]\n\n1.3.2 Each charge is on the invoice. [${made.invoice}]`));
 
     assert.strictEqual(section(briefed().brief, GRAPH), [
       `- §2.1 relies on §1.1: 2.1.1 cites ${made.refunds}, which relies on ${made.cards}, cited by 1.1.1; 2.1.2 cites ${made.fee}, which relies on ${made.cards}, cited by 1.1.1`,
@@ -396,7 +396,7 @@ describe('the cut\'s corridor (11.5.1, 11.5.6, 11.S5, 11.S7)', () => {
   });
 
   it('a spec whose lines cite nothing has no graph', () => {
-    writeState(dir, layout.unit(EPIC, SPEC_FILE), shopSpec().replace(/\[[0-9A-Za-z]+\]/g, '[builder]'));
+    writeState(dir, layout.unit(EPIC, SPEC_FILE), shopSpec().replace(/\[[0-9A-Za-z]+\]/g, '[builder: call-1]'));
 
     assert.strictEqual(section(briefed().brief, GRAPH), 'None recorded.');
   });

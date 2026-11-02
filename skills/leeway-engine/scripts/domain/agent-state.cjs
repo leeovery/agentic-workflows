@@ -43,9 +43,15 @@
 // acknowledged with exactly the findings its report was taken in with, and
 // never incorporated between its report and that acknowledgement, so a
 // finding is declined only where its pass was acknowledged with it and then
-// incorporated. A row incorporated while in flight with no report is closed
+// incorporated. Its rewrite findings go to the writer whole, never surfaced,
+// so its row stays acknowledged while it holds any, and every answer shows
+// them apart from the findings left to surface, which an incorporation
+// declines. A row incorporated while in flight with no report is closed
 // unread: a report landing after is never taken in, since only a row in
-// flight is. A gap finding raised as the replacement of a decision is
+// flight is. A spec review an earlier conversation left in flight, its
+// report not on disk, is closed so as the spec is entered: no notice of its
+// report, or of its agent dying, reaches a later conversation, which would
+// wait on it. A gap finding raised as the replacement of a decision is
 // surfaced with that decision, the reason and the ledger's mark, `raised` on
 // its row: no question stands for it on the ledger, so the spec's loop
 // (spec-passes.cjs) holds the writer on it until the person's call lands.
@@ -57,7 +63,7 @@ const io = require('../kernel/manifest-io.cjs');
 const { VALID_PHASES } = require('../kernel/manifest-schema.cjs');
 const { mailboxDepth } = require('./derivations.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
-const { callerIdentity, ownerAlive, ownsRow, startTimeReader } = require('../kernel/process.cjs');
+const { callerIdentity, handedSession, ownerAlive, ownsRow, startTimeReader } = require('../kernel/process.cjs');
 const { ID_FACTS, foldLedger } = require('./ledger-fold.cjs');
 const { markOf, lineOf, movesSince, lastDecisionLine } = require('./ledger-moves.cjs');
 const { resolveId } = require('./ledger-ids.cjs');
@@ -535,8 +541,20 @@ function unsurfaced(row) {
   return row.findings.filter((/** @type {string} */ f) => !row.surfaced.includes(f));
 }
 
-/** @param {any} row */
+/** A spec review's findings handed to the writer whole, never surfaced: its report's rewrite findings. @param {any} row @returns {string[]} */
+function forWriter(row) {
+  if (row.kind !== 'spec-review' || !Array.isArray(row.report_findings)) return [];
+  return row.report_findings.filter((/** @type {{lane: string}} */ { lane }) => lane === 'rewrite').map((/** @type {{id: string}} */ { id }) => id);
+}
+
+/**
+ * A row as every answer shows it: `remaining` its findings left to surface
+ * — declined where it is incorporated — and, for a spec review, the rewrite
+ * findings handed to the writer instead, `for_writer`, never among them.
+ * @param {any} row
+ */
 function publicRow(row) {
+  const writer = forWriter(row);
   return {
     id: row.id,
     kind: row.kind,
@@ -545,7 +563,8 @@ function publicRow(row) {
     created: row.created,
     findings: row.findings,
     surfaced: row.surfaced,
-    remaining: unsurfaced(row),
+    remaining: unsurfaced(row).filter((/** @type {string} */ f) => !writer.includes(f)),
+    ...(writer.length > 0 ? { for_writer: writer } : {}),
     ...(row.label ? { label: row.label } : {}),
     ...(row.question ? { question: row.question } : {}),
   };
@@ -756,7 +775,10 @@ function surfaceFinding(cwd, workUnit, phase, topic, id, finding, replacing) {
  * is in is refused until it is acknowledged, its findings read before any
  * is declined: pending, or in flight with a report that reads; one in
  * flight whose report does not read is refused as a scan refuses it, the
- * refusal answered under `refusal`.
+ * refusal answered under `refusal`. A row closed already — by this, by its
+ * acknowledgement as clean, or by its last finding surfaced — is answered as
+ * that close left it, nothing written, so a caller closes every pass the same
+ * way whatever closed it first.
  * @param {string} cwd @param {string} workUnit @param {string} phase
  * @param {string} topic @param {string} id
  */
@@ -767,9 +789,7 @@ function incorporateAgent(cwd, workUnit, phase, topic, id) {
   return io.withWorkUnitLock(stateRoot(cwd), workUnit, () => {
     const state = loadState(cwd, workUnit, phase, topic);
     const row = requireRow(state, phase, topic, id);
-    if (row.status === 'incorporated') {
-      throw new Error(`Agent "${id}" is already incorporated`);
-    }
+    if (row.status === 'incorporated') return { work_unit: workUnit, phase, topic, ...publicRow(row) };
     const refusal = row.kind === 'spec-review' && row.status === 'in-flight' && contentFileExists(row, cwd, workUnit) ? takeInReport(row, cwd, workUnit) : null;
     if (row.kind === 'spec-review' && row.status === 'pending') {
       throw new Error(`Agent "${id}" is a spec review whose report is in, not yet acknowledged — agent ack records its findings first (agent scan takes the report in)`);
@@ -868,6 +888,28 @@ function closeUnbriefed(cwd, workUnit, id) {
   });
 }
 
+/**
+ * Close the unit's spec reviews another conversation left in flight, their
+ * reports not on disk, as `incorporate` abandons one in flight: a report
+ * landing after is never taken in. Another conversation's is a row whose
+ * session id is not the caller's; a row with none, or a caller handed none,
+ * is left as it is, judged by the process that dispatched it. Answers the
+ * ids closed.
+ * @param {string} cwd @param {string} workUnit @returns {string[]}
+ */
+function abandonEarlierPasses(cwd, workUnit) {
+  const session = handedSession();
+  if (session === null) return [];
+  return io.withWorkUnitLock(stateRoot(cwd), workUnit, () => {
+    const state = loadState(cwd, workUnit, UNIT_PHASE, workUnit);
+    const earlier = Object.values(state.agents).filter((row) => row.kind === 'spec-review' && row.status === 'in-flight'
+      && typeof row.session_id === 'string' && row.session_id !== session && !contentFileExists(row, cwd, workUnit));
+    for (const row of earlier) row.status = 'incorporated';
+    if (earlier.length > 0) saveState(cwd, workUnit, UNIT_PHASE, workUnit, state);
+    return earlier.map((row) => row.id);
+  });
+}
+
 /** @typedef {import('./spec-report.cjs').ReportFinding} ReportFinding */
 
 /** Whether a spec review's report was taken in. @param {any} row */
@@ -905,11 +947,11 @@ function reportedPasses(cwd, workUnit) {
 
 /**
  * The unit's review passes still in flight, bound to a land, in the order
- * they were dispatched: each with its report on disk for a scan to take in,
- * its agent running, or lost with the process that dispatched it. A
- * dispatch bound to none has had no brief, its own among them while it is
- * drawn, so no agent was sent on it.
- * @param {string} cwd @param {string} workUnit @returns {{id: string, stands: 'landed'|'running'|'lost'}[]}
+ * they were dispatched: each with the digest of the land it reviews, and
+ * its report on disk for a scan to take in, its agent running, or lost with
+ * the process that dispatched it. A dispatch bound to none has had no
+ * brief, its own among them while it is drawn, so no agent was sent on it.
+ * @param {string} cwd @param {string} workUnit @returns {{id: string, digest: string, stands: 'landed'|'running'|'lost'}[]}
  */
 function passesInFlight(cwd, workUnit) {
   const startOf = startTimeReader();
@@ -917,7 +959,7 @@ function passesInFlight(cwd, workUnit) {
   const standing = (row) => (contentFileExists(row, cwd, workUnit) ? 'landed' : ownerAlive(row, startOf) ? 'running' : 'lost');
   return specReviewRows(cwd, workUnit)
     .filter((row) => row.status === 'in-flight' && row.land !== undefined)
-    .map((row) => ({ id: row.id, stands: standing(row) }));
+    .map((row) => ({ id: row.id, digest: row.land.digest, stands: standing(row) }));
 }
 
 /**
@@ -941,6 +983,7 @@ module.exports = {
   surfaceFinding,
   incorporateAgent,
   closeInFlight,
+  abandonEarlierPasses,
   completedReviewCycles,
   reviewArming,
   agentRows,

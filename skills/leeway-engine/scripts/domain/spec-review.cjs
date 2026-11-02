@@ -45,7 +45,9 @@
 // longer holds it; a number removed since the page opened given to another
 // line, a line brought back with its last wording being that line again;
 // and an added number not past every number held where it sits, its part,
-// its area's scenarios or its line's screens.
+// its area's scenarios or its line's screens. The spec's writer is briefed
+// with them, each place's numbers and the next free one there
+// (`heldPlaces`), so it never writes a land the page refuses.
 //
 // The record (11.11.9) is `{unit}/spec-review.json`, written when the
 // person picks the build's position, only where the page was open — a spec
@@ -72,7 +74,9 @@ const { messageOf } = require('../kernel/call.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { SPEC_FILE, specReading } = require('./spec-sections.cjs');
 const { specStanding } = require('./spec-standing.cjs');
-const { fingerprint, specPage } = require('./spec-page-model.cjs');
+const { landedSpec } = require('./spec-landed.cjs');
+const { fingerprint } = require('../kernel/fingerprint.cjs');
+const { specPage } = require('./spec-page-model.cjs');
 
 const MARKS_USAGE = 'spec marks <work-unit> --file <marks.json>';
 
@@ -278,30 +282,11 @@ function reviewStates(cwd, unit) {
   return reviewOf(specPage(cwd, unit), storedMarks(cwd, unit));
 }
 
-/**
- * The comments on the unit's page waiting for Claude, by the marks last
- * stored; none where none are stored (11.11.8).
- * @param {string} cwd @param {string} unit @returns {Waiting[]}
- */
-function commentsWaiting(cwd, unit) {
-  return fs.existsSync(marksFile(cwd, unit)) ? waitingIn(reviewStates(cwd, unit)) : [];
-}
-
 /** The record of reviewed lines written: its path from the state root. @param {string} cwd @param {string} unit @param {Reviewed[]} reviewed */
 function writeRecord(cwd, unit, reviewed) {
   const rel = `${unit}/${REVIEW_FILE}`;
   writeJsonAtomic(statePath(cwd, rel), { lines: Object.fromEntries(reviewed.map(({ number, state, conversation }) => [number, { state, conversation }])) });
   return rel;
-}
-
-/**
- * Write the unit's review record from the marks last stored, where its page
- * was open; its path from the state root, or null where the person did not
- * take the review and none is written. Commits nothing: the caller commits it.
- * @param {string} cwd @param {string} unit @returns {string|null}
- */
-function writeSpecReview(cwd, unit) {
-  return pageOpen(cwd, unit) ? writeRecord(cwd, unit, reviewStates(cwd, unit)) : null;
 }
 
 /** Why the unit's review page can neither be built nor its marks stored, before anything is read, or null. @param {string} cwd @param {string} unit @returns {string|null} */
@@ -369,6 +354,16 @@ function slotOf(number) {
 }
 
 /**
+ * The last of `numbers` at `place`, 0 where none sits there, and the next
+ * free number there, past it.
+ * @param {Iterable<string>} numbers @param {string} place @returns {{past: number, next: string}}
+ */
+function freeAt(numbers, place) {
+  const past = Math.max(0, ...[...numbers].map(slotOf).filter((slot) => slot.place === place).map((slot) => slot.k));
+  return { past, next: `${place}${past + 1}` };
+}
+
+/**
  * Every number the unit's open page holds, with the fingerprint of its last
  * wording — null for one only a mark without a fingerprint names — and the
  * numbers `landed`, the spec the state branch holds, gives.
@@ -385,6 +380,22 @@ function heldNumbers(cwd, unit, landed) {
 }
 
 /**
+ * The numbers the unit's open page holds, by where each sits — a part, an
+ * area's scenarios or a line's screens — in the order first held, each
+ * place's numbers in order with the next free one there; null while no page
+ * is open.
+ * @param {string} cwd @param {string} unit @returns {{held: string[], next: string}[]|null}
+ */
+function heldPlaces(cwd, unit) {
+  if (!pageOpen(cwd, unit)) return null;
+  const numbers = [...heldNumbers(cwd, unit, landedSpec(cwd, unit)).held.keys()];
+  /** @type {Map<string, number[]>} */
+  const places = new Map();
+  for (const { place, k } of numbers.map(slotOf)) places.set(place, [...(places.get(place) ?? []), k]);
+  return [...places].map(([place, ks]) => ({ held: ks.sort((a, b) => a - b).map((k) => `${place}${k}`), next: freeAt(numbers, place).next }));
+}
+
+/**
  * What a land of `lines` would change of the numbers the unit's open page
  * holds (11.11.3), one fault a line: a line whose wording another number
  * held, which no longer holds it; a number removed since the page opened
@@ -397,18 +408,13 @@ function heldNumberFaults(cwd, unit, landed, lines) {
   if (!pageOpen(cwd, unit)) return [];
   const { held, live } = heldNumbers(cwd, unit, landed);
   const now = new Map(lines.map(({ number, wording }) => [number, fingerprint(wording)]));
-  const nextFree = (/** @type {string} */ number) => {
-    const { place } = slotOf(number);
-    const past = Math.max(0, ...[...held.keys()].map(slotOf).filter((slot) => slot.place === place).map((slot) => slot.k));
-    return { past, next: `${place}${past + 1}` };
-  };
   return lines.flatMap(({ number }) => {
     const h = now.get(number);
     if (held.get(number) === h) return [];
     const moved = [...held].find(([other, was]) => other !== number && was === h && now.get(other) !== h);
     if (moved !== undefined) return [`${number} now holds the wording ${moved[0]} held — a number never changes while the review page is open: a line keeps its number, and a line added takes the next free one`];
     if (live.has(number)) return [];
-    const { past, next } = nextFree(number);
+    const { past, next } = freeAt(held.keys(), slotOf(number).place);
     if (held.has(number)) return [`${number} was removed while the review page is open, and its number is not given to another line — a line added takes the next free number, ${next}`];
     return slotOf(number).k > past ? [] : [`${number} is added while the review page is open — a line added takes the next free number, ${next}`];
   });
@@ -427,5 +433,5 @@ function holdNumbers(cwd, unit, landed, lines) {
 }
 
 module.exports = {
-  MARKS_USAGE, REVIEW_FILE, marksFile, pageDir, publishedFile, publishedPage, readBackFile, openPage, pageOpen, pageRefusal, storeMarks, reviewStates, commentsWaiting, writeSpecReview, settleReview, heldNumberFaults, holdNumbers,
+  MARKS_USAGE, REVIEW_FILE, marksFile, pageDir, publishedFile, publishedPage, readBackFile, openPage, pageOpen, pageRefusal, storeMarks, reviewStates, settleReview, heldPlaces, heldNumberFaults, holdNumbers,
 };

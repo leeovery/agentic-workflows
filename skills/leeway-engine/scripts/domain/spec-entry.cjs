@@ -19,12 +19,19 @@
 // while the sweep's candidates wait on the person (sweep.cjs, 8.10.9) — the
 // map as staged where one is, read back, else staged from the sweep — and
 // the reports of the agents the spec was left with, landed since, and those
-// lost with a process that no longer runs (9.7.8).
+// lost with a process that no longer runs (9.7.8); and each review pass
+// still running, whose report lands in the unit's store
+// (spec-passes.cjs), so a resume takes it in rather than sending another —
+// one this conversation dispatched. A pass an earlier conversation left
+// running, its report not on disk, is abandoned as the spec is entered
+// (agent-state.cjs), and the review dispatches afresh.
 //
 // The spec's standing and its refusal are answered here too, for every verb
 // that holds the spec to them; the refusal holds the unit first to the rule
 // every entry does (topic-standing.cjs) — one this project has, in progress,
-// its pipeline holding the spec.
+// its pipeline holding the spec. A refusal on a topic still open names the
+// sweep's candidates waiting on the person too: a message the sweep sent
+// reopened the topic, and its candidates wait for approve the map after it.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -37,7 +44,7 @@ const { knownUnit, noUnit, unitClosure, phaseHeldRefusal } = require('./topic-st
 const { topicLog, recordCall } = require('./topic-log.cjs');
 const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 const { canonicalAssets } = require('./ledger-read.cjs');
-const { agentsLeft } = require('./agent-state.cjs');
+const { agentsLeft, passesInFlight, abandonEarlierPasses } = require('./agent-state.cjs');
 const { openPage } = require('./spec-review.cjs');
 const { candidatesWaiting } = require('./sweep.cjs');
 const { sweptStaged } = require('./approve-map.cjs');
@@ -97,6 +104,7 @@ function specReads({ cwd, unit, manifest, notes }) {
     ...(candidatesWaiting(cwd, manifest).length === 0 ? [] : [asCall('approve the map')(approveMapCall(cwd, unit))]),
     ...agents.landed.map(({ file }) => as('landed')(file)),
     ...agents.lost.map(as('lost')),
+    ...passesInFlight(cwd, unit).filter(({ stands }) => stands === 'running').map(({ id }) => as('running')(id)),
   ];
 }
 
@@ -108,14 +116,28 @@ function specReads({ cwd, unit, manifest, notes }) {
  */
 const approveMapCall = (cwd, unit) => `${ENGINE_COMMAND} render approve-map ${unit}${sweptStaged(cwd, unit) ? '' : ' --sweep'}`;
 
+/**
+ * Why the unit, in progress and its pipeline holding the spec, cannot enter
+ * it, or null: the spec's own refusal, naming after it the sweep's
+ * candidates waiting on the person.
+ * @param {string} cwd @param {Record<string, any>} manifest @returns {string|null}
+ */
+function specRefusal(cwd, manifest) {
+  const refused = entryRefusal(manifest);
+  if (refused === null) return null;
+  const waiting = candidatesWaiting(cwd, manifest);
+  return waiting.length === 0 ? refused : `${refused}; after them, the sweep's candidates waiting on the person — ${waiting.join(', ')} — are taken or struck at approve the map`;
+}
+
 /** @type {Entry} */
 const SPECIFICATION = Object.freeze({
   level: /** @type {const} */ ('unit'),
-  standing: ({ manifest }) => entryRefusal(manifest),
+  standing: ({ cwd, manifest }) => specRefusal(cwd, manifest),
   unstarted: () => false,
   start: () => {},
   questions: () => [],
   reads: specReads,
+  closes: ({ cwd, unit }) => { abandonEarlierPasses(cwd, unit); },
 });
 
 /**
@@ -128,7 +150,7 @@ const SPECIFICATION = Object.freeze({
 function specEntryRefusal(cwd, unit) {
   const manifest = knownUnit(cwd, unit);
   if (manifest === null) return noUnit(unit);
-  return unitClosure(manifest) ?? phaseHeldRefusal(manifest, PHASE) ?? entryRefusal(manifest);
+  return unitClosure(manifest) ?? phaseHeldRefusal(manifest, PHASE) ?? specRefusal(cwd, manifest);
 }
 
 module.exports = { SPECIFICATION, specStanding, specEntryRefusal, specSources };

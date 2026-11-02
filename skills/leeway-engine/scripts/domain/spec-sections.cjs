@@ -39,9 +39,11 @@
 // - A statement's or a screen's source bracket is the trailing `[...]` of
 //   its last block that is not fenced, found without reading its wording:
 //   `[Ab12Cd, Ef34Gh]`, the ledger entries it cites by short id;
-//   `[builder: Ab12Cd]`, the builder's, citing the "don't care" entry it
-//   rests on; or `[builder]` alone, a call the builder was left with no entry
-//   (11.4.4). One with none cites nothing. A scenario's source is the
+//   `[builder: Ab12Cd]`, the builder's, citing what made it so — the "don't
+//   care" entry it rests on, or the sweep's call that left it to the
+//   builder, by its id, `[builder: call-1]` (11.4.4); or `[builder]` alone,
+//   the builder's citing nothing, which the trace finds invented
+//   (spec-trace.cjs). One with none cites nothing. A scenario's source is the
 //   statements it draws on, closing its last block that is not fenced in
 //   parentheses, `(1.1.1, 1.2.3)`.
 // - A line's wording is its blocks, its number and its bracket aside, each
@@ -119,8 +121,8 @@ const CITE = '[0-9A-Za-z]+';
 /** A bracket citing entries. */
 const CITES = new RegExp(`^${CITE}(?:\\s*,\\s*${CITE})*$`);
 
-/** A bracket marking the builder's, citing the "don't care" entry or none. */
-const BUILDER = new RegExp(`^builder(?:\\s*:\\s*(${CITE}))?$`);
+/** A bracket marking the builder's, citing the "don't care" entry, the sweep's call by its id, or none. */
+const BUILDER = new RegExp(`^builder(?:\\s*:\\s*(${CITE}(?:-${CITE})?))?$`);
 
 const STATEMENT_NUMBER = '[1-9][0-9]*\\.[1-9][0-9]*\\.[1-9][0-9]*';
 
@@ -576,7 +578,7 @@ function citedSource(reading, { kind, number, line }, parts, bracket) {
   }
   const source = sourceOf(bracket);
   if (source !== null) return { ...noSource(), ...source };
-  reading.faults.push(`${kind} ${number} on line ${line} ends in [${bracket}], which is no source bracket — [id, id, …], [builder: id] or [builder]`);
+  reading.faults.push(`${kind} ${number} on line ${line} ends in [${bracket}], which is no source bracket — [id, id, …] or [builder: id]`);
   return noSource();
 }
 

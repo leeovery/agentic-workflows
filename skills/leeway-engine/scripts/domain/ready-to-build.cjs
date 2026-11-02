@@ -64,7 +64,6 @@ const { manifestOf } = require('./ledger-units.cjs');
 const { knownUnit, noUnit, unitClosure } = require('./topic-standing.cjs');
 const { specEntryRefusal } = require('./spec-entry.cjs');
 const { specReading } = require('./spec-sections.cjs');
-const { readLandedSpec } = require('./spec-landed.cjs');
 const { readyClose } = require('./checklist.cjs');
 const { pageOpen, readBackFile, reviewStates, settleReview } = require('./spec-review.cjs');
 const { handedTag } = require('./topic-map.cjs');
@@ -123,22 +122,22 @@ function callsAtSpec(shower, unit) {
 
 /**
  * What the screen and the yes stand on, refused where ready to build
- * cannot show: the unit's manifest, its checklist's close and skips, and,
- * read in one pass of the ledger, Claude's calls at the spec and the
- * verdict asked.
+ * cannot show: the unit's manifest, its checklist's close and skips, the
+ * landed spec the close seals, and, read in one pass of the ledger, Claude's
+ * calls at the spec and the verdict asked.
  * @param {string} cwd @param {string} unit
  */
 function standing(cwd, unit) {
   const refused = unitRefusal(cwd, unit);
   if (refused !== null) throw new Error(refused);
-  const { closed, skips, warnings } = readyClose(cwd, unit);
+  const { closed, skips, warnings, landed } = readyClose(cwd, unit);
   const root = stateRoot(cwd);
   try {
     const read = readShown(root, warnings, (shower) => ({
       calls: callsAtSpec(shower, unit),
       verdict: verdictAsked(shower, root, (facts) => facts.unit === unit && facts.phase === PHASE, closed),
     }));
-    return { manifest: loadWorkUnitManifest(cwd, unit), skips, warnings, ...read };
+    return { manifest: loadWorkUnitManifest(cwd, unit), skips, warnings, landed, ...read };
   } catch (err) {
     throw carrying(err, warnings);
   }
@@ -165,7 +164,7 @@ function reviewCounts(cwd, unit) {
 function readyToBuildSurface(cwd, { dotpath: unit = '', page, calls }) {
   return refusing('render ready-to-build', () => {
     const ready = standing(cwd, unit);
-    const { headings } = specReading(readLandedSpec(cwd, unit));
+    const { headings } = specReading(ready.landed);
     const open = pageOpen(cwd, unit);
     return readyToBuildScreen({
       unit,

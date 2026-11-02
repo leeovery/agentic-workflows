@@ -12,9 +12,11 @@
 // another shape, a message to a topic that is not live, a candidate as
 // add-batch refuses one — that refusal carried into the next brief; its
 // messages sent from the unit's spec, reopening the topics they reach and
-// never sent twice, the sweep taken recorded and committed, its candidates
-// staged, and what comes next: approve the map, the epic's menu, or the spec
-// carrying on (8.10.3, 8.10.5, P10); refused past the spec (P3) and once
+// never sent twice, the sweep taken recorded and committed — its candidates
+// whole, and the builder's calls each with its id, which the spec's writer's
+// brief and the trace read with the unit's cache gone (11.4.4) — its
+// candidates staged, and what comes next: approve the map, the epic's menu,
+// or the spec carrying on (8.10.3, 8.10.5, P10); refused past the spec (P3) and once
 // taken; `render approve-map <unit> --sweep`, the map as it stands with
 // every topic ticked and the candidates below it, each with its reason, and
 // nothing of the messages or the builder's calls (8.8.4, 8.S50); the strike,
@@ -53,7 +55,6 @@ const { gatesHelpers } = require('./discovery-gates-world.cjs');
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { BRIEFS, briefPath, issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
-const { builderCalls } = require(path.join(SCRIPTS, 'domain/sweep.cjs'));
 
 const UNIT = 'fumi';
 const SESSION_ID = SESSION.CLAUDE_CODE_SESSION_ID;
@@ -115,7 +116,9 @@ const candidate = (name, reason) => ({ name, reason, brief: `# ${name}\n\nWhat i
 const BACKUPS = candidate('backing-up-notes', 'Storage and sync keeps every note as a file in a folder you choose, and no topic decides what happens when that folder is lost or restored.');
 const EXPORT = candidate('exporting-notes', 'No topic decides how notes leave Fumi.');
 const TITLE_REQUIRED = Object.freeze({ topic: 'note-model', text: 'A title is required\n\nStorage names each file by its title.' });
-const CALLS = Object.freeze([{ call: 'The file extension', why: 'The person would leave it.' }]);
+const CALLS = Object.freeze([{ call: 'The file extension', why: 'The person would leave it.' }, { call: 'The folder\'s default name', why: 'Any name serves.' }]);
+/** The calls as the sweep taken records them, each with its id. */
+const RECORDED = Object.freeze(CALLS.map((call, at) => ({ id: `call-${at + 1}`, ...call })));
 
 /** The sweep's report written, its parts as given: one candidate, no message, by default. @param {Record<string, unknown>} [parts] */
 function report(parts = {}) {
@@ -194,12 +197,29 @@ describe('the sweep\'s brief (8.10.8, 8.S43, 26.5.1)', () => {
   });
 });
 
-describe('the builder\'s calls, for the spec\'s writer', () => {
-  it('reads the calls the sweep left to the builder from its report alone, and none where no report is written', () => {
-    const before = builderCalls(dir, UNIT);
-    report({ messages: [TITLE_REQUIRED] });
+describe('the builder\'s calls, recorded by the take for the spec\'s writer and its trace (8.10.5, 11.4.4)', () => {
+  it('records each call with its id, and the writer\'s and the reviewer\'s briefs list them and the trace resolves a builder\'s cite against them with the unit\'s cache gone — a call the record does not hold invented', () => {
+    report({ candidates: [] });
+    take();
+    fs.rmSync(statePath(dir, layout.cache(UNIT)), { recursive: true, force: true });
+    const res = ok(dir, ['brief', 'spec-writer', UNIT], { env: SESSION });
+    writeState(dir, layout.unit(UNIT, 'spec.md'), [
+      '# Fumi', '', '## 1. Notes', '', '### 1.1 Files', '',
+      '1.1.1 A note\'s file ends in .md. [builder: call-1]', '', '1.1.2 A note\'s file is hidden. [builder: call-3]', '',
+      '## 1-S. Scenarios for §1', '', '1.S1 Given a note, when it is saved, then its file ends in .md. (1.1.1)', '',
+    ].join('\n'));
 
-    assert.deepStrictEqual([before, builderCalls(dir, UNIT)], [[], CALLS]);
+    const invented = ok(dir, ['spec', 'land', UNIT]).invented;
+    const pass = ok(dir, ['agent', 'dispatch', UNIT, 'specification', UNIT, '--kind', 'spec-review'], { env: SESSION });
+    const reviewer = ok(dir, ['brief', 'spec-reviewer', UNIT, '--agent', pass.id], { env: SESSION });
+    const calls = [
+      '- call-1: The file extension', '  Why: The person would leave it.',
+      '- call-2: The folder\'s default name', '  Why: Any name serves.',
+    ].join('\n');
+
+    assert.deepStrictEqual(JSON.parse(readState(dir, TAKEN)).builder_calls, RECORDED);
+    assert.deepStrictEqual([res, reviewer].map(({ id }) => part(fs.readFileSync(briefPath(SESSION_ID, id), 'utf8'), 'The builder\'s calls')), [calls, calls]);
+    assert.deepStrictEqual(invented, [{ number: '1.1.2', why: 'call-3 names no call the sweep left to the builder' }]);
   });
 });
 
@@ -263,12 +283,12 @@ describe('sweep take: what it sends, records and stages, and where it goes next 
     const res = take();
 
     assert.deepStrictEqual(res, { ok: true, unit: UNIT, sent: [], reopened: [], candidates: [], committed: res.committed, next: { kind: 'continue' } });
-    assert.deepStrictEqual(JSON.parse(readState(dir, TAKEN)), { taken: JSON.parse(readState(dir, TAKEN)).taken, messages: [], candidates: [] });
+    assert.deepStrictEqual(JSON.parse(readState(dir, TAKEN)), { candidates: [], builder_calls: [] });
     assert.deepStrictEqual([lastMessage(dir), touched(statePath(dir), 'HEAD')], [`sweep(${UNIT}): taken`, [`A\t${TAKEN}`]]);
     assert.strictEqual(fs.existsSync(statePath(dir, STAGED)), false);
   });
 
-  it('sends each message from the unit\'s spec, reopening the decided topic it reaches, marks it sent in the report and records it — then the epic\'s menu, a topic no longer decided', () => {
+  it('sends each message from the unit\'s spec, reopening the decided topic it reaches, and marks it sent in the report — then the epic\'s menu, a topic no longer decided', () => {
     report({ candidates: [], messages: [TITLE_REQUIRED] });
     const res = take();
     const message = layout.unit(UNIT, 'topics', 'note-model', 'mail', '001-a-title-is-required.md');
@@ -278,7 +298,7 @@ describe('sweep take: what it sends, records and stages, and where it goes next 
       next: { kind: 'handoff', skill: 'leeway-continue-epic', args: [UNIT] },
     });
     assert.match(readState(dir, message), /^A title is required\nFrom Specification · .*\n\nStorage names each file by its title\.\n$/);
-    assert.deepStrictEqual([JSON.parse(readState(dir, REPORT)).messages, JSON.parse(readState(dir, TAKEN)).messages], [[{ ...TITLE_REQUIRED, sent: message }], [{ topic: 'note-model', message }]]);
+    assert.deepStrictEqual(JSON.parse(readState(dir, REPORT)).messages, [{ ...TITLE_REQUIRED, sent: message }]);
     assert.strictEqual(readManifest(dir, UNIT).phases.discussion.items['note-model'].status, 'in-progress');
   });
 
@@ -433,7 +453,7 @@ describe('approve the map after the sweep (8.8.4, 8.10.9, 8.S50)', () => {
     assert.deepStrictEqual([discovery.items['backing-up-notes'], discovery.dismissed], [{ source: 'sweep', summary: BACKUPS.reason, order: 3 }, ['dock-badge', 'exporting-notes']]);
     assert.strictEqual(readState(dir, layout.topic(UNIT, 'backing-up-notes', 'brief.md')), `${BACKUPS.brief}\n`);
     assert.deepStrictEqual([lastMessage(dir), touched(statePath(dir), 'HEAD').sort()], [`discovery(${UNIT}): approve the map`, [`A\t${layout.topic(UNIT, 'backing-up-notes', 'brief.md')}`, `M\t${layout.manifest(UNIT)}`]]);
-    assert.deepStrictEqual([fs.existsSync(statePath(dir, STAGED)), fs.existsSync(statePath(dir, REPORT))], [false, true], 'the report stays for the spec\'s writer');
+    assert.strictEqual(fs.existsSync(statePath(dir, STAGED)), false);
   });
 
   it('the yes joins a candidate taking in a waiting roadmap item to it, its source the sweep and the item, the item leaving the waiting roadmap (8.1.6)', () => {
@@ -500,6 +520,16 @@ describe('the sweep\'s step, held until approve the map answers its candidates (
     ok(dir, ['approve-map', 'yes', UNIT]);
 
     assert.deepStrictEqual([sweepRun(), refused(['brief', 'sweep', UNIT])], ['done', taken]);
+  });
+});
+
+describe('the sweep\'s candidates behind a topic its message reopened', () => {
+  it('resumed with the cache gone, the entry refuses on the reopened topic, naming after it the candidate waiting for approve the map', () => {
+    report({ messages: [TITLE_REQUIRED] });
+    take();
+    fs.rmSync(statePath(dir, layout.cache(UNIT)), { recursive: true, force: true });
+
+    assert.strictEqual(refused(['enter', 'specification', UNIT]), `${UNIT}'s spec waits until every topic is decided, cancelled or postponed — still open: "note-model"; work them from the epic's menu, or postpone them to the roadmap; after them, the sweep's candidates waiting on the person — backing-up-notes — are taken or struck at approve the map`);
   });
 });
 
