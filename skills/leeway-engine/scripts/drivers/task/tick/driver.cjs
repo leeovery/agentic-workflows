@@ -20,13 +20,14 @@
 // the driver finds Tick's id through them, read from the store, the one
 // place Tick lists refs. A ref is the engine's only where it reads as one of
 // those three shapes; any other a person gives a task is theirs, and passed
-// by. A name two tasks hold, or a task holding two, is refused. Every other
-// read is Tick's JSON output, and Tick's own ids in a refusal it makes are
-// put in the engine's words. A task's text is its description, its type its
-// one tag, an addition a note naming whose it is, and a link a dependency; a
-// closed task is cancelled, its reason a note. Tick counts a cancelled task,
-// as a done one, as holding nothing up, and ready answers only tasks not yet
-// started. Tick ends a parent itself once every child has ended — marking
+// by. A name two tasks hold, or a task holding two, is refused. When a task
+// started is its first transition into progress, which the store alone
+// holds too. Every other read is Tick's JSON output, and Tick's own ids in a
+// refusal it makes are put in the engine's words. A task's text is its
+// description, its type its one tag, an addition a note naming whose it is,
+// and a link a dependency; a closed task is cancelled, its reason a note.
+// Tick counts a cancelled task, as a done one, as holding nothing up, and
+// ready answers only tasks not yet started. Tick ends a parent itself once every child has ended — marking
 // the change its own — and makes no child under a cancelled one, so a phase
 // or task is made after the parents Tick ended are reopened. A parent the
 // person ended, cancelled or done, is theirs: the make is refused, reopening
@@ -322,6 +323,21 @@ function show(root, ref) {
   };
 }
 
+/**
+ * When the task first moved into progress: its first transition there in
+ * the store, which Tick's show leaves out and the store's merge unions.
+ * @param {string} root @param {TaskRef} ref @returns {string|null}
+ */
+function started(root, ref) {
+  const id = idsIn(root).byRef.get(taskRef(ref));
+  if (id === undefined) return null;
+  const store = path.join(root, STORE, TASKS);
+  /** @type {{id: string, transitions?: {to: string, at: string}[]}[]} */
+  const records = fs.readFileSync(store, 'utf8').split('\n').flatMap((line, i) => (line === '' ? [] : [lineOf(store, i + 1, line)]));
+  const at = records.find((record) => record.id === id)?.transitions?.find(({ to }) => to === 'in_progress')?.at;
+  return at === undefined ? null : new Date(at).toISOString();
+}
+
 /** What the store's merge reads Tick's records by. @type {import('./merge.cjs').Names} */
 const NAMES = Object.freeze({ statuses: STATUSES, nameIn, said, phaseTitle });
 
@@ -350,4 +366,5 @@ module.exports = {
   close,
   list,
   show,
+  started,
 };

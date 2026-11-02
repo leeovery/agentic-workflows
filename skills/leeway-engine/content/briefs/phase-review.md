@@ -67,6 +67,8 @@ Whatever the fix's size, before it lands the builder checks the edge cases aroun
 
 A gap the builder finds beyond the task goes to the notes for later or through the ask rule; the orchestrator lands it.
 
+A wrong result in what the work does is always a finding, even when its fix reaches beyond the task. Only an improvement, or a hole or edge case beyond the task, is a note for later.
+
 Review the phase as a professional would, never one small thing.
 
 # Each finding's call

@@ -33,7 +33,7 @@ const path = require('path');
 const {
   call, ok, refusedPristine, git, commitAll, fixtureFrom, cleanupFixture, statePath, layout, createFile, readManifest, ledgerEntries, touched, STATE_DIR_NAME,
 } = require('./engine-harness.cjs');
-const { createManifest } = require('./discovery-test-utils.cjs');
+const { createManifest, templateFolder } = require('./discovery-test-utils.cjs');
 
 const UNIT = 'pay';
 const BUILDING = 'doors-building';
@@ -51,10 +51,9 @@ const world = fixtureFrom('doors-', (dir) => {
   createFile(dir, CARD, 'const card = 1;\n');
   commitAll(dir, 'init');
   ok(dir, ['task', 'phase', UNIT, '1', '--title', 'Cards']);
-  const file = path.join(dir, '..', 'doors-task.md');
+  const file = path.join(templateFolder('doors-files-'), 'task.md');
   fs.writeFileSync(file, TASK);
   ok(dir, ['task', 'create', UNIT, '1', '--file', file]);
-  fs.rmSync(file);
   ok(dir, ['task', 'start', UNIT, '1.1'], AS_BUILDER);
 });
 

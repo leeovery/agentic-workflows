@@ -552,10 +552,10 @@ describe('the refusals, nothing written and no brief stored', () => {
     refusedUnissued(['reviewer', 'refund', '1.1', '--base', 'main', '--letter', 'a'], new RegExp(`^no repository of the project holds work on task 1\\.1 of refund's branch, ${REFUND_BRANCH}$`));
   });
 
-  it('a fix round for a task with no round\'s reports, a round missing a reviewer\'s report, and one holding a report that does not read', () => {
+  it('a fix round for a task with no round\'s reports, a round holding none of them, and one holding a report that does not read', () => {
     refusedUnissued(['fix', 'refund', '1.1'], /^task 1\.1 of refund has no review round's reports — its reviewers write them in refund\/build\/tasks\/1\.1\/$/);
     writeState(dir, roundAt('1.1', 3, 'a'), reportOf('bug'));
-    refusedUnissued([...FIX], /^round 2 of task 1\.1 of pay has no report from reviewer a — pay\/build\/tasks\/1\.1\/round-2-a\.md$/);
+    refusedUnissued([...FIX], /^round 2 of task 1\.1 of pay has no reviewer's report — its reviewers write them in pay\/build\/tasks\/1\.1\/$/);
     writeState(dir, roundAt('1.1', 2, 'a'), reportOf('bug'));
     writeState(dir, roundAt('1.1', 2, 'b'), 'Verdict: fail\n\n- The receipt omits the amount.\n');
     refusedUnissued([...FIX], /^pay\/build\/tasks\/1\.1\/round-2-b\.md does not read as a reviewer's report — its last heading at level one or two is not `## Findings`; its last line is not `Verdict: pass` or `Verdict: fail`; brief reviewer b again, and its report replaces it$/);

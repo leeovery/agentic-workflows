@@ -53,6 +53,7 @@ const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { writeTextAtomic } = require('../kernel/manifest-io.cjs');
 const { messageOf } = require('../kernel/call.cjs');
+const { refusing } = require('./staged-payload.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { headingLevels, fencedLines } = require('./spec-sections.cjs');
@@ -92,15 +93,6 @@ function linesOf(text) {
   const lines = text.trimEnd().split(/\r\n?|\n/);
   const levels = headingLevels(lines);
   return lines.map((line, at) => ({ line, top: levels[at] === 1 || levels[at] === 2 }));
-}
-
-/** `fn`'s answer, its refusal the verb's. @template T @param {() => T} fn @returns {T} */
-function refusing(fn) {
-  try {
-    return fn();
-  } catch (err) {
-    return refuse(messageOf(err));
-  }
 }
 
 /**
@@ -167,11 +159,11 @@ function heldFor(cwd, unit, manifest, given) {
 function depositNote(cwd, unit, file, given) {
   const manifest = workUnitNameRefusal(unit) === null ? manifestOf(stateRoot(cwd), unit) : null;
   if (manifest === null) refuse(`there is no work unit "${unit}"`);
-  const text = refusing(() => givenText(cwd, file, 'note'));
+  const text = refusing('task note', () => givenText(cwd, file, 'note'));
   const heading = linesOf(text).find(({ top }) => top);
   if (heading !== undefined) refuse(`a note holds no heading at level one or two, which would read as another note — "${heading.line.trim()}"`);
   const phase = given === undefined ? null : heldFor(cwd, unit, manifest, given);
-  const notes = refusing(() => readNotes(cwd, unit));
+  const notes = refusing('task note', () => readNotes(cwd, unit));
   const note = notes.length + 1;
   const at = statePath(cwd, notesPath(unit));
   fs.mkdirSync(path.dirname(at), { recursive: true });

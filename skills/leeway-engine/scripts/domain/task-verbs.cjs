@@ -400,6 +400,16 @@ function trackedTask(cwd, ref, lacking) {
 }
 
 /**
+ * When a task first moved into progress, as the tracker holds it, read as
+ * any read is; null where it never has.
+ * @param {string} cwd @param {TaskRef} ref @returns {string|null}
+ */
+function trackedStart(cwd, ref) {
+  requireUnit(cwd, ref.unit);
+  return withTracker(cwd, ref.unit, null, (driver, root) => ({ started: driver.started(root, ref) })).started;
+}
+
+/**
  * Each of the unit's phases from 1 to `last` as the tracker holds it, read
  * as any read is: a phase written as the list of its tasks, in order, null
  * for one not written; and phase `last`'s tasks whole, null where it is not
@@ -558,4 +568,4 @@ function runTaskVerb(cwd, verb, positional, opts) {
   return run(cwd, positional, ...values, .../** @type {string[]} */ (given));
 }
 
-module.exports = { TASK_VERBS, ENDED, runTaskVerb, trackedTask, trackedPhases, phaseWritten, givenText };
+module.exports = { TASK_VERBS, ENDED, runTaskVerb, trackedTask, trackedPhases, phaseWritten, givenText, trackedStart };

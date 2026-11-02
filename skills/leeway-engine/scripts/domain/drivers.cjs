@@ -43,7 +43,7 @@ const METHODS = Object.freeze({
     required: /** @type {const} */ ([
       'ensureStore', 'storeFiles', 'localFiles', 'mergeStore',
       'createUnit', 'createPhase', 'createTask', 'add', 'setType', 'link',
-      'ready', 'start', 'done', 'close', 'list', 'show',
+      'ready', 'start', 'done', 'close', 'list', 'show', 'started',
     ]),
     optional: /** @type {const} */ ([]),
   },
@@ -130,7 +130,10 @@ const METHODS = Object.freeze({
  * `setType` replaces its type. `ready` answers every task, of the phase or
  * of every written phase, waiting to be started with nothing it is linked
  * after still to finish: a task done or closed holds nothing up. `list`
- * answers a phase's tasks in order. `mergeStore` merges the store's files
+ * answers a phase's tasks in order. `started` answers when a task first
+ * moved into progress, as the tracker's own record of the move holds it, so
+ * a second clone's merge of the store carries it; null where it never has,
+ * or the tracker lacks it. `mergeStore` merges the store's files
  * between two clones (4.7, 29.14.9): given the common ancestor's text, this
  * machine's and the remote's, it matches the tracker's records by the
  * tracker's own ids, takes a record only one side changed from that side,
@@ -166,6 +169,7 @@ const METHODS = Object.freeze({
  *   close: (root: string, ref: TaskRef, reason: string) => void,
  *   list: (root: string, unit: string, phase: number) => TaskRow[]|null,
  *   show: (root: string, ref: TaskRef) => TaskDetail|null,
+ *   started: (root: string, ref: TaskRef) => string|null,
  * }} TaskDriver
  */
 /** @typedef {import('./landing.cjs').LandingContext} LandingContext */

@@ -24,7 +24,7 @@ const path = require('path');
 const {
   ok, refusedPristine, statePath, layout, writeState, readState, commitAll, commitCode, git, initRepo, fixtureFrom, cleanupFixture,
 } = require('./engine-harness.cjs');
-const { createManifest } = require('./discovery-test-utils.cjs');
+const { createManifest, templateFolder } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { briefPath, issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
@@ -183,8 +183,8 @@ const world = fixtureFrom('brief-build-', (dir) => {
   DRIVER.start(root, task(2));
   DRIVER.add(root, task(2), { by: 'person', text: 'The receipt is emailed.' });
   DRIVER.close(root, task(3), 'folded into 1.1');
+  const file = path.join(templateFolder('brief-build-files-'), 'note.md');
   for (const [text, phase] of [['Reading a card back never checks its expiry.'], ['A refund screen wants its own receipt.', '3'], ['Two card helpers do the same.']]) {
-    const file = path.join(dir, '..', 'note.md');
     fs.writeFileSync(file, `${text}\n`);
     ok(dir, ['task', 'note', UNIT, '--file', file, ...(phase === undefined ? [] : ['--phase', phase])]);
   }

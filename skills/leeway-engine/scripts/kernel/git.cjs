@@ -624,6 +624,6 @@ function diffWithUntracked(cwd, base, args, exclude) {
 
 module.exports = {
   READ_BUDGET_BYTES, git, tryGit, GitError, gitPath, commitPathspec, commitStaged, dirtyEntries, hasCommits, commitsBySubject, pathsTouchedBySubject,
-  parentOrEmptyTree, emptyTree, diffPatch, diffWithUntracked, literally,
+  parentOrEmptyTree, emptyTree, diffPatch, diffWithUntracked, literally, excluding,
   stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, operationInProgress, addRefused,
 };

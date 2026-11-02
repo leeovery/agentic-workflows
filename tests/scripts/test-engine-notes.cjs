@@ -24,14 +24,14 @@
 
 require('./hermetic-env.cjs');
 
-const { describe, it, beforeEach, afterEach } = require('node:test');
+const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  ok, refuses, refusedPristine, statePath, layout, writeState, readState, stateGit, lastMessage, touched, commitAll, fixtureFrom, cleanupFixture,
+  ok, refuses, refusedPristine, statePath, layout, writeState, readState, stateGit, lastMessage, touched, commitAll, fixtureFrom,
 } = require('./engine-harness.cjs');
-const { createManifest } = require('./discovery-test-utils.cjs');
+const { createManifest, useTempFolder } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { readConsolidation, consolidationFaults } = require(path.join(SCRIPTS, 'domain/notes.cjs'));
@@ -53,12 +53,12 @@ const notesWorld = fixtureFrom('notes-', (dir) => {
 /** @type {string} */
 let dir;
 
-beforeEach(() => { dir = notesWorld(); });
-afterEach(() => cleanupFixture(dir));
+const folder = useTempFolder('notes-');
+beforeEach(() => { dir = notesWorld(path.join(folder(), 'project')); });
 
-/** A note's text in a file beside the project: its path. @param {string} text */
+/** A note's text in a file of the test's own: its path. @param {string} text */
 function noteFile(text) {
-  const file = path.join(dir, '..', 'note.md');
+  const file = path.join(folder(), 'note.md');
   fs.writeFileSync(file, text);
   return file;
 }
@@ -97,7 +97,7 @@ describe('task note (12.10.2, 6.1.7)', () => {
   it('a unit the project lacks, no such file, a note holding nothing or a heading at level one or two, and arguments of another shape', () => {
     refusedWith(['nope', '--file', noteFile('A gap.')], /^task note: there is no work unit "nope"$/);
     refusedWith([UNIT, '--file', noteFile('  \n')], /^task note: .*note\.md holds nothing to note$/);
-    refusedWith([UNIT, '--file', path.join(dir, '..', 'missing.md')], /^task note: there is no file .*missing\.md$/);
+    refusedWith([UNIT, '--file', path.join(folder(), 'missing.md')], /^task note: there is no file .*missing\.md$/);
     refusedWith([UNIT, '--file', noteFile('A gap.\n\n## Another\n\nText.')], /^task note: a note holds no heading at level one or two, which would read as another note — "## Another"$/);
     for (const args of [[UNIT], [UNIT, '--file', noteFile('A gap.'), '--phase'], ['--file', noteFile('A gap.')]]) {
       assert.match(refuses(dir, ['task', 'note', ...args]).error, /^Usage: engine task note <unit> --file <note> \[--phase <N>\]$/, args.join(' '));

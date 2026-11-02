@@ -229,18 +229,6 @@ describe('the position every arrival records', () => {
     assert.deepStrictEqual(position(), { name: 'pay', phase: 'implementation', topic: 'ledger' });
   });
 
-  it('a re-label of the same implementation keeps its tasks; arriving anywhere else leaves none behind', () => {
-    ok(['session', 'label', 'pay', 'implementation', 'ledger']);
-    ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3']);
-    ok(['task', 'start', 'pay', 'ledger', 'ledger-2-4']);
-    ok(['session', 'label', 'pay', 'implementation', 'ledger']);
-    assert.deepStrictEqual(position().tasks, [fresh('2.3'), fresh('2.4')]);
-    ok(['session', 'label', 'pay']);
-    assert.deepStrictEqual(position(), { name: 'pay' });
-    ok(['session', 'label', 'pay', 'implementation', 'ledger']);
-    assert.deepStrictEqual(position(), { name: 'pay', phase: 'implementation', topic: 'ledger' }, 'no task until task start');
-  });
-
   it('task start writes the whole position — the conversation is in that implementation, on that task', () => {
     ok(['session', 'label', 'pay', 'discussion', 'ledger']);
     ok(['task', 'start', 'pay', 'ledger', 'ledger-1-4']);
@@ -376,7 +364,9 @@ describe('the builders and reviewers the gate mod records (24.2.4, 13.3.3, 29.14
     ok(['session', 'label', 'pay', 'implementation', 'ledger']);
     assert.strictEqual(position().tasks[0].builder, AGENT);
     ok(['session', 'label', 'pay']);
+    assert.deepStrictEqual(position(), { name: 'pay' });
     ok(['session', 'label', 'pay', 'implementation', 'ledger']);
+    assert.deepStrictEqual(position(), { name: 'pay', phase: 'implementation', topic: 'ledger' }, 'no task until task start');
     ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3']);
     assert.deepStrictEqual(position(), { name: 'pay', phase: 'implementation', topic: 'ledger', tasks: [fresh('2.3')] });
   });

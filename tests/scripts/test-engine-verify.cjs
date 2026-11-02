@@ -300,7 +300,7 @@ describe('verify run: a scenario run and its run recorded (15.4.1, 15.4.2, 15.4.
       + 'recordings/hosts.cast is a symbolic link; recordings/takes is not a file. Nothing was recorded.');
   });
 
-  it('builder attribution: run in a code worktree, the run records that checkout\'s HEAD and the one task of the unit in flight in the calling conversation — with several in flight, the one whose worktree `task worktree` laid out there; else, or with none, no task', () => {
+  it('builder attribution: run in a code worktree, the run records that checkout\'s HEAD and the task it ran for — the task of the unit in flight in the calling conversation whose worktree `task worktree` laid out there; else the one in flight there whose acceptance scenarios hold the scenario; else, with several or none, or the orchestrator re-proving a scenario no task in flight holds, no task', () => {
     steering(dir, 'verdict', 'pass\n');
     const worktree = path.join(fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'verify-worktree-'))), 'card');
     git(dir, ['worktree', 'add', '-q', '-b', 'card', worktree]);
@@ -311,14 +311,13 @@ describe('verify run: a scenario run and its run recorded (15.4.1, 15.4.2, 15.4.
 
     const runs = [
       ok(worktree, ['verify', 'run', UNIT, '1.S1'], as(BUILDING)), ok(worktree, ['verify', 'run', UNIT, '1.S1'], as(LAID_OUT)),
-      ok(dir, ['verify', 'run', UNIT, '1.S1'], as(PARALLEL)), ok(dir, ['verify', 'run', UNIT, '1.S1']),
+      ok(dir, ['verify', 'run', UNIT, '1.S1'], as(PARALLEL)), ok(dir, ['verify', 'run', UNIT, '1.S2'], as(PARALLEL)),
+      ok(dir, ['verify', 'run', UNIT, '1.S2'], as(BUILDING)), ok(dir, ['verify', 'run', UNIT, '1.S1']),
     ].map((res) => JSON.parse(readState(dir, res.run)));
 
+    const at = (/** @type {string} */ checkout, /** @type {string|null} */ task) => ({ commits: [{ repo: '.', commit: codeHead(checkout) }], checkout, task });
     assert.deepStrictEqual(runs.map(({ commits, checkout, task }) => ({ commits, checkout, task })), [
-      { commits: [{ repo: '.', commit: codeHead(worktree) }], checkout: worktree, task: '1.1' },
-      { commits: [{ repo: '.', commit: codeHead(worktree) }], checkout: worktree, task: '1.2' },
-      { commits: [{ repo: '.', commit: codeHead(dir) }], checkout: dir, task: null },
-      { commits: [{ repo: '.', commit: codeHead(dir) }], checkout: dir, task: null },
+      at(worktree, '1.1'), at(worktree, '1.2'), at(dir, null), at(dir, '1.2'), at(dir, null), at(dir, null),
     ]);
     assert.notStrictEqual(codeHead(worktree), codeHead(dir));
     assert.strictEqual(partsRan(dir)[0], `launch 1.S1 ${worktree}`);

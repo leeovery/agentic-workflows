@@ -31,7 +31,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { ok, refusedPristine, git, commitAll, fixtureFrom, cleanupFixture, statePath, layout, createFile, readState, writeState } = require('./engine-harness.cjs');
-const { createManifest } = require('./discovery-test-utils.cjs');
+const { createManifest, templateFolder } = require('./discovery-test-utils.cjs');
 
 const UNIT = 'pay';
 const OTHER_UNIT = 'refunds';
@@ -52,7 +52,7 @@ const world = fixtureFrom('commit-task-', (dir) => {
   createFile(dir, 'src/card.js', 'const card = 1;\n');
   commitAll(dir, 'init');
   ok(dir, ['task', 'phase', UNIT, '1', '--title', 'Cards']);
-  const file = path.join(dir, '..', 'commit-task.md');
+  const file = path.join(templateFolder('commit-task-files-'), 'task.md');
   fs.writeFileSync(file, TASK);
   ok(dir, ['task', 'create', UNIT, '1', '--file', file]);
   ok(dir, ['task', 'create', UNIT, '1', '--file', file]);

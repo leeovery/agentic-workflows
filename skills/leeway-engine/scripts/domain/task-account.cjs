@@ -36,10 +36,13 @@
 // branch's first commit naming the task (`Leeway-Task`, commit-task.cjs) to
 // its tip, so the tasks a stack holds below it are not counted — a
 // repository where the branch holds none of the task's commits counts
-// nothing, and work merged into the branch above its first commit counts
-// as the task's; the acceptance criteria the task holds (task-file.cjs);
-// when it started, its `task start`'s state commit, null where none was
-// made; and when it finished, as the account is taken.
+// nothing, work merged into the branch above its first commit counts as the
+// task's, and a submodule's pointer is never a file of it, as `verify
+// mutants` leaves it out; the acceptance criteria the task holds
+// (task-file.cjs); when it started, its move into progress as the tracker
+// holds it, which a second clone's merge of the store carries (drivers.cjs,
+// `started`), null where it never moved; and when it finished, as the
+// account is taken.
 //
 // An account is taken once the task's last round passed, or once the
 // orchestrator settled it. `task settle <unit> <task> --file <why>` is that
@@ -64,9 +67,8 @@
 
 const fs = require('fs');
 const path = require('path');
-const { stateRoot, statePath } = require('../kernel/state-root.cjs');
-const { isolatedGit } = require('../kernel/isolated-git.cjs');
-const { git, tryGit } = require('../kernel/git.cjs');
+const { statePath } = require('../kernel/state-root.cjs');
+const { git, parentOrEmptyTree, excluding } = require('../kernel/git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { projectRepos } = require('../kernel/repos.cjs');
 const { writeJsonAtomic, writeTextAtomic } = require('../kernel/manifest-io.cjs');
@@ -79,8 +81,9 @@ const { criteriaOf } = require('./task-file.cjs');
 const { parseShownTask, shownTask, taskId, taskName } = require('./task-id.cjs');
 const { taskBranch } = require('./landing-names.cjs');
 const { holdingBranch } = require('./landing-git.cjs');
-const { trackedTask, givenText, ENDED } = require('./task-verbs.cjs');
+const { trackedTask, trackedStart, givenText, ENDED } = require('./task-verbs.cjs');
 const { refuseParked } = require('./task-parks.cjs');
+const { refusing } = require('./staged-payload.cjs');
 const { taskFolder, settlementPath, taskRounds } = require('./round-report.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
@@ -100,20 +103,11 @@ const SETTLED = 'Settled';
 /** An item of `## Differs from the task`, its text. */
 const DIFFERENCE = new RegExp(`^${BULLET}(\\S.*)$`);
 
-/** The refusal of `task {verb}`. @param {string} verb @returns {Refuse} */
-function refuserFor(verb) {
+/** A verb's refusal, opening on `said`. @param {string} said @returns {Refuse} */
+function refuserFor(said) {
   return (reason) => {
-    throw new Error(`task ${verb}: ${reason}`);
+    throw new Error(`${said}: ${reason}`);
   };
-}
-
-/** `fn`'s answer, its refusal the verb's. @template T @param {Refuse} refuse @param {() => T} fn @returns {T} */
-function refusing(refuse, fn) {
-  try {
-    return fn();
-  } catch (err) {
-    return refuse(messageOf(err));
-  }
 }
 
 /** A task's account, state-relative. @param {TaskRef} ref */
@@ -215,33 +209,21 @@ function readAccount(text, rounds, settled = []) {
   };
 }
 
-/** The tree with nothing in it, in a repository's own hash. @param {Repo} repo */
-function emptyTree(repo) {
-  return git(repo.path, ['hash-object', '-t', 'tree', '--stdin'], undefined, '').trim();
-}
-
 /**
  * The task's change in one repository holding its branch: from the parent
- * of the branch's first commit naming the task to its tip; none where the
- * branch holds no commit naming it.
+ * of the branch's first commit naming the task to its tip, its submodules'
+ * pointers left out; none where the branch holds no commit naming it.
  * @param {Repo} repo @param {string} branch @param {string} id @returns {Change}
  */
 function changeIn(repo, branch, id) {
   const [first] = git(repo.path, ['log', '--reverse', '--format=%H', `--grep=^${TRAILER}: ${id}$`, `refs/heads/${branch}`, '--']).split('\n');
   if (first === '') return { files: 0, added: 0, removed: 0 };
-  const from = tryGit(repo.path, ['rev-parse', '--verify', '--quiet', `${first}^`])?.trim() ?? emptyTree(repo);
-  const rows = git(repo.path, ['diff', '--numstat', '--find-renames', from, `refs/heads/${branch}`, '--']).split('\n').filter((row) => row !== '');
+  const changed = ['diff', '--numstat', '--find-renames', parentOrEmptyTree(repo.path, first), `refs/heads/${branch}`, '--', ':(top)', ...excluding(repo.submodules)];
+  const rows = git(repo.path, changed).split('\n').filter((row) => row !== '');
   return rows.reduce((sum, row) => {
     const [added, removed] = row.split('\t').map(Number);
     return { files: sum.files + 1, added: sum.added + (added || 0), removed: sum.removed + (removed || 0) };
   }, { files: 0, added: 0, removed: 0 });
-}
-
-/** When the task started: its `task start`'s state commit, null where none was made. @param {string} cwd @param {TaskRef} ref */
-function startedAt(cwd, ref) {
-  const made = isolatedGit(stateRoot(cwd)).tryRun(['log', '--reverse', '--format=%aI', '-E', `--grep=^task\\(${ref.unit}\\): start ${ref.phase}\\.${ref.n}$`]);
-  const [first = ''] = (made ?? '').split('\n');
-  return first === '' ? null : new Date(first).toISOString();
 }
 
 /**
@@ -258,20 +240,21 @@ function figuresOf(cwd, ref, task, refuse) {
     (sum, part) => ({ files: sum.files + part.files, added: sum.added + part.added, removed: sum.removed + part.removed }),
     { files: 0, added: 0, removed: 0 },
   );
-  return { ...change, criteria: criteriaOf(task.text), started: startedAt(cwd, ref), finished: new Date().toISOString() };
+  return { ...change, criteria: criteriaOf(task.text), started: trackedStart(cwd, ref), finished: new Date().toISOString() };
 }
 
 /**
  * The task a verb is given, not yet ended, with its review rounds, refused
- * where it has none.
- * @param {string} cwd @param {string} unit @param {string} given @param {Refuse} refuse @param {string} ended what an ended task's refusal says
+ * where it has none, each refusal opening on `said`.
+ * @param {string} cwd @param {string} unit @param {string} given @param {string} said @param {string} ended what an ended task's refusal says
  * @returns {{ref: TaskRef, task: ReturnType<typeof trackedTask>, rounds: Round[], last: Round}}
  */
-function reviewedTask(cwd, unit, given, refuse, ended) {
-  const ref = refusing(refuse, () => parseShownTask(unit, given));
-  const task = refusing(refuse, () => trackedTask(cwd, ref));
+function reviewedTask(cwd, unit, given, said, ended) {
+  const refuse = refuserFor(said);
+  const ref = refusing(said, () => parseShownTask(unit, given));
+  const task = refusing(said, () => trackedTask(cwd, ref));
   if (ENDED.includes(task.status)) refuse(`${taskName(ref)} is ${task.status} — ${ended}`);
-  const rounds = refusing(refuse, () => taskRounds(cwd, ref));
+  const rounds = refusing(said, () => taskRounds(cwd, ref));
   const last = rounds.at(-1);
   if (last === undefined) return refuse(`${taskName(ref)} has no review round's reports — its reviewers write them in ${taskFolder(ref)}/`);
   return { ref, task, rounds, last };
@@ -303,15 +286,16 @@ function committed(cwd, files, message, warnings, answer) {
  * @param {string} cwd @param {string} unit @param {string} given
  */
 function takeAccount(cwd, unit, given) {
-  const refuse = refuserFor('account');
-  const { ref, task, rounds, last } = reviewedTask(cwd, unit, given, refuse, 'its account is taken as it lands, before task done');
-  refuseParked(cwd, ref, 'task account');
+  const said = 'task account';
+  const refuse = refuserFor(said);
+  const { ref, task, rounds, last } = reviewedTask(cwd, unit, given, said, 'its account is taken as it lands, before task done');
+  refuseParked(cwd, ref, said);
   if (!last.passes && !last.settled) {
     refuse(`round ${last.round} of ${taskName(ref)} did not pass — an account is taken once every reviewer of a round passes the task, or the orchestrator settles it: engine task settle ${unit} ${shownTask(ref)} --file <why>`);
   }
   const text = writtenAccount(cwd, ref, refuse);
   const settled = rounds.filter((round) => round.settled).map(({ round }) => round);
-  refusing(refuse, () => {
+  refusing(said, () => {
     try {
       return readAccount(text, rounds.length, settled);
     } catch (err) {
@@ -337,11 +321,12 @@ function takeAccount(cwd, unit, given) {
  * @param {string} cwd @param {string} unit @param {string} given @param {string} file
  */
 function settleTask(cwd, unit, given, file) {
-  const refuse = refuserFor('settle');
-  const { ref, task, last } = reviewedTask(cwd, unit, given, refuse, 'a round is settled as the task lands, before task done');
+  const said = 'task settle';
+  const refuse = refuserFor(said);
+  const { ref, task, last } = reviewedTask(cwd, unit, given, said, 'a round is settled as the task lands, before task done');
   if (last.passes) refuse(`round ${last.round} of ${taskName(ref)} passed — only a failed round is settled; its account is taken as it stands`);
   if (last.settled) refuse(`round ${last.round} of ${taskName(ref)} is settled already — ${settlementPath(ref, last.round)}`);
-  const why = refusing(refuse, () => givenText(cwd, file, 'settle by'));
+  const why = refusing(said, () => givenText(cwd, file, 'settle by'));
   const at = statePath(cwd, settlementPath(ref, last.round));
   fs.mkdirSync(path.dirname(at), { recursive: true });
   writeTextAtomic(at, `${why}\n`);

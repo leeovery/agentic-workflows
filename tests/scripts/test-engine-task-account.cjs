@@ -13,10 +13,14 @@
 // with no scenario still refused; the account read by its five sections,
 // its differences counted, `None` never one, and each round summarised,
 // with the settlement after each round settled (12.14.5, 12.14.6); the
-// verb's answer, the account, every round's reports and the figures
-// committed in one state commit (12.S42), the figures the task's own change
-// across its repositories, a stack's earlier task not counted, its
-// criteria, and when it started and finished (15.3.4); a failed last round
+// rounds read with the reviewers' count raised or lowered, a round before
+// the last by the letters it holds and the last against the count
+// (13.3.4, 2.4.6); the verb's answer, the account, every round's reports
+// and the figures committed in one state commit (12.S42), the figures the
+// task's own change across its repositories, a stack's earlier task and a
+// submodule's pointer not counted, its criteria, and when it started — the
+// tracker's, outliving a state merge that drops the start's commit — and
+// finished (15.3.4); a failed last round
 // settled by the orchestrator, then the task's account taken, a later round
 // passing or not (13.4.6); and every refusal writing and committing nothing
 // — a last round with a bug standing (13.S3) and no repository holding the
@@ -28,31 +32,35 @@
 // first's commit sits below two of its own, and in a repository nested in
 // the project; its two rounds' reports — the first failing on a bug, the
 // second passing with a nit (13.S4) — and its account, each in its build
-// folder, copied for the verb's describe alone. The grammar's describes call
-// the readers with values.
+// folder, copied into a folder of each test's own, which holds the files it
+// hands the verbs. The grammar's describes call the readers with values.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
 
-const { describe, it, beforeEach, afterEach } = require('node:test');
+const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  ok, refuses, refusedPristine, statePath, layout, writeState, readState, stateGit, lastMessage, touched, commitAll, commitCode, git, initRepo, fixtureFrom, cleanupFixture,
+  ok, refuses, refusedPristine, statePath, layout, writeState, readState, stateGit, lastMessage, touched, commitAll, commitCode, git, initRepo, addSubmodule, tip, fixtureFrom,
   withFrozenClock, FROZEN_AT,
 } = require('./engine-harness.cjs');
-const { createManifest } = require('./discovery-test-utils.cjs');
+const { createManifest, templateFolder, useTempFolder } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
-const { readReport } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
+const { readReport, taskRounds, roundUnderReview } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
 const { readAccount } = require(path.join(SCRIPTS, 'domain/task-account.cjs'));
 const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 const { taskBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
+const { listDrivers } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
+
+const [DRIVER] = listDrivers('task').filter((driver) => driver.isDefault);
 
 const UNIT = 'pay';
 const SESSION = Object.freeze({ CLAUDE_CODE_SESSION_ID: 'task-account-session' });
 const NESTED = 'lib';
+const TASK = Object.freeze({ unit: UNIT, phase: 1, n: 2 });
 const CARD = taskBranch({ unit: UNIT, phase: 1, n: 1 }, 'feat', 'Take a card');
 const RECEIPT = taskBranch({ unit: UNIT, phase: 1, n: 2 }, 'feat', 'Show a receipt');
 
@@ -117,8 +125,8 @@ const accountWorld = fixtureFrom('task-account-', (dir) => {
   fs.writeFileSync(path.join(dir, '.gitignore'), `${NESTED}/\n`);
   commitAll(dir, 'init');
   ok(dir, ['task', 'phase', UNIT, '1', '--title', 'Cards']);
+  const file = path.join(templateFolder('task-account-files-'), 'task.md');
   for (const [title, scenarios] of [['Take a card', ['A card is taken.']], ['Show a receipt', ['A charge prints a receipt.', 'The receipt shows the amount.', 'A refund prints none.']]]) {
-    const file = path.join(dir, '..', 'task.md');
     fs.writeFileSync(file, taskText(title, scenarios));
     ok(dir, ['task', 'create', UNIT, '1', '--file', file]);
   }
@@ -301,14 +309,46 @@ describe('an account, read by its grammar (12.14.5, 12.14.6)', () => {
   });
 });
 
+describe('the rounds read with the reviewers\' count changed (13.3.4, 2.4.6)', () => {
+  const folder = useTempFolder('task-account-count-');
+  beforeEach(() => { dir = accountWorld(path.join(folder(), 'project')); });
+
+  /** Each of task 1.2's rounds read with the count's letters given: its number, its reviewers' letters, and whether it passes. @param {string[]} letters */
+  const rounds = (letters) => taskRounds(dir, TASK, letters).map(({ round, reports, passes }) => [round, reports.map(({ reviewer }) => reviewer), passes]);
+
+  it('raised to three: a round before the last read by the letters it holds, the last judged against three — under review until its third reviewer reports, then read whole', () => {
+    const three = ['a', 'b', 'c'];
+
+    assert.throws(() => taskRounds(dir, TASK, three), { message: 'round 2 of task 1.2 of pay has no report from reviewer c — pay/build/tasks/1.2/round-2-c.md' });
+    assert.strictEqual(roundUnderReview(dir, TASK, three), 2);
+    writeState(dir, roundAt('1.2', 2, 'c'), reportOf([['bug', 'The receipt rounds the total.']]));
+    assert.deepStrictEqual(rounds(three), [[1, ['a', 'b'], false], [2, ['a', 'b', 'c'], false]]);
+    assert.strictEqual(roundUnderReview(dir, TASK, three), 3);
+  });
+
+  it('lowered to one: the rounds of two before the last read whole, the last by its one reviewer — its review over once that one passes', () => {
+    writeState(dir, roundAt('1.2', 3, 'a'), reportOf([]));
+
+    assert.deepStrictEqual(rounds(['a']), [[1, ['a', 'b'], false], [2, ['a', 'b'], true], [3, ['a'], true]]);
+    assert.throws(() => roundUnderReview(dir, TASK, ['a']), { message: 'round 3 of task 1.2 of pay passed — its review is over' });
+  });
+});
+
 describe('task account (12.14.4, 6.3.13)', () => {
-  beforeEach(() => { dir = accountWorld(); });
-  afterEach(() => cleanupFixture(dir));
+  const folder = useTempFolder('task-account-');
+  beforeEach(() => { dir = accountWorld(path.join(folder(), 'project')); });
+
+  /** A file of the test's own, its text as given: its path. @param {string} name @param {string} text */
+  const fileOf = (name, text) => {
+    fs.writeFileSync(path.join(folder(), name), text);
+    return path.join(folder(), name);
+  };
 
   it('12.S42, 13.S4: a task through two rounds, its last passing on a nit — the account, both rounds\' four reports and its figures committed in one state commit, the figures answered', () => {
     const res = withFrozenClock(take);
 
-    const started = new Date(stateGit(dir, ['log', '-1', '--format=%aI', '-E', '--grep=^task\\(pay\\): start 1\\.2$']).trim()).toISOString();
+    const started = DRIVER.started(statePath(dir), TASK);
+    assert.match(started, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
     const figures = { files: 4, added: 7, removed: 1, criteria: 3, started, finished: FROZEN_AT };
     assert.deepStrictEqual(res, { ok: true, task: '1.2', id: 'pay-1-2', rounds: 2, figures, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim() });
     assert.strictEqual(lastMessage(dir), 'task(pay): account 1.2');
@@ -325,6 +365,26 @@ describe('task account (12.14.4, 6.3.13)', () => {
     git(path.join(dir, NESTED), ['branch', '-f', RECEIPT, 'scratch']);
 
     assert.deepStrictEqual((({ files, added, removed }) => ({ files, added, removed }))(take().figures), { files: 3, added: 6, removed: 1 });
+  });
+
+  it('15.3.4: when it started is the tracker\'s, so it outlives a second clone\'s merge of the state, whose commit holds only the remote\'s tip below it', () => {
+    const started = DRIVER.started(statePath(dir), TASK);
+    stateGit(dir, ['reset', '-q', '--soft', stateGit(dir, ['commit-tree', 'HEAD^{tree}', '-m', 'state: merge the remote\'s']).trim()]);
+
+    assert.strictEqual(take().figures.started, started);
+  });
+
+  it('15.3.4: a submodule\'s pointer the task moved is no file of its figures, as `verify mutants` leaves it out', () => {
+    const source = initRepo(path.join(folder(), 'ext-source'));
+    git(source, ['commit', '-q', '--allow-empty', '-m', 'ext']);
+    addSubmodule(dir, 'ext', source);
+    const pinning = path.join(folder(), 'pinning');
+    git(dir, ['worktree', 'add', '-q', pinning, RECEIPT]);
+    git(pinning, ['update-index', '--add', '--cacheinfo', `160000,${tip(source, 'HEAD')},ext`]);
+    git(pinning, ['commit', '-q', '-m', 'pin ext\n\nLeeway-Task: pay-1-2']);
+    git(dir, ['worktree', 'remove', '--force', pinning]);
+
+    assert.deepStrictEqual((({ files, added, removed }) => ({ files, added, removed }))(take().figures), { files: 4, added: 7, removed: 1 });
   });
 
   it('13.S3: a task whose last round has a bug standing, however many rounds before it', () => {
@@ -349,8 +409,7 @@ describe('task account (12.14.4, 6.3.13)', () => {
   it('13.4.6: a task stuck on a failed round, settled by the orchestrator in one state commit, then its account taken, carrying what was done', () => {
     writeState(dir, roundAt('1.2', 3, 'a'), reportOf([['bug', 'The total is wrong.']]));
     writeState(dir, roundAt('1.2', 3, 'b'), reportOf([]));
-    const why = path.join(dir, '..', 'why.md');
-    fs.writeFileSync(why, '  The total kept failing on rounding; the orchestrator rounded it itself.\n');
+    const why = fileOf('why.md', '  The total kept failing on rounding; the orchestrator rounded it itself.\n');
 
     const settled = ok(dir, ['task', 'settle', UNIT, '1.2', '--file', why]);
     assert.deepStrictEqual(settled, { ok: true, task: '1.2', id: 'pay-1-2', round: 3, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim() });
@@ -368,8 +427,7 @@ describe('task account (12.14.4, 6.3.13)', () => {
   it('13.4.6: a round settled, then reviewed again and passed — the account still says what was done about the settled round, where it sits', () => {
     writeState(dir, roundAt('1.2', 3, 'a'), reportOf([['bug', 'The total is wrong.']]));
     writeState(dir, roundAt('1.2', 3, 'b'), reportOf([]));
-    const why = path.join(dir, '..', 'why.md');
-    fs.writeFileSync(why, 'The orchestrator rounded the total itself.\n');
+    const why = fileOf('why.md', 'The orchestrator rounded the total itself.\n');
     ok(dir, ['task', 'settle', UNIT, '1.2', '--file', why]);
     writeState(dir, roundAt('1.2', 4, 'a'), reportOf([]));
     writeState(dir, roundAt('1.2', 4, 'b'), reportOf([]));
@@ -382,15 +440,14 @@ describe('task account (12.14.4, 6.3.13)', () => {
   });
 
   it('a task settled only on a failed last round, once: refused after a passing round, a second time, with no round, ended, and from no file or an empty one', () => {
-    const why = path.join(dir, '..', 'why.md');
-    fs.writeFileSync(why, 'Stuck.\n');
+    const why = fileOf('why.md', 'Stuck.\n');
     const settle = (/** @type {string[]} */ args, /** @type {RegExp} */ pattern) => assert.match(refusedPristine(dir, ['task', 'settle', ...args]).error, pattern);
 
     settle([UNIT, '1.2', '--file', why], /^task settle: round 2 of task 1\.2 of pay passed — only a failed round is settled; its account is taken as it stands$/);
     settle([UNIT, '1.1', '--file', why], /^task settle: task 1\.1 of pay has no review round's reports — its reviewers write them in pay\/build\/tasks\/1\.1\/$/);
     writeState(dir, roundAt('1.2', 3, 'a'), reportOf([['bug', 'The total is wrong.']]));
     writeState(dir, roundAt('1.2', 3, 'b'), reportOf([]));
-    settle([UNIT, '1.2', '--file', path.join(dir, '..', 'missing.md')], /^task settle: there is no file .*missing\.md$/);
+    settle([UNIT, '1.2', '--file', path.join(folder(), 'missing.md')], /^task settle: there is no file .*missing\.md$/);
     fs.writeFileSync(why, '\n');
     settle([UNIT, '1.2', '--file', why], /^task settle: .*why\.md holds nothing to settle by$/);
     fs.writeFileSync(why, 'Stuck.\n');
@@ -417,14 +474,17 @@ describe('task account (12.14.4, 6.3.13)', () => {
     refusedWith([UNIT, '1.2'], /^task account: pay\/build\/tasks\/1\.2\.md does not read as an account — ## Reviews summarises each of the task's 2 review rounds, under `### Round 1`, `### Round 2`$/);
   });
 
-  it('no account written, no round\'s reports, a round missing a reviewer\'s report, and a report that does not read', () => {
+  it('no account written, no round\'s reports, the last round missing a reviewer\'s report, a round before it holding none, and a report that does not read', () => {
     fs.rmSync(statePath(dir, layout.unit(UNIT, 'build/tasks/1.2.md')));
     refusedWith([UNIT, '1.2'], /^task account: task 1\.2 of pay has no account — its builder writes it at pay\/build\/tasks\/1\.2\.md$/);
     refusedWith([UNIT, '1.1'], /^task account: task 1\.1 of pay has no review round's reports — its reviewers write them in pay\/build\/tasks\/1\.1\/$/);
-    fs.rmSync(statePath(dir, roundAt('1.2', 1, 'b')));
-    refusedWith([UNIT, '1.2'], /^task account: round 1 of task 1\.2 of pay has no report from reviewer b — pay\/build\/tasks\/1\.2\/round-1-b\.md$/);
-    writeState(dir, roundAt('1.2', 1, 'b'), 'Passed.\n');
-    refusedWith([UNIT, '1.2'], /^task account: pay\/build\/tasks\/1\.2\/round-1-b\.md does not read as a reviewer's report — its last heading at level one or two is not `## Findings`; its last line is not `Verdict: pass` or `Verdict: fail`; brief reviewer b again, and its report replaces it$/);
+    fs.rmSync(statePath(dir, roundAt('1.2', 2, 'b')));
+    refusedWith([UNIT, '1.2'], /^task account: round 2 of task 1\.2 of pay has no report from reviewer b — pay\/build\/tasks\/1\.2\/round-2-b\.md$/);
+    writeState(dir, roundAt('1.2', 2, 'b'), 'Passed.\n');
+    refusedWith([UNIT, '1.2'], /^task account: pay\/build\/tasks\/1\.2\/round-2-b\.md does not read as a reviewer's report — its last heading at level one or two is not `## Findings`; its last line is not `Verdict: pass` or `Verdict: fail`; brief reviewer b again, and its report replaces it$/);
+    writeState(dir, roundAt('1.2', 2, 'b'), reportOf([]));
+    for (const letter of ['a', 'b']) fs.rmSync(statePath(dir, roundAt('1.2', 1, letter)));
+    refusedWith([UNIT, '1.2'], /^task account: round 1 of task 1\.2 of pay has no reviewer's report — its reviewers write them in pay\/build\/tasks\/1\.2\/$/);
   });
 
   it('a task ended, one the tracker lacks, a unit the project lacks, and arguments of another shape', () => {

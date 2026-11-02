@@ -42,7 +42,7 @@ const { spawnSync } = require('child_process');
 const {
   ENGINE, call, ok, git, stateGit, commitAll, fixtureFrom, codeProject, cleanupFixture, statePath, layout, STATE_DIR_NAME,
 } = require('./engine-harness.cjs');
-const { createManifest } = require('./discovery-test-utils.cjs');
+const { createManifest, templateFolder } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.dirname(ENGINE);
 const { GUARD_VERBS } = require(path.join(SCRIPTS, 'guards.cjs'));
@@ -106,7 +106,7 @@ const unitWorld = fixtureFrom('shell-guard-', (dir) => {
   createManifest(dir, UNIT, {});
   commitAll(dir, 'init');
   ok(dir, ['task', 'phase', UNIT, '1', '--title', 'Cards']);
-  const file = path.join(dir, '..', 'task.md');
+  const file = path.join(templateFolder('shell-guard-files-'), 'task.md');
   fs.writeFileSync(file, TASK);
   ok(dir, ['task', 'create', UNIT, '1', '--file', file]);
   ok(dir, ['task', 'create', UNIT, '1', '--file', file]);

@@ -7,9 +7,9 @@
 // links across phases; ready answering several; done unblocking; close, and
 // close unblocking; a task closed and replaced, and tasks and a phase made
 // after every task of the unit ended, closed or done; an addition to a task;
-// a type replaced; list; show — its store made in the state root, never in
-// the project's own a walk up would find, and the tasks it names its own,
-// whatever else a person gives them. The driver answers whether a phase or
+// a type replaced; list; show; when a task started — its store made in the
+// state root, never in the project's own a walk up would find, and the
+// tasks it names its own, whatever else a person gives them. The driver answers whether a phase or
 // task is there, and finds its tools — none, or one that fails — for the
 // engine to refuse in its words (test-engine-task-verbs.cjs); what stays
 // with the driver is refused here: a store it cannot read, or a line of it,
@@ -18,7 +18,8 @@
 // is reopened. 7.S5: the shipped task drivers are exactly one, the default.
 // The store merged between two clones (7.5.5–7.5.7): each side's changes
 // kept, a field both set differently the person's choice in the engine's
-// words, a name both made the remote's, this machine's set aside and named.
+// words, a name both made the remote's, this machine's set aside and named,
+// and when a task started carried from the side that started it.
 //
 // Layer: conformance. World: for each driver, a plain folder standing as the
 // state root, its store built once through the driver — a unit whose first
@@ -306,6 +307,16 @@ for (const driver of listDrivers('task')) {
       });
     });
 
+    it('started: when a task first moved into progress, kept as it ends; none for a task never started, or one the tracker lacks', () => {
+      const before = new Date(Math.floor(Date.now() / 1000) * 1000).toISOString();
+      driver.start(root, ref(1, 1));
+      const started = driver.started(root, ref(1, 1));
+      driver.done(root, ref(1, 1));
+
+      assert.ok(started !== null && started >= before && started <= new Date().toISOString(), String(started));
+      assert.deepStrictEqual([driver.started(root, ref(1, 1)), driver.started(root, ref(1, 2)), driver.started(root, ref(1, 4))], [started, null, null]);
+    });
+
     it('show answers no task the tracker lacks, and a task a person made carrying the engine\'s name for it, so the engine makes none twice', () => {
       assert.strictEqual(driver.show(root, ref(1, 4)), null);
       require(sideOf(driver.name)).makeTask(root, 'Made by hand', ref(1, 4));
@@ -391,6 +402,14 @@ for (const driver of listDrivers('task')) {
         const read12 = driver.show(dir, ref(1, 2));
         assert.deepStrictEqual([read12?.additions, read12?.type], [[fact, instruction], 'fix']);
         assert.deepStrictEqual(driver.show(dir, ref(2, 1))?.after.map((after) => shown([{ ref: after }])[0]).sort(), ['1.1', '1.2', '1.3']);
+      });
+
+      it('carries when a task started from the side that started it', () => {
+        const there = copied('started-there');
+        driver.start(there, ref(1, 2));
+        const text = clean(driver.mergeStore(storeAfter('base'), storeAfter('here', (here) => driver.add(here, ref(1, 2), { by: 'person', text: 'Mind the ledger.' })), fs.readFileSync(path.join(there, store), 'utf8')));
+
+        assert.strictEqual(driver.started(read(text), ref(1, 2)), driver.started(there, ref(1, 2)));
       });
 
       it('takes a status both sides set alike, asking nothing', () => {

@@ -22,7 +22,9 @@
 // proven by running it (15.2.14), its account written where its brief says,
 // its ask rule and its answer to reviewers who disagree (13.S7); the
 // reviewer's report placed and its final message the verdict and the nits
-// (13.5.9). No template tells an agent to break a task down, keep a to-do
+// (13.5.9); and the task's and the phase's reviewers told that a wrong
+// result is a finding even where its fix reaches beyond the task (13.S11).
+// No template tells an agent to break a task down, keep a to-do
 // list, check its own work or leave no stubs (12.3.8), or names a model, an
 // effort or a project skill's path (15.S15). The refusals, nothing written
 // and no brief stored. Each build agent's definition: Opus at medium, the
@@ -205,6 +207,12 @@ describe('the build\'s templates', () => {
     ]) assert.ok(words.includes(rule), rule);
     assert.ok(words.includes('where the phase meets what it relies on from earlier phases'), words);
     assert.strictEqual(from(words), from(template('reviewer')).replace('Review the task as a professional would', 'Review the phase as a professional would'));
+  });
+
+  it('13.S11: a wrong result in what the work does is a finding even where its fix reaches beyond the task, only an improvement or a hole beyond it a note — told to the task\'s reviewers and the phase\'s, never left to read the notes rule as taking it', () => {
+    const line = 'A wrong result in what the work does is always a finding, even when its fix reaches beyond the task. Only an improvement, or a hole or edge case beyond the task, is a note for later.';
+
+    for (const role of ['reviewer', 'phase-review']) assert.ok(template(role).includes(`goes to the notes for later or through the ask rule; the orchestrator lands it.\n\n${line}\n`), role);
   });
 
   it('13.S7: the template has the builder decide against the brief and the design where the reviewers disagree, and its ask rule keeps every question for the person off the builder', () => {
