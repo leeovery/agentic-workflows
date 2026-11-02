@@ -46,8 +46,8 @@
 // where its role takes the unit alone, a phase or a topic, a task done or
 // closed, a topic set aside (5.8.17), a phase for a unit whose build has
 // not begun or one its cut lacks, and a record it cannot read. A phase's
-// brief reads every task of each of the unit's phases to it from the
-// tracker, once (task-verbs.cjs). Once
+// brief reads the list of each of the unit's phases to it from the
+// tracker, once, and its own phase's tasks whole (task-verbs.cjs). Once
 // every record is drawn, what a record binds is bound — the dispatch a
 // question's brief is for, to that question (brief-records.cjs) — before
 // the brief is stored; where a record or a binding refuses the brief, what a
@@ -296,14 +296,15 @@ function unendedTask(cwd, ref, warnings) {
 }
 
 /**
- * Every task of each of the unit's phases to `phase`, and what their read
- * committed; what the read warned of pushed to `warnings`.
+ * The list of each of the unit's phases to `phase`, that phase's tasks
+ * whole, and what their read committed; what the read warned of pushed to
+ * `warnings`.
  * @param {string} cwd @param {string} unit @param {number} phase @param {string[]} warnings
  */
 function trackedTo(cwd, unit, phase, warnings) {
-  const { committed, warnings: read = [], phases } = trackedPhases(cwd, unit, phase);
+  const { committed, warnings: read = [], phases, written } = trackedPhases(cwd, unit, phase);
   warnings.push(...read);
-  return { phases, committed };
+  return { phases, written, committed };
 }
 
 /**
@@ -347,9 +348,11 @@ function issueBrief(cwd, [role, ...rest]) {
     else if (phase !== null) cutPhase(cwd, /** @type {string} */ (unit), phase);
     else if (ref === null && unit !== null) knownUnit(stateRoot(cwd), unit);
     const { task, committed: taskCommitted } = ref === null ? { task: null, committed: undefined } : unendedTask(cwd, ref, warnings);
-    const { phases, committed } = phase === null ? { phases: null, committed: taskCommitted } : trackedTo(cwd, /** @type {string} */ (unit), phase, warnings);
+    const { phases, written, committed } = phase === null
+      ? { phases: null, written: null, committed: taskCommitted }
+      : trackedTo(cwd, /** @type {string} */ (unit), phase, warnings);
     const drawn = drawnRecords({
-      cwd, role, ref, task, phase, phases, place, unit, given, session,
+      cwd, role, ref, task, phase, phases, written, place, unit, given, session,
     }, records, warnings);
     const id = newId();
     storeBrief(session, id, `Brief ${id} — ${whose}${forWhat(ref, phase, place, unit)}\n\n${filled(template, drawn)}`, {

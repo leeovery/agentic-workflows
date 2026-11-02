@@ -266,7 +266,9 @@ function drawnForTakeACard() {
     `- ${calls.claude}, Claude's: A card is tokenised.\n  Its number is never kept.\n  Why: No card number is kept.\n  The audit stays small.`,
     `- ${calls.person}, the person's: Refunds through the API.\n  Why: They come weekly now.`,
   ].join('\n');
-  return { task, 'spec-sections': `${REFUNDS}\n\n${FORM}`, 'decided-calls': decisions, linters: '- eslint: npx eslint .\n- tsc: npx tsc --noEmit' };
+  return {
+    task, 'spec-sections': `${REFUNDS}\n\n${FORM}`, 'decided-calls': decisions, linters: '- eslint: npx eslint .\n- tsc: npx tsc --noEmit', 'account-to': `\`${statePath(dir, 'pay/build/tasks/1.1.md')}\``,
+  };
 }
 
 /**
@@ -303,7 +305,7 @@ describe('the builder\'s brief (6.5.1–6.5.5, 6.S15)', () => {
     assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'builder', agent: 'leeway-builder', pointer: `brief:${res.id}` });
     assert.strictEqual(brief, `Brief ${res.id} — the builder's, for pay task 1.1\n\n${filledTemplate('builder', drawnForTakeACard())}`);
     assert.ok(!brief.includes(PROJECT_WORDS) && !brief.includes('Prefer tabs.'), 'nothing of CLAUDE.md or a skill reaches the brief');
-    assert.ok(!brief.includes('.claude/skills'), 'no project skill\'s path reaches the brief (15.10.2)');
+    assert.doesNotMatch(brief, /\.claude\/skills\/(?!leeway-engine\/)/, 'no project skill\'s path reaches the brief, the engine\'s alone named as installed (15.10.2)');
     assert.deepStrictEqual(stored(), [`${res.id}.json`, `${res.id}.md`]);
   });
 
@@ -614,12 +616,12 @@ describe('the templates and the store', () => {
   });
 
   it('a template is refused for a slot not alone on its line, one no record answers, one its role does not draw on, and a record\'s slot missing or twice', () => {
-    const builder = '{{task}}\n{{spec-sections}}\n{{decided-calls}}\n{{linters}}\n';
+    const builder = '{{task}}\n{{spec-sections}}\n{{decided-calls}}\n{{linters}}\n{{account-to}}\n';
     assert.strictEqual(templateOf('builder', builder), builder);
     assert.throws(() => templateOf('builder', `${builder}See {{task}} above.\n`), /"See \{\{task\}\} above\." holds a slot that is not alone on its line; task's slot is there 2 times$/);
     assert.throws(() => templateOf('builder', `${builder}{{diff}}\n`), /the builder's template is refused — \{\{diff\}\} is no record$/);
     assert.throws(() => templateOf('product-researcher', '{{linters}}\n'), /the product-researcher's brief draws on no linters$/);
-    assert.throws(() => templateOf('builder', '{{task}}\n{{spec-sections}}\n{{linters}}\n'), /— no slot for decided-calls$/);
+    assert.throws(() => templateOf('builder', '{{task}}\n{{spec-sections}}\n{{linters}}\n{{account-to}}\n'), /— no slot for decided-calls$/);
   });
 
   it('a brief and its record are never stored over another\'s', () => {

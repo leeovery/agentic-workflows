@@ -185,6 +185,16 @@ describe('the layout, held (6.2.1, 6.2.3)', () => {
     }
   });
 
+  it('a file place\'s `.txt` beside it — a build agent\'s two-step write of a report or an account — passes as the place, and a `.txt` beside no file place is outside the layout', () => {
+    for (const rel of [
+      layout.unit('pay', 'build', 'tasks', '1.2.txt'), layout.unit('pay', 'build', 'tasks', '1.2', 'round-1-a.txt'),
+      layout.unit('pay', 'build', 'phases', 'phase-1', 'review-b.txt'), layout.unit('pay', 'build', 'phases', 'phase-1', 'consolidation.txt'),
+    ]) assertAllowed(guard(dir, path.join(root, rel)), rel);
+    for (const rel of [layout.unit('pay', 'build', 'tasks', '1.2', 'notes.txt'), layout.unit('pay', 'build', 'notes.txt'), layout.unit('pay', 'manifest.txt')]) {
+      assertRefused(guard(dir, path.join(root, rel)), rel, outsideReason(rel));
+    }
+  });
+
   it('a place named in another case is that place where the filesystem ignores case, and a path the layout has no place for where it keeps it', () => {
     const rel = layout.unit('PAY', 'Topics', 'auth', 'LOG.md');
     const res = guard(dir, path.join(root, rel));

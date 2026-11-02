@@ -18,7 +18,7 @@ The engine's brief is all you are given; the conversation never reaches you. It 
 - **The spec's sections it cites**, verbatim.
 - **The decided calls** — the unit's decisions, your own calls among them once the orchestrator has recorded them.
 - **The linters** — the project's, which the commit door runs with its tests.
-- **Where you work**, **where the task leaves a call open**, **a failed review** and **your account** — how the work is done.
+- **Where your account goes**, **where you work**, **proving it**, **where the task leaves a call open**, **a failed review** and **your account** — how the work is done.
 
 A fix round reaches you as a message: each reviewer's report of the round, verbatim, and nothing else.
 
@@ -26,9 +26,10 @@ A fix round reaches you as a message: each reviewer's report of the round, verba
 
 1. **The task is your brief.** Never edit it: what changes it reaches you as an addition, from the orchestrator.
 2. **Find the project's skills yourself.** Use the Skill tool for any the work touches; the project's CLAUDE.md is loaded already.
-3. **Work in your task's worktree.** The brief's first step lays it out; every build, run and commit is made there.
+3. **Work in your task's worktree.** The brief's first step lays it out; every build, run and commit is made there, and each of its scenarios is proven there by running it, as the brief says.
 4. **Commit through the engine's door**, from your worktree's root: `node .claude/skills/leeway-engine/scripts/engine.cjs commit --paths {file}… --task {unit} {N.M} -m "{message}"`. It runs the project's tests and linters first, and refuses a commit they fail. A raw `git commit` is refused.
-5. **Never ask the person.** A question for them comes back to the orchestrator in your status.
+5. **Write your account in two steps:** its content to the brief's path with `.txt` in place of `.md`, with the Write tool, then rename it with Bash (`mv {path}.txt {path}.md`), so it is never read half written.
+6. **Never ask the person.** A question for them comes back to the orchestrator in your status.
 
 ## Your Status
 

@@ -7,7 +7,9 @@
 // installs it in the project's settings beside the session hooks
 // (domain/session-label), so it holds with or without the mod.
 //
-// In the state it refuses a path the layout has no place for, and a file
+// In the state it refuses a path the layout has no place for — a `file`
+// place's `.txt` staging beside it passing as the place (layout.cjs,
+// `stagedPlace`) — and a file
 // only the engine writes, naming the verb that writes it where one does
 // (layout.cjs); and a unit's `spec.md` once its spec is concluded, never
 // corrected after (11.9.1, spec-standing.cjs). It reads the target as a path in
@@ -46,7 +48,9 @@ const fs = require('fs');
 const path = require('path');
 const { STATE_DIR_NAME, findStateRoot, stateRelative, resolvedPath } = require('../kernel/state-root.cjs');
 const { userLevelRefusal } = require('./user-files.cjs');
-const { SPEC_PLACE, folding, layoutPlace, engineRefusal } = require('./layout.cjs');
+const {
+  SPEC_PLACE, folding, layoutPlace, stagedPlace, engineRefusal,
+} = require('./layout.cjs');
 
 /** The tools the hook stands before, as the settings' matcher names them. */
 const LAYOUT_HOOK_TOOLS = ['Write', 'Edit', 'NotebookEdit'];
@@ -145,7 +149,7 @@ function concludedRefusal(from, rel) {
  * @returns {string|null}
  */
 function placeRefusal(from, rel, fold) {
-  const at = layoutPlace(rel, fold);
+  const at = layoutPlace(rel, fold) ?? stagedPlace(rel, fold);
   if (at === null) return `${STATE_DIR_NAME}/${rel} is outside the workflows' layout — the state holds only the places the workflows keep; scratch goes in ${STATE_DIR_NAME}/.cache/`;
   return at.path === SPEC_PLACE ? concludedRefusal(from, rel) : engineRefusal(at, rel);
 }

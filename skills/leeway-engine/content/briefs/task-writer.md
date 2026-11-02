@@ -55,7 +55,7 @@ Run each through the engine from the project root, `node .claude/skills/leeway-e
 
 1. Where the phase is not written in the tracker yet, write it first: `task phase {unit} {N} --title "{the phase's name}"`.
 2. Write each task's file in the folder below, then record it: `task create {unit} {N} --file {file}`, one call per task, as you go. Its answer names the task, `{N}.{n}`.
-3. Link each task as you record it: `task link {unit} {N}.{n} --after {task}`, after each task of this phase it waits on, and each unfinished task of an earlier phase.
+3. Link each task as you record it: `task link {unit} {N}.{n} --after {task}`, after each task it waits on: one of this phase, or an unfinished one of an earlier phase. A task waiting on none is linked after none, and runs beside the rest.
 
 A task the tracker holds already stands: never record it again. Read the spec beyond the sections below only where one of them meets another part at a seam.
 

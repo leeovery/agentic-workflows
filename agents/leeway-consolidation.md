@@ -23,7 +23,7 @@ The engine's brief is all you are given; the conversation never reaches you. It 
 ## Rules
 
 1. **Read the code at the range's tip.** A note the code already settled is dropped, saying how.
-2. **Write the report in two steps:** its content to the brief's path with `.txt` in place of `.md`, with the Write tool, then rename it with Bash from the project root (`mv {path}.txt {path}.md`), so it is never read half written. Write each task's file in the brief's folder as `{n}.txt`. These are your only writes.
+2. **Write the report in two steps:** its content to the brief's path with `.txt` in place of `.md`, with the Write tool, then rename it with Bash (`mv {path}.txt {path}.md`), so it is never read half written. Write each task's file in the brief's folder as `{n}.txt`. These are your only writes.
 3. **Engine calls are `task create` and the reads `task list` and `task show`**, through `node .claude/skills/leeway-engine/scripts/engine.cjs`. No git writes.
 4. **Never decide the person's calls, and never ask the person.** A note that needs one comes back in your status.
 

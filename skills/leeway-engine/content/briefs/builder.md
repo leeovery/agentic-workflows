@@ -14,9 +14,17 @@
 
 {{linters}}
 
+# Where your account goes
+
+{{account-to}}
+
 # Where you work
 
-Before anything else, lay the task out in the worktree you were started in: from its root, run the engine's `task worktree {unit} {task}`, the unit and the task this brief is for. It puts the worktree, and every repository nested in it, on the task's branch. Build, run and commit only there.
+Before anything else, lay the task out in the worktree you were started in: from its root, run `node .claude/skills/leeway-engine/scripts/engine.cjs task worktree {unit} {task}`, the unit and the task this brief is for. It puts the worktree, and every repository nested in it, on the task's branch. Build, run and commit only there.
+
+# Proving it
+
+Once the work is committed through the door, run each acceptance scenario of the task from your task's worktree, one at a time: `node .claude/skills/leeway-engine/scripts/engine.cjs verify run {unit} {scenario}`. Give what each run proves in your account, under `## What the tests prove`. Where the project has no verify setup recorded yet — the first phase builds it — say so there instead of running.
 
 # Where the task leaves a call open
 
@@ -46,7 +54,7 @@ The reviewer reviews the task as a professional would, never one small thing.
 
 # Your account
 
-As the task lands, write its account: your words and diagrams, never a status or a figure, which the engine counts. Its five sections sit at level two, in this order, with no title, nothing before the first, and none empty. Under `## Differs from the task`, an item for each way the work differs from the task as written, or `None.` where it differs in none. Under `## Reviews`, a `### Round N` for each review round, from 1, over its summary. After each round the orchestrator settled, wherever it sits, `### Settled` follows it, over what was done about it.
+As the task lands, write its account to the file under "Where your account goes": your words and diagrams, never a status or a figure, which the engine counts. Its five sections sit at level two, in this order, with no title, nothing before the first, and none empty. Under `## Differs from the task`, an item for each way the work differs from the task as written, or `None.` where it differs in none. Under `## Reviews`, a `### Round N` for each review round, from 1, over its summary. After each round the orchestrator settled, wherever it sits, `### Settled` follows it, over what was done about it.
 
 ```markdown
 ## What was done

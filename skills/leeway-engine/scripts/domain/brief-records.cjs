@@ -32,6 +32,9 @@
 //   reports        the task's last review round's reports, one per
 //                  reviewer of the count (13.3.4), each verbatim under a
 //                  heading naming its reviewer (round-report.cjs)
+//   account-to     where the builder writes the task's account as it
+//                  lands: the task's `build/tasks/{task}.md` (task-account.cjs,
+//                  12.14), as `task account` reads it
 //   round-report-to where the reviewer `--letter` names writes its report
 //                  of the round under review (13.5.9): the task's
 //                  `round-{N}-{letter}.md`, N read from the task's reports
@@ -174,9 +177,10 @@
 //                  kind its role is briefed for and still in flight
 //
 // A build phase's records, each of the phase of the unit's cut the brief is
-// for (11.5), its tasks read from the tracker, every task of each phase to
-// it, once (task-verbs.cjs), its sections and scenarios from the unit's
-// `spec.md` — never the whole spec (12.5.6, 11.3.6):
+// for (11.5), its tasks read from the tracker — each phase to it as its
+// list, its own phase's tasks whole, once (task-verbs.cjs) — its sections
+// and scenarios from the unit's `spec.md`, never the whole spec (12.5.6,
+// 11.3.6):
 //
 //   cut-phase      the phase as the cut holds it: its number, the unit and
 //                  its name, its goal, and what it relies on, an earlier
@@ -184,11 +188,11 @@
 //   phase-sections the spec's path; each section the phase names, and
 //                  whether it is first built in this phase or an earlier
 //                  one — the phase that builds a section being the first
-//                  naming it, or for a part its area (11.5.2), so an
-//                  invariant in one first built here is this phase's to
-//                  check (15.8.2); then each
-//                  verbatim, in the cut's order, a part whose own area the
-//                  phase names left to the area
+//                  naming it, a part of it or the area holding it (11.5.2),
+//                  so an invariant in one first built here is this phase's
+//                  to check (15.8.2); then each verbatim, in the cut's
+//                  order, a part whose own area the phase names left to the
+//                  area
 //   phase-scenarios each scenario the phase holds, by id with its wording
 //   held-notes     the notes for later held for this phase (12.9.10,
 //                  notes.cjs), each verbatim under its heading
@@ -355,10 +359,12 @@ const { ENDED } = require('./task-verbs.cjs');
 const { notesToTake, notesHeldFor, consolidationPath } = require('./notes.cjs');
 const { runsOf } = require('./runs.cjs');
 const { cachedSurvivors } = require('./verify.cjs');
+const { accountPath } = require('./task-account.cjs');
 const { directiveOf } = require('./directives.cjs');
 const { topicPlace, recordsRules, composedPath, findingsPath, refusedPath } = require('./ledger-carry.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
+/** @typedef {import('./drivers.cjs').TaskRow} TaskRow */
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** @typedef {import('../kernel/repos.cjs').Repo} Repo */
 
@@ -372,7 +378,7 @@ const { topicPlace, recordsRules, composedPath, findingsPath, refusedPath } = re
  * or the unit alone where its role takes that; each flag given, by its
  * name; and the conversation it is issued in.
  * @typedef {{
- *   cwd: string, role: string, ref: TaskRef|null, task: TaskDetail|null, phase: number|null, phases: (TaskDetail[]|null)[]|null, place: TopicPlace|null, unit: string|null,
+ *   cwd: string, role: string, ref: TaskRef|null, task: TaskDetail|null, phase: number|null, phases: (TaskRow[]|null)[]|null, written: TaskDetail[]|null, place: TopicPlace|null, unit: string|null,
  *   given: Readonly<Record<string, string>>, session: string,
  * }} Filling
  */
@@ -402,6 +408,11 @@ const WHOSE = Object.freeze({ person: 'the person\'s', claude: 'Claude\'s' });
 /** A drawn list, a line an item, or none recorded. @param {string[]} items */
 function listed(items) {
   return items.length === 0 ? NONE : items.join('\n');
+}
+
+/** Drawn blocks, a blank line between each, or none recorded. @param {string[]} items */
+function blocks(items) {
+  return items.length === 0 ? NONE : items.join('\n\n');
 }
 
 /** The task, and the ref it was read by, for a record that is a task's. @param {Filling} filling */
@@ -1246,6 +1257,9 @@ const reliedName = (on) => (typeof on === 'number' ? `phase ${on}` : `the work u
 /** The area a section is in: an area its own. @param {string} address */
 const areaOf = (address) => address.split('.')[0];
 
+/** Whether a phase naming `named` builds some of the section at `address`: it, a part of it, or the area holding it. @param {string} address */
+const builds = (address) => (/** @type {string} */ named) => named === address || named === areaOf(address) || named.startsWith(`${address}.`);
+
 /** @param {Filling} filling */
 function drawCutPhase(filling) {
   const { unit, phase } = phaseOf(filling);
@@ -1261,7 +1275,7 @@ function drawPhaseSections(filling) {
   const named = cut[phase - 1].sections;
   const { file, sections } = unitSpec(filling);
   const built = named.map((address) => {
-    const first = cut.findIndex((each) => each.sections.includes(address) || each.sections.includes(areaOf(address))) + 1;
+    const first = cut.findIndex((each) => each.sections.some(builds(address))) + 1;
     return `- §${address}, first built in ${first === phase ? 'this phase' : `phase ${first}`}`;
   });
   const texts = named.filter((address) => areaOf(address) === address || !named.includes(areaOf(address))).map((address) => {
@@ -1336,8 +1350,8 @@ function drawTaskFilesTo(filling) {
 
 /** The phase's tasks, refused where it is not written. @param {Filling} filling @returns {TaskDetail[]} */
 function writtenPhase(filling) {
-  const { unit, phase, phases } = phaseOf(filling);
-  const tasks = phases[phase - 1];
+  const { unit, phase } = phaseOf(filling);
+  const tasks = filling.written;
   if (tasks === null) throw new Error(`${phaseName(unit, phase)} is not written — its tasks are written as it starts`);
   return tasks;
 }
@@ -1347,7 +1361,7 @@ const additionsOf = ({ additions }) => additions.flatMap(({ by, text }) => ['', 
 
 /** @param {Filling} filling */
 function drawPhaseTasks(filling) {
-  return listed(writtenPhase(filling).map((task) => {
+  return blocks(writtenPhase(filling).map((task) => {
     const [title, ...body] = headingsDown(task.text).split('\n');
     const stands = task.status === 'closed' ? `It was closed: ${task.reason}` : `It is ${STANDS[task.status]}.`;
     return [title.replace(/^## /, `## ${shownTask(task.ref)} `), '', stands, '', body.join('\n').replace(/^\n+/, ''), ...additionsOf(task)].join('\n');
@@ -1356,7 +1370,7 @@ function drawPhaseTasks(filling) {
 
 /** @param {Filling} filling */
 function drawPhaseCriteria(filling) {
-  return listed(writtenPhase(filling).filter(({ status }) => status !== 'closed').map((task) => (
+  return blocks(writtenPhase(filling).filter(({ status }) => status !== 'closed').map((task) => (
     [`## ${shownTask(task.ref)} ${task.title}`, '', scenariosOf(task.text), ...additionsOf(task)].join('\n')
   )));
 }
@@ -1365,7 +1379,7 @@ function drawPhaseCriteria(filling) {
 function drawReliedOn(filling) {
   const { phase, phases } = phaseOf(filling);
   const cut = cutOf(filling);
-  return listed(cut[phase - 1].relies_on.map((on) => {
+  return blocks(cut[phase - 1].relies_on.map((on) => {
     if (typeof on === 'string') return `## The work unit ${on}\n\nThis phase relies on its delivery.`;
     const { name, goal, sections } = cut[on - 1];
     return [
@@ -1444,6 +1458,11 @@ function reportPlace(filling, rel) {
 }
 
 /** @param {Filling} filling */
+function drawAccountTo(filling) {
+  return `\`${statePath(filling.cwd, accountPath(taskOf(filling).ref))}\``;
+}
+
+/** @param {Filling} filling */
 function drawRoundReportTo(filling) {
   const { ref } = taskOf(filling);
   return reportPlace(filling, roundReportPath(ref, roundUnderReview(filling.cwd, ref).round, letterOf(filling)));
@@ -1479,6 +1498,7 @@ const RECORDS = Object.freeze({
   'diff-range': { of: 'task', flags: [BASE], draw: drawDiffRange },
   reports: { of: 'task', draw: drawReports },
   'round-report-to': { of: 'task', flags: [LETTER], draw: drawRoundReportTo },
+  'account-to': { of: 'task', draw: drawAccountTo },
   'topic-record': { of: 'topic', draw: drawTopicRecord },
   'topic-log': { of: 'topic', draw: drawTopicLog },
   'other-records': { of: 'topic', draw: drawOtherRecords },
