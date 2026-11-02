@@ -33,7 +33,8 @@
 //   one a kill cut short before anything else (state-merge-landing.cjs).
 // - The stop: a field of a manifest or of the tracker's store both sides
 //   changed to different values stops the merge (4.7.6), with nothing
-//   written. A field the working tree's uncommitted copy and the merge
+//   written, and so do names both sides made in the tracker's store (7.5.7),
+//   a notice with one row that carries on. A field the working tree's uncommitted copy and the merge
 //   changed differently stops it the same way, once every field on the
 //   branch is picked. Nothing else stops the merge, so its questions are
 //   worked out from those files alone, and the whole merge only once every
@@ -592,8 +593,9 @@ function pendingStateMerge(root) {
 
 /**
  * Record the person's pick for the choice the screen showed — `1` keeps
- * this machine's value, `2` the remote's — and, once every field is picked,
- * finish the merge (4.7.11). The pick names the shown choice by its
+ * this machine's value, `2` the remote's; at names both machines made, `1`
+ * carries on — and, once every choice is answered, finish the merge
+ * (4.7.11). The pick names the shown choice by its
  * identity; where the merge now asks another, the pick is not taken, and the
  * outcome carries the new question.
  * @param {string} root  the state root
@@ -613,7 +615,12 @@ function pickStateMerge(root, key, choice, opts = {}) {
     const asked = conflicts.find(open);
     if (asked === undefined) return converge(state, timeoutsOf(opts));
     if (choiceId(asked) !== choice) return outcome(state, 'stopped', { conflicts, warnings: [NOT_ASKED] });
-    asked.pick = side;
+    if ('madeTwice' in asked) {
+      if (key !== '1') throw new Error(`the state merge asks only to carry on past names made on both machines: pick 1, got "${key}"`);
+      asked.pick = 'seen';
+    } else {
+      asked.pick = side;
+    }
     keepStop(state, { conflicts });
     if (conflicts.some(open)) return outcome(state, 'stopped', { conflicts });
     return converge(state, timeoutsOf(opts));

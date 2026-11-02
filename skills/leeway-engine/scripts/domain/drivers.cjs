@@ -84,14 +84,15 @@ const METHODS = Object.freeze({
  * A field of the tracker's store both sides set differently: the choice,
  * its pick, and what the screen calls it — the task by the engine's name,
  * and the field by its meaning.
- * @typedef {import('./state-merge-rules.cjs').FieldConflict & {label: {subject: string, name: string, field: string}}} StoreConflict
+ * @typedef {import('./state-merge-rules.cjs').FieldConflict & {label: {subject: string, name: string, field: string}}} FieldStoreConflict
  */
 /**
- * The store merged: its text and the choices it leaves; or, where an engine
- * name was made on both sides, those names and the phases and tasks only
- * this machine made, by the engine's names.
- * @typedef {{text: string, conflicts: StoreConflict[]}|{madeTwice: string[], madeHere: string[]}} StoreMerge
+ * Engine names both sides made, by the engine's words, and this machine's
+ * tasks set aside for them, each by its title and the phase it was in.
+ * @typedef {{madeTwice: string[], again: {phase: number|null, title: string}[]}} MadeTwice
  */
+/** @typedef {FieldStoreConflict|MadeTwice} StoreConflict */
+/** The store merged: its text, and what it leaves the person. @typedef {{text: string, conflicts: StoreConflict[]}} StoreMerge */
 /**
  * A task driver. Every method but the three that name the store takes the
  * state root, where the tracker's store lives and the tool runs; the
@@ -128,11 +129,15 @@ const METHODS = Object.freeze({
  * and merges one both changed field by field against the ancestor, its
  * notes and links unioned; a field both set differently is a choice, which
  * `pickOf` answers or leaves open, shown in the engine's words and labelled
- * by the engine's name for its task. An engine name both sides made under
- * ids of their own is not merged: it answers the names made twice and the
- * phases and tasks only this machine made, and the engine keeps both copies
- * whole. A copy it cannot read is refused with a MergeError naming the side
- * and the line. A driver whose tracker projects used
+ * by the engine's name for its task. A status the tracker derives from a
+ * record's children reads, once merged, as the tracker's own rules would
+ * leave it over the merged children, never a choice. An engine name both
+ * sides made under ids of their own stays the remote's: this machine's
+ * record is set aside, with all it holds, and the rest merged; the merge
+ * answers it as one more conflict, naming the names made twice and the
+ * tasks set aside, and the engine stops on it and keeps this machine's
+ * whole copy beside. A copy it cannot read is refused with a MergeError
+ * naming the side and the line. A driver whose tracker projects used
  * before Leeway may declare where they kept its store, `preLeewayStore`
  * (`{files, localFiles}`, project-relative): frozen, since migration 078
  * reads it from the module alone, outside this loader.

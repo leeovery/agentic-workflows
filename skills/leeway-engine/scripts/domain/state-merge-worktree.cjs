@@ -41,7 +41,7 @@ const { GitError } = require('../kernel/git.cjs');
 const { MergeError } = require('./state-merge-rules.cjs');
 const { blobIds } = require('../kernel/file-stream.cjs');
 const {
-  sameEntry, changedPaths, indexEntries, withPrivateIndex, fillIndex, mergePath, readContested, separateClashes, isUnder, besidePath, changedCopyKept,
+  sameEntry, changedPaths, indexEntries, withPrivateIndex, fillIndex, mergePath, placeRuns, readContested, separateClashes, isUnder, besidePath, changedCopyKept,
 } = require('./state-merge-paths.cjs');
 
 /** @typedef {import('./state-merge-paths.cjs').Entry} Entry */
@@ -95,30 +95,32 @@ function workingEntries(ctx, local) {
 
 /**
  * Work out the working tree's move from this clone's tip to the merge's
- * tree: each path the move changes merged with what the working tree holds,
- * then each file-against-folder clash with an uncommitted path separated.
+ * tree: the runs it holds uncommitted under numbers the merge's runs hold
+ * moved after them, each path the move changes merged with what the working
+ * tree holds, then each file-against-folder clash with an uncommitted path
+ * separated.
  * @param {WorktreeContext} ctx @param {Entries} local @param {Entries} target @param {Entries} working @param {PickOf} pickOf
  * @returns {WorktreePlan}
  */
 function planWorktree(ctx, local, target, working, pickOf) {
   const dirty = changedPaths(local, working);
+  const runs = placeRuns(local, working, target);
   /** @type {Steps} */
-  const steps = { removes: [], moves: [], writes: [] };
+  const steps = { removes: [], moves: [...runs.moves], writes: [] };
   /** @type {PathConflict[]} */
   const conflicts = [];
-  /** @type {string[]} */
-  const notes = [];
-  const layout = new Map(working);
+  const notes = [...runs.notes];
+  const placed = runs.entries;
+  const layout = new Map(placed);
   const changed = changedPaths(local, target);
   /** @type {[string, import('./state-merge-paths.cjs').Versions][]} */
-  const paths = changed.map((file) => [file, { base: local.get(file), local: working.get(file), remote: target.get(file) }]);
+  const paths = changed.map((file) => [file, { base: local.get(file), local: placed.get(file), remote: target.get(file) }]);
   readContested(ctx, paths);
-  const taken = new Set([...local.keys(), ...target.keys(), ...working.keys()]);
   for (const [file, versions] of paths) {
-    const result = mergePath(ctx, file, versions, pickOf, taken);
+    const result = mergePath(ctx, file, versions, pickOf);
     conflicts.push(...(result.conflicts ?? []));
     if (result.note !== undefined) notes.push(result.note);
-    let from = working.get(file);
+    let from = placed.get(file);
     if (result.beside !== undefined) {
       steps.moves.push({ from: file, to: result.beside.path });
       layout.set(result.beside.path, result.beside.entry);
@@ -135,7 +137,8 @@ function planWorktree(ctx, local, target, working, pickOf) {
   }
   const clashes = separateClashes(ctx, layout, target);
   steps.moves.push(...clashes.moves);
-  const touched = new Set([...changed, ...dirty.filter((file) => clashes.moves.some((move) => file === move.from || isUnder(move.from, file)))]);
+  const moved = [...runs.moves, ...clashes.moves];
+  const touched = new Set([...changed, ...dirty.filter((file) => moved.some((move) => file === move.from || isUnder(move.from, file)))]);
   return {
     steps,
     conflicts,
@@ -230,7 +233,7 @@ function leaveBeside(ctx, write, report) {
  */
 function tryMerge(ctx, file, versions) {
   try {
-    return mergePath(ctx, file, versions, () => null, new Set([file]));
+    return mergePath(ctx, file, versions, () => null);
   } catch (err) {
     if (err instanceof GitError || err instanceof MergeError) return null;
     throw err;
@@ -270,8 +273,9 @@ function removeFile(root, file) {
 
 /**
  * Set a copy beside, never over anything already there. The copy's name is
- * its content's id, or a run's next free number, so one already there is
- * that copy, set beside by a landing a kill cut short.
+ * its content's id, so one already there is that copy, set beside by a
+ * landing a kill cut short; a run's moves never land on a run still to move,
+ * so one already at a run's new number was moved there by such a landing.
  * @param {WorktreeContext} ctx @param {Move} move
  */
 function moveBeside(ctx, move) {

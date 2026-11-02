@@ -81,6 +81,38 @@ describe('the stop\'s screen (4.7.6)', () => {
     auditMarkers(out, 'state merge gate');
   });
 
+  it('draws names both machines made (7.5.7): what was made twice, the tasks to make again, where this machine\'s copy is kept, one row carrying on; counted apart from the fields', () => {
+    const notice = { file: '.store/tasks.jsonl', uncommitted: false, madeTwice: ['task 2.2 of pay', 'phase 3 of pay'], again: [{ phase: 2, title: 'Page the ledger' }, { phase: 3, title: 'Export *it*' }], beside: '.store/tasks.0123abcd.jsonl', pick: null };
+    const stop = { conflicts: [...stopOf({ pick: 'local' }).conflicts, notice] };
+    const out = stateMergeGate(stop);
+
+    assert.strictEqual(out, [
+      '=== DATA (reason from this — never display or parse the sections below) ===',
+      `choice: ${choiceId(notice)}`,
+      '',
+      '=== DISPLAY: state merge stop (emit verbatim as a properties code block (```properties fence)) ===',
+      '⚑ The state merge stopped: 2 phases and tasks made on both machines',
+      '',
+      '=== DISPLAY: state merge account (emit verbatim as markdown (not a code block)) ===',
+      '> In the tracker\'s store, task 2.2 of pay and phase 3 of pay were made on each machine since they last agreed. The remote\'s keep those numbers, and this machine\'s are set aside with all they hold.',
+      '>',
+      '> Make these tasks again after the merge; each takes the next free number:',
+      '> - "Page the ledger", in phase 2',
+      '> - "Export \\*it\\*", in phase 3',
+      '>',
+      '> This machine\'s whole copy of the tracker\'s store is kept beside the merged one, as `.store/tasks.0123abcd.jsonl`.',
+      '',
+      '=== MENU: state merge gate (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
+      '· · · · · · · · · · · ·',
+      '**`◆ Carry on with the merge?`**',
+      '',
+      '**`1`** → Carry on — *and make them again after*',
+      '',
+    ].join('\n'));
+    auditMarkers(out, 'state merge gate');
+    assert.match(stateMergeGate({ conflicts: [stopOf({}).conflicts[0], notice] }), /^⚑ The state merge stopped: one field changed on both machines$/m);
+  });
+
   it('states the gate for the gate surface, its rows the two sides', () => {
     const gate = announced(() => {
       openGate();

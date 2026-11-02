@@ -16,6 +16,9 @@
 // a link that would make a cycle, a name carried twice, and a unit or phase the person
 // ended in the tracker, cancelled or done — a parent the tracker ended itself
 // is reopened. 7.S5: the shipped task drivers are exactly one, the default.
+// The store merged between two clones (7.5.5–7.5.7): each side's changes
+// kept, a field both set differently the person's choice in the engine's
+// words, a name both made the remote's, this machine's set aside and named.
 //
 // Layer: conformance. World: for each driver, a plain folder standing as the
 // state root, its store built once through the driver — a unit whose first
@@ -432,10 +435,13 @@ for (const driver of listDrivers('task')) {
         assert.deepStrictEqual([driver.show(taken, ref(1, 1))?.status, driver.show(taken, ref(1, 1))?.reason, driver.show(taken, ref(1, 2))?.type], ['closed', 'Not needed.', 'chore']);
       });
 
-      it('merges nothing where both sides made a phase or task under one name, answering those names and every phase and task only this machine made', () => {
+      it('keeps the remote\'s phase or task where both made one under a name, setting aside this machine\'s with all it holds and every link to it, the rest merged; the notice names them and the tasks set aside', () => {
         const result = merged(
           (here) => {
+            driver.done(here, ref(1, 1));
             driver.createTask(here, ref(2, 2), task('Page the ledger'));
+            driver.createTask(here, ref(2, 3), task('Sort the ledger'));
+            driver.link(here, ref(2, 3), ref(2, 2));
             driver.createPhase(here, UNIT, 3, 'The export');
             driver.createTask(here, ref(3, 1), task('Export the ledger'));
           },
@@ -444,10 +450,14 @@ for (const driver of listDrivers('task')) {
             driver.createPhase(there, UNIT, 3, 'The archive');
           },
         );
-        assert.deepStrictEqual(result, {
+        assert.deepStrictEqual(result.conflicts, [{
           madeTwice: [taskName(ref(2, 2)), phaseName(UNIT, 3)],
-          madeHere: [taskName(ref(2, 2)), phaseName(UNIT, 3), taskName(ref(3, 1))],
-        });
+          again: [{ phase: 2, title: 'Page the ledger' }, { phase: 3, title: 'Export the ledger' }],
+        }]);
+        const dir = read(result.text);
+        assert.strictEqual(driver.show(dir, ref(1, 1))?.status, 'done');
+        assert.deepStrictEqual(driver.list(dir, UNIT, 2)?.map((row) => row.title), ['Show the ledger', 'Print the ledger', 'Sort the ledger']);
+        assert.deepStrictEqual([driver.show(dir, ref(2, 3))?.after, driver.list(dir, UNIT, 3)], [[], []]);
       });
 
       it('refuses a side\'s copy it cannot read, naming the side and the line', () => {

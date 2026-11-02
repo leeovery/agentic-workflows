@@ -5,8 +5,9 @@
 // (leeway-engine/scripts/domain/state-merge-rules.cjs): which rule a path
 // takes, the tracker's store its driver's among them, the ledger's lines
 // added by id, the migrations record's ids, a manifest merged field by field
-// against its ancestor, where a run both machines wrote goes, and how a
-// choice is named and labelled.
+// against its ancestor, a build's run read by its number, and how a choice
+// is named and labelled; and where this machine's runs go where both wrote
+// runs under the same numbers (state-merge-paths.cjs, placeRuns).
 //
 // Layer: unit. The rules are called with values; no git.
 // ---------------------------------------------------------------------------
@@ -20,8 +21,9 @@ const { layout } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const {
-  linesToAdd, entryId, migrationId, mergeManifest, choiceId, conflictLabel, ruleOf, storeDriverOf, nextRun,
+  linesToAdd, entryId, migrationId, mergeManifest, choiceId, conflictLabel, ruleOf, storeDriverOf, runNumber, runRenumbered,
 } = require(path.join(SCRIPTS, 'domain/state-merge-rules.cjs'));
+const { placeRuns } = require(path.join(SCRIPTS, 'domain/state-merge-paths.cjs'));
 const { listDrivers } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
 
 describe('the rules each file merges by', () => {
@@ -32,22 +34,31 @@ describe('the rules each file merges by', () => {
     );
   });
 
-  it('reads each task driver\'s store as its driver\'s, and a build\'s run by its place, a JSON file elsewhere in the build kept whole', () => {
+  it('reads each task driver\'s store as its driver\'s, and a build\'s run by its number and place, kept whole as JSON', () => {
     const drivers = listDrivers('task');
     const stores = drivers.flatMap((/** @type {any} */ driver) => driver.storeFiles());
     assert.deepStrictEqual(stores.map(ruleOf), stores.map(() => 'store'));
     assert.deepStrictEqual(stores.map(storeDriverOf), drivers.flatMap((/** @type {any} */ driver) => driver.storeFiles().map(() => driver)));
-    assert.deepStrictEqual(
-      ['pay/build/runs/2.S1/run-003.json', 'pay/build/runs/2.S1/run-1004.json', 'pay/build/runs/2.S1/run-3.json', 'pay/build/runs/run-003.json', 'pay/build/2.S1/run-003.json', 'pay/build/runs/2.S1/sub/run-003.json'].map(ruleOf),
-      ['run', 'run', 'whole', 'whole', 'whole', 'whole'],
-    );
+    const paths = ['pay/build/runs/2.S1/run-003.json', 'pay/build/runs/2.S1/run-1004.json', 'pay/build/runs/2.S1/run-3.json', 'pay/build/runs/run-003.json', 'pay/build/2.S1/run-003.json', 'pay/build/runs/2.S1/sub/run-003.json'];
+    assert.deepStrictEqual([paths.map(runNumber), paths.map(ruleOf)], [[3, 1004, null, null, null, null], paths.map(() => 'whole')]);
+    assert.deepStrictEqual([runRenumbered(paths[0], 8), runRenumbered(paths[0], 1000)], ['pay/build/runs/2.S1/run-008.json', 'pay/build/runs/2.S1/run-1000.json']);
   });
 
-  it('places a run both machines wrote under one number after every run its folder holds, on any side or placed already', () => {
-    const taken = new Set(['pay/build/runs/2.S1/run-003.json', 'pay/build/runs/2.S1/run-007.json', 'pay/build/runs/3.S1/run-012.json', 'pay/build/runs/2.S1/notes.md']);
-    assert.strictEqual(nextRun('pay/build/runs/2.S1/run-003.json', taken), 'pay/build/runs/2.S1/run-008.json');
-    assert.strictEqual(nextRun('pay/build/runs/3.S1/run-012.json', taken), 'pay/build/runs/3.S1/run-013.json');
-    assert.strictEqual(nextRun('pay/build/runs/2.S1/run-999.json', new Set(['pay/build/runs/2.S1/run-999.json'])), 'pay/build/runs/2.S1/run-1000.json');
+  it('moves this machine\'s new runs after the remote\'s highest only in a folder where a number is held twice, each move onto a number already emptied', () => {
+    const at = (/** @type {string} */ folder, /** @type {number} */ n) => `pay/build/runs/${folder}/run-${String(n).padStart(3, '0')}.json`;
+    const entry = (/** @type {string} */ oid) => ({ mode: '100644', oid });
+    const base = new Map([[at('2.S1', 1), entry('b1')]]);
+    const remote = new Map([...base, [at('2.S1', 2), entry('r2')], [at('3.S1', 1), entry('r31')]]);
+    const local = new Map([...base, [at('2.S1', 2), entry('l2')], [at('2.S1', 5), entry('l5')], [at('2.S1', 100), entry('l100')], [at('3.S1', 2), entry('l32')]]);
+    const placed = placeRuns(base, local, remote);
+    assert.deepStrictEqual(placed.moves, [
+      { from: at('2.S1', 2), to: at('2.S1', 3) },
+      { from: at('2.S1', 5), to: at('2.S1', 4) },
+      { from: at('2.S1', 100), to: at('2.S1', 5) },
+    ]);
+    assert.deepStrictEqual([...placed.entries].sort(), [
+      [at('2.S1', 1), entry('b1')], [at('2.S1', 3), entry('l2')], [at('2.S1', 4), entry('l5')], [at('2.S1', 5), entry('l100')], [at('3.S1', 2), entry('l32')],
+    ]);
   });
 
   /** The lines a line rule adds after the remote's. @param {string} remote @param {string} local @param {any} keyOf */

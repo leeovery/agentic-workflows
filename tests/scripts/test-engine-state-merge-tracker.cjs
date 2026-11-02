@@ -6,8 +6,9 @@
 // the store merged by its task driver; 4.7, 7.5, 29.14.9): each side's
 // tasks merged by the tracker's records, a field both machines set
 // differently asked at the merge's stop and the pick written, and a name
-// both machines made keeping both copies whole, naming what to make again.
-// What the driver merges is the task conformance suite's.
+// both machines made stopping the merge (7.S22), its screen naming the task
+// to make again, carrying on keeping this machine's whole copy beside. What
+// the driver merges is the task conformance suite's.
 //
 // Layer: git. World: real repositories in a temp folder per test, a project
 // on a bare remote and a second clone of it on "another machine"
@@ -27,7 +28,7 @@ const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { catchUpState, stateMergeGateSurface } = require(path.join(SCRIPTS, 'domain/state-merge.cjs'));
 const { listDrivers } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
-const { taskName, phaseName } = require(path.join(SCRIPTS, 'domain/task-id.cjs'));
+const { taskName } = require(path.join(SCRIPTS, 'domain/task-id.cjs'));
 
 const { templateFolder } = require('./discovery-test-utils.cjs');
 const { useWorld, machinesSharing, blobId, status, commitUnpushed, pickShown } = require('./state-merge-world.cjs');
@@ -127,26 +128,32 @@ describe('the tracker\'s store, both machines having changed it', () => {
     assert.strictEqual(DRIVER.show(branchStore(here), ref(1, 1))?.status, 'done');
   });
 
-  it('keeps both copies whole where both made a phase or task under one name: the remote\'s at the path, this machine\'s beside it, the note naming the names and what to make again', () => {
-    const { here, mine, theirs } = bothChanged(
+  it('stops where both made a task under one number, its screen naming it and the task to make again; carrying on keeps this machine\'s other progress, the remote\'s task under the number, and this machine\'s whole copy beside', () => {
+    const { here, mine } = bothChanged(
       (dir) => {
+        DRIVER.done(dir, ref(1, 1));
         DRIVER.createTask(dir, ref(2, 2), task('Page the ledger'));
-        DRIVER.createPhase(dir, UNIT, 3, 'The export');
       },
-      (dir) => {
-        DRIVER.createTask(dir, ref(2, 2), task('Print the ledger'));
-        DRIVER.createPhase(dir, UNIT, 3, 'The archive');
-      },
+      (dir) => DRIVER.createTask(dir, ref(2, 2), task('Print the ledger')),
     );
-
-    const out = catchUpState(here.root);
-
     const ext = path.extname(STORE);
     const beside = `${STORE.slice(0, -ext.length)}.${blobId(mine).slice(0, 8)}${ext}`;
+
+    const stopped = catchUpState(here.root);
+
+    assert.deepStrictEqual([stopped.action, stopped.conflicts], ['stopped', [
+      { file: STORE, madeTwice: [taskName(ref(2, 2))], again: [{ phase: 2, title: 'Page the ledger' }], beside, pick: null, uncommitted: false },
+    ]]);
+    const screen = stateMergeGateSurface(here.main, {});
+    assert.match(screen, new RegExp(`^⚑ The state merge stopped: ${taskName(ref(2, 2))} made on both machines$`, 'm'));
+    assert.match(screen, /^> - "Page the ledger", in phase 2$/m);
+    assert.throws(() => pickShown(here, '2'), /pick 1, got "2"/);
+
+    const out = pickShown(here, '1');
+
     assert.deepStrictEqual([out.action, out.pushed], ['merged', true]);
-    assert.deepStrictEqual([STORE, beside].map((file) => git(here.main, ['show', `${STATE_BRANCH}:${file}`])), [theirs, mine]);
-    assert.deepStrictEqual(out.warnings, [
-      `${taskName(ref(2, 2))} and ${phaseName(UNIT, 3)} were made on both machines, so the tracker's store is not merged: the remote's copy stays at ${STORE}, and this machine's is kept beside it as ${beside}; make again in the tracker what only this machine made: ${taskName(ref(2, 2))} and ${phaseName(UNIT, 3)}`,
-    ]);
+    const merged = branchStore(here);
+    assert.deepStrictEqual([DRIVER.show(merged, ref(1, 1))?.status, DRIVER.show(merged, ref(2, 2))?.title], ['done', 'Print the ledger']);
+    assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:${beside}`]), mine);
   });
 });

@@ -36,11 +36,12 @@
 // - The tracker's store: each file a task driver names (`storeFiles`) is
 //   merged by that driver (`mergeStore`), which reads the tracker's own
 //   records (7.5, 29.14.9); the fields both sides changed differently are
-//   choices like a manifest's.
+//   choices like a manifest's, and engine names both sides made are a
+//   notice the person acknowledges.
 // - A build's run (`{unit}/build/runs/{n}.S{m}/run-{NNN}.json`) is an
-//   append-only fact: one each machine wrote under the same number keeps
-//   the remote's there, and this machine's takes the folder's next free
-//   number.
+//   append-only fact, read here by its number; where both machines wrote
+//   runs under the same numbers, this machine's are renumbered before the
+//   tree merges (state-merge-paths.cjs).
 // - Any other JSON file is kept whole, never merged line by line: a text
 //   merge of JSON can leave neither side's data.
 // ---------------------------------------------------------------------------
@@ -58,7 +59,7 @@ const JSON_FILE = /\.jsonl?$/;
 const RUN = /^[^./][^/]*\/build\/runs\/[^/]+\/run-([0-9]{3,})\.json$/;
 const PROJECT_KEY = ['manifest.json', 'project_id'];
 
-/** @typedef {'ledger'|'migrations'|'manifest'|'store'|'run'|'whole'|'file'} MergeRule */
+/** @typedef {'ledger'|'migrations'|'manifest'|'store'|'whole'|'file'} MergeRule */
 /** @typedef {import('./drivers.cjs').TaskDriver} TaskDriver */
 
 /** A side's copy is not what its rule reads, so the merge cannot take it apart. */
@@ -73,6 +74,13 @@ class MergeError extends Error {}
  * A choice a field leaves the person: its path from the manifest's root,
  * and each side's value.
  * @typedef {{field: string[], local: Side, remote: Side}} Choice
+ */
+
+/**
+ * A notice the person acknowledges rather than picks between: the engine
+ * names both sides made in the tracker's store, and this machine's tasks set
+ * aside for them (drivers.cjs, MadeTwice).
+ * @typedef {import('./drivers.cjs').MadeTwice} Notice
  */
 
 /**
@@ -115,23 +123,18 @@ function ruleOf(file) {
   if (file === MIGRATIONS) return 'migrations';
   if (MANIFEST.test(file)) return 'manifest';
   if (storeDriverOf(file) !== undefined) return 'store';
-  if (RUN.test(file)) return 'run';
   return JSON_FILE.test(file) ? 'whole' : 'file';
 }
 
-/**
- * Where a run both machines wrote under one number goes: its folder's next
- * number above every run `taken` holds there.
- * @param {string} file  a run's path @param {Set<string>} taken  every path the merge's sides hold, and those it has placed
- * @returns {string}
- */
-function nextRun(file, taken) {
-  const folder = file.slice(0, file.lastIndexOf('/') + 1);
-  const numbers = [...taken].flatMap((held) => {
-    const run = held.startsWith(folder) ? RUN.exec(held) : null;
-    return run === null ? [] : [Number(run[1])];
-  });
-  return `${folder}run-${String(Math.max(...numbers) + 1).padStart(3, '0')}.json`;
+/** A build's run's number, or null where the path is no run's. @param {string} file @returns {number|null} */
+function runNumber(file) {
+  const run = RUN.exec(file);
+  return run === null ? null : Number(run[1]);
+}
+
+/** A run's path under another number, in its folder. @param {string} file @param {number} number @returns {string} */
+function runRenumbered(file, number) {
+  return `${file.slice(0, file.lastIndexOf('/') + 1)}run-${String(number).padStart(3, '0')}.json`;
 }
 
 /**
@@ -252,14 +255,17 @@ function canonical(value) {
 
 /**
  * A choice's identity: the file it is in, whether it is on the branch or
- * between the working tree and the update, the field, and the two values,
- * whatever order their keys came in. A pick answers the choice with its
- * identity, and the screen carries it to the pick.
- * @param {Choice & {file: string, uncommitted: boolean}} choice
+ * between the working tree and the update, and what it asks — the field and
+ * the two values, whatever order their keys came in, or the notice's names
+ * and tasks. A pick answers the choice with its identity, and the screen
+ * carries it to the pick.
+ * @param {(Choice|Notice) & {file: string, uncommitted: boolean}} choice
  * @returns {string}
  */
-function choiceId({ file, uncommitted, field, local, remote }) {
-  const named = JSON.stringify(canonical([file, uncommitted, field, local, remote]));
+function choiceId(choice) {
+  const { file, uncommitted } = choice;
+  const asked = 'madeTwice' in choice ? [choice.madeTwice, choice.again] : [choice.field, choice.local, choice.remote];
+  const named = JSON.stringify(canonical([file, uncommitted, ...asked]));
   return crypto.createHash('sha1').update(named).digest('hex').slice(0, 12);
 }
 
@@ -376,7 +382,7 @@ function conflictLabel(manifest, field, project) {
 /**
  * The conflict a stop asks about: the first not yet picked; where every one
  * is picked, which the next catch-up finishes, the last.
- * @param {{pick: 'local'|'remote'|null}[]} conflicts
+ * @param {{pick: string|null}[]} conflicts
  * @returns {number}
  */
 function askedAt(conflicts) {
@@ -389,7 +395,8 @@ module.exports = {
   MergeError,
   ruleOf,
   storeDriverOf,
-  nextRun,
+  runNumber,
+  runRenumbered,
   linesToAdd,
   entryId,
   migrationId,
