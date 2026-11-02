@@ -400,7 +400,7 @@ describe('the map\'s verbs racing the writes on their topic (8.8.6, 8.8.17)', ()
       fs.unlinkSync(lock);
       appendEntry(statePath(dir), {
         event: 'found', unit: UNIT, topic: 'fresh-topic', phase: 'discovery', session: SESSION_ID, ...MADE,
-        text: 'Landed first?', how: 'read Checkout.swift', known: 'read', command: null, result: null, product_wide: false, relies_on: [], cites: [],
+        text: 'Landed first?', how: 'read Checkout.swift', known: 'read', command: null, result: null, product_wide: false, relies_on: [], cites: [], task: null,
       }, []);
     });
   }

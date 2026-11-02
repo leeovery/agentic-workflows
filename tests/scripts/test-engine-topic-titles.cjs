@@ -123,7 +123,7 @@ describe('a started topic renamed goes by its title on every screen that names i
 
   /** A raise drawn on the topic, as sealed. */
   const SEAL = Object.freeze({
-    id: 'r1', menu: 'raise', fact: false, reason: 'It decides where a note opens.', replaces: null,
+    id: 'r1', menu: 'raise', fact: false, reason: 'It decides where a note opens.', replaces: null, parks: null,
     place: { unit: UNIT, phase: 'discussion', topic: KEY },
     call: { question: 'Which corner?', rows: [], lean: 'a', why: 'Habit.', sort: 'one', mechanism: 'The window frame.', product_wide: false },
   });

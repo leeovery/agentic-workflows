@@ -211,7 +211,7 @@ describe('a large ledger (5.7.6, 5.7.8)', () => {
       while (size <= READ_BUDGET_BYTES) {
         const bulk = `${JSON.stringify(validEvent({
           v: LEDGER_VERSION, id: newId(), event: 'found', unit: UNIT, topic: 'space-homing', phase: 'discussion', session: SESSION_ID, at: '2026-10-27T09:00:00Z',
-          ...MADE, text: 'x'.repeat(2000), how: 'by hand', relies_on: [], product_wide: false, known: 'read', command: null, result: null, cites: [],
+          ...MADE, text: 'x'.repeat(2000), how: 'by hand', relies_on: [], product_wide: false, known: 'read', command: null, result: null, cites: [], task: null,
         }))}\n`;
         fs.writeSync(fd, bulk);
         size += Buffer.byteLength(bulk);

@@ -76,6 +76,11 @@ function shownTask({ phase, n }) {
   return `${phase}.${n}`;
 }
 
+/** Whether `value` is a task as screens show it, `{phase}.{n}`. @param {unknown} value */
+function isShownTask(value) {
+  return typeof value === 'string' && SHOWN.test(value);
+}
+
 /** The unit's task a shown id names. Refuses another shape. @param {string} unit @param {string} shown @returns {TaskRef} */
 function parseShownTask(unit, shown) {
   assertUnit(unit);
@@ -114,5 +119,5 @@ function endedInTracker(whats, unit) {
 }
 
 module.exports = {
-  assertUnit, taskId, sameTask, stepOfId, parseTaskId, parsePhase, shownTask, parseShownTask, taskName, phaseName, unitName, FOREIGN_TASK, endedInTracker,
+  assertUnit, taskId, sameTask, stepOfId, parseTaskId, parsePhase, shownTask, parseShownTask, taskName, phaseName, unitName, FOREIGN_TASK, endedInTracker, isShownTask,
 };

@@ -61,7 +61,7 @@ describe('tags (5.2.3)', () => {
   it('tags an entry made at the unit\'s level with its unit, phase and session, and no topic', () => {
     const res = write('ask', `${UNIT}.specification`, [], { ...MADE, text: 'Which macOS releases does the spec cover?' });
 
-    const id = assertLast('asked', { phase: 'specification', topic: null }, { ...MADE, text: 'Which macOS releases does the spec cover?', part_of: null, relies_on: [], cites: [] });
+    const id = assertLast('asked', { phase: 'specification', topic: null }, { ...MADE, text: 'Which macOS releases does the spec cover?', part_of: null, relies_on: [], cites: [], task: null });
     assertAnswered(res, id);
   });
 
@@ -172,7 +172,7 @@ describe('content and links', () => {
     const [a, b] = [`${twin}a${newId().slice(0, 12)}`, `${twin}b${newId().slice(0, 12)}`];
     const lines = [a, b].map((id) => JSON.stringify(validEvent({
       v: LEDGER_VERSION, id, event: 'found', unit: UNIT, topic: 'note-window', phase: 'discussion', session: SESSION_ID, at: '2026-10-27T09:00:00Z',
-      ...MADE, text: `Found ${id}.`, how: 'by hand', relies_on: [], product_wide: false, known: 'read', command: null, result: null, cites: [],
+      ...MADE, text: `Found ${id}.`, how: 'by hand', relies_on: [], product_wide: false, known: 'read', command: null, result: null, cites: [], task: null,
     })));
     fs.writeFileSync(statePath(dir, layout.ledger), `${lines.join('\n')}\n`);
     withStateLock(statePath(dir), () => commitState(statePath(dir), [layout.ledger], 'state: two findings'));
@@ -225,7 +225,7 @@ describe('scenarios', () => {
 
   it('records a review\'s finding as a question the review asked, and links the later answer to it (5.S14)', () => {
     const raised = write('ask', `${UNIT}.review`, [], { by: 'review', who_moved_whom: 'none', text: 'The note window leaks its frame on hover — is that intended?' });
-    assertLast('asked', { phase: 'review', topic: null }, { by: 'review', who_moved_whom: 'none', text: 'The note window leaks its frame on hover — is that intended?', part_of: null, relies_on: [], cites: [] });
+    assertLast('asked', { phase: 'review', topic: null }, { by: 'review', who_moved_whom: 'none', text: 'The note window leaks its frame on hover — is that intended?', part_of: null, relies_on: [], cites: [], task: null });
 
     write('decide', `${UNIT}.review`, ['--answers', raised.id], { ...MADE, text: 'No: the frame stays hidden on hover.', why: 'The design is frameless.' });
 
@@ -244,8 +244,8 @@ describe('scenarios', () => {
     assert.deepStrictEqual([res.stop, res.error], ['ledger', `${layout.ledger} changed outside the engine: line 2 is not the line committed there — the engine stops here`]);
     assert.strictEqual(ledgerText(), tampered, 'the stop appended');
     const screen = output(dir, ['render', 'ledger-stop']);
-    assert.match(screen, /line 2 isn't the line the state branch last committed there\. The line it found:\n> \s+\{"v":2,"id":"/);
-    assert.ok(screen.includes(`{"v":2,"id":"${JSON.parse(tampered.split('\n')[1]).id.slice(0, 6)}`), `the screen does not show the line found\n${screen}`);
+    assert.match(screen, new RegExp(`line 2 isn't the line the state branch last committed there\\. The line it found:\\n> \\s+\\{"v":${LEDGER_VERSION},"id":"`));
+    assert.ok(screen.includes(`{"v":${LEDGER_VERSION},"id":"${JSON.parse(tampered.split('\n')[1]).id.slice(0, 6)}`), `the screen does not show the line found\n${screen}`);
   });
 });
 

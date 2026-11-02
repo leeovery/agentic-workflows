@@ -69,14 +69,14 @@ const FUMI = Object.freeze({ name: 'fumi', state: true });
 
 /** A question's fields. @param {Record<string, unknown>} [fields] */
 function question(fields = {}) {
-  return { event: 'asked', ...TAGS, ...MADE, text: 'What is a fumi, at its most basic?', part_of: null, relies_on: [], cites: [], ...fields };
+  return { event: 'asked', ...TAGS, ...MADE, text: 'What is a fumi, at its most basic?', part_of: null, relies_on: [], cites: [], task: null, ...fields };
 }
 
 /** A finding's fields. @param {Record<string, unknown>} [fields] */
 function finding(fields = {}) {
   return {
     event: 'found', ...TAGS, ...MADE, text: 'CKSyncEngine ships from macOS 14.', how: 'Apple\'s documentation', relies_on: [], product_wide: false,
-    known: 'documented', command: null, result: null, cites: [], ...fields,
+    known: 'documented', command: null, result: null, cites: [], task: null, ...fields,
   };
 }
 
@@ -85,7 +85,20 @@ function decision(answers, fields = {}) {
   return {
     event: 'decided', ...TAGS, ...MADE, answers, text: 'A near-frameless floating note.', why: 'Notes are furniture on the desk.',
     rules_out: ['a title bar'], relies_on: [], product_wide: false, sealed: null, alternatives: [], evidence: [], kind: null, unchecked: false,
-    given: 'own', cites: [], ...fields,
+    given: 'own', cites: [], task: null, ...fields,
+  };
+}
+
+/** A question parked with task 2.3 as Q1, answering `question`. @param {string} question @param {Record<string, unknown>} [fields] */
+function parked(question, fields = {}) {
+  return {
+    event: 'parked', ...TAGS, topic: null, phase: 'implementation', question, replaces: null, reason: null, cause: null, relies_on: [], task: '2.3', number: 1,
+    call: {
+      question: 'Where should a new note open?',
+      rows: [{ key: '1', name: 'Cursor', text: 'On the cursor\'s screen', notice: 'it opens where you look' }, { key: '2', name: 'Main', text: 'On the main screen', notice: 'it always opens there' }],
+      lean: '1', why: 'A note follows the person.', sort: 'several', mechanism: 'The pointer\'s screen.', product_wide: false,
+    },
+    rows_judged: [], why_asking: 'Every call comes to you for now.', ...fields,
   };
 }
 
@@ -133,11 +146,11 @@ function stopped(root) {
 describe('the events and their schemas', () => {
   const HEADER = ['v', 'id', 'event', 'unit', 'topic', 'phase', 'session', 'at'];
   const BY = ['by', 'who_moved_whom'];
-  const QUESTION = ['text', 'part_of', 'relies_on', 'cites'];
-  const FINDING = ['text', 'how', 'relies_on', 'product_wide', 'known', 'command', 'result', 'cites'];
-  const DECISION = ['answers', 'text', 'why', 'rules_out', 'relies_on', 'product_wide', 'sealed', 'alternatives', 'evidence', 'kind', 'unchecked', 'given', 'cites'];
+  const QUESTION = ['text', 'part_of', 'relies_on', 'cites', 'task'];
+  const FINDING = ['text', 'how', 'relies_on', 'product_wide', 'known', 'command', 'result', 'cites', 'task'];
+  const DECISION = ['answers', 'text', 'why', 'rules_out', 'relies_on', 'product_wide', 'sealed', 'alternatives', 'evidence', 'kind', 'unchecked', 'given', 'cites', 'task'];
 
-  it('writes every event §5 names, and merged, checked, kept and asset, each with its fields in its schema\'s order on a line of its own, ended by LF alone', () => {
+  it('writes every event §5 names, and merged, checked, kept, asset and parked, each with its fields in its schema\'s order on a line of its own, ended by LF alone', () => {
     const { root } = codeProject(world, FUMI);
     const q = /** @type {string} */ (appendEntry(root, question(), []).id);
     const f = /** @type {string} */ (appendEntry(root, finding(), []).id);
@@ -151,6 +164,7 @@ describe('the events and their schemas', () => {
     appendEntry(root, { event: 'checked', ...TAGS, entry: d, rules: 'one' }, []);
     appendEntry(root, { event: 'kept', ...TAGS, by: 'person', who_moved_whom: 'person-moved-claude', entry: r, reason: 'new-fact', cause: f, why: 'They float every note.', sealed: 'A floating panel.' }, []);
     appendEntry(root, { event: 'asset', ...TAGS, entry: r, path: 'fumi/assets/note-window.png', status: 'canonical', into: null }, []);
+    appendEntry(root, parked(q), []);
 
     const text = ledgerText(root);
     assert.ok(text.endsWith('\n') && !text.includes('\r'), 'a line ends with LF alone');
@@ -166,8 +180,9 @@ describe('the events and their schemas', () => {
       [...HEADER, 'entry', 'rules'],
       [...HEADER, ...BY, 'entry', 'reason', 'cause', 'why', 'sealed'],
       [...HEADER, 'entry', 'path', 'status', 'into'],
+      [...HEADER, 'question', 'replaces', 'reason', 'cause', 'relies_on', 'task', 'number', 'call', 'rows_judged', 'why_asking'],
     ]);
-    assert.deepStrictEqual(Object.keys(SCHEMA.events).sort(), ['asked', 'asset', 'checked', 'decided', 'found', 'kept', 'merged', 'moved', 'replaced', 'still-holds']);
+    assert.deepStrictEqual(Object.keys(SCHEMA.events).sort(), ['asked', 'asset', 'checked', 'decided', 'found', 'kept', 'merged', 'moved', 'parked', 'replaced', 'still-holds']);
   });
 
   it('holds a keep to its shape: the person\'s alone, standing over Claude\'s proposal, a reason of the four, Claude\'s account of their reason, and that proposal sealed in it, never none', () => {
@@ -181,10 +196,30 @@ describe('the events and their schemas', () => {
     assert.throws(() => validEvent(unexplained), { message: 'the kept event needs why' });
   });
 
+  it('holds a park to its shape: a question answered or a replacement proposed, one and not both, the reason and cause a replacement\'s alone; a task as screens show it, a number from 1, and the call sealed whole, leaning to a row it holds', () => {
+    const park = { v: LEDGER_VERSION, id: newId(), at: AT, ...parked(newId()) };
+    const replacing = { ...park, question: null, replaces: newId(), reason: 'was-wrong' };
+    assert.deepStrictEqual(validEvent(park), park);
+    assert.deepStrictEqual(validEvent(replacing), replacing);
+    const cases = [
+      [{ ...park, replaces: newId(), reason: 'was-wrong' }, /a parked question answers a question or proposes a replacement, one and not both/],
+      [{ ...park, question: null }, /a parked question answers a question or proposes a replacement, one and not both/],
+      [{ ...park, reason: 'was-wrong' }, /a replacement proposed gives its reason, and only a replacement does/],
+      [{ ...replacing, reason: null }, /a replacement proposed gives its reason, and only a replacement does/],
+      [{ ...park, cause: newId() }, /only a replacement proposed has a cause/],
+      [{ ...park, call: { ...park.call, lean: '3' } }, /its call leans to 3, a row it does not hold/],
+      [{ ...park, call: { ...park.call, rows: [{ key: '1', name: 'Cursor', text: 'On the cursor\'s screen' }] } }, /its call is not a call, \{question, rows, lean, why, sort, mechanism, product_wide\}/],
+      [{ ...park, call: { ...park.call, said: 'more' } }, /its call is not a call/],
+      [{ ...park, task: '2' }, /its task is not a task, as screens show it: \{phase\}\.\{n\}/],
+      [{ ...park, number: 0 }, /its number is not a whole number from 1/],
+    ];
+    for (const [value, message] of cases) assert.throws(() => validEvent(value), (err) => err instanceof LedgerLineError && message.test(err.message), `${JSON.stringify(value)} was not refused as ${message}`);
+  });
+
   it('carries in a replacement the content of what it replaces: a question\'s, a finding\'s or a decision\'s', () => {
     const shapes = {
-      question: { text: 'Where does a note go?', part_of: null, relies_on: [], cites: [] },
-      finding: { text: 'Spaces keep their ids.', how: 'seen in a spike', relies_on: [], product_wide: true, known: 'spike', command: null, result: null, cites: [] },
+      question: { text: 'Where does a note go?', part_of: null, relies_on: [], cites: [], task: null },
+      finding: { text: 'Spaces keep their ids.', how: 'seen in a spike', relies_on: [], product_wide: true, known: 'spike', command: null, result: null, cites: [], task: null },
     };
     for (const [of, content] of Object.entries(shapes)) {
       const event = validEvent({ v: LEDGER_VERSION, id: newId(), event: 'replaced', ...TAGS, at: AT, ...MADE, replaces: newId(), reason: 'was-wrong', cause: null, drops: [], of, ...content });
@@ -205,14 +240,14 @@ describe('the events and their schemas', () => {
       [{ ...base, v: 0 }, /its v, 0, is not a schema version/],
       [{ ...base, v: '1' }, /its v, "1", is not a schema version/],
       [{ ...base, v: 1.5 }, /its v, 1.5, is not a schema version/],
-      [{ ...base, event: 'noted' }, /its event "noted" is none of version 2's: asked, found/],
+      [{ ...base, event: 'noted' }, new RegExp(`its event "noted" is none of version ${LEDGER_VERSION}'s: asked, found`)],
       [{ ...base, id: 'Q1' }, /its id is not an entry id/],
       [{ ...base, unit: '' }, /its unit is not non-empty text/],
       [{ ...base, at: 'yesterday' }, /its at is not a UTC time/],
       [{ ...base, by: 'someone' }, /its by is not one of person, claude, review/],
       [{ ...base, relies_on: ['Q1'] }, /its relies_on is not a list of an entry id/],
       [{ ...base, part_of: undefined }, /its part_of is not an entry id, or null/],
-      [{ ...base, kind: 'look' }, /the asked event has no field kind at version 2/],
+      [{ ...base, kind: 'look' }, new RegExp(`the asked event has no field kind at version ${LEDGER_VERSION}`)],
       [Object.fromEntries(Object.entries(base).filter(([key]) => key !== 'text')), /the asked event needs text/],
       [{ ...decision(newId()), v: LEDGER_VERSION, id: newId(), at: AT, by: 'review' }, /its by is not one of person, claude/],
       [{ ...decision(newId()), v: LEDGER_VERSION, id: newId(), at: AT, kind: 'taste' }, /its kind is not one of process, danger, contract, scope, look, words, behaviour, internals, or null/],
@@ -287,7 +322,7 @@ describe('the streamed reader', () => {
     const committed = ledgerText(root);
     const cases = [
       ['not json\n', /line 2 of the ledger is not JSON: not json/],
-      [`${JSON.stringify({ ...q, id: newId(), why: 'a decision\'s field' })}\n`, /line 2 of the ledger is no ledger entry: the asked event has no field why at version 2/],
+      [`${JSON.stringify({ ...q, id: newId(), why: 'a decision\'s field' })}\n`, new RegExp(`line 2 of the ledger is no ledger entry: the asked event has no field why at version ${LEDGER_VERSION}`)],
       [JSON.stringify({ ...q, id: newId() }).slice(0, 40), /line 2 of the ledger is not JSON/],
       ['\n', /line 2 of the ledger is not JSON/],
     ];
@@ -326,22 +361,22 @@ describe('the streamed reader', () => {
     const { main, root } = codeProject(world, FUMI);
     const q = appendEntry(root, question(), []);
     commitLedger(root);
-    const newer = JSON.stringify({ ...q, v: 3, id: newId(), raised: true });
+    const newer = JSON.stringify({ ...q, v: LEDGER_VERSION + 1, id: newId(), raised: true });
     writeLedger(root, `${ledgerText(root)}${newer}\n`);
     const gitDir = gitDirOf(root);
 
     const read = [];
     assert.throws(() => withLedger(root, [], (ledger) => { for (const { event } of ledger.entries()) read.push(event); }),
       (err) => err instanceof LedgerNewer && !(err instanceof LedgerLineError) && err.payload.stop === 'ledger'
-        && /holds entries a newer Leeway wrote, at schema version 3, and the workflows here read up to version 2 — update the workflows on this machine \(pull the project's code\) and start again/.test(err.message));
+        && new RegExp(`holds entries a newer Leeway wrote, at schema version ${LEDGER_VERSION + 1}, and the workflows here read up to version ${LEDGER_VERSION} — update the workflows on this machine \\(pull the project's code\\) and start again`).test(err.message));
     assert.deepStrictEqual(read, [q]);
-    assert.deepStrictEqual(keptStop(gitDir), { stop: 'newer', version: 3, reads: 2 });
+    assert.deepStrictEqual(keptStop(gitDir), { stop: 'newer', version: LEDGER_VERSION + 1, reads: LEDGER_VERSION });
     assert.strictEqual(ledgerStopSurface(main, {}), [
       '=== DISPLAY: ledger stop (emit verbatim as a properties code block (```properties fence)) ===',
       '⚑ The engine stopped: the ledger holds entries a newer Leeway wrote',
       '',
       '=== DISPLAY: ledger account (emit verbatim as markdown (not a code block)) ===',
-      "> Fumi's ledger holds entries at schema version 3, and the workflows on this machine read up to version 2, so the engine reads none of it.",
+      `> Fumi's ledger holds entries at schema version ${LEDGER_VERSION + 1}, and the workflows on this machine read up to version ${LEDGER_VERSION}, so the engine reads none of it.`,
       '>',
       "> Update the workflows on this machine — pull the project's code — and start again.",
       '',

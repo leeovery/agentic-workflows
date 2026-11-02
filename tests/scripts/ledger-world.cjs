@@ -203,7 +203,7 @@ function ledgerHelpers(dir) {
     const id = newId();
     appendEntry(statePath(dir()), {
       event: 'decided', unit, topic, phase, session: SESSION_ID, ...MADE, answers: full(question), text, why: 'Carried over.', rules_out: [], relies_on: [],
-      product_wide: false, sealed: null, alternatives: [], evidence: [], kind: null, unchecked: true, given: 'carried', cites: [],
+      product_wide: false, sealed: null, alternatives: [], evidence: [], kind: null, unchecked: true, given: 'carried', cites: [], task: null,
     }, [], id);
     return /** @type {string} */ (shortIds(entries().map((e) => e.id)).get(id));
   }

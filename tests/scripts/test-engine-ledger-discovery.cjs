@@ -57,7 +57,7 @@ describe('the product\'s place (8.12.9)', () => {
 
     const { known, ...said } = READ;
     const id = assertLast('found', { unit: 'product', phase: 'discovery', topic: null }, {
-      ...said, relies_on: [], product_wide: false, known, command: null, result: null, cites: [],
+      ...said, relies_on: [], product_wide: false, known, command: null, result: null, cites: [], task: null,
     });
     assertAnswered(res, id);
   });

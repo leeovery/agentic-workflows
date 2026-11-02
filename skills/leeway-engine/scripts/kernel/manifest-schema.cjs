@@ -40,6 +40,9 @@ const DERIVED_PHASES = ['experiment'];
 /** The phases a topic exists in: those before the spec (4.11.2). */
 const TOPIC_PHASES = Object.freeze(['discovery', 'experiment', 'discussion', 'investigation']);
 
+/** The build's places: its phases, where a question parks its task (12.13.2). */
+const BUILD_PHASES = Object.freeze(['implementation', 'review']);
+
 const VALID_PHASE_STATUSES = {
   // Empty on purpose, never removed: discovery items are map items with NO
   // status field (lifecycle is computed at render time), and an empty
@@ -277,4 +280,5 @@ module.exports = {
   RESERVED_WORK_UNIT_NAMES,
   workUnitNameRefusal,
   DRIVER_KINDS,
+  BUILD_PHASES,
 };

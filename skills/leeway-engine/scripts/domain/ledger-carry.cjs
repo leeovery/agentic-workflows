@@ -259,6 +259,7 @@ function recordLines(place, entries, session) {
       ...(event === 'asked' ? { part_of: partOf === undefined ? null : linked(said, 'part_of', [partOf], before, 'asked')[0] } : {}),
       ...(event === 'decided' ? { answers: linked(said, 'answers', [answers], before, 'asked')[0] } : {}),
       relies_on: linked(said, 'relies_on', reliesOn, before, null),
+      task: null,
     };
     if (event === 'decided') {
       if (answered.has(links.answers)) throw new Error(`${said}: answers ${answers}, which another decision of the record answers — a question's current answer is one`);

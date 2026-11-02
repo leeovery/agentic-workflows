@@ -56,7 +56,7 @@ const {
 const { announced, auditGate } = require('./gate-audit.cjs');
 const { ledgerEntries, stateGit } = require('./engine-harness.cjs');
 const { statePath, BRANCH_REF } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
-const { SHOWN } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/gate.cjs'));
+const { SHOWN, RAISE_SHOWN } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/gate.cjs'));
 const { TRUST_LOG, PENDING } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/trust-log.cjs'));
 
 // The same per-type pipeline the start dashboard derives from (start.cjs
@@ -749,6 +749,14 @@ function auditCopies(root, events, shownAt, placed, full, ctx) {
 // naming the line, for each of the person's
 // answers to the lean a raise sealed — an entry, or a keep of the decision
 // Claude proposed to replace — beside the raises the person did not follow;
+// each answered blocking the build exactly where its answer is to what a
+// question waiting in the build waited on — the question it answers, by
+// any wording, parked before it, or the decision it replaces or keeps,
+// parked since its last keep — and saying nothing of it elsewhere, and
+// every such answer landed through its raise (12.13.16, 16.4.7); one
+// raise not followed for each "I don't follow" the conversations' seals
+// count, but a fact's, blocking the build exactly where its seal's
+// question waited in it;
 // none of them for anything else; and nothing left waiting in a
 // conversation, as no append fails. Every verdict names a departure the
 // trust log holds — a raise answered against the lean, a keep among them,
@@ -784,8 +792,38 @@ function auditTrust(sim, label, ran = []) {
   assert.deepStrictEqual(ofType('raise').filter((e) => !e.didnt_follow).map((e) => e.entry).sort(),
     entries.filter((e) => (isDecision(e) && e.by === 'person' && e.sealed !== null) || isKeep(e)).map((e) => e.id).sort(),
     ctx('the trust log does not hold one raise for each of the person\'s answers to the lean a raise sealed, and no other'));
+  /** @type {(id: string) => string} */
+  const firstWording = (id) => (byId.get(id)?.event === 'replaced' && byId.get(id).of === 'question' ? firstWording(byId.get(id).replaces) : id);
+  /** @type {(e: Record<string, any>) => {question: string|null, decision: string|null}|null} */
+  const answered = (e) => {
+    if (e.event === 'decided') return { question: firstWording(e.answers), decision: null };
+    if (e.event === 'replaced' && e.of === 'decision') return { question: null, decision: e.replaces };
+    return isKeep(e) ? { question: null, decision: e.entry } : null;
+  };
+  /** @type {(e: Record<string, any>) => boolean} */
+  const waitedOn = (e) => {
+    const subject = answered(e);
+    const at = entries.indexOf(e);
+    return subject !== null && entries.slice(0, at).some((p, i) => p.event === 'parked'
+      && ((subject.question !== null && p.question !== null && firstWording(p.question) === subject.question) || (subject.decision !== null && p.replaces === subject.decision))
+      && !entries.slice(i, at).some((k) => isKeep(k) && k.entry === p.replaces));
+  };
+  const answers = ofType('raise').filter((e) => !e.didnt_follow);
+  for (const raise of answers) {
+    assert.strictEqual(raise.blocked_build, waitedOn(byId.get(raise.entry)) ? true : null,
+      ctx(`the raise ${raise.id} does not block the build exactly where its answer is to what a question waiting in the build waited on`));
+  }
+  const raised = new Set(answers.map((e) => e.entry));
+  assert.deepStrictEqual(entries.filter((e) => waitedOn(e) && !raised.has(e.id)).map((e) => e.id), [],
+    ctx('an answer to what a question waiting in the build waited on landed other than through its raise'));
   const conversations = path.join(sim.configDir, 'conversations');
-  const waiting = fs.existsSync(conversations) ? fs.readdirSync(conversations).filter((name) => fs.existsSync(path.join(conversations, name, PENDING))) : [];
+  const folders = fs.existsSync(conversations) ? fs.readdirSync(conversations) : [];
+  /** @type {Record<string, any>[]} */
+  const sealed = folders.map((name) => path.join(conversations, name, RAISE_SHOWN)).filter((file) => fs.existsSync(file)).flatMap((file) => Object.values(JSON.parse(fs.readFileSync(file, 'utf8'))));
+  assert.deepStrictEqual(ofType('raise').filter((e) => e.didnt_follow).map((e) => e.blocked_build).sort(),
+    sealed.filter((s) => !s.fact).flatMap((s) => Array(s.didnt_follow).fill(s.parks === null ? null : true)).sort(),
+    ctx('the trust log does not hold one raise not followed for each "I don\'t follow" the seals count, blocking the build exactly where its question waited in it'));
+  const waiting = folders.filter((name) => fs.existsSync(path.join(conversations, name, PENDING)));
   assert.deepStrictEqual(waiting, [], ctx('an event waits in a conversation, though no append failed'));
   const departures = new Set([...ofType('raise').filter((e) => !e.didnt_follow && e.answer !== e.sealed), ...ofType('reversal')].map((e) => e.entry));
   /** @type {Map<string, Record<string, any>[]>} */
