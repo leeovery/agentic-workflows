@@ -140,7 +140,7 @@ function screen(id, fact, { technical = false } = {}) {
  */
 function entryOf(id, question, own = {}) {
   return {
-    v: 3, id, event: 'decided', unit: UNIT, topic: 'note-window', phase: 'discussion', session: SESSION,
+    v: 1, id, event: 'decided', unit: UNIT, topic: 'note-window', phase: 'discussion', session: SESSION,
     by: 'person', who_moved_whom: 'none', answers: full(question), text: MONDAY.text, why: WHY, rules_out: [LATER.text],
     relies_on: [], product_wide: true, sealed: null, alternatives: [], evidence: [], kind: null, unchecked: true, given: 'own', cites: [], task: null, ...own,
   };
@@ -174,7 +174,7 @@ describe('the draw (16.S75, 16.3.8)', () => {
 
     const seal = seals()[res.raise];
     assert.deepStrictEqual(seal, {
-      v: 2, id: res.raise, menu: `raise — ${res.raise}`, place: { unit: UNIT, phase: 'discussion', topic: 'note-window' },
+      v: 1, id: res.raise, menu: `raise — ${res.raise}`, place: { unit: UNIT, phase: 'discussion', topic: 'note-window' },
       answers: full(asked.ships), relies_on: [full(asked.team)], replaces: null,
       call: FACT, fact: true, rows_judged: [], reason: ONLY_YOU_KNOW, at: seal.at, answered: null, didnt_follow: 0, parks: null,
     });

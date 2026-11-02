@@ -142,7 +142,7 @@ async function refusedDraw(args, call = CALL) {
  */
 function replacementOf(id, own = {}) {
   return {
-    v: 3, id, event: 'replaced', unit: UNIT, topic: 'note-window', phase: 'discussion', session: SESSION,
+    v: 1, id, event: 'replaced', unit: UNIT, topic: 'note-window', phase: 'discussion', session: SESSION,
     by: 'person', who_moved_whom: 'none', replaces: full(made.opens), reason: 'changed-mind', cause: null, drops: [KEPT], of: 'decision',
     answers: full(made.where), text: MAIN.text, why: WHY, rules_out: [LAST.text], relies_on: [], product_wide: false, sealed: MAIN.text,
     alternatives: [], evidence: [], kind: null, unchecked: true, given: 'own', cites: [], task: null, ...own,
@@ -152,7 +152,7 @@ function replacementOf(id, own = {}) {
 /** The person's keep of Claude's decision a raise lands, its line but the time. @param {string} id */
 function keepOf(id) {
   return {
-    v: 3, id, event: 'kept', unit: UNIT, topic: 'note-window', phase: 'discussion', session: SESSION,
+    v: 1, id, event: 'kept', unit: UNIT, topic: 'note-window', phase: 'discussion', session: SESSION,
     by: 'person', who_moved_whom: OVER, entry: full(made.opens), reason: 'changed-mind', cause: null, why: WHY, sealed: MAIN.text,
   };
 }
@@ -184,7 +184,7 @@ describe('the draw (16.5.7, 29.5.2)', () => {
 
     const sealed = /** @type {Record<string, any>} */ (seals())[res.raise];
     assert.deepStrictEqual(sealed, {
-      v: 2, id: res.raise, menu: `raise — ${res.raise}`, place: { unit: UNIT, phase: 'discussion', topic: 'note-window' },
+      v: 1, id: res.raise, menu: `raise — ${res.raise}`, place: { unit: UNIT, phase: 'discussion', topic: 'note-window' },
       answers: null, relies_on: [full(made.screens)],
       replaces: { entry: full(made.opens), reason: 'new-fact', cause: full(made.screens), keep: KEEP },
       call: CALL, fact: false, rows_judged: [], reason: EVERY_CALL_ASKS, at: sealed.at, answered: null, didnt_follow: 0, parks: null,

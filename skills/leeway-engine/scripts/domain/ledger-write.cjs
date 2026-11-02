@@ -29,7 +29,10 @@
 //   check of the ledger, in the raise's words. A raise in the build that
 //   asks parks its task instead (raise.cjs): its `parked` line is landed
 //   the same way, its place read again and its links checked under the
-//   lock, and its number the raise's to mint there.
+//   lock, and its number the raise's to mint there. While a question waits
+//   in the build, `decide` on it and `replace` of the decision it would
+//   replace are refused under the lock, naming its raise: the person
+//   answers it there alone (questions.cjs).
 // - What: the content comes as one JSON object on stdin, the links as flags,
 //   and the task an entry is made for, `--task {phase}.{n}`, a flag taken
 //   at the build's places alone (12.12.5), its entry's `task` null
@@ -163,6 +166,7 @@ const { refreshLedgerCopies } = require('./ledger-copies.cjs');
 const { derivedMove, movedRefusal, reverses } = require('./ledger-verdicts.cjs');
 const { heldAgainst } = require('./ledger-affected.cjs');
 const { newEvent, keepEvent, landKept } = require('./trust-log.cjs');
+const { checkUnparked } = require('./questions.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').IdFacts} IdFacts */
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
@@ -235,6 +239,12 @@ const { newEvent, keepEvent, landKept } = require('./trust-log.cjs');
  */
 
 /**
+ * What a ledger write checks under the lock of the entries its links name,
+ * resolved, beyond what every write of its kind checks.
+ * @typedef {(linked: Linked, read: Folded) => void} LinksCheck
+ */
+
+/**
  * The trust log's event a write logs, built from the entry it is about to
  * append, its id minted: the event's type and its own fields.
  * @typedef {(entry: Record<string, unknown>) => {type: string, fields: Record<string, unknown>}} Logs
@@ -248,10 +258,10 @@ const { newEvent, keepEvent, landKept } = require('./trust-log.cjs');
  * for a decision, whether it lands unchecked: true until the one-decision
  * check finds it holds one rule; the id it lands as, minted by its raise,
  * or null for one minted under the lock; what it checks of the ledger under
- * the lock before its links resolve, and what it sets from it there; the
- * trust log's event it logs, or null; and the ledger as it stood before the
- * lock, folded the first time a step reads it.
- * @typedef {{verb: string, said: string, write: Write, at: Address, session: string, given: Map<string, string[]>, kind: EntryKind|null, content: Record<string, unknown>, unchecked: boolean, id: string|null, checkRead: ReadCheck, mints: Mints, logs: Logs|null, before: () => Folded}} Request
+ * the lock before its links resolve, and after, and what it sets from it
+ * there; the trust log's event it logs, or null; and the ledger as it stood
+ * before the lock, folded the first time a step reads it.
+ * @typedef {{verb: string, said: string, write: Write, at: Address, session: string, given: Map<string, string[]>, kind: EntryKind|null, content: Record<string, unknown>, unchecked: boolean, id: string|null, checkRead: ReadCheck, checkLinks: LinksCheck, mints: Mints, logs: Logs|null, before: () => Folded}} Request
  */
 
 /**
@@ -343,6 +353,23 @@ function nothingToCheck() {}
 
 /** What a write sets of its line under the lock where nothing is minted. @type {Mints} */
 const NOTHING_MINTED = () => ({});
+
+/** What a write checks of its links where it checks nothing of its own. @type {LinksCheck} */
+function linksUnchecked() {}
+
+/**
+ * A decision on, or a replacement of, what a question waiting in the build
+ * is about, refused in the words of `said`: the person answers it through
+ * its raise alone (questions.cjs).
+ * @param {string} said
+ * @returns {LinksCheck}
+ */
+function unparked(said) {
+  return ({ answers, replaces }, read) => checkUnparked(read, {
+    answers: typeof answers === 'string' ? answers : null,
+    replaces: typeof replaces === 'string' ? replaces : null,
+  }, said);
+}
 
 /**
  * @param {string} event @param {Flag[]} flags
@@ -1079,6 +1106,7 @@ function requestOf(cwd, verb, args, stdin, warnings) {
     unchecked: true,
     id: null,
     checkRead: nothingToCheck,
+    checkLinks: write === WRITES.decide || write === WRITES.replace ? unparked(said) : linksUnchecked,
     mints: NOTHING_MINTED,
     logs: trustEventOf(kind, fields, reason, replaced),
     before,
@@ -1121,7 +1149,7 @@ function raisedRequest(cwd, { said, place, lands, linked, content, id, logs, che
     kind: replaced === null ? entryKind({ event: write.event }) : replaced.kind,
     content: contentFields(said, write, content, replaced),
     unchecked: true,
-    id, checkRead, mints, logs, before,
+    id, checkRead, checkLinks: linksUnchecked, mints, logs, before,
   };
 }
 
@@ -1137,6 +1165,7 @@ function eventOf(request, read) {
   request.checkRead(read);
   const linked = resolvedLinks(request, read);
   write.checkLinked(request.said, linked, read);
+  request.checkLinks(linked, read);
   checkUnmeasured(request, linked, read);
   return {
     event: write.event, unit: at.unit, topic: at.topic, phase: at.phase, session,

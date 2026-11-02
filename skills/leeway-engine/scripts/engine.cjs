@@ -1782,8 +1782,8 @@ function runRaiseShow(call, argv) {
 function runRaiseDrawParked(call, argv) {
   const { seal, redrawn, warnings } = drawParked(call.cwd, argv);
   const screen = raiseScreenOf(call.cwd, seal);
-  const { number, task } = /** @type {import('./domain/questions.cjs').Parks} */ (seal.parks);
-  respond(call, { raise: seal.id, question: numbered(number), parks: task, redrawn, ...(warnings.length > 0 ? { warnings } : {}) });
+  const { number, tasks } = /** @type {import('./domain/questions.cjs').Parks} */ (seal.parks);
+  respond(call, { raise: seal.id, question: numbered(number), parks: tasks, redrawn, ...(warnings.length > 0 ? { warnings } : {}) });
   respondSections(call, screen);
 }
 

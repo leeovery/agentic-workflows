@@ -214,12 +214,6 @@ describe('the events and their schemas', () => {
       [{ ...park, number: 0 }, /its number is not a whole number from 1/],
     ];
     for (const [value, message] of cases) assert.throws(() => validEvent(value), (err) => err instanceof LedgerLineError && message.test(err.message), `${JSON.stringify(value)} was not refused as ${message}`);
-    assert.throws(() => validEvent({ ...park, v: 2 }), /its event "parked" is none of version 2's/);
-  });
-
-  it('reads an entry before version 3 as made for no task', () => {
-    const { task: _task, ...before } = { v: 2, id: newId(), at: AT, ...question() };
-    assert.deepStrictEqual(validEvent(before), { ...before, task: null });
   });
 
   it('carries in a replacement the content of what it replaces: a question\'s, a finding\'s or a decision\'s', () => {

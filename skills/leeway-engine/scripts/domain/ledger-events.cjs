@@ -19,18 +19,17 @@
 //   finding is a question the review asked (5.3.9).
 // - found: a fact, how it is known, what it relies on, and whether it is
 //   product-wide (5.2.5). How it is known is said in words, `how`, and
-//   from version 2 by its kind, `known` (9.2.12): measured, or
-//   exploratory — measured in the conversation without an experiment —
-//   each by running something, whose command and result are recorded so
-//   the closing pass can run it again (9.9.7); documented; seen in a spike;
-//   or read. A finding written before version 2 says it in words alone, its
-//   kind null.
+//   by its kind, `known` (9.2.12): measured, or exploratory — measured in
+//   the conversation without an experiment — each by running something,
+//   whose command and result are recorded so the closing pass can run it
+//   again (9.9.7); documented; seen in a spike; or read; null where the
+//   words alone say it.
 // - decided: an answer to the question it closes (5.5.1): who, why, what it
 //   rules out and relies on, whether it is product-wide; beside a person's
 //   answer Claude's sealed one, beside Claude's own call its alternatives
 //   and evidence (5.1.1), the kind of question (16.11), and whether it
-//   landed unchecked by the one-decision check (16.19.8). From version 2,
-//   how the answer was given, `given` (9.2.14, 9.2.16, 21.6.5): its
+//   landed unchecked by the one-decision check (16.19.8); and how the
+//   answer was given, `given` (9.2.14, 9.2.16, 21.6.5): its
 //   maker's own; "your call", the person handing it to Claude; "don't
 //   care", the builder's; or carried over by the migration, its log not
 //   showing who made it. `by` stays the person or Claude, so the
@@ -59,7 +58,7 @@
 //   entry is affected (5.6.10), and against its cause it confirms the entry
 //   still holds (ledger-affected.cjs) — and a departure owed a verdict
 //   (16.10.1).
-// - asset (version 2): a file linked from an entry (9.10.5–9.10.7, 9.10.16):
+// - asset: a file linked from an entry (9.10.5–9.10.7, 9.10.16):
 //   the entry and the file's path from the state root; the status the link
 //   gives it, canonical or reference; and the lift, the path in the project
 //   the file was lifted into — each, or both, but never neither. The first
@@ -67,25 +66,25 @@
 //   holds. It is no entry and is never replaced: for an entry and a path,
 //   the latest live status stands, and apart from it the latest live lift,
 //   which no status after it undoes (ledger-fold.cjs).
-// - parked (version 3): a question the build needs the person for, parked
-//   with the task it holds (12.13.4; raise.cjs): what it is about — the
-//   question it answers, or the decision a replacement would replace with
-//   the reason and the cause — and what its answer relies on; the task it
-//   parks, as screens show it; its number in its unit, `Q{number}`, the
-//   engine's, minted as it parks and never reused (questions.cjs); and the
-//   call sealed, so it is raised as it was put whenever the person is ready,
-//   in whatever conversation: Claude's call as the raise took it, the rows
-//   the one-decision check judged one rule, and why it asks, the decision
+// - parked: a question the build needs the person for, parked with the
+//   task it holds (12.13.4; raise.cjs): what it is about — the question it
+//   answers, or the decision a replacement would replace with the reason
+//   and the cause — and what its answer relies on; the task it parks, as
+//   screens show it; its number in its unit, `Q{number}`, the engine's,
+//   minted as it parks and never reused, or, for a task joining a question
+//   already waiting, that question's (questions.cjs); and the call sealed,
+//   so it is raised as it was put whenever the person is ready, in whatever
+//   conversation: Claude's call as the raise took it, the rows the
+//   one-decision check judged one rule, and why it asks, the decision
 //   point's reason. It names no maker, is no entry and is never replaced:
 //   it waits while what it is about stands open (questions.cjs).
 //
-// From version 2 every entry may cite where it came from (21.6.3, 21.6.4):
-// sections of files — a topic's log, a spec — each by its path from the
-// state root and its heading. Every path is written plain, so one file is
-// one path: relative, no part of it empty, `.` or `..`. From version 3 every
-// entry names the task it was made for, where it was made in the build
-// (12.12.5), as screens show it, `{phase}.{n}`; null elsewhere, and on a
-// line before version 3.
+// Every entry may cite where it came from (21.6.3, 21.6.4): sections of
+// files — a topic's log, a spec — each by its path from the state root and
+// its heading. Every path is written plain, so one file is one path:
+// relative, no part of it empty, `.` or `..`. Every entry names the task it
+// was made for, where it was made in the build (12.12.5), as screens show
+// it, `{phase}.{n}`; null where it was made for none.
 //
 // The engine assigns every link; it constrains links and identity, never
 // content (5.1.8). Lines are written with their fields in the schema's
@@ -129,18 +128,13 @@ const CODE_PATH = type('a path in the project from its root, written plain: no p
 const CITE = type('a citation, {path, section}: a path from the state root and a heading', (v) => isObject(v)
   && Object.keys(v).length === 2 && PATH.test(v.path) && TEXT.test(v.section));
 
-/** What version 2 added, and the default a line before it takes. @param {unknown} value */
-function sinceTwo(value) {
-  return { version: 2, default: value };
-}
-
 /** What an entry cites (21.6.3). */
-const CITES = field('cites', listOf(CITE), sinceTwo([]));
+const CITES = field('cites', listOf(CITE));
 
 const TASK = type('a task, as screens show it: {phase}.{n}', isShownTask);
 
 /** The task an entry was made for, in the build (12.12.5). */
-const FOR_TASK = field('task', nullable(TASK), { version: 3, default: null });
+const FOR_TASK = field('task', nullable(TASK));
 
 /** What a raise's row holds (raise.cjs). */
 const ROW_FIELDS = Object.freeze({ key: KEY, name: LINE, text: LINE, notice: LINE });
@@ -197,9 +191,9 @@ const CONTENT = {
     field('how', TEXT),
     field('relies_on', listOf(ID)),
     field('product_wide', FLAG),
-    field('known', nullable(oneOf(...KNOWN)), sinceTwo(null)),
-    field('command', nullable(TEXT), sinceTwo(null)),
-    field('result', nullable(TEXT), sinceTwo(null)),
+    field('known', nullable(oneOf(...KNOWN))),
+    field('command', nullable(TEXT)),
+    field('result', nullable(TEXT)),
     CITES,
     FOR_TASK,
   ],
@@ -215,7 +209,7 @@ const CONTENT = {
     field('evidence', listOf(TEXT)),
     field('kind', nullable(oneOf(...KINDS))),
     field('unchecked', FLAG),
-    field('given', oneOf(...GIVEN), sinceTwo('own')),
+    field('given', oneOf(...GIVEN)),
     CITES,
     FOR_TASK,
   ],
@@ -238,7 +232,7 @@ function parkHolds({ question, replaces, reason, cause, call }) {
 
 /** @type {Schema} */
 const SCHEMA = {
-  version: 3,
+  version: 1,
   events: {
     asked: event([...made([...PEOPLE, 'review']), ...CONTENT.question]),
     found: event([...made(PEOPLE), ...CONTENT.finding]),
@@ -265,7 +259,7 @@ const SCHEMA = {
     ]),
     asset: event(
       [field('entry', ID), field('path', PATH), field('status', nullable(oneOf(...ASSET_STATUSES))), field('into', nullable(CODE_PATH))],
-      2,
+      1,
       ({ status, into }) => (status === null && into === null ? 'an asset link gives a status, a lift into the project, or both' : null),
     ),
     parked: event([
@@ -279,7 +273,7 @@ const SCHEMA = {
       field('call', shaped(`a call, {${Object.keys(CALL_FIELDS).join(', ')}}`, CALL_FIELDS)),
       field('rows_judged', listOf(KEY)),
       field('why_asking', LINE),
-    ], 3, parkHolds),
+    ], 1, parkHolds),
   },
 };
 

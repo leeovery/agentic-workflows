@@ -247,7 +247,7 @@ describe('the seal (P1, P6)', () => {
     assert.deepStrictEqual(Object.keys(seals()), [res.raise]);
     assert.ok(!Number.isNaN(Date.parse(sealed.at)), `when it was shown is no time: ${sealed.at}`);
     assert.deepStrictEqual(sealed, {
-      v: 2,
+      v: 1,
       id: res.raise,
       menu: `raise — ${res.raise}`,
       place: { unit: 'fumi', phase: 'discussion', topic: 'note-window' },
@@ -298,7 +298,7 @@ describe('the seal (P1, P6)', () => {
 
   it('a seal of another version is never matched, nor drawn by raise show, and stays as written', async () => {
     const first = await draw();
-    const newer = { ...seals()[first.res.raise], v: 3 };
+    const newer = { ...seals()[first.res.raise], v: 2 };
     fs.writeFileSync(inFolder('raise-shown.json'), JSON.stringify({ [first.res.raise]: newer }));
 
     const again = await draw();

@@ -82,7 +82,7 @@ describe('a topic\'s record carried (21.6, 21.10.9)', () => {
     const res = carry(LICENSING, [QUESTION, DECISION, FINDING]);
     const entries = ledgerEntries(statePath(dir));
     const [q, d, , f] = entries;
-    const tags = { v: 3, unit: 'fumi', topic: 'licensing', phase: 'discussion', session: SESSION.CLAUDE_CODE_SESSION_ID };
+    const tags = { v: 1, unit: 'fumi', topic: 'licensing', phase: 'discussion', session: SESSION.CLAUDE_CODE_SESSION_ID };
 
     assert.deepStrictEqual(res, { ok: true, carried: 3, ids: { q1: q.id.slice(0, res.ids.q1.length), d1: d.id.slice(0, res.ids.d1.length), f1: f.id.slice(0, res.ids.f1.length) }, committed: null, note: 'held for the migration\'s commit' });
     assert.deepStrictEqual(lines(), [

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// What an entry says of where it came from, from the ledger's version 2
+// What an entry says of where it came from
 // (leeway-engine/scripts/domain/ledger-events.cjs, written by
 // domain/ledger-write.cjs, folded by domain/ledger-fold.cjs and read by
 // domain/ledger-read.cjs): who decided a decision — the person, Claude, the
@@ -9,8 +9,7 @@
 // unrecorded — how a finding is known, a measurement with the command run
 // and its result, the sections each entry cites, and the files linked from
 // an entry, each with its latest live status and, apart from it, its lift
-// into the project; and a ledger version 1 wrote, read through every
-// projection at version 2's defaults.
+// into the project.
 //
 // Layer: verb. World: a project with its state worktree from the fixture
 // library, the work unit's manifest written there; the asset links appended
@@ -22,14 +21,13 @@ require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
-const fs = require('fs');
 const path = require('path');
-const { ok, refuses, stateGit, statePath, layout, keywordOnlyKnowledge, cleanupFixture } = require('./engine-harness.cjs');
+const { ok, stateGit, statePath, layout, cleanupFixture } = require('./engine-harness.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 
-const { UNIT, SESSION_ID, MADE, NOTE, SPACE, NOTE_COPY, ids, ledgerHelpers, ledgerReadHelpers, ledgerWriteHelpers, ledgerWorld } = require('./ledger-world.cjs');
+const { UNIT, SESSION_ID, MADE, NOTE, ids, ledgerHelpers, ledgerReadHelpers, ledgerWriteHelpers, ledgerWorld } = require('./ledger-world.cjs');
 
 const PERSON = Object.freeze({ by: 'person', who_moved_whom: 'none' });
 const CITES = Object.freeze([{ path: `${UNIT}/discussion/note-window.md`, section: 'Session 1 — 2026-10-30' }]);
@@ -186,61 +184,5 @@ describe('the files an entry links (9.10.5–9.10.7, 9.10.16)', () => {
       assert.throws(() => link(decided, 'fumi/assets/a.png', { into: at }), { message: 'its into is not a path in the project from its root, written plain: no part of it empty, . or .., or null' }, at);
     }
     assert.deepStrictEqual(rawLines(), before);
-  });
-});
-
-describe('a ledger version 1 wrote (5.7.2)', () => {
-  /** Every projection of the ledger in `at`, and the note window's copy. @param {string} at */
-  function projections(at) {
-    const reading = (/** @type {string[]} */ ...args) => ok(at, args);
-    return {
-      record: reading('ledger', 'record', UNIT, 'note-window'),
-      unit: reading('ledger', 'record', UNIT),
-      map: reading('ledger', 'map', UNIT, 'note-window'),
-      product: reading('ledger', 'product'),
-      since: reading('ledger', 'since', UNIT),
-      affected: reading('ledger', 'affected', UNIT),
-      verdicts: reading('verdict', 'queue'),
-    };
-  }
-
-  it('reads every projection as version 2 would but a finding\'s kind, unsaid — no citation, the command and result none, each decision its maker\'s own — and renders it so; a version-1 line holding a field version 2 added is broken, and an asset line', () => {
-    const written = ledgerWorld('ledger-provenance-v2-');
-    try {
-      keywordOnlyKnowledge(written);
-      const there = ledgerReadHelpers(() => written);
-      const question = there.ask(NOTE, 'Is a note a window?');
-      const call = there.decide(NOTE, question, 'A panel.', [], { product_wide: true });
-      there.find(NOTE, 'Panels float above every Space.', [], { how: 'the person said so', known: 'read' });
-      there.ask(SPACE, 'Does a panel follow the person?', ['--relies-on', call]);
-      there.decide(NOTE, there.ask(NOTE, 'Does a note snap?'), 'Notes snap to the grid.');
-      there.write('replace', NOTE, ['--replaces', call, '--reason', 'changed-mind'], { by: 'person', drops: ['a panel'], text: 'A document window.', why: 'Notes are documents.' });
-      const expected = JSON.parse(JSON.stringify(projections(written)), (key, value) => (key === 'known' ? null : value));
-      const copied = fs.readFileSync(statePath(written, NOTE_COPY), 'utf8').replace('How it is known: read, the person said so', 'How it is known: the person said so');
-      const v1 = there.rawLines().map((raw) => {
-        const { given: _given, known: _known, command: _command, result: _result, cites: _cites, task: _task, ...fields } = JSON.parse(raw);
-        return `${JSON.stringify({ ...fields, v: 1 })}\n`;
-      });
-      keywordOnlyKnowledge(dir);
-      fs.writeFileSync(statePath(dir, layout.ledger), v1.join(''));
-      stateGit(dir, ['add', layout.ledger]);
-      stateGit(dir, ['commit', '-q', '-m', 'state: the ledger version 1 wrote']);
-
-      assert.deepStrictEqual(projections(dir), expected);
-      ask(SPACE, 'Does a panel take focus?');
-      assert.strictEqual(fs.readFileSync(statePath(dir, NOTE_COPY), 'utf8'), copied);
-    } finally {
-      cleanupFixture(written);
-    }
-    const lines = rawLines().map((raw) => `${raw}\n`);
-    const decision = JSON.parse(/** @type {string} */ (lines.find((raw) => JSON.parse(raw).event === 'decided')));
-    const asset = { v: 1, id: 'z'.repeat(21), event: 'asset', unit: UNIT, topic: 'note-window', phase: 'discussion', session: SESSION_ID, at: decision.at, entry: decision.id, path: `${UNIT}/assets/note-mock.png`, status: 'canonical', into: null };
-    /** The refusal a read gives with `tail` appended, uncommitted. @param {Record<string, unknown>} tail */
-    const brokenBy = (tail) => {
-      fs.writeFileSync(statePath(dir, layout.ledger), [...lines, `${JSON.stringify(tail)}\n`].join(''));
-      return refuses(dir, ['ledger', 'record', UNIT, 'note-window']).error;
-    };
-    assert.match(brokenBy({ ...decision, id: 'z'.repeat(21), given: 'own' }), new RegExp(`^line ${lines.length + 1} of the ledger is no ledger entry: the decided event has no field given at version 1`));
-    assert.match(brokenBy(asset), new RegExp(`^line ${lines.length + 1} of the ledger is no ledger entry: its event "asset" is none of version 1's`));
   });
 });

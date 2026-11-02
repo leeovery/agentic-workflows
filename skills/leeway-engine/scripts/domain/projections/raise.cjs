@@ -3,8 +3,8 @@
 // ---------------------------------------------------------------------------
 // Domain ring: a raise's screen (16.9.2) — one MENU, drawn from the raise's
 // seal alone (raise.cjs), read cold and product first: where the question
-// stands — for a question waiting in the build, its number and the task it
-// parks besides (16.9.5) — the question, Claude's lean, what the person
+// stands — for a question waiting in the build, its number and the tasks it
+// parks besides (16.9.5, 12.12.5) — the question, Claude's lean, what the person
 // would notice with each row, why it asks, and, with the toggle on, the
 // mechanism; then the
 // rows, the lean recommended, the toggle, "I don't follow" and a comment.
@@ -23,7 +23,7 @@ const { section, menu, cmdOption, promptOption, MENU_INSTRUCTION } = require('./
 const { escapeMarkdown } = require('./worklist.cjs');
 const { titlecase } = require('../conventions.cjs');
 const { titled } = require('../derivations.cjs');
-const { numbered } = require('../questions.cjs');
+const { numbered, parkedTasks } = require('../questions.cjs');
 
 /** @typedef {import('../raise.cjs').Seal} Seal */
 /** @typedef {import('./surfaces.cjs').Next} Next */
@@ -67,7 +67,8 @@ function asking({ fact }) {
 /**
  * Where the question stands: its unit, and its topic where it has one of its
  * own, by the name it goes by; a question waiting in the build, by its
- * number before them and the task it parks after.
+ * number before them and the tasks it parks after: the first, and how
+ * many more (12.12.5).
  * @param {Seal} seal @param {Record<string, string>} titles
  */
 function header({ place: { unit, topic }, parks }, titles) {
@@ -75,7 +76,7 @@ function header({ place: { unit, topic }, parks }, titles) {
     ...(parks === null ? [] : [numbered(parks.number)]),
     titlecase(unit),
     ...(topic === null || topic === unit ? [] : [titled(titles, topic)]),
-    ...(parks === null ? [] : [`parks task ${parks.task}`]),
+    ...(parks === null ? [] : [`parks ${parkedTasks(parks.tasks)}`]),
   ].join(' · ');
 }
 
