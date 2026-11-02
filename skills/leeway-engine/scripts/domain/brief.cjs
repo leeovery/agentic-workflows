@@ -14,10 +14,11 @@
 // other none; a unit's record is drawn for the unit of a task's, a phase's
 // or a topic's brief alike. A role takes each flag its records name, every
 // one of them but a flag a record holds optional, once, and no other:
-// `--base <branch>`, a phase review's `--head <commit>`, `--question <id>`,
-// `--agent <id>`, `--kind <kind>`, a read dive's `--path <file>`, the
-// migration's `--directive <id>` and `--topic <unit.phase.topic>`; a flag
-// carries a name, an id or a path, so no free text reaches a brief (6.5.6).
+// `--base <branch>`, a phase review's `--head <commit>`, a reviewer's
+// `--letter <a|b>`, `--question <id>`, `--agent <id>`, `--kind <kind>`, a
+// read dive's `--path <file>`, the migration's `--directive <id>` and
+// `--topic <unit.phase.topic>`; a flag carries a name, an id or a path, so
+// no free text reaches a brief (6.5.6).
 //
 // A template is markdown in the engine's content (`content/briefs/{role}.md`,
 // 6.5.2): the template's own words, and a slot, `{{record}}` alone on its

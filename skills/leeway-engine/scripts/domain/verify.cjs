@@ -60,9 +60,12 @@
 //   whatever its exit code says — many exit failing where a mutant survives.
 //   A survivor's path is read as the project's: posix-normalised, an
 //   absolute one made relative to the project's root. The verb answers those
-//   on a line the phase changed (15.6.6). It writes nothing. `phaseSurvivors`
-//   answers the same for a phase review's brief (brief-records.cjs), null
-//   where the setup names no tool.
+//   on a line the phase changed (15.6.6). It writes nothing of the state or
+//   the code: what survived is left in the unit's cache, `.cache/{unit}/
+//   build/mutants/phase-{N}/{head}.json`, keyed by the project's commit it
+//   ran at, where the phase review's brief reads it for its HEAD
+//   (`cachedSurvivors`, brief-records.cjs), so the tool runs once a review,
+//   outside any lock, from the checkout holding the phase's commits.
 //
 // Each refuses, opening on its command and recording nothing: a unit the
 // project lacks; no verify setup recorded, naming `verify setup`, for the
@@ -88,10 +91,10 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { git, tryGit, literally, parentOrEmptyTree, diffPatch, hasCommits } = require('../kernel/git.cjs');
-const { isObject } = require('../kernel/manifest-io.cjs');
+const { isObject, writeJsonAtomic } = require('../kernel/manifest-io.cjs');
 const { readProjectManifest, writeProjectManifestAtomic, withProjectLock } = require('../kernel/manifest.cjs');
 const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
-const { stateRoot, STATE_DIR_NAME } = require('../kernel/state-root.cjs');
+const { stateRoot, statePath, STATE_DIR_NAME } = require('../kernel/state-root.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { projectRepos, projectPath, repoName } = require('../kernel/repos.cjs');
 const { handedSession } = require('../kernel/process.cjs');
@@ -596,7 +599,8 @@ function onChangedLines(root, changed, survivors) {
 
 /**
  * `verify mutants <unit> <N>`: the setup's mutation tool run over the lines
- * phase N changed, and what survived on them. Writes nothing.
+ * phase N changed, and what survived on them, left in the unit's cache for
+ * the HEAD it ran at.
  * @param {string} cwd @param {string} unit @param {string} given
  * @returns {Record<string, unknown>}
  */
@@ -605,32 +609,44 @@ function verifyMutants(cwd, unit, given) {
   const phases = cutPhases(manifest).length;
   const phase = /^[1-9][0-9]*$/.test(given) ? Number(given) : 0;
   if (phase < 1 || phase > phases) throw new Error(`"${given}" is no phase of ${unit}'s cut — it has ${phases === 1 ? '1 phase' : `${phases} phases`}`);
-  const survivors = phaseSurvivors(cwd, unit, phase);
-  if (survivors === null) {
-    throw new Error('the verify setup names no mutation tool — where the language has none, each reviewer breaks the riskiest line of a criterion\'s code in a scratch worktree (15.6.5)');
-  }
-  return { unit, phase, survivors };
-}
-
-/**
- * What survived the setup's mutation tool on the lines phase `phase` of the
- * unit changed, as `verify mutants` answers it; null where the setup names
- * no tool.
- * @param {string} cwd @param {string} unit @param {number} phase
- * @returns {Survivor[]|null}
- */
-function phaseSurvivors(cwd, unit, phase) {
   const { mutation } = recordedSetup(cwd, unit);
-  if (mutation === undefined) return null;
+  if (mutation === undefined) throw new Error(NO_TOOL);
   const root = codeRoot(cwd);
   const changed = phaseChanges(root, unit, phase);
   if (changed.length === 0) throw new Error(`no commit of phase ${phase} of ${unit} changes a line in the checkout at ${root} — run it from the checkout holding the phase's work`);
-  const survivors = inRunFolder((run) => {
+  const ran = inRunFolder((run) => {
     const listing = path.join(run, 'changed.json');
     fs.writeFileSync(listing, `${JSON.stringify(changed, null, 2)}\n`);
     return survivorsIn(run, runShellCommand(root, mutation, { LEEWAY_RUN: run, LEEWAY_CHANGED: listing }));
   });
-  return onChangedLines(root, changed, survivors);
+  const survivors = onChangedLines(root, changed, ran);
+  const head = git(root, ['rev-parse', 'HEAD']).trim();
+  const cached = statePath(cwd, mutantsRel(unit, phase, head));
+  fs.mkdirSync(path.dirname(cached), { recursive: true });
+  writeJsonAtomic(cached, { head, survivors });
+  return { unit, phase, survivors };
+}
+
+const NO_TOOL = 'the verify setup names no mutation tool — where the language has none, each reviewer breaks the riskiest line of a criterion\'s code in a scratch worktree (15.6.5)';
+
+/** Where `verify mutants` leaves what survived for phase `phase` at the project's commit `head`, state-relative, in the unit's cache. @param {string} unit @param {number} phase @param {string} head */
+const mutantsRel = (unit, phase, head) => `.cache/${unit}/build/mutants/phase-${phase}/${head}.json`;
+
+/**
+ * What survived the setup's mutation tool on phase `phase` of the unit at
+ * the project's commit `head`, as `verify mutants` left it; null where the
+ * setup names no tool. Refused where no setup is recorded, or nothing is
+ * left for that head.
+ * @param {string} cwd @param {string} unit @param {number} phase @param {string} head the commit, in full
+ * @returns {Survivor[]|null}
+ */
+function cachedSurvivors(cwd, unit, phase, head) {
+  if (recordedSetup(cwd, unit).mutation === undefined) return null;
+  const file = statePath(cwd, mutantsRel(unit, phase, head));
+  if (!fs.existsSync(file)) {
+    throw new Error(`the mutation tool has not run over phase ${phase} of ${unit} at ${head} — engine verify mutants ${unit} ${phase}, run from the checkout at that HEAD, runs it`);
+  }
+  return JSON.parse(fs.readFileSync(file, 'utf8')).survivors;
 }
 
 /**
@@ -650,4 +666,4 @@ function runVerifyVerb(cwd, argv, opts) {
   throw usage();
 }
 
-module.exports = { VERIFY_USAGE, runVerifyVerb, phaseSurvivors };
+module.exports = { VERIFY_USAGE, runVerifyVerb, cachedSurvivors };

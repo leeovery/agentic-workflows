@@ -20,10 +20,15 @@
 // 13.S12). The phase review's brief, the reviewer's second template — the
 // phase, its sections, its tasks' criteria, what it relies on, the decided
 // calls, its range, its scenarios' runs read at the phase's HEAD (15.S5,
-// 15.S18), what survived the mutation tool on the lines the phase changed
+// 15.S18), what `verify mutants` left of the tool's survivors for that HEAD
 // (15.S9), the linters (12.11.2) — where no tool exists, breaking the
 // riskiest line in a scratch worktree (15.S10), and the task reviewer's
-// stance, call, report and comment rules word for word (13.S9). The
+// stance, call, report and comment rules word for word (13.S9). Where a
+// reviewer's report goes (13.5.9): a task's reviewer's file of the round
+// under review, read from the reports on disk so it holds across a
+// `/clear`, a phase's reviewer's beside its consolidation, each by the
+// reviewer's letter, the report written there and the final message only
+// the verdict and the nits. The
 // builder's own call among the decided calls its reviewers read (13.S17);
 // the builder's template laying its task out with `task worktree` first and
 // committing only there (12.7.10), its ask rule and its answer to reviewers
@@ -165,6 +170,14 @@ if [ -f "$steer" ]; then cp "$steer" "$LEEWAY_RUN/survivors.json"; else echo '[]
 
 /** The survivors the mutation tool answers, steered. @param {unknown[]} survivors */
 const surviving = (survivors) => fs.writeFileSync(path.join(dir, '.git', 'mutants.json'), JSON.stringify(survivors));
+
+/** The project's verify setup recorded again naming no mutation tool. */
+function withoutMutationTool() {
+  const project = JSON.parse(readState(dir, layout.projectManifest));
+  const { mutation: _mutation, ...without } = project.environment.verify;
+  writeState(dir, layout.projectManifest, JSON.stringify({ ...project, environment: { ...project.environment, verify: without } }, null, 2));
+  commitAll(dir, 'no mutation tool');
+}
 
 /** The scenarios' runs the world records, each `[scenario, verdict, the task whose branch it ran at, when]`, in that order. */
 const RUNS = Object.freeze([
@@ -385,10 +398,14 @@ describe('the consolidation agent\'s brief (12.10.3, 13.8.3, 12.S23, 13.S12)', (
 describe('the phase review\'s brief, the reviewer\'s second template (12.11.2, 6.5.2)', () => {
   useWorld();
 
-  /** The phase review's brief for phase `phase`, issued from the checkout at `tip`, its runs read there. @param {number} phase @param {string} tip */
-  function reviewedAt(phase, tip) {
+  /**
+   * The phase review's brief for phase `phase` by reviewer `letter`, its runs read at `tip` and the mutation tool run over the phase from the checkout there first.
+   * @param {number} phase @param {string} tip @param {string} [letter]
+   */
+  function reviewedAt(phase, tip, letter = 'a') {
     git(dir, ['checkout', '-q', tip]);
-    return issued(['phase-review', UNIT, String(phase), '--base', 'main', '--head', tip]);
+    ok(dir, ['verify', 'mutants', UNIT, String(phase)]);
+    return issued(['phase-review', UNIT, String(phase), '--base', 'main', '--head', tip, '--letter', letter]);
   }
 
   /** A run of RUNS drawn as a brief draws it. @param {number} at its place in RUNS */
@@ -413,33 +430,37 @@ describe('the phase review\'s brief, the reviewer\'s second template (12.11.2, 6
       'recorded-runs': ['- 2.S1: proven', runDrawn(1), runDrawn(2)].join('\n'),
       mutants: 'None survived.',
       linters: '- eslint: npx eslint .',
+      'phase-report-to': pathDrawn('pay/build/phases/phase-2/review-a.md'),
     })}`);
   });
 
   it('15.S5, 15.S18: the runs are read at the phase\'s HEAD — a run at a commit beyond it never counts, so a scenario whose only run there failed reads not proven, one with none not proven, and one only skipped named, not run', () => {
-    git(dir, ['checkout', '-q', branchOf(2, 1)]);
-    const second = issued(['phase-review', UNIT, '2', '--base', 'main', '--head', branchOf(1, 4)]);
-    const first = reviewedAt(1, branchOf(1, 4));
+    withoutMutationTool();
+    const second = issued(['phase-review', UNIT, '2', '--base', 'main', '--head', branchOf(1, 4), '--letter', 'a']);
+    const first = issued(['phase-review', UNIT, '1', '--base', 'main', '--head', branchOf(1, 4), '--letter', 'a']);
 
     assert.ok(second.brief.includes(`# Its scenarios' runs, at the phase's HEAD\n\n- 2.S1: not proven\n${runDrawn(1)}\n\n#`), second.brief);
     assert.ok(first.brief.includes(`# Its scenarios' runs, at the phase's HEAD\n\n- 1.S1: not proven\n- 1.S2: named, not run\n${runDrawn(0)}\n\n#`), first.brief);
   });
 
-  it('15.S9: what the mutation tool left alive on the lines the phase changed reaches the pair, and none of what it left on lines the phase never changed', () => {
+  it('15.S9: what `verify mutants` left alive on the lines the phase changed, at the phase\'s HEAD, reaches the pair — none of what it left on lines the phase never changed, nor what it left at another HEAD — and the brief never runs the tool', () => {
+    git(dir, ['checkout', '-q', branchOf(1, 2)]);
+    surviving([{ path: 'src/card.js', line: 1, mutant: 'left at another HEAD' }]);
+    ok(dir, ['verify', 'mutants', UNIT, '1']);
     surviving([{ path: 'src/check.js', line: 1, mutant: '1 → 0' }, { path: 'src/card.js', line: 2, mutant: 'a line the phase never wrote' }]);
+    git(dir, ['checkout', '-q', branchOf(1, 4)]);
+    ok(dir, ['verify', 'mutants', UNIT, '1']);
+    surviving([{ path: 'src/check.js', line: 1, mutant: 'the brief ran the tool' }]);
 
-    const { brief } = reviewedAt(1, branchOf(1, 4));
+    const { brief } = issued(['phase-review', UNIT, '1', '--base', 'main', '--head', branchOf(1, 4), '--letter', 'a']);
 
     assert.ok(brief.includes('# What survived the mutation tool\n\n- src/check.js:1 — 1 → 0\n\n#'), brief);
   });
 
   it('15.S10: a setup naming no mutation tool says so, and the template has each reviewer break the riskiest line instead', () => {
-    const project = JSON.parse(readState(dir, layout.projectManifest));
-    const { mutation: _mutation, ...without } = project.environment.verify;
-    writeState(dir, layout.projectManifest, JSON.stringify({ ...project, environment: { ...project.environment, verify: without } }, null, 2));
-    commitAll(dir, 'no mutation tool');
+    withoutMutationTool();
 
-    const { brief } = reviewedAt(2, branchOf(2, 1));
+    const { brief } = issued(['phase-review', UNIT, '2', '--base', 'main', '--head', branchOf(2, 1), '--letter', 'a']);
 
     assert.ok(brief.includes('# What survived the mutation tool\n\nThe verify setup names no mutation tool.\n\n#'), brief);
   });
@@ -452,12 +473,70 @@ describe('the phase review\'s brief, the reviewer\'s second template (12.11.2, 6
   });
 });
 
+describe('where a reviewer\'s report goes (13.5.9)', () => {
+  useWorld();
+
+  const REPORT = '## Findings\n\n- bug: The receipt is never sent.\n  Scenario: A customer pays and waits for a receipt.\n\nVerdict: fail\n';
+  const PASSED = '## Findings\n\nNone.\n\nVerdict: pass\n';
+
+  /** The reviewer's brief for task 1.2 by reviewer `letter`, in the conversation `session` names. @param {string} letter @param {string} [session] */
+  const reviewing = (letter, session = SESSION_ID) => ok(dir, ['brief', 'reviewer', UNIT, '1.2', '--base', 'main', '--letter', letter], { env: { CLAUDE_CODE_SESSION_ID: session } });
+
+  /** The report place a brief draws. @param {{id: string}} res @param {string} [session] */
+  const placeIn = (res, session = SESSION_ID) => /# Where your report goes\n\n(.*)\n/.exec(fs.readFileSync(briefPath(session, res.id), 'utf8'))?.[1];
+
+  /** A round's report written by reviewer `letter`. @param {number} round @param {string} letter @param {string} [text] */
+  const reported = (round, letter, text = REPORT) => writeState(dir, `pay/build/tasks/1.2/round-${round}-${letter}.md`, text);
+
+  it('each reviewer of a task\'s first round writes to its own file of round 1', () => {
+    assert.strictEqual(placeIn(reviewing('a')), pathDrawn('pay/build/tasks/1.2/round-1-a.md'));
+    assert.strictEqual(placeIn(reviewing('b')), pathDrawn('pay/build/tasks/1.2/round-1-b.md'));
+  });
+
+  it('the round is read from the reports on disk: the round one reviewer has reported holds for the other after a /clear, and a round both reported is followed by the next', () => {
+    reported(1, 'a');
+    const cleared = 'brief-build-after-clear';
+    try {
+      assert.strictEqual(placeIn(reviewing('b', cleared), cleared), pathDrawn('pay/build/tasks/1.2/round-1-b.md'));
+    } finally {
+      fs.rmSync(conversationDir(cleared), { recursive: true, force: true });
+    }
+    reported(1, 'b');
+    assert.strictEqual(placeIn(reviewing('a')), pathDrawn('pay/build/tasks/1.2/round-2-a.md'));
+  });
+
+  it('refused: a letter none of the reviewers\', a report already written for its round, and a task whose last round passed or was settled', () => {
+    refusedUnissued(['reviewer', UNIT, '1.2', '--base', 'main', '--letter', 'c'], /^c is no reviewer's letter — the reviewers are a and b$/);
+    reported(1, 'a');
+    refusedUnissued(['reviewer', UNIT, '1.2', '--base', 'main', '--letter', 'a'], /^pay\/build\/tasks\/1\.2\/round-1-a\.md is written already — that reviewer's report of the round is in$/);
+    reported(1, 'b');
+    writeState(dir, 'pay/build/tasks/1.2/round-1-settled.md', 'Settled.\n');
+    refusedUnissued(['reviewer', UNIT, '1.2', '--base', 'main', '--letter', 'a'], /^round 1 of task 1\.2 of pay was settled — its review is over$/);
+    reported(2, 'a', PASSED);
+    reported(2, 'b', PASSED);
+    refusedUnissued(['reviewer', UNIT, '1.2', '--base', 'main', '--letter', 'a'], /^round 2 of task 1\.2 of pay passed — its review is over$/);
+  });
+
+  it('a phase\'s reviewer writes to its letter\'s file beside the consolidation, refused once written', () => {
+    withoutMutationTool();
+    const phaseReview = ['phase-review', UNIT, '1', '--base', 'main', '--head', branchOf(1, 4), '--letter', 'b'];
+    const first = 'brief-build-phase-review';
+    try {
+      assert.strictEqual(placeIn(ok(dir, ['brief', ...phaseReview], { env: { CLAUDE_CODE_SESSION_ID: first } }), first), pathDrawn('pay/build/phases/phase-1/review-b.md'));
+    } finally {
+      fs.rmSync(conversationDir(first), { recursive: true, force: true });
+    }
+    writeState(dir, 'pay/build/phases/phase-1/review-b.md', REPORT);
+    refusedUnissued(phaseReview, /^pay\/build\/phases\/phase-1\/review-b\.md is written already — that reviewer's report of the round is in$/);
+  });
+});
+
 describe('the builder\'s calls (13.11.10)', () => {
   useWorld();
 
   it('13.S17: a call the builder took, recorded in the build, is among the decided calls the builder\'s brief and its reviewers\' carry', () => {
     const builder = issued(['builder', UNIT, '1.2']).brief;
-    const reviewer = issued(['reviewer', UNIT, '1.2', '--base', 'main']).brief;
+    const reviewer = issued(['reviewer', UNIT, '1.2', '--base', 'main', '--letter', 'a']).brief;
 
     for (const brief of [builder, reviewer]) assert.ok(brief.includes(`# The decided calls\n\n${decidedDrawn()}\n`), brief);
   });
@@ -513,6 +592,14 @@ describe('the build\'s templates', () => {
     ]) assert.ok(words.includes(line), line);
   });
 
+  it('13.5.9: each reviewer\'s template has the report written whole to its file and the final message carry only the nits and the verdict', () => {
+    for (const [role, slot] of [['reviewer', 'round-report-to'], ['phase-review', 'phase-report-to']]) {
+      const words = template(role);
+      assert.ok(words.includes(`# Where your report goes\n\n{{${slot}}}\n`), role);
+      assert.ok(words.includes('Write the whole report to the file under "Where your report goes". Your final message then holds only the report\'s nits, each as the report words it, and its verdict line, and nothing else.'), role);
+    }
+  });
+
   it('12.7.10: the builder lays its task out with task worktree before anything else, and builds, runs and commits only there', () => {
     const words = template('builder');
 
@@ -537,7 +624,7 @@ describe('the refusals, nothing written and no brief stored', () => {
   useWorld();
 
   it('arguments of another shape, a unit the project lacks, a unit whose build has not begun, and a phase its cut lacks', () => {
-    for (const args of [['task-writer', UNIT], ['task-writer', UNIT, '1', 'more'], ['consolidation', UNIT, '1'], ['phase-review', UNIT, '--base', 'main', '--head', 'main'], ['phase-review', UNIT, '1', '--base', 'main']]) refusedUnissued(args, /^Usage: /);
+    for (const args of [['task-writer', UNIT], ['task-writer', UNIT, '1', 'more'], ['consolidation', UNIT, '1'], ['phase-review', UNIT, '--base', 'main', '--head', 'main', '--letter', 'a'], ['phase-review', UNIT, '1', '--base', 'main', '--letter', 'a']]) refusedUnissued(args, /^Usage: /);
     refusedUnissued(['task-writer', UNIT, 'one'], /^task-id: "one" is not a phase/);
     refusedUnissued(['task-writer', 'nope', '1'], /^Work unit "nope" not found$/);
     refusedUnissued(['task-writer', 'draft', '1'], /^brief: draft's build has not begun — a phase is briefed once ready to build's yes begins it$/);
@@ -545,7 +632,7 @@ describe('the refusals, nothing written and no brief stored', () => {
   });
 
   it('a phase not written, whose tasks and range the consolidation and the phase review draw', () => {
-    for (const args of [['consolidation', UNIT, '3', '--base', 'main'], ['phase-review', UNIT, '3', '--base', 'main', '--head', 'main']]) refusedUnissued(args, /^phase 3 of pay is not written — its tasks are written as it starts$/);
+    for (const args of [['consolidation', UNIT, '3', '--base', 'main'], ['phase-review', UNIT, '3', '--base', 'main', '--head', 'main', '--letter', 'a']]) refusedUnissued(args, /^phase 3 of pay is not written — its tasks are written as it starts$/);
   });
 
   it('a cut naming a section or a scenario the spec lacks', () => {
@@ -560,27 +647,25 @@ describe('the refusals, nothing written and no brief stored', () => {
   });
 
   it('a range\'s base no repository holding the phase\'s work has, tasks that are no one stack, and a phase no repository holds work on', () => {
-    refusedUnissued(['phase-review', UNIT, '1', '--base', 'trunk', '--head', 'main'], /^the base trunk is no local branch in any repository holding phase 1 of pay's tasks$/);
+    refusedUnissued(['phase-review', UNIT, '1', '--base', 'trunk', '--head', 'main', '--letter', 'a'], /^the base trunk is no local branch in any repository holding phase 1 of pay's tasks$/);
     git(dir, ['branch', '-f', branchOf(1, 4), 'main']);
     commitFile(dir, 'src/aside.js');
     git(dir, ['branch', '-f', branchOf(1, 4), 'HEAD']);
     git(dir, ['reset', '-q', '--hard', 'HEAD~1']);
     refusedUnissued(['consolidation', UNIT, '1', '--base', 'main'], new RegExp(`^phase 1 of pay's tasks are no one stack in the project's repository — ${branchOf(1, 1)}, ${branchOf(1, 2)}, ${branchOf(1, 4)} each hold work another lacks`));
     git(dir, ['branch', '-D', branchOf(2, 1)]);
-    refusedUnissued(['phase-review', UNIT, '2', '--base', 'main', '--head', 'main'], /^no repository of the project holds work on phase 2 of pay's tasks$/);
+    refusedUnissued(['phase-review', UNIT, '2', '--base', 'main', '--head', 'main', '--letter', 'a'], /^no repository of the project holds work on phase 2 of pay's tasks$/);
   });
 
-  it('a head that is no commit of the project\'s repository, no verify setup recorded for the mutants, and a checkout holding no commit of the phase', () => {
-    git(dir, ['checkout', '-q', branchOf(2, 1)]);
-    for (const head of ['nope', '-x']) {
-      refusedUnissued(['phase-review', UNIT, '2', '--base', 'main', '--head', head], new RegExp(`^${head} is no commit of the project's repository — the phase's runs are read at its HEAD there$`));
-    }
-    git(dir, ['checkout', '-q', 'main']);
-    refusedUnissued(['phase-review', UNIT, '2', '--base', 'main', '--head', branchOf(2, 1)], /^no commit of phase 2 of pay changes a line in the checkout at .* — run it from the checkout holding the phase's work$/);
+  it('a head that is no commit of the project\'s repository, a mutation tool not yet run over the phase at the head, and no verify setup recorded', () => {
+    const at = (/** @type {string} */ head) => ['phase-review', UNIT, '2', '--base', 'main', '--head', head, '--letter', 'a'];
+    for (const head of ['nope', '-x']) refusedUnissued(at(head), new RegExp(`^${head} is no commit of the project's repository — the phase's runs are read at its HEAD there$`));
+    const tip = tipOf(dir, branchOf(2, 1));
+    refusedUnissued(at(branchOf(2, 1)), new RegExp(`^the mutation tool has not run over phase 2 of pay at ${tip} — engine verify mutants pay 2, run from the checkout at that HEAD, runs it$`));
     const project = JSON.parse(readState(dir, layout.projectManifest));
     writeState(dir, layout.projectManifest, JSON.stringify({ ...project, environment: { linters: LINTERS } }, null, 2));
     commitAll(dir, 'no verify setup');
-    refusedUnissued(['phase-review', UNIT, '2', '--base', 'main', '--head', branchOf(2, 1)], /^the project has no verify setup recorded — /);
+    refusedUnissued(at(branchOf(2, 1)), /^the project has no verify setup recorded — /);
   });
 });
 

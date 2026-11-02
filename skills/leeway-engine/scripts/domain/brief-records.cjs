@@ -32,6 +32,11 @@
 //   reports        the task's last review round's reports, one per
 //                  reviewer of the count (13.3.4), each verbatim under a
 //                  heading naming its reviewer (round-report.cjs)
+//   round-report-to where the reviewer `--letter` names writes its report
+//                  of the round under review (13.5.9): the task's
+//                  `round-{N}-{letter}.md`, N read from the task's reports
+//                  on disk (round-report.cjs), so it holds across a
+//                  `/clear` and for both reviewers of a round
 //
 // A discussion topic's records, each read from the ledger as its read verb
 // answers it (ledger-read.cjs) or from the topic's agent store
@@ -225,9 +230,12 @@
 //                  its file
 //   mutants        what survived the verify setup's mutation tool on the
 //                  lines the phase changed, each by its path and line with
-//                  its mutant, as `verify mutants` answers it (verify.cjs,
-//                  15.6.3); that none survived; or that the setup names no
-//                  mutation tool
+//                  its mutant, as `verify mutants` left it in the unit's
+//                  cache for the commit `--head` names (verify.cjs, 15.6.3);
+//                  that none survived; or that the setup names no mutation
+//                  tool. The brief never runs the tool
+//   phase-report-to where the reviewer `--letter` names writes its report
+//                  of the phase review: the phase's `review-{letter}.md`
 //   consolidation-to where the consolidation agent writes its report: the
 //                  phase's `consolidation.md` (notes.cjs)
 //
@@ -274,9 +282,10 @@
 // scenarios the spec lacks, a phase not yet written whose tasks or range a
 // record draws, a task of it with no type, its tasks held as no one stack in
 // a repository, no repository holding work on them, a head that is no
-// commit of the project's repository, the mutants' refusals — no verify
-// setup recorded, a checkout holding no commit of the phase, a tool's
-// survivors that do not read — a task with no review
+// commit of the project's repository, no verify setup recorded, a tool that
+// has not run over the phase at the head, a letter none of the reviewers',
+// a report already written for its round, a task whose review passed or
+// was settled — a task with no review
 // round's reports, a round missing a reviewer's report or holding one
 // that does not read, a last round that passed; a question that is none, no longer current,
 // stands elsewhere or is not open, or one its dispatch was not first briefed
@@ -330,7 +339,10 @@ const {
 } = require('./spec-passes.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { specReferenceOf, scenariosOf } = require('./task-file.cjs');
-const { taskFolder, taskRounds } = require('./round-report.cjs');
+const {
+  taskFolder, taskRounds, roundReportPath, roundUnderReview, phaseReviewPath,
+} = require('./round-report.cjs');
+const { REVIEWER_LETTERS } = require('../kernel/reviewers.cjs');
 const { taskName, shownTask, phaseName } = require('./task-id.cjs');
 const { taskBranch } = require('./landing-names.cjs');
 const {
@@ -342,7 +354,7 @@ const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
 const { ENDED } = require('./task-verbs.cjs');
 const { notesToTake, notesHeldFor, consolidationPath } = require('./notes.cjs');
 const { runsOf } = require('./runs.cjs');
-const { phaseSurvivors } = require('./verify.cjs');
+const { cachedSurvivors } = require('./verify.cjs');
 const { directiveOf } = require('./directives.cjs');
 const { topicPlace, recordsRules, composedPath, findingsPath, refusedPath } = require('./ledger-carry.cjs');
 
@@ -1413,9 +1425,34 @@ function drawRecordedRuns(filling) {
 /** @param {Filling} filling */
 function drawMutants(filling) {
   const { unit, phase } = phaseOf(filling);
-  const survivors = phaseSurvivors(filling.cwd, unit, phase);
+  const survivors = cachedSurvivors(filling.cwd, unit, phase, headOf(filling));
   if (survivors === null) return 'The verify setup names no mutation tool.';
   return survivors.length === 0 ? 'None survived.' : survivors.map(({ path: at, line, mutant }) => `- ${at}:${line} — ${mutant}`).join('\n');
+}
+
+/** The reviewer's letter `--letter` names; refused where it names none of the count's. @param {Filling} filling */
+function letterOf(filling) {
+  const { letter } = filling.given;
+  if (!REVIEWER_LETTERS.includes(letter)) throw new Error(`${letter} is no reviewer's letter — the reviewers are ${REVIEWER_LETTERS.join(' and ')}`);
+  return letter;
+}
+
+/** Where a reviewer writes its report, drawn; refused where it is written already. @param {Filling} filling @param {string} rel state-relative */
+function reportPlace(filling, rel) {
+  if (fs.existsSync(statePath(filling.cwd, rel))) throw new Error(`${rel} is written already — that reviewer's report of the round is in`);
+  return `\`${statePath(filling.cwd, rel)}\``;
+}
+
+/** @param {Filling} filling */
+function drawRoundReportTo(filling) {
+  const { ref } = taskOf(filling);
+  return reportPlace(filling, roundReportPath(ref, roundUnderReview(filling.cwd, ref).round, letterOf(filling)));
+}
+
+/** @param {Filling} filling */
+function drawPhaseReportTo(filling) {
+  const { unit, phase } = phaseOf(filling);
+  return reportPlace(filling, phaseReviewPath(unit, phase, letterOf(filling)));
 }
 
 /** @param {Filling} filling */
@@ -1430,6 +1467,9 @@ const BASE = Object.freeze({ name: 'base', value: 'branch' });
 /** The flag naming the commit a phase's runs are read at. @type {BriefFlag} */
 const HEAD = Object.freeze({ name: 'head', value: 'commit' });
 
+/** The flag naming the reviewer a report is written by. @type {BriefFlag} */
+const LETTER = Object.freeze({ name: 'letter', value: REVIEWER_LETTERS.join('|') });
+
 /** Every record, by the slot that draws it. @type {Readonly<Record<string, BriefRecord>>} */
 const RECORDS = Object.freeze({
   task: { of: 'task', draw: drawTask },
@@ -1438,6 +1478,7 @@ const RECORDS = Object.freeze({
   linters: { of: null, draw: drawLinters },
   'diff-range': { of: 'task', flags: [BASE], draw: drawDiffRange },
   reports: { of: 'task', draw: drawReports },
+  'round-report-to': { of: 'task', flags: [LETTER], draw: drawRoundReportTo },
   'topic-record': { of: 'topic', draw: drawTopicRecord },
   'topic-log': { of: 'topic', draw: drawTopicLog },
   'other-records': { of: 'topic', draw: drawOtherRecords },
@@ -1495,7 +1536,8 @@ const RECORDS = Object.freeze({
   'relied-on': { of: 'phase', draw: drawReliedOn },
   'phase-diff-range': { of: 'phase', flags: [BASE], draw: drawPhaseDiffRange },
   'recorded-runs': { of: 'phase', flags: [HEAD], draw: drawRecordedRuns },
-  mutants: { of: 'phase', draw: drawMutants },
+  mutants: { of: 'phase', flags: [HEAD], draw: drawMutants },
+  'phase-report-to': { of: 'phase', flags: [LETTER], draw: drawPhaseReportTo },
   'consolidation-to': { of: 'phase', draw: drawConsolidationTo },
 });
 

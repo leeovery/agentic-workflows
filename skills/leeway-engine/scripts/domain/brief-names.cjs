@@ -47,7 +47,7 @@ const OURS = 'leeway-';
  */
 const ROLES = Object.freeze({
   builder: { agent: 'leeway-builder', whose: 'the builder\'s', records: ['task', 'spec-sections', 'decided-calls', 'linters'] },
-  reviewer: { agent: 'leeway-reviewer', whose: 'the reviewer\'s', records: ['task', 'spec-sections', 'decided-calls', 'diff-range', 'linters'] },
+  reviewer: { agent: 'leeway-reviewer', whose: 'the reviewer\'s', records: ['task', 'spec-sections', 'decided-calls', 'diff-range', 'linters', 'round-report-to'] },
   fix: { agent: 'leeway-builder', whose: 'the fix round\'s', records: ['reports'] },
   'product-researcher': { agent: 'leeway-product-researcher', whose: 'the product researcher\'s', records: [] },
   'deep-dive': {
@@ -93,7 +93,7 @@ const ROLES = Object.freeze({
     agent: 'leeway-consolidation', whose: 'the consolidation agent\'s', records: ['phase-notes', 'phase-tasks', 'phase-diff-range', 'consolidation-to', 'task-files-to'],
   },
   'phase-review': {
-    agent: 'leeway-reviewer', whose: 'the phase review\'s', records: ['cut-phase', 'phase-sections', 'phase-criteria', 'relied-on', 'decided-calls', 'phase-diff-range', 'recorded-runs', 'mutants', 'linters'],
+    agent: 'leeway-reviewer', whose: 'the phase review\'s', records: ['cut-phase', 'phase-sections', 'phase-criteria', 'relied-on', 'decided-calls', 'phase-diff-range', 'recorded-runs', 'mutants', 'linters', 'phase-report-to'],
   },
 });
 

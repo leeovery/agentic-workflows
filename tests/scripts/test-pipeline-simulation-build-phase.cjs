@@ -8,7 +8,9 @@
 // the door and recorded once it ran end to end, the phase's scenario proven
 // by its run — and a note for later banked, the consolidation agent and the
 // phase review briefed over the phase's stack, the review reading the
-// scenario's runs at the phase's HEAD and what survived the mutation tool.
+// scenario's runs at the phase's HEAD and what survived the mutation tool,
+// run once over the phase before the pair is briefed, each reviewer's report
+// written to its own file.
 //
 // Layer: simulation. World: this file's own, built once from the project
 // every scenario starts from (pipeline-world.cjs) — a feature through its
@@ -64,7 +66,8 @@ describe('pipeline simulation: a phase of the cut', () => {
     sim.run(['task', 'done', wu, '1.1']);
 
     assert.strictEqual(sim.run(['brief', 'consolidation', wu, '1', '--base', 'main']).agent, 'leeway-consolidation');
-    const review = sim.run(['brief', 'phase-review', wu, '1', '--base', 'main', '--head', git(sim.dir, ['rev-parse', 'HEAD']).trim()]);
+    assert.deepStrictEqual(sim.run(['verify', 'mutants', wu, '1']).survivors, [], 'the mutation tool runs once, before the pair is briefed');
+    const review = sim.run(['brief', 'phase-review', wu, '1', '--base', 'main', '--letter', 'a', '--head', git(sim.dir, ['rev-parse', 'HEAD']).trim()]);
     assert.strictEqual(review.agent, 'leeway-reviewer');
     assert.strictEqual(stateGit(sim.dir, ['status', '--porcelain']), '', 'the tracker\'s writes and the note are on the state branch');
   });

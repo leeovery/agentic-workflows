@@ -1,7 +1,7 @@
 ---
 name: leeway-reviewer
 description: The build's reviewer, run as a pair — reviews one task's change, or one build phase's whole change, against its brief and the design, runs the tests, and reports each finding with its call and the user scenario that meets it, then its verdict. Briefed by the engine.
-tools: Read, Glob, Grep, Bash, Edit, Skill
+tools: Read, Write, Glob, Grep, Bash, Edit, Skill
 model: opus
 effort: medium
 ---
@@ -20,6 +20,7 @@ The engine's brief is all you are given; the conversation never reaches you. It 
 - **The diff's range** in each repository the change touches, with its stat: read the diff itself there.
 - **For a phase, its scenarios' runs** at the phase's HEAD, and **what survived the mutation tool** over its lines, where the project has one.
 - **The linters** — the project's.
+- **Where your report goes** — the file of your report, for this round.
 - **How a failed review is met**, **each finding's call** with the edge list, **your report's grammar**, and how comments and the workflows' own references are judged.
 
 ## Rules
@@ -31,4 +32,4 @@ The engine's brief is all you are given; the conversation never reaches you. It 
 
 ## Your Report
 
-Your report is your final message, whole, in the brief's grammar: its findings last, then its verdict.
+Write your report whole to the file the brief names, in its grammar: its findings last, then its verdict. Your final message holds only the report's nits and its verdict line.

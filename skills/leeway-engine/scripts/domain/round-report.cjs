@@ -47,6 +47,11 @@
 // reviewer's report; a round passes where each of them passes, and the
 // task's verdict is its last round's. A report that does not read, or a
 // round missing one, refuses every read of the task's rounds, naming it.
+// The round under review is read from them too, never from a conversation:
+// the last round where a report of it is still to be written, else the
+// next, none once a round passed or was settled. A phase's review is
+// reported beside its consolidation, `build/phases/phase-{N}/
+// review-{letter}.md`.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -168,6 +173,11 @@ function roundReportPath(ref, round, letter) {
   return `${taskFolder(ref)}/round-${round}-${letter}.md`;
 }
 
+/** A reviewer's report of a phase's review, state-relative. @param {string} unit @param {number} phase @param {string} letter */
+function phaseReviewPath(unit, phase, letter) {
+  return `${unit}/build/phases/phase-${phase}/review-${letter}.md`;
+}
+
 /** The orchestrator's settlement of a task's failed round, state-relative. @param {TaskRef} ref @param {number} round */
 function settlementPath(ref, round) {
   return `${taskFolder(ref)}/round-${round}-settled.md`;
@@ -199,10 +209,40 @@ function readRound(cwd, ref, round, held) {
  * @param {string} cwd @param {TaskRef} ref @returns {Round[]}
  */
 function taskRounds(cwd, ref) {
-  const folder = statePath(cwd, taskFolder(ref));
-  const held = new Set(fs.existsSync(folder) ? fs.readdirSync(folder) : []);
-  const rounds = [...held].map((name) => ROUND_FILE.exec(name)).flatMap((named) => (named !== null && REVIEWER_LETTERS.includes(named[2]) ? [Number(named[1])] : []));
-  return Array.from({ length: Math.max(0, ...rounds) }, (_, at) => readRound(cwd, ref, at + 1, held));
+  const held = heldFiles(cwd, ref);
+  return Array.from({ length: lastReported(held) }, (_, at) => readRound(cwd, ref, at + 1, held));
 }
 
-module.exports = { passes, readReport, taskFolder, roundReportPath, settlementPath, taskRounds };
+/** The names of the files a task's folder holds. @param {string} cwd @param {TaskRef} ref @returns {Set<string>} */
+function heldFiles(cwd, ref) {
+  const folder = statePath(cwd, taskFolder(ref));
+  return new Set(fs.existsSync(folder) ? fs.readdirSync(folder) : []);
+}
+
+/** The highest round any reviewer's report is written for, 0 where none is. @param {Set<string>} held */
+function lastReported(held) {
+  const rounds = [...held].map((name) => ROUND_FILE.exec(name)).flatMap((named) => (named !== null && REVIEWER_LETTERS.includes(named[2]) ? [Number(named[1])] : []));
+  return Math.max(0, ...rounds);
+}
+
+/**
+ * The round of a task under review, from its reports on disk alone, so both
+ * reviewers of a round are briefed for it whenever they are: the last round
+ * reported where a reviewer's report of it is still to be written, else the
+ * one after it; refused where the last round passed or was settled, which
+ * ends the task's review.
+ * @param {string} cwd @param {TaskRef} ref @returns {{round: number, written: string[]}}
+ */
+function roundUnderReview(cwd, ref) {
+  const held = heldFiles(cwd, ref);
+  const last = lastReported(held);
+  const written = REVIEWER_LETTERS.filter((letter) => held.has(`round-${last}-${letter}.md`));
+  if (last > 0 && written.length < REVIEWER_LETTERS.length) return { round: last, written };
+  const ended = last > 0 ? readRound(cwd, ref, last, held) : null;
+  if (ended?.passes || ended?.settled) {
+    throw new Error(`round ${last} of ${taskName(ref)} ${ended.passes ? 'passed' : 'was settled'} — its review is over`);
+  }
+  return { round: last + 1, written: [] };
+}
+
+module.exports = { passes, readReport, taskFolder, roundReportPath, settlementPath, taskRounds, roundUnderReview, phaseReviewPath };

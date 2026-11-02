@@ -384,33 +384,33 @@ describe('the reviewer\'s brief (13.2.2, 13.11.5)', () => {
   useWorld(unitWorld);
 
   it('a task whose branch is in two repositories: the builder\'s records, the task\'s additions among them, then the range and its stat in each, the project\'s own first — and no line of the diff', () => {
-    const { res, brief } = issued(['reviewer', UNIT, '1.1', '--base', 'main']);
+    const { res, brief } = issued(['reviewer', UNIT, '1.1', '--base', 'main', '--letter', 'a']);
 
     assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'reviewer', agent: 'leeway-reviewer', pointer: `brief:${res.id}` });
     const ranges = takeACardRanges('main', 'main');
-    assert.strictEqual(brief, `Brief ${res.id} — the reviewer's, for pay task 1.1\n\n${filledTemplate('reviewer', { ...drawnForTakeACard(), 'diff-range': ranges })}`);
+    assert.strictEqual(brief, `Brief ${res.id} — the reviewer's, for pay task 1.1\n\n${filledTemplate('reviewer', { ...drawnForTakeACard(), 'diff-range': ranges, 'round-report-to': `\`${statePath(dir, roundAt('1.1', 2, 'a'))}\`` })}`);
     assert.ok(!brief.includes(CHANGED), 'the diff\'s text reaches no brief');
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'reviewer', agent: 'leeway-reviewer', unit: UNIT, task: '1.1', topic: null });
   });
 
   it('a task whose branch holds work in the project\'s repository alone: its range there, a path past 80 columns drawn whole, and none in a repository naming the branch with nothing on it', () => {
-    const { brief } = issued(['reviewer', 'refund', '1.1', '--base', 'main']);
+    const { brief } = issued(['reviewer', 'refund', '1.1', '--base', 'main', '--letter', 'a']);
 
     assert.ok(brief.includes(`# The diff's range\n\n${rangeDrawn('the project\'s repository', REFUND_BRANCH, DEEP)}\n\n# The linters\n`), brief);
   });
 
   it('a base a repository lacks is its own default branch there: a stack\'s base in the project\'s repository alone, and a nested repository whose default is master', () => {
     git(dir, ['branch', 'pay-stack', 'main']);
-    const stacked = issued(['reviewer', UNIT, '1.1', '--base', 'pay-stack']).brief;
+    const stacked = issued(['reviewer', UNIT, '1.1', '--base', 'pay-stack', '--letter', 'a']).brief;
     git(path.join(dir, NESTED), ['branch', '-m', 'main', 'master']);
-    const master = issued(['reviewer', UNIT, '1.1', '--base', 'main']).brief;
+    const master = issued(['reviewer', UNIT, '1.1', '--base', 'main', '--letter', 'a']).brief;
 
     assert.ok(stacked.includes(`# The diff's range\n\n${takeACardRanges('pay-stack', 'main')}\n\n`), stacked);
     assert.ok(master.includes(`# The diff's range\n\n${takeACardRanges('main', 'master')}\n\n`), master);
   });
 
   it('a range with nothing in it says so', () => {
-    const { brief } = issued(['reviewer', 'refund', '1.1', '--base', REFUND_BRANCH]);
+    const { brief } = issued(['reviewer', 'refund', '1.1', '--base', REFUND_BRANCH, '--letter', 'a']);
 
     assert.ok(brief.includes(`# The diff's range\n\n## In the project's repository: \`${REFUND_BRANCH}...${REFUND_BRANCH}\`\n\nNothing changed in the range.\n\n# The linters\n`), brief);
   });
@@ -488,13 +488,13 @@ describe('the refusals, nothing written and no brief stored', () => {
 
   it('a role it does not know, and arguments of another shape for each role: a flag it takes missing, given twice or given no value', () => {
     const usage = new RegExp(`^Usage: ${[
-      'builder <unit> <task>', 'reviewer <unit> <task> --base <branch>', 'fix <unit> <task>', 'product-researcher',
+      'builder <unit> <task>', 'reviewer <unit> <task> --base <branch> --letter <a|b>', 'fix <unit> <task>', 'product-researcher',
       'deep-dive <unit> <topic> --question <id> --agent <id> --kind <survey|read|feasibility|landscape|verify> [--path <file>]',
       'perspective <unit> <topic> --question <id> --agent <id>', 'synthesis <unit> <topic> --agent <id>', 'discussion-reviewer <unit> <topic> --agent <id>',
       'closing-pass-reader <unit> <topic> --agent <id>', 'plain-search',
       'migration-topic --topic <unit.phase.topic> --directive <id>', 'migration-verifier --topic <unit.phase.topic> --directive <id>', 'phase-cut <unit>', 'sweep <unit>',
       'spec-writer <unit> [--wording <file>]', 'spec-reviewer <unit> --agent <id>',
-      'task-writer <unit> <N>', 'consolidation <unit> <N> --base <branch>', 'phase-review <unit> <N> --base <branch> --head <commit>',
+      'task-writer <unit> <N>', 'consolidation <unit> <N> --base <branch>', 'phase-review <unit> <N> --base <branch> --head <commit> --letter <a|b>',
     ].map((line) => `engine brief ${line.replace(/[|[\]]/g, '\\$&')}`).join(' \\| ')}$`);
     for (const args of [
       [], ['scribe', UNIT, '1.1'], ['builder'], ['builder', UNIT], ['builder', UNIT, '1.1', 'more'], ['product-researcher', UNIT],
@@ -513,7 +513,7 @@ describe('the refusals, nothing written and no brief stored', () => {
     const migrated = ['--topic', `${UNIT}.discussion.cards`, '--directive', '079-records'];
     const taking = {
       builder: [UNIT, '1.1'],
-      reviewer: [UNIT, '1.1', '--base', 'main'],
+      reviewer: [UNIT, '1.1', '--base', 'main', '--letter', 'a'],
       fix: FIX.slice(1),
       'product-researcher': [],
       'deep-dive': [...asked, ...dispatched.slice(2), '--kind', 'survey'],
@@ -530,7 +530,7 @@ describe('the refusals, nothing written and no brief stored', () => {
       'spec-reviewer': [UNIT, '--agent', 'spec-review-001'],
       'task-writer': [UNIT, '1'],
       consolidation: [UNIT, '1', '--base', 'main'],
-      'phase-review': [UNIT, '1', '--base', 'main', '--head', 'main'],
+      'phase-review': [UNIT, '1', '--base', 'main', '--head', 'main', '--letter', 'a'],
     };
     for (const role of Object.keys(ROLES)) {
       for (const [flag, value] of [['--note', 'be quick'], ...(taking[role].includes('--base') ? [] : [['--base', 'main']]), ['--report-a', 'a.md']]) {
@@ -543,9 +543,9 @@ describe('the refusals, nothing written and no brief stored', () => {
 
   it('a reviewer\'s base no repository holding the task\'s branch has as a local branch, and a task whose branch no repository holds', () => {
     const holding = `task 1\\.1 of pay's branch, ${PAY_BRANCH}`;
-    refusedUnissued(['reviewer', UNIT, '1.1', '--base', 'trunk'], new RegExp(`^the base trunk is no local branch in any repository holding ${holding}$`));
+    refusedUnissued(['reviewer', UNIT, '1.1', '--base', 'trunk', '--letter', 'a'], new RegExp(`^the base trunk is no local branch in any repository holding ${holding}$`));
     git(dir, ['branch', '-D', REFUND_BRANCH]);
-    refusedUnissued(['reviewer', 'refund', '1.1', '--base', 'main'], new RegExp(`^no repository of the project holds work on task 1\\.1 of refund's branch, ${REFUND_BRANCH}$`));
+    refusedUnissued(['reviewer', 'refund', '1.1', '--base', 'main', '--letter', 'a'], new RegExp(`^no repository of the project holds work on task 1\\.1 of refund's branch, ${REFUND_BRANCH}$`));
   });
 
   it('a fix round for a task with no round\'s reports, a round missing a reviewer\'s report, and one holding a report that does not read', () => {

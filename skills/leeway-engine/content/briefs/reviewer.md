@@ -18,6 +18,10 @@
 
 {{linters}}
 
+# Where your report goes
+
+{{round-report-to}}
+
 # A failed review
 
 A failed review is met as a senior engineer would, between two extremes, taking neither: fixes kept small and covering only the places a finding names, which leaves ripples unchecked; and starting again, which reworks a sound build into variations that raise decisions and stop the build for the person.
@@ -68,6 +72,8 @@ Your report ends in its findings, then its verdict. The findings are its last se
 
 Verdict: fail
 ```
+
+Write the whole report to the file under "Where your report goes". Your final message then holds only the report's nits, each as the report words it, and its verdict line, and nothing else.
 
 # Comments are never the standard
 
