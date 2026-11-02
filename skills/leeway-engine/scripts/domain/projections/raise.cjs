@@ -67,8 +67,8 @@ function asking({ fact }) {
 /**
  * Where the question stands: its unit, and its topic where it has one of its
  * own, by the name it goes by; a question waiting in the build, by its
- * number before them and the tasks it parks after: the first, and how
- * many more (12.12.5).
+ * number before them and the tasks it parks after, where it parks any: the
+ * first, and how many more (12.12.5).
  * @param {Seal} seal @param {Record<string, string>} titles
  */
 function header({ place: { unit, topic }, parks }, titles) {
@@ -76,7 +76,7 @@ function header({ place: { unit, topic }, parks }, titles) {
     ...(parks === null ? [] : [numbered(parks.number)]),
     titlecase(unit),
     ...(topic === null || topic === unit ? [] : [titled(titles, topic)]),
-    ...(parks === null ? [] : [`parks ${parkedTasks(parks.tasks)}`]),
+    ...(parks === null || parks.tasks.length === 0 ? [] : [`parks ${parkedTasks(parks.tasks)}`]),
   ].join(' · ');
 }
 

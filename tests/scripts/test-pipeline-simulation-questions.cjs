@@ -4,11 +4,13 @@
 // The pipeline simulation's scenario of the build's questions: a task
 // parking on a question only the person can answer while the others carry
 // on, and another task meeting it joining it; the questions waiting listed;
-// one drawn when the person is ready and answered for its task; another set
-// aside and still waiting, answered through its raise alone; Claude's calls
-// made for a task; and a replacement of one proposed for its task, parking
-// it, raised outside the build refused and kept through its raise — each
-// landing in the ledger and the trust log as the command that writes it.
+// a task parked never ready nor done; one drawn when the person is ready and
+// answered for its task; another set aside and still waiting, answered
+// through its raise alone; Claude's calls made for a task; a replacement of
+// one proposed for its task, parking it, raised outside the build refused
+// and kept through its raise; and the task writer's gap, a call made in no
+// task, waiting parking none, a task joining it then closed, taken off it —
+// each landing in the ledger and the trust log as the command that writes it.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -28,7 +30,7 @@ describe('pipeline simulation: the build\'s questions', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('a task parks on a question while the others carry on, and another meeting it joins it; the questions waiting listed oldest first; one drawn and answered for its task, which builds again; another set aside, still waiting, answered through its raise alone, freeing both its tasks; Claude\'s calls made for a task, a replacement of one parking it, kept through its raise alone', async () => {
+  it('a task parks on a question while the others carry on, and another meeting it joins it; the questions waiting listed oldest first, a task parked never ready nor done; one drawn and answered for its task, which builds again; another set aside, still waiting, answered through its raise alone, freeing both its tasks; Claude\'s calls made for a task, a replacement of one parking it, kept through its raise alone; the task writer\'s gap waiting parking none, a task joining it then closed, taken off it', async () => {
     const wu = 'ledger';
     startNew(sim, 'feature');
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'A ledger', '--session-log-file', sessionLog(sim, wu)]);
@@ -51,6 +53,8 @@ describe('pipeline simulation: the build\'s questions', () => {
 
     const waiting = () => sim.run(['raise', 'waiting', wu]).waiting.map((/** @type {{question: string, parks: string[]}} */ q) => [q.question, q.parks]);
     assert.deepStrictEqual(waiting(), [['Q1', ['1.1']], ['Q2', ['1.2', '1.3']]], 'the questions waiting, oldest first, with the tasks they park');
+    assert.deepStrictEqual(sim.run(['task', 'ready', wu, '1']).tasks.map((/** @type {{task: string}} */ t) => t.task), ['1.4'], 'a task parked is never ready');
+    sim.refuses(['task', 'done', wu, '1.1'], /task 1\.1 of ledger waits on Q1, parked for the person — they answer it through its raise: raise draw ledger Q1$/);
 
     // Claude carries on with the task nothing parks, its calls made for it.
     const indexing = asked('Does the index hold every entry?', '1.4');
@@ -81,5 +85,17 @@ describe('pipeline simulation: the build\'s questions', () => {
     const kept = sim.run(['raise', 'draw', wu, 'Q3']);
     assert.strictEqual(sim.run(['raise', 'answer', kept.raise, '--pick', 'keep'], null, JSON.stringify({ why: 'Dead entries are history too.' })).receipt,
       'Q3 answered · task 1.4 builds again · nothing waiting on you');
+
+    // The task writer meets a gap partway through the phase's tasks: its call, made in no task, waits parking none.
+    const versioning = sim.run(['ledger', 'ask', build], null, JSON.stringify({ ...made, text: 'Does every line carry its version?' })).id;
+    const gap = await sim.runAsync(['raise', build, '--answers', versioning], null, JSON.stringify({ ...leaningCall('Yes.', 'No.'), question: 'Does every line carry its version?' }));
+    assert.deepStrictEqual([gap.parked, gap.task], ['Q4', null], 'a call made in no task waits parking none');
+    // Task 1.4's builder meets it and joins it; folded into another task, 1.4 closes, taken off Q4, which still waits.
+    await raised(versioning, 'Does every line carry its version?', '1.4');
+    assert.deepStrictEqual(sim.run(['task', 'close', wu, '1.4', '--reason', 'Folded into 1.1.']).unparked, ['Q4'], 'a task closing is taken off its questions');
+    assert.deepStrictEqual(waiting(), [['Q4', []]], 'a question its task left still waits, parking none');
+    const versioned = sim.run(['raise', 'draw', wu, 'Q4']);
+    assert.strictEqual(sim.run(['raise', 'answer', versioned.raise, '--pick', '1'], null, JSON.stringify({ why: 'Every line says its version.' })).receipt,
+      'Q4 answered · no task waited on it · nothing waiting on you');
   });
 });

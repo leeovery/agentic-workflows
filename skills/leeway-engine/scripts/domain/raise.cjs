@@ -94,26 +94,30 @@
 // - A raise is no gate (gate.cjs): drawing it clears the gate shown.
 // - In the build (12.13): a raise at a build place, `<unit>.implementation`
 //   or `<unit>.review`, names the task it is for, `--parks <phase>.<n>`,
-//   and takes it nowhere else; it takes no `--task`, the flag `ledger`
-//   takes there, nor `--fact`. A proceed lands Claude's call for that task.
-//   One that asks draws nothing and seals nothing in the conversation: it
-//   parks the task (12.13.2, 12.13.9) — one `parked` line in the ledger
-//   holding the question's subject and links, the task, its number minted
-//   under the writer lock (questions.cjs), and the call sealed with the rows
-//   the check judged and the decision point's reason (12.13.4, 16.1.2) —
-//   and answers the one line Claude says (12.13.3). The task stays in
-//   progress, held; what depends on it is what the tracker's links hold
-//   back. Raised while a question already waits on its subject, it judges
-//   no row and asks nothing: where that question parks its task — a rerun
-//   after a kill among them — it parks nothing and answers that question;
-//   else its task joins the question, parked under its number with its
-//   first park's call as sealed, copied under the writer lock. Its line,
-//   and the one an `already` answers, say the question as it is worded now.
-//   While a question waits, any raise on its subject without `--parks` —
-//   one asking as one proceeding — is refused, naming its raise: before a
-//   row is judged, under the lock as a proceed or an answer lands, and at
-//   "I don't follow", for a park that came after it was drawn
-//   (questions.cjs).
+//   where it is made in one — the tracker holding it, not yet ended
+//   (task-parks.cjs) — and takes it nowhere else; it takes no `--task`, the
+//   flag `ledger` takes there, nor `--fact`. A call made outside any task —
+//   the task writer's, the consolidation agent's, the phase review's — names
+//   none (12.5.5, 12.12.12). A proceed lands Claude's call for its task, or
+//   for none. One that asks draws nothing and seals nothing in the
+//   conversation: it parks its task (12.13.2, 12.13.9), or, with none,
+//   waits in the build's queue parking none (12.8.4) — one `parked` line in
+//   the ledger holding the question's subject and links, the task or null,
+//   its number minted under the writer lock (questions.cjs), and the call
+//   sealed with the rows the check judged and the decision point's reason
+//   (12.13.4, 16.1.2) — and answers the one line Claude says (12.13.3). The
+//   task stays in progress, held; what depends on it is what the tracker's
+//   links hold back. Raised while a question already waits on its subject,
+//   it judges no row and asks nothing: where that question parks its task,
+//   or it names none — a rerun after a kill among them — it parks nothing
+//   and answers that question; else its task joins the question, parked
+//   under its number with its first park's call as sealed, copied under the
+//   writer lock. Its line, and the one an `already` answers, say the
+//   question as it is worded now. While a question waits, any raise on its
+//   subject outside the build — one asking as one proceeding — is refused,
+//   naming its raise: before a row is judged, under the lock as a proceed
+//   or an answer lands, and at "I don't follow", for a park that came after
+//   it was drawn (questions.cjs).
 // - `raise draw <unit> <question>` (12.13.10, 12.13.20): a question waiting,
 //   by its number or a park's id, raised in full once the person says they
 //   are ready — sealed in the conversation from its first park alone, never
@@ -278,10 +282,11 @@ const questions = require('./questions.cjs');
  * @typedef {{decision: 'ask', reason: string, seal: Seal, redrawn: boolean, warnings: string[]} | {decision: 'proceed', reason: string, landed: Landed}} Drawn
  */
 /**
- * What a raise in the build did that asks: its task parked — the question's
- * number, the task, the park's short id, its commit, and the line Claude
- * says — or found parked already.
- * @typedef {{decision: 'ask', reason: string, parked: string, task: string, id: string, committed: string|null, line: string, already?: true, note?: string, warnings?: string[]}} Parked
+ * What a raise in the build did that asks: its task parked, or its question
+ * waiting parking none — the question's number, the task or null, the
+ * park's short id, its commit, and the line Claude says — or found parked
+ * already.
+ * @typedef {{decision: 'ask', reason: string, parked: string, task: string|null, id: string, committed: string|null, line: string, already?: true, note?: string, warnings?: string[]}} Parked
  */
 /**
  * The person's answer as its entry and its event hold it: the entry's
@@ -466,15 +471,19 @@ function parksFlag(args, fact) {
 }
 
 /**
- * Refuse a raise at a build place naming no task it parks — a question there
- * waits for the person, never a gate (12.13.9) — and one elsewhere naming
- * one.
- * @param {Place} place @param {string|null} parks
+ * Whether a raise is made in the build, refused where it names a task it
+ * parks elsewhere, or is a fact there — a fact always asks, and a question
+ * in the build waits for the person, never a gate (12.13.9) — and where the
+ * task it parks is one the tracker lacks or that has ended.
+ * @param {string} cwd @param {Place} place @param {string|null} parks @param {boolean} fact
+ * @returns {boolean}
  */
-function checkBuildPlace({ unit, phase }, parks) {
+function checkBuildPlace(cwd, { unit, phase }, parks, fact) {
   const inBuild = BUILD_PHASES.includes(phase);
-  if (inBuild && parks === null) throw new Error(`raise at ${unit}.${phase} names the task it is for, ${PARKS} <phase>.<n>: in the build a question waits for the person with its task parked, never as a gate`);
   if (!inBuild && parks !== null) throw new Error(`raise ${PARKS} parks a task in the build, and ${phase} is none of its phases — ${BUILD_PHASES.join(' or ')}`);
+  if (inBuild && fact) throw new Error(`raise ${FACT} at ${unit}.${phase}: a fact always asks, and in the build a question waits for the person, never as a gate — raise it as a call, its lean sealed for when the person is ready`);
+  if (parks !== null) require('./task-parks.cjs').checkParkable(cwd, unit, parks, SAID);
+  return inBuild;
 }
 
 /**
@@ -794,11 +803,11 @@ function askedRaise(session, place, target, what, judged, reason, warnings) {
 
 /**
  * The park of a question in the build: its links — what it is about, what
- * its answer relies on, and the task — checked as the answer it waits for
- * is; and, set under the lock, its number and its call as sealed: where a
- * question waits on what it is about, which its task joins, that
+ * its answer relies on, and the task, or none — checked as the answer it
+ * waits for is; and, set under the lock, its number and its call as sealed:
+ * where a question waits on what it is about, which its task joins, that
  * question's, else the next number and `sealed`.
- * @param {Place} place @param {Target} target @param {import('./questions.cjs').Sealed} sealed @param {string} task
+ * @param {Place} place @param {Target} target @param {import('./questions.cjs').Sealed} sealed @param {string|null} task
  * @returns {import('./ledger-write.cjs').Raised}
  */
 function parking(place, target, sealed, task) {
@@ -817,8 +826,13 @@ function parking(place, target, sealed, task) {
   };
 }
 
-/** The line Claude says as a task parks on the question `name`, which asks `asks` (12.13.3). @param {string} task @param {string} name @param {string} asks */
+/**
+ * The line Claude says as a task parks on the question `name`, which asks
+ * `asks`, or as it waits parking none (12.13.3).
+ * @param {string|null} task @param {string} name @param {string} asks
+ */
 function parkedLine(task, name, asks) {
+  if (task === null) return `${name} waits for you, parking no task: ${asks} The build carries on.`;
   return `Task ${task} parks on ${name}, waiting for you: ${asks} The other tasks carry on.`;
 }
 
@@ -830,7 +844,7 @@ function parkedLine(task, name, asks) {
  * @returns {Parked}
  */
 function parkLanded(cwd, park, reason, warnings) {
-  const task = /** @type {string} */ (park.linked.task);
+  const task = /** @type {string|null} */ (park.linked.task);
   const { landed, line } = landRaised(cwd, park, warnings);
   const { name, asks } = questions.parkedQuestion(cwd, park.place.unit, /** @type {string} */ (/** @type {Record<string, unknown>} */ (line).id), warnings);
   const { id, committed, ...rest } = landed;
@@ -838,20 +852,21 @@ function parkLanded(cwd, park, reason, warnings) {
 }
 
 /**
- * A raise in the build. Where a question already waits on what it is
- * about, no row is judged and nothing asked: a question parking `task`
- * already is answered as it stands, parking nothing; else `task` joins it,
- * parked under its number with its first park's call as sealed. Else its
- * rows judged and the call put through the decision point — landed as
- * Claude's for `task` where it proceeds, else the task parked.
- * @param {string} cwd @param {Place} place @param {Target} target @param {Call} call @param {string} task @param {string[]} warnings
+ * A raise in the build, for `task`, or for none. Where a question already
+ * waits on what it is about, no row is judged and nothing asked: a question
+ * parking `task` already, or any with no task named, is answered as it
+ * stands, parking nothing; else `task` joins it, parked under its number
+ * with its first park's call as sealed. Else its rows judged and the call
+ * put through the decision point — landed as Claude's for `task` where it
+ * proceeds, else parked with it.
+ * @param {string} cwd @param {Place} place @param {Target} target @param {Call} call @param {string|null} task @param {string[]} warnings
  * @returns {Promise<Parked|Drawn>}
  */
 async function parkedRaise(cwd, place, target, call, task, warnings) {
   const waiting = questions.waitingOn(cwd, place.unit, subjectOf(target), warnings);
   if (waiting !== null) {
     const { name, id, tasks, asks, line: { call: sealed, rows_judged: judged, why_asking: whyAsking } } = waiting;
-    if (tasks.includes(task)) return { decision: 'ask', reason: whyAsking, parked: name, task, id, committed: null, line: parkedLine(task, name, asks), already: true, ...(warnings.length > 0 ? { warnings } : {}) };
+    if (task === null || tasks.includes(task)) return { decision: 'ask', reason: whyAsking, parked: name, task, id, committed: null, line: parkedLine(task, name, asks), already: true, ...(warnings.length > 0 ? { warnings } : {}) };
     return parkLanded(cwd, parking(place, target, { call: sealed, rows_judged: judged, why_asking: whyAsking }, task), whyAsking, warnings);
   }
   const judged = await checkedRows(call, { cwd, unit: place.unit, verb: 'raise', warnings });
@@ -880,11 +895,11 @@ async function drawRaise(cwd, args, stdin) {
   const { fact, rest: unfact } = factFlag(args);
   const { parks, rest } = parksFlag(unfact, fact);
   const { place, target, short, read } = placedRaise(cwd, rest, warnings, fact);
-  checkBuildPlace(place, parks);
-  if (parks === null) questions.checkUnparked(read, subjectOf(target), SAID);
+  const inBuild = checkBuildPlace(cwd, place, parks, fact);
+  if (!inBuild) questions.checkUnparked(read, subjectOf(target), SAID);
   const given = fact ? factOf(stdin()) : callOf(stdin(), target.replaces !== null);
   if (target.replaces !== null) checkProposals(/** @type {Call} */ (given), target.replaces, short(target.replaces.entry));
-  if (parks !== null) return parkedRaise(cwd, place, target, /** @type {Call} */ (given), parks, warnings);
+  if (inBuild) return parkedRaise(cwd, place, target, /** @type {Call} */ (given), parks, warnings);
   const open = openSeal(readSeals(session), place, target, null);
   if (open !== null) {
     clearGateShown(session);

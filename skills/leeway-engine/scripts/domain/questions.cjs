@@ -11,7 +11,11 @@
 //   a replacement would replace — each a task that met it while it waited
 //   and joined it, its line holding the first park's sealed call, copied
 //   under the writer lock. It goes by its first park, which it is drawn
-//   from, and parks every task its parks name. What it asks is Claude's
+//   from, and parks every task its parks name but a task closed since,
+//   taken off it by an `unparked` line of its unit: a park made outside any
+//   task — the task writer's, the consolidation agent's or the phase
+//   review's (12.5.5) — names none, and a question parking nothing waits as
+//   any other, nothing waiting on it. What it asks is Claude's
 //   call's question as sealed, or, where its question has been reworded
 //   since, its wording as it stands.
 // - Its number: `Q{n}`, per unit, the next after the highest the unit's
@@ -46,7 +50,8 @@
 //   the task the answer freed, or each of theirs, building again: a task a
 //   park held that waited before the answer and no park still waiting
 //   holds after it; where none is, the task a question still waiting holds;
-//   else still waiting — how many questions of the unit still wait, and the
+//   where none is and it parks none, that no task waited on it; else still
+//   waiting — how many questions of the unit still wait, and the
 //   next to raise. The next is read from the conversation's discussion
 //   queue, `discussing.json` in its folder, which the board keeps —
 //   `{"discussing", "queue"}`, the question under discussion and those
@@ -54,6 +59,10 @@
 //   just recorded. With no queue, or none still waiting, it names none; a
 //   queue that cannot be read names none, and says so as a warning. An
 //   explained-again question is still under discussion, so names no next.
+// - A task against its questions (13.4.6), what the task verbs read: the
+//   tasks each question waiting parks, so a task parked never shows as
+//   ready, is never done nor its account taken while a question parks it,
+//   and is taken off them as it closes.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -78,7 +87,7 @@ const { liveness, manifestOf } = require('./ledger-units.cjs');
 /**
  * A question parked in a unit: its first park, its number, every park of
  * it in the ledger's order, and the tasks they park, in the order each
- * first parked.
+ * first parked — none taken off it since.
  * @typedef {{park: string, number: number, parks: string[], tasks: string[]}} Question
  */
 /**
@@ -112,9 +121,33 @@ function numbered(number) {
   return `Q${number}`;
 }
 
-/** The tasks a question parks, as a line says them: the first, and how many more. @param {string[]} tasks */
+/** The tasks a question parks, as a line says them: the first, and how many more; or none. @param {string[]} tasks */
 function parkedTasks(tasks) {
+  if (tasks.length === 0) return 'no task';
   return tasks.length === 1 ? `task ${tasks[0]}` : `task ${tasks[0]} and ${tasks.length - 1} more`;
+}
+
+/**
+ * The tasks taken off their questions in each unit, `{unit} {task}`, read
+ * once for a ledger folded.
+ * @type {WeakMap<Map<string, import('./ledger-fold.cjs').IdFacts>, Set<string>>}
+ */
+const TAKEN_OFF = new WeakMap();
+
+/** Whether `task` of `unit` is taken off its questions. @param {Folded} read @param {string} unit @param {string} task */
+function takenOff(read, unit, task) {
+  let off = TAKEN_OFF.get(read.facts);
+  if (off === undefined) {
+    off = new Set([...read.facts.values()].filter((facts) => facts.event === 'unparked').map((facts) => `${facts.unit} ${facts.task}`));
+    TAKEN_OFF.set(read.facts, off);
+  }
+  return off.has(`${unit} ${task}`);
+}
+
+/** The task the park `id` parks, or null: none named, or taken off since. @param {Folded} read @param {string} id */
+function taskOf(read, id) {
+  const { unit, task } = factsOf(read, id);
+  return task === null || takenOff(read, unit, task) ? null : task;
 }
 
 /** The parks made in `unit`, live or not, in the ledger's order. @param {Folded} read @param {string} unit @returns {string[]} */
@@ -146,14 +179,14 @@ function questionsOf(read, ids) {
   const questions = [];
   for (const id of ids) {
     const number = /** @type {number} */ (factsOf(read, id).number);
-    const task = /** @type {string} */ (factsOf(read, id).task);
-    const joined = questions.find((q) => q.number === number && isAbout(read, id, subjectOf(read, q.park)));
-    if (joined === undefined) {
-      questions.push({ park: id, number, parks: [id], tasks: [task] });
-    } else {
-      joined.parks.push(id);
-      if (!joined.tasks.includes(task)) joined.tasks.push(task);
+    const task = taskOf(read, id);
+    let question = questions.find((q) => q.number === number && isAbout(read, id, subjectOf(read, q.park)));
+    if (question === undefined) {
+      question = { park: id, number, parks: [], tasks: [] };
+      questions.push(question);
     }
+    question.parks.push(id);
+    if (task !== null && !question.tasks.includes(task)) question.tasks.push(task);
   }
   return questions;
 }
@@ -232,7 +265,7 @@ function questionNamed(read, unit, name, said) {
     const waiting = waitingNumbers(read, unit);
     throw new Error(`${said}: ${unit} has no question ${name} — ${waiting.length === 0 ? 'none waits on the person' : `those waiting: ${waiting.join(', ')}`}`);
   }
-  const each = holding.map((q) => `${shortId(q.park, read.facts.keys())} (parks ${q.tasks.join(', ')})`).join(', ');
+  const each = holding.map((q) => `${shortId(q.park, read.facts.keys())} (parks ${q.tasks.length === 0 ? 'no task' : q.tasks.join(', ')})`).join(', ');
   throw new Error(`${said}: ${name} names ${holding.length} questions of ${unit} — each clone parked one under it before the other pushed; name the one by its id: ${each}`);
 }
 
@@ -438,17 +471,19 @@ function receiptLine(names, outcome, means, count, next) {
  * parks waiting before it `before`: the tasks parks held that waited
  * before it and wait no longer, that no park still waiting holds — one
  * building again, or each of theirs; none, where a question still waiting
- * holds its task.
+ * holds its task; and none where it parks no task.
  * @param {Folded} read @param {string} unit @param {Parks} parks @param {string[]} before
  */
 function answerMeans(read, unit, parks, before) {
   const after = waitingParks(read, unit);
-  const held = new Set(after.map((id) => factsOf(read, id).task));
-  const freed = [...new Set(before.filter((id) => !after.includes(id)).map((id) => /** @type {string} */ (factsOf(read, id).task)))]
-    .filter((task) => !held.has(task));
+  const held = new Set(after.map((id) => taskOf(read, id)));
+  const freed = [...new Set(before.filter((id) => !after.includes(id)).map((id) => taskOf(read, id)))]
+    .filter((task) => task !== null && !held.has(task));
   if (freed.length === 1) return `task ${freed[0]} builds again`;
   if (freed.length > 1) return 'their tasks build again';
-  const task = parks.tasks.find((t) => held.has(t)) ?? parks.tasks[0];
+  const { tasks } = /** @type {Question} */ (questionsOf(read, parksOf(read, unit)).find((q) => q.park === parks.park));
+  const task = tasks.find((t) => held.has(t));
+  if (task === undefined) return 'no task waited on it';
   const by = waitingOf(read, unit).filter((q) => q.tasks.includes(task)).map((q) => numbered(q.number));
   return `task ${task} waits on ${by.join(', ')}`;
 }
@@ -537,7 +572,24 @@ function asideQuestions(cwd, args) {
   return { receipt, ...(warnings.length > 0 ? { warnings } : {}) };
 }
 
+/**
+ * The tasks of `unit` its questions waiting park, each with the numbers of
+ * those parking it, oldest first.
+ * @param {string} root @param {string} unit @param {string[]} warnings
+ * @returns {Map<string, string[]>}
+ */
+function parkedTasksOf(root, unit, warnings) {
+  return readQuestions(root, warnings, (read) => {
+    /** @type {Map<string, string[]>} */
+    const parked = new Map();
+    for (const question of waitingOf(read, unit)) {
+      for (const task of question.tasks) parked.set(task, [...(parked.get(task) ?? []), numbered(question.number)]);
+    }
+    return parked;
+  });
+}
+
 module.exports = {
   DISCUSSING, WAITING_USAGE, ASIDE_USAGE, numbered, parkedTasks, waitingOn, parkedUnder, parkedQuestion, checkUnparked, waitingQuestions, asideQuestions, foundPark, answeredReceipt,
-  explainedReceipt, checkAnswerable, answerable,
+  explainedReceipt, checkAnswerable, answerable, parkedTasksOf,
 };

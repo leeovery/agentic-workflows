@@ -47,6 +47,7 @@ const { createManifest } = require('./discovery-test-utils.cjs');
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { readReport } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
 const { readAccount } = require(path.join(SCRIPTS, 'domain/task-account.cjs'));
+const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 const { taskBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
 
 const UNIT = 'pay';
@@ -331,6 +332,18 @@ describe('task account (12.14.4, 6.3.13)', () => {
     writeState(dir, roundAt('1.2', 3, 'b'), reportOf([['nit', 'a name.']]));
 
     refusedWith([UNIT, '1.2'], /^task account: round 3 of task 1\.2 of pay did not pass — an account is taken once every reviewer of a round passes the task, or the orchestrator settles it: engine task settle pay 1\.2 --file <why>$/);
+  });
+
+  it('13.4.6: a task a question waiting parks, its last round passed, naming the question\'s raise', () => {
+    const tags = { unit: UNIT, topic: null, phase: 'implementation', session: SESSION.CLAUDE_CODE_SESSION_ID };
+    const { id: question } = appendEntry(statePath(dir), { event: 'asked', ...tags, by: 'claude', who_moved_whom: 'none', text: 'Does a receipt show the tax?', part_of: null, relies_on: [], cites: [], task: '1.2' }, []);
+    const rows = [{ key: '1', name: 'Shown', text: 'The receipt shows the tax', notice: 'a line for tax' }, { key: '2', name: 'Folded', text: 'The total holds the tax', notice: 'no tax line' }];
+    appendEntry(statePath(dir), {
+      event: 'parked', ...tags, question, replaces: null, reason: null, cause: null, relies_on: [], task: '1.2', number: 1,
+      call: { question: 'Should a receipt show the tax?', rows, lean: '1', why: 'Customers ask.', sort: 'one', mechanism: 'A line.', product_wide: false }, rows_judged: [], why_asking: 'Every call asks.',
+    }, []);
+
+    refusedWith([UNIT, '1.2'], /^task account: task 1\.2 of pay waits on Q1, parked for the person — they answer it through its raise: raise draw pay Q1$/);
   });
 
   it('13.4.6: a task stuck on a failed round, settled by the orchestrator in one state commit, then its account taken, carrying what was done', () => {

@@ -70,7 +70,9 @@
 //   task it holds (12.13.4; raise.cjs): what it is about — the question it
 //   answers, or the decision a replacement would replace with the reason
 //   and the cause — and what its answer relies on; the task it parks, as
-//   screens show it; its number in its unit, `Q{number}`, the engine's,
+//   screens show it, null where a call made in the build outside any task
+//   asks — the task writer's, the consolidation agent's or the phase
+//   review's — parking none; its number in its unit, `Q{number}`, the engine's,
 //   minted as it parks and never reused, or, for a task joining a question
 //   already waiting, that question's (questions.cjs); and the call sealed,
 //   so it is raised as it was put whenever the person is ready, in whatever
@@ -78,6 +80,10 @@
 //   one-decision check judged one rule, and why it asks, the decision
 //   point's reason. It names no maker, is no entry and is never replaced:
 //   it waits while what it is about stands open (questions.cjs).
+// - unparked: a task closed in the build, taken off every question of its
+//   unit that parks it (task-verbs.cjs, questions.cjs): the task, as
+//   screens show it. It names no maker and is no entry; a question it
+//   leaves parking nothing still waits.
 //
 // Every entry may cite where it came from (21.6.3, 21.6.4): sections of
 // files — a topic's log, a spec — each by its path from the state root and
@@ -268,12 +274,13 @@ const SCHEMA = {
       field('reason', nullable(oneOf(...REASONS))),
       field('cause', nullable(ID)),
       field('relies_on', listOf(ID)),
-      field('task', TASK),
+      field('task', nullable(TASK)),
       field('number', COUNT),
       field('call', shaped(`a call, {${Object.keys(CALL_FIELDS).join(', ')}}`, CALL_FIELDS)),
       field('rows_judged', listOf(KEY)),
       field('why_asking', LINE),
     ], 1, parkHolds),
+    unparked: event([field('task', TASK)]),
   },
 };
 
@@ -284,7 +291,8 @@ const ENTRY_EVENTS = Object.freeze({ asked: 'question', found: 'finding', decide
 
 /**
  * The kind of entry an event is, or null for an event that is no entry: a
- * confirmation, a move, a merge, a check, a keep, an asset or a park.
+ * confirmation, a move, a merge, a check, a keep, an asset, a park or a
+ * task taken off its questions.
  * @param {Record<string, unknown>} event
  * @returns {EntryKind|null}
  */
