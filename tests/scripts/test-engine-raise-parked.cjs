@@ -47,6 +47,7 @@ const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
 const EVERY_CALL_ASKS = 'Every call comes to you for now: the counts that would let me decide aren\'t built yet.';
 const BUILD = `${UNIT}.implementation`;
 const REVIEW = `${UNIT}.review`;
+const TOPIC = `${UNIT}.discussion.note-window`;
 const MINT = 'mint';
 // Another conversation: the same person after a /clear.
 const CLEARED = 'c0ffee00-1234-4abc-8def-0123456789ac';
@@ -102,7 +103,7 @@ afterEach(() => {
   cleanupFixture(dir);
 });
 
-const { write, ledgerText, entries, full } = ledgerHelpers(() => dir);
+const { write, ledgerText, entries, full, checkRuns } = ledgerHelpers(() => dir);
 const { conversation, inFolder, seals, logged, answer, lastEntry, raiseEvent } = raiseHelpers(() => dir, config, CALL);
 
 /** The cleared conversation's environment. */
@@ -181,6 +182,14 @@ function parked(number, task, own = {}) {
 
 /** The frameless note's replacement proposed and parked as `Q{number}` with `task`, appended in process. */
 const parkedReplacement = (number = 1, task = '2.4') => parked(number, task, { question: null, replaces: full(made.frameless), reason: 'was-wrong', call: FRAMED });
+
+/** The refusal naming `name`'s raise, in the words of `said`, `tasks` the tasks it parks. @param {string} said @param {string} [tasks] @param {string} [name] */
+function raiseNamed(said, tasks = 'task 2.3', name = 'Q1') {
+  return `${said}: ${name} of fumi waits on the person about this, parking ${tasks} — the person answers it through the raise alone: raise draw fumi ${name}`;
+}
+
+/** A question asked on the note window's topic: its short id. */
+const askedOnTopic = () => write('ask', TOPIC, [], { ...MADE, text: 'Is a note a window?' }).id;
 
 /** An event of Claude's made in the build, appended in process as a clone's merge lays it. @param {Record<string, unknown>} event */
 function appended(event) {
@@ -276,6 +285,17 @@ describe('a question parked in the build (12.13.2–12.13.4, 12.13.9, 12.S28, 12
     assert.strictEqual(lastEntry().task, '2.3');
   });
 
+  it('a task whose question comes to wait while its rows are judged joins it under the lock, its line holding the first park\'s call as sealed', async (t) => {
+    t.mock.method(decisionPoint, 'decide', () => {
+      parked(1, '2.3');
+      return { decision: 'ask', reason: 'Its own reason.' };
+    });
+
+    const { res } = await park(made.where, '2.5', { call: { ...CALL, why: 'Its tests need the screen.' } });
+
+    assert.deepStrictEqual([res.parked, lastEntry()], ['Q1', { ...parkedLine({ task: '2.5' }), id: full(res.id) }]);
+  });
+
   it('a replacement proposed in the build parks its task too, the decision it would replace, the reason and the cause on the line', async () => {
     const { res } = await parkReplacement('2.4');
 
@@ -344,6 +364,26 @@ describe('what waits (12.13.6, 12.13.7)', () => {
     assert.deepStrictEqual(waiting(), []);
   });
 
+  it('a question set aside with its topic, postponed or cancelled, waits no longer — raise waiting, raise draw and raise aside answering for the rest — and waits again once the topic is back', () => {
+    parked(1, '2.2', { question: full(made.size) });
+    parked(2, '2.3', { question: full(askedOnTopic()) });
+    /** The note window's map row, `item` over it. @param {Record<string, unknown>} item */
+    const mapped = (item) => createManifest(dir, UNIT, { work_type: 'epic', phases: { ...PHASES, discovery: { items: { ...PHASES.discovery.items, 'note-window': { ...PHASES.discovery.items['note-window'], ...item } } } } });
+    const refused = (/** @type {string} */ verb) => refusedPristine(dir, ['raise', verb, UNIT, 'Q2'], { env: conversation() }).error;
+
+    for (const aside of ['postponed', 'cancelled']) {
+      mapped({ [aside]: true });
+      assert.deepStrictEqual(waitingNumbers(), ['Q1'], `a question on a topic ${aside} waits`);
+      assert.strictEqual(refused('draw'), `raise draw: Q2 waits no longer — its question is set aside — its topic, note-window, is ${aside}`);
+      assert.strictEqual(refused('aside'), `raise aside: Q2 waits no longer — its question is set aside — its topic, note-window, is ${aside}`);
+      assert.strictEqual(ok(dir, ['raise', 'aside', UNIT, 'Q1'], { env: conversation() }).receipt, 'Q1 set aside · still waiting · 1 waiting on you');
+      assert.deepStrictEqual(draw('Q1').res.parks, ['2.2']);
+    }
+    mapped({});
+    assert.deepStrictEqual(waitingNumbers(), ['Q1', 'Q2']);
+    assert.deepStrictEqual(draw('Q2').res.parks, ['2.3']);
+  });
+
   it('two clones parking two questions under one number before either pushed: the merge keeps both, each waiting; the number naming both refuses, naming each by its id, and an id draws its own', () => {
     const one = parked(1, '2.3');
     const other = parked(1, '2.5', { question: full(made.size) });
@@ -373,16 +413,19 @@ describe('raise draw (12.13.10, 12.13.18–12.13.20, 12.S33, 12.S34)', () => {
     assert.strictEqual(afresh.sections, screen(afresh.res.raise, 'Q1', 'task 2.3'));
   });
 
-  it('a question reworded while it waits is drawn as it is worded now — sealed on its new wording, which it shows — and answered; raised again on it for its task, it is the question waiting', async () => {
+  it('a question reworded while it waits is drawn as it is worded now — sealed on its new wording, which it shows — and answered; raised on it again, for its task or another joining it, its line says it as worded now', async () => {
     parked(1, '2.3');
     const reworded = write('replace', BUILD, ['--replaces', made.where, '--reason', 'changed-mind'], { ...MADE, drops: ['where it opens'], text: 'On which screen does a new note open?' }).id;
+    const said = (/** @type {string} */ task) => `Task ${task} parks on Q1, waiting for you: On which screen does a new note open? The other tasks carry on.`;
 
     const { res, sections } = draw('Q1');
 
     assert.strictEqual(sections, screen(res.raise, 'Q1', 'task 2.3', 'On which screen does a new note open?'));
     assert.strictEqual(seals()?.[res.raise].answers, full(reworded));
-    assert.strictEqual((await park(reworded, '2.3')).res.already, true);
-    assert.strictEqual(answer(res.raise, ['--pick', '1']).receipt, 'Q1 answered · task 2.3 builds again · nothing waiting on you');
+    const again = (await park(reworded, '2.3')).res;
+    const joined = (await park(reworded, '2.5')).res;
+    assert.deepStrictEqual([again.already, again.line, joined.parked, joined.line], [true, said('2.3'), 'Q1', said('2.5')]);
+    assert.strictEqual(answer(res.raise, ['--pick', '1']).receipt, 'Q1 answered · their tasks build again · nothing waiting on you');
     assert.deepStrictEqual([lastEntry().event, lastEntry().answers], ['decided', full(reworded)]);
   });
 
@@ -397,12 +440,16 @@ describe('raise draw (12.13.10, 12.13.18–12.13.20, 12.S33, 12.S34)', () => {
     assert.notStrictEqual(second.raise, first.raise);
   });
 
-  it('drawn again in the conversation, its open seal is drawn again', () => {
+  it('drawn again in the conversation, its open seal is drawn again — after a task joined it, holding the tasks it parks now, its header saying so', () => {
     parked(1, '2.3');
     const first = draw('Q1').res;
 
     assert.deepStrictEqual(draw('Q1').res, { ...first, redrawn: true });
-    assert.deepStrictEqual(Object.keys(seals() ?? {}), [first.raise]);
+    parked(1, '2.4');
+    const { res, sections } = draw('Q1');
+    assert.deepStrictEqual(res, { ...first, parks: ['2.3', '2.4'], redrawn: true });
+    assert.strictEqual(sections, screen(res.raise, 'Q1', 'task 2.3 and 1 more'));
+    assert.deepStrictEqual([Object.keys(seals() ?? {}), seals()?.[res.raise].parks.tasks], [[first.raise], ['2.3', '2.4']]);
   });
 
   it('a replacement proposed draws Claude\'s proposals, then keep — the decision\'s answer as it stands', () => {
@@ -501,10 +548,7 @@ describe('the answer and its receipt (12.13.15, 12.13.16, 20.6.9, 12.S35, 20.S6)
   });
 });
 
-describe('its answer through its raise alone (12.13.5, 5.3.10)', () => {
-  /** The refusal naming Q1's raise, in the words of `said`, `tasks` the tasks it parks. @param {string} said @param {string} [tasks] */
-  const raiseNamed = (said, tasks = 'task 2.3') => `${said}: Q1 of fumi waits on the person about this, parking ${tasks} — the person answers it through the raise alone: raise draw fumi Q1`;
-
+describe('its answer through its raise alone (12.13.5, 12.13.16, 16.4.7, 5.3.10)', () => {
   it('while a question waits, ledger decide on it is refused, naming its raise — Claude\'s for another task, the person\'s own, and on a new wording of it — writing nothing', () => {
     parked(1, '2.3');
     const decided = (/** @type {string} */ question, /** @type {string[]} */ flags, /** @type {Record<string, unknown>} */ content) => refusedPristine(dir, ['ledger', 'decide', BUILD, '--answers', question, ...flags], { env: conversation(), stdin: JSON.stringify(content) }).error;
@@ -523,14 +567,41 @@ describe('its answer through its raise alone (12.13.5, 5.3.10)', () => {
     }).error, raiseNamed('ledger replace', 'task 2.4'));
   });
 
-  it('while a question waits, Claude\'s call that would proceed on it is refused, naming its raise, writing and sealing nothing', async (t) => {
-    const topic = `${UNIT}.discussion.note-window`;
-    const opened = write('ask', topic, [], { ...MADE, text: 'Is a note a window?' }).id;
+  it('while a question waits, any other raise on it is refused before a row is judged, naming its raise — asking on its question from its topic, on a fact, and on the decision a replacement waiting would replace — writing, sealing and judging nothing', async () => {
+    const opened = askedOnTopic();
     parked(1, '2.3', { question: full(opened) });
     parked(1, '2.5', { question: full(opened) });
-    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'proceed', reason: 'Your calls on this kind land.' }));
+    parkedReplacement(2, '2.4');
+    const fact = { question: 'Who signs the beta?', rows: [], mechanism: 'Outside the code.', product_wide: false };
 
-    assert.strictEqual(await refusedPark([topic, '--answers', opened]), raiseNamed('raise', 'task 2.3 and 1 more'));
+    assert.strictEqual(await refusedPark([TOPIC, '--answers', opened]), raiseNamed('raise', 'task 2.3 and 1 more'));
+    assert.strictEqual(await refusedPark([TOPIC, '--answers', opened, '--fact'], fact), raiseNamed('raise', 'task 2.3 and 1 more'));
+    assert.strictEqual(await refusedPark([`${UNIT}.specification`, '--replaces', made.frameless, '--reason', 'was-wrong'], FRAMED), raiseNamed('raise', 'task 2.4', 'Q2'));
+    assert.deepStrictEqual(checkRuns(config()), [], 'a refused raise judged a row');
+  });
+
+  it('a raise whose question comes to wait while its rows are judged is refused under the lock as its call proceeds, naming its raise, writing nothing', async (t) => {
+    const opened = askedOnTopic();
+    t.mock.method(decisionPoint, 'decide', () => {
+      parked(1, '2.3', { question: full(opened) });
+      return { decision: 'proceed', reason: 'Your calls on this kind land.' };
+    });
+    const text = ledgerText();
+
+    const { error } = await refusesAsync(dir, ['raise', TOPIC, '--answers', opened], { env: conversation(), stdin: JSON.stringify(CALL) });
+
+    assert.strictEqual(error, raiseNamed('raise'));
+    assert.deepStrictEqual(entries().slice(-1).map((e) => e.event), ['parked'], 'the refused call landed');
+    assert.ok(ledgerText().startsWith(text));
+  });
+
+  it('a raise drawn before its question came to wait is refused at its answer, under the lock, naming its raise, recording nothing', async () => {
+    const opened = askedOnTopic();
+    const { res } = await okSectionsAsync(dir, ['raise', TOPIC, '--answers', opened], { env: conversation(), stdin: JSON.stringify(CALL) });
+    parked(1, '2.3', { question: full(opened) });
+
+    assert.strictEqual(refusedPristine(dir, ['raise', 'answer', res.raise, '--pick', '1'], { env: conversation(), stdin: JSON.stringify({ why: WHY }) }).error, raiseNamed('raise answer'));
+    assert.deepStrictEqual(logged(), []);
   });
 });
 

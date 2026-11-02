@@ -9,8 +9,11 @@
 // - A question: a park, and every park after it holding its number about
 //   the same thing — the question, in any of its wordings, or the decision
 //   a replacement would replace — each a task that met it while it waited
-//   and joined it. It goes by its first park, which it is drawn from, and
-//   parks every task its parks name.
+//   and joined it, its line holding the first park's sealed call, copied
+//   under the writer lock. It goes by its first park, which it is drawn
+//   from, and parks every task its parks name. What it asks is Claude's
+//   call's question as sealed, or, where its question has been reworded
+//   since, its wording as it stands.
 // - Its number: `Q{n}`, per unit, the next after the highest the unit's
 //   parks hold, live or not, so none is ever reused and a queued "Q2" never
 //   shifts when Q1 is answered; a task joining a question waiting takes its
@@ -18,14 +21,16 @@
 //   one number for two questions; the merge keeps both, and the number
 //   naming both refuses, naming each by the id that tells them apart.
 // - Waiting: a park waits while it is live and what it is about stands open
-//   — the question it answers open, by the one rule every read decides by
-//   (ledger-fold.cjs); the decision a replacement would replace current,
-//   and no live keep of it made since the park. While it waits, its answer
-//   comes through its raise alone: a decision on its question, a
-//   replacement of its decision, and Claude's call proceeding on either
-//   are refused anywhere else (`checkUnparked`). So the wait ends with the
-//   raise's answer, a keep among them, a merge of its question, a move of
-//   it to the roadmap, or the unit or its place set aside, while it is.
+//   — the question it answers live, in some wording, and open, by the one
+//   rule every read decides by (ledger-fold.cjs); the decision a
+//   replacement would replace current, and no live keep of it made since
+//   the park. While it waits, its answer comes through its raise alone: a
+//   decision on its question, a replacement of its decision, and any other
+//   raise on either, asked or proceeding, are refused anywhere else
+//   (`checkUnparked`). So the wait ends with the raise's answer, a keep
+//   among them, a merge of its question, a move of it to the roadmap, or
+//   the unit, its place or its question set aside, while it is — a
+//   question set aside with its topic waits again once the topic is back.
 // - `raise waiting <unit>`: the unit's waiting questions, oldest first, each
 //   by its number and its first park's id, with what it asks — its
 //   question's wording as it stands now — the tasks it parks, when it
@@ -59,6 +64,7 @@ const { handedSession } = require('../kernel/process.cjs');
 const { findStateRoot } = require('../kernel/state-root.cjs');
 const { conversationDir } = require('./conversation.cjs');
 const { shortId, resolveId } = require('./ledger-ids.cjs');
+const { withLedger } = require('./ledger.cjs');
 const { ID_FACTS, readFolded, factsOf, whyDead, questionStands, notCurrent, keptOf, wordingOf } = require('./ledger-fold.cjs');
 const { liveness, manifestOf } = require('./ledger-units.cjs');
 
@@ -90,9 +96,11 @@ const { liveness, manifestOf } = require('./ledger-units.cjs');
  */
 /**
  * The question of a unit waiting on a subject: its number, its first
- * park's short id, the tasks it parks, and its first park's line.
- * @typedef {{name: string, id: string, tasks: string[], line: Record<string, any>}} WaitingOn
+ * park's short id, the tasks it parks, its first park's line, and what it
+ * asks now.
+ * @typedef {{name: string, id: string, tasks: string[], line: Record<string, any>, asks: string}} WaitingOn
  */
+/** A park's call as sealed: Claude's call, the rows judged, and why it asks. @typedef {{call: Record<string, any>, rows_judged: string[], why_asking: string}} Sealed */
 /** A seal's question: its first park's full id, its number and the tasks it parks (raise.cjs). @typedef {{park: string, number: number, tasks: string[]}} Parks */
 
 const DISCUSSING = 'discussing.json';
@@ -158,9 +166,9 @@ function nextNumber(read, unit) {
 
 /**
  * Why the park `id` waits no longer, or null while it waits: its place set
- * aside; its question answered, merged into another's answer or moved to
- * the roadmap; the decision it would replace no longer current, or kept as
- * it stands since it parked.
+ * aside; its question set aside in every wording, answered, merged into
+ * another's answer or moved to the roadmap; the decision it would replace
+ * no longer current, or kept as it stands since it parked.
  * @param {Folded} read @param {string} id
  * @returns {string|null}
  */
@@ -169,6 +177,7 @@ function notWaiting(read, id) {
   if (dead !== null) return dead;
   const { question, replaces, place } = factsOf(read, id);
   if (question !== null) {
+    if (wordingOf(read, question) === null) return `its question is set aside — ${whyDead(read, question)}`;
     const stands = questionStands(read, question);
     return { open: null, answered: 'its question is answered', merged: 'its question is merged into another\'s answer', later: 'its question is moved to the roadmap as later' }[stands];
   }
@@ -195,16 +204,6 @@ function waitingOf(read, unit) {
 /** The numbers of the questions of `unit` still waiting, oldest first. @param {Folded} read @param {string} unit */
 function waitingNumbers(read, unit) {
   return waitingOf(read, unit).map((q) => numbered(q.number));
-}
-
-/**
- * The number a park about `subject` takes in `unit` now: that of the
- * question waiting on it, the park a task joining it, else the next.
- * @param {Folded} read @param {string} unit @param {Subject} subject
- */
-function numberFor(read, unit, subject) {
-  const joined = waitingParks(read, unit).find((id) => isAbout(read, id, subject));
-  return joined === undefined ? nextNumber(read, unit) : /** @type {number} */ (factsOf(read, joined).number);
 }
 
 /**
@@ -277,17 +276,17 @@ function readQuestions(root, warnings, answer) {
 }
 
 /**
- * What the park whose line is `line` asks now: Claude's call's question as
- * it was sealed, or, where its question has been reworded since, its
- * wording as it stands, on one line; and that wording, null for a
- * replacement.
+ * What the question whose first park's line is `line` asks now: Claude's
+ * call's question as it was sealed, or, where its question has been
+ * reworded since, its wording as it stands, on one line; and that wording —
+ * null for a replacement, and for a question set aside in every wording,
+ * which asks as it was sealed.
  * @param {Folded} read @param {EntryAt} entryAt @param {Record<string, any>} line
  * @returns {{asks: string, answers: string|null}}
  */
 function askedNow(read, entryAt, line) {
-  if (line.question === null) return { asks: line.call.question, answers: null };
-  const answers = /** @type {string} */ (wordingOf(read, line.question));
-  if (answers === line.question) return { asks: line.call.question, answers };
+  const answers = line.question === null ? null : wordingOf(read, line.question);
+  if (answers === null || answers === line.question) return { asks: line.call.question, answers };
   return { asks: entryAt(factsOf(read, answers).place).text.replace(/\s+/g, ' ').trim(), answers };
 }
 
@@ -321,15 +320,46 @@ function waitingOn(cwd, unit, subject, warnings) {
   return readQuestions(/** @type {string} */ (findStateRoot(cwd)), warnings, (read, entryAt) => {
     const question = waitingOf(read, unit).find((q) => isAbout(read, q.park, subject));
     if (question === undefined) return null;
-    return { name: numbered(question.number), id: shortId(question.park, read.facts.keys()), tasks: question.tasks, line: entryAt(factsOf(read, question.park).place) };
+    const line = entryAt(factsOf(read, question.park).place);
+    return { name: numbered(question.number), id: shortId(question.park, read.facts.keys()), tasks: question.tasks, line, asks: askedNow(read, entryAt, line).asks };
+  });
+}
+
+/**
+ * What a park about `subject` in `unit` holds of its own, set under the
+ * writer lock from the ledger as it stands there, `read`: where a question
+ * waits on it, which the park's task joins, that question's number and its
+ * first park's call as sealed; else the next number, and `sealed`, the call
+ * as the raise sealed it.
+ * @param {string} cwd @param {Folded} read @param {string} unit @param {Subject} subject @param {Sealed} sealed @param {string[]} warnings
+ * @returns {Sealed & {number: number}}
+ */
+function parkedUnder(cwd, read, unit, subject, sealed, warnings) {
+  const joined = waitingParks(read, unit).find((id) => isAbout(read, id, subject));
+  if (joined === undefined) return { number: nextNumber(read, unit), ...sealed };
+  const first = /** @type {Record<string, any>} */ (withLedger(/** @type {string} */ (findStateRoot(cwd)), warnings, (ledger) => ledger.entryAt(factsOf(read, joined).place)));
+  return { number: /** @type {number} */ (factsOf(read, joined).number), call: first.call, rows_judged: first.rows_judged, why_asking: first.why_asking };
+}
+
+/**
+ * The question of `unit` the park `park` is one of, read now: its number,
+ * and what it asks now.
+ * @param {string} cwd @param {string} unit @param {string} park @param {string[]} warnings
+ * @returns {{name: string, asks: string}}
+ */
+function parkedQuestion(cwd, unit, park, warnings) {
+  return readQuestions(/** @type {string} */ (findStateRoot(cwd)), warnings, (read, entryAt) => {
+    const question = /** @type {Question} */ (questionsOf(read, parksOf(read, unit)).find((q) => q.parks.includes(park)));
+    return { name: numbered(question.number), asks: askedNow(read, entryAt, entryAt(factsOf(read, question.park).place)).asks };
   });
 }
 
 /**
  * Refuse, in the words of `said`, an answer to what a question waiting in
  * the build is about — a decision on its question, a replacement of the
- * decision it would replace, or Claude's call proceeding on either — made
- * anywhere but through its raise, which the person answers it by alone.
+ * decision it would replace, or a raise on either, asked or proceeding —
+ * made anywhere but through its raise, which the person answers it by
+ * alone.
  * @param {Folded} read @param {Subject} subject @param {string} said
  */
 function checkUnparked(read, subject, said) {
@@ -492,6 +522,6 @@ function asideQuestions(cwd, args) {
 }
 
 module.exports = {
-  DISCUSSING, WAITING_USAGE, ASIDE_USAGE, numbered, parkedTasks, numberFor, waitingOn, checkUnparked, waitingQuestions, asideQuestions, foundPark, answeredReceipt, explainedReceipt,
-  checkStillWaiting, stillWaiting,
+  DISCUSSING, WAITING_USAGE, ASIDE_USAGE, numbered, parkedTasks, waitingOn, parkedUnder, parkedQuestion, checkUnparked, waitingQuestions, asideQuestions, foundPark, answeredReceipt,
+  explainedReceipt, checkStillWaiting, stillWaiting,
 };

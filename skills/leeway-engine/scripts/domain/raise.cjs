@@ -107,21 +107,26 @@
 //   no row and asks nothing: where that question parks its task — a rerun
 //   after a kill among them — it parks nothing and answers that question;
 //   else its task joins the question, parked under its number with its
-//   call as sealed. While a question waits, a call of Claude's that would
-//   proceed on its subject is refused, naming its raise (questions.cjs).
+//   first park's call as sealed, copied under the writer lock. Its line,
+//   and the one an `already` answers, say the question as it is worded now.
+//   While a question waits, any raise on its subject without `--parks` —
+//   one asking as one proceeding — is refused, naming its raise: before a
+//   row is judged, and under the lock as a proceed or an answer lands, for
+//   a park that came after it was drawn (questions.cjs).
 // - `raise draw <unit> <question>` (12.13.10, 12.13.20): a question waiting,
 //   by its number or a park's id, raised in full once the person says they
 //   are ready — sealed in the conversation from its first park alone, never
 //   from Claude's words, so after a `/clear` it draws as it was sealed; its
 //   question as it is worded now, sealed and shown where it was reworded
 //   since. A seal of that question the conversation holds open, on the same
-//   wording, is drawn again; a seal is matched to a question waiting by its
-//   park alone. Its screen is headed by its number and the tasks it parks
-//   (16.9.5, 12.12.5), and it is answered as any raise is. Its answer
-//   carries the first task it parks; its trust log event says it blocked
-//   the build (16.4.7); and the answer, or "I don't follow", answers the
-//   receipt (questions.cjs). A question waiting no longer refuses the draw,
-//   and its answer, under the lock, with nothing recorded (20.6.10).
+//   wording, is drawn again, holding the tasks it parks now; a seal is
+//   matched to a question waiting by its park alone. Its screen is headed
+//   by its number and the tasks it parks (16.9.5, 12.12.5), and it is
+//   answered as any raise is. Its answer carries the first task it parks;
+//   its trust log event says it blocked the build (16.4.7); and the answer,
+//   or "I don't follow", answers the receipt (questions.cjs). A question
+//   waiting no longer refuses the draw, and its answer, under the lock,
+//   with nothing recorded (20.6.10).
 // - `raise show <id> [--technical]` draws a raise again from its seal
 //   alone, never from Claude's words; `--technical` shows the mechanism.
 // - `raise answer <id> (--pick <key> | --own | --didnt-follow)`: the person's
@@ -592,7 +597,9 @@ function changeSeals(session, change) {
 /**
  * `seal` kept beside the conversation's raises, drawn; or, where an open
  * seal of its question or replacement was sealed while the draw waited, that
- * one, drawn again. Refuses the raise where it cannot be sealed.
+ * one, drawn again — a question waiting in the build holding the tasks it
+ * parks as `seal` read them now. Refuses the raise where it cannot be
+ * sealed.
  * @param {string} session @param {Place} place @param {Target} target @param {Seal} seal
  * @returns {{seal: Seal, redrawn: boolean}}
  */
@@ -600,9 +607,14 @@ function sealDrawn(session, place, target, seal) {
   try {
     return changeSeals(session, (seals, put) => {
       const open = openSeal(seals, place, target, seal.parks?.park ?? null);
-      if (open !== null) return { seal: open, redrawn: true };
-      put(seal);
-      return { seal, redrawn: false };
+      if (open === null) {
+        put(seal);
+        return { seal, redrawn: false };
+      }
+      if (seal.parks === null) return { seal: open, redrawn: true };
+      const now = { ...open, parks: seal.parks };
+      put(now);
+      return { seal: now, redrawn: true };
     });
   } catch (err) {
     throw new Error(`raise: the raise could not be sealed in the conversation's folder — nothing drawn: ${messageOf(err)}`);
@@ -738,7 +750,7 @@ function subjectOf({ answers, replaces }) {
  * a decision, its answer as it stands kept for the screen's own row. Its
  * usage is a fact's where `fact`.
  * @param {string} cwd @param {string[]} args @param {string[]} warnings @param {boolean} fact
- * @returns {{place: Place, target: Target, short: (id: string) => string}}
+ * @returns {{place: Place, target: Target, short: (id: string) => string, read: import('./ledger-fold.cjs').Folded}}
  */
 function placedRaise(cwd, args, warnings, fact) {
   const verb = args.includes('--replaces') ? 'replace' : 'decide';
@@ -750,13 +762,13 @@ function placedRaise(cwd, args, warnings, fact) {
   if (replacing === null) {
     const answers = /** @type {string} */ (linked.answers);
     checkOpen(answers, read);
-    return { place, target: { answers, relies_on: reliesOn, replaces: null }, short };
+    return { place, target: { answers, relies_on: reliesOn, replaces: null }, short, read };
   }
   const entry = /** @type {string} */ (linked.replaces);
   const kind = entryKind(replacing);
   if (kind !== 'decision') throw new Error(`raise --replaces names ${short(entry)}, a ${kind} — a raise replaces a decision, the person picking its answer`);
   const replaces = { entry, reason: /** @type {string} */ (linked.reason), cause: /** @type {string|null} */ (linked.cause), keep: keepRow(/** @type {string} */ (replacing.text)) };
-  return { place, target: { answers: null, relies_on: reliesOn, replaces }, short };
+  return { place, target: { answers: null, relies_on: reliesOn, replaces }, short, read };
 }
 
 /**
@@ -781,14 +793,14 @@ function askedRaise(session, place, target, what, judged, reason, warnings) {
 
 /**
  * The park of a question in the build: its links — what it is about, what
- * its answer relies on, and the task — and the call sealed, with the rows
- * the check judged and the decision point's reason; its number, under the
- * lock, that of the question waiting on what it is about, which its task
- * joins, else the next; checked as the answer it waits for is.
- * @param {Place} place @param {Target} target @param {Call} call @param {string[]} judged @param {string} reason @param {string} task
+ * its answer relies on, and the task — checked as the answer it waits for
+ * is; and, set under the lock, its number and its call as sealed: where a
+ * question waits on what it is about, which its task joins, that
+ * question's, else the next number and `sealed`.
+ * @param {string} cwd @param {Place} place @param {Target} target @param {import('./questions.cjs').Sealed} sealed @param {string} task @param {string[]} warnings
  * @returns {import('./ledger-write.cjs').Raised}
  */
-function parking(place, target, call, judged, reason, task) {
+function parking(cwd, place, target, sealed, task, warnings) {
   const { answers, relies_on: reliesOn, replaces } = target;
   const { checkRead } = landsAs(target, AT_THE_DRAW, task);
   return {
@@ -796,11 +808,11 @@ function parking(place, target, call, judged, reason, task) {
     place,
     lands: 'park',
     linked: { question: answers, replaces: replaces?.entry ?? null, reason: replaces?.reason ?? null, cause: replaces?.cause ?? null, relies_on: reliesOn, task },
-    content: { call, rows_judged: judged, why_asking: reason },
+    content: sealed,
     id: null,
     logs: null,
     checkRead,
-    mints: (read) => ({ number: questions.numberFor(read, place.unit, subjectOf(target)) }),
+    mints: (read) => questions.parkedUnder(cwd, read, place.unit, subjectOf(target), sealed, warnings),
   };
 }
 
@@ -811,14 +823,15 @@ function parkedLine(task, name, asks) {
 
 /**
  * A task parked: the park landed, and what it answers — the question's
- * number, the task, the park's id and commit, and the line Claude says.
- * @param {string} cwd @param {import('./ledger-write.cjs').Raised} park @param {string} reason @param {string} asks @param {string[]} warnings
+ * number, the task, the park's id and commit, and the line Claude says,
+ * the question as it is worded now.
+ * @param {string} cwd @param {import('./ledger-write.cjs').Raised} park @param {string} reason @param {string[]} warnings
  * @returns {Parked}
  */
-function parkLanded(cwd, park, reason, asks, warnings) {
+function parkLanded(cwd, park, reason, warnings) {
   const task = /** @type {string} */ (park.linked.task);
   const { landed, line } = landRaised(cwd, park, warnings);
-  const name = questions.numbered(/** @type {number} */ (/** @type {Record<string, unknown>} */ (line).number));
+  const { name, asks } = questions.parkedQuestion(cwd, park.place.unit, /** @type {string} */ (/** @type {Record<string, unknown>} */ (line).id), warnings);
   const { id, committed, ...rest } = landed;
   return { decision: 'ask', reason, parked: name, task, id, committed, line: parkedLine(task, name, asks), ...rest };
 }
@@ -827,24 +840,24 @@ function parkLanded(cwd, park, reason, asks, warnings) {
  * A raise in the build. Where a question already waits on what it is
  * about, no row is judged and nothing asked: a question parking `task`
  * already is answered as it stands, parking nothing; else `task` joins it,
- * parked under its number with its call as sealed. Else its rows judged and
- * the call put through the decision point — landed as Claude's for `task`
- * where it proceeds, else the task parked.
+ * parked under its number with its first park's call as sealed. Else its
+ * rows judged and the call put through the decision point — landed as
+ * Claude's for `task` where it proceeds, else the task parked.
  * @param {string} cwd @param {Place} place @param {Target} target @param {Call} call @param {string} task @param {string[]} warnings
  * @returns {Promise<Parked|Drawn>}
  */
 async function parkedRaise(cwd, place, target, call, task, warnings) {
   const waiting = questions.waitingOn(cwd, place.unit, subjectOf(target), warnings);
   if (waiting !== null) {
-    const { name, id, tasks, line: { call: sealed, rows_judged: judged, why_asking: whyAsking } } = waiting;
-    if (tasks.includes(task)) return { decision: 'ask', reason: whyAsking, parked: name, task, id, committed: null, line: parkedLine(task, name, sealed.question), already: true, ...(warnings.length > 0 ? { warnings } : {}) };
-    return parkLanded(cwd, parking(place, target, sealed, judged, whyAsking, task), whyAsking, sealed.question, warnings);
+    const { name, id, tasks, asks, line: { call: sealed, rows_judged: judged, why_asking: whyAsking } } = waiting;
+    if (tasks.includes(task)) return { decision: 'ask', reason: whyAsking, parked: name, task, id, committed: null, line: parkedLine(task, name, asks), already: true, ...(warnings.length > 0 ? { warnings } : {}) };
+    return parkLanded(cwd, parking(cwd, place, target, { call: sealed, rows_judged: judged, why_asking: whyAsking }, task, warnings), whyAsking, warnings);
   }
   const judged = await checkedRows(call, { cwd, unit: place.unit, verb: 'raise', warnings });
   const { decision, reason } = decisionPoint.decide(call);
   if (decision === 'proceed') return { decision, reason, landed: proceeded(cwd, place, target, call, task, warnings) };
   if (decision === 'blind') throw new Error('raise: the decision point answered blind, and asking blind is 29.19\'s, not built yet — nothing parked');
-  return parkLanded(cwd, parking(place, target, call, judged, reason, task), reason, call.question, warnings);
+  return parkLanded(cwd, parking(cwd, place, target, { call, rows_judged: judged, why_asking: reason }, task, warnings), reason, warnings);
 }
 
 /**
@@ -865,8 +878,9 @@ async function drawRaise(cwd, args, stdin) {
   const warnings = [];
   const { fact, rest: unfact } = factFlag(args);
   const { parks, rest } = parksFlag(unfact, fact);
-  const { place, target, short } = placedRaise(cwd, rest, warnings, fact);
+  const { place, target, short, read } = placedRaise(cwd, rest, warnings, fact);
   checkBuildPlace(place, parks);
+  if (parks === null) questions.checkUnparked(read, subjectOf(target), SAID);
   const given = fact ? factOf(stdin()) : callOf(stdin(), target.replaces !== null);
   if (target.replaces !== null) checkProposals(/** @type {Call} */ (given), target.replaces, short(target.replaces.entry));
   if (parks !== null) return parkedRaise(cwd, place, target, /** @type {Call} */ (given), parks, warnings);
@@ -1190,10 +1204,12 @@ function keeping(session, seal, { entry, reason, cause }, stdin) {
 
 /**
  * The person's answer landed at the raise's id, its raise event with it —
- * none for a fact — then the seal marked answered. Where its question
- * waited in the build, before anything lands, under the lock, it is
- * checked still waiting and the unit's parks waiting are noted, and the
- * response adds the receipt of what the answer freed. Where the ledger held
+ * none for a fact — then the seal marked answered. Before anything lands,
+ * under the lock: where its question waited in the build, it is checked
+ * still waiting and the unit's parks waiting are noted, and the response
+ * adds the receipt of what the answer freed; else it is refused where a
+ * question in the build has come to wait on what it answers since it was
+ * drawn, its answer that question's raise's alone. Where the ledger held
  * the line already, the seal is marked with the answer it holds, and the
  * response says the raise was answered already, and with which row.
  * @param {string} cwd @param {string} session @param {Seal} seal @param {Answering} answering
@@ -1213,7 +1229,10 @@ function recordAnswer(cwd, session, seal, { lands, linked, content, checkRead, a
     content,
     id: seal.id,
     logs,
-    checkRead: parks === null ? checkRead : (read) => {
+    checkRead: parks === null ? (read) => {
+      checkRead(read);
+      questions.checkUnparked(read, subjectOf(seal), ANSWER_SAID);
+    } : (read) => {
       waitedBefore = questions.checkStillWaiting(read, parks, ANSWER_SAID);
       checkRead(read);
     },

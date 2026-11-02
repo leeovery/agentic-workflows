@@ -246,9 +246,23 @@ class Sim {
 
   /** Engine call that must refuse loudly: exit 1, {ok:false} JSON on stderr. */
   refuses(args, pattern, identity = null, stdin = '') {
+    return this.refused(args, pattern, this.engine(args, identity, stdin));
+  }
+
+  /** Engine call awaited that must refuse loudly, held as `refuses` holds one. */
+  async refusesAsync(args, pattern, identity = null, stdin = '') {
+    return this.refused(args, pattern, await this.engineAsync(args, identity, stdin));
+  }
+
+  /**
+   * A refusal's answer `res` held to exit 1 and clean {ok:false} JSON on
+   * stderr matching `pattern`, then the whole state audited untouched: its
+   * parsed answer.
+   * @param {string[]} args @param {RegExp|null} pattern @param {{code: number, stdout: string, stderr: string}} res
+   */
+  refused(args, pattern, res) {
     this.step += 1;
     const label = `step ${this.step}: engine ${args.join(' ')} (expected refusal)`;
-    const res = this.engine(args, identity, stdin);
     assert.strictEqual(res.code, 1, `[${label}] expected exit 1, got ${res.code}\nstdout: ${res.stdout}`);
     const parsed = JSON.parse(res.stderr.trim());
     assert.strictEqual(parsed.ok, false, `[${label}] refusal is not clean {ok:false} JSON`);

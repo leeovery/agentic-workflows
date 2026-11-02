@@ -5,9 +5,10 @@
 // parking on a question only the person can answer while the others carry
 // on, and another task meeting it joining it; the questions waiting listed;
 // one drawn when the person is ready and answered for its task; another set
-// aside and still waiting, answered through its raise alone; and Claude's
-// calls made for a task — each landing in the ledger and the trust log as
-// the command that writes it.
+// aside and still waiting, answered through its raise alone; Claude's calls
+// made for a task; and a replacement of one proposed for its task, parking
+// it, raised outside the build refused and kept through its raise — each
+// landing in the ledger and the trust log as the command that writes it.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -27,7 +28,7 @@ describe('pipeline simulation: the build\'s questions', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('a task parks on a question while the others carry on, and another meeting it joins it; the questions waiting listed oldest first; one drawn and answered for its task, which builds again; another set aside, still waiting, answered through its raise alone, freeing both its tasks; Claude\'s calls made for a task', async () => {
+  it('a task parks on a question while the others carry on, and another meeting it joins it; the questions waiting listed oldest first; one drawn and answered for its task, which builds again; another set aside, still waiting, answered through its raise alone, freeing both its tasks; Claude\'s calls made for a task, a replacement of one parking it, kept through its raise alone', async () => {
     const wu = 'ledger';
     startNew(sim, 'feature');
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'A ledger', '--session-log-file', sessionLog(sim, wu)]);
@@ -53,7 +54,7 @@ describe('pipeline simulation: the build\'s questions', () => {
 
     // Claude carries on with the task nothing parks, its calls made for it.
     const indexing = asked('Does the index hold every entry?', '1.4');
-    sim.run(['ledger', 'decide', build, '--answers', indexing, '--task', '1.4'], null, JSON.stringify({ ...made, text: 'The index holds every entry.', why: 'Every event counts.' }));
+    const indexed = sim.run(['ledger', 'decide', build, '--answers', indexing, '--task', '1.4'], null, JSON.stringify({ ...made, text: 'The index holds every entry.', why: 'Every event counts.' })).id;
 
     // The person, ready, takes Q1: drawn from its park, answered against the lean.
     const drawn = sim.run(['raise', 'draw', wu, 'Q1']);
@@ -70,5 +71,14 @@ describe('pipeline simulation: the build\'s questions', () => {
     assert.strictEqual(sim.run(['raise', 'answer', later.raise, '--pick', '1'], null, JSON.stringify({ why: 'Order is the history.' })).receipt,
       'Q2 answered · their tasks build again · nothing waiting on you');
     assert.deepStrictEqual(waiting(), [], 'a question answered waits no longer');
+
+    // Task 1.4's builder finds its call wrong: the replacement it proposes parks it, kept through its raise alone.
+    const replacing = { ...leaningCall('The index holds the live entries.', 'The index holds the entries a read asks for.'), question: 'Should the index drop dead entries?' };
+    const proposed = await sim.runAsync(['raise', build, '--replaces', indexed, '--reason', 'was-wrong', '--parks', '1.4'], null, JSON.stringify(replacing));
+    assert.deepStrictEqual([proposed.parked, proposed.task], ['Q3', '1.4'], 'a replacement proposed parks its task');
+    await sim.refusesAsync(['raise', `${wu}.specification`, '--replaces', indexed, '--reason', 'was-wrong'], /the person answers it through the raise alone: raise draw ledger Q3$/, null, JSON.stringify(replacing));
+    const kept = sim.run(['raise', 'draw', wu, 'Q3']);
+    assert.strictEqual(sim.run(['raise', 'answer', kept.raise, '--pick', 'keep'], null, JSON.stringify({ why: 'Dead entries are history too.' })).receipt,
+      'Q3 answered · task 1.4 builds again · nothing waiting on you');
   });
 });
