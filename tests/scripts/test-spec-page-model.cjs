@@ -23,7 +23,8 @@ const path = require('path');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { specReading } = require(path.join(SCRIPTS, 'domain/spec-sections.cjs'));
-const { pageOf, lineId, fingerprint } = require(path.join(SCRIPTS, 'domain/spec-page-model.cjs'));
+const { pageOf, lineId } = require(path.join(SCRIPTS, 'domain/spec-page-model.cjs'));
+const { fingerprint } = require(path.join(SCRIPTS, 'kernel/fingerprint.cjs'));
 
 const SPEC = [
   '# Payments', '', 'What the spec covers.', '', '## Contents', '', '- §1 Cards', '',

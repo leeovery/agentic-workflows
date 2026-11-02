@@ -35,16 +35,15 @@
 // on — it carries it where every one does — and none of their flags.
 // ---------------------------------------------------------------------------
 
-const crypto = require('crypto');
+const { fingerprint } = require('../kernel/fingerprint.cjs');
 const { resolveId } = require('./ledger-ids.cjs');
 const { claudesCall } = require('./ledger-events.cjs');
 const { readSpec, specReading } = require('./spec-sections.cjs');
-const { untraced } = require('./spec-trace.cjs');
-const { withUnitEntries } = require('./unit-entries.cjs');
+const { untraced, withTraceView } = require('./spec-trace.cjs');
 
 /** @typedef {import('./spec-sections.cjs').Line} Line */
 /** @typedef {import('./spec-sections.cjs').SpecReading} SpecReading */
-/** @typedef {import('./unit-entries.cjs').UnitView} UnitView */
+/** @typedef {import('./spec-trace.cjs').TraceView} TraceView */
 /** @typedef {import('./unit-entries.cjs').UnitEntry} UnitEntry */
 
 /** The decision's field that marks its question hard to undo (16.11.7), absent until the labeller writes it. */
@@ -73,9 +72,6 @@ const HARD_TO_UNDO = 'hard_to_undo';
 /** A line's id: its number, its dots as dashes. @param {string} number */
 const lineId = (number) => number.replaceAll('.', '-');
 
-/** The first 12 hex digits of the SHA-256 of `text`. @param {string} text */
-const fingerprint = (text) => crypto.createHash('sha256').update(text, 'utf8').digest('hex').slice(0, 12);
-
 /** The title and introduction: the first line's title, and what stands before the first area but its contents. @param {string} text */
 function frontOf(text) {
   const plain = text.replace(/\r\n?/g, '\n');
@@ -97,8 +93,8 @@ function flagsOf(line, { calls, builders }) {
   return flags.filter(([, on]) => on).map(([flag]) => flag);
 }
 
-/** A line as the page draws it. @param {Line} line @param {Drawn} drawn @returns {Item} */
-function itemOf(line, drawn) {
+/** A line as the page draws it, its fingerprint `h`. @param {Line} line @param {Drawn} drawn @param {string} h @returns {Item} */
+function itemOf(line, drawn, h) {
   const shown = line.kind === 'screen' || line.kind === 'note' ? line.kind : line.number;
   return {
     k: 'line',
@@ -109,7 +105,7 @@ function itemOf(line, drawn) {
     parts: line.parts.map(({ kind, text }) => [kind, text]),
     src: line.bracket ?? '',
     flags: flagsOf(line, drawn),
-    h: fingerprint(line.wording),
+    h,
   };
 }
 
@@ -133,9 +129,9 @@ function pageOf(text, { lines, headings }, drawn = UNDRAWN) {
     const area = sections.at(-1);
     if (area === undefined) continue;
     if ('line' in mark) {
-      const item = itemOf(mark.line, drawn);
-      area.items.push(item);
-      model.push({ id: lineId(mark.line.number), section: area.num, h: fingerprint(mark.line.wording), line: mark.line });
+      const h = fingerprint(mark.line.wording);
+      area.items.push(itemOf(mark.line, drawn, h));
+      model.push({ id: lineId(mark.line.number), section: area.num, h, line: mark.line });
     } else if (mark.heading.kind === 'scenarios') {
       area.items.push({ k: 'h2s', t: `Scenarios for §${mark.heading.number}` });
     } else {
@@ -181,7 +177,7 @@ const assessed = (tick, { call = false, builder = false } = {}) => ({ tick, call
 
 /**
  * Claude's tick on a statement or a screen, from the entries it cites.
- * @param {UnitView} view @param {Line} line @returns {Assessed}
+ * @param {TraceView} view @param {Line} line @returns {Assessed}
  */
 function citedTick(view, line) {
   const fault = untraced(view, line);
@@ -218,7 +214,7 @@ function scenarioTick({ drawsOn }, drawn) {
 /**
  * Claude's tick on each line, by number, and the lines the ticks find
  * resting on a call of Claude's or left to the builder.
- * @param {UnitView} view @param {Line[]} lines @returns {Drawn & {ticks: Map<string, Tick>}}
+ * @param {TraceView} view @param {Line[]} lines @returns {Drawn & {ticks: Map<string, Tick>}}
  */
 function lineTicks(view, lines) {
   /** @type {Map<string, Assessed>} */
@@ -244,8 +240,8 @@ function specPage(cwd, unit, warnings = []) {
   const text = readSpec(cwd, unit);
   const reading = specReading(text);
   if (reading.faults.length > 0) throw new Error(reading.faults.join('\n'));
-  const { ticks, ...drawn } = withUnitEntries(cwd, unit, warnings, (view) => lineTicks(view, reading.lines));
+  const { ticks, ...drawn } = withTraceView(cwd, unit, warnings, (view) => lineTicks(view, reading.lines));
   return { ...pageOf(text, reading, drawn), ticks: new Map([...ticks].map(([number, tick]) => [lineId(number), tick])) };
 }
 
-module.exports = { HARD_TO_UNDO, lineId, fingerprint, pageOf, lineTicks, specPage };
+module.exports = { HARD_TO_UNDO, lineId, pageOf, lineTicks, specPage };

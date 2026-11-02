@@ -19,6 +19,7 @@ const { productConversation } = require('./discovery-session.cjs');
 const { researchOwed } = require('./brownfield.cjs');
 const { INBOX, ARCHIVED } = require('./inbox.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
+const { pastItsSpec } = require('./spec-standing.cjs');
 const {
   phaseItems,
   computeUnitPhaseState,
@@ -220,7 +221,7 @@ function startDetail(cwd) {
   const cross_cutting = [];
 
   for (const m of manifests) {
-    const state = computeUnitPhaseState(m, pipelineOf(m.work_type));
+    const state = computeUnitPhaseState(m, pipelineOf(m.work_type), pastItsSpec(cwd, m));
     /** @type {WorkUnitEntry} */
     const unit = {
       name: m.name,

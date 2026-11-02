@@ -162,7 +162,7 @@ function activeWorkUnit(cwd, name) {
   const m = loadManifest(cwd, name);
   if (!m || m.status !== 'in-progress' || !Object.hasOwn(WORK_UNIT_TYPES, m.work_type)) return null;
   const cfg = WORK_UNIT_TYPES[m.work_type];
-  const state = computeUnitPhaseState(m, cfg.pipeline);
+  const state = computeUnitPhaseState(m, cfg.pipeline, pastItsSpec(cwd, m));
   const targets = phaseTargets(cwd, m, state.next_phase);
   /** @type {WorkUnitEntry} */
   const unit = {

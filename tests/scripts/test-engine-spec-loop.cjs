@@ -113,9 +113,10 @@ const EVENTS = Object.freeze([
  * a finding's fenced text read as headings (30), the section ended at one (10, 42), a running pass with no way out (1, 5,
  * 42), a pass in flight holding nothing (2, 5), a report outside the grammar taken in (1, 42), a take marked at the land
  * (10), every event at the spec counted (30), a surfaced finding waiting still (2, 30, 42), a pass closed in flight taken in
- * as it reports (1, 42), an acknowledgement before the report's ids or none (2). No five do.
+ * as it reports (1, 42), an acknowledgement before the report's ids or none (2). No five do. Since a pass's brief is
+ * refused while another runs on its land, a pass in flight is abandoned by 3 alone among them, so 3 joins them.
  */
-const SEEDS = Object.freeze([1, 2, 5, 10, 30, 42]);
+const SEEDS = Object.freeze([1, 2, 3, 5, 10, 30, 42]);
 const STEPS = 12;
 /** The most steps a drained walk follows the way on before it must have settled. */
 const DRAIN = 16;
@@ -140,7 +141,7 @@ const world = fixtureFrom('spec-loop-', (dir) => {
     decided[topic] = write('decide', at, ['--answers', asked], { ...PERSON, text: `${topic} take one kind.`, why: 'Kept simple.' }).id;
   }
   manifest('completed');
-  writeState(dir, layout.unit(UNIT, 'sweep-taken.json'), JSON.stringify({ taken: '2026-11-01T00:00:00.000Z', messages: [], candidates: [] }));
+  writeState(dir, layout.unit(UNIT, 'sweep-taken.json'), JSON.stringify({ candidates: [], builder_calls: [] }));
   commitAll(dir, 'topics settled');
 });
 

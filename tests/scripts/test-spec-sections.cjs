@@ -218,16 +218,16 @@ describe('a spec\'s lines, read as its page reads them (11.4.5, 11.11.3)', () =>
     ]);
   });
 
-  it('a Screen…: caption after a line starts a screen of it, <line>-scr<k>, with its own bracket and the blocks after it; a bare fenced block is its line\'s', () => {
+  it('a Screen…: caption after a line starts a screen of it, <line>-scr<k>, with its own bracket — the builder\'s citing a call the sweep left to the builder, by its id, among them — and the blocks after it; a bare fenced block is its line\'s', () => {
     const spec = text([
       '# Payments', '', '## 1. Cards', '', '### 1.1 The form', '', '1.1.1 The form. [builder]', '',
-      'Screen: the form, empty. [builder: Ab12Cd]', '', '```text', 'Card number  ____', '```', '',
+      'Screen: the form, empty. [builder: call-1]', '', '```text', 'Card number  ____', '```', '',
       'Screen: the form, filled.', '', '```text', 'Card number  4242', '```', '',
       '## 1-S. Scenarios for §1', '', '1.S1 Given the form, then it shows. (1.1.1)', '', 'Screen: shown. [Ef34Gh]', '',
     ]);
 
     assert.deepStrictEqual(linesOf(spec, 'screen'), [
-      lineOf({ kind: 'screen', number: '1.1.1-scr1', line: 9, of: '1.1.1', wording: 'Screen: the form, empty.\n```text\nCard number  ____\n```', bracket: 'builder: Ab12Cd', cites: ['Ab12Cd'], builder: true }),
+      lineOf({ kind: 'screen', number: '1.1.1-scr1', line: 9, of: '1.1.1', wording: 'Screen: the form, empty.\n```text\nCard number  ____\n```', bracket: 'builder: call-1', cites: ['call-1'], builder: true }),
       lineOf({ kind: 'screen', number: '1.1.1-scr2', line: 15, of: '1.1.1', wording: 'Screen: the form, filled.\n```text\nCard number  4242\n```' }),
       lineOf({ kind: 'screen', number: '1.S1-scr1', line: 25, of: '1.S1', wording: 'Screen: shown.', bracket: 'Ef34Gh', cites: ['Ef34Gh'] }),
     ]);
@@ -301,7 +301,7 @@ describe('a spec\'s lines, read as its page reads them (11.4.5, 11.11.3)', () =>
       'the fenced block opened on line 40 is never closed',
       'line 40 opens a note, a block with no number after a heading — every requirement is a numbered line, N.M.K or N.Sk',
       'statement 2.1.1 on line 17: its bracket closes an earlier block — the bracket closes the line\'s last text block',
-      'statement 1.2.1 on line 25 ends in [see below], which is no source bracket — [id, id, …], [builder: id] or [builder]',
+      'statement 1.2.1 on line 25 ends in [see below], which is no source bracket — [id, id, …] or [builder: id]',
       'scenario 1.S1 on line 33 ends in [Ab12] — a scenario\'s source is the statements it draws on, in parentheses',
       'scenario 1.S1 draws on statement 1.9.9, which the spec lacks',
     ]);

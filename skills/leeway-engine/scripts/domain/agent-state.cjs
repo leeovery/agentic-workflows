@@ -43,7 +43,10 @@
 // acknowledged with exactly the findings its report was taken in with, and
 // never incorporated between its report and that acknowledgement, so a
 // finding is declined only where its pass was acknowledged with it and then
-// incorporated. A row incorporated while in flight with no report is closed
+// incorporated. Its rewrite findings go to the writer whole, never surfaced,
+// so its row stays acknowledged while it holds any, and every answer shows
+// them apart from the findings left to surface, which an incorporation
+// declines. A row incorporated while in flight with no report is closed
 // unread: a report landing after is never taken in, since only a row in
 // flight is. A gap finding raised as the replacement of a decision is
 // surfaced with that decision, the reason and the ledger's mark, `raised` on
@@ -535,8 +538,20 @@ function unsurfaced(row) {
   return row.findings.filter((/** @type {string} */ f) => !row.surfaced.includes(f));
 }
 
-/** @param {any} row */
+/** A spec review's findings handed to the writer whole, never surfaced: its report's rewrite findings. @param {any} row @returns {string[]} */
+function forWriter(row) {
+  if (row.kind !== 'spec-review' || !Array.isArray(row.report_findings)) return [];
+  return row.report_findings.filter((/** @type {{lane: string}} */ { lane }) => lane === 'rewrite').map((/** @type {{id: string}} */ { id }) => id);
+}
+
+/**
+ * A row as every answer shows it: `remaining` its findings left to surface
+ * — declined where it is incorporated — and, for a spec review, the rewrite
+ * findings handed to the writer instead, `for_writer`, never among them.
+ * @param {any} row
+ */
 function publicRow(row) {
+  const writer = forWriter(row);
   return {
     id: row.id,
     kind: row.kind,
@@ -545,7 +560,8 @@ function publicRow(row) {
     created: row.created,
     findings: row.findings,
     surfaced: row.surfaced,
-    remaining: unsurfaced(row),
+    remaining: unsurfaced(row).filter((/** @type {string} */ f) => !writer.includes(f)),
+    ...(writer.length > 0 ? { for_writer: writer } : {}),
     ...(row.label ? { label: row.label } : {}),
     ...(row.question ? { question: row.question } : {}),
   };
@@ -905,11 +921,11 @@ function reportedPasses(cwd, workUnit) {
 
 /**
  * The unit's review passes still in flight, bound to a land, in the order
- * they were dispatched: each with its report on disk for a scan to take in,
- * its agent running, or lost with the process that dispatched it. A
- * dispatch bound to none has had no brief, its own among them while it is
- * drawn, so no agent was sent on it.
- * @param {string} cwd @param {string} workUnit @returns {{id: string, stands: 'landed'|'running'|'lost'}[]}
+ * they were dispatched: each with the digest of the land it reviews, and
+ * its report on disk for a scan to take in, its agent running, or lost with
+ * the process that dispatched it. A dispatch bound to none has had no
+ * brief, its own among them while it is drawn, so no agent was sent on it.
+ * @param {string} cwd @param {string} workUnit @returns {{id: string, digest: string, stands: 'landed'|'running'|'lost'}[]}
  */
 function passesInFlight(cwd, workUnit) {
   const startOf = startTimeReader();
@@ -917,7 +933,7 @@ function passesInFlight(cwd, workUnit) {
   const standing = (row) => (contentFileExists(row, cwd, workUnit) ? 'landed' : ownerAlive(row, startOf) ? 'running' : 'lost');
   return specReviewRows(cwd, workUnit)
     .filter((row) => row.status === 'in-flight' && row.land !== undefined)
-    .map((row) => ({ id: row.id, stands: standing(row) }));
+    .map((row) => ({ id: row.id, digest: row.land.digest, stands: standing(row) }));
 }
 
 /**

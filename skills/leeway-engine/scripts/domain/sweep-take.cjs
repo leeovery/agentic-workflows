@@ -15,8 +15,9 @@
 // mail's own send, which reopens a decided topic (10.2.7) and draws no
 // report (mail.cjs); marks each in the report as it goes, so a take killed
 // part-way and run again sends none twice; records the sweep taken,
-// committed — each message sent and the candidates whole (sweep.cjs) — and
-// stages the candidates for approve the map (approve-map.cjs).
+// committed — the candidates whole, and the builder's calls, each with its
+// id (sweep.cjs) — and stages the candidates for approve the map
+// (approve-map.cjs).
 //
 // What comes next: approve the map, drawn from the sweep taken, where it
 // found a candidate; else the epic's menu where a message reopened a topic;
@@ -42,7 +43,7 @@ const { computeTopicLifecycle, itemOf, topicKey, noTopicRefusal } = require('./d
 const { assertBeforeSpec, topicsSettled } = require('./spec-standing.cjs');
 const { sendMessage } = require('./mail.cjs');
 const { isLive, checkCandidates, stageSwept } = require('./approve-map.cjs');
-const { takenRel, sweepPath, readSweep, sweepTaken, sweepApplies } = require('./sweep.cjs');
+const { takenRel, callId, sweepPath, readSweep, sweepTaken, sweepApplies } = require('./sweep.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { refusing } = require('./staged-payload.cjs');
 
@@ -153,9 +154,8 @@ function takeSweep(cwd, unit) {
   const sends = sendMessages(cwd, unit, report);
   fs.mkdirSync(statePath(cwd, unit), { recursive: true });
   writeJsonAtomic(statePath(cwd, takenRel(unit)), {
-    taken: new Date().toISOString(),
-    messages: report.messages.map(({ topic, sent }) => ({ topic, message: sent })),
     candidates: report.candidates,
+    builder_calls: report.builder_calls.map((call, at) => ({ id: callId(at), ...call })),
   });
   /** @type {string[]} */
   const warnings = sends.flatMap((sent) => sent.warnings ?? []);

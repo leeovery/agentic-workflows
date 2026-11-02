@@ -19,23 +19,32 @@ function landedSpec(cwd, unit) {
 }
 
 /**
- * Why the unit's landed spec is not the one on disk, or null: none has
- * landed, or the file holds changes that have not.
- * @param {string} cwd @param {string} unit @returns {string|null}
+ * Why `landed`, the unit's spec as it last landed, is not the one on disk,
+ * or null: none has landed, or the file holds changes that have not.
+ * @param {string} cwd @param {string} unit @param {string|null} landed @returns {string|null}
  */
-function unlandedRefusal(cwd, unit) {
-  const landed = landedSpec(cwd, unit);
+function refusalOf(cwd, unit, landed) {
   if (landed === null) return `${unit}'s spec has not landed — land it: spec land ${unit}`;
   const file = specPath(cwd, unit);
   const disk = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
   return disk === landed ? null : `${unit}'s spec has changes that haven't landed — land them: spec land ${unit}`;
 }
 
+/**
+ * Why the unit's landed spec is not the one on disk, or null: none has
+ * landed, or the file holds changes that have not.
+ * @param {string} cwd @param {string} unit @returns {string|null}
+ */
+function unlandedRefusal(cwd, unit) {
+  return refusalOf(cwd, unit, landedSpec(cwd, unit));
+}
+
 /** The unit's landed spec, refused while it is not the one on disk. @param {string} cwd @param {string} unit @returns {string} */
 function readLandedSpec(cwd, unit) {
-  const refused = unlandedRefusal(cwd, unit);
+  const landed = landedSpec(cwd, unit);
+  const refused = refusalOf(cwd, unit, landed);
   if (refused !== null) throw new Error(refused);
-  return /** @type {string} */ (landedSpec(cwd, unit));
+  return /** @type {string} */ (landed);
 }
 
 module.exports = { landedSpec, unlandedRefusal, readLandedSpec };

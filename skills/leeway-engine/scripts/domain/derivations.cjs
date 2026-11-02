@@ -26,13 +26,14 @@ function buildBegun(manifest) {
 
 /**
  * A phase's status over its live items. The one spec a unit writes keeps no
- * items: it reads completed once its build has begun, and none before —
- * whether its `spec.md` is written is the state's to say (spec-standing.cjs).
- * A unit whose building began under the old spec keeps that spec's items.
- * @param {Record<string, any>} manifest @param {string} phase
+ * items: it reads completed once its build has begun, in progress while its
+ * `spec.md` is written — the state's to say, so the caller says it
+ * (spec-standing.cjs) — and none before. A unit whose building began under
+ * the old spec keeps that spec's items.
+ * @param {Record<string, any>} manifest @param {string} phase @param {boolean} [specWritten]
  * @returns {string|null}
  */
-function phaseStatus(manifest, phase) {
+function phaseStatus(manifest, phase, specWritten = false) {
   const p = (manifest.phases || {})[phase] || {};
   const keys = p.items && typeof p.items === 'object' ? Object.keys(p.items) : [];
   if (keys.length > 0) {
@@ -54,7 +55,9 @@ function phaseStatus(manifest, phase) {
     if (statuses.some(s => s === 'in-progress')) return 'in-progress';
     return statuses[0];
   }
-  return phase === 'specification' && buildBegun(manifest) ? 'completed' : null;
+  if (phase !== 'specification') return null;
+  if (buildBegun(manifest)) return 'completed';
+  return specWritten ? 'in-progress' : null;
 }
 
 function phaseItems(manifest, phase) {
@@ -459,10 +462,16 @@ function waitingItems(manifest, phase) {
       && Array.isArray(i.awaiting_experiments) && i.awaiting_experiments.length > 0);
 }
 
-function computeNextPhase(manifest) {
+/**
+ * Where the unit's work goes next, and the label the menus show for it,
+ * `specWritten` saying whether its spec is written (phaseStatus).
+ * @param {Record<string, any>} manifest @param {boolean} [specWritten]
+ * @returns {{next_phase: string, phase_label: string}}
+ */
+function computeNextPhase(manifest, specWritten = false) {
   const wt = manifest.work_type;
 
-  const ps = (phase) => phaseStatus(manifest, phase);
+  const ps = (/** @type {string} */ phase) => phaseStatus(manifest, phase, specWritten);
 
   // A completed phase whose item carries a reconcile flag routes BACK to that
   // phase for the linear types — routing forward past known-stale input is
@@ -590,8 +599,8 @@ function computeNextPhase(manifest) {
 // Feeds the finalising derivation: computeNextPhase short-circuits on a
 // completed review, so a reopened earlier phase (mid-revisit) would otherwise
 // masquerade as a finished pipeline.
-function computeInProgressPhases(manifest, pipeline) {
-  return pipeline.filter((phase) => phaseStatus(manifest, phase) === 'in-progress');
+function computeInProgressPhases(manifest, pipeline, specWritten = false) {
+  return pipeline.filter((phase) => phaseStatus(manifest, phase, specWritten) === 'in-progress');
 }
 
 /**
@@ -605,11 +614,12 @@ function computeInProgressPhases(manifest, pipeline) {
  * work-unit detail read, so the two can never disagree.
  * @param {object} manifest
  * @param {string[]} pipeline  the work type's pipeline phases, in order
+ * @param {boolean} [specWritten]  the unit's spec is written (phaseStatus)
  * @returns {{next_phase: string, phase_label: string, finalising: boolean, in_progress_phases: string[]}}
  */
-function computeUnitPhaseState(manifest, pipeline) {
-  const state = computeNextPhase(manifest);
-  const inProgress = computeInProgressPhases(manifest, pipeline);
+function computeUnitPhaseState(manifest, pipeline, specWritten = false) {
+  const state = computeNextPhase(manifest, specWritten);
+  const inProgress = computeInProgressPhases(manifest, pipeline, specWritten);
   let nextPhase = state.next_phase;
   let phaseLabel = state.phase_label;
   if (nextPhase === 'done' && inProgress.length > 0) {

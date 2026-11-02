@@ -11,7 +11,7 @@
 // What changed, one comparison (`changedSince`): a section's own text is the
 // title and introduction, everything before the first area; a part's text;
 // an area's from its heading to its first part, with its block of
-// scenarios. Its print is the SHA-256 of that text, by address; a section
+// scenarios. Its print is that text's fingerprint, by address; a section
 // changed where its print differs or is new, and one gone where it is no
 // longer there. A section's order, and the blank lines between sections,
 // change none (E4).
@@ -56,7 +56,9 @@
 //   the file where it is unchanged since.
 // - The reviewer's brief binds its pass to the last land, and reads what
 //   changed since the land the latest reported pass reviewed — every
-//   section where none has; with nothing changed it names what waits.
+//   section where none has; with nothing changed it names what waits. It
+//   is refused while another pass on that land still runs, naming it, so a
+//   resume never sends a second pass over the same land.
 // - A gap waits while a question asked at the unit's own level at the spec
 //   is open (11.7.2), or while a review's finding raised as the replacement
 //   of a decision, surfaced with it (agent-state.cjs), finds the decision
@@ -69,11 +71,11 @@
 //   spec unchanged settles it; one changing a section sends it to a pass.
 // ---------------------------------------------------------------------------
 
-const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { statePath, stateRoot } = require('../kernel/state-root.cjs');
 const { writeJsonAtomic, isObject } = require('../kernel/manifest-io.cjs');
+const { fingerprint } = require('../kernel/fingerprint.cjs');
 const { specSections, scenarioBlocks, specIntroduction, readSpec } = require('./spec-sections.cjs');
 const { ID_FACTS, foldLedger, factsOf, questionStands, isCurrent, keptOf } = require('./ledger-fold.cjs');
 const { markOf, lineOf } = require('./ledger-moves.cjs');
@@ -93,9 +95,6 @@ const INTRODUCTION = 'introduction';
 /** @typedef {ReturnType<typeof reportedPasses>[number]} Pass */
 /** A finding waiting to be surfaced: its pass, its id and lane, and whether its pass is acknowledged. @typedef {{pass: string, id: string, lane: string, acknowledged: boolean}} Finding */
 /** What waits: the entries' full ids and the passes, for the writer, and the findings to be surfaced, each in order. @typedef {{entries: string[], passes: Pass[], surface: Finding[]}} Outstanding */
-
-/** @param {string} text */
-const hashOf = (text) => crypto.createHash('sha256').update(text).digest('hex');
 
 /** Where a unit's spec keeps `file`. @param {string} cwd @param {string} unit @param {string} file */
 const kept = (cwd, unit, file) => statePath(cwd, '.cache', unit, UNIT_PHASE, file);
@@ -136,12 +135,12 @@ function ownTexts(text) {
 }
 
 /** Each section's print, by address, in the spec's order. @param {string} text */
-const sectionPrints = (text) => new Map([...ownTexts(text)].map(([address, own]) => [address, hashOf(own)]));
+const sectionPrints = (text) => new Map([...ownTexts(text)].map(([address, own]) => [address, fingerprint(own)]));
 
 /** A spec's print. @param {string} text @returns {Print} */
 function printOf(text) {
   const prints = sectionPrints(text);
-  return { digest: hashOf(JSON.stringify([...prints].sort(([a], [b]) => a.localeCompare(b)))), sections: Object.fromEntries(prints) };
+  return { digest: fingerprint(JSON.stringify([...prints].sort(([a], [b]) => a.localeCompare(b)))), sections: Object.fromEntries(prints) };
 }
 
 /** Addresses in the spec's order, each number compared as a number. @param {string} a @param {string} b */
@@ -204,7 +203,7 @@ function recordLand(cwd, unit, text, warnings) {
  */
 function retireWording(wording) {
   if (wording === undefined || !fs.existsSync(wording.file)) return;
-  if (hashOf(fs.readFileSync(wording.file, 'utf8')) === wording.print) fs.rmSync(wording.file);
+  if (fingerprint(fs.readFileSync(wording.file, 'utf8')) === wording.print) fs.rmSync(wording.file);
 }
 
 /** The last committed take, null where none is kept. @param {string} cwd @param {string} unit @returns {Taken|null} */
@@ -225,7 +224,7 @@ const latestReported = (cwd, unit) => reportedPasses(cwd, unit).pop();
 function recordTaking(cwd, unit, warnings, wording) {
   /** @type {Taken} */
   const taking = { ledger_mark: markOf(ledgerFacts(cwd, warnings)), passes: reportedPasses(cwd, unit).map(({ id }) => id) };
-  if (wording !== undefined) taking.wording = { file: wording, print: hashOf(fs.readFileSync(wording, 'utf8')) };
+  if (wording !== undefined) taking.wording = { file: wording, print: fingerprint(fs.readFileSync(wording, 'utf8')) };
   keep(kept(cwd, unit, 'taking.json'), taking);
 }
 
@@ -377,6 +376,18 @@ const IN_FLIGHT = Object.freeze({
 });
 
 /**
+ * The passes still running on `land`, but `own`, the dispatch a brief is
+ * drawn for, each said as its way on; null where none runs. A pass lost with
+ * the process that dispatched it holds nothing, nor one whose report is on
+ * disk, which the entry names for its scan.
+ * @param {string} cwd @param {string} unit @param {Landed} land @param {string} own @returns {string|null}
+ */
+function passesRunningOn(cwd, unit, land, own) {
+  const running = passesInFlight(cwd, unit).filter(({ id, digest, stands }) => id !== own && digest === land.digest && stands === 'running');
+  return running.length === 0 ? null : running.map(({ id }) => IN_FLIGHT.running(id)).join('; ');
+}
+
+/**
  * What the review waits on, past a pass that reviewed the spec as it
  * stands, said as the way on; null where nothing waits: a gap waiting on
  * the person; else each pass in flight, the findings waiting to be
@@ -418,5 +429,5 @@ function reviewSettled(cwd, unit, warnings) {
 }
 
 module.exports = {
-  ownTexts, printOf, changedSince, recordLand, lastLand, recordTaking, recordCutTaking, recordCut, cutRequests, outstanding, reviewedSpec, sectionsToReview, waitingGaps, gapsWaiting, waitingOn, reviewSettled,
+  ownTexts, printOf, changedSince, recordLand, lastLand, recordTaking, recordCutTaking, recordCut, cutRequests, outstanding, reviewedSpec, sectionsToReview, waitingGaps, gapsWaiting, passesRunningOn, waitingOn, reviewSettled,
 };

@@ -6,11 +6,14 @@
 // (spec-trace.cjs, unit-entries.cjs). A spec whose statements and screens
 // trace — each cite a current decision or finding of the unit, on a decided
 // topic or at its own level, or made there of another unit's; a builder's
-// line citing a "don't care" decision, or none — is committed alone on the
+// line citing a "don't care" decision, or a call the sweep left to the
+// builder by its id (11.4.4) — is committed alone on the
 // state branch with the files it links in the assets, answering its
 // statements, none invented, and every section changed, the title and
 // introduction among them (11.S3); a statement
-// or a screen that does not trace — a question cited among the reasons — is
+// or a screen that does not trace — a question cited, a builder's line
+// citing nothing or a call the sweep never left among the reasons, and a
+// feature's builder's line citing a call, a feature taking no sweep — is
 // listed with why and refuses nothing (11.S4's mechanical half, 11.4.2); a
 // later land answers the sections changed since the last, each by its own
 // text — an area's with its scenarios and without its parts, a part's
@@ -32,7 +35,7 @@
 // `refunds` a question moved to `cards`; a gap decided at the spec and a
 // finding at discovery, each at the unit's level; and a feature, `billing`,
 // with two decisions, one replaced from the payments spec; payments' sweep
-// taken.
+// taken, leaving one call to the builder.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -102,7 +105,7 @@ const world = fixtureFrom('spec-land-', (dir) => {
   made.taxOld = decide(atBilling, ask(atBilling, 'Is tax shown?'), 'As a total.');
   made.tax = replace(atSpec, made.taxOld, 'Per line.');
   payments(dir, { wallets: 'in-progress', disputes: 'in-progress' }, { wallets: { postponed: true }, disputes: { cancelled: true } });
-  writeState(dir, layout.unit(UNIT, 'sweep-taken.json'), JSON.stringify({ taken: '2026-11-01T00:00:00.000Z', messages: [], candidates: [] }));
+  writeState(dir, layout.unit(UNIT, 'sweep-taken.json'), JSON.stringify({ candidates: [], builder_calls: [{ id: 'call-1', call: 'How a refund is worded', why: 'The person would leave it.' }] }));
   commitAll(dir, 'topics settled');
 });
 
@@ -119,7 +122,7 @@ function lineOf(short) {
 }
 
 /** A spec of two areas, its first part's statements as given. @param {string[]} statements @param {string[]} [more] the second area's part, as given */
-function spec(statements, more = ['2.1.1 A refund goes back to the card. [builder]']) {
+function spec(statements, more = ['2.1.1 A refund goes back to the card. [builder: call-1]']) {
   return [
     '# Payments', '',
     '## 1. Cards', '', '### 1.1 The form', '', ...statements.flatMap((line) => [line, '']),
@@ -140,7 +143,7 @@ const stateTouched = () => touched(statePath(dir), 'HEAD');
 const refused = (args = [UNIT]) => refusedPristine(dir, ['spec', 'land', ...args]).error;
 
 describe('a spec landed (11.4.1, 11.4.3, 11.S3)', () => {
-  it('commits spec.md with the asset it links, answering its statements, none invented, and every section changed — each cite a current entry of the unit: a decided topic\'s, its own level\'s, or one made there of another unit\'s, and the builder\'s with a "don\'t care" decision or none', () => {
+  it('commits spec.md with the asset it links, answering its statements, none invented, and every section changed — each cite a current entry of the unit: a decided topic\'s, its own level\'s, or one made there of another unit\'s, and the builder\'s with a "don\'t care" decision or the sweep\'s call (11.4.4)', () => {
     writeState(dir, layout.unit(UNIT, 'assets', 'flow.md'), '# The charge flow\n');
     writeState(dir, layout.unit(UNIT, 'assets', 'unlinked.md'), '# Not linked\n');
     writeSpec(spec([
@@ -169,6 +172,8 @@ describe('a spec landed (11.4.1, 11.4.3, 11.S3)', () => {
       `1.1.8 Visa and Mastercard, left to the builder. [builder: ${made.cards}]`,
       `1.1.9 Which cards are taken. [${made.taken}]`,
       'Screen: the form, drawn.',
+      '1.1.10 Left to the builder, citing nothing. [builder]',
+      '1.1.11 Left to a call the sweep never made. [builder: call-9]',
     ]));
     const answer = land();
 
@@ -180,11 +185,23 @@ describe('a spec landed (11.4.1, 11.4.3, 11.S3)', () => {
       { number: '1.1.5', why: `${made.invoice} belongs to billing` },
       { number: '1.1.6', why: `${made.moved} names no entry` },
       { number: '1.1.7', why: 'no ledger entry\'s id begins "Zz9Zz9Zz9"; "Ab" is too short to name a ledger entry — give at least 4 characters of its id' },
-      { number: '1.1.8', why: `${made.cards} is no "don't care" decision — a builder's line cites the one it rests on, or carries [builder] alone` },
+      { number: '1.1.8', why: `${made.cards} is no "don't care" decision — a builder\'s line cites the "don\'t care" decision it rests on, or the sweep\'s call that left it to the builder` },
       { number: '1.1.9', why: `${made.taken} is a question — cite its answer` },
       { number: '1.1.9-scr1', why: 'cites no entry' },
+      { number: '1.1.10', why: 'cites no entry — a builder\'s line cites the "don\'t care" decision it rests on, or the sweep\'s call that left it to the builder' },
+      { number: '1.1.11', why: 'call-9 names no call the sweep left to the builder' },
     ]);
-    assert.deepStrictEqual([answer.statements, typeof answer.committed, stateTouched()], [10, 'string', [`A\t${SPEC}`]]);
+    assert.deepStrictEqual([answer.statements, typeof answer.committed, stateTouched()], [12, 'string', [`A\t${SPEC}`]]);
+  });
+
+  it('a feature takes no sweep, so a builder\'s line of its citing a call is invented (11.4.4)', () => {
+    createManifest(dir, 'billing', { phases: { discussion: { items: { billing: { status: 'completed' } } } } });
+    commitAll(dir, 'billing decided');
+    writeState(dir, layout.unit('billing', 'spec.md'), spec(['1.1.1 Invoices show each charge. [builder: call-1]'], [`2.1.1 An invoice shows each charge. [${made.invoice}]`]));
+
+    assert.deepStrictEqual(ok(dir, ['spec', 'land', 'billing']).invented, [
+      { number: '1.1.1', why: 'call-1 names no call the sweep left to the builder — none is recorded, so a builder\'s line cites the "don\'t care" decision it rests on' },
+    ]);
   });
 
   it('answers at a later land the sections changed since the last — an area\'s with its scenarios, a part\'s alone, then those removed — and commits nothing where nothing changed', () => {
@@ -267,7 +284,7 @@ describe('a land refused, spec.md left as written and nothing committed (11.9.1)
 
     assert.deepStrictEqual([none, refused()], [
       `spec land: ${UNIT} has no spec — its folder holds no spec.md`,
-      'spec land: the spec gives statement 1.1.1 twice, on lines 7 and 9\nstatement 1.1.1 on line 9 ends in [see; below], which is no source bracket — [id, id, …], [builder: id] or [builder]',
+      'spec land: the spec gives statement 1.1.1 twice, on lines 7 and 9\nstatement 1.1.1 on line 9 ends in [see; below], which is no source bracket — [id, id, …] or [builder: id]',
     ]);
     assert.match(readState(dir, SPEC), /1\.1\.1 Again\. \[see; below\]/);
   });

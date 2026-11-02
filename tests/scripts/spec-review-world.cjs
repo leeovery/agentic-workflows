@@ -92,7 +92,7 @@ const world = fixtureFrom('spec-review-', (dir) => {
   writeState(dir, layout.topic(UNIT, 'cards', 'log.md'), '# Card form\n');
   writeState(dir, layout.topic(UNIT, 'refunds', 'log.md'), '# Refunds\n');
   payments(dir);
-  writeState(dir, layout.unit(UNIT, 'sweep-taken.json'), JSON.stringify({ taken: '2026-11-01T00:00:00.000Z', messages: [], candidates: [] }));
+  writeState(dir, layout.unit(UNIT, 'sweep-taken.json'), JSON.stringify({ candidates: [], builder_calls: [] }));
   commitAll(dir, 'topics settled');
 });
 

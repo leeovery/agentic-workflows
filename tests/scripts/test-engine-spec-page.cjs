@@ -82,7 +82,7 @@ function spec(statements, refunds = true) {
     `# ${TITLE}`, '', 'How to read it.', '', '## 1. Cards', '', '### 1.1 The form', '', ...statements.flatMap((line) => [line, '']),
     '## 1-S. Scenarios for §1', '',
     '1.S1 Given a form, when it is sent, then the card is charged. (1.1.1, 1.1.3)', '',
-    ...(refunds ? ['## 2. Refunds', '', '### 2.1 Whole', '', '2.1.1 A refund goes back to the card. [builder]', ''] : []),
+    ...(refunds ? ['## 2. Refunds', '', '### 2.1 Whole', '', `2.1.1 A refund goes back to the card. [builder: ${made.radius}]`, ''] : []),
   ].join('\n');
 }
 
@@ -236,7 +236,7 @@ describe('spec page: the page and its first writes (11.11.2, 11.11.13, 11.S23)',
   });
 
   it('writes in batches of at most 40', () => {
-    const areas = Array.from({ length: 20 }, (_, k) => k + 3).flatMap((n) => [`## ${n}. Area ${n}`, '', `### ${n}.1 Part`, '', `${n}.1.1 Holds. [builder]`, '']);
+    const areas = Array.from({ length: 20 }, (_, k) => k + 3).flatMap((n) => [`## ${n}. Area ${n}`, '', `### ${n}.1 Part`, '', `${n}.1.1 Holds. [builder: ${made.radius}]`, '']);
     writeState(dir, SPEC, `${spec(STATEMENTS())}\n${areas.join('\n')}`);
     ok(dir, ['spec', 'land', UNIT]);
     assert.deepStrictEqual(build().batches.map((file) => json(file).length), [40, 6]);

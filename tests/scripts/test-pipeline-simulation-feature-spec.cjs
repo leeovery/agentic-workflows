@@ -3,9 +3,11 @@
 // ---------------------------------------------------------------------------
 // The pipeline simulation's feature scenarios on the spec's side: a feature
 // discussed to its decided screen's yes, entered at its spec, the spec
-// written from the writer's brief, landed, reviewed and cut, then ready to
-// build's pick beginning the build, the conversation
-// carrying on, and the position switched after.
+// written from the writer's brief, landed, and reviewed — the first pass
+// holding a rewrite and a gap the record answers, declined, so the prose
+// incorporates it, the writer taking the rewrite and landing the spec
+// unchanged — and cut, then ready to build's pick beginning the build, the
+// conversation carrying on, and the position switched after.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -26,7 +28,7 @@ describe('pipeline simulation: feature, the spec', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('feature: its spec written, landed, reviewed and cut, ready to build\'s pick begins the build in step, the conversation carrying on; the position switched to auto after (11.8.1, E7, 3.3.6)', () => {
+  it('feature: its spec written, landed, reviewed — a rewrite taken by the writer, a gap declined — and cut, ready to build\'s pick begins the build in step, the conversation carrying on; the position switched to auto after (11.8.1, 11.7.6, E7, 3.3.6)', () => {
     const wu = 'tally';
     startUnit(sim, 'feature', wu, 'A tally of its own');
     handoff(sim, `/leeway-discussion-process feature ${wu}`);
@@ -40,7 +42,9 @@ describe('pipeline simulation: feature, the spec', () => {
       '## 1-S. Scenarios for §1', '', '1.S1 Given a tally, when it counts, then it counts as decided. (1.1.1)', '',
     ].join('\n'));
     sim.run(['spec', 'land', wu]);
-    specReviewed(sim, wu);
+    specReviewed(sim, wu, [{ lane: 'rewrite' }, { lane: 'gap', declined: true }]);
+    sim.run(['brief', 'spec-writer', wu]);
+    sim.run(['spec', 'land', wu]);
     cutTheSpec(sim, wu, [{ name: 'Counting', goal: 'The tally counts.', scenarios: ['1.S1'], sections: ['1'], relies_on: [] }]);
     readyToBuild(sim, wu);
     const begun = sim.run(answerGate(sim, 'ready to build', '--pick', 's').next.argv);

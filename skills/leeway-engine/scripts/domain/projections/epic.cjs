@@ -604,20 +604,14 @@ function startEntries(workUnit, detail, phase) {
   return out;
 }
 
-/** Command options with presence conditions and adaptive descriptions. @param {string} workUnit @param {EpicDetail} detail @param {boolean} hasMap @returns {MenuKey[]} */
-function commandOptions(workUnit, detail, hasMap) {
-  /** @type {MenuKey[]} */
-  const opts = [];
-  if (detail.spec_row !== null) {
-    opts.push({
-      key: 's', word: 'spec', action: 'enter_specification', topic: null,
-      route: `/leeway-specification-process epic ${workUnit}`,
-      label: detail.spec_row === 'start' ? 'Start the specification' : 'Continue the specification',
-    });
-  }
-  // Discovery is reachable in EVERY map state: with a map it refines the
-  // map; without one it is how the map gets built — the map-less epic is the
-  // state that needs the route most, so it leads the menu there.
+/**
+ * The rows that shape the map: discovery and a new topic. Discovery is
+ * reachable in every map state while the map is open: with a map it refines
+ * the map; without one it is how the map gets built — the map-less epic is
+ * the state that needs the route most, so it leads the menu there.
+ * @param {string} workUnit @param {EpicDetail} detail @param {boolean} hasMap @returns {MenuKey[]}
+ */
+function mapOptions(workUnit, detail, hasMap) {
   /** @type {MenuKey} */
   const discoveryOpt = {
     key: 'i', word: 'discovery', action: 'continue_discovery', topic: null,
@@ -628,20 +622,23 @@ function commandOptions(workUnit, detail, hasMap) {
       ? `Resume the in-progress discovery session (session-${detail.active_session})`
       : (hasMap ? 'Continue discovery' : 'Run discovery — shape the topic map'),
   };
-  if (detail.active_session && hasMap) {
-    // resume leads even on a populated map; the !hasMap unshift below already
-    // leads for map-less epics
-    opts.push(discoveryOpt);
-  }
-  if (!hasMap) opts.push(discoveryOpt);
-  opts.push({
+  /** @type {MenuKey} */
+  const discussOpt = {
     key: 'd', word: 'discuss', action: 'new_topic', topic: null, route: `/leeway-discovery none ${workUnit}`,
     label: hasMap ? 'Start a discussion on a new topic' : 'Start new discussion',
-  });
-  if (hasMap && !detail.active_session) opts.push(discoveryOpt);
-  if (detail.completed.length > 0) {
-    opts.push({ key: 'c', word: 'completed', action: 'resume_completed', topic: null, route: null, label: 'Resume a completed topic' });
-  }
+  };
+  // A resume, or a map-less epic, leads with discovery.
+  return hasMap && !detail.active_session ? [discussOpt, discoveryOpt] : [discoveryOpt, discussOpt];
+}
+
+/**
+ * The rows that change a topic's place on the map: cancel, postpone,
+ * reactivate and pull forward.
+ * @param {EpicDetail} detail @returns {MenuKey[]}
+ */
+function topicOptions(detail) {
+  /** @type {MenuKey[]} */
+  const opts = [];
   if (detail.cancellable.length > 0) {
     opts.push({ key: 'a', word: 'cancel', action: 'cancel_topic', topic: null, route: null, label: 'Cancel a topic' });
   }
@@ -659,6 +656,30 @@ function commandOptions(workUnit, detail, hasMap) {
   if (detail.postponed.some((t) => t.waiting)) {
     opts.push({ key: 'f', word: 'forward', action: 'pull_forward_topic', topic: null, route: null, label: 'Pull a postponed topic back from the roadmap' });
   }
+  return opts;
+}
+
+/**
+ * Command options with presence conditions and adaptive descriptions. Past
+ * the spec the map is closed (18.4.19), so neither its rows nor a topic's
+ * place on it show.
+ * @param {string} workUnit @param {EpicDetail} detail @param {boolean} hasMap @returns {MenuKey[]}
+ */
+function commandOptions(workUnit, detail, hasMap) {
+  /** @type {MenuKey[]} */
+  const opts = [];
+  if (detail.spec_row !== null) {
+    opts.push({
+      key: 's', word: 'spec', action: 'enter_specification', topic: null,
+      route: `/leeway-specification-process epic ${workUnit}`,
+      label: detail.spec_row === 'start' ? 'Start the specification' : 'Continue the specification',
+    });
+  }
+  if (!detail.map_closed) opts.push(...mapOptions(workUnit, detail, hasMap));
+  if (detail.completed.length > 0) {
+    opts.push({ key: 'c', word: 'completed', action: 'resume_completed', topic: null, route: null, label: 'Resume a completed topic' });
+  }
+  if (!detail.map_closed) opts.push(...topicOptions(detail));
   const anyPlanBlocked = (detail.phases.planning || [])
     .some((p) => Array.isArray(p.deps_blocking) && p.deps_blocking.length > 0);
   if (anyPlanBlocked) {

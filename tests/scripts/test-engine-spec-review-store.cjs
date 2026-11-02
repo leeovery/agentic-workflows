@@ -16,12 +16,17 @@
 // with; each `gap` or `fact` finding then waits to be surfaced until raised
 // or declined — a gap raised as the replacement of a decision surfaced
 // alone, with the decision, a replacement's reason and the ledger's mark,
-// which the writer is held on (test-engine-spec-review-settled.cjs). A pass in flight holds the review — running, waited for, the
-// way on naming its way out where its agent returned without its report;
-// lost with the process that dispatched it, abandoned; its report on disk,
-// taken in by a scan — and a pass abandoned in flight is ignored whole,
-// whenever it reports. A reviewer's brief refused closes its dispatch where
-// it is bound to no land, so no reader of the store lists it in flight.
+// which the writer is held on (test-engine-spec-review-settled.cjs). A pass
+// closes as the prose closes it, each answer giving its status, its rewrite
+// findings the writer's and never waiting on the person. A pass in flight
+// holds the review — running, waited for, the way on naming its way out
+// where its agent returned without its report; lost with the process that
+// dispatched it, abandoned; its report on disk, taken in by a scan — and a
+// pass abandoned in flight is ignored whole, whenever it reports. A pass
+// running on the spec as it stands is named at the entry, and another
+// pass's brief is refused while it runs. A reviewer's brief refused closes
+// its dispatch where it is bound to no land, so no reader of the store
+// lists it in flight.
 //
 // Layer: verb. World: spec-review-world.cjs's.
 // ---------------------------------------------------------------------------
@@ -32,10 +37,10 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { ok } = require('./engine-harness.cjs');
+const { ok, output } = require('./engine-harness.cjs');
 const { ledgerHelpers } = require('./ledger-world.cjs');
 const {
-  UNIT, MADE, AT_SPEC, LANED, OWNER, made, useSpecReviewWorld, specReviewHelpers, section, unchangedSince,
+  UNIT, SESSION, MADE, AT_SPEC, FOUND, LANED, OWNER, made, useSpecReviewWorld, specReviewHelpers, section, unchangedSince,
 } = require('./spec-review-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
@@ -71,6 +76,32 @@ describe('a pass of the spec\'s review in the store (11.7.1, 11.7.2, 11.7.6)', (
     assert.deepStrictEqual([unscanned, ...refusals], [unacknowledged, unacknowledged, exactly, exactly]);
     assert.deepStrictEqual(waiting, ['open', unchangedSince(pass, `the review's findings wait to be surfaced: ${pass.id} acknowledged, then ${laned(pass)}`)]);
     assert.strictEqual(nothingToRead(), unchangedSince(pass, `the review's findings wait to be surfaced: ${laned(pass)}`));
+  });
+
+  it('a pass closes as the prose closes it, the ack\'s answer and each surfacing\'s giving its status: a clean pass at its ack, a gap pass at its last surfacing; a rewrite pass stays acknowledged until incorporated, its rewrite handed to the writer and never among the findings left to surface, which read declined', () => {
+    const passOn = (/** @type {string} */ instant, /** @type {string} */ report) => {
+      writeSpec(spec({ instant }));
+      land();
+      const pass = dispatchReview();
+      issued(['spec-reviewer', UNIT, '--agent', pass.id]);
+      reportIn(pass, report);
+      scan();
+      return pass.id;
+    };
+    const agent = (/** @type {string[]} */ args) => {
+      const { status, remaining, for_writer: writer } = ok(dir(), ['agent', ...args]);
+      return { status, remaining, writer };
+    };
+    const clean = passOn('2.1.2 Refunds are instant.', '# Spec Review\n\n## Findings\n\nNone identified.');
+    const cleanAck = agent(['ack', UNIT, 'specification', UNIT, clean, '--clean']);
+    const gap = passOn('2.1.2 Refunds are instant, always.', '# Spec Review\n\n## Findings\n\n### F1: is a refund split?\n\n**Lane:** gap\n\nNo entry decides it.');
+    const gapped = [agent(['ack', UNIT, 'specification', UNIT, gap, '--findings', 'F1']), agent(['surface', UNIT, 'specification', UNIT, gap, 'F1'])];
+    const rewrite = passOn('2.1.2 Refunds are instant, and whole.', FOUND);
+    const rewritten = [agent(['ack', UNIT, 'specification', UNIT, rewrite, '--findings', 'F1']), agent(['incorporate', UNIT, 'specification', UNIT, rewrite])];
+
+    assert.deepStrictEqual(cleanAck, { status: 'incorporated', remaining: [], writer: undefined });
+    assert.deepStrictEqual(gapped, [{ status: 'acknowledged', remaining: ['F1'], writer: undefined }, { status: 'incorporated', remaining: [], writer: undefined }]);
+    assert.deepStrictEqual(rewritten, [{ status: 'acknowledged', remaining: [], writer: ['F1'] }, { status: 'incorporated', remaining: [], writer: ['F1'] }]);
   });
 
   it('a pass is read once, as its report is taken in: a report deleted, rewritten to no longer read, or rewritten with fewer findings since changes nothing — each still reported with the findings it was taken in with, acknowledged with exactly those, and each waiting to be surfaced', () => {
@@ -190,10 +221,10 @@ describe('a pass of the spec\'s review in the store (11.7.1, 11.7.2, 11.7.6)', (
   it('a pass in flight holds the review though a later pass reviewed the spec as it stands and reported clean — one running, waited for; one lost with the process that dispatched it, abandoned; one whose report is on disk, taken in by a scan — and a dispatch whose brief was refused holds nothing', () => {
     writeSpec(spec());
     land();
-    const running = dispatchReview(OWNER.running);
-    issued(['spec-reviewer', UNIT, '--agent', running.id]);
     const lost = dispatchReview();
     issued(['spec-reviewer', UNIT, '--agent', lost.id]);
+    const running = dispatchReview(OWNER.running);
+    issued(['spec-reviewer', UNIT, '--agent', running.id]);
     write('find', AT_SPEC, [], { ...MADE, text: 'A refund posts within a day.', how: 'read in the code', known: 'read' });
     issued(['spec-writer', UNIT]);
     writeSpec(spec({ instant: '2.1.2 Refunds are instant, always.' }));
@@ -206,22 +237,22 @@ describe('a pass of the spec\'s review in the store (11.7.1, 11.7.2, 11.7.6)', (
     const landed = [reviewSettled(), nothingToRead()];
     acked(running);
 
-    assert.deepStrictEqual(flying, ['open', unchangedSince(later, `${stillRunning(running)}; ${lost.id} was lost with the process that dispatched it, and agent incorporate abandons it`)]);
+    assert.deepStrictEqual(flying, ['open', unchangedSince(later, `${lost.id} was lost with the process that dispatched it, and agent incorporate abandons it; ${stillRunning(running)}`)]);
     assert.deepStrictEqual(runs, ['open', unchangedSince(later, stillRunning(running))]);
     assert.deepStrictEqual(landed, ['open', unchangedSince(later, `${running.id}'s report is in, and agent scan takes it in`)]);
     assert.strictEqual(reviewSettled(), 'done');
   });
 
-  it('a pass whose agent returned without writing its report reads as running while the process that dispatched it lives, and the way on, the refusal of a pass with nothing to read among it, names the way out — agent incorporate abandons it; followed, the review settles', () => {
+  it('a pass whose agent returned without writing its report reads as running while the process that dispatched it lives, and the refusal of another pass\'s brief names the way out — agent incorporate abandons it; followed, another pass goes and the review settles', () => {
     writeSpec(spec());
     land();
     const returned = dispatchReview(OWNER.running);
     issued(['spec-reviewer', UNIT, '--agent', returned.id]);
-    const later = cleanPass();
-    const held = [reviewSettled(), nothingToRead()];
+    const held = [reviewSettled(), refusedUnissued(['spec-reviewer', UNIT, '--agent', dispatchReview().id])];
     unread(returned);
+    cleanPass();
 
-    assert.deepStrictEqual(held, ['open', unchangedSince(later, stillRunning(returned))]);
+    assert.deepStrictEqual(held, ['open', `brief: ${UNIT}'s spec as it stands is under review already — ${stillRunning(returned)}`]);
     assert.strictEqual(reviewSettled(), 'done');
   });
 
@@ -246,5 +277,22 @@ describe('a pass of the spec\'s review in the store (11.7.1, 11.7.2, 11.7.6)', (
       [scan().in_flight.map((/** @type {{id: string}} */ { id }) => id), runningAgents(dir(), UNIT, 'specification', UNIT), agentsLeft(dir(), UNIT, 'specification', UNIT)],
       [[bound.id], [{ id: bound.id, kind: 'spec-review' }], { landed: [], lost: [] }],
     );
+  });
+
+  it('a resume with a pass running on the spec as it stands: the entry names it, and a second pass\'s brief is refused naming it — accepted once its report is on disk; a pass lost with the process that dispatched it holds nothing', () => {
+    writeSpec(spec());
+    land();
+    const lost = dispatchReview();
+    issued(['spec-reviewer', UNIT, '--agent', lost.id]);
+    const first = dispatchReview(OWNER.running);
+    issued(['spec-reviewer', UNIT, '--agent', first.id]);
+    const entered = output(dir(), ['enter', 'specification', UNIT, '--take'], { env: SESSION }).split('\n');
+    const held = refusedUnissued(['spec-reviewer', UNIT, '--agent', dispatchReview().id]);
+    reportIn(first);
+    const after = issued(['spec-reviewer', UNIT, '--agent', dispatchReview().id]).res.role;
+
+    assert.deepStrictEqual([entered.includes(`running: ${first.id}`), entered.includes(`running: ${lost.id}`), entered.includes(`lost: ${lost.id}`)], [true, false, true]);
+    assert.strictEqual(held, `brief: ${UNIT}'s spec as it stands is under review already — ${stillRunning(first)}`);
+    assert.strictEqual(after, 'spec-reviewer');
   });
 });

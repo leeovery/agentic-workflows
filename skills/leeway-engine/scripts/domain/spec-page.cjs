@@ -64,7 +64,8 @@ const fs = require('fs');
 const path = require('path');
 const { messageOf } = require('../kernel/call.cjs');
 const { isObject, writeJsonAtomic } = require('../kernel/manifest-io.cjs');
-const { fingerprint, specPage } = require('./spec-page-model.cjs');
+const { fingerprint } = require('../kernel/fingerprint.cjs');
+const { specPage } = require('./spec-page-model.cjs');
 const { pageDir, pageRefusal, publishedFile, publishedPage, readBackFile } = require('./spec-review.cjs');
 
 const PAGE_USAGE = 'spec page <work-unit>';

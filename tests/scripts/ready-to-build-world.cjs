@@ -113,7 +113,7 @@ function buildLanded(dir) {
   answered(dir, `${UNIT}.discussion.cards`, 'Is the brand shown?', { ...MADE, text: 'As a logo.' });
   made.refund = answered(dir, `${UNIT}.discussion.refunds`, 'Where does a refund go?', { ...PERSON, text: 'Back to the card.' });
   payments(dir, 'completed');
-  writeState(dir, layout.unit(UNIT, 'sweep-taken.json'), JSON.stringify({ taken: '2026-11-01T00:00:00.000Z', messages: [], candidates: [] }));
+  writeState(dir, layout.unit(UNIT, 'sweep-taken.json'), JSON.stringify({ candidates: [], builder_calls: [] }));
   commitAll(dir, 'topics settled, the sweep taken');
   made.brand = answered(dir, SPEC_AT, 'What of an unknown brand?', { ...MADE, text: 'Refused.', kind: 'behaviour' });
   made.day = answered(dir, SPEC_AT, 'How soon is a refund sent?', { ...MADE, text: 'Within a day.' });

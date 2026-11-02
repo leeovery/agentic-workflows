@@ -251,8 +251,9 @@ const { stagedCutPath, stagedCutRefusal } = require('./cut.cjs');
 const { inventedLines } = require('./spec-trace.cjs');
 const { specSources } = require('./spec-entry.cjs');
 const { landRefusal, unitRefusal } = require('./spec-land.cjs');
+const { heldPlaces } = require('./spec-review.cjs');
 const {
-  ownTexts, recordTaking, recordCutTaking, outstanding, cutRequests, reviewedSpec, sectionsToReview, waitingGaps, gapsWaiting, waitingOn,
+  ownTexts, recordTaking, recordCutTaking, outstanding, cutRequests, reviewedSpec, sectionsToReview, waitingGaps, gapsWaiting, passesRunningOn, waitingOn,
 } = require('./spec-passes.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { specReferenceOf } = require('./task-file.cjs');
@@ -996,7 +997,7 @@ const drawTopicLogs = (filling, warnings) => listed(sourcesOf(filling, warnings)
 const drawCanonicalAssets = (filling, warnings) => listed(sourcesOf(filling, warnings).assets.map((asset) => `- \`${asset}\``));
 
 /** @param {Filling} filling */
-const drawBuilderCalls = (filling) => listed(builderCalls(filling.cwd, unitOf(filling)).map(({ call, why }) => `- ${indented(call)}\n  Why: ${indented(why)}`));
+const drawBuilderCalls = (filling) => listed(builderCalls(filling.cwd, unitOf(filling)).map(({ id, call, why }) => `- ${id}: ${indented(call)}\n  Why: ${indented(why)}`));
 
 /**
  * The unit's entries `ids` names, in the ledger's order, each with where it
@@ -1041,6 +1042,15 @@ const takeFindings = (filling, warnings) => recordTaking(filling.cwd, unitOf(fil
 /** @param {Filling} filling */
 const drawLandRefusal = (filling) => landRefusal(filling.cwd, unitOf(filling)) ?? NONE;
 
+/** The rule the numbers the open review page holds keep, which `spec land` holds a land to (11.11.3). */
+const HELD_RULE = 'The person\'s review page is open, so these numbers are held: every line keeps its number; a line added takes the next free number at the end of its part — and a scenario or a screen added, at the end of its area\'s scenarios or its line\'s screens — and a number removed is never given to another line.';
+
+/** @param {Filling} filling */
+function drawHeldNumbers(filling) {
+  const places = heldPlaces(filling.cwd, unitOf(filling));
+  return places === null ? NONE : [HELD_RULE, '', ...places.map(({ held, next }) => `- ${held.join(', ')} · next free ${next}`)].join('\n');
+}
+
 /** @param {Filling} filling @param {string[]} warnings */
 function drawSpecTo(filling, warnings) {
   const unit = unitOf(filling);
@@ -1054,7 +1064,9 @@ function drawSpecTo(filling, warnings) {
 /** @param {Filling} filling @param {string[]} warnings */
 function drawChangedSections(filling, warnings) {
   const unit = unitOf(filling);
-  const { text } = reviewedSpec(filling.cwd, unit);
+  const { land, text } = reviewedSpec(filling.cwd, unit);
+  const running = passesRunningOn(filling.cwd, unit, land, filling.given.agent);
+  if (running !== null) throw new Error(`brief: ${unit}'s spec as it stands is under review already — ${running}`);
   const { changed, removed, since } = sectionsToReview(filling.cwd, unit, text);
   if (since !== null && changed.length === 0 && removed.length === 0) {
     throw new Error(`brief: ${unit}'s spec has not changed since pass ${since}, whose report is in, so a pass has nothing to read — ${waitingOn(filling.cwd, unit, warnings) ?? 'its review has settled'}`);
@@ -1169,6 +1181,7 @@ const RECORDS = Object.freeze({
   'wording-changes': { of: 'unit', flags: [{ name: 'wording', value: 'file', optional: true }], draw: drawWordingChanges },
   'review-findings': { of: 'unit', draw: drawReviewFindings, bind: takeFindings },
   'land-refusal': { of: 'unit', draw: drawLandRefusal },
+  'held-numbers': { of: 'unit', draw: drawHeldNumbers },
   'spec-to': { of: 'unit', draw: drawSpecTo },
   'changed-sections': { of: 'unit', flags: [AGENT], draw: drawChangedSections, bind: bindPass, refused: closePass },
   'invented-lines': { of: 'unit', draw: drawInventedLines },

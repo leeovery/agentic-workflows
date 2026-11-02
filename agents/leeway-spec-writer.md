@@ -22,6 +22,7 @@ The engine's brief is all you are given; the conversation never reaches you. It 
 - **The builder's calls** — the calls the sweep left to the builder, or none.
 - **Written since your last brief** — the entries made at the spec that a rewrite takes in, each with where it stands and what it replaced, or none.
 - **The review's findings** — the report of each review pass waiting for you, or none.
+- **The numbers held** — while the person's review page is open, the numbers it holds and how a line added is numbered, or none.
 - **Lines that do not trace** — each statement or screen of the spec whose cites the engine could not resolve, with why, or none.
 - **The refusal** — what the engine refused of the spec you last wrote, or none.
 

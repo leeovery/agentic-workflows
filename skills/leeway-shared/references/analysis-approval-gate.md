@@ -61,10 +61,10 @@ node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}
 
 Set `postpone_after` = `false`; the `postpone` arm below is the only thing that raises it, and it is raised for one candidate at a time.
 
-Write the candidate payload to `.workflows/.cache/{work_unit}/discovery/candidate.json` with the Write tool (`{"name": "…", "routing": "…", "summary": "…"}` — the block's stored fields), then render it:
+Write the candidate payload to `.leeway/.cache/{work_unit}/discovery/candidate.json` with the Write tool (`{"name": "…", "routing": "…", "summary": "…"}` — the block's stored fields), then render it:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render candidate-gate {work_unit} --file .workflows/.cache/{work_unit}/discovery/candidate.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render candidate-gate {work_unit} --file .leeway/.cache/{work_unit}/discovery/candidate.json
 ```
 
 Emit the response's sections verbatim per their markers. The surface reads `gate_mode` from the `analysis_staging.discovery-gap-analysis` subtree and branches for you — an `auto` mode answers with the approval line, a `gated` mode with the menu.
