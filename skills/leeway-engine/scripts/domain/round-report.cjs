@@ -48,8 +48,10 @@
 // task's verdict is its last round's. A report that does not read, or a
 // round missing one, refuses every read of the task's rounds, naming it.
 // The round under review is read from them too, never from a conversation:
-// the last round where a report of it is still to be written, else the
-// next, none once a round passed or was settled. A phase's review is
+// the last round where a report of it is still to be written or does not
+// read, else the next — a settled round's too — none once a round passed.
+// A report that does not read is replaced by briefing its reviewer again,
+// which every refusal of it names. A phase's review is
 // reported beside its consolidation, `build/phases/phase-{N}/
 // review-{letter}.md`.
 // ---------------------------------------------------------------------------
@@ -197,7 +199,7 @@ function readRound(cwd, ref, round, held) {
     try {
       return { reviewer: letter, file, text, ...readReport(text) };
     } catch (err) {
-      throw new Error(`${file} does not read as a reviewer's report — ${messageOf(err)}`);
+      throw new Error(`${file} does not read as a reviewer's report — ${messageOf(err)}; brief reviewer ${letter} again, and its report replaces it`);
     }
   });
   return { round, reports, passes: reports.every(({ verdict }) => verdict === 'pass'), settled: held.has(`round-${round}-settled.md`) };
@@ -225,24 +227,35 @@ function lastReported(held) {
   return Math.max(0, ...rounds);
 }
 
+/** Whether a file's text reads as a reviewer's report. @param {string} file @returns {boolean} */
+function readsAsReport(file) {
+  try {
+    readReport(fs.readFileSync(file, 'utf8'));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * The round of a task under review, from its reports on disk alone, so both
  * reviewers of a round are briefed for it whenever they are: the last round
- * reported where a reviewer's report of it is still to be written, else the
- * one after it; refused where the last round passed or was settled, which
- * ends the task's review.
- * @param {string} cwd @param {TaskRef} ref @returns {{round: number, written: string[]}}
+ * reported where a reviewer's report of it is still to be written, or does
+ * not read, else the one after it — a settled round among them, the
+ * orchestrator's direction reviewed again (13.4.6); refused where the last
+ * round passed, which ends the task's review.
+ * @param {string} cwd @param {TaskRef} ref @returns {number}
  */
 function roundUnderReview(cwd, ref) {
   const held = heldFiles(cwd, ref);
   const last = lastReported(held);
-  const written = REVIEWER_LETTERS.filter((letter) => held.has(`round-${last}-${letter}.md`));
-  if (last > 0 && written.length < REVIEWER_LETTERS.length) return { round: last, written };
-  const ended = last > 0 ? readRound(cwd, ref, last, held) : null;
-  if (ended?.passes || ended?.settled) {
-    throw new Error(`round ${last} of ${taskName(ref)} ${ended.passes ? 'passed' : 'was settled'} — its review is over`);
-  }
-  return { round: last + 1, written: [] };
+  if (last === 0) return 1;
+  const reported = REVIEWER_LETTERS.every((letter) => held.has(`round-${last}-${letter}.md`) && readsAsReport(statePath(cwd, roundReportPath(ref, last, letter))));
+  if (!reported) return last;
+  if (readRound(cwd, ref, last, held).passes) throw new Error(`round ${last} of ${taskName(ref)} passed — its review is over`);
+  return last + 1;
 }
 
-module.exports = { passes, readReport, taskFolder, roundReportPath, settlementPath, taskRounds, roundUnderReview, phaseReviewPath };
+module.exports = {
+  passes, readReport, readsAsReport, taskFolder, roundReportPath, settlementPath, taskRounds, roundUnderReview, phaseReviewPath,
+};

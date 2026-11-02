@@ -46,7 +46,7 @@ const OURS = 'leeway-';
  * @type {Readonly<Record<string, {agent: string, whose: string, records: readonly string[], kind?: string}>>}
  */
 const ROLES = Object.freeze({
-  builder: { agent: 'leeway-builder', whose: 'the builder\'s', records: ['task', 'spec-sections', 'decided-calls', 'linters', 'account-to'] },
+  builder: { agent: 'leeway-builder', whose: 'the builder\'s', records: ['task', 'spec-sections', 'decided-calls', 'linters', 'account-to', 'setup-to'] },
   reviewer: { agent: 'leeway-reviewer', whose: 'the reviewer\'s', records: ['task', 'spec-sections', 'decided-calls', 'diff-range', 'linters', 'round-report-to'] },
   fix: { agent: 'leeway-builder', whose: 'the fix round\'s', records: ['reports'] },
   'product-researcher': { agent: 'leeway-product-researcher', whose: 'the product researcher\'s', records: [] },

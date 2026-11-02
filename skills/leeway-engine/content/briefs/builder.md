@@ -18,13 +18,21 @@
 
 {{account-to}}
 
+# Where the verify setup goes
+
+{{setup-to}}
+
 # Where you work
 
 Before anything else, lay the task out in the worktree you were started in: from its root, run `node .claude/skills/leeway-engine/scripts/engine.cjs task worktree {unit} {task}`, the unit and the task this brief is for. It puts the worktree, and every repository nested in it, on the task's branch. Build, run and commit only there.
 
 # Proving it
 
-Once the work is committed through the door, run each acceptance scenario of the task from your task's worktree, one at a time: `node .claude/skills/leeway-engine/scripts/engine.cjs verify run {unit} {scenario}`. Give what each run proves in your account, under `## What the tests prove`. Where the project has no verify setup recorded yet — the first phase builds it — say so there instead of running.
+Once the work is committed through the door, run each acceptance scenario of the task from your task's worktree, one at a time: `node .claude/skills/leeway-engine/scripts/engine.cjs verify run {unit} {scenario}`. A drive can run for minutes: give the Bash call a timeout to match.
+
+Where your task builds the verify setup, record it once it is committed, from your task's worktree, before running: write the setup to the file under "Where the verify setup goes", then run `node .claude/skills/leeway-engine/scripts/engine.cjs verify setup {unit} --file {that file} --scenario {scenario}`.
+
+In your account, under `## What the tests prove`, name each scenario you ran through `verify` and what its drive does. What the runs prove is the engine's to say, never the account's. Where the project has no verify setup recorded yet and your task does not build it, say so there instead of running.
 
 # Where the task leaves a call open
 

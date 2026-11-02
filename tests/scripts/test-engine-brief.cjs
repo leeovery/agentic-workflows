@@ -267,7 +267,7 @@ function drawnForTakeACard() {
     `- ${calls.person}, the person's: Refunds through the API.\n  Why: They come weekly now.`,
   ].join('\n');
   return {
-    task, 'spec-sections': `${REFUNDS}\n\n${FORM}`, 'decided-calls': decisions, linters: '- eslint: npx eslint .\n- tsc: npx tsc --noEmit', 'account-to': `\`${statePath(dir, 'pay/build/tasks/1.1.md')}\``,
+    task, 'spec-sections': `${REFUNDS}\n\n${FORM}`, 'decided-calls': decisions, linters: '- eslint: npx eslint .\n- tsc: npx tsc --noEmit', 'account-to': `\`${statePath(dir, 'pay/build/tasks/1.1.md')}\``, 'setup-to': `\`${statePath(dir, '.cache/pay/build/verify-setup.json')}\``,
   };
 }
 
@@ -556,7 +556,7 @@ describe('the refusals, nothing written and no brief stored', () => {
     refusedUnissued([...FIX], /^round 2 of task 1\.1 of pay has no report from reviewer a — pay\/build\/tasks\/1\.1\/round-2-a\.md$/);
     writeState(dir, roundAt('1.1', 2, 'a'), reportOf('bug'));
     writeState(dir, roundAt('1.1', 2, 'b'), 'Verdict: fail\n\n- The receipt omits the amount.\n');
-    refusedUnissued([...FIX], /^pay\/build\/tasks\/1\.1\/round-2-b\.md does not read as a reviewer's report — its last heading at level one or two is not `## Findings`; its last line is not `Verdict: pass` or `Verdict: fail`$/);
+    refusedUnissued([...FIX], /^pay\/build\/tasks\/1\.1\/round-2-b\.md does not read as a reviewer's report — its last heading at level one or two is not `## Findings`; its last line is not `Verdict: pass` or `Verdict: fail`; brief reviewer b again, and its report replaces it$/);
   });
 
   it('13.S4: a fix round after a round of nits alone, which passes and sends nothing back to the builder', () => {
@@ -616,12 +616,12 @@ describe('the templates and the store', () => {
   });
 
   it('a template is refused for a slot not alone on its line, one no record answers, one its role does not draw on, and a record\'s slot missing or twice', () => {
-    const builder = '{{task}}\n{{spec-sections}}\n{{decided-calls}}\n{{linters}}\n{{account-to}}\n';
+    const builder = '{{task}}\n{{spec-sections}}\n{{decided-calls}}\n{{linters}}\n{{account-to}}\n{{setup-to}}\n';
     assert.strictEqual(templateOf('builder', builder), builder);
     assert.throws(() => templateOf('builder', `${builder}See {{task}} above.\n`), /"See \{\{task\}\} above\." holds a slot that is not alone on its line; task's slot is there 2 times$/);
     assert.throws(() => templateOf('builder', `${builder}{{diff}}\n`), /the builder's template is refused — \{\{diff\}\} is no record$/);
     assert.throws(() => templateOf('product-researcher', '{{linters}}\n'), /the product-researcher's brief draws on no linters$/);
-    assert.throws(() => templateOf('builder', '{{task}}\n{{spec-sections}}\n{{linters}}\n{{account-to}}\n'), /— no slot for decided-calls$/);
+    assert.throws(() => templateOf('builder', '{{task}}\n{{spec-sections}}\n{{linters}}\n{{account-to}}\n{{setup-to}}\n'), /— no slot for decided-calls$/);
   });
 
   it('a brief and its record are never stored over another\'s', () => {

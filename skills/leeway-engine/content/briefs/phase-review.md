@@ -47,9 +47,11 @@ Every task of the phase has passed its own review. Review the phase's whole chan
 - what should be consolidated across its tasks;
 - where the phase meets what it relies on from earlier phases, so a fault between phases is found now, before more is built on it.
 
+Run the tests, and make any break, in a detached scratch worktree of your own at the range's tip: in each repository the range names, laid out as the project lays them out, each child repository at its own tip at its folder inside it. Remove it after. Never check out, detach or switch anything in another checkout.
+
 A scenario its runs leave "not proven", or "named, not run", at the phase's HEAD is a finding, and reads so in your report, in those words.
 
-Every criterion has a test, and the tests must catch a break. A mutant that survived in code a criterion covers is a finding. Where the verify setup names no mutation tool, break the riskiest line of each criterion's code in a scratch worktree of your own, never the phase's: a break the tests do not catch is a finding.
+Every criterion has a test, and the tests must catch a break. A mutant that survived in code a criterion covers is a finding. Where the verify setup names no mutation tool, break the riskiest line of each criterion's code in that scratch worktree, never the phase's: a break the tests do not catch is a finding.
 
 # A failed review
 

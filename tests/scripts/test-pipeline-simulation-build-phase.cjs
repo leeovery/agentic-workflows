@@ -81,7 +81,8 @@ describe('pipeline simulation: a phase of the cut', () => {
     assert.strictEqual(sim.run(['brief', 'task-writer', wu, '1']).agent, 'leeway-task-writer');
     writePhaseTasks(sim, wu, 1, 'The work', [{ title: 'Write the ledger' }]);
     sim.run(['task', 'start', wu, '1.1']);
-    const account = placeIn(sim, sim.run(['brief', 'builder', wu, '1.1']), 'Where your account goes');
+    const builder = sim.run(['brief', 'builder', wu, '1.1']);
+    const account = placeIn(sim, builder, 'Where your account goes');
 
     // The builder lays its task out in the worktree its isolation made, and
     // builds, commits and proves it there (12.7.10, 15.2.14).
@@ -92,7 +93,9 @@ describe('pipeline simulation: a phase of the cut', () => {
     fs.writeFileSync(path.join(tree, 'verify', 'features.md'), '# Features\n');
     fs.writeFileSync(path.join(tree, 'verify', 'drive.sh'), '#!/bin/sh\nprintf "pass\\n" > "$LEEWAY_RUN/verdict"\n', { mode: 0o755 });
     sim.runIn(tree, ['commit', '--paths', 'verify/features.md', 'verify/drive.sh', '--task', wu, '1.1', '-m', 'feat(ledger): the verify setup']);
-    const setup = path.join(sim.dir, sim.write(`.leeway/.cache/${wu}/build/verify-setup.json`, {
+    const setup = placeIn(sim, builder, 'Where the verify setup goes');
+    fs.mkdirSync(path.dirname(setup), { recursive: true });
+    fs.writeFileSync(setup, JSON.stringify({
       place: 'verify', feature_map: 'verify/features.md', launch: 'true', health: 'true', drive: 'verify/drive.sh', evidence: 'true', cleanup: 'true',
       mutation: 'echo "[]" > "$LEEWAY_RUN/survivors.json"',
     }));
@@ -106,7 +109,7 @@ describe('pipeline simulation: a phase of the cut', () => {
     // taken from where each was written (13.5.9, 12.14).
     for (const letter of ['a', 'b']) landed(placeIn(sim, sim.run(['brief', 'reviewer', wu, '1.1', '--base', 'main', '--letter', letter]), 'Where your report goes'), PASSED);
     landed(account, [
-      '## What was done', 'The ledger is written.', '## Where in the code', '- verify/', '## What the tests prove', '- 1.S1: proven, by its run.',
+      '## What was done', 'The ledger is written.', '## Where in the code', '- verify/', '## What the tests prove', '- 1.S1, run through verify: its drive writes an entry and reads it back.',
       '## Differs from the task', 'None.', '## Reviews', '### Round 1', 'Passed.',
     ].join('\n\n'));
     assert.deepStrictEqual(sim.run(['task', 'account', wu, '1.1']).rounds, 1, 'the account and the round\'s reports are read where the agents wrote them');

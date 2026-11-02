@@ -35,11 +35,16 @@
 //   account-to     where the builder writes the task's account as it
 //                  lands: the task's `build/tasks/{task}.md` (task-account.cjs,
 //                  12.14), as `task account` reads it
+//   setup-to       where the builder writes the verify setup its task
+//                  builds, for `verify setup --file`: the unit's
+//                  `.cache/{unit}/build/verify-setup.json`, outside the
+//                  checkout, as the setup's trial needs
 //   round-report-to where the reviewer `--letter` names writes its report
 //                  of the round under review (13.5.9): the task's
 //                  `round-{N}-{letter}.md`, N read from the task's reports
 //                  on disk (round-report.cjs), so it holds across a
-//                  `/clear` and for both reviewers of a round
+//                  `/clear` and for both reviewers of a round; a report
+//                  there that does not read named as the one it replaces
 //
 // A discussion topic's records, each read from the ledger as its read verb
 // answers it (ledger-read.cjs) or from the topic's agent store
@@ -209,7 +214,9 @@
 //                  rely on (11.9.1), as `ledger affected` answers them
 //                  (ledger-affected.cjs), fenced as JSON
 //   task-files-to  the folder in the unit's cache the agent writes each
-//                  task's file in, for `task create --file`
+//                  task's file in, for `task create --file`: the phase's,
+//                  `.cache/{unit}/build/phase-{N}/{role}`, the task writer's
+//                  apart from the consolidation agent's
 //   phase-notes    the notes the phase has to take at its end (notes.cjs),
 //                  each verbatim under its heading
 //   phase-tasks    each task of the phase, whole, as `task` draws it, under
@@ -239,7 +246,8 @@
 //                  that none survived; or that the setup names no mutation
 //                  tool. The brief never runs the tool
 //   phase-report-to where the reviewer `--letter` names writes its report
-//                  of the phase review: the phase's `review-{letter}.md`
+//                  of the phase review: the phase's `review-{letter}.md`,
+//                  likewise
 //   consolidation-to where the consolidation agent writes its report: the
 //                  phase's `consolidation.md` (notes.cjs)
 //
@@ -288,8 +296,8 @@
 // a repository, no repository holding work on them, a head that is no
 // commit of the project's repository, no verify setup recorded, a tool that
 // has not run over the phase at the head, a letter none of the reviewers',
-// a report already written for its round, a task whose review passed or
-// was settled — a task with no review
+// a report already written for its round that reads, a task whose review
+// passed — a task with no review
 // round's reports, a round missing a reviewer's report or holding one
 // that does not read, a last round that passed; a question that is none, no longer current,
 // stands elsewhere or is not open, or one its dispatch was not first briefed
@@ -344,7 +352,7 @@ const {
 const { messageOf } = require('../kernel/call.cjs');
 const { specReferenceOf, scenariosOf } = require('./task-file.cjs');
 const {
-  taskFolder, taskRounds, roundReportPath, roundUnderReview, phaseReviewPath,
+  taskFolder, taskRounds, roundReportPath, roundUnderReview, phaseReviewPath, readsAsReport,
 } = require('./round-report.cjs');
 const { REVIEWER_LETTERS } = require('../kernel/reviewers.cjs');
 const { taskName, shownTask, phaseName } = require('./task-id.cjs');
@@ -1345,7 +1353,7 @@ function drawAffectedEntries(filling, warnings) {
 /** @param {Filling} filling */
 function drawTaskFilesTo(filling) {
   const { unit, phase } = phaseOf(filling);
-  return `\`${statePath(filling.cwd, '.cache', unit, 'implementation', `phase-${phase}`)}\``;
+  return `\`${statePath(filling.cwd, '.cache', unit, 'build', `phase-${phase}`, filling.role)}\``;
 }
 
 /** The phase's tasks, refused where it is not written. @param {Filling} filling @returns {TaskDetail[]} */
@@ -1451,10 +1459,21 @@ function letterOf(filling) {
   return letter;
 }
 
-/** Where a reviewer writes its report, drawn; refused where it is written already. @param {Filling} filling @param {string} rel state-relative */
+/**
+ * Where a reviewer writes its report, drawn; a report there that does not
+ * read is named as the one this replaces, and one that reads refuses it.
+ * @param {Filling} filling @param {string} rel state-relative
+ */
 function reportPlace(filling, rel) {
-  if (fs.existsSync(statePath(filling.cwd, rel))) throw new Error(`${rel} is written already — that reviewer's report of the round is in`);
-  return `\`${statePath(filling.cwd, rel)}\``;
+  const file = statePath(filling.cwd, rel);
+  if (!fs.existsSync(file)) return `\`${file}\``;
+  if (readsAsReport(file)) throw new Error(`${rel} is written already — that reviewer's report of the round is in`);
+  return `\`${file}\` — the report there does not read as a reviewer's report, and yours replaces it`;
+}
+
+/** @param {Filling} filling */
+function drawSetupTo(filling) {
+  return `\`${statePath(filling.cwd, '.cache', taskOf(filling).ref.unit, 'build', 'verify-setup.json')}\``;
 }
 
 /** @param {Filling} filling */
@@ -1465,7 +1484,7 @@ function drawAccountTo(filling) {
 /** @param {Filling} filling */
 function drawRoundReportTo(filling) {
   const { ref } = taskOf(filling);
-  return reportPlace(filling, roundReportPath(ref, roundUnderReview(filling.cwd, ref).round, letterOf(filling)));
+  return reportPlace(filling, roundReportPath(ref, roundUnderReview(filling.cwd, ref), letterOf(filling)));
 }
 
 /** @param {Filling} filling */
@@ -1499,6 +1518,7 @@ const RECORDS = Object.freeze({
   reports: { of: 'task', draw: drawReports },
   'round-report-to': { of: 'task', flags: [LETTER], draw: drawRoundReportTo },
   'account-to': { of: 'task', draw: drawAccountTo },
+  'setup-to': { of: 'task', draw: drawSetupTo },
   'topic-record': { of: 'topic', draw: drawTopicRecord },
   'topic-log': { of: 'topic', draw: drawTopicLog },
   'other-records': { of: 'topic', draw: drawOtherRecords },

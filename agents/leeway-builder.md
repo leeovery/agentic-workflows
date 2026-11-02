@@ -18,7 +18,7 @@ The engine's brief is all you are given; the conversation never reaches you. It 
 - **The spec's sections it cites**, verbatim.
 - **The decided calls** — the unit's decisions, your own calls among them once the orchestrator has recorded them.
 - **The linters** — the project's, which the commit door runs with its tests.
-- **Where your account goes**, **where you work**, **proving it**, **where the task leaves a call open**, **a failed review** and **your account** — how the work is done.
+- **Where your account goes**, **where the verify setup goes**, **where you work**, **proving it**, **where the task leaves a call open**, **a failed review** and **your account** — how the work is done.
 
 A fix round reaches you as a message: each reviewer's report of the round, verbatim, and nothing else.
 

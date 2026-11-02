@@ -13,7 +13,8 @@
 // what a log links in a spike or the assets (9.10.11, 9.S39). The
 // files the person's tools leave beside the state's — Finder's, Explorer's,
 // AppleDouble's, Vim's, Emacs's, JetBrains' — are neither refused nor
-// committed; a name in another case is its place where the filesystem
+// committed, nor is an agent's `.txt` staging beside a file place, while a
+// `.txt` beside none is a stray; a name in another case is its place where the filesystem
 // ignores case; and a merge's landing is never held to the layout. The
 // places themselves are test-engine-layout.cjs's.
 //
@@ -169,6 +170,34 @@ describe('the files the person\'s tools leave beside the state\'s', () => {
     assert.deepStrictEqual(res, { ok: true, committed: short(root, 'HEAD') });
     assert.deepStrictEqual(touched(root, 'HEAD'), [`A\t${BRIEF}`]);
     assert.deepStrictEqual(status(root).split('\n').filter(Boolean).sort(), left.map((rel) => `?? ${rel}`).sort());
+  });
+});
+
+describe('an agent\'s staging of a file place, waiting on its rename', () => {
+  const STAGED = [
+    layout.unit(UNIT, 'build', 'tasks', '1.1.txt'), layout.unit(UNIT, 'build', 'tasks', '1.1', 'round-1-a.txt'),
+    layout.unit(UNIT, 'build', 'phases', 'phase-1', 'consolidation.txt'),
+  ];
+
+  it('is neither refused nor committed: a commit of the whole state takes the rest and leaves each `.txt` in place', () => {
+    const { main, root } = codeProject(folder(), { state: true });
+    for (const rel of STAGED) createFile(root, rel, 'half written\n');
+    createFile(root, BRIEF, '# login\n');
+
+    const res = ok(main, ['commit', '--workflows', '-m', 'chore: the state']);
+
+    assert.deepStrictEqual(res, { ok: true, committed: short(root, 'HEAD') });
+    assert.deepStrictEqual(touched(root, 'HEAD'), [`A\t${BRIEF}`]);
+    assert.deepStrictEqual(status(root).split('\n').filter(Boolean).sort(), STAGED.map((rel) => `?? ${rel}`).sort());
+  });
+
+  it('a `.txt` beside no file place is a stray all the same', () => {
+    const { main, root } = codeProject(folder(), { state: true });
+    const stray = layout.unit(UNIT, 'build', 'notes.txt');
+    createFile(root, stray, 'not the engine\'s\n');
+    createFile(root, BRIEF, '# login\n');
+
+    assert.strictEqual(refusedPristine(main, ['commit', '--workflows', '-m', 'chore: the state']).error, outsideLayout(root, stray));
   });
 });
 

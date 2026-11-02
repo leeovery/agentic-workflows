@@ -164,24 +164,40 @@ describe('where a reviewer\'s report goes (13.5.9)', () => {
     assert.strictEqual(placeIn(reviewing('a')), pathDrawn('pay/build/tasks/1.2/round-2-a.md'));
   });
 
-  it('refused: a letter none of the reviewers\', a report already written for its round, and a task whose last round passed or was settled', () => {
+  it('13.4.6: a round the orchestrator settled is followed by another, its direction reviewed again', () => {
+    reported(1, 'a');
+    reported(1, 'b');
+    writeState(dir, 'pay/build/tasks/1.2/round-1-settled.md', 'Settled.\n');
+
+    assert.strictEqual(placeIn(reviewing('a')), pathDrawn('pay/build/tasks/1.2/round-2-a.md'));
+  });
+
+  it('a report that does not read is replaced: its reviewer is briefed again for its round, the brief naming the file it replaces, and the other reviewer\'s round stands', () => {
+    reported(1, 'a', 'Looks fine to me.\n');
+    reported(1, 'b');
+
+    refusedUnissued(['reviewer', UNIT, '1.2', '--base', 'main', '--letter', 'b'], /^pay\/build\/tasks\/1\.2\/round-1-b\.md is written already — that reviewer's report of the round is in$/);
+    assert.strictEqual(placeIn(reviewing('a')), `${pathDrawn('pay/build/tasks/1.2/round-1-a.md')} — the report there does not read as a reviewer's report, and yours replaces it`);
+  });
+
+  it('refused: a letter none of the reviewers\', a report already written for its round that reads, and a task whose last round passed', () => {
     refusedUnissued(['reviewer', UNIT, '1.2', '--base', 'main', '--letter', 'c'], /^c is no reviewer's letter — the reviewers are a and b$/);
     reported(1, 'a');
     refusedUnissued(['reviewer', UNIT, '1.2', '--base', 'main', '--letter', 'a'], /^pay\/build\/tasks\/1\.2\/round-1-a\.md is written already — that reviewer's report of the round is in$/);
-    reported(1, 'b');
-    writeState(dir, 'pay/build/tasks/1.2/round-1-settled.md', 'Settled.\n');
-    refusedUnissued(['reviewer', UNIT, '1.2', '--base', 'main', '--letter', 'a'], /^round 1 of task 1\.2 of pay was settled — its review is over$/);
-    reported(2, 'a', PASSED);
-    reported(2, 'b', PASSED);
-    refusedUnissued(['reviewer', UNIT, '1.2', '--base', 'main', '--letter', 'a'], /^round 2 of task 1\.2 of pay passed — its review is over$/);
+    reported(1, 'b', PASSED);
+    reported(1, 'a', PASSED);
+    refusedUnissued(['reviewer', UNIT, '1.2', '--base', 'main', '--letter', 'a'], /^round 1 of task 1\.2 of pay passed — its review is over$/);
   });
 
-  it('a phase\'s reviewer writes to its letter\'s file beside the consolidation, refused once written', () => {
+  it('a phase\'s reviewer writes to its letter\'s file beside the consolidation, a report there that does not read named as the one it replaces, refused once one that reads is written', () => {
     withoutMutationTool();
     const phaseReview = ['phase-review', UNIT, '1', '--base', 'main', '--head', branchOf(1, 4), '--letter', 'b'];
     const first = 'brief-build-phase-review';
+    const elsewhere = () => placeIn(ok(dir, ['brief', ...phaseReview], { env: { CLAUDE_CODE_SESSION_ID: first } }), first);
     try {
-      assert.strictEqual(placeIn(ok(dir, ['brief', ...phaseReview], { env: { CLAUDE_CODE_SESSION_ID: first } }), first), pathDrawn('pay/build/phases/phase-1/review-b.md'));
+      assert.strictEqual(elsewhere(), pathDrawn('pay/build/phases/phase-1/review-b.md'));
+      writeState(dir, 'pay/build/phases/phase-1/review-b.md', 'Half a report.\n');
+      assert.strictEqual(elsewhere(), `${pathDrawn('pay/build/phases/phase-1/review-b.md')} — the report there does not read as a reviewer's report, and yours replaces it`);
     } finally {
       fs.rmSync(conversationDir(first), { recursive: true, force: true });
     }

@@ -99,7 +99,7 @@ describe('the task writer\'s brief (12.5, 12.S9, 11.S17)', () => {
         `- ${calls.api}, the person's, replacing ${calls.byHand}: Refunds through the API.\n  Why: They come weekly now.`,
       ].join('\n'),
       'affected-entries': `\`\`\`json\n${JSON.stringify(affected, null, 2)}\n\`\`\``,
-      'task-files-to': pathDrawn('.cache/pay/implementation/phase-3'),
+      'task-files-to': pathDrawn('.cache/pay/build/phase-3/task-writer'),
     })}`);
   });
 
@@ -156,7 +156,7 @@ describe('the consolidation agent\'s brief (12.10.3, 13.8.3, 12.S23, 13.S12)', (
         rangeDrawn('the project\'s repository', branchOf(1, 4), ['src/card.js', 'src/check.js', 'src/receipt.js']), rangeDrawn(`\`${NESTED}\``, branchOf(1, 1), ['card/token.js']),
       ].join('\n\n'),
       'consolidation-to': pathDrawn('pay/build/phases/phase-1/consolidation.md'),
-      'task-files-to': pathDrawn('.cache/pay/implementation/phase-1'),
+      'task-files-to': pathDrawn('.cache/pay/build/phase-1/consolidation'),
     })}`);
   });
 
@@ -200,7 +200,8 @@ describe('the build\'s templates', () => {
 
     for (const rule of [
       'A mutant that survived in code a criterion covers is a finding.',
-      'Where the verify setup names no mutation tool, break the riskiest line of each criterion\'s code in a scratch worktree of your own, never the phase\'s: a break the tests do not catch is a finding.',
+      'Where the verify setup names no mutation tool, break the riskiest line of each criterion\'s code in that scratch worktree, never the phase\'s: a break the tests do not catch is a finding.',
+      'Run the tests, and make any break, in a detached scratch worktree of your own at the range\'s tip: in each repository the range names, laid out as the project lays them out, each child repository at its own tip at its folder inside it. Remove it after. Never check out, detach or switch anything in another checkout.',
       'A scenario its runs leave "not proven", or "named, not run", at the phase\'s HEAD is a finding, and reads so in your report, in those words.',
     ]) assert.ok(words.includes(rule), rule);
     assert.ok(words.includes('where the phase meets what it relies on from earlier phases'), words);
@@ -239,14 +240,20 @@ describe('the build\'s templates', () => {
     for (const role of ['builder', 'fix', 'reviewer', 'phase-review']) assert.doesNotMatch(template(role), /\.claude\/skills\/(?!leeway-engine\/scripts\/engine\.cjs )|SKILL\.md/, role);
   });
 
-  it('15.2.14, 15.S18: once its work is committed the builder runs each of its task\'s scenarios through verify from its worktree, gives what each proves in its account, and says so where no setup is recorded yet', () => {
+  it('15.2.14, 15.S18, 22.5.1, 15.4.2: once its work is committed the builder records the verify setup its task builds, from the file its brief names, and runs each of its task\'s scenarios through verify from its worktree, a timeout to match; its account names what it ran and never what the runs prove', () => {
     const words = template('builder');
 
     for (const rule of [
-      'Once the work is committed through the door, run each acceptance scenario of the task from your task\'s worktree, one at a time: `node .claude/skills/leeway-engine/scripts/engine.cjs verify run {unit} {scenario}`.',
-      'Give what each run proves in your account, under `## What the tests prove`.',
-      'Where the project has no verify setup recorded yet — the first phase builds it — say so there instead of running.',
+      'Once the work is committed through the door, run each acceptance scenario of the task from your task\'s worktree, one at a time: `node .claude/skills/leeway-engine/scripts/engine.cjs verify run {unit} {scenario}`. A drive can run for minutes: give the Bash call a timeout to match.',
+      'Where your task builds the verify setup, record it once it is committed, from your task\'s worktree, before running: write the setup to the file under "Where the verify setup goes", then run `node .claude/skills/leeway-engine/scripts/engine.cjs verify setup {unit} --file {that file} --scenario {scenario}`.',
+      'In your account, under `## What the tests prove`, name each scenario you ran through `verify` and what its drive does. What the runs prove is the engine\'s to say, never the account\'s.',
+      'Where the project has no verify setup recorded yet and your task does not build it, say so there instead of running.',
+      '# Where the verify setup goes\n\n{{setup-to}}\n',
     ]) assert.ok(words.includes(rule), rule);
+  });
+
+  it('13.2.2: the reviewer tests in a detached scratch worktree of its own at the range\'s tip, every repository laid out, and never moves another checkout', () => {
+    assert.ok(fs.readFileSync(path.join(AGENTS, 'leeway-reviewer.md'), 'utf8').includes('Run the tests, and make any break, in a detached scratch worktree of your own at the range\'s tip: in each repository the range names, laid out as the project lays them out, each child repository at its own tip at its folder inside it. Remove it after. Never check out, detach or switch anything in another checkout.'));
   });
 
   it('12.14: the builder writes its account to the file its brief names', () => {

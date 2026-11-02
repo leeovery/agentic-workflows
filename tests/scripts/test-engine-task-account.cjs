@@ -411,7 +411,7 @@ describe('task account (12.14.4, 6.3.13)', () => {
     fs.rmSync(statePath(dir, roundAt('1.2', 1, 'b')));
     refusedWith([UNIT, '1.2'], /^task account: round 1 of task 1\.2 of pay has no report from reviewer b — pay\/build\/tasks\/1\.2\/round-1-b\.md$/);
     writeState(dir, roundAt('1.2', 1, 'b'), 'Passed.\n');
-    refusedWith([UNIT, '1.2'], /^task account: pay\/build\/tasks\/1\.2\/round-1-b\.md does not read as a reviewer's report — its last heading at level one or two is not `## Findings`; its last line is not `Verdict: pass` or `Verdict: fail`$/);
+    refusedWith([UNIT, '1.2'], /^task account: pay\/build\/tasks\/1\.2\/round-1-b\.md does not read as a reviewer's report — its last heading at level one or two is not `## Findings`; its last line is not `Verdict: pass` or `Verdict: fail`; brief reviewer b again, and its report replaces it$/);
   });
 
   it('a task ended, one the tracker lacks, a unit the project lacks, and arguments of another shape', () => {
