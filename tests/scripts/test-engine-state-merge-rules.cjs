@@ -3,9 +3,11 @@
 // ---------------------------------------------------------------------------
 // The rules each state file merges by
 // (leeway-engine/scripts/domain/state-merge-rules.cjs): which rule a path
-// takes, the ledger's lines added by id, the migrations record's ids, a
-// manifest merged field by field against its ancestor, and how a choice is
-// named and labelled.
+// takes, the tracker's store its driver's among them, the ledger's lines
+// added by id, the migrations record's ids, a manifest merged field by field
+// against its ancestor, a build's run read by its number, and how a choice
+// is named and labelled; and where this machine's runs go where both wrote
+// runs under the same numbers (state-merge-paths.cjs, placeRuns).
 //
 // Layer: unit. The rules are called with values; no git.
 // ---------------------------------------------------------------------------
@@ -19,8 +21,10 @@ const { layout } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const {
-  linesToAdd, entryId, migrationId, mergeManifest, choiceId, conflictLabel, ruleOf,
+  linesToAdd, entryId, migrationId, mergeManifest, choiceId, conflictLabel, ruleOf, storeDriverOf, runNumber, runRenumbered,
 } = require(path.join(SCRIPTS, 'domain/state-merge-rules.cjs'));
+const { placeRuns } = require(path.join(SCRIPTS, 'domain/state-merge-paths.cjs'));
+const { listDrivers } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
 
 describe('the rules each file merges by', () => {
   it('reads the ledger, the migrations record, each manifest and any other JSON file by its path', () => {
@@ -28,6 +32,33 @@ describe('the rules each file merges by', () => {
       [layout.ledger, layout.migrations, layout.projectManifest, layout.manifest('auth-flow'), '.tick/manifest.json', 'unit/topics/a/manifest.json', 'unit/data.json', 'unit/events.jsonl', 'unit/topics/a/log.md'].map(ruleOf),
       ['ledger', 'migrations', 'manifest', 'manifest', 'whole', 'whole', 'whole', 'whole', 'file'],
     );
+  });
+
+  it('reads each task driver\'s store as its driver\'s, and a build\'s run by its number and place, kept whole as JSON', () => {
+    const drivers = listDrivers('task');
+    const stores = drivers.flatMap((/** @type {any} */ driver) => driver.storeFiles());
+    assert.deepStrictEqual(stores.map(ruleOf), stores.map(() => 'store'));
+    assert.deepStrictEqual(stores.map(storeDriverOf), drivers.flatMap((/** @type {any} */ driver) => driver.storeFiles().map(() => driver)));
+    const paths = ['pay/build/runs/2.S1/run-003.json', 'pay/build/runs/2.S1/run-1004.json', 'pay/build/runs/2.S1/run-3.json', 'pay/build/runs/run-003.json', 'pay/build/2.S1/run-003.json', 'pay/build/runs/2.S1/sub/run-003.json'];
+    assert.deepStrictEqual([paths.map(runNumber), paths.map(ruleOf)], [[3, 1004, null, null, null, null], paths.map(() => 'whole')]);
+    assert.deepStrictEqual([runRenumbered(paths[0], 8), runRenumbered(paths[0], 1000)], ['pay/build/runs/2.S1/run-008.json', 'pay/build/runs/2.S1/run-1000.json']);
+  });
+
+  it('moves this machine\'s new runs after the remote\'s highest only in a folder where a number is held twice, each move onto a number already emptied', () => {
+    const at = (/** @type {string} */ folder, /** @type {number} */ n) => `pay/build/runs/${folder}/run-${String(n).padStart(3, '0')}.json`;
+    const entry = (/** @type {string} */ oid) => ({ mode: '100644', oid });
+    const base = new Map([[at('2.S1', 1), entry('b1')]]);
+    const remote = new Map([...base, [at('2.S1', 2), entry('r2')], [at('3.S1', 1), entry('r31')]]);
+    const local = new Map([...base, [at('2.S1', 2), entry('l2')], [at('2.S1', 5), entry('l5')], [at('2.S1', 100), entry('l100')], [at('3.S1', 2), entry('l32')]]);
+    const placed = placeRuns(base, local, remote);
+    assert.deepStrictEqual(placed.moves, [
+      { from: at('2.S1', 2), to: at('2.S1', 3) },
+      { from: at('2.S1', 5), to: at('2.S1', 4) },
+      { from: at('2.S1', 100), to: at('2.S1', 5) },
+    ]);
+    assert.deepStrictEqual([...placed.entries].sort(), [
+      [at('2.S1', 1), entry('b1')], [at('2.S1', 3), entry('l2')], [at('2.S1', 4), entry('l5')], [at('2.S1', 5), entry('l100')], [at('3.S1', 2), entry('l32')],
+    ]);
   });
 
   /** The lines a line rule adds after the remote's. @param {string} remote @param {string} local @param {any} keyOf */
@@ -41,7 +72,7 @@ describe('the rules each file merges by', () => {
   });
 
   it('refuses a ledger line that is not an entry with a string id, counting the lines that are not blank', () => {
-    assert.throws(() => added('{"id":"r"}\n', '{"id":"a"}\n\nnot json\n', entryId), /line 2 of this machine's is not an entry with an id: not json/);
+    assert.throws(() => added('{"id":"r"}\n', '{"id":"a"}\n\nnot json\n', entryId), /^Error: cannot merge \.leeway\/\S+: line 2 of this machine's is not an entry with an id: not json$/);
     assert.throws(() => added('{"id":7}\n', '{"id":"a"}\n', entryId), /line 1 of the remote's is not an entry with an id/);
   });
 
@@ -102,13 +133,13 @@ describe('the rules each file merges by', () => {
     assert.deepStrictEqual(merged({ a: 1 }, { a: 2 }, { a: 4 }, pickOf).conflicts.map((c) => c.pick), [null]);
   });
 
-  it('names a choice by its manifest, its step, its field and both values, whatever the pick or the values\' key order', () => {
-    const choice = { manifest: layout.projectManifest, uncommitted: false, field: ['a', 'b'], local: { set: true, value: { x: [1], y: 2 } }, remote: { set: false } };
+  it('names a choice by its file, its step, its field and both values, whatever the pick or the values\' key order', () => {
+    const choice = { file: layout.projectManifest, uncommitted: false, field: ['a', 'b'], local: { set: true, value: { x: [1], y: 2 } }, remote: { set: false } };
     const id = choiceId(choice);
     assert.match(id, /^[0-9a-f]{12}$/);
     assert.strictEqual(choiceId({ ...choice, local: { set: true, value: { y: 2, x: [1] } }, pick: 'local' }), id);
     for (const other of [
-      { manifest: layout.manifest('auth-flow') }, { uncommitted: true }, { field: ['a', 'c'] },
+      { file: layout.manifest('auth-flow') }, { uncommitted: true }, { field: ['a', 'c'] },
       { local: { set: true, value: { x: [2], y: 2 } } }, { remote: { set: true, value: null } },
     ]) {
       assert.notStrictEqual(choiceId({ ...choice, ...other }), id, JSON.stringify(other));

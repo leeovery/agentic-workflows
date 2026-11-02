@@ -5,8 +5,8 @@
 // writes them (leeway-engine/scripts/domain/state-merge-paths.cjs,
 // domain/state-merge-blobs.cjs): text merged by place or both sides' lines
 // kept, a file that is not text kept whole beside, a file and a folder kept
-// apart; the state byte for byte whatever line endings the person's git
-// config names; and the git calls a merge makes under the writer lock, the
+// apart, runs both wrote under the same numbers renumbered; the state byte
+// for byte whatever line endings the person's git config names; and the git calls a merge makes under the writer lock, the
 // blobs read in batches, no working-tree file read whole.
 //
 // Layer: git. World: real repositories in a temp folder per test, a project
@@ -28,7 +28,7 @@ const { STATE_BRANCH, withStateLock, commitState } = require(path.join(SCRIPTS, 
 const { catchUpState, pickStateMerge } = require(MERGE);
 const { isolatedGit } = require(path.join(SCRIPTS, 'kernel/isolated-git.cjs'));
 
-const { readFile } = require('./discovery-test-utils.cjs');
+const { readFile, createFile } = require('./discovery-test-utils.cjs');
 const { useWorld, machinesSharing, blobId, treeId, status, pushFailing, commitUnpushed, ledger, projectManifest, shownChoice } = require('./state-merge-world.cjs');
 
 /** @typedef {import('./state-merge-world.cjs').Machine} Machine */
@@ -56,7 +56,7 @@ describe('any other file both sides changed', () => {
 
     assert.strictEqual(readFile(here.root, 'unit/topics/a/log.md'), '# a\n\n## there\n## here\n');
     assert.deepStrictEqual(out.warnings, [
-      'unit/topics/a/log.md was changed in the same place on both machines: both machines\' lines are kept there, the remote\'s first — read it through',
+      '.leeway/unit/topics/a/log.md was changed in the same place on both machines: both machines\' lines are kept there, the remote\'s first — read it through',
     ]);
   });
 
@@ -72,7 +72,7 @@ describe('any other file both sides changed', () => {
     assert.strictEqual(readFile(here.root, 'unit/assets/chart.png'), 'png\0there');
     assert.strictEqual(readFile(here.root, beside), 'png\0here');
     assert.deepStrictEqual(out.warnings, [
-      `unit/assets/chart.png was changed on both machines and is not merged line by line: the remote's copy stays at unit/assets/chart.png, and this machine's is kept beside it as ${beside}`,
+      `.leeway/unit/assets/chart.png was changed on both machines and is not merged line by line: the remote's copy stays at .leeway/unit/assets/chart.png, and this machine's is kept beside it as .leeway/${beside}`,
     ]);
     assert.strictEqual(status(here.root), '');
   });
@@ -105,7 +105,7 @@ describe('any other file both sides changed', () => {
     const beside = `unit/assets/notes.${blobId(latin('café\n\nONE\n\ntwo\n')).slice(0, 8)}.txt`;
     assert.ok(fs.readFileSync(path.join(here.root, 'unit/assets/notes.txt')).equals(latin('café\n\none\n\nTWO\n')), 'the remote\'s bytes are not at the path');
     assert.ok(fs.readFileSync(path.join(here.root, beside)).equals(latin('café\n\nONE\n\ntwo\n')), 'this machine\'s bytes are not beside it');
-    assert.deepStrictEqual(out.warnings.map((w) => w.split(' was ')[0]), ['unit/assets/notes.txt']);
+    assert.deepStrictEqual(out.warnings.map((w) => w.split(' was ')[0]), ['.leeway/unit/assets/notes.txt']);
   });
 
   it('keeps a JSON file both sides changed whole, the remote\'s at its path and this machine\'s beside it, never merged line by line', () => {
@@ -122,7 +122,7 @@ describe('any other file both sides changed', () => {
     assert.strictEqual(readFile(here.root, data), '{\n  "a": 2,\n  "b": 1\n}\n');
     assert.strictEqual(readFile(here.root, 'unit/assets/events.jsonl'), '{"n":1}\n{"n":3}\n');
     assert.strictEqual(readFile(here.root, events), '{"n":1}\n{"n":2}\n');
-    assert.deepStrictEqual(out.warnings.map((w) => w.split(' was ')[0]), ['unit/assets/data.json', 'unit/assets/events.jsonl']);
+    assert.deepStrictEqual(out.warnings.map((w) => w.split(' was ')[0]), ['.leeway/unit/assets/data.json', '.leeway/unit/assets/events.jsonl']);
   });
 
   it('keeps a file on the remote and a folder here apart, the remote\'s file at the path and this machine\'s folder beside it', () => {
@@ -138,7 +138,7 @@ describe('any other file both sides changed', () => {
     assert.strictEqual(readFile(here.root, 'unit/assets/z'), 'z, a file there\n');
     assert.strictEqual(readFile(here.root, `${beside}/inside.md`), 'inside, here\n');
     assert.deepStrictEqual(out.warnings, [
-      `unit/assets/z is a file on the remote and a folder on this machine: the remote's file stays at unit/assets/z, and this machine's folder is kept beside it as ${beside}`,
+      `.leeway/unit/assets/z is a file on the remote and a folder on this machine: the remote's file stays at .leeway/unit/assets/z, and this machine's folder is kept beside it as .leeway/${beside}`,
     ]);
     assert.strictEqual(status(here.root), '');
   });
@@ -155,7 +155,7 @@ describe('any other file both sides changed', () => {
     assert.strictEqual(readFile(here.root, 'unit/assets/w/inside.md'), 'inside, there\n');
     assert.strictEqual(readFile(here.root, beside), 'w, a file here\n');
     assert.deepStrictEqual(out.warnings, [
-      `unit/assets/w is a folder on the remote and a file on this machine: the remote's folder stays at unit/assets/w, and this machine's file is kept beside it as ${beside}`,
+      `.leeway/unit/assets/w is a folder on the remote and a file on this machine: the remote's folder stays at .leeway/unit/assets/w, and this machine's file is kept beside it as .leeway/${beside}`,
     ]);
     assert.strictEqual(status(here.root), '');
   });
@@ -174,9 +174,42 @@ describe('any other file both sides changed', () => {
     assert.strictEqual(readFile(here.root, 'unit/assets/notes.md'), 'n, changed there\n');
     assert.strictEqual(readFile(here.root, 'unit/assets/brief.md'), 'b, changed here\n');
     assert.deepStrictEqual(out.warnings.sort(), [
-      'unit/assets/brief.md was deleted on one machine and changed on the other: the changed copy is kept',
-      'unit/assets/notes.md was deleted on one machine and changed on the other: the changed copy is kept',
+      '.leeway/unit/assets/brief.md was deleted on one machine and changed on the other: the changed copy is kept',
+      '.leeway/unit/assets/notes.md was deleted on one machine and changed on the other: the changed copy is kept',
     ]);
+  });
+});
+
+describe('a build\'s runs both machines wrote under the same numbers', () => {
+  const run = (/** @type {string} */ number) => layout.unit('pay', 'build', 'runs', '2.S1', `run-${number}.json`);
+  const ran = (/** @type {string} */ where) => `{"ran": "${where}"}\n`;
+
+  it('keeps the remote\'s runs at their numbers, and moves this machine\'s new runs after the remote\'s highest, in their own order', () => {
+    const { here, there } = machinesSharing({ [run('001')]: ran('base') });
+    commitUnpushed(here, { [run('002')]: ran('here'), [run('003')]: ran('here, after') });
+    commitOnState(there.root, { [run('002')]: ran('there') });
+
+    const out = catchUpState(here.root);
+
+    assert.deepStrictEqual([out.action, out.pushed], ['merged', true]);
+    assert.deepStrictEqual(['001', '002', '003', '004'].map((n) => readFile(here.root, run(n))), [ran('base'), ran('there'), ran('here'), ran('here, after')]);
+    assert.deepStrictEqual(out.warnings, [
+      `runs in .leeway/${run('').slice(0, -'run-.json'.length)} were written under the same numbers on both machines: the remote's keep theirs, and this machine's follow them — run-002.json is now run-003.json, run-003.json is now run-004.json`,
+    ]);
+    assert.strictEqual(status(here.root), '');
+  });
+
+  it('moves this machine\'s runs still uncommitted after the remote\'s, each onto a number already emptied, leaving them uncommitted', () => {
+    const { here, there } = machinesSharing({ [run('001')]: ran('base') });
+    createFile(here.root, run('002'), ran('here'));
+    createFile(here.root, run('003'), ran('here, after'));
+    commitOnState(there.root, { [run('002')]: ran('there') });
+
+    const out = catchUpState(here.root);
+
+    assert.strictEqual(out.action, 'fast-forwarded');
+    assert.deepStrictEqual(['002', '003', '004'].map((n) => readFile(here.root, run(n))), [ran('there'), ran('here'), ran('here, after')]);
+    assert.strictEqual(status(here.root), `?? ${run('003')}\n?? ${run('004')}\n`);
   });
 });
 

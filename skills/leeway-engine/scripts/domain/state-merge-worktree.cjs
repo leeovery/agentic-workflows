@@ -11,10 +11,10 @@
 //   merged there, three ways, by the rules the branch merges by
 //   (state-merge-paths.cjs): this clone's committed copy is the ancestor,
 //   the merge's copy the remote's side, and the working copy this
-//   machine's. The result stays uncommitted. A manifest field the two
-//   changed to different values stops the catch-up for the person's pick,
-//   as one on the branch does. An uncommitted path the move leaves alone
-//   stays byte for byte as it is.
+//   machine's. The result stays uncommitted. A field of a manifest or the
+//   tracker's store the two changed to different values stops the catch-up
+//   for the person's pick, as one on the branch does. An uncommitted path
+//   the move leaves alone stays byte for byte as it is.
 // - No file is written, replaced or removed over bytes other than those it
 //   was merged from: each is checked just before, with no git call between
 //   the check and the write. One another session wrote meanwhile is merged
@@ -38,10 +38,10 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { GitError } = require('../kernel/git.cjs');
-const { MergeError } = require('./state-merge-rules.cjs');
+const { MergeError, fromRoot } = require('./state-merge-rules.cjs');
 const { blobIds } = require('../kernel/file-stream.cjs');
 const {
-  sameEntry, changedPaths, indexEntries, withPrivateIndex, fillIndex, mergePath, readContested, separateClashes, isUnder, besidePath, changedCopyKept,
+  sameEntry, changedPaths, indexEntries, withPrivateIndex, fillIndex, mergePath, placeRuns, readContested, separateClashes, isUnder, besidePath, changedCopyKept,
 } = require('./state-merge-paths.cjs');
 
 /** @typedef {import('./state-merge-paths.cjs').Entry} Entry */
@@ -95,29 +95,32 @@ function workingEntries(ctx, local) {
 
 /**
  * Work out the working tree's move from this clone's tip to the merge's
- * tree: each path the move changes merged with what the working tree holds,
- * then each file-against-folder clash with an uncommitted path separated.
+ * tree: the runs it holds uncommitted under numbers the merge's runs hold
+ * moved after them, each path the move changes merged with what the working
+ * tree holds, then each file-against-folder clash with an uncommitted path
+ * separated.
  * @param {WorktreeContext} ctx @param {Entries} local @param {Entries} target @param {Entries} working @param {PickOf} pickOf
  * @returns {WorktreePlan}
  */
 function planWorktree(ctx, local, target, working, pickOf) {
   const dirty = changedPaths(local, working);
+  const runs = placeRuns(local, working, target);
   /** @type {Steps} */
-  const steps = { removes: [], moves: [], writes: [] };
+  const steps = { removes: [], moves: [...runs.moves], writes: [] };
   /** @type {PathConflict[]} */
   const conflicts = [];
-  /** @type {string[]} */
-  const notes = [];
-  const layout = new Map(working);
+  const notes = [...runs.notes];
+  const placed = runs.entries;
+  const layout = new Map(placed);
   const changed = changedPaths(local, target);
   /** @type {[string, import('./state-merge-paths.cjs').Versions][]} */
-  const paths = changed.map((file) => [file, { base: local.get(file), local: working.get(file), remote: target.get(file) }]);
+  const paths = changed.map((file) => [file, { base: local.get(file), local: placed.get(file), remote: target.get(file) }]);
   readContested(ctx, paths);
   for (const [file, versions] of paths) {
     const result = mergePath(ctx, file, versions, pickOf);
     conflicts.push(...(result.conflicts ?? []));
     if (result.note !== undefined) notes.push(result.note);
-    let from = working.get(file);
+    let from = placed.get(file);
     if (result.beside !== undefined) {
       steps.moves.push({ from: file, to: result.beside.path });
       layout.set(result.beside.path, result.beside.entry);
@@ -134,7 +137,8 @@ function planWorktree(ctx, local, target, working, pickOf) {
   }
   const clashes = separateClashes(ctx, layout, target);
   steps.moves.push(...clashes.moves);
-  const touched = new Set([...changed, ...dirty.filter((file) => clashes.moves.some((move) => file === move.from || isUnder(move.from, file)))]);
+  const moved = [...runs.moves, ...clashes.moves];
+  const touched = new Set([...changed, ...dirty.filter((file) => moved.some((move) => file === move.from || isUnder(move.from, file)))]);
   return {
     steps,
     conflicts,
@@ -207,17 +211,18 @@ function stored(ctx, file) {
 function leaveBeside(ctx, write, report) {
   const { file } = write;
   const beside = besidePath(file, write.to.oid);
+  const [named, besideNamed] = [fromRoot(file), fromRoot(beside)];
   const left = report.resumed
-    ? `${file} changed after a catch-up was cut short and was left as it stands`
-    : `${file} changed while the state caught up and was left as it stands`;
-  const unless = report.resumed ? `unless ${file} was changed from the merged copy, ` : '';
+    ? `${named} changed after a catch-up was cut short and was left as it stands`
+    : `${named} changed while the state caught up and was left as it stands`;
+  const unless = report.resumed ? `unless ${named} was changed from the merged copy, ` : '';
   try {
     if (!exists(path.join(ctx.root, beside))) fs.renameSync(path.join(ctx.staged, file), path.join(ctx.root, beside));
-    report.warnings.push(`${left}, with the merged copy beside it as ${beside}: ${unless}committing ${file} as it stands leaves the remote's change only in ${beside}`);
+    report.warnings.push(`${left}, with the merged copy beside it as ${besideNamed}: ${unless}committing ${named} as it stands leaves the remote's change only in ${besideNamed}`);
   } catch (err) {
     if (!(err instanceof Error) || !('code' in err)) throw err;
     report.warnings.push(`${left}, and its merged copy could not be set beside it: `
-      + `${unless}the remote's change is only in the copy committed on ${ctx.branch}, until ${file} is next committed`);
+      + `${unless}the remote's change is only in the copy committed on ${ctx.branch}, until ${named} is next committed`);
   }
 }
 
@@ -270,7 +275,8 @@ function removeFile(root, file) {
 /**
  * Set a copy beside, never over anything already there. The copy's name is
  * its content's id, so one already there is that copy, set beside by a
- * landing a kill cut short.
+ * landing a kill cut short; a run's moves never land on a run still to move,
+ * so one already at a run's new number was moved there by such a landing.
  * @param {WorktreeContext} ctx @param {Move} move
  */
 function moveBeside(ctx, move) {

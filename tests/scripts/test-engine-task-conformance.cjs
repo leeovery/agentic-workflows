@@ -16,6 +16,9 @@
 // a link that would make a cycle, a name carried twice, and a unit or phase the person
 // ended in the tracker, cancelled or done — a parent the tracker ended itself
 // is reopened. 7.S5: the shipped task drivers are exactly one, the default.
+// The store merged between two clones (7.5.5–7.5.7): each side's changes
+// kept, a field both set differently the person's choice in the engine's
+// words, a name both made the remote's, this machine's set aside and named.
 //
 // Layer: conformance. World: for each driver, a plain folder standing as the
 // state root, its store built once through the driver — a unit whose first
@@ -35,7 +38,8 @@ const path = require('path');
 
 const { STATE_DIR_NAME, templateFolder, useTempFolder } = require('./discovery-test-utils.cjs');
 const { listDrivers, needsRefusal } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
-const { phaseName, unitName, endedInTracker, FOREIGN_TASK } = require('../../skills/leeway-engine/scripts/domain/task-id.cjs');
+const { phaseName, unitName, taskName, endedInTracker, FOREIGN_TASK } = require('../../skills/leeway-engine/scripts/domain/task-id.cjs');
+const { MergeError } = require('../../skills/leeway-engine/scripts/domain/state-merge-rules.cjs');
 
 const UNIT = 'pay';
 const SIDES = path.join(__dirname, '..', 'drivers');
@@ -320,6 +324,151 @@ for (const driver of listDrivers('task')) {
       assert.throws(() => driver.list(root, UNIT, 1), /\btask 1\.2 of pay\b/);
       side.addRef(root, 'Write the ledger', ref(1, 3));
       assert.throws(() => driver.show(root, ref(1, 1)), /\btask 1\.1 of pay\b.*\btask 1\.3 of pay\b/);
+    });
+
+    describe('the store merged between two clones (7.5, 29.14.9)', () => {
+      const [store] = driver.storeFiles();
+
+      /** The template's store copied to a folder of its own. @param {string} name */
+      const copied = (name) => {
+        const dir = path.join(folder(), name);
+        fs.cpSync(template, dir, { recursive: true });
+        return dir;
+      };
+
+      /** The template's store changed in a folder of its own, as its text. @param {string} name @param {(dir: string) => void} [change] */
+      const storeAfter = (name, change = () => {}) => {
+        const dir = copied(name);
+        change(dir);
+        return fs.readFileSync(path.join(dir, store), 'utf8');
+      };
+
+      /** A merged store's text in a folder the driver reads. @param {string} text */
+      const read = (text) => {
+        const dir = copied(`merged-${fs.readdirSync(folder()).length}`);
+        fs.writeFileSync(path.join(dir, store), text);
+        return dir;
+      };
+
+      /** The template's store merged from two sides each changed its own way. @param {(dir: string) => void} here @param {(dir: string) => void} there @param {any} [pickOf] */
+      const merged = (here, there, pickOf) => driver.mergeStore(storeAfter('base'), storeAfter('here', here), storeAfter('there', there), pickOf);
+
+      /** @param {any} result @returns {string} the merged text, where it merged with no choice left */
+      const clean = (result) => {
+        assert.deepStrictEqual(result.conflicts, []);
+        return result.text;
+      };
+
+      it('takes a task only one side changed from that side, and keeps the tasks each side made', () => {
+        const dir = read(clean(merged(
+          (here) => {
+            driver.done(here, ref(1, 1));
+            driver.createTask(here, ref(1, 4), task('Page the ledger'));
+          },
+          (there) => {
+            driver.start(there, ref(1, 2));
+            driver.createTask(there, ref(2, 2), task('Print the ledger'));
+          },
+        )));
+        assert.deepStrictEqual(driver.list(dir, UNIT, 1)?.map((row) => [shown([row])[0], row.status]), [['1.1', 'done'], ['1.2', 'in-progress'], ['1.3', 'open'], ['1.4', 'open']]);
+        assert.deepStrictEqual(shown(driver.ready(dir, UNIT, null)), ['1.3', '1.4', '2.2']);
+      });
+
+      it('merges a task both sides changed field by field: each side\'s additions kept, the remote\'s first, its links unioned, a field one side changed taken from it', () => {
+        const instruction = { by: 'person', text: 'Keep the ledger\'s file format.' };
+        const fact = { by: 'orchestrator', text: 'The reader moved.' };
+        const dir = read(clean(merged(
+          (here) => {
+            driver.add(here, ref(1, 2), instruction);
+            driver.link(here, ref(2, 1), ref(1, 1));
+          },
+          (there) => {
+            driver.add(there, ref(1, 2), fact);
+            driver.setType(there, ref(1, 2), 'fix');
+            driver.link(there, ref(2, 1), ref(1, 3));
+          },
+        )));
+        const read12 = driver.show(dir, ref(1, 2));
+        assert.deepStrictEqual([read12?.additions, read12?.type], [[fact, instruction], 'fix']);
+        assert.deepStrictEqual(driver.show(dir, ref(2, 1))?.after.map((after) => shown([{ ref: after }])[0]).sort(), ['1.1', '1.2', '1.3']);
+      });
+
+      it('takes a status both sides set alike, asking nothing', () => {
+        const dir = read(clean(merged(
+          (here) => {
+            driver.add(here, ref(1, 1), { by: 'person', text: 'Done here.' });
+            driver.done(here, ref(1, 1));
+          },
+          (there) => driver.done(there, ref(1, 1)),
+        )));
+        assert.strictEqual(driver.show(dir, ref(1, 1))?.status, 'done');
+      });
+
+      it('leaves a field both sides set differently to the person: the choice in the engine\'s words, labelled by the task\'s name and the field\'s meaning, the pick taken', () => {
+        const here = (/** @type {string} */ dir) => {
+          driver.done(dir, ref(1, 1));
+          driver.setType(dir, ref(1, 2), 'fix');
+        };
+        const there = (/** @type {string} */ dir) => {
+          driver.close(dir, ref(1, 1), 'Not needed.');
+          driver.setType(dir, ref(1, 2), 'chore');
+        };
+        /** @type {any[]} */
+        const asked = [];
+        const open = merged(here, there, (/** @type {any} */ choice) => {
+          asked.push(choice);
+          return null;
+        });
+        assert.ok('conflicts' in open);
+        assert.deepStrictEqual(open.conflicts.map(({ field, ...c }) => c), [
+          { local: { set: true, value: 'done' }, remote: { set: true, value: 'closed' }, pick: null, label: { subject: taskName(ref(1, 1)), name: taskName(ref(1, 1)), field: 'status' } },
+          { local: { set: true, value: 'fix' }, remote: { set: true, value: 'chore' }, pick: null, label: { subject: taskName(ref(1, 2)), name: taskName(ref(1, 2)), field: 'type' } },
+        ]);
+        assert.deepStrictEqual(asked, open.conflicts.map(({ field, local, remote }) => ({ field, local, remote })));
+
+        const mine = merged(here, there, () => 'local');
+        const theirs = merged(here, there, () => 'remote');
+        assert.ok('conflicts' in mine && 'conflicts' in theirs);
+        assert.deepStrictEqual([mine, theirs].map((result) => result.conflicts.map((c) => c.pick)), [['local', 'local'], ['remote', 'remote']]);
+        const [kept, taken] = [mine, theirs].map((result) => read(result.text));
+        assert.deepStrictEqual([driver.show(kept, ref(1, 1))?.status, driver.show(kept, ref(1, 2))?.type], ['done', 'fix']);
+        assert.deepStrictEqual([driver.show(taken, ref(1, 1))?.status, driver.show(taken, ref(1, 1))?.reason, driver.show(taken, ref(1, 2))?.type], ['closed', 'Not needed.', 'chore']);
+      });
+
+      it('keeps the remote\'s phase or task where both made one under a name, setting aside this machine\'s with all it holds and every link to it, the rest merged; the notice names them, and what to make again by phase: one set aside by its title, one kept by its number', () => {
+        const result = merged(
+          (here) => {
+            driver.done(here, ref(1, 1));
+            driver.createTask(here, ref(2, 2), task('Page the ledger'));
+            driver.createTask(here, ref(2, 3), task('Sort the ledger'));
+            driver.link(here, ref(2, 3), ref(2, 2));
+            driver.createPhase(here, UNIT, 3, 'The export');
+            driver.createTask(here, ref(3, 1), task('Export the ledger'));
+          },
+          (there) => {
+            driver.createTask(there, ref(2, 2), task('Print the ledger'));
+            driver.createPhase(there, UNIT, 3, 'The archive');
+          },
+        );
+        assert.deepStrictEqual(result.conflicts, [{
+          madeTwice: [{ kind: 'task', said: taskName(ref(2, 2)) }, { kind: 'phase', said: phaseName(UNIT, 3) }],
+          again: [{ phase: 'The screen', kept: 2, tasks: ['Page the ledger'] }, { phase: 'The export', kept: null, tasks: ['Export the ledger'] }],
+        }]);
+        const dir = read(result.text);
+        assert.strictEqual(driver.show(dir, ref(1, 1))?.status, 'done');
+        assert.deepStrictEqual(driver.list(dir, UNIT, 2)?.map((row) => row.title), ['Show the ledger', 'Print the ledger', 'Sort the ledger']);
+        assert.deepStrictEqual([driver.show(dir, ref(2, 3))?.after, driver.list(dir, UNIT, 3)], [[], []]);
+      });
+
+      it('refuses a side\'s copy it cannot read, naming the side and the line', () => {
+        const side = require(sideOf(driver.name));
+        let line = 0;
+        const garbled = storeAfter('here', (dir) => {
+          line = side.garbleStore(dir);
+        });
+        assert.throws(() => driver.mergeStore(storeAfter('base'), garbled, storeAfter('there')), (err) => err instanceof MergeError
+          && err.message.includes('this machine\'s') && new RegExp(`\\bline ${line}\\b`).test(err.message));
+      });
     });
   });
 }

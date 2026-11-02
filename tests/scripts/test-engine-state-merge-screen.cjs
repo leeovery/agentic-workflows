@@ -39,7 +39,7 @@ describe('the stop\'s screen (4.7.6)', () => {
   function stopOf(...conflicts) {
     return {
       conflicts: conflicts.map((c) => ({
-        manifest: layout.projectManifest,
+        file: layout.projectManifest,
         uncommitted: false,
         field: ['roadmap', 'items', 'a-lifetime-tier', 'horizon'],
         local: { set: true, value: 'next' },
@@ -79,6 +79,79 @@ describe('the stop\'s screen (4.7.6)', () => {
       '',
     ].join('\n'));
     auditMarkers(out, 'state merge gate');
+  });
+
+  describe('names both machines made (7.5.7)', () => {
+    /** A notice as the merge keeps it. @param {object} fields */
+    const noticeOf = (fields) => ({ file: '.store/tasks.jsonl', uncommitted: false, beside: '.store/tasks.0123abcd.jsonl', pick: null, ...fields });
+
+    it('draws what was made twice, what to make again — a phase set aside by its title with its tasks, a task under a phase kept by its number and title — and where this machine\'s copy is kept, one row carrying on', () => {
+      const notice = noticeOf({
+        madeTwice: [{ kind: 'task', said: 'task 2.2 of pay' }, { kind: 'phase', said: 'phase 3 of pay' }],
+        again: [{ phase: 'The screen', kept: 2, tasks: ['Page the ledger'] }, { phase: 'The export', kept: null, tasks: ['Export *it*', 'Mail it'] }],
+      });
+      const out = stateMergeGate({ conflicts: [...stopOf({ pick: 'local' }).conflicts, notice] });
+
+      assert.strictEqual(out, [
+        '=== DATA (reason from this — never display or parse the sections below) ===',
+        `choice: ${choiceId(notice)}`,
+        '',
+        '=== DISPLAY: state merge stop (emit verbatim as a properties code block (```properties fence)) ===',
+        '⚑ The state merge stopped: a phase and a task made on both machines',
+        '',
+        '=== DISPLAY: state merge account (emit verbatim as markdown (not a code block)) ===',
+        '> In the tracker\'s store, task 2.2 of pay and phase 3 of pay were made on each machine since they last agreed. The remote\'s keep those numbers, and this machine\'s are set aside with all they hold.',
+        '>',
+        '> Make these again after the merge; each takes the next free number:',
+        '> - in phase 2, "The screen":',
+        '>   - "Page the ledger"',
+        '> - the phase "The export", with its tasks:',
+        '>   - "Export \\*it\\*"',
+        '>   - "Mail it"',
+        '>',
+        '> This machine\'s whole copy of the tracker\'s store is kept beside the merged one, as `.leeway/.store/tasks.0123abcd.jsonl`.',
+        '',
+        '=== MENU: state merge gate (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
+        '· · · · · · · · · · · ·',
+        '**`◆ Carry on with the merge?`**',
+        '',
+        '**`1`** → Carry on — *and make them again after*',
+        '',
+      ].join('\n'));
+      auditMarkers(out, 'state merge gate');
+    });
+
+    it('says "it" of one thing to make again, and counts names of one kind by that kind alone', () => {
+      const task = stateMergeGate({ conflicts: [noticeOf({
+        madeTwice: [{ kind: 'task', said: 'task 2.2 of pay' }, { kind: 'task', said: 'task 2.3 of pay' }],
+        again: [{ phase: 'The screen', kept: 2, tasks: ['Page the ledger'] }],
+      })] });
+      assert.match(task, /^⚑ The state merge stopped: 2 tasks made on both machines$/m);
+      assert.ok(task.includes(['> Make this again after the merge; it takes the next free number:', '> - in phase 2, "The screen":', '>   - "Page the ledger"'].join('\n')));
+      assert.match(task, /^\*\*`1`\*\* → Carry on — \*and make it again after\*$/m);
+
+      const phase = stateMergeGate({ conflicts: [noticeOf({ madeTwice: [{ kind: 'phase', said: 'phase 3 of pay' }], again: [{ phase: 'The export', kept: null, tasks: [] }] })] });
+      assert.match(phase, /^⚑ The state merge stopped: phase 3 of pay made on both machines$/m);
+      assert.ok(phase.includes(['> Make this again after the merge; it takes the next free number:', '> - the phase "The export"', '>'].join('\n')));
+
+      const unit = stateMergeGate({ conflicts: [noticeOf({ madeTwice: [{ kind: 'unit', said: 'unit pay' }], again: [] })] });
+      assert.doesNotMatch(unit, /Make th/);
+      assert.match(unit, /^\*\*`1`\*\* → Carry on — \*this machine's copy stays beside the merged one\*$/m);
+    });
+
+    it('announces the names made twice on each field screen before them, counting the fields apart', () => {
+      const notice = noticeOf({ madeTwice: [{ kind: 'task', said: 'task 2.2 of pay' }], again: [] });
+      const one = stateMergeGate({ conflicts: [stopOf({}).conflicts[0], notice] });
+      assert.match(one, /^⚑ The state merge stopped: one field changed on both machines, and names made twice$/m);
+      assert.match(one, /^> One field; the names made twice follow\. In Fumi's project manifest/m);
+
+      const two = stateMergeGate({ conflicts: [...stopOf({}, { field: ['defaults', 'plan_format'], label: conflictLabel(layout.projectManifest, ['defaults', 'plan_format'], 'Fumi') }).conflicts, notice] });
+      assert.match(two, /^⚑ The state merge stopped: 2 fields changed on both machines, and names made twice$/m);
+      assert.match(two, /^> Field 1 of 2; the names made twice follow\. In Fumi's project manifest/m);
+
+      const later = stateMergeGate({ conflicts: [stopOf({}).conflicts[0], { ...notice, uncommitted: true }] });
+      assert.match(later, /^⚑ The state merge stopped: one field changed on both machines$/m);
+    });
   });
 
   it('states the gate for the gate surface, its rows the two sides', () => {

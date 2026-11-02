@@ -57,6 +57,14 @@ describe('the manifests (4.S17)', () => {
     assert.strictEqual(merged.roadmap.items['a-lifetime-tier'].horizon, 'next');
   });
 
+  it('refuses a side\'s copy that is not a JSON object, naming the manifest from the project root', () => {
+    const { here, there } = machinesSharing({ [layout.projectManifest]: projectManifest('now') });
+    commitUnpushed(here, { [layout.projectManifest]: '[]\n' });
+    commitOnState(there.root, { [layout.projectManifest]: projectManifest('next') });
+
+    assert.throws(() => catchUpState(here.root), { message: `cannot merge .leeway/${layout.projectManifest}: this machine's copy is not a JSON object` });
+  });
+
   it('stops on a field both sides changed to different values, with both values and nothing written; the pick finishes the merge', () => {
     const { here, there, bare } = machinesSharing({ [layout.projectManifest]: projectManifest('now'), [layout.ledger]: ledger('base') });
     const mine = commitUnpushed(here, { [layout.projectManifest]: projectManifest('next'), [layout.ledger]: ledger('base', 'a1') });
@@ -66,7 +74,7 @@ describe('the manifests (4.S17)', () => {
 
     assert.deepStrictEqual([out.action, out.commit, out.pushed], ['stopped', mine, false]);
     assert.deepStrictEqual(out.conflicts, [{
-      manifest: layout.projectManifest,
+      file: layout.projectManifest,
       uncommitted: false,
       field: ['roadmap', 'items', 'a-lifetime-tier', 'horizon'],
       local: { set: true, value: 'next' },

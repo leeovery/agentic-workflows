@@ -33,6 +33,10 @@
 // nothing, and names every parent they must reopen, outermost first, the
 // ones Tick ended above theirs among them.
 //
+// The store's merge between two clones is merge.cjs's, given the driver's
+// names for what the store holds. It is loaded only as the store merges:
+// the layout guard loads every task driver on each write into the state.
+//
 // `preLeewayStore` is where a project from before Leeway keeps Tick's store,
 // the project root's `.tick/`: the paths migration 078 was released against,
 // which it reads to carry the store into the state. It never changes; the
@@ -221,11 +225,17 @@ function createUnit(root, unit) {
   return true;
 }
 
+/** A phase's title as Tick holds it. @param {number} phase @param {string} title */
+const phaseHeld = (phase, title) => `Phase ${phase}: ${title}`;
+
+/** A phase's title as the engine gave it, from Tick's. @param {string} held */
+const phaseTitle = (held) => held.replace(/^Phase [1-9][0-9]*: /, '');
+
 /** @param {string} root @param {string} unit @param {number} phase @param {string} title */
 function createPhase(root, unit, phase, title) {
   const ids = idsIn(root);
   reopenParents(root, ids, unit, [unitRef(unit)]);
-  tick(root, ['create', '--parent', idOf(ids, unitRef(unit)), '--refs', phaseRef(unit, phase), '--', `Phase ${phase}: ${title}`]);
+  tick(root, ['create', '--parent', idOf(ids, unitRef(unit)), '--refs', phaseRef(unit, phase), '--', phaseHeld(phase, title)]);
 }
 
 /** @param {string} root @param {TaskRef} ref @param {{title: string, type: string, text: string}} task */
@@ -312,6 +322,9 @@ function show(root, ref) {
   };
 }
 
+/** What the store's merge reads Tick's records by. @type {import('./merge.cjs').Names} */
+const NAMES = Object.freeze({ statuses: STATUSES, nameIn, said, phaseTitle });
+
 module.exports = {
   kind: 'task',
   name: 'tick',
@@ -324,9 +337,7 @@ module.exports = {
     files: Object.freeze(['.tick/tasks.jsonl']),
     localFiles: Object.freeze(['/.tick/cache.db*', '/.tick/lock', '/.tick/.tasks-*.jsonl.tmp']),
   }),
-  mergeStore: () => {
-    throw new Error(`the tracker's store is not yet merged by the ${TOOL} driver`);
-  },
+  mergeStore: (/** @type {string} */ base, /** @type {string} */ local, /** @type {string} */ remote, /** @type {any} */ pickOf) => require('./merge.cjs').mergeStore(NAMES, base, local, remote, pickOf),
   createUnit,
   createPhase,
   createTask,

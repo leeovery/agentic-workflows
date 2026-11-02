@@ -54,7 +54,7 @@ describe('the ledger through a catch-up', () => {
   /** What the landing says of the chart both machines changed. */
   function chartNote() {
     const beside = `unit/assets/chart.${blobId('png\0here').slice(0, 8)}.png`;
-    return `${CHART} was changed on both machines and is not merged line by line: the remote's copy stays at ${CHART}, and this machine's is kept beside it as ${beside}`;
+    return `.leeway/${CHART} was changed on both machines and is not merged line by line: the remote's copy stays at .leeway/${CHART}, and this machine's is kept beside it as .leeway/${beside}`;
   }
 
   /**

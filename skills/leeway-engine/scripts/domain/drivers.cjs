@@ -81,6 +81,27 @@ const METHODS = Object.freeze({
  * @typedef {TaskRow & {type: string|null, text: string, additions: TaskAddition[], after: TaskRef[], reason: string|null}} TaskDetail
  */
 /**
+ * A field of the tracker's store both sides set differently: the choice,
+ * its pick, and what the screen calls it — the task by the engine's name,
+ * and the field by its meaning.
+ * @typedef {import('./state-merge-rules.cjs').FieldConflict & {label: {subject: string, name: string, field: string}}} FieldStoreConflict
+ */
+/**
+ * What the person makes again of what a merge set aside, by phase: the
+ * phase's title, null for tasks in none; the kept phase's number, null
+ * where the phase itself is made again; and the titles of its tasks set
+ * aside.
+ * @typedef {{phase: string|null, kept: number|null, tasks: string[]}} MadeAgain
+ */
+/**
+ * Engine names both sides made, each its kind and the words `task-id.cjs`
+ * gives it, and what of this machine's set aside for them the person makes
+ * again.
+ * @typedef {{madeTwice: {kind: 'unit'|'phase'|'task', said: string}[], again: MadeAgain[]}} MadeTwice
+ */
+/** @typedef {FieldStoreConflict|MadeTwice} StoreConflict */
+/** The store merged: its text, and what it leaves the person. @typedef {{text: string, conflicts: StoreConflict[]}} StoreMerge */
+/**
  * A task driver. Every method but the three that name the store takes the
  * state root, where the tracker's store lives and the tool runs; the
  * engine's ids go in and come out, the tracker's own never. A unit holds the
@@ -109,7 +130,22 @@ const METHODS = Object.freeze({
  * `setType` replaces its type. `ready` answers every task, of the phase or
  * of every written phase, waiting to be started with nothing it is linked
  * after still to finish: a task done or closed holds nothing up. `list`
- * answers a phase's tasks in order. A driver whose tracker projects used
+ * answers a phase's tasks in order. `mergeStore` merges the store's files
+ * between two clones (4.7, 29.14.9): given the common ancestor's text, this
+ * machine's and the remote's, it matches the tracker's records by the
+ * tracker's own ids, takes a record only one side changed from that side,
+ * and merges one both changed field by field against the ancestor, its
+ * notes and links unioned; a field both set differently is a choice, which
+ * `pickOf` answers or leaves open, shown in the engine's words and labelled
+ * by the engine's name for its task. A status the tracker derives from a
+ * record's children reads, once merged, as the tracker's own rules would
+ * leave it over the merged children, never a choice. An engine name both
+ * sides made under ids of their own stays the remote's: this machine's
+ * record is set aside, with all it holds, and the rest merged; the merge
+ * answers it as one more conflict, naming the names made twice and what
+ * to make again by phase, and the engine stops on it and keeps this machine's
+ * whole copy beside. A copy it cannot read is refused with a MergeError
+ * naming the side and the line. A driver whose tracker projects used
  * before Leeway may declare where they kept its store, `preLeewayStore`
  * (`{files, localFiles}`, project-relative): frozen, since migration 078
  * reads it from the module alone, outside this loader.
@@ -117,6 +153,7 @@ const METHODS = Object.freeze({
  *   ensureStore: (root: string) => boolean,
  *   storeFiles: () => string[],
  *   localFiles: () => string[],
+ *   mergeStore: (base: string, local: string, remote: string, pickOf?: import('./state-merge-rules.cjs').PickOf) => StoreMerge,
  *   createUnit: (root: string, unit: string) => boolean,
  *   createPhase: (root: string, unit: string, phase: number, title: string) => void,
  *   createTask: (root: string, ref: TaskRef, task: {title: string, type: string, text: string}) => void,

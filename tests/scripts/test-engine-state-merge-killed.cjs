@@ -91,7 +91,7 @@ describe('a catch-up killed between its steps', () => {
 
     const beside = `unit/assets/chart.${blobId('png\0here').slice(0, 8)}.png`;
     assert.strictEqual(live.warnings.length, 2, live.warnings.join('\n'));
-    assert.strictEqual(live.warnings[0], `${CHART} was changed on both machines and is not merged line by line: the remote's copy stays at ${CHART}, and this machine's is kept beside it as ${beside}`);
+    assert.strictEqual(live.warnings[0], `.leeway/${CHART} was changed on both machines and is not merged line by line: the remote's copy stays at .leeway/${CHART}, and this machine's is kept beside it as .leeway/${beside}`);
     assert.deepStrictEqual([out.action, out.pushed, out.conflicts], ['merged', true, []]);
     assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:${layout.projectManifest}`]), projectManifest('later'));
     assert.strictEqual(readFile(here.root, layout.projectManifest), projectManifest('later'), 'a field the killed landing wrote came back');
@@ -132,8 +132,8 @@ describe('a catch-up killed between its steps', () => {
     assert.strictEqual(readFile(here.root, DATA), '{"a":3,"b":1}\n');
     assert.strictEqual(readFile(here.root, beside), '{"a":3}\n');
     assert.ok(out.warnings.includes(
-      `${DATA} changed after a catch-up was cut short and was left as it stands, with the merged copy beside it as ${beside}: `
-      + `unless ${DATA} was changed from the merged copy, committing ${DATA} as it stands leaves the remote's change only in ${beside}`,
+      `.leeway/${DATA} changed after a catch-up was cut short and was left as it stands, with the merged copy beside it as .leeway/${beside}: `
+      + `unless .leeway/${DATA} was changed from the merged copy, committing .leeway/${DATA} as it stands leaves the remote's change only in .leeway/${beside}`,
     ), out.warnings.join('\n'));
   });
 });

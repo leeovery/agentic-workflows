@@ -218,7 +218,7 @@ describe('another session writing while the catch-up runs', () => {
 
     assert.strictEqual(out.action, 'fast-forwarded');
     assert.strictEqual(readFile(here.root, 'unit/assets/gone.md'), 'gone\nwritten meanwhile\n');
-    assert.deepStrictEqual(out.warnings, ['unit/assets/gone.md was deleted on one machine and changed on the other: the changed copy is kept']);
+    assert.deepStrictEqual(out.warnings, ['.leeway/unit/assets/gone.md was deleted on one machine and changed on the other: the changed copy is kept']);
   });
 
   it('leaves a file that moves again as it stands, and names it', () => {
@@ -233,8 +233,8 @@ describe('another session writing while the catch-up runs', () => {
     assert.strictEqual(readFile(here.root, LOG), '# a\n\n## first\n\n## here\n## another session\n## and again\n');
     assert.strictEqual(readFile(here.root, beside), mergedCopy);
     assert.ok(out.warnings.includes(
-      `${LOG} changed while the state caught up and was left as it stands, with the merged copy beside it as ${beside}: `
-      + `committing ${LOG} as it stands leaves the remote's change only in ${beside}`,
+      `.leeway/${LOG} changed while the state caught up and was left as it stands, with the merged copy beside it as .leeway/${beside}: `
+      + `committing .leeway/${LOG} as it stands leaves the remote's change only in .leeway/${beside}`,
     ), out.warnings.join('\n'));
     assert.strictEqual(status(here.root), ` M ${LOG}\n?? ${beside}\n`);
   });

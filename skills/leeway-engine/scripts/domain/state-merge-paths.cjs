@@ -10,7 +10,11 @@
 // - A path both sides changed goes to its rule. The ledger, the migrations
 //   record and the manifests merge by state-merge-rules.cjs, whatever their
 //   size: the ledger and the migrations record are read a line at a time,
-//   and a manifest is read whole, since its fields must merge. Any other
+//   and a manifest is read whole, since its fields must merge. The tracker's
+//   store is read whole and merged by its task driver; where the driver
+//   sets aside engine names this machine made that the remote made too,
+//   this machine's whole copy is kept beside the merged one, and the notice
+//   stops the merge for the person to acknowledge. Any other
 //   text goes through git's three-way merge, the remote's copy the one
 //   merged into; where both changed the same lines, both versions' lines are
 //   kept, the remote's first. A file that is not text, a JSON file that is
@@ -20,6 +24,10 @@
 //   and changed on the other keeps the changed copy.
 // - The versions a whole tree's merge reads whole are read together, before
 //   any path is merged.
+// - A build's runs are append-only facts: where this machine wrote a run
+//   under a number the remote wrote one under, this machine's new runs in
+//   that folder follow the remote's highest, in their own order, before any
+//   path is merged.
 // - A file on one side where the other side has a folder cannot sit in one
 //   tree: the remote's stays at the path, and this machine's is set beside
 //   it, a file named by its blob's id and a folder by its tree's.
@@ -29,15 +37,17 @@
 const fs = require('fs');
 const path = require('path');
 const {
-  MergeError, ruleOf, linesToAdd, entryId, migrationId, mergeManifest, conflictLabel,
+  MergeError, fromRoot, ruleOf, storeDriverOf, runNumber, runRenumbered, linesToAdd, entryId, migrationId, mergeManifest, conflictLabel,
 } = require('./state-merge-rules.cjs');
 const { withScratch, readBlobs, blobOf } = require('./state-merge-blobs.cjs');
 const { blobToFile, fileLines, endsWithNewline } = require('../kernel/file-stream.cjs');
 
 /** @typedef {import('../kernel/isolated-git.cjs').IsolatedGit} IsolatedGit */
 /** @typedef {import('./state-merge-rules.cjs').Choice} Choice */
+/** @typedef {import('./state-merge-rules.cjs').Notice} Notice */
 /** @typedef {import('./state-merge-rules.cjs').KeyOf} KeyOf */
-/** @typedef {import('./projections/state-merge.cjs').Conflict} Conflict */
+/** @typedef {import('./projections/state-merge.cjs').FieldConflict} FieldConflict */
+/** @typedef {import('./projections/state-merge.cjs').NoticeConflict} NoticeConflict */
 /** @typedef {{mode: string, oid: string}} Entry */
 /** @typedef {Map<string, Entry>} Entries */
 /** @typedef {{base: Entry|undefined, local: Entry|undefined, remote: Entry|undefined}} Versions */
@@ -49,9 +59,9 @@ const { blobToFile, fileLines, endsWithNewline } = require('../kernel/file-strea
  * @typedef {import('./state-merge-blobs.cjs').BlobContext & {budget: number, index: string, project: string}} MergeContext
  */
 
-/** @typedef {(manifest: string, choice: Choice) => 'local'|'remote'|null} PickOf */
+/** @typedef {(file: string, choice: Choice|Notice) => 'local'|'remote'|'seen'|null} PickOf */
 
-/** A conflict as a path's merge finds it, before the caller says where. @typedef {Omit<Conflict, 'uncommitted'>} PathConflict */
+/** A conflict as a path's merge finds it, before the caller says where. @typedef {Omit<FieldConflict, 'uncommitted'>|Omit<NoticeConflict, 'uncommitted'>} PathConflict */
 
 /**
  * One path merged: the entry at the path (none where it goes), this
@@ -142,13 +152,13 @@ function modeOf({ local, remote }) {
 const TEXT_MODES = ['100644', '100755'];
 
 /**
- * The most bytes of a version its rule reads whole: a manifest all of it,
- * since its fields must merge, and any other file the read budget; null
- * where the rule reads none whole.
+ * The most bytes of a version its rule reads whole: a manifest or the
+ * tracker's store all of it, since its records must merge, and any other
+ * file the read budget; null where the rule reads none whole.
  * @param {MergeContext} ctx @param {import('./state-merge-rules.cjs').MergeRule} rule @returns {number|null}
  */
 function readLimit(ctx, rule) {
-  if (rule === 'manifest') return Infinity;
+  if (rule === 'manifest' || rule === 'store') return Infinity;
   return rule === 'file' ? ctx.budget : null;
 }
 
@@ -171,12 +181,21 @@ function textOf(ctx, entry) {
 
 /** @param {string} file */
 function changedCopyKept(file) {
-  return `${file} was deleted on one machine and changed on the other: the changed copy is kept`;
+  return `${fromRoot(file)} was deleted on one machine and changed on the other: the changed copy is kept`;
 }
 
 /** @param {string} file @param {Versions} versions @returns {PathMerge} */
 function keepChanged(file, { local, remote }) {
   return { entry: local ?? remote, note: changedCopyKept(file) };
+}
+
+/**
+ * That a copy is kept beside a path: the copy at `file` stays, and this
+ * machine's `what` is kept as `beside`, both named from the project root.
+ * @param {string} file @param {string} stays @param {string} what @param {string} beside
+ */
+function keptBeside(file, stays, what, beside) {
+  return `${stays} stays at ${fromRoot(file)}, and this machine's ${what} kept beside it as ${fromRoot(beside)}`;
 }
 
 /** Where this machine's copy of a path is set beside the remote's. @param {string} file @param {string} oid */
@@ -192,7 +211,7 @@ function keepBoth(file, versions) {
   return {
     entry: versions.remote,
     beside: { path: beside, entry: local },
-    note: `${file} was changed on both machines and is not merged line by line: the remote's copy stays at ${file}, and this machine's is kept beside it as ${beside}`,
+    note: `${fromRoot(file)} was changed on both machines and is not merged line by line: ${keptBeside(file, "the remote's copy", 'is', beside)}`,
   };
 }
 
@@ -220,7 +239,7 @@ function mergeText(ctx, file, versions, [base, local, remote]) {
     ctx.git.run(['merge-file', '--union', remoteFile, baseFile, localFile]);
     return {
       entry: fileBlob(ctx, remoteFile, modeOf(versions)),
-      note: `${file} was changed in the same place on both machines: both machines' lines are kept there, the remote's first — read it through`,
+      note: `${fromRoot(file)} was changed in the same place on both machines: both machines' lines are kept there, the remote's first — read it through`,
     };
   });
 }
@@ -233,6 +252,11 @@ function mergeOtherFile(ctx, file, versions) {
   return mergeText(ctx, file, versions, /** @type {string[]} */ (texts));
 }
 
+/** A version read whole, its rule reading all of it. @param {MergeContext} ctx @param {Entry} entry @returns {string} */
+function wholeText(ctx, entry) {
+  return /** @type {Buffer} */ (blobOf(ctx, entry.oid, Infinity).bytes).toString('utf8');
+}
+
 /**
  * One side's manifest, parsed. Refuses one that is not a JSON object: a
  * manifest the engine cannot read is not one the merge can take apart.
@@ -242,12 +266,12 @@ function mergeOtherFile(ctx, file, versions) {
 function manifestOf(ctx, file, entry, whose) {
   let value;
   try {
-    value = JSON.parse(/** @type {Buffer} */ (blobOf(ctx, entry.oid, /** @type {number} */ (readLimit(ctx, 'manifest'))).bytes).toString('utf8'));
+    value = JSON.parse(wholeText(ctx, entry));
   } catch {
     value = null;
   }
   if (value === null || typeof value !== 'object' || Array.isArray(value)) {
-    throw new MergeError(`cannot merge ${file}: ${whose} copy is not a JSON object`);
+    throw new MergeError(`cannot merge ${fromRoot(file)}: ${whose} copy is not a JSON object`);
   }
   return value;
 }
@@ -261,11 +285,53 @@ function mergeManifestFile(ctx, file, versions, pickOf) {
     base,
     manifestOf(ctx, file, versions.local, "this machine's"),
     manifestOf(ctx, file, versions.remote, "the remote's"),
-    (choice) => pickOf(file, choice),
+    (choice) => /** @type {'local'|'remote'|null} */ (pickOf(file, choice)),
   );
   return {
     entry: blob(ctx, `${JSON.stringify(merged.value, null, 2)}\n`, modeOf(versions)),
-    conflicts: merged.conflicts.map((c) => ({ manifest: file, ...c, label: conflictLabel(file, c.field, ctx.project) })),
+    conflicts: merged.conflicts.map((c) => ({ file, ...c, label: conflictLabel(file, c.field, ctx.project) })),
+  };
+}
+
+const STORE_OWNER = "the tracker's store";
+
+/**
+ * The driver's merge of the store at `file`, its refusal of a copy it cannot
+ * read naming the file.
+ * @param {string} file @param {() => import('./drivers.cjs').StoreMerge} merge
+ * @returns {import('./drivers.cjs').StoreMerge}
+ */
+function storeMerged(file, merge) {
+  try {
+    return merge();
+  } catch (err) {
+    if (err instanceof MergeError) throw new MergeError(`cannot merge ${fromRoot(file)}: ${err.message}`);
+    throw err;
+  }
+}
+
+/**
+ * The tracker's store merged by its task driver, read whole. Where the
+ * driver set aside names this machine made that the remote made too, this
+ * machine's whole copy is kept beside the merged one, and the notice is a
+ * conflict of its own.
+ * @param {MergeContext} ctx @param {string} file @param {Versions} versions @param {PickOf} pickOf @returns {PathMerge}
+ */
+function mergeStoreFile(ctx, file, versions, pickOf) {
+  if (versions.local === undefined || versions.remote === undefined) return keepChanged(file, versions);
+  const local = versions.local;
+  const [base, mine, remote] = [versions.base, local, versions.remote].map((entry) => (entry === undefined ? '' : wholeText(ctx, entry)));
+  const driver = /** @type {import('./drivers.cjs').TaskDriver} */ (storeDriverOf(file));
+  const merged = storeMerged(file, () => driver.mergeStore(base, mine, remote, (choice) => /** @type {'local'|'remote'|null} */ (pickOf(file, choice))));
+  const beside = besidePath(file, local.oid);
+  /** @type {PathConflict[]} */
+  const conflicts = merged.conflicts.map((c) => ('madeTwice' in c
+    ? { file, madeTwice: c.madeTwice, again: c.again, beside, pick: /** @type {'seen'|null} */ (pickOf(file, c)) }
+    : { file, field: c.field, local: c.local, remote: c.remote, pick: c.pick, label: { owner: STORE_OWNER, ...c.label, path: c.field.join('.') } }));
+  return {
+    entry: blob(ctx, merged.text, modeOf(versions)),
+    ...(conflicts.some((c) => 'madeTwice' in c) ? { beside: { path: beside, entry: local } } : {}),
+    conflicts,
   };
 }
 
@@ -305,6 +371,7 @@ const MERGERS = {
   ledger: (ctx, file, versions) => unionLines(ctx, versions, entryId),
   migrations: (ctx, file, versions) => unionLines(ctx, versions, migrationId),
   manifest: mergeManifestFile,
+  store: mergeStoreFile,
   whole: (ctx, file, versions) => keepWhole(file, versions),
   file: (ctx, file, versions) => mergeOtherFile(ctx, file, versions),
 };
@@ -328,6 +395,59 @@ function oneSided({ base, local, remote }) {
  */
 function mergePath(ctx, file, versions, pickOf) {
   return oneSided(versions) ?? MERGERS[ruleOf(file)](ctx, file, versions, pickOf);
+}
+
+// --- runs both machines numbered alike ---------------------------------------
+
+/**
+ * Where this machine's new runs go, where it wrote one under a number the
+ * remote wrote another under: in each such folder, every run this machine
+ * wrote that the ancestor lacks and the remote does not hold alike follows
+ * the remote's highest there, in this machine's order. The moves come in an
+ * order that never moves a run onto one not yet moved, and the entries are
+ * this machine's, moved.
+ * @param {Entries} base @param {Entries} local @param {Entries} remote
+ * @returns {{entries: Entries, moves: {from: string, to: string}[], notes: string[]}}
+ */
+function placeRuns(base, local, remote) {
+  /** @type {Map<string, string[]>} */
+  const folders = new Map();
+  for (const file of local.keys()) {
+    if (runNumber(file) === null || base.has(file) || sameEntry(local.get(file), remote.get(file))) continue;
+    const folder = file.slice(0, file.lastIndexOf('/') + 1);
+    folders.set(folder, [...(folders.get(folder) ?? []), file]);
+  }
+  const entries = new Map(local);
+  /** @type {{from: string, to: string}[]} */
+  const moves = [];
+  /** @type {string[]} */
+  const notes = [];
+  for (const [folder, runs] of folders) {
+    if (!runs.some((file) => remote.has(file))) continue;
+    const highest = Math.max(...[...remote.keys()].filter((file) => file.startsWith(folder)).map((file) => runNumber(file) ?? 0));
+    const placed = runs.sort((a, b) => Number(runNumber(a)) - Number(runNumber(b))).map((from, i) => ({ from, to: runRenumbered(from, highest + i + 1) }));
+    for (const { from } of placed) entries.delete(from);
+    for (const { from, to } of placed) entries.set(to, /** @type {Entry} */ (local.get(from)));
+    moves.push(...inMovingOrder(placed));
+    notes.push(`runs in ${fromRoot(folder)} were written under the same numbers on both machines: the remote's keep theirs, and this machine's follow them — ${placed.map(({ from, to }) => `${path.posix.basename(from)} is now ${path.posix.basename(to)}`).join(', ')}`);
+  }
+  return { entries, moves, notes };
+}
+
+/**
+ * Moves ordered so none lands on a path another move has still to empty.
+ * The numbers only rise in order, so the moves form chains, never a loop.
+ * @param {{from: string, to: string}[]} moves @returns {{from: string, to: string}[]}
+ */
+function inMovingOrder(moves) {
+  const pending = moves.filter(({ from, to }) => from !== to);
+  /** @type {{from: string, to: string}[]} */
+  const ordered = [];
+  while (pending.length > 0) {
+    const free = pending.findIndex(({ to }) => !pending.some(({ from }) => from === to));
+    ordered.push(...pending.splice(free, 1));
+  }
+  return ordered;
 }
 
 /**
@@ -386,13 +506,13 @@ function separateClashes(ctx, entries, remote) {
         separated.set(`${beside}${f.slice(file.length)}`, e);
       }
       moves.push({ from: file, to: beside });
-      notes.push(`${file} is a file on the remote and a folder on this machine: the remote's file stays at ${file}, and this machine's folder is kept beside it as ${beside}`);
+      notes.push(`${fromRoot(file)} is a file on the remote and a folder on this machine: ${keptBeside(file, "the remote's file", 'folder is', beside)}`);
     } else {
       const beside = besidePath(file, entry.oid);
       separated.delete(file);
       separated.set(beside, entry);
       moves.push({ from: file, to: beside });
-      notes.push(`${file} is a folder on the remote and a file on this machine: the remote's folder stays at ${file}, and this machine's file is kept beside it as ${beside}`);
+      notes.push(`${fromRoot(file)} is a folder on the remote and a file on this machine: ${keptBeside(file, "the remote's folder", 'file is', beside)}`);
     }
   }
   return { entries: separated, moves, notes };
@@ -411,9 +531,11 @@ function mergeTrees(ctx, base, local, remote, pickOf) {
   const conflicts = [];
   /** @type {string[]} */
   const notes = [];
+  const runs = placeRuns(base, local, remote);
+  notes.push(...runs.notes);
   /** @type {[string, Versions][]} */
-  const paths = [...new Set([...base.keys(), ...local.keys(), ...remote.keys()])]
-    .map((file) => [file, { base: base.get(file), local: local.get(file), remote: remote.get(file) }]);
+  const paths = [...new Set([...base.keys(), ...runs.entries.keys(), ...remote.keys()])]
+    .map((file) => [file, { base: base.get(file), local: runs.entries.get(file), remote: remote.get(file) }]);
   readContested(ctx, paths);
   for (const [file, versions] of paths) {
     const result = mergePath(ctx, file, versions, pickOf);
@@ -435,6 +557,7 @@ module.exports = {
   fillIndex,
   writeTree,
   mergePath,
+  placeRuns,
   readContested,
   mergeTrees,
   separateClashes,

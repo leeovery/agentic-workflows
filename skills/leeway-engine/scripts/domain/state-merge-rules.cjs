@@ -33,6 +33,15 @@
 //   the state up, so two set up before either pushed hold one each; where
 //   the sides differ the remote's stands, with or without an ancestor
 //   (4.7.12, 16.13.5).
+// - The tracker's store: each file a task driver names (`storeFiles`) is
+//   merged by that driver (`mergeStore`), which reads the tracker's own
+//   records (7.5, 29.14.9); the fields both sides changed differently are
+//   choices like a manifest's, and engine names both sides made are a
+//   notice the person acknowledges.
+// - A build's run (`{unit}/build/runs/{n}.S{m}/run-{NNN}.json`) is an
+//   append-only fact, read here by its number; where both machines wrote
+//   runs under the same numbers, this machine's are renumbered before the
+//   tree merges (state-merge-paths.cjs).
 // - Any other JSON file is kept whole, never merged line by line: a text
 //   merge of JSON can leave neither side's data.
 // ---------------------------------------------------------------------------
@@ -41,18 +50,26 @@ const crypto = require('crypto');
 const { isObject } = require('../kernel/manifest-io.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { LEDGER } = require('./ledger-events.cjs');
+const { STATE_DIR_NAME } = require('../kernel/state-root.cjs');
 
 const MIGRATIONS = '.state/migrations';
 // The project's manifest and each unit's; a unit's name never starts with
 // a dot, so a hidden folder's file is never a unit's manifest.
 const MANIFEST = /^(?:[^./][^/]*\/)?manifest\.json$/;
 const JSON_FILE = /\.jsonl?$/;
+const RUN = /^[^./][^/]*\/build\/runs\/[^/]+\/run-([0-9]{3,})\.json$/;
 const PROJECT_KEY = ['manifest.json', 'project_id'];
 
-/** @typedef {'ledger'|'migrations'|'manifest'|'whole'|'file'} MergeRule */
+/** @typedef {'ledger'|'migrations'|'manifest'|'store'|'whole'|'file'} MergeRule */
+/** @typedef {import('./drivers.cjs').TaskDriver} TaskDriver */
 
 /** A side's copy is not what its rule reads, so the merge cannot take it apart. */
 class MergeError extends Error {}
+
+/** A state path as the merge's notes and refusals name it, from the project root. @param {string} file */
+function fromRoot(file) {
+  return `${STATE_DIR_NAME}/${file}`;
+}
 
 /**
  * One side of a conflicted field: its value, or that it was removed.
@@ -63,6 +80,13 @@ class MergeError extends Error {}
  * A choice a field leaves the person: its path from the manifest's root,
  * and each side's value.
  * @typedef {{field: string[], local: Side, remote: Side}} Choice
+ */
+
+/**
+ * A notice the person acknowledges rather than picks between: the engine
+ * names both sides made in the tracker's store, and this machine's tasks set
+ * aside for them (drivers.cjs, MadeTwice).
+ * @typedef {import('./drivers.cjs').MadeTwice} Notice
  */
 
 /**
@@ -78,6 +102,23 @@ class MergeError extends Error {}
  * @typedef {{owner: string, subject: string|null, name: string|null, field: string|null, path: string}} ConflictLabel
  */
 
+/** @type {Map<string, TaskDriver>|undefined} */
+let stores;
+
+/**
+ * The task driver whose store holds a file, by the files each shipped one
+ * names; undefined where none does.
+ * @param {string} file  from the state root
+ * @returns {TaskDriver|undefined}
+ */
+function storeDriverOf(file) {
+  // Loaded here, not with the module: the stop's screen reads this module
+  // and needs no driver.
+  stores ??= new Map(/** @type {TaskDriver[]} */ (require('./drivers.cjs').listDrivers('task'))
+    .flatMap((driver) => driver.storeFiles().map((held) => /** @type {[string, TaskDriver]} */ ([held, driver]))));
+  return stores.get(file);
+}
+
 /**
  * The rule a state file merges by.
  * @param {string} file  from the state root
@@ -87,7 +128,19 @@ function ruleOf(file) {
   if (file === LEDGER) return 'ledger';
   if (file === MIGRATIONS) return 'migrations';
   if (MANIFEST.test(file)) return 'manifest';
+  if (storeDriverOf(file) !== undefined) return 'store';
   return JSON_FILE.test(file) ? 'whole' : 'file';
+}
+
+/** A build's run's number, or null where the path is no run's. @param {string} file @returns {number|null} */
+function runNumber(file) {
+  const run = RUN.exec(file);
+  return run === null ? null : Number(run[1]);
+}
+
+/** A run's path under another number, in its folder. @param {string} file @param {number} number @returns {string} */
+function runRenumbered(file, number) {
+  return `${file.slice(0, file.lastIndexOf('/') + 1)}run-${String(number).padStart(3, '0')}.json`;
 }
 
 /**
@@ -134,7 +187,7 @@ function entryId(line, side, number) {
   }
   if (entry === null || typeof entry !== 'object' || typeof entry.id !== 'string') {
     const where = side === 'local' ? "this machine's" : "the remote's";
-    throw new MergeError(`cannot merge ${LEDGER}: line ${number} of ${where} is not an entry with an id: ${line.slice(0, 80)}`);
+    throw new MergeError(`cannot merge ${fromRoot(LEDGER)}: line ${number} of ${where} is not an entry with an id: ${line.slice(0, 80)}`);
   }
   return entry.id;
 }
@@ -207,15 +260,18 @@ function canonical(value) {
 }
 
 /**
- * A choice's identity: the manifest it is in, whether it is on the branch or
- * between the working tree and the update, the field, and the two values,
- * whatever order their keys came in. A pick answers the choice with its
- * identity, and the screen carries it to the pick.
- * @param {Choice & {manifest: string, uncommitted: boolean}} choice
+ * A choice's identity: the file it is in, whether it is on the branch or
+ * between the working tree and the update, and what it asks — the field and
+ * the two values, whatever order their keys came in, or the notice's names
+ * and tasks. A pick answers the choice with its identity, and the screen
+ * carries it to the pick.
+ * @param {(Choice|Notice) & {file: string, uncommitted: boolean}} choice
  * @returns {string}
  */
-function choiceId({ manifest, uncommitted, field, local, remote }) {
-  const named = JSON.stringify(canonical([manifest, uncommitted, field, local, remote]));
+function choiceId(choice) {
+  const { file, uncommitted } = choice;
+  const asked = 'madeTwice' in choice ? [choice.madeTwice, choice.again] : [choice.field, choice.local, choice.remote];
+  const named = JSON.stringify(canonical([file, uncommitted, ...asked]));
   return crypto.createHash('sha1').update(named).digest('hex').slice(0, 12);
 }
 
@@ -261,20 +317,33 @@ function mergeObject(base, local, remote, field, merge) {
 }
 
 /**
+ * Two JSON values merged field by field against their common ancestor
+ * (undefined where it held none). Each conflict carries the pick `pickOf`
+ * names for its choice, and takes it; a conflict with no pick takes the
+ * remote's value for now. A field `remoteStands` names is the remote's
+ * wherever the sides differ.
+ * @param {unknown} base @param {unknown} local @param {unknown} remote
+ * @param {PickOf} [pickOf] @param {(field: string[]) => boolean} [remoteStands]
+ * @returns {{value: unknown, conflicts: FieldConflict[]}}
+ */
+function mergeFields(base, local, remote, pickOf = () => null, remoteStands = () => false) {
+  /** @type {FieldMerge} */
+  const merge = { conflicts: [], pickOf, remoteStands };
+  const value = mergeValue(base, local, remote, [], merge);
+  return { value, conflicts: merge.conflicts };
+}
+
+/**
  * The manifest `file` merged field by field against the common ancestor
- * (undefined where the manifest is new on both sides). Each conflict carries
- * the pick `pickOf` names for its choice, and takes it; a conflict with no
- * pick takes the remote's value for now, and stops the merge.
+ * (undefined where the manifest is new on both sides); a conflict with no
+ * pick stops the merge.
  * @param {string} file  from the state root
  * @param {unknown} base @param {Record<string, unknown>} local @param {Record<string, unknown>} remote
  * @param {PickOf} [pickOf]
  * @returns {{value: unknown, conflicts: FieldConflict[]}}
  */
-function mergeManifest(file, base, local, remote, pickOf = () => null) {
-  /** @type {FieldMerge} */
-  const merge = { conflicts: [], pickOf, remoteStands: (field) => same([file, ...field], PROJECT_KEY) };
-  const value = mergeValue(base, local, remote, [], merge);
-  return { value, conflicts: merge.conflicts };
+function mergeManifest(file, base, local, remote, pickOf) {
+  return mergeFields(base, local, remote, pickOf, (field) => same([file, ...field], PROJECT_KEY));
 }
 
 // The entries a field can belong to, by where they sit in a manifest: the
@@ -319,7 +388,7 @@ function conflictLabel(manifest, field, project) {
 /**
  * The conflict a stop asks about: the first not yet picked; where every one
  * is picked, which the next catch-up finishes, the last.
- * @param {{pick: 'local'|'remote'|null}[]} conflicts
+ * @param {{pick: string|null}[]} conflicts
  * @returns {number}
  */
 function askedAt(conflicts) {
@@ -330,10 +399,16 @@ function askedAt(conflicts) {
 module.exports = {
   MIGRATIONS,
   MergeError,
+  fromRoot,
   ruleOf,
+  storeDriverOf,
+  runNumber,
+  runRenumbered,
   linesToAdd,
   entryId,
   migrationId,
+  same,
+  mergeFields,
   mergeManifest,
   choiceId,
   askedAt,
