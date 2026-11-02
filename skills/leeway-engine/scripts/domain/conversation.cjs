@@ -26,8 +26,9 @@
 //                  agent id and its pair's (position.cjs), written under the
 //                  lock beside it — what the tmux label's resume re-applies,
 //                  the gate mod's spinner says, the commit door and the hook
-//                  before Bash check a commit against, and `conversation
-//                  position` names files for; read here alone (`readPosition`)
+//                  before Bash check a commit against, `verify` attributes a
+//                  run by, and `conversation position` names files for; read
+//                  here alone (`readPosition`)
 //   trust-pending.jsonl
 //                  the trust log's events waiting in the conversation
 //                  (trust-log.cjs): those it could not append, for its next
@@ -199,7 +200,8 @@ function readPosition(sessionId) {
 /**
  * The tasks in flight in the conversation `sessionId`, each with the unit
  * its position names — what the commit door (commit-task.cjs) and the hook
- * before Bash check a commit against.
+ * before Bash check a commit against, and `verify` attributes a run by
+ * (verify.cjs).
  * @param {string} sessionId @returns {(InFlight & {unit: string})[]}
  */
 function tasksInFlight(sessionId) {

@@ -6,11 +6,13 @@
 // a task before its dispatch, the tasks started side by side in the one
 // conversation — the note a compaction hands up naming each — and done, and
 // the task they held up freed — the project's default task driver running
-// its real tool, its store on the state branch alone; and a task landing on
-// its branch: a note for later banked, the fix round briefed from its pair's
-// reports, its account taken once a round passes, then done; and one stuck
-// on a failed round, settled by the orchestrator, its account carrying what
-// was done.
+// its real tool, its store on the state branch alone; the first phase's
+// verify setup recorded once it ran end to end, then a task in flight
+// proving its scenario by running the product, the run on the state branch;
+// a task landing on its branch: a note for later banked, the fix round
+// briefed from its pair's reports, its account taken once a round passes,
+// then done; and one stuck on a failed round, settled by the orchestrator,
+// its account carrying what was done.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), and for the landings this file's own, built once
@@ -24,9 +26,10 @@ require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
+const fs = require('fs');
 const path = require('path');
 const { stateGit, git } = require('./engine-harness.cjs');
-const { Sim, sessionLog, startNew, carryOn, writePhaseTasks, worldFrom } = require('./pipeline-world.cjs');
+const { Sim, sessionLog, startNew, carryOn, writePhaseTasks, worldFrom, cutTheSpec } = require('./pipeline-world.cjs');
 
 const { taskBranch } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/landing-names.cjs'));
 
@@ -71,6 +74,33 @@ describe('pipeline simulation: the tracker', () => {
     assert.deepStrictEqual(sim.run(['task', 'ready', wu]).tasks.map((/** @type {{task: string}} */ task) => task.task), ['1.3'],
       'the task they held up is ready once both are done');
     assert.strictEqual(stateGit(sim.dir, ['status', '--porcelain']), '', 'every tracker write is on the state branch');
+  });
+
+  it('the first phase builds the verify setup and records it once it runs end to end; a task in flight then proves its scenario through it (15.S1, 15.S4)', () => {
+    const wu = 'ledger';
+    startNew(sim, 'feature');
+    sim.run(['workunit', 'create', wu, 'feature', '--description', 'A ledger', '--session-log-file', sessionLog(sim, wu)]);
+    sim.write(`.leeway/${wu}/spec.md`, [
+      '# A ledger', '', '## 1. The ledger', '', '### 1.1 Writing', '', '1.1.1 An entry is written. [builder]', '',
+      '## 1-S. Scenarios for §1', '', '1.S1 Given a ledger, when an entry is written, then it reads back. (1.1.1)', '',
+    ].join('\n'));
+    cutTheSpec(sim, wu, [{ name: 'The ledger', goal: 'Entries are written.', scenarios: ['1.S1'], sections: ['1'], relies_on: [] }]);
+    writePhaseTasks(sim, wu, 1, 'The ledger', [{ title: 'Write the ledger' }]);
+    sim.run(['task', 'start', wu, '1.1']);
+
+    // The task builds the setup in the product's code, commits it through
+    // the door, then records it, run end to end for its scenario.
+    sim.write('verify/features.md', '# Features\n');
+    fs.chmodSync(path.join(sim.dir, sim.write('verify/drive.sh', '#!/bin/sh\nprintf "pass\\n" > "$LEEWAY_RUN/verdict"\n')), 0o755);
+    sim.run(['commit', '--paths', 'verify/features.md', 'verify/drive.sh', '--task', wu, '1.1', '-m', 'feat(ledger): the verify setup']);
+    const setup = sim.write(`.leeway/.cache/${wu}/build/verify-setup.json`, {
+      place: 'verify', feature_map: 'verify/features.md', launch: 'true', health: 'true',
+      drive: 'verify/drive.sh', evidence: 'mkdir -p "$LEEWAY_RUN/evidence" && echo read back > "$LEEWAY_RUN/evidence/screen.txt"', cleanup: 'true',
+    });
+    sim.run(['verify', 'setup', wu, '--file', setup, '--scenario', '1.S1']);
+    assert.deepStrictEqual(sim.run(['verify', 'run', wu, '1.S1']).standing, 'proven', 'the scenario is proven by its run');
+    sim.run(['task', 'done', wu, '1.1']);
+    assert.strictEqual(stateGit(sim.dir, ['status', '--porcelain', '--', 'manifest.json', `${wu}/build`]), '', 'the setup and the run are on the state branch');
   });
 });
 

@@ -16,8 +16,9 @@
 //   engine  a file only the engine writes — the manifests, the ledger, a
 //           topic's brief, the record of the person's review of the spec,
 //           the record of the sweep taken, the notes for later, a task's
-//           figures and the settlement of its failed round — with what it
-//           is and the verb that writes it, where one does;
+//           figures and the settlement of its failed round, a
+//           verification run — with what it is and the verb that writes
+//           it, where one does;
 //   log     a log a session writes to, which a state commit takes along
 //           (6.3.2).
 // A path's names are literal but for its placeholders: `{unit}` a unit's
@@ -126,7 +127,7 @@ const LAYOUT = Object.freeze([
   place('file', '{unit}/build/phases/phase-{N}/review-{letter}.md', '4.11.5'),
   place('file', '{unit}/build/phases/phase-{N}/consolidation.md', '4.11.5'),
   place('file', '{unit}/build/phases/phase-{N}/{area}-{letter}.md', '4.11.5'),
-  place('file', '{unit}/build/runs/{n}.S{m}/run-{NNN}.json', '4.11.15'),
+  engineFile('{unit}/build/runs/{n}.S{m}/run-{NNN}.json', '4.11.15', 'a verification run', 'verify'),
   place('file', '{unit}/review/round-{N}.md', '4.11.5'),
   place('file', '{unit}/review/round-{N}-checks.md', '4.11.5'),
   place('file', '{unit}/review/round-{N}/tests-{letter}.md', '4.11.5'),

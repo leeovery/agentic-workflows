@@ -78,7 +78,7 @@ const DRAWN = Object.freeze({
   'pay/build/phases/phase-1/review-b.md': 'file {unit}/build/phases/phase-{N}/review-{letter}.md',
   'pay/build/phases/phase-1/consolidation.md': 'file {unit}/build/phases/phase-{N}/consolidation.md',
   'pay/build/phases/phase-1/3-checkout-a.md': 'file {unit}/build/phases/phase-{N}/{area}-{letter}.md',
-  'pay/build/runs/3.S2/run-001.json': 'file {unit}/build/runs/{n}.S{m}/run-{NNN}.json',
+  'pay/build/runs/3.S2/run-001.json': 'engine {unit}/build/runs/{n}.S{m}/run-{NNN}.json',
   'pay/review/round-1.md': 'file {unit}/review/round-{N}.md',
   'pay/review/round-1-checks.md': 'file {unit}/review/round-{N}-checks.md',
   'pay/review/round-1/tests-b.md': 'file {unit}/review/round-{N}/tests-{letter}.md',
@@ -122,7 +122,7 @@ const OUTSIDE = Object.freeze([
 const named = (at) => (at === null ? null : `${at.kind} ${at.path}`);
 
 describe('4.11\'s places (4.11.17)', () => {
-  it('every place the tree draws holds its sample, of its kind — the engine\'s alone the manifests, the ledger, spec-review.json (6.2.3), sweep-taken.json (8.10.3), a topic\'s brief (8.7.6), the notes for later (task note), a task\'s figures (task account) and the settlement of its failed round (task settle) — and every place has one', () => {
+  it('every place the tree draws holds its sample, of its kind — the engine\'s alone the manifests, the ledger, spec-review.json and a verification run (6.2.3), sweep-taken.json (8.10.3), a topic\'s brief (8.7.6), the notes for later (task note), a task\'s figures (task account) and the settlement of its failed round (task settle) — and every place has one', () => {
     assert.deepStrictEqual(Object.fromEntries(Object.keys(DRAWN).map((rel) => [rel, named(layoutPlace(rel))])), DRAWN);
     assert.deepStrictEqual(new Set(Object.values(DRAWN)), new Set(LAYOUT.map(named)));
   });
@@ -247,6 +247,7 @@ describe('today\'s places (E4)', () => {
       brief: layout.brief('pay', 'auth'),
       imports: layout.imports('pay', 'deck.pdf'),
       unitState: layout.unitState('pay', 'discussion-consolidation-analysis.md'),
+      run: layout.run('pay', '3.S2', '001'),
     };
     assert.deepStrictEqual(Object.keys(samples).sort(), Object.keys(layout).sort(), 'a sample of every place the helper names');
     assert.deepStrictEqual(Object.entries(samples).filter(([, rel]) => layoutPlace(rel) === null), []);
