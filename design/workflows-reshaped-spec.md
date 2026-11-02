@@ -948,15 +948,14 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 
 5.3.1 The ledger is an event stream, and everything read from it is a projection. [R23; agreed by the person 2026-10-14; made a principle 2026-10-15, R45]
 
-5.3.2 There are six kinds of event, each with its own schema:
+5.3.2 There are five kinds of event, each with its own schema:
 - asked: a question goes on a topic's map;
 - found: a fact, and how it is known;
 - decided: an answer to a question, with who, why, what it rules out and what it relies on;
 - replaced: a new answer, naming the old one and one of the four reasons (5.6.2);
-- still holds: a topic confirms an answer after something it relied on, or the question it answers, changed;
-- parked: a question a task in the build parks on the person, its call sealed (5.3.16).
+- still holds: a topic confirms an answer after something it relied on, or the question it answers, changed.
 
-[R23, R45, plan 4.1; Claude's derivation, O16; Claude's proposal, 29.14 planning]
+[R23, R45, plan 4.1; Claude's derivation, O16]
 
 5.3.3 A question can also be moved to another topic, which is written as an event of its own (moved); its schema is the builder's. [R23, plan 4.1, plan 6.1; Claude's derivation, O16]
 
@@ -3927,7 +3926,7 @@ mechanically. [R14; ruled by the person 2026-10-13]
 11.4.3 The spec marks what it leaves to the builder: only what the matrix makes
 the builder's, recorded as such (§16). [R14]
 
-11.4.4 Left to the builder: how a spec statement is marked the builder's; it cites the "don't care" entry, or, for a call the person would leave that has none (8.10.5), the call the sweep left to the builder, by the id the sweep taken records (4.11.5), as `[builder: {id}]`. [Claude's sort, B28; 9.2.16, 9.5.4, 8.10.5; Claude's derivation, 29.13 as built]
+11.4.4 A spec statement marked the builder's cites the "don't care" entry, or, for a call the person would leave that has none (8.10.5), the call the sweep left to the builder, by the id the sweep taken records (4.11.5), as `[builder: {id}]`. [Claude's sort, B28; 9.2.16, 9.5.4, 8.10.5; Claude's derivation, 29.13 as built]
 
 11.4.5 The spec's statements stay markdown, prose for the builder, each on a
 line of a fixed shape the engine reads to check the entry it cites (6.4.7); a
@@ -4903,7 +4902,7 @@ person 2026-10-20]
 
 12.13.4 As the task parks, the engine appends the question to the project's ledger as an event of its own, holding the question's call sealed — what it asks, why it needs the person, its options as rows, and Claude's lean and why — its number (12.13.24), and the task it parks, so the call draws as sealed after any `/clear`. [R15; R23; ruled by the person 2026-10-20; Claude's proposal, 29.14 planning]
 
-12.13.5 The person's answer is recorded through the engine's `raise` verb and appended to the ledger as a line of its own; "I don't follow" is recorded in the trust log alone, and the question stays open (16.9.3). [R15; agreed with the person 2026-10-20; Claude's derivation, O38; Claude's derivation 2026-10-29, 29.5 slicing: "I don't follow" is no answer, and no ledger event could hold it; Claude's derivation, 29.14 planning]
+12.13.5 The person's answer is recorded through the engine's `raise` verb and appended to the ledger as a line of its own; "I don't follow" is recorded in the trust log alone, and the question stays open (16.9.3). [R15; agreed with the person 2026-10-20; Claude's derivation, O38; Claude's derivation 2026-10-29, 29.5 slicing: "I don't follow" is no answer, and no ledger event could hold it; Claude's derivation, 29.14 planning; Claude's proposal, 29.14 planning: the locked spike]
 
 12.13.6 What waits is the questions with no answer yet: a projection of the
 ledger, like the verdict queue, never a file. [R15; agreed with the person
@@ -5066,7 +5065,7 @@ Ask         → Ask questions about the task (doesn't approve or
 Comment     → Request changes
 ```
 
-12.14.4 The account is written as the task lands, into the task's file beside the task as written; the file is the unit's `build/tasks/{task}.md` (§4), under fixed headings: What was done, Where in the code, What the tests prove, Differs from the task, and Reviews, a short summary of each round under `### Round N`. The builder writes it, and the engine checks it and commits it with the round reports; the figures in it are the engine's. [R15; agreed with the person 2026-10-21; Layout on disk; Claude's proposal, 29.14 planning]
+12.14.4 The account is written as the task lands, into the task's file beside the task as written; the file is the unit's `build/tasks/{task}.md` (§4), under fixed headings: What was done, Where in the code, What the tests prove, Differs from the task, and Reviews, a short summary of each round under `### Round N`. The task's builder agent writes it, and the engine checks it and commits it with the round reports; the figures in it are the engine's. [R15; agreed with the person 2026-10-21; Layout on disk; Claude's proposal, 29.14 planning]
 
 12.14.5 The account holds what was done, in product terms; where in the code;
 what the tests prove; and every way the work differs from the task —
@@ -5083,7 +5082,7 @@ account, a press away on the task's page on the board. They sit in
 `build/tasks/{task}/` as `round-N-a.md` and `round-N-b.md` (4.11.5). [R15;
 Claude's derivation, O40; where, Claude's proposal]
 
-12.14.8 The builder writes a task's account and its round summaries (12.14.4), the orchestrator taking no more of a report than the verdict and nits. [Claude's sort, B27; Claude's derivation, 29.14 planning]
+12.14.8 The task's builder agent writes the task's account and its round summaries (12.14.4), the orchestrator taking no more of a report than the verdict and nits. [Claude's sort, B27; Claude's derivation, 29.14 planning]
 
 12.14.9 Left to the builder: whether `build/tasks/{task}.md` copies the task as
 written or sits beside the tracker's copy. [Claude's sort, B32]
@@ -8077,7 +8076,7 @@ step, discovery shaping — shows its clock where it has one ("building 2:14",
 board is up. Nothing that is not running moves. [the locked spike; the person
 2026-10-21: "I like the very subtle sort of spinner"]
 
-20.4.9 The statuses are the workflows' own: a task is building, in review, done, failed or waits on a question; a phase whose tasks are all done is "complete". A task has failed when its builder stopped and reported it could not build past a problem (13.11.9), until the orchestrator sends it back. No other word ("landed") stands in for them. [plan 3.6; ruled by the person 2026-10-21; Claude's proposal, 29.14 planning]
+20.4.9 The statuses are the workflows' own: a task is building, in review, done, failed or waits on a question; a phase whose tasks are all done is "complete". A task has failed from its builder's stop, when it reported it could not build past a problem (13.11.9), until the orchestrator sends it back or raises the stop to the person; once raised, the task waits on that question and shows "waits on Q{k}" (20.5.2). No other word ("landed") stands in for them. [plan 3.6; ruled by the person 2026-10-21; Claude's proposal, 29.14 planning]
 
 ### 20.5 In the build
 
@@ -8274,7 +8273,7 @@ in one line ("Set Q1 aside; it stays waiting." / "Set Q1, Q2 aside; they
 stay waiting."). Each puts exactly one line in the conversation. [R15, plan
 3.6; the person 2026-10-21]
 
-20.6.9 Recording what became of a question — answered, set aside, or "I don't follow", which leaves it open, explained again (16.9.3) — is the engine's `raise`, whose response is a one-line receipt Claude shows as it is: "{Q1} {answered|set aside|still open, explained again} · {task 6.7 builds again|their tasks build again|still waiting} · {N waiting on you|nothing waiting on you}{ · next: Q2}". Several questions can be set aside in one go, with one receipt naming each. [R15, plan 3.6, 6.1; the locked spike stands its `question` tool in for the verb; Claude's derivation, O38; 16.9.3; Claude's proposal, 29.14 planning: the locked spike]
+20.6.9 Recording what became of a question — answered, set aside, or "I don't follow", which leaves it open, explained again (16.9.3) — is the engine's `raise`, whose response is a one-line receipt Claude shows as it is: "{Q1|Q1, Q2} {answered|set aside|still open, explained again} · {task 6.7 builds again|their tasks build again|still waiting} · {N waiting on you|nothing waiting on you}{ · next: Q2}". Several questions can be set aside in one go, with one receipt naming each. [R15, plan 3.6, 6.1; the locked spike stands its `question` tool in for the verb; Claude's derivation, O38; 16.9.3; Claude's proposal, 29.14 planning: the locked spike]
 
 20.6.10 A question no longer waiting is refused by the verb. [the locked
 spike]
