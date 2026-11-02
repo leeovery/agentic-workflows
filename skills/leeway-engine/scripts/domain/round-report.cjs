@@ -5,7 +5,11 @@
 // review in the build writes to, so the engine reads a round's outcome and
 // the orchestrator takes a report's verdict and nits alone, never the rest
 // (13.5.9). A report is markdown, its reading the reviewer's own, ending in
-// its findings, then its verdict:
+// its notes for later, then its findings, then its verdict:
+//
+//   ## Notes for later
+//
+//   - {what lies beyond the task}, at {where it is}
 //
 //   ## Findings
 //
@@ -20,7 +24,9 @@
 // level one or two, fenced blocks aside; its last line is its verdict,
 // `Verdict: pass` or `Verdict: fail` in any case, bold or not, a period
 // after it or none; and the verdict says what the findings do — a report
-// passes with nothing serious and no bug (13.4.3, 13.4.4).
+// passes with nothing serious and no bug (13.4.3, 13.4.4). What comes before
+// `## Findings`, the notes for later among it (12.10.1), no reader here
+// reads.
 //
 // Between them the findings are read as a careful writer writes them, and
 // nothing is lost or misread (list-items.cjs). Each finding is an item at
@@ -43,10 +49,13 @@
 // per reviewer of the count each round, `round-{N}-{letter}.md` (4.11.5,
 // 12.14.7), and beside them a failed round the orchestrator settled, its
 // settlement, `round-{N}-settled.md`, the engine's (task-account.cjs,
-// 13.4.6). Its rounds run from 1 with none missing, each holding every
-// reviewer's report; a round passes where each of them passes, and the
-// task's verdict is its last round's. A report that does not read, or a
-// round missing one, refuses every read of the task's rounds, naming it.
+// 13.4.6). The count may change between rounds as the model pass
+// re-measures it (13.3.4, 2.4.6), so a round before the last is read by
+// the letters it holds, and the last, the round under review, by the
+// count's. Its rounds run from 1 with none missing, each holding a
+// reviewer's report and the last every one of the count's; a round passes where each of its reports passes, and
+// the task's verdict is its last round's. A report that does not read, or
+// a round missing one, refuses every read of the task's rounds, naming it.
 // The round under review is read from them too, never from a conversation:
 // the last round where a report of it is still to be written or does not
 // read, else the next — a settled round's too — none once a round passed.
@@ -186,13 +195,26 @@ function settlementPath(ref, round) {
 }
 
 /**
- * One round of a task: every reviewer's report read, refused where one is
- * missing or does not read, and whether the orchestrator settled it.
- * @param {string} cwd @param {TaskRef} ref @param {number} round @param {Set<string>} held the folder's file names
+ * The letters of the reviewers whose reports a round holds, in order.
+ * @param {Set<string>} held the folder's file names @param {number} round
+ */
+function lettersHeld(held, round) {
+  return [...held].flatMap((name) => {
+    const named = ROUND_FILE.exec(name);
+    return named !== null && Number(named[1]) === round ? [named[2]] : [];
+  }).sort();
+}
+
+/**
+ * One round of a task: the reports of the reviewers `letters` names, read,
+ * refused where it names none, or a report is missing or does not read;
+ * and whether the orchestrator settled it.
+ * @param {string} cwd @param {TaskRef} ref @param {number} round @param {Set<string>} held the folder's file names @param {readonly string[]} letters the round's
  * @returns {Round}
  */
-function readRound(cwd, ref, round, held) {
-  const reports = REVIEWER_LETTERS.map((letter) => {
+function readRound(cwd, ref, round, held, letters) {
+  if (letters.length === 0) throw new Error(`round ${round} of ${taskName(ref)} has no reviewer's report — its reviewers write them in ${taskFolder(ref)}/`);
+  const reports = letters.map((letter) => {
     const file = roundReportPath(ref, round, letter);
     if (!held.has(`round-${round}-${letter}.md`)) throw new Error(`round ${round} of ${taskName(ref)} has no report from reviewer ${letter} — ${file}`);
     const text = fs.readFileSync(statePath(cwd, file), 'utf8');
@@ -206,13 +228,16 @@ function readRound(cwd, ref, round, held) {
 }
 
 /**
- * Every review round of a task, in order, from its reports on disk; none
- * before its first report is written.
- * @param {string} cwd @param {TaskRef} ref @returns {Round[]}
+ * Every review round of a task, in order, from its reports on disk, each
+ * read by its letters (the header's); none before its first report is
+ * written.
+ * @param {string} cwd @param {TaskRef} ref @param {readonly string[]} [letters] the count's
+ * @returns {Round[]}
  */
-function taskRounds(cwd, ref) {
+function taskRounds(cwd, ref, letters = REVIEWER_LETTERS) {
   const held = heldFiles(cwd, ref);
-  return Array.from({ length: lastReported(held) }, (_, at) => readRound(cwd, ref, at + 1, held));
+  const last = lastReported(held);
+  return Array.from({ length: last }, (_, at) => readRound(cwd, ref, at + 1, held, at + 1 === last ? letters : lettersHeld(held, at + 1)));
 }
 
 /** The names of the files a task's folder holds. @param {string} cwd @param {TaskRef} ref @returns {Set<string>} */
@@ -223,7 +248,7 @@ function heldFiles(cwd, ref) {
 
 /** The highest round any reviewer's report is written for, 0 where none is. @param {Set<string>} held */
 function lastReported(held) {
-  const rounds = [...held].map((name) => ROUND_FILE.exec(name)).flatMap((named) => (named !== null && REVIEWER_LETTERS.includes(named[2]) ? [Number(named[1])] : []));
+  const rounds = [...held].map((name) => ROUND_FILE.exec(name)).flatMap((named) => (named !== null ? [Number(named[1])] : []));
   return Math.max(0, ...rounds);
 }
 
@@ -238,21 +263,23 @@ function reportFaults(file) {
 }
 
 /**
- * The round of a task under review, from its reports on disk alone, so both
- * reviewers of a round are briefed for it whenever they are: the last round
- * reported where a reviewer's report of it is still to be written, or does
- * not read, else the one after it — a settled round among them, the
- * orchestrator's direction reviewed again (13.4.6); refused where the last
- * round passed, which ends the task's review.
- * @param {string} cwd @param {TaskRef} ref @returns {number}
+ * The round of a task under review, from its reports on disk alone, so
+ * every reviewer of a round is briefed for it whenever they are: the last
+ * round reported where a report of it the count asks for is still to be
+ * written, or does not read, else the one after it — a
+ * settled round among them, the orchestrator's direction reviewed again
+ * (13.4.6); refused where the last round passed, which ends the task's
+ * review.
+ * @param {string} cwd @param {TaskRef} ref @param {readonly string[]} [letters] the count's
+ * @returns {number}
  */
-function roundUnderReview(cwd, ref) {
+function roundUnderReview(cwd, ref, letters = REVIEWER_LETTERS) {
   const held = heldFiles(cwd, ref);
   const last = lastReported(held);
   if (last === 0) return 1;
-  const reported = REVIEWER_LETTERS.every((letter) => held.has(`round-${last}-${letter}.md`) && reportFaults(statePath(cwd, roundReportPath(ref, last, letter))) === null);
+  const reported = letters.every((letter) => held.has(`round-${last}-${letter}.md`) && reportFaults(statePath(cwd, roundReportPath(ref, last, letter))) === null);
   if (!reported) return last;
-  if (readRound(cwd, ref, last, held).passes) throw new Error(`round ${last} of ${taskName(ref)} passed — its review is over`);
+  if (readRound(cwd, ref, last, held, letters).passes) throw new Error(`round ${last} of ${taskName(ref)} passed — its review is over`);
   return last + 1;
 }
 

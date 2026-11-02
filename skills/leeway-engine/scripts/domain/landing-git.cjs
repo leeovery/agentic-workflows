@@ -665,6 +665,11 @@ function switchTo(tree, branch) {
   git(tree, [...CHECKOUT_PINS, 'switch', '-q', branch]);
 }
 
+/** A worktree let go of its branch, detached at its own commit, so no file there moves. @param {string} tree */
+function detach(tree) {
+  git(tree, [...CHECKOUT_PINS, 'switch', '-q', '--detach']);
+}
+
 /** A worktree of the repository removed, as git removes a clean one — or its registration, where its folder is gone. @param {string} root @param {string} tree */
 function removeWorktree(root, tree) {
   git(root, ['worktree', 'remove', tree]);
@@ -1115,5 +1120,5 @@ module.exports = {
   short, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranch, refsUnder, updateRefs, isAncestor, mergeBase, treesOf, firstParentLine, messagesPast, commitsNamed, messageOf, commitWithTree, treesPast,
   prefixOf, pointersAt, treeWithPointers, pointedLike, holdsCommit, pointerAhead, stackMoves, commitsPast, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, remedy, moveTo, movedSinceOpened, rewrite, scratchBlock, rebaseBlock, checkoutBlock, pathsChanged, dirtBlock, moveBranch,
   defaultBranch, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, nothingPast,
-  worktrees, holderOf, samePlace, removing, branchInPlace, addWorktree, switchTo, removeWorktree,
+  worktrees, holderOf, samePlace, removing, branchInPlace, addWorktree, switchTo, removeWorktree, detach,
 };

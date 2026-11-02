@@ -52,6 +52,7 @@ const { commitStateScoped, noteCommitOutcome } = require('./commit.cjs');
 const { heldNumberFaults, holdNumbers } = require('./spec-review.cjs');
 const { sweepWait } = require('./sweep.cjs');
 const { printOf, changedSince, recordLand } = require('./spec-passes.cjs');
+const { refusing } = require('./staged-payload.cjs');
 
 const SPEC_USAGE = 'spec land <work-unit>';
 
@@ -92,15 +93,6 @@ function changedSections(landed, text) {
   return [...changed, ...removed];
 }
 
-/** `fn`'s answer, its refusal the land's. @template T @param {() => T} fn @returns {T} */
-function refusing(fn) {
-  try {
-    return fn();
-  } catch (err) {
-    return refuse(messageOf(err));
-  }
-}
-
 /**
  * The unit's `spec.md`, its lines, and the spec the state branch holds,
  * checked as the land checks them before its commit; refused as the land
@@ -110,8 +102,8 @@ function refusing(fn) {
 function checkedSpec(cwd, unit) {
   const refused = unitRefusal(cwd, unit);
   if (refused !== null) refuse(refused);
-  const text = refusing(() => readSpec(cwd, unit));
-  const lines = refusing(() => specStatements(text));
+  const text = refusing('spec land', () => readSpec(cwd, unit));
+  const lines = refusing('spec land', () => specStatements(text));
   const landed = landedSpec(cwd, unit);
   const held = heldNumberFaults(cwd, unit, landed, lines);
   if (held.length > 0) refuse(held.join('\n'));
@@ -147,7 +139,7 @@ function landSpec(cwd, unit) {
   const warnings = [];
   const invented = inventedLines(cwd, unit, lines, warnings);
   const changed = changedSections(landed, text);
-  const outcome = refusing(() => commitStateScoped(cwd, rel, `spec(${unit}): landed`, { kept: logLinks(root, [rel]) }));
+  const outcome = refusing('spec land', () => commitStateScoped(cwd, rel, `spec(${unit}): landed`, { kept: logLinks(root, [rel]) }));
   holdNumbers(cwd, unit, landed, lines);
   recordLand(cwd, unit, text, warnings);
   /** @type {Landed} */

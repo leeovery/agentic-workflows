@@ -21,8 +21,11 @@
 // `task worktree` first and committed only there (12.7.10), each scenario
 // proven by running it (15.2.14), its account written where its brief says,
 // its ask rule and its answer to reviewers who disagree (13.S7); the
-// reviewer's report placed and its final message the verdict and the nits
-// (13.5.9). No template tells an agent to break a task down, keep a to-do
+// reviewer's report placed, its notes for later a section before its
+// findings, and its final message the nits, the notes and the verdict
+// (13.5.9, 12.10.1); and the task's and the phase's reviewers told that a wrong
+// result is a finding even where its fix reaches beyond the task (13.S11).
+// No template tells an agent to break a task down, keep a to-do
 // list, check its own work or leave no stubs (12.3.8), or names a model, an
 // effort or a project skill's path (15.S15). The refusals, nothing written
 // and no brief stored. Each build agent's definition: Opus at medium, the
@@ -207,6 +210,12 @@ describe('the build\'s templates', () => {
     assert.strictEqual(from(words), from(template('reviewer')).replace('Review the task as a professional would', 'Review the phase as a professional would'));
   });
 
+  it('13.S11: a wrong result in what the work does is a finding even where its fix reaches beyond the task, only an improvement or a hole beyond it a note — told to the task\'s reviewers and the phase\'s, never left to read the notes rule as taking it', () => {
+    const line = 'A wrong result in what the work does is always a finding, even when its fix reaches beyond the task. Only an improvement, or a hole or edge case beyond the task, is a note for later.';
+
+    for (const role of ['reviewer', 'phase-review']) assert.ok(template(role).includes(`goes to the notes for later or through the ask rule; the orchestrator lands it.\n\n${line}\n`), role);
+  });
+
   it('13.S7: the template has the builder decide against the brief and the design where the reviewers disagree, and its ask rule keeps every question for the person off the builder', () => {
     const words = template('builder');
 
@@ -219,11 +228,12 @@ describe('the build\'s templates', () => {
     ]) assert.ok(words.includes(line), line);
   });
 
-  it('13.5.9: each reviewer\'s template has the report written whole to its file and the final message carry only the nits and the verdict', () => {
+  it('13.5.9, 12.10.1: each reviewer\'s template has the report written whole to its file, its notes for later in a section of their own before its findings, and the final message carry only the nits, the notes for later and the verdict', () => {
     for (const [role, slot] of [['reviewer', 'round-report-to'], ['phase-review', 'phase-report-to']]) {
       const words = template(role);
       assert.ok(words.includes(`# Where your report goes\n\n{{${slot}}}\n`), role);
-      assert.ok(words.includes('Write the whole report to the file under "Where your report goes". Your final message then holds only the report\'s nits, each as the report words it, and its verdict line, and nothing else.'), role);
+      assert.ok(words.includes('Your report ends in its notes for later, then its findings, then its verdict. The notes for later are the section just before the findings, `## Notes for later`: each note an item naming what lies beyond the task and where it is; or `None.` where there is none.'), role);
+      assert.ok(words.includes('Write the whole report to the file under "Where your report goes". Your final message then holds only the report\'s nits, then its notes for later, each as the report words it, and its verdict line, and nothing else.'), role);
     }
   });
 

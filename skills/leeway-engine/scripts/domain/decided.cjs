@@ -108,7 +108,7 @@ const { runningAgents } = require('./agent-state.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { rowStanding, answersOn, claudesCalls, handedTag, topicAddress } = require('./topic-map.cjs');
 const { decidedScreen, strikePick, waitAgents } = require('./projections/decided.cjs');
-const { filled, shaped, readPayload, stage: writeStaged, stagedAt, refusedAs } = require('./staged-payload.cjs');
+const { filled, shaped, readPayload, stage: writeStaged, stagedAt, refusedAs, refusing } = require('./staged-payload.cjs');
 
 /** @typedef {import('./ledger-read.cjs').Shower} Shower */
 /** @typedef {import('./topic-map.cjs').Row} Row */
@@ -733,18 +733,6 @@ function runDecidedVerb(cwd, [verb, ...args]) {
   if (verb === 'yes' && args.length === 2) return refusing('decided yes', () => decidedYes(cwd, args[0], args[1]));
   if ((verb === 'strike' || verb === 'unstrike') && args.length === 3) return refusing(`decided ${verb}`, () => decidedStrike(cwd, args[0], args[1], args[2], verb === 'strike'));
   throw usage();
-}
-
-/**
- * `answer`'s answer, its refusal opening on `said`.
- * @param {string} said @param {() => Record<string, unknown>} answer
- */
-function refusing(said, answer) {
-  try {
-    return answer();
-  } catch (err) {
-    throw refusedAs(said, err);
-  }
 }
 
 module.exports = { DECIDED_USAGE, runDecidedVerb, decidedSurface, decidedStrikeSurface, waitAgentsSurface };

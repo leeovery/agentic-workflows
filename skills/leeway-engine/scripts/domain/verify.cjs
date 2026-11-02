@@ -29,9 +29,11 @@
 //   it ran in and each of its repositories' HEAD; and the task it ran for —
 //   the task of the unit in flight in the calling conversation whose
 //   worktree the run is in (conversation.cjs, `taskAt`; task-worktree.cjs),
-//   else the one task of the unit in flight there, a builder's commands
+//   else the one task of the unit in flight there whose acceptance
+//   scenarios hold the scenario (task-file.cjs), a builder's commands
 //   carrying its conversation's id, and none where there is none, or
-//   several. It is committed alone under the writer lock, pushed, and
+//   several — so the orchestrator's run of an earlier phase's scenario
+//   is no task's. It is committed alone under the writer lock, pushed, and
 //   answers what the scenario's runs now prove at the commits it ran at, the
 //   checkout's HEAD in each of its repositories.
 // - `verify setup <unit> --file <setup.json> --scenario <scenario>` records
@@ -107,7 +109,10 @@ const { tasksInFlight, taskAt } = require('./conversation.cjs');
 const { codeStatus } = require('./code.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
-const { stepOfId } = require('./task-id.cjs');
+const { stepOfId, parseShownTask } = require('./task-id.cjs');
+const { TRAILER } = require('./commit-task.cjs');
+const { scenariosOf } = require('./task-file.cjs');
+const { trackedTask } = require('./task-verbs.cjs');
 const { isoNow } = require('./dates.cjs');
 const { VERIFY_PARTS, SETUP_PLACES, setupFaults, verifySetup } = require('./environment.cjs');
 const { VERDICTS, SCENARIO, recordRun, recordingPath, behindHead, runsOf } = require('./runs.cjs');
@@ -136,9 +141,6 @@ const VERIFY_USAGE = [
 
 /** The parts a run calls before its cleanup. */
 const RUN_PARTS = /** @type {readonly Part[]} */ (['launch', 'health', 'drive', 'evidence']);
-
-/** The trailer a code commit names its task in (commit-task.cjs). */
-const TASK_TRAILER = 'Leeway-Task';
 
 /** The most a file of text evidence holds, since the state branch keeps it for good (15.4.4). */
 const EVIDENCE_LIMIT = 64 * 1024;
@@ -343,19 +345,29 @@ function runScenario(root, setup, scenario, keep = () => {}) {
 }
 
 /**
- * The task a run in the calling conversation is for: the task of the unit
- * in flight there whose worktree the run is in, else the one task of the
- * unit in flight there, or null where there is none, or several.
- * @param {string} root the checkout the run is in @param {string} unit
+ * Whether a task's acceptance scenarios hold a scenario, by its id.
+ * @param {string} text the task's, as the tracker holds it @param {string} scenario
+ */
+function holdsScenario(text, scenario) {
+  return new RegExp(`(?<![\\w.])${scenario.replace('.', '\\.')}(?!\\w)`).test(scenariosOf(text));
+}
+
+/**
+ * The task a run in the calling conversation is for (the header's): the
+ * task of the unit in flight there whose worktree the run is in, else the
+ * one task of the unit in flight there whose acceptance scenarios hold the
+ * scenario, or null.
+ * @param {string} cwd @param {string} root the checkout the run is in @param {string} unit @param {string} scenario
  * @returns {string|null}
  */
-function taskOfRun(root, unit) {
+function taskOfRun(cwd, root, unit, scenario) {
   const session = handedSession();
   if (session === null) return null;
   const here = taskAt(session, root);
   if (here !== null && here.unit === unit) return here.task;
-  const inFlight = tasksInFlight(session).filter((task) => task.unit === unit);
-  return inFlight.length === 1 ? inFlight[0].task : null;
+  const holding = tasksInFlight(session)
+    .filter((task) => task.unit === unit && holdsScenario(trackedTask(cwd, parseShownTask(unit, task.task)).text, scenario));
+  return holding.length === 1 ? holding[0].task : null;
 }
 
 /**
@@ -369,6 +381,7 @@ function verifyScenario(cwd, unit, scenario) {
   const setup = recordedSetup(cwd, unit);
   const root = codeRoot(cwd);
   const commits = cleanCommits(root);
+  const task = taskOfRun(cwd, root, unit, scenario);
   const { verdict, evidence, recordings } = runScenario(root, setup, scenario, (wrote) => {
     for (const recording of wrote.recordings) {
       const kept = recordingPath(cwd, unit, scenario, recording);
@@ -385,7 +398,7 @@ function verifyScenario(cwd, unit, scenario) {
       at: isoNow(),
       checkout: root,
       commits,
-      task: taskOfRun(root, unit),
+      task,
       evidence,
       recordings: recordings.map(({ name, sha256 }) => ({ name, sha256 })),
     });
@@ -505,8 +518,8 @@ function recordSetup(cwd, unit, file, scenario) {
  */
 function phaseCommits(repo, unit, phase) {
   if (!hasCommits(repo.path)) return [];
-  const out = git(repo.path, ['log', '--reverse', '--relative', '--no-renames', '--no-show-signature', '--fixed-strings', `--grep=${TASK_TRAILER}: ${unit}-${phase}-`,
-    `--format=%x1e%H%x09%(trailers:key=${TASK_TRAILER},valueonly,separator=%x09)`, '--name-only', '-z']);
+  const out = git(repo.path, ['log', '--reverse', '--relative', '--no-renames', '--no-show-signature', '--fixed-strings', `--grep=${TRAILER}: ${unit}-${phase}-`,
+    `--format=%x1e%H%x09%(trailers:key=${TRAILER},valueonly,separator=%x09)`, '--name-only', '-z']);
   return out.split('\x1e').slice(1).flatMap((record) => {
     const end = record.search(/[\n\0]/);
     const [sha, ...tasks] = (end < 0 ? record : record.slice(0, end)).split('\t');

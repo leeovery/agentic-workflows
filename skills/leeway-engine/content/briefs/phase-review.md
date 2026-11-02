@@ -67,6 +67,8 @@ Whatever the fix's size, before it lands the builder checks the edge cases aroun
 
 A gap the builder finds beyond the task goes to the notes for later or through the ask rule; the orchestrator lands it.
 
+A wrong result in what the work does is always a finding, even when its fix reaches beyond the task. Only an improvement, or a hole or edge case beyond the task, is a note for later.
+
 Review the phase as a professional would, never one small thing.
 
 # Each finding's call
@@ -91,9 +93,13 @@ The edge list:
 
 # Your report
 
-Your report ends in its findings, then its verdict. The findings are its last section, `## Findings`: each finding an item opening on its call, with what is wrong, and beneath it, indented, the user scenario that meets it; or `None.` where you found nothing. The last line is `Verdict: pass` where nothing serious and no bug stands, else `Verdict: fail`.
+Your report ends in its notes for later, then its findings, then its verdict. The notes for later are the section just before the findings, `## Notes for later`: each note an item naming what lies beyond the task and where it is; or `None.` where there is none. The findings are its last section, `## Findings`: each finding an item opening on its call, with what is wrong, and beneath it, indented, the user scenario that meets it; or `None.` where you found nothing. The last line is `Verdict: pass` where nothing serious and no bug stands, else `Verdict: fail`.
 
 ```markdown
+## Notes for later
+
+- {what lies beyond the task}, at {where it is}
+
 ## Findings
 
 - serious: {what is wrong}
@@ -106,7 +112,7 @@ Your report ends in its findings, then its verdict. The findings are its last se
 Verdict: fail
 ```
 
-Write the whole report to the file under "Where your report goes". Your final message then holds only the report's nits, each as the report words it, and its verdict line, and nothing else.
+Write the whole report to the file under "Where your report goes". Your final message then holds only the report's nits, then its notes for later, each as the report words it, and its verdict line, and nothing else.
 
 # Comments are never the standard
 

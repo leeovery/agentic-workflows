@@ -35,7 +35,7 @@ const { spawnSync } = require('child_process');
 const {
   ENGINE, call, ok, layout, writeState, readState, commitAll, fixtureFrom, setupGitFixture, cleanupFixture, withFrozenClock, FROZEN_AT,
 } = require('./engine-harness.cjs');
-const { createManifest } = require('./discovery-test-utils.cjs');
+const { createManifest, templateFolder } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { BRIEF_REFUSALS, briefPath, issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
@@ -64,7 +64,7 @@ const unitWorld = fixtureFrom('brief-guard-', (dir) => {
   writeState(dir, REPORTS[1], '## Findings\n\n- bug: The receipt omits the amount.\n  Scenario: a customer pays.\n\nVerdict: fail\n');
   commitAll(dir, 'init');
   ok(dir, ['task', 'phase', UNIT, '1', '--title', 'Cards']);
-  const file = path.join(dir, '..', 'task.md');
+  const file = path.join(templateFolder('brief-guard-files-'), 'task.md');
   fs.writeFileSync(file, TASK);
   ok(dir, ['task', 'create', UNIT, '1', '--file', file]);
 });

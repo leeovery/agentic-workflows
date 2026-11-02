@@ -20,13 +20,14 @@
 // the driver finds Tick's id through them, read from the store, the one
 // place Tick lists refs. A ref is the engine's only where it reads as one of
 // those three shapes; any other a person gives a task is theirs, and passed
-// by. A name two tasks hold, or a task holding two, is refused. Every other
-// read is Tick's JSON output, and Tick's own ids in a refusal it makes are
-// put in the engine's words. A task's text is its description, its type its
-// one tag, an addition a note naming whose it is, and a link a dependency; a
-// closed task is cancelled, its reason a note. Tick counts a cancelled task,
-// as a done one, as holding nothing up, and ready answers only tasks not yet
-// started. Tick ends a parent itself once every child has ended — marking
+// by. A name two tasks hold, or a task holding two, is refused. When a task
+// started is its first transition into progress, which the store alone
+// holds too. Every other read is Tick's JSON output, and Tick's own ids in a
+// refusal it makes are put in the engine's words. A task's text is its
+// description, its type its one tag, an addition a note naming whose it is,
+// and a link a dependency; a closed task is cancelled, its reason a note.
+// Tick counts a cancelled task, as a done one, as holding nothing up, and
+// ready answers only tasks not yet started. Tick ends a parent itself once every child has ended — marking
 // the change its own — and makes no child under a cancelled one, so a phase
 // or task is made after the parents Tick ended are reopened. A parent the
 // person ended, cancelled or done, is theirs: the make is refused, reopening
@@ -55,7 +56,7 @@ const {
 /** @typedef {import('../../../domain/drivers.cjs').TaskStatus} TaskStatus */
 /** @typedef {import('../../../domain/task-id.cjs').TaskRef} TaskRef */
 /** @typedef {{kind: 'unit', unit: string} | {kind: 'phase', unit: string, phase: number} | {kind: 'task', task: TaskRef}} Name */
-/** @typedef {{byRef: Map<string, string>, byId: Map<string, Name>, ended: Map<string, 'tick'|'person'>}} Ids */
+/** @typedef {{byRef: Map<string, string>, byId: Map<string, Name>, ended: Map<string, 'tick'|'person'>, started: Map<string, string>}} Ids */
 
 const TOOL = 'tick';
 const UPDATE = 'https://github.com/leeovery/tick';
@@ -100,20 +101,21 @@ function said(name) {
 }
 
 /**
- * Tick's ids by the engine's names, the engine's names by Tick's ids, and
- * which of them have ended, by Tick itself or by the person — whoever made
- * the last change — as the store holds them. Refuses a line that is not
+ * Tick's ids by the engine's names, the engine's names by Tick's ids, which
+ * of them have ended, by Tick itself or by the person — whoever made the
+ * last change — and when each that moved into progress first did, as the
+ * store holds them. Refuses a line that is not
  * JSON, a name two tasks hold, and a task holding two.
  * @param {string} root
  * @returns {Ids}
  */
 function idsIn(root) {
   /** @type {Ids} */
-  const ids = { byRef: new Map(), byId: new Map(), ended: new Map() };
+  const ids = { byRef: new Map(), byId: new Map(), ended: new Map(), started: new Map() };
   const store = path.join(root, STORE, TASKS);
   for (const [i, line] of fs.readFileSync(store, 'utf8').split('\n').entries()) {
     if (line === '') continue;
-    /** @type {{id: string, status: string, refs?: string[], transitions?: {auto?: boolean}[]}} */
+    /** @type {{id: string, status: string, refs?: string[], transitions?: {to: string, at: string, auto?: boolean}[]}} */
     const { id, status, refs = [], transitions = [] } = lineOf(store, i + 1, line);
     const named = refs.flatMap((ref) => {
       const name = nameIn(ref);
@@ -126,6 +128,8 @@ function idsIn(root) {
     ids.byRef.set(ref, id);
     ids.byId.set(id, name);
     if (status === 'cancelled' || status === 'done') ids.ended.set(id, transitions.at(-1)?.auto === true ? 'tick' : 'person');
+    const into = transitions.find(({ to }) => to === 'in_progress');
+    if (into !== undefined) ids.started.set(id, into.at);
   }
   return ids;
 }
@@ -322,6 +326,17 @@ function show(root, ref) {
   };
 }
 
+/**
+ * When the task first moved into progress: its first transition there in
+ * the store, which Tick's show leaves out and the store's merge unions.
+ * @param {string} root @param {TaskRef} ref @returns {string|null}
+ */
+function started(root, ref) {
+  const ids = idsIn(root);
+  const at = ids.started.get(ids.byRef.get(taskRef(ref)) ?? '');
+  return at === undefined ? null : new Date(at).toISOString();
+}
+
 /** What the store's merge reads Tick's records by. @type {import('./merge.cjs').Names} */
 const NAMES = Object.freeze({ statuses: STATUSES, nameIn, said, phaseTitle });
 
@@ -350,4 +365,5 @@ module.exports = {
   close,
   list,
   show,
+  started,
 };
