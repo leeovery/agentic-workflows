@@ -96,6 +96,10 @@ describe('Tick\'s store merged between two clones', () => {
     const started = { ...BASE[2], ...set('in_progress', 6, true), notes: [{ text: 'x', created: AT(6) }] };
     const held = byId(merged(side({ 'tick-a': cancelled }), side({ 'tick-a': started })).tasks, 'tick-a');
     assert.deepStrictEqual([held?.status, held?.transitions.at(-1)], ['cancelled', cancelled.transitions[0]]);
+    const byTick = { ...BASE[2], ...set('done', 8, true), title: 'Write it' };
+    const byHand = { ...BASE[2], ...set('done', 4) };
+    const same = byId(merged(side({ 'tick-a': byTick }), side({ 'tick-a': byHand })).tasks, 'tick-a');
+    assert.deepStrictEqual([same?.status, same?.transitions.at(-1)], ['done', byHand.transitions[0]]);
   });
 
   it('keeps a task deleted on one side and changed on the other, and drops one deleted on one side and left alone on the other', () => {

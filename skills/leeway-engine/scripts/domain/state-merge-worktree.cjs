@@ -41,7 +41,8 @@ const { GitError } = require('../kernel/git.cjs');
 const { MergeError } = require('./state-merge-rules.cjs');
 const { blobIds } = require('../kernel/file-stream.cjs');
 const {
-  sameEntry, changedPaths, indexEntries, withPrivateIndex, fillIndex, mergePath, placeRuns, readContested, separateClashes, isUnder, besidePath, changedCopyKept,
+  sameEntry, changedPaths, indexEntries, withPrivateIndex, fillIndex, mergePath, placeRuns, readContested, separateClashes, isUnder, besidePath, fromRoot,
+  changedCopyKept,
 } = require('./state-merge-paths.cjs');
 
 /** @typedef {import('./state-merge-paths.cjs').Entry} Entry */
@@ -211,17 +212,18 @@ function stored(ctx, file) {
 function leaveBeside(ctx, write, report) {
   const { file } = write;
   const beside = besidePath(file, write.to.oid);
+  const [named, besideNamed] = [fromRoot(file), fromRoot(beside)];
   const left = report.resumed
-    ? `${file} changed after a catch-up was cut short and was left as it stands`
-    : `${file} changed while the state caught up and was left as it stands`;
-  const unless = report.resumed ? `unless ${file} was changed from the merged copy, ` : '';
+    ? `${named} changed after a catch-up was cut short and was left as it stands`
+    : `${named} changed while the state caught up and was left as it stands`;
+  const unless = report.resumed ? `unless ${named} was changed from the merged copy, ` : '';
   try {
     if (!exists(path.join(ctx.root, beside))) fs.renameSync(path.join(ctx.staged, file), path.join(ctx.root, beside));
-    report.warnings.push(`${left}, with the merged copy beside it as ${beside}: ${unless}committing ${file} as it stands leaves the remote's change only in ${beside}`);
+    report.warnings.push(`${left}, with the merged copy beside it as ${besideNamed}: ${unless}committing ${named} as it stands leaves the remote's change only in ${besideNamed}`);
   } catch (err) {
     if (!(err instanceof Error) || !('code' in err)) throw err;
     report.warnings.push(`${left}, and its merged copy could not be set beside it: `
-      + `${unless}the remote's change is only in the copy committed on ${ctx.branch}, until ${file} is next committed`);
+      + `${unless}the remote's change is only in the copy committed on ${ctx.branch}, until ${named} is next committed`);
   }
 }
 

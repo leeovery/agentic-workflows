@@ -164,7 +164,7 @@ describe('the worktree\'s uncommitted state through a catch-up', () => {
     assert.strictEqual(readFile(here.root, `${beside}/new.md`), 'uncommitted, where x was\n');
     assert.deepStrictEqual(out.warnings, [
       'unit/assets/x was deleted on one machine and changed on the other: the changed copy is kept',
-      `unit/assets/x is a file on the remote and a folder on this machine: the remote's file stays at unit/assets/x, and this machine's folder is kept beside it as ${beside}`,
+      `.leeway/unit/assets/x is a file on the remote and a folder on this machine: the remote's file stays at .leeway/unit/assets/x, and this machine's folder is kept beside it as .leeway/${beside}`,
     ]);
     assert.deepStrictEqual(out.uncommitted, { kept: [], merged: ['unit/assets/x', 'unit/assets/x/new.md'] });
     assert.strictEqual(status(here.root), `?? ${beside}/new.md\n`);
@@ -182,7 +182,7 @@ describe('the worktree\'s uncommitted state through a catch-up', () => {
     assert.strictEqual(readFile(here.root, 'unit/assets/y/b.md'), 'b, there\n');
     assert.strictEqual(readFile(here.root, beside), 'an uncommitted file\n');
     assert.deepStrictEqual(out.warnings, [
-      `unit/assets/y is a folder on the remote and a file on this machine: the remote's folder stays at unit/assets/y, and this machine's file is kept beside it as ${beside}`,
+      `.leeway/unit/assets/y is a folder on the remote and a file on this machine: the remote's folder stays at .leeway/unit/assets/y, and this machine's file is kept beside it as .leeway/${beside}`,
     ]);
     assert.strictEqual(status(here.root), `?? ${beside}\n`);
   });

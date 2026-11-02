@@ -143,7 +143,7 @@ describe('the merge, both sides moved (4.S14)', () => {
     assert.strictEqual(readFile(here.root, 'unit/assets/notes.md'), `there\n${notes}`);
     assert.strictEqual(readFile(here.root, notesBeside), `${notes}here\n`);
     assert.strictEqual(readFile(here.root, layout.manifest('unit')), unit('next', { there: 1, here: 1 }));
-    assert.deepStrictEqual(out.warnings.map((w) => w.split(' was ')[0]), ['unit/assets/notes.md']);
+    assert.deepStrictEqual(out.warnings.map((w) => w.split(' was ')[0]), ['.leeway/unit/assets/notes.md']);
   });
 
   it('carries a line across the chunks the ledger is read in whole, a character split between them included', () => {

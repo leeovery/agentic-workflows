@@ -26,6 +26,7 @@ const { git, commitOnState } = require('./engine-harness.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
+const { STATE_DIR_NAME } = require(path.join(SCRIPTS, 'kernel/state-root.cjs'));
 const { catchUpState, stateMergeGateSurface } = require(path.join(SCRIPTS, 'domain/state-merge.cjs'));
 const { listDrivers } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
 const { taskName } = require(path.join(SCRIPTS, 'domain/task-id.cjs'));
@@ -142,11 +143,12 @@ describe('the tracker\'s store, both machines having changed it', () => {
     const stopped = catchUpState(here.root);
 
     assert.deepStrictEqual([stopped.action, stopped.conflicts], ['stopped', [
-      { file: STORE, madeTwice: [taskName(ref(2, 2))], again: [{ phase: 2, title: 'Page the ledger' }], beside, pick: null, uncommitted: false },
+      { file: STORE, madeTwice: [{ kind: 'task', said: taskName(ref(2, 2)) }], again: [{ phase: 'The screen', kept: 2, tasks: ['Page the ledger'] }], beside, pick: null, uncommitted: false },
     ]]);
     const screen = stateMergeGateSurface(here.main, {});
     assert.match(screen, new RegExp(`^⚑ The state merge stopped: ${taskName(ref(2, 2))} made on both machines$`, 'm'));
-    assert.match(screen, /^> - "Page the ledger", in phase 2$/m);
+    assert.ok(screen.includes(['> - in phase 2, "The screen":', '>   - "Page the ledger"'].join('\n')));
+    assert.ok(screen.includes(`as \`${STATE_DIR_NAME}/${beside}\`.`));
     assert.throws(() => pickShown(here, '2'), /pick 1, got "2"/);
 
     const out = pickShown(here, '1');

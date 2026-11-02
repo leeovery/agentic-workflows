@@ -435,7 +435,7 @@ for (const driver of listDrivers('task')) {
         assert.deepStrictEqual([driver.show(taken, ref(1, 1))?.status, driver.show(taken, ref(1, 1))?.reason, driver.show(taken, ref(1, 2))?.type], ['closed', 'Not needed.', 'chore']);
       });
 
-      it('keeps the remote\'s phase or task where both made one under a name, setting aside this machine\'s with all it holds and every link to it, the rest merged; the notice names them and the tasks set aside', () => {
+      it('keeps the remote\'s phase or task where both made one under a name, setting aside this machine\'s with all it holds and every link to it, the rest merged; the notice names them, and what to make again by phase: one set aside by its title, one kept by its number', () => {
         const result = merged(
           (here) => {
             driver.done(here, ref(1, 1));
@@ -451,8 +451,8 @@ for (const driver of listDrivers('task')) {
           },
         );
         assert.deepStrictEqual(result.conflicts, [{
-          madeTwice: [taskName(ref(2, 2)), phaseName(UNIT, 3)],
-          again: [{ phase: 2, title: 'Page the ledger' }, { phase: 3, title: 'Export the ledger' }],
+          madeTwice: [{ kind: 'task', said: taskName(ref(2, 2)) }, { kind: 'phase', said: phaseName(UNIT, 3) }],
+          again: [{ phase: 'The screen', kept: 2, tasks: ['Page the ledger'] }, { phase: 'The export', kept: null, tasks: ['Export the ledger'] }],
         }]);
         const dir = read(result.text);
         assert.strictEqual(driver.show(dir, ref(1, 1))?.status, 'done');

@@ -41,6 +41,7 @@ const {
 } = require('./state-merge-rules.cjs');
 const { withScratch, readBlobs, blobOf } = require('./state-merge-blobs.cjs');
 const { blobToFile, fileLines, endsWithNewline } = require('../kernel/file-stream.cjs');
+const { STATE_DIR_NAME } = require('../kernel/state-root.cjs');
 
 /** @typedef {import('../kernel/isolated-git.cjs').IsolatedGit} IsolatedGit */
 /** @typedef {import('./state-merge-rules.cjs').Choice} Choice */
@@ -189,6 +190,20 @@ function keepChanged(file, { local, remote }) {
   return { entry: local ?? remote, note: changedCopyKept(file) };
 }
 
+/** A state path as a note names it, from the project root. @param {string} file */
+function fromRoot(file) {
+  return `${STATE_DIR_NAME}/${file}`;
+}
+
+/**
+ * That a copy is kept beside a path: the copy at `file` stays, and this
+ * machine's `what` is kept as `beside`, both named from the project root.
+ * @param {string} file @param {string} stays @param {string} what @param {string} beside
+ */
+function keptBeside(file, stays, what, beside) {
+  return `${stays} stays at ${fromRoot(file)}, and this machine's ${what} kept beside it as ${fromRoot(beside)}`;
+}
+
 /** Where this machine's copy of a path is set beside the remote's. @param {string} file @param {string} oid */
 function besidePath(file, oid) {
   const ext = path.posix.extname(file);
@@ -202,7 +217,7 @@ function keepBoth(file, versions) {
   return {
     entry: versions.remote,
     beside: { path: beside, entry: local },
-    note: `${file} was changed on both machines and is not merged line by line: the remote's copy stays at ${file}, and this machine's is kept beside it as ${beside}`,
+    note: `${fromRoot(file)} was changed on both machines and is not merged line by line: ${keptBeside(file, "the remote's copy", 'is', beside)}`,
   };
 }
 
@@ -482,13 +497,13 @@ function separateClashes(ctx, entries, remote) {
         separated.set(`${beside}${f.slice(file.length)}`, e);
       }
       moves.push({ from: file, to: beside });
-      notes.push(`${file} is a file on the remote and a folder on this machine: the remote's file stays at ${file}, and this machine's folder is kept beside it as ${beside}`);
+      notes.push(`${fromRoot(file)} is a file on the remote and a folder on this machine: ${keptBeside(file, "the remote's file", 'folder is', beside)}`);
     } else {
       const beside = besidePath(file, entry.oid);
       separated.delete(file);
       separated.set(beside, entry);
       moves.push({ from: file, to: beside });
-      notes.push(`${file} is a folder on the remote and a file on this machine: the remote's folder stays at ${file}, and this machine's file is kept beside it as ${beside}`);
+      notes.push(`${fromRoot(file)} is a folder on the remote and a file on this machine: ${keptBeside(file, "the remote's folder", 'file is', beside)}`);
     }
   }
   return { entries: separated, moves, notes };
@@ -538,6 +553,7 @@ module.exports = {
   mergeTrees,
   separateClashes,
   besidePath,
+  fromRoot,
   changedCopyKept,
   isUnder,
 };

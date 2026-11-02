@@ -17,18 +17,28 @@
 //   changed a task's status, a status set by hand stands over one Tick set,
 //   and only two set by hand differently are a choice.
 // - The merged store then reads as if Tick's own cascades had run over the
-//   merged tasks (Tick's internal/task/cascades.go): each parent whose
-//   status is Tick's, deepest first, is settled from its children — every
-//   child ended ends it, done where any is done, else cancelled; a child
-//   still open reopens one that had ended; a child in progress starts one
-//   that is open — each change an automatic transition stamped with the
-//   latest change the store holds. A parent the person ended stays ended.
+//   merged tasks (Tick's internal/task/cascades.go and apply_cascades.go),
+//   each parent settled from its children, deepest first, whoever set its
+//   status, as Tick's rules read no `auto`:
+//   - Rule 3 (EvaluateParentCompletion): a parent not ended whose children
+//     have all ended ends, done where any is done, else cancelled. One
+//     already ended stays as it is.
+//   - Rules 5 and 6: a parent ended over a child still open or in progress
+//     reopens; one Tick cancelled too, since only the merge leaves a live
+//     child under it.
+//   - Rule 2: an open parent over a child in progress starts.
+//   - Rules 7 and 9: a parent the person cancelled stays cancelled, its
+//     children whatever they are.
+//   Each change is an automatic transition stamped with the latest change
+//   the store holds.
 // - An engine name both sides made under Tick ids of their own is the
 //   remote's: this machine's record of it is set aside, a phase or unit
 //   with all it holds, every link to it dropped, and the rest merged as
 //   above. The merge answers it as one more conflict, naming the names
-//   made twice and the tasks set aside, for the engine to stop on and to
-//   keep this machine's whole copy beside the merged one.
+//   made twice and what to make again — each phase set aside by its title,
+//   with its tasks, and each task set aside under a phase kept by the
+//   phase's number and title — for the engine to stop on and to keep this
+//   machine's whole copy beside the merged one.
 // - A task only this machine made takes a creation sequence after the
 //   remote's highest, in this machine's order.
 // ---------------------------------------------------------------------------
@@ -48,11 +58,19 @@ const { FOREIGN_TASK } = require('../../../domain/task-id.cjs');
 /** @typedef {Map<string, Task>} Tasks */
 /** @typedef {{from: string, to: string, at: string, auto: boolean}} Transition */
 
+/** @typedef {import('../../../domain/drivers.cjs').MadeAgain} MadeAgain */
+
 /**
  * The driver's names for what the store holds: the store's file, Tick's
- * statuses in the engine's words, the engine's name a ref carries, and a
- * name as a sentence gives it.
- * @typedef {{file: string, statuses: Readonly<Record<string, string>>, nameIn: (ref: string) => Name|null, said: (name: Name) => string}} Names
+ * statuses in the engine's words, the engine's name a ref carries, a name
+ * as a sentence gives it, and a phase's title as the engine gave it.
+ * @typedef {{
+ *   file: string,
+ *   statuses: Readonly<Record<string, string>>,
+ *   nameIn: (ref: string) => Name|null,
+ *   said: (name: Name) => string,
+ *   phaseTitle: (held: string) => string,
+ * }} Names
  */
 
 const SIDES = ["the common ancestor's", "this machine's", "the remote's"];
@@ -99,16 +117,16 @@ function madeOn(base, side) {
 /**
  * The engine's names both sides made, each under a Tick id of its own, with
  * this machine's ids for them, in this machine's order.
- * @param {Names} names @param {Tasks} base @param {Tasks} local @param {Tasks} remote @returns {Map<string, string>}
+ * @param {Names} names @param {Tasks} base @param {Tasks} local @param {Tasks} remote @returns {Map<string, {name: Name, id: string}>}
  */
 function madeTwice(names, base, local, remote) {
-  /** @param {Tasks} side @returns {Map<string, string>} */
+  /** @param {Tasks} side @returns {Map<string, {name: Name, id: string}>} */
   const named = (side) => new Map(madeOn(base, side).flatMap((task) => {
     const name = nameOf(names, task);
-    return name === null ? [] : [/** @type {[string, string]} */ ([names.said(name), task.id])];
+    return name === null ? [] : [/** @type {[string, {name: Name, id: string}]} */ ([names.said(name), { name, id: task.id }])];
   }));
   const theirs = named(remote);
-  return new Map([...named(local)].filter(([name, id]) => theirs.has(name) && theirs.get(name) !== id));
+  return new Map([...named(local)].filter(([said, { id }]) => theirs.has(said) && theirs.get(said)?.id !== id));
 }
 
 /**
@@ -183,16 +201,18 @@ function settled(base, local, remote) {
 }
 
 /**
- * The transition that set the task's status on the side it was kept from
+ * The transition that set the task's status on a side it was kept from
  * moved last, where another stands after it, so the store still says who
- * set it.
+ * set it: the person's, where either side's was theirs.
  * @param {Task} task @param {Task[]} sides
  * @returns {Transition[]|undefined}
  */
 function deciderLast(task, sides) {
   const transitions = /** @type {Transition[]|undefined} */ (task.transitions);
-  const decider = sides.map((side) => side.transitions?.at(-1)).find((last) => last?.to === task.status);
-  if (transitions === undefined || decider === undefined || transitions.at(-1)?.to === task.status) return transitions;
+  const deciders = sides.map((side) => side.transitions?.at(-1)).filter((last) => last?.to === task.status);
+  const decider = deciders.find((last) => last?.auto === false) ?? deciders[0];
+  const last = transitions?.at(-1);
+  if (transitions === undefined || decider === undefined || (last?.to === task.status && last?.auto === decider.auto)) return transitions;
   return [...transitions.filter((held) => !same(held, decider)), decider];
 }
 
@@ -246,13 +266,16 @@ function mergeTask(names, base, local, remote, pickOf, named) {
 
 /**
  * The status Tick's cascades give a parent from its children's: every
- * child ended ends it, done where any is done (Rule 3); else one that had
- * ended reopens (Rules 5 and 6), and one open starts where a child is in
- * progress (Rule 2).
+ * child ended ends one not yet ended, done where any is done (Rule 3);
+ * else one that had ended reopens (Rules 5 and 6), and one open starts
+ * where a child is in progress (Rule 2).
  * @param {string} status @param {string[]} children @returns {string}
  */
 function cascaded(status, children) {
-  if (children.every(ended)) return children.includes('done') ? 'done' : 'cancelled';
+  if (children.every(ended)) {
+    if (ended(status)) return status;
+    return children.includes('done') ? 'done' : 'cancelled';
+  }
   const from = ended(status) ? 'open' : status;
   return from === 'open' && children.includes('in_progress') ? 'in_progress' : from;
 }
@@ -287,10 +310,12 @@ function moved(task, to, stamp) {
 }
 
 /**
- * The merged tasks with each parent whose status is Tick's settled from
- * its children, deepest first. A status is the person's where a side
- * holding it last set it by hand.
- * @param {Task[]} tasks @param {Tasks[]} sides @returns {Task[]}
+ * The merged tasks with each parent settled from its children, deepest
+ * first, but one the person cancelled: cancelled by hand on a side that
+ * holds it cancelled. The ancestor's copy says nothing of who set the
+ * status now: a side that left the task alone holds the ancestor's.
+ * @param {Task[]} tasks @param {Tasks[]} sides  this machine's and the remote's
+ * @returns {Task[]}
  */
 function settleParents(tasks, sides) {
   const byId = new Map(tasks.map((task) => [task.id, task]));
@@ -302,11 +327,12 @@ function settleParents(tasks, sides) {
   /** @param {string} id @returns {number} */
   const depth = (id) => (byId.has(byId.get(id)?.parent) ? 1 + depth(byId.get(id)?.parent) : 0);
   const stamp = tasks.map((task) => task.updated).reduce(later, undefined);
-  const theirs = (/** @type {Task} */ task) => !sides.some((side) => side.get(task.id)?.status === task.status && byHand(side.get(task.id)));
+  const cancelledByHand = (/** @type {Task} */ task) => task.status === 'cancelled'
+    && sides.some((side) => side.get(task.id)?.status === 'cancelled' && byHand(side.get(task.id)));
   for (const id of [...children.keys()].sort((a, b) => depth(b) - depth(a))) {
     const task = /** @type {Task} */ (byId.get(id));
     const to = cascaded(task.status, /** @type {string[]} */ (children.get(id)).map((child) => byId.get(child)?.status));
-    if (to !== task.status && theirs(task)) byId.set(id, moved(task, to, stamp));
+    if (to !== task.status && !cancelledByHand(task)) byId.set(id, moved(task, to, stamp));
   }
   return tasks.map((task) => /** @type {Task} */ (byId.get(task.id)));
 }
@@ -373,20 +399,42 @@ function unlinked(task, gone) {
 }
 
 /**
- * The tasks set aside as the person makes them again: each that is no
- * phase or unit, its title and the phase it was in.
+ * What the person makes again of what was set aside, by phase: each phase
+ * set aside by its title, with its tasks; each task set aside under a phase
+ * kept by that phase's number and title; one in no phase under none.
  * @param {Names} names @param {Task[]} aside @param {Tasks} local
- * @returns {{phase: number|null, title: string}[]}
+ * @returns {MadeAgain[]}
  */
 function toMakeAgain(names, aside, local) {
-  return aside.flatMap((task) => {
-    const name = nameOf(names, task);
-    if (name !== null && name.kind !== 'task') return [];
-    const parent = local.get(task.parent);
-    const held = parent === undefined ? null : nameOf(names, parent);
-    const phase = name?.kind === 'task' ? name.task.phase : held?.kind === 'phase' ? held.phase : null;
-    return [{ phase, title: String(task.title) }];
-  });
+  const gone = new Set(aside.map((task) => task.id));
+  /** @param {Task} task @returns {Task|undefined} */
+  const phaseOver = (task) => {
+    for (let at = local.get(task.parent); at !== undefined; at = local.get(at.parent)) {
+      if (nameOf(names, at)?.kind === 'phase') return at;
+    }
+    return undefined;
+  };
+  /** @type {Map<string, MadeAgain>} */
+  const byPhase = new Map();
+  /** @param {Task|undefined} phase @returns {MadeAgain} */
+  const groupOf = (phase) => {
+    const key = phase?.id ?? '';
+    if (!byPhase.has(key)) {
+      const name = phase === undefined ? null : nameOf(names, phase);
+      byPhase.set(key, {
+        phase: phase === undefined ? null : names.phaseTitle(String(phase.title)),
+        kept: name?.kind === 'phase' && !gone.has(key) ? name.phase : null,
+        tasks: [],
+      });
+    }
+    return /** @type {MadeAgain} */ (byPhase.get(key));
+  };
+  for (const task of aside) {
+    const kind = nameOf(names, task)?.kind;
+    if (kind === 'phase') groupOf(task);
+    else if (kind !== 'unit') groupOf(phaseOver(task)).tasks.push(String(task.title));
+  }
+  return [...byPhase.values()];
 }
 
 /**
@@ -398,14 +446,16 @@ function toMakeAgain(names, aside, local) {
 function mergeStore(names, baseText, localText, remoteText, pickOf = () => null) {
   const [base, mine, remote] = [baseText, localText, remoteText].map((text, i) => tasksOf(names, text, SIDES[i]));
   const twice = madeTwice(names, base, mine, remote);
-  const aside = setAside(mine, twice.values());
+  const aside = setAside(mine, [...twice.values()].map(({ id }) => id));
   const gone = new Set(aside.map((task) => task.id));
   const local = new Map([...mine].filter(([id]) => !gone.has(id)));
   const merged = mergeTasks(names, base, local, remote, pickOf);
-  const tasks = settleParents(sequenced(merged.tasks, base, remote).map((task) => unlinked(task, gone)), [base, local, remote]);
+  const tasks = settleParents(sequenced(merged.tasks, base, remote).map((task) => unlinked(task, gone)), [local, remote]);
   /** @type {StoreConflict[]} */
   const conflicts = [...merged.conflicts];
-  if (twice.size > 0) conflicts.push({ madeTwice: [...twice.keys()], again: toMakeAgain(names, aside, mine) });
+  if (twice.size > 0) {
+    conflicts.push({ madeTwice: [...twice].map(([said, { name }]) => ({ kind: name.kind, said })), again: toMakeAgain(names, aside, mine) });
+  }
   return { text: tasks.map((task) => `${JSON.stringify(task)}\n`).join(''), conflicts };
 }
 

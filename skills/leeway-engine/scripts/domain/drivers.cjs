@@ -87,9 +87,17 @@ const METHODS = Object.freeze({
  * @typedef {import('./state-merge-rules.cjs').FieldConflict & {label: {subject: string, name: string, field: string}}} FieldStoreConflict
  */
 /**
- * Engine names both sides made, by the engine's words, and this machine's
- * tasks set aside for them, each by its title and the phase it was in.
- * @typedef {{madeTwice: string[], again: {phase: number|null, title: string}[]}} MadeTwice
+ * What the person makes again of what a merge set aside, by phase: the
+ * phase's title, null for tasks in none; the kept phase's number, null
+ * where the phase itself is made again; and the titles of its tasks set
+ * aside.
+ * @typedef {{phase: string|null, kept: number|null, tasks: string[]}} MadeAgain
+ */
+/**
+ * Engine names both sides made, each its kind and the words `task-id.cjs`
+ * gives it, and what of this machine's set aside for them the person makes
+ * again.
+ * @typedef {{madeTwice: {kind: 'unit'|'phase'|'task', said: string}[], again: MadeAgain[]}} MadeTwice
  */
 /** @typedef {FieldStoreConflict|MadeTwice} StoreConflict */
 /** The store merged: its text, and what it leaves the person. @typedef {{text: string, conflicts: StoreConflict[]}} StoreMerge */
@@ -134,8 +142,8 @@ const METHODS = Object.freeze({
  * leave it over the merged children, never a choice. An engine name both
  * sides made under ids of their own stays the remote's: this machine's
  * record is set aside, with all it holds, and the rest merged; the merge
- * answers it as one more conflict, naming the names made twice and the
- * tasks set aside, and the engine stops on it and keeps this machine's
+ * answers it as one more conflict, naming the names made twice and what
+ * to make again by phase, and the engine stops on it and keeps this machine's
  * whole copy beside. A copy it cannot read is refused with a MergeError
  * naming the side and the line. A driver whose tracker projects used
  * before Leeway may declare where they kept its store, `preLeewayStore`

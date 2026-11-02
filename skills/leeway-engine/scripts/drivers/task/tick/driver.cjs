@@ -225,11 +225,17 @@ function createUnit(root, unit) {
   return true;
 }
 
+/** A phase's title as Tick holds it. @param {number} phase @param {string} title */
+const phaseHeld = (phase, title) => `Phase ${phase}: ${title}`;
+
+/** A phase's title as the engine gave it, from Tick's. @param {string} held */
+const phaseTitle = (held) => held.replace(/^Phase [1-9][0-9]*: /, '');
+
 /** @param {string} root @param {string} unit @param {number} phase @param {string} title */
 function createPhase(root, unit, phase, title) {
   const ids = idsIn(root);
   reopenParents(root, ids, unit, [unitRef(unit)]);
-  tick(root, ['create', '--parent', idOf(ids, unitRef(unit)), '--refs', phaseRef(unit, phase), '--', `Phase ${phase}: ${title}`]);
+  tick(root, ['create', '--parent', idOf(ids, unitRef(unit)), '--refs', phaseRef(unit, phase), '--', phaseHeld(phase, title)]);
 }
 
 /** @param {string} root @param {TaskRef} ref @param {{title: string, type: string, text: string}} task */
@@ -317,7 +323,7 @@ function show(root, ref) {
 }
 
 /** What the store's merge reads Tick's records by. @type {import('./merge.cjs').Names} */
-const NAMES = Object.freeze({ file: `${STORE}/${TASKS}`, statuses: STATUSES, nameIn, said });
+const NAMES = Object.freeze({ file: `${STORE}/${TASKS}`, statuses: STATUSES, nameIn, said, phaseTitle });
 
 module.exports = {
   kind: 'task',

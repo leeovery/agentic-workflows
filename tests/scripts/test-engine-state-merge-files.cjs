@@ -72,7 +72,7 @@ describe('any other file both sides changed', () => {
     assert.strictEqual(readFile(here.root, 'unit/assets/chart.png'), 'png\0there');
     assert.strictEqual(readFile(here.root, beside), 'png\0here');
     assert.deepStrictEqual(out.warnings, [
-      `unit/assets/chart.png was changed on both machines and is not merged line by line: the remote's copy stays at unit/assets/chart.png, and this machine's is kept beside it as ${beside}`,
+      `.leeway/unit/assets/chart.png was changed on both machines and is not merged line by line: the remote's copy stays at .leeway/unit/assets/chart.png, and this machine's is kept beside it as .leeway/${beside}`,
     ]);
     assert.strictEqual(status(here.root), '');
   });
@@ -105,7 +105,7 @@ describe('any other file both sides changed', () => {
     const beside = `unit/assets/notes.${blobId(latin('café\n\nONE\n\ntwo\n')).slice(0, 8)}.txt`;
     assert.ok(fs.readFileSync(path.join(here.root, 'unit/assets/notes.txt')).equals(latin('café\n\none\n\nTWO\n')), 'the remote\'s bytes are not at the path');
     assert.ok(fs.readFileSync(path.join(here.root, beside)).equals(latin('café\n\nONE\n\ntwo\n')), 'this machine\'s bytes are not beside it');
-    assert.deepStrictEqual(out.warnings.map((w) => w.split(' was ')[0]), ['unit/assets/notes.txt']);
+    assert.deepStrictEqual(out.warnings.map((w) => w.split(' was ')[0]), ['.leeway/unit/assets/notes.txt']);
   });
 
   it('keeps a JSON file both sides changed whole, the remote\'s at its path and this machine\'s beside it, never merged line by line', () => {
@@ -122,7 +122,7 @@ describe('any other file both sides changed', () => {
     assert.strictEqual(readFile(here.root, data), '{\n  "a": 2,\n  "b": 1\n}\n');
     assert.strictEqual(readFile(here.root, 'unit/assets/events.jsonl'), '{"n":1}\n{"n":3}\n');
     assert.strictEqual(readFile(here.root, events), '{"n":1}\n{"n":2}\n');
-    assert.deepStrictEqual(out.warnings.map((w) => w.split(' was ')[0]), ['unit/assets/data.json', 'unit/assets/events.jsonl']);
+    assert.deepStrictEqual(out.warnings.map((w) => w.split(' was ')[0]), ['.leeway/unit/assets/data.json', '.leeway/unit/assets/events.jsonl']);
   });
 
   it('keeps a file on the remote and a folder here apart, the remote\'s file at the path and this machine\'s folder beside it', () => {
@@ -138,7 +138,7 @@ describe('any other file both sides changed', () => {
     assert.strictEqual(readFile(here.root, 'unit/assets/z'), 'z, a file there\n');
     assert.strictEqual(readFile(here.root, `${beside}/inside.md`), 'inside, here\n');
     assert.deepStrictEqual(out.warnings, [
-      `unit/assets/z is a file on the remote and a folder on this machine: the remote's file stays at unit/assets/z, and this machine's folder is kept beside it as ${beside}`,
+      `.leeway/unit/assets/z is a file on the remote and a folder on this machine: the remote's file stays at .leeway/unit/assets/z, and this machine's folder is kept beside it as .leeway/${beside}`,
     ]);
     assert.strictEqual(status(here.root), '');
   });
@@ -155,7 +155,7 @@ describe('any other file both sides changed', () => {
     assert.strictEqual(readFile(here.root, 'unit/assets/w/inside.md'), 'inside, there\n');
     assert.strictEqual(readFile(here.root, beside), 'w, a file here\n');
     assert.deepStrictEqual(out.warnings, [
-      `unit/assets/w is a folder on the remote and a file on this machine: the remote's folder stays at unit/assets/w, and this machine's file is kept beside it as ${beside}`,
+      `.leeway/unit/assets/w is a folder on the remote and a file on this machine: the remote's folder stays at .leeway/unit/assets/w, and this machine's file is kept beside it as .leeway/${beside}`,
     ]);
     assert.strictEqual(status(here.root), '');
   });
