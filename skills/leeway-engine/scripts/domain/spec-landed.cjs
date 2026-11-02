@@ -30,15 +30,6 @@ function refusalOf(cwd, unit, landed) {
   return disk === landed ? null : `${unit}'s spec has changes that haven't landed — land them: spec land ${unit}`;
 }
 
-/**
- * Why the unit's landed spec is not the one on disk, or null: none has
- * landed, or the file holds changes that have not.
- * @param {string} cwd @param {string} unit @returns {string|null}
- */
-function unlandedRefusal(cwd, unit) {
-  return refusalOf(cwd, unit, landedSpec(cwd, unit));
-}
-
 /** The unit's landed spec, refused while it is not the one on disk. @param {string} cwd @param {string} unit @returns {string} */
 function readLandedSpec(cwd, unit) {
   const landed = landedSpec(cwd, unit);
@@ -47,4 +38,4 @@ function readLandedSpec(cwd, unit) {
   return /** @type {string} */ (landed);
 }
 
-module.exports = { landedSpec, unlandedRefusal, readLandedSpec };
+module.exports = { landedSpec, readLandedSpec };

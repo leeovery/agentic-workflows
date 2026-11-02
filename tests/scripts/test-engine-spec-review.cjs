@@ -116,6 +116,17 @@ describe('the spec writer\'s brief (11.1.5, 11.3.2, 11.S2)', () => {
     ].join('\n'));
   });
 
+  it('a number removed while the review page is open stays held, so the next free number is past it (11.11.3)', () => {
+    writeSpec(spec({ more: [`2.1.3 A refund names its charge. [${made.where}]`, ''] }));
+    land();
+    ok(dir(), ['spec', 'page', UNIT]);
+    ok(dir(), ['spec', 'published', UNIT, 'https://claude.ai/public/artifacts/0123']);
+    writeSpec(spec());
+    land();
+
+    assert.ok(section(issued(['spec-writer', UNIT]).brief, 'The numbers held').endsWith('\n- 2.1.1, 2.1.2, 2.1.3 · next free 2.1.4'));
+  });
+
   it('the land committing a take retires the wording file it carried where unchanged since the brief; one written to since stays, holding an agreement no brief carried', () => {
     writeSpec(spec());
     const file = writeState(dir(), WORDING, '2.1.1: A refund reaches the card at once.\n');
@@ -259,6 +270,7 @@ describe('the spec reviewer\'s brief (11.7.1, 11.7.8, 11.7.9)', () => {
       'measured-findings': `- ${made.speed}: A charge takes 300 ms.\n  Its result: 300 ms\n  Its command:\n\n  \`\`\`\n  npm run bench -- charge\n  \`\`\``,
       'product-cites': `- ${made.where} decision: Back to the card.\n  Cited by 2.1.1`,
       'unit-records': RECORDS(),
+      'builder-calls': 'None recorded.',
       'report-refusal': 'None recorded.',
       'unit-report-to': `\`${pass.file}\``,
     })}`);

@@ -198,7 +198,7 @@ describe('the sweep\'s brief (8.10.8, 8.S43, 26.5.1)', () => {
 });
 
 describe('the builder\'s calls, recorded by the take for the spec\'s writer and its trace (8.10.5, 11.4.4)', () => {
-  it('records each call with its id, and the writer\'s brief lists them and the trace resolves a builder\'s cite against them with the unit\'s cache gone — a call the record does not hold invented', () => {
+  it('records each call with its id, and the writer\'s and the reviewer\'s briefs list them and the trace resolves a builder\'s cite against them with the unit\'s cache gone — a call the record does not hold invented', () => {
     report({ candidates: [] });
     take();
     fs.rmSync(statePath(dir, layout.cache(UNIT)), { recursive: true, force: true });
@@ -209,12 +209,17 @@ describe('the builder\'s calls, recorded by the take for the spec\'s writer and 
       '## 1-S. Scenarios for §1', '', '1.S1 Given a note, when it is saved, then its file ends in .md. (1.1.1)', '',
     ].join('\n'));
 
-    assert.deepStrictEqual(JSON.parse(readState(dir, TAKEN)).builder_calls, RECORDED);
-    assert.strictEqual(part(fs.readFileSync(briefPath(SESSION_ID, res.id), 'utf8'), 'The builder\'s calls'), [
+    const invented = ok(dir, ['spec', 'land', UNIT]).invented;
+    const pass = ok(dir, ['agent', 'dispatch', UNIT, 'specification', UNIT, '--kind', 'spec-review'], { env: SESSION });
+    const reviewer = ok(dir, ['brief', 'spec-reviewer', UNIT, '--agent', pass.id], { env: SESSION });
+    const calls = [
       '- call-1: The file extension', '  Why: The person would leave it.',
       '- call-2: The folder\'s default name', '  Why: Any name serves.',
-    ].join('\n'));
-    assert.deepStrictEqual(ok(dir, ['spec', 'land', UNIT]).invented, [{ number: '1.1.2', why: 'call-3 names no call the sweep left to the builder' }]);
+    ].join('\n');
+
+    assert.deepStrictEqual(JSON.parse(readState(dir, TAKEN)).builder_calls, RECORDED);
+    assert.deepStrictEqual([res, reviewer].map(({ id }) => part(fs.readFileSync(briefPath(SESSION_ID, id), 'utf8'), 'The builder\'s calls')), [calls, calls]);
+    assert.deepStrictEqual(invented, [{ number: '1.1.2', why: 'call-3 names no call the sweep left to the builder' }]);
   });
 });
 

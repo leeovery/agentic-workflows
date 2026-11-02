@@ -211,7 +211,7 @@ describe('a spec landed (11.4.1, 11.4.3, 11.S3)', () => {
     const unchanged = land();
     writeSpec(once(spec([`1.1.1 Visa and Mastercard. [${made.cards}]`])));
     const scenario = land();
-    const added = once(spec([`1.1.1 Visa and Mastercard. [${made.cards}]`], ['2.1.1 A refund goes back to the card. [builder]', '2.1.2 It names its charge. [builder]']));
+    const added = once(spec([`1.1.1 Visa and Mastercard. [${made.cards}]`], ['2.1.1 A refund goes back to the card. [builder: call-1]', '2.1.2 It names its charge. [builder: call-1]']));
     writeSpec(added);
     const [part, touchedByPart] = [land().changed, stateTouched()];
     writeSpec(added.slice(0, added.indexOf('## 2. Refunds')));
@@ -230,7 +230,7 @@ describe('a land refused, spec.md left as written and nothing committed (11.9.1)
   });
 
   it('refuses a concluded spec — the build begun on it — which is never corrected', () => {
-    writeSpec(spec(['1.1.1 Cards. [builder]']));
+    writeSpec(spec(['1.1.1 Cards. [builder: call-1]']));
     payments(dir, { wallets: 'in-progress', disputes: 'in-progress' }, { wallets: { postponed: true }, disputes: { cancelled: true } }, { build: { position: 'auto' } });
     commitAll(dir, 'concluded');
 
@@ -258,10 +258,10 @@ describe('a land refused, spec.md left as written and nothing committed (11.9.1)
   });
 
   it('refuses, in its words, a unit enter specification refuses: a topic not yet settled, and a quick-fix', () => {
-    writeSpec(spec(['1.1.1 Cards. [builder]']));
+    writeSpec(spec(['1.1.1 Cards. [builder: call-1]']));
     payments(dir, { refunds: 'in-progress', wallets: 'in-progress', disputes: 'in-progress' }, { wallets: { postponed: true }, disputes: { cancelled: true } });
     createManifest(dir, 'tidy', { work_type: 'quick-fix' });
-    writeState(dir, layout.unit('tidy', 'spec.md'), spec(['1.1.1 Tidied. [builder]']));
+    writeState(dir, layout.unit('tidy', 'spec.md'), spec(['1.1.1 Tidied. [builder: call-1]']));
     commitAll(dir, 'unsettled');
     const [unsettled, quickFix] = [specEntryRefusal(dir, UNIT), specEntryRefusal(dir, 'tidy')];
 
@@ -270,7 +270,7 @@ describe('a land refused, spec.md left as written and nothing committed (11.9.1)
   });
 
   it('refuses an epic of more than one live topic whose sweep is not taken, naming the way on (8.10.3)', () => {
-    writeSpec(spec(['1.1.1 Cards. [builder]']));
+    writeSpec(spec(['1.1.1 Cards. [builder: call-1]']));
     fs.rmSync(statePath(dir, layout.unit(UNIT, 'sweep-taken.json')));
     commitAll(dir, 'sweep not taken');
 
@@ -279,7 +279,7 @@ describe('a land refused, spec.md left as written and nothing committed (11.9.1)
 
   it('refuses a unit with no spec.md, and a spec its grammar refuses, naming its faults one per line', () => {
     const none = refused();
-    writeSpec(spec(['1.1.1 Cards. [builder]', '1.1.1 Again. [see; below]']));
+    writeSpec(spec(['1.1.1 Cards. [builder: call-1]', '1.1.1 Again. [see; below]']));
     commitAll(dir, 'written');
 
     assert.deepStrictEqual([none, refused()], [
@@ -290,7 +290,7 @@ describe('a land refused, spec.md left as written and nothing committed (11.9.1)
   });
 
   it('refuses a commit git refuses, naming its fault', () => {
-    writeSpec(spec(['1.1.1 Cards. [builder]']));
+    writeSpec(spec(['1.1.1 Cards. [builder: call-1]']));
     const real = execFileSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim();
     const wrapper = fs.mkdtempSync(path.join(dir, 'git-'));
     fs.writeFileSync(path.join(wrapper, 'git'), `#!/bin/sh\ncase "$*" in *commit-tree*) echo "fatal: refused here" >&2; exit 128 ;; esac\nexec "${real}" "$@"\n`, { mode: 0o755 });

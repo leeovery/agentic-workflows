@@ -25,9 +25,10 @@
 // dispatched it, abandoned; its report on disk, taken in by a scan — and a
 // pass abandoned in flight is ignored whole, whenever it reports. A pass
 // running on the spec as it stands is named at the entry, and another
-// pass's brief is refused while it runs. A reviewer's brief refused closes
-// its dispatch where it is bound to no land, so no reader of the store
-// lists it in flight.
+// pass's brief is refused while it runs; one an earlier conversation left
+// running, its report not on disk, is abandoned there. A reviewer's brief
+// refused closes its dispatch where it is bound to no land, so no reader of
+// the store lists it in flight.
 //
 // Layer: verb. World: spec-review-world.cjs's.
 // ---------------------------------------------------------------------------
@@ -299,5 +300,26 @@ describe('a pass of the spec\'s review in the store (11.7.1, 11.7.2, 11.7.6)', (
     assert.deepStrictEqual([entered.includes(`running: ${first.id}`), entered.includes(`running: ${lost.id}`), entered.includes(`lost: ${lost.id}`)], [true, false, true]);
     assert.strictEqual(held, `brief: ${UNIT}'s spec as it stands is under review already — ${stillRunning(first)}`);
     assert.strictEqual(after, 'spec-reviewer');
+  });
+
+  it('a pass an earlier conversation in the same process left running, its report not on disk, is abandoned as the spec is entered — the next pass\'s brief accepted, its report landing after never taken in; a pass this conversation sent still holds the next brief, named running at its re-entry', () => {
+    const here = { CLAUDE_PID: String(process.pid) };
+    const enter = () => output(dir(), ['enter', 'specification', UNIT, '--take'], { env: { ...SESSION, ...here } }).split('\n');
+    writeSpec(spec());
+    land();
+    const earlier = dispatchReview({ ...here, CLAUDE_CODE_SESSION_ID: 'an-earlier-conversation' });
+    issued(['spec-reviewer', UNIT, '--agent', earlier.id]);
+    const entered = enter();
+    const own = dispatchReview({ ...here, ...SESSION });
+    const accepted = issued(['spec-reviewer', UNIT, '--agent', own.id]).res.role;
+    const reentered = enter();
+    const held = refusedUnissued(['spec-reviewer', UNIT, '--agent', dispatchReview().id]);
+    reportIn(earlier);
+    scan();
+
+    assert.deepStrictEqual([entered.includes(`running: ${earlier.id}`), reentered.includes(`running: ${own.id}`)], [false, true]);
+    assert.strictEqual(accepted, 'spec-reviewer');
+    assert.strictEqual(held, `brief: ${UNIT}'s spec as it stands is under review already — ${stillRunning(own)}`);
+    assert.deepStrictEqual(reportedPasses(dir(), UNIT).map(({ id }) => id), []);
   });
 });

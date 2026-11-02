@@ -86,10 +86,10 @@ function frontOf(text) {
 /** Nothing drawn from the ledger. @type {Drawn} */
 const UNDRAWN = Object.freeze({ calls: new Set(), builders: new Set() });
 
-/** A line's flags. @param {Line} line @param {Drawn} drawn @returns {Flag[]} */
+/** A line's flags: `builder` only where its trace held, never from its bracket alone. @param {Line} line @param {Drawn} drawn @returns {Flag[]} */
 function flagsOf(line, { calls, builders }) {
   const screen = line.kind === 'screen' || line.parts.some(({ kind }) => kind === 'fence');
-  const flags = /** @type {[Flag, boolean][]} */ ([['claude', calls.has(line.number)], ['builder', line.builder || builders.has(line.number)], ['screen', screen]]);
+  const flags = /** @type {[Flag, boolean][]} */ ([['claude', calls.has(line.number)], ['builder', builders.has(line.number)], ['screen', screen]]);
   return flags.filter(([, on]) => on).map(([flag]) => flag);
 }
 

@@ -354,6 +354,16 @@ function slotOf(number) {
 }
 
 /**
+ * The last of `numbers` at `place`, 0 where none sits there, and the next
+ * free number there, past it.
+ * @param {Iterable<string>} numbers @param {string} place @returns {{past: number, next: string}}
+ */
+function freeAt(numbers, place) {
+  const past = Math.max(0, ...[...numbers].map(slotOf).filter((slot) => slot.place === place).map((slot) => slot.k));
+  return { past, next: `${place}${past + 1}` };
+}
+
+/**
  * Every number the unit's open page holds, with the fingerprint of its last
  * wording — null for one only a mark without a fingerprint names — and the
  * numbers `landed`, the spec the state branch holds, gives.
@@ -378,16 +388,11 @@ function heldNumbers(cwd, unit, landed) {
  */
 function heldPlaces(cwd, unit) {
   if (!pageOpen(cwd, unit)) return null;
+  const numbers = [...heldNumbers(cwd, unit, landedSpec(cwd, unit)).held.keys()];
   /** @type {Map<string, number[]>} */
   const places = new Map();
-  for (const number of heldNumbers(cwd, unit, landedSpec(cwd, unit)).held.keys()) {
-    const { place, k } = slotOf(number);
-    places.set(place, [...(places.get(place) ?? []), k]);
-  }
-  return [...places].map(([place, ks]) => {
-    const sorted = ks.sort((a, b) => a - b);
-    return { held: sorted.map((k) => `${place}${k}`), next: `${place}${Number(sorted.at(-1)) + 1}` };
-  });
+  for (const { place, k } of numbers.map(slotOf)) places.set(place, [...(places.get(place) ?? []), k]);
+  return [...places].map(([place, ks]) => ({ held: ks.sort((a, b) => a - b).map((k) => `${place}${k}`), next: freeAt(numbers, place).next }));
 }
 
 /**
@@ -403,18 +408,13 @@ function heldNumberFaults(cwd, unit, landed, lines) {
   if (!pageOpen(cwd, unit)) return [];
   const { held, live } = heldNumbers(cwd, unit, landed);
   const now = new Map(lines.map(({ number, wording }) => [number, fingerprint(wording)]));
-  const nextFree = (/** @type {string} */ number) => {
-    const { place } = slotOf(number);
-    const past = Math.max(0, ...[...held.keys()].map(slotOf).filter((slot) => slot.place === place).map((slot) => slot.k));
-    return { past, next: `${place}${past + 1}` };
-  };
   return lines.flatMap(({ number }) => {
     const h = now.get(number);
     if (held.get(number) === h) return [];
     const moved = [...held].find(([other, was]) => other !== number && was === h && now.get(other) !== h);
     if (moved !== undefined) return [`${number} now holds the wording ${moved[0]} held — a number never changes while the review page is open: a line keeps its number, and a line added takes the next free one`];
     if (live.has(number)) return [];
-    const { past, next } = nextFree(number);
+    const { past, next } = freeAt(held.keys(), slotOf(number).place);
     if (held.has(number)) return [`${number} was removed while the review page is open, and its number is not given to another line — a line added takes the next free number, ${next}`];
     return slotOf(number).k > past ? [] : [`${number} is added while the review page is open — a line added takes the next free number, ${next}`];
   });

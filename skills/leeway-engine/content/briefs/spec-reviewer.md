@@ -4,7 +4,7 @@ Review this unit's spec for its gaps: what a build working from it would meet un
 
 ## What you hunt
 
-1. **Fidelity to the records.** A statement saying more, less or otherwise than the entries it cites; an entry the spec should carry and leaves out; a line citing an entry it does not come from.
+1. **Fidelity to the records.** A statement saying more, less or otherwise than the entries it cites; an entry the spec should carry and leaves out; a line citing an entry it does not come from; a builder's line that does not rest on the call or the "don't care" decision it cites.
 2. **Contradictions between topics.** Two statements, or two topics' entries, that cannot both be built.
 3. **The undecided detail.** A case, an edge, an error or a state the build would have to guess at, which no entry decides.
 4. **Invented lines.** Each line listed under "Lines that do not trace" cites no entry it can come from: say whether the records settle it, under another cite, or whether it is undecided.
@@ -43,6 +43,10 @@ Every finding carries the lane that says where it goes, written under its headin
 # The records
 
 {{unit-records}}
+
+# The builder's calls
+
+{{builder-calls}}
 
 # Reports refused
 

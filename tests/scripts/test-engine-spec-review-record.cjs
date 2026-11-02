@@ -177,8 +177,8 @@ describe('Claude\'s tick, drawn from the entries each line cites (11.11.15, 11.S
     });
   });
 
-  it('flags the statements and screens resting on a call of Claude\'s, and those left to the builder by their bracket or by a "don\'t care" cited — a scenario taking none of its statements\' flags (11.11.2)', () => {
-    assert.deepStrictEqual([flagged('claude'), flagged('builder')], [['1-1-2', '1-1-6'], ['1-1-3', '1-1-8', '2-1-1']]);
+  it('flags the statements and screens resting on a call of Claude\'s, and those left to the builder by a cite that traces — a bare builder\'s bracket, which does not, flagging nothing, and a scenario taking none of its statements\' flags (11.11.2)', () => {
+    assert.deepStrictEqual([flagged('claude'), flagged('builder')], [['1-1-2', '1-1-6'], ['1-1-3', '1-1-8']]);
   });
 
   it('11.S36\'s drawn half: a line restating the person\'s decision marked hard to undo stays open, its reason saying its question was; unmarked, it carries the tick (P8)', () => {

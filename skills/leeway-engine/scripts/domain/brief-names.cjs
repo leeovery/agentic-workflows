@@ -75,7 +75,7 @@ const ROLES = Object.freeze({
     agent: 'leeway-spec-reviewer',
     whose: 'the spec reviewer\'s',
     kind: 'spec-review',
-    records: ['changed-sections', 'invented-lines', 'measured-findings', 'product-cites', 'unit-records', 'report-refusal', 'unit-report-to'],
+    records: ['changed-sections', 'invented-lines', 'measured-findings', 'product-cites', 'unit-records', 'builder-calls', 'report-refusal', 'unit-report-to'],
   },
 });
 

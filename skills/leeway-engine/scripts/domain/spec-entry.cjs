@@ -21,7 +21,10 @@
 // the reports of the agents the spec was left with, landed since, and those
 // lost with a process that no longer runs (9.7.8); and each review pass
 // still running, whose report lands in the unit's store
-// (spec-passes.cjs), so a resume takes it in rather than sending another.
+// (spec-passes.cjs), so a resume takes it in rather than sending another —
+// one this conversation dispatched. A pass an earlier conversation left
+// running, its report not on disk, is abandoned as the spec is entered
+// (agent-state.cjs), and the review dispatches afresh.
 //
 // The spec's standing and its refusal are answered here too, for every verb
 // that holds the spec to them; the refusal holds the unit first to the rule
@@ -41,7 +44,7 @@ const { knownUnit, noUnit, unitClosure, phaseHeldRefusal } = require('./topic-st
 const { topicLog, recordCall } = require('./topic-log.cjs');
 const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 const { canonicalAssets } = require('./ledger-read.cjs');
-const { agentsLeft, passesInFlight } = require('./agent-state.cjs');
+const { agentsLeft, passesInFlight, abandonEarlierPasses } = require('./agent-state.cjs');
 const { openPage } = require('./spec-review.cjs');
 const { candidatesWaiting } = require('./sweep.cjs');
 const { sweptStaged } = require('./approve-map.cjs');
@@ -134,6 +137,7 @@ const SPECIFICATION = Object.freeze({
   start: () => {},
   questions: () => [],
   reads: specReads,
+  closes: ({ cwd, unit }) => { abandonEarlierPasses(cwd, unit); },
 });
 
 /**

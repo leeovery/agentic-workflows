@@ -20,6 +20,7 @@ The engine's brief is all you are given; the conversation never reaches you. It 
 - **Measured findings** — each of the unit's findings recording the command that measured it, with the result recorded.
 - **Product-wide entries the spec cites** — each with the lines citing it.
 - **The records** — every live topic's current entries, then the unit's own, each by its short id, its kind and its text.
+- **The builder's calls** — the calls the sweep left to the builder, each with why, or none.
 - **Reports refused** — each pass's report refused since the last one taken in, with what of it did not read; write yours so it reads.
 - **Your report** — the file your report goes to.
 

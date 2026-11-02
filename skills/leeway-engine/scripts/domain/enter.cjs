@@ -25,7 +25,9 @@
 // why it cannot be entered as it stands (topic-standing.cjs, the rule a
 // handoff into a topic and a message to one share), whether and how it
 // starts, the questions it raises first, what it reads, its log where it
-// keeps one, and where a level move leaves from. A topic-level row refuses
+// keeps one, where a level move leaves from, and what it closes as the
+// conversation arrives — specification's, a review pass an earlier
+// conversation left running. A topic-level row refuses
 // an epic entered at no topic, a topic once the unit has its spec (4.11.2),
 // and a topic the unit lacks; a unit-level row takes no topic, and is
 // entered after the spec as before it. Discussion is the first row,
@@ -43,8 +45,9 @@
 //
 // The refusals, the question and the reads take no lock. The start and the
 // move hold the writer lock around their writes and the commit; the
-// position, the label, the presence and the line a row writes into its log
-// are outside the state's commits, the log riding the next.
+// position, the label, the presence, what a row closes in the cache and the
+// line a row writes into its log are outside the state's commits, the log
+// riding the next.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -98,8 +101,9 @@ const { earlierRecord, earlierReads } = require('./earlier-record.cjs');
  * read, each a section drawn whole; what it reads, as the place stood before
  * the entry wrote anything; the log its conversation keeps, state-relative,
  * where it keeps one, and whether the entry writes the conversation's line
- * into it rather than naming it; and where a level move into it leaves from,
- * for a row that takes one, which keeps a log.
+ * into it rather than naming it; where a level move into it leaves from,
+ * for a row that takes one, which keeps a log; and what it closes as the
+ * conversation arrives, before it reads, for a row that closes anything.
  * @typedef {object} Entry
  * @property {'topic'|'unit'} level
  * @property {boolean} [product]
@@ -111,6 +115,7 @@ const { earlierRecord, earlierReads } = require('./earlier-record.cjs');
  * @property {(at: Entering) => string} [log]
  * @property {boolean} [writesHeader]
  * @property {(at: Standing) => Departure} [move]
+ * @property {(at: Standing) => void} [closes]
  */
 
 /** The files in a state folder, sorted, as absolute paths; none where it is not there. @param {string} dir absolute */
@@ -356,6 +361,7 @@ function enterThrough(entries, cwd, argv) {
   if (hold !== null) return { response: { phase, unit, ...atTopic, entered: false }, sections: heldQuestion(at, place, hold.age_seconds, move) };
   /** @type {Entering} */
   const entering = { ...at, started: entry.unstarted(at), notes: [] };
+  entry.closes?.(at);
   const reads = entry.reads(entering);
   const held = heldAt(cwd, phase, unit, place);
   /** @type {{committed?: string|null, note?: string, warnings?: string[]}} */

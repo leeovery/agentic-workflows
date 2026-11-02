@@ -48,7 +48,10 @@
 // them apart from the findings left to surface, which an incorporation
 // declines. A row incorporated while in flight with no report is closed
 // unread: a report landing after is never taken in, since only a row in
-// flight is. A gap finding raised as the replacement of a decision is
+// flight is. A spec review an earlier conversation left in flight, its
+// report not on disk, is closed so as the spec is entered: no notice of its
+// report, or of its agent dying, reaches a later conversation, which would
+// wait on it. A gap finding raised as the replacement of a decision is
 // surfaced with that decision, the reason and the ledger's mark, `raised` on
 // its row: no question stands for it on the ledger, so the spec's loop
 // (spec-passes.cjs) holds the writer on it until the person's call lands.
@@ -60,7 +63,7 @@ const io = require('../kernel/manifest-io.cjs');
 const { VALID_PHASES } = require('../kernel/manifest-schema.cjs');
 const { mailboxDepth } = require('./derivations.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
-const { callerIdentity, ownerAlive, ownsRow, startTimeReader } = require('../kernel/process.cjs');
+const { callerIdentity, handedSession, ownerAlive, ownsRow, startTimeReader } = require('../kernel/process.cjs');
 const { ID_FACTS, foldLedger } = require('./ledger-fold.cjs');
 const { markOf, lineOf, movesSince, lastDecisionLine } = require('./ledger-moves.cjs');
 const { resolveId } = require('./ledger-ids.cjs');
@@ -885,6 +888,28 @@ function closeUnbriefed(cwd, workUnit, id) {
   });
 }
 
+/**
+ * Close the unit's spec reviews another conversation left in flight, their
+ * reports not on disk, as `incorporate` abandons one in flight: a report
+ * landing after is never taken in. Another conversation's is a row whose
+ * session id is not the caller's; a row with none, or a caller handed none,
+ * is left as it is, judged by the process that dispatched it. Answers the
+ * ids closed.
+ * @param {string} cwd @param {string} workUnit @returns {string[]}
+ */
+function abandonEarlierPasses(cwd, workUnit) {
+  const session = handedSession();
+  if (session === null) return [];
+  return io.withWorkUnitLock(stateRoot(cwd), workUnit, () => {
+    const state = loadState(cwd, workUnit, UNIT_PHASE, workUnit);
+    const earlier = Object.values(state.agents).filter((row) => row.kind === 'spec-review' && row.status === 'in-flight'
+      && typeof row.session_id === 'string' && row.session_id !== session && !contentFileExists(row, cwd, workUnit));
+    for (const row of earlier) row.status = 'incorporated';
+    if (earlier.length > 0) saveState(cwd, workUnit, UNIT_PHASE, workUnit, state);
+    return earlier.map((row) => row.id);
+  });
+}
+
 /** @typedef {import('./spec-report.cjs').ReportFinding} ReportFinding */
 
 /** Whether a spec review's report was taken in. @param {any} row */
@@ -958,6 +983,7 @@ module.exports = {
   surfaceFinding,
   incorporateAgent,
   closeInFlight,
+  abandonEarlierPasses,
   completedReviewCycles,
   reviewArming,
   agentRows,
