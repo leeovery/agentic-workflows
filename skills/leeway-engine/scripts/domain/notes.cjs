@@ -16,7 +16,12 @@
 // as another note; and for `--phase`, a unit with no cut, a phase its cut
 // lacks, and a phase written in the tracker already, whose finds are tasks
 // in it. It runs under the writer lock (engine.cjs); a commit git refuses is
-// a warning, the note written.
+// a warning, the note written. A notes file holding anything but notes
+// numbered from 1 refuses every read of it, naming the fault and how it is
+// put right: by hand, since only the engine writes it, the next note
+// committing it. A second clone's merge keeps them so, placing each
+// machine's notes by note and renaming this machine's consolidation reports
+// with them (4.7, state-merge-paths.cjs, `renumberedReport`).
 //
 // At a phase's end the consolidation agent reads the notes it has to take —
 // those held for no phase that no other phase's report took, whatever their
@@ -50,7 +55,7 @@ const { writeTextAtomic } = require('../kernel/manifest-io.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
-const { headingLevels } = require('./spec-sections.cjs');
+const { headingLevels, fencedLines } = require('./spec-sections.cjs');
 const { BULLET, listItems, saysNone } = require('./list-items.cjs');
 const { parsePhase, phaseName } = require('./task-id.cjs');
 const { phaseWritten, givenText } = require('./task-verbs.cjs');
@@ -65,6 +70,7 @@ const NOTE_SHAPED = new RegExp(`^${BULLET}[*_]*notes?(?![\\w-])`, 'i');
 const THE_NOTES = '## The notes';
 const GRAMMAR = 'each item reads `- Note {k}: dropped — {why}` or `- Note {k}[, Note {k}…]: a task — {title}`';
 const PHASE_FOLDER = /^phase-([1-9][0-9]*)$/;
+const PUT_RIGHT = 'the engine writes its notes, through task note, so they are put right by hand: each under its heading, `## Note {k}` or `## Note {k}, for phase {N}`, numbered from 1 in the order they stand; the next note commits the file';
 
 /** @param {string} reason @returns {never} */
 function refuse(reason) {
@@ -98,25 +104,44 @@ function refusing(fn) {
 }
 
 /**
+ * A notes file's notes, in order; none before the first. Refused, naming the
+ * fault, where it holds anything but notes numbered from 1.
+ * @param {string} text @returns {Note[]}
+ */
+function notesOf(text) {
+  /** @type {{note: number, phase: number|null, lines: string[]}[]} */
+  const notes = [];
+  for (const { line, top } of linesOf(text)) {
+    const heading = top ? NOTE_HEADING.exec(line) : null;
+    if (heading !== null) notes.push({ note: Number(heading[1]), phase: heading[2] === undefined ? null : Number(heading[2]), lines: [] });
+    else if (top || (notes.length === 0 && line.trim() !== '')) throw new Error(`holds "${line.trim()}", which is no note`);
+    else notes.at(-1)?.lines.push(line);
+  }
+  notes.forEach(({ note }, at) => {
+    if (note !== at + 1) throw new Error(`numbers note ${at + 1} as ${note}`);
+  });
+  return notes.map(({ note, phase, lines: held }) => ({ note, phase, text: held.join('\n').trim() }));
+}
+
+/**
  * The unit's notes, in order; none before the first. Refused where the file
- * holds anything but notes numbered from 1.
+ * holds anything but notes numbered from 1, saying how it is put right.
  * @param {string} cwd @param {string} unit @returns {Note[]}
  */
 function readNotes(cwd, unit) {
   const file = statePath(cwd, notesPath(unit));
   if (!fs.existsSync(file)) return [];
-  /** @type {{note: number, phase: number|null, lines: string[]}[]} */
-  const notes = [];
-  for (const { line, top } of linesOf(fs.readFileSync(file, 'utf8'))) {
-    const heading = top ? NOTE_HEADING.exec(line) : null;
-    if (heading !== null) notes.push({ note: Number(heading[1]), phase: heading[2] === undefined ? null : Number(heading[2]), lines: [] });
-    else if (top || (notes.length === 0 && line.trim() !== '')) throw new Error(`${notesPath(unit)} holds "${line.trim()}", which is no note — the engine writes its notes, through task note`);
-    else notes.at(-1)?.lines.push(line);
+  try {
+    return notesOf(fs.readFileSync(file, 'utf8'));
+  } catch (err) {
+    throw new Error(`${notesPath(unit)} ${messageOf(err)} — ${PUT_RIGHT}`);
   }
-  notes.forEach(({ note }, at) => {
-    if (note !== at + 1) throw new Error(`${notesPath(unit)} numbers note ${at + 1} as ${note} — the engine writes its notes, through task note`);
-  });
-  return notes.map(({ note, phase, lines: held }) => ({ note, phase, text: held.join('\n').trim() }));
+}
+
+/** A notes file's text with `notes` written after what it holds. @param {string} text @param {Note[]} notes */
+function notesAppended(text, notes) {
+  const blocks = notes.map(({ note, phase, text: body }) => `## Note ${note}${phase === null ? '' : `, for phase ${phase}`}\n\n${body}`);
+  return `${[text.trimEnd(), ...blocks].filter((part) => part !== '').join('\n\n')}\n`;
 }
 
 /**
@@ -147,10 +172,9 @@ function depositNote(cwd, unit, file, given) {
   const phase = given === undefined ? null : heldFor(cwd, unit, manifest, given);
   const notes = refusing(() => readNotes(cwd, unit));
   const note = notes.length + 1;
-  const written = `## Note ${note}${phase === null ? '' : `, for phase ${phase}`}\n\n${text}\n`;
   const at = statePath(cwd, notesPath(unit));
   fs.mkdirSync(path.dirname(at), { recursive: true });
-  writeTextAtomic(at, notes.length === 0 ? written : `${fs.readFileSync(at, 'utf8').trimEnd()}\n\n${written}`);
+  writeTextAtomic(at, notesAppended(notes.length === 0 ? '' : fs.readFileSync(at, 'utf8'), [{ note, phase, text }]));
   /** @type {string[]} */
   const warnings = [];
   const outcome = commitStateTail(cwd, [notesPath(unit)], `task(${unit}): note ${note}${phase === null ? '' : `, for phase ${phase}`}`, warnings);
@@ -181,6 +205,34 @@ function readConsolidation(text) {
     kind: opened[2].toLowerCase() === 'dropped' ? 'dropped' : 'task',
     text: [opened[3], ...beneath.map(({ line }) => line.trim())].join('\n').trim(),
   }));
+}
+
+/**
+ * A consolidation report renamed as its notes were renumbered (`at`, a
+ * note's number to its new one; a number `at` lacks stays as it is): its
+ * text with each item's names renumbered and every other byte as it was.
+ * Null where the report does not read, so what it names is not known.
+ * @param {string} text @param {Map<number, number>} at @returns {string|null}
+ */
+function renumberedReport(text, at) {
+  try {
+    readConsolidation(text);
+  } catch {
+    return null;
+  }
+  const parts = text.split(/(\r\n?|\n)/);
+  const lines = parts.filter((_, i) => i % 2 === 0);
+  const levels = headingLevels(lines);
+  const fenced = fencedLines(lines);
+  const section = levels.reduce((last, level, i) => (level === 1 || level === 2 ? i : last), -1);
+  const renamed = lines.map((line, i) => {
+    const opened = i > section && !fenced[i] ? TAKEN.exec(line) : null;
+    if (opened === null) return line;
+    const from = line.indexOf(opened[1]);
+    const names = opened[1].replace(/[0-9]+/g, (n) => String(at.get(Number(n)) ?? n));
+    return `${line.slice(0, from)}${names}${line.slice(from + opened[1].length)}`;
+  });
+  return parts.map((part, i) => (i % 2 === 0 ? renamed[i / 2] : part)).join('');
 }
 
 /** The notes a phase's report takes, none where it has no report or it does not read. @param {string} cwd @param {string} unit @param {number} phase */
@@ -258,5 +310,5 @@ function consolidationFaults(cwd, unit, phase) {
 }
 
 module.exports = {
-  notesPath, consolidationPath, readNotes, depositNote, readConsolidation, notesToTake, notesHeldFor, consolidationFaults,
+  notesPath, consolidationPath, notesOf, readNotes, notesAppended, depositNote, readConsolidation, renumberedReport, notesToTake, notesHeldFor, consolidationFaults,
 };

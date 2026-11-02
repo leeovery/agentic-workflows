@@ -154,6 +154,62 @@ describe('the stop\'s screen (4.7.6)', () => {
     });
   });
 
+  describe('a consolidation report set aside, its notes having moved', () => {
+    const REPORT = 'pay/build/phases/phase-2/consolidation.md';
+    /** A notice as the merge keeps it. @param {object} fields */
+    const setAsideOf = (fields) => ({
+      file: REPORT, uncommitted: false, beside: 'pay/build/phases/phase-2/consolidation.0123abcd.md', pick: null,
+      setAside: { phase: 2, stays: true, renumbered: [{ from: 3, to: 4 }, { from: 4, to: 5 }] },
+      ...fields,
+    });
+
+    it('draws how this machine\'s notes moved, that its report does not read so its names cannot follow, and where each copy is, one row carrying on', () => {
+      const notice = setAsideOf({});
+      const out = stateMergeGate({ conflicts: [notice] });
+
+      assert.strictEqual(out, [
+        '=== DATA (reason from this — never display or parse the sections below) ===',
+        `choice: ${choiceId(notice)}`,
+        '',
+        '=== DISPLAY: state merge stop (emit verbatim as a properties code block (```properties fence)) ===',
+        '⚑ The state merge stopped: the consolidation report of phase 2 of pay set aside',
+        '',
+        '=== DISPLAY: state merge account (emit verbatim as markdown (not a code block)) ===',
+        '> This machine\'s notes for later follow the remote\'s in the merge: note 3 is now note 4, note 4 is now note 5. This machine\'s copy of the consolidation report of phase 2 of pay does not read as one, so the notes it takes cannot be renamed with them.',
+        '>',
+        '> The remote\'s report stays at `.leeway/pay/build/phases/phase-2/consolidation.md`, and this machine\'s copy is kept beside it as `.leeway/pay/build/phases/phase-2/consolidation.0123abcd.md`. The notes it took wait for a consolidation again; the tasks it made stand.',
+        '',
+        '=== MENU: state merge gate (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
+        '· · · · · · · · · · · ·',
+        '**`◆ Carry on with the merge?`**',
+        '',
+        '**`1`** → Carry on — *this machine\'s copy is kept beside*',
+        '',
+      ].join('\n'));
+      auditMarkers(out, 'state merge gate');
+    });
+
+    it('names the merged report or none at the path, and this machine\'s uncommitted copy', () => {
+      const later = stateMergeGate({ conflicts: [setAsideOf({ uncommitted: true })] });
+      assert.match(later, /^> The merged report stays at `\.leeway\/pay\/build\/phases\/phase-2\/consolidation\.md`, and this machine's uncommitted copy is kept beside it as /m);
+      assert.match(later, /^\*\*`1`\*\* → Carry on — \*this machine's uncommitted copy is kept beside\*$/m);
+
+      const none = stateMergeGate({ conflicts: [setAsideOf({ setAside: { phase: 2, stays: false, renumbered: [{ from: 3, to: 4 }] } })] });
+      assert.match(none, /^> No report stays at `\.leeway\/pay\/build\/phases\/phase-2\/consolidation\.md`, and this machine's copy is kept beside it as /m);
+    });
+
+    it('announces the reports set aside on each field screen before them, beside the names made twice', () => {
+      const field = stopOf({}).conflicts[0];
+      const one = stateMergeGate({ conflicts: [field, setAsideOf({})] });
+      assert.match(one, /^⚑ The state merge stopped: one field changed on both machines, and a consolidation report set aside$/m);
+      assert.match(one, /^> One field; the consolidation report set aside follows\. In Fumi's project manifest/m);
+
+      const both = stateMergeGate({ conflicts: [field, { file: '.store/tasks.jsonl', uncommitted: false, beside: '.store/tasks.0123abcd.jsonl', pick: null, madeTwice: [{ kind: 'task', said: 'task 2.2 of pay' }], again: [] }, setAsideOf({}), setAsideOf({ file: 'pay/build/phases/phase-3/consolidation.md' })] });
+      assert.match(both, /^⚑ The state merge stopped: one field changed on both machines, and names made twice and 2 consolidation reports set aside$/m);
+      assert.match(both, /^> One field; the names made twice and the 2 consolidation reports set aside follow\. In Fumi's project manifest/m);
+    });
+  });
+
   it('states the gate for the gate surface, its rows the two sides', () => {
     const gate = announced(() => {
       openGate();

@@ -6,7 +6,8 @@
 // A note deposited into the unit's notes as it arrives, numbered after the
 // last, and committed alone (12.10.2, 13.S8); one held for a phase not yet
 // written, for its task writer (12.9.10); every refusal writing and
-// committing nothing, no such file among them. A phase's consolidation
+// committing nothing, no such file among them, and a notes file not
+// numbered from 1 refused with how it is put right. A phase's consolidation
 // report read by its grammar — each note dropped with its reason or made a
 // task (12.10.3, 12.10.4), as a careful writer writes the list, or `None`
 // as all it holds; an item opening on a note that does not read refused for
@@ -101,6 +102,16 @@ describe('task note (12.10.2, 6.1.7)', () => {
     for (const args of [[UNIT], [UNIT, '--file', noteFile('A gap.'), '--phase'], ['--file', noteFile('A gap.')]]) {
       assert.match(refuses(dir, ['task', 'note', ...args]).error, /^Usage: engine task note <unit> --file <note> \[--phase <N>\]$/, args.join(' '));
     }
+  });
+
+  it('a notes file holding anything but notes numbered from 1 refuses, naming the fault and how it is put right by hand', () => {
+    const putRight = 'the engine writes its notes, through task note, so they are put right by hand: each under its heading, `## Note {k}` or `## Note {k}, for phase {N}`, numbered from 1 in the order they stand; the next note commits the file';
+    deposit('The receipt omits the currency.');
+    const held = readState(dir, NOTES);
+    writeState(dir, NOTES, `${held}\n## Note 1\n\nRefund totals round twice.\n`);
+    assert.strictEqual(refusedPristine(dir, ['task', 'note', UNIT, '--file', noteFile('A gap.')]).error, `task note: pay/build/notes.md numbers note 2 as 1 — ${putRight}`);
+    writeState(dir, NOTES, `# Notes\n\n${held}`);
+    assert.strictEqual(refusedPristine(dir, ['task', 'note', UNIT, '--file', noteFile('A gap.')]).error, `task note: pay/build/notes.md holds "# Notes", which is no note — ${putRight}`);
   });
 
   it('a note held for a phase of a unit with no cut, one its cut lacks, and one the tracker has written, whose finds are tasks there', () => {
