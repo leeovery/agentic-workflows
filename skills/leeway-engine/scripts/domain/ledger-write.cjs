@@ -26,15 +26,15 @@
 //   decision Claude proposed to replace, or Claude's call the decision
 //   point lets proceed — is that write's, or the keep's, its place read
 //   again and its links checked under the same lock, after the raise's own
-//   check of the ledger, in the raise's words. A raise in the build that
-//   asks parks its task instead (raise.cjs): its `parked` line is landed
-//   the same way, its place read again and its links checked under the
-//   lock, and its number the raise's to mint there. A task closed in the
-//   build is taken off its questions by an `unparked` line naming the parks
-//   it is taken off, landed the same way (task-parks.cjs). While a question waits
-//   in the build, `decide` on it and `replace` of the decision it would
-//   replace are refused under the lock, naming its raise: the person
-//   answers it there alone (questions.cjs).
+//   check of the ledger, in the raise's words. A raise in the build that asks
+//   parks its task instead (raise.cjs): its `parked` line is landed the same
+//   way, its place read again and its links checked under the lock, and its
+//   number the raise's to mint there. A task closed in the build is taken off
+//   its questions by an `unparked` line naming the parks it is taken off,
+//   landed the same way (task-parks.cjs). While a question waits in the
+//   build, `decide` on it and `replace` of the decision it would replace are
+//   refused under the lock, naming its raise: the person answers it there
+//   alone (questions.cjs).
 // - What: the content comes as one JSON object on stdin, the links as flags,
 //   and the task an entry is made for, `--task {phase}.{n}`, a flag taken
 //   at the build's places alone (12.12.5), its entry's `task` null

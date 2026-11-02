@@ -7,17 +7,17 @@
 // `parked` line (ledger-events.cjs).
 //
 // - A question: a park, and every park after it holding its number about
-//   the same thing — the question, in any of its wordings, or the decision
-//   a replacement would replace — each a task that met it while it waited
-//   and joined it, its line holding the first park's sealed call, copied
-//   under the writer lock. It goes by its first park, which it is drawn
-//   from, and parks every task its parks name but where a close has taken
-//   the task off that park, an `unparked` line naming it: a park made outside any
-//   task — the task writer's, the consolidation agent's or the phase
-//   review's (12.5.5) — names none, and a question parking nothing waits as
-//   any other, nothing waiting on it. What it asks is Claude's
-//   call's question as sealed, or, where its question has been reworded
-//   since, its wording as it stands.
+//   the same thing — the question, in any of its wordings, or the decision a
+//   replacement would replace — each a task that met it while it waited and
+//   joined it, its line holding the first park's sealed call, copied under
+//   the writer lock. It goes by its first park, which it is drawn from, and
+//   parks every task its parks name but where a close has taken the task off
+//   that park, an `unparked` line naming it: a park made outside any task —
+//   the task writer's, the consolidation agent's or the phase review's
+//   (12.5.5) — names none, and a question parking nothing waits as any other,
+//   nothing waiting on it. What it asks is Claude's call's question as
+//   sealed, or, where its question has been reworded since, its wording as it
+//   stands.
 // - Its number: `Q{n}`, per unit, the next after the highest the unit's
 //   parks hold, live or not, so none is ever reused and a queued "Q2" never
 //   shifts when Q1 is answered; a task joining a question waiting takes its

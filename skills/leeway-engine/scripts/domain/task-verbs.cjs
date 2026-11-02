@@ -468,7 +468,6 @@ function ending(rule, after = () => ({})) {
   };
 }
 
-
 /** `task start`: in progress — where it is not already — and in flight on the position beside any others. */
 const startTask = moving('start', (driver, root, ref) => {
   if (refuseEnded(driver, root, ref, 'only a task not yet ended is started').status !== 'in-progress') driver.start(root, ref);

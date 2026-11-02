@@ -16,13 +16,13 @@
 // links, an asset link's path and whether it gives a status or a lift among
 // them; the task it was made for, in the build, and a parked question's
 // number; every entry linking back to it — the replacements naming it, the
-// merges that took it as a duplicate, the confirmations that it still
-// holds, the person's keeps of it against Claude's proposed replacement,
-// which change nothing current, the asset links giving a file a status or a
-// lift beside it, the closes that took a park's task off it, and on the first entry of a question's chain, the answers
-// to, the parts of (5.3.11), the merges of and the moves of any wording; and
-// where its line sits, so a read shows an entry by reading that one line
-// again.
+// merges that took it as a duplicate, the confirmations that it still holds,
+// the person's keeps of it against Claude's proposed replacement, which
+// change nothing current, the asset links giving a file a status or a lift
+// beside it, the closes that took a park's task off it, and on the first
+// entry of a question's chain, the answers to, the parts of (5.3.11), the
+// merges of and the moves of any wording; and where its line sits, so a read
+// shows an entry by reading that one line again.
 // It keeps one thing a read shows that the entry's line never holds: what
 // the late one-decision check last found of a decision that landed
 // unchecked (16.19.8).

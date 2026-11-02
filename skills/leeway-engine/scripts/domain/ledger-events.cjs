@@ -68,21 +68,21 @@
 //   which no status after it undoes (ledger-fold.cjs).
 // - parked: a question the build needs the person for, parked with the
 //   task it holds (12.13.4; raise.cjs): what it is about — the question it
-//   answers, or the decision a replacement would replace with the reason
-//   and the cause — and what its answer relies on; the task it parks, as
-//   screens show it, null where a call made in the build outside any task
-//   asks — the task writer's, the consolidation agent's or the phase
-//   review's — parking none; its number in its unit, `Q{number}`, the engine's,
-//   minted as it parks and never reused, or, for a task joining a question
-//   already waiting, that question's (questions.cjs); and the call sealed,
-//   so it is raised as it was put whenever the person is ready, in whatever
+//   answers, or the decision a replacement would replace with the reason and
+//   the cause — and what its answer relies on; the task it parks, as screens
+//   show it, null where a call made in the build outside any task asks — the
+//   task writer's, the consolidation agent's or the phase review's — parking
+//   none; its number in its unit, `Q{number}`, the engine's, minted as it
+//   parks and never reused, or, for a task joining a question already
+//   waiting, that question's (questions.cjs); and the call sealed, so it is
+//   raised as it was put whenever the person is ready, in whatever
 //   conversation: Claude's call as the raise took it, the rows the
-//   one-decision check judged one rule, and why it asks, the decision
-//   point's reason. A fact only the person holds (16.3.8) parks in the same
-//   shape, as the ledger holds a fact's answer, with no lean: its call's
-//   lean, why and sort null, its rows any number. It names no maker, is no
-//   entry and is never replaced: it waits while what it is about stands
-//   open (questions.cjs).
+//   one-decision check judged one rule, and why it asks, the decision point's
+//   reason. A fact only the person holds (16.3.8) parks in the same shape, as
+//   the ledger holds a fact's answer, with no lean: its call's lean, why and
+//   sort null, its rows any number. It names no maker, is no entry and is
+//   never replaced: it waits while what it is about stands open
+//   (questions.cjs).
 // - unparked: a task closed in the build, taken off the questions of its
 //   unit that parked it (task-parks.cjs, questions.cjs): the task, as
 //   screens show it, and the parks naming it that it is taken off, by id —

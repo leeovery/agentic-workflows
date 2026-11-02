@@ -127,14 +127,14 @@
 //   question as it is worded now, sealed and shown where it was reworded
 //   since. A seal of that question the conversation holds open, on the same
 //   wording, is drawn again, holding the tasks it parks now; a seal is
-//   matched to a question waiting by its park alone. Its screen is headed
-//   by its number and the tasks it parks (16.9.5, 12.12.5), and it is
-//   answered as any raise is, a fact's as a fact is, with no lean and
-//   nothing in the trust log. Its answer carries the first task it parks;
-//   a call's trust log event says it blocked the build (16.4.7); and the answer,
-//   or "I don't follow", answers the receipt (questions.cjs). A question
-//   waiting no longer refuses the draw, and its answer, under the lock,
-//   with nothing recorded (20.6.10).
+//   matched to a question waiting by its park alone. Its screen is headed by
+//   its number and the tasks it parks (16.9.5, 12.12.5), and it is answered
+//   as any raise is, a fact's as a fact is, with no lean and nothing in the
+//   trust log. Its answer carries the first task it parks; a call's trust log
+//   event says it blocked the build (16.4.7); and the answer, or "I don't
+//   follow", answers the receipt (questions.cjs). A question waiting no
+//   longer refuses the draw, and its answer, under the lock, with nothing
+//   recorded (20.6.10).
 // - `raise show <id> [--technical]` draws a raise again from its seal
 //   alone, never from Claude's words; `--technical` shows the mechanism.
 // - `raise answer <id> (--pick <key> | --own | --didnt-follow)`: the person's

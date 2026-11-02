@@ -54,12 +54,12 @@
 // is done; a task with no review round's reports, a round missing a
 // reviewer's report or holding one that does not read. The account refuses
 // besides: a task a question waiting parks, naming its raise (13.4.6,
-// task-parks.cjs); a last round neither passed nor settled; no account written, or
-// one that does not read, every fault named; a task with no type, from which
-// its branch is named; and no repository of the project holding work on its
-// branch. Settling refuses no such file, or one holding nothing. Each runs
-// under the writer lock (engine.cjs); a commit git refuses is a warning, the
-// files written.
+// task-parks.cjs); a last round neither passed nor settled; no account
+// written, or one that does not read, every fault named; a task with no type,
+// from which its branch is named; and no repository of the project holding
+// work on its branch. Settling refuses no such file, or one holding nothing.
+// Each runs under the writer lock (engine.cjs); a commit git refuses is a
+// warning, the files written.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
