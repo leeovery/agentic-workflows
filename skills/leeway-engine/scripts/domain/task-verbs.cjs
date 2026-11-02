@@ -33,7 +33,8 @@
 // a phase not written, a task the tracker lacks or already holds, a task
 // already ended. Beside them, three take the build's records, each its own
 // module's: account, a task's account and its rounds' reports, and settle,
-// the orchestrator's settlement of a failed round (task-account.cjs); and
+// the orchestrator's settlement of a failed round (task-account.cjs) or,
+// with `--phase`, of a phase review that failed (phase-settlement.cjs); and
 // note, a note for later (notes.cjs).
 //
 // Every verb runs under the writer lock (engine.cjs), the tool's own lock
@@ -570,7 +571,21 @@ function worktreeTask(cwd, unit, given) {
 // The build's records, loaded at their call: each reads its task, or the
 // tracker's phases, through this module.
 const account = () => require('./task-account.cjs');
+const settlement = () => require('./phase-settlement.cjs');
 const notes = () => require('./notes.cjs');
+
+const SETTLE_USAGE = '<unit> <task> --file <why> | <unit> --phase <N> --file <why> [--fixes <task>,…]';
+
+/**
+ * `task settle`: a task's failed round settled, or with `--phase` a phase
+ * review that failed, naming its fixes; refused, with the usage, given both
+ * a task and a phase, neither, or fixes for a task.
+ * @param {string} cwd @param {string[]} positional @param {string} file @param {string} [phase] @param {string} [fixes]
+ */
+function settleVerb(cwd, [unit, task], file, phase, fixes) {
+  if ((task === undefined) === (phase === undefined) || (phase === undefined && fixes !== undefined)) throw new Error(`Usage: engine task settle ${SETTLE_USAGE}`);
+  return phase === undefined ? account().settleTask(cwd, unit, task, file) : settlement().settlePhase(cwd, unit, phase, file, fixes);
+}
 
 /**
  * Each verb: its arguments after `task {verb}`, how many positionals it
@@ -593,7 +608,7 @@ const TASK_VERBS = Object.freeze({
   show: { usage: '<unit> <task>', arity: 2, run: (cwd, [unit, task]) => showTask(cwd, unit, task) },
   worktree: { usage: '<unit> <task>', arity: 2, run: (cwd, [unit, task]) => worktreeTask(cwd, unit, task) },
   account: { usage: '<unit> <task>', arity: 2, run: (cwd, [unit, task]) => account().takeAccount(cwd, unit, task) },
-  settle: { usage: '<unit> <task> --file <why>', arity: 2, flags: ['file'], run: (cwd, [unit, task], file) => account().settleTask(cwd, unit, task, file) },
+  settle: { usage: SETTLE_USAGE, arity: 1, optional: 1, flags: ['file'], mayTake: ['phase', 'fixes'], run: settleVerb },
   note: { usage: '<unit> --file <note> [--phase <N>]', arity: 1, flags: ['file'], mayTake: ['phase'], run: (cwd, [unit], file, phase) => notes().depositNote(cwd, unit, file, phase) },
 });
 

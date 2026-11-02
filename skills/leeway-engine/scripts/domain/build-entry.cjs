@@ -23,14 +23,18 @@
 // position (position.cjs), a task already there kept as it stands: one
 // another conversation left comes with no builder and no pair, which are
 // dispatched afresh on its branch — the pair that conversation sent is
-// abandoned, its round's reports written again by the new pair. That
-// conversation's own record is left as it stands.
+// abandoned, its round's reports written again by the new pair. A task a
+// question parks is put in flight as well, but no builder goes to it until
+// the person answers (12.13.2). That conversation's own record is left as
+// it stands.
 //
 // It answers, and its recovery note with it (12.1.6, 24.2.2): where the
-// build stands, a line a phase; each task in flight with its builder and its
-// pair; each question waiting on the person; the entries affected since the
-// spec concluded, by their call (11.9.1); the unit's record, by its call;
-// and the build's log, read beside the ledger (12.2.2, 24.2.5).
+// build stands, a line a phase, and a line where the phase's review failed
+// with its fixes owed — no settlement naming them (phase-settlement.cjs);
+// each task in flight with its builder and its pair, or the question
+// parking it; each question waiting on the person; the entries affected
+// since the spec concluded, by their call (11.9.1); the unit's record, by
+// its call; and the build's log, read beside the ledger (12.2.2, 24.2.5).
 //
 // The standing is worked out at each read, never kept: only the position,
 // auto or step, is stored, as `build`. Each phase of the cut is not yet
@@ -56,7 +60,7 @@ const { codeGate } = require('./projections/enter.cjs');
 const { tasksInFlight } = require('./conversation.cjs');
 const { recordTask } = require('./position.cjs');
 const { waitingQuestions, parkedTasks, parkedTasksOf } = require('./questions.cjs');
-const { reading, cutPhases, phaseLists, phaseLanded } = require('./phase-checks.cjs');
+const { reading, cutPhases, phaseLists, phaseLanded, fixesOwed } = require('./phase-checks.cjs');
 const { taskId, shownTask } = require('./task-id.cjs');
 
 /** @typedef {import('./enter.cjs').Entry} Entry */
@@ -72,7 +76,12 @@ const { taskId, shownTask } = require('./task-id.cjs');
 
 /** Where a phase of the cut stands. @typedef {'not yet written'|'written'|'running'|'in review'|'closed'|'merged'} PhaseState */
 /** A task of a phase: its id shown, its title, where the tracker holds it, and the questions waiting that park it, by number. @typedef {{task: string, title: string, status: TaskStatus, parked: string[]}} StandingTask */
-/** A phase of the cut: its number, name and what it relies on, where it stands, and its tasks, none where it is not written. @typedef {{phase: number, name: string, relies_on: Array<number|string>, state: PhaseState, tasks: StandingTask[]}} StandingPhase */
+/**
+ * A phase of the cut: its number, name and what it relies on, where it
+ * stands, its tasks, none where it is not written, and whether its review
+ * failed with its fixes owed — no settlement naming them yet.
+ * @typedef {{phase: number, name: string, relies_on: Array<number|string>, state: PhaseState, tasks: StandingTask[], fixes_owed: boolean}} StandingPhase
+ */
 /**
  * Where a build stands: its unit and position; each phase of its cut; the
  * calling conversation's tasks in flight there; the questions waiting on the
@@ -140,6 +149,7 @@ function standingOf(at) {
       relies_on: reliesOn,
       state: phaseState(at, i + 1, lists[i]),
       tasks: (lists[i] ?? []).map(({ ref, title, status }) => ({ task: shownTask(ref), title, status, parked: parked.get(shownTask(ref)) ?? [] })),
+      fixes_owed: fixesOwed(at, i + 1),
     })),
     in_flight: ownInFlight(at.unit),
     waiting,
@@ -164,29 +174,40 @@ function buildStanding(cwd, unit, warnings = []) {
 /** A task of a phase, as its phase's line says it. @param {StandingTask} task */
 const taskWords = ({ task, status, parked }) => (parked.length > 0 ? `${task} parked on ${parked.join(', ')}` : `${task} ${STATUS_WORDS[status]}`);
 
-/** A task in flight, with its builder and its pair where recorded — what a fix round goes back to (24.2.4). @param {InFlight} inFlight */
-function inFlightWords({ task, builder, reviewers }) {
+/**
+ * A task in flight, with its builder and its pair where recorded — what a
+ * fix round goes back to (24.2.4); one parked waits on the person's answer,
+ * no builder going to it until then (12.13.2).
+ * @param {InFlight} inFlight @param {string[]} parked the questions waiting that park it
+ */
+function inFlightWords({ task, builder, reviewers }, parked) {
   const agents = [
     ...(builder === null ? [] : [`its builder agent \`${builder}\``]),
     ...(reviewers.length === 0 ? [] : [`its reviewer agent${reviewers.length === 1 ? '' : 's'} ${reviewers.map((id) => `\`${id}\``).join(' and ')}`]),
   ];
+  if (parked.length > 0) return `task ${task}, ${[...agents, `parked on ${parked.join(', ')}`].join(', ')} — it waits on the person's answer, and no builder goes to it until then`;
   return `task ${task}, ${agents.length === 0 ? 'no builder dispatched — its builder and pair go afresh on its branch' : agents.join(', ')}`;
 }
 
+/** The phase whose review failed with its fixes owed, and the way on. @param {string} unit @param {number} phase */
+const owedWords = (unit, phase) => `phase ${phase}'s review failed, and no settlement names its fixes — write them as tasks of the phase, then settle it, naming them: task settle ${unit} --phase ${phase} --file <why> [--fixes <task>,…]`;
+
 /**
- * Where the build stands, a line a phase, the tasks in flight and the
+ * Where the build stands, a line a phase — and where its review failed
+ * with its fixes owed, a line saying so — the tasks in flight and the
  * questions waiting, as the entry and the recovery note give them.
  * @param {BuildStanding} standing @returns {Line[]}
  */
 function standingLines(standing) {
   const of = standing.phases.length;
+  const parked = new Map(standing.phases.flatMap(({ tasks }) => tasks.map(({ task, parked: on }) => [task, on])));
   return [
     ['position', standing.position],
-    ...standing.phases.map(({ phase, name, state, tasks }) => /** @type {Line} */ ([
-      'phase',
-      `phase ${phase} of ${of}, "${name}": ${state}${tasks.length === 0 ? '' : ` — tasks ${tasks.map(taskWords).join(', ')}`}`,
+    ...standing.phases.flatMap(({ phase, name, state, tasks, fixes_owed: owed }) => /** @type {Line[]} */ ([
+      ['phase', `phase ${phase} of ${of}, "${name}": ${state}${tasks.length === 0 ? '' : ` — tasks ${tasks.map(taskWords).join(', ')}`}`],
+      ...(owed ? [['fixes owed', owedWords(standing.unit, phase)]] : []),
     ])),
-    ...standing.in_flight.map((task) => /** @type {Line} */ (['in flight', inFlightWords(task)])),
+    ...standing.in_flight.map((task) => /** @type {Line} */ (['in flight', inFlightWords(task, parked.get(task.task) ?? [])])),
     ...standing.waiting.map(({ question, asks, parks }) => /** @type {Line} */ (['waiting', `${question} — ${asks} — parks ${parkedTasks(parks)}`])),
   ];
 }

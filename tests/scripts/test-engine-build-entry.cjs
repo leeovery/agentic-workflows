@@ -10,11 +10,14 @@
 // back leaving it to that session (12.7.8); the tasks another conversation
 // left in flight taken onto this conversation's record with no builder and
 // no pair, this conversation's own kept as they stand, the other's record
-// left alone; and the answer, which is the recovery note too (12.1.6,
-// 12.2.2, 24.2.2, 24.2.5, 12.S4, 24.S13): where each phase of the cut stands
-// with its tasks, the tasks in flight with their builders, the questions
-// waiting and the tasks they park, the entries affected and the unit's
-// record by their calls, and the build's log. The standing (P13): each
+// left alone, a parked one waiting on its question with no builder until
+// the answer (12.13.2); and the answer, which is the recovery note too
+// (12.1.6, 12.2.2, 24.2.2, 24.2.5, 12.S4, 24.S13), none for a unit built
+// under the old plan: where each phase of the cut stands with its tasks,
+// its review's fixes owed until it is settled (13.10.1), the tasks in
+// flight with their builders, the questions waiting and the tasks they
+// park, the entries affected and the unit's record by their calls, and the
+// build's log. The standing (P13): each
 // phase not yet written, written, running, in review, closed or merged, as
 // the tracker, the checklists and the landing hold it, and the build
 // finished only once every phase of the cut has closed, so nothing ready
@@ -238,6 +241,34 @@ describe('the answer: where the build stands, and what to read beside the ledger
     assert.ok(sections.includes('in flight: task 1.3, its builder agent `agent-own`\nin flight: task 1.2, no builder dispatched — its builder and pair go afresh on its branch\n'), sections);
   });
 
+  it('takes a parked task over in flight, its line saying it waits on its question, no builder going to it until the person answers (12.13.2)', async () => {
+    const { conversation } = raiseHelpers(() => dir, () => config, CALL);
+    await okSectionsAsync(dir, ['raise', `${UNIT}.implementation`, '--answers', made.where, '--parks', '1.2'], { env: conversation(), stdin: JSON.stringify(CALL) });
+    const { sections } = enter([UNIT]);
+
+    assert.deepStrictEqual([position().tasks, sections.split('\n').filter((line) => line.startsWith('in flight: '))], [
+      [{ task: '1.2', builder: null, reviewers: [] }],
+      ['in flight: task 1.2, parked on Q1 — it waits on the person\'s answer, and no builder goes to it until then'],
+    ]);
+  });
+
+  it('says where a phase\'s review failed with its fixes owed — every report of the count in — the settlement its way on, and no longer once it is settled (13.10.1)', () => {
+    const owed = `fixes owed: phase 1's review failed, and no settlement names its fixes — write them as tasks of the phase, then settle it, naming them: task settle ${UNIT} --phase 1 --file <why> [--fixes <task>,…]`;
+    const report = (/** @type {string} */ letter, /** @type {string} */ verdict) => writeState(dir, layout.unit(UNIT, 'build', 'phases', 'phase-1', `review-${letter}.md`),
+      `# Review\n\n## Findings\n\n${verdict === 'pass' ? 'None.' : '- bug: a note opens off screen\n  Scenario: a note made on a second screen'}\n\nVerdict: ${verdict}\n`);
+    report('b', 'fail');
+    const incomplete = standing().phases[0].fixes_owed;
+    report('a', 'pass');
+    const lines = enter([UNIT]).sections.split('\n');
+    const note = output(dir, ['conversation', 'position'], { env: env() });
+    ok(dir, ['task', 'settle', UNIT, '--phase', '1', '--file', writeState(dir, layout.cache(UNIT, 'why.md'), 'A second screen is out of this phase.\n')]);
+
+    assert.strictEqual(incomplete, false, 'a review not complete owes no fixes yet');
+    assert.deepStrictEqual(lines.slice(lines.indexOf(PHASE_LINES[0]), lines.indexOf(PHASE_LINES[0]) + 2), [PHASE_LINES[0], owed]);
+    assert.ok(note.includes(`${PHASE_LINES[0]}\n${owed}\n`), note);
+    assert.deepStrictEqual([standing().phases.map(({ fixes_owed: fixesOwed }) => fixesOwed), enter([UNIT]).sections.includes('fixes owed:')], [[false, false, false], false]);
+  });
+
   it('answers each question waiting on the person and the tasks it parks, the task parked on it in its phase\'s line (12.8.4)', async () => {
     const { conversation } = raiseHelpers(() => dir, () => config, CALL);
     await okSectionsAsync(dir, ['raise', `${UNIT}.implementation`, '--answers', made.where, '--parks', '1.3'], { env: conversation(), stdin: JSON.stringify(CALL) });
@@ -261,6 +292,15 @@ describe('the answer: where the build stands, and what to read beside the ledger
       assert.ok(note.includes(line), `the note names ${line}\n${note}`);
     }
   });
+
+  it('gives a unit built under the old plan no build\'s standing in its recovery note, its build begun all the same (P12)', () => {
+    fs.mkdirSync(path.join(config, 'conversations', 'sess-1'), { recursive: true });
+    fs.writeFileSync(path.join(config, 'conversations', 'sess-1', 'position.json'), JSON.stringify({ name: 'kept', phase: 'implementation', topic: 'kept' }));
+    const note = output(dir, ['conversation', 'position'], { env: env() });
+
+    assert.ok(note.includes('leeway-implementation-process'), note);
+    assert.doesNotMatch(note, /position: auto|build log:/);
+  });
 });
 
 describe('the build\'s standing (P13)', () => {
@@ -272,9 +312,9 @@ describe('the build\'s standing (P13)', () => {
       unit: UNIT,
       position: 'auto',
       phases: [
-        { phase: 1, name: 'Cards', relies_on: [], state: 'running', tasks: [task('1.1', 'Open a note', 'done'), task('1.2', 'Size a note', 'in-progress'), task('1.3', 'Place a note', 'open')] },
-        { phase: 2, name: 'Refunds', relies_on: [1], state: 'written', tasks: [task('2.1', 'Refund a note', 'open')] },
-        { phase: 3, name: 'Reports', relies_on: [], state: 'not yet written', tasks: [] },
+        { phase: 1, name: 'Cards', relies_on: [], state: 'running', tasks: [task('1.1', 'Open a note', 'done'), task('1.2', 'Size a note', 'in-progress'), task('1.3', 'Place a note', 'open')], fixes_owed: false },
+        { phase: 2, name: 'Refunds', relies_on: [1], state: 'written', tasks: [task('2.1', 'Refund a note', 'open')], fixes_owed: false },
+        { phase: 3, name: 'Reports', relies_on: [], state: 'not yet written', tasks: [], fixes_owed: false },
       ],
       in_flight: [{ task: '1.2', builder: null, reviewers: [] }],
       waiting: [],

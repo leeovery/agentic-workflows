@@ -64,7 +64,9 @@
 // A report that does not read is replaced by briefing its reviewer again,
 // which every refusal of it names. A phase's review is
 // reported beside its consolidation, `build/phases/phase-{N}/
-// review-{letter}.md`.
+// review-{letter}.md`, or `{area}-{letter}.md` where it was split, and read
+// whole (`phaseReports`), each report with its text's fingerprint, by which
+// a settlement names the reports it answers (phase-settlement.cjs).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -73,7 +75,8 @@ const { messageOf } = require('../kernel/call.cjs');
 const { REVIEWER_LETTERS } = require('../kernel/reviewers.cjs');
 const { headingLevels } = require('./spec-sections.cjs');
 const { BULLET, listItems, saysNone } = require('./list-items.cjs');
-const { shownTask, taskName } = require('./task-id.cjs');
+const { fingerprint } = require('../kernel/fingerprint.cjs');
+const { shownTask, taskName, phaseName } = require('./task-id.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** A finding's call (13.4.1). @typedef {'serious'|'bug'|'nit'} Call */
@@ -81,6 +84,7 @@ const { shownTask, taskName } = require('./task-id.cjs');
 /** @typedef {{verdict: 'pass'|'fail', findings: Finding[]}} Report */
 /** A reviewer's report of a round: its letter, its path from the state root, its text. @typedef {Report & {reviewer: string, file: string, text: string}} RoundReport */
 /** @typedef {{round: number, reports: RoundReport[], passes: boolean, settled: boolean}} Round */
+/** A reviewer's report of a phase's review: its path from the state root, and the fingerprint of its text. @typedef {Report & {file: string, print: string}} PhaseReport */
 
 const FINDINGS = '## Findings';
 const EMPHASIS = '[*_]*';
@@ -97,6 +101,8 @@ const SCENARIO_LINE = new RegExp(`^[ \\t]*(?:${BULLET})?${SCENARIO_NAMED}`, 'i')
 const SCENARIO_AFTER = new RegExp(`(?:^|[ \\t])${SCENARIO_NAMED}`, 'i');
 const FORM = `each finding opens at the margin on its call, \`- serious: …\`, \`- bug: …\` or \`- nit: …\``;
 const ROUND_FILE = /^round-([1-9][0-9]*)-([a-z])\.md$/;
+/** A report of a phase's review: its set, `review` or an area, and its reviewer's letter. */
+const PHASE_REPORT = /^(.+)-([a-z])\.md$/;
 
 /** Whether findings pass: nothing serious and no bug (13.4.3, 13.4.4). @param {readonly Finding[]} findings */
 function passes(findings) {
@@ -188,12 +194,49 @@ function roundReportPath(ref, round, letter) {
 
 /** A reviewer's report of a phase's review, state-relative. @param {string} unit @param {number} phase @param {string} letter */
 function phaseReviewPath(unit, phase, letter) {
-  return `${unit}/build/phases/phase-${phase}/review-${letter}.md`;
+  return `${phaseFolder(unit, phase)}/review-${letter}.md`;
 }
 
 /** The orchestrator's settlement of a task's failed round, state-relative. @param {TaskRef} ref @param {number} round */
 function settlementPath(ref, round) {
   return `${taskFolder(ref)}/round-${round}-settled.md`;
+}
+
+/** A phase's folder, where its review's reports sit, state-relative. @param {string} unit @param {number} phase */
+function phaseFolder(unit, phase) {
+  return `${unit}/build/phases/phase-${phase}`;
+}
+
+/**
+ * A phase's review as its reports stand: a report from every reviewer of
+ * the count, for each set of reports the folder holds — `review`, or an
+ * area where the review was split (13.1.4) — each read, with its file and
+ * the fingerprint of its text; or what stands in the way of reading them
+ * all — none reported, a report missing, one that does not read.
+ * @param {string} cwd @param {string} unit @param {number} phase
+ * @returns {{faults: string[], reports: PhaseReport[]}}
+ */
+function phaseReports(cwd, unit, phase) {
+  const rel = phaseFolder(unit, phase);
+  const folder = statePath(cwd, rel);
+  const held = fs.existsSync(folder) ? fs.readdirSync(folder) : [];
+  const sets = [...new Set(held.flatMap((name) => PHASE_REPORT.exec(name)?.[1] ?? []))].sort();
+  if (sets.length === 0) return { faults: [`${phaseName(unit, phase)} has no phase review reported — its reviewers write their reports in ${rel}/`], reports: [] };
+  /** @type {{faults: string[], reports: PhaseReport[]}} */
+  const found = { faults: [], reports: [] };
+  for (const file of sets.flatMap((set) => REVIEWER_LETTERS.map((letter) => `${rel}/${set}-${letter}.md`))) {
+    if (!held.includes(file.slice(rel.length + 1))) {
+      found.faults.push(`the phase review has no report at ${file}`);
+      continue;
+    }
+    const text = fs.readFileSync(statePath(cwd, file), 'utf8');
+    try {
+      found.reports.push({ file, print: fingerprint(text), ...readReport(text) });
+    } catch (err) {
+      found.faults.push(`${file} does not read as a reviewer's report — ${messageOf(err)}`);
+    }
+  }
+  return found;
 }
 
 /**
@@ -300,4 +343,5 @@ function roundUnderReview(cwd, ref, letters = REVIEWER_LETTERS) {
 
 module.exports = {
   passes, readReport, reportFaults, taskFolder, roundReportPath, settlementPath, taskRounds, pairPassed, taskPassed, roundUnderReview, phaseReviewPath,
+  phaseFolder, phaseReports,
 };

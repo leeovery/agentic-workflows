@@ -335,4 +335,4 @@ function settleTask(cwd, unit, given, file) {
   });
 }
 
-module.exports = { SECTIONS, accountPath, figuresPath, readAccount, takeAccount, settleTask };
+module.exports = { SECTIONS, accountPath, figuresPath, readAccount, takeAccount, settleTask, refuserFor, committed };

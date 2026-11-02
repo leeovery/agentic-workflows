@@ -18,8 +18,9 @@
 // refusing a task its pair has not passed — no round reported, its last
 // failed and not settled, or a report that does not read — and chaining it
 // once the orchestrator settles that round (12.1.4, 13.4.6); `phase`
-// refusing a phase the cut holds until its phase review has passed, and a
-// fix phase past the cut asking none (7.2.4, P14); what a phase review
+// refusing a phase the cut holds until its phase review has passed, or
+// failed and been settled (13.10.1), its refusal naming the settlement,
+// and a fix phase past the cut asking none (7.2.4, P14); what a phase review
 // passed means, test-engine-build-checklists.cjs's. What every driver does
 // is the landing conformance suites'; the local driver's stacks,
 // test-engine-land-local.cjs's; the person's checkouts,
@@ -328,15 +329,21 @@ describe('land: what the build\'s reviews ask first (12.1.4, 7.2.4)', () => {
     assert.deepStrictEqual(own(ok(dir, chain)).stack, ['1.1']);
   });
 
-  it('refuses to merge a phase the cut holds until its phase review has passed, moving nothing, and merges it once passed — a fix phase past the cut asking none (P14)', () => {
+  it('refuses to merge a phase the cut holds until its phase review has passed, or failed and been settled — every task done settling nothing — moving nothing, and merges it once passed (13.10.1); a fix phase past the cut asking none (P14)', () => {
     const dir = project();
     createManifest(dir, UNIT, { ...readManifest(dir, UNIT), build: { position: 'auto' }, cut: { phases: [{ name: 'Cards', goal: 'Cards are taken.', scenarios: ['1.S1'], sections: ['1'], relies_on: [] }] } });
     ok(dir, openArgs(card));
     ok(dir, ['land', 'chain', UNIT, card.shown]);
     const unreviewed = refusedMoving(dir, ['land', 'phase', UNIT, '1']);
-    for (const letter of REVIEWER_LETTERS) writeState(dir, phaseReviewPath(UNIT, 1, letter), reportOf('pass'));
+    REVIEWER_LETTERS.forEach((letter, i) => writeState(dir, phaseReviewPath(UNIT, 1, letter), reportOf(i === 0 ? 'fail' : 'pass')));
+    ok(dir, ['task', 'done', UNIT, card.shown]);
+    const unsettled = refusedMoving(dir, ['land', 'phase', UNIT, '1']);
+    ok(dir, ['task', 'settle', UNIT, '--phase', '1', '--file', writeState(dir, `.cache/${UNIT}/why.md`, 'The double charge is the driver\'s, outside this phase.\n')]);
 
-    assert.strictEqual(unreviewed, `land: phase 1 of pay merges once its phase review has passed and its fixes are done — phase 1 of pay has no phase review reported — its reviewers write their reports in ${UNIT}/build/phases/phase-1/`);
+    assert.deepStrictEqual([unreviewed, unsettled], [
+      `land: phase 1 of pay merges once its phase review has passed and its fixes are done — phase 1 of pay has no phase review reported — its reviewers write their reports in ${UNIT}/build/phases/phase-1/`,
+      'land: phase 1 of pay merges once its phase review has passed and its fixes are done — the phase review failed, and no settlement answers it — write its fixes as tasks of the phase, then settle it, naming them: task settle pay --phase 1 --file <why> [--fixes <task>,…]',
+    ]);
     assert.deepStrictEqual(own(ok(dir, ['land', 'phase', UNIT, '1'])).merged, ['1.1']);
     assert.strictEqual(refuses(dir, ['land', 'phase', UNIT, '2']).error, 'land: phase 2 of pay has no task opened — open its tasks first');
   });

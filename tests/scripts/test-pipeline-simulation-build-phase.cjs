@@ -15,7 +15,8 @@
 // the file their brief names, renamed to it — and taken from there; the
 // task opened and chained into its phase's stack; then the
 // mutation tool run once over the phase, and the consolidation agent's
-// report and the phase review's landing where their readers find them; the
+// report and the phase review's landing where their readers find them, one
+// reviewer failing it, its fixes owed until the orchestrator settles it; the
 // stack merged and the phase's close taken on the engine's items alone.
 //
 // Layer: simulation. World: this file's own, built once from the project
@@ -68,6 +69,7 @@ function landed(file, text) {
 }
 
 const PASSED = '## Findings\n\nNone.\n\nVerdict: pass\n';
+const OFF_PHASE = '## Findings\n\n- bug: the ledger never checks its hash on read\n  Scenario: an entry read back\n\nVerdict: fail\n';
 
 describe('pipeline simulation: a phase of the cut', () => {
   let sim;
@@ -141,11 +143,18 @@ describe('pipeline simulation: a phase of the cut', () => {
     for (const letter of ['a', 'b']) {
       const review = sim.run(['brief', 'phase-review', wu, '1', '--base', 'main', '--letter', letter]);
       assert.ok(briefOf(sim, review).includes('# Its scenarios\' runs, at the phase\'s tips\n\n- 1.S1: proven\n'), 'the run from the task\'s worktree proves the scenario at the phase\'s tips');
-      landed(placeIn(sim, review, 'Where your report goes'), PASSED);
+      landed(placeIn(sim, review, 'Where your report goes'), letter === 'a' ? PASSED : OFF_PHASE);
     }
     assert.deepStrictEqual(['a', 'b'].map((letter) => fs.existsSync(path.join(sim.dir, `.leeway/${wu}/build/phases/phase-1/review-${letter}.md`))), [true, true]);
 
-    // The phase review passed, its stack merges, and the phase closes on
+    // One reviewer failed it, on a finding outside the phase: its fixes are
+    // owed, and the stack waits, until the orchestrator settles the review
+    // naming none (13.10.1).
+    assert.ok(buildEntry(sim, wu).some((line) => line.startsWith('fixes owed: phase 1\'s review failed, and no settlement names its fixes')), 'the standing says the fixes are owed');
+    sim.refuses(['land', 'phase', wu, '1'], /— the phase review failed, and no settlement answers it — /);
+    sim.run(['task', 'settle', wu, '--phase', '1', '--file', sim.write(`.leeway/.cache/${wu}/build/why.md`, 'Checking the hash on read is the next phase\'s.\n')]);
+
+    // The phase review settled, its stack merges, and the phase closes on
     // the engine's items alone (7.2.4, 6.4.9).
     sim.run(['land', 'phase', wu, '1']);
     sim.run(['checklist', 'close', 'phase-close', wu, '1']);

@@ -464,7 +464,7 @@ describe('task account (12.14.4, 6.3.13)', () => {
     settle([UNIT, '1.2', '--file', why], /^task settle: round 3 of task 1\.2 of pay is settled already — pay\/build\/tasks\/1\.2\/round-3-settled\.md$/);
     ok(dir, ['task', 'done', UNIT, '1.2'], { env: SESSION });
     settle([UNIT, '1.2', '--file', why], /^task settle: task 1\.2 of pay is done — a round is settled as the task lands, before task done$/);
-    assert.match(refuses(dir, ['task', 'settle', UNIT, '1.2']).error, /^Usage: engine task settle <unit> <task> --file <why>$/);
+    assert.match(refuses(dir, ['task', 'settle', UNIT, '1.2']).error, /^Usage: engine task settle <unit> <task> --file <why> \| <unit> --phase <N> --file <why> \[--fixes <task>,…\]$/);
   });
 
   it('no repository of the project holding the task\'s branch, as the reviewer\'s brief refuses it; a branch holding none of the task\'s commits counts nothing', () => {

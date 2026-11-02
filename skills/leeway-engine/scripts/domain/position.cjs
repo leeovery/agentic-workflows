@@ -52,7 +52,7 @@ const { handedSession } = require('../kernel/process.cjs');
 const { positionPath, readPosition, isMarked, markConversation, runningTranscript } = require('./conversation.cjs');
 const { ROLES, issuedOf } = require('./brief-names.cjs');
 const { loadManifest, loadProjectManifest } = require('./reads.cjs');
-const { buildBegun, computeTopicLifecycle, itemOf, openRecords, phaseData, UNIT_PHASES } = require('./derivations.cjs');
+const { buildBegun, buildByCut, computeTopicLifecycle, itemOf, openRecords, phaseData, UNIT_PHASES } = require('./derivations.cjs');
 const { recordDir } = require('./experiment-paths.cjs');
 const { latestSessionLog, productSession } = require('./discovery-session.cjs');
 const { PRODUCT_SESSIONS } = require('./layout.cjs');
@@ -500,7 +500,7 @@ function workAt(cwd, position, manifest) {
     case 'planning':
       return { skill, documents: [path.join(plan, 'planning.md'), ...phaseTaskFiles(plan)] };
     case 'implementation': {
-      if (buildBegun(manifest)) return { skill, ...buildWork(cwd, name) };
+      if (buildByCut(manifest)) return { skill, ...buildWork(cwd, name) };
       const tasks = position.tasks ?? [];
       if (tasks.length === 0) return { skill, documents: [] };
       const format = itemOf(manifest, 'planning', topic)?.format;

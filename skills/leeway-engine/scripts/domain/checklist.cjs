@@ -39,7 +39,9 @@
 // relies on done, its tasks passed, its phase review passed with its fixes
 // landed, its scenarios proven or reported, its notes consolidated and its
 // stack merged; and a directive's check passing (directives.cjs). What a
-// call reads for them is read once (`reads`). Phase 1's close is refused
+// call reads for them is read once (`reads`). An open engine item may name
+// its way on: the phase review's, what stands in the way of it, its
+// settlement among them (phase-settlement.cjs). Phase 1's close is refused
 // beyond its items until the verify setup is recorded (12.3.3).
 // An item applies only where the unit has its step: the sweep between
 // topics where it has more than one live topic. No phase starts before
@@ -113,8 +115,9 @@ const { REVIEWERS } = require('../kernel/reviewers.cjs');
 
 /**
  * An item of a point: its key and text; how the engine checks it, where it
- * does; and where it applies, where not everywhere.
- * @typedef {{key: string, text: string, check?: (named: Named) => boolean, applies?: (named: Named) => boolean}} Item
+ * does, and the way on it names while open, where it names one; and where
+ * it applies, where not everywhere.
+ * @typedef {{key: string, text: string, check?: (named: Named) => boolean, way?: (named: Named) => string, applies?: (named: Named) => boolean}} Item
  */
 
 /** @typedef {{checklist: string, item: string, text: string, reason: string, at: string}} Skip */
@@ -246,6 +249,9 @@ const specAndCut = (cwd, unit, manifest) => sealOf(readLandedSpec(cwd, unit), ma
  */
 const ofPhase = (check) => (named) => check(/** @type {PhaseReading} */ (named), /** @type {number} */ (named.phase));
 
+/** What stands between the phase and its review passed, each fault saying its way on. @param {Named} named */
+const reviewFaults = (named) => checks.phaseReviewFaults(/** @type {PhaseReading} */ (named), /** @type {number} */ (named.phase));
+
 /** The directive's check passes. @param {Named} named */
 const directivePasses = ({ cwd, path }) => checkDirective(cwd, path[1]).passed;
 
@@ -339,7 +345,9 @@ const POINTS = Object.freeze({
     place: onPhase('close'),
     items: [
       { key: 'tasks-passed', text: `every task passed each of its ${REVIEWERS} reviewers`, check: ofPhase(checks.tasksPassed) },
-      { key: 'phase-review-passed', text: 'the phase review passed and its fixes landed', check: ofPhase((at, phase) => checks.phaseReviewFaults(at, phase).length === 0) },
+      {
+        key: 'phase-review-passed', text: 'the phase review passed and its fixes landed', check: (named) => reviewFaults(named).length === 0, way: (named) => reviewFaults(named).join('; '),
+      },
       { key: 'scenarios-reported', text: 'each scenario proven or reported not proven', check: ofPhase(checks.scenariosReported) },
       { key: 'notes-consolidated', text: 'the notes for later read by the consolidation agent, then made into tasks or dropped with a reason', check: ofPhase(checks.notesConsolidated) },
       { key: 'stack-merged', text: 'the stack merged, or waiting at its gate in step', check: ofPhase(checks.stackMerged) },
@@ -378,14 +386,18 @@ const itemsOf = (named) => POINTS[named.point].items.filter((item) => item.appli
 
 /**
  * Where each item of a named checklist stands: the engine's as it checks
- * them now, and Claude's by the marks made since the last close.
+ * them now, an open one with the way on it names, and Claude's by the marks
+ * made since the last close.
  * @param {Named} named
- * @returns {Array<{key: string, text: string, by: 'engine'|'claude', state: 'done'|'skipped'|'open', reason?: string, at?: string}>}
+ * @returns {Array<{key: string, text: string, by: 'engine'|'claude', state: 'done'|'skipped'|'open', reason?: string, at?: string, way?: string}>}
  */
 function itemStates(named) {
   const record = recordAt(named.manifest, named.path);
-  return itemsOf(named).map(({ key, text, check }) => {
-    if (check !== undefined) return { key, text, by: 'engine', state: check(named) ? 'done' : 'open' };
+  return itemsOf(named).map(({ key, text, check, way }) => {
+    if (check !== undefined) {
+      if (check(named)) return { key, text, by: 'engine', state: 'done' };
+      return { key, text, by: 'engine', state: 'open', ...(way === undefined ? {} : { way: way(named) }) };
+    }
     const mark = record?.items[key];
     if (mark === undefined || (record?.closed !== undefined && mark.at <= record.closed)) return { key, text, by: 'claude', state: 'open' };
     return { key, text, by: 'claude', ...mark };

@@ -22,8 +22,10 @@
 //   round-report.cjs); rounds that do not read fail it, said as a warning.
 // - Its phase review passed and its fixes landed: a report from every
 //   reviewer of the count, of each set where the review was split by area
-//   (13.1.4), every one read; where one failed, the fixes are tasks of the
-//   phase (13.10.1), so every task not closed is done.
+//   (13.1.4), every one read (round-report.cjs), passing; or, where one
+//   failed, the orchestrator's settlement answering those reports, every
+//   fix task it names done (13.10.1, phase-settlement.cjs). Until it is
+//   settled the phase's fixes are owed, which the build's standing says.
 // - Each scenario proven or reported not proven: proven by its runs at the
 //   phase's tips (phase-stack.cjs, runs.cjs), else named in every report of
 //   the phase review by a finding in its standing's words (15.4.3). A stack
@@ -40,17 +42,15 @@
 // since a read may commit the tracker's setting up; and what landed.
 // ---------------------------------------------------------------------------
 
-const fs = require('fs');
-const path = require('path');
-const { stateRoot, statePath } = require('../kernel/state-root.cjs');
+const { stateRoot } = require('../kernel/state-root.cjs');
 const { messageOf } = require('../kernel/call.cjs');
-const { REVIEWER_LETTERS } = require('../kernel/reviewers.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { manifestOf, finishedUnits } = require('./ledger-units.cjs');
 const { phaseClosed } = require('./derivations.cjs');
 const { trackedLists, trackedPhase } = require('./task-verbs.cjs');
 const { holdsScenario, namesScenario } = require('./task-file.cjs');
-const { taskPassed, readReport, phaseReviewPath } = require('./round-report.cjs');
+const { taskPassed, phaseReports } = require('./round-report.cjs');
+const { readSettlement, answers } = require('./phase-settlement.cjs');
 const { phaseStack, tipCommits } = require('./phase-stack.cjs');
 const { runsOf } = require('./runs.cjs');
 const { consolidationFaults } = require('./notes.cjs');
@@ -60,7 +60,7 @@ const { phaseName, shownTask } = require('./task-id.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskRow} TaskRow */
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
-/** @typedef {import('./round-report.cjs').Report} Report */
+/** @typedef {import('./round-report.cjs').PhaseReport} PhaseReport */
 /** @typedef {import('./runs.cjs').RepoCommit} RepoCommit */
 
 /**
@@ -70,10 +70,7 @@ const { phaseName, shownTask } = require('./task-id.cjs');
  * @typedef {{cwd: string, unit: string, manifest: Record<string, any>, warnings: string[], reads: Map<string, any>}} Reading
  */
 
-/** A phase review's reports read: what stands in the way of reading them all, and those read. @typedef {{faults: string[], reports: (Report & {file: string})[]}} Reviewed */
-
-/** A report of the phase review: its set, `review` or an area, and its reviewer's letter. */
-const REVIEW_FILE = /^(.+)-([a-z])\.md$/;
+/** A phase review's reports read: what stands in the way of reading them all, and those read. @typedef {{faults: string[], reports: PhaseReport[]}} Reviewed */
 
 /** @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {string[]} [warnings] @returns {Reading} */
 const reading = (cwd, unit, manifest, warnings = []) => ({ cwd, unit, manifest, warnings, reads: new Map() });
@@ -161,46 +158,59 @@ function tasksPassed(at, phase) {
   return rows.length > 0 && rows.every(({ ref }) => passed(at, ref));
 }
 
+/** The phase review's reports, read once a call (round-report.cjs). @param {Reading} at @param {number} phase @returns {Reviewed} */
+const reviewed = (at, phase) => once(at, `review ${phase}`, () => phaseReports(at.cwd, at.unit, phase));
+
+/** Whether every report of a phase review passes. @param {PhaseReport[]} reports */
+const allPass = (reports) => reports.every(({ verdict }) => verdict === 'pass');
+
 /**
- * The phase review's reports, read once a call: a report from each reviewer
- * of the count, for each set of reports the folder holds — `review`, or an
- * area where the review was split.
- * @param {Reading} at @param {number} phase @returns {Reviewed}
+ * The phase review's settlement where it answers the reports as they stand,
+ * read once a call; null where none does, and where it does not read, said
+ * as a fault.
+ * @param {Reading} at @param {number} phase @param {PhaseReport[]} reports @param {string[]} faults
+ * @returns {import('./phase-settlement.cjs').Settlement|null}
  */
-function reviewed(at, phase) {
-  return once(at, `review ${phase}`, () => {
-    const rel = path.posix.dirname(phaseReviewPath(at.unit, phase, REVIEWER_LETTERS[0]));
-    const folder = statePath(at.cwd, rel);
-    const held = fs.existsSync(folder) ? fs.readdirSync(folder) : [];
-    const sets = [...new Set(held.flatMap((name) => REVIEW_FILE.exec(name)?.[1] ?? []))].sort();
-    if (sets.length === 0) return { faults: [`${phaseName(at.unit, phase)} has no phase review reported — its reviewers write their reports in ${rel}/`], reports: [] };
-    /** @type {Reviewed} */
-    const found = { faults: [], reports: [] };
-    for (const file of sets.flatMap((set) => REVIEWER_LETTERS.map((letter) => `${rel}/${set}-${letter}.md`))) {
-      if (!held.includes(path.posix.basename(file))) {
-        found.faults.push(`the phase review has no report at ${file}`);
-        continue;
-      }
-      try {
-        found.reports.push({ file, ...readReport(fs.readFileSync(statePath(at.cwd, file), 'utf8')) });
-      } catch (err) {
-        found.faults.push(`${file} does not read as a reviewer's report — ${messageOf(err)}`);
-      }
+function answering(at, phase, reports, faults) {
+  const settled = once(at, `settlement ${phase}`, () => {
+    try {
+      return readSettlement(at.cwd, at.unit, phase);
+    } catch (err) {
+      return messageOf(err);
     }
-    return found;
   });
+  if (typeof settled === 'string') faults.push(settled);
+  return settled !== null && typeof settled !== 'string' && answers(settled, reports) ? settled : null;
 }
 
 /**
  * What stands between the phase and its review passed with its fixes
  * landed (12.11.3, 13.10.1), none where nothing does: a report missing or
- * not reading; where one failed, each task not closed that is not done.
+ * not reading; where one failed, no settlement answering it, or a fix it
+ * names not done — each saying the way on.
  * @param {Reading} at @param {number} phase @returns {string[]}
  */
 function phaseReviewFaults(at, phase) {
   const { faults, reports } = reviewed(at, phase);
-  if (faults.length > 0 || reports.every(({ verdict }) => verdict === 'pass')) return faults;
-  return liveRows(at, phase).filter(({ status }) => status !== 'done').map(({ ref, status }) => `the phase review failed, and task ${shownTask(ref)}, a fix of it, is ${status}`);
+  if (faults.length > 0 || allPass(reports)) return faults;
+  /** @type {string[]} */
+  const unread = [];
+  const settled = answering(at, phase, reports, unread);
+  if (settled === null) {
+    return [...unread, `the phase review failed, and no settlement answers it — write its fixes as tasks of the phase, then settle it, naming them: task settle ${at.unit} --phase ${phase} --file <why> [--fixes <task>,…]`];
+  }
+  const statuses = new Map(phaseLists(at, [phase])[0]?.map(({ ref, status }) => [shownTask(ref), status]) ?? []);
+  return settled.fixes.flatMap((fix) => (statuses.get(fix) === 'done' ? [] : [`the phase review failed, and task ${fix}, a fix of it, is ${statuses.get(fix)}`]));
+}
+
+/**
+ * Whether the phase's review failed with its fixes owed: every report of
+ * the count in and read, one failing, and no settlement answering it.
+ * @param {Reading} at @param {number} phase
+ */
+function fixesOwed(at, phase) {
+  const { faults, reports } = reviewed(at, phase);
+  return faults.length === 0 && !allPass(reports) && answering(at, phase, reports, []) === null;
 }
 
 /** The phase's stack's tips, read once a call; null where they cannot be read, said as a warning. @param {Reading} at @param {number} phase @returns {RepoCommit[]|null} */
@@ -267,6 +277,6 @@ function phaseReviewRefusal(cwd, unit, phase) {
 }
 
 module.exports = {
-  reading, cutPhases, phaseLists, phaseLanded,
+  reading, cutPhases, phaseLists, phaseLanded, fixesOwed,
   tasksWritten, reliedOnDone, tasksPassed, phaseReviewFaults, scenariosReported, notesConsolidated, stackMerged, closeRefusal, phaseReviewRefusal,
 };

@@ -132,6 +132,7 @@ const LAYOUT = Object.freeze([
   place('file', '{unit}/build/phases/phase-{N}/review-{letter}.md', '4.11.5'),
   place('file', '{unit}/build/phases/phase-{N}/consolidation.md', '4.11.5'),
   place('file', '{unit}/build/phases/phase-{N}/{area}-{letter}.md', '4.11.5'),
+  engineFile('{unit}/build/phases/phase-{N}/settlement.json', '4.11.5', 'the orchestrator\'s settlement of a phase review that failed', 'task settle'),
   engineFile('{unit}/build/runs/{n}.S{m}/run-{NNN}.json', '4.11.15', 'a verification run', 'verify'),
   place('file', '{unit}/review/round-{N}.md', '4.11.5'),
   place('file', '{unit}/review/round-{N}-checks.md', '4.11.5'),
