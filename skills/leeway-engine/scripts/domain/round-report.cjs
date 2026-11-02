@@ -66,7 +66,8 @@
 // reported beside its consolidation, `build/phases/phase-{N}/
 // review-{letter}.md`, or `{area}-{letter}.md` where it was split, and read
 // whole (`phaseReports`), each report with its text's fingerprint, by which
-// a settlement names the reports it answers (phase-settlement.cjs).
+// a settlement names the reports it answers (phase-settlement.cjs). What the
+// phase's folder holds (`phaseRecords`) its close commits.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -240,6 +241,19 @@ function phaseReports(cwd, unit, phase) {
 }
 
 /**
+ * Every record a phase's folder holds — its review's reports, its
+ * consolidation report, its settlement — each state-relative, in name
+ * order; none where it holds none. A state commit holds back an agent's
+ * staged `.txt`, and refuses a file the layout does not place.
+ * @param {string} cwd @param {string} unit @param {number} phase @returns {string[]}
+ */
+function phaseRecords(cwd, unit, phase) {
+  const rel = phaseFolder(unit, phase);
+  const folder = statePath(cwd, rel);
+  return (fs.existsSync(folder) ? fs.readdirSync(folder).sort() : []).map((name) => `${rel}/${name}`);
+}
+
+/**
  * The letters of the reviewers whose reports a round holds, in order.
  * @param {Set<string>} held the folder's file names @param {number} round
  */
@@ -343,5 +357,5 @@ function roundUnderReview(cwd, ref, letters = REVIEWER_LETTERS) {
 
 module.exports = {
   passes, readReport, reportFaults, taskFolder, roundReportPath, settlementPath, taskRounds, pairPassed, taskPassed, roundUnderReview, phaseReviewPath,
-  phaseFolder, phaseReports,
+  phaseFolder, phaseReports, phaseRecords,
 };

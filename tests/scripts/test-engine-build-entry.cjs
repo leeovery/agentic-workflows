@@ -15,9 +15,10 @@
 // (12.1.6, 12.2.2, 24.2.2, 24.2.5, 12.S4, 24.S13), none for a unit built
 // under the old plan: where each phase of the cut stands with its tasks,
 // its review's fixes owed until it is settled (13.10.1), the tasks in
-// flight with their builders, the questions waiting and the tasks they
-// park, the entries affected and the unit's record by their calls, and the
-// build's log. The standing (P13): each
+// flight with their builders — the entry's of its own unit alone, the
+// note's those of the conversation it is asked for, whoever asks — the
+// questions waiting and the tasks they park, the entries affected and the
+// unit's record by their calls, and the build's log. The standing (P13): each
 // phase not yet written, written, running, in review, closed or merged, as
 // the tracker, the checklists and the landing hold it, and the build
 // finished only once every phase of the cut has closed, so nothing ready
@@ -152,8 +153,8 @@ function position(sessionId = 'sess-1') {
 /** A DATA section of `lines`, as the entry draws it. @param {string[]} lines */
 const data = (lines) => `=== DATA (reason from this — never display or parse the sections below) ===\n${lines.join('\n')}\n`;
 
-/** The build's standing, as this conversation reads it. */
-const standing = () => withEnv({ LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'sess-1' }, () => buildStanding(dir, UNIT));
+/** The build's standing, as this conversation reads it, with its tasks in flight. */
+const standing = () => withEnv({ LEEWAY_CONFIG_DIR: config }, () => buildStanding(dir, UNIT, position()?.tasks ?? []));
 
 /** Where each phase of the cut stands. */
 const states = () => standing().phases.map(({ state }) => state);
@@ -253,7 +254,7 @@ describe('the answer: where the build stands, and what to read beside the ledger
   });
 
   it('says where a phase\'s review failed with its fixes owed — every report of the count in — the settlement its way on, and no longer once it is settled (13.10.1)', () => {
-    const owed = `fixes owed: phase 1's review failed, and no settlement names its fixes — write them as tasks of the phase, then settle it, naming them: task settle ${UNIT} --phase 1 --file <why> [--fixes <task>,…]`;
+    const owed = `fixes owed: phase 1's review failed, and no settlement answers it — write its fixes as tasks of the phase, then settle it, naming them: task settle ${UNIT} --phase 1 --file <why> [--fixes <task>,…]`;
     const report = (/** @type {string} */ letter, /** @type {string} */ verdict) => writeState(dir, layout.unit(UNIT, 'build', 'phases', 'phase-1', `review-${letter}.md`),
       `# Review\n\n## Findings\n\n${verdict === 'pass' ? 'None.' : '- bug: a note opens off screen\n  Scenario: a note made on a second screen'}\n\nVerdict: ${verdict}\n`);
     report('b', 'fail');
@@ -293,6 +294,27 @@ describe('the answer: where the build stands, and what to read beside the ledger
     }
   });
 
+  describe('carries the tasks in flight of the conversation it is asked for, never the calling process\'s — a compaction asks from outside that conversation (24.2.4)', () => {
+    /** sess-1's note, asked for by a process whose own id is `caller`; its in-flight lines. @param {string|undefined} caller */
+    const asked = (caller) => output(dir, ['conversation', 'position', 'sess-1'], { env: { ...env(), CLAUDE_CODE_SESSION_ID: caller } })
+      .split('\n').filter((line) => line.startsWith('in flight: '));
+    const OWN = ['in flight: task 1.2, its builder agent `agent-own`'];
+    beforeEach(() => {
+      enter([UNIT]);
+      ok(dir, ['conversation', 'builder', 'sess-1', 'agent-own'], { env: env() });
+    });
+
+    it('asked with no session id of its own', () => {
+      assert.deepStrictEqual(asked(undefined), OWN);
+    });
+
+    it('asked by another conversation with tasks in flight of its own', () => {
+      ok(dir, ['task', 'start', UNIT, '1.3'], { env: env('other') });
+
+      assert.deepStrictEqual(asked('other'), OWN);
+    });
+  });
+
   it('gives a unit built under the old plan no build\'s standing in its recovery note, its build begun all the same (P12)', () => {
     fs.mkdirSync(path.join(config, 'conversations', 'sess-1'), { recursive: true });
     fs.writeFileSync(path.join(config, 'conversations', 'sess-1', 'position.json'), JSON.stringify({ name: 'kept', phase: 'implementation', topic: 'kept' }));
@@ -320,7 +342,7 @@ describe('the build\'s standing (P13)', () => {
       waiting: [],
       finished: false,
     });
-    assert.deepStrictEqual(withEnv({ LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'sess-1' }, () => buildStanding(dir, 'solo')).in_flight, [], 'another build\'s standing holds none of this one\'s tasks');
+    assert.ok(!enter(['solo']).sections.includes('in flight:'), 'another build\'s entry names none of this conversation\'s tasks in flight');
   });
 
   it('reads a phase in review once every task not closed is done, closed once its close is recorded, merged once its tasks landed — and the build finished only once every phase of the cut has closed, so nothing ready with a phase not yet written never reads finished (7.4.3, 12.6.7, 12.S16, 3.S3)', () => {

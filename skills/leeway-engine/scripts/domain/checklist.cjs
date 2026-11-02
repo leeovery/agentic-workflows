@@ -42,7 +42,11 @@
 // call reads for them is read once (`reads`). An open engine item may name
 // its way on: the phase review's, what stands in the way of it, its
 // settlement among them (phase-settlement.cjs). Phase 1's close is refused
-// beyond its items until the verify setup is recorded (12.3.3).
+// beyond its items until the verify setup is recorded (12.3.3). A phase's
+// close commits, beside the manifest, every record its folder holds — the
+// reports its items read, its consolidation report, its settlement
+// (round-report.cjs, `phaseRecords`) — so a second clone reads
+// the phase as this one did.
 // An item applies only where the unit has its step: the sweep between
 // topics where it has more than one live topic. No phase starts before
 // ready to build's yes begins the build (11.8.3), so a phase's start has no
@@ -88,6 +92,7 @@ const { sweepTaken, candidatesWaiting } = require('./sweep.cjs');
 const { reviewSettled, cutRequests } = require('./spec-passes.cjs');
 const { mailboxDepth, buildBegun, phaseKey } = require('./derivations.cjs');
 const checks = require('./phase-checks.cjs');
+const { phaseRecords } = require('./round-report.cjs');
 const { cutHolds } = require('./cut.cjs');
 const { canonicalAssets } = require('./ledger-read.cjs');
 const { logLinks } = require('./log-links.cjs');
@@ -128,7 +133,8 @@ const { REVIEWERS } = require('../kernel/reviewers.cjs');
  * A point: what names its checklist after the point, and where that places
  * it; its items; the skips its gate shows, given its own; what its close
  * keeps beside the time, where it keeps more; why its close is refused
- * beyond its items, where it can be; and what its close does beyond
+ * beyond its items, where it can be; what its close commits beside the
+ * manifest, where it commits more; and what its close does beyond
  * recording itself, where it does more.
  * @typedef {{
  *   takes: string[],
@@ -137,6 +143,7 @@ const { REVIEWERS } = require('../kernel/reviewers.cjs');
  *   shows: (named: Named, own: Skip[]) => Skip[],
  *   seals?: (named: Named) => Record<string, unknown>,
  *   refuses?: (named: Named) => string|null,
+ *   commits?: (named: Named) => string[],
  *   closes?: (named: Named) => void,
  * }} Point
  */
@@ -354,6 +361,7 @@ const POINTS = Object.freeze({
     ],
     shows: noSkips,
     refuses: (named) => checks.closeRefusal(/** @type {PhaseReading} */ (named), /** @type {number} */ (named.phase)),
+    commits: ({ cwd, unit, phase }) => phaseRecords(cwd, /** @type {string} */ (unit), /** @type {number} */ (phase)),
   },
   finish: {
     takes: ['<work-unit>'],
@@ -458,13 +466,13 @@ function named(cwd, point, args) {
 /**
  * Change a named checklist's record, its work's manifest read again and
  * saved under that manifest's lock — the change seeing the checklist as
- * read there, and throwing to write nothing — then commit the manifest
- * alone. Answers the commit's outcome on `result`.
+ * read there, and throwing to write nothing — then commit the manifest,
+ * with the files given beside it. Answers the commit's outcome on `result`.
  * @param {Named} checklist @param {string} done what the commit message says was done
  * @param {(record: Checklist, fresh: Named) => void} change
- * @param {Record<string, unknown>} result
+ * @param {Record<string, unknown>} result @param {string[]} [beside] state-relative
  */
-function changeRecord(checklist, done, change, result) {
+function changeRecord(checklist, done, change, result, beside = []) {
   const { cwd, unit, path } = checklist;
   const write = (/** @type {Record<string, any>} */ manifest) => {
     const parent = path.slice(0, -1).reduce((node, key) => (node[key] ??= {}), manifest.checklists ??= {});
@@ -478,7 +486,7 @@ function changeRecord(checklist, done, change, result) {
   }
   const { warnings } = checklist;
   const scope = unit === null ? 'checklist' : `checklist(${unit})`;
-  const outcome = commitStateTail(cwd, unit === null ? PROJECT_MANIFEST_SPEC : `${unit}/manifest.json`, `${scope}: ${nameOf(checklist)} ${done}`, warnings);
+  const outcome = commitStateTail(cwd, [unit === null ? PROJECT_MANIFEST_SPEC : `${unit}/manifest.json`, ...beside], `${scope}: ${nameOf(checklist)} ${done}`, warnings);
   result.committed = outcome.committed;
   if (warnings.length > 0) result.warnings = warnings;
   noteCommitOutcome(result, outcome, unit === null ? undefined : `${unit} --state`);
@@ -525,7 +533,8 @@ function mark(checklist, key, state, reason) {
 /**
  * Record the checklist's close, refused where what its point keeps cannot be
  * read, then while any item is open (6.4.4), then as its point refuses it
- * beyond them; then do what its point's close does beyond.
+ * beyond them, committing what its point's close commits beside the
+ * manifest; then do what its point's close does beyond.
  * @param {Named} checklist
  */
 function close(checklist) {
@@ -538,7 +547,7 @@ function close(checklist) {
     if (refused !== null) throw new Error(refused);
     record.closed = at;
     Object.assign(record, sealed);
-  }, { ...answering(checklist), closed: at });
+  }, { ...answering(checklist), closed: at }, POINTS[checklist.point].commits?.(checklist));
   POINTS[checklist.point].closes?.(checklist);
   return answer;
 }

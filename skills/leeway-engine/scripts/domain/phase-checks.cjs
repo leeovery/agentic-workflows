@@ -24,8 +24,9 @@
 //   reviewer of the count, of each set where the review was split by area
 //   (13.1.4), every one read (round-report.cjs), passing; or, where one
 //   failed, the orchestrator's settlement answering those reports, every
-//   fix task it names done (13.10.1, phase-settlement.cjs). Until it is
-//   settled the phase's fixes are owed, which the build's standing says.
+//   fix task it names done (13.10.1, phase-settlement.cjs) — one closed
+//   naming the settlement given again as its way on. Until it is settled
+//   the phase's fixes are owed, which the build's standing says.
 // - Each scenario proven or reported not proven: proven by its runs at the
 //   phase's tips (phase-stack.cjs, runs.cjs), else named in every report of
 //   the phase review by a finding in its standing's words (15.4.3). A stack
@@ -50,7 +51,7 @@ const { phaseClosed } = require('./derivations.cjs');
 const { trackedLists, trackedPhase } = require('./task-verbs.cjs');
 const { holdsScenario, namesScenario } = require('./task-file.cjs');
 const { taskPassed, phaseReports } = require('./round-report.cjs');
-const { readSettlement, answers } = require('./phase-settlement.cjs');
+const { readSettlement, answers, settleCall, unsettledWords } = require('./phase-settlement.cjs');
 const { phaseStack, tipCommits } = require('./phase-stack.cjs');
 const { runsOf } = require('./runs.cjs');
 const { consolidationFaults } = require('./notes.cjs');
@@ -184,6 +185,19 @@ function answering(at, phase, reports, faults) {
 }
 
 /**
+ * What stands in the way of a fix the settlement names: nothing once it is
+ * done; once closed, the settlement given again, naming the fixes that
+ * stand.
+ * @param {Reading} at @param {number} phase @param {string} fix @param {string|undefined} status
+ * @returns {string[]}
+ */
+function fixFaults(at, phase, fix, status) {
+  if (status === 'done') return [];
+  const fault = `the phase review failed, and task ${fix}, a fix of it, is ${status}`;
+  return [status === 'closed' ? `${fault} — settle it again, naming the fixes that stand: ${settleCall(at.unit, phase)}` : fault];
+}
+
+/**
  * What stands between the phase and its review passed with its fixes
  * landed (12.11.3, 13.10.1), none where nothing does: a report missing or
  * not reading; where one failed, no settlement answering it, or a fix it
@@ -197,10 +211,10 @@ function phaseReviewFaults(at, phase) {
   const unread = [];
   const settled = answering(at, phase, reports, unread);
   if (settled === null) {
-    return [...unread, `the phase review failed, and no settlement answers it — write its fixes as tasks of the phase, then settle it, naming them: task settle ${at.unit} --phase ${phase} --file <why> [--fixes <task>,…]`];
+    return [...unread, unsettledWords(at.unit, phase)];
   }
   const statuses = new Map(phaseLists(at, [phase])[0]?.map(({ ref, status }) => [shownTask(ref), status]) ?? []);
-  return settled.fixes.flatMap((fix) => (statuses.get(fix) === 'done' ? [] : [`the phase review failed, and task ${fix}, a fix of it, is ${statuses.get(fix)}`]));
+  return settled.fixes.flatMap((fix) => fixFaults(at, phase, fix, statuses.get(fix)));
 }
 
 /**

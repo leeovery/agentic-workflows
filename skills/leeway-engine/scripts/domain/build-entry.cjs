@@ -30,11 +30,14 @@
 //
 // It answers, and its recovery note with it (12.1.6, 24.2.2): where the
 // build stands, a line a phase, and a line where the phase's review failed
-// with its fixes owed — no settlement naming them (phase-settlement.cjs);
+// with its fixes owed — no settlement answering it (phase-settlement.cjs);
 // each task in flight with its builder and its pair, or the question
 // parking it; each question waiting on the person; the entries affected
 // since the spec concluded, by their call (11.9.1); the unit's record, by
 // its call; and the build's log, read beside the ledger (12.2.2, 24.2.5).
+// The entry's tasks in flight are the calling conversation's; the note's,
+// those of the conversation it is asked for, as its position holds them —
+// a compaction's note is asked for from outside that conversation.
 //
 // The standing is worked out at each read, never kept: only the position,
 // auto or step, is stored, as `build`. Each phase of the cut is not yet
@@ -61,6 +64,7 @@ const { tasksInFlight } = require('./conversation.cjs');
 const { recordTask } = require('./position.cjs');
 const { waitingQuestions, parkedTasks, parkedTasksOf } = require('./questions.cjs');
 const { reading, cutPhases, phaseLists, phaseLanded, fixesOwed } = require('./phase-checks.cjs');
+const { unsettledWords } = require('./phase-settlement.cjs');
 const { taskId, shownTask } = require('./task-id.cjs');
 
 /** @typedef {import('./enter.cjs').Entry} Entry */
@@ -79,14 +83,14 @@ const { taskId, shownTask } = require('./task-id.cjs');
 /**
  * A phase of the cut: its number, name and what it relies on, where it
  * stands, its tasks, none where it is not written, and whether its review
- * failed with its fixes owed — no settlement naming them yet.
+ * failed with its fixes owed — no settlement answering it yet.
  * @typedef {{phase: number, name: string, relies_on: Array<number|string>, state: PhaseState, tasks: StandingTask[], fixes_owed: boolean}} StandingPhase
  */
 /**
  * Where a build stands: its unit and position; each phase of its cut; the
- * calling conversation's tasks in flight there; the questions waiting on the
- * person, as `raise waiting` answers them; and whether every phase of the
- * cut has closed.
+ * tasks in flight there of the conversation it is read for; the questions
+ * waiting on the person, as `raise waiting` answers them; and whether every
+ * phase of the cut has closed.
  * @typedef {{unit: string, position: string, phases: StandingPhase[], in_flight: InFlight[], waiting: Waiting[], finished: boolean}} BuildStanding
  */
 
@@ -133,8 +137,12 @@ function phaseState(at, phase, rows) {
   return live.length > 0 && live.every(({ status }) => status === 'done') ? 'in review' : 'running';
 }
 
-/** The build's standing, as a call reads the unit. @param {Reading} at @returns {BuildStanding} */
-function standingOf(at) {
+/**
+ * The build's standing, as a call reads the unit, for the conversation
+ * whose tasks in flight are given.
+ * @param {Reading} at @param {InFlight[]} inFlight @returns {BuildStanding}
+ */
+function standingOf(at, inFlight) {
   const cut = cutPhases(at.manifest);
   const lists = phaseLists(at, cut.map((_, i) => i + 1));
   const { waiting, warnings = [] } = waitingQuestions(at.cwd, [at.unit]);
@@ -151,24 +159,25 @@ function standingOf(at) {
       tasks: (lists[i] ?? []).map(({ ref, title, status }) => ({ task: shownTask(ref), title, status, parked: parked.get(shownTask(ref)) ?? [] })),
       fixes_owed: fixesOwed(at, i + 1),
     })),
-    in_flight: ownInFlight(at.unit),
+    in_flight: inFlight,
     waiting,
     finished: buildFinished(at.manifest),
   };
 }
 
 /**
- * Where the unit's build stands (the header's), what its reads said pushed
- * to `warnings`; refused where the project has no such unit, or its build
- * has not begun.
- * @param {string} cwd @param {string} unit @param {string[]} [warnings]
+ * Where the unit's build stands (the header's), for the conversation whose
+ * tasks in flight there are given, what its reads said pushed to
+ * `warnings`; refused where the project has no such unit, or its build has
+ * not begun.
+ * @param {string} cwd @param {string} unit @param {InFlight[]} inFlight @param {string[]} [warnings]
  * @returns {BuildStanding}
  */
-function buildStanding(cwd, unit, warnings = []) {
+function buildStanding(cwd, unit, inFlight, warnings = []) {
   const manifest = workUnitNameRefusal(unit) === null ? manifestOf(stateRoot(cwd), unit) : null;
   if (manifest === null) throw new Error(`there is no work unit "${unit}"`);
   if (!buildBegun(manifest)) throw new Error(`${unit}'s build has not begun — ready to build's yes begins it: render ready-to-build ${unit}`);
-  return standingOf(reading(cwd, unit, manifest, warnings));
+  return standingOf(reading(cwd, unit, manifest, warnings), inFlight);
 }
 
 /** A task of a phase, as its phase's line says it. @param {StandingTask} task */
@@ -189,9 +198,6 @@ function inFlightWords({ task, builder, reviewers }, parked) {
   return `task ${task}, ${agents.length === 0 ? 'no builder dispatched — its builder and pair go afresh on its branch' : agents.join(', ')}`;
 }
 
-/** The phase whose review failed with its fixes owed, and the way on. @param {string} unit @param {number} phase */
-const owedWords = (unit, phase) => `phase ${phase}'s review failed, and no settlement names its fixes — write them as tasks of the phase, then settle it, naming them: task settle ${unit} --phase ${phase} --file <why> [--fixes <task>,…]`;
-
 /**
  * Where the build stands, a line a phase — and where its review failed
  * with its fixes owed, a line saying so — the tasks in flight and the
@@ -205,7 +211,7 @@ function standingLines(standing) {
     ['position', standing.position],
     ...standing.phases.flatMap(({ phase, name, state, tasks, fixes_owed: owed }) => /** @type {Line[]} */ ([
       ['phase', `phase ${phase} of ${of}, "${name}": ${state}${tasks.length === 0 ? '' : ` — tasks ${tasks.map(taskWords).join(', ')}`}`],
-      ...(owed ? [['fixes owed', owedWords(standing.unit, phase)]] : []),
+      ...(owed ? [['fixes owed', unsettledWords(standing.unit, phase)]] : []),
     ])),
     ...standing.in_flight.map((task) => /** @type {Line} */ (['in flight', inFlightWords(task, parked.get(task.task) ?? [])])),
     ...standing.waiting.map(({ question, asks, parks }) => /** @type {Line} */ (['waiting', `${question} — ${asks} — parks ${parkedTasks(parks)}`])),
@@ -218,15 +224,17 @@ const ledgerCalls = (unit) => [`${ENGINE_COMMAND} ledger affected ${unit}`, `${E
 /**
  * What the build's recovery note re-reads beside its skill, as the entry
  * reads it: the ledger's calls, the build's log, and where the build
- * stands, a line each — or why that cannot be read, in their place.
- * @param {string} cwd @param {string} unit
+ * stands, a line each — its tasks in flight those of the conversation the
+ * note is for, as its position holds them, never the calling process's —
+ * or why that cannot be read, in their place.
+ * @param {string} cwd @param {string} unit @param {InFlight[]} inFlight
  * @returns {{calls: string[], documents: string[], lines: string[]}}
  */
-function buildRecovery(cwd, unit) {
+function buildRecovery(cwd, unit, inFlight) {
   /** @type {string[]} */
   let lines;
   try {
-    lines = standingLines(buildStanding(cwd, unit)).map(([key, value]) => `${key}: ${value}`);
+    lines = standingLines(buildStanding(cwd, unit, inFlight)).map(([key, value]) => `${key}: ${value}`);
   } catch (err) {
     lines = [`Where the build stands could not be read: ${messageOf(err)}`];
   }
@@ -250,7 +258,7 @@ function takeInFlight(at) {
 /** What the build reads at its entry (the header's). @param {Entering} at @returns {Line[]} */
 function buildReads(at) {
   const read = readingOf(at);
-  const lines = standingLines(standingOf(read));
+  const lines = standingLines(standingOf(read, ownInFlight(at.unit)));
   at.notes.push(...read.warnings);
   const [affected, record] = ledgerCalls(at.unit);
   return [

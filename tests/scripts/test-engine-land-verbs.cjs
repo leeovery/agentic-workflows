@@ -342,7 +342,7 @@ describe('land: what the build\'s reviews ask first (12.1.4, 7.2.4)', () => {
 
     assert.deepStrictEqual([unreviewed, unsettled], [
       `land: phase 1 of pay merges once its phase review has passed and its fixes are done — phase 1 of pay has no phase review reported — its reviewers write their reports in ${UNIT}/build/phases/phase-1/`,
-      'land: phase 1 of pay merges once its phase review has passed and its fixes are done — the phase review failed, and no settlement answers it — write its fixes as tasks of the phase, then settle it, naming them: task settle pay --phase 1 --file <why> [--fixes <task>,…]',
+      'land: phase 1 of pay merges once its phase review has passed and its fixes are done — phase 1\'s review failed, and no settlement answers it — write its fixes as tasks of the phase, then settle it, naming them: task settle pay --phase 1 --file <why> [--fixes <task>,…]',
     ]);
     assert.deepStrictEqual(own(ok(dir, ['land', 'phase', UNIT, '1'])).merged, ['1.1']);
     assert.strictEqual(refuses(dir, ['land', 'phase', UNIT, '2']).error, 'land: phase 2 of pay has no task opened — open its tasks first');

@@ -450,13 +450,14 @@ function discoveryWork(skill, calls, log) {
 
 /**
  * A build's note, carried whole, as its entry reads it (build-entry.cjs):
- * the ledger's calls, the build's log, and where the build stands.
- * @param {string} cwd @param {string} unit @returns {Omit<Work, 'skill'>}
+ * the ledger's calls, the build's log, and where the build stands, with
+ * the tasks in flight of the conversation the note is for.
+ * @param {string} cwd @param {string} unit @param {InFlight[]} inFlight @returns {Omit<Work, 'skill'>}
  */
-function buildWork(cwd, unit) {
+function buildWork(cwd, unit, inFlight) {
   // Required here, as the build's entry puts its tasks in flight through
   // this module.
-  const { calls, documents, lines } = require('./build-entry.cjs').buildRecovery(cwd, unit);
+  const { calls, documents, lines } = require('./build-entry.cjs').buildRecovery(cwd, unit, inFlight);
   return { documents, whole: { calls, log: null, lines } };
 }
 
@@ -500,7 +501,7 @@ function workAt(cwd, position, manifest) {
     case 'planning':
       return { skill, documents: [path.join(plan, 'planning.md'), ...phaseTaskFiles(plan)] };
     case 'implementation': {
-      if (buildByCut(manifest)) return { skill, ...buildWork(cwd, name) };
+      if (buildByCut(manifest)) return { skill, ...buildWork(cwd, name, position.tasks ?? []) };
       const tasks = position.tasks ?? [];
       if (tasks.length === 0) return { skill, documents: [] };
       const format = itemOf(manifest, 'planning', topic)?.format;

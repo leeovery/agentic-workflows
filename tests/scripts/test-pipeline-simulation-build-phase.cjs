@@ -150,8 +150,8 @@ describe('pipeline simulation: a phase of the cut', () => {
     // One reviewer failed it, on a finding outside the phase: its fixes are
     // owed, and the stack waits, until the orchestrator settles the review
     // naming none (13.10.1).
-    assert.ok(buildEntry(sim, wu).some((line) => line.startsWith('fixes owed: phase 1\'s review failed, and no settlement names its fixes')), 'the standing says the fixes are owed');
-    sim.refuses(['land', 'phase', wu, '1'], /— the phase review failed, and no settlement answers it — /);
+    assert.ok(buildEntry(sim, wu).some((line) => line.startsWith('fixes owed: phase 1\'s review failed, and no settlement answers it')), 'the standing says the fixes are owed');
+    sim.refuses(['land', 'phase', wu, '1'], /— phase 1's review failed, and no settlement answers it — /);
     sim.run(['task', 'settle', wu, '--phase', '1', '--file', sim.write(`.leeway/.cache/${wu}/build/why.md`, 'Checking the hash on read is the next phase\'s.\n')]);
 
     // The phase review settled, its stack merges, and the phase closes on
