@@ -16,12 +16,15 @@
 // gives one (21.5.21). A link holds a task after one of its own phase's or
 // an earlier phase's, still unfinished, and only a task not yet ended is
 // linked (12.6.4); ready answers every task waiting with nothing before it
-// (7.1.5); start puts the task in flight on the conversation's position,
+// and no question parking it (7.1.5, 13.4.6); start puts the task in flight
+// on the conversation's position,
 // beside any others in flight there — a task already in flight kept as it
 // stands, its builder and reviewers with it — and done and close take it
-// off, each first taking the task's worktree apart (6.3.3, 24.2.4); close
-// ends a task without it being done, with a reason, and frees what waits on
-// it as done does (7.1.12); worktree lays the task's worktree out for its
+// off, each first taking the task's worktree apart (6.3.3, 24.2.4); done
+// refuses a task a question waiting parks; close ends a task without it
+// being done, with a reason, takes it off every question parking it
+// (task-parks.cjs), and frees what waits on it as done does (7.1.12);
+// worktree lays the task's worktree out for its
 // builder, reading the task as show does (task-worktree.cjs). The verbs
 // refuse in the engine's words: a tool the driver needs missing or failing,
 // a phase not written, a task the tracker lacks or already holds, a task
@@ -64,6 +67,10 @@ const { taskId, shownTask, parseShownTask, parsePhase, taskName, phaseName } = r
 const { TASK_TYPES, breaksLine, readTaskText } = require('./task-file.cjs');
 const { recordTask, clearTask } = require('./position.cjs');
 const { layOutTask, takeWorktreeApart } = require('./task-worktree.cjs');
+
+// The questions parking a task, loaded at their call: they read the task
+// through this module.
+const parks = () => require('./task-parks.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskDriver} TaskDriver */
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
@@ -350,14 +357,15 @@ function typeTask(cwd, unit, given, type) {
   });
 }
 
-/** `task ready`: every task waiting to start, of the phase or of the unit. @param {string} cwd @param {string} unit @param {string} [given] */
+/** `task ready`: every task waiting to start, of the phase or of the unit, but those a question waiting parks. @param {string} cwd @param {string} unit @param {string} [given] */
 function readyTasks(cwd, unit, given) {
   const phase = given === undefined ? null : parsePhase(given);
   requireUnit(cwd, unit);
   return withTracker(cwd, unit, null, (driver, root) => {
     const rows = driver.ready(root, unit, phase);
     if (rows === null) throw unwritten(unit, /** @type {number} */ (phase));
-    return { tasks: rows.map((row) => ({ ...named(row.ref), title: row.title })) };
+    const parked = parks().parkedOf(cwd, unit);
+    return { tasks: rows.filter((row) => !parked.has(shownTask(row.ref))).map((row) => ({ ...named(row.ref), title: row.title })) };
   });
 }
 
@@ -432,7 +440,10 @@ function moving(verb, move, prepare) {
       move(driver, root, ref, ...more);
       return named(ref);
     });
-    return { ...answer, ...settle() };
+    /** @type {{warnings?: string[]}} */
+    const settled = settle();
+    const warnings = [...(answer.warnings ?? []), ...(settled.warnings ?? [])];
+    return { ...answer, ...settled, ...(warnings.length > 0 ? { warnings } : {}) };
   };
 }
 
@@ -440,17 +451,19 @@ function moving(verb, move, prepare) {
  * Ending a task, refused once it has ended as `rule` says: its worktree
  * taken apart before the tracker moves (task-worktree.cjs), so a removal
  * failing leaves it in flight for the verb run again, the worktrees removed
- * answered where any was; and, once the tracker has moved, the task taken
- * off the position, where it is one in flight.
- * @param {string} rule
+ * answered where any was, then `after`, answering what it adds; and, once
+ * the tracker has moved, the task taken off the position, where it is one
+ * in flight.
+ * @param {string} rule @param {(cwd: string, ref: TaskRef, verb: string) => object} [after]
  * @returns {(cwd: string, ref: TaskRef, verb: string) => () => object}
  */
-function ending(rule) {
+function ending(rule, after = () => ({})) {
   return (cwd, ref, verb) => {
     const removed = takeWorktreeApart(cwd, ref, verb, () => withTracker(cwd, ref.unit, null, (driver, root) => refuseEnded(driver, root, ref, rule)));
+    const added = after(cwd, ref, verb);
     return () => {
       clearTask(ref.unit, ref.unit, taskId(ref));
-      return removed.length === 0 ? {} : { removed };
+      return { ...(removed.length === 0 ? {} : { removed }), ...added };
     };
   };
 }
@@ -466,17 +479,27 @@ const startTask = moving('start', (driver, root, ref) => {
 const DONE_RULE = 'only a task not yet ended is done';
 const CLOSE_RULE = 'only a task not yet ended is closed';
 
-/** `task done`: its worktree taken apart, then done, and off the position. */
+/** `task done`: refused while a question waiting parks it; else its worktree taken apart, then done, and off the position. */
 const doneTask = moving('done', (driver, root, ref) => {
   refuseEnded(driver, root, ref, DONE_RULE);
   driver.done(root, ref);
-}, ending(DONE_RULE));
+}, (cwd, ref, verb) => {
+  parks().refuseParked(cwd, ref, `task ${verb}`);
+  return ending(DONE_RULE)(cwd, ref, verb);
+});
 
-/** `task close`: its worktree taken apart, then closed without being done, its reason kept, and off the position. */
+/**
+ * `task close`: where a question parks it, refused with no session before
+ * anything moves; its worktree taken apart, then off every question parking
+ * it, then closed without being done, its reason kept, and off the position.
+ */
 const closeTask = moving('close', (driver, root, ref, reason) => {
   refuseEnded(driver, root, ref, CLOSE_RULE);
   driver.close(root, ref, reason);
-}, ending(CLOSE_RULE));
+}, (cwd, ref, verb) => {
+  const parking = parks().parkingOf(cwd, ref, `task ${verb}`);
+  return ending(CLOSE_RULE, () => parks().takeOff(cwd, ref, `task ${verb}`, parking))(cwd, ref, verb);
+});
 
 /**
  * `task worktree`: the task's worktree laid out where the call is made

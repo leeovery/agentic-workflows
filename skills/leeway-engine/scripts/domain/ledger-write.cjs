@@ -26,13 +26,15 @@
 //   decision Claude proposed to replace, or Claude's call the decision
 //   point lets proceed — is that write's, or the keep's, its place read
 //   again and its links checked under the same lock, after the raise's own
-//   check of the ledger, in the raise's words. A raise in the build that
-//   asks parks its task instead (raise.cjs): its `parked` line is landed
-//   the same way, its place read again and its links checked under the
-//   lock, and its number the raise's to mint there. While a question waits
-//   in the build, `decide` on it and `replace` of the decision it would
-//   replace are refused under the lock, naming its raise: the person
-//   answers it there alone (questions.cjs).
+//   check of the ledger, in the raise's words. A raise in the build that asks
+//   parks its task instead (raise.cjs): its `parked` line is landed the same
+//   way, its place read again and its links checked under the lock, and its
+//   number the raise's to mint there. A task closed in the build is taken off
+//   its questions by an `unparked` line naming the parks it is taken off,
+//   landed the same way (task-parks.cjs). While a question waits in the
+//   build, `decide` on it and `replace` of the decision it would replace are
+//   refused under the lock, naming its raise: the person answers it there
+//   alone (questions.cjs).
 // - What: the content comes as one JSON object on stdin, the links as flags,
 //   and the task an entry is made for, `--task {phase}.{n}`, a flag taken
 //   at the build's places alone (12.12.5), its entry's `task` null
@@ -286,9 +288,10 @@ const { checkUnparked } = require('./questions.cjs');
  * How a raise lands: as `ledger decide` writes, answering its question; as
  * `ledger replace` writes, replacing a decision; as the person's keep of
  * that decision as it stands; as `ledger ask` writes, the question a
- * product-record line answers at the decided gate's yes (decided.cjs); or,
- * asked in the build, as the question parked with its task.
- * @typedef {'decide'|'replace'|'keep'|'ask'|'park'} Lands
+ * product-record line answers at the decided gate's yes (decided.cjs);
+ * asked in the build, as the question parked with its task; or, as a task
+ * closes in the build, as that task taken off its questions.
+ * @typedef {'decide'|'replace'|'keep'|'ask'|'park'|'unpark'} Lands
  */
 
 /**
@@ -423,11 +426,11 @@ const KEEP = writeOf('kept', [
 ], { checkGiven: checkCauseGiven, checkLinked: causeChecked('entry') });
 
 /**
- * A question the build needs the person for, parked with its task: a
- * raise's alone writes it (raise.cjs), so no verb takes it. It is held to
- * the links the answer it waits for will be: the question open and the
- * unit's own, or the decision current and the write's to replace, and the
- * cause what the reason needs.
+ * A question the build needs the person for, parked with its task, or with
+ * none: a raise's alone writes it (raise.cjs), so no verb takes it. It is
+ * held to the links the answer it waits for will be: the question open and
+ * the unit's own, or the decision current and the write's to replace, and
+ * the cause what the reason needs.
  */
 const PARK = writeOf('parked', [
   link('question', A_QUESTION, { current: true, owner: 'unit' }),
@@ -435,14 +438,24 @@ const PARK = writeOf('parked', [
   { ...REASON, required: false },
   link('cause', AN_ENTRY),
   RELIES_ON,
-  { ...TASK, required: true },
+  TASK,
 ], { checkLinked: causeChecked('replaces') });
 
+/**
+ * A task closed in the build, taken off the questions parking it, naming
+ * the parks it is taken off: `task close` alone writes it (task-parks.cjs),
+ * so no verb takes it.
+ */
+const UNPARK = writeOf('unparked', [
+  { ...TASK, required: true },
+  { field: 'parks', shown: '<id>', required: true, many: true, names: names('a park', (f) => f.event === 'parked'), current: false, owner: null },
+]);
+
 /** The writes a raise lands through, by how it lands. @type {Readonly<Record<Lands, Write>>} */
-const RAISED = Object.freeze({ decide: WRITES.decide, replace: WRITES.replace, keep: KEEP, ask: WRITES.ask, park: PARK });
+const RAISED = Object.freeze({ decide: WRITES.decide, replace: WRITES.replace, keep: KEEP, ask: WRITES.ask, park: PARK, unpark: UNPARK });
 
 /** Every field a flag sets, whichever write takes it: never content. */
-const FLAG_FIELDS = new Set([...Object.values(WRITES), KEEP, PARK].flatMap((w) => w.flags.map((flag) => flag.field)));
+const FLAG_FIELDS = new Set([...Object.values(WRITES), KEEP, PARK, UNPARK].flatMap((w) => w.flags.map((flag) => flag.field)));
 
 /** The fields the engine gives an entry, never its content. */
 const ENGINE_FIELDS = new Set([...HEADER.map((f) => f.name), 'of', 'unchecked', 'number']);

@@ -753,7 +753,8 @@ function auditCopies(root, events, shownAt, placed, full, ctx) {
 // question waiting in the build waited on — the question it answers, by
 // any wording, parked before it, or the decision it replaces or keeps,
 // parked since its last keep — and saying nothing of it elsewhere, and
-// every such answer landed through its raise (12.13.16, 16.4.7); one
+// every such answer landed through its raise, a fact's, which logs no raise,
+// by the seal the conversation answered it from (12.13.16, 16.4.7); one
 // raise not followed for each "I don't follow" the conversations' seals
 // count, but a fact's, blocking the build exactly where its seal's
 // question waited in it;
@@ -813,13 +814,13 @@ function auditTrust(sim, label, ran = []) {
     assert.strictEqual(raise.blocked_build, waitedOn(byId.get(raise.entry)) ? true : null,
       ctx(`the raise ${raise.id} does not block the build exactly where its answer is to what a question waiting in the build waited on`));
   }
-  const raised = new Set(answers.map((e) => e.entry));
-  assert.deepStrictEqual(entries.filter((e) => waitedOn(e) && !raised.has(e.id)).map((e) => e.id), [],
-    ctx('an answer to what a question waiting in the build waited on landed other than through its raise'));
   const conversations = path.join(sim.configDir, 'conversations');
   const folders = fs.existsSync(conversations) ? fs.readdirSync(conversations) : [];
   /** @type {Record<string, any>[]} */
   const sealed = folders.map((name) => path.join(conversations, name, RAISE_SHOWN)).filter((file) => fs.existsSync(file)).flatMap((file) => Object.values(JSON.parse(fs.readFileSync(file, 'utf8'))));
+  const raised = new Set([...answers.map((e) => e.entry), ...sealed.filter((s) => s.fact && s.answered !== null).map((s) => s.id)]);
+  assert.deepStrictEqual(entries.filter((e) => waitedOn(e) && !raised.has(e.id)).map((e) => e.id), [],
+    ctx('an answer to what a question waiting in the build waited on landed other than through its raise'));
   assert.deepStrictEqual(ofType('raise').filter((e) => e.didnt_follow).map((e) => e.blocked_build).sort(),
     sealed.filter((s) => !s.fact).flatMap((s) => Array(s.didnt_follow).fill(s.parks === null ? null : true)).sort(),
     ctx('the trust log does not hold one raise not followed for each "I don\'t follow" the seals count, blocking the build exactly where its question waited in it'));

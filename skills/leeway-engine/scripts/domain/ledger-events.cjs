@@ -68,16 +68,27 @@
 //   which no status after it undoes (ledger-fold.cjs).
 // - parked: a question the build needs the person for, parked with the
 //   task it holds (12.13.4; raise.cjs): what it is about — the question it
-//   answers, or the decision a replacement would replace with the reason
-//   and the cause — and what its answer relies on; the task it parks, as
-//   screens show it; its number in its unit, `Q{number}`, the engine's,
-//   minted as it parks and never reused, or, for a task joining a question
-//   already waiting, that question's (questions.cjs); and the call sealed,
-//   so it is raised as it was put whenever the person is ready, in whatever
+//   answers, or the decision a replacement would replace with the reason and
+//   the cause — and what its answer relies on; the task it parks, as screens
+//   show it, null where a call made in the build outside any task asks — the
+//   task writer's, the consolidation agent's or the phase review's — parking
+//   none; its number in its unit, `Q{number}`, the engine's, minted as it
+//   parks and never reused, or, for a task joining a question already
+//   waiting, that question's (questions.cjs); and the call sealed, so it is
+//   raised as it was put whenever the person is ready, in whatever
 //   conversation: Claude's call as the raise took it, the rows the
-//   one-decision check judged one rule, and why it asks, the decision
-//   point's reason. It names no maker, is no entry and is never replaced:
-//   it waits while what it is about stands open (questions.cjs).
+//   one-decision check judged one rule, and why it asks, the decision point's
+//   reason. A fact only the person holds (16.3.8) parks in the same shape, as
+//   the ledger holds a fact's answer, with no lean: its call's lean, why and
+//   sort null, its rows any number. It names no maker, is no entry and is
+//   never replaced: it waits while what it is about stands open
+//   (questions.cjs).
+// - unparked: a task closed in the build, taken off the questions of its
+//   unit that parked it (task-parks.cjs, questions.cjs): the task, as
+//   screens show it, and the parks naming it that it is taken off, by id —
+//   those alone, so the task reopened and parked again parks again. It
+//   names no maker and is no entry; a question it leaves parking nothing
+//   still waits.
 //
 // Every entry may cite where it came from (21.6.3, 21.6.4): sections of
 // files — a topic's log, a spec — each by its path from the state root and
@@ -216,10 +227,17 @@ const CONTENT = {
 };
 
 /**
+ * What a parked question's call holds: Claude's call, or a fact only the
+ * person holds, its lean, why and sort null.
+ */
+const PARKED_CALL_FIELDS = Object.freeze({ ...CALL_FIELDS, lean: nullable(KEY), why: nullable(LINE), sort: nullable(oneOf('one', 'several')) });
+
+/**
  * Why a parked question's fields disagree, or null where they keep together:
  * it answers a question or proposes a replacement, one and not both; the
- * reason and the cause are a replacement's alone, its reason given; its
- * call leans to a row it holds.
+ * reason and the cause are a replacement's alone, its reason given; a fact
+ * answers a question, and has no lean, why or sort, while a call has all
+ * three and leans to a row it holds.
  * @param {Record<string, any>} parked
  * @returns {string|null}
  */
@@ -227,7 +245,15 @@ function parkHolds({ question, replaces, reason, cause, call }) {
   if ((question === null) === (replaces === null)) return 'a parked question answers a question or proposes a replacement, one and not both';
   if ((replaces === null) !== (reason === null)) return 'a replacement proposed gives its reason, and only a replacement does';
   if (cause !== null && replaces === null) return 'only a replacement proposed has a cause';
+  const leans = [call.lean, call.why, call.sort].filter((given) => given !== null).length;
+  if (leans === 0) return replaces === null ? null : 'a fact parked answers a question, never proposes a replacement';
+  if (leans < 3) return 'its call has a lean, a why and a sort, or, a fact, none of them';
   return call.rows.some((/** @type {{key: string}} */ row) => row.key === call.lean) ? null : `its call leans to ${call.lean}, a row it does not hold`;
+}
+
+/** Why a task taken off its questions names none of them, or null. @param {Record<string, any>} unparked */
+function unparkHolds({ parks }) {
+  return parks.length === 0 ? 'a task taken off its questions names the parks it is taken off' : null;
 }
 
 /** @type {Schema} */
@@ -268,12 +294,13 @@ const SCHEMA = {
       field('reason', nullable(oneOf(...REASONS))),
       field('cause', nullable(ID)),
       field('relies_on', listOf(ID)),
-      field('task', TASK),
+      field('task', nullable(TASK)),
       field('number', COUNT),
-      field('call', shaped(`a call, {${Object.keys(CALL_FIELDS).join(', ')}}`, CALL_FIELDS)),
+      field('call', shaped(`a call, {${Object.keys(PARKED_CALL_FIELDS).join(', ')}}`, PARKED_CALL_FIELDS)),
       field('rows_judged', listOf(KEY)),
       field('why_asking', LINE),
     ], 1, parkHolds),
+    unparked: event([field('task', TASK), field('parks', listOf(ID))], 1, unparkHolds),
   },
 };
 
@@ -284,7 +311,8 @@ const ENTRY_EVENTS = Object.freeze({ asked: 'question', found: 'finding', decide
 
 /**
  * The kind of entry an event is, or null for an event that is no entry: a
- * confirmation, a move, a merge, a check, a keep, an asset or a park.
+ * confirmation, a move, a merge, a check, a keep, an asset, a park or a
+ * task taken off its questions.
  * @param {Record<string, unknown>} event
  * @returns {EntryKind|null}
  */

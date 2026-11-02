@@ -53,12 +53,13 @@
 // — the account is taken, and a round settled, as the task lands, before it
 // is done; a task with no review round's reports, a round missing a
 // reviewer's report or holding one that does not read. The account refuses
-// besides: a last round neither passed nor settled; no account written, or
-// one that does not read, every fault named; a task with no type, from which
-// its branch is named; and no repository of the project holding work on its
-// branch. Settling refuses no such file, or one holding nothing. Each runs
-// under the writer lock (engine.cjs); a commit git refuses is a warning, the
-// files written.
+// besides: a task a question waiting parks, naming its raise (13.4.6,
+// task-parks.cjs); a last round neither passed nor settled; no account
+// written, or one that does not read, every fault named; a task with no type,
+// from which its branch is named; and no repository of the project holding
+// work on its branch. Settling refuses no such file, or one holding nothing.
+// Each runs under the writer lock (engine.cjs); a commit git refuses is a
+// warning, the files written.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -79,6 +80,7 @@ const { parseShownTask, shownTask, taskId, taskName } = require('./task-id.cjs')
 const { taskBranch } = require('./landing-names.cjs');
 const { holdingBranch } = require('./landing-git.cjs');
 const { trackedTask, givenText, ENDED } = require('./task-verbs.cjs');
+const { refuseParked } = require('./task-parks.cjs');
 const { taskFolder, settlementPath, taskRounds } = require('./round-report.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
@@ -303,6 +305,7 @@ function committed(cwd, files, message, warnings, answer) {
 function takeAccount(cwd, unit, given) {
   const refuse = refuserFor('account');
   const { ref, task, rounds, last } = reviewedTask(cwd, unit, given, refuse, 'its account is taken as it lands, before task done');
+  refuseParked(cwd, ref, 'task account');
   if (!last.passes && !last.settled) {
     refuse(`round ${last.round} of ${taskName(ref)} did not pass — an account is taken once every reviewer of a round passes the task, or the orchestrator settles it: engine task settle ${unit} ${shownTask(ref)} --file <why>`);
   }
