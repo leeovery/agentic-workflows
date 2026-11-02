@@ -12,9 +12,11 @@
 //   spec-sections  each section the task's spec reference cites, verbatim
 //                  from the unit's spec (spec-sections.cjs)
 //   decided-calls  the unit's current decisions at its own level, the
-//                  person's and Claude's alike, in the ledger's order, each
-//                  one list item: its id, whose it is, its answer and why,
-//                  every line after its first indented
+//                  person's and Claude's alike — the builder's own calls
+//                  among them (13.11.10) — in the ledger's order, each one
+//                  list item: its id, whose it is, its answer and why,
+//                  every line after its first indented; a unit's record,
+//                  drawn for a task's brief and a phase's alike
 //   linters        the project's linters, each its name and its command,
 //                  from the environment on the project manifest (22.5.12,
 //                  environment.cjs)
@@ -166,6 +168,69 @@
 //                  dispatch `--agent` names in the unit's agent store, of the
 //                  kind its role is briefed for and still in flight
 //
+// A build phase's records, each of the phase of the unit's cut the brief is
+// for (11.5), its tasks read from the tracker, every task of each phase to
+// it, once (task-verbs.cjs), its sections and scenarios from the unit's
+// `spec.md` — never the whole spec (12.5.6, 11.3.6):
+//
+//   cut-phase      the phase as the cut holds it: its number, the unit and
+//                  its name, its goal, and what it relies on, an earlier
+//                  phase by its number or another unit by its name
+//   phase-sections the spec's path; each section the phase names, and
+//                  whether it is first built in this phase or an earlier
+//                  one — the phase that builds a section being the first
+//                  naming it, or for a part its area (11.5.2), so an
+//                  invariant in one first built here is this phase's to
+//                  check (15.8.2); then each
+//                  verbatim, in the cut's order, a part whose own area the
+//                  phase names left to the area
+//   phase-scenarios each scenario the phase holds, by id with its wording
+//   held-notes     the notes for later held for this phase (12.9.10,
+//                  notes.cjs), each verbatim under its heading
+//   written-tasks  the phase's tasks the tracker holds so far, each by its
+//                  number with its title and where it stands; or that the
+//                  phase is not written in the tracker yet
+//   earlier-tasks  every task of an earlier phase not yet ended, likewise,
+//                  which a task of this phase may wait on (12.6.4)
+//   build-calls    the unit's current decisions made in the build — at
+//                  `{unit}.implementation` or `{unit}.review` — the
+//                  person's and Claude's, in the ledger's order, each with
+//                  the task it was made for and what it replaced
+//   affected-entries the entries waiting in the unit for a replacement they
+//                  rely on (11.9.1), as `ledger affected` answers them
+//                  (ledger-affected.cjs), fenced as JSON
+//   task-files-to  the folder in the unit's cache the agent writes each
+//                  task's file in, for `task create --file`
+//   phase-notes    the notes the phase has to take at its end (notes.cjs),
+//                  each verbatim under its heading
+//   phase-tasks    each task of the phase, whole, as `task` draws it, under
+//                  a heading naming its number, with where it stands
+//   phase-criteria each task of the phase not closed: its acceptance
+//                  scenarios, then each addition, under a heading naming the
+//                  task
+//   relied-on      each phase the phase relies on (12.11.2): its name, goal
+//                  and sections, and its tasks with where each stands; and
+//                  each other unit it relies on, by its name
+//   phase-diff-range in each repository holding work on the branch of a task
+//                  of the phase not closed, under a heading naming it, the
+//                  range from its base, as diff-range picks it, to the
+//                  stack's tip there — the branch every other the phase's
+//                  tasks hold there descends from — `{base}...{tip}`, and its
+//                  `git diff --stat`, never the diff's text
+//   recorded-runs  each scenario the phase holds, by id with what its runs
+//                  of the change prove read at the project's commit
+//                  `--head` names (runs.cjs) — the phase's HEAD, so the
+//                  runs at the commit nearest it decide (15.3.5) — then
+//                  each run counted, its verdict, when it was recorded and
+//                  its file
+//   mutants        what survived the verify setup's mutation tool on the
+//                  lines the phase changed, each by its path and line with
+//                  its mutant, as `verify mutants` answers it (verify.cjs,
+//                  15.6.3); that none survived; or that the setup names no
+//                  mutation tool
+//   consolidation-to where the consolidation agent writes its report: the
+//                  phase's `consolidation.md` (notes.cjs)
+//
 // The plain-search helper's one record is the conversation's (22.6.10):
 //
 //   knowledge-query the conversation's last `knowledge query`, as it kept
@@ -205,7 +270,13 @@
 // yet is drawn as none recorded. One that cannot be read refuses the brief:
 // a task with no spec reference, a section the spec lacks, linters of
 // another shape, a task's branch no repository holds work on, a base no
-// repository holding it has as a local branch, a task with no review
+// repository holding it has as a local branch, a phase's sections or
+// scenarios the spec lacks, a phase not yet written whose tasks or range a
+// record draws, a task of it with no type, its tasks held as no one stack in
+// a repository, no repository holding work on them, a head that is no
+// commit of the project's repository, the mutants' refusals — no verify
+// setup recorded, a checkout holding no commit of the phase, a tool's
+// survivors that do not read — a task with no review
 // round's reports, a round missing a reviewer's report or holding one
 // that does not read, a last round that passed; a question that is none, no longer current,
 // stands elsewhere or is not open, or one its dispatch was not first briefed
@@ -225,7 +296,7 @@
 const fs = require('fs');
 const path = require('path');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
-const { git } = require('../kernel/git.cjs');
+const { git, tryGit } = require('../kernel/git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { projectRepos } = require('../kernel/repos.cjs');
 const { linters } = require('./environment.cjs');
@@ -258,13 +329,20 @@ const {
   ownTexts, recordTaking, recordCutTaking, outstanding, cutRequests, reviewedSpec, sectionsToReview, waitingGaps, gapsWaiting, passesRunningOn, waitingOn,
 } = require('./spec-passes.cjs');
 const { messageOf } = require('../kernel/call.cjs');
-const { specReferenceOf } = require('./task-file.cjs');
+const { specReferenceOf, scenariosOf } = require('./task-file.cjs');
 const { taskFolder, taskRounds } = require('./round-report.cjs');
-const { taskName } = require('./task-id.cjs');
+const { taskName, shownTask, phaseName } = require('./task-id.cjs');
 const { taskBranch } = require('./landing-names.cjs');
-const { branches, holdingBranch, defaultBranch, plain } = require('./landing-git.cjs');
+const {
+  branches, holdingBranch, isAncestor, defaultBranch, plain,
+} = require('./landing-git.cjs');
 const { remoteName, nestedRemoteName } = require('./remote.cjs');
 const { readWorkUnitManifest } = require('../kernel/manifest-io.cjs');
+const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
+const { ENDED } = require('./task-verbs.cjs');
+const { notesToTake, notesHeldFor, consolidationPath } = require('./notes.cjs');
+const { runsOf } = require('./runs.cjs');
+const { phaseSurvivors } = require('./verify.cjs');
 const { directiveOf } = require('./directives.cjs');
 const { topicPlace, recordsRules, composedPath, findingsPath, refusedPath } = require('./ledger-carry.cjs');
 
@@ -276,12 +354,14 @@ const { topicPlace, recordsRules, composedPath, findingsPath, refusedPath } = re
 
 /**
  * What a brief is filled for: the project; its role; the task where its
- * role takes one, as the tracker holds it, or the topic where it takes
- * one; the unit of either, or the unit alone where its role takes that;
- * each flag given, by its name; and the conversation it is issued in.
+ * role takes one, as the tracker holds it, the phase where it takes one,
+ * with every task of each phase to it as the tracker holds them — null for
+ * a phase not written — or the topic where it takes one; the unit of any,
+ * or the unit alone where its role takes that; each flag given, by its
+ * name; and the conversation it is issued in.
  * @typedef {{
- *   cwd: string, role: string, ref: TaskRef|null, task: TaskDetail|null, place: TopicPlace|null, unit: string|null, given: Readonly<Record<string, string>>,
- *   session: string,
+ *   cwd: string, role: string, ref: TaskRef|null, task: TaskDetail|null, phase: number|null, phases: (TaskDetail[]|null)[]|null, place: TopicPlace|null, unit: string|null,
+ *   given: Readonly<Record<string, string>>, session: string,
  * }} Filling
  */
 
@@ -292,12 +372,12 @@ const { topicPlace, recordsRules, composedPath, findingsPath, refusedPath } = re
  */
 
 /**
- * A record: whether it is a task's, a topic's, a unit's or none's, the
+ * A record: whether it is a task's, a phase's, a topic's, a unit's or none's, the
  * flags it takes, its drawn form, what it binds once every record of the
  * brief is drawn, and what it closes where the brief is refused; what a
  * read said on the way pushed to `warnings`.
  * @typedef {{
- *   of: 'task'|'topic'|'unit'|null, flags?: BriefFlag[], draw: (filling: Filling, warnings: string[]) => string, bind?: (filling: Filling, warnings: string[]) => void,
+ *   of: 'task'|'phase'|'topic'|'unit'|null, flags?: BriefFlag[], draw: (filling: Filling, warnings: string[]) => string, bind?: (filling: Filling, warnings: string[]) => void,
  *   refused?: (filling: Filling) => void,
  * }} BriefRecord
  */
@@ -344,9 +424,9 @@ function drawSpecSections(filling) {
 
 /** @param {Filling} filling @param {string[]} warnings */
 function drawDecidedCalls(filling, warnings) {
-  const { ref } = taskOf(filling);
+  const unit = unitOf(filling);
   return readShown(stateRoot(filling.cwd), warnings, ({ folded, show }) => listed(
-    recordOf(folded, ref.unit, null).decisions
+    recordOf(folded, unit, null).decisions
       .filter((id) => standingOf(folded, id).topic === null)
       .map((id) => {
         const { id: short, by, text, why } = show(id);
@@ -365,12 +445,15 @@ function drawLinters({ cwd }) {
 // git's own 40 columns, which the width would otherwise stretch.
 const STAT = ['--stat=1000', '--stat-graph-width=40'];
 
+/** A repository as a brief names it. @param {Repo} repo */
+const repoNamed = (repo) => (repo.dir === '' ? 'the project\'s repository' : `\`${plain(repo.dir)}\``);
+
 /**
  * The range in one repository, under a heading naming it, and its stat.
  * @param {Repo} repo @param {string} base @param {string} branch
  */
 function rangeIn(repo, base, branch) {
-  const where = repo.dir === '' ? 'the project\'s repository' : `\`${plain(repo.dir)}\``;
+  const where = repoNamed(repo);
   const stat = git(repo.path, ['diff', '--no-color', ...STAT, `refs/heads/${base}...refs/heads/${branch}`, '--']);
   return `## In ${where}: \`${base}...${branch}\`\n\n${stat === '' ? 'Nothing changed in the range.' : `\`\`\`\n${stat}\`\`\``}`;
 }
@@ -1122,13 +1205,238 @@ function drawProductCites(filling, warnings) {
   return listed([...cited].map(([id, numbers]) => `${entryLine(/** @type {UnitEntry} */ (entries.get(id)))}\n  Cited by ${numbers.join(', ')}`));
 }
 
+/** A phase of a unit's cut. @typedef {import('./cut.cjs').Phase} CutPhase */
+
+/**
+ * The phase a phase's record is drawn for: its unit, its number, and every
+ * task of each phase to it as the tracker holds them.
+ * @param {Filling} filling
+ */
+function phaseOf({ unit, phase, phases }) {
+  if (unit === null || phase === null || phases === null) throw new Error('brief-records: a phase\'s record is drawn for a phase');
+  return { unit, phase, phases };
+}
+
+/** The unit's cut, its phases in build order. @param {Filling} filling @returns {CutPhase[]} */
+const cutOf = (filling) => unitManifest(filling).cut.phases;
+
+/** Where a task stands, as a brief says it. @type {Readonly<Record<string, string>>} */
+const STANDS = Object.freeze({
+  open: 'not started', 'in-progress': 'in progress', done: 'done', closed: 'closed',
+});
+
+/** A task as a list draws it: its number, its title and where it stands. @param {TaskDetail} task */
+const taskLine = ({ ref, title, status }) => `- ${shownTask(ref)} ${title}, ${STANDS[status]}`;
+
+/** What a phase relies on, as a sentence names it. @param {number|string} on */
+const reliedName = (on) => (typeof on === 'number' ? `phase ${on}` : `the work unit ${on}`);
+
+/** The area a section is in: an area its own. @param {string} address */
+const areaOf = (address) => address.split('.')[0];
+
+/** @param {Filling} filling */
+function drawCutPhase(filling) {
+  const { unit, phase } = phaseOf(filling);
+  const { name, goal, relies_on: reliesOn } = cutOf(filling)[phase - 1];
+  const relies = reliesOn.length === 0 ? 'It relies on nothing.' : `It relies on ${reliesOn.map(reliedName).join(', ')}.`;
+  return [`Phase ${phase} of ${unit}: ${name}`, goal, relies].join('\n\n');
+}
+
+/** @param {Filling} filling */
+function drawPhaseSections(filling) {
+  const { phase } = phaseOf(filling);
+  const cut = cutOf(filling);
+  const named = cut[phase - 1].sections;
+  const { file, sections } = unitSpec(filling);
+  const built = named.map((address) => {
+    const first = cut.findIndex((each) => each.sections.includes(address) || each.sections.includes(areaOf(address))) + 1;
+    return `- §${address}, first built in ${first === phase ? 'this phase' : `phase ${first}`}`;
+  });
+  const texts = named.filter((address) => areaOf(address) === address || !named.includes(areaOf(address))).map((address) => {
+    const section = sections.get(address);
+    if (section === undefined) throw new Error(`phase ${phase} of the cut names §${address}, which the spec lacks`);
+    return section.text;
+  });
+  return [`\`${file}\``, built.join('\n'), ...texts].join('\n\n');
+}
+
+/** @param {Filling} filling */
+function drawPhaseScenarios(filling) {
+  const { phase } = phaseOf(filling);
+  const wordings = new Map(unitSpec(filling).lines.filter(({ kind }) => kind === 'scenario').map(({ number, wording }) => [number, wording]));
+  return listed(cutOf(filling)[phase - 1].scenarios.map((id) => {
+    const wording = wordings.get(id);
+    if (wording === undefined) throw new Error(`phase ${phase} of the cut holds ${id}, which the spec lacks`);
+    return `- ${id}: ${indented(wording)}`;
+  }));
+}
+
+/** Notes for later, each verbatim under its heading. @param {import('./notes.cjs').Note[]} notes */
+const notesDrawn = (notes) => (notes.length === 0 ? NONE : notes.map(({ note, text }) => `## Note ${note}\n\n${text}`).join('\n\n'));
+
+/** @param {Filling} filling */
+function drawHeldNotes(filling) {
+  const { unit, phase } = phaseOf(filling);
+  return notesDrawn(notesHeldFor(filling.cwd, unit, phase));
+}
+
+/** @param {Filling} filling */
+function drawPhaseNotes(filling) {
+  const { unit, phase } = phaseOf(filling);
+  return notesDrawn(notesToTake(filling.cwd, unit, phase));
+}
+
+/** @param {Filling} filling */
+function drawWrittenTasks(filling) {
+  const { phase, phases } = phaseOf(filling);
+  const tasks = phases[phase - 1];
+  return tasks === null ? 'The phase is not written in the tracker yet.' : listed(tasks.map(taskLine));
+}
+
+/** @param {Filling} filling */
+function drawEarlierTasks(filling) {
+  const { phase, phases } = phaseOf(filling);
+  return listed(phases.slice(0, phase - 1).flatMap((tasks) => tasks ?? []).filter(({ status }) => !ENDED.includes(status)).map(taskLine));
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawBuildCalls(filling, warnings) {
+  const { entries, short } = unitView(filling, warnings);
+  const made = [...entries.values()].filter(({ kind, line }) => kind === 'decision' && BUILD_PHASES.includes(String(line.phase)));
+  return listed(made.map(({ short: id, line }) => {
+    const task = typeof line.task === 'string' ? `, for task ${line.task}` : '';
+    const replaced = typeof line.replaces === 'string' ? `, replacing ${short(line.replaces)}` : '';
+    return `- ${id}, ${WHOSE[String(line.by)]}${task}${replaced}: ${indented(String(line.text))}\n  Why: ${indented(String(line.why))}`;
+  }));
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawAffectedEntries(filling, warnings) {
+  const { affected } = ledgerRead(filling.cwd, 'affected', [unitOf(filling)], warnings);
+  return affected.length === 0 ? NONE : fenced('json', JSON.stringify(affected, null, 2));
+}
+
+/** @param {Filling} filling */
+function drawTaskFilesTo(filling) {
+  const { unit, phase } = phaseOf(filling);
+  return `\`${statePath(filling.cwd, '.cache', unit, 'implementation', `phase-${phase}`)}\``;
+}
+
+/** The phase's tasks, refused where it is not written. @param {Filling} filling @returns {TaskDetail[]} */
+function writtenPhase(filling) {
+  const { unit, phase, phases } = phaseOf(filling);
+  const tasks = phases[phase - 1];
+  if (tasks === null) throw new Error(`${phaseName(unit, phase)} is not written — its tasks are written as it starts`);
+  return tasks;
+}
+
+/** Each addition to a task, under a heading a level below the task's own. @param {TaskDetail} task */
+const additionsOf = ({ additions }) => additions.flatMap(({ by, text }) => ['', `### Added by the ${by}`, '', text]);
+
+/** @param {Filling} filling */
+function drawPhaseTasks(filling) {
+  return listed(writtenPhase(filling).map((task) => {
+    const [title, ...body] = headingsDown(task.text).split('\n');
+    const stands = task.status === 'closed' ? `It was closed: ${task.reason}` : `It is ${STANDS[task.status]}.`;
+    return [title.replace(/^## /, `## ${shownTask(task.ref)} `), '', stands, '', body.join('\n').replace(/^\n+/, ''), ...additionsOf(task)].join('\n');
+  }));
+}
+
+/** @param {Filling} filling */
+function drawPhaseCriteria(filling) {
+  return listed(writtenPhase(filling).filter(({ status }) => status !== 'closed').map((task) => (
+    [`## ${shownTask(task.ref)} ${task.title}`, '', scenariosOf(task.text), ...additionsOf(task)].join('\n')
+  )));
+}
+
+/** @param {Filling} filling */
+function drawReliedOn(filling) {
+  const { phase, phases } = phaseOf(filling);
+  const cut = cutOf(filling);
+  return listed(cut[phase - 1].relies_on.map((on) => {
+    if (typeof on === 'string') return `## The work unit ${on}\n\nThis phase relies on its delivery.`;
+    const { name, goal, sections } = cut[on - 1];
+    return [
+      `## Phase ${on}: ${name}`, '', goal, '', `Its sections: ${sections.map((address) => `§${address}`).join(', ')}`, '', 'Its tasks:', '', listed((phases[on - 1] ?? []).map(taskLine)),
+    ].join('\n');
+  }));
+}
+
+/**
+ * The branch of a task of the phase, among those a repository holds work
+ * on, that every other descends from: the tip of the stack they make there.
+ * @param {Repo} repo @param {string[]} held @param {string} what the phase, as a refusal names it
+ */
+function stackTip(repo, held, what) {
+  const tip = held.find((branch) => held.every((other) => isAncestor(repo.path, `refs/heads/${other}`, `refs/heads/${branch}`)));
+  if (tip === undefined) throw new Error(`${what}'s tasks are no one stack in ${repoNamed(repo)} — ${held.join(', ')} each hold work another lacks; chain them before its range is read`);
+  return tip;
+}
+
+/** @param {Filling} filling */
+function drawPhaseDiffRange(filling) {
+  const { unit, phase } = phaseOf(filling);
+  const what = phaseName(unit, phase);
+  const named = writtenPhase(filling).filter(({ status }) => status !== 'closed').map((task) => {
+    if (task.type === null) throw new Error(`${taskName(task.ref)} has no type in the tracker, and its branch is named from it`);
+    return taskBranch(task.ref, task.type, task.title);
+  });
+  const repos = projectRepos(codeRoot(filling.cwd));
+  const held = named.map((branch) => holdingBranch(unit, repos, branch).holding);
+  const holding = repos.map((repo) => ({ repo, on: named.filter((_, at) => held[at].includes(repo)) })).filter(({ on }) => on.length > 0);
+  if (holding.length === 0) throw new Error(`no repository of the project holds work on ${what}'s tasks`);
+  const bases = basesOf(filling.cwd, holding.map(({ repo }) => repo), filling.given.base, `${what}'s tasks`);
+  return holding.map(({ repo, on }, at) => rangeIn(repo, bases[at], stackTip(repo, on, what))).join('\n\n');
+}
+
+/**
+ * The project's commit `--head` names, in full; refused where it names none.
+ * @param {Filling} filling
+ */
+function headOf(filling) {
+  const { head } = filling.given;
+  const commit = tryGit(codeRoot(filling.cwd), ['rev-parse', '--verify', '--quiet', `${head}^{commit}`]);
+  if (commit === null) throw new Error(`${head} is no commit of the project's repository — the phase's runs are read at its HEAD there`);
+  return commit.trim();
+}
+
+/** @param {Filling} filling */
+function drawRecordedRuns(filling) {
+  const { unit, phase } = phaseOf(filling);
+  const head = headOf(filling);
+  return cutOf(filling)[phase - 1].scenarios.map((scenario) => {
+    const { standing, runs } = runsOf(filling.cwd, unit, scenario, head);
+    return [`- ${scenario}: ${standing}`, ...runs.map((run) => `  - ${run.verdict}, recorded ${run.at}: \`${statePath(filling.cwd, run.file)}\``)].join('\n');
+  }).join('\n');
+}
+
+/** @param {Filling} filling */
+function drawMutants(filling) {
+  const { unit, phase } = phaseOf(filling);
+  const survivors = phaseSurvivors(filling.cwd, unit, phase);
+  if (survivors === null) return 'The verify setup names no mutation tool.';
+  return survivors.length === 0 ? 'None survived.' : survivors.map(({ path: at, line, mutant }) => `- ${at}:${line} — ${mutant}`).join('\n');
+}
+
+/** @param {Filling} filling */
+function drawConsolidationTo(filling) {
+  const { unit, phase } = phaseOf(filling);
+  return `\`${statePath(filling.cwd, consolidationPath(unit, phase))}\``;
+}
+
+/** The flag naming the branch a range is read from. @type {BriefFlag} */
+const BASE = Object.freeze({ name: 'base', value: 'branch' });
+
+/** The flag naming the commit a phase's runs are read at. @type {BriefFlag} */
+const HEAD = Object.freeze({ name: 'head', value: 'commit' });
+
 /** Every record, by the slot that draws it. @type {Readonly<Record<string, BriefRecord>>} */
 const RECORDS = Object.freeze({
   task: { of: 'task', draw: drawTask },
   'spec-sections': { of: 'task', draw: drawSpecSections },
-  'decided-calls': { of: 'task', draw: drawDecidedCalls },
+  'decided-calls': { of: 'unit', draw: drawDecidedCalls },
   linters: { of: null, draw: drawLinters },
-  'diff-range': { of: 'task', flags: [{ name: 'base', value: 'branch' }], draw: drawDiffRange },
+  'diff-range': { of: 'task', flags: [BASE], draw: drawDiffRange },
   reports: { of: 'task', draw: drawReports },
   'topic-record': { of: 'topic', draw: drawTopicRecord },
   'topic-log': { of: 'topic', draw: drawTopicLog },
@@ -1172,6 +1480,23 @@ const RECORDS = Object.freeze({
   'product-cites': { of: 'unit', draw: drawProductCites },
   'report-refusal': { of: 'unit', draw: drawReportRefusal },
   'unit-report-to': { of: 'unit', flags: [AGENT], draw: drawReportTo },
+  'cut-phase': { of: 'phase', draw: drawCutPhase },
+  'phase-sections': { of: 'phase', draw: drawPhaseSections },
+  'phase-scenarios': { of: 'phase', draw: drawPhaseScenarios },
+  'held-notes': { of: 'phase', draw: drawHeldNotes },
+  'written-tasks': { of: 'phase', draw: drawWrittenTasks },
+  'earlier-tasks': { of: 'phase', draw: drawEarlierTasks },
+  'build-calls': { of: 'unit', draw: drawBuildCalls },
+  'affected-entries': { of: 'unit', draw: drawAffectedEntries },
+  'task-files-to': { of: 'phase', draw: drawTaskFilesTo },
+  'phase-notes': { of: 'phase', draw: drawPhaseNotes },
+  'phase-tasks': { of: 'phase', draw: drawPhaseTasks },
+  'phase-criteria': { of: 'phase', draw: drawPhaseCriteria },
+  'relied-on': { of: 'phase', draw: drawReliedOn },
+  'phase-diff-range': { of: 'phase', flags: [BASE], draw: drawPhaseDiffRange },
+  'recorded-runs': { of: 'phase', flags: [HEAD], draw: drawRecordedRuns },
+  mutants: { of: 'phase', draw: drawMutants },
+  'consolidation-to': { of: 'phase', draw: drawConsolidationTo },
 });
 
 module.exports = { RECORDS, DIVE_KINDS };

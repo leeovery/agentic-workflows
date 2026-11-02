@@ -60,7 +60,9 @@
 //   whatever its exit code says — many exit failing where a mutant survives.
 //   A survivor's path is read as the project's: posix-normalised, an
 //   absolute one made relative to the project's root. The verb answers those
-//   on a line the phase changed (15.6.6). It writes nothing.
+//   on a line the phase changed (15.6.6). It writes nothing. `phaseSurvivors`
+//   answers the same for a phase review's brief (brief-records.cjs), null
+//   where the setup names no tool.
 //
 // Each refuses, opening on its command and recording nothing: a unit the
 // project lacks; no verify setup recorded, naming `verify setup`, for the
@@ -603,10 +605,23 @@ function verifyMutants(cwd, unit, given) {
   const phases = cutPhases(manifest).length;
   const phase = /^[1-9][0-9]*$/.test(given) ? Number(given) : 0;
   if (phase < 1 || phase > phases) throw new Error(`"${given}" is no phase of ${unit}'s cut — it has ${phases === 1 ? '1 phase' : `${phases} phases`}`);
-  const { mutation } = recordedSetup(cwd, unit);
-  if (mutation === undefined) {
+  const survivors = phaseSurvivors(cwd, unit, phase);
+  if (survivors === null) {
     throw new Error('the verify setup names no mutation tool — where the language has none, each reviewer breaks the riskiest line of a criterion\'s code in a scratch worktree (15.6.5)');
   }
+  return { unit, phase, survivors };
+}
+
+/**
+ * What survived the setup's mutation tool on the lines phase `phase` of the
+ * unit changed, as `verify mutants` answers it; null where the setup names
+ * no tool.
+ * @param {string} cwd @param {string} unit @param {number} phase
+ * @returns {Survivor[]|null}
+ */
+function phaseSurvivors(cwd, unit, phase) {
+  const { mutation } = recordedSetup(cwd, unit);
+  if (mutation === undefined) return null;
   const root = codeRoot(cwd);
   const changed = phaseChanges(root, unit, phase);
   if (changed.length === 0) throw new Error(`no commit of phase ${phase} of ${unit} changes a line in the checkout at ${root} — run it from the checkout holding the phase's work`);
@@ -615,7 +630,7 @@ function verifyMutants(cwd, unit, given) {
     fs.writeFileSync(listing, `${JSON.stringify(changed, null, 2)}\n`);
     return survivorsIn(run, runShellCommand(root, mutation, { LEEWAY_RUN: run, LEEWAY_CHANGED: listing }));
   });
-  return { unit, phase, survivors: onChangedLines(root, changed, survivors) };
+  return onChangedLines(root, changed, survivors);
 }
 
 /**
@@ -635,4 +650,4 @@ function runVerifyVerb(cwd, argv, opts) {
   throw usage();
 }
 
-module.exports = { VERIFY_USAGE, runVerifyVerb };
+module.exports = { VERIFY_USAGE, runVerifyVerb, phaseSurvivors };

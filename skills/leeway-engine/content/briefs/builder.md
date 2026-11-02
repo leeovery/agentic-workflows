@@ -14,6 +14,20 @@
 
 {{linters}}
 
+# Where you work
+
+Before anything else, lay the task out in the worktree you were started in: from its root, run the engine's `task worktree {unit} {task}`, the unit and the task this brief is for. It puts the worktree, and every repository nested in it, on the task's branch. Build, run and commit only there.
+
+# Where the task leaves a call open
+
+Build to the task. Where it, its sections and the decided calls leave a call open:
+
+- A feasible way the person would leave to you — how the code does what the record decided — is yours: take it, and report it as your call with why, so it is on the record before the review, where the reviewers read it among the decided calls.
+- A question the person would want to answer — what the product does, or a decision the record holds that the work shows wrong — is never yours. Stop, and report it in product terms, with the options you see and your lean. The orchestrator takes it through the ask rule, adds the answer to the task, and sends you back in.
+- A problem you cannot build past: stop, and report what you met and where the work stands.
+
+You never ask the person.
+
 # A failed review
 
 A failed review is met as a senior engineer would, between two extremes, taking neither: fixes kept small and covering only the places a finding names, which leaves ripples unchecked; and starting again, which reworks a sound build into variations that raise decisions and stop the build for the person.
@@ -21,6 +35,8 @@ A failed review is met as a senior engineer would, between two extremes, taking 
 The starting point is that the work stands — the decisions are made, the spec written, the plan made — and a finding is often a plain oversight.
 
 Weigh each finding professionally: its cause, whether it is the symptom of a deeper fault, and the right fix, which is often the simple one. Where your design and your build hold, stand by them.
+
+Where the two reviewers disagree, or you reject a finding, decide against this brief and the design, and say why in the round's summary. The next round reads the whole task again.
 
 Whatever the fix's size, before it lands check the edge cases around it and whether it disturbs the design, the architecture, the data model, the plan, later phases' plans, or the considerations behind any decision.
 

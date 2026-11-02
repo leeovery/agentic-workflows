@@ -207,6 +207,25 @@ function takenElsewhere(cwd, unit, phase) {
 }
 
 /**
+ * The notes a phase has to take (the header's), in order: those held for no
+ * phase that no other phase's report took.
+ * @param {Note[]} notes @param {Map<number, number>} elsewhere @returns {Note[]}
+ */
+function toTakeOf(notes, elsewhere) {
+  return notes.filter((note) => note.phase === null && !elsewhere.has(note.note));
+}
+
+/** The notes phase `phase` has to take at its end. @param {string} cwd @param {string} unit @param {number} phase */
+function notesToTake(cwd, unit, phase) {
+  return toTakeOf(readNotes(cwd, unit), takenElsewhere(cwd, unit, phase));
+}
+
+/** The notes held for phase `phase`, which its task writer takes. @param {string} cwd @param {string} unit @param {number} phase */
+function notesHeldFor(cwd, unit, phase) {
+  return readNotes(cwd, unit).filter((note) => note.phase === phase);
+}
+
+/**
  * What stands between a phase and its notes consolidated (the header's),
  * none where they are.
  * @param {string} cwd @param {string} unit @param {number} phase @returns {string[]}
@@ -214,7 +233,7 @@ function takenElsewhere(cwd, unit, phase) {
 function consolidationFaults(cwd, unit, phase) {
   const notes = new Map(readNotes(cwd, unit).map((note) => [note.note, note]));
   const elsewhere = takenElsewhere(cwd, unit, phase);
-  const toTake = [...notes.values()].filter((note) => note.phase === null && !elsewhere.has(note.note));
+  const toTake = toTakeOf([...notes.values()], elsewhere);
   const rel = consolidationPath(unit, phase);
   if (!fs.existsSync(statePath(cwd, rel))) {
     if (toTake.length === 0) return [];
@@ -238,4 +257,6 @@ function consolidationFaults(cwd, unit, phase) {
   return [...faults, ...left.map(({ note }) => `note ${note} is neither dropped nor made a task`)];
 }
 
-module.exports = { notesPath, consolidationPath, readNotes, depositNote, readConsolidation, consolidationFaults };
+module.exports = {
+  notesPath, consolidationPath, readNotes, depositNote, readConsolidation, notesToTake, notesHeldFor, consolidationFaults,
+};

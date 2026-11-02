@@ -303,6 +303,7 @@ describe('the builder\'s brief (6.5.1–6.5.5, 6.S15)', () => {
     assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'builder', agent: 'leeway-builder', pointer: `brief:${res.id}` });
     assert.strictEqual(brief, `Brief ${res.id} — the builder's, for pay task 1.1\n\n${filledTemplate('builder', drawnForTakeACard())}`);
     assert.ok(!brief.includes(PROJECT_WORDS) && !brief.includes('Prefer tabs.'), 'nothing of CLAUDE.md or a skill reaches the brief');
+    assert.ok(!brief.includes('.claude/skills'), 'no project skill\'s path reaches the brief (15.10.2)');
     assert.deepStrictEqual(stored(), [`${res.id}.json`, `${res.id}.md`]);
   });
 
@@ -493,6 +494,7 @@ describe('the refusals, nothing written and no brief stored', () => {
       'closing-pass-reader <unit> <topic> --agent <id>', 'plain-search',
       'migration-topic --topic <unit.phase.topic> --directive <id>', 'migration-verifier --topic <unit.phase.topic> --directive <id>', 'phase-cut <unit>', 'sweep <unit>',
       'spec-writer <unit> [--wording <file>]', 'spec-reviewer <unit> --agent <id>',
+      'task-writer <unit> <N>', 'consolidation <unit> <N> --base <branch>', 'phase-review <unit> <N> --base <branch> --head <commit>',
     ].map((line) => `engine brief ${line.replace(/[|[\]]/g, '\\$&')}`).join(' \\| ')}$`);
     for (const args of [
       [], ['scribe', UNIT, '1.1'], ['builder'], ['builder', UNIT], ['builder', UNIT, '1.1', 'more'], ['product-researcher', UNIT],
@@ -526,9 +528,12 @@ describe('the refusals, nothing written and no brief stored', () => {
       sweep: [UNIT],
       'spec-writer': [UNIT],
       'spec-reviewer': [UNIT, '--agent', 'spec-review-001'],
+      'task-writer': [UNIT, '1'],
+      consolidation: [UNIT, '1', '--base', 'main'],
+      'phase-review': [UNIT, '1', '--base', 'main', '--head', 'main'],
     };
     for (const role of Object.keys(ROLES)) {
-      for (const [flag, value] of [['--note', 'be quick'], ...(role === 'reviewer' ? [] : [['--base', 'main']]), ['--report-a', 'a.md']]) {
+      for (const [flag, value] of [['--note', 'be quick'], ...(taking[role].includes('--base') ? [] : [['--base', 'main']]), ['--report-a', 'a.md']]) {
         refusedUnissued([role, ...taking[role], flag, value], new RegExp(`^brief: the ${role}'s brief takes no ${flag} `));
       }
     }
@@ -600,12 +605,9 @@ describe('the templates and the store', () => {
     for (const [role, { agent }] of Object.entries(ROLES)) assert.ok(agent.startsWith(OURS) && agent.length > OURS.length, `${role}: ${agent}`);
   });
 
-  it('every role\'s agent is a definition on the roster fixing Opus at medium (26.4.1, 26.5.3) — but the build\'s, whose definitions its phase writes', () => {
-    const roles = Object.entries(ROLES);
-    const written = roles.filter(([, { agent }]) => fs.existsSync(path.join(AGENTS, `${agent}.md`)));
-
-    assert.deepStrictEqual(roles.filter((role) => !written.includes(role)).map(([role]) => role), ['builder', 'reviewer', 'fix']);
-    for (const [role, { agent }] of written) {
+  it('every role\'s agent is a definition on the roster fixing Opus at medium (26.4.1, 26.5.3)', () => {
+    for (const [role, { agent }] of Object.entries(ROLES)) {
+      assert.ok(fs.existsSync(path.join(AGENTS, `${agent}.md`)), `${role}: ${agent}`);
       const frontmatter = /^---\n([\s\S]*?)\n---\n/.exec(fs.readFileSync(path.join(AGENTS, `${agent}.md`), 'utf8'))?.[1] ?? '';
       assert.deepStrictEqual(['name', 'model', 'effort'].map((key) => new RegExp(`^${key}: (.*)$`, 'm').exec(frontmatter)?.[1]), [agent, 'opus', 'medium'], role);
     }
