@@ -25,10 +25,11 @@
 // brief was issued for (brief-names.cjs), only while that task is in flight:
 // the builder's replacing any before it, each reviewer's joining the pair
 // the later rounds go back to (13.3.3); a dispatch with no brief, the plan's
-// executor's, is the builder of the one task in flight. They ride with their
-// task and go with it. The start menu is no position: boot drops the calling
-// conversation's own before anything else it does, and `session repair`
-// drops it too.
+// executor's, is the builder of the one task in flight. `task worktree`
+// records the worktree it laid out for a task in flight (task-worktree.cjs).
+// They ride with their task and go with it. The start menu is no position:
+// boot drops the calling conversation's own before anything else it does,
+// and `session repair` drops it too.
 //
 // The engine is the file's one writer, and writes only for a conversation
 // that runs the workflows: recording a position marks the conversation first
@@ -255,6 +256,24 @@ function recordBuilder(sessionId, agentId, briefId) {
       const held = at === null ? [] : tasksAt(prior, at.place);
       if (at === null || !held.some((t) => t.task === at.task)) return null;
       return withTasks(at.place, held.map((t) => (t.task === at.task ? withAgent(t, at.slot, agentId) : t)));
+    }),
+  };
+}
+
+/**
+ * Record the worktree `task worktree` laid out against the unit's task in
+ * flight on the conversation `sessionId`'s position — only while it is in
+ * flight there.
+ * @param {string} sessionId @param {string} workUnit @param {string} step `{phase}.{n}` @param {string} worktree absolute
+ * @returns {{recorded: boolean}}
+ */
+function recordWorktree(sessionId, workUnit, step, worktree) {
+  const place = implementationOf(workUnit, workUnit);
+  return {
+    recorded: updatePosition(sessionId, (prior) => {
+      const held = tasksAt(prior, place);
+      if (!held.some((t) => t.task === step)) return null;
+      return withTasks(place, held.map((t) => (t.task === step ? { ...t, worktree } : t)));
     }),
   };
 }
@@ -650,6 +669,6 @@ function positionSections(reads) {
 }
 
 module.exports = {
-  readPosition, assertPlace, isPlace, recordPosition, recordTask, recordBuilder, clearTask, dropPosition,
+  readPosition, assertPlace, isPlace, recordPosition, recordTask, recordBuilder, recordWorktree, clearTask, dropPosition,
   placeLine, skillAt, positionReads, positionSections,
 };

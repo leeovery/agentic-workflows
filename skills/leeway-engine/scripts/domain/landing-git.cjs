@@ -55,6 +55,11 @@
 //   stops every verb until it is settled or ended. Every path and word a
 //   remedy names is quoted for the shell, and what the person wrote that a
 //   refusal names — a subject, a title, a path — never opens a command.
+// - A task's worktree (task-worktree.cjs) is laid out by the same git: its
+//   branch made in place at the worktree's own commit, or switched to, and
+//   a worktree of each child repository added on it, none recursing into a
+//   submodule nor tracking a branch; and each child worktree removed as git
+//   removes a clean one.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -632,6 +637,39 @@ function holderOf(root, branch, trees = worktrees(root)) {
   return trees.find((tree) => !tree.scratch && tree.branch === branch);
 }
 
+/** The settings a checkout a task's worktree makes is read by, at git's own defaults: no submodule recursed into. */
+const CHECKOUT_PINS = ['-c', 'submodule.recurse=false'];
+
+/**
+ * A branch made at a worktree's own commit and checked out there, tracking
+ * nothing: no file and no index entry changes, so the worktree stays where
+ * it is.
+ * @param {string} tree @param {string} branch
+ */
+function branchInPlace(tree, branch) {
+  git(tree, [...CHECKOUT_PINS, 'switch', '-q', '--no-track', '-c', branch]);
+}
+
+/**
+ * A worktree of the repository added at `at` on `branch` — made at `start`,
+ * tracking nothing, or, `start` null, the branch checked out as it stands —
+ * into an empty folder there, as git takes one.
+ * @param {string} root @param {string} at @param {string} branch @param {string|null} start
+ */
+function addWorktree(root, at, branch, start) {
+  git(root, [...CHECKOUT_PINS, 'worktree', 'add', '-q', ...(start === null ? [at, branch] : ['--no-track', '-b', branch, at, start])]);
+}
+
+/** A branch made already checked out in a worktree, its files moved to it. @param {string} tree @param {string} branch */
+function switchTo(tree, branch) {
+  git(tree, [...CHECKOUT_PINS, 'switch', '-q', branch]);
+}
+
+/** A worktree of the repository removed, as git removes a clean one — or its registration, where its folder is gone. @param {string} root @param {string} tree */
+function removeWorktree(root, tree) {
+  git(root, ['worktree', 'remove', tree]);
+}
+
 /** How an operation stopped in a worktree is abandoned, by the marker git leaves. */
 const ABORTS = Object.freeze({
   MERGE_HEAD: 'merge --abort',
@@ -697,9 +735,14 @@ function clearing(tree) {
     : `remove the worktree an earlier remedy left with ${removing(tree)}`;
 }
 
-/** The command that removes a worktree, as a remedy names it — its folder there or missing. @param {Worktree} tree */
-function removing(tree) {
-  return `\`git worktree remove ${quoted(tree.path)}\``;
+/**
+ * The command that removes a worktree, as a remedy names it — its folder
+ * there or missing — run in `from`, the repository's folder, where the
+ * person runs it from another repository's.
+ * @param {Worktree} tree @param {string} [from]
+ */
+function removing(tree, from) {
+  return `\`git ${from === undefined ? '' : `-C ${quoted(from)} `}worktree remove ${quoted(tree.path)}\``;
 }
 
 /**
@@ -1072,4 +1115,5 @@ module.exports = {
   short, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranch, refsUnder, updateRefs, isAncestor, mergeBase, treesOf, firstParentLine, messagesPast, commitsNamed, messageOf, commitWithTree, treesPast,
   prefixOf, pointersAt, treeWithPointers, pointedLike, holdsCommit, pointerAhead, stackMoves, commitsPast, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, remedy, moveTo, movedSinceOpened, rewrite, scratchBlock, rebaseBlock, checkoutBlock, pathsChanged, dirtBlock, moveBranch,
   defaultBranch, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, nothingPast,
+  worktrees, holderOf, samePlace, removing, branchInPlace, addWorktree, switchTo, removeWorktree,
 };

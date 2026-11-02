@@ -16,15 +16,17 @@
 // linked (12.6.4); ready answers every task waiting with nothing before it
 // (7.1.5); start puts the task in flight on the conversation's position,
 // beside any others in flight there — a task already in flight kept as it
-// stands, its builder and reviewers with it — and done and close take it off
-// (6.3.3, 24.2.4); close ends a task without it being done, with a reason, and
-// frees what waits on it as done does (7.1.12). The verbs refuse in the
-// engine's words: a tool the driver needs missing or failing, a phase not
-// written, a task the tracker lacks or already holds, a task already ended.
-// Beside them, three take the build's records, each its own module's:
-// account, a task's account and its rounds' reports, and settle, the
-// orchestrator's settlement of a failed round (task-account.cjs); and note,
-// a note for later (notes.cjs).
+// stands, its builder and reviewers with it — and done and close take it
+// off, each first taking the task's worktree apart (6.3.3, 24.2.4); close
+// ends a task without it being done, with a reason, and frees what waits on
+// it as done does (7.1.12); worktree lays the task's worktree out for its
+// builder, reading the task as show does (task-worktree.cjs). The verbs
+// refuse in the engine's words: a tool the driver needs missing or failing,
+// a phase not written, a task the tracker lacks or already holds, a task
+// already ended. Beside them, three take the build's records, each its own
+// module's: account, a task's account and its rounds' reports, and settle,
+// the orchestrator's settlement of a failed round (task-account.cjs); and
+// note, a note for later (notes.cjs).
 //
 // Every verb runs under the writer lock (engine.cjs), the tool's own lock
 // inside it. Before anything else reaches the driver, the project's setting
@@ -59,6 +61,7 @@ const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('.
 const { taskId, shownTask, parseShownTask, parsePhase, taskName, phaseName } = require('./task-id.cjs');
 const { TASK_TYPES, breaksLine, readTaskText } = require('./task-file.cjs');
 const { recordTask, clearTask } = require('./position.cjs');
+const { layOutTask, leavingWorktree } = require('./task-worktree.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskDriver} TaskDriver */
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
@@ -392,46 +395,72 @@ function showTask(cwd, unit, given) {
 }
 
 /**
- * A verb that moves one task on, then the position with it.
+ * A verb that moves one task on, then the position with it: `prepare`, run
+ * before anything moves, answers what settles the rest once the tracker
+ * has moved, and that answers what it adds to the verb's answer.
  * @param {string} verb
  * @param {(driver: TaskDriver, root: string, ref: TaskRef, ...more: string[]) => void} move
- * @param {(cwd: string, ref: TaskRef) => void} settle
+ * @param {(cwd: string, ref: TaskRef, verb: string) => () => object} prepare
  * @returns {(cwd: string, unit: string, given: string, ...more: string[]) => object}
  */
-function moving(verb, move, settle) {
+function moving(verb, move, prepare) {
   return (cwd, unit, given, ...more) => {
     const ref = parseShownTask(unit, given);
     requireUnit(cwd, unit);
+    const settle = prepare(cwd, ref, verb);
     const answer = withTracker(cwd, unit, `${verb} ${shownTask(ref)}`, (driver, root) => {
       move(driver, root, ref, ...more);
       return named(ref);
     });
-    settle(cwd, ref);
-    return answer;
+    return { ...answer, ...settle() };
   };
 }
 
-/** Takes the task off the position, where it is one in flight. @param {string} cwd @param {TaskRef} ref */
-function offPosition(cwd, ref) {
-  clearTask(ref.unit, ref.unit, taskId(ref));
+/**
+ * Ending a task: its worktree's child repositories checked before anything
+ * moves, then removed (task-worktree.cjs), answered where any was, and the
+ * task taken off the position, where it is one in flight.
+ * @param {string} cwd @param {TaskRef} ref @param {string} verb
+ */
+function ending(cwd, ref, verb) {
+  const leave = leavingWorktree(cwd, ref, verb);
+  return () => {
+    const removed = leave();
+    clearTask(ref.unit, ref.unit, taskId(ref));
+    return removed.length === 0 ? {} : { removed };
+  };
 }
 
 /** `task start`: in progress — where it is not already — and in flight on the position beside any others. */
 const startTask = moving('start', (driver, root, ref) => {
   if (refuseEnded(driver, root, ref, 'only a task not yet ended is started') !== 'in-progress') driver.start(root, ref);
-}, (cwd, ref) => recordTask(cwd, ref.unit, ref.unit, taskId(ref)));
+}, (cwd, ref) => () => {
+  recordTask(cwd, ref.unit, ref.unit, taskId(ref));
+  return {};
+});
 
-/** `task done`: done, and off the position. */
+/** `task done`: done, its worktree taken apart, and off the position. */
 const doneTask = moving('done', (driver, root, ref) => {
   refuseEnded(driver, root, ref, 'only a task not yet ended is done');
   driver.done(root, ref);
-}, offPosition);
+}, ending);
 
-/** `task close`: closed without being done, its reason kept, and off the position. */
+/** `task close`: closed without being done, its reason kept, its worktree taken apart, and off the position. */
 const closeTask = moving('close', (driver, root, ref, reason) => {
   refuseEnded(driver, root, ref, 'only a task not yet ended is closed');
   driver.close(root, ref, reason);
-}, offPosition);
+}, ending);
+
+/**
+ * `task worktree`: the task's worktree laid out where the call is made
+ * (task-worktree.cjs), its type and title read as any read of the tracker is.
+ * @param {string} cwd @param {string} unit @param {string} given
+ */
+function worktreeTask(cwd, unit, given) {
+  const ref = parseShownTask(unit, given);
+  requireUnit(cwd, unit);
+  return layOutTask(cwd, ref, () => trackedTask(cwd, ref));
+}
 
 // The build's records, loaded at their call: each reads its task, or the
 // tracker's phases, through this module.
@@ -457,6 +486,7 @@ const TASK_VERBS = Object.freeze({
   close: { usage: '<unit> <task> --reason <reason>', arity: 2, flags: ['reason'], run: (cwd, [unit, task], reason) => closeTask(cwd, unit, task, reason) },
   list: { usage: '<unit> <N>', arity: 2, run: (cwd, [unit, phase]) => listTasks(cwd, unit, phase) },
   show: { usage: '<unit> <task>', arity: 2, run: (cwd, [unit, task]) => showTask(cwd, unit, task) },
+  worktree: { usage: '<unit> <task>', arity: 2, run: (cwd, [unit, task]) => worktreeTask(cwd, unit, task) },
   account: { usage: '<unit> <task>', arity: 2, run: (cwd, [unit, task]) => account().takeAccount(cwd, unit, task) },
   settle: { usage: '<unit> <task> --file <why>', arity: 2, flags: ['file'], run: (cwd, [unit, task], file) => account().settleTask(cwd, unit, task, file) },
   note: { usage: '<unit> --file <note> [--phase <N>]', arity: 1, flags: ['file'], mayTake: ['phase'], run: (cwd, [unit], file, phase) => notes().depositNote(cwd, unit, file, phase) },

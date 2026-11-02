@@ -191,6 +191,15 @@ class Sim {
     return this.audited(args, this.engine(args, identity, stdin));
   }
 
+  /**
+   * Engine mutation run in another folder of the project — a builder's
+   * worktree — audited as `run`'s.
+   * @param {string} cwd @param {string[]} args @param {object|null} [identity]
+   */
+  runIn(cwd, args, identity = null) {
+    return this.audited(args, engine.run(args, { cwd, env: this.envOf(identity), stdin: '' }));
+  }
+
   /** Engine mutation awaited — the door a command that answers later takes — audited as `run`'s. */
   async runAsync(args, identity = null, stdin = '') {
     return this.audited(args, await this.engineAsync(args, identity, stdin));

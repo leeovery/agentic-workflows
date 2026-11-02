@@ -272,6 +272,7 @@ ${Object.values(MAP_USAGE).map((usage) => `  ${usage}`).join('\n')}
   task close <work-unit> <task> --reason <reason>
   task list <work-unit> <N>
   task show <work-unit> <task>
+  task worktree <work-unit> <task>
   task account <work-unit> <task>
   task settle <work-unit> <task> --file <why>
   task note <work-unit> --file <note> [--phase <N>]
@@ -1144,7 +1145,8 @@ function runExperiment(call, argv) {
 // (domain/task-verbs.cjs): phase, create, add, type, link, ready, start,
 // done, close, list and show, and beside them the build's records, account
 // and settle (domain/task-account.cjs) and note (domain/notes.cjs), each
-// committing what it wrote to the state branch.
+// committing what it wrote to the state branch; and worktree, the task's
+// worktree laid out for its builder (domain/task-worktree.cjs).
 //
 // Beside them, until the plan's loops go, the implementation-task
 // bookkeeping: format-blind, manifest-side only — init, the three-argument
