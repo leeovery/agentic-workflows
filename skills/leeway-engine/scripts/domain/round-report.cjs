@@ -227,13 +227,13 @@ function lastReported(held) {
   return Math.max(0, ...rounds);
 }
 
-/** Whether a file's text reads as a reviewer's report. @param {string} file @returns {boolean} */
-function readsAsReport(file) {
+/** Why a file's text does not read as a reviewer's report, or null where it does. @param {string} file @returns {string|null} */
+function reportFaults(file) {
   try {
     readReport(fs.readFileSync(file, 'utf8'));
-    return true;
-  } catch {
-    return false;
+    return null;
+  } catch (err) {
+    return messageOf(err);
   }
 }
 
@@ -250,12 +250,12 @@ function roundUnderReview(cwd, ref) {
   const held = heldFiles(cwd, ref);
   const last = lastReported(held);
   if (last === 0) return 1;
-  const reported = REVIEWER_LETTERS.every((letter) => held.has(`round-${last}-${letter}.md`) && readsAsReport(statePath(cwd, roundReportPath(ref, last, letter))));
+  const reported = REVIEWER_LETTERS.every((letter) => held.has(`round-${last}-${letter}.md`) && reportFaults(statePath(cwd, roundReportPath(ref, last, letter))) === null);
   if (!reported) return last;
   if (readRound(cwd, ref, last, held).passes) throw new Error(`round ${last} of ${taskName(ref)} passed — its review is over`);
   return last + 1;
 }
 
 module.exports = {
-  passes, readReport, readsAsReport, taskFolder, roundReportPath, settlementPath, taskRounds, roundUnderReview, phaseReviewPath,
+  passes, readReport, reportFaults, taskFolder, roundReportPath, settlementPath, taskRounds, roundUnderReview, phaseReviewPath,
 };

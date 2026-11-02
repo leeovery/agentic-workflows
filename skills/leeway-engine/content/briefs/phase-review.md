@@ -22,6 +22,10 @@
 
 {{phase-diff-range}}
 
+# Laying out your scratch worktree
+
+{{phase-scratch-layout}}
+
 # Its scenarios' runs, at the phase's HEAD
 
 {{recorded-runs}}
@@ -46,8 +50,6 @@ Every task of the phase has passed its own review. Review the phase's whole chan
 - the phase's coherence: its tasks fitting together as one design;
 - what should be consolidated across its tasks;
 - where the phase meets what it relies on from earlier phases, so a fault between phases is found now, before more is built on it.
-
-Run the tests, and make any break, in a detached scratch worktree of your own at the range's tip: in each repository the range names, laid out as the project lays them out, each child repository at its own tip at its folder inside it. Remove it after. Never check out, detach or switch anything in another checkout.
 
 A scenario its runs leave "not proven", or "named, not run", at the phase's HEAD is a finding, and reads so in your report, in those words.
 

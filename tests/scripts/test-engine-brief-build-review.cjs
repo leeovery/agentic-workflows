@@ -22,8 +22,12 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
+const path = require('path');
+const { initRepo, commitCode, addSubmodule } = require('./engine-harness.cjs');
 const {
   UNIT,
+  NESTED,
+  VERIFY,
   SESSION_ID,
   AREA_2,
   TASKS,
@@ -53,6 +57,9 @@ const {
 
 /** @type {string} */
 let dir;
+
+/** Why a report holding neither its findings' heading nor a verdict does not read, as round-report.cjs says it. */
+const NOT_READ = 'its last heading at level one or two is not `## Findings`; its last line is not `Verdict: pass` or `Verdict: fail`';
 
 describe('the phase review\'s brief, the reviewer\'s second template (12.11.2, 6.5.2)', () => {
   useWorld((at) => { dir = at; });
@@ -86,6 +93,7 @@ describe('the phase review\'s brief, the reviewer\'s second template (12.11.2, 6
       ].join('\n'),
       'decided-calls': decidedDrawn(),
       'phase-diff-range': rangeDrawn('the project\'s repository', branchOf(2, 1), ['src/check.js', 'src/card.js', 'src/receipt.js', 'src/refund.js'].sort()),
+      'phase-scratch-layout': `- the project's repository: \`${branchOf(2, 1)}\` — the range's tip there\n- \`${NESTED}\`: \`main\` — the branch it lands on`,
       'recorded-runs': ['- 2.S1: proven', runDrawn(1), runDrawn(2)].join('\n'),
       mutants: 'None survived.',
       linters: '- eslint: npx eslint .',
@@ -177,7 +185,7 @@ describe('where a reviewer\'s report goes (13.5.9)', () => {
     reported(1, 'b');
 
     refusedUnissued(['reviewer', UNIT, '1.2', '--base', 'main', '--letter', 'b'], /^pay\/build\/tasks\/1\.2\/round-1-b\.md is written already — that reviewer's report of the round is in$/);
-    assert.strictEqual(placeIn(reviewing('a')), `${pathDrawn('pay/build/tasks/1.2/round-1-a.md')} — the report there does not read as a reviewer's report, and yours replaces it`);
+    assert.strictEqual(placeIn(reviewing('a')), `${pathDrawn('pay/build/tasks/1.2/round-1-a.md')} — the report there does not read as a reviewer's report — ${NOT_READ}; yours replaces it`);
   });
 
   it('refused: a letter none of the reviewers\', a report already written for its round that reads, and a task whose last round passed', () => {
@@ -197,12 +205,53 @@ describe('where a reviewer\'s report goes (13.5.9)', () => {
     try {
       assert.strictEqual(elsewhere(), pathDrawn('pay/build/phases/phase-1/review-b.md'));
       writeState(dir, 'pay/build/phases/phase-1/review-b.md', 'Half a report.\n');
-      assert.strictEqual(elsewhere(), `${pathDrawn('pay/build/phases/phase-1/review-b.md')} — the report there does not read as a reviewer's report, and yours replaces it`);
+      assert.strictEqual(elsewhere(), `${pathDrawn('pay/build/phases/phase-1/review-b.md')} — the report there does not read as a reviewer's report — ${NOT_READ}; yours replaces it`);
     } finally {
       fs.rmSync(conversationDir(first), { recursive: true, force: true });
     }
     writeState(dir, 'pay/build/phases/phase-1/review-b.md', REPORT);
     refusedUnissued(phaseReview, /^pay\/build\/phases\/phase-1\/review-b\.md is written already — that reviewer's report of the round is in$/);
+  });
+});
+
+describe('the reviewer\'s scratch worktree (13.2.2)', () => {
+  useWorld((at) => { dir = at; });
+
+  /** The scratch worktree's layout task 1.2's reviewer is briefed with. */
+  const laidOut = () => /# Laying out your scratch worktree\n\n([^#]*)\n\n#/.exec(issued(['reviewer', UNIT, '1.2', '--base', 'main', '--letter', 'a']).brief)?.[1];
+
+  it('a task touching the project\'s repository alone lays out every repository, as the builder\'s worktree held them: the project\'s at the range\'s tip, a submodule at the commit that tip points it at, a clone on the task\'s branch, or the branch it lands on where that is not made there', () => {
+    const source = initRepo(path.join(dir, '..', 'ext-source'));
+    fs.writeFileSync(path.join(source, 'one.txt'), 'one\n');
+    commitCode(source, 'one');
+    const first = git(source, ['rev-parse', 'HEAD']).trim();
+    fs.writeFileSync(path.join(source, 'two.txt'), 'two\n');
+    commitCode(source, 'two');
+    addSubmodule(dir, 'ext', source);
+    const pinning = path.join(dir, '..', 'pinning');
+    git(dir, ['worktree', 'add', '-q', pinning, branchOf(1, 2)]);
+    git(pinning, ['update-index', '--add', '--cacheinfo', `160000,${first},ext`]);
+    git(pinning, ['commit', '-q', '-m', 'ext pinned']);
+    git(dir, ['worktree', 'remove', '--force', pinning]);
+    const nested = path.join(dir, NESTED);
+    git(nested, ['branch', branchOf(1, 2), 'main']);
+
+    const own = `- the project's repository: \`${branchOf(1, 2)}\` — the range's tip there`;
+    const ext = `- \`ext\`: \`${first}\` — a submodule, at the commit the project's repository points it at as laid out`;
+    assert.strictEqual(laidOut(), [own, ext, `- \`${NESTED}\`: \`${branchOf(1, 2)}\` — the task's branch`].join('\n'));
+    git(nested, ['branch', '-D', branchOf(1, 2)]);
+    assert.strictEqual(laidOut(), [own, ext, `- \`${NESTED}\`: \`main\` — the branch it lands on, the task's branch not made there`].join('\n'));
+  });
+});
+
+describe('where the verify setup goes (15.2.11)', () => {
+  useWorld((at) => { dir = at; });
+
+  it('the builder\'s file starts from the setup recorded now, drawn whole but for its run, so a builder changing it never undoes a change recorded since', () => {
+    const { ran: _ran, ...parts } = VERIFY;
+    const { brief } = issued(['builder', UNIT, '1.2']);
+
+    assert.ok(brief.includes(`# Where the verify setup goes\n\n${pathDrawn('.cache/pay/build/verify-setup.json')}\n\nThe verify setup recorded now, which the file starts from:\n\n\`\`\`json\n${JSON.stringify(parts, null, 2)}\n\`\`\`\n\n#`), brief);
   });
 });
 

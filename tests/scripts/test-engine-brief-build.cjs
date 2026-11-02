@@ -201,7 +201,6 @@ describe('the build\'s templates', () => {
     for (const rule of [
       'A mutant that survived in code a criterion covers is a finding.',
       'Where the verify setup names no mutation tool, break the riskiest line of each criterion\'s code in that scratch worktree, never the phase\'s: a break the tests do not catch is a finding.',
-      'Run the tests, and make any break, in a detached scratch worktree of your own at the range\'s tip: in each repository the range names, laid out as the project lays them out, each child repository at its own tip at its folder inside it. Remove it after. Never check out, detach or switch anything in another checkout.',
       'A scenario its runs leave "not proven", or "named, not run", at the phase\'s HEAD is a finding, and reads so in your report, in those words.',
     ]) assert.ok(words.includes(rule), rule);
     assert.ok(words.includes('where the phase meets what it relies on from earlier phases'), words);
@@ -240,20 +239,25 @@ describe('the build\'s templates', () => {
     for (const role of ['builder', 'fix', 'reviewer', 'phase-review']) assert.doesNotMatch(template(role), /\.claude\/skills\/(?!leeway-engine\/scripts\/engine\.cjs )|SKILL\.md/, role);
   });
 
-  it('15.2.14, 15.S18, 22.5.1, 15.4.2: once its work is committed the builder records the verify setup its task builds, from the file its brief names, and runs each of its task\'s scenarios through verify from its worktree, a timeout to match; its account names what it ran and never what the runs prove', () => {
+  it('15.2.14, 15.S18, 22.5.1, 15.4.2: once its work is committed the builder records again the verify setup its task builds or changes, from the file its brief names, starting from the setup that stands, and runs each of its task\'s scenarios through verify from its worktree, a timeout to match; its account names what it ran and never what the runs prove', () => {
     const words = template('builder');
 
     for (const rule of [
       'Once the work is committed through the door, run each acceptance scenario of the task from your task\'s worktree, one at a time: `node .claude/skills/leeway-engine/scripts/engine.cjs verify run {unit} {scenario}`. A drive can run for minutes: give the Bash call a timeout to match.',
-      'Where your task builds the verify setup, record it once it is committed, from your task\'s worktree, before running: write the setup to the file under "Where the verify setup goes", then run `node .claude/skills/leeway-engine/scripts/engine.cjs verify setup {unit} --file {that file} --scenario {scenario}`.',
+      'Where your task builds the verify setup or changes any part of it, record it again once it is committed, from your task\'s worktree, before running: write the setup to the file under "Where the verify setup goes", starting from the setup recorded there where there is one, then run `node .claude/skills/leeway-engine/scripts/engine.cjs verify setup {unit} --file {that file} --scenario {scenario}`.',
+      '## What the tests prove\n\n{each scenario you ran through `verify`, and what its drive does}\n',
       'In your account, under `## What the tests prove`, name each scenario you ran through `verify` and what its drive does. What the runs prove is the engine\'s to say, never the account\'s.',
       'Where the project has no verify setup recorded yet and your task does not build it, say so there instead of running.',
       '# Where the verify setup goes\n\n{{setup-to}}\n',
     ]) assert.ok(words.includes(rule), rule);
   });
 
-  it('13.2.2: the reviewer tests in a detached scratch worktree of its own at the range\'s tip, every repository laid out, and never moves another checkout', () => {
-    assert.ok(fs.readFileSync(path.join(AGENTS, 'leeway-reviewer.md'), 'utf8').includes('Run the tests, and make any break, in a detached scratch worktree of your own at the range\'s tip: in each repository the range names, laid out as the project lays them out, each child repository at its own tip at its folder inside it. Remove it after. Never check out, detach or switch anything in another checkout.'));
+  it('13.2.2: the reviewer tests in a detached scratch worktree of its own, every repository laid out where its brief names, and never moves another checkout; the phase review\'s template points to it and never repeats it', () => {
+    const rule = 'Run the tests, and make any break, in a detached scratch worktree of your own: every repository of the project at its folder, as the project lays them out, each at the commit your brief names for it under "Laying out your scratch worktree". Remove it after. Never check out, detach or switch anything in another checkout.';
+    assert.ok(fs.readFileSync(path.join(AGENTS, 'leeway-reviewer.md'), 'utf8').includes(rule));
+    for (const role of ['reviewer', 'phase-review']) assert.ok(!template(role).includes('Run the tests, and make any break'), role);
+    assert.ok(template('reviewer').includes('# Laying out your scratch worktree\n\n{{scratch-layout}}\n'));
+    assert.ok(template('phase-review').includes('# Laying out your scratch worktree\n\n{{phase-scratch-layout}}\n'));
   });
 
   it('12.14: the builder writes its account to the file its brief names', () => {

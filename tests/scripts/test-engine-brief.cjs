@@ -267,7 +267,7 @@ function drawnForTakeACard() {
     `- ${calls.person}, the person's: Refunds through the API.\n  Why: They come weekly now.`,
   ].join('\n');
   return {
-    task, 'spec-sections': `${REFUNDS}\n\n${FORM}`, 'decided-calls': decisions, linters: '- eslint: npx eslint .\n- tsc: npx tsc --noEmit', 'account-to': `\`${statePath(dir, 'pay/build/tasks/1.1.md')}\``, 'setup-to': `\`${statePath(dir, '.cache/pay/build/verify-setup.json')}\``,
+    task, 'spec-sections': `${REFUNDS}\n\n${FORM}`, 'decided-calls': decisions, linters: '- eslint: npx eslint .\n- tsc: npx tsc --noEmit', 'account-to': `\`${statePath(dir, 'pay/build/tasks/1.1.md')}\``, 'setup-to': `\`${statePath(dir, '.cache/pay/build/verify-setup.json')}\`\n\nNo verify setup is recorded yet.`,
   };
 }
 
@@ -390,7 +390,8 @@ describe('the reviewer\'s brief (13.2.2, 13.11.5)', () => {
 
     assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'reviewer', agent: 'leeway-reviewer', pointer: `brief:${res.id}` });
     const ranges = takeACardRanges('main', 'main');
-    assert.strictEqual(brief, `Brief ${res.id} — the reviewer's, for pay task 1.1\n\n${filledTemplate('reviewer', { ...drawnForTakeACard(), 'diff-range': ranges, 'round-report-to': `\`${statePath(dir, roundAt('1.1', 2, 'a'))}\`` })}`);
+    const laid = `- the project's repository: \`${PAY_BRANCH}\` — the range's tip there\n- \`${NESTED}\`: \`${PAY_BRANCH}\` — the range's tip there`;
+    assert.strictEqual(brief, `Brief ${res.id} — the reviewer's, for pay task 1.1\n\n${filledTemplate('reviewer', { ...drawnForTakeACard(), 'diff-range': ranges, 'scratch-layout': laid, 'round-report-to': `\`${statePath(dir, roundAt('1.1', 2, 'a'))}\`` })}`);
     assert.ok(!brief.includes(CHANGED), 'the diff\'s text reaches no brief');
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'reviewer', agent: 'leeway-reviewer', unit: UNIT, task: '1.1', topic: null });
   });
@@ -398,7 +399,8 @@ describe('the reviewer\'s brief (13.2.2, 13.11.5)', () => {
   it('a task whose branch holds work in the project\'s repository alone: its range there, a path past 80 columns drawn whole, and none in a repository naming the branch with nothing on it', () => {
     const { brief } = issued(['reviewer', 'refund', '1.1', '--base', 'main', '--letter', 'a']);
 
-    assert.ok(brief.includes(`# The diff's range\n\n${rangeDrawn('the project\'s repository', REFUND_BRANCH, DEEP)}\n\n# The linters\n`), brief);
+    assert.ok(brief.includes(`# The diff's range\n\n${rangeDrawn('the project\'s repository', REFUND_BRANCH, DEEP)}\n\n# Laying out your scratch worktree\n\n`
+      + `- the project's repository: \`${REFUND_BRANCH}\` — the range's tip there\n- \`${NESTED}\`: \`${REFUND_BRANCH}\` — the task's branch\n\n# The linters\n`), brief);
   });
 
   it('a base a repository lacks is its own default branch there: a stack\'s base in the project\'s repository alone, and a nested repository whose default is master', () => {
@@ -414,7 +416,7 @@ describe('the reviewer\'s brief (13.2.2, 13.11.5)', () => {
   it('a range with nothing in it says so', () => {
     const { brief } = issued(['reviewer', 'refund', '1.1', '--base', REFUND_BRANCH, '--letter', 'a']);
 
-    assert.ok(brief.includes(`# The diff's range\n\n## In the project's repository: \`${REFUND_BRANCH}...${REFUND_BRANCH}\`\n\nNothing changed in the range.\n\n# The linters\n`), brief);
+    assert.ok(brief.includes(`# The diff's range\n\n## In the project's repository: \`${REFUND_BRANCH}...${REFUND_BRANCH}\`\n\nNothing changed in the range.\n\n# Laying out your scratch worktree\n\n`), brief);
   });
 
   it('13.S20: the template carries the stance on a failed review (13.5.7), a call on every finding, when it is serious, with the edge list, and what a nit is (13.4.1, 13.4.5, 13.6), judges against the brief and the design, never the comments (13.9.1), returns a wrong comment as a nit (13.9.3), and a workflows reference in the work too (13.11.14)', () => {

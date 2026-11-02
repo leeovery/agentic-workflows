@@ -286,6 +286,7 @@ module.exports = {
   SESSION,
   LINTERS,
   NESTED,
+  VERIFY,
   SPEC,
   AREA_1,
   AREA_2,

@@ -29,6 +29,14 @@
 //                  names where the repository has it, else the repository's
 //                  default branch: a nested repository's may be named
 //                  otherwise, and a stack's base branch be in some only
+//   scratch-layout where the reviewer's scratch worktree lays out every
+//                  repository of the project, each before those nested in
+//                  it, as the builder's worktree held them all
+//                  (task-worktree.cjs): one holding work on the task's
+//                  branch at that branch, a submodule otherwise at the
+//                  commit its holder as laid out points it at, a clone
+//                  otherwise at the task's branch, or the branch it lands
+//                  on where the task's branch is not made there
 //   reports        the task's last review round's reports, one per
 //                  reviewer of the count (13.3.4), each verbatim under a
 //                  heading naming its reviewer (round-report.cjs)
@@ -36,9 +44,11 @@
 //                  lands: the task's `build/tasks/{task}.md` (task-account.cjs,
 //                  12.14), as `task account` reads it
 //   setup-to       where the builder writes the verify setup its task
-//                  builds, for `verify setup --file`: the unit's
-//                  `.cache/{unit}/build/verify-setup.json`, outside the
-//                  checkout, as the setup's trial needs
+//                  builds or changes, for `verify setup --file`: the
+//                  unit's `.cache/{unit}/build/verify-setup.json`, outside
+//                  the checkout, as the setup's trial needs; then the setup
+//                  recorded now, fenced as JSON without its run, which the
+//                  file starts from, or that none is recorded yet
 //   round-report-to where the reviewer `--letter` names writes its report
 //                  of the round under review (13.5.9): the task's
 //                  `round-{N}-{letter}.md`, N read from the task's reports
@@ -233,6 +243,10 @@
 //                  stack's tip there — the branch every other the phase's
 //                  tasks hold there descends from — `{base}...{tip}`, and its
 //                  `git diff --stat`, never the diff's text
+//   phase-scratch-layout the phase review's scratch worktree, laid out as
+//                  scratch-layout lays it out, one holding work at the
+//                  stack's tip there, a clone holding none at the branch
+//                  it lands on
 //   recorded-runs  each scenario the phase holds, by id with what its runs
 //                  of the change prove read at the project's commit
 //                  `--head` names (runs.cjs) — the phase's HEAD, so the
@@ -320,7 +334,7 @@ const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { git, tryGit } = require('../kernel/git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { projectRepos } = require('../kernel/repos.cjs');
-const { linters } = require('./environment.cjs');
+const { linters, verifySetup } = require('./environment.cjs');
 const { readShown, readLedgerVerb } = require('./ledger-read.cjs');
 const {
   recordOf, standingOf, factsOf, wordingOf, inPlace, questionStands, currentsOf,
@@ -352,7 +366,7 @@ const {
 const { messageOf } = require('../kernel/call.cjs');
 const { specReferenceOf, scenariosOf } = require('./task-file.cjs');
 const {
-  taskFolder, taskRounds, roundReportPath, roundUnderReview, phaseReviewPath, readsAsReport,
+  taskFolder, taskRounds, roundReportPath, roundUnderReview, phaseReviewPath, reportFaults,
 } = require('./round-report.cjs');
 const { REVIEWER_LETTERS } = require('../kernel/reviewers.cjs');
 const { taskName, shownTask, phaseName } = require('./task-id.cjs');
@@ -361,6 +375,7 @@ const {
   branches, holdingBranch, isAncestor, defaultBranch, plain,
 } = require('./landing-git.cjs');
 const { remoteName, nestedRemoteName } = require('./remote.cjs');
+const { heldIn, pointedAt } = require('./task-worktree.cjs');
 const { readWorkUnitManifest } = require('../kernel/manifest-io.cjs');
 const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
 const { ENDED } = require('./task-verbs.cjs');
@@ -499,22 +514,82 @@ function rangeIn(repo, base, branch) {
 function basesOf(cwd, holding, given, what) {
   const has = holding.map((repo) => branches(repo.path).has(given));
   if (!has.includes(true)) throw new Error(`the base ${given} is no local branch in any repository holding ${what}`);
-  return holding.map((repo, at) => {
-    if (has[at]) return given;
-    return defaultBranch(repo.path, repo.dir === '' ? remoteName(cwd) : nestedRemoteName(repo.path), repo.dir !== '');
-  });
+  return holding.map((repo, at) => (has[at] ? given : landsOn(cwd, repo)));
 }
 
-/** @param {Filling} filling */
-function drawDiffRange(filling) {
+/** The branch a repository lands on (landing-git.cjs). @param {string} cwd @param {Repo} repo */
+function landsOn(cwd, repo) {
+  return defaultBranch(repo.path, repo.dir === '' ? remoteName(cwd) : nestedRemoteName(repo.path), repo.dir !== '');
+}
+
+/** Where a repository is laid out: what the brief names, its commit, and why there. @typedef {{named: string, commit: string, why: string}} Laid */
+
+/** A repository laid out on a branch. @param {Repo} repo @param {string} branch @param {string} why @returns {Laid} */
+const onBranch = (repo, branch, why) => ({ named: branch, commit: git(repo.path, ['rev-parse', '--verify', `refs/heads/${branch}^{commit}`]).trim(), why });
+
+/**
+ * Where the reviewer's scratch worktree lays out every repository of the
+ * project, each before those nested in it, as the builder's worktree held
+ * them all (task-worktree.cjs): one holding work at the range's tip there;
+ * a submodule otherwise at the commit its holder, as laid out, points it
+ * at; any other as `otherwise` lays it out.
+ * @param {Repo[]} repos @param {Map<Repo, string>} tips each repository holding work's tip branch
+ * @param {(repo: Repo) => Laid} otherwise
+ */
+function layoutOf(repos, tips, otherwise) {
+  /** @type {Map<string, string>} */
+  const laid = new Map();
+  const lines = repos.map((repo) => {
+    const place = laidOut(repos, repo, tips, laid, otherwise);
+    laid.set(repo.dir, place.commit);
+    return `- ${repoNamed(repo)}: \`${place.named}\` — ${place.why}`;
+  });
+  return lines.join('\n');
+}
+
+/**
+ * @param {Repo[]} repos @param {Repo} repo @param {Map<Repo, string>} tips @param {Map<string, string>} laid each laid out before it, its commit by folder
+ * @param {(repo: Repo) => Laid} otherwise
+ * @returns {Laid}
+ */
+function laidOut(repos, repo, tips, laid, otherwise) {
+  const tip = tips.get(repo);
+  if (tip !== undefined) return onBranch(repo, tip, 'the range\'s tip there');
+  if (repo.dir === '' || !heldIn(repos, repo).submodule) return otherwise(repo);
+  const { holder } = heldIn(repos, repo);
+  const commit = pointedAt(repos, repo, holder.path, /** @type {string} */ (laid.get(holder.dir)));
+  return { named: commit, commit, why: `a submodule, at the commit ${repoNamed(holder)} points it at as laid out` };
+}
+
+/**
+ * The project's repositories, the task's branch, and those of them holding
+ * work on it; refused where none does.
+ * @param {Filling} filling @returns {{repos: Repo[], branch: string, holding: Repo[], what: string}}
+ */
+function taskHolding(filling) {
   const { ref, task } = taskOf(filling);
   if (task.type === null) throw new Error(`${taskName(ref)} has no type in the tracker, and its branch is named from it`);
   const branch = taskBranch(ref, task.type, task.title);
   const what = `${taskName(ref)}'s branch, ${branch}`;
-  const { holding } = holdingBranch(ref.unit, projectRepos(codeRoot(filling.cwd)), branch);
+  const repos = projectRepos(codeRoot(filling.cwd));
+  const { holding } = holdingBranch(ref.unit, repos, branch);
   if (holding.length === 0) throw new Error(`no repository of the project holds work on ${what}`);
+  return { repos, branch, holding, what };
+}
+
+/** @param {Filling} filling */
+function drawDiffRange(filling) {
+  const { branch, holding, what } = taskHolding(filling);
   const bases = basesOf(filling.cwd, holding, filling.given.base, what);
   return holding.map((repo, at) => rangeIn(repo, bases[at], branch)).join('\n\n');
+}
+
+/** @param {Filling} filling */
+function drawScratchLayout(filling) {
+  const { repos, branch, holding } = taskHolding(filling);
+  return layoutOf(repos, new Map(holding.map((repo) => [repo, branch])), (repo) => (
+    branches(repo.path).has(branch) ? onBranch(repo, branch, 'the task\'s branch') : onBranch(repo, landsOn(filling.cwd, repo), 'the branch it lands on, the task\'s branch not made there')
+  ));
 }
 
 /**
@@ -1407,8 +1482,12 @@ function stackTip(repo, held, what) {
   return tip;
 }
 
-/** @param {Filling} filling */
-function drawPhaseDiffRange(filling) {
+/**
+ * The project's repositories and the stack's tip in each holding work on the
+ * branch of a task of the phase not closed; refused where none does.
+ * @param {Filling} filling @returns {{repos: Repo[], tips: Map<Repo, string>, what: string}}
+ */
+function phaseHolding(filling) {
   const { unit, phase } = phaseOf(filling);
   const what = phaseName(unit, phase);
   const named = writtenPhase(filling).filter(({ status }) => status !== 'closed').map((task) => {
@@ -1419,8 +1498,21 @@ function drawPhaseDiffRange(filling) {
   const held = named.map((branch) => holdingBranch(unit, repos, branch).holding);
   const holding = repos.map((repo) => ({ repo, on: named.filter((_, at) => held[at].includes(repo)) })).filter(({ on }) => on.length > 0);
   if (holding.length === 0) throw new Error(`no repository of the project holds work on ${what}'s tasks`);
-  const bases = basesOf(filling.cwd, holding.map(({ repo }) => repo), filling.given.base, `${what}'s tasks`);
-  return holding.map(({ repo, on }, at) => rangeIn(repo, bases[at], stackTip(repo, on, what))).join('\n\n');
+  return { repos, tips: new Map(holding.map(({ repo, on }) => [repo, stackTip(repo, on, what)])), what };
+}
+
+/** @param {Filling} filling */
+function drawPhaseDiffRange(filling) {
+  const { tips, what } = phaseHolding(filling);
+  const holding = [...tips.keys()];
+  const bases = basesOf(filling.cwd, holding, filling.given.base, `${what}'s tasks`);
+  return holding.map((repo, at) => rangeIn(repo, bases[at], /** @type {string} */ (tips.get(repo)))).join('\n\n');
+}
+
+/** @param {Filling} filling */
+function drawPhaseScratchLayout(filling) {
+  const { repos, tips } = phaseHolding(filling);
+  return layoutOf(repos, tips, (repo) => onBranch(repo, landsOn(filling.cwd, repo), 'the branch it lands on'));
 }
 
 /**
@@ -1461,19 +1553,30 @@ function letterOf(filling) {
 
 /**
  * Where a reviewer writes its report, drawn; a report there that does not
- * read is named as the one this replaces, and one that reads refuses it.
+ * read is named as the one this replaces, with why it does not, and one
+ * that reads refuses it.
  * @param {Filling} filling @param {string} rel state-relative
  */
 function reportPlace(filling, rel) {
   const file = statePath(filling.cwd, rel);
   if (!fs.existsSync(file)) return `\`${file}\``;
-  if (readsAsReport(file)) throw new Error(`${rel} is written already — that reviewer's report of the round is in`);
-  return `\`${file}\` — the report there does not read as a reviewer's report, and yours replaces it`;
+  const faults = reportFaults(file);
+  if (faults === null) throw new Error(`${rel} is written already — that reviewer's report of the round is in`);
+  return `\`${file}\` — the report there does not read as a reviewer's report — ${faults}; yours replaces it`;
 }
 
-/** @param {Filling} filling */
+/**
+ * The file the builder writes the verify setup in, and the setup recorded
+ * now, which it starts from: the cache's copy is never refreshed, so a
+ * builder reading it would undo a change recorded since.
+ * @param {Filling} filling
+ */
 function drawSetupTo(filling) {
-  return `\`${statePath(filling.cwd, '.cache', taskOf(filling).ref.unit, 'build', 'verify-setup.json')}\``;
+  const file = `\`${statePath(filling.cwd, '.cache', taskOf(filling).ref.unit, 'build', 'verify-setup.json')}\``;
+  const setup = verifySetup(filling.cwd);
+  if (setup === null) return `${file}\n\nNo verify setup is recorded yet.`;
+  const { ran, ...parts } = setup;
+  return `${file}\n\nThe verify setup recorded now, which the file starts from:\n\n${fenced('json', JSON.stringify(parts, null, 2))}`;
 }
 
 /** @param {Filling} filling */
@@ -1515,6 +1618,7 @@ const RECORDS = Object.freeze({
   'decided-calls': { of: 'unit', draw: drawDecidedCalls },
   linters: { of: null, draw: drawLinters },
   'diff-range': { of: 'task', flags: [BASE], draw: drawDiffRange },
+  'scratch-layout': { of: 'task', draw: drawScratchLayout },
   reports: { of: 'task', draw: drawReports },
   'round-report-to': { of: 'task', flags: [LETTER], draw: drawRoundReportTo },
   'account-to': { of: 'task', draw: drawAccountTo },
@@ -1575,6 +1679,7 @@ const RECORDS = Object.freeze({
   'phase-criteria': { of: 'phase', draw: drawPhaseCriteria },
   'relied-on': { of: 'phase', draw: drawReliedOn },
   'phase-diff-range': { of: 'phase', flags: [BASE], draw: drawPhaseDiffRange },
+  'phase-scratch-layout': { of: 'phase', draw: drawPhaseScratchLayout },
   'recorded-runs': { of: 'phase', flags: [HEAD], draw: drawRecordedRuns },
   mutants: { of: 'phase', flags: [HEAD], draw: drawMutants },
   'phase-report-to': { of: 'phase', flags: [LETTER], draw: drawPhaseReportTo },

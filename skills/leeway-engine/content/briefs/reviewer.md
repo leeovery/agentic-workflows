@@ -14,6 +14,10 @@
 
 {{diff-range}}
 
+# Laying out your scratch worktree
+
+{{scratch-layout}}
+
 # The linters
 
 {{linters}}
