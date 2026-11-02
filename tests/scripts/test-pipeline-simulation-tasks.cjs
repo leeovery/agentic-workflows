@@ -4,15 +4,16 @@
 // The pipeline simulation's tracker scenario: a build phase's tasks written
 // through the `task` verbs, ready answering what can start, a fact added to
 // a task before its dispatch, the tasks started side by side in the one
-// conversation — the note a compaction hands up naming each — and done, and
-// the task they held up freed — the project's default task driver running
-// its real tool, its store on the state branch alone; the first phase's
-// verify setup recorded once it ran end to end, then a task in flight
-// proving its scenario by running the product, the run on the state branch;
-// a task landing on its branch: a note for later banked, the fix round
-// briefed from its pair's reports, its account taken once a round passes,
-// then done; and one stuck on a failed round, settled by the orchestrator,
-// its account carrying what was done.
+// conversation, each builder laying its task's worktree out in its own — the
+// note a compaction hands up naming each — and done, and the task they held
+// up freed — the project's default task driver running its real tool, its
+// store on the state branch alone; the first phase's verify setup recorded
+// once it ran end to end, then a task in flight proving its scenario by
+// running the product, the run on the state branch; a task landing on its
+// branch: a note for later banked, the fix round briefed from its pair's
+// reports, its account taken once a round passes, then done; and one stuck
+// on a failed round, settled by the orchestrator, its account carrying what
+// was done.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), and for the landings this file's own, built once
@@ -27,6 +28,7 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { stateGit, git } = require('./engine-harness.cjs');
 const { Sim, sessionLog, startNew, carryOn, writePhaseTasks, worldFrom, cutTheSpec } = require('./pipeline-world.cjs');
@@ -46,10 +48,17 @@ const landingWorld = worldFrom('pipeline-tasks-landing-', (sim) => {
 
 describe('pipeline simulation: the tracker', () => {
   let sim;
-  beforeEach(() => { sim = new Sim(); });
-  afterEach(() => { sim.destroy(); });
+  /** @type {string} */ let builders;
+  beforeEach(() => {
+    sim = new Sim();
+    builders = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'pipeline-sim-builders-')));
+  });
+  afterEach(() => {
+    sim.destroy();
+    fs.rmSync(builders, { recursive: true, force: true });
+  });
 
-  it('a build phase: its tasks written, the ready ones added to, started side by side and done, the task they held up freed', () => {
+  it('a build phase: its tasks written, the ready ones added to, started side by side each in its own worktree and done, the task they held up freed', () => {
     const wu = 'ledger';
     startNew(sim, 'feature');
     const log = sessionLog(sim, wu);
@@ -67,7 +76,16 @@ describe('pipeline simulation: the tracker', () => {
     const fact = sim.write(`.leeway/.cache/${wu}/build/addition.md`, 'The ledger file moved to `ledger/store.go`.\n');
     sim.run(['task', 'add', wu, '1.1', '--file', fact, '--by', 'orchestrator']);
     for (const task of ready) sim.run(['task', 'start', wu, task]);
-    assert.deepStrictEqual(carryOn(sim).position.tasks.map((/** @type {{task: string}} */ t) => t.task), ready, 'both are in flight in the conversation');
+    // Each builder lays its task's worktree out in the one its isolation
+    // made (12.7.10), the worktree recorded against its task.
+    const trees = ready.map((task, i) => {
+      const tree = path.join(builders, `agent-${i + 1}`);
+      git(sim.dir, ['worktree', 'add', '-q', '-b', `worktree-agent-${i + 1}`, tree]);
+      sim.runIn(tree, ['task', 'worktree', wu, task]);
+      return tree;
+    });
+    assert.deepStrictEqual(carryOn(sim).position.tasks.map((/** @type {{task: string, worktree: string}} */ t) => [t.task, t.worktree]), ready.map((task, i) => [task, trees[i]]),
+      'both are in flight in the conversation, each in its own worktree');
     for (const task of ready) sim.run(['task', 'done', wu, task]);
     assert.strictEqual(carryOn(sim).position.tasks, undefined, 'each done takes its task off');
 

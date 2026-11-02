@@ -23,12 +23,14 @@
 //                  the SessionEnd hook
 //   position.json  where in the workflows the conversation is working, and
 //                  in implementation every task in flight with its builder's
-//                  agent id and its pair's (position.cjs), written under the
-//                  lock beside it — what the tmux label's resume re-applies,
-//                  the gate mod's spinner says, the commit door and the hook
-//                  before Bash check a commit against, `verify` attributes a
-//                  run by, and `conversation position` names files for; read
-//                  here alone (`readPosition`)
+//                  agent id and its pair's, and the worktree it is built in
+//                  (position.cjs), written under the lock beside it — what
+//                  the tmux label's resume re-applies, the gate mod's spinner
+//                  says, the commit door and the hook before Bash check a
+//                  commit against, `verify` attributes a run by, a call in a
+//                  task's worktree is that task's by (`taskAt`), and
+//                  `conversation position` names files for; read here alone
+//                  (`readPosition`)
 //   trust-pending.jsonl
 //                  the trust log's events waiting in the conversation
 //                  (trust-log.cjs): those it could not append, for its next
@@ -143,9 +145,10 @@ function positionPath(sessionId) {
 
 /**
  * A task in flight: its `{phase}.{n}`, the agent id of its builder once one
- * is dispatched, and those of its reviewers, the pair the later rounds go
- * back to.
- * @typedef {{task: string, builder: string|null, reviewers: string[]}} InFlight
+ * is dispatched, those of its reviewers, the pair the later rounds go back
+ * to, and the worktree it is built in, absolute, once `task worktree` laid
+ * it out (task-worktree.cjs).
+ * @typedef {{task: string, builder: string|null, reviewers: string[], worktree?: string}} InFlight
  */
 
 /**
@@ -166,9 +169,14 @@ function isAgentId(value) {
 /** A stored task in flight, or null where it does not read as one. @param {unknown} stored @returns {InFlight|null} */
 function inFlightOf(stored) {
   if (stored === null || typeof stored !== 'object') return null;
-  const { task, builder, reviewers } = /** @type {Record<string, unknown>} */ (stored);
+  const { task, builder, reviewers, worktree } = /** @type {Record<string, unknown>} */ (stored);
   if (typeof task !== 'string' || !/^\d+\.\d+$/.test(task)) return null;
-  return { task, builder: isAgentId(builder) ? builder : null, reviewers: Array.isArray(reviewers) ? reviewers.filter(isAgentId) : [] };
+  return {
+    task,
+    builder: isAgentId(builder) ? builder : null,
+    reviewers: Array.isArray(reviewers) ? reviewers.filter(isAgentId) : [],
+    ...(typeof worktree === 'string' && path.isAbsolute(worktree) ? { worktree } : {}),
+  };
 }
 
 /**
@@ -208,6 +216,19 @@ function tasksInFlight(sessionId) {
   const position = readPosition(sessionId);
   if (position === null) return [];
   return (position.tasks ?? []).map((task) => ({ unit: position.name, ...task }));
+}
+
+/**
+ * The task in flight in the conversation `sessionId` whose worktree holds
+ * `cwd` — what a call made in a task's worktree is that task's by; null
+ * where none does. Claude Code makes each worktree beside the others, so
+ * none holds another.
+ * @param {string} sessionId @param {string} cwd @returns {(InFlight & {unit: string, worktree: string})|null}
+ */
+function taskAt(sessionId, cwd) {
+  const here = realpathOrSelf(cwd);
+  return tasksInFlight(sessionId)
+    .find(/** @returns {task is InFlight & {unit: string, worktree: string}} */ (task) => task.worktree !== undefined && within(here, task.worktree)) ?? null;
 }
 
 /**
@@ -464,4 +485,4 @@ function tidyConversations(keeps = () => false) {
   }
 }
 
-module.exports = { conversationsRoot, conversationDir, positionPath, isAgentId, readPosition, tasksInFlight, isMarked, markConversation, endConversation, claudeProjectsDir, runningTranscript, callerModel, subagentType, tidyConversations };
+module.exports = { conversationsRoot, conversationDir, positionPath, isAgentId, readPosition, tasksInFlight, taskAt, isMarked, markConversation, endConversation, claudeProjectsDir, runningTranscript, callerModel, subagentType, tidyConversations };

@@ -476,14 +476,17 @@ function commitIndexEntries(cwd, specs, message) {
  * names a path from the repository's top whatever the cwd, so a cwd below
  * the top has its own prefix taken off. NUL-separated so paths with spaces
  * or non-ASCII bytes survive; a rename record's second field (the source
- * path) is consumed with it.
+ * path) is consumed with it. With `pointersOnly`, a submodule differs only
+ * where its pointer moved, staged or not, never for what it holds itself.
  * @param {string} cwd
  * @param {string[]} [exclude]
+ * @param {boolean} [pointersOnly]
  * @returns {{path: string, status: string}[]}
  */
-function dirtyEntries(cwd, exclude = []) {
+function dirtyEntries(cwd, exclude = [], pointersOnly = false) {
   const cwdPrefix = git(cwd, ['rev-parse', '--show-prefix']).trim();
-  const fields = git(cwd, ['status', '--porcelain', '-z', '--untracked-files=all', '--', '.', ...excluding(exclude)]).split('\0');
+  const submodules = pointersOnly ? ['--ignore-submodules=dirty'] : [];
+  const fields = git(cwd, ['status', '--porcelain', '-z', '--untracked-files=all', ...submodules, '--', '.', ...excluding(exclude)]).split('\0');
   /** @type {{path: string, status: string}[]} */
   const entries = [];
   for (let i = 0; i < fields.length; i++) {

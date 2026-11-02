@@ -43,6 +43,7 @@ const { ignoresCase } = require(path.join(SCRIPTS, 'kernel/state-root.cjs'));
 const CONFIG = /** @type {string} */ (process.env.LEEWAY_CONFIG_DIR);
 const BUILDING = 'verify-building';
 const PARALLEL = 'verify-parallel';
+const LAID_OUT = 'verify-laid-out';
 const AT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
 const IGNORES_CASE = ignoresCase(fs.realpathSync(os.tmpdir()));
 
@@ -66,7 +67,7 @@ before(() => {
 });
 
 after(() => {
-  for (const session of [BUILDING, PARALLEL]) fs.rmSync(path.join(CONFIG, 'conversations', session), { recursive: true, force: true });
+  for (const session of [BUILDING, PARALLEL, LAID_OUT]) fs.rmSync(path.join(CONFIG, 'conversations', session), { recursive: true, force: true });
 });
 
 /** @type {string} */ let dir;
@@ -294,18 +295,23 @@ describe('verify run: a scenario run and its run recorded (15.4.1, 15.4.2, 15.4.
       + 'recordings/hosts.cast is a symbolic link; recordings/takes is not a file. Nothing was recorded.');
   });
 
-  it('builder attribution: run in a code worktree, the run records that checkout\'s HEAD and the one task of the unit in flight in the calling conversation; with several in flight, or none, no task', () => {
+  it('builder attribution: run in a code worktree, the run records that checkout\'s HEAD and the one task of the unit in flight in the calling conversation — with several in flight, the one whose worktree `task worktree` laid out there; else, or with none, no task', () => {
     steering(dir, 'verdict', 'pass\n');
     const worktree = path.join(fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'verify-worktree-'))), 'card');
     git(dir, ['worktree', 'add', '-q', '-b', 'card', worktree]);
     createFile(worktree, 'src/card.js', 'const card = 2;\n');
     commitCode(worktree, 'feat(pay): take a card');
+    for (const task of ['1.1', '1.2']) ok(dir, ['task', 'start', UNIT, task], as(LAID_OUT));
+    ok(worktree, ['task', 'worktree', UNIT, '1.2'], as(LAID_OUT));
 
-    const runs = [ok(worktree, ['verify', 'run', UNIT, '1.S1'], as(BUILDING)), ok(dir, ['verify', 'run', UNIT, '1.S1'], as(PARALLEL)), ok(dir, ['verify', 'run', UNIT, '1.S1'])]
-      .map((res) => JSON.parse(readState(dir, res.run)));
+    const runs = [
+      ok(worktree, ['verify', 'run', UNIT, '1.S1'], as(BUILDING)), ok(worktree, ['verify', 'run', UNIT, '1.S1'], as(LAID_OUT)),
+      ok(dir, ['verify', 'run', UNIT, '1.S1'], as(PARALLEL)), ok(dir, ['verify', 'run', UNIT, '1.S1']),
+    ].map((res) => JSON.parse(readState(dir, res.run)));
 
     assert.deepStrictEqual(runs.map(({ commits, checkout, task }) => ({ commits, checkout, task })), [
       { commits: [{ repo: '.', commit: codeHead(worktree) }], checkout: worktree, task: '1.1' },
+      { commits: [{ repo: '.', commit: codeHead(worktree) }], checkout: worktree, task: '1.2' },
       { commits: [{ repo: '.', commit: codeHead(dir) }], checkout: dir, task: null },
       { commits: [{ repo: '.', commit: codeHead(dir) }], checkout: dir, task: null },
     ]);

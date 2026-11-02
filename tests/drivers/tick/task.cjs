@@ -4,9 +4,10 @@
 // own store in its code tree, as a project tracking its own work with Tick
 // keeps one at its root — the store a walk up from the state would find; what
 // a person might do to the state's store in Tick itself — make a task, give
-// one refs, link one after another, remove one, cancel, mark done or reopen
-// a unit or a phase, delete the store's file, take away its folder's write
-// or write a line into it that is not JSON; a title Tick refuses, for a verb
+// one refs, link one after another, reopen or remove one, cancel, mark done
+// or reopen a unit or a phase, delete the store's file, take away its
+// folder's write or write a line into it that is not JSON; a title Tick
+// refuses, for a verb
 // refused after it wrote; and a folder named in part like Tick's ids. Tick
 // reads no config of its own; the hermetic environment pins the rest.
 
@@ -73,6 +74,11 @@ function linkBy(root, title, after) {
   tick(root, ['dep', 'add', idOf(root, title), idOf(root, after)]);
 }
 
+/** The task titled `title` reopened once ended, as a person might in Tick. @param {string} root @param {string} title */
+function reopenTask(root, title) {
+  tick(root, ['reopen', idOf(root, title)]);
+}
+
 /** The task titled `title` removed, as a person might in Tick. @param {string} root @param {string} title */
 function removeTask(root, title) {
   tick(root, ['remove', idOf(root, title), '--force']);
@@ -121,5 +127,5 @@ const LOOKALIKE_FOLDER = path.join('tick-cafe', 'x+tick-cafe-old');
 const REFUSED_TITLE = 'x'.repeat(501);
 
 module.exports = {
-  projectStore, addRef, makeTask, linkBy, removeTask, breakStore, garbleStore, setStoreWritable, byHand, REFUSED_TITLE, LOOKALIKE_FOLDER,
+  projectStore, addRef, makeTask, linkBy, reopenTask, removeTask, breakStore, garbleStore, setStoreWritable, byHand, REFUSED_TITLE, LOOKALIKE_FOLDER,
 };

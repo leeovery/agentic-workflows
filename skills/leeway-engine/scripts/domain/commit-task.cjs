@@ -13,7 +13,11 @@
 //   conversation, a unit the project lacks, a task id that does not read
 //   `{phase}.{n}`, no task in flight — `task start` puts it there, again
 //   after a `/clear`, which begins another conversation — and only other
-//   tasks in flight, each named.
+//   tasks in flight, each named; from a worktree `task worktree` laid out
+//   for another task in flight (task-worktree.cjs, conversation.cjs's
+//   `taskAt`), any task but that one, naming it; and a task with a worktree
+//   laid out for it from anywhere else, naming the worktree. A task with
+//   none recorded commits from where it is called.
 // - The project's checks run before the commit (15.8.3): its tests,
 //   `environment.run.tests`, then each of its linters, `environment.linters`
 //   (environment.cjs), in that order, each by `sh -c` in the code root of the
@@ -35,7 +39,7 @@ const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { runShellCommand, tailText } = require('../kernel/shell-command.cjs');
-const { tasksInFlight } = require('./conversation.cjs');
+const { tasksInFlight, taskAt } = require('./conversation.cjs');
 const { parseShownTask, shownTask, taskId, taskName } = require('./task-id.cjs');
 const environment = require('./environment.cjs');
 
@@ -68,12 +72,31 @@ function inFlightTask(cwd, unit, given) {
   }
   const ref = shownRef(unit, given);
   const inFlight = tasksInFlight(session);
-  if (inFlight.some((task) => task.unit === unit && task.task === shownTask(ref))) return ref;
+  const named = inFlight.find((task) => task.unit === unit && task.task === shownTask(ref));
+  if (named !== undefined) return fromItsWorktree(session, cwd, ref, named.worktree);
   if (inFlight.length === 0) {
     throw new Error(`commit --task: no task is in flight in this conversation — start ${taskName(ref)} with ${startCall(unit, given)}, then commit again; a /clear begins another conversation, so a task started before one is started again after it`);
   }
   const others = inFlight.map((task) => `task ${task.task} of ${task.unit}`).join(', ');
   throw new Error(`commit --task: ${taskName(ref)} is not in flight in this conversation, ${others} ${inFlight.length === 1 ? 'is' : 'are'} — commit under the task the work is for, or start ${taskName(ref)} with ${startCall(unit, given)}`);
+}
+
+/**
+ * The task in flight, where the call is made in its own worktree, or, with
+ * none recorded for it, in no worktree of another task in flight; refused
+ * otherwise, naming the worktree.
+ * @param {string} session @param {string} cwd @param {TaskRef} ref @param {string|undefined} worktree the task's, where one is recorded
+ * @returns {TaskRef}
+ */
+function fromItsWorktree(session, cwd, ref, worktree) {
+  const owner = taskAt(session, cwd);
+  if (owner !== null && (owner.unit !== ref.unit || owner.task !== shownTask(ref))) {
+    throw new Error(`commit --task: the worktree at ${owner.worktree} is task ${owner.task} of ${owner.unit}'s — commit ${taskName(ref)}'s work from its own worktree, or this work under task ${owner.task}`);
+  }
+  if (worktree !== undefined && owner === null) {
+    throw new Error(`commit --task: ${taskName(ref)} is built in its worktree at ${worktree}, and its branch is checked out there alone — commit its work from there`);
+  }
+  return ref;
 }
 
 /** The unit's task a shown id names; refused where it does not read as one. @param {string} unit @param {string} given */
