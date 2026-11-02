@@ -772,7 +772,10 @@ function surfaceFinding(cwd, workUnit, phase, topic, id, finding, replacing) {
  * is in is refused until it is acknowledged, its findings read before any
  * is declined: pending, or in flight with a report that reads; one in
  * flight whose report does not read is refused as a scan refuses it, the
- * refusal answered under `refusal`.
+ * refusal answered under `refusal`. A row closed already — by this, by its
+ * acknowledgement as clean, or by its last finding surfaced — is answered as
+ * that close left it, nothing written, so a caller closes every pass the same
+ * way whatever closed it first.
  * @param {string} cwd @param {string} workUnit @param {string} phase
  * @param {string} topic @param {string} id
  */
@@ -783,9 +786,7 @@ function incorporateAgent(cwd, workUnit, phase, topic, id) {
   return io.withWorkUnitLock(stateRoot(cwd), workUnit, () => {
     const state = loadState(cwd, workUnit, phase, topic);
     const row = requireRow(state, phase, topic, id);
-    if (row.status === 'incorporated') {
-      throw new Error(`Agent "${id}" is already incorporated`);
-    }
+    if (row.status === 'incorporated') return { work_unit: workUnit, phase, topic, ...publicRow(row) };
     const refusal = row.kind === 'spec-review' && row.status === 'in-flight' && contentFileExists(row, cwd, workUnit) ? takeInReport(row, cwd, workUnit) : null;
     if (row.kind === 'spec-review' && row.status === 'pending') {
       throw new Error(`Agent "${id}" is a spec review whose report is in, not yet acknowledged — agent ack records its findings first (agent scan takes the report in)`);

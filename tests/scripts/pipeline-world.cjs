@@ -1136,8 +1136,8 @@ function specToBuild(sim, wu, topics, position = 's') {
 // said — clean, or holding `findings`, each by its lane, a gap or a fact
 // the record already answers declined — taken in by the scan and
 // acknowledged with every finding it holds; each finding but a rewrite or
-// one declined surfaced; and the pass incorporated only where the last
-// answer leaves it acknowledged.
+// one declined surfaced; and the pass incorporated, whatever closed it
+// first.
 /**
  * @param {Sim} sim @param {string} wu @param {{lane: 'rewrite'|'gap'|'fact', declined?: boolean}[]} [findings]
  * @returns {{id: string, file: string}} the pass
@@ -1149,11 +1149,11 @@ function specReviewed(sim, wu, findings = []) {
   fs.writeFileSync(pass.file, `# Spec Review — ${pass.id}\n\n## Findings\n\n${body}\n`);
   sim.run(['agent', 'scan', wu, 'specification', wu]);
   const ids = findings.map((_, at) => `F${at + 1}`);
-  let answer = sim.run(['agent', 'ack', wu, 'specification', wu, pass.id, ...(ids.length === 0 ? ['--clean'] : ['--findings', ids.join(',')])]);
+  sim.run(['agent', 'ack', wu, 'specification', wu, pass.id, ...(ids.length === 0 ? ['--clean'] : ['--findings', ids.join(',')])]);
   for (const [at, { lane, declined }] of findings.entries()) {
-    if (lane !== 'rewrite' && !declined) answer = sim.run(['agent', 'surface', wu, 'specification', wu, pass.id, ids[at]]);
+    if (lane !== 'rewrite' && !declined) sim.run(['agent', 'surface', wu, 'specification', wu, pass.id, ids[at]]);
   }
-  if (answer.status === 'acknowledged') sim.run(['agent', 'incorporate', wu, 'specification', wu, pass.id]);
+  sim.run(['agent', 'incorporate', wu, 'specification', wu, pass.id]);
   return pass;
 }
 

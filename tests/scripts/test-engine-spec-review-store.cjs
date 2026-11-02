@@ -17,8 +17,9 @@
 // or declined — a gap raised as the replacement of a decision surfaced
 // alone, with the decision, a replacement's reason and the ledger's mark,
 // which the writer is held on (test-engine-spec-review-settled.cjs). A pass
-// closes as the prose closes it, each answer giving its status, its rewrite
-// findings the writer's and never waiting on the person. A pass in flight
+// closes by the prose's one sequence, its incorporation last whatever closed
+// it first, its rewrite findings the writer's and never waiting on the
+// person. A pass in flight
 // holds the review — running, waited for, the way on naming its way out
 // where its agent returned without its report; lost with the process that
 // dispatched it, abandoned; its report on disk, taken in by a scan — and a
@@ -78,7 +79,7 @@ describe('a pass of the spec\'s review in the store (11.7.1, 11.7.2, 11.7.6)', (
     assert.strictEqual(nothingToRead(), unchangedSince(pass, `the review's findings wait to be surfaced: ${laned(pass)}`));
   });
 
-  it('a pass closes as the prose closes it, the ack\'s answer and each surfacing\'s giving its status: a clean pass at its ack, a gap pass at its last surfacing; a rewrite pass stays acknowledged until incorporated, its rewrite handed to the writer and never among the findings left to surface, which read declined', () => {
+  it('a pass closes by the prose\'s one sequence — its ack, each raised finding surfaced, then its incorporation — whatever it held: a clean pass closed at its ack and a gap pass at its last surfacing, each incorporation answering the row as that close left it; a rewrite pass closed by its incorporation, its rewrite handed to the writer and never among the findings left to surface', () => {
     const passOn = (/** @type {string} */ instant, /** @type {string} */ report) => {
       writeSpec(spec({ instant }));
       land();
@@ -92,16 +93,20 @@ describe('a pass of the spec\'s review in the store (11.7.1, 11.7.2, 11.7.6)', (
       const { status, remaining, for_writer: writer } = ok(dir(), ['agent', ...args]);
       return { status, remaining, writer };
     };
-    const clean = passOn('2.1.2 Refunds are instant.', '# Spec Review\n\n## Findings\n\nNone identified.');
-    const cleanAck = agent(['ack', UNIT, 'specification', UNIT, clean, '--clean']);
-    const gap = passOn('2.1.2 Refunds are instant, always.', '# Spec Review\n\n## Findings\n\n### F1: is a refund split?\n\n**Lane:** gap\n\nNo entry decides it.');
-    const gapped = [agent(['ack', UNIT, 'specification', UNIT, gap, '--findings', 'F1']), agent(['surface', UNIT, 'specification', UNIT, gap, 'F1'])];
-    const rewrite = passOn('2.1.2 Refunds are instant, and whole.', FOUND);
-    const rewritten = [agent(['ack', UNIT, 'specification', UNIT, rewrite, '--findings', 'F1']), agent(['incorporate', UNIT, 'specification', UNIT, rewrite])];
+    /** The prose's sequence over a pass: every answer, in order. @param {string} pass @param {string[]} findings @param {string[]} raised */
+    const closed = (pass, findings, raised) => [
+      agent(['ack', UNIT, 'specification', UNIT, pass, ...(findings.length === 0 ? ['--clean'] : ['--findings', findings.join(',')])]),
+      ...raised.map((finding) => agent(['surface', UNIT, 'specification', UNIT, pass, finding])),
+      agent(['incorporate', UNIT, 'specification', UNIT, pass]),
+    ];
+    const clean = closed(passOn('2.1.2 Refunds are instant.', '# Spec Review\n\n## Findings\n\nNone identified.'), [], []);
+    const gap = closed(passOn('2.1.2 Refunds are instant, always.', '# Spec Review\n\n## Findings\n\n### F1: is a refund split?\n\n**Lane:** gap\n\nNo entry decides it.'), ['F1'], ['F1']);
+    const rewrite = closed(passOn('2.1.2 Refunds are instant, and whole.', FOUND), ['F1'], []);
 
-    assert.deepStrictEqual(cleanAck, { status: 'incorporated', remaining: [], writer: undefined });
-    assert.deepStrictEqual(gapped, [{ status: 'acknowledged', remaining: ['F1'], writer: undefined }, { status: 'incorporated', remaining: [], writer: undefined }]);
-    assert.deepStrictEqual(rewritten, [{ status: 'acknowledged', remaining: [], writer: ['F1'] }, { status: 'incorporated', remaining: [], writer: ['F1'] }]);
+    const done = { status: 'incorporated', remaining: [], writer: undefined };
+    assert.deepStrictEqual(clean, [done, done]);
+    assert.deepStrictEqual(gap, [{ status: 'acknowledged', remaining: ['F1'], writer: undefined }, done, done]);
+    assert.deepStrictEqual(rewrite, [{ status: 'acknowledged', remaining: [], writer: ['F1'] }, { status: 'incorporated', remaining: [], writer: ['F1'] }]);
   });
 
   it('a pass is read once, as its report is taken in: a report deleted, rewritten to no longer read, or rewritten with fewer findings since changes nothing — each still reported with the findings it was taken in with, acknowledged with exactly those, and each waiting to be surfaced', () => {

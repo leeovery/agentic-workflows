@@ -108,15 +108,15 @@ const EVENTS = Object.freeze([
   'gap answered', 'the way on taken',
 ]);
 /**
- * The walks' seeds, chosen among sixty: together they take every event, one settles before it is drained, and each of the
- * loop's holes put back fails one — a fence opened at inline code (2, 5), one closed unrefused as its block quote ends (42),
- * a finding's fenced text read as headings (30), the section ended at one (10, 42), a running pass with no way out (1, 5,
- * 42), a pass in flight holding nothing (2, 5), a report outside the grammar taken in (1, 42), a take marked at the land
- * (10), every event at the spec counted (30), a surfaced finding waiting still (2, 30, 42), a pass closed in flight taken in
- * as it reports (1, 42), an acknowledgement before the report's ids or none (2). No five do. Since a pass's brief is
- * refused while another runs on its land, a pass in flight is abandoned by 3 alone among them, so 3 joins them.
+ * The walks' seeds, chosen among sixty: together they take every event — an incorporation and a surfacing 5 alone, a pass
+ * in flight abandoned 8 alone — one settles before it is drained (6), and each of the loop's holes put back fails one — a
+ * fence opened at inline code (2), one closed unrefused as its block quote ends (35), a finding's fenced text read as
+ * headings (30), the section ended at one (6), a running pass with no way out (5, 8), a pass in flight holding nothing (2, 5,
+ * 8), a report outside the grammar taken in (6, 35), a take marked at the land (35), every event at the spec counted (30), a
+ * surfaced finding waiting still (2, 30, 35), a pass closed in flight taken in as it reports (8), an acknowledgement before
+ * the report's ids or none (2). No five do.
  */
-const SEEDS = Object.freeze([1, 2, 3, 5, 10, 30, 42]);
+const SEEDS = Object.freeze([2, 5, 6, 8, 30, 35]);
 const STEPS = 12;
 /** The most steps a drained walk follows the way on before it must have settled. */
 const DRAIN = 16;
