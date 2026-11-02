@@ -1,0 +1,308 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// The build's entry and its standing (leeway-engine/scripts/domain/
+// build-entry.cjs): `engine enter implementation <unit>`. What it refuses,
+// naming the way on and writing nothing — a quick-fix (P9), a unit built
+// under the old plan (P12), a build not begun (11.8.3), a work type with no
+// build, and a topic named; another session holding the checkout's code
+// stopped at the code gate alone, nothing written, `--take` entering and
+// back leaving it to that session (12.7.8); the tasks another conversation
+// left in flight taken onto this conversation's record with no builder and
+// no pair, this conversation's own kept as they stand, the other's record
+// left alone; and the answer, which is the recovery note too (12.1.6,
+// 12.2.2, 24.2.2, 24.2.5, 12.S4, 24.S13): where each phase of the cut stands
+// with its tasks, the tasks in flight with their builders, the questions
+// waiting and the tasks they park, the entries affected and the unit's
+// record by their calls, and the build's log. The standing (P13): each
+// phase not yet written, written, running, in review, closed or merged, as
+// the tracker, the checklists and the landing hold it, and the build
+// finished only once every phase of the cut has closed, so nothing ready
+// with a phase not yet written never reads finished (7.4.3, 12.6.7, 12.S16,
+// 3.S3). The code gate's wording is render code-gate's
+// (test-engine-render-surfaces.cjs); a phase's checklists,
+// test-engine-build-checklists.cjs's.
+//
+// Layer: verb. World, built once and copied: the ledger suites' epic,
+// `fumi`, its build begun in auto, its cut three phases — Cards and Reports
+// relying on nothing, Refunds on Cards — Cards started, its tasks 1.1 done,
+// 1.2 in progress, started by another conversation, and 1.3 not started;
+// Refunds written, 2.1 not started; Reports not yet written; a question
+// asked in its build. Beside it a feature, `solo`, its build begun; another
+// feature whose code a peer may hold; a feature cut and not yet built; a
+// quick-fix; an epic built under the old plan, and a feature whose old spec
+// stands; a cross-cutting concern; and the build's skill installed. Each
+// test's conversations keep their records in a config folder of their own.
+// ---------------------------------------------------------------------------
+
+require('./hermetic-env.cjs');
+
+const { describe, it, beforeEach, afterEach } = require('node:test');
+const assert = require('node:assert');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const {
+  ok, okSections, okSectionsAsync, output, refusedPristine, git, stateGit, statePath, layout, writeState, readManifest, commitAll, createFile, fixtureFrom, cleanupFixture,
+  withEnv, FROZEN_AT,
+} = require('./engine-harness.cjs');
+const { createManifest } = require('./discovery-test-utils.cjs');
+const { MADE, PHASES, ledgerHelpers } = require('./ledger-world.cjs');
+const { raiseHelpers } = require('./raise-world.cjs');
+
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const { buildStanding } = require(path.join(SCRIPTS, 'domain/build-entry.cjs'));
+const { computeNextPhase } = require(path.join(SCRIPTS, 'domain/derivations.cjs'));
+
+const UNIT = 'fumi';
+const ENGINE = 'node .claude/skills/leeway-engine/scripts/engine.cjs';
+// A process that runs and is not this suite's.
+const PEER = String(process.ppid);
+
+const CUT = {
+  phases: [
+    { name: 'Cards', goal: 'Cards are taken.', scenarios: ['1.S1'], sections: ['1'], relies_on: [] },
+    { name: 'Refunds', goal: 'Refunds reach the card.', scenarios: ['2.S1'], sections: ['2'], relies_on: [1] },
+    { name: 'Reports', goal: 'Reports add up.', scenarios: ['3.S1'], sections: ['3'], relies_on: [] },
+  ],
+};
+
+/** Claude's call on where a new note opens, as the raise suites make it. */
+const CALL = Object.freeze({
+  question: 'When you make a new note, where should its window open?',
+  rows: [
+    { key: '1', name: 'Cursor', text: 'On the screen the cursor is on', notice: 'the note opens where you are looking' },
+    { key: '2', name: 'Main', text: 'On the main screen', notice: 'every note opens on the same screen' },
+  ],
+  lean: '1',
+  why: 'A note follows the person.',
+  sort: 'several',
+  mechanism: 'The screen under the pointer when the note is made.',
+  product_wide: false,
+});
+
+/** The question the world asks in the build: its short id. */
+const made = { where: '' };
+
+/** A task's file, written beside the project. @param {string} dir @param {string} title */
+function taskFile(dir, title) {
+  const file = path.join(dir, '..', `${path.basename(dir)}-task.md`);
+  fs.writeFileSync(file, [
+    `# ${title}`, '', '## Type', 'feat', '', '## Problem', `${title} is missing.`, '', '## Solution', `Add ${title.toLowerCase()}.`, '',
+    '## Outcome', `${title} works.`, '', '## Acceptance scenarios', `- Given a note, when ${title.toLowerCase()} runs, then it answers.`, '', '## Spec reference', '§1', '',
+  ].join('\n'));
+  return file;
+}
+
+const world = fixtureFrom('engine-build-entry-', (dir) => {
+  createManifest(dir, UNIT, { work_type: 'epic', phases: PHASES, build: { position: 'auto' }, cut: CUT, checklists: { 'phase-1-start': { items: {}, closed: FROZEN_AT } } });
+  createManifest(dir, 'solo', { build: { position: 'step' }, cut: { phases: [CUT.phases[0]] } });
+  createManifest(dir, 'other', {});
+  createManifest(dir, 'fresh', { cut: { phases: [CUT.phases[0]] } });
+  createManifest(dir, 'tweak', { work_type: 'quick-fix' });
+  createManifest(dir, 'old', { work_type: 'epic', phases: { planning: { items: { old: { status: 'completed' } } } }, build: { position: 'auto' } });
+  createManifest(dir, 'kept', { phases: { specification: { items: { kept: { status: 'completed' } } } }, build: { position: 'auto' } });
+  createManifest(dir, 'concern', { work_type: 'cross-cutting' });
+  createFile(dir, '.claude/skills/leeway-implementation-process/SKILL.md', '# The build\n');
+  commitAll(dir, 'the world');
+  ok(dir, ['task', 'phase', UNIT, '1', '--title', 'Cards']);
+  ok(dir, ['task', 'phase', UNIT, '2', '--title', 'Refunds']);
+  for (const [phase, title] of [['1', 'Open a note'], ['1', 'Size a note'], ['1', 'Place a note'], ['2', 'Refund a note']]) ok(dir, ['task', 'create', UNIT, phase, '--file', taskFile(dir, title)]);
+  fs.rmSync(taskFile(dir, ''));
+  const config = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-build-entry-world-'));
+  try {
+    ok(dir, ['task', 'done', UNIT, '1.1'], { env: { LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'earlier' } });
+    ok(dir, ['task', 'start', UNIT, '1.2'], { env: { LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'earlier' } });
+  } finally {
+    fs.rmSync(config, { recursive: true, force: true });
+  }
+  made.where = ledgerHelpers(() => dir).write('ask', `${UNIT}.implementation`, [], { ...MADE, text: 'Where does a new note open?' }).id;
+});
+
+let dir = ''; // the project
+let config = ''; // the system config: the conversations' folders
+
+beforeEach(() => {
+  dir = world();
+  config = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-build-entry-config-'));
+});
+
+afterEach(() => {
+  cleanupFixture(dir);
+  fs.rmSync(config, { recursive: true, force: true });
+});
+
+/** The engine as the conversation `sessionId` runs it. @param {string} [sessionId] */
+const env = (sessionId = 'sess-1') => ({ LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: sessionId, CLAUDE_PID: String(process.pid), TMUX: undefined, TMUX_PANE: undefined });
+
+/** An entry that must succeed: its response and its sections. @param {string[]} args @param {string} [sessionId] */
+const enter = (args, sessionId) => okSections(dir, ['enter', 'implementation', ...args], { env: env(sessionId) });
+
+/** An entry that must refuse, writing nothing: its error. @param {string[]} args */
+const refused = (args) => refusedPristine(dir, ['enter', 'implementation', ...args], { env: env() }).error;
+
+/** A conversation's position as recorded, or null. @param {string} [sessionId] */
+function position(sessionId = 'sess-1') {
+  try { return JSON.parse(fs.readFileSync(path.join(config, 'conversations', sessionId, 'position.json'), 'utf8')); } catch { return null; }
+}
+
+/** A DATA section of `lines`, as the entry draws it. @param {string[]} lines */
+const data = (lines) => `=== DATA (reason from this — never display or parse the sections below) ===\n${lines.join('\n')}\n`;
+
+/** The build's standing, as this conversation reads it. */
+const standing = () => withEnv({ LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'sess-1' }, () => buildStanding(dir, UNIT));
+
+/** Where each phase of the cut stands. */
+const states = () => standing().phases.map(({ state }) => state);
+
+/** Each named checklist closed on the unit's manifest, as its close records it. @param {string[]} names */
+function closed(names) {
+  const manifest = readManifest(dir, UNIT);
+  createManifest(dir, UNIT, { ...manifest, checklists: { ...manifest.checklists, ...Object.fromEntries(names.map((name) => [name, { items: {}, closed: FROZEN_AT }])) } });
+}
+
+/** The lines the world's entry answers past its in-flight lines: the ledger's calls and the build's log. */
+const readsAfter = () => [
+  `affected: \`${ENGINE} ledger affected ${UNIT}\``,
+  `record: \`${ENGINE} ledger record ${UNIT}\``,
+  `build log: ${statePath(dir, `${UNIT}/build/log.md`)}`,
+];
+
+const PHASE_LINES = Object.freeze([
+  'phase: phase 1 of 3, "Cards": running — tasks 1.1 done, 1.2 in progress, 1.3 not started',
+  'phase: phase 2 of 3, "Refunds": written — tasks 2.1 not started',
+  'phase: phase 3 of 3, "Reports": not yet written',
+]);
+
+describe('enter implementation: what cannot be entered is refused, naming the way on, and nothing is written', () => {
+  it('a quick-fix (P9), a unit built under the old plan (P12), a build not begun (11.8.3), a work type with no build, and a topic named', () => {
+    assert.deepStrictEqual([refused(['tweak']), refused(['old']), refused(['kept']), refused(['fresh']), refused([UNIT, 'note-window'])], [
+      'tweak is a quick-fix, whose delivery is built with the reshape\'s 29.15 — until then a quick-fix stops at its scoping',
+      'old was built under the old plan, and its build is entered once the reshape\'s 29.17 migration has cut it',
+      'kept was built under the old plan, and its build is entered once the reshape\'s 29.17 migration has cut it',
+      'fresh\'s build has not begun — ready to build\'s yes begins it: render ready-to-build fresh',
+      `implementation is entered at the work unit — name no topic: engine enter implementation ${UNIT}`,
+    ]);
+    assert.match(refused(['concern']), /^a cross-cutting has no implementation — its phases are /);
+  });
+});
+
+describe('another session holding the checkout\'s code (12.7.8)', () => {
+  it('stops at the code gate alone, naming that session and when it was last active, and writes nothing — no position, no task taken', () => {
+    okSections(dir, ['presence', 'beat', 'other', 'implementation', 'other'], { env: { ...env('peer'), CLAUDE_PID: PEER } });
+    const head = stateGit(dir, ['rev-parse', 'HEAD']).trim();
+    const { res, sections } = enter([UNIT]);
+
+    assert.deepStrictEqual(res, { ok: true, phase: 'implementation', unit: UNIT, entered: false });
+    assert.match(sections, /^=== DISPLAY: code gate .*\n⚑ Another session is implementing "Other" \(other\) — last active \d+s ago\.\n/);
+    assert.match(sections, /=== MENU: code gate /);
+    assert.doesNotMatch(sections, /=== DATA/);
+    assert.deepStrictEqual([stateGit(dir, ['rev-parse', 'HEAD']).trim(), position()], [head, null]);
+  });
+
+  it('yes is the entry again with --take, which enters; back leaves it to that session — to the epic\'s menu, or carrying on where there is none', () => {
+    okSections(dir, ['presence', 'beat', 'other', 'implementation', 'other'], { env: { ...env('peer'), CLAUDE_PID: PEER } });
+    enter([UNIT]);
+    const { next } = ok(dir, ['gate', 'code gate', '--pick', 'y'], { env: env() });
+    assert.deepStrictEqual(next, { kind: 'engine', argv: ['enter', 'implementation', UNIT, '--take'] });
+    assert.strictEqual(enter(next.argv.slice(2)).res.entered, true);
+    enter([UNIT]);
+    const epic = ok(dir, ['gate', 'code gate', '--pick', 'b'], { env: env() }).next;
+    enter(['solo']);
+
+    assert.deepStrictEqual([epic, ok(dir, ['gate', 'code gate', '--pick', 'b'], { env: env() }).next], [{ kind: 'handoff', skill: 'leeway-continue-epic', args: [UNIT] }, { kind: 'continue' }]);
+  });
+});
+
+describe('the answer: where the build stands, and what to read beside the ledger (12.1.6, 12.2.2, 24.2.5)', () => {
+  it('answers each phase of the cut with its tasks, each task in flight, the ledger\'s calls and the build\'s log — starting nothing, the unit its place', () => {
+    const head = stateGit(dir, ['rev-parse', 'HEAD']).trim();
+    const { res, sections } = enter([UNIT]);
+
+    assert.deepStrictEqual(res, { ok: true, phase: 'implementation', unit: UNIT, entered: true, started: false });
+    assert.strictEqual(sections, data(['position: auto', ...PHASE_LINES, 'in flight: task 1.2, no builder dispatched — its builder and pair go afresh on its branch', ...readsAfter()]));
+    assert.deepStrictEqual([stateGit(dir, ['rev-parse', 'HEAD']).trim(), position()], [head, { name: UNIT, phase: 'implementation', topic: UNIT, tasks: [{ task: '1.2', builder: null, reviewers: [] }] }]);
+  });
+
+  it('takes a task another conversation left in flight onto this one\'s record with no builder and no pair, keeps this one\'s own as it stands, and leaves the other\'s record alone', () => {
+    ok(dir, ['task', 'start', UNIT, '1.2'], { env: env('earlier') });
+    ok(dir, ['conversation', 'builder', 'earlier', 'agent-old'], { env: env('earlier') });
+    ok(dir, ['task', 'start', UNIT, '1.3'], { env: env() });
+    ok(dir, ['conversation', 'builder', 'sess-1', 'agent-own'], { env: env() });
+    const { sections } = enter([UNIT]);
+
+    assert.deepStrictEqual([position().tasks, position('earlier').tasks], [
+      [{ task: '1.3', builder: 'agent-own', reviewers: [] }, { task: '1.2', builder: null, reviewers: [] }],
+      [{ task: '1.2', builder: 'agent-old', reviewers: [] }],
+    ]);
+    assert.ok(sections.includes('in flight: task 1.3, its builder agent `agent-own`\nin flight: task 1.2, no builder dispatched — its builder and pair go afresh on its branch\n'), sections);
+  });
+
+  it('answers each question waiting on the person and the tasks it parks, the task parked on it in its phase\'s line (12.8.4)', async () => {
+    const { conversation } = raiseHelpers(() => dir, () => config, CALL);
+    await okSectionsAsync(dir, ['raise', `${UNIT}.implementation`, '--answers', made.where, '--parks', '1.3'], { env: conversation(), stdin: JSON.stringify(CALL) });
+    const lines = enter([UNIT]).sections.split('\n');
+
+    assert.deepStrictEqual([lines.find((line) => line.startsWith('phase: phase 1 ')), lines.filter((line) => line.startsWith('waiting: '))], [
+      'phase: phase 1 of 3, "Cards": running — tasks 1.1 done, 1.2 in progress, 1.3 parked on Q1',
+      [`waiting: Q1 — ${CALL.question} — parks task 1.3`],
+    ]);
+  });
+
+  it('is the recovery note too: a compaction re-reads the build\'s skill, the ledger\'s calls, the build\'s log, and where each phase stands (12.S4, 24.S13)', () => {
+    enter([UNIT]);
+    writeState(dir, layout.unit(UNIT, 'build', 'log.md'), '# The build\n\nPhase 1: 1.2 in flight.\n');
+    const note = output(dir, ['conversation', 'position'], { env: env() });
+
+    for (const line of [
+      path.join(dir, '.claude/skills/leeway-implementation-process/SKILL.md'), `\`${ENGINE} ledger affected ${UNIT}\``, `\`${ENGINE} ledger record ${UNIT}\``,
+      statePath(dir, `${UNIT}/build/log.md`), ...PHASE_LINES, 'in flight: task 1.2, no builder dispatched — its builder and pair go afresh on its branch',
+    ]) {
+      assert.ok(note.includes(line), `the note names ${line}\n${note}`);
+    }
+  });
+});
+
+describe('the build\'s standing (P13)', () => {
+  it('answers each phase of the cut, its tasks, this conversation\'s tasks in flight, the questions waiting, and whether the build is finished', () => {
+    enter([UNIT]);
+    const task = (/** @type {string} */ shown, /** @type {string} */ title, /** @type {string} */ status) => ({ task: shown, title, status, parked: [] });
+
+    assert.deepStrictEqual(standing(), {
+      unit: UNIT,
+      position: 'auto',
+      phases: [
+        { phase: 1, name: 'Cards', relies_on: [], state: 'running', tasks: [task('1.1', 'Open a note', 'done'), task('1.2', 'Size a note', 'in-progress'), task('1.3', 'Place a note', 'open')] },
+        { phase: 2, name: 'Refunds', relies_on: [1], state: 'written', tasks: [task('2.1', 'Refund a note', 'open')] },
+        { phase: 3, name: 'Reports', relies_on: [], state: 'not yet written', tasks: [] },
+      ],
+      in_flight: [{ task: '1.2', builder: null, reviewers: [] }],
+      waiting: [],
+      finished: false,
+    });
+    assert.deepStrictEqual(withEnv({ LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'sess-1' }, () => buildStanding(dir, 'solo')).in_flight, [], 'another build\'s standing holds none of this one\'s tasks');
+  });
+
+  it('reads a phase in review once every task not closed is done, closed once its close is recorded, merged once its tasks landed — and the build finished only once every phase of the cut has closed, so nothing ready with a phase not yet written never reads finished (7.4.3, 12.6.7, 12.S16, 3.S3)', () => {
+    const seen = [states()];
+    ok(dir, ['task', 'done', UNIT, '1.2'], { env: env() });
+    ok(dir, ['task', 'close', UNIT, '1.3', '--reason', 'Folded into 1.2.'], { env: env() });
+    seen.push(states());
+    closed(['phase-1-close']);
+    seen.push(states());
+    for (const task of ['1-1', '1-2']) git(dir, ['commit', '-q', '--allow-empty', '-m', `feat(${UNIT}): landed`, '-m', `Task: ${UNIT}-${task}`]);
+    closed(['phase-2-start', 'phase-2-close']);
+    ok(dir, ['task', 'done', UNIT, '2.1'], { env: env() });
+    seen.push(states());
+
+    assert.deepStrictEqual(seen, [
+      ['running', 'written', 'not yet written'],
+      ['in review', 'written', 'not yet written'],
+      ['closed', 'written', 'not yet written'],
+      ['merged', 'closed', 'not yet written'],
+    ]);
+    assert.deepStrictEqual(ok(dir, ['task', 'ready', UNIT]).tasks, [], 'the tracker reports nothing ready');
+    assert.deepStrictEqual([standing().finished, computeNextPhase(readManifest(dir, UNIT))], [false, { next_phase: 'implementation', phase_label: 'implementation (in-progress)' }]);
+    assert.match(refusedPristine(dir, ['checklist', 'close', 'phase-close', UNIT, '3'], { env: env() }).error, /^checklist close: phase-3-close has items open: tasks-passed, /);
+  });
+});

@@ -1,0 +1,270 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Domain ring: the build's row of the entry (enter.cjs) — `enter
+// implementation <unit>`, at the work unit, whose build it is — and the
+// build's standing (P13), which everything showing where a build stands
+// reads: the entry and its recovery note (position.cjs), the menus, the
+// screens and the board.
+//
+// The entry refuses, before anything else: a quick-fix, whose delivery
+// moves onto the build with the reshape's 29.15 (P9); a unit built under
+// the old plan, its old spec's, planning's or implementation's items
+// standing until the reshape's 29.17 migration cuts it (`legacyBuild`,
+// P12), which a handoff still sends into the phase's skill at its topic;
+// and a unit whose build has not begun, ready to build's yes beginning it
+// (11.8.3). Another
+// session holding the checkout's code stops it with the code gate alone,
+// nothing written, and `--take` enters all the same (12.7.8). It starts
+// nothing and names no log of the conversation's: the build's log is
+// Claude's to append as it goes (12.2.1), a log of the layout's, which
+// every state commit carries. As the conversation arrives, every task the
+// tracker holds in progress in a phase of the cut is put in flight on its
+// position (position.cjs), a task already there kept as it stands: one
+// another conversation left comes with no builder and no pair, which are
+// dispatched afresh on its branch — the pair that conversation sent is
+// abandoned, its round's reports written again by the new pair. That
+// conversation's own record is left as it stands.
+//
+// It answers, and its recovery note with it (12.1.6, 24.2.2): where the
+// build stands, a line a phase; each task in flight with its builder and its
+// pair; each question waiting on the person; the entries affected since the
+// spec concluded, by their call (11.9.1); the unit's record, by its call;
+// and the build's log, read beside the ledger (12.2.2, 24.2.5).
+//
+// The standing is worked out at each read, never kept: only the position,
+// auto or step, is stored, as `build`. Each phase of the cut is not yet
+// written, the tracker holding none of it (7.4.1); written, its start
+// checklist not closed; running; in review, every task not closed done;
+// closed, its close checklist closed; or merged, closed with its stack
+// merged (phase-checks.cjs). Each task stands as the tracker holds it, with
+// the questions waiting that park it. The build is finished once every
+// phase of the cut has closed, so "nothing ready" with a phase not yet
+// written never reads finished (7.4.3, 12.6.7) — the rule `phaseStatus`
+// reads off the manifest (derivations.cjs). The review phase's fix phases,
+// past the cut, are not the build's (P14).
+// ---------------------------------------------------------------------------
+
+const { ENGINE_COMMAND, messageOf } = require('../kernel/call.cjs');
+const { statePath, stateRoot } = require('../kernel/state-root.cjs');
+const { handedSession } = require('../kernel/process.cjs');
+const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
+const { buildBegun, buildFinished, phaseStarted, phaseClosed, legacyBuild, buildByCut } = require('./derivations.cjs');
+const { manifestOf } = require('./ledger-units.cjs');
+const { heldCodeSessions } = require('./presence.cjs');
+const { codeGate } = require('./projections/enter.cjs');
+const { tasksInFlight } = require('./conversation.cjs');
+const { recordTask } = require('./position.cjs');
+const { waitingQuestions, parkedTasks, parkedTasksOf } = require('./questions.cjs');
+const { reading, cutPhases, phaseLists, phaseLanded } = require('./phase-checks.cjs');
+const { taskId, shownTask } = require('./task-id.cjs');
+
+/** @typedef {import('./enter.cjs').Entry} Entry */
+/** @typedef {import('./enter.cjs').Entering} Entering */
+/** @typedef {import('./enter.cjs').Line} Line */
+/** @typedef {import('./enter.cjs').HeldWays} HeldWays */
+/** @typedef {import('./topic-standing.cjs').Standing} Standing */
+/** @typedef {import('./phase-checks.cjs').Reading} Reading */
+/** @typedef {import('./drivers.cjs').TaskRow} TaskRow */
+/** @typedef {import('./drivers.cjs').TaskStatus} TaskStatus */
+/** @typedef {import('./conversation.cjs').InFlight} InFlight */
+/** @typedef {import('./questions.cjs').Waiting} Waiting */
+
+/** Where a phase of the cut stands. @typedef {'not yet written'|'written'|'running'|'in review'|'closed'|'merged'} PhaseState */
+/** A task of a phase: its id shown, its title, where the tracker holds it, and the questions waiting that park it, by number. @typedef {{task: string, title: string, status: TaskStatus, parked: string[]}} StandingTask */
+/** A phase of the cut: its number, name and what it relies on, where it stands, and its tasks, none where it is not written. @typedef {{phase: number, name: string, relies_on: Array<number|string>, state: PhaseState, tasks: StandingTask[]}} StandingPhase */
+/**
+ * Where a build stands: its unit and position; each phase of its cut; the
+ * calling conversation's tasks in flight there; the questions waiting on the
+ * person, as `raise waiting` answers them; and whether every phase of the
+ * cut has closed.
+ * @typedef {{unit: string, position: string, phases: StandingPhase[], in_flight: InFlight[], waiting: Waiting[], finished: boolean}} BuildStanding
+ */
+
+/** A task's status, as a line says it. @type {Readonly<Record<TaskStatus, string>>} */
+const STATUS_WORDS = Object.freeze({ open: 'not started', 'in-progress': 'in progress', done: 'done', closed: 'closed' });
+
+/** The build's log, state-relative (12.2.3). @param {string} unit */
+const buildLogOf = (unit) => `${unit}/build/log.md`;
+
+/**
+ * Why the unit's build cannot be entered, with its way on, or null where it
+ * can: a quick-fix, a unit built under the old plan, a build not begun.
+ * @param {Record<string, any>} manifest @returns {string|null}
+ */
+function buildRefusal(manifest) {
+  const unit = manifest.name;
+  if (manifest.work_type === 'quick-fix') return `${unit} is a quick-fix, whose delivery is built with the reshape's 29.15 — until then a quick-fix stops at its scoping`;
+  if (legacyBuild(manifest)) return `${unit} was built under the old plan, and its build is entered once the reshape's 29.17 migration has cut it`;
+  return buildBegun(manifest) ? null : `${unit}'s build has not begun — ready to build's yes begins it: render ready-to-build ${unit}`;
+}
+
+/** The readings of an entry, one each, shared by what it closes and what it reads. @type {WeakMap<Record<string, any>, Reading>} */
+const readings = new WeakMap();
+
+/** The unit as an entry reads it, once. @param {Standing} at @returns {Reading} */
+function readingOf({ cwd, unit, manifest }) {
+  const made = readings.get(manifest) ?? reading(cwd, unit, manifest);
+  readings.set(manifest, made);
+  return made;
+}
+
+/** The calling conversation's tasks in flight in the unit's build. @param {string} unit @returns {InFlight[]} */
+function ownInFlight(unit) {
+  const session = handedSession();
+  return session === null ? [] : tasksInFlight(session).filter((task) => task.unit === unit).map(({ unit: _unit, ...task }) => task);
+}
+
+/** Where a phase written in the tracker stands, or not yet written. @param {Reading} at @param {number} phase @param {TaskRow[]|null} rows @returns {PhaseState} */
+function phaseState(at, phase, rows) {
+  if (rows === null) return 'not yet written';
+  if (phaseClosed(at.manifest, phase)) return phaseLanded(at, phase) ? 'merged' : 'closed';
+  if (!phaseStarted(at.manifest, phase)) return 'written';
+  const live = rows.filter(({ status }) => status !== 'closed');
+  return live.length > 0 && live.every(({ status }) => status === 'done') ? 'in review' : 'running';
+}
+
+/** The build's standing, as a call reads the unit. @param {Reading} at @returns {BuildStanding} */
+function standingOf(at) {
+  const cut = cutPhases(at.manifest);
+  const lists = phaseLists(at, cut.map((_, i) => i + 1));
+  const { waiting, warnings = [] } = waitingQuestions(at.cwd, [at.unit]);
+  at.warnings.push(...warnings);
+  const parked = parkedTasksOf(stateRoot(at.cwd), at.unit, at.warnings);
+  return {
+    unit: at.unit,
+    position: at.manifest.build.position,
+    phases: cut.map(({ name = '', relies_on: reliesOn }, i) => ({
+      phase: i + 1,
+      name,
+      relies_on: reliesOn,
+      state: phaseState(at, i + 1, lists[i]),
+      tasks: (lists[i] ?? []).map(({ ref, title, status }) => ({ task: shownTask(ref), title, status, parked: parked.get(shownTask(ref)) ?? [] })),
+    })),
+    in_flight: ownInFlight(at.unit),
+    waiting,
+    finished: buildFinished(at.manifest),
+  };
+}
+
+/**
+ * Where the unit's build stands (the header's), what its reads said pushed
+ * to `warnings`; refused where the project has no such unit, or its build
+ * has not begun.
+ * @param {string} cwd @param {string} unit @param {string[]} [warnings]
+ * @returns {BuildStanding}
+ */
+function buildStanding(cwd, unit, warnings = []) {
+  const manifest = workUnitNameRefusal(unit) === null ? manifestOf(stateRoot(cwd), unit) : null;
+  if (manifest === null) throw new Error(`there is no work unit "${unit}"`);
+  if (!buildBegun(manifest)) throw new Error(`${unit}'s build has not begun — ready to build's yes begins it: render ready-to-build ${unit}`);
+  return standingOf(reading(cwd, unit, manifest, warnings));
+}
+
+/** A task of a phase, as its phase's line says it. @param {StandingTask} task */
+const taskWords = ({ task, status, parked }) => (parked.length > 0 ? `${task} parked on ${parked.join(', ')}` : `${task} ${STATUS_WORDS[status]}`);
+
+/** A task in flight, with its builder and its pair where recorded — what a fix round goes back to (24.2.4). @param {InFlight} inFlight */
+function inFlightWords({ task, builder, reviewers }) {
+  const agents = [
+    ...(builder === null ? [] : [`its builder agent \`${builder}\``]),
+    ...(reviewers.length === 0 ? [] : [`its reviewer agent${reviewers.length === 1 ? '' : 's'} ${reviewers.map((id) => `\`${id}\``).join(' and ')}`]),
+  ];
+  return `task ${task}, ${agents.length === 0 ? 'no builder dispatched — its builder and pair go afresh on its branch' : agents.join(', ')}`;
+}
+
+/**
+ * Where the build stands, a line a phase, the tasks in flight and the
+ * questions waiting, as the entry and the recovery note give them.
+ * @param {BuildStanding} standing @returns {Line[]}
+ */
+function standingLines(standing) {
+  const of = standing.phases.length;
+  return [
+    ['position', standing.position],
+    ...standing.phases.map(({ phase, name, state, tasks }) => /** @type {Line} */ ([
+      'phase',
+      `phase ${phase} of ${of}, "${name}": ${state}${tasks.length === 0 ? '' : ` — tasks ${tasks.map(taskWords).join(', ')}`}`,
+    ])),
+    ...standing.in_flight.map((task) => /** @type {Line} */ (['in flight', inFlightWords(task)])),
+    ...standing.waiting.map(({ question, asks, parks }) => /** @type {Line} */ (['waiting', `${question} — ${asks} — parks ${parkedTasks(parks)}`])),
+  ];
+}
+
+/** The ledger's calls the build reads beside its log: the entries affected since the spec concluded, and the unit's record. @param {string} unit */
+const ledgerCalls = (unit) => [`${ENGINE_COMMAND} ledger affected ${unit}`, `${ENGINE_COMMAND} ledger record ${unit}`];
+
+/**
+ * What the build's recovery note re-reads beside its skill, as the entry
+ * reads it: the ledger's calls, the build's log, and where the build
+ * stands, a line each — or why that cannot be read, in their place.
+ * @param {string} cwd @param {string} unit
+ * @returns {{calls: string[], documents: string[], lines: string[]}}
+ */
+function buildRecovery(cwd, unit) {
+  /** @type {string[]} */
+  let lines;
+  try {
+    lines = standingLines(buildStanding(cwd, unit)).map(([key, value]) => `${key}: ${value}`);
+  } catch (err) {
+    lines = [`Where the build stands could not be read: ${messageOf(err)}`];
+  }
+  return { calls: ledgerCalls(unit), documents: [statePath(cwd, buildLogOf(unit))], lines };
+}
+
+/**
+ * Every task the tracker holds in progress in a phase of the cut, put in
+ * flight on this conversation's position, one there already kept as it
+ * stands (the header's).
+ * @param {Standing} at
+ */
+function takeInFlight(at) {
+  const read = readingOf(at);
+  const cut = cutPhases(at.manifest).map((_, i) => i + 1);
+  for (const row of phaseLists(read, cut).flatMap((rows) => rows ?? [])) {
+    if (row.status === 'in-progress') recordTask(at.cwd, at.unit, at.unit, taskId(row.ref));
+  }
+}
+
+/** What the build reads at its entry (the header's). @param {Entering} at @returns {Line[]} */
+function buildReads(at) {
+  const read = readingOf(at);
+  const lines = standingLines(standingOf(read));
+  at.notes.push(...read.warnings);
+  const [affected, record] = ledgerCalls(at.unit);
+  return [
+    ...lines,
+    ['affected', `\`${affected}\``],
+    ['record', `\`${record}\``],
+    ['build log', statePath(at.cwd, buildLogOf(at.unit))],
+  ];
+}
+
+/**
+ * The code gate, where another session holds the checkout's code (12.7.8):
+ * back to the epic's menu, or carrying on; the entry again with `--take`.
+ * @param {Standing} at @param {HeldWays} ways @returns {string|null}
+ */
+function codeHeld({ cwd }, { take, menu }) {
+  const holders = heldCodeSessions(cwd);
+  if (holders.length === 0) return null;
+  return codeGate(holders, {
+    back: menu === null ? { kind: 'continue' } : { kind: 'handoff', ...menu },
+    take: { kind: 'engine', argv: take },
+  });
+}
+
+/** @type {Entry} */
+const IMPLEMENTATION = Object.freeze({
+  level: /** @type {const} */ ('unit'),
+  takes: buildByCut,
+  standing: ({ manifest }) => buildRefusal(manifest),
+  held: codeHeld,
+  unstarted: () => false,
+  start: () => {},
+  questions: () => [],
+  reads: buildReads,
+  closes: takeInFlight,
+});
+
+module.exports = { IMPLEMENTATION, buildStanding, buildRecovery };

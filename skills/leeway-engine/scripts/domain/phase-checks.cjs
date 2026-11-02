@@ -1,0 +1,272 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Domain ring: what the engine checks of a build phase as it starts and
+// closes (6.4.8, 6.4.9) — the engine's items of the phase checklists
+// (checklist.cjs), worked out at each call and never kept (6.4.3); the
+// refusal of `land phase` before the phase review passed (landing.cjs); and
+// what the build's standing reads of a phase (build-entry.cjs). A phase is
+// one the unit's cut holds: the review phase's fix phases, numbered past
+// it, have no checklists (P14).
+//
+// - Its tasks written: each of the phase's scenarios — a phase of the cut
+//   names one at least — an acceptance scenario of exactly one task of it
+//   not closed in the tracker (12.4.3); `task link` keeps each link where
+//   it may run (12.6.4).
+// - What it relies on done: an earlier phase closed and its stack merged,
+//   since in step a phase closes with its stack waiting at its gate
+//   (7.2.5); another unit completed (12.6.2). A phase relying on nothing
+//   unfinished starts whenever Claude schedules it (12.7.5).
+// - Its tasks passed: each task not closed passed by its pair — its last
+//   round passed by every reviewer of the count, or settled (13.4.6,
+//   round-report.cjs); rounds that do not read fail it, said as a warning.
+// - Its phase review passed and its fixes landed: a report from every
+//   reviewer of the count, of each set where the review was split by area
+//   (13.1.4), every one read; where one failed, the fixes are tasks of the
+//   phase (13.10.1), so every task not closed is done.
+// - Each scenario proven or reported not proven: proven by its runs at the
+//   phase's tips (phase-stack.cjs, runs.cjs), else named in every report of
+//   the phase review by a finding in its standing's words (15.4.3). A stack
+//   whose tips cannot be read proves nothing, said as a warning.
+// - Its notes consolidated: as notes.cjs reads the consolidation's record.
+// - Its stack merged: every task not closed landed (landing.cjs), one at
+//   least — or, in step, waiting at its gate (7.2.4).
+// - Phase 1's close also needs the verify setup recorded (12.3.3): a
+//   refusal of the close, not an item, so the checklist lists 6.4.9's items
+//   alone (6.S14).
+//
+// A call reads each thing once for all its checks (`Reading`): a phase's
+// tasks, under the state's lock as every reader of the tracker takes it,
+// since a read may commit the tracker's setting up; and what landed.
+// ---------------------------------------------------------------------------
+
+const fs = require('fs');
+const path = require('path');
+const { stateRoot, statePath } = require('../kernel/state-root.cjs');
+const { messageOf } = require('../kernel/call.cjs');
+const { REVIEWER_LETTERS } = require('../kernel/reviewers.cjs');
+const { withStateLock } = require('./state-worktree.cjs');
+const { manifestOf, finishedUnits } = require('./ledger-units.cjs');
+const { phaseClosed } = require('./derivations.cjs');
+const { trackedLists, trackedPhase } = require('./task-verbs.cjs');
+const { holdsScenario, namesScenario } = require('./task-file.cjs');
+const { taskPassed, readReport, phaseReviewPath } = require('./round-report.cjs');
+const { phaseStack, tipCommits } = require('./phase-stack.cjs');
+const { runsOf } = require('./runs.cjs');
+const { consolidationFaults } = require('./notes.cjs');
+const { verifySetup } = require('./environment.cjs');
+const { landedTasks } = require('./landing.cjs');
+const { phaseName, shownTask } = require('./task-id.cjs');
+
+/** @typedef {import('./drivers.cjs').TaskRow} TaskRow */
+/** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
+/** @typedef {import('./round-report.cjs').Report} Report */
+/** @typedef {import('./runs.cjs').RepoCommit} RepoCommit */
+
+/**
+ * What a call's checks read the unit by: the unit and its manifest, the
+ * warnings its reads give, and what it has read already, by what it is,
+ * kept for its other checks.
+ * @typedef {{cwd: string, unit: string, manifest: Record<string, any>, warnings: string[], reads: Map<string, any>}} Reading
+ */
+
+/** A phase review's reports read: what stands in the way of reading them all, and those read. @typedef {{faults: string[], reports: (Report & {file: string})[]}} Reviewed */
+
+/** A report of the phase review: its set, `review` or an area, and its reviewer's letter. */
+const REVIEW_FILE = /^(.+)-([a-z])\.md$/;
+
+/** @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {string[]} [warnings] @returns {Reading} */
+const reading = (cwd, unit, manifest, warnings = []) => ({ cwd, unit, manifest, warnings, reads: new Map() });
+
+/**
+ * What `read` answers, read once a call.
+ * @template T @param {Reading} at @param {string} key @param {() => T} read @returns {T}
+ */
+function once(at, key, read) {
+  if (!at.reads.has(key)) at.reads.set(key, read());
+  return at.reads.get(key);
+}
+
+/** The phases of the unit's cut, none where it has none. @param {Record<string, any>} manifest @returns {Array<{name?: string, sections: string[], scenarios: string[], relies_on: Array<number|string>}>} */
+const cutPhases = (manifest) => (Array.isArray(manifest.cut?.phases) ? manifest.cut.phases : []);
+
+/**
+ * `read` under the state's lock, as every reader of the tracker takes it,
+ * the read's warnings joining the call's.
+ * @template {{warnings?: string[]}} T @param {Reading} at @param {() => T} read @returns {T}
+ */
+function tracked(at, read) {
+  const answer = withStateLock(stateRoot(at.cwd), read);
+  at.warnings.push(...(answer.warnings ?? []));
+  return answer;
+}
+
+/**
+ * The lists of the phases named, in turn, null for one not written: those
+ * not read yet in one read of the tracker.
+ * @param {Reading} at @param {number[]} phases @returns {(TaskRow[]|null)[]}
+ */
+function phaseLists(at, phases) {
+  const unread = phases.filter((phase) => !at.reads.has(`list ${phase}`));
+  if (unread.length > 0) {
+    const { phases: lists } = tracked(at, () => trackedLists(at.cwd, at.unit, unread));
+    unread.forEach((phase, i) => at.reads.set(`list ${phase}`, lists[i]));
+  }
+  return phases.map((phase) => at.reads.get(`list ${phase}`));
+}
+
+/** A phase's tasks whole, null where it is not written. @param {Reading} at @param {number} phase @returns {TaskDetail[]|null} */
+function phaseTasks(at, phase) {
+  return once(at, `tasks ${phase}`, () => tracked(at, () => trackedPhase(at.cwd, at.unit, phase)).tasks);
+}
+
+/** Of a phase's tasks, those not closed: the phase's work. @template {TaskRow} T @param {T[]|null} tasks @returns {T[]} */
+const live = (tasks) => (tasks ?? []).filter(({ status }) => status !== 'closed');
+
+/** The phase's tasks not closed, by their rows. @param {Reading} at @param {number} phase */
+const liveRows = (at, phase) => live(at.reads.get(`tasks ${phase}`) ?? phaseLists(at, [phase])[0]);
+
+/** Whether the phase's stack has merged: every task not closed landed, one at least. @param {Reading} at @param {number} phase */
+function phaseLanded(at, phase) {
+  const rows = liveRows(at, phase);
+  const landed = once(at, 'landed', () => landedTasks(at.cwd, at.unit));
+  return rows.length > 0 && rows.every(({ ref }) => landed.has(shownTask(ref)));
+}
+
+/** The phase's tasks written: each phase scenario held by exactly one task not closed (12.4.3). @param {Reading} at @param {number} phase */
+function tasksWritten(at, phase) {
+  const tasks = live(phaseTasks(at, phase));
+  return cutPhases(at.manifest)[phase - 1].scenarios.every((scenario) => tasks.filter(({ text }) => holdsScenario(text, scenario)).length === 1);
+}
+
+/** What the phase relies on done: an earlier phase closed and its stack merged, another unit completed (6.4.8). @param {Reading} at @param {number} phase */
+function reliedOnDone(at, phase) {
+  const finished = finishedUnits(stateRoot(at.cwd));
+  return cutPhases(at.manifest)[phase - 1].relies_on.every((relied) => (typeof relied === 'number' ? phaseClosed(at.manifest, relied) && phaseLanded(at, relied) : finished(relied)));
+}
+
+/** Whether a task's pair passed it; not where its rounds do not read, said as a warning. @param {Reading} at @param {import('./task-id.cjs').TaskRef} ref */
+function passed(at, ref) {
+  try {
+    return taskPassed(at.cwd, ref);
+  } catch (err) {
+    at.warnings.push(messageOf(err));
+    return false;
+  }
+}
+
+/** Every task of the phase not closed, one at least, passed by its pair (13.4.6). @param {Reading} at @param {number} phase */
+function tasksPassed(at, phase) {
+  const rows = liveRows(at, phase);
+  return rows.length > 0 && rows.every(({ ref }) => passed(at, ref));
+}
+
+/**
+ * The phase review's reports, read once a call: a report from each reviewer
+ * of the count, for each set of reports the folder holds — `review`, or an
+ * area where the review was split.
+ * @param {Reading} at @param {number} phase @returns {Reviewed}
+ */
+function reviewed(at, phase) {
+  return once(at, `review ${phase}`, () => {
+    const rel = path.posix.dirname(phaseReviewPath(at.unit, phase, REVIEWER_LETTERS[0]));
+    const folder = statePath(at.cwd, rel);
+    const held = fs.existsSync(folder) ? fs.readdirSync(folder) : [];
+    const sets = [...new Set(held.flatMap((name) => REVIEW_FILE.exec(name)?.[1] ?? []))].sort();
+    if (sets.length === 0) return { faults: [`${phaseName(at.unit, phase)} has no phase review reported — its reviewers write their reports in ${rel}/`], reports: [] };
+    /** @type {Reviewed} */
+    const found = { faults: [], reports: [] };
+    for (const file of sets.flatMap((set) => REVIEWER_LETTERS.map((letter) => `${rel}/${set}-${letter}.md`))) {
+      if (!held.includes(path.posix.basename(file))) {
+        found.faults.push(`the phase review has no report at ${file}`);
+        continue;
+      }
+      try {
+        found.reports.push({ file, ...readReport(fs.readFileSync(statePath(at.cwd, file), 'utf8')) });
+      } catch (err) {
+        found.faults.push(`${file} does not read as a reviewer's report — ${messageOf(err)}`);
+      }
+    }
+    return found;
+  });
+}
+
+/**
+ * What stands between the phase and its review passed with its fixes
+ * landed (12.11.3, 13.10.1), none where nothing does: a report missing or
+ * not reading; where one failed, each task not closed that is not done.
+ * @param {Reading} at @param {number} phase @returns {string[]}
+ */
+function phaseReviewFaults(at, phase) {
+  const { faults, reports } = reviewed(at, phase);
+  if (faults.length > 0 || reports.every(({ verdict }) => verdict === 'pass')) return faults;
+  return liveRows(at, phase).filter(({ status }) => status !== 'done').map(({ ref, status }) => `the phase review failed, and task ${shownTask(ref)}, a fix of it, is ${status}`);
+}
+
+/** The phase's stack's tips, read once a call; null where they cannot be read, said as a warning. @param {Reading} at @param {number} phase @returns {RepoCommit[]|null} */
+function phaseTips(at, phase) {
+  return once(at, `tips ${phase}`, () => {
+    try {
+      return tipCommits(phaseStack(at.cwd, at.unit, phase, phaseTasks(at, phase) ?? []));
+    } catch (err) {
+      at.warnings.push(`${phaseName(at.unit, phase)}'s scenarios are judged at its stack's tips, which cannot be read — ${messageOf(err)}`);
+      return null;
+    }
+  });
+}
+
+/**
+ * Each of the phase's scenarios proven at its tips, or named in every
+ * report of its review by a finding in its standing's words (15.4.3).
+ * @param {Reading} at @param {number} phase
+ */
+function scenariosReported(at, phase) {
+  const tips = phaseTips(at, phase);
+  if (tips === null) return false;
+  const { faults, reports } = reviewed(at, phase);
+  return cutPhases(at.manifest)[phase - 1].scenarios.every((scenario) => {
+    const { standing } = runsOf(at.cwd, at.unit, scenario, tips);
+    if (standing === 'proven') return true;
+    const says = (/** @type {string} */ text) => namesScenario(text, scenario) && text.toLowerCase().includes(standing);
+    return faults.length === 0 && reports.every(({ findings }) => findings.some(({ text }) => says(text)));
+  });
+}
+
+/** The phase's notes consolidated, as notes.cjs reads the record (12.10). @param {Reading} at @param {number} phase */
+const notesConsolidated = (at, phase) => consolidationFaults(at.cwd, at.unit, phase).length === 0;
+
+/** The phase's stack merged, or in step waiting at its gate (7.2.4). @param {Reading} at @param {number} phase */
+const stackMerged = (at, phase) => at.manifest.build?.position === 'step' || phaseLanded(at, phase);
+
+/**
+ * Why the phase's close is refused beyond its items, or null: phase 1's
+ * before the verify setup is recorded (12.3.3), a setup that does not read
+ * said as a warning.
+ * @param {Reading} at @param {number} phase @returns {string|null}
+ */
+function closeRefusal(at, phase) {
+  if (phase !== 1) return null;
+  try {
+    if (verifySetup(at.cwd) !== null) return null;
+  } catch (err) {
+    at.warnings.push(messageOf(err));
+  }
+  return `${phaseName(at.unit, phase)} closes once the verify setup is recorded — the first phase gets the product running and drivable: verify setup ${at.unit} --file <setup.json> --scenario <scenario>`;
+}
+
+/**
+ * Why `land phase` refuses the phase, or null: for a phase the unit's cut
+ * holds, its review not passed or its fixes not done (7.2.4, 12.11.3).
+ * @param {string} cwd @param {string} unit @param {number} phase @returns {string|null}
+ */
+function phaseReviewRefusal(cwd, unit, phase) {
+  const manifest = manifestOf(stateRoot(cwd), unit);
+  if (manifest === null || phase > cutPhases(manifest).length) return null;
+  const faults = phaseReviewFaults(reading(cwd, unit, manifest), phase);
+  return faults.length === 0 ? null : `${phaseName(unit, phase)} merges once its phase review has passed and its fixes are done — ${faults.join('; ')}`;
+}
+
+module.exports = {
+  reading, cutPhases, phaseLists, phaseLanded,
+  tasksWritten, reliedOnDone, tasksPassed, phaseReviewFaults, scenariosReported, notesConsolidated, stackMerged, closeRefusal, phaseReviewRefusal,
+};

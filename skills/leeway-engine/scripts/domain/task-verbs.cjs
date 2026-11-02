@@ -6,7 +6,9 @@
 // a verb of another kind that needs a task reads it as `task show` does
 // (`trackedTask`), as `land open` reads its type and title, and one that
 // needs a unit's phases reads each one's list, and its own phase's tasks
-// whole (`trackedPhases`).
+// whole (`trackedPhases`); the build's standing reads the lists of the
+// phases it names (`trackedLists`), and a phase's checklist that phase's
+// tasks whole (`trackedPhase`).
 // A unit's phases are written into the tracker as each starts, so it holds
 // only those (7.4.1); a task is made from the task template in a file, one
 // call per task (7.1.3, 12.5.3), and its id is the engine's (task-id.cjs),
@@ -16,8 +18,9 @@
 // gives one (21.5.21). A link holds a task after one of its own phase's or
 // an earlier phase's, still unfinished, and only a task not yet ended is
 // linked (12.6.4); ready answers every task waiting with nothing before it
-// and no question parking it (7.1.5, 13.4.6); start puts the task in flight
-// on the conversation's position,
+// and no question parking it (7.1.5, 13.4.6); start, refused for a phase
+// the cut holds before its start checklist has closed (6.4.8, 12.S7), puts
+// the task in flight on the conversation's position,
 // beside any others in flight there — a task already in flight kept as it
 // stands, its builder and reviewers with it — and done and close take it
 // off, each first taking the task's worktree apart (6.3.3, 24.2.4); done
@@ -58,6 +61,7 @@ const fs = require('fs');
 const path = require('path');
 const { isolatedGit } = require('../kernel/isolated-git.cjs');
 const { isObject, jsonText } = require('../kernel/manifest-io.cjs');
+const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { resolveDriver, settingOf, needsRefusal } = require('./drivers.cjs');
@@ -66,6 +70,7 @@ const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('.
 const { taskId, shownTask, parseShownTask, parsePhase, taskName, phaseName } = require('./task-id.cjs');
 const { TASK_TYPES, breaksLine, readTaskText } = require('./task-file.cjs');
 const { recordTask, clearTask } = require('./position.cjs');
+const { phaseStarted } = require('./derivations.cjs');
 const { layOutTask, takeWorktreeApart } = require('./task-worktree.cjs');
 
 // The questions parking a task, loaded at their call: they read the task
@@ -425,6 +430,29 @@ function trackedPhases(cwd, unit, last) {
   });
 }
 
+/**
+ * The unit's phases `numbers` names as the tracker holds them, read as any
+ * read is: each written as the list of its tasks, in order, null for one
+ * not written.
+ * @param {string} cwd @param {string} unit @param {number[]} numbers
+ * @returns {{phases: (TaskRow[]|null)[], committed?: string|null, warnings?: string[]}}
+ */
+function trackedLists(cwd, unit, numbers) {
+  requireUnit(cwd, unit);
+  return withTracker(cwd, unit, null, (driver, root) => ({ phases: numbers.map((phase) => driver.list(root, unit, phase)) }));
+}
+
+/**
+ * A phase's tasks whole, in order, as the tracker holds them, read as any
+ * read is; null where the phase is not written.
+ * @param {string} cwd @param {string} unit @param {number} phase
+ * @returns {{tasks: TaskDetail[]|null, committed?: string|null, warnings?: string[]}}
+ */
+function trackedPhase(cwd, unit, phase) {
+  requireUnit(cwd, unit);
+  return withTracker(cwd, unit, null, (driver, root) => ({ tasks: driver.list(root, unit, phase)?.map((row) => taskIn(driver, root, row.ref)) ?? null }));
+}
+
 /** `task show`: the task whole, what was added to it among it. @param {string} cwd @param {string} unit @param {string} given */
 function showTask(cwd, unit, given) {
   const ref = parseShownTask(unit, given);
@@ -478,12 +506,29 @@ function ending(rule, after = () => ({})) {
   };
 }
 
-/** `task start`: in progress — where it is not already — and in flight on the position beside any others. */
+/**
+ * Refuse a task of a phase the unit's cut holds before that phase's start
+ * checklist has closed, so no builder starts before its tasks are written
+ * (6.4.8, 12.S7). A phase past the cut, a fix phase of the review's, has
+ * no start checklist (P14).
+ * @param {string} cwd @param {TaskRef} ref
+ */
+function refuseUnstarted(cwd, ref) {
+  const manifest = loadWorkUnitManifest(cwd, ref.unit);
+  const cut = Array.isArray(manifest.cut?.phases) ? manifest.cut.phases.length : 0;
+  if (ref.phase > cut || phaseStarted(manifest, ref.phase)) return;
+  throw new Error(`task start: ${phaseName(ref.unit, ref.phase)} has not started — its tasks start once its start checklist closes: checklist close phase-start ${ref.unit} ${ref.phase}`);
+}
+
+/** `task start`: refused before its phase has started; else in progress — where it is not already — and in flight on the position beside any others. */
 const startTask = moving('start', (driver, root, ref) => {
   if (refuseEnded(driver, root, ref, 'only a task not yet ended is started').status !== 'in-progress') driver.start(root, ref);
-}, (cwd, ref) => () => {
-  recordTask(cwd, ref.unit, ref.unit, taskId(ref));
-  return {};
+}, (cwd, ref) => {
+  refuseUnstarted(cwd, ref);
+  return () => {
+    recordTask(cwd, ref.unit, ref.unit, taskId(ref));
+    return {};
+  };
 });
 
 const DONE_RULE = 'only a task not yet ended is done';
@@ -568,4 +613,4 @@ function runTaskVerb(cwd, verb, positional, opts) {
   return run(cwd, positional, ...values, .../** @type {string[]} */ (given));
 }
 
-module.exports = { TASK_VERBS, ENDED, runTaskVerb, trackedTask, trackedPhases, phaseWritten, givenText, trackedStart };
+module.exports = { TASK_VERBS, ENDED, runTaskVerb, trackedTask, trackedPhases, trackedLists, trackedPhase, phaseWritten, givenText, trackedStart };

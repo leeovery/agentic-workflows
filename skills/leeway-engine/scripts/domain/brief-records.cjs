@@ -333,7 +333,7 @@ const path = require('path');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { git } = require('../kernel/git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
-const { projectRepos, repoName } = require('../kernel/repos.cjs');
+const { projectRepos } = require('../kernel/repos.cjs');
 const { linters, verifySetup } = require('./environment.cjs');
 const { readShown, readLedgerVerb } = require('./ledger-read.cjs');
 const {
@@ -372,10 +372,11 @@ const { REVIEWER_LETTERS } = require('../kernel/reviewers.cjs');
 const { taskName, shownTask, phaseName } = require('./task-id.cjs');
 const { taskBranch } = require('./landing-names.cjs');
 const {
-  branches, holdingBranch, isAncestor, defaultBranch, plain,
+  branches, holdingBranch, defaultBranch,
 } = require('./landing-git.cjs');
 const { remoteName, nestedRemoteName } = require('./remote.cjs');
 const { heldIn, pointedAt } = require('./task-worktree.cjs');
+const { repoNamed, phaseStack, tipCommits } = require('./phase-stack.cjs');
 const { readWorkUnitManifest } = require('../kernel/manifest-io.cjs');
 const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
 const { ENDED } = require('./task-verbs.cjs');
@@ -491,9 +492,6 @@ function drawLinters({ cwd }) {
 // front; a width past any path keeps each whole, and the graph is held to
 // git's own 40 columns, which the width would otherwise stretch.
 const STAT = ['--stat=1000', '--stat-graph-width=40'];
-
-/** A repository as a brief names it. @param {Repo} repo */
-const repoNamed = (repo) => (repo.dir === '' ? 'the project\'s repository' : `\`${plain(repo.dir)}\``);
 
 /**
  * The range in one repository, under a heading naming it, and its stat.
@@ -1473,33 +1471,13 @@ function drawReliedOn(filling) {
 }
 
 /**
- * The branch of a task of the phase, among those a repository holds work
- * on, that every other descends from: the tip of the stack they make there.
- * @param {Repo} repo @param {string[]} held @param {string} what the phase, as a refusal names it
- */
-function stackTip(repo, held, what) {
-  const tip = held.find((branch) => held.every((other) => isAncestor(repo.path, `refs/heads/${other}`, `refs/heads/${branch}`)));
-  if (tip === undefined) throw new Error(`${what}'s tasks are no one stack in ${repoNamed(repo)} — ${held.join(', ')} each hold work another lacks; chain them before its range is read`);
-  return tip;
-}
-
-/**
  * The project's repositories and the stack's tip in each holding work on the
- * branch of a task of the phase not closed, read once a fill; refused where
- * none does.
+ * branch of a task of the phase not closed (phase-stack.cjs), read once a
+ * fill.
  */
-const phaseHolding = oncePerFill(/** @param {Filling} filling @returns {{repos: Repo[], tips: Map<Repo, string>, what: string}} */ (filling) => {
+const phaseHolding = oncePerFill(/** @param {Filling} filling @returns {import('./phase-stack.cjs').PhaseStack} */ (filling) => {
   const { unit, phase } = phaseOf(filling);
-  const what = phaseName(unit, phase);
-  const named = writtenPhase(filling).filter(({ status }) => status !== 'closed').map((task) => {
-    if (task.type === null) throw new Error(`${taskName(task.ref)} has no type in the tracker, and its branch is named from it`);
-    return taskBranch(task.ref, task.type, task.title);
-  });
-  const repos = projectRepos(codeRoot(filling.cwd));
-  const held = named.map((branch) => holdingBranch(unit, repos, branch).holding);
-  const holding = repos.map((repo) => ({ repo, on: named.filter((_, at) => held[at].includes(repo)) })).filter(({ on }) => on.length > 0);
-  if (holding.length === 0) throw new Error(`no repository of the project holds work on ${what}'s tasks`);
-  return { repos, tips: new Map(holding.map(({ repo, on }) => [repo, stackTip(repo, on, what)])), what };
+  return phaseStack(filling.cwd, unit, phase, writtenPhase(filling));
 });
 
 /** @param {Filling} filling @param {string[]} warnings */
@@ -1522,7 +1500,7 @@ function drawPhaseScratchLayout(filling, warnings) {
  * @param {Filling} filling @param {string[]} warnings @returns {RepoCommit[]}
  */
 function phaseTips(filling, warnings) {
-  return [...phaseHolding(filling, warnings).tips].map(([repo, tip]) => ({ repo: repoName(repo), commit: git(repo.path, ['rev-parse', `refs/heads/${tip}`]).trim() }));
+  return tipCommits(phaseHolding(filling, warnings));
 }
 
 /** @param {Filling} filling @param {string[]} warnings */

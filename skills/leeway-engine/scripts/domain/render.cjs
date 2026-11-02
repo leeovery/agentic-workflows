@@ -43,7 +43,8 @@ const { readMetadata } = require('../kernel/knowledge/store.cjs');
 const { ENGINE_COMMAND, messageOf } = require('../kernel/call.cjs');
 const { projectRepos, projectDirtyEntries, projectPathsTouchedBySubject } = require('../kernel/repos.cjs');
 const { githubSquashNested } = require('./github-setup.cjs');
-const { heldCodeSessions, beatQuietly, fmtAge, CODE_PHASES } = require('./presence.cjs');
+const { heldCodeSessions, beatQuietly, CODE_PHASES } = require('./presence.cjs');
+const { codeGate: drawCodeGate } = require('./projections/enter.cjs');
 const { roadmapState, hasRoadmapNode, validateKind, markedKind, planRoadmapBatch, DEFAULT_KIND } = require('./roadmap.cjs');
 const {
   roadmapMapView,
@@ -3792,11 +3793,6 @@ function entryGate(cwd, { dotpath }) {
 // the session's first code commit.
 // ---------------------------------------------------------------------------
 
-/** @param {string} phase */
-function codeVerb(phase) {
-  return phase === 'review' ? 'reviewing' : 'implementing';
-}
-
 /**
  * @param {string} cwd
  * @param {{dotpath: string}} args
@@ -3826,30 +3822,7 @@ function codeGate(cwd, { dotpath }) {
     beatQuietly(cwd, workUnit, phase, topic);
     return '';
   }
-
-  const facts = holders.map((h) =>
-    `⚑ Another session is ${codeVerb(h.phase)} "${titlecase(h.topic)}" (${h.work_unit}) — last active ${fmtAge(h.age_seconds)} ago.`);
-  const first = holders[0];
-  return [
-    section(
-      'DISPLAY: code gate',
-      emitAs('properties'),
-      facts.join('\n'),
-    ),
-    section(
-      'MENU: code gate',
-      MENU_INSTRUCTION,
-      menuFrame([
-        'Code phases run one at a time — concurrent sessions write the same files, and even worktrees end in merge conflicts. Only proceed if you know that session is no longer working; if it is wedged but alive, release its hold with '
-          + `\`${ENGINE_COMMAND} presence clear ${first.work_unit} ${first.phase} ${first.topic}\`.`,
-        '',
-        '**`◆ Proceed anyway?`**',
-        '',
-        cmdOption('b', 'back', { head: 'Leave that session to it', recommended: true }),
-        cmdOption('y', 'yes', 'Enter anyway — two sessions on one code base'),
-      ]),
-    ),
-  ].join('\n');
+  return drawCodeGate(holders);
 }
 
 // ---------------------------------------------------------------------------

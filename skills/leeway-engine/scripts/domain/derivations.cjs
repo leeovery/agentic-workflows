@@ -24,12 +24,58 @@ function buildBegun(manifest) {
   return isObject(manifest.build);
 }
 
+/** The key a phase's start or close keeps its checklist under (6.4.12). @param {number} number @param {'start'|'close'} end */
+const phaseKey = (number, end) => `phase-${number}-${end}`;
+
+/** Whether the checklist of a phase's start or close has closed. @param {Record<string, any>} manifest @param {number} number @param {'start'|'close'} end */
+function phaseEnded(manifest, number, end) {
+  const record = isObject(manifest.checklists) ? manifest.checklists[phaseKey(number, end)] : undefined;
+  return isObject(record) && record.closed !== undefined;
+}
+
+/** Whether a phase of the unit has started: its start's checklist closed (6.4.8). @param {Record<string, any>} manifest @param {number} number */
+const phaseStarted = (manifest, number) => phaseEnded(manifest, number, 'start');
+
+/** Whether a phase of the unit has closed: its close's checklist closed (6.4.9). @param {Record<string, any>} manifest @param {number} number */
+const phaseClosed = (manifest, number) => phaseEnded(manifest, number, 'close');
+
+/**
+ * Whether the unit's build is through every phase of its cut, each closed —
+ * a phase not yet written never read as finished (7.4.3, 12.6.7). The
+ * review phase's fix phases, numbered past the cut, are its own (P14).
+ * @param {Record<string, any>} manifest
+ */
+function buildFinished(manifest) {
+  const phases = Array.isArray(manifest.cut?.phases) ? manifest.cut.phases : [];
+  return phases.length > 0 && phases.every((_, at) => phaseClosed(manifest, at + 1));
+}
+
+/**
+ * Whether the unit was built under the old plan: its old spec's, planning's
+ * or implementation's items standing on its manifest, which 29.17's cut
+ * takes (P12).
+ * @param {Record<string, any>} manifest
+ */
+function legacyBuild(manifest) {
+  return ['specification', 'planning', 'implementation'].some((phase) => phaseItems(manifest, phase).length > 0);
+}
+
+/**
+ * Whether the unit's build runs by its cut: begun at ready to build's yes,
+ * with nothing of the old plan standing.
+ * @param {Record<string, any>} manifest
+ */
+function buildByCut(manifest) {
+  return buildBegun(manifest) && !legacyBuild(manifest);
+}
+
 /**
  * A phase's status over its live items. The one spec a unit writes keeps no
  * items: it reads completed once its build has begun, in progress while its
  * `spec.md` is written — the state's to say, so the caller says it
- * (spec-standing.cjs) — and none before. A unit whose building began under
- * the old spec keeps that spec's items.
+ * (spec-standing.cjs) — and none before. A build by the cut is in progress
+ * until every phase of its cut has closed. A unit whose building began
+ * under the old spec keeps that spec's items, which are read alone.
  * @param {Record<string, any>} manifest @param {string} phase @param {boolean} [specWritten]
  * @returns {string|null}
  */
@@ -55,6 +101,7 @@ function phaseStatus(manifest, phase, specWritten = false) {
     if (statuses.some(s => s === 'in-progress')) return 'in-progress';
     return statuses[0];
   }
+  if (phase === 'implementation' && buildByCut(manifest)) return buildFinished(manifest) ? 'completed' : 'in-progress';
   if (phase !== 'specification') return null;
   if (buildBegun(manifest)) return 'completed';
   return specWritten ? 'in-progress' : null;
@@ -1134,6 +1181,12 @@ module.exports = {
   phaseData,
   phaseItems,
   buildBegun,
+  phaseKey,
+  phaseStarted,
+  phaseClosed,
+  buildFinished,
+  legacyBuild,
+  buildByCut,
   phaseStatus,
   UNIT_PHASES,
   unitItems,

@@ -111,7 +111,7 @@ const { withStateLock } = require('./state-worktree.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { stepOfId, parseShownTask } = require('./task-id.cjs');
 const { TRAILER } = require('./commit-task.cjs');
-const { scenariosOf } = require('./task-file.cjs');
+const { holdsScenario } = require('./task-file.cjs');
 const { trackedTask } = require('./task-verbs.cjs');
 const { isoNow } = require('./dates.cjs');
 const { VERIFY_PARTS, SETUP_PLACES, setupFaults, verifySetup } = require('./environment.cjs');
@@ -342,14 +342,6 @@ function runScenario(root, setup, scenario, keep = () => {}) {
     keep(wrote);
     return wrote;
   });
-}
-
-/**
- * Whether a task's acceptance scenarios hold a scenario, by its id.
- * @param {string} text the task's, as the tracker holds it @param {string} scenario
- */
-function holdsScenario(text, scenario) {
-  return new RegExp(`(?<![\\w.])${scenario.replace('.', '\\.')}(?!\\w)`).test(scenariosOf(text));
 }
 
 /**

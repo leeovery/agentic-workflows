@@ -264,7 +264,13 @@ describe('a second cut (E10)', () => {
   it('a phase whose start\'s checklist is open, items marked and no close, has not started; `checklist close` starts it', () => {
     const cards = { ...CARDS, relies_on: [] };
     cut([cards, REFUNDS]);
-    ok(dir, ['checklist', 'done', 'phase-start', UNIT, '1', 'tasks-written']);
+    ok(dir, ['task', 'phase', UNIT, '1', '--title', 'Cards']);
+    const task = path.join(dir, '..', 'cards-task.md');
+    fs.writeFileSync(task, [
+      '# Take a card', '', '## Type', 'feat', '', '## Problem', 'No card is taken.', '', '## Solution', 'Take one.', '',
+      '## Outcome', 'A card is taken.', '', '## Acceptance scenarios', '- 1.S1', '', '## Spec reference', '§1.1', '',
+    ].join('\n'));
+    ok(dir, ['task', 'create', UNIT, '1', '--file', task]);
     ok(dir, ['checklist', 'done', 'phase-start', UNIT, '1', 'design-settled']);
     const sooner = { ...cards, goal: 'Cards, sooner.' };
 

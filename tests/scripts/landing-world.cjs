@@ -7,7 +7,9 @@
 // commit off the branch it was cut from (`TASKS`), each in the tracker, as
 // the unit and its phases are — through the default task driver, its real
 // tool, where a test puts any other task it opens (`track`), for `land
-// open` reads a task's type and title there. A branch is made, and
+// open` reads a task's type and title there — and each passed by its pair,
+// a passing report from each reviewer, for `land chain` asks it. The unit
+// has no cut, so its phases ask no phase review of `land phase`. A branch is made, and
 // merged back onto another as Claude merges a parallel task back, with no
 // checkout touched — imported over the commit it starts from, under the
 // world's identity — so the main checkout stays as the test left it. What
@@ -41,6 +43,8 @@ const {
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
 const { parseShownTask } = require('../../skills/leeway-engine/scripts/domain/task-id.cjs');
+const { roundReportPath } = require('../../skills/leeway-engine/scripts/domain/round-report.cjs');
+const { REVIEWER_LETTERS } = require('../../skills/leeway-engine/scripts/kernel/reviewers.cjs');
 const names = require('../../skills/leeway-engine/scripts/domain/landing-names.cjs');
 
 const UNIT = 'pay';
@@ -104,7 +108,20 @@ function own(answer) {
 function track(dir, shown, type, title) {
   const ref = parseShownTask(UNIT, shown);
   TRACKER.createTask(statePath(dir), ref, { title, type, text: `${title}.` });
+  passPair(dir, ref);
   return { shown, type, title, branch: names.taskBranch(ref, type, title) };
+}
+
+/** A passing reviewer's report, as the build's reviewers write one (round-report.cjs). */
+const PASSING = '# Review\n\n## Findings\n\nNone.\n\nVerdict: pass\n';
+
+/**
+ * A task's pair passed it, as `land chain` asks: a passing report from each
+ * reviewer of the count, its first round's.
+ * @param {string} dir @param {import('../../skills/leeway-engine/scripts/domain/task-id.cjs').TaskRef} ref
+ */
+function passPair(dir, ref) {
+  for (const letter of REVIEWER_LETTERS) writeState(dir, roundReportPath(ref, 1, letter), PASSING);
 }
 
 /**

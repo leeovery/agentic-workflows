@@ -11,15 +11,16 @@
 // call and never kept or marked — the person's questions on the ledger's map
 // (6.S13), mail waiting, the unit's topics settled, the sweep run, every statement and
 // screen of `spec.md` traced, the cut against `spec.md`, the canonical
-// assets linked from `spec.md`, what a phase relies on — the review settled
-// is test-engine-spec-review-settled.cjs's; no phase's start before the
+// assets linked from `spec.md`, another unit a phase relies on — the review
+// settled is test-engine-spec-review-settled.cjs's, and a build phase's
+// checks test-engine-build-checklists.cjs's; no phase's start before the
 // build begins (11.8.3);
 // the close refused while an item is open (6.S26), and a mark from before
 // the last close never counting toward the next; finish showing every phase
-// start's and close's skips, read from the manifest by another conversation
-// (6.S32); the record as stored, `checklists.{point}` on the unit's
-// manifest; each write under the writer lock with its own state commit, and
-// every refusal writing nothing.
+// start's skips, read from the manifest by another conversation (6.S32); the
+// record as stored, `checklists.{point}` on the unit's manifest; each write
+// under the writer lock with its own state commit, and every refusal
+// writing nothing.
 //
 // Layer: verb. Worlds, each built once and copied: a project with an epic,
 // `payments`, of two topics under discussion, a "don't care" decision on
@@ -28,10 +29,10 @@
 // 1.S1 and 2.S1) and its cut written by
 // the verb, two phases, the first relying on another unit, `billing`, the
 // second on the first, its build begun; `billing`, under way; and a feature
-// of one topic, `solo`, with no cut. And the same project with three
+// of one topic, `solo`, with no cut. And the same project with two
 // checklists marked through the verbs all but one item: decided's for
-// `cards` all but `findings-rerun`, phase 1's close all but
-// `notes-consolidated`, and ready to build's all but `invariants-checked`. `show` taking no lock is
+// `cards` all but `findings-rerun`, and ready to build's all but
+// `invariants-checked`. `show` taking no lock is
 // test-engine-manifest-io.cjs's.
 // ---------------------------------------------------------------------------
 
@@ -137,7 +138,6 @@ const fresh = fixtureFrom('checklist-', project);
 const marked = fixtureFrom('checklist-marked-', (at) => {
   project(at);
   doneAll(['decided', UNIT, 'cards'], ['findings-rerun'], at);
-  doneAll(['phase-close', UNIT, '1'], ['notes-consolidated'], at);
   doneAll(['ready-to-build', UNIT], ['invariants-checked'], at);
 });
 
@@ -206,16 +206,16 @@ describe('the points of a unit\'s work, each its exact list (6.4.6–6.4.10, 6.S
         'assets-linked engine done: canonical assets linked from spec.md — one gone or no longer needed set to reference: asset status <work-unit> <path> reference',
       ],
       start: [
-        'tasks-written claude open: tasks written with their links',
+        'tasks-written engine open: tasks written with their links',
         'design-settled claude open: shared design settled',
-        'relies-on-done engine open: what the phase relies on is done',
+        'relies-on-done engine open: what the phase relies on is done: closed, and its stack merged',
       ],
       close: [
-        `tasks-passed claude open: every task passed each of its ${REVIEWERS} reviewers`,
-        'phase-review-passed claude open: the phase review passed and its fixes landed',
-        'scenarios-reported claude open: each scenario proven or reported not proven',
-        'notes-consolidated claude open: the notes for later read by the consolidation agent, then made into tasks or dropped with a reason',
-        'stack-merged claude open: the stack merged, or waiting at its gate in step',
+        `tasks-passed engine open: every task passed each of its ${REVIEWERS} reviewers`,
+        'phase-review-passed engine open: the phase review passed and its fixes landed',
+        'scenarios-reported engine open: each scenario proven or reported not proven',
+        'notes-consolidated engine done: the notes for later read by the consolidation agent, then made into tasks or dropped with a reason',
+        'stack-merged engine open: the stack merged, or waiting at its gate in step',
       ],
       finish: [
         'review-passed claude open: the review phase passed and its report is written, where the unit has a review phase (a quick-fix\'s only when the person asks)',
@@ -299,31 +299,30 @@ describe('no phase starts before the build begins (11.8.1, 11.8.3, 11.S13)', () 
   });
 });
 
-describe('a phase\'s close worked in Claude\'s order (2.S2, 6.4.2, 6.4.12)', () => {
+describe('finish worked in Claude\'s order (2.S2, 6.4.2, 6.4.12)', () => {
   eachOn(fresh);
 
   it('ends each item done but the one skipped, its reason recorded, and the close recorded on the unit\'s manifest — Claude\'s marks and the close alone, each write committed alone', () => {
     const before = stateGit(dir, ['rev-parse', 'HEAD']).trim();
-    const named = ['phase-close', UNIT, '1'];
+    const named = ['finish', UNIT];
     const marks = {
-      'stack-merged': checklist(['done', ...named, 'stack-merged']),
-      'tasks-passed': checklist(['done', ...named, 'tasks-passed']),
-      'notes-consolidated': checklist(['skip', ...named, 'notes-consolidated', '--reason', 'No notes were left for later.']),
-      'scenarios-reported': checklist(['done', ...named, 'scenarios-reported']),
-      'phase-review-passed': checklist(['done', ...named, 'phase-review-passed']),
+      'records-indexed': checklist(['done', ...named, 'records-indexed']),
+      'review-passed': checklist(['done', ...named, 'review-passed']),
+      'inbox-closed': checklist(['skip', ...named, 'inbox-closed', '--reason', 'No inbox item was resolved.']),
+      'build-log-closed': checklist(['done', ...named, 'build-log-closed']),
     };
     const closing = checklist(['close', ...named]);
 
     const stored = (/** @type {any} */ { state, reason, at }) => (reason === undefined ? { state, at } : { state, reason, at });
-    assert.deepStrictEqual(records(), { 'phase-1-close': { items: Object.fromEntries(Object.entries(marks).map(([key, mark]) => [key, stored(mark)])), closed: closing.closed } });
-    assert.deepStrictEqual(marks['notes-consolidated'], {
-      ok: true, unit: UNIT, checklist: 'phase-1-close', item: 'notes-consolidated', state: 'skipped', reason: 'No notes were left for later.',
-      at: marks['notes-consolidated'].at, committed: marks['notes-consolidated'].committed,
+    assert.deepStrictEqual(records(), { finish: { items: Object.fromEntries(Object.entries(marks).map(([key, mark]) => [key, stored(mark)])), closed: closing.closed } });
+    assert.deepStrictEqual(marks['inbox-closed'], {
+      ok: true, unit: UNIT, checklist: 'finish', item: 'inbox-closed', state: 'skipped', reason: 'No inbox item was resolved.',
+      at: marks['inbox-closed'].at, committed: marks['inbox-closed'].committed,
     });
-    assert.deepStrictEqual(closing, { ok: true, unit: UNIT, checklist: 'phase-1-close', closed: closing.closed, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim() });
+    assert.deepStrictEqual(closing, { ok: true, unit: UNIT, checklist: 'finish', closed: closing.closed, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim() });
     assert.deepStrictEqual(stateGit(dir, ['log', '--reverse', '--format=%s', `${before}..HEAD`]).trim().split('\n'), [
-      ...Object.entries(marks).map(([key, { state }]) => `checklist(${UNIT}): phase-1-close ${key} ${state}`),
-      `checklist(${UNIT}): phase-1-close closed`,
+      ...Object.entries(marks).map(([key, { state }]) => `checklist(${UNIT}): finish ${key} ${state}`),
+      `checklist(${UNIT}): finish closed`,
     ]);
     assert.deepStrictEqual([...new Set(stateGit(dir, ['log', '--format=', '--name-only', `${before}..HEAD`]).trim().split('\n'))], [layout.manifest(UNIT)]);
   });
@@ -337,9 +336,9 @@ describe('a phase\'s close worked in Claude\'s order (2.S2, 6.4.2, 6.4.12)', () 
       fs.unlinkSync(lock);
     });
 
-    checklist(['done', 'phase-close', UNIT, '1', 'tasks-passed']);
+    checklist(['done', 'finish', UNIT, 'records-indexed']);
 
-    assert.deepStrictEqual([attempts, whileHeld, Object.keys(records()['phase-1-close'].items)], [['taken', 'made'], [undefined], ['tasks-passed']]);
+    assert.deepStrictEqual([attempts, whileHeld, Object.keys(records().finish.items)], [['taken', 'made'], [undefined], ['records-indexed']]);
   });
 });
 
@@ -476,16 +475,14 @@ describe('the engine\'s own items, worked out at each call (6.4.3)', () => {
     assert.match(ok(dir, ['checklist', 'show', 'ready-to-build', UNIT]).items.find((/** @type {{key: string}} */ item) => item.key === 'assets-linked').text, /set to reference: asset status <work-unit> <path> reference$/);
   });
 
-  it('reads what a phase relies on as done once an earlier phase\'s close is recorded and another unit is completed, never cancelled (12.6.3)', () => {
-    const relied = (/** @type {string} */ number) => itemState('relies-on-done', 'phase-start', UNIT, number);
-    const before = [relied('1'), relied('2')];
-    checklist(['done', 'phase-close', UNIT, '1', 'notes-consolidated']);
-    checklist(['close', 'phase-close', UNIT, '1']);
+  it('reads another unit a phase relies on as done once that unit is completed, never cancelled (12.6.2)', () => {
+    const relied = () => itemState('relies-on-done', 'phase-start', UNIT, '1');
+    const before = relied();
     createManifest(dir, 'billing', { status: 'cancelled' });
-    const cancelled = relied('1');
+    const cancelled = relied();
     createManifest(dir, 'billing', { status: 'completed' });
 
-    assert.deepStrictEqual([before, cancelled, [relied('1'), relied('2')]], [['open', 'open'], 'open', ['done', 'done']]);
+    assert.deepStrictEqual([before, cancelled, relied()], ['open', 'open', 'done']);
   });
 
   it('refuses to mark or skip an engine item, and keeps none in the record however it reads', () => {
@@ -544,35 +541,28 @@ describe('skips (6.4.2, 6.4.5)', () => {
     assert.strictEqual(refused(['skip', 'finish', UNIT, 'inbox-closed', '--reason', ' ']), 'checklist skip: a skip records its reason — --reason "<text>"');
   });
 
-  it('decided\'s gate shows its own skips; a phase\'s start and close show none of theirs', () => {
+  it('decided\'s gate shows its own skips; a phase\'s start shows none of its own', () => {
     checklist(['skip', 'decided', UNIT, 'cards', 'findings-rerun', '--reason', 'No finding was measured.']);
-    checklist(['skip', 'phase-close', UNIT, '1', 'notes-consolidated', '--reason', 'No notes were left for later.']);
+    checklist(['skip', 'phase-start', UNIT, '2', 'design-settled', '--reason', 'Nothing shared.']);
     const { at } = records().decided.cards.items['findings-rerun'];
 
-    assert.deepStrictEqual([show('decided', UNIT, 'cards').skips, show('phase-close', UNIT, '1').skips], [
+    assert.deepStrictEqual([show('decided', UNIT, 'cards').skips, show('phase-start', UNIT, '2').skips], [
       [{ checklist: 'decided.cards', item: 'findings-rerun', text: 'each measured finding the topic\'s decisions rest on re-run', reason: 'No finding was measured.', at }],
       [],
     ]);
   });
 
-  it('finish shows every phase start\'s and close\'s skips, then its own, read from the unit\'s manifest by a later conversation (6.S32)', () => {
-    createManifest(dir, 'billing', { status: 'completed' });
-    checklist(['skip', 'phase-start', UNIT, '1', 'design-settled', '--reason', 'Nothing shared.']);
-    checklist(['done', 'phase-start', UNIT, '1', 'tasks-written']);
-    checklist(['close', 'phase-start', UNIT, '1']);
-    checklist(['skip', 'phase-close', UNIT, '1', 'notes-consolidated', '--reason', 'No notes were left for later.']);
-    checklist(['close', 'phase-close', UNIT, '1']);
+  it('finish shows every phase start\'s skips, in the cut\'s order, then its own, read from the unit\'s manifest by a later conversation (6.S32)', () => {
+    checklist(['skip', 'phase-start', UNIT, '2', 'design-settled', '--reason', 'Nothing shared.']);
     checklist(['skip', 'finish', UNIT, 'records-indexed', '--reason', 'Indexed at the last phase.']);
+    checklist(['skip', 'phase-start', UNIT, '1', 'design-settled', '--reason', 'One task alone.']);
     const at = (/** @type {string} */ key, /** @type {string} */ item) => records()[key].items[item].at;
 
     const later = checklist(['show', 'finish', UNIT], { CLAUDE_CODE_SESSION_ID: 'session-2' });
 
     assert.deepStrictEqual(later.skips, [
-      { checklist: 'phase-1-start', item: 'design-settled', text: 'shared design settled', reason: 'Nothing shared.', at: at('phase-1-start', 'design-settled') },
-      {
-        checklist: 'phase-1-close', item: 'notes-consolidated', text: 'the notes for later read by the consolidation agent, then made into tasks or dropped with a reason',
-        reason: 'No notes were left for later.', at: at('phase-1-close', 'notes-consolidated'),
-      },
+      { checklist: 'phase-1-start', item: 'design-settled', text: 'shared design settled', reason: 'One task alone.', at: at('phase-1-start', 'design-settled') },
+      { checklist: 'phase-2-start', item: 'design-settled', text: 'shared design settled', reason: 'Nothing shared.', at: at('phase-2-start', 'design-settled') },
       { checklist: 'finish', item: 'records-indexed', text: 'the records indexed', reason: 'Indexed at the last phase.', at: at('finish', 'records-indexed') },
     ]);
   });

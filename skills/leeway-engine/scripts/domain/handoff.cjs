@@ -120,22 +120,41 @@ function at(place, name = null) {
   return name === null ? place : `${place} · ${name}`;
 }
 
+/** The phase's row of the entry, where it has one. @param {string} phase */
+function entryOf(phase) {
+  // Required here: the entry's rows reach this module through the position.
+  const { ENTRIES } = require('./enter.cjs');
+  return ENTRIES[phase];
+}
+
 /**
- * Whether the phase is entered at the work unit, whatever its type, as its
- * row of the entry says (4.11.2).
+ * Whether every unit is entered at the work unit in the phase, whatever its
+ * type, as its row of the entry says (4.11.2).
  * @param {string} phase
  */
 function enteredAtUnit(phase) {
-  // Required here: the entry's rows reach this module through the position.
-  const { ENTRIES } = require('./enter.cjs');
-  return ENTRIES[phase]?.level === 'unit';
+  const entry = entryOf(phase);
+  return entry?.level === 'unit' && entry.takes === undefined;
+}
+
+/**
+ * Whether the unit is entered at the work unit in the phase: as every unit
+ * is, or as a row taking units only in a state of their own takes it — the
+ * build's, a unit whose build runs by its cut, one built under the old plan
+ * entered at its topic as before (P12).
+ * @param {string} cwd @param {string} phase @param {string} unit
+ */
+function unitEnters(cwd, phase, unit) {
+  const entry = entryOf(phase);
+  if (entry?.level !== 'unit') return false;
+  return entry.takes === undefined || entry.takes(workUnitManifest(cwd, unit));
 }
 
 /**
  * A phase's skill: the work type it serves, a work unit of that type, and,
  * where the phase is entered at a topic, the topic — a legal name, which need
  * not exist. An epic names its topic there; a single-topic unit's topic is
- * the unit itself. A phase entered at the unit takes no topic.
+ * the unit itself. A unit entered at the unit names no topic.
  * @param {string} phase @returns {Target}
  */
 function phaseTarget(phase) {
@@ -145,9 +164,11 @@ function phaseTarget(phase) {
     get counts() { return enteredAtUnit(phase) ? [2] : [2, 3]; },
     check: (cwd, [type, unit, topic]) => {
       assertOneOf('the work type', type, served);
-      if (type === 'epic' && topic === undefined && !enteredAtUnit(phase)) throw new Error(`an epic enters ${phase} at a topic`);
+      if (type === 'epic' && topic === undefined && !unitEnters(cwd, phase, unit)) throw new Error(`an epic enters ${phase} at a topic`);
       assertWorkUnit(cwd, unit, type);
-      if (topic !== undefined) assertLegalName('topic', topic);
+      if (topic === undefined) return;
+      if (unitEnters(cwd, phase, unit)) throw new Error(`${unit} enters ${phase} at the work unit — name no topic`);
+      assertLegalName('topic', topic);
     },
     where: (cwd, [, unit, topic]) => at(titlecase(phase), topic === undefined ? unit : itemName(topicTitles(loadWorkUnitManifest(cwd, unit)), phase, topic)),
   };

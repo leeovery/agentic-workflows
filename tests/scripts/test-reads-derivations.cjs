@@ -421,14 +421,21 @@ describe('reads + derivations', () => {
       assert.strictEqual(r.next_phase, 'implementation');
     });
 
-    it('returns planning when the old spec\'s item completed — a unit whose building began under it keeps its plan', () => {
-      const r = computeNextPhase({ name: 'test', work_type: 'feature', phases: { specification: { items: { test: { status: 'completed' } } } } });
-      assert.strictEqual(r.next_phase, 'planning');
+    it('returns planning when the old spec\'s item completed — a unit whose building began under it keeps its plan, a build begun on it never read by the cut (P12)', () => {
+      const kept = (/** @type {Record<string, unknown>} */ more) => computeNextPhase({ name: 'test', work_type: 'feature', phases: { specification: { items: { test: { status: 'completed' } } } }, ...more }).next_phase;
+      assert.deepStrictEqual([kept({}), kept({ build: { position: 'step' } })], ['planning', 'planning']);
     });
 
-    it('returns implementation once ready to build\'s yes began the build, whatever the work type that writes a spec (E6)', () => {
-      const built = (/** @type {string} */ type) => computeNextPhase({ name: 'test', work_type: type, phases: {}, build: { position: 'step' } });
-      assert.deepStrictEqual(['feature', 'epic', 'bugfix'].map(built), ['feature', 'epic', 'bugfix'].map(() => ({ next_phase: 'implementation', phase_label: 'ready for implementation' })));
+    it('returns implementation in progress once ready to build\'s yes began the build, whatever the work type that writes a spec, until every phase of the cut has closed, then review (E6, 12.6.7)', () => {
+      const cut = { phases: [{ name: 'One' }, { name: 'Two' }] };
+      const closed = (/** @type {number[]} */ phases) => Object.fromEntries(phases.map((phase) => [`phase-${phase}-close`, { items: {}, closed: '2026-11-01T00:00:00.000Z' }]));
+      const built = (/** @type {number[]} */ phases) => (/** @type {string} */ type) => computeNextPhase({ name: 'test', work_type: type, phases: {}, build: { position: 'step' }, cut, checklists: closed(phases) });
+      const types = ['feature', 'epic', 'bugfix'];
+      assert.deepStrictEqual([types.map(built([])), types.map(built([1])), types.map(built([1, 2]))], [
+        types.map(() => ({ next_phase: 'implementation', phase_label: 'implementation (in-progress)' })),
+        types.map(() => ({ next_phase: 'implementation', phase_label: 'implementation (in-progress)' })),
+        types.map(() => ({ next_phase: 'review', phase_label: 'ready for review' })),
+      ]);
     });
 
     it('returns specification when discussion completed', () => {

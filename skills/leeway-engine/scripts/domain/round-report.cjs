@@ -54,7 +54,9 @@
 // the letters it holds, and the last, the round under review, by the
 // count's. Its rounds run from 1 with none missing, each holding a
 // reviewer's report and the last every one of the count's; a round passes where each of its reports passes, and
-// the task's verdict is its last round's. A report that does not read, or
+// the task's verdict is its last round's. A task has passed its pair once
+// its last round passed or the orchestrator settled it — what its account,
+// its phase's close and `land chain` all read (13.4.6). A report that does not read, or
 // a round missing one, refuses every read of the task's rounds, naming it.
 // The round under review is read from them too, never from a conversation:
 // the last round where a report of it is still to be written or does not
@@ -240,6 +242,19 @@ function taskRounds(cwd, ref, letters = REVIEWER_LETTERS) {
   return Array.from({ length: last }, (_, at) => readRound(cwd, ref, at + 1, held, at + 1 === last ? letters : lettersHeld(held, at + 1)));
 }
 
+/** Whether a round ends the task's review: every reviewer of it passed the task, or the orchestrator settled it (13.4.6). @param {Round} round */
+const pairPassed = (round) => round.passes || round.settled;
+
+/**
+ * Whether a task passed its pair, by its last round (`pairPassed`); not
+ * where no round is reported. Refused as `taskRounds` refuses.
+ * @param {string} cwd @param {TaskRef} ref @param {readonly string[]} [letters] the count's
+ */
+function taskPassed(cwd, ref, letters = REVIEWER_LETTERS) {
+  const last = taskRounds(cwd, ref, letters).at(-1);
+  return last !== undefined && pairPassed(last);
+}
+
 /** The names of the files a task's folder holds. @param {string} cwd @param {TaskRef} ref @returns {Set<string>} */
 function heldFiles(cwd, ref) {
   const folder = statePath(cwd, taskFolder(ref));
@@ -284,5 +299,5 @@ function roundUnderReview(cwd, ref, letters = REVIEWER_LETTERS) {
 }
 
 module.exports = {
-  passes, readReport, reportFaults, taskFolder, roundReportPath, settlementPath, taskRounds, roundUnderReview, phaseReviewPath,
+  passes, readReport, reportFaults, taskFolder, roundReportPath, settlementPath, taskRounds, pairPassed, taskPassed, roundUnderReview, phaseReviewPath,
 };
