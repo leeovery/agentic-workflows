@@ -14,7 +14,8 @@
 // against and the task in flight it ran for (15.S4, 15.S7, 4.S28); and
 // `runsOf` reads what a scenario's runs prove, whatever their numbers — the
 // latest that was not skipped deciding, or against a head the nearest of the
-// runs at it or before it (15.S6). `verify mutants` is
+// runs at it or before it in every repository both name, a clone nested in
+// the project among them (15.S6, 12.7.10). `verify mutants` is
 // test-engine-verify-mutants.cjs's;
 // that a run's file refuses Claude's write is the layout hook's suite's
 // (6.2.3).
@@ -242,10 +243,14 @@ describe('verify run: a scenario run and its run recorded (15.4.1, 15.4.2, 15.4.
     assert.strictEqual(JSON.parse(readState(dir, layout.run(UNIT, '1.S1', '001'))).verdict, 'fail');
   });
 
-  it('15.S6: a drive whose criterion\'s tests were skipped records skipped, and the scenario reads named, not run at the checkout\'s HEAD — a pass at code it does not hold counting for nothing', () => {
+  it('15.S6, 12.7.10: a drive whose criterion\'s tests were skipped records skipped, and the scenario reads named, not run at the commits it ran at — a pass at code it does not hold counting for nothing, though it differs only in a nested clone', () => {
     steering(dir, 'verdict', 'skipped\n');
-    const elsewhere = git(dir, ['commit-tree', 'HEAD^{tree}', '-p', 'HEAD', '-m', 'another builder\'s work']).trim();
-    writeState(dir, layout.run(UNIT, '1.S1', '001'), JSON.stringify({ verdict: 'pass', unfixed: false, at: '2026-11-01T00:00:00Z', commits: [{ repo: '.', commit: elsewhere }] }));
+    const lib = initRepo(path.join(dir, 'lib'));
+    git(lib, ['commit', '-q', '--allow-empty', '-m', 'the library']);
+    const elsewhere = git(lib, ['commit-tree', 'HEAD^{tree}', '-p', 'HEAD', '-m', 'another builder\'s work']).trim();
+    writeState(dir, layout.run(UNIT, '1.S1', '001'), JSON.stringify({
+      verdict: 'pass', unfixed: false, at: '2026-11-01T00:00:00Z', commits: [{ repo: '.', commit: codeHead(dir) }, { repo: 'lib', commit: elsewhere }],
+    }));
     stateGit(dir, ['add', '-A']);
     stateGit(dir, ['commit', '-qm', 'a run at another builder\'s code']);
 
@@ -412,47 +417,74 @@ describe('runsOf: what a scenario\'s runs prove (15.3.5, 15.4.3)', () => {
     assert.deepStrictEqual(runsOf(dir, UNIT, '1.S1').runs.map(({ file, verdict }) => [file, verdict]), [[layout.run(UNIT, '1.S1', '003'), 'fail'], [layout.run(UNIT, '1.S1', '007'), 'pass']]);
   });
 
-  describe('read against a head, the project\'s commit to judge', () => {
-    /** @type {{base: string, merged: string, after: string, branched: string}} */ let code;
+  describe('read against a head, the code to judge in every repository it names', () => {
+    /**
+     * Each repository's commits by name: the project's own, `P0` to `P3`,
+     * and a clone nested in it, `lib`, `L0` to `L3`, each a line from its
+     * first; `Pb` and `Lb` each a branch off its first, as a builder cut
+     * before the line moved on.
+     * @type {Record<string, string>}
+     */ let at;
     beforeEach(() => {
-      const child = (/** @type {string} */ parent, /** @type {string} */ message) => git(dir, ['commit-tree', `${parent}^{tree}`, '-p', parent, '-m', message]).trim();
-      const base = codeHead(dir);
-      const merged = child(base, '1.1, merged');
-      code = { base, merged, after: child(merged, 'later'), branched: child(base, '1.2, branched before 1.1 merged') };
+      const lib = initRepo(path.join(dir, 'lib'));
+      git(lib, ['commit', '-q', '--allow-empty', '-m', 'the library']);
+      const child = (/** @type {string} */ repo, /** @type {string} */ parent, /** @type {string} */ name) => git(repo, ['commit-tree', `${parent}^{tree}`, '-p', parent, '-m', name]).trim();
+      at = { P0: codeHead(dir), L0: codeHead(lib) };
+      for (const [repo, line] of /** @type {Array<[string, string]>} */ ([[dir, 'P'], [lib, 'L']])) {
+        for (const n of [1, 2, 3]) at[`${line}${n}`] = child(repo, at[`${line}${n - 1}`], `${line}${n}`);
+        at[`${line}b`] = child(repo, at[`${line}0`], `${line}b`);
+      }
     });
 
+    /** Code as a run or a head names it, `.` the project's own repository. @param {Record<string, string>} commits */
+    const code = (commits) => Object.entries(commits).map(([repo, name]) => ({ repo, commit: at[name] ?? name }));
+
     /**
-     * Runs of 1.S1 written, each `[verdict, commit, day]`, numbered in order;
-     * then what they prove against `head`, and the runs that count.
-     * @param {Array<[string, string, number]>} runs @param {string} [head]
+     * Runs of 1.S1 written, each `[verdict, its code, day]`, numbered in
+     * order; then what they prove against `head`, and the runs that count.
+     * @param {Array<[string, Record<string, string>, number]>} runs @param {Record<string, string>} [head]
      */
     function against(runs, head) {
       fs.rmSync(statePath(dir, layout.run(UNIT, '1.S1')), { recursive: true, force: true });
-      runs.forEach(([verdict, commit, day], i) => writeState(dir, layout.run(UNIT, '1.S1', String(i + 1).padStart(3, '0')),
-        JSON.stringify({ verdict, unfixed: false, at: `2026-11-0${day}T00:00:00Z`, commits: [{ repo: '.', commit }] })));
-      const { standing, runs: counted } = runsOf(dir, UNIT, '1.S1', head);
+      runs.forEach(([verdict, commits, day], i) => writeState(dir, layout.run(UNIT, '1.S1', String(i + 1).padStart(3, '0')),
+        JSON.stringify({ verdict, unfixed: false, at: `2026-11-0${day}T00:00:00Z`, commits: code(commits) })));
+      const { standing, runs: counted } = runsOf(dir, UNIT, '1.S1', head === undefined ? undefined : code(head));
       return [standing, counted.map(({ file }) => path.basename(file))];
     }
 
-    it('side by side: 1.1\'s merged regression fails at the phase\'s HEAD, then 1.2\'s builder, branched before it, passes at older code — against the HEAD the regression stands; without a head the later pass reads proven', () => {
-      const runs = /** @type {Array<[string, string, number]>} */ ([['fail', code.merged, 1], ['pass', code.base, 2], ['pass', code.branched, 3]]);
+    it('12.7.10: side by side in a clone, the project\'s commit never moving — 1.1\'s merged regression fails at the merged tips, then 1.2\'s builder, branched before it landed, passes at older code: against the merged tips the regression stands; without a head the later pass reads proven', () => {
+      const runs = /** @type {Array<[string, Record<string, string>, number]>} */ ([
+        ['fail', { '.': 'P0', lib: 'L1' }, 1], ['pass', { '.': 'P0', lib: 'L0' }, 2], ['pass', { '.': 'P0', lib: 'Lb' }, 3],
+      ]);
 
-      assert.deepStrictEqual([against(runs, code.merged), against(runs, code.branched), against(runs)], [
+      assert.deepStrictEqual([against(runs, { '.': 'P0', lib: 'L1' }), against(runs, { '.': 'P0', lib: 'Lb' }), against(runs)], [
         ['not proven', ['run-001.json', 'run-002.json']],
         ['proven', ['run-002.json', 'run-003.json']],
         ['proven', ['run-001.json', 'run-002.json', 'run-003.json']],
       ]);
     });
 
-    it('the runs at the commit nearest the head decide, skipped ones passed over, the latest of them by when they were recorded; named, not run where every run counted was skipped; not proven where none reached the head', () => {
+    it('a repository only one side names decides nothing — the head\'s clone the run never named, nor a repository only the run names, at a commit the project holds nowhere', () => {
+      assert.deepStrictEqual(against([['pass', { '.': 'P1', ext: 'f'.repeat(40) }, 1]], { '.': 'P2', lib: 'L1' }), ['proven', ['run-001.json']]);
+    });
+
+    it('the runs nearest the head decide, the commits between summed over the repositories both name — however one repository alone would order them — then the latest by when they were recorded', () => {
+      const head = { '.': 'P3', lib: 'L3' };
       assert.deepStrictEqual([
-        against([['pass', code.base, 3], ['fail', code.merged, 1], ['skipped', code.after, 2]], code.after)[0],
-        against([['fail', code.merged, 2], ['pass', code.merged, 1]], code.after)[0],
-        against([['pass', code.merged, 2], ['fail', code.merged, 1]], code.after)[0],
-        against([['skipped', code.merged, 1], ['pass', code.branched, 2]], code.after)[0],
-        against([['pass', code.merged, 1]], code.base)[0],
-      ], ['not proven', 'not proven', 'proven', 'named, not run', 'not proven']);
+        against([['pass', { '.': 'P2', lib: 'L2' }, 1], ['fail', { '.': 'P3', lib: 'L0' }, 2]], head)[0],
+        against([['pass', { '.': 'P2', lib: 'L2' }, 1], ['fail', { '.': 'P0', lib: 'L3' }, 2]], head)[0],
+        against([['fail', { '.': 'P2', lib: 'L2' }, 1], ['pass', { '.': 'P3', lib: 'L1' }, 2]], head)[0],
+        against([['pass', { '.': 'P2', lib: 'L2' }, 1], ['fail', { '.': 'P3', lib: 'L1' }, 2]], head)[0],
+      ], ['proven', 'proven', 'proven', 'not proven']);
+    });
+
+    it('skipped runs are passed over; named, not run where every run counted was skipped; not proven where none reached the head, in any repository', () => {
+      const head = { '.': 'P3', lib: 'L3' };
+      assert.deepStrictEqual([
+        against([['pass', { '.': 'P0', lib: 'L0' }, 3], ['fail', { '.': 'P1', lib: 'L1' }, 1], ['skipped', head, 2]], head)[0],
+        against([['skipped', { '.': 'P1', lib: 'L1' }, 1], ['pass', { '.': 'Pb', lib: 'L1' }, 2], ['pass', { '.': 'P1', lib: 'Lb' }, 3]], head)[0],
+        against([['pass', { '.': 'P1', lib: 'L1' }, 1]], { '.': 'P0', lib: 'L3' })[0],
+      ], ['not proven', 'named, not run', 'not proven']);
     });
   });
 });
-

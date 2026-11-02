@@ -31,12 +31,16 @@
 // ordered by when they were recorded, a tie by their numbers.
 //
 // `runsOf` answers what a scenario's runs of the change prove (15.3.5,
-// 15.4.3). Given a head — the project's own repository's commit to judge
-// against — only the runs whose project commit is the head or an ancestor of
-// it count, since builders side by side run one scenario at different code;
-// among those not skipped, the runs at the commit nearest the head decide,
-// the latest of them, a tie by number. Without a head every run counts and
-// the latest not skipped decides, a standing tied to no code. The run that
+// 15.4.3). Given a head — the code to judge against, the commit of each
+// repository it names, as a run names its own — only the runs at that code
+// or before it count, since builders side by side run one scenario at
+// different code, in whichever repository the work is (12.7.10): a run
+// counts where, in every repository both name, its commit is the head's or
+// an ancestor of it there, a repository only one names deciding nothing
+// (`behindHead`). Among those not skipped, the runs nearest the head decide
+// — the fewest commits between them, summed over those repositories — the
+// latest of them, a tie by number. Without a head every run counts and the
+// latest not skipped decides, a standing tied to no code. The run that
 // decides makes it proven where it passed, so a regression after a pass
 // reads not proven; named, not run where every run counted was skipped; not
 // proven otherwise, a scenario with none among them.
@@ -120,27 +124,38 @@ function readRuns(cwd, unit, scenario) {
 }
 
 /**
- * How many commits a run's project commit lies behind `head` in the code at
- * `root`, or null where it is neither the head nor an ancestor of it.
- * @param {string} root @param {Run} run @param {string} head @returns {number|null}
+ * How far the code `commits` names lies behind the code `head` names, in the
+ * project whose code root is `root`: the commits between them, summed over
+ * the repositories both name — one only one of them names deciding nothing —
+ * or null where, in one of those, its commit is neither the head's nor an
+ * ancestor of it. A null commit, a repository before its first, is behind
+ * only a null.
+ * @param {string} root @param {RepoCommit[]} commits @param {RepoCommit[]} head @returns {number|null}
  */
-function behind(root, run, head) {
-  const commit = run.commits.find(({ repo }) => repo === '.')?.commit ?? null;
-  if (commit === null || tryGit(root, ['merge-base', '--is-ancestor', commit, head]) === null) return null;
-  return Number(tryGit(root, ['rev-list', '--count', `${commit}..${head}`]));
+function behindHead(root, commits, head) {
+  let distance = 0;
+  for (const { repo, commit } of head) {
+    const ran = commits.find((named) => named.repo === repo);
+    if (ran === undefined || ran.commit === commit) continue;
+    if (ran.commit === null || commit === null) return null;
+    const at = path.join(root, repo);
+    if (tryGit(at, ['merge-base', '--is-ancestor', ran.commit, commit]) === null) return null;
+    distance += Number(tryGit(at, ['rev-list', '--count', `${ran.commit}..${commit}`]));
+  }
+  return distance;
 }
 
 /**
  * What a scenario's runs of the change prove, and the runs that count: at the
  * head or before it, where a head is given.
- * @param {string} cwd @param {string} unit @param {string} scenario @param {string} [head]
+ * @param {string} cwd @param {string} unit @param {string} scenario @param {RepoCommit[]} [head]
  * @returns {{standing: Standing, runs: (Run & {file: string})[]}}
  */
 function runsOf(cwd, unit, scenario, head) {
   const all = readRuns(cwd, unit, scenario).filter((run) => !run.unfixed);
   const root = head === undefined ? '' : codeRoot(cwd);
   const counted = all.flatMap((run) => {
-    const distance = head === undefined ? 0 : behind(root, run, head);
+    const distance = head === undefined ? 0 : behindHead(root, run.commits, head);
     return distance === null ? [] : [{ run, distance }];
   });
   const runs = counted.map(({ run }) => run);
@@ -150,4 +165,4 @@ function runsOf(cwd, unit, scenario, head) {
   return { standing: nearest[nearest.length - 1].run.verdict === 'pass' ? 'proven' : 'not proven', runs };
 }
 
-module.exports = { VERDICTS, SCENARIO, runsRel, recordRun, recordingPath, readRuns, runsOf };
+module.exports = { VERDICTS, SCENARIO, runsRel, recordRun, recordingPath, readRuns, behindHead, runsOf };

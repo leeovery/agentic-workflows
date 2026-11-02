@@ -32,7 +32,8 @@
 //   else the one task of the unit in flight there, a builder's commands
 //   carrying its conversation's id, and none where there is none, or
 //   several. It is committed alone under the writer lock, pushed, and
-//   answers what the scenario's runs now prove at the checkout's HEAD.
+//   answers what the scenario's runs now prove at the commits it ran at, the
+//   checkout's HEAD in each of its repositories.
 // - `verify setup <unit> --file <setup.json> --scenario <scenario>` records
 //   the verify setup on the project manifest, `environment.verify` (15.2.11,
 //   22.5.12): its place and the feature map's in the product's code, its five
@@ -62,10 +63,12 @@
 //   absolute one made relative to the project's root. The verb answers those
 //   on a line the phase changed (15.6.6). It writes nothing of the state or
 //   the code: what survived is left in the unit's cache, `.cache/{unit}/
-//   build/mutants/phase-{N}/{head}.json`, keyed by the project's commit it
-//   ran at, where the phase review's brief reads it for its HEAD
-//   (`cachedSurvivors`, brief-records.cjs), so the tool runs once a review,
-//   outside any lock, from the checkout holding the phase's commits.
+//   build/mutants/phase-{N}/{key}.json`, `{commits, survivors}` — `commits`
+//   each repository of the checkout with the HEAD it ran at, as a run names
+//   them, `key` their hash — where the phase review's brief reads it for the
+//   phase's tip in each repository holding its work (`cachedSurvivors`,
+//   brief-records.cjs), so the tool runs once a review, outside any lock,
+//   from a checkout at those tips.
 //
 // Each refuses, opening on its command and recording nothing: a unit the
 // project lacks; no verify setup recorded, naming `verify setup`, for the
@@ -107,7 +110,7 @@ const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('.
 const { stepOfId } = require('./task-id.cjs');
 const { isoNow } = require('./dates.cjs');
 const { VERIFY_PARTS, SETUP_PLACES, setupFaults, verifySetup } = require('./environment.cjs');
-const { VERDICTS, SCENARIO, recordRun, recordingPath, runsOf } = require('./runs.cjs');
+const { VERDICTS, SCENARIO, recordRun, recordingPath, behindHead, runsOf } = require('./runs.cjs');
 const { folding } = require('./layout.cjs');
 const { filled, refusing } = require('./staged-payload.cjs');
 
@@ -117,6 +120,7 @@ const { filled, refusing } = require('./staged-payload.cjs');
 /** @typedef {import('./runs.cjs').Evidence} Evidence */
 /** @typedef {import('./runs.cjs').Recording} Recording */
 /** @typedef {import('./runs.cjs').RepoCommit} RepoCommit */
+/** @typedef {import('../kernel/repos.cjs').Repo} Repo */
 /** @typedef {import('../kernel/shell-command.cjs').CommandRun} CommandRun */
 /** @typedef {(typeof VERIFY_PARTS)[number]} Part */
 /** @typedef {{part: string, exit: number, tail: string[]}} PartFailure */
@@ -175,16 +179,18 @@ function assertCutScenario(manifest, unit, scenario) {
 /** The files the checkout at `root` holds not committed, tracked or untracked and not ignored, in every repository. @param {string} root */
 const uncommitted = (root) => codeStatus(root).files.map((file) => file.path);
 
+/** Each repository with its HEAD, null before its first commit. @param {Repo[]} repos @returns {RepoCommit[]} */
+const headsOf = (repos) => repos.map((repo) => ({ repo: repoName(repo), commit: tryGit(repo.path, ['rev-parse', '-q', '--verify', 'HEAD'])?.trim() ?? null }));
+
 /**
- * Each repository of the checkout at `root` with its HEAD — null before its
- * first commit — refused where any holds an uncommitted change: a run proves
- * committed code.
+ * Each repository of the checkout at `root` with its HEAD, refused where any
+ * holds an uncommitted change: a run proves committed code.
  * @param {string} root @returns {RepoCommit[]}
  */
 function cleanCommits(root) {
   const dirty = uncommitted(root);
   if (dirty.length > 0) throw new Error(`the checkout at ${root} holds changes not committed — ${dirty.join(', ')} — a run proves committed code. ${LEFT_BEHIND}`);
-  return projectRepos(root).map((repo) => ({ repo: repoName(repo), commit: tryGit(repo.path, ['rev-parse', '-q', '--verify', 'HEAD'])?.trim() ?? null }));
+  return headsOf(projectRepos(root));
 }
 
 /**
@@ -385,9 +391,8 @@ function verifyScenario(cwd, unit, scenario) {
     });
     return { rel: recorded, outcome: commitStateTail(cwd, recorded, `verify(${unit}): ${scenario} ${verdict}`, warnings) };
   });
-  const head = commits.find(({ repo }) => repo === '.')?.commit ?? undefined;
   /** @type {Record<string, unknown>} */
-  const result = { unit, scenario, verdict, run: rel, standing: runsOf(cwd, unit, scenario, head).standing, committed: outcome.committed };
+  const result = { unit, scenario, verdict, run: rel, standing: runsOf(cwd, unit, scenario, commits).standing, committed: outcome.committed };
   if (warnings.length > 0) result.warnings = warnings;
   noteCommitOutcome(result, outcome, `${unit} --state`);
   return result;
@@ -495,7 +500,7 @@ function recordSetup(cwd, unit, file, scenario) {
 /**
  * A repository's commits naming a task of the phase in their trailer, oldest
  * first, each with the paths it touched, a submodule's pointer left out.
- * @param {import('../kernel/repos.cjs').Repo} repo @param {string} unit @param {number} phase
+ * @param {Repo} repo @param {string} unit @param {number} phase
  * @returns {{sha: string, paths: string[]}[]}
  */
 function phaseCommits(repo, unit, phase) {
@@ -530,13 +535,13 @@ function changedLines(cwd, base, file) {
 }
 
 /**
- * The lines phase `phase` changed, in every repository of the checkout at
- * `root`, each file named from the project's root.
- * @param {string} root @param {string} unit @param {number} phase
+ * The lines phase `phase` changed, in every repository of a checkout, each
+ * file named from the project's root.
+ * @param {Repo[]} repos @param {string} unit @param {number} phase
  * @returns {Changed[]}
  */
-function phaseChanges(root, unit, phase) {
-  return projectRepos(root).flatMap((repo) => {
+function phaseChanges(repos, unit, phase) {
+  return repos.flatMap((repo) => {
     const commits = phaseCommits(repo, unit, phase);
     if (commits.length === 0) return [];
     const base = parentOrEmptyTree(repo.path, commits[0].sha);
@@ -612,7 +617,8 @@ function verifyMutants(cwd, unit, given) {
   const { mutation } = recordedSetup(cwd, unit);
   if (mutation === undefined) throw new Error(NO_TOOL);
   const root = codeRoot(cwd);
-  const changed = phaseChanges(root, unit, phase);
+  const repos = projectRepos(root);
+  const changed = phaseChanges(repos, unit, phase);
   if (changed.length === 0) throw new Error(`no commit of phase ${phase} of ${unit} changes a line in the checkout at ${root} — run it from the checkout holding the phase's work`);
   const ran = inRunFolder((run) => {
     const listing = path.join(run, 'changed.json');
@@ -620,33 +626,45 @@ function verifyMutants(cwd, unit, given) {
     return survivorsIn(run, runShellCommand(root, mutation, { LEEWAY_RUN: run, LEEWAY_CHANGED: listing }));
   });
   const survivors = onChangedLines(root, changed, ran);
-  const head = git(root, ['rev-parse', 'HEAD']).trim();
-  const cached = statePath(cwd, mutantsRel(unit, phase, head));
+  const commits = headsOf(repos);
+  const cached = statePath(cwd, mutantsRel(unit, phase), `${mutantsKey(commits)}.json`);
   fs.mkdirSync(path.dirname(cached), { recursive: true });
-  writeJsonAtomic(cached, { head, survivors });
+  writeJsonAtomic(cached, { commits, survivors });
   return { unit, phase, survivors };
 }
 
 const NO_TOOL = 'the verify setup names no mutation tool — where the language has none, each reviewer breaks the riskiest line of a criterion\'s code in a scratch worktree (15.6.5)';
 
-/** Where `verify mutants` leaves what survived for phase `phase` at the project's commit `head`, state-relative, in the unit's cache. @param {string} unit @param {number} phase @param {string} head */
-const mutantsRel = (unit, phase, head) => `.cache/${unit}/build/mutants/phase-${phase}/${head}.json`;
+/** Where `verify mutants` leaves what survived for phase `phase`, state-relative, in the unit's cache. @param {string} unit @param {number} phase */
+const mutantsRel = (unit, phase) => `.cache/${unit}/build/mutants/phase-${phase}`;
+
+/** The name of what survived at the code `commits` names: their hash, so a run at the same code replaces the last. @param {RepoCommit[]} commits */
+const mutantsKey = (commits) => crypto.createHash('sha256').update(JSON.stringify(commits)).digest('hex').slice(0, 16);
+
+/** A repository's commit, as a refusal names it. @param {RepoCommit} at */
+const commitNamed = ({ repo, commit }) => `${repo === '.' ? 'the project\'s repository' : repo} at ${commit}`;
 
 /**
  * What survived the setup's mutation tool on phase `phase` of the unit at
- * the project's commit `head`, as `verify mutants` left it; null where the
- * setup names no tool. Refused where no setup is recorded, or nothing is
- * left for that head.
- * @param {string} cwd @param {string} unit @param {number} phase @param {string} head the commit, in full
+ * the code `tips` names, the phase's tip in each repository holding its
+ * work, as `verify mutants` left it — run at those commits in each, any
+ * other repository deciding nothing (`behindHead`); null where the setup
+ * names no tool. Refused where no setup is recorded, or nothing is left for
+ * those tips.
+ * @param {string} cwd @param {string} unit @param {number} phase @param {RepoCommit[]} tips
  * @returns {Survivor[]|null}
  */
-function cachedSurvivors(cwd, unit, phase, head) {
+function cachedSurvivors(cwd, unit, phase, tips) {
   if (recordedSetup(cwd, unit).mutation === undefined) return null;
-  const file = statePath(cwd, mutantsRel(unit, phase, head));
-  if (!fs.existsSync(file)) {
-    throw new Error(`the mutation tool has not run over phase ${phase} of ${unit} at ${head} — engine verify mutants ${unit} ${phase}, run from the checkout at that HEAD, runs it`);
+  const root = codeRoot(cwd);
+  const folder = statePath(cwd, mutantsRel(unit, phase));
+  const atTips = written(folder)
+    .map((entry) => /** @type {{commits: RepoCommit[], survivors: Survivor[]}} */ (JSON.parse(fs.readFileSync(path.join(folder, entry.name), 'utf8'))))
+    .find(({ commits }) => behindHead(root, commits, tips) === 0);
+  if (atTips === undefined) {
+    throw new Error(`the mutation tool has not run over phase ${phase} of ${unit} at its tips — ${tips.map(commitNamed).join(', ')} — engine verify mutants ${unit} ${phase}, run from a checkout at those tips, runs it`);
   }
-  return JSON.parse(fs.readFileSync(file, 'utf8')).survivors;
+  return atTips.survivors;
 }
 
 /**

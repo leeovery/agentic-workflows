@@ -18,7 +18,7 @@ The engine's brief is all you are given; the conversation never reaches you. It 
 - **The spec's sections** the task cites, or the phase draws on, verbatim.
 - **The decided calls** — the unit's decisions, the builder's calls among them.
 - **The diff's range** in each repository the change touches, with its stat: read the diff itself there.
-- **For a phase, its scenarios' runs** at the phase's HEAD, and **what survived the mutation tool** over its lines, where the project has one.
+- **For a phase, its scenarios' runs** at the phase's tips, and **what survived the mutation tool** over its lines, where the project has one.
 - **The linters** — the project's.
 - **Where your report goes** — the file of your report, for this round.
 - **How a failed review is met**, **each finding's call** with the edge list, **your report's grammar**, and how comments and the workflows' own references are judged.
