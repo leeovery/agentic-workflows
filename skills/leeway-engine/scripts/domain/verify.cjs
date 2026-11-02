@@ -27,10 +27,11 @@
 //   Claude's (15.4.2); each text file whole; each recording copied into the
 //   unit's cache under its hash, the hash in the run (15.4.4); the checkout
 //   it ran in and each of its repositories' HEAD; and the task it ran for —
-//   the one task of the unit in flight in the calling conversation
-//   (conversation.cjs), a builder's commands carrying its conversation's id,
-//   and none where there is none, or several, until the task's worktree tells
-//   them apart. It is committed alone under the writer lock, pushed, and
+//   the task of the unit in flight in the calling conversation whose
+//   worktree the run is in (conversation.cjs, `taskAt`; task-worktree.cjs),
+//   else the one task of the unit in flight there, a builder's commands
+//   carrying its conversation's id, and none where there is none, or
+//   several. It is committed alone under the writer lock, pushed, and
 //   answers what the scenario's runs now prove at the checkout's HEAD.
 // - `verify setup <unit> --file <setup.json> --scenario <scenario>` records
 //   the verify setup on the project manifest, `environment.verify` (15.2.11,
@@ -94,7 +95,7 @@ const { projectRepos, projectPath, repoName } = require('../kernel/repos.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { runShellCommand, tailText } = require('../kernel/shell-command.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
-const { tasksInFlight } = require('./conversation.cjs');
+const { tasksInFlight, taskAt } = require('./conversation.cjs');
 const { codeStatus } = require('./code.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
@@ -331,13 +332,18 @@ function runScenario(root, setup, scenario, keep = () => {}) {
 }
 
 /**
- * The task a run in the calling conversation is for: the one task of the
+ * The task a run in the calling conversation is for: the task of the unit
+ * in flight there whose worktree the run is in, else the one task of the
  * unit in flight there, or null where there is none, or several.
- * @param {string} unit @returns {string|null}
+ * @param {string} root the checkout the run is in @param {string} unit
+ * @returns {string|null}
  */
-function taskOfRun(unit) {
+function taskOfRun(root, unit) {
   const session = handedSession();
-  const inFlight = session === null ? [] : tasksInFlight(session).filter((task) => task.unit === unit);
+  if (session === null) return null;
+  const here = taskAt(session, root);
+  if (here !== null && here.unit === unit) return here.task;
+  const inFlight = tasksInFlight(session).filter((task) => task.unit === unit);
   return inFlight.length === 1 ? inFlight[0].task : null;
 }
 
@@ -368,7 +374,7 @@ function verifyScenario(cwd, unit, scenario) {
       at: isoNow(),
       checkout: root,
       commits,
-      task: taskOfRun(unit),
+      task: taskOfRun(root, unit),
       evidence,
       recordings: recordings.map(({ name, sha256 }) => ({ name, sha256 })),
     });

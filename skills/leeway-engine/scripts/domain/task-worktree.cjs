@@ -19,14 +19,15 @@
 //   repositories nested in it: a submodule's branch made at the commit its
 //   holder's laid-out commit points it at, as a checkout of that commit lays
 //   it out — at the submodule's own checkout's commit where that commit
-//   points it nowhere — and a clone's at its own checkout's commit; or,
-//   where the branch is made already and no worktree has it out, checked out
-//   as it stands. A worktree of that repository already at the folder, on
-//   another branch, takes the branch as the project's own repository does. A
-//   child repository the task never changes holds the branch with nothing on
-//   it, which the landing passes over (landing.cjs); merging a parallel task
-//   back is Claude's (12.7.1), and the landing's chain lands it, so nothing
-//   here merges.
+//   points it nowhere — and a clone's at the branch it lands on
+//   (landing-git.cjs, `defaultBranch`), never its checkout, which may be on
+//   the person's own work; or, where the branch is made already and no
+//   worktree has it out, checked out as it stands. A worktree of that
+//   repository already at the folder, on another branch, takes the branch
+//   as the project's own repository does. A child repository the task never
+//   changes holds the branch with nothing on it, which the landing passes
+//   over (landing.cjs); merging a parallel task back is Claude's (12.7.1),
+//   and the landing's chain lands it, so nothing here merges.
 // - The worktree is recorded against the task on the conversation's position
 //   (position.cjs), so a call made in it is that task's (conversation.cjs,
 //   `taskAt`), and the task's commits are made there alone (commit-task.cjs).
@@ -35,14 +36,20 @@
 //   holds, so in the task's worktree they read each child repository laid
 //   out there; a reviewer's diff range reads each repository holding work on
 //   the task's branch (brief-records.cjs).
-// - As `task done` or `task close` ends the task, before its record goes,
-//   each child repository's worktree in it is removed, deepest first — the
-//   registration of one whose folder is gone with it, and a submodule's
-//   folder left empty, as a checkout of its holder leaves it — so its
-//   repository no longer holds the task's branch out, and the worktree
-//   itself is left for Claude Code or plain git to remove; the branches are
-//   the landing's, and stay. A child worktree holding changes not committed refuses the verb
-//   before anything moves.
+// - As `task done` or `task close` ends the task, before the tracker moves,
+//   every worktree of a child repository the task has is removed, deepest
+//   first: each with the task's branch out — never a repository's own
+//   checkout — and each in the worktree recorded for it, so a conversation
+//   that lost its record leaves none behind. The registration of one whose
+//   folder is gone goes with them, and a submodule's folder is left empty,
+//   as a checkout of its holder leaves it, so no child repository holds the
+//   branch out, and the worktree itself is left for Claude Code or plain git
+//   to remove; the branches are the landing's, and stay. One holding changes
+//   not committed refuses the verb before anything moves: its own files, and
+//   a nested submodule's pointer moved, staged or not; what a nested
+//   repository holds is that repository's to answer for, and a nested
+//   clone's folder, which it never tracks, is no change. Removal failing
+//   partway leaves the task in flight, so the verb run again finishes it.
 //
 // Run again where it is laid out already, `task worktree` answers each
 // repository so and makes nothing. It refuses, before anything is made, in
@@ -50,20 +57,22 @@
 // call made in the project's own checkout, or in the worktree of another
 // task in flight; the task with no type in the tracker, which its branch is
 // named from; its branch out in another worktree of a repository — removed,
-// where that worktree's folder is gone; a worktree switching to the branch
-// made already with changes not committed; and a child repository's folder
+// where that worktree's folder is gone, and switched off, where it is a
+// repository's own checkout; a worktree switching to the branch made
+// already with changes not committed; and a child repository's folder
 // holding anything but a worktree of that repository.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
 const { handedSession } = require('../kernel/process.cjs');
-const { git, dirtyEntries } = require('../kernel/git.cjs');
+const { git, tryGit, dirtyEntries } = require('../kernel/git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { realpathOrSelf, within } = require('../kernel/isolated-git.cjs');
 const { projectRepos, repoOf, repoPath, repoName } = require('../kernel/repos.cjs');
 const { tasksInFlight, taskAt } = require('./conversation.cjs');
 const { recordWorktree } = require('./position.cjs');
+const { nestedRemoteName } = require('./remote.cjs');
 const { taskBranch } = require('./landing-names.cjs');
 const lg = require('./landing-git.cjs');
 const { shownTask, taskId, taskName } = require('./task-id.cjs');
@@ -150,7 +159,9 @@ function goneRefusal(repo, tree, what) {
 
 /**
  * Refuses the task's branch out in another worktree of the repository —
- * built there, or that worktree removed where its folder is gone.
+ * built there; that worktree removed, where its folder is gone; or, where it
+ * is the repository's own checkout, which no task is built in, switched off
+ * the branch.
  * @param {TaskRef} ref @param {Repo} repo @param {string} branch @param {Worktree[]} trees the repository's
  */
 function refuseHeldElsewhere(ref, repo, branch, trees) {
@@ -158,17 +169,24 @@ function refuseHeldElsewhere(ref, repo, branch, trees) {
   if (holder === undefined) return;
   const what = `${taskName(ref)}'s branch ${branch} is checked out${repo.dir === '' ? '' : ` in ${repo.dir}`} at ${holder.path}`;
   if (!fs.existsSync(holder.path)) throw goneRefusal(repo, holder, what);
+  if (holder === trees[0]) {
+    throw refusal(`${what}, its own checkout — check out another branch there, as \`git -C ${lg.quoted(holder.path)} switch --detach\` does, then run it again`);
+  }
   throw refusal(`${what} — build the task there`);
 }
 
 /**
- * The folders of the repositories nested in `repo`, from its own folder —
- * what a read of its changes holds out.
- * @param {Repo[]} repos @param {Repo} repo
+ * What a worktree of `repo` at `at` holds not committed, named from there:
+ * its own files, and a nested submodule's pointer moved, staged or not —
+ * never what a nested repository holds, its own to answer for, nor the
+ * folder of a clone nested in it, which it never tracks.
+ * @param {Repo[]} repos @param {Repo} repo @param {string} at
+ * @returns {string[]}
  */
-function nestedFolders(repos, repo) {
-  return repos.filter((other) => other !== repo && (repo.dir === '' || other.dir.startsWith(`${repo.dir}/`)))
-    .map((other) => (repo.dir === '' ? other.dir : other.dir.slice(repo.dir.length + 1)));
+function uncommitted(repos, repo, at) {
+  const clones = repos.slice(1).map((other) => heldIn(repos, other))
+    .filter(({ holder, submodule }) => holder === repo && !submodule).map(({ folder }) => `${folder}/`);
+  return dirtyEntries(at, [], true).filter(({ path: entry, status }) => status !== '??' || !clones.includes(entry)).map((entry) => lg.plain(entry.path));
 }
 
 /**
@@ -186,7 +204,7 @@ function inPlace(ref, repos, repo, at, branch, trees) {
     const commit = commitOf(at, 'HEAD');
     return { repo, at, commit, make: { inPlace: true, start: commit } };
   }
-  const dirt = dirtyEntries(at, nestedFolders(repos, repo)).map((entry) => lg.plain(entry.path));
+  const dirt = uncommitted(repos, repo, at);
   if (dirt.length > 0) {
     throw refusal(`${branch} is made already, and ${at} has changes not committed: ${dirt.join(', ')}, so nothing was laid out — commit them, or move them out of the way, then run it again`);
   }
@@ -222,21 +240,18 @@ function heldIn(repos, repo) {
 }
 
 /**
- * The commit a child repository's branch is made at: where it is a
- * submodule, the commit its holder's laid-out commit points it at, if any;
- * else its own checkout's.
+ * The commit a child repository's branch is made at: for a submodule, the
+ * commit its holder's laid-out commit points it at — its own checkout's
+ * where that points it nowhere; for a clone, the branch it lands on.
  * @param {Repo[]} repos @param {Repo} repo @param {Map<string, Part>} parts each laid out before it, by folder
  * @returns {string}
  */
 function startOf(repos, repo, parts) {
   const { holder, folder, submodule } = heldIn(repos, repo);
-  if (submodule) {
-    const { at, commit } = /** @type {Part} */ (parts.get(holder.dir));
-    const [pointers] = lg.pointersAt(holder.path, [commit], [`${holder.dir === '' ? lg.prefixOf(at) : ''}${folder}`]);
-    const pointer = [...pointers.values()][0];
-    if (pointer !== null) return pointer;
-  }
-  return commitOf(repo.path, 'HEAD');
+  if (!submodule) return commitOf(repo.path, `refs/heads/${lg.defaultBranch(repo.path, nestedRemoteName(repo.path), true)}`);
+  const { at, commit } = /** @type {Part} */ (parts.get(holder.dir));
+  const [pointers] = lg.pointersAt(holder.path, [commit], [`${holder.dir === '' ? lg.prefixOf(at) : ''}${folder}`]);
+  return [...pointers.values()][0] ?? commitOf(repo.path, 'HEAD');
 }
 
 /**
@@ -302,35 +317,57 @@ function layOutTask(cwd, ref, read) {
 }
 
 /**
- * What ending the task does to its worktree (see the header), checked as
- * `task {verb}` begins: each child repository's worktree in the one recorded
- * for it in the calling conversation, deepest first — refused where one has
- * changes not committed — and what removes them, answering where each was;
- * nothing where no worktree is recorded.
- * @param {string} cwd @param {TaskRef} ref @param {string} verb
- * @returns {() => string[]}
+ * Whether a checkout of a submodule's holder tracks it at `at`: emptied as
+ * its worktree goes, the folder is made again, as that checkout leaves it.
+ * @param {string} at
  */
-function leavingWorktree(cwd, ref, verb) {
+function gitlinkAt(at) {
+  const parent = path.dirname(at);
+  return fs.existsSync(parent) && (tryGit(parent, ['ls-files', '--stage', '--', path.basename(at)]) ?? '').startsWith('160000 ');
+}
+
+/**
+ * Each worktree of a child repository the task has (see the header),
+ * deepest first: its branch out there, read from the tracker by `read`
+ * where it has a type, or in the worktree recorded for the task in the
+ * calling conversation.
+ * @param {string} cwd @param {TaskRef} ref @param {() => TaskDetail} read
+ * @returns {{repos: Repo[], trees: {repo: Repo, tree: Worktree}[]}}
+ */
+function childWorktrees(cwd, ref, read) {
+  const repos = projectRepos(projectOf(fs.realpathSync(codeRoot(cwd))));
+  if (repos.length === 1) return { repos, trees: [] };
+  const { type, title } = read();
+  const branch = type === null ? null : taskBranch(ref, type, title);
   const session = handedSession();
   const recorded = session === null ? undefined : inFlightIn(session, ref)?.worktree;
-  if (recorded === undefined) return () => [];
-  const repos = projectRepos(projectOf(fs.realpathSync(codeRoot(cwd))));
-  const children = repos.slice(1).flatMap((repo) => lg.worktrees(repo.path)
-    .filter((tree) => within(realpathOrSelf(tree.path), recorded))
-    .map((tree) => ({ repo, tree, submodule: heldIn(repos, repo).submodule })))
-    .sort((a, b) => b.tree.path.length - a.tree.path.length);
-  for (const { tree } of children.filter((child) => fs.existsSync(child.tree.path))) {
-    const inner = children.filter((other) => other.tree !== tree && within(other.tree.path, tree.path)).map((other) => path.relative(tree.path, other.tree.path));
-    const dirt = dirtyEntries(tree.path, inner).map((entry) => lg.plain(entry.path));
+  const trees = repos.slice(1).flatMap((repo) => lg.worktrees(repo.path).slice(1)
+    .filter((tree) => (branch !== null && !tree.scratch && tree.branch === branch) || (recorded !== undefined && within(realpathOrSelf(tree.path), recorded)))
+    .map((tree) => ({ repo, tree })));
+  return { repos, trees: trees.sort((a, b) => b.tree.path.length - a.tree.path.length) };
+}
+
+/**
+ * The task's worktree taken apart as `task {verb}` ends it (see the
+ * header), before the tracker moves: each child repository's worktree the
+ * task has checked, refused where one holds changes not committed, then
+ * removed, deepest first, answering where each was.
+ * @param {string} cwd @param {TaskRef} ref @param {string} verb @param {() => TaskDetail} read
+ * @returns {string[]}
+ */
+function takeWorktreeApart(cwd, ref, verb, read) {
+  const { repos, trees } = childWorktrees(cwd, ref, read);
+  for (const { repo, tree } of trees.filter((child) => fs.existsSync(child.tree.path))) {
+    const dirt = uncommitted(repos, repo, tree.path);
     if (dirt.length > 0) {
       throw new Error(`task ${verb}: ${tree.branch ?? 'a detached HEAD'} is checked out at ${tree.path}, with changes not committed: ${dirt.join(', ')}, so nothing moved — commit them, or move them out of the way, then run it again`);
     }
   }
-  return () => children.map(({ repo, tree, submodule }) => {
+  return trees.map(({ repo, tree }) => {
     lg.removeWorktree(repo.path, tree.path);
-    if (submodule && fs.existsSync(path.dirname(tree.path))) fs.mkdirSync(tree.path, { recursive: true });
+    if (gitlinkAt(tree.path)) fs.mkdirSync(tree.path);
     return tree.path;
   });
 }
 
-module.exports = { layOutTask, leavingWorktree };
+module.exports = { layOutTask, takeWorktreeApart };

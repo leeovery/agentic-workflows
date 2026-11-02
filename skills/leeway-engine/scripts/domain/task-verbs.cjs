@@ -61,7 +61,7 @@ const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('.
 const { taskId, shownTask, parseShownTask, parsePhase, taskName, phaseName } = require('./task-id.cjs');
 const { TASK_TYPES, breaksLine, readTaskText } = require('./task-file.cjs');
 const { recordTask, clearTask } = require('./position.cjs');
-const { layOutTask, leavingWorktree } = require('./task-worktree.cjs');
+const { layOutTask, takeWorktreeApart } = require('./task-worktree.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskDriver} TaskDriver */
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
@@ -101,14 +101,15 @@ function taskIn(driver, root, ref, lacking = `${taskName(ref)} is not in the tra
 }
 
 /**
- * Where a task stands, refused where it has ended, saying what only an
- * unended one takes.
+ * The task as the tracker holds it, refused where it has ended, saying what
+ * only an unended one takes.
  * @param {TaskDriver} driver @param {string} root @param {TaskRef} ref @param {string} rule
+ * @returns {TaskDetail}
  */
 function refuseEnded(driver, root, ref, rule) {
-  const { status } = taskIn(driver, root, ref);
-  if (ENDED.includes(status)) throw new TaskRefusal(`task ${shownTask(ref)} is ${status} — ${rule}`);
-  return status;
+  const task = taskIn(driver, root, ref);
+  if (ENDED.includes(task.status)) throw new TaskRefusal(`task ${shownTask(ref)} is ${task.status} — ${rule}`);
+  return task;
 }
 
 /**
@@ -396,8 +397,8 @@ function showTask(cwd, unit, given) {
 
 /**
  * A verb that moves one task on, then the position with it: `prepare`, run
- * before anything moves, answers what settles the rest once the tracker
- * has moved, and that answers what it adds to the verb's answer.
+ * before the tracker moves, answers what settles the rest once it has, and
+ * that answers what it adds to the verb's answer.
  * @param {string} verb
  * @param {(driver: TaskDriver, root: string, ref: TaskRef, ...more: string[]) => void} move
  * @param {(cwd: string, ref: TaskRef, verb: string) => () => object} prepare
@@ -417,39 +418,46 @@ function moving(verb, move, prepare) {
 }
 
 /**
- * Ending a task: its worktree's child repositories checked before anything
- * moves, then removed (task-worktree.cjs), answered where any was, and the
- * task taken off the position, where it is one in flight.
- * @param {string} cwd @param {TaskRef} ref @param {string} verb
+ * Ending a task, refused once it has ended as `rule` says: its worktree
+ * taken apart before the tracker moves (task-worktree.cjs), so a removal
+ * failing leaves it in flight for the verb run again, the worktrees removed
+ * answered where any was; and, once the tracker has moved, the task taken
+ * off the position, where it is one in flight.
+ * @param {string} rule
+ * @returns {(cwd: string, ref: TaskRef, verb: string) => () => object}
  */
-function ending(cwd, ref, verb) {
-  const leave = leavingWorktree(cwd, ref, verb);
-  return () => {
-    const removed = leave();
-    clearTask(ref.unit, ref.unit, taskId(ref));
-    return removed.length === 0 ? {} : { removed };
+function ending(rule) {
+  return (cwd, ref, verb) => {
+    const removed = takeWorktreeApart(cwd, ref, verb, () => withTracker(cwd, ref.unit, null, (driver, root) => refuseEnded(driver, root, ref, rule)));
+    return () => {
+      clearTask(ref.unit, ref.unit, taskId(ref));
+      return removed.length === 0 ? {} : { removed };
+    };
   };
 }
 
 /** `task start`: in progress — where it is not already — and in flight on the position beside any others. */
 const startTask = moving('start', (driver, root, ref) => {
-  if (refuseEnded(driver, root, ref, 'only a task not yet ended is started') !== 'in-progress') driver.start(root, ref);
+  if (refuseEnded(driver, root, ref, 'only a task not yet ended is started').status !== 'in-progress') driver.start(root, ref);
 }, (cwd, ref) => () => {
   recordTask(cwd, ref.unit, ref.unit, taskId(ref));
   return {};
 });
 
-/** `task done`: done, its worktree taken apart, and off the position. */
-const doneTask = moving('done', (driver, root, ref) => {
-  refuseEnded(driver, root, ref, 'only a task not yet ended is done');
-  driver.done(root, ref);
-}, ending);
+const DONE_RULE = 'only a task not yet ended is done';
+const CLOSE_RULE = 'only a task not yet ended is closed';
 
-/** `task close`: closed without being done, its reason kept, its worktree taken apart, and off the position. */
+/** `task done`: its worktree taken apart, then done, and off the position. */
+const doneTask = moving('done', (driver, root, ref) => {
+  refuseEnded(driver, root, ref, DONE_RULE);
+  driver.done(root, ref);
+}, ending(DONE_RULE));
+
+/** `task close`: its worktree taken apart, then closed without being done, its reason kept, and off the position. */
 const closeTask = moving('close', (driver, root, ref, reason) => {
-  refuseEnded(driver, root, ref, 'only a task not yet ended is closed');
+  refuseEnded(driver, root, ref, CLOSE_RULE);
   driver.close(root, ref, reason);
-}, ending);
+}, ending(CLOSE_RULE));
 
 /**
  * `task worktree`: the task's worktree laid out where the call is made

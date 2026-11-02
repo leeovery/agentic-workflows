@@ -16,8 +16,8 @@
 //   tasks in flight, each named; from a worktree `task worktree` laid out
 //   for another task in flight (task-worktree.cjs, conversation.cjs's
 //   `taskAt`), any task but that one, naming it; and a task with a worktree
-//   laid out for it from anywhere else, where its branch is not out, naming
-//   the worktree. A task with none recorded commits from where it is called.
+//   laid out for it from anywhere else, naming the worktree. A task with
+//   none recorded commits from where it is called.
 // - The project's checks run before the commit (15.8.3): its tests,
 //   `environment.run.tests`, then each of its linters, `environment.linters`
 //   (environment.cjs), in that order, each by `sh -c` in the code root of the
