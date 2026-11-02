@@ -467,7 +467,7 @@ for (const driver of listDrivers('task')) {
           line = side.garbleStore(dir);
         });
         assert.throws(() => driver.mergeStore(storeAfter('base'), garbled, storeAfter('there')), (err) => err instanceof MergeError
-          && err.message.includes(path.basename(store)) && err.message.includes('this machine\'s') && new RegExp(`\\bline ${line}\\b`).test(err.message));
+          && err.message.includes('this machine\'s') && new RegExp(`\\bline ${line}\\b`).test(err.message));
       });
     });
   });

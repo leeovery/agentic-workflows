@@ -61,11 +61,10 @@ const { FOREIGN_TASK } = require('../../../domain/task-id.cjs');
 /** @typedef {import('../../../domain/drivers.cjs').MadeAgain} MadeAgain */
 
 /**
- * The driver's names for what the store holds: the store's file, Tick's
- * statuses in the engine's words, the engine's name a ref carries, a name
- * as a sentence gives it, and a phase's title as the engine gave it.
+ * The driver's names for what the store holds: Tick's statuses in the
+ * engine's words, the engine's name a ref carries, a name as a sentence
+ * gives it, and a phase's title as the engine gave it.
  * @typedef {{
- *   file: string,
  *   statuses: Readonly<Record<string, string>>,
  *   nameIn: (ref: string) => Name|null,
  *   said: (name: Name) => string,
@@ -98,7 +97,7 @@ function tasksOf(names, text, whose) {
     } catch {
       task = null;
     }
-    if (!isObject(task) || typeof task.id !== 'string') throw new MergeError(`cannot merge ${names.file}: line ${i + 1} of ${whose} copy is not a task`);
+    if (!isObject(task) || typeof task.id !== 'string') throw new MergeError(`line ${i + 1} of ${whose} copy is not a task`);
     tasks.set(task.id, /** @type {Task} */ (task));
   }
   return tasks;

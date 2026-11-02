@@ -50,6 +50,7 @@ const crypto = require('crypto');
 const { isObject } = require('../kernel/manifest-io.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { LEDGER } = require('./ledger-events.cjs');
+const { STATE_DIR_NAME } = require('../kernel/state-root.cjs');
 
 const MIGRATIONS = '.state/migrations';
 // The project's manifest and each unit's; a unit's name never starts with
@@ -64,6 +65,11 @@ const PROJECT_KEY = ['manifest.json', 'project_id'];
 
 /** A side's copy is not what its rule reads, so the merge cannot take it apart. */
 class MergeError extends Error {}
+
+/** A state path as the merge's notes and refusals name it, from the project root. @param {string} file */
+function fromRoot(file) {
+  return `${STATE_DIR_NAME}/${file}`;
+}
 
 /**
  * One side of a conflicted field: its value, or that it was removed.
@@ -181,7 +187,7 @@ function entryId(line, side, number) {
   }
   if (entry === null || typeof entry !== 'object' || typeof entry.id !== 'string') {
     const where = side === 'local' ? "this machine's" : "the remote's";
-    throw new MergeError(`cannot merge ${LEDGER}: line ${number} of ${where} is not an entry with an id: ${line.slice(0, 80)}`);
+    throw new MergeError(`cannot merge ${fromRoot(LEDGER)}: line ${number} of ${where} is not an entry with an id: ${line.slice(0, 80)}`);
   }
   return entry.id;
 }
@@ -393,6 +399,7 @@ function askedAt(conflicts) {
 module.exports = {
   MIGRATIONS,
   MergeError,
+  fromRoot,
   ruleOf,
   storeDriverOf,
   runNumber,

@@ -72,7 +72,7 @@ describe('the rules each file merges by', () => {
   });
 
   it('refuses a ledger line that is not an entry with a string id, counting the lines that are not blank', () => {
-    assert.throws(() => added('{"id":"r"}\n', '{"id":"a"}\n\nnot json\n', entryId), /line 2 of this machine's is not an entry with an id: not json/);
+    assert.throws(() => added('{"id":"r"}\n', '{"id":"a"}\n\nnot json\n', entryId), /^Error: cannot merge \.leeway\/\S+: line 2 of this machine's is not an entry with an id: not json$/);
     assert.throws(() => added('{"id":7}\n', '{"id":"a"}\n', entryId), /line 1 of the remote's is not an entry with an id/);
   });
 

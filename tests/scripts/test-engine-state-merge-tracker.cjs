@@ -158,4 +158,18 @@ describe('the tracker\'s store, both machines having changed it', () => {
     assert.deepStrictEqual([DRIVER.show(merged, ref(1, 1))?.status, DRIVER.show(merged, ref(2, 2))?.title], ['done', 'Print the ledger']);
     assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:${beside}`]), mine);
   });
+
+  it('refuses a copy the driver cannot read, naming the store from the project root and the driver\'s side and line', () => {
+    const side = require(path.join(__dirname, '../drivers', DRIVER.name, 'task.cjs'));
+    let line = 0;
+    const { here } = bothChanged(
+      (dir) => {
+        line = side.garbleStore(dir);
+      },
+      (dir) => DRIVER.start(dir, ref(1, 1)),
+    );
+
+    assert.throws(() => catchUpState(here.root), (err) => err instanceof Error
+      && err.message.startsWith(`cannot merge ${STATE_DIR_NAME}/${STORE}: line ${line} of this machine's`));
+  });
 });

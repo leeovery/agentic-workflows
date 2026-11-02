@@ -323,7 +323,7 @@ function show(root, ref) {
 }
 
 /** What the store's merge reads Tick's records by. @type {import('./merge.cjs').Names} */
-const NAMES = Object.freeze({ file: `${STORE}/${TASKS}`, statuses: STATUSES, nameIn, said, phaseTitle });
+const NAMES = Object.freeze({ statuses: STATUSES, nameIn, said, phaseTitle });
 
 module.exports = {
   kind: 'task',

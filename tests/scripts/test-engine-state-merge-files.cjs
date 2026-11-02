@@ -56,7 +56,7 @@ describe('any other file both sides changed', () => {
 
     assert.strictEqual(readFile(here.root, 'unit/topics/a/log.md'), '# a\n\n## there\n## here\n');
     assert.deepStrictEqual(out.warnings, [
-      'unit/topics/a/log.md was changed in the same place on both machines: both machines\' lines are kept there, the remote\'s first — read it through',
+      '.leeway/unit/topics/a/log.md was changed in the same place on both machines: both machines\' lines are kept there, the remote\'s first — read it through',
     ]);
   });
 
@@ -174,8 +174,8 @@ describe('any other file both sides changed', () => {
     assert.strictEqual(readFile(here.root, 'unit/assets/notes.md'), 'n, changed there\n');
     assert.strictEqual(readFile(here.root, 'unit/assets/brief.md'), 'b, changed here\n');
     assert.deepStrictEqual(out.warnings.sort(), [
-      'unit/assets/brief.md was deleted on one machine and changed on the other: the changed copy is kept',
-      'unit/assets/notes.md was deleted on one machine and changed on the other: the changed copy is kept',
+      '.leeway/unit/assets/brief.md was deleted on one machine and changed on the other: the changed copy is kept',
+      '.leeway/unit/assets/notes.md was deleted on one machine and changed on the other: the changed copy is kept',
     ]);
   });
 });
@@ -194,7 +194,7 @@ describe('a build\'s runs both machines wrote under the same numbers', () => {
     assert.deepStrictEqual([out.action, out.pushed], ['merged', true]);
     assert.deepStrictEqual(['001', '002', '003', '004'].map((n) => readFile(here.root, run(n))), [ran('base'), ran('there'), ran('here'), ran('here, after')]);
     assert.deepStrictEqual(out.warnings, [
-      `runs in ${run('').slice(0, -'run-.json'.length)} were written under the same numbers on both machines: the remote's keep theirs, and this machine's follow them — run-002.json is now run-003.json, run-003.json is now run-004.json`,
+      `runs in .leeway/${run('').slice(0, -'run-.json'.length)} were written under the same numbers on both machines: the remote's keep theirs, and this machine's follow them — run-002.json is now run-003.json, run-003.json is now run-004.json`,
     ]);
     assert.strictEqual(status(here.root), '');
   });

@@ -38,11 +38,10 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { GitError } = require('../kernel/git.cjs');
-const { MergeError } = require('./state-merge-rules.cjs');
+const { MergeError, fromRoot } = require('./state-merge-rules.cjs');
 const { blobIds } = require('../kernel/file-stream.cjs');
 const {
-  sameEntry, changedPaths, indexEntries, withPrivateIndex, fillIndex, mergePath, placeRuns, readContested, separateClashes, isUnder, besidePath, fromRoot,
-  changedCopyKept,
+  sameEntry, changedPaths, indexEntries, withPrivateIndex, fillIndex, mergePath, placeRuns, readContested, separateClashes, isUnder, besidePath, changedCopyKept,
 } = require('./state-merge-paths.cjs');
 
 /** @typedef {import('./state-merge-paths.cjs').Entry} Entry */

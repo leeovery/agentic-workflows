@@ -218,7 +218,7 @@ describe('another session writing while the catch-up runs', () => {
 
     assert.strictEqual(out.action, 'fast-forwarded');
     assert.strictEqual(readFile(here.root, 'unit/assets/gone.md'), 'gone\nwritten meanwhile\n');
-    assert.deepStrictEqual(out.warnings, ['unit/assets/gone.md was deleted on one machine and changed on the other: the changed copy is kept']);
+    assert.deepStrictEqual(out.warnings, ['.leeway/unit/assets/gone.md was deleted on one machine and changed on the other: the changed copy is kept']);
   });
 
   it('leaves a file that moves again as it stands, and names it', () => {
