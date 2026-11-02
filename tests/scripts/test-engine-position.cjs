@@ -11,7 +11,8 @@
 // against the task its brief was issued for — the plan's executor, with no
 // brief, the builder of the one task in flight — riding with that task
 // alone, two recorded at once both standing (24.2.4, 13.3.3, 12.S21); the
-// start menu's repair dropping it; and `conversation position`,
+// start menu's repair dropping it, a record racing the drop never bringing
+// it back; and `conversation position`,
 // which answers what to re-read to carry on there: the skill that runs the
 // work, then the topic's documents this project has, each by its absolute
 // path under the project root, as the note a compaction hands up and one line
@@ -430,6 +431,34 @@ describe('the builders and reviewers the gate mod records (24.2.4, 13.3.3, 29.14
     const { reviewers } = position().tasks[0];
     assert.strictEqual(reviewers.length, reports[0].ids.length + reports[1].ids.length);
     for (const { ids } of reports) assert.deepStrictEqual(reviewers.filter((id) => ids.includes(id)), ids);
+  });
+
+  it('a drop racing a record: the drop waits on the lock the record holds, so the record\'s write never brings the dropped position back', async () => {
+    writePosition({ ...BUILD, tasks: [fresh('1.1')] });
+    issue('B11', 'builder', '1.1');
+    const file = path.join(folder(), 'position.json');
+    const met = path.join(config, 'met');
+    const reports = await harness.contend(2, [
+      'const [part, file, met] = process.argv.slice(1);',
+      `const { recordBuilder, dropPosition } = require(${JSON.stringify(POSITION_MODULE)});`,
+      "if (part === 'record') {",
+      '  const rename = fs.renameSync;',
+      '  const pause = new Int32Array(new SharedArrayBuffer(4));',
+      // The record, its position read, holds its write until the drop has found the lock held — or, with no lock, has deleted the file.
+      '  fs.renameSync = (from, to) => { if (to === file) { atBarrier(); while (!fs.existsSync(met) && fs.existsSync(file)) Atomics.wait(pause, 0, 0, 5); } return rename(from, to); };',
+      "  report(recordBuilder('sess-1', 'b1', 'B11'));",
+      '} else {',
+      '  const link = fs.linkSync;',
+      "  fs.linkSync = (from, to) => { try { return link(from, to); } catch (err) { if (to === `${file}.lock` && err.code === 'EEXIST') fs.writeFileSync(met, ''); throw err; } };",
+      '  atBarrier();',
+      "  dropPosition('sess-1');",
+      '  report({ dropped: true });',
+      '}',
+    ].join('\n'), (i) => [i === 0 ? 'record' : 'drop', file, met], { ...process.env, LEEWAY_CONFIG_DIR: config });
+
+    assert.deepStrictEqual(reports, [{ recorded: true }, { dropped: true }]);
+    assert.strictEqual(position(), null, 'the dropped position came back');
+    assert.ok(fs.existsSync(met), 'the drop never found the lock held: the two never met');
   });
 });
 

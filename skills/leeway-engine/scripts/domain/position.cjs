@@ -36,9 +36,11 @@
 // a conversation a handoff began can arrive at its first place before any
 // other engine call has marked it; an agent is recorded only on a position
 // already there. Each write reads the position and writes it whole under the
-// lock beside it, so a pair dispatched side by side, or a builder recorded
-// as a task starts, never loses the other's write. A position that cannot be
-// written costs the verb nothing. It is read through conversation.cjs alone.
+// lock beside it, and a drop deletes it under the same lock, so a pair
+// dispatched side by side, or a builder recorded as a task starts, never
+// loses the other's write, and no write brings back a dropped position. A
+// position that cannot be written costs the verb nothing. It is read
+// through conversation.cjs alone.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -105,23 +107,32 @@ function arrivingConversation(cwd) {
 }
 
 /**
+ * `write` run on the conversation `sessionId`'s position file under its lock:
+ * whether it wrote — never where the lock or the file could not be had.
+ * @param {string} sessionId @param {(file: string) => boolean} write @returns {boolean}
+ */
+function underPositionLock(sessionId, write) {
+  const file = positionPath(sessionId);
+  try {
+    return withStateLockFile(`${file}.lock`, () => write(file), POSITION_LOCK);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * The conversation `sessionId`'s position changed: read and written whole
  * under its lock, `change` answering the position to write from the one
  * recorded, or null to write nothing. Whether it was written.
  * @param {string} sessionId @param {(prior: Position|null) => Position|null} change @returns {boolean}
  */
 function updatePosition(sessionId, change) {
-  const file = positionPath(sessionId);
-  try {
-    return withStateLockFile(`${file}.lock`, () => {
-      const next = change(readPosition(sessionId));
-      if (next === null) return false;
-      writeJsonAtomic(file, next);
-      return true;
-    }, POSITION_LOCK);
-  } catch {
-    return false;
-  }
+  return underPositionLock(sessionId, (file) => {
+    const next = change(readPosition(sessionId));
+    if (next === null) return false;
+    writeJsonAtomic(file, next);
+    return true;
+  });
 }
 
 /** A place with its tasks in flight, none held where none is. @param {Position} place @param {InFlight[]} tasks @returns {Position} */
@@ -267,7 +278,10 @@ function clearTask(workUnit, topic, internalId) {
 /** @param {string|null|undefined} sessionId */
 function dropPosition(sessionId) {
   if (!sessionId) return;
-  try { fs.unlinkSync(positionPath(sessionId)); } catch { /* none recorded */ }
+  underPositionLock(sessionId, (file) => {
+    fs.rmSync(file, { force: true });
+    return true;
+  });
 }
 
 // ---------------------------------------------------------------------------
