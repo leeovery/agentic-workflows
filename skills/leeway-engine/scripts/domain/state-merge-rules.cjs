@@ -42,6 +42,18 @@
 //   append-only fact, read here by its number; where both machines wrote
 //   runs under the same numbers, this machine's are renumbered before the
 //   tree merges (state-merge-paths.cjs).
+// - A unit's notes for later (`{unit}/build/notes.md`) merge by note
+//   (`notesMerged`): the remote's stand at their numbers; each of this
+//   machine's its ancestor holds alike at its number is settled, at the
+//   number the merge gave the ancestor's (`notesSettled`); each other the
+//   remote holds alike — the same text, held for the same phase or none —
+//   is that one, at its own number first, then anywhere; and the rest
+//   follow the remote's highest, in this machine's order, each still held
+//   for its phase. A phase's consolidation report
+//   (`{unit}/build/phases/phase-{N}/consolidation.md`) names notes by
+//   number, so this machine's are renamed with them before the tree merges
+//   (state-merge-paths.cjs); one that cannot be is set aside, a notice the
+//   person acknowledges.
 // - Any other JSON file is kept whole, never merged line by line: a text
 //   merge of JSON can leave neither side's data.
 // ---------------------------------------------------------------------------
@@ -58,10 +70,13 @@ const MIGRATIONS = '.state/migrations';
 const MANIFEST = /^(?:[^./][^/]*\/)?manifest\.json$/;
 const JSON_FILE = /\.jsonl?$/;
 const RUN = /^[^./][^/]*\/build\/runs\/[^/]+\/run-([0-9]{3,})\.json$/;
+const NOTES = /^[^./][^/]*\/build\/notes\.md$/;
+const REPORT = /^([^./][^/]*)\/build\/phases\/phase-([1-9][0-9]*)\/consolidation\.md$/;
 const PROJECT_KEY = ['manifest.json', 'project_id'];
 
-/** @typedef {'ledger'|'migrations'|'manifest'|'store'|'whole'|'file'} MergeRule */
+/** @typedef {'ledger'|'migrations'|'manifest'|'store'|'notes'|'whole'|'file'} MergeRule */
 /** @typedef {import('./drivers.cjs').TaskDriver} TaskDriver */
+/** @typedef {import('./notes.cjs').Note} Note */
 
 /** A side's copy is not what its rule reads, so the merge cannot take it apart. */
 class MergeError extends Error {}
@@ -83,10 +98,19 @@ function fromRoot(file) {
  */
 
 /**
+ * A consolidation report this machine changed that does not read, set aside
+ * since what it names cannot be renamed with its notes: its phase, whether
+ * the remote's copy stays at its path, and each of this machine's notes the
+ * merge renumbered.
+ * @typedef {{setAside: {phase: number, stays: boolean, renumbered: {from: number, to: number}[]}}} SetAside
+ */
+
+/**
  * A notice the person acknowledges rather than picks between: the engine
  * names both sides made in the tracker's store, and this machine's tasks set
- * aside for them (drivers.cjs, MadeTwice).
- * @typedef {import('./drivers.cjs').MadeTwice} Notice
+ * aside for them (drivers.cjs, MadeTwice); or a consolidation report set
+ * aside (SetAside).
+ * @typedef {import('./drivers.cjs').MadeTwice|SetAside} Notice
  */
 
 /**
@@ -129,6 +153,7 @@ function ruleOf(file) {
   if (file === MIGRATIONS) return 'migrations';
   if (MANIFEST.test(file)) return 'manifest';
   if (storeDriverOf(file) !== undefined) return 'store';
+  if (NOTES.test(file)) return 'notes';
   return JSON_FILE.test(file) ? 'whole' : 'file';
 }
 
@@ -141,6 +166,49 @@ function runNumber(file) {
 /** A run's path under another number, in its folder. @param {string} file @param {number} number @returns {string} */
 function runRenumbered(file, number) {
   return `${file.slice(0, file.lastIndexOf('/') + 1)}run-${String(number).padStart(3, '0')}.json`;
+}
+
+/** The unit and phase of a consolidation report's path, or null where the path is no report's. @param {string} file @returns {{unit: string, phase: number}|null} */
+function consolidationOf(file) {
+  const report = REPORT.exec(file);
+  return report === null ? null : { unit: report[1], phase: Number(report[2]) };
+}
+
+/** Whether two notes are one: the same text, held for the same phase or none. @param {Note} a @param {Note|undefined} b */
+function alike(a, b) {
+  return b !== undefined && a.phase === b.phase && a.text === b.text;
+}
+
+/**
+ * This machine's notes its ancestor holds alike at their numbers, each at
+ * the number the merge gave the ancestor's (`prior`), its own where none.
+ * @param {Note[]} local @param {Note[]} ancestor @param {Map<number, number>} [prior]
+ * @returns {Map<number, number>}
+ */
+function notesSettled(local, ancestor, prior = new Map()) {
+  return new Map(local.filter((mine) => alike(mine, ancestor[mine.note - 1])).map(({ note }) => [note, prior.get(note) ?? note]));
+}
+
+/**
+ * This machine's notes placed among the remote's (the header's), those
+ * `settled` where it says: each one's number in the merge, and those
+ * written after the remote's, numbered so.
+ * @param {Note[]} local @param {Note[]} remote @param {Map<number, number>} settled
+ * @returns {{at: Map<number, number>, added: Note[]}}
+ */
+function notesMerged(local, remote, settled) {
+  const at = new Map(settled);
+  const matched = new Set(settled.values());
+  const take = (/** @type {Note} */ mine, /** @type {Note|undefined} */ theirs) => {
+    if (at.has(mine.note) || theirs === undefined || matched.has(theirs.note) || !alike(mine, theirs)) return;
+    at.set(mine.note, theirs.note);
+    matched.add(theirs.note);
+  };
+  for (const mine of local) take(mine, remote[mine.note - 1]);
+  for (const mine of local) take(mine, remote.find((theirs) => !matched.has(theirs.note) && alike(mine, theirs)));
+  const rest = local.filter(({ note }) => !at.has(note));
+  rest.forEach(({ note }, i) => at.set(note, remote.length + i + 1));
+  return { at, added: rest.map((mine) => ({ ...mine, note: /** @type {number} */ (at.get(mine.note)) })) };
 }
 
 /**
@@ -259,19 +327,30 @@ function canonical(value) {
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonical(value[key])]));
 }
 
+/** Whether a choice is a notice, acknowledged rather than picked between. @param {object} choice @returns {choice is Notice} */
+function isNotice(choice) {
+  return 'madeTwice' in choice || 'setAside' in choice;
+}
+
+/** What a choice asks. @param {Choice|Notice} choice @returns {unknown[]} */
+function askedBy(choice) {
+  if ('madeTwice' in choice) return [choice.madeTwice, choice.again];
+  if ('setAside' in choice) return [choice.setAside];
+  return [choice.field, choice.local, choice.remote];
+}
+
 /**
  * A choice's identity: the file it is in, whether it is on the branch or
  * between the working tree and the update, and what it asks — the field and
  * the two values, whatever order their keys came in, or the notice's names
- * and tasks. A pick answers the choice with its identity, and the screen
- * carries it to the pick.
+ * and tasks, or its report set aside. A pick answers the choice with its
+ * identity, and the screen carries it to the pick.
  * @param {(Choice|Notice) & {file: string, uncommitted: boolean}} choice
  * @returns {string}
  */
 function choiceId(choice) {
   const { file, uncommitted } = choice;
-  const asked = 'madeTwice' in choice ? [choice.madeTwice, choice.again] : [choice.field, choice.local, choice.remote];
-  const named = JSON.stringify(canonical([file, uncommitted, ...asked]));
+  const named = JSON.stringify(canonical([file, uncommitted, ...askedBy(choice)]));
   return crypto.createHash('sha1').update(named).digest('hex').slice(0, 12);
 }
 
@@ -404,12 +483,16 @@ module.exports = {
   storeDriverOf,
   runNumber,
   runRenumbered,
+  consolidationOf,
+  notesSettled,
+  notesMerged,
   linesToAdd,
   entryId,
   migrationId,
   same,
   mergeFields,
   mergeManifest,
+  isNotice,
   choiceId,
   askedAt,
   conflictLabel,

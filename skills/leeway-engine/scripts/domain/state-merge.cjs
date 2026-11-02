@@ -33,17 +33,21 @@
 //   one a kill cut short before anything else (state-merge-landing.cjs).
 // - The stop: a field of a manifest or of the tracker's store both sides
 //   changed to different values stops the merge (4.7.6), with nothing
-//   written, and so do names both sides made in the tracker's store (7.5.7),
-//   a notice with one row that carries on. A field the working tree's uncommitted copy and the merge
-//   changed differently stops it the same way, once every field on the
-//   branch is picked. Nothing else stops the merge, so its questions are
-//   worked out from those files alone, and the whole merge only once every
-//   question is answered. The stop is kept in the state worktree's git
-//   directory, beside the private index: it outlives the session and is
-//   never on the branch. It holds each choice with the person's pick, and a
-//   pick answers its choice, the field and the two values, wherever the
-//   merge meets it again; so the merge is always worked out afresh from the
-//   sides as they stand, and only a choice it has not met before is asked.
+//   written, and so do names both sides made in the tracker's store (7.5.7)
+//   and a consolidation report of this machine's set aside since its notes
+//   moved (state-merge-paths.cjs), each a notice with one row that carries
+//   on. A field the working tree's uncommitted copy and the merge changed
+//   differently stops it the same way, once every field on the branch is
+//   picked. Nothing else stops the merge, so its questions are worked out
+//   from those files alone — the manifests, the tracker's store, and the
+//   notes for later with the consolidation reports — and the whole merge
+//   only once every question is answered. The stop is kept in the state
+//   worktree's git directory, beside the private index: it outlives the
+//   session and is never on the branch. It holds each choice with the
+//   person's pick, and a pick answers its choice, the field and the two
+//   values, wherever the merge meets it again; so the merge is always worked
+//   out afresh from the sides as they stand, and only a choice it has not
+//   met before is asked.
 //   Picks are recorded one at a time, each naming the choice its screen
 //   showed; a pick naming any other choice than the one the merge now asks
 //   is not taken. The last pick finishes the merge (4.7.11).
@@ -64,7 +68,7 @@ const {
   STATE_BRANCH, BRANCH_REF, FETCH_TIMEOUT_MS, PUSH_TIMEOUT_MS, NETWORK_ENV, trackingRef, noRemoteChosen, openWorktree, inspectState,
   withStateLock, pushState, pushRefusal, askStateRemote, fetchStateTip, refuseCodeHistory,
 } = require('./state-worktree.cjs');
-const { ruleOf, choiceId } = require('./state-merge-rules.cjs');
+const { ruleOf, consolidationOf, isNotice, choiceId } = require('./state-merge-rules.cjs');
 const { sameEntry, changedPaths, entriesOf, writeTree, mergeTrees } = require('./state-merge-paths.cjs');
 const { workingEntries, planWorktree } = require('./state-merge-worktree.cjs');
 const { readRecord, openMerge, startLanding, finishLanding } = require('./state-merge-landing.cjs');
@@ -283,7 +287,7 @@ function planMerge(state, sides, stop, scope = () => true) {
   const merged = mergeTrees(state, sides.base === null ? new Map() : entries(sides.base), local, entries(sides.remote), picksOf(stop, false));
   const committed = merged.conflicts.map((c) => ({ ...c, uncommitted: false }));
   const working = () => scoped(listedOnce(state, `working ${sides.local}`, () => workingEntries(state, sides.local)), scope);
-  const worktree = committed.some(open) ? null : planWorktree(state, local, merged.entries, working(), picksOf(stop, true));
+  const worktree = committed.some(open) ? null : planWorktree(state, local, merged.entries, working(), picksOf(stop, true), merged.numbered);
   return {
     local,
     target: merged.entries,
@@ -293,14 +297,19 @@ function planMerge(state, sides, stop, scope = () => true) {
   };
 }
 
-/** Whether a file's fields can stop the merge: a manifest's, or the tracker's store's. @param {string} file */
+/**
+ * Whether a file can stop the merge: a manifest's or the tracker's store's
+ * fields, or a unit's notes for later and its phases' consolidation
+ * reports, one of which may be set aside.
+ * @param {string} file
+ */
 function asksAbout(file) {
-  return ['manifest', 'store'].includes(ruleOf(file));
+  return ['manifest', 'store', 'notes'].includes(ruleOf(file)) || consolidationOf(file) !== null;
 }
 
 /**
  * The questions the merge asks, with the kept stop's picks: worked out from
- * the manifests and the tracker's store alone, since nothing else stops it.
+ * the files that can stop it alone.
  * @param {State} state @param {Sides} sides @param {KeptStop|null} stop
  * @returns {Conflict[]}
  */
@@ -593,8 +602,9 @@ function pendingStateMerge(root) {
 
 /**
  * Record the person's pick for the choice the screen showed — `1` keeps
- * this machine's value, `2` the remote's; at names both machines made, `1`
- * carries on — and, once every choice is answered, finish the merge
+ * this machine's value, `2` the remote's; at a notice, names both machines
+ * made or a report set aside, `1` carries on — and, once every choice is
+ * answered, finish the merge
  * (4.7.11). The pick names the shown choice by its
  * identity; where the merge now asks another, the pick is not taken, and the
  * outcome carries the new question.
@@ -615,8 +625,9 @@ function pickStateMerge(root, key, choice, opts = {}) {
     const asked = conflicts.find(open);
     if (asked === undefined) return converge(state, timeoutsOf(opts));
     if (choiceId(asked) !== choice) return outcome(state, 'stopped', { conflicts, warnings: [NOT_ASKED] });
-    if ('madeTwice' in asked) {
-      if (key !== '1') throw new Error(`the state merge asks only to carry on past names made on both machines: pick 1, got "${key}"`);
+    if (isNotice(asked)) {
+      const past = 'madeTwice' in asked ? 'names made on both machines' : 'a consolidation report set aside';
+      if (key !== '1') throw new Error(`the state merge asks only to carry on past ${past}: pick 1, got "${key}"`);
       asked.pick = 'seen';
     } else {
       asked.pick = side;

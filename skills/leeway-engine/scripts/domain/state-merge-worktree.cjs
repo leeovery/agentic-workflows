@@ -13,8 +13,13 @@
 //   the merge's copy the remote's side, and the working copy this
 //   machine's. The result stays uncommitted. A field of a manifest or the
 //   tracker's store the two changed to different values stops the catch-up
-//   for the person's pick, as one on the branch does. An uncommitted path
-//   the move leaves alone stays byte for byte as it is.
+//   for the person's pick, as one on the branch does. The working tree's
+//   notes take the numbers the branch's merge gave the committed ones, its
+//   uncommitted notes placed after, so a note has one number in both.
+//   Where the merge's notes number the working tree's otherwise, each
+//   consolidation report it holds uncommitted is carried with them as the
+//   branch's are, renumbered or set aside. An uncommitted path the move
+//   leaves alone stays byte for byte as it is.
 // - No file is written, replaced or removed over bytes other than those it
 //   was merged from: each is checked just before, with no git call between
 //   the check and the write. One another session wrote meanwhile is merged
@@ -41,7 +46,7 @@ const { GitError } = require('../kernel/git.cjs');
 const { MergeError, fromRoot } = require('./state-merge-rules.cjs');
 const { blobIds } = require('../kernel/file-stream.cjs');
 const {
-  sameEntry, changedPaths, indexEntries, withPrivateIndex, fillIndex, mergePath, placeRuns, readContested, separateClashes, isUnder, besidePath, changedCopyKept,
+  sameEntry, changedPaths, indexEntries, withPrivateIndex, fillIndex, mergePath, placeRuns, placeNotes, readContested, separateClashes, isUnder, besidePath, changedCopyKept,
 } = require('./state-merge-paths.cjs');
 
 /** @typedef {import('./state-merge-paths.cjs').Entry} Entry */
@@ -96,25 +101,33 @@ function workingEntries(ctx, local) {
 /**
  * Work out the working tree's move from this clone's tip to the merge's
  * tree: the runs it holds uncommitted under numbers the merge's runs hold
- * moved after them, each path the move changes merged with what the working
- * tree holds, then each file-against-folder clash with an uncommitted path
- * separated.
+ * moved after them, its notes placed among the merge's — the committed ones
+ * at the numbers the merge gave them (`numbered`) — and its reports carried
+ * with them, each path the move changes, or a report carried, merged with
+ * what the working tree holds, then each file-against-folder clash with an
+ * uncommitted path separated.
  * @param {WorktreeContext} ctx @param {Entries} local @param {Entries} target @param {Entries} working @param {PickOf} pickOf
+ * @param {import('./state-merge-paths.cjs').Numbered} numbered
  * @returns {WorktreePlan}
  */
-function planWorktree(ctx, local, target, working, pickOf) {
+function planWorktree(ctx, local, target, working, pickOf, numbered) {
   const dirty = changedPaths(local, working);
   const runs = placeRuns(local, working, target);
+  const carried = placeNotes(ctx, local, runs.entries, target, pickOf, numbered);
   /** @type {Steps} */
-  const steps = { removes: [], moves: [...runs.moves], writes: [] };
+  const steps = { removes: [], moves: [...runs.moves, ...carried.moves], writes: [] };
   /** @type {PathConflict[]} */
   const conflicts = [];
-  const notes = [...runs.notes];
-  const placed = runs.entries;
+  const notes = [...runs.notes, ...carried.notes];
+  const placed = new Map(runs.entries);
+  for (const { from, to } of carried.moves) {
+    placed.set(to, /** @type {Entry} */ (placed.get(from)));
+    placed.delete(from);
+  }
   const layout = new Map(placed);
   const changed = changedPaths(local, target);
   /** @type {[string, import('./state-merge-paths.cjs').Versions][]} */
-  const paths = changed.map((file) => [file, { base: local.get(file), local: placed.get(file), remote: target.get(file) }]);
+  const paths = [...new Set([...changed, ...carried.touched])].map((file) => [file, { base: carried.base.get(file), local: carried.local.get(file), remote: target.get(file) }]);
   readContested(ctx, paths);
   for (const [file, versions] of paths) {
     const result = mergePath(ctx, file, versions, pickOf);
@@ -135,10 +148,11 @@ function planWorktree(ctx, local, target, working, pickOf) {
       layout.set(file, result.entry);
     }
   }
+  conflicts.push(...carried.conflicts);
   const clashes = separateClashes(ctx, layout, target);
   steps.moves.push(...clashes.moves);
   const moved = [...runs.moves, ...clashes.moves];
-  const touched = new Set([...changed, ...dirty.filter((file) => moved.some((move) => file === move.from || isUnder(move.from, file)))]);
+  const touched = new Set([...changed, ...carried.touched, ...dirty.filter((file) => moved.some((move) => file === move.from || isUnder(move.from, file)))]);
   return {
     steps,
     conflicts,

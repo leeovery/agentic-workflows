@@ -3,10 +3,11 @@
 // ---------------------------------------------------------------------------
 // Domain ring: the screen of a state merge stopped by a field both machines
 // changed to different values (4.7.6), in a manifest or the tracker's store,
-// or by tasks both machines made under the same numbers (7.5.7), which the
-// person acknowledges with the one row it offers, making again after what
-// this machine made. Pure renderer over the stop the merge keeps. The
-// conflicts are shown one at a time, the one the stop asks about
+// or by a notice the person acknowledges with the one row it offers: tasks
+// both machines made under the same numbers (7.5.7), making again after
+// what this machine made; or a consolidation report of this machine's set
+// aside, its notes having moved. Pure renderer over the stop the merge
+// keeps. The conflicts are shown one at a time, the one the stop asks about
 // (state-merge-rules.cjs, askedAt): each has its own question, and two
 // numbered rows answer it as the spec draws them, where every conflict at
 // once would need a key per side per field. The DATA section carries the
@@ -16,14 +17,15 @@
 // The merge asks in two steps: the branch's fields, then, once those are
 // picked, the fields this machine's uncommitted copies changed differently
 // from the update. Each step is known whole when it is asked, so the title
-// counts the step's fields, and the names made twice that follow them, and
-// the account says which one this is.
+// counts the step's fields and names the notices that follow them, and the
+// account says which one this is.
 // ---------------------------------------------------------------------------
 
 const { section, menu, cmdOption, emitAs, MENU_INSTRUCTION, dataSection, clipped } = require('./surfaces.cjs');
 const { escapeMarkdown } = require('./worklist.cjs');
-const { askedAt, choiceId } = require('../state-merge-rules.cjs');
+const { askedAt, isNotice, choiceId } = require('../state-merge-rules.cjs');
 const { STATE_DIR_NAME } = require('../../kernel/state-root.cjs');
+const { phaseName } = require('../task-id.cjs');
 
 /** @typedef {import('../state-merge-rules.cjs').Side} Side */
 /** @typedef {import('../state-merge-rules.cjs').ConflictLabel} ConflictLabel */
@@ -46,16 +48,24 @@ const { STATE_DIR_NAME } = require('../../kernel/state-root.cjs');
  */
 
 /**
- * Engine names both sides made in the tracker's store at `file`, the remote's
- * standing: the names, this machine's tasks set aside for them, where this
- * machine's whole copy is kept, and whether the person has seen it.
- * @typedef {import('../state-merge-rules.cjs').Notice & {
- *   file: string,
- *   uncommitted: boolean,
- *   beside: string,
- *   pick: 'seen'|null,
- * }} NoticeConflict
+ * Where a notice is, where this machine's copy is kept, and whether the
+ * person has seen it.
+ * @typedef {{file: string, uncommitted: boolean, beside: string, pick: 'seen'|null}} Noticed
  */
+
+/**
+ * Engine names both sides made in the tracker's store at `file`, the remote's
+ * standing: the names, and this machine's tasks set aside for them.
+ * @typedef {import('../drivers.cjs').MadeTwice & Noticed} MadeTwiceConflict
+ */
+
+/**
+ * The consolidation report at `file` this machine changed, set aside: its
+ * phase, whether the remote's copy stays, and how this machine's notes moved.
+ * @typedef {import('../state-merge-rules.cjs').SetAside & Noticed} SetAsideConflict
+ */
+
+/** @typedef {MadeTwiceConflict|SetAsideConflict} NoticeConflict */
 
 /** @typedef {FieldConflict|NoticeConflict} Conflict */
 
@@ -159,7 +169,7 @@ function toMake(again) {
  * The stop's screen for names both machines made: what was made twice,
  * what of this machine's to make again, and where its whole copy is kept;
  * one row carries on.
- * @param {NoticeConflict} notice
+ * @param {MadeTwiceConflict} notice
  * @returns {string}
  */
 function madeTwiceGate(notice) {
@@ -187,13 +197,59 @@ function madeTwiceGate(notice) {
 }
 
 /**
- * Which of the step's fields this is, and that the names made twice follow
- * them, where they do; nothing where it is the one stop.
- * @param {number} at @param {number} count @param {boolean} then @returns {string}
+ * The stop's screen for a consolidation report of this machine's set aside:
+ * how this machine's notes moved, why the report could not move with them,
+ * and where each copy is; one row carries on.
+ * @param {SetAsideConflict} notice
+ * @returns {string}
+ */
+function setAsideGate(notice) {
+  const { file, setAside, beside, uncommitted } = notice;
+  const report = `the consolidation report of ${phaseName(file.slice(0, file.indexOf('/')), setAside.phase)}`;
+  const copy = uncommitted ? 'uncommitted copy' : 'copy';
+  const kept = uncommitted ? 'The merged report' : "The remote's report";
+  const stays = setAside.stays ? `${kept} stays at \`${STATE_DIR_NAME}/${file}\`` : `No report stays at \`${STATE_DIR_NAME}/${file}\``;
+  const account = [
+    `> This machine's notes for later follow the remote's in the merge: ${setAside.renumbered.map(({ from, to }) => `note ${from} is now note ${to}`).join(', ')}. This machine's ${copy} of ${escapeMarkdown(report)} does not read as one, so the notes it takes cannot be renamed with them.`,
+    '>',
+    `> ${stays}, and this machine's ${copy} is kept beside it as \`${STATE_DIR_NAME}/${beside}\`. The notes it took wait for a consolidation again; the tasks it made stand.`,
+  ];
+  return [
+    dataSection([`choice: ${choiceId(notice)}`]),
+    section('DISPLAY: state merge stop', emitAs('properties'), `⚑ The state merge stopped: ${report} set aside`),
+    section('DISPLAY: state merge account', emitAs('markdown'), account.join('\n')),
+    section('MENU: state merge gate', MENU_INSTRUCTION, menu('', [
+      cmdOption('1', null, { head: 'Carry on', tail: `this machine's ${copy} is kept beside` }),
+    ], { question: 'Carry on with the merge?' })),
+  ].join('\n');
+}
+
+/**
+ * The notices that follow a step's fields, named for its title and for the
+ * line saying which field this is: none where none follows.
+ * @param {NoticeConflict[]} notices @returns {{title: string, which: string}|null}
+ */
+function following(notices) {
+  const reports = notices.filter((c) => 'setAside' in c).length;
+  const kinds = [
+    ...(notices.some((c) => 'madeTwice' in c) ? [{ title: 'names made twice', which: 'the names made twice', many: true }] : []),
+    ...(reports === 0 ? [] : [reports === 1
+      ? { title: 'a consolidation report set aside', which: 'the consolidation report set aside', many: false }
+      : { title: `${reports} consolidation reports set aside`, which: `the ${reports} consolidation reports set aside`, many: true }]),
+  ];
+  if (kinds.length === 0) return null;
+  const many = kinds.length > 1 || kinds[0].many;
+  return { title: listed(kinds.map((kind) => kind.title)), which: `${listed(kinds.map((kind) => kind.which))} ${many ? 'follow' : 'follows'}` };
+}
+
+/**
+ * Which of the step's fields this is, and the notices that follow them,
+ * where any do; nothing where it is the one stop.
+ * @param {number} at @param {number} count @param {string|null} then @returns {string}
  */
 function whichField(at, count, then) {
-  const follow = then ? '; the names made twice follow' : '';
-  if (count === 1) return then ? `One field${follow}. ` : '';
+  const follow = then === null ? '' : `; ${then}`;
+  if (count === 1) return then === null ? '' : `One field${follow}. `;
   return `Field ${at + 1} of ${count}${follow}. `;
 }
 
@@ -205,12 +261,13 @@ function whichField(at, count, then) {
 function stateMergeGate({ conflicts }) {
   const asked = conflicts[askedAt(conflicts)];
   if ('madeTwice' in asked) return madeTwiceGate(asked);
+  if ('setAside' in asked) return setAsideGate(asked);
   const conflict = asked;
   const inStep = conflicts.filter((c) => c.uncommitted === conflict.uncommitted);
-  const fields = inStep.filter((c) => !('madeTwice' in c));
-  const then = inStep.length > fields.length;
+  const fields = /** @type {FieldConflict[]} */ (inStep.filter((c) => !isNotice(c)));
+  const then = following(/** @type {NoticeConflict[]} */ (inStep.filter(isNotice)));
   const step = STEPS[conflict.uncommitted ? 'uncommitted' : 'branch'];
-  const which = whichField(fields.indexOf(conflict), fields.length, then);
+  const which = whichField(fields.indexOf(conflict), fields.length, then?.which ?? null);
   const account = [
     `> ${which}In ${escapeMarkdown(conflict.label.owner)}, ${changed(conflict.label)} ${step.changed}:`,
     '>',
@@ -221,7 +278,7 @@ function stateMergeGate({ conflicts }) {
   const rows = step.sides.map(([key, side, whose]) => cmdOption(key, null, { head: escapeMarkdown(clipped(shown(conflict[side]), ROW_VALUE_MAX)), tail: whose }));
   return [
     dataSection([`choice: ${choiceId(conflict)}`]),
-    section('DISPLAY: state merge stop', emitAs('properties'), `⚑ The state merge stopped: ${step.title(fields.length)}${then ? ', and names made twice' : ''}`),
+    section('DISPLAY: state merge stop', emitAs('properties'), `⚑ The state merge stopped: ${step.title(fields.length)}${then === null ? '' : `, and ${then.title}`}`),
     section('DISPLAY: state merge account', emitAs('markdown'), account.join('\n')),
     section('MENU: state merge gate', MENU_INSTRUCTION, menu('', rows, { question: question(conflict.label) })),
   ].join('\n');
