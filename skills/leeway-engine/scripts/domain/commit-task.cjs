@@ -5,13 +5,15 @@
 // `commit --paths <file>… --task <unit> <N.M> -m "<message>"`, the door's
 // half that is the task's, beside its paths and repos (engine.cjs):
 //
-// - The task must be in flight in the calling conversation, the one
-//   `CLAUDE_CODE_SESSION_ID` names, as its position records it
+// - The task must be one of those in flight in the calling conversation,
+//   the one `CLAUDE_CODE_SESSION_ID` names, as its position records them
 //   (conversation.cjs, `tasksInFlight`, the read the hook before Bash makes
-//   too). Refused, each with the way on: no conversation, a unit the project
-//   lacks, a task id that does not read `{phase}.{n}`, no task in flight —
-//   `task start` puts it there, again after a `/clear`, which begins
-//   another conversation — and another task in flight, named.
+//   too) — a builder's commands carry the conversation's id, so a commit
+//   from its worktree finds its task. Refused, each with the way on: no
+//   conversation, a unit the project lacks, a task id that does not read
+//   `{phase}.{n}`, no task in flight — `task start` puts it there, again
+//   after a `/clear`, which begins another conversation — and only other
+//   tasks in flight, each named.
 // - The project's checks run before the commit (15.8.3): its tests,
 //   `environment.run.tests`, then each of its linters, `environment.linters`
 //   (environment.cjs), in that order, each by `sh -c` in the code root of the
@@ -79,7 +81,7 @@ function inFlightTask(cwd, unit, given) {
     throw new Error(`commit --task: no task is in flight in this conversation — start ${taskName(ref)} with ${startCall(unit, given)}, then commit again; a /clear begins another conversation, so a task started before one is started again after it`);
   }
   const others = inFlight.map((task) => `task ${task.task} of ${task.unit}`).join(', ');
-  throw new Error(`commit --task: ${taskName(ref)} is not in flight in this conversation, ${others} is — commit under the task the work is for, or start ${taskName(ref)} with ${startCall(unit, given)}`);
+  throw new Error(`commit --task: ${taskName(ref)} is not in flight in this conversation, ${others} ${inFlight.length === 1 ? 'is' : 'are'} — commit under the task the work is for, or start ${taskName(ref)} with ${startCall(unit, given)}`);
 }
 
 /** The unit's task a shown id names; refused where it does not read as one. @param {string} unit @param {string} given */

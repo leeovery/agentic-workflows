@@ -176,7 +176,8 @@ person's own settings: the mod never touches either there.
 In a session that announced, in a conversation the engine has marked, on the
 terminal app and the Desktop app, the spinner keeps Claude Code's animation
 and ellipsis, its word the phase the conversation works in — `Discussing`,
-`Specifying`, `Implementing task 2.3`, `Shaping` in discovery and the
+`Specifying`, `Implementing task 2.3` with one task in flight and
+`Implementing 3 tasks` with several, `Shaping` in discovery and the
 product's conversation, `Roadmapping` — from the position the engine keeps in the
 conversation's folder (`position.json`). The drawing alone changes, never what
 Claude reads. The mod reads the position once for each conversation the
@@ -220,23 +221,28 @@ Code does, with nothing appended; so does a compaction Claude Code skips. The
 compaction Claude Code computes ahead of time passes through untouched, and
 the compaction that comes reuses it beneath the note.
 
-## How it keeps the task's executor
+## How it keeps each task's builder and reviewers
 
-The implementation phase dispatches one executor agent per task and sends the
-task's later rounds — a fix, a retry, a comment at the gate — to that same
-agent by its id, so it keeps what it learned. In a session that announced, in
-a conversation the engine has marked, when the main loop dispatches
-`leeway-implementation-task-executor`, the mod hands the agent id the
-dispatch answers with, foreground or background, to the engine's
-`conversation executor`, which records it on the position beside the task in
-flight; with no task in flight it records nothing. The id rides with that
-task and goes when the task completes, so a compaction's note names it
-beside the task (``on task 2.3 (internal id `ledger-2-3`), its executor agent
-`aa76bd7f82a2ef3e4` ``) and the next round continues that agent rather than
-dispatching a fresh one. Another agent, a subagent's own dispatch, a dispatch
-that was refused or errored, a plain conversation and a session that did not
-announce record nothing, and whatever the engine answers, the dispatch's
-result is Claude Code's own.
+A build runs several tasks at once, each dispatching one builder agent and a
+pair of reviewer agents, and sends the task's later rounds — a fix to the
+builder, a re-review to the pair — to those same agents by their ids, so they
+keep what they learned. In a session that announced, in a conversation the
+engine has marked, when the main loop dispatches `leeway-builder` or
+`leeway-reviewer` with its brief's pointer (`brief:{id}`), the mod hands the
+agent id the dispatch answers with, foreground or background, and the brief's
+id to the engine's `conversation builder`, which records it on the position
+against the task the brief was issued for — a builder in place of any before
+it, a reviewer beside the pair's other; with that task not in flight it
+records nothing. The plan's `leeway-implementation-task-executor` carries no
+brief, and is recorded as the builder of the one task in flight. The ids ride
+with their task and go when it ends, so a compaction's note names each task
+with its agents (``on task 2.3 (internal id `ledger-2-3`), its builder agent
+`aa76bd7f82a2ef3e4`, its reviewer agents `ab12` and `cd34` ``) and the next
+round continues them rather than dispatching fresh ones. Another agent, a
+build's agent whose prompt is not its brief's pointer alone, a subagent's own
+dispatch, a dispatch that was refused or errored, a plain conversation and a
+session that did not announce record nothing, and whatever the engine
+answers, the dispatch's result is Claude Code's own.
 
 ## Working on it
 

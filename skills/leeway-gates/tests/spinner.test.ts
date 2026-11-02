@@ -19,7 +19,12 @@ const DEFAULT_CONFIG = `${HOME}/.config/leeway`
 
 const ENGINE = 'node .claude/skills/leeway-engine/scripts/engine.cjs'
 
-type Position = { name: string; phase?: string; topic?: string; task?: string }
+type InFlight = { task: string; builder: string | null; reviewers: string[] }
+
+type Position = { name: string; phase?: string; topic?: string; tasks?: InFlight[] }
+
+/** Tasks just put in flight, by their numbers. */
+const inFlight = (...tasks: string[]): InFlight[] => tasks.map(task => ({ task, builder: null, reviewers: [] }))
 
 /** The announcement a session the mod applies to carries from its start. */
 const ANNOUNCED = { LEEWAY_GATE_SURFACE: '1' }
@@ -169,10 +174,15 @@ describe('the spinner', () => {
       expect(textOf(await drawn($, spinnerOf(surface)))).toBe('Discussing…')
     })
 
-    test(`in implementation, the task in flight with it — ${surface}`, async ($, on) => {
-      world(on, { positions: { s0: { name: 'pay', phase: 'implementation', topic: 'ledger', task: '2.3' } } })
+    test(`in implementation, the task in flight by its number, several by their count — ${surface}`, async ($, on) => {
+      const { places } = world(on, { positions: { s0: { name: 'pay', phase: 'implementation', topic: 'ledger', tasks: inFlight('2.3') } } })
 
       expect(textOf(await drawn($, spinnerOf(surface)))).toBe('Implementing task 2.3…')
+
+      places({ name: 'pay', phase: 'implementation', topic: 'pay', tasks: [{ task: '1.1', builder: 'b1', reviewers: ['r1', 'r2'] }, ...inFlight('1.2', '2.1')] })
+      await $.tool.call({ tool: 'Bash', command: `${ENGINE} task start pay 2.1` })
+
+      expect(textOf(await drawn($, spinnerOf(surface)))).toBe('Implementing 3 tasks…')
     })
 
     test(`keeps Claude Code's word with no position, at a work unit's menu, and in an unmarked conversation — ${surface}`, async ($, on) => {
@@ -237,7 +247,7 @@ describe('the spinner', () => {
   }
 
   test('a task\'s completion takes it off the word, its implementation kept', async ($, on) => {
-    const { places } = world(on, { positions: { s0: { name: 'pay', phase: 'implementation', topic: 'ledger', task: '2.3' } } })
+    const { places } = world(on, { positions: { s0: { name: 'pay', phase: 'implementation', topic: 'ledger', tasks: inFlight('2.3') } } })
 
     expect(textOf(await drawn($, spinnerOf('terminal')))).toBe('Implementing task 2.3…')
 
@@ -246,19 +256,19 @@ describe('the spinner', () => {
 
     expect(textOf(await drawn($, spinnerOf('terminal')))).toBe('Implementing…')
 
-    places({ name: 'pay', phase: 'implementation', topic: 'ledger', task: '2.4' })
+    places({ name: 'pay', phase: 'implementation', topic: 'ledger', tasks: inFlight('2.4') })
     await $.tool.call({ tool: 'Bash', command: `${ENGINE} task start pay ledger ledger-2-4` })
 
     expect(textOf(await drawn($, spinnerOf('terminal')))).toBe('Implementing task 2.4…')
   })
 
-  test('the tracker\'s verbs move the word: a task started comes on it, and off it once done or closed', async ($, on) => {
+  test('the tracker\'s verbs move the word: a task started comes on it, beside any others, and off it once done or closed', async ($, on) => {
     const unit = { name: 'pay', phase: 'implementation', topic: 'pay' }
     const { places } = world(on, { positions: { s0: unit } })
     const steps: [string, Position, string][] = [
-      ['task start pay 1.1', { ...unit, task: '1.1' }, 'Implementing task 1.1…'],
-      ['task done pay 1.1', unit, 'Implementing…'],
-      ['task start pay 1.2', { ...unit, task: '1.2' }, 'Implementing task 1.2…'],
+      ['task start pay 1.1', { ...unit, tasks: inFlight('1.1') }, 'Implementing task 1.1…'],
+      ['task start pay 1.2', { ...unit, tasks: inFlight('1.1', '1.2') }, 'Implementing 2 tasks…'],
+      ['task done pay 1.1', { ...unit, tasks: inFlight('1.2') }, 'Implementing task 1.2…'],
       ['task close pay 1.2 --reason "Not needed."', unit, 'Implementing…'],
     ]
 

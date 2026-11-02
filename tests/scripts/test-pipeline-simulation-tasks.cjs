@@ -3,9 +3,10 @@
 // ---------------------------------------------------------------------------
 // The pipeline simulation's tracker scenario: a build phase's tasks written
 // through the `task` verbs, ready answering what can start, a fact added to
-// a task before its dispatch, the tasks started and done, and the task they
-// held up freed — the project's default task driver running its real tool,
-// its store on the state branch alone.
+// a task before its dispatch, the tasks started side by side in the one
+// conversation — the note a compaction hands up naming each — and done, and
+// the task they held up freed — the project's default task driver running
+// its real tool, its store on the state branch alone.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -25,7 +26,7 @@ describe('pipeline simulation: the tracker', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('a build phase: its tasks written, the ready ones added to, started and done, the task they held up freed', () => {
+  it('a build phase: its tasks written, the ready ones added to, started side by side and done, the task they held up freed', () => {
     const wu = 'ledger';
     startNew(sim, 'feature');
     const log = sessionLog(sim, wu);
@@ -35,19 +36,17 @@ describe('pipeline simulation: the tracker', () => {
       { title: 'Write the ledger' }, { title: 'Read the ledger' }, { title: 'Fold the ledger', after: ['1.1', '1.2'] },
     ]);
 
-    // The build runs what is ready side by side, each task in flight in a
-    // conversation of its own.
+    // The build runs what is ready side by side, every task in flight in the
+    // one conversation (12.S21).
     const ready = sim.run(['task', 'ready', wu, '1']).tasks.map((/** @type {{task: string}} */ task) => task.task);
     assert.deepStrictEqual(ready, ['1.1', '1.2'], 'ready answers the two tasks nothing holds up');
     // Before the dispatch, a fact about the code goes onto the task (13.11.3).
     const fact = sim.write(`.leeway/.cache/${wu}/build/addition.md`, 'The ledger file moved to `ledger/store.go`.\n');
     sim.run(['task', 'add', wu, '1.1', '--file', fact, '--by', 'orchestrator']);
-    for (const task of ready) {
-      sim.handOver();
-      sim.run(['task', 'start', wu, task]);
-      assert.strictEqual(carryOn(sim).position.task, task, 'the task is in flight in its conversation');
-      sim.run(['task', 'done', wu, task]);
-    }
+    for (const task of ready) sim.run(['task', 'start', wu, task]);
+    assert.deepStrictEqual(carryOn(sim).position.tasks.map((/** @type {{task: string}} */ t) => t.task), ready, 'both are in flight in the conversation');
+    for (const task of ready) sim.run(['task', 'done', wu, task]);
+    assert.strictEqual(carryOn(sim).position.tasks, undefined, 'each done takes its task off');
 
     assert.deepStrictEqual(sim.run(['task', 'ready', wu]).tasks.map((/** @type {{task: string}} */ task) => task.task), ['1.3'],
       'the task they held up is ready once both are done');

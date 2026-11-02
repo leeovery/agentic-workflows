@@ -17,7 +17,12 @@ const ROOT = '/Users/person/app'
 
 const ENGINE = `${ROOT}/.claude/skills/leeway-engine/scripts/engine.cjs`
 
+const BUILDER = 'leeway-builder'
+const REVIEWER = 'leeway-reviewer'
 const EXECUTOR = 'leeway-implementation-task-executor'
+
+/** A dispatch of the build's agents carries its brief's pointer alone. */
+const POINTER = 'brief:Kq3xW9'
 
 /** The announcement a session the mod applies to carries from its start. */
 const ANNOUNCED = { LEEWAY_GATE_SURFACE: '1' }
@@ -39,21 +44,21 @@ const COMPLETED = {
     service_tier: null,
     cache_creation: null,
   },
-  prompt: 'Implement task 2.3.',
+  prompt: POINTER,
 }
 
 /** A background dispatch's answer: the agent launched. */
 const LAUNCHED = {
   status: 'async_launched' as const,
   agentId: 'ab12cd34ef56ab78c',
-  description: 'Implement task 2.3',
-  prompt: 'Implement task 2.3.',
+  description: 'Build task 2.3',
+  prompt: POINTER,
   outputFile: '/tmp/agent-output',
 }
 
-/** The engine's run that records an executor, by its agent id. */
-const recording = (agentId: string) => ({
-  argv: ['node', ENGINE, 'conversation', 'executor', 's0', agentId],
+/** The engine's run that records an agent, by its agent id, and the brief its dispatch named, where it named one. */
+const recording = (agentId: string, brief?: string) => ({
+  argv: ['node', ENGINE, 'conversation', 'builder', 's0', agentId, ...(brief === undefined ? [] : ['--brief', brief])],
   cwd: ROOT,
   timeoutMs: 15_000,
 })
@@ -114,10 +119,10 @@ function world(
   return { runs, clock }
 }
 
-const dispatchOf = (subagent_type: string | undefined, over: { agentId?: string } = {}) => ({
+const dispatchOf = (subagent_type: string | undefined, over: { agentId?: string; prompt?: string } = {}) => ({
   tool: 'Agent' as const,
-  description: 'Implement task 2.3',
-  prompt: 'Implement task 2.3.',
+  description: 'Build task 2.3',
+  prompt: subagent_type === EXECUTOR ? 'Implement task 2.3.' : POINTER,
   ...(subagent_type === undefined ? {} : { subagent_type }),
   ...over,
 })
@@ -131,46 +136,56 @@ async function dispatched($: Engine, clock: ReturnType<typeof mock.clock>, call:
   return answer
 }
 
-describe('the task executor, recorded as it is dispatched', () => {
-  for (const dispatch of [COMPLETED, LAUNCHED]) {
-    test(`hands the engine the agent id the dispatch answered with — ${dispatch.status}`, async ($, on) => {
-      const { runs, clock } = world(on, { answer: { result: dispatch } })
+describe('a task\'s builder and reviewers, recorded as they are dispatched', () => {
+  for (const type of [BUILDER, REVIEWER]) {
+    for (const dispatch of [COMPLETED, LAUNCHED]) {
+      test(`hands the engine the agent id the dispatch answered with, and the brief its pointer names — ${type}, ${dispatch.status}`, async ($, on) => {
+        const { runs, clock } = world(on, { answer: { result: dispatch } })
 
-      expect(await dispatched($, clock, dispatchOf(EXECUTOR))).toEqual({ result: dispatch })
-      expect(runs).toEqual([recording(dispatch.agentId)])
-    })
+        expect(await dispatched($, clock, dispatchOf(type))).toEqual({ result: dispatch })
+        expect(runs).toEqual([recording(dispatch.agentId, 'Kq3xW9')])
+      })
+    }
   }
 
-  test('answers the dispatch at once, the record made after it', async ($, on) => {
+  test('the plan\'s executor, which carries no brief, is handed over without one', async ($, on) => {
     const { runs, clock } = world(on)
-
-    expect(await $.tool.call(dispatchOf(EXECUTOR))).toEqual({ result: COMPLETED })
-    expect(runs, 'nothing is run before the dispatch answers').toEqual([])
-
-    await clock.advance(0)
-
-    expect(runs).toEqual([recording(COMPLETED.agentId)])
-  })
-
-  test('finds the conversation in the config directory the process names, never under the home directory', async ($, on) => {
-    const config = '/Users/person/state/workflows'
-    const { runs, clock } = world(on, { env: { ...ANNOUNCED, LEEWAY_CONFIG_DIR: config }, markedIn: config })
 
     await dispatched($, clock, dispatchOf(EXECUTOR))
 
     expect(runs).toEqual([recording(COMPLETED.agentId)])
   })
 
+  test('answers the dispatch at once, the record made after it', async ($, on) => {
+    const { runs, clock } = world(on)
+
+    expect(await $.tool.call(dispatchOf(BUILDER))).toEqual({ result: COMPLETED })
+    expect(runs, 'nothing is run before the dispatch answers').toEqual([])
+
+    await clock.advance(0)
+
+    expect(runs).toEqual([recording(COMPLETED.agentId, 'Kq3xW9')])
+  })
+
+  test('finds the conversation in the config directory the process names, never under the home directory', async ($, on) => {
+    const config = '/Users/person/state/workflows'
+    const { runs, clock } = world(on, { env: { ...ANNOUNCED, LEEWAY_CONFIG_DIR: config }, markedIn: config })
+
+    await dispatched($, clock, dispatchOf(BUILDER))
+
+    expect(runs).toEqual([recording(COMPLETED.agentId, 'Kq3xW9')])
+  })
+
   test('an engine that cannot start leaves the dispatch\'s result as Claude Code answered it', async ($, on) => {
     const { runs, clock } = world(on, { engineUnstartable: true })
 
-    expect(await dispatched($, clock, dispatchOf(EXECUTOR))).toEqual({ result: COMPLETED })
+    expect(await dispatched($, clock, dispatchOf(BUILDER))).toEqual({ result: COMPLETED })
     expect(runs.length, 'the mod asked once').toBe(1)
   })
 })
 
 describe('what records nothing, the dispatch\'s result as Claude Code answered it', () => {
-  for (const type of ['leeway-implementation-task-reviewer', 'general-purpose', undefined]) {
+  for (const type of ['leeway-deep-dive', 'general-purpose', undefined]) {
     test(`another agent — ${type ?? 'no type named'}`, async ($, on) => {
       const { runs, clock } = world(on)
 
@@ -179,11 +194,21 @@ describe('what records nothing, the dispatch\'s result as Claude Code answered i
     })
   }
 
+  for (const prompt of ['Build task 2.3.', `${POINTER} — task 2.3`, 'brief:']) {
+    test(`a build's agent whose prompt is no brief's pointer alone — ${JSON.stringify(prompt)}`, async ($, on) => {
+      const { runs, clock } = world(on)
+
+      await dispatched($, clock, dispatchOf(BUILDER, { prompt }))
+
+      expect(runs).toEqual([])
+    })
+  }
+
   for (const answer of [{ deny: 'not now' }, { isError: true as const, result: 'Agent failed', text: 'Agent failed' }]) {
     test(`a dispatch that was refused or errored — ${JSON.stringify(answer)}`, async ($, on) => {
       const { runs, clock } = world(on, { answer })
 
-      expect(await dispatched($, clock, dispatchOf(EXECUTOR))).toEqual(answer)
+      expect(await dispatched($, clock, dispatchOf(BUILDER))).toEqual(answer)
       expect(runs).toEqual([])
     })
   }
@@ -191,7 +216,7 @@ describe('what records nothing, the dispatch\'s result as Claude Code answered i
   test('a dispatch a subagent made', async ($, on) => {
     const { runs, clock } = world(on)
 
-    expect(await dispatched($, clock, dispatchOf(EXECUTOR, { agentId: 'a1' }))).toEqual({ result: COMPLETED })
+    expect(await dispatched($, clock, dispatchOf(BUILDER, { agentId: 'a1' }))).toEqual({ result: COMPLETED })
     expect(runs).toEqual([])
   })
 
@@ -199,7 +224,7 @@ describe('what records nothing, the dispatch\'s result as Claude Code answered i
     test(`a session that did not announce — ${JSON.stringify(env)}`, async ($, on) => {
       const { runs, clock } = world(on, { env })
 
-      expect(await dispatched($, clock, dispatchOf(EXECUTOR))).toEqual({ result: COMPLETED })
+      expect(await dispatched($, clock, dispatchOf(BUILDER))).toEqual({ result: COMPLETED })
       expect(runs).toEqual([])
     })
   }
@@ -207,14 +232,14 @@ describe('what records nothing, the dispatch\'s result as Claude Code answered i
   test('a conversation the engine has not marked', async ($, on) => {
     const { runs, clock } = world(on, { marked: [] })
 
-    expect(await dispatched($, clock, dispatchOf(EXECUTOR))).toEqual({ result: COMPLETED })
+    expect(await dispatched($, clock, dispatchOf(BUILDER))).toEqual({ result: COMPLETED })
     expect(runs).toEqual([])
   })
 
   test('a process that names no folder', async ($, on) => {
     const { runs, clock } = world(on, { env: { ...ANNOUNCED, HOME: '' } })
 
-    await dispatched($, clock, dispatchOf(EXECUTOR))
+    await dispatched($, clock, dispatchOf(BUILDER))
 
     expect(runs).toEqual([])
   })

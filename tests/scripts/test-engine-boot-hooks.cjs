@@ -167,7 +167,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
       git(fix.project, ['checkout', '-q', '-b', 'feature']);
       const main = git(fix.project, ['rev-parse', 'main']);
       fs.mkdirSync(conversationDir(session), { recursive: true });
-      fs.writeFileSync(positionPath(session), JSON.stringify({ name: 'payments', phase: 'implementation', topic: 'payments', task: '1.1' }));
+      fs.writeFileSync(positionPath(session), JSON.stringify({ name: 'payments', phase: 'implementation', topic: 'payments', tasks: [{ task: '1.1', builder: null, reviewers: [] }] }));
 
       assert.strictEqual(bootWith().session_hooks_installed, true);
       assert.deepStrictEqual(settings().hooks.PreToolUse, GUARD_GROUPS);

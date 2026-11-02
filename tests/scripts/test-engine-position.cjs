@@ -5,10 +5,13 @@
 // arrival records in the conversation's folder, labels on or off — a phase,
 // a work unit's menu, the project-level places — a place this project lacks
 // refused, marking the conversation first where the call runs in a
-// workflows project, and nothing without a session id; the task `task
-// start` adds and its `task complete` takes off; the executor the gate mod's
-// `conversation executor` adds beside a task in flight, riding with that task
-// alone; the start menu's repair dropping it; and `conversation position`,
+// workflows project, and nothing without a session id; each task `task
+// start` adds beside those in flight and its `task complete` takes off; the
+// builder and reviewers the gate mod's `conversation builder` records
+// against the task its brief was issued for — the plan's executor, with no
+// brief, the builder of the one task in flight — riding with that task
+// alone, two recorded at once both standing (24.2.4, 13.3.3, 12.S21); the
+// start menu's repair dropping it; and `conversation position`,
 // which answers what to re-read to carry on there: the skill that runs the
 // work, then the topic's documents this project has, each by its absolute
 // path under the project root, as the note a compaction hands up and one line
@@ -23,7 +26,8 @@
 // unit, each live topic's record and log, the files linked canonical, then
 // the spec once written and its cut, and the review page while it is open,
 // a concluded spec carrying nothing on;
-// every other phase's sends Claude to its skill's own steps.
+// every other phase's sends Claude to its skill's own steps, a build's
+// naming each task in flight with its builder and its pair (24.S12).
 //
 
 require('./hermetic-env.cjs');
@@ -35,12 +39,16 @@ const os = require('os');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
 const { skillAt } = require('../../skills/leeway-engine/scripts/domain/position.cjs');
+const { ROLES } = require('../../skills/leeway-engine/scripts/domain/brief-names.cjs');
+const { storeBrief } = require('../../skills/leeway-engine/scripts/domain/brief.cjs');
 const { OPENING_SKILLS } = require('../../skills/leeway-engine/scripts/domain/handoff.cjs');
 const { PROJECT_IDENTITIES, VALID_PHASES } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
 
 // The phases whose note carries the recovery whole, their skills keeping no
 // steps of their own for it.
 const WHOLE = ['discussion', 'discovery', 'specification'];
+
+const POSITION_MODULE = path.join(__dirname, '../../skills/leeway-engine/scripts/domain/position.cjs');
 
 let dir; // a workflows project
 let config; // this test's system config directory
@@ -71,6 +79,18 @@ function writePosition(record, sessionId = 'sess-1') {
   fs.mkdirSync(folder(sessionId), { recursive: true });
   fs.writeFileSync(path.join(folder(sessionId), 'workflow'), '');
   fs.writeFileSync(path.join(folder(sessionId), 'position.json'), JSON.stringify(record));
+}
+
+/** A task just put in flight: no builder or reviewer recorded yet. */
+const fresh = (task) => ({ task, builder: null, reviewers: [] });
+
+/**
+ * A brief the conversation issued for the `role`'s agent, stored as `brief`
+ * stores it — for the unit's task, or with no task, for its topic.
+ */
+function issue(id, role, task, unit = 'pay', sessionId = 'sess-1') {
+  const issued = { role, agent: ROLES[role].agent, unit, task, topic: task === null ? 'ledger' : null };
+  harness.withEnv({ LEEWAY_CONFIG_DIR: config }, () => storeBrief(sessionId, id, `Brief ${id}\n`, issued));
 }
 
 /** Mark a conversation as the engine does: any call it makes in the project. */
@@ -147,7 +167,7 @@ describe('the position every arrival records', () => {
     assert.deepStrictEqual(position('sess-new'), { name: 'roadmap' });
     ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3'], 'sess-task');
     assert.ok(fs.existsSync(path.join(folder('sess-task'), 'workflow')), 'task start marked the conversation');
-    assert.deepStrictEqual(position('sess-task'), { name: 'pay', phase: 'implementation', topic: 'ledger', task: '2.3' });
+    assert.deepStrictEqual(position('sess-task'), { name: 'pay', phase: 'implementation', topic: 'ledger', tasks: [fresh('2.3')] });
   });
 
   it('no session id records nothing', () => {
@@ -185,13 +205,16 @@ describe('the position every arrival records', () => {
     assert.deepStrictEqual(position(), { name: 'pay', phase: 'discussion', topic: 'ledger' });
   });
 
-  it('task start adds the task in flight; that task\'s complete takes it off, another\'s leaves it', () => {
+  it('task start adds the task in flight beside those there; that task\'s complete takes it off, another\'s leaves it, and the last off leaves none', () => {
     ok(['session', 'label', 'pay', 'implementation', 'ledger']);
     ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3']);
-    assert.deepStrictEqual(position(), { name: 'pay', phase: 'implementation', topic: 'ledger', task: '2.3' });
+    ok(['task', 'start', 'pay', 'ledger', 'ledger-2-4']);
+    assert.deepStrictEqual(position(), { name: 'pay', phase: 'implementation', topic: 'ledger', tasks: [fresh('2.3'), fresh('2.4')] });
     ok(['task', 'complete', 'pay', 'ledger', 'ledger-1-1']);
-    assert.strictEqual(position().task, '2.3', 'an out-of-band completion of another task');
-    ok(['task', 'complete', 'pay', 'ledger', 'ledger-2-3', '--next-task', '~']);
+    assert.deepStrictEqual(position().tasks, [fresh('2.3'), fresh('2.4')], 'an out-of-band completion of another task');
+    ok(['task', 'complete', 'pay', 'ledger', 'ledger-2-3']);
+    assert.deepStrictEqual(position().tasks, [fresh('2.4')]);
+    ok(['task', 'complete', 'pay', 'ledger', 'ledger-2-4', '--next-task', '~']);
     assert.deepStrictEqual(position(), { name: 'pay', phase: 'implementation', topic: 'ledger' });
   });
 
@@ -205,11 +228,12 @@ describe('the position every arrival records', () => {
     assert.deepStrictEqual(position(), { name: 'pay', phase: 'implementation', topic: 'ledger' });
   });
 
-  it('a re-label of the same implementation keeps the task; arriving anywhere else leaves none behind', () => {
+  it('a re-label of the same implementation keeps its tasks; arriving anywhere else leaves none behind', () => {
     ok(['session', 'label', 'pay', 'implementation', 'ledger']);
     ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3']);
+    ok(['task', 'start', 'pay', 'ledger', 'ledger-2-4']);
     ok(['session', 'label', 'pay', 'implementation', 'ledger']);
-    assert.strictEqual(position().task, '2.3');
+    assert.deepStrictEqual(position().tasks, [fresh('2.3'), fresh('2.4')]);
     ok(['session', 'label', 'pay']);
     assert.deepStrictEqual(position(), { name: 'pay' });
     ok(['session', 'label', 'pay', 'implementation', 'ledger']);
@@ -219,7 +243,7 @@ describe('the position every arrival records', () => {
   it('task start writes the whole position — the conversation is in that implementation, on that task', () => {
     ok(['session', 'label', 'pay', 'discussion', 'ledger']);
     ok(['task', 'start', 'pay', 'ledger', 'ledger-1-4']);
-    assert.deepStrictEqual(position(), { name: 'pay', phase: 'implementation', topic: 'ledger', task: '1.4' });
+    assert.deepStrictEqual(position(), { name: 'pay', phase: 'implementation', topic: 'ledger', tasks: [fresh('1.4')] });
   });
 
   it('the start menu is no position: repair takes the calling conversation\'s own off, labels off, and leaves another\'s', () => {
@@ -237,61 +261,104 @@ describe('the position every arrival records', () => {
   });
 });
 
-describe('the executor the gate mod records', () => {
+describe('the builders and reviewers the gate mod records (24.2.4, 13.3.3, 29.14.8)', () => {
   const AGENT = 'aa76bd7f82a2ef3e4';
+  /** The unit's build: the tracker's tasks are in flight at the unit's implementation. */
+  const BUILD = { name: 'pay', phase: 'implementation', topic: 'pay' };
 
-  /** The gate mod's call as it sees the executor dispatched, its answer parsed. */
-  function executor(agentId = AGENT, sessionId = 'sess-1') {
-    return ok(['conversation', 'executor', sessionId, agentId], null);
+  /** The gate mod's call as it sees a dispatch answered, its answer parsed — a builder's or a reviewer's naming its brief. */
+  function dispatched(agentId, brief, sessionId = 'sess-1') {
+    return ok(['conversation', 'builder', sessionId, agentId, ...(brief === undefined ? [] : ['--brief', brief])], null);
   }
 
-  /** The conversation in that implementation, on task 2.3, its executor recorded. */
+  /** The conversation in that implementation, on task 2.3, the plan's executor recorded as its builder. */
   function onTask() {
     ok(['session', 'label', 'pay', 'implementation', 'ledger']);
     ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3']);
-    assert.deepStrictEqual(executor(), { ok: true, recorded: true });
+    assert.deepStrictEqual(dispatched(AGENT), { ok: true, recorded: true });
   }
 
-  it('records the agent id beside the task in flight', () => {
-    onTask();
-    assert.deepStrictEqual(position(), { name: 'pay', phase: 'implementation', topic: 'ledger', task: '2.3', executor: AGENT });
+  it('a builder\'s dispatch is recorded against the task its brief was issued for — several in flight, each its own (12.S21)', () => {
+    writePosition({ ...BUILD, tasks: [fresh('1.1'), fresh('1.2')] });
+    issue('B11', 'builder', '1.1');
+    issue('B12', 'builder', '1.2');
+
+    assert.deepStrictEqual([dispatched('b12', 'B12'), dispatched('b11', 'B11')], [{ ok: true, recorded: true }, { ok: true, recorded: true }]);
+
+    assert.deepStrictEqual(position(), { ...BUILD, tasks: [{ task: '1.1', builder: 'b11', reviewers: [] }, { task: '1.2', builder: 'b12', reviewers: [] }] });
   });
 
-  it('records nothing without a task in flight — no position, another phase, an implementation between tasks', () => {
-    assert.deepStrictEqual(executor(AGENT, 'sess-none'), { ok: true, recorded: false });
+  it('the pair: each reviewer joins its task\'s reviewers, once; a later builder\'s dispatch, the fix round\'s brief among them, replaces the builder (13.3.3)', () => {
+    writePosition({ ...BUILD, tasks: [fresh('1.1'), fresh('1.2')] });
+    issue('B11', 'builder', '1.1');
+    issue('R1', 'reviewer', '1.1');
+    issue('R2', 'reviewer', '1.1');
+    issue('F11', 'fix', '1.1');
+
+    for (const [agentId, brief] of [['b11', 'B11'], ['r1', 'R1'], ['r2', 'R2'], ['r1', 'R1']]) dispatched(agentId, brief);
+    assert.deepStrictEqual(position().tasks, [{ task: '1.1', builder: 'b11', reviewers: ['r1', 'r2'] }, fresh('1.2')]);
+
+    dispatched('b9', 'F11');
+    assert.deepStrictEqual(position().tasks, [{ task: '1.1', builder: 'b9', reviewers: ['r1', 'r2'] }, fresh('1.2')]);
+  });
+
+  it('records nothing where its brief names no task in flight at its unit\'s build — never issued here, another agent\'s, a task not in flight, another unit\'s, a topic\'s implementation, no position, another place', () => {
+    writePosition({ ...BUILD, tasks: [fresh('1.1')] });
+    issue('B12', 'builder', '1.2');
+    issue('REF', 'builder', '1.1', 'refunds');
+    issue('DIVE', 'deep-dive', null);
+    issue('B11', 'builder', '1.1');
+    const before = position();
+    for (const brief of ['NOPE', 'B12', 'REF', 'DIVE']) assert.deepStrictEqual(dispatched('a1', brief), { ok: true, recorded: false }, brief);
+    assert.deepStrictEqual(position(), before);
+
+    writePosition({ name: 'pay', phase: 'implementation', topic: 'ledger', tasks: [fresh('1.1')] }, 'sess-2');
+    issue('B11', 'builder', '1.1', 'pay', 'sess-2');
+    assert.deepStrictEqual(dispatched('a1', 'B11', 'sess-2'), { ok: true, recorded: false }, 'a task of that number in a topic\'s implementation');
+    assert.deepStrictEqual(dispatched('a1', 'B11', 'sess-none'), { ok: true, recorded: false });
     assert.strictEqual(position('sess-none'), null);
-    for (const place of [['pay', 'discussion', 'ledger'], ['pay'], ['pay', 'implementation', 'ledger']]) {
+    for (const place of [['pay', 'discussion', 'ledger'], ['pay']]) {
       ok(['session', 'label', ...place]);
-      const before = position();
-      assert.deepStrictEqual(executor(), { ok: true, recorded: false }, place.join(' '));
-      assert.deepStrictEqual(position(), before, place.join(' '));
+      const at = position();
+      assert.deepStrictEqual(dispatched('a1', 'B11'), { ok: true, recorded: false }, place.join(' '));
+      assert.deepStrictEqual(position(), at, place.join(' '));
     }
+  });
+
+  it('with no brief — the plan\'s executor — the builder of the one task in flight; nothing where none is, or several', () => {
+    onTask();
+    assert.deepStrictEqual(position(), { name: 'pay', phase: 'implementation', topic: 'ledger', tasks: [{ task: '2.3', builder: AGENT, reviewers: [] }] });
+
+    ok(['task', 'start', 'pay', 'ledger', 'ledger-2-4']);
+    const several = position();
+    assert.deepStrictEqual(dispatched('ab12'), { ok: true, recorded: false });
+    assert.deepStrictEqual(position(), several);
+
+    ok(['session', 'label', 'pay', 'implementation', 'refunds']);
+    assert.deepStrictEqual(dispatched('ab12'), { ok: true, recorded: false });
   });
 
   it('records on the conversation it names, never the calling one', () => {
     onTask();
     ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3'], 'sess-2');
     const calling = position();
-    assert.deepStrictEqual(ok(['conversation', 'executor', 'sess-2', 'ab12'], 'sess-1'), { ok: true, recorded: true });
-    assert.strictEqual(position('sess-2').executor, 'ab12');
+    assert.deepStrictEqual(ok(['conversation', 'builder', 'sess-2', 'ab12'], 'sess-1'), { ok: true, recorded: true });
+    assert.strictEqual(position('sess-2').tasks[0].builder, 'ab12');
     assert.deepStrictEqual(position(), calling, 'the calling conversation\'s position is untouched');
   });
 
-  it('a later dispatch for the same task replaces it', () => {
-    onTask();
-    executor('ab12');
-    assert.strictEqual(position().executor, 'ab12');
-  });
-
-  it('task start re-run for the task in flight keeps it; another task starts without one', () => {
-    onTask();
+  it('a task\'s agents ride with it: task start re-run keeps them, another task starts beside it with none, and its completion takes them off with it', () => {
+    writePosition({ name: 'pay', phase: 'implementation', topic: 'ledger', tasks: [{ task: '2.3', builder: AGENT, reviewers: ['r1', 'r2'] }] });
+    const [held] = position().tasks;
     ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3']);
-    assert.strictEqual(position().executor, AGENT, 'the recovery steps re-run task start for the task in flight');
+    assert.deepStrictEqual(position().tasks, [held], 'the recovery steps re-run task start for the task in flight');
     ok(['task', 'start', 'pay', 'ledger', 'ledger-2-4']);
-    assert.deepStrictEqual(position(), { name: 'pay', phase: 'implementation', topic: 'ledger', task: '2.4' });
+    assert.deepStrictEqual(position().tasks, [held, fresh('2.4')]);
+    ok(['task', 'complete', 'pay', 'ledger', 'ledger-2-3']);
+    assert.deepStrictEqual(position().tasks, [fresh('2.4')]);
   });
 
-  it('task start for the same step in another implementation starts without one', () => {
+  it('task start for the same step in another implementation starts without them', () => {
     workUnit('pay', 'epic', {
       implementation: { items: {
         ledger: { status: 'in-progress', current_task: null, fix_attempts: 0 },
@@ -300,46 +367,30 @@ describe('the executor the gate mod records', () => {
     });
     onTask();
     ok(['task', 'start', 'pay', 'refunds', 'refunds-2-3']);
-    assert.deepStrictEqual(position(), { name: 'pay', phase: 'implementation', topic: 'refunds', task: '2.3' });
+    assert.deepStrictEqual(position(), { name: 'pay', phase: 'implementation', topic: 'refunds', tasks: [fresh('2.3')] });
   });
 
-  it('the task\'s completion takes it off with the task', () => {
-    onTask();
-    ok(['task', 'complete', 'pay', 'ledger', 'ledger-1-1']);
-    assert.strictEqual(position().executor, AGENT, 'another task\'s completion leaves it');
-    ok(['task', 'complete', 'pay', 'ledger', 'ledger-2-3', '--next-task', '~']);
-    assert.deepStrictEqual(position(), { name: 'pay', phase: 'implementation', topic: 'ledger' });
-  });
-
-  it('a re-label of the same implementation keeps it; arriving anywhere else leaves none behind', () => {
+  it('a re-label of the same implementation keeps them; arriving anywhere else leaves none behind', () => {
     onTask();
     ok(['session', 'label', 'pay', 'implementation', 'ledger']);
-    assert.strictEqual(position().executor, AGENT);
+    assert.strictEqual(position().tasks[0].builder, AGENT);
     ok(['session', 'label', 'pay']);
     ok(['session', 'label', 'pay', 'implementation', 'ledger']);
     ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3']);
-    assert.deepStrictEqual(position(), { name: 'pay', phase: 'implementation', topic: 'ledger', task: '2.3' });
+    assert.deepStrictEqual(position(), { name: 'pay', phase: 'implementation', topic: 'ledger', tasks: [fresh('2.3')] });
   });
 
-  it('a stored executor that does not read as an agent id is ignored, never carried on', () => {
-    install('leeway-implementation-process');
-    for (const stored of ['a b', '../x', '`x`', '', 7, null, ['a1']]) {
-      writePosition({ name: 'pay', phase: 'implementation', topic: 'ledger', task: '2.3', executor: stored });
-      const answer = reads();
-      assert.deepStrictEqual(answer.position, { name: 'pay', phase: 'implementation', topic: 'ledger', task: '2.3' }, JSON.stringify(stored));
-      assert.doesNotMatch(answer.text, /executor/, JSON.stringify(stored));
-      ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3']);
-      assert.deepStrictEqual(position(), { name: 'pay', phase: 'implementation', topic: 'ledger', task: '2.3' }, JSON.stringify(stored));
-    }
-  });
-
-  it('refuses an agent id that is not one, a missing argument, and an extra one, recording nothing', () => {
+  it('refuses an agent id that is not one, a brief id that is not one, a missing argument and an extra one, recording nothing', () => {
     onTask();
-    const usage = /^Usage: engine conversation executor <session-id> <agent-id> — the agent id letters, digits, - and _ alone$/;
-    for (const args of [['sess-1', 'a b'], ['sess-1', '../x'], ['sess-1', 'a`b'], ['sess-1', ''], ['sess-1'], [], ['', AGENT], ['sess-1', AGENT, 'x']]) {
-      assert.match(harness.refuses(dir, ['conversation', 'executor', ...args], { env: env(null) }).error, usage, JSON.stringify(args));
+    const usage = /^Usage: engine conversation builder <session-id> <agent-id> \[--brief <id>\] — the agent id letters, digits, - and _ alone, the brief's id as `engine brief` answers it$/;
+    for (const args of [
+      ['sess-1', 'a b'], ['sess-1', '../x'], ['sess-1', 'a`b'], ['sess-1', ''], ['sess-1'], [], ['', AGENT], ['sess-1', AGENT, 'x'],
+      ['sess-1', AGENT, '--brief'], ['sess-1', AGENT, '--brief', '../B1'], ['sess-1', AGENT, '--brief', ''], ['sess-1', AGENT, '--brief=B1'],
+      ['sess-1', AGENT, '--brief', 'B1', 'x'], ['sess-1', AGENT, '--task', 'B1'],
+    ]) {
+      assert.match(harness.refuses(dir, ['conversation', 'builder', ...args], { env: env(null) }).error, usage, JSON.stringify(args));
     }
-    assert.strictEqual(position().executor, AGENT);
+    assert.strictEqual(position().tasks[0].builder, AGENT);
   });
 
   it('a position that cannot be written records nothing, the file left as it was', () => {
@@ -349,11 +400,36 @@ describe('the executor the gate mod records', () => {
     const before = fs.readFileSync(file, 'utf8');
     fs.chmodSync(folder(), 0o555);
     try {
-      assert.deepStrictEqual(executor(), { ok: true, recorded: false });
+      assert.deepStrictEqual(dispatched(AGENT), { ok: true, recorded: false });
     } finally {
       fs.chmodSync(folder(), 0o755);
     }
     assert.strictEqual(fs.readFileSync(file, 'utf8'), before);
+  });
+
+  it('a pair dispatched side by side: two records at once on a barrier each stand, every reviewer kept in the order each recorded, and the lock found held', async () => {
+    writePosition({ ...BUILD, tasks: [fresh('1.1')] });
+    issue('R1', 'reviewer', '1.1');
+    issue('R2', 'reviewer', '1.1');
+    const lock = `${path.join(folder(), 'position.json')}.lock`;
+    const met = path.join(config, 'met');
+    const reports = await harness.contend(2, [
+      'const [brief, lock, met] = process.argv.slice(1);',
+      `const { recordBuilder } = require(${JSON.stringify(POSITION_MODULE)});`,
+      'const link = fs.linkSync;',
+      'let taken = 0;',
+      "fs.linkSync = (from, to) => { try { return link(from, to); } catch (err) { if (to === lock && err.code === 'EEXIST') { taken += 1; fs.writeFileSync(met, ''); } throw err; } };",
+      'atBarrier();',
+      // Each records ten at least, and goes on until one of them has found the lock held.
+      'const ids = [];',
+      "while (ids.length < 10 || (!fs.existsSync(met) && ids.length < 500)) { const id = `${brief}-${ids.length}`; if (recordBuilder('sess-1', id, brief).recorded) ids.push(id); }",
+      'report({ taken, ids });',
+    ].join('\n'), (i) => [`R${i + 1}`, lock, met], { ...process.env, LEEWAY_CONFIG_DIR: config });
+
+    assert.ok(reports[0].taken + reports[1].taken > 0, 'neither found the lock held: the two never met');
+    const { reviewers } = position().tasks[0];
+    assert.strictEqual(reviewers.length, reports[0].ids.length + reports[1].ids.length);
+    for (const { ids } of reports) assert.deepStrictEqual(reviewers.filter((id) => ids.includes(id)), ids);
   });
 });
 
@@ -521,12 +597,13 @@ describe('conversation position', () => {
     assert.strictEqual(answer.place, 'auth › discussion');
   });
 
-  it('an implementation task: the skill, the plan format\'s reading adapter, and the task\'s file where the plan keeps one', () => {
+  it('an implementation task: the skill, the plan format\'s reading adapter, and the file of each task in flight where the plan keeps one', () => {
     install('leeway-implementation-process');
     write('.claude/skills/leeway-planning-process/references/output-formats/flat-files/reading.md');
     write('.leeway/pay/planning/ledger/planning.md');
     write('.leeway/pay/planning/ledger/tasks/ledger-2-3.md');
     write('.leeway/pay/planning/ledger/tasks/ledger-2-4.md');
+    write('.leeway/pay/planning/ledger/tasks/ledger-2-5.md');
     ok(['session', 'label', 'pay', 'implementation', 'ledger']);
     ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3']);
     const answer = reads();
@@ -540,17 +617,41 @@ describe('conversation position', () => {
       `- ${dir}/.leeway/pay/planning/ledger/tasks/ledger-2-3.md`,
     ].join('\n'));
     assert.strictEqual(answer.place, 'pay › implementation › ledger');
+    ok(['task', 'start', 'pay', 'ledger', 'ledger-2-5']);
+    assert.deepStrictEqual(reads().files.slice(1), [abs('.leeway/pay/planning/ledger/tasks/ledger-2-3.md'), abs('.leeway/pay/planning/ledger/tasks/ledger-2-5.md')]);
   });
 
-  it('an implementation task with its executor recorded: the note names the agent its later rounds continue', () => {
+  it('an implementation task with its builder recorded: the note names the agent its later rounds continue', () => {
     install('leeway-implementation-process');
     ok(['session', 'label', 'pay', 'implementation', 'ledger']);
     ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3']);
-    ok(['conversation', 'executor', 'sess-1', 'aa76bd7f82a2ef3e4'], null);
+    ok(['conversation', 'builder', 'sess-1', 'aa76bd7f82a2ef3e4'], null);
     const answer = reads();
-    assert.deepStrictEqual(answer.position, { name: 'pay', phase: 'implementation', topic: 'ledger', task: '2.3', executor: 'aa76bd7f82a2ef3e4' });
+    assert.deepStrictEqual(answer.position, { name: 'pay', phase: 'implementation', topic: 'ledger', tasks: [{ task: '2.3', builder: 'aa76bd7f82a2ef3e4', reviewers: [] }] });
     assert.strictEqual(answer.place, 'pay › implementation › ledger');
-    assert.strictEqual(answer.text, note('the implementation of "ledger" in the epic "pay", on task 2.3 (internal id `ledger-2-3`), its executor agent `aa76bd7f82a2ef3e4`', 'leeway-implementation-process', []));
+    assert.strictEqual(answer.text, note('the implementation of "ledger" in the epic "pay", on task 2.3 (internal id `ledger-2-3`), its builder agent `aa76bd7f82a2ef3e4`', 'leeway-implementation-process', []));
+  });
+
+  it('24.S12: a build that compacts with three tasks in flight — the note names each with its builder and its pair, so a fix round on any goes back to that task\'s builder, a re-review to its pair', () => {
+    install('leeway-implementation-process');
+    const tasks = [fresh('1.1'), fresh('1.2'), fresh('2.1')];
+    writePosition({ name: 'pay', phase: 'implementation', topic: 'pay', tasks });
+    for (const [brief, role, task, agentId] of [
+      ['B11', 'builder', '1.1', 'b11'], ['B12', 'builder', '1.2', 'b12'], ['B21', 'builder', '2.1', 'b21'],
+      ['R1', 'reviewer', '1.1', 'r1'], ['R2', 'reviewer', '1.1', 'r2'], ['R3', 'reviewer', '1.2', 'r3'],
+    ]) {
+      issue(brief, role, task);
+      ok(['conversation', 'builder', 'sess-1', agentId, '--brief', brief], null);
+    }
+    const answer = reads();
+    assert.deepStrictEqual(answer.position.tasks, [
+      { task: '1.1', builder: 'b11', reviewers: ['r1', 'r2'] }, { task: '1.2', builder: 'b12', reviewers: ['r3'] }, { task: '2.1', builder: 'b21', reviewers: [] },
+    ]);
+    assert.strictEqual(answer.text, note([
+      'the implementation of the epic "pay", on 3 tasks: task 1.1 (internal id `pay-1-1`), its builder agent `b11`, its reviewer agents `r1` and `r2`',
+      'task 1.2 (internal id `pay-1-2`), its builder agent `b12`, its reviewer agent `r3`',
+      'task 2.1 (internal id `pay-2-1`), its builder agent `b21`',
+    ].join('; '), 'leeway-implementation-process', []));
   });
 
   it('an implementation task whose plan names no format, or one no file can be named for, names no reading adapter', () => {

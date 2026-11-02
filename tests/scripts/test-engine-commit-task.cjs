@@ -3,11 +3,13 @@
 // ---------------------------------------------------------------------------
 // The commit door's task (leeway-engine/scripts/domain/commit-task.cjs,
 // with environment.cjs, and `commit --paths … --task` in engine.cjs): a
-// code commit lands only for the task in flight in the calling conversation,
-// its message Claude's with the trailer naming the task, joining the
-// trailers it ends in (6.S8); the project's checks — its tests, then each
-// linter — run in the code root before the commit is written, holding no
-// lock, and the first to fail refuses it, nothing committed (6.S9); and a
+// code commit lands only for a task in flight in the calling conversation —
+// several side by side, each builder's commit from its own worktree under
+// its own task (12.S21) — its message Claude's with the trailer naming the
+// task, joining the trailers it ends in (6.S8); the project's checks — its
+// tests, then each linter — run in the code root before each commit is
+// written, holding no lock, and the first to fail refuses it, nothing
+// committed (6.S9, 15.S11); and a
 // tree with the state branch checked out is refused before any check runs
 // (4.S20). Its paths and repos are today's code commit's,
 // test-engine-commit-door-code.cjs's; that landing never reads the trailer as a
@@ -15,9 +17,10 @@
 //
 // Layer: git. World: a unit with two tasks written and another unit with a
 // task of the first one's number, the code committed; one conversation
-// building task 1.1, another task 1.2, and a third the other unit's 1.1,
-// each started through `task start`; built once and copied for each test,
-// a code worktree beside it for the checks' folder.
+// building task 1.1, one building both side by side, another task 1.2, and
+// another the other unit's 1.1, each started through `task start`; built
+// once and copied for each test, a code worktree beside it for each
+// builder's checks.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -33,6 +36,7 @@ const { createManifest } = require('./discovery-test-utils.cjs');
 const UNIT = 'pay';
 const OTHER_UNIT = 'refunds';
 const BUILDING = 'commit-task-building';
+const PARALLEL = 'commit-task-parallel';
 const ELSEWHERE = 'commit-task-elsewhere';
 const CLEARED = 'commit-task-cleared';
 const REFUNDING = 'commit-task-refunding';
@@ -98,13 +102,14 @@ function refusedUncommitted(dir, args, opts) {
 before(() => {
   const dir = world();
   ok(dir, ['task', 'start', UNIT, '1.1'], as(BUILDING));
+  for (const task of ['1.1', '1.2']) ok(dir, ['task', 'start', UNIT, task], as(PARALLEL));
   ok(dir, ['task', 'start', UNIT, '1.2'], as(ELSEWHERE));
   ok(dir, ['task', 'start', OTHER_UNIT, '1.1'], as(REFUNDING));
   cleanupFixture(dir);
 });
 
 after(() => {
-  for (const session of [BUILDING, ELSEWHERE, CLEARED, REFUNDING]) fs.rmSync(path.join(CONFIG, 'conversations', session), { recursive: true, force: true });
+  for (const session of [BUILDING, PARALLEL, ELSEWHERE, CLEARED, REFUNDING]) fs.rmSync(path.join(CONFIG, 'conversations', session), { recursive: true, force: true });
 });
 
 /** @type {string} */ let dir;
@@ -147,6 +152,13 @@ describe('commit --task: the task in flight (6.S8)', () => {
     ]);
   });
 
+  it('12.S21: with several tasks in flight, a commit naming none of them is refused, naming each', () => {
+    assert.strictEqual(
+      refusedUncommitted(dir, ['commit', '--paths', 'src/card.js', '--task', OTHER_UNIT, '1.1', '-m', MESSAGE], as(PARALLEL)),
+      'commit --task: task 1.1 of refunds is not in flight in this conversation, task 1.1 of pay, task 1.2 of pay are — commit under the task the work is for, or start task 1.1 of refunds with `engine task start refunds 1.1`',
+    );
+  });
+
   it('refuses before reading a path: no conversation, a unit the project lacks, a task id that is no task, a task beside --for', () => {
     const missing = ['src/missing.js'];
     assert.deepStrictEqual([
@@ -177,6 +189,24 @@ describe('commit --task: the project\'s checks (6.S9)', () => {
     assert.deepStrictEqual(res.checks, [{ name: 'tests', exit: 0 }, { name: 'eslint', exit: 0 }, { name: 'tsc', exit: 0 }]);
     assert.deepStrictEqual(res.committed, [{ repo: '.', sha: codeHead(worktree) }]);
     assert.strictEqual(marked(dir), ['tests', 'eslint', 'tsc'].map((name) => `${name} ${worktree} ${before}\n`).join(''));
+  });
+
+  it('12.S21, 15.S11, 2.S3: several tasks in flight, each builder in a worktree of its own — its commands carrying the conversation\'s id — commits under its own task, the checks run first in its worktree', (t) => {
+    setEnvironment(dir, { run: { tests: marking(dir, 'tests') }, linters: [{ name: 'eslint', command: marking(dir, 'eslint') }] });
+    const folder = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'commit-task-builders-')));
+    t.after(() => fs.rmSync(folder, { recursive: true, force: true }));
+    const builders = ['1.1', '1.2'].map((task) => {
+      const worktree = path.join(folder, task);
+      git(dir, ['worktree', 'add', '-q', '-b', `card-${task}`, worktree]);
+      createFile(worktree, 'src/card.js', `const card = '${task}';\n`);
+      return { task, worktree, before: codeHead(worktree) };
+    });
+
+    const commits = builders.map(({ task, worktree }) => ok(worktree, commitArgs(task), as(PARALLEL)));
+
+    assert.deepStrictEqual(commits.map(({ task, checks }) => ({ task, checks })), ['pay-1-1', 'pay-1-2'].map((id) => ({ task: id, checks: [{ name: 'tests', exit: 0 }, { name: 'eslint', exit: 0 }] })));
+    assert.deepStrictEqual(builders.map(({ worktree }) => git(worktree, ['log', '-1', '--format=%(trailers:key=Leeway-Task,valueonly)']).trim()), ['pay-1-1', 'pay-1-2']);
+    assert.strictEqual(marked(dir), builders.map(({ worktree, before }) => `tests ${worktree} ${before}\neslint ${worktree} ${before}\n`).join(''));
   });
 
   it('6.S9: a failing check refuses the commit, nothing committed, naming the check, its exit code — a signal\'s as 128 and its number — and the last 40 lines of its output and errors; no check after it runs, and its output\'s folder goes', () => {

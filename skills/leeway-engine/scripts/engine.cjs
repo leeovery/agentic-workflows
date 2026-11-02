@@ -85,8 +85,9 @@ const { READY_TO_BUILD_USAGE, POSITION_USAGE, runReadyToBuildVerb, runPositionVe
 const { MIGRATE_USAGE, runMigrateVerb } = require('./domain/directives.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, clearOwnQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { arriveAt, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
-const { markConversation, endConversation } = require('./domain/conversation.cjs');
-const { recordTask, recordExecutor, clearTask, isAgentId, positionReads, positionSections } = require('./domain/position.cjs');
+const { markConversation, endConversation, isAgentId } = require('./domain/conversation.cjs');
+const { recordTask, recordBuilder, clearTask, positionReads, positionSections } = require('./domain/position.cjs');
+const { isBriefId } = require('./domain/brief-names.cjs');
 const { ENTER_USAGE, enter } = require('./domain/enter.cjs');
 const { createWorkUnit } = require('./domain/workunit-create.cjs');
 const { importWorkUnitFiles } = require('./domain/workunit-import.cjs');
@@ -244,7 +245,7 @@ ${Object.values(MAP_USAGE).map((usage) => `  ${usage}`).join('\n')}
   session resume [session-id]
   conversation end
   conversation position [session-id]
-  conversation executor <session-id> <agent-id>
+  conversation builder <session-id> <agent-id> [--brief <id>]
   ${ENTER_USAGE}
   layout guard                       (hook before Write, Edit and NotebookEdit; its JSON on stdin)
   shell guard                        (hook before Bash; its JSON on stdin)
@@ -974,16 +975,17 @@ function runConversation(call, argv) {
       respondSections(call, positionSections(positionReads(call.cwd, sessionId)));
       return;
     }
-    if (command === 'executor') {
-      // The gate mod's target, as an executor is dispatched.
-      const [sessionId, agentId] = rest;
-      if (rest.length !== 2 || !sessionId || !isAgentId(agentId)) {
-        throw new Error('Usage: engine conversation executor <session-id> <agent-id> — the agent id letters, digits, - and _ alone');
+    if (command === 'builder') {
+      // The gate mod's target, as a builder or a reviewer is dispatched.
+      const [sessionId, agentId, flag, briefId] = rest;
+      const briefed = rest.length === 4 && flag === '--brief' && isBriefId(briefId);
+      if ((rest.length !== 2 && !briefed) || !sessionId || !isAgentId(agentId)) {
+        throw new Error('Usage: engine conversation builder <session-id> <agent-id> [--brief <id>] — the agent id letters, digits, - and _ alone, the brief\'s id as `engine brief` answers it');
       }
-      respond(call, recordExecutor(sessionId, agentId));
+      respond(call, recordBuilder(sessionId, agentId, briefed ? briefId : undefined));
       return;
     }
-    throw new Error('Usage: engine conversation <end|position|executor> …');
+    throw new Error('Usage: engine conversation <end|position|builder> …');
   } catch (err) {
     failJson(call, err);
   }

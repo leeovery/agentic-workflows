@@ -12,7 +12,7 @@
 // pushed, never a code commit (7.S17, 7.S21); a refusal writing nothing, or
 // committing what setting up and the verb wrote before it, under a message
 // saying so; a tool missing or failing named; a task numbered after its
-// phase's highest; the task in flight on the conversation's position; and
+// phase's highest; the tasks in flight on the conversation's position; and
 // the writer lock around every verb, reads included. What a driver does
 // with a task is the conformance suite's.
 //
@@ -38,7 +38,7 @@ const { createManifest } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { listDrivers } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
-const { readPosition } = require(path.join(SCRIPTS, 'domain/position.cjs'));
+const { readPosition, conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
 const { processStartTime } = require(path.join(SCRIPTS, 'kernel/process.cjs'));
 const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { FOREIGN_TASK } = require(path.join(SCRIPTS, 'domain/task-id.cjs'));
@@ -434,26 +434,31 @@ describe('task link, ready, list and show (7.1.5, 12.6.4)', () => {
   });
 });
 
-describe('task start, done and close: the task in flight (6.3.3, 7.1.12)', () => {
-  beforeEach(() => { dir = inFolder(phasedWorld); });
+describe('task start, done and close: the tasks in flight (6.3.3, 7.1.12)', () => {
+  beforeEach(() => {
+    dir = inFolder(phasedWorld);
+    fs.rmSync(conversationDir(SESSION_ID), { recursive: true, force: true });
+  });
 
   const position = () => readPosition(SESSION_ID);
+  /** A task just put in flight, no agent recorded against it. @param {string} task */
+  const fresh = (task) => ({ task, builder: null, reviewers: [] });
 
-  it('task start puts the task in flight on the conversation\'s position, the unit its topic, as often as it is run; task done takes it off', () => {
+  it('task start puts the task in flight on the conversation\'s position beside any others, the unit its topic; re-run, it keeps it as it stands; task done takes it off (12.S21)', () => {
     assert.deepStrictEqual(ok(dir, ['task', 'start', UNIT, '1.1'], { env: SESSION }), {
       ok: true, task: '1.1', id: 'pay-1-1', committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(),
     });
     assert.strictEqual(lastMessage(dir), 'task(pay): start 1.1');
-    assert.deepStrictEqual(position(), { name: UNIT, phase: 'implementation', topic: UNIT, task: '1.1' });
+    assert.deepStrictEqual(position(), { name: UNIT, phase: 'implementation', topic: UNIT, tasks: [fresh('1.1')] });
     ok(dir, ['task', 'start', UNIT, '1.2'], { env: SESSION });
     const started = head(dir);
     ok(dir, ['task', 'start', UNIT, '1.1'], { env: SESSION });
-    assert.deepStrictEqual([head(dir), position().task], [started, '1.1'], 'a task already started is put on the position again, nothing written');
+    assert.deepStrictEqual([head(dir), position().tasks], [started, [fresh('1.1'), fresh('1.2')]], 'a task already in flight is kept as it stands, nothing written');
 
     ok(dir, ['task', 'done', UNIT, '1.1'], { env: SESSION });
 
     assert.strictEqual(lastMessage(dir), 'task(pay): done 1.1');
-    assert.deepStrictEqual(position(), { name: UNIT, phase: 'implementation', topic: UNIT });
+    assert.deepStrictEqual(position(), { name: UNIT, phase: 'implementation', topic: UNIT, tasks: [fresh('1.2')] });
     assert.deepStrictEqual(ok(dir, ['task', 'ready', UNIT]).tasks.map((/** @type {any} */ row) => row.task), ['1.3'], '1.2 started, so not waiting');
   });
 
