@@ -56,7 +56,7 @@ const {
 const { announced, auditGate } = require('./gate-audit.cjs');
 const { ledgerEntries, stateGit } = require('./engine-harness.cjs');
 const { statePath, BRANCH_REF } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
-const { SHOWN } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/gate.cjs'));
+const { SHOWN, RAISE_SHOWN } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/gate.cjs'));
 const { TRUST_LOG, PENDING } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/trust-log.cjs'));
 
 // The same per-type pipeline the start dashboard derives from (start.cjs
@@ -753,7 +753,10 @@ function auditCopies(root, events, shownAt, placed, full, ctx) {
 // question waiting in the build waited on — the question it answers, by
 // any wording, parked before it, or the decision it replaces or keeps,
 // parked since its last keep — and saying nothing of it elsewhere, and
-// every such answer landed through its raise (12.13.16, 16.4.7);
+// every such answer landed through its raise (12.13.16, 16.4.7); one
+// raise not followed for each "I don't follow" the conversations' seals
+// count, but a fact's, blocking the build exactly where its seal's
+// question waited in it;
 // none of them for anything else; and nothing left waiting in a
 // conversation, as no append fails. Every verdict names a departure the
 // trust log holds — a raise answered against the lean, a keep among them,
@@ -814,7 +817,13 @@ function auditTrust(sim, label, ran = []) {
   assert.deepStrictEqual(entries.filter((e) => waitedOn(e) && !raised.has(e.id)).map((e) => e.id), [],
     ctx('an answer to what a question waiting in the build waited on landed other than through its raise'));
   const conversations = path.join(sim.configDir, 'conversations');
-  const waiting = fs.existsSync(conversations) ? fs.readdirSync(conversations).filter((name) => fs.existsSync(path.join(conversations, name, PENDING))) : [];
+  const folders = fs.existsSync(conversations) ? fs.readdirSync(conversations) : [];
+  /** @type {Record<string, any>[]} */
+  const sealed = folders.map((name) => path.join(conversations, name, RAISE_SHOWN)).filter((file) => fs.existsSync(file)).flatMap((file) => Object.values(JSON.parse(fs.readFileSync(file, 'utf8'))));
+  assert.deepStrictEqual(ofType('raise').filter((e) => e.didnt_follow).map((e) => e.blocked_build).sort(),
+    sealed.filter((s) => !s.fact).flatMap((s) => Array(s.didnt_follow).fill(s.parks === null ? null : true)).sort(),
+    ctx('the trust log does not hold one raise not followed for each "I don\'t follow" the seals count, blocking the build exactly where its question waited in it'));
+  const waiting = folders.filter((name) => fs.existsSync(path.join(conversations, name, PENDING)));
   assert.deepStrictEqual(waiting, [], ctx('an event waits in a conversation, though no append failed'));
   const departures = new Set([...ofType('raise').filter((e) => !e.didnt_follow && e.answer !== e.sealed), ...ofType('reversal')].map((e) => e.entry));
   /** @type {Map<string, Record<string, any>[]>} */

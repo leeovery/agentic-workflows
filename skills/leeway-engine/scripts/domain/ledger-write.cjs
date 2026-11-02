@@ -154,7 +154,7 @@ const { messageOf, stdinObject } = require('../kernel/call.cjs');
 const { VALID_PHASES, WORK_TYPE_PIPELINES, BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { handedSession } = require('../kernel/process.cjs');
-const { appendEntry, carrying, withLedger, commitLedger } = require('./ledger.cjs');
+const { appendEntry, carrying, commitLedger } = require('./ledger.cjs');
 const { HEADER, REASONS, ROADMAP, PRODUCT, entryKind, claudesCall, roadmapItemOf, eventFields } = require('./ledger-events.cjs');
 const { newId, shortId, resolveId } = require('./ledger-ids.cjs');
 const { ID_FACTS, foldLedger, readFolded, factsOf, standingOf, notCurrent, currentsOf, wordingOf } = require('./ledger-fold.cjs');
@@ -232,10 +232,13 @@ const { checkUnparked } = require('./questions.cjs');
  * @typedef {{dotpath: string, root: string, unit: string, manifest: Record<string, any>|null, phase: string, topic: string|null}} Address
  */
 
+/** The entry at a place, read again from the ledger as it was read. @typedef {(place: import('./ledger.cjs').EntryPlace) => Record<string, unknown>} EntryAt */
+
 /**
- * What a raise sets of its line from the ledger as it stands under the lock:
- * a parked question's number (questions.cjs).
- * @typedef {(read: Folded) => Record<string, unknown>} Mints
+ * What a raise sets of its line from the ledger as it stands under the lock,
+ * folded and read again at any place through the lock's own read: a parked
+ * question's number and its call as sealed (questions.cjs).
+ * @typedef {(read: Folded, entryAt: EntryAt) => Record<string, unknown>} Mints
  */
 
 /**
@@ -1169,7 +1172,7 @@ function eventOf(request, read) {
   checkUnmeasured(request, linked, read);
   return {
     event: write.event, unit: at.unit, topic: at.topic, phase: at.phase, session,
-    ...content, ...linked, ...followed(write, linked, read), ...request.mints(read), ...(kind === 'decision' ? { unchecked } : {}),
+    ...content, ...linked, ...followed(write, linked, read), ...(kind === 'decision' ? { unchecked } : {}),
   };
 }
 
@@ -1223,7 +1226,8 @@ function commitEntry(cwd, { at, write }, id, warnings) {
  * append, or of one that finished, done as the first run left it — its
  * event, kept ahead of the entry, landed, and the ledger committed —
  * nothing appended again. Else the places the write names read live again
- * and each topic's item read held, the trust log's event built and kept
+ * and each topic's item read held, the event built with what the request
+ * sets of it from that read, the trust log's event built and kept
  * waiting in the conversation, the entry appended, the event landed in the
  * trust log, and the ledger committed to the state branch. Answers the entry's short id, the commit,
  * the line appended, or null, and the entry the ledger already held, or null.
@@ -1232,18 +1236,21 @@ function commitEntry(cwd, { at, write }, id, warnings) {
  */
 function land(cwd, request, warnings) {
   const { said, at, write, given, logs } = request;
-  const read = readNow(at, warnings);
   const id = request.id ?? newId();
-  const short = shortId(id, read.facts.keys());
-  if (read.facts.has(id)) {
-    const held = withLedger(at.root, warnings, (ledger) => ledger.entryAt(factsOf(read, id).place));
+  /** @type {{short: string, held: Record<string, unknown>|null, fields: Record<string, unknown>}} */
+  const { short, held, fields } = readFolded(at.root, ID_FACTS, warnings, (facts, entryAt) => {
+    const read = { facts, live: liveness(at.root) };
+    const short = shortId(id, facts.keys());
+    if (facts.has(id)) return { short, held: entryAt(factsOf(read, id).place), fields: {} };
+    checkPlaceLive(said, at, read.live);
+    checkItemHeld(said, at, () => manifestOf(at.root, at.unit));
+    write.checkLive(said, at, given, read.live);
+    return { short, held: null, fields: { ...eventOf(request, read), ...request.mints(read, entryAt) } };
+  });
+  if (held !== null) {
     if (logs !== null) landKept(cwd, warnings);
     return { id: short, outcome: commitEntry(cwd, request, id, warnings), line: null, held };
   }
-  checkPlaceLive(said, at, read.live);
-  checkItemHeld(said, at, () => manifestOf(at.root, at.unit));
-  write.checkLive(said, at, given, read.live);
-  const fields = eventOf(request, read);
   if (logs !== null) {
     const { type, fields: own } = logs({ ...fields, id });
     keepEvent(newEvent(type, own, cwd), at.root, id);

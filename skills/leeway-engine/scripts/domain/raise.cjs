@@ -111,8 +111,9 @@
 //   and the one an `already` answers, say the question as it is worded now.
 //   While a question waits, any raise on its subject without `--parks` —
 //   one asking as one proceeding — is refused, naming its raise: before a
-//   row is judged, and under the lock as a proceed or an answer lands, for
-//   a park that came after it was drawn (questions.cjs).
+//   row is judged, under the lock as a proceed or an answer lands, and at
+//   "I don't follow", for a park that came after it was drawn
+//   (questions.cjs).
 // - `raise draw <unit> <question>` (12.13.10, 12.13.20): a question waiting,
 //   by its number or a park's id, raised in full once the person says they
 //   are ready — sealed in the conversation from its first park alone, never
@@ -797,10 +798,10 @@ function askedRaise(session, place, target, what, judged, reason, warnings) {
  * is; and, set under the lock, its number and its call as sealed: where a
  * question waits on what it is about, which its task joins, that
  * question's, else the next number and `sealed`.
- * @param {string} cwd @param {Place} place @param {Target} target @param {import('./questions.cjs').Sealed} sealed @param {string} task @param {string[]} warnings
+ * @param {Place} place @param {Target} target @param {import('./questions.cjs').Sealed} sealed @param {string} task
  * @returns {import('./ledger-write.cjs').Raised}
  */
-function parking(cwd, place, target, sealed, task, warnings) {
+function parking(place, target, sealed, task) {
   const { answers, relies_on: reliesOn, replaces } = target;
   const { checkRead } = landsAs(target, AT_THE_DRAW, task);
   return {
@@ -812,7 +813,7 @@ function parking(cwd, place, target, sealed, task, warnings) {
     id: null,
     logs: null,
     checkRead,
-    mints: (read) => questions.parkedUnder(cwd, read, place.unit, subjectOf(target), sealed, warnings),
+    mints: (read, entryAt) => questions.parkedUnder(read, entryAt, place.unit, subjectOf(target), sealed),
   };
 }
 
@@ -851,13 +852,13 @@ async function parkedRaise(cwd, place, target, call, task, warnings) {
   if (waiting !== null) {
     const { name, id, tasks, asks, line: { call: sealed, rows_judged: judged, why_asking: whyAsking } } = waiting;
     if (tasks.includes(task)) return { decision: 'ask', reason: whyAsking, parked: name, task, id, committed: null, line: parkedLine(task, name, asks), already: true, ...(warnings.length > 0 ? { warnings } : {}) };
-    return parkLanded(cwd, parking(cwd, place, target, { call: sealed, rows_judged: judged, why_asking: whyAsking }, task, warnings), whyAsking, warnings);
+    return parkLanded(cwd, parking(place, target, { call: sealed, rows_judged: judged, why_asking: whyAsking }, task), whyAsking, warnings);
   }
   const judged = await checkedRows(call, { cwd, unit: place.unit, verb: 'raise', warnings });
   const { decision, reason } = decisionPoint.decide(call);
   if (decision === 'proceed') return { decision, reason, landed: proceeded(cwd, place, target, call, task, warnings) };
   if (decision === 'blind') throw new Error('raise: the decision point answered blind, and asking blind is 29.19\'s, not built yet — nothing parked');
-  return parkLanded(cwd, parking(cwd, place, target, { call, rows_judged: judged, why_asking: reason }, task, warnings), reason, warnings);
+  return parkLanded(cwd, parking(place, target, { call, rows_judged: judged, why_asking: reason }, task), reason, warnings);
 }
 
 /**
@@ -1205,13 +1206,12 @@ function keeping(session, seal, { entry, reason, cause }, stdin) {
 /**
  * The person's answer landed at the raise's id, its raise event with it —
  * none for a fact — then the seal marked answered. Before anything lands,
- * under the lock: where its question waited in the build, it is checked
- * still waiting and the unit's parks waiting are noted, and the response
- * adds the receipt of what the answer freed; else it is refused where a
- * question in the build has come to wait on what it answers since it was
- * drawn, its answer that question's raise's alone. Where the ledger held
- * the line already, the seal is marked with the answer it holds, and the
- * response says the raise was answered already, and with which row.
+ * under the lock, it is checked answerable (questions.cjs): where its
+ * question waited in the build, still waiting, the unit's parks waiting
+ * noted, and the response adds the receipt of what the answer freed. Where
+ * the ledger held the line already, the seal is marked with the answer it
+ * holds, and the response says the raise was answered already, and with
+ * which row.
  * @param {string} cwd @param {string} session @param {Seal} seal @param {Answering} answering
  * @returns {Landed & {raise: string, already?: true, answer?: string|null, receipt?: string}}
  */
@@ -1229,11 +1229,8 @@ function recordAnswer(cwd, session, seal, { lands, linked, content, checkRead, a
     content,
     id: seal.id,
     logs,
-    checkRead: parks === null ? (read) => {
-      checkRead(read);
-      questions.checkUnparked(read, subjectOf(seal), ANSWER_SAID);
-    } : (read) => {
-      waitedBefore = questions.checkStillWaiting(read, parks, ANSWER_SAID);
+    checkRead: (read) => {
+      waitedBefore = questions.checkAnswerable(read, parks, subjectOf(seal), ANSWER_SAID);
       checkRead(read);
     },
   }, warnings);
@@ -1250,7 +1247,8 @@ function recordAnswer(cwd, session, seal, { lands, linked, content, checkRead, a
  * question waited in the build, the receipt says so. On a raise the ledger
  * holds the answer to — an old screen's press — nothing is logged or
  * counted, and the raise is said answered already, with the row the line
- * holds. A question in the build waiting no longer refuses it.
+ * holds. It is refused as an answer is where it is not answerable
+ * (questions.cjs).
  * @param {string} cwd @param {string} session @param {Seal} seal
  * @returns {{raise: string, open: true, receipt?: string, warnings?: string[]} | {raise: string, already: true, answer: string|null, warnings?: string[]}}
  */
@@ -1260,7 +1258,7 @@ function didntFollow(cwd, session, seal) {
   const said = (/** @type {object} */ answer) => ({ raise: seal.id, ...answer, ...(warnings.length > 0 ? { warnings } : {}) });
   const held = heldLine(cwd, seal.id, warnings);
   if (held !== null) return said(answeredAlready(session, seal, held));
-  if (seal.parks !== null) questions.stillWaiting(cwd, seal.parks, ANSWER_SAID, warnings);
+  questions.answerable(cwd, seal.parks, subjectOf(seal), ANSWER_SAID, warnings);
   if (!seal.fact) record('raise', raiseEvent(seal, { entry: null, answer: null, via: cameBy(session, seal, EXPLAIN), with_text: false, didnt_follow: true }), { cwd, warnings });
   changeSeals(session, (seals, put) => {
     const sealed = seals[seal.id];

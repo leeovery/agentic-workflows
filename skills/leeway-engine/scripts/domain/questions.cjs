@@ -64,7 +64,6 @@ const { handedSession } = require('../kernel/process.cjs');
 const { findStateRoot } = require('../kernel/state-root.cjs');
 const { conversationDir } = require('./conversation.cjs');
 const { shortId, resolveId } = require('./ledger-ids.cjs');
-const { withLedger } = require('./ledger.cjs');
 const { ID_FACTS, readFolded, factsOf, whyDead, questionStands, notCurrent, keptOf, wordingOf } = require('./ledger-fold.cjs');
 const { liveness, manifestOf } = require('./ledger-units.cjs');
 
@@ -327,18 +326,19 @@ function waitingOn(cwd, unit, subject, warnings) {
 
 /**
  * What a park about `subject` in `unit` holds of its own, set under the
- * writer lock from the ledger as it stands there, `read`: where a question
- * waits on it, which the park's task joins, that question's number and its
- * first park's call as sealed; else the next number, and `sealed`, the call
- * as the raise sealed it.
- * @param {string} cwd @param {Folded} read @param {string} unit @param {Subject} subject @param {Sealed} sealed @param {string[]} warnings
+ * writer lock from the ledger as the write read it there, `read` and
+ * `entryAt`: where a question waits on it, which the park's task joins,
+ * that question's number and its first park's call as sealed; else the
+ * next number, and `sealed`, the call as the raise sealed it.
+ * @param {Folded} read @param {EntryAt} entryAt @param {string} unit @param {Subject} subject @param {Sealed} sealed
  * @returns {Sealed & {number: number}}
  */
-function parkedUnder(cwd, read, unit, subject, sealed, warnings) {
+function parkedUnder(read, entryAt, unit, subject, sealed) {
   const joined = waitingParks(read, unit).find((id) => isAbout(read, id, subject));
   if (joined === undefined) return { number: nextNumber(read, unit), ...sealed };
-  const first = /** @type {Record<string, any>} */ (withLedger(/** @type {string} */ (findStateRoot(cwd)), warnings, (ledger) => ledger.entryAt(factsOf(read, joined).place)));
-  return { number: /** @type {number} */ (factsOf(read, joined).number), call: first.call, rows_judged: first.rows_judged, why_asking: first.why_asking };
+  const { number, place } = factsOf(read, joined);
+  const { call, rows_judged: judged, why_asking: whyAsking } = entryAt(place);
+  return { number: /** @type {number} */ (number), call, rows_judged: judged, why_asking: whyAsking };
 }
 
 /**
@@ -493,12 +493,28 @@ function checkStillWaiting(read, parks, said) {
 }
 
 /**
- * Whether the parked question `parks` still waits, read now: refused in the
- * words of `said` where it waits no longer.
- * @param {string} cwd @param {Parks} parks @param {string} said @param {string[]} warnings
+ * Refuse, in the words of `said`, the person's answer to a raise, read from
+ * `read` as it is about to land, recording nothing: to a question waiting in
+ * the build, `parks`, once it waits no longer (20.6.10); to any other raise,
+ * about `subject`, once a question in the build has come to wait on it since
+ * it was drawn, its answer that question's raise's alone. Answers the unit's
+ * parks waiting for the first, none for the other.
+ * @param {Folded} read @param {Parks|null} parks @param {Subject} subject @param {string} said
+ * @returns {string[]}
  */
-function stillWaiting(cwd, parks, said, warnings) {
-  readQuestions(/** @type {string} */ (findStateRoot(cwd)), warnings, (read) => checkStillWaiting(read, parks, said));
+function checkAnswerable(read, parks, subject, said) {
+  if (parks !== null) return checkStillWaiting(read, parks, said);
+  checkUnparked(read, subject, said);
+  return [];
+}
+
+/**
+ * `checkAnswerable`, read now: for "I don't follow", which lands nothing in
+ * the ledger.
+ * @param {string} cwd @param {Parks|null} parks @param {Subject} subject @param {string} said @param {string[]} warnings
+ */
+function answerable(cwd, parks, subject, said, warnings) {
+  readQuestions(/** @type {string} */ (findStateRoot(cwd)), warnings, (read) => checkAnswerable(read, parks, subject, said));
 }
 
 /**
@@ -523,5 +539,5 @@ function asideQuestions(cwd, args) {
 
 module.exports = {
   DISCUSSING, WAITING_USAGE, ASIDE_USAGE, numbered, parkedTasks, waitingOn, parkedUnder, parkedQuestion, checkUnparked, waitingQuestions, asideQuestions, foundPark, answeredReceipt,
-  explainedReceipt, checkStillWaiting, stillWaiting,
+  explainedReceipt, checkAnswerable, answerable,
 };

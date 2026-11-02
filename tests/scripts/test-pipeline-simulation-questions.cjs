@@ -56,9 +56,10 @@ describe('pipeline simulation: the build\'s questions', () => {
     const indexing = asked('Does the index hold every entry?', '1.4');
     const indexed = sim.run(['ledger', 'decide', build, '--answers', indexing, '--task', '1.4'], null, JSON.stringify({ ...made, text: 'The index holds every entry.', why: 'Every event counts.' })).id;
 
-    // The person, ready, takes Q1: drawn from its park, answered against the lean.
+    // The person, ready, takes Q1: drawn from its park, not followed at first, answered against the lean.
     const drawn = sim.run(['raise', 'draw', wu, 'Q1']);
     assert.deepStrictEqual([drawn.question, drawn.parks], ['Q1', ['1.1']], 'the question is drawn from its park');
+    assert.strictEqual(sim.run(['raise', 'answer', drawn.raise, '--didnt-follow']).receipt, 'Q1 still open, explained again · still waiting · 2 waiting on you');
     const answered = sim.run(['raise', 'answer', drawn.raise, '--pick', '2'], null, JSON.stringify({ why: 'Readers never wait on a writer.' }));
     assert.strictEqual(answered.receipt, 'Q1 answered · task 1.1 builds again · 1 waiting on you');
 

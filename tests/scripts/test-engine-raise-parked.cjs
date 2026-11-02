@@ -595,13 +595,21 @@ describe('its answer through its raise alone (12.13.5, 12.13.16, 16.4.7, 5.3.10)
     assert.ok(ledgerText().startsWith(text));
   });
 
-  it('a raise drawn before its question came to wait is refused at its answer, under the lock, naming its raise, recording nothing', async () => {
+  it('a raise drawn before its question came to wait is refused at its answer, under the lock, and at "I don\'t follow", naming its raise, recording and counting nothing — a question\'s, and a replacement\'s keep among them', async () => {
     const opened = askedOnTopic();
-    const { res } = await okSectionsAsync(dir, ['raise', TOPIC, '--answers', opened], { env: conversation(), stdin: JSON.stringify(CALL) });
+    const asked = (await okSectionsAsync(dir, ['raise', TOPIC, '--answers', opened], { env: conversation(), stdin: JSON.stringify(CALL) })).res.raise;
+    const proposed = (await okSectionsAsync(dir, ['raise', `${UNIT}.specification`, '--replaces', made.frameless, '--reason', 'was-wrong'], { env: conversation(), stdin: JSON.stringify(FRAMED) })).res.raise;
     parked(1, '2.3', { question: full(opened) });
+    parkedReplacement(2, '2.4');
+    const answered = (/** @type {string} */ raise, /** @type {string[]} */ given) => refusedPristine(dir, ['raise', 'answer', raise, ...given], { env: conversation(), stdin: JSON.stringify({ why: WHY }) }).error;
+    const opaque = (/** @type {string} */ raise) => refusedPristine(dir, ['raise', 'answer', raise, '--didnt-follow'], { env: conversation() }).error;
+    const sealed = JSON.stringify(seals());
 
-    assert.strictEqual(refusedPristine(dir, ['raise', 'answer', res.raise, '--pick', '1'], { env: conversation(), stdin: JSON.stringify({ why: WHY }) }).error, raiseNamed('raise answer'));
-    assert.deepStrictEqual(logged(), []);
+    assert.deepStrictEqual(
+      [answered(asked, ['--pick', '1']), opaque(asked), answered(proposed, ['--pick', 'keep']), answered(proposed, ['--pick', '1']), opaque(proposed)],
+      [raiseNamed('raise answer'), raiseNamed('raise answer'), ...Array(3).fill(raiseNamed('raise answer', 'task 2.4', 'Q2'))],
+    );
+    assert.deepStrictEqual([logged(), JSON.stringify(seals())], [[], sealed]);
   });
 });
 
