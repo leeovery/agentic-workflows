@@ -73,9 +73,9 @@
 // does not take over — removed, where that worktree's folder is gone,
 // switched off, where it is a repository's own checkout, and, where it is
 // the worktree of a task in flight in the calling conversation, its builder
-// sent back in by the orchestrator — naming why; a worktree switching to the branch made
-// already with changes not committed; and a child repository's folder
-// holding anything but a worktree of that repository.
+// sent back in by the orchestrator — naming why; a worktree switching to
+// the branch made already with changes not committed; and a child
+// repository's folder holding anything but a worktree of that repository.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
