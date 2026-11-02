@@ -21,6 +21,8 @@
 // A log is never indexed (8.14.7, 9.2.2): discovery's sessions, the
 // product's among them, are reached through the pointers into them. Nor is
 // the spec (11.1.2): the records it is drawn from are indexed in its place.
+// Nor is anything of a unit's build (22.6.3): its log, its notes for later,
+// and each task's account and reports.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');

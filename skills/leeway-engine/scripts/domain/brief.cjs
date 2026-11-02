@@ -12,8 +12,8 @@
 // takes the unit alone, any other none; a unit's record is drawn for the
 // unit of a task's or a topic's brief alike. A role takes each flag its records name, every one of them but a
 // flag a record holds optional, once, and no other:
-// `--base <branch>`, `--report-a <path>`, `--question <id>`, `--agent
-// <id>`, `--kind <kind>`, a read dive's `--path <file>`, the migration's
+// `--base <branch>`, `--question <id>`, `--agent <id>`, `--kind
+// <kind>`, a read dive's `--path <file>`, the migration's
 // `--directive <id>` and `--topic <unit.phase.topic>`; a flag carries a
 // name, an id or a path, so no free text reaches a brief (6.5.6).
 //

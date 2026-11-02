@@ -5,13 +5,15 @@
 // table of places and its reader, `layoutPlace`. Unit layer, no world.
 // Every place 4.11.17's tree draws holds a sample path, with its kind — the
 // logs 4.11's four, a topic's brief the engine's alone (8.7.6) — and a sample
-// outside each folder is in none, today's briefs folder among them; names are
-// compared as the fold spells them; the tracker's store is each shipped
-// task driver's; each of today's places holds its sample, is no log, and
-// names the phase from 29.11 to 29.17 that retires it (E4); the product's
-// conversation keeps one folder of logs; the asset homes, and the spike
-// folders among them; and the suites' layout helper names only places the
-// table holds.
+// outside each folder is in none, today's briefs folder among them; each
+// report place takes a letter per reviewer of the count (13.3.4), and an
+// area's report the area's number and slug, so none is named as another's;
+// names are compared as the fold spells them; the tracker's store is each
+// shipped task driver's; each of today's places holds its sample, is no
+// log, and names the phase from 29.11 to 29.17 that retires it (E4); the
+// product's conversation keeps one folder of logs; the asset homes, and the
+// spike folders among them; and the suites' layout helper names only places
+// the table holds.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -21,6 +23,7 @@ const assert = require('node:assert');
 const path = require('path');
 
 const { LAYOUT, TODAY, IN_LOWER_CASE, layoutPlace, assetHome } = require('../../skills/leeway-engine/scripts/domain/layout.cjs');
+const { REVIEWER_LETTERS } = require('../../skills/leeway-engine/scripts/kernel/reviewers.cjs');
 const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
 const { WRITE_VERBS } = require('../../skills/leeway-engine/scripts/domain/ledger-write.cjs');
 const { LEDGER } = require('../../skills/leeway-engine/scripts/domain/ledger-events.cjs');
@@ -65,16 +68,21 @@ const DRAWN = Object.freeze({
   'pay/sweep-taken.json': 'engine {unit}/sweep-taken.json',
   'pay/summary.md': 'file {unit}/summary.md',
   'pay/build/log.md': 'log {unit}/build/log.md',
-  'pay/build/notes.md': 'file {unit}/build/notes.md',
+  'pay/build/notes.md': 'engine {unit}/build/notes.md',
   'pay/build/tasks/1.2.md': 'file {unit}/build/tasks/{task}.md',
-  'pay/build/tasks/1.2/round-1-a.md': 'file {unit}/build/tasks/{task}/round-{N}-{a,b}.md',
-  'pay/build/tasks/1.2/round-1-b.md': 'file {unit}/build/tasks/{task}/round-{N}-{a,b}.md',
-  'pay/build/phases/phase-1/review-a.md': 'file {unit}/build/phases/phase-{N}/review-{a,b}.md',
-  'pay/build/phases/phase-1/review-b.md': 'file {unit}/build/phases/phase-{N}/review-{a,b}.md',
-  'pay/build/phases/phase-1/checkout-a.md': 'file {unit}/build/phases/phase-{N}/{area}-{a,b}.md',
+  'pay/build/tasks/1.2/round-1-a.md': 'file {unit}/build/tasks/{task}/round-{N}-{letter}.md',
+  'pay/build/tasks/1.2/round-1-b.md': 'file {unit}/build/tasks/{task}/round-{N}-{letter}.md',
+  'pay/build/tasks/1.2/figures.json': 'engine {unit}/build/tasks/{task}/figures.json',
+  'pay/build/tasks/1.2/round-1-settled.md': 'engine {unit}/build/tasks/{task}/round-{N}-settled.md',
+  'pay/build/phases/phase-1/review-a.md': 'file {unit}/build/phases/phase-{N}/review-{letter}.md',
+  'pay/build/phases/phase-1/review-b.md': 'file {unit}/build/phases/phase-{N}/review-{letter}.md',
+  'pay/build/phases/phase-1/consolidation.md': 'file {unit}/build/phases/phase-{N}/consolidation.md',
+  'pay/build/phases/phase-1/3-checkout-a.md': 'file {unit}/build/phases/phase-{N}/{area}-{letter}.md',
   'pay/build/runs/3.S2/run-001.json': 'file {unit}/build/runs/{n}.S{m}/run-{NNN}.json',
   'pay/review/round-1.md': 'file {unit}/review/round-{N}.md',
   'pay/review/round-1-checks.md': 'file {unit}/review/round-{N}-checks.md',
+  'pay/review/round-1/tests-b.md': 'file {unit}/review/round-{N}/tests-{letter}.md',
+  'pay/review/round-1/3-checkout-a.md': 'file {unit}/review/round-{N}/{area}-{letter}.md',
 });
 
 /** A path in each of today's places, and the place's path. */
@@ -99,10 +107,11 @@ const OUTSIDE = Object.freeze([
   'pay/notes.md', 'pay/scratch/notes.md', 'pay/discovery/notes.md', 'pay/topics/auth.md', 'pay/topics/auth/notes.md', 'pay/topics/auth/mail/retry-policy.md',
   'pay/topics/auth/experiments/notes.md', 'pay/topics/auth/experiments/E1-token-cost/notes.md', 'pay/topics/auth/experiments/E1-token-cost/E1.1-cold-start/notes.md',
   'pay/spikes/checkout/index.html', 'pay/build/notes/today.md', 'pay/build/tasks/notes.md', 'pay/build/tasks/1.2/notes.md', 'pay/build/phases/phase-1/notes.md',
-  'pay/build/runs/3.S2/notes.json', 'pay/review/notes.md',
+  'pay/build/runs/3.S2/notes.json', 'pay/review/notes.md', 'pay/build/tasks/1.2/round-1.md', 'pay/build/phases/phase-1/review.md',
   '.cache', '.knowledge', 'pay/assets', 'pay/seeds', 'pay/spikes/001-checkout', 'pay/topics/auth/experiments/E1-token-cost/data', 'pay/imports',
   'Pay/spec.md', 'pay/topics/a.b/log.md', 'pay/discovery/session-1.md', 'pay/build/tasks/1.md', 'pay/build/tasks/0.2.md', 'pay/build/runs/3.s2/run-001.json', 'pay/review/round-0.md',
-  '.inbox/ideas/30-10-2026--smart-retry.md', '.inbox/ideas/today--smart-retry.md', '.inbox/ideas/2026-10-30--smart_retry.md', 'pay/build/phases/phase-1/check_out-a.md',
+  '.inbox/ideas/30-10-2026--smart-retry.md', '.inbox/ideas/today--smart-retry.md', '.inbox/ideas/2026-10-30--smart_retry.md', 'pay/build/phases/phase-1/3-check_out-a.md',
+  'pay/build/phases/phase-1/checkout-a.md', 'pay/build/phases/phase-1/0-checkout-a.md',
   'pay/topics/auth/experiments/E0-token-cost/problem.md', 'pay/topics/auth/experiments/E1-token-cost/E1.0-cold-start/report.md', 'pay/build/runs/0.S2/run-001.json', 'pay/build/runs/3.S0/run-001.json',
   'pay/research/auth.md', 'pay/discussion/auth.md', 'pay/experiment/auth/E1-token-cost/E1.1-cold-start/report.md', 'pay/discussion/.mailbox/auth/001-retry-policy.md', 'pay/discovery/sessions/notes.md', 'pay/discovery/briefs/auth.md',
   '.roadmap/notes.md', '.roadmap/sessions/notes.md', '.state/environment.md',
@@ -113,13 +122,38 @@ const OUTSIDE = Object.freeze([
 const named = (at) => (at === null ? null : `${at.kind} ${at.path}`);
 
 describe('4.11\'s places (4.11.17)', () => {
-  it('every place the tree draws holds its sample, of its kind — the engine\'s alone the manifests, the ledger, spec-review.json (6.2.3), sweep-taken.json (8.10.3) and a topic\'s brief (8.7.6) — and every place has one', () => {
+  it('every place the tree draws holds its sample, of its kind — the engine\'s alone the manifests, the ledger, spec-review.json (6.2.3), sweep-taken.json (8.10.3), a topic\'s brief (8.7.6), the notes for later (task note), a task\'s figures (task account) and the settlement of its failed round (task settle) — and every place has one', () => {
     assert.deepStrictEqual(Object.fromEntries(Object.keys(DRAWN).map((rel) => [rel, named(layoutPlace(rel))])), DRAWN);
     assert.deepStrictEqual(new Set(Object.values(DRAWN)), new Set(LAYOUT.map(named)));
   });
 
   it('a path beside each folder\'s places, a free folder named as a file, and a name a placeholder refuses are in no place', () => {
     assert.deepStrictEqual(OUTSIDE.filter((rel) => layoutPlace(rel) !== null), []);
+  });
+
+  it('13.3.4: each report place takes a letter for each reviewer of the count, and none past it', () => {
+    const past = String.fromCharCode(REVIEWER_LETTERS[REVIEWER_LETTERS.length - 1].charCodeAt(0) + 1);
+    for (const at of ['pay/build/tasks/1.2/round-1-{letter}.md', 'pay/build/phases/phase-1/review-{letter}.md', 'pay/build/phases/phase-1/3-checkout-{letter}.md', 'pay/review/round-1/tests-{letter}.md', 'pay/review/round-1/3-checkout-{letter}.md']) {
+      const placeOf = (/** @type {string} */ letter) => layoutPlace(at.replace('{letter}', letter))?.path;
+      const place = placeOf('a');
+      assert.ok(place?.endsWith('-{letter}.md'), at);
+      assert.deepStrictEqual(REVIEWER_LETTERS.map(placeOf), REVIEWER_LETTERS.map(() => place), at);
+      assert.notStrictEqual(placeOf(past), place, `${at} for a reviewer past the count`);
+    }
+  });
+
+  it('an area\'s report is named by the area\'s number and slug, so none is named as the tests\' or a phase review\'s, and one without the number is in no area\'s place', () => {
+    const area = (/** @type {string} */ folder) => `{unit}/${folder}/{area}-{letter}.md`;
+    assert.deepStrictEqual(Object.fromEntries([
+      'pay/build/phases/phase-1/review-a.md', 'pay/build/phases/phase-1/1-review-a.md', 'pay/build/phases/phase-1/payments-a.md',
+      'pay/review/round-1/tests-a.md', 'pay/review/round-1/3-tests-a.md',
+    ].map((rel) => [rel, layoutPlace(rel)?.path ?? null])), {
+      'pay/build/phases/phase-1/review-a.md': '{unit}/build/phases/phase-{N}/review-{letter}.md',
+      'pay/build/phases/phase-1/1-review-a.md': area('build/phases/phase-{N}'),
+      'pay/build/phases/phase-1/payments-a.md': null,
+      'pay/review/round-1/tests-a.md': '{unit}/review/round-{N}/tests-{letter}.md',
+      'pay/review/round-1/3-tests-a.md': area('review/round-{N}'),
+    });
   });
 
   it('names are compared as the fold spells them: in another case, under a fold to lower case, a path is the place it names, and as written it is none', () => {

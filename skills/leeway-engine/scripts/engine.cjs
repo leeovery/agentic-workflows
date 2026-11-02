@@ -271,6 +271,9 @@ ${Object.values(MAP_USAGE).map((usage) => `  ${usage}`).join('\n')}
   task close <work-unit> <task> --reason <reason>
   task list <work-unit> <N>
   task show <work-unit> <task>
+  task account <work-unit> <task>
+  task settle <work-unit> <task> --file <why>
+  task note <work-unit> --file <note> [--phase <N>]
   task init <work-unit> <topic>
   task start <work-unit> <topic> <internal-id>
   task fix-attempt <work-unit> <topic> <internal-id> --findings-file <path>
@@ -1137,8 +1140,9 @@ function runExperiment(call, argv) {
 // ---------------------------------------------------------------------------
 // task — the tracker's verbs through the project's task driver
 // (domain/task-verbs.cjs): phase, create, add, type, link, ready, start,
-// done, close, list and show, each committing what it wrote to the state
-// branch.
+// done, close, list and show, and beside them the build's records, account
+// and settle (domain/task-account.cjs) and note (domain/notes.cjs), each
+// committing what it wrote to the state branch.
 //
 // Beside them, until the plan's loops go, the implementation-task
 // bookkeeping: format-blind, manifest-side only — init, the three-argument

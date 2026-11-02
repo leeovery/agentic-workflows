@@ -170,4 +170,4 @@ function workMessage(message, ref) {
   return `${text}${trailers ? '\n' : '\n\n'}${TRAILER}: ${taskId(ref)}`;
 }
 
-module.exports = { inFlightTask, runChecks, workMessage };
+module.exports = { TRAILER, inFlightTask, runChecks, workMessage };

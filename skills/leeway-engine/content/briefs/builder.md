@@ -28,6 +28,38 @@ A gap you find beyond the task goes to the notes for later or through the ask ru
 
 The reviewer reviews the task as a professional would, never one small thing.
 
+# Your account
+
+As the task lands, write its account: your words and diagrams, never a status or a figure, which the engine counts. Its five sections sit at level two, in this order, with no title, nothing before the first, and none empty. Under `## Differs from the task`, an item for each way the work differs from the task as written, or `None.` where it differs in none. Under `## Reviews`, a `### Round N` for each review round, from 1, over its summary. After each round the orchestrator settled, wherever it sits, `### Settled` follows it, over what was done about it.
+
+```markdown
+## What was done
+
+{what the work does, in product terms}
+
+## Where in the code
+
+{the files and the parts of them the work changed}
+
+## What the tests prove
+
+{each behaviour the tests pin}
+
+## Differs from the task
+
+- {a way the work differs from the task as written}
+
+## Reviews
+
+### Round 1
+
+{what the round found, and what was done about it}
+
+### Round 2
+
+{what the round found, and what was done about it}
+```
+
 # The workflows' own references
 
 The workflows' own references never go into the product's code or comments: task ids, phase numbers and spec sections. Beyond that, quality is held by the project's own rules and checks.

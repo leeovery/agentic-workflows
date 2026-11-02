@@ -27,8 +27,9 @@
 //                  names where the repository has it, else the repository's
 //                  default branch: a nested repository's may be named
 //                  otherwise, and a stack's base branch be in some only
-//   report-a,      the report its flag's path points to, verbatim, a file
-//   report-b       in the unit's `build/` folder (4.11.5)
+//   reports        the task's last review round's reports, one per
+//                  reviewer of the count (13.3.4), each verbatim under a
+//                  heading naming its reviewer (round-report.cjs)
 //
 // A discussion topic's records, each read from the ledger as its read verb
 // answers it (ledger-read.cjs) or from the topic's agent store
@@ -204,8 +205,9 @@
 // yet is drawn as none recorded. One that cannot be read refuses the brief:
 // a task with no spec reference, a section the spec lacks, linters of
 // another shape, a task's branch no repository holds work on, a base no
-// repository holding it has as a local branch, a report missing, empty or
-// outside the unit's `build/`; a question that is none, no longer current,
+// repository holding it has as a local branch, a task with no review
+// round's reports, a round missing a reviewer's report or holding one
+// that does not read, a last round that passed; a question that is none, no longer current,
 // stands elsewhere or is not open, or one its dispatch was not first briefed
 // on; a dispatch the topic's store lacks, of another kind, no longer in
 // flight; a perspective of the set with no report, or briefed on no question
@@ -257,6 +259,7 @@ const {
 } = require('./spec-passes.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { specReferenceOf } = require('./task-file.cjs');
+const { taskFolder, taskRounds } = require('./round-report.cjs');
 const { taskName } = require('./task-id.cjs');
 const { taskBranch } = require('./landing-names.cjs');
 const { branches, holdingBranch, defaultBranch, plain } = require('./landing-git.cjs');
@@ -400,37 +403,18 @@ function drawDiffRange(filling) {
   return holding.map((repo, at) => rangeIn(repo, bases[at], branch)).join('\n\n');
 }
 
-/** The folder of a unit's build records. */
-const BUILD = 'build';
-
-/** A report's text, refused where there is no file. @param {string} file @param {string} flag */
-function readReport(file, flag) {
-  try {
-    return fs.readFileSync(file, 'utf8');
-  } catch (err) {
-    const { code } = /** @type {NodeJS.ErrnoException} */ (err);
-    if (code === 'ENOENT' || code === 'EISDIR') throw new Error(`the --${flag} report, ${file}, is no file`);
-    throw err;
-  }
-}
-
-/** @param {Filling} filling @param {string} flag */
-function drawReport(filling, flag) {
+/**
+ * The task's last round's reports, refused where it has none, or the round
+ * passed: a round with nothing serious and no bug sends nothing back to the
+ * builder, its nits the orchestrator's to fix (13.4.4, 13.4.5).
+ * @param {Filling} filling
+ */
+function drawReports(filling) {
   const { ref } = taskOf(filling);
-  const build = statePath(filling.cwd, ref.unit, BUILD);
-  const file = path.resolve(filling.cwd, filling.given[flag]);
-  const within = path.relative(build, file);
-  if (within === '' || within.split(path.sep)[0] === '..' || path.isAbsolute(within)) {
-    throw new Error(`the --${flag} report, ${file}, is not in ${ref.unit}'s ${BUILD} folder, ${build}`);
-  }
-  const text = readReport(file, flag);
-  if (text.trim() === '') throw new Error(`the --${flag} report, ${file}, is empty`);
-  return text;
-}
-
-/** A record drawing the report its flag points to. @param {string} flag @returns {BriefRecord} */
-function reportRecord(flag) {
-  return { of: 'task', flags: [{ name: flag, value: 'path' }], draw: (filling) => drawReport(filling, flag) };
+  const last = taskRounds(filling.cwd, ref).at(-1);
+  if (last === undefined) throw new Error(`${taskName(ref)} has no review round's reports — its reviewers write them in ${taskFolder(ref)}/`);
+  if (last.passes) throw new Error(`round ${last.round} of ${taskName(ref)} passed — a round with nothing serious and no bug sends nothing back to the builder; its nits are the orchestrator's to fix`);
+  return last.reports.map(({ reviewer, text }) => `# Reviewer ${reviewer.toUpperCase()}'s report\n\n${text}`).join('\n\n');
 }
 
 /** The topic a topic's record is drawn for. @param {Filling} filling @returns {TopicPlace} */
@@ -1145,8 +1129,7 @@ const RECORDS = Object.freeze({
   'decided-calls': { of: 'task', draw: drawDecidedCalls },
   linters: { of: null, draw: drawLinters },
   'diff-range': { of: 'task', flags: [{ name: 'base', value: 'branch' }], draw: drawDiffRange },
-  'report-a': reportRecord('report-a'),
-  'report-b': reportRecord('report-b'),
+  reports: { of: 'task', draw: drawReports },
   'topic-record': { of: 'topic', draw: drawTopicRecord },
   'topic-log': { of: 'topic', draw: drawTopicLog },
   'other-records': { of: 'topic', draw: drawOtherRecords },

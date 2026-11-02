@@ -21,6 +21,10 @@
 // frees what waits on it as done does (7.1.12). The verbs refuse in the
 // engine's words: a tool the driver needs missing or failing, a phase not
 // written, a task the tracker lacks or already holds, a task already ended.
+// Beside them, three take the build's records, each its own module's:
+// account, a task's account and its rounds' reports, and settle, the
+// orchestrator's settlement of a failed round (task-account.cjs); and note,
+// a note for later (notes.cjs).
 //
 // Every verb runs under the writer lock (engine.cjs), the tool's own lock
 // inside it. Before anything else reaches the driver, the project's setting
@@ -104,10 +108,16 @@ function refuseEnded(driver, root, ref, rule) {
   return status;
 }
 
-/** A task's text from its file, refused where the file holds nothing. @param {string} cwd @param {string} file */
-function textOf(cwd, file) {
-  const text = fs.readFileSync(path.resolve(cwd, file), 'utf8').trim();
-  if (text === '') throw new Error(`${file} holds nothing to add`);
+/**
+ * The text of a file a verb is given, by its path from `cwd`, trimmed;
+ * refused where there is no such file or it holds nothing.
+ * @param {string} cwd @param {string} file @param {string} purpose what it would hold nothing to do
+ */
+function givenText(cwd, file, purpose) {
+  const at = path.resolve(cwd, file);
+  if (!fs.statSync(at, { throwIfNoEntry: false })?.isFile()) throw new Error(`there is no file ${file}`);
+  const text = fs.readFileSync(at, 'utf8').trim();
+  if (text === '') throw new Error(`${file} holds nothing to ${purpose}`);
   return text;
 }
 
@@ -310,7 +320,7 @@ function addToTask(cwd, unit, given, file, by) {
   const ref = parseShownTask(unit, given);
   if (!ADDED_BY.includes(by)) throw new Error(`an addition is the ${ADDED_BY.join(' or the ')}'s — got "${by}"`);
   requireUnit(cwd, unit);
-  const text = textOf(cwd, file);
+  const text = givenText(cwd, file, 'add');
   return withTracker(cwd, unit, `add to ${shownTask(ref)}`, (driver, root) => {
     refuseEnded(driver, root, ref, 'only a task not yet ended is added to');
     driver.add(root, ref, { by: /** @type {'orchestrator'|'person'} */ (by), text });
@@ -353,6 +363,12 @@ function listTasks(cwd, unit, given) {
     if (rows === null) throw unwritten(unit, phase);
     return { phase, tasks: rows.map((row) => ({ ...named(row.ref), title: row.title, status: row.status })) };
   });
+}
+
+/** Whether the tracker holds a phase of the unit written, read as any read is. @param {string} cwd @param {string} unit @param {number} phase */
+function phaseWritten(cwd, unit, phase) {
+  requireUnit(cwd, unit);
+  return withTracker(cwd, unit, null, (driver, root) => ({ written: driver.list(root, unit, phase) !== null })).written;
 }
 
 /**
@@ -417,11 +433,17 @@ const closeTask = moving('close', (driver, root, ref, reason) => {
   driver.close(root, ref, reason);
 }, offPosition);
 
+// The build's records, loaded at their call: each reads its task, or the
+// tracker's phases, through this module.
+const account = () => require('./task-account.cjs');
+const notes = () => require('./notes.cjs');
+
 /**
  * Each verb: its arguments after `task {verb}`, how many positionals it
- * takes and how many of them may be left out, the flags it needs, and what
- * it runs, given the flags' values in their order.
- * @type {Readonly<Record<string, {usage: string, arity: number, optional?: number, flags?: string[], run: (cwd: string, positional: string[], ...values: string[]) => object}>>}
+ * takes and how many of them may be left out, the flags it needs and those
+ * it may be given, and what it runs, given the flags' values in their
+ * order, one left out undefined.
+ * @type {Readonly<Record<string, {usage: string, arity: number, optional?: number, flags?: string[], mayTake?: string[], run: (cwd: string, positional: string[], ...values: string[]) => object}>>}
  */
 const TASK_VERBS = Object.freeze({
   phase: { usage: '<unit> <N> --title <title>', arity: 2, flags: ['title'], run: (cwd, [unit, phase], title) => writePhase(cwd, unit, phase, title) },
@@ -435,6 +457,9 @@ const TASK_VERBS = Object.freeze({
   close: { usage: '<unit> <task> --reason <reason>', arity: 2, flags: ['reason'], run: (cwd, [unit, task], reason) => closeTask(cwd, unit, task, reason) },
   list: { usage: '<unit> <N>', arity: 2, run: (cwd, [unit, phase]) => listTasks(cwd, unit, phase) },
   show: { usage: '<unit> <task>', arity: 2, run: (cwd, [unit, task]) => showTask(cwd, unit, task) },
+  account: { usage: '<unit> <task>', arity: 2, run: (cwd, [unit, task]) => account().takeAccount(cwd, unit, task) },
+  settle: { usage: '<unit> <task> --file <why>', arity: 2, flags: ['file'], run: (cwd, [unit, task], file) => account().settleTask(cwd, unit, task, file) },
+  note: { usage: '<unit> --file <note> [--phase <N>]', arity: 1, flags: ['file'], mayTake: ['phase'], run: (cwd, [unit], file, phase) => notes().depositNote(cwd, unit, file, phase) },
 });
 
 /**
@@ -444,12 +469,13 @@ const TASK_VERBS = Object.freeze({
  * @returns {object}
  */
 function runTaskVerb(cwd, verb, positional, opts) {
-  const { usage, arity, optional = 0, flags = [], run } = TASK_VERBS[verb];
+  const { usage, arity, optional = 0, flags = [], mayTake = [], run } = TASK_VERBS[verb];
   const values = flags.map((flag) => opts[flag] ?? '');
-  if (positional.length < arity || positional.length > arity + optional || values.some((value) => value.trim() === '')) {
+  const given = mayTake.map((flag) => (Object.hasOwn(opts, flag) ? opts[flag] ?? '' : undefined));
+  if (positional.length < arity || positional.length > arity + optional || [...values, ...given].some((value) => value !== undefined && value.trim() === '')) {
     throw new Error(`Usage: engine task ${verb} ${usage}`);
   }
-  return run(cwd, positional, ...values);
+  return run(cwd, positional, ...values, .../** @type {string[]} */ (given));
 }
 
-module.exports = { TASK_VERBS, ENDED, runTaskVerb, trackedTask };
+module.exports = { TASK_VERBS, ENDED, runTaskVerb, trackedTask, phaseWritten, givenText };

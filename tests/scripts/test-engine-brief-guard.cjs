@@ -33,7 +33,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const {
-  ENGINE, call, ok, statePath, layout, writeState, readState, commitAll, fixtureFrom, setupGitFixture, cleanupFixture, withFrozenClock, FROZEN_AT,
+  ENGINE, call, ok, layout, writeState, readState, commitAll, fixtureFrom, setupGitFixture, cleanupFixture, withFrozenClock, FROZEN_AT,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
@@ -53,15 +53,15 @@ const TASK = [
   '## Outcome', 'A card is taken.', '', '## Acceptance scenarios', '- Given a card, when it is taken, then it is charged.', '', '## Spec reference', '§1',
 ].join('\n');
 
-/** The two reviewers' reports on the first task, in the unit's build folder. */
+/** The two reviewers' reports of the first task's first round, failing it, in the unit's build folder. */
 const REPORTS = Object.freeze([layout.unit(UNIT, 'build/tasks/1.1/round-1-a.md'), layout.unit(UNIT, 'build/tasks/1.1/round-1-b.md')]);
 
-/** The unit, its spec of one area, its first task citing it, and two reports on that task. */
+/** The unit, its spec of one area, its first task citing it, and a round's two reports on that task. */
 const unitWorld = fixtureFrom('brief-guard-', (dir) => {
   createManifest(dir, UNIT, {});
   writeState(dir, layout.unit(UNIT, SPEC_FILE), '# Payments\n\n## 1. Cards\n\nA card is taken once.\n');
-  writeState(dir, REPORTS[0], 'Verdict: fail\n\n- card.js keeps the token in plain text.\n');
-  writeState(dir, REPORTS[1], 'Verdict: fail\n\n- The receipt omits the amount.\n');
+  writeState(dir, REPORTS[0], '## Findings\n\n- serious: card.js keeps the token in plain text.\n  Scenario: a customer saves a card.\n\nVerdict: fail\n');
+  writeState(dir, REPORTS[1], '## Findings\n\n- bug: The receipt omits the amount.\n  Scenario: a customer pays.\n\nVerdict: fail\n');
   commitAll(dir, 'init');
   ok(dir, ['task', 'phase', UNIT, '1', '--title', 'Cards']);
   const file = path.join(dir, '..', 'task.md');
@@ -96,7 +96,7 @@ before(() => {
   bare = fs.realpathSync(setupGitFixture('brief-guard-bare-'));
   projects = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'brief-guard-projects-')));
   briefs.builder = issued(dir, ['builder', UNIT, '1.1'], SESSION_ID);
-  briefs.fix = issued(dir, ['fix', UNIT, '1.1', '--report-a', statePath(dir, REPORTS[0]), '--report-b', statePath(dir, REPORTS[1])], SESSION_ID);
+  briefs.fix = issued(dir, ['fix', UNIT, '1.1'], SESSION_ID);
   briefs.researcher = issued(bare, ['product-researcher'], SESSION_ID);
   briefs.elsewhere = issued(dir, ['builder', UNIT, '1.1'], OTHER_SESSION);
   recordSubagent('a1builder', 'leeway-builder');

@@ -52,6 +52,23 @@ The edge list:
 - a terminal smaller than 80 columns by 24 rows;
 - a time-zone change, or a calendar oddity such as a span across 29 February.
 
+# Your report
+
+Your report ends in its findings, then its verdict. The findings are its last section, `## Findings`: each finding an item opening on its call, with what is wrong, and beneath it, indented, the user scenario that meets it; or `None.` where you found nothing. The last line is `Verdict: pass` where nothing serious and no bug stands, else `Verdict: fail`.
+
+```markdown
+## Findings
+
+- serious: {what is wrong}
+  Scenario: {the user scenario that meets it}
+- bug: {what is wrong}
+  Scenario: {the user scenario that meets it}
+- nit: {what is wrong}
+  Scenario: {the user scenario that meets it}
+
+Verdict: fail
+```
+
 # Comments are never the standard
 
 Judge the code against this brief and the design, never against its comments.

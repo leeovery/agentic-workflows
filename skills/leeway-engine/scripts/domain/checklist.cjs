@@ -87,6 +87,7 @@ const { directiveOf, checkDirective, recordDirective } = require('./directives.c
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { fingerprint } = require('../kernel/fingerprint.cjs');
+const { REVIEWERS } = require('../kernel/reviewers.cjs');
 
 /** @typedef {{state: 'done'|'skipped', reason?: string, at: string}} Mark */
 /** @typedef {{items: Record<string, Mark>, closed?: string, ledger_at?: number, voided?: string, taken?: string, spec_hash?: string, cut_hash?: string}} Checklist */
@@ -338,7 +339,7 @@ const POINTS = Object.freeze({
     takes: ['<work-unit>', '<N>'],
     place: onPhase('close'),
     items: [
-      { key: 'tasks-passed', text: 'every task passed its pair' },
+      { key: 'tasks-passed', text: `every task passed each of its ${REVIEWERS} reviewers` },
       { key: 'phase-review-passed', text: 'the phase review passed and its fixes landed' },
       { key: 'scenarios-reported', text: 'each scenario proven or reported not proven' },
       { key: 'notes-consolidated', text: 'the notes for later read by the consolidation agent, then made into tasks or dropped with a reason' },

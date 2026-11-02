@@ -12,7 +12,8 @@
 // refused, every fault named at once. A title is one line wherever the
 // engine takes one, a phase's too: no character that breaks a line anywhere
 // in it, the task file's own line ending aside. A verb of another kind
-// reads a task's spec reference from its text as the tracker holds it.
+// reads a task's spec reference, and how many acceptance criteria it holds,
+// from its text as the tracker holds it.
 // ---------------------------------------------------------------------------
 
 /** The kinds a task's type is one of. */
@@ -103,4 +104,15 @@ function specReferenceOf(text) {
   return bodies.length === 1 && bodies[0] !== '' ? bodies[0] : null;
 }
 
-module.exports = { TASK_TYPES, breaksLine, readTaskText, specReferenceOf };
+/**
+ * How many acceptance criteria a task's text holds: each item at the margin
+ * of its acceptance scenarios' list, or one where the field holds no list.
+ * @param {string} text @returns {number}
+ */
+function criteriaOf(text) {
+  const [body = ''] = sectionsOf(text.trim().split('\n').slice(1)).get('Acceptance scenarios') ?? [];
+  const items = body.split('\n').filter((line) => /^(?:[-*+]|[0-9]+[.)])[ \t]/.test(line)).length;
+  return items > 0 ? items : Number(body !== '');
+}
+
+module.exports = { TASK_TYPES, breaksLine, readTaskText, specReferenceOf, criteriaOf };

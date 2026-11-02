@@ -11,27 +11,33 @@
 // saying whose it is, the sections its spec reference cites verbatim, the
 // unit's current decisions at its own level, each one list item, the
 // linters from the environment — and nothing of the project's CLAUDE.md or
-// its skills (6.S15); beside it the record of whose it is; the reviewer's
-// brief, the builder's records and, in each repository holding the task's
-// branch, the diff's three-dot range and its stat, never its text, from
-// the base given or, where a repository lacks it, its default, its template
+// its skills (6.S15); beside it the record of whose it is; the builder's
+// template giving the account's grammar, its example reading by it
+// (12.14.5); the reviewer's brief, the builder's records and, in each
+// repository holding the task's branch, the diff's three-dot range and its
+// stat, never its text, from the base given or, where a repository lacks
+// it, its default, its template
 // saying a wrong comment or a workflows reference in the work is returned
-// as a nit (13.S20);
-// the fix round's brief, the two reports verbatim under their labels and
-// nothing else (6.S17); the product researcher's brief in a project with no
-// unit; the fill under the writer lock; every refusal writing nothing, no
-// brief and no record among it; every role's agent named as the workflows'
-// are, and defined on the roster fixing Opus at medium; a template's slots
-// held to its role; a brief and its record never stored over another's.
+// as a nit (13.S20) and giving the report's grammar, its example reading
+// by it (13.5.11); the fix round's brief, each reviewer's report of the
+// task's last round verbatim under its label and nothing else (6.S17),
+// refused where the task has no round's reports, a round lacks one or
+// holds one that does not read, or the last round passed (13.S4); the
+// product researcher's brief in a project with no unit; the fill under the
+// writer lock; every refusal writing nothing, no brief and no record among
+// it; every role's agent named as the workflows' are, and defined on the
+// roster fixing Opus at medium; a template's slots held to its role; a
+// brief and its record never stored over another's.
 //
 // Layer: verb. World: a project with two work units, built once and copied:
 // one with its first phase written in the tracker, its tasks made through
 // the default driver — a task with two additions and a spec reference over
 // two lines, a task done, a task closed, a task citing a section its spec
 // lacks — its spec, decisions at its level, one over several lines, and on
-// its topic, two reviewers' reports on its first task in its build folder,
-// and that task's branch in the project's repository and in one nested in
-// it, the project's default branch moved on past it; the other with its
+// its topic, the two reviewers' reports of its first task's first round,
+// failing it, in its build folder, and that task's branch in the project's
+// repository and in one nested in it, the project's default branch moved
+// on past it; the other with its
 // spec, a task whose branch holds work in the project's repository alone
 // and is named in the nested one, and no decision; the project's linters, and
 // a CLAUDE.md and a project skill in the code tree. And a project with no
@@ -58,6 +64,8 @@ const { SPEC_FILE } = require(path.join(SCRIPTS, 'domain/spec-sections.cjs'));
 const { listDrivers } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
 const { readTaskText } = require(path.join(SCRIPTS, 'domain/task-file.cjs'));
 const { taskBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
+const { readReport } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
+const { readAccount } = require(path.join(SCRIPTS, 'domain/task-account.cjs'));
 const TEMPLATES = path.join(__dirname, '../../skills/leeway-engine/content/briefs');
 const AGENTS = path.join(__dirname, '../../agents');
 
@@ -90,17 +98,23 @@ const DEEP = 'packages/payments-service/src/components/checkout/refund-form/vali
 /** The line each task branch adds, which no brief carries. */
 const CHANGED = 'export const token = (card) => card.token;';
 
-/** The two reviewers' reports on task 1.1 in the unit's build folder, their whitespace and line breaks their own. */
-const REPORTS = Object.freeze({
-  'report-a': {
-    at: layout.unit(UNIT, 'build/tasks/1.1/round-1-a.md'),
-    text: '\n## Verdict\n\nFail.  \n\n## Findings\n\n1. card.js keeps the token   in plain text,\n   which the spec forbids.\n\n```js\n    keep(token);\n```\n\n',
+/** A reviewer's report of a task's round in the unit's build folder. @param {string} task @param {number} round @param {string} letter */
+const roundAt = (task, round, letter) => layout.unit(UNIT, `build/tasks/${task}/round-${round}-${letter}.md`);
+
+/** The two reviewers' reports of task 1.1's first round, failing it, their whitespace and line breaks their own. */
+const REPORTS = Object.freeze([
+  {
+    at: roundAt('1.1', 1, 'a'),
+    text: '\nThe card is taken once.  \n\n## Findings\n\n- serious: card.js keeps the token   in plain text,\n  which the spec forbids.\n  Scenario: a customer saves a card, and its token sits in plain text.\n\n  ```js\n      keep(token);\n  ```\n\nVerdict: fail\n\n',
   },
-  'report-b': {
-    at: layout.unit(UNIT, 'build/tasks/1.1/round-1-b.md'),
-    text: 'Verdict: fail\r\n\n- The receipt omits the amount.\n- Nit: a comment in card.js names task 1.1.\n',
+  {
+    at: roundAt('1.1', 1, 'b'),
+    text: 'Read whole.\r\n\n## Findings\n\n- bug: The receipt omits the amount.\n  Scenario: a customer pays, and the receipt shows no amount.\n- nit: a comment in card.js names task 1.1.\n  Scenario: a reader of card.js meets a workflows reference.\n\nVerdict: fail\n',
   },
-});
+]);
+
+/** A report of one finding, its verdict as the finding gives it. @param {'serious'|'bug'|'nit'} call */
+const reportOf = (call) => `## Findings\n\n- ${call}: the ${call}.\n  Scenario: a customer meets the ${call}.\n\nVerdict: ${call === 'nit' ? 'pass' : 'fail'}\n`;
 
 /** One file added in the repository at `repo`, committed alone on the branch checked out. @param {string} repo @param {string} file */
 function commitFile(repo, file) {
@@ -169,7 +183,7 @@ const unitWorld = fixtureFrom('brief-', (dir) => {
   writeState(dir, layout.unit(UNIT, SPEC_FILE), SPEC);
   const project = JSON.parse(readState(dir, layout.projectManifest));
   writeState(dir, layout.projectManifest, JSON.stringify({ ...project, environment: { linters: LINTERS } }, null, 2));
-  for (const { at, text } of Object.values(REPORTS)) writeState(dir, at, text);
+  for (const { at, text } of REPORTS) writeState(dir, at, text);
   fs.writeFileSync(path.join(dir, 'CLAUDE.md'), `# Rules\n\n${PROJECT_WORDS}\n`);
   fs.writeFileSync(path.join(dir, '.gitignore'), `${NESTED}/\n`);
   fs.mkdirSync(path.join(dir, '.claude', 'skills', 'x'), { recursive: true });
@@ -266,13 +280,11 @@ const takeACardRanges = (own, nested) => [
   rangeDrawn('the project\'s repository', PAY_BRANCH, 'src/card.js', own), rangeDrawn(`\`${NESTED}\``, PAY_BRANCH, 'card/token.js', nested),
 ].join('\n\n');
 
-/** The fix round's brief's labels: everything it holds beside the reports, under its first line. */
-const LABELS = Object.freeze({ 'report-a': '# Reviewer A\'s report\n\n', 'report-b': '\n\n# Reviewer B\'s report\n\n' });
+/** The fix round's brief under its first line: each report under its reviewer's label, everything it holds beside them. @param {string} a @param {string} b */
+const fixDrawn = (a, b) => `# Reviewer A's report\n\n${a}\n\n# Reviewer B's report\n\n${b}`;
 
-/** The fix round's arguments for task 1.1, each report by its path, the second relative to the project. */
-const fixArgs = () => [
-  'fix', UNIT, '1.1', '--report-a', statePath(dir, REPORTS['report-a'].at), '--report-b', path.relative(dir, statePath(dir, REPORTS['report-b'].at)),
-];
+/** The fix round's arguments for task 1.1. */
+const FIX = Object.freeze(['fix', UNIT, '1.1']);
 
 /** A refusal leaving the state as it was and no brief stored: its error. @param {string[]} args @param {RegExp} pattern @param {Record<string, string|undefined>} [env] */
 function refusedUnissued(args, pattern, env = SESSION) {
@@ -356,6 +368,15 @@ describe('the builder\'s brief (6.5.1–6.5.5, 6.S15)', () => {
       'The workflows\' own references never go into the product\'s code or comments: task ids, phase numbers and spec sections.',
     ]) assert.ok(template.includes(line), line);
   });
+
+  it('12.14.5: the builder\'s template gives the account\'s grammar, its sections and its rounds, and its example reads by it', () => {
+    const template = fs.readFileSync(path.join(TEMPLATES, 'builder.md'), 'utf8');
+    const example = /\n```markdown\n([\s\S]*?)\n```\n/.exec(template)?.[1];
+
+    assert.ok(template.includes('As the task lands, write its account'), template);
+    assert.ok(template.includes('After each round the orchestrator settled, wherever it sits, `### Settled` follows it'), template);
+    assert.strictEqual(readAccount(/** @type {string} */ (example), 2).reviews.length, 2);
+  });
 });
 
 describe('the reviewer\'s brief (13.2.2, 13.11.5)', () => {
@@ -413,28 +434,34 @@ describe('the reviewer\'s brief (13.2.2, 13.11.5)', () => {
       'The workflows\' own references never go into the product\'s code or comments: task ids, phase numbers and spec sections. Meeting one in the work, return it as a nit.',
     ]) assert.ok(template.includes(line), line);
   });
+
+  it('13.5.11: the template gives the report\'s grammar, its findings then its verdict, and its example reads by it', () => {
+    const template = fs.readFileSync(path.join(TEMPLATES, 'reviewer.md'), 'utf8');
+    const example = /\n```markdown\n([\s\S]*?)\n```\n/.exec(template)?.[1];
+
+    assert.ok(template.includes('Your report ends in its findings, then its verdict.'), template);
+    assert.deepStrictEqual(readReport(/** @type {string} */ (example)).findings.map(({ call }) => call), ['serious', 'bug', 'nit']);
+  });
 });
 
 describe('6.S17: the fix round\'s brief (6.5.10, 13.11.6)', () => {
   useWorld(unitWorld);
 
-  it('the pair\'s two reports, each under its label, verbatim and nothing else: less its labels, the brief under its first line is the two files byte for byte; it is the builder\'s to take', () => {
-    const { res, brief } = issued(fixArgs());
+  it('13.S2: each reviewer\'s report of the round, each under its label, verbatim and nothing else: less its labels, the brief under its first line is the reports byte for byte; it is the builder\'s to take', () => {
+    const { res, brief } = issued([...FIX]);
 
     assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'fix', agent: 'leeway-builder', pointer: `brief:${res.id}` });
-    const [a, b] = ['report-a', 'report-b'].map((flag) => REPORTS[flag].text);
-    assert.strictEqual(brief,`Brief ${res.id} — the fix round's, for pay task 1.1\n\n${LABELS['report-a']}${a}${LABELS['report-b']}${b}`);
+    assert.strictEqual(brief, `Brief ${res.id} — the fix round's, for pay task 1.1\n\n${fixDrawn(REPORTS[0].text, REPORTS[1].text)}`);
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'fix', agent: 'leeway-builder', unit: UNIT, task: '1.1', topic: null });
   });
 
-  it('a report whose name starts with two dots is in the build folder', () => {
-    const draft = statePath(dir, layout.unit(UNIT, 'build/..draft.md'));
-    fs.writeFileSync(draft, 'Verdict: pass\n');
-    const [, , , ...reports] = fixArgs();
+  it('13.S3: a later round failing on a bug alone sends its own reports, never an earlier round\'s', () => {
+    writeState(dir, roundAt('1.1', 2, 'a'), reportOf('bug'));
+    writeState(dir, roundAt('1.1', 2, 'b'), reportOf('nit'));
 
-    const { brief } = issued(['fix', UNIT, '1.1', '--report-a', draft, ...reports.slice(2)]);
+    const { res, brief } = issued([...FIX]);
 
-    assert.ok(brief.includes(`${LABELS['report-a']}Verdict: pass\n${LABELS['report-b']}`), brief);
+    assert.strictEqual(brief, `Brief ${res.id} — the fix round's, for pay task 1.1\n\n${fixDrawn(reportOf('bug'), reportOf('nit'))}`);
   });
 });
 
@@ -460,18 +487,17 @@ describe('the refusals, nothing written and no brief stored', () => {
 
   it('a role it does not know, and arguments of another shape for each role: a flag it takes missing, given twice or given no value', () => {
     const usage = new RegExp(`^Usage: ${[
-      'builder <unit> <task>', 'reviewer <unit> <task> --base <branch>', 'fix <unit> <task> --report-a <path> --report-b <path>', 'product-researcher',
+      'builder <unit> <task>', 'reviewer <unit> <task> --base <branch>', 'fix <unit> <task>', 'product-researcher',
       'deep-dive <unit> <topic> --question <id> --agent <id> --kind <survey|read|feasibility|landscape|verify> [--path <file>]',
       'perspective <unit> <topic> --question <id> --agent <id>', 'synthesis <unit> <topic> --agent <id>', 'discussion-reviewer <unit> <topic> --agent <id>',
       'closing-pass-reader <unit> <topic> --agent <id>', 'plain-search',
       'migration-topic --topic <unit.phase.topic> --directive <id>', 'migration-verifier --topic <unit.phase.topic> --directive <id>', 'phase-cut <unit>', 'sweep <unit>',
       'spec-writer <unit> [--wording <file>]', 'spec-reviewer <unit> --agent <id>',
     ].map((line) => `engine brief ${line.replace(/[|[\]]/g, '\\$&')}`).join(' \\| ')}$`);
-    const [, , , ...reports] = fixArgs();
     for (const args of [
       [], ['scribe', UNIT, '1.1'], ['builder'], ['builder', UNIT], ['builder', UNIT, '1.1', 'more'], ['product-researcher', UNIT],
       ['reviewer', UNIT, '1.1'], ['reviewer', UNIT, '1.1', '--base'], ['reviewer', UNIT, '1.1', '--base', 'main', '--base', 'main'], ['reviewer', UNIT, '--base', 'main'],
-      ['fix', UNIT, '1.1', ...reports.slice(0, 2)], ['fix', UNIT, '1.1', '--report-a', '--report-b', reports[3]],
+      ['fix', UNIT], ['fix', UNIT, '1.1', 'more'],
     ]) {
       refusedUnissued(args, /^Usage: /);
     }
@@ -486,7 +512,7 @@ describe('the refusals, nothing written and no brief stored', () => {
     const taking = {
       builder: [UNIT, '1.1'],
       reviewer: [UNIT, '1.1', '--base', 'main'],
-      fix: fixArgs().slice(1),
+      fix: FIX.slice(1),
       'product-researcher': [],
       'deep-dive': [...asked, ...dispatched.slice(2), '--kind', 'survey'],
       perspective: [...asked, ...dispatched.slice(2)],
@@ -502,7 +528,7 @@ describe('the refusals, nothing written and no brief stored', () => {
       'spec-reviewer': [UNIT, '--agent', 'spec-review-001'],
     };
     for (const role of Object.keys(ROLES)) {
-      for (const [flag, value] of [['--note', 'be quick'], ...(role === 'reviewer' ? [] : [['--base', 'main']]), ...(role === 'fix' ? [] : [['--report-a', 'a.md']])]) {
+      for (const [flag, value] of [['--note', 'be quick'], ...(role === 'reviewer' ? [] : [['--base', 'main']]), ['--report-a', 'a.md']]) {
         refusedUnissued([role, ...taking[role], flag, value], new RegExp(`^brief: the ${role}'s brief takes no ${flag} `));
       }
     }
@@ -517,18 +543,20 @@ describe('the refusals, nothing written and no brief stored', () => {
     refusedUnissued(['reviewer', 'refund', '1.1', '--base', 'main'], new RegExp(`^no repository of the project holds work on task 1\\.1 of refund's branch, ${REFUND_BRANCH}$`));
   });
 
-  it('a fix round\'s report missing, empty, or outside the unit\'s build folder', () => {
-    const [, , , ...reports] = fixArgs();
-    const fix = (/** @type {string} */ a) => ['fix', UNIT, '1.1', '--report-a', a, ...reports.slice(2)];
-    const build = statePath(dir, layout.unit(UNIT, 'build'));
-    fs.writeFileSync(path.join(build, 'blank.md'), '\n  \n');
+  it('a fix round for a task with no round\'s reports, a round missing a reviewer\'s report, and one holding a report that does not read', () => {
+    refusedUnissued(['fix', 'refund', '1.1'], /^task 1\.1 of refund has no review round's reports — its reviewers write them in refund\/build\/tasks\/1\.1\/$/);
+    writeState(dir, roundAt('1.1', 3, 'a'), reportOf('bug'));
+    refusedUnissued([...FIX], /^round 2 of task 1\.1 of pay has no report from reviewer a — pay\/build\/tasks\/1\.1\/round-2-a\.md$/);
+    writeState(dir, roundAt('1.1', 2, 'a'), reportOf('bug'));
+    writeState(dir, roundAt('1.1', 2, 'b'), 'Verdict: fail\n\n- The receipt omits the amount.\n');
+    refusedUnissued([...FIX], /^pay\/build\/tasks\/1\.1\/round-2-b\.md does not read as a reviewer's report — its last heading at level one or two is not `## Findings`; its last line is not `Verdict: pass` or `Verdict: fail`$/);
+  });
 
-    refusedUnissued(fix(path.join(build, 'tasks/1.1/round-2-a.md')), /^the --report-a report, .*round-2-a\.md, is no file$/);
-    refusedUnissued(fix(path.join(build, 'tasks')), /^the --report-a report, .*tasks, is no file$/);
-    refusedUnissued(fix(path.join(build, 'blank.md')), /^the --report-a report, .*blank\.md, is empty$/);
-    for (const outside of [statePath(dir, layout.unit(UNIT, SPEC_FILE)), path.join(build, '..', '..', 'refund', 'build', 'round-1-a.md'), build]) {
-      refusedUnissued(fix(outside), /^the --report-a report, .*, is not in pay's build folder, /);
-    }
+  it('13.S4: a fix round after a round of nits alone, which passes and sends nothing back to the builder', () => {
+    writeState(dir, roundAt('1.1', 2, 'a'), reportOf('nit'));
+    writeState(dir, roundAt('1.1', 2, 'b'), '## Findings\n\nNone.\n\nVerdict: pass\n');
+
+    refusedUnissued([...FIX], /^round 2 of task 1\.1 of pay passed — a round with nothing serious and no bug sends nothing back to the builder; its nits are the orchestrator's to fix$/);
   });
 
   it('a unit or a task the project lacks', () => {
