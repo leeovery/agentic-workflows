@@ -171,7 +171,7 @@ re-weighs each item below, each held as it is for today's model:
   decision in the conversation has an entry", and the closing pass's
   second reader;
 - the habit-hook entries;
-- the reviewer count;
+- the reviewer count (`kernel/reviewers.cjs` in the engine);
 - the effort threshold;
 - the raw calls' models and efforts: the one-decision check, the
   labeller, and the typed-answer reader;

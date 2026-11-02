@@ -15,14 +15,19 @@
 //           assets, a spike, the seeds, an experiment's data, the cache;
 //   engine  a file only the engine writes — the manifests, the ledger, a
 //           topic's brief, the record of the person's review of the spec,
-//           the record of the sweep taken — with what it is and the verb that writes it, where one does;
+//           the record of the sweep taken, the notes for later, a task's
+//           figures and the settlement of its failed round — with what it
+//           is and the verb that writes it, where one does;
 //   log     a log a session writes to, which a state commit takes along
 //           (6.3.2).
 // A path's names are literal but for its placeholders: `{unit}` a unit's
-// name, `{slug}` and `{area}`, each a kebab-case slug; `{topic}` a topic's
-// name, which holds no dot; `{N}`, `{n}` and `{m}` a whole number from 1;
-// `{NNN}` three digits or more; `{task}` a task as screens show it,
-// `{phase}.{n}`; `{YYYY-MM-DD}` a date; and `{a,b}` one of the names listed.
+// name, `{slug}` a kebab-case slug; `{area}` an area of the spec by its
+// number and slug, `{n}-{slug}`, so no area's report is named as the tests'
+// or the phase review's; `{topic}` a topic's name, which holds no dot;
+// `{N}`, `{n}` and `{m}` a whole number from 1; `{NNN}` three digits or
+// more; `{task}` a task as screens show it, `{phase}.{n}`; `{letter}` a
+// reviewer's letter, one per reviewer of the count (kernel/reviewers.cjs);
+// `{YYYY-MM-DD}` a date; and `{a,b}` one of the names listed.
 // Whatever a placeholder matches, it matches in lower case too, and the
 // literal names are spelled by `fold`, so a path matches as `fold` spells
 // it: in lower case where the filesystem ignores case (`folding`).
@@ -38,6 +43,7 @@
 
 const { ignoresCase } = require('../kernel/state-root.cjs');
 const { KEBAB_SLUG } = require('../kernel/manifest-schema.cjs');
+const { REVIEWER_LETTERS } = require('../kernel/reviewers.cjs');
 
 /** @typedef {'file'|'free'|'engine'|'log'} PlaceKind */
 
@@ -56,13 +62,14 @@ const WHOLE = '[1-9][0-9]*';
 const PLACEHOLDERS = Object.freeze({
   unit: KEBAB_SLUG,
   slug: KEBAB_SLUG,
-  area: KEBAB_SLUG,
+  area: `${WHOLE}-${KEBAB_SLUG}`,
   topic: '[^/.]+',
   N: WHOLE,
   n: WHOLE,
   m: WHOLE,
   NNN: '[0-9]{3,}',
   task: `${WHOLE}\\.${WHOLE}`,
+  letter: `[${REVIEWER_LETTERS.join('')}]`,
   'YYYY-MM-DD': '[0-9]{4}-[0-9]{2}-[0-9]{2}',
 });
 
@@ -111,14 +118,19 @@ const LAYOUT = Object.freeze([
   engineFile('{unit}/sweep-taken.json', '8.10.3', 'a unit\'s record of the sweep taken before its spec', 'sweep take'),
   place('file', '{unit}/summary.md', '4.11.6'),
   place('log', '{unit}/build/log.md', '4.11.5'),
-  place('file', '{unit}/build/notes.md', '4.11.5'),
+  engineFile('{unit}/build/notes.md', '4.11.5', 'a unit\'s notes for later', 'task note'),
   place('file', '{unit}/build/tasks/{task}.md', '4.11.5'),
-  place('file', '{unit}/build/tasks/{task}/round-{N}-{a,b}.md', '4.11.5'),
-  place('file', '{unit}/build/phases/phase-{N}/review-{a,b}.md', '4.11.5'),
-  place('file', '{unit}/build/phases/phase-{N}/{area}-{a,b}.md', '4.11.5'),
+  place('file', '{unit}/build/tasks/{task}/round-{N}-{letter}.md', '4.11.5'),
+  engineFile('{unit}/build/tasks/{task}/figures.json', '4.11.5', 'a task\'s figures, as its account was taken', 'task account'),
+  engineFile('{unit}/build/tasks/{task}/round-{N}-settled.md', '4.11.5', 'the orchestrator\'s settlement of a task\'s failed round', 'task settle'),
+  place('file', '{unit}/build/phases/phase-{N}/review-{letter}.md', '4.11.5'),
+  place('file', '{unit}/build/phases/phase-{N}/consolidation.md', '4.11.5'),
+  place('file', '{unit}/build/phases/phase-{N}/{area}-{letter}.md', '4.11.5'),
   place('file', '{unit}/build/runs/{n}.S{m}/run-{NNN}.json', '4.11.15'),
   place('file', '{unit}/review/round-{N}.md', '4.11.5'),
   place('file', '{unit}/review/round-{N}-checks.md', '4.11.5'),
+  place('file', '{unit}/review/round-{N}/tests-{letter}.md', '4.11.5'),
+  place('file', '{unit}/review/round-{N}/{area}-{letter}.md', '4.11.5'),
 ]);
 
 /** Today's places, each with the phase that retires it. @type {readonly Place[]} */

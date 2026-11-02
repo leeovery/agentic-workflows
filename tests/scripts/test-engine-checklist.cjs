@@ -47,6 +47,7 @@ const {
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { MADE, ledgerHelpers } = require('./ledger-world.cjs');
+const { REVIEWERS } = require('../../skills/leeway-engine/scripts/kernel/reviewers.cjs');
 
 const UNIT = 'payments';
 const SESSION = Object.freeze({ CLAUDE_CODE_SESSION_ID: 'session-1' });
@@ -175,7 +176,7 @@ const mailFor = (topic) => layout.unit(UNIT, 'topics', topic, 'mail', '001-from-
 describe('the points of a unit\'s work, each its exact list (6.4.6–6.4.10, 6.S14)', () => {
   eachOn(fresh);
 
-  it('lists each point\'s items in the spec\'s order, each in the spec\'s words with who checks it, every one open on a fresh unit but what the engine finds done', () => {
+  it('lists each point\'s items in the spec\'s order, each in the spec\'s words with who checks it — a task\'s pass read against the reviewers\' count (13.3.4) — every one open on a fresh unit but what the engine finds done', () => {
     assert.deepStrictEqual({
       decided: standing('decided', UNIT, 'cards'),
       ready: standing('ready-to-build', UNIT),
@@ -210,7 +211,7 @@ describe('the points of a unit\'s work, each its exact list (6.4.6–6.4.10, 6.S
         'relies-on-done engine open: what the phase relies on is done',
       ],
       close: [
-        'tasks-passed claude open: every task passed its pair',
+        `tasks-passed claude open: every task passed each of its ${REVIEWERS} reviewers`,
         'phase-review-passed claude open: the phase review passed and its fixes landed',
         'scenarios-reported claude open: each scenario proven or reported not proven',
         'notes-consolidated claude open: the notes for later read by the consolidation agent, then made into tasks or dropped with a reason',

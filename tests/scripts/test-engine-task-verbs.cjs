@@ -355,6 +355,7 @@ describe('task phase and task create (7.1.3, 7.4.1, 12.4.1)', () => {
       [['task', 'add', UNIT, '1.2', '--file', file], 'Usage: engine task add <unit> <task> --file <path> --by <orchestrator|person>'],
       [['task', 'add', UNIT, '1.2', '--file', file, '--by', 'builder'], 'an addition is the orchestrator or the person\'s — got "builder"'],
       [['task', 'add', UNIT, '1.2', '--file', blank, '--by', 'person'], `${blank} holds nothing to add`],
+      [['task', 'add', UNIT, '1.2', '--file', `${blank}.gone`, '--by', 'person'], `there is no file ${blank}.gone`],
       [['task', 'type', UNIT, '1.2', 'feature'], 'the type "feature" is not one of feat, fix, refactor, perf, test, docs, build, ci, chore'],
       [['task', 'link', UNIT, '1.1', '--after', '2.1'], 'task 2.1 is in a later phase than 1.1 — a task is linked after one of its own phase\'s or an earlier phase\'s'],
     ];

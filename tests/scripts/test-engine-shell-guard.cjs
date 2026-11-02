@@ -88,7 +88,7 @@ const SHELL_GUARD_LOADS = [
 const LAYOUT_GUARD_LOADS = [
   'domain/brief-names.cjs', 'domain/conversation.cjs', 'domain/drivers.cjs', 'domain/layout-hook.cjs', 'domain/layout.cjs', 'domain/task-id.cjs',
   'domain/user-files.cjs', 'engine.cjs', 'guards.cjs', 'kernel/call.cjs', 'kernel/file-stream.cjs', 'kernel/git.cjs', 'kernel/isolated-git.cjs',
-  'kernel/manifest-io.cjs', 'kernel/manifest-schema.cjs', 'kernel/manifest.cjs', 'kernel/process.cjs', 'kernel/state-root.cjs', 'kernel/system-config.cjs',
+  'kernel/manifest-io.cjs', 'kernel/manifest-schema.cjs', 'kernel/manifest.cjs', 'kernel/process.cjs', 'kernel/reviewers.cjs', 'kernel/state-root.cjs', 'kernel/system-config.cjs',
 ];
 
 /** Each file in the state only the engine writes, by its path from the state, with the layout hook's reason for refusing a write to it. */

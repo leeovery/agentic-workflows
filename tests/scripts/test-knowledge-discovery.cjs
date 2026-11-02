@@ -3,7 +3,8 @@
 // Pins the bulk-discovery artifact SET on a rich fixture: discoverArtifacts()
 // yields exactly the completed artifacts below, every path state-relative —
 // and never a log, discovery's or the product's, nor a file the product's
-// conversation keeps (8.14.7, 9.2.2), nor a spec (11.1.2).
+// conversation keeps (8.14.7, 9.2.2), nor a spec (11.1.2), nor anything of a
+// unit's build (22.6.3).
 
 require('./hermetic-env.cjs');
 
@@ -30,6 +31,9 @@ function writeFile(p, content) {
   fs.mkdirSync(path.dirname(p), { recursive: true });
   fs.writeFileSync(p, content);
 }
+
+/** A unit's build: its log, its notes for later, a task's account and a round's report. */
+const BUILD = Object.freeze(['payments/build/log.md', 'payments/build/notes.md', 'payments/build/tasks/1.1.md', 'payments/build/tasks/1.1/round-1-a.md']);
 
 // A fixture exercising every discovery branch and every exclusion rule.
 function buildFixture(root) {
@@ -85,6 +89,7 @@ function buildFixture(root) {
   writeFile(path.join(wf, 'payments', '.state', 'coherence-analysis.md'), '# legacy cache — not indexable\n');
   writeFile(path.join(wf, 'payments', 'discovery', 'session-001.md'), '# S1 — a log, never indexed\n');
   writeFile(path.join(wf, 'payments', 'discovery', 'session-002.md'), '# S2 — a log, never indexed\n');
+  for (const rel of BUILD) writeFile(path.join(wf, rel), '# the build\'s — never indexed\n');
 
   // Feature: single topic, its first discovery log never indexed.
   proj.work_units['auth-flow'] = { work_type: 'feature' };
@@ -184,6 +189,12 @@ describe('knowledge bulk discovery — artifact-set equivalence', () => {
       '.knowledge/records/payments/ledger.md', '.knowledge/records/payments/refunds.md',
     ].sort());
     assert.deepStrictEqual(files.filter((f) => f.includes('/topics/') || f.includes('/discussion/')), []);
+  });
+
+  it('22.S17: discovers nothing of a unit\'s build — its log, its notes, a task\'s account and reports — and the one-file door refuses each', () => {
+    const files = normalise(discover(root)).map((it) => it.file);
+    assert.deepStrictEqual(files.filter((f) => f.includes('/build/')), []);
+    for (const rel of BUILD) assert.throws(() => deriveIdentity(rel), (err) => err instanceof UserError && /Cannot derive identity/.test(err.message), rel);
   });
 
   it('leaves non-markdown imports undiscovered — manifest-tracked, never indexed', () => {

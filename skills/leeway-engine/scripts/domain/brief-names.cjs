@@ -45,7 +45,7 @@ const OURS = 'leeway-';
 const ROLES = Object.freeze({
   builder: { agent: 'leeway-builder', whose: 'the builder\'s', records: ['task', 'spec-sections', 'decided-calls', 'linters'] },
   reviewer: { agent: 'leeway-reviewer', whose: 'the reviewer\'s', records: ['task', 'spec-sections', 'decided-calls', 'diff-range', 'linters'] },
-  fix: { agent: 'leeway-builder', whose: 'the fix round\'s', records: ['report-a', 'report-b'] },
+  fix: { agent: 'leeway-builder', whose: 'the fix round\'s', records: ['reports'] },
   'product-researcher': { agent: 'leeway-product-researcher', whose: 'the product researcher\'s', records: [] },
   'deep-dive': {
     agent: 'leeway-deep-dive', whose: 'the deep dive\'s', kind: 'deep-dive', records: ['question', 'dive-kind', 'topic-record', 'product-record', 'report-to'],

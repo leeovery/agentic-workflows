@@ -6,20 +6,40 @@
 // a task before its dispatch, the tasks started side by side in the one
 // conversation — the note a compaction hands up naming each — and done, and
 // the task they held up freed — the project's default task driver running
-// its real tool, its store on the state branch alone.
+// its real tool, its store on the state branch alone; and a task landing on
+// its branch: a note for later banked, the fix round briefed from its pair's
+// reports, its account taken once a round passes, then done; and one stuck
+// on a failed round, settled by the orchestrator, its account carrying what
+// was done.
 //
 // Layer: simulation. World: the project every scenario starts from
-// (pipeline-world.cjs), a copy per scenario; each replays the engine calls
-// the skill prose makes, in prose order, and the oracle
-// (pipeline-oracle.cjs) audits the whole state after every mutation.
+// (pipeline-world.cjs), and for the landings this file's own, built once
+// from it — a feature, its first phase's one task, the task's branch — a
+// copy per scenario; each replays the engine calls the skill prose makes,
+// in prose order, and the oracle (pipeline-oracle.cjs) audits the whole
+// state after every mutation.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
-const { stateGit } = require('./engine-harness.cjs');
-const { Sim, sessionLog, startNew, carryOn, writePhaseTasks } = require('./pipeline-world.cjs');
+const path = require('path');
+const { stateGit, git } = require('./engine-harness.cjs');
+const { Sim, sessionLog, startNew, carryOn, writePhaseTasks, worldFrom } = require('./pipeline-world.cjs');
+
+const { taskBranch } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/landing-names.cjs'));
+
+const WU = 'ledger';
+
+/** A feature with its build's first phase written, one task, and that task's branch cut in the project. */
+const landingWorld = worldFrom('pipeline-tasks-landing-', (sim) => {
+  startNew(sim, 'feature');
+  const log = sessionLog(sim, WU);
+  sim.run(['workunit', 'create', WU, 'feature', '--description', 'A ledger', '--session-log-file', log]);
+  writePhaseTasks(sim, WU, 1, 'The ledger', [{ title: 'Write the ledger' }]);
+  git(sim.dir, ['branch', taskBranch({ unit: WU, phase: 1, n: 1 }, 'feat', 'Write the ledger')]);
+});
 
 describe('pipeline simulation: the tracker', () => {
   let sim;
@@ -51,5 +71,52 @@ describe('pipeline simulation: the tracker', () => {
     assert.deepStrictEqual(sim.run(['task', 'ready', wu]).tasks.map((/** @type {{task: string}} */ task) => task.task), ['1.3'],
       'the task they held up is ready once both are done');
     assert.strictEqual(stateGit(sim.dir, ['status', '--porcelain']), '', 'every tracker write is on the state branch');
+  });
+});
+
+describe('pipeline simulation: a task landing', () => {
+  let sim;
+  beforeEach(() => { sim = new Sim(landingWorld); });
+  afterEach(() => { sim.destroy(); });
+
+  it('a task lands on its branch: a find beyond it banked as a note, its pair failing it on a bug, the fix round briefed from their reports, a round of nits passing it, its account taken, then done', () => {
+    const wu = WU;
+    sim.run(['task', 'start', wu, '1.1']);
+
+    sim.run(['task', 'note', wu, '--file', sim.write(`.leeway/.cache/${wu}/build/note.md`, 'Reading the ledger back never checks its hash.\n')]);
+    const report = (/** @type {number} */ round, /** @type {string} */ letter, /** @type {string} */ findings, /** @type {string} */ verdict) => sim.write(
+      `.leeway/${wu}/build/tasks/1.1/round-${round}-${letter}.md`, `## Findings\n\n${findings}\n\nVerdict: ${verdict}\n`,
+    );
+    report(1, 'a', '- bug: an empty ledger writes no header.\n  Scenario: a first write to a new ledger.', 'fail');
+    report(1, 'b', 'None.', 'pass');
+    sim.run(['brief', 'fix', wu, '1.1']);
+    report(2, 'a', '- nit: a comment names the task.\n  Scenario: a reader of the code.', 'pass');
+    report(2, 'b', 'None.', 'pass');
+    sim.write(`.leeway/${wu}/build/tasks/1.1.md`, [
+      '## What was done', 'An empty ledger now writes its header first.', '## Where in the code', '- ledger/store.go', '## What the tests prove', '- A first write to a new ledger holds its header.',
+      '## Differs from the task', 'None.', '## Reviews', '### Round 1', 'The header was missing; the builder wrote it.', '### Round 2', 'Passed, one nit fixed.',
+    ].join('\n\n'));
+    sim.run(['task', 'account', wu, '1.1']);
+    sim.run(['task', 'done', wu, '1.1']);
+
+    assert.strictEqual(stateGit(sim.dir, ['status', '--porcelain']), '', 'the note, the reports, the account and its figures are on the state branch');
+  });
+
+  it('a task stuck on a failed round: the orchestrator settles it, its account says what was done, then done', () => {
+    const wu = WU;
+    sim.run(['task', 'start', wu, '1.1']);
+
+    for (const letter of ['a', 'b']) {
+      sim.write(`.leeway/${wu}/build/tasks/1.1/round-1-${letter}.md`, `## Findings\n\n- bug: the ledger's lock is never freed.\n  Scenario: a second write.\n\nVerdict: fail\n`);
+    }
+    sim.run(['task', 'settle', wu, '1.1', '--file', sim.write(`.leeway/.cache/${wu}/build/settle.md`, 'The lock is the driver\'s; the orchestrator freed it in the driver.\n')]);
+    sim.write(`.leeway/${wu}/build/tasks/1.1.md`, [
+      '## What was done', 'A ledger write takes the lock and frees it.', '## Where in the code', '- ledger/store.go', '## What the tests prove', '- A second write follows the first.',
+      '## Differs from the task', 'None.', '## Reviews', '### Round 1', 'The lock was never freed.', '### Settled', 'The orchestrator freed it in the driver.',
+    ].join('\n\n'));
+    assert.deepStrictEqual(sim.run(['task', 'account', wu, '1.1']).settled, [1], 'the account is of a task whose first round was settled');
+    sim.run(['task', 'done', wu, '1.1']);
+
+    assert.strictEqual(stateGit(sim.dir, ['status', '--porcelain']), '', 'the settlement, the reports and the account are on the state branch');
   });
 });
