@@ -323,8 +323,6 @@ describe('epic projections: dashboard (map branch)', () => {
     const cOption = keys.find((k) => k.action === 'resume_completed');
     assert.ok(cOption, 'completed option present');
     assert.strictEqual(cOption.recommended, true, 'the reconcile route leads');
-    const sOption = keys.find((k) => k.action === 'analyze_discussions');
-    assert.notStrictEqual(sOption && sOption.recommended, true, 'analyze is not the recommendation');
   });
 
   it('an input-moved start entry is never the recommendation', () => {
@@ -590,7 +588,6 @@ describe('epic projections: menu', () => {
     // and the u/unblock option carry the state instead.
     assert.ok(!keys.some((k) => k.action === 'start_implementation'), 'blocked start never surfaces');
     assert.ok(!keys.some((k) => k.action === 'start_planning'), 'gated start_planning never surfaces');
-    assert.ok(!keys.some((k) => k.action === 'enter_specification'), 'a spec that keeps items draws no spec row');
   });
 
   it('in-progress map recommends the top discovery row; ✓/⊘ rows get no entry', () => {
@@ -721,6 +718,61 @@ describe('epic projections: menu', () => {
       '**`d/discuss`**   → Start new discussion',
       '**`b/back`**      → Return to the start menu',
     ].join('\n'));
+  });
+});
+
+describe('epic projections: the spec row (18.4.6)', () => {
+  let dir;
+  beforeEach(() => { dir = setupFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  /** An epic whose topics are decided, cancelled and postponed, `more` laid over it. @param {Record<string, any>} [discussion] @param {Record<string, any>} [more] */
+  const settled = (discussion = {}, more = {}) => detailFor(dir, 'v1', {
+    work_type: 'epic',
+    phases: {
+      discovery: { items: {
+        decided: { source: 'discovery', order: 1 },
+        dropped: { source: 'discovery', cancelled: true },
+        later: { source: 'discovery', postponed: true },
+      } },
+      discussion: { items: {
+        decided: { status: 'completed' },
+        dropped: { status: 'cancelled', previous_status: 'in-progress' },
+        later: { status: 'postponed', previous_status: 'in-progress' },
+        ...discussion,
+      } },
+    },
+    ...more,
+  });
+
+  /** The menu's spec row, as its key, route, label and recommendation. @param {Record<string, any>} detail */
+  const specRow = (detail) => epicMenu('v1', detail).keys
+    .filter((k) => k.action === 'enter_specification')
+    .map((k) => ({ key: k.key, route: k.route, label: k.label, recommended: k.recommended === true }));
+
+  it('shows once every topic is settled — decided, cancelled or postponed — entered at the unit, starting the spec, recommended', () => {
+    assert.deepStrictEqual(specRow(settled()), [{ key: 's', route: '/leeway-specification-process epic v1', label: 'Start the specification', recommended: true }]);
+  });
+
+  it('never shows while a topic is still open', () => {
+    const open = detailFor(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: { decided: { source: 'discovery', order: 1 }, talking: { source: 'discovery', order: 2 } } },
+        discussion: { items: { decided: { status: 'completed' }, talking: { status: 'in-progress' } } },
+      },
+    });
+    assert.deepStrictEqual(specRow(open), []);
+  });
+
+  it('carries on the spec once spec.md is written', () => {
+    fs.mkdirSync(path.join(dir, '.leeway', 'v1'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.leeway', 'v1', 'spec.md'), '# V1\n');
+    assert.deepStrictEqual(specRow(settled()).map((row) => [row.label, row.recommended]), [['Continue the specification', true]]);
+  });
+
+  it('is gone once the build has begun', () => {
+    assert.deepStrictEqual(specRow(settled({}, { build: { position: 'auto' } })), []);
   });
 });
 

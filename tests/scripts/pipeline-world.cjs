@@ -1123,7 +1123,11 @@ function specToBuild(sim, wu, topics, position = 's') {
   assert.deepStrictEqual(sim.run(['spec', 'land', wu]).invented, []);
   specReviewed(sim, wu);
   cutTheSpec(sim, wu, [{ name: 'The work', goal: 'The work holds as decided.', scenarios: ['1.S1'], sections: ['1'], relies_on: [] }]);
-  assert.doesNotMatch(readyToBuild(sim, wu), /construction gate|finding gate|sign-off|another cycle/i);
+  const rows = readyToBuild(sim, wu).split('\n').flatMap((line) => {
+    const row = line.match(/^\*\*`(\w+\/\w+)`\*\* +→ (.+?)(?: —|$)/);
+    return row ? [`${row[1]} ${row[2]}`] : [];
+  });
+  assert.deepStrictEqual(rows, ['a/auto Auto', 's/step Step'], 'ready to build is the one gate: its rows are the position alone');
   return sim.run(answerGate(sim, 'ready to build', '--pick', position).next.argv);
 }
 

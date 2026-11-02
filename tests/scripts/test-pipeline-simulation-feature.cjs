@@ -25,7 +25,7 @@ const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/leeway-engine/scripts/
 const BRIDGE = require(path.join(ROOT, 'skills/leeway-bridge/scripts/gateway.cjs'));
 const { statePath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
 const {
-  Sim, sessionLog, enterEntry, carryOn, handoff, answerGate, decideTopic, startKeys, startNew, shapedInTheProduct, briefDraft, startThisWork, workTheSet, walkDeliveryPhases, cutTheSpec, specEntry, specReviewed, readyToBuild,
+  Sim, sessionLog, enterEntry, carryOn, handoff, answerGate, decideTopic, startKeys, startNew, shapedInTheProduct, briefDraft, startThisWork, workTheSet, walkDeliveryPhases, specToBuild,
 } = require('./pipeline-world.cjs');
 
 const { shellWords } = require('./pipeline-oracle.cjs');
@@ -88,21 +88,8 @@ describe('pipeline simulation: feature', () => {
     // nothing.
     sim.render(['next-phase-gate', wu, '--prev', 'discussion', '--next', 'specification'], { expect: 'empty' });
     // The spec, entered at the unit, lands citing what was decided, is
-    // reviewed, and the cut's corridor cuts it into phases on the unit's
-    // manifest; ready to build's pick begins the build.
-    specEntry(sim, wu, [wu]);
-    const [decision] = JSON.parse(sim.read(['ledger', 'record', wu, wu])).decisions;
-    sim.write(`.leeway/${wu}/spec.md`, [
-      '# Pay', '', '## 1. Checkout', '', '### 1.1 Networks', '', `1.1.1 Checkout takes ${decision.text} [${decision.id}]`, '',
-      '## 1-S. Scenarios for §1', '', '1.S1 Given checkout, when a Visa is offered, then it is taken. (1.1.1)', '',
-    ].join('\n'));
-    assert.deepStrictEqual(sim.run(['spec', 'land', wu]).invented, []);
-    const networks = { name: 'Card networks', goal: 'Checkout takes the networks decided.', scenarios: ['1.S1'], sections: ['1'], relies_on: [] };
-    assert.strictEqual(cutTheSpec(sim, wu, [networks]).phases, 1);
-    assert.deepStrictEqual(sim.manifest(wu).cut, { phases: [networks] });
-    specReviewed(sim, wu);
-    readyToBuild(sim, wu);
-    assert.deepStrictEqual(sim.run(answerGate(sim, 'ready to build', '--pick', 's').next.argv).next, { kind: 'continue' });
+    // reviewed and cut into phases; ready to build's pick begins the build.
+    assert.deepStrictEqual(specToBuild(sim, wu, [wu]).next, { kind: 'continue' });
 
     walkDeliveryPhases(sim, wu, wu);
 

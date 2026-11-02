@@ -128,18 +128,6 @@ function inputMoved(item) {
 }
 
 /**
- * What moved a completed item's input, as the surfaces name it: the stored
- * flag's value, or `true` where the move is derived and names no single
- * upstream — the "reconcile at next entry" voice the brief flag already
- * uses.
- * @param {{reconcile_needed?: unknown}} item
- * @returns {unknown}
- */
-function movedFrom(item) {
-  return item.reconcile_needed !== undefined ? item.reconcile_needed : true;
-}
-
-/**
  * @typedef {object} CancelPlan
  * @property {{phase: string, item: Record<string, any>}[]} items  the live phase items the cancel stashes
  * @property {string[]} records   every open experiment record, top-level and sub, in register order
@@ -1142,7 +1130,6 @@ module.exports = {
   liveUnitItems,
   discoveryUnitExists,
   inputMoved,
-  movedFrom,
   cancelPlan,
   postponePlan,
   openExperiments,

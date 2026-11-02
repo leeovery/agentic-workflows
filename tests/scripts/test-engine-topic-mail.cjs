@@ -211,12 +211,6 @@ describe('topic send (10.1, 10.2.7)', () => {
     assert.deepStrictEqual([res.reopened, discussion('first-run').status, computeTopicLifecycle(manifest, 'first-run').lifecycle, mapRow?.mail_waiting], [true, 'in-progress', 'discussing', true]);
   });
 
-  it('stales no specification sourcing the topic and flags nothing downstream — the one spec keeps no items (P7)', () => {
-    const before = readManifest(dir, EPIC).phases.specification;
-    const res = send(EPIC, 'first-run', 'lost-key');
-    assert.deepStrictEqual([res.reconcile_flagged, res.sources_staled, readManifest(dir, EPIC).phases.specification], [undefined, undefined, before]);
-  });
-
   it('leaves a postponed topic as it stands, its message waiting in its mailbox for its return (10.1.8)', () => {
     const before = readState(dir, layout.manifest(EPIC));
     assert.strictEqual(send(EPIC, 'widgets', 'lost-key').message_path, at(layout.mailbox(EPIC, 'widgets', '001-lost-key.md')));

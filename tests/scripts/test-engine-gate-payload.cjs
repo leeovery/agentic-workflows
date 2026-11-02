@@ -634,7 +634,7 @@ describe('gate payload — a row built from parts', () => {
         cmdOption('1', null, { head: 'Continue "Auth"', tail: 'discussion', cue: 'mail waiting', recommended: true }),
         cmdOption('2', null, { head: 'Continue "Auth"', tail: 'discussion', cue: 'input moved', holder: 'in session (last active 4m ago)' }),
         cmdOption('3', null, { head: 'Start discussion for "Billing"', tail: 'mail waiting' }),
-        cmdOption('s', 'spec', { head: 'Analyze / regroup discussions' }),
+        cmdOption('s', 'spec', { head: 'Start the specification' }),
       ];
       return menu('Pick one?', rows);
     });
@@ -643,13 +643,13 @@ describe('gate payload — a row built from parts', () => {
       '**`1`** → Continue "Auth" — *discussion* · mail waiting (recommended)',
       '**`2`** → ~~Continue "Auth" — *discussion* · input moved~~ · in session (last active 4m ago)',
       '**`3`** → Start discussion for "Billing" — *mail waiting*',
-      '**`s/spec`** → Analyze / regroup discussions',
+      '**`s/spec`** → Start the specification',
     ]);
     assert.deepStrictEqual(gate.options, [
       { key: '1', word: null, head: 'Continue "Auth"', tail: 'discussion', cue: 'mail waiting', holder: null, detail: null, struck: false, recommended: true },
       { key: '2', word: null, head: 'Continue "Auth"', tail: 'discussion', cue: 'input moved', holder: 'in session (last active 4m ago)', detail: null, struck: true, recommended: false },
       { key: '3', word: null, head: 'Start discussion for "Billing"', tail: 'mail waiting', cue: null, holder: null, detail: null, struck: false, recommended: false },
-      { key: 's', word: 'spec', head: 'Analyze / regroup discussions', tail: null, cue: null, holder: null, detail: null, struck: false, recommended: false },
+      { key: 's', word: 'spec', head: 'Start the specification', tail: null, cue: null, holder: null, detail: null, struck: false, recommended: false },
     ]);
   });
 

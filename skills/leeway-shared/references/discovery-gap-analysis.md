@@ -75,7 +75,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.di
 
 `items` is the active map (an object keyed by topic name). `dismissed` is the array of names previously removed from the map by the user.
 
-Initialise the staging file fresh (overwrite any prior pass) at `.workflows/{work_unit}/.state/discovery-gap-analysis-candidates.md` — pure markdown, content only; the gate state lives in the manifest and is initialised after staging (below). This reference is only invoked for staging when no pending candidates remain from a prior run, so overwriting is safe.
+Initialise the staging file fresh (overwrite any prior pass) at `.leeway/{work_unit}/.state/discovery-gap-analysis-candidates.md` — pure markdown, content only; the gate state lives in the manifest and is initialised after staging (below). This reference is only invoked for staging when no pending candidates remain from a prior run, so overwriting is safe.
 
 For each candidate topic from **C** (kebab-case name + summary + description + routing), evaluate the conditions below in order. The first two cases are resolved here at stage time without a gate; only genuinely-new candidates are staged for the approval gate. Each branch is self-contained and concludes by moving on to the next candidate.
 
@@ -142,10 +142,10 @@ node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.di
 
 Invoked by [topic-discovery.md](topic-discovery.md) after the approval gate has run, regardless of how many candidates were approved — a decline-all pass still stamps, so the analysis won't re-fire on every boot.
 
-Update the existing cache file at `.workflows/{work_unit}/.state/discovery-gap-analysis.md` (pure markdown, no frontmatter):
+Update the existing cache file at `.leeway/{work_unit}/.state/discovery-gap-analysis.md` (pure markdown, no frontmatter):
 
 ```bash
-mkdir -p .workflows/{work_unit}/.state
+mkdir -p .leeway/{work_unit}/.state
 ```
 
 Overwrite with the topic list:

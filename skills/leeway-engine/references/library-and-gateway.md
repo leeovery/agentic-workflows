@@ -78,18 +78,16 @@ engine.detail.combinedInbox(scan, { archived })   // → PickupItem[] (one inbox
 engine.detail.workingSetDetail(cwd, paths)        // → WorkingSetDetail (held selection: the work-type pre-seed, addable items)
 engine.detail.manageDetail(cwd, wu)               // → ManageDetail (lifecycle-action availability), or null
 engine.detail.activeWorkUnit(cwd, wu)             // → { type, unit: WorkUnitEntry } — one single-topic unit in progress (feature | bugfix | quick-fix | cross-cutting), its type read from its manifest; null otherwise
-engine.detail.phaseTargets(manifest, nextPhase)   // → { next, revisit } — where each single-topic route enters: next, the {phase, topic} of the next phase, topic naming the phase's item where its items carry names of their own (a promoted unit's moved discussions), null otherwise; revisit, the phases of the revisit candidates (completed phases before nextPhase, pipeline-filtered, never the experiment or a decided discussion), each entered by the unit alone
+engine.detail.phaseTargets(cwd, manifest, nextPhase) // → { next, revisit } — where each single-topic route enters: next, the {phase, topic} of the next phase, topic naming the phase's item where its items carry names of their own (a promoted unit's moved discussions), null otherwise; revisit, the phases of the revisit candidates (completed phases before nextPhase, pipeline-filtered, never the experiment, a decided discussion or the spec, nor a phase entered at a topic once the unit is past its spec), each entered by the unit alone
 engine.detail.WORK_UNIT_TYPES                     // { [type]: config } — single-topic pipeline configs
-engine.detail.specificationDiscovery(cwd, wu)     // → DiscoveryResult (the epic specification menu's read: discussions, grouping specifications, cancelled keys, the grouping analysis's cache); throws for a name with no active epic
-engine.detail.specificationDetail(wu, result)     // → SpecificationDetail (the epic specification menu's scenario + grouping rows over one specificationDiscovery() result)
 engine.project.actionsTable(columns, keys, cells) // → the DATA `ACTIONS` table's lines — each key's `key` and `word` (`—` for none), then `cells(key)` under `columns`
 engine.project.epicDashboard(wu, detail, { newArrivals }) // → dashboard display block
 engine.project.epicKey(detail)                    // → Key block ('' when nothing on screen earns a legend)
 engine.project.epicMenu(wu, detail)               // → { keys, rendered } — keys carry action + route
 engine.project.epicMenuKeys(wu, detail)           // → the same keys, the menu never drawn (a gate over one entry)
 engine.project.epicCompletedMenu(wu, detail)      // → { keys, title, display, rendered } — Completed Topics resume sub-view
-engine.project.epicCancelMenu(detail, { presence }) // → { keys, title, display, rendered } — Cancellable Topics pick menu over the stage units (Topics / Specifications); a locked unit renders keyless with its reason, a held one carries its in-session age
-engine.project.epicReactivateMenu(detail, { presence }) // → { keys, title, display, rendered } — Cancelled Topics reactivate menu over the cancelled units, each row naming what returns; a specification whose sources are unavailable renders keyless with its reason, a held unit carries its in-session age; both unit menus open on a statement over b/back alone when every row is locked
+engine.project.epicCancelMenu(detail, { presence }) // → { keys, title, display, rendered } — Cancellable Topics pick menu over the Discovery units; a locked unit renders keyless with its reason, a held one carries its in-session age
+engine.project.epicReactivateMenu(detail, { presence }) // → { keys, title, display, rendered } — Cancelled Topics reactivate menu over the cancelled units, each row naming what returns; a held unit carries its in-session age; both unit menus open on a statement over b/back alone when every row is locked
 engine.project.epicPostponeMenu(detail, { presence }) // → { keys, title, display, rendered } — Postponable Topics pick menu over the Discovery units; a locked unit renders keyless with its reason, a held one carries its in-session age
 engine.project.epicPullForwardMenu(detail)        // → { keys, title, display, rendered } — Postponed Topics pick menu over the topics this epic postponed that still wait, each row naming its horizon; the key carries the roadmap item's own name
 engine.project.epicUnblockMenu(detail)            // → { keys, title, display, rendered } — Blocked Plans unblock menu, one row per blocking dependency (`dep` on the key)
@@ -111,11 +109,8 @@ engine.project.completedView(detail)              // → { data, menu, rows } �
 engine.project.workUnitStatus(type, unit)         // → status display block (pipeline tree)
 engine.project.workUnitMenu(type, unit)           // → { keys, rendered } — proceed/revisit gate; '' rendered when nothing to revisit
 engine.project.workUnitData(type, unit, menu)     // → DATA body (flow flags + ACTIONS key table)
-engine.project.phaseRoute(type, phase, wu, topic) // → the route a single-topic unit's phase is entered by (`/{skill} {work_type} {wu}`, `{topic}` appended where a target names one) — the bridge gateway's `next_route` and `revisit_routes`
+engine.project.phaseRoute(type, phase, wu, topic) // → the route a single-topic unit's phase is entered by (`/{skill} {work_type} {wu}`, `{topic}` appended where a target names one and the phase is entered at a topic) — the bridge gateway's `next_route` and `revisit_routes`
 engine.project.revisitPhasesSection(phases)       // → labelled `MENU: revisit phases` section over phaseTargets' revisit candidates ('' when none)
-engine.project.specificationDisplay(detail)       // → scenario overview block
-engine.project.specificationMenu(detail)          // → { keys, rendered } — grouping/spec menu; both empty for menu-less scenarios
-engine.project.specificationCompletedMenu(detail) // → { keys, title, display, rendered } — concluded-specs Refine sub-view
 
 // gateway: adapter harness
 engine.gateway.runGateway(handlers)               // argv verb dispatch → stdout; the gate the result's MENU states recorded as the gate the conversation was shown

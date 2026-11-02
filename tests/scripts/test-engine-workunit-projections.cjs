@@ -328,6 +328,16 @@ describe('workunit projections: menu', () => {
     );
   });
 
+  it('bugfix: the investigation is a revisit until the spec is written, and closed with every topic once it is', () => {
+    createManifest(dir, 'login-crash', {
+      work_type: 'bugfix',
+      phases: { investigation: { items: { 'login-crash': { status: 'completed' } } } },
+    });
+    assert.deepStrictEqual(unitOf(dir, 'bugfix', 'login-crash').revisit, ['investigation']);
+    createFile(dir, '.leeway/login-crash/spec.md', '# Login crash\n');
+    assert.deepStrictEqual(unitOf(dir, 'bugfix', 'login-crash').revisit, []);
+  });
+
   it('bugfix: routes carry the bugfix work_type argument', () => {
     createManifest(dir, 'login-crash', {
       work_type: 'bugfix',

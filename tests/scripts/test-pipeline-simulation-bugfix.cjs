@@ -110,11 +110,13 @@ describe('pipeline simulation: bugfix', () => {
     specToBuild(sim, wu, [wu]);
     assert.doesNotMatch(await provenance(), /^\[specification \|/m);
     walkDeliveryPhases(sim, wu, wu);
-    // The bugfix review hop offers all three rows — investigation and
-    // planning sit behind it as revisit candidates, never the spec (11.9.1).
+    // The bugfix review hop offers all three rows; what a revisit reaches is
+    // the delivery behind it — never the spec (11.9.1), nor the
+    // investigation the spec closed (4.11.2).
     const bfGate = sim.render(['next-phase-gate', wu, '--prev', 'implementation', '--next', 'review'], { expect: 'content' });
     assert.match(bfGate, /\*\*`d\/done`\*\* +→ Complete without review/);
     assert.match(bfGate, /\*\*`r\/revisit`\*\* → Revisit an earlier phase/);
+    assert.deepStrictEqual([...sim.render(['revisit-phases', wu], { expect: 'content' }).matchAll(/→ (\w+) — \*completed\*/g)].map((m) => m[1]), ['Planning', 'Implementation', 'Review']);
     // Past its spec the investigation is not reopened: a change is settled
     // in the spec.
     sim.refuses(['topic', 'reopen', wu, 'investigation', wu], /^crash-fix has its spec — a topic exists only before it/);

@@ -5,7 +5,7 @@ const engine = require('../../leeway-engine/scripts/lib.cjs');
 const { TERMINAL_STATUSES } = require('../../leeway-engine/scripts/kernel/manifest-schema.cjs');
 const { loadManifest, fileExists, listFiles, listDirs } = engine.reads;
 const { stateRoot } = engine.state;
-const { phaseStatus, phaseItems, computeNextPhase, movedFrom } = engine.derivations;
+const { phaseStatus, phaseItems, computeNextPhase } = engine.derivations;
 const { seriesDir } = require('../../leeway-engine/scripts/domain/experiment-paths.cjs');
 const { specPath } = require('../../leeway-engine/scripts/domain/spec-sections.cjs');
 
@@ -53,7 +53,7 @@ function discover(cwd, workUnit) {
     for (const item of phaseItems(manifest, phase)) {
       if (!TERMINAL_STATUSES.includes(item.status)
           && item.reconcile_needed !== undefined) {
-        reconcile_pending.push(`${phase}/${item.name} (${movedFrom(item)})`);
+        reconcile_pending.push(`${phase}/${item.name} (${item.reconcile_needed})`);
       }
     }
   }
@@ -61,7 +61,7 @@ function discover(cwd, workUnit) {
   // Where a linear type's routes enter: the next phase and the revisit
   // candidates — none past the pipeline's end, which completes the unit.
   const targets = engine.detail.WORK_UNIT_TYPES[workType] && next_phase !== 'done'
-    ? engine.detail.phaseTargets(manifest, next_phase)
+    ? engine.detail.phaseTargets(cwd, manifest, next_phase)
     : null;
 
   return {

@@ -231,7 +231,6 @@ describe('pipeline simulation: experiments, in an epic', () => {
     // phase's start reconciles, so the settled series is left untouched.
     const reopened = send(sim, wu, 'layout', 'timing', 'grid-at-scale');
     assert.strictEqual(reopened.reopened, true);
-    assert.strictEqual(reopened.reconcile_flagged, undefined, 'no specification downstream — nothing takes the flag');
     assert.strictEqual(sim.manifest(wu).phases.experiment.items.layout.reconcile_needed, undefined,
       'the series item never takes a reconcile flag');
 

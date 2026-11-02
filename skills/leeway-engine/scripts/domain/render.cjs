@@ -3243,7 +3243,7 @@ function nextPhaseGate(cwd, { dotpath, prev, next }) {
     }
   }
   const skipReview = next === 'review';
-  const revisitable = phaseTargets(manifest, next).revisit;
+  const revisitable = phaseTargets(cwd, manifest, next).revisit;
   if (!skipReview && revisitable.length === 0) return '';
 
   let statement = `${titlecase(prev)} completed for "${titlecase(workUnit)}".`;
@@ -4425,7 +4425,7 @@ function revisitPhasesSurface(cwd, args) {
     throw new Error(`render revisit-phases: "${workUnit}" is ${type ? `typed "${type}"` : 'untyped'} — the revisit menu serves the linear work types`);
   }
   const { next_phase } = computeNextPhase(manifest);
-  const targets = phaseTargets(manifest, next_phase).revisit;
+  const targets = phaseTargets(cwd, manifest, next_phase).revisit;
   if (targets.length === 0) {
     throw new Error(`render revisit-phases: "${workUnit}" has no completed earlier phase to revisit`);
   }

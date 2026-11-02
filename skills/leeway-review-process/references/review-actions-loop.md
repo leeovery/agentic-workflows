@@ -98,6 +98,16 @@ No actionable tasks synthesized — closing the review.
 
 ## C. Approval Overview
 
+Settle the spec defects first — each `## Spec Defects` entry in `review-report-c{N}.md` is judged before the overview renders, so the tasks are built against what the record decides. Once per entry, read the statement it names and the entries that statement cites, and judge which side is wrong:
+
+- **The code is wrong** — the tree owes the change: stage it under the next `## Task {n}` heading in `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{N}.md` — a synthesis that staged none wrote no file: create it with its `# Review Tasks: {topic:(titlecase)} (Cycle {N})` header — shaped like the proposals beside it: a `severity:` line carrying the defect's grade (`high`, `medium`, `low` — never a refactor class), a `sources:` line naming the report entry, then **Problem** and **Solution** — and initialise its row:
+  ```bash
+  node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.review.{topic} staging.c{N}.tasks.{n} pending
+  ```
+- **The spec is wrong** — a decision it cites is: put its replacement to the person, `raise {work_unit}.review.{topic} --replaces {decision_id} --reason was-wrong`. A replacement they agree lands on the ledger, and the spec stays as written — a concluded spec is never corrected. One they keep leaves the code wrong: route it as the code side. A finding it cites that the code shows wrong is a fact, replaced outright: `ledger replace {work_unit}.review.{topic} --replaces {finding_id} --reason was-wrong`, the finding's content with what it `drops`.
+
+An entry an earlier run already settled — its proposal in the staging file, or its replacement on the ledger — is skipped; a proposal already in the staging file whose `staging.c{N}` row is missing is a crashed landing — initialise the row and move on, never re-append.
+
 #### If the cycle stages no proposal
 
 The synthesis staged none and the record settled every defect.

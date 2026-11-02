@@ -209,7 +209,20 @@ node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "impl
 
 ## E. Approval Overview
 
-1. **Apply the comment corrections** — each `## Comment Corrections` entry with the Edit tool: its OLD text replaced by its NEW text at the named file, verbatim; an empty NEW deletes the comment. A correction whose NEW text is already in place was applied by an earlier run — skip it silently; one whose OLD text is otherwise absent is dropped — name the dropped ones in one line. Commit the files a correction changed as a code commit, each path single-quoted (a single quote inside a path written `'\''`); nothing when none changed:
+1. **Settle the spec defects** — each `## Spec Defects` entry in `analysis-report-c{N}.md` is judged before the overview renders, so the tasks are built against what the record decides.
+
+   **If the report carries a `## Spec Defects` section** — once per entry, read the statement it names and the entries that statement cites, and judge which side is wrong:
+
+   - **The code is wrong** — the tree owes the change: stage it under the next `## Task {n}` heading in `.workflows/{work_unit}/implementation/{topic}/analysis-tasks-c{N}.md` — a synthesis that staged none wrote no file: create it with its `# Analysis Tasks: {Topic} (Cycle {N})` header — shaped like the proposals beside it: a `severity:` line carrying the defect's grade (`high`, `medium`, `low` — never a refactor class), a `sources:` line naming the report entry, then **Problem** and **Solution** — and initialise its row:
+     ```bash
+     node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.c{N}.tasks.{n} pending
+     ```
+   - **The spec is wrong** — a decision it cites is: put its replacement to the person, `raise {work_unit}.implementation.{topic} --replaces {decision_id} --reason was-wrong`. A replacement they agree lands on the ledger, and the spec stays as written — a concluded spec is never corrected. One they keep leaves the code wrong: route it as the code side. A finding it cites that the code shows wrong is a fact, replaced outright: `ledger replace {work_unit}.implementation.{topic} --replaces {finding_id} --reason was-wrong`, the finding's content with what it `drops`.
+
+   An entry an earlier run already settled — its proposal in the staging file, or its replacement on the ledger — is skipped; a proposal already in the staging file whose `staging.c{N}` row is missing is a crashed landing — initialise the row and move on, never re-append.
+
+   **Otherwise:** nothing to settle — continue.
+2. **Apply the comment corrections** — each `## Comment Corrections` entry with the Edit tool: its OLD text replaced by its NEW text at the named file, verbatim; an empty NEW deletes the comment. A correction whose NEW text is already in place was applied by an earlier run — skip it silently; one whose OLD text is otherwise absent is dropped — name the dropped ones in one line. Commit the files a correction changed as a code commit, each path single-quoted (a single quote inside a path written `'\''`); nothing when none changed:
    ```bash
    node .claude/skills/leeway-engine/scripts/engine.cjs commit --paths '{corrected file}' … -m "impl({work_unit}): analysis cycle {N} — comment corrections" --for {work_unit} implementation/{topic}
    ```

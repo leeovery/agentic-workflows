@@ -158,10 +158,11 @@
 // its conclusion, its discussion decided and its record carried by 079 as
 // any decided topic's; any other is cancelled, as the cancel leaves one, no
 // decision written, its mail going to the inbox with a cancelled topic's.
-// A unit whose building has not started keeps no spec items: its specs are
-// reference assets now, and its one spec is written fresh once its topics
-// are decided (21.8.2, 21.8.3); a unit whose building started keeps them
-// for the cut and the merges, and a quick-fix's scoping keeps its own.
+// A unit whose building has not started keeps no spec or planning items:
+// its specs and plans are reference assets now, and its one spec is written
+// fresh once its topics are decided (21.8.2, 21.8.3); a unit whose building
+// started keeps them for the cut and the merges, and a quick-fix's scoping
+// keeps its own.
 // Everything else carries as it stood, the fields 21.5.9 names among them.
 // Each later reshape of a manifest updates this move until it is released
 // (E4): the reshape's own steps written for `.leeway/` before this one —
@@ -609,14 +610,15 @@ const isQuickFix = (manifest) => manifest.work_type === 'quick-fix';
 /** @param {Record<string, any>} manifest */
 const quickFixDone = (manifest) => isQuickFix(manifest) && manifest.status === 'completed';
 
-/** Whether the unit keeps no spec items: nothing built, and not a quick-fix. @param {Record<string, any>} manifest */
-const specWrittenFresh = (manifest) => !isQuickFix(manifest) && !buildingStarted(manifest);
+/** Whether the unit keeps no spec or planning items: nothing built, and not a quick-fix. @param {Record<string, any>} manifest */
+const writtenFresh = (manifest) => !isQuickFix(manifest) && !buildingStarted(manifest);
 
 /**
  * The unit's manifest less research and the retired state: the experiments
  * of names no topic holds going with their records' place, a completed
- * quick-fix's spec and plan with their files, and the spec items of a unit
- * that writes its spec fresh; each import's path following its file.
+ * quick-fix's spec and plan with their files, and the spec and planning
+ * items of a unit that writes its spec fresh; each import's path following
+ * its file.
  * @param {Record<string, any>} manifest @param {Set<string>} topics
  * @returns {Record<string, any>}
  */
@@ -629,7 +631,7 @@ function reshapedManifest(manifest, topics) {
     const experiments = itemsOf(out, 'experiment');
     for (const name of Object.keys(experiments)) if (!topics.has(name)) delete experiments[name];
     if (quickFixDone(manifest)) for (const phase of QUICK_FIX_SPENT) delete out.phases[phase];
-    if (specWrittenFresh(manifest)) delete out.phases.specification;
+    if (writtenFresh(manifest)) for (const phase of ['specification', 'planning']) delete out.phases[phase];
   }
   if (Array.isArray(out.imports)) out.imports = out.imports.map(asAsset);
   return out;

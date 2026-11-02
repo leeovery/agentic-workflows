@@ -15,7 +15,7 @@ The caller provides these via context before loading:
 - `work_unit` — the epic's work unit name.
 - `tracker` — a list (initially empty) the caller surfaces as the new-topics callout. The reference appends a name only when a candidate is **approved and written**.
 
-The staging file is `.workflows/{work_unit}/.state/discovery-gap-analysis-candidates.md`.
+The staging file is `.leeway/{work_unit}/.state/discovery-gap-analysis-candidates.md`.
 
 ## A. Count and Announce
 

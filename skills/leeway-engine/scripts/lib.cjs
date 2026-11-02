@@ -75,7 +75,6 @@ module.exports = {
     computeSourceProvenance: derivations.computeSourceProvenance,
     compareMapRows: derivations.compareMapRows,
     computeNeedsSequencing: derivations.computeNeedsSequencing,
-    movedFrom: derivations.movedFrom,
   },
   agents: {
     completedReviewCycles: agentState.completedReviewCycles,

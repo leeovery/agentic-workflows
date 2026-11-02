@@ -188,7 +188,7 @@ const PROJECT_MANIFEST = {
   baseline: { status: 'skipped' },
 };
 
-/** An epic mid-discussion, nothing built: research, mail, experiments, a spec proposed, imports. */
+/** An epic mid-discussion, nothing built: research, mail, experiments, a spec under way and a plan, imports. */
 const CORE = {
   name: 'core',
   work_type: 'epic',
@@ -250,6 +250,12 @@ const CORE = {
           reconcile_needed: 'discussion', sources: { alpha: { status: 'incorporated' } },
         },
         old: { status: 'cancelled', previous_order: 2, sources: {} },
+      },
+    },
+    planning: {
+      items: {
+        search: { status: 'in-progress', format: 'sample-format', phase: 1, task: 1 },
+        old: { status: 'completed', format: 'sample-format' },
       },
     },
   },
@@ -769,8 +775,8 @@ describe('migration 078: the move into the layout in .leeway/', () => {
       assert.strictEqual(manifestOf('shop').phases.planning.items.ranking.reconcile_needed, 'specification');
     });
 
-    it('keeps no spec items where nothing is built, its specs reference assets and its one spec written fresh (21.8.2, 21.8.3)', () => {
-      assert.ok(!('specification' in manifestOf('core').phases));
+    it('keeps no spec or planning items where nothing is built, its specs and plans reference assets and its one spec written fresh (21.8.2, 21.8.3)', () => {
+      assert.deepStrictEqual(['specification', 'planning'].filter((phase) => phase in manifestOf('core').phases), [], 'a planned epic, nothing built');
       assert.ok(!('specification' in manifestOf('shared').phases), 'a cross-cutting unit builds nothing');
     });
   });
