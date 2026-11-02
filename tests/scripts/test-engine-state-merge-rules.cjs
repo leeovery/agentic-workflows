@@ -3,9 +3,10 @@
 // ---------------------------------------------------------------------------
 // The rules each state file merges by
 // (leeway-engine/scripts/domain/state-merge-rules.cjs): which rule a path
-// takes, the ledger's lines added by id, the migrations record's ids, a
-// manifest merged field by field against its ancestor, and how a choice is
-// named and labelled.
+// takes, the tracker's store its driver's among them, the ledger's lines
+// added by id, the migrations record's ids, a manifest merged field by field
+// against its ancestor, where a run both machines wrote goes, and how a
+// choice is named and labelled.
 //
 // Layer: unit. The rules are called with values; no git.
 // ---------------------------------------------------------------------------
@@ -19,8 +20,9 @@ const { layout } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const {
-  linesToAdd, entryId, migrationId, mergeManifest, choiceId, conflictLabel, ruleOf,
+  linesToAdd, entryId, migrationId, mergeManifest, choiceId, conflictLabel, ruleOf, storeDriverOf, nextRun,
 } = require(path.join(SCRIPTS, 'domain/state-merge-rules.cjs'));
+const { listDrivers } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
 
 describe('the rules each file merges by', () => {
   it('reads the ledger, the migrations record, each manifest and any other JSON file by its path', () => {
@@ -28,6 +30,24 @@ describe('the rules each file merges by', () => {
       [layout.ledger, layout.migrations, layout.projectManifest, layout.manifest('auth-flow'), '.tick/manifest.json', 'unit/topics/a/manifest.json', 'unit/data.json', 'unit/events.jsonl', 'unit/topics/a/log.md'].map(ruleOf),
       ['ledger', 'migrations', 'manifest', 'manifest', 'whole', 'whole', 'whole', 'whole', 'file'],
     );
+  });
+
+  it('reads each task driver\'s store as its driver\'s, and a build\'s run by its place, a JSON file elsewhere in the build kept whole', () => {
+    const drivers = listDrivers('task');
+    const stores = drivers.flatMap((/** @type {any} */ driver) => driver.storeFiles());
+    assert.deepStrictEqual(stores.map(ruleOf), stores.map(() => 'store'));
+    assert.deepStrictEqual(stores.map(storeDriverOf), drivers.flatMap((/** @type {any} */ driver) => driver.storeFiles().map(() => driver)));
+    assert.deepStrictEqual(
+      ['pay/build/runs/2.S1/run-003.json', 'pay/build/runs/2.S1/run-1004.json', 'pay/build/runs/2.S1/run-3.json', 'pay/build/runs/run-003.json', 'pay/build/2.S1/run-003.json', 'pay/build/runs/2.S1/sub/run-003.json'].map(ruleOf),
+      ['run', 'run', 'whole', 'whole', 'whole', 'whole'],
+    );
+  });
+
+  it('places a run both machines wrote under one number after every run its folder holds, on any side or placed already', () => {
+    const taken = new Set(['pay/build/runs/2.S1/run-003.json', 'pay/build/runs/2.S1/run-007.json', 'pay/build/runs/3.S1/run-012.json', 'pay/build/runs/2.S1/notes.md']);
+    assert.strictEqual(nextRun('pay/build/runs/2.S1/run-003.json', taken), 'pay/build/runs/2.S1/run-008.json');
+    assert.strictEqual(nextRun('pay/build/runs/3.S1/run-012.json', taken), 'pay/build/runs/3.S1/run-013.json');
+    assert.strictEqual(nextRun('pay/build/runs/2.S1/run-999.json', new Set(['pay/build/runs/2.S1/run-999.json'])), 'pay/build/runs/2.S1/run-1000.json');
   });
 
   /** The lines a line rule adds after the remote's. @param {string} remote @param {string} local @param {any} keyOf */
@@ -102,13 +122,13 @@ describe('the rules each file merges by', () => {
     assert.deepStrictEqual(merged({ a: 1 }, { a: 2 }, { a: 4 }, pickOf).conflicts.map((c) => c.pick), [null]);
   });
 
-  it('names a choice by its manifest, its step, its field and both values, whatever the pick or the values\' key order', () => {
-    const choice = { manifest: layout.projectManifest, uncommitted: false, field: ['a', 'b'], local: { set: true, value: { x: [1], y: 2 } }, remote: { set: false } };
+  it('names a choice by its file, its step, its field and both values, whatever the pick or the values\' key order', () => {
+    const choice = { file: layout.projectManifest, uncommitted: false, field: ['a', 'b'], local: { set: true, value: { x: [1], y: 2 } }, remote: { set: false } };
     const id = choiceId(choice);
     assert.match(id, /^[0-9a-f]{12}$/);
     assert.strictEqual(choiceId({ ...choice, local: { set: true, value: { y: 2, x: [1] } }, pick: 'local' }), id);
     for (const other of [
-      { manifest: layout.manifest('auth-flow') }, { uncommitted: true }, { field: ['a', 'c'] },
+      { file: layout.manifest('auth-flow') }, { uncommitted: true }, { field: ['a', 'c'] },
       { local: { set: true, value: { x: [2], y: 2 } } }, { remote: { set: true, value: null } },
     ]) {
       assert.notStrictEqual(choiceId({ ...choice, ...other }), id, JSON.stringify(other));

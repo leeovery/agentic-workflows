@@ -11,10 +11,10 @@
 //   merged there, three ways, by the rules the branch merges by
 //   (state-merge-paths.cjs): this clone's committed copy is the ancestor,
 //   the merge's copy the remote's side, and the working copy this
-//   machine's. The result stays uncommitted. A manifest field the two
-//   changed to different values stops the catch-up for the person's pick,
-//   as one on the branch does. An uncommitted path the move leaves alone
-//   stays byte for byte as it is.
+//   machine's. The result stays uncommitted. A field of a manifest or the
+//   tracker's store the two changed to different values stops the catch-up
+//   for the person's pick, as one on the branch does. An uncommitted path
+//   the move leaves alone stays byte for byte as it is.
 // - No file is written, replaced or removed over bytes other than those it
 //   was merged from: each is checked just before, with no git call between
 //   the check and the write. One another session wrote meanwhile is merged
@@ -113,8 +113,9 @@ function planWorktree(ctx, local, target, working, pickOf) {
   /** @type {[string, import('./state-merge-paths.cjs').Versions][]} */
   const paths = changed.map((file) => [file, { base: local.get(file), local: working.get(file), remote: target.get(file) }]);
   readContested(ctx, paths);
+  const taken = new Set([...local.keys(), ...target.keys(), ...working.keys()]);
   for (const [file, versions] of paths) {
-    const result = mergePath(ctx, file, versions, pickOf);
+    const result = mergePath(ctx, file, versions, pickOf, taken);
     conflicts.push(...(result.conflicts ?? []));
     if (result.note !== undefined) notes.push(result.note);
     let from = working.get(file);
@@ -229,7 +230,7 @@ function leaveBeside(ctx, write, report) {
  */
 function tryMerge(ctx, file, versions) {
   try {
-    return mergePath(ctx, file, versions, () => null);
+    return mergePath(ctx, file, versions, () => null, new Set([file]));
   } catch (err) {
     if (err instanceof GitError || err instanceof MergeError) return null;
     throw err;
@@ -269,8 +270,8 @@ function removeFile(root, file) {
 
 /**
  * Set a copy beside, never over anything already there. The copy's name is
- * its content's id, so one already there is that copy, set beside by a
- * landing a kill cut short.
+ * its content's id, or a run's next free number, so one already there is
+ * that copy, set beside by a landing a kill cut short.
  * @param {WorktreeContext} ctx @param {Move} move
  */
 function moveBeside(ctx, move) {

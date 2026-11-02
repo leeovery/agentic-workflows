@@ -131,7 +131,7 @@ describe('the merge, both sides moved (4.S14)', () => {
     const stopped = catchUpState(here.root, { readBudgetBytes: budget });
 
     assert.strictEqual(stopped.action, 'stopped');
-    assert.deepStrictEqual(stopped.conflicts.map((c) => [c.manifest, c.field.join('.'), c.local, c.remote]), [
+    assert.deepStrictEqual(stopped.conflicts.map((c) => [c.file, c.field.join('.'), c.local, c.remote]), [
       [layout.manifest('unit'), 'roadmap.items.a-lifetime-tier.horizon', { set: true, value: 'next' }, { set: true, value: 'someday' }],
     ]);
 

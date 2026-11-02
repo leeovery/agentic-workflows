@@ -66,7 +66,7 @@ describe('the manifests (4.S17)', () => {
 
     assert.deepStrictEqual([out.action, out.commit, out.pushed], ['stopped', mine, false]);
     assert.deepStrictEqual(out.conflicts, [{
-      manifest: layout.projectManifest,
+      file: layout.projectManifest,
       uncommitted: false,
       field: ['roadmap', 'items', 'a-lifetime-tier', 'horizon'],
       local: { set: true, value: 'next' },

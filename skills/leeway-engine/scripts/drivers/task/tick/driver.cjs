@@ -33,6 +33,19 @@
 // nothing, and names every parent they must reopen, outermost first, the
 // ones Tick ended above theirs among them.
 //
+// The store merges between two clones by Tick's own ids, never by a line's
+// place, since Tick writes the whole file afresh each time (7.5, 29.14.9).
+// A task only one side changed takes that side, and one deleted on a side
+// and changed on the other keeps the changed copy. One both changed merges
+// field by field against the ancestor: its notes, dependencies and
+// transitions unioned, its updated stamp the later, its closed stamp that
+// of a side whose status it kept, and a field both set differently the
+// person's choice, shown in the engine's words. A task only this machine
+// made takes a creation sequence after the remote's highest. An engine name
+// both sides made under Tick ids of their own is not merged: the merge
+// answers the names made twice, and the phases and tasks only this machine
+// made, for the engine to keep both copies whole.
+//
 // `preLeewayStore` is where a project from before Leeway keeps Tick's store,
 // the project root's `.tick/`: the paths migration 078 was released against,
 // which it reads to carry the store into the state. It never changes; the
@@ -46,10 +59,17 @@ const { workUnitNameRefusal } = require('../../../kernel/manifest-schema.cjs');
 const {
   taskId, stepOfId, shownTask, taskName, phaseName, unitName, FOREIGN_TASK, endedInTracker,
 } = require('../../../domain/task-id.cjs');
+const { isObject } = require('../../../kernel/manifest-io.cjs');
 
 /** @typedef {import('../../../domain/drivers.cjs').TaskRow} TaskRow */
 /** @typedef {import('../../../domain/drivers.cjs').TaskStatus} TaskStatus */
 /** @typedef {import('../../../domain/task-id.cjs').TaskRef} TaskRef */
+/** @typedef {import('../../../domain/drivers.cjs').StoreMerge} StoreMerge */
+/** @typedef {import('../../../domain/drivers.cjs').StoreConflict} StoreConflict */
+/** @typedef {import('../../../domain/state-merge-rules.cjs').Choice} Choice */
+/** @typedef {import('../../../domain/state-merge-rules.cjs').Side} Side */
+/** @typedef {import('../../../domain/state-merge-rules.cjs').PickOf} PickOf */
+/** @typedef {Record<string, any> & {id: string}} Task */
 /** @typedef {{kind: 'unit', unit: string} | {kind: 'phase', unit: string, phase: number} | {kind: 'task', task: TaskRef}} Name */
 /** @typedef {{byRef: Map<string, string>, byId: Map<string, Name>, ended: Map<string, 'tick'|'person'>}} Ids */
 
@@ -312,6 +332,191 @@ function show(root, ref) {
   };
 }
 
+// --- the store merged between two clones -------------------------------------
+
+// Loaded as the store merges, never with the module: the layout guard
+// loads every task driver on each write into the state.
+const mergeRules = () => require('../../../domain/state-merge-rules.cjs');
+
+const SIDES = ["the common ancestor's", "this machine's", "the remote's"];
+const UNIONED = ['notes', 'blocked_by', 'transitions'];
+const ENDED = ['done', 'cancelled'];
+/** A field as the person reads it, where that is not its own name. @type {Readonly<Record<string, string>>} */
+const FIELD_WORDS = Object.freeze({ tags: 'type', description: 'text' });
+
+/**
+ * One side's copy of the store, its tasks by Tick's id. Refuses a line that
+ * is not a task, naming the side and the line.
+ * @param {string} text @param {string} whose @returns {Map<string, Task>}
+ */
+function tasksOf(text, whose) {
+  /** @type {Map<string, Task>} */
+  const tasks = new Map();
+  for (const [i, line] of text.split('\n').entries()) {
+    if (line.trim() === '') continue;
+    let task;
+    try {
+      task = JSON.parse(line);
+    } catch {
+      task = null;
+    }
+    if (!isObject(task) || typeof task.id !== 'string') throw new (mergeRules().MergeError)(`cannot merge ${STORE}/${TASKS}: line ${i + 1} of ${whose} copy is not a task`);
+    tasks.set(task.id, /** @type {Task} */ (task));
+  }
+  return tasks;
+}
+
+/** The engine's name a task carries, or null where it carries none. @param {Task} task @returns {Name|null} */
+function nameOf(task) {
+  return (Array.isArray(task.refs) ? task.refs : []).map(nameIn).find((name) => name !== null) ?? null;
+}
+
+/** A side's tasks the ancestor lacks. @param {Map<string, Task>} base @param {Map<string, Task>} side */
+function madeOn(base, side) {
+  return [...side.values()].filter((task) => !base.has(task.id));
+}
+
+/**
+ * The engine's names both sides made, each under a Tick id of its own, in
+ * this machine's order.
+ * @param {Map<string, Task>} base @param {Map<string, Task>} local @param {Map<string, Task>} remote @returns {string[]}
+ */
+function madeTwice(base, local, remote) {
+  /** @param {Map<string, Task>} side @returns {Map<string, string>} */
+  const named = (side) => new Map(madeOn(base, side).flatMap((task) => {
+    const name = nameOf(task);
+    return name === null ? [] : [/** @type {[string, string]} */ ([said(name), task.id])];
+  }));
+  const theirs = named(remote);
+  return [...named(local)].filter(([name, id]) => theirs.has(name) && theirs.get(name) !== id).map(([name]) => name);
+}
+
+/**
+ * The phases and tasks only this machine made, by the engine's names.
+ * @param {Map<string, Task>} base @param {Map<string, Task>} local @param {Map<string, Task>} remote @returns {string[]}
+ */
+function madeHere(base, local, remote) {
+  return madeOn(base, local).flatMap((task) => {
+    const name = remote.has(task.id) ? null : nameOf(task);
+    return name === null || name.kind === 'unit' ? [] : [said(name)];
+  });
+}
+
+/**
+ * A list both sides may have added to or taken from, merged: the remote's,
+ * then what this machine added, less what either took away. Undefined where
+ * nothing is left.
+ * @param {unknown[]} [base] @param {unknown[]} [local] @param {unknown[]} [remote] @returns {unknown[]|undefined}
+ */
+function unionOf(base = [], local = [], remote = []) {
+  const key = (/** @type {unknown} */ item) => JSON.stringify(item);
+  const [b, l, r] = [base, local, remote].map((list) => new Set(list.map(key)));
+  const takenAway = (/** @type {unknown} */ item) => b.has(key(item)) && !(l.has(key(item)) && r.has(key(item)));
+  const merged = [...remote, ...local.filter((item) => !r.has(key(item)))].filter((item) => !takenAway(item));
+  return merged.length === 0 ? undefined : merged;
+}
+
+/** The later of two stamps, either absent. @param {string|undefined} a @param {string|undefined} b */
+function later(a, b) {
+  return a === undefined || (b !== undefined && b > a) ? b : a;
+}
+
+/**
+ * The fields Tick keeps for itself on a task both sides changed, settled
+ * without asking: the lists unioned, the transitions in time order, the
+ * updated stamp the later. The closed stamp waits on the status.
+ * @param {Task|undefined} base @param {Task} local @param {Task} remote @returns {Record<string, unknown>}
+ */
+function settled(base, local, remote) {
+  /** @type {Record<string, any>} */
+  const fields = Object.fromEntries(UNIONED.map((key) => [key, unionOf(base?.[key], local[key], remote[key])]));
+  fields.transitions = fields.transitions?.sort((/** @type {{at: string}} */ a, /** @type {{at: string}} */ b) => (a.at < b.at ? -1 : Number(a.at > b.at)));
+  return { ...fields, updated: later(local.updated, remote.updated), closed: undefined };
+}
+
+/**
+ * A choice on a task as the person reads it: the field under the task's
+ * Tick id, each side's value in the engine's words.
+ * @param {string} id @param {Choice} choice @param {Map<string, string>} names  the engine's name of each task, by Tick's id
+ * @returns {Choice}
+ */
+function shownChoice(id, { field, local, remote }, names) {
+  const [key] = field;
+  /** @param {any} value */
+  const word = (value) => {
+    if (key === 'status') return STATUSES[value] ?? value;
+    if (key === 'tags' && Array.isArray(value)) return value.join(', ');
+    return key === 'parent' ? names.get(value) ?? FOREIGN_TASK : value;
+  };
+  /** @param {Side} side @returns {Side} */
+  const shown = (side) => (side.set ? { set: true, value: word(side.value) } : side);
+  return { field: [id, ...field], local: shown(local), remote: shown(remote) };
+}
+
+/**
+ * A task both sides changed, merged, with the fields left to the person.
+ * @param {Task|undefined} base @param {Task} local @param {Task} remote
+ * @param {PickOf} pickOf @param {Map<string, string>} names
+ * @returns {{task: Task, conflicts: StoreConflict[]}}
+ */
+function mergeTask(base, local, remote, pickOf, names) {
+  const fixed = settled(base, local, remote);
+  const merged = mergeRules().mergeFields(base, { ...local, ...fixed }, { ...remote, ...fixed }, (choice) => pickOf(shownChoice(remote.id, choice, names)));
+  const task = /** @type {Task} */ (merged.value);
+  const closed = ENDED.includes(task.status) ? [local, remote].filter((side) => side.status === task.status).map((side) => side.closed) : [];
+  const stamp = closed.reduce(later, undefined);
+  if (stamp !== undefined) task.closed = stamp;
+  const name = nameOf(remote);
+  const label = name === null ? { subject: `${FOREIGN_TASK}, "${remote.title}"`, name: String(remote.title) } : { subject: said(name), name: said(name) };
+  return {
+    task,
+    conflicts: merged.conflicts.map((conflict) => ({
+      ...shownChoice(remote.id, conflict, names),
+      pick: conflict.pick,
+      label: { ...label, field: FIELD_WORDS[conflict.field[0]] ?? conflict.field[0] },
+    })),
+  };
+}
+
+/**
+ * The store merged from the common ancestor's copy, this machine's and the
+ * remote's, each its text, the ancestor's empty where it held none.
+ * @param {string} baseText @param {string} localText @param {string} remoteText @param {PickOf} [pickOf]
+ * @returns {StoreMerge}
+ */
+function mergeStore(baseText, localText, remoteText, pickOf = () => null) {
+  const { same } = mergeRules();
+  const [base, local, remote] = [baseText, localText, remoteText].map((text, i) => tasksOf(text, SIDES[i]));
+  const twice = madeTwice(base, local, remote);
+  if (twice.length > 0) return { madeTwice: twice, madeHere: madeHere(base, local, remote) };
+  const names = new Map([...base.values(), ...local.values(), ...remote.values()].flatMap((task) => {
+    const name = nameOf(task);
+    return name === null ? [] : [/** @type {[string, string]} */ ([task.id, said(name)])];
+  }));
+  /** @type {StoreConflict[]} */
+  const conflicts = [];
+  /** @type {(Task|undefined)[]} */
+  const tasks = [];
+  for (const id of [...remote.keys(), ...[...local.keys()].filter((held) => !remote.has(held))]) {
+    const [b, l, r] = [base.get(id), local.get(id), remote.get(id)];
+    if (same(l, r) || same(l, b)) tasks.push(r);
+    else if (same(r, b)) tasks.push(l);
+    else if (l === undefined || r === undefined) tasks.push(l ?? r);
+    else {
+      const merged = mergeTask(b, l, r, pickOf, names);
+      tasks.push(merged.task);
+      conflicts.push(...merged.conflicts);
+    }
+  }
+  let seq = Math.max(0, ...[...remote.values()].map((task) => (typeof task.seq === 'number' ? task.seq : 0)));
+  const lines = tasks.flatMap((task) => {
+    if (task === undefined) return [];
+    const renumber = !base.has(task.id) && !remote.has(task.id) && typeof task.seq === 'number';
+    return [`${JSON.stringify(renumber ? { ...task, seq: ++seq } : task)}\n`];
+  });
+  return { text: lines.join(''), conflicts };
+}
+
 module.exports = {
   kind: 'task',
   name: 'tick',
@@ -324,9 +529,7 @@ module.exports = {
     files: Object.freeze(['.tick/tasks.jsonl']),
     localFiles: Object.freeze(['/.tick/cache.db*', '/.tick/lock', '/.tick/.tasks-*.jsonl.tmp']),
   }),
-  mergeStore: () => {
-    throw new Error(`the tracker's store is not yet merged by the ${TOOL} driver`);
-  },
+  mergeStore,
   createUnit,
   createPhase,
   createTask,

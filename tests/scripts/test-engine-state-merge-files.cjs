@@ -5,7 +5,7 @@
 // writes them (leeway-engine/scripts/domain/state-merge-paths.cjs,
 // domain/state-merge-blobs.cjs): text merged by place or both sides' lines
 // kept, a file that is not text kept whole beside, a file and a folder kept
-// apart; the state byte for byte whatever line endings the person's git
+// apart, a run both wrote under one number renumbered; the state byte for byte whatever line endings the person's git
 // config names; and the git calls a merge makes under the writer lock, the
 // blobs read in batches, no working-tree file read whole.
 //
@@ -28,7 +28,7 @@ const { STATE_BRANCH, withStateLock, commitState } = require(path.join(SCRIPTS, 
 const { catchUpState, pickStateMerge } = require(MERGE);
 const { isolatedGit } = require(path.join(SCRIPTS, 'kernel/isolated-git.cjs'));
 
-const { readFile } = require('./discovery-test-utils.cjs');
+const { readFile, createFile } = require('./discovery-test-utils.cjs');
 const { useWorld, machinesSharing, blobId, treeId, status, pushFailing, commitUnpushed, ledger, projectManifest, shownChoice } = require('./state-merge-world.cjs');
 
 /** @typedef {import('./state-merge-world.cjs').Machine} Machine */
@@ -177,6 +177,38 @@ describe('any other file both sides changed', () => {
       'unit/assets/brief.md was deleted on one machine and changed on the other: the changed copy is kept',
       'unit/assets/notes.md was deleted on one machine and changed on the other: the changed copy is kept',
     ]);
+  });
+});
+
+describe('a build\'s run both machines wrote under one number', () => {
+  const run = (/** @type {string} */ number) => layout.unit('pay', 'build', 'runs', '2.S1', `run-${number}.json`);
+  const ran = (/** @type {string} */ where) => `{"ran": "${where}"}\n`;
+
+  it('keeps the remote\'s run at its number, and gives this machine\'s the next number free among every run the folder holds', () => {
+    const { here, there } = machinesSharing({ [run('001')]: ran('base') });
+    commitUnpushed(here, { [run('002')]: ran('here'), [run('003')]: ran('here, after') });
+    commitOnState(there.root, { [run('002')]: ran('there') });
+
+    const out = catchUpState(here.root);
+
+    assert.deepStrictEqual([out.action, out.pushed], ['merged', true]);
+    assert.deepStrictEqual(['001', '002', '003', '004'].map((n) => readFile(here.root, run(n))), [ran('base'), ran('there'), ran('here, after'), ran('here')]);
+    assert.deepStrictEqual(out.warnings, [
+      `${run('002')} was written on both machines: the remote's run stays at ${run('002')}, and this machine's is renumbered ${run('004')}`,
+    ]);
+    assert.strictEqual(status(here.root), '');
+  });
+
+  it('renumbers this machine\'s run still uncommitted, leaving it uncommitted at its new number', () => {
+    const { here, there } = machinesSharing({ [run('001')]: ran('base') });
+    createFile(here.root, run('002'), ran('here'));
+    commitOnState(there.root, { [run('002')]: ran('there'), [run('003')]: ran('there, after') });
+
+    const out = catchUpState(here.root);
+
+    assert.strictEqual(out.action, 'fast-forwarded');
+    assert.deepStrictEqual(['002', '003', '004'].map((n) => readFile(here.root, run(n))), [ran('there'), ran('there, after'), ran('here')]);
+    assert.strictEqual(status(here.root), `?? ${run('004')}\n`);
   });
 });
 

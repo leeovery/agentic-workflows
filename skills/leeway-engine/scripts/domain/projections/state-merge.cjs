@@ -2,11 +2,12 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: the screen of a state merge stopped by a field both machines
-// changed to different values (4.7.6). Pure renderer over the stop the merge
-// keeps. The conflicts are shown one at a time, the one the stop asks about
-// (state-merge-rules.cjs, askedAt): each has its own question, and two
-// numbered rows answer it as the spec draws them, where every conflict at
-// once would need a key per side per field. The DATA section carries the
+// changed to different values (4.7.6), in a manifest or the tracker's store.
+// Pure renderer over the stop the merge keeps. The conflicts are shown one
+// at a time, the one the stop asks about (state-merge-rules.cjs, askedAt):
+// each has its own question, and two numbered rows answer it as the spec
+// draws them, where every conflict at once would need a key per side per
+// field. The DATA section carries the
 // shown choice's identity, which the pick passes back, so a pick only ever
 // answers the question its screen showed.
 //
@@ -24,11 +25,11 @@ const { askedAt, choiceId } = require('../state-merge-rules.cjs');
 /** @typedef {import('../state-merge-rules.cjs').ConflictLabel} ConflictLabel */
 
 /**
- * A field both sides changed to different values, in the manifest at
- * `manifest`: on the branch, or between the working tree's uncommitted copy
- * and the branch's update.
+ * A field both sides changed to different values, in the manifest or the
+ * tracker's store at `file`: on the branch, or between the working tree's
+ * uncommitted copy and the branch's update.
  * @typedef {{
- *   manifest: string,
+ *   file: string,
  *   uncommitted: boolean,
  *   field: string[],
  *   label: ConflictLabel,

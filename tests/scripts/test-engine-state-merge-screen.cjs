@@ -39,7 +39,7 @@ describe('the stop\'s screen (4.7.6)', () => {
   function stopOf(...conflicts) {
     return {
       conflicts: conflicts.map((c) => ({
-        manifest: layout.projectManifest,
+        file: layout.projectManifest,
         uncommitted: false,
         field: ['roadmap', 'items', 'a-lifetime-tier', 'horizon'],
         local: { set: true, value: 'next' },

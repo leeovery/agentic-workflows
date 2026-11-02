@@ -31,21 +31,21 @@
 //   merged into and left uncommitted (state-merge-worktree.cjs), and the
 //   branch follows. The landing is recorded first, and a catch-up finishes
 //   one a kill cut short before anything else (state-merge-landing.cjs).
-// - The stop: a manifest field both sides changed to different values stops
-//   the merge (4.7.6), with nothing written. A field the working tree's
-//   uncommitted copy and the merge changed differently stops it the same
-//   way, once every field on the branch is picked. Nothing but a manifest
-//   stops the merge, so its questions are worked out from the manifests
-//   alone, and the whole merge only once every question is answered. The
-//   stop is kept in the state worktree's git directory, beside the private
-//   index: it outlives the session and is never on the branch. It holds each
-//   choice with the person's pick, and a pick answers its choice, the field
-//   and the two values, wherever the merge meets it again; so the merge is
-//   always worked out afresh from the sides as they stand, and only a choice
-//   it has not met before is asked. Picks are recorded one at a time, each
-//   naming the choice its screen showed; a pick naming any other choice than
-//   the one the merge now asks is not taken. The last pick finishes the
-//   merge (4.7.11).
+// - The stop: a field of a manifest or of the tracker's store both sides
+//   changed to different values stops the merge (4.7.6), with nothing
+//   written. A field the working tree's uncommitted copy and the merge
+//   changed differently stops it the same way, once every field on the
+//   branch is picked. Nothing else stops the merge, so its questions are
+//   worked out from those files alone, and the whole merge only once every
+//   question is answered. The stop is kept in the state worktree's git
+//   directory, beside the private index: it outlives the session and is
+//   never on the branch. It holds each choice with the person's pick, and a
+//   pick answers its choice, the field and the two values, wherever the
+//   merge meets it again; so the merge is always worked out afresh from the
+//   sides as they stand, and only a choice it has not met before is asked.
+//   Picks are recorded one at a time, each naming the choice its screen
+//   showed; a pick naming any other choice than the one the merge now asks
+//   is not taken. The last pick finishes the merge (4.7.11).
 //
 // Every git call goes through kernel/isolated-git, under the state's writer
 // lock, but those of the stop's screen, which reads the merge waiting on a
@@ -227,8 +227,8 @@ function dropKeptStop(state) {
  * @returns {PickOf}
  */
 function picksOf(stop, uncommitted) {
-  return (manifest, choice) => {
-    const id = choiceId({ manifest, uncommitted, ...choice });
+  return (file, choice) => {
+    const id = choiceId({ file, uncommitted, ...choice });
     return stop?.conflicts.find((c) => choiceId(c) === id)?.pick ?? null;
   };
 }
@@ -292,19 +292,19 @@ function planMerge(state, sides, stop, scope = () => true) {
   };
 }
 
-/** @param {string} file */
-function isManifest(file) {
-  return ruleOf(file) === 'manifest';
+/** Whether a file's fields can stop the merge: a manifest's, or the tracker's store's. @param {string} file */
+function asksAbout(file) {
+  return ['manifest', 'store'].includes(ruleOf(file));
 }
 
 /**
  * The questions the merge asks, with the kept stop's picks: worked out from
- * the manifests alone, since nothing else stops it.
+ * the manifests and the tracker's store alone, since nothing else stops it.
  * @param {State} state @param {Sides} sides @param {KeptStop|null} stop
  * @returns {Conflict[]}
  */
 function questionsOf(state, sides, stop) {
-  return planMerge(state, sides, stop, isManifest).conflicts;
+  return planMerge(state, sides, stop, asksAbout).conflicts;
 }
 
 /**
