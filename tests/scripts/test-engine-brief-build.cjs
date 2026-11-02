@@ -21,8 +21,9 @@
 // `task worktree` first and committed only there (12.7.10), each scenario
 // proven by running it (15.2.14), its account written where its brief says,
 // its ask rule and its answer to reviewers who disagree (13.S7); the
-// reviewer's report placed and its final message the verdict and the nits
-// (13.5.9); and the task's and the phase's reviewers told that a wrong
+// reviewer's report placed, its notes for later a section before its
+// findings, and its final message the nits, the notes and the verdict
+// (13.5.9, 12.10.1); and the task's and the phase's reviewers told that a wrong
 // result is a finding even where its fix reaches beyond the task (13.S11).
 // No template tells an agent to break a task down, keep a to-do
 // list, check its own work or leave no stubs (12.3.8), or names a model, an
@@ -227,11 +228,12 @@ describe('the build\'s templates', () => {
     ]) assert.ok(words.includes(line), line);
   });
 
-  it('13.5.9: each reviewer\'s template has the report written whole to its file and the final message carry only the nits and the verdict', () => {
+  it('13.5.9, 12.10.1: each reviewer\'s template has the report written whole to its file, its notes for later in a section of their own before its findings, and the final message carry only the nits, the notes for later and the verdict', () => {
     for (const [role, slot] of [['reviewer', 'round-report-to'], ['phase-review', 'phase-report-to']]) {
       const words = template(role);
       assert.ok(words.includes(`# Where your report goes\n\n{{${slot}}}\n`), role);
-      assert.ok(words.includes('Write the whole report to the file under "Where your report goes". Your final message then holds only the report\'s nits, each as the report words it, and its verdict line, and nothing else.'), role);
+      assert.ok(words.includes('Your report ends in its notes for later, then its findings, then its verdict. The notes for later are the section just before the findings, `## Notes for later`: each note an item naming what lies beyond the task and where it is; or `None.` where there is none.'), role);
+      assert.ok(words.includes('Write the whole report to the file under "Where your report goes". Your final message then holds only the report\'s nits, then its notes for later, each as the report words it, and its verdict line, and nothing else.'), role);
     }
   });
 

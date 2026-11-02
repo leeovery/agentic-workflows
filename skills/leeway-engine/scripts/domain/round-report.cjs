@@ -5,7 +5,11 @@
 // review in the build writes to, so the engine reads a round's outcome and
 // the orchestrator takes a report's verdict and nits alone, never the rest
 // (13.5.9). A report is markdown, its reading the reviewer's own, ending in
-// its findings, then its verdict:
+// its notes for later, then its findings, then its verdict:
+//
+//   ## Notes for later
+//
+//   - {what lies beyond the task}, at {where it is}
 //
 //   ## Findings
 //
@@ -20,7 +24,9 @@
 // level one or two, fenced blocks aside; its last line is its verdict,
 // `Verdict: pass` or `Verdict: fail` in any case, bold or not, a period
 // after it or none; and the verdict says what the findings do — a report
-// passes with nothing serious and no bug (13.4.3, 13.4.4).
+// passes with nothing serious and no bug (13.4.3, 13.4.4). What comes before
+// `## Findings`, the notes for later among it (12.10.1), no reader here
+// reads.
 //
 // Between them the findings are read as a careful writer writes them, and
 // nothing is lost or misread (list-items.cjs). Each finding is an item at

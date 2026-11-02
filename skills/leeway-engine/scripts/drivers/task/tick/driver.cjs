@@ -56,7 +56,7 @@ const {
 /** @typedef {import('../../../domain/drivers.cjs').TaskStatus} TaskStatus */
 /** @typedef {import('../../../domain/task-id.cjs').TaskRef} TaskRef */
 /** @typedef {{kind: 'unit', unit: string} | {kind: 'phase', unit: string, phase: number} | {kind: 'task', task: TaskRef}} Name */
-/** @typedef {{byRef: Map<string, string>, byId: Map<string, Name>, ended: Map<string, 'tick'|'person'>}} Ids */
+/** @typedef {{byRef: Map<string, string>, byId: Map<string, Name>, ended: Map<string, 'tick'|'person'>, started: Map<string, string>}} Ids */
 
 const TOOL = 'tick';
 const UPDATE = 'https://github.com/leeovery/tick';
@@ -101,20 +101,21 @@ function said(name) {
 }
 
 /**
- * Tick's ids by the engine's names, the engine's names by Tick's ids, and
- * which of them have ended, by Tick itself or by the person — whoever made
- * the last change — as the store holds them. Refuses a line that is not
+ * Tick's ids by the engine's names, the engine's names by Tick's ids, which
+ * of them have ended, by Tick itself or by the person — whoever made the
+ * last change — and when each that moved into progress first did, as the
+ * store holds them. Refuses a line that is not
  * JSON, a name two tasks hold, and a task holding two.
  * @param {string} root
  * @returns {Ids}
  */
 function idsIn(root) {
   /** @type {Ids} */
-  const ids = { byRef: new Map(), byId: new Map(), ended: new Map() };
+  const ids = { byRef: new Map(), byId: new Map(), ended: new Map(), started: new Map() };
   const store = path.join(root, STORE, TASKS);
   for (const [i, line] of fs.readFileSync(store, 'utf8').split('\n').entries()) {
     if (line === '') continue;
-    /** @type {{id: string, status: string, refs?: string[], transitions?: {auto?: boolean}[]}} */
+    /** @type {{id: string, status: string, refs?: string[], transitions?: {to: string, at: string, auto?: boolean}[]}} */
     const { id, status, refs = [], transitions = [] } = lineOf(store, i + 1, line);
     const named = refs.flatMap((ref) => {
       const name = nameIn(ref);
@@ -127,6 +128,8 @@ function idsIn(root) {
     ids.byRef.set(ref, id);
     ids.byId.set(id, name);
     if (status === 'cancelled' || status === 'done') ids.ended.set(id, transitions.at(-1)?.auto === true ? 'tick' : 'person');
+    const into = transitions.find(({ to }) => to === 'in_progress');
+    if (into !== undefined) ids.started.set(id, into.at);
   }
   return ids;
 }
@@ -329,12 +332,8 @@ function show(root, ref) {
  * @param {string} root @param {TaskRef} ref @returns {string|null}
  */
 function started(root, ref) {
-  const id = idsIn(root).byRef.get(taskRef(ref));
-  if (id === undefined) return null;
-  const store = path.join(root, STORE, TASKS);
-  /** @type {{id: string, transitions?: {to: string, at: string}[]}[]} */
-  const records = fs.readFileSync(store, 'utf8').split('\n').flatMap((line, i) => (line === '' ? [] : [lineOf(store, i + 1, line)]));
-  const at = records.find((record) => record.id === id)?.transitions?.find(({ to }) => to === 'in_progress')?.at;
+  const ids = idsIn(root);
+  const at = ids.started.get(ids.byRef.get(taskRef(ref)) ?? '');
   return at === undefined ? null : new Date(at).toISOString();
 }
 

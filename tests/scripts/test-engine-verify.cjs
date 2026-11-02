@@ -20,8 +20,9 @@
 // that a run's file refuses Claude's write is the layout hook's suite's
 // (6.2.3).
 //
-// Layer: git. World: verify-world.cjs's, with one conversation building task
-// 1.1 and another building 1.1 and 1.2 side by side.
+// Layer: git. World: verify-world.cjs's, with one conversation building
+// tasks 1.1 and 1.3 — whose scenarios name 1.S10 and 11.S1, never 1.S1 — and
+// another building 1.1 and 1.2 side by side.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -62,7 +63,7 @@ const as = (session) => ({ env: { CLAUDE_CODE_SESSION_ID: session } });
 
 before(() => {
   const dir = world();
-  ok(dir, ['task', 'start', UNIT, '1.1'], as(BUILDING));
+  for (const task of ['1.1', '1.3']) ok(dir, ['task', 'start', UNIT, task], as(BUILDING));
   for (const task of ['1.1', '1.2']) ok(dir, ['task', 'start', UNIT, task], as(PARALLEL));
   cleanupFixture(dir);
 });

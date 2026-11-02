@@ -444,7 +444,8 @@ describe('the reviewer\'s brief (13.2.2, 13.11.5)', () => {
     const template = fs.readFileSync(path.join(TEMPLATES, 'reviewer.md'), 'utf8');
     const example = /\n```markdown\n([\s\S]*?)\n```\n/.exec(template)?.[1];
 
-    assert.ok(template.includes('Your report ends in its findings, then its verdict.'), template);
+    assert.ok(template.includes('Your report ends in its notes for later, then its findings, then its verdict.'), template);
+    assert.match(/** @type {string} */ (example), /^## Notes for later\n\n- [^\n]+\n\n## Findings\n/);
     assert.deepStrictEqual(readReport(/** @type {string} */ (example)).findings.map(({ call }) => call), ['serious', 'bug', 'nit']);
   });
 });

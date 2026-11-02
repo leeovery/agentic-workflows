@@ -71,9 +71,9 @@
 // task in flight; the task with no type in the tracker, which its branch is
 // named from; its branch out in another worktree of a repository that it
 // does not take over — removed, where that worktree's folder is gone,
-// switched off, where it is a repository's own checkout, and built there,
-// where it is the worktree of the task in flight in the calling
-// conversation — naming why; a worktree switching to the branch made
+// switched off, where it is a repository's own checkout, and, where it is
+// the worktree of a task in flight in the calling conversation, its builder
+// sent back in by the orchestrator — naming why; a worktree switching to the branch made
 // already with changes not committed; and a child repository's folder
 // holding anything but a worktree of that repository.
 // ---------------------------------------------------------------------------
@@ -228,7 +228,9 @@ function removeChildTrees(trees) {
  */
 function takeOverFrom(ref, repos, holder, what, session) {
   const owner = tasksInFlight(session).find((task) => task.worktree !== undefined && lg.samePlace(task.worktree, holder.path));
-  if (owner !== undefined) throw refusal(`${what}, the worktree of task ${owner.task} of ${owner.unit} in this conversation, never taken over — build the task there`);
+  if (owner !== undefined) {
+    throw refusal(`${what}, where task ${owner.task} of ${owner.unit} is in flight in this conversation, so it is never taken over — stop, and report it: the orchestrator sends the builder of task ${owner.task} of ${owner.unit} back in, to carry on at ${holder.path}`);
+  }
   const children = childTreesIn(repos, holder.path);
   const dirt = dirtIn(repos, [{ repo: repos[0], tree: holder }, ...children]);
   if (dirt.length > 0) {

@@ -3,8 +3,9 @@
 // ---------------------------------------------------------------------------
 // The verify suites' world and helpers (test-engine-verify.cjs,
 // test-engine-verify-mutants.cjs): a feature, `pay`, its spec cut into two
-// phases, the first's two tasks in the tracker, the first's acceptance
-// scenarios holding 1.S1, the second's 1.S1 and 1.S2; a verify setup in the
+// phases, the first's three tasks in the tracker, their acceptance
+// scenarios holding 1.S1; 1.S1 and 1.S2; and 1.S10 and 11.S1, which hold
+// no 1.S1; a verify setup in the
 // product's code whose parts each log their call and do what the test steers
 // them to from a folder in the repository's git directory — `unrecorded`, and
 // `world`, the same with the setup recorded through `verify setup` — each
@@ -111,7 +112,7 @@ function build(dir) {
   commitAll(dir, 'init');
   fs.mkdirSync(steer(dir));
   ok(dir, ['task', 'phase', UNIT, '1', '--title', 'Cards']);
-  for (const text of [TASK, TASK.replace('- 1.S1', '- 1.S1\n- 1.S2')]) ok(dir, ['task', 'create', UNIT, '1', '--file', writeState(dir, layout.cache('task.md'), text)]);
+  for (const text of [TASK, TASK.replace('- 1.S1', '- 1.S1\n- 1.S2'), TASK.replace('- 1.S1', '- 1.S10\n- 11.S1')]) ok(dir, ['task', 'create', UNIT, '1', '--file', writeState(dir, layout.cache('task.md'), text)]);
 }
 
 const unrecorded = fixtureFrom('verify-unset-', build);

@@ -15,7 +15,8 @@
 // again after a `/clear` taking its branch over from the clean worktree it
 // was built in before, that worktree's child repositories' worktrees
 // removed and it detached, and refused, naming why, where that worktree
-// holds changes not committed or is the task's own in this conversation; a
+// holds changes not committed or is a task's in flight in this
+// conversation, whose builder the orchestrator sends back in; a
 // branch out in a worktree whose folder is gone, or in a repository's own
 // checkout, refused with the way on, which lays it out once followed; every
 // refusal making nothing. Git layer: the task worktree world (task-worktree-world.cjs),
@@ -155,7 +156,7 @@ describe('task worktree: every repository laid out (12.7.10, 7.2.21)', () => {
       `task worktree: this worktree, ${a}, is task 3.1 of pay's — build task 3.2 of pay in a worktree of its own`,
       'task worktree: task 3.5 of pay has no type in the tracker, and its branch is named from it — give it one with `engine task type pay 3.5 <type>`, then run it again',
       `task worktree: ${SHOW} is made already, and ${b} has changes not committed: app.txt, so nothing was laid out — commit them, or move them out of the way, then run it again`,
-      `task worktree: task 3.1 of pay's branch ${FEES} is checked out at ${a}, the worktree of task 3.1 of pay in this conversation, never taken over — build the task there`,
+      `task worktree: task 3.1 of pay's branch ${FEES} is checked out at ${a}, where task 3.1 of pay is in flight in this conversation, so it is never taken over — stop, and report it: the orchestrator sends the builder of task 3.1 of pay back in, to carry on at ${a}`,
       'task worktree: lib in this worktree holds something other than a worktree of lib — move it out of the way, then run it again',
       `task worktree: task 3.3 of pay's branch ${CAP} is checked out in lib at ${stray} — build the task there`,
       `task worktree: lib in this worktree is a worktree of lib, at ${path.join(e, 'lib')}, whose folder is missing — remove that worktree with \`git -C ${fs.realpathSync(at.lib)} worktree remove ${path.join(e, 'lib')}\`, then run it again`,
@@ -183,7 +184,7 @@ describe('task worktree: every repository laid out (12.7.10, 7.2.21)', () => {
     assert.deepStrictEqual(checkoutsOf(b)[2], [SHOW, tip(at.lib, cache.branch)]);
   });
 
-  it('12.S53: a task started again after a /clear takes its branch over from the worktree it was built in before — each child repository\'s worktree there removed, that worktree detached at its own commit with nothing moved — and is laid out here on the work committed there', () => {
+  it('a task started again after a /clear takes its branch over from the worktree it was built in before — refused, naming why and making nothing, while that worktree or a child repository\'s worktree in it holds changes not committed; then each child repository\'s worktree there removed, that worktree detached at its own commit with nothing moved — and is laid out here on the work committed there', () => {
     const at = project();
     const first = building(at.dir, ['3.1']);
     const a = isolation(at.dir, 'a');
@@ -194,30 +195,24 @@ describe('task worktree: every repository laid out (12.7.10, 7.2.21)', () => {
     const built = { project: tip(a, 'HEAD'), lib: tip(path.join(a, 'lib'), 'HEAD') };
     const session = building(at.dir, ['3.1']);
     const b = isolation(at.dir, 'b');
+    createFile(a, 'mine.txt', 'mine\n');
+    createFile(a, 'lib/left.txt', 'left\n');
+    const before = madeIn(at);
 
+    const { error } = refuses(b, layOut('3.1'), as(session));
+    const refused = madeIn(at);
+    fs.rmSync(path.join(a, 'mine.txt'));
+    fs.rmSync(path.join(a, 'lib', 'left.txt'));
     const answer = ok(b, layOut('3.1'), as(session));
+
+    assert.strictEqual(error, `task worktree: task 3.1 of pay's branch ${FEES} is checked out at ${a}, with changes not committed — ${a}: mine.txt; ${path.join(a, 'lib')}: left.txt — so it was not taken over, and nothing was laid out — commit them, or move them out of the way, then run it again`);
+    assert.deepStrictEqual(refused, before);
 
     assert.deepStrictEqual(answer.taken_over, { worktree: a, removed: [path.join(a, 'ext'), path.join(a, 'lib')] });
     assert.deepStrictEqual(checkoutsOf(b), [[FEES, built.project], [FEES, tip(at.dir, `${FEES}:ext`)], [FEES, built.lib]]);
     assert.deepStrictEqual([git(a, ['rev-parse', '--abbrev-ref', 'HEAD']).trim(), tip(a, 'HEAD'), git(a, ['status', '--porcelain'])], ['HEAD', built.project, '']);
     assert.deepStrictEqual([fs.readdirSync(path.join(a, 'ext')), fs.existsSync(path.join(a, 'lib'))], [[], false]);
     assert.deepStrictEqual(readPosition(session)?.tasks, [{ task: '3.1', builder: null, reviewers: [], worktree: b }]);
-  });
-
-  it('refuses to take the branch over, naming why and making nothing, where the earlier worktree or a child repository\'s worktree in it holds changes not committed', () => {
-    const at = project();
-    const a = isolation(at.dir, 'a');
-    ok(a, layOut('3.1'), as(building(at.dir, ['3.1'])));
-    createFile(a, 'mine.txt', 'mine\n');
-    createFile(a, 'lib/left.txt', 'left\n');
-    const session = building(at.dir, ['3.1']);
-    const b = isolation(at.dir, 'b');
-    const before = madeIn(at);
-
-    const { error } = refuses(b, layOut('3.1'), as(session));
-
-    assert.strictEqual(error, `task worktree: task 3.1 of pay's branch ${FEES} is checked out at ${a}, with changes not committed — ${a}: mine.txt; ${path.join(a, 'lib')}: left.txt — so it was not taken over, and nothing was laid out — commit them, or move them out of the way, then run it again`);
-    assert.deepStrictEqual(madeIn(at), before);
   });
 
   it('names a branch held by a worktree whose folder is gone, the way on removing it as the landing\'s remedy does — and lays out once each is followed', () => {
