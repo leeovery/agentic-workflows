@@ -24,7 +24,7 @@ const { startMenu } = require(path.join(ROOT, 'skills/leeway-engine/scripts/doma
 const { workUnitStatus } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/workunit.cjs'));
 const { drawLabel } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
 const {
-  Sim, startUnit, handoffEntry, handoff, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases,
+  Sim, startUnit, handoffEntry, handoff, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, specToBuild,
 } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: bugfix', () => {
@@ -32,7 +32,7 @@ describe('pipeline simulation: bugfix', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('bugfix: investigation → spec (source pinned to topic) → delivery → complete', async () => {
+  it('bugfix: investigation → a gap answered before the spec → the spec, entered at the unit, to ready to build → delivery → complete', async () => {
     const wu = 'crash-fix';
     startNew(sim, 'bugfix');
     const started = startUnit(sim, 'bugfix', wu, 'Fix the crash');
@@ -68,46 +68,16 @@ describe('pipeline simulation: bugfix', () => {
     assert.ok(backToStart(sim, linearMenu(sim, wu).keys)
       .some((k) => k.action === 'continue_work_unit' && k.route === `/leeway-continue-linear ${wu}`));
 
-    // The bugfix spec source name is pinned to the topic.
-    walkDeliveryPhases(sim, wu, wu, { sources: [wu] });
-    // The bugfix review hop offers all three rows — investigation, spec and
-    // planning sit behind it as revisit candidates.
-    const bfGate = sim.render(['next-phase-gate', wu, '--prev', 'implementation', '--next', 'review'], { expect: 'content' });
-    assert.match(bfGate, /\*\*`d\/done`\*\* +→ Complete without review/);
-    assert.match(bfGate, /\*\*`r\/revisit`\*\* → Revisit an earlier phase/);
-
-    // The investigation hop takes the same reverse join as a discussion's: a
-    // gap routed back reopens the investigation, stales the spec row naming
-    // it, and the entry gate refuses until the investigation re-concludes.
-    const invReopen = sim.run(['topic', 'reopen', wu, 'investigation', wu]);
-    assert.deepStrictEqual(invReopen.sources_staled, [wu]);
-    const bugSpec = sim.manifest(wu).phases.specification.items[wu];
-    assert.strictEqual(bugSpec.sources[wu].status, 'stale');
-    assert.strictEqual(bugSpec.reconcile_needed, 'investigation');
-    // The reopened investigation's chunks stay live, a query marking them
-    // reopened; the spec is never indexed (11.1.2).
+    // A gap routed back before the spec lands in the topic's mailbox, waiting
+    // for its investigation: the delivery reopens the item, the question it
+    // raised answers it, and the investigation re-concludes.
     const provenance = async () => (await sim.engineAsync(['knowledge', 'query', 'investigation', 'spec'])).stdout;
     const reopenedLine = /^\[investigation \| crash-fix\/crash-fix \| medium \| \d{4}-\d{2}-\d{2} \| reopened\]$/m;
     const concludedLine = /^\[investigation \| crash-fix\/crash-fix \| medium \| \d{4}-\d{2}-\d{2}\]$/m;
-    const whileReopened = await provenance();
-    assert.match(whileReopened, reopenedLine);
-    assert.doesNotMatch(whileReopened, /^\[specification \|/m);
-    sim.refuses(['topic', 'complete', wu, 'specification', wu], /unresolved source rows|completed/);
-    sim.run(['topic', 'complete', wu, 'investigation', wu]);
-    assert.match(await provenance(), concludedLine, 'the marker goes as the topic concludes again');
-    sim.run(['manifest', 'delete', `${wu}.specification.${wu}`, 'reconcile_needed']);
-    sim.run(['manifest', 'set', `${wu}.specification.${wu}`, `sources.${wu}.status`, 'incorporated']);
-    sim.render(['entry-gate', `${wu}.specification.${wu}`], { expect: 'empty' });
-
-    // A spec-routed gap lands in the topic's mailbox, waiting for its
-    // investigation: the delivery reopens the item and stales the spec row;
-    // the mailbox answers; the question it raised answers it, and the
-    // pipeline re-concludes.
     sim.write('.leeway/.cache/scratch/gap-message.md', 'Gap — retry semantics\n\nWhat the spec needs decided.\n');
     const gapLand = sim.run(['topic', 'send', wu, wu, '--from', wu, '--content', '.leeway/.cache/scratch/gap-message.md', '--slug', 'retry-semantics']);
     assert.strictEqual(gapLand.reopened, true);
-    assert.deepStrictEqual(gapLand.sources_staled, [wu]);
-    assert.match(await provenance(), reopenedLine, 'a landing that reopens marks it as a reopen does');
+    assert.match(await provenance(), reopenedLine, 'a landing that reopens marks the topic reopened');
     // The reopened investigation's rows say what waits — the start menu
     // entry and the bugfix pipeline row — and answering it retires the cue.
     const startRow = () => startMenu(START_GATEWAY.discover(sim.dir)).keys
@@ -118,6 +88,8 @@ describe('pipeline simulation: bugfix', () => {
     assert.match(workUnitStatus('bugfix', bugfixUnit()), /◐ Investigation +\[in-progress · mail waiting\]/);
     const gapMailbox = sim.run(['topic', 'mailbox', wu, wu]);
     assert.deepStrictEqual(gapMailbox.files, [path.join(sim.dir, `.leeway/${wu}/topics/${wu}/mail/001-retry-semantics.md`)]);
+    // Until investigation writes entries of its own (29.15), the decision the
+    // spec cites is written on the investigation's place (E9).
     const gapQuestion = sim.run(['ledger', 'ask', `${wu}.investigation.${wu}`], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'What are the retry semantics?' }));
     sim.run(['ledger', 'decide', `${wu}.investigation.${wu}`, '--answers', gapQuestion.id], null,
       JSON.stringify({ by: 'person', who_moved_whom: 'none', text: 'Retry twice, then fail.', why: 'The spec needs a bound.' }));
@@ -128,9 +100,26 @@ describe('pipeline simulation: bugfix', () => {
     assert.strictEqual(sim.run(['topic', 'mailbox', wu, wu]).files.length, 0);
     assert.strictEqual(startRow(), 'Continue "Crash Fix" — *bugfix, investigation (in-progress)*', 'the answered mailbox retires the cue');
     assert.strictEqual(bugfixUnit().mail_phases, undefined);
+    sim.refuses(['enter', 'specification', wu], /^crash-fix's spec waits until its investigation concludes/);
     sim.run(['topic', 'complete', wu, 'investigation', wu]);
-    sim.run(['manifest', 'delete', `${wu}.specification.${wu}`, 'reconcile_needed']);
-    sim.run(['manifest', 'set', `${wu}.specification.${wu}`, `sources.${wu}.status`, 'incorporated']);
+    assert.match(await provenance(), concludedLine, 'the marker goes as the topic concludes again');
+
+    // The spec, entered at the unit — its route naming no topic — through its
+    // corridor to ready to build's pick; the spec is never indexed (11.1.2).
+    assert.strictEqual(linearPick(sim, wu, 'continue').line, `→ Specification · ${wu}`);
+    specToBuild(sim, wu, [wu]);
+    assert.doesNotMatch(await provenance(), /^\[specification \|/m);
+    walkDeliveryPhases(sim, wu, wu);
+    // The bugfix review hop offers all three rows; what a revisit reaches is
+    // the delivery behind it — never the spec (11.9.1), nor the
+    // investigation the spec closed (4.11.2).
+    const bfGate = sim.render(['next-phase-gate', wu, '--prev', 'implementation', '--next', 'review'], { expect: 'content' });
+    assert.match(bfGate, /\*\*`d\/done`\*\* +→ Complete without review/);
+    assert.match(bfGate, /\*\*`r\/revisit`\*\* → Revisit an earlier phase/);
+    assert.deepStrictEqual([...sim.render(['revisit-phases', wu], { expect: 'content' }).matchAll(/→ (\w+) — \*completed\*/g)].map((m) => m[1]), ['Planning', 'Implementation', 'Review']);
+    // Past its spec the investigation is not reopened: a change is settled
+    // in the spec.
+    sim.refuses(['topic', 'reopen', wu, 'investigation', wu], /^crash-fix has its spec — a topic exists only before it/);
 
     sim.run(['workunit', 'complete', wu, '-m', `workflow(${wu}): pipeline complete`]);
     assert.strictEqual(sim.manifest(wu).status, 'completed');

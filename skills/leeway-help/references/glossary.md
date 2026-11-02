@@ -85,7 +85,7 @@ The bugfix's route to the cause: gathering symptoms, reading the code, and arriv
 The quick-fix's one pass: context, specification and plan written in a single sitting, because there is nothing to debate or diagnose.
 
 **specification**:
-The contract. The decisions of a discussion (or the findings of an investigation) written up as a standalone document everything downstream is built from. The one document that never fades from the knowledge base and the only one corrected after the fact.
+The contract. A piece of work's one document, written from its topics' decisions — each statement citing the entries it comes from — and the document its build reads. Once concluded it is never corrected: a later change replaces the decision itself.
 _Avoid_: the golden record (fine as a description)
 
 **spec**:

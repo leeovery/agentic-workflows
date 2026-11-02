@@ -98,17 +98,15 @@ No actionable tasks synthesized — closing the review.
 
 ## C. Approval Overview
 
-Settle the spec defects first — each `## Spec Defects` entry in `review-report-c{N}.md` is classified before the overview renders, so the tasks are authored against a correct specification. Once per entry:
+Settle the spec defects first — each `## Spec Defects` entry in `review-report-c{N}.md` is judged before the overview renders, so the tasks are built against what the record decides. Once per entry, read the statement it names and the entries that statement cites, and judge which side is wrong:
 
-→ Load **[correcting-historical-artifacts.md](../../leeway-shared/references/correcting-historical-artifacts.md)** for **B. This Work Unit's Specification** and follow its instructions, with specification path = `.workflows/{work_unit}/specification/{topic}/specification.md`, correcting_phase = `review/{topic}`.
+- **The code is wrong** — the tree owes the change: stage it under the next `## Task {n}` heading in `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{N}.md` — a synthesis that staged none wrote no file: create it with its `# Review Tasks: {topic:(titlecase)} (Cycle {N})` header — shaped like the proposals beside it: a `severity:` line carrying the defect's grade (`high`, `medium`, `low` — never a refactor class), a `sources:` line naming the report entry, then **Problem** and **Solution** — and initialise its row:
+  ```bash
+  node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.review.{topic} staging.c{N}.tasks.{n} pending
+  ```
+- **The spec is wrong** — a decision it cites is: put its replacement to the person, `raise {work_unit}.review.{topic} --replaces {decision_id} --reason was-wrong`. A replacement they agree lands on the ledger, and the spec stays as written — a concluded spec is never corrected. One they keep leaves the code wrong: route it as the code side. A finding it cites that the code shows wrong is a fact, replaced outright: `ledger replace {work_unit}.review.{topic} --replaces {finding_id} --reason was-wrong`, the finding's content with what it `drops`.
 
-A record-settled entry lands there silently — a derivable gap included, its derivation in the corrigendum. A code-wrong verdict becomes a staged proposal — the tree owes the change; an open verdict (a product-intent gap, or a call the reference could not stand behind — the only classes it returns open) becomes one whose Solution says what is settled and whose **Decision** carries the question, a **Stakes** line arguing the stop (each side's product consequence, why no investigation settles the tie, and the grounds for the recommendation where a side is marked), and two to four sides, each written as the product end state chosen — what the product *is* if that side wins, never the work to do — the recommended side first and marked `(recommended)`; only an honest no-lean fork carries no marker. An entry the reference returns unsettled (the item back in its own phase, or held by another session) is left exactly as reported — never re-classified here. Add each staged verdict under the next `## Task {n}` heading in `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{N}.md` — a synthesis that staged none wrote no file: create it with its `# Review Tasks: {topic:(titlecase)} (Cycle {N})` header — shaped like the proposals beside it: a `severity:` line carrying the defect's grade (`high`, `medium`, `low` — never a refactor class), a `sources:` line naming the report entry, then **Problem**, **Solution**, and where there is one the **Decision** with its **Stakes** and sides — and initialise its row:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.review.{topic} staging.c{N}.tasks.{n} pending
-```
-
-An entry an earlier run already settled — its corrigendum present in the specification, or its proposal already in the staging file — is skipped; a proposal already in the staging file whose `staging.c{N}` row is missing is a crashed landing — initialise the row and move on, never re-append. When at least one correction landed — nothing when none did, never a per-correction recap — say `{count} spec correction(s) recorded.`
+An entry an earlier run already settled — its proposal in the staging file, or its replacement on the ledger — is skipped; a proposal already in the staging file whose `staging.c{N}` row is missing is a crashed landing — initialise the row and move on, never re-append.
 
 #### If the cycle stages no proposal
 

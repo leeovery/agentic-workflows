@@ -97,16 +97,16 @@ function workunitReceipt(verb, workUnit, workType, { pipeline = false, skippedRe
 }
 
 /**
- * topic complete / supersede / cancel / reactivate / postpone / restore
- * receipts. `complete` and `supersede` carry no confirmation line — the
- * calling flow owns its own conclusion display; each renders its knowledge
- * advisory alone, empty without `--warn`. The rest confirm the unit by name:
+ * topic complete / cancel / reactivate / postpone / restore receipts.
+ * `complete` carries no confirmation line — the calling flow owns its own
+ * conclusion display; it renders its knowledge advisory alone, empty without
+ * `--warn`. The rest confirm the unit by name:
  * the postpone names the horizon it waits under, and the reactivate and the
  * pull forward's restore the statuses their items returned to (none for a
  * never-started topic), and the cancel how many waiting messages it moved to
  * the inbox (10.1.6).
- * @param {'complete'|'supersede'|'cancel'|'reactivate'|'postpone'|'restore'} verb
- * @param {string} name  the topic or specification as screens title it
+ * @param {'complete'|'cancel'|'reactivate'|'postpone'|'restore'} verb
+ * @param {string} name  the topic as screens title it
  * @param {{warn?: boolean, restored?: {phase: string, status: string}[], horizon?: string|null, inbox?: number}} [opts]
  * @returns {string}
  */
@@ -114,11 +114,6 @@ function topicReceipt(verb, name, { warn = false, restored = [], horizon = null,
   if (verb === 'complete') {
     return warn
       ? warningBlock('Knowledge indexing warning', 'The artifact is saved. The next start retries the indexing.', CONTINUE_INSTRUCTION)
-      : '';
-  }
-  if (verb === 'supersede') {
-    return warn
-      ? warningBlock('Knowledge removal warning', 'The spec is superseded. The next start removes its chunks from the knowledge base.', CONTINUE_INSTRUCTION)
       : '';
   }
   if (verb === 'cancel') {
@@ -200,33 +195,6 @@ function absorbReceipt(epic, topic, moved, { warn = false, experiments = 0, rena
   lines.push('  • Feature: removed');
   return joined([
     warn ? warningBlock('Knowledge warning', 'The feature is absorbed. The next start brings the knowledge base up to date.') : null,
-    confirmation(lines.join('\n')),
-  ]);
-}
-
-/**
- * workunit promote — the promotion summary.
- * @param {string} workUnit @param {string} topic @param {string} ccWorkUnit
- * @param {{warn?: boolean, imports?: number}} [opts]
- * @returns {string}
- */
-function promoteReceipt(workUnit, topic, ccWorkUnit, { warn = false, imports = 0 } = {}) {
-  // Same shape as its sibling above: column-0 sentence, bulleted facts.
-  const lines = [
-    'Promoted to Cross-Cutting',
-    '',
-    `"${titlecase(topic)}" has been promoted to its own cross-cutting work unit.`,
-    '',
-    `  • Work unit: ${ccWorkUnit}`,
-    `  • Source: ${workUnit}`,
-    '  • Discussion files: moved',
-    '  • Specification: moved',
-    // Copied, not moved — the epic keeps its own, so the row says so.
-    ...(imports > 0 ? [`  • Imports: ${imports} copied`] : []),
-    '  • Epic status: promoted',
-  ];
-  return joined([
-    warn ? warningBlock('Knowledge warning', 'The promotion is committed. The next start brings the knowledge base up to date.') : null,
     confirmation(lines.join('\n')),
   ]);
 }
@@ -337,4 +305,4 @@ function inboxDeleteReceipt(title) {
   return confirmation(`Deleted "${title}".`);
 }
 
-module.exports = { workunitReceipt, topicReceipt, mapReceipt, absorbSummary, absorbReceipt, promoteReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, inboxRestoreReceipt, inboxDeleteReceipt };
+module.exports = { workunitReceipt, topicReceipt, mapReceipt, absorbSummary, absorbReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, inboxRestoreReceipt, inboxDeleteReceipt };

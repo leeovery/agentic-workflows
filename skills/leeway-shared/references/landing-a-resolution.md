@@ -1,6 +1,6 @@
 # Landing a Resolution
 
-*Shared reference. Loaded by `resolve-source-incoherence.md` (the specification's landings) and `resolve-spec-gap.md` (planning's and implementation's).*
+*Shared reference. Loaded by `resolve-spec-gap.md` (planning's and implementation's).*
 
 ---
 
@@ -11,7 +11,6 @@ The resolution is written into the owning source's record in its own terms — n
 The caller provides these via context before loading:
 
 - `work_unit` — the work unit the source document belongs to. Always present.
-- `topic` — the caller's own topic, which names a specification item (a plan or an implementation carries its specification's name). Used by the `--except` in step 3 and nothing else.
 - `doc` — the owning source's topic name.
 - `source_phase` — the source's own phase: `discussion`, or `investigation` for a bugfix.
 - `resolution` — what lands, carrying whatever settled it: a measurement's command and result, a derivation, the side the user picked.
@@ -26,7 +25,6 @@ The caller provides these via context before loading:
    - a decision the record never made, asked and answered: `node .claude/skills/leeway-engine/scripts/engine.cjs ledger ask {work_unit}.discussion.{doc}`, then `node .claude/skills/leeway-engine/scripts/engine.cjs ledger decide {work_unit}.discussion.{doc} --answers {id}` with the question's id.
 
    Each write commits itself and re-renders the record the knowledge base serves.
-3. **Stale the other extractions.** Single-topic work types skip this step — no sibling specs exist. For an epic, run `node .claude/skills/leeway-engine/scripts/engine.cjs sources stale {work_unit} {doc} --except {topic}`; when the response's `staled` is non-empty, tell the user in one line which specification(s) it named.
 
 → Return to caller.
 

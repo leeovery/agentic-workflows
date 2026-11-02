@@ -22,24 +22,16 @@ const {
   UNIT_PHASES,
   unitItems,
   liveUnitItems,
-  specIsStarted,
-  specGroupsSources,
-  unitLocks,
-  unitLockNames,
   CLOSED_LIFECYCLES,
   postponePlan,
   postponedItem,
-  specReactivateLocks,
-  reactivateLockPhrases,
-  deliveryStarted,
-  specUnsettled,
-  OPEN_SOURCE_STATUSES,
+  buildBegun,
   topicTitles,
-  titled,
 } = require('./derivations.cjs');
 const { computeBuildOrderNeedsSequencing, sortItemsByBuildOrder } = require('./build-order.cjs');
-const { discoveryLifecycleLabel, titlecase } = require('./conventions.cjs');
+const { discoveryLifecycleLabel } = require('./conventions.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
+const { entryRefusal, pastItsSpec } = require('./spec-standing.cjs');
 
 // Every phase the epic detail iterates and the epic dashboard / thin dump
 // surface — discovery (the map, not a pipeline phase) first, then the epic
@@ -77,9 +69,6 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  *                                             top-level records, id order; the menu's
  *                                             topic-grain entry reads them for its tail
  * @property {SpecSource[]} [sources]          specification items
- * @property {string[]} [blocked_by]           what holds the item's entry shut — a specification's
- *                                             source discussions still open, or
- *                                             `['specification']` on a plan whose spec is unsettled
  * @property {string} [format]                 planning items
  * @property {boolean} [deps_satisfied]        planning items
  * @property {DepBlocking[]} [deps_blocking]   planning items with unmet deps
@@ -94,11 +83,9 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {string} name
  * @property {string} phase
  * @property {string|boolean} [reconcile_needed]  completed items only — a live reconcile flag
- * @property {string[]} [blocked_by]           completed items only — what holds the item's entry
- *                                             shut (the phase entry's `blocked_by`); no resume row
  */
 
-/** @typedef {'discovery'|'specification'} UnitStage */
+/** @typedef {'discovery'} UnitStage */
 
 /**
  * @typedef {object} RestoreRef
@@ -111,8 +98,6 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {string} name
  * @property {UnitStage} stage
  * @property {RestoreRef[]} restores  what a reactivate returns — empty for a never-started topic
- * @property {string} [locked] why the unit cannot be reactivated — a source topic cancelled, or a
- *                             source another started specification has taken
  */
 
 /**
@@ -127,15 +112,14 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @typedef {object} CancellableUnit
  * @property {string} name
  * @property {UnitStage} stage
- * @property {string} state    the unit's state tag — the map lifecycle label for a topic, the
- *                             specification's status for a specification
- * @property {string} [locked] why the unit cannot be cancelled — the later stage holding it
+ * @property {string} state    the unit's state tag — the topic's map lifecycle label
+ * @property {string} [locked] why the unit cannot be moved — the postpone's first lock
  */
 
 /**
  * @typedef {object} NextPhaseEntry
  * @property {string} name
- * @property {string} action  `start_specification` | `start_planning` | `start_implementation` | `start_review`
+ * @property {string} action  `start_planning` | `start_implementation` | `start_review`
  * @property {string} label
  * @property {boolean} [blocked]
  * @property {DepBlocking[]} [deps_blocking]
@@ -187,14 +171,13 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {Record<string, PhaseEntry[]>} phases  build phases with items (discovery excluded)
  * @property {ItemRef[]} in_progress
  * @property {ItemRef[]} completed
- * @property {CancellableUnit[]} cancellable  every unit the cancel menu lists, locked ones included — topics in map order, then specifications in build order
+ * @property {CancellableUnit[]} cancellable  every topic the cancel menu lists, map order
  * @property {CancelledUnit[]} cancelled      every unit reading cancelled, the same order
  * @property {CancellableUnit[]} postponable  every Discovery unit the postpone menu lists, locked ones included — map order
  * @property {PostponedTopic[]} postponed     the topics that left for the roadmap, map order
  * @property {NextPhaseEntry[]} next_phase_ready
- * @property {string[]} unaccounted_discussions
- * @property {string[]} reopened_discussions
- * @property {{name: string, by: string[]}[]} spec_blocked  live spec items whose source discussion has not concluded
+ * @property {'start'|'continue'|null} spec_row  the spec the menu offers — to start, or to carry on once written; null
+ *                             while a topic is open, once the build has begun, and on a unit keeping the old spec's items
  * @property {MapRow[]} discovery_map
  * @property {Record<string, string>} titles  the titles a rename gave started topics, by key (derivations' `topicTitles`)
  * @property {string|null} active_session  in-progress discovery session number, or null
@@ -205,7 +188,7 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {number} imports_count
  * @property {number} seeds_count
  * @property {{gap_analysis: AnalysisCache}} analysis_caches
- * @property {{can_start_specification: boolean, can_start_planning: boolean, can_start_implementation: boolean, can_start_review: boolean}} gating
+ * @property {{can_start_planning: boolean, can_start_implementation: boolean, can_start_review: boolean}} gating
  */
 
 /**
@@ -248,31 +231,11 @@ function resolveDeps(manifest, planItem) {
   return { deps_satisfied: depsSatisfied, deps_blocking: depsBlocking };
 }
 
-/** What a reactivate returns for a unit — its cancelled items with their stashes. @param {object} manifest @param {UnitStage} stage @param {string} name @returns {RestoreRef[]} */
-function unitRestores(manifest, stage, name) {
-  return unitItems(manifest, stage, name)
+/** What a reactivate returns for a topic — its cancelled items with their stashes. @param {object} manifest @param {string} name @returns {RestoreRef[]} */
+function unitRestores(manifest, name) {
+  return unitItems(manifest, 'discovery', name)
     .filter(({ item }) => item.status === 'cancelled')
     .map(({ phase, item }) => ({ phase, previous_status: item.previous_status || null }));
-}
-
-/** The menu's lock reason for a Discovery unit, or undefined when it is free. @param {object} manifest @param {string} topic */
-function discoveryLockReason(manifest, topic) {
-  const locks = unitLocks(manifest, topic);
-  if (locks.length === 0) return undefined;
-  const one = locks.length === 1;
-  const recovery = locks.some((lock) => lock.promoted_to !== null)
-    ? 'promotion is terminal'
-    : `cancel ${one ? 'it' : 'them'} first`;
-  return `locked by specification${one ? '' : 's'} ${unitLockNames(locks, titlecase)} — ${recovery}`;
-}
-
-/** The menu's lock reason for a cancelled specification, or undefined when it can return. @param {object} manifest @param {string} spec */
-function specificationLockReason(manifest, spec) {
-  const locks = specReactivateLocks(manifest, spec);
-  if (locks.length === 0) return undefined;
-  const titles = topicTitles(manifest);
-  const { holds, recovery } = reactivateLockPhrases(locks, (name) => titled(titles, name), { now: true });
-  return `locked — ${holds}; ${recovery}`;
 }
 
 /**
@@ -304,14 +267,13 @@ function topicState(cwd, manifest, name, row) {
 }
 
 /**
- * The cancel units: every Discovery unit not reading cancelled, then every
- * started, non-terminal specification in build order — locked ones listed
- * with their reason, never omitted. A topic off the map with nothing live
- * beneath it has nothing a cancel could take and is left out.
- * @param {string} cwd @param {object} manifest @param {MapRow[]} discoveryMap @param {Record<string, any>[]} specItems  build-ordered
+ * The cancel units: every Discovery unit not reading cancelled or
+ * postponed. A topic off the map with nothing live beneath it has nothing a
+ * cancel could take and is left out.
+ * @param {string} cwd @param {object} manifest @param {MapRow[]} discoveryMap
  * @returns {CancellableUnit[]}
  */
-function cancellableUnits(cwd, manifest, discoveryMap, specItems) {
+function cancellableUnits(cwd, manifest, discoveryMap) {
   /** @type {CancellableUnit[]} */
   const units = [];
   for (const { name, row } of discoveryUnits(manifest, discoveryMap)) {
@@ -320,37 +282,25 @@ function cancellableUnits(cwd, manifest, discoveryMap, specItems) {
     // the door to "actually never".
     if (lifecycle === 'cancelled' || lifecycle === 'postponed') continue;
     if (!row && liveUnitItems(manifest, 'discovery', name).length === 0) continue;
-    const locked = discoveryLockReason(manifest, name);
-    units.push({ name, stage: 'discovery', state: topicState(cwd, manifest, name, row), ...(locked ? { locked } : {}) });
-  }
-  for (const s of specItems) {
-    if (!specIsStarted(s)) continue;
-    const locked = deliveryStarted(manifest, s.name) ? 'implementation started — fix forward' : undefined;
-    units.push({ name: s.name, stage: 'specification', state: s.status, ...(locked ? { locked } : {}) });
+    units.push({ name, stage: 'discovery', state: topicState(cwd, manifest, name, row) });
   }
   return units;
 }
 
 /**
  * The cancelled units — every Discovery unit reading cancelled (its marker,
- * or the legacy every-item reading), then every cancelled specification —
- * each carrying what a reactivate returns, a specification whose sources
- * are unavailable carrying its lock reason.
- * @param {object} manifest @param {MapRow[]} discoveryMap @param {Record<string, any>[]} specItems  build-ordered
+ * or the legacy every-item reading) — each carrying what a reactivate
+ * returns.
+ * @param {object} manifest @param {MapRow[]} discoveryMap
  * @returns {CancelledUnit[]}
  */
-function cancelledUnits(manifest, discoveryMap, specItems) {
+function cancelledUnits(manifest, discoveryMap) {
   /** @type {CancelledUnit[]} */
   const units = [];
   for (const { name, row } of discoveryUnits(manifest, discoveryMap)) {
     const lifecycle = row ? row.lifecycle : computeTopicLifecycle(manifest, name).lifecycle;
     if (lifecycle !== 'cancelled') continue;
-    units.push({ name, stage: 'discovery', restores: unitRestores(manifest, 'discovery', name) });
-  }
-  for (const s of specItems) {
-    if (s.status !== 'cancelled') continue;
-    const locked = specificationLockReason(manifest, s.name);
-    units.push({ name: s.name, stage: 'specification', restores: unitRestores(manifest, 'specification', s.name), ...(locked ? { locked } : {}) });
+    units.push({ name, stage: 'discovery', restores: unitRestores(manifest, name) });
   }
   return units;
 }
@@ -358,8 +308,7 @@ function cancelledUnits(manifest, discoveryMap, specItems) {
 /**
  * The postpone units: every Discovery unit not already postponed or
  * cancelled, in map order — locked ones carrying the plan's first lock,
- * never omitted. The Discovery stage alone postpones: a topic past
- * specification is past "not yet".
+ * never omitted.
  * @param {string} cwd @param {object} manifest @param {MapRow[]} discoveryMap @param {object|null} project
  * @returns {CancellableUnit[]}
  */
@@ -400,6 +349,19 @@ function postponedTopics(manifest, discoveryMap, project) {
 }
 
 /**
+ * The spec the epic's menu offers (18.4.6): none while a topic is open, nor
+ * once ready to build's yes has begun the build, nor on a unit whose
+ * building began under the old spec, which keeps its items (29.17); else to
+ * start, or to carry on once `spec.md` is written.
+ * @param {string} cwd @param {Record<string, any>} manifest
+ * @returns {'start'|'continue'|null}
+ */
+function specRow(cwd, manifest) {
+  if (phaseItems(manifest, 'specification').length > 0 || buildBegun(manifest) || entryRefusal(manifest) !== null) return null;
+  return pastItsSpec(cwd, manifest) ? 'continue' : 'start';
+}
+
+/**
  * @param {string} cwd
  * @param {object} manifest
  * @returns {{gap_analysis: AnalysisCache}}
@@ -420,8 +382,6 @@ function buildAnalysisCaches(cwd, manifest) {
 function epicDetail(cwd, manifest) {
   /** @type {Record<string, PhaseEntry[]>} */
   const phases = {};
-  const allSourcedDiscussions = new Set();
-  const groupedDiscussions = new Set();
   /** @type {ItemRef[]} */
   const completedItems = [];
   const inProgressItems = [];
@@ -461,28 +421,9 @@ function epicDetail(cwd, manifest) {
       }
 
       if (phase === 'specification' && item.sources) {
-        const sourcesArr = Array.isArray(item.sources)
+        entry.sources = Array.isArray(item.sources)
           ? item.sources
           : Object.entries(item.sources).map(([topic, data]) => ({ topic, ...data }));
-        entry.sources = sourcesArr;
-        // groupedDiscussions tracks every grouping spec item's sources
-        // (proposed included) — a discussion in any such item is "grouped",
-        // which is what unaccounted_discussions measures; a cancelled or
-        // superseded specification groups nothing, the same reading the
-        // specification menu's discovery makes.
-        if (specGroupsSources(item)) {
-          for (const src of sourcesArr) {
-            groupedDiscussions.add(src.topic || src.name);
-          }
-        }
-        // allSourcedDiscussions tracks only materialized items' sources —
-        // a proposed grouping has nothing extracted, so its sources can't
-        // be "reopened". Reopened detection reads this set.
-        if (item.status !== 'proposed') {
-          for (const src of sourcesArr) {
-            allSourcedDiscussions.add(src.topic || src.name);
-          }
-        }
       }
 
       // Enrich planning items with format and dependency data. Terminal
@@ -511,9 +452,10 @@ function epicDetail(cwd, manifest) {
         inProgressItems.push({ name: item.name, phase });
       }
       // A derived item has no session of its own: a completed series has
-      // nothing to resume (a new spawn reopens it), so it never joins the
+      // nothing to resume (a new spawn reopens it). Nor has a spec item an
+      // old unit kept: the spec is entered at the unit. Neither joins the
       // resume candidates.
-      if (item.status === 'completed' && !DERIVED_PHASES.includes(phase)) {
+      if (item.status === 'completed' && !DERIVED_PHASES.includes(phase) && phase !== 'specification') {
         completedItems.push({
           name: item.name, phase,
           ...(item.reconcile_needed !== undefined ? { reconcile_needed: item.reconcile_needed } : {}),
@@ -524,82 +466,15 @@ function epicDetail(cwd, manifest) {
     phases[phase] = phaseEntries;
   }
 
-  const discussionItems = phaseItems(manifest, 'discussion');
-
-  const unaccountedDiscussions = [];
-  for (const d of discussionItems) {
-    if (d.status === 'completed' && !groupedDiscussions.has(d.name)) {
-      unaccountedDiscussions.push(d.name);
-    }
-  }
-
-  const reopenedDiscussions = [];
-  for (const d of discussionItems) {
-    if (d.status === 'in-progress' && allSourcedDiscussions.has(d.name)) {
-      reopenedDiscussions.push(d.name);
-    }
-  }
-
   const specItems = sortItemsByBuildOrder(phaseItems(manifest, 'specification'), manifest, 'specification');
   const planItems = sortItemsByBuildOrder(phaseItems(manifest, 'planning'), manifest, 'planning');
   const implItems = sortItemsByBuildOrder(phaseItems(manifest, 'implementation'), manifest, 'implementation');
-
-  // A spec item (proposed included) whose source discussion has not
-  // concluded — back in-progress, or opened by the gap exit and parked — is
-  // blocked from entry until it does; the epic menu hard-blocks the route.
-  const discussionStatus = new Map(discussionItems.map((d) => [d.name, d.status]));
-  /** @type {{name: string, by: string[]}[]} */
-  const specBlocked = [];
-  for (const s of specItems) {
-    if (TERMINAL_STATUSES.includes(s.status || '')) continue;
-    const srcs = Array.isArray(s.sources)
-      ? s.sources
-      : Object.entries(s.sources || {}).map(([topic, data]) => ({ topic, ...(typeof data === 'object' ? data : {}) }));
-    const open = srcs.map((src) => src.topic || src.name)
-      .filter((n) => n && OPEN_SOURCE_STATUSES.includes(discussionStatus.get(n)));
-    if (open.length > 0) specBlocked.push({ name: s.name, by: open });
-  }
-  // The display tree shows the blocked state; the menu withholds a blocked
-  // item (a held one excepted), so the entries carry the fact for the
-  // projections.
-  for (const e of phases.specification || []) {
-    const b = specBlocked.find((x) => x.name === e.name);
-    if (b) e.blocked_by = b.by;
-  }
-  // A plan stands on its specification: while that record is unsettled the
-  // plan's entry, birth, reopen, and conclusion are all held engine-side, so
-  // the menu withholds its row (a live session's hold excepted) and the tree
-  // tags it blocked. The specification's own row is the way in.
-  for (const e of phases.planning || []) {
-    if (!TERMINAL_STATUSES.includes(e.status) && specUnsettled(manifest, e.name)) e.blocked_by = ['specification'];
-  }
-  // A completed item held at entry is no resume candidate either — the
-  // completed list carries its entry's blocked state, so the resume menu
-  // and the `c` option read the one fact the tree and the main menu read.
-  for (const c of completedItems) {
-    const e = (phases[c.phase] || []).find((x) => x.name === c.name);
-    if (e && e.blocked_by !== undefined) c.blocked_by = e.blocked_by;
-  }
-
-  // Proposed groupings are actionable from the epic menu — surface them as
-  // start_specification. Pushed before start_planning so they precede it in
-  // pipeline order (spec → planning), which the settled-state recommendation
-  // reads. A blocked grouping is not actionable: it stays out of the menu
-  // and shows its blocked state on the display tree instead.
-  for (const s of specItems) {
-    if (s.status === 'proposed' && !specBlocked.some((b) => b.name === s.name)) {
-      nextPhaseReady.push({ name: s.name, action: 'start_specification', label: 'grouping ready' });
-    }
-  }
 
   const live = (/** @type {{status?: string}} */ i) => !TERMINAL_STATUSES.includes(i.status || '');
   const planTopics = new Set(planItems.filter(live).map(i => i.name));
   for (const s of specItems) {
     if (s.status === 'completed' && !planTopics.has(s.name)) {
-      nextPhaseReady.push({
-        name: s.name, action: 'start_planning', label: 'spec completed',
-        ...(specUnsettled(manifest, s.name) ? { blocked: true } : {}),
-      });
+      nextPhaseReady.push({ name: s.name, action: 'start_planning', label: 'spec completed' });
     }
   }
 
@@ -627,11 +502,8 @@ function epicDetail(cwd, manifest) {
     }
   }
 
-  // Planning opens on a settled record: a completed specification still
-  // holding an open source row, or carrying a flag, gates nothing open.
-  const hasSettledSpec = specItems.some(s => s.status === 'completed' && !specUnsettled(manifest, s.name));
+  const hasCompletedSpec = specItems.some(s => s.status === 'completed');
   const hasCompletedPlan = planItems.some(p => p.status === 'completed');
-  const hasCompletedDiscussion = discussionItems.some(d => d.status === 'completed');
   const hasCompletedImpl = implItems.some(i => i.status === 'completed');
 
   // The map rows, summary, and sequencing flag come from the shared builder —
@@ -659,14 +531,12 @@ function epicDetail(cwd, manifest) {
     phases,
     in_progress: inProgressItems,
     completed: completedItems,
-    cancellable: cancellableUnits(cwd, manifest, discoveryMap, specItems),
-    cancelled: cancelledUnits(manifest, discoveryMap, specItems),
+    cancellable: cancellableUnits(cwd, manifest, discoveryMap),
+    cancelled: cancelledUnits(manifest, discoveryMap),
     postponable: postponableUnits(cwd, manifest, discoveryMap, project),
     postponed: postponedTopics(manifest, discoveryMap, project),
     next_phase_ready: nextPhaseReady,
-    unaccounted_discussions: unaccountedDiscussions,
-    reopened_discussions: reopenedDiscussions,
-    spec_blocked: specBlocked,
+    spec_row: specRow(cwd, manifest),
     discovery_map: discoveryMap,
     titles: topicTitles(manifest),
     active_session: (manifest.phases && manifest.phases.discovery && typeof manifest.phases.discovery.active_session === 'string')
@@ -679,8 +549,7 @@ function epicDetail(cwd, manifest) {
     seeds_count: seedsCount,
     analysis_caches: buildAnalysisCaches(cwd, manifest),
     gating: {
-      can_start_specification: hasCompletedDiscussion,
-      can_start_planning: hasSettledSpec,
+      can_start_planning: hasCompletedSpec,
       can_start_implementation: hasCompletedPlan,
       can_start_review: hasCompletedImpl,
     },

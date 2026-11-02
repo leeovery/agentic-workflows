@@ -21,9 +21,7 @@ const {
   mailboxDir, mailboxFiles, mailboxDepth, mailPhase, mailPhases,
   awaitedExperiments, waits, topicWaits, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES, lifecyclePhrase,
   TIER_RANK,
-  specIsStarted, specGroupsSources, lockingSpecs, unitLocks, unitLockNames, cancelPlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases,
-  postponePlan, postponeTarget, postponeClashPhrase, postponedItem, topicKey, noTopicRefusal,
-  openSources, specUnsettled, specUnsettledPhrase,
+  cancelPlan, postponePlan, postponeTarget, postponeClashPhrase, postponedItem, topicKey, noTopicRefusal,
 } = require('../../skills/leeway-engine/scripts/domain/derivations.cjs');
 
 describe('reads + derivations', () => {
@@ -906,34 +904,18 @@ describe('reads + derivations', () => {
         'the log moving leaves the analysis current');
     });
 
-    it('grouping-analysis: the decided discussions\' records are its inputs, never a log or an undecided record — a stamp over them is valid', () => {
-      createFile(dir, record('auth'), 'content-a');
-      createFile(dir, record('billing'), 'content-b');
-      createFile(dir, '.leeway/alpha/topics/auth/log.md', 'the conversation');
-      const checksum = filesChecksum([path.join(dir, record('auth'))]);
-      createManifest(dir, 'alpha', {
-        phases: {
-          discussion: {
-            analysis_cache: { checksum, generated: '2026-05-02' },
-            items: { auth: { status: 'completed' }, billing: { status: 'cancelled' } },
-          },
-        },
-      });
-      const r = computeAnalysisCacheStatus(loadManifest(dir, 'alpha'), path.join(dir, '.leeway'), 'grouping-analysis');
-      assert.strictEqual(r.status, 'valid');
-      assert.strictEqual(r.generated, '2026-05-02');
-      assert.deepStrictEqual(r.files, [], 'the grouping stamp records no file list');
-    });
-
     it('stamped tells a cache an analysis never wrote from one the inputs have moved past', () => {
       createFile(dir, record('auth'), 'content-a');
       createManifest(dir, 'alpha', { phases: { discussion: { items: { auth: { status: 'completed' } } } } });
-      const unstamped = computeAnalysisCacheStatus(loadManifest(dir, 'alpha'), path.join(dir, '.leeway'), 'grouping-analysis');
+      const unstamped = computeAnalysisCacheStatus(loadManifest(dir, 'alpha'), path.join(dir, '.leeway'), 'gap-analysis');
       assert.deepStrictEqual([unstamped.status, unstamped.stamped], ['stale', false]);
       createManifest(dir, 'alpha', {
-        phases: { discussion: { analysis_cache: { checksum: 'old', generated: '2026-05-02' }, items: { auth: { status: 'completed' } } } },
+        phases: {
+          discussion: { items: { auth: { status: 'completed' } } },
+          discovery: { gap_analysis_cache: { checksum: 'old', generated: '2026-05-02', input_files: ['auth.md'] } },
+        },
       });
-      const moved = computeAnalysisCacheStatus(loadManifest(dir, 'alpha'), path.join(dir, '.leeway'), 'grouping-analysis');
+      const moved = computeAnalysisCacheStatus(loadManifest(dir, 'alpha'), path.join(dir, '.leeway'), 'gap-analysis');
       assert.deepStrictEqual([moved.status, moved.stamped], ['stale', true]);
     });
 
@@ -962,9 +944,8 @@ describe('reads + derivations', () => {
   });
 
   describe('the cancel units', () => {
-    // A map with a live topic under a proposed grouping, a status-less and a
-    // promoted specification, a topic under a started specification, and two
-    // cancelled specifications over a cancelled and a held source.
+    // A map with a live topic holding open and closed records, and a decided
+    // topic with no series.
     function unitManifest() {
       return {
         name: 'pay',
@@ -975,114 +956,25 @@ describe('reads + derivations', () => {
           experiment: { items: {
             auth: { status: 'in-progress', experiments: { E2: { status: 'running' }, E1: { status: 'concluded' }, 'E2.1': { status: 'conceived' } } },
           } },
-          specification: { items: {
-            grp: { status: 'proposed', sources: { auth: { status: 'pending' } } },
-            blank: { sources: { auth: { status: 'pending' } } },
-            done: { status: 'promoted', sources: { auth: { status: 'incorporated' } } },
-            unified: { status: 'in-progress', sources: { timing: { status: 'incorporated' }, held: { status: 'pending' } } },
-            parked: { status: 'cancelled', previous_status: 'completed', sources: { gone: { status: 'incorporated' }, held: { status: 'incorporated' } } },
-            legacy: { status: 'cancelled', sources: [{ name: 'gone', status: 'incorporated' }] },
-          } },
-          planning: { items: { unified: { status: 'in-progress' } } },
         },
       };
     }
 
-    it('specIsStarted: in-progress or completed — proposed, terminal, and status-less are not', () => {
-      assert.deepStrictEqual(
-        ['in-progress', 'completed', 'proposed', 'cancelled', 'superseded', 'promoted', undefined].map((status) => specIsStarted({ status })),
-        [true, true, false, false, false, false, false]);
-    });
-
-    it('specGroupsSources: everything but cancelled and superseded — a promoted specification still groups', () => {
-      assert.deepStrictEqual(
-        ['in-progress', 'completed', 'proposed', 'promoted', undefined, 'cancelled', 'superseded'].map((status) => specGroupsSources({ status })),
-        [true, true, true, true, true, false, false]);
-    });
-
-    it('lockingSpecs: only a started specification locks — a proposed grouping and a status-less item never do', () => {
-      const m = unitManifest();
-      assert.deepStrictEqual(lockingSpecs(m, 'auth'), []);
-      assert.deepStrictEqual(lockingSpecs(m, 'timing'), ['unified']);
-    });
-
-    it('unitLocks: a started specification and a promoted one each lock the topic — the promoted one naming its unit', () => {
-      const m = unitManifest();
-      m.phases.specification.items.done.promoted_to = 'auth-cc';
-      assert.deepStrictEqual(unitLocks(m, 'auth'), [{ name: 'done', promoted_to: 'auth-cc' }], 'promoted, never proposed or status-less');
-      assert.deepStrictEqual(unitLocks(m, 'timing'), [{ name: 'unified', promoted_to: null }]);
-      assert.deepStrictEqual(lockingSpecs(m, 'auth'), [], 'a promoted specification is never an individual one');
-      assert.strictEqual(unitLockNames(unitLocks(m, 'auth'), (n) => n.toUpperCase()), '"DONE" (promoted to "auth-cc")');
-      const [lock] = postponePlan(m, 'auth', null).locks.filter((l) => /past specification/.test(l.reason));
-      assert.strictEqual(lock.reason, 'postponing "auth" is refused while the specification "done" (promoted to "auth-cc") sources its discussion — a topic past specification is past "not yet"');
-    });
-
-    it('cancelPlan over a discovery unit: the live items, every open record in register order, the proposed groupings', () => {
-      const plan = cancelPlan(unitManifest(), 'discovery', 'auth');
+    it('cancelPlan over a discovery unit: the live items, every open record in register order', () => {
+      const plan = cancelPlan(unitManifest(), 'auth');
       assert.deepStrictEqual(plan.items.map(({ phase, item }) => [phase, item.status]), [['discussion', 'in-progress']]);
       assert.deepStrictEqual(plan.records, ['E2', 'E2.1']);
-      assert.deepStrictEqual(plan.discards, ['grp']);
     });
 
-    it('cancelPlan over a topic with no series takes no records, and a specification unit takes its items alone', () => {
-      const m = unitManifest();
-      assert.deepStrictEqual(cancelPlan(m, 'discovery', 'timing').records, []);
-      const spec = cancelPlan(m, 'specification', 'unified');
-      assert.deepStrictEqual(spec.items.map(({ phase }) => phase), ['specification', 'planning']);
-      assert.deepStrictEqual([spec.records, spec.discards], [[], []]);
-      assert.deepStrictEqual(cancelPlan(m, 'specification', 'blank').items, [], 'a status-less specification has nothing to take');
+    it('cancelPlan over a topic with no series takes no records', () => {
+      assert.deepStrictEqual(cancelPlan(unitManifest(), 'timing').records, []);
     });
 
-    it('proposedGroupings names the proposed specifications over a discussion — never a started or cancelled one', () => {
-      const m = unitManifest();
-      assert.deepStrictEqual(proposedGroupings(m, 'auth'), ['grp']);
-      assert.deepStrictEqual(proposedGroupings(m, 'gone'), []);
-    });
-
-    it('specReactivateLocks: a cancelled source topic, a source another started specification holds; a proposed grouping never holds; the legacy array form reads', () => {
-      const m = unitManifest();
-      assert.deepStrictEqual(specReactivateLocks(m, 'parked'), [{ topic: 'gone', reason: 'cancelled' }, { topic: 'held', reason: 'held', by: 'unified' }]);
-      assert.deepStrictEqual(specReactivateLocks(m, 'legacy'), [{ topic: 'gone', reason: 'cancelled' }]);
-      m.phases.specification.items.unified.status = 'proposed';
-      assert.deepStrictEqual(specReactivateLocks(m, 'parked'), [{ topic: 'gone', reason: 'cancelled' }]);
-    });
-
-    it('a postponed source holds a cancelled specification\'s reactivate shut, naming the pull', () => {
-      const m = unitManifest();
-      m.phases.discovery.items.gone.cancelled = false;
-      m.phases.discovery.items.gone.postponed = true;
-      m.phases.discussion.items.gone.status = 'postponed';
-      assert.deepStrictEqual(specReactivateLocks(m, 'parked'),
-        [{ topic: 'gone', reason: 'postponed' }, { topic: 'held', reason: 'held', by: 'unified' }]);
-      assert.deepStrictEqual(reactivateLockPhrases([{ topic: 'a', reason: 'postponed' }], (n) => n),
-        { holds: 'its source "a" is postponed', recovery: 'pull the topic forward from the roadmap first' });
-      assert.deepStrictEqual(reactivateLockPhrases([
-        { topic: 'a', reason: 'cancelled' }, { topic: 'b', reason: 'postponed' }, { topic: 'c', reason: 'postponed' },
-      ], (n) => n), {
-        holds: 'its source "a" is cancelled and its sources "b", "c" are postponed',
-        recovery: 'reactivate the topic first and pull the topics forward from the roadmap first',
-      });
-    });
-
-    it('reactivateLockPhrases: singular, plural, and mixed — the names cast by the caller, the hold marked since the cancel on request', () => {
-      assert.deepStrictEqual(reactivateLockPhrases([{ topic: 'a', reason: 'cancelled' }], (n) => n),
-        { holds: 'its source "a" is cancelled', recovery: 'reactivate the topic first' });
-      assert.deepStrictEqual(reactivateLockPhrases([{ topic: 'b', reason: 'held', by: 'x' }], (n) => n.toUpperCase(), { now: true }),
-        { holds: 'the specification "X" now sources "B"', recovery: 'regroup the discussions from the menu (s/spec)' });
-      assert.deepStrictEqual(reactivateLockPhrases([
-        { topic: 'a', reason: 'cancelled' }, { topic: 'b', reason: 'cancelled' },
-        { topic: 'c', reason: 'held', by: 'x' }, { topic: 'd', reason: 'held', by: 'y' },
-      ], (n) => n), {
-        holds: 'its sources "a", "b" are cancelled and the specifications "x", "y" source "c", "d"',
-        recovery: 'reactivate the topics first and regroup the discussions from the menu (s/spec)',
-      });
-    });
   });
 
   describe('the postpone plan', () => {
-    // A live topic with a proposed grouping over its discussion, a topic
-    // under a started specification, one with a live record on its series,
-    // one already postponed, and one cancelled.
+    // A live topic, a decided one, one with a live record on its series, one
+    // already postponed, and one cancelled.
     function manifest() {
       return {
         name: 'pay',
@@ -1104,10 +996,6 @@ describe('reads + derivations', () => {
           experiment: { items: {
             busy: { status: 'in-progress', experiments: { E1: { status: 'concluded' }, E2: { status: 'running' }, 'E2.1': { status: 'conceived' } } },
           } },
-          specification: { items: {
-            grp: { status: 'proposed', sources: { auth: { status: 'pending' } } },
-            unified: { status: 'in-progress', sources: { timing: { status: 'incorporated' } } },
-          } },
         },
       };
     }
@@ -1117,20 +1005,21 @@ describe('reads + derivations', () => {
       ordering: { horizon: 'next', summary: 's', origin: 'harvest', pulled_to: { work_unit: 'pay', topic: 'busy' } },
     } } };
 
-    it('takes the live items and the proposed groupings; the experiment series is never touched', () => {
+    it('takes the live items; the experiment series is never touched', () => {
       const plan = postponePlan(manifest(), 'auth', null);
       assert.deepStrictEqual(plan.items.map(({ phase, item }) => [phase, item.status]), [['discussion', 'in-progress']]);
-      assert.deepStrictEqual(plan.discards, ['grp']);
       assert.deepStrictEqual(plan.locks, []);
     });
 
-    it('locks, in refusal order: no such topic, already postponed, cancelled, a started specification, a live record, an illegal horizon, a roadmap clash', () => {
+    it('locks, in refusal order: no such topic, already postponed, cancelled, the build begun, a live record, an illegal horizon, a roadmap clash', () => {
       const m = manifest();
       const reasons = (name, proj = null, horizon = undefined) => postponePlan(m, name, proj, horizon).locks.map((l) => l.reason);
       assert.deepStrictEqual(reasons('ghost'), ['no topic "ghost" — the map\'s topics are auth, timing, busy']);
       assert.deepStrictEqual(reasons('away'), ['"away" is already postponed — it waits on the roadmap']);
       assert.deepStrictEqual(reasons('gone'), ['"gone" is cancelled — reactivate it from the epic menu first']);
-      assert.deepStrictEqual(reasons('timing'), ['postponing "timing" is refused while the specification "unified" sources its discussion — a topic past specification is past "not yet"']);
+      assert.deepStrictEqual(reasons('timing'), [], 'a decided topic goes while the spec is written');
+      assert.deepStrictEqual(postponePlan({ ...m, build: { position: 'auto' } }, 'timing', null).locks.map((l) => l.reason),
+        ['postponing "timing" is refused — pay\'s build has begun, so its map is closed: a decision that must change is settled in the build, and abandoning the work is the unit\'s cancel, through manage on the start menu']);
       assert.deepStrictEqual(reasons('busy'), ['postponing "busy" is refused while an experiment is live (E2, with E2.1) — conclude or abandon it first; a laboratory cannot run under a topic that has left the epic']);
       assert.deepStrictEqual(reasons('auth', project), ['a roadmap item named "auth" (horizon "next") is not this topic\'s — rename or remove it on the roadmap first']);
       // The horizon is read here, before the epic moves — a name the roadmap
@@ -1557,95 +1446,6 @@ describe('reads + derivations', () => {
     });
   });
 
-  describe('specUnsettled — the one predicate every planning surface holds the plan on', () => {
-    const unit = (spec) => ({
-      name: 'pay', work_type: 'epic',
-      phases: spec ? { specification: { items: { auth: spec } } } : {},
-    });
-
-    it('a concluded record with nothing moving beneath it is settled', () => {
-      assert.strictEqual(specUnsettled(unit({ status: 'completed' }), 'auth'), null);
-      assert.strictEqual(specUnsettled(unit({ status: 'completed', sources: { talks: { status: 'incorporated' } } }), 'auth'), null);
-    });
-
-    it('names each reason that holds — the status, the open rows, the flag', () => {
-      assert.deepStrictEqual(specUnsettled(unit({ status: 'in-progress' }), 'auth'),
-        { status: 'in-progress', flagged: false, open_sources: [] });
-      assert.deepStrictEqual(specUnsettled(unit({ status: 'completed', reconcile_needed: 'discussion' }), 'auth'),
-        { status: 'completed', flagged: true, open_sources: [] });
-      assert.deepStrictEqual(specUnsettled(unit({ status: 'completed', sources: { talks: { status: 'stale' }, roles: { status: 'incorporated' }, pay: { status: 'pending' } } }), 'auth'),
-        { status: 'completed', flagged: false, open_sources: [{ name: 'talks', status: 'stale' }, { name: 'pay', status: 'pending' }] });
-      assert.deepStrictEqual(specUnsettled(unit({ status: 'proposed' }), 'auth'),
-        { status: 'proposed', flagged: false, open_sources: [] });
-      assert.deepStrictEqual(specUnsettled(unit({}), 'auth'),
-        { status: null, flagged: false, open_sources: [] });
-    });
-
-    it('a terminal specification is settled by exit, and an absent one is no specification at all', () => {
-      for (const status of ['cancelled', 'superseded', 'promoted']) {
-        assert.strictEqual(specUnsettled(unit({ status }), 'auth'), null, status);
-      }
-      assert.strictEqual(specUnsettled(unit(undefined), 'auth'), null);
-      assert.strictEqual(specUnsettled(unit({ status: 'in-progress' }), 'other'), null,
-        'another topic\'s specification holds nothing');
-    });
-
-    it('openSources decodes both source forms and keeps every row that is not incorporated, with its class', () => {
-      assert.deepStrictEqual(openSources({ sources: { a: { status: 'incorporated' }, b: { status: 'stale' } } }),
-        [{ name: 'b', status: 'stale' }]);
-      assert.deepStrictEqual(openSources({ sources: [{ name: 'a', status: 'pending' }] }),
-        [{ name: 'a', status: 'pending' }]);
-      assert.deepStrictEqual(openSources(undefined), []);
-    });
-
-    it('phrases every reason that holds, in the order the record moves through them', () => {
-      assert.strictEqual(specUnsettledPhrase({ status: 'in-progress', flagged: false, open_sources: [] }), 'back in progress');
-      assert.strictEqual(specUnsettledPhrase({ status: 'proposed', flagged: false, open_sources: [] }), 'not concluded');
-      assert.strictEqual(specUnsettledPhrase({ status: 'completed', flagged: true, open_sources: [] }), 'its own input moved');
-      // Never extracted and extracted-then-moved are different facts, so
-      // each class takes its own clause, pending before stale.
-      assert.strictEqual(specUnsettledPhrase({ status: 'completed', flagged: false, open_sources: [{ name: 'talks', status: 'stale' }] }),
-        'a source has moved beneath the extraction (talks)');
-      assert.strictEqual(specUnsettledPhrase({ status: 'completed', flagged: false, open_sources: [{ name: 'talks', status: 'pending' }] }),
-        'a source is not yet extracted (talks)');
-      assert.strictEqual(specUnsettledPhrase({ status: 'completed', flagged: false, open_sources: [{ name: 'talks', status: undefined }] }),
-        'a source is not yet extracted (talks)', 'a row with no status has never been extracted');
-      assert.strictEqual(specUnsettledPhrase({
-        status: 'completed', flagged: false,
-        open_sources: [{ name: 'talks', status: 'pending' }, { name: 'roles', status: 'pending' }],
-      }), 'sources are not yet extracted (talks, roles)');
-      assert.strictEqual(specUnsettledPhrase({
-        status: 'completed', flagged: false,
-        open_sources: [{ name: 'talks', status: 'stale' }, { name: 'roles', status: 'stale' }],
-      }), 'sources have moved beneath the extraction (talks, roles)');
-      assert.strictEqual(specUnsettledPhrase({
-        status: 'in-progress',
-        flagged: true,
-        open_sources: [{ name: 'talks', status: 'stale' }, { name: 'roles', status: 'pending' }, { name: 'pay', status: 'stale' }],
-      }), 'back in progress, a source is not yet extracted (roles), sources have moved beneath the extraction (talks, pay), its own input moved');
-    });
-  });
-
-  describe('computeNextPhase — a specification whose row staled routes back before the plan', () => {
-    const feature = (spec, planning) => ({
-      name: 'feat', work_type: 'feature',
-      phases: {
-        discussion: { items: { feat: { status: 'completed' } } },
-        specification: { items: { feat: spec } },
-        planning: { items: { feat: planning } },
-      },
-    });
-
-    it('a stale source row with no flag routes to the specification, never past it', () => {
-      assert.deepStrictEqual(
-        computeNextPhase(feature({ status: 'completed', sources: { feat: { status: 'stale' } } }, { status: 'in-progress' })),
-        { next_phase: 'specification', phase_label: 'specification (input moved — reconcile)' });
-      assert.deepStrictEqual(
-        computeNextPhase(feature({ status: 'completed', sources: { feat: { status: 'incorporated' } } }, { status: 'in-progress' })),
-        { next_phase: 'planning', phase_label: 'planning (in-progress)' });
-    });
-  });
-
   describe('waits — every kind that holds a conclusion shut', () => {
     const world = (discussion) => ({
       name: 'lab', work_type: 'epic',
@@ -1661,26 +1461,6 @@ describe('reads + derivations', () => {
     it('an absent item holds nothing, and no other phase waits on experiments', () => {
       assert.deepStrictEqual(waits(world(undefined), 'discussion', 'pay'), [], 'no discussion item — nothing to hold shut');
       assert.deepStrictEqual(waits(world({ status: 'in-progress', awaiting_experiments: ['E3'] }), 'specification', 'pay'), []);
-    });
-
-    it('a plan waits on its specification while the record is unsettled, and on nothing once it settles', () => {
-      const plan = (spec) => ({
-        name: 'pay', work_type: 'epic',
-        phases: {
-          specification: { items: { auth: spec } },
-          planning: { items: { auth: { status: 'in-progress' } } },
-        },
-      });
-      assert.deepStrictEqual(waits(plan({ status: 'completed', sources: { talks: { status: 'stale' } } }), 'planning', 'auth'),
-        [{ kind: 'specification', status: 'completed', flagged: false, open_sources: [{ name: 'talks', status: 'stale' }] }]);
-      assert.deepStrictEqual(waits(plan({ status: 'in-progress' }), 'planning', 'auth'),
-        [{ kind: 'specification', status: 'in-progress', flagged: false, open_sources: [] }]);
-      assert.deepStrictEqual(waits(plan({ status: 'completed' }), 'planning', 'auth'), []);
-      assert.deepStrictEqual(waits(plan({ status: 'cancelled' }), 'planning', 'auth'), [],
-        'a cancelled specification releases the plan — the cancel is the exit');
-      const orphan = plan({ status: 'in-progress' });
-      delete orphan.phases.planning;
-      assert.deepStrictEqual(waits(orphan, 'planning', 'auth'), [], 'no plan item — nothing to hold shut');
     });
 
     it('topicWaits joins the in-progress holders alone — a parked or concluded discussion waits on nothing', () => {

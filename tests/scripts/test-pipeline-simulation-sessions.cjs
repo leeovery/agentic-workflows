@@ -22,7 +22,7 @@ const ROOT = path.join(__dirname, '../..');
 const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/knowledge/files.cjs'));
 const { githubOffline, git, stateGit } = require('./engine-harness.cjs');
 const { STATE_DIR_NAME, statePath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
-const { Sim, sessionLog, mappedEpic, enterEntry, decideTopic, discussed, askedOn } = require('./pipeline-world.cjs');
+const { Sim, sessionLog, mappedEpic, enterEntry, decideTopic, discussed, askedOn, keptOldSpec } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: sessions', () => {
   let sim;
@@ -132,8 +132,7 @@ describe('pipeline simulation: sessions', () => {
     const wu = 'redo';
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Redo it', '--session-log-file', sessionLog(sim, wu)]);
     discussed(sim, wu, wu);
-    sim.run(['topic', 'start', wu, 'specification', wu]);
-    sim.run(['topic', 'complete', wu, 'specification', wu]);
+    keptOldSpec(sim, wu, wu);
     sim.run(['topic', 'start', wu, 'planning', wu]);
     sim.write(`.leeway/${wu}/planning/${wu}/planning.md`, `# Plan — ${wu}\n`);
     sim.write(`.leeway/${wu}/planning/${wu}/tasks/${wu}-1-1.md`, '---\nid: redo-1-1\n---\n\n# A task\n');
@@ -143,10 +142,10 @@ describe('pipeline simulation: sessions', () => {
       `task_map.${wu}-1-1=${wu}-1-1`, 'storage_paths=[]']);
     sim.run(['commit', wu, '-m', `plan(${wu}): author`, '--plan', wu]);
 
-    // A peer session is mid-write on the specification beside it — the
+    // A peer session is mid-write on the unit's imports beside it — the
     // restart's two commits must not touch that.
-    const peerDoc = `.leeway/${wu}/specification/${wu}/specification.md`;
-    sim.write(peerDoc, '# Specification — Redo\n\npeer session dirt\n');
+    const peerDoc = `.leeway/${wu}/imports/notes.md`;
+    sim.write(peerDoc, '# Notes — Redo\n\npeer session dirt\n');
 
     // The restart, in prose order: files first, committed through `--plan`
     // while the planning item still resolves it.
@@ -164,7 +163,7 @@ describe('pipeline simulation: sessions', () => {
     assert.match(closed.committed, /^[0-9a-f]+$/);
     assert.deepStrictEqual(stateGit(sim.dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).split('\n').map((l) => l.trim()).filter(Boolean),
       [`${wu}/manifest.json`], 'only the entry\'s removal — the plan files are already in');
-    assert.match(stateGit(sim.dir, ['status', '--porcelain', '-uall']), /redo\/specification\/redo\/specification\.md/, 'the peer\'s dirt survives both commits');
+    assert.match(stateGit(sim.dir, ['status', '--porcelain', '-uall']), /redo\/imports\/notes\.md/, 'the peer\'s dirt survives both commits');
 
     // And the reason the order is what it is: `--plan` cannot resolve a
     // deleted item, so a cleanup committed after the delete has no scope.

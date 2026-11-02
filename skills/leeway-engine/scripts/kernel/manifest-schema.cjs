@@ -54,13 +54,13 @@ const VALID_PHASE_STATUSES = {
   // `postponed` is the Discovery unit's second terminal-for-now state: the
   // topic left the epic for the roadmap whole, its status stashed, and the
   // pull is the way back. Only the conversation postpones — a topic past
-  // specification is past "not yet". `promoted`: the discussion left the
-  // epic with the specification it sources, into that specification's
-  // cross-cutting unit (`promoted_to`).
-  discussion:     ['unstarted', 'in-progress', 'completed', 'cancelled', 'postponed', 'promoted'],
+  // specification is past "not yet".
+  discussion:     ['unstarted', 'in-progress', 'completed', 'cancelled', 'postponed'],
   investigation:  ['unstarted', 'in-progress', 'completed', 'cancelled'],
   scoping:        ['in-progress', 'completed', 'cancelled'],
-  specification:  ['proposed', 'in-progress', 'completed', 'superseded', 'promoted', 'cancelled'],
+  // The one spec keeps no items (P7); a quick-fix's scoping keeps its spec
+  // item until 29.15.
+  specification:  ['in-progress', 'completed', 'cancelled'],
   planning:       ['in-progress', 'completed', 'cancelled'],
   implementation: ['in-progress', 'completed', 'cancelled'],
   review:         ['in-progress', 'completed', 'cancelled'],
@@ -163,15 +163,11 @@ function isImportOrigin(origin) {
 const EXPERIMENT_SPAWN_PHASES = ['discussion'];
 
 // Every phase whose conclusion the wait gate holds on an upstream that has
-// not landed: discussion, plus planning, which stands on its
-// specification. The wait gate addresses these and no others.
+// not landed, and so that leaves on a pause rather than a conclusion:
+// discussion, plus planning, whose conclusion still fetches the wait gate
+// until planning itself goes (29.14). The wait gate, the paused banner and
+// the handoff into the epic menu address these and no others.
 const WAITING_PHASES = [...EXPERIMENT_SPAWN_PHASES, 'planning'];
-
-// Every phase that leaves on a pause rather than a conclusion: the wait
-// gate's phases, plus specification, which pauses on a gap it routed into
-// its sources. The paused banner and the handoff into the epic menu address
-// these and no others.
-const PAUSING_PHASES = [...WAITING_PHASES, 'specification'];
 
 // Gate modes. `auto` runs to the end of the session — a phase's start
 // returns every gate to `gated`; `bounded` is auto with an end the gate
@@ -190,7 +186,6 @@ const VALID_GATE_MODES = ['gated', 'auto', 'bounded'];
 /** @type {Record<string, Record<string, string | null>>} */
 const GATE_FIELDS = {
   planning:       { task_list_gate_mode: null, author_gate_mode: null, finding_gate_mode: null },
-  specification:  { construction_gate_mode: null, finding_gate_mode: null },
   implementation: { task_gate_mode: 'plan-phase', fix_gate_mode: 'plan-phase', analysis_gate_mode: null, consolidation_gate_mode: null },
 };
 
@@ -271,7 +266,6 @@ module.exports = {
   isImportOrigin,
   EXPERIMENT_SPAWN_PHASES,
   WAITING_PHASES,
-  PAUSING_PHASES,
   VALID_GATE_MODES,
   GATE_FIELDS,
   VALID_WORK_UNIT_STATUSES,

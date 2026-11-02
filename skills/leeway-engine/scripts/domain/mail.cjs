@@ -9,9 +9,9 @@
 // - `topic send <unit> <topic> --from <sender> --content <file> --slug
 //   <kebab>` lands a message, the scratch it was written to consumed. The
 //   topic is named by its key or by the title a rename gave it (8.8.17),
-//   either landing in its one mailbox. The sender is a name, never text: a topic of the unit or an item of one of
-//   its phases — a specification grouping its topics under a name of its own
-//   sends as that name — `{unit}.discovery` for the epic's own discovery
+//   either landing in its one mailbox. The sender is a name, never text: a
+//   topic of the unit or an item of one of its phases, `{unit}.discovery`
+//   for the epic's own discovery
 //   (8.2.13), `{unit}.specification` for its spec, whose sweep sends what
 //   only carries a decision into a topic (8.10.5), `{unit}.{topic}` for
 //   another unit's, or an
@@ -57,7 +57,7 @@ const { stateRoot, statePath, stateRelative, cacheScratch } = require('../kernel
 const { messageOf } = require('../kernel/call.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { computeTopicLifecycle, mailboxDir, mailboxFiles, mailPhase, dismissedNames, topicTitle, topicTitles, itemTitle, topicKey } = require('./derivations.cjs');
-const { parkMessageItem, flagDownstream, assertLegalTopicName } = require('./transitions.cjs');
+const { parkMessageItem, assertLegalTopicName } = require('./transitions.cjs');
 const { liveness, manifestOf } = require('./ledger-units.cjs');
 const { ID_FACTS, foldLedger, movedToBy } = require('./ledger-fold.cjs');
 const { assertInProgress, holdsTopic, topicClosure } = require('./topic-standing.cjs');
@@ -313,12 +313,9 @@ function toMailbox(cwd, manifest, phase, topic, message, slug) {
     const phases = ensureContainer(manifest, 'phases', 'phases');
     const items = ensureContainer(ensureContainer(phases, phase, `phases.${phase}`), 'items', `phases.${phase}.items`);
     const park = parkMessageItem(items, phase, topic);
-    const flags = flagDownstream(manifest, manifest.work_type, phase, topic);
     const voided = voidDecidedClose(manifest, topic, new Date().toISOString());
     if (park.reopened) fields.reopened = true;
-    if (flags.flagged.length > 0) fields.reconcile_flagged = true;
-    if (flags.staled.length > 0) fields.sources_staled = flags.staled;
-    if (park.dirty || voided || flags.flagged.length > 0 || flags.staled.length > 0) saveWorkUnitManifest(cwd, unit, manifest);
+    if (park.dirty || voided) saveWorkUnitManifest(cwd, unit, manifest);
   }
   const name = `${nextNumber(cwd, unit, topic)}-${slug}.md`;
   const rel = `${mailboxDir(unit, topic)}/${name}`;

@@ -314,8 +314,8 @@ describe('worklist shape', () => {
     const long = 'Collapse the *duplicated* retry_budget into one constant shared by both callers';
     const width = displayWidth();
     const holdWidth = (out) => {
-      // Rows, continuations, and notes hold the width; the header and a
-      // batch intro are prose lines left to soft-wrap, so they are exempt.
+      // Rows, continuations, and notes hold the width; the header is a
+      // prose line left to soft-wrap, so it is exempt.
       for (const line of out.split('===\n')[1].split('\n')) {
         if (!/^[○✓⊘\d ]/.test(line)) continue;
         assert.ok(renderedLen(line) <= width, `overflowing row: ${line}`);
@@ -328,10 +328,6 @@ describe('worklist shape', () => {
     writeManifest(dir, 'wu3', { phases: { planning: { items: { portal: { status: 'in-progress' } } }, discussion: { items: { checkout: { status: 'in-progress' } } } } });
     holdWidth(render(dir, ['findings-summary', 'wu3.planning.portal', '--file', writePayload(dir, 'w2.json', { review_label: 'Integrity Review', items: [
       { title: long, tag: 'Important', summary: 'A summary long enough to wrap beneath the arrow and hold its hang.' },
-    ] })]));
-    writeManifest(dir, 'wu4', { phases: { specification: { items: { checkout: { status: 'in-progress' } } } } });
-    holdWidth(render(dir, ['finding-batch', 'wu4.specification.checkout', '--file', writePayload(dir, 'w3.json', { items: [
-      { title: long, detail: 'The payments reconciliation storage owns the claim, and its subtopic says why.' },
     ] })]));
   });
 
@@ -356,13 +352,8 @@ describe('worklist shape', () => {
     const out = render(dir, ['findings-summary', 'wu2.planning.portal', '--file', writePayload(dir, 'b.json', { review_label: 'Rev', items })]);
     assert.ok(out.includes(`○ ${NB(1)}1. Item 1`), 'single-digit row pads with NBSP');
     assert.ok(out.includes('○ 11. Item 11'), 'two-digit row unpadded');
-    // Batch rows are capped below padding range, but the leading column must
-    // still never open on a real space — a markdown renderer would strip it.
-    const batch = Array.from({ length: 5 }, (_, i) => ({ title: `Item ${i + 1}`, detail: `Detail ${i + 1}` }));
-    writeManifest(dir, 'wu5', { phases: { specification: { items: { checkout: { status: 'in-progress' } } } } });
-    const bout = render(dir, ['finding-batch', 'wu5.specification.checkout', '--file', writePayload(dir, 'b2.json', { items: batch })]);
-    assert.ok(bout.includes('1\\. Item 1'), 'unglyphed row opens on its number');
-    for (const line of [...out.split('\n'), ...bout.split('\n')]) {
+    // A markdown renderer strips a leading real space.
+    for (const line of out.split('\n')) {
       assert.ok(!/^ /.test(line), `line leads with a real space: ${JSON.stringify(line)}`);
     }
   });
@@ -442,7 +433,6 @@ describe('CLI boundary — engine render through the argv entry', () => {
       phases: {
         discussion: { items: { pay: { status: 'in-progress' } } },
         planning: { items: { pay: { status: 'in-progress', task_list_gate_mode: 'auto' } } },
-        specification: { items: { pay: { status: 'superseded', superseded_by: 'core' } } },
       },
     });
   });
@@ -466,8 +456,6 @@ describe('CLI boundary — engine render through the argv entry', () => {
     assert.ok(run(['phase-completed', 'pay', '--phase', 'discussion']).includes('Discussion completed for "Pay".'));
     assert.ok(run(['phase-paused', 'pay', '--phase', 'discussion']).includes('Discussion paused for "Pay".'));
     assert.ok(run(['epic-all-done-gate', 'pay']).includes('Mark this epic as completed'));
-    assert.ok(run(['entry-gate', 'pay.specification.pay', '--own']).includes('was consolidated into'),
-      '--own must survive boolean-flag registration through argv');
     assert.ok(run(['phase-completed', 'pay', '--phase', 'scoping', '--paths']).includes(`  Spec: ${dir}/.leeway/pay/specification/pay/specification.md`),
       '--paths must survive boolean-flag registration through argv');
   });
@@ -481,7 +469,7 @@ describe('CLI boundary — engine render through the argv entry', () => {
 describe('catalogue dispatch', () => {
   it('the CLI usage banner lists every registered surface', () => {
     // A surface reachable from the catalogue but absent from the banner is
-    // invisible to anyone who mistypes a command — the way finding-batch was.
+    // invisible to anyone who mistypes a command.
     let catalogue;
     try {
       renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' });
@@ -496,7 +484,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, plan-progress, findings-summary, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, hypothesis-board, findings-signoff-gate, fix-direction, validation-gate, validation-report, project-skills, linters, mail-announce, mail-offer, mail-block, backlog-gate, candidate-gate, send-closed-target, conclude-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, change-set-tree, executor-block-gate, dependency-approval-gate, task-count-gate, plan-context-gate, cross-cutting-gate, cross-cutting-references, plan-format-gate, plan-review-gate, scoping-questions, complexity-gate, correction-gate, analysis-proceed-gate, spec-confirm-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, step-opening, format-version-check, entry-gate, code-gate, next-phase-gate, cancel-gate, postpone-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, absorb-target, absorb-confirm-gate, plan-topics, plan-summary, archived-actions, archived-delete-gate, inbox-content, inbox-restore-receipt, inbox-delete-receipt, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, inbox-roadmap-gate, roadmap-harvest-gate, roadmap-parks-gate, query-failure-gate, brownfield-offer-gate, walkthrough-offer, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migrations-applied, migration-gate, state-lost-gate, git-floor-stop, github-rule-gate, github-squash-gate, label-gate, knowledge-gate, knowledge-ready, state-merge-gate, ledger-stop, directive-stop, send-report, map, decided, decided-strike, wait-agents, start-this-work, approve-map, discovery-map, approve-map-strike, ready-to-build\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, plan-progress, findings-summary, finding, review-presentation, review-gate, convergence-diagnostic, hypothesis-board, findings-signoff-gate, fix-direction, validation-gate, validation-report, project-skills, linters, mail-announce, mail-offer, mail-block, backlog-gate, candidate-gate, send-closed-target, conclude-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, change-set-tree, executor-block-gate, dependency-approval-gate, task-count-gate, plan-context-gate, cross-cutting-gate, cross-cutting-references, plan-format-gate, plan-review-gate, scoping-questions, complexity-gate, proposed-task, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, step-opening, format-version-check, entry-gate, code-gate, next-phase-gate, cancel-gate, postpone-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, import-reprompt, pivot-continuation, absorb-target, absorb-confirm-gate, plan-topics, plan-summary, archived-actions, archived-delete-gate, inbox-content, inbox-restore-receipt, inbox-delete-receipt, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, inbox-roadmap-gate, roadmap-harvest-gate, roadmap-parks-gate, query-failure-gate, brownfield-offer-gate, walkthrough-offer, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migrations-applied, migration-gate, state-lost-gate, git-floor-stop, github-rule-gate, github-squash-gate, label-gate, knowledge-gate, knowledge-ready, state-merge-gate, ledger-stop, directive-stop, send-report, map, decided, decided-strike, wait-agents, start-this-work, approve-map, discovery-map, approve-map-strike, ready-to-build\)/);
   });
 });
 

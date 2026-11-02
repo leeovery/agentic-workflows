@@ -51,7 +51,7 @@ The phases group into three **stages**, the top-level grouping of the epic dashb
 3. **Discussion** (`leeway-discussion-process`) — one conversation per topic, research one of its tools: every question, finding and decision on the ledger, the decided checklist closing it; topics send each other messages through mailboxes.
 4. **Investigation** (`leeway-investigation-process`) — bugfix: symptoms and code analysis to a root cause.
 5. **Scoping** (`leeway-scoping-process`) — quick-fix: context, spec and plan in one pass.
-6. **Specification** (`leeway-specification-process`) — turn concluded discussions (a bugfix's investigation) into a standalone spec; an epic groups its discussions into specifications at the epic menu.
+6. **Specification** (`leeway-specification-process`) — turn a unit's decided topics (a bugfix's investigation) into its one spec, cut into phases and approved at ready to build, where the build's position is chosen.
 7. **Planning** (`leeway-planning-process`) — phases, tasks and acceptance criteria; the code's mechanism stays the implementer's.
 8. **Implementation** (`leeway-implementation-process`) — execute the plan by TDD (a verification workflow for a quick-fix).
 9. **Review** (`leeway-review-process`) — verify the delivered change-set against the plan and the specification.
@@ -93,7 +93,7 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - `.workflows/{work_unit}/discovery/session-NNN.md` — discovery session logs
 - `.workflows/{work_unit}/topics/{topic}/` — a topic's own place: `brief.md` its brief, `log.md` its conversation's log, `experiments/{id}-{slug}/` one experiment record, `mail/` the messages waiting for it
 - `.workflows/{work_unit}/investigation/{topic}.md`
-- `.workflows/{work_unit}/specification/{topic}/specification.md`
+- `.workflows/{work_unit}/spec.md` — the unit's one spec
 - `.workflows/{work_unit}/planning/{topic}/planning.md` — plus `phase-{N}-tasks.md` and the task files
 - `.workflows/{work_unit}/implementation/{topic}/`
 - `.workflows/{work_unit}/review/{topic}/report.md`

@@ -616,7 +616,7 @@ describe('epic topic cancel takes the series with its topic', () => {
   it('no phase-level cancel: the series and the discussion each refuse with the stage rule, writing nothing', () => {
     for (const phase of ['experiment', 'discussion']) {
       assert.strictEqual(engineFails(dir, ['topic', 'cancel', 'lab', phase, 'timing']).error,
-        'cancel is topic-level per stage — discovery (the map row with its discussion and experiments) or specification (with its planning)', phase);
+        'cancel is topic-level — discovery, the map row with its discussion and experiments', phase);
     }
     const before = readManifest(dir, 'lab');
     assert.deepStrictEqual(before.phases.discussion.items.timing.awaiting_experiments, ['E1', 'E2'], 'refusal writes nothing');
@@ -664,7 +664,7 @@ describe('epic topic cancel takes the series with its topic', () => {
   it('the reactivate restores the conversation; the series is never reactivated on its own, and the next spawn revives it', () => {
     engine(dir, ['topic', 'cancel', 'lab', 'discovery', 'timing']);
     assert.match(engineFails(dir, ['topic', 'reactivate', 'lab', 'experiment', 'timing']).error,
-      /^reactivate is topic-level per stage — discovery/);
+      /^reactivate is topic-level — discovery/);
     const res = engine(dir, ['topic', 'reactivate', 'lab', 'discovery', 'timing']);
     assert.deepStrictEqual(res.restored, [{ phase: 'discussion', status: 'in-progress' }]);
     const after = readManifest(dir, 'lab');

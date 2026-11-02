@@ -38,12 +38,10 @@ const start = require('./domain/start.cjs');
 const inboxSet = require('./domain/inbox-set.cjs');
 const workunit = require('./domain/workunit-detail.cjs');
 const workunitManage = require('./domain/workunit-manage.cjs');
-const specification = require('./domain/specification.cjs');
 const agentState = require('./domain/agent-state.cjs');
 const epicProjections = require('./domain/projections/epic.cjs');
 const startProjections = require('./domain/projections/start.cjs');
 const workunitProjections = require('./domain/projections/workunit.cjs');
-const specificationProjections = require('./domain/projections/specification.cjs');
 const selectionProjections = require('./domain/projections/selection.cjs');
 const surfaces = require('./domain/projections/surfaces.cjs');
 
@@ -77,8 +75,6 @@ module.exports = {
     computeSourceProvenance: derivations.computeSourceProvenance,
     compareMapRows: derivations.compareMapRows,
     computeNeedsSequencing: derivations.computeNeedsSequencing,
-    inputMoved: derivations.inputMoved,
-    movedFrom: derivations.movedFrom,
   },
   agents: {
     completedReviewCycles: agentState.completedReviewCycles,
@@ -105,14 +101,11 @@ module.exports = {
     activeWorkUnit: workunit.activeWorkUnit,
     phaseTargets: workunit.phaseTargets,
     WORK_UNIT_TYPES: workunit.WORK_UNIT_TYPES,
-    specificationDiscovery: specification.specificationDiscovery,
-    specificationDetail: specification.specificationDetail,
   },
   project: {
     titlecase: conventions.titlecase,
     actionsTable: surfaces.actionsTable,
     workUnitTitle: workunitProjections.workUnitTitle,
-    SPEC_TITLE: specificationProjections.SPEC_TITLE,
     selectionNotFound: selectionProjections.selectionNotFound,
     epicDashboard: epicProjections.epicDashboard,
     epicKey: epicProjections.epicKey,
@@ -147,8 +140,5 @@ module.exports = {
     workUnitData: workunitProjections.workUnitData,
     phaseRoute: workunitProjections.phaseRoute,
     revisitPhasesSection: workunitProjections.revisitPhasesSection,
-    specificationDisplay: specificationProjections.specificationDisplay,
-    specificationMenu: specificationProjections.specificationMenu,
-    specificationCompletedMenu: specificationProjections.specificationCompletedMenu,
   },
 };

@@ -210,13 +210,12 @@ describe('engine manifest — mutations answer with the engine JSON contract', (
     // where no flow reads it.
     assert.match(runFails(dir, ['set', 'auth.planning.auth', 'task_gate_mode', 'auto']).error,
       /"task_gate_mode" is a gate of the implementation phase — write it on that phase's item/);
-    assert.match(runFails(dir, ['set', 'auth.implementation.auth', 'construction_gate_mode', 'auto']).error,
-      /is a gate of the specification phase/);
     assert.match(runFails(dir, ['set', 'auth.implementation.auth', 'ghost_gate_mode', 'gated']).error,
       /"ghost_gate_mode" is not a gate the schema knows — gates by phase: planning: /);
-    // finding_gate_mode is a gate of two phases — both accept it.
+    // The spec keeps no gates — finding_gate_mode is planning's alone.
     runJson(dir, ['set', 'auth.planning.auth', 'finding_gate_mode', 'auto']);
-    runJson(dir, ['set', 'auth.specification.auth', 'finding_gate_mode', 'auto']);
+    assert.match(runFails(dir, ['set', 'auth.specification.auth', 'finding_gate_mode', 'auto']).error,
+      /"finding_gate_mode" is a gate of the planning phase — write it on that phase's item/);
     // bounded reaches only a gate with a declared bound; the refusal names them.
     runJson(dir, ['set', 'auth.implementation.auth', 'fix_gate_mode', 'bounded']);
     assert.match(runFails(dir, ['set', 'auth.implementation.auth', 'consolidation_gate_mode', 'bounded']).error,
@@ -451,12 +450,12 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
     const m = readWorkUnit(dir, 'payments');
     m.phases.specification.items.dropped = { status: 'cancelled', previous_status: 'completed', previous_order: 1, sources: { beta: { status: 'incorporated' } } };
     fs.writeFileSync(path.join(dir, '.leeway', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
-    const refusal = /specification item "dropped" is cancelled — reactivate it instead \(engine topic reactivate payments specification dropped\)/;
-    assert.match(runFails(dir, ['set', 'payments.specification.dropped', 'status', 'proposed']).error, refusal);
-    assert.match(runFails(dir, ['set', 'payments.specification.dropped', 'status=proposed', 'sources.gamma.status=pending']).error, refusal);
+    const refusal = /specification item "dropped" is cancelled — reactivate it instead \(engine topic reactivate\)/;
+    assert.match(runFails(dir, ['set', 'payments.specification.dropped', 'status', 'in-progress']).error, refusal);
+    assert.match(runFails(dir, ['set', 'payments.specification.dropped', 'status=in-progress', 'sources.gamma.status=pending']).error, refusal);
     assert.match(runFails(dir, ['apply', 'payments', '--file', payload([
       { op: 'set', path: 'payments.planning.portal', fields: { 'external_dependencies.billing.state': 'resolved' } },
-      { op: 'set', path: 'payments.specification.dropped', fields: { status: 'proposed', 'sources.gamma.status': 'pending' } },
+      { op: 'set', path: 'payments.specification.dropped', fields: { status: 'in-progress', 'sources.gamma.status': 'pending' } },
     ])]).error, refusal);
     const after = readWorkUnit(dir, 'payments');
     assert.deepStrictEqual(after.phases.specification.items.dropped,
@@ -474,7 +473,7 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
     const manifestPath = path.join(dir, '.leeway', 'payments', 'manifest.json');
     fs.writeFileSync(manifestPath, JSON.stringify(m, null, 2) + '\n');
     const before = fs.readFileSync(manifestPath, 'utf8');
-    const refusal = /specification item "dropped" is cancelled — reactivate it instead \(engine topic reactivate payments specification dropped\)/;
+    const refusal = /specification item "dropped" is cancelled — reactivate it instead \(engine topic reactivate\)/;
     assert.match(runFails(dir, ['delete', 'payments.specification', 'items.dropped']).error, refusal);
     assert.match(runFails(dir, ['delete', 'payments.specification.dropped', 'previous_order']).error, refusal);
     assert.match(runFails(dir, ['delete', 'payments.specification.dropped', 'sources.beta']).error, refusal);
@@ -516,8 +515,8 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
     assert.match(runFails(dir, ['set', 'payments.discussion.fees', 'status', 'completed']).error, discussion);
     assert.match(runFails(dir, ['delete', 'payments.discussion', 'items.fees']).error, discussion);
     assert.match(runFails(dir, ['delete', 'payments.discussion.fees', 'promoted_to']).error, discussion);
-    // A grouping landing on a promoted specification's key never overwrites it.
-    assert.match(runFails(dir, ['set', 'payments.specification.billing', 'status', 'proposed']).error,
+    // A status landing on a promoted specification an old unit kept never overwrites it.
+    assert.match(runFails(dir, ['set', 'payments.specification.billing', 'status', 'in-progress']).error,
       /specification item "billing" is promoted \(to "billing-cc"\)/);
     assert.strictEqual(fs.readFileSync(manifestPath, 'utf8'), before, 'nothing written');
   });

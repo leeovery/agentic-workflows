@@ -570,7 +570,7 @@ describe('structurally corrupt manifests refuse writes', () => {
 
 /**
  * One call per entry of the writer lock's exempt table, each one that
- * succeeds in the epic fixture with a discussion and a specification, in a
+ * succeeds in the epic fixture with a discussion, in a
  * conversation — the gate it answers rendered just before
  * it. Boot and the ledger's writes are the table's verbs that wait on the
  * lock, each taking it itself around the state writes it makes, so they have
@@ -587,7 +587,6 @@ const EXEMPT_CALLS = [
   ['render', 'signpost', 'Hello'],
   ['handoff', 'leeway-continue-epic', 'payments'],
   ['topic', 'mailbox', 'payments', 'auth-flow'],
-  ['topic', 'incorporations', 'payments', 'auth-flow'],
   ['roadmap', 'state'],
   ['verdict', 'queue'],
   ['session', 'label', 'payments'],
@@ -671,7 +670,6 @@ describe('engine writes take the writer lock', () => {
       'the table names dispatched commands alone');
     const manifest = readManifest(dir, 'payments');
     manifest.phases.discussion = { items: { 'auth-flow': { status: 'in-progress' } } };
-    manifest.phases.specification = { items: { 'auth-flow': { status: 'in-progress', sources: {} } } };
     writeState(dir, layout.manifest('payments'), JSON.stringify(manifest, null, 2) + '\n');
     const env = { CLAUDE_CODE_SESSION_ID: 'sess-1' };
     const asked = harness.ok(dir, ['ledger', 'ask', 'payments.discussion.auth-flow'], { env, stdin: JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'Who signs a user in?' }) }).id;

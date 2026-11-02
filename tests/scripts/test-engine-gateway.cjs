@@ -322,10 +322,10 @@ describe('an ACTIONS table resolves every row its MENU offers', () => {
   }
 
   // Every linear unit with an earlier phase to revisit — a decided discussion
-  // being none, the cross-cutting concern is finalising; the epic holds a
-  // cancelled topic, a topic postponed to the roadmap, a plan blocked on a
-  // dependency, a concluded specification and a proposed grouping, so each
-  // of its sub-views offers rows.
+  // and a concluded spec being none, the cross-cutting concern is
+  // finalising; the epic holds a cancelled topic, a topic postponed to the
+  // roadmap and a plan blocked on a dependency, so each of its sub-views
+  // offers rows.
   const WORLDS = {
     live: (/** @type {string} */ dir) => {
       projectManifest(dir);
@@ -343,15 +343,11 @@ describe('an ACTIONS table resolves every row its MENU offers', () => {
             gone: { status: 'cancelled', previous_status: 'in-progress' },
             exports: { status: 'postponed', previous_status: 'in-progress' },
           } },
-          specification: { items: {
-            billing: { status: 'completed', sources: { billing: { status: 'incorporated' } } },
-            payments: { status: 'proposed', sources: { payments: { status: 'pending' } } },
-          } },
+          specification: { items: { billing: { status: 'completed', sources: { billing: { status: 'incorporated' } } } } },
           planning: { items: { billing: { status: 'completed', external_dependencies: { auth: { description: 'd', state: 'unresolved' } } } } },
         },
       });
-      createFile(dir, '.leeway/live-epic/specification/billing/specification.md', '# Billing\n');
-      linearUnit(dir, 'live-feature', 'feature', 'specification', 'planning');
+      linearUnit(dir, 'live-feature', 'feature', 'planning', 'implementation');
       linearUnit(dir, 'live-bugfix', 'bugfix', 'investigation', 'specification');
       linearUnit(dir, 'live-quickfix', 'quick-fix', 'scoping', 'implementation');
       createManifest(dir, 'live-policy', {
@@ -379,8 +375,6 @@ describe('an ACTIONS table resolves every row its MENU offers', () => {
     ['leeway-continue-linear', ['view', 'live-bugfix'], 'live'],
     ['leeway-continue-linear', ['view', 'live-quickfix'], 'live'],
     ['leeway-continue-linear', ['view', 'live-policy'], 'live'],
-    ['leeway-continue-epic', ['spec-view', 'live-epic'], 'live'],
-    ['leeway-continue-epic', ['spec-completed-menu', 'live-epic'], 'live'],
     ['leeway-roadmap', ['view'], 'live'],
   ];
 

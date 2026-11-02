@@ -188,7 +188,7 @@ const PROJECT_MANIFEST = {
   baseline: { status: 'skipped' },
 };
 
-/** An epic mid-discussion, nothing built: research, mail, experiments, a spec proposed, imports. */
+/** An epic mid-discussion, nothing built: research, mail, experiments, a spec under way and a plan, imports. */
 const CORE = {
   name: 'core',
   work_type: 'epic',
@@ -252,6 +252,12 @@ const CORE = {
         old: { status: 'cancelled', previous_order: 2, sources: {} },
       },
     },
+    planning: {
+      items: {
+        search: { status: 'in-progress', format: 'sample-format', phase: 1, task: 1 },
+        old: { status: 'completed', format: 'sample-format' },
+      },
+    },
   },
 };
 
@@ -265,11 +271,11 @@ const SHOP = {
   phases: {
     discovery: { items: { ranking: { routing: 'discussion', source: 'discovery', summary: 'Ranking' } } },
     discussion: { items: { ranking: { status: 'completed' }, 'event-tracking': { status: 'completed' }, 'usage-analysis': { status: 'completed' } } },
-    specification: { items: { ranking: { status: 'completed', order: 1, sources: { ranking: { status: 'incorporated' } } } } },
+    specification: { items: { ranking: { status: 'completed', order: 1, construction_gate_mode: 'auto', finding_gate_mode: 'gated', sources: { ranking: { status: 'incorporated' } } } } },
     planning: {
       items: {
         ranking: {
-          status: 'completed', format: 'sample-format', phase: 2, task: 1, review_cycle: 1, review_baseline_words: 900,
+          status: 'completed', format: 'sample-format', phase: 2, task: 1, review_cycle: 1, review_baseline_words: 900, reconcile_needed: 'specification',
           approvals: { structure: true }, tracking: { 'review-integrity-tracking-c1.md': 'done' },
           external_dependencies: { core: { state: 'resolved', description: 'search' } },
           staging: { 'author-p1': { tasks: { 1: 'approved' } } },
@@ -756,7 +762,6 @@ describe('migration 078: the move into the layout in .leeway/', () => {
             },
           },
           experiment: { items: { alpha: CORE.phases.experiment.items.alpha } },
-          specification: { items: { search: { status: 'in-progress', reconcile_needed: 'discussion', sources: { alpha: { status: 'incorporated' } } }, old: { status: 'cancelled', sources: {} } } },
         },
       });
       assert.strictEqual(read('core/manifest.json'), json(manifestOf('core')), 'in the engine\'s serialisation');
@@ -767,7 +772,12 @@ describe('migration 078: the move into the layout in .leeway/', () => {
         Object.entries(manifestOf('core').phases.discussion.items).filter(([, item]) => 'reconcile_needed' in item).map(([topic]) => topic),
         [],
       );
-      assert.strictEqual(manifestOf('core').phases.specification.items.search.reconcile_needed, 'discussion');
+      assert.strictEqual(manifestOf('shop').phases.planning.items.ranking.reconcile_needed, 'specification');
+    });
+
+    it('keeps no spec or planning items where nothing is built, its specs and plans reference assets and its one spec written fresh (21.8.2, 21.8.3)', () => {
+      assert.deepStrictEqual(['specification', 'planning'].filter((phase) => phase in manifestOf('core').phases), [], 'a planned epic, nothing built');
+      assert.ok(!('specification' in manifestOf('shared').phases), 'a cross-cutting unit builds nothing');
     });
   });
 
@@ -794,12 +804,12 @@ describe('migration 078: the move into the layout in .leeway/', () => {
       ]);
     });
 
-    it('drops staging, review cycles, plan review tracking and dependencies, keeping the build\'s standing', () => {
+    it('drops staging, review cycles, the spec\'s gate modes, plan review tracking and dependencies, keeping the build\'s standing and its spec items for the cut', () => {
       assert.deepStrictEqual(manifestOf('shop').phases, {
         discovery: { items: { ranking: { source: 'discovery', summary: 'Ranking' } } },
         discussion: { items: { ranking: { status: 'completed' }, 'event-tracking': { status: 'completed' }, 'usage-analysis': { status: 'completed' } } },
         specification: { items: { ranking: { status: 'completed', sources: { ranking: { status: 'incorporated' } } } } },
-        planning: { items: { ranking: { status: 'completed', format: 'sample-format', phase: 2, task: 1, task_map: { 'ranking-1-1': 'ext-a1' }, storage_paths: ['.tracker'] } } },
+        planning: { items: { ranking: { status: 'completed', format: 'sample-format', phase: 2, task: 1, reconcile_needed: 'specification', task_map: { 'ranking-1-1': 'ext-a1' }, storage_paths: ['.tracker'] } } },
         implementation: { items: { ranking: { status: 'in-progress', current_phase: 2, current_task: 'ranking-2-1', completed_tasks: ['ranking-1-1'], bank: [{ finding: 'later' }] } } },
         review: { items: { ranking: { status: 'in-progress', reviewed_tasks: ['ranking-1-1'] } } },
       });

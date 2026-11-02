@@ -11,9 +11,8 @@
 //
 // Judgment decides, code records: the sequencing reference proposes the
 // order; this validates and writes it in one transaction (manifest write,
-// scoped git commit) and clears `phases.specification.build_order_stale` —
-// the flag topic completion sets so declared dependencies can sharpen an
-// order first assigned at grouping. The order is advisory everywhere: it
+// scoped git commit) and clears `phases.specification.build_order_stale`.
+// The order is advisory everywhere: it
 // sorts and recommends, it never blocks. All errors throw loud and specific,
 // before anything is written. Every load→mutate→save runs under the work
 // unit's manifest lock.
@@ -125,10 +124,9 @@ function sequenceBuildOrder(cwd, workUnit, orders) {
  * live set's orders are not exactly a contiguous 1..N permutation — a topic
  * lacking an order, a duplicate, or a hole (a cancel stashes its number;
  * birth writes ride `manifest apply`, which validates nothing) — or when
- * topic completion has flagged the order stale. The same invariant the
- * sequence verb enforces on write, read back. No specification topics at
- * all → false (there is nothing to order yet — the grouping analysis
- * assigns at birth).
+ * the order is flagged stale. The same invariant the sequence verb enforces
+ * on write, read back. No specification topics at all → false (there is
+ * nothing to order).
  * @param {object} manifest
  * @returns {boolean}
  */

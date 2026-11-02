@@ -47,7 +47,6 @@ const { PRODUCT_SESSIONS } = require('./layout.cjs');
 const { phaseSkill } = require('./handoff.cjs');
 const { stepOfId, shownTask } = require('./task-id.cjs');
 const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
-const { specificationFile } = require('./specification.cjs');
 const { section, dataSection, GATE_MOD_INSTRUCTION } = require('./projections/surfaces.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
@@ -410,7 +409,7 @@ function workAt(cwd, position, manifest) {
     case 'experiment':
       return { skill, documents: experimentFiles(cwd, name, topic, manifest) };
     case 'scoping':
-      return { skill, documents: [statePath(cwd, specificationFile(name, topic)), path.join(plan, 'planning.md')] };
+      return { skill, documents: [path.join(wu, 'specification', topic, 'specification.md'), path.join(plan, 'planning.md')] };
     case 'planning':
       return { skill, documents: [path.join(plan, 'planning.md'), ...phaseTaskFiles(plan)] };
     case 'implementation': {

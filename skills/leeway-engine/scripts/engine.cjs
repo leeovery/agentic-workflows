@@ -45,8 +45,7 @@ const { projectRepos, repoOf, repoPath, repoName, commitGroups, projectDirtyEntr
 const { TERMINAL_STATUSES, isParentExperimentId } = require('./kernel/manifest-schema.cjs');
 const { sequenceMap, addTopic, addTopics, editTopic, renameTopic, removeTopic, rewriteBrief } = require('./domain/discovery-map.cjs');
 const { sequenceBuildOrder } = require('./domain/build-order.cjs');
-const { startTopic, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic, postponeTopic } = require('./domain/transitions.cjs');
-const { incorporations } = require('./domain/specification.cjs');
+const { startTopic, completeTopic, reopenTopic, cancelTopic, reactivateTopic, postponeTopic } = require('./domain/transitions.cjs');
 const { mailboxDir, mailPhase } = require('./domain/derivations.cjs');
 const { SEND_USAGE, MAILBOX_USAGE, ANSWERED_USAGE, sendMessage, mailboxOf, answerMessage } = require('./domain/mail.cjs');
 const { loadWorkUnitManifest } = require('./kernel/manifest.cjs');
@@ -93,7 +92,6 @@ const { createWorkUnit } = require('./domain/workunit-create.cjs');
 const { importWorkUnitFiles } = require('./domain/workunit-import.cjs');
 const { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
 const { absorbWorkUnit } = require('./domain/workunit-absorb.cjs');
-const { promoteWorkUnit } = require('./domain/workunit-promote.cjs');
 const { closeDiscoverySession } = require('./domain/discovery-session.cjs');
 const { runFieldCommand, isRead } = require('./domain/fields.cjs');
 const { renderSurface, SURFACES } = require('./domain/render.cjs');
@@ -227,7 +225,6 @@ ${VERDICT_USAGE.replace(/^/gm, '  ')}
   workunit reactivate <work-unit>
   workunit pivot <work-unit>
   workunit absorb <feature> --into <epic> --topic <name>
-  workunit promote <work-unit> <topic> --to <cc-work-unit> --description <text>
   ${POSITION_USAGE}
   build-order sequence <work-unit> <topic>=<order> [<topic>=<order> …]
   discovery-session close <work-unit|product> -m <message>
@@ -235,7 +232,6 @@ ${VERDICT_USAGE.replace(/^/gm, '  ')}
 ${Object.values(MAP_USAGE).map((usage) => `  ${usage}`).join('\n')}
   ${SEND_USAGE}
   ${MAILBOX_USAGE}
-  topic incorporations <work-unit> <topic>
   ${ANSWERED_USAGE}
   presence beat <work-unit> <phase> <topic>
   presence clear <work-unit> <phase> <topic>
@@ -254,16 +250,14 @@ ${Object.values(MAP_USAGE).map((usage) => `  ${usage}`).join('\n')}
   shell guard                        (hook before Bash; its JSON on stdin)
   topic complete <work-unit> <phase> <topic>
   topic reopen <work-unit> <phase> <topic>
-  topic supersede <work-unit> <phase> <topic> --by <topic>
-  topic cancel <work-unit> <discovery|specification> <topic>
-  topic reactivate <work-unit> <discovery|specification> <topic>
+  topic cancel <work-unit> discovery <topic>
+  topic reactivate <work-unit> discovery <topic>
   topic postpone <work-unit> <topic> --horizon "<horizon>"
   experiment create <work-unit> <topic> --slug <kebab> (--from discussion --problem <file> --question <id> | --parent <E{n}>)
   experiment advance <work-unit> <topic> <id>
   experiment approve <work-unit> <topic> <id>
   experiment conclude <work-unit> <topic> <id> --verdict <one line>
   experiment abandon <work-unit> <topic> <id> --reason <one line>
-  sources stale <work-unit> <discussion> [--except <spec-topic>]
   task phase <work-unit> <N> --title <title>
   task create <work-unit> <N> --file <path>
   task add <work-unit> <task> --file <path> --by <orchestrator|person>
@@ -340,12 +334,9 @@ ${APPROVE_MAP_USAGE.replace(/^/gm, '  ')}
   render task-list   <wu.planning.topic> --file <payload.json>
   render plan-progress <wu.planning.topic> --variant construction-complete|concluded
   render findings-summary <wu.phase.topic> --file <payload.json>
-  render finding          <wu.phase.topic> --file <payload.json> [--view full]
-  render finding-batch    <wu.specification.topic> --file <payload.json>
+  render finding          <wu.planning.topic> --file <payload.json> [--view full]
   render review-presentation <wu.review.topic> --file <payload.json>
   render review-gate      <wu.review.topic> --verdict pass|fail [--replan N]
-  render spec-review-gate <wu.specification.topic> --variant continue|reloop
-  render spec-completion-gate <wu.specification.topic> --variant assessment --file <payload.json> | --variant signoff
   render hypothesis-board <wu.investigation.topic> --file <payload.json> --variant plan|resume|check-in|pivot
   render findings-signoff-gate <wu.investigation.topic>
   render fix-direction     <wu.investigation.topic> --file <payload.json>
@@ -381,25 +372,19 @@ ${APPROVE_MAP_USAGE.replace(/^/gm, '  ')}
   render plan-review-gate <wu.planning.topic> --variant continue|reloop
   render scoping-questions <wu> --open <what,where,why,exclusions>
   render complexity-gate  <wu> --file <payload.json>
-  render correction-gate  <wu.specification.topic>
-  render analysis-proceed-gate <wu>
-  render spec-confirm-gate <wu.specification.topic> [--single|--unify]  (bare: empty unless the start incorporates a specification)
   render proposed-task    <wu.phase.topic> --file <payload.json> --gate gated|auto [--comment-hint STR]
-  render incoherence-gate <wu.phase.topic> --file <payload.json> --variant conflict|gap-route|held-doc
-  render resurface-gate   <wu.phase.topic> --file <payload.json> [--view full]
-  render construction-gate <wu.phase.topic>
   render tasks-overview   <wu.phase.topic> --file <payload.json>
   render author-task-gate <wu.planning.topic> --m N --total N --title STR --file <payload.json> | --phase N  (--phase: empty while gated)
   render phase-tree       <wu.planning.topic> --file <payload.json> [--approve] | --menu-only
   render phase-completed   <wu> --phase <phase> [--paths]
-  render phase-paused      <wu> --phase <discussion|planning|specification>
+  render phase-paused      <wu> --phase <discussion|planning>
   render phase-note        <wu.phase.topic> --verb <Word> [--noun <word>]
   render step-opening      <wu.phase.topic> --step conclude|consolidation|do-now
   render format-version-check --file <payload.json>
-  render entry-gate        <wu.phase.topic> [--own]  (planning|implementation|review|specification)
+  render entry-gate        <wu.phase.topic>  (planning|implementation|review)
   render code-gate         <wu.phase.topic>          (implementation|review — empty when the code slot is free)
   render next-phase-gate   <wu> --prev <phase> --next <phase>  (empty when continuing is the only way forward)
-  render cancel-gate       <wu.discovery|specification.name>
+  render cancel-gate       <wu.discovery.name>
   render postpone-gate     <wu.discovery.topic> --horizon "<horizon>"
   render epic-all-done-gate <wu>
   render epic-soft-gate <wu> --action <action> [--topic <topic>]
@@ -412,13 +397,11 @@ ${APPROVE_MAP_USAGE.replace(/^/gm, '  ')}
   render cycle-gate
   render workunit-receipt  <wu> --verb complete|cancel|reactivate|pivot [--pipeline [--skipped-review]] [--warn] [--inbox <n>]
   render topic-receipt     <wu.phase.topic> --verb complete [--warn]
-  render topic-receipt     <wu.specification.spec> --verb supersede [--warn]
-  render topic-receipt     <wu.discovery|specification.name> --verb cancel|reactivate [--warn] [--inbox <n>]
+  render topic-receipt     <wu.discovery.name> --verb cancel|reactivate [--warn] [--inbox <n>]
   render topic-receipt     <wu.discovery.topic> --verb postpone|restore [--warn]
   render absorb-summary    <feature> --into <epic> --topic <name>
   render absorb-receipt    <epic> --topic <name> [--moved seeds,imports] [--experiments <N>] [--renamed <from>:<to>[,…]] [--warn]
   render absorb-continuation <epic> --feature <name>
-  render promote-receipt   <wu.specification.topic> --to <cc-work-unit> [--imports <N>] [--warn]
   render import-reprompt   --file <payload.json>   # {"missing": ["path", …]} — the re-prompt after a landing refused
   render pivot-continuation <wu>
   render absorb-target     <feature>
@@ -587,9 +570,6 @@ function runVerdict(call, argv) {
 // re-index — as one transaction with an engine-owned message. absorb merges
 // a feature into an epic as a new topic and deletes the feature — validated
 // completely before anything moves, one multi-pathspec commit at the end.
-// promote moves a completed epic specification (and its source discussions)
-// to a new, already-completed cross-cutting work unit — same shape: validated
-// completely before anything moves, one multi-pathspec commit at the end.
 // import is create's landing once the unit exists: files into the same
 // `imports/` home, stamped with the origin that took them, one confined
 // commit — and a beat on that origin's topic when a phase session landed it.
@@ -658,17 +638,10 @@ function runWorkunit(call, argv) {
         throw new Error('Usage: engine workunit absorb <feature> --into <epic> --topic <name>');
       }
       respond(call, absorbWorkUnit(call.cwd, feature, { into: opts.into, topic: opts.topic }));
-    } else if (command === 'promote') {
-      const { opts, positional } = parseArgs(rest);
-      const [workUnit, topic] = positional;
-      if (!workUnit || !topic || positional.length !== 2 || !opts.to || !opts.description) {
-        throw new Error('Usage: engine workunit promote <work-unit> <topic> --to <cc-work-unit> --description <text>');
-      }
-      respond(call, promoteWorkUnit(call.cwd, workUnit, topic, { to: opts.to, description: opts.description }));
     } else if (command === 'position') {
       respond(call, runPositionVerb(call.cwd, rest));
     } else {
-      throw new Error('Usage: engine workunit <create|import|complete|cancel|reactivate|pivot|absorb|promote|position> …');
+      throw new Error('Usage: engine workunit <create|import|complete|cancel|reactivate|pivot|absorb|position> …');
     }
   } catch (err) {
     failJson(call, err);
@@ -827,14 +800,13 @@ function runDiscoverySession(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
-// topic — phase-item transitions. start/send/complete/reopen/supersede are
+// topic — phase-item transitions. start/send/complete/reopen are
 // manifest-side lifecycle bookkeeping (KB sync where the phase is indexed:
-// index on complete, remove on supersede; reopen syncs nothing —
-// warn-don't-block) with no git commit — the calling session's commit
-// cadence picks the change up. cancel/reactivate act on a stage's unit —
-// `discovery` (the map row with its discussion and experiments)
-// or `specification` (with its planning) — one transaction per call:
-// manifest write, knowledge-base sync (warn-don't-block), scoped git commit.
+// index on complete; reopen syncs nothing — warn-don't-block) with no git
+// commit — the calling session's commit cadence picks the change up.
+// cancel/reactivate act on a topic's unit, `discovery` (the map row with its
+// discussion and experiments) — one transaction per call: manifest write,
+// knowledge-base sync (warn-don't-block), scoped git commit.
 // The JSON response reports what happened — no follow-up read needed.
 //
 // Heartbeats ride the self-referential verbs — the session acting on its own
@@ -844,7 +816,7 @@ function runDiscoverySession(call, argv) {
 // so the slot it held opens at that moment rather than at some later commit.
 // `send` never beats — delivery acts on the TARGET topic from the origin's
 // session, and a beat there would stamp the origin process onto a topic it
-// does not hold. Nor do `cancel`, `reactivate`, `supersede` or `reopen`:
+// does not hold. Nor do `cancel`, `reactivate` or `reopen`:
 // those are analysis and navigation actors reaching across topics.
 // ---------------------------------------------------------------------------
 
@@ -854,7 +826,7 @@ const TOPIC_COMMANDS = { start: startTopic, complete: completeTopic, reopen: reo
 // `mailbox` and `answered` beat at their own branches.
 const TOPIC_BEATS = ['start'];
 
-// The verbs whose phase argument names a stage's unit, not a phase item.
+// The verbs whose phase argument names a topic's unit, not a phase item.
 const UNIT_VERBS = ['cancel', 'reactivate'];
 
 /**
@@ -1017,25 +989,6 @@ function runConversation(call, argv) {
   }
 }
 
-/** @param {Call} call @param {string[]} argv */
-function runSources(call, argv) {
-  const [command, ...rest] = argv;
-  try {
-    if (command === 'stale') {
-      const { opts, positional } = parseArgs(rest);
-      const [workUnit, discussion] = positional;
-      if (!workUnit || !discussion || positional.length !== 2 || ('except' in opts && typeof opts.except !== 'string')) {
-        throw new Error('Usage: engine sources stale <work-unit> <discussion> [--except <spec-topic>]');
-      }
-      respond(call, staleSources(call.cwd, workUnit, discussion, { except: opts.except }));
-      return;
-    }
-    throw new Error('Usage: engine sources <stale> …');
-  } catch (err) {
-    failJson(call, err);
-  }
-}
-
 /**
  * The phase a unit's topics are talked through, where a topic's presence is
  * kept beside its mail; null for a unit that talks through none.
@@ -1049,15 +1002,6 @@ function mailPhaseOf(cwd, unit) {
 function runTopic(call, argv) {
   const [command, ...rest] = argv;
   try {
-    if (command === 'supersede') {
-      const { opts, positional } = parseArgs(rest);
-      const [workUnit, phase, topic] = positional;
-      if (!workUnit || !phase || !topic || positional.length !== 3 || !opts.by) {
-        throw new Error('Usage: engine topic supersede <work-unit> <phase> <topic> --by <topic>');
-      }
-      respond(call, supersedeTopic(call.cwd, workUnit, phase, topic, { by: opts.by }));
-      return;
-    }
     if (command === 'mailbox') {
       const [workUnit, topic] = rest;
       if (!workUnit || !topic || rest.length !== 2) throw new Error(`Usage: engine ${MAILBOX_USAGE}`);
@@ -1068,15 +1012,6 @@ function runTopic(call, argv) {
       const phase = mailPhaseOf(call.cwd, workUnit);
       if (phase !== null) refreshQuietly(call.cwd, workUnit, phase, topic);
       respond(call, mailbox);
-      return;
-    }
-    if (command === 'incorporations') {
-      const [workUnit, topic] = rest;
-      if (!workUnit || !topic || rest.length !== 2) {
-        throw new Error('Usage: engine topic incorporations <work-unit> <topic>');
-      }
-      const manifest = loadWorkUnitManifest(call.cwd, workUnit);
-      respond(call, { work_unit: workUnit, topic, incorporations: incorporations(call.cwd, manifest, workUnit, topic) });
       return;
     }
     if (command === 'send') {
@@ -1103,7 +1038,7 @@ function runTopic(call, argv) {
         throw new Error('Usage: engine topic postpone <work-unit> <topic> --horizon "<horizon>"');
       }
       const postponed = postponeTopic(call.cwd, workUnit, topic, { horizon: opts.horizon });
-      respond(call, { ...postponed, next: leaveNext(workUnit, 'discovery', postponed.topic, 'postponed') });
+      respond(call, { ...postponed, next: leaveNext(workUnit, postponed.topic, 'postponed') });
       return;
     }
     if (Object.hasOwn(MAP_VERBS, command)) {
@@ -1113,17 +1048,17 @@ function runTopic(call, argv) {
       return;
     }
     if (!Object.prototype.hasOwnProperty.call(TOPIC_COMMANDS, command)) {
-      throw new Error(`Usage: engine topic <start|send|complete|reopen|supersede|cancel|reactivate|postpone|mailbox|incorporations|answered|${Object.keys(MAP_VERBS).join('|')}> <work-unit> …`);
+      throw new Error(`Usage: engine topic <start|send|complete|reopen|cancel|reactivate|postpone|mailbox|answered|${Object.keys(MAP_VERBS).join('|')}> <work-unit> …`);
     }
     const fn = TOPIC_COMMANDS[/** @type {keyof typeof TOPIC_COMMANDS} */ (command)];
     const [workUnit, phase, topic] = rest;
     if (!workUnit || !phase || !topic || rest.length !== 3) {
-      const phaseArg = UNIT_VERBS.includes(command) ? '<discovery|specification>' : '<phase>';
+      const phaseArg = UNIT_VERBS.includes(command) ? 'discovery' : '<phase>';
       throw new Error(`Usage: engine topic ${command} <work-unit> ${phaseArg} <topic>`);
     }
     if (command === 'cancel') {
       const cancelled = cancelTopic(call.cwd, workUnit, phase, topic);
-      respond(call, { ...cancelled, next: leaveNext(workUnit, cancelled.phase, cancelled.topic, 'cancelled') });
+      respond(call, { ...cancelled, next: leaveNext(workUnit, cancelled.topic, 'cancelled') });
       return;
     }
     const result = fn(call.cwd, workUnit, phase, topic);
@@ -2227,10 +2162,9 @@ function runCommit(call, argv) {
       }
       if (stateScope) {
         // --state: the work unit's analysis dir plus its manifest — the scope
-        // the epic-wide analyses write (grouping, consolidation, the gap
-        // analysis, build-order sequencing). Every one of them runs beside
-        // live topic sessions whose half-written documents sit in the same
-        // work unit, so the analysis slices its own paths and never theirs.
+        // the epic's gap analysis writes. It runs beside live topic sessions
+        // whose half-written documents sit in the same work unit, so it
+        // slices its own paths and never theirs.
         respond(call, stateCommitted(commitStateScoped(cwd, [`${wu}/.state`, `${wu}/manifest.json`], message)));
         return;
       }
@@ -2384,7 +2318,7 @@ function runHandoff(call, argv) {
   }
 }
 
-const RENDER_FLAGS = ['approve', 'skipped-review', 'own', 'paths', 'warn', 'pipeline', 'donow', 'recommendations', 'menu-only', 'single', 'unify', 'calls', 'sweep', 'page'];
+const RENDER_FLAGS = ['approve', 'skipped-review', 'paths', 'warn', 'pipeline', 'menu-only', 'calls', 'sweep', 'page'];
 
 /** @param {Call} call @param {string[]} argv */
 function runRender(call, argv) {
@@ -2445,7 +2379,6 @@ const COMMANDS = Object.freeze({
   'discovery-session': runDiscoverySession,
   topic: runTopic,
   experiment: runExperiment,
-  sources: runSources,
   presence: runPresence,
   session: runSession,
   conversation: runConversation,
@@ -2521,7 +2454,7 @@ const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */
   code: '*',
   render: '*',
   handoff: '*',
-  topic: ['mailbox', 'incorporations'],
+  topic: ['mailbox'],
   roadmap: ['state'],
   session: ['label', 'repair', 'cleanup', 'resume'],
   gate: '*',

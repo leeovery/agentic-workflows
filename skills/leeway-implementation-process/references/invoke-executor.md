@@ -48,7 +48,7 @@ The dispatch includes these file paths:
 
 A fresh dispatch starts with no memory — this payload is everything the executor sees.
 
-Context the task needs that its content lacks is landed on the task first — [ad-hoc-plan-changes.md](ad-hoc-plan-changes.md) section C, marked as an addition from the orchestrator — and a specification the work has shown wrong is corrected through [correcting-historical-artifacts.md](../../leeway-shared/references/correcting-historical-artifacts.md). Nothing rides beside the enumerated items, on a fresh dispatch or a continuation's send: the executor proceeds on them alone and reports anything else.
+Context the task needs that its content lacks is landed on the task first — [ad-hoc-plan-changes.md](ad-hoc-plan-changes.md) section C, marked as an addition from the orchestrator. Nothing rides beside the enumerated items, on a fresh dispatch or a continuation's send: the executor proceeds on them alone and reports anything else.
 
 → Proceed to **Expected Result**.
 

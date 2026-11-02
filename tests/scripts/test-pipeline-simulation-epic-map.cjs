@@ -9,9 +9,7 @@
 // renamed and a message aimed at its new name, a topic a message names
 // landed with its brief, one removed with its mail sent to the inbox, and one
 // taking in the roadmap idea of its name — the map deriving after every
-// change. What
-// the grouping makes of the decided topics is
-// test-pipeline-simulation-epic-supersession.cjs.
+// change.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls

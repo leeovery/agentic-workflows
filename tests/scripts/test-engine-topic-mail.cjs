@@ -211,12 +211,6 @@ describe('topic send (10.1, 10.2.7)', () => {
     assert.deepStrictEqual([res.reopened, discussion('first-run').status, computeTopicLifecycle(manifest, 'first-run').lifecycle, mapRow?.mail_waiting], [true, 'in-progress', 'discussing', true]);
   });
 
-  it('stales the extraction of a specification sourcing the topic, and flags the specification', () => {
-    const res = send(EPIC, 'first-run', 'lost-key');
-    const { onboarding } = readManifest(dir, EPIC).phases.specification.items;
-    assert.deepStrictEqual([res.reconcile_flagged, res.sources_staled, onboarding.reconcile_needed, onboarding.sources['first-run'].status], [true, ['onboarding'], 'discussion', 'stale']);
-  });
-
   it('leaves a postponed topic as it stands, its message waiting in its mailbox for its return (10.1.8)', () => {
     const before = readState(dir, layout.manifest(EPIC));
     assert.strictEqual(send(EPIC, 'widgets', 'lost-key').message_path, at(layout.mailbox(EPIC, 'widgets', '001-lost-key.md')));

@@ -191,10 +191,11 @@ describe('gate payload — a render surface', () => {
   });
 
   it('a bare key row states no label — its word is the key the person presses, never a head', () => {
-    createManifest(dir, 'auth', { work_type: 'epic' });
-    const gate = gateOf(output(dir, ['render', 'analysis-proceed-gate', 'auth'], { env: ANNOUNCED }));
+    createManifest(dir, 'auth', { phases: { discussion: { items: { auth: { status: 'completed' } } } } });
+    createManifest(dir, 'v1', { work_type: 'epic' });
+    const gate = gateOf(output(dir, ['render', 'absorb-confirm-gate', 'auth'], { env: ANNOUNCED }));
 
-    assert.strictEqual(gate.question, 'Proceed with analysis?');
+    assert.strictEqual(gate.question, 'Proceed?');
     assert.deepStrictEqual(gate.options, [
       { key: 'y', word: 'yes', head: '', tail: null, cue: null, holder: null, detail: null, struck: false, recommended: false },
       { key: 'n', word: 'no', head: '', tail: null, cue: null, holder: null, detail: null, struck: false, recommended: false },
@@ -203,17 +204,15 @@ describe('gate payload — a render surface', () => {
 
   it('a metadata tail is stated apart from the head, its italics gone', () => {
     createManifest(dir, 'auth', {
-      next_phase: 'planning',
-      completed_phases: ['discovery', 'discussion', 'specification'],
-      phases: {
-        discussion: { items: { auth: { status: 'completed' } } },
-        specification: { items: { auth: { status: 'completed' } } },
-      },
+      work_type: 'bugfix',
+      next_phase: 'specification',
+      completed_phases: ['discovery', 'investigation'],
+      phases: { investigation: { items: { auth: { status: 'completed' } } } },
     });
     const gate = gateOf(output(dir, ['render', 'revisit-phases', 'auth'], { env: ANNOUNCED }));
 
     assert.strictEqual(gate.gate, 'revisit phases');
-    assert.deepStrictEqual(gate.options[0], { key: '1', word: null, head: 'Specification', tail: 'completed', cue: null, holder: null, detail: null, struck: false, recommended: false });
+    assert.deepStrictEqual(gate.options[0], { key: '1', word: null, head: 'Investigation', tail: 'completed', cue: null, holder: null, detail: null, struck: false, recommended: false });
     assert.deepStrictEqual(gate.options.at(-1), { key: 'b', word: 'back', head: 'Return to the previous menu', tail: null, cue: null, holder: null, detail: null, struck: false, recommended: false });
   });
 
@@ -295,14 +294,14 @@ describe('gate payload — the statement', () => {
   it('a question the frame glyphs by hand is the question, and every head line above it is statement', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
-      phases: { discussion: { items: { a: { status: 'completed' }, b: { status: 'in-progress' } } } },
+      phases: { specification: { items: { a: { status: 'completed', order: 1 }, b: { status: 'completed', order: 2 } } } },
     });
-    const gate = gateOf(output(dir, ['render', 'epic-soft-gate', 'v1', '--action', 'start_specification'], { env: ANNOUNCED }));
+    const gate = gateOf(output(dir, ['render', 'epic-soft-gate', 'v1', '--action', 'start_planning', '--topic', 'b'], { env: ANNOUNCED }));
 
     assert.strictEqual(gate.question, 'Proceed anyway?');
     assert.strictEqual(gate.statement, [
-      '1 of 2 discussions still in-progress. Later conclusions may reshape this grouping.',
-      'The system will re-analyse if you revisit later — proceeding now is safe, but may require rework.',
+      'You\'re about to plan "B" — "A" is ahead of it in the build order and unplanned.',
+      'The build order is advisory — proceeding now is safe; the gate only names what sits ahead.',
     ].join('\n'));
   });
 
@@ -382,66 +381,17 @@ describe('gate payload — a gateway menu', () => {
 
   it('a glyph-off statement over a hand-glyphed question', () => {
     createManifest(dir, 'auth', {
-      phases: {
-        discussion: { items: { auth: { status: 'completed' } } },
-        specification: { items: { auth: { status: 'completed' } } },
-      },
-      completed_phases: ['discovery', 'discussion', 'specification'],
-      next_phase: 'planning',
+      work_type: 'bugfix',
+      phases: { investigation: { items: { auth: { status: 'completed' } } } },
+      completed_phases: ['discovery', 'investigation'],
+      next_phase: 'specification',
     });
     const gate = gateOf(runGateway(dir, 'leeway-continue-linear', ['view', 'auth'], ANNOUNCED));
 
     assert.strictEqual(gate.question, 'Proceed?');
-    assert.strictEqual(gate.statement, 'Continuing "Auth" — ready for planning.');
+    assert.strictEqual(gate.statement, 'Continuing "Auth" — ready for specification.');
   });
 
-  it('a meta option carries its description as its detail, unwrapped, never as statement', () => {
-    createManifest(dir, 'v2', {
-      work_type: 'epic',
-      phases: {
-        discussion: { items: { a: { status: 'completed' }, b: { status: 'completed' } } },
-        specification: { items: { 'auth-spec': { status: 'in-progress', sources: { a: { status: 'incorporated' } } } } },
-      },
-    });
-    createFile(dir, '.leeway/v2/specification/auth-spec/specification.md', '# A');
-    const gate = gateOf(runGateway(dir, 'leeway-continue-epic', ['spec-view', 'v2'], ANNOUNCED));
-
-    assert.strictEqual(gate.question, 'What would you like to do?');
-    assert.strictEqual(gate.statement, '');
-    assert.deepStrictEqual(gate.options[0], {
-      key: '1', word: null, head: 'Analyze for groupings', tail: null, cue: null, holder: null,
-      detail: 'All discussions are analyzed for natural groupings. Existing specification names are preserved. You can provide guidance in the next step.',
-      struck: false, recommended: true,
-    });
-    assert.ok(gate.options.slice(1).every((/** @type {{detail: string|null}} */ o) => o.detail === null), JSON.stringify(gate.options));
-  });
-
-  it('each grouping action carries its own description', () => {
-    createManifest(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        discussion: { items: { 'auth-design': { status: 'completed' }, 'session-model': { status: 'completed' }, 'data-model': { status: 'completed' } } },
-        specification: {
-          items: {
-            'done-spec': { status: 'completed', sources: { 'auth-design': { status: 'incorporated' } } },
-            'auth-flow': { status: 'proposed', sources: { 'auth-design': { status: 'pending' }, 'session-model': { status: 'pending' } } },
-            'data-spec': { status: 'in-progress', sources: { 'data-model': { status: 'pending' }, 'session-model': { status: 'incorporated' } } },
-          },
-        },
-      },
-    });
-    createFile(dir, '.leeway/v1/specification/done-spec/specification.md', '# Done');
-    createFile(dir, '.leeway/v1/specification/data-spec/specification.md', '# Data');
-    const gate = gateOf(runGateway(dir, 'leeway-continue-epic', ['spec-view', 'v1'], ANNOUNCED));
-    const detailOf = (/** @type {string} */ head) => gate.options.find((/** @type {{head: string}} */ o) => o.head === head).detail;
-
-    assert.strictEqual(gate.statement, '');
-    assert.strictEqual(detailOf('Unify all into single specification'),
-      'All discussions are combined into one specification. Existing specifications are incorporated and superseded.');
-    assert.strictEqual(detailOf('Re-analyze groupings'),
-      'Current groupings are discarded and rebuilt. Existing specification names are preserved. You can provide guidance in the next step.');
-    assert.strictEqual(detailOf('Start "Auth Flow"'), null);
-  });
 });
 
 describe('gate payload — every gateway verb', () => {
@@ -489,9 +439,6 @@ describe('gate payload — every gateway verb', () => {
       'postpone-menu': [gated('postpone-menu', 'v1')],
       'pull-forward-menu': [gated('pull-forward-menu', 'v1')],
       'unblock-menu': [gated('unblock-menu', 'v1')],
-      'spec-scenario': [ungated('spec-scenario', 'v2'), refused('spec-scenario', 'nowhere')],
-      'spec-view': [gated('spec-view', 'v2'), refused('spec-view', 'nowhere')],
-      'spec-completed-menu': [gated('spec-completed-menu', 'v2')],
       'in-session-gate': [gated('in-session-gate', 'v1', '1')],
       fallback: [ungated('v1')],
     },
@@ -510,7 +457,6 @@ describe('gate payload — every gateway verb', () => {
     'a struck row with its cue and its holder': (g) => g.options.some((o) => o.struck && o.cue !== null && o.holder !== null),
     'a row with its tail and a cue': (g) => g.options.some((o) => !o.struck && o.tail !== null && o.cue !== null),
     'a recommended row': (g) => g.options.some((o) => o.recommended),
-    'a row with its detail': (g) => g.options.some((o) => o.detail !== null),
     'a range row': (g) => g.typed.some((t) => t.label.includes('–')),
     'a prompt row': (g) => g.typed.some((t) => !t.label.includes('–')),
     'a statement': (g) => g.statement !== '',
@@ -522,7 +468,7 @@ describe('gate payload — every gateway verb', () => {
    * and an archive, a roadmap with items waiting, an epic whose discussion a
    * peer holds while a message waits in its mailbox —
    * beside a completed topic whose input moved, a cancelled topic, a topic
-   * postponed to the roadmap and a blocked plan — an epic grouped into specifications, a unit of each
+   * postponed to the roadmap and a blocked plan — a unit of each
    * linear type ready for its next phase, a feature with a message waiting,
    * and closed units.
    * @param {string} dir
@@ -569,22 +515,6 @@ describe('gate payload — every gateway verb', () => {
     });
     createFile(dir, '.leeway/v1/topics/auth/mail/001.md', '# A message\n');
     heldByPeer(dir, 'v1', 'discussion', 'auth');
-
-    createManifest(dir, 'v2', {
-      work_type: 'epic',
-      phases: {
-        discussion: { items: { 'auth-design': { status: 'completed' }, 'session-model': { status: 'completed' }, 'data-model': { status: 'completed' } } },
-        specification: {
-          items: {
-            'done-spec': { status: 'completed', sources: { 'auth-design': { status: 'incorporated' } } },
-            'auth-flow': { status: 'proposed', sources: { 'auth-design': { status: 'pending' }, 'session-model': { status: 'pending' } } },
-            'data-spec': { status: 'in-progress', sources: { 'data-model': { status: 'pending' }, 'session-model': { status: 'incorporated' } } },
-          },
-        },
-      },
-    });
-    createFile(dir, '.leeway/v2/specification/done-spec/specification.md', '# Done');
-    createFile(dir, '.leeway/v2/specification/data-spec/specification.md', '# Data');
 
     /** A linear unit whose one phase concluded — its view asks whether to proceed where that phase is revisitable, and hands straight on behind a decided discussion. @param {string} name @param {string} workType @param {string} phase @param {string} next */
     const concluded = (name, workType, phase, next) => createManifest(dir, name, {
@@ -704,7 +634,7 @@ describe('gate payload — a row built from parts', () => {
         cmdOption('1', null, { head: 'Continue "Auth"', tail: 'discussion', cue: 'mail waiting', recommended: true }),
         cmdOption('2', null, { head: 'Continue "Auth"', tail: 'discussion', cue: 'input moved', holder: 'in session (last active 4m ago)' }),
         cmdOption('3', null, { head: 'Start discussion for "Billing"', tail: 'mail waiting' }),
-        cmdOption('s', 'spec', { head: 'Analyze / regroup discussions' }),
+        cmdOption('s', 'spec', { head: 'Start the specification' }),
       ];
       return menu('Pick one?', rows);
     });
@@ -713,13 +643,13 @@ describe('gate payload — a row built from parts', () => {
       '**`1`** → Continue "Auth" — *discussion* · mail waiting (recommended)',
       '**`2`** → ~~Continue "Auth" — *discussion* · input moved~~ · in session (last active 4m ago)',
       '**`3`** → Start discussion for "Billing" — *mail waiting*',
-      '**`s/spec`** → Analyze / regroup discussions',
+      '**`s/spec`** → Start the specification',
     ]);
     assert.deepStrictEqual(gate.options, [
       { key: '1', word: null, head: 'Continue "Auth"', tail: 'discussion', cue: 'mail waiting', holder: null, detail: null, struck: false, recommended: true },
       { key: '2', word: null, head: 'Continue "Auth"', tail: 'discussion', cue: 'input moved', holder: 'in session (last active 4m ago)', detail: null, struck: true, recommended: false },
       { key: '3', word: null, head: 'Start discussion for "Billing"', tail: 'mail waiting', cue: null, holder: null, detail: null, struck: false, recommended: false },
-      { key: 's', word: 'spec', head: 'Analyze / regroup discussions', tail: null, cue: null, holder: null, detail: null, struck: false, recommended: false },
+      { key: 's', word: 'spec', head: 'Start the specification', tail: null, cue: null, holder: null, detail: null, struck: false, recommended: false },
     ]);
   });
 

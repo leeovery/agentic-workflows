@@ -73,104 +73,13 @@ function itemOf(manifest, phase, topic) {
   return item && typeof item === 'object' ? item : undefined;
 }
 
-/**
- * A spec item's `sources` as `[name, row]` entries — the one decoder of the
- * map form and the legacy array form. Rows that aren't objects are dropped.
- * @param {object|Array<{name?: string, status?: string}>|undefined} sources
- * @returns {[string, {status?: string}][]}
- */
-function sourceRows(sources) {
-  if (!sources || typeof sources !== 'object') return [];
-  const entries = Array.isArray(sources)
-    ? sources.map((r) => /** @type {[string, unknown]} */ ([r && typeof r === 'object' ? r.name || '' : '', r]))
-    : Object.entries(sources);
-  return /** @type {[string, {status?: string}][]} */ (entries.filter(([, r]) => r && typeof r === 'object'));
-}
-
-/**
- * The `topic`-named row of a spec item's `sources`, object or legacy array
- * form, or undefined.
- * @param {object|Array<{name?: string}>|undefined} sources
- * @param {string} topic
- * @returns {{status?: string}|undefined}
- */
-function sourceRow(sources, topic) {
-  const entry = sourceRows(sources).find(([name]) => name === topic);
-  return entry ? entry[1] : undefined;
-}
-
-/**
- * A spec item's source rows that are not yet incorporated, each with its own
- * status — the two classes say different things: `pending` was never
- * extracted (a source the gap exit added, or one mid-extraction), `stale`
- * was extracted and the document moved beneath it. The one read behind the
- * completion refusal and the unsettled predicate.
- * @param {{sources?: object|Array<{name?: string}>}|undefined} item
- * @returns {{name: string, status: string|undefined}[]}
- */
-function openSources(item) {
-  return sourceRows(item && item.sources)
-    .filter(([, r]) => r.status !== 'incorporated')
-    .map(([name, r]) => ({ name, status: r.status }));
-}
-
-// Source statuses that hold shut every specification sourcing them: a
-// source back in-progress (a gap routed into it), and a topic the gap exit
-// opened and parked as a stub no session has drained. Either way the
-// specification waits for a record that has not concluded.
-const OPEN_SOURCE_STATUSES = ['in-progress', 'unstarted'];
-
-/**
- * The phase a work type's specification extracts its sources from — the
- * investigation where the pipeline holds one, the discussion otherwise.
- * @param {string} workType
- * @returns {'investigation'|'discussion'}
- */
-function specSourcePhase(workType) {
-  const pipeline = WORK_TYPE_PIPELINES[/** @type {keyof typeof WORK_TYPE_PIPELINES} */ (workType)] || [];
-  return pipeline.includes('investigation') ? 'investigation' : 'discussion';
-}
-
-/**
- * The sources a specification awaits, by name: its rows not yet
- * incorporated whose record is still open — a source a gap was routed back
- * into, or a topic the gap exit opened and parked. Empty once each has
- * concluded. Derived, never stored.
- * @param {object} manifest @param {string} topic
- * @returns {string[]}
- */
-function awaitedSources(manifest, topic) {
-  const phase = specSourcePhase(manifest.work_type);
-  return openSources(itemOf(manifest, 'specification', topic))
-    .map((row) => row.name)
-    .filter((name) => OPEN_SOURCE_STATUSES.includes(itemOf(manifest, phase, name)?.status ?? ''));
-}
-
-/**
- * The non-terminal specification items whose `sources` name `discussion`,
- * as `[name, item]` entries — proposed groupings included; callers filter
- * on status.
- * @param {object} manifest @param {string} discussion
- * @returns {[string, Record<string, any>][]}
- */
-function sourcingSpecs(manifest, discussion) {
-  return Object.entries(phaseData(manifest, 'specification').items || {})
-    .filter(([, item]) => item && typeof item === 'object'
-      && !TERMINAL_STATUSES.includes(item.status)
-      && sourceRow(item.sources, discussion) !== undefined);
-}
-
-// The units cancel and reactivate act on — one per stage, keyed by the name
-// the user sees. The Discovery unit is the map row with every conversation
-// under its name (its experiment series rides along through its records,
-// never a status); the Definition unit is the specification with its
-// same-named plan. Delivery never cancels: an implementation or review item
-// under a specification's name locks it.
+// The unit cancel, reactivate and postpone act on, keyed by the name the
+// user sees: the Discovery unit, the map row with every conversation under
+// its name (its experiment series rides along through its records, never a
+// status).
 const UNIT_PHASES = {
   discovery: ['discussion'],
-  specification: ['specification', 'planning'],
 };
-const DELIVERY_PHASES = ['implementation', 'review'];
 
 /**
  * The phase items a unit carries, in unit-phase order — only those that
@@ -207,210 +116,31 @@ function discoveryUnitExists(manifest, topic) {
 }
 
 /**
- * Whether a specification has started — `in-progress` or `completed`. A
- * started specification locks its source topics and lists as cancellable;
- * a proposed grouping is a regenerable suggestion, a terminal one is
- * closed, and a status-less item (an augment against a mistyped key
- * creates one) is inert.
- * @param {{status?: string}} item
- */
-function specIsStarted(item) {
-  return item.status === 'in-progress' || item.status === 'completed';
-}
-
-/**
- * Whether a specification still groups its sources — every status but
- * `cancelled` and `superseded`. A promoted specification continues in its
- * cross-cutting unit, so its sources stay grouped; a proposed grouping
- * holds its sources until it is discarded.
- * @param {{status?: string}} item
- */
-function specGroupsSources(item) {
-  return item.status !== 'cancelled' && item.status !== 'superseded';
-}
-
-/**
- * @typedef {object} SpecUnsettled
- * @property {string|null} status     the specification item's own status
- * @property {boolean} flagged        it carries a live reconcile flag
- * @property {{name: string, status: string|undefined}[]} open_sources  source rows that are not `incorporated`
- */
-
-/**
- * Why a plan's specification is not a settled record, or null when it is.
- * Three facts make one predicate: the record has concluded, nothing has
- * moved beneath it, and every source it extracted is still incorporated.
- * Keying on the status alone fires too late — a message landing stales a
- * source row while the specification still reads `completed` — and keying
- * on the flag alone fires only at the reopen, one step after the landing.
- * Derived from the specification item, never stored.
- *
- * A terminal specification is settled by exit rather than by agreement:
- * a cancel takes the plan with it (`topic cancel` is Definition-unit-wide),
- * and supersession and promotion each close the record for good under the
- * entry gate's own arms, which say where the work went. An absent item is
- * not unsettledness either — it is "no specification", the entry gate's
- * first arm, and `topic start` has never enforced pipeline order.
- * @param {object} manifest @param {string} topic
- * @returns {SpecUnsettled|null}
- */
-function specUnsettled(manifest, topic) {
-  const spec = itemOf(manifest, 'specification', topic);
-  if (!spec || TERMINAL_STATUSES.includes(spec.status)) return null;
-  const status = spec.status ?? null;
-  const flagged = spec.reconcile_needed !== undefined;
-  const open_sources = openSources(spec);
-  if (status === 'completed' && !flagged && open_sources.length === 0) return null;
-  return { status, flagged, open_sources };
-}
-
-// `stale` is the one named status: anything else — `pending`, or a row
-// carrying none — has never been extracted, which is what the first says.
-const OPEN_ROW_CLAUSES = [
-  { stale: false, one: 'a source is not yet extracted', many: 'sources are not yet extracted' },
-  { stale: true, one: 'a source has moved beneath the extraction', many: 'sources have moved beneath the extraction' },
-];
-
-/**
- * Where an unsettled specification stands, one clause per reason that holds,
- * in the order the record moves through them — the open source rows split
- * by class, because never extracted and extracted-then-moved are different
- * facts about the document. The one phrasing the entry gate, the birth and
- * reopen refusals, and the conclusion wait compose from, so no two surfaces
- * can name it differently.
- * @param {SpecUnsettled} unsettled
- * @returns {string}
- */
-function specUnsettledPhrase({ status, flagged, open_sources }) {
-  const reasons = [];
-  if (status !== 'completed') reasons.push(status === 'in-progress' ? 'back in progress' : 'not concluded');
-  for (const { stale, one, many } of OPEN_ROW_CLAUSES) {
-    const names = open_sources.filter((r) => (r.status === 'stale') === stale).map((r) => r.name);
-    if (names.length > 0) reasons.push(`${names.length === 1 ? one : many} (${names.join(', ')})`);
-  }
-  if (flagged) reasons.push('its own input moved');
-  return reasons.join(', ');
-}
-
-/**
- * Whether a completed item's record has moved since it completed — its
- * reconcile flag, or, for a specification, unsettledness the flag does not
- * carry (a source row staled by a message landing moves the document with no
- * reopen and no flag). The one reading the linear route and the linear
+ * Whether a completed item's record has moved since it completed: its
+ * reconcile flag. The one reading the linear route and the linear
  * dashboard's cue share, so the bridge can never route back to a phase the
  * display calls settled.
- * @param {object} manifest @param {string} phase
- * @param {{name: string, status?: string, reconcile_needed?: unknown}} item
+ * @param {{status?: string, reconcile_needed?: unknown}} item
  * @returns {boolean}
  */
-function inputMoved(manifest, phase, item) {
-  if (item.status !== 'completed') return false;
-  if (item.reconcile_needed !== undefined) return true;
-  return phase === 'specification' && specUnsettled(manifest, item.name) !== null;
-}
-
-/**
- * What moved a completed item's input, as the surfaces name it: the stored
- * flag's value, or `true` where the move is derived and names no single
- * upstream — the "reconcile at next entry" voice the brief flag already
- * uses.
- * @param {{reconcile_needed?: unknown}} item
- * @returns {unknown}
- */
-function movedFrom(item) {
-  return item.reconcile_needed !== undefined ? item.reconcile_needed : true;
-}
-
-/**
- * The started specifications sourcing a topic's discussion — its individual
- * specifications: the ones that lock its Discovery unit, and that a unify or
- * a fresh grouping over it incorporates and supersedes. A proposed grouping
- * is never one: it is a regenerable suggestion the analysis writes for every
- * unaccounted discussion, discarded with its source.
- * @param {object} manifest @param {string} topic
- * @returns {string[]}
- */
-function lockingSpecs(manifest, topic) {
-  return sourcingSpecs(manifest, topic)
-    .filter(([, item]) => specIsStarted(item))
-    .map(([name]) => name);
-}
-
-/**
- * A specification holding a Discovery unit shut — `promoted_to` names the
- * cross-cutting unit a promoted one moved to, null for a started one.
- * @typedef {{name: string, promoted_to: string|null}} UnitLock
- */
-
-/**
- * The specifications that lock a topic's Discovery unit against its cancel
- * and its postpone — the topic is past specification under each: every
- * started specification sourcing its discussion, then every one promoted
- * with it to a cross-cutting unit, where its record continues.
- * @param {object} manifest @param {string} topic
- * @returns {UnitLock[]}
- */
-function unitLocks(manifest, topic) {
-  const promoted = Object.entries(phaseData(manifest, 'specification').items || {})
-    .filter(([, item]) => item && typeof item === 'object' && item.status === 'promoted'
-      && sourceRow(item.sources, topic) !== undefined)
-    .map(([name, item]) => ({ name, promoted_to: /** @type {string} */ (item.promoted_to) }));
-  return [...lockingSpecs(manifest, topic).map((name) => ({ name, promoted_to: null })), ...promoted];
-}
-
-/**
- * The locking specifications, named — a promoted one with the unit it moved
- * to — the list every lock's wording names.
- * @param {UnitLock[]} locks @param {(name: string) => string} [nameOf]
- * @returns {string}
- */
-function unitLockNames(locks, nameOf = (n) => n) {
-  return locks
-    .map(({ name, promoted_to }) => (promoted_to === null ? `"${nameOf(name)}"` : `"${nameOf(name)}" (promoted to "${promoted_to}")`))
-    .join(', ');
-}
-
-/**
- * The started specifications a specification incorporates — their content
- * is extracted beside its discussions, and its completion supersedes them.
- * A proposed grouping reads what its start would take in: the started
- * specifications sourcing any of its discussions. `topic start` records that
- * list as `incorporates`, and a started specification reads it back, those
- * still started; recorded rather than re-derived, because two started
- * specifications sharing a discussion would otherwise each read the other.
- * A closed specification incorporates nothing.
- * @param {object} manifest @param {string} topic
- * @returns {string[]}
- */
-function specIncorporations(manifest, topic) {
-  const item = itemOf(manifest, 'specification', topic);
-  if (!item) return [];
-  if (specIsStarted(item)) {
-    return (Array.isArray(item.incorporates) ? item.incorporates : [])
-      .filter((name) => specIsStarted(itemOf(manifest, 'specification', name) || {}));
-  }
-  if (item.status !== 'proposed') return [];
-  return [...new Set(sourceRows(item.sources).flatMap(([source]) => lockingSpecs(manifest, source)))];
+function inputMoved(item) {
+  return item.status === 'completed' && item.reconcile_needed !== undefined;
 }
 
 /**
  * @typedef {object} CancelPlan
  * @property {{phase: string, item: Record<string, any>}[]} items  the live phase items the cancel stashes
  * @property {string[]} records   every open experiment record, top-level and sub, in register order
- * @property {string[]} discards  the proposed groupings sourcing the discussion, deleted with it
  */
 
 /**
- * What a cancel takes — the one reading the transactions execute and the
- * cancel gate renders. A Definition unit takes its items alone: its source
- * discussions are untouched, and nothing on the register is its own.
- * @param {object} manifest @param {keyof typeof UNIT_PHASES} stage @param {string} name
+ * What a topic's cancel takes — the one reading the transaction executes and
+ * the cancel gate renders.
+ * @param {object} manifest @param {string} name
  * @returns {CancelPlan}
  */
-function cancelPlan(manifest, stage, name) {
-  const items = liveUnitItems(manifest, stage, name);
-  if (stage !== 'discovery') return { items, records: [], discards: [] };
-  return { items, records: openRecords(manifest, name), discards: proposedGroupings(manifest, name) };
+function cancelPlan(manifest, name) {
+  return { items: liveUnitItems(manifest, 'discovery', name), records: openRecords(manifest, name) };
 }
 
 /**
@@ -425,20 +155,6 @@ function openRecords(manifest, topic) {
     .filter(([, r]) => r && typeof r === 'object' && !EXPERIMENT_TERMINAL_STATUSES.includes(/** @type {string} */ (r.status)))
     .map(([id]) => id)
     .sort(compareExperimentIds);
-}
-
-/**
- * The proposed groupings sourcing a discussion — regenerable suggestions
- * the analysis writes for every unaccounted discussion, discarded whenever
- * the discussion stops being one: with its topic's cancel or postpone, or
- * with the reactivate of a specification that sources it.
- * @param {object} manifest @param {string} discussion
- * @returns {string[]}
- */
-function proposedGroupings(manifest, discussion) {
-  return sourcingSpecs(manifest, discussion)
-    .filter(([, spec]) => spec.status === 'proposed')
-    .map(([name]) => name);
 }
 
 /**
@@ -616,22 +332,8 @@ function postponedStillWaits(cwd, workUnit, topic) {
 }
 
 /**
- * The specifications holding a Discovery unit, as one clause — the subject
- * both unit refusals share; each supplies its own recovery tail.
- * @param {UnitLock[]} locks @param {(name: string) => string} [nameOf]
- * @returns {string}
- */
-function lockingSpecsPhrase(locks, nameOf = (n) => n) {
-  const named = unitLockNames(locks, nameOf);
-  return locks.length === 1
-    ? `the specification ${named} sources its discussion`
-    : `the specifications ${named} source its discussion`;
-}
-
-/**
  * @typedef {object} PostponePlan
  * @property {{phase: string, item: Record<string, any>}[]} items  the live phase items the postpone stashes
- * @property {string[]} discards  the proposed groupings sourcing the discussion, deleted with it
  * @property {{reason: string}[]} locks  what holds the postpone shut, in refusal order — empty when it is clear
  */
 
@@ -656,7 +358,7 @@ function postponePlan(manifest, name, project, horizon) {
   const locks = [];
   if (!discoveryUnitExists(manifest, name)) {
     locks.push({ reason: noTopicRefusal(manifest, name) });
-    return { items: [], discards: [], locks };
+    return { items: [], locks };
   }
   const { lifecycle } = computeTopicLifecycle(manifest, name);
   if (lifecycle === 'postponed') {
@@ -667,10 +369,6 @@ function postponePlan(manifest, name, project, horizon) {
   }
   if (buildBegun(manifest)) {
     locks.push({ reason: `postponing "${name}" is refused — ${manifest.name}'s build has begun, so its map is closed: a decision that must change is settled in the build, and abandoning the work is the unit's cancel, through manage on the start menu` });
-  }
-  const specs = unitLocks(manifest, name);
-  if (specs.length > 0) {
-    locks.push({ reason: `postponing "${name}" is refused while ${lockingSpecsPhrase(specs)} — a topic past specification is past "not yet"` });
   }
   const records = openRecords(manifest, name);
   if (records.length > 0) {
@@ -687,92 +385,7 @@ function postponePlan(manifest, name, project, horizon) {
   if (!target.joined && target.item !== undefined) {
     locks.push({ reason: postponeClashPhrase(target.name, target.item) });
   }
-  return { items: liveUnitItems(manifest, 'discovery', name), discards: proposedGroupings(manifest, name), locks };
-}
-
-/**
- * @typedef {{topic: string, reason: 'cancelled'|'postponed'} | {topic: string, reason: 'held', by: string}} ReactivateLock
- */
-
-// The source lifecycles that hold a cancelled specification's reactivate
-// shut, each with its own way out.
-const UNAVAILABLE_SOURCE_LIFECYCLES = ['cancelled', 'postponed'];
-
-/**
- * What holds a cancelled specification's reactivate shut: a source topic
- * that has left the board — cancelled (reactivate the topic first) or
- * postponed (pull it forward from the roadmap first) — or a source another
- * started specification has since taken (regroup at the specification
- * entry). One row per offending source, spec order for the holds — the
- * refusal and the reactivate menu's locked rows read the same facts.
- * @param {object} manifest @param {string} spec
- * @returns {ReactivateLock[]}
- */
-function specReactivateLocks(manifest, spec) {
-  const item = itemOf(manifest, 'specification', spec);
-  /** @type {ReactivateLock[]} */
-  const locks = [];
-  for (const [topic] of sourceRows(item && item.sources)) {
-    const { lifecycle } = computeTopicLifecycle(manifest, topic);
-    if (UNAVAILABLE_SOURCE_LIFECYCLES.includes(lifecycle)) {
-      locks.push({ topic, reason: /** @type {'cancelled'|'postponed'} */ (lifecycle) });
-      continue;
-    }
-    for (const [other, holder] of sourcingSpecs(manifest, topic)) {
-      if (other !== spec && specIsStarted(holder)) locks.push({ topic, reason: 'held', by: other });
-    }
-  }
-  return locks;
-}
-
-// The way back for each source lifecycle that holds a reactivate shut,
-// singular and plural, in the order the sentence names them.
-const GONE_SOURCE_RECOVERY = /** @type {const} */ ([
-  ['cancelled', 'reactivate the topic first', 'reactivate the topics first'],
-  ['postponed', 'pull the topic forward from the roadmap first', 'pull the topics forward from the roadmap first'],
-]);
-
-/**
- * A reactivate lock set as one sentence's two halves — what holds the
- * specification and the way out — so the refusal and the menu row never
- * drift. `nameOf` casts each name for its surface; `now` marks the hold as
- * arisen since the cancel (`now sources`), the menu row's register.
- * @param {ReactivateLock[]} locks
- * @param {(name: string) => string} nameOf
- * @param {{now?: boolean}} [opts]
- * @returns {{holds: string, recovery: string}}
- */
-function reactivateLockPhrases(locks, nameOf, { now = false } = {}) {
-  const quote = (/** @type {string} */ n) => `"${nameOf(n)}"`;
-  const unique = (/** @type {string[]} */ names) => [...new Set(names)].map(quote);
-  const held = locks.filter((l) => l.reason === 'held');
-  const holds = [];
-  const recovery = [];
-  for (const [reason, way, ways] of GONE_SOURCE_RECOVERY) {
-    const gone = unique(locks.filter((l) => l.reason === reason).map((l) => l.topic));
-    if (gone.length === 0) continue;
-    holds.push(gone.length === 1 ? `its source ${gone[0]} is ${reason}` : `its sources ${gone.join(', ')} are ${reason}`);
-    recovery.push(gone.length === 1 ? way : ways);
-  }
-  if (held.length > 0) {
-    const specs = unique(held.map((l) => /** @type {{by: string}} */ (l).by));
-    const topics = unique(held.map((l) => l.topic));
-    const verb = `${now ? 'now ' : ''}source${specs.length === 1 ? 's' : ''}`;
-    holds.push(`the specification${specs.length === 1 ? '' : 's'} ${specs.join(', ')} ${verb} ${topics.join(', ')}`);
-    recovery.push('regroup the discussions from the menu (s/spec)');
-  }
-  return { holds: holds.join(' and '), recovery: recovery.join(' and ') };
-}
-
-/**
- * Whether code work has started under a specification's name — an
- * implementation or review item exists, any status. A legacy cancelled one
- * counts: code may have landed before the cancel.
- * @param {object} manifest @param {string} spec
- * @returns {boolean}
- */
-function deliveryStarted(manifest, spec) {
-  return DELIVERY_PHASES.some((phase) => itemOf(manifest, phase, spec) !== undefined);
+  return { items: liveUnitItems(manifest, 'discovery', name), locks };
 }
 
 /**
@@ -788,15 +401,13 @@ function awaitedExperiments(manifest, phase, topic) {
 }
 
 /**
- * @typedef {{kind: 'specification'} & SpecUnsettled
- *   | {kind: 'experiment', id: string}} Wait
+ * @typedef {{kind: 'experiment', id: string}} Wait
  */
 
 /**
- * Every wait holding one item's conclusion shut, in presentation order: a
- * plan's unsettled specification, then one `experiment` wait per live
- * awaited id. Derived from the items' own state alone — never stored — and
- * work-type agnostic; an absent item holds nothing.
+ * Every wait holding one item's conclusion shut: one `experiment` wait per
+ * live awaited id. Derived from the item's own state alone — never stored —
+ * and work-type agnostic; an absent item holds nothing.
  * @param {object} manifest @param {string} phase @param {string} topic
  * @returns {Wait[]}
  */
@@ -804,8 +415,6 @@ function waits(manifest, phase, topic) {
   /** @type {Wait[]} */
   const out = [];
   if (!itemOf(manifest, phase, topic)) return out;
-  const spec = phase === 'planning' ? specUnsettled(manifest, topic) : null;
-  if (spec) out.push({ kind: 'specification', ...spec });
   for (const id of awaitedExperiments(manifest, phase, topic)) out.push({ kind: 'experiment', id });
   return out;
 }
@@ -865,9 +474,7 @@ function computeNextPhase(manifest) {
   if (wt !== 'epic') {
     const pipeline = WORK_TYPE_PIPELINES[/** @type {keyof typeof WORK_TYPE_PIPELINES} */ (wt)] || [];
     for (const phase of pipeline) {
-      // The earliest in-flight phase owns the next action — a spec paused by
-      // a gap routed into its reopened source must route to that source, not
-      // back into its own blocked entry. A discussion holding a live
+      // The earliest in-flight phase owns the next action. A discussion holding a live
       // evidence wait cannot act, and an in-flight experiment slot is
       // that wait's other side (a discussion's lock sits later in the
       // pipeline than the laboratory it waits on): both route to the
@@ -888,7 +495,7 @@ function computeNextPhase(manifest) {
       }
       // Walking past a completed item whose record has moved hands the next
       // phase input about to change — so the walk stops there instead.
-      if (phaseItems(manifest, phase).some((i) => inputMoved(manifest, phase, i))) {
+      if (phaseItems(manifest, phase).some(inputMoved)) {
         return { next_phase: phase, phase_label: `${phase} (input moved — reconcile)` };
       }
     }
@@ -1042,11 +649,9 @@ function lastCompletedPhase(manifest, pipeline) {
 
 /**
  * The sorted set of existing input files for an analysis kind — the record
- * copies of the decided discussions, for either. The one collection both cache
- * sides checksum — the read (computeAnalysisCacheStatus) and the write
- * (`engine cache stamp`; for `grouping-analysis`, the checksum the
- * specification menu hands its analysis to stamp) — so they can never
- * drift. Returns absolute paths, sorted.
+ * copies of the decided discussions. The one collection both cache sides
+ * checksum — the read (computeAnalysisCacheStatus) and the write (`engine
+ * cache stamp`) — so they can never drift. Returns absolute paths, sorted.
  */
 function collectAnalysisInputs(manifest, stateDir, kind) {
   if (!manifest || !manifest.name || !(kind in ANALYSIS_KINDS)) return [];
@@ -1068,12 +673,6 @@ const ANALYSIS_KINDS = {
     filesField: 'input_files',
     reasonNoInputs: 'no decided discussion records',
     reasonStale: 'decided discussions have changed since gap analysis was generated',
-  },
-  'grouping-analysis': {
-    cacheOf: (manifest) => ((manifest.phases || {}).discussion || {}).analysis_cache,
-    filesField: null,
-    reasonNoInputs: 'no decided discussion records',
-    reasonStale: 'decided discussions have changed since the grouping analysis was generated',
   },
 };
 
@@ -1526,27 +1125,11 @@ module.exports = {
   phaseItems,
   buildBegun,
   phaseStatus,
-  sourceRows,
-  sourceRow,
-  openSources,
-  OPEN_SOURCE_STATUSES,
-  specSourcePhase,
-  awaitedSources,
-  sourcingSpecs,
   UNIT_PHASES,
   unitItems,
   liveUnitItems,
   discoveryUnitExists,
-  specIsStarted,
-  specGroupsSources,
-  specUnsettled,
-  specUnsettledPhrase,
   inputMoved,
-  movedFrom,
-  lockingSpecs,
-  unitLocks,
-  unitLockNames,
-  specIncorporations,
   cancelPlan,
   postponePlan,
   openExperiments,
@@ -1560,11 +1143,6 @@ module.exports = {
   postponeClashPhrase,
   postponedItem,
   postponedStillWaits,
-  lockingSpecsPhrase,
-  proposedGroupings,
-  specReactivateLocks,
-  reactivateLockPhrases,
-  deliveryStarted,
   awaitedExperiments,
   waits,
   topicWaits,

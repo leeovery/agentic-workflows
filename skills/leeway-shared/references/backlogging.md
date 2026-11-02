@@ -70,8 +70,8 @@ Emit the call's MENU section verbatim per its marker.
 | --- | --- |
 | `investigation` | `{work_unit}/investigation/{topic}.md` |
 | `planning` | `{work_unit}/planning/{topic}/planning.md` |
-| `specification` | `{work_unit}/spec.md` |
-| `scoping`, `implementation`, `review` | `{work_unit}/specification/{topic}/specification.md` |
+| `specification`, `implementation`, `review` | `{work_unit}/spec.md` |
+| `scoping` | `{work_unit}/specification/{topic}/specification.md` |
 
 A source is recorded only once it is on disk. Before this session's record exists (a scoping or specification session before its first write, a planning session before `planning.md`), the park carries none: both calls below leave `[--source {source}]` out.
 

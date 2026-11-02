@@ -10,8 +10,7 @@
 //   - every derivation (lifecycle, phaseStatus, next-phase) computes without
 //     throwing for every item,
 //   - every navigation gateway (start, the continue menus, bridge) reads
-//     and renders the state without throwing — the epic's specification
-//     menu among its views,
+//     and renders the state without throwing,
 //   - every menu a gateway draws, and every menu a render draws, states
 //     itself whole in its gate payload once the gate surface is announced,
 //     and the gate a render's menu states is the one its conversation was
@@ -50,9 +49,6 @@ const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/script
 const LINEAR_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-linear/scripts/gateway.cjs'));
 const BRIDGE = require(path.join(ROOT, 'skills/leeway-bridge/scripts/gateway.cjs'));
 const LIB = require(path.join(ROOT, 'skills/leeway-engine/scripts/lib.cjs'));
-const {
-  specificationDiscovery, specificationDetail,
-} = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/specification.cjs'));
 const { openGate } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
 const {
   resolveHandoff, HANDOFF_TARGETS,
@@ -67,11 +63,6 @@ const { TRUST_LOG, PENDING } = require(path.join(ROOT, 'skills/leeway-engine/scr
 // pipelineOf): the schema's one home for pipeline order.
 function pipelineOf(workType) {
   return schema.WORK_TYPE_PIPELINES[workType] || schema.VALID_PHASES.filter((p) => p !== 'discovery');
-}
-
-// The epic specification menu's detail — the spec boundary's derived view.
-function specDetail(dir, workUnit) {
-  return specificationDetail(workUnit, specificationDiscovery(dir, workUnit));
 }
 
 // The words a shell makes of a route written into a command: split at spaces,
@@ -847,25 +838,9 @@ function auditRoutes(dir, keys, label) {
 // ---------------------------------------------------------------------------
 
 // The menus each gateway's `view` verb draws over the project: the start
-// menu (the empty state's when there is no work), every epic's menu, its
-// completed topics and its specification menu, every linear unit's
-// proceed/revisit menu.
+// menu (the empty state's when there is no work), every epic's menu and its
+// completed topics, every linear unit's proceed/revisit menu.
 /** @typedef {{keys: {route?: string|null}[], rendered: string}} ViewMenu */
-
-// The specification menu's views over one epic — its `spec-scenario`,
-// `spec-view` and `spec-completed-menu` verbs: the routing read and the
-// scenario's display render whatever the state, beside the scenario's menu
-// and, once anything has concluded, the concluded-specs sub-view.
-/** @param {string} dir @param {string} workUnit @returns {GatewayMenu[]} */
-function specificationViewMenus(dir, workUnit) {
-  EPIC_GATEWAY.specScenario(dir, workUnit);
-  const detail = specDetail(dir, workUnit);
-  LIB.project.specificationDisplay(detail);
-  return [
-    [EPIC_GATEWAY.GATES.spec, () => LIB.project.specificationMenu(detail)],
-    ...(detail.concluded.length > 0 ? [/** @type {GatewayMenu} */ ([EPIC_GATEWAY.GATES.specRefine, () => LIB.project.specificationCompletedMenu(detail)])] : []),
-  ];
-}
 
 /** A gateway's menu: the gate it states, by the gateway's name for it, and its composition. @typedef {[string, () => ViewMenu]} GatewayMenu */
 
@@ -882,7 +857,6 @@ const VIEW_MENUS = {
     return detail ? [
       /** @type {GatewayMenu} */ ([EPIC_GATEWAY.GATES.epic, () => LIB.project.epicMenu(wu, detail)]),
       /** @type {GatewayMenu} */ ([EPIC_GATEWAY.GATES.resume, () => LIB.project.epicCompletedMenu(wu, detail)]),
-      ...specificationViewMenus(dir, wu),
     ] : [];
   }),
   linear: (dir) => listWorkUnits(dir).map((wu) => LIB.detail.activeWorkUnit(dir, wu)).filter(Boolean)
@@ -952,5 +926,5 @@ function auditGateAnswer(sim, answered, before, label) {
 }
 
 module.exports = {
-  auditState, auditGatePayload, auditTrust, specDetail, shellWords, trustLines, auditGateAnswer, ledgerAuditsOf,
+  auditState, auditGatePayload, auditTrust, shellWords, trustLines, auditGateAnswer, ledgerAuditsOf,
 };

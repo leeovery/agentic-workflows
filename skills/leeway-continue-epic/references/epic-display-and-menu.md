@@ -93,12 +93,6 @@ A new topic lands on the map in the epic's discovery.
 
 → Proceed to **C. Route Selection**.
 
-#### If `action` is `analyze_discussions`
-
-→ Load **[specification-display-and-menu.md](specification-display-and-menu.md)** and follow its instructions as written.
-
-→ On return, proceed to **C. Route Selection**.
-
 #### If `action` is `back`
 
 → Load **[start-menu.md](../../leeway/references/start-menu.md)**.
@@ -155,35 +149,7 @@ Emit the section verbatim per its marker.
 
 ## C. Route Selection
 
-Store the exact skill invocation the selection hands off along as `route`, and the topic it carries as `{topic}` — for the specification the specification menu returned, `/leeway-specification-process epic {work_unit} {topic}`; otherwise the selected entry's own `route` (e.g. `/leeway-discussion-process epic {work_unit} {topic}`) and its `topic`. The `analyze_discussions` entry carries route `(internal)` and arrives here with the topic its flow named; every other `(internal)` entry is resolved from **B. Handle Selection** and never reaches this section.
-
-#### If `route` enters the specification
-
-Fetch the confirm for `{topic}`, adding `--unify` when this selection is the specification menu's unify — empty unless the start incorporates a started specification or unifies the groupings, what the pick did not show:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render spec-confirm-gate {work_unit}.specification.{topic} [--unify]
-```
-
-**If the output is empty:**
-
-→ Return to caller.
-
-**If a `MENU: spec confirm gate` section is returned:**
-
-Emit the call's DISPLAY and MENU sections verbatim per their markers.
-
-**STOP.** Wait for user response.
-
-**If user chose `no`:**
-
-→ Return to **A. State Display and Menu**.
-
-**If user chose `yes`:**
-
-→ Return to caller.
-
-#### Otherwise
+Store the selected entry's `route` (e.g. `/leeway-discussion-process epic {work_unit} {topic}`) and its `topic`. Every `(internal)` entry is resolved from **B. Handle Selection** and never reaches this section.
 
 → Return to caller.
 
@@ -215,7 +181,7 @@ Store the selected entry's `phase`, `topic`, and `route`.
 
 ## E. Cancel Topic
 
-Render the cancellable-topics list and pick menu — one row per unit, a topic (its discussion and experiments together) or a specification (with its plan). Every unit is listed: a locked one carries its reason and no key, a unit a live session holds carries its in-session age (a cue, not a lock); when every row is locked the menu opens on a statement over `b/back` alone:
+Render the cancellable-topics list and pick menu — one row per topic, its discussion and experiments together. Every topic is listed: a locked one carries its reason and no key, a unit a live session holds carries its in-session age (a cue, not a lock); when every row is locked the menu opens on a statement over `b/back` alone:
 
 ```bash
 node .claude/skills/leeway-continue-epic/scripts/gateway.cjs cancel-menu {work_unit}
@@ -237,10 +203,10 @@ A locked row's name is the usual case — the row carries its reason. Tell the u
 
 #### If user chose a numbered topic
 
-Store the selected entry's `phase` — the unit's stage, `discovery` or `specification` — and `topic`. Fetch and emit the confirm's `MENU: cancel gate` section verbatim per its marker; its statement names exactly what the cancel takes:
+Store the selected entry's `topic`. Fetch and emit the confirm's `MENU: cancel gate` section verbatim per its marker; its statement names exactly what the cancel takes:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render cancel-gate {work_unit}.{phase}.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render cancel-gate {work_unit}.discovery.{topic}
 ```
 
 **STOP.** Wait for user response.
@@ -251,10 +217,10 @@ node .claude/skills/leeway-engine/scripts/engine.cjs render cancel-gate {work_un
 
 **If user chose `yes`:**
 
-Run the cancel transaction — one command cancels the unit (a topic: the map row marked, the discussion item under its name stashed and cancelled, every open experiment record abandoned with the cancellation as its reason, any proposed grouping over its discussion discarded; a specification: the specification and its plan), stashes the execution order, removes the cancelled artifacts' knowledge-base chunks, and commits:
+Run the cancel transaction — one command cancels the topic (the map row marked, the discussion item under its name stashed and cancelled, every open experiment record abandoned with the cancellation as its reason), stashes the execution order, removes the cancelled artifacts' knowledge-base chunks, and commits:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs topic cancel {work_unit} {phase} {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs topic cancel {work_unit} discovery {topic}
 ```
 
 **If the response is `ok: false`:**
@@ -265,10 +231,10 @@ Surface the engine's error verbatim in one line — nothing was written.
 
 **Otherwise:**
 
-Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section, each verbatim per its marker — adding `--warn` when the response's `warnings` is non-empty, and `--inbox {n}` when its `inbox` lists the waiting messages the cancel moved, `{n}` their count. When the response's `discarded` is non-empty, tell the user in one line which proposed grouping(s) went with the topic; when `abandoned` is non-empty, name the experiment records the cancel closed; when `released_waits` is non-empty, say where the ball sits — each waiting point reverts to open, surfaced when the topic is reactivated and that conversation next runs:
+Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section, each verbatim per its marker — adding `--warn` when the response's `warnings` is non-empty, and `--inbox {n}` when its `inbox` lists the waiting messages the cancel moved, `{n}` their count. When the response's `abandoned` is non-empty, name the experiment records the cancel closed; when `released_waits` is non-empty, say where the ball sits — each waiting point reverts to open, surfaced when the topic is reactivated and that conversation next runs:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render topic-receipt {work_unit}.{phase}.{topic} --verb cancel [--warn] [--inbox {n}]
+node .claude/skills/leeway-engine/scripts/engine.cjs render topic-receipt {work_unit}.discovery.{topic} --verb cancel [--warn] [--inbox {n}]
 ```
 
 → Return to **A. State Display and Menu**.
@@ -277,7 +243,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs render topic-receipt {work_
 
 ## F. Reactivate Topic
 
-Render the cancelled-topics list and pick menu — one row per cancelled unit, each naming what a reactivate returns. A specification whose sources are unavailable — a source topic cancelled, or a source another started specification has since taken — carries its reason and no key; when every row is locked the menu opens on a statement over `b/back` alone:
+Render the cancelled-topics list and pick menu — one row per cancelled topic, each naming what a reactivate returns:
 
 ```bash
 node .claude/skills/leeway-continue-epic/scripts/gateway.cjs reactivate-menu {work_unit}
@@ -293,16 +259,16 @@ Emit the TITLE section, then the DISPLAY section, then the MENU section, each ve
 
 #### If the input matches no entry
 
-A locked row's name is the usual case — the row carries its reason. Tell the user in one line: the reason from the row for a locked unit, or that the input matched no option; then re-present the sub-view.
+Tell the user in one line that the input matched no option, then re-present the sub-view.
 
 → Return to **F. Reactivate Topic**.
 
 #### If user chose a numbered topic
 
-Store the selected entry's `phase` — the unit's stage, `discovery` or `specification` — and `topic`. Run the reactivate transaction — one command restores the unit's stashed statuses (an item cancelled with no stash returns to never started) and its execution order (the map's for a topic, the build order's for a specification; a number returns only while no live topic holds it — otherwise the next sequencing pass seats the topic), discards any proposed grouping over a specification's returning sources, re-indexes each restored `completed` artifact into the knowledge base, and commits:
+Store the selected entry's `topic`. Run the reactivate transaction — one command restores the topic's stashed statuses (an item cancelled with no stash returns to never started) and its map order (a number returns only while no live topic holds it — otherwise the next sequencing pass seats the topic), re-indexes each restored `completed` artifact into the knowledge base, and commits:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs topic reactivate {work_unit} {phase} {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs topic reactivate {work_unit} discovery {topic}
 ```
 
 **If the response is `ok: false`:**
@@ -313,10 +279,10 @@ Surface the engine's error verbatim in one line — nothing was written.
 
 **Otherwise:**
 
-Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section naming the statuses the unit's items returned to, each verbatim per its marker — adding `--warn` when the response's `warnings` is non-empty. The receipt lists only items that came back with a status: for each `restored` row whose `status` is `null`, tell the user in one line that its phase returned to never started; when the response's `discarded` is non-empty, tell the user in one line which proposed grouping(s) went with the reactivate:
+Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section naming the statuses the unit's items returned to, each verbatim per its marker — adding `--warn` when the response's `warnings` is non-empty. The receipt lists only items that came back with a status: for each `restored` row whose `status` is `null`, tell the user in one line that its phase returned to never started:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render topic-receipt {work_unit}.{phase}.{topic} --verb reactivate [--warn]
+node .claude/skills/leeway-engine/scripts/engine.cjs render topic-receipt {work_unit}.discovery.{topic} --verb reactivate [--warn]
 ```
 
 → Return to **A. State Display and Menu**.

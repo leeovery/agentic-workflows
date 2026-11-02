@@ -9,7 +9,6 @@ const path = require('path');
 
 const harness = require('./engine-harness.cjs');
 const { computeTopicLifecycle } = require('../../skills/leeway-engine/scripts/domain/derivations.cjs');
-const { flagDownstream } = require('../../skills/leeway-engine/scripts/domain/transitions.cjs');
 
 const { git, stateGit, commitAll, cleanupFixture, call, ok: engine, okSections, refuses: engineFails } = harness;
 
@@ -68,9 +67,7 @@ function paymentsFixture(manifest) {
 const setupEpicFixture = paymentsFixture(epicManifest());
 
 // An epic whose map carries every unit shape the cancel meets: a never-
-// started topic, a started one with a live evidence wait and a proposed
-// grouping over its discussion, a parked stub, a topic a started spec
-// sources, and a Definition unit with a plan beneath it.
+// started topic, a started one with a live evidence wait, and decided ones.
 function unitManifest() {
   return {
     name: 'payments',
@@ -97,15 +94,6 @@ function unitManifest() {
           'auth-flow': { status: 'in-progress', experiments: { E1: { slug: 'latency', status: 'running' }, 'E1.1': { slug: 'part', status: 'conceived' } } },
         },
       },
-      specification: {
-        items: {
-          grouping: { status: 'proposed', sources: { 'auth-flow': { status: 'pending' } } },
-          'session-model': { status: 'in-progress', order: 1, sources: { 'session-model': { status: 'incorporated' } } },
-          'fee-model': { status: 'completed', order: 2, sources: { 'fee-model': { status: 'incorporated' } } },
-        },
-      },
-      planning: { items: { 'session-model': { status: 'in-progress' }, 'fee-model': { status: 'completed' } } },
-      implementation: { items: { 'fee-model': { status: 'in-progress' } } },
     },
   };
 }
@@ -121,7 +109,7 @@ describe('engine topic cancel — the discovery unit', () => {
     const { res, sections } = okSections(dir, ['topic', 'cancel', 'payments', 'discovery', 'data-export']);
     assert.deepStrictEqual(res, {
       ok: true, topic: 'data-export', phase: 'discovery', status: 'cancelled',
-      cancelled: [], discarded: [], abandoned: [], released_waits: [], closed_agents: [],
+      cancelled: [], abandoned: [], released_waits: [], closed_agents: [],
       committed: shortHead(dir), warnings: [], roadmap_reverted: [], inbox: [], next: { kind: 'continue' },
     });
     assert.deepStrictEqual(readManifest(dir, 'payments').phases.discovery.items['data-export'],
@@ -132,11 +120,10 @@ describe('engine topic cancel — the discovery unit', () => {
       /DISPLAY: confirmation[\s\S]*Cancelled "Data Export"\.\n/);
   });
 
-  it('a started topic takes every conversation, releasing the waits before the holders close, abandoning the records, discarding the proposed grouping', () => {
+  it('a started topic takes every conversation, releasing the waits before the holders close, abandoning the records', () => {
     harness.unreadableKnowledge(dir);
     const res = engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'auth-flow']);
     assert.deepStrictEqual(res.cancelled, [{ phase: 'discussion', previous_status: 'in-progress' }]);
-    assert.deepStrictEqual(res.discarded, ['grouping']);
     assert.deepStrictEqual(res.abandoned, ['E1', 'E1.1'], 'every open record ends abandoned, the split with its parent');
     assert.deepStrictEqual(res.released_waits, [{ phase: 'discussion', released: ['E1'], remaining: [] }]);
     assert.deepStrictEqual(res.warnings, [], 'a conversation holds no indexed artifact — the store is never asked');
@@ -147,7 +134,6 @@ describe('engine topic cancel — the discovery unit', () => {
     assert.strictEqual(series.status, 'completed', 'every record terminal — the series settles, never a cancel');
     assert.strictEqual(series.experiments.E1.reason, 'topic cancelled');
     assert.strictEqual(series.experiments['E1.1'].reason, 'topic cancelled');
-    assert.strictEqual(m.phases.specification.items.grouping, undefined, 'the proposed grouping is gone, not cancelled');
     assert.deepStrictEqual(m.phases.discovery.items['auth-flow'],
       { source: 'discovery', cancelled: true, previous_order: 2 });
     assert.strictEqual(lastMessage(dir), 'workflow(payments): cancel auth-flow (discovery)');
@@ -164,25 +150,6 @@ describe('engine topic cancel — the discovery unit', () => {
     assert.deepStrictEqual(readManifest(dir, 'payments').phases.discussion.items['data-export'], { status: 'cancelled', previous_status: 'unstarted' });
   });
 
-  it('a started specification locks its source topic; cancelling the specification frees it', () => {
-    const err = engineFails(dir, ['topic', 'cancel', 'payments', 'discovery', 'session-model']);
-    assert.strictEqual(err.error, 'cancelling "session-model" is refused while the specification "session-model" sources its discussion — cancel the specification first');
-    assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['session-model'].status, 'completed', 'the refusal writes nothing');
-
-    engine(dir, ['topic', 'cancel', 'payments', 'specification', 'session-model']);
-    const res = engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'session-model']);
-    assert.deepStrictEqual(res.cancelled, [{ phase: 'discussion', previous_status: 'completed' }]);
-    assert.deepStrictEqual(res.discarded, [], 'a cancelled specification is not a proposal — nothing to discard');
-  });
-
-  it('two started specifications sourcing the discussion are both named', () => {
-    const m = unitManifest();
-    m.phases.specification.items.other = { status: 'in-progress', sources: { 'session-model': { status: 'pending' } } };
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
-    assert.match(engineFails(dir, ['topic', 'cancel', 'payments', 'discovery', 'session-model']).error,
-      /refused while the specifications "session-model", "other" source its discussion — cancel them first/);
-  });
-
   it('an off-map topic reads cancelled, and reactivates', () => {
     const m = unitManifest();
     m.phases.discussion.items.legacy = { status: 'cancelled', previous_status: 'completed' };
@@ -192,18 +159,6 @@ describe('engine topic cancel — the discovery unit', () => {
     const res = engine(dir, ['topic', 'reactivate', 'payments', 'discovery', 'legacy']);
     assert.deepStrictEqual(res.restored, [{ phase: 'discussion', status: 'completed' }]);
     assert.strictEqual(computeTopicLifecycle(readManifest(dir, 'payments'), 'legacy').lifecycle, 'decided');
-  });
-
-  it('a legacy array-form sources list locks and holds the same way', () => {
-    const m = unitManifest();
-    m.phases.specification.items['session-model'].sources = [{ name: 'session-model', status: 'incorporated' }];
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
-    assert.match(engineFails(dir, ['topic', 'cancel', 'payments', 'discovery', 'session-model']).error,
-      /refused while the specification "session-model" sources its discussion — cancel the specification first/);
-    engine(dir, ['topic', 'cancel', 'payments', 'specification', 'session-model']);
-    engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'session-model']);
-    assert.strictEqual(engineFails(dir, ['topic', 'reactivate', 'payments', 'specification', 'session-model']).error,
-      'reactivating "session-model" is refused while its source "session-model" is cancelled — reactivate the topic first');
   });
 
   it('a legacy topic with no map row cancels through its items and reads cancelled', () => {
@@ -221,13 +176,13 @@ describe('engine topic cancel — the discovery unit', () => {
     assert.match(engineFails(dir, ['topic', 'cancel', 'payments', 'discovery', 'ghost']).error,
       /no topic "ghost" — the map's topics are auth-flow, fee-model, session-model$/);
     assert.match(engineFails(dir, ['topic', 'cancel', 'ghost', 'discovery', 'data-export']).error, /manifest not found/);
-    for (const phase of ['discussion', 'experiment', 'planning', 'nonsense']) {
+    for (const phase of ['discussion', 'experiment', 'specification', 'planning', 'nonsense']) {
       assert.strictEqual(engineFails(dir, ['topic', 'cancel', 'payments', phase, 'auth-flow']).error,
-        'cancel is topic-level per stage — discovery (the map row with its discussion and experiments) or specification (with its planning)', phase);
+        'cancel is topic-level — discovery, the map row with its discussion and experiments', phase);
     }
-    assert.match(engineFails(dir, ['topic', 'cancel', 'payments']).error, /Usage: engine topic cancel <work-unit> <discovery\|specification> <topic>/);
+    assert.match(engineFails(dir, ['topic', 'cancel', 'payments']).error, /Usage: engine topic cancel <work-unit> discovery <topic>/);
     assert.match(engineFails(dir, ['topic', 'cancel', 'payments', 'discovery', 'auth-flow', '--cascade']).error,
-      /Usage: engine topic cancel <work-unit> <discovery\|specification> <topic>/, 'the retired flag is a usage error');
+      /Usage: engine topic cancel <work-unit> discovery <topic>/, 'the retired flag is a usage error');
     assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['auth-flow'].status, 'in-progress', 'no refusal wrote anything');
   });
 
@@ -235,158 +190,13 @@ describe('engine topic cancel — the discovery unit', () => {
     assert.match(render(dir, ['cancel-gate', 'payments.discovery.data-export']),
       /Cancelling \*\*Data Export\*\* takes it off the board — nothing has started, so only the map row is marked; it can be reactivated later\./);
     const started = render(dir, ['cancel-gate', 'payments.discovery.auth-flow']).replace(/\n +/g, ' ');
-    assert.match(started, /Cancelling \*\*Auth Flow\*\* marks its discussion \[in-progress\] cancelled — it can be reactivated later\. 1 open experiment \(E1, with E1\.1\) ends abandoned on the register\. The proposed grouping \*\*Grouping\*\* is discarded — the next grouping analysis rebuilds from the new world\./);
+    assert.match(started, /Cancelling \*\*Auth Flow\*\* marks its discussion \[in-progress\] cancelled — it can be reactivated later\. 1 open experiment \(E1, with E1\.1\) ends abandoned on the register\./);
     assert.match(started, /◆ Cancel it\?/);
     assert.match(started, /\*\*`y\/yes`\*\* → Confirm cancellation/);
-    assert.match(engineFails(dir, ['render', 'cancel-gate', 'payments.discovery.session-model']).error,
-      /"session-model" is locked by the specification sourcing its discussion \("session-model"\) — the menu never offers it/);
     engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'data-export']);
     assert.match(engineFails(dir, ['render', 'cancel-gate', 'payments.discovery.data-export']).error, /already cancelled — the menu never offers it/);
     assert.match(engineFails(dir, ['render', 'cancel-gate', 'payments.discussion.auth-flow']).error,
-      /address must be <work_unit>\.discovery\.<topic> or <work_unit>\.specification\.<spec>, got phase "discussion"/);
-  });
-});
-
-describe('engine topic cancel — the specification unit', () => {
-  let dir;
-  beforeEach(() => { dir = setupUnitFixture(); });
-  afterEach(() => { cleanupFixture(dir); });
-
-  it('takes the specification and its plan, stashing statuses and the build order, and leaves the sources alone', () => {
-    const res = engine(dir, ['topic', 'cancel', 'payments', 'specification', 'session-model']);
-    assert.deepStrictEqual(res, {
-      ok: true, topic: 'session-model', phase: 'specification', status: 'cancelled', discarded: [], abandoned: [], released_waits: [],
-      cancelled: [
-        { phase: 'specification', previous_status: 'in-progress' },
-        { phase: 'planning', previous_status: 'in-progress' },
-      ],
-      closed_agents: [], committed: shortHead(dir), warnings: [], next: { kind: 'continue' },
-    });
-    const m = readManifest(dir, 'payments');
-    assert.deepStrictEqual(m.phases.specification.items['session-model'],
-      { status: 'cancelled', previous_status: 'in-progress', previous_order: 1, sources: { 'session-model': { status: 'incorporated' } } });
-    assert.deepStrictEqual(m.phases.planning.items['session-model'], { status: 'cancelled', previous_status: 'in-progress' });
-    assert.strictEqual(m.phases.discussion.items['session-model'].status, 'completed', 'the source discussion is untouched');
-    assert.strictEqual(m.phases.discovery.items['session-model'].order, 4, 'the map order belongs to the topic, not the specification');
-    assert.strictEqual(lastMessage(dir), 'workflow(payments): cancel session-model (specification)');
-    assert.match(render(dir, ['topic-receipt', 'payments.specification.session-model', '--verb', 'cancel', '--warn']),
-      /⚑ Knowledge removal warning[\s\S]*Cancelled "Session Model"\./);
-  });
-
-  it('the cancel gate names the plan and the source discussions the cancel frees', () => {
-    const out = render(dir, ['cancel-gate', 'payments.specification.session-model']).replace(/\n +/g, ' ');
-    assert.match(out, /Cancelling \*\*Session Model\*\* marks the specification and its plan cancelled and frees its source discussion \(Session Model\) to be regrouped or cancelled; it can be reactivated later\./);
-  });
-
-  it('a specification that carries no status has nothing to cancel — the analysis\'s augment against a mistyped key creates one', () => {
-    const m = unitManifest();
-    m.phases.specification.items.blank = { sources: { 'session-model': { status: 'pending' } } };
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
-    const before = JSON.stringify(readManifest(dir, 'payments'));
-    assert.strictEqual(engineFails(dir, ['topic', 'cancel', 'payments', 'specification', 'blank']).error,
-      'specification "blank" has nothing to cancel — it carries no status');
-    assert.strictEqual(JSON.stringify(readManifest(dir, 'payments')), before, 'nothing written');
-    assert.match(engineFails(dir, ['render', 'cancel-gate', 'payments.specification.blank']).error,
-      /"blank" has nothing to cancel — it carries no status, so the menu never offers it/);
-    // Nor does it lock its source: the topic beneath it cancels freely once
-    // the started specification over the same discussion is gone.
-    engine(dir, ['topic', 'cancel', 'payments', 'specification', 'session-model']);
-    assert.deepStrictEqual(engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'session-model']).discarded, []);
-  });
-
-  it('refuses a proposed grouping, a locked specification, and an already-cancelled one', () => {
-    assert.strictEqual(engineFails(dir, ['topic', 'cancel', 'payments', 'specification', 'grouping']).error,
-      'a proposed grouping is not started — cancel its source topic to discard it, or let the grouping walk regroup');
-    assert.strictEqual(engineFails(dir, ['topic', 'cancel', 'payments', 'specification', 'fee-model']).error,
-      '"fee-model" is locked — implementation has started; code in the tree is fixed forward, and the work-unit cancel abandons the epic');
-    assert.match(engineFails(dir, ['render', 'cancel-gate', 'payments.specification.fee-model']).error, /is locked — implementation has started/);
-    assert.match(engineFails(dir, ['render', 'cancel-gate', 'payments.specification.grouping']).error, /is a proposed grouping/);
-    assert.match(engineFails(dir, ['topic', 'cancel', 'payments', 'specification', 'ghost']).error, /no specification item "ghost"/);
-    engine(dir, ['topic', 'cancel', 'payments', 'specification', 'session-model']);
-    assert.match(engineFails(dir, ['topic', 'cancel', 'payments', 'specification', 'session-model']).error, /"session-model" is already cancelled/);
-  });
-
-  it('a review item locks the specification too, and a legacy cancelled implementation item still does', () => {
-    const m = unitManifest();
-    m.phases.review = { items: { 'session-model': { status: 'completed' } } };
-    m.phases.implementation.items['fee-model'].status = 'cancelled';
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
-    assert.match(engineFails(dir, ['topic', 'cancel', 'payments', 'specification', 'session-model']).error, /is locked — implementation has started/);
-    assert.match(engineFails(dir, ['topic', 'cancel', 'payments', 'specification', 'fee-model']).error, /is locked — implementation has started/);
-  });
-});
-
-// A spec topic's name collides with a discovery-map topic's name by
-// construction — an independent discussion becomes a grouping of one. The
-// map's order belongs to the Discovery unit, so a Definition-unit cancel
-// must leave it untouched.
-function collidingManifest() {
-  return {
-    name: 'payments',
-    work_type: 'epic',
-    status: 'in-progress',
-    phases: {
-      discovery: {
-        items: {
-          'auth-flow': { order: 1, source: 'discovery' },
-          'fee-model': { order: 2, source: 'discovery' },
-        },
-      },
-      discussion: {
-        items: { 'auth-flow': { status: 'completed' }, 'fee-model': { status: 'completed' } },
-      },
-      specification: {
-        items: { 'auth-flow': { status: 'in-progress', sources: { 'auth-flow': { status: 'incorporated' } } } },
-      },
-    },
-  };
-}
-
-describe('a specification cancel leaves the discovery order alone', () => {
-  const colliding = paymentsFixture(collidingManifest());
-  let dir;
-  beforeEach(() => { dir = colliding(); });
-  afterEach(() => { cleanupFixture(dir); });
-
-  it('cancelling a specification does not strip the same-named map topic order', () => {
-    engine(dir, ['topic', 'cancel', 'payments', 'specification', 'auth-flow']);
-
-    const map = readManifest(dir, 'payments').phases.discovery.items['auth-flow'];
-    assert.strictEqual(map.order, 1, 'a live map topic keeps its position');
-    assert.strictEqual(map.previous_order, undefined, 'nothing stashed');
-  });
-
-  it('reactivating a specification does not overwrite a re-sequenced map order', () => {
-    engine(dir, ['topic', 'cancel', 'payments', 'specification', 'auth-flow']);
-    engine(dir, ['topic', 'order', 'payments', 'auth-flow=2', 'fee-model=1']);
-    engine(dir, ['topic', 'reactivate', 'payments', 'specification', 'auth-flow']);
-
-    const items = readManifest(dir, 'payments').phases.discovery.items;
-    assert.strictEqual(items['auth-flow'].order, 2, 're-sequenced position survives');
-    assert.strictEqual(items['fee-model'].order, 1, 'no collision');
-    assert.strictEqual(items['auth-flow'].previous_order, undefined);
-  });
-
-  it('a topic cancel stashes the map order and its reactivate restores it', () => {
-    engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'fee-model']);
-    assert.strictEqual(readManifest(dir, 'payments').phases.discovery.items['fee-model'].previous_order, 2);
-
-    engine(dir, ['topic', 'reactivate', 'payments', 'discovery', 'fee-model']);
-    const back = readManifest(dir, 'payments').phases.discovery.items['fee-model'];
-    assert.strictEqual(back.order, 2);
-    assert.strictEqual(back.previous_order, undefined);
-    assert.strictEqual(back.cancelled, undefined, 'the marker is gone');
-  });
-
-  it('a taken map number is not restored — the stash drops and the row reads unordered', () => {
-    engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'fee-model']);
-    engine(dir, ['topic', 'order', 'payments', 'auth-flow=2']);
-    engine(dir, ['topic', 'reactivate', 'payments', 'discovery', 'fee-model']);
-
-    const items = readManifest(dir, 'payments').phases.discovery.items;
-    assert.strictEqual(items['fee-model'].order, undefined, 'stale number not restored over auth-flow');
-    assert.strictEqual(items['fee-model'].previous_order, undefined, 'stash dropped');
-    assert.strictEqual(items['auth-flow'].order, 2, 'no collision');
+      /address must be <work_unit>\.discovery\.<topic>, got phase "discussion"/);
   });
 });
 
@@ -399,7 +209,7 @@ describe('engine topic reactivate', () => {
     engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'data-export']);
     const res = engine(dir, ['topic', 'reactivate', 'payments', 'discovery', 'data-export']);
     assert.deepStrictEqual(res, {
-      ok: true, topic: 'data-export', phase: 'discovery', status: 'reactivated', restored: [], discarded: [],
+      ok: true, topic: 'data-export', phase: 'discovery', status: 'reactivated', restored: [],
       committed: shortHead(dir), warnings: [],
     });
     assert.deepStrictEqual(readManifest(dir, 'payments').phases.discovery.items['data-export'],
@@ -425,83 +235,14 @@ describe('engine topic reactivate', () => {
       /Reactivated "Auth Flow"\. Restored discussion \[in-progress\]\./);
   });
 
-  it('a specification returns with its plan and its build order', () => {
-    engine(dir, ['topic', 'cancel', 'payments', 'specification', 'session-model']);
-    const res = engine(dir, ['topic', 'reactivate', 'payments', 'specification', 'session-model']);
-    assert.deepStrictEqual(res.restored, [
-      { phase: 'specification', status: 'in-progress' },
-      { phase: 'planning', status: 'in-progress' },
-    ]);
-    const m = readManifest(dir, 'payments');
-    assert.deepStrictEqual(m.phases.specification.items['session-model'],
-      { status: 'in-progress', order: 1, sources: { 'session-model': { status: 'incorporated' } } });
-    assert.deepStrictEqual(m.phases.planning.items['session-model'], { status: 'in-progress' });
-    assert.strictEqual(lastMessage(dir), 'workflow(payments): reactivate session-model (specification)');
-    assert.match(render(dir, ['topic-receipt', 'payments.specification.session-model', '--verb', 'reactivate']),
-      /Reactivated "Session Model"\. Restored specification \[in-progress\] · planning \[in-progress\]\./);
-  });
-
-  it('a specification stays cancelled while a source topic is cancelled — reactivate the topic first', () => {
-    engine(dir, ['topic', 'cancel', 'payments', 'specification', 'session-model']);
-    engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'session-model']);
-    const before = JSON.stringify(readManifest(dir, 'payments'));
-    assert.strictEqual(engineFails(dir, ['topic', 'reactivate', 'payments', 'specification', 'session-model']).error,
-      'reactivating "session-model" is refused while its source "session-model" is cancelled — reactivate the topic first');
-    assert.strictEqual(JSON.stringify(readManifest(dir, 'payments')), before, 'nothing written');
-    engine(dir, ['topic', 'reactivate', 'payments', 'discovery', 'session-model']);
-    const res = engine(dir, ['topic', 'reactivate', 'payments', 'specification', 'session-model']);
-    assert.deepStrictEqual(res.restored, [{ phase: 'specification', status: 'in-progress' }, { phase: 'planning', status: 'in-progress' }]);
-    assert.deepStrictEqual(res.discarded, []);
-  });
-
-  it('a specification stays cancelled while another started specification holds its source; a proposed grouping never holds and is discarded on the return', () => {
-    engine(dir, ['topic', 'cancel', 'payments', 'specification', 'session-model']);
-    const m = readManifest(dir, 'payments');
-    m.phases.specification.items.other = { status: 'in-progress', sources: { 'session-model': { status: 'pending' } } };
-    m.phases.specification.items.sketch = { status: 'proposed', sources: { 'session-model': { status: 'pending' } } };
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
-    assert.strictEqual(engineFails(dir, ['topic', 'reactivate', 'payments', 'specification', 'session-model']).error,
-      'reactivating "session-model" is refused while the specification "other" sources "session-model" — regroup the discussions from the menu (s/spec)');
-    assert.strictEqual(readManifest(dir, 'payments').phases.specification.items.sketch.status, 'proposed', 'a refusal discards nothing');
-    engine(dir, ['topic', 'cancel', 'payments', 'specification', 'other']);
-    const res = engine(dir, ['topic', 'reactivate', 'payments', 'specification', 'session-model']);
-    assert.deepStrictEqual(res.discarded, ['sketch']);
-    const after = readManifest(dir, 'payments');
-    assert.strictEqual(after.phases.specification.items.sketch, undefined, 'the proposed grouping is gone, not cancelled');
-    assert.strictEqual(after.phases.specification.items.other.status, 'cancelled', 'a cancelled sibling holds nothing');
-    assert.strictEqual(after.phases.specification.items['session-model'].status, 'in-progress');
-  });
-
-  it('the reactivate refusal names every unavailable source — cancelled and held alike, singular and plural', () => {
-    const m = unitManifest();
-    for (const topic of ['alpha', 'beta']) {
-      m.phases.discovery.items[topic] = { source: 'discovery' };
-      m.phases.discussion.items[topic] = { status: 'completed' };
-    }
-    m.phases.specification.items.pair = { status: 'cancelled', previous_status: 'completed', sources: { alpha: { status: 'incorporated' }, beta: { status: 'incorporated' } } };
-    m.phases.specification.items.other = { status: 'completed', sources: { beta: { status: 'incorporated' } } };
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
-    engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'alpha']);
-    assert.strictEqual(engineFails(dir, ['topic', 'reactivate', 'payments', 'specification', 'pair']).error,
-      'reactivating "pair" is refused while its source "alpha" is cancelled and the specification "other" sources "beta" — reactivate the topic first and regroup the discussions from the menu (s/spec)');
-    engine(dir, ['topic', 'cancel', 'payments', 'specification', 'other']);
-    engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'beta']);
-    assert.strictEqual(engineFails(dir, ['topic', 'reactivate', 'payments', 'specification', 'pair']).error,
-      'reactivating "pair" is refused while its sources "alpha", "beta" are cancelled — reactivate the topics first');
-  });
-
   it('a stash-less cancelled item returns to never-attempted — the per-item cancel of a status-less item stashed nothing', () => {
     const m = unitManifest();
     m.phases.discussion.items.stuck = { status: 'cancelled', reconcile_needed: 'brief' };
-    m.phases.specification.items.blank = { status: 'cancelled', previous_order: 3, sources: {} };
     writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     const topic = engine(dir, ['topic', 'reactivate', 'payments', 'discovery', 'stuck']);
     assert.deepStrictEqual(topic.restored, [{ phase: 'discussion', status: null }]);
     const after = readManifest(dir, 'payments');
     assert.deepStrictEqual(after.phases.discussion.items.stuck, { reconcile_needed: 'brief' }, 'the status is gone, the other fields stay');
-    const spec = engine(dir, ['topic', 'reactivate', 'payments', 'specification', 'blank']);
-    assert.deepStrictEqual(spec.restored, [{ phase: 'specification', status: null }]);
-    assert.deepStrictEqual(readManifest(dir, 'payments').phases.specification.items.blank, { order: 3, sources: {} });
   });
 
   it('a legacy topic with no map row reactivates the item carrying a stash', () => {
@@ -514,14 +255,13 @@ describe('engine topic reactivate', () => {
 
   it('refuses a unit that is not cancelled, an unknown topic, and every non-unit phase', () => {
     assert.match(engineFails(dir, ['topic', 'reactivate', 'payments', 'discovery', 'auth-flow']).error, /"auth-flow" is not cancelled \(lifecycle: discussing\)/);
-    assert.match(engineFails(dir, ['topic', 'reactivate', 'payments', 'specification', 'session-model']).error, /not cancelled \(status: in-progress\)/);
     assert.match(engineFails(dir, ['topic', 'reactivate', 'payments', 'discovery', 'ghost']).error, /no topic "ghost"/);
-    for (const phase of ['discussion', 'experiment', 'planning']) {
+    for (const phase of ['discussion', 'experiment', 'specification', 'planning']) {
       assert.match(engineFails(dir, ['topic', 'reactivate', 'payments', phase, 'auth-flow']).error,
-        /^reactivate is topic-level per stage — discovery/, phase);
+        /^reactivate is topic-level — discovery/, phase);
     }
     assert.match(engineFails(dir, ['topic', 'reactivate', 'payments', 'discovery', 'auth-flow', 'extra']).error,
-      /Usage: engine topic reactivate <work-unit> <discovery\|specification> <topic>/);
+      /Usage: engine topic reactivate <work-unit> discovery <topic>/);
   });
 
   it('the receipts refuse a state the verb has not produced', () => {
@@ -531,7 +271,7 @@ describe('engine topic reactivate', () => {
     assert.match(engineFails(dir, ['render', 'topic-receipt', 'payments.discovery.auth-flow', '--verb', 'reactivate']).error,
       /"auth-flow" is still cancelled — the reactivate has not run/);
     assert.match(engineFails(dir, ['render', 'topic-receipt', 'payments.discussion.auth-flow', '--verb', 'cancel']).error,
-      /--verb cancel addresses a unit — <work_unit>\.discovery\.<topic> or <work_unit>\.specification\.<spec>, got phase "discussion"/);
+      /--verb cancel addresses the Discovery unit — <work_unit>\.discovery\.<topic>, got phase "discussion"/);
   });
 });
 
@@ -587,26 +327,25 @@ describe('engine topic start', () => {
     assert.match(err.error, /is cancelled — reactivate it instead/);
   });
 
-  it('rejects starting a superseded item — supersession is terminal, superseded_by preserved', () => {
-    const m0 = epicManifest();
-    m0.phases.specification = { items: { 'auth-flow': { status: 'in-progress' }, 'fee-model': { status: 'completed' } } };
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m0, null, 2) + '\n');
-    engine(dir, ['topic', 'supersede', 'payments', 'specification', 'auth-flow', '--by', 'fee-model']);
-    const err = engineFails(dir, ['topic', 'start', 'payments', 'specification', 'auth-flow']);
-    assert.match(err.error, /is superseded \(by "fee-model"\) — supersession is terminal/);
-    // start must NOT resurrect the item — that would leave superseded_by dangling
-    // on an in-progress item, a state the render layer promises never to show.
-    const item = readManifest(dir, 'payments').phases.specification.items['auth-flow'];
-    assert.strictEqual(item.status, 'superseded');
-    assert.strictEqual(item.superseded_by, 'fee-model');
-  });
-
   it('rejects unknown work unit, phase, and missing args — loud and specific', () => {
     assert.match(engineFails(dir, ['topic', 'start', 'ghost', 'investigation', 'auth-flow']).error, /manifest not found/);
     assert.match(engineFails(dir, ['topic', 'start', 'payments', 'nonsense', 'auth-flow']).error, /unknown or non-lifecycle phase "nonsense"/);
     assert.match(engineFails(dir, ['topic', 'start', 'payments', 'research', 'auth-flow']).error, /unknown or non-lifecycle phase "research"/);
     assert.match(engineFails(dir, ['topic', 'start', 'payments', 'investigation']).error, /Usage: engine topic start/);
-    assert.match(engineFails(dir, ['topic', 'begin', 'payments', 'investigation', 'auth-flow']).error, /Usage: engine topic <start\|send\|complete\|reopen\|supersede\|cancel\|reactivate\|postpone\|mailbox\|incorporations\|answered\|add\|add-batch\|edit\|rename\|remove\|order\|brief> <work-unit> …/);
+    assert.match(engineFails(dir, ['topic', 'begin', 'payments', 'investigation', 'auth-flow']).error, /Usage: engine topic <start\|send\|complete\|reopen\|cancel\|reactivate\|postpone\|mailbox\|answered\|add\|add-batch\|edit\|rename\|remove\|order\|brief> <work-unit> …/);
+  });
+
+  it('refuses a specification item on every unit but a quick-fix — the spec is entered at the work unit', () => {
+    const before = fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8');
+    for (const verb of ['start', 'complete', 'reopen']) {
+      assert.strictEqual(engineFails(dir, ['topic', verb, 'payments', 'specification', 'auth-flow']).error,
+        "payments's spec keeps no items — it is entered at the work unit: engine enter specification payments", verb);
+    }
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'), before, 'nothing written');
+    writeFile(dir, '.leeway/typo/manifest.json', JSON.stringify({
+      name: 'typo', work_type: 'quick-fix', status: 'in-progress', phases: { scoping: { items: { typo: { status: 'in-progress' } } } },
+    }, null, 2) + '\n');
+    assert.strictEqual(engine(dir, ['topic', 'start', 'typo', 'specification', 'typo']).created, true, "scoping's spec keeps its item");
   });
 
   it('flips an unstarted stub to in-progress — the one exit from unstarted', () => {
@@ -670,15 +409,10 @@ describe('topic verbs without section folds', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   it('every topic verb appends nothing — receipts are render surfaces', () => {
-    const m0 = epicManifest();
-    m0.phases.specification = { items: { 'auth-flow': { status: 'completed' }, 'fee-model': { status: 'completed' } } };
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m0, null, 2) + '\n');
     assert.strictEqual(okSections(dir, ['topic', 'start', 'payments', 'investigation', 'brand-new']).sections, '',
       'start appends no sections');
     assert.strictEqual(okSections(dir, ['topic', 'reopen', 'payments', 'investigation', 'fee-model']).sections, '',
       'reopen appends no sections');
-    assert.strictEqual(okSections(dir, ['topic', 'supersede', 'payments', 'specification', 'fee-model', '--by', 'auth-flow']).sections, '',
-      'supersede appends no sections — its removal warning stays in the JSON');
   });
 });
 
@@ -752,20 +486,6 @@ describe('engine topic complete', () => {
     assert.match(engineFails(dir, ['topic', 'complete', 'payments']).error, /Usage: engine topic complete/);
   });
 
-  it('rejects completing a superseded item — supersession is terminal, superseded_by preserved', () => {
-    const m0 = epicManifest();
-    m0.phases.specification = { items: { 'auth-flow': { status: 'in-progress' }, 'fee-model': { status: 'completed' } } };
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m0, null, 2) + '\n');
-    engine(dir, ['topic', 'supersede', 'payments', 'specification', 'auth-flow', '--by', 'fee-model']);
-    const err = engineFails(dir, ['topic', 'complete', 'payments', 'specification', 'auth-flow']);
-    assert.match(err.error, /is superseded \(by "fee-model"\) — supersession is terminal/);
-    // complete must NOT overwrite the terminal status and leave superseded_by
-    // dangling on a completed item.
-    const item = readManifest(dir, 'payments').phases.specification.items['auth-flow'];
-    assert.strictEqual(item.status, 'superseded');
-    assert.strictEqual(item.superseded_by, 'fee-model');
-  });
-
   it('round-trips with start: start → complete → resuming via start is still rejected', () => {
     engine(dir, ['topic', 'start', 'payments', 'investigation', 'auth-flow']);
     const res = engine(dir, ['topic', 'complete', 'payments', 'investigation', 'auth-flow']);
@@ -796,28 +516,28 @@ describe('engine topic reopen', () => {
     assert.match(stateGit(dir, ['status', '--porcelain']), /^ M payments\/manifest\.json/m);
   });
 
-  it('every other hop flags completed items only — a specification reopen leaves an in-progress plan alone', () => {
+  it('every hop flags completed items only — a planning reopen leaves an in-progress implementation alone', () => {
     const m = epicManifest();
-    m.phases.specification = { items: { 'fee-model': { status: 'completed' } } };
-    m.phases.planning = { items: { 'fee-model': { status: 'in-progress' } } };
+    m.phases.planning = { items: { 'fee-model': { status: 'completed' } } };
+    m.phases.implementation = { items: { 'fee-model': { status: 'in-progress' } } };
     writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
 
-    const res = engine(dir, ['topic', 'reopen', 'payments', 'specification', 'fee-model']);
+    const res = engine(dir, ['topic', 'reopen', 'payments', 'planning', 'fee-model']);
 
     assert.strictEqual(res.reconcile_flagged, undefined);
-    assert.strictEqual(readManifest(dir, 'payments').phases.planning.items['fee-model'].reconcile_needed, undefined);
+    assert.strictEqual(readManifest(dir, 'payments').phases.implementation.items['fee-model'].reconcile_needed, undefined);
   });
 
   it('never clobbers an existing downstream flag', () => {
     const m = epicManifest();
-    m.phases.specification = { items: { 'fee-model': { status: 'completed' } } };
-    m.phases.planning = { items: { 'fee-model': { status: 'completed', reconcile_needed: 'specification' } } };
+    m.phases.planning = { items: { 'fee-model': { status: 'completed' } } };
+    m.phases.implementation = { items: { 'fee-model': { status: 'completed', reconcile_needed: 'review' } } };
     writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
 
-    const res = engine(dir, ['topic', 'reopen', 'payments', 'specification', 'fee-model']);
+    const res = engine(dir, ['topic', 'reopen', 'payments', 'planning', 'fee-model']);
 
     assert.strictEqual(res.reconcile_flagged, undefined);
-    assert.strictEqual(readManifest(dir, 'payments').phases.planning.items['fee-model'].reconcile_needed, 'specification', 'the earlier flag preserved');
+    assert.strictEqual(readManifest(dir, 'payments').phases.implementation.items['fee-model'].reconcile_needed, 'review', 'the earlier flag preserved');
   });
 
   it('refuses a discussion, whatever it stands at — a decided one reopens through a message sent to it', () => {
@@ -829,62 +549,16 @@ describe('engine topic reopen', () => {
     assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'), before);
   });
 
-  it('a discussion\'s hop — taken by a message landing on it — flags owning specs by reverse join and stales their source rows', () => {
+  it('planning reopen flags the completed implementation — the pipeline hop', () => {
     const m = epicManifest();
-    m.phases.specification = { items: {
-      unified: { status: 'completed', sources: { 'session-model': { status: 'incorporated' }, other: { status: 'incorporated' } } },
-      legacy: { status: 'completed', sources: [{ name: 'session-model', status: 'incorporated' }] },
-      unrelated: { status: 'completed', sources: { other: { status: 'incorporated' } } },
-      gone: { status: 'superseded', superseded_by: 'unified', sources: { 'session-model': { status: 'incorporated' } } },
-      building: { status: 'in-progress', sources: { 'session-model': { status: 'incorporated' } } },
-    } };
-    const fd = flagDownstream(m, 'epic', 'discussion', 'session-model');
-    assert.deepStrictEqual(fd.flagged, [{ phase: 'specification', topic: 'unified' }, { phase: 'specification', topic: 'legacy' }]);
-    assert.deepStrictEqual(fd.staled, ['unified', 'legacy', 'building']);
-    const items = m.phases.specification.items;
-    assert.strictEqual(items.unified.reconcile_needed, 'discussion');
-    assert.strictEqual(items.unified.sources['session-model'].status, 'stale');
-    assert.strictEqual(items.unified.sources.other.status, 'incorporated', 'sibling rows untouched');
-    assert.strictEqual(items.legacy.sources[0].status, 'stale', 'legacy array form stales in place');
-    assert.strictEqual(items.unrelated.reconcile_needed, undefined, 'no source row, no flag');
-    assert.strictEqual(items.gone.reconcile_needed, undefined, 'terminal specs are skipped');
-    assert.strictEqual(items.gone.sources['session-model'].status, 'incorporated');
-    // The in-progress spec takes no flag — its own session's sign-off reads
-    // the stale row — but the row still stales.
-    assert.strictEqual(items.building.reconcile_needed, undefined);
-    assert.strictEqual(items.building.sources['session-model'].status, 'stale');
-
-    const again = flagDownstream(m, 'epic', 'discussion', 'other');
-    assert.deepStrictEqual(again.flagged, [{ phase: 'specification', topic: 'unrelated' }], 'an existing flag is never clobbered');
-    assert.deepStrictEqual(again.staled, ['unified', 'unrelated']);
-    assert.strictEqual(items.unified.sources.other.status, 'stale', 'a second source re-deciding still stales its row on a flagged spec');
-  });
-
-  it('specification reopen flags the completed plan — the pipeline hop', () => {
-    const m = epicManifest();
-    m.phases.specification = { items: { 'auth-flow': { status: 'completed' } } };
     m.phases.planning = { items: { 'auth-flow': { status: 'completed' } } };
+    m.phases.implementation = { items: { 'auth-flow': { status: 'completed' } } };
     writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
 
-    const res = engine(dir, ['topic', 'reopen', 'payments', 'specification', 'auth-flow']);
+    const res = engine(dir, ['topic', 'reopen', 'payments', 'planning', 'auth-flow']);
 
-    assert.deepStrictEqual(res.reconcile_flagged, [{ phase: 'planning', topic: 'auth-flow' }]);
-    assert.strictEqual(readManifest(dir, 'payments').phases.planning.items['auth-flow'].reconcile_needed, 'specification');
-  });
-
-  it('bugfix investigation reopen flags the completed spec — the type pipeline drives the hop', () => {
-    writeFile(dir, '.leeway/crash/manifest.json', JSON.stringify({
-      name: 'crash', work_type: 'bugfix', status: 'in-progress',
-      phases: {
-        investigation: { items: { crash: { status: 'completed' } } },
-        specification: { items: { crash: { status: 'completed' } } },
-      },
-    }, null, 2) + '\n');
-
-    const res = engine(dir, ['topic', 'reopen', 'crash', 'investigation', 'crash']);
-
-    assert.deepStrictEqual(res.reconcile_flagged, [{ phase: 'specification', topic: 'crash' }]);
-    assert.strictEqual(readManifest(dir, 'crash').phases.specification.items.crash.reconcile_needed, 'investigation');
+    assert.deepStrictEqual(res.reconcile_flagged, [{ phase: 'implementation', topic: 'auth-flow' }]);
+    assert.strictEqual(readManifest(dir, 'payments').phases.implementation.items['auth-flow'].reconcile_needed, 'planning');
   });
 
   it('quick-fix scoping reopen flags the completed implementation', () => {
@@ -909,32 +583,11 @@ describe('engine topic reopen', () => {
     assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'), before);
   });
 
-  it('refuses a promoted specification — it left for its cross-cutting unit, and reopens there', () => {
-    const m = epicManifest();
-    m.phases.specification = { items: { sessions: { status: 'promoted', promoted_to: 'sessions' } } };
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
-    const before = fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8');
-    const refusal = /specification item "sessions" is promoted \(to "sessions"\) — promotion is terminal; continue it from the cross-cutting work unit/;
-    assert.match(engineFails(dir, ['topic', 'reopen', 'payments', 'specification', 'sessions']).error, refusal);
-    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'), before);
-  });
-
-  it('refuses a superseded item — supersession stays its own flow', () => {
-    const m0 = epicManifest();
-    m0.phases.specification = { items: { 'auth-flow': { status: 'in-progress' }, 'fee-model': { status: 'completed' } } };
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m0, null, 2) + '\n');
-    engine(dir, ['topic', 'supersede', 'payments', 'specification', 'auth-flow', '--by', 'fee-model']);
-    const before = fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8');
-    const err = engineFails(dir, ['topic', 'reopen', 'payments', 'specification', 'auth-flow']);
-    assert.match(err.error, /is not completed \(status: superseded\)/);
-    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'), before);
-  });
-
   it('refuses a cancelled item — reactivate owns that path', () => {
     const m = epicManifest();
-    m.phases.specification = { items: { 'auth-flow': { status: 'cancelled' } } };
+    m.phases.planning = { items: { 'auth-flow': { status: 'cancelled' } } };
     writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
-    const err = engineFails(dir, ['topic', 'reopen', 'payments', 'specification', 'auth-flow']);
+    const err = engineFails(dir, ['topic', 'reopen', 'payments', 'planning', 'auth-flow']);
     assert.match(err.error, /is cancelled — reactivate it instead/);
   });
 
@@ -944,272 +597,6 @@ describe('engine topic reopen', () => {
     assert.match(engineFails(dir, ['topic', 'reopen', 'payments', 'planning', 'fee-model']).error, /no planning items/);
     assert.match(engineFails(dir, ['topic', 'reopen', 'payments', 'investigation', 'ghost']).error, /no investigation item "ghost"/);
     assert.match(engineFails(dir, ['topic', 'reopen', 'payments', 'investigation']).error, /Usage: engine topic reopen/);
-  });
-});
-
-describe('engine sources stale', () => {
-  let dir;
-  beforeEach(() => { dir = setupEpicFixture(); });
-  afterEach(() => { cleanupFixture(dir); });
-
-  function specedManifest() {
-    const m = epicManifest();
-    m.phases.specification = { items: {
-      unified: { status: 'completed', sources: { 'session-model': { status: 'incorporated' }, other: { status: 'incorporated' } } },
-      legacy: { status: 'completed', sources: [{ name: 'session-model', status: 'incorporated' }] },
-      unrelated: { status: 'completed', sources: { other: { status: 'incorporated' } } },
-      gone: { status: 'superseded', superseded_by: 'unified', sources: { 'session-model': { status: 'incorporated' } } },
-      building: { status: 'in-progress', sources: { 'session-model': { status: 'incorporated' } } },
-    } };
-    return m;
-  }
-
-  it('runs the reverse join without reopening — rows stale, completed specs flag, the discussion stays completed', () => {
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(specedManifest(), null, 2) + '\n');
-
-    const res = engine(dir, ['sources', 'stale', 'payments', 'session-model']);
-
-    assert.strictEqual(res.ok, true);
-    assert.strictEqual(res.discussion, 'session-model');
-    assert.deepStrictEqual(res.flagged, [
-      { phase: 'specification', topic: 'unified' },
-      { phase: 'specification', topic: 'legacy' },
-    ]);
-    assert.deepStrictEqual(res.staled, ['unified', 'legacy', 'building']);
-    const m = readManifest(dir, 'payments');
-    assert.strictEqual(m.phases.discussion.items['session-model'].status, 'completed', 'no reopen — the discussion is untouched');
-    const items = m.phases.specification.items;
-    assert.strictEqual(items.unified.reconcile_needed, 'discussion');
-    assert.strictEqual(items.unified.sources['session-model'].status, 'stale');
-    assert.strictEqual(items.unified.sources.other.status, 'incorporated', 'sibling rows untouched');
-    assert.strictEqual(items.legacy.sources[0].status, 'stale', 'legacy array form stales in place');
-    assert.strictEqual(items.unrelated.reconcile_needed, undefined, 'no source row, no flag');
-    assert.strictEqual(items.gone.sources['session-model'].status, 'incorporated', 'terminal specs are skipped');
-    assert.strictEqual(items.building.reconcile_needed, undefined, 'in-progress specs take no flag');
-    assert.strictEqual(items.building.sources['session-model'].status, 'stale');
-  });
-
-  it('--except skips the invoking spec entirely — no flip, no flag', () => {
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(specedManifest(), null, 2) + '\n');
-
-    const res = engine(dir, ['sources', 'stale', 'payments', 'session-model', '--except', 'unified']);
-
-    assert.deepStrictEqual(res.staled, ['legacy', 'building']);
-    assert.deepStrictEqual(res.flagged, [{ phase: 'specification', topic: 'legacy' }]);
-    const items = readManifest(dir, 'payments').phases.specification.items;
-    assert.strictEqual(items.unified.sources['session-model'].status, 'incorporated', 'the excepted spec keeps its row');
-    assert.strictEqual(items.unified.reconcile_needed, undefined);
-  });
-
-  it('never clobbers an existing reconcile flag', () => {
-    const m = specedManifest();
-    m.phases.specification.items.unified.reconcile_needed = 'discussion';
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
-
-    const res = engine(dir, ['sources', 'stale', 'payments', 'session-model']);
-
-    assert.deepStrictEqual(res.flagged, [{ phase: 'specification', topic: 'legacy' }]);
-    assert.strictEqual(readManifest(dir, 'payments').phases.specification.items.unified.reconcile_needed, 'discussion');
-  });
-
-  it('refuses a discussion the manifest does not carry', () => {
-    const res = engineFails(dir, ['sources', 'stale', 'payments', 'nonexistent']);
-    assert.match(res.error, /discussion item "nonexistent" not found/);
-  });
-
-  it('refuses an --except that names no specification item — a typo must never self-stale', () => {
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(specedManifest(), null, 2) + '\n');
-    const res = engineFails(dir, ['sources', 'stale', 'payments', 'session-model', '--except', 'unifed']);
-    assert.match(res.error, /--except "unifed" names no specification item/);
-    const items = readManifest(dir, 'payments').phases.specification.items;
-    assert.strictEqual(items.unified.sources['session-model'].status, 'incorporated', 'nothing staled');
-  });
-
-  it('refuses a valueless --except with the usage line', () => {
-    const res = engineFails(dir, ['sources', 'stale', 'payments', 'session-model', '--except']);
-    assert.match(res.error, /Usage: engine sources stale/);
-  });
-
-  it('answers with empty arrays when no specification phase exists', () => {
-    const res = engine(dir, ['sources', 'stale', 'payments', 'session-model']);
-    assert.deepStrictEqual(res.flagged, []);
-    assert.deepStrictEqual(res.staled, []);
-  });
-});
-
-describe('engine topic complete: specification source gate', () => {
-  let dir;
-  beforeEach(() => { dir = setupEpicFixture(); });
-  afterEach(() => { cleanupFixture(dir); });
-
-  function withSpec(sources) {
-    const m = epicManifest();
-    m.phases.specification = { items: { unified: { status: 'in-progress', ...(sources !== undefined ? { sources } : {}) } } };
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
-  }
-
-  it('refuses while a source row is pending', () => {
-    withSpec({ 'session-model': { status: 'incorporated' }, other: { status: 'pending' } });
-    const res = engineFails(dir, ['topic', 'complete', 'payments', 'specification', 'unified']);
-    assert.match(res.error, /unresolved source rows \(other\)/);
-    assert.strictEqual(readManifest(dir, 'payments').phases.specification.items.unified.status, 'in-progress');
-  });
-
-  it('refuses while a source row is stale', () => {
-    withSpec([{ name: 'session-model', status: 'stale' }]);
-    const res = engineFails(dir, ['topic', 'complete', 'payments', 'specification', 'unified']);
-    assert.match(res.error, /unresolved source rows \(session-model\)/);
-  });
-
-  it('completes when every row is incorporated, and with no sources field at all', () => {
-    withSpec({ 'session-model': { status: 'incorporated' } });
-    assert.strictEqual(engine(dir, ['topic', 'complete', 'payments', 'specification', 'unified']).status, 'completed');
-
-    withSpec(undefined);
-    assert.strictEqual(engine(dir, ['topic', 'complete', 'payments', 'specification', 'unified']).status, 'completed');
-  });
-
-  it('legacy array form: all-incorporated completes, a missing status blocks', () => {
-    withSpec([{ name: 'session-model', status: 'incorporated' }, { name: 'other', status: 'incorporated' }]);
-    assert.strictEqual(engine(dir, ['topic', 'complete', 'payments', 'specification', 'unified']).status, 'completed');
-
-    withSpec({ 'session-model': {} });
-    const res = engineFails(dir, ['topic', 'complete', 'payments', 'specification', 'unified']);
-    assert.match(res.error, /unresolved source rows \(session-model\)/);
-    assert.strictEqual(readManifest(dir, 'payments').phases.specification.items.unified.status, 'in-progress', 'refusal leaves status untouched');
-  });
-});
-
-describe('engine topic supersede', () => {
-  let dir;
-
-  /** The epic manifest extended with specification items in every source status. */
-  function specManifest() {
-    const m = epicManifest();
-    m.phases.specification = {
-      items: {
-        unified: { status: 'completed' },
-        'auth-flow': { status: 'completed' },
-        'fee-model': { status: 'in-progress' },
-        'refund-policy': { status: 'proposed' },
-        'session-model': { status: 'cancelled', previous_status: 'completed' },
-      },
-    };
-    return m;
-  }
-
-  const specs = paymentsFixture(specManifest());
-  beforeEach(() => { dir = specs(); });
-  afterEach(() => { cleanupFixture(dir); });
-
-  it('marks a spec source superseded with superseded_by the TOPIC, removes KB chunks, no commit', () => {
-    harness.unreadableKnowledge(dir);
-    const res = engine(dir, ['topic', 'supersede', 'payments', 'specification', 'auth-flow', '--by', 'unified']);
-
-    assert.strictEqual(res.ok, true);
-    assert.strictEqual(res.topic, 'auth-flow');
-    assert.strictEqual(res.phase, 'specification');
-    assert.strictEqual(res.status, 'superseded');
-    assert.strictEqual(res.superseded_by, 'unified');
-    // A store that cannot be loaded — warn-don't-block.
-    assert.strictEqual(res.warnings.length, 1);
-    assert.match(res.warnings[0], /^knowledge remove failed: loadStore: corrupted store file at /);
-
-    const m = readManifest(dir, 'payments');
-    assert.deepStrictEqual(m.phases.specification.items['auth-flow'], {
-      status: 'superseded',
-      superseded_by: 'unified',
-    });
-    // Batch-oriented: no commit inside — the calling flow commits the set.
-    assert.strictEqual(lastMessage(dir), 'init', 'no commit');
-    assert.match(stateGit(dir, ['status', '--porcelain']), /^ M payments\/manifest\.json/m);
-  });
-
-  it('supersedes an in-progress source too — prose only excludes proposed', () => {
-    const res = engine(dir, ['topic', 'supersede', 'payments', 'specification', 'fee-model', '--by', 'unified']);
-    assert.strictEqual(res.status, 'superseded');
-    const m = readManifest(dir, 'payments');
-    assert.strictEqual(m.phases.specification.items['fee-model'].superseded_by, 'unified');
-  });
-
-  it('refuses a missing item, a missing --by target, and self-supersession — nothing touched', () => {
-    const before = fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8');
-    assert.match(
-      engineFails(dir, ['topic', 'supersede', 'payments', 'specification', 'ghost', '--by', 'unified']).error,
-      /no specification item "ghost"/);
-    assert.match(
-      engineFails(dir, ['topic', 'supersede', 'payments', 'specification', 'auth-flow', '--by', 'ghost']).error,
-      /no specification item "ghost" to supersede toward — the absorbing item must exist first/);
-    assert.match(
-      engineFails(dir, ['topic', 'supersede', 'payments', 'specification', 'auth-flow', '--by', 'auth-flow']).error,
-      /cannot supersede itself/);
-    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'), before);
-  });
-
-  it('refuses an already-superseded, proposed, or cancelled item', () => {
-    engine(dir, ['topic', 'supersede', 'payments', 'specification', 'auth-flow', '--by', 'unified']);
-    assert.match(
-      engineFails(dir, ['topic', 'supersede', 'payments', 'specification', 'auth-flow', '--by', 'unified']).error,
-      /already superseded \(by "unified"\)/);
-    assert.match(
-      engineFails(dir, ['topic', 'supersede', 'payments', 'specification', 'refund-policy', '--by', 'unified']).error,
-      /is proposed — a proposed item has no artifact to supersede/);
-    assert.match(
-      engineFails(dir, ['topic', 'supersede', 'payments', 'specification', 'session-model', '--by', 'unified']).error,
-      /is cancelled — reactivate it instead/);
-  });
-
-  it('rejects missing args and an unknown phase — loud and specific', () => {
-    assert.match(engineFails(dir, ['topic', 'supersede', 'payments', 'specification', 'auth-flow']).error, /Usage: engine topic supersede/);
-    assert.match(engineFails(dir, ['topic', 'supersede', 'payments', 'specification']).error, /Usage: engine topic supersede/);
-    assert.match(engineFails(dir, ['topic', 'supersede', 'payments', 'nonsense', 'auth-flow', '--by', 'unified']).error, /unknown or non-lifecycle phase "nonsense"/);
-  });
-});
-
-describe('engine topic incorporations', () => {
-  let dir;
-
-  // A completed `ranking` specification over two discussions, and a proposed
-  // grouping `search` that takes one of them in beside a third.
-  function incorporationManifest() {
-    const m = epicManifest();
-    m.phases.discussion.items = { ranking: { status: 'completed' }, synonyms: { status: 'completed' }, stray: { status: 'completed' } };
-    m.phases.specification = {
-      items: {
-        ranking: { status: 'completed', sources: { ranking: { status: 'incorporated' }, stray: { status: 'incorporated' } } },
-        search: { status: 'proposed', sources: { ranking: { status: 'pending' }, synonyms: { status: 'pending' } } },
-      },
-    };
-    return m;
-  }
-
-  const incorporating = paymentsFixture(incorporationManifest());
-  beforeEach(() => { dir = incorporating(); });
-  afterEach(() => { cleanupFixture(dir); });
-
-  const RANKING = () => ({ topic: 'ranking', path: path.join(dir, '.leeway/payments/specification/ranking/specification.md'), covers: ['ranking'] });
-
-  it('reads what a grouping\'s start takes in, and what the start recorded once it has run — the same on every read after', () => {
-    assert.deepStrictEqual(engine(dir, ['topic', 'incorporations', 'payments', 'search']),
-      { ok: true, work_unit: 'payments', topic: 'search', incorporations: [RANKING()] });
-    engine(dir, ['topic', 'start', 'payments', 'specification', 'search']);
-    assert.deepStrictEqual(readManifest(dir, 'payments').phases.specification.items.search.incorporates, ['ranking']);
-    assert.deepStrictEqual(engine(dir, ['topic', 'incorporations', 'payments', 'search']).incorporations, [RANKING()]);
-    assert.deepStrictEqual(engine(dir, ['topic', 'incorporations', 'payments', 'ranking']).incorporations, [],
-      'the specification taken in never reads the newer one back');
-  });
-
-  it('a superseded specification drops out, so the completion supersedes each once', () => {
-    engine(dir, ['topic', 'start', 'payments', 'specification', 'search']);
-    engine(dir, ['topic', 'supersede', 'payments', 'specification', 'ranking', '--by', 'search']);
-    assert.deepStrictEqual(engine(dir, ['topic', 'incorporations', 'payments', 'search']).incorporations, []);
-  });
-
-  it('refuses missing args and a specification the work unit does not hold', () => {
-    assert.match(engineFails(dir, ['topic', 'incorporations', 'payments']).error, /^Usage: engine topic incorporations <work-unit> <topic>$/);
-    assert.match(engineFails(dir, ['topic', 'incorporations', 'payments', 'search', 'extra']).error, /^Usage: engine topic incorporations/);
-    assert.match(engineFails(dir, ['topic', 'incorporations', 'payments', 'ghost']).error, /no specification "ghost" in "payments"/);
-    assert.match(engineFails(dir, ['topic', 'incorporations', 'nowhere', 'search']).error, /manifest not found/);
   });
 });
 
@@ -1344,7 +731,7 @@ describe('engine workunit complete', () => {
     assert.match(engineFails(dir, ['workunit', 'complete', 'auth-flow']).error, /Usage: engine workunit complete/);
     assert.match(engineFails(dir, ['workunit', 'complete', '-m', 'msg']).error, /Usage: engine workunit complete/);
     assert.match(engineFails(dir, ['workunit', 'complete', 'ghost', '-m', 'msg']).error, /manifest not found/);
-    assert.match(engineFails(dir, ['workunit', 'finish', 'auth-flow']).error, /Usage: engine workunit <create\|import\|complete\|cancel\|reactivate\|pivot\|absorb\|promote\|position>/);
+    assert.match(engineFails(dir, ['workunit', 'finish', 'auth-flow']).error, /Usage: engine workunit <create\|import\|complete\|cancel\|reactivate\|pivot\|absorb\|position>/);
   });
 
   it('completes a cancelled unit with a finished pipeline directly, restoring its chunks', () => {
@@ -1578,9 +965,8 @@ describe('engine usage banner', () => {
       'topic answered <work-unit> <topic> <NNN-slug> --entry <id>',
       'topic complete <work-unit> <phase> <topic>',
       'topic reopen <work-unit> <phase> <topic>',
-      'topic supersede <work-unit> <phase> <topic> --by <topic>',
-      'topic cancel <work-unit> <discovery|specification> <topic>',
-      'topic reactivate <work-unit> <discovery|specification> <topic>',
+      'topic cancel <work-unit> discovery <topic>',
+      'topic reactivate <work-unit> discovery <topic>',
       'experiment create <work-unit> <topic> --slug <kebab> (--from discussion --problem <file> --question <id> | --parent <E{n}>)',
       'experiment advance <work-unit> <topic> <id>',
       'experiment approve <work-unit> <topic> <id>',
@@ -1649,59 +1035,6 @@ describe('engine topic start — the discovery map gates the birth of a phase it
   });
 });
 
-describe('a plan is held while its specification is unsettled', () => {
-  let dir;
-  beforeEach(() => { dir = setupEpicFixture(); });
-  afterEach(() => { cleanupFixture(dir); });
-
-  /** Give "refund-policy" a specification in the given state, and optionally a plan. */
-  function withSpec(spec, planning) {
-    const m = epicManifest();
-    m.phases.specification = { items: { 'refund-policy': spec } };
-    if (planning) m.phases.planning = { items: { 'refund-policy': planning } };
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
-  }
-
-  it('the birth refuses over a specification still in motion, naming what holds it and the way in', () => {
-    withSpec({ status: 'completed', sources: { 'refund-policy': { status: 'stale' } } });
-    const err = engineFails(dir, ['topic', 'start', 'payments', 'planning', 'refund-policy']);
-    assert.strictEqual(err.error, 'planning can\'t start on "refund-policy" — its specification is unsettled (a source has moved beneath the extraction (refund-policy)); a plan is built from a settled record, so the specification\'s entry is the way in');
-    assert.strictEqual(readManifest(dir, 'payments').phases.planning, undefined, 'a refusal creates nothing');
-  });
-
-  it('the reopen refuses the same way, and a plan already in session resumes', () => {
-    withSpec({ status: 'completed', reconcile_needed: 'discussion' }, { status: 'completed' });
-    assert.match(engineFails(dir, ['topic', 'reopen', 'payments', 'planning', 'refund-policy']).error,
-      /planning can't reopen on "refund-policy" — its specification is unsettled \(its own input moved\)/);
-    withSpec({ status: 'in-progress' }, { status: 'in-progress' });
-    assert.strictEqual(engine(dir, ['topic', 'start', 'payments', 'planning', 'refund-policy']).status, 'in-progress');
-  });
-
-  it('the conclusion refuses while the record moves, and the settling releases it', () => {
-    withSpec({ status: 'in-progress' }, { status: 'in-progress' });
-    assert.strictEqual(engineFails(dir, ['topic', 'complete', 'payments', 'planning', 'refund-policy']).error,
-      'planning "refund-policy" awaits its specification (back in progress) — settle the specification to release the wait');
-    engine(dir, ['topic', 'complete', 'payments', 'specification', 'refund-policy']);
-    assert.strictEqual(engine(dir, ['topic', 'complete', 'payments', 'planning', 'refund-policy']).status, 'completed');
-  });
-
-  it('a settled specification holds nothing, and a terminal one releases the plan outright', () => {
-    withSpec({ status: 'completed', sources: { 'refund-policy': { status: 'incorporated' } } });
-    assert.strictEqual(engine(dir, ['topic', 'start', 'payments', 'planning', 'refund-policy']).created, true);
-    withSpec({ status: 'cancelled' }, { status: 'in-progress' });
-    assert.strictEqual(engine(dir, ['topic', 'complete', 'payments', 'planning', 'refund-policy']).status, 'completed');
-  });
-
-  it('no specification item at all is the one spec, its plan born only once ready to build\'s yes has begun the build (11.8.1)', () => {
-    const m = epicManifest();
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
-    assert.strictEqual(engineFails(dir, ['topic', 'start', 'payments', 'planning', 'refund-policy']).error,
-      'planning can\'t start on "refund-policy" — payments\'s build has not begun; ready to build\'s yes begins it: render ready-to-build payments');
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify({ ...m, build: { position: 'auto' } }, null, 2) + '\n');
-    assert.strictEqual(engine(dir, ['topic', 'start', 'payments', 'planning', 'refund-policy']).created, true);
-  });
-});
-
 describe('engine topic complete — a reconcile flag is its phase start\'s, never a refusal', () => {
   let dir;
   beforeEach(() => { dir = setupEpicFixture(); });
@@ -1721,17 +1054,10 @@ describe('engine topic complete — a reconcile flag is its phase start\'s, neve
     assert.strictEqual(readManifest(dir, 'payments').phases.investigation.items['auth-flow'].reconcile_needed, true, 'the flag stands for the entry advisory');
   });
 
-  it('other phases\' flags are their start\'s alone — a flagged specification or plan completes untouched', () => {
+  it('other phases\' flags are their start\'s alone — a flagged plan completes untouched', () => {
     const m = epicManifest();
-    m.phases.specification = { items: { 'refund-policy': { status: 'in-progress', reconcile_needed: 'discussion', sources: { 'refund-policy': { status: 'incorporated' } } } } };
     m.phases.planning = { items: { 'refund-policy': { status: 'in-progress', reconcile_needed: 'specification' } } };
     writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
-    assert.strictEqual(engine(dir, ['topic', 'complete', 'payments', 'specification', 'refund-policy']).status, 'completed');
-    // The specification's own flag is its entry's business, but it leaves the
-    // record unsettled — which is the plan's wait, not the plan's own flag.
-    assert.match(engineFails(dir, ['topic', 'complete', 'payments', 'planning', 'refund-policy']).error,
-      /awaits its specification \(its own input moved\)/);
-    engine(dir, ['manifest', 'delete', 'payments.specification.refund-policy', 'reconcile_needed']);
     assert.strictEqual(engine(dir, ['topic', 'complete', 'payments', 'planning', 'refund-policy']).status, 'completed');
     const after = readManifest(dir, 'payments');
     assert.strictEqual(after.phases.planning.items['refund-policy'].reconcile_needed, 'specification');

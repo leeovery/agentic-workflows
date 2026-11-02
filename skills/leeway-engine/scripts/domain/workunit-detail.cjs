@@ -15,7 +15,8 @@
 
 const { loadManifest } = require('./reads.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
-const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
+const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, TOPIC_PHASES } = require('../kernel/manifest-schema.cjs');
+const { pastItsSpec } = require('./spec-standing.cjs');
 const {
   phaseStatus,
   phaseItems,
@@ -23,7 +24,6 @@ const {
   mailPhases,
   ownNamedItems,
   inputMoved,
-  movedFrom,
 } = require('./derivations.cjs');
 
 /**
@@ -101,28 +101,23 @@ function completedPhases(cfg, manifest) {
 }
 
 /**
- * Live pipeline phases whose input has moved, in pipeline order — the
- * stored flag, or a completed specification the flag never reached (its
- * source rows no longer incorporated). The same reading `computeNextPhase`
- * routes on, so the dashboard never calls settled a phase the bridge routes
- * back to; a derived one names no revised upstream, so it carries `true` —
- * the "reconcile at next entry" voice the brief flag already uses.
- * @param {WorkUnitTypeConfig} cfg @param {object} manifest @returns {{phase: string, from: string|boolean}[]}
+ * Live pipeline phases whose input has moved, in pipeline order, each with
+ * the upstream phase that moved it — the stored flag's value.
+ * @param {WorkUnitTypeConfig} cfg @param {object} manifest @returns {{phase: string, from: string}[]}
  */
 function reconcilePhases(cfg, manifest) {
-  /** @type {{phase: string, from: string|boolean}[]} */
+  /** @type {{phase: string, from: string}[]} */
   const out = [];
   for (const phase of cfg.pipeline) {
     const moved = phaseItems(manifest, phase)
-      .find((i) => !TERMINAL_STATUSES.includes(i.status)
-        && (i.reconcile_needed !== undefined || inputMoved(manifest, phase, i)));
-    if (moved) out.push({ phase, from: /** @type {string|boolean} */ (movedFrom(moved)) });
+      .find((i) => !TERMINAL_STATUSES.includes(i.status) && i.reconcile_needed !== undefined);
+    if (moved) out.push({ phase, from: moved.reconcile_needed });
   }
   return out;
 }
 
 /** The phases a revisit never enters. */
-const UNREVISITABLE = [...DERIVED_PHASES, 'discussion'];
+const UNREVISITABLE = [...DERIVED_PHASES, 'discussion', 'specification'];
 
 /**
  * Where a single-topic unit's routes enter from `nextPhase`. The next route
@@ -134,21 +129,24 @@ const UNREVISITABLE = [...DERIVED_PHASES, 'discussion'];
  * (every completed phase where it sits outside — the finalising case), each
  * entered by the unit alone; never the derived phase, since a concluded
  * verdict stands and a new spawn is what reopens the series, nor a decided
- * discussion, which reopens through a message sent to it.
- * @param {object} manifest @param {string} nextPhase
+ * discussion, which reopens through a message sent to it, nor the spec, which
+ * is never corrected once concluded (11.9.1), nor, once the unit is past its
+ * spec, a phase entered at a topic — the spec closes every topic (4.11.2).
+ * @param {string} cwd @param {object} manifest @param {string} nextPhase
  * @returns {{next: PhaseTarget, revisit: string[]}}
  */
-function phaseTargets(manifest, nextPhase) {
+function phaseTargets(cwd, manifest, nextPhase) {
   const cfg = typeConfig(manifest.work_type);
   const nextIdx = cfg.pipeline.indexOf(nextPhase);
   const own = ownNamedItems(manifest, nextPhase);
   const entered = own.find((i) => i.status === 'in-progress')
     ?? own.find((i) => i.status === 'unstarted')
-    ?? own.find((i) => inputMoved(manifest, nextPhase, i));
+    ?? own.find(inputMoved);
+  const closed = pastItsSpec(cwd, manifest) ? [...UNREVISITABLE, ...TOPIC_PHASES] : UNREVISITABLE;
   return {
     next: { phase: nextPhase, topic: entered ? entered.name : null },
     revisit: completedPhases(cfg, manifest)
-      .filter((phase) => !UNREVISITABLE.includes(phase) && (nextIdx === -1 || cfg.pipeline.indexOf(phase) < nextIdx)),
+      .filter((phase) => !closed.includes(phase) && (nextIdx === -1 || cfg.pipeline.indexOf(phase) < nextIdx)),
   };
 }
 
@@ -165,7 +163,7 @@ function activeWorkUnit(cwd, name) {
   if (!m || m.status !== 'in-progress' || !Object.hasOwn(WORK_UNIT_TYPES, m.work_type)) return null;
   const cfg = WORK_UNIT_TYPES[m.work_type];
   const state = computeUnitPhaseState(m, cfg.pipeline);
-  const targets = phaseTargets(m, state.next_phase);
+  const targets = phaseTargets(cwd, m, state.next_phase);
   /** @type {WorkUnitEntry} */
   const unit = {
     name: m.name,

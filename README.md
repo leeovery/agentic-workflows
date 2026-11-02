@@ -105,7 +105,7 @@ Above the work units sits a product layer for the conversations that are not yet
 
 ## When work changes shape
 
-A feature that outgrows its scope pivots into an epic. A feature that belongs inside one gets absorbed as a topic. A topic wanted later rather than never is postponed onto the roadmap whole. Completed work reopens cleanly, cancelled work reactivates, and a spec that turns out to be project-wide gets promoted to a standing document. The system also notices change on its own: artifacts are checksummed, so an edited research file triggers an offer to re-analyse, and an edited spec an offer to replan. Reopening has teeth too: reopen anything a later phase was built on and that phase is flagged to reconcile — cued on every menu, routed back to instead of past, and never read as done while the flag is live.
+A feature that outgrows its scope pivots into an epic. A feature that belongs inside one gets absorbed as a topic. A topic wanted later rather than never is postponed onto the roadmap whole. Completed work reopens cleanly, and cancelled work reactivates. The system also notices change on its own: artifacts are checksummed, so an edited research file triggers an offer to re-analyse, and an edited spec an offer to replan. Reopening has teeth too: reopen anything a later phase was built on and that phase is flagged to reconcile — cued on every menu, routed back to instead of past, and never read as done while the flag is live.
 
 ---
 

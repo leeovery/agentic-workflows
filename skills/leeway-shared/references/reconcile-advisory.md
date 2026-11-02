@@ -1,6 +1,6 @@
 # Reconcile Advisory
 
-*Shared reference. Loaded where a phase starts — by the specification, planning, implementation and review skills.*
+*Shared reference. Loaded where a phase starts — by the planning, implementation and review skills.*
 
 ---
 
@@ -17,55 +17,6 @@ node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.{d
 #### If output is empty (no reconcile pending)
 
 The common case. No output.
-
-→ Return to caller.
-
-#### If output is `investigation` (upstream investigation reopened)
-
-The investigation reopened after this specification concluded — the root cause may have shifted beneath it. Surface the advisory, read the investigation file fresh into context, and clear the flag.
-
-> *Output the next fenced block as a text code block (```text fence):*
-
-```text
-  ⚑ This topic's investigation was reopened after the
-    specification concluded. Re-read it — the root cause may
-    have shifted. Nothing has been overwritten.
-```
-
-Read `.workflows/{work_unit}/investigation/{topic}.md` in full, then clear the flag:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
-```
-
-The reopen also flipped the spec's source row to `stale`.
-
-→ Return to caller.
-
-#### If output is `discussion` (a source discussion re-decided)
-
-A discussion this specification extracted was re-decided after extraction. The spec's `sources` rows record which — every row whose status is `stale`:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources
-```
-
-Surface the advisory. The `stale` rows themselves stay: only re-incorporation clears a row.
-
-> *Output the next fenced block as a text code block (```text fence):*
-
-```text
-  ⚑ A source discussion was re-decided after this specification
-    extracted it. The stale source rows mark which — re-read
-    them and reconcile the extracted content against the new
-    decisions. Nothing has been overwritten.
-```
-
-Read each stale source's record in full — `node .claude/skills/leeway-engine/scripts/engine.cjs ledger record {work_unit} {source-name}` — then clear the flag:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
-```
 
 → Return to caller.
 

@@ -18,16 +18,15 @@ const { UNIT_PHASES } = require('./derivations.cjs');
 /**
  * The `next` of a topic that left, from the calling conversation's position.
  * @param {string} workUnit
- * @param {'discovery'|'specification'} stage  the unit the topic left as
  * @param {string} topic
  * @param {'cancelled'|'postponed'} outcome
  * @returns {Next}
  */
-function leaveNext(workUnit, stage, topic, outcome) {
+function leaveNext(workUnit, topic, outcome) {
   const sessionId = handedSession();
   const at = sessionId === null ? null : readPosition(sessionId);
   const sitting = at !== null && at.name === workUnit && at.topic === topic
-    && typeof at.phase === 'string' && UNIT_PHASES[stage].includes(at.phase);
+    && typeof at.phase === 'string' && UNIT_PHASES.discovery.includes(at.phase);
   return sitting
     ? { kind: 'handoff', skill: 'leeway-continue-epic', args: [workUnit, /** @type {string} */ (at.phase), outcome] }
     : { kind: 'continue' };
