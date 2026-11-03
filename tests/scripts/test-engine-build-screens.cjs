@@ -14,7 +14,8 @@
 // Claude's made for it, one of the person's, and one of Claude's for 1.2.
 // Task 1.2, not started, has its account taken after the orchestrator
 // settled its one failed round, nothing differing from it. Task 1.3, linked
-// after 1.2, has no account. Five questions wait where a test parks them.
+// after 1.2, has no account. Five questions are asked, waiting where a test
+// parks them; a second world, made once from the first, has all five parked.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -27,7 +28,7 @@ const path = require('path');
 const {
   ok, okSectionsAsync, output, refusedPristine, git, writeState, readManifest, layout, commitAll, fixtureFrom, cleanupFixture, sectionOf, FROZEN_AT,
 } = require('./engine-harness.cjs');
-const { createManifest, templateFolder } = require('./discovery-test-utils.cjs');
+const { createManifest, templateFolder, copyWorld } = require('./discovery-test-utils.cjs');
 const { raiseHelpers } = require('./raise-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
@@ -191,17 +192,29 @@ const CALL = Object.freeze({
 });
 
 /** One of the world's questions, the first unless `at` says, parked on each task given, as a builder's call parks it. @param {string[]} tasks @param {number} [at] */
-async function parkOn(tasks, at = 0) {
+async function parkOn(tasks, at = 0, into = dir) {
   const call = { ...CALL, question: QUESTIONS[at] };
-  const { conversation } = raiseHelpers(() => dir, () => config, call);
+  const { conversation } = raiseHelpers(() => into, () => config, call);
   for (const task of tasks) {
-    await okSectionsAsync(dir, ['raise', `${UNIT}.implementation`, '--answers', made.asked[at], '--parks', task], { env: conversation(), stdin: JSON.stringify(call) });
+    await okSectionsAsync(into, ['raise', `${UNIT}.implementation`, '--answers', made.asked[at], '--parks', task], { env: conversation(), stdin: JSON.stringify(call) });
   }
 }
 
-/** Each of the world's five questions parked on the tasks given it, in turn. @param {string[][]} parks */
-async function parkFive(parks) {
-  for (const [at, tasks] of parks.entries()) await parkOn(tasks, at);
+/** Where the world's five questions park: Q1 and Q5 task 1.1, Q2 and Q4 task 1.2, Q3 task 2.1. */
+const FIVE = Object.freeze([['1.1'], ['1.2'], ['2.1'], ['1.2'], ['1.1']]);
+
+/** The world with its five questions parked as FIVE says, made once. @type {{template: string|null}} */
+const fiveParked = { template: null };
+
+/** The test's project made a copy of the world with its five questions parked. */
+async function parkFive() {
+  if (fiveParked.template === null) {
+    const template = world(templateFolder('engine-build-screens-five-template-'));
+    for (const [at, tasks] of FIVE.entries()) await parkOn(tasks, at, template);
+    fiveParked.template = template;
+  }
+  cleanupFixture(dir);
+  dir = copyWorld(fiveParked.template, fs.mkdtempSync(path.join(os.tmpdir(), 'engine-build-screens-five-')));
 }
 
 /** The unit's build switched to a position, through its door. @param {'auto'|'step'} to */
@@ -322,16 +335,16 @@ describe('the landing summary (12.12.5, 12.12.6)', () => {
   });
 
   it('with five questions waiting, the count reads five and each has its line (12.S26)', async () => {
-    await parkFive([['1.2'], ['1.3'], ['2.1'], ['1.2'], ['1.3']]);
+    await parkFive();
     const lines = sectionOf(screen(['task-landed', UNIT, '1.1']), 'DISPLAY: task landed').split('\n');
 
     assert.deepStrictEqual(lines.slice(lines.indexOf('5 QUESTIONS WAITING FOR YOU')), [
       '5 QUESTIONS WAITING FOR YOU',
-      `  ├─ ⚑ Q1 ${QUESTIONS[0]} · parks 1.2`,
-      `  ├─ ⚑ Q2 ${QUESTIONS[1]} · parks 1.3`,
+      `  ├─ ⚑ Q1 ${QUESTIONS[0]} · parks 1.1`,
+      `  ├─ ⚑ Q2 ${QUESTIONS[1]} · parks 1.2`,
       `  ├─ ⚑ Q3 ${QUESTIONS[2]} · parks 2.1`,
       `  ├─ ⚑ Q4 ${QUESTIONS[3]} · parks 1.2`,
-      `  └─ ⚑ Q5 ${QUESTIONS[4]} · parks 1.3`,
+      `  └─ ⚑ Q5 ${QUESTIONS[4]} · parks 1.1`,
       '',
     ]);
   });
@@ -569,7 +582,7 @@ describe('a task linked after another (12.6.4)', () => {
 
 describe('the stop report (12.12.9, 12.13.22)', () => {
   it('when every task left is parked or waits after one that is: the build stopped, the five questions waiting first with a line each, what was built, and what each answer lets run (12.S38, 12.S26)', async () => {
-    await parkFive([['1.1'], ['1.2'], ['2.1'], ['1.2'], ['1.1']]);
+    await parkFive();
     const out = screen(['build-stop', UNIT]);
 
     assert.strictEqual(sectionOf(out, 'DISPLAY: build stop'), '⚑ The build has stopped: nothing more can be built until you answer\n');
