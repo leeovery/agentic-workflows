@@ -1,0 +1,269 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Domain ring: the build's screens as `render` serves them (12.12, 12.14),
+// each read from the records and drawn by projections/build.cjs; nothing
+// here writes. Where the build stands is read from its standing alone
+// (build-entry.cjs); a task, from the tracker as any read of a task is, a
+// phase of the review's fixes past the cut among them (P14), named for its
+// round; a task's account, rounds and figures where `task account` took them
+// (task-account.cjs, round-report.cjs); the questions waiting, from the
+// ledger's projection (questions.cjs, 12.13.7); a task's calls, the
+// decisions of Claude's the ledger holds made for it in the build
+// (12.12.12); and what running the product proved of a task's scenarios of
+// the cut, at the tips of its branch (runs.cjs).
+//
+// - `build-headline <unit> --file <payload>`: the tasks started together,
+//   the payload `{"tasks": [{"task", "changes", "watch"}, …]}` saying what
+//   each is about to change and what to watch when it lands, each a task
+//   in progress.
+// - `task-landed <unit> <task>`: a task's landing summary, once its account
+//   is taken.
+// - `task-account <unit> <task>`: any task's account, printed when asked —
+//   one not yet taken drawn without it.
+// - `step-gate <unit> <task>`: the gate after a task, in step alone, once
+//   its account is taken and before it is done; in auto none follows a task
+//   (12.12.7).
+// - `phase-merge-gate <unit> <N>`: the gate before a phase's stack merges,
+//   in step alone, for a phase written and not yet merged: one of the cut
+//   once `land phase` would take it (7.2.4), one of the review's fixes
+//   once its tasks are done.
+// - `build-stop <unit>`: the stop report, while a question waits and
+//   nothing can be built without an answer: no task in progress, in any
+//   phase written, and none ready, that no question parks (12.12.9,
+//   12.13.22).
+// - `build-progress <unit>`: the build's phases and tasks.
+//
+// Each refuses, opening on its command: a unit the project lacks or whose
+// build has not begun; a task the tracker lacks; and as each says above.
+// ---------------------------------------------------------------------------
+
+const fs = require('fs');
+const { statePath, stateRoot } = require('../kernel/state-root.cjs');
+const { withStateLock } = require('./state-worktree.cjs');
+const { STATUS_WORDS, buildStanding, builtUnit, ownInFlight } = require('./build-entry.cjs');
+const { reading, cutPhases, phaseLists, phaseLanded, reviewRefusalOf } = require('./phase-checks.cjs');
+const { trackedTask, trackedLists, goingOn, ENDED } = require('./task-verbs.cjs');
+const { fieldOf, criteriaTexts, criterionWords, holdsScenario, namesScenario } = require('./task-file.cjs');
+const { finishedUnits } = require('./ledger-units.cjs');
+const { accountPath, figuresPath, readAccount } = require('./task-account.cjs');
+const { taskRounds } = require('./round-report.cjs');
+const { phaseStack, tipCommits } = require('./phase-stack.cjs');
+const { runsOf } = require('./runs.cjs');
+const { waitingQuestions } = require('./questions.cjs');
+const { unitEntries } = require('./unit-entries.cjs');
+const { projectName } = require('./state-checks.cjs');
+const { parseShownTask, parsePhase, shownTask, taskName, phaseName } = require('./task-id.cjs');
+const { filled, shaped, listed, readPayload, refusing } = require('./staged-payload.cjs');
+const {
+  landingScreen, accountScreen, stepGateScreen, phaseMergeGateScreen, headlineScreen, progressScreen, stopScreen,
+} = require('./projections/build.cjs');
+
+/** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
+/** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
+/** @typedef {import('./round-report.cjs').Round} Round */
+/** @typedef {import('./projections/build.cjs').TaskHead} TaskHead */
+/** @typedef {import('./projections/build.cjs').Reviewed} Reviewed */
+/** @typedef {import('./projections/build.cjs').AccountView} AccountView */
+/** @typedef {{dotpath?: string, item?: string, file?: string}} Args */
+
+/** A phase's name: the cut's, or for a phase past it, the review's fixes of its round (P14). @param {Record<string, any>} manifest @param {number} phase */
+function phaseNamed(manifest, phase) {
+  const cut = cutPhases(manifest);
+  return phase <= cut.length ? cut[phase - 1].name ?? '' : `the review's fixes, round ${phase - cut.length}`;
+}
+
+/** A task as the tracker holds it, read as every read of the tracker is. @param {string} cwd @param {TaskRef} ref @returns {TaskDetail} */
+const taskOf = (cwd, ref) => withStateLock(stateRoot(cwd), () => trackedTask(cwd, ref));
+
+/** A task as screens name it. @param {Record<string, any>} manifest @param {TaskRef} ref @param {TaskDetail} task @returns {TaskHead} */
+const headOf = (manifest, ref, task) => ({ task: shownTask(ref), title: task.title, phase: ref.phase, phase_name: phaseNamed(manifest, ref.phase) });
+
+/** The unit a screen is for, its build begun, and the task it names. @param {string} cwd @param {Args} args @param {string} surface */
+function namedTask(cwd, { dotpath: unit = '', item }, surface) {
+  if (item === undefined) throw new Error(`Usage: engine render ${surface} <work-unit> <task>`);
+  const manifest = builtUnit(cwd, unit);
+  const ref = parseShownTask(unit, item);
+  return { manifest, ref, task: taskOf(cwd, ref) };
+}
+
+/** The figures `task account` took, or null where it has not. @param {string} cwd @param {TaskRef} ref @returns {import('./projections/build.cjs').Figures|null} */
+function takenFigures(cwd, ref) {
+  const file = statePath(cwd, figuresPath(ref));
+  return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null;
+}
+
+/** How a task's review ended: in which round, and whether passed or settled. @param {Round[]} rounds @returns {Reviewed} */
+const reviewedOf = (rounds) => ({ rounds: rounds.length, settled: /** @type {Round} */ (rounds.at(-1)).settled });
+
+/** Each summary's heading under `## Reviews`: each round's, and after each round settled, its settlement's. @param {Round[]} rounds */
+const reviewHeadings = (rounds) => rounds.flatMap(({ round, settled }) => [`Round ${round}`, ...(settled ? ['Settled'] : [])]);
+
+/**
+ * A task's account as `task account` took it, read with its rounds; null
+ * where it has not taken one.
+ * @param {string} cwd @param {TaskRef} ref @returns {AccountView['account']}
+ */
+function takenAccount(cwd, ref) {
+  const figures = takenFigures(cwd, ref);
+  if (figures === null) return null;
+  const rounds = taskRounds(cwd, ref);
+  const settled = rounds.filter((round) => round.settled).map(({ round }) => round);
+  const { sections, differences, reviews } = readAccount(fs.readFileSync(statePath(cwd, accountPath(ref)), 'utf8'), rounds.length, settled);
+  const headings = reviewHeadings(rounds);
+  return { sections, differences, reviews: reviews.map((summary, at) => ({ heading: headings[at], summary })), reviewed: reviewedOf(rounds), figures };
+}
+
+/** The account a screen needs, refused where `task account` has not taken it. @param {string} cwd @param {TaskRef} ref */
+function requiredAccount(cwd, ref) {
+  const account = takenAccount(cwd, ref);
+  if (account === null) throw new Error(`${taskName(ref)} has no account taken — it lands once its account is: task account ${ref.unit} ${shownTask(ref)}`);
+  return account;
+}
+
+/** A task's account as a screen draws it, with its place among its phase's tasks. @param {string} cwd @param {Record<string, any>} manifest @param {TaskRef} ref @param {TaskDetail} task @param {AccountView['account']} account @returns {AccountView} */
+function accountView(cwd, manifest, ref, task, account) {
+  const { phases: [rows] } = withStateLock(stateRoot(cwd), () => trackedLists(cwd, ref.unit, [ref.phase]));
+  const tasks = (rows ?? []).map((row) => shownTask(row.ref));
+  return {
+    head: headOf(manifest, ref, task), at: tasks.indexOf(shownTask(ref)) + 1, of: tasks.length, does: fieldOf(task.text, 'Outcome') ?? '', closed: task.status === 'closed', account,
+  };
+}
+
+/** Refuses a unit building in auto, where `what` never shows (12.12.7). @param {Record<string, any>} manifest @param {string} what */
+function stepOnly(manifest, what) {
+  if (manifest.build.position !== 'step') throw new Error(`${manifest.name} builds in auto, where ${what} — the person meets only danger, the authority gates and the questions parked`);
+}
+
+/** The calls of Claude's the ledger holds made for a task (12.12.12). @param {string} cwd @param {TaskRef} ref */
+function callsMade(cwd, ref) {
+  const task = shownTask(ref);
+  return [...unitEntries(cwd, ref.unit).values()].filter(({ kind, line }) => kind === 'decision' && line.by === 'claude' && line.task === task).length;
+}
+
+/**
+ * What running the product proved of each of the task's scenarios of the
+ * cut, at the tips of its branch — null where it holds none — and whether a
+ * run there counts, one skipped never.
+ * @param {string} cwd @param {Record<string, any>} manifest @param {TaskRef} ref @param {TaskDetail} task @param {string[]} criteria
+ */
+function ranOf(cwd, manifest, ref, task, criteria) {
+  const scenarios = cutPhases(manifest).flatMap(({ scenarios: held }) => held).filter((scenario) => holdsScenario(task.text, scenario));
+  if (scenarios.length === 0) return { ran: null, recorded: false };
+  const head = tipCommits(phaseStack(cwd, ref.unit, ref.phase, [task]));
+  const read = scenarios.map((scenario) => ({ scenario, ...runsOf(cwd, ref.unit, scenario, head) }));
+  return {
+    ran: read.map(({ scenario, standing }) => ({ criterion: criterionWords(criteria.find((criterion) => namesScenario(criterion, scenario)) ?? scenario), standing })),
+    recorded: read.some(({ runs }) => runs.some(({ verdict }) => verdict !== 'skipped')),
+  };
+}
+
+/** `render task-landed <unit> <task>`. @param {string} cwd @param {Args} args */
+function taskLandedSurface(cwd, args) {
+  return refusing('render task-landed', () => {
+    const { manifest, ref, task } = namedTask(cwd, args, 'task-landed');
+    const account = requiredAccount(cwd, ref);
+    const criteria = criteriaTexts(task.text);
+    return landingScreen({
+      head: headOf(manifest, ref, task),
+      reviewed: account.reviewed,
+      calls: callsMade(cwd, ref),
+      changed: account.sections['What was done'],
+      criteria: criteria.map(criterionWords),
+      product: projectName(cwd),
+      ...ranOf(cwd, manifest, ref, task, criteria),
+      waiting: waitingQuestions(cwd, [ref.unit]).waiting,
+    });
+  });
+}
+
+/** `render task-account <unit> <task>`. @param {string} cwd @param {Args} args */
+function taskAccountSurface(cwd, args) {
+  return refusing('render task-account', () => {
+    const { manifest, ref, task } = namedTask(cwd, args, 'task-account');
+    return accountScreen(accountView(cwd, manifest, ref, task, takenAccount(cwd, ref)));
+  });
+}
+
+/** `render step-gate <unit> <task>`. @param {string} cwd @param {Args} args */
+function stepGateSurface(cwd, args) {
+  return refusing('render step-gate', () => {
+    const { manifest, ref, task } = namedTask(cwd, args, 'step-gate');
+    stepOnly(manifest, 'no gate follows a task');
+    if (ENDED.includes(task.status)) throw new Error(`${taskName(ref)} is ${task.status} — its gate comes as it lands, before task done`);
+    return stepGateScreen(ref.unit, accountView(cwd, manifest, ref, task, requiredAccount(cwd, ref)));
+  });
+}
+
+/** `render phase-merge-gate <unit> <N>`. @param {string} cwd @param {Args} args */
+function phaseMergeGateSurface(cwd, { dotpath: unit = '', item }) {
+  return refusing('render phase-merge-gate', () => {
+    if (item === undefined) throw new Error('Usage: engine render phase-merge-gate <work-unit> <N>');
+    const manifest = builtUnit(cwd, unit);
+    const phase = parsePhase(item);
+    stepOnly(manifest, 'a phase\'s stack merges with no gate');
+    const refused = mergeRefusal(reading(cwd, unit, manifest), phase);
+    if (refused !== null) throw new Error(refused);
+    return phaseMergeGateScreen(unit, phase, phaseNamed(manifest, phase));
+  });
+}
+
+/**
+ * Why no gate stands before the phase's stack merges, or null: a phase the
+ * tracker lacks, one merged already, one of the cut whose review has not
+ * passed or whose fixes are not done, and one of the review's fixes with a
+ * task not done.
+ * @param {import('./phase-checks.cjs').Reading} at @param {number} phase @returns {string|null}
+ */
+function mergeRefusal(at, phase) {
+  const [rows] = phaseLists(at, [phase]);
+  if (rows === null) return `${phaseName(at.unit, phase)} is not written — no stack of its waits to merge`;
+  if (phaseLanded(at, phase)) return `${phaseName(at.unit, phase)} is merged already — its tasks are on the default branch`;
+  if (phase <= cutPhases(at.manifest).length) return reviewRefusalOf(at, phase);
+  const unfinished = rows.find(({ status }) => status !== 'done' && status !== 'closed');
+  return unfinished === undefined ? null : `${phaseName(at.unit, phase)} merges once its tasks are done — task ${shownTask(unfinished.ref)} is ${STATUS_WORDS[unfinished.status]}`;
+}
+
+/** One task the headline names, as the payload gives it. @param {unknown} given @param {number} at */
+function startedTask(given, at) {
+  const { task, changes, watch } = shaped(given, `tasks[${at}]`, ['task', 'changes', 'watch']);
+  if (![task, changes, watch].every(filled)) throw new Error(`tasks[${at}]'s task, changes and watch are each words`);
+  return { task: /** @type {string} */ (task), changes: /** @type {string} */ (changes).trim(), watch: /** @type {string} */ (watch).trim() };
+}
+
+/** `render build-headline <unit> --file <payload>`. @param {string} cwd @param {Args} args */
+function buildHeadlineSurface(cwd, { dotpath: unit = '', file }) {
+  return refusing('render build-headline', () => {
+    if (file === undefined) throw new Error('Usage: engine render build-headline <work-unit> --file <payload.json>');
+    const manifest = builtUnit(cwd, unit);
+    const given = listed(shaped(readPayload(cwd, file), 'the payload', ['tasks']).tasks, 'the payload\'s tasks').map(startedTask);
+    if (given.length === 0) throw new Error('the payload names the tasks started together, one at least');
+    const twice = given.map(({ task }) => task).find((task, at, all) => all.indexOf(task) !== at);
+    if (twice !== undefined) throw new Error(`the payload names task ${twice} twice`);
+    const started = given.map(({ task: shown, changes, watch }) => {
+      const ref = parseShownTask(unit, shown);
+      const task = taskOf(cwd, ref);
+      if (task.status !== 'in-progress') throw new Error(`${taskName(ref)} is ${task.status === 'open' ? 'not started' : task.status} — the headline names tasks as they start: task start ${unit} ${shown}`);
+      return { ...headOf(manifest, ref, task), changes, watch };
+    });
+    return headlineScreen(buildStanding(cwd, unit, ownInFlight(unit)), started);
+  });
+}
+
+/** `render build-stop <unit>`. @param {string} cwd @param {Args} args */
+function buildStopSurface(cwd, { dotpath: unit = '' }) {
+  return refusing('render build-stop', () => {
+    const standing = buildStanding(cwd, unit, ownInFlight(unit));
+    if (standing.waiting.length === 0) throw new Error(`no question waits on the person in ${unit}'s build — it stops only where nothing can go on without their answer (12.13.22)`);
+    const [next] = withStateLock(stateRoot(cwd), () => goingOn(cwd, unit, standing.phases.length, { ready: true })).tasks;
+    if (next !== undefined) throw new Error(`${unit}'s build goes on with task ${next}, which no question parks — it stops only where nothing can go on without the person's answer (12.13.22)`);
+    return stopScreen(standing, finishedUnits(stateRoot(cwd)));
+  });
+}
+
+/** `render build-progress <unit>`. @param {string} cwd @param {Args} args */
+function buildProgressSurface(cwd, { dotpath: unit = '' }) {
+  return refusing('render build-progress', () => progressScreen(buildStanding(cwd, unit, ownInFlight(unit)), finishedUnits(stateRoot(cwd))));
+}
+
+module.exports = { buildHeadlineSurface, taskLandedSurface, taskAccountSurface, stepGateSurface, phaseMergeGateSurface, buildStopSurface, buildProgressSurface };

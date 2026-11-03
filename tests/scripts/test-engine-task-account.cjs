@@ -263,7 +263,7 @@ describe('a reviewer\'s report, read by its grammar (13.4.1, 13.5.11)', () => {
 });
 
 describe('an account, read by its grammar (12.14.5, 12.14.6)', () => {
-  it('each section\'s text by its heading, how many ways the work differs, and each round\'s summary; `None.` differs in none', () => {
+  it('each section\'s text by its heading, each way the work differs as one line, and each round\'s summary; `None.` differs in none', () => {
     assert.deepStrictEqual(readAccount(accountOf(), 2), {
       sections: {
         'What was done': 'A receipt follows every charge, its amount on it.',
@@ -272,10 +272,10 @@ describe('an account, read by its grammar (12.14.5, 12.14.6)', () => {
         'Differs from the task': '- The card form now names its charge too, which the task did not ask for.\n  The receipt reads it.\n- The receipt test reads a fixed clock.',
         Reviews: '### Round 1\n\nThe amount was missing; the builder added it.\n\n### Round 2\n\nPassed, one nit fixed.',
       },
-      differs: 2,
+      differences: ['The card form now names its charge too, which the task did not ask for. The receipt reads it.', 'The receipt test reads a fixed clock.'],
       reviews: ['The amount was missing; the builder added it.', 'Passed, one nit fixed.'],
     });
-    assert.strictEqual(readAccount(accountOf({ 'Differs from the task': 'None.' }), 2).differs, 0);
+    assert.strictEqual(readAccount(accountOf({ 'Differs from the task': 'None.' }), 2).differences.length, 0);
   });
 
   it('its lists as a careful writer writes them: `*` bullets and numbers, a lead-in, a thematic break no item; `None` as all it holds, an item or not, and an item beginning `None` never a difference', () => {
@@ -284,7 +284,7 @@ describe('an account, read by its grammar (12.14.5, 12.14.6)', () => {
       ['None', 0], ['None — built as written.', 0], ['- None.', 0], ['- None.\n- The card form changed.', 1], ['None. One thing to note:\n\n- The card form changed.', 1],
       ['- The card form changed.\n\n- - -', 1],
     ]) {
-      assert.strictEqual(readAccount(accountOf({ 'Differs from the task': String(differs) }), 2).differs, count, String(differs));
+      assert.strictEqual(readAccount(accountOf({ 'Differs from the task': String(differs) }), 2).differences.length, count, String(differs));
     }
   });
 

@@ -12,9 +12,11 @@
 // refused, every fault named at once. A title is one line wherever the
 // engine takes one, a phase's too: no character that breaks a line anywhere
 // in it, the task file's own line ending aside. A verb of another kind
-// reads a task's spec reference, its acceptance scenarios and how many
-// criteria they hold, from its text as the tracker holds it.
+// reads a task's fields, its spec reference, its acceptance scenarios and
+// the criteria they hold, from its text as the tracker holds it.
 // ---------------------------------------------------------------------------
+
+const { BULLET, listItems } = require('./list-items.cjs');
 
 /** The kinds a task's type is one of. */
 const TASK_TYPES = Object.freeze(['feat', 'fix', 'refactor', 'perf', 'test', 'docs', 'build', 'ci', 'chore']);
@@ -95,13 +97,22 @@ function readTaskText(text) {
 }
 
 /**
+ * A field of a task's text as written, trimmed; null where it holds none, or
+ * more than one.
+ * @param {string} text @param {string} field one of FIELDS @returns {string|null}
+ */
+function fieldOf(text, field) {
+  const bodies = sectionsOf(text.trim().split('\n').slice(1)).get(field) ?? [];
+  return bodies.length === 1 && bodies[0] !== '' ? bodies[0] : null;
+}
+
+/**
  * The spec reference a task's text holds, as written; null where it holds
  * none, or more than one.
  * @param {string} text @returns {string|null}
  */
 function specReferenceOf(text) {
-  const bodies = sectionsOf(text.trim().split('\n').slice(1)).get('Spec reference') ?? [];
-  return bodies.length === 1 && bodies[0] !== '' ? bodies[0] : null;
+  return fieldOf(text, 'Spec reference');
 }
 
 /**
@@ -114,15 +125,25 @@ function scenariosOf(text) {
   return body;
 }
 
+/** Lines as one line of words. @param {string[]} lines */
+const oneLine = (lines) => lines.map((line) => line.trim()).filter((line) => line !== '').join(' ');
+
 /**
- * How many acceptance criteria a task's text holds: each item at the margin
- * of its acceptance scenarios' list, or one where the field holds no list.
- * @param {string} text @returns {number}
+ * A task's acceptance criteria, each as one line: each item at the margin
+ * of its acceptance scenarios' list (list-items.cjs), or the field whole
+ * where it holds no list; none where it is empty.
+ * @param {string} text @returns {string[]}
  */
-function criteriaOf(text) {
+function criteriaTexts(text) {
   const body = scenariosOf(text);
-  const items = body.split('\n').filter((line) => /^(?:[-*+]|[0-9]+[.)])[ \t]/.test(line)).length;
-  return items > 0 ? items : Number(body !== '');
+  const { items } = listItems(body.split('\n'), new RegExp(`^${BULLET}(.*)$`));
+  if (items.length === 0) return body === '' ? [] : [oneLine(body.split('\n'))];
+  return items.map(({ opened, beneath }) => oneLine([opened[1], ...beneath.map(({ line }) => line)]));
+}
+
+/** How many acceptance criteria a task's text holds (`criteriaTexts`). @param {string} text @returns {number} */
+function criteriaOf(text) {
+  return criteriaTexts(text).length;
 }
 
 /** Whether text names a scenario by its id, `N.Sk`, a longer id never read as it. @param {string} text @param {string} scenario */
@@ -135,4 +156,9 @@ function holdsScenario(text, scenario) {
   return namesScenario(scenariosOf(text), scenario);
 }
 
-module.exports = { TASK_TYPES, breaksLine, readTaskText, specReferenceOf, scenariosOf, criteriaOf, namesScenario, holdsScenario };
+/** A criterion in its own words, the scenario id it opens with taken off, as the task writer writes it (`{id} {wording}`). @param {string} criterion */
+function criterionWords(criterion) {
+  return criterion.replace(/^\d+\.S\d+\s+/, '') || criterion;
+}
+
+module.exports = { TASK_TYPES, breaksLine, readTaskText, fieldOf, specReferenceOf, scenariosOf, criteriaTexts, criteriaOf, namesScenario, holdsScenario, criterionWords };

@@ -447,6 +447,13 @@ ${VERIFY_USAGE.replace(/^/gm, '  ')}
   render approve-map <work-unit> [--file <payload.json> | --sweep]
   render approve-map-strike <work-unit>
   render ready-to-build <work-unit> [--page] [--calls]
+  render build-headline <work-unit> --file <payload.json>
+  render task-landed <work-unit> <task>
+  render task-account <work-unit> <task>
+  render step-gate <work-unit> <task>          (step only)
+  render phase-merge-gate <work-unit> <N>      (step only)
+  render build-stop <work-unit>
+  render build-progress <work-unit>
   render discovery-map <work-unit>
   render migrations-applied --file <payload.json>
   render migration-gate
@@ -2377,7 +2384,7 @@ function runRender(call, argv) {
   if (Object.hasOwn(SURFACES, command)) {
     try {
       /** @type {{dotpath: string} & Record<string, string|undefined>} */
-      const args = { dotpath: positional[0], ...opts };
+      const args = { dotpath: positional[0], item: positional[1], ...opts };
       for (const flag of RENDER_FLAGS) if (flags.has(flag)) args[flag] = '1';
       respondSections(call, renderSurface(call.cwd, command, args));
     } catch (err) {

@@ -6,18 +6,22 @@
 // its phase not yet written, the build's log appended and carried by the
 // state's commits; the task writer briefed from the cut and the phase's
 // tasks written through the `task` verbs, a task refused its start until the
-// phase's start checklist closes; its task's builder laying the task
+// phase's start checklist closes, its start announced by the headline; its
+// task's builder laying the task
 // out in the worktree its isolation made, building the verify setup there,
 // its mutation tool among it, committing it through the door, recording it
 // once it ran end to end and proving the task's scenario by running it from
 // that worktree, its evidence kept; a note for later banked; the pair's reports and the
 // builder's account each written as the agents write them — a `.txt` beside
 // the file their brief names, renamed to it — and taken from there; the
-// task opened and chained into its phase's stack; then the
+// person switching the build to step, the task's landing summary and its
+// gate after it, answered yes; the task opened and chained into its phase's
+// stack and done; then the
 // mutation tool run once over the phase, and the consolidation agent's
 // report and the phase review's landing where their readers find them, one
 // reviewer failing it, its fixes owed until the orchestrator settles it; the
-// stack merged and the phase's close taken on the engine's items alone.
+// stack merged at the gate before it, in step, and the phase's close taken on
+// the engine's items alone, the build's progress reading it merged.
 //
 // Layer: simulation. World: this file's own, built once from the project
 // every scenario starts from (pipeline-world.cjs) — a feature through its
@@ -33,9 +37,9 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { stateGit, git, withEnv } = require('./engine-harness.cjs');
+const { stateGit, git, withEnv, sectionOf } = require('./engine-harness.cjs');
 const {
-  Sim, startUnit, discussed, specToBuild, buildEntry, startPhase, writePhaseTasks, worldFrom, carryOn,
+  Sim, startUnit, discussed, specToBuild, buildEntry, startPhase, writePhaseTasks, worldFrom, carryOn, answerGate,
 } = require('./pipeline-world.cjs');
 
 const DOMAIN = path.join(__dirname, '../../skills/leeway-engine/scripts/domain');
@@ -83,7 +87,7 @@ describe('pipeline simulation: a phase of the cut', () => {
     fs.rmSync(builders, { recursive: true, force: true });
   });
 
-  it('the build entered; the task writer briefed from the cut writes the phase\'s tasks and the phase starts; the builder, in its task\'s worktree, builds the verify setup and proves the task\'s scenario by running it; the pair\'s reports, the account and the consolidation report land where their readers find them; the task chains into the phase\'s stack; the phase review reads the runs and the survivors at the phase\'s tips; the stack merges and the phase closes', () => {
+  it('the build entered; the task writer briefed from the cut writes the phase\'s tasks and the phase starts; the builder, in its task\'s worktree, builds the verify setup and proves the task\'s scenario by running it; the pair\'s reports, the account and the consolidation report land where their readers find them; switched to step, the task\'s landing summary and its gate show; the task chains into the phase\'s stack; the phase review reads the runs and the survivors at the phase\'s tips; the stack merges at its gate and the phase closes', () => {
     const wu = WU;
     const entered = buildEntry(sim, wu);
     assert.deepStrictEqual(entered.filter((line) => line.startsWith('phase: ')), ['phase: phase 1 of 1, "The work": not yet written'], 'a phase not yet written reads so (7.4.2)');
@@ -95,6 +99,8 @@ describe('pipeline simulation: a phase of the cut', () => {
     assert.ok(stateGit(sim.dir, ['ls-files', '--', `${wu}/build/log.md`]).trim() !== '', 'the build\'s log rides the state\'s commits (12.2.3)');
     assert.ok(carryOn(sim).text.includes(path.join(sim.dir, `.leeway/${wu}/build/log.md`)), 'a compaction re-reads the build\'s log (12.S4)');
     sim.run(['task', 'start', wu, '1.1']);
+    const headline = sim.write(`.leeway/.cache/${wu}/build/headline.json`, JSON.stringify({ tasks: [{ task: '1.1', changes: 'The ledger is written.', watch: 'An entry read back.' }] }));
+    assert.match(sim.render(['build-headline', wu, '--file', headline]), /▪ Starting 1 task\n\n {2}└─ 1\.1 Write the ledger\n/, 'the headline names the task as it starts (12.12.4)');
     const builder = sim.run(['brief', 'builder', wu, '1.1']);
     const account = placeIn(sim, builder, 'Where your account goes');
 
@@ -129,6 +135,13 @@ describe('pipeline simulation: a phase of the cut', () => {
       '## Differs from the task', 'None.', '## Reviews', '### Round 1', 'Passed.',
     ].join('\n\n'));
     assert.deepStrictEqual(sim.run(['task', 'account', wu, '1.1']).rounds, 1, 'the account and the round\'s reports are read where the agents wrote them');
+
+    // The person switches the build to step: the task lands, its summary
+    // printed, and its gate stops before it is done (12.12.5, 12.14.3).
+    sim.run(['workunit', 'position', wu, 'step']);
+    assert.match(sim.render(['task-landed', wu, '1.1']), /✓ Landed — its reviewer pair passed it in round 1 · no calls\n {2}went to the ledger\n[\s\S]*PROVED 1 OF 1\n[\s\S]*NO QUESTIONS WAITING FOR YOU\n/, 'the landing summary, the questions beneath it');
+    sim.render(['step-gate', wu, '1.1'], { expect: 'content' });
+    assert.deepStrictEqual(answerGate(sim, 'step gate', '--pick', 'y').next, { kind: 'continue' }, 'yes goes on to the next task');
     sim.run(['land', 'open', wu, '1.1']);
     sim.run(['land', 'chain', wu, '1.1']);
     sim.run(['task', 'done', wu, '1.1']);
@@ -154,10 +167,12 @@ describe('pipeline simulation: a phase of the cut', () => {
     sim.refuses(['land', 'phase', wu, '1'], /— phase 1's review failed, and no settlement answers it — /);
     sim.run(['task', 'settle', wu, '--phase', '1', '--file', sim.write(`.leeway/.cache/${wu}/build/why.md`, 'Checking the hash on read is the next phase\'s.\n')]);
 
-    // The phase review settled, its stack merges, and the phase closes on
-    // the engine's items alone (7.2.4, 6.4.9).
-    sim.run(['land', 'phase', wu, '1']);
+    // The phase review settled, its stack merges at the gate before it, in
+    // step, and the phase closes on the engine's items alone (7.2.4, 6.4.9).
+    sim.render(['phase-merge-gate', wu, '1'], { expect: 'content' });
+    sim.run(answerGate(sim, 'phase merge', '--pick', 'y').next.argv);
     sim.run(['checklist', 'close', 'phase-close', wu, '1']);
+    assert.match(sectionOf(sim.render(['build-progress', wu]), 'DISPLAY: build progress'), /^1 of 1 task done · 0 running\n\n {2}└─ Phase 1 of 1 · The work +\[merged\]\n/, 'the build\'s progress reads its phase merged');
     assert.deepStrictEqual(buildEntry(sim, wu).filter((line) => line.startsWith('phase: ')), ['phase: phase 1 of 1, "The work": merged — tasks 1.1 done'],
       'the build\'s one phase reads merged');
   });
