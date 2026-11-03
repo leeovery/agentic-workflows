@@ -295,6 +295,6 @@ function phaseReviewRefusal(cwd, unit, phase) {
 }
 
 module.exports = {
-  reading, cutPhases, phaseLists, phaseLanded, fixesOwed,
+  reading, cutPhases, phaseLists, phaseTasks, phaseLanded, fixesOwed,
   tasksWritten, reliedOnDone, tasksPassed, phaseReviewFaults, scenariosReported, notesConsolidated, stackMerged, closeRefusal, phaseReviewRefusal,
 };

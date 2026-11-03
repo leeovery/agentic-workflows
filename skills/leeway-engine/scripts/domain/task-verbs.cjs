@@ -19,8 +19,10 @@
 // an earlier phase's, still unfinished, and only a task not yet ended is
 // linked (12.6.4); ready answers every task waiting with nothing before it
 // and no question parking it (7.1.5, 13.4.6); start, refused for a phase
-// the cut holds before its start checklist has closed (6.4.8, 12.S7), puts
-// the task in flight on the conversation's position,
+// the cut holds before its start checklist has closed (6.4.8, 12.S7), and
+// in step while another of the unit's tasks is in flight or at its gate —
+// in progress, here or in another conversation, and no question parking it
+// (12.7.9) — puts the task in flight on the conversation's position,
 // beside any others in flight there — a task already in flight kept as it
 // stands, its builder and reviewers with it — and done and close take it
 // off, each first taking the task's worktree apart (6.3.3, 24.2.4); done
@@ -77,6 +79,10 @@ const { layOutTask, takeWorktreeApart } = require('./task-worktree.cjs');
 // The questions parking a task, loaded at their call: they read the task
 // through this module.
 const parks = () => require('./task-parks.cjs');
+
+// Where the build stands, loaded at its call: it reads the tracker through
+// this module.
+const entry = () => require('./build-entry.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskDriver} TaskDriver */
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
@@ -512,20 +518,38 @@ function ending(rule, after = () => ({})) {
  * checklist has closed, so no builder starts before its tasks are written
  * (6.4.8, 12.S7). A phase past the cut, a fix phase of the review's, has
  * no start checklist (P14).
- * @param {string} cwd @param {TaskRef} ref
+ * @param {string} cwd @param {TaskRef} ref @param {Record<string, any>} manifest
  */
-function refuseUnstarted(cwd, ref) {
-  const manifest = loadWorkUnitManifest(cwd, ref.unit);
+function refuseUnstarted(cwd, ref, manifest) {
   const cut = Array.isArray(manifest.cut?.phases) ? manifest.cut.phases.length : 0;
   if (ref.phase > cut || phaseStarted(manifest, ref.phase)) return;
   throw new Error(`task start: ${phaseName(ref.unit, ref.phase)} has not started — its tasks start once its start checklist closes: checklist close phase-start ${ref.unit} ${ref.phase}`);
 }
 
-/** `task start`: refused before its phase has started; else in progress — where it is not already — and in flight on the position beside any others. */
+/**
+ * In step, refuse a task while another of the unit's is in flight or at its
+ * gate, which it reaches before it is done (12.7.9): in progress in the
+ * build's standing, or in flight on this conversation's position, and no
+ * question waiting parks it — a parked task holds nothing new to test.
+ * @param {string} cwd @param {TaskRef} ref @param {Record<string, any>} manifest
+ */
+function refuseSecondInStep(cwd, ref, manifest) {
+  if (manifest.build?.position !== 'step') return;
+  const { phases, in_flight: inFlight, waiting } = entry().buildStanding(cwd, ref.unit, entry().ownInFlight(ref.unit));
+  const parked = new Set(waiting.flatMap(({ parks: tasks }) => tasks));
+  const running = [...phases.flatMap(({ tasks }) => tasks.filter(({ status }) => status === 'in-progress')), ...inFlight].map(({ task }) => task);
+  const other = running.find((task) => task !== shownTask(ref) && !parked.has(task));
+  if (other === undefined) return;
+  throw new Error(`task start: ${ref.unit} builds in step, one task at a time — task ${other} is in flight or at its gate, and the next starts once the person's go there is given and it is done`);
+}
+
+/** `task start`: refused before its phase has started, and in step beside another task; else in progress — where it is not already — and in flight on the position beside any others. */
 const startTask = moving('start', (driver, root, ref) => {
   if (refuseEnded(driver, root, ref, 'only a task not yet ended is started').status !== 'in-progress') driver.start(root, ref);
 }, (cwd, ref) => {
-  refuseUnstarted(cwd, ref);
+  const manifest = loadWorkUnitManifest(cwd, ref.unit);
+  refuseUnstarted(cwd, ref, manifest);
+  refuseSecondInStep(cwd, ref, manifest);
   return () => {
     recordTask(cwd, ref.unit, ref.unit, taskId(ref));
     return {};

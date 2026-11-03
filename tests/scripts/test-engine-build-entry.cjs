@@ -344,7 +344,7 @@ describe('the answer: where the build stands, and what to read beside the ledger
 describe('the build\'s standing (P13)', () => {
   it('answers each phase of the cut, its tasks, this conversation\'s tasks in flight, the questions waiting, and whether the build is finished', () => {
     enter([UNIT]);
-    const task = (/** @type {string} */ shown, /** @type {string} */ title, /** @type {string} */ status) => ({ task: shown, title, status, parked: [] });
+    const task = (/** @type {string} */ shown, /** @type {string} */ title, /** @type {string} */ status) => ({ task: shown, title, status, parked: [], after: [] });
 
     assert.deepStrictEqual(standing(), {
       unit: UNIT,

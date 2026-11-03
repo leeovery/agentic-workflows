@@ -146,11 +146,12 @@ function sectionsAt(lines, levels, level) {
 /** Whether lines hold nothing but blanks. @param {string[]} lines */
 const blank = (lines) => lines.every((line) => line.trim() === '');
 
-/** How many ways the work differs, `## Differs from the task` as written; null where it is no list and says no `None`. @param {string[]} lines */
+/** Each way the work differs, `## Differs from the task` as written, an item as one line; null where it is no list and says no `None`. @param {string[]} lines @returns {string[]|null} */
 function differences(lines) {
-  if (saysNone(lines)) return 0;
+  if (saysNone(lines)) return [];
   const { items } = listItems(lines, DIFFERENCE);
-  return items.length === 0 ? null : items.filter(({ opened }) => !saysNoneIn(opened[1])).length;
+  if (items.length === 0) return null;
+  return items.filter(({ opened }) => !saysNoneIn(opened[1])).map(({ opened, beneath }) => [opened[1], ...beneath.map(({ line }) => line.trim())].filter((line) => line !== '').join(' '));
 }
 
 /**
@@ -178,11 +179,11 @@ function summariesOf(reviews, rounds, settled, faults) {
 /**
  * The account read by its grammar (the header's), given how many review
  * rounds the task's reports hold and those the orchestrator settled: each
- * section's text by its heading, how many ways the work differs from the
- * task, and each summary under `## Reviews`. Refused where it does not
- * read, every fault named.
+ * section's text by its heading, each way the work differs from the task,
+ * as one line, and each summary under `## Reviews`. Refused where it does
+ * not read, every fault named.
  * @param {string} text @param {number} rounds @param {readonly number[]} [settled] the rounds settled
- * @returns {{sections: Record<string, string>, differs: number, reviews: string[]}}
+ * @returns {{sections: Record<string, string>, differences: string[], reviews: string[]}}
  */
 function readAccount(text, rounds, settled = []) {
   const lines = text.trimEnd().split(/\r\n?|\n/);
@@ -198,13 +199,13 @@ function readAccount(text, rounds, settled = []) {
   }
   const [, , , differs, reviews] = sections;
   faults.push(...sections.filter((section) => blank(section.lines)).map(({ title }) => `## ${title} is empty`));
-  const count = differences(differs.lines);
-  if (count === null && !blank(differs.lines)) faults.push(`## ${differs.title} is a list, an item for each way the work differs from the task, or \`None.\``);
+  const differ = differences(differs.lines);
+  if (differ === null && !blank(differs.lines)) faults.push(`## ${differs.title} is a list, an item for each way the work differs from the task, or \`None.\``);
   const reviewed = blank(reviews.lines) ? [] : summariesOf(reviews, rounds, settled, faults);
   if (faults.length > 0) throw new Error(faults.join('; '));
   return {
     sections: Object.fromEntries(sections.map((section) => [section.title, section.lines.join('\n').trim()])),
-    differs: /** @type {number} */ (count),
+    differences: /** @type {string[]} */ (differ),
     reviews: reviewed,
   };
 }

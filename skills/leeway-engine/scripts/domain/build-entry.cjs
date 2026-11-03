@@ -46,7 +46,8 @@
 // checklist not closed; running; in review, every task not closed done;
 // closed, its close checklist closed; or merged, closed with its stack
 // merged (phase-checks.cjs). Each task stands as the tracker holds it, with
-// the questions waiting that park it. The build is finished once every
+// the questions waiting that park it and, one not started, the tasks not
+// yet done it is linked after (12.6.4). The build is finished once every
 // phase of the cut has closed, so "nothing ready" with a phase not yet
 // written never reads finished (7.4.3, 12.6.7) — the rule `phaseStatus`
 // reads off the manifest (derivations.cjs). The review phase's fix phases,
@@ -64,7 +65,7 @@ const { codeGate } = require('./projections/enter.cjs');
 const { tasksInFlight } = require('./conversation.cjs');
 const { recordTask } = require('./position.cjs');
 const { waitingQuestions, parkedTasks, parkedTasksOf } = require('./questions.cjs');
-const { reading, cutPhases, phaseLists, phaseLanded, fixesOwed } = require('./phase-checks.cjs');
+const { reading, cutPhases, phaseLists, phaseTasks, phaseLanded, fixesOwed } = require('./phase-checks.cjs');
 const { taskId, shownTask } = require('./task-id.cjs');
 
 /** @typedef {import('./enter.cjs').Entry} Entry */
@@ -79,7 +80,12 @@ const { taskId, shownTask } = require('./task-id.cjs');
 /** @typedef {import('./questions.cjs').Waiting} Waiting */
 
 /** Where a phase of the cut stands. @typedef {'not yet written'|'written'|'running'|'in review'|'closed'|'merged'} PhaseState */
-/** A task of a phase: its id shown, its title, where the tracker holds it, and the questions waiting that park it, by number. @typedef {{task: string, title: string, status: TaskStatus, parked: string[]}} StandingTask */
+/**
+ * A task of a phase: its id shown, its title, where the tracker holds it,
+ * the questions waiting that park it, by number, and, one not started, the
+ * tasks not yet done it is linked after.
+ * @typedef {{task: string, title: string, status: TaskStatus, parked: string[], after: string[]}} StandingTask
+ */
 /**
  * A phase of the cut: its number, name and what it relies on, where it
  * stands, its tasks, none where it is not written, and the fixes its failed
@@ -140,6 +146,19 @@ function phaseState(at, phase, rows) {
 }
 
 /**
+ * The tasks not yet done that each task of a phase not started is linked
+ * after, by task: read whole only for a phase holding one, given every task
+ * of the cut's status.
+ * @param {Reading} at @param {number} phase @param {TaskRow[]|null} rows @param {Map<string, TaskStatus>} statuses
+ * @returns {Map<string, string[]>}
+ */
+function linkedAfter(at, phase, rows, statuses) {
+  if (!rows?.some(({ status }) => status === 'open')) return new Map();
+  const unfinished = (/** @type {string} */ task) => ['open', 'in-progress'].includes(String(statuses.get(task)));
+  return new Map((phaseTasks(at, phase) ?? []).map(({ ref, status, after }) => [shownTask(ref), status === 'open' ? after.map(shownTask).filter(unfinished) : []]));
+}
+
+/**
  * The build's standing, as a call reads the unit, for the conversation
  * whose tasks in flight are given.
  * @param {Reading} at @param {InFlight[]} inFlight @returns {BuildStanding}
@@ -147,20 +166,26 @@ function phaseState(at, phase, rows) {
 function standingOf(at, inFlight) {
   const cut = cutPhases(at.manifest);
   const lists = phaseLists(at, cut.map((_, i) => i + 1));
+  const statuses = new Map(lists.flatMap((rows) => (rows ?? []).map(({ ref, status }) => /** @type {[string, TaskStatus]} */ ([shownTask(ref), status]))));
   const { waiting, warnings = [] } = waitingQuestions(at.cwd, [at.unit]);
   at.warnings.push(...warnings);
   const parked = parkedTasksOf(stateRoot(at.cwd), at.unit, at.warnings);
   return {
     unit: at.unit,
     position: at.manifest.build.position,
-    phases: cut.map(({ name = '', relies_on: reliesOn }, i) => ({
-      phase: i + 1,
-      name,
-      relies_on: reliesOn,
-      state: phaseState(at, i + 1, lists[i]),
-      tasks: (lists[i] ?? []).map(({ ref, title, status }) => ({ task: shownTask(ref), title, status, parked: parked.get(shownTask(ref)) ?? [] })),
-      fixes_owed: fixesOwed(at, i + 1),
-    })),
+    phases: cut.map(({ name = '', relies_on: reliesOn }, i) => {
+      const after = linkedAfter(at, i + 1, lists[i], statuses);
+      return {
+        phase: i + 1,
+        name,
+        relies_on: reliesOn,
+        state: phaseState(at, i + 1, lists[i]),
+        tasks: (lists[i] ?? []).map(({ ref, title, status }) => ({
+          task: shownTask(ref), title, status, parked: parked.get(shownTask(ref)) ?? [], after: after.get(shownTask(ref)) ?? [],
+        })),
+        fixes_owed: fixesOwed(at, i + 1),
+      };
+    }),
     in_flight: inFlight,
     waiting,
     finished: buildFinished(at.manifest),
@@ -176,10 +201,19 @@ function standingOf(at, inFlight) {
  * @returns {BuildStanding}
  */
 function buildStanding(cwd, unit, inFlight, warnings = []) {
+  return standingOf(reading(cwd, unit, builtUnit(cwd, unit), warnings), inFlight);
+}
+
+/**
+ * The manifest of a unit whose build has begun, refused where the project
+ * has no such unit, or its build has not begun.
+ * @param {string} cwd @param {string} unit @returns {Record<string, any>}
+ */
+function builtUnit(cwd, unit) {
   const manifest = workUnitNameRefusal(unit) === null ? manifestOf(stateRoot(cwd), unit) : null;
   if (manifest === null) throw new Error(`there is no work unit "${unit}"`);
   if (!buildBegun(manifest)) throw new Error(`${unit}'s build has not begun — ready to build's yes begins it: render ready-to-build ${unit}`);
-  return standingOf(reading(cwd, unit, manifest, warnings), inFlight);
+  return manifest;
 }
 
 /** A task of a phase, as its phase's line says it. @param {StandingTask} task */
@@ -298,4 +332,4 @@ const IMPLEMENTATION = Object.freeze({
   closes: takeInFlight,
 });
 
-module.exports = { IMPLEMENTATION, buildStanding, buildRecovery };
+module.exports = { IMPLEMENTATION, STATUS_WORDS, buildStanding, builtUnit, buildRecovery, ownInFlight };
