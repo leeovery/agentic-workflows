@@ -9,7 +9,10 @@
 // whole (`trackedPhases`); the build's standing reads the lists of the
 // phases it names (`trackedLists`), a phase's checklist that phase's tasks
 // whole (`trackedPhase`), and the tasks the build goes on with: those in
-// progress in every phase written, and those ready (`goingOn`).
+// progress in every phase written, and those ready that start would take
+// (`goingOn`) — in step, the one in flight first, any an answer freed while
+// it went on behind it, their briefs and gate refused until it is done
+// (`stepTurn`, `turnRefusal`).
 // A unit's phases are written into the tracker as each starts, so it holds
 // only those (7.4.1); a task is made from the task template in a file, one
 // call per task (7.1.3, 12.5.3), and its id is the engine's (task-id.cjs),
@@ -21,18 +24,18 @@
 // linked (12.6.4); ready answers every task waiting with nothing before it
 // and no question parking it (7.1.5, 13.4.6); start, refused for a phase
 // the cut holds before its start checklist has closed (6.4.8, 12.S7), and
-// in step while another of the unit's tasks is in flight or at its gate —
-// in progress in any phase written, the review's fixes past the cut among
-// them, here or in another conversation, and no question parking it
-// (12.7.9) — puts the task in flight on the conversation's position,
-// beside any others in flight there — a task already in flight kept as it
-// stands, its builder and reviewers with it — and done and close take it
-// off, each first taking the task's worktree apart (6.3.3, 24.2.4); done
-// refuses a task a question waiting parks; close ends a task without it
-// being done, with a reason, takes it off every question parking it
-// (task-parks.cjs), and frees what waits on it as done does (7.1.12);
-// worktree lays the task's worktree out for its
-// builder, reading the task as show does (task-worktree.cjs). The verbs
+// in step for any task but the one in flight or at its gate — in progress
+// in any phase written, the review's fixes past the cut among them, here or
+// in another conversation, no question parking it, and ahead of any an
+// answer freed (12.7.9) — puts the task in flight on the conversation's
+// position, beside any others in flight there — a task already in flight
+// kept as it stands, its builder and reviewers with it — and done and close
+// take it off, each first taking the task's worktree apart (6.3.3,
+// 24.2.4); done refuses a task a question waiting parks; close ends a task
+// without it being done, with a reason, takes it off every question
+// parking it (task-parks.cjs), and frees what waits on it as done does
+// (7.1.12); worktree lays the task's worktree out for its builder, reading
+// the task as show does (task-worktree.cjs). The verbs
 // refuse in the engine's words: a tool the driver needs missing or failing,
 // a phase not written, a task the tracker lacks or already holds, a task
 // already ended. Beside them, three take the build's records, each its own
@@ -86,6 +89,8 @@ const parks = () => require('./task-parks.cjs');
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
 /** @typedef {import('./drivers.cjs').TaskRow} TaskRow */
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
+
+/** In step, the task in flight, and those an answer freed behind it. @typedef {{inFlight: string, behind: string[]}} StepTurn */
 
 /** Where a task stands once it has ended, done or not. */
 const ENDED = Object.freeze(['done', 'closed']);
@@ -463,13 +468,15 @@ function trackedPhase(cwd, unit, phase) {
  * parks, in one read of the tracker: those in progress in every phase it
  * has written — the cut's, and the review's fixes numbered on past it
  * (P14) — any conversation's in flight among them, and, where `ready`,
- * those waiting to start with nothing before them.
- * @param {string} cwd @param {string} unit @param {number} cut how many phases the unit's cut holds
+ * those waiting to start with nothing before them that `task start` would
+ * take, their phase open (`phaseOpen`).
+ * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest the unit's
  * @param {{ready?: boolean}} [opts]
  * @returns {{tasks: string[], committed?: string|null, warnings?: string[]}}
  */
-function goingOn(cwd, unit, cut, { ready = false } = {}) {
+function goingOn(cwd, unit, manifest, { ready = false } = {}) {
   requireUnit(cwd, unit);
+  const cut = cutLength(manifest);
   return withTracker(cwd, unit, null, (driver, root) => {
     /** @type {TaskRow[]} */
     const rows = [];
@@ -478,10 +485,43 @@ function goingOn(cwd, unit, cut, { ready = false } = {}) {
       if (list === null && phase > cut) break;
       rows.push(...(list ?? []).filter(({ status }) => status === 'in-progress'));
     }
-    if (ready) rows.push(...(driver.ready(root, unit, null) ?? []));
+    if (ready) rows.push(...(driver.ready(root, unit, null) ?? []).filter(({ ref }) => phaseOpen(manifest, ref.phase)));
     const parked = parks().parkedOf(cwd, unit);
     return { tasks: rows.map(({ ref }) => shownTask(ref)).filter((task) => !parked.has(task)) };
   });
+}
+
+/**
+ * In step, the task in flight among those the build goes on with
+ * (`goingOn`), and those behind it, each freed by an answer while it went
+ * on, which go on once it is done (12.7.9): the one in flight is the one
+ * parked longest ago, one never parked before any, since a task an answer
+ * frees was parked before the one in flight started. Null in auto, and
+ * where none goes on.
+ * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest the unit's
+ * @returns {StepTurn|null}
+ */
+function stepTurn(cwd, unit, manifest) {
+  if (manifest.build?.position !== 'step') return null;
+  const { tasks } = goingOn(cwd, unit, manifest);
+  if (tasks.length < 2) return tasks.length === 0 ? null : { inFlight: tasks[0], behind: [] };
+  const lastParked = parks().lastParked(cwd, unit);
+  const [inFlight, ...behind] = [...tasks].sort((a, b) => (lastParked.get(a) ?? -1) - (lastParked.get(b) ?? -1));
+  return { inFlight, behind };
+}
+
+/**
+ * Why, in step, the task goes no further yet — its briefs, its gate — or
+ * null: an answer freed it while another went on, which goes first
+ * (`stepTurn`).
+ * @param {string} cwd @param {TaskRef} ref @param {Record<string, any>} manifest the unit's
+ * @returns {string|null}
+ */
+function turnRefusal(cwd, ref, manifest) {
+  const turn = stepTurn(cwd, ref.unit, manifest);
+  const shown = shownTask(ref);
+  if (turn === null || !turn.behind.includes(shown)) return null;
+  return `${ref.unit} builds in step, one task at a time — task ${turn.inFlight} is in flight, and task ${shown}, which an answer freed, goes on once it is done`;
 }
 
 /** `task show`: the task whole, what was added to it among it. @param {string} cwd @param {string} unit @param {string} given */
@@ -541,31 +581,32 @@ function ending(rule, after = () => ({})) {
 const cutLength = (manifest) => (Array.isArray(manifest.cut?.phases) ? manifest.cut.phases.length : 0);
 
 /**
- * Refuse a task of a phase the unit's cut holds before that phase's start
- * checklist has closed, so no builder starts before its tasks are written
- * (6.4.8, 12.S7). A phase past the cut, a fix phase of the review's, has
- * no start checklist (P14).
- * @param {string} cwd @param {TaskRef} ref @param {Record<string, any>} manifest
+ * Whether the phase's tasks may start: for a phase the unit's cut holds,
+ * once its start checklist has closed, so no builder starts before its
+ * tasks are written (6.4.8, 12.S7); a phase past the cut, a fix phase of
+ * the review's, has no start checklist (P14).
+ * @param {Record<string, any>} manifest @param {number} phase
  */
-function refuseUnstarted(cwd, ref, manifest) {
-  if (ref.phase > cutLength(manifest) || phaseStarted(manifest, ref.phase)) return;
+const phaseOpen = (manifest, phase) => phase > cutLength(manifest) || phaseStarted(manifest, phase);
+
+/** Refuse a task whose phase's tasks may not start yet (`phaseOpen`). @param {TaskRef} ref @param {Record<string, any>} manifest */
+function refuseUnstarted(ref, manifest) {
+  if (phaseOpen(manifest, ref.phase)) return;
   throw new Error(`task start: ${phaseName(ref.unit, ref.phase)} has not started — its tasks start once its start checklist closes: checklist close phase-start ${ref.unit} ${ref.phase}`);
 }
 
 /**
- * In step, refuse a task while another of the unit's is in flight or at its
- * gate, which it reaches before it is done (12.7.9): in progress in any
- * phase the unit has written, in flight here or in another conversation,
- * and no question waiting parks it — a parked task holds nothing new to
- * test (`goingOn`).
+ * In step, refuse any task but the one in flight or at its gate, which it
+ * reaches before it is done (12.7.9): in progress in any phase the unit has
+ * written, in flight here or in another conversation, no question waiting
+ * parking it — a parked task holds nothing new to test — and ahead of any
+ * an answer freed while it went on (`stepTurn`).
  * @param {string} cwd @param {TaskRef} ref @param {Record<string, any>} manifest
  */
 function refuseSecondInStep(cwd, ref, manifest) {
-  if (manifest.build?.position !== 'step') return;
-  const { tasks } = goingOn(cwd, ref.unit, cutLength(manifest));
-  const other = tasks.find((task) => task !== shownTask(ref));
-  if (other === undefined) return;
-  throw new Error(`task start: ${ref.unit} builds in step, one task at a time — task ${other} is in flight or at its gate, and the next starts once the person's go there is given and it is done`);
+  const turn = stepTurn(cwd, ref.unit, manifest);
+  if (turn === null || turn.inFlight === shownTask(ref)) return;
+  throw new Error(`task start: ${ref.unit} builds in step, one task at a time — task ${turn.inFlight} is in flight or at its gate, and the next starts once the person's go there is given and it is done`);
 }
 
 /** `task start`: refused before its phase has started, and in step beside another task; else in progress — where it is not already — and in flight on the position beside any others. */
@@ -573,7 +614,7 @@ const startTask = moving('start', (driver, root, ref) => {
   if (refuseEnded(driver, root, ref, 'only a task not yet ended is started').status !== 'in-progress') driver.start(root, ref);
 }, (cwd, ref) => {
   const manifest = loadWorkUnitManifest(cwd, ref.unit);
-  refuseUnstarted(cwd, ref, manifest);
+  refuseUnstarted(ref, manifest);
   refuseSecondInStep(cwd, ref, manifest);
   return () => {
     recordTask(cwd, ref.unit, ref.unit, taskId(ref));
@@ -677,4 +718,4 @@ function runTaskVerb(cwd, verb, positional, opts) {
   return run(cwd, positional, ...values, .../** @type {string[]} */ (given));
 }
 
-module.exports = { TASK_VERBS, ENDED, runTaskVerb, trackedTask, trackedPhases, trackedLists, trackedPhase, goingOn, phaseWritten, givenText, trackedStart };
+module.exports = { TASK_VERBS, ENDED, runTaskVerb, trackedTask, trackedPhases, trackedLists, trackedPhase, goingOn, stepTurn, turnRefusal, phaseWritten, givenText, trackedStart };

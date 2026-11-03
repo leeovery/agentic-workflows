@@ -3,9 +3,10 @@
 // ---------------------------------------------------------------------------
 // The build's gates in step (leeway-engine/scripts/domain/build-screens.cjs,
 // drawn by domain/projections/build.cjs) — the gate after a task and the gate
-// before a phase's stack merges — and task start's refusal in step, one task
-// at a time (domain/task-verbs.cjs). The screens that report are
-// test-engine-build-screens.cjs.
+// before a phase's stack merges — and step's one task at a time
+// (domain/task-verbs.cjs): task start's refusal, and a task an answer freed
+// while another went on held behind it, in the answer's receipt, its gate
+// and its briefs. The screens that report are test-engine-build-screens.cjs.
 //
 // Layer: verb. World: the build screens' world (build-screens-world.cjs),
 // built once and copied; a test that needs a phase of the review's fixes
@@ -19,8 +20,9 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { ok, refusedPristine, git, writeState, layout, cleanupFixture, sectionOf } = require('./engine-harness.cjs');
-const { UNIT, ACCOUNT_DRAWN, taskText, reportOf, buildScreensWorld, buildScreenHelpers } = require('./build-screens-world.cjs');
+const { ok, okSections, refusedPristine, git, writeState, layout, cleanupFixture, sectionOf } = require('./engine-harness.cjs');
+const { UNIT, CALL, ACCOUNT_DRAWN, taskText, reportOf, buildScreensWorld, buildScreenHelpers } = require('./build-screens-world.cjs');
+const { raiseHelpers } = require('./raise-world.cjs');
 
 let dir = ''; // the project
 let config = ''; // the system config: the conversations' folders
@@ -36,6 +38,10 @@ afterEach(() => {
 });
 
 const { env, screen, refused, position, parkOn } = buildScreenHelpers(() => dir, () => config);
+const { conversation, answer } = raiseHelpers(() => dir, () => config, CALL);
+
+/** The question `name` drawn and its lean picked: the answer's receipt. @param {string} name */
+const answered = (name) => answer(okSections(dir, ['raise', 'draw', UNIT, name], { env: conversation() }).res.raise, ['--pick', '1']).receipt;
 
 /** A phase of the review's fixes past the cut, phase 4, written with a task of each title given. @param {string[]} titles */
 function fixPhase(titles) {
@@ -161,6 +167,50 @@ describe('task start in step: one task at a time (12.7.9)', () => {
 
     assert.strictEqual(refusedPristine(dir, ['task', 'start', UNIT, '4.2'], { env: env() }).error,
       'task start: pay builds in step, one task at a time — task 4.1 is in flight or at its gate, and the next starts once the person\'s go there is given and it is done');
+  });
+
+  it('holds a task an answer freed while another went on behind it: the receipt says it builds again once that one is done, its gate and its briefs refused until then and the next task\'s start naming the one in flight — whose gate draws — then the freed task\'s gate draws once it is done (12.7.9)', async () => {
+    await parkOn(['1.1']);
+    ok(dir, ['task', 'start', UNIT, '1.2'], { env: env() });
+    const receipt = answered('Q1');
+    const held = [refused(['step-gate', UNIT, '1.1']), refusedPristine(dir, ['brief', 'reviewer', UNIT, '1.1', '--base', 'main', '--letter', 'a'], { env: env() }).error];
+    const next = refusedPristine(dir, ['task', 'start', UNIT, '1.3'], { env: env() }).error;
+    const inFlight = sectionOf(screen(['step-gate', UNIT, '1.2']), 'DISPLAY: step gate');
+    ok(dir, ['task', 'done', UNIT, '1.2'], { env: env() });
+
+    assert.strictEqual(receipt, 'Q1 answered · task 1.1 builds again once task 1.2 is done · nothing waiting on you');
+    assert.deepStrictEqual(held, [
+      'render step-gate: pay builds in step, one task at a time — task 1.2 is in flight, and task 1.1, which an answer freed, goes on once it is done',
+      'brief: pay builds in step, one task at a time — task 1.2 is in flight, and task 1.1, which an answer freed, goes on once it is done',
+    ]);
+    assert.strictEqual(next, 'task start: pay builds in step, one task at a time — task 1.2 is in flight or at its gate, and the next starts once the person\'s go there is given and it is done');
+    assert.match(inFlight, /^▪ Show a receipt \(task 1\.2\)/);
+    assert.strictEqual(sectionOf(screen(['step-gate', UNIT, '1.1']), 'DISPLAY: step gate'), `${ACCOUNT_DRAWN}\n`);
+  });
+
+  it('reads the task in flight by where each was last parked: one freed, parked again and freed once more goes behind the one that went on meanwhile', async () => {
+    await parkOn(['1.1']);
+    ok(dir, ['task', 'start', UNIT, '1.2'], { env: env() });
+    await parkOn(['1.2'], 1);
+    answered('Q1');
+    await parkOn(['1.1'], 2);
+    answered('Q2');
+
+    assert.strictEqual(answered('Q3'), 'Q3 answered · task 1.1 builds again once task 1.2 is done · nothing waiting on you');
+  });
+
+  it('frees the tasks one answer parked one at a time, the one parked first going first; in auto each builds again at once', async () => {
+    await parkOn(['1.1']);
+    ok(dir, ['task', 'start', UNIT, '1.2'], { env: env() });
+    await parkOn(['1.2']);
+    const receipt = answered('Q1');
+    const held = refused(['step-gate', UNIT, '1.2']);
+    position('auto');
+    await parkOn(['1.1', '1.2'], 1);
+
+    assert.strictEqual(receipt, 'Q1 answered · their tasks build again, task 1.1 first · nothing waiting on you');
+    assert.strictEqual(held, 'render step-gate: pay builds in step, one task at a time — task 1.1 is in flight, and task 1.2, which an answer freed, goes on once it is done');
+    assert.strictEqual(answered('Q2'), 'Q2 answered · their tasks build again · nothing waiting on you');
   });
 
   it('starts the next while a question parks the task in flight — a parked task holds nothing new to test — and starts the task in flight again; the next waits on the one then in flight', async () => {

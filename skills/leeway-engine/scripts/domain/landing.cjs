@@ -11,7 +11,8 @@
 // fixes are done, as the phase's close reads it (phase-checks.cjs, 7.2.4).
 // Which of a unit's tasks landed — each one a default branch's landing
 // names — is read here for the phase's close and the build's standing
-// (`landedTasks`).
+// (`landedTasks`); and, for the close in step, whether a phase's tasks are
+// each in its stack (`allChained`).
 //
 // What every driver shares is settled here: the names (landing-names.cjs);
 // the default branch everything lands on in each repository, never the
@@ -77,7 +78,7 @@
 // warnings.
 // ---------------------------------------------------------------------------
 
-const { resolveDriver, needsRefusal } = require('./drivers.cjs');
+const { resolveDriver, chosenDriver, needsRefusal } = require('./drivers.cjs');
 const { commitStateTail, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { remoteName, nestedRemoteName } = require('./remote.cjs');
 const { assertUnit, parsePhase, parseShownTask, shownTask, taskId } = require('./task-id.cjs');
@@ -606,6 +607,23 @@ function landFinish(cwd, unit) {
 }
 
 /**
+ * Whether each of the tasks given, whole, is chained into its phase's stack
+ * wherever its change touches: opened there, which puts a task in its
+ * phase's stack for every driver, as `open` reads one opened already — read
+ * off git and the host, writing nothing, through the driver the project's
+ * setting names, else the default. Refused as `open` refuses the task.
+ * @param {string} cwd @param {string} unit @param {import('./drivers.cjs').TaskDetail[]} tasks
+ */
+function allChained(cwd, unit, tasks) {
+  const project = projectOf(cwd, unit);
+  const driver = /** @type {LandingDriver} */ (chosenDriver(cwd, 'landing').driver);
+  return tasks.every((held) => {
+    const { task, holding } = landingOf(project, held.ref, held);
+    return touching(project, driver, task, holding).length === 0;
+  });
+}
+
+/**
  * The unit's tasks landed, shown: each a landing on the default branch of a
  * repository of the project names by its `Task:` line, as every driver
  * lands a task (landing-names.cjs). A repository with no default branch to
@@ -625,4 +643,4 @@ function landedTasks(cwd, unit) {
   }));
 }
 
-module.exports = { LAND_USAGE, landOpen, landChain, landPhase, landFinish, landedTasks };
+module.exports = { LAND_USAGE, landOpen, landChain, landPhase, landFinish, landedTasks, allChained };

@@ -43,8 +43,10 @@
 // It refuses no session id, a role it does not know, arguments of another
 // shape, a unit, a task or a topic the project lacks, a unit set aside
 // where its role takes the unit alone, a phase or a topic, a task done or
-// closed, a topic set aside (5.8.17), a phase for a unit whose build has
-// not begun or one its cut lacks, and a record it cannot read. A phase's
+// closed, in step a task an answer freed while another went on, until that
+// one is done (task-verbs.cjs), a topic set aside (5.8.17), a phase for a
+// unit whose build has not begun or one its cut lacks, and a record it
+// cannot read. A phase's
 // brief reads the list of each of the unit's phases to it from the
 // tracker, once, and its own phase's tasks whole (task-verbs.cjs). Once
 // every record is drawn, what a record binds is bound — the dispatch a
@@ -60,7 +62,7 @@ const path = require('path');
 const { handedSession } = require('../kernel/process.cjs');
 const { newId } = require('./ledger-ids.cjs');
 const { carrying } = require('./ledger.cjs');
-const { trackedTask, trackedPhases, ENDED } = require('./task-verbs.cjs');
+const { trackedTask, trackedPhases, turnRefusal, ENDED } = require('./task-verbs.cjs');
 const { parseShownTask, parsePhase, shownTask, taskName } = require('./task-id.cjs');
 const { buildBegun } = require('./derivations.cjs');
 const { RECORDS } = require('./brief-records.cjs');
@@ -284,13 +286,17 @@ function forWhat(ref, phase, place, unit) {
 
 /**
  * The task as the tracker holds it, and what its read committed, refused
- * where it is done or closed; what the read warned of pushed to `warnings`.
+ * where it is done or closed, and in step where an answer freed it while
+ * another went on (`turnRefusal`); what the read warned of pushed to
+ * `warnings`.
  * @param {string} cwd @param {TaskRef} ref @param {string[]} warnings
  */
 function unendedTask(cwd, ref, warnings) {
   const { committed, warnings: read = [], ...task } = trackedTask(cwd, ref);
   warnings.push(...read);
   if (ENDED.includes(task.status)) throw new Error(`brief: ${taskName(ref)} is ${task.status} — a brief is issued for a task not yet ended`);
+  const behind = turnRefusal(cwd, ref, /** @type {Record<string, any>} */ (manifestOf(stateRoot(cwd), ref.unit)));
+  if (behind !== null) throw new Error(`brief: ${behind}`);
   return { task, committed };
 }
 

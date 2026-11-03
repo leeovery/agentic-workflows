@@ -21,6 +21,8 @@
 //   again, finds it taken off already and writes nothing more. A question it
 //   leaves parking nothing still waits; the task reopened and parked again
 //   parks again.
+// - In step, which task goes on first among those in progress reads where
+//   each was last parked (task-verbs.cjs, `stepTurn`).
 // ---------------------------------------------------------------------------
 
 const { handedSession } = require('../kernel/process.cjs');
@@ -29,7 +31,7 @@ const { withStateLock } = require('./state-worktree.cjs');
 const { parseShownTask, shownTask, taskName } = require('./task-id.cjs');
 const { trackedTask, ENDED } = require('./task-verbs.cjs');
 const { landRaised } = require('./ledger-write.cjs');
-const { parkedTasksOf, parkingTask } = require('./questions.cjs');
+const { parkedTasksOf, lastParkedOf, parkingTask } = require('./questions.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 
@@ -48,6 +50,11 @@ function checkParkable(cwd, unit, task, said) {
 /** The tasks of `unit` its questions waiting park, each with the numbers of those parking it. @param {string} cwd @param {string} unit */
 function parkedOf(cwd, unit) {
   return parkedTasksOf(stateRoot(cwd), unit, []);
+}
+
+/** Each task of `unit` a park has named, by where its last park stands in the ledger's order (questions.cjs). @param {string} cwd @param {string} unit */
+function lastParked(cwd, unit) {
+  return lastParkedOf(stateRoot(cwd), unit, []);
 }
 
 /**
@@ -96,4 +103,4 @@ function takeOff(cwd, ref, said, { names, parks, phase }) {
   return { unparked: names, ...(warnings.length > 0 ? { warnings } : {}) };
 }
 
-module.exports = { checkParkable, refuseParked, parkingOf, takeOff, parkedOf };
+module.exports = { checkParkable, refuseParked, parkingOf, takeOff, parkedOf, lastParked };

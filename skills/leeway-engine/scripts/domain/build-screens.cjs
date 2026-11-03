@@ -22,16 +22,17 @@
 // - `task-account <unit> <task>`: any task's account, printed when asked —
 //   one not yet taken drawn without it.
 // - `step-gate <unit> <task>`: the gate after a task, in step alone, once
-//   its account is taken and before it is done; in auto none follows a task
-//   (12.12.7).
+//   its account is taken and before it is done, and for a task an answer
+//   freed while another went on, once that one is done (12.7.9); in auto
+//   none follows a task (12.12.7).
 // - `phase-merge-gate <unit> <N>`: the gate before a phase's stack merges,
 //   in step alone, for a phase written and not yet merged: one of the cut
 //   once `land phase` would take it (7.2.4), one of the review's fixes
 //   once its tasks are done.
 // - `build-stop <unit>`: the stop report, while a question waits and
 //   nothing can be built without an answer: no task in progress, in any
-//   phase written, and none ready, that no question parks (12.12.9,
-//   12.13.22).
+//   phase written, and none ready that `task start` would take, that no
+//   question parks (12.12.9, 12.13.22).
 // - `build-progress <unit>`: the build's phases and tasks.
 //
 // Each refuses, opening on its command: a unit the project lacks or whose
@@ -43,7 +44,7 @@ const { statePath, stateRoot } = require('../kernel/state-root.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { STATUS_WORDS, buildStanding, builtUnit, ownInFlight } = require('./build-entry.cjs');
 const { reading, cutPhases, phaseLists, phaseLanded, reviewRefusalOf } = require('./phase-checks.cjs');
-const { trackedTask, trackedLists, goingOn, ENDED } = require('./task-verbs.cjs');
+const { trackedTask, trackedLists, goingOn, turnRefusal, ENDED } = require('./task-verbs.cjs');
 const { fieldOf, criteriaTexts, criterionWords, holdsScenario, namesScenario } = require('./task-file.cjs');
 const { finishedUnits } = require('./ledger-units.cjs');
 const { accountPath, figuresPath, readAccount } = require('./task-account.cjs');
@@ -191,6 +192,8 @@ function stepGateSurface(cwd, args) {
     const { manifest, ref, task } = namedTask(cwd, args, 'step-gate');
     stepOnly(manifest, 'no gate follows a task');
     if (ENDED.includes(task.status)) throw new Error(`${taskName(ref)} is ${task.status} — its gate comes as it lands, before task done`);
+    const behind = withStateLock(stateRoot(cwd), () => turnRefusal(cwd, ref, manifest));
+    if (behind !== null) throw new Error(behind);
     return stepGateScreen(ref.unit, accountView(cwd, manifest, ref, task, requiredAccount(cwd, ref)));
   });
 }
@@ -255,7 +258,7 @@ function buildStopSurface(cwd, { dotpath: unit = '' }) {
   return refusing('render build-stop', () => {
     const standing = buildStanding(cwd, unit, ownInFlight(unit));
     if (standing.waiting.length === 0) throw new Error(`no question waits on the person in ${unit}'s build — it stops only where nothing can go on without their answer (12.13.22)`);
-    const [next] = withStateLock(stateRoot(cwd), () => goingOn(cwd, unit, standing.phases.length, { ready: true })).tasks;
+    const [next] = withStateLock(stateRoot(cwd), () => goingOn(cwd, unit, builtUnit(cwd, unit), { ready: true })).tasks;
     if (next !== undefined) throw new Error(`${unit}'s build goes on with task ${next}, which no question parks — it stops only where nothing can go on without the person's answer (12.13.22)`);
     return stopScreen(standing, finishedUnits(stateRoot(cwd)));
   });

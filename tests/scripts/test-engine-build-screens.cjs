@@ -20,9 +20,9 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { ok, git, writeState, readManifest, layout, cleanupFixture, sectionOf } = require('./engine-harness.cjs');
+const { ok, refusedPristine, git, writeState, readManifest, layout, cleanupFixture, sectionOf } = require('./engine-harness.cjs');
 const { createManifest, templateFolder, copyWorld } = require('./discovery-test-utils.cjs');
-const { UNIT, QUESTIONS, CALL, ACCOUNT_DRAWN, reportOf, buildScreensWorld, buildScreenHelpers } = require('./build-screens-world.cjs');
+const { UNIT, QUESTIONS, CALL, ACCOUNT_DRAWN, taskText, reportOf, buildScreensWorld, buildScreenHelpers } = require('./build-screens-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { taskBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
@@ -386,16 +386,27 @@ describe('the stop report (12.12.9, 12.13.22)', () => {
     ].join('\n'));
   });
 
-  it('is refused while no question waits, and while a task can still be built — one in progress or one ready that no question parks — writing nothing (12.12.9, 12.13.22)', async () => {
+  it('is refused while no question waits, and while a task can still be built — one in progress, or one ready that task start would take, that no question parks — writing nothing (12.12.9, 12.13.22)', async () => {
     const none = refused(['build-stop', UNIT]);
     await parkOn(['1.2']);
     const running = refused(['build-stop', UNIT]);
     await parkOn(['1.1'], 1);
+    fs.writeFileSync(path.join(config, 'task.md'), taskText('Void a charge', ['A void charge prints nothing.']));
+    ok(dir, ['task', 'create', UNIT, '1', '--file', path.join(config, 'task.md')], { env: env() });
 
     assert.deepStrictEqual([none, running, refused(['build-stop', UNIT])], [
       'render build-stop: no question waits on the person in pay\'s build — it stops only where nothing can go on without their answer (12.13.22)',
       'render build-stop: pay\'s build goes on with task 1.1, which no question parks — it stops only where nothing can go on without the person\'s answer (12.13.22)',
-      'render build-stop: pay\'s build goes on with task 2.1, which no question parks — it stops only where nothing can go on without the person\'s answer (12.13.22)',
+      'render build-stop: pay\'s build goes on with task 1.4, which no question parks — it stops only where nothing can go on without the person\'s answer (12.13.22)',
     ]);
+  });
+
+  it('stops where the only task ready is of a phase not started, which task start refuses — Refunds relying on Cards, written ahead (12.7.7, 6.4.8)', async () => {
+    await parkOn(['1.2']);
+    await parkOn(['1.1'], 1);
+
+    assert.strictEqual(sectionOf(screen(['build-stop', UNIT]), 'DISPLAY: build stop'), '⚑ The build has stopped: nothing more can be built until you answer\n');
+    assert.strictEqual(refusedPristine(dir, ['task', 'start', UNIT, '2.1'], { env: env() }).error,
+      'task start: phase 2 of pay has not started — its tasks start once its start checklist closes: checklist close phase-start pay 2');
   });
 });

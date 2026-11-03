@@ -221,6 +221,8 @@ const { OVER_THE_LEAN, BACK_TO_THE_LEAN, derivedMove } = require('./ledger-verdi
 const { judgeDecisionAsync } = require('./ledger-one-decision.cjs');
 const { type, TEXT, KEY, listOf } = require('./event-fields.cjs');
 const { isShownTask } = require('./task-id.cjs');
+const { stepTurn } = require('./task-verbs.cjs');
+const { withStateLock } = require('./state-worktree.cjs');
 const { record } = require('./trust-log.cjs');
 const { RAISE_SHOWN, raiseMenu, clearGateShown, isPressed } = require('./gate.cjs');
 const { drawnRows, raiseScreen } = require('./projections/raise.cjs');
@@ -1231,6 +1233,16 @@ function keeping(session, seal, { entry, reason, cause }, stdin) {
 }
 
 /**
+ * In step, the task in flight and those an answer freed behind it, read as
+ * any read of the tracker is (task-verbs.cjs, `stepTurn`); null in auto.
+ * @param {string} cwd @param {string} unit
+ */
+function turnNow(cwd, unit) {
+  const root = /** @type {string} */ (findStateRoot(cwd));
+  return withStateLock(root, () => stepTurn(cwd, unit, /** @type {Record<string, any>} */ (manifestOf(root, unit))));
+}
+
+/**
  * The person's answer landed at the raise's id, its raise event with it —
  * none for a fact — then the seal marked answered. Before anything lands,
  * under the lock, it is checked answerable (questions.cjs): where its
@@ -1264,7 +1276,7 @@ function recordAnswer(cwd, session, seal, { lands, linked, content, checkRead, a
   if (held !== null) return { raise: seal.id, ...landed, ...answeredAlready(session, seal, held) };
   markAnswered(session, seal.id, answer);
   if (parks === null) return { raise: seal.id, ...landed };
-  const receipt = questions.answeredReceipt(cwd, seal.place.unit, parks, waitedBefore, warnings);
+  const receipt = questions.answeredReceipt(cwd, seal.place.unit, parks, waitedBefore, warnings, () => turnNow(cwd, seal.place.unit));
   return { raise: seal.id, ...landed, receipt, ...(warnings.length > 0 ? { warnings } : {}) };
 }
 
