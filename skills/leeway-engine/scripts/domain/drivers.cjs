@@ -106,8 +106,12 @@ const METHODS = Object.freeze({
  * state root, where the tracker's store lives and the tool runs; the
  * engine's ids go in and come out, the tracker's own never. A unit holds the
  * phases written for it, a phase its tasks. `ensureStore` makes the store at
- * the root where it is missing, answering whether it did; no other method
- * runs before it. `storeFiles` and `localFiles` name, from the root, the
+ * the root where it is missing, answering whether it did; no method that
+ * writes runs before it. The reads — `list`, `ready`, `tasks`, `show` and
+ * `started` — also work in a root holding the store's files alone, copied
+ * there for a read that must not wait on a writer (task-verbs.cjs), and
+ * answer there as they would in the state root, writing nothing beyond what
+ * `localFiles` names. `storeFiles` and `localFiles` name, from the root, the
  * files the state branch carries and the gitignore patterns of those the
  * tool keeps local. The engine owns the refusals: `list`, `tasks` and
  * `ready` answer null for a phase not written, `show` null for a task the

@@ -29,9 +29,6 @@ const { UNIT, SESSION, SESSION_ID, MADE, NOTE, SPACE } = require('./ledger-world
 
 const dir = useDecidedWorld();
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
-const { todayStamp } = require(path.join(SCRIPTS, 'domain/dates.cjs'));
-
 /** A dispatch's owner, this test's own process, which runs while it reads. */
 const OWNED = Object.freeze({ CLAUDE_PID: String(process.pid) });
 
@@ -108,8 +105,8 @@ describe('a discussion on the board (20.7)', () => {
     });
   });
 
-  it('what the topic sent stays listed once taken in, no longer waiting, read from the day before the unit was made — a unit made today finding what it sent today; a message waiting opens in full (20.7.1, 20.7.3)', () => {
-    createManifest(dir(), UNIT, { ...readManifest(dir(), UNIT), created: todayStamp() });
+  it('what the topic sent stays listed once taken in, no longer waiting, read from the day before the unit was made — a unit stamped as made an hour from now, by a clock running ahead, still finding what it sent; a message waiting opens in full (20.7.1, 20.7.3)', () => {
+    createManifest(dir(), UNIT, { ...readManifest(dir(), UNIT), created: new Date(Date.now() + 3600e3).toISOString() });
     at([UNIT, 'discussion', 'note-window']);
     sent('note-window', 'space-homing', 'The tour opens first');
     sent('space-homing', 'note-window', 'Notes open on their Space');

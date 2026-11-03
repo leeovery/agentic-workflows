@@ -12,7 +12,9 @@
 // progress in every phase written, and those ready in a phase the caller
 // lets go on (`goingOn`) — in step, the one in flight first and any other
 // going on held behind it, its briefs and gate refused until that one is
-// done (`stepTurn`, `turnRefusal`).
+// done (`stepTurn`, `turnRefusal`); and the board reads the whole unit from
+// a copy of the tracker's store, taking no lock and setting nothing up, so
+// it never waits on a writer (`trackedUnit`, `withStoreCopy`).
 // A unit's phases are written into the tracker as each starts, so it holds
 // only those (7.4.1); a task is made from the task template in a file, one
 // call per task (7.1.3, 12.5.3), and its id is the engine's (task-id.cjs),
@@ -531,9 +533,9 @@ function goesOn(parked, { phases, ready }, lets) {
 
 /**
  * `read` against a copy of the tracker's store, each of its files read
- * whole once, so it reads the store as it stood at one moment: no writer
- * lock taken, nothing set up or written into the state, the copy removed
- * after. A tool the driver needs that is missing is refused for that.
+ * whole once — a store kept in one file, read as it stood at one moment:
+ * no writer lock taken, nothing set up or written into the state, the copy
+ * removed after. A tool the driver needs that is missing is refused for that.
  * @template T @param {string} cwd @param {(driver: TaskDriver, root: string) => T} read @returns {T}
  */
 function withStoreCopy(cwd, read) {
@@ -555,9 +557,9 @@ function withStoreCopy(cwd, read) {
 }
 
 /**
- * The unit as the tracker holds it at one moment (the typedef's), read from
- * a copy of its store (`withStoreCopy`), for a reader that must never wait
- * on a writer.
+ * The unit as the tracker holds it (the typedef's), read from a copy of
+ * its store (`withStoreCopy`), for a reader that must never wait on a
+ * writer.
  * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest the unit's @param {TaskRef|null} [task]
  * @returns {TrackedUnit}
  */

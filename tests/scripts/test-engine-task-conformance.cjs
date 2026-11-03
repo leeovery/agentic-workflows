@@ -7,7 +7,10 @@
 // links across phases; ready answering several; done unblocking; close, and
 // close unblocking; a task closed and replaced, and tasks and a phase made
 // after every task of the unit ended, closed or done; an addition to a task;
-// a type replaced; list; show; a phase's tasks whole; when a task started —
+// a type replaced; list; show; a phase's tasks whole; when a task started;
+// every read the same from a copy of the store's files alone; list and ready
+// as the tracker itself answers them, a person's own child and link among
+// what holds a task —
 // its store made in the state root, never in the project's own a walk up would find, and the
 // tasks it names its own, whatever else a person gives them. The driver answers whether a phase or
 // task is there, and finds its tools — none, or one that fails — for the
@@ -325,6 +328,50 @@ for (const driver of listDrivers('task')) {
 
       assert.ok(started !== null && started >= before && started <= new Date().toISOString(), String(started));
       assert.deepStrictEqual([driver.started(root, ref(1, 1)), driver.started(root, ref(1, 2)), driver.started(root, ref(1, 4))], [started, null, null]);
+    });
+
+    it('reads a copy of its store\'s files alone, in a root of their own, as it reads the state root, setting nothing up there', () => {
+      driver.start(root, ref(1, 1));
+      driver.done(root, ref(1, 2));
+      driver.close(root, ref(1, 3), 'Not needed.');
+      driver.createTask(root, ref(2, 2), task('Page the ledger'));
+      const copy = path.join(folder(), 'copy');
+      for (const file of driver.storeFiles()) fs.cpSync(path.join(root, file), path.join(copy, file));
+      /** @param {string} at */
+      const reads = (at) => [
+        [1, 2, 3].map((phase) => [driver.list(at, UNIT, phase), driver.tasks(at, UNIT, phase)]),
+        [1, 2, 3, null].map((phase) => driver.ready(at, UNIT, phase)),
+        [ref(1, 1), ref(1, 2), ref(1, 3), ref(1, 4), ref(2, 1), ref(2, 2)].map((each) => [driver.show(at, each), driver.started(at, each)]),
+      ];
+
+      assert.deepStrictEqual(reads(copy), reads(root));
+      assert.deepStrictEqual(fs.readdirSync(copy, { recursive: true }).map(String).filter((name) => fs.statSync(path.join(copy, name)).isFile()).sort(), [...driver.storeFiles()].sort());
+    });
+
+    it('list and ready answer as the tracker itself does: in order, by status, held by a link, freed by a closed blocker or one the store lacks, held by a child of its own, and held by its phase\'s link', () => {
+      const side = require(sideOf(driver.name));
+      driver.createTask(root, ref(2, 2), task('Page the ledger'));
+      const steps = [
+        () => {},
+        () => driver.start(root, ref(1, 1)),
+        () => side.childOf(root, 'Check the reading', 'Read the ledger'),
+        () => driver.close(root, ref(1, 1), 'Not needed.'),
+        () => driver.done(root, ref(1, 3)),
+        () => side.linkAfterGone(root, 'Page the ledger'),
+        () => side.phaseAfter(root, UNIT, 2, 'Read the ledger'),
+      ];
+
+      const readyEach = steps.map((step, n) => {
+        step();
+        for (const phase of [1, 2, null]) {
+          const own = { list: phase === null ? null : driver.list(root, UNIT, phase), ready: driver.ready(root, UNIT, phase) };
+          const tool = side.toolAnswers(root, UNIT, phase);
+          assert.deepStrictEqual(own, { list: phase === null ? null : tool.list, ready: tool.ready }, `step ${n}, phase ${phase}`);
+        }
+        return shown(driver.ready(root, UNIT, null));
+      });
+
+      assert.deepStrictEqual(readyEach, [['1.1', '1.2', '2.2'], ['1.2', '2.2'], ['2.2'], ['1.3', '2.2'], ['2.2'], ['2.2'], []]);
     });
 
     it('show answers no task the tracker lacks, and a task a person made carrying the engine\'s name for it, so the engine makes none twice', () => {

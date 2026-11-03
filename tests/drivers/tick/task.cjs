@@ -3,18 +3,21 @@
 // Tick's side of the task suites, what they need that names Tick: a project's
 // own store in its code tree, as a project tracking its own work with Tick
 // keeps one at its root — the store a walk up from the state would find; what
-// a person might do to the state's store in Tick itself — make a task, give
-// one refs, link one after another, reopen or remove one, cancel, mark done
-// or reopen a unit or a phase, delete the store's file, take away its
-// folder's write or write a line into it that is not JSON; a title Tick
-// refuses, for a verb
-// refused after it wrote; and a folder named in part like Tick's ids. Tick
-// reads no config of its own; the hermetic environment pins the rest.
+// a person might do to the state's store in Tick itself — make a task, or one
+// under another, give one refs, link one after another, or a phase after a
+// task, reopen or remove one, cancel, mark done or reopen a unit or a phase,
+// delete the store's file, take away its folder's write, write a line into
+// it that is not JSON or link a task after one it does not hold; what Tick
+// itself answers as a phase's list and the
+// tasks ready in it, for the driver's reads to be held to; a title Tick
+// refuses, for a verb refused after it wrote; and a folder named in part like
+// Tick's ids. Tick reads no config of its own; the hermetic environment pins
+// the rest.
 
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { taskId } = require('../../../skills/leeway-engine/scripts/domain/task-id.cjs');
+const { taskId, stepOfId } = require('../../../skills/leeway-engine/scripts/domain/task-id.cjs');
 
 /** @typedef {import('../../../skills/leeway-engine/scripts/domain/task-id.cjs').TaskRef} TaskRef */
 
@@ -111,9 +114,58 @@ function setStoreWritable(root, writable) {
  * @param {string} root @param {'cancel'|'done'|'reopen'} act @param {string} unit @param {number} [phase]
  */
 function byHand(root, act, unit, phase) {
-  const ref = phase === undefined ? `unit:${unit}` : `phase:${unit}-${phase}`;
-  const held = fs.readFileSync(path.join(root, '.tick', 'tasks.jsonl'), 'utf8').trim().split('\n').map((line) => JSON.parse(line));
-  tick(root, [act, held.find((task) => (task.refs ?? []).includes(ref)).id]);
+  tick(root, [act, recordOf(root, phase === undefined ? `unit:${unit}` : `phase:${unit}-${phase}`).id]);
+}
+
+/** The store's records, as its file holds them. @param {string} root @returns {{id: string, refs?: string[]}[]} */
+const records = (root) => fs.readFileSync(path.join(root, '.tick', 'tasks.jsonl'), 'utf8').trim().split('\n').map((line) => JSON.parse(line));
+
+/** The store's record carrying `ref`. @param {string} root @param {string} ref */
+const recordOf = (root, ref) => records(root).find((held) => (held.refs ?? []).includes(ref)) ?? { id: '' };
+
+/** A task of a person's own made in Tick under the task titled `parent`. @param {string} root @param {string} title @param {string} parent */
+function childOf(root, title, parent) {
+  tick(root, ['create', '--parent', idOf(root, parent), '--', title]);
+}
+
+/** A phase of the unit linked after the task titled `after`, as a person might in Tick. @param {string} root @param {string} unit @param {number} phase @param {string} after */
+function phaseAfter(root, unit, phase, after) {
+  tick(root, ['dep', 'add', recordOf(root, `phase:${unit}-${phase}`).id, idOf(root, after)]);
+}
+
+/**
+ * The task titled `title` linked after a task the store does not hold, as a
+ * store edited or merged by hand might leave it — Tick's remove takes the
+ * links to a task with it.
+ * @param {string} root @param {string} title
+ */
+function linkAfterGone(root, title) {
+  const held = records(root).map((task) => (/** @type {{title?: string}} */ (task).title === title ? { ...task, blocked_by: ['tick-ffffff'] } : task));
+  fs.writeFileSync(path.join(root, '.tick', 'tasks.jsonl'), `${held.map((task) => JSON.stringify(task)).join('\n')}\n`);
+}
+
+/** Tick's statuses as the engine words them. @type {Record<string, string>} */
+const WORDED = { open: 'open', in_progress: 'in-progress', done: 'done', cancelled: 'closed' };
+
+/**
+ * What Tick itself answers of a phase, or of the unit where `phase` is
+ * null — its list, and the tasks ready to start — as the engine's rows, in
+ * the engine's order, a task of a person's own passed by.
+ * @param {string} root @param {string} unit @param {number|null} phase
+ */
+function toolAnswers(root, unit, phase) {
+  /** @type {Map<string, TaskRef>} */
+  const named = new Map();
+  for (const { id, refs = [] } of records(root)) {
+    const step = refs.filter((ref) => ref.startsWith(`task:${unit}-`)).map((ref) => stepOfId(ref.slice('task:'.length)))[0];
+    if (step) named.set(id, { unit, phase: step.phase, n: step.n });
+  }
+  /** @param {{id: string, title: string, status: string}[]} listed */
+  const rows = (listed) => listed.filter(({ id }) => named.has(id))
+    .map(({ id, title, status }) => ({ ref: named.get(id), title, status: WORDED[status] }))
+    .sort((a, b) => a.ref.phase - b.ref.phase || a.ref.n - b.ref.n);
+  const parent = recordOf(root, phase === null ? `unit:${unit}` : `phase:${unit}-${phase}`).id;
+  return { list: rows(tick(root, ['list', '--parent', parent])), ready: rows(tick(root, ['ready', '--parent', parent, '--status', 'open'])) };
 }
 
 /**
@@ -127,5 +179,5 @@ const LOOKALIKE_FOLDER = path.join('tick-cafe', 'x+tick-cafe-old');
 const REFUSED_TITLE = 'x'.repeat(501);
 
 module.exports = {
-  projectStore, addRef, makeTask, linkBy, reopenTask, removeTask, breakStore, garbleStore, setStoreWritable, byHand, REFUSED_TITLE, LOOKALIKE_FOLDER,
+  projectStore, addRef, makeTask, linkBy, reopenTask, removeTask, breakStore, garbleStore, setStoreWritable, byHand, childOf, phaseAfter, linkAfterGone, toolAnswers, REFUSED_TITLE, LOOKALIKE_FOLDER,
 };
