@@ -24,6 +24,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { pathToFileURL } = require('url');
 const {
   ok, refusedPristine, treeSnapshot, head, git, cleanupFixture, withEnv, readState, readManifest, layout, holdLock, lockAttempts, statePath,
 } = require('./engine-harness.cjs');
@@ -36,7 +37,8 @@ const { storeBrief } = require(path.join(SCRIPTS, 'domain/brief.cjs'));
 const { issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { titlecase } = require(path.join(SCRIPTS, 'domain/conventions.cjs'));
 
-const FIXTURE = path.join(__dirname, '../fixtures/board/build.json');
+// The mod's tests import it, and can import nothing outside the mod's folder or named other than as code.
+const FIXTURE = path.join(__dirname, '../../skills/leeway-gates/tests/fixtures/board-build.mjs');
 
 let dir = ''; // the project
 let config = ''; // the system config: the conversations' folders
@@ -118,6 +120,7 @@ describe('the board at the start menu (20.3.3, 20.16)', () => {
         inbox: [],
         complete: [],
       },
+      beneath: null,
       questions: [],
       warnings: [],
     });
@@ -129,6 +132,27 @@ describe('the board at the start menu (20.3.3, 20.16)', () => {
     ok(dir, ['board', 'other-conversation'], { env: { ...env(), CLAUDE_CODE_SESSION_ID: 'other-conversation' } });
 
     assert.deepStrictEqual({ tree: treeSnapshot(dir), head: head(dir), folder: fs.existsSync(path.join(config, 'conversations', 'other-conversation')) }, { ...before, folder: false });
+  });
+
+  it('a unit\'s page opened from All work at the start menu stays once the session enters a unit, and a page over it goes back to it (20.3.6, 20.3.5)', () => {
+    const page = ['--page', `unit:${UNIT}`, '--page-unit', UNIT];
+    const atStart = board(page);
+    enterBuild();
+    const inBuild = board(page);
+    const over = board(['--page', 'task:1.2', '--page-unit', UNIT]);
+
+    assert.deepStrictEqual(
+      [[atStart.view.kind, atStart.view.unit, atStart.beneath.kind], [inBuild.view.kind, inBuild.view.unit, inBuild.beneath.kind], [over.view.kind, over.view.unit]],
+      [['unit', UNIT, 'all'], ['unit', UNIT, 'build'], ['task', UNIT]],
+    );
+  });
+
+  it('home is never refused: a session whose unit has left the project reads All work, the banner the project\'s', () => {
+    enterBuild();
+    fs.rmSync(path.join(dir, '.leeway', UNIT), { recursive: true, force: true });
+    const { place, banner, view } = board();
+
+    assert.deepStrictEqual([place.unit, banner.name, view.kind], [null, project(), 'all']);
   });
 });
 
@@ -151,6 +175,7 @@ describe('the build on the board (20.5)', () => {
         waiting: [],
         phases: phasesWith(line('1.1', 'Take a card', 'at-gate')),
       },
+      beneath: null,
       questions: [],
       warnings: [],
     });
@@ -377,12 +402,30 @@ describe('a task\'s pages (20.5.4–20.5.7)', () => {
     assert.deepStrictEqual({ view: atMenu.view, place: atMenu.place }, { view: { ...inBuild.view, line: line('1.2', 'Show a receipt', 'not-started') }, place: { unit: UNIT, type: 'feature', phase: null, topic: null } });
   });
 
-  it('a page of a unit the session is not in is read against the unit --unit names, on This session as on the unit\'s tab (20.3.5)', () => {
+  it('a page is read against the unit it was opened in, from the start menu and from another unit; the banner, the unit\'s tab and what lies beneath it are the session\'s (20.3.5)', () => {
     enterBuild();
-    const inBuild = board(['--page', 'task:1.2']).view;
-    const elsewhere = ok(dir, ['board', 'elsewhere', '--unit', UNIT, '--page', 'task:1.2'], { env: { ...env(), CLAUDE_CODE_SESSION_ID: 'elsewhere' } });
+    const page = ['--page', 'task:1.2', '--page-unit', UNIT];
+    const opened = board(page);
+    fs.rmSync(path.join(config, 'conversations', SESSION, 'position.json'));
+    const atStart = board(page);
+    createManifest(dir, 'till', {});
+    ok(dir, ['session', 'label', 'till'], { env: env() });
+    const inTill = board(page);
+    const seen = (/** @type {any} */ answer) => ({ page: [answer.view.kind, answer.view.unit, answer.view.line.task], banner: answer.banner.name, unit: answer.unit, beneath: [answer.beneath.kind, answer.beneath.unit] });
 
-    assert.deepStrictEqual({ view: elsewhere.view, place: elsewhere.place.unit }, { view: inBuild, place: null });
+    assert.deepStrictEqual([opened, atStart, inTill].map(seen), [
+      { page: ['task', UNIT, '1.2'], banner: 'Pay', unit: { unit: UNIT, title: 'Pay' }, beneath: ['build', UNIT] },
+      { page: ['task', UNIT, '1.2'], banner: project(), unit: null, beneath: ['all', undefined] },
+      { page: ['task', UNIT, '1.2'], banner: 'Till', unit: { unit: 'till', title: 'Till' }, beneath: ['unit', 'till'] },
+    ]);
+  });
+
+  it('--unit names the unit\'s tab alone: a page on This session is the session\'s unit\'s, the tab\'s unit standing as named', () => {
+    createManifest(dir, 'till', {});
+    ok(dir, ['session', 'label', 'till'], { env: env() });
+    const answer = board(['--unit', UNIT, '--page', 'task:1.2']);
+
+    assert.deepStrictEqual([answer.view, answer.unit], [{ kind: 'unavailable', reason: 'till\'s build has not begun' }, { unit: UNIT, title: 'Pay' }]);
   });
 
   it('a page that cannot be drawn answers unavailable in its tab, saying why, the banner and the questions standing beside it', async () => {
@@ -439,15 +482,16 @@ describe('the tabs (20.3)', () => {
     assert.deepStrictEqual({ kind: view.kind, at_menu: view.at_menu, banner }, { kind: 'unit', at_menu: true, banner: { name: 'Pay', state: 'idle', facts: [{ text: 'feature', needs: false }, { text: 'at its menu', needs: false }] } });
   });
 
-  it('All work lists the session\'s unit with how far its build has come, what waits in it, this session in it, and what waits across the units; and opens a unit\'s page (20.16, 20.3.6)', async () => {
+  it('All work lists the session\'s unit with how far its build has come, what waits in it, this session in it, and what waits across the units; and opens a unit\'s page, and a page of a unit opened from it (20.16, 20.3.6)', async () => {
     enterBuild();
     await parkOn(['1.2']);
     await parkOn(['2.1'], 1);
     const { units, waiting } = board(['--tab', 'all']).view;
 
-    assert.deepStrictEqual([{ units, waiting }, board(['--tab', 'all', '--page', `unit:${UNIT}`]).view.kind], [
+    assert.deepStrictEqual([{ units, waiting }, board(['--tab', 'all', '--page', `unit:${UNIT}`]).view.kind, board(['--tab', 'all', '--page', 'task:1.2', '--page-unit', UNIT]).view.kind], [
       { units: [{ unit: UNIT, title: 'Pay', type: 'feature', phase: 'build', standing: '0 of 4 tasks done', waiting: 2, session: 'this' }], waiting: 2 },
       'unit',
+      'task',
     ]);
   });
 });
@@ -473,7 +517,7 @@ describe('the contract with the mod (14.16)', () => {
     await parkOn(['1.2']);
     issued('builder', '1.1', '2026-10-21T10:00:00.000Z');
     fs.rmSync(path.join(dir, '.leeway', UNIT, 'build/tasks/1.1/figures.json'));
-    const fixture = JSON.parse(fs.readFileSync(FIXTURE, 'utf8'));
+    const { default: fixture } = await import(pathToFileURL(FIXTURE).href);
     const answer = board();
     const forShape = (/** @type {any} */ held) => ({ ...held, view: { ...held.view, phases: held.view.phases.filter((/** @type {any} */ phase) => phase.tasks.length > 0) } });
 
@@ -491,7 +535,7 @@ describe('refusals', () => {
     assert.deepStrictEqual([refused([]), refused([SESSION, 'more'])].map((error) => error.startsWith('Usage: engine board <session-id>')), [true, true]);
   });
 
-  it('a tab that is none of the three, the unit\'s tab or a page with no unit, a unit the project lacks, a page no ref names, and a page\'s task that is no task\'s number are refused, nothing written', () => {
+  it('a tab that is none of the three, the unit\'s tab or a page with no unit, a unit the project lacks, a page no ref names, a page\'s task that is no task\'s number, a page\'s unit with no page, and a unit\'s own page under another unit are refused, nothing written', () => {
     assert.deepStrictEqual([
       refused([SESSION, '--tab', 'mine']),
       refused([SESSION, '--tab', 'unit']),
@@ -501,6 +545,9 @@ describe('refusals', () => {
       refused([SESSION, '--tab', 'all', '--page', 'task:1.1']),
       refused([SESSION, '--tab', 'unit', '--unit', UNIT, '--page', 'shelf:1']),
       refused([SESSION, '--tab', 'unit', '--unit', UNIT, '--page', 'task:one']),
+      refused([SESSION, '--page', 'task:1.1', '--page-unit', 'nope']),
+      refused([SESSION, '--page-unit', UNIT]),
+      refused([SESSION, '--page', `unit:${UNIT}`, '--page-unit', 'till']),
     ].map((error) => error.split(' — ')[0]), [
       '--tab is this, unit or all, not "mine"',
       'the unit\'s tab is at no unit, whose page it would show',
@@ -510,6 +557,9 @@ describe('refusals', () => {
       'no page of All work is named "task:1.1"',
       'no page is named "shelf:1"',
       'task-id: "one" is not a task',
+      'there is no work unit "nope"',
+      '--page-unit names the unit a page was opened in, and goes with --page',
+      `unit:${UNIT} is ${UNIT}'s own page, not a page of till`,
     ]);
   });
 });

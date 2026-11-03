@@ -17,6 +17,8 @@ import {
   type Mounted,
 } from 'claude-code/testing'
 
+import BOARD from './fixtures/board-build.mjs'
+
 tier('user')
 
 const SESSION = {
@@ -848,6 +850,20 @@ function world(
     types,
     boxHolds: () => box,
   }
+}
+
+/** The engine answering `engine board` with a build's board, its banner one line. */
+function boardAnswered(on: On) {
+  on('session.root', () => ({ value: '/work' }))
+  on('process.run', () => ({
+    value: {
+      exitCode: 0,
+      stdout: `${JSON.stringify({ ok: true, ...BOARD })}\n`,
+      stderr: '',
+      isStdoutTruncated: false,
+      isStderrTruncated: false,
+    },
+  }))
 }
 
 /** A gate rendered in a main-conversation turn that has since ended. */
@@ -2276,6 +2292,40 @@ describe('register', () => {
     await ui.key({ key: 'return', in: 'gate' })
 
     expect(filled, 'the first row of the page before').toEqual(['7'])
+
+    await ui.unmount()
+  })
+
+  test('the workflows board\'s banner takes the band\'s last line, beneath the gate, whose menu lays out whole in the rows it leaves', async ($, on) => {
+    const { clock } = world($, on, announced({ options: LONG }), {
+      marked: ['s0'],
+    })
+
+    boardAnswered(on)
+    await presented($)
+
+    const ui = await $.ui.mount(SHORT_MOUNT)
+
+    await clock.settle()
+
+    const { children } = (await ui.drawn()) as { children: RenderElement[] }
+
+    expect(children.at(-1)).toMatchObject({ props: { key: 'banner' } })
+    expect(await ui.find({ type: 'Client', key: 'gate' })).toMatchObject({
+      props: { height: 10, props: { maxRows: 10 } },
+    })
+    expect((await linesOf(ui)).map(line => line.trimEnd())).toEqual([
+      '─'.repeat(72),
+      '',
+      '◆ Approve this task?',
+      '',
+      '▌ 1        Continue "Topic 1" (recommended)',
+      '  2        Continue "Topic 2"',
+      '  3        Continue "Topic 3"',
+      '  ↑ previous   ↓ next   page 1 of 4',
+      '',
+      `  ${IDLE_FOOTER}`,
+    ])
 
     await ui.unmount()
   })

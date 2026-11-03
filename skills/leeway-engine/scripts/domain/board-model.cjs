@@ -14,18 +14,19 @@
 // - The board: the version; where the session is (`place`); the banner
 //   (20.2.4); the unit the second tab names, by its key and title, null at
 //   the start menu (20.3.1); the tab answered and the view or page it shows
-//   (20.3.3); the questions of the session's unit a press can queue (20.6),
+//   (20.3.3), and under a page the view the tab shows beneath it, else
+//   null; the questions of the session's unit a press can queue (20.6),
 //   which the banner, every WAITING ON YOU and READY TO DISCUSS draw from;
 //   and what the reads warned of.
-// - A page is asked for by its ref (`--page`), resolved against the unit
-//   `--unit` names, else the session's, whatever phase the session is in,
-//   so a page stays while the session moves beneath it (20.3.5) and once it
-//   leaves the unit: `task:{N.n}`, `task:{N.n}:written`,
+// - A page is asked for by its ref (`--page`), resolved against the unit it
+//   was opened in (`--page-unit`), else the tab's, whatever the session is
+//   doing, so a page stays while the session moves beneath it (20.3.5) and
+//   once it leaves the unit: `task:{N.n}`, `task:{N.n}:written`,
 //   `task:{N.n}:round:{k}`, `entry:{id}`, `finding:{round}:{k}`,
 //   `check:{round}:{scenario}`, `section:{n}`, `pass:{k}`, `topic:{topic}`,
 //   `message:{topic}:{file}`, `review:{topic}:{id}`, `spike:{folder}`,
 //   `report:{topic}:{id}`; and from All work `unit:{unit}`. The way back is
-//   the mod's, which knows where the page was opened from.
+//   the mod's, which names the page it was opened over, else `beneath`.
 // - Each tab is answered on its own: a view or page that cannot be drawn
 //   is `unavailable`, saying why, and the banner and questions still stand.
 // ---------------------------------------------------------------------------
@@ -317,7 +318,7 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * The board's view model (the header's).
  * @typedef {{
  *   version: number, place: Place, banner: Banner|null, unit: {unit: string, title: string}|null,
- *   tab: 'this'|'unit'|'all', view: View, questions: Question[], warnings: string[],
+ *   tab: 'this'|'unit'|'all', view: View, beneath: View|null, questions: Question[], warnings: string[],
  * }} Board
  */
 

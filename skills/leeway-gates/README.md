@@ -244,6 +244,59 @@ dispatch, a dispatch that was refused or errored, a plain conversation and a
 session that did not announce record nothing, and whatever the engine
 answers, the dispatch's result is Claude Code's own.
 
+## The workflows board
+
+In a session that announced, in a conversation the engine has marked, the mod
+draws the workflows board: a banner on the band's last line, directly above the
+prompt, and a pane beside the conversation, its tab titled `workflows` — beside
+sitrep's where both are open. Anywhere else nothing draws, and nothing draws
+while another screen — Remote Control's, say — is attached beside the band's.
+
+The banner names the work and where it stands: the session's mark — ◐ running,
+⚑ waiting on you, ✓ done, none where neither — the work's name in bold, then
+its facts in grey, each one that waits on you in peach behind a ⚑, and at its
+right `▸ show board` while the pane is hidden, `hide board` while it is up. A
+banner too long for the band is cut from its right end, its button kept. It
+sits beneath a gate's rows, which are drawn in the rows it leaves; a survey
+holds the band alone.
+
+The pane has three tabs: `⌂ This session`, the unit's own (`≡ {unit}`), and
+`≡ All work`. This session shows the most specific place the session is, and
+follows it as its position moves; a page opened over a tab — a task, an entry,
+another unit — is read in the unit it was opened in and stays until back is
+pressed, however the session moves beneath it, to the start menu or another
+unit. A page whose target has gone says why, beneath the way back, and stays.
+Where the engine refuses what the pane asks — a ref it cannot read, a unit gone
+from the project — the pane unwinds a level at a time, each page and then the
+unit's tab, to This session's top, which asks nothing of the pane's; a read
+that times out moves nothing. Back names what it returns to: the page under it,
+else what the tab shows beneath it now. A tab opens at its top. Docked beside a
+fullscreen transcript the pane has the full height; inline above the prompt it
+draws the same lines spread to its width. Each view and page is drawn by its
+kind (`hooks/views/`), with the drawing kit (`hooks/draw.ts`): colours with one
+meaning each — peach waits on you, seafoam runs, sage is done, rose failed,
+slate has not started, lavender this view and every button — a section's
+heading with its rule and count, one line per item, its state at the right, a
+complete section folding to its heading.
+
+Both draw the board's model as `engine board <session-id>` answers it for where
+the person is on the pane (`--tab`, `--unit`, `--page`, `--page-unit`): read
+afresh after every engine call, the conversation's or a subagent's, without
+holding up the call's result; on every press that moves the pane; and once for
+each conversation the board draws in — the session's first, a `/clear`'s or a
+resume's. Each read is one call, and the reads asked while one runs are
+answered by one more after it. Nothing is read on a clock: while the pane is
+up, what runs turns its ◐ a quarter every 250 ms and its clock ticks each
+second, from the model already read; while it is hidden, nothing turns.
+
+The model is versioned. A version the mod does not know is refused rather than
+drawn wrongly: no banner, and the pane says so in a line. An engine that
+refuses what the pane asks unwinds it to This session, which is drawn; one
+that refuses This session itself, or fails, draws nothing. Whatever the board
+does, nothing of it reaches the conversation or the prompt box: the
+conversation gets every summary and question whether the board is up or
+hidden.
+
 ## Working on it
 
     npm run test:mod        # claude plugin test
