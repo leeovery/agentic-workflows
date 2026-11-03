@@ -7,15 +7,14 @@
 //
 // Layer: verb. World, built once and copied: a feature, `pay`, its build
 // begun in step, its cut three phases — Cards and Reports relying on
-// nothing, Refunds on Cards — Cards started, Refunds written, Reports not
-// yet written. Task 1.1 is in progress at its gate: its branch holds its
-// work, its first round failed on a bug, its second passed, its account is
-// taken, a run proved its scenario, one of its two criteria, and the ledger
-// holds a call of Claude's made for it, one of the person's, and one of
-// Claude's for 1.2. Task 1.2, not started, has its account taken after the
-// orchestrator settled its one failed round, nothing differing from it.
-// Task 1.3, linked after 1.2, has no account. A question waits where a test
-// parks one.
+// nothing, Refunds on Cards — Cards started, Refunds written, Reports not yet written. Task 1.1 is in
+// progress at its gate: its branch holds its work, its first round failed
+// on a bug, its second passed, its account is taken, a run proved its
+// scenario, one of its two criteria, and the ledger holds a call of
+// Claude's made for it, one of the person's, and one of Claude's for 1.2.
+// Task 1.2, not started, has its account taken after the orchestrator
+// settled its one failed round, nothing differing from it. Task 1.3, linked
+// after 1.2, has no account. Five questions wait where a test parks them.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -26,7 +25,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {
-  ok, okSectionsAsync, output, refusedPristine, git, writeState, layout, commitAll, fixtureFrom, cleanupFixture, sectionOf, FROZEN_AT,
+  ok, okSectionsAsync, output, refusedPristine, git, writeState, readManifest, layout, commitAll, fixtureFrom, cleanupFixture, sectionOf, FROZEN_AT,
 } = require('./engine-harness.cjs');
 const { createManifest, templateFolder } = require('./discovery-test-utils.cjs');
 const { raiseHelpers } = require('./raise-world.cjs');
@@ -108,8 +107,13 @@ function callFor(dir, task, text, by = 'claude') {
   write(dir, 'decide', ['--answers', question, '--task', task], { by, text, why: 'The till needs it.' });
 }
 
-/** The question a test parks: its short id. */
-const made = { asked: '' };
+/** The questions the world asks, which a test parks tasks on. */
+const QUESTIONS = Object.freeze([
+  'Does a refund print a receipt?', 'Is a refund capped at the charge?', 'Does a void charge show on the statement?', 'Is the receipt mailed or printed?', 'Does the till keep the card?',
+]);
+
+/** The questions a test parks: their short ids, in order. */
+const made = { asked: /** @type {string[]} */ ([]) };
 
 const world = fixtureFrom('engine-build-screens-', (dir) => {
   createManifest(dir, UNIT, { build: { position: 'step' }, cut: CUT, checklists: { 'phase-1-start': { items: {}, closed: FROZEN_AT } } });
@@ -147,7 +151,7 @@ const world = fixtureFrom('engine-build-screens-', (dir) => {
   callFor(dir, '1.1', 'The till masks the digits');
   callFor(dir, '1.1', 'The till beeps', 'person');
   callFor(dir, '1.2', 'The receipt is printed');
-  made.asked = write(dir, 'ask', [], { text: 'Does a refund print a receipt?' });
+  made.asked = QUESTIONS.map((text) => write(dir, 'ask', [], { text }));
 });
 
 let dir = ''; // the project
@@ -172,9 +176,9 @@ const screen = (args) => output(dir, ['render', ...args], { env: env() });
 /** A screen that must refuse, writing nothing: its error. @param {string[]} args */
 const refused = (args) => refusedPristine(dir, ['render', ...args], { env: env() }).error;
 
-/** Claude's call on a refund's receipt, which a test parks tasks on. */
+/** Claude's call on the first question, which a test parks tasks on — on another, asking that. */
 const CALL = Object.freeze({
-  question: 'Does a refund print a receipt?',
+  question: QUESTIONS[0],
   rows: [
     { key: '1', name: 'Print', text: 'A refund prints a receipt', notice: 'the customer holds proof of the refund' },
     { key: '2', name: 'None', text: 'A refund prints nothing', notice: 'the refund shows only on the statement' },
@@ -186,12 +190,18 @@ const CALL = Object.freeze({
   product_wide: false,
 });
 
-/** The world's question parked on each task given, as a builder's call parks it. @param {string[]} tasks */
-async function parkOn(tasks) {
-  const { conversation } = raiseHelpers(() => dir, () => config, CALL);
+/** One of the world's questions, the first unless `at` says, parked on each task given, as a builder's call parks it. @param {string[]} tasks @param {number} [at] */
+async function parkOn(tasks, at = 0) {
+  const call = { ...CALL, question: QUESTIONS[at] };
+  const { conversation } = raiseHelpers(() => dir, () => config, call);
   for (const task of tasks) {
-    await okSectionsAsync(dir, ['raise', `${UNIT}.implementation`, '--answers', made.asked, '--parks', task], { env: conversation(), stdin: JSON.stringify(CALL) });
+    await okSectionsAsync(dir, ['raise', `${UNIT}.implementation`, '--answers', made.asked[at], '--parks', task], { env: conversation(), stdin: JSON.stringify(call) });
   }
+}
+
+/** Each of the world's five questions parked on the tasks given it, in turn. @param {string[][]} parks */
+async function parkFive(parks) {
+  for (const [at, tasks] of parks.entries()) await parkOn(tasks, at);
 }
 
 /** The unit's build switched to a position, through its door. @param {'auto'|'step'} to */
@@ -204,7 +214,7 @@ const product = () => titlecase(path.basename(dir)).toUpperCase();
 const ACCOUNT_DRAWN = [
   '▪ Take a card (task 1.1)',
   '',
-  '✓ Passed its review — 2 rounds, 2 findings fixed',
+  '✓ Passed its review in round 2, after 1 round of fixes',
   '',
   '- Phase: 1 — Cards',
   '- Position: 1 of 3 in phase',
@@ -228,7 +238,7 @@ const ACCOUNT_DRAWN = [
 ].join('\n');
 
 describe('the gate after a task, in step (12.14.3, 12.12.7, 3.3.8, 13.4.7)', () => {
-  it('carries the task\'s description, its account and diagrams, its verdict with the findings its rounds fixed, and the engine\'s figures, then asks — no review report printed (3.S16, 12.S27, 12.S41, 13.S19)', () => {
+  it('carries the task\'s description, its account and diagrams, its verdict with the round it passed in after its rounds of fixes, and the engine\'s figures, then asks — no review report printed (3.S16, 12.S27, 12.S41, 13.S19)', () => {
     const out = screen(['step-gate', UNIT, '1.1']);
 
     assert.strictEqual(sectionOf(out, 'DISPLAY: step gate'), `${ACCOUNT_DRAWN}\n`);
@@ -284,15 +294,15 @@ describe('the landing summary (12.12.5, 12.12.6)', () => {
     assert.strictEqual(sectionOf(out, 'DISPLAY: task landed'), [
       '▪ Take a card (task 1.1)',
       '',
-      '✓ Landed — its reviewer pair passed it in 2 rounds · 1 call',
-      '  went to the ledger',
+      '✓ Landed — its reviewer pair passed it in round 2, after 1',
+      '  round of fixes · 1 call went to the ledger',
       '',
       'WHAT CHANGED',
       '  A card is taken at the till, and the receipt line names its',
       '  last four digits.',
       '',
       'ITS TESTS PROVE (2)',
-      '  ├─ 1.S1 A card is taken at the till.',
+      '  ├─ A card is taken at the till.',
       '  └─ A taken card shows its last four digits.',
       '',
       `RUNNING ${product()} PROVED 1 OF 1`,
@@ -311,12 +321,27 @@ describe('the landing summary (12.12.5, 12.12.6)', () => {
     assert.deepStrictEqual(lines.slice(lines.indexOf('1 QUESTION WAITING FOR YOU')), ['1 QUESTION WAITING FOR YOU', `  └─ ⚑ Q1 ${CALL.question} · parks 1.2 and 1 more`, '']);
   });
 
+  it('with five questions waiting, the count reads five and each has its line (12.S26)', async () => {
+    await parkFive([['1.2'], ['1.3'], ['2.1'], ['1.2'], ['1.3']]);
+    const lines = sectionOf(screen(['task-landed', UNIT, '1.1']), 'DISPLAY: task landed').split('\n');
+
+    assert.deepStrictEqual(lines.slice(lines.indexOf('5 QUESTIONS WAITING FOR YOU')), [
+      '5 QUESTIONS WAITING FOR YOU',
+      `  ├─ ⚑ Q1 ${QUESTIONS[0]} · parks 1.2`,
+      `  ├─ ⚑ Q2 ${QUESTIONS[1]} · parks 1.3`,
+      `  ├─ ⚑ Q3 ${QUESTIONS[2]} · parks 2.1`,
+      `  ├─ ⚑ Q4 ${QUESTIONS[3]} · parks 1.2`,
+      `  └─ ⚑ Q5 ${QUESTIONS[4]} · parks 1.3`,
+      '',
+    ]);
+  });
+
   it('a task whose last round the orchestrator settled says so, and one no run proves reads not proven', () => {
     const lines = sectionOf(screen(['task-landed', UNIT, '1.2']), 'DISPLAY: task landed').split('\n');
 
     assert.deepStrictEqual([lines.slice(2, 4), lines.slice(lines.indexOf(`RUNNING ${product()} PROVED 0 OF 1`), lines.indexOf('NO QUESTIONS WAITING FOR YOU'))], [
-      ['✓ Landed — the orchestrator settled its review after 1 round ·', '  1 call went to the ledger'],
-      [`RUNNING ${product()} PROVED 0 OF 1`, '  └─ △ Not proven: 1.S2 A charge prints its receipt.', ''],
+      ['✓ Landed — the orchestrator settled its review in round 1 · 1', '  call went to the ledger'],
+      [`RUNNING ${product()} PROVED 0 OF 1`, '  └─ △ Not proven: A charge prints its receipt.', ''],
     ]);
   });
 
@@ -326,7 +351,7 @@ describe('the landing summary (12.12.5, 12.12.6)', () => {
     const lines = sectionOf(screen(['task-landed', UNIT, '1.1']), 'DISPLAY: task landed').split('\n');
     const at = lines.indexOf(`RUNNING ${product()} PROVED 0 OF 1`);
 
-    assert.deepStrictEqual(lines.slice(at, at + 3), [`RUNNING ${product()} PROVED 0 OF 1`, '  └─ △ Not proven: 1.S1 A card is taken at the till.', '  ↳ The proof is on 1.1\'s page on the board.']);
+    assert.deepStrictEqual(lines.slice(at, at + 3), [`RUNNING ${product()} PROVED 0 OF 1`, '  └─ △ Not proven: A card is taken at the till.', '  ↳ The proof is on 1.1\'s page on the board.']);
   });
 
   it('a run at code the task\'s branch does not hold — another task\'s — never counts for it, however late', () => {
@@ -335,6 +360,17 @@ describe('the landing summary (12.12.5, 12.12.6)', () => {
     writeState(dir, layout.unit(UNIT, 'build/runs/1.S1/run-002.json'), JSON.stringify({ ...run, verdict: 'fail', at: '2026-12-01T00:00:00.000Z', commits: [{ repo: '.', commit: elsewhere }] }));
 
     assert.ok(sectionOf(screen(['task-landed', UNIT, '1.1']), 'DISPLAY: task landed').includes(`RUNNING ${product()} PROVED 1 OF 1\n`));
+  });
+
+  it('a scenario whose only run at the task\'s code was skipped reads named, not run, and no proof is pointed to', () => {
+    const run = JSON.parse(fs.readFileSync(path.join(dir, '.leeway', UNIT, 'build/runs/1.S1/run-001.json'), 'utf8'));
+    const tip = git(dir, ['rev-parse', taskBranch({ unit: UNIT, phase: 1, n: 2 }, 'feat', 'Show a receipt')]).trim();
+    writeState(dir, layout.unit(UNIT, 'build/runs/1.S2/run-001.json'), JSON.stringify({ ...run, verdict: 'skipped', task: '1.2', commits: [{ repo: '.', commit: tip }] }));
+    const lines = sectionOf(screen(['task-landed', UNIT, '1.2']), 'DISPLAY: task landed').split('\n');
+
+    assert.deepStrictEqual(lines.slice(lines.indexOf(`RUNNING ${product()} PROVED 0 OF 1`), lines.indexOf('NO QUESTIONS WAITING FOR YOU')), [
+      `RUNNING ${product()} PROVED 0 OF 1`, '  └─ △ Named, not run: A charge prints its receipt.', '',
+    ]);
   });
 
   it('is refused before the task\'s account is taken, for a task the tracker lacks, and for a unit the project lacks, writing nothing', () => {
@@ -364,7 +400,7 @@ describe('a task\'s account, printed when asked (12.14.1, 12.14.2)', () => {
       [
         '▪ Show a receipt (task 1.2)',
         '',
-        '✓ Settled by the orchestrator — 1 round',
+        '✓ Settled by the orchestrator in round 1',
         '',
         '- Phase: 1 — Cards',
         '- Position: 2 of 3 in phase',
@@ -401,6 +437,15 @@ describe('a task\'s account, printed when asked (12.14.1, 12.14.2)', () => {
         '',
       ].join('\n'),
     ]);
+  });
+
+  it('a task closed keeps its place among every task of its phase, and with no account says it closed without one', () => {
+    ok(dir, ['task', 'close', UNIT, '1.2', '--reason', 'Folded into 1.1.'], { env: env() });
+    ok(dir, ['task', 'close', UNIT, '1.3', '--reason', 'Mailing waits for later.'], { env: env() });
+    const [receipt, mail] = ['1.2', '1.3'].map((task) => sectionOf(screen(['task-account', UNIT, task]), 'DISPLAY: task account').split('\n'));
+    const place = (/** @type {string[]} */ lines) => lines.find((line) => line.startsWith('- Position'));
+
+    assert.deepStrictEqual([place(receipt), place(mail), mail.at(-2)], ['- Position: 2 of 3 in phase', '- Position: 3 of 3 in phase', '  No account was written: it closed without one.']);
   });
 });
 
@@ -497,6 +542,17 @@ describe('the build\'s phases and tasks, printed when asked (12.12.11, 7.4.2)', 
       '  │  ├─ ⚑ 1.2 Show a receipt      [waits on Q1]',
     ]);
   });
+
+  it('a phase waits after another unit it relies on only while that unit is not finished', () => {
+    const manifest = readManifest(dir, UNIT);
+    manifest.cut.phases[1].relies_on = ['billing'];
+    writeState(dir, layout.manifest(UNIT), JSON.stringify(manifest, null, 2));
+    const tagged = () => sectionOf(screen(['build-progress', UNIT]), 'DISPLAY: build progress').split('\n').find((line) => line.includes('Refunds'));
+    const before = tagged();
+    createManifest(dir, 'billing', { status: 'completed' });
+
+    assert.deepStrictEqual([before, tagged()], ['  ├─ Phase 2 of 3 · Refunds       [written · after billing]', '  ├─ Phase 2 of 3 · Refunds       [written]']);
+  });
 });
 
 describe('a task linked after another (12.6.4)', () => {
@@ -512,42 +568,73 @@ describe('a task linked after another (12.6.4)', () => {
 });
 
 describe('the stop report (12.12.9, 12.13.22)', () => {
-  it('when nothing can go on without an answer: the build stopped, the questions waiting first, what was built, and what each answer lets run (12.S38)', async () => {
-    await parkOn(['1.2']);
+  it('when every task left is parked or waits after one that is: the build stopped, the five questions waiting first with a line each, what was built, and what each answer lets run (12.S38, 12.S26)', async () => {
+    await parkFive([['1.1'], ['1.2'], ['2.1'], ['1.2'], ['1.1']]);
     const out = screen(['build-stop', UNIT]);
 
     assert.strictEqual(sectionOf(out, 'DISPLAY: build stop'), '⚑ The build has stopped: nothing more can be built until you answer\n');
     assert.strictEqual(sectionOf(out, 'DISPLAY: build stop report'), [
-      '1 QUESTION WAITING FOR YOU',
-      `  └─ ⚑ Q1 ${CALL.question} · parks 1.2`,
+      '5 QUESTIONS WAITING FOR YOU',
+      `  ├─ ⚑ Q1 ${QUESTIONS[0]} · parks 1.1`,
+      `  ├─ ⚑ Q2 ${QUESTIONS[1]} · parks 1.2`,
+      `  ├─ ⚑ Q3 ${QUESTIONS[2]} · parks 2.1`,
+      `  ├─ ⚑ Q4 ${QUESTIONS[3]} · parks 1.2`,
+      `  └─ ⚑ Q5 ${QUESTIONS[4]} · parks 1.1`,
       '',
       'WHAT WAS BUILT',
-      '  0 of 4 tasks done · 1 running',
+      '  0 of 4 tasks done · 0 running',
       '  ├─ Phase 1 of 3 · Cards         [running]',
-      '  │  ├─ ◐ 1.1 Take a card         [in progress]',
-      '  │  ├─ ⚑ 1.2 Show a receipt      [waits on Q1]',
+      '  │  ├─ ⚑ 1.1 Take a card         [waits on Q1, Q5]',
+      '  │  ├─ ⚑ 1.2 Show a receipt      [waits on Q2, Q4]',
       '  │  └─ ○ 1.3 Mail the receipt    [after 1.2]',
       '  │',
       '  ├─ Phase 2 of 3 · Refunds       [written · after phase 1]',
-      '  │  └─ ○ 2.1 Refund a card       [not started]',
+      '  │  └─ ⚑ 2.1 Refund a card       [waits on Q3]',
       '  │',
       '  └─ Phase 3 of 3 · Reports       [not yet written]',
       '',
       'WHAT RUNS ONCE YOU ANSWER',
-      '  └─ Q1',
-      '        1.2 Show a receipt',
-      '        then 1.3',
+      '  ├─ Q1',
+      '  │     1.1 Take a card',
+      '  ├─ Q2',
+      '  │     1.2 Show a receipt',
+      '  │     then 1.3',
+      '  ├─ Q3',
+      '  │     2.1 Refund a card',
+      '  ├─ Q4',
+      '  │     1.2 Show a receipt',
+      '  │     then 1.3',
+      '  └─ Q5',
+      '        1.1 Take a card',
       '',
     ].join('\n'));
   });
 
-  it('is refused while no question waits on the person, writing nothing', () => {
-    assert.strictEqual(refused(['build-stop', UNIT]), 'render build-stop: no question waits on the person in pay\'s build — it stops only where nothing can go on without their answer (12.13.22)');
+  it('is refused while no question waits, and while a task can still be built — one in progress or one ready that no question parks — writing nothing (12.12.9, 12.13.22)', async () => {
+    const none = refused(['build-stop', UNIT]);
+    await parkOn(['1.2']);
+    const running = refused(['build-stop', UNIT]);
+    await parkOn(['1.1'], 1);
+
+    assert.deepStrictEqual([none, running, refused(['build-stop', UNIT])], [
+      'render build-stop: no question waits on the person in pay\'s build — it stops only where nothing can go on without their answer (12.13.22)',
+      'render build-stop: pay\'s build goes on with task 1.1, which no question parks — it stops only where nothing can go on without the person\'s answer (12.13.22)',
+      'render build-stop: pay\'s build goes on with task 2.1, which no question parks — it stops only where nothing can go on without the person\'s answer (12.13.22)',
+    ]);
   });
 });
 
+/** A phase of the review's fixes past the cut, phase 4, written with a task of each title given. @param {string[]} titles */
+function fixPhase(titles) {
+  ok(dir, ['task', 'phase', UNIT, '4', '--title', 'Fixes'], { env: env() });
+  for (const title of titles) {
+    fs.writeFileSync(path.join(config, 'fix.md'), taskText(title, [`${title} works.`]));
+    ok(dir, ['task', 'create', UNIT, '4', '--file', path.join(config, 'fix.md')], { env: env() });
+  }
+}
+
 describe('the gate before a phase\'s stack merges, in step (7.2.4)', () => {
-  it('stops once the phase review passed, its yes merging the phase through land phase (7.S8); a phase of the review\'s fixes past the cut is named for its round', () => {
+  it('stops once the phase review passed, its yes merging the phase through land phase (7.S8)', () => {
     for (const letter of ['a', 'b']) writeState(dir, layout.unit(UNIT, `build/phases/phase-1/review-${letter}.md`), reportOf([]));
     const out = screen(['phase-merge-gate', UNIT, '1']);
     const next = ok(dir, ['gate', 'phase merge', '--pick', 'y'], { env: env() }).next;
@@ -563,14 +650,30 @@ describe('the gate before a phase\'s stack merges, in step (7.2.4)', () => {
       '',
     ].join('\n'));
     assert.deepStrictEqual(next, { kind: 'engine', argv: ['land', 'phase', UNIT, '1'] });
-    assert.match(screen(['phase-merge-gate', UNIT, '4']), /Phase 4, "the review's fixes, round 1", is ready to merge/);
   });
 
-  it('is refused before the phase review passed, in auto, and for no phase, writing nothing', () => {
-    const before = refused(['phase-merge-gate', UNIT, '1']);
+  it('a phase of the review\'s fixes, named for its round, stops once its tasks are done, and is refused before and once it has merged, writing nothing', () => {
+    ok(dir, ['task', 'done', UNIT, '1.1'], { env: env() });
+    fixPhase(['Mask the reprint']);
+    ok(dir, ['task', 'start', UNIT, '4.1'], { env: env() });
+    const before = refused(['phase-merge-gate', UNIT, '4']);
+    ok(dir, ['task', 'done', UNIT, '4.1'], { env: env() });
+    const ready = screen(['phase-merge-gate', UNIT, '4']);
+    git(dir, ['commit', '-q', '--allow-empty', '-m', `fix(${UNIT}): landed`, '-m', `Task: ${UNIT}-4-1`]);
+
+    assert.deepStrictEqual([before, refused(['phase-merge-gate', UNIT, '4'])], [
+      'render phase-merge-gate: phase 4 of pay merges once its tasks are done — task 4.1 is in progress',
+      'render phase-merge-gate: phase 4 of pay is merged already — its tasks are on the default branch',
+    ]);
+    assert.match(ready, /Phase 4, "the review's fixes, round 1", is ready to merge/);
+  });
+
+  it('is refused for a phase the tracker lacks, before the phase review passed, in auto, and for no phase, writing nothing', () => {
+    const before = [refused(['phase-merge-gate', UNIT, '9']), refused(['phase-merge-gate', UNIT, '1'])];
     position('auto');
 
-    assert.deepStrictEqual([before, refused(['phase-merge-gate', UNIT, '1']), refused(['phase-merge-gate', UNIT, 'one']), refused(['phase-merge-gate', UNIT])], [
+    assert.deepStrictEqual([...before, refused(['phase-merge-gate', UNIT, '1']), refused(['phase-merge-gate', UNIT, 'one']), refused(['phase-merge-gate', UNIT])], [
+      'render phase-merge-gate: phase 9 of pay is not written — no stack of its waits to merge',
       'render phase-merge-gate: phase 1 of pay merges once its phase review has passed and its fixes are done — phase 1 of pay has no phase review reported — its reviewers write their reports in pay/build/phases/phase-1/',
       'render phase-merge-gate: pay builds in auto, where a phase\'s stack merges with no gate — the person meets only danger, the authority gates and the questions parked',
       'render phase-merge-gate: task-id: "one" is not a phase — it is a whole number from 1',
@@ -588,14 +691,12 @@ describe('task start in step: one task at a time (12.7.9)', () => {
     assert.strictEqual(ok(dir, ['task', 'start', UNIT, '1.2'], { env: env() }).task, '1.2');
   });
 
-  it('holds the next while a task of a phase past the cut is in flight on this conversation\'s position, writing nothing', () => {
+  it('holds the next while a task of the review\'s fixes past the cut is in progress, started in another conversation, writing nothing', () => {
     ok(dir, ['task', 'done', UNIT, '1.1'], { env: env() });
-    ok(dir, ['task', 'phase', UNIT, '4', '--title', 'Fixes'], { env: env() });
-    fs.writeFileSync(path.join(config, 'fix.md'), taskText('Mask the reprint', ['A reprint masks the digits.']));
-    ok(dir, ['task', 'create', UNIT, '4', '--file', path.join(config, 'fix.md')], { env: env() });
-    ok(dir, ['task', 'start', UNIT, '4.1'], { env: env() });
+    fixPhase(['Mask the reprint', 'Mask the copy']);
+    ok(dir, ['task', 'start', UNIT, '4.1'], { env: { ...env(), CLAUDE_CODE_SESSION_ID: 'sess-2' } });
 
-    assert.strictEqual(refusedPristine(dir, ['task', 'start', UNIT, '1.2'], { env: env() }).error,
+    assert.strictEqual(refusedPristine(dir, ['task', 'start', UNIT, '4.2'], { env: env() }).error,
       'task start: pay builds in step, one task at a time — task 4.1 is in flight or at its gate, and the next starts once the person\'s go there is given and it is done');
   });
 

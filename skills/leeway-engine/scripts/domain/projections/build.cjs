@@ -17,7 +17,7 @@
 // - a task's account: its title, phase and place in it, its verdict, what it
 //   does, what was done with the engine's figures, every way it differs
 //   from the task, and, printed when asked, each round's summary (12.14.1,
-//   12.14.2); one with no account yet says so;
+//   12.14.2); one with no account says so, and whether it closed without;
 // - the gate after a task in step, the account above it (12.14.3); and the
 //   gate before a phase's stack merges in step (7.2.4);
 // - the stop report, when nothing can go on without an answer: the
@@ -44,7 +44,7 @@ const { STATUS_WORDS } = require('../build-entry.cjs');
 
 /** A task as a screen names it: its number, title, and its phase's number and name. @typedef {{task: string, title: string, phase: number, phase_name: string}} TaskHead */
 /** A task started, with what Claude says of it. @typedef {TaskHead & {changes: string, watch: string}} Started */
-/** How a task's review ended: its rounds, whether the orchestrator settled the last, and the findings its failed rounds sent back. @typedef {{rounds: number, settled: boolean, fixed: number}} Reviewed */
+/** How a task's review ended: its rounds, and whether the orchestrator settled the last. @typedef {{rounds: number, settled: boolean}} Reviewed */
 /** One of a task's cut scenarios, as its criterion reads, and what running it proved. @typedef {{criterion: string, standing: import('../runs.cjs').Standing}} Ran */
 /**
  * A task landing: the task, how its review ended, the calls it sent to the
@@ -53,14 +53,15 @@ const { STATUS_WORDS } = require('../build-entry.cjs');
  * run was recorded, and the questions waiting.
  * @typedef {{head: TaskHead, reviewed: Reviewed, calls: number, changed: string, criteria: string[], product: string, ran: Ran[]|null, recorded: boolean, waiting: Waiting[]}} Landing
  */
+/** Whether another unit is finished, by its name. @typedef {(unit: string) => boolean} Finished */
 /** The engine's figures of a task (task-account.cjs). @typedef {{files: number, added: number, removed: number, criteria: number}} Figures */
 /**
  * A task's account as a screen draws it: the task, its place in its phase,
- * what it does, and its account where one is written — its sections, its
- * differences, its rounds' summaries by their headings, how its review ended
- * and its figures.
+ * what it does, whether it closed, and its account where one is written —
+ * its sections, its differences, its rounds' summaries by their headings,
+ * how its review ended and its figures.
  * @typedef {{
- *   head: TaskHead, at: number, of: number, does: string,
+ *   head: TaskHead, at: number, of: number, does: string, closed: boolean,
  *   account: {sections: Record<string, string>, differences: string[], reviews: {heading: string, summary: string}[], reviewed: Reviewed, figures: Figures}|null,
  * }} AccountView
  */
@@ -142,10 +143,14 @@ function waitingBlock(waiting) {
   return block(heading, treeList(waiting.map(({ question, asks, parks }) => `⚑ ${question} ${asks} · ${parksWords(parks)}`), { indent: '  ', width: WIDTH }));
 }
 
+/** The round a task's review ended in, and the rounds of fixes before a pass. @param {Reviewed} reviewed */
+function roundWords({ rounds, settled }) {
+  return settled || rounds === 1 ? `in round ${rounds}` : `in round ${rounds}, after ${counted(rounds - 1, 'round')} of fixes`;
+}
+
 /** How a task's review ended, as the landing says it. @param {Reviewed} reviewed */
-function landedVerdict({ rounds, settled }) {
-  const many = counted(rounds, 'round');
-  return settled ? `the orchestrator settled its review after ${many}` : `its reviewer pair passed it in ${many}`;
+function landedVerdict(reviewed) {
+  return reviewed.settled ? `the orchestrator settled its review ${roundWords(reviewed)}` : `its reviewer pair passed it ${roundWords(reviewed)}`;
 }
 
 /** The calls a task sent to the ledger, as the landing says them. @param {number} calls */
@@ -182,9 +187,8 @@ function landingScreen(landing) {
 }
 
 /** How a task's review ended, as its account says it. @param {Reviewed} reviewed */
-function accountVerdict({ rounds, settled, fixed }) {
-  const said = [counted(rounds, 'round'), ...(fixed === 0 ? [] : [`${counted(fixed, 'finding')} fixed`])].join(', ');
-  return `${settled ? '✓ Settled by the orchestrator' : '✓ Passed its review'} — ${said}`;
+function accountVerdict(reviewed) {
+  return `${reviewed.settled ? '✓ Settled by the orchestrator' : '✓ Passed its review'} ${roundWords(reviewed)}`;
 }
 
 /** What was done, where in the code and what the tests prove, then the engine's figures. @param {NonNullable<AccountView['account']>} account */
@@ -214,7 +218,7 @@ function reviewsBlock(reviews) {
  * where `reviews`.
  * @param {AccountView} view @param {{reviews: boolean}} opts
  */
-function accountDisplay({ head, at, of, does, account }, { reviews }) {
+function accountDisplay({ head, at, of, does, closed, account }, { reviews }) {
   const blocks = [
     taskMarker(head),
     ...(account === null ? [] : [accountVerdict(account.reviewed)]),
@@ -222,7 +226,7 @@ function accountDisplay({ head, at, of, does, account }, { reviews }) {
     block('WHAT IT DOES', prose(does, '  ').join('\n')),
   ];
   if (account === null) {
-    blocks.push('  No account is written yet: its builder writes it as the task lands.');
+    blocks.push(closed ? '  No account was written: it closed without one.' : '  No account is written yet: its builder writes it as the task lands.');
   } else {
     blocks.push(doneBlock(account), differsBlock(account.differences));
     if (reviews) blocks.push(reviewsBlock(account.reviews));
@@ -282,18 +286,25 @@ function taskTag({ status, parked, after }) {
   return STATUS_WORDS[status];
 }
 
-/** What holds a phase, or where it stands: one written waits on a phase it relies on not yet merged. @param {StandingPhase} phase @param {BuildStanding} standing */
-function phaseTag({ state, relies_on: reliesOn }, { phases }) {
-  const waits = reliesOn.filter((relied) => typeof relied === 'number' && phases[relied - 1]?.state !== 'merged');
-  return state === 'written' && waits.length > 0 ? `written · after phase ${waits.join(', ')}` : state;
+/**
+ * What holds a phase, or where it stands: one written waits on what it
+ * relies on not yet done — a phase of the cut not merged, another unit not
+ * finished.
+ * @param {StandingPhase} phase @param {BuildStanding} standing @param {Finished} finished
+ */
+function phaseTag({ state, relies_on: reliesOn }, { phases }, finished) {
+  const phasesWaited = reliesOn.filter((relied) => typeof relied === 'number' && phases[relied - 1]?.state !== 'merged');
+  const unitsWaited = reliesOn.filter((relied) => typeof relied === 'string' && !finished(relied));
+  const waits = [...(phasesWaited.length === 0 ? [] : [`phase ${phasesWaited.join(', ')}`]), ...unitsWaited];
+  return state === 'written' && waits.length > 0 ? `written · after ${waits.join(', ')}` : state;
 }
 
-/** Each phase of the cut with its tasks and what holds each, a phase's owed fixes beneath it. @param {BuildStanding} standing */
-function phaseTree(standing) {
+/** Each phase of the cut with its tasks and what holds each, a phase's owed fixes beneath it. @param {BuildStanding} standing @param {Finished} finished */
+function phaseTree(standing, finished) {
   const of = standing.phases.length;
   return renderTree(standing.phases.map((phase) => ({
     title: `Phase ${phase.phase} of ${of} · ${phase.name}`,
-    tag: phaseTag(phase, standing),
+    tag: phaseTag(phase, standing, finished),
     body: phase.fixes_owed.map((owed) => ({ text: `⚑ fixes owed: ${owed}`, hang: 2 })),
     children: phase.tasks.map((task) => ({ title: `${task.parked.length > 0 ? '⚑' : TASK_GLYPH[task.status]} ${task.task} ${task.title}`, tag: taskTag(task) })),
   })), { width: WIDTH, gap: true, wrapTitles: true });
@@ -306,9 +317,9 @@ function taskCounts({ phases }) {
   return `${tasks.filter(({ status }) => status === 'done').length} of ${counted(tasks.length, 'task')} done · ${running} running`;
 }
 
-/** The build's phases and tasks, each with its state and what holds it (12.12.11). @param {BuildStanding} standing */
-function progressScreen(standing) {
-  return markerSection(standing) + section('DISPLAY: build progress', CONTINUE_INSTRUCTION, `${taskCounts(standing)}\n\n${phaseTree(standing)}`);
+/** The build's phases and tasks, each with its state and what holds it (12.12.11). @param {BuildStanding} standing @param {Finished} finished */
+function progressScreen(standing, finished) {
+  return markerSection(standing) + section('DISPLAY: build progress', CONTINUE_INSTRUCTION, `${taskCounts(standing)}\n\n${phaseTree(standing, finished)}`);
 }
 
 /** Each question's tasks, and the tasks waiting after those, that its answer lets run. @param {BuildStanding} standing */
@@ -331,13 +342,13 @@ function afterAnswers(standing) {
  * The stop report, when nothing can go on without an answer (12.12.9): the
  * build stopped, the questions waiting first, what was built, and what each
  * answer lets run.
- * @param {BuildStanding} standing
+ * @param {BuildStanding} standing @param {Finished} finished
  */
-function stopScreen(standing) {
+function stopScreen(standing, finished) {
   const stopped = section('DISPLAY: build stop', emitAs('properties'), '⚑ The build has stopped: nothing more can be built until you answer');
   const report = [
     waitingBlock(standing.waiting),
-    block('WHAT WAS BUILT', `  ${taskCounts(standing)}\n${phaseTree(standing)}`),
+    block('WHAT WAS BUILT', `  ${taskCounts(standing)}\n${phaseTree(standing, finished)}`),
     block('WHAT RUNS ONCE YOU ANSWER', afterAnswers(standing)),
   ].join('\n\n');
   return markerSection(standing) + stopped + section('DISPLAY: build stop report', CONTINUE_INSTRUCTION, report);

@@ -139,7 +139,7 @@ describe('pipeline simulation: a phase of the cut', () => {
     // The person switches the build to step: the task lands, its summary
     // printed, and its gate stops before it is done (12.12.5, 12.14.3).
     sim.run(['workunit', 'position', wu, 'step']);
-    assert.match(sim.render(['task-landed', wu, '1.1']), /✓ Landed — its reviewer pair passed it in 1 round · no calls\n {2}went to the ledger\n[\s\S]*PROVED 1 OF 1\n[\s\S]*NO QUESTIONS WAITING FOR YOU\n/, 'the landing summary, the questions beneath it');
+    assert.match(sim.render(['task-landed', wu, '1.1']), /✓ Landed — its reviewer pair passed it in round 1 · no calls\n {2}went to the ledger\n[\s\S]*PROVED 1 OF 1\n[\s\S]*NO QUESTIONS WAITING FOR YOU\n/, 'the landing summary, the questions beneath it');
     sim.render(['step-gate', wu, '1.1'], { expect: 'content' });
     assert.deepStrictEqual(answerGate(sim, 'step gate', '--pick', 'y').next, { kind: 'continue' }, 'yes goes on to the next task');
     sim.run(['land', 'open', wu, '1.1']);

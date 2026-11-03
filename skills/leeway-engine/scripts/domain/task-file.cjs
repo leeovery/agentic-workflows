@@ -156,4 +156,9 @@ function holdsScenario(text, scenario) {
   return namesScenario(scenariosOf(text), scenario);
 }
 
-module.exports = { TASK_TYPES, breaksLine, readTaskText, fieldOf, specReferenceOf, scenariosOf, criteriaTexts, criteriaOf, namesScenario, holdsScenario };
+/** A criterion in its own words, the scenario id it opens with taken off, as the task writer writes it (`{id} {wording}`). @param {string} criterion */
+function criterionWords(criterion) {
+  return criterion.replace(/^\d+\.S\d+\s+/, '') || criterion;
+}
+
+module.exports = { TASK_TYPES, breaksLine, readTaskText, fieldOf, specReferenceOf, scenariosOf, criteriaTexts, criteriaOf, namesScenario, holdsScenario, criterionWords };

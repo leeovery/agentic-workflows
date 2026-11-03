@@ -25,8 +25,13 @@
 //   its account is taken and before it is done; in auto none follows a task
 //   (12.12.7).
 // - `phase-merge-gate <unit> <N>`: the gate before a phase's stack merges,
-//   in step alone, once `land phase` would take it (7.2.4).
-// - `build-stop <unit>`: the stop report, while a question waits (12.12.9).
+//   in step alone, for a phase written and not yet merged: one of the cut
+//   once `land phase` would take it (7.2.4), one of the review's fixes
+//   once its tasks are done.
+// - `build-stop <unit>`: the stop report, while a question waits and
+//   nothing can be built without an answer: no task in progress, in any
+//   phase written, and none ready, that no question parks (12.12.9,
+//   12.13.22).
 // - `build-progress <unit>`: the build's phases and tasks.
 //
 // Each refuses, opening on its command: a unit the project lacks or whose
@@ -36,10 +41,11 @@
 const fs = require('fs');
 const { statePath, stateRoot } = require('../kernel/state-root.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
-const { buildStanding, builtUnit, ownInFlight } = require('./build-entry.cjs');
-const { cutPhases, phaseReviewRefusal } = require('./phase-checks.cjs');
-const { trackedTask, trackedLists, ENDED } = require('./task-verbs.cjs');
-const { fieldOf, criteriaTexts, holdsScenario, namesScenario } = require('./task-file.cjs');
+const { STATUS_WORDS, buildStanding, builtUnit, ownInFlight } = require('./build-entry.cjs');
+const { reading, cutPhases, phaseLists, phaseLanded, reviewRefusalOf } = require('./phase-checks.cjs');
+const { trackedTask, trackedLists, goingOn, ENDED } = require('./task-verbs.cjs');
+const { fieldOf, criteriaTexts, criterionWords, holdsScenario, namesScenario } = require('./task-file.cjs');
+const { finishedUnits } = require('./ledger-units.cjs');
 const { accountPath, figuresPath, readAccount } = require('./task-account.cjs');
 const { taskRounds } = require('./round-report.cjs');
 const { phaseStack, tipCommits } = require('./phase-stack.cjs');
@@ -47,7 +53,7 @@ const { runsOf } = require('./runs.cjs');
 const { waitingQuestions } = require('./questions.cjs');
 const { unitEntries } = require('./unit-entries.cjs');
 const { projectName } = require('./state-checks.cjs');
-const { parseShownTask, parsePhase, shownTask, taskName } = require('./task-id.cjs');
+const { parseShownTask, parsePhase, shownTask, taskName, phaseName } = require('./task-id.cjs');
 const { filled, shaped, listed, readPayload, refusing } = require('./staged-payload.cjs');
 const {
   landingScreen, accountScreen, stepGateScreen, phaseMergeGateScreen, headlineScreen, progressScreen, stopScreen,
@@ -87,16 +93,8 @@ function takenFigures(cwd, ref) {
   return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null;
 }
 
-/** The findings a task's rounds before its last sent back, nits aside: each round's, as many as its reviewer who found most, so one found by both counts once. @param {Round[]} rounds */
-function fixedFindings(rounds) {
-  return rounds.slice(0, -1).reduce((sum, { reports }) => sum + Math.max(0, ...reports.map(({ findings }) => findings.filter(({ call }) => call !== 'nit').length)), 0);
-}
-
-/** How a task's review ended. @param {Round[]} rounds @returns {Reviewed} */
-function reviewedOf(rounds) {
-  const last = /** @type {Round} */ (rounds.at(-1));
-  return { rounds: rounds.length, settled: last.settled, fixed: fixedFindings(rounds) };
-}
+/** How a task's review ended: in which round, and whether passed or settled. @param {Round[]} rounds @returns {Reviewed} */
+const reviewedOf = (rounds) => ({ rounds: rounds.length, settled: /** @type {Round} */ (rounds.at(-1)).settled });
 
 /** Each summary's heading under `## Reviews`: each round's, and after each round settled, its settlement's. @param {Round[]} rounds */
 const reviewHeadings = (rounds) => rounds.flatMap(({ round, settled }) => [`Round ${round}`, ...(settled ? ['Settled'] : [])]);
@@ -123,11 +121,13 @@ function requiredAccount(cwd, ref) {
   return account;
 }
 
-/** A task's account as a screen draws it, with its place among its phase's tasks not closed. @param {string} cwd @param {Record<string, any>} manifest @param {TaskRef} ref @param {TaskDetail} task @param {AccountView['account']} account @returns {AccountView} */
+/** A task's account as a screen draws it, with its place among its phase's tasks. @param {string} cwd @param {Record<string, any>} manifest @param {TaskRef} ref @param {TaskDetail} task @param {AccountView['account']} account @returns {AccountView} */
 function accountView(cwd, manifest, ref, task, account) {
   const { phases: [rows] } = withStateLock(stateRoot(cwd), () => trackedLists(cwd, ref.unit, [ref.phase]));
-  const live = (rows ?? []).filter(({ status }) => status !== 'closed').map((row) => shownTask(row.ref));
-  return { head: headOf(manifest, ref, task), at: live.indexOf(shownTask(ref)) + 1, of: live.length, does: fieldOf(task.text, 'Outcome') ?? '', account };
+  const tasks = (rows ?? []).map((row) => shownTask(row.ref));
+  return {
+    head: headOf(manifest, ref, task), at: tasks.indexOf(shownTask(ref)) + 1, of: tasks.length, does: fieldOf(task.text, 'Outcome') ?? '', closed: task.status === 'closed', account,
+  };
 }
 
 /** Refuses a unit building in auto, where `what` never shows (12.12.7). @param {Record<string, any>} manifest @param {string} what */
@@ -143,7 +143,8 @@ function callsMade(cwd, ref) {
 
 /**
  * What running the product proved of each of the task's scenarios of the
- * cut, at the tips of its branch; null where it holds none.
+ * cut, at the tips of its branch — null where it holds none — and whether a
+ * run there counts, one skipped never.
  * @param {string} cwd @param {Record<string, any>} manifest @param {TaskRef} ref @param {TaskDetail} task @param {string[]} criteria
  */
 function ranOf(cwd, manifest, ref, task, criteria) {
@@ -152,8 +153,8 @@ function ranOf(cwd, manifest, ref, task, criteria) {
   const head = tipCommits(phaseStack(cwd, ref.unit, ref.phase, [task]));
   const read = scenarios.map((scenario) => ({ scenario, ...runsOf(cwd, ref.unit, scenario, head) }));
   return {
-    ran: read.map(({ scenario, standing }) => ({ criterion: criteria.find((criterion) => namesScenario(criterion, scenario)) ?? scenario, standing })),
-    recorded: read.some(({ runs }) => runs.length > 0),
+    ran: read.map(({ scenario, standing }) => ({ criterion: criterionWords(criteria.find((criterion) => namesScenario(criterion, scenario)) ?? scenario), standing })),
+    recorded: read.some(({ runs }) => runs.some(({ verdict }) => verdict !== 'skipped')),
   };
 }
 
@@ -168,7 +169,7 @@ function taskLandedSurface(cwd, args) {
       reviewed: account.reviewed,
       calls: callsMade(cwd, ref),
       changed: account.sections['What was done'],
-      criteria,
+      criteria: criteria.map(criterionWords),
       product: projectName(cwd),
       ...ranOf(cwd, manifest, ref, task, criteria),
       waiting: waitingQuestions(cwd, [ref.unit]).waiting,
@@ -201,10 +202,26 @@ function phaseMergeGateSurface(cwd, { dotpath: unit = '', item }) {
     const manifest = builtUnit(cwd, unit);
     const phase = parsePhase(item);
     stepOnly(manifest, 'a phase\'s stack merges with no gate');
-    const refused = phaseReviewRefusal(cwd, unit, phase);
+    const refused = mergeRefusal(reading(cwd, unit, manifest), phase);
     if (refused !== null) throw new Error(refused);
     return phaseMergeGateScreen(unit, phase, phaseNamed(manifest, phase));
   });
+}
+
+/**
+ * Why no gate stands before the phase's stack merges, or null: a phase the
+ * tracker lacks, one merged already, one of the cut whose review has not
+ * passed or whose fixes are not done, and one of the review's fixes with a
+ * task not done.
+ * @param {import('./phase-checks.cjs').Reading} at @param {number} phase @returns {string|null}
+ */
+function mergeRefusal(at, phase) {
+  const [rows] = phaseLists(at, [phase]);
+  if (rows === null) return `${phaseName(at.unit, phase)} is not written — no stack of its waits to merge`;
+  if (phaseLanded(at, phase)) return `${phaseName(at.unit, phase)} is merged already — its tasks are on the default branch`;
+  if (phase <= cutPhases(at.manifest).length) return reviewRefusalOf(at, phase);
+  const unfinished = rows.find(({ status }) => status !== 'done' && status !== 'closed');
+  return unfinished === undefined ? null : `${phaseName(at.unit, phase)} merges once its tasks are done — task ${shownTask(unfinished.ref)} is ${STATUS_WORDS[unfinished.status]}`;
 }
 
 /** One task the headline names, as the payload gives it. @param {unknown} given @param {number} at */
@@ -238,13 +255,15 @@ function buildStopSurface(cwd, { dotpath: unit = '' }) {
   return refusing('render build-stop', () => {
     const standing = buildStanding(cwd, unit, ownInFlight(unit));
     if (standing.waiting.length === 0) throw new Error(`no question waits on the person in ${unit}'s build — it stops only where nothing can go on without their answer (12.13.22)`);
-    return stopScreen(standing);
+    const [next] = withStateLock(stateRoot(cwd), () => goingOn(cwd, unit, standing.phases.length, { ready: true })).tasks;
+    if (next !== undefined) throw new Error(`${unit}'s build goes on with task ${next}, which no question parks — it stops only where nothing can go on without the person's answer (12.13.22)`);
+    return stopScreen(standing, finishedUnits(stateRoot(cwd)));
   });
 }
 
 /** `render build-progress <unit>`. @param {string} cwd @param {Args} args */
 function buildProgressSurface(cwd, { dotpath: unit = '' }) {
-  return refusing('render build-progress', () => progressScreen(buildStanding(cwd, unit, ownInFlight(unit))));
+  return refusing('render build-progress', () => progressScreen(buildStanding(cwd, unit, ownInFlight(unit)), finishedUnits(stateRoot(cwd))));
 }
 
 module.exports = { buildHeadlineSurface, taskLandedSurface, taskAccountSurface, stepGateSurface, phaseMergeGateSurface, buildStopSurface, buildProgressSurface };

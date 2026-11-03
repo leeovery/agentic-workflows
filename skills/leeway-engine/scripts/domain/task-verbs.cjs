@@ -7,8 +7,9 @@
 // (`trackedTask`), as `land open` reads its type and title, and one that
 // needs a unit's phases reads each one's list, and its own phase's tasks
 // whole (`trackedPhases`); the build's standing reads the lists of the
-// phases it names (`trackedLists`), and a phase's checklist that phase's
-// tasks whole (`trackedPhase`).
+// phases it names (`trackedLists`), a phase's checklist that phase's tasks
+// whole (`trackedPhase`), and the tasks the build goes on with: those in
+// progress in every phase written, and those ready (`goingOn`).
 // A unit's phases are written into the tracker as each starts, so it holds
 // only those (7.4.1); a task is made from the task template in a file, one
 // call per task (7.1.3, 12.5.3), and its id is the engine's (task-id.cjs),
@@ -21,7 +22,8 @@
 // and no question parking it (7.1.5, 13.4.6); start, refused for a phase
 // the cut holds before its start checklist has closed (6.4.8, 12.S7), and
 // in step while another of the unit's tasks is in flight or at its gate —
-// in progress, here or in another conversation, and no question parking it
+// in progress in any phase written, the review's fixes past the cut among
+// them, here or in another conversation, and no question parking it
 // (12.7.9) — puts the task in flight on the conversation's position,
 // beside any others in flight there — a task already in flight kept as it
 // stands, its builder and reviewers with it — and done and close take it
@@ -79,10 +81,6 @@ const { layOutTask, takeWorktreeApart } = require('./task-worktree.cjs');
 // The questions parking a task, loaded at their call: they read the task
 // through this module.
 const parks = () => require('./task-parks.cjs');
-
-// Where the build stands, loaded at its call: it reads the tracker through
-// this module.
-const entry = () => require('./build-entry.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskDriver} TaskDriver */
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
@@ -460,6 +458,32 @@ function trackedPhase(cwd, unit, phase) {
   return withTracker(cwd, unit, null, (driver, root) => ({ tasks: driver.list(root, unit, phase)?.map((row) => taskIn(driver, root, row.ref)) ?? null }));
 }
 
+/**
+ * The unit's tasks its build goes on with, but each a question waiting
+ * parks, in one read of the tracker: those in progress in every phase it
+ * has written — the cut's, and the review's fixes numbered on past it
+ * (P14) — any conversation's in flight among them, and, where `ready`,
+ * those waiting to start with nothing before them.
+ * @param {string} cwd @param {string} unit @param {number} cut how many phases the unit's cut holds
+ * @param {{ready?: boolean}} [opts]
+ * @returns {{tasks: string[], committed?: string|null, warnings?: string[]}}
+ */
+function goingOn(cwd, unit, cut, { ready = false } = {}) {
+  requireUnit(cwd, unit);
+  return withTracker(cwd, unit, null, (driver, root) => {
+    /** @type {TaskRow[]} */
+    const rows = [];
+    for (let phase = 1; ; phase += 1) {
+      const list = driver.list(root, unit, phase);
+      if (list === null && phase > cut) break;
+      rows.push(...(list ?? []).filter(({ status }) => status === 'in-progress'));
+    }
+    if (ready) rows.push(...(driver.ready(root, unit, null) ?? []));
+    const parked = parks().parkedOf(cwd, unit);
+    return { tasks: rows.map(({ ref }) => shownTask(ref)).filter((task) => !parked.has(task)) };
+  });
+}
+
 /** `task show`: the task whole, what was added to it among it. @param {string} cwd @param {string} unit @param {string} given */
 function showTask(cwd, unit, given) {
   const ref = parseShownTask(unit, given);
@@ -513,6 +537,9 @@ function ending(rule, after = () => ({})) {
   };
 }
 
+/** How many phases the unit's cut holds, none where it has none. @param {Record<string, any>} manifest */
+const cutLength = (manifest) => (Array.isArray(manifest.cut?.phases) ? manifest.cut.phases.length : 0);
+
 /**
  * Refuse a task of a phase the unit's cut holds before that phase's start
  * checklist has closed, so no builder starts before its tasks are written
@@ -521,24 +548,22 @@ function ending(rule, after = () => ({})) {
  * @param {string} cwd @param {TaskRef} ref @param {Record<string, any>} manifest
  */
 function refuseUnstarted(cwd, ref, manifest) {
-  const cut = Array.isArray(manifest.cut?.phases) ? manifest.cut.phases.length : 0;
-  if (ref.phase > cut || phaseStarted(manifest, ref.phase)) return;
+  if (ref.phase > cutLength(manifest) || phaseStarted(manifest, ref.phase)) return;
   throw new Error(`task start: ${phaseName(ref.unit, ref.phase)} has not started — its tasks start once its start checklist closes: checklist close phase-start ${ref.unit} ${ref.phase}`);
 }
 
 /**
  * In step, refuse a task while another of the unit's is in flight or at its
- * gate, which it reaches before it is done (12.7.9): in progress in the
- * build's standing, or in flight on this conversation's position, and no
- * question waiting parks it — a parked task holds nothing new to test.
+ * gate, which it reaches before it is done (12.7.9): in progress in any
+ * phase the unit has written, in flight here or in another conversation,
+ * and no question waiting parks it — a parked task holds nothing new to
+ * test (`goingOn`).
  * @param {string} cwd @param {TaskRef} ref @param {Record<string, any>} manifest
  */
 function refuseSecondInStep(cwd, ref, manifest) {
   if (manifest.build?.position !== 'step') return;
-  const { phases, in_flight: inFlight, waiting } = entry().buildStanding(cwd, ref.unit, entry().ownInFlight(ref.unit));
-  const parked = new Set(waiting.flatMap(({ parks: tasks }) => tasks));
-  const running = [...phases.flatMap(({ tasks }) => tasks.filter(({ status }) => status === 'in-progress')), ...inFlight].map(({ task }) => task);
-  const other = running.find((task) => task !== shownTask(ref) && !parked.has(task));
+  const { tasks } = goingOn(cwd, ref.unit, cutLength(manifest));
+  const other = tasks.find((task) => task !== shownTask(ref));
   if (other === undefined) return;
   throw new Error(`task start: ${ref.unit} builds in step, one task at a time — task ${other} is in flight or at its gate, and the next starts once the person's go there is given and it is done`);
 }
@@ -652,4 +677,4 @@ function runTaskVerb(cwd, verb, positional, opts) {
   return run(cwd, positional, ...values, .../** @type {string[]} */ (given));
 }
 
-module.exports = { TASK_VERBS, ENDED, runTaskVerb, trackedTask, trackedPhases, trackedLists, trackedPhase, phaseWritten, givenText, trackedStart };
+module.exports = { TASK_VERBS, ENDED, runTaskVerb, trackedTask, trackedPhases, trackedLists, trackedPhase, goingOn, phaseWritten, givenText, trackedStart };

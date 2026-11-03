@@ -289,12 +289,17 @@ function closeRefusal(at, phase) {
  */
 function phaseReviewRefusal(cwd, unit, phase) {
   const manifest = manifestOf(stateRoot(cwd), unit);
-  if (manifest === null || phase > cutPhases(manifest).length) return null;
-  const faults = phaseReviewFaults(reading(cwd, unit, manifest), phase);
-  return faults.length === 0 ? null : `${phaseName(unit, phase)} merges once its phase review has passed and its fixes are done — ${faults.join('; ')}`;
+  return manifest === null ? null : reviewRefusalOf(reading(cwd, unit, manifest), phase);
+}
+
+/** `phaseReviewRefusal`, as a call reads the unit. @param {Reading} at @param {number} phase @returns {string|null} */
+function reviewRefusalOf(at, phase) {
+  if (phase > cutPhases(at.manifest).length) return null;
+  const faults = phaseReviewFaults(at, phase);
+  return faults.length === 0 ? null : `${phaseName(at.unit, phase)} merges once its phase review has passed and its fixes are done — ${faults.join('; ')}`;
 }
 
 module.exports = {
   reading, cutPhases, phaseLists, phaseTasks, phaseLanded, fixesOwed,
-  tasksWritten, reliedOnDone, tasksPassed, phaseReviewFaults, scenariosReported, notesConsolidated, stackMerged, closeRefusal, phaseReviewRefusal,
+  tasksWritten, reliedOnDone, tasksPassed, phaseReviewFaults, scenariosReported, notesConsolidated, stackMerged, closeRefusal, phaseReviewRefusal, reviewRefusalOf,
 };
