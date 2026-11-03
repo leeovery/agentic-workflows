@@ -2,12 +2,12 @@
 
 // ---------------------------------------------------------------------------
 // The build's gates in step (leeway-engine/scripts/domain/build-screens.cjs,
-// drawn by domain/projections/build.cjs) — the gate after a task and the gate
-// before a phase's stack merges — and a task at its gate as the build's
-// standing gives it and its entry takes it over after a /clear (domain/
-// build-entry.cjs). The screens that report are
-// test-engine-build-screens.cjs; step's one task at a time,
-// test-engine-build-step.cjs.
+// drawn by domain/projections/build.cjs): the gate after a task and the gate
+// before a phase's stack merges. A task at its gate as the build's standing
+// gives it, and as its entry takes it over after a /clear, is
+// test-engine-build-gates-standing.cjs's; the screens that report,
+// test-engine-build-screens.cjs's; step's one task at a time,
+// test-engine-build-step.cjs's.
 //
 // Layer: verb. World: the build screens' world (build-screens-world.cjs),
 // built once and copied; a test that needs a phase of the review's fixes
@@ -21,10 +21,8 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { ok, git, statePath, writeState, layout, cleanupFixture, sectionOf, withEnv } = require('./engine-harness.cjs');
+const { ok, git, writeState, layout, cleanupFixture, sectionOf } = require('./engine-harness.cjs');
 const { UNIT, ACCOUNT_DRAWN, taskText, reportOf, buildScreensWorld, buildScreenHelpers } = require('./build-screens-world.cjs');
-
-const { buildStanding } = require('../../skills/leeway-engine/scripts/domain/build-entry.cjs');
 
 let dir = ''; // the project
 let config = ''; // the system config: the conversations' folders
@@ -39,7 +37,7 @@ afterEach(() => {
   fs.rmSync(config, { recursive: true, force: true });
 });
 
-const { env, screen, refused, position, parkOn, takenOver } = buildScreenHelpers(() => dir, () => config);
+const { env, screen, refused, position } = buildScreenHelpers(() => dir, () => config);
 
 /** A phase of the review's fixes past the cut, phase 4, written with a task of each title given. @param {string[]} titles */
 function fixPhase(titles) {
@@ -145,44 +143,6 @@ describe('the gate before a phase\'s stack merges, in step (7.2.4)', () => {
       'render phase-merge-gate: pay builds in auto, where a phase\'s stack merges with no gate — the person meets only danger, the authority gates and the questions parked',
       'render phase-merge-gate: task-id: "one" is not a phase — it is a whole number from 1',
       'render phase-merge-gate: Usage: engine render phase-merge-gate <work-unit> <N>',
-    ]);
-  });
-});
-
-describe('a task at its gate, met again after a /clear (12.7.9, 12.14.3)', () => {
-  /** Task 1.1 as the build's standing gives it. */
-  const standing11 = () => withEnv({ LEEWAY_CONFIG_DIR: config }, () => buildStanding(dir, UNIT, []).phases[0].tasks[0]);
-
-  it('is taken over waiting on the person\'s go, the entry and its recovery note saying so, its gate drawn again and its builder never sent afresh; in auto it is in progress, its builder going afresh', () => {
-    const step = takenOver();
-    position('auto');
-
-    const atGate = 'in flight: task 1.1, at its gate — it waits on the person\'s go there, the gate drawn again with render step-gate pay 1.1, and its builder is never sent afresh';
-    assert.deepStrictEqual(step, ['phase: phase 1 of 3, "Cards": running — tasks 1.1 at its gate, 1.2 not started, 1.3 not started', atGate, atGate]);
-    assert.deepStrictEqual(takenOver().slice(0, 2), [
-      'phase: phase 1 of 3, "Cards": running — tasks 1.1 in progress, 1.2 not started, 1.3 not started',
-      'in flight: task 1.1, no builder dispatched — its builder and pair go afresh on its branch',
-    ]);
-  });
-
-  it('stands at its gate only in step, in progress, its pair passed, its account taken and no question parking it', async () => {
-    const figures = statePath(dir, `${UNIT}/build/tasks/1.1/figures.json`);
-    const failing = ['a', 'b'].map((letter) => layout.unit(UNIT, `build/tasks/1.1/round-3-${letter}.md`));
-    const seen = [standing11().status];
-    position('auto');
-    seen.push(standing11().status);
-    position('step');
-    for (const file of failing) writeState(dir, file, reportOf([['bug', 'The digits show again.']]));
-    seen.push(standing11().status);
-    for (const file of failing) fs.rmSync(statePath(dir, file));
-    fs.renameSync(figures, `${figures}.aside`);
-    seen.push(standing11().status);
-    fs.renameSync(`${figures}.aside`, figures);
-    await parkOn(['1.1']);
-
-    assert.deepStrictEqual([...seen, standing11()], [
-      'at-gate', 'in-progress', 'in-progress', 'in-progress',
-      { task: '1.1', title: 'Take a card', status: 'in-progress', parked: ['Q1'], after: [] },
     ]);
   });
 });

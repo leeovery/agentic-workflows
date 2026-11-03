@@ -26,8 +26,8 @@
 // 3.S3). The code gate's wording is render code-gate's
 // (test-engine-render-surfaces.cjs); a phase's checklists,
 // test-engine-build-checklists-*.cjs's; a task at its step gate,
-// test-engine-build-gates.cjs's; the review's fix phases in the standing,
-// test-engine-review-fix-phases.cjs's.
+// test-engine-build-gates-standing.cjs's; the review's fix phases in the
+// standing, test-engine-review-fix-phases.cjs's.
 //
 // Layer: verb. World, built once and copied: the ledger suites' epic,
 // `fumi`, its build begun in auto, its cut three phases — Cards and Reports

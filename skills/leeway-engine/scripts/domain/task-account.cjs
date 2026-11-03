@@ -39,7 +39,10 @@
 // nothing, work merged into the branch above its first commit counts as the
 // task's, and a submodule's pointer is never a file of it, as `verify
 // mutants` leaves it out; the acceptance criteria the task holds
-// (task-file.cjs); when it started, its move into progress as the tracker
+// (task-file.cjs); how many additions the task holds, whoever made them
+// (13.11.3) — one made after the account means the task changed under it,
+// so it stands at its step gate only while the count holds
+// (build-entry.cjs); when it started, its move into progress as the tracker
 // holds it, which a second clone's merge of the store carries (drivers.cjs,
 // `started`), null where it never moved; and when it finished, as the
 // account is taken.
@@ -91,7 +94,7 @@ const { taskFolder, settlementPath, taskRounds, pairPassed } = require('./round-
 /** @typedef {import('./round-report.cjs').Round} Round */
 /** @typedef {import('../kernel/repos.cjs').Repo} Repo */
 /** @typedef {{files: number, added: number, removed: number}} Change */
-/** @typedef {Change & {criteria: number, started: string|null, finished: string}} Figures */
+/** @typedef {Change & {criteria: number, additions: number, started: string|null, finished: string}} Figures */
 /** @typedef {(reason: string) => never} Refuse */
 
 /** The account's sections, as their headings read, in order. */
@@ -118,6 +121,12 @@ function accountPath(ref) {
 /** A task's figures, state-relative. @param {TaskRef} ref */
 function figuresPath(ref) {
   return `${taskFolder(ref)}/figures.json`;
+}
+
+/** The figures `task account` took, or null where it has not. @param {string} cwd @param {TaskRef} ref @returns {Figures|null} */
+function takenFigures(cwd, ref) {
+  const file = statePath(cwd, figuresPath(ref));
+  return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null;
 }
 
 /** @typedef {{title: string, lines: string[], levels: number[]}} Section */
@@ -241,7 +250,7 @@ function figuresOf(cwd, ref, task, refuse) {
     (sum, part) => ({ files: sum.files + part.files, added: sum.added + part.added, removed: sum.removed + part.removed }),
     { files: 0, added: 0, removed: 0 },
   );
-  return { ...change, criteria: criteriaOf(task.text), started: trackedStart(cwd, ref), finished: new Date().toISOString() };
+  return { ...change, criteria: criteriaOf(task.text), additions: task.additions.length, started: trackedStart(cwd, ref), finished: new Date().toISOString() };
 }
 
 /**
@@ -336,4 +345,4 @@ function settleTask(cwd, unit, given, file) {
   });
 }
 
-module.exports = { SECTIONS, accountPath, figuresPath, readAccount, takeAccount, settleTask, refuserFor, committed };
+module.exports = { SECTIONS, accountPath, figuresPath, takenFigures, readAccount, takeAccount, settleTask, refuserFor, committed };

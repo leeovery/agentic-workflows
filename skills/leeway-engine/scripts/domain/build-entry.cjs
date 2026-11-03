@@ -64,9 +64,11 @@
 // waiting that park it and, one not started, the tasks not yet done it is
 // linked after (12.6.4) — and, in step, behind the task in flight where it
 // goes on beside it, held until that one is done (task-verbs.cjs,
-// `stepTurn`); else at its gate once it lands: in
-// progress, parked by no question, its pair passed and its account taken
-// (task-account.cjs), until the person's go there and `task done`. The
+// `stepTurn`); else at its gate once it lands: in progress, parked by no
+// question, its pair passed and its account taken (task-account.cjs), with
+// nothing added to it since — an addition, the person's Comment at its gate
+// among them (13.11.3), is reworked first, the task in progress until a new
+// account counts it — until the person's go there and `task done`. The
 // build is finished once every phase of the cut has closed, so "nothing
 // ready" with a phase not yet written never reads finished (7.4.3, 12.6.7)
 // — the rule `phaseStatus` reads off the manifest (derivations.cjs) — its
@@ -75,7 +77,6 @@
 // (`mergeWaiting`, phase-checks.cjs).
 // ---------------------------------------------------------------------------
 
-const fs = require('fs');
 const { ENGINE_COMMAND, messageOf } = require('../kernel/call.cjs');
 const { statePath, stateRoot } = require('../kernel/state-root.cjs');
 const { handedSession } = require('../kernel/process.cjs');
@@ -90,7 +91,7 @@ const { tasksInFlight } = require('./conversation.cjs');
 const { recordTasksAt } = require('./position.cjs');
 const { waitingQuestions, parkedTasks, parkedTasksOf } = require('./questions.cjs');
 const { reading, cutPhases, phaseLists, phaseTasks, phaseLanded, mergeWaiting, fixesOwed, passed } = require('./phase-checks.cjs');
-const { figuresPath } = require('./task-account.cjs');
+const { takenFigures } = require('./task-account.cjs');
 const { recordedRounds, mergingWords } = require('./review-phase.cjs');
 const { shownTask } = require('./task-id.cjs');
 
@@ -101,6 +102,7 @@ const { shownTask } = require('./task-id.cjs');
 /** @typedef {import('./topic-standing.cjs').Standing} Standing */
 /** @typedef {import('./phase-checks.cjs').Reading} Reading */
 /** @typedef {import('./drivers.cjs').TaskRow} TaskRow */
+/** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** @typedef {import('./drivers.cjs').TaskStatus} TaskStatus */
 /** @typedef {import('./conversation.cjs').InFlight} InFlight */
 /** @typedef {import('./questions.cjs').Waiting} Waiting */
@@ -216,14 +218,19 @@ function linkedAfter(at, phase, rows, statuses) {
   return new Map((phaseTasks(at, phase) ?? []).map(({ ref, status, after }) => [shownTask(ref), status === 'open' ? after.map(shownTask).filter(unfinished) : []]));
 }
 
+/** How many additions the task holds now. @param {Reading} at @param {TaskRef} ref */
+const additionsOf = (at, ref) => phaseTasks(at, ref.phase)?.find((task) => shownTask(task.ref) === shownTask(ref))?.additions.length;
+
 /**
  * Whether a task in progress stands at its gate: in step, parked by no
- * question, its account taken and its pair passed (the header's).
+ * question, its account taken with nothing added to it since, and its pair
+ * passed (the header's).
  * @param {Reading} at @param {TaskRow} row @param {string[]} parked
  */
 function atGate(at, { ref, status }, parked) {
-  return at.manifest.build.position === 'step' && status === 'in-progress' && parked.length === 0
-    && fs.existsSync(statePath(at.cwd, figuresPath(ref))) && passed(at, ref);
+  if (at.manifest.build.position !== 'step' || status !== 'in-progress' || parked.length > 0) return false;
+  const figures = takenFigures(at.cwd, ref);
+  return figures !== null && figures.additions === additionsOf(at, ref) && passed(at, ref);
 }
 
 /** In step, the tasks held behind the task in flight, which go on once it is done (the header's); none in auto. @param {Reading} at @returns {Set<string>} */

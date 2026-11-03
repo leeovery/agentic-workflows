@@ -50,7 +50,7 @@ const { trackedTask, trackedLists, goingOn, phaseOpen, turnRefusal, ENDED } = re
 const { engineItemsHold } = require('./checklist.cjs');
 const { fieldOf, criteriaTexts, criterionWords, holdsScenario, namesScenario } = require('./task-file.cjs');
 const { finishedUnits } = require('./ledger-units.cjs');
-const { accountPath, figuresPath, readAccount } = require('./task-account.cjs');
+const { accountPath, takenFigures, readAccount } = require('./task-account.cjs');
 const { taskRounds } = require('./round-report.cjs');
 const { phaseStack, tipCommits } = require('./phase-stack.cjs');
 const { runsOf } = require('./runs.cjs');
@@ -83,12 +83,6 @@ function namedTask(cwd, { dotpath: unit = '', item }, surface) {
   const manifest = builtUnit(cwd, unit);
   const ref = parseShownTask(unit, item);
   return { manifest, ref, task: taskOf(cwd, ref) };
-}
-
-/** The figures `task account` took, or null where it has not. @param {string} cwd @param {TaskRef} ref @returns {import('./projections/build.cjs').Figures|null} */
-function takenFigures(cwd, ref) {
-  const file = statePath(cwd, figuresPath(ref));
-  return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null;
 }
 
 /** How a task's review ended: in which round, and whether passed or settled. @param {Round[]} rounds @returns {Reviewed} */
