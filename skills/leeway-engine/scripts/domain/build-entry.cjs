@@ -29,8 +29,9 @@
 // it stands.
 //
 // It answers, and its recovery note with it (12.1.6, 24.2.2): where the
-// build stands, a line a phase, and a line where the phase's review failed
-// with its fixes owed — no settlement answering it (phase-settlement.cjs);
+// build stands, a line a phase, and a line for each fix its failed review
+// owes, as the phase close's `phase-review-passed` reads it — no settlement
+// answering it, or a fix it names not done or closed (phase-checks.cjs);
 // each task in flight with its builder and its pair, or the question
 // parking it; each question waiting on the person; the entries affected
 // since the spec concluded, by their call (11.9.1); the unit's record, by
@@ -64,7 +65,6 @@ const { tasksInFlight } = require('./conversation.cjs');
 const { recordTask } = require('./position.cjs');
 const { waitingQuestions, parkedTasks, parkedTasksOf } = require('./questions.cjs');
 const { reading, cutPhases, phaseLists, phaseLanded, fixesOwed } = require('./phase-checks.cjs');
-const { unsettledWords } = require('./phase-settlement.cjs');
 const { taskId, shownTask } = require('./task-id.cjs');
 
 /** @typedef {import('./enter.cjs').Entry} Entry */
@@ -82,9 +82,11 @@ const { taskId, shownTask } = require('./task-id.cjs');
 /** A task of a phase: its id shown, its title, where the tracker holds it, and the questions waiting that park it, by number. @typedef {{task: string, title: string, status: TaskStatus, parked: string[]}} StandingTask */
 /**
  * A phase of the cut: its number, name and what it relies on, where it
- * stands, its tasks, none where it is not written, and whether its review
- * failed with its fixes owed — no settlement answering it yet.
- * @typedef {{phase: number, name: string, relies_on: Array<number|string>, state: PhaseState, tasks: StandingTask[], fixes_owed: boolean}} StandingPhase
+ * stands, its tasks, none where it is not written, and the fixes its failed
+ * review owes, as `phase-review-passed` reads them, each saying its way on
+ * — none where the review is not complete, passed, or settled with every
+ * fix done (phase-checks.cjs).
+ * @typedef {{phase: number, name: string, relies_on: Array<number|string>, state: PhaseState, tasks: StandingTask[], fixes_owed: string[]}} StandingPhase
  */
 /**
  * Where a build stands: its unit and position; each phase of its cut; the
@@ -199,8 +201,8 @@ function inFlightWords({ task, builder, reviewers }, parked) {
 }
 
 /**
- * Where the build stands, a line a phase — and where its review failed
- * with its fixes owed, a line saying so — the tasks in flight and the
+ * Where the build stands, a line a phase — and a line for each fix its
+ * failed review owes, saying the way on — the tasks in flight and the
  * questions waiting, as the entry and the recovery note give them.
  * @param {BuildStanding} standing @returns {Line[]}
  */
@@ -211,7 +213,7 @@ function standingLines(standing) {
     ['position', standing.position],
     ...standing.phases.flatMap(({ phase, name, state, tasks, fixes_owed: owed }) => /** @type {Line[]} */ ([
       ['phase', `phase ${phase} of ${of}, "${name}": ${state}${tasks.length === 0 ? '' : ` — tasks ${tasks.map(taskWords).join(', ')}`}`],
-      ...(owed ? [['fixes owed', unsettledWords(standing.unit, phase)]] : []),
+      ...owed.map((fault) => ['fixes owed', fault]),
     ])),
     ...standing.in_flight.map((task) => /** @type {Line} */ (['in flight', inFlightWords(task, parked.get(task.task) ?? [])])),
     ...standing.waiting.map(({ question, asks, parks }) => /** @type {Line} */ (['waiting', `${question} — ${asks} — parks ${parkedTasks(parks)}`])),

@@ -253,21 +253,37 @@ describe('the answer: where the build stands, and what to read beside the ledger
     ]);
   });
 
-  it('says where a phase\'s review failed with its fixes owed — every report of the count in — the settlement its way on, and no longer once it is settled (13.10.1)', () => {
-    const owed = `fixes owed: phase 1's review failed, and no settlement answers it — write its fixes as tasks of the phase, then settle it, naming them: task settle ${UNIT} --phase 1 --file <why> [--fixes <task>,…]`;
+  it('says, a line each, the fixes a phase\'s failed review owes as phase-review-passed reads them — every report of the count in — in the entry and the note, until a settlement answers it with every fix it names done (13.10.1)', () => {
+    const settleWay = `task settle ${UNIT} --phase 1 --file <why> [--fixes <task>,…]`;
+    const unsettled = `phase 1's review failed, and no settlement answers it — write its fixes as tasks of the phase, then settle it, naming them: ${settleWay}`;
     const report = (/** @type {string} */ letter, /** @type {string} */ verdict) => writeState(dir, layout.unit(UNIT, 'build', 'phases', 'phase-1', `review-${letter}.md`),
       `# Review\n\n## Findings\n\n${verdict === 'pass' ? 'None.' : '- bug: a note opens off screen\n  Scenario: a note made on a second screen'}\n\nVerdict: ${verdict}\n`);
+    const settle = (/** @type {string[]} */ fixes) => ok(dir, ['task', 'settle', UNIT, '--phase', '1', '--file', writeState(dir, layout.cache(UNIT, 'why.md'), 'A second screen is out of this phase.\n'), ...fixes]);
+    const owed = () => standing().phases[0].fixes_owed;
     report('b', 'fail');
-    const incomplete = standing().phases[0].fixes_owed;
+    const seen = [owed()];
     report('a', 'pass');
+    seen.push(owed());
     const lines = enter([UNIT]).sections.split('\n');
     const note = output(dir, ['conversation', 'position'], { env: env() });
-    ok(dir, ['task', 'settle', UNIT, '--phase', '1', '--file', writeState(dir, layout.cache(UNIT, 'why.md'), 'A second screen is out of this phase.\n')]);
+    ok(dir, ['task', 'create', UNIT, '1', '--file', taskFile(dir, 'Keep a note on screen')]);
+    fs.rmSync(taskFile(dir, ''));
+    settle(['--fixes', '1.4']);
+    seen.push(owed());
+    ok(dir, ['task', 'close', UNIT, '1.4', '--reason', 'A note off screen is the window manager\'s.']);
+    seen.push(owed());
+    settle([]);
 
-    assert.strictEqual(incomplete, false, 'a review not complete owes no fixes yet');
-    assert.deepStrictEqual(lines.slice(lines.indexOf(PHASE_LINES[0]), lines.indexOf(PHASE_LINES[0]) + 2), [PHASE_LINES[0], owed]);
-    assert.ok(note.includes(`${PHASE_LINES[0]}\n${owed}\n`), note);
-    assert.deepStrictEqual([standing().phases.map(({ fixes_owed: fixesOwed }) => fixesOwed), enter([UNIT]).sections.includes('fixes owed:')], [[false, false, false], false]);
+    assert.deepStrictEqual([...seen, owed()], [
+      [],
+      [unsettled],
+      ['phase 1\'s review failed, and task 1.4, a fix of it, is open'],
+      [`phase 1's review failed, and task 1.4, a fix of it, is closed — settle it again, naming the fixes that stand: ${settleWay}`],
+      [],
+    ]);
+    assert.deepStrictEqual(lines.slice(lines.indexOf(PHASE_LINES[0]), lines.indexOf(PHASE_LINES[0]) + 2), [PHASE_LINES[0], `fixes owed: ${unsettled}`]);
+    assert.ok(note.includes(`${PHASE_LINES[0]}\nfixes owed: ${unsettled}\n`), note);
+    assert.ok(!enter([UNIT]).sections.includes('fixes owed:'), 'a settled review with every fix done owes none');
   });
 
   it('answers each question waiting on the person and the tasks it parks, the task parked on it in its phase\'s line (12.8.4)', async () => {
@@ -334,9 +350,9 @@ describe('the build\'s standing (P13)', () => {
       unit: UNIT,
       position: 'auto',
       phases: [
-        { phase: 1, name: 'Cards', relies_on: [], state: 'running', tasks: [task('1.1', 'Open a note', 'done'), task('1.2', 'Size a note', 'in-progress'), task('1.3', 'Place a note', 'open')], fixes_owed: false },
-        { phase: 2, name: 'Refunds', relies_on: [1], state: 'written', tasks: [task('2.1', 'Refund a note', 'open')], fixes_owed: false },
-        { phase: 3, name: 'Reports', relies_on: [], state: 'not yet written', tasks: [], fixes_owed: false },
+        { phase: 1, name: 'Cards', relies_on: [], state: 'running', tasks: [task('1.1', 'Open a note', 'done'), task('1.2', 'Size a note', 'in-progress'), task('1.3', 'Place a note', 'open')], fixes_owed: [] },
+        { phase: 2, name: 'Refunds', relies_on: [1], state: 'written', tasks: [task('2.1', 'Refund a note', 'open')], fixes_owed: [] },
+        { phase: 3, name: 'Reports', relies_on: [], state: 'not yet written', tasks: [], fixes_owed: [] },
       ],
       in_flight: [{ task: '1.2', builder: null, reviewers: [] }],
       waiting: [],

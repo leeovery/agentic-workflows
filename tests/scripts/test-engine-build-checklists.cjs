@@ -261,7 +261,7 @@ describe('a phase\'s close (6.4.9)', () => {
     assert.deepStrictEqual([...seen, reviewed()], ['open', 'open', 'done', 'open', 'done', 'done']);
     assert.deepStrictEqual([unsettled, owed], [
       { state: 'open', way: 'phase 1\'s review failed, and no settlement answers it — write its fixes as tasks of the phase, then settle it, naming them: task settle pay --phase 1 --file <why> [--fixes <task>,…]' },
-      { state: 'open', way: 'the phase review failed, and task 1.3, a fix of it, is open' },
+      { state: 'open', way: 'phase 1\'s review failed, and task 1.3, a fix of it, is open' },
     ]);
   });
 
@@ -294,8 +294,8 @@ describe('a phase\'s close (6.4.9)', () => {
     ok(dir, ['task', 'done', UNIT, '1.4'], { env: SESSION });
 
     assert.deepStrictEqual([closedFix, resettled, item('phase-close', 1, 'phase-review-passed')], [
-      { state: 'open', way: 'the phase review failed, and task 1.3, a fix of it, is closed — settle it again, naming the fixes that stand: task settle pay --phase 1 --file <why> [--fixes <task>,…]' },
-      { state: 'open', way: 'the phase review failed, and task 1.4, a fix of it, is open' },
+      { state: 'open', way: 'phase 1\'s review failed, and task 1.3, a fix of it, is closed — settle it again, naming the fixes that stand: task settle pay --phase 1 --file <why> [--fixes <task>,…]' },
+      { state: 'open', way: 'phase 1\'s review failed, and task 1.4, a fix of it, is open' },
       'done',
     ]);
   });
@@ -366,10 +366,13 @@ describe('a phase\'s close (6.4.9)', () => {
     assert.strictEqual(ok(dir, ['checklist', 'close', 'phase-close', UNIT, '1'], { env: SESSION }).checklist, 'phase-1-close');
   });
 
-  it('commits, at its close, every record its folder holds beside the manifest — its review\'s reports and its consolidation report — so a second clone reads a passing review and a settled one as this clone does', () => {
+  it('commits, at its close, every record its folder holds beside the manifest — its review\'s reports and its consolidation report, never a file the layout does not place, which the person\'s gitignore may cover — so a second clone reads a passing review and a settled one as this clone does', () => {
     everyItem(2, ['2.1'], ['2.S1']);
     writeState(dir, layout.unit(UNIT, 'build', 'phases', 'phase-2', 'consolidation.md'), '## The notes\n\nNone.\n');
-    ok(dir, ['checklist', 'close', 'phase-close', UNIT, '2'], { env: SESSION });
+    fs.mkdirSync(path.join(dir, '.git', 'info'), { recursive: true });
+    fs.appendFileSync(path.join(dir, '.git', 'info', 'exclude'), '*.swp\n');
+    for (const stray of ['.review-a.md.swp', 'review-a.txt', '.DS_Store']) writeState(dir, layout.unit(UNIT, 'build', 'phases', 'phase-2', stray), 'stray\n');
+    const { committed } = ok(dir, ['checklist', 'close', 'phase-close', UNIT, '2'], { env: SESSION });
     const closing = touched(statePath(dir), 'HEAD');
     everyItem(1, ['1.1', '1.2'], ['1.S1', '1.S2']);
     phaseReport(1, 'b', [DROPS_CENTS], 'fail');
@@ -377,6 +380,7 @@ describe('a phase\'s close (6.4.9)', () => {
     verifySetUp();
     ok(dir, ['checklist', 'close', 'phase-close', UNIT, '1'], { env: SESSION });
 
+    assert.notStrictEqual(committed, null, 'the close commits');
     assert.deepStrictEqual(closing, ['A\tpay/build/phases/phase-2/consolidation.md', 'A\tpay/build/phases/phase-2/review-a.md', 'A\tpay/build/phases/phase-2/review-b.md', 'M\tpay/manifest.json']);
     assert.deepStrictEqual(stateGit(dir, ['ls-tree', '-r', '--name-only', 'HEAD', '--', `${UNIT}/build/phases`]).trim().split('\n'), [
       'pay/build/phases/phase-1/review-a.md', 'pay/build/phases/phase-1/review-b.md', 'pay/build/phases/phase-1/settlement.json',
@@ -412,12 +416,12 @@ describe('a phase review\'s settlement (13.10.1)', () => {
     ok(dir, ['task', 'done', UNIT, '1.3'], { env: SESSION });
 
     assert.deepStrictEqual([...seen, widened, item('phase-close', 1, 'phase-review-passed')], [
-      'done', { state: 'open', way: 'the phase review failed, and task 1.3, a fix of it, is open' }, 'done',
+      'done', { state: 'open', way: 'phase 1\'s review failed, and task 1.3, a fix of it, is open' }, 'done',
     ]);
     assert.deepStrictEqual(JSON.parse(readState(dir, SETTLED)).fixes, ['1.3']);
   });
 
-  it('refuses, writing nothing, a unit the project lacks, a review not complete, one passing, and each fix no task\'s id, no task of the phase or one the tracker lacks', () => {
+  it('refuses, writing nothing, a unit the project lacks, a review not complete, one passing, and each fix no task\'s id, no task of the phase, one the tracker lacks or one it has closed', () => {
     const refused = (/** @type {string[]} */ args, unit = UNIT) => refusedPristine(dir, ['task', 'settle', unit, '--phase', '1', '--file', why(), ...args], { env: SESSION }).error;
     const seen = [refused([], 'nowhere'), refused([])];
     phaseReport(1, 'a', [], 'pass');
@@ -425,14 +429,15 @@ describe('a phase review\'s settlement (13.10.1)', () => {
     phaseReport(1, 'b', [], 'pass');
     seen.push(refused([]));
     phaseReport(1, 'b', [DROPS_CENTS], 'fail');
-    seen.push(refused(['--fixes', 'cents,2.1,1.9']));
+    ok(dir, ['task', 'close', UNIT, '1.2', '--reason', 'Not needed.']);
+    seen.push(refused(['--fixes', 'cents,2.1,1.9,1.2,1.1']));
 
     assert.deepStrictEqual(seen, [
       'task settle: Work unit "nowhere" not found',
       'task settle: phase 1 of pay has no phase review reported — its reviewers write their reports in pay/build/phases/phase-1/ — a phase review is settled once every reviewer of the count has reported it',
       'task settle: the phase review has no report at pay/build/phases/phase-1/review-b.md — a phase review is settled once every reviewer of the count has reported it',
       'task settle: phase 1 of pay\'s review passed — only a failed review is settled',
-      'task settle: task-id: "cents" is not a task — it is {phase}.{n}; --fixes names task 2.1, which is no task of phase 1 of pay; --fixes names task 1.9, which the tracker does not hold in phase 1 of pay',
+      'task settle: task-id: "cents" is not a task — it is {phase}.{n}; --fixes names task 2.1, which is no task of phase 1 of pay; --fixes names task 1.9, which the tracker does not hold in phase 1 of pay; --fixes names task 1.2, which the tracker has closed — a fix is a task still to be done',
     ]);
   });
 

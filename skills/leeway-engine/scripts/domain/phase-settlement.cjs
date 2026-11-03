@@ -26,7 +26,8 @@
 // opening `task settle: ` and writing nothing: a unit the project lacks; a
 // review not complete — none reported, a report of the count missing, or
 // one that does not read; one every report passes; and each fix named that
-// is no task of the phase or one the tracker lacks, every fault named;
+// is no task of the phase, one the tracker lacks, or one it has closed —
+// a fix known dead would leave the review open at once — every fault named;
 // then no such file of the why, or one holding nothing. It runs under the
 // writer lock (engine.cjs); a commit git refuses is a warning, the files
 // written.
@@ -89,11 +90,11 @@ const unsettledWords = (unit, phase) => `phase ${phase}'s review failed, and no 
 
 /**
  * Why a fix the settlement names cannot be one: no task's id, no task of
- * the phase, or a task the tracker does not hold there.
- * @param {string} unit @param {number} phase @param {string} fix @param {Set<string>} held the phase's tasks, shown
+ * the phase, a task the tracker does not hold there, or one it has closed.
+ * @param {string} unit @param {number} phase @param {string} fix @param {Map<string, string>} statuses the phase's tasks, shown, by status
  * @returns {string[]}
  */
-function fixFaults(unit, phase, fix, held) {
+function fixFaults(unit, phase, fix, statuses) {
   let ref;
   try {
     ref = parseShownTask(unit, fix);
@@ -101,7 +102,9 @@ function fixFaults(unit, phase, fix, held) {
     return [messageOf(err)];
   }
   if (ref.phase !== phase) return [`--fixes names task ${fix}, which is no task of ${phaseName(unit, phase)}`];
-  return held.has(shownTask(ref)) ? [] : [`--fixes names task ${fix}, which the tracker does not hold in ${phaseName(unit, phase)}`];
+  const status = statuses.get(shownTask(ref));
+  if (status === undefined) return [`--fixes names task ${fix}, which the tracker does not hold in ${phaseName(unit, phase)}`];
+  return status === 'closed' ? [`--fixes names task ${fix}, which the tracker has closed — a fix is a task still to be done`] : [];
 }
 
 /**
@@ -118,8 +121,8 @@ function settlePhase(cwd, unit, given, file, fixes) {
   if (faults.length > 0) refuse(`${faults.join('; ')} — a phase review is settled once every reviewer of the count has reported it`);
   if (reports.every(({ verdict }) => verdict === 'pass')) refuse(`${phaseName(unit, phase)}'s review passed — only a failed review is settled`);
   const named = [...new Set((fixes ?? '').split(',').map((fix) => fix.trim()).filter((fix) => fix !== ''))];
-  const held = new Set((rows ?? []).map(({ ref }) => shownTask(ref)));
-  const unfit = named.flatMap((fix) => fixFaults(unit, phase, fix, held));
+  const statuses = new Map((rows ?? []).map(({ ref, status }) => [shownTask(ref), status]));
+  const unfit = named.flatMap((fix) => fixFaults(unit, phase, fix, statuses));
   if (unfit.length > 0) refuse(unfit.join('; '));
   const why = refusing(said, () => givenText(cwd, file, 'settle by'));
   const rel = phaseSettlementPath(unit, phase);

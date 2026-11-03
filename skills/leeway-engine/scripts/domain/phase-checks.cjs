@@ -25,8 +25,9 @@
 //   (13.1.4), every one read (round-report.cjs), passing; or, where one
 //   failed, the orchestrator's settlement answering those reports, every
 //   fix task it names done (13.10.1, phase-settlement.cjs) — one closed
-//   naming the settlement given again as its way on. Until it is settled
-//   the phase's fixes are owed, which the build's standing says.
+//   naming the settlement given again as its way on. Wherever the review
+//   is complete, has failed and the item reads open, its faults are the
+//   fixes the phase owes, which the build's standing says.
 // - Each scenario proven or reported not proven: proven by its runs at the
 //   phase's tips (phase-stack.cjs, runs.cjs), else named in every report of
 //   the phase review by a finding in its standing's words (15.4.3). A stack
@@ -193,7 +194,7 @@ function answering(at, phase, reports, faults) {
  */
 function fixFaults(at, phase, fix, status) {
   if (status === 'done') return [];
-  const fault = `the phase review failed, and task ${fix}, a fix of it, is ${status}`;
+  const fault = `phase ${phase}'s review failed, and task ${fix}, a fix of it, is ${status}`;
   return [status === 'closed' ? `${fault} — settle it again, naming the fixes that stand: ${settleCall(at.unit, phase)}` : fault];
 }
 
@@ -218,13 +219,16 @@ function phaseReviewFaults(at, phase) {
 }
 
 /**
- * Whether the phase's review failed with its fixes owed: every report of
- * the count in and read, one failing, and no settlement answering it.
- * @param {Reading} at @param {number} phase
+ * The fixes the phase's review owes, as `phase-review-passed` reads them —
+ * its own faults, each saying the way on, wherever every report of the
+ * count is in and read, one failed, and the item reads open: no settlement
+ * answering it, or a fix it names not done, closed among them. None where
+ * the review is not complete, or passed.
+ * @param {Reading} at @param {number} phase @returns {string[]}
  */
 function fixesOwed(at, phase) {
   const { faults, reports } = reviewed(at, phase);
-  return faults.length === 0 && !allPass(reports) && answering(at, phase, reports, []) === null;
+  return faults.length > 0 || allPass(reports) ? [] : phaseReviewFaults(at, phase);
 }
 
 /** The phase's stack's tips, read once a call; null where they cannot be read, said as a warning. @param {Reading} at @param {number} phase @returns {RepoCommit[]|null} */

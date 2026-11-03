@@ -66,8 +66,11 @@
 // reported beside its consolidation, `build/phases/phase-{N}/
 // review-{letter}.md`, or `{area}-{letter}.md` where it was split, and read
 // whole (`phaseReports`), each report with its text's fingerprint, by which
-// a settlement names the reports it answers (phase-settlement.cjs). What the
-// phase's folder holds (`phaseRecords`) its close commits.
+// a settlement names the reports it answers (phase-settlement.cjs) and
+// commits them. What the phase's folder holds (`phaseRecords`) its close
+// commits. Both read the folder as the layout places it: a file it does not
+// place — an editor's swap file, a `.DS_Store` — may be one the person's
+// gitignore covers, which a commit naming it fails on.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -77,6 +80,7 @@ const { REVIEWER_LETTERS } = require('../kernel/reviewers.cjs');
 const { headingLevels } = require('./spec-sections.cjs');
 const { BULLET, listItems, saysNone } = require('./list-items.cjs');
 const { fingerprint } = require('../kernel/fingerprint.cjs');
+const { layoutPlace } = require('./layout.cjs');
 const { shownTask, taskName, phaseName } = require('./task-id.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
@@ -209,6 +213,19 @@ function phaseFolder(unit, phase) {
 }
 
 /**
+ * The names of the files a phase's folder holds that the layout places
+ * there, in name order — never an editor's swap file, a `.DS_Store` or an
+ * agent's staged `.txt`, which the person's gitignore may cover and a
+ * commit naming them would fail on.
+ * @param {string} cwd @param {string} unit @param {number} phase @returns {string[]}
+ */
+function placedIn(cwd, unit, phase) {
+  const rel = phaseFolder(unit, phase);
+  const folder = statePath(cwd, rel);
+  return (fs.existsSync(folder) ? fs.readdirSync(folder).sort() : []).filter((name) => layoutPlace(`${rel}/${name}`) !== null);
+}
+
+/**
  * A phase's review as its reports stand: a report from every reviewer of
  * the count, for each set of reports the folder holds — `review`, or an
  * area where the review was split (13.1.4) — each read, with its file and
@@ -219,8 +236,7 @@ function phaseFolder(unit, phase) {
  */
 function phaseReports(cwd, unit, phase) {
   const rel = phaseFolder(unit, phase);
-  const folder = statePath(cwd, rel);
-  const held = fs.existsSync(folder) ? fs.readdirSync(folder) : [];
+  const held = placedIn(cwd, unit, phase);
   const sets = [...new Set(held.flatMap((name) => PHASE_REPORT.exec(name)?.[1] ?? []))].sort();
   if (sets.length === 0) return { faults: [`${phaseName(unit, phase)} has no phase review reported — its reviewers write their reports in ${rel}/`], reports: [] };
   /** @type {{faults: string[], reports: PhaseReport[]}} */
@@ -243,14 +259,11 @@ function phaseReports(cwd, unit, phase) {
 /**
  * Every record a phase's folder holds — its review's reports, its
  * consolidation report, its settlement — each state-relative, in name
- * order; none where it holds none. A state commit holds back an agent's
- * staged `.txt`, and refuses a file the layout does not place.
+ * order; none where it holds none.
  * @param {string} cwd @param {string} unit @param {number} phase @returns {string[]}
  */
 function phaseRecords(cwd, unit, phase) {
-  const rel = phaseFolder(unit, phase);
-  const folder = statePath(cwd, rel);
-  return (fs.existsSync(folder) ? fs.readdirSync(folder).sort() : []).map((name) => `${rel}/${name}`);
+  return placedIn(cwd, unit, phase).map((name) => `${phaseFolder(unit, phase)}/${name}`);
 }
 
 /**
