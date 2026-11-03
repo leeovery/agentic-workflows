@@ -14,13 +14,14 @@
  * The way back names what it returns to: the page under it, else what the
  * tab shows beneath it now.
  *
- * The views are drawn by their kind (`views/`); a model this board does not
- * know the version of is refused in a line, never drawn.
+ * The views are drawn by their kind (`views/`), and one the engine cannot
+ * draw by its reason; a model this board does not know the version of is
+ * refused in a line, never drawn.
  */
 import type { ElementTable, RenderElement } from 'claude-code'
 
 import { COLOUR, blank, cutTo, drawLine, foldKey, widthOf, type Button, type Kit, type Line, type Part } from './draw.ts'
-import { BOARD_VERSION, type Answer, type Board, type Reading, type Tab, type View } from './model.ts'
+import { BOARD_VERSION, isUnavailable, type Answer, type Board, type Reading, type Tab, type View } from './model.ts'
 import type { Views } from './views/index.ts'
 
 /** The pane's id, which its render and close name. */
@@ -190,10 +191,18 @@ const refusal = (version: unknown): Line => ({
   ],
 })
 
+/** Why the engine cannot draw what the person is on, for them to see before they press back. */
+const reasonOf = (reason: string): Line => ({ key: 'unavailable', wraps: true, parts: [{ text: reason, color: COLOUR.secondary }] })
+
+/** The lines a view draws: its drawing's, by its kind, or why it cannot be drawn. */
+const linesOf = (view: View, views: Views, kit: Kit): Line[] =>
+  isUnavailable(view) ? [reasonOf(view.reason)] : (views[view.kind]?.lines(view, kit) ?? [])
+
 /**
  * What the pane draws for the engine's answer: the tabs and their rule,
- * then the way back from a page, then the view; a version refused, its line
- * alone; with nothing answered, only the way back from a page.
+ * then the way back from a page, then the view, or why it cannot be drawn;
+ * a version refused, its line alone; with nothing answered, only the way
+ * back from a page.
  */
 export function framed(answer: Answer, nav: Nav, views: Views, kit: Kit): Framed {
   const page = nav.pages.at(-1)
@@ -213,7 +222,7 @@ export function framed(answer: Answer, nav: Nav, views: Views, kit: Kit): Framed
 
   return {
     tabs,
-    lines: [ruleOf(tabs, kit.width), blank('tabs'), ...back, ...(views[board.view.kind]?.lines(board.view, kit) ?? [])],
+    lines: [ruleOf(tabs, kit.width), blank('tabs'), ...back, ...linesOf(board.view, views, kit)],
   }
 }
 

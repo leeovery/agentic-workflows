@@ -176,6 +176,16 @@ describe('the pane as drawn', () => {
     expect(shown(draw(written, nav).lines)[2]).toBe('← back to 6.4 A failed single-pass call is classified')
   })
 
+  test('a page the engine cannot draw says why beneath the way back; a tab\'s view, beneath the tabs', () => {
+    const nav = walk(build, pageKey('task:9.9'))
+    const unavailable = { kind: 'unavailable', reason: 'task 9.9 of token-aware-diff-sizing is not in the tracker' }
+    const { lines } = draw(answered({ ...taskPage, view: unavailable }), nav)
+
+    expect(shown(lines).slice(2)).toEqual(['← back to the build', ' ', 'task 9.9 of token-aware-diff-sizing is not in the tracker'])
+    expect(lines.at(-1)).toMatchObject({ wraps: true, parts: [{ color: '#a3abd0' }] })
+    expect(shown(draw(answered({ ...build, view: unavailable }), HOME).lines).slice(2)).toEqual(['task 9.9 of token-aware-diff-sizing is not in the tracker'])
+  })
+
   test('a version this board does not know is refused in a line, nothing of it drawn', () => {
     const { tabs, lines } = draw({ kind: 'refused', version: 2 }, walk(build, pageKey('task:6.4')))
 

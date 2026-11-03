@@ -12,6 +12,12 @@ describe('the engine\'s answer', () => {
     expect(answerIn(said({ ok: true, ...BUILD }))).toEqual({ kind: 'board', board: BUILD })
   })
 
+  test('a view the engine cannot draw is a board still, its reason with it', () => {
+    const unavailable = { ...BUILD, view: { kind: 'unavailable', reason: 'pay\'s build has not begun' } }
+
+    expect(answerIn(said({ ok: true, ...unavailable }))).toEqual({ kind: 'board', board: unavailable })
+  })
+
   test('another version is refused, by the version it is', () => {
     expect(answerIn(said({ ok: true, ...BUILD, version: 2 }))).toEqual({ kind: 'refused', version: 2 })
   })

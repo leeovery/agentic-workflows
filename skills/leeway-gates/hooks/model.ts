@@ -33,6 +33,12 @@ export type Banner = {
 /** A view or page, by its kind; each kind's fields are its drawing's to read. */
 export type View = { kind: string } & Record<string, unknown>
 
+/** A view or page the engine cannot draw, and why, the banner and the questions standing beside it. */
+export type Unavailable = { kind: 'unavailable'; reason: string }
+
+/** Whether a view is one the engine cannot draw. */
+export const isUnavailable = (view: View): view is View & Unavailable => view.kind === 'unavailable'
+
 /**
  * The board as the engine answers it, its `ok` dropped: under a page,
  * `beneath` is what the tab shows under it.
