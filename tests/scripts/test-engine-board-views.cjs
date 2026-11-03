@@ -22,12 +22,18 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { ok, output, writeState } = require('./engine-harness.cjs');
+const { ok, output, writeState, readManifest, stateGit } = require('./engine-harness.cjs');
 const { useDecidedWorld, writeIn, answeredIn, NOTE_MAP } = require('./decided-world.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, SESSION, SESSION_ID, MADE, NOTE, SPACE } = require('./ledger-world.cjs');
 
 const dir = useDecidedWorld();
+
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const { todayStamp } = require(path.join(SCRIPTS, 'domain/dates.cjs'));
+
+/** A dispatch's owner, this test's own process, which runs while it reads. */
+const OWNED = Object.freeze({ CLAUDE_PID: String(process.pid) });
 
 /** The board's answer for the world's conversation, its `ok` dropped. @param {string[]} [args] */
 function board(args = []) {
@@ -102,7 +108,8 @@ describe('a discussion on the board (20.7)', () => {
     });
   });
 
-  it('what the topic sent stays listed once taken in, no longer waiting; a message waiting opens in full (20.7.1, 20.7.3)', () => {
+  it('what the topic sent stays listed once taken in, no longer waiting, read from the day before the unit was made — a unit made today finding what it sent today; a message waiting opens in full (20.7.1, 20.7.3)', () => {
+    createManifest(dir(), UNIT, { ...readManifest(dir(), UNIT), created: todayStamp() });
     at([UNIT, 'discussion', 'note-window']);
     sent('note-window', 'space-homing', 'The tour opens first');
     sent('space-homing', 'note-window', 'Notes open on their Space');
@@ -118,23 +125,32 @@ describe('a discussion on the board (20.7)', () => {
     });
   });
 
-  it('its review rounds, newest first: one running since it was dispatched, a finished one with its findings taken in and waiting; a report opens in full (20.7.1, 20.7.3)', () => {
+  it('its review rounds, newest first, each since it was dispatched: one running while the conversation that sent it runs, a read one with its findings taken in and waiting; a report opens in full (20.7.1, 20.7.3)', () => {
     at([UNIT, 'discussion', 'note-window']);
     const first = ok(dir(), ['agent', 'dispatch', UNIT, 'discussion', 'note-window', '--kind', 'review', '--final'], { env: SESSION });
     fs.writeFileSync(first.file, '# Review\n\n- F1: the corner is unexplained.\n- F2: the banner is unexplained.\n');
     ok(dir(), ['agent', 'scan', UNIT, 'discussion', 'note-window'], { env: SESSION });
     ok(dir(), ['agent', 'ack', UNIT, 'discussion', 'note-window', first.id, '--findings', 'F1,F2'], { env: SESSION });
     ok(dir(), ['agent', 'surface', UNIT, 'discussion', 'note-window', first.id, 'F1'], { env: SESSION });
-    const second = ok(dir(), ['agent', 'dispatch', UNIT, 'discussion', 'note-window', '--kind', 'review', '--final'], { env: SESSION });
+    const second = ok(dir(), ['agent', 'dispatch', UNIT, 'discussion', 'note-window', '--kind', 'review', '--final'], { env: { ...SESSION, ...OWNED } });
     const { reviews } = board().view;
 
     assert.deepStrictEqual({ reviews, page: board(['--page', `review:note-window:${first.id}`]).view.text }, {
       reviews: [
-        { id: second.id, round: 2, running: true, since: reviews[0].since, findings: 0, taken: 0, waiting: 0 },
-        { id: first.id, round: 1, running: false, since: reviews[1].since, findings: 2, taken: 1, waiting: 1 },
+        { id: second.id, round: 2, state: 'running', since: reviews[0].since, findings: 0, taken: 0, waiting: 0 },
+        { id: first.id, round: 1, state: 'read', since: reviews[1].since, findings: 2, taken: 1, waiting: 1 },
       ],
       page: fs.readFileSync(first.file, 'utf8'),
     });
+  });
+
+  it('a round in flight stands where the agent store stands it: lost once the conversation that sent it is gone, and its report in, not yet taken, once written (20.7.1)', () => {
+    at([UNIT, 'discussion', 'note-window']);
+    const sent = ok(dir(), ['agent', 'dispatch', UNIT, 'discussion', 'note-window', '--kind', 'review', '--final'], { env: { ...SESSION, CLAUDE_PID: undefined } });
+    const lost = board().view.reviews.map(({ state }) => state);
+    fs.writeFileSync(sent.file, '# Review\n\n- F1: the corner is unexplained.\n');
+
+    assert.deepStrictEqual([lost, board().view.reviews.map(({ state }) => state)], [['lost'], ['landed']]);
   });
 
   it('5.S30, 9.S57: opening the board is not looking — the calls since the map last showed in the conversation stay listed however often the board is drawn, and only those made since that look list after it', () => {
@@ -256,6 +272,14 @@ describe('an epic\'s page (20.8)', () => {
       { kind: 'postponed', topic: 'Space Homing', detail: 'later' },
       { kind: 'sent', topic: 'Space Homing', detail: '001-bears.md' },
     ]);
+  });
+
+  it('20.8.2 LATELY shows the latest ten of the epic\'s moments, newest first', () => {
+    at([UNIT]);
+    for (let k = 1; k <= 11; k += 1) stateGit(dir(), ['commit', '-q', '--allow-empty', '-m', `mail(${UNIT}): send m${k}.md to note-window`]);
+    const { lately } = board().view;
+
+    assert.deepStrictEqual(lately.map(({ detail }) => detail), Array.from({ length: 10 }, (_, k) => `m${11 - k}.md`));
   });
 
   it('on the epic\'s tab the topic the session is in is this session\'s, and a topic opens on its own page (20.8.3, 20.15.2)', () => {

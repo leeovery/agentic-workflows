@@ -7,8 +7,8 @@
 // links across phases; ready answering several; done unblocking; close, and
 // close unblocking; a task closed and replaced, and tasks and a phase made
 // after every task of the unit ended, closed or done; an addition to a task;
-// a type replaced; list; show; when a task started — its store made in the
-// state root, never in the project's own a walk up would find, and the
+// a type replaced; list; show; a phase's tasks whole; when a task started —
+// its store made in the state root, never in the project's own a walk up would find, and the
 // tasks it names its own, whatever else a person gives them. The driver answers whether a phase or
 // task is there, and finds its tools — none, or one that fails — for the
 // engine to refuse in its words (test-engine-task-verbs.cjs); what stays
@@ -305,6 +305,16 @@ for (const driver of listDrivers('task')) {
       assert.deepStrictEqual(driver.show(root, ref(1, 3)), {
         ref: ref(1, 3), title: 'Fold the ledger', status: 'open', type: 'feat', text: task('Fold the ledger').text, additions: [], after: [ref(1, 1)], reason: null,
       });
+    });
+
+    it('tasks: a phase\'s own tasks whole, in order, each as show gives it — one closed with its reason; none for a phase not written', () => {
+      driver.close(root, ref(1, 2), 'Not needed.');
+
+      assert.deepStrictEqual([driver.tasks(root, UNIT, 1), driver.tasks(root, UNIT, 2), driver.tasks(root, UNIT, 3)], [
+        [ref(1, 1), ref(1, 2), ref(1, 3)].map((each) => driver.show(root, each)),
+        [driver.show(root, ref(2, 1))],
+        null,
+      ]);
     });
 
     it('started: when a task first moved into progress, kept as it ends; none for a task never started, or one the tracker lacks', () => {

@@ -200,11 +200,22 @@ function linearPhase(at, phase, reads) {
 /** An epic's phase while its discovery runs, before any topic exists. @param {string} phase @returns {UnitPhase} */
 const epicPhase = (phase) => ({ phase, state: 'later', words: EPIC_WAITS[phase] ?? '' });
 
+/**
+ * What waits on the person in a unit (the header's): its build's questions
+ * once the build has begun, else its spec's gaps once the spec is written.
+ * @param {string} cwd @param {Record<string, any>} manifest @returns {'question'|'gap'|null}
+ */
+function waitsOn(cwd, manifest) {
+  if (buildBegun(manifest)) return 'question';
+  return fs.existsSync(specPath(cwd, manifest.name)) ? 'gap' : null;
+}
+
 /** What waits on the person in the unit (the header's). @param {BoardAt} at @returns {UnitView['waiting']} */
 function waitingIn(at) {
-  if (buildBegun(at.manifest)) return (buildView(at).questions ?? []).map(({ question, asks }) => ({ kind: /** @type {const} */ ('question'), id: question, text: asks }));
-  if (!fs.existsSync(specPath(at.cwd, at.unit))) return [];
-  return waitingGaps(at.cwd, at.unit, at.warnings).map(({ short, text }) => ({ kind: /** @type {const} */ ('gap'), id: short, text }));
+  const kind = waitsOn(at.cwd, at.manifest);
+  if (kind === 'question') return (buildView(at).questions ?? []).map(({ question, asks }) => ({ kind, id: question, text: asks }));
+  if (kind === null) return [];
+  return waitingGaps(at.cwd, at.unit, at.warnings).map(({ short, text }) => ({ kind, id: short, text }));
 }
 
 /** A unit's tab (the header's): an epic's only while its discovery runs before any topic exists. @param {BoardAt} at @param {boolean} atMenu @returns {UnitView} */
@@ -261,4 +272,4 @@ function epicWords(manifest) {
   return `${live.filter((topic) => computeTopicLifecycle(manifest, topic).lifecycle === 'decided').length} of ${counted(live.length, 'topic')} decided`;
 }
 
-module.exports = { unitPage, unitBanner, placeBanner, epicWords };
+module.exports = { unitPage, unitBanner, placeBanner, epicWords, waitsOn };

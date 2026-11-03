@@ -43,7 +43,7 @@ const METHODS = Object.freeze({
     required: /** @type {const} */ ([
       'ensureStore', 'storeFiles', 'localFiles', 'mergeStore',
       'createUnit', 'createPhase', 'createTask', 'add', 'setType', 'link',
-      'ready', 'start', 'done', 'close', 'list', 'show', 'started',
+      'ready', 'start', 'done', 'close', 'list', 'show', 'tasks', 'started',
     ]),
     optional: /** @type {const} */ ([]),
   },
@@ -109,8 +109,9 @@ const METHODS = Object.freeze({
  * the root where it is missing, answering whether it did; no other method
  * runs before it. `storeFiles` and `localFiles` name, from the root, the
  * files the state branch carries and the gitignore patterns of those the
- * tool keeps local. The engine owns the refusals: `list` and `ready` answer
- * null for a phase not written, `show` null for a task the tracker lacks,
+ * tool keeps local. The engine owns the refusals: `list`, `tasks` and
+ * `ready` answer null for a phase not written, `show` null for a task the
+ * tracker lacks,
  * and the engine refuses in its words before any other method names one. A
  * verb a driver's method fails, where a tool the driver needs is not
  * installed or fails to run, is refused for that (`needsRefusal`), so a
@@ -130,8 +131,10 @@ const METHODS = Object.freeze({
  * `setType` replaces its type. `ready` answers every task, of the phase or
  * of every written phase, waiting to be started with nothing it is linked
  * after still to finish: a task done or closed holds nothing up. `list`
- * answers a phase's tasks in order. `started` answers when a task first
- * moved into progress, as the tracker's own record of the move holds it, so
+ * answers a phase's tasks in order, and `tasks` each of them whole, as
+ * `show` gives it, in one read of the tracker. `started` answers when a
+ * task first moved into progress, as the tracker's own record of the move
+ * holds it, so
  * a second clone's merge of the store carries it; null where it never has,
  * or the tracker lacks it. `mergeStore` merges the store's files
  * between two clones (4.7, 29.14.9): given the common ancestor's text, this
@@ -169,6 +172,7 @@ const METHODS = Object.freeze({
  *   close: (root: string, ref: TaskRef, reason: string) => void,
  *   list: (root: string, unit: string, phase: number) => TaskRow[]|null,
  *   show: (root: string, ref: TaskRef) => TaskDetail|null,
+ *   tasks: (root: string, unit: string, phase: number) => TaskDetail[]|null,
  *   started: (root: string, ref: TaskRef) => string|null,
  * }} TaskDriver
  */

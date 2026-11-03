@@ -249,12 +249,13 @@ function buildHeadlineSurface(cwd, { dotpath: unit = '', file }) {
 /**
  * Whether the build goes on with a phase's tasks ready to start: the phase
  * open, or its start's engine items holding (12.13.22) — the stop's rule, and
- * the board's (projections/board-build.cjs).
- * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest the unit's
+ * the board's (projections/board-build.cjs), its checks reading first what
+ * the call has read of the unit already, `reads`, where given.
+ * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest the unit's @param {Map<string, any>} [reads]
  * @returns {(phase: number) => boolean}
  */
-function phaseLets(cwd, unit, manifest) {
-  return (phase) => phaseOpen(manifest, phase) || engineItemsHold(cwd, 'phase-start', [unit, String(phase)]);
+function phaseLets(cwd, unit, manifest, reads) {
+  return (phase) => phaseOpen(manifest, phase) || engineItemsHold(cwd, 'phase-start', [unit, String(phase)], reads);
 }
 
 /** `render build-stop <unit>`. @param {string} cwd @param {Args} args */

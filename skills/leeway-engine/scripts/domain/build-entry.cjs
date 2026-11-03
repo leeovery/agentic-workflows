@@ -89,7 +89,7 @@ const { heldCodeSessions } = require('./presence.cjs');
 const { codeGate } = require('./projections/enter.cjs');
 const { tasksInFlight } = require('./conversation.cjs');
 const { recordTasksAt } = require('./position.cjs');
-const { waitingQuestions, parkedTasks, parkedTasksOf } = require('./questions.cjs');
+const { waitingQuestions, parkedTasks } = require('./questions.cjs');
 const { reading, cutPhases, phaseLists, phaseTasks, phaseLanded, mergeWaiting, fixesOwed, passed } = require('./phase-checks.cjs');
 const { takenFigures } = require('./task-account.cjs');
 const { recordedRounds, mergingWords } = require('./review-phase.cjs');
@@ -273,8 +273,22 @@ function standingPhase(at, phase, rows, tasks) {
 }
 
 /**
+ * The questions parking each task, by task, oldest first, from the
+ * questions waiting.
+ * @param {{question: string, parks: string[]}[]} waiting @returns {Map<string, string[]>}
+ */
+function parkingQuestions(waiting) {
+  /** @type {Map<string, string[]>} */
+  const parked = new Map();
+  for (const { question, parks } of waiting) {
+    for (const task of parks) parked.set(task, [...(parked.get(task) ?? []), question]);
+  }
+  return parked;
+}
+
+/**
  * The build's standing, as a call reads the unit, for the conversation
- * whose tasks in flight are given.
+ * whose tasks in flight are given, the ledger read once.
  * @param {Reading} at @param {InFlight[]} inFlight @returns {BuildStanding}
  */
 function standingOf(at, inFlight) {
@@ -284,7 +298,7 @@ function standingOf(at, inFlight) {
   const statuses = new Map(lists.flatMap((rows) => (rows ?? []).map(({ ref, status }) => /** @type {[string, TaskStatus]} */ ([shownTask(ref), status]))));
   const { waiting, warnings = [] } = waitingQuestions(at.cwd, [at.unit]);
   at.warnings.push(...warnings);
-  const parked = parkedTasksOf(stateRoot(at.cwd), at.unit, at.warnings);
+  const parked = parkingQuestions(waiting);
   const behind = behindInFlight(at);
   return {
     unit: at.unit,

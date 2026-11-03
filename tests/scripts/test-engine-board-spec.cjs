@@ -65,6 +65,22 @@ function landed() {
   land();
 }
 
+/**
+ * A question asked at the spec before it was written, and a replacement the
+ * first pass, dispatched after it, raised. @returns {string} the question's id
+ */
+function bothWaiting() {
+  const asked = write('ask', AT_SPEC, [], { ...MADE, text: 'Is a refund ever split?' }).id;
+  landed();
+  const pass = dispatchReview();
+  issued(['spec-reviewer', UNIT, '--agent', pass.id]);
+  reportIn(pass, LANED);
+  acked(pass, ['F1', 'F2']);
+  ok(dir(), ['agent', 'surface', UNIT, 'specification', UNIT, pass.id, 'F1', '--replaces', made.where, '--reason', 'changed-mind']);
+  dispatchedAt(pass, lastAt(1000));
+  return asked;
+}
+
 describe('a specification on the board (20.9)', () => {
   it('before the spec is written: no section, no pass, nothing waiting; the banner says it is being written', () => {
     assert.deepStrictEqual(board(), {
@@ -88,42 +104,46 @@ describe('a specification on the board (20.9)', () => {
     assert.deepStrictEqual({ sections: view.sections, passes: view.passes, facts: banner.facts.slice(2) }, {
       sections: [{ number: '1', title: 'Cards', changed_by: [], reading: false }, { number: '2', title: 'Refunds', changed_by: [1], reading: true }],
       passes: [
-        { pass: 2, found: 0, calls: 0, yours: 0, running: true, since: created, reads: ['2'] },
-        { pass: 1, found: 0, calls: 0, yours: 0, running: false, since: null, reads: null },
+        { pass: 2, found: 0, calls: 0, yours: 0, state: 'running', since: created, reads: ['2'] },
+        { pass: 1, found: 0, calls: 0, yours: 0, state: 'read', since: null, reads: null },
       ],
       facts: [fact('pass 2 reading')],
     });
   });
 
-  it('a section a later land changed again is changed by each pass whose findings the land took (20.9.1)', () => {
+  it('a section is changed by each pass after whose report a land changed it, and by none before — Refunds after pass 1, Cards only after pass 2 (20.9.1)', () => {
+    const instant = '2.1.2 Refunds are instant, always.';
     landed();
     cleanPass();
-    writeSpec(spec({ instant: '2.1.2 Refunds are instant, always.' }));
+    writeSpec(spec({ instant }));
+    land();
+    cleanPass();
+    writeSpec(spec({ instant, charge: `1.2.1 A charge is one request, and takes 200 ms. [${made.one}, ${made.speed}]` }));
     land();
     cleanPass();
 
-    assert.deepStrictEqual(board().view.sections.map(({ changed_by: by }) => by), [[], [1]]);
+    assert.deepStrictEqual(board().view.sections.map(({ changed_by: by }) => by), [[2], [1]]);
   });
 
   it('20.9.1: a question asked at the spec and a replacement the review raised each wait on the person by its entry and words, the pass that raised it and the sections citing what it is about; the pass\'s finds split into Claude\'s calls and the person\'s; the banner says the next pass waits on them, plain, the count waiting flagged (20.2.4)', () => {
-    const asked = write('ask', AT_SPEC, [], { ...MADE, text: 'Is a refund ever split?' }).id;
-    landed();
-    const pass = dispatchReview();
-    issued(['spec-reviewer', UNIT, '--agent', pass.id]);
-    reportIn(pass, LANED);
-    acked(pass, ['F1', 'F2']);
-    ok(dir(), ['agent', 'surface', UNIT, 'specification', UNIT, pass.id, 'F1', '--replaces', made.where, '--reason', 'changed-mind']);
-    dispatchedAt(pass, lastAt(1000));
+    const asked = bothWaiting();
     const { view, banner } = board();
 
     assert.deepStrictEqual({ passes: view.passes, waiting: view.waiting, banner }, {
-      passes: [{ pass: 1, found: 2, calls: 1, yours: 1, running: false, since: null, reads: null }],
+      passes: [{ pass: 1, found: 2, calls: 1, yours: 1, state: 'read', since: null, reads: null }],
       waiting: [
         { id: asked, text: 'Is a refund ever split?', pass: null, sections: [] },
         { id: made.where, text: 'Back to the card.', pass: 1, sections: ['2'] },
       ],
       banner: { name: 'Payments', state: 'needs', facts: [fact('epic'), fact('specification'), fact('pass 2 waits on you'), fact('2 waiting on you', true)] },
     });
+  });
+
+  it('All work counts what waits in the unit as its banner does — the question asked at the spec and the replacement raised — the project\'s total summing each unit\'s (20.16, 20.2.4)', () => {
+    bothWaiting();
+    const { view } = board(['--tab', 'all']);
+
+    assert.deepStrictEqual({ units: view.units.map(({ unit, waiting }) => [unit, waiting]), total: view.waiting }, { units: [['billing', 0], [UNIT, 2]], total: 2 });
   });
 
   it('20.9.1: a question asked after a pass reported is that pass\'s — one dispatched in the second it was asked among them, the ledger\'s time being to the second — with the sections it cites', () => {
@@ -133,6 +153,26 @@ describe('a specification on the board (20.9)', () => {
     dispatchedAt(pass, lastAt(999));
 
     assert.deepStrictEqual(board().view.waiting, [{ id: asked, text: 'Is a refund ever split?', pass: 1, sections: ['2'] }]);
+  });
+
+  it('20.2.4: while a pass runs with a question waiting, the banner says where the review stands, then the count waiting flagged — never the next pass waiting on the person', () => {
+    write('ask', AT_SPEC, [], { ...MADE, text: 'Is a refund ever split?' });
+    landed();
+    issued(['spec-reviewer', UNIT, '--agent', dispatchReview(OWNER.running).id]);
+
+    assert.deepStrictEqual(board().banner.facts.slice(2), [fact('pass 1 reading'), fact('1 waiting on you', true)]);
+  });
+
+  it('a pass out is shown by where the agent store stands it — lost once the conversation that sent it is gone, its report in once written, not yet taken — and the banner says so (20.9.1, 20.2.4)', () => {
+    landed();
+    const pass = dispatchReview();
+    issued(['spec-reviewer', UNIT, '--agent', pass.id]);
+    const lost = board();
+    reportIn(pass);
+    const landedIn = board();
+    const shown = (/** @type {{view: any, banner: any}} */ { view, banner }) => [view.passes.map(({ pass: k, state }) => [k, state]), banner.facts.at(-1)];
+
+    assert.deepStrictEqual([shown(lost), shown(landedIn)], [[[[1, 'lost']], fact('pass 1 lost')], [[[1, 'landed']], fact('pass 1\'s report in')]]);
   });
 
   it('once the review settles, ready to build waits on the person, the banner saying so plain (20.2.4)', () => {

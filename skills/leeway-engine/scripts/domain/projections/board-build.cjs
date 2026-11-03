@@ -97,7 +97,9 @@ const running = ({ state }) => state === 'building' || state === 'in-review';
 
 /** Whether the build has stopped (the header's). @param {BoardAt} at @param {BuildStanding} standing */
 function stoppedOf(at, standing) {
-  return standing.waiting.length > 0 && goesOn(at.cwd, at.unit, at.tracker(), phaseLets(at.cwd, at.unit, at.manifest)).length === 0;
+  if (standing.waiting.length === 0) return false;
+  const parked = new Set(standing.waiting.flatMap(({ parks }) => parks));
+  return goesOn(parked, at.tracker(), phaseLets(at.cwd, at.unit, at.manifest, readingAt(at).reads)).length === 0;
 }
 
 /** The questions a press can queue, oldest first (the header's). @param {BuildStanding} standing @returns {Question[]} */
@@ -114,27 +116,34 @@ function questionsOf(standing) {
 }
 
 /**
- * The build's standing for the board's unit, read once a call from the
+ * What the board's unit's checks read it by, once a call, seeded with the
  * unit's one read of the tracker: each phase's list, and the tasks whole of
  * each phase holding one not started.
- * @param {BoardAt} at @returns {BuildStanding}
+ * @param {BoardAt} at @returns {import('../phase-checks.cjs').Reading}
  */
-const standingAt = (at) => at.once('build', () => {
+const readingAt = (at) => at.once('reading', () => {
   const { phases, written } = at.tracker();
   const read = reading(at.cwd, at.unit, at.manifest, at.warnings);
   phases.forEach((rows, i) => read.reads.set(`list ${i + 1}`, rows));
   written.forEach((tasks, i) => {
     if (tasks !== null) read.reads.set(`tasks ${i + 1}`, tasks);
   });
-  return standingOf(read, at.inFlight);
+  return read;
 });
+
+/** The build's standing for the board's unit, read once a call (`readingAt`). @param {BoardAt} at @returns {BuildStanding} */
+const standingAt = (at) => at.once('build', () => standingOf(readingAt(at), at.inFlight));
 
 /**
  * The build's This session (20.5.1–20.5.3) and the questions a press can
- * queue, from one read of where the build stands.
+ * queue, from one read of where the build stands, drawn once a call
+ * whichever tabs show it.
  * @param {BoardAt} at @returns {{view: BuildView, questions: Question[]}}
  */
-function buildView(at) {
+const buildView = (at) => at.once('build-view', () => drawBuild(at));
+
+/** The build's This session, drawn (`buildView`'s). @param {BoardAt} at @returns {{view: BuildView, questions: Question[]}} */
+function drawBuild(at) {
   const standing = standingAt(at);
   const phases = standing.phases.map((phase) => buildPhase(at, phase));
   const lines = phases.flatMap(({ tasks }) => tasks).filter((line) => line.state !== 'closed');

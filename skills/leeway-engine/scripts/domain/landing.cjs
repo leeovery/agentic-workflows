@@ -99,9 +99,6 @@ const { STATE_DIR_NAME } = require('../kernel/state-root.cjs');
 const phaseChecks = () => require('./phase-checks.cjs');
 const reviewChange = () => require('./review-change.cjs');
 
-/** A day, in milliseconds. */
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** @typedef {import('./drivers.cjs').LandingDriver} LandingDriver */
 /** @typedef {import('../kernel/repos.cjs').Repo} Repo */
@@ -668,14 +665,12 @@ function allChained(cwd, unit, tasks) {
 /**
  * The unit's tasks landed, shown: each a landing on the default branch of a
  * repository of the project names by its `Task:` line, as every driver
- * lands a task (landing-names.cjs), searched from the day before `since`
- * where given — the day the unit was made, its own clock's, before which
- * none of its work landed. A repository with no default branch to land on
- * holds none.
- * @param {string} cwd @param {string} unit @param {string|null} [since] @returns {Set<string>}
+ * lands a task (landing-names.cjs), searched from the time `from` names
+ * where given (`dayBefore` the unit was made, before which none of its work
+ * landed). A repository with no default branch to land on holds none.
+ * @param {string} cwd @param {string} unit @param {string|null} [from] @returns {Set<string>}
  */
-function landedTasks(cwd, unit, since = null) {
-  const from = since === null || Number.isNaN(Date.parse(since)) ? null : new Date(Date.parse(since) - DAY_MS).toISOString();
+function landedTasks(cwd, unit, from = null) {
   return new Set(projectRepos(codeRoot(cwd)).flatMap((repo) => {
     const nested = repo.dir !== '';
     let into;

@@ -14,10 +14,14 @@
 // - Its passes are those whose report the agent store took in, each with
 //   what it found — the person's share each gap it found, raised as a
 //   question, and each finding raised as the replacement of a decision,
-//   each counted once; Claude's every other — then those still running,
-//   numbered on, each since
-//   it was dispatched and with the sections it reads: those changed since
-//   the land the latest reported pass reviewed. Newest first.
+//   each counted once; Claude's every other — then those still out,
+//   numbered on, each by where the store stands it — running, its report
+//   in and not yet taken, or lost with the conversation that sent it —
+//   since it was dispatched and with the sections it reads: those changed
+//   since the land the latest reported pass reviewed. Newest first.
+// - The banner says where the review stands: a pass out by its state; else,
+//   while a question waits, the next pass waiting on the person; else ready
+//   to build waiting on them, or the spec being written.
 // - What waits on the person is each gap the review waits on them for, a
 //   question asked at the spec or a replacement a pass raised — asked in
 //   the conversation, never queued (20.9.1) — each by its entry and words,
@@ -82,11 +86,14 @@ function foundBy({ findings, raised }) {
   return { found: found.length, calls: found.length - yours, yours };
 }
 
-/** The review's passes, newest first (the header's). @param {Reported[]} reported @param {{created: string}[]} running @param {string[]|null} reads @returns {SpecPass[]} */
-function passesOf(reported, running, reads) {
+/**
+ * The review's passes, newest first (the header's).
+ * @param {Reported[]} reported @param {{created: string, stands: 'landed'|'running'|'lost'}[]} out @param {string[]|null} reads @returns {SpecPass[]}
+ */
+function passesOf(reported, out, reads) {
   return [
-    ...reported.map((pass, k) => ({ pass: k + 1, ...foundBy(pass), running: false, since: null, reads: null })),
-    ...running.map(({ created }, k) => ({ pass: reported.length + k + 1, found: 0, calls: 0, yours: 0, running: true, since: created, reads })),
+    ...reported.map((pass, k) => ({ pass: k + 1, ...foundBy(pass), state: /** @type {const} */ ('read'), since: null, reads: null })),
+    ...out.map(({ created, stands }, k) => ({ pass: reported.length + k + 1, found: 0, calls: 0, yours: 0, state: stands, since: created, reads })),
   ].reverse();
 }
 
@@ -122,8 +129,9 @@ function specView(at) {
   const text = specText(at);
   const reading = text === null ? null : specReading(text);
   const reported = reportedPasses(at.cwd, at.unit);
-  const running = passesInFlight(at.cwd, at.unit).filter(({ stands }) => stands === 'running');
-  const reads = text === null || running.length === 0 ? null : [...areasOf(sectionsToReview(at.cwd, at.unit, text).changed)];
+  const out = passesInFlight(at.cwd, at.unit);
+  const reads = text === null || out.length === 0 ? null : [...areasOf(sectionsToReview(at.cwd, at.unit, text).changed)];
+  const beingRead = out.some(({ stands }) => stands === 'running') ? reads : null;
   const changed = changedBy(reported, text);
   const since = readShown(at.root, at.warnings, (shower) => /** @type {{id: string, text: string}[]} */ (/** @type {unknown} */ (answerSince(shower, { unit: at.unit, topic: null }, at.root, at.warnings).calls)));
   return {
@@ -133,9 +141,9 @@ function specView(at) {
       title: at.title,
       type: at.manifest.work_type,
       sections: (reading?.headings ?? []).filter(({ kind }) => kind === 'area').map(({ number, title }) => ({
-        number: String(number), title, changed_by: changed.get(String(number)) ?? [], reading: reads?.includes(String(number)) ?? false,
+        number: String(number), title, changed_by: changed.get(String(number)) ?? [], reading: beingRead?.includes(String(number)) ?? false,
       })),
-      passes: passesOf(reported, running, reads),
+      passes: passesOf(reported, out, reads),
       waiting: waitingGaps(at.cwd, at.unit, at.warnings).map((gap) => gapLine(at, gap, reported, reading)),
       since: since.map(({ id, text: said }) => ({ id, text: said, question: null })),
       cut: cutPhases(at.manifest).map(({ name = '', scenarios, sections }, k) => ({ phase: k + 1, name, scenarios: scenarios.length, sections })),
@@ -144,21 +152,28 @@ function specView(at) {
   };
 }
 
+/** Where the review stands while a pass is out, by the pass's state. @type {Readonly<Record<'running'|'landed'|'lost', (pass: number) => string>>} */
+const OUT = Object.freeze({
+  running: (pass) => `pass ${pass} reading`,
+  landed: (pass) => `pass ${pass}'s report in`,
+  lost: (pass) => `pass ${pass} lost`,
+});
+
 /**
- * The banner's facts in a specification (20.2.4): the pass that waits on
- * the person and how many questions wait, while any does; else the pass
- * reading, or ready to build waiting on the person.
+ * The banner's facts in a specification (20.2.4): where the review stands —
+ * a pass out by its state; else, while a question waits, the next pass
+ * waiting on the person; else ready to build waiting on them, or the spec
+ * being written — then how many questions wait, while any does.
  * @param {SpecView} view @returns {{state: 'running'|'needs', facts: {text: string, needs: boolean}[]}}
  */
 function specBanner({ type, passes, waiting, ready }) {
   const fact = (/** @type {string} */ text, needs = false) => ({ text, needs });
-  const next = (passes.find(({ running }) => !running)?.pass ?? 0) + 1;
-  const running = passes.find((pass) => pass.running);
-  if (waiting.length > 0) {
-    return { state: 'needs', facts: [fact(type), fact('specification'), fact(`pass ${next} waits on you`), fact(`${waiting.length} waiting on you`, true)] };
-  }
-  if (ready === 'person') return { state: 'needs', facts: [fact(type), fact('specification'), fact('ready to build waits on you')] };
-  return { state: 'running', facts: [fact(type), fact('specification'), fact(running === undefined ? 'being written' : `pass ${running.pass} reading`)] };
+  const head = [fact(type), fact('specification')];
+  const [latest] = passes;
+  const out = latest === undefined || latest.state === 'read' ? null : fact(OUT[latest.state](latest.pass));
+  if (waiting.length > 0) return { state: 'needs', facts: [...head, out ?? fact(`pass ${(latest?.pass ?? 0) + 1} waits on you`), fact(`${waiting.length} waiting on you`, true)] };
+  if (ready === 'person') return { state: 'needs', facts: [...head, fact('ready to build waits on you')] };
+  return { state: 'running', facts: [...head, out ?? fact('being written')] };
 }
 
 /**

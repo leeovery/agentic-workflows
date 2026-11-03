@@ -77,7 +77,7 @@ const { statePath, stateRoot } = require('../kernel/state-root.cjs');
 const { writeJsonAtomic, isObject } = require('../kernel/manifest-io.cjs');
 const { fingerprint } = require('../kernel/fingerprint.cjs');
 const { specSections, scenarioBlocks, specIntroduction, readSpec } = require('./spec-sections.cjs');
-const { ID_FACTS, foldLedger, factsOf, questionStands, isCurrent, keptOf } = require('./ledger-fold.cjs');
+const { ID_FACTS, foldLedger, factsOf, questionStands, isCurrent, keptOf, standingOf } = require('./ledger-fold.cjs');
 const { markOf, lineOf } = require('./ledger-moves.cjs');
 const { withUnitEntries } = require('./unit-entries.cjs');
 const { UNIT_PHASE, reportedPasses, passesInFlight } = require('./agent-state.cjs');
@@ -355,38 +355,56 @@ function gapEntry(id, entry) {
   };
 }
 
-/**
- * Whether a unit's entry is a question asked at its own level at the spec
- * and still open.
- * @param {import('./ledger-fold.cjs').Folded} folded @param {string} unit @param {string} id @param {import('./unit-entries.cjs').UnitEntry} entry
- */
-function openAtSpec(folded, unit, id, { kind, stands }) {
-  return kind === 'question' && stands.unit === unit && stands.topic === null && factsOf(folded, id).phase === UNIT_PHASE && questionStands(folded, id) === 'open';
+/** A review's finding raised as a replacement, with the pass that raised it. @typedef {Pass['raised'][number] & {pass: string}} Raised */
+
+/** Every replacement the unit's review passes raised. @param {string} cwd @param {string} unit @returns {Raised[]} */
+function raisedIn(cwd, unit) {
+  return reportedPasses(cwd, unit).flatMap((pass) => pass.raised.map((raise) => ({ ...raise, pass: pass.id })));
 }
 
 /**
- * The gaps waiting on the person: the current questions asked at the unit's
- * own level at the spec and still open, in the ledger's order; then each
- * replacement a review's finding was raised as, its decision still current
- * and kept by no answer since — each with the raise that puts it to them
- * again from any conversation, sealed afresh where it is drawn.
+ * The gaps waiting on the person among the current entries `ids`, from the
+ * ledger folded (`waitingGaps`'s): the questions asked at the unit's own
+ * level at the spec and still open, in their order, and the replacements
+ * raised whose decision is still current and kept by no answer since.
+ * @param {import('./ledger-fold.cjs').Folded} folded @param {string} unit @param {Iterable<string>} ids @param {Raised[]} raised
+ * @returns {{asked: string[], raised: Raised[]}}
+ */
+function gapsIn(folded, unit, ids, raised) {
+  const openAtSpec = (/** @type {string} */ id) => {
+    const made = factsOf(folded, id);
+    const stands = standingOf(folded, id);
+    return made.kind === 'question' && stands.unit === unit && stands.topic === null && made.phase === UNIT_PHASE && questionStands(folded, id) === 'open';
+  };
+  return {
+    asked: [...ids].filter(openAtSpec),
+    raised: raised.filter(({ replaces, mark }) => isCurrent(folded, replaces) && !keptOf(folded, replaces).some((keep) => factsOf(folded, keep).place.number > lineOf(folded.facts, mark))),
+  };
+}
+
+/**
+ * The gaps waiting on the person (`gapsIn`'s), each with the raise that
+ * puts it to them again from any conversation, sealed afresh where it is
+ * drawn.
  * @param {string} cwd @param {string} unit @param {string[]} warnings
  * @returns {Gap[]}
  */
 function waitingGaps(cwd, unit, warnings) {
-  const raised = reportedPasses(cwd, unit).flatMap((pass) => pass.raised.map((raise) => ({ ...raise, pass: pass.id })));
-  return withUnitEntries(cwd, unit, warnings, ({ folded, entries, short }) => [
-    ...[...entries].flatMap(([id, entry]) => (openAtSpec(folded, unit, id, entry)
-      ? [{ gap: `the gap ${entry.short}, asked at the spec,`, again: `engine raise ${unit}.specification --answers ${entry.short}`, ...gapEntry(id, entry), pass: null }]
-      : [])),
-    ...raised.filter(({ replaces, mark }) => isCurrent(folded, replaces) && !keptOf(folded, replaces).some((keep) => factsOf(folded, keep).place.number > lineOf(folded.facts, mark)))
-      .map(({ replaces, reason, pass }) => ({
+  const all = raisedIn(cwd, unit);
+  return withUnitEntries(cwd, unit, warnings, ({ folded, entries, short }) => {
+    const { asked, raised } = gapsIn(folded, unit, entries.keys(), all);
+    return [
+      ...asked.map((id) => ({
+        gap: `the gap ${short(id)}, asked at the spec,`, again: `engine raise ${unit}.specification --answers ${short(id)}`, ...gapEntry(id, entries.get(id)), pass: null,
+      })),
+      ...raised.map(({ replaces, reason, pass }) => ({
         gap: `the replacement of ${short(replaces)}, raised at the spec,`,
         again: `engine raise ${unit}.specification --replaces ${short(replaces)} --reason ${reason}`,
         ...gapEntry(replaces, entries.get(replaces)),
         pass,
       })),
-  ]);
+    ];
+  });
 }
 
 /**
@@ -469,5 +487,5 @@ function reviewSettled(cwd, unit, warnings) {
 }
 
 module.exports = {
-  ownTexts, printOf, changedSince, changedBetween, recordLand, lastLand, recordTaking, recordCutTaking, recordCut, cutRequests, outstanding, reviewedSpec, sectionsToReview, waitingGaps, gapsWaiting, passesRunningOn, waitingOn, reviewSettled,
+  ownTexts, printOf, changedSince, changedBetween, recordLand, lastLand, recordTaking, recordCutTaking, recordCut, cutRequests, outstanding, reviewedSpec, sectionsToReview, raisedIn, gapsIn, waitingGaps, gapsWaiting, passesRunningOn, waitingOn, reviewSettled,
 };

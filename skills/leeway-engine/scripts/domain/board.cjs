@@ -5,7 +5,11 @@
 // <work-unit>] [--page <ref>]` — the workflows board's one read (§20),
 // answering its view model (board-model.cjs) for the gate mod, which calls
 // it after every engine call and every press. It writes nothing, the
-// conversation's mark among it, and takes no writer lock.
+// conversation's mark among it, and never waits on a writer: it takes no
+// writer lock, reading the tracker from a copy of its store, but where the
+// ledger on disk departs from the state branch's other than by lines added
+// at its end — a landing a kill cut short — which any read of the ledger
+// finishes under that lock first (ledger.cjs).
 //
 // - This session follows the conversation's position (20.3.3, 20.3.4): a
 //   phase's view while it is in one — the build, the review phase, a
@@ -25,8 +29,10 @@
 // - Never a look (5.8.14): Claude's calls since the person last looked are
 //   read without moving the mark.
 // - Each unit is read once a call, whichever tabs and pages draw it, and its
-//   tracker in one read, once its build has begun — its phases, the fix
-//   phases past the cut, the tasks ready, and the task a page names; All
+//   tracker in one read, once its build has begun, of a copy of its store
+//   taken at one moment (task-verbs.cjs) — its phases, the fix phases past
+//   the cut, the tasks ready, and the task a page names — which its build's
+//   checks read too, the stop's asked of a phase's start among them; All
 //   work reads no other unit's tracker.
 // - Each tab is answered on its own: a view or page that cannot be drawn
 //   answers `unavailable`, saying why, the banner and the questions standing
@@ -50,7 +56,6 @@ const { BRIEFS } = require('./brief-names.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { trackedUnit } = require('./task-verbs.cjs');
 const { parseShownTask } = require('./task-id.cjs');
-const { withStateLock } = require('./state-worktree.cjs');
 const { buildBegun } = require('./derivations.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { projectName } = require('./state-checks.cjs');
@@ -160,9 +165,7 @@ function unitAt(cwd, session, place, unit, inFlight, warnings, task) {
     issued: place.unit === unit ? issuedFor(session, unit) : [],
     tracker: () => once('tracker', () => {
       if (!buildBegun(manifest)) throw new Error(`${unit}'s build has not begun`);
-      const read = withStateLock(root, () => trackedUnit(cwd, unit, manifest, task));
-      warnings.push(...(read.warnings ?? []));
-      return read;
+      return trackedUnit(cwd, unit, manifest, task);
     }),
     once,
     warnings,

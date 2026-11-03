@@ -66,6 +66,7 @@
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { isolatedGit } = require('../kernel/isolated-git.cjs');
 const { isObject, jsonText } = require('../kernel/manifest-io.cjs');
@@ -428,7 +429,7 @@ function trackedStart(cwd, ref) {
  * Each of the unit's phases from 1 to `last` as the tracker holds it, read
  * as any read is: a phase written as the list of its tasks, in order, null
  * for one not written; and phase `last`'s tasks whole, null where it is not
- * written — one read of each task of that phase alone.
+ * written.
  * @param {string} cwd @param {string} unit @param {number} last
  * @returns {{phases: (TaskRow[]|null)[], written: TaskDetail[]|null, committed?: string|null, warnings?: string[]}}
  */
@@ -436,7 +437,7 @@ function trackedPhases(cwd, unit, last) {
   requireUnit(cwd, unit);
   return withTracker(cwd, unit, null, (driver, root) => {
     const phases = Array.from({ length: last }, (_, at) => driver.list(root, unit, at + 1));
-    return { phases, written: phases[last - 1]?.map((row) => taskIn(driver, root, row.ref)) ?? null };
+    return { phases, written: driver.tasks(root, unit, last) };
   });
 }
 
@@ -460,7 +461,7 @@ function trackedLists(cwd, unit, numbers) {
  */
 function trackedPhase(cwd, unit, phase) {
   requireUnit(cwd, unit);
-  return withTracker(cwd, unit, null, (driver, root) => ({ tasks: driver.list(root, unit, phase)?.map((row) => taskIn(driver, root, row.ref)) ?? null }));
+  return withTracker(cwd, unit, null, (driver, root) => ({ tasks: driver.tasks(root, unit, phase) }));
 }
 
 /**
@@ -480,7 +481,7 @@ function goingOn(cwd, unit, manifest, { ready } = {}) {
     phases: writtenPhases(driver, root, unit, cutLength(manifest)),
     waiting: ready === undefined ? [] : driver.ready(root, unit, null) ?? [],
   }));
-  return { ...read, tasks: goesOn(cwd, unit, { phases, ready: waiting }, ready ?? (() => false)) };
+  return { ...read, tasks: goesOn(parks().parkedOf(cwd, unit), { phases, ready: waiting }, ready ?? (() => false)) };
 }
 
 /**
@@ -500,17 +501,17 @@ function writtenPhases(driver, root, unit, cut) {
 
 /**
  * The tasks the unit's build goes on with, from what the tracker gave, but
- * each a question waiting parks: those in progress in the phases read, then
- * those ready to start whose phase `lets` go on, asked once a phase.
- * @param {string} cwd @param {string} unit @param {{phases: (TaskRow[]|null)[], ready: TaskRow[]}} read
+ * each `parked` holds — those a question waiting parks: those in progress
+ * in the phases read, then those ready to start whose phase `lets` go on,
+ * asked once a phase.
+ * @param {{has: (task: string) => boolean}} parked @param {{phases: (TaskRow[]|null)[], ready: TaskRow[]}} read
  * @param {(phase: number) => boolean} lets
  * @returns {string[]}
  */
-function goesOn(cwd, unit, { phases, ready }, lets) {
+function goesOn(parked, { phases, ready }, lets) {
   /** @type {Map<number, boolean>} */
   const asked = new Map();
   const goes = (/** @type {number} */ phase) => asked.get(phase) ?? asked.set(phase, lets(phase)).get(phase);
-  const parked = parks().parkedOf(cwd, unit);
   const running = phases.flatMap((list) => (list ?? []).filter(({ status }) => status === 'in-progress'));
   return [...running, ...ready.filter(({ ref }) => goes(ref.phase))].map(({ ref }) => shownTask(ref)).filter((task) => !parked.has(task));
 }
@@ -524,23 +525,50 @@ function goesOn(cwd, unit, { phases, ready }, lets) {
  * it — and when it first moved into progress.
  * @typedef {{
  *   phases: (TaskRow[]|null)[], written: (TaskDetail[]|null)[], ready: TaskRow[], starts: Record<string, string|null>,
- *   task: TaskDetail|null, started: string|null, committed?: string|null, warnings?: string[],
+ *   task: TaskDetail|null, started: string|null,
  * }} TrackedUnit
  */
 
 /**
- * The unit as the tracker holds it, read as any read is (the typedef's).
+ * `read` against a copy of the tracker's store, each of its files read
+ * whole once, so it reads the store as it stood at one moment: no writer
+ * lock taken, nothing set up or written into the state, the copy removed
+ * after. A tool the driver needs that is missing is refused for that.
+ * @template T @param {string} cwd @param {(driver: TaskDriver, root: string) => T} read @returns {T}
+ */
+function withStoreCopy(cwd, read) {
+  const driver = /** @type {TaskDriver} */ (resolveDriver(cwd, 'task').driver);
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'leeway-store-'));
+  try {
+    for (const file of driver.storeFiles()) {
+      const text = fs.readFileSync(statePath(cwd, file));
+      fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+      fs.writeFileSync(path.join(root, file), text);
+    }
+    return read(driver, root);
+  } catch (thrown) {
+    const missing = needsRefusal(driver);
+    throw missing === null ? thrown : new Error(missing);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+}
+
+/**
+ * The unit as the tracker holds it at one moment (the typedef's), read from
+ * a copy of its store (`withStoreCopy`), for a reader that must never wait
+ * on a writer.
  * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest the unit's @param {TaskRef|null} [task]
  * @returns {TrackedUnit}
  */
 function trackedUnit(cwd, unit, manifest, task = null) {
   requireUnit(cwd, unit);
-  return withTracker(cwd, unit, null, (driver, root) => {
+  return withStoreCopy(cwd, (driver, root) => {
     const phases = writtenPhases(driver, root, unit, cutLength(manifest));
     const running = phases.flatMap((rows) => (rows ?? []).filter(({ status }) => status === 'in-progress'));
     return {
       phases,
-      written: phases.map((rows) => (rows?.some(({ status }) => status === 'open') ? rows.map(({ ref }) => taskIn(driver, root, ref)) : null)),
+      written: phases.map((rows, i) => (rows?.some(({ status }) => status === 'open') ? driver.tasks(root, unit, i + 1) : null)),
       ready: driver.ready(root, unit, null) ?? [],
       starts: Object.fromEntries(running.map(({ ref }) => [shownTask(ref), driver.started(root, ref)])),
       task: task === null ? null : driver.show(root, task),

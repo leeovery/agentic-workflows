@@ -13,9 +13,10 @@
 //   decided are theirs, Claude's — handed over among them — and those
 //   carried over, as the map counts them (9.5.3).
 // - Its reviews are its review agent's rounds (agent-state.cjs), newest
-//   first: one in flight running since it was dispatched; each finished
-//   one with the findings its report gave, those taken in and those still
-//   waiting.
+//   first, each since it was dispatched: one in flight where the store
+//   stands it — running, its report in and not yet taken, or lost with the
+//   conversation that sent it — and one read with the findings its report
+//   gave, those taken in and those still waiting.
 // - What the topic sent is every message the state's history shows added to
 //   another topic's mailbox of the unit naming it as its sender, as the
 //   screens title it (10.4.2) — newest first, each still waiting where its
@@ -30,8 +31,9 @@ const { answerSince } = require('../ledger-since.cjs');
 const { carrying } = require('../ledger.cjs');
 const { rowStanding, claudesCalls } = require('../topic-map.cjs');
 const { waitingMessages } = require('../mail.cjs');
-const { agentRows, agentDir } = require('../agent-state.cjs');
+const { agentRows, agentDir, inFlightStandings } = require('../agent-state.cjs');
 const { sentMail } = require('../state-history.cjs');
+const { dayBefore } = require('../dates.cjs');
 const { withUnitEntries } = require('../unit-entries.cjs');
 const { topicTitle, topicKey, mailboxFiles } = require('../derivations.cjs');
 
@@ -58,11 +60,12 @@ function callLines(rows, calls) {
 
 /** The topic's review rounds, newest first (the header's). @param {BoardAt} at @param {string} topic @returns {import('../board-model.cjs').ReviewLine[]} */
 function reviewsOf(at, topic) {
+  const standings = inFlightStandings(at.cwd, at.unit, 'discussion', topic);
   return agentRows(at.cwd, at.unit, 'discussion', topic)
     .filter(({ kind }) => kind === 'review')
     .sort((a, b) => b.created.localeCompare(a.created) || b.id.localeCompare(a.id))
     .map(({ id, set, status, created, findings, surfaced, remaining }) => ({
-      id, round: Number(set), running: status === 'in-flight', since: created, findings: findings.length, taken: surfaced.length, waiting: remaining.length,
+      id, round: Number(set), state: status === 'in-flight' ? /** @type {'landed'|'running'|'lost'} */ (standings.get(id)) : 'read', since: created, findings: findings.length, taken: surfaced.length, waiting: remaining.length,
     }));
 }
 
@@ -71,7 +74,7 @@ function reviewsOf(at, topic) {
  * @param {BoardAt} at @param {string} topic @param {string} title @returns {import('../board-model.cjs').DiscussionView['sent']}
  */
 function sentFrom(at, topic, title) {
-  return sentMail(at.cwd, at.unit)
+  return sentMail(at.cwd, at.unit, dayBefore(at.manifest.created))
     .filter(({ to, from }) => to !== topic && sentBy(from).from === title)
     .map(({ to, file, title: sent, at: when }) => ({ title: sent, to: topicTitle(at.manifest, to), file, at: when, waiting: mailboxFiles(at.root, at.unit, to).includes(file) }));
 }

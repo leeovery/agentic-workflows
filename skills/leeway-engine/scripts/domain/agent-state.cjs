@@ -612,11 +612,33 @@ function agentsLeft(cwd, workUnit, phase, topic) {
  * @returns {{id: string, kind: string}[]}
  */
 function runningAgents(cwd, workUnit, phase, topic) {
-  const startOf = startTimeReader();
+  const standing = inFlightStanding(cwd, workUnit);
   return derivationRows(agentDir(cwd, workUnit, phase, topic))
-    .filter((row) => row.status === 'in-flight' && !contentFileExists(row, cwd, workUnit) && ownerAlive(row, startOf))
+    .filter((row) => row.status === 'in-flight' && standing(row) === 'running')
     .sort((a, b) => String(a.created).localeCompare(String(b.created)) || a.id.localeCompare(b.id))
     .map(({ id, kind }) => ({ id, kind }));
+}
+
+/**
+ * Where an agent in flight stands, as one read of the processes running
+ * answers it: its report on disk for a scan to take in, its agent running
+ * while the process that dispatched it is alive, else lost with it.
+ * @param {string} cwd @param {string} workUnit @returns {(row: any) => 'landed'|'running'|'lost'}
+ */
+function inFlightStanding(cwd, workUnit) {
+  const startOf = startTimeReader();
+  return (row) => (contentFileExists(row, cwd, workUnit) ? 'landed' : ownerAlive(row, startOf) ? 'running' : 'lost');
+}
+
+/**
+ * Where each agent in flight on a topic stands (`inFlightStanding`), by id,
+ * read promoting and saving nothing.
+ * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
+ * @returns {Map<string, 'landed'|'running'|'lost'>}
+ */
+function inFlightStandings(cwd, workUnit, phase, topic) {
+  const standing = inFlightStanding(cwd, workUnit);
+  return new Map(derivationRows(agentDir(cwd, workUnit, phase, topic)).filter((row) => row.status === 'in-flight').map((row) => [row.id, standing(row)]));
 }
 
 /**
@@ -956,9 +978,7 @@ function reportedPasses(cwd, workUnit) {
  * @param {string} cwd @param {string} workUnit @returns {{id: string, created: string, digest: string, stands: 'landed'|'running'|'lost'}[]}
  */
 function passesInFlight(cwd, workUnit) {
-  const startOf = startTimeReader();
-  /** @param {any} row @returns {'landed'|'running'|'lost'} */
-  const standing = (row) => (contentFileExists(row, cwd, workUnit) ? 'landed' : ownerAlive(row, startOf) ? 'running' : 'lost');
+  const standing = inFlightStanding(cwd, workUnit);
   return specReviewRows(cwd, workUnit)
     .filter((row) => row.status === 'in-flight' && row.land !== undefined)
     .map((row) => ({ id: row.id, created: String(row.created), digest: row.land.digest, stands: standing(row) }));
@@ -992,6 +1012,7 @@ module.exports = {
   agentRows,
   agentsLeft,
   runningAgents,
+  inFlightStandings,
   latestReview,
   gapReviewSince,
   dispatchedRows,

@@ -417,15 +417,6 @@ function waitingQuestions(cwd, args) {
 }
 
 /**
- * How many questions wait on the person in each of `units`, by unit, in
- * one read of the ledger.
- * @param {string} root @param {string[]} units @param {string[]} warnings @returns {Map<string, number>}
- */
-function waitingCounts(root, units, warnings) {
-  return readQuestions(root, warnings, (read) => new Map(units.map((unit) => [unit, waitingOf(read, unit).length])));
-}
-
-/**
  * The next question to raise: the first of the conversation's discussion
  * queue still waiting and not among those `recorded`; null with no queue,
  * none such, or no conversation. A queue that cannot be read names none,
@@ -648,6 +639,6 @@ function parkingTask(root, unit, task, warnings) {
 }
 
 module.exports = {
-  DISCUSSING, WAITING_USAGE, ASIDE_USAGE, numbered, parkedTasks, waitingOn, parkedUnder, parkedQuestion, checkUnparked, waitingQuestions, waitingCounts, asideQuestions, foundPark, answeredReceipt,
+  DISCUSSING, WAITING_USAGE, ASIDE_USAGE, numbered, parkedTasks, waitingOn, parkedUnder, parkedQuestion, checkUnparked, waitingQuestions, readQuestions, waitingOf, asideQuestions, foundPark, answeredReceipt,
   explainedReceipt, checkAnswerable, answerable, parkedTasksOf, freedAtOf, parkingTask,
 };

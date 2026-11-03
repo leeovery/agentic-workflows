@@ -146,10 +146,11 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
 /** A decision on a topic: its entry, the question's words, and whose it is. @typedef {{id: string, text: string, who: 'yours'|'claude'|'carried'}} DecidedLine */
 /** A call of Claude's since the person last looked: its entry, its words and the question it answers. @typedef {{id: string, text: string, question: string|null}} CallLine */
 /**
- * A round of a discussion's review (20.7.1): its agent's id and round; one
- * running, since it was dispatched; each finished one's findings, those
- * taken in and those waiting.
- * @typedef {{id: string, round: number, running: boolean, since: string, findings: number, taken: number, waiting: number}} ReviewLine
+ * A round of a discussion's review (20.7.1): its agent's id and round; where
+ * it stands — in flight running, its report in and not yet taken, or lost
+ * with the conversation that sent it; else read — since it was dispatched;
+ * each read one's findings, those taken in and those waiting.
+ * @typedef {{id: string, round: number, state: 'running'|'landed'|'lost'|'read', since: string, findings: number, taken: number, waiting: number}} ReviewLine
  */
 /**
  * A discussion's This session (20.7.1): the unit, its title and type; the
@@ -177,9 +178,11 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  */
 /**
  * A pass of the spec's review: its number; what it found, of which the
- * calls are Claude's and the rest the person's; whether it still runs,
- * since when, and the sections it reads, null for one reported.
- * @typedef {{pass: number, found: number, calls: number, yours: number, running: boolean, since: string|null, reads: string[]|null}} SpecPass
+ * calls are Claude's and the rest the person's; where it stands — out
+ * running, its report in and not yet taken, or lost with the conversation
+ * that sent it; else read — and, while out, since when and the sections it
+ * reads, each null for one read.
+ * @typedef {{pass: number, found: number, calls: number, yours: number, state: 'running'|'landed'|'lost'|'read', since: string|null, reads: string[]|null}} SpecPass
  */
 /** A gap waiting on the person (20.9.1): its entry, its words, the pass that found it, null where none did, and the sections it touches. @typedef {{id: string, text: string, pass: number|null, sections: string[]}} GapLine */
 /**

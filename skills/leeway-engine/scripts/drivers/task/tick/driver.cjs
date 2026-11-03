@@ -22,8 +22,10 @@
 // those three shapes; any other a person gives a task is theirs, and passed
 // by. A name two tasks hold, or a task holding two, is refused. When a task
 // started is its first transition into progress, which the store alone
-// holds too. Every other read is Tick's JSON output, and Tick's own ids in a
-// refusal it makes are put in the engine's words. A task's text is its
+// holds too, and a task whole — one, or a phase's in one read — is its line
+// of the store, which holds every field Tick's show gives. A list and the
+// tasks ready are Tick's JSON output, and Tick's own ids in a refusal it
+// makes are put in the engine's words. A task's text is its
 // description, its type its one tag, an addition a note naming whose it is,
 // and a link a dependency; a closed task is cancelled, its reason a note.
 // Tick counts a cancelled task, as a done one, as holding nothing up, and
@@ -54,9 +56,17 @@ const {
 
 /** @typedef {import('../../../domain/drivers.cjs').TaskRow} TaskRow */
 /** @typedef {import('../../../domain/drivers.cjs').TaskStatus} TaskStatus */
+/** @typedef {import('../../../domain/drivers.cjs').TaskDetail} TaskDetail */
 /** @typedef {import('../../../domain/task-id.cjs').TaskRef} TaskRef */
 /** @typedef {{kind: 'unit', unit: string} | {kind: 'phase', unit: string, phase: number} | {kind: 'task', task: TaskRef}} Name */
-/** @typedef {{byRef: Map<string, string>, byId: Map<string, Name>, ended: Map<string, 'tick'|'person'>, started: Map<string, string>}} Ids */
+/**
+ * A task as Tick records it in a line of its store.
+ * @typedef {{
+ *   id: string, title: string, status: string, refs?: string[], tags?: string[], description?: string,
+ *   notes?: {text: string}[], blocked_by?: string[], parent?: string, transitions?: {to: string, at: string, auto?: boolean}[],
+ * }} Held
+ */
+/** @typedef {{byRef: Map<string, string>, byId: Map<string, Name>, ended: Map<string, 'tick'|'person'>, started: Map<string, string>, held: Map<string, Held>}} Ids */
 
 const TOOL = 'tick';
 const UPDATE = 'https://github.com/leeovery/tick';
@@ -103,20 +113,21 @@ function said(name) {
 /**
  * Tick's ids by the engine's names, the engine's names by Tick's ids, which
  * of them have ended, by Tick itself or by the person — whoever made the
- * last change — and when each that moved into progress first did, as the
- * store holds them. Refuses a line that is not
+ * last change — when each that moved into progress first did, and each
+ * named one's record, as the store holds them. Refuses a line that is not
  * JSON, a name two tasks hold, and a task holding two.
  * @param {string} root
  * @returns {Ids}
  */
 function idsIn(root) {
   /** @type {Ids} */
-  const ids = { byRef: new Map(), byId: new Map(), ended: new Map(), started: new Map() };
+  const ids = { byRef: new Map(), byId: new Map(), ended: new Map(), started: new Map(), held: new Map() };
   const store = path.join(root, STORE, TASKS);
   for (const [i, line] of fs.readFileSync(store, 'utf8').split('\n').entries()) {
     if (line === '') continue;
-    /** @type {{id: string, status: string, refs?: string[], transitions?: {to: string, at: string, auto?: boolean}[]}} */
-    const { id, status, refs = [], transitions = [] } = lineOf(store, i + 1, line);
+    /** @type {Held} */
+    const record = lineOf(store, i + 1, line);
+    const { id, status, refs = [], transitions = [] } = record;
     const named = refs.flatMap((ref) => {
       const name = nameIn(ref);
       return name === null ? [] : [{ ref, name }];
@@ -127,6 +138,7 @@ function idsIn(root) {
     if (ids.byRef.has(ref)) throw new Error(`two tasks in the tracker are named ${said(name)} — a name is carried once`);
     ids.byRef.set(ref, id);
     ids.byId.set(id, name);
+    ids.held.set(id, record);
     if (status === 'cancelled' || status === 'done') ids.ended.set(id, transitions.at(-1)?.auto === true ? 'tick' : 'person');
     const into = transitions.find(({ to }) => to === 'in_progress');
     if (into !== undefined) ids.started.set(id, into.at);
@@ -298,32 +310,47 @@ function list(root, unit, phase) {
   return parent === undefined ? null : rowsOf(ids, tick(root, ['list', '--parent', parent]));
 }
 
-/** @param {string} root @param {TaskRef} ref */
-function show(root, ref) {
-  const ids = idsIn(root);
-  const id = ids.byRef.get(taskRef(ref));
-  if (id === undefined) return null;
-  const shown = tick(root, ['show', id]);
-  const status = STATUSES[shown.status];
-  /** @type {{text: string}[]} */
-  const notes = shown.notes;
+/** A task whole, from its record. @param {Ids} ids @param {TaskRef} ref @param {Held} task @returns {TaskDetail} */
+function detailOf(ids, ref, task) {
+  const status = STATUSES[task.status];
+  const notes = task.notes ?? [];
   const note = [...notes].reverse().find((held) => held.text.startsWith(CLOSED));
   return {
     ref,
-    title: shown.title,
+    title: task.title,
     status,
-    type: shown.tags[0] ?? null,
-    text: shown.description,
+    type: task.tags?.[0] ?? null,
+    text: task.description ?? '',
     additions: notes.flatMap((held) => {
       const added = ADDED.exec(held.text);
       return added === null ? [] : [{ by: /** @type {'orchestrator'|'person'} */ (added[1]), text: added[2] }];
     }),
-    after: shown.blocked_by.flatMap((/** @type {{id: string}} */ blocker) => {
-      const name = ids.byId.get(blocker.id);
+    after: (task.blocked_by ?? []).flatMap((blocker) => {
+      const name = ids.byId.get(blocker);
       return name?.kind === 'task' ? [name.task] : [];
     }),
     reason: status === 'closed' && note !== undefined ? note.text.slice(CLOSED.length) : null,
   };
+}
+
+/** @param {string} root @param {TaskRef} ref */
+function show(root, ref) {
+  const ids = idsIn(root);
+  const id = ids.byRef.get(taskRef(ref));
+  return id === undefined ? null : detailOf(ids, ref, /** @type {Held} */ (ids.held.get(id)));
+}
+
+/** @param {string} root @param {string} unit @param {number} phase @returns {TaskDetail[]|null} */
+function tasks(root, unit, phase) {
+  const ids = idsIn(root);
+  const parent = ids.byRef.get(phaseRef(unit, phase));
+  if (parent === undefined) return null;
+  return [...ids.held.values()]
+    .flatMap((task) => {
+      const name = /** @type {Name} */ (ids.byId.get(task.id));
+      return task.parent === parent && name.kind === 'task' ? [detailOf(ids, name.task, task)] : [];
+    })
+    .sort((a, b) => a.ref.phase - b.ref.phase || a.ref.n - b.ref.n);
 }
 
 /**
@@ -365,5 +392,6 @@ module.exports = {
   close,
   list,
   show,
+  tasks,
   started,
 };

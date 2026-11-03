@@ -14,9 +14,10 @@
 //   and what it names besides: the type, the horizon, the message, the
 //   round, the phase started.
 // - What each topic was sent (`sentMail`): every message a commit added to
-//   one of the unit's mailboxes, newest first, each with the topic it went
-//   to, its file, its title and the line under it naming who sent it and
-//   when, read from the file as it was added, wherever it has gone since.
+//   one of the unit's mailboxes since the day before it was made, newest
+//   first, each with the topic it went to, its file, its title and the
+//   line under it naming who sent it and when, read from the file as it
+//   was added, wherever it has gone since.
 // ---------------------------------------------------------------------------
 
 const { stateRoot } = require('../kernel/state-root.cjs');
@@ -96,10 +97,15 @@ function addedMail(unit, at, patch) {
   });
 }
 
-/** Every message sent to one of the unit's topics, newest first (the header's). @param {string} cwd @param {string} unit @returns {SentMail[]} */
-function sentMail(cwd, unit) {
+/**
+ * Every message sent to one of the unit's topics, newest first (the
+ * header's), from the commits since the time `from` names where it names
+ * one.
+ * @param {string} cwd @param {string} unit @param {string|null} from @returns {SentMail[]}
+ */
+function sentMail(cwd, unit, from) {
   const out = isolatedGit(stateRoot(cwd)).tryRun([
-    'log', '--no-show-signature', '--no-color', '--no-ext-diff', '--diff-filter=A', '-p', '--format=%x01%cI', 'HEAD', '--', `:(glob)${unit}/topics/*/mail/*.md`,
+    'log', '--no-show-signature', '--no-color', '--no-ext-diff', '--diff-filter=A', '-p', '--format=%x01%cI', ...(from === null ? [] : [`--since=${from}`]), 'HEAD', '--', `:(glob)${unit}/topics/*/mail/*.md`,
   ]);
   return (out ?? '').split('\x01').filter(Boolean).flatMap((commit) => {
     const [at, ...patch] = commit.split('\n');

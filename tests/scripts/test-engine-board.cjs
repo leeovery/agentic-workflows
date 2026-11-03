@@ -24,7 +24,9 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { ok, refusedPristine, treeSnapshot, head, git, cleanupFixture, withEnv, readState, readManifest, layout } = require('./engine-harness.cjs');
+const {
+  ok, refusedPristine, treeSnapshot, head, git, cleanupFixture, withEnv, readState, readManifest, layout, holdLock, lockAttempts, statePath,
+} = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, QUESTIONS, taskText, buildScreensWorld, buildScreenHelpers } = require('./build-screens-world.cjs');
 
@@ -241,19 +243,19 @@ describe('the build on the board (20.5)', () => {
     assert.deepStrictEqual([running, held, board().view.progress.stopped], [false, true, false]);
   });
 
-  it('a phase whose every task not closed is done is complete, its tasks done; one with a task still to do runs (20.4.9, 20.4.7)', () => {
+  it('a phase whose every task not closed is done is complete, its tasks done; one with a task still to do runs; and with nothing running, nothing ready in an open phase and no question waiting, the build has not stopped (20.4.9, 20.4.7, 20.5.1)', () => {
     enterBuild();
     ok(dir, ['task', 'done', UNIT, '1.1'], { env: env() });
     const phase = () => {
-      const [{ state, done, total, tasks }] = board().view.phases;
-      return { state, done, total, tasks: tasks.map((task) => task.state) };
+      const { phases: [{ state, done, total, tasks }], progress: { stopped } } = board().view;
+      return { state, done, total, tasks: tasks.map((task) => task.state), stopped };
     };
     const running = phase();
     for (const task of ['1.2', '1.3']) ok(dir, ['task', 'close', UNIT, task, '--reason', 'not needed'], { env: env() });
 
     assert.deepStrictEqual([running, phase()], [
-      { state: 'running', done: 1, total: 3, tasks: ['done', 'not-started', 'after'] },
-      { state: 'complete', done: 1, total: 1, tasks: ['done', 'closed', 'closed'] },
+      { state: 'running', done: 1, total: 3, tasks: ['done', 'not-started', 'after'], stopped: false },
+      { state: 'complete', done: 1, total: 1, tasks: ['done', 'closed', 'closed'], stopped: false },
     ]);
   });
 
@@ -265,6 +267,16 @@ describe('the build on the board (20.5)', () => {
     for (const page of [[], ['--page', 'task:1.1'], ['--page', 'task:1.2:written'], ['--tab', 'unit']]) board(page);
 
     assert.deepStrictEqual(standing(), before);
+  });
+
+  it('is drawn while a peer holds the writer lock, never trying it — the stop asked of a phase\'s start among it — so it neither waits behind that writer nor holds it up', async (t) => {
+    enterBuild();
+    await parkOn(['1.1', '1.2']);
+    const lock = holdLock(statePath(dir, layout.lock));
+    const attempts = lockAttempts(t, lock, () => { throw new Error('the board waited on the writer lock'); });
+    const drawn = [[], ['--tab', 'unit'], ['--tab', 'all'], ['--page', 'task:1.1']].map((args) => board(args).view);
+
+    assert.deepStrictEqual([drawn.map((view) => [view.kind, view.progress?.stopped ?? null]), attempts], [[['build', true], ['unit', null], ['all', null], ['task', null]], []]);
   });
 });
 

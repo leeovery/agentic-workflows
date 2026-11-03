@@ -62,6 +62,7 @@ const { runsOf } = require('./runs.cjs');
 const { consolidationFaults } = require('./notes.cjs');
 const { verifySetup } = require('./environment.cjs');
 const { landedTasks, allChained } = require('./landing.cjs');
+const { dayBefore } = require('./dates.cjs');
 const { phaseName, shownTask } = require('./task-id.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskRow} TaskRow */
@@ -132,7 +133,7 @@ const liveRows = (at, phase) => live(at.reads.get(`tasks ${phase}`) ?? phaseList
 /** Whether the phase's stack has merged: every task not closed landed, one at least. @param {Reading} at @param {number} phase */
 function phaseLanded(at, phase) {
   const rows = liveRows(at, phase);
-  const landed = once(at, 'landed', () => landedTasks(at.cwd, at.unit, typeof at.manifest.created === 'string' ? at.manifest.created : null));
+  const landed = once(at, 'landed', () => landedTasks(at.cwd, at.unit, dayBefore(at.manifest.created)));
   return rows.length > 0 && rows.every(({ ref }) => landed.has(shownTask(ref)));
 }
 

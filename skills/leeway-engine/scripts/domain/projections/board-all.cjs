@@ -10,8 +10,10 @@
 // - How far a unit has come: an epic's topics decided of all; the
 //   session's unit's build its tasks done of all, its tracker read; no
 //   other unit's tracker is read on every call.
-// - The questions waiting on the person in each unit, and across them all,
-//   are read in one read of the ledger (questions.cjs).
+// - What waits on the person in each unit is counted as its banner counts
+//   it — its build's questions, else its spec's gaps (board-unit.cjs) —
+//   every unit from one read of the ledger, and the project's total sums
+//   them.
 // - A session is in a unit where this one is, or another holds a presence
 //   in it.
 // - The roadmap is its waiting items, those no unit has pulled, under their
@@ -25,12 +27,14 @@ const { loadActiveManifests } = require('../reads.cjs');
 const { scanProject } = require('../presence.cjs');
 const { discoverInbox } = require('../start.cjs');
 const { pastItsSpec } = require('../spec-standing.cjs');
-const { waitingCounts } = require('../questions.cjs');
+const { readQuestions, waitingOf } = require('../questions.cjs');
+const { raisedIn, gapsIn } = require('../spec-passes.cjs');
+const { isCurrent } = require('../ledger-fold.cjs');
 const { projectName } = require('../state-checks.cjs');
 const { titlecase } = require('../conventions.cjs');
 const { computeUnitPhaseState, buildBegun, buildFinished, roadmapItems, itemJoin } = require('../derivations.cjs');
 const { buildView, buildWords } = require('./board-build.cjs');
-const { epicWords } = require('./board-unit.cjs');
+const { epicWords, waitsOn } = require('./board-unit.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
 /** @typedef {import('../board-model.cjs').AllView} AllView */
@@ -52,6 +56,23 @@ function phaseOf(cwd, manifest) {
 function workStanding(own, manifest, phase) {
   if (own !== null && phase === 'build') return buildWords(buildView(own).view);
   return manifest.work_type === 'epic' ? epicWords(manifest) : '';
+}
+
+/**
+ * How many wait on the person in each of the units, by unit (the header's).
+ * @param {string} cwd @param {Record<string, any>[]} manifests @param {string[]} warnings @returns {Map<string, number>}
+ */
+function waitingCounts(cwd, manifests, warnings) {
+  const units = manifests.map((manifest) => ({ unit: String(manifest.name), kind: waitsOn(cwd, manifest) }));
+  const raised = new Map(units.filter(({ kind }) => kind === 'gap').map(({ unit }) => [unit, raisedIn(cwd, unit)]));
+  return readQuestions(stateRoot(cwd), warnings, (read) => {
+    const current = raised.size === 0 ? [] : [...read.facts.keys()].filter((id) => isCurrent(read, id));
+    const gaps = (/** @type {string} */ unit) => {
+      const { asked, raised: waiting } = gapsIn(read, unit, current, raised.get(unit) ?? []);
+      return asked.length + waiting.length;
+    };
+    return new Map(units.map(({ unit, kind }) => [unit, kind === 'question' ? waitingOf(read, unit).length : kind === 'gap' ? gaps(unit) : 0]));
+  });
 }
 
 /**
@@ -92,7 +113,7 @@ function allView(cwd, here, atStart, warnings) {
   const others = new Set(scanProject(cwd).sessions.filter(({ held, session_id: session }) => held && session !== here?.session).map(({ work_unit: unit }) => unit));
   const inbox = discoverInbox(cwd);
   const active = loadActiveManifests(cwd);
-  const waiting = waitingCounts(stateRoot(cwd), active.map(({ name }) => name), warnings);
+  const waiting = waitingCounts(cwd, active, warnings);
   return {
     view: {
       kind: 'all',
