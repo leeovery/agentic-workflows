@@ -80,8 +80,9 @@ const DRAWN = Object.freeze({
   'pay/build/phases/phase-1/3-checkout-a.md': 'file {unit}/build/phases/phase-{N}/{area}-{letter}.md',
   'pay/build/phases/phase-1/settlement.json': 'engine {unit}/build/phases/phase-{N}/settlement.json',
   'pay/build/runs/3.S2/run-001.json': 'engine {unit}/build/runs/{n}.S{m}/run-{NNN}.json',
-  'pay/review/round-1.md': 'file {unit}/review/round-{N}.md',
-  'pay/review/round-1-checks.md': 'file {unit}/review/round-{N}-checks.md',
+  'pay/review/round-1.md': 'engine {unit}/review/round-{N}.md',
+  'pay/review/round-1-checks.md': 'engine {unit}/review/round-{N}-checks.md',
+  'pay/review/round-1.json': 'engine {unit}/review/round-{N}.json',
   'pay/review/round-1/tests-b.md': 'file {unit}/review/round-{N}/tests-{letter}.md',
   'pay/review/round-1/3-checkout-a.md': 'file {unit}/review/round-{N}/{area}-{letter}.md',
 });

@@ -53,7 +53,7 @@ const { createExperiment, advanceExperiment, approveExperiment, concludeExperime
 const { seriesDir } = require('./domain/experiment-paths.cjs');
 const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = require('./domain/tasks.cjs');
 const { TASK_VERBS, runTaskVerb } = require('./domain/task-verbs.cjs');
-const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs');
+const { archiveItems, restoreItems, deleteItems, fileItem } = require('./domain/inbox.cjs');
 const { stampAnalysisCache } = require('./domain/cache.cjs');
 const agentState = require('./domain/agent-state.cjs');
 const { boot } = require('./domain/boot.cjs');
@@ -85,6 +85,7 @@ const { SWEEP_USAGE, runSweepVerb } = require('./domain/sweep-take.cjs');
 const { VERIFY_USAGE, runVerifyVerb } = require('./domain/verify.cjs');
 const { READY_TO_BUILD_USAGE, POSITION_USAGE, runReadyToBuildVerb, runPositionVerb } = require('./domain/ready-to-build.cjs');
 const { MIGRATE_USAGE, runMigrateVerb } = require('./domain/directives.cjs');
+const { REVIEW_USAGE, runReviewVerb } = require('./domain/review-round.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, clearOwnQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { arriveAt, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
 const { markConversation, endConversation, isAgentId } = require('./domain/conversation.cjs');
@@ -303,6 +304,8 @@ ${VERIFY_USAGE.replace(/^/gm, '  ')}
   inbox archive <path> [<path> …]
   inbox restore <path> [<path> …]
   inbox delete <path> [<path> …]
+  inbox file <work-unit> --file <item.json>
+  ${REVIEW_USAGE}
   brownfield record <native|skipped|accepted|completed>
   walkthrough record <walked|skipped>
   handoff <skill|/skill> [args …]
@@ -454,6 +457,8 @@ ${VERIFY_USAGE.replace(/^/gm, '  ')}
   render phase-merge-gate <work-unit> <N>      (step only)
   render build-stop <work-unit>
   render build-progress <work-unit>
+  render review-report <work-unit> [--round <N>]
+  render review-calls <work-unit>
   render discovery-map <work-unit>
   render migrations-applied --file <payload.json>
   render migration-gate
@@ -1432,6 +1437,21 @@ function runVerify(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
+// review — a round of the review phase recorded, with its report and its
+// checks (domain/review-round.cjs).
+// ---------------------------------------------------------------------------
+
+/** @param {Call} call @param {string[]} argv */
+function runReview(call, argv) {
+  const { opts, positional } = parseArgs(argv);
+  try {
+    respond(call, runReviewVerb(call.cwd, positional, opts));
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // migrate — a directive of the migration checked (domain/directives.cjs).
 // ---------------------------------------------------------------------------
 
@@ -1447,17 +1467,24 @@ function runMigrate(call, argv) {
 // ---------------------------------------------------------------------------
 // inbox — archive / restore / delete one or more inbox items as a single
 // transaction: strict path validation, file moves (or git rm), one scoped
-// commit for the whole set.
+// commit for the whole set; and file, the review phase's out-of-scope
+// finding filed with the ledger's call that filed it.
 // ---------------------------------------------------------------------------
+
+const INBOX_USAGE = 'Usage: engine inbox <archive|restore|delete> <path> [<path> …] | engine inbox file <work-unit> --file <item.json>';
 
 /** @param {Call} call @param {string[]} argv */
 function runInbox(call, argv) {
   const [command, ...paths] = argv;
   try {
-    if (!['archive', 'restore', 'delete'].includes(command) || paths.length === 0) {
-      throw new Error('Usage: engine inbox <archive|restore|delete> <path> [<path> …]');
-    }
     const { cwd } = call;
+    if (command === 'file') {
+      const { opts, positional } = parseArgs(paths);
+      if (positional.length !== 1 || typeof opts.file !== 'string' || Object.keys(opts).length !== 1) throw new Error(INBOX_USAGE);
+      respond(call, fileItem(cwd, positional[0], opts.file));
+      return;
+    }
+    if (!['archive', 'restore', 'delete'].includes(command) || paths.length === 0) throw new Error(INBOX_USAGE);
     if (command === 'archive') respond(call, archiveItems(cwd, paths));
     else if (command === 'restore') respond(call, restoreItems(cwd, paths));
     else respond(call, deleteItems(cwd, paths));
@@ -2465,6 +2492,7 @@ const COMMANDS = Object.freeze({
   sweep: runSweep,
   'ready-to-build': runReadyToBuild,
   verify: runVerify,
+  review: runReview,
 });
 
 // Every command dispatched runs whole under the writer lock, its writes and

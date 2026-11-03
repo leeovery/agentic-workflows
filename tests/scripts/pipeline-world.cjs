@@ -34,7 +34,8 @@ const LIB = require(path.join(ROOT, 'skills/leeway-engine/scripts/lib.cjs'));
 const { epicMenu } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
 const { startMenu } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/start.cjs'));
 const { skillAt } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/position.cjs'));
-const { initRepo, fixtureFrom, cleanupFixture, git, stateGit } = require('./engine-harness.cjs');
+const { initRepo, fixtureFrom, cleanupFixture, git, stateGit, withEnv } = require('./engine-harness.cjs');
+const { briefPath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/brief-names.cjs'));
 const { copyWorld, templateFolder } = require('./discovery-test-utils.cjs');
 const { STATE_DIR_NAME, statePath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
 
@@ -1272,6 +1273,23 @@ function literal(text) {
   return text.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
 }
 
+/** A brief as the conversation stored it. @param {Sim} sim @param {{id: string}} res */
+const briefOf = (sim, res) => withEnv({ LEEWAY_CONFIG_DIR: sim.configDir }, () => fs.readFileSync(briefPath(sim.env.CLAUDE_CODE_SESSION_ID, res.id), 'utf8'));
+
+/** The file a brief names under its heading `heading`. @param {Sim} sim @param {{id: string}} res @param {string} heading */
+function placeIn(sim, res, heading) {
+  const brief = briefOf(sim, res);
+  return /`([^`]+)`/.exec(brief.slice(brief.indexOf(`# ${heading}\n`)))?.[1] ?? '';
+}
+
+/** A file written as a build agent writes it: a `.txt` beside it, renamed to it. @param {string} file @param {string} text */
+function landed(file, text) {
+  const staged = `${file.slice(0, -'.md'.length)}.txt`;
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(staged, text);
+  fs.renameSync(staged, file);
+}
+
 module.exports = {
-  Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, buildEntry, startPhase, writePhaseTasks, specReviewed, cutTheSpec, readyToBuild, specToBuild, keptOldSpec,
+  Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, buildEntry, startPhase, writePhaseTasks, specReviewed, cutTheSpec, readyToBuild, specToBuild, keptOldSpec, briefOf, placeIn, landed,
 };

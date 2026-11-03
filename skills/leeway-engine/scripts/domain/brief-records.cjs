@@ -265,6 +265,39 @@
 //   consolidation-to where the consolidation agent writes its report: the
 //                  phase's `consolidation.md` (notes.cjs)
 //
+// The review phase's records, each of the unit the brief is for, in the
+// round under review (review-phase.cjs): an area's, the area `--area`
+// names by its number, never merged with another (14.2.3); the change's,
+// the whole change across every repository (review-change.cjs):
+//
+//   area-sections  the spec's path, then the area verbatim, its parts in it
+//   area-meets     the spec's other areas, by number and title; then each
+//                  pair of parts, one in the area and one outside it, where
+//                  one relies on the other, as relies-on-graph draws them
+//   unit-calls     every current decision of the unit's, at any of its
+//                  places, in the ledger's order, each with whose it is,
+//                  how the person handed it over where they did, where it
+//                  was made, the question it answers and why — the ledger
+//                  whole, for calls fine alone and wrong in combination
+//                  (16.17.8, P18)
+//   change-range   in each repository holding the change, under a heading
+//                  naming it, the range from where it starts to its tip,
+//                  `{from}..{tip}`, and its `git diff --stat`, the base the
+//                  branch `--base` names where the repository has it
+//   change-scratch-layout the reviewer's scratch worktree, laid out as
+//                  scratch-layout lays it out, one holding the change at
+//                  its tip there, a clone holding none at the branch it
+//                  lands on
+//   area-runs      each scenario of the area, by id with what its runs
+//                  prove at the change's tips, and its wording; then each
+//                  run counted, as recorded-runs draws it (15.3.3)
+//   area-report-to where the reviewer `--letter` names writes its report
+//                  of the area in the round under review:
+//                  `review/round-{N}/{area}-{letter}.md`; refused for an
+//                  area the round does not read (14.3.3)
+//   tests-report-to where the test surface's one reader writes its report
+//                  of the round: `review/round-{N}/tests-a.md` (14.2.4)
+//
 // The plain-search helper's one record is the conversation's (22.6.10):
 //
 //   knowledge-query the conversation's last `knowledge query`, as it kept
@@ -313,7 +346,10 @@
 // a report already written for its round that reads, a task whose review
 // passed — a task with no review
 // round's reports, a round missing a reviewer's report or holding one
-// that does not read, a last round that passed; a question that is none, no longer current,
+// that does not read, a last round that passed; a review phase that cannot
+// be entered or is over, a round waiting on the round before's fix tasks,
+// an area the spec lacks or the round does not read, a change no
+// repository holds; a question that is none, no longer current,
 // stands elsewhere or is not open, or one its dispatch was not first briefed
 // on; a dispatch the topic's store lacks, of another kind, no longer in
 // flight; a perspective of the set with no report, or briefed on no question
@@ -385,6 +421,11 @@ const { runsOf } = require('./runs.cjs');
 const { cachedSurvivors } = require('./verify.cjs');
 const { accountPath } = require('./task-account.cjs');
 const { directiveOf } = require('./directives.cjs');
+const {
+  TESTS, TESTS_LETTER, reviewStanding, areaReportPath, unitCalls,
+} = require('./review-phase.cjs');
+const { reviewRefusal, fixesWaiting, fixesWaitingWords } = require('./review-entry.cjs');
+const { changeOf, changeTips } = require('./review-change.cjs');
 const { topicPlace, recordsRules, composedPath, findingsPath, refusedPath } = require('./ledger-carry.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
@@ -1579,11 +1620,115 @@ function drawConsolidationTo(filling) {
   return `\`${statePath(filling.cwd, consolidationPath(unit, phase))}\``;
 }
 
+/**
+ * The unit's review phase as its round's reports are written for, read
+ * once a fill; refused where it cannot be entered, is over, or waits on the
+ * round before's fix tasks (review-entry.cjs).
+ */
+const reviewOf = oncePerFill(/** @param {Filling} filling */ (filling) => {
+  const unit = unitOf(filling);
+  const manifest = unitManifest(filling);
+  const refused = reviewRefusal(manifest);
+  if (refused !== null) throw new Error(refused);
+  const standing = reviewStanding(filling.cwd, unit);
+  if (standing.over) throw new Error(`${unit}'s review phase passed in round ${standing.round} — finish is next`);
+  const waiting = fixesWaiting(filling.cwd, unit, manifest, standing.rounds);
+  if (waiting.length > 0) throw new Error(fixesWaitingWords(standing.round, waiting));
+  return { manifest, ...standing };
+});
+
+/** The area `--area` names, refused where the spec has none so numbered. @param {Filling} filling @param {string[]} warnings */
+function areaNamed(filling, warnings) {
+  const { areas } = reviewOf(filling, warnings);
+  const area = areas.find(({ number }) => number === filling.given.area);
+  if (area === undefined) throw new Error(`the spec has no area ${filling.given.area} — its areas are ${areas.map(({ number }) => `§${number}`).join(', ')}`);
+  return area;
+}
+
+/** The whole change, read once a fill (review-change.cjs). */
+const changeHeld = oncePerFill(/** @param {Filling} filling @param {string[]} warnings */ (filling, warnings) => {
+  const { rounds } = reviewOf(filling, warnings);
+  return changeOf(filling.cwd, unitOf(filling), cutOf(filling).length + rounds.length, filling.given.base ?? null);
+});
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawAreaSections(filling, warnings) {
+  const { number } = areaNamed(filling, warnings);
+  const { file, sections } = unitSpec(filling);
+  return [`\`${file}\``, /** @type {Section} */ (sections.get(number)).text].join('\n\n');
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawAreaMeets(filling, warnings) {
+  const { number } = areaNamed(filling, warnings);
+  const others = reviewOf(filling, warnings).areas.filter((area) => area.number !== number);
+  const spec = unitSpec(filling);
+  const edges = withUnitEntries(filling.cwd, unitOf(filling), warnings, (view) => reliesOnEdges(view, spec))
+    .filter(({ from, to }) => (areaOf(from) === number) !== (areaOf(to) === number));
+  return [
+    'The other areas:', listed(others.map(({ number: at, title }) => `- §${at} ${title}`)),
+    'Where they meet it:', listed(edges.map(({ from, to, links }) => `- §${from} relies on §${to}: ${links.join('; ')}`)),
+  ].join('\n\n');
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawUnitCalls(filling, warnings) {
+  const unit = unitOf(filling);
+  return listed(readShown(stateRoot(filling.cwd), warnings, (shower) => unitCalls(shower, unit)).map(({
+    short, by, handed, phase, topic, question, answer, why,
+  }) => [
+    `- ${short}, ${WHOSE[by]}${handed === null ? '' : `, handed over as ${handed}`}, at ${unit}.${phase}${topic === null ? '' : `.${topic}`}: ${indented(answer)}`,
+    ...(question === null ? [] : [`  It answers: ${indented(question)}`]),
+    `  Why: ${indented(why)}`,
+  ].join('\n')));
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawChangeRange(filling, warnings) {
+  return changeHeld(filling, warnings).holding.map(({ repo, from, tip, commit }) => {
+    const stat = git(repo.path, ['diff', '--no-color', ...STAT, from, commit, '--']);
+    return `## In ${repoNamed(repo)}: \`${from.slice(0, 12)}..${tip}\`\n\n${stat === '' ? 'Nothing changed in the range.' : `\`\`\`\n${stat}\`\`\``}`;
+  }).join('\n\n');
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawChangeScratchLayout(filling, warnings) {
+  const { repos, holding } = changeHeld(filling, warnings);
+  return layoutOf(repos, new Map(holding.map(({ repo, tip }) => [repo, tip])), (repo) => onBranch(repo, landsOn(filling.cwd, repo), 'the branch it lands on'));
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawAreaRuns(filling, warnings) {
+  const { number } = areaNamed(filling, warnings);
+  const tips = changeTips(changeHeld(filling, warnings));
+  const scenarios = unitSpec(filling).lines.filter(({ kind, number: id }) => kind === 'scenario' && id.startsWith(`${number}.S`));
+  return listed(scenarios.map(({ number: scenario, wording }) => {
+    const { standing, runs } = runsOf(filling.cwd, unitOf(filling), scenario, tips);
+    return [`- ${scenario}: ${standing}`, `  ${indented(wording)}`, ...runs.map((run) => `  - ${run.verdict}, recorded ${run.at}: \`${statePath(filling.cwd, run.file)}\``)].join('\n');
+  }));
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawAreaReportTo(filling, warnings) {
+  const { name, number } = areaNamed(filling, warnings);
+  const { round, reads } = reviewOf(filling, warnings);
+  if (!reads.includes(name)) throw new Error(`area ${number} is not read in round ${round} — an area is read again only where a fix task of the round before changed it, and round ${round} reads ${reads.length === 0 ? 'the test surface alone' : reads.join(', ')}`);
+  return reportPlace(filling, areaReportPath(unitOf(filling), round, name, letterOf(filling)));
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawTestsReportTo(filling, warnings) {
+  return reportPlace(filling, areaReportPath(unitOf(filling), reviewOf(filling, warnings).round, TESTS, TESTS_LETTER));
+}
+
 /** The flag naming the branch a range is read from. @type {BriefFlag} */
 const BASE = Object.freeze({ name: 'base', value: 'branch' });
 
 /** The flag naming the reviewer a report is written by. @type {BriefFlag} */
 const LETTER = Object.freeze({ name: 'letter', value: REVIEWER_LETTERS.join('|') });
+
+/** The flag naming the spec's area a review phase's pair reads, by its number. @type {BriefFlag} */
+const AREA = Object.freeze({ name: 'area', value: 'N' });
 
 /** Every record, by the slot that draws it. @type {Readonly<Record<string, BriefRecord>>} */
 const RECORDS = Object.freeze({
@@ -1658,6 +1803,14 @@ const RECORDS = Object.freeze({
   mutants: { of: 'phase', draw: drawMutants },
   'phase-report-to': { of: 'phase', flags: [LETTER], draw: drawPhaseReportTo },
   'consolidation-to': { of: 'phase', draw: drawConsolidationTo },
+  'area-sections': { of: 'unit', flags: [AREA], draw: drawAreaSections },
+  'area-meets': { of: 'unit', flags: [AREA], draw: drawAreaMeets },
+  'unit-calls': { of: 'unit', draw: drawUnitCalls },
+  'change-range': { of: 'unit', flags: [BASE], draw: drawChangeRange },
+  'change-scratch-layout': { of: 'unit', flags: [BASE], draw: drawChangeScratchLayout },
+  'area-runs': { of: 'unit', flags: [AREA, BASE], draw: drawAreaRuns },
+  'area-report-to': { of: 'unit', flags: [AREA, LETTER], draw: drawAreaReportTo },
+  'tests-report-to': { of: 'unit', draw: drawTestsReportTo },
 });
 
 module.exports = { RECORDS, DIVE_KINDS };

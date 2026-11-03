@@ -3,7 +3,9 @@
 // ---------------------------------------------------------------------------
 // Domain ring: a phase's stack as the project's repositories hold it, read
 // off git for what judges the phase whole — the phase review's brief
-// (brief-records.cjs) and the phase's close (phase-checks.cjs). In each
+// (brief-records.cjs) and the phase's close (phase-checks.cjs) — and the
+// stack the review phase reads of the unit's tasks not landed, whatever
+// their phases, which stack on one another (review-change.cjs). In each
 // repository holding work on the branch of a task of the phase not closed
 // (landing-git.cjs, `holdingBranch`), the stack's tip is the branch every
 // other the phase's tasks hold there descends from. The phase's tips — each
@@ -51,7 +53,15 @@ function stackTip(repo, held, what) {
  * @returns {PhaseStack}
  */
 function phaseStack(cwd, unit, phase, tasks) {
-  const what = phaseName(unit, phase);
+  return stackOf(cwd, unit, tasks, phaseName(unit, phase));
+}
+
+/**
+ * The stack the tasks not closed among `tasks` make (the header's).
+ * @param {string} cwd @param {string} unit @param {TaskDetail[]} tasks whole @param {string} what the tasks' owner, as a refusal names it
+ * @returns {PhaseStack}
+ */
+function stackOf(cwd, unit, tasks, what) {
   const named = tasks.filter(({ status }) => status !== 'closed').map((task) => {
     if (task.type === null) throw new Error(`${taskName(task.ref)} has no type in the tracker, and its branch is named from it`);
     return taskBranch(task.ref, task.type, task.title);
@@ -68,4 +78,4 @@ function tipCommits({ tips }) {
   return [...tips].map(([repo, tip]) => ({ repo: repoName(repo), commit: git(repo.path, ['rev-parse', `refs/heads/${tip}`]).trim() }));
 }
 
-module.exports = { repoNamed, phaseStack, tipCommits };
+module.exports = { repoNamed, phaseStack, stackOf, tipCommits };

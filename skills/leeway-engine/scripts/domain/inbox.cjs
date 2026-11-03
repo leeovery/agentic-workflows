@@ -13,12 +13,27 @@
 //
 // A path given is read from the caller's folder, absolute as the engine
 // hands paths out; a path answered is absolute.
+//
+// `inbox file <unit> --file <item.json>` files an out-of-scope finding of
+// the unit's review phase to the inbox (6.1.15, 14.3.5): Claude's item,
+// `{kind, text, call}` — its kind, `idea`, `bug` or `quick-fix`; its text,
+// markdown opening on its title, `# Title`; and the ledger's file-or-drop
+// call that filed it, a current decision of Claude's own at `{unit}.review`
+// (14.3.7, review-phase.cjs), so every filing is one engine call away.
+// It is written at `.inbox/{folder}/{YYYY-MM-DD}--{slug}.md`, today's date
+// and its title's slug, and committed. It refuses, writing nothing, a unit
+// whose review phase cannot be entered (review-entry.cjs), a payload of
+// another shape, a text with no title, a call that is none of those, and
+// an item already there.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
-const { statePath, stateRelative } = require('../kernel/state-root.cjs');
+const { statePath, stateRelative, stateRoot } = require('../kernel/state-root.cjs');
+const { filled, shaped, readPayload, refusing } = require('./staged-payload.cjs');
+const { todayStamp } = require('./dates.cjs');
+const { slugOf } = require('./landing-names.cjs');
 
 const INBOX = '.inbox';
 const ARCHIVED = `${INBOX}/.archived`;
@@ -253,7 +268,50 @@ function deleteItems(cwd, paths) {
   return committedResult({ deleted, committed: outcome.committed }, outcome, warnings);
 }
 
+/** Each kind of item by the folder it is filed in. */
+const KIND_FOLDER = Object.freeze(Object.fromEntries(Object.entries(FOLDER_KIND).map(([folder, kind]) => [kind, folder])));
+
+/** An item's title: its text's first line, `# Title`, or null. @param {string} text */
+const titleOf = (text) => /^# +(\S.*)$/.exec(text.split('\n')[0])?.[1].trim() ?? null;
+
+/**
+ * `inbox file`: an out-of-scope finding of the unit's review phase filed
+ * to the inbox, and committed (the header's).
+ * @param {string} cwd @param {string} unit @param {string} file
+ * @returns {{filed: string, committed: string|null}}
+ */
+function fileItem(cwd, unit, file) {
+  // Required here: the ledger's and the review phase's modules reach this
+  // one through the handoff.
+  const { reviewRefusal } = require('./review-entry.cjs');
+  const { reviewCallFault } = require('./review-phase.cjs');
+  const { readShown } = require('./ledger-read.cjs');
+  const { unitInProgress } = require('./topic-standing.cjs');
+  const said = 'inbox file';
+  const refused = refusing(said, () => reviewRefusal(unitInProgress(cwd, unit)));
+  if (refused !== null) throw new Error(`${said}: ${refused}`);
+  const item = refusing(said, () => shaped(readPayload(cwd, file), 'the item', ['kind', 'text', 'call']));
+  const { kind, text, call } = item;
+  /** @type {string[]} */
+  const faults = [];
+  if (typeof kind !== 'string' || !Object.hasOwn(KIND_FOLDER, kind)) faults.push(`its kind is one of ${Object.keys(KIND_FOLDER).join(', ')}, not ${JSON.stringify(kind)}`);
+  const title = filled(text) ? titleOf(text) : null;
+  if (title === null) faults.push('its text opens on its title, `# Title`');
+  /** @type {string[]} */
+  const warnings = [];
+  const fault = filled(call) ? readShown(stateRoot(cwd), warnings, (shower) => reviewCallFault(shower, unit, call)) : 'its call names the ledger\'s file-or-drop call';
+  if (fault !== null) faults.push(fault);
+  if (faults.length > 0) throw new Error(`${said}: ${faults.join('; ')}`);
+  const rel = `${INBOX}/${KIND_FOLDER[/** @type {string} */ (kind)]}/${todayStamp()}--${slugOf(/** @type {string} */ (title))}.md`;
+  if (fs.existsSync(statePath(cwd, rel))) throw new Error(`${said}: ${statePath(cwd, rel)} is filed already — group this finding with it, or title it apart`);
+  fs.mkdirSync(path.dirname(statePath(cwd, rel)), { recursive: true });
+  fs.writeFileSync(statePath(cwd, rel), `${String(text).replace(/\n*$/, '')}\n`);
+  const outcome = commitStateTail(cwd, [rel], `workflow(inbox): file ${path.posix.basename(rel, '.md').replace(/^\d{4}-\d{2}-\d{2}--/, '')} from ${unit}'s review`, warnings);
+  return committedResult({ filed: statePath(cwd, rel), committed: outcome.committed }, outcome, warnings);
+}
+
 module.exports = {
+  fileItem,
   archiveItems,
   restoreItems,
   deleteItems,
