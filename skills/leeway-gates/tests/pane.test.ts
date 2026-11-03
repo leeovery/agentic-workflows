@@ -2,7 +2,7 @@ import { describe, expect, test, tier } from 'claude-code/testing'
 
 import { kitOf, widthOf, type Line, type Part } from '../hooks/draw.ts'
 import type { Answer, Board, View } from '../hooks/model.ts'
-import { BACK, HOME, argsOf, framed, pageKey, pressed, tabKey, type Nav } from '../hooks/pane.ts'
+import { BACK, HOME, argsOf, framed, pageKey, pressed, readOn, tabKey, type Nav } from '../hooks/pane.ts'
 import type { Views } from '../hooks/views/index.ts'
 import BUILD from './fixtures/board-build.mjs'
 
@@ -20,11 +20,18 @@ const review: Board = {
   view: { kind: 'review', unit: UNIT, title: 'Token-aware diff sizing', type: 'feature' },
 }
 
-/** A task's page, its line building since 10:00. */
+/** A task's page over This session's build, its line building since 10:00. */
 const taskPage: Board = {
   ...build,
   view: { kind: 'task', unit: UNIT, line: { task: '6.4', title: 'A failed single-pass call is classified', since: '2026-10-21T10:00:00.000Z' } },
+  beneath: build.view,
 }
+
+/** All work, which names no unit of its own. */
+const allWork: Board = { ...build, tab: 'all', view: { kind: 'all', project: 'App' } }
+
+/** Another unit's page, opened from All work. */
+const fumiPage: Board = { ...allWork, view: { kind: 'unit', unit: 'fumi', title: 'Fumi' }, beneath: allWork.view }
 
 const answered = (board: Board): Answer => ({ kind: 'board', board })
 
@@ -51,10 +58,13 @@ const VIEWS: Views = {
 const textOf = (parts: readonly Part[]) => parts.map(part => part.text).join('')
 const shown = (lines: readonly Line[]) => lines.map(line => textOf(line.parts) + (line.button === undefined ? '' : line.button.label))
 
-/** Where a run of presses takes the person, each from the board shown. */
-function walk(board: Board, ...keys: string[]): Nav {
-  return keys.reduce<Nav>((nav, key) => pressed(nav, key, board, VIEWS) ?? nav, HOME)
+/** Where a run of presses takes the person, each on the board it was pressed on. */
+function through(...presses: readonly (readonly [Board, string])[]): Nav {
+  return presses.reduce<Nav>((nav, [board, key]) => pressed(nav, key, board, VIEWS) ?? nav, HOME)
 }
+
+/** Where a run of presses on one board takes the person. */
+const walk = (board: Board, ...keys: string[]): Nav => through(...keys.map(key => [board, key] as const))
 
 const draw = (answer: Answer, nav: Nav, frame = 0, now = Date.parse('2026-10-21T10:02:14.000Z')) => {
   const drawn = kitOf(62, now, frame, nav.opened)
@@ -73,24 +83,35 @@ describe('where the person is on the pane, as the engine is asked for it', () =>
     expect(argsOf(walk(build, tabKey('unit'), tabKey('this')))).toEqual([])
   })
 
-  test('a page opened over a tab is asked for by its ref, the newest on top', () => {
-    expect(argsOf(walk(build, pageKey('task:6.4')))).toEqual(['--page', 'task:6.4'])
-    expect(argsOf(walk(build, tabKey('all'), pageKey('unit:fumi')))).toEqual(['--tab', 'all', '--page', 'unit:fumi'])
-    expect(argsOf(walk(build, pageKey('task:6.4'), pageKey('task:6.4:round:1')))).toEqual(['--page', 'task:6.4:round:1'])
+  test('a page opened over a tab is asked for by its ref and the unit of the view it was opened on, the newest on top', () => {
+    expect(argsOf(walk(build, pageKey('task:6.4')))).toEqual(['--page', 'task:6.4', '--page-unit', UNIT])
+    expect(argsOf(through([build, pageKey('task:6.4')], [taskPage, pageKey('task:6.4:round:1')]))).toEqual(['--page', 'task:6.4:round:1', '--page-unit', UNIT])
+    expect(argsOf(through([build, tabKey('all')], [allWork, pageKey('unit:fumi')], [fumiPage, pageKey('task:1.1')]))).toEqual([
+      '--tab',
+      'all',
+      '--page',
+      'task:1.1',
+      '--page-unit',
+      'fumi',
+    ])
   })
 
-  test('a page stays while the session moves beneath it, until back, which shows This session where the session is now', () => {
+  test('a unit\'s page opened from All work names its own unit, and is asked for by its ref alone', () => {
+    expect(argsOf(through([build, tabKey('all')], [allWork, pageKey('unit:fumi')]))).toEqual(['--tab', 'all', '--page', 'unit:fumi'])
+  })
+
+  test('a page stays while the session moves beneath it, asked for in the unit it was opened in, until back, which shows This session where the session is now', () => {
     const reading = walk(build, pageKey('task:1.4'))
 
     expect(pressed(reading, 'anything', review, VIEWS), 'the session moving moves no page').toBeNull()
-    expect(argsOf(reading), 'the build gone to review, the page still asked for').toEqual(['--page', 'task:1.4'])
+    expect(argsOf(reading), 'the build gone to review, the page still asked for').toEqual(['--page', 'task:1.4', '--page-unit', UNIT])
     expect(argsOf(pressed(reading, BACK, review, VIEWS) ?? reading), 'back: This session, the review').toEqual([])
   })
 
   test('back returns one page at a time; a tab opens at its top, leaving every page', () => {
-    const deep = walk(build, pageKey('task:6.4'), pageKey('task:6.4:written'))
+    const deep = through([build, pageKey('task:6.4')], [taskPage, pageKey('task:6.4:written')])
 
-    expect(argsOf(pressed(deep, BACK, taskPage, VIEWS) ?? deep)).toEqual(['--page', 'task:6.4'])
+    expect(argsOf(pressed(deep, BACK, taskPage, VIEWS) ?? deep)).toEqual(['--page', 'task:6.4', '--page-unit', UNIT])
     expect(argsOf(pressed(deep, tabKey('this'), taskPage, VIEWS) ?? deep)).toEqual([])
   })
 
@@ -140,13 +161,19 @@ describe('the pane as drawn', () => {
     expect(shown(draw(answered({ ...build, view: { kind: 'discovery' } }), HOME).lines).slice(1)).toEqual([' '])
   })
 
-  test('a page leads with the way back, naming what it returns to', () => {
+  test('a page leads with the way back, naming what the tab shows beneath it now', () => {
     const nav = walk(build, pageKey('task:6.4'))
 
     expect(shown(draw(answered(taskPage), nav).lines).slice(1, 4)).toEqual([' ', '← back to the build', ' '])
-    expect(shown(draw(answered(taskPage), walk(taskPage, pageKey('task:6.4:written'))).lines)[2]).toBe(
-      '← back to 6.4 A failed single-pass call is classified',
-    )
+    expect(shown(draw(answered({ ...taskPage, beneath: review.view }), nav).lines)[2], 'the session gone on to review').toBe('← back to the review')
+    expect(shown(draw(answered({ ...taskPage, beneath: { kind: 'discovery' } }), nav).lines)[2], 'beneath it a kind with no drawing').toBe('← back')
+  })
+
+  test('a page opened over a page names the page beneath it, wherever the session has gone', () => {
+    const nav = through([build, pageKey('task:6.4')], [taskPage, pageKey('task:6.4:written')])
+    const written = answered({ ...taskPage, view: { kind: 'task-written', unit: UNIT }, beneath: review.view })
+
+    expect(shown(draw(written, nav).lines)[2]).toBe('← back to 6.4 A failed single-pass call is classified')
   })
 
   test('a version this board does not know is refused in a line, nothing of it drawn', () => {
@@ -158,9 +185,53 @@ describe('the pane as drawn', () => {
     ])
   })
 
-  test('with nothing answered, only the way back from a page is drawn', () => {
+  test('with nothing answered, only the way back from a page is drawn, naming a page beneath it alone', () => {
     expect(draw(null, HOME)).toMatchObject({ tabs: null, lines: [] })
-    expect(shown(draw(null, walk(build, pageKey('task:6.4'))).lines)).toEqual(['← back to the build', ' '])
+    expect(shown(draw(null, walk(build, pageKey('task:6.4'))).lines)).toEqual(['← back', ' '])
+    expect(shown(draw(null, through([build, pageKey('task:6.4')], [taskPage, pageKey('task:6.4:written')])).lines)[0]).toBe(
+      '← back to 6.4 A failed single-pass call is classified',
+    )
+  })
+})
+
+describe('a page the engine no longer answers', () => {
+  /** An engine answering a board wherever no more than `pages` pages are open, recording what it was asked. */
+  const engine = (pages: number) => {
+    const asked: string[][] = []
+    const read = async (nav: Nav): Promise<Answer> => {
+      asked.push(argsOf(nav))
+
+      return nav.pages.length > pages ? null : answered(build)
+    }
+
+    return { asked, read }
+  }
+
+  test('drops back to what lies beneath it, which is read instead', async () => {
+    const { asked, read } = engine(0)
+    const { nav, answer } = await readOn(walk(build, pageKey('task:6.4')), read)
+
+    expect({ nav: argsOf(nav), answer, asked }).toEqual({ nav: [], answer: answered(build), asked: [['--page', 'task:6.4', '--page-unit', UNIT], []] })
+  })
+
+  test('drops itself alone, the page beneath it answered', async () => {
+    const { asked, read } = engine(1)
+    const { nav } = await readOn(through([build, pageKey('task:6.4')], [taskPage, pageKey('task:6.4:written')]), read)
+
+    expect([argsOf(nav), asked.length]).toEqual([['--page', 'task:6.4', '--page-unit', UNIT], 2])
+  })
+
+  test('a page answered is kept, read once', async () => {
+    const { asked, read } = engine(1)
+    const page = walk(build, pageKey('task:6.4'))
+
+    expect([(await readOn(page, read)).nav, asked.length]).toEqual([page, 1])
+  })
+
+  test('nothing answered at a tab\'s top is read once', async () => {
+    const { asked, read } = engine(-1)
+
+    expect([(await readOn(HOME, read)).answer, asked]).toEqual([null, [[]]])
   })
 })
 

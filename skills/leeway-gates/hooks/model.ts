@@ -33,7 +33,10 @@ export type Banner = {
 /** A view or page, by its kind; each kind's fields are its drawing's to read. */
 export type View = { kind: string } & Record<string, unknown>
 
-/** The board as the engine answers it, its `ok` dropped. */
+/**
+ * The board as the engine answers it, its `ok` dropped: under a page,
+ * `beneath` is what the tab shows under it.
+ */
 export type Board = {
   version: number
   place: Place
@@ -41,6 +44,7 @@ export type Board = {
   unit: { unit: string; title: string } | null
   tab: Tab
   view: View
+  beneath: View | null
   questions: unknown[]
   warnings: string[]
 }
@@ -55,13 +59,15 @@ export type Answer = { kind: 'board'; board: Board } | { kind: 'refused'; versio
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
+const isView = (value: unknown): boolean => isObject(value) && typeof value.kind === 'string'
+
 /** Whether a known version's answer holds what the frame draws from. */
 const isBoard = (value: Record<string, unknown>): boolean =>
   isObject(value.place) &&
   (value.banner === null || isObject(value.banner)) &&
   (value.unit === null || isObject(value.unit)) &&
-  isObject(value.view) &&
-  typeof value.view.kind === 'string'
+  isView(value.view) &&
+  (value.beneath === null || isView(value.beneath))
 
 /** What the engine's stdout gives the board (the type's). */
 export function answerIn(stdout: string): Answer {

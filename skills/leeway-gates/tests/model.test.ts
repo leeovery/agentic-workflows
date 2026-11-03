@@ -16,11 +16,20 @@ describe('the engine\'s answer', () => {
     expect(answerIn(said({ ok: true, ...BUILD, version: 2 }))).toEqual({ kind: 'refused', version: 2 })
   })
 
-  test('a refusal, words that read as no answer, and a board missing what the frame draws from give nothing to draw', () => {
+  test('a refusal, words that read as no answer, and a board missing what the frame draws from, or with something beneath a page that is no view, give nothing to draw', () => {
     const { view: _, ...viewless } = BUILD
+    const { beneath: __, ...beneathless } = BUILD
 
     expect(
-      [said({ ok: false, error: 'board: there is no work unit "nope"' }), '', 'not json', said([BUILD]), said({ ok: true, ...viewless })].map(answerIn),
-    ).toEqual([null, null, null, null, null])
+      [
+        said({ ok: false, error: 'board: there is no work unit "nope"' }),
+        '',
+        'not json',
+        said([BUILD]),
+        said({ ok: true, ...viewless }),
+        said({ ok: true, ...beneathless }),
+        said({ ok: true, ...BUILD, beneath: { unit: 'pay' } }),
+      ].map(answerIn),
+    ).toEqual([null, null, null, null, null, null, null])
   })
 })

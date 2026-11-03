@@ -3,12 +3,15 @@
  * session, and the pages the person opens over them.
  *
  * What the pane shows is where the person has gone on it (`Nav`): the tab,
- * the unit the unit's tab was opened on, the pages opened over the tab, each
- * with the name of what its back returns to, and the folding sections they
- * opened. The engine answers each with the board's model for that place, so
- * This session, with no page open, is whatever the session's position puts
- * it at, and a page stays — asked for by its ref at every refresh — until
- * the person presses back, however the session moves beneath it.
+ * the unit the unit's tab was opened on, the pages opened over the tab, and
+ * the folding sections they opened. The engine answers each with the board's
+ * model for that place, so This session, with no page open, is whatever the
+ * session's position puts it at, and a page stays — asked for by its ref and
+ * the unit it was opened in at every refresh — until the person presses
+ * back, however the session moves beneath it. A page the engine no longer
+ * answers, its unit or its ref gone, drops back to what lies beneath it.
+ * The way back names what it returns to: the page under it, else what the
+ * tab shows beneath it now.
  *
  * The views are drawn by their kind (`views/`); a model this board does not
  * know the version of is refused in a line, never drawn.
@@ -16,7 +19,7 @@
 import type { ElementTable, RenderElement } from 'claude-code'
 
 import { COLOUR, blank, cutTo, drawLine, foldKey, widthOf, type Button, type Kit, type Line, type Part } from './draw.ts'
-import { BOARD_VERSION, type Answer, type Board, type Tab } from './model.ts'
+import { BOARD_VERSION, type Answer, type Board, type Tab, type View } from './model.ts'
 import type { Views } from './views/index.ts'
 
 /** The pane's id, which its render and close name. */
@@ -28,8 +31,12 @@ export const TITLE = 'workflows'
 /** The width and height it asks for. */
 export const SIZE = { columns: 60, rows: 28 }
 
-/** A page opened over a tab: its ref, and the name of what its back returns to. */
-export type Page = { ref: string; back: string }
+/**
+ * A page opened over a tab: its ref; the unit it was opened in, none where
+ * its ref names its own; and the name of the page it was opened over, null
+ * over the tab.
+ */
+export type Page = { ref: string; unit: string | null; over: string | null }
 
 /** Where the person has gone on the pane (the header's). */
 export type Nav = {
@@ -59,9 +66,26 @@ export function argsOf({ tab, unit, pages }: Nav): string[] {
   return [
     ...(tab === 'this' ? [] : ['--tab', tab]),
     ...(tab === 'unit' && unit !== null ? ['--unit', unit] : []),
-    ...(page === undefined ? [] : ['--page', page.ref]),
+    ...(page === undefined ? [] : ['--page', page.ref, ...(page.unit === null ? [] : ['--page-unit', page.unit])]),
   ]
 }
+
+/** What the engine answers for where the person is on the pane. */
+export type Read = (nav: Nav) => Promise<Answer>
+
+/**
+ * The engine's answer for where the person is, and where that is: a page
+ * it answers nothing for dropped back to what lies beneath it, and that
+ * read instead.
+ */
+export async function readOn(nav: Nav, read: Read): Promise<{ nav: Nav; answer: Answer }> {
+  const answer = await read(nav)
+
+  return answer === null && nav.pages.length > 0 ? readOn({ ...nav, pages: nav.pages.slice(0, -1) }, read) : { nav, answer }
+}
+
+/** The name a view gives a way back to it, where its kind has a drawing. */
+const nameOf = (view: View, views: Views): string | undefined => views[view.kind]?.name(view)
 
 /** A tab opened at its top, the unit's on the unit its tab names now. */
 function tabbed(nav: Nav, tab: string, board: Board | null): Nav | null {
@@ -84,9 +108,11 @@ export function pressed(nav: Nav, key: string, board: Board | null, views: Views
   }
 
   if (key.startsWith(PAGE) && board !== null) {
-    const back = views[board.view.kind]?.name(board.view) ?? ''
+    const { view } = board
+    const unit = typeof view.unit === 'string' ? view.unit : null
+    const over = nav.pages.length === 0 ? null : (nameOf(view, views) ?? '')
 
-    return { ...nav, pages: [...nav.pages, { ref: key.slice(PAGE.length), back }] }
+    return { ...nav, pages: [...nav.pages, { ref: key.slice(PAGE.length), unit, over }] }
   }
 
   if (key === BACK) {
@@ -144,11 +170,12 @@ function ruleOf(tabs: readonly TabButton[], width: number): Line {
   return { key: 'tabs:rule', parts: [...parts, { text: '─'.repeat(Math.max(0, width - widthOf(parts))), color: COLOUR.rule }] }
 }
 
-/** The way back from the page on top, naming what it returns to. */
-const backOf = (page: Page): Line[] => [
-  { key: BACK, parts: [], button: { key: BACK, label: page.back === '' ? '← back' : `← back to ${page.back}` } },
-  blank(BACK),
-]
+/** The way back from the page on top, naming what it returns to: the page under it, else what the tab shows beneath it. */
+function backOf(page: Page, beneath: View | null, views: Views): Line[] {
+  const name = page.over ?? (beneath === null ? undefined : nameOf(beneath, views)) ?? ''
+
+  return [{ key: BACK, parts: [], button: { key: BACK, label: name === '' ? '← back' : `← back to ${name}` } }, blank(BACK)]
+}
 
 /** The line refusing a version this board does not draw. */
 const refusal = (version: unknown): Line => ({
@@ -169,7 +196,8 @@ const refusal = (version: unknown): Line => ({
  */
 export function framed(answer: Answer, nav: Nav, views: Views, kit: Kit): Framed {
   const page = nav.pages.at(-1)
-  const back = page === undefined ? [] : backOf(page)
+  const beneath = answer?.kind === 'board' ? answer.board.beneath : null
+  const back = page === undefined ? [] : backOf(page, beneath, views)
 
   if (answer === null) {
     return { tabs: null, lines: back }

@@ -2,7 +2,8 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: `engine board <session-id> [--tab this|unit|all] [--unit
-// <work-unit>] [--page <ref>]` — the workflows board's one read (§20),
+// <work-unit>] [--page <ref> [--page-unit <work-unit>]]` — the workflows
+// board's one read (§20),
 // answering its view model (board-model.cjs) for the gate mod, which calls
 // it after every engine call and every press. It takes no writer lock and
 // writes nothing, the conversation's mark among it, reading the tracker from
@@ -22,10 +23,16 @@
 //   epic's page for an epic (20.15.2), the unit's page for any other.
 //   All work shows the project (20.16), and `--page unit:{unit}` another
 //   unit's page from it (20.3.6).
-// - A page (`--page`) is read against the unit `--unit` names, else the
-//   session's, on either of the first two tabs, so it stays while the
-//   session moves beneath it (20.3.5), and once the session has left the
-//   unit.
+// - A page (`--page`) is read against the unit it was opened in,
+//   `--page-unit`, whatever tab shows it and wherever the session has gone
+//   since — the start menu or another unit — so it stays while the session
+//   moves beneath it (20.3.5). With none named it is the tab's unit's: on
+//   the unit's tab the unit `--unit` names, else the session's; on This
+//   session the session's. All work's `unit:{unit}` names its own, and
+//   All work opens any other page only with its unit named. `--unit` names
+//   the unit's tab's unit alone, never a page's, so the tabs stand as they
+//   would with no page open. The answer carries beside the page the view
+//   the tab shows beneath it (`beneath`), which its way back returns to.
 // - The banner is the session's place's (20.2.4), whichever tab is shown.
 // - Never a look (5.8.14): Claude's calls since the person last looked are
 //   read without moving the mark.
@@ -42,9 +49,10 @@
 //   the warnings.
 //
 // It refuses, opening `board: `: a call with no session id or more than one,
-// a tab that is none of the three, the unit's tab with no unit to show, a
-// unit the project lacks, a page its ref does not name, and a page's task
-// that is no task's number.
+// a tab that is none of the three, the unit's tab or a page with no unit to
+// show, a unit the project lacks — `--unit`'s or `--page-unit`'s — a page
+// its ref does not name, a page's task that is no task's number, and
+// `--page-unit` with no page.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -79,7 +87,7 @@ const { allView, allBanner } = require('./projections/board-all.cjs');
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** @typedef {import('./task-verbs.cjs').TrackedUnit} TrackedUnit */
 
-const BOARD_USAGE = 'board <session-id> [--tab this|unit|all] [--unit <work-unit>] [--page <ref>]';
+const BOARD_USAGE = 'board <session-id> [--tab this|unit|all] [--unit <work-unit>] [--page <ref> [--page-unit <work-unit>]]';
 
 /**
  * A brief this conversation issued for a unit: its role, its task, and the
@@ -238,17 +246,17 @@ const PAGES = Object.freeze([
 const ALL_PAGE = /^unit:([^:]+)$/;
 
 /**
- * A page a ref names: All work's, by the unit it opens; any other tab's, by
- * what draws it, its parts and the task it names; refused where the ref
- * names none.
- * @param {Board['tab']} tab @param {string} ref
+ * A page a ref names: All work's, by the unit it opens; any other, by what
+ * draws it, its parts and the task it names, All work opening one only with
+ * the unit it was opened in named; refused where the ref names none.
+ * @param {Board['tab']} tab @param {string} ref @param {boolean} isUnitNamed
  * @returns {{unit: string, draw: null, parts: string[], task: null}|{unit: null, draw: (at: BoardAt, ...parts: string[]) => View, parts: string[], task: string|null}}
  */
-function pageOf(tab, ref) {
+function pageOf(tab, ref, isUnitNamed) {
   if (tab === 'all') {
     const opens = ALL_PAGE.exec(ref);
-    if (opens === null) throw new Error(`no page of All work is named "${ref}" — All work opens unit:{unit}`);
-    return { unit: opens[1], draw: null, parts: [], task: null };
+    if (opens !== null) return { unit: opens[1], draw: null, parts: [], task: null };
+    if (!isUnitNamed) throw new Error(`no page of All work is named "${ref}" — All work opens unit:{unit}, and another unit's page with --page-unit`);
   }
   for (const { shape, draw, task } of PAGES) {
     const parts = shape.exec(ref)?.slice(1);
@@ -289,16 +297,16 @@ function boardOf(cwd, positional, opts) {
   const [session] = positional;
   const tab = /** @type {Board['tab']} */ (opts.tab ?? 'this');
   if (!TABS.includes(tab)) throw new Error(`--tab is this, unit or all, not "${tab}"`);
-  const page = opts.page === undefined ? null : pageOf(tab, opts.page);
+  if (opts['page-unit'] !== undefined && opts.page === undefined) throw new Error('--page-unit names the unit a page was opened in, and goes with --page');
+  const page = opts.page === undefined ? null : pageOf(tab, opts.page, opts['page-unit'] !== undefined);
   /** @type {string[]} */
   const warnings = [];
   const position = readPosition(session);
   const place = placeOf(stateRoot(cwd), position);
   const tabUnit = opts.unit ?? place.unit;
-  if (tabUnit === null && (tab === 'unit' || page !== null && page.unit === null)) {
-    throw new Error(`the ${tab === 'unit' ? 'unit\'s tab' : 'session'} is at no unit, whose page it would show — --unit names one`);
-  }
-  const pageUnit = page === null ? null : page.unit ?? tabUnit;
+  if (tab === 'unit' && tabUnit === null) throw new Error('the unit\'s tab is at no unit, whose page it would show — --unit names one');
+  const pageUnit = page === null ? null : page.unit ?? opts['page-unit'] ?? (tab === 'unit' ? tabUnit : place.unit);
+  if (page !== null && pageUnit === null) throw new Error('the session is at no unit, whose page it would show — --page-unit names one');
   const pageTask = page === null || page.task === null ? null : parseShownTask(/** @type {string} */ (pageUnit), page.task);
   /** @type {Map<string, BoardAt>} */
   const units = new Map();
@@ -311,19 +319,23 @@ function boardOf(cwd, positional, opts) {
   const here = place.unit === null ? null : at(place.unit);
   const own = here === null ? null : ownRead(here, warnings);
   const read = own === null || 'failed' in own ? null : own;
+  const tabView = () => {
+    if (tab === 'all' || here === null && tab === 'this') return allView(cwd, here, position === null, warnings).view;
+    if (tab === 'unit') return unitPage(/** @type {BoardAt} */ (tabAt), tabAt === here && place.phase === null).view;
+    if (own !== null && 'failed' in own) throw new Error(own.failed);
+    return /** @type {Read} */ (read).view;
+  };
   return {
     version: BOARD_VERSION,
     place,
     banner: here === null ? { name: projectName(cwd), ...allBanner(position) } : { name: here.title, ...(read?.banned ?? placeBanner(here)) },
     unit: tabAt === null ? null : { unit: tabAt.unit, title: tabAt.title },
     tab,
-    view: drawn(() => {
-      if (page !== null) return page.draw === null ? unitPage(/** @type {BoardAt} */ (pageAt), false).view : page.draw(/** @type {BoardAt} */ (pageAt), ...page.parts);
-      if (tab === 'all' || here === null && tab === 'this') return allView(cwd, here, position === null, warnings).view;
-      if (tab === 'unit') return unitPage(/** @type {BoardAt} */ (tabAt), tabAt === here && place.phase === null).view;
-      if (own !== null && 'failed' in own) throw new Error(own.failed);
-      return /** @type {Read} */ (read).view;
+    view: page === null ? drawn(tabView) : drawn(() => {
+      const of = /** @type {BoardAt} */ (pageAt);
+      return page.draw === null ? unitPage(of, false).view : page.draw(of, ...page.parts);
     }),
+    beneath: page === null ? null : drawn(tabView),
     questions: read?.questions ?? [],
     warnings,
   };

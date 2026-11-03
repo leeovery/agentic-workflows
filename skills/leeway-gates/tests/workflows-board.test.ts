@@ -1,4 +1,4 @@
-import type { On, RenderElement } from 'claude-code'
+import type { On, RenderElement, RenderSurface } from 'claude-code'
 import { describe, expect, mock, test, tier, type Engine, type Mounted as MountedOf } from 'claude-code/testing'
 
 import type { Board } from '../hooks/model.ts'
@@ -56,6 +56,9 @@ const PANE_MOUNT = {
 /** What Claude Code draws in the band beneath the mod. */
 const BENEATH: RenderElement = { type: 'Text', children: ['? for shortcuts'] }
 
+/** What Claude Code draws in a pane no plugin draws. */
+const NO_PANE: RenderElement = { type: 'Box', children: [] }
+
 /** The build as the engine answers it: This session in a build, three questions waiting on the person. */
 const BUILD_BOARD = BUILD
 
@@ -66,7 +69,8 @@ const boardReply = (board: unknown): Reply => ({ exitCode: 0, stdout: `${JSON.st
 
 /**
  * The world beneath the mod: the process's environment (announced unless
- * told otherwise), the session's id and project, the conversations the
+ * told otherwise), the session's id and project, the screens attached (the
+ * terminal's alone unless given), the conversations the
  * engine `marked`, and what `engine board` answers (`replies`, by the args
  * it was asked) and how long it `takes` on the clock, which starts at 10:00
  * on 21 Oct; the panes `open` from before the mod loaded; every Bash call
@@ -80,12 +84,13 @@ function world(
   on: On,
   options: {
     env?: Readonly<Record<string, string>>
+    surfaces?: readonly RenderSurface[]
     marked?: readonly string[]
     open?: readonly string[]
     replies?: (args: readonly string[]) => Reply
   } = {},
 ) {
-  const { env = ANNOUNCED, marked = ['s0', 's1'] } = options
+  const { env = ANNOUNCED, surfaces = ['terminal'], marked = ['s0', 's1'] } = options
   const clock = mock.clock(on, { now: Date.parse('2026-10-21T10:00:00.000Z') })
   const boards: { id: string; args: readonly string[] }[] = []
   const opened: unknown[] = []
@@ -102,7 +107,7 @@ function world(
   on('session.id', () => ({ value: sessionId }))
   on('session.root', () => ({ value: ROOT }))
   on('session.messages', () => ({ value: [] }))
-  on('session.surfaces', () => ({ value: ['terminal'] }))
+  on('session.surfaces', () => ({ value: surfaces }))
   on('fs.exists', ($, e) => ({ value: marked.some(id => e.path === `${DEFAULT_CONFIG}/conversations/${id}/workflow`) }))
 
   on('process.run', async ($, e) => {
@@ -149,6 +154,8 @@ function world(
 
     return BENEATH
   })
+
+  on('ui.render', { component: 'Pane' }, () => NO_PANE)
 
   on('tool.call', { tool: 'Bash' }, () => ({ result: { stdout: ENGINE_SAID, stderr: '', interrupted: false } }))
 
@@ -211,9 +218,9 @@ const REVIEW_BOARD: Board = {
 /** A drawing as the tests read it, the band's or the pane's. */
 type Mounted = Pick<MountedOf<'terminal'>, 'drawn' | 'find' | 'findAll'>
 
-/** The banner's words: the line it draws them in, its button apart. */
+/** The banner's words: the line it draws them in, cut from its right, its button apart. */
 async function bannerOf(ui: Mounted): Promise<string | undefined> {
-  return (await ui.find({ type: 'Text' }))?.text
+  return (await ui.findAll({ type: 'Text' })).find(found => found.props.wrap === 'truncate-end')?.text
 }
 
 /** The innermost run the drawing shows `text` in. */
@@ -285,11 +292,11 @@ describe('the banner', () => {
     expect(shown).toEqual(['◐ Pay · feature', '⚑ Pay · feature', '✓ Pay · feature', 'Pay · feature'])
   })
 
-  test('takes a line of its own above the band, which draws in the rows it leaves', async ($, on) => {
+  test('takes the band\'s last line, directly above the prompt, beneath what the band draws in the rows it leaves', async ($, on) => {
     const { clock, beneath } = world(on)
     const ui = await mounted($, clock)
 
-    expect(await ui.drawn()).toMatchObject({ type: 'Box', props: { flexDirection: 'column' }, children: [{ props: { key: 'banner' } }, BENEATH] })
+    expect(await ui.drawn()).toMatchObject({ type: 'Box', props: { flexDirection: 'column' }, children: [BENEATH, { props: { key: 'banner' } }] })
     expect(beneath.at(-1)).toBe(23)
   })
 
@@ -462,9 +469,21 @@ describe('what reads the board', () => {
     expect(boards.map(({ id }) => id)).toEqual(['s0'])
 
     becomes('s1')
-    await mounted($, clock, BAND_MOUNT, 'resumed')
+    const resumed = await mounted($, clock, BAND_MOUNT, 'resumed')
     expect(boards.map(({ id }) => id)).toEqual(['s0', 's1'])
-    expect(await bannerOf(ui)).toBe('◐ Token-aware diff sizing · feature · build · 1 building · 1 in review · ⚑ 3 waiting on you')
+    expect(await bannerOf(resumed), 'the same board in another conversation, drawn').toBe(
+      '◐ Token-aware diff sizing · feature · build · 1 building · 1 in review · ⚑ 3 waiting on you',
+    )
+  })
+
+  test('a read that answers what is drawn already redraws nothing', async ($, on) => {
+    const { clock, counts } = world(on)
+
+    await mounted($, clock)
+    counts.invalidations = 0
+    await engineCall($, clock)
+
+    expect(counts.invalidations).toBe(0)
   })
 
   for (const [where, options] of [
@@ -480,6 +499,20 @@ describe('what reads the board', () => {
       expect(boards).toEqual([])
     })
   }
+
+  test('a session that did not announce draws no pane, one still up from before a reload among it, and reads nothing for it', async ($, on) => {
+    const { clock, boards } = world(on, { env: {}, open: ['board'] })
+
+    expect(await drawnOf(await mounted($, clock, PANE_MOUNT))).toEqual(NO_PANE)
+    expect(boards).toEqual([])
+  })
+
+  test('with another screen attached beside the terminal, Remote Control\'s, neither the banner nor the pane draws', async ($, on) => {
+    const { clock } = world(on, { surfaces: ['terminal', 'mobile'], open: ['board'] })
+
+    expect(await drawnOf(await mounted($, clock))).toEqual(BENEATH)
+    expect(await drawnOf(await mounted($, clock, PANE_MOUNT))).toEqual(NO_PANE)
+  })
 })
 
 describe('what turns', () => {

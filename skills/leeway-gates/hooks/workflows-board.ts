@@ -1,8 +1,9 @@
 /**
  * The workflows board (§20): a pane titled "workflows" beside the
- * conversation, and a banner in the band above the prompt that names the
- * work and shows or hides the pane — in a session that announced, in a
- * conversation the engine has marked; anywhere else nothing draws.
+ * conversation, and a banner on the band's last line, directly above the
+ * prompt, that names the work and shows or hides the pane — in a session
+ * that announced, in a conversation the engine has marked, with no screen
+ * but the band's attached; anywhere else nothing draws.
  *
  * Both draw the board's model as `engine board` answers it for where the
  * person is on the pane, read afresh after every engine call, the
@@ -22,7 +23,8 @@ import { TOGGLE, drawBanner } from './banner.ts'
 import { kitOf } from './draw.ts'
 import { ENGINE, ENGINE_TIMEOUT_MS, MARKER, folderOf } from './folder.ts'
 import { answerIn, type Answer, type Board } from './model.ts'
-import { HOME, PANE, SIZE, TITLE, argsOf, drawPane, framed, pressed, widthIn, type Nav } from './pane.ts'
+import { HOME, PANE, SIZE, TITLE, argsOf, drawPane, framed, pressed, readOn, widthIn, type Nav } from './pane.ts'
+import { isAnnounced, isBandAlone } from './surface.ts'
 import { VIEWS } from './views/index.ts'
 
 /** How often what runs turns a quarter, and how often a clock ticks. */
@@ -49,9 +51,9 @@ type State = {
   isStale: boolean
 }
 
-/** Whether the session announced, so the board draws at all. */
-async function isAnnounced($: EngineInterface): Promise<boolean> {
-  return (await $.env.get('LEEWAY_GATE_SURFACE')) === '1'
+/** Whether the board draws: in a session that announced, the band's screen the only one attached. */
+async function isDrawn($: EngineInterface): Promise<boolean> {
+  return (await isAnnounced($)) && (await isBandAlone($))
 }
 
 /** Whether the engine has marked the conversation `id` as one that runs the workflows. */
@@ -61,13 +63,9 @@ async function isWorkflow($: EngineInterface, id: string): Promise<boolean> {
   return folder !== null && (await $.fs.exists(`${folder}/${MARKER}`))
 }
 
-/** The engine's answer for the conversation `id` where it runs the workflows, `nav` asked; none where the engine fails. */
+/** The engine's answer for the conversation `id`, `nav` asked; none where the engine refuses or fails. */
 async function answerNow($: EngineInterface, id: string, nav: Nav): Promise<Answer> {
   try {
-    if (!(await isWorkflow($, id))) {
-      return null
-    }
-
     const root = await $.session.root()
     const { stdout } = await $.process.run(['node', `${root}/${ENGINE}`, 'board', id, ...argsOf(nav)], {
       cwd: root,
@@ -78,6 +76,13 @@ async function answerNow($: EngineInterface, id: string, nav: Nav): Promise<Answ
   } catch {
     return null
   }
+}
+
+/** What the board shows for the conversation `id` from `nav` (`readOn`'s); nothing where it does not run the workflows. */
+async function readFor($: EngineInterface, id: string, nav: Nav): Promise<{ nav: Nav; answer: Answer }> {
+  const isMarked = await isWorkflow($, id).catch(() => false)
+
+  return isMarked ? readOn(nav, at => answerNow($, id, at)) : { nav, answer: null }
 }
 
 /** Reads the board afresh (the header's), redrawing where what it draws changed. */
@@ -93,11 +98,18 @@ function refresh($: EngineInterface, state: State): Promise<void> {
       state.isStale = false
 
       const id = await $.session.id()
-      const before = JSON.stringify(state.read?.answer ?? null)
+      const asked = state.nav
+      const { nav, answer } = await readFor($, id, asked)
+      const drawn = state.read?.id === id ? state.read.answer : null
+      const isChanged = nav !== asked || JSON.stringify(answer) !== JSON.stringify(drawn)
 
-      state.read = { id, answer: await answerNow($, id, state.nav) }
+      state.read = { id, answer }
 
-      if (JSON.stringify(state.read.answer) !== before) {
+      if (state.nav === asked) {
+        state.nav = nav
+      }
+
+      if (isChanged) {
         $.ui.invalidate('ui.render')
       }
     } while (state.isStale)
@@ -245,7 +257,9 @@ export function workflowsBoard(on: On) {
 
   // A pane drawn is up, a reload's among them, which finds it still open.
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e, next) => {
-    if (!(await isAnnounced($))) {
+    if (!(await isDrawn($))) {
+      clocks($, state, { turns: false, clocks: false })
+
       return next(e)
     }
 
@@ -260,10 +274,10 @@ export function workflowsBoard(on: On) {
     return drawPane(await $.ui.resolve(e), drawn)
   }).catch(($, e, next) => next(e))
 
-  // The banner takes a line of its own above whatever the band draws, the
-  // gate's rows drawn in the rows it leaves; a survey holds the band alone.
+  // The banner takes the band's last line, beneath whatever the band draws,
+  // the gate's rows drawn in the rows it leaves; a survey holds the band alone.
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    if (e.props.hasSurvey || (e.surface !== 'terminal' && e.surface !== 'desktop') || !(await isAnnounced($))) {
+    if (e.props.hasSurvey || !(await isDrawn($))) {
       return next(e)
     }
 
@@ -277,6 +291,6 @@ export function workflowsBoard(on: On) {
     const beneath = await next({ ...e, props: { ...e.props, maxRows: e.props.maxRows - 1 } })
     const els = await $.ui.resolve(e)
 
-    return els.Box({ flexDirection: 'column', children: [drawBanner(els, { banner, isOpen: state.isOpen }, e.props.bodyColumns), beneath] })
+    return els.Box({ flexDirection: 'column', children: [beneath, drawBanner(els, { banner, isOpen: state.isOpen }, e.props.bodyColumns)] })
   }).catch(($, e, next) => next(e))
 }

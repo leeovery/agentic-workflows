@@ -34,7 +34,7 @@
  * Code's own, the engine's note appended last (`compaction.ts`) — each
  * task's builder and reviewers recorded as they are dispatched
  * (`builder.ts`), and the workflows board, its pane beside the conversation
- * and its banner on a line of its own above the band's rows
+ * and its banner on a line of its own beneath the band's rows
  * (`workflows-board.ts`).
  *
  * All of it happens in Claude Code's terminal app and the Desktop app's Code
@@ -47,7 +47,6 @@ import type {
   EngineInterface,
   PromptOrigin,
   Register,
-  RenderSurface,
   SessionMessage,
 } from 'claude-code'
 
@@ -64,6 +63,7 @@ import {
   type Sends,
 } from './layout.ts'
 import { spinner } from './spinner.ts'
+import { isAnnounced, isBandAlone } from './surface.ts'
 import { workflowsBoard } from './workflows-board.ts'
 
 /** The payload's marker and the menu it sits directly above. */
@@ -130,9 +130,6 @@ const ENTRYPOINTS: ReadonlySet<string> = new Set([
   'claude-desktop',
   'claude-desktop-3p',
 ])
-
-/** The surfaces the band draws on: the terminal app's, and the Desktop app's. */
-const BAND_SURFACES: ReadonlySet<RenderSurface> = new Set(['terminal', 'desktop'])
 
 /** The oldest Claude Code the mod runs on, major, minor and patch. */
 const OLDEST = [2, 1, 287]
@@ -309,35 +306,16 @@ async function isApplicable($: EngineInterface): Promise<boolean> {
   return isSupported((await $.session.version()).version)
 }
 
-/**
- * Whether the session announces the gate surface: set at its start, and
- * still set after a reload of the module. The band is kept and read back,
- * and the harness put on, only where it is, so a process whose session
- * never announced — one the mod does not apply to, or one this module was
- * loaded into after it started — never gets either.
- */
-async function isAnnounced($: EngineInterface): Promise<boolean> {
-  return (await $.env.get('LEEWAY_GATE_SURFACE')) === '1'
-}
-
 /** Whether an event is the conversation's own, not a subagent's loop. */
 const inConversation = (e: AgentLoop) => e.agentId === undefined
 
 /**
  * Whether the band takes a gate a Bash call stated: the conversation's own
- * call, not a subagent's; and the session's only screen the terminal or the
- * Desktop app, since the band is theirs and any other screen attached beside
- * it shows the menu as text alone. The Desktop app attaches after the
- * session starts, so this is read at the call.
+ * call, not a subagent's, with the band's screen the session's only one,
+ * read at the call.
  */
 async function isForBand($: EngineInterface, e: AgentLoop): Promise<boolean> {
-  if (!inConversation(e)) {
-    return false
-  }
-
-  const [only, ...others] = await $.session.surfaces()
-
-  return only !== undefined && others.length === 0 && BAND_SURFACES.has(only)
+  return inConversation(e) && (await isBandAlone($))
 }
 
 /**
@@ -738,7 +716,7 @@ async function readBack(
 
 export const register: Register = on => {
   // First, so its banner's hook wraps the band's: the banner takes its line
-  // above the rows, which are drawn in the rows it leaves.
+  // beneath the rows, which are drawn in the rows it leaves.
   workflowsBoard(on)
 
   let band = emptyBand()
