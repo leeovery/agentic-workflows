@@ -127,10 +127,12 @@ function stepOnly(manifest, what) {
   if (manifest.build.position !== 'step') throw new Error(`${manifest.name} builds in auto, where ${what} — the person meets only danger, the authority gates and the questions parked`);
 }
 
-/** The calls of Claude's the ledger holds made for a task (12.12.12). @param {string} cwd @param {TaskRef} ref */
-function callsMade(cwd, ref) {
+/** The calls of Claude's the ledger holds made for a task (12.12.12), each by its short id and words. @param {string} cwd @param {TaskRef} ref */
+function callsOf(cwd, ref) {
   const task = shownTask(ref);
-  return [...unitEntries(cwd, ref.unit).values()].filter(({ kind, line }) => kind === 'decision' && line.by === 'claude' && line.task === task).length;
+  return [...unitEntries(cwd, ref.unit).values()]
+    .filter(({ kind, line }) => kind === 'decision' && line.by === 'claude' && line.task === task)
+    .map(({ short, line }) => ({ id: short, text: String(line.text) }));
 }
 
 /**
@@ -145,7 +147,7 @@ function ranOf(cwd, manifest, ref, task, criteria) {
   const head = tipCommits(phaseStack(cwd, ref.unit, ref.phase, [task]));
   const read = scenarios.map((scenario) => ({ scenario, ...runsOf(cwd, ref.unit, scenario, head) }));
   return {
-    ran: read.map(({ scenario, standing }) => ({ criterion: criterionWords(criteria.find((criterion) => namesScenario(criterion, scenario)) ?? scenario), standing })),
+    ran: read.map(({ scenario, standing }) => ({ scenario, criterion: criterionWords(criteria.find((criterion) => namesScenario(criterion, scenario)) ?? scenario), standing })),
     recorded: read.some(({ runs }) => runs.some(({ verdict }) => verdict !== 'skipped')),
   };
 }
@@ -159,7 +161,7 @@ function taskLandedSurface(cwd, args) {
     return landingScreen({
       head: headOf(manifest, ref, task),
       reviewed: account.reviewed,
-      calls: callsMade(cwd, ref),
+      calls: callsOf(cwd, ref).length,
       changed: account.sections['What was done'],
       criteria: criteria.map(criterionWords),
       product: projectName(cwd),
@@ -244,14 +246,25 @@ function buildHeadlineSurface(cwd, { dotpath: unit = '', file }) {
   });
 }
 
+/**
+ * Whether the build goes on with a phase's tasks ready to start: the phase
+ * open, or its start's engine items holding (12.13.22) — the stop's rule, and
+ * the board's (projections/board-build.cjs), its checks reading first what
+ * the call has read of the unit already, `reads`, where given.
+ * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest the unit's @param {Map<string, any>} [reads]
+ * @returns {(phase: number) => boolean}
+ */
+function phaseLets(cwd, unit, manifest, reads) {
+  return (phase) => phaseOpen(manifest, phase) || engineItemsHold(cwd, 'phase-start', [unit, String(phase)], reads);
+}
+
 /** `render build-stop <unit>`. @param {string} cwd @param {Args} args */
 function buildStopSurface(cwd, { dotpath: unit = '' }) {
   return refusing('render build-stop', () => {
     const standing = buildStanding(cwd, unit, ownInFlight(unit));
     if (standing.waiting.length === 0) throw new Error(`no question waits on the person in ${unit}'s build — it stops only where nothing can go on without their answer (12.13.22)`);
     const manifest = builtUnit(cwd, unit);
-    const opens = (/** @type {number} */ phase) => phaseOpen(manifest, phase) || engineItemsHold(cwd, 'phase-start', [unit, String(phase)]);
-    const [next] = withStateLock(stateRoot(cwd), () => goingOn(cwd, unit, manifest, { ready: opens })).tasks;
+    const [next] = withStateLock(stateRoot(cwd), () => goingOn(cwd, unit, manifest, { ready: phaseLets(cwd, unit, manifest) })).tasks;
     if (next !== undefined) throw new Error(`${unit}'s build goes on with task ${next}, which no question parks — it stops only where nothing can go on without the person's answer (12.13.22)`);
     return stopScreen(standing, finishedUnits(stateRoot(cwd)));
   });
@@ -262,4 +275,7 @@ function buildProgressSurface(cwd, { dotpath: unit = '' }) {
   return refusing('render build-progress', () => progressScreen(buildStanding(cwd, unit, ownInFlight(unit)), finishedUnits(stateRoot(cwd))));
 }
 
-module.exports = { buildHeadlineSurface, taskLandedSurface, taskAccountSurface, stepGateSurface, phaseMergeGateSurface, buildStopSurface, buildProgressSurface };
+module.exports = {
+  phaseNamed, phaseLets, taskOf, takenAccount, takenFigures, callsOf, ranOf,
+  buildHeadlineSurface, taskLandedSurface, taskAccountSurface, stepGateSurface, phaseMergeGateSurface, buildStopSurface, buildProgressSurface,
+};

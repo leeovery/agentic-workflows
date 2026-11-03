@@ -665,11 +665,12 @@ function allChained(cwd, unit, tasks) {
 /**
  * The unit's tasks landed, shown: each a landing on the default branch of a
  * repository of the project names by its `Task:` line, as every driver
- * lands a task (landing-names.cjs). A repository with no default branch to
- * land on holds none.
- * @param {string} cwd @param {string} unit @returns {Set<string>}
+ * lands a task (landing-names.cjs), searched from the time `from` names
+ * where given (`dayBefore` the unit was made, before which none of its work
+ * landed). A repository with no default branch to land on holds none.
+ * @param {string} cwd @param {string} unit @param {string|null} [from] @returns {Set<string>}
  */
-function landedTasks(cwd, unit) {
+function landedTasks(cwd, unit, from = null) {
   return new Set(projectRepos(codeRoot(cwd)).flatMap((repo) => {
     const nested = repo.dir !== '';
     let into;
@@ -678,7 +679,7 @@ function landedTasks(cwd, unit) {
     } catch {
       return [];
     }
-    return lg.messagesNaming(repo.path, into, `Task: ${unit}-`).flatMap((message) => names.tasksOfMessage(unit, message).map(shownTask));
+    return lg.messagesNaming(repo.path, into, `Task: ${unit}-`, from).flatMap((message) => names.tasksOfMessage(unit, message).map(shownTask));
   }));
 }
 

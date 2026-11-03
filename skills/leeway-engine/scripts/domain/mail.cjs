@@ -463,10 +463,14 @@ function answerMessage(cwd, unit, topic, message, { entry }) {
 function waitingMessages(cwd, unit, topic) {
   return mailboxFiles(stateRoot(cwd), unit, topic).map((name) => {
     const at = statePath(cwd, mailboxDir(unit, topic), name);
-    const text = fs.readFileSync(at, 'utf8');
-    const [, from = '', ...rest] = text.split('\n');
-    return { path: at, title: titleOf(text), from, body: bodyFrom(rest) };
+    return { path: at, ...messageParts(fs.readFileSync(at, 'utf8')) };
   });
+}
+
+/** A message's title, the line naming its sender, and what follows. @param {string} text @returns {{title: string, from: string, body: string}} */
+function messageParts(text) {
+  const [, from = '', ...rest] = text.split('\n');
+  return { title: titleOf(text), from, body: bodyFrom(rest) };
 }
 
 const SEND_REPORT_USAGE = 'render send-report <work-unit>.<topic> --sent <path>';
@@ -498,4 +502,4 @@ function sendReportOf(cwd, address, sent) {
   return sendReport({ unit, topic, named: topicTitle(manifest, topic), title: titleOf(fs.readFileSync(at, 'utf8')), landing, gone });
 }
 
-module.exports = { SEND_USAGE, MAILBOX_USAGE, ANSWERED_USAGE, SEND_REPORT_USAGE, sendMessage, mailboxOf, answerMessage, waitingMessages, moveWaitingToInbox, moveUnitMailToInbox, sendReportOf };
+module.exports = { SEND_USAGE, MAILBOX_USAGE, ANSWERED_USAGE, SEND_REPORT_USAGE, sendMessage, mailboxOf, answerMessage, waitingMessages, messageParts, moveWaitingToInbox, moveUnitMailToInbox, sendReportOf };

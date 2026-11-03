@@ -472,23 +472,25 @@ function usage() {
 /**
  * Whether every item the engine checks of the checklist `args` name after
  * its point holds, so only Claude's own items stand before its close —
- * refused as `checklist show` refuses it.
- * @param {string} cwd @param {string} point @param {string[]} args
+ * refused as `checklist show` refuses it; its checks read first what the
+ * call has read already, `reads`, where given.
+ * @param {string} cwd @param {string} point @param {string[]} args @param {Map<string, any>} [reads]
  */
-function engineItemsHold(cwd, point, args) {
-  return itemStates(named(cwd, point, args)).every(({ by, state }) => by !== 'engine' || state === 'done');
+function engineItemsHold(cwd, point, args, reads = new Map()) {
+  return itemStates(named(cwd, point, args, reads)).every(({ by, state }) => by !== 'engine' || state === 'done');
 }
 
 /**
  * The checklist `args` name after its point, its work's manifest read.
  * Refuses a point it does not know, a unit, topic or phase the project
- * lacks, and a directive the migrations lack.
- * @param {string} cwd @param {string} point @param {string[]} args
+ * lacks, and a directive the migrations lack. Its checks keep what they
+ * read in `reads`.
+ * @param {string} cwd @param {string} point @param {string[]} args @param {Map<string, any>} [reads]
  * @returns {Named}
  */
-function named(cwd, point, args) {
+function named(cwd, point, args, reads = new Map()) {
   if (!Object.hasOwn(POINTS, point) || args.length !== POINTS[point].takes.length) usage();
-  return { point, cwd, warnings: [], reads: new Map(), ...POINTS[point].place(cwd, args) };
+  return { point, cwd, warnings: [], reads, ...POINTS[point].place(cwd, args) };
 }
 
 /**

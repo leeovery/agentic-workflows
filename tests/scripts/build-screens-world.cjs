@@ -8,9 +8,10 @@
 // once a process and copied (`buildScreensWorld`), and over a test's
 // project and system config, the calls its tests make (`buildScreenHelpers`).
 //
-// The world: a feature, `pay`, its build begun in step, its cut three
-// phases — Cards and Reports relying on nothing, Refunds on Cards — Cards
-// started, Refunds written, Reports not yet written. Task 1.1 is in progress
+// The world: a feature, `pay`, its discussion concluded, its spec cut,
+// and its build begun in step, its cut three phases — Cards and Reports
+// relying on nothing, Refunds on Cards — Cards started, Refunds written,
+// Reports not yet written. Task 1.1 is in progress
 // at its gate: its branch holds its work, its first round failed on a bug,
 // its second passed, its account is taken, a run proved its scenario, one of
 // its two criteria, and the ledger holds a call of Claude's made for it, one
@@ -145,7 +146,10 @@ const QUESTIONS = Object.freeze([
 const made = { asked: /** @type {string[]} */ ([]), printed: '' };
 
 const buildScreensWorld = fixtureFrom('engine-build-screens-', (dir) => {
-  createManifest(dir, UNIT, { build: { position: 'step' }, cut: CUT, checklists: { 'phase-1-start': { items: {}, closed: FROZEN_AT } } });
+  createManifest(dir, UNIT, {
+    phases: { discussion: { items: { [UNIT]: { status: 'completed' } } } },
+    build: { position: 'step' }, cut: CUT, checklists: { 'phase-1-start': { items: {}, closed: FROZEN_AT } },
+  });
   commitAll(dir, 'the world');
   const file = path.join(templateFolder('engine-build-screens-files-'), 'task.md');
   ok(dir, ['task', 'phase', UNIT, '1', '--title', 'Cards']);

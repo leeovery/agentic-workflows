@@ -11,8 +11,10 @@
 // brief is kept in the folder of the conversation that issued it
 // (conversation.cjs):
 // `briefs/{id}.md`, what the agent is handed, and beside it `{id}.json`,
-// whose it is, `{role, agent, unit, task, topic}`. A dispatch carries it
-// by its pointer, `brief:{id}`, alone; the hook's refusals are appended to
+// whose it is, `{role, agent, unit, task, topic}`, a read of the review
+// phase's round with its `area`, where it names one, and its `round` (the
+// board's clock reads them). A dispatch carries it by its
+// pointer, `brief:{id}`, alone; the hook's refusals are appended to
 // `brief-refusals.jsonl` in the system config directory.
 // ---------------------------------------------------------------------------
 
@@ -114,7 +116,7 @@ function issuedPath(session, id) {
   return path.join(conversationDir(session), BRIEFS, `${id}.json`);
 }
 
-/** @typedef {{role: string, agent: string, unit: string|null, task: string|null, topic: string|null}} Issued */
+/** @typedef {{role: string, agent: string, unit: string|null, task: string|null, topic: string|null, area?: string, round?: number}} Issued */
 
 /** The pointer a dispatch carries for a brief. @param {string} id */
 function pointerOf(id) {

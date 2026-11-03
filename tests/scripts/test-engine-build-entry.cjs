@@ -360,6 +360,7 @@ describe('the build\'s standing (P13)', () => {
       waiting: [],
       finished: false,
       merging: null,
+      turn: null,
     });
     assert.ok(!enter(['solo']).sections.includes('in flight:'), 'another build\'s entry names none of this conversation\'s tasks in flight');
   });

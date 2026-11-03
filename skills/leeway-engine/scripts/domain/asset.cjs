@@ -181,6 +181,33 @@ function spikesOf(root, owner) {
 }
 
 /**
+ * The status the unit's live links give each of its spikes, by folder:
+ * canonical where the latest status any of them gives the spike, or a file
+ * in it, is canonical; else reference. A spike no live link gives a status
+ * is absent. Read in one read of the ledger.
+ * @param {string} cwd @param {string} unit @param {string[]} warnings @returns {Map<string, string>}
+ */
+function spikeStatuses(cwd, unit, warnings) {
+  const root = stateRoot(cwd);
+  const home = `${unit}/spikes/`;
+  return readFolded(root, ID_FACTS, warnings, (facts, entryAt) => {
+    const read = { facts, live: liveness(root) };
+    /** @type {Map<string, string>} */
+    const given = new Map();
+    for (const [id, link] of facts) {
+      if (link.event === 'asset' && link.gives_status && String(link.path).startsWith(home) && isLive(read, id)) given.set(String(link.path), String(entryAt(link.place).status));
+    }
+    /** @type {Map<string, string>} */
+    const statuses = new Map();
+    for (const [file, status] of given) {
+      const [folder] = file.slice(home.length).split('/');
+      if (statuses.get(folder) !== 'canonical') statuses.set(folder, status);
+    }
+    return statuses;
+  });
+}
+
+/**
  * `asset spike`: the unit's next spike, or the product's, its folder and its
  * twin under the cache made, under the writer lock so two starts never take
  * one number.
@@ -520,4 +547,4 @@ function runAssetVerb(cwd, verb, argv) {
   return RUNS[verb](cwd, positional, flags);
 }
 
-module.exports = { ASSET_USAGE, runAssetVerb };
+module.exports = { ASSET_USAGE, runAssetVerb, spikesOf, spikeStatuses };

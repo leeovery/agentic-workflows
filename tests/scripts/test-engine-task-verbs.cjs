@@ -520,16 +520,17 @@ describe('a task already ended', () => {
 describe('a driver whose tools are not installed', () => {
   beforeEach(() => { dir = inFolder(phasedWorld); });
 
-  it('is refused in the engine\'s words, naming every tool missing and where its updates are, and passing through the error of one that runs and fails, writing nothing', { skip: DRIVER.needs.length === 0 }, () => {
+  it('is refused in the engine\'s words where a verb runs them, naming every tool missing and where its updates are, and passing through the error of one that runs and fails, writing nothing', { skip: DRIVER.needs.length === 0 }, () => {
     const bin = toolless();
+    const adding = ['task', 'create', UNIT, '1', '--file', taskFile(dir, 'page', template('Page the ledger'))];
 
-    const error = refusesPristine(['task', 'ready', UNIT], { PATH: bin });
+    const error = refusesPristine(adding, { PATH: bin });
 
     assert.strictEqual(error.split(' — ')[0], `the task driver needs ${DRIVER.needs.map((need) => need.tool).join(' and ')}, not installed`);
     for (const need of DRIVER.needs) assert.ok(error.includes(need.update), `names where ${need.tool}'s updates are`);
     for (const need of DRIVER.needs) fs.writeFileSync(path.join(bin, need.tool), '#!/bin/sh\necho "broken here" >&2\nexit 3\n', { mode: 0o755 });
 
-    const broken = refusesPristine(['task', 'ready', UNIT], { PATH: bin });
+    const broken = refusesPristine(adding, { PATH: bin });
 
     assert.ok(broken.includes('broken here') && !broken.includes('not installed'), broken);
   });

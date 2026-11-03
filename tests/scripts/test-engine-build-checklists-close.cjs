@@ -25,8 +25,9 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  ok, refusedPristine, git, stateGit, writeState, statePath, touched, layout, cleanupFixture,
+  ok, refusedPristine, git, stateGit, writeState, statePath, touched, layout, cleanupFixture, readManifest,
 } = require('./engine-harness.cjs');
+const { createManifest } = require('./discovery-test-utils.cjs');
 const {
   UNIT, SESSION, DROPS_CENTS, branchOf, taskFile, world, checklistHelpers,
 } = require('./build-checklists-world.cjs');
@@ -119,7 +120,8 @@ describe('a phase\'s close (6.4.9)', () => {
     assert.deepStrictEqual([...seen, consolidated()], ['done', 'open', 'done']);
   });
 
-  it('reads its stack merged once every task not closed landed on the default branch (7.S7)', () => {
+  it('reads its stack merged once every task not closed landed on the default branch, searched from the day before the unit was made — a unit stamped as made an hour from now, by a clock running ahead, still finding what landed (7.S7)', () => {
+    createManifest(dir, UNIT, { ...readManifest(dir, UNIT), created: new Date(Date.now() + 3600e3).toISOString() });
     const merged = () => item('phase-close', 1, 'stack-merged');
     const seen = [merged()];
     landed(['1.1']);

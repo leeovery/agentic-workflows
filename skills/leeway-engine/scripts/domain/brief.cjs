@@ -64,7 +64,7 @@ const { carrying } = require('./ledger.cjs');
 const { trackedTask, trackedPhases, turnRefusal, ENDED } = require('./task-verbs.cjs');
 const { parseShownTask, parsePhase, shownTask, taskName } = require('./task-id.cjs');
 const { buildBegun } = require('./derivations.cjs');
-const { RECORDS } = require('./brief-records.cjs');
+const { RECORDS, readFacts } = require('./brief-records.cjs');
 const { ROLES, briefPath, issuedPath, pointerOf } = require('./brief-names.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { hasTopic, manifestOf, liveness } = require('./ledger-units.cjs');
@@ -355,12 +355,13 @@ function issueBrief(cwd, [role, ...rest]) {
     const { phases, written, committed } = phase === null
       ? { phases: null, written: null, committed: taskCommitted }
       : trackedTo(cwd, /** @type {string} */ (unit), phase, warnings);
-    const drawn = drawnRecords({
+    const filling = {
       cwd, role, ref, task, phase, phases, written, place, unit, given, session,
-    }, records, warnings);
+    };
+    const drawn = drawnRecords(filling, records, warnings);
     const id = newId();
     storeBrief(session, id, `Brief ${id} — ${whose}${forWhat(ref, phase, place, unit)}\n\n${filled(template, drawn)}`, {
-      role, agent, unit, task: ref === null ? null : shownTask(ref), topic: place === null ? null : place.topic,
+      role, agent, unit, task: ref === null ? null : shownTask(ref), topic: place === null ? null : place.topic, ...readFacts(filling, records, warnings),
     });
     return { id, role, agent, pointer: pointerOf(id), ...(committed === undefined ? {} : { committed }), ...(warnings.length > 0 ? { warnings } : {}) };
   } catch (err) {

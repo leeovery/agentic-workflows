@@ -1823,4 +1823,19 @@ const RECORDS = Object.freeze({
   'tests-report-to': { of: 'unit', draw: drawTestsReportTo },
 });
 
-module.exports = { RECORDS, DIVE_KINDS };
+/** The records that place a read of the review phase's round. */
+const ROUND_REPORTS = Object.freeze(['area-report-to', 'tests-report-to']);
+
+/**
+ * What the record of whose a brief is keeps beside its role for a read of
+ * the review phase's round: the area `--area` names, where it names one,
+ * and the round it reads (the board's clock reads both); nothing for any
+ * other brief.
+ * @param {Filling} filling @param {readonly string[]} records @param {string[]} warnings @returns {{area?: string, round?: number}}
+ */
+function readFacts(filling, records, warnings) {
+  if (!records.some((record) => ROUND_REPORTS.includes(record))) return {};
+  return { ...(filling.given.area === undefined ? {} : { area: filling.given.area }), round: reviewOf(filling, warnings).round };
+}
+
+module.exports = { RECORDS, DIVE_KINDS, readFacts };

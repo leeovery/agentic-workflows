@@ -92,7 +92,7 @@ describe('the area review\'s brief, the reviewer\'s third template (14.1, 14.2)'
 
     assert.deepStrictEqual([res, whose], [
       { ok: true, id: res.id, role: 'review-area', agent: 'leeway-reviewer', pointer: `brief:${res.id}` },
-      { role: 'review-area', agent: 'leeway-reviewer', unit: UNIT, task: null, topic: null },
+      { role: 'review-area', agent: 'leeway-reviewer', unit: UNIT, task: null, topic: null, area: '1', round: 1 },
     ]);
     assert.strictEqual(brief, `Brief ${res.id} — the area review's, for ${UNIT}\n\n${filledTemplate('review-area', {
       'area-sections': [pathDrawn(`${UNIT}/spec.md`), areaText(spec, 1)].join('\n\n'),
@@ -157,7 +157,7 @@ describe('the test surface\'s brief (14.2.4)', () => {
   it('every scenario of the spec with its area, the change\'s range, the layout, the linters and its one report — dispatched as the test reader', () => {
     const { res, brief, whose } = issued(['test-surface', UNIT, '--base', 'main']);
 
-    assert.deepStrictEqual(whose, { role: 'test-surface', agent: 'leeway-test-surface', unit: UNIT, task: null, topic: null });
+    assert.deepStrictEqual(whose, { role: 'test-surface', agent: 'leeway-test-surface', unit: UNIT, task: null, topic: null, round: 1 });
     assert.strictEqual(brief, `Brief ${res.id} — the test surface's, for ${UNIT}\n\n${filledTemplate('test-surface', {
       'spec-scenarios': [
         '- 1.S1, of §1 Cards: Given a card form, when the number is typed, then it is checked. (1.1.1)',

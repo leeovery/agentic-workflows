@@ -87,6 +87,7 @@ const { reading, phaseLists, mergeWaiting } = require('./phase-checks.cjs');
 const { shownTask } = require('./task-id.cjs');
 
 /** @typedef {import('./ledger-read.cjs').Shower} Shower */
+/** @typedef {import('./phase-checks.cjs').Reading} Reading */
 
 /** An area of the spec: its number, its title, and its name in the layout. @typedef {{number: string, title: string, name: string}} Area */
 /** What the test surface's findings, its place among a round's reads and its report are known by, beside the areas. */
@@ -221,14 +222,13 @@ const STATUS_WORDS = Object.freeze({ open: 'not started', 'in-progress': 'in pro
  * the lowest phase up to its fix phase whose stack waits at its merge gate
  * (`mergeWaiting`, phase-checks.cjs) — that fix phase's own, or one below
  * it a switch from auto left unmerged — null where none waits.
- * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {RoundRecord[]} rounds
+ * @param {Reading} at @param {RoundRecord[]} rounds
  * @returns {{waiting: string[], merging: number|null}}
  */
-function fixesWaiting(cwd, unit, manifest, rounds) {
+function fixesWaiting(at, rounds) {
   const last = rounds.at(-1);
   if (last === undefined || fixesOf(last).length === 0) return { waiting: [], merging: null };
-  const phase = fixPhase(manifest, rounds.length);
-  const at = reading(cwd, unit, manifest);
+  const phase = fixPhase(at.manifest, rounds.length);
   const statuses = new Map((phaseLists(at, [phase])[0] ?? []).map(({ ref, status }) => [shownTask(ref), status]));
   const waiting = fixesOf(last).filter((fix) => !['done', 'closed'].includes(statuses.get(fix) ?? ''))
     .map((fix) => `${fix} ${STATUS_WORDS[statuses.get(fix) ?? ''] ?? 'not in the tracker'}`);
@@ -249,11 +249,16 @@ function fixesWaiting(cwd, unit, manifest, rounds) {
  * }} ReviewStanding
  */
 
-/** Where the unit's review phase stands. @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @returns {ReviewStanding} */
-function reviewStanding(cwd, unit, manifest) {
+/**
+ * Where the unit's review phase stands, its tracker read through `at` —
+ * a reading of its own, where the caller has not read the unit already.
+ * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {Reading} [at]
+ * @returns {ReviewStanding}
+ */
+function reviewStanding(cwd, unit, manifest, at = reading(cwd, unit, manifest)) {
   const areas = specAreas(cwd, unit);
   const rounds = recordedRounds(cwd, unit);
-  const { waiting, merging } = fixesWaiting(cwd, unit, manifest, rounds);
+  const { waiting, merging } = fixesWaiting(at, rounds);
   const last = rounds.at(-1);
   if (last === undefined) return { areas, rounds, round: 1, ended: false, over: false, waiting, merging, required: everyRead(areas), reads: everyRead(areas) };
   if (endsReview(last)) return { areas, rounds, round: rounds.length, ended: true, over: waiting.length === 0, waiting, merging: null, required: [], reads: [] };

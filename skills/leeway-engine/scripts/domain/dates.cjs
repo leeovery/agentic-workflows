@@ -15,6 +15,20 @@ function isoNow() {
   return new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
 }
 
+/** A day, in milliseconds. */
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * The time a day before the date a stamp names, in full: where a search of
+ * what came after that date starts, whatever the clocks between; null
+ * where the stamp names none.
+ * @param {unknown} stamp @returns {string|null}
+ */
+function dayBefore(stamp) {
+  const at = typeof stamp === 'string' ? Date.parse(stamp) : Number.NaN;
+  return Number.isNaN(at) ? null : new Date(at - DAY_MS).toISOString();
+}
+
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /** A date stamp as a screen shows it: `2026-10-16` as `16 Oct`. @param {string} stamp `YYYY-MM-DD` */
@@ -23,4 +37,4 @@ function dayMonth(stamp) {
   return `${day} ${MONTHS[month - 1]}`;
 }
 
-module.exports = { todayStamp, isoNow, dayMonth };
+module.exports = { todayStamp, isoNow, dayBefore, dayMonth };

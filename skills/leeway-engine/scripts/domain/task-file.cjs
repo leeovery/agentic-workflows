@@ -161,4 +161,4 @@ function criterionWords(criterion) {
   return criterion.replace(/^\d+\.S\d+\s+/, '') || criterion;
 }
 
-module.exports = { TASK_TYPES, breaksLine, readTaskText, fieldOf, specReferenceOf, scenariosOf, criteriaTexts, criteriaOf, namesScenario, holdsScenario, criterionWords };
+module.exports = { FIELDS, TASK_TYPES, breaksLine, readTaskText, fieldOf, specReferenceOf, scenariosOf, criteriaTexts, criteriaOf, namesScenario, holdsScenario, criterionWords };

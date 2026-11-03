@@ -12,7 +12,9 @@
 // progress in every phase written, and those ready in a phase the caller
 // lets go on (`goingOn`) — in step, the one in flight first and any other
 // going on held behind it, its briefs and gate refused until that one is
-// done (`stepTurn`, `turnRefusal`).
+// done (`stepTurn`, `turnRefusal`); and the board reads the whole unit from
+// a copy of the tracker's store, taking no lock and setting nothing up, so
+// it never waits on a writer (`trackedUnit`, `withStoreCopy`).
 // A unit's phases are written into the tracker as each starts, so it holds
 // only those (7.4.1); a task is made from the task template in a file, one
 // call per task (7.1.3, 12.5.3), and its id is the engine's (task-id.cjs),
@@ -66,6 +68,7 @@
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { isolatedGit } = require('../kernel/isolated-git.cjs');
 const { isObject, jsonText } = require('../kernel/manifest-io.cjs');
@@ -428,7 +431,7 @@ function trackedStart(cwd, ref) {
  * Each of the unit's phases from 1 to `last` as the tracker holds it, read
  * as any read is: a phase written as the list of its tasks, in order, null
  * for one not written; and phase `last`'s tasks whole, null where it is not
- * written — one read of each task of that phase alone.
+ * written.
  * @param {string} cwd @param {string} unit @param {number} last
  * @returns {{phases: (TaskRow[]|null)[], written: TaskDetail[]|null, committed?: string|null, warnings?: string[]}}
  */
@@ -436,7 +439,7 @@ function trackedPhases(cwd, unit, last) {
   requireUnit(cwd, unit);
   return withTracker(cwd, unit, null, (driver, root) => {
     const phases = Array.from({ length: last }, (_, at) => driver.list(root, unit, at + 1));
-    return { phases, written: phases[last - 1]?.map((row) => taskIn(driver, root, row.ref)) ?? null };
+    return { phases, written: driver.tasks(root, unit, last) };
   });
 }
 
@@ -460,7 +463,7 @@ function trackedLists(cwd, unit, numbers) {
  */
 function trackedPhase(cwd, unit, phase) {
   requireUnit(cwd, unit);
-  return withTracker(cwd, unit, null, (driver, root) => ({ tasks: driver.list(root, unit, phase)?.map((row) => taskIn(driver, root, row.ref)) ?? null }));
+  return withTracker(cwd, unit, null, (driver, root) => ({ tasks: driver.tasks(root, unit, phase) }));
 }
 
 /**
@@ -469,29 +472,108 @@ function trackedPhase(cwd, unit, phase) {
  * has written — the cut's, and the review's fixes numbered on past it
  * (P14) — any conversation's in flight among them, and, where `ready` is
  * given, those waiting to start with nothing before them whose phase it
- * lets go on, asked once a phase once the tracker is read.
+ * lets go on (`goesOn`).
  * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest the unit's
  * @param {{ready?: (phase: number) => boolean}} [opts]
  * @returns {{tasks: string[], committed?: string|null, warnings?: string[]}}
  */
 function goingOn(cwd, unit, manifest, { ready } = {}) {
   requireUnit(cwd, unit);
-  const cut = cutLength(manifest);
-  const { running, waiting, ...read } = withTracker(cwd, unit, null, (driver, root) => {
-    /** @type {TaskRow[]} */
-    const rows = [];
-    for (let phase = 1; ; phase += 1) {
-      const list = driver.list(root, unit, phase);
-      if (list === null && phase > cut) break;
-      rows.push(...(list ?? []).filter(({ status }) => status === 'in-progress'));
-    }
-    return { running: rows, waiting: ready === undefined ? [] : driver.ready(root, unit, null) ?? [] };
-  });
+  const { phases, waiting, ...read } = withTracker(cwd, unit, null, (driver, root) => ({
+    phases: writtenPhases(driver, root, unit, cutLength(manifest)),
+    waiting: ready === undefined ? [] : driver.ready(root, unit, null) ?? [],
+  }));
+  return { ...read, tasks: goesOn(parks().parkedOf(cwd, unit), { phases, ready: waiting }, ready ?? (() => false)) };
+}
+
+/**
+ * Each phase the unit has written, from 1 on — the cut's, a phase of it not
+ * written null, and the review's fixes numbered on past it (P14).
+ * @param {TaskDriver} driver @param {string} root @param {string} unit @param {number} cut @returns {(TaskRow[]|null)[]}
+ */
+function writtenPhases(driver, root, unit, cut) {
+  /** @type {(TaskRow[]|null)[]} */
+  const phases = [];
+  for (let phase = 1; ; phase += 1) {
+    const list = driver.list(root, unit, phase);
+    if (list === null && phase > cut) return phases;
+    phases.push(list);
+  }
+}
+
+/**
+ * The tasks the unit's build goes on with, from what the tracker gave, but
+ * each `parked` holds — those a question waiting parks: those in progress
+ * in the phases read, then those ready to start whose phase `lets` go on,
+ * asked once a phase.
+ * @param {{has: (task: string) => boolean}} parked @param {{phases: (TaskRow[]|null)[], ready: TaskRow[]}} read
+ * @param {(phase: number) => boolean} lets
+ * @returns {string[]}
+ */
+function goesOn(parked, { phases, ready }, lets) {
   /** @type {Map<number, boolean>} */
-  const opens = new Map();
-  const goes = (/** @type {number} */ phase) => opens.get(phase) ?? opens.set(phase, /** @type {(phase: number) => boolean} */ (ready)(phase)).get(phase);
-  const parked = parks().parkedOf(cwd, unit);
-  return { ...read, tasks: [...running, ...waiting.filter(({ ref }) => goes(ref.phase))].map(({ ref }) => shownTask(ref)).filter((task) => !parked.has(task)) };
+  const asked = new Map();
+  const goes = (/** @type {number} */ phase) => asked.get(phase) ?? asked.set(phase, lets(phase)).get(phase);
+  const running = phases.flatMap((list) => (list ?? []).filter(({ status }) => status === 'in-progress'));
+  return [...running, ...ready.filter(({ ref }) => goes(ref.phase))].map(({ ref }) => shownTask(ref)).filter((task) => !parked.has(task));
+}
+
+/**
+ * What a read of the whole unit takes from the tracker, in one read: each
+ * phase it has written, as `writtenPhases` gives them; each phase's tasks
+ * whole where it holds one not yet ended, else null; the tasks ready to
+ * start; when each task in progress first moved into it, by task; and,
+ * where `task` names one, that task whole — null where the tracker lacks
+ * it — and when it first moved into progress.
+ * @typedef {{
+ *   phases: (TaskRow[]|null)[], written: (TaskDetail[]|null)[], ready: TaskRow[], starts: Record<string, string|null>,
+ *   task: TaskDetail|null, started: string|null,
+ * }} TrackedUnit
+ */
+
+/**
+ * `read` against a copy of the tracker's store, each of its files read
+ * whole once — a store kept in one file, read as it stood at one moment:
+ * no writer lock taken, nothing set up or written into the state, the copy
+ * removed after.
+ * @template T @param {string} cwd @param {(driver: TaskDriver, root: string) => T} read @returns {T}
+ */
+function withStoreCopy(cwd, read) {
+  const driver = /** @type {TaskDriver} */ (resolveDriver(cwd, 'task').driver);
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'leeway-store-'));
+  try {
+    for (const file of driver.storeFiles()) {
+      const text = fs.readFileSync(statePath(cwd, file));
+      fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+      fs.writeFileSync(path.join(root, file), text);
+    }
+    return read(driver, root);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+}
+
+/**
+ * The unit as the tracker holds it (the typedef's), read from a copy of
+ * its store (`withStoreCopy`), for a reader that must never wait on a
+ * writer.
+ * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest the unit's @param {TaskRef|null} [task]
+ * @returns {TrackedUnit}
+ */
+function trackedUnit(cwd, unit, manifest, task = null) {
+  requireUnit(cwd, unit);
+  return withStoreCopy(cwd, (driver, root) => {
+    const phases = writtenPhases(driver, root, unit, cutLength(manifest));
+    const running = phases.flatMap((rows) => (rows ?? []).filter(({ status }) => status === 'in-progress'));
+    return {
+      phases,
+      written: phases.map((rows, i) => (rows?.some(({ status }) => status === 'open' || status === 'in-progress') ? driver.tasks(root, unit, i + 1) : null)),
+      ready: driver.ready(root, unit, null) ?? [],
+      starts: Object.fromEntries(running.map(({ ref }) => [shownTask(ref), driver.started(root, ref)])),
+      task: task === null ? null : driver.show(root, task),
+      started: task === null ? null : driver.started(root, task),
+    };
+  });
 }
 
 /**
@@ -506,10 +588,19 @@ function goingOn(cwd, unit, manifest, { ready } = {}) {
  */
 function stepTurn(cwd, unit, manifest) {
   if (manifest.build?.position !== 'step') return null;
-  const { tasks } = goingOn(cwd, unit, manifest);
+  return turnOf(goingOn(cwd, unit, manifest).tasks, () => parks().freedAt(cwd, unit));
+}
+
+/**
+ * Of the tasks the build goes on with, in the tracker's order, the one in
+ * flight and those behind it (`stepTurn`'s), when an answer last freed each
+ * read only where two go on.
+ * @param {string[]} tasks @param {() => Map<string, number>} freedAt @returns {StepTurn|null}
+ */
+function turnOf(tasks, freedAt) {
   if (tasks.length < 2) return tasks.length === 0 ? null : { inFlight: tasks[0], behind: [] };
-  const freedAt = parks().freedAt(cwd, unit);
-  const [inFlight, ...behind] = [...tasks].sort((a, b) => (freedAt.get(a) ?? 0) - (freedAt.get(b) ?? 0));
+  const freed = freedAt();
+  const [inFlight, ...behind] = [...tasks].sort((a, b) => (freed.get(a) ?? 0) - (freed.get(b) ?? 0));
   return { inFlight, behind };
 }
 
@@ -720,4 +811,4 @@ function runTaskVerb(cwd, verb, positional, opts) {
   return run(cwd, positional, ...values, .../** @type {string[]} */ (given));
 }
 
-module.exports = { TASK_VERBS, ENDED, runTaskVerb, trackedTask, trackedPhases, trackedLists, trackedPhase, goingOn, phaseOpen, stepTurn, turnRefusal, phaseWritten, givenText, trackedStart };
+module.exports = { TASK_VERBS, ENDED, runTaskVerb, trackedTask, trackedPhases, trackedLists, trackedPhase, trackedUnit, goingOn, goesOn, phaseOpen, stepTurn, turnOf, turnRefusal, phaseWritten, givenText, trackedStart };
