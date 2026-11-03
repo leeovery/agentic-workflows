@@ -3,7 +3,9 @@
 // ---------------------------------------------------------------------------
 // The verify suites' world and helpers (test-engine-verify.cjs,
 // test-engine-verify-mutants.cjs): a feature, `pay`, its spec cut into two
-// phases, the first's three tasks in the tracker, their acceptance
+// phases, its build begun and the first phase started — its start's close
+// written onto the manifest, since two of its tasks hold 1.S1, which its
+// checklist refuses — the first's three tasks in the tracker, their acceptance
 // scenarios holding 1.S1; 1.S1 and 1.S2; and 1.S10 and 11.S1, which hold
 // no 1.S1; a verify setup in the
 // product's code whose parts each log their call and do what the test steers
@@ -14,7 +16,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { ok, commitAll, fixtureFrom, layout, createFile, writeState } = require('./engine-harness.cjs');
+const { ok, commitAll, fixtureFrom, layout, createFile, writeState, readManifest, FROZEN_AT } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
 const UNIT = 'pay';
@@ -102,9 +104,10 @@ const setupArgs = (dir, setup) => ['verify', 'setup', UNIT, '--file', setupFile(
 
 /** The world before its setup is recorded. @param {string} dir */
 function build(dir) {
-  createManifest(dir, UNIT, {});
+  createManifest(dir, UNIT, { build: { position: 'auto' } });
   writeState(dir, layout.unit(UNIT, 'spec.md'), SPEC);
   ok(dir, ['cut', UNIT, '--file', writeState(dir, layout.cache('cut.json'), JSON.stringify(CUT))]);
+  createManifest(dir, UNIT, { ...readManifest(dir, UNIT), checklists: { 'phase-1-start': { items: {}, closed: FROZEN_AT } } });
   fs.chmodSync(createFile(dir, 'verify/part.sh', PART), 0o755);
   createFile(dir, 'verify/mutate.sh', MUTATE);
   createFile(dir, 'verify/features.md', '# Features\n');

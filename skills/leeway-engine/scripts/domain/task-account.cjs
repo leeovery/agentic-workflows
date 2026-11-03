@@ -84,7 +84,7 @@ const { holdingBranch } = require('./landing-git.cjs');
 const { trackedTask, trackedStart, givenText, ENDED } = require('./task-verbs.cjs');
 const { refuseParked } = require('./task-parks.cjs');
 const { refusing } = require('./staged-payload.cjs');
-const { taskFolder, settlementPath, taskRounds } = require('./round-report.cjs');
+const { taskFolder, settlementPath, taskRounds, pairPassed } = require('./round-report.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
@@ -290,7 +290,7 @@ function takeAccount(cwd, unit, given) {
   const refuse = refuserFor(said);
   const { ref, task, rounds, last } = reviewedTask(cwd, unit, given, said, 'its account is taken as it lands, before task done');
   refuseParked(cwd, ref, said);
-  if (!last.passes && !last.settled) {
+  if (!pairPassed(last)) {
     refuse(`round ${last.round} of ${taskName(ref)} did not pass — an account is taken once every reviewer of a round passes the task, or the orchestrator settles it: engine task settle ${unit} ${shownTask(ref)} --file <why>`);
   }
   const text = writtenAccount(cwd, ref, refuse);
@@ -335,4 +335,4 @@ function settleTask(cwd, unit, given, file) {
   });
 }
 
-module.exports = { SECTIONS, accountPath, figuresPath, readAccount, takeAccount, settleTask };
+module.exports = { SECTIONS, accountPath, figuresPath, readAccount, takeAccount, settleTask, refuserFor, committed };

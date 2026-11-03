@@ -275,6 +275,7 @@ ${Object.values(MAP_USAGE).map((usage) => `  ${usage}`).join('\n')}
   task worktree <work-unit> <task>
   task account <work-unit> <task>
   task settle <work-unit> <task> --file <why>
+  task settle <work-unit> --phase <N> --file <why> [--fixes <task>,…]
   task note <work-unit> --file <note> [--phase <N>]
   task init <work-unit> <topic>
   task start <work-unit> <topic> <internal-id>
@@ -1144,7 +1145,8 @@ function runExperiment(call, argv) {
 // task — the tracker's verbs through the project's task driver
 // (domain/task-verbs.cjs): phase, create, add, type, link, ready, start,
 // done, close, list and show, and beside them the build's records, account
-// and settle (domain/task-account.cjs) and note (domain/notes.cjs), each
+// and settle (domain/task-account.cjs), settle --phase, a phase review's
+// (domain/phase-settlement.cjs), and note (domain/notes.cjs), each
 // committing what it wrote to the state branch; and worktree, the task's
 // worktree laid out for its builder (domain/task-worktree.cjs).
 //

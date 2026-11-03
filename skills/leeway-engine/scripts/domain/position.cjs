@@ -52,7 +52,7 @@ const { handedSession } = require('../kernel/process.cjs');
 const { positionPath, readPosition, isMarked, markConversation, runningTranscript } = require('./conversation.cjs');
 const { ROLES, issuedOf } = require('./brief-names.cjs');
 const { loadManifest, loadProjectManifest } = require('./reads.cjs');
-const { buildBegun, computeTopicLifecycle, itemOf, openRecords, phaseData, UNIT_PHASES } = require('./derivations.cjs');
+const { buildBegun, buildByCut, computeTopicLifecycle, itemOf, openRecords, phaseData, UNIT_PHASES } = require('./derivations.cjs');
 const { recordDir } = require('./experiment-paths.cjs');
 const { latestSessionLog, productSession } = require('./discovery-session.cjs');
 const { PRODUCT_SESSIONS } = require('./layout.cjs');
@@ -320,7 +320,11 @@ function dropPosition(sessionId) {
 // names, what its entry reads to carry it on — each live topic's record and
 // log, the unit's own record, the canonical assets, then the spec once written and the cut once cut,
 // and while the person's review page is open, its address and where its
-// marks are read back to (spec-entry.cjs), the spec keeping no log. Every
+// marks are read back to (spec-entry.cjs), the spec keeping no log;
+// implementation's, once the unit's build has begun, what its entry reads
+// to carry it on — the entries affected and the unit's record by their
+// calls, the build's log, and where the build stands, its tasks in flight
+// and its questions waiting (build-entry.cjs, 12.1.6, 24.2.2). Every
 // other phase's note sends
 // Claude to its skill's own steps.
 // ---------------------------------------------------------------------------
@@ -445,6 +449,19 @@ function discoveryWork(skill, calls, log) {
 }
 
 /**
+ * A build's note, carried whole, as its entry reads it (build-entry.cjs):
+ * the ledger's calls, the build's log, and where the build stands, with
+ * the tasks in flight of the conversation the note is for.
+ * @param {string} cwd @param {string} unit @param {InFlight[]} inFlight @returns {Omit<Work, 'skill'>}
+ */
+function buildWork(cwd, unit, inFlight) {
+  // Required here, as the build's entry puts its tasks in flight through
+  // this module.
+  const { calls, documents, lines } = require('./build-entry.cjs').buildRecovery(cwd, unit, inFlight);
+  return { documents, whole: { calls, log: null, lines } };
+}
+
+/**
  * @param {string} cwd @param {Position} position @param {Manifest} manifest
  * @returns {Work}
  */
@@ -484,6 +501,7 @@ function workAt(cwd, position, manifest) {
     case 'planning':
       return { skill, documents: [path.join(plan, 'planning.md'), ...phaseTaskFiles(plan)] };
     case 'implementation': {
+      if (buildByCut(manifest)) return { skill, ...buildWork(cwd, name, position.tasks ?? []) };
       const tasks = position.tasks ?? [];
       if (tasks.length === 0) return { skill, documents: [] };
       const format = itemOf(manifest, 'planning', topic)?.format;

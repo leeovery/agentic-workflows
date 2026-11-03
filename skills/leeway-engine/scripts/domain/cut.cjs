@@ -44,7 +44,7 @@ const { messageOf } = require('../kernel/call.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { readSpec, specSections, specScenarios, SPEC_FILE } = require('./spec-sections.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
-const { phaseStarted } = require('./checklist.cjs');
+const { phaseStarted } = require('./derivations.cjs');
 const { recordCut } = require('./spec-passes.cjs');
 
 /** @typedef {{name: string, goal: string, scenarios: string[], sections: string[], relies_on: Array<number|string>}} Phase */

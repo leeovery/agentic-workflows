@@ -34,9 +34,19 @@
 // in flight, no gap it found waiting on the person and nothing it left
 // waiting, for the writer or to be surfaced (spec-passes.cjs); every file the
 // unit's current entries link as canonical linked from `spec.md` (11.6.3,
-// log-links.cjs); what a phase relies on done — an earlier phase's close
-// recorded, another unit completed; and a directive's check passing
-// (directives.cjs).
+// log-links.cjs); a build phase's, every item of its start and close but
+// the shared design settled (phase-checks.cjs) — its tasks written, what it
+// relies on done, its tasks passed, its phase review passed with its fixes
+// landed, its scenarios proven or reported, its notes consolidated and its
+// stack merged; and a directive's check passing (directives.cjs). What a
+// call reads for them is read once (`reads`). An open engine item may name
+// its way on: the phase review's, what stands in the way of it, its
+// settlement among them (phase-settlement.cjs). Phase 1's close is refused
+// beyond its items until the verify setup is recorded (12.3.3). A phase's
+// close commits, beside the manifest, every record its folder holds — the
+// reports its items read, its consolidation report, its settlement
+// (round-report.cjs, `phaseRecords`) — so a second clone reads
+// the phase as this one did.
 // An item applies only where the unit has its step: the sweep between
 // topics where it has more than one live topic. No phase starts before
 // ready to build's yes begins the build (11.8.3), so a phase's start has no
@@ -72,7 +82,7 @@
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, readProjectManifest, writeProjectManifestAtomic, withProjectLock } = require('../kernel/manifest.cjs');
 const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
-const { hasTopic, manifestOf, liveness, finishedUnits, liveTopics } = require('./ledger-units.cjs');
+const { hasTopic, manifestOf, liveness, liveTopics } = require('./ledger-units.cjs');
 const { ID_FACTS, foldLedger, mapOf } = require('./ledger-fold.cjs');
 const { SPEC_FILE, readSpec, specSections, specStatements } = require('./spec-sections.cjs');
 const { topicsSettled } = require('./spec-standing.cjs');
@@ -80,7 +90,10 @@ const { inventedLines } = require('./spec-trace.cjs');
 const { readLandedSpec } = require('./spec-landed.cjs');
 const { sweepTaken, candidatesWaiting } = require('./sweep.cjs');
 const { reviewSettled, cutRequests } = require('./spec-passes.cjs');
-const { mailboxDepth, buildBegun } = require('./derivations.cjs');
+const { mailboxDepth, buildBegun, phaseKey } = require('./derivations.cjs');
+const checks = require('./phase-checks.cjs');
+const { phaseRecords } = require('./round-report.cjs');
+const { cutHolds } = require('./cut.cjs');
 const { canonicalAssets } = require('./ledger-read.cjs');
 const { logLinks } = require('./log-links.cjs');
 const { directiveOf, checkDirective, recordDirective } = require('./directives.cjs');
@@ -89,56 +102,54 @@ const { messageOf } = require('../kernel/call.cjs');
 const { fingerprint } = require('../kernel/fingerprint.cjs');
 const { REVIEWERS } = require('../kernel/reviewers.cjs');
 
+/** @typedef {import('./phase-checks.cjs').Reading} PhaseReading */
 /** @typedef {{state: 'done'|'skipped', reason?: string, at: string}} Mark */
 /** @typedef {{items: Record<string, Mark>, closed?: string, ledger_at?: number, voided?: string, taken?: string, spec_hash?: string, cut_hash?: string}} Checklist */
 
 /**
  * A checklist named: its point; where its record sits under the manifest's
- * `checklists`; the work it closes; and that work's manifest as read, the
- * unit's or, for a directive, the project's.
+ * `checklists`; the work it closes; that work's manifest as read, the
+ * unit's or, for a directive, the project's; and what the call has read for
+ * its checks, kept for its others (phase-checks.cjs).
  * @typedef {{
  *   point: string, path: string[], cwd: string,
  *   unit: string|null, topic: string|null, phase: number|null,
- *   manifest: Record<string, any>, warnings: string[],
+ *   manifest: Record<string, any>, warnings: string[], reads: Map<string, any>,
  * }} Named
  */
 
 /**
  * An item of a point: its key and text; how the engine checks it, where it
- * does; and where it applies, where not everywhere.
- * @typedef {{key: string, text: string, check?: (named: Named) => boolean, applies?: (named: Named) => boolean}} Item
+ * does, and the way on it names while open, where it names one; and where
+ * it applies, where not everywhere.
+ * @typedef {{key: string, text: string, check?: (named: Named) => boolean, way?: (named: Named) => string, applies?: (named: Named) => boolean}} Item
  */
 
 /** @typedef {{checklist: string, item: string, text: string, reason: string, at: string}} Skip */
 
-/** Where a checklist sits, named by what follows its point. @typedef {Omit<Named, 'point'|'cwd'|'warnings'>} Place */
+/** Where a checklist sits, named by what follows its point. @typedef {Omit<Named, 'point'|'cwd'|'warnings'|'reads'>} Place */
 
 /**
  * A point: what names its checklist after the point, and where that places
  * it; its items; the skips its gate shows, given its own; what its close
- * keeps beside the time, where it keeps more; and what its close does
- * beyond recording itself, where it does more.
+ * keeps beside the time, where it keeps more; why its close is refused
+ * beyond its items, where it can be; what its close commits beside the
+ * manifest, where it commits more; and what its close does beyond
+ * recording itself, where it does more.
  * @typedef {{
  *   takes: string[],
  *   place: (cwd: string, args: string[]) => Place,
  *   items: Item[],
  *   shows: (named: Named, own: Skip[]) => Skip[],
  *   seals?: (named: Named) => Record<string, unknown>,
+ *   refuses?: (named: Named) => string|null,
+ *   commits?: (named: Named) => string[],
  *   closes?: (named: Named) => void,
  * }} Point
  */
 
-/** The key a phase's start or close keeps its checklist under. @param {number} number @param {'start'|'close'} end */
-const phaseKey = (number, end) => `phase-${number}-${end}`;
-
 /** A checklist's record on a manifest, where it has one. @param {Record<string, any>} manifest @param {string[]} path @returns {Checklist|undefined} */
 const recordAt = (manifest, path) => path.reduce((node, key) => node?.[key], manifest.checklists);
-
-/** Whether a checklist on a manifest has been closed. @param {Record<string, any>} manifest @param {string[]} path */
-const closed = (manifest, path) => recordAt(manifest, path)?.closed !== undefined;
-
-/** Whether a phase of the unit has started: its start's checklist closed (6.4.8). @param {Record<string, any>} manifest @param {number} number */
-const phaseStarted = (manifest, number) => closed(manifest, [phaseKey(number, 'start')]);
 
 /** The phases of the unit's cut, none where it has no cut. @param {Record<string, any>} manifest @returns {Array<{sections: string[], scenarios: string[], relies_on: Array<number|string>}>} */
 const phasesOf = (manifest) => manifest.cut?.phases ?? [];
@@ -192,8 +203,6 @@ const sweepRun = ({ cwd, unit, manifest }) => sweepTaken(cwd, /** @type {string}
 function phasesComplete({ cwd, unit, manifest, warnings }) {
   const phases = phasesOf(manifest);
   const at = /** @type {string} */ (unit);
-  // Required here, not above: cut.cjs requires this module.
-  const { cutHolds } = require('./cut.cjs');
   return phases.length > 0 && phases.every(({ scenarios, sections }) => scenarios.length > 0 && sections.length > 0) && cutHolds(cwd, at, phases)
     && cutRequests(cwd, at, warnings).length === 0;
 }
@@ -240,12 +249,15 @@ const sealOf = (landed, manifest) => ({ spec_hash: fingerprint(landed), cut_hash
 /** What the unit's landed spec and its cut hold now, as ready to build's close keeps them, refused while the spec on disk is not the landed one. @param {string} cwd @param {string} unit @param {Record<string, any>} manifest */
 const specAndCut = (cwd, unit, manifest) => sealOf(readLandedSpec(cwd, unit), manifest);
 
-/** What the phase relies on is done: each earlier phase's close recorded, each other unit completed (12.6.2, 12.6.3). @param {Named} named */
-function reliedOnDone({ cwd, manifest, phase }) {
-  const finished = finishedUnits(stateRoot(cwd));
-  const on = phasesOf(manifest)[/** @type {number} */ (phase) - 1].relies_on;
-  return on.every((relied) => (typeof relied === 'number' ? closed(manifest, [phaseKey(relied, 'close')]) : finished(relied)));
-}
+/**
+ * A check of the phase a checklist closes, as phase-checks.cjs makes it,
+ * reading the unit as the call has read it.
+ * @param {(at: PhaseReading, phase: number) => boolean} check @returns {(named: Named) => boolean}
+ */
+const ofPhase = (check) => (named) => check(/** @type {PhaseReading} */ (named), /** @type {number} */ (named.phase));
+
+/** What stands between the phase and its review passed, each fault saying its way on. @param {Named} named */
+const reviewFaults = (named) => checks.phaseReviewFaults(/** @type {PhaseReading} */ (named), /** @type {number} */ (named.phase));
 
 /** The directive's check passes. @param {Named} named */
 const directivePasses = ({ cwd, path }) => checkDirective(cwd, path[1]).passed;
@@ -329,9 +341,9 @@ const POINTS = Object.freeze({
     takes: ['<work-unit>', '<N>'],
     place: onPhase('start'),
     items: [
-      { key: 'tasks-written', text: 'tasks written with their links' },
+      { key: 'tasks-written', text: 'tasks written with their links', check: ofPhase(checks.tasksWritten) },
       { key: 'design-settled', text: 'shared design settled' },
-      { key: 'relies-on-done', text: 'what the phase relies on is done', check: reliedOnDone },
+      { key: 'relies-on-done', text: 'what the phase relies on is done: closed, and its stack merged', check: ofPhase(checks.reliedOnDone) },
     ],
     shows: noSkips,
   },
@@ -339,13 +351,17 @@ const POINTS = Object.freeze({
     takes: ['<work-unit>', '<N>'],
     place: onPhase('close'),
     items: [
-      { key: 'tasks-passed', text: `every task passed each of its ${REVIEWERS} reviewers` },
-      { key: 'phase-review-passed', text: 'the phase review passed and its fixes landed' },
-      { key: 'scenarios-reported', text: 'each scenario proven or reported not proven' },
-      { key: 'notes-consolidated', text: 'the notes for later read by the consolidation agent, then made into tasks or dropped with a reason' },
-      { key: 'stack-merged', text: 'the stack merged, or waiting at its gate in step' },
+      { key: 'tasks-passed', text: `every task passed each of its ${REVIEWERS} reviewers`, check: ofPhase(checks.tasksPassed) },
+      {
+        key: 'phase-review-passed', text: 'the phase review passed and its fixes landed', check: (named) => reviewFaults(named).length === 0, way: (named) => reviewFaults(named).join('; '),
+      },
+      { key: 'scenarios-reported', text: 'each scenario proven or reported not proven', check: ofPhase(checks.scenariosReported) },
+      { key: 'notes-consolidated', text: 'the notes for later read by the consolidation agent, then made into tasks or dropped with a reason', check: ofPhase(checks.notesConsolidated) },
+      { key: 'stack-merged', text: 'the stack merged, or waiting at its gate in step', check: ofPhase(checks.stackMerged) },
     ],
     shows: noSkips,
+    refuses: (named) => checks.closeRefusal(/** @type {PhaseReading} */ (named), /** @type {number} */ (named.phase)),
+    commits: ({ cwd, unit, phase }) => phaseRecords(cwd, /** @type {string} */ (unit), /** @type {number} */ (phase)),
   },
   finish: {
     takes: ['<work-unit>'],
@@ -378,14 +394,18 @@ const itemsOf = (named) => POINTS[named.point].items.filter((item) => item.appli
 
 /**
  * Where each item of a named checklist stands: the engine's as it checks
- * them now, and Claude's by the marks made since the last close.
+ * them now, an open one with the way on it names, and Claude's by the marks
+ * made since the last close.
  * @param {Named} named
- * @returns {Array<{key: string, text: string, by: 'engine'|'claude', state: 'done'|'skipped'|'open', reason?: string, at?: string}>}
+ * @returns {Array<{key: string, text: string, by: 'engine'|'claude', state: 'done'|'skipped'|'open', reason?: string, at?: string, way?: string}>}
  */
 function itemStates(named) {
   const record = recordAt(named.manifest, named.path);
-  return itemsOf(named).map(({ key, text, check }) => {
-    if (check !== undefined) return { key, text, by: 'engine', state: check(named) ? 'done' : 'open' };
+  return itemsOf(named).map(({ key, text, check, way }) => {
+    if (check !== undefined) {
+      if (check(named)) return { key, text, by: 'engine', state: 'done' };
+      return { key, text, by: 'engine', state: 'open', ...(way === undefined ? {} : { way: way(named) }) };
+    }
     const mark = record?.items[key];
     if (mark === undefined || (record?.closed !== undefined && mark.at <= record.closed)) return { key, text, by: 'claude', state: 'open' };
     return { key, text, by: 'claude', ...mark };
@@ -440,19 +460,19 @@ function usage() {
  */
 function named(cwd, point, args) {
   if (!Object.hasOwn(POINTS, point) || args.length !== POINTS[point].takes.length) usage();
-  return { point, cwd, warnings: [], ...POINTS[point].place(cwd, args) };
+  return { point, cwd, warnings: [], reads: new Map(), ...POINTS[point].place(cwd, args) };
 }
 
 /**
  * Change a named checklist's record, its work's manifest read again and
  * saved under that manifest's lock — the change seeing the checklist as
- * read there, and throwing to write nothing — then commit the manifest
- * alone. Answers the commit's outcome on `result`.
+ * read there, and throwing to write nothing — then commit the manifest,
+ * with the files given beside it. Answers the commit's outcome on `result`.
  * @param {Named} checklist @param {string} done what the commit message says was done
  * @param {(record: Checklist, fresh: Named) => void} change
- * @param {Record<string, unknown>} result
+ * @param {Record<string, unknown>} result @param {string[]} [beside] state-relative
  */
-function changeRecord(checklist, done, change, result) {
+function changeRecord(checklist, done, change, result, beside = []) {
   const { cwd, unit, path } = checklist;
   const write = (/** @type {Record<string, any>} */ manifest) => {
     const parent = path.slice(0, -1).reduce((node, key) => (node[key] ??= {}), manifest.checklists ??= {});
@@ -466,7 +486,7 @@ function changeRecord(checklist, done, change, result) {
   }
   const { warnings } = checklist;
   const scope = unit === null ? 'checklist' : `checklist(${unit})`;
-  const outcome = commitStateTail(cwd, unit === null ? PROJECT_MANIFEST_SPEC : `${unit}/manifest.json`, `${scope}: ${nameOf(checklist)} ${done}`, warnings);
+  const outcome = commitStateTail(cwd, [unit === null ? PROJECT_MANIFEST_SPEC : `${unit}/manifest.json`, ...beside], `${scope}: ${nameOf(checklist)} ${done}`, warnings);
   result.committed = outcome.committed;
   if (warnings.length > 0) result.warnings = warnings;
   noteCommitOutcome(result, outcome, unit === null ? undefined : `${unit} --state`);
@@ -512,8 +532,9 @@ function mark(checklist, key, state, reason) {
 
 /**
  * Record the checklist's close, refused where what its point keeps cannot be
- * read, then while any item is open (6.4.4); then do what its point's close
- * does beyond.
+ * read, then while any item is open (6.4.4), then as its point refuses it
+ * beyond them, committing what its point's close commits beside the
+ * manifest; then do what its point's close does beyond.
  * @param {Named} checklist
  */
 function close(checklist) {
@@ -522,9 +543,11 @@ function close(checklist) {
     const sealed = POINTS[checklist.point].seals?.(fresh);
     const open = itemStates(fresh).filter((item) => item.state === 'open').map((item) => item.key);
     if (open.length > 0) throw new Error(`${nameOf(checklist)} has items open: ${open.join(', ')}`);
+    const refused = POINTS[checklist.point].refuses?.(fresh) ?? null;
+    if (refused !== null) throw new Error(refused);
     record.closed = at;
     Object.assign(record, sealed);
-  }, { ...answering(checklist), closed: at });
+  }, { ...answering(checklist), closed: at }, POINTS[checklist.point].commits?.(checklist));
   POINTS[checklist.point].closes?.(checklist);
   return answer;
 }
@@ -646,4 +669,4 @@ function takeDecidedClose(manifest, topic, at) {
   /** @type {Checklist} */ (recordAt(manifest, ['decided', topic])).taken = at;
 }
 
-module.exports = { CHECKLIST_USAGE, runChecklistVerb, phaseStarted, decidedClose, readyClose, takeDecidedClose, voidDecidedClose };
+module.exports = { CHECKLIST_USAGE, runChecklistVerb, decidedClose, readyClose, takeDecidedClose, voidDecidedClose };

@@ -26,7 +26,7 @@ const path = require('path');
 
 const { ok, refuses, git, tip } = require('./engine-harness.cjs');
 const {
-  TASKS, openArgs, cutTask, commitFiles, useLandingWorld, refusedMoving, followRemedy, short, shellWord, checkoutOf: checkout, heldRefusal: held, rebasingRefusal: rebasing, stops,
+  TASKS, openArgs, track, cutTask, commitFiles, useLandingWorld, refusedMoving, followRemedy, short, shellWord, checkoutOf: checkout, heldRefusal: held, rebasingRefusal: rebasing, stops,
   stoppedRebase, way, moveStep, rebaseSteps, strayRefusal: stray,
 } = require('./landing-world.cjs');
 
@@ -125,6 +125,7 @@ describe('land: a remedy freeing a branch a linked worktree has out', () => {
     const dir = project();
     ok(dir, openArgs(card));
     const other = commitFiles(dir, PHASE_FOUR, 'main', { 'v2.txt': 'v2\n' }, { message: 'feat(pay-v2): Other\n\nTask: pay-v2-4-1\n' });
+    track(dir, '4.1', 'fix', 'Four');
     commitFiles(dir, PHASE_FOUR, PHASE_FOUR, { 'four.txt': 'four\n' }, { message: 'fix(pay): Four\n\nTask: pay-4-1\n' });
     const top = commitFiles(dir, PHASE_ONE, PHASE_ONE, { 'tidy.txt': 'tidy\n' }, { message: 'my tidy' });
     const detached = path.join(dir, '.git', 'linked detached');

@@ -14,8 +14,15 @@
 // and a project inside a larger repository reading the change from its own
 // folder alone, but for the state, at the repository's top (7.2.17),
 // naming a nested repository from its own folder and the person's own
-// checkout as theirs. What every driver does is the landing conformance
-// suites'; the local driver's stacks,
+// checkout as theirs. And what the build's reviews ask first: `chain`
+// refusing a task its pair has not passed — no round reported, its last
+// failed and not settled, or a report that does not read — and chaining it
+// once the orchestrator settles that round (12.1.4, 13.4.6); `phase`
+// refusing a phase the cut holds until its phase review has passed, or
+// failed and been settled (13.10.1), its refusal naming the settlement,
+// and a fix phase past the cut asking none (7.2.4, P14); what a phase review
+// passed means, test-engine-build-checklists.cjs's. What every driver does
+// is the landing conformance suites'; the local driver's stacks,
 // test-engine-land-local.cjs's; the person's checkouts,
 // test-engine-land-checkout.cjs's and test-engine-land-worktrees.cjs's. Verb
 // layer: the landing world (landing-world.cjs), built once and copied for
@@ -29,11 +36,16 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { ok, refuses, git, stateGit, tip, head, lastMessage, initRepo, statePath, layout, readState } = require('./engine-harness.cjs');
+const { ok, refuses, git, stateGit, tip, head, lastMessage, initRepo, statePath, layout, readState, writeState, readManifest } = require('./engine-harness.cjs');
 const {
-  TASKS, TRACKER, openArgs, own, track, cutTask, commitFiles, landedOn, setLandingDriver, useLandingWorld, followRemedy, short, way, moveStep, strayRefusal: stray,
+  UNIT, TASKS, TRACKER, openArgs, own, track, cutTask, commitFiles, landedOn, setLandingDriver, useLandingWorld, followRemedy, short, way, moveStep, strayRefusal: stray,
+  refusedMoving,
 } = require('./landing-world.cjs');
+const { createManifest } = require('./discovery-test-utils.cjs');
 const { STATE_BRANCH } = require('../../skills/leeway-engine/scripts/domain/state-worktree.cjs');
+const { roundReportPath, phaseReviewPath } = require('../../skills/leeway-engine/scripts/domain/round-report.cjs');
+const { parseShownTask } = require('../../skills/leeway-engine/scripts/domain/task-id.cjs');
+const { REVIEWER_LETTERS } = require('../../skills/leeway-engine/scripts/kernel/reviewers.cjs');
 
 const { card } = TASKS;
 const project = useLandingWorld('engine-land-verbs-');
@@ -287,5 +299,52 @@ describe('land open: a task judged by its own change', () => {
       followRemedy(app, refusal);
       assert.deepStrictEqual(own(ok(app, ['land', 'chain', 'pay', '1.1'])).stack, ['1.1']);
     });
+  });
+});
+
+describe('land: what the build\'s reviews ask first (12.1.4, 7.2.4)', () => {
+  /** A reviewer's report, its verdict given. @param {'pass'|'fail'} verdict */
+  const reportOf = (verdict) => `# Review\n\n## Findings\n\n${verdict === 'pass' ? 'None.' : '- bug: the card is charged twice.\n  Scenario: a card taken twice.'}\n\nVerdict: ${verdict}\n`;
+
+  it('refuses to chain a task no round of whose review is reported, whose last round failed unsettled, or whose report does not read, moving nothing — and chains it once the orchestrator settles that round (13.4.6)', () => {
+    const dir = project();
+    ok(dir, openArgs(card));
+    ok(dir, ['task', 'start', UNIT, card.shown]);
+    const ref = parseShownTask(UNIT, card.shown);
+    const chain = ['land', 'chain', UNIT, card.shown];
+    for (const letter of REVIEWER_LETTERS) fs.rmSync(statePath(dir, roundReportPath(ref, 1, letter)));
+    const unreported = refusedMoving(dir, chain);
+    REVIEWER_LETTERS.forEach((letter, i) => writeState(dir, roundReportPath(ref, 1, letter), reportOf(i === 0 ? 'fail' : 'pass')));
+    const failed = refusedMoving(dir, chain);
+    writeState(dir, roundReportPath(ref, 1, REVIEWER_LETTERS[1]), 'Looks fine.\n');
+    const unread = refusedMoving(dir, chain);
+
+    assert.deepStrictEqual([unreported, failed], [
+      'land: task 1.1 has no review round reported — a task chains into its phase\'s stack once its pair has passed it',
+      'land: round 1 of task 1.1 did not pass — a task chains into its phase\'s stack once every reviewer of a round passes it, or once the orchestrator settles it: task settle pay 1.1 --file <why>',
+    ]);
+    assert.ok(unread.startsWith(`land: ${roundReportPath(ref, 1, REVIEWER_LETTERS[1])} does not read as a reviewer's report — `), unread);
+    writeState(dir, roundReportPath(ref, 1, REVIEWER_LETTERS[1]), reportOf('pass'));
+    ok(dir, ['task', 'settle', UNIT, card.shown, '--file', writeState(dir, `.cache/${UNIT}/why.md`, 'The charge is the driver\'s; the orchestrator fixed it there.\n')]);
+    assert.deepStrictEqual(own(ok(dir, chain)).stack, ['1.1']);
+  });
+
+  it('refuses to merge a phase the cut holds until its phase review has passed, or failed and been settled — every task done settling nothing — moving nothing, and merges it once passed (13.10.1); a fix phase past the cut asking none (P14)', () => {
+    const dir = project();
+    createManifest(dir, UNIT, { ...readManifest(dir, UNIT), build: { position: 'auto' }, cut: { phases: [{ name: 'Cards', goal: 'Cards are taken.', scenarios: ['1.S1'], sections: ['1'], relies_on: [] }] } });
+    ok(dir, openArgs(card));
+    ok(dir, ['land', 'chain', UNIT, card.shown]);
+    const unreviewed = refusedMoving(dir, ['land', 'phase', UNIT, '1']);
+    REVIEWER_LETTERS.forEach((letter, i) => writeState(dir, phaseReviewPath(UNIT, 1, letter), reportOf(i === 0 ? 'fail' : 'pass')));
+    ok(dir, ['task', 'done', UNIT, card.shown]);
+    const unsettled = refusedMoving(dir, ['land', 'phase', UNIT, '1']);
+    ok(dir, ['task', 'settle', UNIT, '--phase', '1', '--file', writeState(dir, `.cache/${UNIT}/why.md`, 'The double charge is the driver\'s, outside this phase.\n')]);
+
+    assert.deepStrictEqual([unreviewed, unsettled], [
+      `land: phase 1 of pay merges once its phase review has passed and its fixes are done — phase 1 of pay has no phase review reported — its reviewers write their reports in ${UNIT}/build/phases/phase-1/`,
+      'land: phase 1 of pay merges once its phase review has passed and its fixes are done — phase 1\'s review failed, and no settlement answers it — write its fixes as tasks of the phase, then settle it, naming them: task settle pay --phase 1 --file <why> [--fixes <task>,…]',
+    ]);
+    assert.deepStrictEqual(own(ok(dir, ['land', 'phase', UNIT, '1'])).merged, ['1.1']);
+    assert.strictEqual(refuses(dir, ['land', 'phase', UNIT, '2']).error, 'land: phase 2 of pay has no task opened — open its tasks first');
   });
 });

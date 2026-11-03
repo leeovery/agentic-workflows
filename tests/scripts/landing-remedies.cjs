@@ -124,6 +124,7 @@ const COMMIT_ROWS = [
     rewrites: true,
     setup: (dir) => {
       const other = commitFiles(dir, 'feat/pay-phase-4', 'main', { 'v2.txt': 'v2\n' }, { message: 'feat(pay-v2): Other\n\nTask: pay-v2-4-1\n' });
+      track(dir, '4.1', 'fix', 'Four');
       commitFiles(dir, 'feat/pay-phase-4', 'feat/pay-phase-4', { 'four.txt': 'four\n' }, { message: 'fix(pay): Four\n\nTask: pay-4-1\n' });
       return {
         args: ['land', 'chain', 'pay', '4.1'],
@@ -137,6 +138,7 @@ const COMMIT_ROWS = [
     rewrites: true,
     setup: (dir) => {
       const other = commitFiles(dir, 'feat/pay-phase-5', 'main', { 'v2.txt': 'v2\n' }, { message: 'feat(pay-v2): Other\n\nTask: pay-v2-1-1\n' });
+      track(dir, '5.1', 'fix', 'Five');
       commitFiles(dir, 'feat/pay-phase-5', 'feat/pay-phase-5', { 'five.txt': 'five\n' }, { message: 'fix(pay): Five\n\nTask: pay-5-1\n' });
       return {
         args: ['land', 'chain', 'pay', '5.1'],

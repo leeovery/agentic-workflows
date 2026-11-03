@@ -220,6 +220,11 @@ function messagesPast(root, from, to) {
   return git(root, ['log', '-z', '--format=%B', `${from}..${to}`]).split('\0').filter(Boolean);
 }
 
+/** The message of every commit `branch` holds whose message holds `text`. @param {string} root @param {string} branch @param {string} text @returns {string[]} */
+function messagesNaming(root, branch, text) {
+  return git(root, ['log', '-z', '--format=%B', '--fixed-strings', `--grep=${text}`, `refs/heads/${branch}`, '--']).split('\0').filter(Boolean);
+}
+
 /** Every commit `to` holds past `from`, oldest first, as a refusal names it: short, then its subject. @param {string} root @param {string} from @param {string} to @returns {string[]} */
 function commitsNamed(root, from, to) {
   return git(root, ['log', '--reverse', '--format=%H%x00%s', `${from}..${to}`]).split('\n').filter(Boolean).map((line) => {
@@ -1117,7 +1122,7 @@ function defaultBranch(root, remote, nested = false) {
 }
 
 module.exports = {
-  short, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranch, refsUnder, updateRefs, isAncestor, mergeBase, treesOf, firstParentLine, messagesPast, commitsNamed, messageOf, commitWithTree, treesPast,
+  short, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranch, refsUnder, updateRefs, isAncestor, mergeBase, treesOf, firstParentLine, messagesPast, messagesNaming, commitsNamed, messageOf, commitWithTree, treesPast,
   prefixOf, pointersAt, treeWithPointers, pointedLike, holdsCommit, pointerAhead, stackMoves, commitsPast, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, remedy, moveTo, movedSinceOpened, rewrite, scratchBlock, rebaseBlock, checkoutBlock, pathsChanged, dirtBlock, moveBranch,
   defaultBranch, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, nothingPast,
   worktrees, holderOf, samePlace, removing, branchInPlace, addWorktree, switchTo, removeWorktree, detach,

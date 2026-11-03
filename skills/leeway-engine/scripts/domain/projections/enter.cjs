@@ -7,11 +7,18 @@
 // before the reading (2.10.3). Where another live session holds the place,
 // the question is the whole answer: the held-topic gate, worded as the epic
 // menu's in-session gate words it (18.4.21) — the one home of that wording.
+// Where another session holds the checkout's code, it is the code gate
+// (12.7.8), which `render code-gate` draws too — the one home of its
+// wording, each row's way on the entry's alone.
 // ---------------------------------------------------------------------------
 
-const { section, dataSection, menu, cmdOption, MENU_INSTRUCTION } = require('./surfaces.cjs');
+const { section, dataSection, menu, menuFrame, cmdOption, emitAs, MENU_INSTRUCTION } = require('./surfaces.cjs');
 const { fmtAge } = require('../presence.cjs');
+const { titlecase } = require('../conventions.cjs');
 const { ENGINE_COMMAND } = require('../../kernel/call.cjs');
+
+/** @typedef {import('./surfaces.cjs').Next} Next */
+/** A session holding the checkout's code, as presence.cjs reads it. @typedef {{work_unit: string, phase: string, topic: string, age_seconds: number}} CodeHolder */
 
 /**
  * @param {string[]} questions each a section, drawn whole
@@ -62,4 +69,36 @@ function heldGate({ take, menu: back, ...held }) {
   ));
 }
 
-module.exports = { entrySections, heldStatement, heldGate };
+/** @param {string} phase */
+const codeVerb = (phase) => (phase === 'review' ? 'reviewing' : 'implementing');
+
+/**
+ * The code gate (12.7.8): each session holding the checkout's code, with
+ * when it was last active, then the question — leave that session to it,
+ * recommended, or enter anyway — each row leading where `ways` says, where
+ * it says.
+ * @param {CodeHolder[]} holders one at least @param {{back?: Next, take?: Next}} [ways]
+ * @returns {string}
+ */
+function codeGate(holders, { back, take } = {}) {
+  const facts = holders.map((h) => `⚑ Another session is ${codeVerb(h.phase)} "${titlecase(h.topic)}" (${h.work_unit}) — last active ${fmtAge(h.age_seconds)} ago.`);
+  const first = holders[0];
+  return [
+    section('DISPLAY: code gate', emitAs('properties'), facts.join('\n')),
+    section(
+      'MENU: code gate',
+      MENU_INSTRUCTION,
+      menuFrame([
+        'Code phases run one at a time — concurrent sessions write the same files, and even worktrees end in merge conflicts. Only proceed if you know that session is no longer working; if it is wedged but alive, release its hold with '
+          + `\`${ENGINE_COMMAND} presence clear ${first.work_unit} ${first.phase} ${first.topic}\`.`,
+        '',
+        '**`◆ Proceed anyway?`**',
+        '',
+        cmdOption('b', 'back', { head: 'Leave that session to it', recommended: true }, { next: back }),
+        cmdOption('y', 'yes', 'Enter anyway — two sessions on one code base', { next: take }),
+      ]),
+    ),
+  ].join('\n');
+}
+
+module.exports = { entrySections, heldStatement, heldGate, codeGate };

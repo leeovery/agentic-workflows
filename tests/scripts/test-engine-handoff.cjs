@@ -185,6 +185,17 @@ describe('engine handoff — the composed answer for every target', () => {
     }
   });
 
+  it('the build is entered at the unit once it runs by its cut, an epic\'s with no topic and refusing one — a unit built under the old plan at its topic as before (P12)', () => {
+    createManifest(dir, 'cards', { work_type: 'epic', build: { position: 'auto' } });
+    createManifest(dir, 'kept', { work_type: 'epic', build: { position: 'auto' }, phases: { specification: { items: { kept: { status: 'completed' } } } } });
+    const skill = 'leeway-implementation-process';
+
+    assert.strictEqual(inline(dir, [skill, 'epic', 'cards']), inlineAnswer(skill, 'epic cards', '→ Implementation · cards'));
+    refused(dir, [skill, 'epic', 'cards', 'checkout'], /^cards enters implementation at the work unit — name no topic$/);
+    assert.strictEqual(inline(dir, [skill, 'epic', 'kept', 'checkout']), inlineAnswer(skill, 'epic kept checkout', '→ Implementation · checkout'));
+    refused(dir, [skill, 'epic', 'kept'], /^an epic enters implementation at a topic$/);
+  });
+
   it('a topic the work unit does not hold yet is named all the same — the phase starts it', () => {
     assert.strictEqual(payloadOf(carried(dir, ['leeway-discussion-process', 'epic', 'fumi', 'payments'])).line,
       '→ Discussion · payments');

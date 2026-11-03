@@ -125,4 +125,14 @@ function criteriaOf(text) {
   return items > 0 ? items : Number(body !== '');
 }
 
-module.exports = { TASK_TYPES, breaksLine, readTaskText, specReferenceOf, scenariosOf, criteriaOf };
+/** Whether text names a scenario by its id, `N.Sk`, a longer id never read as it. @param {string} text @param {string} scenario */
+function namesScenario(text, scenario) {
+  return new RegExp(`(?<![\\w.])${scenario.replace('.', '\\.')}(?!\\w)`).test(text);
+}
+
+/** Whether a task's acceptance scenarios hold a scenario, by its id. @param {string} text the task's, as the tracker holds it @param {string} scenario */
+function holdsScenario(text, scenario) {
+  return namesScenario(scenariosOf(text), scenario);
+}
+
+module.exports = { TASK_TYPES, breaksLine, readTaskText, specReferenceOf, scenariosOf, criteriaOf, namesScenario, holdsScenario };

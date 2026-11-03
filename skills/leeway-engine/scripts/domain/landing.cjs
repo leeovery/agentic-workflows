@@ -5,7 +5,13 @@
 // through the project's landing driver (drivers.cjs): `open` the task's pull
 // request, `chain` it into its phase's stack, merge a `phase` whole, and
 // `finish`, which merges every phase still standing — the review phase's fix
-// phases, after every other (7.2.6).
+// phases, after every other (7.2.6). `chain` refuses a task its pair has
+// not passed, read off its rounds' reports (round-report.cjs, 12.1.4); and
+// `phase` a phase the cut holds until its phase review has passed and its
+// fixes are done, as the phase's close reads it (phase-checks.cjs, 7.2.4).
+// Which of a unit's tasks landed — each one a default branch's landing
+// names — is read here for the phase's close and the build's standing
+// (`landedTasks`).
 //
 // What every driver shares is settled here: the names (landing-names.cjs);
 // the default branch everything lands on in each repository, never the
@@ -76,12 +82,17 @@ const { commitStateTail, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { remoteName, nestedRemoteName } = require('./remote.cjs');
 const { assertUnit, parsePhase, parseShownTask, shownTask, taskId } = require('./task-id.cjs');
 const { trackedTask, ENDED } = require('./task-verbs.cjs');
+const { taskRounds, pairPassed } = require('./round-report.cjs');
 const names = require('./landing-names.cjs');
 const lg = require('./landing-git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { projectRepos, projectPath, childrenFirst } = require('../kernel/repos.cjs');
 const { STATE_DIR_NAME } = require('../kernel/state-root.cjs');
+
+// A phase's checks, loaded at their call: they read what landed through
+// this module.
+const phaseChecks = () => require('./phase-checks.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** @typedef {import('./drivers.cjs').LandingDriver} LandingDriver */
@@ -483,12 +494,34 @@ function landOpen(cwd, unit, task) {
 }
 
 /**
+ * Refuse a task its pair has not passed: no round of its review reported,
+ * or its last round failed and not settled (12.1.4, 13.4.6) — read off its
+ * rounds' reports alone, refused as their read refuses.
+ * @param {string} cwd @param {TaskRef} ref
+ */
+function refuseUnpassed(cwd, ref) {
+  const shown = shownTask(ref);
+  let last;
+  try {
+    last = taskRounds(cwd, ref).at(-1);
+  } catch (err) {
+    throw new Error(`land: ${messageOf(err)}`);
+  }
+  if (last === undefined) throw new Error(`land: task ${shown} has no review round reported — a task chains into its phase's stack once its pair has passed it`);
+  if (!pairPassed(last)) {
+    throw new Error(`land: round ${last.round} of task ${shown} did not pass — a task chains into its phase's stack once every reviewer of a round passes it, or once the orchestrator settles it: task settle ${ref.unit} ${shown} --file <why>`);
+  }
+}
+
+/**
  * The task chained into its phase's stack in every repository it is open
- * in, each answered in the order its tasks were merged back there.
+ * in, each answered in the order its tasks were merged back there — refused
+ * before anything moves where its pair has not passed it.
  * @param {string} cwd @param {string} unit @param {string} task shown, `{phase}.{n}`
  */
 function landChain(cwd, unit, task) {
   const ref = parseShownTask(unit, task);
+  refuseUnpassed(cwd, ref);
   const project = projectOf(cwd, unit);
   const ofTask = (/** @type {string} */ branch) => {
     const of = names.taskOfBranch(unit, branch);
@@ -509,11 +542,15 @@ function landChain(cwd, unit, task) {
  * A phase merged whole in every repository it lands in, children first —
  * `already` where it is merged wherever it lands, so a rerun reads finished
  * work as done, with every warning bringing the default branch here to it
- * gave.
+ * gave — refused before anything moves, for a phase the cut holds, until
+ * its phase review has passed and its fixes are done (7.2.4, 12.11.3).
  * @param {string} cwd @param {string} unit @param {string} given
  */
 function landPhase(cwd, unit, given) {
   const phase = parsePhase(given);
+  assertUnit(unit);
+  const unreviewed = phaseChecks().phaseReviewRefusal(cwd, unit, phase);
+  if (unreviewed !== null) throw new Error(`land: ${unreviewed}`);
   const project = projectOf(cwd, unit);
   const ofPhase = (/** @type {string} */ branch) => (names.taskOfBranch(unit, branch)?.phase ?? names.phaseOfBranch(unit, branch)) === phase;
   return withDriver(cwd, (driver) => {
@@ -566,4 +603,24 @@ function landFinish(cwd, unit) {
   });
 }
 
-module.exports = { LAND_USAGE, landOpen, landChain, landPhase, landFinish };
+/**
+ * The unit's tasks landed, shown: each a landing on the default branch of a
+ * repository of the project names by its `Task:` line, as every driver
+ * lands a task (landing-names.cjs). A repository with no default branch to
+ * land on holds none.
+ * @param {string} cwd @param {string} unit @returns {Set<string>}
+ */
+function landedTasks(cwd, unit) {
+  return new Set(projectRepos(codeRoot(cwd)).flatMap((repo) => {
+    const nested = repo.dir !== '';
+    let into;
+    try {
+      into = lg.defaultBranch(repo.path, nested ? nestedRemoteName(repo.path) : remoteName(cwd), nested);
+    } catch {
+      return [];
+    }
+    return lg.messagesNaming(repo.path, into, `Task: ${unit}-`).flatMap((message) => names.tasksOfMessage(unit, message).map(shownTask));
+  }));
+}
+
+module.exports = { LAND_USAGE, landOpen, landChain, landPhase, landFinish, landedTasks };

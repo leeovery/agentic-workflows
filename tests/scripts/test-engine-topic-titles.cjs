@@ -370,12 +370,12 @@ describe('every screen names a topic through one helper', () => {
       'render.cjs › resolveWorkUnit › String(manifest.work_type || \'\')',
     ],
     'a specification, a plan or a build, named for itself': [
+      'projections/enter.cjs › codeGate › h.topic',
       'projections/epic.cjs › epicUnblockMenu › item.name',
       'projections/epic.cjs › plansNotReadyBlock › p.name',
       'projections/start.cjs › planTopicsPick › t.name',
       'projections/surfaces.cjs › autoSelectLine › name',
       'render.cjs › aheadPhrase › a.name',
-      'render.cjs › codeGate › h.topic',
       'render.cjs › entryGate › String(spec.superseded_by || \'\')',
       'render.cjs › epicSoftGate › topic',
       'render.cjs › externalDependencyGate › dep.name',

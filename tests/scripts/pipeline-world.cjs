@@ -1210,21 +1210,53 @@ function readyToBuild(sim, wu, flags = []) {
   return sim.render(['ready-to-build', wu, ...flags], { expect: 'content' });
 }
 
+// The build's entry, at the work unit: once ready to build's yes carries the
+// conversation on, the build's first engine call is its entry, which starts
+// nothing and records the unit as its place, answering where the build
+// stands and what to read beside the ledger — the build's log among it; a
+// compaction there carries on in the build's skill, re-reading the same
+// (12.1.6, 24.2.2). Answers the entry's DATA lines.
+/** @param {Sim} sim @param {string} wu @returns {string[]} */
+function buildEntry(sim, wu) {
+  const res = sim.run(['enter', 'implementation', wu]);
+  assert.strictEqual(res.entered, true, 'no other session holds the code, so the entry asks nothing');
+  const lines = sim.sections.split('\n').filter((line) => /^[a-z ]+: /.test(line));
+  const here = carryOn(sim);
+  assert.deepStrictEqual(here.position, { name: wu, phase: 'implementation', topic: wu }, 'the entry records the unit as its place');
+  assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills', /** @type {string} */ (skillAt(wu, 'implementation')), 'SKILL.md'),
+    'a compaction there carries on in the build\'s skill');
+  for (const call of [`ledger affected ${wu}`, `ledger record ${wu}`]) assert.ok(here.text.includes(`${call}\``), `a compaction there re-reads ${call}`);
+  assert.ok(lines.filter((line) => line.startsWith('phase: ')).every((line) => here.text.includes(line)), 'a compaction there says where each phase stands, as the entry does');
+  return lines;
+}
+
+// A phase's start (6.4.8): its checklist shown, Claude's items marked done,
+// the engine's holding, and closed.
+/** @param {Sim} sim @param {string} wu @param {number} phase */
+function startPhase(sim, wu, phase) {
+  for (const { key, by, state } of JSON.parse(sim.read(['checklist', 'show', 'phase-start', wu, String(phase)])).items) {
+    if (by === 'claude' && state === 'open') sim.run(['checklist', 'done', 'phase-start', wu, String(phase), key]);
+  }
+  sim.run(['checklist', 'close', 'phase-start', wu, String(phase)]);
+}
+
 // The task writer's calls for one phase (12.5.2–12.5.4): the phase written
 // into the tracker, then each task from its file, one call per task, then
 // the links between them. A task's `after` names the tasks it waits on, as
-// `{phase}.{n}`.
+// `{phase}.{n}`; its `scenarios`, the phase's scenarios it takes from the
+// cut (12.4.3), else a scenario of its own.
 /**
  * @param {Sim} sim @param {string} wu @param {number} phase @param {string} title
- * @param {{title: string, after?: string[]}[]} tasks
+ * @param {{title: string, after?: string[], scenarios?: string[]}[]} tasks
  * @returns {string[]} the tasks as created
  */
 function writePhaseTasks(sim, wu, phase, title, tasks) {
   sim.run(['task', 'phase', wu, String(phase), '--title', title]);
   const created = tasks.map((task) => {
+    const scenarios = task.scenarios ?? [`Given a ledger, when ${task.title.toLowerCase()} runs, then it answers.`];
     const file = sim.write(`.leeway/.cache/${wu}/build/task.md`, [
       `# ${task.title}`, '', '## Type', 'feat', '', '## Problem', `${task.title} is missing.`, '', '## Solution', `Build ${task.title.toLowerCase()}.`, '',
-      '## Outcome', `${task.title} works.`, '', '## Acceptance scenarios', `- Given a ledger, when ${task.title.toLowerCase()} runs, then it answers.`, '',
+      '## Outcome', `${task.title} works.`, '', '## Acceptance scenarios', ...scenarios.map((scenario) => `- ${scenario}`), '',
       '## Spec reference', '§1', '',
     ].join('\n'));
     return sim.run(['task', 'create', wu, String(phase), '--file', file]).task;
@@ -1241,5 +1273,5 @@ function literal(text) {
 }
 
 module.exports = {
-  Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, writePhaseTasks, specReviewed, cutTheSpec, readyToBuild, specToBuild, keptOldSpec,
+  Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, buildEntry, startPhase, writePhaseTasks, specReviewed, cutTheSpec, readyToBuild, specToBuild, keptOldSpec,
 };

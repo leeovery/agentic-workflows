@@ -6,8 +6,9 @@
 // refuses what cannot be entered, each refusal naming the way on: a unit
 // this project lacks or has closed, a phase its work type has no place for,
 // and what the phase's own row refuses. Where another live session holds the
-// place, it asks first (18.4.21) — its question the whole answer, nothing
-// written — and `--take` enters all the same. Otherwise it starts what is
+// place, or what the row holds beyond it, it asks first (18.4.21, 12.7.8) —
+// its question the whole answer, nothing written — and `--take` enters all
+// the same. Otherwise it starts what is
 // not yet started, writing nothing ahead of its opening (9.3.1), and commits
 // that start; records where the conversation is working — its position, the
 // tmux label and the place's presence, as `session label` and `topic start`
@@ -25,14 +26,19 @@
 // why it cannot be entered as it stands (topic-standing.cjs, the rule a
 // handoff into a topic and a message to one share), whether and how it
 // starts, the questions it raises first, what it reads, its log where it
-// keeps one, where a level move leaves from, and what it closes as the
+// keeps one, where a level move leaves from, what it closes as the
 // conversation arrives — specification's, a review pass an earlier
-// conversation left running. A topic-level row refuses
+// conversation left running; the build's, the tasks another conversation
+// left in flight, taken onto this one's — and what of its own holds it
+// beyond its place: the build's, another session holding the checkout's
+// code, whose question comes before the place's own and is answered as it
+// is (12.7.8). A topic-level row refuses
 // an epic entered at no topic, a topic once the unit has its spec (4.11.2),
 // and a topic the unit lacks; a unit-level row takes no topic, and is
 // entered after the spec as before it. Discussion is the first row,
-// discovery the second (discovery-entry.cjs) and specification the third
-// (spec-entry.cjs); each later phase adds its own as its rewrite moves it
+// discovery the second (discovery-entry.cjs), specification the third
+// (spec-entry.cjs) and implementation, the build, the fourth
+// (build-entry.cjs); each later phase adds its own as its rewrite moves it
 // onto the entry. A unit-level place is the unit itself, as a
 // single-topic unit's topic is; the product's is `product`, a project place
 // with no manifest of its own, whose marker and lock are the project
@@ -72,9 +78,17 @@ const { waitingMessages } = require('./mail.cjs');
 const { waitingMail } = require('./projections/mail.cjs');
 const { DISCOVERY } = require('./discovery-entry.cjs');
 const { SPECIFICATION } = require('./spec-entry.cjs');
+const { IMPLEMENTATION } = require('./build-entry.cjs');
 const { earlierRecord, earlierReads } = require('./earlier-record.cjs');
 
 /** @typedef {[string, string]} Line a DATA line, its key and its value */
+
+/**
+ * The ways on from a question the entry puts where its place is held: the
+ * entry again with `--take`, and the epic's menu to go back to, null where
+ * there is none.
+ * @typedef {{take: string[], menu: {skill: string, args: string[]}|null}} HeldWays
+ */
 
 /** @typedef {import('./topic-standing.cjs').Standing} Standing */
 
@@ -95,19 +109,26 @@ const { earlierRecord, earlierReads } = require('./earlier-record.cjs');
  */
 
 /**
- * A phase's row: its level, and whether the product's conversation enters
- * through it too; why it cannot be entered as it stands, or null; whether it
- * is yet to start, and what starts it; the questions owed before anything is
+ * A phase's row: its level — for a unit-level row some units reach only in
+ * a state of their own, which it takes (`takes`), a unit it does not take
+ * handed off into the phase's skill at its topic as before (handoff.cjs) —
+ * and whether the product's conversation enters through it too; why it
+ * cannot be entered as it stands, or null; whether it is yet to start, and
+ * what starts it; the questions owed before anything is
  * read, each a section drawn whole; what it reads, as the place stood before
  * the entry wrote anything; the log its conversation keeps, state-relative,
  * where it keeps one, and whether the entry writes the conversation's line
  * into it rather than naming it; where a level move into it leaves from,
- * for a row that takes one, which keeps a log; and what it closes as the
- * conversation arrives, before it reads, for a row that closes anything.
+ * for a row that takes one, which keeps a log; what it closes as the
+ * conversation arrives, before it reads, for a row that closes anything;
+ * and the question it puts where something of its own holds it beyond its
+ * place, drawn whole, for a row that has such a hold.
  * @typedef {object} Entry
  * @property {'topic'|'unit'} level
+ * @property {(manifest: Record<string, any>) => boolean} [takes]
  * @property {boolean} [product]
  * @property {(at: Standing) => string|null} standing
+ * @property {(at: Standing, ways: HeldWays) => string|null} [held]
  * @property {(at: Standing) => boolean} unstarted
  * @property {(cwd: string, unit: string, topic?: string) => void} start
  * @property {(at: Entering) => string[]} questions
@@ -215,6 +236,7 @@ const ENTRIES = Object.freeze({
   },
   discovery: DISCOVERY,
   specification: SPECIFICATION,
+  implementation: IMPLEMENTATION,
 });
 
 const TAKE = '--take';
@@ -329,16 +351,33 @@ function settle(cwd, entry, at, held, departure) {
 }
 
 /**
- * The question put where another live session holds the place: proceeding
- * is the entry again with `--take`, a move kept a move; leaving it goes back
- * to the epic's menu, a single-topic unit or the product's conversation
- * having none to hand off to.
- * @param {Standing} at @param {string} place @param {number} ageSeconds @param {boolean} move
+ * The ways on from a question the entry puts where its place is held:
+ * proceeding is the entry again with `--take`, a move kept a move; leaving
+ * it goes back to the epic's menu, a single-topic unit or the product's
+ * conversation having none to hand off to.
+ * @param {Standing} at @param {boolean} move @returns {HeldWays}
  */
-function heldQuestion({ phase, unit, topic, manifest }, place, ageSeconds, move) {
-  const take = ['enter', phase, unit, ...(topic === undefined ? [] : [topic]), TAKE, ...(move ? [MOVE] : [])];
-  const menu = manifest.work_type === 'epic' ? { skill: 'leeway-continue-epic', args: [unit] } : null;
-  return heldGate({ unit, phase, place, title: topicTitle(manifest, place), ageSeconds, take, menu });
+function waysOn({ phase, unit, topic, manifest }, move) {
+  return {
+    take: ['enter', phase, unit, ...(topic === undefined ? [] : [topic]), TAKE, ...(move ? [MOVE] : [])],
+    menu: manifest.work_type === 'epic' ? { skill: 'leeway-continue-epic', args: [unit] } : null,
+  };
+}
+
+/**
+ * The question put where the place is held, or null where it is not: the
+ * row's own hold first, where it has one — the build's, the checkout's code
+ * — then another live session at the place itself.
+ * @param {Entry} entry @param {Standing} at @param {string} place @param {boolean} move
+ * @returns {string|null}
+ */
+function heldQuestion(entry, at, place, move) {
+  const ways = waysOn(at, move);
+  const own = entry.held?.(at, ways) ?? null;
+  if (own !== null) return own;
+  const hold = peerHold(at.cwd, at.unit, at.phase, place);
+  if (hold === null) return null;
+  return heldGate({ unit: at.unit, phase: at.phase, place, title: topicTitle(at.manifest, place), ageSeconds: hold.age_seconds, ...ways });
 }
 
 /**
@@ -357,8 +396,8 @@ function enterThrough(entries, cwd, argv) {
   const { topic } = at;
   const atTopic = topic === undefined ? {} : { topic };
   const place = topic ?? unit;
-  const hold = take ? null : peerHold(cwd, unit, phase, place);
-  if (hold !== null) return { response: { phase, unit, ...atTopic, entered: false }, sections: heldQuestion(at, place, hold.age_seconds, move) };
+  const stop = take ? null : heldQuestion(entry, at, place, move);
+  if (stop !== null) return { response: { phase, unit, ...atTopic, entered: false }, sections: stop };
   /** @type {Entering} */
   const entering = { ...at, started: entry.unstarted(at), notes: [] };
   entry.closes?.(at);
