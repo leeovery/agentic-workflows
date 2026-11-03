@@ -51,7 +51,7 @@ afterEach(() => {
   fs.rmSync(config, { recursive: true, force: true });
 });
 
-const { env, parkOn } = buildScreenHelpers(() => dir, () => config);
+const { env, parkOn, position } = buildScreenHelpers(() => dir, () => config);
 
 /** The conversation the board is drawn for. */
 const SESSION = 'sess-1';
@@ -133,13 +133,13 @@ describe('the board at the start menu (20.3.3, 20.16)', () => {
 });
 
 describe('the build on the board (20.5)', () => {
-  it('This session follows the session into its build: the unit\'s tab named, each phase of the cut with its tasks and their states, and the banner\'s facts (20.3.4, 20.5.1, 20.5.2)', () => {
+  it('This session follows the session into its build: the unit\'s tab named, each phase of the cut with its tasks and their states — in step, a task at its gate, not running — and the banner\'s facts (20.3.4, 20.5.1, 20.5.2)', () => {
     enterBuild();
 
     assert.deepStrictEqual(board(), {
       version: BOARD_VERSION,
       place: { unit: UNIT, type: 'feature', phase: 'implementation', topic: UNIT },
-      banner: { name: 'Pay', state: 'running', facts: [{ text: 'feature', needs: false }, { text: 'build', needs: false }, { text: '1 building', needs: false }] },
+      banner: { name: 'Pay', state: 'running', facts: [{ text: 'feature', needs: false }, { text: 'build', needs: false }, { text: '1 at the gate', needs: false }] },
       unit: { unit: UNIT, title: 'Pay' },
       tab: 'this',
       view: {
@@ -147,9 +147,9 @@ describe('the build on the board (20.5)', () => {
         unit: UNIT,
         title: 'Pay',
         type: 'feature',
-        progress: { done: 0, total: 4, phase: 1, phases: 3, running: 1, stopped: false },
+        progress: { done: 0, total: 4, phase: 1, phases: 3, running: 0, stopped: false },
         waiting: [],
-        phases: phasesWith(line('1.1', 'Take a card', 'building')),
+        phases: phasesWith(line('1.1', 'Take a card', 'at-gate')),
       },
       questions: [],
       warnings: [],
@@ -172,8 +172,9 @@ describe('the build on the board (20.5)', () => {
     ]);
   });
 
-  it('its clock ends once task account takes its account (P15)', () => {
+  it('its clock ends once task account takes its account, in auto, where no gate stops it (P15)', () => {
     enterBuild();
+    position('auto');
     issued('reviewer', '1.1', '2026-10-21T10:20:00.000Z');
 
     assert.deepStrictEqual(board().view.phases[0].tasks[0], line('1.1', 'Take a card', 'in-review'));
@@ -278,6 +279,31 @@ describe('the build on the board (20.5)', () => {
 
     assert.deepStrictEqual([drawn.map((view) => [view.kind, view.progress?.stopped ?? null]), attempts], [[['build', true], ['unit', null], ['all', null], ['task', null]], []]);
   });
+
+  it('draws, in step, a task at its gate and one behind the task in flight while a peer holds the writer lock, never trying it, neither running — their phase holding no task not started (12.7.9)', (t) => {
+    enterBuild();
+    position('auto');
+    ok(dir, ['task', 'start', UNIT, '1.2'], { env: env() });
+    ok(dir, ['task', 'close', UNIT, '1.3', '--reason', 'Not needed.'], { env: env() });
+    position('step');
+    const lock = holdLock(statePath(dir, layout.lock));
+    const attempts = lockAttempts(t, lock, () => { throw new Error('the board waited on the writer lock'); });
+    const { view, banner } = board();
+
+    assert.deepStrictEqual([view.phases[0].tasks.slice(0, 2), view.progress.running, banner.facts.map(({ text }) => text), attempts], [
+      [line('1.1', 'Take a card', 'at-gate'), line('1.2', 'Show a receipt', 'behind')], 0, ['feature', 'build', '1 at the gate'], [],
+    ]);
+  });
+
+  it('in step, holds no task behind one a question parks: the parked one waits, the other stands at its own gate (12.7.9)', async () => {
+    enterBuild();
+    position('auto');
+    ok(dir, ['task', 'start', UNIT, '1.2'], { env: env() });
+    position('step');
+    await parkOn(['1.1']);
+
+    assert.deepStrictEqual(board().view.phases[0].tasks.slice(0, 2).map(({ state }) => state), ['waits', 'at-gate']);
+  });
 });
 
 describe('a task\'s pages (20.5.4–20.5.7)', () => {
@@ -290,7 +316,7 @@ describe('a task\'s pages (20.5.4–20.5.7)', () => {
       unit: UNIT,
       phase: 1,
       phase_name: 'Cards',
-      line: line('1.1', 'Take a card', 'building'),
+      line: line('1.1', 'Take a card', 'at-gate'),
       started: figures.started,
       finished: figures.finished,
       does: 'Take a card works at the till, and the customer sees it.',

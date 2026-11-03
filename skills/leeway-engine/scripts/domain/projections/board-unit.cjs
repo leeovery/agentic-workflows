@@ -43,13 +43,12 @@ const { liveInOrder } = require('../approve-map.cjs');
 const { pastItsSpec } = require('../spec-standing.cjs');
 const { specPath, specReading } = require('../spec-sections.cjs');
 const { waitingGaps } = require('../spec-passes.cjs');
-const { reviewStanding } = require('../review-phase.cjs');
 const { cutPhases } = require('../phase-checks.cjs');
 const { unitHistory } = require('../state-history.cjs');
 const { computeTopicLifecycle, mailboxFiles, phaseStatus, buildBegun, buildFinished, roadmapItems, topicTitle } = require('../derivations.cjs');
 const { counted } = require('./map.cjs');
 const { buildView, buildWords, buildMoments } = require('./board-build.cjs');
-const { rowsAt } = require('./board-review.cjs');
+const { reviewStandingAt } = require('./board-review.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
 /** @typedef {import('../board-model.cjs').EpicView} EpicView */
@@ -181,7 +180,7 @@ const PHASE_WORDS = Object.freeze({
   discussion: (at) => counted(mapsOf(at, [at.unit]).get(at.unit)?.decisions ?? 0, 'decision'),
   specification: specWords,
   implementation: (at) => (buildBegun(at.manifest) ? buildWords(buildView(at).view) : ''),
-  review: (at) => `round ${reviewStanding(at.cwd, at.unit, at.manifest, rowsAt(at)).round}`,
+  review: (at) => `round ${reviewStandingAt(at).round}`,
 });
 
 /** A phase's words, where its records say any. @param {BoardAt} at @param {string} reads */

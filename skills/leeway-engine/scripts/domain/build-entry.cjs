@@ -83,13 +83,12 @@ const { handedSession } = require('../kernel/process.cjs');
 const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 const { buildBegun, buildFinished, phaseStarted, phaseClosed, legacyBuild, buildByCut } = require('./derivations.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
-const { withStateLock } = require('./state-worktree.cjs');
-const { stepTurn } = require('./task-verbs.cjs');
+const { goesOn, turnOf } = require('./task-verbs.cjs');
 const { heldCodeSessions } = require('./presence.cjs');
 const { codeGate } = require('./projections/enter.cjs');
 const { tasksInFlight } = require('./conversation.cjs');
 const { recordTasksAt } = require('./position.cjs');
-const { waitingQuestions, parkedTasks } = require('./questions.cjs');
+const { waitingQuestions, parkedTasks, freedAtOf } = require('./questions.cjs');
 const { reading, cutPhases, phaseLists, phaseTasks, phaseLanded, mergeWaiting, fixesOwed, passed } = require('./phase-checks.cjs');
 const { takenFigures } = require('./task-account.cjs');
 const { recordedRounds, mergingWords } = require('./review-phase.cjs');
@@ -233,10 +232,16 @@ function atGate(at, { ref, status }, parked) {
   return figures !== null && figures.additions === additionsOf(at, ref) && passed(at, ref);
 }
 
-/** In step, the tasks held behind the task in flight, which go on once it is done (the header's); none in auto. @param {Reading} at @returns {Set<string>} */
-function behindInFlight(at) {
+/**
+ * In step, the tasks held behind the task in flight, which go on once it is
+ * done (the header's, `stepTurn`'s), from the phases' lists and the parks
+ * the standing read; none in auto.
+ * @param {Reading} at @param {(TaskRow[]|null)[]} lists @param {Map<string, string[]>} parked @returns {Set<string>}
+ */
+function behindInFlight(at, lists, parked) {
   if (at.manifest.build.position !== 'step') return new Set();
-  return new Set(withStateLock(stateRoot(at.cwd), () => stepTurn(at.cwd, at.unit, at.manifest))?.behind);
+  const tasks = goesOn(parked, { phases: lists, ready: [] }, () => false);
+  return new Set(turnOf(tasks, () => freedAtOf(stateRoot(at.cwd), at.unit, at.warnings))?.behind);
 }
 
 /** Where a task stands as the standing gives it (the header's). @param {Reading} at @param {TaskRow} row @param {string[]} parked @param {Set<string>} behind @returns {TaskState} */
@@ -299,7 +304,7 @@ function standingOf(at, inFlight) {
   const { waiting, warnings = [] } = waitingQuestions(at.cwd, [at.unit]);
   at.warnings.push(...warnings);
   const parked = parkingQuestions(waiting);
-  const behind = behindInFlight(at);
+  const behind = behindInFlight(at, lists, parked);
   return {
     unit: at.unit,
     position: at.manifest.build.position,

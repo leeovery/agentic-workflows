@@ -6,8 +6,10 @@
 // its reports and the briefs this conversation issued for it in that round;
 // a recorded round, the checks each area ran, its findings, its checks not
 // proven, what went to the inbox, its verdict and its fix tasks as the
-// build's next phase; a later round's areas unchanged, not read again; a
-// finding's page and a check's; and that reading it writes nothing.
+// build's next phase; a later round's areas unchanged, not read again; the
+// build past the cut in step, its fix phase with a task behind the one in
+// flight and the phase whose merge waits; a finding's page and a check's;
+// and that reading it writes nothing.
 //
 // Layer: verb. World: the review phase's (review-world.cjs) — `pay`, its
 // build finished, its spec of two areas — copied for each test.
@@ -20,9 +22,9 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  UNIT, SESSION_ID, EVERY, RECEIPT, FOUND, FAILING, useWorld, env, enter, reportText, reported, named, recorded, issued, fixPhaseWritten, fixBuilt, reviewCall, filed, firstRoundReady, secondRoundReady, ok, writeState, git,
+  UNIT, SESSION_ID, EVERY, RECEIPT, FOUND, FAILING, useWorld, env, enter, inStep, reportText, reported, named, recorded, issued, fixPhaseWritten, cutUnmerged, fixBuilt, reviewCall, filed, firstRoundReady, secondRoundReady, ok, writeState, statePath, git,
 } = require('./review-world.cjs');
-const { withEnv, treeSnapshot, head: stateHead } = require('./engine-harness.cjs');
+const { withEnv, treeSnapshot, head: stateHead, holdLock, lockAttempts, layout } = require('./engine-harness.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
@@ -100,7 +102,7 @@ function issuedOf(id) {
 }
 
 describe('a round recorded (20.10.1, 20.10.2)', () => {
-  it('a failing round shows its finding in scope, its verdict and its fix tasks as the build\'s phase after the cut until the next round opens; open, the next waits on the areas they changed, every other unchanged (20.10.2)', () => {
+  it('a failing round shows its finding in scope, its verdict and its fix tasks as the build\'s phase after the cut until the next round opens; open, the next waits on the areas they changed, every other unchanged, the fix task built counted among the tasks built (20.10.2)', () => {
     firstRoundReady();
     recorded({ can_now: ['Pay by card.'], findings: [RECEIPT] });
     enter();
@@ -116,7 +118,7 @@ describe('a round recorded (20.10.1, 20.10.2)', () => {
         ...head(1), recorded: true, areas: [area('1', 'Cards', 'read', { ran: 2, found: 1 }), area('2', 'Refunds', 'read', { ran: 1 }), tests('read')], found, not_proven: [], inbox: [], verdict: 'failed', fixes: fixes('not-started'),
       },
       {
-        ...head(2), recorded: false, areas: [area('1', 'Cards', 'waiting'), area('2', 'Refunds', 'unchanged'), tests('unchanged')], found, not_proven: [], inbox: [], verdict: null, fixes: fixes('done'),
+        ...head(2), built: 4, recorded: false, areas: [area('1', 'Cards', 'waiting'), area('2', 'Refunds', 'unchanged'), tests('unchanged')], found, not_proven: [], inbox: [], verdict: null, fixes: fixes('done'),
       },
     ]);
   });
@@ -195,7 +197,7 @@ describe('a finding\'s and a check\'s pages (20.10.3)', () => {
 });
 
 describe('the unit\'s tab in the review phase (20.15.1)', () => {
-  it('each phase says what its records hold: the spec its sections and the build phases cut, the build its tasks done, the review its round', () => {
+  it('each phase says what its records hold: the spec its sections and the build phases cut, the build its tasks done, the review\'s fix tasks among them, the review its round', () => {
     firstRoundReady();
     recorded({ can_now: ['Pay by card.'], findings: [RECEIPT] });
     fixBuilt(3, 1, 'Send the receipt', 'main', 'src/send.js');
@@ -204,9 +206,45 @@ describe('the unit\'s tab in the review phase (20.15.1)', () => {
 
     assert.deepStrictEqual(board(['--tab', 'unit']).view.phases.slice(2), [
       { phase: 'specification', state: 'complete', words: '2 sections · 2 build phases' },
-      { phase: 'build', state: 'complete', words: '3 of 3 tasks done' },
+      { phase: 'build', state: 'complete', words: '4 of 4 tasks done' },
       { phase: 'review', state: 'running', words: 'round 2' },
     ]);
+  });
+});
+
+describe('the build past the cut (P14, 7.2.4, 12.7.9)', () => {
+  it('in step, lists the review\'s fixes after the cut\'s phases, a fix task behind the one in flight, and the phase whose merge waits at its gate, the banner saying so — drawn while a peer holds the writer lock, never trying it', (t) => {
+    fixPhaseWritten(3, [['Send the receipt', '§1.2'], ['Send it once', '§1.2']]);
+    ok(dir, ['task', 'start', UNIT, '3.1'], { env: env() });
+    ok(dir, ['task', 'start', UNIT, '3.2'], { env: env() });
+    cutUnmerged();
+    inStep();
+    ok(dir, ['enter', 'implementation', UNIT], { env: env() });
+    const lock = holdLock(statePath(dir, layout.lock));
+    const attempts = lockAttempts(t, lock, () => { throw new Error('the board waited on the writer lock'); });
+    const { view, banner } = board();
+
+    assert.deepStrictEqual([
+      view.phases.map(({ phase, name, state, tasks }) => [phase, name, state, tasks.map(({ task, state: stands }) => `${task} ${stands}`)]),
+      view.progress.running, banner.facts.map(({ text }) => text), attempts,
+    ], [
+      [
+        [1, 'Cards', 'complete', ['1.1 done', '1.2 done', '1.3 closed']],
+        [2, 'Refunds', 'merging', ['2.1 done', '2.2 done']],
+        [3, 'the review\'s fixes, round 1', 'running', ['3.1 building', '3.2 behind']],
+      ],
+      1, ['feature', 'build', '1 building', 'phase 2\'s merge waits'], [],
+    ]);
+  });
+
+  it('in step, the review phase\'s banner names the fix phase whose merge at its gate the next round waits on', () => {
+    firstRoundReady();
+    recorded({ can_now: ['Pay by card.'], findings: [RECEIPT] });
+    enter();
+    fixBuilt(3, 1, 'Send the receipt', 'main', 'src/send.js');
+    inStep();
+
+    assert.deepStrictEqual(board().banner.facts.map(({ text }) => text), ['feature', 'review', 'round 1 failed', 'phase 3\'s merge waits']);
   });
 });
 

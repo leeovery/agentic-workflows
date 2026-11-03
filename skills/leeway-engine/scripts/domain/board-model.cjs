@@ -66,10 +66,10 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
 
 /**
  * A task's state on the board (20.4.9, 20.5.2): done; building or in review,
- * clocked from the brief issued for it in this conversation (P15); failed;
- * waiting on a question; after another task; not started; closed without
- * being done.
- * @typedef {'done'|'building'|'in-review'|'failed'|'waits'|'after'|'not-started'|'closed'} TaskState
+ * clocked from the brief issued for it in this conversation (P15); in step,
+ * at its gate, or behind the task in flight; failed; waiting on a question;
+ * after another task; not started; closed without being done.
+ * @typedef {'done'|'building'|'in-review'|'at-gate'|'behind'|'failed'|'waits'|'after'|'not-started'|'closed'} TaskState
  */
 /**
  * A task's line: its number, title and state; since when it runs, where it
@@ -77,13 +77,14 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * questions for one waiting, the tasks for one after others, else none.
  * @typedef {{task: string, title: string, state: TaskState, since: string|null, on: string[]}} TaskLine
  */
-/** A phase's state on the board: not yet written, written, running, complete (every task done). @typedef {'not-written'|'written'|'running'|'complete'} PhaseState */
-/** A phase of the cut: its number, name, state, tasks done of its tasks, and its tasks. @typedef {{phase: number, name: string, state: PhaseState, done: number, total: number, tasks: TaskLine[]}} BuildPhase */
+/** A phase's state on the board: not yet written, written, running, complete (every task done), or, in step, its merge waiting at its gate. @typedef {'not-written'|'written'|'running'|'complete'|'merging'} PhaseState */
+/** A phase of the cut, or of the review's fixes past it: its number, name, state, tasks done of its tasks, and its tasks. @typedef {{phase: number, name: string, state: PhaseState, done: number, total: number, tasks: TaskLine[]}} BuildPhase */
 /**
  * The build's This session (20.5.1–20.5.3): the unit, its title and type;
- * the progress — tasks done of the tasks, the phase it is at of the cut's,
+ * the progress — tasks done of the tasks, the phase it is at of its phases,
  * how many run, and whether it has stopped, every task waiting on the
- * person; the questions waiting, by number; and every phase of the cut.
+ * person; the questions waiting, by number; and every phase of the cut,
+ * then of the review's fixes past it.
  * @typedef {{
  *   kind: 'build', unit: string, title: string, type: string,
  *   progress: {done: number, total: number, phase: number, phases: number, running: number, stopped: boolean},
@@ -125,12 +126,12 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
 /** A finding in scope of a recorded round: the round, its number in it, its area and words. @typedef {{round: number, finding: number, area: string, text: string}} FoundLine */
 /**
  * The review phase's This session (20.10): the unit, its title and type,
- * how many tasks were built; the round shown — the one under way once it
- * has opened, else the last recorded — whether it is recorded,
- * and each of its areas; each finding in scope — the round's once
- * recorded, else the failing round's before it, which its fix tasks fix;
- * once recorded, each check not proven, what went to the inbox and its
- * verdict; and the fix tasks of the round before, or of this one once
+ * how many tasks were built, the review's fix tasks among them; the round
+ * shown — the one under way once it has opened, else the last recorded —
+ * whether it is recorded, and each of its areas; each finding in scope —
+ * the round's once recorded, else the failing round's before it, which its
+ * fix tasks fix; once recorded, each check not proven, what went to the
+ * inbox and its verdict; and the fix tasks of the round before, or of this one once
  * recorded, as the build's phase they make, null where there are none.
  * @typedef {{
  *   kind: 'review', unit: string, title: string, type: string, built: number,

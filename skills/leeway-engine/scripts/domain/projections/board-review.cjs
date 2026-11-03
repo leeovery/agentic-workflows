@@ -30,11 +30,10 @@
 
 const fs = require('fs');
 const { statePath } = require('../../kernel/state-root.cjs');
-const { shownTask } = require('../task-id.cjs');
 const { readReport } = require('../round-report.cjs');
 const { specPath, specReading } = require('../spec-sections.cjs');
 const { reviewStanding, fixesOf, fixPhase, reportNames, areaReportPath, recordedRounds, TESTS } = require('../review-phase.cjs');
-const { taskLine, standingAt } = require('./board-build.cjs');
+const { taskLine, standingAt, readingAt } = require('./board-build.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
 /** @typedef {import('../board-model.cjs').ReviewView} ReviewView */
@@ -95,12 +94,12 @@ function fixesAt(at, rounds, round) {
   const record = rounds[round - 1];
   if (record === undefined || fixesOf(record).length === 0) return null;
   const phase = fixPhase(at.manifest, round);
-  const tasks = (rowsAt(at)(phase) ?? []).map(({ ref, title, status }) => taskLine(at, { task: shownTask(ref), title, status, parked: [], after: [] }));
+  const tasks = (standingAt(at).phases.find((held) => held.phase === phase)?.tasks ?? []).map((task) => taskLine(at, task));
   return { phase, round, tasks };
 }
 
-/** A phase's rows, as the unit's one read of the tracker holds them. @param {BoardAt} at @returns {(phase: number) => import('../drivers.cjs').TaskRow[]|null} */
-const rowsAt = (at) => (phase) => at.tracker().phases[phase - 1] ?? null;
+/** Where the review phase stands for the board's unit, read once a call through its reading (`readingAt`). @param {BoardAt} at @returns {ReviewStanding} */
+const reviewStandingAt = (at) => at.once('review', () => reviewStanding(at.cwd, at.unit, at.manifest, readingAt(at)));
 
 /**
  * The round the board shows: the one under review once it has opened —
@@ -112,7 +111,7 @@ const shownRound = ({ round, rounds, reads }) => (rounds.length >= round || roun
 
 /** The review phase's This session (the header's). @param {BoardAt} at @returns {{view: ReviewView}} */
 function reviewView(at) {
-  const standing = reviewStanding(at.cwd, at.unit, at.manifest, rowsAt(at));
+  const standing = reviewStandingAt(at);
   const round = shownRound(standing);
   const record = standing.rounds[round - 1];
   const built = standingAt(at).phases.flatMap(({ tasks }) => tasks).filter(({ status }) => status === 'done').length;
@@ -151,14 +150,15 @@ function reviewView(at) {
 
 /**
  * The banner's facts in the review phase (20.2.4): the round reading, or
- * its verdict once recorded; done once a round ended the phase.
- * @param {ReviewView} view @returns {{state: 'running'|'done', facts: {text: string, needs: boolean}[]}}
+ * its verdict once recorded, and, in step, the phase whose merge at its
+ * gate the next round waits on; done once a round ended the phase.
+ * @param {ReviewView} view @param {number|null} merging @returns {{state: 'running'|'done', facts: {text: string, needs: boolean}[]}}
  */
-function reviewBanner({ type, round, verdict }) {
+function reviewBanner({ type, round, verdict }, merging) {
   const fact = (/** @type {string} */ text) => ({ text, needs: false });
   return {
     state: verdict === 'passed' || verdict === 'settled' ? 'done' : 'running',
-    facts: [fact(type), fact('review'), fact(`round ${round} ${verdict ?? 'reading'}`)],
+    facts: [fact(type), fact('review'), fact(`round ${round} ${verdict ?? 'reading'}`), ...(merging === null ? [] : [fact(`phase ${merging}'s merge waits`)])],
   };
 }
 
@@ -190,4 +190,4 @@ function checkPage(at, said, scenario) {
   return { kind: 'check', unit: at.unit, round, scenario, standing: check.standing, text: written?.wording ?? null };
 }
 
-module.exports = { reviewView, reviewBanner, findingPage, checkPage, rowsAt };
+module.exports = { reviewView, reviewBanner, reviewStandingAt, findingPage, checkPage };
