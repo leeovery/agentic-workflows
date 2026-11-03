@@ -129,7 +129,7 @@ describe('a phase\'s close (6.4.9)', () => {
     assert.deepStrictEqual([...seen, merged()], ['open', 'open', 'done']);
   });
 
-  it('in step, reads its stack merged once its merge waits at its gate holding every task of the phase not closed, each opened into it, the stacks read once for all of them — one not, one whose landing cannot be read, said as a warning, or no task at all holding it open (7.2.4)', () => {
+  it('in step, reads its stack merged once its merge waits at its gate holding every task of the phase not closed, each opened into it, the stacks read once for all of them — one not, one whose landing cannot be read, said as a warning, one whose branch holds nothing yet, or no task at all holding it open (7.2.4)', () => {
     manifestWith({ build: { position: 'step' } });
     const merged = () => item('phase-close', 1, 'stack-merged');
     const seen = [merged()];
@@ -140,11 +140,13 @@ describe('a phase\'s close (6.4.9)', () => {
     seen.push(both);
     ok(dir, ['task', 'create', UNIT, '1', '--file', taskFile(dir, 'Mask a card', ['A card is masked.'])]);
     const unbranched = show('phase-close', 1);
+    git(dir, ['branch', 'feat/pay-1.3-mask-a-card', 'main']);
+    seen.push(unbranched.items.find((/** @type {{key: string}} */ shown) => shown.key === 'stack-merged').state, merged());
     ok(dir, ['task', 'close', UNIT, '1.3', '--reason', 'Folded into 1.1.']);
-    seen.push(unbranched.items.find((/** @type {{key: string}} */ shown) => shown.key === 'stack-merged').state, merged(), item('phase-close', 3, 'stack-merged'));
+    seen.push(merged(), item('phase-close', 3, 'stack-merged'));
     manifestWith({ build: { position: 'auto' } });
 
-    assert.deepStrictEqual([...seen, merged()], ['open', 'open', 'done', 'open', 'done', 'open', 'open'], 'a phase with no task holds no stack; in auto a stack waits at no gate, merged once landed');
+    assert.deepStrictEqual([...seen, merged()], ['open', 'open', 'done', 'open', 'open', 'done', 'open', 'open'], 'a phase with no task holds no stack; in auto a stack waits at no gate, merged once landed');
     assert.match(unbranched.warnings.join('\n'), /^land: task 1\.3 has no branch feat\/pay-1\.3-mask-a-card, /m);
     assert.strictEqual(reads, 1, 'the one repository\'s stacks are read once for both tasks');
   });

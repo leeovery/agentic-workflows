@@ -3,9 +3,9 @@
 // ---------------------------------------------------------------------------
 // What the build's screens suites share (test-engine-build-screens.cjs, the
 // screens that report; test-engine-build-gates.cjs, the gates;
-// test-engine-build-step.cjs, step's one task at a time): the world, built once a process and copied
-// (`buildScreensWorld`), and over a test's project and system config, the
-// calls its tests make (`buildScreenHelpers`).
+// test-engine-build-step.cjs, step's one task at a time): the world, built
+// once a process and copied (`buildScreensWorld`), and over a test's
+// project and system config, the calls its tests make (`buildScreenHelpers`).
 //
 // The world: a feature, `pay`, its build begun in step, its cut three
 // phases — Cards and Reports relying on nothing, Refunds on Cards — Cards

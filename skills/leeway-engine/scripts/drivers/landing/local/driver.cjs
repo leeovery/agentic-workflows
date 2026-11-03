@@ -30,6 +30,8 @@
 //   nothing. That the task descends from the tip is the seam's to check
 //   (landing.cjs); putting a parallel task there is Claude's merge-back
 //   (12.7.1), so the driver never rebases.
+// - Holds: whether the task's phase's stack landed it, as the close in step
+//   reads it (7.2.4).
 // - Open: the squash commits the task's tree onto the phase's branch, which
 //   is exactly the task's own change while that branch's tree is the chain
 //   tip's, and the task holds no other task's work the tip does not and the
@@ -325,26 +327,38 @@ function heldBy(ctx, task, refs, stacks) {
 }
 
 /**
+ * The branches here, the stacks they hold, and the task's phase's own —
+ * refused where it is merged, or something stops it — read once on a
+ * context that keeps its reads (landing-git.cjs, `readOnce`).
+ * @param {LandingContext} ctx @param {TaskRef} ref
+ */
+function stacksFor(ctx, ref) {
+  const { refs, stacks } = lg.readOnce(ctx, 'stacks', () => {
+    const read = lg.branches(ctx.root);
+    return { refs: read, stacks: stacksOf(ctx, read) };
+  });
+  const own = stacks.get(ref.phase);
+  if (own?.merged) {
+    throw new Error(`land: phase ${ref.phase} is merged into ${ctx.into} — task ${shownTask(ref)} lands in a phase not yet merged, so number it in one`);
+  }
+  if (own !== undefined) refuseFaulty(ctx, refs, own);
+  return { refs, stacks, own };
+}
+
+/** Whether its phase's stack holds the task, refused as `stacksFor` refuses it. @param {LandingContext} ctx @param {TaskRef} ref */
+const holds = (ctx, ref) => lands(stacksFor(ctx, ref).own, ref);
+
+/**
  * The chain's tip a task lands on, and what opening it takes (see the
- * header) — null where its phase's stack holds it already. Refuses a task
- * whose phase is merged, one built on a stack something stops, and a chain
- * whose last task's branch is gone. The stacks are read once on a context
- * that keeps its reads (landing-git.cjs, `readOnce`).
+ * header) — null where its phase's stack holds it already. Refuses as
+ * `stacksFor` does, a task built on a stack something stops, and a chain
+ * whose last task's branch is gone.
  * @param {LandingContext} ctx @param {LandingTask} task
  * @returns {ChainTip|null}
  */
 function chainTip(ctx, task) {
   const { phase } = task.ref;
-  const shown = shownTask(task.ref);
-  const { refs, stacks } = lg.readOnce(ctx, 'stacks', () => {
-    const read = lg.branches(ctx.root);
-    return { refs: read, stacks: stacksOf(ctx, read) };
-  });
-  const own = stacks.get(phase);
-  if (own?.merged) {
-    throw new Error(`land: phase ${phase} is merged into ${ctx.into} — task ${shown} lands in a phase not yet merged, so number it in one`);
-  }
-  if (own !== undefined) refuseFaulty(ctx, refs, own);
+  const { refs, stacks, own } = stacksFor(ctx, task.ref);
   if (lands(own, task.ref)) return null;
   const held = heldBy(ctx, task, refs, stacks);
   const reached = [...stacks.values()].filter((stack) => stack !== own && held.some(({ ref }) => lands(stack, ref))).sort((a, b) => b.phase - a.phase);
@@ -634,6 +648,7 @@ module.exports = {
   needs: [],
   serves: () => false,
   chainTip,
+  holds,
   open,
   chain,
   mergePhase,

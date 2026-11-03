@@ -44,11 +44,10 @@
 // shape, a unit, a task or a topic the project lacks, a unit set aside
 // where its role takes the unit alone, a phase or a topic, a task done or
 // closed, in step a task behind another in flight, until that one is done
-// (task-verbs.cjs), a topic set aside (5.8.17), a phase for a
-// unit whose build has not begun or one its cut lacks, and a record it
-// cannot read. A phase's
-// brief reads the list of each of the unit's phases to it from the
-// tracker, once, and its own phase's tasks whole (task-verbs.cjs). Once
+// (task-verbs.cjs), a topic set aside (5.8.17), a phase for a unit whose
+// build has not begun or one its cut lacks, and a record it cannot read.
+// A phase's brief reads the list of each of the unit's phases to it from
+// the tracker, once, and its own phase's tasks whole (task-verbs.cjs). Once
 // every record is drawn, what a record binds is bound — the dispatch a
 // question's brief is for, to that question (brief-records.cjs) — before
 // the brief is stored; where a record or a binding refuses the brief, what a

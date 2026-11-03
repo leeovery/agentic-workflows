@@ -611,11 +611,12 @@ function landFinish(cwd, unit) {
 
 /**
  * Whether each of the tasks given, whole, is chained into its phase's stack
- * wherever its change touches: opened there, which puts a task in its
- * phase's stack for every driver, as `open` reads one opened already — read
- * off git and the host, writing nothing, through the driver the project's
- * setting names, else the default, each repository's stacks read once for
- * every task. Refused as `open` refuses the task.
+ * wherever its change touches: in every repository holding its branch with
+ * something past the default branch there, the stack holds it — a task
+ * opened nowhere is not chained. Read off git and the host, writing and
+ * fetching nothing, through the driver the project's setting names, else
+ * the default (`holds`), each repository's stacks read once for every task.
+ * Refused as the task's landing is read (`landingOf`), and its stack.
  * @param {string} cwd @param {string} unit @param {import('./drivers.cjs').TaskDetail[]} tasks
  */
 function allChained(cwd, unit, tasks) {
@@ -623,7 +624,11 @@ function allChained(cwd, unit, tasks) {
   const driver = /** @type {LandingDriver} */ (chosenDriver(cwd, 'landing').driver);
   return tasks.every((held) => {
     const { task, holding } = landingOf(project, held.ref, held);
-    return touching(project, driver, task, holding).length === 0;
+    const touched = holding.map((repo) => contextOf(project, repo)).filter((ctx) => !lg.isAncestor(ctx.root, task.branch, ctx.into));
+    return touched.length > 0 && touched.every((ctx) => inRepo(ctx.repo, () => {
+      driver.assertServes?.(ctx);
+      return driver.holds(ctx, task.ref);
+    }));
   });
 }
 

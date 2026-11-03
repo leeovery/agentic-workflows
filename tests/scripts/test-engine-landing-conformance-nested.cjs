@@ -9,7 +9,8 @@
 // on its own default branch, and in none it does not touch, though it holds
 // the task's branch; a phase merges in each, the project's default branch
 // then pointing the submodule at the submodule's, and finish lands what
-// stands in each. A verb refused in one repository is
+// stands in each; a phase's close in step reads a task in its stack once
+// opened wherever its change touches. A verb refused in one repository is
 // test-engine-landing-conformance-nested-refusals.cjs's; fix phases stacked
 // on a phase that moved the pointer,
 // test-engine-landing-conformance-stacked.cjs's and
@@ -26,6 +27,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
 const { tip } = require('./engine-harness.cjs');
+const { createManifest, readManifest } = require('./discovery-test-utils.cjs');
 const { NESTED_TASKS, openArgs, nestedConformance } = require('./landing-world.cjs');
 const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
 
@@ -55,6 +57,16 @@ for (const { name } of listDrivers('landing')) {
         ['.gitignore', '.gitmodules', 'app.txt', 'ext', 'rates.txt', 'show.txt'], ['ext-rates.txt', 'ext.txt'], ['cache.txt', 'lib-rates.txt', 'lib.txt'],
       ]);
       for (const [dir, into] of Object.values(repos(at))) assert.strictEqual(tip(dir, into), side.defaultTip(dir, into), `${dir}'s default branch here does not hold its landing`);
+    });
+
+    it('a phase\'s close in step reads a task in its stack once it is opened wherever its change touches, a repository holding its branch with nothing past the default branch passed over (7.2.4)', () => {
+      const at = project();
+      createManifest(at.dir, 'pay', { ...readManifest(at.dir, 'pay'), build: { position: 'step' }, cut: { phases: [1, 2].map((n) => ({ name: `Phase ${n}`, goal: 'Rates.', scenarios: [`${n}.S1`], sections: [String(n)], relies_on: [] })) } });
+      const merged = () => ok(at.dir, ['checklist', 'show', 'phase-close', 'pay', '2']).items.find((/** @type {{key: string}} */ item) => item.key === 'stack-merged').state;
+      const before = merged();
+      ok(at.dir, openArgs(cache));
+
+      assert.deepStrictEqual([before, merged()], ['open', 'done']);
     });
   });
 }

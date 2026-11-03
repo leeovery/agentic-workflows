@@ -10,9 +10,9 @@
 // phases it names (`trackedLists`), a phase's checklist that phase's tasks
 // whole (`trackedPhase`), and the tasks the build goes on with: those in
 // progress in every phase written, and those ready in a phase the caller
-// lets go on (`goingOn`) — in step, the one in flight first, any other going on behind
-// it, as an answer frees one, their briefs and gate refused until it is done
-// (`stepTurn`, `turnRefusal`).
+// lets go on (`goingOn`) — in step, the one in flight first and any other
+// going on held behind it, its briefs and gate refused until that one is
+// done (`stepTurn`, `turnRefusal`).
 // A unit's phases are written into the tracker as each starts, so it holds
 // only those (7.4.1); a task is made from the task template in a file, one
 // call per task (7.1.3, 12.5.3), and its id is the engine's (task-id.cjs),

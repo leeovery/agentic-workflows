@@ -48,7 +48,7 @@ const METHODS = Object.freeze({
     optional: /** @type {const} */ ([]),
   },
   landing: {
-    required: /** @type {const} */ (['serves', 'chainTip', 'open', 'chain', 'mergePhase', 'nextMerge']),
+    required: /** @type {const} */ (['serves', 'chainTip', 'holds', 'open', 'chain', 'mergePhase', 'nextMerge']),
     optional: /** @type {const} */ (['assertServes', 'landsOn', 'finished', 'protectBranch', 'setSquashDefault']),
   },
 });
@@ -187,14 +187,15 @@ const METHODS = Object.freeze({
  * tip where it does not.
  * `chainTip` answers the branch a task's branch must descend from, at a
  * commit the repository has locally, which the seam checks before `open` —
- * null where the task's phase's stack holds it already — what it reads of
- * the stacks read once on a context that keeps its reads, as the close in
- * step asks it of every task of a phase (landing-git.cjs, `readOnce`); `chain`, null where
- * the task is not open there; `mergePhase`, null where no task of the
- * phase is open there, and `already` where it is merged; a merge, what it
- * was warned of. `nextMerge` answers the merge finish makes next there —
- * its phase, and the merge, made from what the driver read to pick it —
- * null where every phase is merged; the seam makes each in turn, and
+ * null where the task's phase's stack holds it already; `holds`, whether it
+ * does, fetching and writing nothing, as the close in step asks it of every
+ * task of a phase, the stacks read once on a context that keeps its reads
+ * (landing-git.cjs, `readOnce`); `chain`, null where the task is not open
+ * there; `mergePhase`, null where no task of the phase is open there, and
+ * `already` where it is merged; a merge, what it was warned of.
+ * `nextMerge` answers the merge finish makes next there — its phase, and
+ * the merge, made from what the driver read to pick it — null where every
+ * phase is merged; the seam makes each in turn, and
  * `finished` lets go, once finish has merged them all, what the driver
  * keeps of the unit there. Where the host can, run from a repository's
  * checkout against its remote's repository: `protectBranch` sets a rule
@@ -211,6 +212,7 @@ const METHODS = Object.freeze({
  *   protectBranch?: (root: string, url: string, branch: string) => {repository: string, unset: string|null},
  *   setSquashDefault?: HostSetting,
  *   chainTip: (ctx: LandingContext, task: LandingTask) => ChainTip|null,
+ *   holds: (ctx: LandingContext, ref: TaskRef) => boolean,
  *   open: (ctx: LandingContext, task: LandingTask, tip: ChainTip) => {base: string},
  *   chain: (ctx: LandingContext, ref: TaskRef) => {stack: string[]}|null,
  *   mergePhase: (ctx: LandingContext, phase: number) => {into: string, merged: string[], warnings?: string[]}|{into: string, already: true, warnings?: string[]}|null,
