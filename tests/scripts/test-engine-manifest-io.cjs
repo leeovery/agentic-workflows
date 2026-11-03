@@ -599,6 +599,7 @@ const EXEMPT_CALLS = [
   ['checklist', 'show', 'decided', 'payments', 'auth-flow'],
   ['render', 'migration-gate'],
   ['gate', 'migration gate', '--pick', 'y'],
+  ['measures', 'findings'],
 ];
 
 describe('engine writes take the writer lock', () => {

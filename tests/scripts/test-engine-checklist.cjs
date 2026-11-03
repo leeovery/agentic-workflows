@@ -6,14 +6,16 @@
 // (6.4.6–6.4.10); a directive's checklist (6.4.11) is
 // test-migration-directives.cjs's.
 // Each point's exact list (6.S14), the sweep left off for a unit of one
-// topic; Claude's items marked in its own order, one skipped with its
-// reason, and the close (2.S2); the engine's own items worked out at each
+// topic and finish's records indexed where no knowledge base is set up; the
+// engine's own items worked out at each
 // call and never kept or marked — the person's questions on the ledger's map
 // (6.S13), mail waiting, the unit's topics settled, the sweep run, every statement and
 // screen of `spec.md` traced, the cut against `spec.md`, the canonical
 // assets linked from `spec.md`, another unit a phase relies on — the review
-// settled is test-engine-spec-review-settled.cjs's, and a build phase's
-// checks test-engine-build-checklists.cjs's; no phase's start before the
+// settled is test-engine-spec-review-settled.cjs's, a build phase's
+// checks test-engine-build-checklists.cjs's, and finish's, with its items
+// worked in Claude's order and its close (2.S2), test-engine-finish.cjs's;
+// no phase's start before the
 // build begins (11.8.3);
 // the close refused while an item is open (6.S26), and a mark from before
 // the last close never counting toward the next; finish showing every phase
@@ -218,10 +220,9 @@ describe('the points of a unit\'s work, each its exact list (6.4.6–6.4.10, 6.S
         'stack-merged engine open: the stack merged, or waiting at its gate in step',
       ],
       finish: [
-        'review-passed claude open: the review phase passed and its report is written, where the unit has a review phase (a quick-fix\'s only when the person asks)',
+        'review-passed engine open: the review phase passed and its report is written, where the unit has a review phase (a quick-fix\'s only when the person asks)',
         'inbox-closed claude open: resolved inbox items closed',
         'build-log-closed claude open: the build log closed',
-        'records-indexed claude open: the records indexed',
       ],
     });
   });
@@ -276,7 +277,7 @@ describe('the points of a unit\'s work, each its exact list (6.4.6–6.4.10, 6.S
       `checklist show: ${UNIT}'s cut has no phase 3 — its phases are 1 to 2`,
       `checklist show: ${UNIT}'s cut has no phase 0 — its phases are 1 to 2`,
       'checklist show: solo has no cut — its phases come from engine cut',
-      'checklist done: finish has no item "tidied" — its items are review-passed, inbox-closed, build-log-closed, records-indexed',
+      'checklist done: finish has no item "tidied" — its items are review-passed, inbox-closed, build-log-closed',
     ]);
   });
 });
@@ -299,33 +300,8 @@ describe('no phase starts before the build begins (11.8.1, 11.8.3, 11.S13)', () 
   });
 });
 
-describe('finish worked in Claude\'s order (2.S2, 6.4.2, 6.4.12)', () => {
+describe('a mark\'s write (6.4.12)', () => {
   eachOn(fresh);
-
-  it('ends each item done but the one skipped, its reason recorded, and the close recorded on the unit\'s manifest — Claude\'s marks and the close alone, each write committed alone', () => {
-    const before = stateGit(dir, ['rev-parse', 'HEAD']).trim();
-    const named = ['finish', UNIT];
-    const marks = {
-      'records-indexed': checklist(['done', ...named, 'records-indexed']),
-      'review-passed': checklist(['done', ...named, 'review-passed']),
-      'inbox-closed': checklist(['skip', ...named, 'inbox-closed', '--reason', 'No inbox item was resolved.']),
-      'build-log-closed': checklist(['done', ...named, 'build-log-closed']),
-    };
-    const closing = checklist(['close', ...named]);
-
-    const stored = (/** @type {any} */ { state, reason, at }) => (reason === undefined ? { state, at } : { state, reason, at });
-    assert.deepStrictEqual(records(), { finish: { items: Object.fromEntries(Object.entries(marks).map(([key, mark]) => [key, stored(mark)])), closed: closing.closed } });
-    assert.deepStrictEqual(marks['inbox-closed'], {
-      ok: true, unit: UNIT, checklist: 'finish', item: 'inbox-closed', state: 'skipped', reason: 'No inbox item was resolved.',
-      at: marks['inbox-closed'].at, committed: marks['inbox-closed'].committed,
-    });
-    assert.deepStrictEqual(closing, { ok: true, unit: UNIT, checklist: 'finish', closed: closing.closed, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim() });
-    assert.deepStrictEqual(stateGit(dir, ['log', '--reverse', '--format=%s', `${before}..HEAD`]).trim().split('\n'), [
-      ...Object.entries(marks).map(([key, { state }]) => `checklist(${UNIT}): finish ${key} ${state}`),
-      `checklist(${UNIT}): finish closed`,
-    ]);
-    assert.deepStrictEqual([...new Set(stateGit(dir, ['log', '--format=', '--name-only', `${before}..HEAD`]).trim().split('\n'))], [layout.manifest(UNIT)]);
-  });
 
   it('writes under the writer lock: a live holder keeps the record unwritten until it lets go', (t) => {
     const lock = holdLock(statePath(dir, layout.lock));
@@ -336,9 +312,9 @@ describe('finish worked in Claude\'s order (2.S2, 6.4.2, 6.4.12)', () => {
       fs.unlinkSync(lock);
     });
 
-    checklist(['done', 'finish', UNIT, 'records-indexed']);
+    checklist(['done', 'finish', UNIT, 'build-log-closed']);
 
-    assert.deepStrictEqual([attempts, whileHeld, Object.keys(records().finish.items)], [['taken', 'made'], [undefined], ['records-indexed']]);
+    assert.deepStrictEqual([attempts, whileHeld, Object.keys(records().finish.items)], [['taken', 'made'], [undefined], ['build-log-closed']]);
   });
 });
 
@@ -554,7 +530,7 @@ describe('skips (6.4.2, 6.4.5)', () => {
 
   it('finish shows every phase start\'s skips, in the cut\'s order, then its own, read from the unit\'s manifest by a later conversation (6.S32)', () => {
     checklist(['skip', 'phase-start', UNIT, '2', 'design-settled', '--reason', 'Nothing shared.']);
-    checklist(['skip', 'finish', UNIT, 'records-indexed', '--reason', 'Indexed at the last phase.']);
+    checklist(['skip', 'finish', UNIT, 'build-log-closed', '--reason', 'Closed at the last phase.']);
     checklist(['skip', 'phase-start', UNIT, '1', 'design-settled', '--reason', 'One task alone.']);
     const at = (/** @type {string} */ key, /** @type {string} */ item) => records()[key].items[item].at;
 
@@ -563,7 +539,7 @@ describe('skips (6.4.2, 6.4.5)', () => {
     assert.deepStrictEqual(later.skips, [
       { checklist: 'phase-1-start', item: 'design-settled', text: 'shared design settled', reason: 'One task alone.', at: at('phase-1-start', 'design-settled') },
       { checklist: 'phase-2-start', item: 'design-settled', text: 'shared design settled', reason: 'Nothing shared.', at: at('phase-2-start', 'design-settled') },
-      { checklist: 'finish', item: 'records-indexed', text: 'the records indexed', reason: 'Indexed at the last phase.', at: at('finish', 'records-indexed') },
+      { checklist: 'finish', item: 'build-log-closed', text: 'the build log closed', reason: 'Closed at the last phase.', at: at('finish', 'build-log-closed') },
     ]);
   });
 });

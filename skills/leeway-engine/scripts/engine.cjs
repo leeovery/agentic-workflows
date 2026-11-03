@@ -86,6 +86,8 @@ const { VERIFY_USAGE, runVerifyVerb } = require('./domain/verify.cjs');
 const { READY_TO_BUILD_USAGE, POSITION_USAGE, runReadyToBuildVerb, runPositionVerb } = require('./domain/ready-to-build.cjs');
 const { MIGRATE_USAGE, runMigrateVerb } = require('./domain/directives.cjs');
 const { REVIEW_USAGE, runReviewVerb } = require('./domain/review-verbs.cjs');
+const { FINISH_USAGE, runFinishVerb } = require('./domain/finish.cjs');
+const { MEASURES_USAGE, runMeasuresVerb } = require('./domain/measures.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, clearOwnQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { arriveAt, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
 const { markConversation, endConversation, isAgentId } = require('./domain/conversation.cjs');
@@ -306,6 +308,8 @@ ${VERIFY_USAGE.replace(/^/gm, '  ')}
   inbox delete <path> [<path> …]
   inbox file <work-unit> --file <item.json>
 ${REVIEW_USAGE.replace(/^/gm, '  ')}
+  ${FINISH_USAGE}
+  ${MEASURES_USAGE}
   brownfield record <native|skipped|accepted|completed>
   walkthrough record <walked|skipped>
   handoff <skill|/skill> [args …]
@@ -459,6 +463,7 @@ ${REVIEW_USAGE.replace(/^/gm, '  ')}
   render build-progress <work-unit>
   render review-report <work-unit> [--round <N>]
   render review-calls <work-unit>
+  render finish <work-unit>
   render discovery-map <work-unit>
   render migrations-applied --file <payload.json>
   render migration-gate
@@ -1447,6 +1452,36 @@ function runReview(call, argv) {
   const { opts, positional } = parseArgs(argv);
   try {
     respond(call, runReviewVerb(call.cwd, positional, opts));
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// finish — the person's yes at finish, landing every phase still standing
+// and completing the unit (domain/finish.cjs).
+// ---------------------------------------------------------------------------
+
+/** @param {Call} call @param {string[]} argv */
+function runFinish(call, argv) {
+  const { opts, positional } = parseArgs(argv);
+  try {
+    respond(call, runFinishVerb(call.cwd, positional, opts));
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// measures — the authors' queries over their own projects
+// (domain/measures.cjs): review findings per phase. A read.
+// ---------------------------------------------------------------------------
+
+/** @param {Call} call @param {string[]} argv */
+function runMeasures(call, argv) {
+  const { opts, lists, positional } = parseArgs(argv, [], ['project']);
+  try {
+    respond(call, runMeasuresVerb(call.cwd, positional, opts, lists));
   } catch (err) {
     failJson(call, err);
   }
@@ -2494,6 +2529,8 @@ const COMMANDS = Object.freeze({
   'ready-to-build': runReadyToBuild,
   verify: runVerify,
   review: runReview,
+  finish: runFinish,
+  measures: runMeasures,
 });
 
 // Every command dispatched runs whole under the writer lock, its writes and
@@ -2523,7 +2560,7 @@ const COMMANDS = Object.freeze({
 // conversation's folder; and the rest read: `layout guard` among them, run
 // before every file Claude writes, `brief guard`, before every dispatch of
 // an agent, `shell guard`, before every shell command, `checklist show`,
-// and `migrate check`.
+// `migrate check` and `measures`.
 // `manifest` takes it to write alone, `commit` but for a code commit
 // (`--paths`), and a brief's fill whole, since its read of the task may
 // commit the tracker's set-up.
@@ -2550,6 +2587,7 @@ const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */
   checklist: ['show'],
   migrate: ['check'],
   verify: '*',
+  measures: '*',
 }));
 
 /** @param {string[]} argv @returns {boolean} */

@@ -14,6 +14,9 @@
 // refused, before anything travels, where the entry would refuse it
 // (topic-standing.cjs).
 //
+// The epic's menu takes an epic in progress, and one completed alone where
+// finish hands it there, `review completed`.
+//
 // Discovery is told how the conversation was come to: a work type, the
 // person starting a piece of work of that kind; `start`, a piece of work of
 // no kind yet (8.2.9); `none`, the product's conversation itself, or an
@@ -96,6 +99,16 @@ function assertWorkUnit(cwd, name, type) {
   if (manifest.status !== 'in-progress') {
     throw new Error(`work unit "${name}" is ${manifest.status} — a handoff moves into work in progress`);
   }
+}
+
+/**
+ * Whether the unit is an epic finish completed: its one move onto the
+ * epic's menu once done, handed `review completed` (24.1.2).
+ * @param {string} cwd @param {string} unit
+ */
+function finishedEpic(cwd, unit) {
+  const manifest = workUnitManifest(cwd, unit);
+  return manifest.work_type === 'epic' && manifest.status === 'completed';
 }
 
 /**
@@ -209,6 +222,7 @@ const TARGETS = {
         assertOneOf('the outcome', outcome, OUTCOMES);
         if (outcome === 'paused') assertOneOf('the phase that paused', phase, WAITING_PHASES);
       }
+      if (phase === 'review' && outcome === 'completed' && finishedEpic(cwd, unit)) return;
       assertWorkUnit(cwd, unit, 'epic');
     },
     where: (_cwd, [unit]) => at('Epic', unit),

@@ -11,7 +11,9 @@
 // through the task loop with no phase review over it; the next round's
 // reads named, the area the fix changed alone, the test surface not read
 // again, passing and closing the review; then its report and the calls
-// decided for the person drawn.
+// decided for the person drawn; and finish — its checklist worked and
+// closed, its gate drawn, and its yes landing the fix phase and completing
+// the unit.
 //
 // Layer: simulation. World: this file's own, built once from the project
 // every scenario starts from (pipeline-world.cjs) — a feature through its
@@ -119,7 +121,7 @@ describe('pipeline simulation: the review phase', () => {
     sim.destroy();
   });
 
-  it('the review phase entered; the area\'s pair and the test reader briefed and reporting; a finding out of scope filed; the failing round\'s fix task built as a phase past the cut; the next round\'s reads named, reading the area it changed, passing and closing the review; its report and the calls drawn', () => {
+  it('the review phase entered; the area\'s pair and the test reader briefed and reporting; a finding out of scope filed; the failing round\'s fix task built as a phase past the cut; the next round\'s reads named, reading the area it changed, passing and closing the review; its report and the calls drawn; finish landing the fix phase', () => {
     sim.run(['enter', 'review', WU]);
     assert.ok(sim.sections.includes('reads: 1-the-work, the test surface (tests)\n'), sim.sections);
 
@@ -162,5 +164,14 @@ describe('pipeline simulation: the review phase', () => {
 
     sim.render(['review-report', WU], { expect: 'content' });
     sim.render(['review-calls', WU], { expect: 'content' });
+
+    // Finish: Claude's items marked, the checklist closed, the gate drawn, and the yes landing the fix phase and completing the unit.
+    for (const { key, by, state } of JSON.parse(sim.read(['checklist', 'show', 'finish', WU])).items) {
+      if (by === 'claude' && state === 'open') sim.run(['checklist', 'done', 'finish', WU, key]);
+    }
+    sim.run(['checklist', 'close', 'finish', WU]);
+    sim.render(['finish', WU], { expect: 'content' });
+    const finished = sim.run(['finish', 'yes', WU]);
+    assert.deepStrictEqual(finished.landed.map((/** @type {{phases: {phase: number}[]}} */ { phases }) => phases.map(({ phase }) => phase)), [[2]]);
   });
 });
