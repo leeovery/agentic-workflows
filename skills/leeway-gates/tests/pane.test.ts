@@ -96,8 +96,11 @@ describe('where the person is on the pane, as the engine is asked for it', () =>
     ])
   })
 
-  test('a unit\'s page opened from All work names its own unit, and is asked for by its ref alone', () => {
+  test('a unit\'s page opened from All work names its own unit, and is asked for by its ref alone, on its tab or on This session at the start menu', () => {
+    const atStart: Board = { ...allWork, tab: 'this', unit: null }
+
     expect(argsOf(through([build, tabKey('all')], [allWork, pageKey('unit:fumi')]))).toEqual(['--tab', 'all', '--page', 'unit:fumi'])
+    expect(argsOf(walk(atStart, pageKey('unit:fumi')))).toEqual(['--page', 'unit:fumi'])
   })
 
   test('a page stays while the session moves beneath it, asked for in the unit it was opened in, until back, which shows This session where the session is now', () => {
@@ -204,9 +207,9 @@ describe('the pane as drawn', () => {
   })
 })
 
-describe('a page whose read the engine refuses, or that times out', () => {
-  /** The engine exiting with its error: the page's ref is no longer in its unit. */
-  const REFUSED = readingOf({ stdout: '', stderr: '{"ok":false,"error":"board: task 6.4 of token-aware-diff-sizing is not in the tracker"}\n' })
+describe('where the engine refuses what the pane asks, or a read times out', () => {
+  /** The engine exiting with its error: the unit the place names has left the project. */
+  const REFUSED = readingOf({ stdout: '', stderr: '{"ok":false,"error":"there is no work unit \\"fumi\\""}\n' })
 
   /** A read whose child was killed at its timeout, so the run rejected. */
   const TIMED_OUT = readingOf(null)
@@ -214,42 +217,60 @@ describe('a page whose read the engine refuses, or that times out', () => {
   /** A read whose child a signal ended, with nothing said. */
   const KILLED = readingOf({ stdout: '', stderr: '' })
 
-  /**
-   * An engine answering a board wherever no more than `pages` pages are
-   * open, and `past` them otherwise, recording what it was asked.
-   */
-  const engine = (pages: number, past: Reading = REFUSED) => {
+  /** At most `pages` pages open. */
+  const within = (pages: number) => (nav: Nav) => nav.pages.length <= pages
+
+  /** An engine answering a board where `isAnswered`, and `past` elsewhere, recording what it was asked. */
+  const engine = (isAnswered: (nav: Nav) => boolean, past: Reading = REFUSED) => {
     const asked: string[][] = []
     const read = async (nav: Nav): Promise<Reading> => {
       asked.push(argsOf(nav))
 
-      return nav.pages.length > pages ? past : { answer: answered(build), isRefused: false }
+      return isAnswered(nav) ? { answer: answered(build), isRefused: false } : past
     }
 
     return { asked, read }
   }
 
   test('a refused page drops back to what lies beneath it, which is read instead', async () => {
-    const { asked, read } = engine(0)
+    const { asked, read } = engine(within(0))
     const { nav, answer } = await readOn(walk(build, pageKey('task:6.4')), read)
 
     expect({ nav: argsOf(nav), answer, asked }).toEqual({ nav: [], answer: answered(build), asked: [['--page', 'task:6.4', '--page-unit', UNIT], []] })
   })
 
   test('a refused page drops itself alone, the page beneath it answered', async () => {
-    const { asked, read } = engine(1)
+    const { asked, read } = engine(within(1))
     const { nav } = await readOn(through([build, pageKey('task:6.4')], [taskPage, pageKey('task:6.4:written')]), read)
 
     expect([argsOf(nav), asked.length]).toEqual([['--page', 'task:6.4', '--page-unit', UNIT], 2])
+  })
+
+  test('refused, the pane unwinds a level at a time — each page, then the unit\'s tab — to This session\'s top', async () => {
+    const { asked, read } = engine(nav => nav.tab === 'this')
+    const fumi = { ...build, unit: { unit: 'fumi', title: 'Fumi' }, view: { kind: 'unit', unit: 'fumi' } }
+    const deep = through([fumi, tabKey('unit')], [fumi, pageKey('task:1.1')], [{ ...taskPage, view: { ...taskPage.view, unit: 'fumi' } }, pageKey('task:1.1:written')])
+    const { nav, answer } = await readOn(deep, read)
+
+    expect({ nav: [nav.tab, nav.unit, nav.pages], answer, asked }).toEqual({
+      nav: ['this', null, []],
+      answer: answered(build),
+      asked: [
+        ['--tab', 'unit', '--unit', 'fumi', '--page', 'task:1.1:written', '--page-unit', 'fumi'],
+        ['--tab', 'unit', '--unit', 'fumi', '--page', 'task:1.1', '--page-unit', 'fumi'],
+        ['--tab', 'unit', '--unit', 'fumi'],
+        [],
+      ],
+    })
   })
 
   for (const [how, past] of [
     ['timed out', TIMED_OUT],
     ['was ended by a signal', KILLED],
   ] as const) {
-    test(`a page whose read ${how} is kept, read once, and draws its way back alone`, async () => {
-      const { asked, read } = engine(0, past)
-      const page = walk(build, pageKey('task:6.4'))
+    test(`a place whose read ${how} is kept, read once, a page drawing its way back alone`, async () => {
+      const { asked, read } = engine(within(0), past)
+      const page = through([build, tabKey('unit')], [build, pageKey('task:6.4')])
       const { nav, answer } = await readOn(page, read)
 
       expect([nav, answer, asked.length]).toEqual([page, null, 1])
@@ -258,14 +279,14 @@ describe('a page whose read the engine refuses, or that times out', () => {
   }
 
   test('a page answered is kept, read once', async () => {
-    const { asked, read } = engine(1)
+    const { asked, read } = engine(within(1))
     const page = walk(build, pageKey('task:6.4'))
 
     expect([(await readOn(page, read)).nav, asked.length]).toEqual([page, 1])
   })
 
-  test('a refusal at a tab\'s top is read once, nothing answered', async () => {
-    const { asked, read } = engine(-1)
+  test('This session\'s top, refused, is read once, nothing answered', async () => {
+    const { asked, read } = engine(() => false)
 
     expect([(await readOn(HOME, read)).answer, asked]).toEqual([null, [[]]])
   })

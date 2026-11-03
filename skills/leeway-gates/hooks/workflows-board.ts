@@ -102,7 +102,7 @@ function refresh($: EngineInterface, state: State): Promise<void> {
       const asked = state.nav
       const { nav, answer } = await readFor($, id, asked)
       const drawn = state.read?.id === id ? state.read.answer : null
-      const isChanged = nav !== asked || JSON.stringify(answer) !== JSON.stringify(drawn)
+      const isChanged = JSON.stringify(answer) !== JSON.stringify(drawn)
 
       state.read = { id, answer }
 

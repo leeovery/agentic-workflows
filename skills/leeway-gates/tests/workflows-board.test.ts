@@ -62,10 +62,13 @@ const NO_PANE: RenderElement = { type: 'Box', children: [] }
 /** The build as the engine answers it: This session in a build, three questions waiting on the person. */
 const BUILD_BOARD = BUILD
 
-/** What the engine answers: a board, its exit code and stdout. */
-type Reply = { exitCode: number; stdout: string }
+/** What the engine answers: its exit code, stdout and stderr. */
+type Reply = { exitCode: number; stdout: string; stderr?: string }
 
 const boardReply = (board: unknown): Reply => ({ exitCode: 0, stdout: `${JSON.stringify({ ok: true, ...(board as object) })}\n` })
+
+/** The engine refusing the read, its error on stderr as it exits. */
+const refusal = (error: string): Reply => ({ exitCode: 1, stdout: '', stderr: `${JSON.stringify({ ok: false, error })}\n` })
 
 /**
  * The world beneath the mod: the process's environment (announced unless
@@ -123,9 +126,9 @@ function world(
       await clock.sleep(takesMs)
     }
 
-    const { exitCode, stdout } = replies(args)
+    const { exitCode, stdout, stderr = '' } = replies(args)
 
-    return { value: { exitCode, stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+    return { value: { exitCode, stdout, stderr, isStdoutTruncated: false, isStderrTruncated: false } }
   })
 
   on('ui.open', ($, e) => {
@@ -391,6 +394,32 @@ describe('the pane', () => {
     await pane.press({ key: 'tab:this' })
     expect(boards.at(-1)?.args).toEqual([])
     expect(await bannerOf(band)).toBe('◐ Token-aware diff sizing · feature · review · round 1 reading')
+  })
+
+  test('a unit gone from the project unwinds its tab to This session: the banner stays, the tabs are drawn and pressed, and the gone unit is asked for no more', async ($, on) => {
+    let isGone = false
+    const { clock, boards, answers } = world(on)
+
+    answers(args => (isGone && args.includes('--unit') ? refusal(`there is no work unit "${UNIT}"`) : boardReply(args.includes('--tab') ? { ...BUILD_BOARD, tab: args[1] } : BUILD_BOARD)))
+
+    const pane = await mounted($, clock, PANE_MOUNT)
+    const band = await mounted($, clock)
+
+    await pane.press({ key: 'tab:unit' })
+    isGone = true
+    await engineCall($, clock)
+
+    expect(boards.slice(-2).map(({ args }) => args), 'the unit refused, This session read in its place').toEqual([['--tab', 'unit', '--unit', UNIT], []])
+    expect(await bannerOf(band)).toBe('◐ Token-aware diff sizing · feature · build · 1 building · 1 in review · ⚑ 3 waiting on you')
+    expect((await paneLines(pane)).slice(0, 2)).toEqual(['⌂ This session ≡ Token-aware diff sizing ≡ All work', '━━━━━━━━━━━━━━─'])
+
+    const before = boards.length
+
+    await engineCall($, clock)
+    await pane.press({ key: 'tab:all' })
+    await pane.press({ key: 'tab:this' })
+
+    expect(boards.slice(before).map(({ args }) => args), 'the next call reads This session alone').toEqual([[], ['--tab', 'all'], []])
   })
 
   test('a version this board does not know is refused: no banner, and the pane says so in a line', async ($, on) => {

@@ -8,11 +8,12 @@
  * model for that place, so This session, with no page open, is whatever the
  * session's position puts it at, and a page stays — asked for by its ref and
  * the unit it was opened in at every refresh — until the person presses
- * back, however the session moves beneath it. A page the engine refuses,
- * its unit or its ref gone, drops back to what lies beneath it; one whose
- * read timed out stays.
- * The way back names what it returns to: the page under it, else what the
- * tab shows beneath it now.
+ * back, however the session moves beneath it. A page whose target has gone
+ * says why and stays; where the engine refuses what the pane asks — a ref
+ * it cannot read, a unit gone from the project — the pane unwinds a level
+ * at a time to This session's top, which asks nothing of the pane's; a read
+ * that timed out moves nothing. The way back names what it returns to: the page under it,
+ * else what the tab shows beneath it now.
  *
  * The views are drawn by their kind (`views/`), and one the engine cannot
  * draw by its reason; a model this board does not know the version of is
@@ -75,15 +76,25 @@ export function argsOf({ tab, unit, pages }: Nav): string[] {
 /** The engine read for where the person is on the pane. */
 export type Read = (nav: Nav) => Promise<Reading>
 
+/** One level back towards This session: the page on top, else the tab; none from This session's top. */
+function unwound(nav: Nav): Nav | null {
+  if (nav.pages.length > 0) {
+    return { ...nav, pages: nav.pages.slice(0, -1) }
+  }
+
+  return nav.tab === 'this' ? null : { ...nav, tab: 'this', unit: null }
+}
+
 /**
- * The engine's answer for where the person is, and where that is: a page
- * the engine refuses dropped back to what lies beneath it, and that read
- * instead; a page whose read timed out or never started kept.
+ * The engine's answer for where the person is, and where that is: a place
+ * the engine refuses unwound a level and read again, until This session's
+ * top; one whose read timed out or never started kept.
  */
 export async function readOn(nav: Nav, read: Read): Promise<{ nav: Nav; answer: Answer }> {
   const { answer, isRefused } = await read(nav)
+  const back = isRefused ? unwound(nav) : null
 
-  return isRefused && nav.pages.length > 0 ? readOn({ ...nav, pages: nav.pages.slice(0, -1) }, read) : { nav, answer }
+  return back === null ? { nav, answer } : readOn(back, read)
 }
 
 /** The name a view gives a way back to it, where its kind has a drawing. */

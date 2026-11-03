@@ -133,6 +133,16 @@ describe('the board at the start menu (20.3.3, 20.16)', () => {
 
     assert.deepStrictEqual({ tree: treeSnapshot(dir), head: head(dir), folder: fs.existsSync(path.join(config, 'conversations', 'other-conversation')) }, { ...before, folder: false });
   });
+
+  it('opens a unit\'s page from All work on This session, as on All work\'s tab; in a unit, This session names no such page (20.3.6)', () => {
+    const atStart = board(['--page', `unit:${UNIT}`]);
+    ok(dir, ['session', 'label', UNIT], { env: env() });
+
+    assert.deepStrictEqual(
+      [atStart.view.kind, atStart.view.unit, atStart.beneath.kind, refused([SESSION, '--page', `unit:${UNIT}`]).split(' — ')[0]],
+      ['unit', UNIT, 'all', `no page is named "unit:${UNIT}"`],
+    );
+  });
 });
 
 describe('the build on the board (20.5)', () => {
