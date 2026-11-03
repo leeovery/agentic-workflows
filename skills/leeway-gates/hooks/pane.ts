@@ -8,8 +8,9 @@
  * model for that place, so This session, with no page open, is whatever the
  * session's position puts it at, and a page stays — asked for by its ref and
  * the unit it was opened in at every refresh — until the person presses
- * back, however the session moves beneath it. A page the engine no longer
- * answers, its unit or its ref gone, drops back to what lies beneath it.
+ * back, however the session moves beneath it. A page the engine refuses,
+ * its unit or its ref gone, drops back to what lies beneath it; one whose
+ * read timed out stays.
  * The way back names what it returns to: the page under it, else what the
  * tab shows beneath it now.
  *
@@ -19,7 +20,7 @@
 import type { ElementTable, RenderElement } from 'claude-code'
 
 import { COLOUR, blank, cutTo, drawLine, foldKey, widthOf, type Button, type Kit, type Line, type Part } from './draw.ts'
-import { BOARD_VERSION, type Answer, type Board, type Tab, type View } from './model.ts'
+import { BOARD_VERSION, type Answer, type Board, type Reading, type Tab, type View } from './model.ts'
 import type { Views } from './views/index.ts'
 
 /** The pane's id, which its render and close name. */
@@ -70,18 +71,18 @@ export function argsOf({ tab, unit, pages }: Nav): string[] {
   ]
 }
 
-/** What the engine answers for where the person is on the pane. */
-export type Read = (nav: Nav) => Promise<Answer>
+/** The engine read for where the person is on the pane. */
+export type Read = (nav: Nav) => Promise<Reading>
 
 /**
  * The engine's answer for where the person is, and where that is: a page
- * it answers nothing for dropped back to what lies beneath it, and that
- * read instead.
+ * the engine refuses dropped back to what lies beneath it, and that read
+ * instead; a page whose read timed out or never started kept.
  */
 export async function readOn(nav: Nav, read: Read): Promise<{ nav: Nav; answer: Answer }> {
-  const answer = await read(nav)
+  const { answer, isRefused } = await read(nav)
 
-  return answer === null && nav.pages.length > 0 ? readOn({ ...nav, pages: nav.pages.slice(0, -1) }, read) : { nav, answer }
+  return isRefused && nav.pages.length > 0 ? readOn({ ...nav, pages: nav.pages.slice(0, -1) }, read) : { nav, answer }
 }
 
 /** The name a view gives a way back to it, where its kind has a drawing. */

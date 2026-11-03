@@ -1,6 +1,6 @@
 import { describe, expect, test, tier } from 'claude-code/testing'
 
-import { answerIn } from '../hooks/model.ts'
+import { answerIn, readingOf } from '../hooks/model.ts'
 import BUILD from './fixtures/board-build.mjs'
 
 tier('user')
@@ -31,5 +31,23 @@ describe('the engine\'s answer', () => {
         said({ ok: true, ...BUILD, beneath: { unit: 'pay' } }),
       ].map(answerIn),
     ).toEqual([null, null, null, null, null, null, null])
+  })
+
+  test('a run that exits with the engine\'s error is refused; one that timed out or never started, or a child a signal ended, is not', () => {
+    const board = said({ ok: true, ...BUILD })
+
+    expect(
+      [
+        readingOf({ stdout: '', stderr: said({ ok: false, error: 'board: no page is named "shelf:1"' }) }),
+        readingOf(null),
+        readingOf({ stdout: '', stderr: '' }),
+        readingOf({ stdout: board, stderr: '' }),
+      ].map(({ answer, isRefused }) => [answer?.kind ?? null, isRefused]),
+    ).toEqual([
+      [null, true],
+      [null, false],
+      [null, false],
+      ['board', false],
+    ])
   })
 })

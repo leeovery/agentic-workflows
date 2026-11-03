@@ -1,7 +1,7 @@
 import { describe, expect, test, tier } from 'claude-code/testing'
 
 import { kitOf, widthOf, type Line, type Part } from '../hooks/draw.ts'
-import type { Answer, Board, View } from '../hooks/model.ts'
+import { readingOf, type Answer, type Board, type Reading, type View } from '../hooks/model.ts'
 import { BACK, HOME, argsOf, framed, pageKey, pressed, readOn, tabKey, type Nav } from '../hooks/pane.ts'
 import type { Views } from '../hooks/views/index.ts'
 import BUILD from './fixtures/board-build.mjs'
@@ -194,32 +194,58 @@ describe('the pane as drawn', () => {
   })
 })
 
-describe('a page the engine no longer answers', () => {
-  /** An engine answering a board wherever no more than `pages` pages are open, recording what it was asked. */
-  const engine = (pages: number) => {
+describe('a page whose read the engine refuses, or that times out', () => {
+  /** The engine exiting with its error: the page's ref is no longer in its unit. */
+  const REFUSED = readingOf({ stdout: '', stderr: '{"ok":false,"error":"board: task 6.4 of token-aware-diff-sizing is not in the tracker"}\n' })
+
+  /** A read whose child was killed at its timeout, so the run rejected. */
+  const TIMED_OUT = readingOf(null)
+
+  /** A read whose child a signal ended, with nothing said. */
+  const KILLED = readingOf({ stdout: '', stderr: '' })
+
+  /**
+   * An engine answering a board wherever no more than `pages` pages are
+   * open, and `past` them otherwise, recording what it was asked.
+   */
+  const engine = (pages: number, past: Reading = REFUSED) => {
     const asked: string[][] = []
-    const read = async (nav: Nav): Promise<Answer> => {
+    const read = async (nav: Nav): Promise<Reading> => {
       asked.push(argsOf(nav))
 
-      return nav.pages.length > pages ? null : answered(build)
+      return nav.pages.length > pages ? past : { answer: answered(build), isRefused: false }
     }
 
     return { asked, read }
   }
 
-  test('drops back to what lies beneath it, which is read instead', async () => {
+  test('a refused page drops back to what lies beneath it, which is read instead', async () => {
     const { asked, read } = engine(0)
     const { nav, answer } = await readOn(walk(build, pageKey('task:6.4')), read)
 
     expect({ nav: argsOf(nav), answer, asked }).toEqual({ nav: [], answer: answered(build), asked: [['--page', 'task:6.4', '--page-unit', UNIT], []] })
   })
 
-  test('drops itself alone, the page beneath it answered', async () => {
+  test('a refused page drops itself alone, the page beneath it answered', async () => {
     const { asked, read } = engine(1)
     const { nav } = await readOn(through([build, pageKey('task:6.4')], [taskPage, pageKey('task:6.4:written')]), read)
 
     expect([argsOf(nav), asked.length]).toEqual([['--page', 'task:6.4', '--page-unit', UNIT], 2])
   })
+
+  for (const [how, past] of [
+    ['timed out', TIMED_OUT],
+    ['was ended by a signal', KILLED],
+  ] as const) {
+    test(`a page whose read ${how} is kept, read once, and draws its way back alone`, async () => {
+      const { asked, read } = engine(0, past)
+      const page = walk(build, pageKey('task:6.4'))
+      const { nav, answer } = await readOn(page, read)
+
+      expect([nav, answer, asked.length]).toEqual([page, null, 1])
+      expect(shown(draw(answer, nav).lines)).toEqual(['← back', ' '])
+    })
+  }
 
   test('a page answered is kept, read once', async () => {
     const { asked, read } = engine(1)
@@ -228,7 +254,7 @@ describe('a page the engine no longer answers', () => {
     expect([(await readOn(page, read)).nav, asked.length]).toEqual([page, 1])
   })
 
-  test('nothing answered at a tab\'s top is read once', async () => {
+  test('a refusal at a tab\'s top is read once, nothing answered', async () => {
     const { asked, read } = engine(-1)
 
     expect([(await readOn(HOME, read)).answer, asked]).toEqual([null, [[]]])

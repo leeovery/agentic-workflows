@@ -69,15 +69,18 @@ const isBoard = (value: Record<string, unknown>): boolean =>
   isView(value.view) &&
   (value.beneath === null || isView(value.beneath))
 
+/** A JSON text's value; undefined for text that is not JSON. */
+function parsed(text: string): unknown {
+  try {
+    return JSON.parse(text)
+  } catch {
+    return undefined
+  }
+}
+
 /** What the engine's stdout gives the board (the type's). */
 export function answerIn(stdout: string): Answer {
-  let read: unknown
-
-  try {
-    read = JSON.parse(stdout)
-  } catch {
-    return null
-  }
+  const read = parsed(stdout)
 
   if (!isObject(read) || read.ok !== true) {
     return null
@@ -90,4 +93,23 @@ export function answerIn(stdout: string): Answer {
   }
 
   return isBoard(board) ? { kind: 'board', board: board as Board } : null
+}
+
+/**
+ * One read of the board: what it answered, and whether the engine refused
+ * it — the engine exited with its error, as it does for a page whose unit or
+ * ref has gone. A read that timed out, its child killed, or that never
+ * started is no refusal.
+ */
+export type Reading = { answer: Answer; isRefused: boolean }
+
+/** The reading of an engine run that ended on its own; `null` for one that timed out or never started. */
+export function readingOf(ran: { stdout: string; stderr: string } | null): Reading {
+  if (ran === null) {
+    return { answer: null, isRefused: false }
+  }
+
+  const error = parsed(ran.stderr)
+
+  return { answer: answerIn(ran.stdout), isRefused: isObject(error) && error.ok === false }
 }

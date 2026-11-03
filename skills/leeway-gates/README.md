@@ -265,11 +265,11 @@ The pane has three tabs: `⌂ This session`, the unit's own (`≡ {unit}`), and
 follows it as its position moves; a page opened over a tab — a task, an entry,
 another unit — is read in the unit it was opened in and stays until back is
 pressed, however the session moves beneath it, to the start menu or another
-unit; a page the engine no longer answers drops back to what lies beneath it.
-Back names what it returns to: the page under it, else what the tab shows
-beneath it now. A tab opens at its top. Docked beside a fullscreen transcript
-the pane has the full height; inline above the prompt it draws the same lines
-spread to its width. Each view and page is drawn by its
+unit; a page the engine refuses, its unit or its ref gone, drops back to what
+lies beneath it, while one whose read times out stays. Back names what it
+returns to: the page under it, else what the tab shows beneath it now. A tab
+opens at its top. Docked beside a fullscreen transcript the pane has the full
+height; inline above the prompt it draws the same lines spread to its width. Each view and page is drawn by its
 kind (`hooks/views/`), with the drawing kit (`hooks/draw.ts`): colours with one
 meaning each — peach waits on you, seafoam runs, sage is done, rose failed,
 slate has not started, lavender this view and every button — a section's

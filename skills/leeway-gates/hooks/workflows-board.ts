@@ -22,7 +22,7 @@ import type { EngineInterface, On, Timer } from 'claude-code'
 import { TOGGLE, drawBanner } from './banner.ts'
 import { kitOf } from './draw.ts'
 import { ENGINE, ENGINE_TIMEOUT_MS, MARKER, folderOf } from './folder.ts'
-import { answerIn, type Answer, type Board } from './model.ts'
+import { readingOf, type Answer, type Board, type Reading } from './model.ts'
 import { HOME, PANE, SIZE, TITLE, argsOf, drawPane, framed, pressed, readOn, widthIn, type Nav } from './pane.ts'
 import { isAnnounced, isBandAlone } from './surface.ts'
 import { VIEWS } from './views/index.ts'
@@ -63,18 +63,19 @@ async function isWorkflow($: EngineInterface, id: string): Promise<boolean> {
   return folder !== null && (await $.fs.exists(`${folder}/${MARKER}`))
 }
 
-/** The engine's answer for the conversation `id`, `nav` asked; none where the engine refuses or fails. */
-async function answerNow($: EngineInterface, id: string, nav: Nav): Promise<Answer> {
+/** The engine's reading for the conversation `id`, `nav` asked: a run that rejects timed out or never started. */
+async function readNow($: EngineInterface, id: string, nav: Nav): Promise<Reading> {
   try {
     const root = await $.session.root()
-    const { stdout } = await $.process.run(['node', `${root}/${ENGINE}`, 'board', id, ...argsOf(nav)], {
-      cwd: root,
-      timeoutMs: ENGINE_TIMEOUT_MS,
-    })
 
-    return answerIn(stdout)
+    return readingOf(
+      await $.process.run(['node', `${root}/${ENGINE}`, 'board', id, ...argsOf(nav)], {
+        cwd: root,
+        timeoutMs: ENGINE_TIMEOUT_MS,
+      }),
+    )
   } catch {
-    return null
+    return readingOf(null)
   }
 }
 
@@ -82,7 +83,7 @@ async function answerNow($: EngineInterface, id: string, nav: Nav): Promise<Answ
 async function readFor($: EngineInterface, id: string, nav: Nav): Promise<{ nav: Nav; answer: Answer }> {
   const isMarked = await isWorkflow($, id).catch(() => false)
 
-  return isMarked ? readOn(nav, at => answerNow($, id, at)) : { nav, answer: null }
+  return isMarked ? readOn(nav, at => readNow($, id, at)) : { nav, answer: null }
 }
 
 /** Reads the board afresh (the header's), redrawing where what it draws changed. */
