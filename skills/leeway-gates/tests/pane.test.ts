@@ -2,7 +2,7 @@ import { describe, expect, test, tier } from 'claude-code/testing'
 
 import { kitOf, widthOf, type Line, type Part } from '../hooks/draw.ts'
 import { readingOf, type Answer, type Board, type Reading, type View } from '../hooks/model.ts'
-import { BACK, HOME, argsOf, framed, pageKey, pressed, readOn, tabKey, type Nav } from '../hooks/pane.ts'
+import { BACK, HOME, argsOf, framed, pageKey, pressed, readOn, settled, tabKey, type Nav } from '../hooks/pane.ts'
 import type { Views } from '../hooks/views/index.ts'
 import BUILD from './fixtures/board-build.mjs'
 
@@ -96,11 +96,11 @@ describe('where the person is on the pane, as the engine is asked for it', () =>
     ])
   })
 
-  test('a unit\'s page opened from All work names its own unit, and is asked for by its ref alone, on its tab or on This session at the start menu', () => {
+  test('a unit\'s page opened from All work carries the unit it names, on its tab or on This session at the start menu', () => {
     const atStart: Board = { ...allWork, tab: 'this', unit: null }
 
-    expect(argsOf(through([build, tabKey('all')], [allWork, pageKey('unit:fumi')]))).toEqual(['--tab', 'all', '--page', 'unit:fumi'])
-    expect(argsOf(walk(atStart, pageKey('unit:fumi')))).toEqual(['--page', 'unit:fumi'])
+    expect(argsOf(through([build, tabKey('all')], [allWork, pageKey('unit:fumi')]))).toEqual(['--tab', 'all', '--page', 'unit:fumi', '--page-unit', 'fumi'])
+    expect(argsOf(walk(atStart, pageKey('unit:fumi')))).toEqual(['--page', 'unit:fumi', '--page-unit', 'fumi'])
   })
 
   test('a page stays while the session moves beneath it, asked for in the unit it was opened in, until back, which shows This session where the session is now', () => {
@@ -283,6 +283,22 @@ describe('where the engine refuses what the pane asks, or a read times out', () 
     const page = walk(build, pageKey('task:6.4'))
 
     expect([(await readOn(page, read)).nav, asked.length]).toEqual([page, 1])
+  })
+
+  test('a read that unwound the pane settles it there, keeping a fold pressed meanwhile; a press elsewhere meanwhile stands', () => {
+    const asked = walk(build, tabKey('unit'), pageKey('task:6.4'))
+    const unwound = HOME
+
+    expect(settled(asked, asked, unwound)).toEqual(unwound)
+
+    const folded = pressed(asked, 'fold:phase:5', build, VIEWS) ?? asked
+    const kept = settled(folded, asked, unwound)
+
+    expect([argsOf(kept), [...kept.opened]]).toEqual([[], ['phase:5']])
+
+    const elsewhere = pressed(asked, tabKey('all'), build, VIEWS) ?? asked
+
+    expect(settled(elsewhere, asked, unwound)).toBe(elsewhere)
   })
 
   test('This session\'s top, refused, is read once, nothing answered', async () => {

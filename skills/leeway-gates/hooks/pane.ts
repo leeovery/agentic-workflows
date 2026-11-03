@@ -12,8 +12,8 @@
  * says why and stays; where the engine refuses what the pane asks — a ref
  * it cannot read, a unit gone from the project — the pane unwinds a level
  * at a time to This session's top, which asks nothing of the pane's; a read
- * that timed out moves nothing. The way back names what it returns to: the page under it,
- * else what the tab shows beneath it now.
+ * that timed out moves nothing. The way back names what it returns to: the
+ * page under it, else what the tab shows beneath it now.
  *
  * The views are drawn by their kind (`views/`), and one the engine cannot
  * draw by its reason; a model this board does not know the version of is
@@ -35,9 +35,9 @@ export const TITLE = 'workflows'
 export const SIZE = { columns: 60, rows: 28 }
 
 /**
- * A page opened over a tab: its ref; the unit it was opened in, none where
- * its ref names its own; and the name of the page it was opened over, null
- * over the tab.
+ * A page opened over a tab: its ref; the unit it was opened in, a unit's own
+ * page its unit; and the name of the page it was opened over, null over the
+ * tab.
  */
 export type Page = { ref: string; unit: string | null; over: string | null }
 
@@ -71,6 +71,18 @@ export function argsOf({ tab, unit, pages }: Nav): string[] {
     ...(tab === 'unit' && unit !== null ? ['--unit', unit] : []),
     ...(page === undefined ? [] : ['--page', page.ref, ...(page.unit === null ? [] : ['--page-unit', page.unit])]),
   ]
+}
+
+/** A unit's own page, opened from All work, by the unit its ref names. */
+const UNIT_PAGE = /^unit:([^:]+)$/
+
+/**
+ * Where the pane stands once a read of `asked` unwound it: the unwound
+ * place, the person's folds kept, where they have gone nowhere else
+ * meanwhile; else where they have gone.
+ */
+export function settled(current: Nav, asked: Nav, unwound: Nav): Nav {
+  return JSON.stringify(argsOf(current)) === JSON.stringify(argsOf(asked)) ? { ...unwound, opened: current.opened } : current
 }
 
 /** The engine read for where the person is on the pane. */
@@ -122,10 +134,11 @@ export function pressed(nav: Nav, key: string, board: Board | null, views: Views
 
   if (key.startsWith(PAGE) && board !== null) {
     const { view } = board
-    const unit = typeof view.unit === 'string' ? view.unit : null
+    const ref = key.slice(PAGE.length)
+    const unit = UNIT_PAGE.exec(ref)?.[1] ?? (typeof view.unit === 'string' ? view.unit : null)
     const over = nav.pages.length === 0 ? null : (nameOf(view, views) ?? '')
 
-    return { ...nav, pages: [...nav.pages, { ref: key.slice(PAGE.length), unit, over }] }
+    return { ...nav, pages: [...nav.pages, { ref, unit, over }] }
   }
 
   if (key === BACK) {

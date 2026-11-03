@@ -23,7 +23,7 @@ import { TOGGLE, drawBanner } from './banner.ts'
 import { kitOf } from './draw.ts'
 import { ENGINE, ENGINE_TIMEOUT_MS, MARKER, folderOf } from './folder.ts'
 import { readingOf, type Answer, type Board, type Reading } from './model.ts'
-import { HOME, PANE, SIZE, TITLE, argsOf, drawPane, framed, pressed, readOn, widthIn, type Nav } from './pane.ts'
+import { HOME, PANE, SIZE, TITLE, argsOf, drawPane, framed, pressed, readOn, settled, widthIn, type Nav } from './pane.ts'
 import { isAnnounced, isBandAlone } from './surface.ts'
 import { VIEWS } from './views/index.ts'
 
@@ -106,9 +106,7 @@ function refresh($: EngineInterface, state: State): Promise<void> {
 
       state.read = { id, answer }
 
-      if (state.nav === asked) {
-        state.nav = nav
-      }
+      state.nav = settled(state.nav, asked, nav)
 
       if (isChanged) {
         $.ui.invalidate('ui.render')

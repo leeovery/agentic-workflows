@@ -291,9 +291,11 @@ second, from the model already read; while it is hidden, nothing turns.
 
 The model is versioned. A version the mod does not know is refused rather than
 drawn wrongly: no banner, and the pane says so in a line. An engine that
-refuses or fails draws nothing. Whatever the board does, nothing of it reaches
-the conversation or the prompt box: the conversation gets every summary and
-question whether the board is up or hidden.
+refuses what the pane asks unwinds it to This session, which is drawn; one
+that refuses This session itself, or fails, draws nothing. Whatever the board
+does, nothing of it reaches the conversation or the prompt box: the
+conversation gets every summary and question whether the board is up or
+hidden.
 
 ## Working on it
 

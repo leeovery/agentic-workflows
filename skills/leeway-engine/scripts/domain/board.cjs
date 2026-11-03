@@ -22,19 +22,18 @@
 // - The unit's tab shows the unit `--unit` names, else the session's: an
 //   epic's page for an epic (20.15.2), the unit's page for any other.
 //   All work shows the project (20.16), and `--page unit:{unit}` another
-//   unit's page from it (20.3.6).
+//   unit's page from it (20.3.6), wherever All work shows.
 // - A page (`--page`) is read against the unit it was opened in,
 //   `--page-unit`, whatever tab shows it and wherever the session has gone
 //   since — the start menu or another unit — so it stays while the session
 //   moves beneath it (20.3.5). With none named it is the tab's unit's: on
 //   the unit's tab the unit `--unit` names, else the session's; on This
-//   session the session's. Wherever All work shows — its tab, and This
-//   session at the start menu (20.3.6) — `unit:{unit}` names its own, and
-//   All work's tab opens any other page only with its unit named. `--unit`
-//   names the unit's tab's unit alone, never a page's, so the tabs stand as
-//   they would with no page open. The answer carries beside the page the
-//   view the tab shows beneath it (`beneath`), which its way back returns
-//   to.
+//   session the session's. `unit:{unit}` names its own, read on any tab,
+//   and refused with a `--page-unit` naming another; All work's tab opens
+//   any other page only with its unit named. `--unit` names the unit's
+//   tab's unit alone, never a page's, so the tabs stand as they would with
+//   no page open. The answer carries beside the page the view the tab shows
+//   beneath it (`beneath`), which its way back returns to.
 // - The banner is the session's place's (20.2.4), whichever tab is shown.
 // - Never a look (5.8.14): Claude's calls since the person last looked are
 //   read without moving the mark.
@@ -53,8 +52,8 @@
 // It refuses: a call with no session id or more than one, a tab that is
 // none of the three, the unit's tab or a page with no unit to show, a unit
 // the project lacks — `--unit`'s or `--page-unit`'s — a page its ref does
-// not name, a page's task that is no task's number, and `--page-unit` with
-// no page.
+// not name, a page's task that is no task's number, `--page-unit` with no
+// page, and a unit's own page with `--page-unit` naming another.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -244,22 +243,22 @@ const PAGES = Object.freeze([
   { ref: 'report:{topic}:{id}', shape: /^report:([^:]+):([^:]+)$/, draw: reportPage },
 ]);
 
-/** All work's one page: another unit's. */
-const ALL_PAGE = /^unit:([^:]+)$/;
+/** A unit's own page, opened from All work, which names its unit. */
+const UNIT_PAGE = /^unit:([^:]+)$/;
 
 /**
- * A page a ref names: All work's, by the unit it opens, wherever All work
- * shows — its tab, and This session at the start menu; any other, by what
- * draws it, its parts and the task it names, All work's tab opening one
- * only with the unit it was opened in named; refused where the ref names
- * none.
- * @param {Board['tab']} tab @param {boolean} showsAll @param {string} ref @param {boolean} isUnitNamed
+ * A page a ref names: a unit's own page by the unit it names, on any tab,
+ * refused where `--page-unit` names another; any other by what draws it,
+ * its parts and the task it names, All work's tab opening one only with the
+ * unit it was opened in named; refused where the ref names none.
+ * @param {Board['tab']} tab @param {string} ref @param {string|undefined} pageUnit
  * @returns {{unit: string, draw: null, parts: string[], task: null}|{unit: null, draw: (at: BoardAt, ...parts: string[]) => View, parts: string[], task: string|null}}
  */
-function pageOf(tab, showsAll, ref, isUnitNamed) {
-  const opens = ALL_PAGE.exec(ref);
-  if (showsAll && opens !== null) return { unit: opens[1], draw: null, parts: [], task: null };
-  if (tab === 'all' && !isUnitNamed) throw new Error(`no page of All work is named "${ref}" — All work opens unit:{unit}, and another unit's page with --page-unit`);
+function pageOf(tab, ref, pageUnit) {
+  const opens = UNIT_PAGE.exec(ref);
+  if (opens !== null && pageUnit !== undefined && pageUnit !== opens[1]) throw new Error(`${ref} is ${opens[1]}'s own page, not a page of ${pageUnit}`);
+  if (opens !== null) return { unit: opens[1], draw: null, parts: [], task: null };
+  if (tab === 'all' && pageUnit === undefined) throw new Error(`no page of All work is named "${ref}" — All work opens unit:{unit}, and another unit's page with --page-unit`);
   for (const { shape, draw, task } of PAGES) {
     const parts = shape.exec(ref)?.slice(1);
     if (parts !== undefined) return { unit: null, draw, parts, task: task ? parts[0] : null };
@@ -304,8 +303,7 @@ function boardOf(cwd, positional, opts) {
   const warnings = [];
   const position = readPosition(session);
   const place = placeOf(stateRoot(cwd), position);
-  const showsAll = tab === 'all' || tab === 'this' && place.unit === null;
-  const page = opts.page === undefined ? null : pageOf(tab, showsAll, opts.page, opts['page-unit'] !== undefined);
+  const page = opts.page === undefined ? null : pageOf(tab, opts.page, opts['page-unit']);
   const tabUnit = opts.unit ?? place.unit;
   if (tab === 'unit' && tabUnit === null) throw new Error('the unit\'s tab is at no unit, whose page it would show — --unit names one');
   const pageUnit = page === null ? null : page.unit ?? opts['page-unit'] ?? (tab === 'unit' ? tabUnit : place.unit);

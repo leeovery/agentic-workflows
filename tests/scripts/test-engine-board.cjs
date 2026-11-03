@@ -134,14 +134,25 @@ describe('the board at the start menu (20.3.3, 20.16)', () => {
     assert.deepStrictEqual({ tree: treeSnapshot(dir), head: head(dir), folder: fs.existsSync(path.join(config, 'conversations', 'other-conversation')) }, { ...before, folder: false });
   });
 
-  it('opens a unit\'s page from All work on This session, as on All work\'s tab; in a unit, This session names no such page (20.3.6)', () => {
-    const atStart = board(['--page', `unit:${UNIT}`]);
-    ok(dir, ['session', 'label', UNIT], { env: env() });
+  it('a unit\'s page opened from All work at the start menu stays once the session enters a unit, and a page over it goes back to it (20.3.6, 20.3.5)', () => {
+    const page = ['--page', `unit:${UNIT}`, '--page-unit', UNIT];
+    const atStart = board(page);
+    enterBuild();
+    const inBuild = board(page);
+    const over = board(['--page', 'task:1.2', '--page-unit', UNIT]);
 
     assert.deepStrictEqual(
-      [atStart.view.kind, atStart.view.unit, atStart.beneath.kind, refused([SESSION, '--page', `unit:${UNIT}`]).split(' — ')[0]],
-      ['unit', UNIT, 'all', `no page is named "unit:${UNIT}"`],
+      [[atStart.view.kind, atStart.view.unit, atStart.beneath.kind], [inBuild.view.kind, inBuild.view.unit, inBuild.beneath.kind], [over.view.kind, over.view.unit]],
+      [['unit', UNIT, 'all'], ['unit', UNIT, 'build'], ['task', UNIT]],
     );
+  });
+
+  it('home is never refused: a session whose unit has left the project reads All work, the banner the project\'s', () => {
+    enterBuild();
+    fs.rmSync(path.join(dir, '.leeway', UNIT), { recursive: true, force: true });
+    const { place, banner, view } = board();
+
+    assert.deepStrictEqual([place.unit, banner.name, view.kind], [null, project(), 'all']);
   });
 });
 
@@ -524,7 +535,7 @@ describe('refusals', () => {
     assert.deepStrictEqual([refused([]), refused([SESSION, 'more'])].map((error) => error.startsWith('Usage: engine board <session-id>')), [true, true]);
   });
 
-  it('a tab that is none of the three, the unit\'s tab or a page with no unit, a unit the project lacks, a page no ref names, a page\'s task that is no task\'s number, and a page\'s unit with no page are refused, nothing written', () => {
+  it('a tab that is none of the three, the unit\'s tab or a page with no unit, a unit the project lacks, a page no ref names, a page\'s task that is no task\'s number, a page\'s unit with no page, and a unit\'s own page under another unit are refused, nothing written', () => {
     assert.deepStrictEqual([
       refused([SESSION, '--tab', 'mine']),
       refused([SESSION, '--tab', 'unit']),
@@ -536,6 +547,7 @@ describe('refusals', () => {
       refused([SESSION, '--tab', 'unit', '--unit', UNIT, '--page', 'task:one']),
       refused([SESSION, '--page', 'task:1.1', '--page-unit', 'nope']),
       refused([SESSION, '--page-unit', UNIT]),
+      refused([SESSION, '--page', `unit:${UNIT}`, '--page-unit', 'till']),
     ].map((error) => error.split(' — ')[0]), [
       '--tab is this, unit or all, not "mine"',
       'the unit\'s tab is at no unit, whose page it would show',
@@ -547,6 +559,7 @@ describe('refusals', () => {
       'task-id: "one" is not a task',
       'there is no work unit "nope"',
       '--page-unit names the unit a page was opened in, and goes with --page',
+      `unit:${UNIT} is ${UNIT}'s own page, not a page of till`,
     ]);
   });
 });
