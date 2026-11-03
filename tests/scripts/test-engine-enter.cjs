@@ -71,7 +71,7 @@ const EPIC = 'fumi';
 const ATLAS = 'atlas';
 const FEATURE = 'quick-sync';
 const ENGINE = 'node .claude/skills/leeway-engine/scripts/engine.cjs';
-const USAGE = 'Usage: engine enter <discussion|discovery|specification|implementation> <work-unit|product> [<topic>] [--take] [--move]';
+const USAGE = 'Usage: engine enter <discussion|discovery|specification|implementation|review> <work-unit|product> [<topic>] [--take] [--move]';
 const TODAY = FROZEN_AT.slice(0, 10);
 
 // A process that no longer runs, and one that does that is not this suite's.

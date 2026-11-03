@@ -15,7 +15,8 @@
 // and a unit whose build has not begun, ready to build's yes beginning it
 // (11.8.3). Another
 // session holding the checkout's code stops it with the code gate alone,
-// nothing written, and `--take` enters all the same (12.7.8). It starts
+// nothing written, and `--take` enters all the same (12.7.8) — the refusals
+// and the gate the review phase's entry makes too (review-entry.cjs). It starts
 // nothing and names no log of the conversation's: the build's log is
 // Claude's to append as it goes (12.2.1), a log of the layout's, which
 // every state commit carries. As the conversation arrives, every task the
@@ -332,4 +333,4 @@ const IMPLEMENTATION = Object.freeze({
   closes: takeInFlight,
 });
 
-module.exports = { IMPLEMENTATION, STATUS_WORDS, buildStanding, builtUnit, buildRecovery, ownInFlight };
+module.exports = { IMPLEMENTATION, STATUS_WORDS, buildStanding, builtUnit, buildRecovery, ownInFlight, buildRefusal, codeHeld, buildLogOf };

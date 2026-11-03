@@ -70,6 +70,7 @@ const { startThisWorkSurface } = require('./start-this-work.cjs');
 const { approveMapSurface, approveMapStrikeSurface } = require('./approve-map.cjs');
 const { readyToBuildSurface } = require('./ready-to-build.cjs');
 const { buildHeadlineSurface, taskLandedSurface, taskAccountSurface, stepGateSurface, phaseMergeGateSurface, buildStopSurface, buildProgressSurface } = require('./build-screens.cjs');
+const { reviewReportSurface, reviewCallsSurface } = require('./review-round.cjs');
 const { discoveryMapScreen } = require('./projections/discovery-map.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
 const { gateOf, counterOf, FIX_THRESHOLD, CYCLE_LIMIT } = require('./tasks.cjs');
@@ -4940,6 +4941,8 @@ const SURFACES = {
   'phase-merge-gate': phaseMergeGateSurface,
   'build-stop': buildStopSurface,
   'build-progress': buildProgressSurface,
+  'review-report': reviewReportSurface,
+  'review-calls': reviewCallsSurface,
 };
 
 /**

@@ -500,6 +500,7 @@ describe('the refusals, nothing written and no brief stored', () => {
       'migration-topic --topic <unit.phase.topic> --directive <id>', 'migration-verifier --topic <unit.phase.topic> --directive <id>', 'phase-cut <unit>', 'sweep <unit>',
       'spec-writer <unit> [--wording <file>]', 'spec-reviewer <unit> --agent <id>',
       'task-writer <unit> <N>', 'consolidation <unit> <N> --base <branch>', 'phase-review <unit> <N> --base <branch> --letter <a|b>',
+      'review-area <unit> --area <N> --base <branch> --letter <a|b>', 'test-surface <unit> --base <branch>',
     ].map((line) => `engine brief ${line.replace(/[|[\]]/g, '\\$&')}`).join(' \\| ')}$`);
     for (const args of [
       [], ['scribe', UNIT, '1.1'], ['builder'], ['builder', UNIT], ['builder', UNIT, '1.1', 'more'], ['product-researcher', UNIT],
@@ -536,6 +537,8 @@ describe('the refusals, nothing written and no brief stored', () => {
       'task-writer': [UNIT, '1'],
       consolidation: [UNIT, '1', '--base', 'main'],
       'phase-review': [UNIT, '1', '--base', 'main', '--letter', 'a'],
+      'review-area': [UNIT, '--area', '1', '--base', 'main', '--letter', 'a'],
+      'test-surface': [UNIT, '--base', 'main'],
     };
     for (const role of Object.keys(ROLES)) {
       for (const [flag, value] of [['--note', 'be quick'], ...(taking[role].includes('--base') ? [] : [['--base', 'main']]), ['--report-a', 'a.md']]) {

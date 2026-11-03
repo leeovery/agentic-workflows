@@ -5,8 +5,9 @@
 // and the hook before Agent and SendMessage (brief-guard.cjs). Each role
 // names the agent it is dispatched as, whose brief its first line says it
 // is, and the records its brief draws on (6.5.4, 6.5.11): the reviewer's
-// agent is dispatched for a task and for a phase's review, each with its
-// own template (6.5.2), and the builder's for a task and its fix rounds. A
+// agent is dispatched for a task, for a phase's review and for an area of
+// the review phase, each with its own template (6.5.2), and the builder's
+// for a task and its fix rounds. A
 // brief is kept in the folder of the conversation that issued it
 // (conversation.cjs):
 // `briefs/{id}.md`, what the agent is handed, and beside it `{id}.json`,
@@ -94,6 +95,12 @@ const ROLES = Object.freeze({
   },
   'phase-review': {
     agent: 'leeway-reviewer', whose: 'the phase review\'s', records: ['cut-phase', 'phase-sections', 'phase-criteria', 'relied-on', 'decided-calls', 'phase-diff-range', 'phase-scratch-layout', 'recorded-runs', 'mutants', 'linters', 'phase-report-to'],
+  },
+  'review-area': {
+    agent: 'leeway-reviewer', whose: 'the area review\'s', records: ['area-sections', 'area-meets', 'unit-calls', 'change-commits', 'change-scratch-layout', 'area-runs', 'linters', 'area-report-to'],
+  },
+  'test-surface': {
+    agent: 'leeway-test-surface', whose: 'the test surface\'s', records: ['spec-scenarios', 'change-commits', 'change-scratch-layout', 'linters', 'tests-report-to'],
   },
 });
 

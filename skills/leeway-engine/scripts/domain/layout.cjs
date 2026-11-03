@@ -17,8 +17,9 @@
 //           topic's brief, the record of the person's review of the spec,
 //           the record of the sweep taken, the notes for later, a task's
 //           figures and the settlement of its failed round, a
-//           verification run — with what it is and the verb that writes
-//           it, where one does;
+//           verification run, a review round's record, its report and its
+//           checks — with what it is and the verb that writes it, where
+//           one does;
 //   log     a log a session writes to, which a state commit takes along
 //           (6.3.2).
 // A `file` place's `.txt` beside it is its staging (`stagedPlace`): an
@@ -134,8 +135,10 @@ const LAYOUT = Object.freeze([
   place('file', '{unit}/build/phases/phase-{N}/{area}-{letter}.md', '4.11.5'),
   engineFile('{unit}/build/phases/phase-{N}/settlement.json', '4.11.5', 'the orchestrator\'s settlement of a phase review that failed', 'task settle'),
   engineFile('{unit}/build/runs/{n}.S{m}/run-{NNN}.json', '4.11.15', 'a verification run', 'verify'),
-  place('file', '{unit}/review/round-{N}.md', '4.11.5'),
-  place('file', '{unit}/review/round-{N}-checks.md', '4.11.5'),
+  engineFile('{unit}/review/round-{N}.md', '4.11.5', 'a review round\'s report', 'review round'),
+  engineFile('{unit}/review/round-{N}-checks.md', '4.11.5', 'a review round\'s detailed checks', 'review round'),
+  engineFile('{unit}/review/round-{N}.json', '4.11.5', 'the record of a review round', 'review round'),
+  engineFile('{unit}/review/round-{N}-reads.json', '4.11.5', 'the areas a later review round reads', 'review reads'),
   place('file', '{unit}/review/round-{N}/tests-{letter}.md', '4.11.5'),
   place('file', '{unit}/review/round-{N}/{area}-{letter}.md', '4.11.5'),
 ]);

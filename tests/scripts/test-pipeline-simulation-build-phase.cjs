@@ -37,13 +37,12 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { stateGit, git, withEnv, sectionOf } = require('./engine-harness.cjs');
+const { stateGit, git, sectionOf } = require('./engine-harness.cjs');
 const {
-  Sim, startUnit, discussed, specToBuild, buildEntry, startPhase, writePhaseTasks, worldFrom, carryOn, answerGate,
+  Sim, startUnit, discussed, specToBuild, buildEntry, startPhase, writePhaseTasks, worldFrom, carryOn, answerGate, briefOf, placeIn, landed,
 } = require('./pipeline-world.cjs');
 
 const DOMAIN = path.join(__dirname, '../../skills/leeway-engine/scripts/domain');
-const { briefPath } = require(path.join(DOMAIN, 'brief-names.cjs'));
 const { consolidationFaults } = require(path.join(DOMAIN, 'notes.cjs'));
 
 const WU = 'ledger';
@@ -54,23 +53,6 @@ const builtWorld = worldFrom('pipeline-build-phase-', (sim) => {
   discussed(sim, WU, WU);
   specToBuild(sim, WU, [WU], 'a');
 });
-
-/** A brief as the conversation stored it. @param {Sim} sim @param {{id: string}} res */
-const briefOf = (sim, res) => withEnv({ LEEWAY_CONFIG_DIR: sim.configDir }, () => fs.readFileSync(briefPath(sim.env.CLAUDE_CODE_SESSION_ID, res.id), 'utf8'));
-
-/** The file a brief names under its heading `heading`. @param {Sim} sim @param {{id: string}} res @param {string} heading */
-function placeIn(sim, res, heading) {
-  const brief = briefOf(sim, res);
-  return /`([^`]+)`/.exec(brief.slice(brief.indexOf(`# ${heading}\n`)))?.[1] ?? '';
-}
-
-/** A file written as a build agent writes it: a `.txt` beside it, renamed to it. @param {string} file @param {string} text */
-function landed(file, text) {
-  const staged = `${file.slice(0, -'.md'.length)}.txt`;
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(staged, text);
-  fs.renameSync(staged, file);
-}
 
 const PASSED = '## Findings\n\nNone.\n\nVerdict: pass\n';
 const OFF_PHASE = '## Findings\n\n- bug: the ledger never checks its hash on read\n  Scenario: an entry read back\n\nVerdict: fail\n';

@@ -37,9 +37,10 @@
 // and a topic the unit lacks; a unit-level row takes no topic, and is
 // entered after the spec as before it. Discussion is the first row,
 // discovery the second (discovery-entry.cjs), specification the third
-// (spec-entry.cjs) and implementation, the build, the fourth
-// (build-entry.cjs); each later phase adds its own as its rewrite moves it
-// onto the entry. A unit-level place is the unit itself, as a
+// (spec-entry.cjs), implementation, the build, the fourth
+// (build-entry.cjs) and the review phase the fifth (review-entry.cjs),
+// whose arrival snapshots the working tree; each later phase adds its own
+// as its rewrite moves it onto the entry. A unit-level place is the unit itself, as a
 // single-topic unit's topic is; the product's is `product`, a project place
 // with no manifest of its own, whose marker and lock are the project
 // manifest's.
@@ -79,6 +80,7 @@ const { waitingMail } = require('./projections/mail.cjs');
 const { DISCOVERY } = require('./discovery-entry.cjs');
 const { SPECIFICATION } = require('./spec-entry.cjs');
 const { IMPLEMENTATION } = require('./build-entry.cjs');
+const { REVIEW } = require('./review-entry.cjs');
 const { earlierRecord, earlierReads } = require('./earlier-record.cjs');
 
 /** @typedef {[string, string]} Line a DATA line, its key and its value */
@@ -237,6 +239,7 @@ const ENTRIES = Object.freeze({
   discovery: DISCOVERY,
   specification: SPECIFICATION,
   implementation: IMPLEMENTATION,
+  review: REVIEW,
 });
 
 const TAKE = '--take';
