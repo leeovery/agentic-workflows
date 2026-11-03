@@ -80,7 +80,7 @@ describe('a later round\'s snapshot, taken as review reads opens the round (14.1
     assert.match(refusedRound({ can_now: [], findings: [] }), /^review round: the working tree outside \.leeway\/ changed since the snapshot the round is held to: src\/card\.js — /);
   });
 
-  it('a snapshot held for an earlier round is no snapshot of this one\'s — the round holds the tree to its own alone', () => {
+  it('a snapshot held for an earlier round is no snapshot of this one\'s — the round holds the tree to its own alone, the refusal naming the round it holds', () => {
     firstRoundReady();
     const first = fs.readFileSync(statePath(dir, SNAPSHOT), 'utf8');
     recorded({ can_now: [], findings: [RECEIPT] });
@@ -89,7 +89,7 @@ describe('a later round\'s snapshot, taken as review reads opens the round (14.1
     named(['1-cards']);
     reported(2, ['1-cards']);
 
-    assert.match(refusedRound({ can_now: [], findings: [] }), /^review round: no snapshot of round 2's working tree is held — /);
+    assert.match(refusedRound({ can_now: [], findings: [] }), /^review round: no snapshot of round 2's working tree is held — the one held is round 1's, and nothing is taken of the tree unasked: /);
   });
 });
 

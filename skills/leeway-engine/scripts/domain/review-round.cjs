@@ -28,16 +28,18 @@
 // items it answers; the round passes where every report does — Claude
 // never types a verdict. What each scenario of the cut stands at, read at
 // the change's tips (review-change.cjs, runs.cjs), is recorded with it
-// (15.3.3, 15.5.6), and the calls decided for the person then. Then it
-// writes the round's record, its report — the closing report where the
-// round ends the review phase (14.4.3), what the round decided, its fix
-// tasks as filed — and its checks, every report read whole (14.4.2), drops
-// its round's snapshot, and commits them with the reports.
+// (15.3.3, 15.5.6). Then it writes the round's record, its report — the
+// closing report where the round ends the review phase (14.4.3), what each
+// round decided, its fix tasks as filed, and the calls decided for the
+// person counted as the round is recorded — and its checks, every report
+// read whole (14.4.2), drops its round's snapshot, and commits them with
+// the reports.
 //
 // It refuses, opening `review round: ` and writing nothing: a unit whose
 // review phase cannot be entered; a round that cannot be read — one ended
 // the phase, fix tasks of the round before wait, a later round's areas are
-// not named; no snapshot of the round's held, its cache lost; a working
+// not named; no snapshot of the round's held, its cache lost or an earlier
+// round's held, each named; a working
 // tree outside `.leeway/` changed since the round's snapshot, naming every
 // path — nothing is reverted, the person decides; each naming `review
 // accept-tree`, which on their word takes the tree as it is (12.7.8,
@@ -47,9 +49,10 @@
 // the files written.
 //
 // The report's screen draws a round's report, the last by default, from
-// the records to it, each fix task standing as the tracker holds it now —
-// built where done, not built where closed, else to fix (14.4.1); the
-// calls' screen lists every call decided for the person across the unit
+// the records to it, each round with the fix tasks it made, each standing
+// as the tracker holds it now — built where done, not built where closed,
+// else to fix (14.4.1) — and the calls decided for the person counted as
+// they stand now, as the calls' screen lists them across the unit
 // (review-phase.cjs, 14.4.4).
 // ---------------------------------------------------------------------------
 
@@ -75,7 +78,7 @@ const { changeOf, changeTips } = require('./review-change.cjs');
 const { reviewHeld } = require('./review-entry.cjs');
 const {
   reportNames, reviewStanding, roundRefusal, recordedRounds, fixesOf, endsReview, fixPhase, roundRecordPath, roundReportFile, roundChecksFile, roundFolder,
-  snapshotHeld, dropSnapshot, treeChanges, unitCalls, reviewCallFault, forThePerson, inTheBuild,
+  snapshotRound, dropSnapshot, treeChanges, unitCalls, reviewCallFault, forThePerson, inTheBuild,
 } = require('./review-phase.cjs');
 const {
   roundReport, closingReport, reportScreen, reviewCallsScreen,
@@ -271,7 +274,11 @@ function roundUnderReview(cwd, unit) {
 
 /** The tree held to its round's snapshot, refused where it is not held or the tree moved since (the header's). @param {string} cwd @param {string} unit @param {number} round @param {(reason: string) => never} refuse */
 function treeHeld(cwd, unit, round, refuse) {
-  if (!snapshotHeld(cwd, unit, round)) refuse(`no snapshot of round ${round}'s working tree is held — its cache is gone, and nothing is taken of the tree unasked: the person decides what stands, and on their word review accept-tree ${unit} takes the tree as it is`);
+  const held = snapshotRound(cwd, unit);
+  if (held !== round) {
+    const why = held === null ? 'its cache is gone' : `the one held is round ${held}'s`;
+    refuse(`no snapshot of round ${round}'s working tree is held — ${why}, and nothing is taken of the tree unasked: the person decides what stands, and on their word review accept-tree ${unit} takes the tree as it is`);
+  }
   const changed = treeChanges(cwd, unit);
   if (changed.length > 0) {
     refuse(`the working tree outside .leeway/ changed since the snapshot the round is held to: ${changed.join(', ')} — nothing is reverted; the person decides what stands, and on their word review accept-tree ${unit} takes the tree as it is`);
@@ -314,15 +321,14 @@ function recordRound(cwd, unit, file) {
   }, readPayload(cwd, file), reads, reportItems(reports))));
   /** @type {RoundRecord} */
   const record = {
-    reports: reports.map(({ name }) => name), passed: reports.every(({ verdict }) => verdict === 'pass'), can_now: account.can_now, findings: account.findings, settled: account.settled, scenarios: [], calls: { count: 0, build: 0 },
+    reports: reports.map(({ name }) => name), passed: reports.every(({ verdict }) => verdict === 'pass'), can_now: account.can_now, findings: account.findings, settled: account.settled, scenarios: [],
   };
   verdictHeld(round, unit, phase, record, refuse);
   record.scenarios = refusing(said, () => scenarioStandings(cwd, unit, manifest, round));
-  record.calls = callsCount(cwd, unit, warnings);
   const recorded = [...rounds, record];
   const rels = [roundRecordPath(unit, round), roundReportFile(unit, round), roundChecksFile(unit, round)];
   writeJsonAtomic(statePath(cwd, rels[0]), record);
-  fs.writeFileSync(statePath(cwd, rels[1]), `${reportText(cwd, unit, manifest, recorded, null)}\n`);
+  fs.writeFileSync(statePath(cwd, rels[1]), `${reportText(cwd, unit, manifest, recorded, null, warnings)}\n`);
   fs.writeFileSync(statePath(cwd, rels[2]), checksText(round, reports));
   dropSnapshot(cwd, unit);
   const fixes = fixesOf(record);
@@ -345,9 +351,6 @@ function filedItem(cwd, rel) {
   return { title: (fs.existsSync(file) ? titleOf(fs.readFileSync(file, 'utf8')) : null) ?? slug, kind: FOLDER_KIND[folder] };
 }
 
-/** A round's fix tasks, each with the finding it answers. @param {RoundRecord} record */
-const fixesFiled = (record) => record.findings.flatMap(({ fix, text }) => (fix === undefined ? [] : [{ task: fix, text }]));
-
 /**
  * Each fix task of the rounds' fix phases, shown, by its status in the
  * tracker now: what a report's screen draws each fix's standing from.
@@ -360,18 +363,19 @@ function fixStatuses(cwd, unit, manifest, rounds) {
   return new Map(lists.flatMap((rows) => (rows ?? []).map(({ ref, status }) => [shownTask(ref), status])));
 }
 
+/** A fix's standing by its task's status in the tracker, `fixing` where it is neither. @type {Map<string, 'fixed'|'unbuilt'>} */
+const FIX_STANDINGS = new Map([['done', 'fixed'], ['closed', 'unbuilt']]);
+
 /**
- * A round as its report draws it. Where `statuses` gives the tracker's,
- * each fix task to the round stands as it does now — built where done, not
- * built where closed, else to fix; where it is null, as the round's file
- * keeps it, the round's own fix tasks as filed and no standing claimed.
- * @param {string} cwd @param {Record<string, any>} manifest @param {RoundRecord[]} rounds every round to it @param {number} round @param {Map<string, string>} wordings each scenario's @param {Map<string, string>|null} statuses
+ * A round as its report draws it, with the fix tasks it made, each with the
+ * finding it answers. Where `statuses` gives the tracker's, each stands as
+ * it does now (FIX_STANDINGS); where it is null, as the round's file keeps
+ * them, as filed, no standing claimed.
+ * @param {string} cwd @param {Record<string, any>} manifest @param {RoundRecord} record @param {number} round @param {Map<string, string>} wordings each scenario's @param {Map<string, string>|null} statuses
  * @returns {RoundView}
  */
-function roundView(cwd, manifest, rounds, round, wordings, statuses) {
-  const record = rounds[round - 1];
-  const fixes = statuses === null ? [] : rounds.slice(0, round).flatMap(fixesFiled);
-  const standing = (/** @type {string} */ status) => [...new Set(fixes.filter(({ task }) => statuses?.get(task) === status).map(({ text }) => text))];
+function roundView(cwd, manifest, record, round, wordings, statuses) {
+  const standing = (/** @type {string} */ task) => (statuses === null ? null : FIX_STANDINGS.get(statuses.get(task) ?? '') ?? 'fixing');
   return {
     round,
     passed: record.passed,
@@ -379,9 +383,7 @@ function roundView(cwd, manifest, rounds, round, wordings, statuses) {
     can_now: record.can_now,
     scenarios: record.scenarios.map(({ scenario, standing: stands }) => ({ scenario, standing: stands, wording: wordings.get(scenario) ?? '' })),
     made: fixesOf(record).length,
-    fixed: standing('done'),
-    unbuilt: standing('closed'),
-    fixing: fixesFiled(record).filter(({ task }) => !['done', 'closed'].includes(statuses?.get(task) ?? '')),
+    fixes: record.findings.flatMap(({ fix, text }) => (fix === undefined ? [] : [{ task: fix, text, standing: standing(fix) }])),
     phase: fixPhase(manifest, round),
     filed: [...new Set(record.findings.flatMap(({ inbox }) => (inbox === undefined ? [] : [inbox])))].map((rel) => filedItem(cwd, rel)),
   };
@@ -400,23 +402,27 @@ function callsCount(cwd, unit, warnings) {
 
 /**
  * The last round's report as text: the closing report where the round ends
- * the review phase, else the round's own — its calls counted as the round
- * recorded them, each fix's standing as `statuses` gives it (roundView).
- * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {RoundRecord[]} rounds @param {Map<string, string>|null} statuses
+ * the review phase, else the round's own, the calls decided for the person
+ * counted as it is drawn. Where `statuses` gives the tracker's, as the
+ * screen draws it; where it is null, as the last round's file keeps it as
+ * it is recorded — each fix task as filed (roundView), the calls counted as
+ * of its record.
+ * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {RoundRecord[]} rounds @param {Map<string, string>|null} statuses @param {string[]} warnings
  */
-function reportText(cwd, unit, manifest, rounds, statuses) {
+function reportText(cwd, unit, manifest, rounds, statuses, warnings) {
   const wordings = scenarioWordings(cwd, unit);
   const title = itemTitle(topicTitles(manifest), 'review', unit);
   const last = /** @type {RoundRecord} */ (rounds.at(-1));
-  const view = (/** @type {number} */ round) => roundView(cwd, manifest, rounds, round, wordings, statuses);
-  if (endsReview(last)) return closingReport(unit, title, rounds.map((_, at) => view(at + 1)), last.calls);
-  return roundReport(unit, title, view(rounds.length), last.calls);
+  const view = (/** @type {number} */ round) => roundView(cwd, manifest, rounds[round - 1], round, wordings, statuses);
+  const calls = { ...callsCount(cwd, unit, warnings), recorded: statuses === null ? rounds.length : null };
+  if (endsReview(last)) return closingReport(unit, title, rounds.map((_, at) => view(at + 1)), calls);
+  return roundReport(unit, title, view(rounds.length), calls);
 }
 
 /**
  * `render review-report <unit> [--round N]`: a round's report, the last by
- * default, drawn from the records to it and each fix's standing in the
- * tracker now.
+ * default, drawn from the records to it, each fix's standing in the
+ * tracker now and the calls as they stand now.
  * @param {string} cwd @param {{dotpath: string, round?: string}} args
  */
 function reviewReportSurface(cwd, { dotpath: unit = '', round }) {
@@ -427,7 +433,7 @@ function reviewReportSurface(cwd, { dotpath: unit = '', round }) {
     const at = round === undefined ? rounds.length : Number(round);
     if (!Number.isInteger(at) || at < 1 || at > rounds.length) throw new Error(`--round names a round recorded, 1 to ${rounds.length}`);
     const drawn = rounds.slice(0, at);
-    return reportScreen(reportText(cwd, unit, manifest, drawn, fixStatuses(cwd, unit, manifest, at)));
+    return reportScreen(reportText(cwd, unit, manifest, drawn, fixStatuses(cwd, unit, manifest, at), []));
   });
 }
 

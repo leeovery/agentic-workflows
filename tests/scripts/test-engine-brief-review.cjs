@@ -106,7 +106,7 @@ describe('the area review\'s brief, the reviewer\'s third template (14.1, 14.2)'
         `- ${calls.refund}, the person's, at ${UNIT}.specification: A refund's receipt names the shop.\n  It answers: What does a refund's receipt say?\n  Why: As its charge's did.`,
       ].join('\n'),
       'change-commits': projectCommits(),
-      'change-scratch-layout': '- the project\'s repository: `main` — the range\'s tip there',
+      'change-scratch-layout': '- the project\'s repository: `main` — the change\'s tip there',
       'area-runs': [
         '- 1.S1: proven', '  Given a card form, when the number is typed, then it is checked. (1.1.1)', run('1.S1', 'pass', 0),
         '- 1.S2: not proven', '  Given a charge, when it lands, then a receipt follows. (1.2.1)', run('1.S2', 'fail', 1),
@@ -129,7 +129,7 @@ describe('the area review\'s brief, the reviewer\'s third template (14.1, 14.2)'
     const { brief } = areaReview('1');
 
     assert.strictEqual(sectionIn(brief, 'The change\'s commits'), projectCommits([unlandedDrawn(dir, tip, 'src/send.js')]));
-    assert.ok(brief.includes(`# Laying out your scratch worktree\n\n- the project's repository: \`${tip}\` — the range's tip there\n`), brief);
+    assert.ok(brief.includes(`# Laying out your scratch worktree\n\n- the project's repository: \`${tip}\` — the change's tip there\n`), brief);
     assert.ok(brief.includes(`# Where your report goes\n\n${pathDrawn(`${UNIT}/review/round-2/1-cards-a.md`)}\n`), brief);
     assert.deepStrictEqual([
       refusedBrief(['review-area', UNIT, '--area', '2', '--base', 'main', '--letter', 'a']), refusedBrief(['test-surface', UNIT, '--base', 'main']),
@@ -165,7 +165,7 @@ describe('the test surface\'s brief (14.2.4)', () => {
         '- 2.S1, of §2 Refunds: Given a charge, when it is refunded whole, then the card is credited. (2.1.1)',
       ].join('\n'),
       'change-commits': projectCommits(),
-      'change-scratch-layout': '- the project\'s repository: `main` — the range\'s tip there',
+      'change-scratch-layout': '- the project\'s repository: `main` — the change\'s tip there',
       linters: '- eslint: npx eslint .',
       'tests-report-to': pathDrawn(`${UNIT}/review/round-1/tests-a.md`),
     })}`);

@@ -20,16 +20,13 @@
 //   one finding, and where it landed: a fix task, an item filed to the inbox,
 //   or dropped with why, the ledger's file-or-drop call beside each finding
 //   out of scope and each above a nit dropped (14.3); how Claude settled a
-//   failing round, null where it did not (14.6.3); what each scenario of
-//   the cut stood at as the round was recorded (15.3.3); and the calls
-//   decided for the person across the unit then, with the build's share
-//   (14.4.3):
+//   failing round, null where it did not (14.6.3); and what each scenario
+//   of the cut stood at as the round was recorded (15.3.3):
 //
 //     {"reports": ["1-cards-a.md", …], "passed": false, "can_now": ["…"],
 //      "findings": [{"area": "1-cards", "scope": "in", "call": "bug",
 //                    "text": "…", "from": ["1-cards-a#1"], "fix": "4.1"}, …],
-//      "settled": null, "scenarios": [{"scenario": "1.S1", "standing": "proven"}],
-//      "calls": {"count": 5, "build": 3}}
+//      "settled": null, "scenarios": [{"scenario": "1.S1", "standing": "proven"}]}
 //
 //   Rounds run from 1 with none missing; a round never holds its own number.
 // - A round's fix tasks are a build phase of their own, numbered past the
@@ -102,7 +99,7 @@ const TESTS_LETTER = REVIEWER_LETTERS[0];
  * A round as `review round` recorded it (the header's).
  * @typedef {{
  *   reports: string[], passed: boolean, can_now: string[], findings: RoundFinding[], settled: string|null,
- *   scenarios: {scenario: string, standing: string}[], calls: {count: number, build: number},
+ *   scenarios: {scenario: string, standing: string}[],
  * }} RoundRecord
  */
 
@@ -144,7 +141,7 @@ const strings = (value) => Array.isArray(value) && value.every((item) => typeof 
 function fitsRecord(held) {
   return isObject(held) && strings(held.reports) && typeof held.passed === 'boolean' && strings(held.can_now) && Array.isArray(held.findings)
     && held.findings.every((/** @type {unknown} */ finding) => isObject(finding)) && (held.settled === null || typeof held.settled === 'string')
-    && Array.isArray(held.scenarios) && isObject(held.calls) && Number.isInteger(held.calls.count) && Number.isInteger(held.calls.build);
+    && Array.isArray(held.scenarios);
 }
 
 /**
@@ -331,10 +328,10 @@ function openSnapshot(cwd, unit, round) {
   if (!fs.existsSync(snapshotPath(cwd, unit))) takeSnapshot(cwd, unit, round);
 }
 
-/** Whether the snapshot held is the round's. @param {string} cwd @param {string} unit @param {number} round */
-function snapshotHeld(cwd, unit, round) {
+/** The round whose snapshot is held, or null where none is. @param {string} cwd @param {string} unit @returns {number|null} */
+function snapshotRound(cwd, unit) {
   const file = snapshotPath(cwd, unit);
-  return fs.existsSync(file) && JSON.parse(fs.readFileSync(file, 'utf8')).round === round;
+  return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')).round : null;
 }
 
 /** The snapshot dropped, once the round it held the tree for is recorded. @param {string} cwd @param {string} unit */
@@ -346,7 +343,7 @@ const repoWords = (name) => (name === '.' ? 'the project\'s repository' : `\`${n
 /**
  * What changed outside `.leeway/` since the snapshot, a line each: a
  * repository whose HEAD moved, then each path whose status or content
- * changed, in order; read once the round's snapshot is held (snapshotHeld).
+ * changed, in order; read once the round's snapshot is held (snapshotRound).
  * @param {string} cwd @param {string} unit @returns {string[]}
  */
 function treeChanges(cwd, unit) {
@@ -420,5 +417,5 @@ module.exports = {
   TESTS, TESTS_LETTER, specAreas, reportNames, recordedRounds, fixesOf, endsReview, fixPhase, reviewStanding, everyRead,
   endedWords, endedRefusal, openRefusal, roundRefusal, readsWords,
   reviewFolder, roundRecordPath, roundReportFile, roundChecksFile, roundReadsPath, roundFolder, areaReportPath,
-  takeSnapshot, openSnapshot, snapshotHeld, dropSnapshot, treeChanges, unitCalls, reviewCallFault, forThePerson, inTheBuild,
+  takeSnapshot, openSnapshot, snapshotRound, dropSnapshot, treeChanges, unitCalls, reviewCallFault, forThePerson, inTheBuild,
 };

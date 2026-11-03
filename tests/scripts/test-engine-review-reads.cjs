@@ -61,6 +61,16 @@ describe('review reads: a later round\'s reads named (14.3.3)', () => {
     assert.deepStrictEqual(named(['1-cards', '2-refunds']).reads, ['1-cards', '2-refunds']);
   });
 
+  it('an area\'s finding that answers the test reader\'s item makes the test surface one the next round takes', () => {
+    firstRoundReady();
+    reported(1, EVERY, { '1-cards-a': ['bug: The receipt is never sent.'], 'tests-a': ['bug: No test sends a receipt.'] });
+    recorded({ can_now: [], findings: [{ ...RECEIPT, from: ['1-cards-a#1', 'tests-a#1'] }] });
+    fixBuilt(3, 1, 'Send the receipt', 'main', 'src/send.js');
+
+    assert.strictEqual(refused(['reads', UNIT, '1-cards']), 'review reads: round 2 reads every area whose findings made fix tasks in round 1, and leaves out the test surface (tests)');
+    assert.deepStrictEqual(named(['1-cards', 'tests']).reads, ['1-cards', 'tests']);
+  });
+
   it('the test surface is read only where named, or where its findings made fix tasks', () => {
     fixesDone();
     named(['1-cards']);

@@ -37,7 +37,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { stateGit, git, withEnv, sectionOf } = require('./engine-harness.cjs');
+const { stateGit, git, sectionOf } = require('./engine-harness.cjs');
 const {
   Sim, startUnit, discussed, specToBuild, buildEntry, startPhase, writePhaseTasks, worldFrom, carryOn, answerGate, briefOf, placeIn, landed,
 } = require('./pipeline-world.cjs');

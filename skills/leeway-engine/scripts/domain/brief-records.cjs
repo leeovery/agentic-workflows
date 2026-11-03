@@ -572,6 +572,8 @@ function landsOn(cwd, repo) {
 }
 
 /** Where a repository is laid out: what the brief names, its commit, and why there. @typedef {{named: string, commit: string, why: string}} Laid */
+/** Why a repository holding a task's or a phase's work is laid out at its tip. */
+const RANGE_TIP = 'the range\'s tip there';
 
 /** A repository laid out on a branch. @param {Repo} repo @param {string} branch @param {string} why @returns {Laid} */
 const onBranch = (repo, branch, why) => ({ named: branch, commit: git(repo.path, ['rev-parse', '--verify', `refs/heads/${branch}^{commit}`]).trim(), why });
@@ -579,17 +581,17 @@ const onBranch = (repo, branch, why) => ({ named: branch, commit: git(repo.path,
 /**
  * Where the reviewer's scratch worktree lays out every repository of the
  * project, each before those nested in it, as the builder's worktree held
- * them all (task-worktree.cjs): one holding work at the range's tip there;
- * a submodule otherwise at the commit its holder, as laid out, points it
- * at; any other as `otherwise` lays it out.
- * @param {Repo[]} repos @param {Map<Repo, string>} tips each repository holding work's tip branch
+ * them all (task-worktree.cjs): one holding work at its tip there, as
+ * `tipped` says it; a submodule otherwise at the commit its holder, as laid
+ * out, points it at; any other as `otherwise` lays it out.
+ * @param {Repo[]} repos @param {Map<Repo, string>} tips each repository holding work's tip branch @param {string} tipped why one is laid out at its tip
  * @param {(repo: Repo) => Laid} otherwise
  */
-function layoutOf(repos, tips, otherwise) {
+function layoutOf(repos, tips, tipped, otherwise) {
   /** @type {Map<string, string>} */
   const laid = new Map();
   const lines = repos.map((repo) => {
-    const place = laidOut(repos, repo, tips, laid, otherwise);
+    const place = laidOut(repos, repo, { tips, tipped }, laid, otherwise);
     laid.set(repo.dir, place.commit);
     return `- ${repoNamed(repo)}: \`${place.named}\` — ${place.why}`;
   });
@@ -597,13 +599,13 @@ function layoutOf(repos, tips, otherwise) {
 }
 
 /**
- * @param {Repo[]} repos @param {Repo} repo @param {Map<Repo, string>} tips @param {Map<string, string>} laid each laid out before it, its commit by folder
+ * @param {Repo[]} repos @param {Repo} repo @param {{tips: Map<Repo, string>, tipped: string}} held @param {Map<string, string>} laid each laid out before it, its commit by folder
  * @param {(repo: Repo) => Laid} otherwise
  * @returns {Laid}
  */
-function laidOut(repos, repo, tips, laid, otherwise) {
+function laidOut(repos, repo, { tips, tipped }, laid, otherwise) {
   const tip = tips.get(repo);
-  if (tip !== undefined) return onBranch(repo, tip, 'the range\'s tip there');
+  if (tip !== undefined) return onBranch(repo, tip, tipped);
   if (repo.dir === '' || !heldIn(repos, repo).submodule) return otherwise(repo);
   const { holder } = heldIn(repos, repo);
   const commit = pointedAt(repos, repo, holder.path, /** @type {string} */ (laid.get(holder.dir)));
@@ -636,7 +638,7 @@ function drawDiffRange(filling) {
 /** @param {Filling} filling */
 function drawScratchLayout(filling) {
   const { repos, branch, holding } = taskHolding(filling);
-  return layoutOf(repos, new Map(holding.map((repo) => [repo, branch])), (repo) => (
+  return layoutOf(repos, new Map(holding.map((repo) => [repo, branch])), RANGE_TIP, (repo) => (
     branches(repo.path).has(branch) ? onBranch(repo, branch, 'the task\'s branch') : onBranch(repo, landsOn(filling.cwd, repo), 'the branch it lands on, the task\'s branch not made there')
   ));
 }
@@ -1541,7 +1543,7 @@ function drawPhaseDiffRange(filling, warnings) {
 /** @param {Filling} filling @param {string[]} warnings */
 function drawPhaseScratchLayout(filling, warnings) {
   const { repos, tips } = phaseHolding(filling, warnings);
-  return layoutOf(repos, tips, (repo) => onBranch(repo, landsOn(filling.cwd, repo), 'the branch it lands on'));
+  return layoutOf(repos, tips, RANGE_TIP, (repo) => onBranch(repo, landsOn(filling.cwd, repo), 'the branch it lands on'));
 }
 
 /**
@@ -1700,7 +1702,7 @@ function partDrawn(repo, { from, to, landed, branch }) {
 /** @param {Filling} filling @param {string[]} warnings */
 function drawChangeScratchLayout(filling, warnings) {
   const { repos, holding } = changeHeld(filling, warnings);
-  return layoutOf(repos, new Map(holding.map(({ repo, tip }) => [repo, tip])), (repo) => onBranch(repo, landsOn(filling.cwd, repo), 'the branch it lands on'));
+  return layoutOf(repos, new Map(holding.map(({ repo, tip }) => [repo, tip])), 'the change\'s tip there', (repo) => onBranch(repo, landsOn(filling.cwd, repo), 'the branch it lands on'));
 }
 
 /** @param {Filling} filling @param {string[]} warnings */
