@@ -27,9 +27,9 @@ const { describe, it } = require('node:test');
 const path = require('path');
 const { withFrozenClock } = require('./engine-harness.cjs');
 const {
-  UNIT, AREAS, EVERY, calls, useWorld, env, enter, payload, reportText, reported, recorded, refusedRound, fixPhaseWritten, fixBranch, stateText, lastStateCommit,
+  UNIT, inStep, AREAS, EVERY, calls, useWorld, env, enter, payload, reportText, reported, recorded, refusedRound, fixPhaseWritten, fixBranch, stateText, lastStateCommit,
   reviewCall, filed, RECEIPT, FOUND, firstRoundReady, secondRoundReady,
-  refusedPristine, statePath, writeState, readManifest, createManifest, git, assert,
+  refusedPristine, statePath, writeState, git, assert,
 } = require('./review-world.cjs');
 
 const { runsRel } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/runs.cjs'));
@@ -123,7 +123,7 @@ describe('review round: the round recorded, its report and checks written, and a
   });
 
   it('14.S14: in step, a failing round answers as in auto — its fix phase next, nothing stopping on its verdict', () => {
-    createManifest(dir, UNIT, { ...readManifest(dir, UNIT), build: { position: 'step' } });
+    inStep();
     firstRoundReady();
     const res = recorded({ can_now: [], findings: [RECEIPT] });
 

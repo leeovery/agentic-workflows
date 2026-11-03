@@ -37,8 +37,9 @@
 //   again for them (13.4.4, 13.10.1). Any other round is followed by the
 //   next, once its fix tasks are done — and in step once its fix phase has
 //   merged too, which stops at its gate as any phase merge does (14.6.2,
-//   7.2.4), so the next round reads the tree it merged into; in auto the
-//   fix phases land at finish (7.2.6).
+//   7.2.4), so the next round reads the tree it merged into, each phase
+//   below it merging first, a fix phase built on them (7.2.6); in auto the
+//   fix phases land at finish.
 // - Round 1 reads every area and the test surface. Each later round reads
 //   the areas Claude names once the fix tasks are done, from what they
 //   changed (`review reads`, at `review/round-{N}-reads.json`, the
@@ -68,7 +69,7 @@
 const fs = require('fs');
 const crypto = require('crypto');
 const path = require('path');
-const { statePath, stateRoot } = require('../kernel/state-root.cjs');
+const { statePath } = require('../kernel/state-root.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { tryGit } = require('../kernel/git.cjs');
 const { writeJsonAtomic, isObject } = require('../kernel/manifest-io.cjs');
@@ -82,9 +83,7 @@ const { claudesCall } = require('./ledger-events.cjs');
 const { isCurrent, factsOf } = require('./ledger-fold.cjs');
 const { resolveId } = require('./ledger-ids.cjs');
 const { handedTag } = require('./topic-map.cjs');
-const { withStateLock } = require('./state-worktree.cjs');
-const { trackedLists } = require('./task-verbs.cjs');
-const { landedTasks } = require('./landing.cjs');
+const { reading, phaseLists, mergeWaiting } = require('./phase-checks.cjs');
 const { shownTask } = require('./task-id.cjs');
 
 /** @typedef {import('./ledger-read.cjs').Shower} Shower */
@@ -219,8 +218,9 @@ const STATUS_WORDS = Object.freeze({ open: 'not started', 'in-progress': 'in pro
 /**
  * What comes after the last round waits on (14.3.3): its fix tasks neither
  * done nor closed, each with where it stands; and once none is, in step,
- * its fix phase while a task of it not closed has not landed — null where
- * none waits.
+ * the lowest phase up to its fix phase whose stack waits at its merge gate
+ * (`mergeWaiting`, phase-checks.cjs) — that fix phase's own, or one below
+ * it a switch from auto left unmerged — null where none waits.
  * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {RoundRecord[]} rounds
  * @returns {{waiting: string[], merging: number|null}}
  */
@@ -228,14 +228,11 @@ function fixesWaiting(cwd, unit, manifest, rounds) {
   const last = rounds.at(-1);
   if (last === undefined || fixesOf(last).length === 0) return { waiting: [], merging: null };
   const phase = fixPhase(manifest, rounds.length);
-  const rows = withStateLock(stateRoot(cwd), () => trackedLists(cwd, unit, [phase])).phases[0] ?? [];
-  const statuses = new Map(rows.map(({ ref, status }) => [shownTask(ref), status]));
+  const at = reading(cwd, unit, manifest);
+  const statuses = new Map((phaseLists(at, [phase])[0] ?? []).map(({ ref, status }) => [shownTask(ref), status]));
   const waiting = fixesOf(last).filter((fix) => !['done', 'closed'].includes(statuses.get(fix) ?? ''))
     .map((fix) => `${fix} ${STATUS_WORDS[statuses.get(fix) ?? ''] ?? 'not in the tracker'}`);
-  if (waiting.length > 0 || manifest.build.position !== 'step') return { waiting, merging: null };
-  const landed = landedTasks(cwd, unit);
-  const unmerged = rows.some(({ ref, status }) => status !== 'closed' && !landed.has(shownTask(ref)));
-  return { waiting, merging: unmerged ? phase : null };
+  return { waiting, merging: waiting.length > 0 ? null : mergeWaiting(at, phase) };
 }
 
 /**

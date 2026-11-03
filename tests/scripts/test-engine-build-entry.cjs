@@ -25,7 +25,7 @@
 // with a phase not yet written never reads finished (7.4.3, 12.6.7, 12.S16,
 // 3.S3). The code gate's wording is render code-gate's
 // (test-engine-render-surfaces.cjs); a phase's checklists,
-// test-engine-build-checklists.cjs's; a task at its step gate,
+// test-engine-build-checklists-*.cjs's; a task at its step gate,
 // test-engine-build-gates.cjs's; the review's fix phases in the standing,
 // test-engine-review-fix-phases.cjs's.
 //
@@ -359,6 +359,7 @@ describe('the build\'s standing (P13)', () => {
       in_flight: [{ task: '1.2', builder: null, reviewers: [] }],
       waiting: [],
       finished: false,
+      merging: null,
     });
     assert.ok(!enter(['solo']).sections.includes('in flight:'), 'another build\'s entry names none of this conversation\'s tasks in flight');
   });

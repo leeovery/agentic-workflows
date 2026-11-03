@@ -1290,6 +1290,115 @@ function landed(file, text) {
   fs.renameSync(staged, file);
 }
 
+/** A reviewer's report that passes, as the agent writes it. */
+const PASSED_REPORT = '## Findings\n\nNone.\n\nVerdict: pass\n';
+
+/** The verify setup the first task's builder builds: its files, by path. */
+const VERIFY_FILES = Object.freeze({
+  'verify/features.md': '# Features\n',
+  'verify/drive.sh': '#!/bin/sh\nprintf "pass\\n" > "$LEEWAY_RUN/verdict"\n',
+});
+
+// A worktree a builder's isolation makes, under a folder of its own; and
+// that folder removed.
+const builders = {
+  /** @param {string} name */
+  make: (name) => path.join(fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'pipeline-sim-builders-'))), name),
+  /** @param {Sim} sim @param {string} tree */
+  remove: (sim, tree) => {
+    git(sim.dir, ['worktree', 'remove', '--force', tree]);
+    fs.rmSync(path.dirname(tree), { recursive: true, force: true });
+  },
+};
+
+// A task built as the build's loop builds it in the worktree at `tree`
+// (12.7): started, its files committed there, the verify setup recorded and
+// its scenario run where `setup` says so, its pair passing it, its account
+// taken, chained into its phase's stack and done.
+/**
+ * @param {Sim} sim @param {string} wu @param {string} task @param {string} tree
+ * @param {Record<string, string>} files @param {boolean} setup
+ */
+function taskBuilt(sim, wu, task, tree, files, setup) {
+  sim.run(['task', 'start', wu, task]);
+  const builder = sim.run(['brief', 'builder', wu, task]);
+  git(sim.dir, ['worktree', 'add', '-q', '-b', `worktree-agent-${task}`, tree]);
+  sim.runIn(tree, ['task', 'worktree', wu, task]);
+  for (const [file, text] of Object.entries(files)) {
+    fs.mkdirSync(path.dirname(path.join(tree, file)), { recursive: true });
+    fs.writeFileSync(path.join(tree, file), text, { mode: 0o755 });
+  }
+  sim.runIn(tree, ['commit', '--paths', ...Object.keys(files), '--task', wu, task, '-m', `feat(${wu}): task ${task}`]);
+  if (setup) {
+    const at = placeIn(sim, builder, 'Where the verify setup goes');
+    fs.mkdirSync(path.dirname(at), { recursive: true });
+    fs.writeFileSync(at, JSON.stringify({
+      place: 'verify', feature_map: 'verify/features.md', launch: 'true', health: 'true', drive: 'verify/drive.sh', evidence: 'true', cleanup: 'true',
+      mutation: 'echo "[]" > "$LEEWAY_RUN/survivors.json"',
+    }));
+    sim.runIn(tree, ['verify', 'setup', wu, '--file', at, '--scenario', '1.S1']);
+    sim.runIn(tree, ['verify', 'run', wu, '1.S1']);
+  }
+  for (const letter of ['a', 'b']) landed(placeIn(sim, sim.run(['brief', 'reviewer', wu, task, '--base', 'main', '--letter', letter]), 'Where your report goes'), PASSED_REPORT);
+  landed(placeIn(sim, builder, 'Where your account goes'), [
+    '## What was done', 'Built.', '## Where in the code', ...Object.keys(files).map((file) => `- ${file}`), '## What the tests prove', '- 1.S1, run through verify.',
+    '## Differs from the task', 'None.', '## Reviews', '### Round 1', 'Passed.',
+  ].join('\n\n'));
+  sim.run(['task', 'account', wu, task]);
+  sim.run(['land', 'open', wu, task]);
+  sim.run(['land', 'chain', wu, task]);
+  sim.run(['task', 'done', wu, task]);
+}
+
+// The build the review phase reviews: a feature through its spec to ready
+// to build's pick, its cut's one phase — the verify setup and the code —
+// built, reviewed, merged and closed.
+/** @param {Sim} sim @param {string} wu */
+function cutClosed(sim, wu) {
+  startUnit(sim, 'feature', wu, 'A ledger');
+  discussed(sim, wu, wu);
+  specToBuild(sim, wu, [wu], 'a');
+  buildEntry(sim, wu);
+  writePhaseTasks(sim, wu, 1, 'The work', [{ title: 'Write the ledger', scenarios: ['1.S1'] }]);
+  startPhase(sim, wu, 1);
+  const tree = builders.make('agent-1');
+  taskBuilt(sim, wu, '1.1', tree, { ...VERIFY_FILES, 'src/ledger.js': 'export const ledger = 1;\n' }, true);
+  sim.runIn(tree, ['verify', 'mutants', wu, '1']);
+  builders.remove(sim, tree);
+  for (const letter of ['a', 'b']) landed(placeIn(sim, sim.run(['brief', 'phase-review', wu, '1', '--base', 'main', '--letter', letter]), 'Where your report goes'), PASSED_REPORT);
+  sim.run(['land', 'phase', wu, '1']);
+  sim.run(['checklist', 'close', 'phase-close', wu, '1']);
+}
+
+// The round under review's read of the cut's one area, by its pair (14.2):
+// the first's report `report`, the second's passing.
+/** @param {Sim} sim @param {string} wu @param {string} [report] */
+function areaRead(sim, wu, report = PASSED_REPORT) {
+  for (const letter of ['a', 'b']) {
+    landed(placeIn(sim, sim.run(['brief', 'review-area', wu, '--area', '1', '--base', 'main', '--letter', letter]), 'Where your report goes'), letter === 'a' ? report : PASSED_REPORT);
+  }
+}
+
+// The round under review's read of the test surface, by its one reader
+// (14.2): its report `report`.
+/** @param {Sim} sim @param {string} wu @param {string} [report] */
+function testsRead(sim, wu, report = PASSED_REPORT) {
+  landed(placeIn(sim, sim.run(['brief', 'test-surface', wu, '--base', 'main']), 'Where your report goes'), report);
+}
+
+// Finish (14.8): Claude's items marked, its checklist closed, its gate
+// drawn, and its yes given. Answers the phases each landing landed.
+/** @param {Sim} sim @param {string} wu @returns {number[][]} */
+function finished(sim, wu) {
+  for (const { key, by, state } of JSON.parse(sim.read(['checklist', 'show', 'finish', wu])).items) {
+    if (by === 'claude' && state === 'open') sim.run(['checklist', 'done', 'finish', wu, key]);
+  }
+  sim.run(['checklist', 'close', 'finish', wu]);
+  sim.render(['finish', wu], { expect: 'content' });
+  return sim.run(['finish', 'yes', wu]).landed.map((/** @type {{phases: {phase: number}[]}} */ { phases }) => phases.map(({ phase }) => phase));
+}
+
 module.exports = {
   Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, buildEntry, startPhase, writePhaseTasks, specReviewed, cutTheSpec, readyToBuild, specToBuild, keptOldSpec, briefOf, placeIn, landed,
+  builders, taskBuilt, cutClosed, areaRead, testsRead, finished,
 };

@@ -31,6 +31,9 @@ const PHASE_WORDS: ReadonlyMap<string, string> = new Map([
   ['review', 'Reviewing'],
 ])
 
+/** The phases a unit's tasks are in flight at: its build, and its review phase's fixes. */
+const BUILD_PLACES: ReadonlySet<string> = new Set(['implementation', 'review'])
+
 /** What the project-level places' work is, as the spinner says it. */
 const PLACE_WORDS: ReadonlyMap<string, string> = new Map([
   ['roadmap', 'Roadmapping'],
@@ -88,7 +91,7 @@ export function wordFor(position: Position | null): string | null {
     return null
   }
 
-  const inFlight = phase === 'implementation' ? inFlightWords(tasks) : null
+  const inFlight = BUILD_PLACES.has(phase) ? inFlightWords(tasks) : null
 
   return inFlight === null ? word : `${word} ${inFlight}`
 }

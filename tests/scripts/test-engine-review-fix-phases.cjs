@@ -6,18 +6,14 @@
 // written past the cut as the review's fixes of its round — relying on
 // nothing, owing no phase review, written, running, closed once every task
 // not closed is done and merged once each landed — none not yet written,
-// the build finished all along, its entry saying the review phase is next;
-// the build's screens draw them (domain/projections/build.cjs); a fix task
-// another conversation left in progress is taken over by either entry,
-// `enter implementation` and `enter review`, at the place entered, its
-// recovery note naming it (24.2.4); `task start` of a fix task keeps the
-// review phase the conversation is at, or, with no build place held, puts
-// it there, its tasks riding between the unit's implementation and its
-// review phase (domain/position.cjs); and `land open` refuses a fix task
-// whose branch does not descend from the unit's work not landed below it,
-// which a fix phase is built on (domain/landing.cjs, 7.2.6) — the layout
-// that builds it there is test-engine-task-worktree.cjs's, its proof
-// through round 3 the review phase's simulation's (14.S12).
+// the build finished all along, its entry saying the review phase is next —
+// in step, once no stack of the cut waits at its merge gate, the gate named
+// in its place (7.2.4); and the build's screens draw them (domain/projections/build.cjs), the stop
+// refused in step while a fix task is ready beside one a question parks,
+// which waits, once its answer frees it, behind the one that went on
+// (domain/build-screens.cjs, 12.13.22, 12.7.9). A fix task in flight —
+// taken over, on the position, opened to land — is
+// test-engine-review-fix-tasks.cjs's.
 //
 // Layer: verb. World: review-world.cjs's, copied for each test.
 // ---------------------------------------------------------------------------
@@ -25,31 +21,18 @@
 require('./hermetic-env.cjs');
 
 const { describe, it } = require('node:test');
-const fs = require('fs');
-const path = require('path');
-const { output, sectionOf, createFile } = require('./engine-harness.cjs');
+const { output, sectionOf, okSectionsAsync } = require('./engine-harness.cjs');
 const {
-  UNIT, ENGINE, SESSION_ID, RECEIPT, useWorld, env, enter, recorded, firstRoundReady, fixPhaseWritten, fixBranch, fixBuilt, commitFile, data,
-  ok, okSections, refusedPristine, statePath, git, assert,
+  UNIT, inStep, ENGINE, RECEIPT, useWorld, env, enter, recorded, firstRoundReady, firstRoundFailed, fixPhaseWritten, cutUnmerged, fixBuilt, data,
+  ok, okSections, refusedPristine, statePath, readManifest, createManifest, git, assert,
 } = require('./review-world.cjs');
+const { MADE } = require('./ledger-world.cjs');
 
 const { buildStanding } = require('../../skills/leeway-engine/scripts/domain/build-entry.cjs');
 
 /** @type {string} */
 let dir;
 useWorld((at) => { dir = at; });
-
-/** Round 1 recorded failing on area 1's receipt, its fix task 3.1 written and not started. */
-function firstRoundFailed() {
-  firstRoundReady();
-  recorded({ can_now: ['Pay by card.'], findings: [RECEIPT] });
-}
-
-/** A conversation's position as recorded, or null. @param {string} [session] */
-function positionOf(session = SESSION_ID) {
-  const file = path.join(/** @type {string} */ (env().LEEWAY_CONFIG_DIR), 'conversations', session, 'position.json');
-  return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null;
-}
 
 /** A task landed on main, as its landing's commit names it. @param {string} task its internal id */
 const landedOnMain = (task) => git(dir, ['commit', '-q', '--allow-empty', '-m', `feat(${UNIT}): landed`, '-m', `Task: ${task}`]);
@@ -58,6 +41,20 @@ const landedOnMain = (task) => git(dir, ['commit', '-q', '--allow-empty', '-m', 
 const roundOneFixes = (state, status) => ({
   phase: 3, name: 'the review\'s fixes, round 1', round: 1, relies_on: [], state,
   tasks: [{ task: '3.1', title: 'Send the receipt', status, parked: [], after: [] }], fixes_owed: [],
+});
+
+/** Claude's call on a fix task's question, which asks the person. */
+const MAILED = Object.freeze({
+  question: 'Is the receipt mailed or printed?',
+  rows: [
+    { key: '1', name: 'Mailed', text: 'The receipt is mailed', notice: 'the customer finds it in their inbox' },
+    { key: '2', name: 'Printed', text: 'The receipt is printed', notice: 'the till prints it' },
+  ],
+  lean: '1',
+  why: 'A customer keeps proof.',
+  sort: 'several',
+  mechanism: 'The gateway mails the receipt.',
+  product_wide: false,
 });
 
 describe('the build\'s standing: the review\'s fix phases past the cut (P14)', () => {
@@ -104,6 +101,22 @@ describe('the build\'s standing: the review\'s fix phases past the cut (P14)', (
       `build log: ${statePath(dir, `${UNIT}/build/log.md`)}`,
     ]));
   });
+
+  it('in step, puts the cut\'s stack waiting at its merge gate before the review phase — its gate in place of the finished line, none while its phase is open — the review phase next once it has merged; in auto the stacks wait for finish (7.2.4)', () => {
+    cutUnmerged();
+    const next = () => okSections(dir, ['enter', 'implementation', UNIT], { env: env() }).sections.split('\n').filter((line) => /^(finished|merge waiting): /.test(line));
+    const auto = next();
+    const closed = readManifest(dir, UNIT);
+    const { 'phase-2-close': _close, ...open } = closed.checklists;
+    createManifest(dir, UNIT, { ...closed, checklists: open, build: { position: 'step' } });
+    const running = next();
+    createManifest(dir, UNIT, { ...closed, build: { position: 'step' } });
+    const step = next();
+    landedOnMain(`${UNIT}-2-2`);
+
+    const finished = `finished: every phase of the cut has closed — the review phase is next: enter review ${UNIT}`;
+    assert.deepStrictEqual([auto, running, step, next()], [[finished], [], [`merge waiting: phase 2 waits at its gate: render phase-merge-gate ${UNIT} 2`], [finished]]);
+  });
 });
 
 describe('the build\'s screens: the review\'s fix phases (12.12.11, 3.3.10)', () => {
@@ -129,76 +142,19 @@ describe('the build\'s screens: the review\'s fix phases (12.12.11, 3.3.10)', ()
       '',
     ].join('\n'));
   });
-});
 
-describe('the takeover after a /clear: every phase written (12.13.2, 24.2.4)', () => {
-  it('enter review takes a fix task another conversation left in progress onto this one\'s position at the review phase, with no builder and no pair, its answer and its recovery note naming it; enter implementation takes it over at the build', () => {
-    firstRoundFailed();
-    createFile(dir, '.claude/skills/leeway-review-process/SKILL.md', '# The review\n');
-    ok(dir, ['task', 'start', UNIT, '3.1'], { env: env('earlier') });
-    const { sections } = enter();
-    const note = output(dir, ['conversation', 'position', SESSION_ID], { env: { ...env(), CLAUDE_CODE_SESSION_ID: '' } });
-    okSections(dir, ['enter', 'implementation', UNIT], { env: env('third') });
-
-    const taken = 'in flight: task 3.1, no builder dispatched — its builder and pair go afresh on its branch';
-    assert.deepStrictEqual(positionOf(), { name: UNIT, phase: 'review', topic: UNIT, tasks: [{ task: '3.1', builder: null, reviewers: [] }] });
-    assert.ok(sections.includes(`fix task waiting: 3.1 in progress\n${taken}\n`), sections);
-    assert.ok(note.includes(`\n${taken}\n`), note);
-    assert.deepStrictEqual(positionOf('third'), { name: UNIT, phase: 'implementation', topic: UNIT, tasks: [{ task: '3.1', builder: null, reviewers: [] }] });
-  });
-});
-
-describe('the position: a fix task in flight at the review phase (14.3.2, 24.2.4)', () => {
-  it('task start of a fix task keeps the place in the unit\'s build the conversation is at — the review phase, its worktree and its builder recorded there, or the build\'s entry — its tasks riding between them; and task close takes it off there', () => {
-    enter();
-    fixPhaseWritten(3, [['Send the receipt', '§1.2']]);
+  it('in step, the stop is refused while a fix task is ready beside the one a question parks — a fix phase has no start checklist, so its ready task goes on — and once the answer frees the parked one, it waits behind that task (12.13.22, 12.7.9)', async () => {
+    inStep();
+    fixPhaseWritten(3, [['Send the receipt', '§1.2'], ['Send it once', '§1.2']]);
     ok(dir, ['task', 'start', UNIT, '3.1'], { env: env() });
-    const started = positionOf();
-    const tree = path.join(path.dirname(dir), 'agent-fix');
-    git(dir, ['worktree', 'add', '-q', '-b', 'worktree-agent-fix', tree]);
-    ok(tree, ['task', 'worktree', UNIT, '3.1'], { env: env() });
-    const brief = ok(dir, ['brief', 'builder', UNIT, '3.1'], { env: env() }).id;
-    ok(dir, ['conversation', 'builder', SESSION_ID, 'agent-fix', '--brief', brief], { env: env() });
-    const built = positionOf();
-    okSections(dir, ['enter', 'implementation', UNIT], { env: env() });
-    ok(dir, ['task', 'start', UNIT, '3.1'], { env: env() });
-    const carried = positionOf();
-    enter();
-    const back = positionOf();
-    ok(dir, ['task', 'close', UNIT, '3.1', '--reason', 'The receipt is sent by the gateway.'], { env: env() });
+    const question = ok(dir, ['ledger', 'ask', `${UNIT}.review`], { env: env(), stdin: JSON.stringify({ ...MADE, text: MAILED.question }) }).id;
+    await okSectionsAsync(dir, ['raise', `${UNIT}.review`, '--answers', question, '--parks', '3.1'], { env: env(), stdin: JSON.stringify(MAILED) });
+    const stop = refusedPristine(dir, ['render', 'build-stop', UNIT], { env: env() }).error;
+    ok(dir, ['task', 'start', UNIT, '3.2'], { env: env() });
+    const drawn = okSections(dir, ['raise', 'draw', UNIT, 'Q1'], { env: env() }).res.raise;
+    ok(dir, ['raise', 'answer', drawn, '--pick', '1'], { env: env(), stdin: JSON.stringify({ why: 'Customers keep it.' }) });
 
-    const fix = { task: '3.1', builder: 'agent-fix', reviewers: [], worktree: tree };
-    assert.deepStrictEqual([started, built, carried, back, positionOf()], [
-      { name: UNIT, phase: 'review', topic: UNIT, tasks: [{ task: '3.1', builder: null, reviewers: [] }] },
-      { name: UNIT, phase: 'review', topic: UNIT, tasks: [fix] },
-      { name: UNIT, phase: 'implementation', topic: UNIT, tasks: [fix] },
-      { name: UNIT, phase: 'review', topic: UNIT, tasks: [fix] },
-      { name: UNIT, phase: 'review', topic: UNIT },
-    ]);
-  });
-
-  it('task start puts a fix task at the review phase where the conversation holds no place in the unit\'s build', () => {
-    fixPhaseWritten(3, [['Send the receipt', '§1.2']]);
-    ok(dir, ['task', 'start', UNIT, '3.1'], { env: env('fresh') });
-
-    assert.deepStrictEqual(positionOf('fresh'), { name: UNIT, phase: 'review', topic: UNIT, tasks: [{ task: '3.1', builder: null, reviewers: [] }] });
-  });
-});
-
-describe('land open: a fix phase built on the work below it (7.2.6)', () => {
-  it('refuses a fix task whose branch does not descend from the tip of the unit\'s work not landed below its phase, naming it and opening nothing; opens it once built there', () => {
-    fixPhaseWritten(3, [['Send the receipt', '§1.2']]);
-    fixBuilt(3, 1, 'Send the receipt', 'main', 'src/send.js');
-    ok(dir, ['land', 'open', UNIT, '3.1'], { env: env() });
-    fixPhaseWritten(4, [['Send it once', '§1.2']]);
-    fixBuilt(4, 1, 'Send it once', 'main', 'src/once.js');
-    const [below, branch] = [fixBranch(3, 1, 'Send the receipt'), fixBranch(4, 1, 'Send it once')];
-    const off = refusedPristine(dir, ['land', 'open', UNIT, '4.1'], { env: env() }).error;
-    git(dir, ['checkout', '-q', '-B', branch, below]);
-    commitFile(dir, 'src/once.js', `${UNIT}-4-1`);
-    git(dir, ['checkout', '-q', 'main']);
-
-    assert.strictEqual(off, `land: task 4.1's branch ${branch} does not descend from ${below}, where ${UNIT}'s work not landed below phase 4 ends, which a fix phase is built on (7.2.6) — merge it back onto ${below} first, then open it again`);
-    assert.strictEqual(ok(dir, ['land', 'open', UNIT, '4.1'], { env: env() }).task, '4.1');
+    assert.strictEqual(stop, `render build-stop: ${UNIT}'s build goes on with task 3.2, which no question parks — it stops only where nothing can go on without the person's answer (12.13.22)`);
+    assert.deepStrictEqual(buildStanding(dir, UNIT, []).phases[2].tasks.map(({ task, status }) => [task, status]), [['3.1', 'behind'], ['3.2', 'in-progress']]);
   });
 });

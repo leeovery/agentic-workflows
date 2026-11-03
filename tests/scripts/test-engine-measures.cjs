@@ -30,7 +30,7 @@ const os = require('os');
 const path = require('path');
 const { fixtureFrom, cleanupFixture, commitAll } = require('./engine-harness.cjs');
 const {
-  UNIT, RECEIPT, useWorld, env, reportText, firstRoundReady, recorded, writeState, createManifest, refusedPristine, ok, assert,
+  UNIT, useWorld, env, reportText, firstRoundFailed, writeState, createManifest, refusedPristine, ok, assert,
 } = require('./review-world.cjs');
 
 /** @type {string} */
@@ -67,8 +67,7 @@ describe('measures findings (17.1.5, 17.2.4)', () => {
     reportAt('build/phases/phase-1/review-a.md', []);
     reportAt('build/phases/phase-1/review-b.md', ['nit: The receipt is plain.']);
     writeState(dir, `${UNIT}/build/tasks/1.2/round-1-a.md`, 'Looks fine.\n');
-    firstRoundReady();
-    recorded({ can_now: ['Pay by card.'], findings: [RECEIPT] });
+    firstRoundFailed();
     const elsewhere = other();
 
     try {

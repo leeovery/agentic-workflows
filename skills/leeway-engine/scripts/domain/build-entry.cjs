@@ -38,7 +38,9 @@
 // build stands, a line a phase, and a line for each fix its failed review
 // owes, as the phase close's `phase-review-passed` reads it — no settlement
 // answering it, or a fix it names not done or closed (phase-checks.cjs);
-// once every phase of the cut has closed, that the review phase is next;
+// in step, a phase of the cut closed whose stack waits at its merge gate,
+// the lowest, and its gate; else, once every phase of the cut has closed,
+// that the review phase is next;
 // each task in flight with its builder and its pair, or the question
 // parking it, its gate, or the task it waits behind; each question waiting
 // on the person; the entries affected since the spec concluded, by their
@@ -68,7 +70,9 @@
 // build is finished once every phase of the cut has closed, so "nothing
 // ready" with a phase not yet written never reads finished (7.4.3, 12.6.7)
 // — the rule `phaseStatus` reads off the manifest (derivations.cjs) — its
-// fix phases never counted in it.
+// fix phases never counted in it; in step its stacks merge at their gates
+// first (7.2.4), so the review phase is next only once none waits there
+// (`mergeWaiting`, phase-checks.cjs).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -85,9 +89,9 @@ const { codeGate } = require('./projections/enter.cjs');
 const { tasksInFlight } = require('./conversation.cjs');
 const { recordTasksAt } = require('./position.cjs');
 const { waitingQuestions, parkedTasks, parkedTasksOf } = require('./questions.cjs');
-const { reading, cutPhases, phaseLists, phaseTasks, phaseLanded, fixesOwed, passed } = require('./phase-checks.cjs');
+const { reading, cutPhases, phaseLists, phaseTasks, phaseLanded, mergeWaiting, fixesOwed, passed } = require('./phase-checks.cjs');
 const { figuresPath } = require('./task-account.cjs');
-const { recordedRounds } = require('./review-phase.cjs');
+const { recordedRounds, mergingWords } = require('./review-phase.cjs');
 const { shownTask } = require('./task-id.cjs');
 
 /** @typedef {import('./enter.cjs').Entry} Entry */
@@ -122,9 +126,10 @@ const { shownTask } = require('./task-id.cjs');
  * Where a build stands: its unit and position; each phase of its cut, then
  * each of the review's fix phases written; the tasks in flight there of the
  * conversation it is read for; the questions waiting on the person, as
- * `raise waiting` answers them; and whether every phase of the cut has
- * closed.
- * @typedef {{unit: string, position: string, phases: StandingPhase[], in_flight: InFlight[], waiting: Waiting[], finished: boolean}} BuildStanding
+ * `raise waiting` answers them; whether every phase of the cut has closed;
+ * and, in step, the phase of the cut whose stack waits at its merge gate,
+ * the lowest, null where none does.
+ * @typedef {{unit: string, position: string, phases: StandingPhase[], in_flight: InFlight[], waiting: Waiting[], finished: boolean, merging: number|null}} BuildStanding
  */
 
 /** Where a task stands, as a line says it. @type {Readonly<Record<TaskState, string>>} */
@@ -282,6 +287,7 @@ function standingOf(at, inFlight) {
     in_flight: inFlight,
     waiting,
     finished: buildFinished(at.manifest),
+    merging: mergeWaiting(at, cut),
   };
 }
 
@@ -363,10 +369,20 @@ function phaseLine({ phase, name, round, state, tasks }, of) {
 }
 
 /**
+ * What comes after the build's phases: in step, the merge waiting at its
+ * gate; else, once the cut is through, the review phase.
+ * @param {BuildStanding} standing @returns {Line[]}
+ */
+function nextLines({ unit, finished, merging }) {
+  if (merging !== null) return [['merge waiting', mergingWords(unit, merging)]];
+  return finished ? [['finished', `every phase of the cut has closed — the review phase is next: enter review ${unit}`]] : [];
+}
+
+/**
  * Where the build stands, a line a phase — and a line for each fix its
- * failed review owes, saying the way on — that the review phase is next
- * once the cut is through, the tasks in flight and the questions waiting,
- * as the entry and the recovery note give them.
+ * failed review owes, saying the way on — what comes after them, the tasks
+ * in flight and the questions waiting, as the entry and the recovery note
+ * give them.
  * @param {BuildStanding} standing @returns {Line[]}
  */
 function standingLines(standing) {
@@ -374,7 +390,7 @@ function standingLines(standing) {
   return [
     ['position', standing.position],
     ...standing.phases.flatMap((phase) => /** @type {Line[]} */ ([['phase', phaseLine(phase, of)], ...phase.fixes_owed.map((fault) => ['fixes owed', fault])])),
-    ...(standing.finished ? [/** @type {Line} */ (['finished', `every phase of the cut has closed — the review phase is next: enter review ${standing.unit}`])] : []),
+    ...nextLines(standing),
     ...inFlightLines(standing),
     ...standing.waiting.map(({ question, asks, parks }) => /** @type {Line} */ (['waiting', `${question} — ${asks} — parks ${parkedTasks(parks)}`])),
   ];

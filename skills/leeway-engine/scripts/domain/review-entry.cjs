@@ -9,7 +9,11 @@
 // It refuses what the build's entry refuses — a quick-fix, a unit built
 // under the old plan, a build not begun — and a build not finished: the
 // review phase starts once every phase of the cut has closed
-// (`buildFinished`, 14.6.1), and the refusal names each phase not closed.
+// (`buildFinished`, 14.6.1), and the refusal names each phase not closed;
+// in step, once each has merged too, its stack merging at its gate first
+// (7.2.4), and the refusal names the gate of the lowest still waiting
+// (`mergeWaiting`, phase-checks.cjs). The review phase's verbs refuse as
+// it does.
 // Another session holding the checkout's code stops it at the build's code
 // gate, nothing written, and `--take` enters all the same (12.7.8, 12.S50).
 //
@@ -38,7 +42,7 @@
 const { ENGINE_COMMAND, messageOf } = require('../kernel/call.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { buildByCut, buildFinished, phaseClosed } = require('./derivations.cjs');
-const { cutPhases } = require('./phase-checks.cjs');
+const { reading, cutPhases, mergeWaiting } = require('./phase-checks.cjs');
 const {
   buildRefusal, codeHeld, buildLogOf, buildStanding, ownInFlight, inFlightLines, takeInFlight,
 } = require('./build-entry.cjs');
@@ -55,14 +59,20 @@ const {
 
 /**
  * Why the unit's review phase cannot be entered, with its way on, or null
- * where it can: the build's refusals, then a build not finished.
- * @param {Record<string, any>} manifest @returns {string|null}
+ * where it can: the build's refusals, then a build not finished, then in
+ * step a stack of the cut waiting at its merge gate.
+ * @param {string} cwd @param {Record<string, any>} manifest @returns {string|null}
  */
-function reviewRefusal(manifest) {
+function reviewRefusal(cwd, manifest) {
   const refused = buildRefusal(manifest);
-  if (refused !== null || buildFinished(manifest)) return refused;
+  if (refused !== null) return refused;
+  const { name } = manifest;
+  if (buildFinished(manifest)) {
+    const merging = mergeWaiting(reading(cwd, name, manifest), cutPhases(manifest).length);
+    return merging === null ? null : `${name} builds in step, and its review phase is entered once every phase of its cut has merged — ${mergingWords(name, merging)}`;
+  }
   const open = cutPhases(manifest).map((_, at) => at + 1).filter((phase) => !phaseClosed(manifest, phase));
-  return `${manifest.name}'s review phase starts once every phase of its cut has closed — phase${open.length === 1 ? '' : 's'} ${open.join(', ')} of ${cutPhases(manifest).length} ${open.length === 1 ? 'has' : 'have'} not: enter implementation ${manifest.name}`;
+  return `${name}'s review phase starts once every phase of its cut has closed — phase${open.length === 1 ? '' : 's'} ${open.join(', ')} of ${cutPhases(manifest).length} ${open.length === 1 ? 'has' : 'have'} not: enter implementation ${name}`;
 }
 
 /**
@@ -74,7 +84,7 @@ function reviewRefusal(manifest) {
  * @returns {ReviewStanding}
  */
 function reviewHeld(cwd, unit, manifest, held) {
-  const refused = reviewRefusal(manifest);
+  const refused = reviewRefusal(cwd, manifest);
   if (refused !== null) throw new Error(refused);
   const standing = reviewStanding(cwd, unit, manifest);
   const not = held(unit, standing);
@@ -164,7 +174,7 @@ function arriving(at) {
 const REVIEW = Object.freeze({
   level: /** @type {const} */ ('unit'),
   takes: buildByCut,
-  standing: ({ manifest }) => reviewRefusal(manifest),
+  standing: ({ cwd, manifest }) => reviewRefusal(cwd, manifest),
   held: codeHeld,
   unstarted: () => false,
   start: () => {},

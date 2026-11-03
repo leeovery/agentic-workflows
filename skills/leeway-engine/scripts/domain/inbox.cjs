@@ -286,7 +286,7 @@ function fileItem(cwd, unit, file) {
   const { readShown } = require('./ledger-read.cjs');
   const { unitInProgress } = require('./topic-standing.cjs');
   const said = 'inbox file';
-  const refused = refusing(said, () => reviewRefusal(unitInProgress(cwd, unit)));
+  const refused = refusing(said, () => reviewRefusal(cwd, unitInProgress(cwd, unit)));
   if (refused !== null) throw new Error(`${said}: ${refused}`);
   const item = refusing(said, () => shaped(readPayload(cwd, file), 'the item', ['kind', 'text', 'call']));
   const { kind, text, call } = item;
