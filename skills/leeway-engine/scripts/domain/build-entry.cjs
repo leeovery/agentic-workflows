@@ -88,7 +88,7 @@ const { heldCodeSessions } = require('./presence.cjs');
 const { codeGate } = require('./projections/enter.cjs');
 const { tasksInFlight } = require('./conversation.cjs');
 const { recordTasksAt } = require('./position.cjs');
-const { waitingQuestions, parkedTasks, freedAtOf } = require('./questions.cjs');
+const { waitingAndFreed, parkedTasks } = require('./questions.cjs');
 const { reading, cutPhases, phaseLists, phaseTasks, phaseLanded, mergeWaiting, fixesOwed, passed } = require('./phase-checks.cjs');
 const { takenFigures } = require('./task-account.cjs');
 const { recordedRounds, mergingWords } = require('./review-phase.cjs');
@@ -105,6 +105,7 @@ const { shownTask } = require('./task-id.cjs');
 /** @typedef {import('./drivers.cjs').TaskStatus} TaskStatus */
 /** @typedef {import('./conversation.cjs').InFlight} InFlight */
 /** @typedef {import('./questions.cjs').Waiting} Waiting */
+/** @typedef {import('./task-verbs.cjs').StepTurn} StepTurn */
 
 /** Where a phase of the build stands. @typedef {'not yet written'|'written'|'running'|'in review'|'closed'|'merged'} PhaseState */
 /** Where a task of the build stands: as the tracker holds it, or, in step, behind the task in flight or at its gate. @typedef {TaskStatus|'behind'|'at-gate'} TaskState */
@@ -128,9 +129,13 @@ const { shownTask } = require('./task-id.cjs');
  * each of the review's fix phases written; the tasks in flight there of the
  * conversation it is read for; the questions waiting on the person, as
  * `raise waiting` answers them; whether every phase of the cut has closed;
- * and, in step, the phase of the cut whose stack waits at its merge gate,
- * the lowest, null where none does.
- * @typedef {{unit: string, position: string, phases: StandingPhase[], in_flight: InFlight[], waiting: Waiting[], finished: boolean, merging: number|null}} BuildStanding
+ * in step, the phase of the cut whose stack waits at its merge gate, the
+ * lowest, null where none does; and, in step, the task in flight and those
+ * behind it, null where none goes on.
+ * @typedef {{
+ *   unit: string, position: string, phases: StandingPhase[], in_flight: InFlight[], waiting: Waiting[], finished: boolean, merging: number|null,
+ *   turn: StepTurn|null,
+ * }} BuildStanding
  */
 
 /** Where a task stands, as a line says it. @type {Readonly<Record<TaskState, string>>} */
@@ -233,15 +238,16 @@ function atGate(at, { ref, status }, parked) {
 }
 
 /**
- * In step, the tasks held behind the task in flight, which go on once it is
- * done (the header's, `stepTurn`'s), from the phases' lists and the parks
- * the standing read; none in auto.
- * @param {Reading} at @param {(TaskRow[]|null)[]} lists @param {Map<string, string[]>} parked @returns {Set<string>}
+ * In step, the task in flight and those held behind it, which go on once it
+ * is done (the header's, `stepTurn`'s), from the phases' lists, the parks
+ * and when an answer last freed each task, as the standing read them; null
+ * in auto, and where none goes on.
+ * @param {Reading} at @param {(TaskRow[]|null)[]} lists @param {Map<string, string[]>} parked @param {Map<string, number>} freed
+ * @returns {StepTurn|null}
  */
-function behindInFlight(at, lists, parked) {
-  if (at.manifest.build.position !== 'step') return new Set();
-  const tasks = goesOn(parked, { phases: lists, ready: [] }, () => false);
-  return new Set(turnOf(tasks, () => freedAtOf(stateRoot(at.cwd), at.unit, at.warnings))?.behind);
+function turnIn(at, lists, parked, freed) {
+  if (at.manifest.build.position !== 'step') return null;
+  return turnOf(goesOn(parked, { phases: lists, ready: [] }, () => false), () => freed);
 }
 
 /** Where a task stands as the standing gives it (the header's). @param {Reading} at @param {TaskRow} row @param {string[]} parked @param {Set<string>} behind @returns {TaskState} */
@@ -301,10 +307,10 @@ function standingOf(at, inFlight) {
   const phases = buildPhases(at);
   const lists = phaseLists(at, phases);
   const statuses = new Map(lists.flatMap((rows) => (rows ?? []).map(({ ref, status }) => /** @type {[string, TaskStatus]} */ ([shownTask(ref), status]))));
-  const { waiting, warnings = [] } = waitingQuestions(at.cwd, [at.unit]);
-  at.warnings.push(...warnings);
+  const { waiting, freed } = waitingAndFreed(at.cwd, at.unit, at.warnings);
   const parked = parkingQuestions(waiting);
-  const behind = behindInFlight(at, lists, parked);
+  const turn = turnIn(at, lists, parked, freed);
+  const behind = new Set(turn?.behind);
   return {
     unit: at.unit,
     position: at.manifest.build.position,
@@ -314,6 +320,7 @@ function standingOf(at, inFlight) {
     waiting,
     finished: buildFinished(at.manifest),
     merging: mergeWaiting(at, cut),
+    turn,
   };
 }
 
@@ -499,5 +506,5 @@ const IMPLEMENTATION = Object.freeze({
 });
 
 module.exports = {
-  IMPLEMENTATION, STATUS_WORDS, phaseNamed, buildStanding, standingOf, builtUnit, cutCount, buildRecovery, ownInFlight, inFlightLines, takeInFlight, buildRefusal, codeHeld, buildLogOf,
+  IMPLEMENTATION, STATUS_WORDS, phaseNamed, buildStanding, standingOf, buildPhases, builtUnit, cutCount, buildRecovery, ownInFlight, inFlightLines, takeInFlight, buildRefusal, codeHeld, buildLogOf,
 };

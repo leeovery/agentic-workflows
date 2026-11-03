@@ -74,7 +74,8 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
 /**
  * A task's line: its number, title and state; since when it runs, where it
  * builds or is in review with a clock, else null; and what holds it — the
- * questions for one waiting, the tasks for one after others, else none.
+ * questions for one waiting, the tasks for one after others, the task in
+ * flight for one behind it, else none.
  * @typedef {{task: string, title: string, state: TaskState, since: string|null, on: string[]}} TaskLine
  */
 /** A phase's state on the board: not yet written, written, running, complete (every task done), or, in step, its merge waiting at its gate. @typedef {'not-written'|'written'|'running'|'complete'|'merging'} PhaseState */

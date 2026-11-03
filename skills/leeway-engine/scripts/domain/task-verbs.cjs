@@ -535,7 +535,7 @@ function goesOn(parked, { phases, ready }, lets) {
  * `read` against a copy of the tracker's store, each of its files read
  * whole once — a store kept in one file, read as it stood at one moment:
  * no writer lock taken, nothing set up or written into the state, the copy
- * removed after. A tool the driver needs that is missing is refused for that.
+ * removed after.
  * @template T @param {string} cwd @param {(driver: TaskDriver, root: string) => T} read @returns {T}
  */
 function withStoreCopy(cwd, read) {
@@ -548,9 +548,6 @@ function withStoreCopy(cwd, read) {
       fs.writeFileSync(path.join(root, file), text);
     }
     return read(driver, root);
-  } catch (thrown) {
-    const missing = needsRefusal(driver);
-    throw missing === null ? thrown : new Error(missing);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

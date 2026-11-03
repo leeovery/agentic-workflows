@@ -4,15 +4,15 @@
 // own store in its code tree, as a project tracking its own work with Tick
 // keeps one at its root — the store a walk up from the state would find; what
 // a person might do to the state's store in Tick itself — make a task, or one
-// under another, give one refs, link one after another, or a phase after a
-// task, reopen or remove one, cancel, mark done or reopen a unit or a phase,
-// delete the store's file, take away its folder's write, write a line into
-// it that is not JSON or link a task after one it does not hold; what Tick
-// itself answers as a phase's list and the
-// tasks ready in it, for the driver's reads to be held to; a title Tick
-// refuses, for a verb refused after it wrote; and a folder named in part like
-// Tick's ids. Tick reads no config of its own; the hermetic environment pins
-// the rest.
+// under another, give one refs, start a child under its parent left open,
+// link one after another, or a phase after a task, reopen or remove one,
+// cancel, mark done or reopen a unit or a phase, delete the store's file,
+// take away its folder's write, write a line into it that is not JSON or
+// link a task after one it does not hold; what Tick itself answers as a
+// phase's list and the tasks ready in it, for the driver's reads to be held
+// to; a title Tick refuses, for a verb refused after it wrote; and a folder
+// named in part like Tick's ids. Tick reads no config of its own; the
+// hermetic environment pins the rest.
 
 const { execFileSync } = require('child_process');
 const fs = require('fs');
@@ -128,6 +128,20 @@ function childOf(root, title, parent) {
   tick(root, ['create', '--parent', idOf(root, parent), '--', title]);
 }
 
+/**
+ * The task titled `title` started, as a person might in Tick, then its
+ * parent put back to open in the store by hand — Tick starts a parent with
+ * its child, so only a store edited or merged by hand holds a parent open
+ * beside a child in progress.
+ * @param {string} root @param {string} title
+ */
+function startUnderOpen(root, title) {
+  tick(root, ['start', idOf(root, title)]);
+  const { parent } = /** @type {{parent?: string}} */ (records(root).find((task) => /** @type {{title?: string}} */ (task).title === title));
+  const held = records(root).map((task) => (task.id === parent ? { ...task, status: 'open' } : task));
+  fs.writeFileSync(path.join(root, '.tick', 'tasks.jsonl'), `${held.map((task) => JSON.stringify(task)).join('\n')}\n`);
+}
+
 /** A phase of the unit linked after the task titled `after`, as a person might in Tick. @param {string} root @param {string} unit @param {number} phase @param {string} after */
 function phaseAfter(root, unit, phase, after) {
   tick(root, ['dep', 'add', recordOf(root, `phase:${unit}-${phase}`).id, idOf(root, after)]);
@@ -179,5 +193,5 @@ const LOOKALIKE_FOLDER = path.join('tick-cafe', 'x+tick-cafe-old');
 const REFUSED_TITLE = 'x'.repeat(501);
 
 module.exports = {
-  projectStore, addRef, makeTask, linkBy, reopenTask, removeTask, breakStore, garbleStore, setStoreWritable, byHand, childOf, phaseAfter, linkAfterGone, toolAnswers, REFUSED_TITLE, LOOKALIKE_FOLDER,
+  projectStore, addRef, makeTask, linkBy, reopenTask, removeTask, breakStore, garbleStore, setStoreWritable, byHand, childOf, startUnderOpen, phaseAfter, linkAfterGone, toolAnswers, REFUSED_TITLE, LOOKALIKE_FOLDER,
 };

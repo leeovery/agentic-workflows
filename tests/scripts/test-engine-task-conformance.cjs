@@ -348,13 +348,14 @@ for (const driver of listDrivers('task')) {
       assert.deepStrictEqual(fs.readdirSync(copy, { recursive: true }).map(String).filter((name) => fs.statSync(path.join(copy, name)).isFile()).sort(), [...driver.storeFiles()].sort());
     });
 
-    it('list and ready answer as the tracker itself does: in order, by status, held by a link, freed by a closed blocker or one the store lacks, held by a child of its own, and held by its phase\'s link', () => {
+    it('list and ready answer as the tracker itself does: in order, by status, held by a link, freed by a closed blocker or one the store lacks, held by a child of its own open or in progress, and held by its phase\'s link', () => {
       const side = require(sideOf(driver.name));
       driver.createTask(root, ref(2, 2), task('Page the ledger'));
       const steps = [
         () => {},
         () => driver.start(root, ref(1, 1)),
         () => side.childOf(root, 'Check the reading', 'Read the ledger'),
+        () => side.startUnderOpen(root, 'Check the reading'),
         () => driver.close(root, ref(1, 1), 'Not needed.'),
         () => driver.done(root, ref(1, 3)),
         () => side.linkAfterGone(root, 'Page the ledger'),
@@ -371,7 +372,7 @@ for (const driver of listDrivers('task')) {
         return shown(driver.ready(root, UNIT, null));
       });
 
-      assert.deepStrictEqual(readyEach, [['1.1', '1.2', '2.2'], ['1.2', '2.2'], ['2.2'], ['1.3', '2.2'], ['2.2'], ['2.2'], []]);
+      assert.deepStrictEqual(readyEach, [['1.1', '1.2', '2.2'], ['1.2', '2.2'], ['2.2'], ['2.2'], ['1.3', '2.2'], ['2.2'], ['2.2'], []]);
     });
 
     it('show answers no task the tracker lacks, and a task a person made carrying the engine\'s name for it, so the engine makes none twice', () => {

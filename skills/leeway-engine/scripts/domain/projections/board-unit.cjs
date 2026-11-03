@@ -48,7 +48,7 @@ const { unitHistory } = require('../state-history.cjs');
 const { computeTopicLifecycle, mailboxFiles, phaseStatus, buildBegun, buildFinished, roadmapItems, topicTitle } = require('../derivations.cjs');
 const { counted } = require('./map.cjs');
 const { buildView, buildWords, buildMoments } = require('./board-build.cjs');
-const { reviewStandingAt } = require('./board-review.cjs');
+const { reviewStandingAt } = require('./board-build.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
 /** @typedef {import('../board-model.cjs').EpicView} EpicView */

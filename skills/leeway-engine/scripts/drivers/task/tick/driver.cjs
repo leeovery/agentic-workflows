@@ -151,7 +151,11 @@ function parsed(store) {
     const record = lineOf(store, i + 1, line);
     const { id, status, refs = [], transitions = [] } = record;
     ids.held.set(id, record);
-    if (record.parent !== undefined) ids.children.set(record.parent, [...(ids.children.get(record.parent) ?? []), record]);
+    if (record.parent !== undefined) {
+      const siblings = ids.children.get(record.parent) ?? [];
+      siblings.push(record);
+      ids.children.set(record.parent, siblings);
+    }
     const named = refs.flatMap((ref) => {
       const name = nameIn(ref);
       return name === null ? [] : [{ ref, name }];

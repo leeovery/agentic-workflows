@@ -22,7 +22,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  UNIT, SESSION_ID, EVERY, RECEIPT, FOUND, FAILING, useWorld, env, enter, inStep, reportText, reported, named, recorded, issued, fixPhaseWritten, cutUnmerged, fixBuilt, reviewCall, filed, firstRoundReady, secondRoundReady, ok, writeState, statePath, git,
+  UNIT, SESSION_ID, EVERY, RECEIPT, FOUND, FAILING, useWorld, env, enter, inStep, reportText, reported, named, recorded, issued, fixPhaseWritten, cutUnmerged, fixBuilt, reviewCall, filed, firstRoundReady, firstRoundFailed, secondRoundReady, ok, writeState, statePath, git,
 } = require('./review-world.cjs');
 const { withEnv, treeSnapshot, head: stateHead, holdLock, lockAttempts, layout } = require('./engine-harness.cjs');
 
@@ -213,7 +213,7 @@ describe('the unit\'s tab in the review phase (20.15.1)', () => {
 });
 
 describe('the build past the cut (P14, 7.2.4, 12.7.9)', () => {
-  it('in step, lists the review\'s fixes after the cut\'s phases, a fix task behind the one in flight, and the phase whose merge waits at its gate, the banner saying so — drawn while a peer holds the writer lock, never trying it', (t) => {
+  it('in step, lists the review\'s fixes after the cut\'s phases, a fix task behind the one in flight, naming it, and the phase whose merge waits at its gate, which the banner leaves to the gate — drawn while a peer holds the writer lock, never trying it', (t) => {
     fixPhaseWritten(3, [['Send the receipt', '§1.2'], ['Send it once', '§1.2']]);
     ok(dir, ['task', 'start', UNIT, '3.1'], { env: env() });
     ok(dir, ['task', 'start', UNIT, '3.2'], { env: env() });
@@ -225,26 +225,42 @@ describe('the build past the cut (P14, 7.2.4, 12.7.9)', () => {
     const { view, banner } = board();
 
     assert.deepStrictEqual([
-      view.phases.map(({ phase, name, state, tasks }) => [phase, name, state, tasks.map(({ task, state: stands }) => `${task} ${stands}`)]),
+      view.phases.map(({ phase, name, state, tasks }) => [phase, name, state, tasks.map(({ task, state: stands, on }) => [task, stands, ...on].join(' '))]),
       view.progress.running, banner.facts.map(({ text }) => text), attempts,
     ], [
       [
         [1, 'Cards', 'complete', ['1.1 done', '1.2 done', '1.3 closed']],
         [2, 'Refunds', 'merging', ['2.1 done', '2.2 done']],
-        [3, 'the review\'s fixes, round 1', 'running', ['3.1 building', '3.2 behind']],
+        [3, 'the review\'s fixes, round 1', 'running', ['3.1 building', '3.2 behind 3.1']],
       ],
-      1, ['feature', 'build', '1 building', 'phase 2\'s merge waits'], [],
+      1, ['feature', 'build', '1 building'], [],
     ]);
   });
 
-  it('in step, the review phase\'s banner names the fix phase whose merge at its gate the next round waits on', () => {
-    firstRoundReady();
-    recorded({ can_now: ['Pay by card.'], findings: [RECEIPT] });
-    enter();
+  it('in step, shows a fix phase merging once its fix tasks are done and its stack waits at its merge gate', () => {
+    firstRoundFailed();
     fixBuilt(3, 1, 'Send the receipt', 'main', 'src/send.js');
     inStep();
+    ok(dir, ['enter', 'implementation', UNIT], { env: env() });
 
-    assert.deepStrictEqual(board().banner.facts.map(({ text }) => text), ['feature', 'review', 'round 1 failed', 'phase 3\'s merge waits']);
+    assert.deepStrictEqual(board().view.phases.map(({ phase, state }) => [phase, state]), [[1, 'complete'], [2, 'complete'], [3, 'merging']]);
+  });
+
+  it('draws This session, the unit\'s tab and All work at round 1 reading and after a failed round, every fix phase the build may yet write read as not written, while a peer holds the writer lock, never trying it', (t) => {
+    enter();
+    const lock = statePath(dir, layout.lock);
+    const attempts = lockAttempts(t, lock, () => { throw new Error('the board waited on the writer lock'); });
+    const drawn = () => {
+      holdLock(lock);
+      const from = attempts.length;
+      const kinds = [[], ['--tab', 'unit'], ['--tab', 'all']].map((args) => board(args).view.kind);
+      fs.rmSync(lock);
+      return [kinds, attempts.slice(from)];
+    };
+    const reading = drawn();
+    firstRoundFailed();
+
+    assert.deepStrictEqual([reading, drawn()], [[['review', 'unit', 'all'], []], [['review', 'unit', 'all'], []]]);
   });
 });
 

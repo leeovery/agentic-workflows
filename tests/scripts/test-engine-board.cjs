@@ -139,7 +139,7 @@ describe('the build on the board (20.5)', () => {
     assert.deepStrictEqual(board(), {
       version: BOARD_VERSION,
       place: { unit: UNIT, type: 'feature', phase: 'implementation', topic: UNIT },
-      banner: { name: 'Pay', state: 'running', facts: [{ text: 'feature', needs: false }, { text: 'build', needs: false }, { text: '1 at the gate', needs: false }] },
+      banner: { name: 'Pay', state: 'running', facts: [{ text: 'feature', needs: false }, { text: 'build', needs: false }] },
       unit: { unit: UNIT, title: 'Pay' },
       tab: 'this',
       view: {
@@ -280,7 +280,7 @@ describe('the build on the board (20.5)', () => {
     assert.deepStrictEqual([drawn.map((view) => [view.kind, view.progress?.stopped ?? null]), attempts], [[['build', true], ['unit', null], ['all', null], ['task', null]], []]);
   });
 
-  it('draws, in step, a task at its gate and one behind the task in flight while a peer holds the writer lock, never trying it, neither running — their phase holding no task not started (12.7.9)', (t) => {
+  it('draws, in step, a task at its gate and one behind the task in flight, naming it, while a peer holds the writer lock, never trying it, neither running nor in the banner — their phase holding no task not started (12.7.9)', (t) => {
     enterBuild();
     position('auto');
     ok(dir, ['task', 'start', UNIT, '1.2'], { env: env() });
@@ -291,7 +291,7 @@ describe('the build on the board (20.5)', () => {
     const { view, banner } = board();
 
     assert.deepStrictEqual([view.phases[0].tasks.slice(0, 2), view.progress.running, banner.facts.map(({ text }) => text), attempts], [
-      [line('1.1', 'Take a card', 'at-gate'), line('1.2', 'Show a receipt', 'behind')], 0, ['feature', 'build', '1 at the gate'], [],
+      [line('1.1', 'Take a card', 'at-gate'), line('1.2', 'Show a receipt', 'behind', { on: ['1.1'] })], 0, ['feature', 'build'], [],
     ]);
   });
 

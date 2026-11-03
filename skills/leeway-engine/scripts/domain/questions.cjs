@@ -402,7 +402,26 @@ function waitingQuestions(cwd, args) {
   /** @type {string[]} */
   const warnings = [];
   const now = Date.now();
-  const waiting = readQuestions(root, warnings, (read, entryAt) => waitingOf(read, unit).map((question) => {
+  const waiting = readQuestions(root, warnings, (read, entryAt) => waitingIn(read, entryAt, unit, now));
+  return { unit, waiting, ...(warnings.length > 0 ? { warnings } : {}) };
+}
+
+/**
+ * The unit's questions waiting on the person, as `raise waiting` answers
+ * them, and each task by where an answer last freed it (`freedAtOf`'s),
+ * from one read of the ledger, what it said pushed to `warnings`.
+ * @param {string} cwd @param {string} unit @param {string[]} warnings
+ * @returns {{waiting: Waiting[], freed: Map<string, number>}}
+ */
+function waitingAndFreed(cwd, unit, warnings) {
+  const root = unitRoot(cwd, unit, 'raise waiting', WAITING_USAGE);
+  const now = Date.now();
+  return readQuestions(root, warnings, (read, entryAt) => ({ waiting: waitingIn(read, entryAt, unit, now), freed: freedIn(read, unit) }));
+}
+
+/** The unit's questions waiting, oldest first, as `raise waiting` answers them. @param {Folded} read @param {EntryAt} entryAt @param {string} unit @param {number} now @returns {Waiting[]} */
+function waitingIn(read, entryAt, unit, now) {
+  return waitingOf(read, unit).map((question) => {
     const line = entryAt(factsOf(read, question.park).place);
     return {
       question: numbered(question.number),
@@ -412,8 +431,7 @@ function waitingQuestions(cwd, args) {
       since: line.at,
       waited_minutes: Math.max(0, Math.floor((now - Date.parse(line.at)) / 60000)),
     };
-  }));
-  return { unit, waiting, ...(warnings.length > 0 ? { warnings } : {}) };
+  });
 }
 
 /**
@@ -612,15 +630,18 @@ function stoppedAt(read, id) {
  * @returns {Map<string, number>}
  */
 function freedAtOf(root, unit, warnings) {
-  return readQuestions(root, warnings, (read) => {
-    /** @type {Map<string, number>} */
-    const freed = new Map();
-    for (const id of parksOf(read, unit)) {
-      const task = taskOf(read, id);
-      if (task !== null) freed.set(task, Math.max(freed.get(task) ?? 0, stoppedAt(read, id)));
-    }
-    return freed;
-  });
+  return readQuestions(root, warnings, (read) => freedIn(read, unit));
+}
+
+/** `freedAtOf`'s answer, from the ledger read. @param {Folded} read @param {string} unit @returns {Map<string, number>} */
+function freedIn(read, unit) {
+  /** @type {Map<string, number>} */
+  const freed = new Map();
+  for (const id of parksOf(read, unit)) {
+    const task = taskOf(read, id);
+    if (task !== null) freed.set(task, Math.max(freed.get(task) ?? 0, stoppedAt(read, id)));
+  }
+  return freed;
 }
 
 /**
@@ -640,5 +661,5 @@ function parkingTask(root, unit, task, warnings) {
 
 module.exports = {
   DISCUSSING, WAITING_USAGE, ASIDE_USAGE, numbered, parkedTasks, waitingOn, parkedUnder, parkedQuestion, checkUnparked, waitingQuestions, readQuestions, waitingOf, asideQuestions, foundPark, answeredReceipt,
-  explainedReceipt, checkAnswerable, answerable, parkedTasksOf, freedAtOf, parkingTask,
+  explainedReceipt, checkAnswerable, answerable, parkedTasksOf, freedAtOf, waitingAndFreed, parkingTask,
 };

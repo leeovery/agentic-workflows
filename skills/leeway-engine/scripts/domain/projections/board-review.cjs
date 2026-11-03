@@ -32,8 +32,8 @@ const fs = require('fs');
 const { statePath } = require('../../kernel/state-root.cjs');
 const { readReport } = require('../round-report.cjs');
 const { specPath, specReading } = require('../spec-sections.cjs');
-const { reviewStanding, fixesOf, fixPhase, reportNames, areaReportPath, recordedRounds, TESTS } = require('../review-phase.cjs');
-const { taskLine, standingAt, readingAt } = require('./board-build.cjs');
+const { fixesOf, fixPhase, reportNames, areaReportPath, recordedRounds, TESTS } = require('../review-phase.cjs');
+const { taskLine, standingAt, reviewStandingAt } = require('./board-build.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
 /** @typedef {import('../board-model.cjs').ReviewView} ReviewView */
@@ -98,9 +98,6 @@ function fixesAt(at, rounds, round) {
   return { phase, round, tasks };
 }
 
-/** Where the review phase stands for the board's unit, read once a call through its reading (`readingAt`). @param {BoardAt} at @returns {ReviewStanding} */
-const reviewStandingAt = (at) => at.once('review', () => reviewStanding(at.cwd, at.unit, at.manifest, readingAt(at)));
-
 /**
  * The round the board shows: the one under review once it has opened —
  * round 1 at the phase's entry, a later one once its reads are named — else
@@ -150,15 +147,14 @@ function reviewView(at) {
 
 /**
  * The banner's facts in the review phase (20.2.4): the round reading, or
- * its verdict once recorded, and, in step, the phase whose merge at its
- * gate the next round waits on; done once a round ended the phase.
- * @param {ReviewView} view @param {number|null} merging @returns {{state: 'running'|'done', facts: {text: string, needs: boolean}[]}}
+ * its verdict once recorded; done once a round ended the phase.
+ * @param {ReviewView} view @returns {{state: 'running'|'done', facts: {text: string, needs: boolean}[]}}
  */
-function reviewBanner({ type, round, verdict }, merging) {
+function reviewBanner({ type, round, verdict }) {
   const fact = (/** @type {string} */ text) => ({ text, needs: false });
   return {
     state: verdict === 'passed' || verdict === 'settled' ? 'done' : 'running',
-    facts: [fact(type), fact('review'), fact(`round ${round} ${verdict ?? 'reading'}`), ...(merging === null ? [] : [fact(`phase ${merging}'s merge waits`)])],
+    facts: [fact(type), fact('review'), fact(`round ${round} ${verdict ?? 'reading'}`)],
   };
 }
 
@@ -190,4 +186,4 @@ function checkPage(at, said, scenario) {
   return { kind: 'check', unit: at.unit, round, scenario, standing: check.standing, text: written?.wording ?? null };
 }
 
-module.exports = { reviewView, reviewBanner, reviewStandingAt, findingPage, checkPage };
+module.exports = { reviewView, reviewBanner, findingPage, checkPage };

@@ -62,7 +62,7 @@ const { titlecase } = require('./conventions.cjs');
 const { projectName } = require('./state-checks.cjs');
 const { BOARD_VERSION, TABS } = require('./board-model.cjs');
 const { buildView, buildBanner, taskPage, writtenPage, roundPage } = require('./projections/board-build.cjs');
-const { reviewView, reviewBanner, reviewStandingAt, findingPage, checkPage } = require('./projections/board-review.cjs');
+const { reviewView, reviewBanner, findingPage, checkPage } = require('./projections/board-review.cjs');
 const { discussionView, discussionBanner, entryPage, messagePage, reviewReportPage } = require('./projections/board-discussion.cjs');
 const { specView, specBanner, sectionPage, passPage } = require('./projections/board-spec.cjs');
 const { discoveryView, discoveryBanner, briefPage, topicStarted, spikePage } = require('./projections/board-discovery.cjs');
@@ -181,7 +181,7 @@ function unitAt(cwd, session, place, unit, inFlight, warnings, task) {
  */
 const PHASE_VIEWS = Object.freeze({
   implementation: { read: buildView, banner: (_, view) => buildBanner(view), of: (type) => type !== 'quick-fix' },
-  review: { read: reviewView, banner: (at, view) => reviewBanner(view, reviewStandingAt(at).merging) },
+  review: { read: reviewView, banner: (_, view) => reviewBanner(view) },
   discussion: { read: discussionView, banner: (_, view) => discussionBanner(view) },
   specification: { read: specView, banner: (_, view) => specBanner(view) },
   discovery: { read: discoveryView, banner: (_, view) => discoveryBanner(view), of: (type) => type === 'epic' },

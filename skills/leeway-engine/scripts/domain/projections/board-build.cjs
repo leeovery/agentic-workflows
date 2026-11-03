@@ -8,20 +8,22 @@
 // this conversation issued.
 //
 // - A task's state (20.4.9, 20.5.2): done, or closed, as the tracker holds
-//   it; in step, at its gate, or behind the task in flight, as its standing
-//   says, neither running; waiting on the questions that park it; one in
-//   progress building or in review by the last brief this conversation
-//   issued for it — the builder's or a fix round's building, a reviewer's
-//   in review — since that brief was issued, its clock ended by `task
-//   account`, and building where no brief of this conversation's names it
-//   (P15); one not started after the tasks not yet done it is linked after,
-//   else not started. Failed stands in the board's vocabulary, from a
-//   builder's stop (P5), which no record holds yet.
+//   it; in step, at its gate, or behind the task in flight, which it names,
+//   as its standing says, neither running; waiting on the questions that
+//   park it; one in progress building or in review by the last brief this
+//   conversation issued for it — the builder's or a fix round's building, a
+//   reviewer's in review — since that brief was issued, its clock ended by
+//   `task account`, and building where no brief of this conversation's
+//   names it (P15); one not started after the tasks not yet done it is
+//   linked after, else not started. Failed stands in the board's
+//   vocabulary, from a builder's stop (P5), which no record holds yet.
 // - The phases are the cut's, then the review's fixes past it, as the
 //   standing lists them. A phase is merging where, in step, its merge waits
-//   at its gate — the lowest whose does; else complete once every task not
-//   closed is done, one at least; not yet written, written or running as
-//   its standing says.
+//   at its gate — the lowest whose does, the cut's as the build's standing
+//   names it, past it a fix phase whose tasks are done as the review
+//   phase's does (`mergingAt`); else complete once every task not closed is
+//   done, one at least; not yet written, written or running as its
+//   standing says.
 // - The build has stopped (20.5.1, D6) while a question waits and nothing
 //   can be built without an answer: the stop report's rule (`goesOn`, its
 //   phases let go on by `phaseLets`), over every phase the unit has written,
@@ -35,7 +37,8 @@
 
 const fs = require('fs');
 const { statePath } = require('../../kernel/state-root.cjs');
-const { standingOf } = require('../build-entry.cjs');
+const { standingOf, buildPhases } = require('../build-entry.cjs');
+const { reviewStanding } = require('../review-phase.cjs');
 const { reading } = require('../phase-checks.cjs');
 const { goesOn } = require('../task-verbs.cjs');
 const { phaseNamed, phaseLets, takenAccount, callsOf, ranOf } = require('../build-screens.cjs');
@@ -55,6 +58,7 @@ const { counted } = require('./map.cjs');
 /** @typedef {import('../build-entry.cjs').BuildStanding} BuildStanding */
 /** @typedef {import('../build-entry.cjs').StandingTask} StandingTask */
 /** @typedef {import('../build-entry.cjs').StandingPhase} StandingPhase */
+/** @typedef {import('../review-phase.cjs').ReviewStanding} ReviewStanding */
 /**
  * What the board reads at a call: the project, the tab's unit with its
  * manifest and title, the conversation's tasks in flight and the briefs it
@@ -77,7 +81,8 @@ function runningOf(at, task) {
 function taskLine(at, { task, title, status, parked, after }) {
   /** @type {(state: TaskState, since?: string|null, on?: string[]) => TaskLine} */
   const line = (state, since = null, on = []) => ({ task, title, state, since, on });
-  if (status === 'done' || status === 'closed' || status === 'at-gate' || status === 'behind') return line(status);
+  if (status === 'done' || status === 'closed' || status === 'at-gate') return line(status);
+  if (status === 'behind') return line(status, null, [/** @type {import('../task-verbs.cjs').StepTurn} */ (standingAt(at).turn).inFlight]);
   if (parked.length > 0) return line('waits', null, parked);
   if (status === 'in-progress') {
     const { state, since } = runningOf(at, task);
@@ -132,7 +137,9 @@ function questionsOf(standing) {
 /**
  * What the board's unit's checks read it by, once a call, seeded with the
  * unit's one read of the tracker: each phase's list, and the tasks whole of
- * each phase holding one not yet ended.
+ * each phase holding one not yet ended; and each phase the build may have
+ * written past the last it has as not written — the review's fix phases
+ * are written in turn, so none past the first not written is.
  * @param {BoardAt} at @returns {import('../phase-checks.cjs').Reading}
  */
 const readingAt = (at) => at.once('reading', () => {
@@ -142,11 +149,24 @@ const readingAt = (at) => at.once('reading', () => {
   written.forEach((tasks, i) => {
     if (tasks !== null) read.reads.set(`tasks ${i + 1}`, tasks);
   });
+  for (const phase of buildPhases(read).filter((each) => each > phases.length)) read.reads.set(`list ${phase}`, null);
   return read;
 });
 
 /** The build's standing for the board's unit, read once a call (`readingAt`). @param {BoardAt} at @returns {BuildStanding} */
 const standingAt = (at) => at.once('build', () => standingOf(readingAt(at), at.inFlight));
+
+/** Where the review phase stands for the board's unit, read once a call (`readingAt`). @param {BoardAt} at @returns {ReviewStanding} */
+const reviewStandingAt = (at) => at.once('review', () => reviewStanding(at.cwd, at.unit, at.manifest, readingAt(at)));
+
+/**
+ * In step, the lowest phase whose merge waits at its gate, of every phase
+ * the build lists: one of the cut's as the build's standing names it, else,
+ * once the build has finished, one past it as the review phase's does — a
+ * fix phase once its fix tasks are done; null in auto, and where none waits.
+ * @param {BoardAt} at @param {BuildStanding} standing @returns {number|null}
+ */
+const mergingAt = (at, standing) => standing.merging ?? (standing.finished ? reviewStandingAt(at).merging : null);
 
 /**
  * The build's This session (20.5.1–20.5.3) and the questions a press can
@@ -159,7 +179,8 @@ const buildView = (at) => at.once('build-view', () => drawBuild(at));
 /** The build's This session, drawn (`buildView`'s). @param {BoardAt} at @returns {{view: BuildView, questions: Question[]}} */
 function drawBuild(at) {
   const standing = standingAt(at);
-  const phases = standing.phases.map((phase) => buildPhase(at, phase, standing.merging));
+  const merging = mergingAt(at, standing);
+  const phases = standing.phases.map((phase) => buildPhase(at, phase, merging));
   const lines = phases.flatMap(({ tasks }) => tasks).filter((line) => line.state !== 'closed');
   const at_ = phases.find(({ state }) => state !== 'complete') ?? phases.at(-1);
   return {
@@ -185,29 +206,22 @@ function drawBuild(at) {
 
 /**
  * The banner's facts in a build (20.2.4): stopped first where nothing can
- * go on, then the type and the phase, how many build, are in review and
- * stand at their gates, the phase whose merge waits at its gate, and the
- * questions waiting on the person.
+ * go on, then the type and the phase, how many build and are in review, and
+ * the questions waiting on the person.
  * @param {BuildView} view @returns {{state: 'running'|'needs', facts: Fact[]}}
  */
 function buildBanner({ type, progress, phases, waiting }) {
   const lines = phases.flatMap(({ tasks }) => tasks);
+  const count = (/** @type {TaskState} */ state) => lines.filter((line) => line.state === state).length;
   const fact = (/** @type {string} */ text, needs = false) => ({ text, needs });
-  const tally = (/** @type {TaskState} */ state, /** @type {string} */ words) => {
-    const count = lines.filter((line) => line.state === state).length;
-    return count > 0 ? [fact(`${count} ${words}`)] : [];
-  };
-  const merging = phases.find(({ state }) => state === 'merging');
   return {
     state: progress.stopped ? 'needs' : 'running',
     facts: [
       ...(progress.stopped ? [fact('stopped')] : []),
       fact(type),
       fact('build'),
-      ...tally('building', 'building'),
-      ...tally('in-review', 'in review'),
-      ...tally('at-gate', 'at the gate'),
-      ...(merging === undefined ? [] : [fact(`phase ${merging.phase}'s merge waits`)]),
+      ...(count('building') > 0 ? [fact(`${count('building')} building`)] : []),
+      ...(count('in-review') > 0 ? [fact(`${count('in-review')} in review`)] : []),
       ...(waiting.length > 0 ? [fact(`${waiting.length} waiting on you`, true)] : []),
     ],
   };
@@ -321,4 +335,4 @@ function buildMoments(at) {
 /** How far the build has come, as All work and the unit's tab say it. @param {BuildView} view */
 const buildWords = ({ progress }) => `${progress.done} of ${counted(progress.total, 'task')} done`;
 
-module.exports = { buildView, buildBanner, taskLine, taskPage, writtenPage, roundPage, buildWords, buildMoments, standingAt, readingAt };
+module.exports = { buildView, buildBanner, taskLine, taskPage, writtenPage, roundPage, buildWords, buildMoments, standingAt, reviewStandingAt };
