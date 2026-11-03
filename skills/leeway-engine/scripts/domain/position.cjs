@@ -462,6 +462,19 @@ function buildWork(cwd, unit, inFlight) {
 }
 
 /**
+ * The review phase's note, carried whole, as its entry reads it
+ * (review-entry.cjs): the record's call, each round's report, the spec, the
+ * build's log, and where the phase stands.
+ * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @returns {Omit<Work, 'skill'>}
+ */
+function reviewWork(cwd, unit, manifest) {
+  // Required here, as the review phase's entry reaches this module through
+  // the build's.
+  const { calls, documents, lines } = require('./review-entry.cjs').reviewRecovery(cwd, unit, manifest);
+  return { documents, whole: { calls, log: null, lines } };
+}
+
+/**
  * @param {string} cwd @param {Position} position @param {Manifest} manifest
  * @returns {Work}
  */
@@ -511,6 +524,7 @@ function workAt(cwd, position, manifest) {
       return { skill, documents: [...reading, ...tasks.flatMap((t) => taskFile(plan, internalIdOf(topic, t)))] };
     }
     case 'review':
+      if (buildByCut(manifest)) return { skill, ...reviewWork(cwd, name, manifest) };
       return { skill, documents: [path.join(wu, 'review', topic, 'report.md')] };
     default:
       return { skill: null, documents: [] };

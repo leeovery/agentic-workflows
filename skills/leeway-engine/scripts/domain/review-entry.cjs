@@ -3,7 +3,8 @@
 // ---------------------------------------------------------------------------
 // Domain ring: the review phase's row of the entry (enter.cjs) — `enter
 // review <unit>`, at the work unit, as the build's is (build-entry.cjs),
-// taking a unit whose build runs by its cut.
+// taking a unit whose build runs by its cut — and its recovery note
+// (position.cjs), which re-reads what the entry reads (24.2.2).
 //
 // It refuses what the build's entry refuses — a quick-fix, a unit built
 // under the old plan, a build not begun — and a build not finished: the
@@ -13,38 +14,33 @@
 // gate, nothing written, and `--take` enters all the same (12.7.8, 12.S50).
 //
 // As the conversation arrives, the working tree outside `.leeway/` is
-// snapshotted (review-phase.cjs), what `review round` holds the tree to
-// (14.1.5). Each entry takes it afresh: dirt a round named and the person
-// settled is taken as the tree stands by entering again.
+// snapshotted (review-phase.cjs) where no snapshot is held and a round waits
+// to be read — none waiting on fix tasks — what `review round` holds the
+// tree to (14.1.5). Entering again never retakes it, so dirt met before a
+// `/clear` still stops for the person.
 //
-// It answers, in its DATA: the round under review, or that the review
-// phase is over, finish next; the spec's areas, each by its name in the
-// layout and its title; the areas the round reads, and the test surface;
-// each fix task of the round before not yet done, which the round waits on
-// (14.3.3); each earlier round's report; the spec; the unit's record, by
-// its call; and the build's log.
+// It answers, in its DATA: the round under review, or how the round that
+// ended the phase did, and what is next; the spec's areas, each by its name
+// in the layout and its title; the areas the round reads, the test surface
+// among them, or that a later round's are not yet named, with those it must
+// take (14.3.3); each fix task of the last round not yet done; each round's
+// report; the spec; the unit's record, by its call; and the build's log.
 // ---------------------------------------------------------------------------
 
-const { ENGINE_COMMAND } = require('../kernel/call.cjs');
-const { statePath, stateRoot } = require('../kernel/state-root.cjs');
+const { ENGINE_COMMAND, messageOf } = require('../kernel/call.cjs');
+const { statePath } = require('../kernel/state-root.cjs');
 const { buildByCut, buildFinished, phaseClosed } = require('./derivations.cjs');
-const { withStateLock } = require('./state-worktree.cjs');
-const { trackedLists } = require('./task-verbs.cjs');
 const { cutPhases } = require('./phase-checks.cjs');
 const { buildRefusal, codeHeld, buildLogOf } = require('./build-entry.cjs');
 const { specPath } = require('./spec-sections.cjs');
-const { shownTask } = require('./task-id.cjs');
 const {
-  TESTS, reviewStanding, fixesOf, fixPhase, roundReportFile, takeSnapshot,
+  reviewStanding, endedWords, readsWords, roundReportFile, takeSnapshot, snapshotTaken,
 } = require('./review-phase.cjs');
 
 /** @typedef {import('./enter.cjs').Entry} Entry */
 /** @typedef {import('./enter.cjs').Entering} Entering */
 /** @typedef {import('./enter.cjs').Line} Line */
-/** @typedef {import('./topic-standing.cjs').Standing} Standing */
-
-/** A task's status, as a line says it. @type {Readonly<Record<string, string>>} */
-const STATUS_WORDS = Object.freeze({ open: 'not started', 'in-progress': 'in progress', closed: 'closed' });
+/** @typedef {import('./review-phase.cjs').ReviewStanding} ReviewStanding */
 
 /**
  * Why the unit's review phase cannot be entered, with its way on, or null
@@ -59,36 +55,92 @@ function reviewRefusal(manifest) {
 }
 
 /**
- * The fix tasks of the last round not yet done, each with where it stands:
- * the round under review waits on them (14.3.3).
- * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {import('./review-phase.cjs').RoundRecord[]} rounds
- * @returns {string[]}
+ * Where the unit's review phase stands, refused where it cannot be entered,
+ * or where `held` — `openRefusal` or `roundRefusal` (review-phase.cjs) —
+ * says why the step asked for cannot be taken yet.
+ * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest
+ * @param {(unit: string, standing: ReviewStanding) => string|null} held
+ * @returns {ReviewStanding}
  */
-function fixesWaiting(cwd, unit, manifest, rounds) {
-  const last = rounds.at(-1);
-  if (last === undefined) return [];
-  const [rows] = withStateLock(stateRoot(cwd), () => trackedLists(cwd, unit, [fixPhase(manifest, rounds.length)])).phases;
-  const statuses = new Map((rows ?? []).map(({ ref, status }) => [shownTask(ref), status]));
-  return fixesOf(last).filter((fix) => statuses.get(fix) !== 'done').map((fix) => `${fix} ${STATUS_WORDS[statuses.get(fix) ?? ''] ?? 'not in the tracker'}`);
+function reviewHeld(cwd, unit, manifest, held) {
+  const refused = reviewRefusal(manifest);
+  if (refused !== null) throw new Error(refused);
+  const standing = reviewStanding(cwd, unit, manifest);
+  const not = held(unit, standing);
+  if (not !== null) throw new Error(not);
+  return standing;
 }
 
-/** Why a round cannot be read yet: its fix tasks of the round before not done, as `fixesWaiting` says them. @param {number} round @param {string[]} waiting */
-const fixesWaitingWords = (round, waiting) => `round ${round} reads the areas round ${round - 1}'s fix tasks changed once every one is done — task ${waiting.join(', task ')}`;
+/** The round line: the round under review, or how the round that ended the phase did and what is next. @param {string} unit @param {ReviewStanding} standing */
+function roundWords(unit, standing) {
+  if (!standing.ended) return `round ${standing.round}`;
+  return `${endedWords(unit, standing).replace(`${unit}'s`, 'the')} — ${standing.over ? 'finish is next' : 'its fix tasks are built, then finish'}`;
+}
 
-/** What the review phase reads at its entry (the header's). @param {Entering} at @returns {Line[]} */
-function reviewReads({ cwd, unit, manifest }) {
-  const { areas, rounds, over, round, reads } = reviewStanding(cwd, unit);
-  const names = new Map(areas.map(({ name, number, title }) => [name, `§${number} ${title}`]));
+/** The reads line, while a round waits to be read. @param {string} unit @param {ReviewStanding} standing */
+function readsLine(unit, { round, required, reads }) {
+  if (reads !== null) return readsWords(reads);
+  return `not yet named — once round ${round - 1}'s fix tasks are done, review reads ${unit} names them from what those changed, among them ${readsWords(required)}`;
+}
+
+/** Where the review phase stands, a line each: the round, the areas, the reads and the fix tasks waiting. @param {string} unit @param {ReviewStanding} standing @returns {Line[]} */
+function standingLines(unit, standing) {
   return [
-    ['round', over ? `the review phase passed in round ${round} — finish is next` : `round ${round}`],
-    ...areas.map(({ name }) => /** @type {Line} */ (['area', `${name} — ${names.get(name)}`])),
-    ...(over ? [] : [/** @type {Line} */ (['reads', [...reads, `the test surface (${TESTS})`].join(', ')])]),
-    ...(over ? [] : fixesWaiting(cwd, unit, manifest, rounds).map((fix) => /** @type {Line} */ (['fix task waiting', fix]))),
-    ...rounds.map((_, at) => /** @type {Line} */ (['round report', statePath(cwd, roundReportFile(unit, at + 1))])),
+    ['round', roundWords(unit, standing)],
+    ...standing.areas.map(({ name, number, title }) => /** @type {Line} */ (['area', `${name} — §${number} ${title}`])),
+    ...(standing.ended ? [] : [/** @type {Line} */ (['reads', readsLine(unit, standing)])]),
+    ...standing.waiting.map((fix) => /** @type {Line} */ (['fix task waiting', fix])),
+  ];
+}
+
+/** Each round's report recorded, by its path. @param {string} cwd @param {string} unit @param {ReviewStanding} standing */
+const roundReports = (cwd, unit, { rounds }) => rounds.map((_, at) => statePath(cwd, roundReportFile(unit, at + 1)));
+
+/** The record's call. @param {string} unit */
+const recordCall = (unit) => `${ENGINE_COMMAND} ledger record ${unit}`;
+
+/** What the review phase reads at its entry (the header's). @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @returns {Line[]} */
+function reviewReads(cwd, unit, manifest) {
+  const standing = reviewStanding(cwd, unit, manifest);
+  return [
+    ...standingLines(unit, standing),
+    ...roundReports(cwd, unit, standing).map((report) => /** @type {Line} */ (['round report', report])),
     ['spec', specPath(cwd, unit)],
-    ['record', `\`${ENGINE_COMMAND} ledger record ${unit}\``],
+    ['record', `\`${recordCall(unit)}\``],
     ['build log', statePath(cwd, buildLogOf(unit))],
   ];
+}
+
+/** The entry's reads the recovery note re-reads as documents; the record it re-reads by its call. */
+const DOCUMENTS = new Set(['round report', 'spec', 'build log']);
+
+/**
+ * What the review phase's recovery note re-reads beside its skill: what the
+ * entry reads — the record by its call; each round's report, the spec and
+ * the build's log; where the phase stands, a line each — or why that
+ * cannot be read, in its place.
+ * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest
+ * @returns {{calls: string[], documents: string[], lines: string[]}}
+ */
+function reviewRecovery(cwd, unit, manifest) {
+  const calls = [recordCall(unit)];
+  try {
+    const read = reviewReads(cwd, unit, manifest);
+    return {
+      calls,
+      documents: read.filter(([key]) => DOCUMENTS.has(key)).map(([, value]) => value),
+      lines: read.filter(([key]) => key !== 'record' && !DOCUMENTS.has(key)).map(([key, value]) => `${key}: ${value}`),
+    };
+  } catch (err) {
+    return { calls, documents: [specPath(cwd, unit), statePath(cwd, buildLogOf(unit))], lines: [`Where the review phase stands could not be read: ${messageOf(err)}`] };
+  }
+}
+
+/** The snapshot taken where none is held and a round waits to be read (the header's). @param {Entering} at */
+function snapshotted({ cwd, unit, manifest }) {
+  if (snapshotTaken(cwd, unit)) return;
+  const { ended, waiting } = reviewStanding(cwd, unit, manifest);
+  if (!ended && waiting.length === 0) takeSnapshot(cwd, unit);
 }
 
 /** @type {Entry} */
@@ -100,8 +152,8 @@ const REVIEW = Object.freeze({
   unstarted: () => false,
   start: () => {},
   questions: () => [],
-  reads: reviewReads,
-  closes: ({ cwd, unit }) => { takeSnapshot(cwd, unit); },
+  reads: ({ cwd, unit, manifest }) => reviewReads(cwd, unit, manifest),
+  closes: snapshotted,
 });
 
-module.exports = { REVIEW, reviewRefusal, fixesWaiting, fixesWaitingWords };
+module.exports = { REVIEW, reviewRefusal, reviewHeld, reviewRecovery };

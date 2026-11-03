@@ -138,6 +138,7 @@ const LAYOUT = Object.freeze([
   engineFile('{unit}/review/round-{N}.md', '4.11.5', 'a review round\'s report', 'review round'),
   engineFile('{unit}/review/round-{N}-checks.md', '4.11.5', 'a review round\'s detailed checks', 'review round'),
   engineFile('{unit}/review/round-{N}.json', '4.11.5', 'the record of a review round', 'review round'),
+  engineFile('{unit}/review/round-{N}-reads.json', '4.11.5', 'the areas a later review round reads', 'review reads'),
   place('file', '{unit}/review/round-{N}/tests-{letter}.md', '4.11.5'),
   place('file', '{unit}/review/round-{N}/{area}-{letter}.md', '4.11.5'),
 ]);

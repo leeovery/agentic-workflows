@@ -10,9 +10,9 @@
 
 {{unit-calls}}
 
-# The change's range
+# The change's commits
 
-{{change-range}}
+{{change-commits}}
 
 # Laying out your scratch worktree
 
@@ -37,7 +37,7 @@ Every task and every phase of the build has passed its own review. Hold the whol
 - what the area asks of the product, met by the change as it stands: a requirement no task carried, a behaviour two tasks built halves of, an edge the area names that nothing delivered;
 - where the area meets the others, so a fault between them is found;
 - the unit's calls read whole: a call fine alone and wrong in combination with another is a finding;
-- the product run: drive what touches the area through the project's verify setup in your scratch worktree, wherever the project gives a way to, and run its tests.
+- the product run: run the project's tests in your scratch worktree, and from there each scenario of the area's above through the project's verify setup, one at a time: `node .claude/skills/leeway-engine/scripts/engine.cjs verify run {unit} {scenario}`, the unit this brief is for. A drive can run for minutes: give the Bash call a timeout to match. Where the project has no verify setup recorded, say so in your report instead of running.
 
 A scenario its runs leave "not proven", or "named, not run", at the change's tips is a finding, and reads so in your report, in those words. What you could not run is reported not proven, never assumed to work.
 
@@ -79,12 +79,12 @@ The edge list:
 
 # Your report
 
-Your report ends in its notes for later, then its findings, then its verdict. The notes for later are the section just before the findings, `## Notes for later`: each note an item naming what lies beyond the task and where it is; or `None.` where there is none. The findings are its last section, `## Findings`: each finding an item opening on its call, with what is wrong, and beneath it, indented, the user scenario that meets it; or `None.` where you found nothing. The last line is `Verdict: pass` where nothing serious and no bug stands, else `Verdict: fail`.
+Your report ends in its notes for later, then its findings, then its verdict. The notes for later are the section just before the findings, `## Notes for later`: each note an item naming what lies beyond the work unit's change and where it is; or `None.` where there is none. The findings are its last section, `## Findings`: each finding an item opening on its call, with what is wrong, and beneath it, indented, the user scenario that meets it; or `None.` where you found nothing. The last line is `Verdict: pass` where nothing serious and no bug stands, else `Verdict: fail`.
 
 ```markdown
 ## Notes for later
 
-- {what lies beyond the task}, at {where it is}
+- {what lies beyond the work unit's change}, at {where it is}
 
 ## Findings
 

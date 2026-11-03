@@ -271,9 +271,6 @@ function deleteItems(cwd, paths) {
 /** Each kind of item by the folder it is filed in. */
 const KIND_FOLDER = Object.freeze(Object.fromEntries(Object.entries(FOLDER_KIND).map(([folder, kind]) => [kind, folder])));
 
-/** An item's title: its text's first line, `# Title`, or null. @param {string} text */
-const titleOf = (text) => /^# +(\S.*)$/.exec(text.split('\n')[0])?.[1].trim() ?? null;
-
 /**
  * `inbox file`: an out-of-scope finding of the unit's review phase filed
  * to the inbox, and committed (the header's).
@@ -282,8 +279,9 @@ const titleOf = (text) => /^# +(\S.*)$/.exec(text.split('\n')[0])?.[1].trim() ??
  */
 function fileItem(cwd, unit, file) {
   // Required here: the ledger's and the review phase's modules reach this
-  // one through the handoff.
+  // one through the handoff, and the start's reads it.
   const { reviewRefusal } = require('./review-entry.cjs');
+  const { titleOf } = require('./start.cjs');
   const { reviewCallFault } = require('./review-phase.cjs');
   const { readShown } = require('./ledger-read.cjs');
   const { unitInProgress } = require('./topic-standing.cjs');
@@ -296,7 +294,7 @@ function fileItem(cwd, unit, file) {
   const faults = [];
   if (typeof kind !== 'string' || !Object.hasOwn(KIND_FOLDER, kind)) faults.push(`its kind is one of ${Object.keys(KIND_FOLDER).join(', ')}, not ${JSON.stringify(kind)}`);
   const title = filled(text) ? titleOf(text) : null;
-  if (title === null) faults.push('its text opens on its title, `# Title`');
+  if (title === null) faults.push('its text holds its title, `# Title`');
   /** @type {string[]} */
   const warnings = [];
   const fault = filled(call) ? readShown(stateRoot(cwd), warnings, (shower) => reviewCallFault(shower, unit, call)) : 'its call names the ledger\'s file-or-drop call';

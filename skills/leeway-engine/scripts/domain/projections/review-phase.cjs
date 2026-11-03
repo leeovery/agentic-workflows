@@ -14,14 +14,16 @@
 //   without kinds until the labeller (P11, 29.19). Its detailed checks are
 //   in a file, never shown (14.4.2). `review round` writes it as
 //   `round-{N}.md`.
-// - The report closing a passing review phase (14.4.3), the certificate:
-//   every round, broken up by round, then every call decided for the
-//   person across the unit, with the build's share. The round that ends the
-//   review phase is written as it.
+// - The report closing the review phase (14.4.3), the certificate: whether
+//   it passed or Claude settled it, and in which round; every round, broken
+//   up by round; then every call decided for the person across the unit,
+//   with the build's share. The round that ends the review phase is written
+//   as it.
 // - The calls, when the person asks (14.4.4): every one decided for them,
-//   grouped by the kind each carries, the kinds that change what the
-//   product does first, those the labeller has not reached last, as
-//   unlabelled (P11).
+//   grouped by the kind each carries, in the ledger's order of kinds
+//   (16.11.3), those that change what the product does first, then process
+//   and internals, those the labeller has not reached last, as unlabelled
+//   (P11).
 // ---------------------------------------------------------------------------
 
 const { section, clipped, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
@@ -29,6 +31,7 @@ const { renderTree } = require('../../kernel/render.cjs');
 const { TREE_WIDTH } = require('../conventions.cjs');
 const { counted, ROW_MAX } = require('./map.cjs');
 const { block } = require('./closing.cjs');
+const { KINDS } = require('../event-fields.cjs');
 
 /** @typedef {import('../review-phase.cjs').UnitCall} UnitCall */
 
@@ -83,31 +86,26 @@ function roundReport(unit, title, view, calls) {
   return [`${title} — review, round ${view.round}: ${verdictWords(view)}`, ...roundBlocks(view), callsLine(unit, calls, false)].join('\n\n');
 }
 
-/** The report closing a passing review phase as text (the header's). @param {string} unit @param {string} title @param {RoundView[]} views @param {CallsCount} calls */
+/** The report closing the review phase as text (the header's). @param {string} unit @param {string} title @param {RoundView[]} views @param {CallsCount} calls */
 function closingReport(unit, title, views, calls) {
   const rounds = views.map((view) => [`ROUND ${view.round} — ${verdictWords(view)}`, ...roundBlocks(view)].join('\n\n'));
-  return [`${title} — review passed in round ${views.length}, the certificate of the work`, ...rounds, callsLine(unit, calls, true)].join('\n\n');
+  const ended = views.at(-1)?.passed ? 'passed' : 'settled';
+  return [`${title} — review ${ended} in round ${views.length}, the certificate of the work`, ...rounds, callsLine(unit, calls, true)].join('\n\n');
 }
 
 /** A report drawn as a screen. @param {string} text */
 const reportScreen = (text) => section('DISPLAY: review report', CONTINUE_INSTRUCTION, text);
 
-/** The kinds that change what the product does, first, in this order (16.11.3). */
-const PRODUCT_KINDS = Object.freeze(['behaviour', 'look', 'words', 'contract', 'scope', 'danger']);
+/** The kinds that never change what the product does. */
+const INNER_KINDS = Object.freeze(['process', 'internals']);
+/** The groups' order: the ledger's kinds that change what the product does, then the others. */
+const KIND_ORDER = Object.freeze([...KINDS.filter((kind) => !INNER_KINDS.includes(kind)), ...INNER_KINDS]);
 
-/** A kind's place among the groups: the product's kinds first, then the others by name, the unlabelled last. @param {string|null} kind @returns {[number, string]} */
-function kindRank(kind) {
-  if (kind === null) return [PRODUCT_KINDS.length + 1, ''];
-  const at = PRODUCT_KINDS.indexOf(kind);
-  return at === -1 ? [PRODUCT_KINDS.length, kind] : [at, ''];
-}
+/** A kind's place among the groups, the unlabelled last. @param {string|null} kind */
+const kindRank = (kind) => (kind === null ? KIND_ORDER.length : KIND_ORDER.indexOf(kind));
 
 /** Two kinds in the groups' order. @param {[string|null, unknown]} a @param {[string|null, unknown]} b */
-function byKind([a], [b]) {
-  const [rankA, nameA] = kindRank(a);
-  const [rankB, nameB] = kindRank(b);
-  return rankA - rankB || nameA.localeCompare(nameB);
-}
+const byKind = ([a], [b]) => kindRank(a) - kindRank(b);
 
 /**
  * The calls decided for the person, grouped by kind (the header's), each

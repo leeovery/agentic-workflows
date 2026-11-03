@@ -7,16 +7,18 @@
 // its spec of two areas, each with its scenarios, its statements citing
 // the ledger so the second area relies on the first; its cut of two
 // phases, each closed, their tasks done in the tracker through the default
-// driver, one closed, and landed on main, each commit naming its task, an
-// unrelated commit between them; runs of its scenarios at main, 1.S1
-// passing, 1.S2 failing, 2.S1 only skipped; its calls across the unit —
+// driver, one closed, and landed on main, each commit naming its task —
+// between them a commit naming none and another unit's landing, and another
+// of that unit's after them, the unit named `pay-shop` so its trailers open
+// as this unit's do; runs of its scenarios at main, 1.S1 passing, 1.S2
+// failing, 2.S1 only skipped; its calls across the unit —
 // Claude's two at the spec, each labelled, and two in the build, one
 // labelled, which the person handed over as "your call", one unlabelled;
 // the person's at the spec, one replaced and so no longer current, one
 // relying on Claude's call on the receipt; and the project's linters.
 // Beside it a quick-fix, a unit built under the old plan, a unit whose
 // build has not begun, one whose second phase has not closed, one with no
-// phase closed, and one of one area, its one phase closed.
+// phase closed, one of one area and one of five, each its one phase closed.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -27,7 +29,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {
-  ok, okSections, refusedPristine, statePath, layout, writeState, readState, readManifest, commitAll, git, stateGit, fixtureFrom, cleanupFixture, withEnv, withFrozenClock, FROZEN_AT,
+  ok, okSections, refusedPristine, statePath, layout, writeState, readState, readManifest, commitAll, git, initRepo, stateGit, fixtureFrom, cleanupFixture, withEnv, withFrozenClock, FROZEN_AT,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
@@ -67,6 +69,16 @@ function specOf(cites = {}) {
 const areaText = (spec, area) => spec.slice(spec.indexOf(`## ${area}. `), spec.indexOf(`\n\n## ${area}-S.`));
 /** The areas by their names in the layout. */
 const AREAS = Object.freeze(['1-cards', '2-refunds']);
+/** Round 1's reads: every area and the test surface. */
+const EVERY = Object.freeze([...AREAS, 'tests']);
+
+/** The five-area spec's area titles, in its order. */
+const FIVE = Object.freeze(['Cards', 'Refunds', 'Receipts', 'Disputes', 'Payouts']);
+/** A spec of five areas, each with one part and one scenario. */
+const fiveSpec = () => ['# Payments', '', ...FIVE.flatMap((title, at) => [
+  `## ${at + 1}. ${title}`, '', `### ${at + 1}.1 The ${title.toLowerCase()}`, '', `${at + 1}.1.1 ${title} work.`, '',
+  `## ${at + 1}-S. Scenarios for §${at + 1}`, '', `${at + 1}.S1 Given a charge, when ${title.toLowerCase()} run, then they work. (${at + 1}.1.1)`, '',
+])].join('\n');
 
 /** The unit's cut: two phases. */
 const CUT = Object.freeze({
@@ -94,12 +106,15 @@ const TASKS = Object.freeze({
   2: [['Refund a charge', '§2.1']],
 });
 
-/** One file added in the project's repository and committed on the branch checked out, its message naming the task `trailer` names. @param {string} dir @param {string} file @param {string} [trailer] */
+/** Another unit, its name opening as this one's, whose landings sit beside this one's. */
+const OTHER = `${UNIT}-shop`;
+
+/** One file added in a repository and committed on the branch checked out, its message naming the task `trailer` names. @param {string} dir @param {string} file @param {string} [trailer] */
 function commitFile(dir, file, trailer) {
   fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
   fs.writeFileSync(path.join(dir, file), `export const ${path.basename(file, '.js')} = 1;\n`);
   git(dir, ['add', file]);
-  git(dir, ['commit', '-q', '-m', trailer === undefined ? `add ${file}` : `feat(${UNIT}): add ${file}\n\nTask: ${trailer}`]);
+  git(dir, ['commit', '-q', '-m', trailer === undefined ? `add ${file}` : `feat(${trailer.split('-').slice(0, -2).join('-')}): add ${file}\n\nTask: ${trailer}`]);
 }
 
 /** The scenarios' runs at main: `[scenario, verdict]`. */
@@ -122,11 +137,17 @@ const world = fixtureFrom('review-', (dir) => {
   createManifest(dir, 'half', { build: { position: 'auto' }, cut: CUT, checklists: closedChecklists([1]) });
   createManifest(dir, 'open', { build: { position: 'auto' }, cut: CUT });
   createManifest(dir, 'solo', { build: { position: 'auto' }, cut: { phases: [CUT.phases[0]] }, checklists: closedChecklists([1]) });
+  createManifest(dir, 'five', {
+    build: { position: 'auto' },
+    cut: { phases: [{ name: 'All', goal: 'A customer pays.', scenarios: FIVE.map((_, at) => `${at + 1}.S1`), sections: FIVE.map((_, at) => String(at + 1)), relies_on: [] }] },
+    checklists: closedChecklists([1]),
+  });
   createManifest(dir, 'fresh', { cut: CUT });
   createManifest(dir, 'tweak', { work_type: 'quick-fix' });
   createManifest(dir, 'old', { phases: { planning: { items: { old: { status: 'completed' } } } }, build: { position: 'auto' } });
   for (const unit of ['half', 'fresh']) writeState(dir, layout.unit(unit, SPEC_FILE), specOf());
   writeState(dir, layout.unit('solo', SPEC_FILE), specOf().slice(0, specOf().indexOf('## 2. Refunds')));
+  writeState(dir, layout.unit('five', SPEC_FILE), fiveSpec());
   const project = JSON.parse(readState(dir, layout.projectManifest));
   writeState(dir, layout.projectManifest, JSON.stringify({ ...project, environment: { linters: LINTERS } }, null, 2));
   commitAll(dir, 'init');
@@ -139,9 +160,11 @@ const world = fixtureFrom('review-', (dir) => {
   DRIVER.close(root, { unit: UNIT, phase: 1, n: 3 }, 'folded into 1.1');
   commitAll(dir, 'the phases written');
   commitFile(dir, 'src/card.js', `${UNIT}-1-1`);
-  commitFile(dir, 'src/receipt.js', `${UNIT}-1-2`);
   commitFile(dir, 'docs/readme.js');
+  commitFile(dir, 'src/receipt.js', `${UNIT}-1-2`);
+  commitFile(dir, 'src/coupon.js', `${OTHER}-1-1`);
   commitFile(dir, 'src/refund.js', `${UNIT}-2-1`);
+  commitFile(dir, 'src/banner.js', `${OTHER}-1-2`);
   const main = git(dir, ['rev-parse', 'main']).trim();
   RUNS.forEach(([scenario, verdict], i) => writeState(dir, `${runsRel(UNIT, scenario)}/run-001.json`, JSON.stringify({
     verdict, unfixed: false, at: `2026-11-01T1${i}:00:00.000Z`, checkout: dir, commits: [{ repo: '.', commit: main }], task: null, evidence: [], recordings: [],
@@ -197,18 +220,21 @@ function payload(name, payload) {
   return file;
 }
 
-/** A reviewer's report of the round, its findings each `- {call}: {text}`, passing where it has none. @param {string[]} findings */
+/** A reviewer's report of the round, its findings each `- {call}: {text}`, failing where one is more than a nit. @param {string[]} findings */
 function reportText(findings) {
   const listed = findings.length === 0 ? 'None.' : findings.map((finding) => `- ${finding}\n  Scenario: A customer pays.`).join('\n');
-  return `# Review\n\n## Findings\n\n${listed}\n\nVerdict: ${findings.length === 0 ? 'pass' : 'fail'}\n`;
+  return `# Review\n\n## Findings\n\n${listed}\n\nVerdict: ${findings.every((finding) => finding.startsWith('nit: ')) ? 'pass' : 'fail'}\n`;
 }
 
-/** Every report a round asks for written, each passing but those `failing` names. @param {number} round @param {string[]} areas the areas it reads @param {Record<string, string[]>} [failing] findings by report name */
-function reported(round, areas, failing = {}) {
-  for (const name of [...areas.flatMap((area) => [`${area}-a`, `${area}-b`]), 'tests-a']) {
-    writeState(dir, `${UNIT}/review/round-${round}/${name}.md`, reportText(failing[name] ?? []));
+/** Every report a round's reads ask for written — each area's pair, the test surface's one — each holding the findings `found` gives it by its name, else none. @param {number} round @param {readonly string[]} reads @param {Record<string, string[]>} [found] */
+function reported(round, reads, found = {}) {
+  for (const name of reads.flatMap((read) => (read === 'tests' ? ['tests-a'] : [`${read}-a`, `${read}-b`]))) {
+    writeState(dir, `${UNIT}/review/round-${round}/${name}.md`, reportText(found[name] ?? []));
   }
 }
+
+/** `review reads`, naming a later round's reads, which must succeed: its response. @param {string[]} reads */
+const named = (reads) => ok(dir, ['review', 'reads', UNIT, ...reads], { env: env() });
 
 /** `review round`, which must succeed: its response. @param {object} account */
 const recorded = (account) => ok(dir, ['review', 'round', UNIT, '--file', payload('round.json', account)], { env: env() });
@@ -231,13 +257,19 @@ function fixPhaseWritten(phase, tasks) {
 /** A fix task's branch, as the landing names it. @param {number} phase @param {number} n @param {string} title */
 const fixBranch = (phase, n, title) => taskBranch({ unit: UNIT, phase, n }, 'feat', title);
 
-/** A task done in the tracker, its branch made from `from` with a commit adding `file`, the checkout back on main. @param {number} phase @param {number} n @param {string} title @param {string} from @param {string} file */
-function fixBuilt(phase, n, title, from, file) {
+/** A task done in the tracker, its branch made from `from` with a commit adding `file` in the repository at `repo`, its checkout back on main. @param {number} phase @param {number} n @param {string} title @param {string} from @param {string} file @param {string} [repo] */
+function fixBuilt(phase, n, title, from, file, repo = dir) {
   DRIVER.done(statePath(dir), { unit: UNIT, phase, n });
   commitAll(dir, `task ${phase}.${n} done`);
-  git(dir, ['checkout', '-q', '-b', fixBranch(phase, n, title), from]);
-  commitFile(dir, file, `${UNIT}-${phase}-${n}`);
-  git(dir, ['checkout', '-q', 'main']);
+  git(repo, ['checkout', '-q', '-b', fixBranch(phase, n, title), from]);
+  commitFile(repo, file, `${UNIT}-${phase}-${n}`);
+  git(repo, ['checkout', '-q', 'main']);
+}
+
+/** A task closed in the tracker. @param {number} phase @param {number} n */
+function fixClosed(phase, n) {
+  DRIVER.close(statePath(dir), { unit: UNIT, phase, n }, 'not needed after all');
+  commitAll(dir, `task ${phase}.${n} closed`);
 }
 
 /** A DATA section of `lines`, as an entry draws it. @param {string[]} lines */
@@ -266,25 +298,26 @@ const reviewCall = (text, why) => decided(dir, `${UNIT}.review`, 'Is this findin
 /** An item filed through `inbox file`, which must succeed, under the frozen clock: its response. @param {object} item */
 const filed = (item) => withFrozenClock(() => ok(dir, ['inbox', 'file', UNIT, '--file', payload('item.json', item)], { env: env() }));
 
-/** Area 1's finding in scope; it fixed by task 3.1; and its first reviewer's report of round 1 failing on it. */
+/** Area 1's finding in scope; it answering round 1's first reviewer of area 1, fixed by task 3.1; and that report failing on it. */
 const FOUND = Object.freeze({ area: '1-cards', scope: 'in', call: 'bug', text: 'The receipt is never sent.' });
-const RECEIPT = Object.freeze({ ...FOUND, fix: '3.1' });
+const RECEIPT = Object.freeze({ ...FOUND, from: ['1-cards-a#1'], fix: '3.1' });
 const FAILING = Object.freeze({ '1-cards-a': ['bug: The receipt is never sent.'] });
 
 /** Round 1 under review: entered, its reports written, failing on area 1's receipt, its fix task 3.1 written. */
 function firstRoundReady() {
   enter();
-  reported(1, AREAS, FAILING);
+  reported(1, EVERY, FAILING);
   fixPhaseWritten(3, [['Send the receipt', '§1.2']]);
 }
 
-/** Round 1 recorded failing, its fix task 3.1 built and done, and round 2 under review: entered, its reports written, `failing` its findings. @param {Record<string, string[]>} [failing] */
-function secondRoundReady(failing = {}) {
+/** Round 1 recorded failing, its fix task 3.1 built and done, and round 2 under review: entered, area 1 named its read, its reports written, `found` its findings. @param {Record<string, string[]>} [found] */
+function secondRoundReady(found = {}) {
   firstRoundReady();
   recorded({ can_now: ['Pay by card.'], findings: [RECEIPT] });
   fixBuilt(3, 1, 'Send the receipt', 'main', 'src/send.js');
   enter();
-  reported(2, ['1-cards'], failing);
+  named(['1-cards']);
+  reported(2, ['1-cards'], found);
 }
 
 /** The briefs stored for the world's conversation, by file name. */
@@ -294,8 +327,8 @@ function storedBriefs() {
 }
 
 module.exports = {
-  UNIT, ENGINE, areaText, AREAS, calls,
-  useWorld, env, enter, payload, reportText, reported, recorded, refusedRound, fixPhaseWritten, fixBranch, fixBuilt, data, stateText, lastStateCommit, issued, storedBriefs,
+  UNIT, OTHER, ENGINE, SESSION_ID, areaText, AREAS, EVERY, FIVE, calls,
+  useWorld, env, enter, payload, reportText, reported, named, recorded, refusedRound, fixPhaseWritten, fixBranch, fixBuilt, fixClosed, commitFile, data, stateText, lastStateCommit, issued, storedBriefs,
   decided, reviewCall, filed, FOUND, RECEIPT, FAILING, firstRoundReady, secondRoundReady,
-  ok, okSections, refusedPristine, statePath, writeState, readManifest, git, stateGit, createManifest, assert,
+  ok, okSections, refusedPristine, statePath, writeState, readManifest, git, stateGit, createManifest, initRepo, assert,
 };

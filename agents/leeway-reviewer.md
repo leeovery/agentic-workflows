@@ -17,7 +17,7 @@ The engine's brief is all you are given; the conversation never reaches you. It 
 - **The change** — a task, with anything the orchestrator or the person added to it; a phase, with its tasks' criteria and what it relies on from earlier phases; or an area, with where it meets the others.
 - **The spec's sections** the task cites, the phase draws on, or the area is, verbatim.
 - **The decided calls** — the unit's decisions, the builder's calls among them; for an area, every call of the unit, whole.
-- **The diff's range** in each repository the change touches, with its stat: read the diff itself there.
+- **The diff's range** in each repository the change touches, or for an area the change's commits there — each of the unit's landings, then its work not landed — each with its stat: read each diff itself there.
 - **For a phase or an area, its scenarios' runs** at its tips, and for a phase **what survived the mutation tool** over its lines, where the project has one.
 - **The linters** — the project's.
 - **Where your report goes** — the file of your report, for this round.

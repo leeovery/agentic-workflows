@@ -85,7 +85,7 @@ const { SWEEP_USAGE, runSweepVerb } = require('./domain/sweep-take.cjs');
 const { VERIFY_USAGE, runVerifyVerb } = require('./domain/verify.cjs');
 const { READY_TO_BUILD_USAGE, POSITION_USAGE, runReadyToBuildVerb, runPositionVerb } = require('./domain/ready-to-build.cjs');
 const { MIGRATE_USAGE, runMigrateVerb } = require('./domain/directives.cjs');
-const { REVIEW_USAGE, runReviewVerb } = require('./domain/review-round.cjs');
+const { REVIEW_USAGE, runReviewVerb } = require('./domain/review-verbs.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, clearOwnQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { arriveAt, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
 const { markConversation, endConversation, isAgentId } = require('./domain/conversation.cjs');
@@ -305,7 +305,7 @@ ${VERIFY_USAGE.replace(/^/gm, '  ')}
   inbox restore <path> [<path> …]
   inbox delete <path> [<path> …]
   inbox file <work-unit> --file <item.json>
-  ${REVIEW_USAGE}
+${REVIEW_USAGE.replace(/^/gm, '  ')}
   brownfield record <native|skipped|accepted|completed>
   walkthrough record <walked|skipped>
   handoff <skill|/skill> [args …]
@@ -1438,7 +1438,8 @@ function runVerify(call, argv) {
 
 // ---------------------------------------------------------------------------
 // review — a round of the review phase recorded, with its report and its
-// checks (domain/review-round.cjs).
+// checks (domain/review-round.cjs); a later round's areas named, and the
+// working tree taken as it is (domain/review-verbs.cjs).
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */

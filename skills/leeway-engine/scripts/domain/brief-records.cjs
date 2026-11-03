@@ -280,10 +280,14 @@
 //                  was made, the question it answers and why — the ledger
 //                  whole, for calls fine alone and wrong in combination
 //                  (16.17.8, P18)
-//   change-range   in each repository holding the change, under a heading
-//                  naming it, the range from where it starts to its tip,
-//                  `{from}..{tip}`, and its `git diff --stat`, the base the
-//                  branch `--base` names where the repository has it
+//   change-commits in each repository holding the change, under a heading
+//                  naming it, the unit's own work, never what others
+//                  landed beside it: each landing, `{commit}` and its
+//                  subject, read against its first parent, then the work
+//                  not landed, `{from}..{tip}`, read from where its stack
+//                  leaves the base — each with its `git diff --stat`, the
+//                  base the branch `--base` names where the repository has
+//                  it
 //   change-scratch-layout the reviewer's scratch worktree, laid out as
 //                  scratch-layout lays it out, one holding the change at
 //                  its tip there, a clone holding none at the branch it
@@ -296,7 +300,12 @@
 //                  `review/round-{N}/{area}-{letter}.md`; refused for an
 //                  area the round does not read (14.3.3)
 //   tests-report-to where the test surface's one reader writes its report
-//                  of the round: `review/round-{N}/tests-a.md` (14.2.4)
+//                  of the round: `review/round-{N}/tests-a.md` (14.2.4);
+//                  refused where the round does not read it
+//
+// Each is refused where the round cannot be read: the review phase cannot
+// be entered, a round ended it, the round before's fix tasks wait, or a
+// later round's areas are not named (review-phase.cjs, `roundRefusal`).
 //
 // The plain-search helper's one record is the conversation's (22.6.10):
 //
@@ -422,9 +431,9 @@ const { cachedSurvivors } = require('./verify.cjs');
 const { accountPath } = require('./task-account.cjs');
 const { directiveOf } = require('./directives.cjs');
 const {
-  TESTS, TESTS_LETTER, reviewStanding, areaReportPath, unitCalls,
+  TESTS, TESTS_LETTER, roundRefusal, readsWords, areaReportPath, unitCalls,
 } = require('./review-phase.cjs');
-const { reviewRefusal, fixesWaiting, fixesWaitingWords } = require('./review-entry.cjs');
+const { reviewHeld } = require('./review-entry.cjs');
 const { changeOf, changeTips } = require('./review-change.cjs');
 const { topicPlace, recordsRules, composedPath, findingsPath, refusedPath } = require('./ledger-carry.cjs');
 
@@ -1622,19 +1631,12 @@ function drawConsolidationTo(filling) {
 
 /**
  * The unit's review phase as its round's reports are written for, read
- * once a fill; refused where it cannot be entered, is over, or waits on the
- * round before's fix tasks (review-entry.cjs).
+ * once a fill, the round's reads known; refused where it cannot be entered
+ * (review-entry.cjs) or the round cannot be read (review-phase.cjs).
  */
 const reviewOf = oncePerFill(/** @param {Filling} filling */ (filling) => {
-  const unit = unitOf(filling);
-  const manifest = unitManifest(filling);
-  const refused = reviewRefusal(manifest);
-  if (refused !== null) throw new Error(refused);
-  const standing = reviewStanding(filling.cwd, unit);
-  if (standing.over) throw new Error(`${unit}'s review phase passed in round ${standing.round} — finish is next`);
-  const waiting = fixesWaiting(filling.cwd, unit, manifest, standing.rounds);
-  if (waiting.length > 0) throw new Error(fixesWaitingWords(standing.round, waiting));
-  return { manifest, ...standing };
+  const standing = reviewHeld(filling.cwd, unitOf(filling), unitManifest(filling), roundRefusal);
+  return { ...standing, reads: /** @type {string[]} */ (standing.reads) };
 });
 
 /** The area `--area` names, refused where the spec has none so numbered. @param {Filling} filling @param {string[]} warnings */
@@ -1684,11 +1686,15 @@ function drawUnitCalls(filling, warnings) {
 }
 
 /** @param {Filling} filling @param {string[]} warnings */
-function drawChangeRange(filling, warnings) {
-  return changeHeld(filling, warnings).holding.map(({ repo, from, tip, commit }) => {
-    const stat = git(repo.path, ['diff', '--no-color', ...STAT, from, commit, '--']);
-    return `## In ${repoNamed(repo)}: \`${from.slice(0, 12)}..${tip}\`\n\n${stat === '' ? 'Nothing changed in the range.' : `\`\`\`\n${stat}\`\`\``}`;
-  }).join('\n\n');
+function drawChangeCommits(filling, warnings) {
+  return changeHeld(filling, warnings).holding.map(({ repo, parts }) => [`## In ${repoNamed(repo)}`, ...parts.map((part) => partDrawn(repo, part))].join('\n\n')).join('\n\n');
+}
+
+/** A part of the change in a repository: a landing by its commit and subject, or the work not landed by where it is read from, with its stat. @param {Repo} repo @param {import('./review-change.cjs').ChangePart} part */
+function partDrawn(repo, { from, to, landed, branch }) {
+  const stat = git(repo.path, ['diff', '--no-color', ...STAT, from, to, '--']);
+  const heading = landed === null ? `### Not landed yet: \`${from.slice(0, 12)}..${branch}\`` : `### Landed: \`${landed.commit.slice(0, 12)}\` ${landed.subject}`;
+  return `${heading}\n\n${stat === '' ? 'Nothing changed in it.' : `\`\`\`\n${stat}\`\`\``}`;
 }
 
 /** @param {Filling} filling @param {string[]} warnings */
@@ -1712,13 +1718,15 @@ function drawAreaRuns(filling, warnings) {
 function drawAreaReportTo(filling, warnings) {
   const { name, number } = areaNamed(filling, warnings);
   const { round, reads } = reviewOf(filling, warnings);
-  if (!reads.includes(name)) throw new Error(`area ${number} is not read in round ${round} — an area is read again only where a fix task of the round before changed it, and round ${round} reads ${reads.length === 0 ? 'the test surface alone' : reads.join(', ')}`);
+  if (!reads.includes(name)) throw new Error(`area ${number} is not read in round ${round}, which reads ${readsWords(reads)}`);
   return reportPlace(filling, areaReportPath(unitOf(filling), round, name, letterOf(filling)));
 }
 
 /** @param {Filling} filling @param {string[]} warnings */
 function drawTestsReportTo(filling, warnings) {
-  return reportPlace(filling, areaReportPath(unitOf(filling), reviewOf(filling, warnings).round, TESTS, TESTS_LETTER));
+  const { round, reads } = reviewOf(filling, warnings);
+  if (!reads.includes(TESTS)) throw new Error(`the test surface is not read in round ${round}, which reads ${readsWords(reads)}`);
+  return reportPlace(filling, areaReportPath(unitOf(filling), round, TESTS, TESTS_LETTER));
 }
 
 /** The flag naming the branch a range is read from. @type {BriefFlag} */
@@ -1806,7 +1814,7 @@ const RECORDS = Object.freeze({
   'area-sections': { of: 'unit', flags: [AREA], draw: drawAreaSections },
   'area-meets': { of: 'unit', flags: [AREA], draw: drawAreaMeets },
   'unit-calls': { of: 'unit', draw: drawUnitCalls },
-  'change-range': { of: 'unit', flags: [BASE], draw: drawChangeRange },
+  'change-commits': { of: 'unit', flags: [BASE], draw: drawChangeCommits },
   'change-scratch-layout': { of: 'unit', flags: [BASE], draw: drawChangeScratchLayout },
   'area-runs': { of: 'unit', flags: [AREA, BASE], draw: drawAreaRuns },
   'area-report-to': { of: 'unit', flags: [AREA, LETTER], draw: drawAreaReportTo },

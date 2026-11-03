@@ -83,6 +83,7 @@ const DRAWN = Object.freeze({
   'pay/review/round-1.md': 'engine {unit}/review/round-{N}.md',
   'pay/review/round-1-checks.md': 'engine {unit}/review/round-{N}-checks.md',
   'pay/review/round-1.json': 'engine {unit}/review/round-{N}.json',
+  'pay/review/round-2-reads.json': 'engine {unit}/review/round-{N}-reads.json',
   'pay/review/round-1/tests-b.md': 'file {unit}/review/round-{N}/tests-{letter}.md',
   'pay/review/round-1/3-checkout-a.md': 'file {unit}/review/round-{N}/{area}-{letter}.md',
 });

@@ -7,13 +7,15 @@
 // refuses, and a build whose cut has a phase not closed, each such phase
 // named (14.6.1); another session holding the checkout's code stopped at the
 // build's code gate, nothing written, `--take` entering (12.7.8, 12.S50);
-// the snapshot of the working tree outside `.leeway/` taken at every entry
-// (14.1.5); and the answer: the round under review, the spec's areas, never
-// merged, a one-area spec's one (14.2.1, 14.2.3), the areas the round reads
-// and the test surface — every area at round 1, then those whose findings
-// made fix tasks (14.3.3) — the fix tasks the round waits on, each round's
-// report, the spec, the record and the build's log; and, once a round ends
-// the review phase, that it is over.
+// the snapshot of the working tree outside `.leeway/` taken where none is
+// held and a round waits to be read, never retaken (14.1.5); the answer:
+// the round under review, the spec's areas, never merged, five as one (14.2.1,
+// 14.2.3), the reads the round takes — every area and the test surface at
+// round 1, then those `review reads` named, from the areas whose findings
+// made fix tasks (14.3.3) — the fix tasks waited on, none closed, each
+// round's report, the spec, the record and the build's log; once a round
+// ends the review phase, how it ended and what is next; and the recovery
+// note, re-reading what the entry reads (24.2.2).
 //
 // Layer: verb. World: review-world.cjs's, copied for each test.
 // ---------------------------------------------------------------------------
@@ -22,9 +24,11 @@ require('./hermetic-env.cjs');
 
 const { describe, it } = require('node:test');
 const fs = require('fs');
+const path = require('path');
+const { output } = require('./engine-harness.cjs');
 const {
-  UNIT, ENGINE, AREAS, RECEIPT, useWorld, env, enter, reported, recorded, firstRoundReady, fixBuilt, data,
-  ok, okSections, refusedPristine, statePath, git, stateGit, assert,
+  UNIT, ENGINE, SESSION_ID, AREAS, EVERY, FIVE, RECEIPT, useWorld, env, enter, reported, named, recorded, refusedRound, firstRoundReady, fixPhaseWritten, fixBuilt, fixClosed, data,
+  ok, okSections, refusedPristine, statePath, writeState, git, stateGit, assert,
 } = require('./review-world.cjs');
 
 /** @type {string} */
@@ -43,21 +47,27 @@ function snapshot() {
   return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null;
 }
 
-/** The lines every answer while the review goes on ends with: the spec, the record and the build's log. */
-const readsAfter = () => [
-  `spec: ${statePath(dir, `${UNIT}/spec.md`)}`,
-  `record: \`${ENGINE} ledger record ${UNIT}\``,
-  `build log: ${statePath(dir, `${UNIT}/build/log.md`)}`,
+/** The lines every answer ends with: the spec, the record and the build's log. @param {string} [unit] */
+const readsAfter = (unit = UNIT) => [
+  `spec: ${statePath(dir, `${unit}/spec.md`)}`,
+  `record: \`${ENGINE} ledger record ${unit}\``,
+  `build log: ${statePath(dir, `${unit}/build/log.md`)}`,
 ];
 
 /** The areas' lines, each by its name and its title. */
 const AREA_LINES = ['area: 1-cards — §1 Cards', 'area: 2-refunds — §2 Refunds'];
+
+/** A round's report's line. @param {number} round */
+const reportLine = (round) => `round report: ${statePath(dir, `${UNIT}/review/round-${round}.md`)}`;
 
 /** Round 1 recorded failing, area 1's finding fixed by task 3.1, not yet built. */
 function firstRoundFailed() {
   firstRoundReady();
   recorded({ can_now: ['Pay by card.'], findings: [RECEIPT] });
 }
+
+/** The reads line while round 2's are not yet named. */
+const UNNAMED = `reads: not yet named — once round 1's fix tasks are done, review reads ${UNIT} names them from what those changed, among them 1-cards`;
 
 describe('enter review: what cannot be entered is refused, naming the way on, and nothing is written', () => {
   it('a build whose cut has a phase not closed, naming it or each of them, and what the build\'s entry refuses — a quick-fix, a unit built under the old plan, a build not begun — and a topic named (14.6.1)', () => {
@@ -91,25 +101,43 @@ describe('another session holding the checkout\'s code (12.7.8)', () => {
 });
 
 describe('the snapshot of the working tree outside .leeway/ (14.1.5)', () => {
-  it('holds each repository\'s HEAD and each path its status lists, with the fingerprint of what it holds, taken afresh at every entry', () => {
+  it('holds each repository\'s HEAD and each path its status lists, with the fingerprint of what it holds, taken where none is held and never retaken by entering again', () => {
+    fs.writeFileSync(path.join(dir, 'src/card.js'), 'export const card = 2;\n');
     enter();
-    const clean = snapshot();
-    fs.writeFileSync(`${dir}/src/card.js`, 'export const card = 2;\n');
+    const taken = snapshot();
+    fs.writeFileSync(path.join(dir, 'src/receipt.js'), 'export const receipt = 2;\n');
     enter();
 
-    assert.deepStrictEqual(clean, { heads: { '.': git(dir, ['rev-parse', 'HEAD']).trim() }, paths: {} });
-    assert.deepStrictEqual(Object.keys(snapshot().paths), ['src/card.js']);
-    assert.match(snapshot().paths['src/card.js'], /^ M [0-9a-f]{12}$/);
+    assert.deepStrictEqual(Object.keys(taken), ['heads', 'paths']);
+    assert.deepStrictEqual(taken.heads, { '.': git(dir, ['rev-parse', 'HEAD']).trim() });
+    assert.deepStrictEqual(Object.keys(taken.paths), ['src/card.js']);
+    assert.match(taken.paths['src/card.js'], /^ M [0-9a-f]{12}$/);
+    assert.deepStrictEqual(snapshot(), taken);
+  });
+
+  it('is dropped once its round is recorded, none taken while the round\'s fix tasks wait, and taken afresh once they are done', () => {
+    firstRoundFailed();
+    const recorded1 = snapshot();
+    enter();
+    const waiting = snapshot();
+    fixBuilt(3, 1, 'Send the receipt', 'main', 'src/send.js');
+    enter();
+
+    assert.deepStrictEqual([recorded1, waiting], [null, null]);
+    assert.deepStrictEqual(snapshot()?.heads, { '.': git(dir, ['rev-parse', 'HEAD']).trim() });
   });
 });
 
 describe('the answer: the round under review, the spec\'s areas, and what the round reads', () => {
-  it('14.S2: round 1 answers each of the spec\'s areas, never merged, and reads every one of them beside the test surface — committing nothing', () => {
+  it('14.S2: round 1 answers each of a five-area spec\'s areas, never merged, and reads every one of them beside the test surface — committing nothing', () => {
     const head = stateGit(dir, ['rev-parse', 'HEAD']).trim();
-    const { res, sections } = enter();
+    const { res, sections } = okSections(dir, ['enter', 'review', 'five'], { env: env() });
+    const names = FIVE.map((title, at) => `${at + 1}-${title.toLowerCase()}`);
 
-    assert.deepStrictEqual(res, { ok: true, phase: 'review', unit: UNIT, entered: true, started: false });
-    assert.strictEqual(sections, data(['round: round 1', ...AREA_LINES, 'reads: 1-cards, 2-refunds, the test surface (tests)', ...readsAfter()]));
+    assert.deepStrictEqual(res, { ok: true, phase: 'review', unit: 'five', entered: true, started: false });
+    assert.strictEqual(sections, data([
+      'round: round 1', ...FIVE.map((title, at) => `area: ${names[at]} — §${at + 1} ${title}`), `reads: ${names.join(', ')}, the test surface (tests)`, ...readsAfter('five'),
+    ]));
     assert.strictEqual(stateGit(dir, ['rev-parse', 'HEAD']).trim(), head);
   });
 
@@ -119,23 +147,66 @@ describe('the answer: the round under review, the spec\'s areas, and what the ro
     assert.deepStrictEqual(sections.split('\n').filter((line) => /^(area|reads): /.test(line)), ['area: 1-cards — §1 Cards', 'reads: 1-cards, the test surface (tests)']);
   });
 
-  it('14.S3: after a round whose findings made fix tasks, the next reads only the areas those findings are of, and waits on each fix task until it is done', () => {
+  it('14.S3: after a round whose findings made fix tasks, the next waits on each until it is done, then its reads are named from what they changed — among them every area whose findings made one', () => {
     firstRoundFailed();
     const waiting = enter().sections;
     fixBuilt(3, 1, 'Send the receipt', 'main', 'src/send.js');
-    const report = `round report: ${statePath(dir, `${UNIT}/review/round-1.md`)}`;
+    const unnamed = enter().sections;
+    named(['2-refunds', '1-cards']);
 
-    assert.strictEqual(waiting, data(['round: round 2', ...AREA_LINES, 'reads: 1-cards, the test surface (tests)', 'fix task waiting: 3.1 not started', report, ...readsAfter()]));
-    assert.strictEqual(enter().sections, data(['round: round 2', ...AREA_LINES, 'reads: 1-cards, the test surface (tests)', report, ...readsAfter()]));
+    assert.strictEqual(waiting, data(['round: round 2', ...AREA_LINES, UNNAMED, 'fix task waiting: 3.1 not started', reportLine(1), ...readsAfter()]));
+    assert.strictEqual(unnamed, data(['round: round 2', ...AREA_LINES, UNNAMED, reportLine(1), ...readsAfter()]));
+    assert.strictEqual(enter().sections, data(['round: round 2', ...AREA_LINES, 'reads: 1-cards, 2-refunds', reportLine(1), ...readsAfter()]));
+  });
+
+  it('a fix task closed waits on nothing', () => {
+    firstRoundFailed();
+    fixClosed(3, 1);
+
+    assert.strictEqual(enter().sections, data(['round: round 2', ...AREA_LINES, UNNAMED, reportLine(1), ...readsAfter()]));
   });
 
   it('once a round passes with no fix task, the review phase is over, finish next, and nothing is read', () => {
     enter();
-    reported(1, AREAS);
+    reported(1, EVERY);
     recorded({ can_now: ['Pay by card.'], findings: [] });
 
-    assert.strictEqual(enter().sections, data([
-      'round: the review phase passed in round 1 — finish is next', ...AREA_LINES, `round report: ${statePath(dir, `${UNIT}/review/round-1.md`)}`, ...readsAfter(),
+    assert.strictEqual(enter().sections, data(['round: the review phase passed in round 1 — finish is next', ...AREA_LINES, reportLine(1), ...readsAfter()]));
+  });
+
+  it('13.4.4: a round passing with nits fixed in its fix phase ends the review phase once their fix tasks are done, no area read again for them', () => {
+    enter();
+    reported(1, EVERY, { '2-refunds-b': ['nit: A refund\'s label is terse.'] });
+    fixPhaseWritten(3, [['Word the label', '§2.1']]);
+    const res = recorded({ can_now: ['Pay by card.'], findings: [{ area: '2-refunds', scope: 'in', call: 'nit', text: 'A refund\'s label is terse.', from: ['2-refunds-b#1'], fix: '3.1' }] });
+    const building = enter().sections;
+    const again = refusedRound({ can_now: [], findings: [] });
+    fixBuilt(3, 1, 'Word the label', 'main', 'src/label.js');
+
+    assert.deepStrictEqual(res, { ok: true, round: 1, passed: true, fixes: ['3.1'], ends: true, fix_phase: 3, areas: AREAS, committed: res.committed });
+    assert.strictEqual(again, `review round: ${UNIT}'s review phase passed in round 1 — its fix tasks are built, then finish: task 3.1 not started`);
+    assert.strictEqual(building, data([
+      'round: the review phase passed in round 1 — its fix tasks are built, then finish', ...AREA_LINES, 'fix task waiting: 3.1 not started', reportLine(1), ...readsAfter(),
     ]));
+    assert.strictEqual(enter().sections, data(['round: the review phase passed in round 1 — finish is next', ...AREA_LINES, reportLine(1), ...readsAfter()]));
+  });
+});
+
+describe('the recovery note (24.2.2)', () => {
+  it('mid-review, asked for by its session id with none of the caller\'s own, re-reads the review\'s skill, the record\'s call, each round\'s report, the spec, the build\'s log and where the review stands', () => {
+    firstRoundFailed();
+    fs.mkdirSync(path.join(dir, '.claude/skills/leeway-review-process'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.claude/skills/leeway-review-process/SKILL.md'), '# The review\n');
+    writeState(dir, `${UNIT}/build/log.md`, '# The build\n\nPhase 3: 3.1 not started.\n');
+    enter();
+    const note = output(dir, ['conversation', 'position', SESSION_ID], { env: { ...env(), CLAUDE_CODE_SESSION_ID: '' } });
+
+    for (const line of [
+      `- ${path.join(dir, '.claude/skills/leeway-review-process/SKILL.md')} and its framework`, `- \`${ENGINE} ledger record ${UNIT}\``,
+      ...[`${UNIT}/review/round-1.md`, `${UNIT}/spec.md`, `${UNIT}/build/log.md`].map((rel) => `- ${statePath(dir, rel)}\n`),
+      `\nround: round 2\n${AREA_LINES.join('\n')}\n${UNNAMED}\nfix task waiting: 3.1 not started\n`,
+    ]) {
+      assert.ok(note.includes(line), `the note names ${line}\n${note}`);
+    }
   });
 });

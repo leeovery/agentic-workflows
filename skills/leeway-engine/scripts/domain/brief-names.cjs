@@ -97,10 +97,10 @@ const ROLES = Object.freeze({
     agent: 'leeway-reviewer', whose: 'the phase review\'s', records: ['cut-phase', 'phase-sections', 'phase-criteria', 'relied-on', 'decided-calls', 'phase-diff-range', 'phase-scratch-layout', 'recorded-runs', 'mutants', 'linters', 'phase-report-to'],
   },
   'review-area': {
-    agent: 'leeway-reviewer', whose: 'the area review\'s', records: ['area-sections', 'area-meets', 'unit-calls', 'change-range', 'change-scratch-layout', 'area-runs', 'linters', 'area-report-to'],
+    agent: 'leeway-reviewer', whose: 'the area review\'s', records: ['area-sections', 'area-meets', 'unit-calls', 'change-commits', 'change-scratch-layout', 'area-runs', 'linters', 'area-report-to'],
   },
   'test-surface': {
-    agent: 'leeway-test-surface', whose: 'the test surface\'s', records: ['spec-scenarios', 'change-range', 'change-scratch-layout', 'linters', 'tests-report-to'],
+    agent: 'leeway-test-surface', whose: 'the test surface\'s', records: ['spec-scenarios', 'change-commits', 'change-scratch-layout', 'linters', 'tests-report-to'],
   },
 });
 

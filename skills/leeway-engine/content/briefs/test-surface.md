@@ -2,9 +2,9 @@
 
 {{spec-scenarios}}
 
-# The change's range
+# The change's commits
 
-{{change-range}}
+{{change-commits}}
 
 # Laying out your scratch worktree
 
@@ -52,12 +52,12 @@ The edge list:
 
 # Your report
 
-Your report ends in its notes for later, then its findings, then its verdict. The notes for later are the section just before the findings, `## Notes for later`: each note an item naming what lies beyond the task and where it is; or `None.` where there is none. The findings are its last section, `## Findings`: each finding an item opening on its call, with what is wrong, and beneath it, indented, the user scenario that meets it; or `None.` where you found nothing. The last line is `Verdict: pass` where nothing serious and no bug stands, else `Verdict: fail`.
+Your report ends in its notes for later, then its findings, then its verdict. The notes for later are the section just before the findings, `## Notes for later`: each note an item naming what lies beyond the work unit's change and where it is; or `None.` where there is none. The findings are its last section, `## Findings`: each finding an item opening on its call, with what is wrong, and beneath it, indented, the user scenario that meets it; or `None.` where you found nothing. The last line is `Verdict: pass` where nothing serious and no bug stands, else `Verdict: fail`.
 
 ```markdown
 ## Notes for later
 
-- {what lies beyond the task}, at {where it is}
+- {what lies beyond the work unit's change}, at {where it is}
 
 ## Findings
 
