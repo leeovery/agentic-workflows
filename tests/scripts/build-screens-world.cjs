@@ -2,10 +2,10 @@
 
 // ---------------------------------------------------------------------------
 // What the build's screens suites share (test-engine-build-screens.cjs, the
-// screens that report; test-engine-build-gates.cjs, the gates and step's one
-// task at a time): the world, built once a process and copied
-// (`buildScreensWorld`), and over a test's project and system config, the
-// calls its tests make (`buildScreenHelpers`).
+// screens that report; test-engine-build-gates.cjs, the gates;
+// test-engine-build-step.cjs, step's one task at a time): the world, built
+// once a process and copied (`buildScreensWorld`), and over a test's
+// project and system config, the calls its tests make (`buildScreenHelpers`).
 //
 // The world: a feature, `pay`, its build begun in step, its cut three
 // phases — Cards and Reports relying on nothing, Refunds on Cards — Cards
@@ -16,7 +16,8 @@
 // of the person's, and one of Claude's for 1.2. Task 1.2, not started, has
 // its account taken after the orchestrator settled its one failed round,
 // nothing differing from it. Task 1.3, linked after 1.2, has no account.
-// Five questions are asked, waiting where a test parks them.
+// Five questions are asked, waiting where a test parks them; and a test may
+// park a task on a replacement of the call for 1.2 (`proposeOn`).
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -125,10 +126,10 @@ function branchWith(dir, n, title, files) {
 /** A ledger write that must succeed: its short id. @param {string} dir @param {string} verb @param {string[]} flags @param {object} content */
 const write = (dir, verb, flags, content) => ok(dir, ['ledger', verb, `${UNIT}.implementation`, ...flags], { env: { CLAUDE_CODE_SESSION_ID: 'world' }, stdin: JSON.stringify({ by: 'claude', who_moved_whom: 'none', ...content }) }).id;
 
-/** A call made for `task`, Claude's unless `by` says. @param {string} dir @param {string} task @param {string} text @param {string} [by] */
+/** A call made for `task`, Claude's unless `by` says: its short id. @param {string} dir @param {string} task @param {string} text @param {string} [by] */
 function callFor(dir, task, text, by = 'claude') {
   const question = write(dir, 'ask', [], { text: `What of ${text}?` });
-  write(dir, 'decide', ['--answers', question, '--task', task], { by, text, why: 'The till needs it.' });
+  return write(dir, 'decide', ['--answers', question, '--task', task], { by, text, why: 'The till needs it.' });
 }
 
 /** The questions the world asks, which a test parks tasks on. */
@@ -136,8 +137,8 @@ const QUESTIONS = Object.freeze([
   'Does a refund print a receipt?', 'Is a refund capped at the charge?', 'Does a void charge show on the statement?', 'Is the receipt mailed or printed?', 'Does the till keep the card?',
 ]);
 
-/** The questions a test parks: their short ids, in order. */
-const made = { asked: /** @type {string[]} */ ([]) };
+/** The questions a test parks, their short ids in order, and the call for 1.2 a test proposes to replace. */
+const made = { asked: /** @type {string[]} */ ([]), printed: '' };
 
 const buildScreensWorld = fixtureFrom('engine-build-screens-', (dir) => {
   createManifest(dir, UNIT, { build: { position: 'step' }, cut: CUT, checklists: { 'phase-1-start': { items: {}, closed: FROZEN_AT } } });
@@ -174,7 +175,7 @@ const buildScreensWorld = fixtureFrom('engine-build-screens-', (dir) => {
   ok(dir, ['task', 'account', UNIT, '1.2']);
   callFor(dir, '1.1', 'The till masks the digits');
   callFor(dir, '1.1', 'The till beeps', 'person');
-  callFor(dir, '1.2', 'The receipt is printed');
+  made.printed = callFor(dir, '1.2', 'The receipt is printed');
   made.asked = QUESTIONS.map((text) => write(dir, 'ask', [], { text }));
 });
 
@@ -223,7 +224,18 @@ function buildScreenHelpers(dir, config) {
     }
   }
 
-  return { env, screen, refused, position, parkOn };
+  /**
+   * A replacement of the call for 1.2 proposed as a builder meets it,
+   * parking `task`.
+   * @param {string} task
+   */
+  async function proposeOn(task) {
+    const call = { ...CALL, question: 'Is the receipt mailed after all?' };
+    const { conversation } = raiseHelpers(dir, config, call);
+    await okSectionsAsync(dir(), ['raise', `${UNIT}.implementation`, '--replaces', made.printed, '--reason', 'was-wrong', '--parks', task], { env: conversation(), stdin: JSON.stringify(call) });
+  }
+
+  return { env, screen, refused, position, parkOn, proposeOn };
 }
 
 module.exports = { UNIT, QUESTIONS, CALL, ACCOUNT_DRAWN, taskText, reportOf, buildScreensWorld, buildScreenHelpers };

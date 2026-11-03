@@ -49,8 +49,10 @@
 //   explained again, where the person didn't follow; then what that means —
 //   the task the answer freed, or each of theirs, building again: a task a
 //   park held that waited before the answer and no park still waiting
-//   holds after it; where none is, the task a question still waiting holds;
-//   where none is and it parks none, that no task waited on it; else still
+//   holds after it — in step, once the task in flight is done, or from the
+//   one in flight where it is one of several freed (12.7.9); where none is,
+//   the task a question still waiting holds; where none is and it parks
+//   none, that no task waited on it; else still
 //   waiting — how many questions of the unit still wait, and the
 //   next to raise. The next is read from the conversation's discussion
 //   queue, `discussing.json` in its folder, which the board keeps —
@@ -452,38 +454,53 @@ function receiptLine(names, outcome, means, count, next) {
 /**
  * What an answer to the question `parks` meant for the build, the unit's
  * parks waiting before it `before`: the tasks parks held that waited
- * before it and wait no longer, that no park still waiting holds — one
- * building again, or each of theirs; none, where a question still waiting
- * holds its task; and none where it parks no task.
+ * before it and wait no longer, that no park still waiting holds, as
+ * `freedWords` says them; none, where a question still waiting holds its
+ * task; and none where it parks no task.
  * @param {Folded} read @param {string} unit @param {Parks} parks @param {string[]} before
+ * @returns {{freed: string[]}|{means: string}}
  */
 function answerMeans(read, unit, parks, before) {
   const after = waitingParks(read, unit);
   const held = new Set(after.map((id) => taskOf(read, id)));
   const freed = [...new Set(before.filter((id) => !after.includes(id)).map((id) => taskOf(read, id)))]
     .filter((task) => task !== null && !held.has(task));
-  if (freed.length === 1) return `task ${freed[0]} builds again`;
-  if (freed.length > 1) return 'their tasks build again';
+  if (freed.length > 0) return { freed: /** @type {string[]} */ (freed) };
   const { tasks } = /** @type {Question} */ (questionsOf(read, parksOf(read, unit)).find((q) => q.park === parks.park));
   const task = tasks.find((t) => held.has(t));
-  if (task === undefined) return 'no task waited on it';
+  if (task === undefined) return { means: 'no task waited on it' };
   const by = waitingOf(read, unit).filter((q) => q.tasks.includes(task)).map((q) => numbered(q.number));
-  return `task ${task} waits on ${by.join(', ')}`;
+  return { means: `task ${task} waits on ${by.join(', ')}` };
+}
+
+/**
+ * The tasks an answer freed building again — one, or each of theirs — and
+ * in step, one at a time (12.7.9): once the task in flight is done, where
+ * it is none of them; else from the one in flight, where they are several.
+ * @param {string[]} freed @param {import('./task-verbs.cjs').StepTurn|null} turn
+ */
+function freedWords(freed, turn) {
+  const again = freed.length === 1 ? `task ${freed[0]} builds again` : 'their tasks build again';
+  if (turn === null) return again;
+  if (!freed.includes(turn.inFlight)) return `${again} once task ${turn.inFlight} is done`;
+  return freed.length === 1 ? again : `${again}, task ${turn.inFlight} first`;
 }
 
 /**
  * The receipt of the person's answer to the parked question `parks`, read
  * from the ledger as it stands once the answer landed, against the unit's
- * parks waiting before it, `before`.
+ * parks waiting before it, `before`, and in step what goes on first then,
+ * `turnNow` answering it (task-verbs.cjs, `stepTurn`), read only where the
+ * answer freed a task.
  * @param {string} cwd @param {string} unit @param {Parks} parks @param {string[]} before @param {string[]} warnings
+ * @param {() => import('./task-verbs.cjs').StepTurn|null} turnNow
  */
-function answeredReceipt(cwd, unit, parks, before, warnings) {
+function answeredReceipt(cwd, unit, parks, before, warnings, turnNow) {
   const root = /** @type {string} */ (findStateRoot(cwd));
   const name = numbered(parks.number);
-  return readQuestions(root, warnings, (read) => {
-    const waiting = waitingNumbers(read, unit);
-    return receiptLine([name], 'answered', answerMeans(read, unit, parks, before), waiting.length, nextUp(handedSession(), [name], waiting, warnings));
-  });
+  const { meant, waiting } = readQuestions(root, warnings, (read) => ({ meant: answerMeans(read, unit, parks, before), waiting: waitingNumbers(read, unit) }));
+  const means = 'means' in meant ? meant.means : freedWords(meant.freed, turnNow());
+  return receiptLine([name], 'answered', means, waiting.length, nextUp(handedSession(), [name], waiting, warnings));
 }
 
 /**
@@ -573,6 +590,40 @@ function parkedTasksOf(root, unit, warnings) {
 }
 
 /**
+ * The ledger's line at which the park `id` stopped waiting: the first entry
+ * after it answering, merging or moving its question, or replacing or
+ * keeping the decision it would replace; its own line where none did —
+ * set aside, or waiting still.
+ * @param {Folded} read @param {string} id
+ */
+function stoppedAt(read, id) {
+  const { question, replaces, place } = factsOf(read, id);
+  const about = factsOf(read, question === null ? /** @type {string} */ (replaces) : factsOf(read, question).root);
+  const ends = question === null ? [...about.replaced_by, ...about.kept] : [...about.answered_by, ...about.merges, ...about.moves];
+  const after = ends.map((end) => factsOf(read, end).place.number).filter((line) => line > place.number);
+  return after.length === 0 ? place.number : Math.min(...after);
+}
+
+/**
+ * Each task of `unit` a park has named, live or not — but one a close took
+ * off its parks — by the ledger's line at which the last of its parks to
+ * stop waiting stopped: where it was freed to go on (`stoppedAt`).
+ * @param {string} root @param {string} unit @param {string[]} warnings
+ * @returns {Map<string, number>}
+ */
+function freedAtOf(root, unit, warnings) {
+  return readQuestions(root, warnings, (read) => {
+    /** @type {Map<string, number>} */
+    const freed = new Map();
+    for (const id of parksOf(read, unit)) {
+      const task = taskOf(read, id);
+      if (task !== null) freed.set(task, Math.max(freed.get(task) ?? 0, stoppedAt(read, id)));
+    }
+    return freed;
+  });
+}
+
+/**
  * Where `task` of `unit` waits: the numbers of the questions waiting that
  * park it, oldest first, the parks of theirs naming it, and the build's
  * phase the first of those was made in; none, where none parks it.
@@ -589,5 +640,5 @@ function parkingTask(root, unit, task, warnings) {
 
 module.exports = {
   DISCUSSING, WAITING_USAGE, ASIDE_USAGE, numbered, parkedTasks, waitingOn, parkedUnder, parkedQuestion, checkUnparked, waitingQuestions, asideQuestions, foundPark, answeredReceipt,
-  explainedReceipt, checkAnswerable, answerable, parkedTasksOf, parkingTask,
+  explainedReceipt, checkAnswerable, answerable, parkedTasksOf, freedAtOf, parkingTask,
 };

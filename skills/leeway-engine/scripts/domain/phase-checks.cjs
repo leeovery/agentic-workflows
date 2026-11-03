@@ -34,7 +34,9 @@
 //   whose tips cannot be read proves nothing, said as a warning.
 // - Its notes consolidated: as notes.cjs reads the consolidation's record.
 // - Its stack merged: every task not closed landed (landing.cjs), one at
-//   least — or, in step, waiting at its gate (7.2.4).
+//   least — or, in step, its merge waiting at its gate, every task not
+//   closed chained into its stack, one at least (7.2.4); a task whose
+//   landing cannot be read so is not, said as a warning.
 // - Phase 1's close also needs the verify setup recorded (12.3.3): a
 //   refusal of the close, not an item, so the checklist lists 6.4.9's items
 //   alone (6.S14).
@@ -57,7 +59,7 @@ const { phaseStack, tipCommits } = require('./phase-stack.cjs');
 const { runsOf } = require('./runs.cjs');
 const { consolidationFaults } = require('./notes.cjs');
 const { verifySetup } = require('./environment.cjs');
-const { landedTasks } = require('./landing.cjs');
+const { landedTasks, allChained } = require('./landing.cjs');
 const { phaseName, shownTask } = require('./task-id.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskRow} TaskRow */
@@ -263,8 +265,28 @@ function scenariosReported(at, phase) {
 /** The phase's notes consolidated, as notes.cjs reads the record (12.10). @param {Reading} at @param {number} phase */
 const notesConsolidated = (at, phase) => consolidationFaults(at.cwd, at.unit, phase).length === 0;
 
-/** The phase's stack merged, or in step waiting at its gate (7.2.4). @param {Reading} at @param {number} phase */
-const stackMerged = (at, phase) => at.manifest.build?.position === 'step' || phaseLanded(at, phase);
+/**
+ * Whether every task of the phase not closed, one at least, is chained into
+ * its stack (landing.cjs); not where one cannot be read so, said as a
+ * warning.
+ * @param {Reading} at @param {number} phase
+ */
+function chained(at, phase) {
+  const tasks = live(phaseTasks(at, phase));
+  try {
+    return tasks.length > 0 && allChained(at.cwd, at.unit, tasks);
+  } catch (err) {
+    at.warnings.push(messageOf(err));
+    return false;
+  }
+}
+
+/**
+ * The phase's stack merged, or in step, where its merge waits at its gate,
+ * holding every task of the phase (7.2.4).
+ * @param {Reading} at @param {number} phase
+ */
+const stackMerged = (at, phase) => phaseLanded(at, phase) || (at.manifest.build?.position === 'step' && chained(at, phase));
 
 /**
  * Why the phase's close is refused beyond its items, or null: phase 1's

@@ -3,9 +3,9 @@
 // ---------------------------------------------------------------------------
 // The build's gates in step (leeway-engine/scripts/domain/build-screens.cjs,
 // drawn by domain/projections/build.cjs) — the gate after a task and the gate
-// before a phase's stack merges — and task start's refusal in step, one task
-// at a time (domain/task-verbs.cjs). The screens that report are
-// test-engine-build-screens.cjs.
+// before a phase's stack merges. The screens that report are
+// test-engine-build-screens.cjs; step's one task at a time,
+// test-engine-build-step.cjs.
 //
 // Layer: verb. World: the build screens' world (build-screens-world.cjs),
 // built once and copied; a test that needs a phase of the review's fixes
@@ -19,7 +19,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { ok, refusedPristine, git, writeState, layout, cleanupFixture, sectionOf } = require('./engine-harness.cjs');
+const { ok, git, writeState, layout, cleanupFixture, sectionOf } = require('./engine-harness.cjs');
 const { UNIT, ACCOUNT_DRAWN, taskText, reportOf, buildScreensWorld, buildScreenHelpers } = require('./build-screens-world.cjs');
 
 let dir = ''; // the project
@@ -35,7 +35,7 @@ afterEach(() => {
   fs.rmSync(config, { recursive: true, force: true });
 });
 
-const { env, screen, refused, position, parkOn } = buildScreenHelpers(() => dir, () => config);
+const { env, screen, refused, position } = buildScreenHelpers(() => dir, () => config);
 
 /** A phase of the review's fixes past the cut, phase 4, written with a task of each title given. @param {string[]} titles */
 function fixPhase(titles) {
@@ -142,33 +142,5 @@ describe('the gate before a phase\'s stack merges, in step (7.2.4)', () => {
       'render phase-merge-gate: task-id: "one" is not a phase — it is a whole number from 1',
       'render phase-merge-gate: Usage: engine render phase-merge-gate <work-unit> <N>',
     ]);
-  });
-});
-
-describe('task start in step: one task at a time (12.7.9)', () => {
-  it('refuses a task while another of the unit\'s is in flight or at its gate, writing nothing; in auto both start (12.S52)', () => {
-    const error = refusedPristine(dir, ['task', 'start', UNIT, '1.2'], { env: env() }).error;
-    position('auto');
-
-    assert.strictEqual(error, 'task start: pay builds in step, one task at a time — task 1.1 is in flight or at its gate, and the next starts once the person\'s go there is given and it is done');
-    assert.strictEqual(ok(dir, ['task', 'start', UNIT, '1.2'], { env: env() }).task, '1.2');
-  });
-
-  it('holds the next while a task of the review\'s fixes past the cut is in progress, started in another conversation, writing nothing', () => {
-    ok(dir, ['task', 'done', UNIT, '1.1'], { env: env() });
-    fixPhase(['Mask the reprint', 'Mask the copy']);
-    ok(dir, ['task', 'start', UNIT, '4.1'], { env: { ...env(), CLAUDE_CODE_SESSION_ID: 'sess-2' } });
-
-    assert.strictEqual(refusedPristine(dir, ['task', 'start', UNIT, '4.2'], { env: env() }).error,
-      'task start: pay builds in step, one task at a time — task 4.1 is in flight or at its gate, and the next starts once the person\'s go there is given and it is done');
-  });
-
-  it('starts the next while a question parks the task in flight — a parked task holds nothing new to test — and starts the task in flight again; the next waits on the one then in flight', async () => {
-    ok(dir, ['task', 'start', UNIT, '1.1'], { env: env() });
-    await parkOn(['1.1']);
-    ok(dir, ['task', 'start', UNIT, '1.2'], { env: env() });
-
-    assert.strictEqual(refusedPristine(dir, ['task', 'start', UNIT, '1.3'], { env: env() }).error,
-      'task start: pay builds in step, one task at a time — task 1.2 is in flight or at its gate, and the next starts once the person\'s go there is given and it is done');
   });
 });

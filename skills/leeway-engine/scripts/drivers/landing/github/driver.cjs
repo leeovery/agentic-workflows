@@ -23,6 +23,8 @@
 //   one before (7.2.6) — else the default branch. That the task's branch
 //   descends from it, with something past it, is the seam's to check
 //   (landing.cjs).
+// - Holds: whether the task's pull request is in its phase's stack, read
+//   off GitHub and fetching nothing, as the close in step reads it (7.2.4).
 // - Open: the task's branch pushed under its own name (7.2.14), then its
 //   pull request opened onto the chain's tip, titled with its landing's
 //   subject, its body the rest of that message, with the task's id. Refused,
@@ -270,24 +272,38 @@ function builtOn(ctx, stacks, phase, commit) {
 }
 
 /**
+ * The stacks on GitHub and the task's phase's own — refused where something
+ * done by hand stops it, or it is merged — the pull requests read once on a
+ * context that keeps its reads (landing-git.cjs, `readOnce`).
+ * @param {LandingContext} ctx @param {Host} host @param {TaskRef} ref
+ */
+function stacksFor(ctx, host, ref) {
+  const stacks = stacksOf(lg.readOnce(ctx, 'pulls', () => pullsOf(ctx, host)));
+  const own = stacks.get(ref.phase);
+  if (own !== undefined) {
+    refuseHandled(own);
+    if (isMerged(own)) throw new Error(`land: phase ${ref.phase} is merged into ${ctx.into} — task ${shownTask(ref)} lands in a phase not yet merged, so number it in one`);
+  }
+  return { stacks, own };
+}
+
+/** Whether its phase's stack holds the task's pull request, refused as `stacksFor` refuses it. @param {LandingContext} ctx @param {TaskRef} ref */
+const holds = (ctx, ref) => pullOf(stacksFor(ctx, hostOf(ctx), ref).own, ref) !== undefined;
+
+/**
  * The chain's tip a task lands on (see the header) — null where its phase's
- * stack holds it already. Refuses a task whose phase is merged, and one
- * built on a stack something done by hand stops.
+ * stack holds it already. Refuses as `stacksFor` does, a task GitHub's
+ * default branch lacks commits of (`refuseUnpushed`), and one built on a
+ * stack something done by hand stops.
  * @param {LandingContext} ctx @param {LandingTask} task
  * @returns {ChainTip|null}
  */
 function chainTip(ctx, task) {
   const host = hostOf(ctx);
   const { phase } = task.ref;
-  const shown = shownTask(task.ref);
-  const stacks = stacksOf(pullsOf(ctx, host));
-  const own = stacks.get(phase);
-  if (own !== undefined) {
-    refuseHandled(own);
-    if (isMerged(own)) throw new Error(`land: phase ${phase} is merged into ${ctx.into} — task ${shown} lands in a phase not yet merged, so number it in one`);
-    if (pullOf(own, task.ref) !== undefined) return null;
-  }
-  refuseUnpushed(ctx, host, shown);
+  const { stacks, own } = stacksFor(ctx, host, task.ref);
+  if (pullOf(own, task.ref) !== undefined) return null;
+  refuseUnpushed(ctx, host, shownTask(task.ref));
   const top = own ?? builtOn(ctx, stacks, phase, task.branch);
   if (top === undefined) return { name: ctx.into, commit: /** @type {string} */ (lg.branches(ctx.root).get(ctx.into)), host };
   const last = top.pulls[top.pulls.length - 1];
@@ -769,6 +785,7 @@ module.exports = {
   },
   landsOn: fetchedDefault,
   chainTip,
+  holds,
   open,
   chain,
   mergePhase,

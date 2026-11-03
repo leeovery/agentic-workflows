@@ -11,7 +11,8 @@
 // fixes are done, as the phase's close reads it (phase-checks.cjs, 7.2.4).
 // Which of a unit's tasks landed — each one a default branch's landing
 // names — is read here for the phase's close and the build's standing
-// (`landedTasks`).
+// (`landedTasks`); and, for the close in step, whether a phase's tasks are
+// each in its stack (`allChained`).
 //
 // What every driver shares is settled here: the names (landing-names.cjs);
 // the default branch everything lands on in each repository, never the
@@ -77,7 +78,7 @@
 // warnings.
 // ---------------------------------------------------------------------------
 
-const { resolveDriver, needsRefusal } = require('./drivers.cjs');
+const { resolveDriver, chosenDriver, needsRefusal } = require('./drivers.cjs');
 const { commitStateTail, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { remoteName, nestedRemoteName } = require('./remote.cjs');
 const { assertUnit, parsePhase, parseShownTask, shownTask, taskId } = require('./task-id.cjs');
@@ -105,8 +106,9 @@ const phaseChecks = () => require('./phase-checks.cjs');
  * the default branch everything lands on there; the name of its remote,
  * null where it has none chosen; and, for a merge, each submodule directly
  * inside it, by its path from the repository's top, and of those each the
- * walk lands in, with its own context.
- * @typedef {{root: string, repo: string, unit: string, into: string, remote: string|null, gitlinks: string[], submodules: {path: string, ctx: LandingContext}[]}} LandingContext
+ * walk lands in, with its own context; and, for a call that moves nothing,
+ * the reads a driver keeps there, so each is made once (`readOnce`).
+ * @typedef {{root: string, repo: string, unit: string, into: string, remote: string|null, gitlinks: string[], submodules: {path: string, ctx: LandingContext}[], reads?: Map<string, unknown>}} LandingContext
  */
 
 /**
@@ -123,8 +125,9 @@ const phaseChecks = () => require('./phase-checks.cjs');
 
 /**
  * The project a verb lands in: its repositories, its own first, and their
- * contexts, each made once, as the verb first needs it.
- * @typedef {{unit: string, repos: Repo[], contexts: Map<string, LandingContext>}} Project
+ * contexts, each made once, as the verb first needs it — each keeping the
+ * reads its driver makes there where the call moves nothing.
+ * @typedef {{unit: string, repos: Repo[], contexts: Map<string, LandingContext>, keepsReads?: boolean}} Project
  */
 
 /**
@@ -183,6 +186,7 @@ function projectOf(cwd, unit) {
 /** A repository's context in the project, made once. @param {Project} project @param {Repo} repo @returns {LandingContext} */
 function contextOf(project, repo) {
   const made = project.contexts.get(repo.dir) ?? repoContext(project.unit, repo, nestedRemoteName(repo.path));
+  if (project.keepsReads) made.reads ??= new Map();
   project.contexts.set(repo.dir, made);
   return made;
 }
@@ -606,6 +610,29 @@ function landFinish(cwd, unit) {
 }
 
 /**
+ * Whether each of the tasks given, whole, is chained into its phase's stack
+ * wherever its change touches: in every repository holding its branch with
+ * something past the default branch there, the stack holds it — a task
+ * opened nowhere is not chained. Read off git and the host, writing and
+ * fetching nothing, through the driver the project's setting names, else
+ * the default (`holds`), each repository's stacks read once for every task.
+ * Refused as the task's landing is read (`landingOf`), and its stack.
+ * @param {string} cwd @param {string} unit @param {import('./drivers.cjs').TaskDetail[]} tasks
+ */
+function allChained(cwd, unit, tasks) {
+  const project = { ...projectOf(cwd, unit), keepsReads: true };
+  const driver = /** @type {LandingDriver} */ (chosenDriver(cwd, 'landing').driver);
+  return tasks.every((held) => {
+    const { task, holding } = landingOf(project, held.ref, held);
+    const touched = holding.map((repo) => contextOf(project, repo)).filter((ctx) => !lg.isAncestor(ctx.root, task.branch, ctx.into));
+    return touched.length > 0 && touched.every((ctx) => inRepo(ctx.repo, () => {
+      driver.assertServes?.(ctx);
+      return driver.holds(ctx, task.ref);
+    }));
+  });
+}
+
+/**
  * The unit's tasks landed, shown: each a landing on the default branch of a
  * repository of the project names by its `Task:` line, as every driver
  * lands a task (landing-names.cjs). A repository with no default branch to
@@ -625,4 +652,4 @@ function landedTasks(cwd, unit) {
   }));
 }
 
-module.exports = { LAND_USAGE, landOpen, landChain, landPhase, landFinish, landedTasks };
+module.exports = { LAND_USAGE, landOpen, landChain, landPhase, landFinish, landedTasks, allChained };
