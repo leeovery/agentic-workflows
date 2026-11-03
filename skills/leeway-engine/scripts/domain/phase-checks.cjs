@@ -322,6 +322,6 @@ function reviewRefusalOf(at, phase) {
 }
 
 module.exports = {
-  reading, once, cutPhases, phaseLists, phaseTasks, phaseLanded, fixesOwed,
+  reading, once, cutPhases, phaseLists, phaseTasks, phaseLanded, fixesOwed, passed,
   tasksWritten, reliedOnDone, tasksPassed, phaseReviewFaults, scenariosReported, notesConsolidated, stackMerged, closeRefusal, phaseReviewRefusal, reviewRefusalOf,
 };

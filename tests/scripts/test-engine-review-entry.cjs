@@ -12,10 +12,12 @@
 // the round under review, the spec's areas, never merged, five as one (14.2.1,
 // 14.2.3), the reads the round takes — every area and the test surface at
 // round 1, then those `review reads` named, from the areas whose findings
-// made fix tasks (14.3.3) — the fix tasks waited on, none closed, each
-// round's report, the spec, the record and the build's log; once a round
-// ends the review phase, how it ended and what is next; and the recovery
-// note, re-reading what the entry reads (24.2.2).
+// made fix tasks (14.3.3) — the fix tasks waited on, none closed, and in
+// step their phase's merge at its gate (14.6.2), each round's report, the
+// spec, the record and the build's log; once a round ends the review phase,
+// how it ended and what is next; and the recovery note, re-reading what the
+// entry reads (24.2.2). A fix task in flight there, taken over at the
+// entry, is test-engine-review-fix-phases.cjs's.
 //
 // Layer: verb. World: review-world.cjs's, copied for each test.
 // ---------------------------------------------------------------------------
@@ -27,8 +29,8 @@ const fs = require('fs');
 const path = require('path');
 const { output } = require('./engine-harness.cjs');
 const {
-  UNIT, ENGINE, SESSION_ID, AREAS, EVERY, FIVE, RECEIPT, useWorld, env, enter, reported, named, recorded, refusedRound, firstRoundReady, fixPhaseWritten, fixBuilt, fixClosed, data,
-  ok, okSections, refusedPristine, statePath, writeState, git, stateGit, assert,
+  UNIT, ENGINE, SESSION_ID, AREAS, EVERY, FIVE, RECEIPT, FAILING, useWorld, env, enter, reported, named, recorded, refusedRound, firstRoundReady, fixPhaseWritten, fixBuilt, fixClosed, data,
+  ok, okSections, refusedPristine, statePath, writeState, readManifest, createManifest, git, stateGit, assert,
 } = require('./review-world.cjs');
 
 /** @type {string} */
@@ -160,6 +162,22 @@ describe('the answer: the round under review, the spec\'s areas, and what the ro
     assert.strictEqual(waiting, data(['round: round 2', ...AREA_LINES, UNNAMED, 'fix task waiting: 3.1 not started', reportLine(1), ...readsAfter()]));
     assert.strictEqual(unnamed, data(['round: round 2', ...AREA_LINES, UNNAMED, reportLine(1), ...readsAfter()]));
     assert.strictEqual(enter().sections, data(['round: round 2', ...AREA_LINES, 'reads: 1-cards, 2-refunds', reportLine(1), ...readsAfter()]));
+  });
+
+  it('in step, once the fix tasks are done, waits on their phase\'s merge at its gate until each not closed has landed (14.6.2)', () => {
+    createManifest(dir, UNIT, { ...readManifest(dir, UNIT), build: { position: 'step' } });
+    enter();
+    reported(1, EVERY, { ...FAILING, '2-refunds-b': ['bug: A refund names no charge.'] });
+    fixPhaseWritten(3, [['Send the receipt', '§1.2'], ['Name the charge', '§2.1']]);
+    recorded({ can_now: [], findings: [RECEIPT, { area: '2-refunds', scope: 'in', call: 'bug', text: 'A refund names no charge.', from: ['2-refunds-b#1'], fix: '3.2' }] });
+    fixBuilt(3, 1, 'Send the receipt', 'main', 'src/send.js');
+    fixClosed(3, 2);
+    const merging = enter().sections;
+    git(dir, ['commit', '-q', '--allow-empty', '-m', `feat(${UNIT}): landed`, '-m', `Task: ${UNIT}-3-1`]);
+
+    const unnamed = `reads: not yet named — once round 1's fix tasks are done and their phase has merged, review reads ${UNIT} names them from what those changed, among them 1-cards, 2-refunds`;
+    assert.strictEqual(merging, data(['round: round 2', ...AREA_LINES, unnamed, `merge waiting: phase 3 waits at its gate: render phase-merge-gate ${UNIT} 3`, reportLine(1), ...readsAfter()]));
+    assert.strictEqual(enter().sections, data(['round: round 2', ...AREA_LINES, unnamed, reportLine(1), ...readsAfter()]));
   });
 
   it('a fix task closed waits on nothing', () => {

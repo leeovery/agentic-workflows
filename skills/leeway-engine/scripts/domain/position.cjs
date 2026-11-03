@@ -13,18 +13,25 @@
 // {phase} {topic}` inside a phase not yet entered through it),
 // `session label {wu}` at a work unit's menu, `session label
 // roadmap|product` at the project-level places — a place this project lacks
-// is refused before anything is labelled or recorded. Inside implementation
-// the position holds every task in flight there (4.11.14, 24.2.4): the
-// tracker's `task start` adds one, with the unit as the topic, and its `task
-// done` and `task close` take it off (task-verbs.cjs); the plan's three-
-// argument `task start` adds one to its topic's and `task complete` takes it
-// off. A `task start` re-run for a task already in flight keeps it as it
-// stands; a re-label of the same implementation keeps them all, and any
-// other place leaves none. The gate mod's `conversation builder` records the
-// agent id of a builder or a reviewer it saw dispatched against the task its
-// brief was issued for (brief-names.cjs), only while that task is in flight:
-// the builder's replacing any before it, each reviewer's joining the pair
-// the later rounds go back to (13.3.3); a dispatch with no brief, the plan's
+// is refused before anything is labelled or recorded. Inside a unit's build
+// the position holds every task in flight there (4.11.14, 24.2.4) — at its
+// implementation, or at its review phase, whose fix tasks the same loop
+// builds (14.3.2). The tracker's `task start` adds one where the
+// conversation is at either of the unit's, the place kept, else at the
+// unit's review for a task of one of its fix phases and its implementation
+// for any other, and its `task done` and `task close` take it off
+// (task-verbs.cjs); an entry into either puts the tasks another
+// conversation left in flight there, as the conversation arrives
+// (build-entry.cjs); the plan's three-argument `task start` adds one to its
+// topic's implementation and `task complete` takes it off. A `task start`
+// re-run for a task already in flight keeps it as it stands; a re-label of
+// the same place keeps them all, a move between the unit's implementation
+// and its review phase carries them, and any other place leaves none. The
+// gate mod's `conversation builder` records the agent id of a builder or a
+// reviewer it saw dispatched against the task its brief was issued for
+// (brief-names.cjs), only while that task is in flight: the builder's
+// replacing any before it, each reviewer's joining the pair the later
+// rounds go back to (13.3.3); a dispatch with no brief, the plan's
 // executor's, is the builder of the one task in flight. `task worktree`
 // records the worktree it laid out for a task in flight (task-worktree.cjs).
 // They ride with their task and go with it. The start menu is no position:
@@ -52,7 +59,7 @@ const { handedSession } = require('../kernel/process.cjs');
 const { positionPath, readPosition, isMarked, markConversation, runningTranscript } = require('./conversation.cjs');
 const { ROLES, issuedOf } = require('./brief-names.cjs');
 const { loadManifest, loadProjectManifest } = require('./reads.cjs');
-const { buildBegun, buildByCut, computeTopicLifecycle, itemOf, openRecords, phaseData, UNIT_PHASES } = require('./derivations.cjs');
+const { buildBegun, buildByCut, isFixPhase, computeTopicLifecycle, itemOf, openRecords, phaseData, UNIT_PHASES } = require('./derivations.cjs');
 const { recordDir } = require('./experiment-paths.cjs');
 const { latestSessionLog, productSession } = require('./discovery-session.cjs');
 const { PRODUCT_SESSIONS } = require('./layout.cjs');
@@ -144,6 +151,21 @@ function withTasks(place, tasks) {
 /** A topic's implementation, the place its tasks are in flight. @param {string} workUnit @param {string} topic @returns {Position} */
 const implementationOf = (workUnit, topic) => ({ name: workUnit, phase: 'implementation', topic });
 
+/** The phases a unit's tasks are in flight at, each at the unit: its build, and its review phase's fixes (14.3.2). */
+const BUILD_PLACES = Object.freeze(['implementation', 'review']);
+
+/** Whether a place is one a unit's tasks are in flight at. @param {Position} place */
+const inBuild = ({ name, phase, topic }) => topic === name && BUILD_PLACES.includes(phase ?? '');
+
+/**
+ * Where the conversation holds the unit's tasks in flight: its own place,
+ * where that is the unit's implementation or review phase; null elsewhere.
+ * @param {Position|null} prior @param {string} workUnit @returns {Position|null}
+ */
+function buildPlaceOf(prior, workUnit) {
+  return prior !== null && prior.name === workUnit && inBuild(prior) ? { name: workUnit, phase: prior.phase, topic: workUnit } : null;
+}
+
 /**
  * Why the arguments name no place this project has, or null where they do:
  * a work unit, a phase and legal topic in one, or a project identity, which
@@ -174,10 +196,15 @@ function isPlace(cwd, name, phase, topic) {
   return placeError(cwd, name, phase, topic) === null;
 }
 
-/** The tasks in flight a position holds at `place`; none where it is elsewhere. @param {Position|null} prior @param {Position} place @returns {InFlight[]} */
+/**
+ * The tasks in flight a position holds at `place` — at either of a unit's
+ * build places for the other, which its tasks ride between; none where it
+ * is elsewhere.
+ * @param {Position|null} prior @param {Position} place @returns {InFlight[]}
+ */
 function tasksAt(prior, place) {
-  const there = prior !== null && prior.name === place.name && prior.phase === place.phase && prior.topic === place.topic;
-  return there ? prior.tasks ?? [] : [];
+  if (prior === null || prior.name !== place.name || prior.topic !== place.topic) return [];
+  return prior.phase === place.phase || (inBuild(prior) && inBuild(place)) ? prior.tasks ?? [] : [];
 }
 
 /** The plan step an internal id ends in, `{phase}.{task}`. @param {string} internalId @returns {string|null} */
@@ -195,7 +222,27 @@ function recordPosition(cwd, name, phase, topic) {
   if (!own) return;
   /** @type {Position} */
   const position = phase === undefined ? { name } : { name, phase, topic };
-  updatePosition(own, (prior) => (phase === 'implementation' ? withTasks(position, tasksAt(prior, position)) : position));
+  updatePosition(own, (prior) => (BUILD_PLACES.includes(phase ?? '') ? withTasks(position, tasksAt(prior, position)) : position));
+}
+
+/** Tasks in flight with those of `steps` not among them added after, none with an agent yet. @param {InFlight[]} held @param {string[]} steps @returns {InFlight[]} */
+function joined(held, steps) {
+  return [...held, ...steps.filter((step) => !held.some((t) => t.task === step)).map((step) => ({ task: step, builder: null, reviewers: [] }))];
+}
+
+/**
+ * The place `task start` puts a unit's task in flight (the header's): where
+ * the conversation holds the unit's tasks, else its review phase for a task
+ * of one of its fix phases and its implementation for any other.
+ * @param {string} cwd @param {Position|null} prior @param {string} workUnit @param {string} step
+ * @returns {Position}
+ */
+function startedAt(cwd, prior, workUnit, step) {
+  const held = buildPlaceOf(prior, workUnit);
+  if (held !== null) return held;
+  const manifest = loadManifest(cwd, workUnit);
+  const fix = isObject(manifest) && isFixPhase(manifest, Number(step.split('.')[0]));
+  return fix ? { name: workUnit, phase: 'review', topic: workUnit } : implementationOf(workUnit, workUnit);
 }
 
 /**
@@ -207,11 +254,23 @@ function recordTask(cwd, workUnit, topic, internalId) {
   const own = arrivingConversation(cwd);
   const step = taskStep(internalId);
   if (!own || step === null || !isPlace(cwd, workUnit, 'implementation', topic)) return;
-  const place = implementationOf(workUnit, topic);
   updatePosition(own, (prior) => {
-    const held = tasksAt(prior, place);
-    return withTasks(place, held.some((t) => t.task === step) ? held : [...held, { task: step, builder: null, reviewers: [] }]);
+    const place = topic === workUnit ? startedAt(cwd, prior, workUnit, step) : implementationOf(workUnit, topic);
+    return withTasks(place, joined(tasksAt(prior, place), [step]));
   });
+}
+
+/**
+ * Record the tasks an entry into the unit's build or its review phase puts
+ * in flight on the calling conversation, at that place, beside those there
+ * — each kept as it stands where it is one of them (build-entry.cjs).
+ * @param {string} cwd @param {string} workUnit @param {'implementation'|'review'} phase @param {string[]} steps each `{phase}.{n}`
+ */
+function recordTasksAt(cwd, workUnit, phase, steps) {
+  const own = arrivingConversation(cwd);
+  if (!own || steps.length === 0) return;
+  const place = { name: workUnit, phase, topic: workUnit };
+  updatePosition(own, (prior) => withTasks(place, joined(tasksAt(prior, place), steps)));
 }
 
 /**
@@ -230,7 +289,7 @@ function dispatchedFor(sessionId, prior, briefId) {
   }
   const issued = issuedOf(sessionId, briefId);
   if (issued === null || !Object.hasOwn(SLOTS, issued.agent) || issued.unit === null || issued.task === null) return null;
-  return { place: implementationOf(issued.unit, issued.unit), task: issued.task, slot: SLOTS[issued.agent] };
+  return { place: buildPlaceOf(prior, issued.unit) ?? implementationOf(issued.unit, issued.unit), task: issued.task, slot: SLOTS[issued.agent] };
 }
 
 /**
@@ -268,9 +327,9 @@ function recordBuilder(sessionId, agentId, briefId) {
  * @returns {{recorded: boolean}}
  */
 function recordWorktree(sessionId, workUnit, step, worktree) {
-  const place = implementationOf(workUnit, workUnit);
   return {
     recorded: updatePosition(sessionId, (prior) => {
+      const place = buildPlaceOf(prior, workUnit) ?? implementationOf(workUnit, workUnit);
       const held = tasksAt(prior, place);
       if (!held.some((t) => t.task === step)) return null;
       return withTasks(place, held.map((t) => (t.task === step ? { ...t, worktree } : t)));
@@ -287,8 +346,8 @@ function clearTask(workUnit, topic, internalId) {
   const own = ownConversation();
   if (!own) return;
   const step = taskStep(internalId);
-  const place = implementationOf(workUnit, topic);
   updatePosition(own, (prior) => {
+    const place = (topic === workUnit ? buildPlaceOf(prior, workUnit) : null) ?? implementationOf(workUnit, topic);
     const held = tasksAt(prior, place);
     return held.some((t) => t.task === step) ? withTasks(place, held.filter((t) => t.task !== step)) : null;
   });
@@ -324,9 +383,10 @@ function dropPosition(sessionId) {
 // implementation's, once the unit's build has begun, what its entry reads
 // to carry it on — the entries affected and the unit's record by their
 // calls, the build's log, and where the build stands, its tasks in flight
-// and its questions waiting (build-entry.cjs, 12.1.6, 24.2.2). Every
-// other phase's note sends
-// Claude to its skill's own steps.
+// and its questions waiting (build-entry.cjs, 12.1.6, 24.2.2); and the
+// review phase's, of a unit whose build runs by its cut, what its entry
+// reads, its fix tasks in flight among it (review-entry.cjs). Every other
+// phase's note sends Claude to its skill's own steps.
 // ---------------------------------------------------------------------------
 
 /**
@@ -464,13 +524,14 @@ function buildWork(cwd, unit, inFlight) {
 /**
  * The review phase's note, carried whole, as its entry reads it
  * (review-entry.cjs): the record's call, each round's report, the spec, the
- * build's log, and where the phase stands.
- * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @returns {Omit<Work, 'skill'>}
+ * build's log, and where the phase stands, with the fix tasks in flight of
+ * the conversation the note is for.
+ * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {InFlight[]} inFlight @returns {Omit<Work, 'skill'>}
  */
-function reviewWork(cwd, unit, manifest) {
+function reviewWork(cwd, unit, manifest, inFlight) {
   // Required here, as the review phase's entry reaches this module through
   // the build's.
-  const { calls, documents, lines } = require('./review-entry.cjs').reviewRecovery(cwd, unit, manifest);
+  const { calls, documents, lines } = require('./review-entry.cjs').reviewRecovery(cwd, unit, manifest, inFlight);
   return { documents, whole: { calls, log: null, lines } };
 }
 
@@ -524,7 +585,7 @@ function workAt(cwd, position, manifest) {
       return { skill, documents: [...reading, ...tasks.flatMap((t) => taskFile(plan, internalIdOf(topic, t)))] };
     }
     case 'review':
-      if (buildByCut(manifest)) return { skill, ...reviewWork(cwd, name, manifest) };
+      if (buildByCut(manifest)) return { skill, ...reviewWork(cwd, name, manifest, position.tasks ?? []) };
       return { skill, documents: [path.join(wu, 'review', topic, 'report.md')] };
     default:
       return { skill: null, documents: [] };
@@ -701,6 +762,6 @@ function positionSections(reads) {
 }
 
 module.exports = {
-  readPosition, assertPlace, isPlace, recordPosition, recordTask, recordBuilder, recordWorktree, clearTask, dropPosition,
+  readPosition, assertPlace, isPlace, recordPosition, recordTask, recordTasksAt, recordBuilder, recordWorktree, clearTask, dropPosition,
   placeLine, skillAt, positionReads, positionSections,
 };

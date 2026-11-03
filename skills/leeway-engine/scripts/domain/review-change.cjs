@@ -9,8 +9,13 @@
 //
 // By the review phase every phase of the cut has closed, each merged onto
 // the branch it lands on — or, in step, its stack waiting at its gate
-// (7.2.4) — and a failing round's fix phases are chained, landing only at
-// finish (7.2.6). The change is the unit's own work, never what others
+// (7.2.4). A failing round's fix phase is built on the unit's work not
+// landed below it, in every repository holding that work, so the work not
+// landed is one stack, its tip holding every fix (`fixBase`, the layout
+// task-worktree.cjs makes and `land open` holds a fix task to); in auto the
+// fix phases land only at finish, in that order (7.2.6), and in step each
+// merges at its gate before the next round is read (14.6.2,
+// review-phase.cjs). The change is the unit's own work, never what others
 // landed beside it — a quick-fix taking its turn (12.7.8), the person's own
 // commits, another unit's phase. So in each repository:
 // - its base is the branch given where it has that branch, else the branch
@@ -34,6 +39,8 @@ const { codeRoot } = require('../kernel/code-root.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { projectRepos, repoName } = require('../kernel/repos.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
+const { manifestOf } = require('./ledger-units.cjs');
+const { isFixPhase } = require('./derivations.cjs');
 const { trackedLists, trackedPhase } = require('./task-verbs.cjs');
 const { landedTasks } = require('./landing.cjs');
 const { tasksOfMessage } = require('./landing-names.cjs');
@@ -102,6 +109,32 @@ function unlandedTasks(cwd, unit, phases) {
 }
 
 /**
+ * The stack the unit's work not landed in its phases to `phases` makes: its
+ * tip in each repository holding that work, none where no such task is
+ * done.
+ * @param {string} cwd @param {string} unit @param {number} phases @param {string} what the work, as a refusal names it
+ * @returns {Map<Repo, string>}
+ */
+function unlandedStack(cwd, unit, phases, what) {
+  const pending = unlandedTasks(cwd, unit, phases);
+  return pending.length === 0 ? new Map() : stackOf(cwd, unit, pending, what).tips;
+}
+
+/**
+ * What a task of a phase is built on, by the folder of each repository
+ * holding it: for one of the review's fix phases, the branch at the tip of
+ * the unit's work not landed below it (the header's); nothing for any other
+ * phase, nor where nothing below it waits to land.
+ * @param {string} cwd @param {string} unit @param {number} phase
+ * @returns {Map<string, string>}
+ */
+function fixBase(cwd, unit, phase) {
+  const manifest = manifestOf(stateRoot(cwd), unit);
+  if (manifest === null || !isFixPhase(manifest, phase)) return new Map();
+  return new Map([...unlandedStack(cwd, unit, phase - 1, `${unit}'s work not landed below phase ${phase}`)].map(([repo, tip]) => [repo.dir, tip]));
+}
+
+/**
  * The whole change (the header's), its work not landed read from the
  * unit's phases to `phases`.
  * @param {string} cwd @param {string} unit @param {number} phases @param {string|null} given the base named, or null for each repository's own
@@ -110,8 +143,7 @@ function unlandedTasks(cwd, unit, phases) {
 function changeOf(cwd, unit, phases, given) {
   const repos = projectRepos(codeRoot(cwd));
   if (given !== null && !repos.some((repo) => branches(repo.path).has(given))) throw new Error(`the base ${given} is no local branch in any repository of the project`);
-  const pending = unlandedTasks(cwd, unit, phases);
-  const stack = pending.length === 0 ? new Map() : new Map([...stackOf(cwd, unit, pending, `${unit}'s build`).tips].map(([repo, tip]) => [repo.path, tip]));
+  const stack = new Map([...unlandedStack(cwd, unit, phases, `${unit}'s build`)].map(([repo, tip]) => [repo.path, tip]));
   const holding = repos.flatMap((repo) => {
     const base = given !== null && branches(repo.path).has(given) ? given : landsOn(cwd, repo);
     if (base === null) return [];
@@ -132,4 +164,4 @@ function changeOf(cwd, unit, phases, given) {
 /** The change's tips, each repository by its name at its tip's commit, as a run names its commits. @param {Change} change @returns {RepoCommit[]} */
 const changeTips = ({ holding }) => holding.map(({ repo, commit }) => ({ repo: repoName(repo), commit }));
 
-module.exports = { changeOf, changeTips };
+module.exports = { changeOf, changeTips, fixBase };

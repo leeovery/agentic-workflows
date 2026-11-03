@@ -44,7 +44,7 @@
 const fs = require('fs');
 const { statePath, stateRoot } = require('../kernel/state-root.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
-const { STATUS_WORDS, buildStanding, builtUnit, ownInFlight } = require('./build-entry.cjs');
+const { STATUS_WORDS, phaseNamed, buildStanding, builtUnit, ownInFlight } = require('./build-entry.cjs');
 const { reading, cutPhases, phaseLists, phaseLanded, reviewRefusalOf } = require('./phase-checks.cjs');
 const { trackedTask, trackedLists, goingOn, phaseOpen, turnRefusal, ENDED } = require('./task-verbs.cjs');
 const { engineItemsHold } = require('./checklist.cjs');
@@ -70,12 +70,6 @@ const {
 /** @typedef {import('./projections/build.cjs').Reviewed} Reviewed */
 /** @typedef {import('./projections/build.cjs').AccountView} AccountView */
 /** @typedef {{dotpath?: string, item?: string, file?: string}} Args */
-
-/** A phase's name: the cut's, or for a phase past it, the review's fixes of its round (P14). @param {Record<string, any>} manifest @param {number} phase */
-function phaseNamed(manifest, phase) {
-  const cut = cutPhases(manifest);
-  return phase <= cut.length ? cut[phase - 1].name ?? '' : `the review's fixes, round ${phase - cut.length}`;
-}
 
 /** A task as the tracker holds it, read as every read of the tracker is. @param {string} cwd @param {TaskRef} ref @returns {TaskDetail} */
 const taskOf = (cwd, ref) => withStateLock(stateRoot(cwd), () => trackedTask(cwd, ref));

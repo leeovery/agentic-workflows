@@ -3,12 +3,12 @@
 // ---------------------------------------------------------------------------
 // `engine review reads <unit> <area|tests> …` (leeway-engine/scripts/domain/
 // review-verbs.cjs, its records review-phase.cjs): a later round's reads
-// named once the round before's fix tasks are done, every read whose
-// findings made fix tasks among them — each finding's area and each read
-// whose report holds an item it answers — the test surface read only where
-// named or its findings made one, areas added and never dropped, written in
-// the spec's order and committed (14.3.3); and what it refuses, writing
-// nothing. The round's snapshot taken there, and `review accept-tree`, are
+// named once the round before's fix tasks are done — in step, once their
+// phase has merged too (14.6.2) — every read whose findings made fix tasks
+// among them — each finding's area and each read whose report holds an
+// item it answers — the test surface read only where named or its findings
+// made one, areas added and never dropped, written in the spec's order and
+// committed (14.3.3); and what it refuses, writing nothing. The round's snapshot taken there, and `review accept-tree`, are
 // test-engine-review-tree.cjs's.
 //
 // Layer: verb. World: review-world.cjs's, copied for each test.
@@ -19,7 +19,7 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const {
   UNIT, EVERY, useWorld, env, enter, reported, named, recorded, firstRoundReady, fixBuilt, stateText, lastStateCommit, RECEIPT,
-  ok, refusedPristine, assert,
+  ok, refusedPristine, readManifest, createManifest, git, assert,
 } = require('./review-world.cjs');
 
 /** @type {string} */
@@ -108,5 +108,15 @@ describe('review reads: a later round\'s reads named (14.3.3)', () => {
     reported(2, EVERY);
     recorded({ can_now: [], findings: [] });
     assert.strictEqual(refused(['reads', UNIT, '1-cards']), `review reads: ${UNIT}'s review phase passed in round 2 — finish is next`);
+  });
+
+  it('in step, refused, writing nothing, while the round before\'s fix phase waits at its merge\'s gate; named once it has merged (14.6.2)', () => {
+    createManifest(dir, UNIT, { ...readManifest(dir, UNIT), build: { position: 'step' } });
+    fixesDone();
+    const merging = refused(['reads', UNIT, '1-cards']);
+    git(dir, ['commit', '-q', '--allow-empty', '-m', `feat(${UNIT}): landed`, '-m', `Task: ${UNIT}-3-1`]);
+
+    assert.strictEqual(merging, `review reads: round 2 is read once round 1's fix phase has merged — phase 3 waits at its gate: render phase-merge-gate ${UNIT} 3`);
+    assert.deepStrictEqual(named(['1-cards']).reads, ['1-cards']);
   });
 });

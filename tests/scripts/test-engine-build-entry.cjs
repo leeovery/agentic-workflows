@@ -25,7 +25,9 @@
 // with a phase not yet written never reads finished (7.4.3, 12.6.7, 12.S16,
 // 3.S3). The code gate's wording is render code-gate's
 // (test-engine-render-surfaces.cjs); a phase's checklists,
-// test-engine-build-checklists.cjs's.
+// test-engine-build-checklists.cjs's; a task at its step gate,
+// test-engine-build-gates.cjs's; the review's fix phases in the standing,
+// test-engine-review-fix-phases.cjs's.
 //
 // Layer: verb. World, built once and copied: the ledger suites' epic,
 // `fumi`, its build begun in auto, its cut three phases — Cards and Reports
@@ -350,9 +352,9 @@ describe('the build\'s standing (P13)', () => {
       unit: UNIT,
       position: 'auto',
       phases: [
-        { phase: 1, name: 'Cards', relies_on: [], state: 'running', tasks: [task('1.1', 'Open a note', 'done'), task('1.2', 'Size a note', 'in-progress'), task('1.3', 'Place a note', 'open')], fixes_owed: [] },
-        { phase: 2, name: 'Refunds', relies_on: [1], state: 'written', tasks: [task('2.1', 'Refund a note', 'open')], fixes_owed: [] },
-        { phase: 3, name: 'Reports', relies_on: [], state: 'not yet written', tasks: [], fixes_owed: [] },
+        { phase: 1, name: 'Cards', round: null, relies_on: [], state: 'running', tasks: [task('1.1', 'Open a note', 'done'), task('1.2', 'Size a note', 'in-progress'), task('1.3', 'Place a note', 'open')], fixes_owed: [] },
+        { phase: 2, name: 'Refunds', round: null, relies_on: [1], state: 'written', tasks: [task('2.1', 'Refund a note', 'open')], fixes_owed: [] },
+        { phase: 3, name: 'Reports', round: null, relies_on: [], state: 'not yet written', tasks: [], fixes_owed: [] },
       ],
       in_flight: [{ task: '1.2', builder: null, reviewers: [] }],
       waiting: [],

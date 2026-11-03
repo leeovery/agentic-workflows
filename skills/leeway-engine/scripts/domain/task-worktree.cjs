@@ -11,7 +11,11 @@
 //   made there at the worktree's own commit and checked out, so no file
 //   moves, the branch the isolation made left as it stands; or, where it is
 //   made already and no worktree has it out, switched to, where the worktree
-//   is clean.
+//   is clean. A task of one of the review's fix phases is built on the
+//   unit's work not landed below it, so the fixes make one stack, each on
+//   the one before (7.2.6, review-change.cjs): in each repository holding
+//   that work, its branch is made at that work's tip, the worktree's files
+//   moving to it where it is clean.
 // - Each child repository — a clone or a submodule nested in the project's
 //   folder at any depth, as the project's own checkout has them
 //   (kernel/repos.cjs) — gets a worktree of that repository at its folder
@@ -21,8 +25,9 @@
 //   it out — at the submodule's own checkout's commit where that commit
 //   points it nowhere — and a clone's at the branch it lands on
 //   (landing-git.cjs, `defaultBranch`), never its checkout, which may be on
-//   the person's own work; or, where the branch is made already and no
-//   worktree has it out, checked out as it stands. A worktree of that
+//   the person's own work; a fix phase's, where the repository holds the
+//   work below it, at that work's tip; or, where the branch is made already
+//   and no worktree has it out, checked out as it stands. A worktree of that
 //   repository already at the folder, on another branch, takes the branch
 //   as the project's own repository does. A child repository the task never
 //   changes holds the branch with nothing on it, which the landing passes
@@ -74,7 +79,9 @@
 // switched off, where it is a repository's own checkout, and, where it is
 // the worktree of a task in flight in the calling conversation, its builder
 // sent back in by the orchestrator — naming why; a worktree switching to
-// the branch made already with changes not committed; and a child
+// the branch made already, or making it at the work below a fix phase, with
+// changes not committed; the work below a fix phase no one stack in a
+// repository, as phase-stack.cjs refuses it; and a child
 // repository's folder holding anything but a worktree of that repository.
 // ---------------------------------------------------------------------------
 
@@ -92,6 +99,10 @@ const { taskBranch } = require('./landing-names.cjs');
 const lg = require('./landing-git.cjs');
 const { shownTask, taskId, taskName } = require('./task-id.cjs');
 
+// What a fix phase is built on, loaded at its call: it reads the tracker,
+// whose verbs lay a task out through this module.
+const fixBase = () => require('./review-change.cjs');
+
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
 /** @typedef {import('./landing-git.cjs').Worktree} Worktree */
@@ -99,9 +110,9 @@ const { shownTask, taskId, taskName } = require('./task-id.cjs');
 
 /**
  * How a repository takes the task's branch: in the worktree at its folder
- * already — made there at `start`, its own commit, or, `start` null,
- * switched to — or by a worktree added there, made at `start` or, `start`
- * null, checked out as it stands.
+ * already — made there at `start`, or, `start` null, switched to — or by a
+ * worktree added there, made at `start` or, `start` null, checked out as it
+ * stands.
  * @typedef {{inPlace: boolean, start: string|null}} Make
  */
 
@@ -276,36 +287,47 @@ function uncommitted(repos, repo, at) {
 }
 
 /**
+ * Refuse a worktree of `repo` at `at` holding changes not committed, where
+ * laying the branch out there moves its files — `why`.
+ * @param {Repo[]} repos @param {Repo} repo @param {string} at @param {string} why
+ */
+function refuseUncommitted(repos, repo, at, why) {
+  const dirt = uncommitted(repos, repo, at);
+  if (dirt.length > 0) {
+    throw refusal(`${why}, and ${at} has changes not committed: ${dirt.join(', ')}, so nothing was laid out — commit them, or move them out of the way, then run it again`);
+  }
+}
+
+/**
  * A worktree already at a repository's folder, on another branch, taking
- * the branch in place: made at its own commit, so no file moves; or, made
- * already and out nowhere — or out in a worktree it is taken over from —
- * switched to — refused where the worktree has changes not committed.
- * @param {TaskRef} ref @param {Repo[]} repos @param {Repo} repo @param {string} at @param {string} branch @param {Worktree[]} trees the repository's @param {string} session
+ * the branch in place: made at `start`, what a fix phase is built on, or
+ * else at its own commit, so no file moves; or, made already and out
+ * nowhere — or out in a worktree it is taken over from — switched to —
+ * refused where its files move and the worktree has changes not committed.
+ * @param {TaskRef} ref @param {Repo[]} repos @param {Repo} repo @param {string} at @param {string} branch @param {Worktree[]} trees the repository's @param {string} session @param {string|undefined} start
  * @returns {Part}
  */
-function inPlace(ref, repos, repo, at, branch, trees, session) {
+function inPlace(ref, repos, repo, at, branch, trees, session, start) {
   const taken = heldElsewhere(ref, repos, repo, branch, trees, session);
   const made = lg.branches(repo.path).get(branch);
   if (made === undefined) {
-    const commit = commitOf(at, 'HEAD');
+    const commit = start ?? commitOf(at, 'HEAD');
+    if (commit !== commitOf(at, 'HEAD')) refuseUncommitted(repos, repo, at, `${branch} is made at ${lg.short(commit)}, where the work below it not landed ends`);
     return { repo, at, commit, make: { inPlace: true, start: commit } };
   }
-  const dirt = uncommitted(repos, repo, at);
-  if (dirt.length > 0) {
-    throw refusal(`${branch} is made already, and ${at} has changes not committed: ${dirt.join(', ')}, so nothing was laid out — commit them, or move them out of the way, then run it again`);
-  }
+  refuseUncommitted(repos, repo, at, `${branch} is made already`);
   return { repo, at, commit: made, make: { inPlace: true, start: null }, ...(taken === null ? {} : { taken }) };
 }
 
 /**
  * The project's own repository's part: there already, or taken in place.
- * @param {TaskRef} ref @param {Repo[]} repos @param {{top: string, root: string, trees: Worktree[]}} here @param {string} branch @param {string} session
+ * @param {TaskRef} ref @param {Repo[]} repos @param {{top: string, root: string, trees: Worktree[]}} here @param {string} branch @param {string} session @param {Map<string, string>} base
  * @returns {Part}
  */
-function ownPart(ref, repos, { top, root, trees }, branch, session) {
+function ownPart(ref, repos, { top, root, trees }, branch, session, base) {
   const [own] = repos;
   if (trees.find((tree) => lg.samePlace(tree.path, top))?.branch === branch) return { repo: own, at: root, commit: commitOf(root, 'HEAD'), make: null };
-  return inPlace(ref, repos, own, root, branch, trees, session);
+  return inPlace(ref, repos, own, root, branch, trees, session, base.get(own.dir));
 }
 
 /** Whether anything is at a folder: a file, or a folder holding anything. @param {string} at */
@@ -354,25 +376,39 @@ function startOf(repos, repo, parts) {
 
 /**
  * A child repository's part: its worktree there already, on the branch or
- * taking it in place, or one to add — refused where its folder holds
+ * taking it in place, or one to add, made at what a fix phase is built on
+ * there, else where `startOf` says — refused where its folder holds
  * anything else, or the branch is out in another worktree than those the
  * layout removes as it takes the branch over.
- * @param {TaskRef} ref @param {Repo[]} repos @param {Repo} repo @param {string} root @param {string} branch @param {Map<string, Part>} parts @param {string} session @param {Set<string>} removing the worktrees' paths
+ * @param {TaskRef} ref @param {Repo[]} repos @param {Repo} repo @param {string} root @param {string} branch @param {Map<string, Part>} parts @param {string} session @param {Set<string>} removing the worktrees' paths @param {Map<string, string>} base
  * @returns {Part}
  */
-function childPart(ref, repos, repo, root, branch, parts, session, removing) {
+function childPart(ref, repos, repo, root, branch, parts, session, removing, base) {
   const at = path.join(root, repo.dir);
   const trees = lg.worktrees(repo.path).filter((tree) => !removing.has(tree.path));
   const there = trees.find((tree) => lg.samePlace(tree.path, at));
   if (there !== undefined && !fs.existsSync(there.path)) throw goneRefusal(repo, there, `${repo.dir} in this worktree is a worktree of ${repo.dir}, at ${there.path}`);
   if (there?.branch === branch) return { repo, at, commit: commitOf(at, 'HEAD'), make: null };
-  if (there !== undefined) return inPlace(ref, repos, repo, at, branch, trees, session);
+  if (there !== undefined) return inPlace(ref, repos, repo, at, branch, trees, session, base.get(repo.dir));
   if (occupied(at)) throw refusal(`${repo.dir} in this worktree holds something other than a worktree of ${repo.dir} — move it out of the way, then run it again`);
   heldElsewhere(ref, repos, repo, branch, trees, session);
   const made = lg.branches(repo.path).get(branch);
   if (made !== undefined) return { repo, at, commit: made, make: { inPlace: false, start: null } };
-  const start = startOf(repos, repo, parts);
+  const start = base.get(repo.dir) ?? startOf(repos, repo, parts);
   return { repo, at, commit: start, make: { inPlace: false, start } };
+}
+
+/**
+ * What the task is built on, by repository folder, at its commit: for a
+ * task of one of the review's fix phases, the tip of the unit's work not
+ * landed below it in each repository holding that work (review-change.cjs,
+ * 7.2.6); nothing for any other.
+ * @param {string} project the project's folder in its own checkout @param {Repo[]} repos @param {TaskRef} ref
+ * @returns {Map<string, string>}
+ */
+function builtOn(project, repos, ref) {
+  const tips = fixBase().fixBase(project, ref.unit, ref.phase);
+  return new Map(repos.filter((repo) => tips.has(repo.dir)).map((repo) => [repo.dir, commitOf(repo.path, `refs/heads/${tips.get(repo.dir)}`)]));
 }
 
 /** A part laid out as its plan says. @param {Part} part @param {string} branch */
@@ -380,7 +416,7 @@ function layOutPart({ repo, at, make }, branch) {
   if (make === null) return;
   if (!make.inPlace) lg.addWorktree(repo.path, at, branch, make.start);
   else if (make.start === null) lg.switchTo(at, branch);
-  else lg.branchInPlace(at, branch);
+  else lg.branchInPlace(at, branch, make.start);
 }
 
 /**
@@ -397,12 +433,14 @@ function layOutTask(cwd, ref, read) {
     throw refusal(`${taskName(ref)} has no type in the tracker, and its branch is named from it — give it one with \`engine task type ${ref.unit} ${shownTask(ref)} <type>\`, then run it again`);
   }
   const branch = taskBranch(ref, type, title);
-  const repos = projectRepos(projectOf(here.root));
-  const own = ownPart(ref, repos, here, branch, session);
+  const project = projectOf(here.root);
+  const repos = projectRepos(project);
+  const base = builtOn(project, repos, ref);
+  const own = ownPart(ref, repos, here, branch, session, base);
   const removing = new Set(own.taken?.children.map(({ tree }) => tree.path));
   /** @type {Map<string, Part>} */
   const parts = new Map([['', own]]);
-  for (const repo of repos.slice(1)) parts.set(repo.dir, childPart(ref, repos, repo, here.root, branch, parts, session, removing));
+  for (const repo of repos.slice(1)) parts.set(repo.dir, childPart(ref, repos, repo, here.root, branch, parts, session, removing, base));
   const removed = own.taken === undefined ? [] : removeChildTrees(own.taken.children);
   if (own.taken !== undefined) lg.detach(own.taken.tree.path);
   for (const part of parts.values()) layOutPart(part, branch);

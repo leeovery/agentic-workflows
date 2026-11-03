@@ -5,7 +5,9 @@
 // drawn from where the build stands (build-entry.cjs) and a task's records
 // (build-screens.cjs) — the same whatever order Claude works in (12.12.2):
 // - the step marker, `□ Build (phase N of M) · {position}`, the phase the
-//   first of the cut not yet closed (3.3.10);
+//   first of the build's not yet closed — once the cut is through, one of
+//   the review's fixes, `□ Build (the review's fixes, round k) · {position}`
+//   (3.3.10);
 // - the headline as work starts: the tasks started together in one block,
 //   each with its number, title and phase, what it is about to change and
 //   what to watch when it lands, those two Claude's (12.12.4);
@@ -24,7 +26,9 @@
 //   questions front and centre, what was built, and what each answer lets
 //   run (12.12.9, 12.13.22);
 // - the build's phases and tasks, each with its state and what holds it,
-//   a phase not yet written drawn from the cut (12.12.11, 7.4.2).
+//   a phase not yet written drawn from the cut, the review's fix phases
+//   after it, and in step a task behind the task in flight, or at its gate
+//   until the person's go there, running no more (12.12.11, 7.4.2, 12.7.9).
 // A phase whose review owes fixes says so in the standing's words, on the
 // progress and the stop alike. Nothing here counts a measure (17.2.2).
 // ---------------------------------------------------------------------------
@@ -34,7 +38,7 @@ const { renderTree, wrapWithPrefix } = require('../../kernel/render.cjs');
 const { TREE_WIDTH } = require('../conventions.cjs');
 const { counted } = require('./map.cjs');
 const { block } = require('./closing.cjs');
-const { STATUS_WORDS } = require('../build-entry.cjs');
+const { STATUS_WORDS, cutCount } = require('../build-entry.cjs');
 
 /** @typedef {import('./surfaces.cjs').Next} Next */
 /** @typedef {import('../build-entry.cjs').BuildStanding} BuildStanding */
@@ -70,19 +74,24 @@ const { STATUS_WORDS } = require('../build-entry.cjs');
 const WIDTH = TREE_WIDTH;
 
 /** A task's glyph by its state. @type {Readonly<Record<string, string>>} */
-const TASK_GLYPH = Object.freeze({ open: '○', 'in-progress': '◐', done: '✓', closed: '⊘' });
+const TASK_GLYPH = Object.freeze({ open: '○', 'in-progress': '◐', behind: '◌', 'at-gate': '●', done: '✓', closed: '⊘' });
 
 /** Whether a phase has closed, merged or not. @param {StandingPhase} phase */
 const closedPhase = ({ state }) => state === 'closed' || state === 'merged';
 
-/** The phase the build is at: the first of the cut not closed, else its last. @param {BuildStanding} standing */
+/** The phase the build is at: the first not closed, else its last. @param {BuildStanding} standing @returns {StandingPhase} */
 function currentPhase({ phases }) {
-  return (phases.find((phase) => !closedPhase(phase)) ?? phases[phases.length - 1]).phase;
+  return phases.find((phase) => !closedPhase(phase)) ?? phases[phases.length - 1];
 }
 
-/** The step marker, naming the build's phase and position (3.3.10). @param {BuildStanding} standing */
+/** A phase's number as the marker and the tree give it: one of the cut's with the cut's count, a fix phase's alone. @param {StandingPhase} phase @param {number} of */
+const numbered = ({ phase, round }, of) => (round === null ? `${phase} of ${of}` : `${phase}`);
+
+/** The step marker, naming the build's phase — a fix phase by its round — and position (3.3.10). @param {BuildStanding} standing */
 function markerSection(standing) {
-  return section('DISPLAY: build marker', CONTINUE_MARKDOWN_INSTRUCTION, `**\`□ Build (phase ${currentPhase(standing)} of ${standing.phases.length}) · ${standing.position}\`**`);
+  const current = currentPhase(standing);
+  const at = current.round === null ? `phase ${numbered(current, cutCount(standing))}` : current.name;
+  return section('DISPLAY: build marker', CONTINUE_MARKDOWN_INSTRUCTION, `**\`□ Build (${at}) · ${standing.position}\`**`);
 }
 
 /** Text wrapped at the display's width beneath `indent`, its lines after the first `hang` further in. @param {string} text @param {string} indent @param {number} [hang] */
@@ -299,11 +308,11 @@ function phaseTag({ state, relies_on: reliesOn }, { phases }, finished) {
   return state === 'written' && waits.length > 0 ? `written · after ${waits.join(', ')}` : state;
 }
 
-/** Each phase of the cut with its tasks and what holds each, a phase's owed fixes beneath it. @param {BuildStanding} standing @param {Finished} finished */
+/** Each phase of the build with its tasks and what holds each, a phase's owed fixes beneath it. @param {BuildStanding} standing @param {Finished} finished */
 function phaseTree(standing, finished) {
-  const of = standing.phases.length;
+  const of = cutCount(standing);
   return renderTree(standing.phases.map((phase) => ({
-    title: `Phase ${phase.phase} of ${of} · ${phase.name}`,
+    title: `Phase ${numbered(phase, of)} · ${phase.name}`,
     tag: phaseTag(phase, standing, finished),
     body: phase.fixes_owed.map((owed) => ({ text: `⚑ fixes owed: ${owed}`, hang: 2 })),
     children: phase.tasks.map((task) => ({ title: `${task.parked.length > 0 ? '⚑' : TASK_GLYPH[task.status]} ${task.task} ${task.title}`, tag: taskTag(task) })),
@@ -354,4 +363,4 @@ function stopScreen(standing, finished) {
   return markerSection(standing) + stopped + section('DISPLAY: build stop report', CONTINUE_INSTRUCTION, report);
 }
 
-module.exports = { currentPhase, landingScreen, accountScreen, stepGateScreen, phaseMergeGateScreen, headlineScreen, progressScreen, stopScreen };
+module.exports = { landingScreen, accountScreen, stepGateScreen, phaseMergeGateScreen, headlineScreen, progressScreen, stopScreen };

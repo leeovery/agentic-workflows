@@ -10,10 +10,12 @@
 // answered, with its fix task, written as a phase past the cut and built
 // through the task loop with no phase review over it; the next round's
 // reads named, the area the fix changed alone, the test surface not read
-// again, passing and closing the review; then its report and the calls
-// decided for the person drawn; and finish — its checklist worked and
-// closed, its gate drawn, and its yes landing the fix phase and completing
-// the unit.
+// again, failing again, its fix phase built on the first's, left unlanded
+// in auto (14.S12, 7.2.6); round 3 reading the change both hold, passing
+// and closing the review; then its report and the calls decided for the
+// person drawn; and finish — its checklist worked and closed, its gate
+// drawn, and its yes landing both fix phases in order and completing the
+// unit.
 //
 // Layer: simulation. World: this file's own, built once from the project
 // every scenario starts from (pipeline-world.cjs) — a feature through its
@@ -39,6 +41,7 @@ const WU = 'ledger';
 const PASSED = '## Findings\n\nNone.\n\nVerdict: pass\n';
 const UNCHECKED = '## Findings\n\n- bug: the ledger never checks its hash on read\n  Scenario: an entry read back\n\nVerdict: fail\n';
 const UNEXPORTED = '## Findings\n\n- nit: the ledger has no export\n  Scenario: an entry exported\n\nVerdict: pass\n';
+const UNSALTED = '## Findings\n\n- bug: the ledger never salts its hash\n  Scenario: an entry hashed\n\nVerdict: fail\n';
 
 /** The verify setup the first task's builder builds: its files, by path. */
 const VERIFY_FILES = Object.freeze({
@@ -121,7 +124,7 @@ describe('pipeline simulation: the review phase', () => {
     sim.destroy();
   });
 
-  it('the review phase entered; the area\'s pair and the test reader briefed and reporting; a finding out of scope filed; the failing round\'s fix task built as a phase past the cut; the next round\'s reads named, reading the area it changed, passing and closing the review; its report and the calls drawn; finish landing the fix phase', () => {
+  it('the review phase entered; the area\'s pair and the test reader briefed and reporting; a finding out of scope filed; the failing round\'s fix task built as a phase past the cut; the next round\'s reads named, reading the area it changed and failing; its fix phase built on the first, round 3 reading both, passing and closing the review (14.S12); its report and the calls drawn; finish landing both fix phases', () => {
     sim.run(['enter', 'review', WU]);
     assert.ok(sim.sections.includes('reads: 1-the-work, the test surface (tests)\n'), sim.sections);
 
@@ -154,24 +157,40 @@ describe('pipeline simulation: the review phase', () => {
     taskBuilt(sim, '2.1', tree, { 'src/hash.js': 'export const hash = 1;\n' }, false);
     builders.remove(sim, tree);
 
-    // Round 2's reads named — the area the fix changed — read, passing, and closing the review.
+    // Round 2's reads named — the area the fix changed — read, failing again, its fix phase built on the first's, left unlanded in auto.
+    sim.run(['enter', 'review', WU]);
+    sim.run(['review', 'reads', WU, '1-the-work']);
+    for (const letter of ['a', 'b']) {
+      landed(placeIn(sim, sim.run(['brief', 'review-area', WU, '--area', '1', '--base', 'main', '--letter', letter]), 'Where your report goes'), letter === 'a' ? UNSALTED : PASSED);
+    }
+    writePhaseTasks(sim, WU, 3, 'Review fixes', [{ title: 'Salt the hash' }]);
+    sim.run(['review', 'round', WU, '--file', sim.write(`.leeway/.cache/${WU}/review/round.json`, {
+      can_now: ['Keep a ledger whose entries are checked.'],
+      findings: [{ area: '1-the-work', scope: 'in', call: 'bug', text: 'The hash is never salted.', from: ['1-the-work-a#1'], fix: '3.1' }],
+    })]);
+    const second = builders.make('agent-3');
+    taskBuilt(sim, '3.1', second, { 'src/salt.js': 'export const salt = 1;\n' }, false);
+    assert.strictEqual(git(sim.dir, ['merge-base', '--is-ancestor', 'feat/ledger-2.1-check-the-hash', 'feat/ledger-3.1-salt-the-hash']), '', 'round 2\'s fix is built on round 1\'s');
+    builders.remove(sim, second);
+
+    // Round 3 reads the change both fix phases hold, passing and closing the review.
     sim.run(['enter', 'review', WU]);
     sim.run(['review', 'reads', WU, '1-the-work']);
     for (const letter of ['a', 'b']) {
       landed(placeIn(sim, sim.run(['brief', 'review-area', WU, '--area', '1', '--base', 'main', '--letter', letter]), 'Where your report goes'), PASSED);
     }
-    assert.strictEqual(sim.run(['review', 'round', WU, '--file', sim.write(`.leeway/.cache/${WU}/review/round.json`, { can_now: ['Keep a ledger whose entries are checked.'], findings: [] })]).ends, true);
+    assert.strictEqual(sim.run(['review', 'round', WU, '--file', sim.write(`.leeway/.cache/${WU}/review/round.json`, { can_now: ['Keep a ledger whose entries are checked and salted.'], findings: [] })]).ends, true);
 
     sim.render(['review-report', WU], { expect: 'content' });
     sim.render(['review-calls', WU], { expect: 'content' });
 
-    // Finish: Claude's items marked, the checklist closed, the gate drawn, and the yes landing the fix phase and completing the unit.
+    // Finish: Claude's items marked, the checklist closed, the gate drawn, and the yes landing both fix phases in order and completing the unit.
     for (const { key, by, state } of JSON.parse(sim.read(['checklist', 'show', 'finish', WU])).items) {
       if (by === 'claude' && state === 'open') sim.run(['checklist', 'done', 'finish', WU, key]);
     }
     sim.run(['checklist', 'close', 'finish', WU]);
     sim.render(['finish', WU], { expect: 'content' });
     const finished = sim.run(['finish', 'yes', WU]);
-    assert.deepStrictEqual(finished.landed.map((/** @type {{phases: {phase: number}[]}} */ { phases }) => phases.map(({ phase }) => phase)), [[2]]);
+    assert.deepStrictEqual(finished.landed.map((/** @type {{phases: {phase: number}[]}} */ { phases }) => phases.map(({ phase }) => phase)), [[2, 3]]);
   });
 });
