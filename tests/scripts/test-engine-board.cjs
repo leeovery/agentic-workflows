@@ -24,6 +24,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { pathToFileURL } = require('url');
 const {
   ok, refusedPristine, treeSnapshot, head, git, cleanupFixture, withEnv, readState, readManifest, layout, holdLock, lockAttempts, statePath,
 } = require('./engine-harness.cjs');
@@ -36,7 +37,8 @@ const { storeBrief } = require(path.join(SCRIPTS, 'domain/brief.cjs'));
 const { issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { titlecase } = require(path.join(SCRIPTS, 'domain/conventions.cjs'));
 
-const FIXTURE = path.join(__dirname, '../fixtures/board/build.json');
+// The mod's tests import it, and can import nothing outside the mod's folder or named other than as code.
+const FIXTURE = path.join(__dirname, '../../skills/leeway-gates/tests/fixtures/board-build.mjs');
 
 let dir = ''; // the project
 let config = ''; // the system config: the conversations' folders
@@ -473,7 +475,7 @@ describe('the contract with the mod (14.16)', () => {
     await parkOn(['1.2']);
     issued('builder', '1.1', '2026-10-21T10:00:00.000Z');
     fs.rmSync(path.join(dir, '.leeway', UNIT, 'build/tasks/1.1/figures.json'));
-    const fixture = JSON.parse(fs.readFileSync(FIXTURE, 'utf8'));
+    const { default: fixture } = await import(pathToFileURL(FIXTURE).href);
     const answer = board();
     const forShape = (/** @type {any} */ held) => ({ ...held, view: { ...held.view, phases: held.view.phases.filter((/** @type {any} */ phase) => phase.tasks.length > 0) } });
 

@@ -31,9 +31,11 @@
  *
  * It registers the rest of what the mod does in a workflow conversation as
  * well: the spinner saying the phase (`spinner.ts`), the compaction — Claude
- * Code's own, the engine's note appended last (`compaction.ts`) — and each
+ * Code's own, the engine's note appended last (`compaction.ts`) — each
  * task's builder and reviewers recorded as they are dispatched
- * (`builder.ts`).
+ * (`builder.ts`), and the workflows board, its pane beside the conversation
+ * and its banner on a line of its own above the band's rows
+ * (`workflows-board.ts`).
  *
  * All of it happens in Claude Code's terminal app and the Desktop app's Code
  * tab alone, from 2.1.287. Elsewhere — the VS Code extension, Claude Code on
@@ -62,6 +64,7 @@ import {
   type Sends,
 } from './layout.ts'
 import { spinner } from './spinner.ts'
+import { workflowsBoard } from './workflows-board.ts'
 
 /** The payload's marker and the menu it sits directly above. */
 const GATE_MARKER = '=== GATE ('
@@ -734,6 +737,10 @@ async function readBack(
 }
 
 export const register: Register = on => {
+  // First, so its banner's hook wraps the band's: the banner takes its line
+  // above the rows, which are drawn in the rows it leaves.
+  workflowsBoard(on)
+
   let band = emptyBand()
 
   /** Whether a send is under way, so a press meanwhile cannot send twice. */

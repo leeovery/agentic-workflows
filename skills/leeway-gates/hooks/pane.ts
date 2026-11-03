@@ -1,0 +1,215 @@
+/**
+ * The workflows board's pane: its three tabs, This session following the
+ * session, and the pages the person opens over them.
+ *
+ * What the pane shows is where the person has gone on it (`Nav`): the tab,
+ * the unit the unit's tab was opened on, the pages opened over the tab, each
+ * with the name of what its back returns to, and the folding sections they
+ * opened. The engine answers each with the board's model for that place, so
+ * This session, with no page open, is whatever the session's position puts
+ * it at, and a page stays — asked for by its ref at every refresh — until
+ * the person presses back, however the session moves beneath it.
+ *
+ * The views are drawn by their kind (`views/`); a model this board does not
+ * know the version of is refused in a line, never drawn.
+ */
+import type { ElementTable, RenderElement } from 'claude-code'
+
+import { COLOUR, blank, cutTo, drawLine, foldKey, widthOf, type Button, type Kit, type Line, type Part } from './draw.ts'
+import { BOARD_VERSION, type Answer, type Board, type Tab } from './model.ts'
+import type { Views } from './views/index.ts'
+
+/** The pane's id, which its render and close name. */
+export const PANE = 'board'
+
+/** Its tab's title in Claude Code's tab row, beside sitrep's. */
+export const TITLE = 'workflows'
+
+/** The width and height it asks for. */
+export const SIZE = { columns: 60, rows: 28 }
+
+/** A page opened over a tab: its ref, and the name of what its back returns to. */
+export type Page = { ref: string; back: string }
+
+/** Where the person has gone on the pane (the header's). */
+export type Nav = {
+  tab: Tab
+  unit: string | null
+  pages: readonly Page[]
+  opened: ReadonlySet<string>
+}
+
+/** This session, at its top. */
+export const HOME: Nav = { tab: 'this', unit: null, pages: [], opened: new Set() }
+
+/** The keys a press on the pane addresses. */
+const TAB = 'tab:'
+const PAGE = 'page:'
+const FOLD = foldKey('')
+export const BACK = 'back'
+
+/** The key of a tab's button, and of a page's opener. */
+export const tabKey = (tab: Tab) => `${TAB}${tab}`
+export const pageKey = (ref: string) => `${PAGE}${ref}`
+
+/** What `engine board` is asked beyond the session's id, for where the person is. */
+export function argsOf({ tab, unit, pages }: Nav): string[] {
+  const page = pages.at(-1)
+
+  return [
+    ...(tab === 'this' ? [] : ['--tab', tab]),
+    ...(tab === 'unit' && unit !== null ? ['--unit', unit] : []),
+    ...(page === undefined ? [] : ['--page', page.ref]),
+  ]
+}
+
+/** A tab opened at its top, the unit's on the unit its tab names now. */
+function tabbed(nav: Nav, tab: string, board: Board | null): Nav | null {
+  if (tab === 'this' || tab === 'all') {
+    return { ...nav, tab, unit: null, pages: [] }
+  }
+
+  const unit = board?.unit?.unit
+
+  return tab === 'unit' && unit !== undefined ? { ...nav, tab, unit, pages: [] } : null
+}
+
+/**
+ * Where a press on `key` takes the person, from the board shown; null for a
+ * key that is not the pane's to answer.
+ */
+export function pressed(nav: Nav, key: string, board: Board | null, views: Views): Nav | null {
+  if (key.startsWith(TAB)) {
+    return tabbed(nav, key.slice(TAB.length), board)
+  }
+
+  if (key.startsWith(PAGE) && board !== null) {
+    const back = views[board.view.kind]?.name(board.view) ?? ''
+
+    return { ...nav, pages: [...nav.pages, { ref: key.slice(PAGE.length), back }] }
+  }
+
+  if (key === BACK) {
+    return { ...nav, pages: nav.pages.slice(0, -1) }
+  }
+
+  if (key.startsWith(FOLD)) {
+    const opened = new Set(nav.opened)
+    const section = key.slice(FOLD.length)
+
+    if (!opened.delete(section)) {
+      opened.add(section)
+    }
+
+    return { ...nav, opened }
+  }
+
+  return null
+}
+
+/** A tab's button, and whether it is the tab shown. */
+export type TabButton = Button & { isActive: boolean }
+
+/** What the pane draws: its tabs, where it has a board to draw, and its lines beneath them. */
+export type Framed = { tabs: TabButton[] | null; lines: Line[] }
+
+const THIS_SESSION = '⌂ This session'
+const ALL_WORK = '≡ All work'
+const TAB_GAP = '   '
+
+/** The tabs: This session, the unit's where there is one, All work; the unit's name cut to fit. */
+function tabsOf(board: Board, width: number): TabButton[] {
+  const room = width - widthOf([{ text: THIS_SESSION + ALL_WORK + TAB_GAP.repeat(2) }])
+  const unit: TabButton[] =
+    board.unit === null
+      ? []
+      : [{ key: tabKey('unit'), label: cutTo([{ text: `≡ ${board.unit.title}` }], room)[0]?.text ?? '', isActive: board.tab === 'unit' }]
+
+  return [
+    { key: tabKey('this'), label: THIS_SESSION, isActive: board.tab === 'this' },
+    ...unit,
+    { key: tabKey('all'), label: ALL_WORK, isActive: board.tab === 'all' },
+  ]
+}
+
+/** The rule beneath the tabs, heavy and lavender under the tab shown. */
+function ruleOf(tabs: readonly TabButton[], width: number): Line {
+  const parts: Part[] = tabs.flatMap((tab, at) => [
+    ...(at === 0 ? [] : [{ text: '─'.repeat(TAB_GAP.length), color: COLOUR.rule }]),
+    tab.isActive
+      ? { text: '━'.repeat([...tab.label].length), color: COLOUR.thisView }
+      : { text: '─'.repeat([...tab.label].length), color: COLOUR.rule },
+  ])
+
+  return { key: 'tabs:rule', parts: [...parts, { text: '─'.repeat(Math.max(0, width - widthOf(parts))), color: COLOUR.rule }] }
+}
+
+/** The way back from the page on top, naming what it returns to. */
+const backOf = (page: Page): Line[] => [
+  { key: BACK, parts: [], button: { key: BACK, label: page.back === '' ? '← back' : `← back to ${page.back}` } },
+  blank(BACK),
+]
+
+/** The line refusing a version this board does not draw. */
+const refusal = (version: unknown): Line => ({
+  key: 'refused',
+  wraps: true,
+  parts: [
+    {
+      text: `This board draws version ${BOARD_VERSION} of the engine's board, and the engine answers version ${String(version)}: nothing is drawn until they match.`,
+      color: COLOUR.body,
+    },
+  ],
+})
+
+/**
+ * What the pane draws for the engine's answer: the tabs and their rule,
+ * then the way back from a page, then the view; a version refused, its line
+ * alone; with nothing answered, only the way back from a page.
+ */
+export function framed(answer: Answer, nav: Nav, views: Views, kit: Kit): Framed {
+  const page = nav.pages.at(-1)
+  const back = page === undefined ? [] : backOf(page)
+
+  if (answer === null) {
+    return { tabs: null, lines: back }
+  }
+
+  if (answer.kind === 'refused') {
+    return { tabs: null, lines: [refusal(answer.version)] }
+  }
+
+  const { board } = answer
+  const tabs = tabsOf(board, kit.width)
+
+  return {
+    tabs,
+    lines: [ruleOf(tabs, kit.width), blank('tabs'), ...back, ...(views[board.view.kind]?.lines(board.view, kit) ?? [])],
+  }
+}
+
+/** The width the pane's lines take inside its padding. */
+export const widthIn = (bodyColumns: number) => Math.max(30, bodyColumns - 2)
+
+/** The tabs as buttons, the one shown lavender. */
+const drawTabs = (els: ElementTable, tabs: readonly TabButton[]) =>
+  els.Box({
+    key: 'tabs',
+    children: tabs.flatMap((tab, at) => [
+      ...(at === 0 ? [] : [els.Text({ children: [TAB_GAP] })]),
+      els.Button({
+        key: tab.key,
+        plain: true,
+        onPress: () => undefined,
+        children: [els.Text({ bold: tab.isActive, color: tab.isActive ? COLOUR.thisView : COLOUR.secondary, children: [tab.label] })],
+      }),
+    ]),
+  })
+
+/** The pane as drawn. */
+export const drawPane = (els: ElementTable, { tabs, lines }: Framed): RenderElement =>
+  els.Box({
+    flexDirection: 'column',
+    paddingX: 1,
+    children: [...(tabs === null ? [] : [drawTabs(els, tabs)]), ...lines.map(line => drawLine(els, line))],
+  })
