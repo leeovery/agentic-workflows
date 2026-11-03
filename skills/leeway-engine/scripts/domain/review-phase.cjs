@@ -35,7 +35,11 @@
 //   phase (14.6.3) — no count of rounds ends it — which is over once that
 //   round's fix tasks, nits alone where it passed, are done: no area is read
 //   again for them (13.4.4, 13.10.1). Any other round is followed by the
-//   next, once its fix tasks are done.
+//   next, once its fix tasks are done — and in step once its fix phase has
+//   merged too, which stops at its gate as any phase merge does (14.6.2,
+//   7.2.4), so the next round reads the tree it merged into, each phase
+//   below it merging first, a fix phase built on them (7.2.6); in auto the
+//   fix phases land at finish.
 // - Round 1 reads every area and the test surface. Each later round reads
 //   the areas Claude names once the fix tasks are done, from what they
 //   changed (`review reads`, at `review/round-{N}-reads.json`, the
@@ -65,7 +69,7 @@
 const fs = require('fs');
 const crypto = require('crypto');
 const path = require('path');
-const { statePath, stateRoot } = require('../kernel/state-root.cjs');
+const { statePath } = require('../kernel/state-root.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { tryGit } = require('../kernel/git.cjs');
 const { writeJsonAtomic, isObject } = require('../kernel/manifest-io.cjs');
@@ -79,8 +83,7 @@ const { claudesCall } = require('./ledger-events.cjs');
 const { isCurrent, factsOf } = require('./ledger-fold.cjs');
 const { resolveId } = require('./ledger-ids.cjs');
 const { handedTag } = require('./topic-map.cjs');
-const { withStateLock } = require('./state-worktree.cjs');
-const { trackedLists } = require('./task-verbs.cjs');
+const { reading, phaseLists, mergeWaiting } = require('./phase-checks.cjs');
 const { shownTask } = require('./task-id.cjs');
 
 /** @typedef {import('./ledger-read.cjs').Shower} Shower */
@@ -213,29 +216,36 @@ function fixedReads(areas, round) {
 const STATUS_WORDS = Object.freeze({ open: 'not started', 'in-progress': 'in progress' });
 
 /**
- * The last round's fix tasks neither done nor closed, each with where it
- * stands: what comes after that round waits on them (14.3.3).
+ * What comes after the last round waits on (14.3.3): its fix tasks neither
+ * done nor closed, each with where it stands; and once none is, in step,
+ * the lowest phase up to its fix phase whose stack waits at its merge gate
+ * (`mergeWaiting`, phase-checks.cjs) — that fix phase's own, or one below
+ * it a switch from auto left unmerged — null where none waits.
  * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {RoundRecord[]} rounds
- * @returns {string[]}
+ * @returns {{waiting: string[], merging: number|null}}
  */
 function fixesWaiting(cwd, unit, manifest, rounds) {
   const last = rounds.at(-1);
-  if (last === undefined || fixesOf(last).length === 0) return [];
-  const [rows] = withStateLock(stateRoot(cwd), () => trackedLists(cwd, unit, [fixPhase(manifest, rounds.length)])).phases;
-  const statuses = new Map((rows ?? []).map(({ ref, status }) => [shownTask(ref), status]));
-  return fixesOf(last).filter((fix) => !['done', 'closed'].includes(statuses.get(fix) ?? ''))
+  if (last === undefined || fixesOf(last).length === 0) return { waiting: [], merging: null };
+  const phase = fixPhase(manifest, rounds.length);
+  const at = reading(cwd, unit, manifest);
+  const statuses = new Map((phaseLists(at, [phase])[0] ?? []).map(({ ref, status }) => [shownTask(ref), status]));
+  const waiting = fixesOf(last).filter((fix) => !['done', 'closed'].includes(statuses.get(fix) ?? ''))
     .map((fix) => `${fix} ${STATUS_WORDS[statuses.get(fix) ?? ''] ?? 'not in the tracker'}`);
+  return { waiting, merging: waiting.length > 0 ? null : mergeWaiting(at, phase) };
 }
 
 /**
  * Where the review phase stands: the spec's areas; the rounds recorded; the
  * round under review, or the last recorded once a round ended the phase;
  * whether one did, and whether the phase is over; the last round's fix
- * tasks waiting; the reads the round under review must take; and those it
- * takes — null for a later round whose areas Claude has not yet named.
+ * tasks waiting; in step, the fix phase whose merge the round under review
+ * waits on, null where none; the reads the round under review must take;
+ * and those it takes — null for a later round whose areas Claude has not
+ * yet named.
  * @typedef {{
  *   areas: Area[], rounds: RoundRecord[], round: number, ended: boolean, over: boolean,
- *   waiting: string[], required: string[], reads: string[]|null,
+ *   waiting: string[], merging: number|null, required: string[], reads: string[]|null,
  * }} ReviewStanding
  */
 
@@ -243,12 +253,12 @@ function fixesWaiting(cwd, unit, manifest, rounds) {
 function reviewStanding(cwd, unit, manifest) {
   const areas = specAreas(cwd, unit);
   const rounds = recordedRounds(cwd, unit);
-  const waiting = fixesWaiting(cwd, unit, manifest, rounds);
+  const { waiting, merging } = fixesWaiting(cwd, unit, manifest, rounds);
   const last = rounds.at(-1);
-  if (last === undefined) return { areas, rounds, round: 1, ended: false, over: false, waiting, required: everyRead(areas), reads: everyRead(areas) };
-  if (endsReview(last)) return { areas, rounds, round: rounds.length, ended: true, over: waiting.length === 0, waiting, required: [], reads: [] };
+  if (last === undefined) return { areas, rounds, round: 1, ended: false, over: false, waiting, merging, required: everyRead(areas), reads: everyRead(areas) };
+  if (endsReview(last)) return { areas, rounds, round: rounds.length, ended: true, over: waiting.length === 0, waiting, merging: null, required: [], reads: [] };
   const round = rounds.length + 1;
-  return { areas, rounds, round, ended: false, over: false, waiting, required: fixedReads(areas, last), reads: namedReads(cwd, unit, round) };
+  return { areas, rounds, round, ended: false, over: false, waiting, merging, required: fixedReads(areas, last), reads: namedReads(cwd, unit, round) };
 }
 
 /** How the round that ended the review phase did, as a sentence says it. @param {string} unit @param {ReviewStanding} standing */
@@ -271,6 +281,9 @@ function endedRefusal(unit, standing) {
 /** Why a round cannot be read yet: the round before's fix tasks not done. @param {ReviewStanding} standing */
 const waitingWords = ({ round, waiting }) => `round ${round} is read once every fix task of round ${round - 1} is done — task ${waiting.join(', task ')}`;
 
+/** The fix phase whose merge the round under review waits on, in step, and its gate. @param {string} unit @param {number} phase */
+const mergingWords = (unit, phase) => `phase ${phase} waits at its gate: render phase-merge-gate ${unit} ${phase}`;
+
 /** A round's reads as a line names them, the test surface by its name. @param {string[]} reads */
 const readsWords = (reads) => reads.map((read) => (read === TESTS ? `the test surface (${TESTS})` : read)).join(', ');
 
@@ -278,12 +291,15 @@ const readsWords = (reads) => reads.map((read) => (read === TESTS ? `the test su
 const unnamedWords = (unit, { round, required }) => `round ${round}'s areas are not yet named — review reads ${unit} <area> …, from what round ${round - 1}'s fix tasks changed, among them ${readsWords(required)}`;
 
 /**
- * Why no round is under review, or null: one ended the phase, or the round
- * before's fix tasks wait.
+ * Why no round is under review, or null: one ended the phase, the round
+ * before's fix tasks wait, or, in step, its fix phase's merge.
  * @param {string} unit @param {ReviewStanding} standing @returns {string|null}
  */
 function openRefusal(unit, standing) {
-  return endedRefusal(unit, standing) ?? (standing.waiting.length > 0 ? waitingWords(standing) : null);
+  const ended = endedRefusal(unit, standing);
+  if (ended !== null) return ended;
+  if (standing.waiting.length > 0) return waitingWords(standing);
+  return standing.merging === null ? null : `round ${standing.round} is read once round ${standing.round - 1}'s fix phase has merged — ${mergingWords(unit, standing.merging)}`;
 }
 
 /**
@@ -415,7 +431,7 @@ const inTheBuild = ({ phase }) => BUILD_PHASES.includes(phase);
 
 module.exports = {
   TESTS, TESTS_LETTER, specAreas, reportNames, recordedRounds, fixesOf, endsReview, fixPhase, reviewStanding, everyRead,
-  endedWords, endedRefusal, openRefusal, roundRefusal, readsWords,
+  endedWords, endedRefusal, openRefusal, roundRefusal, readsWords, mergingWords,
   reviewFolder, roundRecordPath, roundReportFile, roundChecksFile, roundReadsPath, roundFolder, areaReportPath,
   takeSnapshot, openSnapshot, snapshotRound, dropSnapshot, treeChanges, unitCalls, reviewCallFault, forThePerson, inTheBuild,
 };

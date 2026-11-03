@@ -18,9 +18,10 @@
 // (13.3.4, 2.4.6); the verb's answer, the account, every round's reports
 // and the figures committed in one state commit (12.S42), the figures the
 // task's own change across its repositories, a stack's earlier task and a
-// submodule's pointer not counted, its criteria, and when it started — the
-// tracker's, outliving a state merge that drops the start's commit — and
-// finished (15.3.4); a failed last round
+// submodule's pointer not counted, its criteria, its additions, whoever
+// made them (13.11.3), and when it started — the tracker's, outliving a
+// state merge that drops the start's commit — and finished (15.3.4); a
+// failed last round
 // settled by the orchestrator, then the task's account taken, a later round
 // passing or not (13.4.6); and every refusal writing and committing nothing
 // — a last round with a bug standing (13.S3) and no repository holding the
@@ -353,12 +354,13 @@ describe('task account (12.14.4, 6.3.13)', () => {
     return path.join(folder(), name);
   };
 
-  it('12.S42, 13.S4: a task through two rounds, its last passing on a nit — the account, both rounds\' four reports and its figures committed in one state commit, the figures answered', () => {
+  it('12.S42, 13.S4: a task through two rounds, its last passing on a nit — the account, both rounds\' four reports and its figures committed in one state commit, the figures answered, counting every addition the task holds, whoever made it (13.11.3)', () => {
+    for (const by of ['orchestrator', 'person']) ok(dir, ['task', 'add', UNIT, '1.2', '--file', fileOf('addition.md', 'Mask the reprint.\n'), '--by', by]);
     const res = withFrozenClock(take);
 
     const started = DRIVER.started(statePath(dir), TASK);
     assert.match(started, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
-    const figures = { files: 4, added: 7, removed: 1, criteria: 3, started, finished: FROZEN_AT };
+    const figures = { files: 4, added: 7, removed: 1, criteria: 3, additions: 2, started, finished: FROZEN_AT };
     assert.deepStrictEqual(res, { ok: true, task: '1.2', id: 'pay-1-2', rounds: 2, figures, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim() });
     assert.strictEqual(lastMessage(dir), 'task(pay): account 1.2');
     assert.deepStrictEqual(touched(statePath(dir), 'HEAD'), [

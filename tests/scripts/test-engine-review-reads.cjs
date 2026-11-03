@@ -3,13 +3,14 @@
 // ---------------------------------------------------------------------------
 // `engine review reads <unit> <area|tests> …` (leeway-engine/scripts/domain/
 // review-verbs.cjs, its records review-phase.cjs): a later round's reads
-// named once the round before's fix tasks are done, every read whose
-// findings made fix tasks among them — each finding's area and each read
-// whose report holds an item it answers — the test surface read only where
-// named or its findings made one, areas added and never dropped, written in
-// the spec's order and committed (14.3.3); and what it refuses, writing
-// nothing. The round's snapshot taken there, and `review accept-tree`, are
-// test-engine-review-tree.cjs's.
+// named once the round before's fix tasks are done — in step, once their
+// phase has merged too (14.6.2) — every read whose findings made fix tasks
+// among them — each finding's area and each read whose report holds an
+// item it answers — the test surface read only where named or its findings
+// made one, areas added and never dropped, written in the spec's order and
+// committed (14.3.3). What it refuses is
+// test-engine-review-reads-refusals.cjs's; the round's snapshot taken
+// there, and `review accept-tree`, test-engine-review-tree.cjs's.
 //
 // Layer: verb. World: review-world.cjs's, copied for each test.
 // ---------------------------------------------------------------------------
@@ -18,8 +19,8 @@ require('./hermetic-env.cjs');
 
 const { describe, it } = require('node:test');
 const {
-  UNIT, EVERY, useWorld, env, enter, reported, named, recorded, firstRoundReady, fixBuilt, stateText, lastStateCommit, RECEIPT,
-  ok, refusedPristine, assert,
+  UNIT, EVERY, RECEIPT, useWorld, env, enter, reported, named, recorded, firstRoundReady, fixBuilt, stateText, lastStateCommit,
+  refusedPristine, assert,
 } = require('./review-world.cjs');
 
 /** @type {string} */
@@ -80,33 +81,5 @@ describe('review reads: a later round\'s reads named (14.3.3)', () => {
 
     assert.strictEqual(brief, 'the test surface is not read in round 2, which reads 1-cards');
     assert.deepStrictEqual(JSON.parse(stateText(`${UNIT}/review/round-2.json`)).reports, ['1-cards-a.md', '1-cards-b.md']);
-  });
-
-  it('refused, writing nothing: round 1, a unit whose review phase cannot be entered, a name no area\'s, a read whose findings made fix tasks left out, a read named before dropped, fix tasks waiting, and a review over', () => {
-    enter();
-    const first = refused(['reads', UNIT, '1-cards']);
-    const half = refused(['reads', 'half', '1-cards']);
-    firstRoundReady();
-    reported(1, EVERY, { '1-cards-a': ['bug: The receipt is never sent.'], 'tests-a': ['bug: No test sends a receipt.'] });
-    recorded({ can_now: [], findings: [RECEIPT, { area: 'tests', scope: 'in', call: 'bug', text: 'No test sends a receipt.', from: ['tests-a#1'], fix: '3.1' }] });
-    const waiting = refused(['reads', UNIT, '1-cards', 'tests']);
-    fixBuilt(3, 1, 'Send the receipt', 'main', 'src/send.js');
-    enter();
-    const unknown = refused(['reads', UNIT, '1-cards', '3-reports', 'tests', 'cards']);
-    const leftOut = refused(['reads', UNIT, '1-cards']);
-    named(['1-cards', '2-refunds', 'tests']);
-    const dropped = refused(['reads', UNIT, '1-cards', 'tests']);
-
-    assert.deepStrictEqual([first, half, waiting, unknown, leftOut, dropped], [
-      'review reads: round 1 reads every area and the test surface (tests) — a later round\'s are named',
-      'review reads: half\'s review phase starts once every phase of its cut has closed — phase 2 of 2 has not: enter implementation half',
-      'review reads: round 2 is read once every fix task of round 1 is done — task 3.1 not started',
-      `review reads: 3-reports, cards are no area of ${UNIT}'s spec — name its areas by 1-cards, 2-refunds, tests`,
-      'review reads: round 2 reads every area whose findings made fix tasks in round 1, and leaves out the test surface (tests)',
-      'review reads: round 2 already reads 2-refunds — areas are added, never dropped',
-    ]);
-    reported(2, EVERY);
-    recorded({ can_now: [], findings: [] });
-    assert.strictEqual(refused(['reads', UNIT, '1-cards']), `review reads: ${UNIT}'s review phase passed in round 2 — finish is next`);
   });
 });

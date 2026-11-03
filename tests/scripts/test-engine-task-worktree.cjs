@@ -21,7 +21,9 @@
 // checkout, refused with the way on, which lays it out once followed; every
 // refusal making nothing. Git layer: the task worktree world (task-worktree-world.cjs),
 // built once and copied for each test, an isolation's worktree beside the
-// project for each builder. Taking the worktree apart as the task ends, and
+// project for each builder; a task of one of the review's fix phases made
+// on the unit's work not landed below it, at its tip in each repository
+// holding it (7.2.6). Taking the worktree apart as the task ends, and
 // tasks side by side: test-engine-task-worktree-end.cjs.
 // ---------------------------------------------------------------------------
 
@@ -32,8 +34,9 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { ok, refuses, git, tip, createFile, initRepo, addSubmodule, statePath } = require('./engine-harness.cjs');
-const { NESTED, NESTED_TASKS, followRemedy } = require('./landing-world.cjs');
+const { ok, refuses, git, tip, createFile, initRepo, addSubmodule, statePath, commitAll, FROZEN_AT } = require('./engine-harness.cjs');
+const { createManifest } = require('./discovery-test-utils.cjs');
+const { NESTED, NESTED_TASKS, TRACKER, followRemedy } = require('./landing-world.cjs');
 const { readPosition } = require('../../skills/leeway-engine/scripts/domain/conversation.cjs');
 const {
   SIDE, UNIT, FEES, SHOW, CAP, taskWorktreeWorld, as, building, isolation, layOut, layOutOrRefusal, madeIn, checkoutsOf,
@@ -41,6 +44,12 @@ const {
 
 const { rates, cache } = NESTED_TASKS;
 const project = taskWorktreeWorld('engine-task-worktree-');
+
+/** A cut of two phases, so phase 3 is the review's fixes of round 1 once both have closed, as their closes record it. */
+const CUT = Object.freeze({
+  phases: [1, 2].map((phase) => ({ name: `Phase ${phase}`, goal: 'Fees are charged.', scenarios: [], sections: [String(phase)], relies_on: [] })),
+});
+const CUT_CLOSED = Object.fromEntries([1, 2].flatMap((phase) => ['start', 'close'].map((at) => [`phase-${phase}-${at}`, { items: {}, closed: FROZEN_AT }])));
 
 /**
  * Task 3.1 laid out at `tree`, each refusal's way on followed from the
@@ -79,6 +88,27 @@ describe('task worktree: every repository laid out (12.7.10, 7.2.21)', () => {
     assert.notStrictEqual(tip(at.lib, NESTED.lib.into), tip(at.lib, 'HEAD'), 'the clone\'s own checkout is elsewhere');
     assert.deepStrictEqual([tip(at.dir, 'worktree-agent-a'), git(tree, ['status', '--porcelain'])], [was.head, was.status]);
     assert.deepStrictEqual(readPosition(session)?.tasks, [{ task: '3.1', builder: null, reviewers: [], worktree: tree }]);
+  });
+
+  it('makes a task of one of the review\'s fix phases on the unit\'s work not landed below it, at that work\'s tip in each repository holding it — refused, making nothing, where the worktree has changes not committed (7.2.6)', () => {
+    const at = project();
+    const { show } = NESTED_TASKS;
+    createManifest(at.dir, UNIT, { build: { position: 'auto' }, cut: CUT, checklists: CUT_CLOSED });
+    for (const n of [1, 2]) TRACKER.done(statePath(at.dir), { unit: UNIT, phase: 1, n });
+    TRACKER.close(statePath(at.dir), { unit: UNIT, phase: 2, n: 1 }, 'not needed');
+    commitAll(at.dir, 'the cut closed, its work not landed');
+    const session = building(at.dir, ['3.1']);
+    const [a, b] = ['a', 'b'].map((name) => isolation(at.dir, name));
+    createFile(b, 'app.txt', 'my edit\n');
+    const before = madeIn(at);
+
+    const dirty = refuses(b, layOut('3.1'), as(session)).error;
+    const refused = madeIn(at);
+    ok(a, layOut('3.1'), as(session));
+
+    assert.strictEqual(dirty, `task worktree: ${FEES} is made at ${tip(at.dir, show.branch).slice(0, 7)}, where the work below it not landed ends, and ${b} has changes not committed: app.txt, so nothing was laid out — commit them, or move them out of the way, then run it again`);
+    assert.deepStrictEqual(refused, before);
+    assert.deepStrictEqual(checkoutsOf(a), [[FEES, tip(at.dir, show.branch)], [FEES, tip(at.ext, rates.branch)], [FEES, tip(at.lib, rates.branch)]]);
   });
 
   it('answers each repository laid out already where it is run again, making nothing', () => {

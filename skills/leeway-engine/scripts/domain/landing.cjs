@@ -5,10 +5,13 @@
 // through the project's landing driver (drivers.cjs): `open` the task's pull
 // request, `chain` it into its phase's stack, merge a `phase` whole, and
 // `finish`, which merges every phase still standing — the review phase's fix
-// phases, after every other (7.2.6). `chain` refuses a task its pair has
-// not passed, read off its rounds' reports (round-report.cjs, 12.1.4); and
-// `phase` a phase the cut holds until its phase review has passed and its
-// fixes are done, as the phase's close reads it (phase-checks.cjs, 7.2.4).
+// phases, after every other (7.2.6). `open` refuses a task of a fix phase
+// whose branch does not descend from the unit's work not landed below it,
+// which a fix phase is built on (review-change.cjs, 7.2.6); `chain` a task
+// its pair has not passed, read off its rounds' reports (round-report.cjs,
+// 12.1.4); and `phase` a phase the cut holds until its phase review has
+// passed and its fixes are done, as the phase's close reads it
+// (phase-checks.cjs, 7.2.4).
 // Which of a unit's tasks landed — each one a default branch's landing
 // names — is read here for the phase's close and the build's standing
 // (`landedTasks`); and, for the close in step, whether a phase's tasks are
@@ -91,9 +94,10 @@ const { messageOf } = require('../kernel/call.cjs');
 const { projectRepos, projectPath, childrenFirst } = require('../kernel/repos.cjs');
 const { STATE_DIR_NAME } = require('../kernel/state-root.cjs');
 
-// A phase's checks, loaded at their call: they read what landed through
-// this module.
+// A phase's checks, and what a fix phase is built on, loaded at their call:
+// they read what landed through this module.
 const phaseChecks = () => require('./phase-checks.cjs');
+const reviewChange = () => require('./review-change.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** @typedef {import('./drivers.cjs').LandingDriver} LandingDriver */
@@ -478,11 +482,36 @@ function standing(driver, ctx, task) {
 }
 
 /**
+ * Refuse a task of one of the review's fix phases whose branch, in a
+ * repository holding the unit's work not landed below it, does not descend
+ * from that work's tip, which a fix phase is built on (7.2.6,
+ * review-change.cjs) — or refused as that work's read refuses.
+ * @param {string} cwd @param {Project} project @param {LandingTask} task
+ */
+function refuseOffBase(cwd, project, task) {
+  const { phase } = task.ref;
+  let base;
+  try {
+    base = reviewChange().fixBase(cwd, project.unit, phase);
+  } catch (err) {
+    throw new Error(`land: ${messageOf(err)}`);
+  }
+  for (const [dir, tip] of base) {
+    const repo = /** @type {Repo} */ (project.repos.find((held) => held.dir === dir));
+    if (!lg.branches(repo.path).has(task.branch) || lg.isAncestor(repo.path, `refs/heads/${tip}`, `refs/heads/${task.branch}`)) continue;
+    inRepo(dir === '' ? '.' : dir, () => {
+      throw new Error(`land: task ${shownTask(task.ref)}'s branch ${task.branch} does not descend from ${tip}, where ${project.unit}'s work not landed below phase ${phase} ends, which a fix phase is built on (7.2.6) — merge it back onto ${tip} first, then open it again`);
+    });
+  }
+}
+
+/**
  * The task's pull request opened in every repository its change touches —
  * locally, its change squashed onto its phase's branch there — under the
  * type and title the tracker holds for it; `already` where it is opened
  * wherever it touches, so a rerun reads finished work as done. A task the
- * tracker lacks is refused as the read finds it.
+ * tracker lacks is refused as the read finds it; a fix phase's off the
+ * work below it, before anything opens.
  * @param {string} cwd @param {string} unit @param {string} task shown, `{phase}.{n}`
  */
 function landOpen(cwd, unit, task) {
@@ -492,6 +521,7 @@ function landOpen(cwd, unit, task) {
   const lacking = `land: task ${shown} of ${unit} is not in the tracker — open a task it holds, as \`task list ${unit} ${ref.phase}\` lists them`;
   const { committed, warnings, ...held } = trackedTask(cwd, ref, lacking);
   const { task: landing, holding } = carrying(warnings ?? [], () => landingOf(project, ref, held));
+  carrying(warnings ?? [], () => refuseOffBase(cwd, project, landing));
   return withDriver(cwd, (driver) => {
     const steps = touching(project, driver, landing, holding).map(({ ctx, tip }) => ({ ctx, act: () => driver.open(ctx, landing, tip) }));
     const already = steps.length === 0 ? { already: true } : {};

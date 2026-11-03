@@ -44,13 +44,13 @@
 const fs = require('fs');
 const { statePath, stateRoot } = require('../kernel/state-root.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
-const { STATUS_WORDS, buildStanding, builtUnit, ownInFlight } = require('./build-entry.cjs');
+const { STATUS_WORDS, phaseNamed, buildStanding, builtUnit, ownInFlight } = require('./build-entry.cjs');
 const { reading, cutPhases, phaseLists, phaseLanded, reviewRefusalOf } = require('./phase-checks.cjs');
 const { trackedTask, trackedLists, goingOn, phaseOpen, turnRefusal, ENDED } = require('./task-verbs.cjs');
 const { engineItemsHold } = require('./checklist.cjs');
 const { fieldOf, criteriaTexts, criterionWords, holdsScenario, namesScenario } = require('./task-file.cjs');
 const { finishedUnits } = require('./ledger-units.cjs');
-const { accountPath, figuresPath, readAccount } = require('./task-account.cjs');
+const { accountPath, takenFigures, readAccount } = require('./task-account.cjs');
 const { taskRounds } = require('./round-report.cjs');
 const { phaseStack, tipCommits } = require('./phase-stack.cjs');
 const { runsOf } = require('./runs.cjs');
@@ -71,12 +71,6 @@ const {
 /** @typedef {import('./projections/build.cjs').AccountView} AccountView */
 /** @typedef {{dotpath?: string, item?: string, file?: string}} Args */
 
-/** A phase's name: the cut's, or for a phase past it, the review's fixes of its round (P14). @param {Record<string, any>} manifest @param {number} phase */
-function phaseNamed(manifest, phase) {
-  const cut = cutPhases(manifest);
-  return phase <= cut.length ? cut[phase - 1].name ?? '' : `the review's fixes, round ${phase - cut.length}`;
-}
-
 /** A task as the tracker holds it, read as every read of the tracker is. @param {string} cwd @param {TaskRef} ref @returns {TaskDetail} */
 const taskOf = (cwd, ref) => withStateLock(stateRoot(cwd), () => trackedTask(cwd, ref));
 
@@ -89,12 +83,6 @@ function namedTask(cwd, { dotpath: unit = '', item }, surface) {
   const manifest = builtUnit(cwd, unit);
   const ref = parseShownTask(unit, item);
   return { manifest, ref, task: taskOf(cwd, ref) };
-}
-
-/** The figures `task account` took, or null where it has not. @param {string} cwd @param {TaskRef} ref @returns {import('./projections/build.cjs').Figures|null} */
-function takenFigures(cwd, ref) {
-  const file = statePath(cwd, figuresPath(ref));
-  return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null;
 }
 
 /** How a task's review ended: in which round, and whether passed or settled. @param {Round[]} rounds @returns {Reviewed} */

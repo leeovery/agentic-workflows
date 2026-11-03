@@ -43,7 +43,7 @@ const hasReviewPhase = ({ manifest }) => manifest.work_type !== 'quick-fix';
  * @param {Reading} at @returns {{refused: string, standing: null}|{refused: null, standing: ReviewStanding}}
  */
 const reviewRead = (at) => once(at, 'review', () => {
-  const refused = reviewRefusal(at.manifest);
+  const refused = reviewRefusal(at.cwd, at.manifest);
   return refused === null ? { refused, standing: reviewStanding(at.cwd, at.unit, at.manifest) } : { refused, standing: null };
 });
 

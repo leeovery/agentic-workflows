@@ -51,6 +51,15 @@ function buildFinished(manifest) {
 }
 
 /**
+ * Whether a phase is one of the review phase's fix phases: numbered past
+ * the cut of a build through every phase of it (P14, 14.3.2).
+ * @param {Record<string, any>} manifest @param {number} phase
+ */
+function isFixPhase(manifest, phase) {
+  return buildFinished(manifest) && phase > manifest.cut.phases.length;
+}
+
+/**
  * Whether the unit was built under the old plan: its old spec's, planning's
  * or implementation's items standing on its manifest, which 29.17's cut
  * takes (P12).
@@ -1185,6 +1194,7 @@ module.exports = {
   phaseStarted,
   phaseClosed,
   buildFinished,
+  isFixPhase,
   legacyBuild,
   buildByCut,
   phaseStatus,

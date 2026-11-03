@@ -2,10 +2,12 @@
 
 // ---------------------------------------------------------------------------
 // The build's gates in step (leeway-engine/scripts/domain/build-screens.cjs,
-// drawn by domain/projections/build.cjs) — the gate after a task and the gate
-// before a phase's stack merges. The screens that report are
-// test-engine-build-screens.cjs; step's one task at a time,
-// test-engine-build-step.cjs.
+// drawn by domain/projections/build.cjs): the gate after a task and the gate
+// before a phase's stack merges. A task at its gate as the build's standing
+// gives it, and as its entry takes it over after a /clear, is
+// test-engine-build-gates-standing.cjs's; the screens that report,
+// test-engine-build-screens.cjs's; step's one task at a time,
+// test-engine-build-step.cjs's.
 //
 // Layer: verb. World: the build screens' world (build-screens-world.cjs),
 // built once and copied; a test that needs a phase of the review's fixes

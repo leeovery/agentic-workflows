@@ -4,10 +4,12 @@
 // Domain ring: what the engine checks of a build phase as it starts and
 // closes (6.4.8, 6.4.9) — the engine's items of the phase checklists
 // (checklist.cjs), worked out at each call and never kept (6.4.3); the
-// refusal of `land phase` before the phase review passed (landing.cjs); and
-// what the build's standing reads of a phase (build-entry.cjs). A phase is
-// one the unit's cut holds: the review phase's fix phases, numbered past
-// it, have no checklists (P14).
+// refusal of `land phase` before the phase review passed (landing.cjs);
+// what the build's standing reads of a phase (build-entry.cjs); and, in
+// step, the lowest phase whose stack waits at its merge gate, which the
+// build's and the review phase's entries put before what comes after it
+// (review-entry.cjs, review-phase.cjs). A phase is one the unit's cut holds:
+// the review phase's fix phases, numbered past it, have no checklists (P14).
 //
 // - Its tasks written: each of the phase's scenarios — a phase of the cut
 //   names one at least — an acceptance scenario of exactly one task of it
@@ -132,6 +134,23 @@ function phaseLanded(at, phase) {
   const rows = liveRows(at, phase);
   const landed = once(at, 'landed', () => landedTasks(at.cwd, at.unit));
   return rows.length > 0 && rows.every(({ ref }) => landed.has(shownTask(ref)));
+}
+
+/**
+ * In step, the lowest phase up to `last` whose stack waits to merge — one
+ * of the cut once closed, its stack then at its gate, or one of the
+ * review's fixes, with a task not closed not landed — the one whose merge
+ * may land first, each stack built on those below it (7.2.4, 7.2.6); null
+ * in auto, and where none waits.
+ * @param {Reading} at @param {number} last @returns {number|null}
+ */
+function mergeWaiting(at, last) {
+  if (at.manifest.build?.position !== 'step') return null;
+  const cut = cutPhases(at.manifest).length;
+  const phases = Array.from({ length: last }, (_, i) => i + 1);
+  phaseLists(at, phases);
+  const unmerged = (/** @type {number} */ phase) => liveRows(at, phase).length > 0 && !phaseLanded(at, phase);
+  return phases.find((phase) => (phase > cut || phaseClosed(at.manifest, phase)) && unmerged(phase)) ?? null;
 }
 
 /** The phase's tasks written: each phase scenario held by exactly one task not closed (12.4.3). @param {Reading} at @param {number} phase */
@@ -322,6 +341,6 @@ function reviewRefusalOf(at, phase) {
 }
 
 module.exports = {
-  reading, once, cutPhases, phaseLists, phaseTasks, phaseLanded, fixesOwed,
+  reading, once, cutPhases, phaseLists, phaseTasks, phaseLanded, mergeWaiting, fixesOwed, passed,
   tasksWritten, reliedOnDone, tasksPassed, phaseReviewFaults, scenariosReported, notesConsolidated, stackMerged, closeRefusal, phaseReviewRefusal, reviewRefusalOf,
 };

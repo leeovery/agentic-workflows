@@ -248,16 +248,25 @@ const recorded = (account) => ok(dir, ['review', 'round', UNIT, '--file', payloa
 /** `review round` refused, nothing written: its error. @param {object|string} account */
 const refusedRound = (account) => refusedPristine(dir, ['review', 'round', UNIT, '--file', payload('round.json', account)], { env: env() }).error;
 
-/** A task of the unit's written in the tracker. @param {number} phase @param {string} title @param {string} reference */
-function taskMade(phase, title, reference) {
+/** A task of the unit's — `unit`'s, where given — written in the tracker. @param {number} phase @param {string} title @param {string} reference @param {string} [unit] */
+function taskMade(phase, title, reference, unit = UNIT) {
   const file = payload('task.md', taskText(title, reference));
-  return ok(dir, ['task', 'create', UNIT, String(phase), '--file', file]);
+  return ok(dir, ['task', 'create', unit, String(phase), '--file', file]);
 }
 
 /** A fix phase written, its tasks made. @param {number} phase @param {[string, string][]} tasks */
 function fixPhaseWritten(phase, tasks) {
   ok(dir, ['task', 'phase', UNIT, String(phase), '--title', `Review fixes ${phase}`]);
   for (const [title, reference] of tasks) taskMade(phase, title, reference);
+}
+
+/** The unit switched to step. */
+const inStep = () => createManifest(dir, UNIT, { ...readManifest(dir, UNIT), build: { position: 'step' } });
+
+/** Task 2.2 written in the cut's last phase and done, its branch not landed: the phase's stack waits to merge — at its gate, in step. */
+function cutUnmerged() {
+  taskMade(2, 'Refund twice', '§2.1');
+  fixBuilt(2, 2, 'Refund twice', 'main', 'src/twice.js');
 }
 
 /** A fix task's branch, as the landing names it. @param {number} phase @param {number} n @param {string} title */
@@ -316,10 +325,15 @@ function firstRoundReady() {
   fixPhaseWritten(3, [['Send the receipt', '§1.2']]);
 }
 
-/** Round 1 recorded failing, its fix task 3.1 built and done, and round 2 under review: entered, area 1 named its read, its reports written, `found` its findings. @param {Record<string, string[]>} [found] */
-function secondRoundReady(found = {}) {
+/** Round 1 recorded failing, area 1's finding fixed by task 3.1, not yet built. */
+function firstRoundFailed() {
   firstRoundReady();
   recorded({ can_now: ['Pay by card.'], findings: [RECEIPT] });
+}
+
+/** Round 1 recorded failing, its fix task 3.1 built and done, and round 2 under review: entered, area 1 named its read, its reports written, `found` its findings. @param {Record<string, string[]>} [found] */
+function secondRoundReady(found = {}) {
+  firstRoundFailed();
   fixBuilt(3, 1, 'Send the receipt', 'main', 'src/send.js');
   enter();
   named(['1-cards']);
@@ -334,7 +348,7 @@ function storedBriefs() {
 
 module.exports = {
   UNIT, OTHER, ENGINE, SESSION_ID, areaText, AREAS, EVERY, FIVE, calls,
-  useWorld, env, enter, payload, reportText, reported, named, recorded, refusedRound, fixPhaseWritten, fixBranch, fixBuilt, fixClosed, commitFile, data, stateText, lastStateCommit, issued, storedBriefs,
-  decided, reviewCall, filed, FOUND, RECEIPT, FAILING, firstRoundReady, secondRoundReady,
+  useWorld, env, enter, inStep, payload, reportText, reported, named, recorded, refusedRound, taskMade, fixPhaseWritten, cutUnmerged, fixBranch, fixBuilt, fixClosed, commitFile, data, stateText, lastStateCommit, issued, storedBriefs,
+  decided, reviewCall, filed, FOUND, RECEIPT, FAILING, firstRoundReady, firstRoundFailed, secondRoundReady,
   ok, okSections, refusedPristine, statePath, writeState, readManifest, git, stateGit, createManifest, initRepo, assert,
 };

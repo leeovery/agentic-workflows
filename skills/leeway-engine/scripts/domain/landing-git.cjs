@@ -56,7 +56,8 @@
 //   remedy names is quoted for the shell, and what the person wrote that a
 //   refusal names — a subject, a title, a path — never opens a command.
 // - A task's worktree (task-worktree.cjs) is laid out by the same git: its
-//   branch made in place at the worktree's own commit, or switched to, and
+//   branch made in place at the worktree's own commit or the commit a fix
+//   phase is built on, or switched to, and
 //   a worktree of each child repository added on it, none recursing into a
 //   submodule nor tracking a branch; and each child worktree removed as git
 //   removes a clean one.
@@ -658,13 +659,13 @@ function holderOf(root, branch, trees = worktrees(root)) {
 const CHECKOUT_PINS = ['-c', 'submodule.recurse=false'];
 
 /**
- * A branch made at a worktree's own commit and checked out there, tracking
- * nothing: no file and no index entry changes, so the worktree stays where
- * it is.
- * @param {string} tree @param {string} branch
+ * A branch made at `start` and checked out in a worktree, tracking nothing:
+ * made at the worktree's own commit, no file and no index entry changes, so
+ * the worktree stays where it is.
+ * @param {string} tree @param {string} branch @param {string} start
  */
-function branchInPlace(tree, branch) {
-  git(tree, [...CHECKOUT_PINS, 'switch', '-q', '--no-track', '-c', branch]);
+function branchInPlace(tree, branch, start) {
+  git(tree, [...CHECKOUT_PINS, 'switch', '-q', '--no-track', '-c', branch, start]);
 }
 
 /**

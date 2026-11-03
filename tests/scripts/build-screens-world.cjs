@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------------------
 // What the build's screens suites share (test-engine-build-screens.cjs, the
 // screens that report; test-engine-build-gates.cjs, the gates;
+// test-engine-build-gates-standing.cjs, a task at its gate;
 // test-engine-build-step.cjs, step's one task at a time): the world, built
 // once a process and copied (`buildScreensWorld`), and over a test's
 // project and system config, the calls its tests make (`buildScreenHelpers`).
@@ -17,7 +18,8 @@
 // its account taken after the orchestrator settled its one failed round,
 // nothing differing from it. Task 1.3, linked after 1.2, has no account.
 // Five questions are asked, waiting where a test parks them; and a test may
-// park a task on a replacement of the call for 1.2 (`proposeOn`).
+// park a task on a replacement of the call for 1.2 (`proposeOn`), and enter
+// the build in another conversation, as a /clear leaves it (`takenOver`).
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -25,7 +27,9 @@ require('./hermetic-env.cjs');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { ok, okSectionsAsync, output, refusedPristine, git, writeState, layout, commitAll, fixtureFrom, FROZEN_AT } = require('./engine-harness.cjs');
+const {
+  ok, okSections, okSectionsAsync, output, refusedPristine, git, writeState, createFile, layout, commitAll, fixtureFrom, FROZEN_AT,
+} = require('./engine-harness.cjs');
 const { createManifest, templateFolder } = require('./discovery-test-utils.cjs');
 const { raiseHelpers } = require('./raise-world.cjs');
 
@@ -235,7 +239,20 @@ function buildScreenHelpers(dir, config) {
     await okSectionsAsync(dir(), ['raise', `${UNIT}.implementation`, '--replaces', made.printed, '--reason', 'was-wrong', '--parks', task], { env: conversation(), stdin: JSON.stringify(call) });
   }
 
-  return { env, screen, refused, position, parkOn, proposeOn };
+  /**
+   * The build entered in another conversation, as a /clear leaves it, the
+   * build's skill installed: the entry's phase 1 and in-flight lines, then
+   * that conversation's recovery note's in-flight lines.
+   */
+  function takenOver() {
+    createFile(dir(), '.claude/skills/leeway-implementation-process/SKILL.md', '# The build\n');
+    const conversation = { ...env(), CLAUDE_CODE_SESSION_ID: 'sess-2', CLAUDE_PID: String(process.pid) };
+    const lines = okSections(dir(), ['enter', 'implementation', UNIT], { env: conversation }).sections.split('\n');
+    const note = output(dir(), ['conversation', 'position'], { env: conversation }).split('\n');
+    return [...lines.filter((line) => /^(phase: phase 1 |in flight: )/.test(line)), ...note.filter((line) => line.startsWith('in flight: '))];
+  }
+
+  return { env, screen, refused, position, parkOn, proposeOn, takenOver };
 }
 
 module.exports = { UNIT, QUESTIONS, CALL, ACCOUNT_DRAWN, taskText, reportOf, buildScreensWorld, buildScreenHelpers };

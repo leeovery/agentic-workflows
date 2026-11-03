@@ -5,17 +5,20 @@
 // its records review-phase.cjs): `engine enter review <unit>`. What it
 // refuses, naming the way on and writing nothing — what the build's entry
 // refuses, and a build whose cut has a phase not closed, each such phase
-// named (14.6.1); another session holding the checkout's code stopped at the
+// named (14.6.1), or in step a stack of it waiting at its merge gate, the
+// gate named (7.2.4); another session holding the checkout's code stopped at the
 // build's code gate, nothing written, `--take` entering (12.7.8, 12.S50);
 // the snapshot of the working tree outside `.leeway/` taken for round 1 at
 // its entry where none is held, never by entering again (14.1.5); the answer:
 // the round under review, the spec's areas, never merged, five as one (14.2.1,
 // 14.2.3), the reads the round takes — every area and the test surface at
 // round 1, then those `review reads` named, from the areas whose findings
-// made fix tasks (14.3.3) — the fix tasks waited on, none closed, each
-// round's report, the spec, the record and the build's log; once a round
-// ends the review phase, how it ended and what is next; and the recovery
-// note, re-reading what the entry reads (24.2.2).
+// made fix tasks (14.3.3) — the fix tasks waited on, none closed, and in
+// step their phase's merge at its gate (14.6.2), each round's report, the
+// spec, the record and the build's log; once a round ends the review phase,
+// how it ended and what is next; and the recovery note, re-reading what the
+// entry reads (24.2.2). A fix task in flight there, taken over at the
+// entry, is test-engine-review-fix-tasks.cjs's.
 //
 // Layer: verb. World: review-world.cjs's, copied for each test.
 // ---------------------------------------------------------------------------
@@ -27,7 +30,7 @@ const fs = require('fs');
 const path = require('path');
 const { output } = require('./engine-harness.cjs');
 const {
-  UNIT, ENGINE, SESSION_ID, AREAS, EVERY, FIVE, RECEIPT, useWorld, env, enter, reported, named, recorded, refusedRound, firstRoundReady, fixPhaseWritten, fixBuilt, fixClosed, data,
+  UNIT, inStep, ENGINE, SESSION_ID, AREAS, EVERY, FIVE, RECEIPT, FAILING, useWorld, env, enter, reported, named, recorded, refusedRound, firstRoundFailed, fixPhaseWritten, cutUnmerged, fixBuilt, fixClosed, data,
   ok, okSections, refusedPristine, statePath, writeState, git, stateGit, assert,
 } = require('./review-world.cjs');
 
@@ -60,12 +63,6 @@ const AREA_LINES = ['area: 1-cards — §1 Cards', 'area: 2-refunds — §2 Refu
 /** A round's report's line. @param {number} round */
 const reportLine = (round) => `round report: ${statePath(dir, `${UNIT}/review/round-${round}.md`)}`;
 
-/** Round 1 recorded failing, area 1's finding fixed by task 3.1, not yet built. */
-function firstRoundFailed() {
-  firstRoundReady();
-  recorded({ can_now: ['Pay by card.'], findings: [RECEIPT] });
-}
-
 /** The reads line while round 2's are not yet named. */
 const UNNAMED = `reads: not yet named — once round 1's fix tasks are done, review reads ${UNIT} names them from what those changed, among them 1-cards`;
 
@@ -79,6 +76,14 @@ describe('enter review: what cannot be entered is refused, naming the way on, an
       'fresh\'s build has not begun — ready to build\'s yes begins it: render ready-to-build fresh',
       `review is entered at the work unit — name no topic: engine enter review ${UNIT}`,
     ]);
+  });
+
+  it('in step, a build whose cut has a stack waiting at its merge gate, naming the gate; in auto, its stacks waiting for finish, it is entered (7.2.4)', () => {
+    cutUnmerged();
+    const entered = enter().res.entered;
+    inStep();
+
+    assert.deepStrictEqual([entered, refused([UNIT])], [true, `${UNIT} builds in step, and its review phase is entered once every phase of its cut has merged — phase 2 waits at its gate: render phase-merge-gate ${UNIT} 2`]);
   });
 });
 
@@ -162,11 +167,29 @@ describe('the answer: the round under review, the spec\'s areas, and what the ro
     assert.strictEqual(enter().sections, data(['round: round 2', ...AREA_LINES, 'reads: 1-cards, 2-refunds', reportLine(1), ...readsAfter()]));
   });
 
-  it('a fix task closed waits on nothing', () => {
+  it('in step, once the fix tasks are done, waits on their phase\'s merge at its gate until each not closed has landed (14.6.2)', () => {
+    inStep();
+    enter();
+    reported(1, EVERY, { ...FAILING, '2-refunds-b': ['bug: A refund names no charge.'] });
+    fixPhaseWritten(3, [['Send the receipt', '§1.2'], ['Name the charge', '§2.1']]);
+    recorded({ can_now: [], findings: [RECEIPT, { area: '2-refunds', scope: 'in', call: 'bug', text: 'A refund names no charge.', from: ['2-refunds-b#1'], fix: '3.2' }] });
+    fixBuilt(3, 1, 'Send the receipt', 'main', 'src/send.js');
+    fixClosed(3, 2);
+    const merging = enter().sections;
+    git(dir, ['commit', '-q', '--allow-empty', '-m', `feat(${UNIT}): landed`, '-m', `Task: ${UNIT}-3-1`]);
+
+    const unnamed = `reads: not yet named — once round 1's fix tasks are done and their phase has merged, review reads ${UNIT} names them from what those changed, among them 1-cards, 2-refunds`;
+    assert.strictEqual(merging, data(['round: round 2', ...AREA_LINES, unnamed, `merge waiting: phase 3 waits at its gate: render phase-merge-gate ${UNIT} 3`, reportLine(1), ...readsAfter()]));
+    assert.strictEqual(enter().sections, data(['round: round 2', ...AREA_LINES, unnamed, reportLine(1), ...readsAfter()]));
+  });
+
+  it('a fix task closed waits on nothing — in step, no merge of its phase either', () => {
+    inStep();
     firstRoundFailed();
     fixClosed(3, 1);
 
-    assert.strictEqual(enter().sections, data(['round: round 2', ...AREA_LINES, UNNAMED, reportLine(1), ...readsAfter()]));
+    const unnamed = `reads: not yet named — once round 1's fix tasks are done and their phase has merged, review reads ${UNIT} names them from what those changed, among them 1-cards`;
+    assert.strictEqual(enter().sections, data(['round: round 2', ...AREA_LINES, unnamed, reportLine(1), ...readsAfter()]));
   });
 
   it('once a round passes with no fix task, the review phase is over, finish next, and nothing is read', () => {

@@ -262,6 +262,17 @@ describe('the spinner', () => {
     expect(textOf(await drawn($, spinnerOf('terminal')))).toBe('Implementing task 2.4…')
   })
 
+  test('at the review phase, a fix task in flight by its number, several by their count', async ($, on) => {
+    const { places } = world(on, { positions: { s0: { name: 'pay', phase: 'review', topic: 'pay', tasks: inFlight('3.1') } } })
+
+    expect(textOf(await drawn($, spinnerOf('terminal')))).toBe('Reviewing task 3.1…')
+
+    places({ name: 'pay', phase: 'review', topic: 'pay', tasks: inFlight('3.1', '3.2') })
+    await $.tool.call({ tool: 'Bash', command: `${ENGINE} task start pay 3.2` })
+
+    expect(textOf(await drawn($, spinnerOf('terminal')))).toBe('Reviewing 2 tasks…')
+  })
+
   test('the tracker\'s verbs move the word: a task started comes on it, beside any others, and off it once done or closed', async ($, on) => {
     const unit = { name: 'pay', phase: 'implementation', topic: 'pay' }
     const { places } = world(on, { positions: { s0: unit } })

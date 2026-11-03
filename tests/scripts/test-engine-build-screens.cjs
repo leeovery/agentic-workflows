@@ -11,7 +11,8 @@
 // Layer: verb. Worlds, each built once and copied: the build screens' world
 // (build-screens-world.cjs), and a second made from it with its five
 // questions parked — Q1 and Q5 on task 1.1, Q2 and Q4 on 1.2, Q3 on 2.1 —
-// which the tests of five questions waiting copy.
+// which the tests of five questions waiting copy. The review's fix phases
+// on these screens: test-engine-review-fix-phases.cjs.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -276,15 +277,15 @@ describe('the headline (12.12.4)', () => {
 });
 
 describe('the build\'s phases and tasks, printed when asked (12.12.11, 7.4.2)', () => {
-  it('each phase of the cut with its state, its tasks with theirs and what holds them — a task after another, a phase after one it relies on — and a phase not yet written drawn from the cut, under the step marker naming the position (12.S51, 3.S19)', () => {
+  it('each phase of the cut with its state, its tasks with theirs and what holds them — a task at its gate, not running, a task after another, a phase after one it relies on — and a phase not yet written drawn from the cut, under the step marker naming the position (12.S51, 3.S19, 12.7.9)', () => {
     const out = screen(['build-progress', UNIT]);
 
     assert.strictEqual(sectionOf(out, 'DISPLAY: build marker'), '**`□ Build (phase 1 of 3) · step`**\n');
     assert.strictEqual(sectionOf(out, 'DISPLAY: build progress'), [
-      '0 of 4 tasks done · 1 running',
+      '0 of 4 tasks done · 0 running',
       '',
       '  ├─ Phase 1 of 3 · Cards         [running]',
-      '  │  ├─ ◐ 1.1 Take a card         [in progress]',
+      '  │  ├─ ● 1.1 Take a card         [at its gate]',
       '  │  ├─ ○ 1.2 Show a receipt      [not started]',
       '  │  └─ ○ 1.3 Mail the receipt    [after 1.2]',
       '  │',

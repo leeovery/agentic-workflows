@@ -9,7 +9,9 @@
 // question, a merge or a move of it, a replacement or a keep of the decision
 // it would replace. The others are held behind it in the answer's receipt
 // (questions.cjs), their gate (build-screens.cjs) and their briefs
-// (brief.cjs). The gates themselves are test-engine-build-gates.cjs.
+// (brief.cjs), and after a /clear in the build's entry, its recovery note
+// and its progress (build-entry.cjs). The gates themselves are
+// test-engine-build-gates.cjs.
 //
 // Layer: verb. World: the build screens' world (build-screens-world.cjs),
 // built once and copied; a test that needs a phase of the review's fixes
@@ -44,7 +46,7 @@ afterEach(() => {
   fs.rmSync(config, { recursive: true, force: true });
 });
 
-const { env, screen, refused, position, parkOn, proposeOn } = buildScreenHelpers(() => dir, () => config);
+const { env, screen, refused, position, parkOn, proposeOn, takenOver } = buildScreenHelpers(() => dir, () => config);
 const { conversation, answer } = raiseHelpers(() => dir, () => config, CALL);
 
 /** The question `name` drawn and answered, its lean picked unless `pick` says: the answer's receipt. @param {string} name @param {string} [pick] */
@@ -229,5 +231,24 @@ describe('the task in flight where more than one goes on (12.7.9)', () => {
 
     assert.strictEqual(refused(['step-gate', UNIT, '1.2']), behind('render step-gate', '1.1', '1.2'));
     assert.strictEqual(sectionOf(screen(['step-gate', UNIT, '1.1']), 'DISPLAY: step gate'), `${ACCOUNT_DRAWN}\n`);
+  });
+
+  it('after a /clear, the entry and its recovery note take the one held behind over saying it goes on once the task in flight is done, no builder going to it until then, and the progress draws it behind, running no more (build-entry.cjs)', async () => {
+    await parkOn(['1.1']);
+    ok(dir, ['task', 'start', UNIT, '1.2'], { env: env() });
+    answered('Q1');
+    const lines = takenOver();
+    const progress = sectionOf(screen(['build-progress', UNIT]), 'DISPLAY: build progress').split('\n');
+
+    const held = 'in flight: task 1.1, behind the task in flight — it goes on once that task is done, and no builder goes to it until then';
+    const atGate = 'in flight: task 1.2, at its gate — it waits on the person\'s go there, the gate drawn again with render step-gate pay 1.2, and its builder is never sent afresh';
+    assert.deepStrictEqual(lines, ['phase: phase 1 of 3, "Cards": running — tasks 1.1 behind the task in flight, 1.2 at its gate, 1.3 not started', held, atGate, held, atGate]);
+    assert.deepStrictEqual(progress.slice(0, 5), [
+      '0 of 4 tasks done · 0 running',
+      '',
+      '  ├─ Phase 1 of 3 · Cards         [running]',
+      '  │  ├─ ◌ 1.1 Take a card         [behind the task in flight]',
+      '  │  ├─ ● 1.2 Show a receipt      [at its gate]',
+    ]);
   });
 });
