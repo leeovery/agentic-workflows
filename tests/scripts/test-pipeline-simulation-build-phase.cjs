@@ -21,7 +21,9 @@
 // report and the phase review's landing where their readers find them, one
 // reviewer failing it, its fixes owed until the orchestrator settles it; the
 // stack merged at the gate before it, in step, and the phase's close taken on
-// the engine's items alone, the build's progress reading it merged.
+// the engine's items alone, the build's progress reading it merged and
+// the board drawing it complete, as it drew the task building from its
+// builder's brief.
 //
 // Layer: simulation. World: this file's own, built once from the project
 // every scenario starts from (pipeline-world.cjs) — a feature through its
@@ -85,6 +87,8 @@ describe('pipeline simulation: a phase of the cut', () => {
     assert.match(sim.render(['build-headline', wu, '--file', headline]), /▪ Starting 1 task\n\n {2}└─ 1\.1 Write the ledger\n/, 'the headline names the task as it starts (12.12.4)');
     const builder = sim.run(['brief', 'builder', wu, '1.1']);
     const account = placeIn(sim, builder, 'Where your account goes');
+    const board = () => JSON.parse(sim.read(['board', sim.env.CLAUDE_CODE_SESSION_ID])).view;
+    assert.deepStrictEqual(board().phases[0].tasks.map(({ task, state }) => ({ task, state })), [{ task: '1.1', state: 'building' }], 'the board draws the task building since its builder\'s brief (20.5.2, P15)');
 
     // The builder lays its task out in the worktree its isolation made, and
     // builds, commits and proves it there (12.7.10, 15.2.14).
@@ -157,5 +161,7 @@ describe('pipeline simulation: a phase of the cut', () => {
     assert.match(sectionOf(sim.render(['build-progress', wu]), 'DISPLAY: build progress'), /^1 of 1 task done · 0 running\n\n {2}└─ Phase 1 of 1 · The work +\[merged\]\n/, 'the build\'s progress reads its phase merged');
     assert.deepStrictEqual(buildEntry(sim, wu).filter((line) => line.startsWith('phase: ')), ['phase: phase 1 of 1, "The work": merged — tasks 1.1 done'],
       'the build\'s one phase reads merged');
+    const { phases: [phase], progress } = board();
+    assert.deepStrictEqual([phase.state, progress.done, progress.total], ['complete', 1, 1], 'the board draws the phase complete, its one task done');
   });
 });

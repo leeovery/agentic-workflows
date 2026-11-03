@@ -600,6 +600,7 @@ const EXEMPT_CALLS = [
   ['render', 'migration-gate'],
   ['gate', 'migration gate', '--pick', 'y'],
   ['measures', 'findings'],
+  ['board', 'sess-1'],
 ];
 
 describe('engine writes take the writer lock', () => {

@@ -321,9 +321,12 @@ describe('every screen names a topic through one helper', () => {
       'derivations.cjs › titled › goesBy(titles, topic)',
     ],
     'a work unit, or the project': [
+      'board.cjs › unitAt › unit',
       'leeway-continue-epic/scripts/gateway.cjs › view › workUnit',
       'mail.cjs › sendReportOf › unit',
       'mail.cjs › topicSender › unit',
+      'projections/board-all.cjs › allView › name',
+      'projections/board-all.cjs › workLine › manifest.name',
       'projections/discovery-gates.cjs › approveMapScreen › unit',
       'projections/discovery-gates.cjs › startDisplay › name',
       'projections/mail.cjs › sendReport › unit',
@@ -406,6 +409,12 @@ describe('every screen names a topic through one helper', () => {
       'render.cjs › inboxRoadmapGate › item.name',
       'render.cjs › parkGate › name',
       'render.cjs › postponeStatement › target.name',
+    ],
+    'an experiment, by its slug where the question it measures is not on the ledger': [
+      'projections/board-experiment.cjs › experimentView › record.slug',
+    ],
+    'a spike, by its folder\'s slug': [
+      "projections/board-discovery.cjs › spikesAt › spike.replace(/^\\d+-/, '')",
     ],
   };
 

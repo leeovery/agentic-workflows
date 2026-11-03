@@ -922,12 +922,12 @@ const specReviewRows = (cwd, workUnit) => derivationRows(agentDir(cwd, workUnit,
 
 /**
  * The unit's review passes whose report was taken in, in the order they
- * were dispatched, each bound to a land: with its report's file, the
- * findings it was taken in with, its status, and the findings it was
- * acknowledged with and surfaced. A pass refused, or closed in flight, is
+ * were dispatched, each bound to a land: when it was dispatched, its
+ * report's file, the findings it was taken in with, its status, and the
+ * findings it was acknowledged with and surfaced. A pass refused, or closed in flight, is
  * never taken in. Read as a derivation reads, tolerant of the store.
  * @param {string} cwd @param {string} workUnit
- * @returns {{id: string, land: Landed, file: string, findings: ReportFinding[], status: string, acknowledged: string[], surfaced: string[], raised: {finding: string, replaces: string, reason: string, mark: string|null}[]}[]}
+ * @returns {{id: string, created: string, land: Landed, file: string, findings: ReportFinding[], status: string, acknowledged: string[], surfaced: string[], raised: {finding: string, replaces: string, reason: string, mark: string|null}[]}[]}
  */
 function reportedPasses(cwd, workUnit) {
   const dir = agentDir(cwd, workUnit, UNIT_PHASE, workUnit);
@@ -935,6 +935,7 @@ function reportedPasses(cwd, workUnit) {
     .filter((row) => row.land !== undefined && takenIn(row))
     .map((row) => ({
       id: row.id,
+      created: String(row.created),
       land: row.land,
       file: path.join(dir, `${row.id}.md`),
       findings: row.report_findings,
@@ -951,7 +952,8 @@ function reportedPasses(cwd, workUnit) {
  * its report on disk for a scan to take in, its agent running, or lost with
  * the process that dispatched it. A dispatch bound to none has had no
  * brief, its own among them while it is drawn, so no agent was sent on it.
- * @param {string} cwd @param {string} workUnit @returns {{id: string, digest: string, stands: 'landed'|'running'|'lost'}[]}
+ * Each says when it was dispatched.
+ * @param {string} cwd @param {string} workUnit @returns {{id: string, created: string, digest: string, stands: 'landed'|'running'|'lost'}[]}
  */
 function passesInFlight(cwd, workUnit) {
   const startOf = startTimeReader();
@@ -959,7 +961,7 @@ function passesInFlight(cwd, workUnit) {
   const standing = (row) => (contentFileExists(row, cwd, workUnit) ? 'landed' : ownerAlive(row, startOf) ? 'running' : 'lost');
   return specReviewRows(cwd, workUnit)
     .filter((row) => row.status === 'in-flight' && row.land !== undefined)
-    .map((row) => ({ id: row.id, digest: row.land.digest, stands: standing(row) }));
+    .map((row) => ({ id: row.id, created: String(row.created), digest: row.land.digest, stands: standing(row) }));
 }
 
 /**
@@ -986,6 +988,7 @@ module.exports = {
   abandonEarlierPasses,
   completedReviewCycles,
   reviewArming,
+  agentDir,
   agentRows,
   agentsLeft,
   runningAgents,

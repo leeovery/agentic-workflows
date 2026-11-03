@@ -88,6 +88,7 @@ const { MIGRATE_USAGE, runMigrateVerb } = require('./domain/directives.cjs');
 const { REVIEW_USAGE, runReviewVerb } = require('./domain/review-verbs.cjs');
 const { FINISH_USAGE, runFinishVerb } = require('./domain/finish.cjs');
 const { MEASURES_USAGE, runMeasuresVerb } = require('./domain/measures.cjs');
+const { BOARD_USAGE, boardOf } = require('./domain/board.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, clearOwnQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { arriveAt, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
 const { markConversation, endConversation, isAgentId } = require('./domain/conversation.cjs');
@@ -310,6 +311,7 @@ ${VERIFY_USAGE.replace(/^/gm, '  ')}
 ${REVIEW_USAGE.replace(/^/gm, '  ')}
   ${FINISH_USAGE}
   ${MEASURES_USAGE}
+  ${BOARD_USAGE}
   brownfield record <native|skipped|accepted|completed>
   walkthrough record <walked|skipped>
   handoff <skill|/skill> [args …]
@@ -1488,6 +1490,22 @@ function runMeasures(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
+// board — the workflows board's view model, read for the gate mod's pane and
+// banner (domain/board.cjs). A read: it writes nothing, the conversation's
+// mark among it.
+// ---------------------------------------------------------------------------
+
+/** @param {Call} call @param {string[]} argv */
+function runBoard(call, argv) {
+  const { opts, positional } = parseArgs(argv);
+  try {
+    respond(call, boardOf(call.cwd, positional, opts));
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // migrate — a directive of the migration checked (domain/directives.cjs).
 // ---------------------------------------------------------------------------
 
@@ -2531,6 +2549,7 @@ const COMMANDS = Object.freeze({
   review: runReview,
   finish: runFinish,
   measures: runMeasures,
+  board: runBoard,
 });
 
 // Every command dispatched runs whole under the writer lock, its writes and
@@ -2560,7 +2579,7 @@ const COMMANDS = Object.freeze({
 // conversation's folder; and the rest read: `layout guard` among them, run
 // before every file Claude writes, `brief guard`, before every dispatch of
 // an agent, `shell guard`, before every shell command, `checklist show`,
-// `migrate check` and `measures`.
+// `migrate check`, `measures` and `board`.
 // `manifest` takes it to write alone, `commit` but for a code commit
 // (`--paths`), and a brief's fill whole, since its read of the task may
 // commit the tracker's set-up.
@@ -2588,6 +2607,7 @@ const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */
   migrate: ['check'],
   verify: '*',
   measures: '*',
+  board: '*',
 }));
 
 /** @param {string[]} argv @returns {boolean} */
@@ -2624,10 +2644,18 @@ function runCli(call, argv) {
 // shell command, whether it ran the workflows or not.
 const HOOK_TARGETS = ['presence cleanup', 'session cleanup', 'session resume', 'conversation end', ...GUARD_VERBS];
 
+// The commands the gate mod runs for whatever conversation it draws, whether
+// that one runs the workflows or not.
+const MOD_READS = ['board'];
+
+/** Whether a command marks the conversation that ran it. @param {string[]} argv */
+const marks = (argv) => !HOOK_TARGETS.includes(argv.slice(0, 2).join(' ')) && !MOD_READS.includes(argv[0]);
+
 /**
  * One command against a bound call, answering its exit code — later, for
  * the argv `ANSWERS_LATER` says waits. Whatever the exit, a command
- * the conversation ran marks it as one that runs the workflows; one that
+ * the conversation ran marks it as one that runs the workflows — but a
+ * hook's or the mod's, run for any conversation; one that
  * answered records the gate its MENU stated as the gate the conversation was
  * shown, where a failed one showed none. Both after the command, which may
  * take the folder both live in: boot's tidy-up deletes one whose transcript
@@ -2639,7 +2667,7 @@ function dispatch(call, argv) {
   return withVerbReads(() => {
     openGate();
     const settle = (/** @type {number} */ code) => {
-      if (!HOOK_TARGETS.includes(argv.slice(0, 2).join(' '))) markConversation(call.cwd);
+      if (marks(argv)) markConversation(call.cwd);
       if (code === 0) recordGateShown();
       return code;
     };

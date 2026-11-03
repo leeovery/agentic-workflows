@@ -157,7 +157,16 @@ function byAddress(a, b) {
  * @returns {{changed: string[], removed: string[]}}
  */
 function changedSince(before, text) {
-  const now = sectionPrints(text);
+  return changedBetween(before, sectionPrints(text));
+}
+
+/**
+ * The sections changed between the prints `before` and `now`, as
+ * `changedSince` reads them, `now` in the spec's order.
+ * @param {Record<string, string>} before @param {Map<string, string>} now
+ * @returns {{changed: string[], removed: string[]}}
+ */
+function changedBetween(before, now) {
   return {
     changed: [...now].filter(([address, print]) => before[address] !== print).map(([address]) => address),
     removed: Object.keys(before).filter((address) => !now.has(address)).sort(byAddress),
@@ -326,7 +335,34 @@ function sectionsToReview(cwd, unit, text) {
   return { ...changedSince(last?.land.sections ?? {}, text), since: last?.id ?? null };
 }
 
-/** A gap waiting on the person: what it is, and the raise that puts it to them again. @typedef {{gap: string, again: string}} Gap */
+/**
+ * A gap waiting on the person: what it is, its entry's words, and the raise
+ * that puts it to them again; the entry it is about — the question, or the
+ * decision a replacement would replace — whole and short, when that entry
+ * was made and what it cites; and the pass that raised a replacement, null
+ * for a question.
+ * @typedef {{
+ *   gap: string, text: string, again: string,
+ *   entry: string, short: string, at: string, cites: {path: string, section: string}[], pass: string|null,
+ * }} Gap
+ */
+
+/** What a gap says of the entry it is about. @param {string} id @param {import('./unit-entries.cjs').UnitEntry|undefined} entry */
+function gapEntry(id, entry) {
+  const line = entry?.line ?? {};
+  return {
+    text: String(line.text ?? ''), entry: id, short: entry?.short ?? id, at: String(line.at ?? ''), cites: /** @type {Gap['cites']} */ (Array.isArray(line.cites) ? line.cites : []),
+  };
+}
+
+/**
+ * Whether a unit's entry is a question asked at its own level at the spec
+ * and still open.
+ * @param {import('./ledger-fold.cjs').Folded} folded @param {string} unit @param {string} id @param {import('./unit-entries.cjs').UnitEntry} entry
+ */
+function openAtSpec(folded, unit, id, { kind, stands }) {
+  return kind === 'question' && stands.unit === unit && stands.topic === null && factsOf(folded, id).phase === UNIT_PHASE && questionStands(folded, id) === 'open';
+}
 
 /**
  * The gaps waiting on the person: the current questions asked at the unit's
@@ -338,14 +374,18 @@ function sectionsToReview(cwd, unit, text) {
  * @returns {Gap[]}
  */
 function waitingGaps(cwd, unit, warnings) {
-  const raised = reportedPasses(cwd, unit).flatMap((pass) => pass.raised);
+  const raised = reportedPasses(cwd, unit).flatMap((pass) => pass.raised.map((raise) => ({ ...raise, pass: pass.id })));
   return withUnitEntries(cwd, unit, warnings, ({ folded, entries, short }) => [
-    ...[...entries].flatMap(([id, { short: gap, kind, stands }]) => {
-      const asked = kind === 'question' && stands.unit === unit && stands.topic === null && factsOf(folded, id).phase === UNIT_PHASE;
-      return asked && questionStands(folded, id) === 'open' ? [{ gap: `the gap ${gap}, asked at the spec,`, again: `engine raise ${unit}.specification --answers ${gap}` }] : [];
-    }),
+    ...[...entries].flatMap(([id, entry]) => (openAtSpec(folded, unit, id, entry)
+      ? [{ gap: `the gap ${entry.short}, asked at the spec,`, again: `engine raise ${unit}.specification --answers ${entry.short}`, ...gapEntry(id, entry), pass: null }]
+      : [])),
     ...raised.filter(({ replaces, mark }) => isCurrent(folded, replaces) && !keptOf(folded, replaces).some((keep) => factsOf(folded, keep).place.number > lineOf(folded.facts, mark)))
-      .map(({ replaces, reason }) => ({ gap: `the replacement of ${short(replaces)}, raised at the spec,`, again: `engine raise ${unit}.specification --replaces ${short(replaces)} --reason ${reason}` })),
+      .map(({ replaces, reason, pass }) => ({
+        gap: `the replacement of ${short(replaces)}, raised at the spec,`,
+        again: `engine raise ${unit}.specification --replaces ${short(replaces)} --reason ${reason}`,
+        ...gapEntry(replaces, entries.get(replaces)),
+        pass,
+      })),
   ]);
 }
 
@@ -429,5 +469,5 @@ function reviewSettled(cwd, unit, warnings) {
 }
 
 module.exports = {
-  ownTexts, printOf, changedSince, recordLand, lastLand, recordTaking, recordCutTaking, recordCut, cutRequests, outstanding, reviewedSpec, sectionsToReview, waitingGaps, gapsWaiting, passesRunningOn, waitingOn, reviewSettled,
+  ownTexts, printOf, changedSince, changedBetween, recordLand, lastLand, recordTaking, recordCutTaking, recordCut, cutRequests, outstanding, reviewedSpec, sectionsToReview, waitingGaps, gapsWaiting, passesRunningOn, waitingOn, reviewSettled,
 };

@@ -132,7 +132,7 @@ const liveRows = (at, phase) => live(at.reads.get(`tasks ${phase}`) ?? phaseList
 /** Whether the phase's stack has merged: every task not closed landed, one at least. @param {Reading} at @param {number} phase */
 function phaseLanded(at, phase) {
   const rows = liveRows(at, phase);
-  const landed = once(at, 'landed', () => landedTasks(at.cwd, at.unit));
+  const landed = once(at, 'landed', () => landedTasks(at.cwd, at.unit, typeof at.manifest.created === 'string' ? at.manifest.created : null));
   return rows.length > 0 && rows.every(({ ref }) => landed.has(shownTask(ref)));
 }
 

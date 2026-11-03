@@ -13,8 +13,10 @@
 // again, passing and closing the review; then its report and the calls
 // decided for the person drawn; and finish — its checklist worked and
 // closed, its gate drawn, and its yes landing the fix phase and completing
-// the unit. A review failing twice, its fix phases built one on the other,
-// is test-pipeline-simulation-review-rounds.cjs's.
+// the unit. The board draws each round recorded: the failing one with its
+// finding, what went to the inbox and its fix task, and the last passed. A
+// review failing twice, its fix phases built one on the other, is
+// test-pipeline-simulation-review-rounds.cjs's.
 //
 // Layer: simulation. World: this file's own, built once from the project
 // every scenario starts from (pipeline-world.cjs) — a feature through its
@@ -71,6 +73,10 @@ describe('pipeline simulation: the review phase', () => {
       ],
     })]);
     assert.deepStrictEqual([round.fix_phase, round.reads_at_least], [2, ['1-the-work']]);
+    const board = () => JSON.parse(sim.read(['board', sim.env.CLAUDE_CODE_SESSION_ID]));
+    const failed = board().view;
+    assert.deepStrictEqual([failed.verdict, failed.found.length, failed.inbox, failed.fixes?.tasks.map(({ task }) => task)], ['failed', 1, ['The ledger has no export.'], ['2.1']],
+      'the board draws the round failed, its finding in scope, what went to the inbox and its fix task (20.10.1)');
 
     // The fix built through the task loop, with no phase review over it.
     const tree = builders.make('agent-2');
@@ -82,6 +88,9 @@ describe('pipeline simulation: the review phase', () => {
     sim.run(['review', 'reads', WU, '1-the-work']);
     areaRead(sim, WU);
     assert.strictEqual(sim.run(['review', 'round', WU, '--file', sim.write(`.leeway/.cache/${WU}/review/round.json`, { can_now: ['Keep a ledger whose entries are checked.'], findings: [] })]).ends, true);
+    const passed = board();
+    assert.deepStrictEqual([passed.view.round, passed.view.verdict, passed.view.areas.map(({ state }) => state), passed.banner.state], [2, 'passed', ['read', 'unchanged'], 'done'],
+      'the board draws round 2 passed, the area read and the tests unchanged, the banner done (20.10.2)');
 
     sim.render(['review-report', WU], { expect: 'content' });
     sim.render(['review-calls', WU], { expect: 'content' });

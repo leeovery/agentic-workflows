@@ -49,7 +49,7 @@ const { STATUS_WORDS, cutCount } = require('../build-entry.cjs');
 /** A task as a screen names it: its number, title, and its phase's number and name. @typedef {{task: string, title: string, phase: number, phase_name: string}} TaskHead */
 /** A task started, with what Claude says of it. @typedef {TaskHead & {changes: string, watch: string}} Started */
 /** How a task's review ended: its rounds, and whether the orchestrator settled the last. @typedef {{rounds: number, settled: boolean}} Reviewed */
-/** One of a task's cut scenarios, as its criterion reads, and what running it proved. @typedef {{criterion: string, standing: import('../runs.cjs').Standing}} Ran */
+/** One of a task's cut scenarios, by its id and as its criterion reads, and what running it proved. @typedef {{scenario: string, criterion: string, standing: import('../runs.cjs').Standing}} Ran */
 /**
  * A task landing: the task, how its review ended, the calls it sent to the
  * ledger, what changed, its criteria, what running the product proved of
@@ -58,7 +58,7 @@ const { STATUS_WORDS, cutCount } = require('../build-entry.cjs');
  * @typedef {{head: TaskHead, reviewed: Reviewed, calls: number, changed: string, criteria: string[], product: string, ran: Ran[]|null, recorded: boolean, waiting: Waiting[]}} Landing
  */
 /** Whether another unit is finished, by its name. @typedef {(unit: string) => boolean} Finished */
-/** The engine's figures of a task (task-account.cjs). @typedef {{files: number, added: number, removed: number, criteria: number}} Figures */
+/** The engine's figures of a task, with when it started and finished (task-account.cjs). @typedef {{files: number, added: number, removed: number, criteria: number, started: string|null, finished: string}} Figures */
 /**
  * A task's account as a screen draws it: the task, its place in its phase,
  * what it does, whether it closed, and its account where one is written —
