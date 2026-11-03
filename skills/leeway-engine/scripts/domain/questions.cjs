@@ -590,20 +590,36 @@ function parkedTasksOf(root, unit, warnings) {
 }
 
 /**
- * Each task of `unit` a park has named, live or not, by where its last park
- * stands in the ledger's order — but one a close took off its parks.
+ * The ledger's line at which the park `id` stopped waiting: the first entry
+ * after it answering, merging or moving its question, or replacing or
+ * keeping the decision it would replace; its own line where none did —
+ * set aside, or waiting still.
+ * @param {Folded} read @param {string} id
+ */
+function stoppedAt(read, id) {
+  const { question, replaces, place } = factsOf(read, id);
+  const about = factsOf(read, question === null ? /** @type {string} */ (replaces) : factsOf(read, question).root);
+  const ends = question === null ? [...about.replaced_by, ...about.kept] : [...about.answered_by, ...about.merges, ...about.moves];
+  const after = ends.map((end) => factsOf(read, end).place.number).filter((line) => line > place.number);
+  return after.length === 0 ? place.number : Math.min(...after);
+}
+
+/**
+ * Each task of `unit` a park has named, live or not — but one a close took
+ * off its parks — by the ledger's line at which the last of its parks to
+ * stop waiting stopped: where it was freed to go on (`stoppedAt`).
  * @param {string} root @param {string} unit @param {string[]} warnings
  * @returns {Map<string, number>}
  */
-function lastParkedOf(root, unit, warnings) {
+function freedAtOf(root, unit, warnings) {
   return readQuestions(root, warnings, (read) => {
     /** @type {Map<string, number>} */
-    const last = new Map();
-    parksOf(read, unit).forEach((id, at) => {
+    const freed = new Map();
+    for (const id of parksOf(read, unit)) {
       const task = taskOf(read, id);
-      if (task !== null) last.set(task, at);
-    });
-    return last;
+      if (task !== null) freed.set(task, Math.max(freed.get(task) ?? 0, stoppedAt(read, id)));
+    }
+    return freed;
   });
 }
 
@@ -624,5 +640,5 @@ function parkingTask(root, unit, task, warnings) {
 
 module.exports = {
   DISCUSSING, WAITING_USAGE, ASIDE_USAGE, numbered, parkedTasks, waitingOn, parkedUnder, parkedQuestion, checkUnparked, waitingQuestions, asideQuestions, foundPark, answeredReceipt,
-  explainedReceipt, checkAnswerable, answerable, parkedTasksOf, lastParkedOf, parkingTask,
+  explainedReceipt, checkAnswerable, answerable, parkedTasksOf, freedAtOf, parkingTask,
 };

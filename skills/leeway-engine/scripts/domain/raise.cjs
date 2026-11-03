@@ -1233,7 +1233,7 @@ function keeping(session, seal, { entry, reason, cause }, stdin) {
 }
 
 /**
- * In step, the task in flight and those an answer freed behind it, read as
+ * In step, the task in flight and those waiting behind it, read as
  * any read of the tracker is (task-verbs.cjs, `stepTurn`); null in auto.
  * @param {string} cwd @param {string} unit
  */

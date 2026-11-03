@@ -4,8 +4,9 @@
 // The build's screens that report (leeway-engine/scripts/domain/
 // build-screens.cjs, drawn by domain/projections/build.cjs): a task's landing
 // summary, its account printed when asked, the headline as tasks start, the
-// build's phases and tasks, and the stop report. The gates in step and step's
-// one task at a time are test-engine-build-gates.cjs.
+// build's phases and tasks, and the stop report. The gates in step are
+// test-engine-build-gates.cjs; step's one task at a time,
+// test-engine-build-step.cjs.
 //
 // Layer: verb. Worlds, each built once and copied: the build screens' world
 // (build-screens-world.cjs), and a second made from it with its five
@@ -401,12 +402,18 @@ describe('the stop report (12.12.9, 12.13.22)', () => {
     ]);
   });
 
-  it('stops where the only task ready is of a phase not started, which task start refuses — Refunds relying on Cards, written ahead (12.7.7, 6.4.8)', async () => {
+  it('stops where the only task ready is of a phase whose start the engine holds — Refunds relying on Cards, written ahead, which task start refuses — and is refused once only Claude\'s own items stand before that start, Refunds relying on nothing (12.7.7, 12.7.5, 6.4.8)', async () => {
     await parkOn(['1.2']);
     await parkOn(['1.1'], 1);
+    const stopped = sectionOf(screen(['build-stop', UNIT]), 'DISPLAY: build stop');
+    const start = refusedPristine(dir, ['task', 'start', UNIT, '2.1'], { env: env() }).error;
+    const manifest = readManifest(dir, UNIT);
+    manifest.cut.phases[1].relies_on = [];
+    createManifest(dir, UNIT, manifest);
 
-    assert.strictEqual(sectionOf(screen(['build-stop', UNIT]), 'DISPLAY: build stop'), '⚑ The build has stopped: nothing more can be built until you answer\n');
-    assert.strictEqual(refusedPristine(dir, ['task', 'start', UNIT, '2.1'], { env: env() }).error,
-      'task start: phase 2 of pay has not started — its tasks start once its start checklist closes: checklist close phase-start pay 2');
+    assert.strictEqual(stopped, '⚑ The build has stopped: nothing more can be built until you answer\n');
+    assert.strictEqual(start, 'task start: phase 2 of pay has not started — its tasks start once its start checklist closes: checklist close phase-start pay 2');
+    assert.strictEqual(refused(['build-stop', UNIT]),
+      'render build-stop: pay\'s build goes on with task 2.1, which no question parks — it stops only where nothing can go on without the person\'s answer (12.13.22)');
   });
 });

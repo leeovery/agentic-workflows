@@ -14,7 +14,8 @@
 // whatever it squashes into (7.2.18); a phase stacked on a higher one,
 // merged after it, its lone pull request based on the default branch and
 // merged once GitHub has worked it out again; which pull request is a task's, and which
-// is no task's. What stops it, and where it leaves the default branch here,
+// is no task's; and a phase's close in step judging its tasks in their stack
+// on one read of the pull requests. What stops it, and where it leaves the default branch here,
 // are test-landing-stops.cjs's; across nested repositories,
 // test-landing-nested.cjs's. Git layer: the landing world on a fake GitHub
 // (world.cjs), built once and copied for each test.
@@ -32,7 +33,8 @@ const side = require('./landing.cjs');
 const { GITHUB_SQUASH } = require('./gh-stub.cjs');
 const { github, onGithub, bareOf, calls, closeByHand, defaultOnGithub, lagOnGithub, tipOnGithub, pulls, ok, refused, stackOfTwo } = require('./world.cjs');
 
-const { git, tip } = harness;
+const { git, tip, readManifest } = harness;
+const { createManifest } = require('../../scripts/discovery-test-utils.cjs');
 const { card, total, rounding } = TASKS;
 const project = useLandingWorld('github-landing-', side.prepare);
 
@@ -207,5 +209,20 @@ describe('phases and their pull requests', () => {
       'land: task 3.3\'s pull request #3 was closed on GitHub without being merged — reopen it there, as `gh pr reopen 3` does, and land again (finish merged phase 1 before it)',
     );
     assert.deepStrictEqual(landedOn(bareOf(dir), 'main').map(({ task }) => task), ['pay-1-1']);
+  });
+});
+
+describe('a phase\'s close in step (7.2.4)', () => {
+  it('judges every task of the phase in its stack on one read of the pull requests', () => {
+    const dir = project();
+    stackOfTwo(dir);
+    for (const task of ['1.3', '1.9']) ok(dir, ['task', 'close', 'pay', task, '--reason', 'Not needed.']);
+    createManifest(dir, 'pay', {
+      ...readManifest(dir, 'pay'), build: { position: 'step' }, cut: { phases: [{ name: 'Cards', goal: 'Cards are taken.', scenarios: ['1.S1'], sections: ['1'], relies_on: [] }] },
+    });
+    const before = calls(dir).length;
+    const items = ok(dir, ['checklist', 'show', 'phase-close', 'pay', '1']).items;
+
+    assert.deepStrictEqual([items.find((/** @type {{key: string}} */ item) => item.key === 'stack-merged').state, calls(dir).slice(before)], ['done', [LIST]]);
   });
 });

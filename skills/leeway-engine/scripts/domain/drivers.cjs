@@ -187,7 +187,9 @@ const METHODS = Object.freeze({
  * tip where it does not.
  * `chainTip` answers the branch a task's branch must descend from, at a
  * commit the repository has locally, which the seam checks before `open` —
- * null where the task's phase's stack holds it already; `chain`, null where
+ * null where the task's phase's stack holds it already — what it reads of
+ * the stacks read once on a context that keeps its reads, as the close in
+ * step asks it of every task of a phase (landing-git.cjs, `readOnce`); `chain`, null where
  * the task is not open there; `mergePhase`, null where no task of the
  * phase is open there, and `already` where it is merged; a merge, what it
  * was warned of. `nextMerge` answers the merge finish makes next there —

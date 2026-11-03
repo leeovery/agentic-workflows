@@ -9,9 +9,9 @@
 // whole (`trackedPhases`); the build's standing reads the lists of the
 // phases it names (`trackedLists`), a phase's checklist that phase's tasks
 // whole (`trackedPhase`), and the tasks the build goes on with: those in
-// progress in every phase written, and those ready that start would take
-// (`goingOn`) — in step, the one in flight first, any an answer freed while
-// it went on behind it, their briefs and gate refused until it is done
+// progress in every phase written, and those ready in a phase the caller
+// lets go on (`goingOn`) — in step, the one in flight first, any other going on behind
+// it, as an answer frees one, their briefs and gate refused until it is done
 // (`stepTurn`, `turnRefusal`).
 // A unit's phases are written into the tracker as each starts, so it holds
 // only those (7.4.1); a task is made from the task template in a file, one
@@ -26,8 +26,8 @@
 // the cut holds before its start checklist has closed (6.4.8, 12.S7), and
 // in step for any task but the one in flight or at its gate — in progress
 // in any phase written, the review's fixes past the cut among them, here or
-// in another conversation, no question parking it, and ahead of any an
-// answer freed (12.7.9) — puts the task in flight on the conversation's
+// in another conversation, no question parking it, and ahead of any other
+// going on (12.7.9) — puts the task in flight on the conversation's
 // position, beside any others in flight there — a task already in flight
 // kept as it stands, its builder and reviewers with it — and done and close
 // take it off, each first taking the task's worktree apart (6.3.3,
@@ -90,7 +90,7 @@ const parks = () => require('./task-parks.cjs');
 /** @typedef {import('./drivers.cjs').TaskRow} TaskRow */
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 
-/** In step, the task in flight, and those an answer freed behind it. @typedef {{inFlight: string, behind: string[]}} StepTurn */
+/** In step, the task in flight, and those going on behind it. @typedef {{inFlight: string, behind: string[]}} StepTurn */
 
 /** Where a task stands once it has ended, done or not. */
 const ENDED = Object.freeze(['done', 'closed']);
@@ -467,17 +467,17 @@ function trackedPhase(cwd, unit, phase) {
  * The unit's tasks its build goes on with, but each a question waiting
  * parks, in one read of the tracker: those in progress in every phase it
  * has written — the cut's, and the review's fixes numbered on past it
- * (P14) — any conversation's in flight among them, and, where `ready`,
- * those waiting to start with nothing before them that `task start` would
- * take, their phase open (`phaseOpen`).
+ * (P14) — any conversation's in flight among them, and, where `ready` is
+ * given, those waiting to start with nothing before them whose phase it
+ * lets go on, asked once a phase once the tracker is read.
  * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest the unit's
- * @param {{ready?: boolean}} [opts]
+ * @param {{ready?: (phase: number) => boolean}} [opts]
  * @returns {{tasks: string[], committed?: string|null, warnings?: string[]}}
  */
-function goingOn(cwd, unit, manifest, { ready = false } = {}) {
+function goingOn(cwd, unit, manifest, { ready } = {}) {
   requireUnit(cwd, unit);
   const cut = cutLength(manifest);
-  return withTracker(cwd, unit, null, (driver, root) => {
+  const { running, waiting, ...read } = withTracker(cwd, unit, null, (driver, root) => {
     /** @type {TaskRow[]} */
     const rows = [];
     for (let phase = 1; ; phase += 1) {
@@ -485,19 +485,22 @@ function goingOn(cwd, unit, manifest, { ready = false } = {}) {
       if (list === null && phase > cut) break;
       rows.push(...(list ?? []).filter(({ status }) => status === 'in-progress'));
     }
-    if (ready) rows.push(...(driver.ready(root, unit, null) ?? []).filter(({ ref }) => phaseOpen(manifest, ref.phase)));
-    const parked = parks().parkedOf(cwd, unit);
-    return { tasks: rows.map(({ ref }) => shownTask(ref)).filter((task) => !parked.has(task)) };
+    return { running: rows, waiting: ready === undefined ? [] : driver.ready(root, unit, null) ?? [] };
   });
+  /** @type {Map<number, boolean>} */
+  const opens = new Map();
+  const goes = (/** @type {number} */ phase) => opens.get(phase) ?? opens.set(phase, /** @type {(phase: number) => boolean} */ (ready)(phase)).get(phase);
+  const parked = parks().parkedOf(cwd, unit);
+  return { ...read, tasks: [...running, ...waiting.filter(({ ref }) => goes(ref.phase))].map(({ ref }) => shownTask(ref)).filter((task) => !parked.has(task)) };
 }
 
 /**
  * In step, the task in flight among those the build goes on with
- * (`goingOn`), and those behind it, each freed by an answer while it went
- * on, which go on once it is done (12.7.9): the one in flight is the one
- * parked longest ago, one never parked before any, since a task an answer
- * frees was parked before the one in flight started. Null in auto, and
- * where none goes on.
+ * (`goingOn`), and those behind it, which go on once it is done (12.7.9):
+ * the one that went back in flight first — one never parked before any,
+ * then by when an answer last freed each (task-parks.cjs), the tracker's
+ * order between those alike, as two left running in auto are. Null in
+ * auto, and where none goes on.
  * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest the unit's
  * @returns {StepTurn|null}
  */
@@ -505,15 +508,14 @@ function stepTurn(cwd, unit, manifest) {
   if (manifest.build?.position !== 'step') return null;
   const { tasks } = goingOn(cwd, unit, manifest);
   if (tasks.length < 2) return tasks.length === 0 ? null : { inFlight: tasks[0], behind: [] };
-  const lastParked = parks().lastParked(cwd, unit);
-  const [inFlight, ...behind] = [...tasks].sort((a, b) => (lastParked.get(a) ?? -1) - (lastParked.get(b) ?? -1));
+  const freedAt = parks().freedAt(cwd, unit);
+  const [inFlight, ...behind] = [...tasks].sort((a, b) => (freedAt.get(a) ?? 0) - (freedAt.get(b) ?? 0));
   return { inFlight, behind };
 }
 
 /**
  * Why, in step, the task goes no further yet — its briefs, its gate — or
- * null: an answer freed it while another went on, which goes first
- * (`stepTurn`).
+ * null: another went on before it, which goes first (`stepTurn`).
  * @param {string} cwd @param {TaskRef} ref @param {Record<string, any>} manifest the unit's
  * @returns {string|null}
  */
@@ -521,7 +523,7 @@ function turnRefusal(cwd, ref, manifest) {
   const turn = stepTurn(cwd, ref.unit, manifest);
   const shown = shownTask(ref);
   if (turn === null || !turn.behind.includes(shown)) return null;
-  return `${ref.unit} builds in step, one task at a time — task ${turn.inFlight} is in flight, and task ${shown}, which an answer freed, goes on once it is done`;
+  return `${ref.unit} builds in step, one task at a time — task ${turn.inFlight} is in flight, and task ${shown} goes on once it is done`;
 }
 
 /** `task show`: the task whole, what was added to it among it. @param {string} cwd @param {string} unit @param {string} given */
@@ -600,7 +602,7 @@ function refuseUnstarted(ref, manifest) {
  * reaches before it is done (12.7.9): in progress in any phase the unit has
  * written, in flight here or in another conversation, no question waiting
  * parking it — a parked task holds nothing new to test — and ahead of any
- * an answer freed while it went on (`stepTurn`).
+ * other going on (`stepTurn`).
  * @param {string} cwd @param {TaskRef} ref @param {Record<string, any>} manifest
  */
 function refuseSecondInStep(cwd, ref, manifest) {
@@ -718,4 +720,4 @@ function runTaskVerb(cwd, verb, positional, opts) {
   return run(cwd, positional, ...values, .../** @type {string[]} */ (given));
 }
 
-module.exports = { TASK_VERBS, ENDED, runTaskVerb, trackedTask, trackedPhases, trackedLists, trackedPhase, goingOn, stepTurn, turnRefusal, phaseWritten, givenText, trackedStart };
+module.exports = { TASK_VERBS, ENDED, runTaskVerb, trackedTask, trackedPhases, trackedLists, trackedPhase, goingOn, phaseOpen, stepTurn, turnRefusal, phaseWritten, givenText, trackedStart };

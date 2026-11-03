@@ -43,8 +43,8 @@
 // It refuses no session id, a role it does not know, arguments of another
 // shape, a unit, a task or a topic the project lacks, a unit set aside
 // where its role takes the unit alone, a phase or a topic, a task done or
-// closed, in step a task an answer freed while another went on, until that
-// one is done (task-verbs.cjs), a topic set aside (5.8.17), a phase for a
+// closed, in step a task behind another in flight, until that one is done
+// (task-verbs.cjs), a topic set aside (5.8.17), a phase for a
 // unit whose build has not begun or one its cut lacks, and a record it
 // cannot read. A phase's
 // brief reads the list of each of the unit's phases to it from the
@@ -286,8 +286,8 @@ function forWhat(ref, phase, place, unit) {
 
 /**
  * The task as the tracker holds it, and what its read committed, refused
- * where it is done or closed, and in step where an answer freed it while
- * another went on (`turnRefusal`); what the read warned of pushed to
+ * where it is done or closed, and in step where it waits behind another in
+ * flight (`turnRefusal`); what the read warned of pushed to
  * `warnings`.
  * @param {string} cwd @param {TaskRef} ref @param {string[]} warnings
  */

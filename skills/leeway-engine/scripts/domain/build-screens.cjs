@@ -31,8 +31,10 @@
 //   once its tasks are done.
 // - `build-stop <unit>`: the stop report, while a question waits and
 //   nothing can be built without an answer: no task in progress, in any
-//   phase written, and none ready that `task start` would take, that no
-//   question parks (12.12.9, 12.13.22).
+//   phase written, and none ready, that no question parks, of a phase
+//   started or one whose start waits on Claude's own items alone, every
+//   item the engine checks of it holding (checklist.cjs) (12.12.9,
+//   12.13.22).
 // - `build-progress <unit>`: the build's phases and tasks.
 //
 // Each refuses, opening on its command: a unit the project lacks or whose
@@ -44,7 +46,8 @@ const { statePath, stateRoot } = require('../kernel/state-root.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { STATUS_WORDS, buildStanding, builtUnit, ownInFlight } = require('./build-entry.cjs');
 const { reading, cutPhases, phaseLists, phaseLanded, reviewRefusalOf } = require('./phase-checks.cjs');
-const { trackedTask, trackedLists, goingOn, turnRefusal, ENDED } = require('./task-verbs.cjs');
+const { trackedTask, trackedLists, goingOn, phaseOpen, turnRefusal, ENDED } = require('./task-verbs.cjs');
+const { engineItemsHold } = require('./checklist.cjs');
 const { fieldOf, criteriaTexts, criterionWords, holdsScenario, namesScenario } = require('./task-file.cjs');
 const { finishedUnits } = require('./ledger-units.cjs');
 const { accountPath, figuresPath, readAccount } = require('./task-account.cjs');
@@ -258,7 +261,9 @@ function buildStopSurface(cwd, { dotpath: unit = '' }) {
   return refusing('render build-stop', () => {
     const standing = buildStanding(cwd, unit, ownInFlight(unit));
     if (standing.waiting.length === 0) throw new Error(`no question waits on the person in ${unit}'s build — it stops only where nothing can go on without their answer (12.13.22)`);
-    const [next] = withStateLock(stateRoot(cwd), () => goingOn(cwd, unit, builtUnit(cwd, unit), { ready: true })).tasks;
+    const manifest = builtUnit(cwd, unit);
+    const opens = (/** @type {number} */ phase) => phaseOpen(manifest, phase) || engineItemsHold(cwd, 'phase-start', [unit, String(phase)]);
+    const [next] = withStateLock(stateRoot(cwd), () => goingOn(cwd, unit, manifest, { ready: opens })).tasks;
     if (next !== undefined) throw new Error(`${unit}'s build goes on with task ${next}, which no question parks — it stops only where nothing can go on without the person's answer (12.13.22)`);
     return stopScreen(standing, finishedUnits(stateRoot(cwd)));
   });

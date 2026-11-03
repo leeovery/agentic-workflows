@@ -31,6 +31,28 @@ const {
   UNIT, SESSION, DROPS_CENTS, branchOf, taskFile, world, checklistHelpers,
 } = require('./build-checklists-world.cjs');
 
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const landingGit = require(path.join(SCRIPTS, 'domain/landing-git.cjs'));
+
+/**
+ * What `act` answers, and how many times the landing read the branches of a
+ * repository while it ran.
+ * @template T @param {() => T} act @returns {[T, number]}
+ */
+function branchReads(act) {
+  const { branches } = landingGit;
+  let reads = 0;
+  landingGit.branches = (/** @type {string} */ root) => {
+    reads += 1;
+    return branches(root);
+  };
+  try {
+    return [act(), reads];
+  } finally {
+    landingGit.branches = branches;
+  }
+}
+
 let dir = '';
 beforeEach(() => { dir = world(); });
 afterEach(() => { cleanupFixture(dir); });
@@ -107,14 +129,15 @@ describe('a phase\'s close (6.4.9)', () => {
     assert.deepStrictEqual([...seen, merged()], ['open', 'open', 'done']);
   });
 
-  it('in step, reads its stack merged once its merge waits at its gate holding every task of the phase not closed, each opened into it — one not, one whose landing cannot be read, said as a warning, or no task at all holding it open (7.2.4)', () => {
+  it('in step, reads its stack merged once its merge waits at its gate holding every task of the phase not closed, each opened into it, the stacks read once for all of them — one not, one whose landing cannot be read, said as a warning, or no task at all holding it open (7.2.4)', () => {
     manifestWith({ build: { position: 'step' } });
     const merged = () => item('phase-close', 1, 'stack-merged');
     const seen = [merged()];
     ok(dir, ['land', 'open', UNIT, '1.1'], { env: SESSION });
     seen.push(merged());
     ok(dir, ['land', 'open', UNIT, '1.2'], { env: SESSION });
-    seen.push(merged());
+    const [both, reads] = branchReads(merged);
+    seen.push(both);
     ok(dir, ['task', 'create', UNIT, '1', '--file', taskFile(dir, 'Mask a card', ['A card is masked.'])]);
     const unbranched = show('phase-close', 1);
     ok(dir, ['task', 'close', UNIT, '1.3', '--reason', 'Folded into 1.1.']);
@@ -123,6 +146,7 @@ describe('a phase\'s close (6.4.9)', () => {
 
     assert.deepStrictEqual([...seen, merged()], ['open', 'open', 'done', 'open', 'done', 'open', 'open'], 'a phase with no task holds no stack; in auto a stack waits at no gate, merged once landed');
     assert.match(unbranched.warnings.join('\n'), /^land: task 1\.3 has no branch feat\/pay-1\.3-mask-a-card, /m);
+    assert.strictEqual(reads, 1, 'the one repository\'s stacks are read once for both tasks');
   });
 
   it('closes phase 1 only once the verify setup is recorded, every item holding (12.3.3, 12.S5); a later phase\'s close asks none', () => {

@@ -106,8 +106,9 @@ const phaseChecks = () => require('./phase-checks.cjs');
  * the default branch everything lands on there; the name of its remote,
  * null where it has none chosen; and, for a merge, each submodule directly
  * inside it, by its path from the repository's top, and of those each the
- * walk lands in, with its own context.
- * @typedef {{root: string, repo: string, unit: string, into: string, remote: string|null, gitlinks: string[], submodules: {path: string, ctx: LandingContext}[]}} LandingContext
+ * walk lands in, with its own context; and, for a call that moves nothing,
+ * the reads a driver keeps there, so each is made once (`readOnce`).
+ * @typedef {{root: string, repo: string, unit: string, into: string, remote: string|null, gitlinks: string[], submodules: {path: string, ctx: LandingContext}[], reads?: Map<string, unknown>}} LandingContext
  */
 
 /**
@@ -124,8 +125,9 @@ const phaseChecks = () => require('./phase-checks.cjs');
 
 /**
  * The project a verb lands in: its repositories, its own first, and their
- * contexts, each made once, as the verb first needs it.
- * @typedef {{unit: string, repos: Repo[], contexts: Map<string, LandingContext>}} Project
+ * contexts, each made once, as the verb first needs it — each keeping the
+ * reads its driver makes there where the call moves nothing.
+ * @typedef {{unit: string, repos: Repo[], contexts: Map<string, LandingContext>, keepsReads?: boolean}} Project
  */
 
 /**
@@ -184,6 +186,7 @@ function projectOf(cwd, unit) {
 /** A repository's context in the project, made once. @param {Project} project @param {Repo} repo @returns {LandingContext} */
 function contextOf(project, repo) {
   const made = project.contexts.get(repo.dir) ?? repoContext(project.unit, repo, nestedRemoteName(repo.path));
+  if (project.keepsReads) made.reads ??= new Map();
   project.contexts.set(repo.dir, made);
   return made;
 }
@@ -611,11 +614,12 @@ function landFinish(cwd, unit) {
  * wherever its change touches: opened there, which puts a task in its
  * phase's stack for every driver, as `open` reads one opened already — read
  * off git and the host, writing nothing, through the driver the project's
- * setting names, else the default. Refused as `open` refuses the task.
+ * setting names, else the default, each repository's stacks read once for
+ * every task. Refused as `open` refuses the task.
  * @param {string} cwd @param {string} unit @param {import('./drivers.cjs').TaskDetail[]} tasks
  */
 function allChained(cwd, unit, tasks) {
-  const project = projectOf(cwd, unit);
+  const project = { ...projectOf(cwd, unit), keepsReads: true };
   const driver = /** @type {LandingDriver} */ (chosenDriver(cwd, 'landing').driver);
   return tasks.every((held) => {
     const { task, holding } = landingOf(project, held.ref, held);

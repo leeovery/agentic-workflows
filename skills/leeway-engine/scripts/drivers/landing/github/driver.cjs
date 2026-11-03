@@ -272,7 +272,8 @@ function builtOn(ctx, stacks, phase, commit) {
 /**
  * The chain's tip a task lands on (see the header) — null where its phase's
  * stack holds it already. Refuses a task whose phase is merged, and one
- * built on a stack something done by hand stops.
+ * built on a stack something done by hand stops. The pull requests are
+ * read once on a context that keeps its reads (landing-git.cjs, `readOnce`).
  * @param {LandingContext} ctx @param {LandingTask} task
  * @returns {ChainTip|null}
  */
@@ -280,7 +281,7 @@ function chainTip(ctx, task) {
   const host = hostOf(ctx);
   const { phase } = task.ref;
   const shown = shownTask(task.ref);
-  const stacks = stacksOf(pullsOf(ctx, host));
+  const stacks = stacksOf(lg.readOnce(ctx, 'pulls', () => pullsOf(ctx, host)));
   const own = stacks.get(phase);
   if (own !== undefined) {
     refuseHandled(own);

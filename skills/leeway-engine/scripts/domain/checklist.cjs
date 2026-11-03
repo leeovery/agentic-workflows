@@ -41,7 +41,9 @@
 // stack merged; finish's, the review phase over and the unit's records
 // indexed (finish-checks.cjs); and a directive's check passing
 // (directives.cjs). What a
-// call reads for them is read once (`reads`). An open engine item may name
+// call reads for them is read once (`reads`). Whether every engine item of
+// a checklist holds is read beside the verbs too, as the build's stop
+// asks it of a phase's start (`engineItemsHold`). An open engine item may name
 // its way on: the phase review's, what stands in the way of it, its
 // settlement among them (phase-settlement.cjs). Phase 1's close is refused
 // beyond its items until the verify setup is recorded (12.3.3). A phase's
@@ -468,6 +470,16 @@ function usage() {
 }
 
 /**
+ * Whether every item the engine checks of the checklist `args` name after
+ * its point holds, so only Claude's own items stand before its close —
+ * refused as `checklist show` refuses it.
+ * @param {string} cwd @param {string} point @param {string[]} args
+ */
+function engineItemsHold(cwd, point, args) {
+  return itemStates(named(cwd, point, args)).every(({ by, state }) => by !== 'engine' || state === 'done');
+}
+
+/**
  * The checklist `args` name after its point, its work's manifest read.
  * Refuses a point it does not know, a unit, topic or phase the project
  * lacks, and a directive the migrations lack.
@@ -702,4 +714,4 @@ function takeDecidedClose(manifest, topic, at) {
   /** @type {Checklist} */ (recordAt(manifest, ['decided', topic])).taken = at;
 }
 
-module.exports = { CHECKLIST_USAGE, runChecklistVerb, decidedClose, readyClose, finishClose, takeDecidedClose, voidDecidedClose };
+module.exports = { CHECKLIST_USAGE, runChecklistVerb, engineItemsHold, decidedClose, readyClose, finishClose, takeDecidedClose, voidDecidedClose };

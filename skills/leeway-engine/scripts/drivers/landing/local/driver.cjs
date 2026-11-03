@@ -328,15 +328,18 @@ function heldBy(ctx, task, refs, stacks) {
  * The chain's tip a task lands on, and what opening it takes (see the
  * header) — null where its phase's stack holds it already. Refuses a task
  * whose phase is merged, one built on a stack something stops, and a chain
- * whose last task's branch is gone.
+ * whose last task's branch is gone. The stacks are read once on a context
+ * that keeps its reads (landing-git.cjs, `readOnce`).
  * @param {LandingContext} ctx @param {LandingTask} task
  * @returns {ChainTip|null}
  */
 function chainTip(ctx, task) {
   const { phase } = task.ref;
   const shown = shownTask(task.ref);
-  const refs = lg.branches(ctx.root);
-  const stacks = stacksOf(ctx, refs);
+  const { refs, stacks } = lg.readOnce(ctx, 'stacks', () => {
+    const read = lg.branches(ctx.root);
+    return { refs: read, stacks: stacksOf(ctx, read) };
+  });
   const own = stacks.get(phase);
   if (own?.merged) {
     throw new Error(`land: phase ${phase} is merged into ${ctx.into} — task ${shown} lands in a phase not yet merged, so number it in one`);

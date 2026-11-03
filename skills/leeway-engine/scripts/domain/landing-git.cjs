@@ -114,6 +114,18 @@ function short(sha) {
   return sha.slice(0, 7);
 }
 
+/**
+ * What `read` answers of a repository a landing reads, kept on its context
+ * where the context keeps reads — a call that moves nothing between them —
+ * so it is read once there; read afresh where it does not.
+ * @template T @param {{reads?: Map<string, unknown>}} ctx @param {string} key @param {() => T} read @returns {T}
+ */
+function readOnce(ctx, key, read) {
+  if (ctx.reads === undefined) return read();
+  if (!ctx.reads.has(key)) ctx.reads.set(key, read());
+  return /** @type {T} */ (ctx.reads.get(key));
+}
+
 /** Every local branch, by name, at its tip. @param {string} root @returns {Map<string, string>} */
 function branches(root) {
   const lines = git(root, ['for-each-ref', '--format=%(refname)%00%(objectname)', HEADS]).split('\n').filter(Boolean);
@@ -1122,7 +1134,7 @@ function defaultBranch(root, remote, nested = false) {
 }
 
 module.exports = {
-  short, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranch, refsUnder, updateRefs, isAncestor, mergeBase, treesOf, firstParentLine, messagesPast, messagesNaming, commitsNamed, messageOf, commitWithTree, treesPast,
+  short, readOnce, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranch, refsUnder, updateRefs, isAncestor, mergeBase, treesOf, firstParentLine, messagesPast, messagesNaming, commitsNamed, messageOf, commitWithTree, treesPast,
   prefixOf, pointersAt, treeWithPointers, pointedLike, holdsCommit, pointerAhead, stackMoves, commitsPast, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, remedy, moveTo, movedSinceOpened, rewrite, scratchBlock, rebaseBlock, checkoutBlock, pathsChanged, dirtBlock, moveBranch,
   defaultBranch, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, nothingPast,
   worktrees, holderOf, samePlace, removing, branchInPlace, addWorktree, switchTo, removeWorktree, detach,
