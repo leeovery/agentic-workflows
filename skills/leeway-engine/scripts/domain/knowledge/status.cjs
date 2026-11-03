@@ -4,7 +4,8 @@
 // Domain ring: the knowledge base's state — whether a checkout is ready, and
 // the report `status` prints: the store's contents, the embedder it records,
 // what a query over it runs in, the config settings it ignores, and what the
-// next bulk index would do.
+// next bulk index would do; and a unit's records the store does not hold as
+// they stand, which finish's checklist reads (finish-checks.cjs).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -13,7 +14,7 @@ const config = require('../../kernel/knowledge/config.cjs');
 const store = require('../../kernel/knowledge/store.cjs');
 const { knowledgeFiles } = require('../../kernel/knowledge/files.cjs');
 const { ENGINE_COMMAND, messageOf } = require('../../kernel/call.cjs');
-const { readManifests } = require('./artifacts.cjs');
+const { readManifests, RECORD_PHASE } = require('./artifacts.cjs');
 const { loadSettings, storeBuildable, keywordOnlyCause, metadataMissing } = require('./embedder.cjs');
 const { planIndex } = require('./indexing.cjs');
 const { fillShortfall } = require('./vectors.cjs');
@@ -137,4 +138,17 @@ function statusReport(root) {
   return out.join('\n') + '\n';
 }
 
-module.exports = { readiness, statusReport };
+/**
+ * A unit's records (22.6.2) the store does not hold as they stand now —
+ * never indexed, or changed since — each state-relative, in the order the
+ * next bulk index takes them; every one where the checkout has no store.
+ * @param {string} root @param {string} unit @returns {string[]}
+ */
+function unindexedRecords(root, unit) {
+  const files = knowledgeFiles(root);
+  const chunks = fs.existsSync(files.store) ? store.allChunks(store.loadStore(files.store)) : [];
+  const plan = planIndex(root, chunks, readManifests(root), { scope: unit, pruning: null });
+  return [...plan.fresh, ...plan.changed].filter(({ phase }) => phase === RECORD_PHASE).map(({ file }) => file);
+}
+
+module.exports = { readiness, statusReport, unindexedRecords };

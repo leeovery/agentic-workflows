@@ -286,8 +286,10 @@ function answered(answers, happened = () => true) {
  * `before`'s — what the verb committed and was warned of before — the
  * setting's own, and the driver's, a refusal's those of the landings before
  * it (`Partial`).
- * @param {string} cwd @param {(driver: LandingDriver) => Record<string, unknown> & {warnings?: string[]}} act
+ * @template {Record<string, unknown> & {warnings?: string[]}} T
+ * @param {string} cwd @param {(driver: LandingDriver) => T} act
  * @param {{committed?: string|null, warnings?: string[]}} [before]
+ * @returns {Omit<T, 'warnings'> & {driver: string, committed?: string|null, warnings?: string[]}}
  */
 function withDriver(cwd, act, before = {}) {
   const { driver, written } = resolveDriver(cwd, 'landing');

@@ -38,7 +38,9 @@
 // the shared design settled (phase-checks.cjs) — its tasks written, what it
 // relies on done, its tasks passed, its phase review passed with its fixes
 // landed, its scenarios proven or reported, its notes consolidated and its
-// stack merged; and a directive's check passing (directives.cjs). What a
+// stack merged; finish's, the review phase over and the unit's records
+// indexed (finish-checks.cjs); and a directive's check passing
+// (directives.cjs). What a
 // call reads for them is read once (`reads`). An open engine item may name
 // its way on: the phase review's, what stands in the way of it, its
 // settlement among them (phase-settlement.cjs). Phase 1's close is refused
@@ -48,7 +50,9 @@
 // (round-report.cjs, `phaseRecords`) — so a second clone reads
 // the phase as this one did.
 // An item applies only where the unit has its step: the sweep between
-// topics where it has more than one live topic. No phase starts before
+// topics where it has more than one live topic; the review passed where it
+// has a review phase; the records indexed where the checkout's knowledge
+// base is set up. No phase starts before
 // ready to build's yes begins the build (11.8.3), so a phase's start has no
 // checklist until then.
 //
@@ -92,6 +96,7 @@ const { sweepTaken, candidatesWaiting } = require('./sweep.cjs');
 const { reviewSettled, cutRequests } = require('./spec-passes.cjs');
 const { mailboxDepth, buildBegun, phaseKey } = require('./derivations.cjs');
 const checks = require('./phase-checks.cjs');
+const finishChecks = require('./finish-checks.cjs');
 const { phaseRecords } = require('./round-report.cjs');
 const { cutHolds } = require('./cut.cjs');
 const { canonicalAssets } = require('./ledger-read.cjs');
@@ -256,6 +261,9 @@ const specAndCut = (cwd, unit, manifest) => sealOf(readLandedSpec(cwd, unit), ma
  */
 const ofPhase = (check) => (named) => check(/** @type {PhaseReading} */ (named), /** @type {number} */ (named.phase));
 
+/** A check of the unit a checklist closes, reading it as the call has read it. @template T @param {(at: PhaseReading) => T} check @returns {(named: Named) => T} */
+const ofUnit = (check) => (named) => check(/** @type {PhaseReading} */ (named));
+
 /** What stands between the phase and its review passed, each fault saying its way on. @param {Named} named */
 const reviewFaults = (named) => checks.phaseReviewFaults(/** @type {PhaseReading} */ (named), /** @type {number} */ (named.phase));
 
@@ -367,10 +375,18 @@ const POINTS = Object.freeze({
     takes: ['<work-unit>'],
     place: onUnit(() => ({ path: ['finish'] })),
     items: [
-      { key: 'review-passed', text: 'the review phase passed and its report is written, where the unit has a review phase (a quick-fix\'s only when the person asks)' },
+      {
+        key: 'review-passed',
+        text: 'the review phase passed and its report is written, where the unit has a review phase (a quick-fix\'s only when the person asks)',
+        check: ofUnit(finishChecks.reviewPassed),
+        way: ofUnit(finishChecks.reviewWay),
+        applies: ofUnit(finishChecks.hasReviewPhase),
+      },
       { key: 'inbox-closed', text: 'resolved inbox items closed' },
       { key: 'build-log-closed', text: 'the build log closed' },
-      { key: 'records-indexed', text: 'the records indexed' },
+      {
+        key: 'records-indexed', text: 'the records indexed', check: ofUnit(finishChecks.recordsIndexed), way: ofUnit(finishChecks.recordsWay), applies: ofUnit(finishChecks.knowledgeSetUp),
+      },
     ],
     shows: (named, own) => [...phaseSkips(named.manifest), ...own],
   },
@@ -630,6 +646,23 @@ function readyClose(cwd, unit) {
 }
 
 /**
+ * The close finish's gate stands on (14.5.1): the record's close, and the
+ * skips it shows (6.4.5) — every phase start's and close's, as their records
+ * keep them, then its own marked before it. Refused while the checklist is
+ * open: closed never, or an item the engine checks failing now.
+ * @param {string} cwd @param {string} unit
+ * @returns {{closed: string, skips: Skip[], warnings: string[]}}
+ */
+function finishClose(cwd, unit) {
+  const checklist = named(cwd, 'finish', [unit]);
+  const record = recordAt(checklist.manifest, checklist.path);
+  const closedAt = record?.closed;
+  if (record === undefined || closedAt === undefined) throw new Error(`finish is open — its items are worked, then it is closed: checklist close finish ${unit}`);
+  const standing = standingClose(checklist, record, closedAt);
+  return { ...standing, skips: [...phaseSkips(checklist.manifest), ...standing.skips] };
+}
+
+/**
  * A close standing as its gate shows it: refused while an item the engine
  * checks fails now; else the close and the skips marked before it.
  * @param {Named} checklist @param {Checklist} record @param {string} closedAt
@@ -669,4 +702,4 @@ function takeDecidedClose(manifest, topic, at) {
   /** @type {Checklist} */ (recordAt(manifest, ['decided', topic])).taken = at;
 }
 
-module.exports = { CHECKLIST_USAGE, runChecklistVerb, decidedClose, readyClose, takeDecidedClose, voidDecidedClose };
+module.exports = { CHECKLIST_USAGE, runChecklistVerb, decidedClose, readyClose, finishClose, takeDecidedClose, voidDecidedClose };

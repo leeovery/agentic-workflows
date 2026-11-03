@@ -150,6 +150,12 @@ describe('engine handoff — the composed answer for every target', () => {
     }
   });
 
+  it('the epic menu takes an epic finish completed, handed its review completed (24.1.2)', () => {
+    createManifest(dir, 'done-epic', { work_type: 'epic', status: 'completed' });
+    assert.strictEqual(inline(dir, ['leeway-continue-epic', 'done-epic', 'review', 'completed']),
+      inlineAnswer('leeway-continue-epic', 'done-epic review completed', '→ Epic · done-epic'));
+  });
+
   it('the epic menu takes a pause from every phase its paused banner names', () => {
     for (const phase of WAITING_PHASES) {
       assert.strictEqual(payloadOf(carried(dir, ['leeway-continue-epic', 'fumi', phase, 'paused'])).args,
@@ -423,6 +429,16 @@ describe('engine handoff — refusals', () => {
     refused(dir, ['leeway-continue-epic', 'none'], /^work unit "none" not found$/);
     refused(dir, ['leeway-continue-epic', 'fumi', 'investigation', 'completed'], /^the phase must be one of discovery\|experiment\|discussion\|specification\|planning\|implementation\|review — got "investigation"$/);
     refused(dir, ['leeway-continue-epic', 'fumi', 'discussion', 'abandoned'], /^the outcome must be one of completed\|paused\|cancelled\|postponed — got "abandoned"$/);
+  });
+
+  it('the epic menu refuses a completed epic but where finish hands it its review completed, and a completed feature however handed', () => {
+    createManifest(dir, 'done-epic', { work_type: 'epic', status: 'completed' });
+    createManifest(dir, 'done-feature', { work_type: 'feature', status: 'completed' });
+    const notInProgress = /^work unit "done-epic" is completed — a handoff moves into work in progress$/;
+    refused(dir, ['leeway-continue-epic', 'done-epic'], notInProgress);
+    refused(dir, ['leeway-continue-epic', 'done-epic', 'implementation', 'completed'], notInProgress);
+    refused(dir, ['leeway-continue-epic', 'done-epic', 'review', 'cancelled'], notInProgress);
+    refused(dir, ['leeway-continue-epic', 'done-feature', 'review', 'completed'], /^work unit "done-feature" is of type feature, not epic$/);
   });
 
   it('the epic menu refuses a pause from a phase its paused banner cannot name', () => {

@@ -123,10 +123,16 @@ const RUNS = Object.freeze([['1.S1', 'pass'], ['1.S2', 'fail'], ['2.S1', 'skippe
 /** A ledger write that must succeed: its short id. @param {string} dir @param {string} verb @param {string} address @param {string[]} flags @param {object} content */
 const write = (dir, verb, address, flags, content) => ok(dir, ['ledger', verb, address, ...flags], { env: { CLAUDE_CODE_SESSION_ID: SESSION_ID }, stdin: JSON.stringify({ ...MADE, ...content }) }).id;
 
-/** A decision answering a question asked at `address`: its short id. @param {string} dir @param {string} address @param {string} question @param {object} decision @param {string[]} [flags] */
-function decided(dir, address, question, decision, flags = []) {
-  const asked = write(dir, 'ask', address, [], { by: 'claude', text: question });
-  return write(dir, 'decide', address, ['--answers', asked, ...flags], decision);
+/**
+ * A decision answering a question asked at `address`, both made for `task`
+ * where one is named: its short id.
+ * @param {string} dir @param {string} address @param {string} question @param {object} decision
+ * @param {{flags?: string[], task?: string}} [made]
+ */
+function decided(dir, address, question, decision, { flags = [], task } = {}) {
+  const forTask = task === undefined ? [] : ['--task', task];
+  const asked = write(dir, 'ask', address, forTask, { by: 'claude', text: question });
+  return write(dir, 'decide', address, ['--answers', asked, ...forTask, ...flags], decision);
 }
 
 /** The world's entries, by name, as their short ids. @type {Record<string, string>} */
@@ -174,13 +180,13 @@ const world = fixtureFrom('review-', (dir) => {
   const atBuild = `${UNIT}.implementation`;
   calls.token = decided(dir, atSpec, 'How is a card kept?', { by: 'claude', text: 'A card is tokenised.', why: 'No number is kept.', kind: 'danger' });
   calls.copy = decided(dir, atSpec, 'What does the receipt say?', { by: 'claude', text: 'The receipt names the shop.', why: 'Customers know it.', kind: 'words' });
-  calls.pdf = decided(dir, atBuild, 'What form is the receipt?', { by: 'claude', text: 'The receipt is a PDF.', why: 'Customers print it.', kind: 'behaviour', given: 'your-call' });
-  calls.retry = decided(dir, atBuild, 'How often is a charge retried?', { by: 'claude', text: 'A charge is retried twice.', why: 'The gateway drops one in a hundred.' });
+  calls.pdf = decided(dir, atBuild, 'What form is the receipt?', { by: 'claude', text: 'The receipt is a PDF.', why: 'Customers print it.', kind: 'behaviour', given: 'your-call' }, { task: '1.2' });
+  calls.retry = decided(dir, atBuild, 'How often is a charge retried?', { by: 'claude', text: 'A charge is retried twice.', why: 'The gateway drops one in a hundred.' }, { task: '1.1' });
   calls.byHand = decided(dir, atSpec, 'How are refunds made?', { by: 'person', text: 'Refunds by hand.', why: 'They are rare.' });
   calls.api = write(dir, 'replace', atSpec, ['--replaces', calls.byHand, '--reason', 'changed-mind'], {
     by: 'person', text: 'Refunds through the API.', why: 'They come weekly now.', drops: ['refunds by hand'],
   });
-  calls.refund = decided(dir, atSpec, 'What does a refund\'s receipt say?', { by: 'person', text: 'A refund\'s receipt names the shop.', why: 'As its charge\'s did.' }, ['--relies-on', calls.copy]);
+  calls.refund = decided(dir, atSpec, 'What does a refund\'s receipt say?', { by: 'person', text: 'A refund\'s receipt names the shop.', why: 'As its charge\'s did.' }, { flags: ['--relies-on', calls.copy] });
   writeState(dir, layout.unit(UNIT, SPEC_FILE), specOf({ token: calls.token, copy: calls.copy, refund: calls.refund }));
   commitAll(dir, 'the spec');
 });

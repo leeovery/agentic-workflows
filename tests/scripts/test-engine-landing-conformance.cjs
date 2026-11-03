@@ -29,7 +29,7 @@ const path = require('path');
 const harness = require('./engine-harness.cjs');
 
 const { git, tip, fixtureFrom, cleanupFixture } = harness;
-const { TASKS, openArgs, own, commitFiles, mergeBack, buildLanding, followRemedy } = require('./landing-world.cjs');
+const { TASKS, openArgs, own, cutTask, commitFiles, mergeBack, buildLanding, followRemedy } = require('./landing-world.cjs');
 const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
 
 const { card, total, notes, loudNotes, rounding, currency } = TASKS;
@@ -118,17 +118,19 @@ for (const { name } of listDrivers('landing')) {
       ]);
     });
 
-    it('finish: the phases still standing land after every other, a phase built on another after it (7.2.6, 7.S10)', () => {
+    it('finish: the phases still standing land after every other, a phase built on another after it, the review\'s fix phases numbered past the cut last, round 1\'s before round 2\'s whatever order they opened in (7.2.6, 7.S10)', () => {
       const at = project();
-      ok(at, openArgs(rounding));
-      ok(at, openArgs(currency));
-      ok(at, openArgs(card));
+      const again = cutTask(at, '5.1', 'fix', 'Fix it again', 'main', { 'again.txt': 'again\n' });
+      const first = cutTask(at, '4.1', 'fix', 'Fix it', 'main', { 'fixed.txt': 'fixed\n' });
+      for (const task of [again, first, rounding, currency, card]) ok(at, openArgs(task));
       ok(at, ['land', 'phase', 'pay', '1']);
-      assert.deepStrictEqual(own(ok(at, ['land', 'finish', 'pay'])).phases.map((/** @type {{phase: number}} */ merged) => merged.phase), [2, 3]);
+      assert.deepStrictEqual(own(ok(at, ['land', 'finish', 'pay'])).phases.map((/** @type {{phase: number}} */ merged) => merged.phase), [2, 3, 4, 5]);
       assert.deepStrictEqual(side.landed(at), [
         { subject: 'feat(pay): Add card', task: 'pay-1-1', paths: ['card.txt'] },
         { subject: 'fix(pay): Round totals', task: 'pay-2-1', paths: ['round.txt'] },
         { subject: 'fix(pay): Name the currency', task: 'pay-3-1', paths: ['currency.txt'] },
+        { subject: 'fix(pay): Fix it', task: 'pay-4-1', paths: ['fixed.txt'] },
+        { subject: 'fix(pay): Fix it again', task: 'pay-5-1', paths: ['again.txt'] },
       ]);
       holdsTheLanding(at);
     });
