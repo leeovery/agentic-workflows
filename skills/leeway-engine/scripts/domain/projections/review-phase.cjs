@@ -7,13 +7,15 @@
 // - A round's report (14.4.1) is short and product first: what the person
 //   can now do; what was proven by running it, and what was not, in the
 //   standing's own words (15.3.3, 15.3.5); what was fixed — the findings
-//   earlier rounds' fix tasks answered; this round's fix tasks, where it
-//   made any, as the build phase they make; what went to the inbox, never
-//   what was dropped (14.3.6); how Claude settled a failing round, where it
-//   did (14.6.3); and one line counting the calls decided for the person,
+//   whose fix tasks, to this round, are done — and, plainly, those whose fix
+//   task was closed, nothing built; this round's fix tasks not yet built, as
+//   the build phase they make; what went to the inbox, never what was
+//   dropped (14.3.6); how Claude settled a failing round, where it did
+//   (14.6.3); and one line counting the calls decided for the person,
 //   without kinds until the labeller (P11, 29.19). Its detailed checks are
 //   in a file, never shown (14.4.2). `review round` writes it as
-//   `round-{N}.md`.
+//   `round-{N}.md`, what the round decided — its fix tasks as filed, no
+//   standing claimed; the screen draws each fix's standing as it is.
 // - The report closing the review phase (14.4.3), the certificate: whether
 //   it passed or Claude settled it, and in which round; every round, broken
 //   up by round; then every call decided for the person across the unit,
@@ -38,14 +40,15 @@ const { KINDS } = require('../event-fields.cjs');
 /**
  * A round as its report draws it: its number and verdict; how Claude
  * settled it, or null; what the person can now do; each scenario of the
- * cut by id with its wording and standing; the findings earlier rounds'
- * fix tasks answered; its own fix tasks, each by its task with the finding
- * it answers, and the phase they make; and what it filed to the inbox,
- * each item by its title and kind.
+ * cut by id with its wording and standing; how many fix tasks it made; the
+ * findings whose fix tasks to it are done, and those whose task was
+ * closed; its own fix tasks not yet built, each by its task with the
+ * finding it answers, and the phase they make; and what it filed to the
+ * inbox, each item by its title and kind.
  * @typedef {{
  *   round: number, passed: boolean, settled: string|null, can_now: string[],
  *   scenarios: {scenario: string, wording: string, standing: string}[],
- *   fixed: string[], fixing: {task: string, text: string}[], phase: number, filed: {title: string, kind: string}[],
+ *   made: number, fixed: string[], unbuilt: string[], fixing: {task: string, text: string}[], phase: number, filed: {title: string, kind: string}[],
  * }} RoundView
  */
 /** The calls decided for the person across the unit, and how many of them were made in the build. @typedef {{count: number, build: number}} CallsCount */
@@ -54,8 +57,8 @@ const { KINDS } = require('../event-fields.cjs');
 const listed = (items) => renderTree(items.map((title) => ({ title })), { width: TREE_WIDTH, wrapTitles: true });
 
 /** A round's verdict, as its heading says it. @param {RoundView} view */
-function verdictWords({ passed, settled, fixing, phase }) {
-  const fixes = fixing.length === 0 ? '' : ` — ${counted(fixing.length, 'fix task')}, phase ${phase}`;
+function verdictWords({ passed, settled, made, phase }) {
+  const fixes = made === 0 ? '' : ` — ${counted(made, 'fix task')}, phase ${phase}`;
   if (passed) return `passed${fixes}`;
   return settled === null ? `failed${fixes}` : `failed, settled${fixes}`;
 }
@@ -69,6 +72,7 @@ function roundBlocks(view) {
     ...(proven.length === 0 ? [] : [block(`PROVEN BY RUNNING IT (${proven.length} of ${view.scenarios.length})`, listed(proven.map(({ scenario, wording }) => `${scenario} ${wording}`)))]),
     ...(unproven.length === 0 ? [] : [block(`NOT PROVEN (${unproven.length})`, listed(unproven.map(({ scenario, wording, standing }) => `${scenario} ${wording} — ${standing}`)))]),
     ...(view.fixed.length === 0 ? [] : [block(`FIXED (${view.fixed.length})`, listed(view.fixed))]),
+    ...(view.unbuilt.length === 0 ? [] : [block(`NOT BUILT (${view.unbuilt.length})`, listed(view.unbuilt.map((text) => `${text} — its fix task was closed`)))]),
     ...(view.fixing.length === 0 ? [] : [block(`TO FIX, PHASE ${view.phase} (${counted(view.fixing.length, 'task')})`, listed(view.fixing.map(({ task, text }) => `${task} ${text}`)))]),
     ...(view.filed.length === 0 ? [] : [block(`WENT TO THE INBOX (${view.filed.length})`, listed(view.filed.map(({ title, kind }) => `${title} (${kind})`)))]),
     ...(view.settled === null ? [] : [block('SETTLED', listed([view.settled]))]),

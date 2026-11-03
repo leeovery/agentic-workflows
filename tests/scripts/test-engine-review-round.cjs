@@ -74,6 +74,7 @@ describe('review round: the round recorded, its report and checks written, and a
       findings: findings.map((finding) => (finding.inbox === undefined ? finding : { ...finding, inbox })),
       settled: null,
       scenarios: [{ scenario: '1.S1', standing: 'proven' }, { scenario: '1.S2', standing: 'not proven' }, { scenario: '2.S1', standing: 'named, not run' }],
+      calls: { count: 6, build: 4 },
     });
     assert.strictEqual(stateText(`${UNIT}/review/round-1-checks.md`), [
       '# Round 1\'s checks', ...NAMES.map((name) => `# ${name}\n\n${reportText(FIRST[name] ?? []).trimEnd()}`),

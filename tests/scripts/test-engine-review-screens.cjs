@@ -5,14 +5,16 @@
 // projections/review-phase.cjs): `engine render review-report <unit>
 // [--round N]` — a round's report, product first: what the person can now
 // do, what running it proved and what it did not, in the standing's words,
-// what was fixed, the round's fix tasks as their phase, what went to the
+// what was fixed — a fix task done — and what was not built — one closed —
+// the round's fix tasks still to build as their phase, what went to the
 // inbox and never what was dropped, how a failing round was settled, and one
-// line counting the calls decided for the person, its checks never shown
-// (14.4.1, 14.4.2, 15.3.3); the closing report once a round ends the review,
-// every round broken up by round and the calls across the unit with the
-// build's share (14.4.3) — each the very text `review round` wrote, an
-// earlier round's drawn as it was written, never again from what holds
-// now; and `engine render review-calls <unit>`, every call decided for the
+// line counting the calls decided for the person as the round recorded them,
+// its checks never shown (14.4.1, 14.4.2, 15.3.3); the closing report once
+// a round ends the review, every round broken up by round and the calls
+// across the unit with the build's share (14.4.3) — each drawn from the
+// records to it and each fix's standing in the tracker now, the file
+// `review round` wrote keeping its fix tasks as filed and claiming no
+// standing; and `engine render review-calls <unit>`, every call decided for the
 // person across the unit, grouped by kind in the ledger's order of kinds,
 // those that change what the product does first, then process and
 // internals, the unlabelled last (14.4.4, 16.11.3, P11).
@@ -25,7 +27,7 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const { output, refuses, sectionOf } = require('./engine-harness.cjs');
 const {
-  UNIT, EVERY, FAILING, RECEIPT, useWorld, env, enter, reported, named, recorded, firstRoundReady, reviewCall, filed, fixPhaseWritten, fixBranch, fixBuilt, stateText, decided, assert,
+  UNIT, EVERY, FAILING, RECEIPT, useWorld, env, enter, reported, named, recorded, firstRoundReady, reviewCall, filed, fixPhaseWritten, fixBranch, fixBuilt, fixClosed, stateText, decided, assert,
 } = require('./review-world.cjs');
 
 /** @type {string} */
@@ -96,7 +98,7 @@ describe('render review-report: a round\'s report (14.4.1)', () => {
     assert.strictEqual(shown, `${stateText(`${UNIT}/review/round-1.md`)}`);
   });
 
-  it('a round that failed again and was settled says how; --round draws an earlier round as it was written, never again from what holds now; refused for a unit with no round recorded and a round not recorded', () => {
+  it('a round that failed again and was settled says how; --round draws an earlier round from its record, its calls as it counted them, its fix now built; refused for a unit with no round recorded and a round not recorded', () => {
     const none = refuses(dir, ['render', 'review-report', UNIT], { env: env() }).error;
     firstRoundRecorded();
     const first = screen(['review-report', UNIT]);
@@ -108,7 +110,7 @@ describe('render review-report: a round\'s report (14.4.1)', () => {
     assert.ok(settled.startsWith('Pay — review settled in round 2, the certificate of the work\n'), settled);
     assert.ok(settled.includes('SETTLED\n  └─ The amount is the bank\'s to show.\n'), settled);
     assert.ok(first.includes('  5 calls — render review-calls'), first);
-    assert.strictEqual(screen(['review-report', UNIT, '--round', '1']), first);
+    assert.strictEqual(screen(['review-report', UNIT, '--round', '1']), first.replace('TO FIX, PHASE 3 (1 task)\n  └─ 3.1 The receipt is never sent.', 'FIXED (1)\n  └─ The receipt is never sent.'));
     assert.deepStrictEqual([none, refuses(dir, ['render', 'review-report', UNIT, '--round', '3'], { env: env() }).error], [
       `render review-report: ${UNIT}'s review phase has recorded no round yet — review round ${UNIT} --file <round.json> records one`,
       'render review-report: --round names a round recorded, 1 to 2',
@@ -124,17 +126,52 @@ describe('render review-report: a round\'s report (14.4.1)', () => {
     recorded({ can_now: ['Pay by card and keep the receipt.'], findings: [] });
     const shown = screen(['review-report', UNIT]);
 
-    assert.deepStrictEqual(shown.split('\n').filter((line) => /^(Pay|ROUND|FIXED|CALLS|  \d+ calls)/.test(line)), [
+    const lines = (/** @type {string} */ text) => text.split('\n').filter((line) => /^(Pay|ROUND|FIXED|NOT BUILT|TO FIX|CALLS|  \d+ calls)/.test(line));
+    const calls = `  5 calls across the work unit, 3 of them in the build — render review-calls ${UNIT} lists them`;
+
+    assert.deepStrictEqual(lines(shown), [
       'Pay — review passed in round 3, the certificate of the work',
       'ROUND 1 — failed — 1 fix task, phase 3',
-      'ROUND 2 — failed — 1 fix task, phase 4',
       'FIXED (1)',
+      'ROUND 2 — failed — 1 fix task, phase 4',
+      'FIXED (2)',
       'ROUND 3 — passed',
       'FIXED (2)',
       'CALLS DECIDED FOR YOU',
-      `  5 calls across the work unit, 3 of them in the build — render review-calls ${UNIT} lists them`,
+      calls,
     ]);
-    assert.strictEqual(shown, stateText(`${UNIT}/review/round-3.md`));
+    assert.deepStrictEqual(lines(stateText(`${UNIT}/review/round-3.md`)), [
+      'Pay — review passed in round 3, the certificate of the work',
+      'ROUND 1 — failed — 1 fix task, phase 3',
+      'TO FIX, PHASE 3 (1 task)',
+      'ROUND 2 — failed — 1 fix task, phase 4',
+      'TO FIX, PHASE 4 (1 task)',
+      'ROUND 3 — passed',
+      'CALLS DECIDED FOR YOU',
+      calls,
+    ]);
+  });
+
+  it('14.4.1: each fix stands as the tracker holds it when drawn — one whose task was closed shown not built, never fixed; a passing round\'s nit fix to build, then fixed once built — the round\'s file keeping its fix tasks as filed', () => {
+    firstRoundRecorded();
+    fixClosed(3, 1);
+    enter();
+    named(['1-cards']);
+    reported(2, ['1-cards'], { '1-cards-a': ['nit: The receipt\'s label is terse.'] });
+    fixPhaseWritten(4, [['Word the label', '§1.2']]);
+    recorded({ can_now: ['Pay by card.'], findings: [{ area: '1-cards', scope: 'in', call: 'nit', text: 'The receipt\'s label is terse.', from: ['1-cards-a#1'], fix: '4.1' }] });
+    const building = screen(['review-report', UNIT]);
+    fixBuilt(4, 1, 'Word the label', 'main', 'src/label.js');
+    const round2 = (/** @type {string} */ text) => text.slice(text.indexOf('ROUND 2 — '), text.indexOf('CALLS DECIDED FOR YOU'));
+
+    assert.strictEqual(round2(building), [
+      'ROUND 2 — passed — 1 fix task, phase 4', 'WHAT YOU CAN NOW DO\n  └─ Pay by card.', building.slice(building.indexOf('PROVEN BY RUNNING IT', building.indexOf('ROUND 2')), building.indexOf('NOT BUILT', building.indexOf('ROUND 2'))).trimEnd(),
+      'NOT BUILT (1)\n  └─ The receipt is never sent. — its fix task was closed', 'TO FIX, PHASE 4 (1 task)\n  └─ 4.1 The receipt\'s label is terse.', '',
+    ].join('\n\n'));
+    assert.ok(round2(screen(['review-report', UNIT])).includes('FIXED (1)\n  └─ The receipt\'s label is terse.\n\nNOT BUILT (1)\n  └─ The receipt is never sent. — its fix task was closed\n\n'));
+    assert.doesNotMatch(round2(screen(['review-report', UNIT])), /TO FIX/);
+    assert.doesNotMatch(stateText(`${UNIT}/review/round-2.md`), /FIXED|NOT BUILT/);
+    assert.match(round2(stateText(`${UNIT}/review/round-2.md`)), /TO FIX, PHASE 4 \(1 task\)\n  └─ 4\.1 The receipt's label is terse\./);
   });
 });
 

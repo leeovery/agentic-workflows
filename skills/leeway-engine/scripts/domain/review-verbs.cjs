@@ -7,14 +7,16 @@
 //   Claude names them once the round before's fix tasks are done, from what
 //   they changed (14.3.3) — written at `review/round-{N}-reads.json` in the
 //   spec's order, the test surface last, and committed, before the round's
-//   briefs are filled. It refuses, writing nothing: a unit whose review
+//   briefs are filled; the round opening there, its snapshot of the working
+//   tree is taken where none is held (review-phase.cjs), so naming more
+//   reads keeps the one held. It refuses, writing nothing: a unit whose review
 //   phase cannot be entered; no round under review (review-phase.cjs,
 //   `openRefusal`); round 1, which reads every area; a name that is no area
 //   of the spec and not `tests`; a set leaving out an area whose findings
 //   made fix tasks in the round before, or one named for the round before —
 //   areas are added, never dropped.
 // - `review accept-tree <unit>`: the working tree taken as it is, on the
-//   person's word, its snapshot taken again over the one held (12.7.8,
+//   person's word, the round's snapshot taken again over any held (12.7.8,
 //   14.S13); nothing else written. It refuses a unit whose review phase
 //   cannot be entered, and one with no round under review.
 // Both run under the writer lock (engine.cjs).
@@ -28,7 +30,7 @@ const { unitInProgress } = require('./topic-standing.cjs');
 const { reviewHeld } = require('./review-entry.cjs');
 const { recordRound } = require('./review-round.cjs');
 const {
-  TESTS, openRefusal, everyRead, readsWords, roundReadsPath, takeSnapshot,
+  TESTS, openRefusal, everyRead, readsWords, roundReadsPath, takeSnapshot, openSnapshot,
 } = require('./review-phase.cjs');
 
 const REVIEW_USAGE = [
@@ -66,13 +68,14 @@ function nameReads(cwd, unit, named) {
   const reads = known.filter((name) => named.includes(name));
   const rel = roundReadsPath(unit, round);
   writeJsonAtomic(statePath(cwd, rel), { reads });
+  openSnapshot(cwd, unit, round);
   return committed(cwd, [rel], `review(${unit}): round ${round} reads ${reads.join(', ')}`, [], { round, reads });
 }
 
 /** `review accept-tree`: the tree taken as it is, its snapshot taken again (the header's). @param {string} cwd @param {string} unit */
 function acceptTree(cwd, unit) {
   const { standing } = roundOpen(cwd, unit, 'review accept-tree');
-  takeSnapshot(cwd, unit);
+  takeSnapshot(cwd, unit, standing.round);
   return { round: standing.round, snapshot: 'taken' };
 }
 

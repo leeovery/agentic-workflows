@@ -24,8 +24,8 @@ const { describe, it } = require('node:test');
 const fs = require('fs');
 const path = require('path');
 const {
-  UNIT, EVERY, calls, useWorld, env, enter, payload, reported, recorded, refusedRound, decided, reviewCall, fixBuilt, RECEIPT, FOUND, firstRoundReady,
-  refusedPristine, statePath, writeState, git, assert,
+  UNIT, EVERY, calls, useWorld, env, enter, payload, reported, named, recorded, refusedRound, decided, reviewCall, fixBuilt, RECEIPT, FOUND, firstRoundReady,
+  ok, refusedPristine, statePath, writeState, git, assert,
 } = require('./review-world.cjs');
 
 /** @type {string} */
@@ -78,17 +78,23 @@ describe('review round: what it refuses, writing nothing', () => {
     assert.strictEqual(refusedRound({ can_now: [], findings: [RECEIPT] }), treeMoved(`the project's repository is at ${after.slice(0, 7)}, not ${before.slice(0, 7)}`));
   });
 
-  it('no snapshot, a unit whose review phase cannot be entered, and a review phase over', () => {
-    reported(1, EVERY);
+  it('no snapshot of a later round\'s held, its cache lost mid-round, naming the person\'s way on — never entering again; a unit whose review phase cannot be entered; and a review phase over', () => {
+    firstRoundReady();
+    recorded({ can_now: [], findings: [RECEIPT] });
+    fixBuilt(3, 1, 'Send the receipt', 'main', 'src/send.js');
+    named(['1-cards']);
+    reported(2, ['1-cards']);
+    fs.rmSync(statePath(dir, `.cache/${UNIT}/review/tree.json`));
+    enter();
     const none = refusedRound({ can_now: [], findings: [] });
     const half = refusedPristine(dir, ['review', 'round', 'half', '--file', payload('round.json', { can_now: [], findings: [] })], { env: env() }).error;
-    enter();
+    ok(dir, ['review', 'accept-tree', UNIT], { env: env() });
     recorded({ can_now: [], findings: [] });
 
     assert.deepStrictEqual([none, half, refusedRound({ can_now: [], findings: [] })], [
-      `review round: no snapshot of the working tree is held — enter review ${UNIT} takes one`,
+      `review round: no snapshot of round 2's working tree is held — its cache is gone, and nothing is taken of the tree unasked: the person decides what stands, and on their word review accept-tree ${UNIT} takes the tree as it is`,
       'review round: half\'s review phase starts once every phase of its cut has closed — phase 2 of 2 has not: enter implementation half',
-      `review round: ${UNIT}'s review phase passed in round 1 — finish is next`,
+      `review round: ${UNIT}'s review phase passed in round 2 — finish is next`,
     ]);
   });
 

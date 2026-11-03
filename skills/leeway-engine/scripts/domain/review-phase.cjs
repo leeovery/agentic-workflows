@@ -20,13 +20,16 @@
 //   one finding, and where it landed: a fix task, an item filed to the inbox,
 //   or dropped with why, the ledger's file-or-drop call beside each finding
 //   out of scope and each above a nit dropped (14.3); how Claude settled a
-//   failing round, null where it did not (14.6.3); and what each scenario of
-//   the cut stood at as the round was recorded (15.3.3):
+//   failing round, null where it did not (14.6.3); what each scenario of
+//   the cut stood at as the round was recorded (15.3.3); and the calls
+//   decided for the person across the unit then, with the build's share
+//   (14.4.3):
 //
 //     {"reports": ["1-cards-a.md", …], "passed": false, "can_now": ["…"],
 //      "findings": [{"area": "1-cards", "scope": "in", "call": "bug",
 //                    "text": "…", "from": ["1-cards-a#1"], "fix": "4.1"}, …],
-//      "settled": null, "scenarios": [{"scenario": "1.S1", "standing": "proven"}]}
+//      "settled": null, "scenarios": [{"scenario": "1.S1", "standing": "proven"}],
+//      "calls": {"count": 5, "build": 3}}
 //
 //   Rounds run from 1 with none missing; a round never holds its own number.
 // - A round's fix tasks are a build phase of their own, numbered past the
@@ -39,14 +42,19 @@
 // - Round 1 reads every area and the test surface. Each later round reads
 //   the areas Claude names once the fix tasks are done, from what they
 //   changed (`review reads`, at `review/round-{N}-reads.json`, the
-//   engine's): every one whose findings made fix tasks among them, the test
+//   engine's): every one whose findings made fix tasks among them — each
+//   read whose report holds an item such a finding answers — the test
 //   surface as one of them, others added but none dropped (14.3.3).
-// - The working tree outside `.leeway/` is snapshotted in the unit's cache,
-//   `review/tree.json`, where none is: each repository's HEAD, and each path
-//   its status lists with the fingerprint of what it holds (kernel/repos.cjs,
-//   `projectDirtyEntries`) — what `review round` holds the tree to, naming
-//   every path changed since, and drops once the round is recorded; only the
-//   person's word retakes it (`review accept-tree`, 12.7.8, 14.1.5).
+// - The working tree outside `.leeway/` is snapshotted for a round in the
+//   unit's cache, `review/tree.json`: the round's number, each repository's
+//   HEAD, and each path its status lists with the fingerprint of what it
+//   holds (kernel/repos.cjs, `projectDirtyEntries`). It is taken where its
+//   round opens — round 1 at its entry, a later round at `review reads`,
+//   which every later round calls before its briefs — and only where none
+//   is held, never again while one is; `review round` holds the tree to its
+//   own round's, naming every path changed since, and drops it once the
+//   round is recorded. Only the person's word takes it again (`review
+//   accept-tree`, 12.7.8, 14.1.5).
 // - The calls across the unit are every current decision made at any of its
 //   places, with whose it is and how it was given (16.17.8); those decided
 //   for the person are Claude's calls (`claudesCall`), the rule every count
@@ -94,7 +102,7 @@ const TESTS_LETTER = REVIEWER_LETTERS[0];
  * A round as `review round` recorded it (the header's).
  * @typedef {{
  *   reports: string[], passed: boolean, can_now: string[], findings: RoundFinding[], settled: string|null,
- *   scenarios: {scenario: string, standing: string}[],
+ *   scenarios: {scenario: string, standing: string}[], calls: {count: number, build: number},
  * }} RoundRecord
  */
 
@@ -136,7 +144,7 @@ const strings = (value) => Array.isArray(value) && value.every((item) => typeof 
 function fitsRecord(held) {
   return isObject(held) && strings(held.reports) && typeof held.passed === 'boolean' && strings(held.can_now) && Array.isArray(held.findings)
     && held.findings.every((/** @type {unknown} */ finding) => isObject(finding)) && (held.settled === null || typeof held.settled === 'string')
-    && Array.isArray(held.scenarios);
+    && Array.isArray(held.scenarios) && isObject(held.calls) && Number.isInteger(held.calls.count) && Number.isInteger(held.calls.build);
 }
 
 /**
@@ -190,9 +198,17 @@ const fixPhase = (manifest, round) => (Array.isArray(manifest.cut?.phases) ? man
 /** The reads every area and the test surface make: round 1's. @param {Area[]} areas */
 const everyRead = (areas) => [...areas.map(({ name }) => name), TESTS];
 
-/** The areas, the test surface among them, whose findings in a round made fix tasks, in the reads' order. @param {Area[]} areas @param {RoundRecord} round */
+/** The read a report item `{report}#{n}` is of: its report's name without the reviewer's letter. @param {string} item */
+const readOfItem = (item) => item.replace(/#\d+$/, '').replace(new RegExp(`-(${REVIEWER_LETTERS.join('|')})$`), '');
+
+/**
+ * The reads whose findings in a round made fix tasks, in the reads' order:
+ * each such finding's area, and each read whose report holds an item it
+ * answers.
+ * @param {Area[]} areas @param {RoundRecord} round
+ */
 function fixedReads(areas, round) {
-  const fixed = new Set(round.findings.filter(({ fix }) => typeof fix === 'string').map(({ area }) => area));
+  const fixed = new Set(round.findings.filter(({ fix }) => typeof fix === 'string').flatMap(({ area, from }) => [area, ...from.map(readOfItem)]));
   return everyRead(areas).filter((read) => fixed.has(read));
 }
 
@@ -303,15 +319,23 @@ function treeNow(cwd) {
   return { heads, paths };
 }
 
-/** The working tree outside `.leeway/` snapshotted for the unit's review phase, over any taken before. @param {string} cwd @param {string} unit */
-function takeSnapshot(cwd, unit) {
+/** The working tree outside `.leeway/` snapshotted for a round, over any held: on the person's word alone. @param {string} cwd @param {string} unit @param {number} round */
+function takeSnapshot(cwd, unit, round) {
   const file = snapshotPath(cwd, unit);
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  writeJsonAtomic(file, treeNow(cwd));
+  writeJsonAtomic(file, { round, ...treeNow(cwd) });
 }
 
-/** Whether a snapshot of the working tree is held for the unit's review phase. @param {string} cwd @param {string} unit */
-const snapshotTaken = (cwd, unit) => fs.existsSync(snapshotPath(cwd, unit));
+/** The working tree snapshotted as a round opens, where none is held; one held kept as it stands. @param {string} cwd @param {string} unit @param {number} round */
+function openSnapshot(cwd, unit, round) {
+  if (!fs.existsSync(snapshotPath(cwd, unit))) takeSnapshot(cwd, unit, round);
+}
+
+/** Whether the snapshot held is the round's. @param {string} cwd @param {string} unit @param {number} round */
+function snapshotHeld(cwd, unit, round) {
+  const file = snapshotPath(cwd, unit);
+  return fs.existsSync(file) && JSON.parse(fs.readFileSync(file, 'utf8')).round === round;
+}
 
 /** The snapshot dropped, once the round it held the tree for is recorded. @param {string} cwd @param {string} unit */
 const dropSnapshot = (cwd, unit) => fs.rmSync(snapshotPath(cwd, unit), { force: true });
@@ -322,7 +346,7 @@ const repoWords = (name) => (name === '.' ? 'the project\'s repository' : `\`${n
 /**
  * What changed outside `.leeway/` since the snapshot, a line each: a
  * repository whose HEAD moved, then each path whose status or content
- * changed, in order; read once a snapshot is held (snapshotTaken).
+ * changed, in order; read once the round's snapshot is held (snapshotHeld).
  * @param {string} cwd @param {string} unit @returns {string[]}
  */
 function treeChanges(cwd, unit) {
@@ -396,5 +420,5 @@ module.exports = {
   TESTS, TESTS_LETTER, specAreas, reportNames, recordedRounds, fixesOf, endsReview, fixPhase, reviewStanding, everyRead,
   endedWords, endedRefusal, openRefusal, roundRefusal, readsWords,
   reviewFolder, roundRecordPath, roundReportFile, roundChecksFile, roundReadsPath, roundFolder, areaReportPath,
-  takeSnapshot, snapshotTaken, dropSnapshot, treeChanges, unitCalls, reviewCallFault, forThePerson, inTheBuild,
+  takeSnapshot, openSnapshot, snapshotHeld, dropSnapshot, treeChanges, unitCalls, reviewCallFault, forThePerson, inTheBuild,
 };

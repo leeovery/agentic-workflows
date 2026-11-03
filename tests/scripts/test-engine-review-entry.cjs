@@ -7,8 +7,8 @@
 // refuses, and a build whose cut has a phase not closed, each such phase
 // named (14.6.1); another session holding the checkout's code stopped at the
 // build's code gate, nothing written, `--take` entering (12.7.8, 12.S50);
-// the snapshot of the working tree outside `.leeway/` taken where none is
-// held and a round waits to be read, never retaken (14.1.5); the answer:
+// the snapshot of the working tree outside `.leeway/` taken for round 1 at
+// its entry where none is held, never by entering again (14.1.5); the answer:
 // the round under review, the spec's areas, never merged, five as one (14.2.1,
 // 14.2.3), the reads the round takes — every area and the test surface at
 // round 1, then those `review reads` named, from the areas whose findings
@@ -101,30 +101,33 @@ describe('another session holding the checkout\'s code (12.7.8)', () => {
 });
 
 describe('the snapshot of the working tree outside .leeway/ (14.1.5)', () => {
-  it('holds each repository\'s HEAD and each path its status lists, with the fingerprint of what it holds, taken where none is held and never retaken by entering again', () => {
+  it('holds its round, each repository\'s HEAD and each path its status lists, with the fingerprint of what it holds, taken for round 1 at its entry and never again by entering', () => {
     fs.writeFileSync(path.join(dir, 'src/card.js'), 'export const card = 2;\n');
     enter();
     const taken = snapshot();
     fs.writeFileSync(path.join(dir, 'src/receipt.js'), 'export const receipt = 2;\n');
     enter();
 
-    assert.deepStrictEqual(Object.keys(taken), ['heads', 'paths']);
+    assert.deepStrictEqual(Object.keys(taken), ['round', 'heads', 'paths']);
+    assert.strictEqual(taken.round, 1);
     assert.deepStrictEqual(taken.heads, { '.': git(dir, ['rev-parse', 'HEAD']).trim() });
     assert.deepStrictEqual(Object.keys(taken.paths), ['src/card.js']);
     assert.match(taken.paths['src/card.js'], /^ M [0-9a-f]{12}$/);
     assert.deepStrictEqual(snapshot(), taken);
   });
 
-  it('is dropped once its round is recorded, none taken while the round\'s fix tasks wait, and taken afresh once they are done', () => {
+  it('is dropped once its round is recorded; a later round\'s is taken as review reads opens it, never by entering, waiting on fix tasks or not', () => {
     firstRoundFailed();
     const recorded1 = snapshot();
     enter();
     const waiting = snapshot();
     fixBuilt(3, 1, 'Send the receipt', 'main', 'src/send.js');
     enter();
+    const built = snapshot();
+    named(['1-cards']);
 
-    assert.deepStrictEqual([recorded1, waiting], [null, null]);
-    assert.deepStrictEqual(snapshot()?.heads, { '.': git(dir, ['rev-parse', 'HEAD']).trim() });
+    assert.deepStrictEqual([recorded1, waiting, built], [null, null, null]);
+    assert.deepStrictEqual([snapshot()?.round, snapshot()?.heads], [2, { '.': git(dir, ['rev-parse', 'HEAD']).trim() }]);
   });
 });
 

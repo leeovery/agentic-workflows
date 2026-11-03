@@ -13,11 +13,11 @@
 // Another session holding the checkout's code stops it at the build's code
 // gate, nothing written, and `--take` enters all the same (12.7.8, 12.S50).
 //
-// As the conversation arrives, the working tree outside `.leeway/` is
-// snapshotted (review-phase.cjs) where no snapshot is held and a round waits
-// to be read — none waiting on fix tasks — what `review round` holds the
-// tree to (14.1.5). Entering again never retakes it, so dirt met before a
-// `/clear` still stops for the person.
+// As the conversation arrives at round 1, the working tree outside
+// `.leeway/` is snapshotted for it (review-phase.cjs) where no snapshot is
+// held — what `review round` holds the tree to (14.1.5); a later round's is
+// taken as `review reads` opens it. Entering again never takes one, so dirt
+// met before a `/clear` still stops for the person.
 //
 // It answers, in its DATA: the round under review, or how the round that
 // ended the phase did, and what is next; the spec's areas, each by its name
@@ -34,7 +34,7 @@ const { cutPhases } = require('./phase-checks.cjs');
 const { buildRefusal, codeHeld, buildLogOf } = require('./build-entry.cjs');
 const { specPath } = require('./spec-sections.cjs');
 const {
-  reviewStanding, endedWords, readsWords, roundReportFile, takeSnapshot, snapshotTaken,
+  reviewStanding, endedWords, readsWords, roundReportFile, openSnapshot,
 } = require('./review-phase.cjs');
 
 /** @typedef {import('./enter.cjs').Entry} Entry */
@@ -136,11 +136,9 @@ function reviewRecovery(cwd, unit, manifest) {
   }
 }
 
-/** The snapshot taken where none is held and a round waits to be read (the header's). @param {Entering} at */
+/** Round 1's snapshot taken as it opens, where none is held (the header's). @param {Entering} at */
 function snapshotted({ cwd, unit, manifest }) {
-  if (snapshotTaken(cwd, unit)) return;
-  const { ended, waiting } = reviewStanding(cwd, unit, manifest);
-  if (!ended && waiting.length === 0) takeSnapshot(cwd, unit);
+  if (reviewStanding(cwd, unit, manifest).rounds.length === 0) openSnapshot(cwd, unit, 1);
 }
 
 /** @type {Entry} */
