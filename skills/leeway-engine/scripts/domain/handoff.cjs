@@ -27,9 +27,8 @@
 
 const fs = require('fs');
 const path = require('path');
-const { VALID_WORK_TYPES, WORK_TYPE_PIPELINES, WAITING_PHASES, NO_ARGUMENT, assertLegalName } = require('../kernel/manifest-schema.cjs');
+const { VALID_WORK_TYPES, WORK_TYPE_PIPELINES, EPIC_PHASES, WAITING_PHASES, NO_ARGUMENT, assertLegalName } = require('../kernel/manifest-schema.cjs');
 const { loadWorkUnitManifest, readProjectManifest } = require('../kernel/manifest.cjs');
-const { EPIC_DETAIL_PHASES } = require('./epic-detail.cjs');
 const { parseInboxPaths, ROADMAP_SEED } = require('./inbox.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { section, dataSection, CONTINUE_INSTRUCTION, GATE_MOD_INSTRUCTION } = require('./projections/surfaces.cjs');
@@ -68,7 +67,7 @@ function phaseSkill(phase) {
  * @typedef {{skill: string, args: string, text: string, line: string}} Handoff
  */
 
-/** @param {string} kind @param {string} value @param {string[]} allowed */
+/** @param {string} kind @param {string} value @param {readonly string[]} allowed */
 function assertOneOf(kind, value, allowed) {
   if (allowed.includes(value)) return;
   const expected = allowed.length === 1 ? allowed[0] : `one of ${allowed.join('|')}`;
@@ -225,7 +224,7 @@ const TARGETS = {
     counts: [1, 3],
     check: (cwd, [unit, phase, outcome]) => {
       if (phase !== undefined) {
-        assertOneOf('the phase', phase, EPIC_DETAIL_PHASES);
+        assertOneOf('the phase', phase, EPIC_PHASES);
         assertOneOf('the outcome', outcome, OUTCOMES);
         if (outcome === 'paused') assertOneOf('the phase that paused', phase, WAITING_PHASES);
       }

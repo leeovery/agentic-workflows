@@ -12,7 +12,9 @@
 // drawn; and finish, its gate's yes landing the fix phase and handing off
 // to the epic's menu, the finished unit's folder holding what the layout
 // lays out. The board draws each round recorded: the failing one with its
-// finding, what went to the inbox and its fix task, and the last passed. In
+// finding, what went to the inbox and its fix task, and the last passed.
+// The way in from the menus: the build's phases and tasks viewed from
+// manage, and the epic menu's review row walked into the review phase. In
 // step, test-pipeline-simulation-review-step-finish.cjs; a
 // review failing then passing with a fix each time, its builder's note
 // answered before finish, -review-rounds.cjs; a stuck round settled,
@@ -20,8 +22,9 @@
 //
 // Layer: simulation. World: this file's own, built once from the project
 // every scenario starts from (pipeline-world.cjs) — an epic of one topic
-// through its spec of two areas to ready to build's pick in auto, its cut
-// one phase, built and closed — a copy per scenario, which replays the
+// through its spec of two areas to ready to build's pick in auto, entered
+// again from its menu's build row, its cut one phase, built and closed — a
+// copy per scenario, which replays the
 // engine calls the review phase's skill makes, in order, the oracle
 // (pipeline-oracle.cjs) auditing the whole state after every mutation.
 // ---------------------------------------------------------------------------
@@ -32,9 +35,10 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { treeSnapshot } = require('./engine-harness.cjs');
+const { treeSnapshot, sectionOf } = require('./engine-harness.cjs');
+const LIB = require('../../skills/leeway-engine/scripts/lib.cjs');
 const {
-  Sim, worldFrom, mappedEpic, discussed, specEntry, specReviewed, cutTheSpec, readyToBuild, answerGate, intoTheBuild, firstPhaseBuilt, carryOn, handoff,
+  Sim, worldFrom, mappedEpic, discussed, specEntry, specReviewed, cutTheSpec, readyToBuild, answerGate, intoTheBuild, epicBuildPick, menuEntry, firstPhaseBuilt, carryOn, handoff,
   writePhaseTasks, builders, taskBuilt, areaRead, testsRead, reviewNext, reviewCall, finished,
 } = require('./pipeline-world.cjs');
 
@@ -47,7 +51,7 @@ const BESIDE = [
   'Verdict: fail', '',
 ].join('\n');
 
-/** An epic of one topic through its spec of two areas — the second with no scenario of its own — to ready to build's pick in auto, its cut's one phase built and closed. */
+/** An epic of one topic through its spec of two areas — the second with no scenario of its own — to ready to build's pick in auto, entered again from its menu's build row, its cut's one phase built and closed. */
 const reviewWorld = worldFrom('pipeline-review-', (sim) => {
   mappedEpic(sim, WU, ['entries']);
   discussed(sim, WU, 'entries');
@@ -64,6 +68,7 @@ const reviewWorld = worldFrom('pipeline-review-', (sim) => {
   cutTheSpec(sim, WU, [{ name: 'The ledger', goal: 'Entries kept and exported.', scenarios: ['1.S1'], sections: ['1', '2'], relies_on: [] }]);
   readyToBuild(sim, WU);
   intoTheBuild(sim, WU, sim.run(answerGate(sim, 'ready to build', '--pick', 'a').next.argv));
+  assert.deepStrictEqual(epicBuildPick(sim, WU, 'enter_implementation').label, { head: 'Build', tail: 'phase 1 of 1' });
   firstPhaseBuilt(sim, WU, 'The ledger', 'Keep the ledger', 'src/ledger.js');
 });
 
@@ -87,6 +92,18 @@ describe('pipeline simulation: the review phase, as its skill runs it', () => {
   });
   afterEach(() => {
     sim.destroy();
+  });
+
+  it('from the epic\'s manage, the build\'s phases and tasks viewed; from its menu, its review row once the cut has closed, through the soft gate into the review phase (12.12.11, 18.4.6, 14.6.1)', () => {
+    menuEntry(sim, WU);
+    const manage = LIB.project.manageUnitView(LIB.detail.manageDetail(sim.dir, WU));
+    assert.match(manage.data, /^ {2}v +view-build +view_build$/m, 'manage offers the build\'s phases and tasks');
+    assert.match(sectionOf(sim.render(['build-progress', WU], { expect: 'content' }), 'DISPLAY: build progress'), /Phase 1 of 1 · The ledger +\[merged\]/);
+    epicBuildPick(sim, WU, 'enter_review');
+    const { move } = reviewNext(sim, WU);
+    const here = carryOn(sim);
+    assert.deepStrictEqual([move, here.position, here.skill], ['round', { name: WU, phase: 'review', topic: WU }, path.join(sim.dir, '.claude/skills/leeway-review-process/SKILL.md')],
+      'the review phase\'s entry records its place, its first round to read');
   });
 
   it('an epic in auto: the build runs straight into the review phase in one conversation; round 1 reads both areas and the tests, files one finding out of scope and drops another by Claude\'s calls, its fix phase the one the entry names, built; round 2 reads only the area it changed and passes; finish lands the fix phase and hands off to the epic\'s menu; the finished folder holds what the layout lays out (14.S1, 24.S7, 12.S43, 14.S3, 14.S5, 4.S21, 4.S22, 20.10.1, 20.10.2)', () => {

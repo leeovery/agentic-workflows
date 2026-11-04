@@ -11,7 +11,7 @@
 // duplicated here.
 // ---------------------------------------------------------------------------
 
-const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_TERMINAL_STATUSES, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
+const { EPIC_PHASES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_TERMINAL_STATUSES, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
 const { loadProjectManifest } = require('./reads.cjs');
 const {
   phaseItems,
@@ -35,11 +35,7 @@ const { computeBuildOrderNeedsSequencing, sortItemsByBuildOrder } = require('./b
 const { discoveryLifecycleLabel } = require('./conventions.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { entryRefusal, pastItsSpec } = require('./spec-standing.cjs');
-
-// Every phase the epic detail iterates and the epic dashboard / thin dump
-// surface — discovery (the map, not a pipeline phase) first, then the epic
-// pipeline from the schema's one home for pipeline order.
-const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
+const { buildRefusal, buildStanding } = require('./build-entry.cjs');
 
 /**
  * @typedef {object} SpecSource
@@ -385,8 +381,6 @@ function specRow(cwd, manifest) {
  * @returns {BuildRow|null}
  */
 function buildRow(cwd, manifest) {
-  // Required here: build-entry.cjs reaches this module back through the handoff table.
-  const { buildRefusal, buildStanding } = require('./build-entry.cjs');
   if (legacyBuild(manifest)) return { state: 'old', line: /** @type {string} */ (buildRefusal(manifest)) };
   if (!buildByCut(manifest)) return null;
   const review = buildPlaceStatus(manifest, 'review');
@@ -422,7 +416,7 @@ function epicDetail(cwd, manifest) {
   const nextPhaseReady = [];
 
   const BUILD_ORDER_PHASES = ['specification', 'planning', 'implementation'];
-  for (const phase of EPIC_DETAIL_PHASES) {
+  for (const phase of EPIC_PHASES) {
     if (phase === 'discovery') continue;
     let items = phaseItems(manifest, phase);
     if (items.length === 0) continue;
@@ -591,4 +585,4 @@ function epicDetail(cwd, manifest) {
   };
 }
 
-module.exports = { EPIC_DETAIL_PHASES, epicDetail };
+module.exports = { epicDetail };

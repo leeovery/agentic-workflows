@@ -233,7 +233,7 @@ function subView(workUnit, gate, projection) {
   const dataLines = [
     `work_unit: ${workUnit}`,
     ...engine.project.actionsTable(['action', 'topic', 'phase', '→ route'], view.keys, (k) => [
-      k.action, k.topic || '—', k.phase || '—', `→ ${k.route || '(internal)'}`, ...(k.dep ? [`(dep: ${k.dep})`] : []), ...(k.item ? [`(item: ${k.item})`] : []),
+      k.action, k.topic || '—', k.phase || '—', `→ ${k.route || '(internal)'}`, ...(k.item ? [`(item: ${k.item})`] : []),
     ]),
   ];
 

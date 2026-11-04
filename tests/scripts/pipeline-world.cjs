@@ -539,6 +539,35 @@ function epicPick(sim, wu, action, topic) {
   return pickRoute(sim, epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu)).keys, action, topic);
 }
 
+// The epic menu's build row picked as epic-display-and-menu.md picks it
+// (18.4.6): the menu reached and its row recommended, the soft gate raising
+// nothing, and the row's route handed off into the build or its review
+// phase, whose skill starts in a fresh conversation. Answers the row.
+/** @param {Sim} sim @param {string} wu @param {'enter_implementation'|'enter_review'} action */
+function epicBuildPick(sim, wu, action) {
+  menuEntry(sim, wu);
+  const { keys } = epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu));
+  const row = keys.find((k) => k.action === action);
+  assert.ok(row?.recommended, `the menu recommends ${action}`);
+  sim.render(['epic-soft-gate', wu, '--action', action, '--topic', wu], { expect: 'empty' });
+  pickRoute(sim, keys, action, wu);
+  sim.handOver();
+  return row;
+}
+
+// A linear unit built by its cut continued from its menu (24.1.6): its
+// continue routes into the build, or into its review phase once every phase
+// of its cut has closed, and hands off there.
+/** @param {Sim} sim @param {string} wu @param {'implementation'|'review'} phase */
+function linearBuildPick(sim, wu, phase) {
+  menuEntry(sim, wu);
+  const { keys } = linearMenu(sim, wu);
+  assert.strictEqual(keys.find((k) => k.action === 'continue')?.route, `/${skillAt(wu, phase)} ${sim.manifest(wu).work_type} ${wu}`,
+    `the menu continues the unit into its ${phase}`);
+  pickRoute(sim, keys, 'continue');
+  sim.handOver();
+}
+
 /** The epic menu's entry for a command option. @param {Sim} sim @param {string} wu @param {string} action */
 function epicKey(sim, wu, action) {
   const key = epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu)).keys.find((k) => k.action === action);
@@ -1409,14 +1438,17 @@ function firstPhaseBuilt(sim, wu, title, task, file) {
 }
 
 // The build the review phase reviews: a feature through its spec to ready
-// to build's pick, its cut's one phase — the verify setup and the code —
-// built, reviewed, merged and closed.
+// to build's pick, continued from its menu into the build, its cut's one
+// phase — the verify setup and the code — built, reviewed, merged and
+// closed, and continued from its menu into its review phase.
 /** @param {Sim} sim @param {string} wu */
 function cutClosed(sim, wu) {
   startUnit(sim, 'feature', wu, 'A ledger');
   discussed(sim, wu, wu);
   specToBuild(sim, wu, [wu], 'a');
+  linearBuildPick(sim, wu, 'implementation');
   firstPhaseBuilt(sim, wu, 'The work', 'Write the ledger', 'src/ledger.js');
+  linearBuildPick(sim, wu, 'review');
 }
 
 // The verify setup the first task's builder records, its mutation tool
@@ -1610,6 +1642,6 @@ function finished(sim, wu) {
 }
 
 module.exports = {
-  Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, keptOldSpec, briefOf, placeIn, landed,
+  Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicBuildPick, linearBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, keptOldSpec, briefOf, placeIn, landed,
   builders, taskBuilt, firstPhaseBuilt, cutClosed, areaRead, testsRead, reviewNext, reviewCall, strayRound, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic,
 };

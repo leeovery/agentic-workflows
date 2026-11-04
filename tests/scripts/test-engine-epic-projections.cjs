@@ -9,7 +9,7 @@ const fs = require('fs');
 const { execFileSync } = require('child_process');
 
 const { setupFixture, cleanupFixture, createManifest, readManifest } = require('./discovery-test-utils.cjs');
-const { ok } = require('./engine-harness.cjs');
+const { ok, output } = require('./engine-harness.cjs');
 const { epicDetail } = require('../../skills/leeway-engine/scripts/domain/epic-detail.cjs');
 const { discover } = require('../../skills/leeway-continue-epic/scripts/gateway.cjs');
 const {
@@ -707,6 +707,17 @@ describe('epic projections: the build\'s row (18.4.6, 12.15.3)', () => {
     assert.deepStrictEqual(rows(detailFor(dir, 'v1', through)), [['1', 'enter_review', 'v1', '/leeway-review-process epic v1', 'Review', true]]);
     createManifest(dir, 'v1', { ...through, status: 'completed' });
     assert.strictEqual(epicDetail(dir, readManifest(dir, 'v1')).build, null);
+  });
+
+  it('the review phase\'s row, as the build\'s, passes the soft gate, which raises nothing, and is struck by a code session elsewhere, never then recommended (18.4.6, 12.7.8)', () => {
+    const softGate = (/** @type {string} */ action) => output(dir, ['render', 'epic-soft-gate', 'v1', '--action', action, '--topic', 'v1']);
+    detailFor(dir, 'v1', built());
+    assert.strictEqual(softGate('enter_implementation'), '');
+    const d = detailFor(dir, 'v1', built({ checklists: { 'phase-1-close': CLOSED, 'phase-2-close': CLOSED } }));
+    assert.strictEqual(softGate('enter_review'), '');
+    const codeRow = { work_unit: 'ship', phase: 'implementation', topic: 'checkout-flow', age_seconds: 300, held: true, session_id: 'peer' };
+    const review = epicMenu('v1', d, { presence: [], codeHeld: [codeRow] }).keys.find((k) => k.action === 'enter_review');
+    assert.deepStrictEqual([review?.in_session, review?.code_session, review?.recommended === true], [true, true, false]);
   });
 });
 

@@ -873,7 +873,6 @@ function epicInSessionGate(workUnit, entry, titles) {
  * @property {string|null} phase
  * @property {string|null} route      skill invocation, or null when the flow continues internally
  * @property {OptionLabel} label
- * @property {string} [dep]           unblock rows — the dependency topic to mark satisfied
  * @property {string} [item]          pull-forward rows — the roadmap item the topic waits as
  */
 
@@ -884,7 +883,6 @@ function epicInSessionGate(workUnit, entry, titles) {
  * @property {string} row     display line (unindented; the branch glyph and `{key}. ` are prefixed)
  * @property {string|null} route
  * @property {string} [group]  the display heading the row sits under — the titlecased phase when absent
- * @property {string} [dep]   unblock rows — the dependency topic to mark satisfied
  * @property {string} [item]  pull-forward rows — the roadmap item the topic waits as
  */
 
@@ -940,7 +938,7 @@ function selectionSubView(title, empty, question, action, rows, { allLocked } = 
     let hang = 0;
     if (r.locked === undefined) {
       const key = String(keys.length + 1);
-      keys.push({ key, action, topic: r.topic, phase: r.phase, route: r.route, label: r.label, ...(r.dep ? { dep: r.dep } : {}), ...(r.item ? { item: r.item } : {}) });
+      keys.push({ key, action, topic: r.topic, phase: r.phase, route: r.route, label: r.label, ...(r.item ? { item: r.item } : {}) });
       text = `${key}. ${r.row}`;
       hang = `${key}. `.length;
     } else {
@@ -1061,7 +1059,7 @@ function epicReactivateMenu(detail, opts = {}) {
 }
 
 /**
- * Section H — the Postponable Topics list and pick menu: every Discovery
+ * Section G — the Postponable Topics list and pick menu: every Discovery
  * unit, locked ones shown keyless with their reason, a unit a live session
  * holds carrying its in-session age. No routes — the flow continues to its
  * horizon step and its confirmation gate.
@@ -1076,7 +1074,7 @@ function epicPostponeMenu(detail, opts = {}) {
 }
 
 /**
- * Section I — the Postponed Topics list and pick menu: the topics this epic
+ * Section H — the Postponed Topics list and pick menu: the topics this epic
  * sent to the roadmap that still wait there, each row naming the horizon it
  * waits under. The key carries the roadmap item's own name, which the pull
  * forward addresses. No routes — the flow runs the pull-forward transaction.
