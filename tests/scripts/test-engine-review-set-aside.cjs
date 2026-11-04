@@ -9,7 +9,9 @@
 // second put back in its own folder, a later round in its own; the round's
 // report as drawn, the entry, the recovery note and finish's screen name it
 // while it holds anything, the report's file never; and it outlives the
-// unit, finish's yes and a cancel leaving it whole (12.7.8, 14.S13).
+// unit, finish's yes and a cancel leaving it whole (12.7.8, 14.S13); in a
+// project that is a folder of a larger repository, each copy named from it
+// (7.2.17).
 //
 // Layer: verb. World: review-world.cjs's, copied for each test.
 // ---------------------------------------------------------------------------
@@ -28,6 +30,8 @@ const {
 } = require('./review-tree-world.cjs');
 
 const { workUnitNameRefusal } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
+const { projectRepos } = require('../../skills/leeway-engine/scripts/kernel/repos.cjs');
+const { setAside } = require('../../skills/leeway-engine/scripts/domain/review-tree.cjs');
 
 /** @type {string} */
 let dir;
@@ -100,6 +104,21 @@ describe('what put back sets aside (12.7.8, 14.S13)', () => {
     putBack({ staged: { 'lib/cards/index.js': 'export const index = \'staged\';\n' } });
 
     assert.deepStrictEqual(Object.keys(asideHeld()), ['round-1/put-1/lib/cards/index.js', 'round-1/put-1/lib/cards/index.js.staged']);
+  });
+
+  it('7.2.17: in a project that is a folder of a larger repository, the version its index holds apart is set aside beside the working one, each named from the folder', () => {
+    const web = at('apps/web');
+    fs.mkdirSync(path.join(web, 'src'), { recursive: true });
+    fs.writeFileSync(path.join(web, 'src/card.js'), 'export const card = 1;\n');
+    git(dir, ['add', 'apps/web/src/card.js']);
+    git(dir, ['commit', '-q', '-m', 'the web app']);
+    fs.writeFileSync(path.join(web, 'src/card.js'), 'export const card = \'staged\';\n');
+    git(web, ['add', 'src/card.js']);
+    fs.writeFileSync(path.join(web, 'src/card.js'), 'export const card = \'worked on\';\n');
+
+    setAside(web, UNIT, 1, projectRepos(web), [{ of: 'src/card.js', then: null, now: null }], (reason) => { throw new Error(reason); });
+
+    assert.deepStrictEqual(asideHeld(), { 'round-1/put-1/src/card.js': 'export const card = \'worked on\';\n', 'round-1/put-1/src/card.js.staged': 'export const card = \'staged\';\n' });
   });
 
   it('a second put back keeps its own folder, put-2, the first\'s copies as they were; a later round\'s is its own folder', () => {

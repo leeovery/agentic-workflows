@@ -106,7 +106,7 @@ const { handedSession } = require('../kernel/process.cjs');
 const { tryGit, dirtyEntries } = require('../kernel/git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { realpathOrSelf, within } = require('../kernel/isolated-git.cjs');
-const { projectRepos, repoOf, repoPath, repoName, mappedSubmodules, placeOf } = require('../kernel/repos.cjs');
+const { projectRepos, repoOf, repoPath, repoName, mappedSubmodules, placeOf, folderUnder } = require('../kernel/repos.cjs');
 const { tasksInFlight, taskAt } = require('./conversation.cjs');
 const { recordWorktree } = require('./position.cjs');
 const { recordLaidOut } = require('./round-report.cjs');
@@ -207,15 +207,20 @@ function childTreesIn(repos, top) {
     .sort((a, b) => b.tree.path.length - a.tree.path.length);
 }
 
+/** A repository's folder in a worktree of it: the worktree's top, but for a root inside a larger repository. @param {Repo} repo @param {Worktree} tree */
+const folderIn = (repo, tree) => folderUnder(repo, tree.path);
+
 /**
- * Each worktree of `trees` there that holds changes not committed, read from
- * its top, as a refusal names it: its path, and what it holds.
+ * Each worktree of `trees` there whose repository's folder holds changes not
+ * committed, as a refusal names it: the worktree, that folder, and what it
+ * holds.
  * @param {Repo[]} repos @param {ChildTree[]} trees
  */
 function dirtIn(repos, trees) {
   return trees.filter(({ tree }) => fs.existsSync(tree.path)).flatMap(({ repo, tree }) => {
-    const dirt = uncommitted(repos, repo, tree.path, '');
-    return dirt.length === 0 ? [] : [{ tree, dirt }];
+    const at = folderIn(repo, tree);
+    const dirt = uncommitted(repos, repo, at);
+    return dirt.length === 0 ? [] : [{ tree, at, dirt }];
   });
 }
 
@@ -227,7 +232,7 @@ function dirtIn(repos, trees) {
  */
 function removeChildTrees(repos, trees) {
   return trees.map(({ repo, tree }) => {
-    removePreparedLinks(repo, tree.path, () => repos[0].path);
+    removePreparedLinks(repo, folderIn(repo, tree), () => repos[0].path);
     lg.removeWorktree(repo.path, tree.path);
     if (gitlinkAt(tree.path)) fs.mkdirSync(tree.path);
     return tree.path;
@@ -249,7 +254,7 @@ function takeOverFrom(ref, repos, holder, what, session) {
   const children = childTreesIn(repos, holder.path);
   const dirt = dirtIn(repos, [{ repo: repos[0], tree: holder }, ...children]);
   if (dirt.length > 0) {
-    throw refusal(`${what}, with changes not committed — ${dirt.map(({ tree, dirt: held }) => `${tree.path}: ${held.join(', ')}`).join('; ')} — so it was not taken over, and nothing was laid out — commit them, or move them out of the way, then run it again`);
+    throw refusal(`${what}, with changes not committed — ${dirt.map(({ at, dirt: held }) => `${at}: ${held.join(', ')}`).join('; ')} — so it was not taken over, and nothing was laid out — commit them, or move them out of the way, then run it again`);
   }
   return { tree: holder, children };
 }
@@ -277,19 +282,19 @@ function heldElsewhere(ref, repos, repo, branch, trees, session) {
 }
 
 /**
- * What a worktree of `repo` at `at` holds not committed, named from there:
- * its own files, and a nested submodule's pointer moved, staged or not —
- * never what a nested repository holds, its own to answer for, the folder
- * of a clone nested in it, which it never tracks, nor a link the
- * worktree's preparation made (worktree-prep.cjs).
- * @param {Repo[]} repos the project's, in its own checkout @param {Repo} repo @param {string} at @param {string} prefix `at` from the worktree's top: `''` at the top, the repo's own at its folder
+ * What `repo`'s folder at `at`, in a worktree of it, holds not committed,
+ * named from there: its own files, and a nested submodule's pointer moved,
+ * staged or not — never what a nested repository holds, its own to answer
+ * for, the folder of a clone nested in it, which it never tracks, nor a
+ * link the worktree's preparation made (worktree-prep.cjs).
+ * @param {Repo[]} repos the project's, in its own checkout @param {Repo} repo @param {string} at
  * @returns {string[]}
  */
-function uncommitted(repos, repo, at, prefix) {
+function uncommitted(repos, repo, at) {
   const clones = repos.slice(1).map((other) => heldIn(repos, other))
     .filter(({ holder, submodule }) => holder === repo && !submodule).map(({ folder }) => `${folder}/`);
   const prepared = preparedLinkOf(() => repos[0].path);
-  return dirtyEntries(at, prefix, [], true).filter((entry) => !(entry.status === '??' && clones.includes(entry.path)) && !prepared(at, entry)).map((entry) => lg.plain(entry.path));
+  return dirtyEntries(at, repo.prefix, [], true).filter((entry) => !(entry.status === '??' && clones.includes(entry.path)) && !prepared(at, entry)).map((entry) => lg.plain(entry.path));
 }
 
 /**
@@ -298,7 +303,7 @@ function uncommitted(repos, repo, at, prefix) {
  * @param {Repo[]} repos @param {Repo} repo @param {string} at @param {string} why
  */
 function refuseUncommitted(repos, repo, at, why) {
-  const dirt = uncommitted(repos, repo, at, repo.prefix);
+  const dirt = uncommitted(repos, repo, at);
   if (dirt.length > 0) {
     throw refusal(`${why}, and ${at} has changes not committed: ${dirt.join(', ')}, so nothing was laid out — commit them, or move them out of the way, then run it again`);
   }

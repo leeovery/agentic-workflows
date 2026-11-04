@@ -412,13 +412,13 @@ function mergeInProgress(cwd) {
 }
 
 /**
- * The paths the index holds unmerged that staging `specs` leaves so, each
- * once, as the repo's root names them.
- * @param {string} cwd the repo's root @param {string[]} specs as the repo names them @returns {string[]}
+ * The paths under `cwd` the index holds unmerged that staging `specs` leaves
+ * so, each once, named from `cwd`.
+ * @param {string} cwd the repo's folder @param {string[]} specs as the repo names them @returns {string[]}
  */
 function unmergedPast(cwd, specs) {
   const staged = (/** @type {string} */ file) => specs.some((spec) => spec === '.' || file === spec || file.startsWith(`${spec}/`));
-  const unmerged = git(cwd, ['ls-files', '--unmerged', '--full-name', '-z']).split('\0').filter(Boolean).map(entryPath);
+  const unmerged = git(cwd, ['ls-files', '--unmerged', '-z']).split('\0').filter(Boolean).map(entryPath);
   return [...new Set(unmerged)].filter((file) => !staged(file));
 }
 

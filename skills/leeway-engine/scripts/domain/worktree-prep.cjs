@@ -40,7 +40,7 @@
 const fs = require('fs');
 const path = require('path');
 const { git, dirtyEntries, hasCommits, emptyTree, literally } = require('../kernel/git.cjs');
-const { projectDirtyEntries, mappedSubmodules, placeOf } = require('../kernel/repos.cjs');
+const { projectDirtyEntries, mappedSubmodules, checkoutTop } = require('../kernel/repos.cjs');
 const { readSettings } = require('./settings.cjs');
 const { projectCheckout } = require('./landing-git.cjs');
 
@@ -197,7 +197,7 @@ function stagedHeldOut(repos, repo) {
     .filter(({ mode }) => mode !== '000000');
   if (staged.length === 0) return [];
   const directories = linkedDirectories(projectCheckout(repos[0].path, repos[0]));
-  const mapped = mappedSubmodules(placeOf(repo.path));
+  const mapped = mappedSubmodules({ top: checkoutTop(repo, repo.path), prefix: repo.prefix });
   /** @type {Map<string, boolean>} */
   const nestedAt = new Map();
   const inNested = (/** @type {string} */ name) => {

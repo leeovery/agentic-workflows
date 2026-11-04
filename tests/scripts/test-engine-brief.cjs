@@ -457,6 +457,15 @@ describe('the reviewer\'s brief (13.2.2, 13.11.5)', () => {
       + `- the project's repository: \`${REFUND_BRANCH}\` — the range's tip there\n- \`${NESTED}\`: \`${REFUND_BRANCH}\` — the task's branch\n\n# The linters\n`), brief);
   });
 
+  it('7.2.17: in a project that is a folder of a larger repository, the range\'s stat holds the folder alone, each path named from it', () => {
+    const service = path.join(dir, 'packages/payments-service');
+    fs.mkdirSync(service, { recursive: true });
+    const res = ok(service, ['brief', 'reviewer', 'refund', '1.1', '--base', 'main', '--letter', 'a'], { env: SESSION });
+    const brief = fs.readFileSync(briefPath(SESSION_ID, res.id), 'utf8');
+
+    assert.ok(brief.includes(`# The diff's range\n\n${rangeDrawn('the project\'s repository', REFUND_BRANCH, DEEP.slice('packages/payments-service/'.length))}\n\n`), brief);
+  });
+
   it('a base a repository lacks is its own default branch there: a stack\'s base in the project\'s repository alone, and a nested repository whose default is master', () => {
     git(dir, ['branch', 'pay-stack', 'main']);
     const stacked = issued(['reviewer', UNIT, '1.1', '--base', 'pay-stack', '--letter', 'a']).brief;

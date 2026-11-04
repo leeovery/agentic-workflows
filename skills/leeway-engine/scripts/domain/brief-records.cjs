@@ -581,10 +581,11 @@ function drawLinters({ cwd }) {
   return listed(linters(cwd).map(({ name, command }) => `- ${name}: ${command}`));
 }
 
-// Off a terminal git fits a stat to 80 columns, cutting a long path from its
-// front; a width past any path keeps each whole, and the graph is held to
-// git's own 40 columns, which the width would otherwise stretch.
-const STAT = ['--stat=1000', '--stat-graph-width=40'];
+// Named from the repo's folder, a root inside a larger repository reading
+// only its own. Off a terminal git fits a stat to 80 columns, cutting a long
+// path from its front; a width past any path keeps each whole, and the graph
+// is held to git's own 40 columns, which the width would otherwise stretch.
+const STAT = ['--relative', '--stat=1000', '--stat-graph-width=40'];
 
 /**
  * The range in one repository, under a heading naming it, and its stat.

@@ -87,7 +87,7 @@ function checkoutTop({ prefix }, folder) {
 
 /** The folder `at`'s prefix deep in the checkout whose top is `top`. @param {{prefix: string}} at @param {string} top */
 function folderUnder({ prefix }, top) {
-  return path.join(top, prefix);
+  return path.resolve(top, prefix);
 }
 
 /**

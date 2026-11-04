@@ -251,31 +251,40 @@ describe('commit door: never a code commit inside an operation git holds open', 
 
 describe('commit door: a confined commit that does not land leaves the index as it found it', () => {
   const setup = fixtureFrom('engine-commit-', (at) => {
-    createFile(at, 'a.txt', 'one\n');
+    for (const folder of ['.', 'apps/web']) {
+      createFile(at, `${folder}/a.txt`, 'one\n');
+      createFile(at, `${folder}/gone.txt`, 'gone\n');
+    }
+    createFile(at, 'outside.txt', 'out\n');
     commitAll(at, 'a');
   });
   let dir;
   beforeEach(() => { dir = setup(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('a commit a hook refuses unstages what it staged and puts back what the person had staged — on its own paths and elsewhere', () => {
-    createFile(dir, 'a.txt', 'staged\n');
-    createFile(dir, 'c.txt', 'elsewhere\n');
-    git(dir, ['add', 'a.txt', 'c.txt']);
-    createFile(dir, 'a.txt', 'on disk\n');
-    createFile(dir, 'b.txt', 'new\n');
-    createFile(dir, '.git/hooks/pre-commit', '#!/bin/sh\nexit 1\n');
-    fs.chmodSync(path.join(dir, '.git/hooks/pre-commit'), 0o755);
-    const [head, index] = [git(dir, ['rev-parse', 'HEAD']), git(dir, ['ls-files', '--stage'])];
+  for (const folder of ['.', 'apps/web']) {
+    it(`a commit a hook refuses, from ${folder === '.' ? 'the repository\'s top' : 'a folder inside it (7.2.17)'}, unstages what it staged and puts back what the person had staged — an edit and a deletion on its own paths, and elsewhere`, () => {
+      const project = path.join(dir, folder);
+      createFile(project, 'a.txt', 'staged\n');
+      createFile(project, 'c.txt', 'elsewhere\n');
+      git(project, ['add', 'a.txt', 'c.txt']);
+      git(project, ['rm', '-q', '--cached', 'gone.txt']);
+      createFile(project, 'a.txt', 'on disk\n');
+      createFile(project, 'b.txt', 'new\n');
+      createFile(dir, 'outside.txt', 'out staged\n');
+      git(dir, ['add', 'outside.txt']);
+      createFile(dir, '.git/hooks/pre-commit', '#!/bin/sh\nexit 1\n');
+      fs.chmodSync(path.join(dir, '.git/hooks/pre-commit'), 0o755);
+      const [head, index] = [git(dir, ['rev-parse', 'HEAD']), git(dir, ['ls-files', '--stage'])];
 
-    assert.throws(() => commitPathspecScoped(dir, ['a.txt', 'b.txt'], 'chore: refused'), /git commit failed/);
+      assert.throws(() => commitPathspecScoped(project, ['a.txt', 'b.txt', 'gone.txt'], 'chore: refused'), /git commit failed/);
 
-    assert.strictEqual(git(dir, ['rev-parse', 'HEAD']), head);
-    assert.strictEqual(git(dir, ['ls-files', '--stage']), index);
-    assert.strictEqual(git(dir, ['show', ':a.txt']), 'staged\n');
-    assert.deepStrictEqual(git(dir, ['diff', '--cached', '--name-only']).trim().split('\n'), ['a.txt', 'c.txt']);
-    assert.strictEqual(fs.readFileSync(path.join(dir, 'a.txt'), 'utf8'), 'on disk\n');
-  });
+      assert.strictEqual(git(dir, ['rev-parse', 'HEAD']), head);
+      assert.strictEqual(git(dir, ['ls-files', '--stage']), index);
+      assert.strictEqual(git(project, ['show', ':./a.txt']), 'staged\n');
+      assert.strictEqual(fs.readFileSync(path.join(project, 'a.txt'), 'utf8'), 'on disk\n');
+    });
+  }
 
   it('paths that turn out clean leave the person\'s staged change to them as it was', () => {
     createFile(dir, 'a.txt', 'staged\n');

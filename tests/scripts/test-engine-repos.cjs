@@ -190,7 +190,7 @@ describe('where the project sits in its repository', () => {
     assert.strictEqual(folderPath(place, 'apps/website/x.js'), null, 'a sibling sharing the folder\'s name is outside it');
     assert.strictEqual(folderPath(place, 'tools/x.js'), null);
     assert.strictEqual(checkoutTop(place, '/tree/apps/web'), '/tree');
-    assert.strictEqual(folderUnder(place, '/tree'), '/tree/apps/web/');
+    assert.strictEqual(folderUnder(place, '/tree'), '/tree/apps/web');
   });
 });
 
