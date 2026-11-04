@@ -11,8 +11,8 @@
 // before not done, and a later round's reads not named (14.3.3); reports
 // missing or not reading; a payload of another shape, every fault named —
 // where each finding landed, its scope and its file-or-drop call
-// (14.3.1–14.3.7) — and every report item answered by exactly one finding,
-// at its call; and a verdict neither fixed nor settled, or settled and
+// (14.3.1–14.3.7) — and every report item, each note for later among them,
+// answered by exactly one finding, at its call, a note's out of scope; and a verdict neither fixed nor settled, or settled and
 // fixed (14.6.3). What it records is test-engine-review-round.cjs's.
 //
 // Layer: verb. World: review-world.cjs's, copied for each test.
@@ -33,17 +33,17 @@ let dir;
 useWorld((at) => { dir = at; });
 
 /** The tree refusal, naming what changed. @param {string} changed */
-const treeMoved = (changed) => `review round: the working tree outside .leeway/ changed since the snapshot the round is held to: ${changed} — nothing is reverted; the person decides what stands, and on their word review accept-tree ${UNIT} takes the tree as it is`;
+const treeMoved = (changed) => `review round: the working tree outside .leeway/ changed since the snapshot the round is held to: ${changed} — nothing is put back unasked: render review-tree ${UNIT} asks the person whether it is put back or kept`;
 
 describe('review round: what it refuses, writing nothing', () => {
   it('a call of another shape, as inbox file\'s is: a verb it lacks, no unit, no payload or reads, an extra word, a flag it takes none of', () => {
     const file = payload('round.json', { can_now: [], findings: [] });
     const usage = (/** @type {string[]} */ args) => refusedPristine(dir, args, { env: env() }).error;
-    const reviewUsage = 'Usage: engine review round <work-unit> --file <round.json> | engine review reads <work-unit> <area|tests> [<area|tests> …] | engine review accept-tree <work-unit>';
+    const reviewUsage = 'Usage: engine review round <work-unit> --file <round.json> | engine review notes <work-unit> --file <notes.json> | engine review reads <work-unit> <area|tests> [<area|tests> …] | engine review accept-tree <work-unit> | engine review restore-tree <work-unit> --listed <print>';
 
     for (const args of [
       ['review', 'record', UNIT, '--file', file], ['review', 'round', '--file', file], ['review', 'round', UNIT], ['review', 'round', UNIT, 'more', '--file', file], ['review', 'round', UNIT, '--file', file, '--force', 'x'],
-      ['review', 'reads', UNIT], ['review', 'reads', UNIT, '1-cards', '--file', file], ['review', 'accept-tree'], ['review', 'accept-tree', UNIT, 'more'],
+      ['review', 'reads', UNIT], ['review', 'reads', UNIT, '1-cards', '--file', file], ['review', 'accept-tree'], ['review', 'accept-tree', UNIT, 'more'], ['review', 'restore-tree', UNIT],
     ]) {
       assert.strictEqual(usage(args), reviewUsage, args.join(' '));
     }
@@ -75,7 +75,7 @@ describe('review round: what it refuses, writing nothing', () => {
     git(dir, ['commit', '-q', '--allow-empty', '-m', 'a stray commit']);
     const after = git(dir, ['rev-parse', 'HEAD']).trim();
 
-    assert.strictEqual(refusedRound({ can_now: [], findings: [RECEIPT] }), treeMoved(`the project's repository is at ${after.slice(0, 7)}, not ${before.slice(0, 7)}`));
+    assert.strictEqual(refusedRound({ can_now: [], findings: [RECEIPT] }), treeMoved(`the project's repository's HEAD moved, from ${before.slice(0, 7)} to ${after.slice(0, 7)}`));
   });
 
   it('no snapshot of a later round\'s held, its cache lost mid-round, naming the person\'s way on — never entering again; a unit whose review phase cannot be entered; and a review phase over', () => {
@@ -92,7 +92,7 @@ describe('review round: what it refuses, writing nothing', () => {
     recorded({ can_now: [], findings: [] });
 
     assert.deepStrictEqual([none, half, refusedRound({ can_now: [], findings: [] })], [
-      `review round: no snapshot of round 2's working tree is held — its cache is gone, and nothing is taken of the tree unasked: the person decides what stands, and on their word review accept-tree ${UNIT} takes the tree as it is`,
+      `review round: no snapshot of round 2's working tree is held — its cache is gone, and nothing is taken of the tree unasked: render review-tree ${UNIT} asks the person whether it stands as it is`,
       'review round: half\'s review phase starts once every phase of its cut has closed — phase 2 of 2 has not: enter implementation half',
       `review round: ${UNIT}'s review phase passed in round 2 — finish is next`,
     ]);
@@ -180,6 +180,16 @@ describe('review round: what it refuses, writing nothing', () => {
       '1-cards-a#1 is named by findings 2 and 4, and is one finding\'s',
       '1-cards-a#2 is answered by no finding — every item of every report lands in the round\'s record (14.3.1)',
       'tests-a#1 is answered by no finding — every item of every report lands in the round\'s record (14.3.1)',
+    ].join('; '));
+  });
+
+  it('a report\'s note for later answered by no finding, and one answered in scope — a note lies beyond the change, filed or dropped, never fixed', () => {
+    firstRoundReady();
+    reported(1, EVERY, { '1-cards-a': ['bug: The receipt is never sent.'] }, { '1-cards-a': ['The export skips refunds, at src/export.js', 'The README is stale, at README.md'] });
+
+    assert.strictEqual(refusedRound({ can_now: [], findings: [{ ...RECEIPT, from: ['1-cards-a#1', '1-cards-a#n1'] }] }), [
+      'review round: finding 1 answers a note for later, which lies beyond the change — its scope is out, and it is filed or dropped, never fixed',
+      '1-cards-a#n2 is answered by no finding — every item of every report lands in the round\'s record (14.3.1)',
     ].join('; '));
   });
 

@@ -2,15 +2,19 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: a review round recorded, and the review phase's screens
-// (§14) — `review round <unit> --file <round.json>`, `render review-report
-// <unit> [--round N]` and `render review-calls <unit>`.
+// (§14) — `review round <unit> --file <round.json>`, `review notes <unit>
+// --file <notes.json>`, `render review-report <unit> [--round N]` and
+// `render review-calls <unit>`.
 //
 // `review round` records the round under review (review-phase.cjs) from
 // Claude's account of it, `{can_now, findings, settled?}`: what the person
 // can now do, each a line; each finding with the area it is of — one the
 // round reads, `tests` for the test surface — its scope, `in` or `out` of
 // the change, its call, its text, the items of the round's reports it
-// answers, `{report}#{n}`, and where it landed, one of:
+// answers — each finding `{report}#{n}`, each note for later `{report}#n{k}`,
+// and each builder's note standing (review-phase.cjs) `notes#{k}`, a
+// finding answering those alone of the area `notes` — and where it landed,
+// one of:
 //   fix     a fix task, in scope: a task of the round's fix phase, past the
 //           cut (P14), the tracker holding it, not closed (14.3.2, 14.3.4);
 //   inbox   the item filed for it, out of scope: a live inbox item
@@ -22,10 +26,12 @@
 // such call is counted for the person (14.3.7); and how Claude settled the
 // round, where it failed and makes no fix task — its findings fixed in
 // earlier rounds or dropped so (14.6.3). It reads every report the round
-// asks for (reportNames) by the reviewers' grammar (round-report.cjs):
-// every item of every report, nits among them, is answered by exactly one
-// finding, two reviewers' one bug one finding, at no lesser call than the
-// items it answers; the round passes where every report does — Claude
+// asks for (reportNames) by a review round's grammar (review-report.cjs):
+// every item of every report, nits and notes for later among them, is
+// answered by exactly one finding, two reviewers' one bug one finding, at no
+// lesser call than the findings it answers; a note lies beyond the change,
+// so a finding answering one is out of scope, filed or dropped, never a
+// fix; the round passes where every report does — Claude
 // never types a verdict. What each scenario of the cut stands at, read at
 // the change's tips (review-change.cjs, runs.cjs), is recorded with it
 // (15.3.3, 15.5.6). Then it writes the round's record, its report — the
@@ -35,15 +41,25 @@
 // read whole (14.4.2), drops its round's snapshot, and commits them with
 // the reports.
 //
+// `review notes` answers the builders' notes standing once the round that
+// ended the phase has its fix tasks done — notes no round is left to
+// answer — from Claude's account, `{findings}`, each finding as a round's,
+// of the area `notes`, every note standing answered by exactly one; their
+// findings join that round's record, its report written again with them,
+// and both are committed. It refuses, opening `review notes: ` and writing
+// nothing: a unit whose review phase cannot be entered; a round under
+// review, which answers them; the round's fix tasks waiting; no note
+// standing; and a payload of another shape, every fault named.
+//
 // It refuses, opening `review round: ` and writing nothing: a unit whose
 // review phase cannot be entered; a round that cannot be read — one ended
 // the phase, fix tasks of the round before wait, a later round's areas are
 // not named; no snapshot of the round's held, its cache lost or an earlier
-// round's held, each named; a working
-// tree outside `.leeway/` changed since the round's snapshot, naming every
-// path — nothing is reverted, the person decides; each naming `review
-// accept-tree`, which on their word takes the tree as it is (12.7.8,
-// 14.S13); a report missing or not reading; a payload of another shape,
+// round's held, each named, and `review accept-tree`, which on the person's
+// word takes the tree as it is; a working tree outside `.leeway/` changed
+// since the round's snapshot, naming every path, nothing put back unasked —
+// `render review-tree` asks the person whether it is put back or kept
+// (review-tree.cjs, 12.7.8, 14.S13); a report missing or not reading; a payload of another shape,
 // every fault named; and a failing round neither fixed nor settled. It runs
 // under the writer lock (engine.cjs); a commit git refuses is a warning,
 // the files written.
@@ -65,26 +81,27 @@ const { trackedLists } = require('./task-verbs.cjs');
 const { parseShownTask, shownTask, phaseName } = require('./task-id.cjs');
 const { filled, shaped, listed, readPayload, refusing } = require('./staged-payload.cjs');
 const { refuserFor, committed } = require('./task-account.cjs');
-const { readReport } = require('./round-report.cjs');
+const { readReviewReport } = require('./review-report.cjs');
 const { readShown } = require('./ledger-read.cjs');
 const { parseInboxPath, FOLDER_KIND } = require('./inbox.cjs');
 const { titleOf } = require('./start.cjs');
 const { unitInProgress } = require('./topic-standing.cjs');
 const { itemTitle, topicTitles } = require('./derivations.cjs');
-const { cutPhases } = require('./phase-checks.cjs');
+const { reading, reposOf, cutPhases } = require('./phase-checks.cjs');
 const { readSpec, specStatements } = require('./spec-sections.cjs');
 const { runsOf } = require('./runs.cjs');
 const { changeOf, changeTips } = require('./review-change.cjs');
 const { reviewHeld } = require('./review-entry.cjs');
 const {
-  reportNames, reviewStanding, roundRefusal, recordedRounds, fixesOf, endsReview, fixPhase, roundRecordPath, roundReportFile, roundChecksFile, roundFolder,
-  snapshotRound, dropSnapshot, treeChanges, unitCalls, reviewCallFault, forThePerson, inTheBuild,
+  NOTES, isBuilderNote, reportNames, reviewStanding, roundRefusal, endedWords, recordedRounds, fixesOf, endsReview, fixPhase, roundRecordPath, roundReportFile, roundChecksFile, roundFolder,
+  snapshotRound, dropSnapshot, treeChanges, setAsideHeld, unitCalls, reviewCallFault, forThePerson, inTheBuild,
 } = require('./review-phase.cjs');
 const {
   roundReport, closingReport, reportScreen, reviewCallsScreen,
 } = require('./projections/review-phase.cjs');
 
 /** @typedef {import('./review-phase.cjs').RoundRecord} RoundRecord */
+/** @typedef {import('../kernel/repos.cjs').Repo} Repo */
 /** @typedef {import('./review-phase.cjs').RoundFinding} RoundFinding */
 /** @typedef {import('./projections/review-phase.cjs').RoundView} RoundView */
 
@@ -92,8 +109,10 @@ const SCOPES = ['in', 'out'];
 /** The calls, gravest first. */
 const CALLS = ['serious', 'bug', 'nit'];
 const LANDS = ['fix', 'inbox', 'drop'];
+/** A note for later's kind among a round's items, beside the findings' calls. */
+const NOTE = 'note';
 
-/** A round's report read, by its file's name in the round's folder, with its findings' calls. @typedef {{name: string, text: string, verdict: 'pass'|'fail', calls: string[]}} ReadReport */
+/** A round's report read, by its file's name in the round's folder, with its findings' calls and how many notes for later it holds. @typedef {{name: string, text: string, verdict: 'pass'|'fail', calls: string[], notes: number}} ReadReport */
 
 /**
  * Every report the round asks for, read, or what stands in the way.
@@ -112,8 +131,8 @@ function roundReports(cwd, unit, round, reads) {
     }
     const text = fs.readFileSync(file, 'utf8');
     try {
-      const { verdict, findings } = readReport(text);
-      found.reports.push({ name, text, verdict, calls: findings.map(({ call }) => call) });
+      const { verdict, findings, notes } = readReviewReport(text);
+      found.reports.push({ name, text, verdict, calls: findings.map(({ call }) => call), notes });
     } catch (err) {
       found.faults.push(`${rel} does not read as a reviewer's report — ${messageOf(err)}; brief its reviewer again, and its report replaces it`);
     }
@@ -121,8 +140,21 @@ function roundReports(cwd, unit, round, reads) {
   return found;
 }
 
-/** Every item of the round's reports, `{report}#{n}`, by its call. @param {ReadReport[]} reports @returns {Map<string, string>} */
-const reportItems = (reports) => new Map(reports.flatMap(({ name, calls }) => calls.map((call, at) => [`${name.replace(/\.md$/, '')}#${at + 1}`, call])));
+/** Each builder's note standing as an item of a round, a note. @param {string[]} notes @returns {[string, string][]} */
+const noteItems = (notes) => notes.map((item) => [item, NOTE]);
+
+/**
+ * Every item of the round by its kind: each finding of its reports,
+ * `{report}#{n}`, by its call; each note for later, `{report}#n{k}`, and
+ * each builder's note standing, `notes#{k}`, a note.
+ * @param {ReadReport[]} reports @param {string[]} notes @returns {Map<string, string>}
+ */
+const roundItems = (reports, notes) => new Map([...reports.flatMap(({ name, calls, notes: noted }) => {
+  const report = name.replace(/\.md$/, '');
+  /** @type {[string, string][]} */
+  const findings = calls.map((call, at) => [`${report}#${at + 1}`, call]);
+  return [...findings, ...Array.from({ length: noted }, (_, at) => /** @type {[string, string]} */ ([`${report}#n${at + 1}`, NOTE]))];
+}), ...noteItems(notes)]);
 
 /** The calls above a nit. */
 const GRAVE = CALLS.slice(0, 2);
@@ -194,15 +226,20 @@ function inboxFaults(cwd, finding, what) {
 
 /**
  * The report items a finding answers refused, every fault named: none, one
- * no report of the round holds, or a call lesser than theirs.
+ * no report of the round holds, a note for later answered in scope, or a
+ * call lesser than the findings'.
  * @param {Map<string, string>} items @param {Record<string, any>} finding @param {string} what @returns {string[]}
  */
 function fromFaults(items, finding, what) {
   if (!Array.isArray(finding.from) || finding.from.length === 0 || !finding.from.every(filled)) return [`${what} answers no report item — name each in from, as 1-cards-a#1`];
   const unheld = finding.from.filter((/** @type {string} */ item) => !items.has(item));
   if (unheld.length > 0) return [`${what} names ${unheld.join(', ')}, which no report the round read holds`];
-  const gravest = Math.min(...finding.from.map((/** @type {string} */ item) => CALLS.indexOf(/** @type {string} */ (items.get(item)))));
-  return CALLS.indexOf(String(finding.call)) > gravest ? [`${what} is a ${finding.call}, and the report items it answers call it a ${CALLS[gravest]}`] : [];
+  const kinds = finding.from.map((/** @type {string} */ item) => /** @type {string} */ (items.get(item)));
+  /** @type {string[]} */
+  const faults = kinds.includes(NOTE) && finding.scope !== 'out' ? [`${what} answers a note for later, which lies beyond the change — its scope is out, and it is filed or dropped, never fixed`] : [];
+  const gravest = Math.min(...kinds.map((kind) => CALLS.indexOf(kind)).filter((at) => at >= 0));
+  if (CALLS.indexOf(String(finding.call)) > gravest) faults.push(`${what} is a ${finding.call}, and the report items it answers call it a ${CALLS[gravest]}`);
+  return faults;
 }
 
 /** Every item of the round's reports answered by exactly one finding, else each left out and each named twice. @param {Map<string, string>} items @param {Record<string, any>[]} findings */
@@ -219,6 +256,40 @@ function coverageFaults(items, findings) {
 }
 
 /**
+ * A finding's area refused where it is none the round reads, nor `notes`
+ * for one answering builders' notes alone — said so where it answers one.
+ * @param {Record<string, any>} finding @param {string[]} reads @param {string} what @returns {string[]}
+ */
+function areaFaults({ area, from }, reads, what) {
+  if (reads.includes(String(area))) return [];
+  const notes = (Array.isArray(from) ? from : []).filter((item) => isBuilderNote(String(item)));
+  if (area === NOTES && notes.length > 0 && notes.length === from.length) return [];
+  const read = reads.length === 0 ? '' : ` — it reads ${reads.join(', ')}`;
+  return [`${what} is of ${JSON.stringify(area)}, which the round does not read${read}${notes.length === 0 ? '' : `; a finding answering builders' notes alone is of ${NOTES}`}`];
+}
+
+/**
+ * Each finding of an account read, its every fault pushed to `faults`, and
+ * every item answered by exactly one.
+ * @param {Parameters<typeof landingFaults>[0]} at @param {unknown} given @param {string[]} reads @param {Map<string, string>} items @param {string[]} faults
+ * @returns {RoundFinding[]}
+ */
+function findingsOf(at, given, reads, items, faults) {
+  const findings = listed(given, 'findings').map((finding, i) => {
+    const what = `finding ${i + 1}`;
+    const shape = shaped(finding, what, ['area', 'scope', 'call', 'text', 'from'], [...LANDS, 'ledger']);
+    faults.push(...areaFaults(shape, reads, what));
+    if (!SCOPES.includes(String(shape.scope))) faults.push(`${what}'s scope is in or out`);
+    if (!CALLS.includes(String(shape.call))) faults.push(`${what}'s call is serious, bug or nit`);
+    if (!filled(shape.text)) faults.push(`${what} says nothing`);
+    faults.push(...fromFaults(items, shape, what), ...landingFaults(at, shape, what));
+    return /** @type {RoundFinding} */ (shape);
+  });
+  faults.push(...coverageFaults(items, findings));
+  return findings;
+}
+
+/**
  * Claude's account of the round, its every fault named.
  * @param {Parameters<typeof landingFaults>[0]} at @param {unknown} given @param {string[]} reads @param {Map<string, string>} items
  * @returns {{can_now: string[], findings: RoundFinding[], settled: string|null}}
@@ -229,17 +300,7 @@ function accountOf(at, given, reads, items) {
   const faults = [];
   const canNow = listed(round.can_now, 'can_now');
   if (!canNow.every(filled)) faults.push('each of can_now is a line of what the person can now do');
-  const findings = listed(round.findings, 'findings').map((finding, i) => {
-    const what = `finding ${i + 1}`;
-    const shape = shaped(finding, what, ['area', 'scope', 'call', 'text', 'from'], [...LANDS, 'ledger']);
-    if (!reads.includes(String(shape.area))) faults.push(`${what} is of ${JSON.stringify(shape.area)}, which the round does not read — it reads ${reads.join(', ')}`);
-    if (!SCOPES.includes(String(shape.scope))) faults.push(`${what}'s scope is in or out`);
-    if (!CALLS.includes(String(shape.call))) faults.push(`${what}'s call is serious, bug or nit`);
-    if (!filled(shape.text)) faults.push(`${what} says nothing`);
-    faults.push(...fromFaults(items, shape, what), ...landingFaults(at, shape, what));
-    return /** @type {RoundFinding} */ (shape);
-  });
-  faults.push(...coverageFaults(items, findings));
+  const findings = findingsOf(at, round.findings, reads, items, faults);
   if (round.settled !== undefined && !filled(round.settled)) faults.push('settled says how Claude settled the round');
   if (faults.length > 0) throw new Error(faults.join('; '));
   return { can_now: /** @type {string[]} */ (canNow), findings, settled: round.settled === undefined ? null : String(round.settled) };
@@ -254,34 +315,37 @@ function phaseStatuses(cwd, unit, phase) {
 /**
  * What each scenario of the cut stands at, at the change's tips — the
  * code the round read.
- * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {number} round
+ * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {number} round @param {Repo[]} repos
  */
-function scenarioStandings(cwd, unit, manifest, round) {
-  const tips = changeTips(changeOf(cwd, unit, fixPhase(manifest, round), null));
+function scenarioStandings(cwd, unit, manifest, round, repos) {
+  const tips = changeTips(changeOf(cwd, unit, fixPhase(manifest, round), null, repos));
   return cutPhases(manifest).flatMap(({ scenarios }) => scenarios).map((scenario) => ({ scenario, standing: runsOf(cwd, unit, scenario, tips).standing }));
 }
 
 /**
- * The round under review, and the unit as it reads, refused where its
- * review phase cannot be entered or the round cannot be read.
+ * The round under review, the unit as it reads and the project's repos,
+ * refused where its review phase cannot be entered or the round cannot be
+ * read.
  * @param {string} cwd @param {string} unit
  */
 function roundUnderReview(cwd, unit) {
-  const manifest = refusing('review round', () => unitInProgress(cwd, unit));
-  const standing = refusing('review round', () => reviewHeld(cwd, unit, manifest, roundRefusal));
-  return { manifest, ...standing, reads: /** @type {string[]} */ (standing.reads) };
+  const at = reading(cwd, unit, refusing('review round', () => unitInProgress(cwd, unit)));
+  const standing = refusing('review round', () => reviewHeld(at, roundRefusal));
+  return {
+    manifest: at.manifest, ...standing, reads: /** @type {string[]} */ (standing.reads), repos: reposOf(at),
+  };
 }
 
-/** The tree held to its round's snapshot, refused where it is not held or the tree moved since (the header's). @param {string} cwd @param {string} unit @param {number} round @param {(reason: string) => never} refuse */
-function treeHeld(cwd, unit, round, refuse) {
+/** The tree held to its round's snapshot, refused where it is not held or the tree moved since (the header's). @param {string} cwd @param {string} unit @param {number} round @param {Repo[]} repos @param {(reason: string) => never} refuse */
+function treeHeld(cwd, unit, round, repos, refuse) {
   const held = snapshotRound(cwd, unit);
   if (held !== round) {
     const why = held === null ? 'its cache is gone' : `the one held is round ${held}'s`;
-    refuse(`no snapshot of round ${round}'s working tree is held — ${why}, and nothing is taken of the tree unasked: the person decides what stands, and on their word review accept-tree ${unit} takes the tree as it is`);
+    refuse(`no snapshot of round ${round}'s working tree is held — ${why}, and nothing is taken of the tree unasked: render review-tree ${unit} asks the person whether it stands as it is`);
   }
-  const changed = treeChanges(cwd, unit);
+  const changed = treeChanges(cwd, unit, repos);
   if (changed.length > 0) {
-    refuse(`the working tree outside .leeway/ changed since the snapshot the round is held to: ${changed.join(', ')} — nothing is reverted; the person decides what stands, and on their word review accept-tree ${unit} takes the tree as it is`);
+    refuse(`the working tree outside .leeway/ changed since the snapshot the round is held to: ${changed.join(', ')} — nothing is put back unasked: render review-tree ${unit} asks the person whether it is put back or kept`);
   }
 }
 
@@ -309,8 +373,10 @@ function verdictHeld(round, unit, phase, record, refuse) {
 function recordRound(cwd, unit, file) {
   const said = 'review round';
   const refuse = refuserFor(said);
-  const { manifest, areas, rounds, round, reads } = roundUnderReview(cwd, unit);
-  treeHeld(cwd, unit, round, refuse);
+  const {
+    manifest, areas, rounds, round, reads, notes, repos,
+  } = roundUnderReview(cwd, unit);
+  treeHeld(cwd, unit, round, repos, refuse);
   const { faults, reports } = roundReports(cwd, unit, round, reads);
   if (faults.length > 0) refuse(faults.join('; '));
   const phase = fixPhase(manifest, round);
@@ -318,13 +384,13 @@ function recordRound(cwd, unit, file) {
   const warnings = [];
   const account = refusing(said, () => readShown(stateRoot(cwd), warnings, (shower) => accountOf({
     unit, phase, cwd, statuses: phaseStatuses(cwd, unit, phase), call: (id) => reviewCallFault(shower, unit, id),
-  }, readPayload(cwd, file), reads, reportItems(reports))));
+  }, readPayload(cwd, file), reads, roundItems(reports, notes))));
   /** @type {RoundRecord} */
   const record = {
     reports: reports.map(({ name }) => name), passed: reports.every(({ verdict }) => verdict === 'pass'), can_now: account.can_now, findings: account.findings, settled: account.settled, scenarios: [],
   };
   verdictHeld(round, unit, phase, record, refuse);
-  record.scenarios = refusing(said, () => scenarioStandings(cwd, unit, manifest, round));
+  record.scenarios = refusing(said, () => scenarioStandings(cwd, unit, manifest, round, repos));
   const recorded = [...rounds, record];
   const rels = [roundRecordPath(unit, round), roundReportFile(unit, round), roundChecksFile(unit, round)];
   writeJsonAtomic(statePath(cwd, rels[0]), record);
@@ -339,9 +405,47 @@ function recordRound(cwd, unit, file) {
     fixes,
     ends,
     ...(fixes.length === 0 ? {} : { fix_phase: phase }),
-    ...(ends ? {} : { reads_at_least: reviewStanding(cwd, unit, manifest).required }),
+    ...(ends ? {} : { reads_at_least: reviewStanding(reading(cwd, unit, manifest)).required }),
     areas: areas.map(({ name }) => name),
   });
+}
+
+/** Why the builders' notes cannot be answered on their own, or null: a round under review answers them, the round that ended the phase waits on its fix tasks, or none stands. @param {string} unit @param {import('./review-phase.cjs').ReviewStanding} standing */
+function notesRefusal(unit, standing) {
+  if (!standing.ended) return roundRefusal(unit, standing) ?? `round ${standing.round} is under review, and answers the builders' notes standing among its items — review round ${unit} --file <round.json>`;
+  if (standing.waiting.length > 0) return `${endedWords(unit, standing)} — its fix tasks are built first, then the notes their builders left are answered: task ${standing.waiting.join(', task ')}`;
+  return standing.notes.length === 0 ? `no builder's note stands unanswered — ${endedWords(unit, standing)}, and finish is next` : null;
+}
+
+/**
+ * `review notes`: the builders' notes standing, answered once the round
+ * that ended the review phase has its fix tasks done, their findings
+ * joining its record and its report written again (the header's).
+ * @param {string} cwd @param {string} unit @param {string} file
+ */
+function answerNotes(cwd, unit, file) {
+  const said = 'review notes';
+  const manifest = refusing(said, () => unitInProgress(cwd, unit));
+  const { rounds, notes } = refusing(said, () => reviewHeld(reading(cwd, unit, manifest), notesRefusal));
+  const round = rounds.length;
+  /** @type {string[]} */
+  const warnings = [];
+  const findings = refusing(said, () => readShown(stateRoot(cwd), warnings, (shower) => {
+    const given = shaped(readPayload(cwd, file), 'the notes\' answers', ['findings'], []);
+    /** @type {string[]} */
+    const faults = [];
+    const answered = findingsOf({
+      unit, phase: fixPhase(manifest, round), cwd, statuses: new Map(), call: (id) => reviewCallFault(shower, unit, id),
+    }, given.findings, [], new Map(noteItems(notes)), faults);
+    if (faults.length > 0) throw new Error(faults.join('; '));
+    return answered;
+  }));
+  const record = /** @type {RoundRecord} */ (rounds.at(-1));
+  const recorded = [...rounds.slice(0, -1), { ...record, findings: [...record.findings, ...findings] }];
+  const rels = [roundRecordPath(unit, round), roundReportFile(unit, round)];
+  writeJsonAtomic(statePath(cwd, rels[0]), recorded.at(-1));
+  fs.writeFileSync(statePath(cwd, rels[1]), `${reportText(cwd, unit, manifest, recorded, null, warnings)}\n`);
+  return committed(cwd, rels, `review(${unit}): round ${round}'s builders' notes`, warnings, { round, answered: notes });
 }
 
 /** An inbox item as a report names it: its title and kind; its file's name where it is gone or has no title. @param {string} cwd @param {string} rel */
@@ -404,9 +508,10 @@ function callsCount(cwd, unit, warnings) {
  * The last round's report as text: the closing report where the round ends
  * the review phase, else the round's own, the calls decided for the person
  * counted as it is drawn. Where `statuses` gives the tracker's, as the
- * screen draws it; where it is null, as the last round's file keeps it as
- * it is recorded — each fix task as filed (roundView), the calls counted as
- * of its record.
+ * screen draws it, with what put back set aside; where it is null, as the
+ * last round's file keeps it as it is recorded — each fix task as filed
+ * (roundView), the calls counted as of its record, and no set-aside, a
+ * folder of this machine's the screen names while it holds anything.
  * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {RoundRecord[]} rounds @param {Map<string, string>|null} statuses @param {string[]} warnings
  */
 function reportText(cwd, unit, manifest, rounds, statuses, warnings) {
@@ -415,8 +520,9 @@ function reportText(cwd, unit, manifest, rounds, statuses, warnings) {
   const last = /** @type {RoundRecord} */ (rounds.at(-1));
   const view = (/** @type {number} */ round) => roundView(cwd, manifest, rounds[round - 1], round, wordings, statuses);
   const calls = { ...callsCount(cwd, unit, warnings), recorded: statuses === null ? rounds.length : null };
-  if (endsReview(last)) return closingReport(unit, title, rounds.map((_, at) => view(at + 1)), calls);
-  return roundReport(unit, title, view(rounds.length), calls);
+  const aside = statuses === null ? null : setAsideHeld(cwd, unit);
+  if (endsReview(last)) return closingReport(unit, title, rounds.map((_, at) => view(at + 1)), calls, aside);
+  return roundReport(unit, title, view(rounds.length), calls, aside);
 }
 
 /**
@@ -446,4 +552,6 @@ function reviewCallsSurface(cwd, { dotpath: unit = '' }) {
   });
 }
 
-module.exports = { recordRound, reviewReportSurface, reviewCallsSurface };
+module.exports = {
+  recordRound, answerNotes, reviewReportSurface, reviewCallsSurface,
+};

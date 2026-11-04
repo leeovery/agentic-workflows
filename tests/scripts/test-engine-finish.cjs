@@ -199,15 +199,16 @@ describe('render finish (14.5.1)', () => {
 });
 
 describe('finish yes (14.5.1, 24.1.2)', () => {
-  it('lands every phase still standing and completes the unit, committed, a feature\'s flow carrying on — refused while finish\'s checklist is open', () => {
+  it('lands every phase still standing and completes the unit, committed, a feature handed to the start menu — refused while finish\'s checklist is open', () => {
     const open = refused(['finish', 'yes', UNIT]);
     finishClosed();
     const done = ok(dir, ['finish', 'yes', UNIT], { env: env() });
 
     assert.strictEqual(open, `finish yes: finish is open — its items are worked, then it is closed: checklist close finish ${UNIT}`);
     assert.deepStrictEqual(done, {
-      ok: true, unit: UNIT, landed: [], completed_at: readManifest(dir, UNIT).completed_at, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(), next: { kind: 'continue' },
+      ok: true, unit: UNIT, landed: [], completed_at: readManifest(dir, UNIT).completed_at, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(), next: { kind: 'handoff', skill: 'leeway', args: [] },
     });
+    assert.match(output(dir, ['handoff', done.next.skill, ...done.next.args], { env: env() }), /^skill: leeway\nargs: $/m);
     assert.deepStrictEqual([readManifest(dir, UNIT).status, stateGit(dir, ['log', '-1', '--format=%s']).trim()], ['completed', `finish(${UNIT}): completed`]);
     assert.strictEqual(refused(['render', 'finish', UNIT]), `render finish: ${UNIT} is completed — new work starts from the start menu`);
   });

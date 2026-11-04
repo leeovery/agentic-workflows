@@ -161,6 +161,7 @@ describe('engine workunit absorb — happy path', () => {
     indexFiles(fix, [...FEATURE_FILES, 'payments/imports/roadmap.md']);
     writeFile(fix.project, 'unrelated.txt', 'outside the scope\n');
     writeFile(fix.project, '.leeway/.cache/auth-flow/discussion/auth-flow/review-1.md', 'scratch\n');
+    writeFile(fix.project, '.leeway/.cache/.set-aside/auth-flow/round-1/put-1/src/draft.md', 'put back\n');
     const marks = path.join(fix.project, '.leeway/.cache/.marks');
     writeFile(fix.project, '.leeway/.cache/.marks/auth-flow.json', '{"shown":[]}\n');
     writeFile(fix.project, '.leeway/.cache/.marks/payments.json', '{"shown":[]}\n');
@@ -176,6 +177,8 @@ describe('engine workunit absorb — happy path', () => {
     const res = engine(fix, ABSORB);
     assert.strictEqual(fs.existsSync(path.join(fix.project, '.leeway/.cache/auth-flow')), false,
       "the absorbed feature's scratch cache is purged with it");
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/.cache/.set-aside/auth-flow/round-1/put-1/src/draft.md'), 'utf8'), 'put back\n',
+      'what its review\'s put back set aside outlives it');
     assert.deepStrictEqual([fs.readdirSync(marks), lockedAsRemoved], [['payments.json'], [true]],
       "the absorbed feature's last-looked mark goes with it, under the mark's lock, and the epic's stays");
 

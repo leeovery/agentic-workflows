@@ -165,7 +165,7 @@ const readingAt = (at) => at.once('reading', () => {
 const standingAt = (at) => at.once('build', () => standingOf(readingAt(at), at.inFlight));
 
 /** Where the review phase stands for the board's unit, read once a call (`readingAt`). @param {BoardAt} at @returns {ReviewStanding} */
-const reviewStandingAt = (at) => at.once('review', () => reviewStanding(at.cwd, at.unit, at.manifest, readingAt(at)));
+const reviewStandingAt = (at) => at.once('review', () => reviewStanding(readingAt(at)));
 
 /**
  * In step, the lowest phase whose merge waits at its gate, of every phase

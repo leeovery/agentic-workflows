@@ -255,7 +255,7 @@ A skill that only hands the work on carries this blockquote, byte for byte (lint
 
 ### The Framework Load
 
-The framework holds what is true in every conversation. It loads once per conversation, at the head of the skill the conversation opens on — the person's way in, or a skill a handoff lands on (`OPENING_SKILLS` in `domain/handoff.cjs`). Each of those opens its `## Instructions` section with this line and nothing else:
+The framework holds what is true in every conversation. It loads once per conversation, at the head of the skill the conversation opens on — the person's way in, or a skill a handoff lands on (`HANDOFF_TARGETS` in `domain/handoff.cjs`). Each of those opens its `## Instructions` section with this line and nothing else:
 
 ```markdown
 Load **[framework.md](../leeway-shared/references/framework.md)** and follow its instructions as written.

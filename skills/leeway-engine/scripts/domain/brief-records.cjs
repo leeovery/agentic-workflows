@@ -456,6 +456,7 @@ const {
 } = require('./round-report.cjs');
 const { landsOn, builtOnBases } = require('./task-base.cjs');
 const { freedAt } = require('./task-parks.cjs');
+const { reviewReportFaults } = require('./review-report.cjs');
 const { REVIEWER_LETTERS } = require('../kernel/reviewers.cjs');
 const { taskName, shownTask, phaseName } = require('./task-id.cjs');
 const { taskBranch } = require('./landing-names.cjs');
@@ -475,6 +476,7 @@ const {
   TESTS, TESTS_LETTER, roundRefusal, readsWords, areaReportPath, unitCalls,
 } = require('./review-phase.cjs');
 const { reviewHeld } = require('./review-entry.cjs');
+const { reading, reposOf } = require('./phase-checks.cjs');
 const { changeOf, changeTips, workBelow } = require('./review-change.cjs');
 const { topicPlace, recordsRules, composedPath, findingsPath, refusedPath } = require('./ledger-carry.cjs');
 
@@ -1634,14 +1636,15 @@ function letterOf(filling) {
 
 /**
  * Where a reviewer writes its report, drawn; a report there that does not
- * read is named as the one this replaces, with why it does not, and one
- * that reads refuses it.
- * @param {Filling} filling @param {string} rel state-relative
+ * read, by `faultsOf` — the reviewers' grammar, or a review round's — is
+ * named as the one this replaces, with why it does not, and one that reads
+ * refuses it.
+ * @param {Filling} filling @param {string} rel state-relative @param {(file: string) => string|null} [faultsOf]
  */
-function reportPlace(filling, rel) {
+function reportPlace(filling, rel, faultsOf = reportFaults) {
   const file = statePath(filling.cwd, rel);
   if (!fs.existsSync(file)) return `\`${file}\``;
-  const faults = reportFaults(file);
+  const faults = faultsOf(file);
   if (faults === null) throw new Error(`${rel} is written already — that reviewer's report of the round is in`);
   return `\`${file}\` — the report there does not read as a reviewer's report — ${faults}; yours replaces it`;
 }
@@ -1716,7 +1719,7 @@ function chainPast(filling, repos) {
   const { ref, task } = taskOf(filling);
   if (task.type === null) throw new Error(`${taskName(ref)} has no type in the tracker, and its branch is named from it`);
   const own = taskBranch(ref, task.type, task.title);
-  const below = workBelow(filling.cwd, ref.unit, ref.phase).flatMap((other) => (other.type === null ? [] : [taskBranch(other.ref, other.type, other.title)]));
+  const below = workBelow(filling.cwd, ref.unit, ref.phase, repos).flatMap((other) => (other.type === null ? [] : [taskBranch(other.ref, other.type, other.title)]));
   return childrenFirst(repos).flatMap((repo) => {
     const held = branches(repo.path);
     if (!held.has(own)) return [];
@@ -1789,13 +1792,16 @@ function drawConsolidationTo(filling) {
   return `\`${statePath(filling.cwd, consolidationPath(unit, phase))}\``;
 }
 
+/** The unit as its review phase reads it, once a fill. */
+const reviewReading = oncePerFill(/** @param {Filling} filling */ (filling) => reading(filling.cwd, unitOf(filling), unitManifest(filling)));
+
 /**
  * The unit's review phase as its round's reports are written for, read
  * once a fill, the round's reads known; refused where it cannot be entered
  * (review-entry.cjs) or the round cannot be read (review-phase.cjs).
  */
-const reviewOf = oncePerFill(/** @param {Filling} filling */ (filling) => {
-  const standing = reviewHeld(filling.cwd, unitOf(filling), unitManifest(filling), roundRefusal);
+const reviewOf = oncePerFill(/** @param {Filling} filling @param {string[]} warnings */ (filling, warnings) => {
+  const standing = reviewHeld(reviewReading(filling, warnings), roundRefusal);
   return { ...standing, reads: /** @type {string[]} */ (standing.reads) };
 });
 
@@ -1810,7 +1816,7 @@ function areaNamed(filling, warnings) {
 /** The whole change, read once a fill (review-change.cjs). */
 const changeHeld = oncePerFill(/** @param {Filling} filling @param {string[]} warnings */ (filling, warnings) => {
   const { rounds } = reviewOf(filling, warnings);
-  return changeOf(filling.cwd, unitOf(filling), cutOf(filling).length + rounds.length, filling.given.base ?? null);
+  return changeOf(filling.cwd, unitOf(filling), cutOf(filling).length + rounds.length, filling.given.base ?? null, reposOf(reviewReading(filling, warnings)));
 });
 
 /** @param {Filling} filling @param {string[]} warnings */
@@ -1879,14 +1885,14 @@ function drawAreaReportTo(filling, warnings) {
   const { name, number } = areaNamed(filling, warnings);
   const { round, reads } = reviewOf(filling, warnings);
   if (!reads.includes(name)) throw new Error(`area ${number} is not read in round ${round}, which reads ${readsWords(reads)}`);
-  return reportPlace(filling, areaReportPath(unitOf(filling), round, name, letterOf(filling)));
+  return reportPlace(filling, areaReportPath(unitOf(filling), round, name, letterOf(filling)), reviewReportFaults);
 }
 
 /** @param {Filling} filling @param {string[]} warnings */
 function drawTestsReportTo(filling, warnings) {
   const { round, reads } = reviewOf(filling, warnings);
   if (!reads.includes(TESTS)) throw new Error(`the test surface is not read in round ${round}, which reads ${readsWords(reads)}`);
-  return reportPlace(filling, areaReportPath(unitOf(filling), round, TESTS, TESTS_LETTER));
+  return reportPlace(filling, areaReportPath(unitOf(filling), round, TESTS, TESTS_LETTER), reviewReportFaults);
 }
 
 /** The flag naming the branch a range is read from. @type {BriefFlag} */

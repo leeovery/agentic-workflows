@@ -7,13 +7,14 @@
 // --file <item.json>` (inbox.cjs). The round's record — the reports it
 // read, its verdict theirs, what the person can now do, each finding with
 // its area, scope, call, the report items it answers — two reviewers' one
-// bug one finding — and where it landed, a fix task of the round's fix
+// bug one finding, a note for later one out of scope — and where it landed, a fix task of the round's fix
 // phase, an item filed, or dropped with why, each out of scope and each
 // bug in scope dropped by a call of Claude's at `{unit}.review`
 // (14.3.1–14.3.7), the settlement, each scenario's standing at the change's
 // tips (15.3.3) — its checks, every report whole (14.4.2), and its commit;
-// each round's fix tasks a phase of their own past the cut (P14, 14.S12);
-// no count of rounds, a round failing again settled, said so and never
+// each round's fix tasks a phase of their own past the cut (P14, 14.S12),
+// both landing at finish in order test-engine-landing-conformance.cjs's
+// (7.S10); no count of rounds, a round failing again settled, said so and never
 // passed (14.S15); and in step, the failing verdict stopping nothing
 // (14.S14). The item filed: its file, its commit, and what it refuses
 // (14.S5). What the round refuses is test-engine-review-refusals.cjs's.
@@ -28,7 +29,7 @@ const path = require('path');
 const { withFrozenClock } = require('./engine-harness.cjs');
 const {
   UNIT, inStep, AREAS, EVERY, calls, useWorld, env, enter, payload, reportText, reported, recorded, refusedRound, fixPhaseWritten, fixBranch, stateText, lastStateCommit,
-  reviewCall, filed, RECEIPT, FOUND, firstRoundReady, secondRoundReady,
+  reviewCall, filed, RECEIPT, FOUND, FAILING, firstRoundReady, secondRoundReady,
   refusedPristine, statePath, writeState, git, assert,
 } = require('./review-world.cjs');
 
@@ -82,6 +83,24 @@ describe('review round: the round recorded, its report and checks written, and a
       subject: `review(${UNIT}): round 1`,
       files: [...NAMES.map((name) => `${UNIT}/review/round-1/${name}.md`), ...['-checks.md', '.json', '.md'].map((end) => `${UNIT}/review/round-1${end}`)].sort(),
     });
+  });
+
+  it('a report\'s notes for later are items of the round, each {report}#n{k} beside its findings, each answered by a finding out of scope — filed or dropped by Claude\'s call, at whatever call — and the report lists one filed as it lists a finding filed', () => {
+    firstRoundReady();
+    reported(1, EVERY, FAILING, { '1-cards-a': ['The ledger export skips refunds, at src/export.js', 'The README names an old endpoint, at README.md'] });
+    const fileCall = reviewCall('Filed: the export skips refunds.', 'It lies beside the change.');
+    const dropCall = reviewCall('Dropped: the README\'s endpoint.', 'The docs are rewritten next month.');
+    const item = filed({ kind: 'bug', text: '# Export skips refunds\n\nThe ledger export leaves refunds out.', call: fileCall });
+    const findings = [
+      RECEIPT,
+      { area: '1-cards', scope: 'out', call: 'bug', text: 'The ledger export skips refunds.', from: ['1-cards-a#n1'], inbox: item.filed, ledger: fileCall },
+      { area: '1-cards', scope: 'out', call: 'nit', text: 'The README names an old endpoint.', from: ['1-cards-a#n2'], drop: 'The docs are rewritten next month.', ledger: dropCall },
+    ];
+
+    assert.deepStrictEqual(recorded({ can_now: [], findings }).fixes, ['3.1']);
+    assert.deepStrictEqual(JSON.parse(stateText(`${UNIT}/review/round-1.json`)).findings.map((/** @type {{from: string[]}} */ { from }) => from), [['1-cards-a#1'], ['1-cards-a#n1'], ['1-cards-a#n2']]);
+    assert.ok(stateText(`${UNIT}/review/round-1.md`).includes('WENT TO THE INBOX (1)'));
+    assert.ok(stateText(`${UNIT}/review/round-1.md`).includes('Export skips refunds (bug)'));
   });
 
   it('14.S12: each failing round\'s fix tasks are a phase of their own past the cut — round 1\'s phase 3, round 2\'s phase 4 — a fix naming the round before\'s phase refused', () => {

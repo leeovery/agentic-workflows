@@ -13,9 +13,10 @@
 // `land open` refuses a fix task whose branch does not descend from the
 // unit's work not landed below it, which a fix phase is built on
 // (domain/landing.cjs, 7.2.6) — the layout that builds it there is
-// test-engine-task-worktree.cjs's, its proof through round 3 the review's
-// rounds' simulation's (14.S12). The fix phases in the build's standing and
-// on its screens are test-engine-review-fix-phases.cjs's.
+// test-engine-task-worktree.cjs's, its proof — round 2's fix built on
+// round 1's, and both landed at finish — the review's rounds' simulation's.
+// The fix phases in the build's standing and on its screens are
+// test-engine-review-fix-phases.cjs's.
 //
 // Layer: verb. World: review-world.cjs's, copied for each test.
 // ---------------------------------------------------------------------------

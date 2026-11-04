@@ -118,7 +118,7 @@ for (const { name } of listDrivers('landing')) {
       ]);
     });
 
-    it('finish: the phases still standing land after every other, a phase built on another after it, the review\'s fix phases numbered past the cut last, round 1\'s before round 2\'s whatever order they opened in (7.2.6, 7.S10)', () => {
+    it('finish: the phases still standing land after every other, a phase built on another after it, the review\'s fix phases numbered past the cut last, round 1\'s before round 2\'s whatever order they opened in (7.2.6, 7.S10, 14.S12)', () => {
       const at = project();
       const again = cutTask(at, '5.1', 'fix', 'Fix it again', 'main', { 'again.txt': 'again\n' });
       const first = cutTask(at, '4.1', 'fix', 'Fix it', 'main', { 'fixed.txt': 'fixed\n' });

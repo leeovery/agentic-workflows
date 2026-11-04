@@ -102,6 +102,7 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - `.workflows/{work_unit}/.state/` — per-unit analysis files
 - `.workflows/.state/` — the migrations ledger, `environment-setup.md`
 - `.workflows/.cache/{work_unit}/{phase}/{topic}/` — gitignored session state, scratch and presence; `.cache/.session-labels/` the tmux label store
+- `.workflows/.cache/.set-aside/{work_unit}/round-{N}/put-{k}/` — what the review's put back set aside; outlives the unit
 - `.workflows/.inbox/{ideas,bugs,quickfixes}/` — undecided captures; `.archived/` the declined ones
 - `.workflows/.roadmap/` — the roadmap's notes
 - `.workflows/.product/` — the product's conversation: `sessions/session-NNN.md` its logs, `assets/` the files shared, `spikes/{NNN}-{slug}/` its spikes

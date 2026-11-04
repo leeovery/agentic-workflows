@@ -518,10 +518,10 @@ function readRefusal(ref, { round, readers }) {
   return `round ${round} of ${taskName(ref)} is not yet reported whole — ${ways.join('; ')} — and its builder goes back once the round's reports are in`;
 }
 
-/** Why a file's text does not read as a reviewer's report, or null where it does. @param {string} file @returns {string|null} */
-function reportFaults(file) {
+/** Why a file's text does not read as a reviewer's report, by `read`, or null where it does. @param {string} file @param {(text: string) => unknown} [read] @returns {string|null} */
+function reportFaults(file, read = readReport) {
   try {
-    readReport(fs.readFileSync(file, 'utf8'));
+    read(fs.readFileSync(file, 'utf8'));
     return null;
   } catch (err) {
     return messageOf(err);

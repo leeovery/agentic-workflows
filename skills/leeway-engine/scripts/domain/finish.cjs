@@ -18,7 +18,9 @@
 //   and the review phase — the person's answer at `{unit}.implementation`
 //   or `{unit}.review` standing over Claude's lean — given at the verdict
 //   point `finish` (16.10.3, ledger-verdicts.cjs); then invites questions
-//   about what was built, answered before finishing (14.5.1). What its
+//   about what was built, answered before finishing (14.5.1); and what the
+//   review's put backs set aside, where they set aside anything, said to
+//   stay until the person removes it. What its
 //   reads warned of — a knowledge base set up that does not read among it
 //   (finish-checks.cjs) — is said on the screen, and on the yes's answer.
 // - The yes stands on the screen as drawn: the close it shows and no
@@ -26,9 +28,9 @@
 //   finish`, landing.cjs) — the review phase's fix phases, numbered past
 //   the cut, after every other (7.2.6) — a refusal there leaving the unit
 //   as it was, with its way on; then completes the unit
-//   (workunit-lifecycle.cjs). It answers where the work goes (24.1.2): an
-//   epic's menu, its review completed; the calling flow carries on for
-//   every other type, the start menu being no handoff's target.
+//   (workunit-lifecycle.cjs). It answers where the work goes (24.1.2), a
+//   handoff each: an epic's menu, its review completed; the start menu,
+//   `/leeway`, for every other type.
 // ---------------------------------------------------------------------------
 
 const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
@@ -44,6 +46,7 @@ const { landFinish } = require('./landing.cjs');
 const { completeWorkUnit } = require('./workunit-lifecycle.cjs');
 const { refusing } = require('./staged-payload.cjs');
 const { finishScreen } = require('./projections/finish.cjs');
+const { setAsideHeld } = require('./review-phase.cjs');
 
 /** @typedef {import('./projections/surfaces.cjs').Next} Next */
 
@@ -83,13 +86,14 @@ function finishSurface(cwd, { dotpath: unit = '' }) {
       skips: skips.map(({ checklist, text, reason }) => ({ checklist, text, reason })),
       verdict,
       warnings,
+      aside: setAsideHeld(cwd, unit),
     });
   });
 }
 
-/** Where the work goes once the unit is finished (24.1.2): an epic's menu, its review completed; else the calling flow carries on. @param {Record<string, any>} manifest @returns {Next} */
+/** Where the work goes once the unit is finished (24.1.2): an epic's menu, its review completed; else the start menu. @param {Record<string, any>} manifest @returns {Next} */
 function nextAfterFinish(manifest) {
-  return manifest.work_type === 'epic' ? { kind: 'handoff', skill: 'leeway-continue-epic', args: [manifest.name, 'review', 'completed'] } : { kind: 'continue' };
+  return manifest.work_type === 'epic' ? { kind: 'handoff', skill: 'leeway-continue-epic', args: [manifest.name, 'review', 'completed'] } : { kind: 'handoff', skill: 'leeway', args: [] };
 }
 
 /**

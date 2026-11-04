@@ -473,6 +473,7 @@ ${REVIEW_USAGE.replace(/^/gm, '  ')}
   render build-progress <work-unit>
   render review-report <work-unit> [--round <N>]
   render review-calls <work-unit>
+  render review-tree <work-unit>
   render finish <work-unit>
   render discovery-map <work-unit>
   render migrations-applied --file <payload.json>
@@ -1481,7 +1482,8 @@ function runVerify(call, argv) {
 // ---------------------------------------------------------------------------
 // review — a round of the review phase recorded, with its report and its
 // checks (domain/review-round.cjs); a later round's areas named, and the
-// working tree taken as it is (domain/review-verbs.cjs).
+// working tree taken as it is (domain/review-verbs.cjs) or put back
+// (domain/review-tree.cjs).
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */

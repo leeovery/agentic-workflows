@@ -565,5 +565,5 @@ const IMPLEMENTATION = Object.freeze({
 });
 
 module.exports = {
-  IMPLEMENTATION, STATUS_WORDS, phaseNamed, buildStanding, standingOf, buildPhases, builtUnit, cutCount, buildRecovery, ownInFlight, inFlightLines, takeInFlight, buildRefusal, codeHeld, buildLogOf,
+  IMPLEMENTATION, STATUS_WORDS, phaseNamed, buildStanding, standingOf, buildPhases, builtUnit, cutCount, buildRecovery, ownInFlight, inFlightLines, takeInFlight, readingOf, buildRefusal, codeHeld, buildLogOf,
 };

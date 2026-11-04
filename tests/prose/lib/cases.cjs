@@ -37,7 +37,7 @@
 // build must be built.
 //
 // `entry` names where the walk starts, and it may only be somewhere a
-// real session starts — one of the engine's OPENING_SKILLS:
+// real session starts — one of the engine's HANDOFF_TARGETS:
 // `leeway` (the user's way in) or a skill a handoff lands the work
 // on in a fresh context — a phase's skill, the epic menu, discovery, the
 // roadmap. Nothing else is a legitimate opening — help, the
@@ -64,7 +64,7 @@
 const fs = require('fs');
 const path = require('path');
 const invariants = require('./invariants.cjs');
-const { OPENING_SKILLS } = require('../../../skills/leeway-engine/scripts/domain/handoff.cjs');
+const { HANDOFF_TARGETS } = require('../../../skills/leeway-engine/scripts/domain/handoff.cjs');
 
 const ROOT = path.join(__dirname, '../../..');
 const PROSE_DIR = path.join(ROOT, 'tests/prose');
@@ -192,9 +192,9 @@ function headingExists(absPath, anchor) {
  */
 function entryErrors(entry) {
   if (!entry) return ['has no entry — name the skill the walk starts at'];
-  if (!OPENING_SKILLS.includes(entry)) {
+  if (!HANDOFF_TARGETS.includes(entry)) {
     return [`entry "${entry}" is not somewhere a session starts — use a skill a conversation opens on `
-      + `(${OPENING_SKILLS.join(', ')}). Help, the linear continue menu and the bridge `
+      + `(${HANDOFF_TARGETS.join(', ')}). Help, the linear continue menu and the bridge `
       + 'are only ever opened in place, mid-session, and a reference never directly'];
   }
   return [];

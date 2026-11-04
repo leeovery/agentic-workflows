@@ -533,15 +533,19 @@ function commitIndexEntries(cwd, specs, message) {
  * or non-ASCII bytes survive; a rename record's second field (the source
  * path) is consumed with it. With `pointersOnly`, a submodule differs only
  * where its pointer moved, staged or not, never for what it holds itself.
+ * With `renames` off, a rename reads as its two paths, the source deleted
+ * and the target added.
  * @param {string} cwd
  * @param {string[]} [exclude]
  * @param {boolean} [pointersOnly]
+ * @param {boolean} [renames]
  * @returns {{path: string, status: string}[]}
  */
-function dirtyEntries(cwd, exclude = [], pointersOnly = false) {
+function dirtyEntries(cwd, exclude = [], pointersOnly = false, renames = true) {
   const cwdPrefix = git(cwd, ['rev-parse', '--show-prefix']).trim();
   const submodules = pointersOnly ? ['--ignore-submodules=dirty'] : [];
-  const fields = git(cwd, ['status', '--porcelain', '-z', '--untracked-files=all', ...submodules, '--', '.', ...excluding(exclude)]).split('\0');
+  const pairs = renames ? [] : ['--no-renames'];
+  const fields = git(cwd, ['status', '--porcelain', '-z', '--untracked-files=all', ...pairs, ...submodules, '--', '.', ...excluding(exclude)]).split('\0');
   /** @type {{path: string, status: string}[]} */
   const entries = [];
   for (let i = 0; i < fields.length; i++) {

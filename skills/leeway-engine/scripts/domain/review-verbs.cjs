@@ -1,8 +1,8 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: the review phase's verbs (§14) — `review round` (review-
-// round.cjs), and here:
+// Domain ring: the review phase's verbs (§14) — `review round` and `review
+// notes` (review-round.cjs), and here:
 // - `review reads <unit> <area|tests> …`: the areas a later round reads, as
 //   Claude names them once the round before's fix tasks are done, from what
 //   they changed (14.3.3) — written at `review/round-{N}-reads.json` in the
@@ -19,7 +19,10 @@
 //   person's word, the round's snapshot taken again over any held (12.7.8,
 //   14.S13); nothing else written. It refuses a unit whose review phase
 //   cannot be entered, and one with no round under review.
-// Both run under the writer lock (engine.cjs).
+// - `review restore-tree <unit> --listed <print>`: the tree put back as the
+//   round's snapshot found it, at the person's word on the gate over it
+//   (review-tree.cjs).
+// Each runs under the writer lock (engine.cjs).
 // ---------------------------------------------------------------------------
 
 const { writeJsonAtomic } = require('../kernel/manifest-io.cjs');
@@ -28,25 +31,29 @@ const { refusing } = require('./staged-payload.cjs');
 const { refuserFor, committed } = require('./task-account.cjs');
 const { unitInProgress } = require('./topic-standing.cjs');
 const { reviewHeld } = require('./review-entry.cjs');
-const { recordRound } = require('./review-round.cjs');
+const { reading, reposOf } = require('./phase-checks.cjs');
+const { recordRound, answerNotes } = require('./review-round.cjs');
+const { restoreTree } = require('./review-tree.cjs');
 const {
   TESTS, openRefusal, everyRead, readsWords, roundReadsPath, takeSnapshot, openSnapshot,
 } = require('./review-phase.cjs');
 
 const REVIEW_USAGE = [
   'review round <work-unit> --file <round.json>',
+  'review notes <work-unit> --file <notes.json>',
   'review reads <work-unit> <area|tests> [<area|tests> …]',
   'review accept-tree <work-unit>',
+  'review restore-tree <work-unit> --listed <print>',
 ].join('\n');
 
 /**
- * The unit's review phase with a round under review, refused where it
- * cannot be entered or none is.
+ * The unit's review phase with a round under review, and the project's
+ * repos, refused where it cannot be entered or none is.
  * @param {string} cwd @param {string} unit @param {string} said
  */
 function roundOpen(cwd, unit, said) {
-  const manifest = refusing(said, () => unitInProgress(cwd, unit));
-  return { refuse: refuserFor(said), standing: refusing(said, () => reviewHeld(cwd, unit, manifest, openRefusal)) };
+  const at = reading(cwd, unit, refusing(said, () => unitInProgress(cwd, unit)));
+  return { refuse: refuserFor(said), standing: refusing(said, () => reviewHeld(at, openRefusal)), repos: reposOf(at) };
 }
 
 /**
@@ -55,7 +62,7 @@ function roundOpen(cwd, unit, said) {
  * @param {string} cwd @param {string} unit @param {string[]} named
  */
 function nameReads(cwd, unit, named) {
-  const { refuse, standing } = roundOpen(cwd, unit, 'review reads');
+  const { refuse, standing, repos } = roundOpen(cwd, unit, 'review reads');
   const { areas, round, required, reads: before } = standing;
   if (round === 1) refuse(`round 1 reads every area and the test surface (${TESTS}) — a later round's are named`);
   const known = everyRead(areas);
@@ -68,14 +75,14 @@ function nameReads(cwd, unit, named) {
   const reads = known.filter((name) => named.includes(name));
   const rel = roundReadsPath(unit, round);
   writeJsonAtomic(statePath(cwd, rel), { reads });
-  openSnapshot(cwd, unit, round);
+  openSnapshot(cwd, unit, round, repos);
   return committed(cwd, [rel], `review(${unit}): round ${round} reads ${reads.join(', ')}`, [], { round, reads });
 }
 
 /** `review accept-tree`: the tree taken as it is, its snapshot taken again (the header's). @param {string} cwd @param {string} unit */
 function acceptTree(cwd, unit) {
-  const { standing } = roundOpen(cwd, unit, 'review accept-tree');
-  takeSnapshot(cwd, unit, standing.round);
+  const { standing, repos } = roundOpen(cwd, unit, 'review accept-tree');
+  takeSnapshot(cwd, unit, standing.round, repos);
   return { round: standing.round, snapshot: 'taken' };
 }
 
@@ -88,8 +95,10 @@ function runReviewVerb(cwd, argv, opts) {
   const named = Object.keys(opts).sort().join();
   if (unit !== undefined) {
     if (verb === 'round' && rest.length === 0 && named === 'file' && opts.file) return recordRound(cwd, unit, opts.file);
+    if (verb === 'notes' && rest.length === 0 && named === 'file' && opts.file) return answerNotes(cwd, unit, opts.file);
     if (verb === 'reads' && rest.length > 0 && named === '') return nameReads(cwd, unit, rest);
     if (verb === 'accept-tree' && rest.length === 0 && named === '') return acceptTree(cwd, unit);
+    if (verb === 'restore-tree' && rest.length === 0 && named === 'listed' && opts.listed) return restoreTree(cwd, unit, opts.listed);
   }
   throw new Error(`Usage: ${REVIEW_USAGE.split('\n').map((line) => `engine ${line}`).join(' | ')}`);
 }

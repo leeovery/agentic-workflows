@@ -18,7 +18,7 @@ const { output, refuses } = require('./engine-harness.cjs');
 const { setupFixture, cleanupFixture, createManifest, createFile, readManifest, writeState, layout } = require('./discovery-test-utils.cjs');
 const { auditMarkers } = require('./gate-audit.cjs');
 const { VALID_WORK_TYPES, WORK_TYPE_PIPELINES, WAITING_PHASES } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
-const { HANDOFF_TARGETS, OPENING_SKILLS } = require('../../skills/leeway-engine/scripts/domain/handoff.cjs');
+const { HANDOFF_TARGETS } = require('../../skills/leeway-engine/scripts/domain/handoff.cjs');
 
 const ANNOUNCED = { LEEWAY_HANDOFF: '1' };
 
@@ -134,6 +134,11 @@ describe('engine handoff — the composed answer for every target', () => {
       `feature none "${spaced}"`);
   });
 
+  it('the start opens on its menu, named bare — where finish hands every unit but an epic once it is done (24.1.2)', () => {
+    assert.strictEqual(inline(dir, ['leeway']), inlineAnswer('leeway', '', '→ Start'));
+    assert.deepStrictEqual(payloadOf(carried(dir, ['/leeway'])), { skill: 'leeway', args: '', text: 'Invoke `/leeway`.', line: '→ Start' });
+  });
+
   it('the roadmap opens on its home', () => {
     assert.strictEqual(inline(dir, ['leeway-roadmap', 'open']),
       inlineAnswer('leeway-roadmap', 'open', '→ Roadmap'));
@@ -215,11 +220,7 @@ describe('engine handoff — the composed answer for every target', () => {
   it('the table holds the targets a move into work lands on — and the skill each phase is entered through', () => {
     assert.deepStrictEqual(Object.keys(PHASE_SKILLS).sort(), [...new Set(Object.values(WORK_TYPE_PIPELINES).flat())].sort());
     assert.deepStrictEqual([...HANDOFF_TARGETS].sort(),
-      ['leeway-continue-epic', 'leeway-discovery', 'leeway-roadmap', ...Object.values(PHASE_SKILLS)].sort());
-  });
-
-  it('a conversation opens on leeway or a skill a handoff lands on — and on nothing else', () => {
-    assert.deepStrictEqual([...OPENING_SKILLS].sort(), ['leeway', ...HANDOFF_TARGETS].sort());
+      ['leeway', 'leeway-continue-epic', 'leeway-discovery', 'leeway-roadmap', ...Object.values(PHASE_SKILLS)].sort());
   });
 
   it('every target is a skill on disk — a handoff never names one that is not there', () => {
@@ -363,7 +364,7 @@ describe('engine handoff — refusals', () => {
   });
 
   it('a skill no move into work lands on refuses, naming the targets', () => {
-    for (const skill of ['leeway-help', 'leeway', 'leeway-bridge', 'leeway-continue-linear', 'leeway-research-process', 'leeway-log-idea', 'leeway-nonsense']) {
+    for (const skill of ['leeway-help', 'leeway-bridge', 'leeway-continue-linear', 'leeway-research-process', 'leeway-log-idea', 'leeway-nonsense']) {
       refused(dir, [skill], new RegExp(`^"${skill}" is not a handoff target — a handoff moves into work: leeway-discovery, `));
     }
   });
@@ -372,6 +373,7 @@ describe('engine handoff — refusals', () => {
     const cases = [
       [['leeway-discovery', 'feature'], /^Usage: engine handoff leeway-discovery <work-type\|start\|none> <none\|epic> \[<seeds\|none>\]$/],
       [['leeway-discovery', 'feature', 'none', 'none', 'extra'], /^Usage: engine handoff leeway-discovery /],
+      [['leeway', 'fumi'], /^Usage: engine handoff leeway$/],
       [['leeway-roadmap'], /^Usage: engine handoff leeway-roadmap open$/],
       [['leeway-roadmap', 'open', 'extra'], /^Usage: engine handoff leeway-roadmap open$/],
       [['leeway-continue-epic'], /^Usage: engine handoff leeway-continue-epic <epic> \[<completed-phase> <outcome>\]$/],

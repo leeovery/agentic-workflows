@@ -242,13 +242,14 @@ function codeHeldOut(repo) {
 /**
  * `dirtyEntries` across the project: each repo's, root first, in project
  * paths, what a read of its code holds out held out, and each entry `kept`
- * refuses, as the repo names it.
+ * refuses, as the repo names it; a rename read as its two paths where
+ * `renames` is off.
  * @param {Repo[]} repos
- * @param {(repo: Repo, entry: {path: string, status: string}) => boolean} [kept]
+ * @param {{kept?: (repo: Repo, entry: {path: string, status: string}) => boolean, renames?: boolean}} [opts]
  * @returns {{path: string, status: string}[]}
  */
-function projectDirtyEntries(repos, kept = () => true) {
-  return repos.flatMap((repo) => dirtyEntries(repo.path, codeHeldOut(repo)).filter((entry) => kept(repo, entry))
+function projectDirtyEntries(repos, { kept = () => true, renames = true } = {}) {
+  return repos.flatMap((repo) => dirtyEntries(repo.path, codeHeldOut(repo), false, renames).filter((entry) => kept(repo, entry))
     .map((entry) => ({ path: projectPath(repo.dir, entry.path), status: entry.status })));
 }
 

@@ -6,7 +6,8 @@
 // of, each a callout, so nothing they took off the checklist goes unsaid;
 // every checklist item skipped on the way — each phase's start and close,
 // then finish's own — with where it was skipped and its reason (6.4.5);
-// then the first
+// what the review's put backs set aside, where they set aside anything,
+// which stays until the person removes it (review-tree.cjs); then the first
 // departure the person made in the build and the review phase still to be
 // asked its verdict, under the verdict gate at the point `finish` — one at
 // a time, as ready to build asks its own (16.10.3, closing.cjs); and once
@@ -18,15 +19,18 @@
 const { section, menu, cmdOption, promptOption, callout, MENU_INSTRUCTION, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
 const { TREE_WIDTH } = require('../conventions.cjs');
 const { verdictBlock, verdictGate } = require('./closing.cjs');
+const { asideBlock } = require('./review-phase.cjs');
 
 /**
  * Finish as it is drawn: the unit and its title, the skips it shows, the
- * verdict asked, null where none waits, and what its reads warned of.
+ * verdict asked, null where none waits, what its reads warned of, and what
+ * put back set aside, null where it set aside nothing.
  * @typedef {{
  *   unit: string, title: string,
  *   skips: {checklist: string, text: string, reason: string}[],
  *   verdict: import('../ledger-verdicts.cjs').AskedVerdict|null,
  *   warnings: string[],
+ *   aside: import('../review-phase.cjs').SetAside|null,
  * }} FinishView
  */
 
@@ -37,10 +41,13 @@ function skippedAt(checklist) {
 }
 
 /** The screen's display: each block that has something to show. @param {FinishView} view */
-function finishDisplay({ title, skips, verdict, warnings }) {
+function finishDisplay({
+  title, skips, verdict, warnings, aside,
+}) {
   const blocks = [`${title} — finish`];
   if (warnings.length > 0) blocks.push(warnings.map((warning) => callout(warning, { width: TREE_WIDTH })).join('\n'));
   if (skips.length > 0) blocks.push(skips.map(({ checklist, text, reason }) => callout(`Skipped at ${skippedAt(checklist)}: ${text} — ${reason}`, { width: TREE_WIDTH })).join('\n'));
+  blocks.push(...asideBlock(aside));
   if (verdict !== null) blocks.push(verdictBlock(verdict));
   return blocks.join('\n\n');
 }

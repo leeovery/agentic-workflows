@@ -230,16 +230,17 @@ function payload(name, payload) {
   return file;
 }
 
-/** A reviewer's report of the round, its findings each `- {call}: {text}`, failing where one is more than a nit. @param {string[]} findings */
-function reportText(findings) {
+/** A reviewer's report of the round, its findings each `- {call}: {text}`, failing where one is more than a nit, its notes for later, where given, before them. @param {string[]} findings @param {string[]} [notes] */
+function reportText(findings, notes = []) {
   const listed = findings.length === 0 ? 'None.' : findings.map((finding) => `- ${finding}\n  Scenario: A customer pays.`).join('\n');
-  return `# Review\n\n## Findings\n\n${listed}\n\nVerdict: ${findings.every((finding) => finding.startsWith('nit: ')) ? 'pass' : 'fail'}\n`;
+  const later = notes.length === 0 ? '' : `## Notes for later\n\n${notes.map((note) => `- ${note}`).join('\n')}\n\n`;
+  return `# Review\n\n${later}## Findings\n\n${listed}\n\nVerdict: ${findings.every((finding) => finding.startsWith('nit: ')) ? 'pass' : 'fail'}\n`;
 }
 
-/** Every report a round's reads ask for written — each area's pair, the test surface's one — each holding the findings `found` gives it by its name, else none. @param {number} round @param {readonly string[]} reads @param {Record<string, string[]>} [found] */
-function reported(round, reads, found = {}) {
+/** Every report a round's reads ask for written — each area's pair, the test surface's one — each holding the findings `found` gives it by its name, else none, and the notes for later `noted` gives it. @param {number} round @param {readonly string[]} reads @param {Record<string, string[]>} [found] @param {Record<string, string[]>} [noted] */
+function reported(round, reads, found = {}, noted = {}) {
   for (const name of reads.flatMap((read) => (read === 'tests' ? ['tests-a'] : [`${read}-a`, `${read}-b`]))) {
-    writeState(dir, `${UNIT}/review/round-${round}/${name}.md`, reportText(found[name] ?? []));
+    writeState(dir, `${UNIT}/review/round-${round}/${name}.md`, reportText(found[name] ?? [], noted[name] ?? []));
   }
 }
 

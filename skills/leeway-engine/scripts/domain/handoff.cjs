@@ -15,7 +15,8 @@
 // (topic-standing.cjs).
 //
 // The epic's menu takes an epic in progress, and one completed alone where
-// finish hands it there, `review completed`.
+// finish hands it there, `review completed`. The start, `leeway`, takes
+// nothing: where finish hands every other unit once it is done.
 //
 // Discovery is told how the conversation was come to: a work type, the
 // person starting a piece of work of that kind; `start`, a piece of work of
@@ -207,6 +208,12 @@ const TARGETS = {
     },
     where: (_cwd, [, unit]) => at('Discovery', unit === NO_ARGUMENT ? null : unit),
   },
+  leeway: {
+    usage: '',
+    counts: [0],
+    check: () => {},
+    where: () => at('Start'),
+  },
   'leeway-roadmap': {
     usage: 'open',
     counts: [1],
@@ -232,9 +239,6 @@ const TARGETS = {
 
 const HANDOFF_TARGETS = Object.keys(TARGETS);
 
-// A conversation opens on leeway, the user's way in, or wherever a handoff lands the work.
-const OPENING_SKILLS = ['leeway', ...HANDOFF_TARGETS];
-
 /**
  * The handoff into `skill` with `args`, checked against the table and
  * composed — the skill named bare or as its slash command, as a menu's
@@ -251,7 +255,7 @@ function resolveHandoff(cwd, named, args) {
   }
   const target = TARGETS[skill];
   if (!target.counts.includes(args.length)) {
-    throw new Error(`Usage: engine handoff ${skill} ${target.usage}`);
+    throw new Error(`Usage: engine handoff ${`${skill} ${target.usage}`.trimEnd()}`);
   }
   const spanEnd = args.find((arg) => arg.includes('`'));
   if (spanEnd !== undefined) throw new Error(`"${spanEnd}" cannot travel in the continuation — a backtick ends its code span`);
@@ -262,7 +266,7 @@ function resolveHandoff(cwd, named, args) {
   return {
     skill,
     args: composed,
-    text: `Invoke \`/${skill} ${composed}\`.`,
+    text: `Invoke \`/${[skill, ...(composed === '' ? [] : [composed])].join(' ')}\`.`,
     line: `→ ${target.where(cwd, args)}`,
   };
 }
@@ -312,4 +316,4 @@ function handoffSections(handoff) {
   ].join('');
 }
 
-module.exports = { resolveHandoff, handoffSections, phaseSkill, enteredAtUnit, HANDOFF_TARGETS, OPENING_SKILLS, TOPIC_HANDOFF_USAGE, topicHandoff };
+module.exports = { resolveHandoff, handoffSections, phaseSkill, enteredAtUnit, HANDOFF_TARGETS, TOPIC_HANDOFF_USAGE, topicHandoff };

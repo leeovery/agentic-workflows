@@ -42,12 +42,12 @@ const harness = require('./engine-harness.cjs');
 const { skillAt } = require('../../skills/leeway-engine/scripts/domain/position.cjs');
 const { ROLES } = require('../../skills/leeway-engine/scripts/domain/brief-names.cjs');
 const { storeBrief } = require('../../skills/leeway-engine/scripts/domain/brief.cjs');
-const { OPENING_SKILLS } = require('../../skills/leeway-engine/scripts/domain/handoff.cjs');
+const { HANDOFF_TARGETS } = require('../../skills/leeway-engine/scripts/domain/handoff.cjs');
 const { PROJECT_IDENTITIES, VALID_PHASES } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
 
 // The phases whose note carries the recovery whole, their skills keeping no
 // steps of their own for it.
-const WHOLE = ['discussion', 'discovery', 'specification', 'implementation'];
+const WHOLE = ['discussion', 'discovery', 'specification', 'implementation', 'review'];
 
 const POSITION_MODULE = path.join(__dirname, '../../skills/leeway-engine/scripts/domain/position.cjs');
 
@@ -462,7 +462,7 @@ describe('conversation position', () => {
   it('names only skills that open a conversation — a phase\'s own, discovery\'s, a project place\'s; none at a work unit\'s menu — each its note sends Claude to carrying the recovery steps', () => {
     const skills = [...VALID_PHASES.map((phase) => skillAt('pay', phase)), ...PROJECT_IDENTITIES.map((name) => skillAt(name))];
     assert.strictEqual(skills.length, 11);
-    for (const skill of skills) assert.ok(skill !== null && OPENING_SKILLS.includes(skill), `${skill} is a skill a conversation opens on`);
+    for (const skill of skills) assert.ok(skill !== null && HANDOFF_TARGETS.includes(skill), `${skill} is a skill a conversation opens on`);
     const whole = WHOLE.map((phase) => skillAt('pay', phase));
     for (const skill of skills.filter((named) => !whole.includes(named))) {
       const file = path.join(__dirname, '../../skills', skill, 'SKILL.md');

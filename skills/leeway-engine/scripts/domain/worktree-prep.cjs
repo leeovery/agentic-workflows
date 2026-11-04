@@ -158,12 +158,13 @@ function removePreparedLinks(at, project) {
 /**
  * What the checkouts of `repos`, the project's, hold not committed, in
  * project paths (kernel/repos.cjs, `projectDirtyEntries`), less the links
- * preparation made in each.
- * @param {Repo[]} repos @returns {Entry[]}
+ * preparation made in each; a rename read as its two paths where `renames`
+ * is off.
+ * @param {Repo[]} repos @param {{renames?: boolean}} [opts] @returns {Entry[]}
  */
-function codeChanges(repos) {
+function codeChanges(repos, { renames = true } = {}) {
   const prepared = preparedIn(repos);
-  return projectDirtyEntries(repos, (repo, entry) => !prepared(repo.path, entry));
+  return projectDirtyEntries(repos, { kept: (repo, entry) => !prepared(repo.path, entry), renames });
 }
 
 /**

@@ -45,6 +45,10 @@
 // report or not; or where its report reads, takes every one of them, takes
 // none another phase's report took or held for a phase, and takes each once
 // (`consolidationFaults`, for the phase close's `notes-consolidated`, 6.4.9).
+//
+// A fix phase of the review's has no consolidation, so a note its builders
+// bank is one no phase's report takes: the review phase answers it
+// (review-phase.cjs, `notesUntaken`).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -265,6 +269,11 @@ function notesToTake(cwd, unit, phase) {
   return toTakeOf(readNotes(cwd, unit), takenElsewhere(cwd, unit, phase));
 }
 
+/** The notes held for no phase that no phase's report took, in order. @param {string} cwd @param {string} unit */
+function notesUntaken(cwd, unit) {
+  return toTakeOf(readNotes(cwd, unit), takenElsewhere(cwd, unit, 0));
+}
+
 /** The notes held for phase `phase`, which its task writer takes. @param {string} cwd @param {string} unit @param {number} phase */
 function notesHeldFor(cwd, unit, phase) {
   return readNotes(cwd, unit).filter((note) => note.phase === phase);
@@ -303,5 +312,5 @@ function consolidationFaults(cwd, unit, phase) {
 }
 
 module.exports = {
-  notesPath, consolidationPath, notesOf, readNotes, notesAppended, depositNote, readConsolidation, renumberedReport, notesToTake, notesHeldFor, consolidationFaults,
+  notesPath, consolidationPath, notesOf, readNotes, notesAppended, depositNote, readConsolidation, renumberedReport, notesToTake, notesUntaken, notesHeldFor, consolidationFaults,
 };

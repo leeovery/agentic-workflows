@@ -11,12 +11,15 @@
 //   those whose fix task was closed, nothing built; those not yet built, as
 //   the build phase they make; what went to the inbox, never what was
 //   dropped (14.3.6); how Claude settled a failing round, where it did
-//   (14.6.3); and one line counting the calls decided for the person,
+//   (14.6.3); what put back set aside, where it holds anything, kept until
+//   the person removes it (review-tree.cjs); and one line counting the calls
+//   decided for the person,
 //   without kinds until the labeller (P11, 29.19). Its detailed checks are
 //   in a file, never shown (14.4.2). `review round` writes it as
 //   `round-{N}.md`, what the round decided — its fix tasks as filed, no
-//   standing claimed, and the calls as the round was recorded; the screen
-//   draws each fix's standing, and the calls, as they are.
+//   standing claimed, the calls as the round was recorded, and no
+//   set-aside; the screen draws each fix's standing, the calls and the
+//   set-aside as they are.
 // - The report closing the review phase (14.4.3), the certificate: whether
 //   it passed or Claude settled it, and in which round; every round, broken
 //   up by round; then every call decided for the person across the unit,
@@ -27,9 +30,16 @@
 //   (16.11.3), those that change what the product does first, then process
 //   and internals, those the labeller has not reached last, as unlabelled
 //   (P11).
+// - The working tree changed under a round (14.1.5, 14.S13, review-tree.cjs):
+//   each change outside `.leeway/` since the round began, one the engine
+//   does not put back named so; then the gate, put back what can be, or keep
+//   it as it is — keep alone where no snapshot of the round's is held; and
+//   what put back set aside, where it holds anything.
 // ---------------------------------------------------------------------------
 
-const { section, clipped, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
+const {
+  section, clipped, menu, cmdOption, promptOption, CONTINUE_INSTRUCTION, MENU_INSTRUCTION,
+} = require('./surfaces.cjs');
 const { renderTree } = require('../../kernel/render.cjs');
 const { TREE_WIDTH } = require('../conventions.cjs');
 const { counted, ROW_MAX } = require('./map.cjs');
@@ -106,16 +116,28 @@ function callsLine(unit, { count, build, recorded }, share) {
   return block('CALLS DECIDED FOR YOU', `  ${of}${when} — render review-calls ${unit} lists them`);
 }
 
-/** A round's report as text (the header's). @param {string} unit @param {string} title @param {RoundView} view @param {CallsCount} calls */
-function roundReport(unit, title, view, calls) {
-  return [`${title} — review, round ${view.round}: ${verdictWords(view)}`, ...roundBlocks(view), callsLine(unit, calls, false)].join('\n\n');
+/** @typedef {import('../review-phase.cjs').SetAside} SetAside */
+
+/**
+ * What put back set aside, its folder and each copy from there, kept until
+ * the person removes it; nothing where it holds nothing. Its lines are never
+ * wrapped, so a path reads whole.
+ * @param {SetAside|null} aside @returns {string[]}
+ */
+const asideBlock = (aside) => (aside === null ? [] : [
+  block(`SET ASIDE BY PUT BACK (${aside.paths.length}) — kept there until you remove them`, [`  ${aside.folder}`, ...aside.paths.map((rel) => `    ${rel}`)].join('\n')),
+]);
+
+/** A round's report as text (the header's). @param {string} unit @param {string} title @param {RoundView} view @param {CallsCount} calls @param {SetAside|null} aside */
+function roundReport(unit, title, view, calls, aside) {
+  return [`${title} — review, round ${view.round}: ${verdictWords(view)}`, ...roundBlocks(view), ...asideBlock(aside), callsLine(unit, calls, false)].join('\n\n');
 }
 
-/** The report closing the review phase as text (the header's). @param {string} unit @param {string} title @param {RoundView[]} views @param {CallsCount} calls */
-function closingReport(unit, title, views, calls) {
+/** The report closing the review phase as text (the header's). @param {string} unit @param {string} title @param {RoundView[]} views @param {CallsCount} calls @param {SetAside|null} aside */
+function closingReport(unit, title, views, calls, aside) {
   const rounds = views.map((view) => [`ROUND ${view.round} — ${verdictWords(view)}`, ...roundBlocks(view)].join('\n\n'));
   const ended = views.at(-1)?.passed ? 'passed' : 'settled';
-  return [`${title} — review ${ended} in round ${views.length}, the certificate of the work`, ...rounds, callsLine(unit, calls, true)].join('\n\n');
+  return [`${title} — review ${ended} in round ${views.length}, the certificate of the work`, ...rounds, ...asideBlock(aside), callsLine(unit, calls, true)].join('\n\n');
 }
 
 /** A report drawn as a screen. @param {string} text */
@@ -152,4 +174,39 @@ function reviewCallsScreen(unit, title, calls) {
   return section('DISPLAY: review calls', CONTINUE_INSTRUCTION, [head, ...(blocks.length === 0 ? ['  None — every call in this work unit was yours.'] : blocks)].join('\n\n'));
 }
 
-module.exports = { roundReport, closingReport, reportScreen, reviewCallsScreen };
+/**
+ * The gate over the working tree changed under round `round` (the header's):
+ * each change listed, one not put back here marked with why; put it back,
+ * `review restore-tree` with the fingerprint of what it lists, where `print`
+ * is given — at least one change can be — its consequence said; keep it as
+ * it is, `review accept-tree`; and the person's own word. Where `lost` says
+ * no snapshot of the round's is held, nothing is listed and keep is the
+ * only row. Where put back set aside anything, `aside`, it is said.
+ * @param {string} unit @param {string} title @param {number} round
+ * @param {{lost: string|null, changes: import('../review-tree.cjs').ListedChange[], print: string|null, aside: SetAside|null}} tree
+ */
+function reviewTreeScreen(unit, title, round, {
+  lost, changes, print, aside,
+}) {
+  const marked = changes.some(({ kept: why }) => why !== null);
+  const display = [
+    ...(lost !== null ? [`${title} — round ${round}'s working tree`, `  ${lost}: nothing can be put back here.`] : [
+      `${title} — the working tree changed under round ${round}`,
+      block(`CHANGED OUTSIDE .leeway/ (${changes.length})`, listed(changes.map(({ line, kept: why }) => (why === null ? line : `${line} — ${why}`)))),
+    ]),
+    ...asideBlock(aside),
+  ].join('\n\n');
+  let lead = 'The review leaves the working tree as it found it: put back what changed, or keep it as it is.';
+  if (lost !== null) lead = 'Nothing can be put back here: keep the tree as it is, or tell me what to do with it.';
+  else if (print === null) lead = 'The review leaves the working tree as it found it. Nothing here can be put back by the engine: put it back by hand, or keep it as it is.';
+  else if (marked) lead = 'The review leaves the working tree as it found it: put back what can be, the marked left for you, or keep it as it is.';
+  return section('DISPLAY: review tree', CONTINUE_INSTRUCTION, display) + section('MENU: review tree', MENU_INSTRUCTION, menu(lead, [
+    ...(print === null ? [] : [cmdOption('p', 'put', { head: 'Put it back as the round found it', tail: 'what it changes is set aside under .leeway/, nothing deleted' }, { next: { kind: 'engine', argv: ['review', 'restore-tree', unit, '--listed', print] } })]),
+    cmdOption('k', 'keep', 'Keep it as it is, the round taking the tree as it stands', { next: { kind: 'engine', argv: ['review', 'accept-tree', unit] } }),
+    promptOption('Comment', 'Tell me what to do with it instead'),
+  ], { question: print === null ? 'Keep the working tree as it is?' : 'Put the working tree back?' }));
+}
+
+module.exports = {
+  roundReport, closingReport, reportScreen, reviewCallsScreen, reviewTreeScreen, asideBlock,
+};
