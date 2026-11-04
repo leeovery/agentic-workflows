@@ -108,8 +108,10 @@
 //   sealed with the rows the check judged and the decision point's reason
 //   (12.13.4, 16.1.2) — and answers the one line Claude says (12.13.3). The
 //   task stays in progress, held; what depends on it is what the tracker's
-//   links hold back. Raised while a question already waits on its subject,
-//   it judges no row and asks nothing: where that question parks its task,
+//   links hold back. A task parked is raised to the person, so a stop its
+//   builder made comes off it (position.cjs). Raised while a question
+//   already waits on its subject, it judges no row and asks nothing: where
+//   that question parks its task,
 //   or it names none — a rerun after a kill among them — it parks nothing
 //   and answers that question; else its task joins the question, parked
 //   under its number with its first park's call as sealed, copied under the
@@ -226,6 +228,7 @@ const { type, TEXT, KEY, listOf } = require('./event-fields.cjs');
 const { isShownTask, parseShownTask } = require('./task-id.cjs');
 const { markChanged, beingRead } = require('./round-report.cjs');
 const { stepTurn } = require('./task-verbs.cjs');
+const { clearStop } = require('./position.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { record } = require('./trust-log.cjs');
 const { RAISE_SHOWN, raiseMenu, clearGateShown, isPressed } = require('./gate.cjs');
@@ -858,6 +861,7 @@ function parkedFact({ question, rows, mechanism, product_wide: productWide }) {
 function parkLanded(cwd, park, reason, warnings) {
   const task = /** @type {string|null} */ (park.linked.task);
   const { landed, line } = landRaised(cwd, park, warnings);
+  if (task !== null) clearStop(sessionOf(SAID), park.place.unit, task);
   const { name, asks, tasks } = questions.parkedQuestion(cwd, park.place.unit, /** @type {string} */ (/** @type {Record<string, unknown>} */ (line).id), warnings);
   const { id, committed, ...rest } = landed;
   return { decision: 'ask', reason, parked: name, task, id, committed, line: parkedLine(task, name, asks, tasks), ...rest };

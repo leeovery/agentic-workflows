@@ -68,8 +68,9 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
 /**
  * A task's state on the board (20.4.9, 20.5.2): done; building or in review,
  * clocked from the brief issued for it in this conversation (P15); in step,
- * at its gate, or behind the task in flight; failed; waiting on a question;
- * after another task; not started; closed without being done.
+ * at its gate, or behind the task in flight; failed, from its builder's stop
+ * until it is sent back or parked (P5); waiting on a question; after another
+ * task; not started; closed without being done.
  * @typedef {'done'|'building'|'in-review'|'at-gate'|'behind'|'failed'|'waits'|'after'|'not-started'|'closed'} TaskState
  */
 /**
@@ -207,29 +208,45 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
 
 /** A section of a document Claude writes: its heading, null for what stands before the first, and its text. @typedef {{heading: string|null, text: string}} HeadedSection */
 /** A topic on the map: its key, title and summary. @typedef {{topic: string, title: string, summary: string}} MapLine */
-/** A spike of the unit: its folder, its slug titled, and the status its links give it, null where none does. @typedef {{spike: string, title: string, status: string|null}} SpikeLine */
+/**
+ * A spike of the unit: its folder, its slug titled, the status its links
+ * give it, and the tool it was made in and what it showed as the log says
+ * them — each null where none does.
+ * @typedef {{spike: string, title: string, status: string|null, tool: string|null, showed: string|null}} SpikeLine
+ */
 /**
  * Discovery's This session (20.11.1): the unit, its title and type; its
- * session's number, null before its first; whether approve the map waits on
- * the person; the map's topics in order; what goes to the roadmap, each
- * with its horizon; and the unit's spikes, in the order they started.
+ * session's number and the day it started, each null before its first;
+ * whether approve the map waits on the person; the map's topics in order;
+ * what goes to the roadmap, each with its horizon; the directions not
+ * taken, each with why; the person's views of the
+ * product; and the unit's spikes, in the order they started.
  * @typedef {{
- *   kind: 'discovery', unit: string, title: string, type: string, session: number|null,
- *   waits: boolean, map: MapLine[], roadmap: {title: string, horizon: string}[], spikes: SpikeLine[],
+ *   kind: 'discovery', unit: string, title: string, type: string, session: number|null, started: string|null,
+ *   waits: boolean, map: MapLine[], roadmap: {title: string, horizon: string}[],
+ *   not_taken: {direction: string, why: string}[], views: string[], spikes: SpikeLine[],
  * }} DiscoveryView
  */
 /** A topic's brief (20.11.2): its place on the map of how many, its summary, and the brief's sections. @typedef {{kind: 'brief', unit: string, topic: string, title: string, order: number|null, of: number, summary: string, sections: HeadedSection[]}} BriefPage */
-/** A spike's page (20.11.3): its folder, title and status, and where it is kept, from the state root. @typedef {{kind: 'spike', unit: string} & SpikeLine & {path: string}} SpikePage */
+/** A spike's page (20.11.3): its line, where it is kept, from the state root, and its live link, null where the log names none. @typedef {{kind: 'spike', unit: string} & SpikeLine & {path: string, link: string|null}} SpikePage */
 
 /**
+ * A condition of an experiment's runs (20.13.1): its name, the runs its
+ * design gives it, the runs done, their median so far, null before the
+ * first, and the unit the runs are measured in, null where none is named.
+ * @typedef {{condition: string, of: number, done: number, median: number|null, unit: string|null}} RunsLine
+ */
+/**
  * An experiment's This session (20.13): the unit, its title and type; its
- * id and question; the topic it serves; where it stands, with its verdict
- * once concluded and its reason once abandoned; its problem as the topic
- * put it; its design by its sections, none before it is written; and
- * whether its report is written.
+ * id and question; the topic it serves; where it stands, the day the
+ * person approved its design, null before that or where its record holds
+ * none, its verdict once concluded and its reason once abandoned; its
+ * problem as the topic put it; its design by its sections, none before it
+ * is written; its runs by condition, none before the first are recorded;
+ * and whether its report is written.
  * @typedef {{
  *   kind: 'experiment', unit: string, title: string, type: string, id: string, question: string, topic: string, topic_title: string,
- *   status: string, verdict: string|null, reason: string|null, problem: string, design: HeadedSection[], report: boolean,
+ *   status: string, approved: string|null, verdict: string|null, reason: string|null, problem: string, design: HeadedSection[], runs: RunsLine[], report: boolean,
  * }} ExperimentView
  */
 /** An experiment's report read in full (20.13.1). @typedef {{kind: 'experiment-report', unit: string, topic: string, id: string, text: string}} ReportPage */
@@ -239,7 +256,7 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * besides — from the state's history the unit made, the map approved, a
  * phase or topic started, a topic postponed, cancelled or back, a message
  * sent or taken in, the spec landed, a review round, the unit completed;
- * from its build a question raised, a task started or finished.
+ * from its build a question raised, a task started, failed or finished.
  * @typedef {{kind: string, at: string, topic: string|null, detail: string|null}} Moment
  */
 
@@ -256,13 +273,14 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * }} TopicLine
  */
 /**
- * The epic's page (20.8, 20.15.2): the unit, its title and what it is for;
- * whether the session is at its menu; its topics decided of all, and how
+ * The epic's page (20.8, 20.15.2): the unit, its title, what it is for and
+ * the day it started, null where its manifest holds none; whether the
+ * session is at its menu; its topics decided of all, and how
  * many are in discussion; its topics in the map's order; the specification
  * and the build, each by where it stands; the topics set aside; and what
  * happened lately, newest first.
  * @typedef {{
- *   kind: 'epic', unit: string, title: string, about: string, at_menu: boolean,
+ *   kind: 'epic', unit: string, title: string, about: string, started: string|null, at_menu: boolean,
  *   progress: {decided: number, total: number, discussing: number},
  *   topics: TopicLine[], spec: 'waits'|'running'|'complete', build: 'waits'|'running'|'complete',
  *   set_aside: {topic: string, title: string, state: 'cancelled'|'postponed', horizon: string|null}[], lately: Moment[],
@@ -278,12 +296,13 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
 /** What waits on the person in a unit: a question of its build, or a gap of its spec, by its number or entry and its words. @typedef {{kind: 'question'|'gap', id: string, text: string}} WaitingLine */
 /**
  * A unit's tab (20.15.1), and an epic's while discovery runs before any
- * topic exists (20.15.2): the unit, its title, type and what it is for;
- * whether the session is at its menu; its phases complete of all; what
+ * topic exists (20.15.2): the unit, its title, type, what it is for and the
+ * day it started, null where its manifest holds none; whether the session
+ * is at its menu; its phases complete of all; what
  * waits on the person; each phase from discovery to review; and what
  * happened lately, newest first.
  * @typedef {{
- *   kind: 'unit', unit: string, title: string, type: string, about: string, at_menu: boolean,
+ *   kind: 'unit', unit: string, title: string, type: string, about: string, started: string|null, at_menu: boolean,
  *   progress: {complete: number, total: number}, waiting: WaitingLine[], phases: UnitPhase[], lately: Moment[],
  * }} UnitView
  */

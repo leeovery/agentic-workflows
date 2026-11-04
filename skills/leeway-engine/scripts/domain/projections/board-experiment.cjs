@@ -8,11 +8,15 @@
 // - The experiment shown is the topic's live one, the latest by id; else
 //   its latest, concluded or abandoned.
 // - Its question is the map's question it measures (9.1.11), else its slug
-//   titled.
+//   titled; the day it was approved is the one `experiment approve` held on
+//   the record, none where the record holds none.
 // - Its problem, design and report are Claude's documents in its record's
 //   folder (experiment-paths.cjs): the view carries the problem as the topic
 //   put it, the design by its sections once written, and whether the report
 //   is, which opens in full on its page.
+// - Its runs are the tally `experiment runs` last recorded on the record,
+//   each condition with its runs done of its runs and their median; the
+//   banner counts them while it runs (20.2.4).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -47,6 +51,9 @@ function recordText(at, topic, id, name) {
   return fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
 }
 
+/** The runs recorded on an experiment's record, by condition, none before the first. @param {Record<string, any>} record @returns {import('../board-model.cjs').RunsLine[]} */
+const runsOf = (record) => (record.runs ?? []).map((/** @type {Record<string, any>} */ { condition, of, done, median, unit }) => ({ condition, of, done, median, unit: unit ?? null }));
+
 /** An experiment's This session (the header's). @param {BoardAt} at @returns {{view: ExperimentView}} */
 function experimentView(at) {
   const topic = topicKey(at.manifest, /** @type {string} */ (at.place.topic));
@@ -66,10 +73,12 @@ function experimentView(at) {
       topic,
       topic_title: topicTitle(at.manifest, topic),
       status: record.status,
+      approved: typeof record.approved === 'string' ? record.approved : null,
       verdict: record.verdict ?? null,
       reason: record.reason ?? null,
       problem: recordText(at, topic, id, 'problem.md').trim(),
       design: headedSections(recordText(at, topic, id, 'design.md')),
+      runs: runsOf(record),
       report: report.trim() !== '',
     },
   };
@@ -89,14 +98,17 @@ function reportPage(at, said, id) {
 }
 
 /**
- * The banner's facts in an experiment (20.2.4): its id, and concluded once
- * its verdict is in.
+ * The banner's facts in an experiment (20.2.4): its id, then its runs done
+ * of all while it runs with runs recorded, else where it stands —
+ * concluded once its verdict is in.
  * @param {ExperimentView} view @returns {{state: 'running'|'done', facts: {text: string, needs: boolean}[]}}
  */
-function experimentBanner({ type, id, status }) {
+function experimentBanner({ type, id, status, runs }) {
   const fact = (/** @type {string} */ text) => ({ text, needs: false });
   const ended = EXPERIMENT_TERMINAL_STATUSES.includes(status);
-  return { state: ended ? 'done' : 'running', facts: [fact(type), fact(`experiment ${id}`), fact(status)] };
+  const sum = (/** @type {'done'|'of'} */ key) => runs.reduce((total, line) => total + line[key], 0);
+  const standing = ended || runs.length === 0 ? status : `${sum('done')} of ${sum('of')} runs`;
+  return { state: ended ? 'done' : 'running', facts: [fact(type), fact(`experiment ${id}`), fact(standing)] };
 }
 
 module.exports = { experimentView, experimentBanner, reportPage };

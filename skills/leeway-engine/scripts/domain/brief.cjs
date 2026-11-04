@@ -38,7 +38,9 @@
 // `… for {unit} topic {topic}`, or `… for {unit}`.
 // The dispatch carries the brief's pointer, `brief:{id}`, alone, and the
 // hook before Agent and SendMessage hands the agent the stored brief
-// (brief-guard.cjs).
+// (brief-guard.cjs). A builder's or a fix round's brief sends its task's
+// builder back in, so it takes off the stop the conversation holds against
+// the task (position.cjs).
 //
 // It refuses no session id, a role it does not know, arguments of another
 // shape, a unit, a task or a topic the project lacks, a unit set aside
@@ -65,10 +67,11 @@ const { trackedTask, trackedPhases, turnRefusal, ENDED } = require('./task-verbs
 const { parseShownTask, parsePhase, shownTask, taskName } = require('./task-id.cjs');
 const { buildBegun } = require('./derivations.cjs');
 const { RECORDS, readFacts } = require('./brief-records.cjs');
-const { ROLES, briefPath, issuedPath, pointerOf } = require('./brief-names.cjs');
+const { ROLES, BUILDING_ROLES, briefPath, issuedPath, pointerOf } = require('./brief-names.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { hasTopic, manifestOf, liveness } = require('./ledger-units.cjs');
 const { unitClosure } = require('./topic-standing.cjs');
+const { clearStop } = require('./position.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** @typedef {import('./brief-records.cjs').Filling} Filling */
@@ -363,6 +366,7 @@ function issueBrief(cwd, [role, ...rest]) {
     storeBrief(session, id, `Brief ${id} — ${whose}${forWhat(ref, phase, place, unit)}\n\n${filled(template, drawn)}`, {
       role, agent, unit, task: ref === null ? null : shownTask(ref), topic: place === null ? null : place.topic, ...readFacts(filling, records, warnings),
     });
+    if (BUILDING_ROLES.includes(role) && ref !== null) clearStop(session, ref.unit, shownTask(ref));
     return { id, role, agent, pointer: pointerOf(id), ...(committed === undefined ? {} : { committed }), ...(warnings.length > 0 ? { warnings } : {}) };
   } catch (err) {
     throw carrying(err, warnings);

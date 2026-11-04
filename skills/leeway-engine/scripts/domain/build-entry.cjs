@@ -368,14 +368,17 @@ const taskWords = ({ task, status, parked }) => (parked.length > 0 ? `${task} pa
 
 /**
  * What holds a task in flight, as its line says it after its agents: a
- * question parking it, the task in flight it waits behind, or its gate;
- * null where nothing does.
- * @param {string} unit @param {string} task @param {StandingTask|undefined} standing the task as the standing gives it
+ * question parking it, its builder's stop, the task in flight it waits
+ * behind, or its gate; null where nothing does.
+ * @param {string} unit @param {InFlight} inFlight @param {StandingTask|undefined} standing the task as the standing gives it
  * @returns {{holds: string, then: string}|null}
  */
-function heldBy(unit, task, standing) {
+function heldBy(unit, { task, stopped }, standing) {
   const parked = standing?.parked ?? [];
   if (parked.length > 0) return { holds: `parked on ${parked.join(', ')}`, then: 'it waits on the person\'s answer, and no builder goes to it until then' };
+  if (stopped !== undefined) {
+    return { holds: 'its builder stopped, unable to build past a problem', then: `send its builder back in with brief builder ${unit} ${task}, or raise what stopped it to the person` };
+  }
   if (standing?.status === 'behind') return { holds: STATUS_WORDS.behind, then: 'it goes on once that task is done, and no builder goes to it until then' };
   if (standing?.status === 'at-gate') {
     return { holds: STATUS_WORDS['at-gate'], then: `it waits on the person's go there, the gate drawn again with render step-gate ${unit} ${task}, and its builder is never sent afresh` };
@@ -421,19 +424,21 @@ function afreshWords(cwd, session, unit, task) {
 /**
  * A task in flight, with its builder and its pair where recorded — what a
  * fix round goes back to (24.2.4); one parked waits on the person's answer,
- * no builder going to it until then (12.13.2); one behind the task in
- * flight, for that one to be done (12.7.9); one at its gate, on the
- * person's go there, its gate drawn again and its builder never sent afresh
- * (12.7.9); one with no builder dispatched here, where it goes (the
- * header's).
+ * no builder going to it until then (12.13.2); one whose builder stopped,
+ * on its builder sent back in or the stop raised to the person (20.4.9);
+ * one behind the task in flight, for that one to be done (12.7.9); one at
+ * its gate, on the person's go there, its gate drawn again and its builder
+ * never sent afresh (12.7.9); one with no builder dispatched here, where it
+ * goes (the header's).
  * @param {string} cwd @param {string|null} session @param {string} unit @param {InFlight} inFlight @param {StandingTask|undefined} standing the task as the standing gives it
  */
-function inFlightWords(cwd, session, unit, { task, builder, reviewers }, standing) {
+function inFlightWords(cwd, session, unit, inFlight, standing) {
+  const { task, builder, reviewers } = inFlight;
   const agents = [
     ...(builder === null ? [] : [`its builder agent \`${builder}\``]),
     ...(reviewers.length === 0 ? [] : [`its reviewer agent${reviewers.length === 1 ? '' : 's'} ${reviewers.map((id) => `\`${id}\``).join(' and ')}`]),
   ];
-  const held = heldBy(unit, task, standing);
+  const held = heldBy(unit, inFlight, standing);
   if (held !== null) return `task ${task}, ${[...agents, held.holds].join(', ')} — ${held.then}`;
   if (builder !== null) return `task ${task}, ${agents.join(', ')}`;
   return `task ${task}, ${[...agents, 'no builder dispatched here'].join(', ')} — ${afreshWords(cwd, session, unit, task)}`;

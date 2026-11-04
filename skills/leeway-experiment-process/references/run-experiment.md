@@ -51,6 +51,12 @@ Author `{dir}/report.md` as the run goes — load **[report-template.md](report-
 - **Results land as they're measured, and stand as written.** Later results are added beneath, never folded into a rewrite of what is already there — a resumed run included. Every number traces to a file under `{dir}` (curated extracts in `{dir}/data/`) or a named source. Raw output is kept by default; genuinely bulky output may stay out of git with the report linking it by path.
 - **Deviations are logged as they happen** — the harness broke, the environment surprised. The record shows the run as it went.
 - **The design is frozen** — changes are dated amendments, never silent edits.
+- **The tally is recorded as runs land**, where the design runs conditions. Write every condition to `.leeway/.cache/{work_unit}/experiment/{topic}/{id}-runs.json`, `[{"condition", "of", "values", "unit"}]` — its name, the runs the design gives it, each value measured so far, and the unit they are in, left out where there is none — and record it; the engine works out the medians:
+
+  ```bash
+  node .claude/skills/leeway-engine/scripts/engine.cjs experiment runs {work_unit} {topic} {id} --file .leeway/.cache/{work_unit}/experiment/{topic}/{id}-runs.json
+  ```
+
 - **Commit after each write** — don't batch; the history is the safety net across context refresh:
 
   ```bash
@@ -109,7 +115,7 @@ Walk each sub in miniature, holding its `id` and `dir` — from the create respo
    node .claude/skills/leeway-engine/scripts/engine.cjs experiment advance {work_unit} {topic} {sub_id}
    ```
 
-   Then measure under **B. Measure as Designed**'s discipline — the sub's frozen design, its report at `{sub_dir}/report.md`, its measurement commits naming `{sub_id}` in the subject.
+   Then measure under **B. Measure as Designed**'s discipline — the sub's frozen design, its report at `{sub_dir}/report.md`, its tally written to `{sub_id}-runs.json` and recorded under `{sub_id}`, its measurement commits naming `{sub_id}` in the subject.
 
    A sub abandoned mid-measurement ends on its own row — skip its verdict:
 

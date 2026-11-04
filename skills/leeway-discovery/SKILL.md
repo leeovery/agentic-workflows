@@ -83,13 +83,14 @@ As new work takes shape, match it against the waiting roadmap items and the live
 
 ### The Log
 
-The DATA's `log` is the record everything here comes back to, and nothing talked about is lost. Keep it as the conversation goes: what was explored at whatever depth, the person's leans, the false paths and why they were dropped, the open questions, the research with its sources, and a link to every spike and file. Write it in sections under headings named for what they cover, so a brief, a roadmap item or a unit's first log can point at a part by its anchor. Before the session closes — at start this work, approve the map or the session's end — end it on a line saying where the conversation got to: a later return reads it.
+The DATA's `log` is the record everything here comes back to, and nothing talked about is lost. Keep it as the conversation goes: what was explored at whatever depth, the person's leans, the false paths and why they were dropped, the open questions, the research with its sources, and a link to every spike and file. Write it in sections under headings named for what they cover, so a brief, a roadmap item or a unit's first log can point at a part by its anchor. In an epic's discovery three headings are the engine's — `## Not taken`, `## Views of the product` and `## Spikes` — written only through `discovery-log`, nothing of Claude's under them, each entry recorded through its door as the conversation reaches it: each path dropped and why, there and nowhere else; each thing the person said of the product as a whole; and what each spike showed, with the tool it was made in and its live link where it lives in an outside tool. Before the session closes — at start this work, approve the map or the session's end — end it on a line saying where the conversation got to: a later return reads it.
 
 ## Doors
 
 - A finding read in the code → `ledger find {home}.discovery`, `{"text", "how", "known": "read", "by": "claude", "who_moved_whom": "none"}` on stdin.
 - The code read for the product's first conversation → `brief product-researcher`, then the Agent call; its findings in → `brownfield record completed`.
 - A spike, a shared file → `asset spike {home} {slug}`, `asset import {home} '{path}' …`, `render import-reprompt`.
+- In an epic, a direction dropped, a view of the product, what a spike showed → `discovery-log not-taken {home} --direction '…' --why '…'`, `discovery-log view {home} --text '…'`, `discovery-log spike {home} {spike} --tool '…' --showed '…' [--link {live link}]`, each value single-quoted, a single quote inside one written `'\''`.
 - The work committed to → `render start-this-work --file`, then `gate`.
 - The waiting roadmap items → `roadmap state`.
 - The map as it stands → `render discovery-map {home}`; changed at the person's word → `topic add|add-batch|edit|rename|remove|order|brief`, `topic postpone|reactivate`, `roadmap pull-forward`, `render cancel-gate`, `render topic-receipt`.

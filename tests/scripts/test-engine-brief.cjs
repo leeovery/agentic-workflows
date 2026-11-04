@@ -33,7 +33,9 @@
 // writer lock; every refusal writing nothing, no brief and no record among
 // it; every role's agent named as the workflows' are, and defined on the
 // roster fixing Opus at medium; a template's slots held to its role; a
-// brief and its record never stored over another's.
+// brief and its record never stored over another's; and a builder's or a
+// fix round's brief taking off the stop the conversation holds against
+// its task.
 //
 // Layer: verb. World: a project with two work units, built once and copied:
 // one with its first phase written in the tracker, its tasks made through
@@ -65,7 +67,7 @@ const { createManifest } = require('./discovery-test-utils.cjs');
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { templateOf, storeBrief } = require(path.join(SCRIPTS, 'domain/brief.cjs'));
 const { OURS, ROLES, briefPath, issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
-const { conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
+const { conversationDir, readPosition } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
 const { SPEC_FILE } = require(path.join(SCRIPTS, 'domain/spec-sections.cjs'));
 const { listDrivers } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
 const { readTaskText } = require(path.join(SCRIPTS, 'domain/task-file.cjs'));
@@ -379,6 +381,15 @@ describe('the builder\'s brief (6.5.1–6.5.5, 6.S15)', () => {
     assert.deepStrictEqual(JSON.parse(readState(dir, layout.projectManifest)).drivers, drivers);
   });
 
+  it('20.4.9, P5: a builder\'s brief sends its task\'s builder back in, taking off the stop the conversation holds against the task', () => {
+    ok(dir, ['task', 'start', UNIT, '1.1'], { env: SESSION });
+    ok(dir, ['task', 'stopped', UNIT, '1.1'], { env: SESSION });
+    const stopped = readPosition(SESSION_ID)?.tasks?.[0].stopped;
+    issued(['builder', UNIT, '1.1']);
+
+    assert.deepStrictEqual([typeof stopped, readPosition(SESSION_ID)?.tasks], ['string', [{ task: '1.1', builder: null, reviewers: [] }]]);
+  });
+
   it('every brief issued is stored under an id of its own, the pointer naming it', () => {
     const first = issued(['builder', UNIT, '1.1']).res;
     const second = issued(['builder', UNIT, '1.1']).res;
@@ -512,6 +523,15 @@ describe('6.S17: the fix round\'s brief (6.5.10, 13.11.6)', () => {
     const { res, brief } = issued([...FIX]);
 
     assert.strictEqual(brief, `Brief ${res.id} — the fix round's, for pay task 1.1\n\n${fixDrawn(reportOf('bug'), reportOf('nit'))}`);
+  });
+
+  it('20.4.9, P5: a fix round\'s brief sends its task\'s builder back in, taking off the stop the conversation holds against the task', () => {
+    ok(dir, ['task', 'start', UNIT, '1.1'], { env: SESSION });
+    ok(dir, ['task', 'stopped', UNIT, '1.1'], { env: SESSION });
+    const stopped = readPosition(SESSION_ID)?.tasks?.[0].stopped;
+    issued([...FIX]);
+
+    assert.deepStrictEqual([typeof stopped, readPosition(SESSION_ID)?.tasks], ['string', [{ task: '1.1', builder: null, reviewers: [] }]]);
   });
 });
 

@@ -43,7 +43,9 @@
 // without it being done, with a reason, takes it off every question
 // parking it (task-parks.cjs), and frees what waits on it as done does
 // (7.1.12); worktree lays the task's worktree out for its builder, reading
-// the task as show does (task-worktree.cjs). The verbs
+// the task as show does (task-worktree.cjs); stopped records, against the
+// task in flight in the calling conversation, that its builder stopped,
+// unable to build past a problem (13.11.9, position.cjs). The verbs
 // refuse in the engine's words: a tool the driver needs missing or failing,
 // a phase not written, a task the tracker lacks or already holds, a task
 // already ended. Beside them, three take the build's records, each its own
@@ -87,7 +89,7 @@ const { ignoreInState, withIgnored } = require('./state-worktree.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { taskId, shownTask, parseShownTask, parsePhase, taskName, phaseName } = require('./task-id.cjs');
 const { TASK_TYPES, breaksLine, readTaskText } = require('./task-file.cjs');
-const { recordTask, clearTask } = require('./position.cjs');
+const { recordTask, clearTask, recordStop } = require('./position.cjs');
 const { phaseStarted } = require('./derivations.cjs');
 const { layOutTask, takeWorktreeApart } = require('./task-worktree.cjs');
 const { markChanged, briefedOf, beingRead } = require('./round-report.cjs');
@@ -791,6 +793,23 @@ function worktreeTask(cwd, unit, given) {
   return layOutTask(cwd, ref, () => trackedTask(cwd, ref));
 }
 
+/**
+ * `task stopped`: the task's builder stopped, unable to build past a
+ * problem — the time recorded against the task in flight in the calling
+ * conversation, a first stop kept; refused with no conversation, or where
+ * the task is not in flight in it.
+ * @param {string} cwd @param {string} unit @param {string} given
+ */
+function stoppedTask(cwd, unit, given) {
+  const ref = parseShownTask(unit, given);
+  requireUnit(cwd, unit);
+  const session = handedSession();
+  if (session === null) throw new Error('task stopped: no conversation is named, so no task is in flight — run it from the Claude Code conversation building the task');
+  const stopped = recordStop(session, unit, shownTask(ref), new Date().toISOString());
+  if (stopped === null) throw new Error(`task stopped: ${taskName(ref)} is not in flight in this conversation — a stop is recorded for a task this conversation builds`);
+  return { task: shownTask(ref), id: taskId(ref), stopped };
+}
+
 // The build's records, loaded at their call: each reads its task, or the
 // tracker's phases, through this module.
 const account = () => require('./task-account.cjs');
@@ -830,6 +849,7 @@ const TASK_VERBS = Object.freeze({
   list: { usage: '<unit> <N>', arity: 2, run: (cwd, [unit, phase]) => listTasks(cwd, unit, phase) },
   show: { usage: '<unit> <task>', arity: 2, run: (cwd, [unit, task]) => showTask(cwd, unit, task) },
   worktree: { usage: '<unit> <task>', arity: 2, run: (cwd, [unit, task]) => worktreeTask(cwd, unit, task) },
+  stopped: { usage: '<unit> <task>', arity: 2, run: (cwd, [unit, task]) => stoppedTask(cwd, unit, task) },
   account: { usage: '<unit> <task>', arity: 2, run: (cwd, [unit, task]) => account().takeAccount(cwd, unit, task) },
   settle: { usage: SETTLE_USAGE, arity: 1, optional: 1, flags: ['file'], mayTake: ['phase', 'fixes'], run: settleVerb },
   note: { usage: '<unit> --file <note> [--phase <N>]', arity: 1, flags: ['file'], mayTake: ['phase'], run: (cwd, [unit], file, phase) => notes().depositNote(cwd, unit, file, phase) },

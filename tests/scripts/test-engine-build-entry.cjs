@@ -15,8 +15,9 @@
 // (12.1.6, 12.2.2, 24.2.2, 24.2.5, 12.S4, 24.S13), none for a unit built
 // under the old plan: where each phase of the cut stands with its tasks,
 // its review's fixes owed until it is settled (13.10.1), the tasks in
-// flight with their builders — the entry's of its own unit alone, the
-// note's those of the conversation it is asked for, whoever asks — the
+// flight with their builders, one whose builder stopped with the way on
+// (20.4.9) — the entry's of its own unit alone, the note's those of the
+// conversation it is asked for, whoever asks — the
 // questions waiting and the tasks they park, the entries affected and the
 // unit's record by their calls, and the build's log. The standing (P13): each
 // phase not yet written, written, running, in review, closed or merged, as
@@ -378,6 +379,16 @@ describe('the answer: where the build stands, and what to read beside the ledger
     ]) {
       assert.ok(note.includes(line), `the note names ${line}\n${note}`);
     }
+  });
+
+  it('says in its recovery note a task whose builder stopped, and the way on: its builder sent back in, or the stop raised to the person (20.4.9)', () => {
+    enter([UNIT]);
+    ok(dir, ['conversation', 'builder', 'sess-1', 'agent-own'], { env: env() });
+    ok(dir, ['task', 'stopped', UNIT, '1.2'], { env: env() });
+
+    assert.deepStrictEqual(output(dir, ['conversation', 'position'], { env: env() }).split('\n').filter((line) => line.startsWith('in flight: ')), [
+      `in flight: task 1.2, its builder agent \`agent-own\`, its builder stopped, unable to build past a problem — send its builder back in with brief builder ${UNIT} 1.2, or raise what stopped it to the person`,
+    ]);
   });
 
   describe('carries the tasks in flight of the conversation it is asked for, never the calling process\'s — a compaction asks from outside that conversation (24.2.4)', () => {

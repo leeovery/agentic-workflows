@@ -80,6 +80,11 @@ function owedHeader(file, sessionId, transcript) {
 function namedConversations(file) {
   let text = '';
   try { text = fs.readFileSync(file, 'utf8'); } catch { return []; }
+  return conversationsIn(text);
+}
+
+/** The conversations a log's text names, as `namedConversations` reads them. @param {string} text @returns {Conversation[]} */
+function conversationsIn(text) {
   return text.split('\n').flatMap((line) => {
     const m = HEADER.exec(line);
     return m === null ? [] : [{ date: m[1], session: m[2], transcript: m[3] ?? null }];
@@ -100,4 +105,4 @@ function appendLine(file, line) {
   fs.appendFileSync(file, `${gap}${line}\n`);
 }
 
-module.exports = { topicLog, ledgerView, recordCall, productCall, mapCall, owedHeader, namedConversations, isHeader, appendLine };
+module.exports = { topicLog, ledgerView, recordCall, productCall, mapCall, owedHeader, namedConversations, conversationsIn, isHeader, appendLine };

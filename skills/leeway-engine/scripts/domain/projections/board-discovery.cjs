@@ -3,8 +3,11 @@
 // ---------------------------------------------------------------------------
 // Domain ring: an epic's discovery on the board (20.11) — This session in
 // discovery and a topic's brief — read from the epic's map, the map Claude
-// staged for approve the map (approve-map.cjs), and the discovery session's
-// log.
+// staged for approve the map (approve-map.cjs), and the discovery sessions'
+// logs: the latest's number and the day it started, and what every log says
+// under its fixed headings (discovery-log.cjs) — the directions not taken,
+// the person's views of the product, and each spike's tool, live link and
+// what it showed.
 //
 // - The map is the staged one while approve the map waits on the person, its
 //   topics and parks; else the epic's map, its live topics in order, and
@@ -21,7 +24,8 @@ const fs = require('fs');
 const path = require('path');
 const { statePath, cacheScratch } = require('../../kernel/state-root.cjs');
 const { stagedOrNone, liveInOrder } = require('../approve-map.cjs');
-const { latestSessionLog } = require('../discovery-session.cjs');
+const { sessionLogs, sessionLogsAt } = require('../discovery-session.cjs');
+const { heardIn, sessionStarted } = require('../discovery-log.cjs');
 const { spikesOf, spikeStatuses } = require('../asset.cjs');
 const { headedSections } = require('../markdown-sections.cjs');
 const { titlecase } = require('../conventions.cjs');
@@ -35,16 +39,38 @@ function mapLine(at, topic) {
   return { topic, title: topicTitle(at.manifest, topic), summary: String(itemOf(at.manifest, 'discovery', topic)?.summary ?? '') };
 }
 
-/** The unit's spikes, in the order they started (the header's). @param {BoardAt} at @returns {import('../board-model.cjs').SpikeLine[]} */
+/**
+ * The unit's discovery logs, in session order, each its number, its path
+ * from the state root and its text, read once a call.
+ * @param {BoardAt} at @returns {{number: number, rel: string, text: string}[]}
+ */
+const logsAt = (at) => at.once('discovery-logs', () => {
+  const folder = sessionLogsAt(at.unit);
+  return sessionLogs(statePath(at.cwd, folder)).map(({ number, file }) => ({ number, rel: path.posix.join(folder, file), text: fs.readFileSync(statePath(at.cwd, folder, file), 'utf8') }));
+});
+
+/** What the unit's discovery logs say under their fixed headings, read once a call. @param {BoardAt} at */
+const heardAt = (at) => at.once('discovery-heard', () => heardIn(logsAt(at), spikesOf(at.root, at.unit), at.warnings));
+
+/**
+ * The unit's spikes, in the order they started, each with what the logs
+ * say of it (the header's), and its live link.
+ * @param {BoardAt} at @returns {(import('../board-model.cjs').SpikeLine & {link: string|null})[]}
+ */
 function spikesAt(at) {
   const statuses = spikeStatuses(at.cwd, at.unit, at.warnings);
-  return spikesOf(at.root, at.unit).map((spike) => ({ spike, title: titlecase(spike.replace(/^\d+-/, '')), status: statuses.get(spike) ?? null }));
+  const { spikes } = heardAt(at);
+  return spikesOf(at.root, at.unit).map((spike) => {
+    const said = spikes.get(spike);
+    return { spike, title: titlecase(spike.replace(/^\d+-/, '')), status: statuses.get(spike) ?? null, tool: said?.tool ?? null, showed: said?.showed ?? null, link: said?.link ?? null };
+  });
 }
 
 /** Discovery's This session (the header's). @param {BoardAt} at @returns {{view: DiscoveryView}} */
 function discoveryView(at) {
   const staged = stagedOrNone(at.cwd, at.unit);
-  const session = latestSessionLog(statePath(at.cwd, at.unit, 'discovery'));
+  const session = logsAt(at).at(-1);
+  const { notTaken, views } = heardAt(at);
   return {
     view: {
       kind: 'discovery',
@@ -52,12 +78,15 @@ function discoveryView(at) {
       title: at.title,
       type: at.manifest.work_type,
       session: session?.number ?? null,
+      started: session === undefined ? null : sessionStarted(session.text),
       waits: staged !== null,
       map: staged === null
         ? liveInOrder(at.manifest).map((topic) => mapLine(at, topic))
         : staged.topics.map(({ name, summary }) => (summary === undefined ? mapLine(at, name) : { topic: name, title: topicTitle(at.manifest, name), summary })),
       roadmap: (staged?.parks ?? []).map(({ summary, horizon }) => ({ title: summary, horizon })),
-      spikes: spikesAt(at),
+      not_taken: notTaken,
+      views,
+      spikes: spikesAt(at).map(({ link: _link, ...line }) => line),
     },
   };
 }
@@ -114,9 +143,10 @@ function briefPage(at, said) {
  * @param {BoardAt} at @param {string} spike @returns {import('../board-model.cjs').SpikePage}
  */
 function spikePage(at, spike) {
-  const line = spikesAt(at).find((held) => held.spike === spike);
-  if (line === undefined) throw new Error(`${at.unit} has no spike ${spike}`);
-  return { kind: 'spike', unit: at.unit, ...line, path: path.posix.join(at.unit, 'spikes', spike) };
+  const held = spikesAt(at).find((line) => line.spike === spike);
+  if (held === undefined) throw new Error(`${at.unit} has no spike ${spike}`);
+  const { link, ...line } = held;
+  return { kind: 'spike', unit: at.unit, ...line, path: path.posix.join(at.unit, 'spikes', spike), link };
 }
 
 module.exports = { discoveryView, discoveryBanner, briefPage, topicStarted, spikePage };
