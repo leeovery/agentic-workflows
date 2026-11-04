@@ -1253,6 +1253,17 @@ function startPhase(sim, wu, phase) {
  */
 function writePhaseTasks(sim, wu, phase, title, tasks) {
   sim.run(['task', 'phase', wu, String(phase), '--title', title]);
+  return writeTasks(sim, wu, phase, tasks);
+}
+
+// A written phase's tasks as the task writer records them, as
+// `writePhaseTasks` records them once the phase is written.
+/**
+ * @param {Sim} sim @param {string} wu @param {number} phase
+ * @param {{title: string, after?: string[], scenarios?: string[]}[]} tasks
+ * @returns {string[]} the tasks as created
+ */
+function writeTasks(sim, wu, phase, tasks) {
   const created = tasks.map((task) => {
     const scenarios = task.scenarios ?? [`Given a ledger, when ${task.title.toLowerCase()} runs, then it answers.`];
     const file = sim.write(`.leeway/.cache/${wu}/build/task.md`, [
@@ -1312,9 +1323,13 @@ const builders = {
 };
 
 // A task built as the build's loop builds it in the worktree at `tree`
-// (12.7): started, its files committed there, the verify setup recorded and
-// its scenario run where `setup` says so, its pair passing it, its account
-// taken, chained into its phase's stack and done.
+// (12.7): started, its builder's worktree made by its isolation at the
+// default branch and the task laid out there, its files committed there,
+// the verify setup recorded and its scenario run where `setup` says so, its
+// pair passing it from where it was laid out, its account written once its
+// builder's brief again says it landed, and taken, chained into its
+// phase's stack — the chain's `next`, the phase's mutation run once its
+// last task chains — and done.
 /**
  * @param {Sim} sim @param {string} wu @param {string} task @param {string} tree
  * @param {Record<string, string>} files @param {boolean} setup
@@ -1322,7 +1337,7 @@ const builders = {
 function taskBuilt(sim, wu, task, tree, files, setup) {
   sim.run(['task', 'start', wu, task]);
   const builder = sim.run(['brief', 'builder', wu, task]);
-  git(sim.dir, ['worktree', 'add', '-q', '-b', `worktree-agent-${task}`, tree]);
+  git(sim.dir, ['worktree', 'add', '-q', '-b', `worktree-agent-${task}`, tree, 'main']);
   sim.runIn(tree, ['task', 'worktree', wu, task]);
   for (const [file, text] of Object.entries(files)) {
     fs.mkdirSync(path.dirname(path.join(tree, file)), { recursive: true });
@@ -1332,22 +1347,39 @@ function taskBuilt(sim, wu, task, tree, files, setup) {
   if (setup) {
     const at = placeIn(sim, builder, 'Where the verify setup goes');
     fs.mkdirSync(path.dirname(at), { recursive: true });
-    fs.writeFileSync(at, JSON.stringify({
-      place: 'verify', feature_map: 'verify/features.md', launch: 'true', health: 'true', drive: 'verify/drive.sh', evidence: 'true', cleanup: 'true',
-      mutation: 'echo "[]" > "$LEEWAY_RUN/survivors.json"',
-    }));
+    fs.writeFileSync(at, JSON.stringify(VERIFY_SETUP));
     sim.runIn(tree, ['verify', 'setup', wu, '--file', at, '--scenario', '1.S1']);
     sim.runIn(tree, ['verify', 'run', wu, '1.S1']);
   }
-  for (const letter of ['a', 'b']) landed(placeIn(sim, sim.run(['brief', 'reviewer', wu, task, '--base', 'main', '--letter', letter]), 'Where your report goes'), PASSED_REPORT);
-  landed(placeIn(sim, builder, 'Where your account goes'), [
+  for (const letter of ['a', 'b']) landed(placeIn(sim, sim.run(['brief', 'reviewer', wu, task, '--letter', letter]), 'Where your report goes'), PASSED_REPORT);
+  const back = sim.run(['brief', 'builder', wu, task]);
+  assert.match(briefOf(sim, back), /Your reviewers passed the task in round 1: it has landed, so write its account now\./);
+  landed(placeIn(sim, back, 'Where your account goes'), [
     '## What was done', 'Built.', '## Where in the code', ...Object.keys(files).map((file) => `- ${file}`), '## What the tests prove', '- 1.S1, run through verify.',
     '## Differs from the task', 'None.', '## Reviews', '### Round 1', 'Passed.',
   ].join('\n\n'));
   sim.run(['task', 'account', wu, task]);
   sim.run(['land', 'open', wu, task]);
-  sim.run(['land', 'chain', wu, task]);
+  const { next } = sim.run(['land', 'chain', wu, task]);
   sim.run(['task', 'done', wu, task]);
+  if (next !== undefined) sim.run(next.argv);
+}
+
+// A unit's first phase, entered once ready to build's yes began its build,
+// built as the loop builds it: written as `title`, its one task `task`
+// building the verify setup and `file` and proving 1.S1, then its review
+// passing, its stack merged and its close.
+/** @param {Sim} sim @param {string} wu @param {string} title @param {string} task @param {string} file */
+function firstPhaseBuilt(sim, wu, title, task, file) {
+  buildEntry(sim, wu);
+  writePhaseTasks(sim, wu, 1, title, [{ title: task, scenarios: ['1.S1'] }]);
+  startPhase(sim, wu, 1);
+  const tree = builders.make('agent-1');
+  taskBuilt(sim, wu, '1.1', tree, { ...VERIFY_FILES, [file]: `export const ${path.basename(file, '.js')} = 1;\n` }, true);
+  builders.remove(sim, tree);
+  for (const letter of ['a', 'b']) landed(placeIn(sim, sim.run(['brief', 'phase-review', wu, '1', '--letter', letter]), 'Where your report goes'), PASSED_REPORT);
+  sim.run(['land', 'phase', wu, '1']);
+  sim.run(['checklist', 'close', 'phase-close', wu, '1']);
 }
 
 // The build the review phase reviews: a feature through its spec to ready
@@ -1358,16 +1390,120 @@ function cutClosed(sim, wu) {
   startUnit(sim, 'feature', wu, 'A ledger');
   discussed(sim, wu, wu);
   specToBuild(sim, wu, [wu], 'a');
-  buildEntry(sim, wu);
-  writePhaseTasks(sim, wu, 1, 'The work', [{ title: 'Write the ledger', scenarios: ['1.S1'] }]);
-  startPhase(sim, wu, 1);
-  const tree = builders.make('agent-1');
-  taskBuilt(sim, wu, '1.1', tree, { ...VERIFY_FILES, 'src/ledger.js': 'export const ledger = 1;\n' }, true);
-  sim.runIn(tree, ['verify', 'mutants', wu, '1']);
-  builders.remove(sim, tree);
-  for (const letter of ['a', 'b']) landed(placeIn(sim, sim.run(['brief', 'phase-review', wu, '1', '--base', 'main', '--letter', letter]), 'Where your report goes'), PASSED_REPORT);
-  sim.run(['land', 'phase', wu, '1']);
-  sim.run(['checklist', 'close', 'phase-close', wu, '1']);
+  firstPhaseBuilt(sim, wu, 'The work', 'Write the ledger', 'src/ledger.js');
+}
+
+// The verify setup the first task's builder records, its mutation tool
+// answering that nothing survived.
+const VERIFY_SETUP = Object.freeze({
+  place: 'verify', feature_map: 'verify/features.md', launch: 'true', health: 'true', drive: 'verify/drive.sh', evidence: 'true', cleanup: 'true',
+  mutation: 'echo "[]" > "$LEEWAY_RUN/survivors.json"',
+});
+
+// The build's task loop as its skill's prose runs it (the-task-loop.md), for
+// the build's simulations: each brief issued, its agent kept by its role;
+// a builder's worktree made by its isolation at the default branch, as
+// Claude Code's starts at the remote's, whatever the checkout holds, and the
+// task laid out there by `task worktree`; its commits through the door; a
+// round of its pair; its account written once its brief again says it
+// landed, and taken; and its landing, the chain's `next` run once the task
+// is done.
+/** @param {Sim} sim @param {string} wu */
+function buildLoop(sim, wu) {
+  /** @type {string[]} */
+  const trees = [];
+  /** The agent each brief went to, by its role. @type {Map<string, Set<string>>} */
+  const agents = new Map();
+  /** A brief issued. @param {string[]} args */
+  const brief = (args) => {
+    const res = sim.run(['brief', ...args]);
+    agents.set(args[0], new Set([...(agents.get(args[0]) ?? []), res.agent]));
+    return res;
+  };
+  return {
+    agents,
+    brief,
+    /** The worktree a builder's isolation makes for `task`, the task laid out there: its path. @param {string} task @param {string} [agent] the builder, a later one's after a /clear */
+    isolated(task, agent = `agent-${task}`) {
+      const tree = builders.make(agent);
+      trees.push(tree);
+      git(sim.dir, ['worktree', 'add', '-q', '-b', `worktree-${agent}`, tree, 'main']);
+      sim.runIn(tree, ['task', 'worktree', wu, task]);
+      return tree;
+    },
+    /** A change committed through the door from the task's worktree. @param {string} tree @param {string} task @param {Record<string, string>} files @param {string} [message] */
+    committed(tree, task, files, message = `feat(${wu}): task ${task}`) {
+      for (const [file, text] of Object.entries(files)) {
+        fs.mkdirSync(path.dirname(path.join(tree, file)), { recursive: true });
+        fs.writeFileSync(path.join(tree, file), text, { mode: 0o755 });
+      }
+      return sim.runIn(tree, ['commit', '--paths', ...Object.keys(files), '--task', wu, task, '-m', message]);
+    },
+    /** The verify setup recorded from the task's worktree, its scenario run there. @param {string} tree @param {{id: string}} builder its brief @param {string} scenario */
+    setUp(tree, builder, scenario) {
+      const at = placeIn(sim, builder, 'Where the verify setup goes');
+      fs.mkdirSync(path.dirname(at), { recursive: true });
+      fs.writeFileSync(at, JSON.stringify(VERIFY_SETUP));
+      sim.runIn(tree, ['verify', 'setup', wu, '--file', at, '--scenario', scenario]);
+      sim.runIn(tree, ['verify', 'run', wu, scenario]);
+    },
+    /** One round of the task's pair, each reviewer briefed and writing its report. @param {string} task @param {string} [a] @param {string} [b] */
+    pairRound(task, a = PASSED_REPORT, b = PASSED_REPORT) {
+      for (const [letter, report] of [['a', a], ['b', b]]) landed(placeIn(sim, brief(['reviewer', wu, task, '--letter', letter]), 'Where your report goes'), report);
+    },
+    /**
+     * The builder's brief again saying the task landed in its last round, its account of `rounds` written and taken — the
+     * builder a new one after a /clear where `agent` names it, its worktree laid out first.
+     * @param {string} task @param {string[]} rounds each round's summary @param {string} [agent]
+     */
+    accounted(task, rounds, agent) {
+      const back = brief(['builder', wu, task]);
+      if (agent !== undefined) this.isolated(task, agent);
+      assert.match(briefOf(sim, back), new RegExp(`Your reviewers passed the task in round ${rounds.length}: it has landed, so write its account now\\.`));
+      landed(placeIn(sim, back, 'Where your account goes'), [
+        '## What was done', `Task ${task} is built.`, '## Where in the code', '- src/', '## What the tests prove', '- Its scenario.',
+        '## Differs from the task', 'None.', '## Reviews', ...rounds.flatMap((summary, at) => [`### Round ${at + 1}`, summary]),
+      ].join('\n\n'));
+      assert.strictEqual(sim.run(['task', 'account', wu, task]).rounds, rounds.length);
+    },
+    /** Into the phase's stack, then done, then the chain's `next`: the `next`. @param {string} task */
+    landedTask(task) {
+      sim.run(['land', 'open', wu, task]);
+      const { next } = sim.run(['land', 'chain', wu, task]);
+      sim.run(['task', 'done', wu, task]);
+      if (next !== undefined) sim.run(next.argv);
+      return next;
+    },
+    /** Every builder's worktree removed. */
+    cleared: () => trees.splice(0).forEach((tree) => builders.remove(sim, tree)),
+  };
+}
+
+// An epic of one topic through its spec to ready to build's pick in auto:
+// its cut two phases, settling an entry and showing it, the second relying
+// on the first.
+/** @param {Sim} sim @param {string} wu */
+function twoPhaseEpic(sim, wu) {
+  mappedEpic(sim, wu, ['alpha']);
+  const { next } = discussed(sim, wu, 'alpha');
+  handoff(sim, [`/${next.skill}`, ...next.args].join(' '));
+  specEntry(sim, wu, ['alpha']);
+  sim.run(['brief', 'spec-writer', wu]);
+  const [decision] = JSON.parse(sim.read(['ledger', 'record', wu, 'alpha'])).decisions;
+  sim.write(`.leeway/${wu}/spec.md`, [
+    '# Ledgerly', '', '## 1. The ledger', '', '### 1.1 Settling', '', `1.1.1 An entry settles as alpha decided. [${decision.id}]`, '',
+    '### 1.2 Showing', '', `1.2.1 A settled entry shows as alpha decided. [${decision.id}]`, '',
+    '## 1-S. Scenarios for §1', '', '1.S1 Given an entry, when it settles, then it holds as alpha decided. (1.1.1)', '',
+    '1.S2 Given a settled entry, when it is shown, then it reads as alpha decided. (1.2.1)', '',
+  ].join('\n'));
+  sim.run(['spec', 'land', wu]);
+  specReviewed(sim, wu);
+  cutTheSpec(sim, wu, [
+    { name: 'Settling', goal: 'An entry settles.', scenarios: ['1.S1'], sections: ['1.1'], relies_on: [] },
+    { name: 'Showing', goal: 'A settled entry shows.', scenarios: ['1.S2'], sections: ['1.2'], relies_on: [1] },
+  ]);
+  readyToBuild(sim, wu);
+  sim.run(answerGate(sim, 'ready to build', '--pick', 'a').next.argv);
 }
 
 // The round under review's read of the cut's one area, by its pair (14.2):
@@ -1399,6 +1535,6 @@ function finished(sim, wu) {
 }
 
 module.exports = {
-  Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, buildEntry, startPhase, writePhaseTasks, specReviewed, cutTheSpec, readyToBuild, specToBuild, keptOldSpec, briefOf, placeIn, landed,
-  builders, taskBuilt, cutClosed, areaRead, testsRead, finished,
+  Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, cutTheSpec, readyToBuild, specToBuild, keptOldSpec, briefOf, placeIn, landed,
+  builders, taskBuilt, firstPhaseBuilt, cutClosed, areaRead, testsRead, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic,
 };

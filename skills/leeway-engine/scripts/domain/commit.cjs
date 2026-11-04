@@ -27,7 +27,9 @@
 
 const fs = require('fs');
 const path = require('path');
-const { git, gitPath, tryGit, literally, commitPathspec, commitStaged, operationInProgress } = require('../kernel/git.cjs');
+const {
+  git, gitPath, tryGit, literally, commitPathspec, commitStaged, operationInProgress, mergeInProgress, commitMerge,
+} = require('../kernel/git.cjs');
 const { isolatedGit } = require('../kernel/isolated-git.cjs');
 const { repoName } = require('../kernel/repos.cjs');
 const { acquireLockFile, releaseLockFile } = require('../kernel/manifest-io.cjs');
@@ -194,16 +196,18 @@ function commitPathspecScoped(cwd, pathspec, message) {
  * submodule. A repo whose commit fails fails the call, naming itself and the
  * commits already made; re-running it is the retry, as those repos have
  * nothing left in the paths and a moved pointer is recorded whatever moved
- * it.
+ * it. With `finishMerges`, a repo with a merge in progress finishes it, its
+ * paths the resolution (`commitMerge`).
  * @param {{repo: import('../kernel/repos.cjs').Repo, paths: string[]}[]} groups
  * @param {string} message
+ * @param {boolean} [finishMerges]
  * @returns {{repo: string, sha: string}[]} the commits made, `.` naming the root
  */
-function commitAcrossRepos(groups, message) {
+function commitAcrossRepos(groups, message, finishMerges = false) {
   /** @type {{repo: string, sha: string}[]} */
   const committed = [];
   for (const { repo, paths } of groups) {
-    const sha = commitInRepo(repo, paths, message, committed);
+    const sha = commitInRepo(repo, paths, message, committed, finishMerges);
     if (sha !== null) committed.push({ repo: repoName(repo), sha });
   }
   return committed;
@@ -215,11 +219,14 @@ function commitAcrossRepos(groups, message) {
  * @param {string[]} paths as the repo names them
  * @param {string} message
  * @param {{repo: string, sha: string}[]} committed the commits the call made before this one
+ * @param {boolean} finishMerges
  * @returns {string|null}
  */
-function commitInRepo(repo, paths, message, committed) {
+function commitInRepo(repo, paths, message, committed, finishMerges) {
   try {
-    return withCommitLock(repo.path, () => commitPathspec(repo.path, paths, message, repo.heldOut));
+    return withCommitLock(repo.path, () => (finishMerges && mergeInProgress(repo.path)
+      ? commitMerge(repo.path, paths, message, repo.heldOut)
+      : commitPathspec(repo.path, paths, message, repo.heldOut)));
   } catch (err) {
     const made = committed.map((c) => `${c.repo} committed ${c.sha}`).join(', ');
     const after = made === '' ? '' : ` after ${made} — re-running the same call commits the rest`;

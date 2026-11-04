@@ -19,7 +19,8 @@
 // task from a task's worktree, or a laid-out task from outside its own, is
 // refused. Git layer: the task worktree world (task-worktree-world.cjs),
 // built once and copied for each test. Laying the worktree out:
-// test-engine-task-worktree.cjs.
+// test-engine-task-worktree.cjs; the links its preparation made and the
+// nested clones, held out of the door: test-engine-task-worktree-held-out.cjs.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -29,18 +30,15 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { ok, refuses, refusedPristine, git, tip, createFile, initRepo, addSubmodule, statePath, layout, readState, writeState } = require('./engine-harness.cjs');
+const { ok, refuses, refusedPristine, git, tip, createFile, initRepo, addSubmodule, statePath, layout, readState, writeState, accountTaken } = require('./engine-harness.cjs');
 const { NESTED, landedOn } = require('./landing-world.cjs');
 const { readPosition } = require('../../skills/leeway-engine/scripts/domain/conversation.cjs');
-const { SIDE, UNIT, FEES, SHOW, taskWorktreeWorld, as, building, isolation, layOut, checkoutsOf } = require('./task-worktree-world.cjs');
+const { SIDE, UNIT, FEES, SHOW, taskWorktreeWorld, as, building, isolation, layOut, checkoutsOf, statusOf } = require('./task-worktree-world.cjs');
 
 const project = taskWorktreeWorld('engine-task-worktree-end-');
 
 /** The worktrees a repository has registered, by their paths. @param {string} repo */
 const registered = (repo) => git(repo, ['worktree', 'list', '--porcelain']).split('\n').filter((line) => line.startsWith('worktree ')).map((line) => line.slice('worktree '.length));
-
-/** Where a task stands in the tracker. @param {string} dir @param {string} task */
-const statusOf = (dir, task) => ok(dir, ['task', 'show', UNIT, task]).status;
 
 /** The project's environment setup set to `environment`. @param {string} dir @param {unknown} environment */
 function setEnvironment(dir, environment) {
@@ -76,6 +74,7 @@ describe('task done and task close: the task\'s worktree taken apart', () => {
     const { error } = refusedPristine(at.dir, ['task', 'done', UNIT, '3.1'], as(session));
     const kept = { tasks: readPosition(session)?.tasks?.map(({ task }) => task), trees: trees(), status: statusOf(at.dir, '3.1') };
     fs.rmSync(path.join(a, 'lib', 'left.txt'));
+    accountTaken(at.dir, UNIT, '3.1');
     const done = ok(at.dir, ['task', 'done', UNIT, '3.1'], as(session));
     git(at.dir, ['worktree', 'remove', a]);
     git(at.ext, ['branch', '-d', FEES]);
@@ -115,6 +114,7 @@ describe('task done and task close: the task\'s worktree taken apart', () => {
     git(at.lib, ['worktree', 'add', '-q', '--detach', detached, NESTED.lib.into]);
     SIDE.makeTask(statePath(at.dir), 'Round fees', { unit: UNIT, phase: 3, n: 5 });
     const session = building(at.dir, ['3.1', '3.2', '3.5']);
+    for (const task of ['3.1', '3.2', '3.5']) accountTaken(at.dir, UNIT, task);
 
     const ended = ['3.1', '3.2', '3.5'].map((task) => ok(at.dir, ['task', 'done', UNIT, task], as(session)).removed);
 
@@ -137,6 +137,7 @@ describe('task done and task close: the task\'s worktree taken apart', () => {
     const refusals = [refuses(at.dir, ['task', 'done', UNIT, '3.2'], as(session)).error];
     git(path.join(b, 'lib'), ['add', 'inner']);
     refusals.push(refuses(at.dir, ['task', 'done', UNIT, '3.2'], as(session)).error);
+    accountTaken(at.dir, UNIT, '3.1');
     const done = ok(at.dir, ['task', 'done', UNIT, '3.1'], as(session));
 
     const unpointed = `task done: ${SHOW} is checked out at ${path.join(b, 'lib')}, with changes not committed: inner, so nothing moved — commit them, or move them out of the way, then run it again`;
@@ -155,6 +156,7 @@ describe('task done and task close: the task\'s worktree taken apart', () => {
     const inFlight = () => (readPosition(session)?.tasks ?? []).map(({ task }) => task);
     const left = { status: statusOf(at.dir, '3.1'), tasks: inFlight() };
     git(at.lib, ['worktree', 'unlock', path.join(a, 'lib')]);
+    accountTaken(at.dir, UNIT, '3.1');
     const done = ok(at.dir, ['task', 'done', UNIT, '3.1'], as(session));
 
     assert.deepStrictEqual(left, { status: 'in-progress', tasks: ['3.1'] });
@@ -180,6 +182,7 @@ describe('task worktree: tasks side by side (12.S15, 12.S53, 7.S19)', () => {
       ok(b, ['commit', '--paths', 'show.txt', 'ext/ext-fees.txt', '--task', UNIT, '3.2', '-m', 'feat(pay): show fees'], as(session)),
     ];
     git(b, ['merge', '-q', '--no-edit', FEES]);
+    for (const task of ['3.1', '3.2']) accountTaken(at.dir, UNIT, task);
     for (const task of ['3.1', '3.2']) ok(at.dir, ['land', 'open', UNIT, task]);
     const chained = ok(at.dir, ['land', 'chain', UNIT, '3.2']);
     ok(at.dir, ['land', 'phase', UNIT, '3']);

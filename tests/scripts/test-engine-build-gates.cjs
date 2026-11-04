@@ -7,7 +7,7 @@
 // gives it, and as its entry takes it over after a /clear, is
 // test-engine-build-gates-standing.cjs's; the screens that report,
 // test-engine-build-screens.cjs's; step's one task at a time,
-// test-engine-build-step.cjs's.
+// test-engine-build-step.cjs's and test-engine-build-step-order.cjs's.
 //
 // Layer: verb. World: the build screens' world (build-screens-world.cjs),
 // built once and copied; a test that needs a phase of the review's fixes
@@ -21,7 +21,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { ok, git, writeState, layout, cleanupFixture, sectionOf } = require('./engine-harness.cjs');
+const { ok, git, writeState, layout, cleanupFixture, sectionOf, accountTaken } = require('./engine-harness.cjs');
 const { UNIT, ACCOUNT_DRAWN, taskText, reportOf, buildScreensWorld, buildScreenHelpers } = require('./build-screens-world.cjs');
 
 let dir = ''; // the project
@@ -69,7 +69,7 @@ describe('the gate after a task, in step (12.14.3, 12.12.7, 3.3.8, 13.4.7)', () 
     assert.doesNotMatch(out, /The digits show whole|Verdict:/, 'no review report is printed (12.12.6)');
   });
 
-  it('a/auto runs the rest of the build in auto through the door verb; yes, the technical retelling and the diagrams carry on as the workflow says (3.S20, 3.3.6)', () => {
+  it('a/auto runs the rest of the build in auto through the door verb; yes carries on as the workflow says; the technical retelling and the diagrams bring the gate back (3.S20, 3.3.6)', () => {
     const picked = Object.fromEntries(['y', 't', 's', 'a'].map((key) => {
       screen(['step-gate', UNIT, '1.1']);
       return [key, ok(dir, ['gate', 'step gate', '--pick', key], { env: env() }).next];
@@ -77,13 +77,17 @@ describe('the gate after a task, in step (12.14.3, 12.12.7, 3.3.8, 13.4.7)', () 
     ok(dir, picked.a.argv, { env: env() });
 
     assert.deepStrictEqual(picked, {
-      y: { kind: 'continue' }, t: { kind: 'continue' }, s: { kind: 'continue' }, a: { kind: 'engine', argv: ['workunit', 'position', UNIT, 'auto'] },
+      y: { kind: 'continue' },
+      t: { kind: 'engine', argv: ['render', 'step-gate', UNIT, '1.1'] },
+      s: { kind: 'engine', argv: ['render', 'step-gate', UNIT, '1.1'] },
+      a: { kind: 'engine', argv: ['workunit', 'position', UNIT, 'auto'] },
     });
     assert.match(refused(['step-gate', UNIT, '1.1']), /^render step-gate: pay builds in auto, where no gate follows a task — /, 'in auto no gate follows a task (3.S17)');
   });
 
   it('is refused before the task\'s account is taken, once the task is done, and in auto — writing nothing', () => {
     const seen = [refused(['step-gate', UNIT, '1.3'])];
+    accountTaken(dir, UNIT, '1.1');
     ok(dir, ['task', 'done', UNIT, '1.1'], { env: env() });
     seen.push(refused(['step-gate', UNIT, '1.1']));
     position('auto');
@@ -118,10 +122,12 @@ describe('the gate before a phase\'s stack merges, in step (7.2.4)', () => {
   });
 
   it('a phase of the review\'s fixes, named for its round, stops once its tasks are done, and is refused before and once it has merged, writing nothing', () => {
+    accountTaken(dir, UNIT, '1.1');
     ok(dir, ['task', 'done', UNIT, '1.1'], { env: env() });
     fixPhase(['Mask the reprint']);
     ok(dir, ['task', 'start', UNIT, '4.1'], { env: env() });
     const before = refused(['phase-merge-gate', UNIT, '4']);
+    accountTaken(dir, UNIT, '4.1');
     ok(dir, ['task', 'done', UNIT, '4.1'], { env: env() });
     const ready = screen(['phase-merge-gate', UNIT, '4']);
     git(dir, ['commit', '-q', '--allow-empty', '-m', `fix(${UNIT}): landed`, '-m', `Task: ${UNIT}-4-1`]);

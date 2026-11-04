@@ -17,7 +17,8 @@
 // the files those commits touched, a submodule's pointer never among them.
 // The uncommitted change is each repo's change against HEAD (the empty tree
 // before its first commit), its untracked files read as additions, held out
-// as the dirt is. A diff names every path from the project, a move as a
+// as the dirt is — a link the worktree's preparation made among what is held
+// out (worktree-prep.cjs). A diff names every path from the project, a move as a
 // deletion and an addition, one patch per repo in repo order. Nothing is
 // written.
 // ---------------------------------------------------------------------------
@@ -25,7 +26,8 @@
 const {
   commitsBySubject, parentOrEmptyTree, emptyTree, hasCommits, diffPatch, diffWithUntracked, literally,
 } = require('../kernel/git.cjs');
-const { projectRepos, repoName, projectPath, codeHeldOut, projectDirtyEntries } = require('../kernel/repos.cjs');
+const { projectRepos, repoName, projectPath, codeHeldOut } = require('../kernel/repos.cjs');
+const { codeChanges, linksHeldOut } = require('./worktree-prep.cjs');
 const { stepOfId } = require('./task-id.cjs');
 
 /** @typedef {import('../kernel/repos.cjs').Repo} Repo */
@@ -138,7 +140,7 @@ function selectedDiff(cwd, selector) {
  * @returns {string} the unified diff, '' when there is none
  */
 function uncommittedDiff(cwd) {
-  return projectRepos(cwd)
+  return linksHeldOut(projectRepos(cwd)).repos
     .map((repo) => diffWithUntracked(repo.path, hasCommits(repo.path) ? 'HEAD' : emptyTree(repo.path),
       projectDiffOptions(repo), codeHeldOut(repo)))
     .join('');
@@ -150,7 +152,7 @@ function uncommittedDiff(cwd) {
  * @returns {{files: {path: string, status: string}[]}}
  */
 function codeStatus(cwd) {
-  return { files: projectDirtyEntries(projectRepos(cwd)) };
+  return { files: codeChanges(projectRepos(cwd)) };
 }
 
 module.exports = { subjectSelector, taskSelector, codeLog, selectedDiff, uncommittedDiff, codeStatus };

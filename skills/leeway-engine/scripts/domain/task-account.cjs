@@ -31,13 +31,12 @@
 // counts (15.3.4).
 //
 // The figures, `figures.json` beside the reports, the engine's alone: the
-// files changed and the lines added and removed across every repository
-// holding the task's branch (landing-git.cjs), from the parent of the
-// branch's first commit naming the task (`Leeway-Task`, commit-task.cjs) to
-// its tip, so the tasks a stack holds below it are not counted — a
-// repository where the branch holds none of the task's commits counts
-// nothing, work merged into the branch above its first commit counts as the
-// task's, and a submodule's pointer is never a file of it, as `verify
+// review rounds the account covers; the files changed and the lines added
+// and removed across every repository holding the task's branch
+// (landing-git.cjs), from where the task's own work starts there
+// (task-base.cjs) to its tip, so neither the tasks a stack holds below it
+// nor the chain it merged back count — and a submodule's pointer is never a
+// file of it, as `verify
 // mutants` leaves it out; the acceptance criteria the task holds
 // (task-file.cjs); how many additions the task holds, whoever made them
 // (13.11.3) — one made after the account means the task changed under it,
@@ -60,7 +59,9 @@
 // is done; a task with no review round's reports, a round missing a
 // reviewer's report or holding one that does not read. The account refuses
 // besides: a task a question waiting parks, naming its raise (13.4.6,
-// task-parks.cjs); a last round neither passed nor settled; no account
+// task-parks.cjs); a last round neither passed nor settled; a task that
+// changed under its last round, until its pair reads it again
+// (round-report.cjs), the change's mark committed with the account; no account
 // written, or one that does not read, every fault named; a task with no type,
 // from which its branch is named; and no repository of the project holding
 // work on its branch. Settling refuses no such file, or one holding nothing.
@@ -71,30 +72,32 @@
 const fs = require('fs');
 const path = require('path');
 const { statePath } = require('../kernel/state-root.cjs');
-const { git, parentOrEmptyTree, excluding } = require('../kernel/git.cjs');
+const { git, excluding } = require('../kernel/git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { projectRepos } = require('../kernel/repos.cjs');
 const { writeJsonAtomic, writeTextAtomic } = require('../kernel/manifest-io.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
-const { TRAILER } = require('./commit-task.cjs');
 const { headingLevels } = require('./spec-sections.cjs');
 const { BULLET, listItems, saysNone, saysNoneIn } = require('./list-items.cjs');
 const { criteriaOf } = require('./task-file.cjs');
 const { parseShownTask, shownTask, taskId, taskName } = require('./task-id.cjs');
 const { taskBranch } = require('./landing-names.cjs');
-const { holdingBranch } = require('./landing-git.cjs');
+const { holdingBranch, taskWorktree } = require('./landing-git.cjs');
 const { trackedTask, trackedStart, givenText, ENDED } = require('./task-verbs.cjs');
-const { refuseParked } = require('./task-parks.cjs');
+const { refuseParked, parkedOf } = require('./task-parks.cjs');
+const { baseRev, builtOnBases } = require('./task-base.cjs');
 const { refusing } = require('./staged-payload.cjs');
-const { taskFolder, settlementPath, taskRounds, pairPassed } = require('./round-report.cjs');
+const {
+  taskFolder, settlementPath, changedPath, taskRounds, pairPassed, changedUnder, changedRefusal,
+} = require('./round-report.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
 /** @typedef {import('./round-report.cjs').Round} Round */
 /** @typedef {import('../kernel/repos.cjs').Repo} Repo */
 /** @typedef {{files: number, added: number, removed: number}} Change */
-/** @typedef {Change & {criteria: number, additions: number, started: string|null, finished: string}} Figures */
+/** @typedef {Change & {rounds: number, criteria: number, additions: number, started: string|null, finished: string}} Figures */
 /** @typedef {(reason: string) => never} Refuse */
 
 /** The account's sections, as their headings read, in order. */
@@ -220,15 +223,13 @@ function readAccount(text, rounds, settled = []) {
 }
 
 /**
- * The task's change in one repository holding its branch: from the parent
- * of the branch's first commit naming the task to its tip, its submodules'
- * pointers left out; none where the branch holds no commit naming it.
- * @param {Repo} repo @param {string} branch @param {string} id @returns {Change}
+ * The task's own change in one repository holding its branch: from where
+ * its own work starts there, `base`, to its tip, its submodules' pointers
+ * left out.
+ * @param {Repo} repo @param {string} base @param {string} branch @returns {Change}
  */
-function changeIn(repo, branch, id) {
-  const [first] = git(repo.path, ['log', '--reverse', '--format=%H', `--grep=^${TRAILER}: ${id}$`, `refs/heads/${branch}`, '--']).split('\n');
-  if (first === '') return { files: 0, added: 0, removed: 0 };
-  const changed = ['diff', '--numstat', '--find-renames', parentOrEmptyTree(repo.path, first), `refs/heads/${branch}`, '--', ':(top)', ...excluding(repo.submodules)];
+function changeIn(repo, base, branch) {
+  const changed = ['diff', '--numstat', '--find-renames', `${baseRev(base)}...refs/heads/${branch}`, '--', ':(top)', ...excluding(repo.submodules)];
   const rows = git(repo.path, changed).split('\n').filter((row) => row !== '');
   return rows.reduce((sum, row) => {
     const [added, removed] = row.split('\t').map(Number);
@@ -237,20 +238,24 @@ function changeIn(repo, branch, id) {
 }
 
 /**
- * The task's figures (the header's), finished now; refused where no
- * repository of the project holds work on its branch.
- * @param {string} cwd @param {TaskRef} ref @param {TaskDetail} task @param {Refuse} refuse
+ * The task's figures (the header's), finished now, the account covering
+ * `rounds`; refused where no repository of the project holds work on its
+ * branch.
+ * @param {string} cwd @param {TaskRef} ref @param {TaskDetail} task @param {number} rounds @param {Refuse} refuse
  * @returns {Figures}
  */
-function figuresOf(cwd, ref, task, refuse) {
+function figuresOf(cwd, ref, task, rounds, refuse) {
   const branch = taskBranch(ref, /** @type {string} */ (task.type), task.title);
   const { holding } = holdingBranch(ref.unit, projectRepos(codeRoot(cwd)), branch);
   if (holding.length === 0) refuse(`no repository of the project holds work on ${taskName(ref)}'s branch, ${branch}`);
-  const change = holding.map((repo) => changeIn(repo, branch, taskId(ref))).reduce(
+  const bases = builtOnBases(cwd, ref, holding, branch);
+  const change = holding.map((repo, at) => changeIn(repo, bases[at], branch)).reduce(
     (sum, part) => ({ files: sum.files + part.files, added: sum.added + part.added, removed: sum.removed + part.removed }),
     { files: 0, added: 0, removed: 0 },
   );
-  return { ...change, criteria: criteriaOf(task.text), additions: task.additions.length, started: trackedStart(cwd, ref), finished: new Date().toISOString() };
+  return {
+    rounds, ...change, criteria: criteriaOf(task.text), additions: task.additions.length, started: trackedStart(cwd, ref), finished: new Date().toISOString(),
+  };
 }
 
 /**
@@ -268,6 +273,49 @@ function reviewedTask(cwd, unit, given, said, ended) {
   const last = rounds.at(-1);
   if (last === undefined) return refuse(`${taskName(ref)} has no review round's reports — its reviewers write them in ${taskFolder(ref)}/`);
   return { ref, task, rounds, last };
+}
+
+/**
+ * Where a task's account stands for its builder's brief (12.14.4, 12.14.8):
+ * the round its review ended in — every reviewer passing it, or the
+ * orchestrator settling it, with the settlement's text — where an account is
+ * owed for it: none is written, or the one written does not read against the
+ * rounds its reports hold, so does not cover the last; and beside it, why
+ * the one written there does not read, where it does not. An account written
+ * that reads covers the review as it stands, so a brief issued after it is
+ * one sending the builder back in (13.11.3). None is owed while the task
+ * changed under its last round (round-report.cjs): that round, its builder
+ * building what changed for the pair to read again; nor while a question
+ * waiting parks it: the questions it waits on, its answer deciding whether
+ * the task lands as passed or changes. A round whose reports cannot be read
+ * yet ends nothing and judges no account: they are its reviewers' to answer.
+ * @param {string} cwd @param {TaskRef} ref
+ * @returns {{owed: {round: number, settlement: string|null}|null, faults: string|null, changed: number|null, waiting: string[]|null}}
+ */
+function accountOwed(cwd, ref) {
+  /** @type {ReturnType<typeof accountOwed>} */
+  const none = { owed: null, faults: null, changed: null, waiting: null };
+  /** @type {import('./round-report.cjs').Round[]} */
+  let rounds;
+  try {
+    rounds = taskRounds(cwd, ref);
+  } catch {
+    return none;
+  }
+  const changed = changedUnder(cwd, ref, rounds);
+  const last = rounds.at(-1);
+  if (changed !== null || last === undefined || !pairPassed(last)) return { ...none, changed };
+  const waiting = parkedOf(cwd, ref.unit).get(shownTask(ref)) ?? null;
+  if (waiting !== null) return { ...none, waiting };
+  const owed = { round: last.round, settlement: last.settled ? fs.readFileSync(statePath(cwd, settlementPath(ref, last.round)), 'utf8').trim() : null };
+  const file = statePath(cwd, accountPath(ref));
+  if (!fs.statSync(file, { throwIfNoEntry: false })?.isFile()) return { ...none, owed };
+  try {
+    readAccount(fs.readFileSync(file, 'utf8'), rounds.length, rounds.filter((round) => round.settled).map(({ round }) => round));
+    return none;
+  } catch (err) {
+    return { ...none, owed, faults: messageOf(err) };
+  }
 }
 
 /** The account as written, refused where none is. @param {string} cwd @param {TaskRef} ref @param {Refuse} refuse */
@@ -303,6 +351,8 @@ function takeAccount(cwd, unit, given) {
   if (!pairPassed(last)) {
     refuse(`round ${last.round} of ${taskName(ref)} did not pass — an account is taken once every reviewer of a round passes the task, or the orchestrator settles it: engine task settle ${unit} ${shownTask(ref)} --file <why>`);
   }
+  const changed = changedUnder(cwd, ref, rounds);
+  if (changed !== null) refuse(changedRefusal(ref, changed));
   const text = writtenAccount(cwd, ref, refuse);
   const settled = rounds.filter((round) => round.settled).map(({ round }) => round);
   refusing(said, () => {
@@ -313,11 +363,12 @@ function takeAccount(cwd, unit, given) {
     }
   });
   if (task.type === null) refuse(`${taskName(ref)} has no type in the tracker, and its branch is named from it`);
-  const figures = figuresOf(cwd, ref, task, refuse);
+  const figures = figuresOf(cwd, ref, task, rounds.length, refuse);
   writeJsonAtomic(statePath(cwd, figuresPath(ref)), figures);
   const files = [
     accountPath(ref),
     ...rounds.flatMap(({ round, reports, settled }) => [...reports.map(({ file }) => file), ...(settled ? [settlementPath(ref, round)] : [])]),
+    ...(fs.existsSync(statePath(cwd, changedPath(ref))) ? [changedPath(ref)] : []),
     figuresPath(ref),
   ];
   return committed(cwd, files, `task(${unit}): account ${shownTask(ref)}`, [...(task.warnings ?? [])], {
@@ -345,4 +396,76 @@ function settleTask(cwd, unit, given, file) {
   });
 }
 
-module.exports = { SECTIONS, accountPath, figuresPath, takenFigures, readAccount, takeAccount, settleTask, refuserFor, committed };
+/**
+ * How far the task stands towards landing (12.14): `building` while its
+ * review is not over — no round read whole, a last round failed, or the
+ * task changed under it; `owed` once it is, its account not taken over
+ * every round of it; `taken` once it is; each with its last round.
+ * @param {string} cwd @param {TaskRef} ref
+ * @returns {{stage: 'building'|'owed'|'taken', last: Round|undefined}}
+ */
+function landingStage(cwd, ref) {
+  /** @type {Round[]} */
+  let rounds;
+  try {
+    rounds = taskRounds(cwd, ref);
+  } catch {
+    return { stage: 'building', last: undefined };
+  }
+  const last = rounds.at(-1);
+  if (last === undefined || !pairPassed(last) || changedUnder(cwd, ref, rounds) !== null) return { stage: 'building', last };
+  return { stage: takenFigures(cwd, ref)?.rounds === rounds.length ? 'taken' : 'owed', last };
+}
+
+/**
+ * Where a task whose last round passed goes, by how far it stands towards
+ * landing (`landingStage`; 12.14, 13.4.5): its account taken, to its
+ * landing, its summary drawn and then `land open`; one written there that reads, to its taking, `task
+ * account`; none, to its builder's brief for it, that round's reports read
+ * for their notes for later and the nits the task's commits do not yet
+ * fix, fixed in the worktree that has its branch checked out — or, where
+ * none has, in the one its builder lays out from that brief. Null where its
+ * review is not over, its last round was settled rather than passed, or a
+ * question parks it.
+ * @param {string} cwd @param {TaskRef} ref
+ * @returns {{round: number, said: string, way: string}|null}
+ */
+function reviewOverWay(cwd, ref) {
+  const { stage, last } = landingStage(cwd, ref);
+  if (stage === 'building' || last === undefined || !last.passes || parkedOf(cwd, ref.unit).has(shownTask(ref))) return null;
+  const task = `${ref.unit} ${shownTask(ref)}`;
+  const passed = `round ${last.round} of its review passed`;
+  if (stage === 'taken') return { round: last.round, said: `${passed}, its account taken`, way: `show its landing, render task-landed ${task}, then land it, engine land open ${task}` };
+  if (accountOwed(cwd, ref).owed === null) return { round: last.round, said: `${passed}, its account written and not taken`, way: `take it, engine task account ${task}` };
+  const builder = `engine brief builder ${task}`;
+  const read = `read its reports, ${last.reports.map(({ file }) => `\`${statePath(cwd, file)}\``).join(' and ')}, for their notes for later and the nits the task's commits do not yet fix`;
+  const tree = taskWorktree(codeRoot(cwd), ref);
+  return {
+    round: last.round,
+    said: `${passed}, its account not taken`,
+    way: tree === undefined
+      ? `no worktree has its branch checked out, so send its builder its brief first, ${builder}, which lays one out and asks for its account; ${read}, and fix those in that worktree before its account is taken`
+      : `${read}, and fix those in ${tree.path}, where its branch is checked out; then send its builder its brief for its account, ${builder}`,
+  };
+}
+
+/**
+ * Refuse, in the words of `said`, a task that lands with no account taken
+ * of its review as it stands (12.14): one a question parks, which waits on
+ * the answer and owes none yet; one changed under its last round; one whose
+ * account was never taken, or was taken over fewer rounds than its review
+ * now holds — each naming its way on.
+ * @param {string} cwd @param {TaskRef} ref @param {string} said
+ */
+function refuseUnaccounted(cwd, ref, said) {
+  refuseParked(cwd, ref, said);
+  const rounds = refusing(said, () => taskRounds(cwd, ref));
+  const changed = changedUnder(cwd, ref, rounds);
+  if (changed !== null) throw new Error(`${said}: ${changedRefusal(ref, changed)}`);
+  if (takenFigures(cwd, ref)?.rounds === rounds.length && rounds.length > 0) return;
+  throw new Error(`${said}: ${taskName(ref)} has no account taken of its review as it stands — once its builder writes it from its brief, engine brief builder ${ref.unit} ${shownTask(ref)}, take it: engine task account ${ref.unit} ${shownTask(ref)}`);
+}
+
+module.exports = {
+  SECTIONS, accountPath, figuresPath, takenFigures, readAccount, accountOwed, takeAccount, settleTask, refuserFor, committed, refuseUnaccounted, landingStage, reviewOverWay,
+};

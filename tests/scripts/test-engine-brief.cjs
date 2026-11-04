@@ -13,13 +13,19 @@
 // linters from the environment — and nothing of the project's CLAUDE.md or
 // its skills (6.S15); beside it the record of whose it is; the builder's
 // template giving the account's grammar, its example reading by it
-// (12.14.5); the reviewer's brief, the builder's records and, in each
+// (12.14.5); the builder's brief again once the task's review has ended,
+// its round passed or settled, saying it has landed and its account is
+// owed, the settlement beneath — one written that covers the review and is
+// not yet taken left as it stands, the builder reporting it — and naming
+// every fault of an account written there that does not read (12.14.4); the reviewer's
+// brief, the builder's records and, in each
 // repository holding the task's branch, the diff's three-dot range and its
 // stat, never its text, from the base given or, where a repository lacks
 // it, its default, its template
 // saying a wrong comment or a workflows reference in the work is returned
 // as a nit (13.S20) and giving the report's grammar, its example reading
-// by it (13.5.11); the fix round's brief, each reviewer's report of the
+// by it (13.5.11); the fix round's brief, from a conversation that briefed
+// the task's builder, each reviewer's report of the
 // task's last round verbatim under its label and nothing else (6.S17),
 // refused where the task has no round's reports, a round lacks one or
 // holds one that does not read, or the last round passed (13.S4); the
@@ -64,7 +70,7 @@ const { SPEC_FILE } = require(path.join(SCRIPTS, 'domain/spec-sections.cjs'));
 const { listDrivers } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
 const { readTaskText } = require(path.join(SCRIPTS, 'domain/task-file.cjs'));
 const { taskBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
-const { readReport } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
+const { readReport, recordBuilder } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
 const { readAccount } = require(path.join(SCRIPTS, 'domain/task-account.cjs'));
 const TEMPLATES = path.join(__dirname, '../../skills/leeway-engine/content/briefs');
 const AGENTS = path.join(__dirname, '../../agents');
@@ -267,6 +273,8 @@ function drawnForTakeACard() {
     `- ${calls.person}, the person's: Refunds through the API.\n  Why: They come weekly now.`,
   ].join('\n');
   return {
+    engine: `\`node ${path.join(__dirname, '../../skills/leeway-engine/scripts/engine.cjs')}\` — the engine of the checkout the orchestrator runs in. Run every engine command this brief and your instructions name as that, from wherever you run it.`,
+    chain: 'Your branch holds its phase\'s chain as it stands.',
     task, 'spec-sections': `${REFUNDS}\n\n${FORM}`, 'decided-calls': decisions, linters: '- eslint: npx eslint .\n- tsc: npx tsc --noEmit', 'account-to': `\`${statePath(dir, 'pay/build/tasks/1.1.md')}\``, 'setup-to': `\`${statePath(dir, '.cache/pay/build/verify-setup.json')}\`\n\nNo verify setup is recorded yet.`,
   };
 }
@@ -307,6 +315,41 @@ describe('the builder\'s brief (6.5.1–6.5.5, 6.S15)', () => {
     assert.ok(!brief.includes(PROJECT_WORDS) && !brief.includes('Prefer tabs.'), 'nothing of CLAUDE.md or a skill reaches the brief');
     assert.doesNotMatch(brief, /\.claude\/skills\/(?!leeway-engine\/)/, 'no project skill\'s path reaches the brief, the engine\'s alone named as installed (15.10.2)');
     assert.deepStrictEqual(stored(), [`${res.id}.json`, `${res.id}.md`]);
+  });
+
+  it('12.14.4: once the task\'s review has ended, its brief again says the task has landed and its account is owed — the round passed, or settled with the settlement beneath — and an account written there that does not read comes back with every fault, only beside the account owed', () => {
+    const heading = '# Where your account goes\n\n';
+    /** The brief's account place, drawn whole. */
+    const accountTo = () => {
+      const { brief } = issued(['builder', UNIT, '1.1']);
+      return brief.slice(brief.indexOf(heading) + heading.length, brief.indexOf('\n\n# Where the verify setup goes'));
+    };
+    const place = `\`${statePath(dir, 'pay/build/tasks/1.1.md')}\``;
+    const unread = 'The account there does not read — its sections are `## What was done`, `## Where in the code`, `## What the tests prove`, `## Differs from the task`, `## Reviews`, in that order, and no other at level two; yours replaces it.';
+    writeState(dir, layout.unit(UNIT, 'build/tasks/1.1.md'), '## What was done\n\nA card is taken.\n');
+    assert.strictEqual(accountTo(), place, 'while the review runs no account is owed, so none written is judged');
+    fs.rmSync(statePath(dir, layout.unit(UNIT, 'build/tasks/1.1.md')));
+    writeState(dir, roundAt('1.1', 2, 'a'), reportOf('nit'));
+    writeState(dir, roundAt('1.1', 2, 'b'), reportOf('nit'));
+    assert.strictEqual(accountTo(), `${place}\n\nYour reviewers passed the task in round 2: it has landed, so write its account now.`);
+
+    writeState(dir, layout.unit(UNIT, 'build/tasks/1.1.md'), '## What was done\n\nA card is taken.\n');
+    assert.strictEqual(accountTo(), [place, 'Your reviewers passed the task in round 2: it has landed, so write its account now.', unread].join('\n\n'));
+
+    writeState(dir, layout.unit(UNIT, 'build/tasks/1.1.md'), [
+      '## What was done', 'A card is taken.', '## Where in the code', '- src/card.js', '## What the tests prove', '- A card is taken.',
+      '## Differs from the task', 'None.', '## Reviews', '### Round 1', 'A bug fixed.', '### Round 2', 'Passed.',
+    ].join('\n\n'));
+    assert.strictEqual(accountTo(), `${place}\n\nYour account of the task is written there and not yet taken: leave it as it stands, and report **accounted**.`, 'an account covering the review as it stands is owed nothing: the builder reports it written');
+    writeState(dir, layout.unit(UNIT, 'build/tasks/1.1.md'), '## What was done\n\nA card is taken.\n');
+
+    fs.rmSync(statePath(dir, roundAt('1.1', 2, 'a')));
+    fs.rmSync(statePath(dir, roundAt('1.1', 2, 'b')));
+    writeState(dir, layout.unit(UNIT, 'build/tasks/1.1/round-1-settled.md'), 'The amount is the gateway\'s to show.\nThe receipt names it.\n');
+    assert.strictEqual(accountTo(), [
+      place, 'The orchestrator settled the task\'s review in round 1: it has landed, so write its account now, `### Settled` after that round saying what was done about it. Its settlement:',
+      '> The amount is the gateway\'s to show.\n> The receipt names it.', unread,
+    ].join('\n\n'));
   });
 
   it('beside the brief, a record of whose it is: its role, its agent, its unit, its task, and no topic', () => {
@@ -452,6 +495,7 @@ describe('the reviewer\'s brief (13.2.2, 13.11.5)', () => {
 
 describe('6.S17: the fix round\'s brief (6.5.10, 13.11.6)', () => {
   useWorld(unitWorld);
+  beforeEach(() => recordBuilder(dir, { unit: UNIT, phase: 1, n: 1 }, 0, SESSION_ID));
 
   it('13.S2: each reviewer\'s report of the round, each under its label, verbatim and nothing else: less its labels, the brief under its first line is the reports byte for byte; it is the builder\'s to take', () => {
     const { res, brief } = issued([...FIX]);
@@ -493,13 +537,13 @@ describe('the refusals, nothing written and no brief stored', () => {
 
   it('a role it does not know, and arguments of another shape for each role: a flag it takes missing, given twice or given no value', () => {
     const usage = new RegExp(`^Usage: ${[
-      'builder <unit> <task>', 'reviewer <unit> <task> --base <branch> --letter <a|b>', 'fix <unit> <task>', 'product-researcher',
+      'builder <unit> <task>', 'reviewer <unit> <task> [--base <branch>] --letter <a|b>', 'fix <unit> <task>', 'product-researcher',
       'deep-dive <unit> <topic> --question <id> --agent <id> --kind <survey|read|feasibility|landscape|verify> [--path <file>]',
       'perspective <unit> <topic> --question <id> --agent <id>', 'synthesis <unit> <topic> --agent <id>', 'discussion-reviewer <unit> <topic> --agent <id>',
       'closing-pass-reader <unit> <topic> --agent <id>', 'plain-search',
       'migration-topic --topic <unit.phase.topic> --directive <id>', 'migration-verifier --topic <unit.phase.topic> --directive <id>', 'phase-cut <unit>', 'sweep <unit>',
       'spec-writer <unit> [--wording <file>]', 'spec-reviewer <unit> --agent <id>',
-      'task-writer <unit> <N>', 'consolidation <unit> <N> --base <branch>', 'phase-review <unit> <N> --base <branch> --letter <a|b>',
+      'task-writer <unit> <N>', 'consolidation <unit> <N> [--base <branch>]', 'phase-review <unit> <N> [--base <branch>] --letter <a|b>',
       'review-area <unit> --area <N> --base <branch> --letter <a|b>', 'test-surface <unit> --base <branch>',
     ].map((line) => `engine brief ${line.replace(/[|[\]]/g, '\\$&')}`).join(' \\| ')}$`);
     for (const args of [
@@ -622,12 +666,12 @@ describe('the templates and the store', () => {
   });
 
   it('a template is refused for a slot not alone on its line, one no record answers, one its role does not draw on, and a record\'s slot missing or twice', () => {
-    const builder = '{{task}}\n{{spec-sections}}\n{{decided-calls}}\n{{linters}}\n{{account-to}}\n{{setup-to}}\n';
+    const builder = '{{engine}}\n{{task}}\n{{spec-sections}}\n{{decided-calls}}\n{{linters}}\n{{chain}}\n{{account-to}}\n{{setup-to}}\n';
     assert.strictEqual(templateOf('builder', builder), builder);
     assert.throws(() => templateOf('builder', `${builder}See {{task}} above.\n`), /"See \{\{task\}\} above\." holds a slot that is not alone on its line; task's slot is there 2 times$/);
     assert.throws(() => templateOf('builder', `${builder}{{diff}}\n`), /the builder's template is refused — \{\{diff\}\} is no record$/);
     assert.throws(() => templateOf('product-researcher', '{{linters}}\n'), /the product-researcher's brief draws on no linters$/);
-    assert.throws(() => templateOf('builder', '{{task}}\n{{spec-sections}}\n{{linters}}\n{{account-to}}\n{{setup-to}}\n'), /— no slot for decided-calls$/);
+    assert.throws(() => templateOf('builder', builder.replace('{{decided-calls}}\n', '')), /— no slot for decided-calls$/);
   });
 
   it('a brief and its record are never stored over another\'s', () => {

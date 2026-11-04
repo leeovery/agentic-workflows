@@ -305,10 +305,10 @@ describe('verify run: a scenario run and its run recorded (15.4.1, 15.4.2, 15.4.
     steering(dir, 'verdict', 'pass\n');
     const worktree = path.join(fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'verify-worktree-'))), 'card');
     git(dir, ['worktree', 'add', '-q', '-b', 'card', worktree]);
-    createFile(worktree, 'src/card.js', 'const card = 2;\n');
-    commitCode(worktree, 'feat(pay): take a card');
     for (const task of ['1.1', '1.2']) ok(dir, ['task', 'start', UNIT, task], as(LAID_OUT));
     ok(worktree, ['task', 'worktree', UNIT, '1.2'], as(LAID_OUT));
+    createFile(worktree, 'src/card.js', 'const card = 2;\n');
+    commitCode(worktree, 'feat(pay): take a card');
 
     const runs = [
       ok(worktree, ['verify', 'run', UNIT, '1.S1'], as(BUILDING)), ok(worktree, ['verify', 'run', UNIT, '1.S1'], as(LAID_OUT)),

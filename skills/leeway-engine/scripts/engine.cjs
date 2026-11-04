@@ -40,8 +40,12 @@ const { resetDisplayWidth } = require('./kernel/terminal.cjs');
 const { commitPathspecScoped, commitAcrossRepos, commitStagedScoped, commitStateScoped, discoveryScope, PRODUCT_SCOPE, onStateBranch, STATE_BRANCH_HELD, OWNED_PATHS } = require('./domain/commit.cjs');
 const { inFlightTask, runChecks, workMessage } = require('./domain/commit-task.cjs');
 const { taskId } = require('./domain/task-id.cjs');
-const { stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, operationInProgress, addRefused } = require('./kernel/git.cjs');
-const { projectRepos, repoOf, repoPath, repoName, commitGroups, projectDirtyEntries } = require('./kernel/repos.cjs');
+const {
+  stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, operationInProgress, addRefused, unmergedPast,
+} = require('./kernel/git.cjs');
+const { projectRepos, repoOf, repoPath, repoName, commitGroups } = require('./kernel/repos.cjs');
+const { codeChanges, linksHeldOut, stagedHeldOut } = require('./domain/worktree-prep.cjs');
+const { quoted } = require('./domain/landing-git.cjs');
 const { TERMINAL_STATUSES, isParentExperimentId } = require('./kernel/manifest-schema.cjs');
 const { sequenceMap, addTopic, addTopics, editTopic, renameTopic, removeTopic, rewriteBrief } = require('./domain/discovery-map.cjs');
 const { sequenceBuildOrder } = require('./domain/build-order.cjs');
@@ -2050,12 +2054,17 @@ function assertCommittable(repos, spec, given) {
  * it must be on a branch: a commit on a detached HEAD (a submodule after
  * `git submodule update`) is orphaned by the next checkout there. The
  * operation is asked first, as a rebase detaches HEAD while it runs. Nor
- * may it have the state branch checked out (4.9.3).
- * @param {import('./kernel/repos.cjs').Repo} repo
+ * may it have the state branch checked out (4.9.3). Where `merging`, a
+ * merge in progress is the one the commit finishes, its group's paths
+ * staging what still conflicts.
+ * @param {import('./kernel/repos.cjs').Repo} repo @param {string[]} paths as the repo names them @param {boolean} merging
  */
-function assertCommitsHere(repo) {
+function assertCommitsHere(repo, paths, merging) {
   const open = operationInProgress(repo.path);
-  if (open !== null) {
+  if (open !== null && merging && open.marker === 'MERGE_HEAD') {
+    const left = unmergedPast(repo.path, paths);
+    if (left.length > 0) throw new Error(`commit --paths: the merge in progress in ${repoName(repo)} still conflicts in ${left.join(', ')} — resolve each and name it, then run the commit again`);
+  } else if (open !== null) {
     throw new Error(`commit --paths: ${open.operation} is in progress in ${repoName(repo)} (${open.marker}) — finish or abort it there, then run the commit again`);
   }
   if (!onBranch(repo.path)) {
@@ -2091,14 +2100,36 @@ function assertCodeTarget(cwd, target) {
 
 /**
  * The project's repos and the code commit's share of the declared paths in
- * each, every path and every repo checked before any repo commits.
- * @param {string} cwd @param {string[]} paths
+ * each, every path and every repo checked before any repo commits — where
+ * `merging`, a merge in progress among them (`assertCommitsHere`).
+ * @param {string} cwd @param {string[]} paths @param {boolean} [merging]
  */
-function checkedGroups(cwd, paths) {
-  const repos = projectRepos(cwd);
+function checkedGroups(cwd, paths, merging = false) {
+  const read = projectRepos(cwd);
+  const { repos, links } = linksHeldOut(read);
   const groups = commitGroups(repos, paths.map((p) => codePathSpec(cwd, repos, p)));
-  groups.forEach(({ repo }) => assertCommitsHere(repo));
+  groups.forEach(({ repo, paths: own }) => {
+    const linked = own.filter((p) => links.get(repo.dir)?.includes(p));
+    if (linked.length > 0) {
+      throw new Error(`commit --paths: ${linked.map((p) => `"${p}"`).join(', ')} in ${repoName(repo)} ${linked.length === 1 ? 'is a link' : 'are links'} the worktree's preparation made, as worktree.symlinkDirectories names, never the work's — leave ${linked.length === 1 ? 'it' : 'them'} out`);
+    }
+    refuseStagedHeldOut(read, /** @type {import('./kernel/repos.cjs').Repo} */ (read.find(({ dir }) => dir === repo.dir)));
+    assertCommitsHere(repo, own, merging);
+  });
   return { repos, groups };
+}
+
+/**
+ * Refuse a commit in `repo` while its index holds what the door never
+ * commits, by either route (`stagedHeldOut`), naming how to unstage it.
+ * @param {import('./kernel/repos.cjs').Repo[]} repos @param {import('./kernel/repos.cjs').Repo} repo
+ */
+function refuseStagedHeldOut(repos, repo) {
+  const held = stagedHeldOut(repos, repo);
+  if (held.length === 0) return;
+  const named = held.map(({ path: name, what }) => `${name}, ${what}`).join('; and ');
+  const unstage = `git${repo.dir === '' ? '' : ` -C ${quoted(repo.dir)}`} restore --staged -- ${held.map(({ path: name }) => quoted(name)).join(' ')}`;
+  throw new Error(`commit --paths: the index in ${repoName(repo)} holds ${named}, which the door never commits — unstage ${held.length === 1 ? 'it' : 'them'}, \`${unstage}\`, then run the commit again`);
 }
 
 /**
@@ -2111,7 +2142,7 @@ function checkedGroups(cwd, paths) {
  */
 function codeCommitted(repos, committed, more = {}) {
   /** @type {CodeCommitted} */
-  const result = { committed, left_dirty: projectDirtyEntries(repos).map((e) => e.path), ...more };
+  const result = { committed, left_dirty: codeChanges(repos).map((e) => e.path), ...more };
   if (committed.length === 0) result.note = 'nothing to commit';
   return result;
 }
@@ -2137,14 +2168,16 @@ function commitCodePaths(cwd, paths, message, target) {
  * (domain/commit-task.cjs): the task and the paths checked, then the
  * project's checks run — before any lock is taken — then the paths
  * committed as `commitCodePaths` commits them, under a message naming the
- * task. Answers the task's id and each check run.
+ * task — a merge in progress in a repo, the chain's tip merged back onto the
+ * task's branch, finished there with them its resolution, every conflict
+ * named. Answers the task's id and each check run.
  * @param {string} cwd @param {string[]} paths @param {string} message @param {string} unit @param {string} given
  */
 function commitTaskPaths(cwd, paths, message, unit, given) {
   const ref = inFlightTask(cwd, unit, given);
-  const { repos, groups } = checkedGroups(cwd, paths);
+  const { repos, groups } = checkedGroups(cwd, paths, true);
   const checks = runChecks(cwd);
-  const committed = commitAcrossRepos(groups, workMessage(message, ref));
+  const committed = commitAcrossRepos(groups, workMessage(message, ref), true);
   return codeCommitted(repos, committed, { task: taskId(ref), checks });
 }
 

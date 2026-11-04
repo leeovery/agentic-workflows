@@ -74,7 +74,8 @@ const { codeRoot } = require('../kernel/code-root.cjs');
 const { tryGit } = require('../kernel/git.cjs');
 const { writeJsonAtomic, isObject } = require('../kernel/manifest-io.cjs');
 const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
-const { projectRepos, repoName, projectDirtyEntries } = require('../kernel/repos.cjs');
+const { projectRepos, repoName } = require('../kernel/repos.cjs');
+const { codeChanges } = require('./worktree-prep.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { readSpec, specReading } = require('./spec-sections.cjs');
 const { slugOf } = require('./landing-names.cjs');
@@ -333,7 +334,7 @@ function treeNow(cwd) {
   const root = codeRoot(cwd);
   const repos = projectRepos(root);
   const heads = Object.fromEntries(repos.map((repo) => [repoName(repo), tryGit(repo.path, ['rev-parse', '-q', '--verify', 'HEAD'])?.trim() ?? null]));
-  const paths = Object.fromEntries(projectDirtyEntries(repos).map(({ path: at, status }) => [at, `${status} ${heldPrint(path.join(root, at)) ?? '-'}`]));
+  const paths = Object.fromEntries(codeChanges(repos).map(({ path: at, status }) => [at, `${status} ${heldPrint(path.join(root, at)) ?? '-'}`]));
   return { heads, paths };
 }
 

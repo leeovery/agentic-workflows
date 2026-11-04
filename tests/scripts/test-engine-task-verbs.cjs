@@ -32,7 +32,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  ok, refuses, git, stateGit, statePath, layout, head, lastMessage, commitAll, fixtureFrom, cleanupFixture, lockAttempts, bareRepo, remoteTip,
+  ok, refuses, git, stateGit, statePath, layout, head, lastMessage, commitAll, fixtureFrom, cleanupFixture, lockAttempts, bareRepo, remoteTip, accountTaken,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
@@ -474,6 +474,7 @@ describe('task start, done and close: the tasks in flight (6.3.3, 7.1.12)', () =
     ok(dir, ['task', 'start', UNIT, '1.1'], { env: SESSION });
     assert.deepStrictEqual([head(dir), position().tasks], [started, [fresh('1.1'), fresh('1.2')]], 'a task already in flight is kept as it stands, nothing written');
 
+    accountTaken(dir, UNIT, '1.1');
     ok(dir, ['task', 'done', UNIT, '1.1'], { env: SESSION });
 
     assert.strictEqual(lastMessage(dir), 'task(pay): done 1.1');
@@ -497,6 +498,7 @@ describe('a task already ended', () => {
   beforeEach(() => { dir = inFolder(phasedWorld); });
 
   it('done or closed, takes no addition, no new type, no link of its own or after it, no start, no done and no close, writing nothing', () => {
+    accountTaken(dir, UNIT, '1.1');
     ok(dir, ['task', 'done', UNIT, '1.1']);
     ok(dir, ['task', 'close', UNIT, '1.2', '--reason', 'Not needed.']);
     const file = taskFile(dir, 'fact', 'The reader moved.');

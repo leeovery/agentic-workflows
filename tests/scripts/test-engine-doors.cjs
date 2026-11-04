@@ -20,8 +20,8 @@
 // command (test-engine-shell-guard.cjs, 4.S7).
 //
 // Layer: verb. World: a unit with a task written, its discussion under way
-// and its code committed; the task started in one conversation; built once
-// and copied for each row.
+// and its code committed; the task started in one conversation, its branch
+// checked out; built once and copied for each row.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -34,6 +34,7 @@ const {
   call, ok, refusedPristine, git, commitAll, fixtureFrom, cleanupFixture, statePath, layout, createFile, readManifest, ledgerEntries, touched, STATE_DIR_NAME,
 } = require('./engine-harness.cjs');
 const { createManifest, templateFolder } = require('./discovery-test-utils.cjs');
+const { taskBranch } = require('../../skills/leeway-engine/scripts/domain/landing-names.cjs');
 
 const UNIT = 'pay';
 const BUILDING = 'doors-building';
@@ -55,6 +56,7 @@ const world = fixtureFrom('doors-', (dir) => {
   fs.writeFileSync(file, TASK);
   ok(dir, ['task', 'create', UNIT, '1', '--file', file]);
   ok(dir, ['task', 'start', UNIT, '1.1'], AS_BUILDER);
+  git(dir, ['checkout', '-q', '-b', taskBranch({ unit: UNIT, phase: 1, n: 1 }, 'feat', 'Take a card')]);
 });
 
 after(() => fs.rmSync(path.join(CONFIG, 'conversations', BUILDING), { recursive: true, force: true }));

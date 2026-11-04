@@ -39,7 +39,7 @@ const fs = require('fs');
 const path = require('path');
 
 const {
-  ok, okSections, okSectionsAsync, refuses, refusesAsync, refusedPristine, treeSnapshot, head, stateGit, fixtureFrom, layout, statePath, cleanupFixture,
+  ok, okSections, okSectionsAsync, refuses, refusesAsync, refusedPristine, treeSnapshot, head, stateGit, fixtureFrom, layout, statePath, writeState, cleanupFixture,
 } = require('./engine-harness.cjs');
 const { useTempFolder, createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, MADE, PHASES, ledgerHelpers } = require('./ledger-world.cjs');
@@ -50,6 +50,7 @@ const { DISCUSSING } = require(path.join(SCRIPTS, 'domain/questions.cjs'));
 const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 const { SURFACES } = require(path.join(SCRIPTS, 'domain/render.cjs'));
 const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
+const { recordReviewer } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
 
 mock.method(require(path.join(SCRIPTS, 'domain/task-parks.cjs')), 'checkParkable', () => {});
 
@@ -559,6 +560,59 @@ describe('the answer and its receipt (12.13.15, 12.13.16, 20.6.9, 12.S35, 20.S6)
     assert.deepStrictEqual([lastEntry().event, lastEntry().by, lastEntry().task, lastEntry().sealed], ['decided', 'person', '2.3', CURSOR.text]);
     assert.deepStrictEqual(logged(), [raiseEvent(full(res.id), { blocked_build: true })]);
     assert.deepStrictEqual(waitingNumbers(), ['Q2']);
+  });
+
+  /** The mark a change left on `task`, or null where it left none. @param {string} task */
+  const marked = (task) => (fs.existsSync(statePath(dir, `${UNIT}/build/tasks/${task}/changed.json`)) ? JSON.parse(fs.readFileSync(statePath(dir, `${UNIT}/build/tasks/${task}/changed.json`), 'utf8')) : null);
+
+  /** `task`'s pair briefed for round `round` in this conversation. @param {string} task @param {number} round */
+  const briefedHere = (task, round) => {
+    for (const letter of ['a', 'b']) recordReviewer(dir, { unit: UNIT, phase: Number(task.split('.')[0]), n: Number(task.split('.')[1]) }, round, letter, SESSION);
+  };
+
+  /** Each of `tasks` with its pair briefed for round 1 in this conversation and reading it, `reports` of it written. @param {string[]} tasks @param {string[]} [reports] */
+  function beingRead(tasks, reports = []) {
+    for (const task of tasks) {
+      briefedHere(task, 1);
+      for (const letter of reports) writeState(dir, `${UNIT}/build/tasks/${task}/round-1-${letter}.md`, '## Findings\n\nNone.\n\nVerdict: pass\n');
+    }
+  }
+
+  it('12.1.4: an answer other than the call\'s lean, given while the pair reads round 1 before either reports, marks each task its question parks changed against that round, so a round briefed after it reads it — the receipt saying the task builds again once its pair has read the round; the lean marks none, and a task no round is briefed for is read as it is', () => {
+    parked(1, '2.3');
+    parked(2, '2.4', { question: full(made.size) });
+    parked(3, '2.5', { question: full(made.title) });
+    beingRead(['2.3', '2.4']);
+
+    const receipts = [drawnAndPicked('Q1', CURSOR.key), drawnAndPicked('Q2', MAIN.key), drawnAndPicked('Q3', MAIN.key)].map((res) => res.receipt);
+
+    assert.deepStrictEqual(['2.3', '2.4', '2.5'].map(marked), [null, { round: 1, n: 1 }, null]);
+    assert.deepStrictEqual(receipts.slice(0, 2), [
+      'Q1 answered · task 2.3 builds again once its pair has read round 1 · 2 waiting on you',
+      'Q2 answered · task 2.4 builds again once its pair has read round 1 · 1 waiting on you',
+    ]);
+  });
+
+  it('12.1.4: a keep of a decision a replacement proposed counts as against the lean and marks its task; a fact, which has no lean, marks none — each task\'s pair briefed and a report of its round written', async () => {
+    parkedReplacement(1, '2.4');
+    await parkFact(made.where, '2.3');
+    beingRead(['2.3', '2.4'], ['a', 'b']);
+
+    answer(draw('Q1').res.raise, ['--pick', 'keep']);
+    answer(draw('Q2').res.raise, ['--own'], { text: 'The work account.', why: 'Notes are for work.' });
+
+    assert.deepStrictEqual(['2.3', '2.4'].map(marked), [null, { round: 1, n: 1 }]);
+  });
+
+  it('12.1.4: an answer other than the lean, given while the pair reads round 2 after round 1 failed, marks the task against round 2, never the round last reported, and the receipt waits for round 2', () => {
+    parked(1, '2.4');
+    for (const letter of ['a', 'b']) writeState(dir, `${UNIT}/build/tasks/2.4/round-1-${letter}.md`, '## Findings\n\n- bug: The note is lost.\n  Scenario: A note is written and read back.\n\nVerdict: fail\n');
+    briefedHere('2.4', 2);
+
+    const { receipt } = drawnAndPicked('Q1', MAIN.key);
+
+    assert.deepStrictEqual(marked('2.4'), { round: 2, n: 1 });
+    assert.strictEqual(receipt, 'Q1 answered · task 2.4 builds again once its pair has read round 2 · nothing waiting on you');
   });
 
   it('with no discussion queue the receipt names no next, and with none left nothing waits', () => {

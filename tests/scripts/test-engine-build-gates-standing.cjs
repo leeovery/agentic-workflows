@@ -7,8 +7,8 @@
 // with nothing added to it since — an addition after its account, the
 // person's Comment there put onto the task (13.11.3), taking it off its gate
 // until a new account counts it — and taken over after a /clear, its gate
-// drawn again and its builder never sent afresh, or, mid-rework, its builder
-// sent again (12.7.9, 12.14.3). The gates themselves are
+// drawn again and its builder never sent afresh, in auto its way on its
+// landing, or, mid-rework, its builder sent again (12.7.9, 12.14.3). The gates themselves are
 // test-engine-build-gates.cjs's.
 //
 // Layer: verb. World: the build screens' world (build-screens-world.cjs),
@@ -26,6 +26,7 @@ const { ok, statePath, writeState, layout, cleanupFixture, withEnv } = require('
 const { UNIT, reportOf, buildScreensWorld, buildScreenHelpers } = require('./build-screens-world.cjs');
 
 const { buildStanding } = require('../../skills/leeway-engine/scripts/domain/build-entry.cjs');
+const { recordReviewer } = require('../../skills/leeway-engine/scripts/domain/round-report.cjs');
 
 let dir = ''; // the project
 let config = ''; // the system config: the conversations' folders
@@ -52,7 +53,7 @@ function added(by) {
 }
 
 describe('a task at its gate, met again after a /clear (12.7.9, 12.14.3)', () => {
-  it('is taken over waiting on the person\'s go, the entry and its recovery note saying so, its gate drawn again and its builder never sent afresh; in auto it is in progress, its builder going afresh', () => {
+  it('is taken over waiting on the person\'s go, the entry and its recovery note saying so, its gate drawn again and its builder never sent afresh; in auto it is in progress, its way on its landing', () => {
     const step = takenOver();
     position('auto');
 
@@ -60,7 +61,7 @@ describe('a task at its gate, met again after a /clear (12.7.9, 12.14.3)', () =>
     assert.deepStrictEqual(step, ['phase: phase 1 of 3, "Cards": running — tasks 1.1 at its gate, 1.2 not started, 1.3 not started', atGate, atGate]);
     assert.deepStrictEqual(takenOver().slice(0, 2), [
       'phase: phase 1 of 3, "Cards": running — tasks 1.1 in progress, 1.2 not started, 1.3 not started',
-      'in flight: task 1.1, no builder dispatched — its builder and pair go afresh on its branch',
+      'in flight: task 1.1, no builder dispatched here — round 2 of its review passed, its account taken — show its landing, render task-landed pay 1.1, then land it, engine land open pay 1.1',
     ]);
   });
 
@@ -105,9 +106,10 @@ describe('a task reworked after its account: the person\'s Comment at its gate (
   });
 
   it('is taken over after a /clear mid-rework with its builder sent again and no gate drawn', () => {
+    for (const letter of ['a', 'b']) recordReviewer(dir, { unit: UNIT, phase: 1, n: 1 }, 2, letter, 'earlier');
     added('person');
 
-    const afresh = 'in flight: task 1.1, no builder dispatched — its builder and pair go afresh on its branch';
+    const afresh = 'in flight: task 1.1, no builder dispatched here — its builder and pair go afresh on its branch';
     assert.deepStrictEqual(takenOver(), ['phase: phase 1 of 3, "Cards": running — tasks 1.1 in progress, 1.2 not started, 1.3 not started', afresh, afresh]);
   });
 });

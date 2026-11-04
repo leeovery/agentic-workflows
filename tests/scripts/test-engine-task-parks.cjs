@@ -26,7 +26,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const { ok, okSections, okSectionsAsync, refusesAsync, refusedPristine, treeSnapshot, head, fixtureFrom, statePath, cleanupFixture } = require('./engine-harness.cjs');
+const { ok, okSections, okSectionsAsync, refusesAsync, refusedPristine, treeSnapshot, head, fixtureFrom, statePath, cleanupFixture, accountTaken } = require('./engine-harness.cjs');
 const { useTempFolder, createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, MADE, PHASES, ledgerHelpers } = require('./ledger-world.cjs');
 const { SESSION, raiseHelpers } = require('./raise-world.cjs');
@@ -140,6 +140,7 @@ describe('a task a question waiting parks waits on it', () => {
       'task done: task 2.3 of fumi waits on Q1, Q2, parked for the person — they answer each through its raise: raise draw fumi Q1, raise draw fumi Q2');
     answered('Q1');
     answered('Q2');
+    accountTaken(dir, UNIT, '2.3');
     assert.strictEqual(taskVerb('done', '2.3').task, '2.3');
   });
 });

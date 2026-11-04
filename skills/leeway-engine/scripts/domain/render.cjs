@@ -41,7 +41,8 @@ const { migrationsApplied, migrationGate, stateLostGate, githubRuleGate, githubS
 const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { readMetadata } = require('../kernel/knowledge/store.cjs');
 const { ENGINE_COMMAND, messageOf } = require('../kernel/call.cjs');
-const { projectRepos, projectDirtyEntries, projectPathsTouchedBySubject } = require('../kernel/repos.cjs');
+const { projectRepos, projectPathsTouchedBySubject } = require('../kernel/repos.cjs');
+const { codeChanges } = require('./worktree-prep.cjs');
 const { githubSquashNested } = require('./github-setup.cjs');
 const { heldCodeSessions, beatQuietly, CODE_PHASES } = require('./presence.cjs');
 const { codeGate: drawCodeGate } = require('./projections/enter.cjs');
@@ -2322,7 +2323,7 @@ function externalDependencyGate(cwd, { dotpath, variant, blocking }) {
 function checkpointFiles(cwd, workUnit) {
   const repos = projectRepos(cwd);
   const touched = projectPathsTouchedBySubject(repos, `impl(${workUnit}):`);
-  const code = projectDirtyEntries(repos);
+  const code = codeChanges(repos);
   return {
     implementation: code.filter((e) => touched.has(e.path)).map((e) => e.path),
     unexpected: code.filter((e) => !touched.has(e.path)),
@@ -2378,7 +2379,7 @@ function checkpointFilesGate(cwd, { dotpath }) {
  */
 function changeSetTree(cwd, { dotpath }) {
   resolvePhaseItem(cwd, dotpath, 'change-set-tree', ['review'], 'the review the verifiers ran for');
-  const dirty = projectDirtyEntries(projectRepos(cwd)).map((e) => `\`${e.path}\``);
+  const dirty = codeChanges(projectRepos(cwd)).map((e) => `\`${e.path}\``);
   if (dirty.length === 0) return '';
   return blocker(
     'The change-set verification left the working tree dirty',

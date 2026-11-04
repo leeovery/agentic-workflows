@@ -1307,6 +1307,51 @@ function checkNoClaudeMdWrites(files, code = []) {
 }
 
 // ---------------------------------------------------------------------------
+// Check 34 — 12.S46: the build's prose names no personal skill, prescribes
+// no red-green loop, and never tells the builder to break a task down, keep
+// a to-do list, check its own work, or finish rather than leave stubs
+// (12.1.7, 12.3.8, 12.8.1). The build's prose is its skill, each reference
+// in its folder the skill loads, at any depth, and the definitions of the
+// agents it dispatches; a reference it no longer loads is no part of it.
+// The agents' templates are test-engine-brief-build.cjs's.
+// ---------------------------------------------------------------------------
+
+const BUILD_SKILL = 'leeway-implementation-process';
+const BUILD_AGENTS = ['leeway-builder', 'leeway-reviewer', 'leeway-task-writer', 'leeway-consolidation'];
+const BUILD_PROSE_RULES = [
+  [/~\/\.claude\b|\.claude\/skills\/(?!leeway)|Invoke `\/(?!leeway)/, 'names a personal skill — the build carries its shape in its own prose (12.1.7)'],
+  [/red[- ]green|\bTDD\b|\btests? first\b/i, 'prescribes a red-green loop — tests are written from the criteria in any order (12.8.1)'],
+  [/break (?:it|the task|this task|tasks?) down|to-?do list|(?:check|verify) (?:your|its) (?:own )?work|\bstubs?\b/i, 'tells the builder to break a task down, keep a to-do list, check its own work or leave no stubs (12.3.8)'],
+];
+const LINKED_MD = /\]\(([^)#\s]+\.md)\)/g;
+
+/** The build's skill, each reference in its folder it loads at any depth, and its agents' definitions, among `files`. */
+function buildProse(files) {
+  const skill = files.find((file) => skillNameOf(file) === BUILD_SKILL);
+  const agents = files.filter((file) => BUILD_AGENTS.some((agent) => file.endsWith(`${path.sep}agents${path.sep}${agent}.md`)));
+  if (skill === undefined) return agents;
+  const folder = path.dirname(skill) + path.sep;
+  const loaded = [skill];
+  for (let at = 0; at < loaded.length; at++) {
+    for (const [, link] of fs.readFileSync(loaded[at], 'utf8').matchAll(LINKED_MD)) {
+      const target = path.resolve(path.dirname(loaded[at]), link);
+      if (target.startsWith(folder) && files.includes(target) && !loaded.includes(target)) loaded.push(target);
+    }
+  }
+  return [...loaded, ...agents];
+}
+
+function checkBuildProse(files) {
+  const out = [];
+  for (const file of buildProse(files)) {
+    readLines(file).forEach((line, i) => {
+      for (const [rule, message] of BUILD_PROSE_RULES) if (rule.test(line)) out.push({ file, line: i + 1, message });
+    });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Registry + reporting
 // ---------------------------------------------------------------------------
 
@@ -1341,6 +1386,7 @@ const CHECKS = [
   ['31: a message\'s scratch is under the state\'s cache', checkSendScratch],
   ['32: a Bash grant names the state under .leeway/', checkGrantsNameTheStateRoot],
   ['33: nothing writes the project\'s CLAUDE.md', (files) => checkNoClaudeMdWrites(files, codeFiles())],
+  ['34: the build\'s prose prescribes nothing the builder does unprompted', checkBuildProse],
 ];
 
 // ---------------------------------------------------------------------------
@@ -1362,7 +1408,7 @@ const CHECKS = [
 // ---------------------------------------------------------------------------
 
 // The skills rewritten to the new shape, whose backbones hold no steps.
-const NEW_SHAPE_SKILLS = new Set(['leeway-discussion-process', 'leeway-discovery', 'leeway-specification-process']);
+const NEW_SHAPE_SKILLS = new Set(['leeway-discussion-process', 'leeway-discovery', 'leeway-specification-process', 'leeway-implementation-process']);
 
 function checkFooterlessLoads(files) {
   const out = [];
@@ -2591,6 +2637,28 @@ test('check 32 (grants name the state root) — catches a grant on a .workflows/
     assert.match(v[0].message, /^Bash\(mkdir -p \.workflows\/\*\/\.state\) names \.workflows\/ — the state lives under \.leeway\/$/);
     const listed = write(dir, 'skills/leeway-c-process/SKILL.md', ['---', 'allowed-tools:', '  - Bash(rm .workflows/*/x.md)', '---', ''].join('\n'));
     assert.deepStrictEqual(checkGrantsNameTheStateRoot([listed]).map((x) => x.line), [3]);
+  });
+});
+
+test('check 34 (the build\'s prose) — 12.S46: catches a personal skill, a red-green loop and an instruction the builder needs no telling in the build\'s skill, a reference it loads at any depth and a build agent\'s definition; permits a reference it no longer loads, another skill and another agent', () => {
+  withTemp((dir) => {
+    const skill = write(dir, `skills/${BUILD_SKILL}/SKILL.md`, '# The Build\n\nLoad **[loop.md](references/loop.md)** and follow its instructions as written.\n\nInvoke `/my-review` first.\n');
+    const loop = write(dir, `skills/${BUILD_SKILL}/references/loop.md`, '# Loop\n\nSee **[deeper.md](deeper.md)**.\n\nWrite the tests first, red-green.\n');
+    const deeper = write(dir, `skills/${BUILD_SKILL}/references/deeper.md`, '# Deeper\n\nTell the builder to keep a to-do list.\n');
+    const builder = write(dir, 'agents/leeway-builder.md', '# Builder\n\nCheck your own work, and leave no stubs.\nRead ~/.claude/skills/house/SKILL.md.\n');
+    const unloaded = write(dir, `skills/${BUILD_SKILL}/references/tdd.md`, '# TDD\n\nRed-green, tests first.\n');
+    const other = write(dir, 'skills/leeway-scoping-process/SKILL.md', '# Scoping\n\nBreak the task down; TDD.\n');
+    const agent = write(dir, 'agents/leeway-plain-search.md', '# Search\n\nKeep a to-do list.\n');
+    const v = checkBuildProse([skill, loop, deeper, builder, unloaded, other, agent]);
+    assert.deepStrictEqual(v.map((x) => [posix(path.relative(dir, x.file)), x.line, x.message.split(' — ')[0]]), [
+      [`skills/${BUILD_SKILL}/SKILL.md`, 5, 'names a personal skill'],
+      [`skills/${BUILD_SKILL}/references/loop.md`, 5, 'prescribes a red-green loop'],
+      [`skills/${BUILD_SKILL}/references/deeper.md`, 3, 'tells the builder to break a task down, keep a to-do list, check its own work or leave no stubs (12.3.8)'],
+      ['agents/leeway-builder.md', 3, 'tells the builder to break a task down, keep a to-do list, check its own work or leave no stubs (12.3.8)'],
+      ['agents/leeway-builder.md', 4, 'names a personal skill'],
+    ], `each line is caught once, at its line, got ${report(v)}`);
+    const clean = write(dir, `skills/${BUILD_SKILL}/references/loop.md`, '# Loop\n\nThe checklist holds it; Invoke `/leeway-review-process epic x`; run `.claude/skills/leeway-engine/scripts/engine.cjs`.\n');
+    assert.strictEqual(checkBuildProse([skill, clean]).filter((x) => x.file === clean).length, 0, 'the workflows\' own skills and checklists are no personal skill and no instruction');
   });
 });
 

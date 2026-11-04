@@ -132,7 +132,10 @@
 //   as any raise is, a fact's as a fact is, with no lean and nothing in the
 //   trust log. Its answer carries the first task it parks; a call's trust log
 //   event says it blocked the build (16.4.7); and the answer, or "I don't
-//   follow", answers the receipt (questions.cjs). A question waiting no
+//   follow", answers the receipt (questions.cjs). A call's answer other
+//   than its lean marks each task it parks changed after the last round of
+//   that task's review reported, so its pair reads it again before its
+//   account (round-report.cjs, 12.1.4). A question waiting no
 //   longer refuses the draw, and its answer, under the lock, with nothing
 //   recorded (20.6.10).
 // - `raise show <id> [--technical]` draws a raise again from its seal
@@ -220,7 +223,8 @@ const { verbUsage, writePlaced, landRaised, callLogged, staleness } = require('.
 const { OVER_THE_LEAN, BACK_TO_THE_LEAN, derivedMove } = require('./ledger-verdicts.cjs');
 const { judgeDecisionAsync } = require('./ledger-one-decision.cjs');
 const { type, TEXT, KEY, listOf } = require('./event-fields.cjs');
-const { isShownTask } = require('./task-id.cjs');
+const { isShownTask, parseShownTask } = require('./task-id.cjs');
+const { markChanged, beingRead } = require('./round-report.cjs');
 const { stepTurn } = require('./task-verbs.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { record } = require('./trust-log.cjs');
@@ -1276,7 +1280,8 @@ function recordAnswer(cwd, session, seal, { lands, linked, content, checkRead, a
   if (held !== null) return { raise: seal.id, ...landed, ...answeredAlready(session, seal, held) };
   markAnswered(session, seal.id, answer);
   if (parks === null) return { raise: seal.id, ...landed };
-  const receipt = questions.answeredReceipt(cwd, seal.place.unit, parks, waitedBefore, warnings, () => turnNow(cwd, seal.place.unit));
+  if (!seal.fact && answer !== seal.call.lean) for (const task of parks.tasks) markChanged(cwd, parseShownTask(seal.place.unit, task));
+  const receipt = questions.answeredReceipt(cwd, seal.place.unit, parks, waitedBefore, warnings, () => turnNow(cwd, seal.place.unit), (task) => beingRead(cwd, parseShownTask(seal.place.unit, task), session));
   return { raise: seal.id, ...landed, receipt, ...(warnings.length > 0 ? { warnings } : {}) };
 }
 

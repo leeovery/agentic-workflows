@@ -42,17 +42,32 @@
 //   reads Claude's own write. Reading one passes;
 // and, while the conversation stdin's `session_id` names has a task in
 // flight (6.3.12, conversation.cjs) — a subagent's call carries the
-// conversation's — a raw `git commit` anywhere: a build commits through the
-// commit door. A git command's folder is the one it runs in, moved by each
+// conversation's — a raw `git commit` wherever it runs (6.3.7); and every
+// other git command that would land a commit on a task's branch past the
+// commit door, through which a build commits, and which finishes a merge in
+// progress — one run where the checkout of its folder has a branch of a
+// unit with a task in flight out, a rebase's own among them
+// (landing-names.cjs), or where the text cannot say which folder it runs
+// in; anywhere else — the engine's own landing remedies, on a phase's branch
+// or the branch the project lands on — it passes. They are a `git merge` but
+// with both `--no-ff` and `--no-commit` — a merge that can fast-forward
+// moves the branch with `--no-commit` too — or with `--abort` or `--quit`, a
+// merge's `--continue` named the door's own way on; a `git pull`; a `git
+// cherry-pick` or `git revert` but with `--no-commit`, `-n`, `--abort` or
+// `--quit`; a `git am` but with `--abort` or `--quit`; and a `git rebase`
+// but with `--abort` or `--quit`, the chain merged back through the door
+// instead. A git command's folder is the one it runs in, moved by each
 // `-C`, with the folders `--git-dir` and `--work-tree` name; it is in the
 // state worktree where any of them has a `.leeway` folder in its path.
 //
 // Each refusal is one line on stderr with the way on, and exit 2, the code
 // Claude Code blocks the call on. A pass says nothing and writes nothing.
-// The decision is the text's, with one file read — the position, and only
-// for a commit — and, for a write into the state alone, the layout loaded
-// and whether the state's filesystem ignores case: it runs before every
-// shell command, so it never asks git. A word that expands at run time — a
+// The decision is the text's, with the files read — the position, and only
+// for a git command that makes a commit, then, with a task in flight, for
+// one but a raw commit, the branch its checkout has out, from git's own
+// files — and, for a write into
+// the state alone, the layout loaded and whether the state's filesystem
+// ignores case: it runs before every shell command, so it never asks git. A word that expands at run time — a
 // glob among them — an alias, a script, or a command handed to another as
 // text (`sh -c`, `eval`, `xargs`) is not seen, and passes. Where the text
 // cannot say which folder a command runs in — after a `cd` to such a word,
@@ -61,6 +76,7 @@
 // `git worktree` of a relative `.leeway` is refused there, its name enough.
 // ---------------------------------------------------------------------------
 
+const fs = require('fs');
 const path = require('path');
 const { simpleCommands } = require('../kernel/shell-reader.cjs');
 const { STATE_DIR_NAME, STATE_BRANCH, BRANCH_REF } = require('../kernel/state-root.cjs');
@@ -83,11 +99,47 @@ const REFUSED = Object.freeze({
   stateCommit: `a raw git commit in the state worktree (${STATE_DIR_NAME}) is refused — every state commit is the engine's, made by the verb that changes the state`,
 });
 
+/** The commit door's call for each task in flight. @param {InFlight[]} tasks */
+function doorsOf(tasks) {
+  return tasks.map(({ unit, task }) => `\`engine commit --paths <file>… --task ${unit} ${task} -m "<message>"\``).join(' or ');
+}
+
+/** The tasks in flight, as a refusal names them. @param {InFlight[]} tasks */
+function inFlightNamed(tasks) {
+  return `${tasks.map(({ unit, task }) => `task ${task} of ${unit}`).join(', ')} ${tasks.length === 1 ? 'is' : 'are'} in flight`;
+}
+
 /** Why a raw commit is refused during a build, with the door's call for each task in flight. @param {InFlight[]} tasks */
 function buildCommit(tasks) {
-  const named = tasks.map(({ unit, task }) => `task ${task} of ${unit}`).join(', ');
-  const doors = tasks.map(({ unit, task }) => `\`engine commit --paths <file>… --task ${unit} ${task} -m "<message>"\``).join(' or ');
-  return `a raw git commit is refused while ${named} ${tasks.length === 1 ? 'is' : 'are'} in flight — the build commits through the commit door: ${doors}`;
+  return `a raw git commit is refused while ${inFlightNamed(tasks)} — the build commits through the commit door: ${doorsOf(tasks)}`;
+}
+
+/** A merge made through the door, as a way on names it. */
+const MERGED = 'merge with --no-ff --no-commit, resolve what conflicts, then commit the merge through the door, which finishes it';
+
+/**
+ * The git commands besides `commit` that make a commit, by their
+ * subcommand: the flags with which one makes none, each set passing where
+ * the command carries all of it, short (`-n`) or long; the way on through
+ * the commit door; and, where it differs, the way on for its `--continue`.
+ * @type {Readonly<Record<string, {passes: string[][], way: string, continued?: string}>>}
+ */
+const COMMITTING = Object.freeze({
+  merge: { passes: [['--no-ff', '--no-commit'], ['--abort'], ['--quit']], way: MERGED, continued: 'name each file you resolved, and commit the merge through the door, which finishes it' },
+  pull: { passes: [], way: `fetch, then ${MERGED}` },
+  'cherry-pick': { passes: [['--no-commit'], ['-n'], ['--abort'], ['--quit']], way: 'pick with --no-commit, then commit through the door' },
+  revert: { passes: [['--no-commit'], ['-n'], ['--abort'], ['--quit']], way: 'revert with --no-commit, then commit through the door' },
+  am: { passes: [['--abort'], ['--quit']], way: 'apply the patch with git apply, then commit through the door' },
+  rebase: { passes: [['--abort'], ['--quit']], way: `rather than rebase, ${MERGED}` },
+});
+
+/**
+ * Why a git command making a commit past the door is refused during a
+ * build, with the way on and the door's call for each task in flight.
+ * @param {string} subcommand @param {string} way @param {InFlight[]} tasks
+ */
+function buildCommitting(subcommand, way, tasks) {
+  return `git ${subcommand} is refused while ${inFlightNamed(tasks)} — it makes a commit past the commit door: ${way}, ${doorsOf(tasks)}`;
 }
 
 /** What a refusal of a file at user level says beyond the layout hook's reason. */
@@ -219,11 +271,75 @@ function pushRefusal(git) {
   return forcesOurs ? REFUSED.force : null;
 }
 
+/**
+ * The git directory of the checkout holding `folder`, from the `.git` folder
+ * or file of the nearest folder up that has one; undefined where none has.
+ * @param {string} folder @returns {string|undefined}
+ */
+function gitDirOf(folder) {
+  for (let at = folder; ; at = path.dirname(at)) {
+    const dotGit = path.join(at, '.git');
+    const stat = fs.statSync(dotGit, { throwIfNoEntry: false });
+    if (stat?.isDirectory()) return dotGit;
+    const named = stat?.isFile() ? /^gitdir: (.+)$/m.exec(fs.readFileSync(dotGit, 'utf8'))?.[1] : undefined;
+    if (named !== undefined) return path.resolve(at, named.trim());
+    if (path.dirname(at) === at) return undefined;
+  }
+}
+
+/** The branch a ref file names, `ref: refs/heads/…` or `refs/heads/…`, or null. @param {string} file */
+function branchIn(file) {
+  try {
+    return /^(?:ref: )?refs\/heads\/(.+)$/.exec(fs.readFileSync(file, 'utf8').trim())?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The branch the checkout holding `folder` has out, read from git's own
+ * files: HEAD's, or, HEAD detached while a rebase runs, the branch it
+ * rewrites; null where it is detached otherwise, or no checkout holds it.
+ * @param {string} folder @returns {string|null}
+ */
+function branchOut(folder) {
+  const gitDir = gitDirOf(folder);
+  if (gitDir === undefined) return null;
+  return branchIn(path.join(gitDir, 'HEAD')) ?? branchIn(path.join(gitDir, 'rebase-merge', 'head-name')) ?? branchIn(path.join(gitDir, 'rebase-apply', 'head-name'));
+}
+
+/**
+ * Whether a commit a git command but `commit` makes would land on a task's
+ * branch (the header's): its checkout has out a branch of a unit with a task
+ * in flight, or the text cannot say where it runs.
+ * @param {GitCommand} git @param {InFlight[]} tasks
+ */
+function onTaskBranch({ folder }, tasks) {
+  if (folder === null) return true;
+  const branch = branchOut(folder);
+  const { taskOfBranch } = require('./landing-names.cjs');
+  return branch !== null && tasks.some(({ unit }) => taskOfBranch(unit, branch) !== null);
+}
+
 /** @param {GitCommand} git @param {() => InFlight[]} inFlight */
 function commitRefusal(git, inFlight) {
   if (inStateWorktree(git)) return REFUSED.stateCommit;
   const tasks = inFlight();
   return tasks.length === 0 ? null : buildCommit(tasks);
+}
+
+/** Whether the options carry `flag`, a short one or a long. @param {(string|null)[]} args @param {string} flag */
+const carriesFlag = (args, flag) => (flag.startsWith('--') ? carries(args, '', [flag]) : carries(args, flag.slice(1), []));
+
+/** The refusal of a git command of `COMMITTING`'s, by its subcommand. @param {string} subcommand */
+function committingRefusal(subcommand) {
+  const { passes, way, continued } = COMMITTING[subcommand];
+  return (/** @type {GitCommand} */ git, /** @type {() => InFlight[]} */ inFlight) => {
+    const { args } = git;
+    if (passes.some((flags) => flags.every((flag) => carriesFlag(args, flag)))) return null;
+    const tasks = inFlight();
+    return tasks.length === 0 || !onTaskBranch(git, tasks) ? null : buildCommitting(subcommand, continued !== undefined && carriesFlag(args, '--continue') ? continued : way, tasks);
+  };
 }
 
 /**
@@ -236,6 +352,7 @@ const GIT_REFUSALS = Object.freeze({
   'update-ref': refRefusal,
   push: pushRefusal,
   commit: commitRefusal,
+  ...Object.fromEntries(Object.keys(COMMITTING).map((subcommand) => [subcommand, committingRefusal(subcommand)])),
 });
 
 /** @param {SimpleCommand} command */

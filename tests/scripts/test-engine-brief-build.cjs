@@ -240,7 +240,7 @@ describe('the build\'s templates', () => {
   it('12.7.10: the builder lays its task out with task worktree before anything else, and builds, runs and commits only there', () => {
     const words = template('builder');
 
-    assert.ok(words.includes('Before anything else, lay the task out in the worktree you were started in: from its root, run `node .claude/skills/leeway-engine/scripts/engine.cjs task worktree {unit} {task}`'), words);
+    assert.ok(words.includes('Before anything else, lay the task out in the worktree you were started in: from its root, run the engine\'s `task worktree {unit} {task}`'), words);
     assert.ok(words.includes('Build, run and commit only there.'), words);
     assert.ok(words.indexOf('# Where you work') < words.indexOf('# Where the task leaves a call open'), 'laying the task out comes before the work');
   });
@@ -249,12 +249,29 @@ describe('the build\'s templates', () => {
     for (const role of ['builder', 'fix', 'reviewer', 'phase-review']) assert.doesNotMatch(template(role), /\.claude\/skills\/(?!leeway-engine\/scripts\/engine\.cjs )|SKILL\.md/, role);
   });
 
+  it('12.7.10: the builder runs the engine by the absolute path of the checkout the orchestrator runs in, never the one its worktree holds, which starts at the remote\'s default branch', () => {
+    const words = template('builder');
+
+    assert.ok(words.indexOf('# The engine\n\n{{engine}}') === 0, words);
+    assert.doesNotMatch(words, /node \.claude\//);
+  });
+
+  it('12.7.10: the orchestrator\'s own commit from a task\'s worktree — a nit it fixes — runs the engine by the absolute path its entry names, never the worktree\'s', () => {
+    const build = path.join(__dirname, '../../skills/leeway-implementation-process');
+    const skill = fs.readFileSync(path.join(build, 'SKILL.md'), 'utf8');
+    const loop = fs.readFileSync(path.join(build, 'references/the-task-loop.md'), 'utf8');
+
+    assert.ok(skill.includes('each verb under **Doors**; one made from a task\'s worktree runs as the entry\'s `engine`.'), skill);
+    assert.ok(skill.includes('`commit --paths {file}… --task {work_unit} {task} -m "{message}"`, from the task\'s worktree, yours run as the entry\'s `engine`.'), skill);
+    assert.ok(loop.includes('commit the fixes from there through the door, the entry\'s `engine` running `commit --paths {file}… --task {work_unit} {task} -m "{message}"`'), loop);
+  });
+
   it('15.2.14, 15.S18, 22.5.1, 15.4.2: once its work is committed the builder records again the verify setup its task builds or changes, from the file its brief names, starting from the setup that stands, and runs each of its task\'s scenarios through verify from its worktree, a timeout to match; its account names what it ran and never what the runs prove', () => {
     const words = template('builder');
 
     for (const rule of [
-      'Once the work is committed through the door, run each acceptance scenario of the task from your task\'s worktree, one at a time: `node .claude/skills/leeway-engine/scripts/engine.cjs verify run {unit} {scenario}`. A drive can run for minutes: give the Bash call a timeout to match.',
-      'Where your task builds the verify setup or changes any part of it, record it again once it is committed, from your task\'s worktree, before running: write the setup to the file under "Where the verify setup goes", starting from the setup recorded there where there is one, then run `node .claude/skills/leeway-engine/scripts/engine.cjs verify setup {unit} --file {that file} --scenario {scenario}`.',
+      'Once the work is committed through the door, run each acceptance scenario of the task from your task\'s worktree, one at a time: the engine\'s `verify run {unit} {scenario}`. A drive can run for minutes: give the Bash call a timeout to match.',
+      'Where your task builds the verify setup or changes any part of it, record it again once it is committed, from your task\'s worktree, before running: write the setup to the file under "Where the verify setup goes", starting from the setup recorded there where there is one, then run the engine\'s `verify setup {unit} --file {that file} --scenario {scenario}`.',
       '## What the tests prove\n\n{each scenario you ran through `verify`, and what its drive does}\n',
       'In your account, under `## What the tests prove`, name each scenario you ran through `verify` and what its drive does. What the runs prove is the engine\'s to say, never the account\'s.',
       'Where the project has no verify setup recorded yet and your task does not build it, say so there instead of running.',
@@ -304,7 +321,7 @@ describe('the refusals, nothing written and no brief stored', () => {
   useWorld((at) => { dir = at; });
 
   it('arguments of another shape, a unit the project lacks, a unit whose build has not begun, and a phase its cut lacks', () => {
-    for (const args of [['task-writer', UNIT], ['task-writer', UNIT, '1', 'more'], ['consolidation', UNIT, '1'], ['phase-review', UNIT, '--base', 'main', '--letter', 'a'], ['phase-review', UNIT, '1', '--base', 'main']]) refusedUnissued(args, /^Usage: /);
+    for (const args of [['task-writer', UNIT], ['task-writer', UNIT, '1', 'more'], ['consolidation', UNIT, '1', '--base'], ['phase-review', UNIT, '--base', 'main', '--letter', 'a'], ['phase-review', UNIT, '1', '--base', 'main']]) refusedUnissued(args, /^Usage: /);
     refusedUnissued(['task-writer', UNIT, 'one'], /^task-id: "one" is not a phase/);
     refusedUnissued(['task-writer', 'nope', '1'], /^Work unit "nope" not found$/);
     refusedUnissued(['task-writer', 'draft', '1'], /^brief: draft's build has not begun — a phase is briefed once ready to build's yes begins it$/);
@@ -340,7 +357,7 @@ describe('the refusals, nothing written and no brief stored', () => {
   it('a mutation tool not yet run over the phase at its tips, and no verify setup recorded', () => {
     const phaseReview = ['phase-review', UNIT, '2', '--base', 'main', '--letter', 'a'];
     const tip = tipOf(dir, branchOf(2, 1));
-    refusedUnissued(phaseReview, new RegExp(`^the mutation tool has not run over phase 2 of pay at its tips — the project's repository at ${tip} — engine verify mutants pay 2, run from a checkout at those tips, runs it$`));
+    refusedUnissued(phaseReview, new RegExp(`^the mutation tool has not run over phase 2 of pay at its tips — the project's repository at ${tip} — engine verify mutants pay 2 runs it$`));
     const project = JSON.parse(readState(dir, layout.projectManifest));
     writeState(dir, layout.projectManifest, JSON.stringify({ ...project, environment: { linters: LINTERS } }, null, 2));
     commitAll(dir, 'no verify setup');

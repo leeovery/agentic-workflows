@@ -11,10 +11,16 @@
 // the branch it lands on — or, in step, its stack waiting at its gate
 // (7.2.4). A failing round's fix phase is built on the unit's work not
 // landed below it, in every repository holding that work, so the work not
-// landed is one stack, its tip holding every fix (`fixBase`, the layout
-// task-worktree.cjs makes and `land open` holds a fix task to); in auto the
-// fix phases land only at finish, in that order (7.2.6), and in step each
-// merges at its gate before the next round is read (14.6.2,
+// landed is one stack, its tip holding every fix (`fixBase`, which `land
+// open` holds a fix task to), each fix task laid out on that work with its
+// own phase's chain (`belowTips`, task-worktree.cjs) and its pair reading
+// it from there (`workBelow`, brief-records.cjs). A task of the cut is laid
+// out on its own phase's chain alone: a phase relying on another starts
+// once that one has merged, and one relying on nothing unfinished may start
+// beside one still open, whose review's fixes go on moving its chain
+// (12.11.3), so no other phase's work not landed is ever under it. In auto
+// the fix phases land only at finish, in that order (7.2.6), and in step
+// each merges at its gate before the next round is read (14.6.2,
 // review-phase.cjs). The change is the unit's own work, never what others
 // landed beside it — a quick-fix taking its turn (12.7.8), the person's own
 // commits, another unit's phase. So in each repository:
@@ -94,30 +100,60 @@ function landings(repo, branch, unit) {
   });
 }
 
+/** The phases 1 to `phases`. @param {number} phases */
+const phasesTo = (phases) => Array.from({ length: phases }, (_, at) => at + 1);
+
 /**
- * The unit's tasks done and not landed, whole, in every phase to `phases`.
- * @param {string} cwd @param {string} unit @param {number} phases @returns {TaskDetail[]}
+ * The unit's tasks done and not landed, whole, in each of the phases
+ * `numbers`, in order.
+ * @param {string} cwd @param {string} unit @param {number[]} numbers @returns {TaskDetail[]}
  */
-function unlandedTasks(cwd, unit, phases) {
+function unlandedTasks(cwd, unit, numbers) {
+  const lists = withStateLock(stateRoot(cwd), () => trackedLists(cwd, unit, numbers).phases);
+  if (!lists.some((list) => (list ?? []).some(({ status }) => status === 'done'))) return [];
   const landed = landedTasks(cwd, unit);
-  const numbers = Array.from({ length: phases }, (_, at) => at + 1);
-  return withStateLock(stateRoot(cwd), () => {
-    const lists = trackedLists(cwd, unit, numbers).phases;
-    const waiting = (/** @type {{ref: import('./task-id.cjs').TaskRef, status: string}} */ { ref, status }) => status === 'done' && !landed.has(shownTask(ref));
-    return numbers.filter((_, at) => (lists[at] ?? []).some(waiting)).flatMap((phase) => (trackedPhase(cwd, unit, phase).tasks ?? []).filter(waiting));
-  });
+  const waiting = (/** @type {{ref: import('./task-id.cjs').TaskRef, status: string}} */ { ref, status }) => status === 'done' && !landed.has(shownTask(ref));
+  return withStateLock(stateRoot(cwd), () => numbers.filter((_, at) => (lists[at] ?? []).some(waiting)).flatMap((phase) => (trackedPhase(cwd, unit, phase).tasks ?? []).filter(waiting)));
 }
 
 /**
- * The stack the unit's work not landed in its phases to `phases` makes: its
- * tip in each repository holding that work, none where no such task is
- * done.
- * @param {string} cwd @param {string} unit @param {number} phases @param {string} what the work, as a refusal names it
+ * The stack the tasks among `pending` make: its tip in each repository
+ * holding their work, none where there are none.
+ * @param {string} cwd @param {string} unit @param {TaskDetail[]} pending @param {string} what the work, as a refusal names it
  * @returns {Map<Repo, string>}
  */
-function unlandedStack(cwd, unit, phases, what) {
-  const pending = unlandedTasks(cwd, unit, phases);
-  return pending.length === 0 ? new Map() : stackOf(cwd, unit, pending, what).tips;
+const stackTips = (cwd, unit, pending, what) => (pending.length === 0 ? new Map() : stackOf(cwd, unit, pending, what).tips);
+
+/**
+ * The stack the unit's work not landed in its phases to `phases` makes (`stackTips`).
+ * @param {string} cwd @param {string} unit @param {number} phases @param {string} what
+ */
+const unlandedStack = (cwd, unit, phases, what) => stackTips(cwd, unit, unlandedTasks(cwd, unit, phasesTo(phases)), what);
+
+/**
+ * The unit's work not landed below a task of phase `phase`, whole — what
+ * the task is laid out on and its pair reads from (brief-records.cjs): for
+ * one of the review's fix phases, its tasks done and not landed in its
+ * phases to `phase`, the work below it with its own chain (7.2.6); for a
+ * phase of the cut, its own chain alone (the header's).
+ * @param {string} cwd @param {string} unit @param {number} phase @returns {TaskDetail[]}
+ */
+function workBelow(cwd, unit, phase) {
+  const manifest = manifestOf(stateRoot(cwd), unit);
+  return unlandedTasks(cwd, unit, manifest !== null && isFixPhase(manifest, phase) ? phasesTo(phase) : [phase]);
+}
+
+/**
+ * Where a task of phase `phase` is laid out, by the folder of each
+ * repository holding the work below it (`workBelow`): the branch at that
+ * work's tip there (task-worktree.cjs, 12.7.10); none where nothing below
+ * it waits to land. Refused where that work is no one stack in a
+ * repository (phase-stack.cjs).
+ * @param {string} cwd @param {string} unit @param {number} phase
+ * @returns {Map<string, string>}
+ */
+function belowTips(cwd, unit, phase) {
+  return new Map([...stackTips(cwd, unit, workBelow(cwd, unit, phase), `the work below ${unit}'s phase ${phase}`)].map(([repo, tip]) => [repo.dir, tip]));
 }
 
 /**
@@ -164,4 +200,4 @@ function changeOf(cwd, unit, phases, given) {
 /** The change's tips, each repository by its name at its tip's commit, as a run names its commits. @param {Change} change @returns {RepoCommit[]} */
 const changeTips = ({ holding }) => holding.map(({ repo, commit }) => ({ repo: repoName(repo), commit }));
 
-module.exports = { changeOf, changeTips, fixBase };
+module.exports = { changeOf, changeTips, fixBase, workBelow, belowTips };

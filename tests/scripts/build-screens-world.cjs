@@ -4,9 +4,10 @@
 // What the build's screens suites share (test-engine-build-screens.cjs, the
 // screens that report; test-engine-build-gates.cjs, the gates;
 // test-engine-build-gates-standing.cjs, a task at its gate;
-// test-engine-build-step.cjs, step's one task at a time): the world, built
-// once a process and copied (`buildScreensWorld`), and over a test's
-// project and system config, the calls its tests make (`buildScreenHelpers`).
+// test-engine-build-step.cjs and test-engine-build-step-order.cjs, step's
+// one task at a time): the world, built once a process and copied
+// (`buildScreensWorld`), and over a test's project and system config, the
+// calls its tests make (`buildScreenHelpers`, and step's `stepHelpers`).
 //
 // The world: a feature, `pay`, its discussion concluded, its spec cut,
 // and its build begun in step, its cut three phases — Cards and Reports
@@ -29,13 +30,15 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {
-  ok, okSections, okSectionsAsync, output, refusedPristine, git, writeState, createFile, layout, commitAll, fixtureFrom, FROZEN_AT,
+  ok, okSections, okSectionsAsync, output, refusedPristine, git, writeState, createFile, layout, commitAll, fixtureFrom, ledgerEntries, statePath, FROZEN_AT,
 } = require('./engine-harness.cjs');
 const { createManifest, templateFolder } = require('./discovery-test-utils.cjs');
-const { raiseHelpers } = require('./raise-world.cjs');
+const { SESSION, raiseHelpers } = require('./raise-world.cjs');
+const { MADE } = require('./ledger-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { taskBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
+const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 
 const UNIT = 'pay';
 
@@ -259,4 +262,60 @@ function buildScreenHelpers(dir, config) {
   return { env, screen, refused, position, parkOn, proposeOn, takenOver };
 }
 
-module.exports = { UNIT, QUESTIONS, CALL, ACCOUNT_DRAWN, taskText, reportOf, buildScreensWorld, buildScreenHelpers };
+/**
+ * The calls step's suites make beside `buildScreenHelpers`, over a test's
+ * project and its system config: questions drawn and answered, the
+ * ledger's events, the refusals of a task held at its turn, and two tasks
+ * parked one after the other.
+ * @param {() => string} dir @param {() => string} config
+ */
+function stepHelpers(dir, config) {
+  const { env, parkOn } = buildScreenHelpers(dir, config);
+  const { conversation, answer } = raiseHelpers(dir, config, CALL);
+
+  /** The question `name` drawn and answered, its lean picked unless `pick` says: the answer's receipt. @param {string} name @param {string} [pick] */
+  const answered = (name, pick = '1') => answer(okSections(dir(), ['raise', 'draw', UNIT, name], { env: conversation() }).res.raise, ['--pick', pick]).receipt;
+
+  /** The ledger's events, in its order. */
+  const events = () => ledgerEntries(statePath(dir()));
+
+  /** The full id of the question parked as `Q{number}`. @param {number} number */
+  const parkedQuestion = (number) => events().find((e) => e.event === 'parked' && e.number === number).question;
+
+  /** The full id of the last decision made for `task`. @param {string} task */
+  const decidedFor = (task) => events().findLast((e) => e.event === 'decided' && e.task === task).id;
+
+  /** A ledger write of Claude's in the build, which must land. @param {string} verb @param {string[]} flags @param {object} [content] */
+  const written = (verb, flags, content = {}) => ok(dir(), ['ledger', verb, `${UNIT}.implementation`, ...flags], { env: env(), stdin: JSON.stringify({ ...MADE, ...content }) });
+
+  /**
+   * Ways a question stops waiting with no answer of its own, each given its
+   * full id: merged into the answer to Q2, or moved to the roadmap as a
+   * clone's merge lays it, the build itself having no topic to move one from.
+   * @type {Array<[string, (question: string) => void]>}
+   */
+  const UNANSWERED_ENDS = [
+    ['merged into another\'s answer', (question) => written('merge', ['--question', question, '--into', decidedFor('1.2')])],
+    ['moved to the roadmap', (question) => appendEntry(statePath(dir()), { event: 'moved', unit: UNIT, topic: null, phase: 'implementation', session: SESSION, ...MADE, question, to: 'roadmap:refunds' }, [])],
+  ];
+
+  /** Why `task start` refuses the task, writing nothing. @param {string} task */
+  const startRefused = (task) => refusedPristine(dir(), ['task', 'start', UNIT, task], { env: env() }).error;
+
+  /** The refusal of task start beside the task in flight. @param {string} task */
+  const beside = (task) => `task start: pay builds in step, one task at a time — task ${task} is in flight or at its gate, and the next starts once the person's go there is given and it is done`;
+
+  /** The refusal of a task held behind the one in flight, as `said` opens it. @param {string} said @param {string} inFlight @param {string} task */
+  const behind = (said, inFlight, task) => `${said}: pay builds in step, one task at a time — task ${inFlight} is in flight, and task ${task} goes on once it is done`;
+
+  /** Q1 parks 1.1, 1.2 starts beside it, then Q2 parks 1.2: nothing goes on. */
+  async function bothParked() {
+    await parkOn(['1.1']);
+    ok(dir(), ['task', 'start', UNIT, '1.2'], { env: env() });
+    await parkOn(['1.2'], 1);
+  }
+
+  return { answered, events, parkedQuestion, decidedFor, written, UNANSWERED_ENDS, startRefused, beside, behind, bothParked };
+}
+
+module.exports = { UNIT, QUESTIONS, CALL, ACCOUNT_DRAWN, taskText, reportOf, buildScreensWorld, buildScreenHelpers, stepHelpers };

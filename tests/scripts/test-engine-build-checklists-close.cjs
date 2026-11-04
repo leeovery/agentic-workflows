@@ -25,7 +25,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  ok, refusedPristine, git, stateGit, writeState, statePath, touched, layout, cleanupFixture, readManifest,
+  ok, refusedPristine, git, stateGit, writeState, statePath, touched, layout, cleanupFixture, readManifest, accountTaken,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const {
@@ -135,6 +135,7 @@ describe('a phase\'s close (6.4.9)', () => {
     manifestWith({ build: { position: 'step' } });
     const merged = () => item('phase-close', 1, 'stack-merged');
     const seen = [merged()];
+    for (const task of ['1.1', '1.2']) accountTaken(dir, UNIT, task);
     ok(dir, ['land', 'open', UNIT, '1.1'], { env: SESSION });
     seen.push(merged());
     ok(dir, ['land', 'open', UNIT, '1.2'], { env: SESSION });

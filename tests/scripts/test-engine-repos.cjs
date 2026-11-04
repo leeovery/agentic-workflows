@@ -112,6 +112,39 @@ describe('projectRepos: the repos a project holds', () => {
     }
   });
 
+  it('S1 (12.14): a gitlink is a submodule only where .gitmodules maps it, a path holding a space read whole — a nested clone git add staged stays a nested clone, held out and no submodule, at the root and in a child', () => {
+    const api = nestedRepo(dir, 'api');
+    nestedRepo(dir, 'packages/kit');
+    nestedRepo(api, 'tools');
+    addSubmodule(dir, 'vendor/sdk', api);
+    addSubmodule(dir, 'my sdk', api);
+    git(dir, ['add', 'packages/kit']);
+    git(api, ['add', 'tools']);
+
+    const repos = projectRepos(dir);
+
+    assert.deepStrictEqual(repos.map(({ dir: at, heldOut, submodules }) => ({ at, heldOut, submodules })), [
+      { at: '', heldOut: ['packages/kit', 'my sdk', 'vendor/sdk'], submodules: ['my sdk', 'vendor/sdk'] },
+      { at: 'api', heldOut: ['tools'], submodules: [] },
+      { at: 'api/tools', heldOut: [], submodules: [] },
+      { at: 'my sdk', heldOut: [], submodules: [] },
+      { at: 'packages/kit', heldOut: [], submodules: [] },
+      { at: 'vendor/sdk', heldOut: [], submodules: [] },
+    ]);
+  });
+
+  it('a project nested in a larger repository reads its submodules from the larger repository\'s .gitmodules, by the project\'s own names', () => {
+    const project = path.join(dir, 'apps/web');
+    createFile(project, 'src/app.js', '1\n');
+    commitCode(dir, 'the project');
+    addSubmodule(dir, 'apps/web/vendor/sdk', nestedRepo(dir, 'api'));
+
+    assert.deepStrictEqual(projectRepos(project).map(({ dir: at, submodules }) => ({ at, submodules })), [
+      { at: '', submodules: ['vendor/sdk'] },
+      { at: 'vendor/sdk', submodules: [] },
+    ]);
+  });
+
   it('a project nested in a larger repository finds only the repos inside it', () => {
     const project = path.join(dir, 'apps/web');
     createFile(project, 'src/app.js', '1\n');

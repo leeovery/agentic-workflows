@@ -50,7 +50,7 @@ const os = require('os');
 const path = require('path');
 const {
   ok, okSections, okSectionsAsync, output, refusedPristine, git, stateGit, statePath, layout, writeState, readManifest, commitAll, createFile, fixtureFrom, cleanupFixture,
-  withEnv, FROZEN_AT,
+  withEnv, FROZEN_AT, accountTaken,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { MADE, PHASES, ledgerHelpers } = require('./ledger-world.cjs');
@@ -58,7 +58,9 @@ const { raiseHelpers } = require('./raise-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { buildStanding } = require(path.join(SCRIPTS, 'domain/build-entry.cjs'));
+const { recordReviewer } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
 const { computeNextPhase } = require(path.join(SCRIPTS, 'domain/derivations.cjs'));
+const { taskBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
 
 const UNIT = 'fumi';
 const ENGINE = 'node .claude/skills/leeway-engine/scripts/engine.cjs';
@@ -72,6 +74,12 @@ const CUT = {
     { name: 'Reports', goal: 'Reports add up.', scenarios: ['3.S1'], sections: ['3'], relies_on: [] },
   ],
 };
+
+/** Task 1.2's account of its one round, as its builder writes it. */
+const ACCOUNT = [
+  '## What was done', 'A note is sized.', '## Where in the code', '- src/size.js', '## What the tests prove', '- A note sized reads its size back.',
+  '## Differs from the task', 'None.', '## Reviews', '### Round 1', 'Passed.',
+].join('\n\n');
 
 /** Claude's call on where a new note opens, as the raise suites make it. */
 const CALL = Object.freeze({
@@ -117,6 +125,7 @@ const world = fixtureFrom('engine-build-entry-', (dir) => {
   fs.rmSync(taskFile(dir, ''));
   const config = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-build-entry-world-'));
   try {
+    accountTaken(dir, UNIT, '1.1');
     ok(dir, ['task', 'done', UNIT, '1.1'], { env: { LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'earlier' } });
     ok(dir, ['task', 'start', UNIT, '1.2'], { env: { LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'earlier' } });
   } finally {
@@ -167,11 +176,12 @@ function closed(names) {
   createManifest(dir, UNIT, { ...manifest, checklists: { ...manifest.checklists, ...Object.fromEntries(names.map((name) => [name, { items: {}, closed: FROZEN_AT }])) } });
 }
 
-/** The lines the world's entry answers past its in-flight lines: the ledger's calls and the build's log. */
+/** The lines the world's entry answers past its in-flight lines: the ledger's calls, the build's log, and the engine by its absolute path, for a call from a task's worktree. */
 const readsAfter = () => [
   `affected: \`${ENGINE} ledger affected ${UNIT}\``,
   `record: \`${ENGINE} ledger record ${UNIT}\``,
   `build log: ${statePath(dir, `${UNIT}/build/log.md`)}`,
+  `engine: \`node ${path.join(SCRIPTS, 'engine.cjs')}\` — the engine by its absolute path, for a call made from a task's worktree`,
 ];
 
 const PHASE_LINES = Object.freeze([
@@ -226,8 +236,66 @@ describe('the answer: where the build stands, and what to read beside the ledger
     const { res, sections } = enter([UNIT]);
 
     assert.deepStrictEqual(res, { ok: true, phase: 'implementation', unit: UNIT, entered: true, started: false });
-    assert.strictEqual(sections, data(['position: auto', ...PHASE_LINES, 'in flight: task 1.2, no builder dispatched — its builder and pair go afresh on its branch', ...readsAfter()]));
+    assert.strictEqual(sections, data(['position: auto', ...PHASE_LINES, 'in flight: task 1.2, no builder dispatched here — its builder and pair go afresh on its branch', ...readsAfter()]));
     assert.deepStrictEqual([stateGit(dir, ['rev-parse', 'HEAD']).trim(), position()], [head, { name: UNIT, phase: 'implementation', topic: UNIT, tasks: [{ task: '1.2', builder: null, reviewers: [] }] }]);
+  });
+
+  /** Task 1.2's line, the entry's, once its review stands as `setUp` leaves it. @param {() => void} setUp */
+  const lineOf = (setUp) => {
+    setUp();
+    return enter([UNIT]).sections.split('\n').find((line) => line.startsWith('in flight: task 1.2'));
+  };
+
+  /** A report of round `round` of task 1.2 by reviewer `letter`, passing. @param {number} round @param {string} letter */
+  const passedBy = (round, letter) => writeState(dir, `${UNIT}/build/tasks/1.2/round-${round}-${letter}.md`, '## Findings\n\nNone.\n\nVerdict: pass\n');
+
+  /** Round 1 of task 1.2 passed by both its reviewers. */
+  const passedRound = () => ['a', 'b'].forEach((letter) => passedBy(1, letter));
+
+  /** Round 1's reports, read for their notes for later and nits, as a line names them. */
+  const readReports = () => `read its reports, ${['a', 'b'].map((letter) => `\`${statePath(dir, `${UNIT}/build/tasks/1.2/round-1-${letter}.md`)}\``).join(' and ')}, for their notes for later and the nits the task's commits do not yet fix`;
+
+  it('N1, N2 (13.4.5, 24.2.4): a task with no builder dispatched here whose last round passed, its account not taken and no worktree having its branch out, names its builder\'s brief first, which lays one out, and that round\'s reports to read for their notes for later and nits, fixed there before its account is taken', () => {
+    const line = lineOf(passedRound);
+
+    assert.strictEqual(line, `in flight: task 1.2, no builder dispatched here — round 1 of its review passed, its account not taken — no worktree has its branch checked out, so send its builder its brief first, engine brief builder ${UNIT} 1.2, which lays one out and asks for its account; ${readReports()}, and fix those in that worktree before its account is taken`);
+  });
+
+  it('N1, N2 (13.4.5, 24.2.4): the same task, a worktree having its branch out, names that round\'s reports to read for their notes for later and nits, fixed in that worktree, then its builder\'s brief for the account', () => {
+    const folder = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'engine-build-entry-tree-')));
+    const tree = path.join(folder, 'tree');
+    try {
+      git(dir, ['worktree', 'add', '-q', '-b', taskBranch({ unit: UNIT, phase: 1, n: 2 }, 'feat', 'Size a note'), tree, 'main']);
+      const line = lineOf(passedRound);
+
+      assert.strictEqual(line, `in flight: task 1.2, no builder dispatched here — round 1 of its review passed, its account not taken — ${readReports()}, and fix those in ${tree}, where its branch is checked out; then send its builder its brief for its account, engine brief builder ${UNIT} 1.2`);
+    } finally {
+      fs.rmSync(folder, { recursive: true, force: true });
+    }
+  });
+
+  it('N2 (12.14): a task whose last round passed, its account written and not taken, names its taking; once it is taken, its landing', () => {
+    passedRound();
+    writeState(dir, `${UNIT}/build/tasks/1.2.md`, ACCOUNT);
+    const written = lineOf(() => {});
+    accountTaken(dir, UNIT, '1.2');
+    const taken = lineOf(() => {});
+
+    assert.deepStrictEqual([written, taken], [
+      `in flight: task 1.2, no builder dispatched here — round 1 of its review passed, its account written and not taken — take it, engine task account ${UNIT} 1.2`,
+      `in flight: task 1.2, no builder dispatched here — round 1 of its review passed, its account taken — show its landing, render task-landed ${UNIT} 1.2, then land it, engine land open ${UNIT} 1.2`,
+    ]);
+  });
+
+  it('a round its pair is reading here names no reviewer\'s brief; one a reviewer of is briefed again for names it', () => {
+    const ref = { unit: UNIT, phase: 1, n: 2 };
+    const reading = lineOf(() => ['a', 'b'].forEach((letter) => recordReviewer(dir, ref, 1, letter, 'sess-1')));
+    const again = lineOf(() => recordReviewer(dir, ref, 2, 'a', 'earlier'));
+
+    assert.deepStrictEqual([reading, again], [
+      'in flight: task 1.2, no builder dispatched here — round 1 of its review is not reported whole — reviewer a is reading it here, reviewer b is reading it here; its builder goes afresh once the round is read',
+      `in flight: task 1.2, no builder dispatched here — round 2 of its review is not reported whole — reviewer a is briefed again for it, reviewer b is briefed again for it: engine brief reviewer ${UNIT} 1.2 --letter <letter>; its builder goes afresh once the round is read`,
+    ]);
   });
 
   it('takes a task another conversation left in flight onto this one\'s record with no builder and no pair, keeps this one\'s own as it stands, and leaves the other\'s record alone', () => {
@@ -241,7 +309,7 @@ describe('the answer: where the build stands, and what to read beside the ledger
       [{ task: '1.3', builder: 'agent-own', reviewers: [] }, { task: '1.2', builder: null, reviewers: [] }],
       [{ task: '1.2', builder: 'agent-old', reviewers: [] }],
     ]);
-    assert.ok(sections.includes('in flight: task 1.3, its builder agent `agent-own`\nin flight: task 1.2, no builder dispatched — its builder and pair go afresh on its branch\n'), sections);
+    assert.ok(sections.includes('in flight: task 1.3, its builder agent `agent-own`\nin flight: task 1.2, no builder dispatched here — its builder and pair go afresh on its branch\n'), sections);
   });
 
   it('takes a parked task over in flight, its line saying it waits on its question, no builder going to it until the person answers (12.13.2)', async () => {
@@ -306,7 +374,7 @@ describe('the answer: where the build stands, and what to read beside the ledger
 
     for (const line of [
       path.join(dir, '.claude/skills/leeway-implementation-process/SKILL.md'), `\`${ENGINE} ledger affected ${UNIT}\``, `\`${ENGINE} ledger record ${UNIT}\``,
-      statePath(dir, `${UNIT}/build/log.md`), ...PHASE_LINES, 'in flight: task 1.2, no builder dispatched — its builder and pair go afresh on its branch',
+      statePath(dir, `${UNIT}/build/log.md`), ...PHASE_LINES, 'in flight: task 1.2, no builder dispatched here — its builder and pair go afresh on its branch',
     ]) {
       assert.ok(note.includes(line), `the note names ${line}\n${note}`);
     }
@@ -367,6 +435,7 @@ describe('the build\'s standing (P13)', () => {
 
   it('reads a phase in review once every task not closed is done, closed once its close is recorded, merged once its tasks landed — and the build finished only once every phase of the cut has closed, so nothing ready with a phase not yet written never reads finished (7.4.3, 12.6.7, 12.S16, 3.S3)', () => {
     const seen = [states()];
+    accountTaken(dir, UNIT, '1.2');
     ok(dir, ['task', 'done', UNIT, '1.2'], { env: env() });
     ok(dir, ['task', 'close', UNIT, '1.3', '--reason', 'Folded into 1.2.'], { env: env() });
     seen.push(states());
@@ -374,6 +443,7 @@ describe('the build\'s standing (P13)', () => {
     seen.push(states());
     for (const task of ['1-1', '1-2']) git(dir, ['commit', '-q', '--allow-empty', '-m', `feat(${UNIT}): landed`, '-m', `Task: ${UNIT}-${task}`]);
     closed(['phase-2-start', 'phase-2-close']);
+    accountTaken(dir, UNIT, '2.1');
     ok(dir, ['task', 'done', UNIT, '2.1'], { env: env() });
     seen.push(states());
 

@@ -13,21 +13,25 @@
 // It refuses, with exit 2 and the way on: the state worktree unlocked,
 // moved or removed, `.leeway` removed, the state branch deleted here or on
 // the remote or force-pushed, by every spelling Claude writes, in a project
-// with a remote and one without (4.S7); a raw `git commit` during a build,
-// the tasks in flight read from the conversation stdin names, each with its
-// door (6.S11, 6.S22, 12.S21), and in the state worktree at any time; a
-// command naming a file at user level the layout hook refuses Claude's
-// writes to; and a command writing, by any form a shell writes with, to a
-// file in the state only the engine writes, for the layout hook's reason
-// (2.S1). Input it cannot read passes.
-// A pass never runs git, and the position is read for a commit alone. At
-// the shell door each guard answers before the engine loads anything but
-// its own module, the shell guard's modules pinned one by one, and the
-// layout guard's for a write into the state (E5).
+// with a remote and one without (4.S7); during a build, a raw `git commit`
+// wherever it runs, and every other git command that commits past the door
+// onto a task's branch — a merge, a pull, a cherry-pick, a revert, an am or
+// a rebase but with the flags that make no commit — the tasks in flight
+// read from the conversation stdin names, each with its door (6.S11, 6.S22,
+// 12.S21), the engine's own landing remedies passing on every other branch,
+// and a raw commit in the state
+// worktree at any time; a command naming a file at user level the layout
+// hook refuses Claude's writes to; and a command writing, by any form a
+// shell writes with, to a file in the state only the engine writes, for the
+// layout hook's reason (2.S1). Input it cannot read passes. A pass never
+// runs git, and the position is read for a git command that makes a commit
+// alone. At the shell door each guard answers before the engine loads
+// anything but its own module, the shell guard's modules pinned one by one,
+// and the layout guard's for a write into the state (E5).
 //
 // Layer: verb, and process for the shell door. World: a project with a unit
 // and two tasks, one started in one conversation and both in another, a
-// code worktree beside it; a project with a bare remote and one without,
+// code worktree beside it on task 1.1's branch; a project with a bare remote and one without,
 // for the state's refusals.
 // ---------------------------------------------------------------------------
 
@@ -40,7 +44,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const {
-  ENGINE, call, ok, git, stateGit, commitAll, fixtureFrom, codeProject, cleanupFixture, statePath, layout, STATE_DIR_NAME,
+  ENGINE, call, ok, git, stateGit, commitAll, fixtureFrom, codeProject, cleanupFixture, initRepo, statePath, layout, STATE_DIR_NAME,
 } = require('./engine-harness.cjs');
 const { createManifest, templateFolder } = require('./discovery-test-utils.cjs');
 
@@ -48,6 +52,7 @@ const SCRIPTS = path.dirname(ENGINE);
 const { GUARD_VERBS } = require(path.join(SCRIPTS, 'guards.cjs'));
 const { positionPath } = require(path.join(SCRIPTS, 'domain', 'conversation.cjs'));
 const { ignoresCase } = require(path.join(SCRIPTS, 'kernel', 'state-root.cjs'));
+const lg = require(path.join(SCRIPTS, 'domain', 'landing-git.cjs'));
 
 // Whether the filesystem every folder of these tests is on ignores case.
 const IGNORES_CASE = ignoresCase(fs.realpathSync(os.tmpdir()));
@@ -112,6 +117,9 @@ const unitWorld = fixtureFrom('shell-guard-', (dir) => {
   ok(dir, ['task', 'create', UNIT, '1', '--file', file]);
 });
 
+/** Task 1.1's branch, as the landing names it, which the code worktree has out. */
+const TASK_BRANCH = 'feat/pay-1.1-take-a-card';
+
 /** @type {string} */ let dir;
 /** @type {string} */ let worktree;
 /** @type {string[]} */ const scratch = [];
@@ -120,7 +128,7 @@ before(() => {
   dir = unitWorld();
   worktree = path.join(fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'shell-guard-worktree-'))), 'card');
   scratch.push(dir, path.dirname(worktree));
-  git(dir, ['worktree', 'add', '-q', '-b', 'card', worktree]);
+  git(dir, ['worktree', 'add', '-q', '-b', TASK_BRANCH, worktree]);
   ok(dir, ['task', 'start', UNIT, '1.1'], { env: { CLAUDE_CODE_SESSION_ID: BUILDING } });
   for (const task of ['1.1', '1.2']) ok(dir, ['task', 'start', UNIT, task], { env: { CLAUDE_CODE_SESSION_ID: PARALLEL } });
   ok(dir, ['session', 'label', UNIT], { env: { CLAUDE_CODE_SESSION_ID: PLACED } });
@@ -320,6 +328,81 @@ describe('raw commits (6.3.7, 6.3.12, 12.9.8)', () => {
     const doors = ['1.1', '1.2'].map((task) => `\`engine commit --paths <file>… --task ${UNIT} ${task} -m "<message>"\``).join(' or ');
     assertRefused(guard(worktree, 'git commit -am "Take the card"', { session: PARALLEL }),
       `a raw git commit is refused while task 1.1 of ${UNIT}, task 1.2 of ${UNIT} are in flight — the build commits through the commit door: ${doors}`, 'two in flight');
+  });
+
+  it('12.14: during a build, every git command that makes a commit past the door is refused, naming the way on and the door, which finishes a merge — a merge but with both --no-ff and --no-commit, or --abort or --quit, its --continue named the door\'s own way; a pull; a cherry-pick or revert but with --no-commit, -n, --abort or --quit; an am or a rebase but with --abort or --quit; those run, and out of a build each runs', () => {
+    const door = `\`engine commit --paths <file>… --task ${UNIT} 1.1 -m "<message>"\``;
+    const refused = (/** @type {string} */ subcommand, /** @type {string} */ way) => `git ${subcommand} is refused while task 1.1 of ${UNIT} is in flight — it makes a commit past the commit door: ${way}, ${door}`;
+    const merged = 'merge with --no-ff --no-commit, resolve what conflicts, then commit the merge through the door, which finishes it';
+    const branch = TASK_BRANCH;
+    const cases = [
+      ...['git merge --continue', `git -C ${worktree} merge --continue`, 'git add src/card.js && git merge --continue']
+        .map((command) => [command, refused('merge', 'name each file you resolved, and commit the merge through the door, which finishes it')]),
+      ...[`git merge ${branch}`, `git merge --no-edit ${branch}`, `git merge --no-ff ${branch}`, `git merge --no-commit ${branch}`].map((command) => [command, refused('merge', merged)]),
+      ...['git pull', 'git pull --rebase origin main'].map((command) => [command, refused('pull', `fetch, then ${merged}`)]),
+      ...['git cherry-pick abc123', 'git cherry-pick --continue'].map((command) => [command, refused('cherry-pick', 'pick with --no-commit, then commit through the door')]),
+      ['git revert abc123', refused('revert', 'revert with --no-commit, then commit through the door')],
+      ['git am fix.patch', refused('am', 'apply the patch with git apply, then commit through the door')],
+      ...['git rebase main', 'git rebase --continue', 'git rebase -i main'].map((command) => [command, refused('rebase', `rather than rebase, ${merged}`)]),
+    ];
+    for (const [command, refusal] of cases) assertRefused(guard(worktree, command, { session: BUILDING }), refusal, command);
+    for (const command of [
+      `git merge --no-ff --no-commit ${branch}`, `git merge --no-commit --no-ff ${branch}`, 'git merge --abort', 'git merge --quit', 'git cherry-pick --no-commit abc123', 'git cherry-pick -n abc123', 'git cherry-pick --abort',
+      'git revert -n abc123', 'git revert --quit', 'git am --abort', 'git rebase --abort', 'git rebase --quit', 'git fetch origin',
+    ]) assertPassed(guard(worktree, command, { session: BUILDING }), command);
+    for (const [command] of cases) assertPassed(guard(worktree, command, { session: IDLE }), `out of a build: ${command}`);
+  });
+
+  it('N1 (12.7.5, 6.3.7): during a build, a git command but a raw commit that makes a commit passes where it lands on no task\'s branch — the engine\'s own landing remedies as printed, on a phase\'s branch, a submodule\'s or the branch the project lands on — and is refused on a task\'s branch, or where the text cannot say where it runs; a raw commit is refused wherever it runs', () => {
+    const phase = 'feat/pay-phase-1';
+    git(dir, ['branch', phase]);
+    const scratch = path.join(lg.scratchRoot(dir), 'feat-pay-phase-1');
+    const rewrite = lg.remedy(dir, phase, lg.rewrite(phase, lg.quoted('main'), `bring ${phase} up to date with main`));
+    git(dir, ['worktree', 'add', '-q', scratch, phase]);
+    try {
+      const printed = [...rewrite.matchAll(/`([^`]+)`/g)].map(([, command]) => command).filter((command) => / rebase /.test(command));
+      const remedies = [...printed, 'git merge --ff-only origin/main', 'git -C . pull'];
+      /** A command run on task 1.1's branch: its `-C` the task's worktree, or, with none, run there. @param {string} command @returns {[string, string]} */
+      const onTask = (command) => (command.startsWith('git -C ') ? [dir, command.replace(/^git -C (?:'[^']*'|\S+)/, `git -C ${worktree}`)] : [worktree, command]);
+      const door = `\`engine commit --paths <file>… --task ${UNIT} 1.1 -m "<message>"\``;
+
+      assert.strictEqual(printed.length, 2, rewrite);
+      for (const command of remedies) assertPassed(guard(dir, command, { session: BUILDING }), command);
+      assertRefused(guard(dir, 'git commit -m x', { session: BUILDING }), BUILD_COMMIT, 'a raw commit from the project\'s checkout on main');
+      for (const [cwd, command] of remedies.map(onTask)) assert.match(guard(cwd, command, { session: BUILDING }).stderr, new RegExp(`is refused while task 1\\.1 of ${UNIT} is in flight — it makes a commit past the commit door: .*${door.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\n$`), command);
+      assert.match(guard(dir, 'cd "$NOWHERE" && git merge --continue', { session: BUILDING }).stderr, /^git merge is refused while task 1\.1 of pay is in flight/, 'a folder the text cannot say');
+    } finally {
+      git(dir, ['worktree', 'remove', '--force', scratch]);
+    }
+  });
+
+  it('N1: a command run in a subfolder of a task\'s worktree is on the task\'s branch, the checkout read from the nearest folder up holding a .git — by the shell\'s directory, by `cd`, by `-C` — and refused', () => {
+    const nested = path.join(worktree, 'src', 'pay');
+    fs.mkdirSync(nested, { recursive: true });
+    const refusal = new RegExp(`^git pull is refused while task 1\\.1 of ${UNIT} is in flight`);
+    for (const [cwd, command] of [[nested, 'git pull'], [worktree, 'cd src/pay && git pull'], [dir, `git -C ${nested} pull`]]) {
+      assert.match(guard(cwd, command, { session: BUILDING }).stderr, refusal, `${command} from ${path.relative(worktree, cwd) || 'the worktree'}`);
+    }
+  });
+
+  it('N1: a rebase stopped on a task\'s branch, HEAD detached, is that branch\'s — its --continue refused — and a HEAD detached otherwise is no task\'s', () => {
+    const repo = initRepo(path.join(fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'shell-guard-rebase-'))), 'repo'));
+    scratch.push(path.dirname(repo));
+    git(repo, ['checkout', '-q', '-b', TASK_BRANCH]);
+    git(repo, ['commit', '-q', '--allow-empty', '-m', 'work']);
+    git(repo, ['checkout', '-q', '--detach']);
+    const detached = guard(repo, 'git rebase --continue', { session: BUILDING });
+    /** The guard's word on `--continue`, a rebase stopped with its state in `kind`, the folder git writes for its backend. @param {string} kind */
+    const stopped = (kind) => {
+      fs.mkdirSync(path.join(repo, '.git', kind));
+      fs.writeFileSync(path.join(repo, '.git', kind, 'head-name'), `refs/heads/${TASK_BRANCH}\n`);
+      const { stderr } = guard(repo, 'git rebase --continue', { session: BUILDING });
+      fs.rmSync(path.join(repo, '.git', kind), { recursive: true });
+      return stderr;
+    };
+
+    assertPassed(detached, 'detached, no rebase');
+    for (const kind of ['rebase-merge', 'rebase-apply']) assert.match(stopped(kind), /^git rebase is refused while task 1\.1 of pay is in flight/, kind);
   });
 
   it('a raw commit is found wherever the text runs one — in a loop, in a conditional, in a substitution alone, by git\'s path', () => {
