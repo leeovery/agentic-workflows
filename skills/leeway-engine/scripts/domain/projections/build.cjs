@@ -38,7 +38,8 @@ const { renderTree, wrapWithPrefix } = require('../../kernel/render.cjs');
 const { TREE_WIDTH } = require('../conventions.cjs');
 const { counted } = require('./map.cjs');
 const { block } = require('./closing.cjs');
-const { STATUS_WORDS, cutCount } = require('../build-entry.cjs');
+const { cutCount } = require('../build-entry.cjs');
+const { STATUS_WORDS } = require('../task-verbs.cjs');
 
 /** @typedef {import('./surfaces.cjs').Next} Next */
 /** @typedef {import('../build-entry.cjs').BuildStanding} BuildStanding */

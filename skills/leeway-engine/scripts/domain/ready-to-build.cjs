@@ -59,7 +59,7 @@ const { claudesCall } = require('./ledger-events.cjs');
 const { isCurrent } = require('./ledger-fold.cjs');
 const { readShown } = require('./ledger-read.cjs');
 const { verdictAsked } = require('./ledger-verdicts.cjs');
-const { buildBegun, itemTitle, phaseItems, topicTitles } = require('./derivations.cjs');
+const { buildBegun, itemTitle, phaseItems, topicTitles, cutPhases } = require('./derivations.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { knownUnit, noUnit, unitClosure } = require('./topic-standing.cjs');
 const { specEntryRefusal } = require('./spec-entry.cjs');
@@ -172,7 +172,7 @@ function readyToBuildSurface(cwd, { dotpath: unit = '', page, calls }) {
       calls: ready.calls,
       listed: calls !== undefined,
       outline: headings.filter(({ kind }) => kind === 'area').map(({ number, title }) => ({ number: /** @type {string} */ (number), title })),
-      phases: (ready.manifest.cut?.phases ?? []).map((/** @type {any} */ { name, scenarios, sections }) => ({ name, scenarios: scenarios.length, sections })),
+      phases: cutPhases(ready.manifest).map((/** @type {any} */ { name, scenarios, sections }) => ({ name, scenarios: scenarios.length, sections })),
       skips: ready.skips.map(({ text, reason }) => ({ text, reason })),
       verdict: ready.verdict,
       page: page !== undefined,

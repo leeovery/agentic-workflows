@@ -89,7 +89,7 @@ const path = require('path');
 const { statePath } = require('../kernel/state-root.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { tryGit } = require('../kernel/git.cjs');
-const { writeJsonAtomic, isObject } = require('../kernel/manifest-io.cjs');
+const { writeJsonAtomic, isObject, isStringList } = require('../kernel/manifest-io.cjs');
 const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
 const { repoName } = require('../kernel/repos.cjs');
 const { codeChanges } = require('./worktree-prep.cjs');
@@ -103,6 +103,8 @@ const { resolveId } = require('./ledger-ids.cjs');
 const { handedTag } = require('./topic-map.cjs');
 const { phaseLists, mergeWaiting } = require('./phase-checks.cjs');
 const { shownTask } = require('./task-id.cjs');
+const { cutLength } = require('./derivations.cjs');
+const { STATUS_WORDS } = require('./task-verbs.cjs');
 const { notesUntaken } = require('./notes.cjs');
 
 /** @typedef {import('./ledger-read.cjs').Shower} Shower */
@@ -189,12 +191,9 @@ function reportNames(reads) {
   return reads.flatMap((read) => (read === TESTS ? [`${TESTS}-${TESTS_LETTER}.md`] : REVIEWER_LETTERS.map((letter) => `${read}-${letter}.md`)));
 }
 
-/** Whether `value` holds strings alone. @param {unknown} value */
-const strings = (value) => Array.isArray(value) && value.every((item) => typeof item === 'string');
-
 /** Whether a round's record reads as one. @param {any} held */
 function fitsRecord(held) {
-  return isObject(held) && strings(held.reports) && typeof held.passed === 'boolean' && strings(held.can_now) && Array.isArray(held.findings)
+  return isObject(held) && isStringList(held.reports) && typeof held.passed === 'boolean' && isStringList(held.can_now) && Array.isArray(held.findings)
     && held.findings.every((/** @type {unknown} */ finding) => isObject(finding)) && (held.settled === null || typeof held.settled === 'string')
     && Array.isArray(held.scenarios);
 }
@@ -235,7 +234,7 @@ function recordedRounds(cwd, unit) {
 
 /** The areas Claude named for a later round, or null where it named none yet. @param {string} cwd @param {string} unit @param {number} round @returns {string[]|null} */
 function namedReads(cwd, unit, round) {
-  return recordAt(cwd, roundReadsPath(unit, round), 'the areas a review round reads', (held) => isObject(held) && strings(held.reads))?.reads ?? null;
+  return recordAt(cwd, roundReadsPath(unit, round), 'the areas a review round reads', (held) => isObject(held) && isStringList(held.reads))?.reads ?? null;
 }
 
 /** A round's fix tasks, each once, in the order its findings name them. @param {RoundRecord} round */
@@ -245,7 +244,7 @@ const fixesOf = (round) => [...new Set(round.findings.flatMap(({ fix }) => (type
 const endsReview = (round) => round.passed || round.settled !== null;
 
 /** The build phase a round's fix tasks make: round k's, the k-th past the cut (P14). @param {Record<string, any>} manifest @param {number} round */
-const fixPhase = (manifest, round) => (Array.isArray(manifest.cut?.phases) ? manifest.cut.phases.length : 0) + round;
+const fixPhase = (manifest, round) => cutLength(manifest) + round;
 
 /** The reads every area and the test surface make: round 1's. @param {Area[]} areas */
 const everyRead = (areas) => [...areas.map(({ name }) => name), TESTS];
@@ -263,9 +262,6 @@ function fixedReads(areas, round) {
   const fixed = new Set(round.findings.filter(({ fix }) => typeof fix === 'string').flatMap(({ area, from }) => [area, ...from.map(readOfItem)]));
   return everyRead(areas).filter((read) => fixed.has(read));
 }
-
-/** A task's status, as a line says it. @type {Readonly<Record<string, string>>} */
-const STATUS_WORDS = Object.freeze({ open: 'not started', 'in-progress': 'in progress' });
 
 /**
  * What comes after the last round waits on (14.3.3): its fix tasks neither
@@ -541,8 +537,8 @@ const forThePerson = ({ by, given }) => claudesCall({ by, given });
 const inTheBuild = ({ phase }) => BUILD_PHASES.includes(phase);
 
 module.exports = {
-  TESTS, TESTS_LETTER, NOTES, isBuilderNote, SET_ASIDE, setAsideFolder, setAsideHeld, EMPTY_PRINT, specAreas, reportNames, recordedRounds, fixesOf, endsReview, fixPhase, reviewStanding, everyRead,
+  TESTS, TESTS_LETTER, NOTES, isBuilderNote, SET_ASIDE, setAsideFolder, setAsideHeld, EMPTY_PRINT, reportNames, recordedRounds, fixesOf, endsReview, fixPhase, reviewStanding, everyRead,
   endedWords, endedRefusal, openRefusal, roundRefusal, readsWords, mergingWords,
-  reviewFolder, roundRecordPath, roundReportFile, roundChecksFile, roundReadsPath, roundFolder, areaReportPath,
+  roundRecordPath, roundReportFile, roundChecksFile, roundReadsPath, roundFolder, areaReportPath,
   takeSnapshot, openSnapshot, snapshotRound, dropSnapshot, treeDrift, movedWords, treeChanges, unitCalls, reviewCallFault, forThePerson, inTheBuild,
 };

@@ -4,8 +4,9 @@
 // Step's one task at a time where more than one is freed (leeway-engine/
 // scripts/domain/task-verbs.cjs, task-parks.cjs; 12.7.9): the one in flight
 // the one that went back in flight first, by when each was last freed — an
-// answer to its question, a merge or a move of it, a replacement or a keep
-// of the decision it would replace — never by when each parked, the others
+// answer to its question, a replacement or a keep of the decision it would
+// replace, or a merge or a move of it in lines a clone's merge lays — never
+// by when each parked, the others
 // held behind it. Task start beside the task in flight, a freed task's
 // turn, and two left running in auto, are test-engine-build-step.cjs's.
 //

@@ -44,9 +44,10 @@
 const fs = require('fs');
 const { statePath, stateRoot } = require('../kernel/state-root.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
-const { STATUS_WORDS, phaseNamed, buildStanding, builtUnit, ownInFlight } = require('./build-entry.cjs');
-const { reading, cutPhases, phaseLists, phaseLanded, reviewRefusalOf } = require('./phase-checks.cjs');
-const { trackedTask, trackedLists, goingOn, phaseOpen, turnRefusal, ENDED } = require('./task-verbs.cjs');
+const { phaseNamed, buildStanding, builtUnit, ownInFlight } = require('./build-entry.cjs');
+const { reading, phaseLists, phaseLanded, reviewRefusalOf } = require('./phase-checks.cjs');
+const { cutPhases, cutLength } = require('./derivations.cjs');
+const { trackedTask, trackedLists, goingOn, phaseOpen, turnRefusal, ENDED, STATUS_WORDS } = require('./task-verbs.cjs');
 const { engineItemsHold } = require('./checklist.cjs');
 const { fieldOf, criteriaTexts, criterionWords, holdsScenario, namesScenario } = require('./task-file.cjs');
 const { finishedUnits } = require('./ledger-units.cjs');
@@ -215,7 +216,7 @@ function mergeRefusal(at, phase) {
   const [rows] = phaseLists(at, [phase]);
   if (rows === null) return `${phaseName(at.unit, phase)} is not written — no stack of its waits to merge`;
   if (phaseLanded(at, phase)) return `${phaseName(at.unit, phase)} is merged already — its tasks are on the default branch`;
-  if (phase <= cutPhases(at.manifest).length) return reviewRefusalOf(at, phase);
+  if (phase <= cutLength(at.manifest)) return reviewRefusalOf(at, phase);
   const unfinished = rows.find(({ status }) => status !== 'done' && status !== 'closed');
   return unfinished === undefined ? null : `${phaseName(at.unit, phase)} merges once its tasks are done — task ${shownTask(unfinished.ref)} is ${STATUS_WORDS[unfinished.status]}`;
 }
@@ -239,7 +240,7 @@ function buildHeadlineSurface(cwd, { dotpath: unit = '', file }) {
     const started = given.map(({ task: shown, changes, watch }) => {
       const ref = parseShownTask(unit, shown);
       const task = taskOf(cwd, ref);
-      if (task.status !== 'in-progress') throw new Error(`${taskName(ref)} is ${task.status === 'open' ? 'not started' : task.status} — the headline names tasks as they start: task start ${unit} ${shown}`);
+      if (task.status !== 'in-progress') throw new Error(`${taskName(ref)} is ${STATUS_WORDS[task.status]} — the headline names tasks as they start: task start ${unit} ${shown}`);
       return { ...headOf(manifest, ref, task), changes, watch };
     });
     return headlineScreen(buildStanding(cwd, unit, ownInFlight(unit)), started);

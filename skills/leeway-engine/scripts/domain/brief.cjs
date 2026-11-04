@@ -65,7 +65,7 @@ const { newId } = require('./ledger-ids.cjs');
 const { carrying } = require('./ledger.cjs');
 const { trackedTask, trackedPhases, turnRefusal, ENDED } = require('./task-verbs.cjs');
 const { parseShownTask, parsePhase, shownTask, taskName } = require('./task-id.cjs');
-const { buildBegun } = require('./derivations.cjs');
+const { buildBegun, cutLength } = require('./derivations.cjs');
 const { RECORDS, readFacts } = require('./brief-records.cjs');
 const { ROLES, BUILDING_ROLES, briefPath, issuedPath, pointerOf } = require('./brief-names.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
@@ -191,8 +191,8 @@ function knownUnit(root, unit) {
 function cutPhase(cwd, unit, phase) {
   const manifest = knownUnit(stateRoot(cwd), unit);
   if (!buildBegun(manifest)) throw new Error(`brief: ${unit}'s build has not begun — a phase is briefed once ready to build's yes begins it`);
-  const phases = manifest.cut?.phases ?? [];
-  if (phase > phases.length) throw new Error(`brief: ${unit}'s cut has no phase ${phase} — its phases are 1 to ${phases.length}`);
+  const phases = cutLength(manifest);
+  if (phase > phases) throw new Error(`brief: ${unit}'s cut has no phase ${phase} — its phases are 1 to ${phases}`);
 }
 
 /**

@@ -428,7 +428,7 @@ const {
 const { resolveId } = require('./ledger-ids.cjs');
 const { manifestOf, liveTopics } = require('./ledger-units.cjs');
 const { topicLog } = require('./topic-log.cjs');
-const { dismissedNames, topicTitle } = require('./derivations.cjs');
+const { dismissedNames, topicTitle, cutPhases } = require('./derivations.cjs');
 const {
   UNIT_PHASE, dispatchedRows, gapReviewSince, bindQuestion, bindSpec, closeUnbriefed, refusedReports,
 } = require('./agent-state.cjs');
@@ -466,14 +466,14 @@ const { heldIn, pointedAt } = require('./project-layout.cjs');
 const { repoNamed, phaseStack, tipCommits } = require('./phase-stack.cjs');
 const { readWorkUnitManifest } = require('../kernel/manifest-io.cjs');
 const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
-const { ENDED } = require('./task-verbs.cjs');
+const { ENDED, STATUS_WORDS } = require('./task-verbs.cjs');
 const { notesToTake, notesHeldFor, consolidationPath } = require('./notes.cjs');
 const { runsOf } = require('./runs.cjs');
 const { cachedSurvivors } = require('./verify.cjs');
 const { accountPath, accountOwed, landingStage, reviewOverWay } = require('./task-account.cjs');
 const { directiveOf } = require('./directives.cjs');
 const {
-  TESTS, TESTS_LETTER, roundRefusal, readsWords, areaReportPath, unitCalls,
+  TESTS, TESTS_LETTER, roundRefusal, readsWords, areaReportPath, unitCalls, fixPhase,
 } = require('./review-phase.cjs');
 const { reviewHeld } = require('./review-entry.cjs');
 const { reading, reposOf } = require('./phase-checks.cjs');
@@ -1427,15 +1427,10 @@ function phaseOf({ unit, phase, phases }) {
 }
 
 /** The unit's cut, its phases in build order. @param {Filling} filling @returns {CutPhase[]} */
-const cutOf = (filling) => unitManifest(filling).cut.phases;
-
-/** Where a task stands, as a brief says it. @type {Readonly<Record<string, string>>} */
-const STANDS = Object.freeze({
-  open: 'not started', 'in-progress': 'in progress', done: 'done', closed: 'closed',
-});
+const cutOf = (filling) => /** @type {CutPhase[]} */ (cutPhases(unitManifest(filling)));
 
 /** A task as a list draws it: its number, its title and where it stands. @param {TaskDetail} task */
-const taskLine = ({ ref, title, status }) => `- ${shownTask(ref)} ${title}, ${STANDS[status]}`;
+const taskLine = ({ ref, title, status }) => `- ${shownTask(ref)} ${title}, ${STATUS_WORDS[status]}`;
 
 /** What a phase relies on, as a sentence names it. @param {number|string} on */
 const reliedName = (on) => (typeof on === 'number' ? `phase ${on}` : `the work unit ${on}`);
@@ -1549,7 +1544,7 @@ const additionsOf = ({ additions }) => additions.flatMap(({ by, text }) => ['', 
 function drawPhaseTasks(filling) {
   return blocks(writtenPhase(filling).map((task) => {
     const [title, ...body] = headingsDown(task.text).split('\n');
-    const stands = task.status === 'closed' ? `It was closed: ${task.reason}` : `It is ${STANDS[task.status]}.`;
+    const stands = task.status === 'closed' ? `It was closed: ${task.reason}` : `It is ${STATUS_WORDS[task.status]}.`;
     return [title.replace(/^## /, `## ${shownTask(task.ref)} `), '', stands, '', body.join('\n').replace(/^\n+/, ''), ...additionsOf(task)].join('\n');
   }));
 }
@@ -1816,7 +1811,7 @@ function areaNamed(filling, warnings) {
 /** The whole change, read once a fill (review-change.cjs). */
 const changeHeld = oncePerFill(/** @param {Filling} filling @param {string[]} warnings */ (filling, warnings) => {
   const { rounds } = reviewOf(filling, warnings);
-  return changeOf(filling.cwd, unitOf(filling), cutOf(filling).length + rounds.length, filling.given.base ?? null, reposOf(reviewReading(filling, warnings)));
+  return changeOf(filling.cwd, unitOf(filling), fixPhase(unitManifest(filling), rounds.length), filling.given.base ?? null, reposOf(reviewReading(filling, warnings)));
 });
 
 /** @param {Filling} filling @param {string[]} warnings */

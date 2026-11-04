@@ -224,6 +224,15 @@ function raiseNamed(said, tasks = 'task 2.3', name = 'Q1') {
   return `${said}: ${name} of fumi waits on the person about this, parking ${tasks} — the person answers it through the raise alone: raise draw fumi ${name}`;
 }
 
+/**
+ * A refused `ledger move` or `ledger merge` of `question`, from its topic or
+ * the build as each is made, writing nothing: its error.
+ * @param {string} question @param {'move'|'merge'} verb @param {string[]} flags
+ */
+function shifted(question, verb, flags) {
+  return refusedPristine(dir, ['ledger', verb, verb === 'move' ? TOPIC : BUILD, '--question', question, ...flags], { env: conversation(), stdin: JSON.stringify(MADE) }).error;
+}
+
 /** A question asked on the note window's topic: its short id. */
 const askedOnTopic = () => write('ask', TOPIC, [], { ...MADE, text: 'Is a note a window?' }).id;
 
@@ -712,6 +721,44 @@ describe('its answer through its raise alone (12.13.5, 12.13.16, 16.4.7, 5.3.10)
     assert.strictEqual(refusedPristine(dir, ['ledger', 'replace', BUILD, '--replaces', made.frameless, '--reason', 'was-wrong'], {
       env: conversation(), stdin: JSON.stringify({ ...MADE, drops: ['frameless'], text: 'A thin frame.', why: 'It stands out.' }),
     }).error, raiseNamed('ledger replace', 'task 2.4'));
+  });
+
+  it('while a question waits, ledger move of it — to another topic, and to the roadmap as later — and ledger merge of it are refused, naming its raise, writing nothing', () => {
+    const opened = askedOnTopic();
+    parked(1, '2.3', { question: full(opened) });
+    ok(dir, ['roadmap', 'add', 'note-windows', '--horizon', 'v2', '--summary', 'Notes as windows']);
+
+    assert.deepStrictEqual(
+      [shifted(opened, 'move', ['--to', 'space-homing']), shifted(opened, 'move', ['--to', 'roadmap:note-windows']), shifted(opened, 'merge', ['--into', made.frameless])],
+      [raiseNamed('ledger move'), raiseNamed('ledger move'), raiseNamed('ledger merge')],
+    );
+  });
+
+  for (const unit of [UNIT, MINT]) {
+    it(`while a replacement proposed in ${unit} waits on fumi's decision, ledger merge naming that decision its duplicate is refused, naming its raise, writing nothing`, () => {
+      const small = write('decide', BUILD, ['--answers', made.size], { ...MADE, text: 'A small note.', why: 'Light.' }).id;
+      parked(1, '2.4', { unit, question: null, replaces: full(made.frameless), reason: 'was-wrong', call: FRAMED });
+
+      assert.strictEqual(
+        shifted(made.frame, 'merge', ['--into', small, '--duplicate', made.frameless]),
+        `ledger merge: Q1 of ${unit} waits on the person about this, parking task 2.4 — the person answers it through the raise alone: raise draw ${unit} Q1`,
+      );
+    });
+  }
+
+  it('a question that waits no longer, answered through its raise, moves to another topic and to the roadmap as later, and merges', () => {
+    const [moved, later, merged] = ['Is a note a window?', 'Is a note a panel?', 'Is a note a sheet?'].map((text) => write('ask', TOPIC, [], { ...MADE, text }).id);
+    for (const [number, question] of [moved, later, merged].entries()) parked(number + 1, `2.${number + 3}`, { question: full(question) });
+    for (const name of ['Q1', 'Q2', 'Q3']) drawnAndPicked(name);
+    ok(dir, ['roadmap', 'add', 'note-windows', '--horizon', 'v2', '--summary', 'Notes as windows']);
+
+    write('move', TOPIC, ['--question', moved, '--to', 'space-homing'], MADE);
+    write('move', TOPIC, ['--question', later, '--to', 'roadmap:note-windows'], MADE);
+    write('merge', BUILD, ['--question', merged, '--into', made.frameless], MADE);
+
+    assert.deepStrictEqual(entries().slice(-3).map((e) => [e.event, e.question, e.to ?? e.into]), [
+      ['moved', full(moved), 'space-homing'], ['moved', full(later), 'roadmap:note-windows'], ['merged', full(merged), full(made.frameless)],
+    ]);
   });
 
   it('while a question waits, any other raise on it is refused before a row is judged, naming its raise — asking on its question from its topic, on a fact, and on the decision a replacement waiting would replace — writing, sealing and judging nothing', async () => {

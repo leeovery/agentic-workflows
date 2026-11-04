@@ -45,9 +45,8 @@ const { liveInOrder } = require('../approve-map.cjs');
 const { pastItsSpec } = require('../spec-standing.cjs');
 const { specPath, specReading } = require('../spec-sections.cjs');
 const { waitingGaps } = require('../spec-passes.cjs');
-const { cutPhases } = require('../phase-checks.cjs');
 const { unitHistory } = require('../state-history.cjs');
-const { computeTopicLifecycle, mailboxFiles, phaseStatus, buildBegun, buildFinished, roadmapItems, topicTitle } = require('../derivations.cjs');
+const { computeTopicLifecycle, mailboxFiles, phaseStatus, buildBegun, buildFinished, cutLength, roadmapItems, topicTitle } = require('../derivations.cjs');
 const { counted } = require('./map.cjs');
 const { buildView, buildWords, buildMoments } = require('./board-build.cjs');
 const { reviewStandingAt } = require('./board-build.cjs');
@@ -177,7 +176,7 @@ function specWords(at) {
   const file = specPath(at.cwd, at.unit);
   if (!fs.existsSync(file)) return '';
   const areas = specReading(fs.readFileSync(file, 'utf8')).headings.filter(({ kind }) => kind === 'area').length;
-  const cut = cutPhases(at.manifest).length;
+  const cut = cutLength(at.manifest);
   return [counted(areas, 'section'), ...(cut > 0 ? [counted(cut, 'build phase')] : [])].join(' · ');
 }
 

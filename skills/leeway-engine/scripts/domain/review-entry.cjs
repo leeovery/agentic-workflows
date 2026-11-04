@@ -52,8 +52,8 @@ const fs = require('fs');
 const { ENGINE_COMMAND, ENGINE_RUN, messageOf } = require('../kernel/call.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
-const { buildByCut, buildFinished, phaseClosed } = require('./derivations.cjs');
-const { reading, reposOf, cutPhases, mergeWaiting } = require('./phase-checks.cjs');
+const { buildByCut, buildFinished, phaseClosed, cutPhases, cutLength } = require('./derivations.cjs');
+const { reading, reposOf, mergeWaiting } = require('./phase-checks.cjs');
 const {
   buildRefusal, codeHeld, buildLogOf, buildStanding, ownInFlight, inFlightLines, takeInFlight, readingOf,
 } = require('./build-entry.cjs');
@@ -83,11 +83,11 @@ function reviewRefusal(at) {
   if (refused !== null) return refused;
   const { name } = manifest;
   if (buildFinished(manifest)) {
-    const merging = mergeWaiting(at, cutPhases(manifest).length);
+    const merging = mergeWaiting(at, cutLength(manifest));
     return merging === null ? null : `${name} builds in step, and its review phase is entered once every phase of its cut has merged — ${mergingWords(name, merging)}`;
   }
   const open = cutPhases(manifest).map((_, at) => at + 1).filter((phase) => !phaseClosed(manifest, phase));
-  return `${name}'s review phase starts once every phase of its cut has closed — phase${open.length === 1 ? '' : 's'} ${open.join(', ')} of ${cutPhases(manifest).length} ${open.length === 1 ? 'has' : 'have'} not: enter implementation ${name}`;
+  return `${name}'s review phase starts once every phase of its cut has closed — phase${open.length === 1 ? '' : 's'} ${open.join(', ')} of ${cutLength(manifest)} ${open.length === 1 ? 'has' : 'have'} not: enter implementation ${name}`;
 }
 
 /**
