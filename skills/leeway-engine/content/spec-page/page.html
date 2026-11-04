@@ -329,6 +329,8 @@ mark.sc.add { background: var(--add-bg); }
   let db = null;
   let canWrite = false;
   let filter = 'all';
+  // the page's first load: no snapshot moves the page until every collection that redraws the lines is in and the saved line has landed
+  let landed = false;
   // lines the person marked under the current filter stay in view until the filter changes, so a tick never pulls the page from under them
   const held = new Set();
   let focused = null;
@@ -1366,7 +1368,7 @@ mark.sc.add { background: var(--add-bg); }
   }
 
   function keepAnchor(anchor) {
-    const el = anchor && byId.get(anchor.id);
+    const el = landed && anchor && byId.get(anchor.id);
     // a line the redraw hid has no place to hold
     if (el && el.getClientRects().length) window.scrollBy(0, el.getBoundingClientRect().top - anchor.y);
     spy();
@@ -1465,16 +1467,24 @@ mark.sc.add { background: var(--add-bg); }
   recount();
   lines.forEach(commentable);
   saving('Loading marks…');
-  if (!location.hash) {
+  // the saved line lands once the fonts and every collection that redraws the lines are in, the bar measured as they leave it
+  const STORED = ['marks', 'spec', 'history', 'changes', 'assess'];
+  const loading = new Set(['fonts', ...STORED]);
+  function loaded(name) {
+    if (!loading.delete(name) || loading.size) return;
+    landed = true;
+    setBar();
     const last = store.get('lastLine');
-    if (last && byId.get(last)) focusLine(byId.get(last));
+    if (!location.hash && last && byId.get(last)) focusLine(byId.get(last));
   }
+  document.fonts.ready.then(() => loaded('fonts'));
 
   (window.claude && window.claude.use ? window.claude.use('db') : Promise.resolve(null)).then(d => {
     db = d;
     if (!db) {
       banner('Marks can only be saved when this page is opened on claude.ai.');
       saving('');
+      STORED.forEach(loaded);
       return;
     }
     // the controls come on once the marks and the spec as the store holds it are both in, so no tick lands on a wording already replaced
@@ -1516,21 +1526,25 @@ mark.sc.add { background: var(--add-bg); }
         first = false;
         arrived();
       }
+      loaded('marks');
     }, err => {
       banner('The marks stopped updating (' + (err && err.code || 'error') + '). Reload the page to reconnect.');
       saving('Offline', true);
+      loaded('marks');
     });
     let specIn = false;
     db.collection('spec').onSnapshot(snap => {
       specChanged(snap);
       if (!specIn) { specIn = true; arrived(); }
+      loaded('spec');
     }, err => {
       banner('The spec stopped updating (' + (err && err.code || 'error') + '). Reload the page to see changes.');
       if (!specIn) { specIn = true; arrived(); }
+      loaded('spec');
     });
-    db.collection('history').onSnapshot(historyChanged, () => {});
-    db.collection('changes').onSnapshot(changesChanged, () => {});
-    db.collection('assess').onSnapshot(assessChanged, () => {});
+    db.collection('history').onSnapshot(snap => { historyChanged(snap); loaded('history'); }, () => loaded('history'));
+    db.collection('changes').onSnapshot(snap => { changesChanged(snap); loaded('changes'); }, () => loaded('changes'));
+    db.collection('assess').onSnapshot(snap => { assessChanged(snap); loaded('assess'); }, () => loaded('assess'));
     db.collection('live').doc('status').onSnapshot(snap => { live = snap.exists ? snap.data() : null; showLive(); }, () => { live = null; showLive(); });
   });
 })();

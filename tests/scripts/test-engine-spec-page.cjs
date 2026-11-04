@@ -19,8 +19,9 @@
 // nothing; and the page's own rules, its state functions run from the
 // template: Claude's tick never over a line changed since the person's tick,
 // the person's untick holding on any wording, To do the lines waiting on
-// the person, and a line the person marked under a filter staying in its
-// view (11.11.4, 11.11.6, 11.11.16, 11.11.19).
+// the person, a line the person marked under a filter staying in its view,
+// and no snapshot moving the page before the saved line has landed
+// (11.11.4, 11.11.6, 11.11.16, 11.11.19).
 //
 // Layer: verb; the page's rules, unit. World, built once and copied: an epic, `payments`, its one
 // topic `cards` decided, its entries written through the ledger's verbs — a
@@ -505,5 +506,17 @@ describe('the page\'s own rules, its state functions run from the template (11.1
     const before = shown();
     context.held.add('1-1-1');
     assert.deepStrictEqual([before, shown()], [false, true]);
+  });
+
+  it('no snapshot moves the page before the saved line has landed; after it, the person\'s place holds', () => {
+    /** @type {number[]} */
+    const scrolled = [];
+    const line = { getClientRects: () => [{}], getBoundingClientRect: () => ({ top: 90 }) };
+    const context = vm.createContext({ byId: new Map([['1-1-1', line]]), window: { scrollBy: (/** @type {number} */ x, /** @type {number} */ y) => scrolled.push(y) }, spy: () => {}, landed: false });
+    vm.runInContext(declared(fs.readFileSync(TEMPLATE, 'utf8'), 'keepAnchor'), context);
+    context.keepAnchor({ id: '1-1-1', y: 40 });
+    context.landed = true;
+    context.keepAnchor({ id: '1-1-1', y: 40 });
+    assert.deepStrictEqual(scrolled, [50]);
   });
 });
