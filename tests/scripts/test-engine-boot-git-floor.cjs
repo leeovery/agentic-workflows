@@ -25,6 +25,8 @@ const path = require('path');
 const { ok, output, refuses, initRepo, withEnv } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const { conversationDir } = require('../../skills/leeway-engine/scripts/domain/conversation.cjs');
+const { trustEvent } = require('../../skills/leeway-engine/scripts/domain/trust-events.cjs');
+const { newId } = require('../../skills/leeway-engine/scripts/domain/ledger-ids.cjs');
 
 const folder = useTempFolder('engine-boot-git-floor-');
 
@@ -52,11 +54,19 @@ const filesUnder = (dir) => fs.readdirSync(dir, { recursive: true, withFileTypes
   .map((entry) => path.relative(dir, path.join(entry.parentPath, entry.name)))
   .sort();
 
+/** A file at `file`, its folders made, holding `content`. @param {string} file @param {string} content */
+function placed(file, content) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, content);
+  return file;
+}
+
 /**
  * Boot in an empty project under `env`, from a conversation holding a
- * position, the config directories fresh: its answer, the project left
- * empty and the position the config directories' one file, and the stop's
- * screen, drawn by `surface`.
+ * position, the config directories fresh but for a trust-log event another
+ * conversation keeps waiting: its answer, the project left empty, the
+ * position and the event left where they were and no trust log begun, and
+ * the stop's screen, drawn by `surface`.
  * @param {string} surface @param {{PATH?: string}} [env]
  */
 function stopped(surface, env = {}) {
@@ -64,16 +74,25 @@ function stopped(surface, env = {}) {
   const config = { LEEWAY_CONFIG_DIR: fs.mkdtempSync(path.join(folder(), 'config-')), CLAUDE_CONFIG_DIR: fs.mkdtempSync(path.join(folder(), 'claude-')) };
   const held = { ...env, ...config };
   const session = path.basename(project);
-  const position = withEnv(config, () => path.join(conversationDir(session), 'position.json'));
-  fs.mkdirSync(path.dirname(position), { recursive: true });
-  fs.writeFileSync(position, '{"name":"payments"}');
+  const [position, pending] = withEnv(config, () => [
+    placed(path.join(conversationDir(session), 'position.json'), '{"name":"payments"}'),
+    placed(path.join(conversationDir(WAITING_SESSION), 'trust-pending.jsonl'), waitingEvent()),
+  ]);
 
   const answer = ok(project, ['boot'], { env: { ...held, CLAUDE_CODE_SESSION_ID: session } });
 
   assert.deepStrictEqual(fs.readdirSync(project), [], 'the stop wrote nothing in the project');
-  assert.deepStrictEqual([filesUnder(config.LEEWAY_CONFIG_DIR), filesUnder(config.CLAUDE_CONFIG_DIR)], [[path.relative(config.LEEWAY_CONFIG_DIR, position)], []],
-    'the stop wrote nothing in the config directories, and left the conversation\'s position');
+  assert.deepStrictEqual([filesUnder(config.LEEWAY_CONFIG_DIR), filesUnder(config.CLAUDE_CONFIG_DIR)], [[position, pending].map((file) => path.relative(config.LEEWAY_CONFIG_DIR, file)).sort(), []],
+    'the stop wrote nothing in the config directories: the position kept, the waiting event still waiting, no trust log begun');
   return { answer, screen: output(project, ['render', surface], { env: held }), project };
+}
+
+const WAITING_SESSION = '6f1c2b9a-0d4e-4a7b-9c3e-2f5a8b7d1e40';
+
+/** A trust-log event a conversation keeps waiting, as one line. */
+function waitingEvent() {
+  const header = { id: newId(), at: '2026-10-28T10:00:00Z', project: null, project_name: null, model: null, session: WAITING_SESSION };
+  return `${JSON.stringify(trustEvent('call', header, { entry: newId(), kind: null, label: null, sort: null }))}\n`;
 }
 
 /** The stop's screen: its title, then what boot found. @param {string} title @param {string} found */

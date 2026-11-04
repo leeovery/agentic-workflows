@@ -914,10 +914,10 @@ function announcedRender(render) {
 
 // With the gate surface announced, the same render states its menu as data
 // directly above the markdown, and that data has to be the whole menu.
-/** @param {Sim} sim @param {string[]} args @param {Record<string,string>|null} identity @returns {void} */
-function auditGatePayload(sim, args, identity) {
+/** @param {Sim} sim @param {string[]} args @param {Record<string,string>|null} identity @param {string} [cwd] @returns {void} */
+function auditGatePayload(sim, args, identity, cwd = sim.dir) {
   const env = { ...sim.envOf(identity), LEEWAY_GATE_SURFACE: '1' };
-  const stated = auditGate(engine.run(['render', ...args], { cwd: sim.dir, env }).stdout, `render ${args.join(' ')} — gate payload`);
+  const stated = auditGate(engine.run(['render', ...args], { cwd, env }).stdout, `render ${args.join(' ')} — gate payload`);
   auditGateShown(sim, stated, identity, `render ${args.join(' ')}`);
 }
 

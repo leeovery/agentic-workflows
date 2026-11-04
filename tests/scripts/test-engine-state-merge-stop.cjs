@@ -151,6 +151,22 @@ describe('a kept stop', () => {
     assert.deepStrictEqual(pendingStateMerge(here.root)?.conflicts.map((c) => c.local), [{ set: true, value: 'never' }]);
   });
 
+  it('finished by the last pick, hands its notes to the next catch-up — the boot the start runs after it — once', () => {
+    const CHART = 'unit/assets/chart.png';
+    const { here, there } = machinesSharing({ [layout.projectManifest]: projectManifest('now'), [CHART]: 'png\0base' });
+    commitUnpushed(here, { [layout.projectManifest]: projectManifest('next'), [CHART]: 'png\0here' });
+    commitOnState(there.root, { [layout.projectManifest]: projectManifest('someday'), [CHART]: 'png\0there' });
+    assert.strictEqual(catchUpState(here.root).action, 'stopped');
+
+    const picked = pickShown(here, '1');
+    const kept = picked.warnings.filter((note) => note.includes(CHART));
+
+    assert.deepStrictEqual([picked.action, kept.length], ['merged', 1], 'the merge kept this machine\'s chart beside the remote\'s, a note saying so');
+    assert.deepStrictEqual(catchUpState(here.root).warnings, kept);
+    assert.deepStrictEqual(catchUpState(here.root).warnings, [], 'the note is handed on once');
+    assert.deepStrictEqual(mergeLeftovers(here.root), []);
+  });
+
   it('with every field picked offline, is not asked again, and the next catch-up finishes it', () => {
     const { here, bare } = stopped();
     const away = path.join(world(), 'moved-away.git');

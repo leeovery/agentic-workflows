@@ -91,7 +91,7 @@ If the boot response carries `warnings`, surface them first. Then fetch the stop
 node .claude/skills/leeway-engine/scripts/engine.cjs render state-lost-gate
 ```
 
-A `next` is a boot: branch on its response from the top of **Step 0.1**. A null `next` ends the start: **STOP.** Do not proceed — terminal condition.
+A `next` is a boot: run it as this step runs boot, with `dangerouslyDisableSandbox: true`, and branch on its response from the top of **Step 0.1**. A null `next` ends the start: **STOP.** Do not proceed — terminal condition.
 
 #### If `state` is `merge`
 

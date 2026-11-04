@@ -50,7 +50,9 @@
 //   met before is asked.
 //   Picks are recorded one at a time, each naming the choice its screen
 //   showed; a pick naming any other choice than the one the merge now asks
-//   is not taken. The last pick finishes the merge (4.7.11).
+//   is not taken. The last pick finishes the merge (4.7.11), and keeps its
+//   notes beside the stop for the next catch-up to answer once, so boot
+//   tells the person what a stopped merge did as it tells them of any.
 //
 // Every git call goes through kernel/isolated-git, under the state's writer
 // lock, but those of the stop's screen, which reads the merge waiting on a
@@ -78,6 +80,7 @@ const { stateMergeGate } = require('./projections/state-merge.cjs');
 
 // Beside the merge's other files, in the worktree's git dir.
 const KEPT_STOP = 'leeway-merge.json';
+const KEPT_NOTES = 'leeway-merge-notes.json';
 
 const MERGE_ATTEMPTS = 3;
 const MERGE_MESSAGE = `state: merge onto the remote's ${STATE_BRANCH}`;
@@ -105,6 +108,7 @@ const NOT_ASKED = 'the pick answered a question the state merge no longer asks, 
  *   remotes: string[],
  *   main: import('../kernel/isolated-git.cjs').IsolatedGit,
  *   stopFile: string,
+ *   notesFile: string,
  *   listings: Map<string, Entries>,
  * }} State
  */
@@ -186,6 +190,7 @@ function openState(root, opts) {
     remotes: seen.remotes,
     main: isolatedGit(seen.main),
     stopFile: path.join(merge.gitDir, KEPT_STOP),
+    notesFile: path.join(merge.gitDir, KEPT_NOTES),
     listings: new Map(),
   };
 }
@@ -224,6 +229,28 @@ function keepStop(state, stop) {
 /** @param {State} state */
 function dropKeptStop(state) {
   fs.rmSync(state.stopFile, { force: true });
+}
+
+/**
+ * A merge the last pick finished, its notes kept for the next catch-up to
+ * hand on: the start boots again after the pick, and the person hears what
+ * the merge did through boot's warnings, as from a merge that never stopped.
+ * @param {State} state @param {CatchUpOutcome} finished
+ * @returns {CatchUpOutcome}
+ */
+function keepNotes(state, finished) {
+  if (!['stopped', 'unreachable'].includes(finished.action) && finished.warnings.length > 0) writeJsonAtomic(state.notesFile, { notes: finished.warnings });
+  return finished;
+}
+
+/**
+ * The notes a finished merge kept, taken once.
+ * @param {State} state @returns {string[]}
+ */
+function takeNotes(state) {
+  const kept = readRecord(state.notesFile);
+  fs.rmSync(state.notesFile, { force: true });
+  return Array.isArray(kept?.notes) ? kept.notes.filter((/** @type {unknown} */ note) => typeof note === 'string') : [];
 }
 
 /**
@@ -561,7 +588,12 @@ function timeoutsOf({ fetchTimeoutMs = FETCH_TIMEOUT_MS, pushTimeoutMs = PUSH_TI
  * @returns {CatchUpOutcome}
  */
 function catchUpState(root, opts = {}) {
-  return withStateLock(root, () => converge(openState(root, opts), timeoutsOf(opts), opts.listing));
+  return withStateLock(root, () => {
+    const state = openState(root, opts);
+    const kept = takeNotes(state);
+    const caught = converge(state, timeoutsOf(opts), opts.listing);
+    return { ...caught, warnings: [...new Set([...kept, ...caught.warnings])] };
+  });
 }
 
 /**
@@ -623,7 +655,7 @@ function pickStateMerge(root, key, choice, opts = {}) {
     if (waiting === null) throw new Error('no state merge is waiting on a pick');
     const { conflicts } = waiting;
     const asked = conflicts.find(open);
-    if (asked === undefined) return converge(state, timeoutsOf(opts));
+    if (asked === undefined) return keepNotes(state, converge(state, timeoutsOf(opts)));
     if (choiceId(asked) !== choice) return outcome(state, 'stopped', { conflicts, warnings: [NOT_ASKED] });
     if (isNotice(asked)) {
       const past = 'madeTwice' in asked ? 'names made on both machines' : 'a consolidation report set aside';
@@ -634,7 +666,7 @@ function pickStateMerge(root, key, choice, opts = {}) {
     }
     keepStop(state, { conflicts });
     if (conflicts.some(open)) return outcome(state, 'stopped', { conflicts });
-    return converge(state, timeoutsOf(opts));
+    return keepNotes(state, converge(state, timeoutsOf(opts)));
   });
 }
 

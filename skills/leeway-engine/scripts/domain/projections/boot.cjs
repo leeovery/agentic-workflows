@@ -5,10 +5,10 @@
 // user before any work is on the table: the state lost, the GitHub rule's
 // offer, the migration confirm, the label opt-in, the brownfield offer — the
 // stops on a git below the engine's floor, in a folder in no git repository
-// and at a directive of the migration not yet done, and the knowledge gate's displays. Pure renderers;
-// none reads state (the calling prose branches on the boot response and
-// fetches the gate at its display point, and the render surface reads what
-// a display names).
+// and at a directive of the migration not yet done, and the knowledge gate's
+// displays. Pure renderers; none reads state (the calling prose branches on
+// the boot response and fetches the gate at its display point, and the
+// render surface reads what a display names).
 // ---------------------------------------------------------------------------
 
 const { section, menu, cmdOption, promptOption, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, emitAs, MENU_INSTRUCTION } = require('./surfaces.cjs');

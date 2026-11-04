@@ -221,16 +221,21 @@ describe('the stop\'s screen (4.7.6)', () => {
     assert.deepStrictEqual(gate.options.map((o) => [o.key, o.head, o.tail]), [['1', 'next', "this machine's"], ['2', 'someday', "the remote's"]]);
   });
 
-  it('leads each row to its pick of the choice shown — a field\'s two sides, a notice\'s one row carrying on', () => {
-    const notices = [
-      { file: '.store/tasks.jsonl', uncommitted: false, beside: '.store/tasks.0123abcd.jsonl', pick: null, madeTwice: [{ kind: 'task', said: 'task 2.2 of pay' }], again: [] },
-      { file: 'pay/build/phases/phase-2/consolidation.md', uncommitted: false, beside: 'pay/build/phases/phase-2/consolidation.0123abcd.md', pick: null, setAside: { phase: 2, stays: true, renumbered: [{ from: 3, to: 4 }] } },
+  it('leads each row to its pick of the choice shown — a field\'s two sides, a notice\'s one row carrying on — the first open one, never the first of all', () => {
+    const madeTwice = { file: '.store/tasks.jsonl', uncommitted: false, beside: '.store/tasks.0123abcd.jsonl', pick: null, madeTwice: [{ kind: 'task', said: 'task 2.2 of pay' }], again: [] };
+    const setAside = { file: 'pay/build/phases/phase-2/consolidation.md', uncommitted: false, beside: 'pay/build/phases/phase-2/consolidation.0123abcd.md', pick: null, setAside: { phase: 2, stays: true, renumbered: [{ from: 3, to: 4 }] } };
+    const second = { field: ['defaults', 'plan_format'], label: conflictLabel(layout.projectManifest, ['defaults', 'plan_format'], 'Fumi') };
+    const stops = [
+      [stopOf({}).conflicts, 0],
+      [stopOf({ pick: 'local' }, second).conflicts, 1],
+      [[...stopOf({ pick: 'local' }).conflicts, madeTwice], 1],
+      [[setAside], 0],
     ];
-    for (const conflicts of [stopOf({}).conflicts, ...notices.map((notice) => [notice])]) {
+    for (const [conflicts, at] of stops) {
       openGate();
       stateMergeGate({ conflicts });
-      const pick = (/** @type {string} */ key) => ({ kind: 'engine', argv: ['state-merge', 'pick', key, choiceId(conflicts[0])] });
-      assert.deepStrictEqual(gateShown()?.options.map((o) => o.next), conflicts[0].field ? [pick('1'), pick('2')] : [pick('1')]);
+      const pick = (/** @type {string} */ key) => ({ kind: 'engine', argv: ['state-merge', 'pick', key, choiceId(conflicts[at])] });
+      assert.deepStrictEqual(gateShown()?.options.map((o) => o.next), conflicts[at].field ? [pick('1'), pick('2')] : [pick('1')], `the choice at ${at}`);
     }
   });
 
