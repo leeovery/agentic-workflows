@@ -231,10 +231,29 @@ async function keep($: EngineInterface, state: State, id: string, discussion: Di
 }
 
 /**
+ * Sends a press's one line to Claude, the discussion it leads to kept
+ * already; a line dropped or failed puts back the discussion as it was
+ * `before`.
+ */
+async function speak($: EngineInterface, state: State, id: string, line: string, before: Discussion) {
+  try {
+    const { drop } = await $.prompt.submit({ text: line })
+
+    if (drop !== undefined) {
+      await keep($, state, id, before)
+    }
+  } catch {
+    await keep($, state, id, before).catch(() => undefined)
+  } finally {
+    state.isSpeaking = false
+  }
+}
+
+/**
  * Does what a press on `key` does to the discussion, saying its one line to
- * Claude where it says one — never while another is being sent, and a line
- * dropped or failed leaving the discussion as it was; false for a key that
- * is not the discussion's.
+ * Claude where it says one — never while another is being sent. The line
+ * goes after the press, which a send Claude Code takes its time over never
+ * holds up; false for a key that is not the discussion's.
  */
 async function discussOn($: EngineInterface, state: State, key: string): Promise<boolean> {
   const id = await $.session.id()
@@ -260,17 +279,15 @@ async function discussOn($: EngineInterface, state: State, key: string): Promise
 
   try {
     await keep($, state, id, press.discussion)
-
-    const { drop } = await $.prompt.submit({ text: press.line })
-
-    if (drop !== undefined) {
-      await keep($, state, id, before)
-    }
   } catch {
-    await keep($, state, id, before).catch(() => undefined)
-  } finally {
     state.isSpeaking = false
+    state.talk = { id, discussion: before }
+    $.ui.invalidate('ui.render')
+
+    return true
   }
+
+  void speak($, state, id, press.line, before)
 
   return true
 }

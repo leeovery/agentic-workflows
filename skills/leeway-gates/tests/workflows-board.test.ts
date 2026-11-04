@@ -83,8 +83,9 @@ const refusal = (error: string): Reply => ({ exitCode: 1, stdout: '', stderr: `$
  * the rows the band beneath the banner was given, `sent` whatever
  * reached the conversation or the prompt box, `scrolled` each scroll of
  * the pane Claude Code was left to move, and `files` what the mod
- * wrote, by path, beside what was there before it (`kept`); a send is
- * dropped while `drops` says why.
+ * wrote, by path, beside what was there before it (`kept`), and the
+ * discussion kept as each send was made (`atSend`); a send is dropped,
+ * fails or is held open as told.
  */
 function world(
   on: On,
@@ -110,6 +111,9 @@ function world(
   let replies = options.replies ?? (() => boardReply(BUILD_BOARD))
   let said = (_command: string): string => ENGINE_SAID
   let drops: string | undefined
+  let fails = false
+  let held: Promise<void> | null = null
+  const atSend: (string | undefined)[] = []
   const files = new Map<string, string>(Object.entries(options.kept ?? {}))
   let sessionId = 's0'
   let takesMs = 0
@@ -198,7 +202,17 @@ function world(
     return { isFilled: true }
   })
 
-  on('prompt.submit', ($, e) => {
+  on('prompt.submit', async ($, e) => {
+    atSend.push(files.get(`${DEFAULT_CONFIG}/conversations/${sessionId}/discussing.json`))
+
+    if (held !== null) {
+      await held
+    }
+
+    if (fails) {
+      throw new Error('the prompt could not be sent')
+    }
+
     if (drops !== undefined) {
       return { text: e.text, drop: drops }
     }
@@ -238,6 +252,25 @@ function world(
     dropping(why: string | undefined) {
       drops = why
     },
+    /** Each send failing from now on. */
+    failing() {
+      fails = true
+    },
+    /** Each send held open from now on, until the function this answers is called. */
+    holding(): () => void {
+      let release = () => undefined as void
+
+      held = new Promise(resolve => {
+        release = () => {
+          held = null
+          resolve()
+        }
+      })
+
+      return () => release()
+    },
+    /** The discussion the conversation's folder kept as each send was made. */
+    atSend,
   }
 }
 
@@ -614,7 +647,7 @@ describe('what turns', () => {
 })
 
 describe('the conversation, whether the board is up or hidden', () => {
-  test('gets each engine call\'s result as Claude Code answered it, and nothing the board does reaches it or the prompt box', async ($, on) => {
+  test('gets each engine call\'s result as Claude Code answered it, and moving about the board sends nothing to it or the prompt box', async ($, on) => {
     const { clock, sent } = world(on)
     const band = await mounted($, clock)
     const hidden = await engineCall($, clock)
@@ -755,7 +788,7 @@ describe('ready to discuss', () => {
   })
 
   test('20.S4: "▸ send to Claude" sends the queue as one message in the order queued, keeps the discussion where the engine reads it, and the banner says what is discussed', async ($, on) => {
-    const { clock, sent, files } = world(on)
+    const { clock, sent, files, atSend } = world(on)
     const pane = await mounted($, clock, PANE_MOUNT)
     const band = await mounted($, clock)
 
@@ -768,19 +801,10 @@ describe('ready to discuss', () => {
 
     expect(sent).toEqual(['submit Ready to discuss 2 waiting questions, in this order: Q1, Q2.'])
     expect(keptIn(files)).toEqual({ discussing: 'Q1', queue: ['Q2'] })
+    expect(atSend, 'kept before the line is sent, for the engine to read as Claude answers it').toEqual([JSON.stringify({ discussing: 'Q1', queue: ['Q2'] })])
     expect(await bannerOf(band)).toBe(building('⚑ Discussing Q1 · task 6.7 "Every abort at the review gate unwinds" · 1 more to discuss'))
     expect(await bannerButtons(band)).toEqual(['discussion:skip', 'discussion:cancel', 'board:toggle'])
     expect(await boxIn(pane), 'the box sent empties').toEqual([])
-  })
-
-  test('20.6.6: every question waiting sent at once is "all" of them', async ($, on) => {
-    const { clock, sent } = world(on)
-    const band = await mounted($, clock)
-
-    await band.press({ key: 'discuss:all' })
-    await band.press({ key: 'ready:send' })
-
-    expect(sent).toEqual(['submit Ready to discuss all 3 waiting questions, in this order: Q1, Q2, Q3.'])
   })
 
   test('20.2.4: one question waiting puts "▸ discuss" on the banner, which queues it; sent alone, it goes with its wording', async ($, on) => {
@@ -917,6 +941,89 @@ describe('ready to discuss', () => {
     const { clock } = world(on, { kept: { [DISCUSSING]: JSON.stringify({ discussing: 'Q2', queue: ['Q3'] }) } })
 
     expect(await bannerOf(await mounted($, clock))).toBe(`${DISCUSSING_Q2} · 1 more to discuss`)
+  })
+
+  test('a press while a line is being sent sends nothing more', async ($, on) => {
+    const { clock, sent, files, holding } = world(on)
+    const band = await mounted($, clock)
+
+    await band.press({ key: 'discuss:all' })
+
+    const release = holding()
+    const sending = band.press({ key: 'ready:send' })
+
+    await clock.settle()
+    await band.press({ key: 'discussion:cancel' })
+    release()
+    await sending
+
+    expect(sent).toEqual(['submit Ready to discuss all 3 waiting questions, in this order: Q1, Q2, Q3.'])
+    expect(keptIn(files)).toEqual({ discussing: 'Q1', queue: ['Q2', 'Q3'] })
+  })
+
+  test('a send that fails leaves the queue in the box and the discussion as it was', async ($, on) => {
+    const { clock, sent, files, failing } = world(on)
+    const band = await mounted($, clock)
+
+    await band.press({ key: 'discuss:all' })
+    failing()
+    await band.press({ key: 'ready:send' })
+
+    expect(sent).toEqual([])
+    expect(keptIn(files)).toEqual({ discussing: null, queue: [] })
+    expect(await bannerOf(band)).toBe(building('⚑ 3 queued to discuss'))
+  })
+
+  test('a /clear\'s conversation starts with no discussion, reading its own folder, and keeps its own there, the earlier one\'s left as it was', async ($, on) => {
+    const earlier = JSON.stringify({ discussing: 'Q2', queue: ['Q3'] })
+    const { clock, files, becomes } = world(on, { kept: { [DISCUSSING]: earlier } })
+
+    expect(await bannerOf(await mounted($, clock))).toBe(`${DISCUSSING_Q2} · 1 more to discuss`)
+
+    becomes('s1')
+
+    const cleared = await mounted($, clock, BAND_MOUNT, 'cleared')
+
+    expect(await bannerOf(cleared)).toBe(building('1 building · 1 in review · ⚑ 3 waiting on you'))
+
+    await cleared.press({ key: 'discuss:all' })
+    await cleared.press({ key: 'ready:send' })
+
+    expect(JSON.parse(files.get(`${DEFAULT_CONFIG}/conversations/s1/discussing.json`) ?? 'null')).toEqual({ discussing: 'Q1', queue: ['Q2', 'Q3'] })
+    expect(files.get(DISCUSSING)).toBe(earlier)
+  })
+
+  test('a question the board no longer lists is neither drawn, pressed nor kept', async ($, on) => {
+    const { clock, sent, files, answers } = world(on)
+    const pane = await mounted($, clock, PANE_MOUNT)
+    const band = await mounted($, clock)
+
+    await band.press({ key: 'discuss:all' })
+    answers(() => boardReply(waitingOnly('Q1', 'Q3')))
+    await engineCall($, clock)
+    expect(await bannerOf(band)).toBe(building('⚑ 2 queued to discuss'))
+
+    await pane.press({ key: 'drop:Q1' })
+    await band.press({ key: 'ready:send' })
+
+    expect(sent).toEqual(['submit Ready to discuss Q3: While a regeneration runs as chunks, should plain mode (CI and agents) print a line as each part finishes, or one line when the whole wave is done?'])
+    expect(keptIn(files)).toEqual({ discussing: 'Q3', queue: [] })
+  })
+
+  test('20.S14: docked, a pane grown past how far it was scrolled draws from the top again', async ($, on) => {
+    const { clock } = world(on)
+    const pane = await mounted($, clock, paneAt('dock', 6))
+    const band = await mounted($, clock)
+
+    await band.press({ key: 'discuss:all' })
+    await pane.press({ key: 'drop:Q2' })
+    await pane.press({ key: 'drop:Q3' })
+    await $.ui.scroll(wheel(3, 6))
+    expect(await keysIn(pane, 'scrolled')).toEqual(['tabs:rule', 'blank:tabs'])
+
+    await pane.redraw(paneAt('dock', 12).props)
+
+    expect(await keysIn(pane, 'scrolled')).toEqual(['tabs', 'tabs:rule', 'blank:tabs'])
   })
 
   test('20.S14: docked, READY TO DISCUSS stays at the pane\'s foot while the person scrolls what is above it, no further than its last line', async ($, on) => {

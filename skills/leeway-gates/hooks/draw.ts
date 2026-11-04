@@ -212,6 +212,46 @@ export const textOf = (els: ElementTable, part: Part) =>
 export const buttonOf = (els: ElementTable, { key, label }: Button) =>
   els.Button({ key, plain: true, onPress: () => undefined, children: [els.Text({ color: COLOUR.thisView, children: [label] })] })
 
+/** The rows `text` takes wrapped at word breaks in `room` cells, a word longer than the room broken across rows. */
+function wrappedRows(text: string, room: number): number {
+  let rows = 1
+  let used = 0
+
+  for (const word of text.split(' ')) {
+    const cells = [...word].length
+    const needs = used === 0 ? cells : used + 1 + cells
+
+    if (needs <= room) {
+      used = needs
+    } else {
+      const spans = Math.max(1, Math.ceil(cells / room))
+
+      rows += spans - (used === 0 ? 1 : 0)
+      used = cells - (spans - 1) * room
+    }
+  }
+
+  return rows
+}
+
+/**
+ * The rows a line takes `width` cells across, as `drawLine` lays it out:
+ * one, or for a line that wraps, as many as its words wrap to in the cells
+ * its mark, leading button and end button leave beside them.
+ */
+export function rowsOf(line: Line, width: number): number {
+  if (line.wraps !== true) {
+    return 1
+  }
+
+  const beside = widthOf([
+    ...(line.mark === undefined ? [] : [line.mark]),
+    ...[line.lead, line.button].flatMap(button => (button === undefined ? [] : [{ text: button.label }])),
+  ])
+
+  return wrappedRows(line.parts.map(part => part.text).join(''), Math.max(1, width - beside))
+}
+
 /** A line as the pane draws it. */
 export function drawLine(els: ElementTable, line: Line): RenderElement {
   const { Box, Text, Button } = els

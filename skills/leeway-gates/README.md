@@ -253,8 +253,9 @@ while another screen — Remote Control's, say — is attached beside the band's
 The banner names the work and where it stands: the session's mark — ◐ running,
 ⚑ waiting on you, ✓ done, none where neither — the work's name in bold, then
 its facts in grey, each one that waits on you in peach behind a ⚑, and at its
-right `▸ show board` while the pane is hidden, `hide board` while it is up. A
-banner too long for the band is cut from its right end, its button kept. It
+right the buttons Ready to discuss gives it (below), then `▸ show board`
+while the pane is hidden, `hide board` while it is up. A banner too long for
+the band is cut from its right end, its buttons kept. It
 sits beneath a gate's rows, which are drawn in the rows it leaves; a survey
 holds the band alone.
 
@@ -298,7 +299,8 @@ nothing the board does fills the prompt box.
 
 The questions waiting on the person in a build are a mailbox the board shows
 and never answers. Each has `▸ discuss` beside it in WAITING ON YOU, whose
-heading carries `▸ discuss all` while more than one waits, and the banner
+heading carries `▸ discuss all` while more than one waits and any is neither
+queued nor under discussion, and the banner
 carries `▸ discuss` for one question or `▸ discuss all` for several. A press
 queues the question in READY TO DISCUSS — `discuss all` every one waiting not
 yet queued, oldest first — and its row reads `queued ▸ unqueue`; `▸ unqueue`,

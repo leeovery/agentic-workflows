@@ -258,20 +258,17 @@ export function recordedIn(stdout: string): string[] {
 /** The question by its number. */
 const questionOf = (questions: readonly Question[], number: string) => questions.find(({ question }) => question === number)
 
-/** The build banner's words for its phase, and for a build that has stopped (domain/projections/board-build.cjs). */
+/** The build banner's word for its phase (domain/projections/board-build.cjs). */
 const PHASE = 'build'
-const STOPPED = 'stopped'
 
 /**
- * The banner's facts in a build that say where the session is: its type
- * and phase, which the build's banner names first, after "stopped" where it
- * leads. A queue or a discussion takes the place of everything after them,
- * as the locked board draws it.
+ * The banner's facts in a build that say where the session is: "stopped"
+ * where nothing can proceed, then its type and phase, as the build's banner
+ * leads with them. A queue or a discussion takes the place of everything
+ * after them, as the locked board draws it.
  */
 function whereOf(facts: readonly Fact[]): Fact[] {
-  const at = facts.findIndex(({ text }) => text === PHASE)
-
-  return facts.slice(0, at + 1).filter(({ text }) => text !== STOPPED)
+  return facts.slice(0, facts.findIndex(({ text }) => text === PHASE) + 1)
 }
 
 const fact = (text: string, needs = false): Fact => ({ text, needs })
@@ -396,8 +393,8 @@ function standingOf(question: Question, discussion: Discussion, width: number, n
 
 /**
  * WAITING ON YOU (20.5.3, 20.6.4, 20.6.11): its heading with the count,
- * "▸ discuss all" while more than one waits loose with nothing under
- * discussion, "▸ cancel all" while more follow the one discussed; each
+ * "▸ cancel all" while more follow the one discussed, else "▸ discuss all"
+ * while more than one waits and any is neither queued nor discussed; each
  * question by its number and full wording, then what it parks, how long it
  * has waited and where it stands. Nothing while none waits.
  */
@@ -407,12 +404,10 @@ export function waitingLines(questions: readonly Question[], discussion: Discuss
   }
 
   const button: Button | undefined =
-    discussion.discussing === null
-      ? looseOf(discussion, questions).length > 1
+    discussion.discussing !== null && discussion.queue.length > 0
+      ? CANCEL_ALL_BUTTON
+      : questions.length > 1 && looseOf(discussion, questions).length > 0
         ? { key: DISCUSS_ALL, label: '▸ discuss all' }
-        : undefined
-      : discussion.queue.length > 0
-        ? CANCEL_ALL_BUTTON
         : undefined
 
   return [

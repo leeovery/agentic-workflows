@@ -22,7 +22,7 @@
  */
 import type { ElementTable, RenderElement } from 'claude-code'
 
-import { COLOUR, blank, cutTo, drawLine, foldKey, widthOf, type Button, type Kit, type Line, type Part } from './draw.ts'
+import { COLOUR, blank, cutTo, drawLine, foldKey, rowsOf, widthOf, type Button, type Kit, type Line, type Part } from './draw.ts'
 import { BOARD_VERSION, isUnavailable, type Answer, type Board, type Reading, type Tab, type View } from './model.ts'
 import type { Views } from './views/index.ts'
 
@@ -286,10 +286,6 @@ export const isPinned = ({ lines, placement }: Foot) => lines.length > 0 && plac
 
 /** The line between what is above the foot and its box. */
 const FOOT_GAP = blank('foot')
-
-/** The rows a line takes `width` cells across: one, or as many as its words wrap to. */
-const rowsOf = (line: Line, width: number) =>
-  line.wraps === true ? Math.max(1, Math.ceil(widthOf([...(line.mark === undefined ? [] : [line.mark]), ...line.parts]) / width)) : 1
 
 /**
  * The furthest a pinned foot's lines scroll: the fewest lines left out at

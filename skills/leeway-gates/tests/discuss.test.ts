@@ -14,6 +14,7 @@ import {
   type Discussion,
 } from '../hooks/discuss.ts'
 import type { Line, Part } from '../hooks/draw.ts'
+import { lastOffset } from '../hooks/pane.ts'
 import BUILD from './fixtures/board-build.mjs'
 
 tier('user')
@@ -67,8 +68,17 @@ describe('WAITING ON YOU', () => {
       '     parks 6.5 · waiting 10m                         ▸ discuss',
     ])
     expect(under.map(line => line.button?.key).filter(Boolean)).toEqual(['discussion:cancel', 'discussion:skip', 'discuss:Q3'])
-    expect(shown(last[0] as Line), 'one loose waiting: no "discuss all" while one is discussed').toBe('WAITING ON YOU ───────────────────────────────────────────── 3')
     expect(standing(last)[1]).toBe('     parks 6.8, and 2 after it · wai… being discussed ▸ cancel')
+  })
+
+  test('20.5.3: the heading carries "▸ discuss all" while more than one waits and any is neither queued nor discussed — the one discussed alone, or some queued; with every one queued or discussed, nothing', () => {
+    const headed = (given: Partial<Discussion>, questions = QUESTIONS) => shown(waitingLines(questions, discussion(given), WIDTH, NOW)[0] as Line)
+    const ALL = 'WAITING ON YOU ───────────────────────────── 3 · ▸ discuss all'
+
+    expect([headed({ discussing: 'Q2' }), headed({ ready: ['Q1', 'Q3'] }), headed({})]).toEqual([ALL, ALL, ALL])
+    expect(headed({ ready: ['Q1'] }, QUESTIONS.slice(0, 2))).toBe('WAITING ON YOU ───────────────────────────── 2 · ▸ discuss all')
+    expect(headed({ ready: ['Q1', 'Q3'], discussing: 'Q2' })).toBe('WAITING ON YOU ───────────────────────────────────────────── 3')
+    expect(headed({}, QUESTIONS.slice(0, 1)), 'one waiting').toBe('WAITING ON YOU ───────────────────────────────────────────── 1')
   })
 
   test('a question parking no task says so, one with a task after it names it, and one parked under a minute ago says so; with none waiting, nothing', () => {
@@ -100,6 +110,14 @@ describe('READY TO DISCUSS', () => {
       '▸ send to Claude                                  ▸ cancel all',
     ])
     expect(lines.flatMap(line => [line.lead?.key, line.button?.key]).filter(Boolean)).toEqual(['drop:Q1', 'ready:send', 'ready:cancel'])
+  })
+
+  test('20.6.5, 20.S14: docked, scrolled to its end, the last row of a wrapped question shows above the box', () => {
+    const lines = waitingLines(QUESTIONS.slice(0, 1), discussion({ ready: ['Q1'] }), 78, NOW)
+    const box = readyLines(QUESTIONS, discussion({ ready: ['Q1'] }), 78)
+
+    expect(lines.map(line => line.key)).toEqual(['waiting', 'q:Q1', 'qt:Q1', 'blank:waiting'])
+    expect(lastOffset({ tabs: null, lines }, { lines: box, placement: 'dock', bodyRows: 9, offset: 0 }, 78), 'Q1 wraps to three rows: with the heading, six rows in the five the box leaves').toBe(1)
   })
 
   test('nothing while none is queued', () => {
@@ -236,12 +254,15 @@ describe('the banner', () => {
     expect(facts({ discussing: 'Q1', ready: ['Q3'] })).toEqual(['feature · build · ⚑ Discussing Q1 · task 6.7 "Every abort at the review gate unwinds" · 1 queued', '▸ send to Claude ▸ cancel'])
   })
 
-  test('a build stopped drops "stopped" from the facts a discussion keeps, its mark kept; a question parking no task names none', () => {
+  test('20.2.4, 12.13.22: a build stopped keeps "stopped" leading the facts, and its mark, while questions are queued or discussed; a question parking no task names none', () => {
     const stopped = { ...banner, state: 'needs' as const, facts: [{ text: 'stopped', needs: false }, ...banner.facts] }
     const [question] = QUESTIONS
-    const { banner: drawn } = discussedBanner(stopped, discussion({ discussing: 'Q1' }), [{ ...question!, parks: [] }])
+    const drawn = (given: Partial<Discussion>) => discussedBanner(stopped, discussion(given), [{ ...question!, parks: [] }]).banner
 
-    expect(drawn.state).toBe('needs')
-    expect(drawn.facts.map(fact => fact.text)).toEqual(['feature', 'build', 'Discussing Q1'])
+    expect(drawn({ discussing: 'Q1' }).state).toBe('needs')
+    expect([drawn({ discussing: 'Q1' }), drawn({ ready: ['Q1'] })].map(({ facts }) => facts.map(fact => fact.text))).toEqual([
+      ['stopped', 'feature', 'build', 'Discussing Q1'],
+      ['stopped', 'feature', 'build', '1 queued to discuss'],
+    ])
   })
 })

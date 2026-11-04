@@ -848,23 +848,18 @@ describe('the discussion queue the gate mod keeps (P16, 20.6.9)', () => {
     return found[1];
   };
 
-  it('the engine reads the queue by the file the mod writes and the shape it writes it in, the next the first still waiting after those recorded; its receipts open with the words the mod reads them by; a queue emptied names none', () => {
+  it('the engine reads the queue by the name the mod writes it under, a queue emptied naming no next; its receipts open with the words the mod reads them by', () => {
     parked(1, '2.3');
     parked(2, '2.4', { question: full(made.size) });
-    parked(3, '2.5', { question: full(made.title) });
     assert.strictEqual(modLiteral('DISCUSSING'), DISCUSSING);
 
-    discussing({ discussing: 'Q1', queue: ['Q2', 'Q3'] });
-    const aside = ok(dir, ['raise', 'aside', UNIT, 'Q1'], { env: conversation() });
-    discussing({ discussing: 'Q2', queue: ['Q3'] });
-    const { receipt: answered } = drawnAndPicked('Q2');
     discussing({ discussing: null, queue: [] });
-    const quiet = ok(dir, ['raise', 'aside', UNIT, 'Q3'], { env: conversation() });
+    const aside = ok(dir, ['raise', 'aside', UNIT, 'Q1'], { env: conversation() });
+    const { receipt: answered } = drawnAndPicked('Q2');
 
-    assert.deepStrictEqual([aside, answered, quiet], [
-      { ok: true, receipt: `Q1 ${modLiteral('SET_ASIDE')} · still waiting · 3 waiting on you · next: Q2` },
-      `Q2 ${modLiteral('ANSWERED')} · task 2.4 builds again · 2 waiting on you · next: Q3`,
-      { ok: true, receipt: `Q3 ${modLiteral('SET_ASIDE')} · still waiting · 2 waiting on you` },
+    assert.deepStrictEqual([aside, answered], [
+      { ok: true, receipt: `Q1 ${modLiteral('SET_ASIDE')} · still waiting · 2 waiting on you` },
+      `Q2 ${modLiteral('ANSWERED')} · task 2.4 builds again · 1 waiting on you`,
     ]);
   });
 });
