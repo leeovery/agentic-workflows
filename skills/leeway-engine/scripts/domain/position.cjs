@@ -512,12 +512,12 @@ function discoveryWork(skill, calls, log) {
  * A build's note, carried whole, as its entry reads it (build-entry.cjs):
  * the ledger's calls, the build's log, and where the build stands, with
  * the tasks in flight of the conversation the note is for.
- * @param {string} cwd @param {string} unit @param {InFlight[]} inFlight @returns {Omit<Work, 'skill'>}
+ * @param {string} cwd @param {string} unit @param {InFlight[]} inFlight @param {string} sessionId @returns {Omit<Work, 'skill'>}
  */
-function buildWork(cwd, unit, inFlight) {
+function buildWork(cwd, unit, inFlight, sessionId) {
   // Required here, as the build's entry puts its tasks in flight through
   // this module.
-  const { calls, documents, lines } = require('./build-entry.cjs').buildRecovery(cwd, unit, inFlight);
+  const { calls, documents, lines } = require('./build-entry.cjs').buildRecovery(cwd, unit, inFlight, sessionId);
   return { documents, whole: { calls, log: null, lines } };
 }
 
@@ -526,20 +526,21 @@ function buildWork(cwd, unit, inFlight) {
  * (review-entry.cjs): the record's call, each round's report, the spec, the
  * build's log, and where the phase stands, with the fix tasks in flight of
  * the conversation the note is for.
- * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {InFlight[]} inFlight @returns {Omit<Work, 'skill'>}
+ * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {InFlight[]} inFlight @param {string} sessionId @returns {Omit<Work, 'skill'>}
  */
-function reviewWork(cwd, unit, manifest, inFlight) {
+function reviewWork(cwd, unit, manifest, inFlight, sessionId) {
   // Required here, as the review phase's entry reaches this module through
   // the build's.
-  const { calls, documents, lines } = require('./review-entry.cjs').reviewRecovery(cwd, unit, manifest, inFlight);
+  const { calls, documents, lines } = require('./review-entry.cjs').reviewRecovery(cwd, unit, manifest, inFlight, sessionId);
   return { documents, whole: { calls, log: null, lines } };
 }
 
 /**
- * @param {string} cwd @param {Position} position @param {Manifest} manifest
+ * What the conversation `sessionId`, at `position`, re-reads.
+ * @param {string} cwd @param {Position} position @param {Manifest} manifest @param {string} sessionId
  * @returns {Work}
  */
-function workAt(cwd, position, manifest) {
+function workAt(cwd, position, manifest, sessionId) {
   const { name, phase } = position;
   const skill = skillAt(name, phase);
   if (skill === null) return { skill: null, documents: [] };
@@ -575,7 +576,7 @@ function workAt(cwd, position, manifest) {
     case 'planning':
       return { skill, documents: [path.join(plan, 'planning.md'), ...phaseTaskFiles(plan)] };
     case 'implementation': {
-      if (buildByCut(manifest)) return { skill, ...buildWork(cwd, name, position.tasks ?? []) };
+      if (buildByCut(manifest)) return { skill, ...buildWork(cwd, name, position.tasks ?? [], sessionId) };
       const tasks = position.tasks ?? [];
       if (tasks.length === 0) return { skill, documents: [] };
       const format = itemOf(manifest, 'planning', topic)?.format;
@@ -585,7 +586,7 @@ function workAt(cwd, position, manifest) {
       return { skill, documents: [...reading, ...tasks.flatMap((t) => taskFile(plan, internalIdOf(topic, t)))] };
     }
     case 'review':
-      if (buildByCut(manifest)) return { skill, ...reviewWork(cwd, name, manifest, position.tasks ?? []) };
+      if (buildByCut(manifest)) return { skill, ...reviewWork(cwd, name, manifest, position.tasks ?? [], sessionId) };
       return { skill, documents: [path.join(wu, 'review', topic, 'report.md')] };
     default:
       return { skill: null, documents: [] };
@@ -739,7 +740,7 @@ function positionReads(cwd, sessionId) {
   const where = placeName(position, manifest);
   const closed = closedReason(position, manifest);
   if (closed !== null) return nothing(`This conversation was working in ${where}, but ${closed}, so there is nothing to carry on from.`);
-  const work = workAt(cwd, position, manifest);
+  const work = workAt(cwd, position, manifest, sessionId);
   if (work.skill === null) return nothing(`This conversation is at ${where}, outside any phase, so there is nothing to carry on from.`);
   const root = codeRoot(cwd);
   const absolute = (/** @type {string} */ f) => path.resolve(root, f);

@@ -8,8 +8,9 @@
 // note a compaction hands up naming each — and done, and the task they held
 // up freed — the project's default task driver running its real tool, its
 // store on the state branch alone; a task landing on its
-// branch: a note for later banked, the fix round briefed from its pair's
-// reports, its account taken once a round passes, then done; and one stuck
+// branch: its builder briefed, a note for later banked, the fix round
+// briefed from its pair's reports in the conversation that briefed its
+// builder, its account taken once a round passes, then done; and one stuck
 // on a failed round, settled by the orchestrator, its account carrying what
 // was done.
 //
@@ -28,18 +29,21 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { stateGit, git } = require('./engine-harness.cjs');
+const { stateGit, git, accountTaken } = require('./engine-harness.cjs');
 const { Sim, sessionLog, startNew, carryOn, writePhaseTasks, worldFrom } = require('./pipeline-world.cjs');
 
 const { taskBranch } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/landing-names.cjs'));
 
 const WU = 'ledger';
 
-/** A feature with its build's first phase written, one task, and that task's branch cut in the project. */
+/** A feature with the spec its builder's brief draws on, its build's first phase written, one task, and that task's branch cut in the project. */
 const landingWorld = worldFrom('pipeline-tasks-landing-', (sim) => {
   startNew(sim, 'feature');
   const log = sessionLog(sim, WU);
   sim.run(['workunit', 'create', WU, 'feature', '--description', 'A ledger', '--session-log-file', log]);
+  sim.write(`.leeway/${WU}/spec.md`, '# Ledger\n\n## 1. The ledger\n\nThe ledger is written with its header first.\n');
+  stateGit(sim.dir, ['add', '-A']);
+  stateGit(sim.dir, ['commit', '-q', '-m', `spec(${WU}): the ledger`]);
   writePhaseTasks(sim, WU, 1, 'The ledger', [{ title: 'Write the ledger' }]);
   git(sim.dir, ['branch', taskBranch({ unit: WU, phase: 1, n: 1 }, 'feat', 'Write the ledger')]);
 });
@@ -84,7 +88,10 @@ describe('pipeline simulation: the tracker', () => {
     });
     assert.deepStrictEqual(carryOn(sim).position.tasks.map((/** @type {{task: string, worktree: string}} */ t) => [t.task, t.worktree]), ready.map((task, i) => [task, trees[i]]),
       'both are in flight in the conversation, each in its own worktree');
-    for (const task of ready) sim.run(['task', 'done', wu, task]);
+    for (const task of ready) {
+      accountTaken(sim.dir, wu, task);
+      sim.run(['task', 'done', wu, task]);
+    }
     assert.strictEqual(carryOn(sim).position.tasks, undefined, 'each done takes its task off');
 
     assert.deepStrictEqual(sim.run(['task', 'ready', wu]).tasks.map((/** @type {{task: string}} */ task) => task.task), ['1.3'],
@@ -99,9 +106,10 @@ describe('pipeline simulation: a task landing', () => {
   beforeEach(() => { sim = new Sim(landingWorld); });
   afterEach(() => { sim.destroy(); });
 
-  it('a task lands on its branch: a find beyond it banked as a note, its pair failing it on a bug, the fix round briefed from their reports, a round of nits passing it, its account taken, then done', () => {
+  it('a task lands on its branch: its builder briefed, a find beyond it banked as a note, its pair failing it on a bug, the fix round briefed from their reports, a round of nits passing it, its account taken, then done', () => {
     const wu = WU;
     sim.run(['task', 'start', wu, '1.1']);
+    sim.run(['brief', 'builder', wu, '1.1']);
 
     sim.run(['task', 'note', wu, '--file', sim.write(`.leeway/.cache/${wu}/build/note.md`, 'Reading the ledger back never checks its hash.\n')]);
     const report = (/** @type {number} */ round, /** @type {string} */ letter, /** @type {string} */ findings, /** @type {string} */ verdict) => sim.write(

@@ -2,8 +2,9 @@
 
 // ---------------------------------------------------------------------------
 // The task worktree suites' world and helpers (test-engine-task-worktree.cjs,
-// test-engine-task-worktree-end.cjs): the nested world (landing-world.cjs)
-// set to the local landing driver, phase 3's three tasks in the tracker,
+// test-engine-task-worktree-end.cjs, test-engine-task-worktree-held-out.cjs,
+// test-engine-task-worktree-submodules.cjs): the nested world
+// (landing-world.cjs) set to the local landing driver, phase 3's three tasks in the tracker,
 // built once per suite and copied for each test; a conversation of its own
 // for each that builds, its folder removed once the suite ends; the
 // worktree Claude Code's isolation makes for a builder, beside the project;
@@ -54,12 +55,20 @@ function building(dir, tasks) {
   return session;
 }
 
-/** The worktree Claude Code's isolation makes for a builder, on a branch of its own, beside the project. @param {string} dir @param {string} name */
-function isolation(dir, name) {
+/**
+ * The worktree Claude Code's isolation makes for a builder, on a branch of
+ * its own, beside the project, at `from` — the remote's default branch,
+ * whatever the checkout holds.
+ * @param {string} dir @param {string} name @param {string} [from]
+ */
+function isolation(dir, name, from = 'HEAD') {
   const tree = path.join(fs.realpathSync(path.dirname(dir)), 'worktrees', name);
-  git(dir, ['worktree', 'add', '-q', '-b', `worktree-agent-${name}`, tree]);
+  git(dir, ['worktree', 'add', '-q', '-b', `worktree-agent-${name}`, tree, from]);
   return tree;
 }
+
+/** Where a task stands in the tracker. @param {string} dir @param {string} task */
+const statusOf = (dir, task) => ok(dir, ['task', 'show', UNIT, task]).status;
 
 /** The argv laying a task's worktree out. @param {string} task */
 const layOut = (task) => ['task', 'worktree', UNIT, task];
@@ -87,5 +96,5 @@ const checkoutsOf = (tree, folders = ['.', NESTED.ext.folder, NESTED.lib.folder]
 });
 
 module.exports = {
-  SIDE, UNIT, FEES, SHOW, CAP, taskWorktreeWorld, as, building, isolation, layOut, layOutOrRefusal, madeIn, checkoutsOf,
+  SIDE, UNIT, FEES, SHOW, CAP, taskWorktreeWorld, as, building, isolation, layOut, layOutOrRefusal, madeIn, checkoutsOf, statusOf,
 };

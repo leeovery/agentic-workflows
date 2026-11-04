@@ -4,13 +4,16 @@
 // A task's worktree laid out (leeway-engine/scripts/domain/task-worktree.cjs,
 // `task worktree` in task-verbs.cjs; the record on the position, position.cjs
 // and conversation.cjs's `taskAt`): run by the builder in the worktree Claude
-// Code's isolation made, it makes the task's branch there in place, the
-// isolation's own branch left as it stands, and lays each child repository
-// out at its folder on the same branch — a submodule at the commit the
-// worktree's commit points it at, a clone at the branch it lands on, whatever
-// its checkout is on, a branch made already checked out as it stands, a
-// worktree already there on another branch taking it in place as the
-// project's own does, switched to where clean — recording the worktree
+// Code's isolation made, it makes the task's branch there where the task is
+// built on, never where the isolation started — a task of the cut on its
+// own phase's chain alone, at its tip in each repository holding it, else
+// at the tip of the branch it lands on —
+// the isolation's own branch left as it stands, and lays each child
+// repository out at its folder on the same branch — a submodule at the
+// commit the laid-out commit points it at, a clone at the branch it lands
+// on, whatever its checkout is on, a branch made already checked out as it
+// stands, a worktree already there on another branch taking it in place as
+// the project's own does, switched to where clean — recording the worktree
 // against the task, and answering a run again so (12.7.10); a task started
 // again after a `/clear` taking its branch over from the clean worktree it
 // was built in before, that worktree's child repositories' worktrees
@@ -21,10 +24,11 @@
 // checkout, refused with the way on, which lays it out once followed; every
 // refusal making nothing. Git layer: the task worktree world (task-worktree-world.cjs),
 // built once and copied for each test, an isolation's worktree beside the
-// project for each builder; a task of one of the review's fix phases made
-// on the unit's work not landed below it, at its tip in each repository
-// holding it (7.2.6). Taking the worktree apart as the task ends, and
-// tasks side by side: test-engine-task-worktree-end.cjs.
+// project for each builder; a task of the cut made on its own phase's
+// chain alone, never on another phase's work not landed, while one of the
+// review's fix phases is made on the unit's work not landed below it
+// (7.2.6). Taking the worktree apart as the task ends, and tasks side by
+// side: test-engine-task-worktree-end.cjs.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -36,8 +40,9 @@ const path = require('path');
 
 const { ok, refuses, git, tip, createFile, initRepo, addSubmodule, statePath, commitAll, FROZEN_AT } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
-const { NESTED, NESTED_TASKS, TRACKER, followRemedy } = require('./landing-world.cjs');
+const { NESTED, NESTED_TASKS, TRACKER, commitFiles, followRemedy } = require('./landing-world.cjs');
 const { readPosition } = require('../../skills/leeway-engine/scripts/domain/conversation.cjs');
+const { laidOutOf } = require('../../skills/leeway-engine/scripts/domain/round-report.cjs');
 const {
   SIDE, UNIT, FEES, SHOW, CAP, taskWorktreeWorld, as, building, isolation, layOut, layOutOrRefusal, madeIn, checkoutsOf,
 } = require('./task-worktree-world.cjs');
@@ -68,7 +73,7 @@ function followingRemedies(dir, tree, session) {
 }
 
 describe('task worktree: every repository laid out (12.7.10, 7.2.21)', () => {
-  it('makes the task\'s branch in place and lays each child repository out on it — a submodule at the commit the worktree\'s commit points it at, a clone at the branch it lands on, its checkout on a branch of its own — recording the worktree against the task, the isolation\'s branch left as it stands', () => {
+  it('makes the task\'s branch in place and lays each child repository out on it — a submodule at the commit the worktree\'s commit points it at, a clone at the branch it lands on, its checkout on a branch of its own — recording the worktree against the task and the commit each repository was laid out at, the isolation\'s branch left as it stands', () => {
     const at = project();
     git(at.ext, ['checkout', '-q', rates.branch]);
     git(at.lib, ['checkout', '-q', cache.branch]);
@@ -88,6 +93,33 @@ describe('task worktree: every repository laid out (12.7.10, 7.2.21)', () => {
     assert.notStrictEqual(tip(at.lib, NESTED.lib.into), tip(at.lib, 'HEAD'), 'the clone\'s own checkout is elsewhere');
     assert.deepStrictEqual([tip(at.dir, 'worktree-agent-a'), git(tree, ['status', '--porcelain'])], [was.head, was.status]);
     assert.deepStrictEqual(readPosition(session)?.tasks, [{ task: '3.1', builder: null, reviewers: [], worktree: tree }]);
+    assert.deepStrictEqual(laidOutOf(at.dir, { unit: UNIT, phase: 3, n: 1 }), { '': was.head, ext: tip(at.dir, 'HEAD:ext'), lib: tip(at.lib, NESTED.lib.into) });
+  });
+
+  it('12.7.10: lays a task of the cut out on its own phase\'s chain alone, never where the isolation started nor on another phase\'s work not landed — with nothing of its phase chained, at the tip of the branch each repository lands on; then at its chain\'s tip, so a phase relying on nothing unfinished, started beside one still open whose review\'s fix then moves its chain, lays its next task out with no refusal', () => {
+    const at = project();
+    const { show } = NESTED_TASKS;
+    for (const n of [1, 2]) TRACKER.done(statePath(at.dir), { unit: UNIT, phase: 1, n });
+    commitAll(at.dir, 'phase 1 done, at its review, none landed');
+    const session = building(at.dir, ['3.1', '3.2']);
+    const [a, b] = ['a', 'b'].map((name) => isolation(at.dir, name));
+    const started = tip(a, 'HEAD');
+    createFile(at.dir, 'later.txt', 'later\n');
+    commitAll(at.dir, 'the branch the project lands on moves on');
+
+    ok(a, layOut('3.1'), as(session));
+    const first = checkoutsOf(a);
+    createFile(a, 'fees.txt', 'fees\n');
+    git(a, ['add', 'fees.txt']);
+    git(a, ['commit', '-q', '-m', 'add fees']);
+    TRACKER.done(statePath(at.dir), { unit: UNIT, phase: 3, n: 1 });
+    commitAll(at.dir, 'task 3.1 chained');
+    commitFiles(at.dir, show.branch, show.branch, { 'show-fix.txt': 'fixed\n' });
+    ok(b, layOut('3.2'), as(session));
+
+    assert.notStrictEqual(started, tip(at.dir, 'main'), 'the isolation started behind the branch the project lands on');
+    assert.deepStrictEqual(first, [[FEES, tip(at.dir, 'main')], [FEES, tip(at.dir, 'main:ext')], [FEES, tip(at.lib, NESTED.lib.into)]]);
+    assert.deepStrictEqual(checkoutsOf(b), [[SHOW, tip(at.dir, FEES)], [SHOW, tip(at.dir, `${FEES}:ext`)], [SHOW, tip(at.lib, NESTED.lib.into)]]);
   });
 
   it('makes a task of one of the review\'s fix phases on the unit\'s work not landed below it, at that work\'s tip in each repository holding it — refused, making nothing, where the worktree has changes not committed (7.2.6)', () => {
@@ -106,9 +138,25 @@ describe('task worktree: every repository laid out (12.7.10, 7.2.21)', () => {
     const refused = madeIn(at);
     ok(a, layOut('3.1'), as(session));
 
-    assert.strictEqual(dirty, `task worktree: ${FEES} is made at ${tip(at.dir, show.branch).slice(0, 7)}, where the work below it not landed ends, and ${b} has changes not committed: app.txt, so nothing was laid out — commit them, or move them out of the way, then run it again`);
+    assert.strictEqual(dirty, `task worktree: ${FEES} is made at ${tip(at.dir, show.branch).slice(0, 7)}, where the task is built on, and ${b} has changes not committed: app.txt, so nothing was laid out — commit them, or move them out of the way, then run it again`);
     assert.deepStrictEqual(refused, before);
     assert.deepStrictEqual(checkoutsOf(a), [[FEES, tip(at.dir, show.branch)], [FEES, tip(at.ext, rates.branch)], [FEES, tip(at.lib, rates.branch)]]);
+  });
+
+  it('prepares each child repository it lays out as Claude Code prepares the root: the ignored files its own .worktreeinclude names copied, and the directories the project\'s settings name in worktree.symlinkDirectories linked', () => {
+    const at = project();
+    for (const [file, text] of Object.entries({ '.gitignore': '.env\n.secret\nvendor/\n', '.worktreeinclude': '.secret\n', '.env': 'LIB=1\n', '.secret': 'SECRET=1\n', 'vendor/kit.txt': 'kit\n' })) createFile(at.lib, file, text);
+    createFile(at.dir, '.claude/settings.local.json', JSON.stringify({ worktree: { symlinkDirectories: ['vendor'] } }));
+    const session = building(at.dir, ['3.1']);
+    const tree = isolation(at.dir, 'a');
+
+    ok(tree, layOut('3.1'), as(session));
+
+    const lib = path.join(tree, 'lib');
+    assert.deepStrictEqual(
+      [fs.readFileSync(path.join(lib, '.secret'), 'utf8'), fs.existsSync(path.join(lib, '.env')), fs.lstatSync(path.join(lib, 'vendor')).isSymbolicLink(), fs.realpathSync(path.join(lib, 'vendor'))],
+      ['SECRET=1\n', false, true, fs.realpathSync(path.join(at.lib, 'vendor'))],
+    );
   });
 
   it('answers each repository laid out already where it is run again, making nothing', () => {
@@ -194,7 +242,7 @@ describe('task worktree: every repository laid out (12.7.10, 7.2.21)', () => {
     assert.deepStrictEqual(madeIn(at), before);
   });
 
-  it('takes the branch in place where a worktree is on another branch, the project\'s own and a child\'s alike — made at its commit, or, made already and out nowhere, switched to where the worktree is clean', () => {
+  it('takes the branch in place where a worktree is on another branch, the project\'s own and a child\'s alike — made where the task is built on, or, made already and out nowhere, switched to where the worktree is clean', () => {
     const at = project();
     const session = building(at.dir, ['3.1', '3.2']);
     git(at.dir, ['branch', FEES, rates.branch]);
@@ -209,7 +257,7 @@ describe('task worktree: every repository laid out (12.7.10, 7.2.21)', () => {
     git(path.join(b, NESTED.lib.folder), ['checkout', '--', 'lib.txt']);
     ok(b, layOut('3.2'), as(session));
 
-    assert.deepStrictEqual(checkoutsOf(a), [[FEES, tip(at.dir, rates.branch)], [FEES, tip(at.dir, `${rates.branch}:ext`)], [FEES, tip(at.lib, cache.branch)]]);
+    assert.deepStrictEqual(checkoutsOf(a), [[FEES, tip(at.dir, rates.branch)], [FEES, tip(at.dir, `${rates.branch}:ext`)], [FEES, tip(at.lib, NESTED.lib.into)]]);
     assert.strictEqual(dirty, `task worktree: ${SHOW} is made already, and ${path.join(b, 'lib')} has changes not committed: lib.txt, so nothing was laid out — commit them, or move them out of the way, then run it again`);
     assert.deepStrictEqual(checkoutsOf(b)[2], [SHOW, tip(at.lib, cache.branch)]);
   });

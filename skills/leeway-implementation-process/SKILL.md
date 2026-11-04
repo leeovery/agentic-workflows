@@ -1,323 +1,107 @@
 ---
 name: leeway-implementation-process
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *), Bash(node .claude/skills/leeway/scripts/gateway.cjs *)
+allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *)
 ---
 
-# Implementation Process
+# The Build
 
-Act as **expert implementation orchestrator** coordinating task execution across agents. Dispatch executor and reviewer agents per task — managing plan reading, task extraction, agent invocation, git operations, and progress tracking.
+The work unit's build: every phase of its cut, from its first phase's start to its last phase's close, then straight on into the review phase, all in this one conversation. You orchestrate and delegate: a task writer writes each phase's tasks as it starts, a builder builds each task, a pair of reviewers reviews it, and other agents consolidate a phase's notes and review the phase whole, each from a brief the engine issues and never from this conversation. You schedule the work, land what the agents find through the doors, fix the nits a review leaves, and keep the person out of it except where the engine stops for them. Nothing here decides the product afresh: the spec is concluded, and a call the build meets goes to the ledger or the person.
 
-## Purpose in the Workflow
+## Arguments
 
-Follows planning. Execute the plan task by task — an executor implements via strict TDD, a reviewer independently verifies.
-
-**Stay in your lane**: Execute the plan via strict TDD (or verification workflow for quick-fix). Don't re-debate decisions from the specification or expand scope beyond the plan. The plan is your authority — when unplanned work surfaces, it grows only through the ad hoc plan-changes route, never freelanced.
-
-### What This Skill Needs
-
-Positional arguments:
-- `$0` — **work_type**: `epic`, `feature`, `bugfix`, or `quick-fix`.
-- `$1` — **work_unit**: the work unit name.
-- `$2` — **topic**: the plan to execute. A single-topic unit's topic is the work unit, so it may be left off: topic = `$2`, or `$1` where `work_type` is not `epic`.
-
-The plan's phases, tasks, and acceptance criteria are read through its output format (the planning item's `format`). The specification it was built from, at `.workflows/{work_unit}/specification/{topic}/specification.md`, is the record behind it — the executor and reviewer both receive its path and read the sections each task cites.
-
----
+- `$0` — **work_type**: `epic`, `feature` or `bugfix`.
+- `$1` — **work_unit**.
 
 ## Instructions
 
 Load **[framework.md](../leeway-shared/references/framework.md)** and follow its instructions as written.
 
----
+## Done When
 
-## Resuming After Context Refresh
+Every phase of the unit's cut has closed, and the review phase, entered straight from here, has reached finish's yes.
 
-Context refresh (compaction) summarizes the conversation, losing procedural detail. This protocol serves a compaction inside a running session and nothing else — a session that opens fresh on work a previous session left in flight is not a refresh, and resumes through **Step 0** and the task loop, whose stage A takes an in-flight task to the gate it is sitting at.
+## Entering
 
-When you detect a context refresh has occurred — the conversation feels abruptly shorter, you lack memory of recent steps, or a summary precedes this message — follow this recovery protocol:
+Every engine call is `node .claude/skills/leeway-engine/scripts/engine.cjs {verb} …`, each verb under **Doors**; one made from a task's worktree runs as the entry's `engine`.
 
-1. **Re-read this skill file completely, then re-load [framework.md](../leeway-shared/references/framework.md).** Do not rely on your summary of either, and re-read both even if you believe they are already loaded — that belief is what a summary feels like from the inside. The full process, steps, and rules must be reloaded.
-2. **Check task progress in the plan** — use the plan adapter's instructions to read the plan's current state. Check manifest state for additional context.
-3. **Check gate modes and progress** via `engine manifest`:
-   ```bash
-   node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic}
-   ```
-   Check `task_gate_mode`, `fix_gate_mode`, `analysis_gate_mode`, `consolidation_gate_mode`, `fix_attempts`, and `analysis_cycle_total` — a gate reading `auto` or `bounded` was opted into earlier this session; preserve it. If `fix_attempts` > 0, you're mid-fix-loop for the current task. If `analysis_cycle_total` > 0, you've completed analysis cycles — check for findings files on disk (`analysis-*-c{cycle-number}.md` in the implementation directory) to determine mid-analysis state; findings files for the latest cycle that each record no findings mean that cycle came back clean and the session had moved on to the conclude gate — resume at **Step 9**, never in the loop. If `staging` holds an `ad-hoc-{n}` subtree with `pending` rows, an ad hoc addition died mid-gate — resume its walk at **[ad-hoc-plan-changes.md](references/ad-hoc-plan-changes.md)** section F; `approved` rows with no matching plan tasks mean the task writer never ran — re-invoke it (idempotent) per section G. A `staging.p{N}` subtree, or a phase whose tasks are all complete while `completed_phases` lacks it, is a consolidation boundary in flight — the task loop's guard routes it to stage J, whose resume guards (**[consolidation-pass.md](references/consolidation-pass.md)**) discriminate the exact seam. A `staging.p{N}` whose rows are all decided, with the phase in both `consolidated_phases` and `completed_phases`, is history, not a signal. `do_banking` is answered by `task start` and never stored — re-run `task start` for `current_task` (idempotent for the in-flight task) before resuming any stage that branches on it.
-4. **Check git state.** Run `node .claude/skills/leeway-engine/scripts/engine.cjs code status` to see uncommitted code across every repo in the project, and `git log --oneline -10` to see recent commits. Commit messages follow a conventional pattern that reveals what was completed.
-5. **Carry on from where the conversation was**, as if the break never happened — no recap and no announcement. Where the person's message is waiting, take it at the stage it arrived at, unless it only asks to carry on. Otherwise resume at the stage that shows the moment. Every gate menu and header is served by its own render surface, fetched by the stage that displays it — the task verbs answer with JSON only, and re-running one re-emits nothing. Re-enter that stage and let it fetch its sections: a pending fix gate at the gate fetch in **F. Fix Approval Gate** and a pending task gate at the gated fetch in **G. Task Gate** (**[task-loop.md](references/task-loop.md)**), a pending conclude gate at **Step 9**; a presentation moment re-runs its display reference (**[display-task-brief.md](references/display-task-brief.md)**, **[display-task-result.md](references/display-task-result.md)**), which rebuilds its payload before rendering. Never run `fix-attempt` or `analysis-cycle` to reconstruct position — each records a new attempt or cycle.
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs enter implementation {work_unit}
+```
 
-Do not guess at progress or continue from memory. The files on disk and git history are authoritative — your recollection is not.
+A refusal names the way on: say it in a line. Where another session holds the checkout's code or the unit's build, the entry asks first: emit its sections verbatim per their markers and follow the answer's `next`; carrying on from it ends the turn.
 
----
+Then read what the DATA names: the unit's `record` and its `affected` entries, by running each call, and the `build log`, beside the ledger. Each affected entry is confirmed (`ledger hold`) or replaced before the work resting on it goes on. The rest of the DATA is where the build stands:
+- Each `phase` line, and the `fixes owed` beneath one, say where the phase is.
+- Each task `in flight` says what it waits on. A task with no builder dispatched here goes the way its line names, through the task loop. One at its gate is drawn there again; one behind the task in flight, or parked on a question, waits — none of these is ever sent to a new builder.
+- `waiting` lists the questions waiting on the person.
+- A `merge waiting` is that phase's gate, which comes before anything else: load **[phase-close.md](references/phase-close.md)** and follow its instructions as written, from **The Merge**.
+- `finished` means the build is through: go on as **Closing** says.
 
-## Hard Rules
+In your own words, say in a line where the build stands and what comes first.
 
-1. **No autonomous decisions on product intent** — a product fork the record does not settle goes to the user and is never resolved on their behalf. A question the record settles lands silently, and an executor that could not finish comes back to the user as the retry — during the build a task is finished or it is being fixed.
-2. **All git operations are the orchestrator's responsibility** — agents never commit, stage, or interact with git.
+## The Build
 
----
+The phases run in the cut's order, each through three stretches:
+1. **Its start** — its tasks written and its start checklist closed: load **[phase-start.md](references/phase-start.md)** and follow its instructions as written, with N = `{N}`.
+2. **Its tasks** — each built, reviewed and landed: load **[the-task-loop.md](references/the-task-loop.md)** and follow its instructions as written, with place = `implementation` and N = the phase's number.
+3. **Its close** — its notes consolidated, its phase review, its stack merged and its close checklist closed: load **[phase-close.md](references/phase-close.md)** and follow its instructions as written, with N = `{N}`.
 
-## Ad Hoc Plan Changes
+Phases overlap where they can. A phase relying on nothing unfinished may start whenever you schedule it — usually as the one before goes into its phase review — and a phase relying on another waits for that one's merge. Its start checklist says which: `relies-on-done` stays open until what it relies on is done. Plan ahead and pull work forward through the tracker as you see fit; the tasks' links and the checklists hold the order.
 
-Unplanned work the user raises mid-implementation — a bug they hit while testing, a gap they name, a decision they change. When they do, load **[ad-hoc-plan-changes.md](references/ad-hoc-plan-changes.md)** and follow its instructions as written, from any point in the phase. Never fold unplanned work into the plan by hand.
+Nothing is finished while the cut holds a phase not yet written: no task ready with a phase still to start means that phase starts next.
 
-→ On return, resume the interrupted flow — a gate that was pending was set aside; once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes put it back — never fall through to Step 0.
+### The Person
 
----
+The build runs start to finish without the person, stopping only where the engine stops it. In the build, every question for the person goes through `raise`: one asked in plain prose is a slip. A question that waits parks its task, and whatever depends on it, while everything else carries on; say so in the one line the raise answers. A waiting question is never a gate, and the build never goes back to a menu for one.
+
+When nothing left can go on without an answer, the build stops with its report: fetch `render build-stop {work_unit}` and emit its sections verbatim per their markers, which ends the turn. It refuses while anything can go on, naming what: take that on instead.
+
+### The Build Log
+
+Append to the build's log, `.leeway/{work_unit}/build/log.md`, as the work goes: what is in flight, what was tried and dropped, and at each phase's close what it left for the next. It is read after a compaction and when the build resumes, so write it for a reader who has only it and the ledger.
+
+## Doors
+
+- A phase's tasks → the task writer: `brief task-writer {work_unit} {N}`, after `task phase {work_unit} {N} --title "{name}"`; the phase's start → `checklist show|done|skip|close phase-start {work_unit} {N}`.
+- What runs → `task ready {work_unit} [{N}]`, its `back` a task whose builder goes back in, `task start {work_unit} {task}`; its headline → `render build-headline {work_unit} --file {payload}`.
+- An agent → `brief builder|fix {work_unit} {task}`, `brief reviewer {work_unit} {task} --letter {letter}`, `brief consolidation {work_unit} {N}`, `brief phase-review {work_unit} {N} --letter {letter}`; then the Agent call with the agent and the pointer `brief` answers, or SendMessage of the pointer to the agent already working the task.
+- A builder's change, and your fix of a nit → `commit --paths {file}… --task {work_unit} {task} -m "{message}"`, from the task's worktree, yours run as the entry's `engine`.
+- What the task was not told → `task add {work_unit} {task} --file {addition} --by {by:[orchestrator|person]}`; a task's type → `task type`; its order → `task link {work_unit} {task} --after {task}`.
+- A note for later → `task note {work_unit} --file {note} [--phase {N}]`.
+- A stuck task, or a phase review that failed → `task settle {work_unit} {task} --file {why}`, `task settle {work_unit} --phase {N} --file {why} [--fixes {task},…]`.
+- A task landing → `task account {work_unit} {task}`, `render task-landed {work_unit} {task}`, `render step-gate {work_unit} {task}`, then `land open|chain {work_unit} {task}` and `task done {work_unit} {task}`; a task given up → `task close {work_unit} {task} --reason "{reason}"`; the phase's mutation run, the `next` of either ending its last task once its notes are consolidated, or named by `brief phase-review`'s refusal → `verify mutants {work_unit} {N}`.
+- A phase's merge → `render phase-merge-gate {work_unit} {N}`, `land phase {work_unit} {N}`; its close → `checklist show|close phase-close {work_unit} {N}`.
+- A call or a question → `ledger ask {work_unit}.implementation [--task {task}]`, then `raise {work_unit}.implementation --answers {question_id} [--parks {task}]`; a decision that must change → `raise {work_unit}.implementation --replaces {decision_id} --reason {reason} [--parks {task}]`; what relied on it → `ledger affected {work_unit}`, `ledger hold`.
+- A question waiting → `raise waiting|draw|aside {work_unit} …`, its answer `raise answer {id} …`.
+- A gate's answer → `gate "{name}" --pick {key}`, or `--typed {key}` for a typed row such as a Comment.
+
+## Closing
+
+The build closes as its last phase does: once every phase of the cut has closed, it runs straight on into the review phase, in this conversation, with no stop between them.
+
+Invoke `/leeway-review-process {work_type} {work_unit}`.
+
+## Something Outside the Plan
+
+A bug the person reports, a gap or a find an agent reports beyond its task, anything the plan never held. Load **[outside-the-plan.md](references/outside-the-plan.md)** and follow its instructions as written.
+
+## Ready to Discuss a Question
+
+The person says they are ready to talk about a waiting question, or all of them — in their own words, or as a message from the board naming the questions they queued. Load **[questions-waiting.md](references/questions-waiting.md)** and follow its instructions as written.
+
+## A Task's Account
+
+The person asks for a task's account, however long ago it landed. Fetch `render task-account {work_unit} {task}` and emit its sections verbatim per their markers.
+
+## The Phases and Tasks
+
+The person asks where the build stands, or for its phases and tasks. Fetch `render build-progress {work_unit}` and emit its sections verbatim per their markers.
+
+## A Switch of Position
+
+The person asks to run the build in auto, or in step. Record it, `workunit position {work_unit} {position:[auto|step]}`, and say in a line that it is switched.
 
 ## Backlogging
 
-The user says to put an idea, a bug or a fix aside — "roadmap it", "inbox it", "backlog that", "push it back" — and the words take this door whatever else is in flight. Never a topic: a topic takes the postponing door. Load **[backlogging.md](../leeway-shared/references/backlogging.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `implementation`, from any point in the phase.
-
-→ On return, resume the interrupted flow — a gate that was pending was set aside; once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes put it back — never fall through to Step 0.
-
----
-
-## Postponing the Topic
-
-The user pushes a topic back to the roadmap — "postpone this", "move the loyalty topic to v2", "take this whole topic back to the roadmap" — this one, or one on the map by name; `{name}` is that topic. The request is taken as said — never argued, and never checked back with a question first: load **[postponing-the-topic.md](../leeway-shared/references/postponing-the-topic.md)** with work_unit = `{work_unit}`, name = `{name}`, topic = `{topic}`, phase = `implementation`, from any point in the phase.
-
-→ On return, resume the interrupted flow — a gate that was pending was set aside; once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes put it back — never fall through to Step 0.
-
----
-
-## Cancelling the Topic
-
-The user calls the topic off — they say to cancel, or the conversation agrees it is not worth pursuing. Never is not yet: a topic wanted later takes the postponing door. The call-off is taken as said — never argued, and never checked back with a question first: load **[cancelling-the-topic.md](../leeway-shared/references/cancelling-the-topic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `implementation`, from any point in the phase.
-
-→ On return, resume the interrupted flow — a gate that was pending was set aside; once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes put it back — never fall through to Step 0.
-
----
-
-## Step 0: Session Setup
-
-### Step 0.1: Code Slot
-
-Load **[code-session-gate.md](../leeway-shared/references/code-session-gate.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, phase = `implementation`.
-
-→ On return, proceed to **Step 0.2**.
-
-### Step 0.2: Entry Gate
-
-Check the plan prerequisite — the engine derives the verdict from manifest state:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render entry-gate {work_unit}.implementation.{topic}
-```
-
-#### If the response is empty
-
-The plan is completed.
-
-→ Proceed to **Step 0.3**.
-
-#### If the response carried `DISPLAY: entry blocker`
-
-Emit both sections verbatim per their markers — the red blocker line, then its guidance.
-
-**STOP.** Do not proceed — terminal condition.
-
-### Step 0.3: Dependencies
-
-#### If `work_type` is not `epic`
-
-→ Proceed to **Step 0.4**.
-
-#### Otherwise
-
-Check whether the plan declares external dependencies:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs manifest exists {work_unit}.planning.{topic} external_dependencies
-```
-
-**If `false`:**
-
-→ Proceed to **Step 0.4**.
-
-**If `true`:**
-
-Load **[check-dependencies.md](references/check-dependencies.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 0.4**.
-
-### Step 0.4: Resume Detection
-
-Record where this session is working — the call also labels the tmux session where the user opted in:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs session label {work_unit} implementation {topic}
-```
-
-Read the phase status, storing it as `phase_status`:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} status
-```
-
-#### If `phase_status` is empty
-
-A first start. Create the implementation tracking — the manifest entry with its default gates and counters:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs task init {work_unit} {topic}
-```
-
-Commit the tracking (the scoped commit covers the manifest):
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): start implementation" --topic implementation/{topic}
-```
-
-→ Proceed to **Step 1**.
-
-#### If `phase_status` is `in-progress` or `completed`
-
-Where `phase_status` is `completed`, reopen it — resuming is not starting:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs topic reopen {work_unit} implementation {topic}
-```
-
-Resume the tracking — it resets the gate modes to `gated` and, outside a live fix round, `fix_attempts`; the cycle count and progress are preserved:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs task init {work_unit} {topic}
-```
-
-Render the phase note — `Reopening` for an implementation just reopened, `Resuming` otherwise — and emit the section verbatim per its marker:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render phase-note {work_unit}.implementation.{topic} --verb {Reopening|Resuming}
-```
-
-Load **[reconcile-advisory.md](../leeway-shared/references/reconcile-advisory.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, downstream_phase = `implementation`.
-
-→ On return, proceed to **Step 1**.
-
----
-
-## Step 1: Environment Setup
-
-Load **[environment-setup.md](references/environment-setup.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 2**.
-
----
-
-## Step 2: Read Plan + Load Plan Adapter
-
-Load **[load-plan-adapter.md](references/load-plan-adapter.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 3**.
-
----
-
-## Step 3: Project Skills Discovery
-
-Load **[project-skills-discovery.md](references/project-skills-discovery.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 4**.
-
----
-
-## Step 4: Linter Discovery
-
-Load **[linter-setup.md](references/linter-setup.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 5**.
-
----
-
-## Step 5: Knowledge Usage
-
-Load **[knowledge-usage.md](../leeway-shared/references/knowledge-usage.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 6**.
-
----
-
-## Step 6: Task Loop
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Task Loop`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Executing tasks from the plan. Each task is implemented via TDD by an executor agent, then independently verified by a reviewer agent. You'll approve each task before it proceeds.
-```
-
-Load **[task-loop.md](references/task-loop.md)** and follow its instructions as written.
-
-*Knowledge-base nudge — code is the source of truth for *what* exists; read it rather than query. Reach for the KB only when you need the *why* behind an existing pattern (rare). Never to fill spec gaps — those are blockers. See **[knowledge-usage.md](../leeway-shared/references/knowledge-usage.md)**.*
-
-After the loop completes:
-
-#### If the task loop exited early (user chose `stop`)
-
-→ Proceed to **Step 8**.
-
-#### Otherwise
-
-**CRITICAL**: This routing applies on **every** task loop completion — including after returning from Step 7 with analysis-created tasks. Step 6 and Step 7 form a mandatory cycle: tasks execute → analysis runs → new tasks may be created → tasks execute again → analysis runs again. Never skip Step 7 after a task loop completes.
-
-→ Proceed to **Step 7**.
-
----
-
-## Step 7: Analysis Loop
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Analysis Loop`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Analysing the implementation for gaps and issues. Agents review what was built against the plan and spec. New tasks may be created if problems are found.
-```
-
-Load **[analysis-loop.md](references/analysis-loop.md)** and follow its instructions as written.
-
-#### If new tasks were created in the plan
-
-→ Return to **Step 6**.
-
-#### If no tasks were created
-
-→ Proceed to **Step 8**.
-
----
-
-## Step 8: Compliance Self-Check
-
-Load **[compliance-check.md](../leeway-shared/references/compliance-check.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 9**.
-
----
-
-## Step 9: Mark Implementation Complete
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Conclude Implementation`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Wrapping up. Final confirmation before marking implementation as complete and moving to review.
-```
-
-Load **[conclude-implementation.md](references/conclude-implementation.md)** and follow its instructions as written.
-
-
+The person puts an idea, a bug or a fix aside — "roadmap it", "inbox it", "backlog that", "push it back". Load **[backlogging.md](../leeway-shared/references/backlogging.md)** with work_unit = `{work_unit}`, topic = `{work_unit}`, phase = `implementation`.

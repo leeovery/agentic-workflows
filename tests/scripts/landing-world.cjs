@@ -38,7 +38,7 @@ const os = require('os');
 const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 const {
-  ok, git, statePath, layout, readState, writeState, commitAll, refuses, fixtureFrom, folderFrom, setupFixtureAt, cleanupFixture, initRepo, addSubmodule,
+  ok, git, statePath, layout, readState, writeState, commitAll, refuses, fixtureFrom, folderFrom, setupFixtureAt, cleanupFixture, initRepo, addSubmodule, accountFiles,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
@@ -101,7 +101,9 @@ function own(answer) {
 /**
  * A task put into the world's tracker at the number given, through the
  * project's task driver, as `task create` makes one — the phase written
- * already — and the branch `land open` will name for it.
+ * already — passed by its pair and its account taken, as `land` asks, each
+ * file left to the engine's next state commit, and the branch `land open`
+ * will name for it.
  * @param {string} dir @param {string} shown @param {string} type @param {string} title
  * @returns {Tracked}
  */
@@ -109,6 +111,7 @@ function track(dir, shown, type, title) {
   const ref = parseShownTask(UNIT, shown);
   TRACKER.createTask(statePath(dir), ref, { title, type, text: `${title}.` });
   passPair(dir, ref);
+  for (const [rel, text] of Object.entries(accountFiles(dir, UNIT, shown))) writeState(dir, rel, text);
   return { shown, type, title, branch: names.taskBranch(ref, type, title) };
 }
 

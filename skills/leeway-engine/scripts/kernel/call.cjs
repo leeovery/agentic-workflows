@@ -19,6 +19,9 @@ const ENGINE_COMMAND = 'node .claude/skills/leeway-engine/scripts/engine.cjs';
 
 const ENGINE_CJS = path.join(__dirname, '..', 'engine.cjs');
 
+/** The command that runs this engine from any folder, by its absolute path, quoted where it holds a space. */
+const ENGINE_RUN = `node ${/\s/.test(ENGINE_CJS) ? `'${ENGINE_CJS}'` : ENGINE_CJS}`;
+
 /**
  * The one door a detached engine job — the vector fill, the late
  * one-decision check — is launched through: its own process, run from `cwd`,
@@ -140,4 +143,4 @@ function stdinObject(stdin, said, what) {
   return value;
 }
 
-module.exports = { ENGINE_COMMAND, processCall, ExitSignal, messageOf, exitCodeOf, stdinObject, hookInput, hookProjectDir, launcher };
+module.exports = { ENGINE_COMMAND, ENGINE_RUN, processCall, ExitSignal, messageOf, exitCodeOf, stdinObject, hookInput, hookProjectDir, launcher };

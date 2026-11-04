@@ -20,13 +20,19 @@
 // call per task (7.1.3, 12.5.3), and its id is the engine's (task-id.cjs),
 // numbered after the highest its phase holds. An addition goes onto a task
 // not yet ended, marked as the orchestrator's or the person's, its text from
-// a file (13.11.3); a task not yet ended takes a new type, as the migration
-// gives one (21.5.21). A link holds a task after one of its own phase's or
-// an earlier phase's, still unfinished, and only a task not yet ended is
-// linked (12.6.4); ready answers every task waiting with nothing before it
-// and no question parking it (7.1.5, 13.4.6); start, refused for a phase
-// the cut holds before its start checklist has closed (6.4.8, 12.S7), and
-// in step for any task but the one in flight or at its gate — in progress
+// a file (13.11.3), the task marked changed after the last round reported
+// of its review, which its pair reads again (round-report.cjs); a task not
+// yet ended takes a new type, as the migration gives one (21.5.21). A link
+// holds a task after one of its own phase's or an earlier phase's, still
+// unfinished, and only a task not yet ended is linked (12.6.4); ready
+// answers every task waiting with nothing before it and no question parking
+// it (7.1.5, 13.4.6), and, in step, the task in progress whose turn has come
+// where an answer freed it — its builder sent back in, never a new one —
+// until its builder's brief is next issued, and never while its pair reads
+// a round of it (`stepTurn`, round-report.cjs, 12.7.9); start, refused for
+// a phase the cut holds before its start checklist has closed (6.4.8,
+// 12.S7), and in step for any task but the one in flight or at its gate —
+// in progress
 // in any phase written, the review's fixes past the cut among them, here or
 // in another conversation, no question parking it, and ahead of any other
 // going on (12.7.9) — puts the task in flight on the conversation's
@@ -71,6 +77,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { isolatedGit } = require('../kernel/isolated-git.cjs');
+const { handedSession } = require('../kernel/process.cjs');
 const { isObject, jsonText } = require('../kernel/manifest-io.cjs');
 const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
@@ -83,10 +90,12 @@ const { TASK_TYPES, breaksLine, readTaskText } = require('./task-file.cjs');
 const { recordTask, clearTask } = require('./position.cjs');
 const { phaseStarted } = require('./derivations.cjs');
 const { layOutTask, takeWorktreeApart } = require('./task-worktree.cjs');
+const { markChanged, briefedOf, beingRead } = require('./round-report.cjs');
 
-// The questions parking a task, loaded at their call: they read the task
-// through this module.
+// The questions parking a task, and the landing naming a phase's mutation
+// run, loaded at their call: each reads the task through this module.
 const parks = () => require('./task-parks.cjs');
+const landing = () => require('./landing.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskDriver} TaskDriver */
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
@@ -356,6 +365,7 @@ function addToTask(cwd, unit, given, file, by) {
   return withTracker(cwd, unit, `add to ${shownTask(ref)}`, (driver, root) => {
     refuseEnded(driver, root, ref, 'only a task not yet ended is added to');
     driver.add(root, ref, { by: /** @type {'orchestrator'|'person'} */ (by), text });
+    markChanged(cwd, ref);
     return named(ref);
   });
 }
@@ -375,16 +385,38 @@ function typeTask(cwd, unit, given, type) {
   });
 }
 
-/** `task ready`: every task waiting to start, of the phase or of the unit, but those a question waiting parks. @param {string} cwd @param {string} unit @param {string} [given] */
+/**
+ * `task ready`: every task waiting to start, of the phase or of the unit,
+ * but those a question waiting parks; and, in step, `back`, the task in
+ * progress an answer freed whose turn has come (`stepTurn`).
+ * @param {string} cwd @param {string} unit @param {string} [given]
+ */
 function readyTasks(cwd, unit, given) {
   const phase = given === undefined ? null : parsePhase(given);
   requireUnit(cwd, unit);
-  return withTracker(cwd, unit, null, (driver, root) => {
+  const ready = withTracker(cwd, unit, null, (driver, root) => {
     const rows = driver.ready(root, unit, phase);
     if (rows === null) throw unwritten(unit, /** @type {number} */ (phase));
     const parked = parks().parkedOf(cwd, unit);
     return { tasks: rows.filter((row) => !parked.has(shownTask(row.ref))).map((row) => ({ ...named(row.ref), title: row.title })) };
   });
+  const back = freedTurn(cwd, unit);
+  return back === null ? ready : { ...ready, back };
+}
+
+/**
+ * In step, the task in progress whose turn has come where an answer freed
+ * it, its builder waiting to go back in: freed since a brief to its builder
+ * was last issued, its builder's or a fix round's, its pair reading no
+ * round of it in this conversation; null in auto, and where none is.
+ * @param {string} cwd @param {string} unit @returns {string|null}
+ */
+function freedTurn(cwd, unit) {
+  const turn = stepTurn(cwd, unit, loadWorkUnitManifest(cwd, unit));
+  if (turn === null) return null;
+  const ref = parseShownTask(unit, turn.inFlight);
+  const freed = parks().freedAt(cwd, unit).get(turn.inFlight);
+  return freed !== undefined && freed > briefedOf(cwd, ref).builder && beingRead(cwd, ref, handedSession()) === null ? turn.inFlight : null;
 }
 
 /** `task list`: the phase's tasks, in order. @param {string} cwd @param {string} unit @param {string} given */
@@ -718,26 +750,34 @@ const startTask = moving('start', (driver, root, ref) => {
 const DONE_RULE = 'only a task not yet ended is done';
 const CLOSE_RULE = 'only a task not yet ended is closed';
 
-/** `task done`: refused while a question waiting parks it; else its worktree taken apart, then done, and off the position. */
+/**
+ * `task done`: refused while a question waiting parks it, and where its
+ * account is not taken of its review as it stands (task-account.cjs); else
+ * its worktree taken apart, then done, and off the position.
+ */
 const doneTask = moving('done', (driver, root, ref) => {
   refuseEnded(driver, root, ref, DONE_RULE);
   driver.done(root, ref);
 }, (cwd, ref, verb) => {
-  parks().refuseParked(cwd, ref, `task ${verb}`);
+  withTracker(cwd, ref.unit, null, (driver, root) => refuseEnded(driver, root, ref, DONE_RULE));
+  account().refuseUnaccounted(cwd, ref, `task ${verb}`);
   return ending(DONE_RULE)(cwd, ref, verb);
 });
 
 /**
  * `task close`: where a question parks it, refused with no session before
  * anything moves; its worktree taken apart, then off every question parking
- * it, then closed without being done, its reason kept, and off the position.
+ * it, then closed without being done, its reason kept, and off the position
+ * — the last of its phase's to end, another done, naming the phase's
+ * mutation run (landing.cjs, `mutationRun`).
  */
 const closeTask = moving('close', (driver, root, ref, reason) => {
   refuseEnded(driver, root, ref, CLOSE_RULE);
   driver.close(root, ref, reason);
 }, (cwd, ref, verb) => {
   const parking = parks().parkingOf(cwd, ref, `task ${verb}`);
-  return ending(CLOSE_RULE, () => parks().takeOff(cwd, ref, `task ${verb}`, parking))(cwd, ref, verb);
+  const settle = ending(CLOSE_RULE, () => parks().takeOff(cwd, ref, `task ${verb}`, parking))(cwd, ref, verb);
+  return () => ({ ...settle(), ...landing().mutationRun(cwd, ref, false) });
 });
 
 /**

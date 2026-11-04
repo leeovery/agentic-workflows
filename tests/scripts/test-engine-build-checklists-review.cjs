@@ -21,7 +21,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const {
-  ok, refusedPristine, writeState, readState, statePath, lastMessage, touched, layout, cleanupFixture,
+  ok, refusedPristine, writeState, readState, statePath, lastMessage, touched, layout, cleanupFixture, accountTaken,
 } = require('./engine-harness.cjs');
 const {
   UNIT, SESSION, DROPS_CENTS, WHY, SETTLED, taskFile, world, checklistHelpers,
@@ -45,11 +45,15 @@ describe('a phase\'s review at its close (6.4.9)', () => {
     phaseReport(1, 'a', [], 'pass');
     seen.push(reviewed());
     phaseReport(1, 'b', [DROPS_CENTS], 'fail');
-    for (const task of ['1.1', '1.2']) ok(dir, ['task', 'done', UNIT, task], { env: SESSION });
+    for (const task of ['1.1', '1.2']) {
+      accountTaken(dir, UNIT, task);
+      ok(dir, ['task', 'done', UNIT, task], { env: SESSION });
+    }
     const unsettled = reviewItem();
     ok(dir, ['task', 'create', UNIT, '1', '--file', taskFile(dir, 'Keep the cents', ['1.S2'])]);
     settle(['--fixes', '1.3']);
     const owed = reviewItem();
+    accountTaken(dir, UNIT, '1.3');
     ok(dir, ['task', 'done', UNIT, '1.3'], { env: SESSION });
     seen.push(reviewed());
     phaseReport(1, 'a', ['- bug: the refund is never logged\n  Scenario: a refund of 9.99'], 'fail');
@@ -84,7 +88,10 @@ describe('a phase\'s review at its close (6.4.9)', () => {
   it('reads a settlement naming a fix since closed as open, its way on the settlement given again — which is let through, passing once its new fixes are done (13.10.1)', () => {
     phaseReport(1, 'a', [], 'pass');
     phaseReport(1, 'b', [DROPS_CENTS], 'fail');
-    for (const task of ['1.1', '1.2']) ok(dir, ['task', 'done', UNIT, task], { env: SESSION });
+    for (const task of ['1.1', '1.2']) {
+      accountTaken(dir, UNIT, task);
+      ok(dir, ['task', 'done', UNIT, task], { env: SESSION });
+    }
     ok(dir, ['task', 'create', UNIT, '1', '--file', taskFile(dir, 'Keep the cents', ['1.S2'])]);
     settle(['--fixes', '1.3']);
     ok(dir, ['task', 'close', UNIT, '1.3', '--reason', 'The cents are lost in the receipt, not the total.']);
@@ -92,6 +99,7 @@ describe('a phase\'s review at its close (6.4.9)', () => {
     ok(dir, ['task', 'create', UNIT, '1', '--file', taskFile(dir, 'Print the cents', ['1.S2'])]);
     settle(['--fixes', '1.4']);
     const resettled = reviewItem();
+    accountTaken(dir, UNIT, '1.4');
     ok(dir, ['task', 'done', UNIT, '1.4'], { env: SESSION });
 
     assert.deepStrictEqual([closedFix, resettled, item('phase-close', 1, 'phase-review-passed')], [
@@ -120,12 +128,16 @@ describe('a phase review\'s settlement (13.10.1)', () => {
   it('settles again at any time, the newer settlement replacing the older: one naming none widened to name a fix found owed after it, the review open until that fix is done', () => {
     phaseReport(1, 'a', [], 'pass');
     phaseReport(1, 'b', [DROPS_CENTS], 'fail');
-    for (const task of ['1.1', '1.2']) ok(dir, ['task', 'done', UNIT, task], { env: SESSION });
+    for (const task of ['1.1', '1.2']) {
+      accountTaken(dir, UNIT, task);
+      ok(dir, ['task', 'done', UNIT, task], { env: SESSION });
+    }
     settle([]);
     const seen = [item('phase-close', 1, 'phase-review-passed')];
     ok(dir, ['task', 'create', UNIT, '1', '--file', taskFile(dir, 'Keep the cents', ['1.S2'])]);
     settle(['--fixes', '1.3']);
     const widened = reviewItem();
+    accountTaken(dir, UNIT, '1.3');
     ok(dir, ['task', 'done', UNIT, '1.3'], { env: SESSION });
 
     assert.deepStrictEqual([...seen, widened, item('phase-close', 1, 'phase-review-passed')], [

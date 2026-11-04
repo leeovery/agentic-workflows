@@ -39,7 +39,8 @@
 // flight those of the conversation the note is for.
 // ---------------------------------------------------------------------------
 
-const { ENGINE_COMMAND, messageOf } = require('../kernel/call.cjs');
+const { ENGINE_COMMAND, ENGINE_RUN, messageOf } = require('../kernel/call.cjs');
+const { handedSession } = require('../kernel/process.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { buildByCut, buildFinished, phaseClosed } = require('./derivations.cjs');
 const { reading, cutPhases, mergeWaiting } = require('./phase-checks.cjs');
@@ -116,8 +117,12 @@ function standingLines(unit, standing, step) {
   ];
 }
 
-/** The conversation's fix tasks in flight, a line each, as the build's entry gives them; none where it has none. @param {string} cwd @param {string} unit @param {InFlight[]} inFlight @returns {Line[]} */
-const fixesInFlight = (cwd, unit, inFlight) => (inFlight.length === 0 ? [] : inFlightLines(buildStanding(cwd, unit, inFlight)));
+/**
+ * The conversation `session`'s fix tasks in flight, a line each, as the
+ * build's entry gives them; none where it has none.
+ * @param {string} cwd @param {string} unit @param {InFlight[]} inFlight @param {string|null} session @returns {Line[]}
+ */
+const fixesInFlight = (cwd, unit, inFlight, session) => (inFlight.length === 0 ? [] : inFlightLines(cwd, session, buildStanding(cwd, unit, inFlight)));
 
 /** Each round's report recorded, by its path. @param {string} cwd @param {string} unit @param {ReviewStanding} standing */
 const roundReports = (cwd, unit, { rounds }) => rounds.map((_, at) => statePath(cwd, roundReportFile(unit, at + 1)));
@@ -125,16 +130,21 @@ const roundReports = (cwd, unit, { rounds }) => rounds.map((_, at) => statePath(
 /** The record's call. @param {string} unit */
 const recordCall = (unit) => `${ENGINE_COMMAND} ledger record ${unit}`;
 
-/** What the review phase reads at its entry (the header's). @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {InFlight[]} inFlight @returns {Line[]} */
-function reviewReads(cwd, unit, manifest, inFlight) {
+/**
+ * What the review phase reads at its entry (the header's), its fix tasks
+ * in flight the conversation `session`'s.
+ * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {InFlight[]} inFlight @param {string|null} session @returns {Line[]}
+ */
+function reviewReads(cwd, unit, manifest, inFlight, session) {
   const standing = reviewStanding(cwd, unit, manifest);
   return [
     ...standingLines(unit, standing, manifest.build.position === 'step'),
-    ...fixesInFlight(cwd, unit, inFlight),
+    ...fixesInFlight(cwd, unit, inFlight, session),
     ...roundReports(cwd, unit, standing).map((report) => /** @type {Line} */ (['round report', report])),
     ['spec', specPath(cwd, unit)],
     ['record', `\`${recordCall(unit)}\``],
     ['build log', statePath(cwd, buildLogOf(unit))],
+    ['engine', `\`${ENGINE_RUN}\` — the engine by its absolute path, for a call made from a task's worktree`],
   ];
 }
 
@@ -145,15 +155,15 @@ const DOCUMENTS = new Set(['round report', 'spec', 'build log']);
  * What the review phase's recovery note re-reads beside its skill: what the
  * entry reads — the record by its call; each round's report, the spec and
  * the build's log; where the phase stands, a line each, its fix tasks in
- * flight those of the conversation the note is for — or why that cannot be
- * read, in its place.
- * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {InFlight[]} inFlight
+ * flight those of the conversation the note is for, `session` — or why
+ * that cannot be read, in its place.
+ * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {InFlight[]} inFlight @param {string} session
  * @returns {{calls: string[], documents: string[], lines: string[]}}
  */
-function reviewRecovery(cwd, unit, manifest, inFlight) {
+function reviewRecovery(cwd, unit, manifest, inFlight, session) {
   const calls = [recordCall(unit)];
   try {
-    const read = reviewReads(cwd, unit, manifest, inFlight);
+    const read = reviewReads(cwd, unit, manifest, inFlight, session);
     return {
       calls,
       documents: read.filter(([key]) => DOCUMENTS.has(key)).map(([, value]) => value),
@@ -179,7 +189,7 @@ const REVIEW = Object.freeze({
   unstarted: () => false,
   start: () => {},
   questions: () => [],
-  reads: ({ cwd, unit, manifest }) => reviewReads(cwd, unit, manifest, ownInFlight(unit)),
+  reads: ({ cwd, unit, manifest }) => reviewReads(cwd, unit, manifest, ownInFlight(unit), handedSession()),
   closes: arriving,
 });
 

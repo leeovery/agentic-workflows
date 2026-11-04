@@ -36,7 +36,9 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { ok, refuses, git, stateGit, tip, head, lastMessage, initRepo, statePath, layout, readState, writeState, readManifest } = require('./engine-harness.cjs');
+const {
+  ok, refuses, git, stateGit, tip, head, lastMessage, initRepo, statePath, layout, readState, writeState, readManifest, accountTaken,
+} = require('./engine-harness.cjs');
 const {
   UNIT, TASKS, TRACKER, openArgs, own, track, cutTask, commitFiles, landedOn, setLandingDriver, useLandingWorld, followRemedy, short, way, moveStep, strayRefusal: stray,
   refusedMoving,
@@ -97,6 +99,7 @@ describe('land open: the task\'s type and title, the tracker\'s (7.2.18, 12.4.1)
     ]);
     assert.deepStrictEqual(stateAt(dir), before);
     ok(dir, ['task', 'type', 'pay', '1.6', 'feat']);
+    accountTaken(dir, 'pay', '1.6');
     commitFiles(dir, 'feat/pay-1.6-card-limits', 'main', { 'limits.txt': 'limits\n' });
     assert.strictEqual(ok(dir, ['land', 'open', 'pay', '1.6']).branch, 'feat/pay-1.6-card-limits');
   });

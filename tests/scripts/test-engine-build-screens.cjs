@@ -6,12 +6,10 @@
 // summary, its account printed when asked, the headline as tasks start, the
 // build's phases and tasks, and the stop report. The gates in step are
 // test-engine-build-gates.cjs; step's one task at a time,
-// test-engine-build-step.cjs.
+// test-engine-build-step.cjs and test-engine-build-step-order.cjs.
 //
-// Layer: verb. Worlds, each built once and copied: the build screens' world
-// (build-screens-world.cjs), and a second made from it with its five
-// questions parked — Q1 and Q5 on task 1.1, Q2 and Q4 on 1.2, Q3 on 2.1 —
-// which the tests of five questions waiting copy. The review's fix phases
+// Layer: verb. World: the build screens' world (build-screens-world.cjs),
+// built once and copied for each test. The review's fix phases
 // on these screens: test-engine-review-fix-phases.cjs.
 // ---------------------------------------------------------------------------
 
@@ -23,7 +21,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { ok, refusedPristine, git, writeState, readManifest, layout, cleanupFixture, sectionOf } = require('./engine-harness.cjs');
-const { createManifest, templateFolder, copyWorld } = require('./discovery-test-utils.cjs');
+const { createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, QUESTIONS, CALL, ACCOUNT_DRAWN, taskText, reportOf, buildScreensWorld, buildScreenHelpers } = require('./build-screens-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
@@ -51,19 +49,6 @@ const product = () => titlecase(path.basename(dir)).toUpperCase();
 /** Where the world's five questions park: Q1 and Q5 task 1.1, Q2 and Q4 task 1.2, Q3 task 2.1. */
 const FIVE = Object.freeze([['1.1'], ['1.2'], ['2.1'], ['1.2'], ['1.1']]);
 
-/** The world with its five questions parked as FIVE says, made once. @type {{template: string|null}} */
-const fiveParked = { template: null };
-
-/** The test's project made a copy of the world with its five questions parked. */
-async function parkFive() {
-  if (fiveParked.template === null) {
-    const template = buildScreensWorld(templateFolder('engine-build-screens-five-template-'));
-    for (const [at, tasks] of FIVE.entries()) await parkOn(tasks, at, template);
-    fiveParked.template = template;
-  }
-  cleanupFixture(dir);
-  dir = copyWorld(fiveParked.template, fs.mkdtempSync(path.join(os.tmpdir(), 'engine-build-screens-five-')));
-}
 
 describe('the landing summary (12.12.5, 12.12.6)', () => {
   it('says what changed, the criteria its tests prove, what running the product proved with the proof a press away, the pair\'s verdict and rounds and the task\'s calls — and beneath it the questions waiting, none here (12.S26, 12.S54, 12.S55)', () => {
@@ -97,21 +82,6 @@ describe('the landing summary (12.12.5, 12.12.6)', () => {
     const lines = sectionOf(screen(['task-landed', UNIT, '1.1']), 'DISPLAY: task landed').split('\n');
 
     assert.deepStrictEqual(lines.slice(lines.indexOf('1 QUESTION WAITING FOR YOU')), ['1 QUESTION WAITING FOR YOU', `  └─ ⚑ Q1 ${CALL.question} · parks 1.2 and 1 more`, '']);
-  });
-
-  it('with five questions waiting, the count reads five and each has its line (12.S26)', async () => {
-    await parkFive();
-    const lines = sectionOf(screen(['task-landed', UNIT, '1.1']), 'DISPLAY: task landed').split('\n');
-
-    assert.deepStrictEqual(lines.slice(lines.indexOf('5 QUESTIONS WAITING FOR YOU')), [
-      '5 QUESTIONS WAITING FOR YOU',
-      `  ├─ ⚑ Q1 ${QUESTIONS[0]} · parks 1.1`,
-      `  ├─ ⚑ Q2 ${QUESTIONS[1]} · parks 1.2`,
-      `  ├─ ⚑ Q3 ${QUESTIONS[2]} · parks 2.1`,
-      `  ├─ ⚑ Q4 ${QUESTIONS[3]} · parks 1.2`,
-      `  └─ ⚑ Q5 ${QUESTIONS[4]} · parks 1.1`,
-      '',
-    ]);
   });
 
   it('a task whose last round the orchestrator settled says so, and one no run proves reads not proven', () => {
@@ -346,12 +316,11 @@ describe('a task linked after another (12.6.4)', () => {
 });
 
 describe('the stop report (12.12.9, 12.13.22)', () => {
-  it('when every task left is parked or waits after one that is: the build stopped, the five questions waiting first with a line each, what was built, and what each answer lets run (12.S38, 12.S26)', async () => {
-    await parkFive();
+  it('when every task left is parked or waits after one that is: the build stopped, the five questions waiting first with a line each, what was built, and what each answer lets run; and with five questions waiting, the landing summary\'s count reads five and each has its line (12.S38, 12.S26)', async () => {
+    for (const [at, tasks] of FIVE.entries()) await parkOn(tasks, at);
     const out = screen(['build-stop', UNIT]);
-
-    assert.strictEqual(sectionOf(out, 'DISPLAY: build stop'), '⚑ The build has stopped: nothing more can be built until you answer\n');
-    assert.strictEqual(sectionOf(out, 'DISPLAY: build stop report'), [
+    const landed = sectionOf(screen(['task-landed', UNIT, '1.1']), 'DISPLAY: task landed').split('\n');
+    const waiting = [
       '5 QUESTIONS WAITING FOR YOU',
       `  ├─ ⚑ Q1 ${QUESTIONS[0]} · parks 1.1`,
       `  ├─ ⚑ Q2 ${QUESTIONS[1]} · parks 1.2`,
@@ -359,6 +328,13 @@ describe('the stop report (12.12.9, 12.13.22)', () => {
       `  ├─ ⚑ Q4 ${QUESTIONS[3]} · parks 1.2`,
       `  └─ ⚑ Q5 ${QUESTIONS[4]} · parks 1.1`,
       '',
+    ];
+
+    assert.deepStrictEqual(landed.slice(landed.indexOf('5 QUESTIONS WAITING FOR YOU')), waiting);
+
+    assert.strictEqual(sectionOf(out, 'DISPLAY: build stop'), '⚑ The build has stopped: nothing more can be built until you answer\n');
+    assert.strictEqual(sectionOf(out, 'DISPLAY: build stop report'), [
+      ...waiting,
       'WHAT WAS BUILT',
       '  0 of 4 tasks done · 0 running',
       '  ├─ Phase 1 of 3 · Cards         [running]',
@@ -388,11 +364,20 @@ describe('the stop report (12.12.9, 12.13.22)', () => {
     ].join('\n'));
   });
 
-  it('is refused while no question waits, and while a task can still be built — one in progress, or one ready that task start would take, that no question parks — writing nothing (12.12.9, 12.13.22)', async () => {
+  it('is refused while no question waits, and while a task can still be built — one in progress, or one ready that task start would take, that no question parks — writing nothing; and stops where the only task ready is of a phase whose start the engine holds — Refunds relying on Cards, written ahead, which task start refuses — refused once only Claude\'s own items stand before that start, Refunds relying on nothing (12.12.9, 12.13.22, 12.7.7, 12.7.5, 6.4.8)', async () => {
     const none = refused(['build-stop', UNIT]);
     await parkOn(['1.2']);
     const running = refused(['build-stop', UNIT]);
     await parkOn(['1.1'], 1);
+    const stopped = sectionOf(screen(['build-stop', UNIT]), 'DISPLAY: build stop');
+    const start = refusedPristine(dir, ['task', 'start', UNIT, '2.1'], { env: env() }).error;
+    const manifest = readManifest(dir, UNIT);
+    const relies = manifest.cut.phases[1].relies_on;
+    manifest.cut.phases[1].relies_on = [];
+    createManifest(dir, UNIT, manifest);
+    const unheld = refused(['build-stop', UNIT]);
+    manifest.cut.phases[1].relies_on = relies;
+    createManifest(dir, UNIT, manifest);
     fs.writeFileSync(path.join(config, 'task.md'), taskText('Void a charge', ['A void charge prints nothing.']));
     ok(dir, ['task', 'create', UNIT, '1', '--file', path.join(config, 'task.md')], { env: env() });
 
@@ -401,20 +386,9 @@ describe('the stop report (12.12.9, 12.13.22)', () => {
       'render build-stop: pay\'s build goes on with task 1.1, which no question parks — it stops only where nothing can go on without the person\'s answer (12.13.22)',
       'render build-stop: pay\'s build goes on with task 1.4, which no question parks — it stops only where nothing can go on without the person\'s answer (12.13.22)',
     ]);
-  });
-
-  it('stops where the only task ready is of a phase whose start the engine holds — Refunds relying on Cards, written ahead, which task start refuses — and is refused once only Claude\'s own items stand before that start, Refunds relying on nothing (12.7.7, 12.7.5, 6.4.8)', async () => {
-    await parkOn(['1.2']);
-    await parkOn(['1.1'], 1);
-    const stopped = sectionOf(screen(['build-stop', UNIT]), 'DISPLAY: build stop');
-    const start = refusedPristine(dir, ['task', 'start', UNIT, '2.1'], { env: env() }).error;
-    const manifest = readManifest(dir, UNIT);
-    manifest.cut.phases[1].relies_on = [];
-    createManifest(dir, UNIT, manifest);
-
     assert.strictEqual(stopped, '⚑ The build has stopped: nothing more can be built until you answer\n');
     assert.strictEqual(start, 'task start: phase 2 of pay has not started — its tasks start once its start checklist closes: checklist close phase-start pay 2');
-    assert.strictEqual(refused(['build-stop', UNIT]),
+    assert.strictEqual(unheld,
       'render build-stop: pay\'s build goes on with task 2.1, which no question parks — it stops only where nothing can go on without the person\'s answer (12.13.22)');
   });
 });

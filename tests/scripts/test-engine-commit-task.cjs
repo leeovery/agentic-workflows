@@ -9,18 +9,25 @@
 // task, joining the trailers it ends in (6.S8); the project's checks — its
 // tests, then each linter — run in the code root before each commit is
 // written, holding no lock, and the first to fail refuses it, nothing
-// committed (6.S9, 15.S11); and a
-// tree with the state branch checked out is refused before any check runs
-// (4.S20). Its paths and repos are today's code commit's,
+// committed (6.S9, 15.S11); a merge in progress — the chain's tip
+// merged back onto the task's branch — finished through the door, its
+// resolution named, the checks run and the trailer on the merge commit,
+// refused while a conflict stays unnamed, a child repository merged first
+// and its holder's pointer resolved to the child's merged tip, staged by the
+// builder as the chain slot says or by the door (12.14); and
+// a tree with the state branch checked out is refused before any check runs
+// (4.S20); and a commit from a checkout on a branch other than the task's
+// refused, naming the worktree that has the task's branch out, or, with
+// none, the verb that lays one out. Its paths and repos are today's code commit's,
 // test-engine-commit-door-code.cjs's; that landing never reads the trailer as a
 // landing is test-engine-land-reads.cjs's.
 //
 // Layer: git. World: a unit with two tasks written and another unit with a
 // task of the first one's number, the code committed; one conversation
 // building task 1.1, one building both side by side, another task 1.2, and
-// another the other unit's 1.1, each started through `task start`; built
-// once and copied for each test, a code worktree beside it for each
-// builder's checks.
+// another the other unit's 1.1, each started through `task start`, the
+// project's checkout on task 1.1's branch; built once and copied for each
+// test, a code worktree beside it for each builder's checks.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -30,8 +37,12 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { ok, refusedPristine, git, commitAll, fixtureFrom, cleanupFixture, statePath, layout, createFile, readState, writeState } = require('./engine-harness.cjs');
+const {
+  ok, refusedPristine, git, commitAll, fixtureFrom, cleanupFixture, statePath, layout, createFile, readState, writeState, initRepo, addSubmodule, commitCode,
+} = require('./engine-harness.cjs');
+const { spawnSync } = require('child_process');
 const { createManifest, templateFolder } = require('./discovery-test-utils.cjs');
+const { taskBranch } = require('../../skills/leeway-engine/scripts/domain/landing-names.cjs');
 
 const UNIT = 'pay';
 const OTHER_UNIT = 'refunds';
@@ -42,6 +53,8 @@ const CLEARED = 'commit-task-cleared';
 const REFUNDING = 'commit-task-refunding';
 const CONFIG = /** @type {string} */ (process.env.LEEWAY_CONFIG_DIR);
 const MESSAGE = 'feat(pay): take a card';
+/** Each task of the unit's branch, by its number. @param {number} n */
+const branchOf = (n) => taskBranch({ unit: UNIT, phase: 1, n }, 'feat', 'Take a card');
 const TASK = [
   '# Take a card', '', '## Type', 'feat', '', '## Problem', 'A card cannot be taken.', '', '## Solution', 'Add the card form.', '',
   '## Outcome', 'A card is taken.', '', '## Acceptance scenarios', '- Given a card, when it is taken, then it is charged.', '', '## Spec reference', '§1',
@@ -61,6 +74,7 @@ const world = fixtureFrom('commit-task-', (dir) => {
   ok(dir, ['task', 'phase', OTHER_UNIT, '1', '--title', 'Refunds']);
   ok(dir, ['task', 'create', OTHER_UNIT, '1', '--file', file]);
   fs.rmSync(file);
+  git(dir, ['checkout', '-q', '-b', branchOf(1)]);
 });
 
 /** A call's options in the conversation `session`. @param {string} session */
@@ -152,6 +166,27 @@ describe('commit --task: the task in flight (6.S8)', () => {
     ]);
   });
 
+  it('N1: refused, nothing committed, from a checkout on a branch other than the task\'s — another task\'s among them — naming the worktree that has its branch out, or, with none, the verb that lays one out', (t) => {
+    const folder = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'commit-task-elsewhere-')));
+    t.after(() => fs.rmSync(folder, { recursive: true, force: true }));
+    const other = path.join(folder, '1.2');
+    git(dir, ['worktree', 'add', '-q', '-b', branchOf(2), other, 'main']);
+    createFile(other, 'src/card.js', 'const card = 12;\n');
+    const otherHead = codeHead(other);
+    const fromOther = refusedPristine(other, commitArgs(), as(PARALLEL)).error;
+    git(dir, ['checkout', '-q', 'main']);
+    const none = refusedUncommitted(dir, commitArgs(), as(BUILDING));
+    const worktree = path.join(folder, '1.1');
+    git(dir, ['worktree', 'add', '-q', worktree, branchOf(1)]);
+
+    assert.deepStrictEqual([fromOther, codeHead(other), none, refusedUncommitted(dir, commitArgs(), as(BUILDING))], [
+      `commit --task: this checkout has ${branchOf(2)} out, not task 1.1 of pay's branch, so its commit would land on another branch — commit it from ${dir}, where its branch is checked out`,
+      otherHead,
+      'commit --task: this checkout has main out, not task 1.1 of pay\'s branch, so its commit would land on another branch — no worktree has it out — `engine task worktree pay 1.1` lays one out, from a worktree of Claude Code\'s isolation',
+      `commit --task: this checkout has main out, not task 1.1 of pay's branch, so its commit would land on another branch — commit it from ${worktree}, where its branch is checked out`,
+    ]);
+  });
+
   it('12.S21: with several tasks in flight, a commit naming none of them is refused, naming each', () => {
     assert.strictEqual(
       refusedUncommitted(dir, ['commit', '--paths', 'src/card.js', '--task', OTHER_UNIT, '1.1', '-m', MESSAGE], as(PARALLEL)),
@@ -180,7 +215,8 @@ describe('commit --task: the project\'s checks (6.S9)', () => {
     const folder = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'commit-task-worktree-')));
     t.after(() => fs.rmSync(folder, { recursive: true, force: true }));
     const worktree = path.join(folder, 'card');
-    git(dir, ['worktree', 'add', '-q', '-b', 'card', worktree]);
+    git(dir, ['checkout', '-q', 'main']);
+    git(dir, ['worktree', 'add', '-q', worktree, branchOf(1)]);
     createFile(worktree, 'src/card.js', 'const card = 3;\n');
     const before = codeHead(worktree);
 
@@ -195,9 +231,10 @@ describe('commit --task: the project\'s checks (6.S9)', () => {
     setEnvironment(dir, { run: { tests: marking(dir, 'tests') }, linters: [{ name: 'eslint', command: marking(dir, 'eslint') }] });
     const folder = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'commit-task-builders-')));
     t.after(() => fs.rmSync(folder, { recursive: true, force: true }));
-    const builders = ['1.1', '1.2'].map((task) => {
+    git(dir, ['checkout', '-q', 'main']);
+    const builders = ['1.1', '1.2'].map((task, at) => {
       const worktree = path.join(folder, task);
-      git(dir, ['worktree', 'add', '-q', '-b', `card-${task}`, worktree]);
+      git(dir, ['worktree', 'add', '-q', ...(at === 0 ? [worktree, branchOf(1)] : ['-b', branchOf(2), worktree])]);
       createFile(worktree, 'src/card.js', `const card = '${task}';\n`);
       return { task, worktree, before: codeHead(worktree) };
     });
@@ -240,15 +277,126 @@ describe('commit --task: the project\'s checks (6.S9)', () => {
   });
 });
 
+/** The merge of `branch` begun in the repository at `repo` as the chain slot has it, its conflicts left: whether it conflicted. @param {string} repo @param {string} branch */
+const mergeBegun = (repo, branch) => spawnSync('git', ['merge', '--no-ff', '--no-commit', branch], { cwd: repo, encoding: 'utf8' }).status !== 0;
+
+/** Whether a merge is in progress in the repository at `repo`. @param {string} repo */
+const merging = (repo) => fs.existsSync(path.join(repo, git(repo, ['rev-parse', '--git-dir']).trim(), 'MERGE_HEAD'));
+
+/** The parents of the commit at HEAD in the repository at `repo`, and its task trailer. @param {string} repo */
+const mergeCommit = (repo) => ({
+  parents: git(repo, ['rev-list', '--parents', '-n', '1', 'HEAD']).trim().split(' ').length - 1,
+  task: git(repo, ['log', '-1', '--format=%(trailers:key=Leeway-Task,valueonly)']).trim(),
+});
+
+describe('commit --task: a merge in progress, the chain merged back (12.14)', () => {
+  /** The card changed on main and, otherwise, on `chained`, its merge begun on main. @param {Record<string, string>} [more] the other files `chained` changes */
+  function conflicted(more = {}) {
+    commitCode(dir, 'card 2');
+    git(dir, ['checkout', '-q', '-b', 'chained', 'HEAD~1']);
+    for (const [file, text] of Object.entries({ 'src/card.js': 'const card = 3;\n', ...more })) createFile(dir, file, text);
+    commitCode(dir, 'card 3');
+    git(dir, ['checkout', '-q', branchOf(1)]);
+    assert.ok(mergeBegun(dir, 'chained'), 'the merge conflicts');
+  }
+
+  it('finishes the merge through the door: the resolution staged, the project\'s checks run, the merge committed whole under the task\'s trailer', () => {
+    setEnvironment(dir, { run: { tests: marking(dir, 'tests') } });
+    conflicted({ 'src/fee.js': 'const fee = 1;\n' });
+    createFile(dir, 'src/card.js', 'const card = 2;\nconst chained = 3;\n');
+
+    const res = ok(dir, commitArgs(), as(BUILDING));
+
+    assert.deepStrictEqual([res.task, res.checks, merging(dir), mergeCommit(dir)], ['pay-1-1', [{ name: 'tests', exit: 0 }], false, { parents: 2, task: 'pay-1-1' }]);
+    assert.deepStrictEqual([git(dir, ['show', 'HEAD:src/card.js']), git(dir, ['show', 'HEAD:src/fee.js'])], ['const card = 2;\nconst chained = 3;\n', 'const fee = 1;\n'], 'the resolution and what the merge brought, committed whole');
+  });
+
+  it('refuses, before any check runs and committing nothing, while a path the merge conflicts in is not named', () => {
+    setEnvironment(dir, { run: { tests: marking(dir, 'tests') } });
+    commitCode(dir, 'card 2');
+    git(dir, ['checkout', '-q', '-b', 'chained', 'HEAD~1']);
+    createFile(dir, 'src/card.js', 'const card = 3;\n');
+    createFile(dir, 'src/till.js', 'const till = 3;\n');
+    commitCode(dir, 'card 3');
+    git(dir, ['checkout', '-q', branchOf(1)]);
+    createFile(dir, 'src/till.js', 'const till = 2;\n');
+    commitCode(dir, 'till 2');
+    assert.ok(mergeBegun(dir, 'chained'));
+    const before = codeHead(dir);
+    createFile(dir, 'src/card.js', 'const card = 2;\n');
+
+    const { error } = refusedPristine(dir, commitArgs(), as(BUILDING));
+
+    assert.strictEqual(error, 'commit --paths: the merge in progress in . still conflicts in src/till.js — resolve each and name it, then run the commit again');
+    assert.deepStrictEqual([codeHead(dir), merging(dir), marked(dir)], [before, true, '']);
+  });
+
+  /**
+   * The submodule `ext`, its chain past the task's branch in it and in the
+   * project, each with work of its own beside; the child's merge back begun,
+   * clean, and committed through the door.
+   * @param {import('node:test').TestContext} t @returns {{ext: string, extMerge: unknown}}
+   */
+  function childMergedBack(t) {
+    const folder = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'commit-task-child-')));
+    t.after(() => fs.rmSync(folder, { recursive: true, force: true }));
+    const source = initRepo(path.join(folder, 'ext-source'));
+    createFile(source, 'ext.txt', 'ext\n');
+    commitCode(source, 'ext');
+    const ext = addSubmodule(dir, 'ext', source);
+    git(ext, ['checkout', '-q', '-b', 'chained']);
+    createFile(ext, 'chained.txt', 'chained\n');
+    commitCode(ext, 'chained in ext');
+    git(dir, ['checkout', '-q', '-b', 'chained']);
+    git(dir, ['add', 'ext']);
+    git(dir, ['commit', '-q', '-m', 'ext chained']);
+    git(dir, ['checkout', '-q', branchOf(1)]);
+    git(ext, ['checkout', '-q', '-B', 'main', 'main']);
+    createFile(ext, 'own.txt', 'own\n');
+    commitCode(ext, 'own in ext');
+    git(dir, ['add', 'ext']);
+    git(dir, ['commit', '-q', '-m', 'ext own']);
+
+    assert.strictEqual(mergeBegun(ext, 'chained'), false, 'the child merges clean');
+    ok(dir, ['commit', '--paths', 'ext/chained.txt', '--task', UNIT, '1.1', '-m', 'merge(pay): the chain back, in ext'], as(BUILDING));
+    return { ext, extMerge: mergeCommit(ext) };
+  }
+
+  it('a child repository merged first, then the project\'s, its pointer named staged by the door as the child stands — past the merged tip the merge itself resolves it to', (t) => {
+    const { ext, extMerge } = childMergedBack(t);
+    createFile(ext, 'fix.txt', 'fix\n');
+    commitCode(ext, 'a fix in ext');
+    const fixed = git(ext, ['rev-parse', 'HEAD']).trim();
+    mergeBegun(dir, 'chained');
+    ok(dir, ['commit', '--paths', 'ext', '--task', UNIT, '1.1', '-m', 'merge(pay): the chain back'], as(BUILDING));
+
+    assert.deepStrictEqual([extMerge, mergeCommit(dir)], [{ parents: 2, task: 'pay-1-1' }, { parents: 2, task: 'pay-1-1' }]);
+    assert.strictEqual(git(dir, ['rev-parse', 'HEAD:ext']).trim(), fixed, 'the pointer at the child as it stands');
+  });
+
+  it('a child repository merged first, then the project\'s, its pointer at the child as it stands, past the merged tip, staged by git add before the door, as the chain slot says — committed, never refused', (t) => {
+    const { ext } = childMergedBack(t);
+    createFile(ext, 'fix.txt', 'fix\n');
+    commitCode(ext, 'a fix in ext');
+    mergeBegun(dir, 'chained');
+    git(dir, ['add', 'ext']);
+    assert.strictEqual(git(dir, ['diff', '--cached', '--name-only', 'HEAD']).trim(), 'ext', 'the pointer staged');
+
+    ok(dir, ['commit', '--paths', 'ext', '--task', UNIT, '1.1', '-m', 'merge(pay): the chain back'], as(BUILDING));
+
+    assert.deepStrictEqual([mergeCommit(dir), git(dir, ['rev-parse', 'HEAD:ext']).trim()], [{ parents: 2, task: 'pay-1-1' }, git(ext, ['rev-parse', 'HEAD']).trim()]);
+  });
+});
+
 describe('commit --task: never a code commit on the state branch (4.S20)', () => {
   it('4.S20: a tree with leeway-state checked out is refused before any check runs, nothing committed on either branch', () => {
     setEnvironment(dir, { run: { tests: marking(dir, 'tests') } });
-    const main = git(dir, ['rev-parse', 'main']);
+    const main = git(dir, ['rev-parse', branchOf(1)]);
     git(dir, ['symbolic-ref', 'HEAD', 'refs/heads/leeway-state']);
 
     const { error } = refusedPristine(dir, commitArgs(), as(BUILDING));
 
     assert.strictEqual(error, 'commit --paths: . has the state branch leeway-state checked out — the state commits through its own door');
-    assert.deepStrictEqual([git(dir, ['rev-parse', 'main']), marked(dir)], [main, '']);
+    assert.deepStrictEqual([git(dir, ['rev-parse', branchOf(1)]), marked(dir)], [main, '']);
   });
 });

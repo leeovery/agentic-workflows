@@ -4,18 +4,29 @@
 // Domain ring: a task's worktree (12.7.10, 7.2.17, 7.2.21), laid out for its
 // builder by `task worktree <unit> <task>`, run from the worktree Claude
 // Code's isolation made, so tasks run side by side there as anywhere
-// (12.7.3), every repository of the project laid out as the project is; and
-// taken apart again as the task ends.
+// (12.7.3), every repository of the project laid out as the project is, by
+// the routine the mutation run's scratch worktree is laid out by too
+// (project-layout.cjs); and taken apart again as the task ends.
 //
 // - The task's branch, named as the landing names it (landing-names.cjs), is
-//   made there at the worktree's own commit and checked out, so no file
-//   moves, the branch the isolation made left as it stands; or, where it is
-//   made already and no worktree has it out, switched to, where the worktree
-//   is clean. A task of one of the review's fix phases is built on the
-//   unit's work not landed below it, so the fixes make one stack, each on
-//   the one before (7.2.6, review-change.cjs): in each repository holding
-//   that work, its branch is made at that work's tip, the worktree's files
-//   moving to it where it is clean.
+//   made where the task is built on, never where the isolation's worktree
+//   happened to start — Claude Code's starts at the remote's default
+//   branch, whatever the project's checkout holds: on the work below the
+//   task — a task of the cut's on its own phase's chain alone, never
+//   another phase's work not landed; a fix phase's on the cut's and the
+//   fixes before it with its own chain, so the fixes make one stack
+//   (7.2.6) — in each repository holding that work, at its tip
+//   (review-change.cjs, `belowTips`); and in the project's own repository
+//   and each clone, where it holds none,
+//   at the tip of the branch it lands on, as the landing driver reads it
+//   (project-layout.cjs, `startsAt`). The branch is checked out there, the
+//   worktree's files moving to it where it is clean, the branch the
+//   isolation made left as it stands; or, where it is made already and no
+//   worktree has it out, switched to, as it stands, where the worktree is
+//   clean. A task laid out beside another on an older tip is merged back
+//   onto the chain's tip as it lands (12.7.1). The commit each repository's
+//   branch is made at is recorded in the checkout's cache (round-report.cjs,
+//   `recordLaidOut`), where its pair's range starts (brief-records.cjs).
 // - Each child repository — a clone or a submodule nested in the project's
 //   folder at any depth, as the project's own checkout has them
 //   (kernel/repos.cjs) — gets a worktree of that repository at its folder
@@ -23,16 +34,20 @@
 //   repositories nested in it: a submodule's branch made at the commit its
 //   holder's laid-out commit points it at, as a checkout of that commit lays
 //   it out — at the submodule's own checkout's commit where that commit
-//   points it nowhere — and a clone's at the branch it lands on
-//   (landing-git.cjs, `defaultBranch`), never its checkout, which may be on
-//   the person's own work; a fix phase's, where the repository holds the
-//   work below it, at that work's tip; or, where the branch is made already
-//   and no worktree has it out, checked out as it stands. A worktree of that
-//   repository already at the folder, on another branch, takes the branch
-//   as the project's own repository does. A child repository the task never
-//   changes holds the branch with nothing on it, which the landing passes
-//   over (landing.cjs); merging a parallel task back is Claude's (12.7.1),
-//   and the landing's chain lands it, so nothing here merges.
+//   points it nowhere — and a clone's at the tip of the branch it lands on,
+//   as the project's own repository's is, never its checkout, which may be
+//   on the person's own work; where the repository holds the unit's work
+//   not landed below the task, at that work's tip; or, where the branch is
+//   made already and no worktree has it out, checked out as it stands. A
+//   worktree of that repository already at the folder, on another branch,
+//   takes the branch as the project's own repository does. A child
+//   repository the task never changes holds the branch with nothing on it,
+//   which the landing passes over (landing.cjs); merging a parallel task back is Claude's (12.7.1),
+//   and the landing's chain lands it, so nothing here merges. Each child
+//   repository's worktree added is prepared as Claude Code prepares the
+//   root, the files its `.worktreeinclude` names copied and the directories
+//   the project's settings name linked (worktree-prep.cjs), so its tools
+//   run with their dependencies.
 // - The worktree is recorded against the task on the conversation's position
 //   (position.cjs), so a call made in it is that task's (conversation.cjs,
 //   `taskAt`), and the task's commits are made there alone (commit-task.cjs).
@@ -79,8 +94,8 @@
 // switched off, where it is a repository's own checkout, and, where it is
 // the worktree of a task in flight in the calling conversation, its builder
 // sent back in by the orchestrator — naming why; a worktree switching to
-// the branch made already, or making it at the work below a fix phase, with
-// changes not committed; the work below a fix phase no one stack in a
+// the branch made already, or making it where the task is built on, with
+// changes not committed; the work below the task no one stack in a
 // repository, as phase-stack.cjs refuses it; and a child
 // repository's folder holding anything but a worktree of that repository.
 // ---------------------------------------------------------------------------
@@ -91,30 +106,24 @@ const { handedSession } = require('../kernel/process.cjs');
 const { git, tryGit, dirtyEntries } = require('../kernel/git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { realpathOrSelf, within } = require('../kernel/isolated-git.cjs');
-const { projectRepos, repoOf, repoPath, repoName } = require('../kernel/repos.cjs');
+const { projectRepos, repoOf, repoPath, repoName, mappedSubmodules } = require('../kernel/repos.cjs');
 const { tasksInFlight, taskAt } = require('./conversation.cjs');
 const { recordWorktree } = require('./position.cjs');
-const { nestedRemoteName } = require('./remote.cjs');
+const { recordLaidOut } = require('./round-report.cjs');
+const { commitOf, heldIn, startsAt, startOf, layOut } = require('./project-layout.cjs');
+const { preparedLinkOf, removePreparedLinks } = require('./worktree-prep.cjs');
 const { taskBranch } = require('./landing-names.cjs');
 const lg = require('./landing-git.cjs');
 const { shownTask, taskId, taskName } = require('./task-id.cjs');
 
-// What a fix phase is built on, loaded at its call: it reads the tracker,
-// whose verbs lay a task out through this module.
-const fixBase = () => require('./review-change.cjs');
+// What a task is built on, loaded at its call: it reads the tracker, whose
+// verbs lay a task out through this module.
+const below = () => require('./review-change.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
 /** @typedef {import('./landing-git.cjs').Worktree} Worktree */
 /** @typedef {import('../kernel/repos.cjs').Repo} Repo */
-
-/**
- * How a repository takes the task's branch: in the worktree at its folder
- * already — made there at `start`, or, `start` null, switched to — or by a
- * worktree added there, made at `start` or, `start` null, checked out as it
- * stands.
- * @typedef {{inPlace: boolean, start: string|null}} Make
- */
 
 /** A child repository's worktree, with its repository. @typedef {{repo: Repo, tree: Worktree}} ChildTree */
 
@@ -125,22 +134,13 @@ const fixBase = () => require('./review-change.cjs');
  */
 
 /**
- * One repository's part of the layout: the repository, as the project's own
- * checkout has it; its folder in the task's worktree; the commit its
- * checkout there is at once laid out; how it takes the branch, or null
- * where it has it already; and the worktree it takes the branch over from,
- * where it does.
- * @typedef {{repo: Repo, at: string, commit: string, make: Make|null, taken?: TakeOver}} Part
+ * One repository's part of the layout (project-layout.cjs), with the
+ * worktree it takes the branch over from, where it does.
+ * @typedef {import('./project-layout.cjs').Part & {taken?: TakeOver}} Part
  */
 
 /** A refusal in the verb's words. @param {string} text */
 const refusal = (text) => new Error(`task worktree: ${text}`);
-
-/** A commit a repository names, in full. @param {string} root @param {string} rev */
-const commitOf = (root, rev) => git(root, ['rev-parse', '--verify', `${rev}^{commit}`]).trim();
-
-/** The project's folder in its own checkout, from the code root of any worktree of it. @param {string} root */
-const projectOf = (root) => path.join(lg.worktrees(root)[0].path, lg.prefixOf(root));
 
 /** The task in flight in the conversation, if it is. @param {string} session @param {TaskRef} ref */
 const inFlightIn = (session, ref) => tasksInFlight(session).find((task) => task.unit === ref.unit && task.task === shownTask(ref));
@@ -218,12 +218,14 @@ function dirtIn(repos, trees) {
 }
 
 /**
- * Child repositories' worktrees removed, deepest first, a submodule's folder
- * left empty as a checkout of its holder leaves it: where each was.
- * @param {ChildTree[]} trees
+ * Child repositories' worktrees removed, deepest first, each with the links
+ * its preparation made, a submodule's folder left empty as a checkout of
+ * its holder leaves it: where each was.
+ * @param {Repo[]} repos the project's, in its own checkout @param {ChildTree[]} trees
  */
-function removeChildTrees(trees) {
+function removeChildTrees(repos, trees) {
   return trees.map(({ repo, tree }) => {
+    removePreparedLinks(tree.path, () => repos[0].path);
     lg.removeWorktree(repo.path, tree.path);
     if (gitlinkAt(tree.path)) fs.mkdirSync(tree.path);
     return tree.path;
@@ -275,15 +277,17 @@ function heldElsewhere(ref, repos, repo, branch, trees, session) {
 /**
  * What a worktree of `repo` at `at` holds not committed, named from there:
  * its own files, and a nested submodule's pointer moved, staged or not —
- * never what a nested repository holds, its own to answer for, nor the
- * folder of a clone nested in it, which it never tracks.
- * @param {Repo[]} repos @param {Repo} repo @param {string} at
+ * never what a nested repository holds, its own to answer for, the folder
+ * of a clone nested in it, which it never tracks, nor a link the
+ * worktree's preparation made (worktree-prep.cjs).
+ * @param {Repo[]} repos the project's, in its own checkout @param {Repo} repo @param {string} at
  * @returns {string[]}
  */
 function uncommitted(repos, repo, at) {
   const clones = repos.slice(1).map((other) => heldIn(repos, other))
     .filter(({ holder, submodule }) => holder === repo && !submodule).map(({ folder }) => `${folder}/`);
-  return dirtyEntries(at, [], true).filter(({ path: entry, status }) => status !== '??' || !clones.includes(entry)).map((entry) => lg.plain(entry.path));
+  const prepared = preparedLinkOf(() => repos[0].path);
+  return dirtyEntries(at, [], true).filter((entry) => !(entry.status === '??' && clones.includes(entry.path)) && !prepared(at, entry)).map((entry) => lg.plain(entry.path));
 }
 
 /**
@@ -300,8 +304,8 @@ function refuseUncommitted(repos, repo, at, why) {
 
 /**
  * A worktree already at a repository's folder, on another branch, taking
- * the branch in place: made at `start`, what a fix phase is built on, or
- * else at its own commit, so no file moves; or, made already and out
+ * the branch in place: made at `start`, what the task is built on there,
+ * or else at its own commit, so no file moves; or, made already and out
  * nowhere — or out in a worktree it is taken over from — switched to —
  * refused where its files move and the worktree has changes not committed.
  * @param {TaskRef} ref @param {Repo[]} repos @param {Repo} repo @param {string} at @param {string} branch @param {Worktree[]} trees the repository's @param {string} session @param {string|undefined} start
@@ -312,7 +316,7 @@ function inPlace(ref, repos, repo, at, branch, trees, session, start) {
   const made = lg.branches(repo.path).get(branch);
   if (made === undefined) {
     const commit = start ?? commitOf(at, 'HEAD');
-    if (commit !== commitOf(at, 'HEAD')) refuseUncommitted(repos, repo, at, `${branch} is made at ${lg.short(commit)}, where the work below it not landed ends`);
+    if (commit !== commitOf(at, 'HEAD')) refuseUncommitted(repos, repo, at, `${branch} is made at ${lg.short(commit)}, where the task is built on`);
     return { repo, at, commit, make: { inPlace: true, start: commit } };
   }
   refuseUncommitted(repos, repo, at, `${branch} is made already`);
@@ -337,46 +341,8 @@ function occupied(at) {
 }
 
 /**
- * The repository a child repository is nested in, its folder from there,
- * and whether that repository holds it as a submodule.
- * @param {Repo[]} repos @param {Repo} repo
- */
-function heldIn(repos, repo) {
-  const holder = repoOf(repos.filter((other) => other !== repo), repo.dir);
-  const folder = repoPath(holder, repo.dir);
-  return { holder, folder, submodule: holder.submodules.includes(folder) };
-}
-
-/**
- * The commit a submodule's holder, laid out at `commit` in the folder `at`,
- * points it at — its own checkout's where that points it nowhere, as a
- * checkout of that commit lays it out.
- * @param {Repo[]} repos @param {Repo} repo @param {string} at @param {string} commit
- * @returns {string}
- */
-function pointedAt(repos, repo, at, commit) {
-  const { holder, folder } = heldIn(repos, repo);
-  const [pointers] = lg.pointersAt(holder.path, [commit], [`${holder.dir === '' ? lg.prefixOf(at) : ''}${folder}`]);
-  return [...pointers.values()][0] ?? commitOf(repo.path, 'HEAD');
-}
-
-/**
- * The commit a child repository's branch is made at: for a submodule, the
- * commit its holder's laid-out commit points it at; for a clone, the branch
- * it lands on.
- * @param {Repo[]} repos @param {Repo} repo @param {Map<string, Part>} parts each laid out before it, by folder
- * @returns {string}
- */
-function startOf(repos, repo, parts) {
-  const { holder, submodule } = heldIn(repos, repo);
-  if (!submodule) return commitOf(repo.path, `refs/heads/${lg.defaultBranch(repo.path, nestedRemoteName(repo.path), true)}`);
-  const { at, commit } = /** @type {Part} */ (parts.get(holder.dir));
-  return pointedAt(repos, repo, at, commit);
-}
-
-/**
  * A child repository's part: its worktree there already, on the branch or
- * taking it in place, or one to add, made at what a fix phase is built on
+ * taking it in place, or one to add, made at what the task is built on
  * there, else where `startOf` says — refused where its folder holds
  * anything else, or the branch is out in another worktree than those the
  * layout removes as it takes the branch over.
@@ -399,27 +365,6 @@ function childPart(ref, repos, repo, root, branch, parts, session, removing, bas
 }
 
 /**
- * What the task is built on, by repository folder, at its commit: for a
- * task of one of the review's fix phases, the tip of the unit's work not
- * landed below it in each repository holding that work (review-change.cjs,
- * 7.2.6); nothing for any other.
- * @param {string} project the project's folder in its own checkout @param {Repo[]} repos @param {TaskRef} ref
- * @returns {Map<string, string>}
- */
-function builtOn(project, repos, ref) {
-  const tips = fixBase().fixBase(project, ref.unit, ref.phase);
-  return new Map(repos.filter((repo) => tips.has(repo.dir)).map((repo) => [repo.dir, commitOf(repo.path, `refs/heads/${tips.get(repo.dir)}`)]));
-}
-
-/** A part laid out as its plan says. @param {Part} part @param {string} branch */
-function layOutPart({ repo, at, make }, branch) {
-  if (make === null) return;
-  if (!make.inPlace) lg.addWorktree(repo.path, at, branch, make.start);
-  else if (make.start === null) lg.switchTo(at, branch);
-  else lg.branchInPlace(at, branch, make.start);
-}
-
-/**
  * `task worktree`: the task's worktree laid out where the call is made (see
  * the header), its type and title read from the tracker by `read` once the
  * task is found in flight and the worktree is its own.
@@ -433,17 +378,18 @@ function layOutTask(cwd, ref, read) {
     throw refusal(`${taskName(ref)} has no type in the tracker, and its branch is named from it — give it one with \`engine task type ${ref.unit} ${shownTask(ref)} <type>\`, then run it again`);
   }
   const branch = taskBranch(ref, type, title);
-  const project = projectOf(here.root);
+  const project = lg.projectCheckout(here.root, here.trees);
   const repos = projectRepos(project);
-  const base = builtOn(project, repos, ref);
+  const base = startsAt(project, ref.unit, repos, below().belowTips(project, ref.unit, ref.phase));
   const own = ownPart(ref, repos, here, branch, session, base);
   const removing = new Set(own.taken?.children.map(({ tree }) => tree.path));
   /** @type {Map<string, Part>} */
   const parts = new Map([['', own]]);
   for (const repo of repos.slice(1)) parts.set(repo.dir, childPart(ref, repos, repo, here.root, branch, parts, session, removing, base));
-  const removed = own.taken === undefined ? [] : removeChildTrees(own.taken.children);
+  const removed = own.taken === undefined ? [] : removeChildTrees(repos, own.taken.children);
   if (own.taken !== undefined) lg.detach(own.taken.tree.path);
-  for (const part of parts.values()) layOutPart(part, branch);
+  layOut([...parts.values()], branch, project);
+  recordLaidOut(cwd, ref, Object.fromEntries([...parts.values()].flatMap(({ repo, make }) => (make === null || make.start === null ? [] : [[repo.dir, make.start]]))));
   const { recorded } = recordWorktree(session, ref.unit, shownTask(ref), here.top);
   return {
     task: shownTask(ref),
@@ -459,13 +405,16 @@ function layOutTask(cwd, ref, read) {
 }
 
 /**
- * Whether a checkout of a submodule's holder tracks it at `at`: emptied as
- * its worktree goes, the folder is made again, as that checkout leaves it.
+ * Whether a checkout of a submodule's holder tracks it at `at` — a gitlink
+ * its `.gitmodules` maps, never a nested clone `git add` staged there
+ * (kernel/repos.cjs): emptied as its worktree goes, the folder is made
+ * again, as that checkout leaves it.
  * @param {string} at
  */
 function gitlinkAt(at) {
   const parent = path.dirname(at);
-  return fs.existsSync(parent) && (tryGit(parent, ['ls-files', '--stage', '--', path.basename(at)]) ?? '').startsWith('160000 ');
+  if (!fs.existsSync(parent) || !(tryGit(parent, ['ls-files', '--stage', '--', path.basename(at)]) ?? '').startsWith('160000 ')) return false;
+  return mappedSubmodules(parent).includes(path.basename(at));
 }
 
 /**
@@ -477,7 +426,7 @@ function gitlinkAt(at) {
  * @returns {{repos: Repo[], trees: {repo: Repo, tree: Worktree}[]}}
  */
 function childWorktrees(cwd, ref, read) {
-  const repos = projectRepos(projectOf(fs.realpathSync(codeRoot(cwd))));
+  const repos = projectRepos(lg.projectCheckout(fs.realpathSync(codeRoot(cwd))));
   if (repos.length === 1) return { repos, trees: [] };
   const { type, title } = read();
   const branch = type === null ? null : taskBranch(ref, type, title);
@@ -503,7 +452,7 @@ function takeWorktreeApart(cwd, ref, verb, read) {
   if (first !== undefined) {
     throw new Error(`task ${verb}: ${first.tree.branch ?? 'a detached HEAD'} is checked out at ${first.tree.path}, with changes not committed: ${first.dirt.join(', ')}, so nothing moved — commit them, or move them out of the way, then run it again`);
   }
-  return removeChildTrees(trees);
+  return removeChildTrees(repos, trees);
 }
 
-module.exports = { layOutTask, takeWorktreeApart, heldIn, pointedAt };
+module.exports = { layOutTask, takeWorktreeApart };

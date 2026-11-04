@@ -1,20 +1,19 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The build's review briefs (leeway-engine/scripts/domain/brief.cjs, its
-// records domain/brief-records.cjs, content/briefs/): the phase review's,
-// the reviewer's second template — the phase, its sections, its tasks'
-// criteria, what it relies on, the decided calls, its range, its scenarios'
-// runs read at the phase's tip in every repository holding its work, a
-// clone's among them (15.S5, 15.S18, 12.7.10), what `verify mutants` left of
-// the tool's survivors run at those tips, refused where a commit has landed
-// in the clone since (15.S9), the linters (12.11.2), a
-// setup with no tool said so (15.S10); where each reviewer's report goes
-// (13.5.9) — a task's reviewer's file of the round under review, read from
-// the reports on disk so it holds across a `/clear`, refused once written
-// or once the review passed or was settled, a phase's reviewer's beside its
-// consolidation, each by the reviewer's letter; and the builder's own call
-// among the decided calls its reviewers read (13.S17).
+// The phase review's brief (leeway-engine/scripts/domain/brief.cjs, its
+// records domain/brief-records.cjs, content/briefs/), the reviewer's second
+// template — the phase, its sections, its tasks' criteria, what it relies
+// on, the decided calls, its range — from where its chain leaves the
+// branch the project lands on where no base is named, as a task's is from
+// where it was laid out, each holding only its own phase's work (12.7.10)
+// — its scenarios' runs read at the phase's tip in every repository
+// holding its work, a clone's among them (15.S5, 15.S18, 12.7.10), what
+// `verify mutants` left of the tool's survivors run at those tips, refused
+// where a commit has landed in the clone since (15.S9), the linters
+// (12.11.2), a setup with no tool said so (15.S10). A task's review rounds
+// are test-engine-brief-build-rounds.cjs's, -changes.cjs's and -ways.cjs's;
+// the builder's branch and its chain test-engine-brief-build-chain.cjs's.
 //
 // Layer: verb. World: brief-build-world.cjs's, copied for each test.
 // ---------------------------------------------------------------------------
@@ -23,14 +22,10 @@ require('./hermetic-env.cjs');
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
-const fs = require('fs');
 const path = require('path');
-const { initRepo, commitCode, addSubmodule } = require('./engine-harness.cjs');
 const {
   UNIT,
   NESTED,
-  VERIFY,
-  SESSION_ID,
   AREA_2,
   TASKS,
   branchOf,
@@ -40,10 +35,8 @@ const {
   withoutMutationTool,
   RUNS,
   runFiles,
-  calls,
   useWorld,
   issued,
-  template,
   filledTemplate,
   refusedUnissued,
   pathDrawn,
@@ -54,16 +47,11 @@ const {
   layout,
   writeState,
   git,
-  briefPath,
-  conversationDir,
   SPEC_FILE,
 } = require('./brief-build-world.cjs');
 
 /** @type {string} */
 let dir;
-
-/** Why a report holding neither its findings' heading nor a verdict does not read, as round-report.cjs says it. */
-const NOT_READ = 'its last heading at level one or two is not `## Findings`; its last line is not `Verdict: pass` or `Verdict: fail`';
 
 describe('the phase review\'s brief, the reviewer\'s second template (12.11.2, 6.5.2)', () => {
   useWorld((at) => { dir = at; });
@@ -117,6 +105,22 @@ describe('the phase review\'s brief, the reviewer\'s second template (12.11.2, 6
     })}`);
   });
 
+  it('12.7.10: with no base named, each range holds its own phase\'s work alone — a phase relying on nothing unfinished, laid out beside one still open, read from where its chain leaves the branch the project lands on, as is the open one, and a task of it with nothing of its phase chained below it from there', () => {
+    withoutMutationTool();
+    git(dir, ['branch', '-D', branchOf(2, 1)]);
+    git(dir, ['checkout', '-q', '-b', branchOf(2, 1), 'main']);
+    commitFile(dir, 'src/refund.js', `${UNIT}-2-1`);
+    git(dir, ['checkout', '-q', 'main']);
+    /** The phase's range its review's brief draws. @param {string[]} args */
+    const phaseRange = (args) => /# The phase's range\n\n([\s\S]*?)\n\n# /.exec(issued(['phase-review', UNIT, ...args]).brief)?.[1];
+    const own = rangeDrawn('the project\'s repository', branchOf(2, 1), ['src/refund.js']);
+
+    assert.strictEqual(phaseRange(['2', '--letter', 'a']), own);
+    assert.strictEqual(phaseRange(['1', '--letter', 'a']), phaseRange(['1', '--base', 'main', '--letter', 'b']));
+    assert.doesNotMatch(String(phaseRange(['1', '--letter', 'a'])), /refund/);
+    assert.ok(issued(['reviewer', UNIT, '2.1', '--letter', 'a']).brief.includes(`# The diff's range\n\n${own}\n\n# `));
+  });
+
   it('15.S5, 15.S18, 12.7.10: the runs are read at the phase\'s tip in every repository holding its work — a run beyond the project\'s tip never counts, nor 1.2\'s builder\'s later pass at the clone\'s code from before 1.1 landed there, the project\'s commit the tip\'s; so a scenario whose only run there failed reads not proven, and one only skipped named, not run', () => {
     withoutMutationTool();
     const lib = path.join(dir, NESTED);
@@ -161,7 +165,7 @@ describe('the phase review\'s brief, the reviewer\'s second template (12.11.2, 6
     const lib = path.join(dir, NESTED);
     commitFile(lib, 'card/nit.js', `${UNIT}-1-1`);
 
-    refusedUnissued(['phase-review', UNIT, '1', '--base', 'main', '--letter', 'a'], new RegExp(`^the mutation tool has not run over phase 1 of pay at its tips — the project's repository at ${tipOf(dir, branchOf(1, 4))}, ${NESTED} at ${tipOf(lib, branchOf(1, 1))} — engine verify mutants pay 1, run from a checkout at those tips, runs it$`));
+    refusedUnissued(['phase-review', UNIT, '1', '--base', 'main', '--letter', 'a'], new RegExp(`^the mutation tool has not run over phase 1 of pay at its tips — the project's repository at ${tipOf(dir, branchOf(1, 4))}, ${NESTED} at ${tipOf(lib, branchOf(1, 1))} — engine verify mutants pay 1 runs it$`));
   });
 
   it('15.S10: a setup naming no mutation tool says so, and the template has each reviewer break the riskiest line instead', () => {
@@ -177,131 +181,5 @@ describe('the phase review\'s brief, the reviewer\'s second template (12.11.2, 6
     const criteria = (/** @type {number} */ n) => `## 1.${n} ${TASKS[1][n - 1][0]}\n\n- Given a card, when ${TASKS[1][n - 1][0].toLowerCase()} runs, then it answers.`;
 
     assert.ok(brief.includes(`# Its tasks' criteria\n\n${criteria(1)}\n\n${criteria(2)}\n\n### Added by the person\n\nThe receipt is emailed.\n\n${criteria(4)}\n\n# What it relies on\n\nNone recorded.\n`), brief);
-  });
-});
-
-describe('where a reviewer\'s report goes (13.5.9)', () => {
-  useWorld((at) => { dir = at; });
-
-  const REPORT = '## Findings\n\n- bug: The receipt is never sent.\n  Scenario: A customer pays and waits for a receipt.\n\nVerdict: fail\n';
-  const PASSED = '## Findings\n\nNone.\n\nVerdict: pass\n';
-
-  /** The reviewer's brief for task 1.2 by reviewer `letter`, in the conversation `session` names. @param {string} letter @param {string} [session] */
-  const reviewing = (letter, session = SESSION_ID) => ok(dir, ['brief', 'reviewer', UNIT, '1.2', '--base', 'main', '--letter', letter], { env: { CLAUDE_CODE_SESSION_ID: session } });
-
-  /** The report place a brief draws. @param {{id: string}} res @param {string} [session] */
-  const placeIn = (res, session = SESSION_ID) => /# Where your report goes\n\n(.*)\n/.exec(fs.readFileSync(briefPath(session, res.id), 'utf8'))?.[1];
-
-  /** A round's report written by reviewer `letter`. @param {number} round @param {string} letter @param {string} [text] */
-  const reported = (round, letter, text = REPORT) => writeState(dir, `pay/build/tasks/1.2/round-${round}-${letter}.md`, text);
-
-  it('each reviewer of a task\'s first round writes to its own file of round 1', () => {
-    assert.strictEqual(placeIn(reviewing('a')), pathDrawn('pay/build/tasks/1.2/round-1-a.md'));
-    assert.strictEqual(placeIn(reviewing('b')), pathDrawn('pay/build/tasks/1.2/round-1-b.md'));
-  });
-
-  it('the round is read from the reports on disk: the round one reviewer has reported holds for the other after a /clear, and a round both reported is followed by the next', () => {
-    reported(1, 'a');
-    const cleared = 'brief-build-after-clear';
-    try {
-      assert.strictEqual(placeIn(reviewing('b', cleared), cleared), pathDrawn('pay/build/tasks/1.2/round-1-b.md'));
-    } finally {
-      fs.rmSync(conversationDir(cleared), { recursive: true, force: true });
-    }
-    reported(1, 'b');
-    assert.strictEqual(placeIn(reviewing('a')), pathDrawn('pay/build/tasks/1.2/round-2-a.md'));
-  });
-
-  it('13.4.6: a round the orchestrator settled is followed by another, its direction reviewed again', () => {
-    reported(1, 'a');
-    reported(1, 'b');
-    writeState(dir, 'pay/build/tasks/1.2/round-1-settled.md', 'Settled.\n');
-
-    assert.strictEqual(placeIn(reviewing('a')), pathDrawn('pay/build/tasks/1.2/round-2-a.md'));
-  });
-
-  it('a report that does not read is replaced: its reviewer is briefed again for its round, the brief naming the file it replaces, and the other reviewer\'s round stands', () => {
-    reported(1, 'a', 'Looks fine to me.\n');
-    reported(1, 'b');
-
-    refusedUnissued(['reviewer', UNIT, '1.2', '--base', 'main', '--letter', 'b'], /^pay\/build\/tasks\/1\.2\/round-1-b\.md is written already — that reviewer's report of the round is in$/);
-    assert.strictEqual(placeIn(reviewing('a')), `${pathDrawn('pay/build/tasks/1.2/round-1-a.md')} — the report there does not read as a reviewer's report — ${NOT_READ}; yours replaces it`);
-  });
-
-  it('refused: a letter none of the reviewers\', a report already written for its round that reads, and a task whose last round passed', () => {
-    refusedUnissued(['reviewer', UNIT, '1.2', '--base', 'main', '--letter', 'c'], /^c is no reviewer's letter — the reviewers are a and b$/);
-    reported(1, 'a');
-    refusedUnissued(['reviewer', UNIT, '1.2', '--base', 'main', '--letter', 'a'], /^pay\/build\/tasks\/1\.2\/round-1-a\.md is written already — that reviewer's report of the round is in$/);
-    reported(1, 'b', PASSED);
-    reported(1, 'a', PASSED);
-    refusedUnissued(['reviewer', UNIT, '1.2', '--base', 'main', '--letter', 'a'], /^round 1 of task 1\.2 of pay passed — its review is over$/);
-  });
-
-  it('a phase\'s reviewer writes to its letter\'s file beside the consolidation, a report there that does not read named as the one it replaces, refused once one that reads is written', () => {
-    withoutMutationTool();
-    const phaseReview = ['phase-review', UNIT, '1', '--base', 'main', '--letter', 'b'];
-    const first = 'brief-build-phase-review';
-    const elsewhere = () => placeIn(ok(dir, ['brief', ...phaseReview], { env: { CLAUDE_CODE_SESSION_ID: first } }), first);
-    try {
-      assert.strictEqual(elsewhere(), pathDrawn('pay/build/phases/phase-1/review-b.md'));
-      writeState(dir, 'pay/build/phases/phase-1/review-b.md', 'Half a report.\n');
-      assert.strictEqual(elsewhere(), `${pathDrawn('pay/build/phases/phase-1/review-b.md')} — the report there does not read as a reviewer's report — ${NOT_READ}; yours replaces it`);
-    } finally {
-      fs.rmSync(conversationDir(first), { recursive: true, force: true });
-    }
-    writeState(dir, 'pay/build/phases/phase-1/review-b.md', REPORT);
-    refusedUnissued(phaseReview, /^pay\/build\/phases\/phase-1\/review-b\.md is written already — that reviewer's report of the round is in$/);
-  });
-});
-
-describe('the reviewer\'s scratch worktree (13.2.2)', () => {
-  useWorld((at) => { dir = at; });
-
-  /** The scratch worktree's layout task 1.2's reviewer is briefed with. */
-  const laidOut = () => /# Laying out your scratch worktree\n\n([^#]*)\n\n#/.exec(issued(['reviewer', UNIT, '1.2', '--base', 'main', '--letter', 'a']).brief)?.[1];
-
-  it('a task touching the project\'s repository alone lays out every repository, as the builder\'s worktree held them: the project\'s at the range\'s tip, a submodule at the commit that tip points it at, a clone on the task\'s branch, or the branch it lands on where that is not made there', () => {
-    const source = initRepo(path.join(dir, '..', 'ext-source'));
-    fs.writeFileSync(path.join(source, 'one.txt'), 'one\n');
-    commitCode(source, 'one');
-    const first = git(source, ['rev-parse', 'HEAD']).trim();
-    fs.writeFileSync(path.join(source, 'two.txt'), 'two\n');
-    commitCode(source, 'two');
-    addSubmodule(dir, 'ext', source);
-    const pinning = path.join(dir, '..', 'pinning');
-    git(dir, ['worktree', 'add', '-q', pinning, branchOf(1, 2)]);
-    git(pinning, ['update-index', '--add', '--cacheinfo', `160000,${first},ext`]);
-    git(pinning, ['commit', '-q', '-m', 'ext pinned']);
-    git(dir, ['worktree', 'remove', '--force', pinning]);
-    const nested = path.join(dir, NESTED);
-    git(nested, ['branch', branchOf(1, 2), 'main']);
-
-    const own = `- the project's repository: \`${branchOf(1, 2)}\` — the range's tip there`;
-    const ext = `- \`ext\`: \`${first}\` — a submodule, at the commit the project's repository points it at as laid out`;
-    assert.strictEqual(laidOut(), [own, ext, `- \`${NESTED}\`: \`${branchOf(1, 2)}\` — the task's branch`].join('\n'));
-    git(nested, ['branch', '-D', branchOf(1, 2)]);
-    assert.strictEqual(laidOut(), [own, ext, `- \`${NESTED}\`: \`main\` — the branch it lands on, the task's branch not made there`].join('\n'));
-  });
-});
-
-describe('where the verify setup goes (15.2.11)', () => {
-  useWorld((at) => { dir = at; });
-
-  it('the builder\'s file starts from the setup recorded now, drawn whole but for its run, so a builder changing it never undoes a change recorded since', () => {
-    const { ran: _ran, ...parts } = VERIFY;
-    const { brief } = issued(['builder', UNIT, '1.2']);
-
-    assert.ok(brief.includes(`# Where the verify setup goes\n\n${pathDrawn('.cache/pay/build/verify-setup.json')}\n\nThe verify setup recorded now, which the file starts from:\n\n\`\`\`json\n${JSON.stringify(parts, null, 2)}\n\`\`\`\n\n#`), brief);
-  });
-});
-
-describe('the builder\'s calls (13.11.10)', () => {
-  useWorld((at) => { dir = at; });
-
-  it('13.S17: a call the builder took, recorded in the build, is among the decided calls the builder\'s brief and its reviewers\' carry', () => {
-    const builder = issued(['builder', UNIT, '1.2']).brief;
-    const reviewer = issued(['reviewer', UNIT, '1.2', '--base', 'main', '--letter', 'a']).brief;
-
-    for (const brief of [builder, reviewer]) assert.ok(brief.includes(`# The decided calls\n\n${decidedDrawn()}\n`), brief);
   });
 });

@@ -2,7 +2,9 @@
 
 // ---------------------------------------------------------------------------
 // The build briefs' suites' world and helpers (test-engine-brief-build.cjs,
-// test-engine-brief-build-review.cjs): a project, built once per process and
+// test-engine-brief-build-review.cjs, test-engine-brief-build-rounds.cjs,
+// test-engine-brief-build-changes.cjs, test-engine-brief-build-ways.cjs,
+// test-engine-brief-build-chain.cjs): a project, built once per process and
 // copied for each test, with a unit past ready to build — its spec of two
 // areas, its cut of three phases, the first two written in the tracker
 // through the default driver, phase 1's tasks done, in progress, closed and
@@ -22,7 +24,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {
-  ok, refusedPristine, statePath, layout, writeState, readState, commitAll, commitCode, git, initRepo, fixtureFrom, cleanupFixture,
+  ok, refuses, refusedPristine, statePath, layout, writeState, readState, commitAll, commitCode, git, initRepo, fixtureFrom, cleanupFixture,
 } = require('./engine-harness.cjs');
 const { createManifest, templateFolder } = require('./discovery-test-utils.cjs');
 
@@ -278,6 +280,83 @@ const decidedDrawn = () => [
   `- ${calls.api}, the person's: Refunds through the API.\n  Why: They come weekly now.`,
 ].join('\n');
 
+// Task 1.2's review rounds, for the suites of where a reviewer's report
+// goes, a change under review and the way on from a round.
+
+const REPORT = '## Findings\n\n- bug: The receipt is never sent.\n  Scenario: A customer pays and waits for a receipt.\n\nVerdict: fail\n';
+
+const PASSED = '## Findings\n\nNone.\n\nVerdict: pass\n';
+
+/** The reviewer's brief for task 1.2 by reviewer `letter`, in the conversation `session` names. @param {string} letter @param {string} [session] */
+const reviewing = (letter, session = SESSION_ID) => ok(dir, ['brief', 'reviewer', UNIT, '1.2', '--base', 'main', '--letter', letter], { env: { CLAUDE_CODE_SESSION_ID: session } });
+
+/** The report place a brief draws. @param {{id: string}} res @param {string} [session] */
+const placeIn = (res, session = SESSION_ID) => /# Where your report goes\n\n(.*)\n/.exec(fs.readFileSync(briefPath(session, res.id), 'utf8'))?.[1];
+
+/** A round's report written by reviewer `letter`. @param {number} round @param {string} letter @param {string} [text] */
+const reported = (round, letter, text = REPORT) => writeState(dir, `pay/build/tasks/1.2/round-${round}-${letter}.md`, text);
+
+/**
+ * Why a reviewer of task 1.2 is refused once round `round` passed, its
+ * account not taken and no worktree having its branch out: the way on, its
+ * builder's brief laying one out, where its reports are read for their
+ * notes for later and nits. @param {number} round
+ */
+const over = (round) => `round ${round} of task 1.2 of pay passed — its review is over: no worktree has its branch checked out, so send its builder its brief first, engine brief builder pay 1.2, which lays one out and asks for its account; read its reports, ${['a', 'b'].map((letter) => pathDrawn(`pay/build/tasks/1.2/round-${round}-${letter}.md`)).join(' and ')}, for their notes for later and the nits the task's commits do not yet fix, and fix those in that worktree before its account is taken`;
+
+/** A reviewer's brief for task 1.2 refused, in the words `expected`, the state as it was and no brief stored. @param {string} expected */
+function reviewerRefused(expected) {
+  const before = stored();
+  assert.strictEqual(refusedPristine(dir, ['brief', 'reviewer', UNIT, '1.2', '--letter', 'a'], { env: SESSION }).error, expected);
+  assert.deepStrictEqual(stored(), before);
+}
+
+/** Round `round`'s pair briefed in a conversation of their own, `opening`. @param {number} round @param {string} [opening] */
+function briefedFor(round, opening = `brief-build-round-${round}`) {
+  try {
+    for (const letter of ['a', 'b']) assert.strictEqual(placeIn(reviewing(letter, opening), opening), pathDrawn(`pay/build/tasks/1.2/round-${round}-${letter}.md`));
+  } finally {
+    fs.rmSync(conversationDir(opening), { recursive: true, force: true });
+  }
+}
+
+/** Something added to task 1.2 by the orchestrator. @param {string} text */
+function added(text) {
+  writeState(dir, 'pay/build/tasks/1.2/addition.md', `${text}\n`);
+  ok(dir, ['task', 'add', UNIT, '1.2', '--file', statePath(dir, 'pay/build/tasks/1.2/addition.md'), '--by', 'orchestrator']);
+}
+
+/** The conversation briefing task 1.2's builder in these tests. */
+const BUILDING = 'brief-build-builder';
+
+/** Why the builder's brief for task 1.2 is refused, asked in the conversation briefing it. */
+const builderBrief = () => {
+  const res = refuses(dir, ['brief', 'builder', UNIT, '1.2'], { env: { CLAUDE_CODE_SESSION_ID: BUILDING } });
+  fs.rmSync(conversationDir(BUILDING), { recursive: true, force: true });
+  return res.error;
+};
+
+/** Why round `round` of task 1.2 is not reported whole, each reviewer's way on given. @param {number} round @param {string[]} ways */
+const notWhole = (round, ways) => `round ${round} of task 1.2 of pay is not yet reported whole — ${ways.join('; ')} — and its builder goes back once the round's reports are in`;
+
+/** The way on for a reviewer of task 1.2 still to report, briefed in this conversation. @param {string} letter */
+const stillReading = (letter) => `reviewer ${letter}, briefed in this conversation, is still to report: wait for it — or, where it stopped without writing its report, brief it again, engine brief reviewer pay 1.2 --letter ${letter}`;
+
+/** The way on for a reviewer of task 1.2 an earlier conversation briefed. @param {string} letter */
+const briefedEarlier = (letter) => `reviewer ${letter} was briefed in an earlier conversation, or not at all: brief it for the round, engine brief reviewer pay 1.2 --letter ${letter}`;
+
+/** Why task 1.2 changed after round `round` passed, as the account and the chain refuse it. @param {number} round */
+const changedAfter = (round) => `task 1.2 of pay changed after round ${round} passed — something was added to it, or a call of it decided against its lean — so its pair reads it again first: engine brief reviewer pay 1.2 --letter <letter>, each reviewer of round ${round + 1}`;
+
+/** The fix brief `id` of round 1 of task 1.2, its reports alone: a's failing, b's passing. @param {string} id */
+const fixOfRound1 = (id) => `Brief ${id} — the fix round's, for pay task 1.2\n\n${filledTemplate('fix', { reports: `# Reviewer A's report\n\n${REPORT}\n\n# Reviewer B's report\n\n${PASSED}` })}`;
+
+/** The change put onto task 1.2 in these tests, as a brief draws it. */
+const ADDED = '## Added by the orchestrator\n\nThe receipt names the amount.';
+
+/** Why the fix brief for task 1.2 is refused, asked in this conversation. */
+const fixRefused = () => refuses(dir, ['brief', 'fix', UNIT, '1.2'], { env: { CLAUDE_CODE_SESSION_ID: SESSION_ID } }).error;
+
 module.exports = {
   TEMPLATES,
   AGENTS,
@@ -311,6 +390,24 @@ module.exports = {
   pathDrawn,
   rangeDrawn,
   decidedDrawn,
+  REPORT,
+  PASSED,
+  reviewing,
+  placeIn,
+  reported,
+  over,
+  reviewerRefused,
+  briefedFor,
+  added,
+  BUILDING,
+  builderBrief,
+  notWhole,
+  stillReading,
+  briefedEarlier,
+  changedAfter,
+  fixOfRound1,
+  ADDED,
+  fixRefused,
   ok,
   refusedPristine,
   statePath,

@@ -23,7 +23,7 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const { output, sectionOf, okSectionsAsync } = require('./engine-harness.cjs');
 const {
-  UNIT, inStep, ENGINE, RECEIPT, useWorld, env, enter, recorded, firstRoundReady, firstRoundFailed, fixPhaseWritten, cutUnmerged, fixBuilt, data,
+  UNIT, inStep, ENGINE, ENGINE_LINE, RECEIPT, useWorld, env, enter, recorded, firstRoundReady, firstRoundFailed, fixPhaseWritten, cutUnmerged, fixBuilt, data,
   ok, okSections, refusedPristine, statePath, readManifest, createManifest, git, assert,
 } = require('./review-world.cjs');
 const { MADE } = require('./ledger-world.cjs');
@@ -95,10 +95,11 @@ describe('the build\'s standing: the review\'s fix phases past the cut (P14)', (
       'phase: phase 2 of 2, "Refunds": merged — tasks 2.1 done',
       'phase: phase 3, "the review\'s fixes, round 1": running — tasks 3.1 in progress',
       `finished: every phase of the cut has closed — the review phase is next: enter review ${UNIT}`,
-      'in flight: task 3.1, no builder dispatched — its builder and pair go afresh on its branch',
+      'in flight: task 3.1, no builder dispatched here — its builder and pair go afresh on its branch',
       `affected: \`${ENGINE} ledger affected ${UNIT}\``,
       `record: \`${ENGINE} ledger record ${UNIT}\``,
       `build log: ${statePath(dir, `${UNIT}/build/log.md`)}`,
+      ENGINE_LINE,
     ]));
   });
 

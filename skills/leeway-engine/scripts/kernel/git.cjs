@@ -253,6 +253,28 @@ function heldOutOf(nested, specs) {
 }
 
 /**
+ * How the commit door stages the paths it is named, one way for an
+ * ordinary commit and a merge's (`commitPathspec`, `commitMerge`): `files`,
+ * those not a nested repo's folder named itself, which is a submodule's
+ * `pointers`; `held`, the pathspecs holding each other nested folder out of
+ * a file path that reaches inside it (`heldOutOf`), a link the worktree's
+ * preparation made among them where the caller names it nested; and
+ * `addable`, the files git can stage.
+ * @param {string} cwd the repo's root @param {string[]} specs as the repo names them @param {string[]} nested
+ * @returns {{files: string[], pointers: string[], held: string[], addable: string[]}}
+ */
+function stagingOf(cwd, specs, nested) {
+  const pointers = specs.filter((spec) => nested.includes(spec));
+  const files = specs.filter((spec) => !nested.includes(spec));
+  return { files, pointers, held: heldOutOf(nested.filter((folder) => !pointers.includes(folder)), files), addable: stageableSpecs(cwd, files) };
+}
+
+/** The files `stagingOf` planned staged, each nested folder held out. @param {string} cwd @param {ReturnType<typeof stagingOf>} staging */
+function stageFiles(cwd, { addable, held }) {
+  if (addable.length > 0) gitIndexed(cwd, ['add', '--', ...literally(addable), ...held]);
+}
+
+/**
  * Commit exactly the named paths — `git commit -- <paths>` builds a
  * temporary index from HEAD plus the worktree content of those paths, so
  * other processes' dirty or staged files are ignored and left untouched.
@@ -278,13 +300,10 @@ function heldOutOf(nested, specs) {
  */
 function commitPathspec(cwd, pathspec, message, nested = []) {
   refuseMidOperation(cwd);
-  const specs = Array.isArray(pathspec) ? pathspec : [pathspec];
-  const pointers = specs.filter((spec) => nested.includes(spec));
-  const files = specs.filter((spec) => !nested.includes(spec));
-  const held = heldOutOf(nested.filter((folder) => !pointers.includes(folder)), files);
-  const addable = stageableSpecs(cwd, files);
+  const staging = stagingOf(cwd, Array.isArray(pathspec) ? pathspec : [pathspec], nested);
+  const { files, pointers, held, addable } = staging;
   return stagedAside(cwd, addable, () => {
-    if (addable.length > 0) gitIndexed(cwd, ['add', '--', ...literally(addable), ...held]);
+    stageFiles(cwd, staging);
     const known = [...files.filter((p) => addable.includes(p) || hasStagedDeletions(cwd, p)), ...pointers];
     if (known.length === 0) return null;
     const scope = [...literally(known), ...held];
@@ -385,6 +404,42 @@ function operationInProgress(cwd) {
 function refuseMidOperation(cwd) {
   const open = operationInProgress(cwd);
   if (open) throw new Error(`${open.operation} is in progress (${open.marker}) — finish or abort it, then commit again`);
+}
+
+/** Whether a merge is in progress in the work tree. @param {string} cwd */
+function mergeInProgress(cwd) {
+  return operationInProgress(cwd)?.marker === 'MERGE_HEAD';
+}
+
+/**
+ * The paths the index holds unmerged that staging `specs` leaves so, each
+ * once, as the repo's root names them.
+ * @param {string} cwd the repo's root @param {string[]} specs as the repo names them @returns {string[]}
+ */
+function unmergedPast(cwd, specs) {
+  const staged = (/** @type {string} */ file) => specs.some((spec) => spec === '.' || file === spec || file.startsWith(`${spec}/`));
+  const unmerged = git(cwd, ['ls-files', '--unmerged', '--full-name', '-z']).split('\0').filter(Boolean).map(entryPath);
+  return [...new Set(unmerged)].filter((file) => !staged(file));
+}
+
+/**
+ * Finish the merge in progress: `specs`, the resolution, staged as an
+ * ordinary commit stages them (`stagingOf`), the nested folders `nested`
+ * names held out, and a submodule's pointer named staged as its folder
+ * stands; then the merge committed whole — everything the merge staged with
+ * them, as a merge commit is. A path left unmerged that `specs` does not
+ * stage is the caller's to refuse first (`unmergedPast`), and so is an index
+ * holding what the door never commits.
+ * @param {string} cwd the repo's root @param {string[]} specs as the repo names them @param {string} message @param {string[]} [nested]
+ * @returns {string} the short commit sha
+ */
+function commitMerge(cwd, specs, message, nested = []) {
+  const staging = stagingOf(cwd, specs, nested);
+  stageFiles(cwd, staging);
+  const pointers = staging.pointers.filter((folder) => indexEntries(cwd, [folder]).length > 0);
+  if (pointers.length > 0) gitIndexed(cwd, ['add', '--', ...literally(pointers)]);
+  gitIndexed(cwd, ['commit', '-q', '-m', message]);
+  return git(cwd, ['rev-parse', '--short', 'HEAD']).trim();
 }
 
 /**
@@ -625,5 +680,5 @@ function diffWithUntracked(cwd, base, args, exclude) {
 module.exports = {
   READ_BUDGET_BYTES, git, tryGit, GitError, gitPath, commitPathspec, commitStaged, dirtyEntries, hasCommits, commitsBySubject, pathsTouchedBySubject,
   parentOrEmptyTree, emptyTree, diffPatch, diffWithUntracked, literally, excluding,
-  stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, operationInProgress, addRefused,
+  stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, operationInProgress, addRefused, mergeInProgress, unmergedPast, commitMerge,
 };

@@ -30,6 +30,7 @@ const os = require('os');
 const path = require('path');
 const {
   ok, okSections, refusedPristine, statePath, layout, writeState, readState, readManifest, commitAll, git, initRepo, stateGit, fixtureFrom, cleanupFixture, withEnv, withFrozenClock, FROZEN_AT,
+  accountTaken,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
@@ -47,6 +48,9 @@ const SESSION_ID = 'review-session';
 const MADE = Object.freeze({ who_moved_whom: 'none' });
 const LINTERS = Object.freeze([{ name: 'eslint', command: 'npx eslint .' }]);
 const ENGINE = 'node .claude/skills/leeway-engine/scripts/engine.cjs';
+
+/** The entry's line naming the engine by its absolute path, for a call made from a task's worktree. */
+const ENGINE_LINE = `engine: \`node ${path.join(__dirname, '../../skills/leeway-engine/scripts/engine.cjs')}\` — the engine by its absolute path, for a call made from a task's worktree`;
 
 /**
  * A spec of two areas, each its scenarios, each statement citing the entry
@@ -272,9 +276,10 @@ function cutUnmerged() {
 /** A fix task's branch, as the landing names it. @param {number} phase @param {number} n @param {string} title */
 const fixBranch = (phase, n, title) => taskBranch({ unit: UNIT, phase, n }, 'feat', title);
 
-/** A task done in the tracker, its branch made from `from` with a commit adding `file` in the repository at `repo`, its checkout back on main. @param {number} phase @param {number} n @param {string} title @param {string} from @param {string} file @param {string} [repo] */
+/** A task done in the tracker, its account taken, its branch made from `from` with a commit adding `file` in the repository at `repo`, its checkout back on main. @param {number} phase @param {number} n @param {string} title @param {string} from @param {string} file @param {string} [repo] */
 function fixBuilt(phase, n, title, from, file, repo = dir) {
   DRIVER.done(statePath(dir), { unit: UNIT, phase, n });
+  accountTaken(dir, UNIT, `${phase}.${n}`);
   commitAll(dir, `task ${phase}.${n} done`);
   git(repo, ['checkout', '-q', '-b', fixBranch(phase, n, title), from]);
   commitFile(repo, file, `${UNIT}-${phase}-${n}`);
@@ -347,7 +352,7 @@ function storedBriefs() {
 }
 
 module.exports = {
-  UNIT, OTHER, ENGINE, SESSION_ID, areaText, AREAS, EVERY, FIVE, calls,
+  UNIT, OTHER, ENGINE, ENGINE_LINE, SESSION_ID, areaText, AREAS, EVERY, FIVE, calls,
   useWorld, env, enter, inStep, payload, reportText, reported, named, recorded, refusedRound, taskMade, fixPhaseWritten, cutUnmerged, fixBranch, fixBuilt, fixClosed, commitFile, data, stateText, lastStateCommit, issued, storedBriefs,
   decided, reviewCall, filed, FOUND, RECEIPT, FAILING, firstRoundReady, firstRoundFailed, secondRoundReady,
   ok, okSections, refusedPristine, statePath, writeState, readManifest, git, stateGit, createManifest, initRepo, assert,

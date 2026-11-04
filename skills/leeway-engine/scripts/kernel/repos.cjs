@@ -3,9 +3,12 @@
 // ---------------------------------------------------------------------------
 // Kernel: the project's repos. The root is git as run at the code root
 // (kernel/code-root), whatever repository holds it. A nested repo is a folder inside the project
-// holding a `.git` of its own that its parent's git reports as a whole: an
-// untracked nested repo (named at any depth), a submodule (its gitlink), or
-// an ignored folder that holds `.git` itself. Each found repo is searched the
+// holding a `.git` of its own that its parent's git reports as a whole: a
+// nested clone — untracked (named at any depth), or its gitlink staged with
+// no `.gitmodules` entry, as `git add` stages one — a submodule (a gitlink
+// the parent's `.gitmodules` maps, read from what defines one, never from
+// the index alone, which a builder changes), or an ignored folder that
+// holds `.git` itself. Each found repo is searched the
 // same way for its own. A repo inside an ignored folder that is not itself a
 // repo is never found: git never descends into one, and walking it
 // (`node_modules/`) costs more than the case is worth. A linked worktree of
@@ -34,9 +37,8 @@ const { codeRoot } = require('./code-root.cjs');
 /**
  * A repo in the project: `dir` its folder from the project root (`''` for
  * the root), `path` that folder absolute, `heldOut` the folders its git
- * holds out — the untracked repos and submodules directly inside it, as it
- * names them — and `submodules` those of them its index records as
- * submodules.
+ * holds out — the nested clones and submodules directly inside it, as it
+ * names them — and `submodules` those of them `.gitmodules` maps.
  * @typedef {{dir: string, path: string, heldOut: string[], submodules: string[]}} Repo
  */
 
@@ -68,9 +70,24 @@ function commonDir(dir) {
 }
 
 /**
+ * The folders the `.gitmodules` at the top of the repo at `cwd` maps to a
+ * submodule, as that repo names them from `cwd`; none where it has none.
+ * @param {string} cwd @returns {string[]}
+ */
+function mappedSubmodules(cwd) {
+  const [top, prefix = ''] = git(cwd, ['rev-parse', '--show-toplevel', '--show-prefix']).split('\n');
+  const file = path.join(top, '.gitmodules');
+  const mapping = fs.existsSync(file) ? tryGit(cwd, ['config', '--file', file, '-z', '--get-regexp', '^submodule\\..*\\.path$']) : null;
+  return (mapping ?? '').split('\0').filter(Boolean)
+    .map((record) => record.slice(record.indexOf('\n') + 1))
+    .filter((folder) => folder.startsWith(prefix)).map((folder) => folder.slice(prefix.length));
+}
+
+/**
  * The folders directly inside the repo at `cwd` that hold a repo of their
- * own, as that repo names them: the untracked ones, which git marks with a
- * trailing `/`, the submodules, `160000` index entries, and the ignored
+ * own, as that repo names them: the nested clones — untracked, which git
+ * marks with a trailing `/`, or a `160000` index entry `.gitmodules` does
+ * not map — the submodules, the `160000` entries it maps, and the ignored
  * ones. A folder holding a worktree of the repo at `cwd`, or a `.git` git
  * cannot read, holds no repo of its own.
  * @param {string} cwd
@@ -88,12 +105,13 @@ function nestedRepoFolders(cwd) {
     return its !== own;
   };
   const folders = (/** @type {string[]} */ args) => listed(cwd, args).filter((p) => p.endsWith('/')).map((p) => p.slice(0, -1));
-  const gitlinks = listed(cwd, ['ls-files', '--stage', '-z'])
+  const gitlinks = [...new Set(listed(cwd, ['ls-files', '--stage', '-z'])
     .filter((entry) => entry.startsWith('160000 '))
-    .map((entry) => entry.slice(entry.indexOf('\t') + 1));
+    .map((entry) => entry.slice(entry.indexOf('\t') + 1)))];
+  const mapped = gitlinks.length === 0 ? [] : mappedSubmodules(cwd);
   return {
-    untracked: folders(['ls-files', '--others', '--exclude-standard', '-z']).filter(holdsRepo),
-    submodules: [...new Set(gitlinks)].filter(holdsRepo),
+    untracked: [...folders(['ls-files', '--others', '--exclude-standard', '-z']), ...gitlinks.filter((folder) => !mapped.includes(folder))].filter(holdsRepo),
+    submodules: gitlinks.filter((folder) => mapped.includes(folder)).filter(holdsRepo),
     ignored: folders(['ls-files', '--others', '--ignored', '--exclude-standard', '--directory', '-z']).filter(holdsRepo),
   };
 }
@@ -223,12 +241,14 @@ function codeHeldOut(repo) {
 
 /**
  * `dirtyEntries` across the project: each repo's, root first, in project
- * paths, what a read of its code holds out held out.
+ * paths, what a read of its code holds out held out, and each entry `kept`
+ * refuses, as the repo names it.
  * @param {Repo[]} repos
+ * @param {(repo: Repo, entry: {path: string, status: string}) => boolean} [kept]
  * @returns {{path: string, status: string}[]}
  */
-function projectDirtyEntries(repos) {
-  return repos.flatMap((repo) => dirtyEntries(repo.path, codeHeldOut(repo))
+function projectDirtyEntries(repos, kept = () => true) {
+  return repos.flatMap((repo) => dirtyEntries(repo.path, codeHeldOut(repo)).filter((entry) => kept(repo, entry))
     .map((entry) => ({ path: projectPath(repo.dir, entry.path), status: entry.status })));
 }
 
@@ -242,6 +262,6 @@ function projectPathsTouchedBySubject(repos, prefix) {
 }
 
 module.exports = {
-  projectRepos, repoOf, repoPath, repoName, projectPath, childrenFirst, commitGroups,
+  projectRepos, mappedSubmodules, repoOf, repoPath, repoName, projectPath, childrenFirst, commitGroups,
   codeHeldOut, projectDirtyEntries, projectPathsTouchedBySubject,
 };

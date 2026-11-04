@@ -45,12 +45,14 @@ const fs = require('fs');
 const path = require('path');
 const {
   ok, refuses, refusedPristine, statePath, layout, writeState, readState, stateGit, lastMessage, touched, commitAll, commitCode, git, initRepo, addSubmodule, tip, fixtureFrom,
-  withFrozenClock, FROZEN_AT,
+  withFrozenClock, FROZEN_AT, accountTaken,
 } = require('./engine-harness.cjs');
 const { createManifest, templateFolder, useTempFolder } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
-const { readReport, taskRounds, roundUnderReview } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
+const {
+  readReport, taskRounds, roundUnderReview, recordReviewer, recordLaidOut,
+} = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
 const { readAccount } = require(path.join(SCRIPTS, 'domain/task-account.cjs'));
 const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 const { taskBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
@@ -117,9 +119,10 @@ function workCommit(repo, id, files) {
 /**
  * The unit, its first phase written — 1.1 and 1.2, 1.2 started — and their
  * branches: 1.1's in the project's repository adding src/card.js; 1.2's
- * cut from it, adding src/receipt.js, then its test and an edit to
- * src/card.js; and 1.2's in `lib`, adding a file. 1.2's rounds' reports
- * and its account written in its build folder.
+ * laid out on it, as `task worktree` records it, adding src/receipt.js,
+ * then its test and an edit to src/card.js; and 1.2's in `lib`, laid out
+ * at its main, adding a file. 1.2's rounds' reports and its account
+ * written in its build folder.
  */
 const accountWorld = fixtureFrom('task-account-', (dir) => {
   createManifest(dir, UNIT, {});
@@ -144,6 +147,7 @@ const accountWorld = fixtureFrom('task-account-', (dir) => {
   git(nested, ['checkout', '-q', '-b', RECEIPT]);
   workCommit(nested, 'pay-1-2', { 'token.js': 'export const token = 1;\n' });
   git(nested, ['checkout', '-q', 'main']);
+  recordLaidOut(dir, TASK, { '': tip(dir, CARD), [NESTED]: tip(nested, 'main') });
   for (const [at, text] of Object.entries(ROUNDS)) writeState(dir, at, text);
   writeState(dir, layout.unit(UNIT, 'build/tasks/1.2.md'), accountOf());
 });
@@ -354,28 +358,35 @@ describe('task account (12.14.4, 6.3.13)', () => {
     return path.join(folder(), name);
   };
 
-  it('12.S42, 13.S4: a task through two rounds, its last passing on a nit — the account, both rounds\' four reports and its figures committed in one state commit, the figures answered, counting every addition the task holds, whoever made it (13.11.3)', () => {
+  it('12.S42, 13.S4: a task through two rounds, its last passing on a nit — the account, both rounds\' four reports and its figures committed in one state commit, the figures answered, counting every addition the task holds, whoever made it, each made while its pair read round 1, whose mark goes with them (13.11.3, 12.1.4)', () => {
+    recordReviewer(dir, TASK, 1, 'a', SESSION.CLAUDE_CODE_SESSION_ID);
     for (const by of ['orchestrator', 'person']) ok(dir, ['task', 'add', UNIT, '1.2', '--file', fileOf('addition.md', 'Mask the reprint.\n'), '--by', by]);
     const res = withFrozenClock(take);
 
     const started = DRIVER.started(statePath(dir), TASK);
     assert.match(started, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
-    const figures = { files: 4, added: 7, removed: 1, criteria: 3, additions: 2, started, finished: FROZEN_AT };
+    const figures = {
+      rounds: 2, files: 4, added: 7, removed: 1, criteria: 3, additions: 2, started, finished: FROZEN_AT,
+    };
     assert.deepStrictEqual(res, { ok: true, task: '1.2', id: 'pay-1-2', rounds: 2, figures, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim() });
     assert.strictEqual(lastMessage(dir), 'task(pay): account 1.2');
     assert.deepStrictEqual(touched(statePath(dir), 'HEAD'), [
-      'A\tpay/build/tasks/1.2.md', 'A\tpay/build/tasks/1.2/figures.json',
+      'A\tpay/build/tasks/1.2.md', 'A\tpay/build/tasks/1.2/figures.json', 'A\tpay/build/tasks/1.2/changed.json',
       ...Object.keys(ROUNDS).map((at) => `A\t${at}`),
     ].sort());
     assert.deepStrictEqual(JSON.parse(readState(dir, layout.unit(UNIT, 'build/tasks/1.2/figures.json'))), figures);
   });
 
-  it('15.3.4: the figures count the task\'s own commits in each repository holding its branch, from below its first — the stack\'s earlier task\'s commit beneath it left out — and none where its branch holds none of them', () => {
-    git(path.join(dir, NESTED), ['checkout', '-q', '-b', 'scratch', RECEIPT]);
-    git(path.join(dir, NESTED), ['commit', '-q', '--amend', '-m', 'work on another task']);
-    git(path.join(dir, NESTED), ['branch', '-f', RECEIPT, 'scratch']);
+  it('15.3.4, 12.14: the figures count the task\'s own work in each repository holding its branch, from where it was laid out — the stack\'s earlier task beneath it left out — and nothing it merged back from its chain since', () => {
+    const own = (({ files, added, removed }) => ({ files, added, removed }))(take().figures);
+    DRIVER.done(statePath(dir), { unit: UNIT, phase: 1, n: 1 });
+    git(dir, ['checkout', '-q', CARD]);
+    workCommit(dir, 'pay-1-1', { 'src/card.css': '.card {}\n.take {}\n' });
+    git(dir, ['checkout', '-q', RECEIPT]);
+    git(dir, ['merge', '-q', '--no-ff', '--no-edit', CARD]);
+    git(dir, ['checkout', '-q', 'main']);
 
-    assert.deepStrictEqual((({ files, added, removed }) => ({ files, added, removed }))(take().figures), { files: 3, added: 6, removed: 1 });
+    assert.deepStrictEqual([own, (({ files, added, removed }) => ({ files, added, removed }))(take().figures)], [{ files: 4, added: 7, removed: 1 }, { files: 4, added: 7, removed: 1 }]);
   });
 
   it('15.3.4: when it started is the tracker\'s, so it outlives a second clone\'s merge of the state, whose commit holds only the remote\'s tip below it', () => {
@@ -464,6 +475,7 @@ describe('task account (12.14.4, 6.3.13)', () => {
     fs.writeFileSync(why, 'Stuck.\n');
     ok(dir, ['task', 'settle', UNIT, '1.2', '--file', why]);
     settle([UNIT, '1.2', '--file', why], /^task settle: round 3 of task 1\.2 of pay is settled already — pay\/build\/tasks\/1\.2\/round-3-settled\.md$/);
+    accountTaken(dir, UNIT, '1.2');
     ok(dir, ['task', 'done', UNIT, '1.2'], { env: SESSION });
     settle([UNIT, '1.2', '--file', why], /^task settle: task 1\.2 of pay is done — a round is settled as the task lands, before task done$/);
     assert.match(refuses(dir, ['task', 'settle', UNIT, '1.2']).error, /^Usage: engine task settle <unit> <task> --file <why> \| <unit> --phase <N> --file <why> \[--fixes <task>,…\]$/);
@@ -499,6 +511,7 @@ describe('task account (12.14.4, 6.3.13)', () => {
   });
 
   it('a task ended, one the tracker lacks, a unit the project lacks, and arguments of another shape', () => {
+    accountTaken(dir, UNIT, '1.2');
     ok(dir, ['task', 'done', UNIT, '1.2'], { env: SESSION });
     refusedWith([UNIT, '1.2'], /^task account: task 1\.2 of pay is done — its account is taken as it lands, before task done$/);
     refusedWith([UNIT, '1.9'], /^task account: task 1\.9 of pay is not in the tracker$/);

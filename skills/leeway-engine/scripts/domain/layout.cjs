@@ -130,6 +130,7 @@ const LAYOUT = Object.freeze([
   place('file', '{unit}/build/tasks/{task}/round-{N}-{letter}.md', '4.11.5'),
   engineFile('{unit}/build/tasks/{task}/figures.json', '4.11.5', 'a task\'s figures, as its account was taken', 'task account'),
   engineFile('{unit}/build/tasks/{task}/round-{N}-settled.md', '4.11.5', 'the orchestrator\'s settlement of a task\'s failed round', 'task settle'),
+  engineFile('{unit}/build/tasks/{task}/changed.json', '12.1.4', 'the mark of a change to a task after its pair was briefed', 'task add|raise answer'),
   place('file', '{unit}/build/phases/phase-{N}/review-{letter}.md', '4.11.5'),
   place('file', '{unit}/build/phases/phase-{N}/consolidation.md', '4.11.5'),
   place('file', '{unit}/build/phases/phase-{N}/{area}-{letter}.md', '4.11.5'),

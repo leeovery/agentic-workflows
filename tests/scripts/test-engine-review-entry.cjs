@@ -30,7 +30,7 @@ const fs = require('fs');
 const path = require('path');
 const { output } = require('./engine-harness.cjs');
 const {
-  UNIT, inStep, ENGINE, SESSION_ID, AREAS, EVERY, FIVE, RECEIPT, FAILING, useWorld, env, enter, reported, named, recorded, refusedRound, firstRoundFailed, fixPhaseWritten, cutUnmerged, fixBuilt, fixClosed, data,
+  UNIT, inStep, ENGINE, ENGINE_LINE, SESSION_ID, AREAS, EVERY, FIVE, RECEIPT, FAILING, useWorld, env, enter, reported, named, recorded, refusedRound, firstRoundFailed, fixPhaseWritten, cutUnmerged, fixBuilt, fixClosed, data,
   ok, okSections, refusedPristine, statePath, writeState, git, stateGit, assert,
 } = require('./review-world.cjs');
 
@@ -50,11 +50,12 @@ function snapshot() {
   return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null;
 }
 
-/** The lines every answer ends with: the spec, the record and the build's log. @param {string} [unit] */
+/** The lines every answer ends with: the spec, the record, the build's log and the engine. @param {string} [unit] */
 const readsAfter = (unit = UNIT) => [
   `spec: ${statePath(dir, `${unit}/spec.md`)}`,
   `record: \`${ENGINE} ledger record ${unit}\``,
   `build log: ${statePath(dir, `${unit}/build/log.md`)}`,
+  ENGINE_LINE,
 ];
 
 /** The areas' lines, each by its name and its title. */

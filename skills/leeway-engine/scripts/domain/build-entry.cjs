@@ -25,8 +25,17 @@
 // is put in flight on its position at the place entered (position.cjs), a
 // task already there kept as it stands (`takeInFlight`): one another
 // conversation left comes with no builder and no pair, which are dispatched
-// afresh on its branch — the pair that conversation sent is abandoned, its
-// round's reports written again by the new pair. A task a question parks is
+// afresh on its branch, as its line names the way: a round briefed and not
+// reported whole is its new pair's to read, each reviewer whose report is
+// not in or does not read briefed again for it, never its builder's, which
+// goes once the round is read (round-report.cjs); a round that failed, its
+// fix not yet read, a new builder's, briefed with its brief and then the
+// fix round's; a round that passed, its way by how far the task stands
+// towards landing — its account taken, to its landing; written and not
+// taken, to its taking; else the orchestrator's to read for its notes for
+// later and the nits the task's commits do not yet fix, fixed in the
+// worktree that has its branch out, then the new builder's for the account
+// (task-account.cjs, `reviewOverWay`); anything else its new builder's. A task a question parks is
 // put in flight as well, but no builder goes to it until the person answers
 // (12.13.2); one at its step gate waits on the person's go there, the gate
 // drawn again, its builder never sent afresh (12.7.9, 12.14.3); and one
@@ -66,9 +75,11 @@
 // goes on beside it, held until that one is done (task-verbs.cjs,
 // `stepTurn`); else at its gate once it lands: in progress, parked by no
 // question, its pair passed and its account taken (task-account.cjs), with
-// nothing added to it since — an addition, the person's Comment at its gate
-// among them (13.11.3), is reworked first, the task in progress until a new
-// account counts it — until the person's go there and `task done`. The
+// nothing added to it since and nothing changed under its last round
+// (round-report.cjs) — an addition, the person's Comment at its gate among
+// them (13.11.3), is reworked and read again first, the task in progress
+// until a new account counts it — until the person's go there and `task
+// done`. The
 // build is finished once every phase of the cut has closed, so "nothing
 // ready" with a phase not yet written never reads finished (7.4.3, 12.6.7)
 // — the rule `phaseStatus` reads off the manifest (derivations.cjs) — its
@@ -77,7 +88,7 @@
 // (`mergeWaiting`, phase-checks.cjs).
 // ---------------------------------------------------------------------------
 
-const { ENGINE_COMMAND, messageOf } = require('../kernel/call.cjs');
+const { ENGINE_COMMAND, ENGINE_RUN, messageOf } = require('../kernel/call.cjs');
 const { statePath, stateRoot } = require('../kernel/state-root.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
@@ -90,9 +101,10 @@ const { tasksInFlight } = require('./conversation.cjs');
 const { recordTasksAt } = require('./position.cjs');
 const { waitingAndFreed, parkedTasks } = require('./questions.cjs');
 const { reading, cutPhases, phaseLists, phaseTasks, phaseLanded, mergeWaiting, fixesOwed, passed } = require('./phase-checks.cjs');
-const { takenFigures } = require('./task-account.cjs');
+const { takenFigures, reviewOverWay } = require('./task-account.cjs');
 const { recordedRounds, mergingWords } = require('./review-phase.cjs');
-const { shownTask } = require('./task-id.cjs');
+const { shownTask, parseShownTask } = require('./task-id.cjs');
+const { roundStanding, taskRounds, pairPassed } = require('./round-report.cjs');
 
 /** @typedef {import('./enter.cjs').Entry} Entry */
 /** @typedef {import('./enter.cjs').Entering} Entering */
@@ -371,29 +383,70 @@ function heldBy(unit, task, standing) {
   return null;
 }
 
+/** How a reviewer of a round not reported whole stands, as a task's line says it. */
+const READER_WORDS = Object.freeze({
+  reading: (/** @type {string} */ letter) => `reviewer ${letter} is reading it here`,
+  again: (/** @type {string} */ letter) => `reviewer ${letter} is briefed again for it`,
+  unread: (/** @type {string} */ letter) => `reviewer ${letter}'s report goes back to it`,
+});
+
+/**
+ * Where a task this conversation dispatched no builder for goes (the
+ * header's), as the conversation `session` stands to its review.
+ * @param {string} cwd @param {string|null} session @param {string} unit @param {string} task
+ */
+function afreshWords(cwd, session, unit, task) {
+  const ref = parseShownTask(unit, task);
+  const standing = roundStanding(cwd, ref, session);
+  if (standing !== null) {
+    const open = standing.readers.filter(({ state }) => state !== 'reported');
+    const readers = open.map(({ letter, state }) => READER_WORDS[/** @type {'reading'|'again'|'unread'} */ (state)](letter));
+    const brief = open.some(({ state }) => state !== 'reading') ? `: engine brief reviewer ${unit} ${task} --letter <letter>` : '';
+    return `round ${standing.round} of its review is not reported whole — ${readers.join(', ')}${brief}; its builder goes afresh once the round is read`;
+  }
+  let last;
+  try {
+    last = taskRounds(cwd, ref).at(-1);
+  } catch {
+    last = undefined;
+  }
+  if (last !== undefined && !pairPassed(last)) {
+    return `round ${last.round} of its review failed — a new builder goes with its brief, then its fix brief, engine brief fix ${unit} ${task}`;
+  }
+  const over = reviewOverWay(cwd, ref);
+  if (over !== null) return `${over.said} — ${over.way}`;
+  return 'its builder and pair go afresh on its branch';
+}
+
 /**
  * A task in flight, with its builder and its pair where recorded — what a
  * fix round goes back to (24.2.4); one parked waits on the person's answer,
  * no builder going to it until then (12.13.2); one behind the task in
  * flight, for that one to be done (12.7.9); one at its gate, on the
  * person's go there, its gate drawn again and its builder never sent afresh
- * (12.7.9).
- * @param {string} unit @param {InFlight} inFlight @param {StandingTask|undefined} standing the task as the standing gives it
+ * (12.7.9); one with no builder dispatched here, where it goes (the
+ * header's).
+ * @param {string} cwd @param {string|null} session @param {string} unit @param {InFlight} inFlight @param {StandingTask|undefined} standing the task as the standing gives it
  */
-function inFlightWords(unit, { task, builder, reviewers }, standing) {
+function inFlightWords(cwd, session, unit, { task, builder, reviewers }, standing) {
   const agents = [
     ...(builder === null ? [] : [`its builder agent \`${builder}\``]),
     ...(reviewers.length === 0 ? [] : [`its reviewer agent${reviewers.length === 1 ? '' : 's'} ${reviewers.map((id) => `\`${id}\``).join(' and ')}`]),
   ];
   const held = heldBy(unit, task, standing);
   if (held !== null) return `task ${task}, ${[...agents, held.holds].join(', ')} — ${held.then}`;
-  return `task ${task}, ${agents.length === 0 ? 'no builder dispatched — its builder and pair go afresh on its branch' : agents.join(', ')}`;
+  if (builder !== null) return `task ${task}, ${agents.join(', ')}`;
+  return `task ${task}, ${[...agents, 'no builder dispatched here'].join(', ')} — ${afreshWords(cwd, session, unit, task)}`;
 }
 
-/** Each of the standing's tasks in flight, a line each, as the entries and the notes give them. @param {BuildStanding} standing @returns {Line[]} */
-function inFlightLines(standing) {
+/**
+ * Each of the standing's tasks in flight, a line each, as the entries and
+ * the notes give them, for the conversation `session`.
+ * @param {string} cwd @param {string|null} session @param {BuildStanding} standing @returns {Line[]}
+ */
+function inFlightLines(cwd, session, standing) {
   const tasks = new Map(standing.phases.flatMap(({ tasks: held }) => held.map((task) => [task.task, task])));
-  return standing.in_flight.map((task) => ['in flight', inFlightWords(standing.unit, task, tasks.get(task.task))]);
+  return standing.in_flight.map((task) => ['in flight', inFlightWords(cwd, session, standing.unit, task, tasks.get(task.task))]);
 }
 
 /** A phase's line: one of the cut's by its place in it, a fix phase by its number alone. @param {StandingPhase} phase @param {number} of the cut's phases */
@@ -415,16 +468,16 @@ function nextLines({ unit, finished, merging }) {
  * Where the build stands, a line a phase — and a line for each fix its
  * failed review owes, saying the way on — what comes after them, the tasks
  * in flight and the questions waiting, as the entry and the recovery note
- * give them.
- * @param {BuildStanding} standing @returns {Line[]}
+ * give them, for the conversation `session`.
+ * @param {string} cwd @param {string|null} session @param {BuildStanding} standing @returns {Line[]}
  */
-function standingLines(standing) {
+function standingLines(cwd, session, standing) {
   const of = cutCount(standing);
   return [
     ['position', standing.position],
     ...standing.phases.flatMap((phase) => /** @type {Line[]} */ ([['phase', phaseLine(phase, of)], ...phase.fixes_owed.map((fault) => ['fixes owed', fault])])),
     ...nextLines(standing),
-    ...inFlightLines(standing),
+    ...inFlightLines(cwd, session, standing),
     ...standing.waiting.map(({ question, asks, parks }) => /** @type {Line} */ (['waiting', `${question} — ${asks} — parks ${parkedTasks(parks)}`])),
   ];
 }
@@ -436,16 +489,16 @@ const ledgerCalls = (unit) => [`${ENGINE_COMMAND} ledger affected ${unit}`, `${E
  * What the build's recovery note re-reads beside its skill, as the entry
  * reads it: the ledger's calls, the build's log, and where the build
  * stands, a line each — its tasks in flight those of the conversation the
- * note is for, as its position holds them, never the calling process's —
- * or why that cannot be read, in their place.
- * @param {string} cwd @param {string} unit @param {InFlight[]} inFlight
+ * note is for, `session`, as its position holds them, never the calling
+ * process's — or why that cannot be read, in their place.
+ * @param {string} cwd @param {string} unit @param {InFlight[]} inFlight @param {string} session
  * @returns {{calls: string[], documents: string[], lines: string[]}}
  */
-function buildRecovery(cwd, unit, inFlight) {
+function buildRecovery(cwd, unit, inFlight, session) {
   /** @type {string[]} */
   let lines;
   try {
-    lines = standingLines(buildStanding(cwd, unit, inFlight)).map(([key, value]) => `${key}: ${value}`);
+    lines = standingLines(cwd, session, buildStanding(cwd, unit, inFlight)).map(([key, value]) => `${key}: ${value}`);
   } catch (err) {
     lines = [`Where the build stands could not be read: ${messageOf(err)}`];
   }
@@ -467,7 +520,7 @@ function takeInFlight(at) {
 /** What the build reads at its entry (the header's). @param {Entering} at @returns {Line[]} */
 function buildReads(at) {
   const read = readingOf(at);
-  const lines = standingLines(standingOf(read, ownInFlight(at.unit)));
+  const lines = standingLines(at.cwd, handedSession(), standingOf(read, ownInFlight(at.unit)));
   at.notes.push(...read.warnings);
   const [affected, record] = ledgerCalls(at.unit);
   return [
@@ -475,6 +528,7 @@ function buildReads(at) {
     ['affected', `\`${affected}\``],
     ['record', `\`${record}\``],
     ['build log', statePath(at.cwd, buildLogOf(at.unit))],
+    ['engine', `\`${ENGINE_RUN}\` — the engine by its absolute path, for a call made from a task's worktree`],
   ];
 }
 

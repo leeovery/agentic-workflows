@@ -619,6 +619,39 @@ function twoMachines(dir, { name = 'project' } = {}) {
 }
 
 /**
+ * The state files that make a task ready to land, as `land open`, `land
+ * chain` and `task done` ask (12.14), by their state-relative paths: its
+ * account taken over every round of its review the test wrote — the figures
+ * `task account` writes, counting them, where none taken covers them — and,
+ * where it wrote none, a passing report from each reviewer of the count in
+ * round 1. None where the account taken covers them already.
+ * @param {string} dir @param {string} unit @param {string} task shown, `{phase}.{n}`
+ * @returns {Record<string, string>}
+ */
+function accountFiles(dir, unit, task) {
+  const { roundReportPath, taskFolder } = require('../../skills/leeway-engine/scripts/domain/round-report.cjs');
+  const { figuresPath, takenFigures } = require('../../skills/leeway-engine/scripts/domain/task-account.cjs');
+  const { REVIEWER_LETTERS } = require('../../skills/leeway-engine/scripts/kernel/reviewers.cjs');
+  const [phase, n] = task.split('.').map(Number);
+  const ref = { unit, phase, n };
+  const folder = statePath(dir, taskFolder(ref));
+  const written = fs.existsSync(folder) ? fs.readdirSync(folder).flatMap((name) => /^round-(\d+)-[a-z]\.md$/.exec(name)?.[1] ?? []).map(Number) : [];
+  const reports = written.length > 0 ? [] : REVIEWER_LETTERS.map((letter) => [roundReportPath(ref, 1, letter), '# Review\n\n## Findings\n\nNone.\n\nVerdict: pass\n']);
+  const figures = { files: 1, added: 1, removed: 0, criteria: 1, additions: 0, started: null, finished: null, rounds: Math.max(1, ...written) };
+  return takenFigures(dir, ref)?.rounds === figures.rounds ? {} : Object.fromEntries([...reports, [figuresPath(ref), JSON.stringify(figures)]]);
+}
+
+/**
+ * A task ready to land (`accountFiles`), its files committed on the state
+ * branch as `task account` commits them.
+ * @param {string} dir @param {string} unit @param {string} task shown, `{phase}.{n}`
+ */
+function accountTaken(dir, unit, task) {
+  const files = accountFiles(dir, unit, task);
+  if (Object.keys(files).length > 0) commitOnState(statePath(dir), files, `task(${unit}): account ${task}`);
+}
+
+/**
  * `rel` added to the repo at `dir` as a submodule cloned from the repo at
  * `source`, the addition committed; the clone commits under the test identity.
  * `force` adds it where the repo ignores its folder.
@@ -907,7 +940,7 @@ module.exports = {
   keywordOnlyKnowledge, unreadableKnowledge, hasStore, indexedFiles,
   STATE_DIR_NAME, statePath, stateRelative, layout, createFile, writeState, readState, readManifest,
   git, stateGit, commitOnState, head, lastMessage, touched, treeSnapshot, traced, configHooksFire, childLimits, ledgerEntries, tip, remoteTip,
-  commitCode, commitAll, testIdentity, bareRepo, initRepo, cloneOf, githubOffline, failingPs,
+  commitCode, commitAll, testIdentity, bareRepo, initRepo, cloneOf, githubOffline, failingPs, accountFiles, accountTaken,
   NO_SPACE, failingTrustAppends,
   setupGitFixture, setupFixtureAt, fixtureFrom, folderFrom, codeProject, twoMachines, addSubmodule, cleanupFixture,
 };

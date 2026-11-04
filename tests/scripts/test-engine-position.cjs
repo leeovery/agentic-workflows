@@ -47,7 +47,7 @@ const { PROJECT_IDENTITIES, VALID_PHASES } = require('../../skills/leeway-engine
 
 // The phases whose note carries the recovery whole, their skills keeping no
 // steps of their own for it.
-const WHOLE = ['discussion', 'discovery', 'specification'];
+const WHOLE = ['discussion', 'discovery', 'specification', 'implementation'];
 
 const POSITION_MODULE = path.join(__dirname, '../../skills/leeway-engine/scripts/domain/position.cjs');
 

@@ -252,17 +252,19 @@ function accountScreen(view) {
  * The gate after a task in step, its account above it (12.14.3): yes goes
  * on to the next task; auto approves it and switches the build to auto
  * through its door (3.3.6); the technical retelling and the diagrams are
- * Claude's; a question or a change is typed.
+ * Claude's, each bringing the gate back after it; a question or a change is
+ * typed.
  * @param {string} unit @param {AccountView} view
  */
 function stepGateScreen(unit, view) {
   const display = section('DISPLAY: step gate', CONTINUE_INSTRUCTION, accountDisplay(view, { reviews: false }));
   const go = { next: /** @type {Next} */ ({ kind: 'continue' }) };
+  const again = { next: /** @type {Next} */ ({ kind: 'engine', argv: ['render', 'step-gate', unit, view.head.task] }) };
   return display + section(`MENU: step gate — ${view.head.task}`, MENU_INSTRUCTION, menu('', [
     cmdOption('y', 'yes', 'Approve it and continue to the next task', go),
     cmdOption('a', 'auto', 'Approve it and run the rest of the build in auto', { next: { kind: 'engine', argv: ['workunit', 'position', unit, 'auto'] } }),
-    cmdOption('t', 'technical', 'Retell the result from the code\'s perspective', go),
-    cmdOption('s', 'show', 'Show the result as diagrams', go),
+    cmdOption('t', 'technical', 'Retell the result from the code\'s perspective', again),
+    cmdOption('s', 'show', 'Show the result as diagrams', again),
     promptOption('Ask', 'Ask questions about the task (doesn\'t approve or reject)'),
     promptOption('Comment', 'Request changes'),
   ], { question: 'Approve this task?' }));

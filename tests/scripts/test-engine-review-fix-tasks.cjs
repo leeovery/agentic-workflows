@@ -49,7 +49,7 @@ describe('the takeover after a /clear: every phase written (12.13.2, 24.2.4)', (
     const note = output(dir, ['conversation', 'position', SESSION_ID], { env: { ...env(), CLAUDE_CODE_SESSION_ID: '' } });
     okSections(dir, ['enter', 'implementation', UNIT], { env: env('third') });
 
-    const taken = 'in flight: task 3.1, no builder dispatched — its builder and pair go afresh on its branch';
+    const taken = 'in flight: task 3.1, no builder dispatched here — its builder and pair go afresh on its branch';
     assert.deepStrictEqual(positionOf(), { name: UNIT, phase: 'review', topic: UNIT, tasks: [{ task: '3.1', builder: null, reviewers: [] }] });
     assert.ok(sections.includes(`fix task waiting: 3.1 in progress\n${taken}\n`), sections);
     assert.ok(note.includes(`\n${taken}\n`), note);

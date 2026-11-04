@@ -547,6 +547,29 @@ function mainCheckout(listed) {
   return tryGit(listed, ['rev-parse', '--show-toplevel'])?.trim() || listed;
 }
 
+/** The project's folder in its own checkout, from the code root of any worktree of it. @param {string} root @param {Worktree[]} [trees] the repository's, where read */
+function projectCheckout(root, trees = worktrees(root)) {
+  return path.join(trees[0].path, prefixOf(root));
+}
+
+/**
+ * The worktree of the repository at `root` that has the task's branch
+ * checked out, if one has.
+ * @param {string} root @param {import('./task-id.cjs').TaskRef} ref
+ * @returns {Worktree|undefined}
+ */
+function taskWorktree(root, ref) {
+  return worktrees(root).find(({ branch }) => {
+    const task = branch === null ? null : names.taskOfBranch(ref.unit, branch);
+    return task !== null && task.phase === ref.phase && task.n === ref.n;
+  });
+}
+
+/** The repository's main checkout, whichever of its worktrees `root` is. @param {string} root */
+function mainCheckoutOf(root) {
+  return mainCheckout(git(root, ['worktree', 'list', '--porcelain']).split('\n')[0].slice('worktree '.length));
+}
+
 /**
  * The repository's worktrees, the main checkout first, each with the branch
  * it has checked out and those a rebase stopped there is rewriting — which
@@ -676,11 +699,13 @@ function branchInPlace(tree, branch, start) {
 /**
  * A worktree of the repository added at `at` on `branch` — made at `start`,
  * tracking nothing, or, `start` null, the branch checked out as it stands —
- * into an empty folder there, as git takes one.
- * @param {string} root @param {string} at @param {string} branch @param {string|null} start
+ * or, `branch` null, detached at `start`, into an empty folder there, as
+ * git takes one.
+ * @param {string} root @param {string} at @param {string|null} branch @param {string|null} start
  */
 function addWorktree(root, at, branch, start) {
-  git(root, [...CHECKOUT_PINS, 'worktree', 'add', '-q', ...(start === null ? [at, branch] : ['--no-track', '-b', branch, at, start])]);
+  const placed = branch === null ? ['--detach', at, /** @type {string} */ (start)] : start === null ? [at, branch] : ['--no-track', '-b', branch, at, start];
+  git(root, [...CHECKOUT_PINS, 'worktree', 'add', '-q', ...placed]);
 }
 
 /** A branch made already checked out in a worktree, its files moved to it. @param {string} tree @param {string} branch */
@@ -1143,5 +1168,5 @@ module.exports = {
   short, readOnce, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranch, refsUnder, updateRefs, isAncestor, mergeBase, treesOf, firstParentLine, messagesPast, messagesNaming, commitsNamed, messageOf, commitWithTree, treesPast,
   prefixOf, pointersAt, treeWithPointers, pointedLike, holdsCommit, pointerAhead, stackMoves, commitsPast, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, remedy, moveTo, movedSinceOpened, rewrite, scratchBlock, rebaseBlock, checkoutBlock, pathsChanged, dirtBlock, moveBranch,
   defaultBranch, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, nothingPast,
-  worktrees, holderOf, samePlace, removing, branchInPlace, addWorktree, switchTo, removeWorktree, detach,
+  worktrees, taskWorktree, mainCheckoutOf, projectCheckout, holderOf, samePlace, removing, branchInPlace, addWorktree, switchTo, removeWorktree, detach, scratchRoot, scratchTree,
 };

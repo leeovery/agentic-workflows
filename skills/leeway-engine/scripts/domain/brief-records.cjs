@@ -25,10 +25,16 @@
 //                  the repository, the range from its base to the branch,
 //                  `{base}...{branch}`, and its `git diff --stat` — never
 //                  the diff's text, which can run to thousands of lines and
-//                  is read in the range. The base is the branch `--base`
-//                  names where the repository has it, else the repository's
-//                  default branch: a nested repository's may be named
-//                  otherwise, and a stack's base branch be in some only
+//                  is read in the range. The base is the engine's: where
+//                  the task was laid out, the commit `task worktree`
+//                  recorded there (task-worktree.cjs), or the tip of the
+//                  work below it that its branch holds since, its own
+//                  phase's chain for a task of the cut, whichever is
+//                  later — else the branch the repository lands on; or,
+//                  where `--base` names one, that branch where the
+//                  repository has it, else the repository's default branch:
+//                  a nested repository's may be named otherwise, and a
+//                  stack's base branch be in some only
 //   scratch-layout where the reviewer's scratch worktree lays out every
 //                  repository of the project, each before those nested in
 //                  it, as the builder's worktree held them all
@@ -39,10 +45,39 @@
 //                  on where the task's branch is not made there
 //   reports        the task's last review round's reports, one per
 //                  reviewer of the count (13.3.4), each verbatim under a
-//                  heading naming its reviewer (round-report.cjs)
+//                  heading naming its reviewer (round-report.cjs), and
+//                  nothing else; refused where the task changed since a
+//                  brief to its builder last went past it, its brief going
+//                  first, carrying the task and its calls as they stand;
+//                  issued, it records what the builder's brief records
 //   account-to     where the builder writes the task's account as it
 //                  lands: the task's `build/tasks/{task}.md` (task-account.cjs,
-//                  12.14), as `task account` reads it
+//                  12.14), as `task account` reads it; then, once the task's
+//                  review has ended — its last round passed, or settled, the
+//                  settlement's text beneath — and no account written there
+//                  covers it, that it has landed and its account is owed
+//                  now, and where an account written there does not read,
+//                  every fault, so a refused account goes back to its
+//                  builder in its brief; but while the task changed under
+//                  that round (round-report.cjs), that it changed, and its
+//                  builder builds what changed for its pair to read again;
+//                  and while a question parks it, that it waits, owing no
+//                  account. Refused while a round its pair was briefed
+//                  for is not reported whole, naming each reviewer's way
+//                  on (round-report.cjs, `readRefusal`); issued, it
+//                  records the freeing and the changes it went past
+//   engine         the engine the builder runs, by the absolute path of the
+//                  one filling the brief, in the checkout the orchestrator
+//                  runs in, so a builder's worktree started at the remote's
+//                  default branch never runs one older or missing there
+//   chain          whether the task's branch holds its phase's chain as it
+//                  stands: where the work below it (review-change.cjs) has
+//                  moved past it in a repository holding the branch, the
+//                  merge of that tip back onto it there, children first,
+//                  each committed through the door before the next, a
+//                  child's pointer staged at its merged tip; then the
+//                  account where one is owed, reported accounted, else
+//                  reported merged
 //   setup-to       where the builder writes the verify setup its task
 //                  builds or changes, for `verify setup --file`: the
 //                  unit's `.cache/{unit}/build/verify-setup.json`, outside
@@ -53,8 +88,12 @@
 //                  of the round under review (13.5.9): the task's
 //                  `round-{N}-{letter}.md`, N read from the task's reports
 //                  on disk (round-report.cjs), so it holds across a
-//                  `/clear` and for both reviewers of a round; a report
-//                  there that does not read named as the one it replaces
+//                  `/clear` and for both reviewers of a round — a passed
+//                  round read again in the round after where the task
+//                  changed under it (round-report.cjs); a report there that
+//                  does not read named as the one it replaces. Issued, it
+//                  records the round its pair was briefed for, which a
+//                  change marks itself against (round-report.cjs)
 //
 // A discussion topic's records, each read from the ledger as its read verb
 // answers it (ledger-read.cjs) or from the topic's agent store
@@ -239,8 +278,10 @@
 //                  each other unit it relies on, by its name
 //   phase-diff-range in each repository holding work on the branch of a task
 //                  of the phase not closed, under a heading naming it, the
-//                  range from its base, as diff-range picks it, to the
-//                  stack's tip there — the branch every other the phase's
+//                  range from its base — the branch the repository lands
+//                  on, where the phase's chain leaves it, where none is
+//                  named, else as diff-range picks it — to the stack's tip
+//                  there — the branch every other the phase's
 //                  tasks hold there descends from — `{base}...{tip}`, and its
 //                  `git diff --stat`, never the diff's text
 //   phase-scratch-layout the phase review's scratch worktree, laid out as
@@ -408,19 +449,19 @@ const { heldPlaces } = require('./spec-review.cjs');
 const {
   ownTexts, recordTaking, recordCutTaking, outstanding, cutRequests, reviewedSpec, sectionsToReview, waitingGaps, gapsWaiting, passesRunningOn, waitingOn,
 } = require('./spec-passes.cjs');
-const { messageOf } = require('../kernel/call.cjs');
+const { messageOf, ENGINE_RUN } = require('../kernel/call.cjs');
 const { specReferenceOf, scenariosOf } = require('./task-file.cjs');
 const {
-  taskFolder, taskRounds, roundReportPath, roundUnderReview, phaseReviewPath, reportFaults,
+  taskFolder, taskRounds, roundReportPath, roundUnderReview, phaseReviewPath, reportFaults, roundStanding, readRefusal, recordReviewer, recordBuilder, pendingChange, briefedOf,
 } = require('./round-report.cjs');
+const { landsOn, builtOnBases } = require('./task-base.cjs');
+const { freedAt } = require('./task-parks.cjs');
 const { REVIEWER_LETTERS } = require('../kernel/reviewers.cjs');
 const { taskName, shownTask, phaseName } = require('./task-id.cjs');
 const { taskBranch } = require('./landing-names.cjs');
-const {
-  branches, holdingBranch, defaultBranch,
-} = require('./landing-git.cjs');
-const { remoteName, nestedRemoteName } = require('./remote.cjs');
-const { heldIn, pointedAt } = require('./task-worktree.cjs');
+const { branches, holdingBranch, isAncestor, quoted } = require('./landing-git.cjs');
+const { childrenFirst } = require('../kernel/repos.cjs');
+const { heldIn, pointedAt } = require('./project-layout.cjs');
 const { repoNamed, phaseStack, tipCommits } = require('./phase-stack.cjs');
 const { readWorkUnitManifest } = require('../kernel/manifest-io.cjs');
 const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
@@ -428,13 +469,13 @@ const { ENDED } = require('./task-verbs.cjs');
 const { notesToTake, notesHeldFor, consolidationPath } = require('./notes.cjs');
 const { runsOf } = require('./runs.cjs');
 const { cachedSurvivors } = require('./verify.cjs');
-const { accountPath } = require('./task-account.cjs');
+const { accountPath, accountOwed, landingStage, reviewOverWay } = require('./task-account.cjs');
 const { directiveOf } = require('./directives.cjs');
 const {
   TESTS, TESTS_LETTER, roundRefusal, readsWords, areaReportPath, unitCalls,
 } = require('./review-phase.cjs');
 const { reviewHeld } = require('./review-entry.cjs');
-const { changeOf, changeTips } = require('./review-change.cjs');
+const { changeOf, changeTips, workBelow } = require('./review-change.cjs');
 const { topicPlace, recordsRules, composedPath, findingsPath, refusedPath } = require('./ledger-carry.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
@@ -549,8 +590,9 @@ const STAT = ['--stat=1000', '--stat-graph-width=40'];
  */
 function rangeIn(repo, base, branch) {
   const where = repoNamed(repo);
-  const stat = git(repo.path, ['diff', '--no-color', ...STAT, `refs/heads/${base}...refs/heads/${branch}`, '--']);
-  return `## In ${where}: \`${base}...${branch}\`\n\n${stat === '' ? 'Nothing changed in the range.' : `\`\`\`\n${stat}\`\`\``}`;
+  const commit = /^[0-9a-f]{40}$/.test(base);
+  const stat = git(repo.path, ['diff', '--no-color', ...STAT, `${commit ? base : `refs/heads/${base}`}...refs/heads/${branch}`, '--']);
+  return `## In ${where}: \`${commit ? base.slice(0, 7) : base}...${branch}\`\n\n${stat === '' ? 'Nothing changed in the range.' : `\`\`\`\n${stat}\`\`\``}`;
 }
 
 /**
@@ -564,11 +606,6 @@ function basesOf(cwd, holding, given, what) {
   const has = holding.map((repo) => branches(repo.path).has(given));
   if (!has.includes(true)) throw new Error(`the base ${given} is no local branch in any repository holding ${what}`);
   return holding.map((repo, at) => (has[at] ? given : landsOn(cwd, repo)));
-}
-
-/** The branch a repository lands on (landing-git.cjs). @param {string} cwd @param {Repo} repo */
-function landsOn(cwd, repo) {
-  return defaultBranch(repo.path, repo.dir === '' ? remoteName(cwd) : nestedRemoteName(repo.path), repo.dir !== '');
 }
 
 /** Where a repository is laid out: what the brief names, its commit, and why there. @typedef {{named: string, commit: string, why: string}} Laid */
@@ -608,7 +645,7 @@ function laidOut(repos, repo, { tips, tipped }, laid, otherwise) {
   if (tip !== undefined) return onBranch(repo, tip, tipped);
   if (repo.dir === '' || !heldIn(repos, repo).submodule) return otherwise(repo);
   const { holder } = heldIn(repos, repo);
-  const commit = pointedAt(repos, repo, holder.path, /** @type {string} */ (laid.get(holder.dir)));
+  const commit = pointedAt(repos, repo, /** @type {string} */ (laid.get(holder.dir)));
   return { named: commit, commit, why: `a submodule, at the commit ${repoNamed(holder)} points it at as laid out` };
 }
 
@@ -630,8 +667,10 @@ function taskHolding(filling) {
 
 /** @param {Filling} filling */
 function drawDiffRange(filling) {
+  const { ref } = taskOf(filling);
   const { branch, holding, what } = taskHolding(filling);
-  const bases = basesOf(filling.cwd, holding, filling.given.base, what);
+  const { base } = filling.given;
+  const bases = base === undefined ? builtOnBases(filling.cwd, ref, holding, branch) : basesOf(filling.cwd, holding, base, what);
   return holding.map((repo, at) => rangeIn(repo, bases[at], branch)).join('\n\n');
 }
 
@@ -646,14 +685,25 @@ function drawScratchLayout(filling) {
 /**
  * The task's last round's reports, refused where it has none, or the round
  * passed: a round with nothing serious and no bug sends nothing back to the
- * builder, its nits the orchestrator's to fix (13.4.4, 13.4.5).
+ * builder, its nits the orchestrator's to fix (13.4.4, 13.4.5); where no
+ * builder of the task was sent its own brief in this conversation, a new
+ * one sent it first (24.2.4); and where the task changed since its
+ * builder's last brief, which carries the task and its calls as they stand
+ * and goes first (round-report.cjs).
  * @param {Filling} filling
  */
 function drawReports(filling) {
   const { ref } = taskOf(filling);
-  const last = taskRounds(filling.cwd, ref).at(-1);
+  const rounds = taskRounds(filling.cwd, ref);
+  const last = rounds.at(-1);
   if (last === undefined) throw new Error(`${taskName(ref)} has no review round's reports — its reviewers write them in ${taskFolder(ref)}/`);
   if (last.passes) throw new Error(`round ${last.round} of ${taskName(ref)} passed — a round with nothing serious and no bug sends nothing back to the builder; its nits are the orchestrator's to fix`);
+  if (briefedOf(filling.cwd, ref).session !== filling.session) {
+    throw new Error(`${taskName(ref)} has no builder briefed in this conversation, so none to send the round back to: send a new builder its brief first, engine brief builder ${ref.unit} ${shownTask(ref)}, which carries the task, the engine and where it builds, then this fix brief`);
+  }
+  if (pendingChange(filling.cwd, ref)) {
+    throw new Error(`${taskName(ref)} changed since its builder's last brief — something was added to it, or one of its calls decided against its lean: send its builder its brief again first, engine brief builder ${ref.unit} ${shownTask(ref)}, which carries the task and its calls as they stand, then this fix brief`);
+  }
   return last.reports.map(({ reviewer, text }) => `# Reviewer ${reviewer.toUpperCase()}'s report\n\n${text}`).join('\n\n');
 }
 
@@ -1536,8 +1586,10 @@ const phaseHolding = oncePerFill(/** @param {Filling} filling @returns {import('
 function drawPhaseDiffRange(filling, warnings) {
   const { tips, what } = phaseHolding(filling, warnings);
   const holding = [...tips.keys()];
-  const bases = basesOf(filling.cwd, holding, filling.given.base, `${what}'s tasks`);
-  return holding.map((repo, at) => rangeIn(repo, bases[at], /** @type {string} */ (tips.get(repo)))).join('\n\n');
+  const tipped = holding.map((repo) => /** @type {string} */ (tips.get(repo)));
+  const { base } = filling.given;
+  const bases = base === undefined ? holding.map((repo) => landsOn(filling.cwd, repo)) : basesOf(filling.cwd, holding, base, `${what}'s tasks`);
+  return holding.map((repo, at) => rangeIn(repo, bases[at], tipped[at])).join('\n\n');
 }
 
 /** @param {Filling} filling @param {string[]} warnings */
@@ -1610,12 +1662,118 @@ function drawSetupTo(filling) {
 
 /** @param {Filling} filling */
 function drawAccountTo(filling) {
-  return `\`${statePath(filling.cwd, accountPath(taskOf(filling).ref))}\``;
+  const { ref } = taskOf(filling);
+  const standing = roundStanding(filling.cwd, ref, filling.session);
+  if (standing !== null) throw new Error(readRefusal(ref, standing));
+  const {
+    owed, faults, changed, waiting,
+  } = accountOwed(filling.cwd, ref);
+  const lines = [`\`${statePath(filling.cwd, accountPath(ref))}\``];
+  if (waiting !== null) lines.push(`Your reviewers passed the task, and it waits on ${waiting.join(', ')}, a question for the person: write no account while it waits — the answer decides whether the task lands as they passed it, or changes.`);
+  if (changed !== null) lines.push(`The task changed after your reviewers passed it in round ${changed} — something was added to it, or one of its calls decided against its lean: build what changed, and your reviewers read the task again before its account is written.`);
+  if (owed !== null && owed.settlement === null) lines.push(`Your reviewers passed the task in round ${owed.round}: it has landed, so write its account now.`);
+  if (owed !== null && owed.settlement !== null) {
+    lines.push(
+      `The orchestrator settled the task's review in round ${owed.round}: it has landed, so write its account now, \`### Settled\` after that round saying what was done about it. Its settlement:`,
+      owed.settlement.split('\n').map((line) => `> ${line}`.trimEnd()).join('\n'),
+    );
+  }
+  if (faults !== null) lines.push(`The account there does not read — ${faults}; yours replaces it.`);
+  if (owed === null && waiting === null && landingStage(filling.cwd, ref).stage === 'owed') lines.push('Your account of the task is written there and not yet taken: leave it as it stands, and report **accounted**.');
+  return lines.join('\n\n');
 }
 
-/** @param {Filling} filling */
+/** A brief to the task's builder issued: the freeing and the changes it went past recorded (round-report.cjs). @param {Filling} filling @param {string|null} session the conversation issuing the builder's own brief */
+function briefedPast(filling, session) {
+  const { ref } = taskOf(filling);
+  recordBuilder(filling.cwd, ref, freedAt(filling.cwd, ref.unit).get(shownTask(ref)) ?? 0, session);
+}
+
+/** The builder's own brief issued, in the calling conversation. @param {Filling} filling */
+const bindBuilder = (filling) => briefedPast(filling, filling.session);
+
+/** A fix round's brief to the builder issued. @param {Filling} filling */
+const bindFix = (filling) => briefedPast(filling, null);
+
+/** A reviewer's brief issued: the round its pair is briefed for, and the conversation briefing this reviewer, recorded (round-report.cjs). @param {Filling} filling */
+function bindReviewer(filling) {
+  const { ref } = taskOf(filling);
+  recordReviewer(filling.cwd, ref, roundUnderReview(filling.cwd, ref), letterOf(filling), filling.session);
+}
+
+/** @returns {string} */
+function drawEngine() {
+  return `\`${ENGINE_RUN}\` — the engine of the checkout the orchestrator runs in. Run every engine command this brief and your instructions name as that, from wherever you run it.`;
+}
+
+/**
+ * Where the task's branch stands against its chain, in each repository
+ * holding it, children first: the tip of the work below it that has moved
+ * past the branch there — one stack's, so its tip holds the rest — or none.
+ * @param {Filling} filling @param {Repo[]} repos the project's @returns {{repo: Repo, tip: string}[]}
+ */
+function chainPast(filling, repos) {
+  const { ref, task } = taskOf(filling);
+  if (task.type === null) throw new Error(`${taskName(ref)} has no type in the tracker, and its branch is named from it`);
+  const own = taskBranch(ref, task.type, task.title);
+  const below = workBelow(filling.cwd, ref.unit, ref.phase).flatMap((other) => (other.type === null ? [] : [taskBranch(other.ref, other.type, other.title)]));
+  return childrenFirst(repos).flatMap((repo) => {
+    const held = branches(repo.path);
+    if (!held.has(own)) return [];
+    const past = below.filter((other) => other !== own && held.has(other) && !isAncestor(repo.path, `refs/heads/${other}`, `refs/heads/${own}`));
+    const tip = past.find((other) => past.every((under) => isAncestor(repo.path, `refs/heads/${under}`, `refs/heads/${other}`)));
+    return tip === undefined ? [] : [{ repo, tip }];
+  });
+}
+
+/** What the builder does once its merge is committed, by how far the task stands towards landing (`landingStage`). */
+const CHAIN_THEN = Object.freeze({
+  building: 'Then go on with the task as the rest of this brief says.',
+  owed: 'Then write the task\'s account, as **Where your account goes** says, and report **accounted**.',
+  taken: 'Then report **merged**.',
+});
+
+/**
+ * Whether the task's branch holds its chain as it stands, and where it does
+ * not, the merge of the chain's tip back onto it in each repository, a
+ * child before its holder — the holder's pointer then resolved to that
+ * child's merged tip — each committed through the door; then the task, while
+ * its review is not over, the account where one is owed, or else the report
+ * that it merged (`CHAIN_THEN`).
+ * @param {Filling} filling
+ */
+function drawChain(filling) {
+  const { ref } = taskOf(filling);
+  const repos = projectRepos(codeRoot(filling.cwd));
+  const past = chainPast(filling, repos);
+  if (past.length === 0) return 'Your branch holds its phase\'s chain as it stands.';
+  const pointers = past.filter(({ repo }) => repo.dir !== '' && heldIn(repos, repo).submodule).map(({ repo }) => {
+    const { holder, folder } = heldIn(repos, repo);
+    return `\`git${holder.dir === '' ? '' : ` -C ${quoted(holder.dir)}`} add ${quoted(folder)}\``;
+  });
+  const { stage } = landingStage(filling.cwd, ref);
+  return [
+    'Your phase\'s chain has moved on past your branch. Merge its tip back before anything else, from your task\'s worktree, one repository at a time in this order, each merge committed before the next starts:',
+    past.map(({ repo, tip }) => `- \`git${repo.dir === '' ? '' : ` -C ${quoted(repo.dir)}`} merge --no-ff --no-commit ${tip}\``).join('\n'),
+    [
+      'Resolve what conflicts as your task and the chained work both need',
+      pointers.length === 0 ? '' : ` — a child repository's pointer at that repository's merged tip, ${pointers.join(', ')}`,
+      `, then commit the merge through the door, naming each file you resolved — or, where nothing conflicted, any file the merge changed: the engine's \`commit --paths {file}… --task ${ref.unit} ${shownTask(ref)} -m "{message}"\`, which finishes it.`,
+    ].join(''),
+    CHAIN_THEN[stage],
+  ].join('\n\n');
+}
+
+/**
+ * Where the reviewer's report of the round under review goes; refused
+ * where the last round passed, naming the way on by how far the task
+ * stands towards landing (task-account.cjs, `reviewOverWay`).
+ * @param {Filling} filling
+ */
 function drawRoundReportTo(filling) {
   const { ref } = taskOf(filling);
+  const over = reviewOverWay(filling.cwd, ref);
+  if (over !== null) throw new Error(`round ${over.round} of ${taskName(ref)} passed — its review is over: ${over.way}`);
   return reportPlace(filling, roundReportPath(ref, roundUnderReview(filling.cwd, ref), letterOf(filling)));
 }
 
@@ -1746,11 +1904,13 @@ const RECORDS = Object.freeze({
   'spec-sections': { of: 'task', draw: drawSpecSections },
   'decided-calls': { of: 'unit', draw: drawDecidedCalls },
   linters: { of: null, draw: drawLinters },
-  'diff-range': { of: 'task', flags: [BASE], draw: drawDiffRange },
+  'diff-range': { of: 'task', flags: [{ ...BASE, optional: true }], draw: drawDiffRange },
   'scratch-layout': { of: 'task', draw: drawScratchLayout },
-  reports: { of: 'task', draw: drawReports },
-  'round-report-to': { of: 'task', flags: [LETTER], draw: drawRoundReportTo },
-  'account-to': { of: 'task', draw: drawAccountTo },
+  reports: { of: 'task', draw: drawReports, bind: bindFix },
+  'round-report-to': { of: 'task', flags: [LETTER], draw: drawRoundReportTo, bind: bindReviewer },
+  'account-to': { of: 'task', draw: drawAccountTo, bind: bindBuilder },
+  engine: { of: null, draw: drawEngine },
+  chain: { of: 'task', draw: drawChain },
   'setup-to': { of: 'task', draw: drawSetupTo },
   'topic-record': { of: 'topic', draw: drawTopicRecord },
   'topic-log': { of: 'topic', draw: drawTopicLog },
@@ -1807,7 +1967,7 @@ const RECORDS = Object.freeze({
   'phase-tasks': { of: 'phase', draw: drawPhaseTasks },
   'phase-criteria': { of: 'phase', draw: drawPhaseCriteria },
   'relied-on': { of: 'phase', draw: drawReliedOn },
-  'phase-diff-range': { of: 'phase', flags: [BASE], draw: drawPhaseDiffRange },
+  'phase-diff-range': { of: 'phase', flags: [{ ...BASE, optional: true }], draw: drawPhaseDiffRange },
   'phase-scratch-layout': { of: 'phase', draw: drawPhaseScratchLayout },
   'recorded-runs': { of: 'phase', draw: drawRecordedRuns },
   mutants: { of: 'phase', draw: drawMutants },

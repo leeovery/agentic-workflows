@@ -52,13 +52,26 @@
 //   holding a file not committed. Its answer draws nothing. A setup recorded
 //   is replaced whole by the next.
 // - `verify mutants <unit> <N>` runs the mutation tool the setup names over
-//   the lines phase N changed (15.6.3): in each repository of the calling
-//   checkout, the commits whose `Leeway-Task` trailer names a task of the
-//   phase (commit-task.cjs), and the change from the parent of the earliest
-//   to HEAD, confined to the files those commits touched — each file's lines
-//   as they stand at HEAD, a submodule's pointer never one of them. The
-//   lines go to the tool as `$LEEWAY_CHANGED`, a JSON file, `[{path, lines:
-//   [[from, to], …]}]`, each path from the project's root; the tool writes
+//   the lines phase N changed (15.6.3), at the phase's tips wherever it is
+//   called from: the engine lays the project out in a scratch worktree of
+//   its own where Claude Code lays out the builders' isolation worktrees,
+//   `.claude/worktrees/` of the project's main checkout, so the tool runs
+//   where the setup's trial ran — never below the git directory, whose
+//   files test runners leave out. It is laid out as a task's worktree is
+//   (project-layout.cjs): the project's folder in it, a nested project's
+//   own folder of its repository, each repository holding the phase's work
+//   at its stack's tip (phase-stack.cjs), a submodule holding none at the
+//   commit its holder points it at, a clone holding none at the tip of the
+//   branch it lands on, each prepared as Claude Code prepares an isolation
+//   worktree. The tool runs in the project's folder there, and the
+//   worktree is taken apart again, whatever the tool did.
+//   In each repository there, the commits whose `Leeway-Task` trailer names
+//   a task of the phase (commit-task.cjs), and the change from the parent
+//   of the earliest to the tip, confined to the files those commits touched
+//   — each file's lines as they stand at the tip, a submodule's pointer
+//   never one of them. The lines go to the tool as `$LEEWAY_CHANGED`, a
+//   JSON file, `[{path, lines: [[from, to], …]}]`, each path from the
+//   project's root; the tool writes
 //   what survived to `$LEEWAY_RUN/survivors.json`, `[{path, line, mutant}]`,
 //   whatever its exit code says — many exit failing where a mutant survives.
 //   A survivor's path is read as the project's: posix-normalised, an
@@ -69,8 +82,7 @@
 //   each repository of the checkout with the HEAD it ran at, as a run names
 //   them, `key` their hash — where the phase review's brief reads it for the
 //   phase's tip in each repository holding its work (`cachedSurvivors`,
-//   brief-records.cjs), so the tool runs once a review, outside any lock,
-//   from a checkout at those tips.
+//   brief-records.cjs), so the tool runs once a review, outside any lock.
 //
 // Each refuses, opening on its command and recording nothing: a unit the
 // project lacks; no verify setup recorded, naming `verify setup`, for the
@@ -86,9 +98,10 @@
 // them — with the drive's exit code and output, or another word; a symbolic
 // link, a folder, a file that is not text or one over 64 KB among the
 // evidence; a symbolic link or a folder among the recordings; for the
-// mutants, a setup naming no tool, no commit of the phase in the checkout,
-// no survivors written, or not of their shape, and a survivor naming none of
-// the files the phase changed.
+// mutants, a setup naming no tool, the phase's tasks no one stack or holding
+// no work in any repository (phase-stack.cjs), no commit of the phase at its
+// tips, no survivors written, or not of their shape, and a survivor naming
+// none of the files the phase changed.
 // ---------------------------------------------------------------------------
 
 const crypto = require('crypto');
@@ -112,7 +125,10 @@ const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('.
 const { stepOfId, parseShownTask } = require('./task-id.cjs');
 const { TRAILER } = require('./commit-task.cjs');
 const { holdsScenario } = require('./task-file.cjs');
-const { trackedTask } = require('./task-verbs.cjs');
+const { trackedTask, trackedPhase } = require('./task-verbs.cjs');
+const { phaseStack } = require('./phase-stack.cjs');
+const { mainCheckoutOf } = require('./landing-git.cjs');
+const { folderIn, layOutAt } = require('./project-layout.cjs');
 const { isoNow } = require('./dates.cjs');
 const { VERIFY_PARTS, SETUP_PLACES, setupFaults, verifySetup } = require('./environment.cjs');
 const { VERDICTS, SCENARIO, recordRun, recordingPath, behindHead, runsOf } = require('./runs.cjs');
@@ -621,17 +637,57 @@ function verifyMutants(cwd, unit, given) {
   if (phase < 1 || phase > phases) throw new Error(`"${given}" is no phase of ${unit}'s cut — it has ${phases === 1 ? '1 phase' : `${phases} phases`}`);
   const { mutation } = recordedSetup(cwd, unit);
   if (mutation === undefined) throw new Error(NO_TOOL);
-  const root = codeRoot(cwd);
-  const repos = projectRepos(root);
-  const changed = phaseChanges(repos, unit, phase);
-  if (changed.length === 0) throw new Error(`no commit of phase ${phase} of ${unit} changes a line in the checkout at ${root} — run it from the checkout holding the phase's work`);
+  const tasks = withStateLock(stateRoot(cwd), () => trackedPhase(cwd, unit, phase).tasks ?? []);
+  const { repos, tips } = phaseStack(cwd, unit, phase, tasks);
+  const top = scratchTop(repos[0], unit, phase);
+  takeApart(repos, top);
+  try {
+    const laid = layOutAt(repos[0].path, unit, repos, new Map([...tips].map(([repo, tip]) => [repo.dir, tip])), top);
+    return mutantsAt(cwd, unit, phase, mutation, laid);
+  } finally {
+    takeApart(repos, top);
+  }
+}
+
+/**
+ * The scratch worktree's top (the header's): beside the builders' isolation
+ * worktrees, in `.claude/worktrees/` of the project's main checkout.
+ * @param {Repo} own the project's own repository @param {string} unit @param {number} phase
+ */
+const scratchTop = (own, unit, phase) => path.join(mainCheckoutOf(own.path), '.claude', 'worktrees', `leeway-mutants-${unit}-phase-${phase}`);
+
+/**
+ * The scratch worktree at `top` taken apart, deepest first, each
+ * repository's registration of it with it; one not there passed over.
+ * @param {Repo[]} repos the project's @param {string} top
+ */
+function takeApart(repos, top) {
+  const folder = folderIn(top, repos[0].path);
+  for (let at = repos.length - 1; at >= 0; at -= 1) {
+    const { dir, path: root } = repos[at];
+    tryGit(root, ['worktree', 'remove', '--force', '--force', dir === '' ? top : path.join(folder, dir)]);
+    tryGit(root, ['worktree', 'prune']);
+  }
+}
+
+/**
+ * The tool run over the phase's lines in the project's folder of the
+ * scratch worktree, each repository of it as `laid` has it, what survived
+ * on them left in the unit's cache for the commits it ran at.
+ * @param {string} cwd @param {string} unit @param {number} phase @param {string} mutation @param {Repo[]} laid
+ * @returns {Record<string, unknown>}
+ */
+function mutantsAt(cwd, unit, phase, mutation, laid) {
+  const [{ path: root }] = laid;
+  const changed = phaseChanges(laid, unit, phase);
+  if (changed.length === 0) throw new Error(`no commit of phase ${phase} of ${unit} changes a line at its tips`);
   const ran = inRunFolder((run) => {
     const listing = path.join(run, 'changed.json');
     fs.writeFileSync(listing, `${JSON.stringify(changed, null, 2)}\n`);
     return survivorsIn(run, runShellCommand(root, mutation, { LEEWAY_RUN: run, LEEWAY_CHANGED: listing }));
   });
   const survivors = onChangedLines(root, changed, ran);
-  const commits = headsOf(repos);
+  const commits = headsOf(laid);
   const cached = statePath(cwd, mutantsRel(unit, phase), `${mutantsKey(commits)}.json`);
   fs.mkdirSync(path.dirname(cached), { recursive: true });
   writeJsonAtomic(cached, { commits, survivors });
@@ -667,7 +723,7 @@ function cachedSurvivors(cwd, unit, phase, tips) {
     .map((entry) => /** @type {{commits: RepoCommit[], survivors: Survivor[]}} */ (JSON.parse(fs.readFileSync(path.join(folder, entry.name), 'utf8'))))
     .find(({ commits }) => behindHead(root, commits, tips) === 0);
   if (atTips === undefined) {
-    throw new Error(`the mutation tool has not run over phase ${phase} of ${unit} at its tips — ${tips.map(commitNamed).join(', ')} — engine verify mutants ${unit} ${phase}, run from a checkout at those tips, runs it`);
+    throw new Error(`the mutation tool has not run over phase ${phase} of ${unit} at its tips — ${tips.map(commitNamed).join(', ')} — engine verify mutants ${unit} ${phase} runs it`);
   }
   return atTips.survivors;
 }

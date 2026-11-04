@@ -492,16 +492,18 @@ function answerMeans(read, unit, parks, before) {
 }
 
 /**
- * The tasks an answer freed building again — one, or each of theirs — and
- * in step, one at a time (12.7.9): once the task in flight is done, where
- * it is none of them; else from the one in flight, where they are several.
- * @param {string[]} freed @param {import('./task-verbs.cjs').StepTurn|null} turn
+ * The tasks an answer freed building again — one, or each of theirs — one
+ * its pair is reading once that round is read (round-report.cjs), and in
+ * step, one at a time (12.7.9): once the task in flight is done, where it
+ * is none of them; else from the one in flight, where they are several.
+ * @param {string[]} freed @param {import('./task-verbs.cjs').StepTurn|null} turn @param {(task: string) => number|null} read the round its pair reads
  */
-function freedWords(freed, turn) {
-  const again = freed.length === 1 ? `task ${freed[0]} builds again` : 'their tasks build again';
-  if (turn === null) return again;
-  if (!freed.includes(turn.inFlight)) return `${again} once task ${turn.inFlight} is done`;
-  return freed.length === 1 ? again : `${again}, task ${turn.inFlight} first`;
+function freedWords(freed, turn, read) {
+  const reading = freed.length === 1 ? read(freed[0]) : null;
+  const behind = turn !== null && !freed.includes(turn.inFlight) ? `task ${turn.inFlight} is done` : null;
+  const waits = [...(reading === null ? [] : [`its pair has read round ${reading}`]), ...(behind === null ? [] : [behind])];
+  const again = `${freed.length === 1 ? `task ${freed[0]} builds` : 'their tasks build'} again${waits.length === 0 ? '' : ` once ${waits.join(' and ')}`}`;
+  return turn !== null && behind === null && freed.length > 1 ? `${again}, task ${turn.inFlight} first` : again;
 }
 
 /**
@@ -511,13 +513,13 @@ function freedWords(freed, turn) {
  * `turnNow` answering it (task-verbs.cjs, `stepTurn`), read only where the
  * answer freed a task.
  * @param {string} cwd @param {string} unit @param {Parks} parks @param {string[]} before @param {string[]} warnings
- * @param {() => import('./task-verbs.cjs').StepTurn|null} turnNow
+ * @param {() => import('./task-verbs.cjs').StepTurn|null} turnNow @param {(task: string) => number|null} read the round a task's pair reads
  */
-function answeredReceipt(cwd, unit, parks, before, warnings, turnNow) {
+function answeredReceipt(cwd, unit, parks, before, warnings, turnNow, read) {
   const root = /** @type {string} */ (findStateRoot(cwd));
   const name = numbered(parks.number);
   const { meant, waiting } = readQuestions(root, warnings, (read) => ({ meant: answerMeans(read, unit, parks, before), waiting: waitingNumbers(read, unit) }));
-  const means = 'means' in meant ? meant.means : freedWords(meant.freed, turnNow());
+  const means = 'means' in meant ? meant.means : freedWords(meant.freed, turnNow(), read);
   return receiptLine([name], 'answered', means, waiting.length, nextUp(handedSession(), [name], waiting, warnings));
 }
 

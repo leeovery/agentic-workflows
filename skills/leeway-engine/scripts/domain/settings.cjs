@@ -112,4 +112,4 @@ function writeProjectSettings(cwd, settings) {
   writeSettings(path.join(codeRoot(cwd), SETTINGS_SPEC), settings);
 }
 
-module.exports = { SETTINGS_SPEC, settingsHeld, parseSettings, readProjectSettings, writeProjectSettings };
+module.exports = { SETTINGS_SPEC, settingsHeld, readSettings, parseSettings, readProjectSettings, writeProjectSettings };
