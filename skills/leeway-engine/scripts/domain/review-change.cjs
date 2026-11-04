@@ -104,14 +104,21 @@ function landings(repo, branch, unit) {
 const phasesTo = (phases) => Array.from({ length: phases }, (_, at) => at + 1);
 
 /**
+ * The project's repos: those read already, else read now.
+ * @param {string} cwd @param {Repo[]} [repos]
+ */
+const reposOr = (cwd, repos) => repos ?? projectRepos(codeRoot(cwd));
+
+/**
  * The unit's tasks done and not landed, whole, in each of the phases
  * `numbers`, in order.
- * @param {string} cwd @param {string} unit @param {number[]} numbers @returns {TaskDetail[]}
+ * @param {string} cwd @param {string} unit @param {number[]} numbers @param {Repo[]} [repos] the project's, where read already
+ * @returns {TaskDetail[]}
  */
-function unlandedTasks(cwd, unit, numbers) {
+function unlandedTasks(cwd, unit, numbers, repos) {
   const lists = withStateLock(stateRoot(cwd), () => trackedLists(cwd, unit, numbers).phases);
   if (!lists.some((list) => (list ?? []).some(({ status }) => status === 'done'))) return [];
-  const landed = landedTasks(cwd, unit);
+  const landed = landedTasks(cwd, unit, reposOr(cwd, repos));
   const waiting = (/** @type {{ref: import('./task-id.cjs').TaskRef, status: string}} */ { ref, status }) => status === 'done' && !landed.has(shownTask(ref));
   return withStateLock(stateRoot(cwd), () => numbers.filter((_, at) => (lists[at] ?? []).some(waiting)).flatMap((phase) => (trackedPhase(cwd, unit, phase).tasks ?? []).filter(waiting)));
 }
@@ -119,16 +126,16 @@ function unlandedTasks(cwd, unit, numbers) {
 /**
  * The stack the tasks among `pending` make: its tip in each repository
  * holding their work, none where there are none.
- * @param {string} cwd @param {string} unit @param {TaskDetail[]} pending @param {string} what the work, as a refusal names it
+ * @param {string} cwd @param {string} unit @param {TaskDetail[]} pending @param {string} what the work, as a refusal names it @param {Repo[]} [repos] the project's, where read already
  * @returns {Map<Repo, string>}
  */
-const stackTips = (cwd, unit, pending, what) => (pending.length === 0 ? new Map() : stackOf(cwd, unit, pending, what).tips);
+const stackTips = (cwd, unit, pending, what, repos) => (pending.length === 0 ? new Map() : stackOf(reposOr(cwd, repos), unit, pending, what).tips);
 
 /**
  * The stack the unit's work not landed in its phases to `phases` makes (`stackTips`).
- * @param {string} cwd @param {string} unit @param {number} phases @param {string} what
+ * @param {string} cwd @param {string} unit @param {number} phases @param {string} what @param {Repo[]} [repos]
  */
-const unlandedStack = (cwd, unit, phases, what) => stackTips(cwd, unit, unlandedTasks(cwd, unit, phasesTo(phases)), what);
+const unlandedStack = (cwd, unit, phases, what, repos) => stackTips(cwd, unit, unlandedTasks(cwd, unit, phasesTo(phases), repos), what, repos);
 
 /**
  * The unit's work not landed below a task of phase `phase`, whole — what
@@ -136,11 +143,12 @@ const unlandedStack = (cwd, unit, phases, what) => stackTips(cwd, unit, unlanded
  * one of the review's fix phases, its tasks done and not landed in its
  * phases to `phase`, the work below it with its own chain (7.2.6); for a
  * phase of the cut, its own chain alone (the header's).
- * @param {string} cwd @param {string} unit @param {number} phase @returns {TaskDetail[]}
+ * @param {string} cwd @param {string} unit @param {number} phase @param {Repo[]} [repos] the project's, where read already
+ * @returns {TaskDetail[]}
  */
-function workBelow(cwd, unit, phase) {
+function workBelow(cwd, unit, phase, repos) {
   const manifest = manifestOf(stateRoot(cwd), unit);
-  return unlandedTasks(cwd, unit, manifest !== null && isFixPhase(manifest, phase) ? phasesTo(phase) : [phase]);
+  return unlandedTasks(cwd, unit, manifest !== null && isFixPhase(manifest, phase) ? phasesTo(phase) : [phase], repos);
 }
 
 /**
@@ -149,11 +157,11 @@ function workBelow(cwd, unit, phase) {
  * work's tip there (task-worktree.cjs, 12.7.10); none where nothing below
  * it waits to land. Refused where that work is no one stack in a
  * repository (phase-stack.cjs).
- * @param {string} cwd @param {string} unit @param {number} phase
+ * @param {string} cwd @param {string} unit @param {number} phase @param {Repo[]} repos the project's
  * @returns {Map<string, string>}
  */
-function belowTips(cwd, unit, phase) {
-  return new Map([...stackTips(cwd, unit, workBelow(cwd, unit, phase), `the work below ${unit}'s phase ${phase}`)].map(([repo, tip]) => [repo.dir, tip]));
+function belowTips(cwd, unit, phase, repos) {
+  return new Map([...stackTips(cwd, unit, workBelow(cwd, unit, phase, repos), `the work below ${unit}'s phase ${phase}`, repos)].map(([repo, tip]) => [repo.dir, tip]));
 }
 
 /**
@@ -161,25 +169,24 @@ function belowTips(cwd, unit, phase) {
  * holding it: for one of the review's fix phases, the branch at the tip of
  * the unit's work not landed below it (the header's); nothing for any other
  * phase, nor where nothing below it waits to land.
- * @param {string} cwd @param {string} unit @param {number} phase
+ * @param {string} cwd @param {string} unit @param {number} phase @param {Repo[]} repos the project's
  * @returns {Map<string, string>}
  */
-function fixBase(cwd, unit, phase) {
+function fixBase(cwd, unit, phase, repos) {
   const manifest = manifestOf(stateRoot(cwd), unit);
   if (manifest === null || !isFixPhase(manifest, phase)) return new Map();
-  return new Map([...unlandedStack(cwd, unit, phase - 1, `${unit}'s work not landed below phase ${phase}`)].map(([repo, tip]) => [repo.dir, tip]));
+  return new Map([...unlandedStack(cwd, unit, phase - 1, `${unit}'s work not landed below phase ${phase}`, repos)].map(([repo, tip]) => [repo.dir, tip]));
 }
 
 /**
  * The whole change (the header's), its work not landed read from the
  * unit's phases to `phases`.
- * @param {string} cwd @param {string} unit @param {number} phases @param {string|null} given the base named, or null for each repository's own
+ * @param {string} cwd @param {string} unit @param {number} phases @param {string|null} given the base named, or null for each repository's own @param {Repo[]} repos the project's
  * @returns {Change}
  */
-function changeOf(cwd, unit, phases, given) {
-  const repos = projectRepos(codeRoot(cwd));
+function changeOf(cwd, unit, phases, given, repos) {
   if (given !== null && !repos.some((repo) => branches(repo.path).has(given))) throw new Error(`the base ${given} is no local branch in any repository of the project`);
-  const stack = new Map([...unlandedStack(cwd, unit, phases, `${unit}'s build`)].map(([repo, tip]) => [repo.path, tip]));
+  const stack = new Map([...unlandedStack(cwd, unit, phases, `${unit}'s build`, repos)].map(([repo, tip]) => [repo.path, tip]));
   const holding = repos.flatMap((repo) => {
     const base = given !== null && branches(repo.path).has(given) ? given : landsOn(cwd, repo);
     if (base === null) return [];

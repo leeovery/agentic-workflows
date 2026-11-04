@@ -1,391 +1,140 @@
 ---
 name: leeway-review-process
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *), Bash(node .claude/skills/leeway/scripts/gateway.cjs *)
+allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *)
 ---
 
-# Review Process
+# Review
 
-Act as a **senior software architect** with deep experience in code review. You haven't seen this code before. Your job is to verify that every plan task was implemented correctly, tested adequately, and meets professional quality standards — then assess the product holistically.
+The third review, once every phase of the build has closed: the whole change held against the spec's intent by independent agents — a pair for each of the spec's areas, reading its area, where it meets the others and the unit's calls whole, and running what touches it; and one reader over every test file of the change. You orchestrate the rounds. Every finding lands somewhere — a fix task, the inbox, or dropped — the fixes are built through the build's own task loop, and the areas they changed are read again, until a round passes. Each round's report is shown to the person, and finish is theirs.
 
-## Purpose in the Workflow
+## Arguments
 
-Follows implementation. Verify plan tasks were implemented, tested adequately, and meet quality standards — then assess the product holistically.
-
-**Stay in your lane**: Verify that every plan task was implemented, tested adequately, and meets quality standards. Don't fix code - identify problems. You're reviewing, not building.
-
-### What This Skill Needs
-
-Positional arguments:
-- `$0` — **work_type**: `epic`, `feature`, `bugfix`, or `quick-fix`.
-- `$1` — **work_unit**: the work unit name.
-- `$2` — **topic**: the implementation to review. A single-topic unit's topic is the work unit, so it may be left off: topic = `$2`, or `$1` where `work_type` is not `epic`.
-
-The plan's tasks and acceptance criteria are what the review verifies against, and the specification at `.workflows/{work_unit}/specification/{topic}/specification.md` gives its design decisions their context — both read at Step 2.
-
----
+- `$0` — **work_type**: `epic`, `feature`, `bugfix` or `quick-fix`.
+- `$1` — **work_unit**.
 
 ## Instructions
 
 Load **[framework.md](../leeway-shared/references/framework.md)** and follow its instructions as written.
 
----
+## Done When
 
-## Resuming After Context Refresh
+The person has said yes at finish: the engine then holds every phase of the build landed, the review's fix phases last, and the work unit completed.
 
-Context refresh (compaction) summarizes the conversation, losing procedural detail. When you detect a context refresh has occurred — the conversation feels abruptly shorter, you lack memory of recent steps, or a summary precedes this message — follow this recovery protocol:
+## Entering
 
-1. **Re-read this skill file completely, then re-load [framework.md](../leeway-shared/references/framework.md).** Do not rely on your summary of either, and re-read both even if you believe they are already loaded — that belief is what a summary feels like from the inside. The full process, steps, and rules must be reloaded.
-2. **Read review and synthesis files** for the current topic. Review documents are at `.workflows/{work_unit}/review/{topic}/report.md` with per-task report files (`report-{phase_id}-{task_id}.md`) and change-set verification files (`change-set-c{N}-{section-slug}.md`, one per section per review cycle) alongside. Synthesis staging files are at `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{N}.md`. These hold the staged proposals — bodies exist only once the task author has run after the walk; the per-task decisions and `gate_mode` live in the manifest's `staging.c{N}` subtree.
-3. **Check git state.** Run `node .claude/skills/leeway-engine/scripts/engine.cjs code status` to see uncommitted code across every repo in the project, and `git log --oneline -10` to see recent commits. Commit messages follow a conventional pattern that reveals what was completed.
-4. **Carry on from where the conversation was**, as if the break never happened — no recap and no announcement. Where the person's message is waiting, take it at the step it arrived at, unless it only asks to carry on. Otherwise, where the conversation was at a gate, put the gate back, fetched fresh; elsewhere continue the step it was on.
+The build runs straight into this phase, invoking it in place once the cut's last phase has closed; after a break, a menu moves into it. Every engine call is `node .claude/skills/leeway-engine/scripts/engine.cjs {verb} …`, each verb under **Doors**.
 
-Do not guess at progress or continue from memory. The files on disk and git history are authoritative — your recollection is not.
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs enter review {work_unit}
+```
 
----
+A refusal names the way on: say it in a line. Where another session holds the unit or the checkout's code, the entry asks first: emit its sections verbatim per their markers and follow the answer's `next`; carrying on from it ends the turn.
 
-## Hard Rules
+Otherwise read what the DATA names that this conversation does not hold already — the spec, the unit's record by its call, the build's log, each round's report, the builders' `notes`: each once in the conversation, and after that only what is new since. Then its lines say what comes next, the first that applies:
+- `fix task waiting` — the last round's fix tasks are built (**The Fixes**).
+- `merge waiting` — their phase merges at its gate (**The Fixes**).
+- a `round` saying its builders' notes are answered — **The Builders' Notes**.
+- a `round` saying finish is next — **Closing**.
+- `reads` not yet named — **Reading Again**.
+- otherwise **The Round** reads what `reads` names.
 
-1. **Review ALL tasks** — Verify every planned task, or only unreviewed tasks when continuing a prior review
-2. **Don't fix code** — Identify problems, don't solve them
-3. **Don't re-implement** — You're reviewing, not building
-4. **Be specific** — "Test doesn't cover X" not "tests need work"
-5. **Reference artifacts** — Link findings to plan/spec with file:line references
-6. **Balanced test review** — Flag both under-testing AND over-testing
-7. **Fresh perspective** — You haven't seen this code before; question everything
+Each ends by entering again, whose DATA says what comes next.
 
----
+## The Round
+
+Each move once the one before it holds:
+1. **The readers.** For each area `reads` names, its pair: `brief review-area {work_unit} --area {n} --base {base} --letter {letter:[a|b]}`, once for each letter; and where it names the test surface, its one reader: `brief test-surface {work_unit} --base {base}`. `{n}` is the area's number, `{base}` the branch the unit's work lands on. A report the entry names `report in` is in already, and its reader is not briefed again. Make the Agent call with the agent and the pointer each brief answers. The round waits for every report.
+2. **The findings.** Each report is whole in its file; the agent's final message holds only its nits, its notes for later and its verdict. Every item of every report is answered by exactly one finding, and each finding lands somewhere:
+   - **In scope**, in the unit's delivered change: a fix task, however small, since no code changes outside a task. One below the floor, or not real, is dropped with its reason.
+   - **Out of scope**, beside the change: drop what is not worth doing, group related findings into one item, and file the rest to the inbox. Nothing is offered to the person, and a drop is never raised.
+   - A report's notes for later are items of it too, and lie beyond the change: each is answered by a finding out of scope, filed or dropped, never a fix.
+   - Each `builder note` the entry names is an item of the round too, `notes#{k}`, note {k} of the `notes` file — a note a fix task's builder left — answered as a report's note is; a finding answering those alone is of the area `notes`.
+
+   Each file-or-drop call out of scope, and each serious finding or bug dropped in scope, is your call on the ledger with its reason. A finding filed goes to the inbox once its call is in.
+3. **The fix tasks.** A round's fix tasks are one more phase of the build, its own: phase {N}, as the entry's `fix phase` line names it. Write the phase, then each fix as a task, findings one change fixes sharing it: its type `fix`, its acceptance scenario the finding's user scenario, its spec reference the area.
+4. **The record.** Write the round to `.leeway/.cache/{work_unit}/review/round.json` and record it, `review round {work_unit} --file .leeway/.cache/{work_unit}/review/round.json`. A refusal names every fault. A report missing or not reading goes back to its reader: brief it again, the fresh brief naming the report it replaces, and never edit a reader's report. A tree changed is **The Working Tree**. Put every other fault right, and record the round again.
+5. **The report.** Draw it, emitting its sections verbatim per their markers:
+
+   ```bash
+   node .claude/skills/leeway-engine/scripts/engine.cjs render review-report {work_unit}
+   ```
+
+   The report is no gate: enter again.
+
+### A Round That Fails Again
+
+A round that fails on findings its fix tasks already addressed is yours to settle, as a stuck task is: judge what is wrong and settle it. Where the fix missed, a new fix task carries what it missed, and its finding's text says so: the earlier round's fix missed it, and what the new task carries. Where the findings were fixed in an earlier round or are rightly dropped, the round makes no fix task and its `settled` says how. The report shows either. No count stops the rounds, and settling one stops for the person only where the answer needs them: a question to them goes through `raise`.
+
+### The Working Tree
+
+The review takes its turn in the checkout and leaves the working tree as it found it. Where `review round` refuses a tree outside `.leeway/` changed since the round began, or holds no snapshot of it, the person answers what becomes of the tree at its gate: fetch it and emit its sections verbatim per their markers.
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs render review-tree {work_unit}
+```
+
+The answer goes to `gate`: follow its `next`, then record the round again; where something stays changed, the round refuses again and the gate returns with what remains. Where putting it back answers a `set_aside`, say in a line where what it changed is kept until the person removes it: its `folder`, and each of its `paths`. Where the person puts back by hand what the gate could not, record the round again.
+
+## The Fixes
+
+The fix tasks the entry names are built in the same loop as every task of the build: load **[the-task-loop.md](../leeway-implementation-process/references/the-task-loop.md)** and follow its instructions as written, with place = `review` and N = `{N}`, as the entry's `fix phase` line names it. A fix phase has no checklists and no phase review: the areas its tasks changed are read again instead. Once the loop hands back, enter again.
+
+Where the entry names a `merge waiting` gate, phase {M}, the phase that line names, merges first; it can be lower than the fix phase. Fetch the gate and emit its sections verbatim per their markers; the answer goes to `gate`, and you follow its `next`:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs render phase-merge-gate {work_unit} {M}
+```
+
+### The Builders' Notes
+
+Once the round that ended the review has its fix tasks done, the notes their builders left are answered before finish, as a round answers its notes: each `builder note` the entry names by a finding out of scope, of the area `notes`, filed or dropped by your call. Write them, `{findings}`, to `.leeway/.cache/{work_unit}/review/notes.json` and record them, `review notes {work_unit} --file .leeway/.cache/{work_unit}/review/notes.json`; they join that round's report. A refusal names every fault: put each right and record them again. Then draw the report again, emitting its sections verbatim per their markers:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs render review-report {work_unit}
+```
+
+The report is no gate: enter again.
+
+## Reading Again
+
+Once a round's fix tasks are done, the next round reads again, whole, every area whose code they changed: name them, `review reads {work_unit} {read} …`, each read the entry's `reads` line says it must take among them. An area nothing changed is not read again, and the whole change is never read against the spec once more. Then enter again, and **The Round** reads them.
+
+## Doors
+
+- A reader → `brief review-area {work_unit} --area {n} --base {base} --letter {letter:[a|b]}`, `brief test-surface {work_unit} --base {base}`; then the Agent call with the agent and the pointer `brief` answers.
+- Your call on a finding → `ledger ask {work_unit}.review`, `{"text", "by": "claude", "who_moved_whom": "none"}`; then `ledger decide {work_unit}.review --answers {question_id}`, `{"text", "why", "by": "claude", "who_moved_whom": "none"}`.
+- A finding filed → `inbox file {work_unit} --file {item}`, `{"kind", "text", "call"}`: its kind `idea`, `bug` or `quick-fix`, its text opening on its `# Title`, its call your decision's id.
+- The fix phase → `task phase {work_unit} {N} --title "{title}"`, then `task create {work_unit} {N} --file {path}` for each task, its file a `#` title over `## Type`, `## Problem`, `## Solution`, `## Outcome`, `## Acceptance scenarios` and `## Spec reference`, in the cache.
+- The tree changed → `render review-tree {work_unit}`, its rows running `review restore-tree` or `review accept-tree {work_unit}`.
+- The builders' notes → `review notes {work_unit} --file {path}`, its file `{findings}`, each finding as the round's.
+- The round → `review reads|round|accept-tree {work_unit}`, the round's file `{can_now, findings, settled?}`: `can_now`, each line of what the person can now do that they could not; each finding's `area` by its name, `tests` for the test surface, `scope` `in` or `out`, `call`, `text` and `from`, the report items it answers as `{report}#{n}`, a note for later as `{report}#n{k}`, a builder's note as `notes#{k}`, then where it landed — `fix` its task, `inbox` the item filed, or `drop` why — and `ledger`, your call's id, where you made one; `settled`, how a round that makes no fix task was settled. Its report → `render review-report {work_unit} [--round {r}]`.
+- A question only the person can answer → `ledger ask {work_unit}.review`, then `raise {work_unit}.review --answers {question_id}`.
+- The close → `checklist show|done|skip|close finish {work_unit}`, then `render finish {work_unit}`, whose yes runs `finish yes`.
+- A gate's answer → `gate "{name}" --pick {key}`, or `--typed {key}` for a typed row such as a Comment.
+
+## Closing
+
+Once a round has passed, or been settled, and its fix tasks are done, finish closes on its checklist; `checklist show finish {work_unit}` lists its items, and the engine checks most of them, an open one naming its way on. Yours:
+- `inbox-closed` — the build's log names each live inbox item this work resolved, by its path, and the item stays in the inbox.
+- `build-log-closed` — the build's log ends on what the build and its review came to, nothing left in flight.
+
+Mark each as it holds, `checklist done finish {work_unit} {item}`, or skip it with its reason, `checklist skip finish {work_unit} {item} --reason "{reason}"`. Close it, `checklist close finish {work_unit}`, then draw finish, emitting its sections verbatim per their markers:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs render finish {work_unit}
+```
+
+Each verdict the screen asks before its gate goes to `gate`, whose `next` gives the verdict; then draw the screen again. The gate's answer goes to `gate`: follow its `next`, and then the `next` of what it ran. A refusal of the yes names the way on: take it, then run the yes again.
+
+## The Calls
+
+The person asks what was decided for them — "show me the calls", "what did you decide". Fetch the calls and emit their sections verbatim per their markers:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs render review-calls {work_unit}
+```
 
 ## Backlogging
 
-The user says to put an idea, a bug or a fix aside — "roadmap it", "inbox it", "backlog that", "push it back" — and the words take this door whatever else is in flight. Never a topic: a topic takes the postponing door. Load **[backlogging.md](../leeway-shared/references/backlogging.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `review`, from any point in the phase.
-
-→ On return, resume the interrupted flow — a gate that was pending was set aside; once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes put it back — never fall through to Step 0.
-
----
-
-## Postponing the Topic
-
-The user pushes a topic back to the roadmap — "postpone this", "move the loyalty topic to v2", "take this whole topic back to the roadmap" — this one, or one on the map by name; `{name}` is that topic. The request is taken as said — never argued, and never checked back with a question first: load **[postponing-the-topic.md](../leeway-shared/references/postponing-the-topic.md)** with work_unit = `{work_unit}`, name = `{name}`, topic = `{topic}`, phase = `review`, from any point in the phase.
-
-→ On return, resume the interrupted flow — a gate that was pending was set aside; once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes put it back — never fall through to Step 0.
-
----
-
-## Cancelling the Topic
-
-The user calls the topic off — they say to cancel, or the conversation agrees it is not worth pursuing. Never is not yet: a topic wanted later takes the postponing door. The call-off is taken as said — never argued, and never checked back with a question first: load **[cancelling-the-topic.md](../leeway-shared/references/cancelling-the-topic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `review`, from any point in the phase.
-
-→ On return, resume the interrupted flow — a gate that was pending was set aside; once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes put it back — never fall through to Step 0.
-
----
-
-## Step 0: Session Setup
-
-### Step 0.1: Code Slot
-
-Load **[code-session-gate.md](../leeway-shared/references/code-session-gate.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, phase = `review`.
-
-→ On return, proceed to **Step 0.2**.
-
-### Step 0.2: Entry Gate
-
-Check the plan and implementation prerequisite — the engine derives the verdict from manifest state:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render entry-gate {work_unit}.review.{topic}
-```
-
-#### If the response is empty
-
-The plan and implementation are completed.
-
-→ Proceed to **Step 0.3**.
-
-#### If the response carried `DISPLAY: entry blocker`
-
-Emit both sections verbatim per their markers — the red blocker line, then its guidance.
-
-**STOP.** Do not proceed — terminal condition.
-
-### Step 0.3: Resume Detection
-
-Record where this session is working — the call also labels the tmux session where the user opted in:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs session label {work_unit} review {topic}
-```
-
-Read the phase status, storing it as `phase_status`:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.review.{topic} status
-```
-
-#### If `phase_status` is empty
-
-A first start.
-
-→ Proceed to **Step 1**.
-
-#### If `phase_status` is `in-progress` or `completed`
-
-Where `phase_status` is `completed`, reopen it — resuming is not starting:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs topic reopen {work_unit} review {topic}
-```
-
-Render the phase note — `Reopening` for a review just reopened, `Resuming` otherwise — and emit the section verbatim per its marker:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render phase-note {work_unit}.review.{topic} --verb {Reopening|Resuming}
-```
-
-Load **[reconcile-advisory.md](../leeway-shared/references/reconcile-advisory.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, downstream_phase = `review`.
-
-Check for prior review state — a review file at `.workflows/{work_unit}/review/{topic}/report.md`, and recorded coverage (empty stdout means none):
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.review.{topic} reviewed_tasks
-```
-
-**If neither exists:**
-
-The review stopped before verifying anything — there is nothing to resume.
-
-→ Proceed to **Step 1**.
-
-**Otherwise:**
-
-Gather coverage state. Read `completed_tasks` from the implementation manifest:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} completed_tasks
-```
-
-Render the resume menu — the engine derives review coverage from the two arrays — and emit its section verbatim per its marker:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render resume-gate {work_unit}.review.{topic} --variant review
-```
-
-**STOP.** Wait for user response.
-
-#### If `continue`
-
-**If unreviewed tasks exist:**
-
-Set `unreviewed_tasks` = `[{list of unreviewed internal IDs}]`.
-
-→ Proceed to **Step 1**.
-
-**If all tasks reviewed and the review file exists:**
-
-→ Proceed to **Step 10**.
-
-**If all tasks reviewed and no review file exists** (verification finished; everything after it was lost):
-
-Set `unreviewed_tasks` = `[]` — nothing to dispatch; the aggregation re-reads the reports on disk, and the change-set verification dispatches only the sections whose files are missing.
-
-→ Proceed to **Step 1**.
-
-**Otherwise** (no tracking data):
-
-→ Proceed to **Step 1**.
-
-#### If `restart`
-
-Order matters — the review file is deleted last, so a crash mid-restart re-offers restart on the next entry instead of impersonating a fresh run.
-
-1. Clear review tracking (each subtree only if it exists — check with `manifest exists {work_unit}.review.{topic} reviewed_tasks`, `… staging`, and `… out_of_scope` first):
-   ```bash
-   node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.review.{topic} reviewed_tasks
-   ```
-   ```bash
-   node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.review.{topic} staging
-   ```
-   ```bash
-   node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.review.{topic} out_of_scope
-   ```
-2. Delete any synthesis staging files (`review-tasks-c*.md`) in `.workflows/{work_unit}/implementation/{topic}/` — stale proposals from the abandoned run. The synthesis reports (`review-report-c*.md`) stay — the cycle counter reads them
-3. **If the abandoned run's `Review Remediation (Cycle {N})` phase already landed in the plan**: mark each of that phase's tasks whose id is **not** in `{work_unit}.implementation.{topic}` `completed_tasks` skipped per the format's **updating.md** (format from `manifest get {work_unit}.planning.{topic} format`) — abandoned remediation must never execute, and a partially-executed phase keeps only what already ran. Then close that phase (`{M}` below is its number) — abandoned work takes no boundary sweep:
-   - empty the bank when the manifest holds one (`manifest exists {work_unit}.implementation.{topic} bank`, then `node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.implementation.{topic} bank`)
-   - drop an in-flight boundary walk when `staging.p{M}` exists (`node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.implementation.{topic} staging.p{M}`), and delete `consolidation-findings-p{M}.md` and `consolidation-tasks-p{M}.md` from `.workflows/{work_unit}/implementation/{topic}/`
-   - mark the boundary, skipping the push when `consolidated_phases` already contains `{M}` (`node .claude/skills/leeway-engine/scripts/engine.cjs manifest push {work_unit}.implementation.{topic} consolidated_phases {M}`)
-   - complete the phase in the plan per the format's **updating.md**, then record it via the engine for the phase's last completed task — or, when none ran, any of its skipped tasks with `--skipped` (`node .claude/skills/leeway-engine/scripts/engine.cjs task complete {work_unit} {topic} {internal_id} --phase {M} [--skipped] --phase-complete`)
-4. Delete the review file, all report files (`report-*.md`) and all change-set files (`change-set-*.md`) in the review directory (`.workflows/{work_unit}/review/{topic}/`), and the topic's review cache directory (`.workflows/.cache/{work_unit}/review/{topic}/`) — the abandoned run's collected criteria and staged payloads
-5. Commit the deletions under the topics that held them, then the plan — `--plan` stages the planning topic, the manifests, and the plan's declared storage (the skip-markings live there):
-   ```bash
-   node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): restart review — clear reports and staging" --topic review/{topic}
-   node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): restart review — clear staged proposals" --topic implementation/{topic} --sweep
-   node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): restart review" --plan {topic}
-   ```
-
-→ Proceed to **Step 1**.
-
----
-
-## Step 1: Initialize Review
-
-#### If `phase_status` is empty
-
-Start the review item — the engine creates it with `status: in-progress`:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs topic start {work_unit} review {topic}
-```
-
-→ Proceed to **Step 2**.
-
-#### Otherwise
-
-→ Proceed to **Step 2**.
-
----
-
-## Step 2: Read the Plan and Specification
-
-Load **[read-plan.md](references/read-plan.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 3**.
-
----
-
-## Step 3: Load Project Skills
-
-Load **[load-project-skills.md](references/load-project-skills.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 4**.
-
----
-
-## Step 4: Knowledge Usage
-
-Load **[knowledge-usage.md](../leeway-shared/references/knowledge-usage.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 5**.
-
----
-
-## Step 5: QA Verification
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ QA Verification`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Dispatching task verifier agents. Each task is independently verified against its acceptance criteria and the specification.
-```
-
-Load **[invoke-task-verifiers.md](references/invoke-task-verifiers.md)** and follow its instructions as written.
-
-*Knowledge-base nudge — use only for cross-work-unit consistency checks ("does this mirror how similar decisions were made elsewhere?"). Consistency with the current spec is already in scope — no KB needed. See **[knowledge-usage.md](../leeway-shared/references/knowledge-usage.md)**.*
-
-→ On return, proceed to **Step 6**.
-
----
-
-## Step 6: Change-Set Verification
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Change-Set Verification`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Holding the whole change-set against the specification's intent, one agent per section — measuring what reading could not settle, where the project's own conventions give a way to.
-```
-
-Load **[invoke-change-set-verifiers.md](references/invoke-change-set-verifiers.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 7**.
-
----
-
-## Step 7: Prep Findings
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Prep Findings`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Each verifier saw one task or one section. Checking every finding against the code and the code standard, against the guards it could breach, and against the other findings it collides with.
-```
-
-Load **[prep-findings.md](references/prep-findings.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 8**.
-
----
-
-## Step 8: Apply Do-Now
-
-Load **[apply-do-now.md](references/apply-do-now.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 9**.
-
----
-
-## Step 9: Produce Review
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Produce Review`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Writing the review — the verdict, what was corrected, what must be planned, and what was discarded.
-```
-
-Load **[produce-review.md](references/produce-review.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 10**.
-
----
-
-## Step 10: Present Review
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Present Review`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> The outcome: pass or fail, what was corrected, and what needs you.
-```
-
-Load **[present-review.md](references/present-review.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 11**.
-
----
-
-## Step 11: Compliance Self-Check
-
-Load **[compliance-check.md](../leeway-shared/references/compliance-check.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 12**.
-
----
-
-## Step 12: Review Actions
-
-Load **[review-actions-loop.md](references/review-actions-loop.md)** and follow its instructions as written.
+The person puts an idea, a bug or a fix aside — "roadmap it", "inbox it", "backlog that", "push it back". Load **[backlogging.md](../leeway-shared/references/backlogging.md)** with work_unit = `{work_unit}`, topic = `{work_unit}`, phase = `review`.

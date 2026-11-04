@@ -49,6 +49,7 @@ const DRAWN = Object.freeze({
   '.knowledge/.copies-live.json': 'free .knowledge',
   '.cache/pay/topics/auth/draft.md': 'free .cache',
   '.cache/.marks/pay.json': 'free .cache',
+  '.cache/.set-aside/pay/round-1/put-1/src/card.js': 'free .cache/.set-aside/{unit}',
   'pay/manifest.json': 'engine {unit}/manifest.json',
   'pay/discovery/session-001.md': 'log {unit}/discovery/session-{NNN}.md',
   'pay/seeds/2026-10-30--smart-retry.md': 'free {unit}/seeds',

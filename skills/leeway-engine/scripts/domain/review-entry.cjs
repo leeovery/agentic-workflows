@@ -31,25 +31,37 @@
 // ended the phase did, and what is next; the spec's areas, each by its name
 // in the layout and its title; the areas the round reads, the test surface
 // among them, or that a later round's are not yet named, with those it must
-// take (14.3.3); each fix task of the last round not yet done, and in step
-// its fix phase waiting at its merge's gate once they are (14.6.2); each
-// of the conversation's fix tasks in flight, as the build's entry gives it;
+// take (14.3.3); each report of the round under review already in, reading
+// as a reviewer's, so a return to the round briefs only the readers whose
+// reports are not; the fix phase a failing round's fixes are under way in —
+// the last round's while its fix tasks wait, else, once the round under
+// review has its reads, its own, where its fix tasks are written (P14);
+// each fix task of the last round not yet done, and in step its fix phase
+// waiting at its merge's gate once they are (14.6.2); each builder's note
+// standing, `notes#{k}`, answered by the round under review or, once the
+// round that ended the phase has its fix tasks done, on its own, with the
+// notes' file (14.3.5); what the review's put backs set aside, the folder
+// and each copy, while it holds anything; each of the
+// conversation's fix tasks in flight, as the build's entry gives it;
 // each round's report; the spec; the unit's record, by its call; and the
 // build's log. Its recovery note re-reads the same, the fix tasks in
 // flight those of the conversation the note is for.
 // ---------------------------------------------------------------------------
 
+const fs = require('fs');
 const { ENGINE_COMMAND, ENGINE_RUN, messageOf } = require('../kernel/call.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { buildByCut, buildFinished, phaseClosed } = require('./derivations.cjs');
-const { reading, cutPhases, mergeWaiting } = require('./phase-checks.cjs');
+const { reading, reposOf, cutPhases, mergeWaiting } = require('./phase-checks.cjs');
 const {
-  buildRefusal, codeHeld, buildLogOf, buildStanding, ownInFlight, inFlightLines, takeInFlight,
+  buildRefusal, codeHeld, buildLogOf, buildStanding, ownInFlight, inFlightLines, takeInFlight, readingOf,
 } = require('./build-entry.cjs');
 const { specPath } = require('./spec-sections.cjs');
+const { notesPath } = require('./notes.cjs');
+const { reviewReportFaults } = require('./review-report.cjs');
 const {
-  reviewStanding, endedWords, readsWords, mergingWords, roundReportFile, openSnapshot,
+  reviewStanding, endedWords, readsWords, mergingWords, roundReportFile, openSnapshot, fixPhase, reportNames, roundFolder, setAsideHeld,
 } = require('./review-phase.cjs');
 
 /** @typedef {import('./enter.cjs').Entry} Entry */
@@ -57,19 +69,21 @@ const {
 /** @typedef {import('./enter.cjs').Line} Line */
 /** @typedef {import('./review-phase.cjs').ReviewStanding} ReviewStanding */
 /** @typedef {import('./conversation.cjs').InFlight} InFlight */
+/** @typedef {import('./phase-checks.cjs').Reading} Reading */
 
 /**
  * Why the unit's review phase cannot be entered, with its way on, or null
  * where it can: the build's refusals, then a build not finished, then in
  * step a stack of the cut waiting at its merge gate.
- * @param {string} cwd @param {Record<string, any>} manifest @returns {string|null}
+ * @param {Reading} at @returns {string|null}
  */
-function reviewRefusal(cwd, manifest) {
+function reviewRefusal(at) {
+  const { manifest } = at;
   const refused = buildRefusal(manifest);
   if (refused !== null) return refused;
   const { name } = manifest;
   if (buildFinished(manifest)) {
-    const merging = mergeWaiting(reading(cwd, name, manifest), cutPhases(manifest).length);
+    const merging = mergeWaiting(at, cutPhases(manifest).length);
     return merging === null ? null : `${name} builds in step, and its review phase is entered once every phase of its cut has merged — ${mergingWords(name, merging)}`;
   }
   const open = cutPhases(manifest).map((_, at) => at + 1).filter((phase) => !phaseClosed(manifest, phase));
@@ -80,24 +94,42 @@ function reviewRefusal(cwd, manifest) {
  * Where the unit's review phase stands, refused where it cannot be entered,
  * or where `held` — `openRefusal` or `roundRefusal` (review-phase.cjs) —
  * says why the step asked for cannot be taken yet.
- * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest
+ * @param {Reading} at
  * @param {(unit: string, standing: ReviewStanding) => string|null} held
  * @returns {ReviewStanding}
  */
-function reviewHeld(cwd, unit, manifest, held) {
-  const refused = reviewRefusal(cwd, manifest);
+function reviewHeld(at, held) {
+  const refused = reviewRefusal(at);
   if (refused !== null) throw new Error(refused);
-  const standing = reviewStanding(cwd, unit, manifest);
-  const not = held(unit, standing);
+  const standing = reviewStanding(at);
+  const not = held(at.unit, standing);
   if (not !== null) throw new Error(not);
   return standing;
+}
+
+/** What is next once a round ended the phase: its fix tasks, its builders' notes, or finish. @param {ReviewStanding} standing */
+function endedNext({ over, waiting }) {
+  if (over) return 'finish is next';
+  return waiting.length > 0 ? 'its fix tasks are built, then finish' : 'the notes its fix tasks\' builders left are answered, then finish';
 }
 
 /** The round line: the round under review, or how the round that ended the phase did and what is next. @param {string} unit @param {ReviewStanding} standing */
 function roundWords(unit, standing) {
   if (!standing.ended) return `round ${standing.round}`;
-  return `${endedWords(unit, standing).replace(`${unit}'s`, 'the')} — ${standing.over ? 'finish is next' : 'its fix tasks are built, then finish'}`;
+  return `${endedWords(unit, standing).replace(`${unit}'s`, 'the')} — ${endedNext(standing)}`;
 }
+
+/** What the review's put backs set aside, its folder and each copy from there, a line; none where they set aside nothing. @param {string} cwd @param {string} unit @returns {Line[]} */
+function asideLines(cwd, unit) {
+  const aside = setAsideHeld(cwd, unit);
+  return aside === null ? [] : [['set aside', `${aside.folder} — ${aside.paths.join(', ')}, kept there until the person removes them`]];
+}
+
+/** Each builder's note standing, a line each, and the notes' file where any stands. @param {string} cwd @param {string} unit @param {ReviewStanding} standing @returns {Line[]} */
+const notesLines = (cwd, unit, { notes }) => (notes.length === 0 ? [] : [
+  ...notes.map((item) => /** @type {Line} */ (['builder note', item])),
+  ['notes', statePath(cwd, notesPath(unit))],
+]);
 
 /** The reads line, while a round waits to be read — in step, on its fix phase's merge too. @param {string} unit @param {ReviewStanding} standing @param {boolean} step */
 function readsLine(unit, { round, required, reads }, step) {
@@ -106,14 +138,43 @@ function readsLine(unit, { round, required, reads }, step) {
   return `not yet named — once ${once}, review reads ${unit} names them from what those changed, among them ${readsWords(required)}`;
 }
 
-/** Where the review phase stands, a line each: the round, the areas, the reads, the fix tasks waiting and, in step, their phase's merge. @param {string} unit @param {ReviewStanding} standing @param {boolean} step @returns {Line[]} */
-function standingLines(unit, standing, step) {
+/**
+ * The fix phase a failing round's fixes are under way in (P14): the last
+ * round's, while its fix tasks wait; else, while the round under review has
+ * its reads, its own, where its fix tasks are written; none once the review
+ * phase has ended.
+ * @param {Record<string, any>} manifest @param {ReviewStanding} standing @returns {string|null}
+ */
+function fixPhaseWords(manifest, { rounds, round, ended, waiting, reads }) {
+  if (waiting.length > 0) return `phase ${fixPhase(manifest, rounds.length)}, where round ${rounds.length}'s fix tasks are built`;
+  if (ended || reads === null) return null;
+  return `phase ${fixPhase(manifest, round)}, where round ${round}'s fix tasks are written`;
+}
+
+/**
+ * Each report of the round under review already in and reading as a
+ * reviewer's, by its path; none once the phase has ended or while the
+ * round's reads are not named.
+ * @param {string} cwd @param {string} unit @param {ReviewStanding} standing @returns {string[]}
+ */
+function reportsIn(cwd, unit, { round, reads, ended }) {
+  if (ended || reads === null) return [];
+  return reportNames(reads).map((name) => statePath(cwd, `${roundFolder(unit, round)}/${name}`)).filter((file) => fs.existsSync(file) && reviewReportFaults(file) === null);
+}
+
+/** Where the review phase stands, a line each: the round, the areas, the reads, the reports in, the fix phase, the fix tasks waiting and, in step, their phase's merge. @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {ReviewStanding} standing @returns {Line[]} */
+function standingLines(cwd, unit, manifest, standing) {
+  const fixes = fixPhaseWords(manifest, standing);
   return [
     ['round', roundWords(unit, standing)],
     ...standing.areas.map(({ name, number, title }) => /** @type {Line} */ (['area', `${name} — §${number} ${title}`])),
-    ...(standing.ended ? [] : [/** @type {Line} */ (['reads', readsLine(unit, standing, step)])]),
+    ...(standing.ended ? [] : [/** @type {Line} */ (['reads', readsLine(unit, standing, manifest.build.position === 'step')])]),
+    ...reportsIn(cwd, unit, standing).map((file) => /** @type {Line} */ (['report in', file])),
+    ...(fixes === null ? [] : [/** @type {Line} */ (['fix phase', fixes])]),
     ...standing.waiting.map((fix) => /** @type {Line} */ (['fix task waiting', fix])),
     ...(standing.merging === null ? [] : [/** @type {Line} */ (['merge waiting', mergingWords(unit, standing.merging)])]),
+    ...notesLines(cwd, unit, standing),
+    ...asideLines(cwd, unit),
   ];
 }
 
@@ -133,12 +194,13 @@ const recordCall = (unit) => `${ENGINE_COMMAND} ledger record ${unit}`;
 /**
  * What the review phase reads at its entry (the header's), its fix tasks
  * in flight the conversation `session`'s.
- * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {InFlight[]} inFlight @param {string|null} session @returns {Line[]}
+ * @param {Reading} at @param {InFlight[]} inFlight @param {string|null} session @returns {Line[]}
  */
-function reviewReads(cwd, unit, manifest, inFlight, session) {
-  const standing = reviewStanding(cwd, unit, manifest);
+function reviewReads(at, inFlight, session) {
+  const { cwd, unit, manifest } = at;
+  const standing = reviewStanding(at);
   return [
-    ...standingLines(unit, standing, manifest.build.position === 'step'),
+    ...standingLines(cwd, unit, manifest, standing),
     ...fixesInFlight(cwd, unit, inFlight, session),
     ...roundReports(cwd, unit, standing).map((report) => /** @type {Line} */ (['round report', report])),
     ['spec', specPath(cwd, unit)],
@@ -149,21 +211,21 @@ function reviewReads(cwd, unit, manifest, inFlight, session) {
 }
 
 /** The entry's reads the recovery note re-reads as documents; the record it re-reads by its call. */
-const DOCUMENTS = new Set(['round report', 'spec', 'build log']);
+const DOCUMENTS = new Set(['round report', 'notes', 'spec', 'build log']);
 
 /**
  * What the review phase's recovery note re-reads beside its skill: what the
- * entry reads — the record by its call; each round's report, the spec and
- * the build's log; where the phase stands, a line each, its fix tasks in
- * flight those of the conversation the note is for, `session` — or why
- * that cannot be read, in its place.
+ * entry reads — the record by its call; each round's report, the builders'
+ * notes where any stands, the spec and the build's log; where the phase
+ * stands, a line each, its fix tasks in flight those of the conversation
+ * the note is for, `session` — or why that cannot be read, in its place.
  * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {InFlight[]} inFlight @param {string} session
  * @returns {{calls: string[], documents: string[], lines: string[]}}
  */
 function reviewRecovery(cwd, unit, manifest, inFlight, session) {
   const calls = [recordCall(unit)];
   try {
-    const read = reviewReads(cwd, unit, manifest, inFlight, session);
+    const read = reviewReads(reading(cwd, unit, manifest), inFlight, session);
     return {
       calls,
       documents: read.filter(([key]) => DOCUMENTS.has(key)).map(([, value]) => value),
@@ -177,19 +239,20 @@ function reviewRecovery(cwd, unit, manifest, inFlight, session) {
 /** The tasks in progress taken over, and round 1's snapshot taken as it opens, where none is held (the header's). @param {Entering} at */
 function arriving(at) {
   takeInFlight(at);
-  if (reviewStanding(at.cwd, at.unit, at.manifest).rounds.length === 0) openSnapshot(at.cwd, at.unit, 1);
+  const read = readingOf(at);
+  if (reviewStanding(read).rounds.length === 0) openSnapshot(at.cwd, at.unit, 1, reposOf(read));
 }
 
 /** @type {Entry} */
 const REVIEW = Object.freeze({
   level: /** @type {const} */ ('unit'),
   takes: buildByCut,
-  standing: ({ cwd, manifest }) => reviewRefusal(cwd, manifest),
+  standing: (at) => reviewRefusal(readingOf(at)),
   held: codeHeld,
   unstarted: () => false,
   start: () => {},
   questions: () => [],
-  reads: ({ cwd, unit, manifest }) => reviewReads(cwd, unit, manifest, ownInFlight(unit), handedSession()),
+  reads: (at) => reviewReads(readingOf(at), ownInFlight(at.unit), handedSession()),
   closes: arriving,
 });
 

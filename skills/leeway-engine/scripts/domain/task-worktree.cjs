@@ -380,7 +380,7 @@ function layOutTask(cwd, ref, read) {
   const branch = taskBranch(ref, type, title);
   const project = lg.projectCheckout(here.root, here.trees);
   const repos = projectRepos(project);
-  const base = startsAt(project, ref.unit, repos, below().belowTips(project, ref.unit, ref.phase));
+  const base = startsAt(project, ref.unit, repos, below().belowTips(project, ref.unit, ref.phase, repos));
   const own = ownPart(ref, repos, here, branch, session, base);
   const removing = new Set(own.taken?.children.map(({ tree }) => tree.path));
   /** @type {Map<string, Part>} */

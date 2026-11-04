@@ -18,7 +18,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { RENDER_FORMS: FORMS } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
-const { OPENING_SKILLS } = require('../../skills/leeway-engine/scripts/domain/handoff.cjs');
+const { HANDOFF_TARGETS } = require('../../skills/leeway-engine/scripts/domain/handoff.cjs');
 
 const REPO = path.resolve(__dirname, '..', '..');
 const DOT = '·'; // MIDDLE DOT (U+00B7)
@@ -1073,8 +1073,8 @@ function checkInstalledDispatchPaths(files) {
 // ---------------------------------------------------------------------------
 // Check 27 — the framework loads once per conversation, at the head of the
 // skill the conversation opens on (CONVENTIONS' The Framework Load): each of
-// the engine's OPENING_SKILLS — leeway, the user's way in, and every
-// skill a handoff lands on — opens its `## Instructions` section on the
+// the engine's HANDOFF_TARGETS — every skill a handoff lands on, leeway,
+// the user's way in, among them — opens its `## Instructions` section on the
 // framework load. Every other workflow backbone carries neither the section
 // nor the load: a skill only ever opened in place runs in a conversation that
 // already holds the framework, and the capture skills are exempt.
@@ -1101,7 +1101,7 @@ function checkFrameworkLoad(files) {
     if (!name || !isOurs(name)) continue;
     const lines = readLines(file);
     const { inFence } = parseFences(lines);
-    if (OPENING_SKILLS.includes(name)) {
+    if (HANDOFF_TARGETS.includes(name)) {
       const opening = instructionsOpening(lines, inFence);
       if (!opening || !opening.first.startsWith(FRAMEWORK_LOAD)) {
         const line = (opening ? opening.heading : firstContentIndex(lines)) + 1;

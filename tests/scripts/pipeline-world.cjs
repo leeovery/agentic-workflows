@@ -1245,10 +1245,11 @@ function startPhase(sim, wu, phase) {
 // into the tracker, then each task from its file, one call per task, then
 // the links between them. A task's `after` names the tasks it waits on, as
 // `{phase}.{n}`; its `scenarios`, the phase's scenarios it takes from the
-// cut (12.4.3), else a scenario of its own.
+// cut (12.4.3), else a scenario of its own; its `type` and `reference`, a
+// review's fix task's `fix` and the finding's area, else `feat` and §1.
 /**
  * @param {Sim} sim @param {string} wu @param {number} phase @param {string} title
- * @param {{title: string, after?: string[], scenarios?: string[]}[]} tasks
+ * @param {{title: string, after?: string[], scenarios?: string[], type?: string, reference?: string}[]} tasks
  * @returns {string[]} the tasks as created
  */
 function writePhaseTasks(sim, wu, phase, title, tasks) {
@@ -1267,9 +1268,9 @@ function writeTasks(sim, wu, phase, tasks) {
   const created = tasks.map((task) => {
     const scenarios = task.scenarios ?? [`Given a ledger, when ${task.title.toLowerCase()} runs, then it answers.`];
     const file = sim.write(`.leeway/.cache/${wu}/build/task.md`, [
-      `# ${task.title}`, '', '## Type', 'feat', '', '## Problem', `${task.title} is missing.`, '', '## Solution', `Build ${task.title.toLowerCase()}.`, '',
+      `# ${task.title}`, '', '## Type', task.type ?? 'feat', '', '## Problem', `${task.title} is missing.`, '', '## Solution', `Build ${task.title.toLowerCase()}.`, '',
       '## Outcome', `${task.title} works.`, '', '## Acceptance scenarios', ...scenarios.map((scenario) => `- ${scenario}`), '',
-      '## Spec reference', '§1', '',
+      '## Spec reference', task.reference ?? '§1', '',
     ].join('\n'));
     return sim.run(['task', 'create', wu, String(phase), '--file', file]).task;
   });
@@ -1326,15 +1327,19 @@ const builders = {
 // (12.7): started, its builder's worktree made by its isolation at the
 // default branch and the task laid out there, its files committed there,
 // the verify setup recorded and its scenario run where `setup` says so, its
-// pair passing it from where it was laid out, its account written once its
-// builder's brief again says it landed, and taken, chained into its
-// phase's stack — the chain's `next`, the phase's mutation run once its
-// last task chains — and done.
+// builder banking `note` for later where one is given (12.10.2), its pair
+// passing it from where it was laid out, its account written once its
+// builder's brief again says it landed, and taken, its step gate drawn and
+// the person's yes given there where `gated` says so (12.7.9), chained into
+// its phase's stack — the chain's `next`, the phase's mutation run once its
+// last task chains — and done. Answers the note's number, null where none
+// was banked.
 /**
  * @param {Sim} sim @param {string} wu @param {string} task @param {string} tree
- * @param {Record<string, string>} files @param {boolean} setup
+ * @param {Record<string, string>} files @param {boolean} setup @param {{gated?: boolean, note?: string}} [opts]
+ * @returns {number|null}
  */
-function taskBuilt(sim, wu, task, tree, files, setup) {
+function taskBuilt(sim, wu, task, tree, files, setup, { gated = false, note } = {}) {
   sim.run(['task', 'start', wu, task]);
   const builder = sim.run(['brief', 'builder', wu, task]);
   git(sim.dir, ['worktree', 'add', '-q', '-b', `worktree-agent-${task}`, tree, 'main']);
@@ -1351,6 +1356,7 @@ function taskBuilt(sim, wu, task, tree, files, setup) {
     sim.runIn(tree, ['verify', 'setup', wu, '--file', at, '--scenario', '1.S1']);
     sim.runIn(tree, ['verify', 'run', wu, '1.S1']);
   }
+  const banked = note === undefined ? null : sim.run(['task', 'note', wu, '--file', sim.write(`.leeway/.cache/${wu}/build/note.md`, `${note}\n`)]).number;
   for (const letter of ['a', 'b']) landed(placeIn(sim, sim.run(['brief', 'reviewer', wu, task, '--letter', letter]), 'Where your report goes'), PASSED_REPORT);
   const back = sim.run(['brief', 'builder', wu, task]);
   assert.match(briefOf(sim, back), /Your reviewers passed the task in round 1: it has landed, so write its account now\./);
@@ -1359,10 +1365,15 @@ function taskBuilt(sim, wu, task, tree, files, setup) {
     '## Differs from the task', 'None.', '## Reviews', '### Round 1', 'Passed.',
   ].join('\n\n'));
   sim.run(['task', 'account', wu, task]);
+  if (gated) {
+    sim.render(['step-gate', wu, task], { expect: 'content' });
+    answerGate(sim, 'step gate', '--pick', 'y');
+  }
   sim.run(['land', 'open', wu, task]);
   const { next } = sim.run(['land', 'chain', wu, task]);
   sim.run(['task', 'done', wu, task]);
   if (next !== undefined) sim.run(next.argv);
+  return banked;
 }
 
 // A unit's first phase, entered once ready to build's yes began its build,
@@ -1506,13 +1517,37 @@ function twoPhaseEpic(sim, wu) {
   sim.run(answerGate(sim, 'ready to build', '--pick', 'a').next.argv);
 }
 
-// The round under review's read of the cut's one area, by its pair (14.2):
-// the first's report `report`, the second's passing.
-/** @param {Sim} sim @param {string} wu @param {string} [report] */
-function areaRead(sim, wu, report = PASSED_REPORT) {
+// The round under review's read of the spec's area `area`, the first by
+// default, by its pair (14.2): the first's report `report`, the second's
+// passing.
+/** @param {Sim} sim @param {string} wu @param {string} [report] @param {number} [area] */
+function areaRead(sim, wu, report = PASSED_REPORT, area = 1) {
   for (const letter of ['a', 'b']) {
-    landed(placeIn(sim, sim.run(['brief', 'review-area', wu, '--area', '1', '--base', 'main', '--letter', letter]), 'Where your report goes'), letter === 'a' ? report : PASSED_REPORT);
+    landed(placeIn(sim, sim.run(['brief', 'review-area', wu, '--area', String(area), '--base', 'main', '--letter', letter]), 'Where your report goes'), letter === 'a' ? report : PASSED_REPORT);
   }
+}
+
+// Claude's own call on a finding at the review, with its reason (14.3.7):
+// the question, then the decision answering it. Answers the decision's id.
+/** @param {Sim} sim @param {string} wu @param {string} question @param {string} text @param {string} why */
+function reviewCall(sim, wu, question, text, why) {
+  const claude = { by: 'claude', who_moved_whom: 'none' };
+  const asked = sim.run(['ledger', 'ask', `${wu}.review`], null, JSON.stringify({ ...claude, text: question })).id;
+  return sim.run(['ledger', 'decide', `${wu}.review`, '--answers', asked], null, JSON.stringify({ ...claude, text, why })).id;
+}
+
+// The round under review recorded from `account` once a stray file is found
+// in the checkout (14.S13): the record refused, the gate over the tree drawn
+// and answered `key`, and the round recorded again. Answers what the record
+// answered.
+/** @param {Sim} sim @param {string} wu @param {object} account @param {string} key */
+function strayRound(sim, wu, account, key) {
+  fs.writeFileSync(path.join(sim.dir, 'stray.txt'), 'left in the checkout\n');
+  const file = sim.write(`.leeway/.cache/${wu}/review/round.json`, account);
+  sim.refuses(['review', 'round', wu, '--file', file], null);
+  sim.render(['review-tree', wu], { expect: 'content' });
+  sim.run(answerGate(sim, 'review tree', '--pick', key).next.argv);
+  return sim.run(['review', 'round', wu, '--file', file]);
 }
 
 // The round under review's read of the test surface, by its one reader
@@ -1522,19 +1557,44 @@ function testsRead(sim, wu, report = PASSED_REPORT) {
   landed(placeIn(sim, sim.run(['brief', 'test-surface', wu, '--base', 'main']), 'Where your report goes'), report);
 }
 
-// Finish (14.8): Claude's items marked, its checklist closed, its gate
-// drawn, and its yes given. Answers the phases each landing landed.
-/** @param {Sim} sim @param {string} wu @returns {number[][]} */
+// The review phase entered (14.6.1), and what its DATA says comes next, the
+// first that applies in its skill's order: the last round's fix tasks
+// built, their phase's merge at its gate, their builders' notes answered,
+// finish, the next round's reads named, or the round read; and the fix
+// phase its `fix phase` line names, null where it names none.
+/**
+ * @param {Sim} sim @param {string} wu
+ * @returns {{move: 'fixes'|'merge'|'notes'|'closing'|'reads'|'round', data: Record<string, string[]>, fixPhase: number|null}}
+ */
+function reviewNext(sim, wu) {
+  sim.run(['enter', 'review', wu]);
+  /** @type {Record<string, string[]>} */
+  const data = {};
+  for (const [, key, value] of sim.sections.matchAll(/^([a-z ]+): (.*)$/gm)) (data[key] ??= []).push(value);
+  const move = data['fix task waiting'] ? 'fixes'
+    : data['merge waiting'] ? 'merge'
+      : data.round[0].endsWith('builders left are answered, then finish') ? 'notes'
+        : data.round[0].endsWith('finish is next') ? 'closing'
+          : data.reads[0].startsWith('not yet named') ? 'reads' : 'round';
+  const fixPhase = data['fix phase'] ? Number(/^phase (\d+),/.exec(data['fix phase'][0])?.[1]) : null;
+  return { move, data, fixPhase };
+}
+
+// Finish (14.5): Claude's items marked, its checklist closed, its gate
+// drawn, and the person's yes at it run. Answers the phases each landing
+// landed, and where the yes goes next.
+/** @param {Sim} sim @param {string} wu @returns {{landed: number[][], next: Record<string, any>}} */
 function finished(sim, wu) {
   for (const { key, by, state } of JSON.parse(sim.read(['checklist', 'show', 'finish', wu])).items) {
     if (by === 'claude' && state === 'open') sim.run(['checklist', 'done', 'finish', wu, key]);
   }
   sim.run(['checklist', 'close', 'finish', wu]);
   sim.render(['finish', wu], { expect: 'content' });
-  return sim.run(['finish', 'yes', wu]).landed.map((/** @type {{phases: {phase: number}[]}} */ { phases }) => phases.map(({ phase }) => phase));
+  const yes = sim.run(answerGate(sim, 'finish', '--pick', 'y').next.argv);
+  return { landed: yes.landed.map((/** @type {{phases: {phase: number}[]}} */ { phases }) => phases.map(({ phase }) => phase)), next: yes.next };
 }
 
 module.exports = {
   Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, cutTheSpec, readyToBuild, specToBuild, keptOldSpec, briefOf, placeIn, landed,
-  builders, taskBuilt, firstPhaseBuilt, cutClosed, areaRead, testsRead, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic,
+  builders, taskBuilt, firstPhaseBuilt, cutClosed, areaRead, testsRead, reviewNext, reviewCall, strayRound, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic,
 };

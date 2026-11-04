@@ -185,6 +185,10 @@ describe('a reviewer\'s report, read by its grammar (13.4.1, 13.5.11)', () => {
     assert.deepStrictEqual(readReport(report), { verdict: 'pass', findings: [{ call: 'nit', text: 'a stray comment.\nScenario: a reader meets it.', scenario: 'a reader meets it.' }] });
   });
 
+  it('12.10.1: what its notes for later hold is no engine code\'s — prose under the heading reads', () => {
+    assert.deepStrictEqual(readReport('## Notes for later\n\nNo notes.\n\n## Findings\n\nNone.\n\nVerdict: pass\n'), { verdict: 'pass', findings: [] });
+  });
+
   it('13.4.3, 13.4.4: its verdict says what its findings do — a bug or a serious finding fails it, nits alone pass it — and one saying otherwise does not read', () => {
     for (const call of ['serious', 'bug']) {
       assert.strictEqual(readReport(reportOf([['nit', 'a name.'], [call, 'a fault.']])).verdict, 'fail', call);

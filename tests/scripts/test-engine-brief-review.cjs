@@ -17,7 +17,8 @@
 // of the spec, the commits, the layout, the linters and its one report
 // (14.2.4); each area its pair's two reports and the tests one, in the
 // round's folder (14.S2); a later round's briefs reading the fix phase's
-// tip and only the reads named for it (14.3.3); what they refuse; and the
+// tip and only the reads named for it (14.3.3); a report that does not read
+// named as the one a fresh brief's replaces; what they refuse; and the
 // templates: the floor as guidance (14.3.1), the product run through the
 // verify setup, the call, the report and its rules the phase review's, its
 // notes for later beyond the work unit's change.
@@ -33,7 +34,7 @@ const path = require('path');
 const { template, filledTemplate } = require('./brief-build-world.cjs');
 const {
   UNIT, OTHER, AREAS, EVERY, RECEIPT, calls, useWorld, env, enter, reported, named, recorded, firstRoundReady, fixBranch, fixBuilt, commitFile, stateText, issued, storedBriefs, areaText,
-  refusedPristine, statePath, git, initRepo, assert,
+  refusedPristine, statePath, writeState, reportText, git, initRepo, assert,
 } = require('./review-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
@@ -121,6 +122,18 @@ describe('the area review\'s brief, the reviewer\'s third template (14.1, 14.2)'
     const tests = /# Where your report goes\n\n(.*)\n/.exec(issued(['test-surface', UNIT, '--base', 'main']).brief)?.[1];
 
     assert.deepStrictEqual([...placed, tests], ['1-cards-a', '1-cards-b', '2-refunds-a', '2-refunds-b', 'tests-a'].map((name) => pathDrawn(`${UNIT}/review/round-1/${name}.md`)));
+  });
+
+  it('a report that does not read is replaced: its reader briefed again, the brief naming the file it replaces and why; one that reads refuses its reader\'s brief', () => {
+    const notRead = 'its last heading at level one or two is not `## Findings`; its last line is not `Verdict: pass` or `Verdict: fail`';
+    const placeOf = (/** @type {string} */ brief) => /# Where your report goes\n\n(.*)\n/.exec(brief)?.[1];
+    for (const name of ['1-cards-a', 'tests-a']) writeState(dir, `${UNIT}/review/round-1/${name}.md`, '# Review\n\nHalf written.\n');
+    writeState(dir, `${UNIT}/review/round-1/1-cards-b.md`, reportText([]));
+
+    assert.deepStrictEqual([placeOf(areaReview('1').brief), placeOf(issued(['test-surface', UNIT, '--base', 'main']).brief)], ['1-cards-a', 'tests-a'].map((name) => (
+      `${pathDrawn(`${UNIT}/review/round-1/${name}.md`)} — the report there does not read as a reviewer's report — ${notRead}; yours replaces it`
+    )));
+    assert.strictEqual(refusedBrief(['review-area', UNIT, '--area', '1', '--base', 'main', '--letter', 'b']), `${UNIT}/review/round-1/1-cards-b.md is written already — that reviewer's report of the round is in`);
   });
 
   it('14.S3: a later round reads the change to its fix phase\'s tip, the work not landed from where it leaves the base, and only the reads named for it', () => {

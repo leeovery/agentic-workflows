@@ -53,20 +53,19 @@ function stackTip(repo, held, what) {
  * @returns {PhaseStack}
  */
 function phaseStack(cwd, unit, phase, tasks) {
-  return stackOf(cwd, unit, tasks, phaseName(unit, phase));
+  return stackOf(projectRepos(codeRoot(cwd)), unit, tasks, phaseName(unit, phase));
 }
 
 /**
  * The stack the tasks not closed among `tasks` make (the header's).
- * @param {string} cwd @param {string} unit @param {TaskDetail[]} tasks whole @param {string} what the tasks' owner, as a refusal names it
+ * @param {Repo[]} repos the project's @param {string} unit @param {TaskDetail[]} tasks whole @param {string} what the tasks' owner, as a refusal names it
  * @returns {PhaseStack}
  */
-function stackOf(cwd, unit, tasks, what) {
+function stackOf(repos, unit, tasks, what) {
   const named = tasks.filter(({ status }) => status !== 'closed').map((task) => {
     if (task.type === null) throw new Error(`${taskName(task.ref)} has no type in the tracker, and its branch is named from it`);
     return taskBranch(task.ref, task.type, task.title);
   });
-  const repos = projectRepos(codeRoot(cwd));
   const held = named.map((branch) => holdingBranch(unit, repos, branch).holding);
   const holding = repos.map((repo) => ({ repo, on: named.filter((_, at) => held[at].includes(repo)) })).filter(({ on }) => on.length > 0);
   if (holding.length === 0) throw new Error(`no repository of the project holds work on ${what}'s tasks`);

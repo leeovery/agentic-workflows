@@ -61,7 +61,7 @@ a deduplicated fixture library you have to chase across the tree.
 ## Where a case starts and stops
 
 **A case starts where a session starts.** `entry` names a skill a
-conversation opens on — one of the engine's `OPENING_SKILLS`
+conversation opens on — one of the engine's `HANDOFF_TARGETS`
 (`domain/handoff.cjs`): `leeway`, or a skill a handoff lands the
 work on in a fresh context. Never a skill only ever opened in place (help,
 the linear continue menu, the bridge — a case about help enters at

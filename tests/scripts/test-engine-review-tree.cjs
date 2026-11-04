@@ -9,7 +9,8 @@
 // <unit>`, the tree taken as it is on the person's word, its snapshot taken
 // again and nothing else written — the one way past a tree changed since the
 // snapshot, which entering again, after a `/clear`, never is (12.7.8,
-// 14.1.5, 14.S13); and what it refuses, writing nothing.
+// 14.1.5, 14.S13); and what it refuses, writing nothing. The gate over a
+// tree changed is test-engine-review-tree-gate.cjs's.
 //
 // Layer: verb. World: review-world.cjs's, copied for each test.
 // ---------------------------------------------------------------------------
@@ -62,7 +63,7 @@ describe('a later round\'s snapshot, taken as review reads opens the round (14.1
     enter();
     const again = refusedRound({ can_now: [], findings: [] });
 
-    assert.strictEqual(stopped, `review round: the working tree outside .leeway/ changed since the snapshot the round is held to: src/card.js — nothing is reverted; the person decides what stands, and on their word review accept-tree ${UNIT} takes the tree as it is`);
+    assert.strictEqual(stopped, `review round: the working tree outside .leeway/ changed since the snapshot the round is held to: src/card.js — nothing is put back unasked: render review-tree ${UNIT} asks the person whether it is put back or kept`);
     assert.strictEqual(again, stopped);
     assert.deepStrictEqual(ok(dir, ['review', 'accept-tree', UNIT], { env: env() }), { ok: true, round: 2, snapshot: 'taken' });
     assert.strictEqual(recorded({ can_now: [], findings: [] }).round, 2);
@@ -104,7 +105,7 @@ describe('review accept-tree: the tree taken as it is, on the person\'s word (12
     const res = ok(dir, ['review', 'accept-tree', UNIT], { env: env() });
     const after = stateBeside();
 
-    assert.strictEqual(stopped, `review round: the working tree outside .leeway/ changed since the snapshot the round is held to: src/card.js — nothing is reverted; the person decides what stands, and on their word review accept-tree ${UNIT} takes the tree as it is`);
+    assert.strictEqual(stopped, `review round: the working tree outside .leeway/ changed since the snapshot the round is held to: src/card.js — nothing is put back unasked: render review-tree ${UNIT} asks the person whether it is put back or kept`);
     assert.strictEqual(again, stopped);
     assert.deepStrictEqual([res, after], [{ ok: true, round: 1, snapshot: 'taken' }, before]);
     assert.match(JSON.parse(fs.readFileSync(statePath(dir, SNAPSHOT), 'utf8')).paths['src/card.js'], /^ M /);

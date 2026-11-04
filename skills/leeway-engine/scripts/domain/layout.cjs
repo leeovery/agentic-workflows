@@ -12,7 +12,9 @@
 // and its kind —
 //   file    one file;
 //   free    a folder whose contents are named by whoever fills it: the
-//           assets, a spike, the seeds, an experiment's data, the cache;
+//           assets, a spike, the seeds, an experiment's data, the cache,
+//           and in it what the review's put backs set aside, a unit's,
+//           which no lifecycle verb removes (review-tree.cjs);
 //   engine  a file only the engine writes — the manifests, the ledger, a
 //           topic's brief, the record of the person's review of the spec,
 //           the record of the sweep taken, the notes for later, a task's
@@ -107,6 +109,7 @@ const LAYOUT = Object.freeze([
   place('free', '.product/assets', '4.11.16'),
   place('file', '.state/migrations', '4.7.4'),
   place('free', '.knowledge', '4.11.10'),
+  place('free', '.cache/.set-aside/{unit}', '4.11.3'),
   place('free', '.cache', '4.11.3'),
   engineFile('{unit}/manifest.json', '4.11.5', 'a unit\'s manifest', 'manifest set|push|pull|delete|apply'),
   place('log', '{unit}/discovery/session-{NNN}.md', '4.11.5'),

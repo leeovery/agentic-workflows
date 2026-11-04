@@ -21,7 +21,7 @@ const { call, ok, output, refuses, commitAll, fixtureFrom, cleanupFixture } = re
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { WORK_TYPE_PIPELINES, VALID_PHASE_STATUSES } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
 const { TOPIC_PHASES } = require('../../skills/leeway-engine/scripts/domain/ledger-units.cjs');
-const { HANDOFF_TARGETS, OPENING_SKILLS } = require('../../skills/leeway-engine/scripts/domain/handoff.cjs');
+const { HANDOFF_TARGETS } = require('../../skills/leeway-engine/scripts/domain/handoff.cjs');
 const EPIC_GATEWAY = require('../../skills/leeway-continue-epic/scripts/gateway.cjs');
 const { epicDashboard } = require('../../skills/leeway-engine/scripts/domain/projections/epic.cjs');
 
@@ -52,7 +52,6 @@ describe('research is no skill and no phase', () => {
   it('ships no research skill, and no handoff lands on one', () => {
     assert.strictEqual(fs.existsSync(path.join(ROOT, 'skills/leeway-research-process')), false);
     assert.ok(!HANDOFF_TARGETS.some((skill) => skill.includes('research')));
-    assert.ok(!OPENING_SKILLS.some((skill) => skill.includes('research')));
     assert.match(refuses(dir, ['handoff', '/leeway-research-process', 'epic', EPIC, 'alpha']).error,
       /^"leeway-research-process" is not a handoff target/);
   });

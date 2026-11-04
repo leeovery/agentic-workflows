@@ -46,10 +46,27 @@
 //   engine's): every one whose findings made fix tasks among them — each
 //   read whose report holds an item such a finding answers — the test
 //   surface as one of them, others added but none dropped (14.3.3).
+// - A note for later a fix task's builder banks (`task note`, notes.cjs)
+//   is one no phase's consolidation takes, a fix phase having none: the
+//   review phase answers it, as it answers a reader's note — `notes#{k}`
+//   among the items of the next round recorded, or, where the round that
+//   ended the phase made the fix task, answered on its own (`review
+//   notes`), its findings joining that round's record. A note held for no
+//   phase that no phase's report took and no round answered stands, and the
+//   phase is not over while one does (14.3.5).
+// - What put back changes is set aside first (review-tree.cjs) at
+//   `.cache/.set-aside/{unit}/round-{N}/put-{k}/{path}`, beside the units'
+//   caches and never in one, so no lifecycle verb that takes a unit's cache
+//   takes it — no unit's name opens on a dot — and nothing in the engine
+//   removes it: the person does. While it holds anything, the screen of
+//   the round's report, the entry and finish's screen name it
+//   (`setAsideHeld`), the report's file never, a folder of this machine's.
 // - The working tree outside `.leeway/` is snapshotted for a round in the
 //   unit's cache, `review/tree.json`: the round's number, each repository's
-//   HEAD, and each path its status lists with the fingerprint of what it
-//   holds (kernel/repos.cjs, `projectDirtyEntries`). It is taken where its
+//   HEAD, each path its status lists with the fingerprint of what it holds
+//   (kernel/repos.cjs, `projectDirtyEntries`), a rename as its two paths,
+//   and each repository's ignored entries, a folder ignored whole as one, so
+//   what was there unseen is never taken for what was not. It is taken where its
 //   round opens — round 1 at its entry, a later round at `review reads`,
 //   which every later round calls before its briefs — and only where none
 //   is held, never again while one is; `review round` holds the tree to its
@@ -74,7 +91,7 @@ const { codeRoot } = require('../kernel/code-root.cjs');
 const { tryGit } = require('../kernel/git.cjs');
 const { writeJsonAtomic, isObject } = require('../kernel/manifest-io.cjs');
 const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
-const { projectRepos, repoName } = require('../kernel/repos.cjs');
+const { repoName } = require('../kernel/repos.cjs');
 const { codeChanges } = require('./worktree-prep.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { readSpec, specReading } = require('./spec-sections.cjs');
@@ -84,17 +101,50 @@ const { claudesCall } = require('./ledger-events.cjs');
 const { isCurrent, factsOf } = require('./ledger-fold.cjs');
 const { resolveId } = require('./ledger-ids.cjs');
 const { handedTag } = require('./topic-map.cjs');
-const { reading, phaseLists, mergeWaiting } = require('./phase-checks.cjs');
+const { phaseLists, mergeWaiting } = require('./phase-checks.cjs');
 const { shownTask } = require('./task-id.cjs');
+const { notesUntaken } = require('./notes.cjs');
 
 /** @typedef {import('./ledger-read.cjs').Shower} Shower */
 /** @typedef {import('./phase-checks.cjs').Reading} Reading */
+/** @typedef {import('../kernel/repos.cjs').Repo} Repo */
 
 /** An area of the spec: its number, its title, and its name in the layout. @typedef {{number: string, title: string, name: string}} Area */
 /** What the test surface's findings, its place among a round's reads and its report are known by, beside the areas. */
 const TESTS = 'tests';
 /** The test surface's one reader's letter. */
 const TESTS_LETTER = REVIEWER_LETTERS[0];
+/** What a builder's note is known by among a round's items, `notes#{k}`, and the area of a finding that answers builders' notes alone. */
+const NOTES = 'notes';
+
+/** The folder of the cache what put back sets aside is kept in, by unit. */
+const SET_ASIDE = '.set-aside';
+
+/** Where a unit's put backs set aside what they changed (the header's). @param {string} cwd @param {string} unit */
+const setAsideFolder = (cwd, unit) => statePath(cwd, '.cache', SET_ASIDE, unit);
+
+/** A copy put back set aside, from its unit's folder: `round-{N}/put-{k}/{path}`. */
+const ASIDE_COPY = /^round-[1-9][0-9]*\/put-[1-9][0-9]*\/./;
+
+/** What a unit's put backs set aside: the folder, and each copy in it from there. @typedef {{folder: string, paths: string[]}} SetAside */
+
+/** Every file and link under `folder`, from it, a link never followed. @param {string} folder @param {string} [from] @returns {string[]} */
+function filesUnder(folder, from = '') {
+  return fs.readdirSync(path.join(folder, from), { withFileTypes: true }).flatMap((entry) => {
+    const rel = from === '' ? entry.name : `${from}/${entry.name}`;
+    return entry.isDirectory() ? filesUnder(folder, rel) : [rel];
+  });
+}
+
+/** What the unit's put backs set aside, in order, null where they set aside nothing. @param {string} cwd @param {string} unit @returns {SetAside|null} */
+function setAsideHeld(cwd, unit) {
+  const folder = setAsideFolder(cwd, unit);
+  const paths = fs.existsSync(folder) ? filesUnder(folder).filter((rel) => ASIDE_COPY.test(rel)).sort((a, b) => a.localeCompare(b, 'en', { numeric: true })) : [];
+  return paths.length === 0 ? null : { folder, paths };
+}
+
+/** Whether a round's item is a builder's note. @param {string} item */
+const isBuilderNote = (item) => item.startsWith(`${NOTES}#`);
 
 /**
  * A finding as a round records it.
@@ -236,35 +286,40 @@ function fixesWaiting(at, rounds) {
   return { waiting, merging: waiting.length > 0 ? null : mergeWaiting(at, phase) };
 }
 
+/** The builders' notes standing (the header's), each `notes#{k}`, in order. @param {string} cwd @param {string} unit @param {RoundRecord[]} rounds */
+function notesStanding(cwd, unit, rounds) {
+  const answered = new Set(rounds.flatMap(({ findings }) => findings.flatMap(({ from }) => from)));
+  return notesUntaken(cwd, unit).map(({ note }) => `${NOTES}#${note}`).filter((item) => !answered.has(item));
+}
+
 /**
  * Where the review phase stands: the spec's areas; the rounds recorded; the
  * round under review, or the last recorded once a round ended the phase;
  * whether one did, and whether the phase is over; the last round's fix
  * tasks waiting; in step, the fix phase whose merge the round under review
  * waits on, null where none; the reads the round under review must take;
- * and those it takes — null for a later round whose areas Claude has not
- * yet named.
+ * those it takes — null for a later round whose areas Claude has not yet
+ * named; and the builders' notes standing.
  * @typedef {{
  *   areas: Area[], rounds: RoundRecord[], round: number, ended: boolean, over: boolean,
- *   waiting: string[], merging: number|null, required: string[], reads: string[]|null,
+ *   waiting: string[], merging: number|null, required: string[], reads: string[]|null, notes: string[],
  * }} ReviewStanding
  */
 
-/**
- * Where the unit's review phase stands, its tracker read through `at` —
- * a reading of its own, where the caller has not read the unit already.
- * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {Reading} [at]
- * @returns {ReviewStanding}
- */
-function reviewStanding(cwd, unit, manifest, at = reading(cwd, unit, manifest)) {
+/** Where the unit's review phase stands, its tracker read through `at`. @param {Reading} at @returns {ReviewStanding} */
+function reviewStanding(at) {
+  const { cwd, unit } = at;
   const areas = specAreas(cwd, unit);
   const rounds = recordedRounds(cwd, unit);
   const { waiting, merging } = fixesWaiting(at, rounds);
+  const notes = notesStanding(cwd, unit, rounds);
   const last = rounds.at(-1);
-  if (last === undefined) return { areas, rounds, round: 1, ended: false, over: false, waiting, merging, required: everyRead(areas), reads: everyRead(areas) };
-  if (endsReview(last)) return { areas, rounds, round: rounds.length, ended: true, over: waiting.length === 0, waiting, merging: null, required: [], reads: [] };
+  if (last === undefined) return { areas, rounds, round: 1, ended: false, over: false, waiting, merging, required: everyRead(areas), reads: everyRead(areas), notes };
+  if (endsReview(last)) {
+    return { areas, rounds, round: rounds.length, ended: true, over: waiting.length === 0 && notes.length === 0, waiting, merging: null, required: [], reads: [], notes };
+  }
   const round = rounds.length + 1;
-  return { areas, rounds, round, ended: false, over: false, waiting, merging, required: fixedReads(areas, last), reads: namedReads(cwd, unit, round) };
+  return { areas, rounds, round, ended: false, over: false, waiting, merging, required: fixedReads(areas, last), reads: namedReads(cwd, unit, round), notes };
 }
 
 /** How the round that ended the review phase did, as a sentence says it. @param {string} unit @param {ReviewStanding} standing */
@@ -272,16 +327,20 @@ function endedWords(unit, { rounds, round }) {
   return `${unit}'s review phase ${rounds[round - 1].passed ? 'passed' : 'was settled'} in round ${round}`;
 }
 
+/** Why the builders' notes standing hold the review phase open, with the way on. @param {string} unit @param {string[]} notes */
+const notesWords = (unit, notes) => `the notes its fix tasks' builders left are answered, then finish: ${notes.join(', ')} — review notes ${unit} --file <notes.json>`;
+
 /**
  * Why nothing more is read or recorded once a round ended the review phase,
- * with the way on: finish, or that round's fix tasks first; null while the
- * review goes on.
+ * with the way on: finish, or that round's fix tasks first, then its
+ * builders' notes answered; null while the review goes on.
  * @param {string} unit @param {ReviewStanding} standing @returns {string|null}
  */
 function endedRefusal(unit, standing) {
   if (!standing.ended) return null;
   if (standing.over) return `${endedWords(unit, standing)} — finish is next`;
-  return `${endedWords(unit, standing)} — its fix tasks are built, then finish: task ${standing.waiting.join(', task ')}`;
+  if (standing.waiting.length > 0) return `${endedWords(unit, standing)} — its fix tasks are built, then finish: task ${standing.waiting.join(', task ')}`;
+  return `${endedWords(unit, standing)} — ${notesWords(unit, standing.notes)}`;
 }
 
 /** Why a round cannot be read yet: the round before's fix tasks not done. @param {ReviewStanding} standing */
@@ -323,31 +382,44 @@ const snapshotPath = (cwd, unit) => statePath(cwd, '.cache', unit, 'review', 'tr
 /** What a path in the tree holds, as its fingerprint; null where it is gone or no file. @param {string} file absolute */
 function heldPrint(file) {
   try {
-    return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex').slice(0, 12);
+    return contentPrint(fs.readFileSync(file));
   } catch {
     return null;
   }
 }
 
-/** The working tree outside `.leeway/` (the header's). @param {string} cwd @returns {{heads: Record<string, string|null>, paths: Record<string, string>}} */
-function treeNow(cwd) {
-  const root = codeRoot(cwd);
-  const repos = projectRepos(root);
+/** The fingerprint of what a file holds, as a snapshot keeps it. @param {Buffer} content */
+function contentPrint(content) {
+  return crypto.createHash('sha256').update(content).digest('hex').slice(0, 12);
+}
+
+/** The fingerprint of an empty file's content. */
+const EMPTY_PRINT = contentPrint(Buffer.alloc(0));
+
+/** The working tree outside `.leeway/` (the header's), its ignored entries aside. @param {string} root the code root @param {Repo[]} repos @returns {{heads: Record<string, string|null>, paths: Record<string, string>}} */
+function treeNow(root, repos) {
   const heads = Object.fromEntries(repos.map((repo) => [repoName(repo), tryGit(repo.path, ['rev-parse', '-q', '--verify', 'HEAD'])?.trim() ?? null]));
-  const paths = Object.fromEntries(codeChanges(repos).map(({ path: at, status }) => [at, `${status} ${heldPrint(path.join(root, at)) ?? '-'}`]));
+  const paths = Object.fromEntries(codeChanges(repos, { renames: false }).map(({ path: at, status }) => [at, `${status} ${heldPrint(path.join(root, at)) ?? '-'}`]));
   return { heads, paths };
 }
 
-/** The working tree outside `.leeway/` snapshotted for a round, over any held: on the person's word alone. @param {string} cwd @param {string} unit @param {number} round */
-function takeSnapshot(cwd, unit, round) {
-  const file = snapshotPath(cwd, unit);
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  writeJsonAtomic(file, { round, ...treeNow(cwd) });
+/** Each repository's ignored entries, by its name, each from its top, a folder ignored whole as one ending `/`. @param {Repo[]} repos @returns {Record<string, string[]>} */
+function ignoredNow(repos) {
+  return Object.fromEntries(repos.map((repo) => [
+    repoName(repo), (tryGit(repo.path, ['ls-files', '--others', '--ignored', '--exclude-standard', '--directory', '-z']) ?? '').split('\0').filter(Boolean),
+  ]));
 }
 
-/** The working tree snapshotted as a round opens, where none is held; one held kept as it stands. @param {string} cwd @param {string} unit @param {number} round */
-function openSnapshot(cwd, unit, round) {
-  if (!fs.existsSync(snapshotPath(cwd, unit))) takeSnapshot(cwd, unit, round);
+/** The working tree outside `.leeway/` snapshotted for a round, over any held: on the person's word alone. @param {string} cwd @param {string} unit @param {number} round @param {Repo[]} repos */
+function takeSnapshot(cwd, unit, round, repos) {
+  const file = snapshotPath(cwd, unit);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  writeJsonAtomic(file, { round, ...treeNow(codeRoot(cwd), repos), ignored: ignoredNow(repos) });
+}
+
+/** The working tree snapshotted as a round opens, where none is held; one held kept as it stands. @param {string} cwd @param {string} unit @param {number} round @param {Repo[]} repos */
+function openSnapshot(cwd, unit, round, repos) {
+  if (!fs.existsSync(snapshotPath(cwd, unit))) takeSnapshot(cwd, unit, round, repos);
 }
 
 /** The round whose snapshot is held, or null where none is. @param {string} cwd @param {string} unit @returns {number|null} */
@@ -363,18 +435,51 @@ const dropSnapshot = (cwd, unit) => fs.rmSync(snapshotPath(cwd, unit), { force: 
 const repoWords = (name) => (name === '.' ? 'the project\'s repository' : `\`${name}\``);
 
 /**
+ * A change outside `.leeway/` since the snapshot: what it is of — a
+ * repository by its name, or a path — and what it was then and is now, a
+ * HEAD or a path's status with the fingerprint of what it holds; null where
+ * there was none, or the path was clean.
+ * @typedef {{of: string, then: string|null, now: string|null}} TreeChange
+ */
+
+/**
+ * What changed outside `.leeway/` since the snapshot: each repository whose
+ * HEAD moved, and each path whose status or content changed, in order, with
+ * each repository's HEAD, its ignored entries and each path its status
+ * listed as the snapshot holds them; read once the round's snapshot is held
+ * (snapshotRound).
+ * @param {string} cwd @param {string} unit @param {Repo[]} repos
+ * @returns {{heads: Record<string, string|null>, ignored: Record<string, string[]>, held: Record<string, string>, moved: TreeChange[], paths: TreeChange[]}}
+ */
+function treeDrift(cwd, unit, repos) {
+  const then = JSON.parse(fs.readFileSync(snapshotPath(cwd, unit), 'utf8'));
+  const now = treeNow(codeRoot(cwd), repos);
+  /** @param {Record<string, string|null>} was @param {Record<string, string|null>} is @returns {TreeChange[]} */
+  const drift = (was, is) => [...new Set([...Object.keys(was), ...Object.keys(is)])].filter((of) => was[of] !== is[of]).map((of) => ({ of, then: was[of] ?? null, now: is[of] ?? null }));
+  return {
+    heads: then.heads, ignored: then.ignored, held: then.paths, moved: drift(then.heads, now.heads), paths: drift(then.paths, now.paths).sort((a, b) => (a.of < b.of ? -1 : 1)),
+  };
+}
+
+/** A commit's first seven characters. @param {string} sha */
+const shortSha = (sha) => sha.slice(0, 7);
+
+/** A repository whose HEAD moved, as a line names it: one new since the snapshot, or one gone, said so. @param {TreeChange} moved */
+function movedWords({ of, then, now }) {
+  if (then === null) return `${repoWords(of)} is a repository new since the round began`;
+  if (now === null) return `${repoWords(of)} holds no commit now, at ${shortSha(then)} when the round began`;
+  return `${repoWords(of)}'s HEAD moved, from ${shortSha(then)} to ${shortSha(now)}`;
+}
+
+/**
  * What changed outside `.leeway/` since the snapshot, a line each: a
  * repository whose HEAD moved, then each path whose status or content
- * changed, in order; read once the round's snapshot is held (snapshotRound).
- * @param {string} cwd @param {string} unit @returns {string[]}
+ * changed, in order (treeDrift).
+ * @param {string} cwd @param {string} unit @param {Repo[]} repos @returns {string[]}
  */
-function treeChanges(cwd, unit) {
-  const then = JSON.parse(fs.readFileSync(snapshotPath(cwd, unit), 'utf8'));
-  const now = treeNow(cwd);
-  const moved = Object.keys({ ...then.heads, ...now.heads }).filter((repo) => then.heads[repo] !== now.heads[repo])
-    .map((repo) => `${repoWords(repo)} is at ${now.heads[repo]?.slice(0, 7) ?? 'no commit'}, not ${then.heads[repo]?.slice(0, 7) ?? 'no commit'}`);
-  const changed = [...new Set([...Object.keys(then.paths), ...Object.keys(now.paths)])].filter((at) => then.paths[at] !== now.paths[at]).sort();
-  return [...moved, ...changed];
+function treeChanges(cwd, unit, repos) {
+  const { moved, paths } = treeDrift(cwd, unit, repos);
+  return [...moved.map(movedWords), ...paths.map(({ of }) => of)];
 }
 
 /**
@@ -436,8 +541,8 @@ const forThePerson = ({ by, given }) => claudesCall({ by, given });
 const inTheBuild = ({ phase }) => BUILD_PHASES.includes(phase);
 
 module.exports = {
-  TESTS, TESTS_LETTER, specAreas, reportNames, recordedRounds, fixesOf, endsReview, fixPhase, reviewStanding, everyRead,
+  TESTS, TESTS_LETTER, NOTES, isBuilderNote, SET_ASIDE, setAsideFolder, setAsideHeld, EMPTY_PRINT, specAreas, reportNames, recordedRounds, fixesOf, endsReview, fixPhase, reviewStanding, everyRead,
   endedWords, endedRefusal, openRefusal, roundRefusal, readsWords, mergingWords,
   reviewFolder, roundRecordPath, roundReportFile, roundChecksFile, roundReadsPath, roundFolder, areaReportPath,
-  takeSnapshot, openSnapshot, snapshotRound, dropSnapshot, treeChanges, unitCalls, reviewCallFault, forThePerson, inTheBuild,
+  takeSnapshot, openSnapshot, snapshotRound, dropSnapshot, treeDrift, movedWords, treeChanges, unitCalls, reviewCallFault, forThePerson, inTheBuild,
 };

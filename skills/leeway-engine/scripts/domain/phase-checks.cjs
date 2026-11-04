@@ -49,6 +49,8 @@
 // ---------------------------------------------------------------------------
 
 const { stateRoot } = require('../kernel/state-root.cjs');
+const { codeRoot } = require('../kernel/code-root.cjs');
+const { projectRepos } = require('../kernel/repos.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { manifestOf, finishedUnits } = require('./ledger-units.cjs');
@@ -90,6 +92,9 @@ function once(at, key, read) {
   if (!at.reads.has(key)) at.reads.set(key, read());
   return at.reads.get(key);
 }
+
+/** The project's repos, read once a call. @param {Reading} at @returns {import('../kernel/repos.cjs').Repo[]} */
+const reposOf = (at) => once(at, 'repos', () => projectRepos(codeRoot(at.cwd)));
 
 /** The phases of the unit's cut, none where it has none. @param {Record<string, any>} manifest @returns {Array<{name?: string, sections: string[], scenarios: string[], relies_on: Array<number|string>}>} */
 const cutPhases = (manifest) => (Array.isArray(manifest.cut?.phases) ? manifest.cut.phases : []);
@@ -133,7 +138,7 @@ const liveRows = (at, phase) => live(at.reads.get(`tasks ${phase}`) ?? phaseList
 /** Whether the phase's stack has merged: every task not closed landed, one at least. @param {Reading} at @param {number} phase */
 function phaseLanded(at, phase) {
   const rows = liveRows(at, phase);
-  const landed = once(at, 'landed', () => landedTasks(at.cwd, at.unit, dayBefore(at.manifest.created)));
+  const landed = once(at, 'landed', () => landedTasks(at.cwd, at.unit, reposOf(at), dayBefore(at.manifest.created)));
   return rows.length > 0 && rows.every(({ ref }) => landed.has(shownTask(ref)));
 }
 
@@ -342,6 +347,6 @@ function reviewRefusalOf(at, phase) {
 }
 
 module.exports = {
-  reading, once, cutPhases, phaseLists, phaseTasks, phaseLanded, mergeWaiting, fixesOwed, passed,
+  reading, once, reposOf, cutPhases, phaseLists, phaseTasks, phaseLanded, mergeWaiting, fixesOwed, passed,
   tasksWritten, reliedOnDone, tasksPassed, phaseReviewFaults, scenariosReported, notesConsolidated, stackMerged, closeRefusal, phaseReviewRefusal, reviewRefusalOf,
 };
