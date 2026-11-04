@@ -60,18 +60,20 @@ function collect(compose) {
   });
 }
 
-/** An implementation topic sitting at its task gate. @param {string} dir @param {object} [item] */
-function seedTaskGate(dir, item = {}) {
-  createManifest(dir, 'auth', {
-    phases: {
-      planning: { items: { 'auth-flow': { status: 'completed' } } },
-      implementation: {
-        items: {
-          'auth-flow': { status: 'in-progress', task_gate_mode: 'gated', current_task: 'auth-flow-1-1', ...item },
-        },
-      },
-    },
+/** An epic whose map holds a topic not yet started, its cancel gate the render. @param {string} dir */
+function seedCancel(dir) {
+  createManifest(dir, 'pay', {
+    work_type: 'epic',
+    phases: { discovery: { items: { 'data-export': { source: 'discovery' } } } },
   });
+}
+
+/** The cancel gate over that topic. */
+const CANCEL = ['render', 'cancel-gate', 'pay.discovery.data-export'];
+
+/** A bugfix's investigation in progress, its conclude gate the render. @param {string} dir */
+function seedInvestigation(dir) {
+  createManifest(dir, 'auth', { work_type: 'bugfix', phases: { investigation: { items: { auth: { status: 'in-progress' } } } } });
 }
 
 /**
@@ -106,9 +108,9 @@ describe('gate payload — the announce switch', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   it('a render surface says nothing extra unannounced, and the announced bytes differ only by the GATE block', () => {
-    seedTaskGate(dir);
-    const plain = output(dir, ['render', 'task-gate', 'auth.implementation.auth-flow']);
-    const announced = output(dir, ['render', 'task-gate', 'auth.implementation.auth-flow'], { env: ANNOUNCED });
+    seedCancel(dir);
+    const plain = output(dir, CANCEL);
+    const announced = output(dir, CANCEL, { env: ANNOUNCED });
 
     assert.ok(!plain.includes('=== GATE'), plain);
     assert.notStrictEqual(plain, announced);
@@ -125,11 +127,10 @@ describe('gate payload — the announce switch', () => {
   });
 
   it('a value other than 1 is not an announcement', () => {
-    seedTaskGate(dir);
-    const plain = output(dir, ['render', 'task-gate', 'auth.implementation.auth-flow']);
+    seedCancel(dir);
+    const plain = output(dir, CANCEL);
     for (const value of ['', '0', 'true', 'yes']) {
-      const out = output(dir, ['render', 'task-gate', 'auth.implementation.auth-flow'],
-        { env: { LEEWAY_GATE_SURFACE: value } });
+      const out = output(dir, CANCEL, { env: { LEEWAY_GATE_SURFACE: value } });
       assert.strictEqual(out, plain, `LEEWAY_GATE_SURFACE=${value} announced a gate`);
     }
   });
@@ -140,41 +141,40 @@ describe('gate payload — a render surface', () => {
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('the task gate states its question, no statement, its pressable rows and its typed rows', () => {
-    seedTaskGate(dir);
-    const out = output(dir, ['render', 'task-gate', 'auth.implementation.auth-flow'], { env: ANNOUNCED });
+  it('the conclude gate states its question, no statement, its pressable row and its typed row', () => {
+    seedInvestigation(dir);
+    const out = output(dir, ['render', 'conclude-gate', 'auth.investigation.auth'], { env: ANNOUNCED });
 
     assert.deepStrictEqual(gateOf(out), {
-      gate: 'task gate',
-      question: 'Approve this task?',
+      gate: 'conclude gate',
+      question: 'Investigation complete. Ready to conclude?',
       statement: '',
       options: [
-        { key: 'y', word: 'yes', head: 'Commit and continue to next task', tail: null, cue: null, holder: null, detail: null, struck: false, recommended: false },
-        { key: 'a', word: 'auto', head: 'Approve this and all remaining tasks automatically', tail: null, cue: null, holder: null, detail: null, struck: false, recommended: false },
-        { key: 'b', word: 'bounded', head: 'Approve this and the remaining tasks in this phase automatically', tail: null, cue: null, holder: null, detail: null, struck: false, recommended: false },
-        { key: 't', word: 'technical', head: "Retell the result from the code's perspective", tail: null, cue: null, holder: null, detail: null, struck: false, recommended: false },
-        { key: 's', word: 'show', head: 'Show the result as diagrams', tail: null, cue: null, holder: null, detail: null, struck: false, recommended: false },
+        { key: 'y', word: 'yes', head: 'Conclude investigation', tail: null, cue: null, holder: null, detail: null, struck: false, recommended: false },
       ],
       typed: [
-        { label: 'Ask', description: "Ask questions about the implementation (doesn't approve or reject)", detail: null },
-        { label: 'Comment', description: 'Request changes (triggers a fix round)', detail: null },
+        { label: 'Keep going', description: 'Tell me what else to explore', detail: null },
       ],
     });
   });
 
-  it('an auto task gate arms nothing — its DISPLAY is not a gate', () => {
-    seedTaskGate(dir, { task_gate_mode: 'auto' });
-    const out = output(dir, ['render', 'task-gate', 'auth.implementation.auth-flow'], { env: ANNOUNCED });
+  it('an auto candidate gate arms nothing — its DISPLAY is not a gate', () => {
+    createManifest(dir, 'pay', {
+      work_type: 'epic',
+      phases: { discovery: { items: {}, analysis_staging: { 'discovery-gap-analysis': { gate_mode: 'auto', candidates: { 'data-export': { status: 'pending' } } } } } },
+    });
+    const file = createFile(dir, '.leeway/.cache/pay/candidate.json', JSON.stringify({ name: 'data-export', summary: 'The export.' }));
+    const out = output(dir, ['render', 'candidate-gate', 'pay', '--file', file], { env: ANNOUNCED });
 
-    assert.match(out, /^=== DISPLAY: task gate auto-approved/);
+    assert.match(out, /^=== DISPLAY: candidate approved/m);
     assert.strictEqual(gateOf(out), null);
   });
 
   it('a display-only surface carries no gate', () => {
-    seedTaskGate(dir, { analysis_cycle_total: 4 });
-    const out = output(dir, ['render', 'cycle-limit', 'auth.implementation.auth-flow'], { env: ANNOUNCED });
+    seedInvestigation(dir);
+    const out = output(dir, ['render', 'phase-completed', 'auth', '--phase', 'investigation'], { env: ANNOUNCED });
 
-    assert.match(out, /^=== DISPLAY: cycle limit/);
+    assert.match(out, /^=== DISPLAY: phase completed/);
     assert.strictEqual(gateOf(out), null);
   });
 
@@ -217,11 +217,12 @@ describe('gate payload — a render surface', () => {
   });
 
   it('each render starts from nothing — neither a menu before it nor a menu-less one leaks rows in', () => {
-    seedTaskGate(dir, { analysis_cycle_total: 4 });
-    const first = output(dir, ['render', 'task-gate', 'auth.implementation.auth-flow'], { env: ANNOUNCED });
-    output(dir, ['render', 'cycle-gate'], { env: ANNOUNCED });
-    output(dir, ['render', 'cycle-limit', 'auth.implementation.auth-flow'], { env: ANNOUNCED });
-    const last = output(dir, ['render', 'task-gate', 'auth.implementation.auth-flow'], { env: ANNOUNCED });
+    seedCancel(dir);
+    seedInvestigation(dir);
+    const first = output(dir, CANCEL, { env: ANNOUNCED });
+    output(dir, ['render', 'conclude-gate', 'auth.investigation.auth'], { env: ANNOUNCED });
+    output(dir, ['render', 'phase-completed', 'auth', '--phase', 'investigation'], { env: ANNOUNCED });
+    const last = output(dir, CANCEL, { env: ANNOUNCED });
 
     assert.deepStrictEqual(gateOf(last), gateOf(first));
   });
@@ -262,25 +263,11 @@ describe('gate payload — the statement', () => {
   });
 
   it('a statement label over the question stays the statement', () => {
-    createManifest(dir, 'auth', { phases: { planning: { items: { auth: { status: 'in-progress', phase: 2, task: 3 } } } } });
-    createFile(dir, '.leeway/auth/planning/auth/planning.md', '# Plan');
-    const gate = gateOf(output(dir, ['render', 'resume-gate', 'auth.planning.auth', '--variant', 'plan'], { env: ANNOUNCED }));
+    createManifest(dir, 'fix', { work_type: 'quick-fix', phases: { scoping: { items: { fix: { status: 'completed' } } } } });
+    const gate = gateOf(output(dir, ['render', 'resume-gate', 'fix.scoping.fix', '--variant', 'scoping'], { env: ANNOUNCED }));
 
     assert.strictEqual(gate.question, 'How would you like to proceed?');
-    assert.strictEqual(gate.statement, 'Found existing plan for Auth (previously reached phase 2, task 3).');
-  });
-
-  it('a multi-line statement keeps its lines', () => {
-    createManifest(dir, 'auth', {
-      phases: {
-        implementation: { items: { auth: { status: 'completed', completed_tasks: ['a', 'b', 'c', 'd', 'e'] } } },
-        review: { items: { auth: { status: 'in-progress', reviewed_tasks: ['a', 'b'] } } },
-      },
-    });
-    const gate = gateOf(output(dir, ['render', 'resume-gate', 'auth.review.auth', '--variant', 'review'], { env: ANNOUNCED }));
-
-    assert.strictEqual(gate.question, 'How would you like to proceed?');
-    assert.strictEqual(gate.statement, 'Found existing review for Auth.\nReview covered 2 of 5 tasks. 3 task(s) not yet reviewed.');
+    assert.strictEqual(gate.statement, 'Found completed scoping for Fix — spec and plan are in place.');
   });
 
   it('a statement over the question is the statement', () => {
@@ -289,20 +276,6 @@ describe('gate payload — the statement', () => {
 
     assert.strictEqual(gate.question, 'Cancel it?');
     assert.strictEqual(gate.statement, 'Cancelling Data Export takes it off the board — nothing has started, so only the map row is marked; it can be reactivated later.');
-  });
-
-  it('a question the frame glyphs by hand is the question, and every head line above it is statement', () => {
-    createManifest(dir, 'v1', {
-      work_type: 'epic',
-      phases: { specification: { items: { a: { status: 'completed', order: 1 }, b: { status: 'completed', order: 2 } } } },
-    });
-    const gate = gateOf(output(dir, ['render', 'epic-soft-gate', 'v1', '--action', 'start_planning', '--topic', 'b'], { env: ANNOUNCED }));
-
-    assert.strictEqual(gate.question, 'Proceed anyway?');
-    assert.strictEqual(gate.statement, [
-      'You\'re about to plan "B" — "A" is ahead of it in the build order and unplanned.',
-      'The build order is advisory — proceeding now is safe; the gate only names what sits ahead.',
-    ].join('\n'));
   });
 
   it('every line above the question is statement, in order', () => {
@@ -701,19 +674,17 @@ describe('gate payload — escaped text', () => {
     assert.strictEqual(gate.statement, 'Run a_b*c to release it.');
   });
 
-  it('a side the model wrote reaches its row as text — its code span as content, its escape as the character', () => {
-    seedTaskGate(dir);
-    const sides = createFile(dir, '.leeway/.cache/auth/implementation/auth-flow/sides.json', JSON.stringify({
-      options: [
-        { summary: 'Call `resolveUser` before the write' },
-        { summary: 'Keep user\\_id on the \\*session\\*', recommended: true },
+  it('a label the model wrote reaches its row as text — its code span as content, its escape as the character', () => {
+    const formats = createFile(dir, '.leeway/.cache/formats.json', JSON.stringify({
+      formats: [
+        { name: 'calls', label: 'Call `resolveUser` before the write' },
+        { name: 'keeps', label: 'Keep user\\_id on the \\*session\\*' },
       ],
     }));
-    const gate = gateOf(output(dir, ['render', 'executor-block-gate', 'auth.implementation.auth-flow',
-      '--result', 'blocked', '--file', sides], { env: ANNOUNCED }));
+    const gate = gateOf(output(dir, ['render', 'plan-format-gate', '--variant', 'select', '--file', formats], { env: ANNOUNCED }));
 
     assert.deepStrictEqual(gate.options.map((/** @type {{head: string}} */ o) => o.head),
-      ['Keep user_id on the *session*', 'Call resolveUser before the write']);
+      ['Call resolveUser before the write', 'Keep user_id on the *session*']);
   });
 
   it('every part of a row states its text, whatever markup drew it', () => {

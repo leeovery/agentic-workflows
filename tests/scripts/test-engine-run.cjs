@@ -254,6 +254,16 @@ describe('engine.run — the invocation is the caller\'s', () => {
   });
 });
 
+describe('no build order (12.6.1, 12.6.5)', () => {
+  it('the engine dispatches no build order, and its usage names none — `engine build-order` answers that usage (12.S12)', () => {
+    const res = engine.run(['build-order', 'pay'], { cwd: os.tmpdir() });
+
+    assert.strictEqual(res.code, 1);
+    assert.match(res.stderr, /^Usage: engine <command> \[args\]\n/);
+    assert.deepStrictEqual([...Object.keys(engine.COMMANDS), ...res.stderr.split('\n')].filter((line) => /build-order|dependenc/i.test(line)), []);
+  });
+});
+
 describe('no uninstall in the release (27.2.3)', () => {
   it('the engine dispatches no uninstall, and its usage names none — `engine uninstall` answers that usage — and no skill or agent, nor any file of theirs, is one (27.S3)', () => {
     const res = engine.run(['uninstall'], { cwd: os.tmpdir() });

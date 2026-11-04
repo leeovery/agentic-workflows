@@ -5,9 +5,9 @@
 // building lives in the engine's domain ring; this script selects which
 // engine answers the skill's flow needs and sections the output.
 //
-//   gateway.cjs {work_unit}   → scoped state dump, one epic (Steps 1–6)
+//   gateway.cjs {work_unit}   → scoped state dump, one epic (Steps 1–4)
 //   gateway.cjs view {work_unit} [new_arrivals_json]
-//                               → DATA + DISPLAY + MENU snapshot (Step 6)
+//                               → DATA + DISPLAY + MENU snapshot (Step 5)
 //   gateway.cjs completed-menu {work_unit}     → Resume Completed sub-view (D)
 //   gateway.cjs cancel-menu {work_unit}        → Cancel Topic sub-view (E)
 //   gateway.cjs reactivate-menu {work_unit}    → Reactivate Topic sub-view (F)
@@ -47,32 +47,6 @@ function discover(cwd, workUnit) {
   return manifest ? engine.detail.epicDetail(cwd, manifest) : null;
 }
 
-/** A parked stub is undrained work — never done. @param {any} d @returns {boolean} */
-function unstartedStubs(d) {
-  return ((d.phases && d.phases.discussion) || []).some((i) => i.status === 'unstarted');
-}
-
-/**
- * The all-done derivation over one epic detail: review items exist
- * and every non-terminal one is completed, nothing is in progress or awaiting
- * its next phase, no item carries a live reconcile flag (the epic mirror of the linear types' routing override
- * — the terminal gate is never offered past known-stale input), and the
- * discovery map has settled (or the epic has none).
- * @param {any} d  EpicDetail
- * @returns {boolean}
- */
-function computeAllDone(d) {
-  const review = (d.phases && d.phases.review) || [];
-  const live = review.filter((i) => !TERMINAL_STATUSES.includes(i.status));
-  return live.length > 0
-    && live.every((i) => i.status === 'completed')
-    && d.in_progress.length === 0
-    && d.next_phase_ready.length === 0
-    && !unstartedStubs(d)
-    && reconcilePending(d).length === 0
-    && (d.convergence_state === 'settled' || d.convergence_state === null);
-}
-
 /**
  * Completed items carrying a live reconcile flag, across every phase —
  * `phase/name (value)` strings for the scoped dump, the same vocabulary the
@@ -92,8 +66,8 @@ function reconcilePending(d) {
   return out;
 }
 
-// The scoped state dump for one epic — the reasoning surface Steps 1–6
-// read: the all-done flag, analysis-cache statuses, the sequencing flag, and
+// The scoped state dump for one epic — the reasoning surface Steps 1–4
+// read: the reconcile flags, analysis-cache statuses, the sequencing flag, and
 // the discovery-map rows (tier, lifecycle, the name a renamed topic goes by
 // beside its key, field presence, current summary text).
 /** @param {string} workUnit @param {EpicDetail|null} d */
@@ -104,11 +78,9 @@ function formatScoped(workUnit, d) {
     lines.push('error: no active epic with this name');
     return lines.join('\n') + '\n';
   }
-  lines.push(`all_done: ${computeAllDone(d)}`);
   lines.push(`reconcile_pending: ${reconcilePending(d).join(', ') || '(none)'}`);
   lines.push(`analysis_caches: gap_analysis=${d.analysis_caches.gap_analysis.status}`);
   lines.push(`needs_sequencing: ${d.needs_sequencing}`);
-  lines.push(`build_order_needs_sequencing: ${d.build_order_needs_sequencing}`);
   lines.push(`discovery_map (${d.discovery_map.length}):`);
   if (d.discovery_map.length === 0) {
     lines.push('  (empty)');
@@ -128,7 +100,7 @@ function formatScoped(workUnit, d) {
   return lines.join('\n') + '\n';
 }
 
-// One snapshot for Step 6: reasoning DATA (flags + the ACTIONS table), the
+// One snapshot for Step 5: reasoning DATA (flags + the ACTIONS table), the
 // rendered dashboard + key (DISPLAY), and the menu (MENU).
 function view(workUnit, newArrivalsJson) {
   const d = discover(process.cwd(), workUnit);
@@ -162,7 +134,6 @@ function view(workUnit, newArrivalsJson) {
   dataLines.push(`sessions_in_progress: ${held.map((r) => `${r.phase}/${r.topic} (last active ${engine.presence.fmtAge(r.age_seconds)} ago)`).join(', ') || '(none)'}`);
   dataLines.push(`convergence: ${d.convergence_state || 'none'}`);
   dataLines.push(`needs_sequencing: ${d.needs_sequencing}`);
-  dataLines.push(`build_order_needs_sequencing: ${d.build_order_needs_sequencing}`);
   dataLines.push(`analysis_caches: gap_analysis=${d.analysis_caches.gap_analysis.status}`);
   dataLines.push(...engine.project.actionsTable(['action', 'topic', '→ route'], menu.keys, (k) => {
     const cells = [k.action, k.topic || '—', `→ ${k.route || '(internal)'}`];
@@ -208,7 +179,7 @@ function inSessionGate(workUnit, key) {
     return engine.gateway.dataBlock({ work_unit: workUnit, error: `entry "${key}" is not held by another session — no gate to render` });
   }
   if (entry.code_session) {
-    return engine.gateway.dataBlock({ work_unit: workUnit, error: `entry "${key}" is a code phase — the code slot is gated where the phase starts (render code-gate), never here` });
+    return engine.gateway.dataBlock({ work_unit: workUnit, error: `entry "${key}" is a code phase — the code slot is gated where the build is entered (enter implementation|review), never here` });
   }
   return engine.project.epicInSessionGate(workUnit, entry, d.titles);
 }

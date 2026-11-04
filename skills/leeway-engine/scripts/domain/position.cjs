@@ -22,17 +22,14 @@
 // for any other, and its `task done` and `task close` take it off
 // (task-verbs.cjs); an entry into either puts the tasks another
 // conversation left in flight there, as the conversation arrives
-// (build-entry.cjs); the plan's three-argument `task start` adds one to its
-// topic's implementation and `task complete` takes it off. A `task start`
-// re-run for a task already in flight keeps it as it stands; a re-label of
-// the same place keeps them all, a move between the unit's implementation
-// and its review phase carries them, and any other place leaves none. The
-// gate mod's `conversation builder` records the agent id of a builder or a
-// reviewer it saw dispatched against the task its brief was issued for
-// (brief-names.cjs), only while that task is in flight: the builder's
-// replacing any before it, each reviewer's joining the pair the later
-// rounds go back to (13.3.3); a dispatch with no brief, the plan's
-// executor's, is the builder of the one task in flight. `task worktree`
+// (build-entry.cjs). A `task start` re-run for a task already in flight
+// keeps it as it stands; a re-label of the same place keeps them all, a move
+// between the unit's implementation and its review phase carries them, and
+// any other place leaves none. The gate mod's `conversation builder`
+// records the agent id of a builder or a reviewer it saw dispatched against
+// the task its brief was issued for (brief-names.cjs), only while that task
+// is in flight: the builder's replacing any before it, each reviewer's
+// joining the pair the later rounds go back to (13.3.3). `task worktree`
 // records the worktree it laid out for a task in flight (task-worktree.cjs),
 // and `task stopped` when its builder stopped, unable to build past a
 // problem (task-verbs.cjs), its first stop kept; the task's next builder's
@@ -63,11 +60,11 @@ const { handedSession } = require('../kernel/process.cjs');
 const { positionPath, readPosition, isMarked, markConversation, runningTranscript } = require('./conversation.cjs');
 const { ROLES, issuedOf } = require('./brief-names.cjs');
 const { loadManifest, loadProjectManifest } = require('./reads.cjs');
-const { buildBegun, buildByCut, isFixPhase, computeTopicLifecycle, itemOf, openRecords, phaseData, UNIT_PHASES } = require('./derivations.cjs');
+const { buildBegun, buildRefusal, isFixPhase, computeTopicLifecycle, itemOf, openRecords, phaseData, UNIT_PHASES } = require('./derivations.cjs');
 const { recordDir } = require('./experiment-paths.cjs');
 const { latestSessionLog, productSession } = require('./discovery-session.cjs');
 const { PRODUCT_SESSIONS } = require('./layout.cjs');
-const { phaseSkill } = require('./handoff.cjs');
+const { phaseSkill, HANDOFF_TARGETS } = require('./handoff.cjs');
 const { stepOfId, shownTask } = require('./task-id.cjs');
 const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 const { section, dataSection, GATE_MOD_INSTRUCTION } = require('./projections/surfaces.cjs');
@@ -152,8 +149,8 @@ function withTasks(place, tasks) {
   return tasks.length === 0 ? place : { ...place, tasks };
 }
 
-/** A topic's implementation, the place its tasks are in flight. @param {string} workUnit @param {string} topic @returns {Position} */
-const implementationOf = (workUnit, topic) => ({ name: workUnit, phase: 'implementation', topic });
+/** A unit's build, the place its tasks are in flight. @param {string} workUnit @returns {Position} */
+const implementationOf = (workUnit) => ({ name: workUnit, phase: 'implementation', topic: workUnit });
 
 /** The phases a unit's tasks are in flight at, each at the unit: its build, and its review phase's fixes (14.3.2). */
 const BUILD_PLACES = Object.freeze(['implementation', 'review']);
@@ -246,20 +243,20 @@ function startedAt(cwd, prior, workUnit, step) {
   if (held !== null) return held;
   const manifest = loadManifest(cwd, workUnit);
   const fix = isObject(manifest) && isFixPhase(manifest, Number(step.split('.')[0]));
-  return fix ? { name: workUnit, phase: 'review', topic: workUnit } : implementationOf(workUnit, workUnit);
+  return fix ? { name: workUnit, phase: 'review', topic: workUnit } : implementationOf(workUnit);
 }
 
 /**
  * Record the task `task start` put in flight beside those already there —
  * as it stands where it is one of them.
- * @param {string} cwd @param {string} workUnit @param {string} topic @param {string} internalId
+ * @param {string} cwd @param {string} workUnit @param {string} internalId
  */
-function recordTask(cwd, workUnit, topic, internalId) {
+function recordTask(cwd, workUnit, internalId) {
   const own = arrivingConversation(cwd);
   const step = taskStep(internalId);
-  if (!own || step === null || !isPlace(cwd, workUnit, 'implementation', topic)) return;
+  if (!own || step === null || !isPlace(cwd, workUnit, 'implementation', workUnit)) return;
   updatePosition(own, (prior) => {
-    const place = topic === workUnit ? startedAt(cwd, prior, workUnit, step) : implementationOf(workUnit, topic);
+    const place = startedAt(cwd, prior, workUnit, step);
     return withTasks(place, joined(tasksAt(prior, place), [step]));
   });
 }
@@ -281,19 +278,14 @@ function recordTasksAt(cwd, workUnit, phase, steps) {
  * Where a dispatch's agent goes on the position: the task it is for, at the
  * place that task is in flight, and which of the task's agents it is — the
  * task its brief was issued for, a builder's or a reviewer's by the agent
- * it was issued for; with no brief, the builder of the one task in flight.
- * Null where it goes nowhere.
- * @param {string} sessionId @param {Position|null} prior @param {string} [briefId]
+ * it was issued for. Null where it goes nowhere.
+ * @param {string} sessionId @param {Position|null} prior @param {string} briefId
  * @returns {{place: Position, task: string, slot: 'builder'|'reviewers'}|null}
  */
 function dispatchedFor(sessionId, prior, briefId) {
-  if (briefId === undefined) {
-    if (prior?.phase !== 'implementation' || prior.tasks?.length !== 1) return null;
-    return { place: implementationOf(prior.name, /** @type {string} */ (prior.topic)), task: prior.tasks[0].task, slot: 'builder' };
-  }
   const issued = issuedOf(sessionId, briefId);
   if (issued === null || !Object.hasOwn(SLOTS, issued.agent) || issued.unit === null || issued.task === null) return null;
-  return { place: buildPlaceOf(prior, issued.unit) ?? implementationOf(issued.unit, issued.unit), task: issued.task, slot: SLOTS[issued.agent] };
+  return { place: buildPlaceOf(prior, issued.unit) ?? implementationOf(issued.unit), task: issued.task, slot: SLOTS[issued.agent] };
 }
 
 /**
@@ -309,7 +301,7 @@ function withAgent(task, slot, agentId) {
 /**
  * Record the agent a dispatch answered with against its task in flight on
  * the conversation `sessionId`'s position (`dispatchedFor`).
- * @param {string} sessionId @param {string} agentId @param {string} [briefId]
+ * @param {string} sessionId @param {string} agentId @param {string} briefId
  * @returns {{recorded: boolean}}
  */
 function recordBuilder(sessionId, agentId, briefId) {
@@ -336,7 +328,7 @@ function changeInFlight(sessionId, workUnit, step, change) {
   /** @type {InFlight|null} */
   let held = null;
   const written = updatePosition(sessionId, (prior) => {
-    const place = buildPlaceOf(prior, workUnit) ?? implementationOf(workUnit, workUnit);
+    const place = buildPlaceOf(prior, workUnit) ?? implementationOf(workUnit);
     const tasks = tasksAt(prior, place);
     held = tasks.find((t) => t.task === step) ?? null;
     const changed = held === null ? null : change(held);
@@ -379,15 +371,15 @@ function clearStop(sessionId, workUnit, step) {
 
 /**
  * Take a task that ended off the position, its agents with it — only the
- * one it names, in that topic's implementation.
- * @param {string} workUnit @param {string} topic @param {string} internalId
+ * one it names, where the unit's tasks are in flight.
+ * @param {string} workUnit @param {string} internalId
  */
-function clearTask(workUnit, topic, internalId) {
+function clearTask(workUnit, internalId) {
   const own = ownConversation();
   if (!own) return;
   const step = taskStep(internalId);
   updatePosition(own, (prior) => {
-    const place = (topic === workUnit ? buildPlaceOf(prior, workUnit) : null) ?? implementationOf(workUnit, topic);
+    const place = buildPlaceOf(prior, workUnit) ?? implementationOf(workUnit);
     const held = tasksAt(prior, place);
     return held.some((t) => t.task === step) ? withTasks(place, held.filter((t) => t.task !== step)) : null;
   });
@@ -432,7 +424,8 @@ function dropPosition(sessionId) {
 /**
  * The skill that runs the work at a place — a phase's own, discovery's,
  * which the product's conversation is too, or a project place's; null at a
- * work unit's menu.
+ * work unit's menu, and at a phase no conversation works in: planning,
+ * whose items are scoping's.
  * @param {string} name @param {string} [phase] @returns {string|null}
  */
 function skillAt(name, phase) {
@@ -440,7 +433,9 @@ function skillAt(name, phase) {
     if (!PROJECT_IDENTITIES.includes(name)) return null;
     return name === PRODUCT ? 'leeway-discovery' : `leeway-${name}`;
   }
-  return phase === 'discovery' ? 'leeway-discovery' : phaseSkill(phase);
+  if (phase === 'discovery') return 'leeway-discovery';
+  const skill = phaseSkill(phase);
+  return HANDOFF_TARGETS.includes(skill) ? skill : null;
 }
 
 /** @param {string} skill */
@@ -456,37 +451,6 @@ function sessionLog(dir, active) {
   if (typeof active === 'string' && /^\d+$/.test(active)) return [path.join(dir, `session-${active}.md`)];
   const latest = latestSessionLog(dir);
   return latest === null ? [] : [path.join(dir, latest.file)];
-}
-
-/** The plan's phase task files, in phase order. @param {string} dir absolute @returns {string[]} */
-function phaseTaskFiles(dir) {
-  /** @type {string[]} */
-  let names = [];
-  try { names = fs.readdirSync(dir).filter((f) => /^phase-\d+-tasks\.md$/.test(f)); } catch { return []; }
-  return names.sort((a, b) => parseInt(a.slice(6), 10) - parseInt(b.slice(6), 10)).map((f) => path.join(dir, f));
-}
-
-/**
- * The file named for the task in the plan's directory or a folder in it —
- * where a plan format that keeps its tasks as files keeps them.
- * @param {string} dir absolute @param {string} internalId
- * @returns {string[]}
- */
-function taskFile(dir, internalId) {
-  const name = `${internalId}.md`;
-  /** @type {string[]} */
-  const found = [];
-  /** @param {string} at @param {boolean} descend */
-  const walk = (at, descend) => {
-    let entries;
-    try { entries = fs.readdirSync(at, { withFileTypes: true }); } catch { return; }
-    for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
-      if (entry.isFile() && entry.name === name) found.push(path.join(at, name));
-      else if (entry.isDirectory() && descend) walk(path.join(at, entry.name), false);
-    }
-  };
-  walk(dir, true);
-  return found;
 }
 
 /** A task in flight's internal id, `{topic}-{phase}-{n}`. @param {string} topic @param {InFlight} inFlight */
@@ -613,21 +577,10 @@ function workAt(cwd, position, manifest, sessionId) {
       return { skill, documents: experimentFiles(cwd, name, topic, manifest) };
     case 'scoping':
       return { skill, documents: [path.join(wu, 'specification', topic, 'specification.md'), path.join(plan, 'planning.md')] };
-    case 'planning':
-      return { skill, documents: [path.join(plan, 'planning.md'), ...phaseTaskFiles(plan)] };
-    case 'implementation': {
-      if (buildByCut(manifest)) return { skill, ...buildWork(cwd, name, position.tasks ?? [], sessionId) };
-      const tasks = position.tasks ?? [];
-      if (tasks.length === 0) return { skill, documents: [] };
-      const format = itemOf(manifest, 'planning', topic)?.format;
-      const reading = typeof format === 'string' && illegalNameReason('format', format) === null
-        ? [`.claude/skills/leeway-planning-process/references/output-formats/${format}/reading.md`]
-        : [];
-      return { skill, documents: [...reading, ...tasks.flatMap((t) => taskFile(plan, internalIdOf(topic, t)))] };
-    }
+    case 'implementation':
+      return { skill, ...buildWork(cwd, name, position.tasks ?? [], sessionId) };
     case 'review':
-      if (buildByCut(manifest)) return { skill, ...reviewWork(cwd, name, manifest, position.tasks ?? [], sessionId) };
-      return { skill, documents: [path.join(wu, 'review', topic, 'report.md')] };
+      return { skill, ...reviewWork(cwd, name, manifest, position.tasks ?? [], sessionId) };
     default:
       return { skill: null, documents: [] };
   }
@@ -679,8 +632,9 @@ function placeLine({ name, phase, topic }, separator) {
 /**
  * Why a work unit's place is no longer open to carry on from, or null where
  * it is: the work unit gone from this project or closed, its spec concluded
- * at the spec's place, the place's item closed, or — in a phase a topic on
- * the map holds — the topic cancelled or postponed.
+ * at the spec's place, its build not to be entered at the build's places
+ * (P12), the place's item closed, or — in a phase a topic on the map holds —
+ * the topic cancelled or postponed.
  * @param {Position} position @param {Manifest} manifest
  * @returns {string|null}
  */
@@ -690,6 +644,10 @@ function closedReason(position, manifest) {
   if (manifest === null) return `this project has no work unit "${name}"`;
   if (manifest.status !== 'in-progress') return `"${name}" is ${typeof manifest.status === 'string' ? manifest.status : 'not in progress'}`;
   if (phase === 'specification' && buildBegun(manifest)) return 'its spec is concluded';
+  if (phase !== undefined && BUILD_PLACES.includes(phase)) {
+    const refused = buildRefusal(manifest);
+    if (refused !== null) return refused;
+  }
   if (phase === undefined || typeof topic !== 'string') return null;
   const status = itemOf(manifest, phase, topic)?.status;
   if (typeof status === 'string' && TERMINAL_STATUSES.includes(status)) return `the ${phase} is ${status}`;

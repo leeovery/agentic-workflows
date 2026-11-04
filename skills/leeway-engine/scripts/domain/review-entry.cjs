@@ -52,10 +52,10 @@ const fs = require('fs');
 const { ENGINE_COMMAND, ENGINE_RUN, messageOf } = require('../kernel/call.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
-const { buildByCut, buildFinished, phaseClosed, cutPhases, cutLength } = require('./derivations.cjs');
+const { buildFinished, phaseClosed, buildRefusal, cutPhases, cutLength } = require('./derivations.cjs');
 const { reading, reposOf, mergeWaiting } = require('./phase-checks.cjs');
 const {
-  buildRefusal, codeHeld, buildLogOf, buildStanding, ownInFlight, inFlightLines, takeInFlight, readingOf,
+  codeHeld, buildLogOf, buildStanding, ownInFlight, inFlightLines, takeInFlight, readingOf,
 } = require('./build-entry.cjs');
 const { specPath } = require('./spec-sections.cjs');
 const { notesPath } = require('./notes.cjs');
@@ -246,7 +246,6 @@ function arriving(at) {
 /** @type {Entry} */
 const REVIEW = Object.freeze({
   level: /** @type {const} */ ('unit'),
-  takes: buildByCut,
   standing: (at) => reviewRefusal(readingOf(at)),
   held: codeHeld,
   unstarted: () => false,

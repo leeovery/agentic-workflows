@@ -29,7 +29,7 @@ const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('.
 const { syncKnowledge } = require('./knowledge/sync.cjs');
 const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 const {
-  buildBegun, phaseItems, itemOf, computeTopicLifecycle, computeNextAction, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES, lifecyclePhrase, topicTitle,
+  phaseItems, itemOf, computeTopicLifecycle, computeNextAction, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES, lifecyclePhrase, topicTitle,
   awaitedExperiments, waits, settleItemStatus,
   UNIT_PHASES, unitItems, discoveryUnitExists, promotedRefusal,
   cancelPlan, postponePlan, briefFile, topicDir, topicKey, noTopicRefusal, topicTitles, goesBy,
@@ -40,7 +40,7 @@ const { closeInFlight } = require('./agent-state.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 
-const { VALID_PHASES, VALID_PHASE_STATUSES, WORK_TYPE_PIPELINES, DERIVED_PHASES, EXPERIMENT_SPAWN_PHASES, TOPIC_PHASES } = require('../kernel/manifest-schema.cjs');
+const { VALID_PHASES, VALID_PHASE_STATUSES, WORK_TYPE_PIPELINES, DERIVED_PHASES, EXPERIMENT_SPAWN_PHASES, TOPIC_PHASES, BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
 const { assertBeforeSpec } = require('./spec-standing.cjs');
 
 // Phase-item lifecycle operates on WORK phases only. Discovery items are map
@@ -157,25 +157,29 @@ function phaseItem(manifest, phase, topic) {
  * @property {string[]} warnings non-blocking failures (knowledge-base index)
  */
 
-// No build before ready to build's yes (11.8.1): on a unit writing the one
-// spec, no planning or implementation topic is started until the yes begins
-// its build. A unit keeping the old spec's items keeps the old door (29.17).
-
-/** @param {Record<string, any>} manifest @param {string} phase @param {string} topic */
-function assertBuildBegun(manifest, phase, topic) {
-  if (phase !== 'planning' && phase !== 'implementation') return;
-  const pipeline = WORK_TYPE_PIPELINES[/** @type {keyof typeof WORK_TYPE_PIPELINES} */ (manifest.work_type)] ?? [];
-  if (!pipeline.includes('specification') || phaseItems(manifest, 'specification').length > 0 || buildBegun(manifest)) return;
-  throw new Error(`${phase} can't start on "${topic}" — ${manifest.name}'s build has not begun; ready to build's yes begins it: render ready-to-build ${manifest.name}`);
-}
-
-// The one spec keeps no items (P7), and a concluded spec is never corrected
-// (11.9.1): a specification item is a quick-fix's scoping's alone.
+// The one spec keeps no items (P7), a concluded spec is never corrected
+// (11.9.1), and a build is planned by its cut: a specification or planning
+// item is a quick-fix's scoping's alone.
 
 /** @param {Record<string, any>} manifest @param {string} phase */
-function assertScopingSpec(manifest, phase) {
-  if (phase !== 'specification' || manifest.work_type === 'quick-fix') return;
-  throw new Error(`${manifest.name}'s spec keeps no items — it is entered at the work unit: engine enter specification ${manifest.name}`);
+function assertScopingItem(manifest, phase) {
+  if (manifest.work_type === 'quick-fix') return;
+  if (phase === 'specification') {
+    throw new Error(`${manifest.name}'s spec keeps no items — it is entered at the work unit: engine enter specification ${manifest.name}`);
+  }
+  if (phase === 'planning') {
+    throw new Error(`${manifest.name}'s build is planned by its cut — a planning item is a quick-fix's scoping's alone`);
+  }
+}
+
+// The build's places stand by its cut (buildPlaceStatus): no topic verb
+// writes an implementation or review item.
+
+/** @param {string} phase */
+function assertNotBuildPlace(phase) {
+  if (BUILD_PHASES.includes(phase)) {
+    throw new Error(`${phase} stands by the build's cut — it is entered by \`engine enter ${phase} <work-unit>\`, never written by a topic verb`);
+  }
 }
 
 // The map decides whether a topic's discussion can be born — the same join
@@ -209,9 +213,7 @@ function assertMapAllowsStart(manifest, phase, topic, existing) {
  * (init-phase semantics), or set an existing item back to `in-progress`.
  * A completed item must go through reopen — resuming is not starting — and
  * a cancelled item through reactivate. On an epic the discovery map gates
- * the birth (see assertMapAllowsStart), and on a unit writing the one spec
- * ready to build's yes gates a build phase's (see assertBuildBegun). No git
- * commit.
+ * the birth (see assertMapAllowsStart). No git commit.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} phase
@@ -220,10 +222,11 @@ function assertMapAllowsStart(manifest, phase, topic, existing) {
  */
 function startTopic(cwd, workUnit, phase, topic) {
   assertLegalWrite(phase, 'in-progress');
+  assertNotBuildPlace(phase);
   assertNotDerived(phase, 'the experiment item is derived bookkeeping — the spawn creates and reopens it (experiment create), never topic start');
   return withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
-    assertScopingSpec(manifest, phase);
+    assertScopingItem(manifest, phase);
     const phases = ensureContainer(manifest, 'phases', 'phases');
     const ph = ensureContainer(phases, phase, `phases.${phase}`);
     const items = ensureContainer(ph, 'items', `phases.${phase}.items`);
@@ -238,7 +241,6 @@ function startTopic(cwd, workUnit, phase, topic) {
     } else if (existing && existing.status === 'promoted') {
       throw new Error(promotedRefusal(phase, topic, existing));
     }
-    if (!existing || existing.status === 'unstarted') assertBuildBegun(manifest, phase, topic);
     assertMapAllowsStart(manifest, phase, topic, existing);
 
     let created = false;
@@ -274,8 +276,8 @@ function assertLegalTopicName(topic) {
  * clear it, and the series item has none. A phase a topic is in flags
  * nothing: the spec keeps no items, and a concluded spec is never corrected
  * (11.9.1). A `completed` item takes the flag (value = the upstream phase
- * name, consumed and cleared by the reconcile advisory where the phase
- * starts; an existing flag is never clobbered).
+ * name, shown as its input moved wherever the item is listed; an existing
+ * flag is never clobbered).
  *
  * Mutates the loaded manifest; the caller saves under its own lock.
  * @param {Record<string, any>} manifest
@@ -392,13 +394,14 @@ function waitClause(blocking) {
  */
 function completeTopic(cwd, workUnit, phase, topic) {
   assertLegalWrite(phase, 'completed');
+  assertNotBuildPlace(phase);
   assertNotDerived(phase, 'the experiment item is derived bookkeeping — each experiment concludes or is abandoned (experiment conclude/abandon), and the item closes itself when the last record ends');
   if (phase === 'discussion') {
     throw new Error('a discussion closes at its decided gate — `checklist close decided`, then `render decided` and the yes, which runs `decided yes`');
   }
   withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
-    assertScopingSpec(manifest, phase);
+    assertScopingItem(manifest, phase);
     const item = phaseItem(manifest, phase, topic);
     if (item.status === 'unstarted') {
       throw new Error(`${phase} item "${topic}" is unstarted — its messages have never been worked; start the topic first`);
@@ -454,13 +457,14 @@ function completeTopic(cwd, workUnit, phase, topic) {
  */
 function reopenTopic(cwd, workUnit, phase, topic) {
   assertLegalWrite(phase, 'in-progress');
+  assertNotBuildPlace(phase);
   assertNotDerived(phase, 'the experiment item is derived bookkeeping — a new spawn reopens the series (experiment create), never topic reopen');
   if (phase === 'discussion') {
     throw new Error('a decided discussion reopens through a message sent to it (topic send), never topic reopen');
   }
   return withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
-    assertScopingSpec(manifest, phase);
+    assertScopingItem(manifest, phase);
     if (TOPIC_PHASES.includes(phase)) assertBeforeSpec(cwd, manifest, 'change');
     const item = phaseItem(manifest, phase, topic);
     if (item.status === 'cancelled') {

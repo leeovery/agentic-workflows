@@ -111,13 +111,10 @@ const { earlierRecord, earlierReads } = require('./earlier-record.cjs');
  */
 
 /**
- * A phase's row: its level — for a unit-level row some units reach only in
- * a state of their own, which it takes (`takes`), a unit it does not take
- * handed off into the phase's skill at its topic as before (handoff.cjs) —
- * and whether the product's conversation enters through it too; why it
- * cannot be entered as it stands, or null; whether it is yet to start, and
- * what starts it; the questions owed before anything is
- * read, each a section drawn whole; what it reads, as the place stood before
+ * A phase's row: its level, and whether the product's conversation enters
+ * through it too; why it cannot be entered as it stands, or null; whether
+ * it is yet to start, and what starts it; the questions owed before
+ * anything is read, each a section drawn whole; what it reads, as the place stood before
  * the entry wrote anything; the log its conversation keeps, state-relative,
  * where it keeps one, and whether the entry writes the conversation's line
  * into it rather than naming it; where a level move into it leaves from,
@@ -127,7 +124,6 @@ const { earlierRecord, earlierReads } = require('./earlier-record.cjs');
  * place, drawn whole, for a row that has such a hold.
  * @typedef {object} Entry
  * @property {'topic'|'unit'} level
- * @property {(manifest: Record<string, any>) => boolean} [takes]
  * @property {boolean} [product]
  * @property {(at: Standing) => string|null} standing
  * @property {(at: Standing, ways: HeldWays) => string|null} [held]

@@ -154,13 +154,13 @@ The spec exists but the plan is incomplete — an interrupted prior run. Rebuild
    node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} format
    node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} external_id
    ```
-   If both are set, load the format's **[reading.md](../leeway-planning-process/references/output-formats/{format}/reading.md)** and list the tasks already created under `external_id`. Carry that list into Step 7 — existing tasks are adjusted or completed, never re-authored as duplicates. If either read is empty, nothing was authored — resume cleanly.
+   If both are set, load the format's **[reading.md](references/output-formats/{format}/reading.md)** and list the tasks already created under `external_id`. Carry that list into Step 7 — existing tasks are adjusted or completed, never re-authored as duplicates. If either read is empty, nothing was authored — resume cleanly.
 
 → Proceed to **Step 6** (resume from format selection).
 
 #### If `continue`
 
-Load the artifacts as session context: read the spec (`.workflows/{work_unit}/specification/{topic}/specification.md`) and the plan (`.workflows/{work_unit}/planning/{topic}/planning.md`) in full, then read the planning item once — `format` and `external_id` ride the subtree — and locate and read the task files via the format's **[reading.md](../leeway-planning-process/references/output-formats/{format}/reading.md)**:
+Load the artifacts as session context: read the spec (`.workflows/{work_unit}/specification/{topic}/specification.md`) and the plan (`.workflows/{work_unit}/planning/{topic}/planning.md`) in full, then read the planning item once — `format` and `external_id` ride the subtree — and locate and read the task files via the format's **[reading.md](references/output-formats/{format}/reading.md)**:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic}
@@ -174,7 +174,7 @@ What should change in the spec or plan?
 
 **STOP.** Wait for user response.
 
-Apply the requested edits — the spec and `planning.md` directly, task file content per the format's **[authoring.md](../leeway-planning-process/references/output-formats/{format}/authoring.md)**. Hard rules still hold: maximum 2 tasks, no acceptance criteria. Then:
+Apply the requested edits — the spec and `planning.md` directly, task file content per the format's **[authoring.md](references/output-formats/{format}/authoring.md)**. Hard rules still hold: maximum 2 tasks, no acceptance criteria. Then:
 
 1. If the spec changed, re-index it (re-completion re-indexes over the same identity):
    ```bash
@@ -200,7 +200,7 @@ Order matters — the plan's cleanup commits while the planning item still exist
    ```bash
    node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic}
    ```
-2. Load the format's **[authoring.md](../leeway-planning-process/references/output-formats/{format}/authoring.md)**
+2. Load the format's **[authoring.md](references/output-formats/{format}/authoring.md)**
 3. Follow the authoring file's cleanup instructions to remove authored tasks for this topic — the cleanup targets the entity identified by `external_id`
 4. Delete the spec and plan files: `rm -rf .workflows/{work_unit}/specification/{topic}/ .workflows/{work_unit}/planning/{topic}/`
 5. Remove the spec's knowledge-base entry. A failed removal never blocks: tell the user in one line that the next start removes it, and continue:

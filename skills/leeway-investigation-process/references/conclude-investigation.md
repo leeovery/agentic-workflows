@@ -64,7 +64,7 @@ On return:
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Investigation complete. The specification phase will formalise the fix approach into a document that drives planning.
+> Investigation complete. The specification phase will formalise the fix approach into a document that drives the build.
 ```
 
 4. Invoke `/leeway-bridge {work_unit} investigation`.

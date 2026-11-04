@@ -30,10 +30,10 @@ Load **[framework.md](../leeway-shared/references/framework.md)** and follow its
 
 This skill receives positional arguments — one not given is unset, whatever an earlier skill in this conversation held under the same name:
 - `$0` — **work_unit**: the epic to continue. Held downstream as `{work_unit}`.
-- `$1` — **completed_phase** (optional): the phase that just concluded or paused, where the epic arrives from one. Held downstream as `{completed_phase}`.
-- `$2` — **outcome**: given with `$1` — `completed`, `paused`, `cancelled` or `postponed`. Held downstream as `{outcome}`.
+- `$1` — **completed_phase** (optional): the phase that just concluded, or whose topic left, where the epic arrives from one. Held downstream as `{completed_phase}`.
+- `$2` — **outcome**: given with `$1` — `completed`, `cancelled` or `postponed`. Held downstream as `{outcome}`.
 
-Run the scoped discovery for the epic and hold its output as **the most recent discovery output** — Steps 2–6 read `discovery_map`, `analysis_caches`, `needs_sequencing`, `build_order_needs_sequencing`, and `all_done` from it; display and routing come from the `view` snapshot at Step 6:
+Run the scoped discovery for the epic and hold its output as **the most recent discovery output** — Steps 2–4 read `discovery_map`, `analysis_caches` and `needs_sequencing` from it; display and routing come from the `view` snapshot at Step 5:
 
 ```bash
 node .claude/skills/leeway-continue-epic/scripts/gateway.cjs {work_unit}
@@ -87,7 +87,7 @@ backfill-checks is terminal when recovery work landed — it commits and hands t
 
 Read `analysis_caches` from the most recent discovery output. Load **[topic-discovery-dispatch.md](../leeway-shared/references/topic-discovery-dispatch.md)** with work_unit = `{work_unit}`, analysis_caches = `{analysis_caches}`.
 
-On return, `new_arrivals` is populated for Step 6 to render the callout.
+On return, `new_arrivals` is populated for Step 5 to render the callout.
 
 → On return, proceed to **Step 4**.
 
@@ -129,37 +129,9 @@ Hold the refreshed output as the most recent discovery output.
 
 ---
 
-## Step 5: Sequence Build Order
+## Step 5: Display State and Menu
 
-Read `build_order_needs_sequencing` from the most recent discovery output.
-
-#### If `build_order_needs_sequencing` is true
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Sequence Build Order`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Assigning the build order across the specification topics.
-```
-
-Load **[sequence-build-order.md](../leeway-shared/references/sequence-build-order.md)** with work_unit = `{work_unit}`.
-
-→ On return, proceed to **Step 6**.
-
-#### Otherwise
-
-→ Proceed to **Step 6**.
-
----
-
-## Step 6: Display State and Menu
-
-Load **[banner-and-completion.md](references/banner-and-completion.md)** and follow its instructions as written, then show the epic.
+Load **[phase-banner.md](references/phase-banner.md)** and follow its instructions as written, then show the epic.
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -175,11 +147,11 @@ Load **[banner-and-completion.md](references/banner-and-completion.md)** and fol
 
 Load **[epic-display-and-menu.md](references/epic-display-and-menu.md)** with new_arrivals = `{new_arrivals}`.
 
-→ On return, proceed to **Step 7**.
+→ On return, proceed to **Step 6**.
 
 ---
 
-## Step 7: Route Selection
+## Step 6: Route Selection
 
 The user's selection carries the `route` epic-display-and-menu.md stored for it, e.g. `/leeway-discussion-process epic {work_unit} {topic}`. Selections whose flows resolve inside that reference never reach this step.
 

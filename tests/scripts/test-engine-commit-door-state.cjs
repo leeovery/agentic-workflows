@@ -85,7 +85,7 @@ describe('engine commit --topic: pathspec isolation', () => {
     assert.strictEqual(clean.committed, null);
     assert.strictEqual(clean.note, 'nothing to commit');
 
-    const missing = ok(dir, ['commit', 'payments', '-m', 'noop', '--topic', 'review/never-started']);
+    const missing = ok(dir, ['commit', 'payments', '-m', 'noop', '--topic', 'investigation/never-started']);
     assert.strictEqual(missing.committed, null);
     assert.strictEqual(missing.note, 'nothing to commit');
   });
@@ -275,13 +275,13 @@ describe('engine commit --state: the analysis scopes', () => {
   });
 
   it('the global form takes .leeway/.state and nothing else', () => {
-    writeState(dir, layout.projectState('environment-setup.md'), '# Environment\n');
+    writeState(dir, layout.migrations, '062\n');
     writeState(dir, layout.doc('payments', 'investigation', 'topic-b'), '# Topic B\npeer session dirt\n');
     writeState(dir, layout.manifest('payments'), JSON.stringify(epicManifest(), null, 2) + '\n\n');
 
-    const res = ok(dir, ['commit', '--state', '-m', 'chore: record environment setup']);
+    const res = ok(dir, ['commit', '--state', '-m', 'chore: record the migrations run']);
 
-    assert.deepStrictEqual(headFiles(dir), [layout.projectState('environment-setup.md')]);
+    assert.deepStrictEqual(headFiles(dir), [layout.migrations]);
     assert.match(res.committed, /^[0-9a-f]+$/);
     assert.deepStrictEqual(
       statusLines(dir).sort(),
@@ -613,7 +613,7 @@ describe('engine commit --migrations: the state and the paths the workflows own'
     assert.match(refuses(dir, ['commit', '--migrations', '--state', '-m', 'x']).error, /Usage/);
     assert.match(refuses(dir, ['commit', 'payments', '--migrations', '-m', 'x']).error, /Usage/);
     assert.match(refuses(dir, ['commit', '--paths', 'src/app.js', '--migrations', '-m', 'x',
-      '--for', 'payments', 'implementation/topic-a']).error, /Usage/);
+      '--task', 'payments', '1.1']).error, /Usage/);
     assert.match(refuses(dir, ['commit', '--migrations']).error, /Usage/);
   });
 

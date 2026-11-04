@@ -335,17 +335,34 @@ describe('engine topic start', () => {
     assert.match(engineFails(dir, ['topic', 'begin', 'payments', 'investigation', 'auth-flow']).error, /Usage: engine topic <start\|send\|complete\|reopen\|cancel\|reactivate\|postpone\|mailbox\|answered\|add\|add-batch\|edit\|rename\|remove\|order\|brief> <work-unit> …/);
   });
 
-  it('refuses a specification item on every unit but a quick-fix — the spec is entered at the work unit', () => {
+  it('refuses a specification or planning item on every unit but a quick-fix — the spec is entered at the work unit, the build planned by its cut', () => {
     const before = fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8');
     for (const verb of ['start', 'complete', 'reopen']) {
       assert.strictEqual(engineFails(dir, ['topic', verb, 'payments', 'specification', 'auth-flow']).error,
         "payments's spec keeps no items — it is entered at the work unit: engine enter specification payments", verb);
+      assert.strictEqual(engineFails(dir, ['topic', verb, 'payments', 'planning', 'auth-flow']).error,
+        "payments's build is planned by its cut — a planning item is a quick-fix's scoping's alone", verb);
     }
     assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'), before, 'nothing written');
     writeFile(dir, '.leeway/typo/manifest.json', JSON.stringify({
       name: 'typo', work_type: 'quick-fix', status: 'in-progress', phases: { scoping: { items: { typo: { status: 'in-progress' } } } },
     }, null, 2) + '\n');
     assert.strictEqual(engine(dir, ['topic', 'start', 'typo', 'specification', 'typo']).created, true, "scoping's spec keeps its item");
+    assert.strictEqual(engine(dir, ['topic', 'start', 'typo', 'planning', 'typo']).created, true, "scoping's plan keeps its item");
+  });
+
+  it('refuses the build\'s places on every unit, a quick-fix\'s too — they stand by the build\'s cut, entered by `enter`', () => {
+    writeFile(dir, '.leeway/typo/manifest.json', JSON.stringify({
+      name: 'typo', work_type: 'quick-fix', status: 'in-progress', phases: { scoping: { items: { typo: { status: 'completed' } } } },
+    }, null, 2) + '\n');
+    const before = fs.readFileSync(path.join(dir, '.leeway/typo/manifest.json'), 'utf8');
+    for (const verb of ['start', 'complete', 'reopen']) {
+      for (const phase of ['implementation', 'review']) {
+        assert.strictEqual(engineFails(dir, ['topic', verb, 'typo', phase, 'typo']).error,
+          `${phase} stands by the build's cut — it is entered by \`engine enter ${phase} <work-unit>\`, never written by a topic verb`, `${verb} ${phase}`);
+      }
+    }
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/typo/manifest.json'), 'utf8'), before, 'nothing written');
   });
 
   it('flips an unstarted stub to in-progress — the one exit from unstarted', () => {
@@ -516,28 +533,33 @@ describe('engine topic reopen', () => {
     assert.match(stateGit(dir, ['status', '--porcelain']), /^ M payments\/manifest\.json/m);
   });
 
-  it('every hop flags completed items only — a planning reopen leaves an in-progress implementation alone', () => {
-    const m = epicManifest();
-    m.phases.planning = { items: { 'fee-model': { status: 'completed' } } };
-    m.phases.implementation = { items: { 'fee-model': { status: 'in-progress' } } };
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+  /** A quick-fix whose scoping concluded, its implementation item as given. @param {Record<string, any>} implementation */
+  function scoped(implementation) {
+    writeFile(dir, '.leeway/typo/manifest.json', JSON.stringify({
+      name: 'typo', work_type: 'quick-fix', status: 'in-progress',
+      phases: {
+        scoping: { items: { typo: { status: 'completed' } } },
+        implementation: { items: { typo: implementation } },
+      },
+    }, null, 2) + '\n');
+  }
 
-    const res = engine(dir, ['topic', 'reopen', 'payments', 'planning', 'fee-model']);
+  it('every hop flags completed items only — a scoping reopen leaves an in-progress implementation alone', () => {
+    scoped({ status: 'in-progress' });
+
+    const res = engine(dir, ['topic', 'reopen', 'typo', 'scoping', 'typo']);
 
     assert.strictEqual(res.reconcile_flagged, undefined);
-    assert.strictEqual(readManifest(dir, 'payments').phases.implementation.items['fee-model'].reconcile_needed, undefined);
+    assert.strictEqual(readManifest(dir, 'typo').phases.implementation.items.typo.reconcile_needed, undefined);
   });
 
   it('never clobbers an existing downstream flag', () => {
-    const m = epicManifest();
-    m.phases.planning = { items: { 'fee-model': { status: 'completed' } } };
-    m.phases.implementation = { items: { 'fee-model': { status: 'completed', reconcile_needed: 'review' } } };
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    scoped({ status: 'completed', reconcile_needed: 'review' });
 
-    const res = engine(dir, ['topic', 'reopen', 'payments', 'planning', 'fee-model']);
+    const res = engine(dir, ['topic', 'reopen', 'typo', 'scoping', 'typo']);
 
     assert.strictEqual(res.reconcile_flagged, undefined);
-    assert.strictEqual(readManifest(dir, 'payments').phases.implementation.items['fee-model'].reconcile_needed, 'review', 'the earlier flag preserved');
+    assert.strictEqual(readManifest(dir, 'typo').phases.implementation.items.typo.reconcile_needed, 'review', 'the earlier flag preserved');
   });
 
   it('refuses a discussion, whatever it stands at — a decided one reopens through a message sent to it', () => {
@@ -549,26 +571,8 @@ describe('engine topic reopen', () => {
     assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'), before);
   });
 
-  it('planning reopen flags the completed implementation — the pipeline hop', () => {
-    const m = epicManifest();
-    m.phases.planning = { items: { 'auth-flow': { status: 'completed' } } };
-    m.phases.implementation = { items: { 'auth-flow': { status: 'completed' } } };
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
-
-    const res = engine(dir, ['topic', 'reopen', 'payments', 'planning', 'auth-flow']);
-
-    assert.deepStrictEqual(res.reconcile_flagged, [{ phase: 'implementation', topic: 'auth-flow' }]);
-    assert.strictEqual(readManifest(dir, 'payments').phases.implementation.items['auth-flow'].reconcile_needed, 'planning');
-  });
-
-  it('quick-fix scoping reopen flags the completed implementation', () => {
-    writeFile(dir, '.leeway/typo/manifest.json', JSON.stringify({
-      name: 'typo', work_type: 'quick-fix', status: 'in-progress',
-      phases: {
-        scoping: { items: { typo: { status: 'completed' } } },
-        implementation: { items: { typo: { status: 'completed' } } },
-      },
-    }, null, 2) + '\n');
+  it('quick-fix scoping reopen flags the completed implementation — the pipeline hop', () => {
+    scoped({ status: 'completed' });
 
     const res = engine(dir, ['topic', 'reopen', 'typo', 'scoping', 'typo']);
 
@@ -585,16 +589,16 @@ describe('engine topic reopen', () => {
 
   it('refuses a cancelled item — reactivate owns that path', () => {
     const m = epicManifest();
-    m.phases.planning = { items: { 'auth-flow': { status: 'cancelled' } } };
+    m.phases.investigation.items['auth-flow'] = { status: 'cancelled' };
     writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
-    const err = engineFails(dir, ['topic', 'reopen', 'payments', 'planning', 'auth-flow']);
+    const err = engineFails(dir, ['topic', 'reopen', 'payments', 'investigation', 'auth-flow']);
     assert.match(err.error, /is cancelled — reactivate it instead/);
   });
 
   it('rejects unknown work unit, phase, missing item, and missing args — loud and specific', () => {
     assert.match(engineFails(dir, ['topic', 'reopen', 'ghost', 'investigation', 'fee-model']).error, /manifest not found/);
     assert.match(engineFails(dir, ['topic', 'reopen', 'payments', 'nonsense', 'fee-model']).error, /unknown or non-lifecycle phase "nonsense"/);
-    assert.match(engineFails(dir, ['topic', 'reopen', 'payments', 'planning', 'fee-model']).error, /no planning items/);
+    assert.match(engineFails(dir, ['topic', 'reopen', 'payments', 'scoping', 'fee-model']).error, /no scoping items/);
     assert.match(engineFails(dir, ['topic', 'reopen', 'payments', 'investigation', 'ghost']).error, /no investigation item "ghost"/);
     assert.match(engineFails(dir, ['topic', 'reopen', 'payments', 'investigation']).error, /Usage: engine topic reopen/);
   });
@@ -1054,12 +1058,12 @@ describe('engine topic complete — a reconcile flag is its phase start\'s, neve
     assert.strictEqual(readManifest(dir, 'payments').phases.investigation.items['auth-flow'].reconcile_needed, true, 'the flag stands for the entry advisory');
   });
 
-  it('other phases\' flags are their start\'s alone — a flagged plan completes untouched', () => {
+  it('other phases\' flags are their start\'s alone — a flagged scoping completes untouched', () => {
     const m = epicManifest();
-    m.phases.planning = { items: { 'refund-policy': { status: 'in-progress', reconcile_needed: 'specification' } } };
+    m.phases.scoping = { items: { 'refund-policy': { status: 'in-progress', reconcile_needed: 'investigation' } } };
     writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
-    assert.strictEqual(engine(dir, ['topic', 'complete', 'payments', 'planning', 'refund-policy']).status, 'completed');
+    assert.strictEqual(engine(dir, ['topic', 'complete', 'payments', 'scoping', 'refund-policy']).status, 'completed');
     const after = readManifest(dir, 'payments');
-    assert.strictEqual(after.phases.planning.items['refund-policy'].reconcile_needed, 'specification');
+    assert.strictEqual(after.phases.scoping.items['refund-policy'].reconcile_needed, 'investigation');
   });
 });

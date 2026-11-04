@@ -304,7 +304,7 @@ const engineGate = (environment: ReadonlyMap<string, string>) =>
 const ENGINE_CALL = {
   tool: 'Bash' as const,
   command:
-    'node .claude/skills/leeway-engine/scripts/engine.cjs render task-gate auth.implementation.auth-flow',
+    'node .claude/skills/leeway-engine/scripts/engine.cjs render finish auth-flow',
 }
 
 /** The same call made inside a subagent's loop. */

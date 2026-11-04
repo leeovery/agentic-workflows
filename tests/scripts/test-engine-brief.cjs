@@ -685,6 +685,23 @@ describe('the templates and the store', () => {
     }
   });
 
+  it('the agents the skills dispatch are the roster, exactly: no second pass over a phase\'s tasks and no gap checker among them (12.S10, 26.S12)', () => {
+    const ROSTER = [
+      'leeway-builder', 'leeway-closing-pass-reader', 'leeway-consolidation', 'leeway-deep-dive', 'leeway-discussion-perspective',
+      'leeway-discussion-reviewer', 'leeway-discussion-synthesis', 'leeway-investigation-fix-validation', 'leeway-investigation-root-cause-validation',
+      'leeway-migration-topic', 'leeway-migration-verifier', 'leeway-phase-cut', 'leeway-plain-search', 'leeway-product-researcher',
+      'leeway-reviewer', 'leeway-spec-reviewer', 'leeway-spec-writer', 'leeway-sweep', 'leeway-task-writer', 'leeway-test-surface',
+    ];
+    const skills = path.join(__dirname, '../../skills');
+    const byPath = /** @type {string[]} */ (fs.readdirSync(skills, { recursive: true }))
+      .filter((file) => /\.(md|cjs)$/.test(file))
+      .flatMap((file) => [...fs.readFileSync(path.join(skills, file), 'utf8').matchAll(/\.claude\/agents\/([\w-]+)\.md/g)].map((m) => m[1]));
+    const dispatched = [...new Set([...Object.values(ROLES).map(({ agent }) => agent), ...byPath])].sort();
+    const defined = fs.readdirSync(AGENTS).filter((file) => file.endsWith('.md')).map((file) => file.slice(0, -3)).sort();
+    assert.deepStrictEqual(dispatched, ROSTER, 'a role\'s agent or an agent path a skill names');
+    assert.deepStrictEqual(defined, ROSTER, 'the definitions');
+  });
+
   it('a template is refused for a slot not alone on its line, one no record answers, one its role does not draw on, and a record\'s slot missing or twice', () => {
     const builder = '{{engine}}\n{{task}}\n{{spec-sections}}\n{{decided-calls}}\n{{linters}}\n{{chain}}\n{{account-to}}\n{{setup-to}}\n';
     assert.strictEqual(templateOf('builder', builder), builder);

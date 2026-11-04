@@ -24,9 +24,9 @@ const VALID_PHASES = [
 // dashboards, gateways, and the simulation all read these arrays, never a
 // local copy.
 const WORK_TYPE_PIPELINES = {
-  epic:            ['experiment', 'discussion', 'specification', 'planning', 'implementation', 'review'],
-  feature:         ['experiment', 'discussion', 'specification', 'planning', 'implementation', 'review'],
-  bugfix:          ['investigation', 'specification', 'planning', 'implementation', 'review'],
+  epic:            ['experiment', 'discussion', 'specification', 'implementation', 'review'],
+  feature:         ['experiment', 'discussion', 'specification', 'implementation', 'review'],
+  bugfix:          ['investigation', 'specification', 'implementation', 'review'],
   'quick-fix':     ['scoping', 'implementation', 'review'],
   'cross-cutting': ['experiment', 'discussion', 'specification'],
 };
@@ -65,7 +65,7 @@ const VALID_PHASE_STATUSES = {
   investigation:  ['unstarted', 'in-progress', 'completed', 'cancelled'],
   scoping:        ['in-progress', 'completed', 'cancelled'],
   // The one spec keeps no items (P7); a quick-fix's scoping keeps its spec
-  // item until 29.15.
+  // and its plan items until 29.15.
   specification:  ['in-progress', 'completed', 'cancelled'],
   planning:       ['in-progress', 'completed', 'cancelled'],
   implementation: ['in-progress', 'completed', 'cancelled'],
@@ -168,32 +168,9 @@ function isImportOrigin(origin) {
 // spawning discussion's own item, `awaiting_experiments`.
 const EXPERIMENT_SPAWN_PHASES = ['discussion'];
 
-// Every phase whose conclusion the wait gate holds on an upstream that has
-// not landed, and so that leaves on a pause rather than a conclusion:
-// discussion, plus planning, whose conclusion still fetches the wait gate
-// until planning itself goes (29.14). The wait gate, the paused banner and
-// the handoff into the epic menu address these and no others.
-const WAITING_PHASES = [...EXPERIMENT_SPAWN_PHASES, 'planning'];
-
-// Gate modes. `auto` runs to the end of the session — a phase's start
-// returns every gate to `gated`; `bounded` is auto with an end the gate
-// declares in GATE_FIELDS, and the domain ring owning that bound returns the
-// gate to `gated` at the bound's close.
-const VALID_GATE_MODES = ['gated', 'auto', 'bounded'];
-
-// The gate-mode fields each phase's items carry, keyed by phase, each naming
-// its bound or `null` for none. The one home for which gate lives where and
-// which gates `bounded` can reach: the field surface accepts a `*_gate_mode`
-// write only where this table places it and `bounded` only where the entry
-// names a bound, and the domain ring owning a bound reads the same entries
-// to know what its close resets (`plan-phase`: domain/tasks.cjs, at `task
-// complete --phase-complete`). A walk's nested gate (`staging.<key>.gate_mode`,
-// `analysis_staging.<name>.gate_mode`) is the walk's own and takes no bound.
-/** @type {Record<string, Record<string, string | null>>} */
-const GATE_FIELDS = {
-  planning:       { task_list_gate_mode: null, author_gate_mode: null, finding_gate_mode: null },
-  implementation: { task_gate_mode: 'plan-phase', fix_gate_mode: 'plan-phase', analysis_gate_mode: null, consolidation_gate_mode: null },
-};
+// A walk's gate mode (`analysis_staging.<name>.gate_mode`): `auto` runs the
+// walk to its end.
+const VALID_GATE_MODES = ['gated', 'auto'];
 
 const VALID_WORK_UNIT_STATUSES = ['in-progress', 'completed', 'cancelled'];
 
@@ -272,9 +249,7 @@ module.exports = {
   IMPORT_PHASES,
   isImportOrigin,
   EXPERIMENT_SPAWN_PHASES,
-  WAITING_PHASES,
   VALID_GATE_MODES,
-  GATE_FIELDS,
   VALID_WORK_UNIT_STATUSES,
   BUILD_POSITIONS,
   TERMINAL_STATUSES,

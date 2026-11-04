@@ -1,6 +1,6 @@
 # Backlogging
 
-*Shared reference. Loaded by the `## Backlogging` section on the investigation, scoping, specification, planning, implementation, and review processing skills.*
+*Shared reference. Loaded by the `## Backlogging` section on the investigation, scoping, specification, implementation, and review processing skills, and by the build's `outside-the-plan.md`.*
 
 ---
 
@@ -69,11 +69,10 @@ Emit the call's MENU section verbatim per its marker.
 | `{phase}` | `{source}` |
 | --- | --- |
 | `investigation` | `{work_unit}/investigation/{topic}.md` |
-| `planning` | `{work_unit}/planning/{topic}/planning.md` |
 | `specification`, `implementation`, `review` | `{work_unit}/spec.md` |
 | `scoping` | `{work_unit}/specification/{topic}/specification.md` |
 
-A source is recorded only once it is on disk. Before this session's record exists (a scoping or specification session before its first write, a planning session before `planning.md`), the park carries none: both calls below leave `[--source {source}]` out.
+A source is recorded only once it is on disk. Before this session's record exists (a scoping or specification session before its first write), the park carries none: both calls below leave `[--source {source}]` out.
 
 **The confirm** — it states the item and its summary, marking a bug or a quick-fix as one, the horizon (flagged new when the map does not hold it), the roadmap's own birth when there is none, and the source where there is one. A refusal means the name is already on the roadmap: derive another and render again.
 

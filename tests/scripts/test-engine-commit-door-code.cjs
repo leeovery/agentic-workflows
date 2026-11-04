@@ -5,23 +5,26 @@
 // committed in the code tree under the commit lock, and across the repos
 // nested in the project — each path in the repo that owns it, a submodule's
 // pointer recorded in its parent, refused before any repo commits where one
-// cannot.
+// cannot. Each is made under the task in flight, whose own refusals and
+// trailer are test-engine-commit-task.cjs's.
 //
 // Layer: git. World: the project world and its code projects, built once and
-// copied (engine-harness.cjs), the commit door's epic over them
-// (commit-door-world.cjs).
+// copied (engine-harness.cjs), the commit door's epic over them and its task
+// in flight, the checkout on its branch (commit-door-world.cjs).
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
 
-const { describe, it, beforeEach, afterEach } = require('node:test');
+const { describe, it, before, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
 const harness = require('./engine-harness.cjs');
 const { ok, refuses, git, commitAll, cleanupFixture, fixtureFrom, statePath, layout, createFile, writeState } = harness;
-const { codeHeadFiles, codeStatusLines, epicManifest, implementing } = require('./commit-door-world.cjs');
+const { codeHeadFiles, codeStatusLines, epicManifest, implementing, building, FOR_TASK, TASK_BRANCH, startBuilding } = require('./commit-door-world.cjs');
+
+before(startBuilding);
 
 describe('engine commit --paths: the code commit', () => {
   const setup = fixtureFrom('engine-commit-', (at) => implementing(at, { 'src/other.js': 'const y = 1;\n', 'src/gone.js': 'const z = 1;\n' }));
@@ -29,7 +32,6 @@ describe('engine commit --paths: the code commit', () => {
   beforeEach(() => { dir = setup(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  const forTopic = ['--for', 'payments', 'implementation/topic-a'];
 
   it('commits the named paths and answers the dirt still outside .leeway', () => {
     createFile(dir, 'src/app.js', 'const x = 2;\n');
@@ -37,7 +39,7 @@ describe('engine commit --paths: the code commit', () => {
     createFile(dir, 'src/other.js', 'const y = 2;\n');
     writeState(dir, layout.doc('payments', 'investigation', 'topic-b'), '# Topic B\na doc session\'s dirt\n');
 
-    const res = ok(dir, ['commit', '--paths', 'src/app.js', 'src/new.js', '-m', 'feat(topic-a): the task', ...forTopic]);
+    const res = ok(dir, ['commit', '--paths', 'src/app.js', 'src/new.js', '-m', 'feat(topic-a): the task', ...FOR_TASK], building);
 
     assert.deepStrictEqual(res.committed, [{ repo: '.', sha: git(dir, ['rev-parse', '--short', 'HEAD']).trim() }],
       'a project of one repo commits once, in the root');
@@ -47,15 +49,13 @@ describe('engine commit --paths: the code commit', () => {
       'the forgotten path is named; a doc session\'s .leeway dirt is its own');
   });
 
-  it('records a task\'s deletion and beats the named code topic', () => {
+  it('records a task\'s deletion', () => {
     fs.unlinkSync(path.join(dir, 'src/gone.js'));
 
-    const res = ok(dir, ['commit', '--paths', 'src/gone.js', '-m', 'refactor(topic-a): drop the module', ...forTopic]);
+    const res = ok(dir, ['commit', '--paths', 'src/gone.js', '-m', 'refactor(topic-a): drop the module', ...FOR_TASK], building);
 
     assert.ok(codeHeadFiles(dir).includes('src/gone.js'), 'the deletion rides the commit');
     assert.deepStrictEqual(res.left_dirty, []);
-    assert.ok(fs.existsSync(statePath(dir, layout.cache('payments', 'implementation', 'topic-a', 'presence'))),
-      '--for beats the code topic');
   });
 
   it('carries a staged rename, and reads the residual dirt past its two-field record', () => {
@@ -66,7 +66,7 @@ describe('engine commit --paths: the code commit', () => {
     createFile(dir, 'src/left-behind.js', '// not this task\n');
 
     const res = ok(dir, ['commit', '--paths', 'src/other.js', 'src/renamed.js',
-      '-m', 'refactor(topic-a): move the module', ...forTopic]);
+      '-m', 'refactor(topic-a): move the module', ...FOR_TASK], building);
 
     assert.deepStrictEqual(
       git(dir, ['show', '--name-only', '--no-renames', '--pretty=format:', 'HEAD']).trim().split('\n').filter(Boolean).sort(),
@@ -76,7 +76,7 @@ describe('engine commit --paths: the code commit', () => {
   });
 
   it('answers nothing to commit when the named paths are clean', () => {
-    const res = ok(dir, ['commit', '--paths', 'src/app.js', '-m', 'noop', ...forTopic]);
+    const res = ok(dir, ['commit', '--paths', 'src/app.js', '-m', 'noop', ...FOR_TASK], building);
     assert.deepStrictEqual(res.committed, []);
     assert.strictEqual(res.note, 'nothing to commit');
   });
@@ -85,7 +85,7 @@ describe('engine commit --paths: the code commit', () => {
     const named = ['app/[id]/page.tsx', 'app/(marketing)/page.tsx', 'src/a*b?.js', ':notes.md'];
     for (const rel of [...named, 'app/i/page.tsx', 'app/d/page.tsx', 'src/aXbY.js']) createFile(dir, rel, `// ${rel}\n`);
 
-    const res = ok(dir, ['commit', '--paths', ...named, '-m', 'feat(topic-a): the routes', ...forTopic]);
+    const res = ok(dir, ['commit', '--paths', ...named, '-m', 'feat(topic-a): the routes', ...FOR_TASK], building);
 
     assert.deepStrictEqual(codeHeadFiles(dir).sort(), [...named].sort(), 'exactly the named files');
     assert.deepStrictEqual(res.left_dirty, ['app/d/page.tsx', 'app/i/page.tsx', 'src/aXbY.js'],
@@ -103,15 +103,15 @@ describe('engine commit --paths: the code commit', () => {
     fs.unlinkSync(path.join(dir, 'app/[slug]/old.tsx'));
     git(dir, ['rm', '-q', '--', ':(literal)app/(shop)/cart.tsx']);
     const call = ['commit', '--paths', 'app/[slug]/page.tsx', 'app/[slug]/old.tsx', 'app/(shop)/cart.tsx',
-      '-m', 'feat(topic-a): the slug route', ...forTopic];
+      '-m', 'feat(topic-a): the slug route', ...FOR_TASK];
 
-    const res = ok(dir, call);
+    const res = ok(dir, call, building);
 
     assert.deepStrictEqual(git(dir, ['show', '--name-status', '--pretty=format:', 'HEAD']).trim().split('\n').sort(),
       ['D\tapp/(shop)/cart.tsx', 'D\tapp/[slug]/old.tsx', 'M\tapp/[slug]/page.tsx']);
     assert.deepStrictEqual(res.left_dirty, ['app/s/old.tsx', 'app/s/page.tsx']);
 
-    const again = ok(dir, call);
+    const again = ok(dir, call, building);
     assert.deepStrictEqual(again.committed, [], 'the HEAD commit\'s own deletions pass the retry, with nothing left');
   });
 
@@ -123,63 +123,39 @@ describe('engine commit --paths: the code commit', () => {
     fs.symlinkSync('app', path.join(dir, 'alias'));
     createFile(dir, 'app/[id]/page.tsx', '// the route\n');
 
-    assert.strictEqual(refuses(dir, ['commit', '--paths', 'app/[id]/debug.log', '-m', 'x', ...forTopic]).error,
+    assert.strictEqual(refuses(dir, ['commit', '--paths', 'app/[id]/debug.log', '-m', 'x', ...FOR_TASK], building).error,
       'commit --paths: git in . refuses to stage "app/[id]/debug.log" (an ignore rule, or a path beyond a symbolic link)');
-    assert.strictEqual(refuses(dir, ['commit', '--paths', 'alias/[id]/page.tsx', '-m', 'x', ...forTopic]).error,
+    assert.strictEqual(refuses(dir, ['commit', '--paths', 'alias/[id]/page.tsx', '-m', 'x', ...FOR_TASK], building).error,
       'commit --paths: git in . refuses to stage "alias/[id]/page.tsx" (an ignore rule, or a path beyond a symbolic link)');
-    assert.strictEqual(refuses(dir, ['commit', '--paths', 'app/[x]/page.tsx', '-m', 'x', ...forTopic]).error,
+    assert.strictEqual(refuses(dir, ['commit', '--paths', 'app/[x]/page.tsx', '-m', 'x', ...FOR_TASK], building).error,
       'commit --paths: "app/[x]/page.tsx" is neither on disk nor tracked');
     assert.strictEqual(git(dir, ['diff', '--cached', '--name-only']).trim(), '', 'a refusal stages nothing');
   });
 
   it('refuses escapes, workflow artifacts, and a missing target', () => {
-    assert.match(refuses(dir, ['commit', '--paths', '../elsewhere.js', '-m', 'x', ...forTopic]).error, /resolves outside the project/);
-    assert.match(refuses(dir, ['commit', '--paths', '/etc/hosts', '-m', 'x', ...forTopic]).error, /resolves outside the project/);
-    assert.strictEqual(refuses(dir, ['commit', '--paths', '.leeway/payments/investigation/topic-a.md', '-m', 'x', ...forTopic]).error,
+    assert.match(refuses(dir, ['commit', '--paths', '../elsewhere.js', '-m', 'x', ...FOR_TASK], building).error, /resolves outside the project/);
+    assert.match(refuses(dir, ['commit', '--paths', '/etc/hosts', '-m', 'x', ...FOR_TASK], building).error, /resolves outside the project/);
+    assert.strictEqual(refuses(dir, ['commit', '--paths', '.leeway/payments/investigation/topic-a.md', '-m', 'x', ...FOR_TASK], building).error,
       'commit --paths: ".leeway/payments/investigation/topic-a.md" is in the workflows\' state — it commits by its own scope (--topic/--discovery/--plan)');
-    assert.match(refuses(dir, ['commit', '--paths', 'src/never-written.js', '-m', 'x', ...forTopic]).error, /neither on disk nor tracked/);
-    assert.match(refuses(dir, ['commit', '--paths', '-m', 'x', ...forTopic]).error, /Usage/);
-    assert.match(refuses(dir, ['commit', '--paths', 'src/app.js', '-m', 'x']).error, /Usage/);
-    assert.match(refuses(dir, ['commit', '--paths', 'src/app.js', '-m', 'x', '--for', 'payments', 'investigation/topic-a']).error, /Usage/);
-    assert.match(refuses(dir, ['commit', '--paths', 'src/app.js', '--for', 'payments', 'review/topic-a']).error, /Usage/);
-    assert.match(refuses(dir, ['commit', 'payments', '--paths', 'src/app.js', '-m', 'x', ...forTopic]).error, /Usage/);
+    assert.match(refuses(dir, ['commit', '--paths', 'src/never-written.js', '-m', 'x', ...FOR_TASK], building).error, /neither on disk nor tracked/);
+    assert.match(refuses(dir, ['commit', '--paths', '-m', 'x', ...FOR_TASK], building).error, /Usage/);
+    assert.match(refuses(dir, ['commit', '--paths', 'src/app.js', '-m', 'x'], building).error, /Usage/);
+    assert.match(refuses(dir, ['commit', '--paths', 'src/app.js', ...FOR_TASK], building).error, /Usage/);
+    assert.match(refuses(dir, ['commit', 'payments', '--paths', 'src/app.js', '-m', 'x', ...FOR_TASK], building).error, /Usage/);
     assert.strictEqual(codeStatusLines(dir).length, 0, 'a refusal touches nothing');
   });
 
   it('names a path in the state as in the state from a code worktree too, never as outside the project', () => {
     const wt = `${dir}-side`;
-    git(dir, ['worktree', 'add', '-q', '-b', 'side', wt]);
+    git(dir, ['checkout', '-q', '-b', 'side']);
+    git(dir, ['worktree', 'add', '-q', wt, TASK_BRANCH]);
     try {
       const inState = statePath(dir, layout.doc('payments', 'investigation', 'topic-a'));
-      assert.strictEqual(harness.refuses(wt, ['commit', '--paths', inState, '-m', 'x', ...forTopic]).error,
+      assert.strictEqual(harness.refuses(wt, ['commit', '--paths', inState, '-m', 'x', ...FOR_TASK], building).error,
         `commit --paths: "${inState}" is in the workflows' state — it commits by its own scope (--topic/--discovery/--plan)`);
     } finally {
       cleanupFixture(wt);
     }
-  });
-
-  it('refuses a --for target that does not exist — the phantom-hold repro', () => {
-    // The commit beats what --for names. A typo there mints a hold on a topic
-    // no session owns and no session-end sweeps, and the checkout's code slot
-    // then reads taken forever. It must refuse before anything is staged.
-    createFile(dir, 'src/app.js', 'const x = 2;\n');
-
-    assert.match(refuses(dir, ['commit', '--paths', 'src/app.js', '-m', 'x',
-      '--for', 'payments', 'implementation/topic-typo']).error,
-    /no implementation item "topic-typo" in "payments"/);
-    assert.match(refuses(dir, ['commit', '--paths', 'src/app.js', '-m', 'x',
-      '--for', 'no-such-unit', 'implementation/topic-a']).error,
-    /no work unit directory/);
-    assert.match(refuses(dir, ['commit', '--paths', 'src/app.js', '-m', 'x',
-      '--for', 'payments', 'implementation/..']).error,
-    /invalid topic name/);
-    assert.match(refuses(dir, ['commit', '--paths', 'src/app.js', '-m', 'x',
-      '--for', '../escapee', 'implementation/topic-a']).error,
-    /invalid work unit name/);
-
-    assert.ok(!fs.existsSync(statePath(dir, layout.cache('payments', 'implementation', 'topic-typo'))),
-      'no ghost heartbeat is minted');
-    assert.deepStrictEqual(codeStatusLines(dir), [' M src/app.js'], 'a refusal stages nothing');
   });
 
   it('refuses a path deleted long before — only the HEAD commit\'s own deletion passes', () => {
@@ -188,7 +164,7 @@ describe('engine commit --paths: the code commit', () => {
     createFile(dir, 'src/app.js', 'const x = 2;\n');
     commitAll(dir, 'later work');
 
-    assert.match(refuses(dir, ['commit', '--paths', 'src/gone.js', '-m', 'x', ...forTopic]).error,
+    assert.match(refuses(dir, ['commit', '--paths', 'src/gone.js', '-m', 'x', ...FOR_TASK], building).error,
       /"src\/gone\.js" is neither on disk nor tracked/);
   });
 
@@ -196,18 +172,17 @@ describe('engine commit --paths: the code commit', () => {
     const repo = harness.setupGitFixture('engine-commit-nested-paths-');
     try {
       const project = path.join(repo, 'apps/web');
-      const manifest = epicManifest();
-      manifest.phases.implementation = { items: { 'topic-a': { status: 'in-progress' } } };
-      writeState(repo, layout.manifest('payments'), JSON.stringify(manifest, null, 2) + '\n');
+      writeState(repo, layout.manifest('payments'), JSON.stringify(epicManifest(), null, 2) + '\n');
       createFile(project, 'src/app.js', 'const x = 1;\n');
       createFile(repo, 'other/x.js', 'const s = 1;\n');
       commitAll(repo, 'init');
+      git(repo, ['checkout', '-q', '-b', TASK_BRANCH]);
       createFile(project, 'src/app.js', 'const x = 2;\n');
       createFile(project, 'src/leftover.js', 'const l = 1;\n');
       writeState(repo, layout.doc('payments', 'investigation', 'topic-b'), '# a doc session\'s own\n');
       createFile(repo, 'other/x.js', 'const s = 2;\n');
 
-      const res = ok(project, ['commit', '--paths', 'src/app.js', '-m', 'feat(topic-a): the task', ...forTopic]);
+      const res = ok(project, ['commit', '--paths', 'src/app.js', '-m', 'feat(topic-a): the task', ...FOR_TASK], building);
 
       assert.deepStrictEqual(res.committed, [{ repo: '.', sha: git(repo, ['rev-parse', '--short', 'HEAD']).trim() }]);
       assert.deepStrictEqual(codeHeadFiles(repo), ['apps/web/src/app.js']);
@@ -237,7 +212,6 @@ describe('engine commit --paths: code in repos of its own', () => {
   });
   afterEach(() => { cleanupFixture(dir); });
 
-  const forTopic = ['--for', 'payments', 'implementation/topic-a'];
   const head = (repo) => git(repo, ['rev-parse', '--short', 'HEAD']).trim();
   const subject = (repo) => git(repo, ['log', '-1', '--format=%s']).trim();
   /** The commit the root's HEAD records for a submodule. */
@@ -256,7 +230,7 @@ describe('engine commit --paths: code in repos of its own', () => {
     createFile(api, 'src/new.js', 'const n = 1;\n');
 
     const res = ok(dir, ['commit', '--paths', 'src/app.js', 'api/src/handler.js', 'api/src/new.js',
-      '-m', 'feat(topic-a): the task', ...forTopic]);
+      '-m', 'feat(topic-a): the task', ...FOR_TASK], building);
 
     assert.deepStrictEqual(res.committed, [{ repo: 'api', sha: head(api) }, { repo: '.', sha: head(dir) }]);
     assert.deepStrictEqual(codeHeadFiles(dir), ['src/app.js']);
@@ -270,7 +244,7 @@ describe('engine commit --paths: code in repos of its own', () => {
     const named = ['api/app/[id]/page.tsx', 'api/app/(marketing)/page.tsx', 'sdk/routes/[slug]/+page.svelte'];
     for (const rel of [...named, 'api/app/i/page.tsx', 'sdk/routes/s/+page.svelte']) createFile(dir, rel, `// ${rel}\n`);
 
-    const res = ok(dir, ['commit', '--paths', ...named, '-m', 'feat(topic-a): the routes', ...forTopic]);
+    const res = ok(dir, ['commit', '--paths', ...named, '-m', 'feat(topic-a): the routes', ...FOR_TASK], building);
 
     assert.deepStrictEqual(res.committed, [{ repo: 'api', sha: head(api) }, { repo: 'sdk', sha: head(sdk) }, { repo: '.', sha: head(dir) }]);
     assert.deepStrictEqual(codeHeadFiles(api).sort(), ['app/(marketing)/page.tsx', 'app/[id]/page.tsx']);
@@ -286,11 +260,11 @@ describe('engine commit --paths: code in repos of its own', () => {
     createFile(api, 'src/handler.js', 'const h = 2;\n');
     const apiBefore = head(api);
 
-    assert.strictEqual(refuses(dir, ['commit', '--paths', 'api/:(exclude)keep.txt', '-m', 'x', ...forTopic]).error,
+    assert.strictEqual(refuses(dir, ['commit', '--paths', 'api/:(exclude)keep.txt', '-m', 'x', ...FOR_TASK], building).error,
       'commit --paths: "api/:(exclude)keep.txt" is neither on disk nor tracked');
     assert.strictEqual(head(api), apiBefore, 'never a sweep of the clone');
 
-    const res = ok(dir, ['commit', '--paths', 'api/:weird.txt', '-m', 'feat(topic-a): the odd file', ...forTopic]);
+    const res = ok(dir, ['commit', '--paths', 'api/:weird.txt', '-m', 'feat(topic-a): the odd file', ...FOR_TASK], building);
 
     assert.deepStrictEqual(res.committed, [{ repo: 'api', sha: head(api) }]);
     assert.deepStrictEqual(codeHeadFiles(api), [':weird.txt']);
@@ -301,12 +275,10 @@ describe('engine commit --paths: code in repos of its own', () => {
     const rootBefore = head(dir);
     createFile(api, 'src/handler.js', 'const h = 2;\n');
 
-    const res = ok(dir, ['commit', '--paths', 'api/src/handler.js', '-m', 'feat(topic-a): the task', ...forTopic]);
+    const res = ok(dir, ['commit', '--paths', 'api/src/handler.js', '-m', 'feat(topic-a): the task', ...FOR_TASK], building);
 
     assert.deepStrictEqual(res.committed, [{ repo: 'api', sha: head(api) }]);
     assert.strictEqual(head(dir), rootBefore);
-    assert.ok(fs.existsSync(statePath(dir, layout.cache('payments', 'implementation', 'topic-a', 'presence'))),
-      'the commit beats the code topic once, in the project');
   });
 
   it('answers every repo\'s leftover in left_dirty, project-relative — never a parent\'s view of a nested repo', () => {
@@ -317,7 +289,7 @@ describe('engine commit --paths: code in repos of its own', () => {
     createFile(api, 'src/other.js', 'const o = 2;\n');
     createFile(web, 'index.js', 'const w = 2;\n');
 
-    const res = ok(dir, ['commit', '--paths', 'api/src/handler.js', '-m', 'feat(topic-a): the task', ...forTopic]);
+    const res = ok(dir, ['commit', '--paths', 'api/src/handler.js', '-m', 'feat(topic-a): the task', ...FOR_TASK], building);
 
     assert.ok(codeStatusLines(dir).includes('?? web/'), 'the root\'s git names the untracked repo\'s folder');
     assert.deepStrictEqual(res.left_dirty, ['api/src/other.js', 'web/index.js']);
@@ -328,7 +300,7 @@ describe('engine commit --paths: code in repos of its own', () => {
     createFile(sdk, 'src/handler.js', 'const h = 2;\n');
     createFile(dir, 'src/app.js', 'const x = 2;\n');
 
-    const both = ok(dir, ['commit', '--paths', 'src/app.js', 'sdk/src/handler.js', '-m', 'feat(topic-a): the task', ...forTopic]);
+    const both = ok(dir, ['commit', '--paths', 'src/app.js', 'sdk/src/handler.js', '-m', 'feat(topic-a): the task', ...FOR_TASK], building);
 
     assert.deepStrictEqual(both.committed, [{ repo: 'sdk', sha: head(sdk) }, { repo: '.', sha: head(dir) }]);
     assert.deepStrictEqual(codeHeadFiles(dir).sort(), ['sdk', 'src/app.js']);
@@ -336,7 +308,7 @@ describe('engine commit --paths: code in repos of its own', () => {
     assert.deepStrictEqual(both.left_dirty, []);
 
     createFile(sdk, 'src/other.js', 'const o = 2;\n');
-    const alone = ok(dir, ['commit', '--paths', 'sdk/src/other.js', '-m', 'feat(topic-a): the rest', ...forTopic]);
+    const alone = ok(dir, ['commit', '--paths', 'sdk/src/other.js', '-m', 'feat(topic-a): the rest', ...FOR_TASK], building);
 
     assert.deepStrictEqual(alone.committed, [{ repo: 'sdk', sha: head(sdk) }, { repo: '.', sha: head(dir) }],
       'a call naming the submodule alone records its pointer too');
@@ -344,7 +316,7 @@ describe('engine commit --paths: code in repos of its own', () => {
     assert.strictEqual(pointer('sdk'), git(sdk, ['rev-parse', 'HEAD']).trim());
 
     createFile(sdk, 'scratch.txt', 'stray\n');
-    const again = ok(dir, ['commit', '--paths', 'sdk/src/other.js', '-m', 'feat(topic-a): the rest', ...forTopic]);
+    const again = ok(dir, ['commit', '--paths', 'sdk/src/other.js', '-m', 'feat(topic-a): the rest', ...FOR_TASK], building);
 
     assert.deepStrictEqual(again.committed, [], 'work uncommitted inside the submodule is no pointer to record');
     assert.strictEqual(again.note, 'nothing to commit');
@@ -356,29 +328,29 @@ describe('engine commit --paths: code in repos of its own', () => {
     git(sdk, ['checkout', '-q', '--detach']);
     createFile(sdk, 'src/handler.js', 'const h = 2;\n');
     createFile(dir, 'src/app.js', 'const x = 2;\n');
-    const call = ['commit', '--paths', 'src/app.js', 'sdk/src/handler.js', '-m', 'feat(topic-a): the task', ...forTopic];
+    const call = ['commit', '--paths', 'src/app.js', 'sdk/src/handler.js', '-m', 'feat(topic-a): the task', ...FOR_TASK];
     const [rootBefore, sdkBefore] = [head(dir), head(sdk)];
 
-    assert.strictEqual(refuses(dir, call).error,
+    assert.strictEqual(refuses(dir, call, building).error,
       'commit --paths: sdk is on a detached HEAD — check out a branch there, then run the commit again');
     assert.deepStrictEqual([head(dir), head(sdk)], [rootBefore, sdkBefore], 'nothing commits in any repo');
 
     git(sdk, ['checkout', '-q', branch]);
     git(dir, ['checkout', '-q', '--detach']);
 
-    assert.strictEqual(refuses(dir, ['commit', '--paths', 'sdk/src/handler.js', '-m', 'feat(topic-a): the task', ...forTopic]).error,
+    assert.strictEqual(refuses(dir, ['commit', '--paths', 'sdk/src/handler.js', '-m', 'feat(topic-a): the task', ...FOR_TASK], building).error,
       'commit --paths: . is on a detached HEAD — check out a branch there, then run the commit again',
       'the parent a reached submodule\'s pointer lands in is checked too');
     assert.strictEqual(head(sdk), sdkBefore);
 
     git(dir, ['checkout', '-q', '-']);
-    const landed = ok(dir, call);
+    const landed = ok(dir, call, building);
 
     assert.deepStrictEqual(landed.committed, [{ repo: 'sdk', sha: head(sdk) }, { repo: '.', sha: head(dir) }]);
     assert.deepStrictEqual(codeHeadFiles(dir).sort(), ['sdk', 'src/app.js']);
   });
 
-  it('refuses a call that would commit in a repo mid-operation — a rebase in a submodule, a merge in the root — before any repo commits', () => {
+  it('refuses a call that would commit in a repo mid-operation — a rebase in a submodule, a cherry-pick in the root — before any repo commits', () => {
     const sdk = harness.addSubmodule(dir, 'sdk', api);
     createFile(sdk, 'src/handler.js', 'const h = 2;\n');
     commitAll(sdk, 'the submodule moves on');
@@ -387,30 +359,32 @@ describe('engine commit --paths: code in repos of its own', () => {
     createFile(dir, 'src/app.js', 'const x = 2;\n');
     const [rootBefore, sdkBefore] = [head(dir), head(sdk)];
 
-    assert.strictEqual(refuses(dir, ['commit', '--paths', 'src/app.js', 'sdk/src/other.js', '-m', 'feat(topic-a): the task', ...forTopic]).error,
+    assert.strictEqual(refuses(dir, ['commit', '--paths', 'src/app.js', 'sdk/src/other.js', '-m', 'feat(topic-a): the task', ...FOR_TASK], building).error,
       'commit --paths: a rebase is in progress in sdk (rebase-merge) — finish or abort it there, then run the commit again',
       'never read as the detached HEAD the rebase leaves');
     assert.deepStrictEqual([head(dir), head(sdk)], [rootBefore, sdkBefore], 'nothing commits in any repo');
 
     git(sdk, ['rebase', '--abort']);
     git(dir, ['checkout', '-q', '-b', 'side']);
-    createFile(dir, 'src/side.js', 'const s = 1;\n');
+    createFile(dir, 'src/app.js', 'const x = 3;\n');
     commitAll(dir, 'the side');
     git(dir, ['checkout', '-q', '-']);
-    git(dir, ['merge', '-q', '--no-ff', '--no-commit', 'side']);
+    createFile(dir, 'src/app.js', 'const x = 2;\n');
+    commitAll(dir, 'the app');
+    assert.throws(() => git(dir, ['cherry-pick', 'side']), 'the cherry-pick stops at its conflict');
     createFile(api, 'src/handler.js', 'const h = 3;\n');
-    const apiBefore = head(api);
+    const [rootPicking, apiBefore] = [head(dir), head(api)];
 
-    assert.strictEqual(refuses(dir, ['commit', '--paths', 'src/app.js', 'api/src/handler.js', '-m', 'feat(topic-a): the task', ...forTopic]).error,
-      'commit --paths: a merge is in progress in . (MERGE_HEAD) — finish or abort it there, then run the commit again');
-    assert.deepStrictEqual([head(dir), head(api)], [rootBefore, apiBefore], 'the clone, whose commit would come first, made none');
+    assert.strictEqual(refuses(dir, ['commit', '--paths', 'src/app.js', 'api/src/handler.js', '-m', 'feat(topic-a): the task', ...FOR_TASK], building).error,
+      'commit --paths: a cherry-pick is in progress in . (CHERRY_PICK_HEAD) — finish or abort it there, then run the commit again');
+    assert.deepStrictEqual([head(dir), head(api)], [rootPicking, apiBefore], 'the clone, whose commit would come first, made none');
   });
 
   it('never checks a repo the call does not commit in — a detached clone blocks nothing elsewhere', () => {
     git(api, ['checkout', '-q', '--detach']);
     createFile(dir, 'src/app.js', 'const x = 2;\n');
 
-    const res = ok(dir, ['commit', '--paths', 'src/app.js', '-m', 'feat(topic-a): the task', ...forTopic]);
+    const res = ok(dir, ['commit', '--paths', 'src/app.js', '-m', 'feat(topic-a): the task', ...FOR_TASK], building);
 
     assert.deepStrictEqual(res.committed, [{ repo: '.', sha: head(dir) }]);
   });
@@ -422,7 +396,7 @@ describe('engine commit --paths: code in repos of its own', () => {
     fs.symlinkSync(path.join(dir, 'nowhere'), path.join(dir, 'broken/.git'));
     createFile(dir, 'src/app.js', 'const x = 2;\n');
 
-    const res = ok(dir, ['commit', '--paths', 'src/app.js', '-m', 'feat(topic-a): the task', ...forTopic]);
+    const res = ok(dir, ['commit', '--paths', 'src/app.js', '-m', 'feat(topic-a): the task', ...FOR_TASK], building);
 
     assert.deepStrictEqual(res.committed, [{ repo: '.', sha: head(dir) }]);
     assert.deepStrictEqual(res.left_dirty, []);
@@ -433,7 +407,7 @@ describe('engine commit --paths: code in repos of its own', () => {
     createFile(dir, 'packages/readme.txt', 'the packages\n');
     createFile(sub, 'lib.txt', 'a library\n');
 
-    const res = ok(dir, ['commit', '--paths', 'packages', 'packages/sub/lib.txt', '-m', 'feat(topic-a): the task', ...forTopic]);
+    const res = ok(dir, ['commit', '--paths', 'packages', 'packages/sub/lib.txt', '-m', 'feat(topic-a): the task', ...FOR_TASK], building);
 
     assert.deepStrictEqual(res.committed, [{ repo: 'packages/sub', sha: head(sub) }, { repo: '.', sha: head(dir) }]);
     assert.deepStrictEqual(codeHeadFiles(dir).sort(), ['packages/readme.txt', 'packages/sub']);
@@ -448,7 +422,7 @@ describe('engine commit --paths: code in repos of its own', () => {
     commitAll(sdk, 'the submodule moves on its own');
     createFile(dir, 'src/app.js', 'const x = 2;\n');
 
-    const res = ok(dir, ['commit', '--paths', 'src/app.js', '-m', 'feat(topic-a): the task', ...forTopic]);
+    const res = ok(dir, ['commit', '--paths', 'src/app.js', '-m', 'feat(topic-a): the task', ...FOR_TASK], building);
 
     assert.deepStrictEqual(res.committed, [{ repo: '.', sha: head(dir) }]);
     assert.deepStrictEqual(codeHeadFiles(dir), ['src/app.js']);
@@ -461,7 +435,7 @@ describe('engine commit --paths: code in repos of its own', () => {
     createFile(kit, 'kit.js', 'const k = 1;\n');
     commitAll(kit, 'init');
 
-    const folder = ok(dir, ['commit', '--paths', 'packages', '-m', 'chore(topic-a): the notes', ...forTopic]);
+    const folder = ok(dir, ['commit', '--paths', 'packages', '-m', 'chore(topic-a): the notes', ...FOR_TASK], building);
 
     assert.deepStrictEqual(folder.committed, [{ repo: '.', sha: head(dir) }]);
     assert.deepStrictEqual(codeHeadFiles(dir), ['packages/notes.txt'], 'the folder\'s files ride, the repo inside it never does');
@@ -477,7 +451,7 @@ describe('engine commit --paths: code in repos of its own', () => {
     commitAll(sdk, 'the submodule moves on its own');
     createFile(dir, 'index.js', 'const i = 1;\n');
 
-    const beside = ok(dir, ['commit', '--paths', 'index.js', '-m', 'feat(topic-a): the task', ...forTopic]);
+    const beside = ok(dir, ['commit', '--paths', 'index.js', '-m', 'feat(topic-a): the task', ...FOR_TASK], building);
 
     assert.deepStrictEqual(beside.committed, [{ repo: '.', sha: head(dir) }]);
     assert.deepStrictEqual(codeHeadFiles(dir), ['index.js']);
@@ -485,7 +459,7 @@ describe('engine commit --paths: code in repos of its own', () => {
     assert.strictEqual(git(dir, ['diff', '--cached', '--name-only']).trim(), '', 'nothing is left staged');
 
     createFile(sdk, 'src/other.js', 'const o = 2;\n');
-    const into = ok(dir, ['commit', '--paths', 'vendor/sdk/src/other.js', '-m', 'feat(topic-a): the rest', ...forTopic]);
+    const into = ok(dir, ['commit', '--paths', 'vendor/sdk/src/other.js', '-m', 'feat(topic-a): the rest', ...FOR_TASK], building);
 
     assert.deepStrictEqual(into.committed, [{ repo: 'vendor/sdk', sha: head(sdk) }, { repo: '.', sha: head(dir) }]);
     assert.strictEqual(pointer('vendor/sdk'), git(sdk, ['rev-parse', 'HEAD']).trim(), 'the pointer lands without being added');
@@ -495,14 +469,14 @@ describe('engine commit --paths: code in repos of its own', () => {
     createFile(api, 'src/handler.js', 'const h = 2;\n');
     const hook = refusingHook(api, 'api');
 
-    assert.strictEqual(refuses(dir, ['commit', '--paths', 'api/src/handler.js', '-m', 'x', ...forTopic]).error,
+    assert.strictEqual(refuses(dir, ['commit', '--paths', 'api/src/handler.js', '-m', 'x', ...FOR_TASK], building).error,
       'the commit in api failed: git commit failed: the api hook refuses');
 
     fs.rmSync(hook);
     createFile(dir, 'src/app.js', 'const x = 2;\n');
     refusingHook(dir, 'root');
 
-    assert.strictEqual(refuses(dir, ['commit', '--paths', 'src/app.js', 'api/src/handler.js', '-m', 'x', ...forTopic]).error,
+    assert.strictEqual(refuses(dir, ['commit', '--paths', 'src/app.js', 'api/src/handler.js', '-m', 'x', ...FOR_TASK], building).error,
       `the commit in . failed after api committed ${head(api)} — re-running the same call commits the rest: git commit failed: the root hook refuses`);
   });
 
@@ -510,10 +484,10 @@ describe('engine commit --paths: code in repos of its own', () => {
     fs.unlinkSync(path.join(api, 'src/old.js'));
     createFile(dir, 'src/app.js', 'const x = 2;\n');
     const hook = refusingHook(dir, 'root');
-    const call = ['commit', '--paths', 'api/src/old.js', 'src/app.js', '-m', 'feat(topic-a): the task', ...forTopic];
+    const call = ['commit', '--paths', 'api/src/old.js', 'src/app.js', '-m', 'feat(topic-a): the task', ...FOR_TASK];
     const rootBefore = head(dir);
 
-    refuses(dir, call);
+    refuses(dir, call, building);
 
     const apiSha = head(api);
     assert.strictEqual(git(api, ['show', '--name-status', '--pretty=format:', 'HEAD']).trim(), 'D\tsrc/old.js',
@@ -521,7 +495,7 @@ describe('engine commit --paths: code in repos of its own', () => {
     assert.strictEqual(head(dir), rootBefore, 'the root committed nothing');
 
     fs.rmSync(hook);
-    const retried = ok(dir, call);
+    const retried = ok(dir, call, building);
 
     assert.deepStrictEqual(retried.committed, [{ repo: '.', sha: head(dir) }], 'the clone has nothing left in the paths');
     assert.strictEqual(head(api), apiSha);
@@ -533,12 +507,12 @@ describe('engine commit --paths: code in repos of its own', () => {
     const sdk = harness.addSubmodule(dir, 'sdk', api);
     createFile(sdk, 'src/handler.js', 'const h = 2;\n');
     const hook = refusingHook(dir, 'root');
-    const call = ['commit', '--paths', 'sdk/src/handler.js', '-m', 'feat(topic-a): the task', ...forTopic];
+    const call = ['commit', '--paths', 'sdk/src/handler.js', '-m', 'feat(topic-a): the task', ...FOR_TASK];
 
-    assert.match(refuses(dir, call).error, new RegExp(`^the commit in \\. failed after sdk committed ${head(sdk)} — `));
+    assert.match(refuses(dir, call, building).error, new RegExp(`^the commit in \\. failed after sdk committed ${head(sdk)} — `));
 
     fs.rmSync(hook);
-    const retried = ok(dir, call);
+    const retried = ok(dir, call, building);
 
     assert.deepStrictEqual(retried.committed, [{ repo: '.', sha: head(dir) }], 'the submodule has nothing left; its pointer has');
     assert.strictEqual(pointer('sdk'), git(sdk, ['rev-parse', 'HEAD']).trim());
@@ -551,7 +525,7 @@ describe('engine commit --paths: code in repos of its own', () => {
     createFile(dir, 'debug.log', 'noise\n');
     const apiBefore = head(api);
 
-    assert.strictEqual(refuses(dir, ['commit', '--paths', 'api/src/handler.js', 'debug.log', '-m', 'x', ...forTopic]).error,
+    assert.strictEqual(refuses(dir, ['commit', '--paths', 'api/src/handler.js', 'debug.log', '-m', 'x', ...FOR_TASK], building).error,
       'commit --paths: git in . refuses to stage "debug.log" (an ignore rule, or a path beyond a symbolic link)');
     assert.strictEqual(head(api), apiBefore, 'the clone, whose commit would come first, made none');
     assert.strictEqual(git(api, ['diff', '--cached', '--name-only']).trim(), '', 'and staged nothing');
@@ -559,7 +533,7 @@ describe('engine commit --paths: code in repos of its own', () => {
     createFile(dir, 'src/app.js', 'const x = 2;\n');
     const rootBefore = head(dir);
 
-    assert.match(refuses(dir, ['commit', '--paths', 'src/app.js', 'api/src/never-written.js', '-m', 'x', ...forTopic]).error,
+    assert.match(refuses(dir, ['commit', '--paths', 'src/app.js', 'api/src/never-written.js', '-m', 'x', ...FOR_TASK], building).error,
       /"api\/src\/never-written\.js" is neither on disk nor tracked/);
     assert.strictEqual(head(dir), rootBefore);
     assert.deepStrictEqual(codeStatusLines(dir), [' M src/app.js'], 'a refusal stages nothing');
@@ -569,13 +543,13 @@ describe('engine commit --paths: code in repos of its own', () => {
     harness.addSubmodule(dir, 'lib/gen/sdk', api, { force: true });
     createFile(dir, 'lib/util.js', 'const u = 1;\n');
 
-    assert.strictEqual(refuses(dir, ['commit', '--paths', 'api/src/handler.js', 'lib', '-m', 'x', ...forTopic]).error,
+    assert.strictEqual(refuses(dir, ['commit', '--paths', 'api/src/handler.js', 'lib', '-m', 'x', ...FOR_TASK], building).error,
       'commit --paths: git in . refuses to stage "lib" (an ignore rule, or a path beyond a symbolic link)',
       'a folder holding a submodule its parent ignores is checked as the commit would stage it');
     assert.strictEqual(head(api), apiBefore);
 
     git(api, ['rm', '-q', '--', 'src/old.js']);
-    const res = ok(dir, ['commit', '--paths', 'api/src/old.js', '-m', 'refactor(topic-a): drop the module', ...forTopic]);
+    const res = ok(dir, ['commit', '--paths', 'api/src/old.js', '-m', 'refactor(topic-a): drop the module', ...FOR_TASK], building);
 
     assert.deepStrictEqual(res.committed, [{ repo: 'api', sha: head(api) }], 'a deletion staged in the clone is its to commit');
     assert.deepStrictEqual(git(api, ['show', '--name-status', '--pretty=format:', 'HEAD']).trim(), 'D\tsrc/old.js');

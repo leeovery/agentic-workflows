@@ -370,9 +370,6 @@ describe('walkthrough sample surfaces', () => {
       '  └─ Sign In       [completed]',
       '     └─ Sign In    [incorporated]',
       '',
-      'PLANNING (1 completed)',
-      '  └─ Sign In    [completed · local-markdown]',
-      '',
       '── DELIVERY ─────────────────────────────────────────────────────',
       '',
       'IMPLEMENTATION (1 in-progress)',
@@ -394,16 +391,7 @@ describe('walkthrough sample surfaces', () => {
       });
     };
     fits('samples', at(CAP), CAP);
-    // At the floor the epic dashboard's planning row runs one column over,
-    // and it is the live surface doing it: the kernel tightens a tag column
-    // it cannot fit to a single space and lets the remainder soft-wrap
-    // (render.cjs columniseTags), exactly as it would for this epic on a
-    // 40-column pane. Pinned rather than relaxed — a sample that starts
-    // overflowing somewhere new should say so here.
-    assert.deepStrictEqual(
-      at(MIN).split('\n').filter((l) => [...l].length > MIN),
-      ['  └─ Sign In [completed · local-markdown]'],
-    );
+    fits('samples', at(MIN), MIN);
   });
 
   it('every fixture is a schema-valid .leeway tree', () => {
@@ -646,9 +634,6 @@ describe('walkthrough screens', () => {
       "  └─ Sign In       [completed]",
       "     └─ Sign In    [incorporated]",
       "",
-      "PLANNING (1 completed)",
-      "  └─ Sign In    [completed · local-markdown]",
-      "",
       "── DELIVERY ─────────────────────────────────────────────────────",
       "",
       "IMPLEMENTATION (1 in-progress)",
@@ -812,12 +797,6 @@ describe('walkthrough screens', () => {
     };
     assert.deepStrictEqual(at(CAP), []);
     assert.deepStrictEqual(at(FALLBACK), []);
-    // At the floor one row of the epic sample runs a single column over, and
-    // it is the live surface doing it — the kernel tightens a tag column it
-    // cannot fit and lets the remainder soft-wrap, exactly as it would for
-    // this epic on a 40-column pane. Pinned to that one row rather than
-    // allowed in general: a diagram that starts overflowing anywhere else
-    // has to say so here.
-    assert.deepStrictEqual(at(MIN), [{ screen: 5, line: '  └─ Sign In [completed · local-markdown]' }]);
+    assert.deepStrictEqual(at(MIN), []);
   });
 });

@@ -234,8 +234,6 @@ const layout = Object.freeze({
   lock: WRITER_LOCK,
   gitignore: '.gitignore',
   migrations: '.state/migrations',
-  /** The project's own analysis files. @param {string} name */
-  projectState: (name) => `.state/${name}`,
   /** An inbox capture. @param {string} kind @param {string} name */
   inbox: (kind, name) => `.inbox/${kind}/${name}`,
   /** A declined capture. @param {string} kind @param {string} name */

@@ -95,31 +95,9 @@ node .claude/skills/leeway-continue-epic/scripts/gateway.cjs in-session-gate {wo
 
 **If user chose `yes`:**
 
-Continue with the **Soft gate check** below.
-
-**Soft gate check** — before routing, the engine checks whether the selection conflicts with a phase-completion recommendation or the build order. Advisory, not blocking. Fetch the gate for the selected entry — `--topic` carries the entry's topic and is omitted for the topic-less command options:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render epic-soft-gate {work_unit} --action {action} [--topic {topic}]
-```
-
-**If the output is empty:**
-
-The selection raises no concern.
-
 → Proceed to **C. Route Selection**.
 
-**If a `MENU: epic soft gate` section is returned:**
-
-Emit the section verbatim per its marker.
-
-**STOP.** Wait for user response.
-
-**If user chose `back`:**
-
-→ Return to **A. State Display and Menu**.
-
-**If user chose `yes`:**
+**If the selected entry carries no `(in session: …)` marker:**
 
 → Proceed to **C. Route Selection**.
 

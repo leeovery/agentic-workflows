@@ -131,7 +131,7 @@ line and the skill stay. As the turn ends the mod clears the conversation and,
 in the conversation that follows, leaves what it sends with the line as
 `sent.json` in that conversation's folder, then sends the continuation, which
 Claude acts on there, and shows a toast naming where the work went
-(`Handed off → Planning · auth-flow`) for eight seconds. The clear runs from
+(`Handed off → Specification · auth-flow`) for eight seconds. The clear runs from
 a timer started at the turn's end, whatever else there fails: a mod cannot run
 a command inside a hook the turn waits on. A send that is dropped or fails
 goes into the prompt box for Enter instead; where the box will not take it
@@ -183,7 +183,7 @@ conversation's folder (`position.json`). The drawing alone changes, never what
 Claude reads. The mod reads the position once for each conversation the
 spinner draws in, and again after each engine call that moves it (`enter`,
 `session label`, `session repair`, `boot`, `task start`, `task done`, `task
-close`, `task complete`), never per frame. At a work unit's menu or the start
+close`), never per frame. At a work unit's menu or the start
 menu it keeps Claude Code's word, and on the Desktop app a step that names
 itself (`Creating notes.md`) keeps its words.
 
@@ -233,9 +233,7 @@ agent id the dispatch answers with, foreground or background, and the brief's
 id to the engine's `conversation builder`, which records it on the position
 against the task the brief was issued for — a builder in place of any before
 it, a reviewer beside the pair's other; with that task not in flight it
-records nothing. The plan's `leeway-implementation-task-executor` carries no
-brief, and is recorded as the builder of the one task in flight. The ids ride
-with their task and go when it ends, so a compaction's note names each task
+records nothing. The ids ride with their task and go when it ends, so a compaction's note names each task
 with its agents (``on task 2.3 (internal id `ledger-2-3`), its builder agent
 `aa76bd7f82a2ef3e4`, its reviewer agents `ab12` and `cd34` ``) and the next
 round continues them rather than dispatching fresh ones. Another agent, a

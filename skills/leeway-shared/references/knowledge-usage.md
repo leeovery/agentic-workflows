@@ -1,6 +1,6 @@
 # Knowledge Usage
 
-*Shared reference. Loaded by the investigation, scoping, planning, implementation, and review processing skills; by `contextual-query.md` for **B**, **C** and **D**, and planning's `cross-cutting-context.md` for **C** and **D**; and by `reading-the-mailbox.md` for **G**.*
+*Shared reference. Loaded by the investigation and scoping processing skills; by `contextual-query.md` for **B**, **C** and **D**; and by `reading-the-mailbox.md` for **G**.*
 
 ---
 
@@ -90,11 +90,8 @@ A result (or its source file) can carry a claim you have verified is wrong or ha
 
 - **Discussion** — query at the start and throughout. Decisions being made now often echo or contradict decisions made elsewhere. Check before committing to a direction.
 - **Investigation** — query at the start (after initial symptoms are gathered) and throughout. Symptoms and root causes may have been seen before — a matching prior investigation can save hours.
-- **Specification** — **do not query while authoring the spec.** The spec turns discussion decisions into a golden document. Cross-cutting concerns merge at planning time via an explicit cross-cutting query, not during spec authoring. Querying mid-spec pulls the document away from its own source material.
+- **Specification** — **do not query while authoring the spec.** The spec turns discussion decisions into a golden document. Querying mid-spec pulls the document away from its own source material.
 - **Scoping** — query throughout. Quick-fix scoping benefits from knowing if the issue was discussed or investigated elsewhere — a "mechanical change" often has a history.
-- **Planning** — **do not query during planning.** The spec is the golden document; planning operates on the spec alone. A spec gap that surfaces during planning is classified and landed through the planning flow (`resolve-spec-gap.md`) — never filled with a KB query. Cross-cutting context is handled at the plan's initialization via the explicit `--work-type cross-cutting` query (existing mechanism, not discretionary).
-- **Implementation** — code is the source of truth for *what* exists during implementation. Read the code; don't query the KB for it. The KB is useful only for the *why* behind an existing pattern or decision (e.g., "why does this use UUID v7?" — the rationale lives in the topic's record, not the code). Rare in practice. Never use it to fill spec gaps — those are blockers.
-- **Review** — query only for cross-work-unit consistency checks ("does this mirror how similar decisions were made elsewhere?"). Consistency with the current spec is already in scope — no KB needed for that.
 
 ## G. Sibling consult at cross-topic decision points
 

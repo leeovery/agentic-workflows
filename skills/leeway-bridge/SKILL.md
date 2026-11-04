@@ -14,8 +14,8 @@ A phase invokes this skill as it ends. A linear work type's next phase is derive
 
 This skill receives positional arguments:
 - `$0` — **work_unit**: the work unit name (directory under `.leeway/`). Held downstream as `{work_unit}`.
-- `$1` — **completed_phase**: the phase the work is leaving — the one that concluded, or the one pausing when `$2` is `paused`. Held downstream as `{completed_phase}`.
-- `$2` — **outcome** (optional): the literal `paused` when the phase is leaving on a wait rather than concluding — the wait gate's or the spawn gate's `yes`; the literal `cancelled` when the phase's topic was cancelled from inside its session and its receipt is already rendered, or `postponed` when it left for the roadmap the same way. Held downstream as `{outcome}`. Absent means the phase completed.
+- `$1` — **completed_phase**: the phase the work is leaving — the one that concluded, or the one whose topic left. Held downstream as `{completed_phase}`.
+- `$2` — **outcome** (optional): the literal `cancelled` when the phase's topic was cancelled from inside its session and its receipt is already rendered, or `postponed` when it left for the roadmap the same way. Held downstream as `{outcome}`. Absent means the phase completed.
 
 Record where this session is working — the call also labels the tmux session where the user opted in:
 

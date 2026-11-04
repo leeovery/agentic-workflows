@@ -194,7 +194,7 @@ describe('commit --task: the task in flight (6.S8)', () => {
     );
   });
 
-  it('refuses before reading a path: no conversation, a unit the project lacks, a task id that is no task, a task beside --for', () => {
+  it('refuses before reading a path: no conversation, a unit the project lacks, a task id that is no task', () => {
     const missing = ['src/missing.js'];
     assert.deepStrictEqual([
       refusedUncommitted(dir, commitArgs('1.1', missing)),
@@ -205,7 +205,6 @@ describe('commit --task: the task in flight (6.S8)', () => {
       'commit --task: this project has no work unit "payments" — name the unit the task is in',
       'commit --task: "1-1" is not a task — name it {phase}.{n}, as 1.2',
     ]);
-    assert.match(refusedUncommitted(dir, [...commitArgs(), '--for', UNIT, `implementation/${UNIT}`], as(BUILDING)), /^Usage: engine commit /);
   });
 });
 

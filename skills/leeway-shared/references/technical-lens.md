@@ -1,6 +1,6 @@
 # Technical-Lens Presentation
 
-*Shared reference. Loaded by `findings-signoff.md` and `raising-a-decision.md` when the user asks for the technical perspective.*
+*Shared reference. Loaded by `findings-signoff.md` and the build's `the-task-loop.md` when the user asks for the technical perspective.*
 
 ---
 

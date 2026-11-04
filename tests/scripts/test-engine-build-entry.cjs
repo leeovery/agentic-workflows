@@ -24,11 +24,9 @@
 // the tracker, the checklists and the landing hold it, and the build
 // finished only once every phase of the cut has closed, so nothing ready
 // with a phase not yet written never reads finished (7.4.3, 12.6.7, 12.S16,
-// 3.S3). The code gate's wording is render code-gate's
-// (test-engine-render-surfaces.cjs); a phase's checklists,
-// test-engine-build-checklists-*.cjs's; a task at its step gate,
-// test-engine-build-gates-standing.cjs's; the review's fix phases in the
-// standing, test-engine-review-fix-phases.cjs's.
+// 3.S3). A phase's checklists are test-engine-build-checklists-*.cjs's; a
+// task at its step gate, test-engine-build-gates-standing.cjs's; the
+// review's fix phases in the standing, test-engine-review-fix-phases.cjs's.
 //
 // Layer: verb. World, built once and copied: the ledger suites' epic,
 // `fumi`, its build begun in auto, its cut three phases — Cards and Reports
@@ -60,6 +58,8 @@ const { raiseHelpers } = require('./raise-world.cjs');
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { buildStanding } = require(path.join(SCRIPTS, 'domain/build-entry.cjs'));
 const { recordReviewer } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
+const { storeBrief } = require(path.join(SCRIPTS, 'domain/brief.cjs'));
+const { ROLES } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { computeNextPhase } = require(path.join(SCRIPTS, 'domain/derivations.cjs'));
 const { taskBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
 
@@ -156,6 +156,18 @@ const enter = (args, sessionId) => okSections(dir, ['enter', 'implementation', .
 
 /** An entry that must refuse, writing nothing: its error. @param {string[]} args */
 const refused = (args) => refusedPristine(dir, ['enter', 'implementation', ...args], { env: env() }).error;
+
+/**
+ * A builder dispatched for the task in flight in the conversation
+ * `sessionId`, as the gate mod records it: its brief issued there, then its
+ * agent.
+ * @param {string} task `{phase}.{n}` @param {string} agentId @param {string} [sessionId]
+ */
+function dispatchBuilder(task, agentId, sessionId = 'sess-1') {
+  const brief = `B${task.replace('.', '')}`;
+  withEnv({ LEEWAY_CONFIG_DIR: config }, () => storeBrief(sessionId, brief, `Brief ${brief}\n`, { role: 'builder', agent: ROLES.builder.agent, unit: UNIT, task, topic: null }));
+  ok(dir, ['conversation', 'builder', sessionId, agentId, '--brief', brief], { env: env(sessionId) });
+}
 
 /** A conversation's position as recorded, or null. @param {string} [sessionId] */
 function position(sessionId = 'sess-1') {
@@ -301,9 +313,9 @@ describe('the answer: where the build stands, and what to read beside the ledger
 
   it('takes a task another conversation left in flight onto this one\'s record with no builder and no pair, keeps this one\'s own as it stands, and leaves the other\'s record alone', () => {
     ok(dir, ['task', 'start', UNIT, '1.2'], { env: env('earlier') });
-    ok(dir, ['conversation', 'builder', 'earlier', 'agent-old'], { env: env('earlier') });
+    dispatchBuilder('1.2', 'agent-old', 'earlier');
     ok(dir, ['task', 'start', UNIT, '1.3'], { env: env() });
-    ok(dir, ['conversation', 'builder', 'sess-1', 'agent-own'], { env: env() });
+    dispatchBuilder('1.3', 'agent-own');
     const { sections } = enter([UNIT]);
 
     assert.deepStrictEqual([position().tasks, position('earlier').tasks], [
@@ -383,7 +395,7 @@ describe('the answer: where the build stands, and what to read beside the ledger
 
   it('says in its recovery note a task whose builder stopped, and the way on: its builder sent back in, or the stop raised to the person (20.4.9)', () => {
     enter([UNIT]);
-    ok(dir, ['conversation', 'builder', 'sess-1', 'agent-own'], { env: env() });
+    dispatchBuilder('1.2', 'agent-own');
     ok(dir, ['task', 'stopped', UNIT, '1.2'], { env: env() });
 
     assert.deepStrictEqual(output(dir, ['conversation', 'position'], { env: env() }).split('\n').filter((line) => line.startsWith('in flight: ')), [
@@ -398,7 +410,7 @@ describe('the answer: where the build stands, and what to read beside the ledger
     const OWN = ['in flight: task 1.2, its builder agent `agent-own`'];
     beforeEach(() => {
       enter([UNIT]);
-      ok(dir, ['conversation', 'builder', 'sess-1', 'agent-own'], { env: env() });
+      dispatchBuilder('1.2', 'agent-own');
     });
 
     it('asked with no session id of its own', () => {
@@ -412,13 +424,13 @@ describe('the answer: where the build stands, and what to read beside the ledger
     });
   });
 
-  it('gives a unit built under the old plan no build\'s standing in its recovery note, its build begun all the same (P12)', () => {
+  it('gives a unit built under the old plan no way into its build in its recovery note — no skill to read, no build\'s standing — its build begun all the same (P12)', () => {
     fs.mkdirSync(path.join(config, 'conversations', 'sess-1'), { recursive: true });
     fs.writeFileSync(path.join(config, 'conversations', 'sess-1', 'position.json'), JSON.stringify({ name: 'kept', phase: 'implementation', topic: 'kept' }));
     const note = output(dir, ['conversation', 'position'], { env: env() });
 
-    assert.ok(note.includes('leeway-implementation-process'), note);
-    assert.doesNotMatch(note, /position: auto|build log:/);
+    assert.doesNotMatch(note, /leeway-implementation-process|position: auto|build log:/);
+    assert.match(note, /kept/, note);
   });
 });
 

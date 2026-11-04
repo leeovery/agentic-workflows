@@ -93,8 +93,6 @@ const DRAWN = Object.freeze({
 /** A path in each of today's places, and the place's path. */
 const TODAYS = Object.freeze({
   'pay/.state/discovery-gap-analysis.md': '{unit}/.state',
-  'pay/implementation/auth/review-tasks-c1.md': '{unit}/implementation/{topic}',
-  'pay/review/auth/report.md': '{unit}/review/{topic}',
   '.state/environment-setup.md': '.state/environment-setup.md',
   'pay/investigation/crash.md': '{unit}/investigation/{topic}.md',
   'pay/specification/auth/specification.md': '{unit}/specification/{topic}',
@@ -232,7 +230,6 @@ describe('today\'s places (E4)', () => {
       lock: layout.lock,
       gitignore: layout.gitignore,
       migrations: layout.migrations,
-      projectState: layout.projectState('environment-setup.md'),
       inbox: layout.inbox('ideas', '2026-10-30--smart-retry.md'),
       archived: layout.archived('ideas', '2026-10-30--smart-retry.md'),
       knowledge: layout.knowledge('config.json'),

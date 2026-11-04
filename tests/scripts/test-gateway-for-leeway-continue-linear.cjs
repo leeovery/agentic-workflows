@@ -44,18 +44,18 @@ describe('leeway-continue-linear discovery', () => {
     assert.strictEqual(activeWorkUnit(dir, 'ghost'), null);
   });
 
-  it('surfaces a finished pipeline still in-progress as finalising, whatever the type', () => {
-    for (const [type, phases] of /** @type {[string, string[]][]} */ ([
-      ['feature', ['discussion', 'specification', 'planning', 'implementation', 'review']],
-      ['bugfix', ['investigation', 'specification', 'planning', 'implementation', 'review']],
-      ['quick-fix', ['scoping', 'implementation', 'review']],
-      ['cross-cutting', ['discussion', 'specification']],
+  it('surfaces a finished pipeline still in-progress as finalising — a quick-fix\'s or a cross-cutting unit\'s, never one built under the old plan (P12)', () => {
+    for (const [type, phases, finalising] of /** @type {[string, string[], boolean][]} */ ([
+      ['feature', ['discussion', 'specification', 'planning', 'implementation', 'review'], false],
+      ['bugfix', ['investigation', 'specification', 'planning', 'implementation', 'review'], false],
+      ['quick-fix', ['scoping', 'implementation', 'review'], true],
+      ['cross-cutting', ['discussion', 'specification'], true],
     ])) {
       const name = `done-${type}`;
       createManifest(dir, name, { work_type: type, phases: items(name, phases, 'completed') });
       const { unit } = activeWorkUnit(dir, name);
       assert.strictEqual(unit.next_phase, 'done', type);
-      assert.strictEqual(unit.finalising, true, type);
+      assert.strictEqual(unit.finalising, finalising, type);
       assert.strictEqual(unit.phase_label, 'pipeline complete', type);
     }
   });
@@ -105,8 +105,8 @@ describe('leeway-continue-linear discovery', () => {
   describe('edge cases', () => {
     it('a unit in review in-progress is found, never filtered as done', () => {
       for (const [type, phases] of /** @type {[string, string[]][]} */ ([
-        ['feature', ['discussion', 'specification', 'planning', 'implementation']],
-        ['bugfix', ['investigation', 'specification', 'planning', 'implementation']],
+        ['feature', ['discussion', 'specification', 'implementation']],
+        ['bugfix', ['investigation', 'specification', 'implementation']],
         ['quick-fix', ['scoping', 'implementation']],
       ])) {
         const name = `live-${type}`;
@@ -178,7 +178,7 @@ describe('leeway-continue-linear view', () => {
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('pins the snapshot byte-exactly — DATA, TITLE, DISPLAY, and the menu with its way back', () => {
+  it('pins the snapshot byte-exactly — DATA, TITLE, DISPLAY, and the menu with its way back, a unit built under the old plan saying it waits on the migration\'s cut, with no route (P12)', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
       phases: {
@@ -196,17 +196,14 @@ describe('leeway-continue-linear view', () => {
       'next_phase: implementation',
       'phase_label: implementation (in-progress)',
       'finalising: false',
-      'completed_phases: discussion, specification, planning',
+      'completed_phases: discussion, specification',
       'reconcile_pending: (none)',
       'mail_waiting: (none)',
-      'revisit_available: true',
+      'revisit_available: false',
       'seeds_count: 1',
       'imports_count: 0',
       'ACTIONS (key  word  action  topic  → route):',
-      '  y  yes  continue  auth  → /leeway-implementation-process feature auth',
-      '  r  revisit  revisit  auth  → (internal)',
       '  b  back  back  auth  → (internal)',
-      '  1  —  revisit_phase  auth  → /leeway-planning-process feature auth',
       '',
       '=== TITLE (emit verbatim as markdown (not a code block) — the view\'s chrome heading) ===',
       '# **`■ Auth`**',
@@ -218,18 +215,15 @@ describe('leeway-continue-linear view', () => {
       'PIPELINE (feature)',
       '  ├─ ✓ Discussion        [completed]',
       '  ├─ ✓ Specification     [completed]',
-      '  ├─ ✓ Planning          [completed]',
       '  └─ ◐ Implementation    [in-progress]',
       '',
       '=== MENU: work unit menu (emit verbatim as markdown (not a code block)) ===',
       '· · · · · · · · · · · ·',
-      'Continuing "Auth" — *implementation (in-progress)*.',
+      'auth was built under the old plan, and its build is entered once the reshape\'s 29.17 migration has cut it',
       '',
-      '**`◆ Proceed?`**',
+      '**`◆ What next?`**',
       '',
-      '**`y/yes`**     → Proceed to implementation',
-      '**`r/revisit`** → Revisit an earlier phase',
-      '**`b/back`**    → Return to the start menu',
+      '**`b/back`** → Return to the start menu',
       '',
     ].join('\n'));
   });

@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The pipeline simulation's bugfix scenario: investigation, the
-// specification with its source pinned to the topic, delivery, and the
+// specification with its source pinned to the topic, into the build, and the
 // unit complete.
 //
 // Layer: simulation. World: the project every scenario starts from
@@ -24,7 +24,7 @@ const { startMenu } = require(path.join(ROOT, 'skills/leeway-engine/scripts/doma
 const { workUnitStatus } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/workunit.cjs'));
 const { drawLabel } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
 const {
-  Sim, startUnit, handoffEntry, handoff, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, specToBuild,
+  Sim, startUnit, handoffEntry, handoff, linearMenu, linearPick, backToStart, startNew, specToBuild,
 } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: bugfix', () => {
@@ -109,25 +109,11 @@ describe('pipeline simulation: bugfix', () => {
     assert.strictEqual(linearPick(sim, wu, 'continue').line, `→ Specification · ${wu}`);
     specToBuild(sim, wu, [wu]);
     assert.doesNotMatch(await provenance(), /^\[specification \|/m);
-    walkDeliveryPhases(sim, wu, wu);
-    // The bugfix review hop offers all three rows; what a revisit reaches is
-    // the delivery behind it — never the spec (11.9.1), nor the
-    // investigation the spec closed (4.11.2).
-    const bfGate = sim.render(['next-phase-gate', wu, '--prev', 'implementation', '--next', 'review'], { expect: 'content' });
-    assert.match(bfGate, /\*\*`d\/done`\*\* +→ Complete without review/);
-    assert.match(bfGate, /\*\*`r\/revisit`\*\* → Revisit an earlier phase/);
-    assert.deepStrictEqual([...sim.render(['revisit-phases', wu], { expect: 'content' }).matchAll(/→ (\w+) — \*completed\*/g)].map((m) => m[1]), ['Planning', 'Implementation', 'Review']);
+    // A build by its cut leaves nothing to revisit — never the spec
+    // (11.9.1), nor the investigation the spec closed (4.11.2).
+    sim.refuses(['render', 'revisit-phases', wu], /"crash-fix" has no completed earlier phase to revisit/);
     // Past its spec the investigation is not reopened: a change is settled
     // in the spec.
     sim.refuses(['topic', 'reopen', wu, 'investigation', wu], /^crash-fix has its spec — a topic exists only before it/);
-
-    sim.run(['workunit', 'complete', wu, '-m', `workflow(${wu}): pipeline complete`]);
-    assert.strictEqual(sim.manifest(wu).status, 'completed');
-    // Completed, the unit takes no message and opens no topic, each refusal
-    // naming the way on, the message's scratch kept.
-    sim.write('.leeway/.cache/scratch/late-message.md', 'A late thought\n');
-    sim.refuses(['topic', 'send', wu, wu, '--from', wu, '--content', '.leeway/.cache/scratch/late-message.md', '--slug', 'late-thought'], /^crash-fix is completed — new work starts from the start menu$/);
-    assert.ok(fs.existsSync(path.join(sim.dir, '.leeway/.cache/scratch/late-message.md')), 'the refused send keeps its scratch');
-    sim.refuses(['handoff', 'topic', wu, wu], /^crash-fix is completed — new work starts from the start menu$/);
   });
 });

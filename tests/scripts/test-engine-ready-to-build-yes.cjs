@@ -6,9 +6,8 @@
 // writing `build: {position}` and committing it, the review settled on fresh
 // marks while the page is open and none written while it is not (11.S22,
 // 11.S25, 11.S26), a failed commit retried in the unit's scope; no build
-// before it — no phase started, no planning or implementation topic started
-// (11.S13) — no postpone after it (18.4.19), and its `next` a handoff into
-// the build (24.S4); and `engine workunit
+// before it — a phase may start only after it (11.S13) — no postpone after it
+// (18.4.19), and its `next` a handoff into the build (24.S4); and `engine workunit
 // position <unit> auto|step`, the switch logged as a `position-switch` event
 // while the first pick is not (3.3.6, 3.3.7, E14). Every refusal writes and
 // commits nothing.
@@ -23,8 +22,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { ok, refuses, statePath, layout, readState, readManifest, commitAll, stateGit, head, lastMessage, touched } = require('./engine-harness.cjs');
-const { createManifest } = require('./discovery-test-utils.cjs');
+const { ok, refuses, statePath, layout, readState, readManifest, stateGit, head, lastMessage, touched } = require('./engine-harness.cjs');
 const { trustLogPath } = require('../../skills/leeway-engine/scripts/domain/trust-log.cjs');
 const { UNIT, SESSION, READ_BACK, commented, closed, useReadyWorld, readyHelpers } = require('./ready-to-build-world.cjs');
 
@@ -55,19 +53,6 @@ describe('the yes (11.8.1, 11.8.6, E11)', () => {
     yes(['--position', 'auto']);
 
     assert.strictEqual(refused(['topic', 'postpone', UNIT, 'refunds', '--horizon', 'next']), `postponing "refunds" is refused — ${UNIT}'s build has begun, so its map is closed: a decision that must change is settled in the build, and abandoning the work is the unit's cancel, through manage on the start menu`);
-  });
-
-  it('starts no planning or implementation topic before the yes, and both after it; a quick-fix\'s implementation and a unit keeping the old spec\'s items keep their door (11.8.1)', () => {
-    const before = ['planning', 'implementation'].map((phase) => refused(['topic', 'start', UNIT, phase, 'cards']));
-    createManifest(dir(), 'tidy', { work_type: 'quick-fix' });
-    createManifest(dir(), 'legacy', { work_type: 'feature', phases: { specification: { items: { legacy: { status: 'completed' } } } } });
-    commitAll(dir(), 'a quick-fix and a unit on the old spec');
-    const kept = [ok(dir(), ['topic', 'start', 'tidy', 'implementation', 'tidy']).created, ok(dir(), ['topic', 'start', 'legacy', 'implementation', 'legacy']).created];
-    yes(['--position', 'auto']);
-
-    assert.deepStrictEqual(before, ['planning', 'implementation'].map((phase) => `${phase} can't start on "cards" — ${UNIT}'s build has not begun; ready to build's yes begins it: render ready-to-build ${UNIT}`));
-    assert.deepStrictEqual(kept, [true, true]);
-    assert.deepStrictEqual(['planning', 'implementation'].map((phase) => ok(dir(), ['topic', 'start', UNIT, phase, 'cards']).created), [true, true]);
   });
 
   it('names the unit\'s own commit where its commit fails, which takes what the yes wrote, the review\'s record among it', () => {

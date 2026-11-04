@@ -89,9 +89,9 @@ describe('tags (5.2.3)', () => {
 
     for (const address of [`${UNIT}.investigation`, `${UNIT}.investigation.note-window`, `${UNIT}.scoping`]) {
       refused('ask', address, [], content,
-        /^ledger ask: fumi has no (investigation|scoping) phase — its work type, epic, has discovery, experiment, discussion, specification, planning, implementation, review$/);
+        /^ledger ask: fumi has no (investigation|scoping) phase — its work type, epic, has discovery, experiment, discussion, specification, implementation, review$/);
     }
-    refused('ask', 'mend.discussion.mend', [], content, /^ledger ask: mend has no discussion phase — its work type, bugfix, has discovery, investigation, specification, planning, implementation, review$/);
+    refused('ask', 'mend.discussion.mend', [], content, /^ledger ask: mend has no discussion phase — its work type, bugfix, has discovery, investigation, specification, implementation, review$/);
 
     write('ask', 'mend.investigation.mend', [], content);
     assert.deepStrictEqual([entries().at(-1).unit, entries().at(-1).phase, entries().at(-1).topic], ['mend', 'investigation', 'mend']);

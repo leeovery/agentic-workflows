@@ -10,7 +10,7 @@ The caller provides via context:
 
 - `work_unit` — the epic's work unit name
 - `items_to_recover` — list of map rows where `summary=absent` or `description=absent`
-- `completed_phase`, `outcome` — what the epic menu received, where it arrived from a phase that concluded, paused or left its topic; unset otherwise
+- `completed_phase`, `outcome` — what the epic menu received, where it arrived from a phase that concluded or left its topic; unset otherwise
 
 ## A. Summary Backfill
 

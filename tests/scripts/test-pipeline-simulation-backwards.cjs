@@ -4,9 +4,8 @@
 // The pipeline simulation's backwards walk: a feature's decided discussion,
 // which the bridge offers no revisit into, reopened by a message sent to it
 // while its spec is entered but not yet written, and decided again; past its
-// spec no message reaches it and the spec is never reopened; then, the
-// pipeline run out, each reopen of the hop family landing its staleness one
-// hop downstream, until every flag is cleared and the pipeline reads done.
+// spec no message reaches it, the spec is never reopened, and the build's
+// places stand by its cut, reopened by no topic verb.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -21,7 +20,7 @@ const assert = require('node:assert');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
 const BRIDGE = require(path.join(ROOT, 'skills/leeway-bridge/scripts/gateway.cjs'));
-const { Sim, startUnit, discussed, arrive, send, sendArgv, specEntry, specToBuild, walkDeliveryPhases } = require('./pipeline-world.cjs');
+const { Sim, startUnit, discussed, arrive, send, sendArgv, specEntry, specToBuild } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: backwards', () => {
   let sim;
@@ -59,33 +58,8 @@ describe('pipeline simulation: backwards', () => {
     sim.refuses(sendArgv(sim, wu, wu, wu, 'a-late-gap'), /^revisit has its spec — a topic exists only before it/);
     sim.refuses(['topic', 'reopen', wu, 'specification', wu], /^revisit's spec keeps no items — it is entered at the work unit/);
 
-    // Run the pipeline out, then walk the hop family backwards: staleness
-    // lands at each reopen, one hop downstream, value = the upstream phase.
-    walkDeliveryPhases(sim, wu, wu);
-    let ro;
-
-    // planning → implementation: the pipeline hop, same-named item.
-    ro = sim.run(['topic', 'reopen', wu, 'planning', wu]);
-    assert.deepStrictEqual(ro.reconcile_flagged, [{ phase: 'implementation', topic: wu }]);
-    assert.strictEqual(sim.manifest(wu).phases.implementation.items[wu].reconcile_needed, 'planning');
-    sim.run(['topic', 'complete', wu, 'planning', wu]);
-    sim.run(['manifest', 'delete', `${wu}.implementation.${wu}`, 'reconcile_needed']);
-
-    // implementation → review; a second reopen never clobbers the live flag.
-    ro = sim.run(['topic', 'reopen', wu, 'implementation', wu]);
-    assert.deepStrictEqual(ro.reconcile_flagged, [{ phase: 'review', topic: wu }]);
-    assert.strictEqual(sim.manifest(wu).phases.review.items[wu].reconcile_needed, 'implementation');
-    sim.run(['topic', 'complete', wu, 'implementation', wu]);
-    ro = sim.run(['topic', 'reopen', wu, 'implementation', wu]);
-    assert.strictEqual(ro.reconcile_flagged, undefined, 'existing flag never clobbered');
-    sim.run(['topic', 'complete', wu, 'implementation', wu]);
-    sim.run(['manifest', 'delete', `${wu}.review.${wu}`, 'reconcile_needed']);
-
-    // review is the pipeline tail — reopening it flags nothing.
-    ro = sim.run(['topic', 'reopen', wu, 'review', wu]);
-    assert.strictEqual(ro.reconcile_flagged, undefined);
-    sim.run(['topic', 'complete', wu, 'review', wu]);
-    // Every flag cleared, every phase re-completed: the pipeline reads done.
-    assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'done');
+    // The build's places stand by its cut: no topic verb reopens them.
+    sim.refuses(['topic', 'reopen', wu, 'implementation', wu], /^implementation stands by the build's cut — it is entered by `engine enter implementation <work-unit>`/);
+    sim.refuses(['topic', 'reopen', wu, 'review', wu], /^review stands by the build's cut/);
   });
 });

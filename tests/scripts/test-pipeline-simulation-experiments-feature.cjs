@@ -20,10 +20,8 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { spawnSync } = require('child_process');
-const ROOT = path.join(__dirname, '../..');
 const {
-  Sim, sessionLog, carryOn, menuEntry, handoffEntry, enterEntry, handoff, bridgeTo, waitAgents, startKeys, decideTopic, askedOn,
+  Sim, sessionLog, carryOn, menuEntry, handoffEntry, enterEntry, bridgeTo, waitAgents, startKeys, decideTopic, askedOn,
 } = require('./pipeline-world.cjs');
 
 /**
@@ -39,7 +37,7 @@ describe('pipeline simulation: experiments, in a feature', () => {
   let sim;
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
-  it('single-topic backs: the laboratory picker and the code gate re-render the start menu', () => {
+  it('a single-topic back: the laboratory picker re-renders the start menu', () => {
     const wu = 'frame-rate';
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Frame pacing', '--session-log-file', sessionLog(sim, wu)]);
     menuEntry(sim, wu);
@@ -62,17 +60,6 @@ describe('pipeline simulation: experiments, in a feature', () => {
     assert.strictEqual(sim.run(['session', 'repair']).repaired, false, 'the sim has no tmux label to put back');
     assert.strictEqual(carryOn(sim).position, null, 'the start menu is no position');
     assert.ok(startKey(), 'the start menu lists the unit the laboratory was entered from');
-
-    // A peer holds the code slot; the gated session's back lands on the
-    // start menu the same way.
-    const holder = sim.session('code-session');
-    holder.render(['code-gate', `${wu}.implementation.${wu}`], { expect: 'empty' });
-    const gatedPid = spawnSync('node', ['-e', '']).pid;
-    assert.ok(gatedPid, 'could not mint a dead pid');
-    const gated = sim.session('review-session', gatedPid);
-    assert.match(gated.render(['code-gate', `${wu}.review.${wu}`], { expect: 'content' }), /Another session is implementing/);
-    assert.strictEqual(gated.run(['session', 'repair']).repaired, false, 'the sim has no tmux label to put back');
-    assert.ok(startKey(), 'the start menu is re-rendered over the same state');
   });
 
   it('feature experiments: the waiting conversation routes to the laboratory and back, and decided over them goes on to its specification', () => {

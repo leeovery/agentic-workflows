@@ -26,7 +26,7 @@ const path = require('path');
 
 const harness = require('./engine-harness.cjs');
 const { announced, auditGate, auditMarkers } = require('./gate-audit.cjs');
-const { DOTS, section, timedInstruction, STOP_CLAUSE, CONTINUE_CLAUSE, AUTO_GATE_CLAUSE, menuFrame, menu, cmdOption, bareOption, promptOption, rangeOption, callout, indentedBody, bulletRow, subDetail, treeList } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
+const { DOTS, section, timedInstruction, STOP_CLAUSE, CONTINUE_CLAUSE, AUTO_GATE_CLAUSE, menuFrame, menu, cmdOption, bareOption, promptOption, rangeOption, callout, indentedBody, bulletRow, treeList } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
 const { renderSurface, NB, setup, teardown, writeManifest, writePayload } = require('./render-surfaces-world.cjs');
 
 /**
@@ -253,13 +253,6 @@ describe('surfaces primitives', () => {
     assert.ok(lines.every((l) => [...l].length <= 40));
   });
 
-  it('subDetail glyphs the first line and aligns continuations under the text', () => {
-    const out = subDetail('alpha '.repeat(30).trim(), { width: 40 });
-    const lines = out.split('\n');
-    assert.ok(lines[0].startsWith('   · alpha') && lines[1].startsWith('     alpha'));
-    assert.ok(lines.every((l) => [...l].length <= 40));
-  });
-
   it('treeList branches each item, gutters continuations, blanks under the last', () => {
     const out = treeList(['one '.repeat(12).trim(), 'two '.repeat(12).trim()], { width: 40 });
     const lines = out.split('\n');
@@ -287,97 +280,55 @@ describe('surfaces primitives', () => {
 });
 
 describe('worklist shape', () => {
-  let dir;
-  beforeEach(() => {
-    dir = setup();
-    writeManifest(dir, 'pay', { phases: { implementation: { items: { portal: { status: 'in-progress' } } } } });
-  });
-  afterEach(() => teardown(dir));
+  const { worklist } = require('../../skills/leeway-engine/scripts/domain/projections/worklist.cjs');
+  const { displayWidth } = require('../../skills/leeway-engine/scripts/kernel/terminal.cjs');
 
   // Rendered width: escapes and code-span backticks are zero-width, `~~` is
   // consumed — byte length over-counts a correct row, so width properties
   // are asserted on the rendered measure, against the resolved width.
   const renderedLen = (line) => line.replace(/\\(.)/g, '$1').replace(/~~/g, '').replace(/`/g, '').length;
-  const { displayWidth } = require('../../skills/leeway-engine/scripts/kernel/terminal.cjs');
+
+  /** A walked list under a heading, the rows a cycle's synthesis works through. @param {Array<{title: string, tag?: string, note?: string}>} items @param {string} [label] */
+  const walkedList = (items, label = 'Cycle') => worklist({ heading: { label, noun: 'item' }, items, walked: true });
+
+  /** A list's rows, its heading and the blank beneath it dropped — the heading is a prose line left to soft-wrap. @param {string} out */
+  const rows = (out) => out.split('\n').slice(2);
 
   it('a tag that cannot fit the last title line drops to its own line at the title column', () => {
-    const file = writePayload(dir, 't.json', { label: 'Cycle', tasks: [
-      { title: 'The traceability matrix omits three acceptance criteria', severity: 'Important' },
-    ] });
-    const out = render(dir, ['tasks-overview', 'pay.implementation.portal', '--file', file]);
-    const body = out.split('===\n')[1].split('\n');
+    const body = rows(walkedList([{ title: 'The traceability matrix omits three acceptance criteria', tag: 'Important' }]));
     assert.ok(body.some((l) => l === `${NB(5)}\`[Important]\``), `tag line missing: ${JSON.stringify(body)}`);
     for (const line of body) assert.ok(renderedLen(line) <= displayWidth(), `overflowing row: ${line}`);
   });
 
-  it('every worklist surface holds the rendered width, tags and escapes included', () => {
+  it('every row holds the rendered width, tags, notes and escapes included', () => {
     const long = 'Collapse the *duplicated* retry_budget into one constant shared by both callers';
-    const width = displayWidth();
-    const holdWidth = (out) => {
-      // Rows, continuations, and notes hold the width; the header is a
-      // prose line left to soft-wrap, so it is exempt.
-      for (const line of out.split('===\n')[1].split('\n')) {
-        if (!/^[○✓⊘\d ]/.test(line)) continue;
-        assert.ok(renderedLen(line) <= width, `overflowing row: ${line}`);
-      }
-    };
-    holdWidth(render(dir, ['tasks-overview', 'pay.implementation.portal', '--file', writePayload(dir, 'w.json', { label: 'Cycle', tasks: [
-      { title: long, severity: 'Important' },
-      { title: 'Short', severity: 'low' },
-    ] })]));
-    writeManifest(dir, 'wu3', { phases: { planning: { items: { portal: { status: 'in-progress' } } }, discussion: { items: { checkout: { status: 'in-progress' } } } } });
-    holdWidth(render(dir, ['findings-summary', 'wu3.planning.portal', '--file', writePayload(dir, 'w2.json', { review_label: 'Integrity Review', items: [
-      { title: long, tag: 'Important', summary: 'A summary long enough to wrap beneath the arrow and hold its hang.' },
-    ] })]));
+    const out = walkedList([
+      { title: long, tag: 'Important', note: 'A summary long enough to wrap beneath the arrow and hold its hang.' },
+      { title: 'Short', tag: 'low' },
+    ]);
+    for (const line of rows(out)) assert.ok(renderedLen(line) <= displayWidth(), `overflowing row: ${line}`);
   });
 
   it('the tag-fit boundary is exact — at budget it stays inline, one over it drops', () => {
     // Walked 1-digit head is 5 columns; budget 60 at width 65. Tag
     // `Important` costs 12 rendered (space + brackets + 9 letters). A
     // 48-char title fits inline at exactly the width; 49 forces the drop.
-    const at = render(dir, ['tasks-overview', 'pay.implementation.portal', '--file', writePayload(dir, 'fit.json', { label: 'C', tasks: [
-      { title: 'x'.repeat(48), severity: 'Important' },
-    ] })]);
+    const at = walkedList([{ title: 'x'.repeat(48), tag: 'Important' }]);
     assert.ok(at.includes('x'.repeat(48) + ' `[Important]`'), `expected inline tag: ${at}`);
-    const over = render(dir, ['tasks-overview', 'pay.implementation.portal', '--file', writePayload(dir, 'over.json', { label: 'C', tasks: [
-      { title: 'x'.repeat(49), severity: 'Important' },
-    ] })]);
+    const over = walkedList([{ title: 'x'.repeat(49), tag: 'Important' }]);
     assert.ok(over.includes(`${NB(5)}\`[Important]\``), `expected dropped tag: ${over}`);
     assert.ok(!over.includes('x `[Important]`'), 'tag not inline past the boundary');
   });
 
-  it('rows pad 10+ numbering with NBSP, never a leading space', () => {
-    writeManifest(dir, 'wu2', { phases: { planning: { items: { portal: { status: 'in-progress' } } }, discussion: { items: { checkout: { status: 'in-progress' } } } } });
-    const items = Array.from({ length: 11 }, (_, i) => ({ title: `Item ${i + 1}`, tag: 'low', summary: `Detail ${i + 1}` }));
-    const out = render(dir, ['findings-summary', 'wu2.planning.portal', '--file', writePayload(dir, 'b.json', { review_label: 'Rev', items })]);
-    assert.ok(out.includes(`○ ${NB(1)}1. Item 1`), 'single-digit row pads with NBSP');
-    assert.ok(out.includes('○ 11. Item 11'), 'two-digit row unpadded');
-    // A markdown renderer strips a leading real space.
-    for (const line of out.split('\n')) {
-      assert.ok(!/^ /.test(line), `line leads with a real space: ${JSON.stringify(line)}`);
-    }
-  });
-
   it('escapes markdown-active characters in the label, title, and note', () => {
-    const file = writePayload(dir, 'e.json', {
-      review_label: 'Rev *2* [beta]',
-      items: [{ title: 'Escape <script> and ~tilde~', tag: 'low', summary: 'see foo_bar and [link] and \\slash' }],
-    });
-    writeManifest(dir, 'pay2', { phases: { planning: { items: { portal: { status: 'in-progress' } } } } });
-    const out = render(dir, ['findings-summary', 'pay2.planning.portal', '--file', file]);
+    const out = walkedList([{ title: 'Escape <script> and ~tilde~', tag: 'low', note: 'see foo_bar and [link] and \\slash' }], 'Rev *2* [beta]');
     assert.ok(out.includes('**Rev \\*2\\* \\[beta\\]**'), 'label escaped');
     assert.ok(out.includes('Escape \\<script\\> and \\~tilde\\~'), 'title escaped, angle brackets included');
     assert.ok(out.includes('↳ see foo\\_bar and \\[link\\] and \\\\slash'), 'note escaped');
   });
 
   it('a wrapped note hangs its continuation two columns past the arrow', () => {
-    writeManifest(dir, 'pay3', { phases: { planning: { items: { portal: { status: 'in-progress' } } } } });
-    const file = writePayload(dir, 'n.json', {
-      review_label: 'Rev',
-      items: [{ title: 'T', tag: 'low', summary: 'This note is deliberately long enough that the wrap point lands inside it and produces a continuation line beneath the arrow.' }],
-    });
-    const out = render(dir, ['findings-summary', 'pay3.planning.portal', '--file', file]);
-    const lines = out.split('\n');
+    const lines = walkedList([{ title: 'T', tag: 'low', note: 'This note is deliberately long enough that the wrap point lands inside it and produces a continuation line beneath the arrow.' }]).split('\n');
     const noteAt = lines.findIndex((l) => l.includes('↳ '));
     assert.ok(noteAt > 0, 'note rendered');
     assert.ok(lines[noteAt].startsWith(`${NB(7)}↳ `), 'note at title column + 2');
@@ -385,7 +336,6 @@ describe('worklist shape', () => {
   });
 
   it('worklist fails loudly on shape errors its callers cannot reach', () => {
-    const { worklist } = require('../../skills/leeway-engine/scripts/domain/projections/worklist.cjs');
     assert.throws(() => worklist({ items: [{ title: 'x' }] }), /exactly one of "heading"\/"intro"/);
     assert.throws(() => worklist({ heading: { label: 'H', noun: 'x' }, intro: 'I', items: [{ title: 'x' }] }), /exactly one of "heading"\/"intro"/);
     assert.throws(() => worklist({ intro: 'I', items: [] }), /"items" must be a non-empty array/);
@@ -395,19 +345,21 @@ describe('worklist shape', () => {
     assert.throws(() => worklist({ intro: 'I', items: [{ title: 'x', tag: 'y'.repeat(70) }] }), /cannot fit the display width/);
   });
 
-  it('walked rows pad 10+ numbering with NBSP too', () => {
-    const { worklist } = require('../../skills/leeway-engine/scripts/domain/projections/worklist.cjs');
-    const items = Array.from({ length: 11 }, (_, i) => ({ title: `T${i + 1}` }));
+  it('walked rows pad 10+ numbering with NBSP, never a leading space', () => {
+    const items = Array.from({ length: 11 }, (_, i) => ({ title: `T${i + 1}`, tag: 'low', note: `Detail ${i + 1}` }));
     const out = worklist({ heading: { label: 'H', noun: 'item' }, items, walked: true });
     assert.ok(out.includes(`○ ${NB(1)}1. T1`), `walked pad is NBSP: ${out.split('\n')[2]}`);
     assert.ok(out.includes('○ 11. T11'), 'two-digit walked row unpadded');
+    // A markdown renderer strips a leading real space.
+    for (const line of out.split('\n')) {
+      assert.ok(!/^ /.test(line), `line leads with a real space: ${JSON.stringify(line)}`);
+    }
   });
 
   it('unglyphed rows pad 10+ numbering with a leading NBSP, never a space', () => {
     // No production surface reaches an unglyphed list past the batch cap;
     // the mechanism is pinned directly so an uncapped future caller
     // inherits it working.
-    const { worklist } = require('../../skills/leeway-engine/scripts/domain/projections/worklist.cjs');
     const items = Array.from({ length: 11 }, (_, i) => ({ title: `T${i + 1}` }));
     const out = worklist({ intro: 'I', items });
     assert.ok(out.includes(`${NB(1)}1\\. T1`), `unglyphed pad is a leading NBSP: ${out.split('\n')[2]}`);
@@ -418,7 +370,6 @@ describe('worklist shape', () => {
   });
 
   it('an unwalked heading never counts remaining', () => {
-    const { worklist } = require('../../skills/leeway-engine/scripts/domain/projections/worklist.cjs');
     const out = worklist({ heading: { label: 'H', noun: 'item' }, items: [{ title: 'a', state: 'approved' }, { title: 'b' }] });
     assert.ok(out.startsWith('**H** — 2 items\n'), `unexpected header: ${out.split('\n')[0]}`);
   });
@@ -430,39 +381,32 @@ describe('CLI boundary — engine render through the argv entry', () => {
     dir = setup();
     writeManifest(dir, 'pay', {
       work_type: 'feature',
-      phases: {
-        discussion: { items: { pay: { status: 'in-progress' } } },
-        planning: { items: { pay: { status: 'in-progress', task_list_gate_mode: 'auto' } } },
-      },
+      phases: { discussion: { items: { pay: { status: 'in-progress' } } } },
+    });
+    writeManifest(dir, 'fix', {
+      work_type: 'quick-fix',
+      phases: { implementation: { items: { fix: { status: 'completed' } } } },
     });
   });
   afterEach(() => teardown(dir));
 
-  const run = (/** @type {string[]} */ args) => harness.output(dir, ['render', ...args]);
+  const run = (/** @type {string[]} */ args) => render(dir, args);
 
-  it('flags survive argv: --mail, --variant, --approve, --gate, scalar flags', () => {
+  it('flags survive argv: --mail, --variant, --file, scalar flags, boolean flags', () => {
     assert.ok(run(['resume-gate', 'pay.discussion.pay', '--mail', '2']).includes('2 message(s)'));
-    const tl = writePayload(dir, 'tl.json', { phase: 1, phase_name: 'X', tasks: [{ name: 'A', summary: 's' }] });
-    assert.ok(run(['task-list', 'pay.planning.pay', '--file', tl, '--variant', 'existing']).includes('task list confirmed'));
-    const pt = writePayload(dir, 'pt.json', { phases: [{ name: 'P' }] });
-    assert.ok(run(['phase-tree', 'pay.planning.pay', '--file', pt, '--approve']).includes('MENU: phase structure gate'));
-    assert.ok(run(['phase-tree', 'pay.planning.pay', '--menu-only']).startsWith('=== MENU: phase structure gate'));
-    const task = writePayload(dir, 'task.json', { current: 1, total: 1, title: 'T', severity: 'Minor', sources: 's', problem: 'p', solution: 's', outcome: 'o', steps: ['1'], criteria: ['c'] });
-    assert.ok(run(['proposed-task', 'pay.planning.pay', '--file', task, '--gate', 'auto']).includes('approved [auto]'));
-    const detail = writePayload(dir, 'at.json', { content: 'The task.' });
-    assert.ok(run(['author-task-gate', 'pay.planning.pay', '--m', '1', '--total', '2', '--title', 'T', '--file', detail]).includes('**Task 1 of 2: T**'));
-    const gate = run(['next-phase-gate', 'pay', '--prev', 'implementation', '--next', 'review']);
-    assert.ok(gate.includes('Implementation completed for "Pay".') && gate.includes('Complete without review'), gate);
+    const formats = writePayload(dir, 'formats.json', { formats: [{ name: 'flat', label: 'Flat files' }] });
+    assert.ok(run(['plan-format-gate', '--variant', 'select', '--file', formats]).includes('Flat files'));
+    const gate = run(['next-phase-gate', 'fix', '--prev', 'implementation', '--next', 'review']);
+    assert.ok(gate.includes('Implementation completed for "Fix".') && gate.includes('Complete without review'), gate);
     assert.ok(run(['phase-completed', 'pay', '--phase', 'discussion']).includes('Discussion completed for "Pay".'));
-    assert.ok(run(['phase-paused', 'pay', '--phase', 'discussion']).includes('Discussion paused for "Pay".'));
-    assert.ok(run(['epic-all-done-gate', 'pay']).includes('Mark this epic as completed'));
+    assert.ok(run(['walkthrough-offer', '--menu-only']).startsWith('=== MENU: '));
     assert.ok(run(['phase-completed', 'pay', '--phase', 'scoping', '--paths']).includes(`  Spec: ${dir}/.leeway/pay/specification/pay/specification.md`),
       '--paths must survive boolean-flag registration through argv');
   });
 
   it('surface errors surface as failJson on stderr with exit 1', () => {
-    assert.match(harness.refuses(dir, ['render', 'proposed-task', 'pay.planning.pay', '--file', 'missing.json', '--gate', 'nope']).error,
-      /--gate must be "gated" or "auto"/);
+    assert.match(harness.refuses(dir, ['render', 'plan-format-gate', '--variant', 'select', '--file', 'missing.json']).error,
+      /missing\.json/);
   });
 });
 
@@ -484,7 +428,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, plan-progress, findings-summary, finding, review-presentation, review-gate, convergence-diagnostic, hypothesis-board, findings-signoff-gate, fix-direction, validation-gate, validation-report, project-skills, linters, mail-announce, mail-offer, mail-block, backlog-gate, candidate-gate, send-closed-target, conclude-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, change-set-tree, executor-block-gate, dependency-approval-gate, task-count-gate, plan-context-gate, cross-cutting-gate, cross-cutting-references, plan-format-gate, plan-review-gate, scoping-questions, complexity-gate, proposed-task, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, step-opening, format-version-check, entry-gate, code-gate, next-phase-gate, cancel-gate, postpone-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, import-reprompt, pivot-continuation, absorb-target, absorb-confirm-gate, plan-topics, plan-summary, archived-actions, archived-delete-gate, inbox-content, inbox-restore-receipt, inbox-delete-receipt, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, inbox-roadmap-gate, roadmap-harvest-gate, roadmap-parks-gate, query-failure-gate, brownfield-offer-gate, walkthrough-offer, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migrations-applied, migration-gate, state-lost-gate, git-floor-stop, github-rule-gate, github-squash-gate, label-gate, knowledge-gate, knowledge-ready, state-merge-gate, ledger-stop, directive-stop, send-report, map, decided, decided-strike, wait-agents, start-this-work, approve-map, discovery-map, approve-map-strike, ready-to-build, build-headline, task-landed, task-account, step-gate, phase-merge-gate, build-stop, build-progress, review-report, review-calls, review-tree, finish\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, hypothesis-board, findings-signoff-gate, fix-direction, validation-gate, validation-report, mail-announce, mail-offer, mail-block, backlog-gate, candidate-gate, send-closed-target, conclude-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, summary-backfill-gate, plan-format-gate, scoping-questions, complexity-gate, phase-completed, phase-note, format-version-check, next-phase-gate, cancel-gate, postpone-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, import-reprompt, pivot-continuation, absorb-target, absorb-confirm-gate, archived-actions, archived-delete-gate, inbox-content, inbox-restore-receipt, inbox-delete-receipt, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, inbox-roadmap-gate, roadmap-harvest-gate, roadmap-parks-gate, query-failure-gate, brownfield-offer-gate, walkthrough-offer, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migrations-applied, migration-gate, state-lost-gate, git-floor-stop, github-rule-gate, github-squash-gate, label-gate, knowledge-gate, knowledge-ready, state-merge-gate, ledger-stop, directive-stop, send-report, map, decided, decided-strike, wait-agents, start-this-work, approve-map, discovery-map, approve-map-strike, ready-to-build, build-headline, task-landed, task-account, step-gate, phase-merge-gate, build-stop, build-progress, review-report, review-calls, review-tree, finish\)/);
   });
 });
 

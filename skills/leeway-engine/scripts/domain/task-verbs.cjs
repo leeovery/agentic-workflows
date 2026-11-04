@@ -703,7 +703,7 @@ function ending(rule, after = () => ({})) {
     const removed = takeWorktreeApart(cwd, ref, verb, () => withTracker(cwd, ref.unit, null, (driver, root) => refuseEnded(driver, root, ref, rule)));
     const added = after(cwd, ref, verb);
     return () => {
-      clearTask(ref.unit, ref.unit, taskId(ref));
+      clearTask(ref.unit, taskId(ref));
       return { ...(removed.length === 0 ? {} : { removed }), ...added };
     };
   };
@@ -746,7 +746,7 @@ const startTask = moving('start', (driver, root, ref) => {
   refuseUnstarted(ref, manifest);
   refuseSecondInStep(cwd, ref, manifest);
   return () => {
-    recordTask(cwd, ref.unit, ref.unit, taskId(ref));
+    recordTask(cwd, ref.unit, taskId(ref));
     return {};
   };
 });

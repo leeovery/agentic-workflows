@@ -17,7 +17,6 @@ The phases in order — the journey from a rough idea to landed, reviewed code. 
 - [Experiments](experiments.md) — the laboratory those conversations borrow: when a number is about to bear a decision, a controlled measurement designed before it is run.
 - [Investigation and scoping](investigation-and-scoping.md) — the bugfix's route to root cause, and the quick-fix's one-pass shortcut.
 - [Specification](specification.md) — decisions become a standalone contract that everything downstream is built from.
-- [Planning](planning.md) — the spec becomes phases, tasks, and an order to build them in.
 - [Implementation](implementation.md) — the plan becomes code, built and checked task by task in a gated TDD loop.
 - [Review](review.md) — the built work is verified against what was agreed, and remediation loops until they match.
 

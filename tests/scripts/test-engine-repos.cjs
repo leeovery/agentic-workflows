@@ -14,7 +14,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { git, commitCode, initRepo, setupGitFixture, addSubmodule, cleanupFixture, createFile, writeState, layout } = require('./engine-harness.cjs');
-const { projectRepos, repoOf, commitGroups, projectDirtyEntries, projectPathsTouchedBySubject } = require('../../skills/leeway-engine/scripts/kernel/repos.cjs');
+const { projectRepos, repoOf, commitGroups, projectDirtyEntries } = require('../../skills/leeway-engine/scripts/kernel/repos.cjs');
 
 /** A repo of its own at `rel` inside `dir`, one commit holding `file`. */
 function nestedRepo(dir, rel, file = 'index.js') {
@@ -250,19 +250,5 @@ describe('dirt and history across the repos', () => {
     const repos = projectRepos(project);
 
     assert.deepStrictEqual(projectDirtyEntries(repos), [{ path: 'src/a.js', status: ' M' }]);
-    assert.deepStrictEqual([...projectPathsTouchedBySubject(repos, 'impl(pay):')], ['src/a.js']);
-  });
-
-  it('reads history across the repos in project paths — a repo with no commits yet has touched nothing', () => {
-    const api = nestedRepo(dir, 'api', 'src/routes.js');
-    createFile(api, 'src/handler.js', '1\n');
-    commitCode(api, 'impl(pay): T2 — the handler');
-    initRepo(path.join(dir, 'fresh'));
-    createFile(dir, 'fresh/notes.txt', 'nothing committed\n');
-    const repos = projectRepos(dir);
-
-    assert.deepStrictEqual(dirsOf(repos), ['', 'api', 'fresh']);
-    assert.deepStrictEqual([...projectPathsTouchedBySubject(repos, 'impl(pay):')].sort(),
-      ['api/src/handler.js', 'src/app.js']);
   });
 });

@@ -82,79 +82,6 @@ describe('leeway-continue-epic discovery', () => {
       assert.strictEqual(d.completed[0].name, 'auth');
     });
 
-    it('computes next-phase-ready: spec completed no plan', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: {
-          specification: { items: { auth: { status: 'completed' } } },
-        },
-      });
-      const d = discover(dir, 'v1');
-      assert.strictEqual(d.next_phase_ready.length, 1);
-      assert.strictEqual(d.next_phase_ready[0].action, 'start_planning');
-    });
-
-    it('computes next-phase-ready: plan completed no impl', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: {
-          planning: { items: { auth: { status: 'completed' } } },
-        },
-      });
-      const d = discover(dir, 'v1');
-      assert.strictEqual(d.next_phase_ready[0].action, 'start_implementation');
-    });
-
-    it('computes next-phase-ready: impl completed no review', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: {
-          implementation: { items: { auth: { status: 'completed' } } },
-        },
-      });
-      const d = discover(dir, 'v1');
-      assert.strictEqual(d.next_phase_ready[0].action, 'start_review');
-    });
-
-    it('does not show next-phase-ready when next phase already exists', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: {
-          specification: { items: { auth: { status: 'completed' } } },
-          planning: { items: { auth: { status: 'in-progress' } } },
-        },
-      });
-      const d = discover(dir, 'v1');
-      assert.strictEqual(d.next_phase_ready.length, 0);
-    });
-
-    it('sets gating flags correctly', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: {
-          discussion: { items: { auth: { status: 'completed' } } },
-          specification: { items: { auth: { status: 'completed' } } },
-          planning: { items: { auth: { status: 'completed' } } },
-          implementation: { items: { auth: { status: 'completed' } } },
-        },
-      });
-      const g = discover(dir, 'v1').gating;
-      assert.strictEqual(g.can_start_planning, true);
-      assert.strictEqual(g.can_start_implementation, true);
-      assert.strictEqual(g.can_start_review, true);
-    });
-
-    it('gating is false when no completed items', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: {
-          discussion: { items: { auth: { status: 'in-progress' } } },
-        },
-      });
-      const g = discover(dir, 'v1').gating;
-      assert.strictEqual(g.can_start_planning, false);
-    });
-
     it('includes spec sources in phase items', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
@@ -268,246 +195,7 @@ describe('leeway-continue-epic discovery', () => {
     });
   });
 
-  describe('external dependencies', () => {
-    it('unresolved dependency blocks the plan', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: {
-          planning: {
-            items: {
-              billing: {
-                status: 'completed',
-                external_dependencies: { auth: { description: 'User context', state: 'unresolved' } },
-              },
-            },
-          },
-        },
-      });
-      const plan = discover(dir, 'v1').phases.planning[0];
-      assert.strictEqual(plan.deps_satisfied, false);
-      assert.deepStrictEqual(plan.deps_blocking, [{ topic: 'auth', reason: 'dependency unresolved' }]);
-    });
-
-    it('resolved dependency with task in same-manifest completed_tasks is satisfied', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: {
-          planning: {
-            items: {
-              auth: { status: 'completed' },
-              billing: {
-                status: 'completed',
-                external_dependencies: { auth: { description: 'User context', state: 'resolved', internal_id: 'auth-1-3' } },
-              },
-            },
-          },
-          implementation: {
-            items: {
-              auth: { status: 'in-progress', completed_tasks: ['auth-1-1', 'auth-1-2', 'auth-1-3'] },
-            },
-          },
-        },
-      });
-      const plan = discover(dir, 'v1').phases.planning.find(p => p.name === 'billing');
-      assert.strictEqual(plan.deps_satisfied, true);
-      assert.strictEqual(plan.deps_blocking, undefined);
-    });
-
-    it('resolved dependency blocks while the task is incomplete', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: {
-          planning: {
-            items: {
-              billing: {
-                status: 'completed',
-                external_dependencies: { auth: { description: 'User context', state: 'resolved', internal_id: 'auth-1-3' } },
-              },
-            },
-          },
-          implementation: {
-            items: {
-              auth: { status: 'in-progress', completed_tasks: ['auth-1-1'] },
-            },
-          },
-        },
-      });
-      const plan = discover(dir, 'v1').phases.planning[0];
-      assert.strictEqual(plan.deps_satisfied, false);
-      assert.deepStrictEqual(plan.deps_blocking, [{ topic: 'auth', internal_id: 'auth-1-3', reason: 'task not yet completed' }]);
-    });
-
-    it('completed implementation satisfies the dependency even when the task id is absent', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: {
-          planning: {
-            items: {
-              billing: {
-                status: 'completed',
-                external_dependencies: { auth: { description: 'User context', state: 'resolved', internal_id: 'auth-9-9' } },
-              },
-            },
-          },
-          implementation: {
-            items: {
-              auth: { status: 'completed', completed_tasks: ['auth-1-1'] },
-            },
-          },
-        },
-      });
-      const plan = discover(dir, 'v1').phases.planning[0];
-      assert.strictEqual(plan.deps_satisfied, true);
-    });
-
-    it('resolved dependency blocks when the dep topic has no implementation entry', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: {
-          planning: {
-            items: {
-              billing: {
-                status: 'completed',
-                external_dependencies: { auth: { description: 'User context', state: 'resolved', internal_id: 'auth-1-3' } },
-              },
-            },
-          },
-        },
-      });
-      const plan = discover(dir, 'v1').phases.planning[0];
-      assert.strictEqual(plan.deps_satisfied, false);
-    });
-
-    it('satisfied_externally dependency never blocks', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: {
-          planning: {
-            items: {
-              billing: {
-                status: 'completed',
-                external_dependencies: { auth: { description: 'User context', state: 'satisfied_externally' } },
-              },
-            },
-          },
-        },
-      });
-      const plan = discover(dir, 'v1').phases.planning[0];
-      assert.strictEqual(plan.deps_satisfied, true);
-    });
-
-    it('resolved dependency without internal_id blocks as missing task reference', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: {
-          planning: {
-            items: {
-              billing: {
-                status: 'completed',
-                external_dependencies: { auth: { description: 'User context', state: 'resolved' } },
-              },
-            },
-          },
-        },
-      });
-      const plan = discover(dir, 'v1').phases.planning[0];
-      assert.strictEqual(plan.deps_satisfied, false);
-      assert.deepStrictEqual(plan.deps_blocking, [{ topic: 'auth', reason: 'resolved dependency missing task reference' }]);
-    });
-
-    it('a settled specification leaves the plan free of any hold', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: {
-          specification: { items: { auth: { status: 'completed' } } },
-          planning: { items: { auth: { status: 'in-progress' } } },
-        },
-      });
-      const d = discover(dir, 'v1');
-      assert.strictEqual(d.phases.planning[0].blocked_by, undefined);
-      assert.strictEqual(d.gating.can_start_planning, true);
-    });
-
-    it('next_phase_ready marks start_implementation blocked only while deps are unmet', () => {
-      // Three-topic chain: cli-presentation implemented; mint-release-tool
-      // depends on its task (met); commit-command depends on both (one unmet).
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: {
-          planning: {
-            items: {
-              'cli-presentation': { status: 'completed' },
-              'mint-release-tool': {
-                status: 'completed',
-                external_dependencies: {
-                  'cli-presentation': { description: 'Presentation layer', state: 'resolved', internal_id: 'cli-presentation-1-1' },
-                },
-              },
-              'commit-command': {
-                status: 'completed',
-                external_dependencies: {
-                  'cli-presentation': { description: 'Presentation layer', state: 'resolved', internal_id: 'cli-presentation-3-1' },
-                  'mint-release-tool': { description: 'Shared engine', state: 'resolved', internal_id: 'mint-release-tool-2-1' },
-                },
-              },
-            },
-          },
-          implementation: {
-            items: {
-              'cli-presentation': { status: 'completed', completed_tasks: ['cli-presentation-1-1', 'cli-presentation-3-1'] },
-            },
-          },
-        },
-      });
-      const ready = discover(dir, 'v1').next_phase_ready;
-      const mint = ready.find(n => n.name === 'mint-release-tool');
-      const commit = ready.find(n => n.name === 'commit-command');
-      assert.strictEqual(mint.action, 'start_implementation');
-      assert.strictEqual(mint.blocked, undefined);
-      assert.strictEqual(commit.blocked, true);
-      assert.deepStrictEqual(commit.deps_blocking, [
-        { topic: 'mint-release-tool', internal_id: 'mint-release-tool-2-1', reason: 'task not yet completed' },
-      ]);
-    });
-  });
-
   describe('edge cases', () => {
-    it('multiple items ready simultaneously', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: {
-          specification: {
-            items: {
-              auth: { status: 'completed' },
-              billing: { status: 'completed' },
-            },
-          },
-          planning: {
-            items: {
-              payments: { status: 'completed' },
-            },
-          },
-          implementation: {
-            items: {
-              core: { status: 'completed' },
-            },
-          },
-        },
-      });
-      const d = discover(dir, 'v1');
-      assert.strictEqual(d.next_phase_ready.length, 4);
-      const actions = d.next_phase_ready.map(n => n.action).sort();
-      assert.deepStrictEqual(actions, ['start_implementation', 'start_planning', 'start_planning', 'start_review']);
-    });
-
-    it('gating flags all false for empty epic', () => {
-      createManifest(dir, 'v1', { work_type: 'epic' });
-      const g = discover(dir, 'v1').gating;
-      assert.strictEqual(g.can_start_planning, false);
-      assert.strictEqual(g.can_start_implementation, false);
-      assert.strictEqual(g.can_start_review, false);
-    });
-
     it('normalizes object-format sources to array', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
@@ -868,7 +556,7 @@ describe('leeway-continue-epic discovery', () => {
       });
       const d = discover(dir, 'v1');
       assert.deepStrictEqual(d.completed.map((i) => i.phase), ['discussion'], 'a kept spec item has no session to resume');
-      assert.strictEqual(d.gating.can_start_planning, true);
+      assert.deepStrictEqual(d.phases.discussion.map((i) => i.name), ['auth'], 'the named epic\'s items, never another\'s');
     });
   });
 });
@@ -899,11 +587,9 @@ describe('leeway-continue-epic formatScoped (state dump)', () => {
     const out = formatScoped('v1', discover(dir, 'v1'));
     assert.strictEqual(out, [
       '=== EPIC: v1 ===',
-      'all_done: false',
       'reconcile_pending: (none)',
       'analysis_caches: gap_analysis=absent',
       'needs_sequencing: true',
-      'build_order_needs_sequencing: false',
       'discovery_map (2):',
       '  - ◐ auth-flow [discussing] summary=present description=present — OAuth vs sessions',
       '  - ○ billing [fresh] summary=absent description=absent',
@@ -919,47 +605,13 @@ describe('leeway-continue-epic formatScoped (state dump)', () => {
     const out = formatScoped('v1', discover(dir, 'v1'));
     assert.strictEqual(out, [
       '=== EPIC: v1 ===',
-      'all_done: false',
       'reconcile_pending: (none)',
       'analysis_caches: gap_analysis=absent',
       'needs_sequencing: false',
-      'build_order_needs_sequencing: false',
       'discovery_map (0):',
       '  (empty)',
       '',
     ].join('\n'));
-  });
-
-  it('build_order_needs_sequencing reads the spec items and the stale flag', () => {
-    createManifest(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        specification: { items: { auth: { status: 'in-progress', order: 1 }, billing: { status: 'proposed' } } },
-      },
-    });
-    let out = formatScoped('v1', discover(dir, 'v1'));
-    assert.match(out, /build_order_needs_sequencing: true/, 'unordered live topic flips the flag');
-
-    createManifest(dir, 'v2', {
-      work_type: 'epic',
-      phases: {
-        specification: {
-          build_order_stale: true,
-          items: { auth: { status: 'completed', order: 1 } },
-        },
-      },
-    });
-    out = formatScoped('v2', discover(dir, 'v2'));
-    assert.match(out, /build_order_needs_sequencing: true/, 'the stale flag alone flips it');
-
-    createManifest(dir, 'v3', {
-      work_type: 'epic',
-      phases: {
-        specification: { items: { auth: { status: 'completed', order: 1 }, gone: { status: 'cancelled' } } },
-      },
-    });
-    out = formatScoped('v3', discover(dir, 'v3'));
-    assert.match(out, /build_order_needs_sequencing: false/, 'ordered live set with terminal residue is quiet');
   });
 
   it('rows omit the summary tail when the field is absent', () => {
@@ -997,172 +649,6 @@ describe('leeway-continue-epic formatScoped (state dump)', () => {
     assert.ok(out.includes('  - ◐ billing [discussing] summary=absent description=absent awaiting=E1\n'), out);
   });
 
-  describe('all_done', () => {
-    it('true when every non-cancelled review item is completed and nothing else is open', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: {
-          discussion: { items: { auth: { status: 'completed' } } },
-          specification: {
-            items: { 'auth-spec': { status: 'completed', sources: [{ topic: 'auth', status: 'incorporated' }] } },
-          },
-          planning: { items: { 'auth-spec': { status: 'completed' } } },
-          implementation: { items: { 'auth-spec': { status: 'completed' } } },
-          review: {
-            items: {
-              'auth-spec': { status: 'completed' },
-              'old-topic': { status: 'cancelled', previous_status: 'in-progress' },
-            },
-          },
-        },
-      });
-      const out = formatScoped('v1', discover(dir, 'v1'));
-      assert.ok(out.includes('all_done: true'));
-    });
-
-    it('false while any item carries a live reconcile flag — the terminal gate is never offered past known-stale input', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: {
-          discussion: { items: { auth: { status: 'completed' } } },
-          specification: {
-            items: { 'auth-spec': { status: 'completed', sources: [{ topic: 'auth', status: 'incorporated' }] } },
-          },
-          planning: { items: { 'auth-spec': { status: 'completed' } } },
-          implementation: { items: { 'auth-spec': { status: 'completed' } } },
-          review: { items: { 'auth-spec': { status: 'completed', reconcile_needed: 'implementation' } } },
-        },
-      });
-      const out = formatScoped('v1', discover(dir, 'v1'));
-      assert.ok(out.includes('all_done: false'), out);
-      assert.ok(out.includes('reconcile_pending: review/auth-spec (implementation)'), out);
-    });
-
-    it('false while a message is parked — a stub is undrained work, whatever the review says', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: {
-          discussion: { items: { auth: { status: 'completed' }, billing: { status: 'unstarted' } } },
-          specification: {
-            items: { 'auth-spec': { status: 'completed', sources: [{ topic: 'auth', status: 'incorporated' }] } },
-          },
-          planning: { items: { 'auth-spec': { status: 'completed' } } },
-          implementation: { items: { 'auth-spec': { status: 'completed' } } },
-          review: { items: { 'auth-spec': { status: 'completed' } } },
-        },
-      });
-      assert.ok(formatScoped('v1', discover(dir, 'v1')).includes('all_done: false'));
-    });
-
-    it('false when every review item is cancelled — vacuous completion never counts', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: {
-          discussion: { items: { auth: { status: 'completed' } } },
-          specification: {
-            items: { 'auth-spec': { status: 'completed', sources: [{ topic: 'auth', status: 'incorporated' }] } },
-          },
-          planning: { items: { 'auth-spec': { status: 'completed' } } },
-          implementation: { items: { 'auth-spec': { status: 'completed' } } },
-          review: {
-            items: {
-              'auth-spec': { status: 'cancelled', previous_status: 'in-progress' },
-              'old-topic': { status: 'cancelled', previous_status: 'in-progress' },
-            },
-          },
-        },
-      });
-      const out = formatScoped('v1', discover(dir, 'v1'));
-      assert.ok(out.includes('all_done: false'));
-    });
-
-    it('false while a live experiment series is open — the gate never offers completion over unfinished evidence', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: {
-          discussion: { items: { auth: { status: 'completed' } } },
-          experiment: {
-            items: { auth: { status: 'in-progress', experiments: { E1: { slug: 'x', status: 'running' } } } },
-          },
-          specification: {
-            items: { 'auth-spec': { status: 'completed', sources: [{ topic: 'auth', status: 'incorporated' }] } },
-          },
-          planning: { items: { 'auth-spec': { status: 'completed' } } },
-          implementation: { items: { 'auth-spec': { status: 'completed' } } },
-          review: { items: { 'auth-spec': { status: 'completed' } } },
-        },
-      });
-      const out = formatScoped('v1', discover(dir, 'v1'));
-      assert.ok(out.includes('all_done: false'), out);
-    });
-
-    it('false while a review item is in progress', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: {
-          discussion: { items: { auth: { status: 'completed' } } },
-          specification: {
-            items: { 'auth-spec': { status: 'completed', sources: [{ topic: 'auth', status: 'incorporated' }] } },
-          },
-          planning: { items: { 'auth-spec': { status: 'completed' } } },
-          implementation: { items: { 'auth-spec': { status: 'completed' } } },
-          review: { items: { 'auth-spec': { status: 'in-progress' } } },
-        },
-      });
-      const out = formatScoped('v1', discover(dir, 'v1'));
-      assert.ok(out.includes('all_done: false'));
-    });
-
-    it('false when no review items exist', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
-      });
-      const out = formatScoped('v1', discover(dir, 'v1'));
-      assert.ok(out.includes('all_done: false'));
-    });
-
-    it('false while the discovery map has not settled', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: {
-          discovery: {
-            items: {
-              auth: { status: 'in-progress', source: 'discovery', summary: 's', description: 'd', order: 1 },
-              'open-thread': { status: 'in-progress', source: 'discovery', summary: 's', description: 'd', order: 2 },
-            },
-          },
-          discussion: { items: { auth: { status: 'completed' } } },
-          specification: {
-            items: { 'auth-spec': { status: 'completed', sources: [{ topic: 'auth', status: 'incorporated' }] } },
-          },
-          planning: { items: { 'auth-spec': { status: 'completed' } } },
-          implementation: { items: { 'auth-spec': { status: 'completed' } } },
-          review: { items: { 'auth-spec': { status: 'completed' } } },
-        },
-      });
-      const out = formatScoped('v1', discover(dir, 'v1'));
-      assert.ok(out.includes('all_done: false'));
-    });
-
-    it('a settled map does not hold all_done open', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: {
-          discovery: { items: { auth: { status: 'in-progress', source: 'discovery', summary: 's', description: 'd', order: 1 } } },
-          discussion: { items: { auth: { status: 'completed' } } },
-          specification: {
-            items: { 'auth-spec': { status: 'completed', sources: [{ topic: 'auth', status: 'incorporated' }] } },
-          },
-          planning: { items: { 'auth-spec': { status: 'completed' } } },
-          implementation: { items: { 'auth-spec': { status: 'completed' } } },
-          review: { items: { 'auth-spec': { status: 'completed' } } },
-        },
-      });
-      const out = formatScoped('v1', discover(dir, 'v1'));
-      assert.ok(out.includes('all_done: true'));
-    });
-  });
 });
 
 describe('leeway-continue-epic detail counts (imports/seeds)', () => {
@@ -1242,18 +728,6 @@ describe('leeway-continue-epic CLI dispatch', () => {
     });
     const out = run(['pull-forward-menu', 'v1']).stdout;
     assert.ok(out.includes('  1  —  pull-forward  away  discovery  → (internal)  (item: export-suite)'), out.split('===')[1] || out);
-  });
-
-  it('the view snapshot carries the build-order flag line', () => {
-    createManifest(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        discussion: { items: { auth: { status: 'completed' } } },
-        specification: { items: { auth: { status: 'in-progress' } } },
-      },
-    });
-    const out = run(['view', 'v1']).stdout;
-    assert.ok(out.includes('build_order_needs_sequencing: true'), out.split('===')[1] || out);
   });
 
   it('the bare call errors with usage — the epic is always named', () => {
@@ -1365,7 +839,7 @@ describe('leeway-continue-epic CLI dispatch', () => {
     const gate = run(['in-session-gate', 'v1', key]);
     assert.strictEqual(gate.status, 0, gate.stderr);
     assert.ok(!gate.stdout.includes('MENU: in-session gate'), `no gate section for a code entry:\n${gate.stdout}`);
-    assert.ok(gate.stdout.includes('the code slot is gated where the phase starts'), gate.stdout);
+    assert.ok(gate.stdout.includes('the code slot is gated where the build is entered (enter implementation|review)'), gate.stdout);
   });
 
   it('the caller\'s own hold marks nothing — a session never strikes through itself', () => {

@@ -22,7 +22,7 @@ const ROOT = path.join(__dirname, '../..');
 const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/knowledge/files.cjs'));
 const { githubOffline, git, stateGit } = require('./engine-harness.cjs');
 const { STATE_DIR_NAME, statePath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
-const { Sim, sessionLog, mappedEpic, enterEntry, decideTopic, discussed, askedOn, keptOldSpec } = require('./pipeline-world.cjs');
+const { Sim, sessionLog, mappedEpic, enterEntry, decideTopic, askedOn } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: sessions', () => {
   let sim;
@@ -128,48 +128,6 @@ describe('pipeline simulation: sessions', () => {
     decideTopic(sim, wu, 'alpha');
   });
 
-  it('restart: the cleanup commits while the plan item lives, the entry goes last', () => {
-    const wu = 'redo';
-    sim.run(['workunit', 'create', wu, 'feature', '--description', 'Redo it', '--session-log-file', sessionLog(sim, wu)]);
-    discussed(sim, wu, wu);
-    keptOldSpec(sim, wu, wu);
-    sim.run(['topic', 'start', wu, 'planning', wu]);
-    sim.write(`.leeway/${wu}/planning/${wu}/planning.md`, `# Plan — ${wu}\n`);
-    sim.write(`.leeway/${wu}/planning/${wu}/tasks/${wu}-1-1.md`, '---\nid: redo-1-1\n---\n\n# A task\n');
-    sim.run(['manifest', 'set', `${wu}.planning.${wu}`,
-      'format=local-markdown', 'task_list_gate_mode=gated', 'author_gate_mode=gated',
-      'finding_gate_mode=gated', 'review_cycle=0', 'phase=1', 'task=~',
-      `task_map.${wu}-1-1=${wu}-1-1`, 'storage_paths=[]']);
-    sim.run(['commit', wu, '-m', `plan(${wu}): author`, '--plan', wu]);
-
-    // A peer session is mid-write on the unit's imports beside it — the
-    // restart's two commits must not touch that.
-    const peerDoc = `.leeway/${wu}/imports/notes.md`;
-    sim.write(peerDoc, '# Notes — Redo\n\npeer session dirt\n');
-
-    // The restart, in prose order: files first, committed through `--plan`
-    // while the planning item still resolves it.
-    fs.rmSync(path.join(sim.dir, `.leeway/${wu}/planning/${wu}`), { recursive: true, force: true });
-    const cleanup = sim.run(['commit', wu, '-m', `planning(${wu}): restart planning — clear the authored plan`, '--plan', wu]);
-    assert.match(cleanup.committed, /^[0-9a-f]+$/, 'the cleanup commits while the item lives');
-    const cleaned = stateGit(sim.dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).split('\n').map((l) => l.trim()).filter(Boolean).map((rel) => `.leeway/${rel}`);
-    assert.ok(cleaned.includes(`.leeway/${wu}/planning/${wu}/planning.md`), 'the deleted plan files ride the cleanup');
-    assert.ok(!cleaned.includes(peerDoc), 'the peer session\'s dirt does not');
-
-    // The entry goes last, committed on the topic's own scope.
-    sim.run(['manifest', 'delete', `${wu}.planning`, `items.${wu}`]);
-    assert.strictEqual(sim.manifest(wu).phases.planning.items[wu], undefined);
-    const closed = sim.run(['commit', wu, '-m', `planning(${wu}): restart planning`, '--topic', `planning/${wu}`]);
-    assert.match(closed.committed, /^[0-9a-f]+$/);
-    assert.deepStrictEqual(stateGit(sim.dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).split('\n').map((l) => l.trim()).filter(Boolean),
-      [`${wu}/manifest.json`], 'only the entry\'s removal — the plan files are already in');
-    assert.match(stateGit(sim.dir, ['status', '--porcelain', '-uall']), /redo\/imports\/notes\.md/, 'the peer\'s dirt survives both commits');
-
-    // And the reason the order is what it is: `--plan` cannot resolve a
-    // deleted item, so a cleanup committed after the delete has no scope.
-    sim.refuses(['commit', wu, '-m', 'too late', '--plan', wu], /no planning item/);
-  });
-
   it('restart: a quick-fix commits the plan first, then everything its work unit is', () => {
     const wu = 'typo';
     sim.run(['workunit', 'create', wu, 'quick-fix', '--description', 'Fix the typo', '--session-log-file', sessionLog(sim, wu)]);
@@ -181,8 +139,7 @@ describe('pipeline simulation: sessions', () => {
     sim.run(['topic', 'start', wu, 'planning', wu]);
     sim.write(`.leeway/${wu}/planning/${wu}/planning.md`, `# Plan — ${wu}\n`);
     sim.run(['manifest', 'set', `${wu}.planning.${wu}`,
-      'format=local-markdown', 'task_list_gate_mode=auto', 'author_gate_mode=auto',
-      'finding_gate_mode=auto', 'review_cycle=0', 'phase=1', 'task=~',
+      'format=local-markdown', 'review_cycle=0', 'phase=1', 'task=~',
       `task_map.${wu}-1-1=${wu}-1-1`, 'storage_paths=[]']);
     sim.run(['topic', 'complete', wu, 'planning', wu]);
     sim.run(['commit', wu, '-m', `scoping(${wu}): register plan`, '--plan', wu]);
@@ -202,6 +159,9 @@ describe('pipeline simulation: sessions', () => {
 
     sim.run(['manifest', 'delete', `${wu}.specification`, `items.${wu}`]);
     sim.run(['manifest', 'delete', `${wu}.planning`, `items.${wu}`]);
+    // The reason the order is what it is: `--plan` cannot resolve a deleted
+    // item, so a cleanup committed after the delete has no scope.
+    sim.refuses(['commit', wu, '-m', 'too late', '--plan', wu], /no planning item/);
     assert.strictEqual(sim.manifest(wu).phases.scoping.items[wu].status, 'in-progress',
       'the scoping item stays in progress — the fresh run re-completes it');
     sim.run(['commit', wu, '-m', `scoping(${wu}): restart scoping`]);

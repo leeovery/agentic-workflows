@@ -76,12 +76,35 @@ function legacyBuild(manifest) {
 }
 
 /**
+ * Whether the unit waits on the migration's cut: built under the old plan,
+ * of a type the build serves — never a quick-fix, whose scoping keeps its
+ * own spec and plan items, nor a cross-cutting concern, which builds
+ * nothing. Its menus show it waiting, with no route into its work (P12).
+ * @param {Record<string, any>} manifest
+ */
+function awaitsCut(manifest) {
+  return ['epic', 'feature', 'bugfix'].includes(manifest.work_type) && legacyBuild(manifest);
+}
+
+/**
  * Whether the unit's build runs by its cut: begun at ready to build's yes,
  * with nothing of the old plan standing.
  * @param {Record<string, any>} manifest
  */
 function buildByCut(manifest) {
   return buildBegun(manifest) && !legacyBuild(manifest);
+}
+
+/**
+ * Why the unit's build cannot be entered, with its way on, or null where it
+ * can: a quick-fix, a unit built under the old plan, a build not begun.
+ * @param {Record<string, any>} manifest @returns {string|null}
+ */
+function buildRefusal(manifest) {
+  const unit = manifest.name;
+  if (manifest.work_type === 'quick-fix') return `${unit} is a quick-fix, whose delivery is built with the reshape's 29.15 — until then a quick-fix stops at its scoping`;
+  if (legacyBuild(manifest)) return `${unit} was built under the old plan, and its build is entered once the reshape's 29.17 migration has cut it`;
+  return buildBegun(manifest) ? null : `${unit}'s build has not begun — ready to build's yes begins it: render ready-to-build ${unit}`;
 }
 
 /**
@@ -559,6 +582,32 @@ function buildNext(manifest) {
 }
 
 /**
+ * Where a unit built under the old plan stands, read from its old spec's,
+ * planning's, implementation's and review's items as before the build by
+ * its cut, until 29.17's cut takes them (P12) — null where none of them
+ * says. For an epic, one topic completing review never marks the whole
+ * epic done: completion is the explicit status flip.
+ * @param {Record<string, any>} manifest @returns {{next_phase: string, phase_label: string}|null}
+ */
+function legacyNext(manifest) {
+  const ps = (/** @type {string} */ phase) => phaseStatus(manifest, phase);
+  if (ps('review') === 'completed') {
+    return manifest.work_type === 'epic'
+      ? { next_phase: 'review', phase_label: 'review completed for current topics' }
+      : { next_phase: 'done', phase_label: 'pipeline complete' };
+  }
+  if (ps('review') === 'in-progress') return { next_phase: 'review', phase_label: 'review (in-progress)' };
+  if (ps('implementation') === 'completed') return { next_phase: 'review', phase_label: 'ready for review' };
+  if (ps('implementation') === 'in-progress') return { next_phase: 'implementation', phase_label: 'implementation (in-progress)' };
+  if (ps('planning') === 'completed') return { next_phase: 'implementation', phase_label: 'ready for implementation' };
+  if (ps('planning') === 'in-progress') return { next_phase: 'planning', phase_label: 'planning (in-progress)' };
+  if (ps('specification') !== 'completed') return null;
+  return manifest.work_type === 'cross-cutting'
+    ? { next_phase: 'done', phase_label: 'pipeline complete' }
+    : { next_phase: 'planning', phase_label: 'ready for planning' };
+}
+
+/**
  * Where the unit's work goes next, and the label the menus show for it,
  * `specWritten` saying whether its spec is written (phaseStatus).
  * @param {Record<string, any>} manifest @param {boolean} [specWritten]
@@ -618,42 +667,9 @@ function computeNextPhase(manifest, specWritten = false) {
     return { next_phase: 'scoping', phase_label: 'ready for scoping' };
   }
 
-  if (ps('review') === 'completed') {
-    // Phase aggregation only covers topics that have reached the phase. For
-    // an epic, one topic completing review must not mark the whole epic done
-    // — completion is the explicit status flip, never derived.
-    if (wt === 'epic') {
-      return { next_phase: 'review', phase_label: 'review completed for current topics' };
-    }
-    return { next_phase: 'done', phase_label: 'pipeline complete' };
-  }
-  if (ps('review') === 'in-progress') {
-    return { next_phase: 'review', phase_label: 'review (in-progress)' };
-  }
-  if (ps('implementation') === 'completed') {
-    return { next_phase: 'review', phase_label: 'ready for review' };
-  }
-  if (ps('implementation') === 'in-progress') {
-    return {
-      next_phase: 'implementation',
-      phase_label: 'implementation (in-progress)',
-    };
-  }
-  if (ps('planning') === 'completed') {
-    return { next_phase: 'implementation', phase_label: 'ready for implementation' };
-  }
-  if (ps('planning') === 'in-progress') {
-    return { next_phase: 'planning', phase_label: 'planning (in-progress)' };
-  }
-  if (ps('specification') === 'completed') {
-    if (wt === 'cross-cutting') {
-      return { next_phase: 'done', phase_label: 'pipeline complete' };
-    }
-    // The one spec a unit writes leads into its build (E6); a unit whose
-    // building began under the old spec keeps that spec's items, and its plan.
-    return phaseItems(manifest, 'specification').length === 0
-      ? { next_phase: 'implementation', phase_label: 'ready for implementation' }
-      : { next_phase: 'planning', phase_label: 'ready for planning' };
+  if (legacyBuild(manifest)) {
+    const next = legacyNext(manifest);
+    if (next !== null) return next;
   }
   if (ps('specification') === 'in-progress') {
     return {
@@ -707,8 +723,10 @@ function computeInProgressPhases(manifest, pipeline, specWritten = false) {
  * between the last topic completion and `workunit complete`). But a reopened
  * earlier phase means the unit is mid-revisit, not finalising: the phase in
  * flight is the next action, and completing the unit now would abandon the
- * revisit. The one derivation both the start dashboard and the single-topic
- * work-unit detail read, so the two can never disagree.
+ * revisit. A unit waiting on the migration's cut is never finalising: it
+ * offers no way on but the migration (P12). The one derivation both the start
+ * dashboard and the single-topic work-unit detail read, so the two can never
+ * disagree.
  * @param {object} manifest
  * @param {string[]} pipeline  the work type's pipeline phases, in order
  * @param {boolean} [specWritten]  the unit's spec is written (phaseStatus)
@@ -726,7 +744,7 @@ function computeUnitPhaseState(manifest, pipeline, specWritten = false) {
   return {
     next_phase: nextPhase,
     phase_label: phaseLabel,
-    finalising: nextPhase === 'done',
+    finalising: nextPhase === 'done' && !awaitsCut(manifest),
     in_progress_phases: inProgress,
   };
 }
@@ -1239,7 +1257,9 @@ module.exports = {
   cutLength,
   isFixPhase,
   legacyBuild,
+  awaitsCut,
   buildByCut,
+  buildRefusal,
   buildPlaceStatus,
   phaseStatus,
   UNIT_PHASES,

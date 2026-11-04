@@ -24,7 +24,7 @@ const {
 } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
 const { drawLabel } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
 const {
-  Sim, mapTopics, sessionLog, menuEntry, handoffEntry, enterEntry, handoff, arriveAtEpicMenu, waitAgents, decideTopic, askedOn, send,
+  Sim, mapTopics, sessionLog, menuEntry, handoffEntry, enterEntry, handoff, waitAgents, decideTopic, askedOn, send,
 } = require('./pipeline-world.cjs');
 
 /**
@@ -93,7 +93,6 @@ describe('pipeline simulation: experiments, in an epic', () => {
     assert.strictEqual(expEntries.some((k) => k.recommended), true, 'a live experiment leads the recommendations');
     assert.match(expEntries[0].route, new RegExp(`^/leeway-experiment-process epic ${wu} timing$`));
     assert.match(drawLabel(expEntries[0].label), /1 experiment queued/);
-    sim.render(['epic-soft-gate', wu, '--action', 'continue_experiment', '--topic', 'timing'], { expect: 'empty' });
 
     // Neither waiting conversation answers the question its experiment
     // measures while the evidence is out.
@@ -101,14 +100,15 @@ describe('pipeline simulation: experiments, in an epic', () => {
       sim.refuses(['ledger', 'decide', `${wu}.discussion.${topic}`, '--answers', question], /is measured by experiment E1, still running/, null,
         JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'A guess.', why: 'No evidence yet.' }));
     }
-    // A pause at either fetches the wait for its agents — a review this
-    // session dispatched is still running, so the gate asks, and a proceed
-    // leaves it running — then hands the session to the bridge and on to the
-    // epic menu, whose banner names each waiting conversation.
+    // Working it now leaves the topic: the wait for its agents first — a
+    // review this session dispatched is still running, so the gate asks, and
+    // a proceed leaves it running — then the spawn gate's yes hands the
+    // session straight to the laboratory.
     const review = sim.run(['agent', 'dispatch', wu, 'discussion', 'timing', '--kind', 'review']);
     waitAgents(sim, wu, 'timing', true);
-    assert.match(arriveAtEpicMenu(sim, wu, 'discussion', 'paused'),
-      /\nDiscussion paused for ".*" — "Timing" awaits experiment evidence \(E1\); "Layout" awaits experiment evidence \(E1\)\.\n$/);
+    sim.render(['experiment-spawn-gate', `${wu}.discussion.timing`, '--id', 'E1'], { expect: 'content' });
+    assert.deepStrictEqual(sim.run(['gate', 'experiment spawn gate', '--pick', 'y']).next,
+      { kind: 'handoff', skill: 'leeway-experiment-process', args: ['epic', wu, 'timing'] });
 
     // The walk to verdict: design → the register and the briefing freeze →
     // run → conclude. The freeze is its own verb; the approval gate renders

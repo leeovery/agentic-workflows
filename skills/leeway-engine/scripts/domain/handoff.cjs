@@ -27,7 +27,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { VALID_WORK_TYPES, WORK_TYPE_PIPELINES, EPIC_PHASES, WAITING_PHASES, NO_ARGUMENT, assertLegalName } = require('../kernel/manifest-schema.cjs');
+const { VALID_WORK_TYPES, WORK_TYPE_PIPELINES, EPIC_PHASES, NO_ARGUMENT, assertLegalName } = require('../kernel/manifest-schema.cjs');
 const { loadWorkUnitManifest, readProjectManifest } = require('../kernel/manifest.cjs');
 const { parseInboxPaths, ROADMAP_SEED } = require('./inbox.cjs');
 const { titlecase } = require('./conventions.cjs');
@@ -41,7 +41,7 @@ const HANDOFF_ENV = 'LEEWAY_HANDOFF';
 /** Discovery's way in for a piece of work of no kind yet. */
 const START = 'start';
 
-const OUTCOMES = ['completed', 'paused', 'cancelled', 'postponed'];
+const OUTCOMES = ['completed', 'cancelled', 'postponed'];
 
 // Every phase some work type's pipeline holds is entered by a handoff.
 const PIPELINE_PHASES = [...new Set(Object.values(WORK_TYPE_PIPELINES).flat())];
@@ -141,26 +141,12 @@ function entryOf(phase) {
 }
 
 /**
- * Whether every unit is entered at the work unit in the phase, whatever its
- * type, as its row of the entry says (4.11.2).
+ * Whether the phase is entered at the work unit, as its row of the entry
+ * says (4.11.2).
  * @param {string} phase
  */
 function enteredAtUnit(phase) {
-  const entry = entryOf(phase);
-  return entry?.level === 'unit' && entry.takes === undefined;
-}
-
-/**
- * Whether the unit is entered at the work unit in the phase: as every unit
- * is, or as a row taking units only in a state of their own takes it — the
- * build's, a unit whose build runs by its cut, one built under the old plan
- * entered at its topic as before (P12).
- * @param {string} cwd @param {string} phase @param {string} unit
- */
-function unitEnters(cwd, phase, unit) {
-  const entry = entryOf(phase);
-  if (entry?.level !== 'unit') return false;
-  return entry.takes === undefined || entry.takes(workUnitManifest(cwd, unit));
+  return entryOf(phase)?.level === 'unit';
 }
 
 /**
@@ -177,10 +163,10 @@ function phaseTarget(phase) {
     get counts() { return enteredAtUnit(phase) ? [2] : [2, 3]; },
     check: (cwd, [type, unit, topic]) => {
       assertOneOf('the work type', type, served);
-      if (type === 'epic' && topic === undefined && !unitEnters(cwd, phase, unit)) throw new Error(`an epic enters ${phase} at a topic`);
+      if (type === 'epic' && topic === undefined && !enteredAtUnit(phase)) throw new Error(`an epic enters ${phase} at a topic`);
       assertWorkUnit(cwd, unit, type);
       if (topic === undefined) return;
-      if (unitEnters(cwd, phase, unit)) throw new Error(`${unit} enters ${phase} at the work unit — name no topic`);
+      if (enteredAtUnit(phase)) throw new Error(`${unit} enters ${phase} at the work unit — name no topic`);
       assertLegalName('topic', topic);
     },
     where: (cwd, [, unit, topic]) => at(titlecase(phase), topic === undefined ? unit : itemName(topicTitles(loadWorkUnitManifest(cwd, unit)), phase, topic)),
@@ -226,7 +212,6 @@ const TARGETS = {
       if (phase !== undefined) {
         assertOneOf('the phase', phase, EPIC_PHASES);
         assertOneOf('the outcome', outcome, OUTCOMES);
-        if (outcome === 'paused') assertOneOf('the phase that paused', phase, WAITING_PHASES);
       }
       if (phase === 'review' && outcome === 'completed' && finishedEpic(cwd, unit)) return;
       assertWorkUnit(cwd, unit, 'epic');

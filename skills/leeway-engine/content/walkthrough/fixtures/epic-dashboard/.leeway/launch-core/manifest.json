@@ -47,14 +47,6 @@
         }
       }
     },
-    "planning": {
-      "items": {
-        "sign-in": {
-          "status": "completed",
-          "format": "local-markdown"
-        }
-      }
-    },
     "implementation": {
       "items": {
         "sign-in": {

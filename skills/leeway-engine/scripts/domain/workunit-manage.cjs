@@ -11,28 +11,20 @@
 // ---------------------------------------------------------------------------
 
 const { loadManifest, loadActiveManifests } = require('./reads.cjs');
-const { phaseItems, buildByCut } = require('./derivations.cjs');
+const { phaseItems, buildByCut, awaitsCut } = require('./derivations.cjs');
 const { pastItsSpec } = require('./spec-standing.cjs');
-
-/**
- * @typedef {object} PlanningTopic
- * @property {string} name
- * @property {string} status
- */
 
 /**
  * @typedef {object} ManageDetail
  * @property {string} work_unit
  * @property {string} work_type
  * @property {string} status
- * @property {boolean} implementation_completed  any implementation item completed → `done` offered
- * @property {boolean} has_plan                  planning phase present — the plan-topics pick reads it
+ * @property {boolean} implementation_completed  any implementation item completed, on a unit not waiting on the migration's cut → `done` offered (P12)
  * @property {boolean} has_build                 a build by its cut → `view-build` offered (12.12.11)
  * @property {boolean} has_spec                  past its spec, written or concluded (absorb guard)
  * @property {boolean} has_discussion            discussion phase present (absorb guard)
  * @property {string[]} available_epics          in-progress epic names before their spec — absorb targets
  * @property {boolean} absorb_available          feature, no spec, has discussion, ≥1 epic target
- * @property {PlanningTopic[]} planning_topics   the view-plan topic choices (epics)
  */
 
 /** @param {object} manifest @param {string} phase */
@@ -61,14 +53,12 @@ function manageDetail(cwd, workUnit) {
     work_unit: workUnit,
     work_type: workType,
     status: manifest.status,
-    implementation_completed: phaseItems(manifest, 'implementation').some((i) => i.status === 'completed'),
-    has_plan: phasePresent(manifest, 'planning'),
+    implementation_completed: !awaitsCut(manifest) && phaseItems(manifest, 'implementation').some((i) => i.status === 'completed'),
     has_build: buildByCut(manifest),
     has_spec: hasSpec,
     has_discussion: hasDiscussion,
     available_epics: availableEpics,
     absorb_available: workType === 'feature' && !hasSpec && hasDiscussion && availableEpics.length > 0,
-    planning_topics: phaseItems(manifest, 'planning').map((i) => ({ name: i.name, status: i.status || 'in-progress' })),
   };
 }
 

@@ -48,7 +48,7 @@ A piece of work that is several distinct things wearing one name. Its parts beco
 One coherent thing to build. It runs the full journey from discussion to review as a single topic.
 
 **bugfix**:
-Something that used to work and now doesn't. It replaces discussion with an investigation into why, then continues through specification, planning, implementation and review.
+Something that used to work and now doesn't. It replaces discussion with an investigation into why, then continues through specification, implementation and review.
 
 **quick-fix**:
 A small, mechanical change with nothing to debate. Its middle is a single scoping pass, then implementation and review.
@@ -62,10 +62,10 @@ One part of an epic, with its own name, its own brief and its own trip through t
 ## The journey
 
 **phase**:
-One step of a piece of work's journey. In order: discovery, experiment, discussion, investigation, scoping, specification, planning, implementation, review. Which phases a piece of work visits depends on its kind.
+One step of a piece of work's journey. In order: discovery, experiment, discussion, investigation, scoping, specification, implementation, review. Which phases a piece of work visits depends on its kind.
 
 **stage**:
-One of the three bands the phases group into, and the top-level divisions of an epic's dashboard. Discovery is where you explore and decide (discovery, experiment, discussion, investigation). Definition is where you specify and plan (scoping, specification, planning). Delivery is where it is built and verified (implementation, review).
+One of the three bands the phases group into, and the top-level divisions of an epic's dashboard. Discovery is where you explore and decide (discovery, experiment, discussion, investigation). Definition is where you specify and plan (scoping, specification). Delivery is where it is built and verified (implementation, review).
 _Avoid_: the three D's, band (fine as a description of the dashboard)
 
 **discovery**:
@@ -90,9 +90,6 @@ _Avoid_: the golden record (fine as a description)
 
 **spec**:
 The short form of specification. The same word.
-
-**planning**:
-The phase that breaks a specification into phases and tasks with acceptance criteria, and settles the order to build them in. Its plan is written into the task tracker the project chose.
 
 **implementation**:
 The building phase. Agents take the plan's tasks one at a time, writing the tests before the code, stopping at gates or running on under `auto`.
@@ -144,9 +141,6 @@ A short per-topic view written when an epic's topics are drawn out: the soft dec
 
 **dashboard**:
 An epic's view: the three stages as bands, the topics and their state beneath them, and a menu that recommends the next move.
-
-**build order**:
-A suggested sequence over an epic's specifications for planning and building. Advisory: stepping ahead of it warns and never blocks.
 
 ## Everyday
 

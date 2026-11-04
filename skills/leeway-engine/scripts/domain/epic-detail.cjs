@@ -5,13 +5,12 @@
 // projection and reasoning surface derives from.
 //
 // Reads the work unit's manifest (already loaded by the caller) and computes
-// per-phase items, lifecycle joins, gating, next-phase readiness, and the
-// discovery map. Pure over its inputs: same manifest, same answer. Shared
+// per-phase items, lifecycle joins, the build's row and the discovery map. Pure over its inputs: same manifest, same answer. Shared
 // manifest semantics come from domain/derivations — never
 // duplicated here.
 // ---------------------------------------------------------------------------
 
-const { EPIC_PHASES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_TERMINAL_STATUSES, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
+const { EPIC_PHASES, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
 const { loadProjectManifest } = require('./reads.cjs');
 const {
   phaseItems,
@@ -29,26 +28,19 @@ const {
   buildByCut,
   buildPlaceStatus,
   legacyBuild,
+  buildRefusal,
   topicTitles,
 } = require('./derivations.cjs');
-const { computeBuildOrderNeedsSequencing, sortItemsByBuildOrder } = require('./build-order.cjs');
 const { discoveryLifecycleLabel } = require('./conventions.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { entryRefusal, pastItsSpec } = require('./spec-standing.cjs');
-const { buildRefusal, buildStanding } = require('./build-entry.cjs');
+const { buildStanding } = require('./build-entry.cjs');
 
 /**
  * @typedef {object} SpecSource
  * @property {string} [topic]  source discussion name (object-format sources)
  * @property {string} [name]   source discussion name (legacy array format)
  * @property {string} [status] `incorporated` | `pending`
- */
-
-/**
- * @typedef {object} DepBlocking
- * @property {string} topic          the plan this dependency points at
- * @property {string} [internal_id]  cross-plan task reference
- * @property {string} reason         why the dependency blocks
  */
 
 /**
@@ -68,9 +60,6 @@ const { buildRefusal, buildStanding } = require('./build-entry.cjs');
  *                                             top-level records, id order; the menu's
  *                                             topic-grain entry reads them for its tail
  * @property {SpecSource[]} [sources]          specification items
- * @property {string} [format]                 planning items
- * @property {boolean} [deps_satisfied]        planning items
- * @property {DepBlocking[]} [deps_blocking]   planning items with unmet deps
  * @property {string|number} [current_phase]   implementation items
  * @property {string} [current_task]           implementation items — the task in flight
  * @property {string[]} [completed_phases]     implementation items
@@ -113,15 +102,6 @@ const { buildRefusal, buildStanding } = require('./build-entry.cjs');
  * @property {UnitStage} stage
  * @property {string} state    the unit's state tag — the topic's map lifecycle label
  * @property {string} [locked] why the unit cannot be moved — the postpone's first lock
- */
-
-/**
- * @typedef {object} NextPhaseEntry
- * @property {string} name
- * @property {string} action  `start_planning` | `start_implementation` | `start_review`
- * @property {string} label
- * @property {boolean} [blocked]
- * @property {DepBlocking[]} [deps_blocking]
  */
 
 /**
@@ -183,7 +163,6 @@ const { buildRefusal, buildStanding } = require('./build-entry.cjs');
  * @property {CancelledUnit[]} cancelled      every unit reading cancelled, the same order
  * @property {CancellableUnit[]} postponable  every Discovery unit the postpone menu lists, locked ones included — map order
  * @property {PostponedTopic[]} postponed     the topics that left for the roadmap, map order
- * @property {NextPhaseEntry[]} next_phase_ready
  * @property {'start'|'continue'|null} spec_row  the spec the menu offers — to start, or to carry on once written; null
  *                             while a topic is open, once the build has begun, and on a unit keeping the old spec's items
  * @property {boolean} map_closed  the unit is past its spec, so its map is closed (18.4.19): no topic is added, cancelled,
@@ -195,53 +174,11 @@ const { buildRefusal, buildStanding } = require('./build-entry.cjs');
  * @property {string|null} active_session  in-progress discovery session number, or null
  * @property {string|null} convergence_state  `in-progress` | `settled` | null (no map)
  * @property {boolean} needs_sequencing
- * @property {boolean} build_order_needs_sequencing  the live set's orders are not a contiguous 1..N permutation (missing, duplicate, or hole), or completion flagged them stale
  * @property {MapSummary|null} map_summary
  * @property {number} imports_count
  * @property {number} seeds_count
  * @property {{gap_analysis: AnalysisCache}} analysis_caches
- * @property {{can_start_planning: boolean, can_start_implementation: boolean, can_start_review: boolean}} gating
  */
-
-/**
- * Resolve a planning item's external dependencies against this manifest's
- * implementation items.
- * @param {object} manifest
- * @param {PhaseEntry & {external_dependencies?: object}} planItem
- * @returns {{deps_satisfied: boolean, deps_blocking: DepBlocking[]}}
- */
-function resolveDeps(manifest, planItem) {
-  const externalDepsObj = (planItem.external_dependencies && typeof planItem.external_dependencies === 'object' && !Array.isArray(planItem.external_dependencies))
-    ? planItem.external_dependencies
-    : {};
-
-  const externalDeps = Object.entries(externalDepsObj).map(([depTopic, d]) => ({ topic: depTopic, ...d }));
-  let depsSatisfied = true;
-  const depsBlocking = [];
-
-  for (const dep of externalDeps) {
-    if (dep.state === 'satisfied_externally') continue;
-    if (dep.state === 'unresolved') {
-      depsSatisfied = false;
-      depsBlocking.push({ topic: dep.topic, reason: 'dependency unresolved' });
-    } else if (dep.state === 'resolved' && dep.internal_id) {
-      // Dep topics live in the same work unit — read the implementation item
-      // from this manifest. A completed implementation satisfies the dep even
-      // if the referenced task was skipped or its ID is stale.
-      const depImpl = phaseItems(manifest, 'implementation').find(i => i.name === dep.topic) || {};
-      const completedTasks = Array.isArray(depImpl.completed_tasks) ? depImpl.completed_tasks : [];
-      if (depImpl.status !== 'completed' && !completedTasks.includes(dep.internal_id)) {
-        depsSatisfied = false;
-        depsBlocking.push({ topic: dep.topic, internal_id: dep.internal_id, reason: 'task not yet completed' });
-      }
-    } else if (dep.state === 'resolved' && !dep.internal_id) {
-      depsSatisfied = false;
-      depsBlocking.push({ topic: dep.topic, reason: 'resolved dependency missing task reference' });
-    }
-  }
-
-  return { deps_satisfied: depsSatisfied, deps_blocking: depsBlocking };
-}
 
 /** What a reactivate returns for a topic — its cancelled items with their stashes. @param {object} manifest @param {string} name @returns {RestoreRef[]} */
 function unitRestores(manifest, name) {
@@ -400,6 +337,9 @@ function buildAnalysisCaches(cwd, manifest) {
   };
 }
 
+/** The phases an old unit keeps items in past its discussions (P12). */
+const PAST_THE_TOPICS = ['specification', 'planning', 'implementation', 'review'];
+
 /**
  * Build the full epic detail for one work unit's manifest.
  * @param {string} cwd       project root
@@ -412,20 +352,11 @@ function epicDetail(cwd, manifest) {
   /** @type {ItemRef[]} */
   const completedItems = [];
   const inProgressItems = [];
-  /** @type {NextPhaseEntry[]} */
-  const nextPhaseReady = [];
 
-  const BUILD_ORDER_PHASES = ['specification', 'planning', 'implementation'];
   for (const phase of EPIC_PHASES) {
     if (phase === 'discovery') continue;
-    let items = phaseItems(manifest, phase);
+    const items = phaseItems(manifest, phase);
     if (items.length === 0) continue;
-    // The build order sorts the three build phases everywhere the detail
-    // feeds — dashboard trees, menu entries, recommendation scans — as a
-    // stable tiebreak within whatever grouping a surface applies on top.
-    if (BUILD_ORDER_PHASES.includes(phase)) {
-      items = sortItemsByBuildOrder(items, manifest, phase);
-    }
 
     const phaseEntries = [];
     for (const item of items) {
@@ -453,19 +384,7 @@ function epicDetail(cwd, manifest) {
           : Object.entries(item.sources).map(([topic, data]) => ({ topic, ...data }));
       }
 
-      // Enrich planning items with format and dependency data. Terminal
-      // items get no dep computation — a cancelled plan must never carry
-      // the blocked cue, surface in the ⚑ list, or take an unblock write.
-      if (phase === 'planning') {
-        if (item.format) entry.format = item.format;
-        if (!TERMINAL_STATUSES.includes(item.status || '')) {
-          const { deps_satisfied, deps_blocking } = resolveDeps(manifest, item);
-          entry.deps_satisfied = deps_satisfied;
-          if (deps_blocking.length > 0) entry.deps_blocking = deps_blocking;
-        }
-      }
-
-      // Enrich implementation items with progress data
+      // An old implementation's item shows its progress in the tree (P12).
       if (phase === 'implementation') {
         if (item.current_phase != null && item.current_phase !== '~') entry.current_phase = item.current_phase;
         if (typeof item.current_task === 'string' && item.current_task) entry.current_task = item.current_task;
@@ -479,10 +398,11 @@ function epicDetail(cwd, manifest) {
         inProgressItems.push({ name: item.name, phase });
       }
       // A derived item has no session of its own: a completed series has
-      // nothing to resume (a new spawn reopens it). Nor has a spec item an
-      // old unit kept: the spec is entered at the unit. Neither joins the
-      // resume candidates.
-      if (item.status === 'completed' && !DERIVED_PHASES.includes(phase) && phase !== 'specification') {
+      // nothing to resume (a new spawn reopens it). Nor has an item an old
+      // unit kept past its discussions: the spec is entered at the unit, and
+      // the old plan's build waits on the migration's cut (P12). None joins
+      // the resume candidates.
+      if (item.status === 'completed' && !DERIVED_PHASES.includes(phase) && !PAST_THE_TOPICS.includes(phase)) {
         completedItems.push({
           name: item.name, phase,
           ...(item.reconcile_needed !== undefined ? { reconcile_needed: item.reconcile_needed } : {}),
@@ -492,46 +412,6 @@ function epicDetail(cwd, manifest) {
 
     phases[phase] = phaseEntries;
   }
-
-  const specItems = sortItemsByBuildOrder(phaseItems(manifest, 'specification'), manifest, 'specification');
-  const planItems = sortItemsByBuildOrder(phaseItems(manifest, 'planning'), manifest, 'planning');
-  const implItems = sortItemsByBuildOrder(phaseItems(manifest, 'implementation'), manifest, 'implementation');
-
-  const live = (/** @type {{status?: string}} */ i) => !TERMINAL_STATUSES.includes(i.status || '');
-  const planTopics = new Set(planItems.filter(live).map(i => i.name));
-  for (const s of specItems) {
-    if (s.status === 'completed' && !planTopics.has(s.name)) {
-      nextPhaseReady.push({ name: s.name, action: 'start_planning', label: 'spec completed' });
-    }
-  }
-
-  const implTopics = new Set(implItems.filter(live).map(i => i.name));
-  for (const p of planItems) {
-    if (p.status === 'completed' && !implTopics.has(p.name)) {
-      // Check deps before marking as ready for implementation
-      const { deps_satisfied, deps_blocking } = resolveDeps(manifest, p);
-      if (deps_satisfied) {
-        nextPhaseReady.push({ name: p.name, action: 'start_implementation', label: 'plan completed' });
-      } else {
-        nextPhaseReady.push({
-          name: p.name, action: 'start_implementation', label: 'plan completed',
-          blocked: true, deps_blocking,
-        });
-      }
-    }
-  }
-
-  const reviewItems = phaseItems(manifest, 'review');
-  const reviewTopics = new Set(reviewItems.filter(live).map(i => i.name));
-  for (const i of implItems) {
-    if (i.status === 'completed' && !reviewTopics.has(i.name)) {
-      nextPhaseReady.push({ name: i.name, action: 'start_review', label: 'implementation completed' });
-    }
-  }
-
-  const hasCompletedSpec = specItems.some(s => s.status === 'completed');
-  const hasCompletedPlan = planItems.some(p => p.status === 'completed');
-  const hasCompletedImpl = implItems.some(i => i.status === 'completed');
 
   // The map rows, summary, and sequencing flag come from the shared builder —
   // the same rows the discovery-session gateway reads. map_summary stays null
@@ -562,7 +442,6 @@ function epicDetail(cwd, manifest) {
     cancelled: cancelledUnits(manifest, discoveryMap),
     postponable: postponableUnits(cwd, manifest, discoveryMap, project),
     postponed: postponedTopics(manifest, discoveryMap, project),
-    next_phase_ready: nextPhaseReady,
     spec_row: specRow(cwd, manifest),
     map_closed: pastItsSpec(cwd, manifest),
     build: buildRow(cwd, manifest),
@@ -572,16 +451,10 @@ function epicDetail(cwd, manifest) {
       ? manifest.phases.discovery.active_session : null,
     convergence_state: convergenceState,
     needs_sequencing: builtMap.needs_sequencing,
-    build_order_needs_sequencing: computeBuildOrderNeedsSequencing(manifest),
     map_summary: mapSummary,
     imports_count: importsCount,
     seeds_count: seedsCount,
     analysis_caches: buildAnalysisCaches(cwd, manifest),
-    gating: {
-      can_start_planning: hasCompletedSpec,
-      can_start_implementation: hasCompletedPlan,
-      can_start_review: hasCompletedImpl,
-    },
   };
 }
 

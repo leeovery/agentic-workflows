@@ -4,7 +4,7 @@
 
 ---
 
-Raises the current topic's mailbox — messages other topics sent here, one engine-numbered file each, shape pinned in [sending-a-message.md](sending-a-message.md) — one at a time, through conversation. A message leaves the mailbox only after it has been raised, worked with the user, folded into the topic's content as the record of that discussion, and answered: the question it raised on the ledger, the message removed under its own commit. An empty mailbox is a no-op. The conclusion gate backstops the whole protocol: the topic cannot conclude while its mailbox holds messages, so nothing is lost however freely the user moves.
+Raises the current topic's mailbox — messages other topics sent here, one engine-numbered file each, its first line the message's title — one at a time, through conversation. A message leaves the mailbox only after it has been raised, worked with the user, folded into the topic's content as the record of that discussion, and answered: the question it raised on the ledger, the message removed under its own commit. An empty mailbox is a no-op. The conclusion gate backstops the whole protocol: the topic cannot conclude while its mailbox holds messages, so nothing is lost however freely the user moves.
 
 ## Parameters
 

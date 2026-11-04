@@ -8,12 +8,9 @@
 // larger repository reads only the project's folder of it. In a project of
 // one repo each read answers what git answers there.
 //
-// A selector picks commits by subject: those opening with a prefix, or a
-// topic's task commits — `impl({work_unit}): T` and an internal id of that
-// topic, so a sibling topic whose name extends it (`auth`, `auth-flow`) is
-// never caught. Each repo holding one has a base — the parent of its
-// earliest, the empty tree where that is the repo's first commit — and the
-// change since is the range from the base to the repo's HEAD, confined to
+// A selector picks commits by subject, those opening with a prefix. Each
+// repo holding one has a base — the parent of its earliest, the empty tree
+// where that is the repo's first commit — and the change since is the range from the base to the repo's HEAD, confined to
 // the files those commits touched, a submodule's pointer never among them.
 // The uncommitted change is each repo's change against HEAD (the empty tree
 // before its first commit), its untracked files read as additions, held out
@@ -28,7 +25,6 @@ const {
 } = require('../kernel/git.cjs');
 const { projectRepos, repoName, projectPath, codeHeldOut } = require('../kernel/repos.cjs');
 const { codeChanges, linksHeldOut } = require('./worktree-prep.cjs');
-const { stepOfId } = require('./task-id.cjs');
 
 /** @typedef {import('../kernel/repos.cjs').Repo} Repo */
 /** @typedef {{sha: string, subject: string, paths: string[]}} Commit */
@@ -46,27 +42,6 @@ const { stepOfId } = require('./task-id.cjs');
  */
 function subjectSelector(prefix) {
   return { grep: prefix, selects: (subject) => subject.startsWith(prefix) };
-}
-
-/**
- * A topic's task commits — `impl({work_unit}): T{internal id}`, the id one of
- * the topic's (`{topic}-{phase}-{task}`) and ending where the subject does or
- * at a character no id continues with, neither a word character nor `-` —
- * and with `phase`, only that phase's.
- * @param {string} workUnit @param {string} topic @param {number} [phase]
- * @returns {Selector}
- */
-function taskSelector(workUnit, topic, phase) {
-  const opening = `impl(${workUnit}): T${topic}-`;
-  return {
-    grep: opening,
-    selects: (subject) => {
-      if (!subject.startsWith(opening)) return false;
-      const id = `${topic}-${subject.slice(opening.length).split(/[^\w-]/)[0]}`;
-      const step = stepOfId(id);
-      return step !== null && step.prefix === topic && (phase === undefined || step.phase === phase);
-    },
-  };
 }
 
 /**
@@ -155,4 +130,4 @@ function codeStatus(cwd) {
   return { files: codeChanges(projectRepos(cwd)) };
 }
 
-module.exports = { subjectSelector, taskSelector, codeLog, selectedDiff, uncommittedDiff, codeStatus };
+module.exports = { subjectSelector, codeLog, selectedDiff, uncommittedDiff, codeStatus };

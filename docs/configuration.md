@@ -14,7 +14,7 @@ The workflows need Node 18 or newer, git 2.40.0 or newer — older, `/leeway` st
 
 ## Settings that fill themselves in
 
-A few settings exist, but you never set them in advance. Each is asked the first time it is needed and remembered thereafter. There is where your plan's tasks get stored (asked during [planning](planning.md)), the project-specific skills that guide the building and reviewing agents (asked during [implementation](implementation.md)), and the linters that run through the build (also discovered during implementation).
+A few settings exist, but you never set them in advance. Each is asked the first time it is needed and remembered thereafter. There is where a quick-fix's plan gets stored (asked during [scoping](investigation-and-scoping.md)), the project-specific skills that guide the building and reviewing agents (asked during [implementation](implementation.md)), and the linters that run through the build (also discovered during implementation).
 
 These stored values are suggestions, not standing decisions. When a setting is relevant again, the remembered value pre-fills the question, but you still confirm or override it, and the value you confirm is what actually gets used for that piece of work. Nothing reads a stored default at the moment of execution, so changing one never silently rewrites work already in flight. This is the same discipline the system applies everywhere: a value that was right last time is a suggestion for this time, never consent given in advance.
 
