@@ -58,7 +58,7 @@
 //   none, that no task waited on it; else still
 //   waiting — how many questions of the unit still wait, and the
 //   next to raise. The next is read from the conversation's discussion
-//   queue, `discussing.json` in its folder, which the board keeps —
+//   queue, `discussing.json` in its folder, which the gate mod keeps —
 //   `{"discussing", "queue"}`, the question under discussion and those
 //   queued after it, by number: the first of them still waiting and not
 //   just recorded. With no queue, or none still waiting, it names none; a

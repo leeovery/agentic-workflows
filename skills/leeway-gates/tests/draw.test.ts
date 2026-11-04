@@ -1,6 +1,6 @@
 import { describe, expect, test, tier } from 'claude-code/testing'
 
-import { RUNNING_FRAMES, blank, clockOf, cutTo, folding, heading, kitOf, spread, widthOf, type Part } from '../hooks/draw.ts'
+import { RUNNING_FRAMES, blank, clockOf, cutTo, folding, heading, kitOf, rowsOf, spread, widthOf, type Part } from '../hooks/draw.ts'
 
 tier('user')
 
@@ -24,6 +24,16 @@ describe('a line', () => {
 
   test('an empty line is one blank', () => {
     expect(blank('x')).toEqual({ key: 'blank:x', parts: [{ text: ' ' }] })
+  })
+
+  test('takes the rows its words wrap to at word breaks, beside its mark and buttons, as §20 draws a question at 64 columns', () => {
+    const question = (text: string) => ({ key: 'q', mark: { text: '⚑ ' }, wraps: true, parts: [{ text }] })
+    const q1 = question('Q1 If the terminal closes while the review gate waits, should the release unwind as a decline does, or keep its commit for the operator to finish by hand?')
+
+    expect([rowsOf(q1, 62), rowsOf(q1, 78), rowsOf(q1, 80), rowsOf(q1, 40)], 'the words wrapped beside the mark').toEqual([3, 3, 3, 5])
+    expect(rowsOf({ ...q1, mark: undefined, button: { key: 'b', label: '▸ read' } }, 59), 'its button beside the words').toBe(4)
+    expect(rowsOf({ key: 'w', wraps: true, parts: [{ text: `a ${'x'.repeat(25)} b` }] }, 10), 'a word longer than the row broken across rows').toBe(4)
+    expect(rowsOf({ ...q1, wraps: undefined }, 10), 'a line that is cut, never wrapped').toBe(1)
   })
 })
 

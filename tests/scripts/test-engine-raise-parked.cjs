@@ -840,6 +840,30 @@ describe('raise aside (12.13.17)', () => {
   });
 });
 
+describe('the discussion queue the gate mod keeps (P16, 20.6.9)', () => {
+  /** A string constant as the gate mod's source spells it: a mod cannot import the engine. @param {string} name */
+  const modLiteral = (name) => {
+    const found = new RegExp(`const ${name} = '([^']*)'`).exec(fs.readFileSync(path.join(__dirname, '../../skills/leeway-gates/hooks/discuss.ts'), 'utf8'));
+    assert.ok(found, `discuss.ts names ${name}`);
+    return found[1];
+  };
+
+  it('the engine reads the queue by the name the mod writes it under, a queue emptied naming no next; its receipts open with the words the mod reads them by', () => {
+    parked(1, '2.3');
+    parked(2, '2.4', { question: full(made.size) });
+    assert.strictEqual(modLiteral('DISCUSSING'), DISCUSSING);
+
+    discussing({ discussing: null, queue: [] });
+    const aside = ok(dir, ['raise', 'aside', UNIT, 'Q1'], { env: conversation() });
+    const { receipt: answered } = drawnAndPicked('Q2');
+
+    assert.deepStrictEqual([aside, answered], [
+      { ok: true, receipt: `Q1 ${modLiteral('SET_ASIDE')} · still waiting · 2 waiting on you` },
+      `Q2 ${modLiteral('ANSWERED')} · task 2.4 builds again · 1 waiting on you`,
+    ]);
+  });
+});
+
 describe('calls carry their task (12.12.5, 20.5.4)', () => {
   it('ledger decide, find, replace and ask take --task in the build, kept on the entry; elsewhere an entry\'s task is null', () => {
     const decided = write('decide', BUILD, ['--answers', made.where, '--task', '2.3'], { ...MADE, text: 'On the cursor\'s screen.', why: 'It follows the person.' }).id;

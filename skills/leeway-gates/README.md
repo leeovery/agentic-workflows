@@ -253,8 +253,9 @@ while another screen — Remote Control's, say — is attached beside the band's
 The banner names the work and where it stands: the session's mark — ◐ running,
 ⚑ waiting on you, ✓ done, none where neither — the work's name in bold, then
 its facts in grey, each one that waits on you in peach behind a ⚑, and at its
-right `▸ show board` while the pane is hidden, `hide board` while it is up. A
-banner too long for the band is cut from its right end, its button kept. It
+right the buttons Ready to discuss gives it (below), then `▸ show board`
+while the pane is hidden, `hide board` while it is up. A banner too long for
+the band is cut from its right end, its buttons kept. It
 sits beneath a gate's rows, which are drawn in the rows it leaves; a survey
 holds the band alone.
 
@@ -290,10 +291,52 @@ second, from the model already read; while it is hidden, nothing turns.
 The model is versioned. A version the mod does not know is refused rather than
 drawn wrongly: no banner, and the pane says so in a line. An engine that
 refuses what the pane asks unwinds it to This session, which is drawn; one
-that refuses This session itself, or fails, draws nothing. Whatever the board
-does, nothing of it reaches the conversation or the prompt box: the
-conversation gets every summary and question whether the board is up or
-hidden.
+that refuses This session itself, or fails, draws nothing. The conversation
+gets every summary and question whether the board is up or hidden, and
+nothing the board does fills the prompt box.
+
+### Ready to discuss
+
+The questions waiting on the person in a build are a mailbox the board shows
+and never answers. Each has `▸ discuss` beside it in WAITING ON YOU, whose
+heading carries `▸ discuss all` while more than one waits and any is neither
+queued nor under discussion, and the banner
+carries `▸ discuss` for one question or `▸ discuss all` for several. A press
+queues the question in READY TO DISCUSS — `discuss all` every one waiting not
+yet queued, oldest first — and its row reads `queued ▸ unqueue`; `▸ unqueue`,
+a queued row's `✕` and the box's `▸ cancel all` take questions back out. None
+of these says anything to Claude. The box is the same on every tab: docked,
+it stays at the pane's foot while what is above it scrolls, the pane moving
+that itself; inline, it follows the list, and Claude Code scrolls the whole
+board.
+
+`▸ send to Claude`, in the box or on the banner, sends the box as one message
+in the order it was queued — `Ready to discuss Q1: {the question}` for one,
+`Ready to discuss {all }N waiting questions, in this order: Q1, Q2, Q3.` for
+several — and those questions become the discussion: the one under discussion
+and those after it, which a box sent meanwhile joins at the end (`Also ready
+to discuss Q2, after Q1.`). While one is discussed the banner names it and
+the task it parks, with `▸ skip` and `▸ cancel all` while more follow it,
+else `▸ cancel`; on the board it reads `being discussed` with the same
+button, the ones after it name the one they follow, and WAITING ON YOU's
+heading carries `▸ cancel all`. `▸ skip` sets it back to waiting and moves to
+the next (`Skip Q1 for now; it stays waiting. Next: Q2.`); a cancel sets it
+and every one after it back (`Set Q1, Q2 aside; they stay waiting.`). Each of
+these sends exactly one line, and nothing else on the board sends anything.
+A line Claude Code drops leaves the box and the discussion as they were, and
+a second press while one is being sent sends nothing more.
+
+The mod keeps the discussion in the conversation's folder as
+`discussing.json`, `{"discussing", "queue"}` by question number, which the
+engine's `raise` reads for the next question its receipt names; the box is
+the board's alone and is never kept. A receipt from the conversation's own
+`raise answer` or `raise aside` saying a question was answered or set aside
+takes it out of the discussion, the next after it then under discussion; "I
+don't follow", a draw and a subagent's call leave it as it stands. What waits
+is always the engine's: a question the board's model no longer lists leaves
+the box and the discussion wherever it stood. A conversation picked up again
+— a restart, a reload, a resume — finds its discussion as its folder keeps
+it.
 
 ## Working on it
 

@@ -17,11 +17,12 @@
  *
  * The views are drawn by their kind (`views/`), and one the engine cannot
  * draw by its reason; a model this board does not know the version of is
- * refused in a line, never drawn.
+ * refused in a line, never drawn. READY TO DISCUSS stands at the pane's
+ * foot on every tab (`Foot`).
  */
 import type { ElementTable, RenderElement } from 'claude-code'
 
-import { COLOUR, blank, cutTo, drawLine, foldKey, widthOf, type Button, type Kit, type Line, type Part } from './draw.ts'
+import { COLOUR, blank, cutTo, drawLine, foldKey, rowsOf, widthOf, type Button, type Kit, type Line, type Part } from './draw.ts'
 import { BOARD_VERSION, isUnavailable, type Answer, type Board, type Reading, type Tab, type View } from './model.ts'
 import type { Views } from './views/index.ts'
 
@@ -268,10 +269,67 @@ const drawTabs = (els: ElementTable, tabs: readonly TabButton[]) =>
     ]),
   })
 
-/** The pane as drawn. */
-export const drawPane = (els: ElementTable, { tabs, lines }: Framed): RenderElement =>
-  els.Box({
+/**
+ * The box held at the pane's foot — READY TO DISCUSS (20.6.5) — and where
+ * the surface seated the pane, with the rows its body shows. Docked, the box
+ * stays at the foot while what is above it scrolls in the rows it leaves,
+ * from `offset` lines down, the pane scrolling it itself; inline, Claude
+ * Code scrolls the whole board, and the box follows what is above it.
+ */
+export type Foot = { lines: Line[]; placement: 'dock' | 'inline'; bodyRows: number; offset: number }
+
+/** No box at the foot. */
+export const NO_FOOT: Foot = { lines: [], placement: 'inline', bodyRows: 0, offset: 0 }
+
+/** Whether the pane scrolls what is above its foot itself: a box held there, docked. */
+export const isPinned = ({ lines, placement }: Foot) => lines.length > 0 && placement === 'dock'
+
+/** The line between what is above the foot and its box. */
+const FOOT_GAP = blank('foot')
+
+/**
+ * The furthest a pinned foot's lines scroll: the fewest lines left out at
+ * the top for the rest to fill the rows the box leaves; none where they fit.
+ */
+export function lastOffset({ tabs, lines }: Framed, foot: Foot, width: number): number {
+  const rows = [...(tabs === null ? [] : [1]), ...lines.map(line => rowsOf(line, width))]
+  const room = foot.bodyRows - foot.lines.length - 1
+  let shown = 0
+
+  for (let at = rows.length - 1; at >= 0; at -= 1) {
+    shown += rows[at] ?? 1
+
+    if (shown > room) {
+      return at + 1
+    }
+  }
+
+  return 0
+}
+
+/** The pane as drawn, its foot's box beneath what is above it. */
+export function drawPane(els: ElementTable, { tabs, lines }: Framed, foot: Foot = NO_FOOT): RenderElement {
+  const above = [...(tabs === null ? [] : [drawTabs(els, tabs)]), ...lines.map(line => drawLine(els, line))]
+  const box = foot.lines.length === 0 ? [] : [FOOT_GAP, ...foot.lines].map(line => drawLine(els, line))
+
+  if (!isPinned(foot)) {
+    return els.Box({ flexDirection: 'column', paddingX: 1, children: [...above, ...box] })
+  }
+
+  return els.Box({
     flexDirection: 'column',
     paddingX: 1,
-    children: [...(tabs === null ? [] : [drawTabs(els, tabs)]), ...lines.map(line => drawLine(els, line))],
+    height: foot.bodyRows,
+    children: [
+      els.Box({
+        key: 'above',
+        flexDirection: 'column',
+        flexGrow: 1,
+        flexShrink: 1,
+        overflow: 'hidden',
+        children: [els.Box({ key: 'scrolled', flexDirection: 'column', flexShrink: 0, children: above.slice(foot.offset) })],
+      }),
+      els.Box({ key: 'foot', flexDirection: 'column', flexShrink: 0, children: box }),
+    ],
   })
+}
