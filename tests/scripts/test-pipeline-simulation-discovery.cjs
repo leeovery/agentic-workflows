@@ -200,7 +200,7 @@ describe('pipeline simulation: discovery\'s entry', () => {
     assert.strictEqual(sim.conversations, conversation, 'no handoff: the same conversation throughout');
   });
 
-  it('the epic menu\'s d hands into its discovery, where the map changes at the person\'s word: a new topic, a cancel confirmed and reactivated, a park pulled forward, a finding, and a message to a started topic (18.4.9, 8.8.6, 8.7.6)', () => {
+  it('the epic menu\'s d hands into its discovery, where the map changes at the person\'s word: a new topic, a cancel confirmed and reactivated, a park pulled forward, a finding, a spike, the log\'s fixed lists, and a message to a started topic (18.4.9, 8.8.6, 8.7.6, 20.11.1)', () => {
     mappedEpic(sim, EPIC, ['licensing', 'pricing']);
     enterEntry(sim, EPIC, 'discussion', 'licensing');
     assert.strictEqual(epicPick(sim, EPIC, 'new_topic').text, `Invoke \`/leeway-discovery none ${EPIC}\`.`);
@@ -224,6 +224,14 @@ describe('pipeline simulation: discovery\'s entry', () => {
     const finding = sim.run(['ledger', 'find', `${EPIC}.discovery`], null,
       JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'Seats are counted per workspace today.', how: 'read app/Seats.php', known: 'read' })).id;
     assert.match(finding, /^\S+$/);
+
+    const { spike } = sim.run(['asset', 'spike', EPIC, 'seat-picker']);
+    const entries = [
+      sim.run(['discovery-log', 'spike', EPIC, spike, '--tool', 'Paper', '--showed', 'A picker reads at a glance', '--link', 'https://paper.design/f/2']),
+      sim.run(['discovery-log', 'not-taken', EPIC, '--direction', 'Seats per user', '--why', 'workspaces are what is billed']),
+      sim.run(['discovery-log', 'view', EPIC, '--text', 'Pricing stays one-time']),
+    ];
+    assert.deepStrictEqual(entries.map(({ log: written, heading }) => [written, heading]), [[log, 'Spikes'], [log, 'Not taken'], [log, 'Views of the product']]);
 
     const sent = sim.run(['topic', 'send', EPIC, 'licensing', '--from', `${EPIC}.discovery`, '--slug', 'seat-counting',
       '--content', sim.write(`.leeway/.cache/${EPIC}/discovery/${EPIC}/message-seat-counting.md`, 'Seat counting\n\nSeats are per workspace today; decide whether licences follow.\n')]);

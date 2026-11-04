@@ -5,8 +5,11 @@
 // projections/board-discovery.cjs, 20.11): the map as it stands, the map
 // Claude staged while approve the map waits on the person with what it parks
 // on the roadmap, a topic's brief by its sections — a staged topic's from
-// its draft — the epic's spikes and a spike's page, and, the map approved,
-// the epic's first topic next.
+// its draft — the epic's spikes and a spike's page, what the logs say under
+// their fixed headings, as `discovery-log` put it there, each entry its one
+// line, and what does not read among the warnings (discovery-log.cjs),
+// the day the session started, and, the map approved, the epic's first
+// topic next.
 //
 // Layer: verb. World: discovery's gate suites' epic to shape
 // (discovery-gates-world.cjs), copied for each test.
@@ -17,9 +20,11 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { ok, writeState, layout } = require('./engine-harness.cjs');
+const { ok, writeState, readState, layout } = require('./engine-harness.cjs');
 const { EPIC, SESSION, useGatesWorld, gatesHelpers } = require('./discovery-gates-world.cjs');
 const { SESSION_ID } = require('./ledger-world.cjs');
+
+const PRODUCT = 'product';
 
 const dir = useGatesWorld('epic');
 const { scratch, screen, answer, run } = gatesHelpers(dir);
@@ -30,6 +35,16 @@ function board(args = []) {
   const { view, banner } = ok(dir(), ['board', SESSION_ID, ...args], { env: SESSION });
   return { view, banner };
 }
+
+/** This session's view at the epic's discovery, and the warnings beside it. */
+function heard() {
+  ok(dir(), ['session', 'label', EPIC, 'discovery', EPIC], { env: SESSION });
+  const { view, warnings } = ok(dir(), ['board', SESSION_ID], { env: SESSION });
+  return { view, warnings };
+}
+
+/** An entry put in the open log by discovery-log. @param {string[]} args */
+const logged = (args) => ok(dir(), ['discovery-log', ...args]);
 
 /** The note model's brief: what discovery heard, the person's leans, no path not taken, and an open question. */
 const NOTE_BRIEF = '# Note model\n\nWhat discovery heard.\n\n## Leans\n\nA note is plain text.\n\n## Paths not taken\n\n## Open questions\n\nCan a note hold a picture?\n';
@@ -51,7 +66,7 @@ const fact = (text, needs = false) => ({ text, needs });
 describe('discovery on the board (20.11)', () => {
   it('the epic\'s map as it stands, nothing waiting on the person', () => {
     assert.deepStrictEqual(board(), {
-      view: { kind: 'discovery', unit: EPIC, title: 'Fumi', type: 'epic', session: 1, waits: false, map: [], roadmap: [], spikes: [] },
+      view: { kind: 'discovery', unit: EPIC, title: 'Fumi', type: 'epic', session: 1, started: null, waits: false, map: [], roadmap: [], not_taken: [], views: [], spikes: [] },
       banner: { name: 'Fumi', state: 'running', facts: [fact('epic'), fact('discovery'), fact('0 topics on the map')] },
     });
   });
@@ -66,9 +81,12 @@ describe('discovery on the board (20.11)', () => {
         title: 'Fumi',
         type: 'epic',
         session: 1,
+        started: null,
         waits: true,
         map: [{ topic: 'note-model', title: 'Note Model', summary: 'What a note is' }, { topic: 'sharing', title: 'Sharing', summary: 'Sharing a note' }],
         roadmap: [{ title: 'Fumi Sync, a hosted sync service', horizon: 'later' }],
+        not_taken: [],
+        views: [],
         spikes: [],
       },
       banner: { name: 'Fumi', state: 'needs', facts: [fact('epic'), fact('discovery'), fact('2 topics on the map'), fact('the map waits on you', true)] },
@@ -106,14 +124,79 @@ describe('discovery on the board (20.11)', () => {
 
     assert.deepStrictEqual({ spikes: board().view.spikes, page: board(['--page', 'spike:001-frame']).view, none: board(['--page', 'spike:009-none']).view }, {
       spikes: [
-        { spike: '001-frame', title: 'Frame', status: 'canonical' },
-        { spike: '002-sync', title: 'Sync', status: 'reference' },
-        { spike: '003-list', title: 'List', status: null },
+        { spike: '001-frame', title: 'Frame', status: 'canonical', tool: null, showed: null },
+        { spike: '002-sync', title: 'Sync', status: 'reference', tool: null, showed: null },
+        { spike: '003-list', title: 'List', status: null, tool: null, showed: null },
       ],
-      page: { kind: 'spike', unit: EPIC, spike: '001-frame', title: 'Frame', status: 'canonical', path: `${EPIC}/spikes/001-frame` },
+      page: { kind: 'spike', unit: EPIC, spike: '001-frame', title: 'Frame', status: 'canonical', tool: null, showed: null, path: `${EPIC}/spikes/001-frame`, link: null },
       none: { kind: 'unavailable', reason: 'fumi has no spike 009-none' },
     });
   });
+
+  it('20.11.1: the session and the day it started; the directions not taken, the person\'s views and each spike\'s tool and what it showed, as discovery-log put them in every log — each entry its one line, wherever it stands under its heading, a why and what a spike showed holding a dash of their own — a later spike line standing over an earlier, and an entry that does not read, or names no spike of the epic, said among the warnings; 20.11.3: a spike\'s live link', () => {
+    for (const slug of ['frame', 'sync', 'list']) ok(dir(), ['asset', 'spike', EPIC, slug]);
+    logged(['not-taken', EPIC, '--direction', 'The Mac App Store', '--why', 'the private Spaces APIs — an automatic rejection']);
+    logged(['view', EPIC, '--text', 'Clean, well-structured, beautiful, and it just works']);
+    logged(['spike', EPIC, '001-frame', '--tool', 'Paper', '--link', 'https://paper.design/f/1', '--showed', 'Luminous glass — reads at a glance']);
+    logged(['spike', EPIC, '002-sync', '--tool', 'draft Swift', '--showed', 'a first try']);
+    const first = layout.session(EPIC, '001');
+    writeState(dir(), first, readState(dir(), first)
+      .replace('## Not taken\n\n', '## Not taken\n\nWhat the person turned down.\n\n- Importing Stickies\n\n')
+      .replace('reads at a glance', 'reads at a glance\n  - [Frame.swift](../spikes/001-frame/Frame.swift)')
+      .replace('- 002-sync', '- 003-list, a thought with no shape\n- 009-ghost · Swift — never started\n- 002-sync')
+      .concat('Got to: the map is drafted.\n\n```text\n## Notes\n- Fenced, never read\n```\n- 003-list · Sketch — a later look\n\n## Leans\n\n- Modern Swift — a lean, not a list\n'));
+    ok(dir(), ['discovery-session', 'close', EPIC, '-m', 'discovery(fumi): end session 001']);
+    ok(dir(), ['enter', 'discovery', EPIC], { env: SESSION });
+    logged(['not-taken', EPIC, '--direction', 'A billing backend', '--why', 'the Merchant of Record covers checkout']);
+    logged(['spike', EPIC, '002-sync', '--tool', 'Swift', '--showed', 'Sync holds across two Macs']);
+    const second = layout.session(EPIC, '002');
+    writeState(dir(), second, `## 2026-07-18 · session sess-2\n\n${readState(dir(), second)}`);
+    const { view, warnings } = heard();
+
+    assert.deepStrictEqual({
+      session: view.session, started: view.started, not_taken: view.not_taken, views: view.views, spikes: view.spikes, warnings,
+      pages: ['001-frame', '002-sync'].map((spike) => board(['--page', `spike:${spike}`]).view.link),
+    }, {
+      session: 2,
+      started: '2026-07-18',
+      not_taken: [
+        { direction: 'The Mac App Store', why: 'the private Spaces APIs — an automatic rejection' },
+        { direction: 'A billing backend', why: 'the Merchant of Record covers checkout' },
+      ],
+      views: ['Clean, well-structured, beautiful, and it just works'],
+      spikes: [
+        { spike: '001-frame', title: 'Frame', status: null, tool: 'Paper', showed: 'Luminous glass — reads at a glance' },
+        { spike: '002-sync', title: 'Sync', status: null, tool: 'Swift', showed: 'Sync holds across two Macs' },
+        { spike: '003-list', title: 'List', status: null, tool: 'Sketch', showed: 'a later look' },
+      ],
+      warnings: [
+        `${first}: "Importing Stickies" under ## Not taken does not read as a direction and why, and is passed over`,
+        `${first}: "003-list, a thought with no shape" under ## Spikes does not read as a spike, and is passed over`,
+        `${first}: "009-ghost · Swift — never started" under ## Spikes names no spike the epic holds, and is passed over`,
+      ],
+      pages: ['https://paper.design/f/1', null],
+    });
+  });
+
+  for (const [list, entry, read, expected] of /** @type {[string, string[], (view: any) => unknown, unknown][]} */ ([
+    ['Not taken', ['not-taken', EPIC, '--direction', 'Importing Stickies', '--why', 'nobody asked'], (view) => view.not_taken, [{ direction: 'Importing Stickies', why: 'nobody asked' }]],
+    ['Views of the product', ['view', EPIC, '--text', 'Modern Swift, correctness over speed'], (view) => view.views, ['Modern Swift, correctness over speed']],
+    ['Spikes', ['spike', EPIC, '001-frame', '--tool', 'Paper', '--showed', 'Glass reads at a glance'], (view) => view.spikes, [{ spike: '001-frame', title: 'Frame', status: null, tool: 'Paper', showed: 'Glass reads at a glance' }]],
+  ])) {
+    it(`20.11.1: ## ${list} the log's last list, the session's closing line written directly beneath its entry and the pointer a move wrote after it are never read into it`, () => {
+      ok(dir(), ['asset', 'spike', EPIC, 'frame']);
+      ok(dir(), ['enter', 'discovery', EPIC], { env: SESSION });
+      logged(entry);
+      const first = layout.session(EPIC, '001');
+      writeState(dir(), first, `${readState(dir(), first)}Got to: the map is drafted, two topics on it.\n`);
+      ok(dir(), ['enter', 'discovery', PRODUCT, '--move'], { env: SESSION });
+      ok(dir(), ['enter', 'discovery', EPIC, '--move'], { env: SESSION });
+      const { view, warnings } = heard();
+
+      assert.match(readState(dir(), first), /\n- .+\nGot to: the map is drafted, two topics on it\.\n\n→ Carried on in /);
+      assert.deepStrictEqual({ read: read(view), warnings }, { read: expected, warnings: [] });
+    });
+  }
 
   it('the map approved, the epic\'s page names its first topic next while none has started, the rest not started (20.8.1)', () => {
     staged();

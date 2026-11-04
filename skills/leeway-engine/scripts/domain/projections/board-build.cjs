@@ -14,9 +14,10 @@
 //   conversation issued for it — the builder's or a fix round's building, a
 //   reviewer's in review — since that brief was issued, its clock ended by
 //   `task account`, and building where no brief of this conversation's
-//   names it (P15); one not started after the tasks not yet done it is
-//   linked after, else not started. Failed stands in the board's
-//   vocabulary, from a builder's stop (P5), which no record holds yet.
+//   names it (P15) — failed instead from its builder's stop, held against
+//   it in flight in this conversation, until the builder is sent back or a
+//   raise parks it (P5); one not started after the tasks not yet done it is
+//   linked after, else not started.
 // - The phases are the cut's, then the review's fixes past it, as the
 //   standing lists them. A phase is merging where, in step, its merge waits
 //   at its gate — the lowest whose does, the cut's as the build's standing
@@ -48,6 +49,7 @@ const { roundReportPath } = require('../round-report.cjs');
 const { REVIEWER_LETTERS } = require('../../kernel/reviewers.cjs');
 const { parseShownTask, taskName } = require('../task-id.cjs');
 const { counted } = require('./map.cjs');
+const { BUILDING_ROLES } = require('../brief-names.cjs');
 
 /** @typedef {import('../board-model.cjs').TaskLine} TaskLine */
 /** @typedef {import('../board-model.cjs').TaskState} TaskState */
@@ -66,16 +68,22 @@ const { counted } = require('./map.cjs');
  * @typedef {import('../board.cjs').BoardAt} BoardAt
  */
 
-/** The roles whose brief puts a task building, by role; any other's puts it in review. */
-const BUILDING_ROLES = Object.freeze(['builder', 'fix']);
-
-/** A task in progress's state and since when, by the last brief this conversation issued for it (P15). @param {BoardAt} at @param {string} task @returns {{state: TaskState, since: string|null}} */
+/**
+ * A task in progress's state and since when: failed where its builder's
+ * stop stands (P5), else by the last brief this conversation issued for it
+ * (P15).
+ * @param {BoardAt} at @param {string} task @returns {{state: TaskState, since: string|null}}
+ */
 function runningOf(at, task) {
-  const brief = at.issued.filter((issued) => issued.task === task && ['builder', 'fix', 'reviewer'].includes(issued.role)).at(-1);
+  if (stopOf(at, task) !== null) return { state: 'failed', since: null };
+  const brief = at.issued.filter((issued) => issued.task === task && [...BUILDING_ROLES, 'reviewer'].includes(issued.role)).at(-1);
   if (brief === undefined) return { state: 'building', since: null };
   const state = BUILDING_ROLES.includes(brief.role) ? 'building' : 'in-review';
   return { state, since: fs.existsSync(statePath(at.cwd, figuresPath(parseShownTask(at.unit, task)))) ? null : brief.at };
 }
+
+/** When the builder of a task in flight in this conversation stopped, null where it stands unstopped. @param {BoardAt} at @param {string} task */
+const stopOf = (at, task) => at.inFlight.find((held) => held.task === task)?.stopped ?? null;
 
 /** A task's line on the board (the header's). @param {BoardAt} at @param {StandingTask} task @returns {TaskLine} */
 function taskLine(at, { task, title, status, parked, after }) {
@@ -317,7 +325,8 @@ function roundPage(at, given, said) {
 /**
  * The build's moments for the unit's LATELY (20.15.1): each question
  * waiting raised, each task in progress started, as the tracker holds it,
- * and each task done finished, as its account was taken.
+ * each one failed as its builder stopped, and each task done finished, as
+ * its account was taken.
  * @param {BoardAt} at @returns {import('../board-model.cjs').Moment[]}
  */
 function buildMoments(at) {
@@ -327,6 +336,8 @@ function buildMoments(at) {
   return [
     ...standing.waiting.flatMap(({ question, since }) => moment('raised', since, question)),
     ...Object.entries(at.tracker().starts).flatMap(([task, when]) => moment('task-started', when, task)),
+    ...standing.phases.flatMap(({ tasks }) => tasks).filter((task) => taskLine(at, task).state === 'failed')
+      .flatMap(({ task }) => moment('task-failed', stopOf(at, task), task)),
     ...standing.phases.flatMap(({ tasks }) => tasks).filter(({ status }) => status === 'done')
       .flatMap(({ task }) => moment('task-finished', takenFigures(at.cwd, parseShownTask(at.unit, task))?.finished, task)),
   ];

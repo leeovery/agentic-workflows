@@ -22,7 +22,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { ok, output, writeState, readManifest, stateGit } = require('./engine-harness.cjs');
+const { ok, output, writeState, readManifest, stateGit, layout, withFrozenClock, FROZEN_AT } = require('./engine-harness.cjs');
 const { useDecidedWorld, writeIn, answeredIn, NOTE_MAP } = require('./decided-world.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, SESSION, SESSION_ID, MADE, NOTE, SPACE } = require('./ledger-world.cjs');
@@ -193,10 +193,12 @@ describe('an experiment on the board (20.13)', () => {
         topic: 'note-window',
         topic_title: 'Note Window',
         status: 'conceived',
+        approved: null,
         verdict: null,
         reason: null,
         problem: '# Problem — note-open',
         design: [],
+        runs: [],
         report: false,
       },
       banner: { name: 'Fumi', state: 'running', facts: ['epic', 'experiment E1', 'conceived'].map((text) => ({ text, needs: false })) },
@@ -223,6 +225,33 @@ describe('an experiment on the board (20.13)', () => {
     });
   });
 
+  it('20.13.1: the day it was approved, and its runs by condition, each with its runs done of the runs its design gives it and their median; 20.2.4: the banner counts them while it runs, and says concluded once its verdict is in', () => {
+    spawned();
+    ok(dir(), ['experiment', 'advance', UNIT, 'note-window', 'E1'], { env: SESSION });
+    withFrozenClock(() => ok(dir(), ['experiment', 'approve', UNIT, 'note-window', 'E1'], { env: SESSION }));
+    ok(dir(), ['experiment', 'advance', UNIT, 'note-window', 'E1'], { env: SESSION });
+    const tally = '.leeway/.cache/fumi/experiment/note-window/runs.json';
+    fs.mkdirSync(path.join(dir(), path.dirname(tally)), { recursive: true });
+    fs.writeFileSync(path.join(dir(), tally), JSON.stringify([
+      { condition: '16 bare windows', of: 2, values: [0.24, 0.26], unit: 's' },
+      { condition: '25 real fumis', of: 3, values: [0.67] },
+    ]));
+    ok(dir(), ['experiment', 'runs', UNIT, 'note-window', 'E1', '--file', tally], { env: SESSION });
+    at([UNIT, 'experiment', 'note-window']);
+    const running = board();
+    ok(dir(), ['experiment', 'conclude', UNIT, 'note-window', 'E1', '--verdict', 'rule held'], { env: SESSION });
+    const concluded = board();
+
+    assert.deepStrictEqual({ approved: running.view.approved, runs: running.view.runs, facts: [running, concluded].map(({ banner }) => banner.facts.map(({ text }) => text)) }, {
+      approved: FROZEN_AT.slice(0, 10),
+      runs: [
+        { condition: '16 bare windows', of: 2, done: 2, median: 0.25, unit: 's' },
+        { condition: '25 real fumis', of: 3, done: 1, median: 0.67, unit: null },
+      ],
+      facts: [['epic', 'experiment E1', '3 of 5 runs'], ['epic', 'experiment E1', 'concluded']],
+    });
+  });
+
   it('an experiment abandoned stands so, with its reason, the banner done', () => {
     spawned();
     ok(dir(), ['experiment', 'abandon', UNIT, 'note-window', 'E1', '--reason', 'The bench is gone.'], { env: SESSION });
@@ -244,6 +273,7 @@ describe('an epic\'s page (20.8)', () => {
         unit: UNIT,
         title: 'Fumi',
         about: 'Test: fumi',
+        started: null,
         at_menu: true,
         progress: { decided: 0, total: 2, discussing: 2 },
         topics: [
@@ -299,6 +329,18 @@ describe('other units\' pages (20.15)', () => {
       { phase: 'build', state: 'later', words: '' },
       { phase: 'review', state: 'later', words: '' },
     ]);
+  });
+
+  it('20.15.1, 20.8.2: a unit started the day its manifest was made, as the manifest stamps it — an epic\'s page and any other unit\'s tab alike — and none is said where it holds no stamp', () => {
+    writeState(dir(), layout.manifest(UNIT), JSON.stringify({ ...readManifest(dir(), UNIT), created: '2026-07-15' }));
+    createManifest(dir(), 'atlas', { work_type: 'epic', created: '2026-07-17' });
+    createManifest(dir(), 'tidy', { work_type: 'feature' });
+    const started = (/** @type {string} */ unit) => {
+      const { kind, started: day } = board(['--tab', 'unit', '--unit', unit]).view;
+      return [kind, day];
+    };
+
+    assert.deepStrictEqual([UNIT, 'atlas', 'tidy'].map(started), [['epic', '2026-07-15'], ['unit', '2026-07-17'], ['unit', null]]);
   });
 
   it('20.15.2: a quick-fix\'s one session is its implementation, which This session shows as the unit\'s page', () => {

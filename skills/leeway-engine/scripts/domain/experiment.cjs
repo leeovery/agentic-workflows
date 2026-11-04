@@ -32,6 +32,11 @@
 // experiment ran, is refused by the send after the conclusion has committed,
 // and never arrives.
 //
+// While it runs, `runs` records the tally of its runs from Claude's payload,
+// each condition with the runs its design gives it, those done and their
+// median, which the engine works out (20.13.1) — the whole tally each time,
+// so a later call stands over an earlier one.
+//
 // The phase item is derived bookkeeping over the records: the spawn opens it
 // (and reopens a completed series), the last record's terminal transition
 // closes it — the user never starts or completes it by hand.
@@ -63,6 +68,8 @@ const { measuredQuestion, reportRoute } = require('./experiment-question.cjs');
 const { rebaseLinks } = require('./markdown-links.cjs');
 const { recordDir } = require('./experiment-paths.cjs');
 const { statePath, cacheScratch } = require('../kernel/state-root.cjs');
+const { shaped, listed, readPayload } = require('./staged-payload.cjs');
+const { todayStamp } = require('./dates.cjs');
 
 // The mechanical steps `advance` walks. designed → approved is missing on
 // purpose: that transition is the briefing gate's freeze (`approve`).
@@ -89,6 +96,15 @@ function assertOneLine(label, value) {
  * @property {string} [verdict]  one line, recorded at conclusion
  * @property {string} [reason]   one line, recorded at abandonment
  * @property {string} [question] the full ledger id of the question on the topic's map it measures
+ * @property {string} [approved] the day the person approved its design, `YYYY-MM-DD`
+ * @property {ConditionRuns[]} [runs]  the tally of its runs, by condition
+ */
+
+/**
+ * A condition's runs as the record holds them: its name, the runs the
+ * design gives it, those done, their median, null before the first, and
+ * the unit they are measured in, where one is named.
+ * @typedef {{condition: string, of: number, done: number, median: number|null, unit?: string}} ConditionRuns
  */
 
 /**
@@ -161,6 +177,7 @@ function liveSubs(item, parentId) {
  * @property {string|null} [committed]  the spawn's commit — null where none landed
  * @property {string} [note]  a pending commit's retry
  * @property {import('./transitions.cjs').WaitRelease[]} [released_waits]
+ * @property {ConditionRuns[]} [runs]  the tally `runs` recorded
  * @property {{topic: string, message_path: string, reopened: boolean, committed: string|null}} [report_sent]  the report sent as a message to the topic its question stands on now, the question no longer open on the spawning topic when it landed
  * @property {string[]} [warnings]
  */
@@ -371,9 +388,9 @@ function advanceExperiment(cwd, workUnit, topic, id) {
 }
 
 /**
- * Record the briefing gate's freeze: designed → approved, and nothing else —
- * the one transition that requires the user's confirm, so it is never a step
- * `advance` can drift past. From `approved` the design is frozen: flaws found
+ * Record the briefing gate's freeze: designed → approved, the day of it held
+ * on the record, and nothing else — the one transition that requires the
+ * user's confirm, so it is never a step `advance` can drift past. From `approved` the design is frozen: flaws found
  * after results are visible go in the report's corrections and trigger the
  * next experiment.
  * @param {string} cwd project root
@@ -387,6 +404,7 @@ function approveExperiment(cwd, workUnit, topic, id) {
       throw new Error(`experiment ${id} ("${topic}") is ${record.status} — only a designed experiment takes the approval freeze`);
     }
     record.status = 'approved';
+    record.approved = todayStamp();
     return { previous: 'designed' };
   });
 }
@@ -520,4 +538,66 @@ function abandonExperiment(cwd, workUnit, topic, id, { reason }) {
   });
 }
 
-module.exports = { createExperiment, advanceExperiment, approveExperiment, concludeExperiment, abandonExperiment };
+/** The median of measured values, null for none, to twelve significant figures. @param {number[]} values */
+function medianOf(values) {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  const median = sorted.length % 2 === 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  return Number(median.toPrecision(12));
+}
+
+/**
+ * A condition of Claude's tally checked and recorded: refused where its
+ * name is not one line, its runs are not a whole number above nought, a
+ * value is no finite number, or more are done than it has runs.
+ * @param {unknown} given @param {number} at its place in the tally, from 1 @returns {ConditionRuns}
+ */
+function conditionRuns(given, at) {
+  const what = `condition ${at}`;
+  const { condition, of, values, unit } = shaped(given, what, ['condition', 'of', 'values'], ['unit']);
+  assertOneLine(`${what}'s condition`, /** @type {string|undefined} */ (condition));
+  if (!Number.isInteger(of) || /** @type {number} */ (of) < 1) throw new Error(`${what}'s of is the runs its design gives it, a whole number above nought`);
+  const measured = listed(values, `${what}'s values`);
+  if (!measured.every((value) => typeof value === 'number' && Number.isFinite(value))) throw new Error(`${what}'s values are the runs measured, each a number`);
+  if (measured.length > /** @type {number} */ (of)) throw new Error(`${what} has ${measured.length} runs measured of the ${of} its design gives it`);
+  if (unit !== undefined) assertOneLine(`${what}'s unit`, /** @type {string|undefined} */ (unit));
+  return {
+    condition: /** @type {string} */ (condition).trim(),
+    of: /** @type {number} */ (of),
+    done: measured.length,
+    median: medianOf(/** @type {number[]} */ (measured)),
+    ...(unit === undefined ? {} : { unit: /** @type {string} */ (unit).trim() }),
+  };
+}
+
+/**
+ * Record a running experiment's runs: Claude's tally at `file`, a cache
+ * scratch, `[{"condition", "of", "values", "unit"?}]` — each condition's
+ * name, the runs its design gives it, the values measured so far and the
+ * unit they are in — kept on the record with the runs done and their
+ * median in place of the values, the whole tally standing over any
+ * before. Refused before anything is written for a tally that is no list,
+ * empty, names a condition twice or holds a condition that does not check
+ * (`conditionRuns`), and for an experiment not running.
+ * @param {string} cwd project root
+ * @param {string} workUnit @param {string} topic @param {string} id
+ * @param {{file: string}} opts
+ * @returns {ExperimentOpResult}
+ */
+function recordRuns(cwd, workUnit, topic, id, { file }) {
+  const tally = listed(readPayload(cwd, cacheScratch(cwd, file, '--file')), 'the tally').map((given, at) => conditionRuns(given, at + 1));
+  if (tally.length === 0) throw new Error('the tally names no condition — it holds each condition the design runs');
+  const twice = tally.find(({ condition }, at) => tally.findIndex((held) => held.condition === condition) !== at);
+  if (twice !== undefined) throw new Error(`the tally names the condition "${twice.condition}" twice`);
+  return recordTransition(cwd, workUnit, topic, id, (record) => {
+    assertNotTerminal(record, topic, id);
+    if (record.status !== 'running') {
+      throw new Error(`experiment ${id} ("${topic}") is ${record.status} — runs are recorded while it runs`);
+    }
+    record.runs = tally;
+    return { runs: tally };
+  });
+}
+
+module.exports = { createExperiment, advanceExperiment, approveExperiment, recordRuns, concludeExperiment, abandonExperiment };

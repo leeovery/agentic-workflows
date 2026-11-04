@@ -20,7 +20,9 @@
 // message — the unit's discovery scope, or the product's — the log with it.
 // The knowledge base never indexes a log (8.14.7).
 //
-// The log's content is the conversation's — the engine never writes prose.
+// The log's content is the conversation's: the engine writes no prose of its
+// own, the fixed lists' entries only in the conversation's words
+// (discovery-log.cjs).
 // The marker always pairs with a log on disk: no marker means no
 // session to close, and a marker without its log refuses, the manifest
 // untouched.

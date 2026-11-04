@@ -130,8 +130,8 @@ const world = fixtureFrom('engine-enter-', (dir) => {
   createManifest(dir, ATLAS, { work_type: 'epic' });
   createManifest(dir, 'built', { work_type: 'epic' });
   writeState(dir, layout.unit('built', 'spec.md'), '# Spec\n');
-  writeState(dir, layout.session(EPIC, '001'), `${SHAPED_BY}[Pricing](../../.product/sessions/session-001.md#pricing)\n\n## 2026-01-02 · session one\n\nThe map took shape.\n\nLicensing comes first.\n`);
-  writeState(dir, layout.session(EPIC, '002'), '## 2026-01-03 · session two\n\nSync came up.\n\nSync waits on licensing.\n\n→ Carried on in the product\'s conversation: [session-002.md](../../.product/sessions/session-002.md)\n');
+  writeState(dir, layout.session(EPIC, '001'), `${SHAPED_BY}[Pricing](../../.product/sessions/session-001.md#pricing)\n\n## 2026-01-02 · session one\n\nThe map took shape.\n\nLicensing comes first.\n\n## Views of the product\n\n- One-time pricing\n`);
+  writeState(dir, layout.session(EPIC, '002'), '## 2026-01-03 · session two\n\nSync came up.\n\nSync waits on licensing.\n\n## Not taken\n\n- A website — the person dropped it\n\n→ Carried on in the product\'s conversation: [session-002.md](../../.product/sessions/session-002.md)\n');
   writeState(dir, layout.session(EPIC, '003'), '## 2026-01-04 · session three\n\nExports.\n');
   writeState(dir, layout.session(EPIC, '004'), '## 2026-01-05 · session four\n\nWhere it stands.\n');
   writeState(dir, layout.productSession('001'), '## 2026-01-01 · session first\n\nWhat the product is.\n');
@@ -651,7 +651,7 @@ describe('discovery: the product\'s conversation (8.2.7–8.2.10)', () => {
 });
 
 describe('discovery: an epic\'s (8.6.7)', () => {
-  it('four logs, the fourth open: the older two by their closing lines, the latest two in full, the first log\'s pointers into the product\'s sessions, the map and the product record; the open log carried on, and the conversation that last wrote it named for catch-up (8.S53, 8.S62)', () => {
+  it('four logs, the fourth open: the older two by their closing lines, never an entry of the fixed lists recorded after one, the latest two in full, the first log\'s pointers into the product\'s sessions, the map and the product record; the open log carried on, and the conversation that last wrote it named for catch-up (8.S53, 8.S62)', () => {
     const four = transcript('four');
     const { res, sections } = withFrozenClock(() => enter(['discovery', EPIC]));
     assert.deepStrictEqual(res, { ok: true, phase: 'discovery', unit: EPIC, entered: true, started: false });

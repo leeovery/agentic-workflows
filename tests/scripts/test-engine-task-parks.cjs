@@ -9,7 +9,8 @@
 // line naming the parks, tagged with the build's phase they were made in,
 // refused with no session before anything moves — a question it leaves
 // parking none still waiting, and the task reopened and parked again
-// parking again. The account's refusal is test-engine-task-account.cjs's.
+// parking again; and a task parked, raised to the person, its builder's stop
+// taken off it. The account's refusal is test-engine-task-account.cjs's.
 //
 // Layer: verb. World: the ledger suites' unit with questions asked in its
 // build and phase 2 written in the tracker — 2.1 closed, 2.2 to 2.4 open —
@@ -142,6 +143,19 @@ describe('a task a question waiting parks waits on it', () => {
     answered('Q2');
     accountTaken(dir, UNIT, '2.3');
     assert.strictEqual(taskVerb('done', '2.3').task, '2.3');
+  });
+});
+
+describe('a task parked is raised to the person (20.4.9, P5)', () => {
+  it('a raise parking a task takes its builder\'s stop off it, in flight in the conversation, another task\'s stop standing', async () => {
+    for (const task of ['2.2', '2.3']) {
+      taskVerb('start', task);
+      taskVerb('stopped', task);
+    }
+    await park(made.where, '2.2');
+    const { tasks } = JSON.parse(fs.readFileSync(path.join(config(), 'conversations', SESSION, 'position.json'), 'utf8'));
+
+    assert.deepStrictEqual(tasks.map((/** @type {{task: string, stopped?: string}} */ { task, stopped }) => [task, stopped !== undefined]), [['2.2', false], ['2.3', true]]);
   });
 });
 

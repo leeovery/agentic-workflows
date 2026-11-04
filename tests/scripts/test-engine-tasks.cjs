@@ -1431,6 +1431,6 @@ describe('engine task usage', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   it('rejects an unknown subcommand', () => {
-    assert.match(engineFails(dir, ['bogus', 'auth', 'auth-flow']).error, /Usage: engine task <phase\|create\|add\|type\|link\|ready\|start\|done\|close\|list\|show\|worktree\|account\|settle\|note\|init\|fix-attempt\|complete\|analysis-cycle>/);
+    assert.match(engineFails(dir, ['bogus', 'auth', 'auth-flow']).error, /Usage: engine task <phase\|create\|add\|type\|link\|ready\|start\|done\|close\|list\|show\|worktree\|stopped\|account\|settle\|note\|init\|fix-attempt\|complete\|analysis-cycle>/);
   });
 });

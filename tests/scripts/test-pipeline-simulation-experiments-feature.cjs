@@ -101,6 +101,8 @@ describe('pipeline simulation: experiments, in a feature', () => {
     sim.run(['experiment', 'advance', wu, wu, 'E1']);
     sim.run(['experiment', 'approve', wu, wu, 'E1']);
     sim.run(['experiment', 'advance', wu, wu, 'E1']);
+    sim.run(['experiment', 'runs', wu, wu, 'E1', '--file', sim.write(`.leeway/.cache/${wu}/experiment/${wu}/E1-runs.json`,
+      JSON.stringify([{ condition: 'a full scroll', of: 3, values: [16.1, 16.4, 15.9], unit: 'ms' }]))]);
     sim.run(['experiment', 'conclude', wu, wu, 'E1', '--verdict', 'budget holds at 60fps']);
     sim.run(['commit', wu, '-m', `experiment(${wu}): conclude E1`, '--topic', `experiment/${wu}`]);
 

@@ -47,6 +47,7 @@ const { clearOwnQuietly } = require('./presence.cjs');
 const { runningTranscript } = require('./conversation.cjs');
 const { researchOwed } = require('./brownfield.cjs');
 const { productCall, mapCall, namedConversations, isHeader, appendLine, topicLog } = require('./topic-log.cjs');
+const { beyondLists } = require('./discovery-log.cjs');
 
 /** @typedef {import('./enter.cjs').Entry} Entry */
 /** @typedef {import('./enter.cjs').Entering} Entering */
@@ -97,12 +98,13 @@ function writtenLines(file) {
 }
 
 /**
- * A log's closing line: its last written line that is neither a
- * conversation's line nor a pointer the engine wrote; null where it has none.
+ * A log's closing line: its last written line beyond the fixed lists that is
+ * neither a conversation's line nor a pointer the engine wrote; null where
+ * it has none.
  * @param {string} file absolute
  */
 function closingLine(file) {
-  return writtenLines(file).filter((line) => !isHeader(line) && !line.startsWith(POINTER)).at(-1) ?? null;
+  return beyondLists(linesOf(file)).map((line) => line.trim()).filter((line) => line !== '' && !isHeader(line) && !line.startsWith(POINTER)).at(-1) ?? null;
 }
 
 /**

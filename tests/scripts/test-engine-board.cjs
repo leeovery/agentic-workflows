@@ -205,6 +205,20 @@ describe('the build on the board (20.5)', () => {
     assert.deepStrictEqual(board().view.phases[0].tasks[0], line('1.1', 'Take a card', 'in-review'));
   });
 
+  it('20.4.9, P5: a task in progress whose builder stopped has failed, unclocked, its stop among the unit\'s moments; a task a question parks waits, whatever its builder did', async () => {
+    enterBuild();
+    position('auto');
+    issued('builder', '1.1', '2026-10-21T10:00:00.000Z');
+    const { stopped } = ok(dir, ['task', 'stopped', UNIT, '1.1'], { env: env() });
+    const failed = { task: board().view.phases[0].tasks[0], moment: board(['--tab', 'unit']).view.lately.find(({ kind }) => kind === 'task-failed') };
+    await parkOn(['1.1']);
+
+    assert.deepStrictEqual([failed, board().view.phases[0].tasks[0].state], [
+      { task: line('1.1', 'Take a card', 'failed'), moment: { kind: 'task-failed', at: stopped, topic: null, detail: '1.1' } },
+      'waits',
+    ]);
+  });
+
   it('a brief the conversation issued for another unit\'s task of the same number never clocks this one (P15)', () => {
     enterBuild();
     fs.rmSync(path.join(dir, '.leeway', UNIT, 'build/tasks/1.1/figures.json'));
@@ -453,6 +467,7 @@ describe('the tabs (20.3)', () => {
       title: 'Pay',
       type: 'feature',
       about: 'Test: pay',
+      started: null,
       at_menu: false,
       progress: { complete: 3, total: 5 },
       waiting: [{ kind: 'question', id: 'Q1', text: QUESTIONS[0] }],

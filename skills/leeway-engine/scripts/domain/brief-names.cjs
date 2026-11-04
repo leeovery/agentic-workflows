@@ -40,6 +40,9 @@ const POINTED = new RegExp(`${POINTER}(${ID})`);
 /** How the workflows' agents are named: the hook acts on every agent so named, and on no other. */
 const OURS = 'leeway-';
 
+/** The roles whose brief sends a task's builder to build it: its own, and a fix round's. */
+const BUILDING_ROLES = Object.freeze(['builder', 'fix']);
+
 /**
  * Each role: the agent it is dispatched as, named `{OURS}…`, whose brief
  * its first line says it is, the records its brief draws on, by their
@@ -148,4 +151,4 @@ function issuedOf(session, id) {
   }
 }
 
-module.exports = { OURS, POINTER, ROLES, BRIEFS, BRIEF_REFUSALS, briefPath, issuedPath, pointerOf, pointedId, isBriefId, issuedOf };
+module.exports = { OURS, POINTER, ROLES, BUILDING_ROLES, BRIEFS, BRIEF_REFUSALS, briefPath, issuedPath, pointerOf, pointedId, isBriefId, issuedOf };

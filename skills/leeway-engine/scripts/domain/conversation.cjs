@@ -23,14 +23,15 @@
 //                  the SessionEnd hook
 //   position.json  where in the workflows the conversation is working, and
 //                  in implementation every task in flight with its builder's
-//                  agent id and its pair's, and the worktree it is built in
-//                  (position.cjs), written under the lock beside it — what
-//                  the tmux label's resume re-applies, the gate mod's spinner
-//                  says, the commit door and the hook before Bash check a
-//                  commit against, `verify` attributes a run by, a call in a
-//                  task's worktree is that task's by (`taskAt`), and
-//                  `conversation position` names files for; read here alone
-//                  (`readPosition`)
+//                  agent id and its pair's, the worktree it is built in, and
+//                  when its builder stopped (position.cjs), written under
+//                  the lock beside it — what the tmux label's resume
+//                  re-applies, the gate mod's spinner says, the commit door
+//                  and the hook before Bash check a commit against, `verify`
+//                  attributes a run by, a call in a task's worktree is that
+//                  task's by (`taskAt`), the board reads a task's stop from,
+//                  and `conversation position` names files for; read here
+//                  alone (`readPosition`)
 //   trust-pending.jsonl
 //                  the trust log's events waiting in the conversation
 //                  (trust-log.cjs): those it could not append, for its next
@@ -146,9 +147,10 @@ function positionPath(sessionId) {
 /**
  * A task in flight: its `{phase}.{n}`, the agent id of its builder once one
  * is dispatched, those of its reviewers, the pair the later rounds go back
- * to, and the worktree it is built in, absolute, once `task worktree` laid
- * it out (task-worktree.cjs).
- * @typedef {{task: string, builder: string|null, reviewers: string[], worktree?: string}} InFlight
+ * to, the worktree it is built in, absolute, once `task worktree` laid it
+ * out (task-worktree.cjs), and when its builder stopped, unable to build
+ * past a problem, until it is sent back or a raise parks the task.
+ * @typedef {{task: string, builder: string|null, reviewers: string[], worktree?: string, stopped?: string}} InFlight
  */
 
 /**
@@ -169,13 +171,14 @@ function isAgentId(value) {
 /** A stored task in flight, or null where it does not read as one. @param {unknown} stored @returns {InFlight|null} */
 function inFlightOf(stored) {
   if (stored === null || typeof stored !== 'object') return null;
-  const { task, builder, reviewers, worktree } = /** @type {Record<string, unknown>} */ (stored);
+  const { task, builder, reviewers, worktree, stopped } = /** @type {Record<string, unknown>} */ (stored);
   if (typeof task !== 'string' || !/^\d+\.\d+$/.test(task)) return null;
   return {
     task,
     builder: isAgentId(builder) ? builder : null,
     reviewers: Array.isArray(reviewers) ? reviewers.filter(isAgentId) : [],
     ...(typeof worktree === 'string' && path.isAbsolute(worktree) ? { worktree } : {}),
+    ...(typeof stopped === 'string' && !Number.isNaN(Date.parse(stopped)) ? { stopped } : {}),
   };
 }
 

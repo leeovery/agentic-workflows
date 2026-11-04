@@ -53,7 +53,7 @@ const { startTopic, completeTopic, reopenTopic, cancelTopic, reactivateTopic, po
 const { mailboxDir, mailPhase } = require('./domain/derivations.cjs');
 const { SEND_USAGE, MAILBOX_USAGE, ANSWERED_USAGE, sendMessage, mailboxOf, answerMessage } = require('./domain/mail.cjs');
 const { loadWorkUnitManifest } = require('./kernel/manifest.cjs');
-const { createExperiment, advanceExperiment, approveExperiment, concludeExperiment, abandonExperiment } = require('./domain/experiment.cjs');
+const { createExperiment, advanceExperiment, approveExperiment, recordRuns, concludeExperiment, abandonExperiment } = require('./domain/experiment.cjs');
 const { seriesDir } = require('./domain/experiment-paths.cjs');
 const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = require('./domain/tasks.cjs');
 const { TASK_VERBS, runTaskVerb } = require('./domain/task-verbs.cjs');
@@ -104,6 +104,7 @@ const { importWorkUnitFiles } = require('./domain/workunit-import.cjs');
 const { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
 const { absorbWorkUnit } = require('./domain/workunit-absorb.cjs');
 const { closeDiscoverySession } = require('./domain/discovery-session.cjs');
+const { LOG_USAGE, logHeard } = require('./domain/discovery-log.cjs');
 const { runFieldCommand, isRead } = require('./domain/fields.cjs');
 const { renderSurface, SURFACES } = require('./domain/render.cjs');
 const { resolveHandoff, topicHandoff, handoffSections, TOPIC_HANDOFF_USAGE } = require('./domain/handoff.cjs');
@@ -239,6 +240,7 @@ ${VERDICT_USAGE.replace(/^/gm, '  ')}
   ${POSITION_USAGE}
   build-order sequence <work-unit> <topic>=<order> [<topic>=<order> …]
   discovery-session close <work-unit|product> -m <message>
+${LOG_USAGE.replace(/^/gm, '  ')}
   topic start <work-unit> <phase> <topic>
 ${Object.values(MAP_USAGE).map((usage) => `  ${usage}`).join('\n')}
   ${SEND_USAGE}
@@ -267,6 +269,7 @@ ${Object.values(MAP_USAGE).map((usage) => `  ${usage}`).join('\n')}
   experiment create <work-unit> <topic> --slug <kebab> (--from discussion --problem <file> --question <id> | --parent <E{n}>)
   experiment advance <work-unit> <topic> <id>
   experiment approve <work-unit> <topic> <id>
+  experiment runs <work-unit> <topic> <id> --file <runs.json>
   experiment conclude <work-unit> <topic> <id> --verdict <one line>
   experiment abandon <work-unit> <topic> <id> --reason <one line>
   task phase <work-unit> <N> --title <title>
@@ -281,6 +284,7 @@ ${Object.values(MAP_USAGE).map((usage) => `  ${usage}`).join('\n')}
   task list <work-unit> <N>
   task show <work-unit> <task>
   task worktree <work-unit> <task>
+  task stopped <work-unit> <task>
   task account <work-unit> <task>
   task settle <work-unit> <task> --file <why>
   task settle <work-unit> --phase <N> --file <why> [--fixes <task>,…]
@@ -832,6 +836,23 @@ function runDiscoverySession(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
+// discovery-log — an entry under one of the fixed headings of the log of an
+// epic's open discovery session (domain/discovery-log.cjs), never committed:
+// every state commit takes the log along.
+// ---------------------------------------------------------------------------
+
+/** @param {Call} call @param {string[]} argv */
+function runDiscoveryLog(call, argv) {
+  const [kind, ...rest] = argv;
+  try {
+    const { opts, positional } = parseArgs(rest);
+    respond(call, logHeard(call.cwd, kind, positional, opts));
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // topic — phase-item transitions. start/send/complete/reopen are
 // manifest-side lifecycle bookkeeping (KB sync where the phase is indexed:
 // index on complete; reopen syncs nothing — warn-don't-block) with no git
@@ -1111,8 +1132,8 @@ function runTopic(call, argv) {
 // (domain/experiment.cjs): create is the spawn (id + item + the spawning
 // item's evidence lock — or a sub-experiment under a running parent);
 // advance/approve/conclude/abandon record one experiment's design-before-data
-// walk. The spawn commits what it wrote; every other write is left to the
-// session's commit cadence.
+// walk, and runs the tally of its runs while it runs. The spawn commits what
+// it wrote; every other write is left to the session's commit cadence.
 //
 // Beats follow the acting session: `create --from` is the spawning
 // discussion session recording the spawn on its own item, so it beats
@@ -1149,6 +1170,15 @@ function runExperiment(call, argv) {
       respond(call, result);
       return;
     }
+    if (command === 'runs') {
+      if (!workUnit || !topic || !id || positional.length !== 3 || opts.file === undefined) {
+        throw new Error('Usage: engine experiment runs <work-unit> <topic> <id> --file <runs.json>');
+      }
+      const result = recordRuns(cwd, workUnit, topic, id, { file: opts.file });
+      beatQuietly(cwd, workUnit, 'experiment', topic);
+      respond(call, result);
+      return;
+    }
     if (command === 'advance' || command === 'approve') {
       if (!workUnit || !topic || !id || positional.length !== 3) {
         throw new Error(`Usage: engine experiment ${command} <work-unit> <topic> <id>`);
@@ -1158,7 +1188,7 @@ function runExperiment(call, argv) {
       respond(call, result);
       return;
     }
-    throw new Error('Usage: engine experiment <create|advance|approve|conclude|abandon> <work-unit> <topic> …');
+    throw new Error('Usage: engine experiment <create|advance|approve|runs|conclude|abandon> <work-unit> <topic> …');
   } catch (err) {
     failJson(call, err);
   }
@@ -1170,8 +1200,9 @@ function runExperiment(call, argv) {
 // done, close, list and show, and beside them the build's records, account
 // and settle (domain/task-account.cjs), settle --phase, a phase review's
 // (domain/phase-settlement.cjs), and note (domain/notes.cjs), each
-// committing what it wrote to the state branch; and worktree, the task's
-// worktree laid out for its builder (domain/task-worktree.cjs).
+// committing what it wrote to the state branch; worktree, the task's
+// worktree laid out for its builder (domain/task-worktree.cjs); and stopped,
+// its builder's stop held on the conversation's position (domain/position.cjs).
 //
 // Beside them, until the plan's loops go, the implementation-task
 // bookkeeping: format-blind, manifest-side only — init, the three-argument
@@ -2546,6 +2577,7 @@ const COMMANDS = Object.freeze({
   workunit: runWorkunit,
   'build-order': runBuildOrder,
   'discovery-session': runDiscoverySession,
+  'discovery-log': runDiscoveryLog,
   topic: runTopic,
   experiment: runExperiment,
   presence: runPresence,

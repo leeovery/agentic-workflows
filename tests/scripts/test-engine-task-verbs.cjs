@@ -3,7 +3,8 @@
 // ---------------------------------------------------------------------------
 // The `task` verbs (leeway-engine/scripts/domain/task-verbs.cjs, the task
 // template in domain/task-file.cjs): `engine task phase|create|add|type|
-// link|ready|start|done|close|list|show`, through the project's task driver.
+// link|ready|start|done|close|list|show|stopped`, through the project's task
+// driver.
 // Their answers, in the engine's words and names; the tracker set up by the
 // first verb — the default driver written as the project's setting, the
 // tool's local files ignored, its store made in the state worktree — the
@@ -12,7 +13,8 @@
 // pushed, never a code commit (7.S17, 7.S21); a refusal writing nothing, or
 // committing what setting up and the verb wrote before it, under a message
 // saying so; a tool missing or failing named; a task numbered after its
-// phase's highest; the tasks in flight on the conversation's position; and
+// phase's highest; the tasks in flight on the conversation's position, and
+// `task stopped`, a builder's stop held against one; and
 // the writer lock around every verb, reads included. What a driver does
 // with a task is the conformance suite's.
 //
@@ -32,7 +34,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  ok, refuses, git, stateGit, statePath, layout, head, lastMessage, commitAll, fixtureFrom, cleanupFixture, lockAttempts, bareRepo, remoteTip, accountTaken,
+  ok, refuses, refusedPristine, git, stateGit, statePath, layout, head, lastMessage, commitAll, fixtureFrom, cleanupFixture, lockAttempts, bareRepo, remoteTip, accountTaken,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
@@ -480,6 +482,39 @@ describe('task start, done and close: the tasks in flight (6.3.3, 7.1.12)', () =
     assert.strictEqual(lastMessage(dir), 'task(pay): done 1.1');
     assert.deepStrictEqual(position(), { name: UNIT, phase: 'implementation', topic: UNIT, tasks: [fresh('1.2')] });
     assert.deepStrictEqual(ok(dir, ['task', 'ready', UNIT]).tasks.map((/** @type {any} */ row) => row.task), ['1.3'], '1.2 started, so not waiting');
+  });
+
+  it('task stopped holds when the task\'s builder stopped against it in flight on the conversation\'s position, an earlier stop kept, writing nothing to the state (20.4.9, P5)', () => {
+    ok(dir, ['task', 'start', UNIT, '1.1'], { env: SESSION });
+    ok(dir, ['task', 'start', UNIT, '1.2'], { env: SESSION });
+    const state = head(dir);
+    const { stopped } = ok(dir, ['task', 'stopped', UNIT, '1.1'], { env: SESSION });
+    const first = position();
+    const earlier = '2026-10-21T10:00:00.000Z';
+    fs.writeFileSync(path.join(conversationDir(SESSION_ID), 'position.json'), JSON.stringify({ ...first, tasks: [{ ...fresh('1.1'), stopped: earlier }, fresh('1.2')] }));
+
+    assert.deepStrictEqual([first.tasks, ok(dir, ['task', 'stopped', UNIT, '1.1'], { env: SESSION }), position().tasks, head(dir)], [
+      [{ ...fresh('1.1'), stopped }, fresh('1.2')],
+      { ok: true, task: '1.1', id: 'pay-1-1', stopped: earlier },
+      [{ ...fresh('1.1'), stopped: earlier }, fresh('1.2')],
+      state,
+    ]);
+    assert.ok(!Number.isNaN(Date.parse(stopped)));
+  });
+
+  it('task stopped refuses with no conversation, and for a task not in flight in it, writing and holding nothing', () => {
+    ok(dir, ['task', 'start', UNIT, '1.1'], { env: SESSION });
+    const held = position();
+
+    assert.deepStrictEqual([
+      refusedPristine(dir, ['task', 'stopped', UNIT, '1.1']).error,
+      refusedPristine(dir, ['task', 'stopped', UNIT, '1.2'], { env: SESSION }).error,
+      position(),
+    ], [
+      'task stopped: no conversation is named, so no task is in flight — run it from the Claude Code conversation building the task',
+      'task stopped: task 1.2 of pay is not in flight in this conversation — a stop is recorded for a task this conversation builds',
+      held,
+    ]);
   });
 
   it('task close ends the task without it being done, its reason kept, and takes it off the position', () => {

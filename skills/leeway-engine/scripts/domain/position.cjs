@@ -33,7 +33,11 @@
 // replacing any before it, each reviewer's joining the pair the later
 // rounds go back to (13.3.3); a dispatch with no brief, the plan's
 // executor's, is the builder of the one task in flight. `task worktree`
-// records the worktree it laid out for a task in flight (task-worktree.cjs).
+// records the worktree it laid out for a task in flight (task-worktree.cjs),
+// and `task stopped` when its builder stopped, unable to build past a
+// problem (task-verbs.cjs), its first stop kept; the task's next builder's
+// or fix round's brief (brief.cjs), or a raise parking it (raise.cjs), takes
+// the stop off.
 // They ride with their task and go with it. The start menu is no position:
 // boot drops the calling conversation's own before anything else it does,
 // and `session repair` drops it too.
@@ -320,6 +324,28 @@ function recordBuilder(sessionId, agentId, briefId) {
 }
 
 /**
+ * The unit's task in flight on the conversation `sessionId`'s position
+ * changed — only while it is in flight there: `change` answers the task to
+ * write from the one held, or null to write nothing. The task as held
+ * before the change, null where it is not in flight, and whether the change
+ * was written.
+ * @param {string} sessionId @param {string} workUnit @param {string} step `{phase}.{n}`
+ * @param {(task: InFlight) => InFlight|null} change @returns {{held: InFlight|null, written: boolean}}
+ */
+function changeInFlight(sessionId, workUnit, step, change) {
+  /** @type {InFlight|null} */
+  let held = null;
+  const written = updatePosition(sessionId, (prior) => {
+    const place = buildPlaceOf(prior, workUnit) ?? implementationOf(workUnit, workUnit);
+    const tasks = tasksAt(prior, place);
+    held = tasks.find((t) => t.task === step) ?? null;
+    const changed = held === null ? null : change(held);
+    return changed === null ? null : withTasks(place, tasks.map((t) => (t.task === step ? changed : t)));
+  });
+  return { held: /** @type {InFlight|null} */ (held), written };
+}
+
+/**
  * Record the worktree `task worktree` laid out against the unit's task in
  * flight on the conversation `sessionId`'s position — only while it is in
  * flight there.
@@ -327,14 +353,28 @@ function recordBuilder(sessionId, agentId, briefId) {
  * @returns {{recorded: boolean}}
  */
 function recordWorktree(sessionId, workUnit, step, worktree) {
-  return {
-    recorded: updatePosition(sessionId, (prior) => {
-      const place = buildPlaceOf(prior, workUnit) ?? implementationOf(workUnit, workUnit);
-      const held = tasksAt(prior, place);
-      if (!held.some((t) => t.task === step)) return null;
-      return withTasks(place, held.map((t) => (t.task === step ? { ...t, worktree } : t)));
-    }),
-  };
+  return { recorded: changeInFlight(sessionId, workUnit, step, (task) => ({ ...task, worktree })).written };
+}
+
+/**
+ * Record when the builder of the unit's task in flight on the conversation
+ * `sessionId`'s position stopped, an earlier stop kept. The stop it holds,
+ * null where the task is not in flight there.
+ * @param {string} sessionId @param {string} workUnit @param {string} step `{phase}.{n}` @param {string} at ISO
+ * @returns {string|null}
+ */
+function recordStop(sessionId, workUnit, step, at) {
+  const { held, written } = changeInFlight(sessionId, workUnit, step, (task) => (task.stopped === undefined ? { ...task, stopped: at } : null));
+  return held?.stopped ?? (written ? at : null);
+}
+
+/**
+ * Take the stop off the unit's task in flight on the conversation
+ * `sessionId`'s position, where it holds one.
+ * @param {string} sessionId @param {string} workUnit @param {string} step `{phase}.{n}`
+ */
+function clearStop(sessionId, workUnit, step) {
+  changeInFlight(sessionId, workUnit, step, ({ stopped, ...task }) => (stopped === undefined ? null : task));
 }
 
 /**
@@ -763,6 +803,6 @@ function positionSections(reads) {
 }
 
 module.exports = {
-  readPosition, assertPlace, isPlace, recordPosition, recordTask, recordTasksAt, recordBuilder, recordWorktree, clearTask, dropPosition,
+  readPosition, assertPlace, isPlace, recordPosition, recordTask, recordTasksAt, recordBuilder, recordWorktree, recordStop, clearStop, clearTask, dropPosition,
   placeLine, skillAt, positionReads, positionSections,
 };

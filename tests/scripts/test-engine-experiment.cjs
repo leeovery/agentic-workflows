@@ -2,10 +2,11 @@
 
 // ---------------------------------------------------------------------------
 // The experiment series (leeway-engine/scripts/domain/experiment.cjs,
-// `engine experiment create|advance|approve|conclude|abandon`, with
+// `engine experiment create|advance|approve|runs|conclude|abandon`, with
 // domain/experiment-question.cjs): the spawn from a discussion, measuring a
 // question on its map it must name, and its lock,
-// the records in the topic's folder (4.11.15), the walk to verdict, splits,
+// the records in the topic's folder (4.11.15), the walk to verdict, the
+// tally of a running experiment's runs, splits,
 // the release edges, the question on the map an experiment measures and the
 // report that reaches as a message the topic that question stands on once it
 // has left the spawning topic's open questions, its relative links rebased
@@ -26,7 +27,7 @@ const path = require('path');
 
 const harness = require('./engine-harness.cjs');
 
-const { cleanupFixture, commitAll, ok: engine, refuses: engineFails, refusedPristine, lastMessage, statePath, layout, withFrozenClock, stateGit, output, fixtureFrom } = harness;
+const { cleanupFixture, commitAll, ok: engine, refuses: engineFails, refusedPristine, lastMessage, statePath, layout, withFrozenClock, FROZEN_AT, stateGit, output, fixtureFrom } = harness;
 
 const setupGitFixture = () => harness.setupGitFixture('engine-exp-');
 
@@ -273,6 +274,13 @@ describe('engine experiment advance / approve — design before data', () => {
     assert.strictEqual(running.previous, 'approved');
   });
 
+  it('approve holds the day the person approved the design on the record, as the unit holds its own (20.13.1)', () => {
+    walkTo(dir, 'E1', 'designed');
+    withFrozenClock(() => engine(dir, ['experiment', 'approve', 'lab', 'timing', 'E1']));
+
+    assert.strictEqual(readManifest(dir, 'lab').phases.experiment.items.timing.experiments.E1.approved, FROZEN_AT.slice(0, 10));
+  });
+
   it('advance never crosses the freeze: designed routes to approve, running to conclude/abandon', () => {
     walkTo(dir, 'E1', 'designed');
     assert.match(engineFails(dir, ['experiment', 'advance', 'lab', 'timing', 'E1']).error, /experiment approve/);
@@ -299,6 +307,73 @@ describe('engine experiment advance / approve — design before data', () => {
     assert.match(engineFails(dir, ['experiment', 'advance', 'lab', 'timing', 'E9']).error, /no experiment E9/);
     assert.match(engineFails(dir, ['experiment', 'advance', 'lab', 'timing', 'X1']).error, /invalid experiment id/);
     assert.match(engineFails(dir, ['experiment', 'advance', 'lab', 'ghost', 'E1']).error, /no experiment series for "ghost"/);
+  });
+});
+
+describe('engine experiment runs — the tally of its runs (20.13.1)', () => {
+  let dir;
+  beforeEach(() => {
+    dir = labWorld();
+    spawn(dir, 'discussion', 'window-placement');
+  });
+  afterEach(() => { cleanupFixture(dir); });
+
+  /** Claude's tally written into the cache: its project-relative path. @param {unknown} tally */
+  function tallied(tally) {
+    const rel = '.leeway/.cache/lab/experiment/timing/runs.json';
+    fs.mkdirSync(path.join(dir, path.dirname(rel)), { recursive: true });
+    fs.writeFileSync(path.join(dir, rel), JSON.stringify(tally));
+    return rel;
+  }
+
+  /** The tally recorded for E1, its record's runs. @param {unknown} tally */
+  const record = (tally) => {
+    const { runs } = engine(dir, ['experiment', 'runs', 'lab', 'timing', 'E1', '--file', tallied(tally)]);
+    return { runs, held: readManifest(dir, 'lab').phases.experiment.items.timing.experiments.E1.runs };
+  };
+
+  it('keeps a running experiment\'s tally on its record, each condition\'s runs done and their median in place of its values — the middle one, or the mean of the two middles — and a later tally stands over it', () => {
+    walkTo(dir, 'E1', 'running');
+    const first = record([
+      { condition: '16 bare windows', of: 20, values: [0.25, 0.23, 0.24], unit: 's' },
+      { condition: '25 real fumis', of: 20, values: [0.7, 0.66, 0.69, 0.68] },
+    ]);
+    const later = record([{ condition: '16 bare windows', of: 20, values: [] }]);
+
+    const bare = { condition: '16 bare windows', of: 20, done: 3, median: 0.24, unit: 's' };
+    const real = { condition: '25 real fumis', of: 20, done: 4, median: 0.685 };
+    const none = { condition: '16 bare windows', of: 20, done: 0, median: null };
+    assert.deepStrictEqual([first, later], [{ runs: [bare, real], held: [bare, real] }, { runs: [none], held: [none] }]);
+  });
+
+  it('refuses, writing nothing, a unit, topic or experiment the project lacks, an experiment not running, and a tally outside the cache, no list, empty, naming a condition twice, or holding one whose runs, values or keys do not check', () => {
+    walkTo(dir, 'E1', 'approved');
+    const runs = (/** @type {string} */ file, at = ['lab', 'timing', 'E1']) => refusedPristine(dir, ['experiment', 'runs', ...at, '--file', file]).error;
+    const one = { condition: 'bare', of: 2, values: [1] };
+    const lacking = [['nowhere', 'timing', 'E1'], ['lab', 'nothing', 'E1'], ['lab', 'timing', 'E9']].map((at) => runs(tallied([one]), at));
+    const approved = runs(tallied([one]));
+    engine(dir, ['experiment', 'advance', 'lab', 'timing', 'E1']);
+    const errors = [
+      ...lacking,
+      approved,
+      runs('runs.json'),
+      ...[{}, [], [one, one], [{ ...one, of: 0 }], [{ ...one, values: ['1'] }], [{ ...one, values: [1, 2, 3] }], [{ ...one, median: 1 }]].map((tally) => runs(tallied(tally))),
+    ];
+
+    assert.deepStrictEqual(errors.map((error) => error.split(' — ')[0]), [
+      `manifest not found: ${statePath(dir, 'nowhere', 'manifest.json')}`,
+      'no experiment series for "nothing"',
+      `no experiment E9 in "timing"'s series`,
+      'experiment E1 ("timing") is approved',
+      `--file must point inside ${statePath(dir, '.cache')}/`,
+      'the tally is a list',
+      'the tally names no condition',
+      'the tally names the condition "bare" twice',
+      'condition 1\'s of is the runs its design gives it, a whole number above nought',
+      'condition 1\'s values are the runs measured, each a number',
+      'condition 1 has 3 runs measured of the 2 its design gives it',
+      'condition 1 must be {condition, of, values, unit?}',
+    ]);
   });
 });
 

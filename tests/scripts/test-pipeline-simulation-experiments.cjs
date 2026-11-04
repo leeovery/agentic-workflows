@@ -127,6 +127,8 @@ describe('pipeline simulation: experiments, in an epic', () => {
       /Approve E1's design\?/);
     sim.run(['experiment', 'approve', wu, 'timing', 'E1']);
     sim.run(['experiment', 'advance', wu, 'timing', 'E1']);
+    sim.run(['experiment', 'runs', wu, 'timing', 'E1', '--file', sim.write(`.leeway/.cache/${wu}/experiment/timing/E1-runs.json`,
+      JSON.stringify([{ condition: 'one monitor', of: 4, values: [1, 1] }, { condition: 'two monitors', of: 4, values: [] }]))]);
 
     // A split: the running question decomposes into sub-experiments walked in
     // miniature; the lock stays on E1 and the parent's verdict waits for them.
@@ -138,6 +140,8 @@ describe('pipeline simulation: experiments, in an epic', () => {
     sim.run(['experiment', 'advance', wu, 'timing', 'E1.1']);
     sim.run(['experiment', 'approve', wu, 'timing', 'E1.1']);
     sim.run(['experiment', 'advance', wu, 'timing', 'E1.1']);
+    assert.deepStrictEqual(sim.run(['experiment', 'runs', wu, 'timing', 'E1.1', '--file', sim.write(`.leeway/.cache/${wu}/experiment/timing/E1.1-runs.json`,
+      JSON.stringify([{ condition: 'one monitor', of: 2, values: [3, 5], unit: 'ms' }]))]).runs, [{ condition: 'one monitor', of: 2, done: 2, median: 4, unit: 'ms' }]);
     const subDone = sim.run(['experiment', 'conclude', wu, 'timing', 'E1.1', '--verdict', 'placed correctly']);
     assert.strictEqual(subDone.released_waits, undefined, 'a sub releases nothing — the lock is the parent to release');
 

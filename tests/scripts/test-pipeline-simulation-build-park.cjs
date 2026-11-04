@@ -4,8 +4,9 @@
 // The pipeline simulation's build in auto with two tasks side by side, as
 // its skill's prose runs it: a feature's one phase, its two tasks each laid
 // out by `task worktree` from a worktree made at the default branch.
-// One builder stopping, the orchestrator adding what it needs to the task
-// and sending it back in, the task text as written (13.S16); the other's
+// One builder stopping, the orchestrator recording the stop, the task
+// failed on the board until it adds what the task needs and sends its
+// builder back in, the task text as written (13.S16, 20.4.9); the other's
 // builder finding a decision of the unit's own record wrong, replaced
 // through a raise at the build's place parking its task — never a message,
 // which the spec refuses — the one line said (12.S44, 12.S30), its pair
@@ -86,11 +87,17 @@ describe('pipeline simulation: the build with two tasks side by side', () => {
     const main = git(sim.dir, ['rev-parse', 'main']).trim();
     assert.deepStrictEqual([showing, hashing].map((tree) => git(tree, ['rev-parse', 'HEAD']).trim()), [main, main], 'each starts on the branch the project lands on');
 
-    // 1.1's builder stops: the orchestrator adds what it needs to the task
-    // and sends it back in; the task stands as written (13.S16).
+    // 1.1's builder stops: the orchestrator records the stop, the board
+    // reading the task failed (20.4.9), adds what it needs to the task and
+    // sends it back in, which takes the stop off; the task stands as written
+    // (13.S16).
+    const stateOf = () => sim.run(['board', conversation]).view.phases[0].tasks.find((/** @type {{task: string}} */ t) => t.task === '1.1').state;
+    assert.strictEqual(typeof sim.run(['task', 'stopped', WU, '1.1']).stopped, 'string');
+    const stopped = stateOf();
     const written = sim.run(['task', 'show', WU, '1.1']).text;
     sim.run(['task', 'add', WU, '1.1', '--file', sim.write(`.leeway/.cache/${WU}/build/addition.md`, 'An entry is shown by its id.\n'), '--by', 'orchestrator']);
     assert.ok(briefOf(sim, loop.brief(['builder', WU, '1.1'])).includes('## Added by the orchestrator\n\nAn entry is shown by its id.'), 'the builder goes back in with the addition on its task');
+    assert.deepStrictEqual([stopped, stateOf()], ['failed', 'building'], 'failed from the stop until its builder is sent back in');
     const shown = sim.run(['task', 'show', WU, '1.1']);
     assert.deepStrictEqual([shown.text, shown.additions.map((/** @type {{by: string}} */ a) => a.by)], [written, ['orchestrator']], 'the task as written, the addition the orchestrator\'s');
 

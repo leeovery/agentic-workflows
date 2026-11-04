@@ -26,6 +26,8 @@
 //   the discussion its decisions, the specification its sections and the
 //   build phases cut, the build its tasks done of its tasks, the review its
 //   round.
+// - A unit started the day its manifest was made, as the manifest stamps it
+//   (20.15.1).
 // - What waits on the person in a unit is each question its build waits on,
 //   and each gap its specification's review waits on while the spec is
 //   written and the build not begun (spec-passes.cjs).
@@ -75,6 +77,9 @@ const LINEAR_PHASES = Object.freeze({
 
 /** What an epic's phases wait on while its discovery runs (20.15.2). @type {Readonly<Record<string, string>>} */
 const EPIC_WAITS = Object.freeze({ discussion: 'once the map is approved', specification: 'once every topic is decided' });
+
+/** The day the unit started (the header's), null where its manifest holds none. @param {BoardAt} at */
+const startedOf = ({ manifest }) => (typeof manifest.created === 'string' ? manifest.created : null);
 
 /** The sessions held elsewhere in the unit's topics, by topic: whether another session is in each. @param {BoardAt} at @returns {Set<string>} */
 function othersIn(at) {
@@ -144,6 +149,7 @@ function epicView(at, atMenu) {
     unit: at.unit,
     title: at.title,
     about: String(at.manifest.description ?? ''),
+    started: startedOf(at),
     at_menu: atMenu,
     progress: { decided: live.filter((topic) => lifecycles.get(topic) === 'decided').length, total: live.length, discussing: live.filter((topic) => lifecycles.get(topic) === 'discussing').length },
     topics: live.map((topic) => {
@@ -231,6 +237,7 @@ function linearView(at, atMenu) {
     title: at.title,
     type: at.manifest.work_type,
     about: String(at.manifest.description ?? ''),
+    started: startedOf(at),
     at_menu: atMenu,
     progress: { complete: phases.filter(({ state }) => state === 'complete').length, total: phases.length },
     waiting: waitingIn(at),
