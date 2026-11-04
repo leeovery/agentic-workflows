@@ -1,9 +1,12 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// What the board's suites share to hold the mod's fixtures to the engine's
-// answers (test-engine-board.cjs, test-engine-board-review.cjs): a value's
-// shape (`shapeOf`), and where two shapes part (`misfits`).
+// What the board's suites share (test-engine-board.cjs,
+// test-engine-board-review.cjs) to hold the mod's fixtures to the engine's
+// answers: a fixture by its name (`fixture`), a value's shape (`shapeOf`),
+// and where two shapes part (`misfits`). A fixture compared is one holding
+// at least one of each list, and so is the world's answer, each suite
+// asserting it, since an empty list fits any shape.
 // ---------------------------------------------------------------------------
 
 const path = require('path');

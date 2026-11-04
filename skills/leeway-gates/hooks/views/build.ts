@@ -10,7 +10,7 @@
  * A task's line, its mark and its state, are the review's fix tasks' too
  * (`views/review.ts`).
  */
-import { COLOUR, MARK, blank, folding, heading, spread, type Kit, type Line, type Part } from '../draw.ts'
+import { COLOUR, MARK, blank, folding, heading, spread, titledLine, type Kit, type Line, type Part } from '../draw.ts'
 import type { View } from '../model.ts'
 import { pageKey } from '../pane.ts'
 
@@ -160,7 +160,7 @@ export function buildLines(view: View, kit: Kit): Line[] {
   const build = view as BuildView
 
   return [
-    { key: 'build:head', parts: [{ text: build.title, bold: true }, { text: ` · ${build.type} · build phase`, color: COLOUR.secondary }] },
+    titledLine('build:head', { text: build.title, bold: true }, [{ text: ` · ${build.type} · build phase`, color: COLOUR.secondary }], kit.width),
     progressOf(build.progress),
     blank('build:head'),
     ...kit.waiting(),

@@ -296,14 +296,17 @@ function taskPage(at, given) {
     reviews: account?.reviews.map(({ heading, summary }) => ({ round: heading, summary })) ?? [],
     calls: callsOf(at.cwd, ref),
     ran: ranOf(at.cwd, at.manifest, ref, task, criteria).ran,
-    question: line?.state === 'waits' ? line.on[0] : null,
-    fixes: recordedRounds(at.cwd, at.unit).flatMap(({ findings }, r) => findings.flatMap(({ fix, area, text }, k) => (fix === given ? [{ round: r + 1, finding: k + 1, area, text }] : []))),
+    questions: line?.state === 'waits' ? line.on : [],
+    fixes: recordedRounds(at.cwd, at.unit).flatMap(({ findings }, r) => findings.flatMap(({ fix, area, call, text }, k) => (fix === given ? [{ round: r + 1, finding: k + 1, area, call, text }] : []))),
   };
 }
 
+/** The statements a scenario's words end by citing, `(1.1.1, 1.1.2)`. */
+const CITATION = /\s*\(\d+(?:\.\d+)+(?:,\s*\d+(?:\.\d+)+)*\)\s*$/;
+
 /**
- * A scenario's words as the unit's spec holds them, the spec read once a
- * call; null where it lacks them.
+ * A scenario's words as the unit's spec holds them, the statements they
+ * cite left out, the spec read once a call; null where it lacks them.
  * @param {BoardAt} at @param {string} scenario @returns {string|null}
  */
 function scenarioWording(at, scenario) {
@@ -311,7 +314,7 @@ function scenarioWording(at, scenario) {
     const file = specPath(at.cwd, at.unit);
     return fs.existsSync(file) ? specReading(fs.readFileSync(file, 'utf8')).lines : [];
   });
-  return lines.find(({ kind, number }) => kind === 'scenario' && number === scenario)?.wording ?? null;
+  return lines.find(({ kind, number }) => kind === 'scenario' && number === scenario)?.wording.replace(CITATION, '') ?? null;
 }
 
 /** Where a scenario's words turn from what is done to what follows: its first "then". */
@@ -430,5 +433,5 @@ function buildMoments(at) {
 const buildWords = ({ progress }) => `${progress.done} of ${counted(progress.total, 'task')} done`;
 
 module.exports = {
-  buildView, buildBanner, taskLine, taskPage, writtenPage, roundPage, scenarioPage, evidencePage, scenarioWording, buildWords, buildMoments, standingAt, reviewStandingAt,
+  buildView, buildBanner, taskLine, taskPage, writtenPage, roundPage, scenarioPage, evidencePage, scenarioWording, buildWords, buildMoments, standingAt, readingAt, reviewStandingAt,
 };

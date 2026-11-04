@@ -19,9 +19,10 @@
 //   the unit's page at its menu and in a phase whose view comes later
 //   (29.14.2), a quick-fix's implementation among them, and All work at the
 //   start menu or a project-level place — and once a unit's finish completes
-//   it from its review phase (20.10.4), the session handed to the start
-//   menu while its position still names that review, All work too, the
-//   banner the unit's close (D38); an epic's finish goes to its menu.
+//   it from its review phase (20.10.4), All work too, the banner the
+//   unit's close (D38) — while its position still names that review, and at
+//   the start menu boot hands it to, until the session records a position
+//   again (position.cjs); an epic's finish goes to its menu.
 // - The unit's tab shows the unit `--unit` names, else the session's: an
 //   epic's page for an epic (20.15.2), the unit's page for any other.
 //   All work shows the project (20.16), and `--page unit:{unit}` another
@@ -64,7 +65,7 @@ const path = require('path');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { PROJECT_IDENTITIES } = require('../kernel/manifest-schema.cjs');
 const { messageOf } = require('../kernel/call.cjs');
-const { readPosition, conversationDir } = require('./conversation.cjs');
+const { readPosition, readLeft, conversationDir } = require('./conversation.cjs');
 const { BRIEFS } = require('./brief-names.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { trackedUnit } = require('./task-verbs.cjs');
@@ -271,11 +272,11 @@ function pageOf(tab, ref, pageUnit) {
 }
 
 /**
- * Whether the session's unit was finished from its review phase, the start
- * menu next (the header's): its position still names that review.
- * @param {BoardAt|null} here
+ * Whether a unit was finished from its review phase, the start menu next
+ * (the header's), at the phase the session's place names.
+ * @param {BoardAt|null} at @param {string|null|undefined} phase
  */
-const finishedHere = (here) => here !== null && here.manifest.status === 'completed' && here.place.phase === 'review' && here.manifest.work_type !== 'epic';
+const finishedFrom = (at, phase) => at !== null && phase === 'review' && at.manifest.status === 'completed' && at.manifest.work_type !== 'epic';
 
 /** A view drawn, or why it cannot be. @param {() => View} draw @returns {View} */
 function drawn(draw) {
@@ -329,12 +330,17 @@ function boardOf(cwd, positional, opts) {
   const tabAt = tabUnit === null ? null : at(tabUnit);
   const pageAt = pageUnit === null ? null : at(pageUnit);
   const here = place.unit === null ? null : at(place.unit);
-  const finished = finishedHere(here);
-  const own = here === null || finished ? null : ownRead(here, warnings);
+  const left = position === null ? readLeft(session) : null;
+  const leftAt = left === null || manifestOf(stateRoot(cwd), left.name) === null ? null : at(left.name);
+  /** @type {BoardAt|null} */
+  let finished = null;
+  if (finishedFrom(here, place.phase)) finished = here;
+  else if (finishedFrom(leftAt, left?.phase)) finished = leftAt;
+  const own = here === null || finished !== null ? null : ownRead(here, warnings);
   const read = own === null || 'failed' in own ? null : own;
-  const atStart = position === null || finished;
+  const atStart = position === null || finished !== null;
   const tabView = () => {
-    if (tab === 'all' || (here === null || finished) && tab === 'this') return allView(cwd, here, atStart, warnings).view;
+    if (tab === 'all' || (here === null || finished !== null) && tab === 'this') return allView(cwd, here, atStart, warnings).view;
     if (tab === 'unit') return unitPage(/** @type {BoardAt} */ (tabAt), tabAt === here && place.phase === null).view;
     if (own !== null && 'failed' in own) throw new Error(own.failed);
     return /** @type {Read} */ (read).view;
@@ -342,7 +348,7 @@ function boardOf(cwd, positional, opts) {
   return {
     version: BOARD_VERSION,
     place,
-    banner: here === null || finished ? allBanner(cwd, position, finished ? here : null) : { name: here.title, ...(read?.banned ?? placeBanner(here)) },
+    banner: here === null || finished !== null ? allBanner(cwd, position, finished) : { name: here.title, ...(read?.banned ?? placeBanner(here)) },
     unit: tabAt === null ? null : { unit: tabAt.unit, title: tabAt.title },
     tab,
     view: page === null ? drawn(tabView) : drawn(() => {

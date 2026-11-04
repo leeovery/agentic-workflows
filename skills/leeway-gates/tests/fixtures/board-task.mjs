@@ -35,6 +35,6 @@ export default {
     { id: 'e3a2', text: 'The list also covers failure classification (§9) and halving with the lower-the-cap hint (§10).' },
   ],
   ran: null,
-  question: null,
+  questions: [],
   fixes: [],
 }

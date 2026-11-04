@@ -330,3 +330,42 @@ export function prose(key: string, text: string, color: string = COLOUR.body, ma
 
 /** A count and its noun: "1 acceptance criterion", "6 acceptance criteria". */
 export const counted = (count: number, one: string, many = `${one}s`) => `${count} ${count === 1 ? one : many}`
+
+/** A title then the words after it, `width` cells across: the title giving way with "…", the words after it whole. */
+export const titledLine = (key: string, title: Part, after: readonly Part[], width: number): Line => ({
+  key,
+  parts: [...cutTo([title], width - widthOf(after)), ...after],
+})
+
+/**
+ * Words that carry what waits, then the state and the button that end them,
+ * `width` cells across: the words wrapped at word breaks under `indent`,
+ * never cut, the state and the button kept at the right of the last row —
+ * a row of their own where the words leave no room beside them. The last
+ * row is keyed `key`, each before it `{key}:{n}`.
+ */
+export function endedRows(key: string, indent: string, words: Part, right: readonly Part[], width: number, button?: Button): Line[] {
+  const room = width - [...indent].length
+  const end = width - (button === undefined ? 0 : [...button.label].length)
+  const rows: string[] = []
+
+  for (const word of words.text.split(' ')) {
+    const last = rows.at(-1)
+
+    if (last !== undefined && [...`${last} ${word}`].length <= room) {
+      rows[rows.length - 1] = `${last} ${word}`
+    } else {
+      rows.push(word)
+    }
+  }
+
+  const row = (text: string): Part => ({ ...words, text: `${indent}${text}` })
+  const ending = rows.at(-1) ?? ''
+  const fits = widthOf([row(ending)]) + 1 + widthOf(right) <= end
+  const before = fits ? rows.slice(0, -1) : rows
+
+  return [
+    ...before.map((text, at): Line => ({ key: `${key}:${at}`, parts: [row(text)] })),
+    { key, parts: spread(fits ? [row(ending)] : [], right, end), ...(button === undefined ? {} : { button }) },
+  ]
+}

@@ -4,19 +4,22 @@
  * This session: its header, the project, type and how many tasks were
  * built; the round, its areas read of all and where it stands, the line
  * wrapping so a failing round's fix tasks show whole (D12); WAITING ON YOU
- * while finish waits on the person (D18), and where the kit draws it; a
- * failing round's fix tasks as the build's next phase, each opening its
- * task's page (20.10.2, D17); FOUND, each finding in scope with its area;
- * the round's areas, each read with what it ran and found, being read with
- * its clock, waiting, or unchanged, not read again (20.S11); NOT PROVEN;
- * TO THE INBOX; and the VERDICT, a failing one hung under its mark (D19).
- * Each finding, fix task and unproven check opens its page (20.10.3).
+ * while finish waits on the person (D18), and where the kit draws it, the
+ * questions the fix tasks wait on; the latest fix tasks as the build's
+ * phase past the cut, each opening its task's page (20.10.2, D17); FOUND,
+ * each finding with its mark by its call and its area — in scope once the
+ * round is recorded, else every one its landed reports hold; the round's
+ * areas, each read with what it ran and found, being read with its clock,
+ * waiting, or unchanged, not read again (20.S11); NOT PROVEN; TO THE
+ * INBOX; and the VERDICT, a failing one hung under its mark (D19). Each
+ * fix task, recorded finding and recorded check opens its page (20.10.3).
  *
- * A finding's page names where it went, the line wrapping so its area shows
- * whole (D13), then its words in full; a check's, where it stands and its
- * scenario's words.
+ * A finding's page names where it went under its mark, the line wrapping
+ * so its area shows whole (D13, D19), then its words in full; a check's,
+ * where it stands under its mark with its scenario, area and round, then
+ * its scenario's words.
  */
-import { COLOUR, MARK, blank, counted, cutTo, heading, prose, rowsOf, spread, type Kit, type Line, type Part } from '../draw.ts'
+import { COLOUR, MARK, blank, counted, cutTo, heading, prose, rowsOf, spread, titledLine, type Kit, type Line, type Part } from '../draw.ts'
 import type { View } from '../model.ts'
 import { pageKey } from '../pane.ts'
 import { taskLineOf, type TaskLine } from './build.ts'
@@ -33,10 +36,11 @@ type ReviewView = View & {
   built: number
   round: number
   finish: boolean
+  recorded: boolean
   areas: AreaLine[]
   found: Found[]
-  not_proven: { scenario: string; standing: string; text: string | null }[]
-  inbox: { finding: number; text: string }[]
+  not_proven: { round: number | null; scenario: string; standing: string; text: string | null }[]
+  inbox: { round: number; finding: number; text: string }[]
   verdict: 'passed' | 'failed' | 'settled' | null
   fixes: { phase: number; round: number; tasks: TaskLine[] } | null
 }
@@ -90,7 +94,7 @@ function headOf(view: ReviewView, kit: Kit): Line[] {
   const read = view.areas.filter(({ state }) => state === 'read' || state === 'unchanged').length
 
   return [
-    { key: 'review:head', parts: [{ text: view.title, bold: true }, { text: ' · review', color: COLOUR.secondary }] },
+    titledLine('review:head', { text: view.title, bold: true }, [{ text: ' · review', color: COLOUR.secondary }], kit.width),
     { key: 'review:where', parts: [{ text: `${view.project} · ${view.type} · ${view.built} tasks built`, color: COLOUR.secondary }] },
     {
       key: 'review:facts',
@@ -131,16 +135,26 @@ function fixesOf({ fixes }: ReviewView, kit: Kit): Line[] {
   ]
 }
 
-/** FOUND: each finding in scope with its area, a press away from its page. */
-const foundOf = ({ found }: ReviewView, kit: Kit): Line[] =>
+/** A finding's mark by its call: ✗ for a serious one, △ for any other. */
+const callMark = (call: string) => (call === 'serious' ? MARK.failed : MARK.difference)
+
+/** Words drawn on one line, each run of white space one space. */
+const oneLine = (text: string) => text.replace(/\s+/g, ' ').trim()
+
+/**
+ * FOUND: each finding with its mark by its call and its area — once the
+ * round is recorded, those in scope, each a press away from its page; while
+ * it is read, each its landed reports hold, scope being Claude's call then.
+ */
+const foundOf = ({ found, recorded }: ReviewView, kit: Kit): Line[] =>
   found.length === 0
     ? []
     : [
-        section('review:found', 'FOUND', COLOUR.failed, kit.width, `${found.length} in scope`),
-        ...found.map(({ round, finding, area, text }) => ({
-          key: `review:found:${round}:${finding}`,
-          parts: cutTo([{ text: `${MARK.difference} `, color: COLOUR.failed }, { text: `${areaOf(area)} `, color: COLOUR.secondary }, { text, color: COLOUR.body }], kit.width),
-          press: pageKey(`finding:${round}:${finding}`),
+        section('review:found', 'FOUND', COLOUR.failed, kit.width, recorded ? `${found.length} in scope` : `${found.length} found`),
+        ...found.map(({ round, finding, area, call, text }, at): Line => ({
+          key: `review:found:${round}:${finding ?? `landed-${at}`}`,
+          parts: cutTo([{ text: `${callMark(call)} `, color: COLOUR.failed }, { text: `${areaOf(area)} `, color: COLOUR.secondary }, { text: oneLine(text), color: COLOUR.body }], kit.width),
+          ...(finding === null ? {} : { press: pageKey(`finding:${round}:${finding}`) }),
         })),
         blank('review:found'),
       ]
@@ -177,29 +191,29 @@ function areasOf({ round, areas }: ReviewView, kit: Kit): Line[] {
   ]
 }
 
-/** NOT PROVEN: each check the round could not prove, a press away from its page. */
-const unprovenOf = ({ round, not_proven: unproven }: ReviewView, kit: Kit): Line[] =>
+/** NOT PROVEN: each check not proven, a press away from its page once a round has recorded it. */
+const unprovenOf = ({ not_proven: unproven }: ReviewView, kit: Kit): Line[] =>
   unproven.length === 0
     ? []
     : [
         section('review:unproven', 'NOT PROVEN', COLOUR.needs, kit.width, `${unproven.length} could not be run`),
-        ...unproven.map(({ scenario, standing, text }) => ({
+        ...unproven.map(({ round, scenario, standing, text }): Line => ({
           key: `review:unproven:${scenario}`,
           parts: cutTo([{ text: `${MARK.difference} `, color: COLOUR.needs }, { text: text ?? `${scenario} ${standing}`, color: COLOUR.body }], kit.width),
-          press: pageKey(`check:${round}:${scenario}`),
+          ...(round === null ? {} : { press: pageKey(`check:${round}:${scenario}`) }),
         })),
         blank('review:unproven'),
       ]
 
 /** TO THE INBOX: what the round filed there as Claude's call, each a press away from its finding. */
-const inboxOf = ({ round, inbox }: ReviewView, kit: Kit): Line[] =>
+const inboxOf = ({ inbox }: ReviewView, kit: Kit): Line[] =>
   inbox.length === 0
     ? []
     : [
         section('review:inbox', 'TO THE INBOX', COLOUR.gold, kit.width, `${inbox.length} · Claude's ${inbox.length === 1 ? 'call' : 'calls'}`),
-        ...inbox.map(({ finding, text }) => ({
+        ...inbox.map(({ round, finding, text }) => ({
           key: `review:inbox:${finding}`,
-          parts: cutTo([{ text: `${MARK.message} `, color: COLOUR.gold }, { text, color: COLOUR.body }], kit.width),
+          parts: cutTo([{ text: `${MARK.message} `, color: COLOUR.gold }, { text: oneLine(text), color: COLOUR.body }], kit.width),
           press: pageKey(`finding:${round}:${finding}`),
         })),
         blank('review:inbox'),
@@ -244,17 +258,17 @@ export function reviewLines(view: View, kit: Kit): Line[] {
   ]
 }
 
-/** Where a finding went: a fix task, the inbox, or dropped, each Claude's call. */
-function wentOf({ scope, fix, inbox }: FindingPage): Part {
+/** Where a finding went, its mark beside it: a fix task, the inbox, or dropped, each Claude's call. */
+function wentOf({ scope, fix, inbox }: FindingPage): [Part, Part] {
   const scoped = scope === 'in' ? 'in scope' : 'out of scope'
 
   if (fix !== null) {
-    return { text: `${MARK.failed} ${scoped} · fix task ${fix}`, color: COLOUR.failed }
+    return [{ text: `${MARK.failed} `, color: COLOUR.failed }, { text: `${scoped} · fix task ${fix}`, color: COLOUR.failed }]
   }
 
   return inbox === null
-    ? { text: `${MARK.cancelled} ${scoped} · dropped, Claude's call`, color: COLOUR.notStarted }
-    : { text: `${MARK.message} ${scoped} · filed to the inbox, Claude's call`, color: COLOUR.gold }
+    ? [{ text: `${MARK.cancelled} `, color: COLOUR.notStarted }, { text: `${scoped} · dropped, Claude's call`, color: COLOUR.notStarted }]
+    : [{ text: `${MARK.message} `, color: COLOUR.gold }, { text: `${scoped} · filed to the inbox, Claude's call`, color: COLOUR.gold }]
 }
 
 /** The rows a finding's title takes at most. */
@@ -283,29 +297,33 @@ function titleOf(text: string, width: number): Line {
   return line(`${kept}…`)
 }
 
-/** A finding read in full: its opening words, where it went, wrapping so its area shows whole (D13), then all its words. */
+/** A finding read in full: its opening words, where it went, wrapping under its mark so its area shows whole (D13, D19), then all its words. */
 export function findingLines(view: View, kit: Kit): Line[] {
   const page = view as FindingPage
+  const [mark, went] = wentOf(page)
 
   return [
     titleOf(page.text, kit.width),
-    { key: 'finding:went', wraps: true, parts: [wentOf(page), { text: ` · ${page.area === TESTS ? 'the tests' : areaOf(page.area)} · round ${page.round}`, color: COLOUR.secondary }] },
+    { key: 'finding:went', mark, wraps: true, parts: [went, { text: ` · ${page.area === TESTS ? 'the tests' : areaOf(page.area)} · round ${page.round}`, color: COLOUR.secondary }] },
     heading('finding:rule', { text: '' }, [], kit.width),
     ...prose('finding', page.text),
   ]
 }
 
-/** A check a round ran, read in full: where it stands and its scenario's words. */
+/** A check a round ran, read in full: where it stands, under its mark, with its scenario, area and round; then its scenario's words. */
 export function checkLines(view: View, kit: Kit): Line[] {
   const { round, scenario, standing, text } = view as CheckPage
   const proven = standing === 'proven'
+  const color = proven ? COLOUR.done : COLOUR.needs
 
   return [
     {
       key: 'check:title',
+      mark: { text: `${proven ? MARK.done : MARK.difference} `, color },
+      wraps: true,
       parts: [
-        { text: `${proven ? MARK.done : MARK.difference} ${standing[0]?.toUpperCase() ?? ''}${standing.slice(1)}`, bold: true, color: proven ? COLOUR.done : COLOUR.needs },
-        { text: ` · ${scenario} · round ${round}`, color: COLOUR.secondary },
+        { text: `${standing[0]?.toUpperCase() ?? ''}${standing.slice(1)}`, bold: true, color },
+        { text: ` · ${scenario} · ${areaOf(scenario.split('.')[0] ?? scenario)} · round ${round}`, color: COLOUR.secondary },
       ],
     },
     heading('check:rule', { text: '' }, [], kit.width),

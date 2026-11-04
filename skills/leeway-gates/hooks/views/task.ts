@@ -9,7 +9,7 @@
  * product proved of each of its scenarios, each opening on `▸ see`, or
  * `▸ read` where it is not proven (D16); WHAT IT DOES, with its count of
  * acceptance criteria and `▸ read the task`; for a fix task, WHAT IT FIXES
- * (D17); for a parked task, the question it waits on, with its `▸ discuss`
+ * (D17); for a parked task, each question it waits on, with its `▸ discuss`
  * (20.5.6); once done, WHAT WAS DONE from its account, or that none was
  * written (D8), DIFFERS FROM THE TASK, always, saying so where nothing
  * differs (D14), and REVIEWS, each round's `▸ read` opening its two reports
@@ -22,7 +22,7 @@ import { pageKey } from '../pane.ts'
 import { taskMark, taskState, type TaskLine } from './build.ts'
 
 /** A finding of the review, as the engine's model holds it. */
-export type Found = { round: number; finding: number; area: string; text: string }
+export type Found = { round: number; finding: number | null; area: string; call: string; text: string }
 
 /** A task's page, as the engine's model holds it. */
 type TaskPage = View & {
@@ -43,7 +43,7 @@ type TaskPage = View & {
   reviews: { round: string; summary: string }[]
   calls: { id: string; text: string }[]
   ran: { scenario: string; criterion: string; standing: string }[] | null
-  question: string | null
+  questions: string[]
   fixes: Found[]
 }
 
@@ -173,15 +173,20 @@ const fixesOf = ({ fixes }: TaskPage, kit: Kit): Line[] =>
         })),
       ]
 
-/** The question parking the task, as WAITING ON YOU draws it, with its "▸ discuss" (20.5.6). */
-function parkedOn({ question }: TaskPage, kit: Kit): Line[] {
-  if (question === null) {
+/** Whether a line of WAITING ON YOU is one of a question's rows: its words, or its standing's. */
+const isRowOf = (key: string, question: string) => key === `q:${question}` || key === `qt:${question}` || key.startsWith(`qt:${question}:`)
+
+/** The questions parking the task, as WAITING ON YOU draws them, each with its "▸ discuss" (20.5.6). */
+function parkedOn({ questions }: TaskPage, kit: Kit): Line[] {
+  if (questions.length === 0) {
     return []
   }
 
-  const own = new Set([`q:${question}`, `qt:${question}`])
-
-  return [blank('asks'), section('asks', 'WAITING ON YOU', COLOUR.needs, kit.width), ...kit.waiting().filter(line => own.has(line.key))]
+  return [
+    blank('asks'),
+    section('asks', 'WAITING ON YOU', COLOUR.needs, kit.width),
+    ...kit.waiting().filter(line => questions.some(question => isRowOf(line.key, question))),
+  ]
 }
 
 /** The account's figures: the criteria it proves, the files changed and the lines added and removed. */
@@ -289,8 +294,8 @@ export function taskLines(view: View, kit: Kit): Line[] {
   ]
 }
 
-/** The task's page, as a way back names it. */
-export const taskName = (view: View) => named((view as TaskPage).line.task, (view as TaskPage).line.title)
+/** The task's page, as a way back names it: by its number (15.2.14). */
+export const taskName = (view: View) => (view as TaskPage).line.task
 
 /** A page's title over a task: its own name in its colour, then the task's number and title. */
 const titled = (key: string, name: string, color: string, task: string, title: string, width: number): Line => ({
@@ -373,7 +378,7 @@ export function evidenceLines(view: View, kit: Kit): Line[] {
 }
 
 /** The page's name for a way back to it. */
-export const writtenName = (view: View) => named((view as WrittenPage).task, (view as WrittenPage).title)
+export const writtenName = (view: View) => (view as WrittenPage).task
 export const roundName = (view: View) => `round ${(view as RoundPage).round}`
 export const scenarioName = (view: View) => (view as ScenarioPage).scenario
 export const evidenceName = (view: View) => (view as EvidencePage).name

@@ -110,7 +110,7 @@ function world(
   const counts = { invalidations: 0 }
   const panes = new Set<string>(options.open)
   const environment: Record<string, string> = { HOME, ...env }
-  let replies = options.replies ?? (() => boardReply(BUILD_BOARD))
+  let replies = options.replies ?? (() => boardReply(UNDRAWN))
   let said = (_command: string): string => ENGINE_SAID
   let drops: string | undefined
   let fails = false
@@ -279,7 +279,7 @@ function world(
 const UNIT = 'token-aware-diff-sizing'
 
 /** The board with another banner, the rest as the build's. */
-const withBanner = (banner: Board['banner']): Board => ({ ...BUILD_BOARD, banner })
+const withBanner = (banner: Board['banner']): Board => ({ ...UNDRAWN, banner })
 
 /** The session moved on into the review phase. */
 const REVIEW_BOARD: Board = {
@@ -473,7 +473,7 @@ describe('the pane', () => {
     let phase = 'build'
     const { clock, boards, answers } = world(on)
 
-    answers(args => boardReply(args.includes('--tab') ? { ...BUILD_BOARD, tab: 'unit' } : phase === 'build' ? BUILD_BOARD : REVIEW_BOARD))
+    answers(args => boardReply(args.includes('--tab') ? { ...UNDRAWN, tab: 'unit' } : phase === 'build' ? UNDRAWN : { ...REVIEW_BOARD, view: UNDRAWN.view }))
 
     const pane = await mounted($, clock, PANE_MOUNT)
     const band = await mounted($, clock)
@@ -492,7 +492,7 @@ describe('the pane', () => {
     let isGone = false
     const { clock, boards, answers } = world(on)
 
-    answers(args => (isGone && args.includes('--unit') ? refusal(`there is no work unit "${UNIT}"`) : boardReply(args.includes('--tab') ? { ...BUILD_BOARD, tab: args[1] } : BUILD_BOARD)))
+    answers(args => (isGone && args.includes('--unit') ? refusal(`there is no work unit "${UNIT}"`) : boardReply(args.includes('--tab') ? { ...UNDRAWN, tab: args[1] } : UNDRAWN)))
 
     const pane = await mounted($, clock, PANE_MOUNT)
     const band = await mounted($, clock)
@@ -704,10 +704,10 @@ async function keysIn(ui: Mounted, key: string): Promise<string[]> {
   return ((await ui.find({ key }))?.children ?? []).map(keyOf)
 }
 
-/** The build's board with only these questions waiting, oldest first. */
+/** The build's board with only these questions waiting, oldest first, its view undrawn. */
 const waitingOnly = (...numbers: string[]): Board => ({
-  ...BUILD_BOARD,
-  questions: BUILD_BOARD.questions.filter(({ question }) => numbers.includes(question)),
+  ...UNDRAWN,
+  questions: UNDRAWN.questions.filter(({ question }) => numbers.includes(question)),
 })
 
 /** A command recording what became of a question, as Claude runs it. */
@@ -1088,16 +1088,19 @@ describe('ready to discuss', () => {
 
 describe('the build and the review on the pane', () => {
   test('20.5.3: WAITING ON YOU stands in the build\'s This session, and a press on a row\'s "▸ discuss" there queues its question, saying nothing to Claude', async ($, on) => {
-    const { clock, sent } = world(on)
+    const { clock, sent } = world(on, { replies: () => boardReply(BUILD_BOARD) })
     const pane = await mounted($, clock, PANE_MOUNT)
 
     expect((await paneLines(pane)).filter(line => line.endsWith('▸ discuss'))).toHaveLength(3)
 
     await pane.press({ key: 'discuss:Q2' })
 
-    expect([await boxIn(pane), (await paneLines(pane)).find(line => line.startsWith('parks 6.8'))?.endsWith('queued ▸ unqueue')]).toEqual([
+    const shown = await paneLines(pane)
+    const at = shown.findIndex(line => line.startsWith('parks 6.8'))
+
+    expect([await boxIn(pane), shown.slice(at, at + 2)]).toEqual([
       ['READY TO DISCUSS ─ 1', "└ Q2 A failed re-merge aborts with every chunk's notes sav… ✕", '▸ send to Claude ▸ cancel all'],
-      true,
+      ['parks 6.8, and 2 after it · waiting under a minute', 'queued ▸ unqueue'],
     ])
     expect(sent).toEqual([])
   })

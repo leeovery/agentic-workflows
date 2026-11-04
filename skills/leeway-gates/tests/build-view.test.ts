@@ -94,6 +94,12 @@ describe('the build\'s This session (20.5)', () => {
     expect(rowsDrawn(progress!)).toEqual(['▰▰▰▰▰▰▰▱  62 of 68 tasks done · phase 6 of 8 · ⚑ stopped until', '          you answer'])
   })
 
+  test('the edge rule: in the header a 40-character title gives way with "…", its type and "· build phase" never do', () => {
+    const [head] = buildLines({ ...view, title: 'Exclusion answers recorded per verb today', type: 'bugfix' } as View, kitAt(NOW))
+
+    expect(rowsDrawn(head!)).toEqual(['Exclusion answers recorded per verb to… · bugfix · build phase'])
+  })
+
   test('20.5.2: every state a task stands in reads at its line\'s right, its mark beside its number: at its gate and behind another in step, closed, and a fix phase whose merge waits', () => {
     const states: TaskLine[] = [
       { task: '6.1', title: 'At its gate', state: 'at-gate', since: null, on: [] },

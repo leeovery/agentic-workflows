@@ -32,6 +32,11 @@
 //                  task's by (`taskAt`), the board reads a task's stop from,
 //                  and `conversation position` names files for; read here
 //                  alone (`readPosition`)
+//   left.json      the place the conversation left for the start menu, its
+//                  unit and phase, written as boot drops a position naming a
+//                  phase and gone once a position is recorded again — what
+//                  the board reads to close a unit finished there (D38);
+//                  read here alone (`readLeft`)
 //   trust-pending.jsonl
 //                  the trust log's events waiting in the conversation
 //                  (trust-log.cjs): those it could not append, for its next
@@ -149,6 +154,25 @@ function safeId(sessionId) {
 /** Where a conversation keeps its position (position.cjs). @param {string} sessionId */
 function positionPath(sessionId) {
   return path.join(conversationDir(sessionId), 'position.json');
+}
+
+/** Where a conversation keeps the place it left for the start menu (position.cjs). @param {string} sessionId */
+function leftPath(sessionId) {
+  return path.join(conversationDir(sessionId), 'left.json');
+}
+
+/**
+ * The place the conversation `sessionId` left for the start menu, its unit
+ * and phase; null where it left none, or it does not read as one.
+ * @param {string} sessionId @returns {{name: string, phase: string}|null}
+ */
+function readLeft(sessionId) {
+  try {
+    const { name, phase } = JSON.parse(fs.readFileSync(leftPath(sessionId), 'utf8')) ?? {};
+    return typeof name === 'string' && typeof phase === 'string' ? { name, phase } : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -495,4 +519,4 @@ function tidyConversations(keeps = () => false) {
   }
 }
 
-module.exports = { conversationsRoot, conversationDir, positionPath, isAgentId, readPosition, tasksInFlight, taskAt, isMarked, markConversation, endConversation, claudeProjectsDir, runningTranscript, callerModel, subagentType, tidyConversations };
+module.exports = { conversationsRoot, conversationDir, positionPath, leftPath, isAgentId, readPosition, readLeft, tasksInFlight, taskAt, isMarked, markConversation, endConversation, claudeProjectsDir, runningTranscript, callerModel, subagentType, tidyConversations };

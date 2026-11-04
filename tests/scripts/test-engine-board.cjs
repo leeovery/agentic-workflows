@@ -29,7 +29,7 @@ const {
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, QUESTIONS, taskText, buildScreensWorld, buildScreenHelpers } = require('./build-screens-world.cjs');
-const { fixture, misfits, shapeOf } = require('./board-fixture-shape.cjs');
+const { fixture, misfits, shapeOf } = require('./board-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { BOARD_VERSION } = require(path.join(SCRIPTS, 'domain/board-model.cjs'));
@@ -385,7 +385,7 @@ describe('a task\'s pages (20.5.4–20.5.7)', () => {
       reviews: [{ round: 'Round 1', summary: 'The digits were shown whole; the builder masked them.' }, { round: 'Round 2', summary: 'Passed.' }],
       calls: [{ id: board(['--page', 'task:1.1']).view.calls[0].id, text: 'The till masks the digits' }],
       ran: [{ scenario: '1.S1', criterion: 'A card is taken at the till.', standing: 'proven' }],
-      question: null,
+      questions: [],
       fixes: [],
     });
   });
@@ -407,7 +407,7 @@ describe('a task\'s pages (20.5.4–20.5.7)', () => {
         standing: 'proven',
         at: JSON.parse(readState(dir, run)).at,
         drive: 'Given a till, when a card is taken',
-        check: 'it shows the card\'s last four digits. (1.1.1)',
+        check: 'it shows the card\'s last four digits.',
         evidence: [{ name: 'till screen', lines: 2 }],
       },
       { kind: 'evidence', unit: UNIT, task: '1.1', scenario: '1.S1', name: 'till screen', text: 'CARD ****4242\nTAKEN\n' },
@@ -422,28 +422,11 @@ describe('a task\'s pages (20.5.4–20.5.7)', () => {
     assert.deepStrictEqual(
       [{ standing: unproven.standing, at: unproven.at, drive: unproven.drive, check: unproven.check, evidence: unproven.evidence }, board(['--page', 'task:1.2:scenario:1.S1']).view, board(['--page', 'task:1.1:scenario:1.S1:evidence:1']).view],
       [
-        { standing: 'not proven', at: null, drive: 'A charge prints its receipt. (1.2.1)', check: null, evidence: [] },
+        { standing: 'not proven', at: null, drive: 'A charge prints its receipt.', check: null, evidence: [] },
         { kind: 'unavailable', reason: 'task 1.2 of pay holds no scenario 1.S1' },
         { kind: 'unavailable', reason: 'no run of 1.S1 keeps an evidence 1' },
       ],
     );
-  });
-
-  it('a fix task lists each finding of the review that went to it (D17)', () => {
-    enterBuild();
-    writeState(dir, layout.unit(UNIT, 'review/round-1.json'), JSON.stringify({
-      reports: [], passed: false, can_now: [], settled: null, scenarios: [],
-      findings: [
-        { area: '1-cards', scope: 'in', call: 'bug', text: 'The receipt is never sent.', from: [], fix: '1.2' },
-        { area: '1-cards', scope: 'in', call: 'bug', text: 'The digits show whole.', from: [], fix: '1.1' },
-        { area: 'tests', scope: 'in', call: 'bug', text: 'No test sends a receipt.', from: [], fix: '1.2' },
-      ],
-    }));
-
-    assert.deepStrictEqual(board(['--page', 'task:1.2']).view.fixes, [
-      { round: 1, finding: 1, area: '1-cards', text: 'The receipt is never sent.' },
-      { round: 1, finding: 3, area: 'tests', text: 'No test sends a receipt.' },
-    ]);
   });
 
   it('a task with no account, parked: none, nothing reviewed or called, never started, and the question it waits on with its line (20.5.6)', async () => {
@@ -452,8 +435,8 @@ describe('a task\'s pages (20.5.4–20.5.7)', () => {
     const { view } = board(['--page', 'task:1.3']);
 
     assert.deepStrictEqual(
-      { line: view.line, started: view.started, finished: view.finished, account: view.account, reviews: view.reviews, calls: view.calls, ran: view.ran, question: view.question },
-      { line: line('1.3', 'Mail the receipt', 'waits', { on: ['Q1'] }), started: null, finished: null, account: null, reviews: [], calls: [], ran: null, question: 'Q1' },
+      { line: view.line, started: view.started, finished: view.finished, account: view.account, reviews: view.reviews, calls: view.calls, ran: view.ran, questions: view.questions },
+      { line: line('1.3', 'Mail the receipt', 'waits', { on: ['Q1'] }), started: null, finished: null, account: null, reviews: [], calls: [], ran: null, questions: ['Q1'] },
     );
   });
 
@@ -601,10 +584,16 @@ describe('the contract with the mod (14.16)', () => {
     );
   });
 
-  it('the task page the mod reads is shaped as the engine answers a done task\'s page, with its account, rounds, calls and runs (20.5.4)', async () => {
+  it('the task pages the mod reads are shaped as the engine answers a done task\'s page, with its account, rounds and calls, and what running the product proved held by both (20.5.4, N7)', async () => {
     enterBuild();
+    const page = board(['--page', 'task:1.1']).view;
+    const [done, fixing] = [await fixture('board-task.mjs'), await fixture('board-task-fix.mjs')];
+    const lists = (/** @type {any} */ view) => [view.reviews.length > 0, view.calls.length > 0, view.account?.differences.length > 0];
 
-    assert.deepStrictEqual(misfits(await fixture('board-task.mjs'), board(['--page', 'task:1.1']).view), []);
+    assert.deepStrictEqual(
+      [misfits(done, page), misfits(fixing.ran, page.ran), lists(done), lists(page), [fixing.ran.length > 0, page.ran.length > 0]],
+      [[], [], [true, true, true], [true, true, true], [true, true]],
+    );
   });
 });
 

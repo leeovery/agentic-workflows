@@ -104,13 +104,13 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * where none is; what it does and its count of acceptance criteria; its
  * account, null where none is taken; each round's summary; each call it
  * made; what running the product proved of its scenarios, null where it
- * holds none; the question parking it, by number, else null; and, for a fix
- * task, each finding of the review it fixes (D17), else none.
+ * holds none; the questions parking it, by number, none where none does;
+ * and, for a fix task, each finding of the review it fixes (D17), else none.
  * @typedef {{
  *   kind: 'task', unit: string, phase: number, phase_name: string, line: TaskLine, started: string|null, finished: string|null,
  *   does: string, criteria: number,
  *   account: {done: string, where: string, tests: string, differences: string[], figures: Figures}|null,
- *   reviews: {round: string, summary: string}[], calls: {id: string, text: string}[], ran: Ran[]|null, question: string|null,
+ *   reviews: {round: string, summary: string}[], calls: {id: string, text: string}[], ran: Ran[]|null, questions: string[],
  *   fixes: FoundLine[],
  * }} TaskPage
  */
@@ -136,7 +136,7 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * @typedef {{kind: 'entry', unit: string, id: string, entry: string, by: string, text: string, why: string|null, question: string|null}} EntryPage
  */
 
-/** A finding of a recorded round: the round, its number in it, its area and words. @typedef {{round: number, finding: number, area: string, text: string}} FoundLine */
+/** A finding of a round: the round, its number in it once the round is recorded, else null, its area, call and words. @typedef {{round: number, finding: number|null, area: string, call: string, text: string}} FoundLine */
 /** An area's state in a round: read, being read, waiting, or not read again (20.10.2). @typedef {'read'|'reading'|'waiting'|'unchanged'} AreaState */
 /**
  * An area of a round, or the reader over the tests (`tests`): its number
@@ -149,17 +149,19 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * and the unit's type, how many tasks were built, the review's fix tasks
  * among them; the round shown — the one under way once it has opened, else
  * the last recorded — whether finish waits on the person, the phase over
- * (D18); whether the round is recorded, and each of its areas; each finding
- * in scope — the round's once recorded, else the failing round's before it,
- * which its fix tasks fix; once recorded, each check not proven with its
- * scenario's words, null where the spec lacks them, each finding that went
- * to the inbox by its number and words, and its verdict; and the fix tasks
- * of the round before, or of this one once recorded, as the build's phase
- * they make, null where there are none.
+ * (D18); the questions its fix tasks wait on, by number, and whether they
+ * stop it, as the build's; whether the round is recorded, and each of its
+ * areas; what it found — once recorded each finding in scope, else each
+ * its landed reports hold; each check not proven, by the round that
+ * recorded it, null where none has, with its scenario's words, null where
+ * the spec lacks them; each finding that went to the inbox, by its round,
+ * number and words; its verdict; and the latest fix tasks, as the build's
+ * phase they make, null where there are none.
  * @typedef {{
  *   kind: 'review', unit: string, title: string, project: string, type: string, built: number,
- *   round: number, finish: boolean, recorded: boolean, areas: AreaLine[],
- *   found: FoundLine[], not_proven: {scenario: string, standing: string, text: string|null}[], inbox: {finding: number, text: string}[],
+ *   round: number, finish: boolean, waiting: string[], stopped: boolean, recorded: boolean, areas: AreaLine[],
+ *   found: FoundLine[], not_proven: {round: number|null, scenario: string, standing: string, text: string|null}[],
+ *   inbox: {round: number, finding: number, text: string}[],
  *   verdict: 'passed'|'failed'|'settled'|null, fixes: {phase: number, round: number, tasks: TaskLine[]}|null,
  * }} ReviewView
  */

@@ -86,5 +86,10 @@ export function paneDrawn(answer: Answer, { nav = HOME, now = 0, clocked }: { na
 /** A kit at the pane's width, the clock at `now`, nothing open and nothing waiting unless given. */
 export const kitAt = (now = 0, waiting: () => Line[] = () => [], opened: readonly string[] = []): Kit => kitOf(WIDTH, now, 0, new Set(opened), waiting).kit
 
-/** A drawing as written in a test, one row a line, its first line dropped. */
-export const rows = (text: string): string[] => text.split('\n').slice(1, -1)
+/** The rows of a section, from its heading to the next blank, else the drawing's end. */
+export function sectionOf(rows: readonly string[], heading: string): string[] {
+  const from = rows.findIndex(row => row.startsWith(heading))
+  const to = rows.indexOf('', from)
+
+  return rows.slice(from, to === -1 ? undefined : to)
+}

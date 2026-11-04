@@ -1,11 +1,13 @@
 import { describe, expect, test, tier } from 'claude-code/testing'
 
-import type { Line } from '../hooks/draw.ts'
-import type { Answer, Board, View } from '../hooks/model.ts'
-import type { Page } from '../hooks/pane.ts'
+import { QUIET, waitingLines } from '../hooks/discuss.ts'
+import type { Answer, Board, Question, View } from '../hooks/model.ts'
+import { HOME, pressed, type Page } from '../hooks/pane.ts'
+import { VIEWS } from '../hooks/views/index.ts'
 import { roundLines, scenarioLines, taskLines, writtenLines } from '../hooks/views/task.ts'
-import { drawnRows, kitAt, paneDrawn } from './drawing.ts'
+import { WIDTH, drawnRows, kitAt, paneDrawn, sectionOf } from './drawing.ts'
 import BUILD from './fixtures/board-build.mjs'
+import FIXING from './fixtures/board-task-fix.mjs'
 import TASK from './fixtures/board-task.mjs'
 
 tier('user')
@@ -29,14 +31,6 @@ const task = (change: Record<string, unknown>): View => ({ ...TASK, ...change })
 
 /** A task's line on its page. */
 const lineOf = (state: string, on: string[] = []) => ({ task: '6.4', title: 'A failed single-pass `r` call is classified and halved', state, since: '2026-10-21T14:59:48.000Z', on })
-
-/** The rows of a page's section, from its heading to the next blank. */
-function sectionOf(rows: readonly string[], heading: string): string[] {
-  const from = rows.findIndex(row => row.startsWith(heading))
-  const to = rows.indexOf('', from)
-
-  return rows.slice(from, to === -1 ? undefined : to)
-}
 
 describe('a task\'s page (20.5.4–20.5.7)', () => {
   test('20.5.6\'s drawing of a done task: its phase and ✓ on one line, when it finished and how long it took on the next (D10), and the count of its acceptance criteria alone, the template holding no steps', () => {
@@ -105,7 +99,7 @@ describe('a task\'s page (20.5.4–20.5.7)', () => {
 
   test('D10: a task not done keeps its mark and state whole on its phase\'s line, the phase\'s name giving way to them', () => {
     const phase = { phase: 6, phase_name: 'Chunked notes at the review gate and in the dry-run cache', finished: null, account: null, reviews: [], calls: [] }
-    const standing = (line: ReturnType<typeof lineOf>) => onPage(task({ ...phase, line, question: null }))[6]
+    const standing = (line: ReturnType<typeof lineOf>) => onPage(task({ ...phase, line, questions: [] }))[6]
 
     expect([standing(lineOf('building')), standing(lineOf('in-review')), standing(lineOf('waits', ['Q1'])), standing(lineOf('failed')), standing(lineOf('after', ['6.3']))]).toEqual([
       'Phase 6 · Chunked notes at the review gate … · ◐ building 0:12',
@@ -116,22 +110,29 @@ describe('a task\'s page (20.5.4–20.5.7)', () => {
     ])
   })
 
-  test('20.5.6: a parked task\'s page shows the question it waits on in full, with its "▸ discuss"', () => {
-    const waiting = (): Line[] => [
-      { key: 'waiting', parts: [{ text: 'WAITING ON YOU ── 2' }] },
-      { key: 'q:Q1', mark: { text: '⚑ ' }, wraps: true, parts: [{ text: 'Q1 If the terminal closes while the review gate waits, should the release unwind?' }] },
-      { key: 'qt:Q1', parts: [{ text: '     parks 6.4 · waiting 4h' }], button: { key: 'discuss:Q1', label: '▸ discuss' } },
-      { key: 'q:Q2', mark: { text: '⚑ ' }, wraps: true, parts: [{ text: 'Q2 Another.' }] },
-      { key: 'qt:Q2', parts: [{ text: '     parks 6.8 · waiting 1h' }], button: { key: 'discuss:Q2', label: '▸ discuss' } },
-    ]
-    const page = task({ line: lineOf('waits', ['Q1']), finished: null, account: null, reviews: [], calls: [], question: 'Q1' })
+  test('20.5.6: a parked task\'s page shows every question it waits on in full, each with its "▸ discuss", and none it does not', () => {
+    const questions = BUILD.questions as Question[]
+    const parks = questions.map(question => ({ ...question, parks: [{ task: '6.4', title: '' }], after: [] }))
+    const waiting = () => waitingLines([...parks, { ...questions[0]!, question: 'Q4' }], QUIET, WIDTH, NOW)
+    const page = task({ line: lineOf('waits', ['Q1', 'Q3']), finished: null, account: null, reviews: [], calls: [], questions: ['Q1', 'Q3'] })
 
     expect(sectionOf(drawnRows(taskLines(page, kitAt(NOW, waiting))), 'WAITING ON YOU')).toEqual([
       'WAITING ON YOU ──────────────────────────────────────────────',
       '⚑ Q1 If the terminal closes while the review gate waits,',
-      '  should the release unwind?',
-      '     parks 6.4 · waiting 4h▸ discuss',
+      '  should the release unwind as a decline does, or keep its',
+      '  commit for the operator to finish by hand?',
+      '     parks 6.4 · waiting 4h                          ▸ discuss',
+      '⚑ Q3 While a regeneration runs as chunks, should plain mode',
+      '  (CI and agents) print a line as each part finishes, or one',
+      '  line when the whole wave is done?',
+      '     parks 6.4 · waiting 10m                         ▸ discuss',
     ])
+  })
+
+  test('the way back from a page over a task names the task by its number, as 15.2.14 draws it', () => {
+    const over = pressed({ ...HOME, pages: [OVER_BUILD] }, 'page:task:1.4:written', { ...BUILD, view: TASK } as Board, VIEWS)
+
+    expect(over?.pages.at(-1)?.over).toBe('1.4')
   })
 
   test('D8: a done task with no account says so in WHAT WAS DONE, its reviews standing beside it', () => {
@@ -155,10 +156,7 @@ describe('a task\'s page (20.5.4–20.5.7)', () => {
   })
 
   test('D17: a fix task\'s page lists what it fixes, each finding hung under its mark', () => {
-    const fixes = [{ round: 1, finding: 3, area: '4-the-per-call-size-cap', text: 'In pretty mode, a failed check kills the notes stage\'s live line for the rest of the stage.' }]
-    const page = task({ phase: 9, phase_name: 'the review\'s fixes, round 1', line: { ...lineOf('not-started'), task: '9.1', title: 'The notes stage\'s live line after a failed check' }, account: null, finished: null, reviews: [], calls: [], fixes })
-
-    expect(sectionOf(onPage(page), 'WHAT IT FIXES')).toEqual([
+    expect(sectionOf(onPage(FIXING), 'WHAT IT FIXES')).toEqual([
       'WHAT IT FIXES ────────────────────────────────────────────── 1',
       '· In pretty mode, a failed check kills the notes stage\'s live',
       '  line for the rest of the stage.',
