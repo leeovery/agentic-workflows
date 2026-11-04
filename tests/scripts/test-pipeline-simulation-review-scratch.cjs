@@ -1,0 +1,93 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// The pipeline simulation's review phase reading an area in a reader's own
+// scratch worktree, as its skill and the reader's brief run it (13.2.2,
+// 14.2.2): a feature whose build has closed its cut, its product's drive
+// needing an ignored `.env` the checkout's `.worktreeinclude` names and a
+// `node_modules` the settings link. Round 1's area reader lays its scratch
+// worktree out by the first call its brief names, prepared as the
+// project's checkout is, proves the area's scenario there through the
+// engine its brief names by its absolute path, and takes the worktree apart
+// by the second once its report is written; the round passes, and its
+// report reads the scenario proven by running it.
+//
+// Layer: simulation. World: this file's own, built once from the project
+// every scenario starts from (pipeline-world.cjs) — a feature through its
+// spec to ready to build's pick, its cut one phase, built and closed, then
+// its drive needing what only a prepared checkout holds — a copy per
+// scenario, which replays the engine calls the review phase's skill and its
+// readers make, in order, the oracle (pipeline-oracle.cjs) auditing the
+// whole state after every mutation.
+// ---------------------------------------------------------------------------
+
+require('./hermetic-env.cjs');
+
+const { describe, it, beforeEach, afterEach } = require('node:test');
+const assert = require('node:assert');
+const fs = require('fs');
+const path = require('path');
+const { git } = require('./engine-harness.cjs');
+const {
+  Sim, worldFrom, cutClosed, testsRead, reviewNext, briefOf, placeIn, landed, PASSED_REPORT,
+} = require('./pipeline-world.cjs');
+
+const WU = 'ledger';
+
+// The drive passes only where the checkout holds the ignored `.env` and the
+// linked `node_modules`, as the project's own checkout does.
+const DRIVE = [
+  '#!/bin/sh',
+  'if [ "$(cat .env 2>/dev/null)" = "KEY=1" ] && [ -f node_modules/dep/index.js ]; then echo pass; else echo fail; fi > "$LEEWAY_RUN/verdict"',
+  '',
+].join('\n');
+
+/** A feature through its spec to ready to build's pick, its cut's one phase built, reviewed, merged and closed; then its drive needing an ignored file and a linked folder. */
+const scratchWorld = worldFrom('pipeline-review-scratch-', (sim) => {
+  cutClosed(sim, WU);
+  fs.appendFileSync(path.join(sim.dir, '.git/info/exclude'), '.env\nnode_modules/\n.worktreeinclude\n.claude/settings.local.json\n');
+  const files = {
+    '.env': 'KEY=1\n', 'node_modules/dep/index.js': 'module.exports = 1;\n', '.worktreeinclude': '.env\n',
+    '.claude/settings.local.json': JSON.stringify({ worktree: { symlinkDirectories: ['node_modules'] } }),
+  };
+  for (const [file, text] of Object.entries(files)) sim.write(file, text);
+  fs.writeFileSync(path.join(sim.dir, 'verify/drive.sh'), DRIVE, { mode: 0o755 });
+  git(sim.dir, ['add', 'verify/drive.sh']);
+  git(sim.dir, ['commit', '-q', '-m', 'chore: the drive reads the environment']);
+});
+
+describe('pipeline simulation: an area read in its reader\'s scratch worktree', () => {
+  let sim;
+  beforeEach(() => {
+    sim = new Sim(scratchWorld);
+  });
+  afterEach(() => {
+    sim.destroy();
+  });
+
+  /** The engine calls a reader's brief names to lay out its scratch worktree and take it apart, each by its argv. @param {string} brief */
+  function scratchCalls(brief) {
+    const calls = [...brief.matchAll(/^node (\S+) (scratch .*)$/gm)];
+    assert.ok(calls.every(([, engine]) => path.isAbsolute(engine)), 'the brief runs the engine by its absolute path');
+    return calls.map(([, , call]) => call.split(' '));
+  }
+
+  it('13.2.2, 14.2.2: an area\'s reader lays out its scratch worktree by its brief\'s calls, prepared as the project\'s checkout is, proves the area\'s scenario there and takes it apart; the round passes, its report reading the scenario proven by running it', () => {
+    assert.strictEqual(reviewNext(sim, WU).move, 'round');
+    const reader = sim.run(['brief', 'review-area', WU, '--area', '1', '--base', 'main', '--letter', 'a']);
+    const [lay, remove] = scratchCalls(briefOf(sim, reader));
+    const { path: project } = sim.run(lay);
+    const prepared = [fs.readFileSync(path.join(project, '.env'), 'utf8'), fs.lstatSync(path.join(project, 'node_modules')).isSymbolicLink()];
+    const run = sim.runIn(project, ['verify', 'run', WU, '1.S1']);
+    landed(placeIn(sim, reader, 'Where your report goes'), PASSED_REPORT);
+    sim.run(remove);
+
+    assert.deepStrictEqual(prepared, ['KEY=1\n', true], 'the ignored file copied and the folder linked');
+    assert.deepStrictEqual([run.verdict, run.standing], ['pass', 'proven'], 'the drive passes in the scratch worktree, at the change\'s tip');
+    assert.strictEqual(fs.existsSync(project), false, 'taken apart once the report is written');
+    landed(placeIn(sim, sim.run(['brief', 'review-area', WU, '--area', '1', '--base', 'main', '--letter', 'b']), 'Where your report goes'), PASSED_REPORT);
+    testsRead(sim, WU);
+    sim.run(['review', 'round', WU, '--file', sim.write(`.leeway/.cache/${WU}/review/round.json`, { can_now: ['Keep a ledger.'], findings: [] })]);
+    assert.match(sim.render(['review-report', WU], { expect: 'content' }), /PROVEN BY RUNNING IT \(1 of 1\)\n\s*└─ 1\.S1 /, 'the round\'s report reads the scenario proven');
+  });
+});

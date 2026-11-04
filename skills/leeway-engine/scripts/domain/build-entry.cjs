@@ -466,9 +466,12 @@ function standingLines(cwd, session, standing) {
     ...standing.phases.flatMap((phase) => /** @type {Line[]} */ ([['phase', phaseLine(phase, of)], ...phase.fixes_owed.map((fault) => ['fixes owed', fault])])),
     ...nextLines(standing),
     ...inFlightLines(cwd, session, standing),
-    ...standing.waiting.map(({ question, asks, parks }) => /** @type {Line} */ (['waiting', `${question} — ${asks} — parks ${parkedTasks(parks)}`])),
+    ...waitingLines(standing),
   ];
 }
+
+/** The questions waiting on the person, a line each, as the entries and the notes give them. @param {BuildStanding} standing @returns {Line[]} */
+const waitingLines = ({ waiting }) => waiting.map(({ question, asks, parks }) => /** @type {Line} */ (['waiting', `${question} — ${asks} — parks ${parkedTasks(parks)}`]));
 
 /** The ledger's calls the build reads beside its log: the entries affected since the spec concluded, and the unit's record. @param {string} unit */
 const ledgerCalls = (unit) => [`${ENGINE_COMMAND} ledger affected ${unit}`, `${ENGINE_COMMAND} ledger record ${unit}`];
@@ -547,5 +550,5 @@ const IMPLEMENTATION = Object.freeze({
 });
 
 module.exports = {
-  IMPLEMENTATION, phaseNamed, buildStanding, standingOf, buildPhases, builtUnit, cutCount, buildRecovery, ownInFlight, inFlightLines, takeInFlight, readingOf, codeHeld, buildLogOf,
+  IMPLEMENTATION, phaseNamed, buildStanding, standingOf, buildPhases, builtUnit, cutCount, buildRecovery, ownInFlight, inFlightLines, waitingLines, takeInFlight, readingOf, codeHeld, buildLogOf,
 };

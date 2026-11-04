@@ -221,6 +221,7 @@ describe('the points of a unit\'s work, each its exact list (6.4.6–6.4.10, 6.S
       ],
       finish: [
         'review-passed engine open: the review phase passed and its report is written, where the unit has a review phase (a quick-fix\'s only when the person asks)',
+        'questions-answered engine done: no question waiting on the person',
         'inbox-closed claude open: resolved inbox items closed',
         'build-log-closed claude open: the build log closed',
       ],
@@ -277,7 +278,7 @@ describe('the points of a unit\'s work, each its exact list (6.4.6–6.4.10, 6.S
       `checklist show: ${UNIT}'s cut has no phase 3 — its phases are 1 to 2`,
       `checklist show: ${UNIT}'s cut has no phase 0 — its phases are 1 to 2`,
       'checklist show: solo has no cut — its phases come from engine cut',
-      'checklist done: finish has no item "tidied" — its items are review-passed, inbox-closed, build-log-closed',
+      'checklist done: finish has no item "tidied" — its items are review-passed, questions-answered, inbox-closed, build-log-closed',
     ]);
   });
 });

@@ -75,7 +75,6 @@ const DRAWN = Object.freeze({
   'pay/build/tasks/1.2/round-1-b.md': 'file {unit}/build/tasks/{task}/round-{N}-{letter}.md',
   'pay/build/tasks/1.2/figures.json': 'engine {unit}/build/tasks/{task}/figures.json',
   'pay/build/tasks/1.2/round-1-settled.md': 'engine {unit}/build/tasks/{task}/round-{N}-settled.md',
-  'pay/build/tasks/1.2/changed.json': 'engine {unit}/build/tasks/{task}/changed.json',
   'pay/build/phases/phase-1/review-a.md': 'file {unit}/build/phases/phase-{N}/review-{letter}.md',
   'pay/build/phases/phase-1/review-b.md': 'file {unit}/build/phases/phase-{N}/review-{letter}.md',
   'pay/build/phases/phase-1/consolidation.md': 'file {unit}/build/phases/phase-{N}/consolidation.md',

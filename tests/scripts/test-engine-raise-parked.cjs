@@ -572,7 +572,7 @@ describe('the answer and its receipt (12.13.15, 12.13.16, 20.6.9, 12.S35, 20.S6)
   });
 
   /** The mark a change left on `task`, or null where it left none. @param {string} task */
-  const marked = (task) => (fs.existsSync(statePath(dir, `${UNIT}/build/tasks/${task}/changed.json`)) ? JSON.parse(fs.readFileSync(statePath(dir, `${UNIT}/build/tasks/${task}/changed.json`), 'utf8')) : null);
+  const marked = (task) => (fs.existsSync(statePath(dir, `.cache/${UNIT}/build/tasks/${task}/changed.json`)) ? JSON.parse(fs.readFileSync(statePath(dir, `.cache/${UNIT}/build/tasks/${task}/changed.json`), 'utf8')) : null);
 
   /** `task`'s pair briefed for round `round` in this conversation. @param {string} task @param {number} round */
   const briefedHere = (task, round) => {

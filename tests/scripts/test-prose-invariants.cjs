@@ -253,12 +253,12 @@ describe('manifest set — a field and its value, either form', () => {
 describe('calls_in_order — presence is not sequence', () => {
   it('passes when the declared calls appear in sequence', () => {
     const rows = [
-      bash(`${ENGINE} render entry-gate pay.planning.pay`),
+      bash(`${ENGINE} render build-stop pay`),
       bash(`${ENGINE} manifest list`),
       bash(`${ENGINE} knowledge query x`),
     ];
     const [result] = invariants.check(rows, {
-      calls_in_order: ['render entry-gate pay.planning.pay', 'engine.cjs knowledge query'],
+      calls_in_order: ['render build-stop pay', 'engine.cjs knowledge query'],
     });
     assert.equal(result.ok, true);
   });
@@ -266,13 +266,13 @@ describe('calls_in_order — presence is not sequence', () => {
   it('fails when they ran in the wrong order — the arm was chosen some other way', () => {
     const rows = [
       bash(`${ENGINE} knowledge query x`),
-      bash(`${ENGINE} render entry-gate pay.planning.pay`),
+      bash(`${ENGINE} render build-stop pay`),
     ];
     const [result] = invariants.check(rows, {
-      calls_in_order: ['render entry-gate pay.planning.pay', 'engine.cjs knowledge query'],
+      calls_in_order: ['render build-stop pay', 'engine.cjs knowledge query'],
     });
     assert.equal(result.ok, false);
-    assert.match(result.detail, /"engine.cjs knowledge query" never ran after "render entry-gate/);
+    assert.match(result.detail, /"engine.cjs knowledge query" never ran after "render build-stop/);
   });
 
   it('matches the sequence through quoting differences', () => {
@@ -396,25 +396,24 @@ describe('calls_in_order — presence is not sequence', () => {
   });
 
   it('lets a compound Bash call satisfy consecutive entries in its own order', () => {
-    // Observed live: the approval row and the gate-mode write, two calls
-    // in the prose, issued as one `a && b` — they ran in that order.
+    // Two calls of the prose, issued as one `a && b`, ran in that order.
     const rows = [
-      bash(`${ENGINE} render proposed-task pay.implementation.pay --gate gated`),
-      bash(`${ENGINE} manifest set pay.implementation.pay staging.c1.tasks.1 approved && ${ENGINE} manifest set pay.implementation.pay analysis_gate_mode auto`),
-      bash(`${ENGINE} manifest push pay.implementation.pay consolidated_phases 2`),
+      bash(`${ENGINE} render step-gate pay 1.2`),
+      bash(`${ENGINE} checklist done phase-start pay 2 design-settled && ${ENGINE} workunit position pay auto`),
+      bash(`${ENGINE} checklist close phase-start pay 2`),
     ];
     const [result] = invariants.check(rows, {
-      calls_in_order: ['--gate gated', 'staging.c1.tasks.1 approved', 'analysis_gate_mode auto', 'consolidated_phases 2'],
+      calls_in_order: ['step-gate pay 1.2', 'design-settled', 'position pay auto', 'close phase-start pay 2'],
     });
     assert.equal(result.ok, true, result.detail);
   });
 
   it('never lets a compound Bash call satisfy entries it ran reversed', () => {
     const rows = [
-      bash(`${ENGINE} manifest set pay.implementation.pay analysis_gate_mode auto && ${ENGINE} manifest set pay.implementation.pay staging.c1.tasks.1 approved`),
+      bash(`${ENGINE} workunit position pay auto && ${ENGINE} checklist done phase-start pay 2 design-settled`),
     ];
     const [result] = invariants.check(rows, {
-      calls_in_order: ['staging.c1.tasks.1 approved', 'analysis_gate_mode auto'],
+      calls_in_order: ['design-settled', 'position pay auto'],
     });
     assert.equal(result.ok, false);
   });

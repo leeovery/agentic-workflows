@@ -86,6 +86,10 @@ class Sim {
     this.api = path.join(this.dir, 'api');
     this.step = 0;
     this.conversations = 0;
+    // Every handoff a call answered, `engine {args}` by its argv: a flow
+    // that holds one conversation asserts none came between.
+    /** @type {string[]} */
+    this.handoffs = [];
     // Hermetic environment, as a delta from this process's — the engine runs
     // in-process and holds these keys for the call's duration: the system
     // config dir pins into the sandbox (the knowledge base reads it) and the
@@ -228,6 +232,7 @@ class Sim {
     }
     auditState(this.dir, label);
     auditTrust(this, label, args);
+    if (parsed.next?.kind === 'handoff') this.handoffs.push(`engine ${args.join(' ')}`);
     if (typeof parsed.committed === 'string' || (Array.isArray(parsed.committed) && parsed.committed.length > 0)) {
       assert.strictEqual(stateGit(this.dir, ['ls-files', '--', KNOWLEDGE_DIR]).trim(), '',
         `[${label}] the commit carried the knowledge directory — it is the checkout's own, never committed`);

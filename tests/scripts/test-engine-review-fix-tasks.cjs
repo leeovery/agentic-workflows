@@ -52,7 +52,7 @@ describe('the takeover after a /clear: every phase written (12.13.2, 24.2.4)', (
 
     const taken = 'in flight: task 3.1, no builder dispatched here — its builder and pair go afresh on its branch';
     assert.deepStrictEqual(positionOf(), { name: UNIT, phase: 'review', topic: UNIT, tasks: [{ task: '3.1', builder: null, reviewers: [] }] });
-    assert.ok(sections.includes(`fix task waiting: 3.1 in progress\n${taken}\n`), sections);
+    assert.ok(sections.includes(`fix task waiting: 3.1 in progress\nbase: main — the branch the unit's work lands on, the --base of each reader's brief\n${taken}\n`), sections);
     assert.ok(note.includes(`\n${taken}\n`), note);
     assert.deepStrictEqual(positionOf('third'), { name: UNIT, phase: 'implementation', topic: UNIT, tasks: [{ task: '3.1', builder: null, reviewers: [] }] });
   });

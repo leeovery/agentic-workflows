@@ -84,9 +84,9 @@
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
-const crypto = require('crypto');
 const path = require('path');
 const { statePath } = require('../kernel/state-root.cjs');
+const { fingerprint } = require('../kernel/fingerprint.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { tryGit } = require('../kernel/git.cjs');
 const { writeJsonAtomic, isObject, isStringList } = require('../kernel/manifest-io.cjs');
@@ -378,19 +378,14 @@ const snapshotPath = (cwd, unit) => statePath(cwd, '.cache', unit, 'review', 'tr
 /** What a path in the tree holds, as its fingerprint; null where it is gone or no file. @param {string} file absolute */
 function heldPrint(file) {
   try {
-    return contentPrint(fs.readFileSync(file));
+    return fingerprint(fs.readFileSync(file));
   } catch {
     return null;
   }
 }
 
-/** The fingerprint of what a file holds, as a snapshot keeps it. @param {Buffer} content */
-function contentPrint(content) {
-  return crypto.createHash('sha256').update(content).digest('hex').slice(0, 12);
-}
-
 /** The fingerprint of an empty file's content. */
-const EMPTY_PRINT = contentPrint(Buffer.alloc(0));
+const EMPTY_PRINT = fingerprint(Buffer.alloc(0));
 
 /** The working tree outside `.leeway/` (the header's), its ignored entries aside. @param {string} root the code root @param {Repo[]} repos @returns {{heads: Record<string, string|null>, paths: Record<string, string>}} */
 function treeNow(root, repos) {
@@ -537,7 +532,7 @@ const forThePerson = ({ by, given }) => claudesCall({ by, given });
 const inTheBuild = ({ phase }) => BUILD_PHASES.includes(phase);
 
 module.exports = {
-  TESTS, TESTS_LETTER, NOTES, isBuilderNote, SET_ASIDE, setAsideFolder, setAsideHeld, EMPTY_PRINT, reportNames, recordedRounds, fixesOf, endsReview, fixPhase, reviewStanding, everyRead,
+  TESTS, TESTS_LETTER, NOTES, isBuilderNote, SET_ASIDE, setAsideFolder, setAsideHeld, filesUnder, EMPTY_PRINT, reportNames, recordedRounds, fixesOf, endsReview, fixPhase, reviewStanding, everyRead,
   endedWords, endedRefusal, openRefusal, roundRefusal, readsWords, mergingWords,
   roundRecordPath, roundReportFile, roundChecksFile, roundReadsPath, roundFolder, areaReportPath,
   takeSnapshot, openSnapshot, snapshotRound, dropSnapshot, treeDrift, movedWords, treeChanges, unitCalls, reviewCallFault, forThePerson, inTheBuild,

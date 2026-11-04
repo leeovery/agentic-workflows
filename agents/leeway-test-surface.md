@@ -24,7 +24,7 @@ The engine's brief is all you are given; the conversation never reaches you. It 
 
 1. **Judge the tests against the spec.** Read each test file whole, and the code it exercises.
 2. **Find the project's skills yourself.** Use the Skill tool for any the tests touch; the project's CLAUDE.md is loaded already.
-3. **Change nothing of the change.** Run the tests, and make any break, in a detached scratch worktree of your own: every repository of the project at its folder, as the project lays them out, each at the commit your brief names for it under "Laying out your scratch worktree". Remove it after. Never check out, detach or switch anything in another checkout. No git writes to any branch of the work.
+3. **Change nothing of the change.** Run the tests, and make any break, in the scratch worktree your brief lays out under "Laying out your scratch worktree": lay it out with its first call, work in the folder its answer names, and take it apart with its second once your report is written. Never check out, detach or switch anything in another checkout. No git writes to any branch of the work.
 4. **Never decide, and never ask the person.** Every finding comes back in your report.
 
 ## Your Report

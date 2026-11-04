@@ -271,20 +271,33 @@ function phaseTips(at, phase) {
 }
 
 /**
- * Each of the phase's scenarios proven at its tips, or named in every
- * report of its review by a finding in its standing's words (15.4.3).
- * @param {Reading} at @param {number} phase
+ * Each of the phase's scenarios neither proven at its tips nor named in
+ * every report of its review by a finding in its standing's words (15.4.3),
+ * with its standing; null where the tips cannot be read. Read once a call.
+ * @param {Reading} at @param {number} phase @returns {{scenario: string, standing: string}[]|null}
  */
-function scenariosReported(at, phase) {
-  const tips = phaseTips(at, phase);
-  if (tips === null) return false;
-  const { faults, reports } = reviewed(at, phase);
-  return cutPhases(at.manifest)[phase - 1].scenarios.every((scenario) => {
-    const { standing } = runsOf(at.cwd, at.unit, scenario, tips);
-    if (standing === 'proven') return true;
-    const says = (/** @type {string} */ text) => namesScenario(text, scenario) && text.toLowerCase().includes(standing);
-    return faults.length === 0 && reports.every(({ findings }) => findings.some(({ text }) => says(text)));
+function unreported(at, phase) {
+  return once(at, `unreported ${phase}`, () => {
+    const tips = phaseTips(at, phase);
+    if (tips === null) return null;
+    const { faults, reports } = reviewed(at, phase);
+    return cutPhases(at.manifest)[phase - 1].scenarios.flatMap((scenario) => {
+      const { standing } = runsOf(at.cwd, at.unit, scenario, tips);
+      if (standing === 'proven') return [];
+      const says = (/** @type {string} */ text) => namesScenario(text, scenario) && text.toLowerCase().includes(standing);
+      return faults.length === 0 && reports.every(({ findings }) => findings.some(({ text }) => says(text))) ? [] : [{ scenario, standing }];
+    });
   });
+}
+
+/** Each of the phase's scenarios proven at its tips, or reported (`unreported`). @param {Reading} at @param {number} phase */
+const scenariosReported = (at, phase) => unreported(at, phase)?.length === 0;
+
+/** What stands between the phase and each scenario proven or reported, with the way on. @param {Reading} at @param {number} phase */
+function scenariosWay(at, phase) {
+  const left = unreported(at, phase);
+  if (left === null) return `${phaseName(at.unit, phase)}'s stack's tips cannot be read, as the warning says`;
+  return left.map(({ scenario, standing }) => `${scenario} is ${standing} at the phase's tips — run it from a worktree at them, verify run ${at.unit} ${scenario}, or the phase review's reports each name it ${standing}`).join('; ');
 }
 
 /** The phase's notes consolidated, as notes.cjs reads the record (12.10). @param {Reading} at @param {number} phase */
@@ -348,5 +361,5 @@ function reviewRefusalOf(at, phase) {
 
 module.exports = {
   reading, once, reposOf, landedOf, phaseLists, phaseTasks, phaseLanded, mergeWaiting, fixesOwed, passed,
-  tasksWritten, reliedOnDone, tasksPassed, phaseReviewFaults, scenariosReported, notesConsolidated, stackMerged, closeRefusal, phaseReviewRefusal, reviewRefusalOf,
+  tasksWritten, reliedOnDone, tasksPassed, phaseReviewFaults, scenariosReported, scenariosWay, notesConsolidated, stackMerged, closeRefusal, phaseReviewRefusal, reviewRefusalOf,
 };

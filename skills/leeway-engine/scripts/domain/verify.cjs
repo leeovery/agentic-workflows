@@ -114,7 +114,7 @@ const { readProjectManifest, writeProjectManifestAtomic, withProjectLock } = req
 const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 const { stateRoot, statePath, STATE_DIR_NAME } = require('../kernel/state-root.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
-const { projectRepos, projectPath, repoName, folderUnder } = require('../kernel/repos.cjs');
+const { projectRepos, projectPath, repoName } = require('../kernel/repos.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { runShellCommand, tailText } = require('../kernel/shell-command.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
@@ -128,8 +128,7 @@ const { TRAILER } = require('./commit-task.cjs');
 const { holdsScenario } = require('./task-file.cjs');
 const { trackedTask, trackedPhase } = require('./task-verbs.cjs');
 const { phaseStack } = require('./phase-stack.cjs');
-const { mainCheckoutOf } = require('./landing-git.cjs');
-const { layOutAt } = require('./project-layout.cjs');
+const { layOutAt, scratchTop, takeApart } = require('./project-layout.cjs');
 const { isoNow } = require('./dates.cjs');
 const { VERIFY_PARTS, SETUP_PLACES, setupFaults, verifySetup } = require('./environment.cjs');
 const { VERDICTS, SCENARIO, recordRun, recordingPath, behindHead, runsOf } = require('./runs.cjs');
@@ -637,34 +636,13 @@ function verifyMutants(cwd, unit, given) {
   if (mutation === undefined) throw new Error(NO_TOOL);
   const tasks = withStateLock(stateRoot(cwd), () => trackedPhase(cwd, unit, phase).tasks ?? []);
   const { repos, tips } = phaseStack(cwd, unit, phase, tasks);
-  const top = scratchTop(repos[0], unit, phase);
+  const top = scratchTop(repos[0], `mutants-${unit}-phase-${phase}`);
   takeApart(repos, top);
   try {
     const laid = layOutAt(repos[0].path, unit, repos, new Map([...tips].map(([repo, tip]) => [repo.dir, tip])), top);
     return mutantsAt(cwd, unit, phase, mutation, laid);
   } finally {
     takeApart(repos, top);
-  }
-}
-
-/**
- * The scratch worktree's top (the header's): beside the builders' isolation
- * worktrees, in `.claude/worktrees/` of the project's main checkout.
- * @param {Repo} own the project's own repository @param {string} unit @param {number} phase
- */
-const scratchTop = (own, unit, phase) => path.join(mainCheckoutOf(own.path), '.claude', 'worktrees', `leeway-mutants-${unit}-phase-${phase}`);
-
-/**
- * The scratch worktree at `top` taken apart, deepest first, each
- * repository's registration of it with it; one not there passed over.
- * @param {Repo[]} repos the project's @param {string} top
- */
-function takeApart(repos, top) {
-  const folder = folderUnder(repos[0], top);
-  for (let at = repos.length - 1; at >= 0; at -= 1) {
-    const { dir, path: root } = repos[at];
-    tryGit(root, ['worktree', 'remove', '--force', '--force', dir === '' ? top : path.join(folder, dir)]);
-    tryGit(root, ['worktree', 'prune']);
   }
 }
 

@@ -38,8 +38,9 @@
 // the shared design settled (phase-checks.cjs) — its tasks written, what it
 // relies on done, its tasks passed, its phase review passed with its fixes
 // landed, its scenarios proven or reported, its notes consolidated and its
-// stack merged; finish's, the review phase over and the unit's records
-// indexed (finish-checks.cjs); and a directive's check passing
+// stack merged; finish's, the review phase over, no question waiting on
+// the person and the unit's records indexed (finish-checks.cjs); and a
+// directive's check passing
 // (directives.cjs). What a
 // call reads for them is read once (`reads`). Whether every engine item of
 // a checklist holds is read beside the verbs too, as the build's stop
@@ -256,7 +257,7 @@ const specAndCut = (cwd, unit, manifest) => sealOf(readLandedSpec(cwd, unit), ma
 /**
  * A check of the phase a checklist closes, as phase-checks.cjs makes it,
  * reading the unit as the call has read it.
- * @param {(at: PhaseReading, phase: number) => boolean} check @returns {(named: Named) => boolean}
+ * @template T @param {(at: PhaseReading, phase: number) => T} check @returns {(named: Named) => T}
  */
 const ofPhase = (check) => (named) => check(/** @type {PhaseReading} */ (named), /** @type {number} */ (named.phase));
 
@@ -362,7 +363,9 @@ const POINTS = Object.freeze({
       {
         key: 'phase-review-passed', text: 'the phase review passed and its fixes landed', check: (named) => reviewFaults(named).length === 0, way: (named) => reviewFaults(named).join('; '),
       },
-      { key: 'scenarios-reported', text: 'each scenario proven or reported not proven', check: ofPhase(checks.scenariosReported) },
+      {
+        key: 'scenarios-reported', text: 'each scenario proven or reported not proven', check: ofPhase(checks.scenariosReported), way: ofPhase(checks.scenariosWay),
+      },
       { key: 'notes-consolidated', text: 'the notes for later read by the consolidation agent, then made into tasks or dropped with a reason', check: ofPhase(checks.notesConsolidated) },
       { key: 'stack-merged', text: 'the stack merged, or waiting at its gate in step', check: ofPhase(checks.stackMerged) },
     ],
@@ -380,6 +383,9 @@ const POINTS = Object.freeze({
         check: ofUnit(finishChecks.reviewPassed),
         way: ofUnit(finishChecks.reviewWay),
         applies: ofUnit(finishChecks.hasReviewPhase),
+      },
+      {
+        key: 'questions-answered', text: 'no question waiting on the person', check: ofUnit(finishChecks.questionsAnswered), way: ofUnit(finishChecks.questionsWay),
       },
       { key: 'inbox-closed', text: 'resolved inbox items closed' },
       { key: 'build-log-closed', text: 'the build log closed' },

@@ -38,6 +38,7 @@ const {
   useWorld,
   issued,
   filledTemplate,
+  scratchCalls,
   refusedUnissued,
   pathDrawn,
   rangeDrawn,
@@ -97,7 +98,8 @@ describe('the phase review\'s brief, the reviewer\'s second template (12.11.2, 6
       ].join('\n'),
       'decided-calls': decidedDrawn(),
       'phase-diff-range': rangeDrawn('the project\'s repository', branchOf(2, 1), ['src/check.js', 'src/card.js', 'src/receipt.js', 'src/refund.js'].sort()),
-      'phase-scratch-layout': `- the project's repository: \`${branchOf(2, 1)}\` — the range's tip there\n- \`${NESTED}\`: \`main\` — the branch it lands on`,
+      'phase-scratch-layout': `- the project's repository: \`${branchOf(2, 1)}\` — the range's tip there\n- \`${NESTED}\`: \`main\` — the branch it lands on\n\n${
+        scratchCalls(`${UNIT}-phase-2-a`, tipOf(dir, branchOf(2, 1)), [`${NESTED}=${tipOf(path.join(dir, NESTED), 'main')}`])}`,
       'recorded-runs': ['- 2.S1: proven', runDrawn(1), runDrawn(2)].join('\n'),
       mutants: 'None survived.',
       linters: '- eslint: npx eslint .',

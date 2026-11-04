@@ -41,11 +41,12 @@
 // standing, `notes#{k}`, answered by the round under review or, once the
 // round that ended the phase has its fix tasks done, on its own, with the
 // notes' file (14.3.5); what the review's put backs set aside, the folder
-// and each copy, while it holds anything; each of the
-// conversation's fix tasks in flight, as the build's entry gives it;
-// each round's report; the spec; the unit's record, by its call; and the
-// build's log. Its recovery note re-reads the same, the fix tasks in
-// flight those of the conversation the note is for.
+// and each copy, while it holds anything; the branch the unit's work lands
+// on, each reader's base (task-base.cjs); each of the conversation's fix
+// tasks in flight, and each question waiting on the person, as the build's
+// entry gives them (12.13.7); each round's report; the spec; the unit's
+// record, by its call; and the build's log. Its recovery note re-reads the
+// same, the fix tasks in flight those of the conversation the note is for.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -55,8 +56,9 @@ const { statePath } = require('../kernel/state-root.cjs');
 const { buildFinished, phaseClosed, buildRefusal, cutPhases, cutLength } = require('./derivations.cjs');
 const { reading, reposOf, mergeWaiting } = require('./phase-checks.cjs');
 const {
-  codeHeld, buildLogOf, buildStanding, ownInFlight, inFlightLines, takeInFlight, readingOf,
+  codeHeld, buildLogOf, buildStanding, ownInFlight, inFlightLines, waitingLines, takeInFlight, readingOf,
 } = require('./build-entry.cjs');
+const { landsOn } = require('./task-base.cjs');
 const { specPath } = require('./spec-sections.cjs');
 const { notesPath } = require('./notes.cjs');
 const { reviewReportFaults } = require('./review-report.cjs');
@@ -179,11 +181,17 @@ function standingLines(cwd, unit, manifest, standing) {
 }
 
 /**
- * The conversation `session`'s fix tasks in flight, a line each, as the
- * build's entry gives them; none where it has none.
+ * The conversation `session`'s fix tasks in flight, a line each, and the
+ * questions waiting on the person, as the build's entry gives them.
  * @param {string} cwd @param {string} unit @param {InFlight[]} inFlight @param {string|null} session @returns {Line[]}
  */
-const fixesInFlight = (cwd, unit, inFlight, session) => (inFlight.length === 0 ? [] : inFlightLines(cwd, session, buildStanding(cwd, unit, inFlight)));
+function buildLines(cwd, unit, inFlight, session) {
+  const standing = buildStanding(cwd, unit, inFlight);
+  return [...inFlightLines(cwd, session, standing), ...waitingLines(standing)];
+}
+
+/** The branch the unit's work lands on, each reader's base. @param {Reading} at @returns {Line} */
+const baseLine = (at) => ['base', `${landsOn(at.cwd, reposOf(at)[0])} — the branch the unit's work lands on, the --base of each reader's brief`];
 
 /** Each round's report recorded, by its path. @param {string} cwd @param {string} unit @param {ReviewStanding} standing */
 const roundReports = (cwd, unit, { rounds }) => rounds.map((_, at) => statePath(cwd, roundReportFile(unit, at + 1)));
@@ -201,7 +209,8 @@ function reviewReads(at, inFlight, session) {
   const standing = reviewStanding(at);
   return [
     ...standingLines(cwd, unit, manifest, standing),
-    ...fixesInFlight(cwd, unit, inFlight, session),
+    baseLine(at),
+    ...buildLines(cwd, unit, inFlight, session),
     ...roundReports(cwd, unit, standing).map((report) => /** @type {Line} */ (['round report', report])),
     ['spec', specPath(cwd, unit)],
     ['record', `\`${recordCall(unit)}\``],

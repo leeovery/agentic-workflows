@@ -21,7 +21,7 @@ const { codeRoot } = require('../kernel/code-root.cjs');
 const { projectRepos, repoName } = require('../kernel/repos.cjs');
 const { taskName, phaseName } = require('./task-id.cjs');
 const { taskBranch } = require('./landing-names.cjs');
-const { holdingBranch, isAncestor, plain } = require('./landing-git.cjs');
+const { branches, holdingBranches, latestOf, plain } = require('./landing-git.cjs');
 
 /** @typedef {import('../kernel/repos.cjs').Repo} Repo */
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
@@ -41,7 +41,8 @@ const repoNamed = (repo) => (repo.dir === '' ? 'the project\'s repository' : `\`
  * @param {Repo} repo @param {string[]} held @param {string} what the phase, as a refusal names it
  */
 function stackTip(repo, held, what) {
-  const tip = held.find((branch) => held.every((other) => isAncestor(repo.path, `refs/heads/${other}`, `refs/heads/${branch}`)));
+  const local = branches(repo.path);
+  const tip = held[latestOf(repo.path, held.map((branch) => /** @type {string} */ (local.get(branch))))];
   if (tip === undefined) throw new Error(`${what}'s tasks are no one stack in ${repoNamed(repo)} — ${held.join(', ')} each hold work another lacks; chain them before its range is read`);
   return tip;
 }
@@ -66,7 +67,7 @@ function stackOf(repos, unit, tasks, what) {
     if (task.type === null) throw new Error(`${taskName(task.ref)} has no type in the tracker, and its branch is named from it`);
     return taskBranch(task.ref, task.type, task.title);
   });
-  const held = named.map((branch) => holdingBranch(unit, repos, branch).holding);
+  const held = holdingBranches(unit, repos, named).map(({ holding }) => holding);
   const holding = repos.map((repo) => ({ repo, on: named.filter((_, at) => held[at].includes(repo)) })).filter(({ on }) => on.length > 0);
   if (holding.length === 0) throw new Error(`no repository of the project holds work on ${what}'s tasks`);
   return { repos, tips: new Map(holding.map(({ repo, on }) => [repo, stackTip(repo, on, what)])), what };

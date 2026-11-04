@@ -13,7 +13,7 @@
 
 const { laidOutOf } = require('./round-report.cjs');
 const { taskBranch } = require('./landing-names.cjs');
-const { branches, defaultBranch, isAncestor } = require('./landing-git.cjs');
+const { branches, branchesHeldBy, defaultBranch, isAncestor, latestOf } = require('./landing-git.cjs');
 const { remoteName, nestedRemoteName } = require('./remote.cjs');
 const { workBelow } = require('./review-change.cjs');
 
@@ -38,9 +38,14 @@ function builtOnBases(cwd, ref, holding, branch) {
   const laid = laidOutOf(cwd, ref);
   const below = workBelow(cwd, ref.unit, ref.phase).flatMap((task) => (task.type === null ? [] : [taskBranch(task.ref, task.type, task.title)]));
   return holding.map((repo) => {
-    const named = [laid[repo.dir] ?? [], below.filter((other) => other !== branch && branches(repo.path).has(other))].flat();
-    const under = named.filter((base) => isAncestor(repo.path, baseRev(base), `refs/heads/${branch}`));
-    return under.find((base) => under.every((other) => isAncestor(repo.path, baseRev(other), baseRev(base)))) ?? landsOn(cwd, repo);
+    const local = branches(repo.path);
+    const merged = branchesHeldBy(repo.path, `refs/heads/${branch}`);
+    const at = laid[repo.dir];
+    const under = [
+      ...(at !== undefined && isAncestor(repo.path, at, `refs/heads/${branch}`) ? [{ base: at, commit: at }] : []),
+      ...below.filter((other) => other !== branch && merged.has(other)).map((other) => ({ base: other, commit: /** @type {string} */ (local.get(other)) })),
+    ];
+    return under[latestOf(repo.path, under.map(({ commit }) => commit))]?.base ?? landsOn(cwd, repo);
   });
 }
 

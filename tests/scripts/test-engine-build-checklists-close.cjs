@@ -100,6 +100,22 @@ describe('a phase\'s close (6.4.9)', () => {
     assert.deepStrictEqual([...seen, reported()], ['open', 'done', 'open', 'open', 'done', 'open']);
   });
 
+  it('names, while open, each scenario neither proven nor reported in its standing\'s words, with the ways on — and, where the tips cannot be read, the warning', () => {
+    const way = () => show('phase-close', 1).items.find((/** @type {{key: string}} */ shown) => shown.key === 'scenarios-reported').way;
+    const ways = (/** @type {string} */ scenario, /** @type {string} */ standing) => `${scenario} is ${standing} at the phase's tips — run it from a worktree at them, verify run ${UNIT} ${scenario}, or the phase review's reports each name it ${standing}`;
+    const unrun = way();
+    ran('1.S1', tipOf(branchOf('1.2')), 'pass');
+    ran('1.S2', tipOf(branchOf('1.2')), 'skipped');
+    const skipped = way();
+    git(dir, ['branch', '-q', '-D', branchOf('1.2'), branchOf('1.1')]);
+
+    assert.deepStrictEqual([unrun, skipped, way()], [
+      `${ways('1.S1', 'not proven')}; ${ways('1.S2', 'not proven')}`,
+      ways('1.S2', 'named, not run'),
+      `phase 1 of ${UNIT}'s stack's tips cannot be read, as the warning says`,
+    ]);
+  });
+
   it('proves nothing where the phase\'s tips cannot be read, said as a warning', () => {
     ran('1.S1', tipOf(branchOf('1.2')), 'pass');
     ran('1.S2', tipOf(branchOf('1.2')), 'pass');

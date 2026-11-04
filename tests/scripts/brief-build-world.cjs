@@ -29,6 +29,7 @@ const {
 const { createManifest, templateFolder } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const { ENGINE_RUN } = require(path.join(SCRIPTS, 'kernel/call.cjs'));
 const { briefPath, issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
 const { SPEC_FILE } = require(path.join(SCRIPTS, 'domain/spec-sections.cjs'));
@@ -255,6 +256,26 @@ function filledTemplate(role, drawn) {
   return template(role).split('\n').map((line) => drawn[line.slice(2, -2)] ?? line).join('\n');
 }
 
+/**
+ * The calls a reviewer's brief lays its scratch worktree `name` out by, at
+ * `own`, the project's repository's commit, and each child's `{folder}={commit}`,
+ * and takes it apart by, drawn after the layout's list.
+ * @param {string} name @param {string} own @param {string[]} [children]
+ */
+function scratchCalls(name, own, children = []) {
+  return [
+    'Lay it out from the project\'s checkout with the first call below, which prepares it as the project\'s own checkout is, its ignored files and linked folders among it; its answer\'s `path` is the project\'s folder there. Take it apart with the second once your report is written.',
+    '',
+    '```bash',
+    `${ENGINE_RUN} scratch lay ${[name, own, ...children].join(' ')}`,
+    `${ENGINE_RUN} scratch remove ${name}`,
+    '```',
+  ].join('\n');
+}
+
+/** The engine record as a brief draws it: the engine by the absolute path of the checkout briefing. */
+const ENGINE_DRAWN = `\`${ENGINE_RUN}\` — the engine of the checkout the orchestrator runs in. Run every engine command this brief and your instructions name as that, from wherever you run it.`;
+
 /** A refusal leaving the state as it was and no brief stored. @param {string[]} args @param {RegExp} pattern */
 function refusedUnissued(args, pattern) {
   const { error } = refusedPristine(dir, ['brief', ...args], { env: SESSION });
@@ -386,6 +407,8 @@ module.exports = {
   issued,
   template,
   filledTemplate,
+  scratchCalls,
+  ENGINE_DRAWN,
   refusedUnissued,
   pathDrawn,
   rangeDrawn,

@@ -60,6 +60,9 @@ const readsAfter = (unit = UNIT) => [
   ENGINE_LINE,
 ];
 
+/** The base line: the branch the unit's work lands on, each reader's base. */
+const BASE_LINE = 'base: main — the branch the unit\'s work lands on, the --base of each reader\'s brief';
+
 /** The areas' lines, each by its name and its title. */
 const AREA_LINES = ['area: 1-cards — §1 Cards', 'area: 2-refunds — §2 Refunds'];
 
@@ -154,7 +157,7 @@ describe('the answer: the round under review, the spec\'s areas, and what the ro
 
     assert.deepStrictEqual(res, { ok: true, phase: 'review', unit: 'five', entered: true, started: false });
     assert.strictEqual(sections, data([
-      'round: round 1', ...FIVE.map((title, at) => `area: ${names[at]} — §${at + 1} ${title}`), `reads: ${names.join(', ')}, the test surface (tests)`, fixPhaseLine(2, 1, 'written'), ...readsAfter('five'),
+      'round: round 1', ...FIVE.map((title, at) => `area: ${names[at]} — §${at + 1} ${title}`), `reads: ${names.join(', ')}, the test surface (tests)`, fixPhaseLine(2, 1, 'written'), BASE_LINE, ...readsAfter('five'),
     ]));
     assert.strictEqual(stateGit(dir, ['rev-parse', 'HEAD']).trim(), head);
   });
@@ -182,9 +185,9 @@ describe('the answer: the round under review, the spec\'s areas, and what the ro
     const unnamed = enter().sections;
     named(['2-refunds', '1-cards']);
 
-    assert.strictEqual(waiting, data(['round: round 2', ...AREA_LINES, UNNAMED, fixPhaseLine(3, 1, 'built'), 'fix task waiting: 3.1 not started', reportLine(1), ...readsAfter()]));
-    assert.strictEqual(unnamed, data(['round: round 2', ...AREA_LINES, UNNAMED, reportLine(1), ...readsAfter()]));
-    assert.strictEqual(enter().sections, data(['round: round 2', ...AREA_LINES, 'reads: 1-cards, 2-refunds', fixPhaseLine(4, 2, 'written'), reportLine(1), ...readsAfter()]));
+    assert.strictEqual(waiting, data(['round: round 2', ...AREA_LINES, UNNAMED, fixPhaseLine(3, 1, 'built'), 'fix task waiting: 3.1 not started', BASE_LINE, reportLine(1), ...readsAfter()]));
+    assert.strictEqual(unnamed, data(['round: round 2', ...AREA_LINES, UNNAMED, BASE_LINE, reportLine(1), ...readsAfter()]));
+    assert.strictEqual(enter().sections, data(['round: round 2', ...AREA_LINES, 'reads: 1-cards, 2-refunds', fixPhaseLine(4, 2, 'written'), BASE_LINE, reportLine(1), ...readsAfter()]));
   });
 
   it('in step, once the fix tasks are done, waits on their phase\'s merge at its gate until each not closed has landed (14.6.2)', () => {
@@ -199,8 +202,8 @@ describe('the answer: the round under review, the spec\'s areas, and what the ro
     git(dir, ['commit', '-q', '--allow-empty', '-m', `feat(${UNIT}): landed`, '-m', `Task: ${UNIT}-3-1`]);
 
     const unnamed = `reads: not yet named — once round 1's fix tasks are done and their phase has merged, review reads ${UNIT} names them from what those changed, among them 1-cards, 2-refunds`;
-    assert.strictEqual(merging, data(['round: round 2', ...AREA_LINES, unnamed, `merge waiting: phase 3 waits at its gate: render phase-merge-gate ${UNIT} 3`, reportLine(1), ...readsAfter()]));
-    assert.strictEqual(enter().sections, data(['round: round 2', ...AREA_LINES, unnamed, reportLine(1), ...readsAfter()]));
+    assert.strictEqual(merging, data(['round: round 2', ...AREA_LINES, unnamed, `merge waiting: phase 3 waits at its gate: render phase-merge-gate ${UNIT} 3`, BASE_LINE, reportLine(1), ...readsAfter()]));
+    assert.strictEqual(enter().sections, data(['round: round 2', ...AREA_LINES, unnamed, BASE_LINE, reportLine(1), ...readsAfter()]));
   });
 
   it('a fix task closed waits on nothing — in step, no merge of its phase either', () => {
@@ -209,7 +212,7 @@ describe('the answer: the round under review, the spec\'s areas, and what the ro
     fixClosed(3, 1);
 
     const unnamed = `reads: not yet named — once round 1's fix tasks are done and their phase has merged, review reads ${UNIT} names them from what those changed, among them 1-cards`;
-    assert.strictEqual(enter().sections, data(['round: round 2', ...AREA_LINES, unnamed, reportLine(1), ...readsAfter()]));
+    assert.strictEqual(enter().sections, data(['round: round 2', ...AREA_LINES, unnamed, BASE_LINE, reportLine(1), ...readsAfter()]));
   });
 
   it('once a round passes with no fix task, the review phase is over, finish next, and nothing is read', () => {
@@ -217,7 +220,7 @@ describe('the answer: the round under review, the spec\'s areas, and what the ro
     reported(1, EVERY);
     recorded({ can_now: ['Pay by card.'], findings: [] });
 
-    assert.strictEqual(enter().sections, data(['round: the review phase passed in round 1 — finish is next', ...AREA_LINES, reportLine(1), ...readsAfter()]));
+    assert.strictEqual(enter().sections, data(['round: the review phase passed in round 1 — finish is next', ...AREA_LINES, BASE_LINE, reportLine(1), ...readsAfter()]));
   });
 
   it('13.4.4: a round passing with nits fixed in its fix phase ends the review phase once their fix tasks are done, no area read again for them', () => {
@@ -232,9 +235,9 @@ describe('the answer: the round under review, the spec\'s areas, and what the ro
     assert.deepStrictEqual(res, { ok: true, round: 1, passed: true, fixes: ['3.1'], ends: true, fix_phase: 3, areas: AREAS, committed: res.committed });
     assert.strictEqual(again, `review round: ${UNIT}'s review phase passed in round 1 — its fix tasks are built, then finish: task 3.1 not started`);
     assert.strictEqual(building, data([
-      'round: the review phase passed in round 1 — its fix tasks are built, then finish', ...AREA_LINES, fixPhaseLine(3, 1, 'built'), 'fix task waiting: 3.1 not started', reportLine(1), ...readsAfter(),
+      'round: the review phase passed in round 1 — its fix tasks are built, then finish', ...AREA_LINES, fixPhaseLine(3, 1, 'built'), 'fix task waiting: 3.1 not started', BASE_LINE, reportLine(1), ...readsAfter(),
     ]));
-    assert.strictEqual(enter().sections, data(['round: the review phase passed in round 1 — finish is next', ...AREA_LINES, reportLine(1), ...readsAfter()]));
+    assert.strictEqual(enter().sections, data(['round: the review phase passed in round 1 — finish is next', ...AREA_LINES, BASE_LINE, reportLine(1), ...readsAfter()]));
   });
 });
 

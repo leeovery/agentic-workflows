@@ -55,7 +55,17 @@ A finding it fixed coming back, or the builder and the pair going round on one p
 
 A builder stops on a problem it cannot build past. Record the stop, `task stopped {work_unit} {task}`, then decide what to do: think it through, or where the answer needs the person, raise it for the task. Then put what the builder should know onto the task, written to `.leeway/.cache/{work_unit}/build/addition.md` — a fact about the code the task was written before, an answer to its question, or the person's instruction — `task add {work_unit} {task} --file .leeway/.cache/{work_unit}/build/addition.md --by {by:[orchestrator|person]}`, and send the builder back in, `brief builder {work_unit} {task}` by SendMessage. A decision goes to the ledger, never onto the task, and the builder's brief carries it among the decided calls. Nothing onto a task sets how its builder works, where it looks or how big the work is, and the builder never edits its task.
 
-A task parked on a question waits, its builder idle, until the answer frees it: the receipt says it builds again, and its builder goes back in the same way.
+## Waiting on the Person
+
+A question that waits parks its task, and whatever depends on it, while everything else carries on: say so in the one line the raise answers. The parked task waits, its builder idle, until the answer frees it: the receipt says it builds again, and its builder goes back in the same way. A question is drawn only once the person says they are ready to discuss it.
+
+When nothing left can go on without an answer, stop with the build's report: fetch it and emit its sections verbatim per their markers, which ends the turn.
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs render build-stop {work_unit}
+```
+
+It refuses while anything can go on, naming what: take that on instead.
 
 ## Landing
 

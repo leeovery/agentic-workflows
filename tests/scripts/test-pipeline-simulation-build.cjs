@@ -60,7 +60,7 @@ describe('pipeline simulation: the build', () => {
   });
 
   it('12.S1, 24.S6: an epic in auto, its first phase built by one orchestrator in one conversation — the fix round to the same builder, the nit committed under its task, the phase\'s mutation run named by its last task\'s chain — and on into its second phase with no handoff', () => {
-    const conversation = sim.env.CLAUDE_CODE_SESSION_ID;
+    const handedOff = sim.handoffs.length;
     const entered = buildEntry(sim, WU);
     assert.deepStrictEqual(entered.filter((line) => line.startsWith('phase: ')), ['phase: phase 1 of 2, "Settling": not yet written', 'phase: phase 2 of 2, "Showing": not yet written']);
     for (const call of [['ledger', 'record', WU], ['ledger', 'affected', WU]]) sim.read(call);
@@ -110,7 +110,7 @@ describe('pipeline simulation: the build', () => {
     fs.appendFileSync(path.join(sim.dir, `.leeway/${WU}/build/log.md`), '\nPhase 1 closed.\n');
 
     // Phase 2 starts with no handoff: the same conversation, the same skill.
-    assert.strictEqual(sim.env.CLAUDE_CODE_SESSION_ID, conversation, 'no handoff at the phase boundary');
+    assert.deepStrictEqual(sim.handoffs.slice(handedOff), [], 'no handoff at the phase boundary');
     assert.deepStrictEqual(carryOn(sim).position.phase, 'implementation');
     sim.run(['task', 'phase', WU, '2', '--title', 'Showing']);
     assert.ok(briefOf(sim, loop.brief(['task-writer', WU, '2'])).includes('A shown entry never checks its hash.'), 'the note held for the phase reaches its writer');

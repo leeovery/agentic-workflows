@@ -61,10 +61,10 @@
 // besides: a task a question waiting parks, naming its raise (13.4.6,
 // task-parks.cjs); a last round neither passed nor settled; a task that
 // changed under its last round, until its pair reads it again
-// (round-report.cjs), the change's mark committed with the account; no account
-// written, or one that does not read, every fault named; a task with no type,
-// from which its branch is named; and no repository of the project holding
-// work on its branch. Settling refuses no such file, or one holding nothing.
+// (round-report.cjs); no account written, or one that does not read,
+// every fault named; a task with no type, from which its branch is named;
+// and no repository of the project holding work on its branch. Settling
+// refuses no such file, or one holding nothing.
 // Each runs under the writer lock (engine.cjs); a commit git refuses is a
 // warning, the files written.
 // ---------------------------------------------------------------------------
@@ -89,7 +89,7 @@ const { refuseParked, parkedOf } = require('./task-parks.cjs');
 const { baseRev, builtOnBases } = require('./task-base.cjs');
 const { refusing } = require('./staged-payload.cjs');
 const {
-  taskFolder, settlementPath, changedPath, taskRounds, pairPassed, changedUnder, changedRefusal,
+  taskFolder, settlementPath, taskRounds, pairPassed, changedUnder, changedRefusal,
 } = require('./round-report.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
@@ -368,7 +368,6 @@ function takeAccount(cwd, unit, given) {
   const files = [
     accountPath(ref),
     ...rounds.flatMap(({ round, reports, settled }) => [...reports.map(({ file }) => file), ...(settled ? [settlementPath(ref, round)] : [])]),
-    ...(fs.existsSync(statePath(cwd, changedPath(ref))) ? [changedPath(ref)] : []),
     figuresPath(ref),
   ];
   return committed(cwd, files, `task(${unit}): account ${shownTask(ref)}`, [...(task.warnings ?? [])], {

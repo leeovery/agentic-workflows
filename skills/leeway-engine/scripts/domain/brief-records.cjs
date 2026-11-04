@@ -42,7 +42,11 @@
 //                  branch at that branch, a submodule otherwise at the
 //                  commit its holder as laid out points it at, a clone
 //                  otherwise at the task's branch, or the branch it lands
-//                  on where the task's branch is not made there
+//                  on where the task's branch is not made there; then the
+//                  calls, by the engine's absolute path, that lay it out
+//                  so at those commits, prepared as a builder's worktree
+//                  is, and take it apart (scratch.cjs) — named for the
+//                  reviewer, so its brief again lays out the same one
 //   reports        the task's last review round's reports, one per
 //                  reviewer of the count (13.3.4), each verbatim under a
 //                  heading naming its reviewer (round-report.cjs), and
@@ -460,7 +464,7 @@ const { reviewReportFaults } = require('./review-report.cjs');
 const { REVIEWER_LETTERS } = require('../kernel/reviewers.cjs');
 const { taskName, shownTask, phaseName } = require('./task-id.cjs');
 const { taskBranch } = require('./landing-names.cjs');
-const { branches, holdingBranch, isAncestor, quoted } = require('./landing-git.cjs');
+const { branches, branchesHeldBy, holdingBranch, latestOf, quoted } = require('./landing-git.cjs');
 const { childrenFirst } = require('../kernel/repos.cjs');
 const { heldIn, pointedAt } = require('./project-layout.cjs');
 const { repoNamed, phaseStack, tipCommits } = require('./phase-stack.cjs');
@@ -473,7 +477,7 @@ const { cachedSurvivors } = require('./verify.cjs');
 const { accountPath, accountOwed, landingStage, reviewOverWay } = require('./task-account.cjs');
 const { directiveOf } = require('./directives.cjs');
 const {
-  TESTS, TESTS_LETTER, roundRefusal, readsWords, areaReportPath, unitCalls, fixPhase,
+  TESTS, TESTS_LETTER, roundRefusal, readsWords, areaReportPath, unitCalls, fixPhase, filesUnder,
 } = require('./review-phase.cjs');
 const { reviewHeld } = require('./review-entry.cjs');
 const { reading, reposOf } = require('./phase-checks.cjs');
@@ -623,11 +627,13 @@ const onBranch = (repo, branch, why) => ({ named: branch, commit: git(repo.path,
  * project, each before those nested in it, as the builder's worktree held
  * them all (task-worktree.cjs): one holding work at its tip there, as
  * `tipped` says it; a submodule otherwise at the commit its holder, as laid
- * out, points it at; any other as `otherwise` lays it out.
+ * out, points it at; any other as `otherwise` lays it out. Then the calls
+ * that lay the scratch worktree `name` out so, prepared, and take it apart
+ * (scratch.cjs).
  * @param {Repo[]} repos @param {Map<Repo, string>} tips each repository holding work's tip branch @param {string} tipped why one is laid out at its tip
- * @param {(repo: Repo) => Laid} otherwise
+ * @param {(repo: Repo) => Laid} otherwise @param {string} name
  */
-function layoutOf(repos, tips, tipped, otherwise) {
+function layoutOf(repos, tips, tipped, otherwise, name) {
   /** @type {Map<string, string>} */
   const laid = new Map();
   const lines = repos.map((repo) => {
@@ -635,7 +641,17 @@ function layoutOf(repos, tips, tipped, otherwise) {
     laid.set(repo.dir, place.commit);
     return `- ${repoNamed(repo)}: \`${place.named}\` — ${place.why}`;
   });
-  return lines.join('\n');
+  const children = repos.slice(1).map((repo) => ` ${quoted(`${repo.dir}=${laid.get(repo.dir)}`)}`).join('');
+  return [
+    lines.join('\n'),
+    '',
+    'Lay it out from the project\'s checkout with the first call below, which prepares it as the project\'s own checkout is, its ignored files and linked folders among it; its answer\'s `path` is the project\'s folder there. Take it apart with the second once your report is written.',
+    '',
+    '```bash',
+    `${ENGINE_RUN} scratch lay ${name} ${laid.get('')}${children}`,
+    `${ENGINE_RUN} scratch remove ${name}`,
+    '```',
+  ].join('\n');
 }
 
 /**
@@ -679,10 +695,11 @@ function drawDiffRange(filling) {
 
 /** @param {Filling} filling */
 function drawScratchLayout(filling) {
+  const { ref } = taskOf(filling);
   const { repos, branch, holding } = taskHolding(filling);
   return layoutOf(repos, new Map(holding.map((repo) => [repo, branch])), RANGE_TIP, (repo) => (
     branches(repo.path).has(branch) ? onBranch(repo, branch, 'the task\'s branch') : onBranch(repo, landsOn(filling.cwd, repo), 'the branch it lands on, the task\'s branch not made there')
-  ));
+  ), `${ref.unit}-${shownTask(ref)}-${letterOf(filling)}`);
 }
 
 /**
@@ -943,15 +960,6 @@ function drawDirective({ given }) {
 /** @param {Filling} filling */
 const migratedTopic = ({ cwd, given }) => topicPlace(cwd, given.topic, 'brief');
 
-/** Every file under `dir`, as posix paths from `from`, sorted. @param {string} from @param {string} dir @returns {string[]} */
-function filesBelow(from, dir) {
-  if (!fs.existsSync(dir)) return [];
-  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    const at = path.join(dir, entry.name);
-    return entry.isDirectory() ? filesBelow(from, at) : [path.relative(from, at).split(path.sep).join('/')];
-  }).sort();
-}
-
 /** @param {Filling} filling */
 function drawMigratedTopic(filling) {
   const { root, unit, topic } = migratedTopic(filling);
@@ -961,7 +969,8 @@ function drawMigratedTopic(filling) {
     const { status } = manifest.phases[phase].items[topic];
     return typeof status === 'string' ? `${phase}, ${status}` : phase;
   });
-  const files = filesBelow(root, path.join(root, unit, 'topics', topic)).filter((file) => !file.startsWith(`${unit}/topics/${topic}/mail/`));
+  const folder = path.join(root, unit, 'topics', topic);
+  const files = (fs.existsSync(folder) ? filesUnder(folder) : []).filter((file) => !file.startsWith('mail/')).map((file) => `${unit}/topics/${topic}/${file}`).sort();
   const sources = rules.sourcesOf({ projectDir: codeRoot(filling.cwd), stateDir: root, unit, topic });
   const assets = sources.imports.map(({ path: at, origin, owner, held }) => {
     const owed = !held ? ' — its file is gone, so no entry links it' : owner === topic ? ' — this topic\'s to link' : '';
@@ -1593,7 +1602,8 @@ function drawPhaseDiffRange(filling, warnings) {
 /** @param {Filling} filling @param {string[]} warnings */
 function drawPhaseScratchLayout(filling, warnings) {
   const { repos, tips } = phaseHolding(filling, warnings);
-  return layoutOf(repos, tips, RANGE_TIP, (repo) => onBranch(repo, landsOn(filling.cwd, repo), 'the branch it lands on'));
+  const { unit, phase } = phaseOf(filling);
+  return layoutOf(repos, tips, RANGE_TIP, (repo) => onBranch(repo, landsOn(filling.cwd, repo), 'the branch it lands on'), `${unit}-phase-${phase}-${letterOf(filling)}`);
 }
 
 /**
@@ -1719,8 +1729,9 @@ function chainPast(filling, repos) {
   return childrenFirst(repos).flatMap((repo) => {
     const held = branches(repo.path);
     if (!held.has(own)) return [];
-    const past = below.filter((other) => other !== own && held.has(other) && !isAncestor(repo.path, `refs/heads/${other}`, `refs/heads/${own}`));
-    const tip = past.find((other) => past.every((under) => isAncestor(repo.path, `refs/heads/${under}`, `refs/heads/${other}`)));
+    const merged = branchesHeldBy(repo.path, `refs/heads/${own}`);
+    const past = below.filter((other) => other !== own && held.has(other) && !merged.has(other));
+    const tip = past[latestOf(repo.path, past.map((other) => /** @type {string} */ (held.get(other))))];
     return tip === undefined ? [] : [{ repo, tip }];
   });
 }
@@ -1862,7 +1873,8 @@ function partDrawn(repo, { from, to, landed, branch }) {
 /** @param {Filling} filling @param {string[]} warnings */
 function drawChangeScratchLayout(filling, warnings) {
   const { repos, holding } = changeHeld(filling, warnings);
-  return layoutOf(repos, new Map(holding.map(({ repo, tip }) => [repo, tip])), 'the change\'s tip there', (repo) => onBranch(repo, landsOn(filling.cwd, repo), 'the branch it lands on'));
+  const reader = filling.given.area === undefined ? TESTS : `area-${filling.given.area}-${letterOf(filling)}`;
+  return layoutOf(repos, new Map(holding.map(({ repo, tip }) => [repo, tip])), 'the change\'s tip there', (repo) => onBranch(repo, landsOn(filling.cwd, repo), 'the branch it lands on'), `${unitOf(filling)}-${reader}`);
 }
 
 /** @param {Filling} filling @param {string[]} warnings */
