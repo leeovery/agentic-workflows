@@ -86,6 +86,11 @@ function isObject(v) {
   return v !== null && typeof v === 'object' && !Array.isArray(v);
 }
 
+/** Whether a parsed JSON value is an array of strings alone. @param {unknown} v @returns {v is string[]} */
+function isStringList(v) {
+  return Array.isArray(v) && v.every((item) => typeof item === 'string');
+}
+
 /**
  * Pre-write guard, run under the lock before the writer's `fn`: a manifest
  * already on disk must have an object root before anything may mutate it.
@@ -609,6 +614,7 @@ module.exports = {
   tryClaimFile,
   ensureContainer,
   isObject,
+  isStringList,
   readWorkUnitManifest,
   jsonText,
   writeTextAtomic,

@@ -54,7 +54,7 @@ const { projectRepos } = require('../kernel/repos.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { manifestOf, finishedUnits } = require('./ledger-units.cjs');
-const { phaseClosed } = require('./derivations.cjs');
+const { phaseClosed, cutPhases, cutLength } = require('./derivations.cjs');
 const { trackedLists, trackedPhase } = require('./task-verbs.cjs');
 const { holdsScenario, namesScenario } = require('./task-file.cjs');
 const { taskPassed, phaseReports } = require('./round-report.cjs');
@@ -95,9 +95,6 @@ function once(at, key, read) {
 
 /** The project's repos, read once a call. @param {Reading} at @returns {import('../kernel/repos.cjs').Repo[]} */
 const reposOf = (at) => once(at, 'repos', () => projectRepos(codeRoot(at.cwd)));
-
-/** The phases of the unit's cut, none where it has none. @param {Record<string, any>} manifest @returns {Array<{name?: string, sections: string[], scenarios: string[], relies_on: Array<number|string>}>} */
-const cutPhases = (manifest) => (Array.isArray(manifest.cut?.phases) ? manifest.cut.phases : []);
 
 /**
  * `read` under the state's lock, as every reader of the tracker takes it,
@@ -152,7 +149,7 @@ function phaseLanded(at, phase) {
  */
 function mergeWaiting(at, last) {
   if (at.manifest.build?.position !== 'step') return null;
-  const cut = cutPhases(at.manifest).length;
+  const cut = cutLength(at.manifest);
   const phases = Array.from({ length: last }, (_, i) => i + 1);
   phaseLists(at, phases);
   const unmerged = (/** @type {number} */ phase) => liveRows(at, phase).length > 0 && !phaseLanded(at, phase);
@@ -341,12 +338,12 @@ function phaseReviewRefusal(cwd, unit, phase) {
 
 /** `phaseReviewRefusal`, as a call reads the unit. @param {Reading} at @param {number} phase @returns {string|null} */
 function reviewRefusalOf(at, phase) {
-  if (phase > cutPhases(at.manifest).length) return null;
+  if (phase > cutLength(at.manifest)) return null;
   const faults = phaseReviewFaults(at, phase);
   return faults.length === 0 ? null : `${phaseName(at.unit, phase)} merges once its phase review has passed and its fixes are done — ${faults.join('; ')}`;
 }
 
 module.exports = {
-  reading, once, reposOf, cutPhases, phaseLists, phaseTasks, phaseLanded, mergeWaiting, fixesOwed, passed,
+  reading, once, reposOf, phaseLists, phaseTasks, phaseLanded, mergeWaiting, fixesOwed, passed,
   tasksWritten, reliedOnDone, tasksPassed, phaseReviewFaults, scenariosReported, notesConsolidated, stackMerged, closeRefusal, phaseReviewRefusal, reviewRefusalOf,
 };

@@ -39,6 +39,12 @@ const phaseStarted = (manifest, number) => phaseEnded(manifest, number, 'start')
 /** Whether a phase of the unit has closed: its close's checklist closed (6.4.9). @param {Record<string, any>} manifest @param {number} number */
 const phaseClosed = (manifest, number) => phaseEnded(manifest, number, 'close');
 
+/** The phases of the unit's cut, none where it has none. @param {Record<string, any>} manifest @returns {Array<{name?: string, sections: string[], scenarios: string[], relies_on: Array<number|string>}>} */
+const cutPhases = (manifest) => (Array.isArray(manifest.cut?.phases) ? manifest.cut.phases : []);
+
+/** How many phases the unit's cut holds, none where it has none. @param {Record<string, any>} manifest */
+const cutLength = (manifest) => cutPhases(manifest).length;
+
 /**
  * Whether the unit's build is through every phase of its cut, each closed —
  * a phase not yet written never read as finished (7.4.3, 12.6.7). The
@@ -46,7 +52,7 @@ const phaseClosed = (manifest, number) => phaseEnded(manifest, number, 'close');
  * @param {Record<string, any>} manifest
  */
 function buildFinished(manifest) {
-  const phases = Array.isArray(manifest.cut?.phases) ? manifest.cut.phases : [];
+  const phases = cutPhases(manifest);
   return phases.length > 0 && phases.every((_, at) => phaseClosed(manifest, at + 1));
 }
 
@@ -56,7 +62,7 @@ function buildFinished(manifest) {
  * @param {Record<string, any>} manifest @param {number} phase
  */
 function isFixPhase(manifest, phase) {
-  return buildFinished(manifest) && phase > manifest.cut.phases.length;
+  return buildFinished(manifest) && phase > cutLength(manifest);
 }
 
 /**
@@ -1194,6 +1200,8 @@ module.exports = {
   phaseStarted,
   phaseClosed,
   buildFinished,
+  cutPhases,
+  cutLength,
   isFixPhase,
   legacyBuild,
   buildByCut,

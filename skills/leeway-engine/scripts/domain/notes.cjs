@@ -60,6 +60,7 @@ const { messageOf } = require('../kernel/call.cjs');
 const { refusing } = require('./staged-payload.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
+const { cutLength } = require('./derivations.cjs');
 const { headingLevels, fencedLines } = require('./spec-sections.cjs');
 const { BULLET, listItems, saysNone } = require('./list-items.cjs');
 const { parsePhase, phaseName } = require('./task-id.cjs');
@@ -148,9 +149,9 @@ function notesAppended(text, notes) {
  */
 function heldFor(cwd, unit, manifest, given) {
   const phase = parsePhase(given);
-  const phases = manifest.cut?.phases ?? [];
-  if (phases.length === 0) refuse(`${unit} has no cut — a note is held for a phase of its cut`);
-  if (phase > phases.length) refuse(`${unit}'s cut has no phase ${phase} — its phases are 1 to ${phases.length}`);
+  const phases = cutLength(manifest);
+  if (phases === 0) refuse(`${unit} has no cut — a note is held for a phase of its cut`);
+  if (phase > phases) refuse(`${unit}'s cut has no phase ${phase} — its phases are 1 to ${phases}`);
   if (phaseWritten(cwd, unit, phase)) refuse(`${phaseName(unit, phase)} is written already — a find for it is a task there: engine task create ${unit} ${phase} --file <task>`);
   return phase;
 }

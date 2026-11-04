@@ -288,15 +288,18 @@ function stepHelpers(dir, config) {
   /** A ledger write of Claude's in the build, which must land. @param {string} verb @param {string[]} flags @param {object} [content] */
   const written = (verb, flags, content = {}) => ok(dir(), ['ledger', verb, `${UNIT}.implementation`, ...flags], { env: env(), stdin: JSON.stringify({ ...MADE, ...content }) });
 
+  /** A line of Claude's in the build, appended in process as a clone's merge lays it. @param {Record<string, unknown>} event */
+  const laid = (event) => appendEntry(statePath(dir()), { unit: UNIT, topic: null, phase: 'implementation', session: SESSION, ...MADE, ...event }, []);
+
   /**
    * Ways a question stops waiting with no answer of its own, each given its
-   * full id: merged into the answer to Q2, or moved to the roadmap as a
-   * clone's merge lays it, the build itself having no topic to move one from.
+   * full id: merged into the answer to Q2, or moved to the roadmap — each as
+   * a clone's merge lays it, the verbs refusing a question waiting.
    * @type {Array<[string, (question: string) => void]>}
    */
   const UNANSWERED_ENDS = [
-    ['merged into another\'s answer', (question) => written('merge', ['--question', question, '--into', decidedFor('1.2')])],
-    ['moved to the roadmap', (question) => appendEntry(statePath(dir()), { event: 'moved', unit: UNIT, topic: null, phase: 'implementation', session: SESSION, ...MADE, question, to: 'roadmap:refunds' }, [])],
+    ['merged into another\'s answer', (question) => laid({ event: 'merged', question, into: decidedFor('1.2'), duplicate: null })],
+    ['moved to the roadmap', (question) => laid({ event: 'moved', question, to: 'roadmap:refunds' })],
   ];
 
   /** Why `task start` refuses the task, writing nothing. @param {string} task */

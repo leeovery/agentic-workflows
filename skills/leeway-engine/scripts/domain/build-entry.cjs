@@ -92,15 +92,15 @@ const { ENGINE_COMMAND, ENGINE_RUN, messageOf } = require('../kernel/call.cjs');
 const { statePath, stateRoot } = require('../kernel/state-root.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
-const { buildBegun, buildFinished, phaseStarted, phaseClosed, legacyBuild, buildByCut } = require('./derivations.cjs');
+const { buildBegun, buildFinished, phaseStarted, phaseClosed, legacyBuild, buildByCut, cutPhases, cutLength } = require('./derivations.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
-const { goesOn, turnOf } = require('./task-verbs.cjs');
+const { STATUS_WORDS, goesOn, turnOf } = require('./task-verbs.cjs');
 const { heldCodeSessions } = require('./presence.cjs');
 const { codeGate } = require('./projections/enter.cjs');
 const { tasksInFlight } = require('./conversation.cjs');
 const { recordTasksAt } = require('./position.cjs');
 const { waitingAndFreed, parkedTasks } = require('./questions.cjs');
-const { reading, cutPhases, phaseLists, phaseTasks, phaseLanded, mergeWaiting, fixesOwed, passed } = require('./phase-checks.cjs');
+const { reading, phaseLists, phaseTasks, phaseLanded, mergeWaiting, fixesOwed, passed } = require('./phase-checks.cjs');
 const { takenFigures, reviewOverWay } = require('./task-account.cjs');
 const { recordedRounds, mergingWords } = require('./review-phase.cjs');
 const { shownTask, parseShownTask } = require('./task-id.cjs');
@@ -150,18 +150,13 @@ const { roundStanding, taskRounds, pairPassed } = require('./round-report.cjs');
  * }} BuildStanding
  */
 
-/** Where a task stands, as a line says it. @type {Readonly<Record<TaskState, string>>} */
-const STATUS_WORDS = Object.freeze({
-  open: 'not started', 'in-progress': 'in progress', behind: 'behind the task in flight', 'at-gate': 'at its gate', done: 'done', closed: 'closed',
-});
-
 /** The build's log, state-relative (12.2.3). @param {string} unit */
 const buildLogOf = (unit) => `${unit}/build/log.md`;
 
 /** A phase's name: the cut's, or for a phase past it, the review's fixes of its round (P14). @param {Record<string, any>} manifest @param {number} phase */
 function phaseNamed(manifest, phase) {
-  const cut = cutPhases(manifest);
-  return phase <= cut.length ? cut[phase - 1].name ?? '' : `the review's fixes, round ${phase - cut.length}`;
+  const cut = cutLength(manifest);
+  return phase > cut ? `the review's fixes, round ${phase - cut}` : cutPhases(manifest)[phase - 1].name ?? '';
 }
 
 /**
@@ -201,7 +196,7 @@ function ownInFlight(unit) {
  */
 function buildPhases(at) {
   const fixes = buildFinished(at.manifest) ? recordedRounds(at.cwd, at.unit).length + 1 : 0;
-  return Array.from({ length: cutPhases(at.manifest).length + fixes }, (_, i) => i + 1);
+  return Array.from({ length: cutLength(at.manifest) + fixes }, (_, i) => i + 1);
 }
 
 /** Where a phase of the cut stands, or not yet written. @param {Reading} at @param {number} phase @param {TaskRow[]|null} rows @returns {PhaseState} */
@@ -289,10 +284,10 @@ function standingTasks(at, phase, rows, parked, statuses, behind) {
  * @returns {StandingPhase}
  */
 function standingPhase(at, phase, rows, tasks) {
-  const cut = cutPhases(at.manifest);
   const name = phaseNamed(at.manifest, phase);
-  if (phase > cut.length) return { phase, name, round: phase - cut.length, relies_on: [], state: fixState(at, phase, rows ?? []), tasks, fixes_owed: [] };
-  return { phase, name, round: null, relies_on: cut[phase - 1].relies_on, state: phaseState(at, phase, rows), tasks, fixes_owed: fixesOwed(at, phase) };
+  const cut = cutLength(at.manifest);
+  if (phase > cut) return { phase, name, round: phase - cut, relies_on: [], state: fixState(at, phase, rows ?? []), tasks, fixes_owed: [] };
+  return { phase, name, round: null, relies_on: cutPhases(at.manifest)[phase - 1].relies_on, state: phaseState(at, phase, rows), tasks, fixes_owed: fixesOwed(at, phase) };
 }
 
 /**
@@ -315,7 +310,7 @@ function parkingQuestions(waiting) {
  * @param {Reading} at @param {InFlight[]} inFlight @returns {BuildStanding}
  */
 function standingOf(at, inFlight) {
-  const cut = cutPhases(at.manifest).length;
+  const cut = cutLength(at.manifest);
   const phases = buildPhases(at);
   const lists = phaseLists(at, phases);
   const statuses = new Map(lists.flatMap((rows) => (rows ?? []).map(({ ref, status }) => /** @type {[string, TaskStatus]} */ ([shownTask(ref), status]))));
@@ -565,5 +560,5 @@ const IMPLEMENTATION = Object.freeze({
 });
 
 module.exports = {
-  IMPLEMENTATION, STATUS_WORDS, phaseNamed, buildStanding, standingOf, buildPhases, builtUnit, cutCount, buildRecovery, ownInFlight, inFlightLines, takeInFlight, readingOf, buildRefusal, codeHeld, buildLogOf,
+  IMPLEMENTATION, phaseNamed, buildStanding, standingOf, buildPhases, builtUnit, cutCount, buildRecovery, ownInFlight, inFlightLines, takeInFlight, readingOf, buildRefusal, codeHeld, buildLogOf,
 };

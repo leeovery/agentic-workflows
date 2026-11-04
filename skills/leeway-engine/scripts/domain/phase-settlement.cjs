@@ -36,7 +36,7 @@
 const path = require('path');
 const fs = require('fs');
 const { statePath, stateRoot } = require('../kernel/state-root.cjs');
-const { writeJsonAtomic, isObject } = require('../kernel/manifest-io.cjs');
+const { writeJsonAtomic, isObject, isStringList } = require('../kernel/manifest-io.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { parsePhase, parseShownTask, phaseName, shownTask } = require('./task-id.cjs');
@@ -52,9 +52,6 @@ const { refuserFor, committed } = require('./task-account.cjs');
 function phaseSettlementPath(unit, phase) {
   return `${phaseFolder(unit, phase)}/settlement.json`;
 }
-
-/** Whether `value` holds strings alone. @param {unknown} value */
-const strings = (value) => Array.isArray(value) && value.every((item) => typeof item === 'string');
 
 /**
  * The phase review's settlement, null where there is none; refused where
@@ -72,7 +69,7 @@ function readSettlement(cwd, unit, phase) {
   } catch (err) {
     throw new Error(`${rel} does not read as a settlement — ${messageOf(err)}`);
   }
-  const fits = isObject(held) && typeof held.why === 'string' && strings(held.fixes) && isObject(held.reports) && strings(Object.values(held.reports));
+  const fits = isObject(held) && typeof held.why === 'string' && isStringList(held.fixes) && isObject(held.reports) && isStringList(Object.values(held.reports));
   if (!fits) throw new Error(`${rel} does not read as a settlement — it holds {"why", "fixes", "reports"}`);
   return held;
 }

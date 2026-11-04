@@ -44,7 +44,7 @@ const { messageOf } = require('../kernel/call.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { readSpec, specSections, specScenarios, SPEC_FILE } = require('./spec-sections.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
-const { phaseStarted } = require('./derivations.cjs');
+const { phaseStarted, cutPhases, cutLength } = require('./derivations.cjs');
 const { recordCut } = require('./spec-passes.cjs');
 
 /** @typedef {{name: string, goal: string, scenarios: string[], sections: string[], relies_on: Array<number|string>}} Phase */
@@ -167,9 +167,7 @@ function reliesFaults(phases, root, unit) {
  * @param {Record<string, any>} manifest
  */
 function lastStarted(manifest) {
-  /** @type {Phase[]} */
-  const phases = manifest.cut?.phases ?? [];
-  return phases.reduce((last, _, at) => (phaseStarted(manifest, at + 1) ? at + 1 : last), 0);
+  return cutPhases(manifest).reduce((last, _, at) => (phaseStarted(manifest, at + 1) ? at + 1 : last), 0);
 }
 
 /**
@@ -180,8 +178,7 @@ function lastStarted(manifest) {
  */
 function startedFaults(manifest, phases) {
   const started = lastStarted(manifest);
-  /** @type {Phase[]} */
-  const kept = manifest.cut?.phases ?? [];
+  const kept = cutPhases(manifest);
   const changed = kept.slice(0, started).findIndex((phase, at) => JSON.stringify(phase) !== JSON.stringify(phases[at]));
   if (changed === -1) return [];
   const how = phases[changed] === undefined ? 'drops' : 'changes';
@@ -259,7 +256,7 @@ function writeCut(cwd, unit, file) {
     const { cut, manifest } = checkedCut(cwd, unit, file === undefined ? staged : path.resolve(cwd, file));
     manifest.cut = { phases: cut };
     saveWorkUnitManifest(cwd, unit, manifest);
-    return cut.length;
+    return cutLength(manifest);
   });
   /** @type {string[]} */
   const warnings = [];

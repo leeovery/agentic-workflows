@@ -466,7 +466,7 @@ const { heldIn, pointedAt } = require('./project-layout.cjs');
 const { repoNamed, phaseStack, tipCommits } = require('./phase-stack.cjs');
 const { readWorkUnitManifest } = require('../kernel/manifest-io.cjs');
 const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
-const { ENDED } = require('./task-verbs.cjs');
+const { ENDED, STATUS_WORDS } = require('./task-verbs.cjs');
 const { notesToTake, notesHeldFor, consolidationPath } = require('./notes.cjs');
 const { runsOf } = require('./runs.cjs');
 const { cachedSurvivors } = require('./verify.cjs');
@@ -1429,13 +1429,8 @@ function phaseOf({ unit, phase, phases }) {
 /** The unit's cut, its phases in build order. @param {Filling} filling @returns {CutPhase[]} */
 const cutOf = (filling) => unitManifest(filling).cut.phases;
 
-/** Where a task stands, as a brief says it. @type {Readonly<Record<string, string>>} */
-const STANDS = Object.freeze({
-  open: 'not started', 'in-progress': 'in progress', done: 'done', closed: 'closed',
-});
-
 /** A task as a list draws it: its number, its title and where it stands. @param {TaskDetail} task */
-const taskLine = ({ ref, title, status }) => `- ${shownTask(ref)} ${title}, ${STANDS[status]}`;
+const taskLine = ({ ref, title, status }) => `- ${shownTask(ref)} ${title}, ${STATUS_WORDS[status]}`;
 
 /** What a phase relies on, as a sentence names it. @param {number|string} on */
 const reliedName = (on) => (typeof on === 'number' ? `phase ${on}` : `the work unit ${on}`);
@@ -1549,7 +1544,7 @@ const additionsOf = ({ additions }) => additions.flatMap(({ by, text }) => ['', 
 function drawPhaseTasks(filling) {
   return blocks(writtenPhase(filling).map((task) => {
     const [title, ...body] = headingsDown(task.text).split('\n');
-    const stands = task.status === 'closed' ? `It was closed: ${task.reason}` : `It is ${STANDS[task.status]}.`;
+    const stands = task.status === 'closed' ? `It was closed: ${task.reason}` : `It is ${STATUS_WORDS[task.status]}.`;
     return [title.replace(/^## /, `## ${shownTask(task.ref)} `), '', stands, '', body.join('\n').replace(/^\n+/, ''), ...additionsOf(task)].join('\n');
   }));
 }

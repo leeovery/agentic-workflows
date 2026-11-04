@@ -118,6 +118,7 @@ const { projectRepos, projectPath, repoName } = require('../kernel/repos.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { runShellCommand, tailText } = require('../kernel/shell-command.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
+const { cutPhases, cutLength } = require('./derivations.cjs');
 const { tasksInFlight, taskAt } = require('./conversation.cjs');
 const { codeStatus } = require('./code.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
@@ -183,9 +184,6 @@ function recordedSetup(cwd, unit) {
   }
   return setup;
 }
-
-/** The phases of the unit's cut. @param {Record<string, any>} manifest @returns {{scenarios: string[]}[]} */
-const cutPhases = (manifest) => manifest.cut?.phases ?? [];
 
 /** Refuses a scenario that is none of the unit's cut. @param {Record<string, any>} manifest @param {string} unit @param {string} scenario */
 function assertCutScenario(manifest, unit, scenario) {
@@ -632,7 +630,7 @@ function onChangedLines(root, changed, survivors) {
  */
 function verifyMutants(cwd, unit, given) {
   const manifest = unitManifest(cwd, unit);
-  const phases = cutPhases(manifest).length;
+  const phases = cutLength(manifest);
   const phase = /^[1-9][0-9]*$/.test(given) ? Number(given) : 0;
   if (phase < 1 || phase > phases) throw new Error(`"${given}" is no phase of ${unit}'s cut — it has ${phases === 1 ? '1 phase' : `${phases} phases`}`);
   const { mutation } = recordedSetup(cwd, unit);

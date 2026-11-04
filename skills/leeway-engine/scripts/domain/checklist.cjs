@@ -96,7 +96,7 @@ const { inventedLines } = require('./spec-trace.cjs');
 const { readLandedSpec } = require('./spec-landed.cjs');
 const { sweepTaken, candidatesWaiting } = require('./sweep.cjs');
 const { reviewSettled, cutRequests } = require('./spec-passes.cjs');
-const { mailboxDepth, buildBegun, phaseKey } = require('./derivations.cjs');
+const { mailboxDepth, buildBegun, phaseKey, cutPhases, cutLength } = require('./derivations.cjs');
 const checks = require('./phase-checks.cjs');
 const finishChecks = require('./finish-checks.cjs');
 const { phaseRecords } = require('./round-report.cjs');
@@ -158,9 +158,6 @@ const { REVIEWERS } = require('../kernel/reviewers.cjs');
 /** A checklist's record on a manifest, where it has one. @param {Record<string, any>} manifest @param {string[]} path @returns {Checklist|undefined} */
 const recordAt = (manifest, path) => path.reduce((node, key) => node?.[key], manifest.checklists);
 
-/** The phases of the unit's cut, none where it has no cut. @param {Record<string, any>} manifest @returns {Array<{sections: string[], scenarios: string[], relies_on: Array<number|string>}>} */
-const phasesOf = (manifest) => manifest.cut?.phases ?? [];
-
 /** No question of the person's open on the topic's map (5.8.5, 9.5.3). @param {Named} named */
 function questionsClosed({ cwd, unit, topic, warnings }) {
   const root = stateRoot(cwd);
@@ -208,7 +205,7 @@ const sweepRun = ({ cwd, unit, manifest }) => sweepTaken(cwd, /** @type {string}
  * @param {Named} named
  */
 function phasesComplete({ cwd, unit, manifest, warnings }) {
-  const phases = phasesOf(manifest);
+  const phases = cutPhases(manifest);
   const at = /** @type {string} */ (unit);
   return phases.length > 0 && phases.every(({ scenarios, sections }) => scenarios.length > 0 && sections.length > 0) && cutHolds(cwd, at, phases)
     && cutRequests(cwd, at, warnings).length === 0;
@@ -216,7 +213,7 @@ function phasesComplete({ cwd, unit, manifest, warnings }) {
 
 /** Every part of the spec drawn on by a phase of the cut, directly or through its area; an area with no parts, whole. @param {Named} named */
 function sectionsDrawn({ cwd, unit, manifest }) {
-  const phases = phasesOf(manifest);
+  const phases = cutPhases(manifest);
   if (phases.length === 0) return false;
   const drawn = new Set(phases.flatMap(({ sections }) => sections));
   const addresses = [...specSections(readSpec(cwd, /** @type {string} */ (unit))).keys()];
@@ -295,9 +292,9 @@ const onUnit = (where) => (cwd, [unit, given]) => {
 
 /** A phase's start or close, refused where the cut has no phase of that number. @param {'start'|'close'} end */
 const onPhase = (end) => onUnit((manifest, given, unit) => {
-  const phases = phasesOf(manifest);
-  if (phases.length === 0) throw new Error(`${unit} has no cut — its phases come from engine cut`);
-  if (!/^[1-9][0-9]*$/.test(given) || Number(given) > phases.length) throw new Error(`${unit}'s cut has no phase ${given} — its phases are 1 to ${phases.length}`);
+  const phases = cutLength(manifest);
+  if (phases === 0) throw new Error(`${unit} has no cut — its phases come from engine cut`);
+  if (!/^[1-9][0-9]*$/.test(given) || Number(given) > phases) throw new Error(`${unit}'s cut has no phase ${given} — its phases are 1 to ${phases}`);
   const phase = Number(given);
   if (end === 'start' && !buildBegun(manifest)) throw new Error(`${unit}'s build has not begun, so no phase starts — ready to build's yes begins it: render ready-to-build ${unit}`);
   return { path: [phaseKey(phase, end)], phase };
@@ -435,7 +432,7 @@ const skipOf = (checklist, { key, text }, { reason, at }) => ({ checklist, item:
 
 /** Every phase start's and close's skips, as their records keep them, in the cut's order. @param {Record<string, any>} manifest @returns {Skip[]} */
 function phaseSkips(manifest) {
-  return phasesOf(manifest).flatMap((_, at) => /** @type {const} */ (['start', 'close']).flatMap((end) => {
+  return cutPhases(manifest).flatMap((_, at) => /** @type {const} */ (['start', 'close']).flatMap((end) => {
     const checklist = phaseKey(at + 1, end);
     const record = recordAt(manifest, [checklist]);
     return POINTS[`phase-${end}`].items.flatMap((item) => {

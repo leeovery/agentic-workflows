@@ -29,12 +29,12 @@
 //   rule every read decides by (ledger-fold.cjs); the decision a
 //   replacement would replace current, and no live keep of it made since
 //   the park. While it waits, its answer comes through its raise alone: a
-//   decision on its question, a replacement of its decision, and any other
-//   raise on either, asked or proceeding, are refused anywhere else
-//   (`checkUnparked`). So the wait ends with the raise's answer, a keep
-//   among them, a merge of its question, a move of it to the roadmap, or
-//   the unit, its place or its question set aside, while it is — a
-//   question set aside with its topic waits again once the topic is back.
+//   decision on its question, a move or a merge of it, a replacement of its
+//   decision, and any other raise on either, asked or proceeding, are
+//   refused anywhere else (`checkUnparked`). So the wait ends with the
+//   raise's answer, a keep among them, or the unit, its place or its
+//   question set aside, while it is — a question set aside with its topic
+//   waits again once the topic is back.
 // - `raise waiting <unit>`: the unit's waiting questions, oldest first, each
 //   by its number and its first park's id, with what it asks — its
 //   question's wording as it stands now — the tasks it parks, when it
@@ -374,8 +374,9 @@ function parkedQuestion(cwd, unit, park, warnings) {
 
 /**
  * Refuse, in the words of `said`, an answer to what a question waiting in
- * the build is about — a decision on its question, a replacement of the
- * decision it would replace, or a raise on either, asked or proceeding —
+ * the build is about — a decision on its question, a move or a merge of it,
+ * a replacement of the decision it would replace, or a raise on either,
+ * asked or proceeding —
  * made anywhere but through its raise, which the person answers it by
  * alone.
  * @param {Folded} read @param {Subject} subject @param {string} said

@@ -90,7 +90,7 @@ const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('.
 const { taskId, shownTask, parseShownTask, parsePhase, taskName, phaseName } = require('./task-id.cjs');
 const { TASK_TYPES, breaksLine, readTaskText } = require('./task-file.cjs');
 const { recordTask, clearTask, recordStop } = require('./position.cjs');
-const { phaseStarted } = require('./derivations.cjs');
+const { phaseStarted, cutLength } = require('./derivations.cjs');
 const { layOutTask, takeWorktreeApart } = require('./task-worktree.cjs');
 const { markChanged, briefedOf, beingRead } = require('./round-report.cjs');
 
@@ -108,6 +108,11 @@ const landing = () => require('./landing.cjs');
 
 /** Where a task stands once it has ended, done or not. */
 const ENDED = Object.freeze(['done', 'closed']);
+
+/** Where a task stands, as a line says it. @type {Readonly<Record<import('./build-entry.cjs').TaskState, string>>} */
+const STATUS_WORDS = Object.freeze({
+  open: 'not started', 'in-progress': 'in progress', behind: 'behind the task in flight', 'at-gate': 'at its gate', done: 'done', closed: 'closed',
+});
 
 /** Whose an addition is. */
 const ADDED_BY = Object.freeze(['orchestrator', 'person']);
@@ -704,9 +709,6 @@ function ending(rule, after = () => ({})) {
   };
 }
 
-/** How many phases the unit's cut holds, none where it has none. @param {Record<string, any>} manifest */
-const cutLength = (manifest) => (Array.isArray(manifest.cut?.phases) ? manifest.cut.phases.length : 0);
-
 /**
  * Whether the phase's tasks may start: for a phase the unit's cut holds,
  * once its start checklist has closed, so no builder starts before its
@@ -871,4 +873,4 @@ function runTaskVerb(cwd, verb, positional, opts) {
   return run(cwd, positional, ...values, .../** @type {string[]} */ (given));
 }
 
-module.exports = { TASK_VERBS, ENDED, runTaskVerb, trackedTask, trackedPhases, trackedLists, trackedPhase, trackedUnit, goingOn, goesOn, phaseOpen, stepTurn, turnOf, turnRefusal, phaseWritten, givenText, trackedStart };
+module.exports = { TASK_VERBS, ENDED, STATUS_WORDS, runTaskVerb, trackedTask, trackedPhases, trackedLists, trackedPhase, trackedUnit, goingOn, goesOn, phaseOpen, stepTurn, turnOf, turnRefusal, phaseWritten, givenText, trackedStart };

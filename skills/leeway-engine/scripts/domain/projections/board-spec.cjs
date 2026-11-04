@@ -41,7 +41,7 @@ const { reportedPasses, passesInFlight } = require('../agent-state.cjs');
 const { reviewSettled, waitingGaps, sectionsToReview, changedSince, changedBetween } = require('../spec-passes.cjs');
 const { readShown } = require('../ledger-read.cjs');
 const { answerSince } = require('../ledger-since.cjs');
-const { cutPhases } = require('../phase-checks.cjs');
+const { cutPhases } = require('../derivations.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
 /** @typedef {import('../board-model.cjs').SpecView} SpecView */
