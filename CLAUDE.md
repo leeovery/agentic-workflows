@@ -94,8 +94,8 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - `.workflows/{work_unit}/investigation/{topic}.md`
 - `.workflows/{work_unit}/spec.md` — the unit's one spec
 - `.workflows/{work_unit}/planning/{topic}/planning.md` — a quick-fix's plan, written by scoping, plus `phase-{N}-tasks.md` and the task files
-- `.workflows/{work_unit}/implementation/{topic}/`
-- `.workflows/{work_unit}/review/{topic}/report.md`
+- `.workflows/{work_unit}/build/` — the build's `log.md` and `notes.md`; `tasks/{task}.md` with each task's round reports, `figures.json` and settlements; `phases/phase-{N}/` with the phase review's reports, the consolidation and `settlement.json`; `runs/{scenario}/run-NNN.json`, the verification runs
+- `.workflows/{work_unit}/review/` — the review phase's rounds: `round-{N}.json`, `round-{N}.md`, `round-{N}-checks.md`, `round-{N}-reads.json`, and `round-{N}/` holding the readers' reports
 - `.workflows/{work_unit}/imports/` — files the user shared
 - `.workflows/{work_unit}/seeds/` — the inbox items the unit was started from
 - `.workflows/{work_unit}/.state/` — per-unit analysis files
