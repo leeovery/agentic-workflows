@@ -13,7 +13,7 @@ const { fileExists, filesChecksum, loadProjectManifest } = require('./reads.cjs'
 const { titlecase } = require('./conventions.cjs');
 const { RECORDS_DIR } = require('../kernel/knowledge/files.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
-const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TOPIC_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, illegalNameReason, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
+const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TOPIC_PHASES, TERMINAL_STATUSES, BUILD_PHASES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, illegalNameReason, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
 
 /**
  * Whether the unit's build has begun: ready to build's yes recorded on its
@@ -85,16 +85,33 @@ function buildByCut(manifest) {
 }
 
 /**
+ * Where a unit stands in the build's two places, read from its own records
+ * and never from items (P13): the build in progress until every phase of
+ * its cut has closed, then completed; the review phase in progress from
+ * then, the build running straight into it (14.6.1, 24.1.6); and both
+ * completed once finish has completed the unit (14.5).
+ * @param {Record<string, any>} manifest @param {'implementation'|'review'} phase
+ * @returns {'in-progress'|'completed'|null}
+ */
+function buildPlaceStatus(manifest, phase) {
+  if (manifest.status === 'completed') return 'completed';
+  if (!buildFinished(manifest)) return phase === 'implementation' ? 'in-progress' : null;
+  return phase === 'implementation' ? 'completed' : 'in-progress';
+}
+
+/**
  * A phase's status over its live items. The one spec a unit writes keeps no
  * items: it reads completed once its build has begun, in progress while its
  * `spec.md` is written — the state's to say, so the caller says it
- * (spec-standing.cjs) — and none before. A build by the cut is in progress
- * until every phase of its cut has closed. A unit whose building began
- * under the old spec keeps that spec's items, which are read alone.
+ * (spec-standing.cjs) — and none before. A build by the cut reads its build
+ * and its review phase off its own records (`buildPlaceStatus`). A unit
+ * whose building began under the old spec keeps that spec's items, which
+ * are read alone.
  * @param {Record<string, any>} manifest @param {string} phase @param {boolean} [specWritten]
  * @returns {string|null}
  */
 function phaseStatus(manifest, phase, specWritten = false) {
+  if (BUILD_PHASES.includes(phase) && buildByCut(manifest)) return buildPlaceStatus(manifest, /** @type {'implementation'|'review'} */ (phase));
   const p = (manifest.phases || {})[phase] || {};
   const keys = p.items && typeof p.items === 'object' ? Object.keys(p.items) : [];
   if (keys.length > 0) {
@@ -116,7 +133,6 @@ function phaseStatus(manifest, phase, specWritten = false) {
     if (statuses.some(s => s === 'in-progress')) return 'in-progress';
     return statuses[0];
   }
-  if (phase === 'implementation' && buildByCut(manifest)) return buildFinished(manifest) ? 'completed' : 'in-progress';
   if (phase !== 'specification') return null;
   if (buildBegun(manifest)) return 'completed';
   return specWritten ? 'in-progress' : null;
@@ -525,12 +541,31 @@ function waitingItems(manifest, phase) {
 }
 
 /**
+ * Where a build by its cut goes next, its standing read from its own
+ * records (`buildPlaceStatus`): into the build until every phase of its cut
+ * has closed; then into the review phase, its fix phases built there; and
+ * once finish has completed the unit, where finish sends it — an epic to
+ * its menu, its review completed; any other unit nowhere, done (24.1.2).
+ * @param {Record<string, any>} manifest @returns {{next_phase: string, phase_label: string}}
+ */
+function buildNext(manifest) {
+  const review = buildPlaceStatus(manifest, 'review');
+  if (review === 'completed') {
+    return manifest.work_type === 'epic' ? { next_phase: 'review', phase_label: 'review completed' } : { next_phase: 'done', phase_label: 'pipeline complete' };
+  }
+  return review === 'in-progress'
+    ? { next_phase: 'review', phase_label: 'review (in-progress)' }
+    : { next_phase: 'implementation', phase_label: 'implementation (in-progress)' };
+}
+
+/**
  * Where the unit's work goes next, and the label the menus show for it,
  * `specWritten` saying whether its spec is written (phaseStatus).
  * @param {Record<string, any>} manifest @param {boolean} [specWritten]
  * @returns {{next_phase: string, phase_label: string}}
  */
 function computeNextPhase(manifest, specWritten = false) {
+  if (buildByCut(manifest)) return buildNext(manifest);
   const wt = manifest.work_type;
 
   const ps = (/** @type {string} */ phase) => phaseStatus(manifest, phase, specWritten);
@@ -1205,6 +1240,7 @@ module.exports = {
   isFixPhase,
   legacyBuild,
   buildByCut,
+  buildPlaceStatus,
   phaseStatus,
   UNIT_PHASES,
   unitItems,

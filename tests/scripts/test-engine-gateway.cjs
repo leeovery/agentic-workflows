@@ -370,7 +370,6 @@ describe('an ACTIONS table resolves every row its MENU offers', () => {
     ['leeway-continue-epic', ['reactivate-menu', 'live-epic'], 'live'],
     ['leeway-continue-epic', ['postpone-menu', 'live-epic'], 'live'],
     ['leeway-continue-epic', ['pull-forward-menu', 'live-epic'], 'live'],
-    ['leeway-continue-epic', ['unblock-menu', 'live-epic'], 'live'],
     ['leeway-continue-linear', ['view', 'live-feature'], 'live'],
     ['leeway-continue-linear', ['view', 'live-bugfix'], 'live'],
     ['leeway-continue-linear', ['view', 'live-quickfix'], 'live'],

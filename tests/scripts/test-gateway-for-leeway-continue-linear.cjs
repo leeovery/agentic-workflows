@@ -267,6 +267,22 @@ describe('leeway-continue-linear view', () => {
     assert.doesNotMatch(out, /revisit_phase|^=== MENU/m, out);
   });
 
+  it('routes a feature or a bugfix built by its cut into the build, then into its review phase, handing straight on — its build never revisited, its review never skipped (24.1.6, 14.6.1)', () => {
+    const cut = { phases: [{ name: 'One', scenarios: [], sections: ['1'], relies_on: [] }] };
+    const closed = { 'phase-1-close': { items: {}, closed: '2026-11-01T00:00:00.000Z' } };
+    for (const [name, type, topic] of [['ledger', 'feature', 'discussion'], ['crash', 'bugfix', 'investigation']]) {
+      createManifest(dir, name, { work_type: type, build: { position: 'auto' }, cut, phases: { [topic]: { items: { [name]: { status: 'completed' } } } } });
+      const building = view(dir, name);
+      createManifest(dir, name, { work_type: type, build: { position: 'auto' }, cut, checklists: closed, phases: { [topic]: { items: { [name]: { status: 'completed' } } } } });
+      const reviewing = view(dir, name);
+      assert.deepStrictEqual([building, reviewing].map((out) => out.split('\n').filter((line) => /^(phase_label: |  [a-z0-9]  )/.test(line))), [
+        ['phase_label: implementation (in-progress)', `  y  yes  continue  ${name}  → /leeway-implementation-process ${type} ${name}`],
+        ['phase_label: review (in-progress)', `  y  yes  continue  ${name}  → /leeway-review-process ${type} ${name}`],
+      ], type);
+      assert.doesNotMatch(reviewing, /^=== MENU/m, type);
+    }
+  });
+
   it('a finalising unit gates on finalise beside the revisit and the way back', () => {
     createManifest(dir, 'typo', { work_type: 'quick-fix', phases: items('typo', ['scoping', 'implementation', 'review'], 'completed') });
     const out = view(dir, 'typo');

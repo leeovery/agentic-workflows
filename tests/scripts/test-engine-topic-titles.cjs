@@ -374,7 +374,6 @@ describe('every screen names a topic through one helper', () => {
     ],
     'a specification, a plan or a build, named for itself': [
       'projections/enter.cjs › codeGate › h.topic',
-      'projections/epic.cjs › epicUnblockMenu › item.name',
       'projections/epic.cjs › plansNotReadyBlock › p.name',
       'projections/start.cjs › planTopicsPick › t.name',
       'projections/surfaces.cjs › autoSelectLine › name',

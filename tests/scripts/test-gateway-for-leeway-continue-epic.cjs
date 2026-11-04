@@ -1207,7 +1207,7 @@ describe('leeway-continue-epic detail counts (imports/seeds)', () => {
 });
 
 describe('leeway-continue-epic CLI dispatch', () => {
-  const USAGE = 'Usage: gateway.cjs {work_unit} | gateway.cjs view {work_unit} [new_arrivals_json] | gateway.cjs (completed-menu|cancel-menu|reactivate-menu|postpone-menu|pull-forward-menu|unblock-menu) {work_unit} | gateway.cjs in-session-gate {work_unit} {key}\n';
+  const USAGE = 'Usage: gateway.cjs {work_unit} | gateway.cjs view {work_unit} [new_arrivals_json] | gateway.cjs (completed-menu|cancel-menu|reactivate-menu|postpone-menu|pull-forward-menu) {work_unit} | gateway.cjs in-session-gate {work_unit} {key}\n';
 
   let dir;
   beforeEach(() => { dir = setupFixture(); });
@@ -1224,18 +1224,6 @@ describe('leeway-continue-epic CLI dispatch', () => {
   function run(args) {
     return spawnSync('node', [GATEWAY, ...args], { cwd: dir, encoding: 'utf8' });
   }
-
-  it('unblock-menu emits the dep column in DATA byte-exactly', () => {
-    createManifest(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        discussion: { items: { auth: { status: 'completed' } } },
-        planning: { items: { tmpl: { status: 'completed', external_dependencies: { auth: { description: 'd', state: 'resolved', internal_id: 'auth-1-4' } } } } },
-      },
-    });
-    const out = run(['unblock-menu', 'v1']).stdout;
-    assert.ok(out.includes('  1  —  unblock  tmpl  planning  → (internal)  (dep: auth)'), out.split('===')[1] || out);
-  });
 
   it('pull-forward-menu emits the roadmap item on the key, in DATA, byte-exactly', () => {
     const fs = require('fs');
@@ -1349,12 +1337,11 @@ describe('leeway-continue-epic CLI dispatch', () => {
   it('a code session anywhere in the project marks this epic\'s code entries', () => {
     const fs = require('fs');
     epicFixture();
-    // A ready-to-implement plan in this epic, and a peer session holding the
-    // code slot in a different work unit entirely.
+    // This epic's build begun, and a peer session holding the code slot in a
+    // different work unit entirely.
     const mpath = path.join(dir, '.leeway/v1/manifest.json');
     const manifest = JSON.parse(fs.readFileSync(mpath, 'utf8'));
-    manifest.phases.specification = { items: { auth: { status: 'completed', order: 1, sources: { auth: { status: 'incorporated' } } } } };
-    manifest.phases.planning = { items: { auth: { status: 'completed', format: 'local-markdown' } } };
+    Object.assign(manifest, { build: { position: 'auto' }, cut: { phases: [{ name: 'Auth', scenarios: [], sections: ['1'], relies_on: [] }] } });
     manifest.phases.discussion.items.auth.status = 'completed';
     fs.writeFileSync(mpath, JSON.stringify(manifest, null, 2));
     fs.mkdirSync(path.join(dir, '.leeway/ship'), { recursive: true });
@@ -1374,7 +1361,7 @@ describe('leeway-continue-epic CLI dispatch', () => {
     // One gate per attempt: the marker is the menu's awareness signal, and the
     // stop belongs to the phase's own code gate — asking here refuses.
     assert.ok(!res.stdout.includes('(in session:'), `a code row never wears the doc marker:\n${res.stdout}`);
-    const key = res.stdout.split('\n').find((l) => l.includes('start_implementation')).trim().split(/\s+/)[0];
+    const key = res.stdout.split('\n').find((l) => l.includes('enter_implementation')).trim().split(/\s+/)[0];
     const gate = run(['in-session-gate', 'v1', key]);
     assert.strictEqual(gate.status, 0, gate.stderr);
     assert.ok(!gate.stdout.includes('MENU: in-session gate'), `no gate section for a code entry:\n${gate.stdout}`);
@@ -1426,7 +1413,7 @@ describe('leeway-continue-epic CLI dispatch', () => {
 
   it('each sub-view verb errors without its work unit instead of rendering the first epic', () => {
     epicFixture();
-    for (const verb of ['completed-menu', 'cancel-menu', 'reactivate-menu', 'postpone-menu', 'unblock-menu']) {
+    for (const verb of ['completed-menu', 'cancel-menu', 'reactivate-menu', 'postpone-menu', 'pull-forward-menu']) {
       const res = run([verb]);
       assert.strictEqual(res.status, 1, verb);
       assert.strictEqual(res.stdout, '', verb);
@@ -1499,7 +1486,7 @@ describe('leeway-continue-epic CLI dispatch', () => {
 
   it('each sub-view verb errors on excess positionals', () => {
     epicFixture();
-    for (const verb of ['completed-menu', 'cancel-menu', 'reactivate-menu', 'postpone-menu', 'unblock-menu']) {
+    for (const verb of ['completed-menu', 'cancel-menu', 'reactivate-menu', 'postpone-menu', 'pull-forward-menu']) {
       const res = run([verb, 'v1', 'extra']);
       assert.strictEqual(res.status, 1, verb);
       assert.strictEqual(res.stdout, '', verb);

@@ -24,6 +24,16 @@ const {
   cancelPlan, postponePlan, postponeTarget, postponeClashPhrase, postponedItem, topicKey, noTopicRefusal,
 } = require('../../skills/leeway-engine/scripts/domain/derivations.cjs');
 
+/**
+ * A unit of `type` whose build runs by its two-phase cut, the phases named
+ * closed, at `status`.
+ * @param {string} type @param {number[]} closed @param {string} [status]
+ */
+function byCut(type, closed, status = 'in-progress') {
+  const checklists = Object.fromEntries(closed.map((phase) => [`phase-${phase}-close`, { items: {}, closed: '2026-11-01T00:00:00.000Z' }]));
+  return { name: 'test', work_type: type, status, phases: {}, build: { position: 'step' }, cut: { phases: [{ name: 'One' }, { name: 'Two' }] }, checklists };
+}
+
 describe('reads + derivations', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
@@ -318,6 +328,16 @@ describe('reads + derivations', () => {
       assert.strictEqual(phaseStatus({}, 'discussion'), null);
     });
 
+    it('reads a build by its cut off its own records: the build in progress until every phase of its cut has closed, the review phase in progress from then, both completed once finish completed the unit — its review items never read (P13, 14.6.1)', () => {
+      const reviewed = { review: { items: { test: { status: 'completed' } } } };
+      const places = (/** @type {Record<string, any>} */ unit) => [phaseStatus(unit, 'implementation'), phaseStatus(unit, 'review')];
+      assert.deepStrictEqual([
+        places({ ...byCut('feature', [1]), phases: reviewed }),
+        places(byCut('feature', [1, 2])),
+        places(byCut('feature', [1, 2], 'completed')),
+      ], [['in-progress', null], ['completed', 'in-progress'], ['completed', 'completed']]);
+    });
+
     it('reads the one spec a unit writes, which keeps no items, completed once its build has begun and none before (P7); a unit with the old spec\'s items reads them', () => {
       const built = { build: { position: 'auto' } };
       assert.deepStrictEqual([
@@ -426,16 +446,25 @@ describe('reads + derivations', () => {
       assert.deepStrictEqual([kept({}), kept({ build: { position: 'step' } })], ['planning', 'planning']);
     });
 
-    it('returns implementation in progress once ready to build\'s yes began the build, whatever the work type that writes a spec, until every phase of the cut has closed, then review (E6, 12.6.7)', () => {
-      const cut = { phases: [{ name: 'One' }, { name: 'Two' }] };
-      const closed = (/** @type {number[]} */ phases) => Object.fromEntries(phases.map((phase) => [`phase-${phase}-close`, { items: {}, closed: '2026-11-01T00:00:00.000Z' }]));
-      const built = (/** @type {number[]} */ phases) => (/** @type {string} */ type) => computeNextPhase({ name: 'test', work_type: type, phases: {}, build: { position: 'step' }, cut, checklists: closed(phases) });
+    it('returns implementation in progress once ready to build\'s yes began the build, whatever the work type that writes a spec, until every phase of the cut has closed, then the review phase under way; once finish completed the unit, an epic to its menu, its review completed, and every other type done (E6, 12.6.7, 14.6.1, 24.1.2)', () => {
       const types = ['feature', 'epic', 'bugfix'];
-      assert.deepStrictEqual([types.map(built([])), types.map(built([1])), types.map(built([1, 2]))], [
+      const at = (/** @type {number[]} */ phases, /** @type {string} */ status = 'in-progress') => types.map((type) => computeNextPhase(byCut(type, phases, status)));
+      assert.deepStrictEqual([at([]), at([1]), at([1, 2]), at([1, 2], 'completed')], [
         types.map(() => ({ next_phase: 'implementation', phase_label: 'implementation (in-progress)' })),
         types.map(() => ({ next_phase: 'implementation', phase_label: 'implementation (in-progress)' })),
-        types.map(() => ({ next_phase: 'review', phase_label: 'ready for review' })),
+        types.map(() => ({ next_phase: 'review', phase_label: 'review (in-progress)' })),
+        [{ next_phase: 'done', phase_label: 'pipeline complete' }, { next_phase: 'review', phase_label: 'review completed' }, { next_phase: 'done', phase_label: 'pipeline complete' }],
       ]);
+    });
+
+    it('routes a build by its cut from its own records, never from items: review items, a discussion\'s input moved, and an experiment awaited are not read (P13)', () => {
+      const unit = byCut('feature', [1, 2]);
+      const items = {
+        discussion: { items: { test: { status: 'completed', reconcile_needed: 'specification' } } },
+        experiment: { items: { test: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
+        review: { items: { test: { status: 'completed' } } },
+      };
+      assert.deepStrictEqual(computeNextPhase({ ...unit, phases: items }), { next_phase: 'review', phase_label: 'review (in-progress)' });
     });
 
     it('returns specification when discussion completed', () => {

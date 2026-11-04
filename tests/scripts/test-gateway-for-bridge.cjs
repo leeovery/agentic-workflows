@@ -274,6 +274,26 @@ describe('leeway-bridge format', () => {
     ].join('\n'));
   });
 
+  it('a build by its cut routes into the build, then into its review phase, with nothing to revisit and no completing past its review (24.1.6, 14.6.1)', () => {
+    const cut = { phases: [{ name: 'One', scenarios: [], sections: ['1'], relies_on: [] }] };
+    const built = { work_type: 'feature', build: { position: 'auto' }, cut, phases: { discussion: { items: { auth: { status: 'completed' } } } } };
+    const dump = (next, completed) => [
+      '=== auth (feature) ===',
+      `next_phase: ${next}`,
+      `completed_phases: ${completed}`,
+      'reconcile_pending: (none)',
+      'revisitable_phases: (none)',
+      `next_route: /leeway-${next}-process feature auth`,
+      'revisit_routes: (none)',
+      '',
+    ].join('\n');
+    createManifest(dir, 'auth', built);
+    assert.strictEqual(format(discover(dir, 'auth')), dump('implementation', 'discussion, specification'));
+    createManifest(dir, 'auth', { ...built, checklists: { 'phase-1-close': { items: {}, closed: '2026-11-01T00:00:00.000Z' } } });
+    assert.strictEqual(format(discover(dir, 'auth')), dump('review', 'discussion, specification, implementation'));
+    assert.strictEqual(renderSurface(dir, 'next-phase-gate', { dotpath: 'auth', prev: 'implementation', next: 'review' }), '');
+  });
+
   it('completed pipeline reports next_phase done — nothing revisitable, no section', () => {
     createManifest(dir, 'rename-api', {
       work_type: 'quick-fix',

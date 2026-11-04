@@ -31,6 +31,9 @@ const WORK_TYPE_PIPELINES = {
   'cross-cutting': ['experiment', 'discussion', 'specification'],
 };
 
+/** Every phase an epic holds: discovery, its map, then its pipeline. */
+const EPIC_PHASES = Object.freeze(['discovery', ...WORK_TYPE_PIPELINES.epic]);
+
 // Derived-bookkeeping phases: the item is computed over its own records — no
 // hand lifecycle, no start-time reconcile, no resume or reactivate; the
 // phase's own verbs maintain the item. Every generic surface keys on this
@@ -252,6 +255,7 @@ module.exports = {
   VALID_WORK_TYPES,
   VALID_PHASES,
   WORK_TYPE_PIPELINES,
+  EPIC_PHASES,
   DERIVED_PHASES,
   TOPIC_PHASES,
   VALID_PHASE_STATUSES,

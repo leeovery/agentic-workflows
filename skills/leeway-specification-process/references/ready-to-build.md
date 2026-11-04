@@ -17,7 +17,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs render ready-to-build {work
 A refusal names what to fix — an item open again since a land or a cut among them: work it, close the checklist again, and draw the screen again.
 
 Each verdict the screen asks before its gate goes to `gate`, whose `next` gives the verdict; then draw the screen again. The gate's answer goes to `gate`; follow its `next`. A `next` that takes the page's marks — a position's while the page is open, or the review's — names the file they are read back to: read them back fresh into it before running it.
-- **A position** runs the yes. It refuses while a comment on the page waits for you, listing each: answer each beneath its line, then draw the screen again. Its own `next` for an epic hands off to the epic's menu: follow it. A feature's or a bugfix's is `continue`, and the unit's menu opens in this conversation: invoke `/leeway-continue-linear {work_unit}`.
+- **A position** runs the yes. It refuses while a comment on the page waits for you, listing each: answer each beneath its line, then draw the screen again. Its own `next` hands off into the build: follow it.
 - **The review** builds the page, or once it is open reads the comments left on it, as review-page.md says.
 
 ## A Change Asked For

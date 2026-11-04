@@ -90,7 +90,6 @@ engine.project.epicCancelMenu(detail, { presence }) // → { keys, title, displa
 engine.project.epicReactivateMenu(detail, { presence }) // → { keys, title, display, rendered } — Cancelled Topics reactivate menu over the cancelled units, each row naming what returns; a held unit carries its in-session age; both unit menus open on a statement over b/back alone when every row is locked
 engine.project.epicPostponeMenu(detail, { presence }) // → { keys, title, display, rendered } — Postponable Topics pick menu over the Discovery units; a locked unit renders keyless with its reason, a held one carries its in-session age
 engine.project.epicPullForwardMenu(detail)        // → { keys, title, display, rendered } — Postponed Topics pick menu over the topics this epic postponed that still wait, each row naming its horizon; the key carries the roadmap item's own name
-engine.project.epicUnblockMenu(detail)            // → { keys, title, display, rendered } — Blocked Plans unblock menu, one row per blocking dependency (`dep` on the key)
 engine.project.discussionMap(topic, manifest)     // → Discussion Map display block
 engine.project.startOverview(detail)              // → Workflow Overview display block
 engine.project.startMenu(detail)                  // → { keys, rendered } — continue entries + start/lifecycle options

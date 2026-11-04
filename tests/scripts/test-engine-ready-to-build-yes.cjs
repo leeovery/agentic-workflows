@@ -7,7 +7,8 @@
 // marks while the page is open and none written while it is not (11.S22,
 // 11.S25, 11.S26), a failed commit retried in the unit's scope; no build
 // before it — no phase started, no planning or implementation topic started
-// (11.S13) — and no postpone after it (18.4.19); and `engine workunit
+// (11.S13) — no postpone after it (18.4.19), and its `next` a handoff into
+// the build (24.S4); and `engine workunit
 // position <unit> auto|step`, the switch logged as a `position-switch` event
 // while the first pick is not (3.3.6, 3.3.7, E14). Every refusal writes and
 // commits nothing.
@@ -31,11 +32,11 @@ const dir = useReadyWorld(closed);
 const { refused, yes, events, publish, readBack } = readyHelpers(dir);
 
 describe('the yes (11.8.1, 11.8.6, E11)', () => {
-  it('begins the build in the position picked, its manifest holding it as `build`, committed alone, with no review written where no page is open, and hands to the epic\'s menu (11.S22, E7)', () => {
+  it('begins the build in the position picked, its manifest holding it as `build`, committed alone, with no review written where no page is open, and hands off into the build (11.S22, 24.S4)', () => {
     const before = head(dir());
     const answer = yes(['--position', 'auto']);
 
-    assert.deepStrictEqual(answer, { ok: true, unit: UNIT, position: 'auto', record: null, committed: stateGit(dir(), ['rev-parse', '--short', 'HEAD']).trim(), next: { kind: 'handoff', skill: 'leeway-continue-epic', args: [UNIT] } });
+    assert.deepStrictEqual(answer, { ok: true, unit: UNIT, position: 'auto', record: null, committed: stateGit(dir(), ['rev-parse', '--short', 'HEAD']).trim(), next: { kind: 'handoff', skill: 'leeway-implementation-process', args: ['epic', UNIT] } });
     assert.deepStrictEqual(readManifest(dir(), UNIT).build, { position: 'auto' });
     assert.deepStrictEqual([lastMessage(dir()), touched(statePath(dir()), 'HEAD'), stateGit(dir(), ['rev-parse', 'HEAD~1']).trim()], [`ready-to-build(${UNIT}): auto`, [`M\t${layout.manifest(UNIT)}`], before]);
     assert.ok(!fs.existsSync(statePath(dir(), layout.unit(UNIT, 'spec-review.json'))));
