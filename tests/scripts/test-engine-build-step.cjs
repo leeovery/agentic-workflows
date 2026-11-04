@@ -6,8 +6,8 @@
 // than one goes on — an answer freeing one while another went on, or two
 // left running in auto — the one in flight the one that went back in flight
 // first, by when each was last freed (task-parks.cjs): an answer to its
-// question, a merge or a move of it, a replacement or a keep of the decision
-// it would replace. The others are held behind it in the answer's receipt
+// question, a replacement or a keep of the decision it would replace, or a
+// merge or a move of it in lines a clone's merge lays. The others are held behind it in the answer's receipt
 // (questions.cjs), their gate (build-screens.cjs) and their briefs
 // (brief.cjs), and after a /clear in the build's entry, its recovery note
 // and its progress (build-entry.cjs); once its turn comes, `task ready`

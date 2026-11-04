@@ -734,6 +734,18 @@ describe('its answer through its raise alone (12.13.5, 12.13.16, 16.4.7, 5.3.10)
     );
   });
 
+  for (const unit of [UNIT, MINT]) {
+    it(`while a replacement proposed in ${unit} waits on fumi's decision, ledger merge naming that decision its duplicate is refused, naming its raise, writing nothing`, () => {
+      const small = write('decide', BUILD, ['--answers', made.size], { ...MADE, text: 'A small note.', why: 'Light.' }).id;
+      parked(1, '2.4', { unit, question: null, replaces: full(made.frameless), reason: 'was-wrong', call: FRAMED });
+
+      assert.strictEqual(
+        shifted(made.frame, 'merge', ['--into', small, '--duplicate', made.frameless]),
+        `ledger merge: Q1 of ${unit} waits on the person about this, parking task 2.4 — the person answers it through the raise alone: raise draw ${unit} Q1`,
+      );
+    });
+  }
+
   it('a question that waits no longer, answered through its raise, moves to another topic and to the roadmap as later, and merges', () => {
     const [moved, later, merged] = ['Is a note a window?', 'Is a note a panel?', 'Is a note a sheet?'].map((text) => write('ask', TOPIC, [], { ...MADE, text }).id);
     for (const [number, question] of [moved, later, merged].entries()) parked(number + 1, `2.${number + 3}`, { question: full(question) });

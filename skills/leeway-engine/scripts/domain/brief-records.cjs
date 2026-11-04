@@ -428,7 +428,7 @@ const {
 const { resolveId } = require('./ledger-ids.cjs');
 const { manifestOf, liveTopics } = require('./ledger-units.cjs');
 const { topicLog } = require('./topic-log.cjs');
-const { dismissedNames, topicTitle } = require('./derivations.cjs');
+const { dismissedNames, topicTitle, cutPhases } = require('./derivations.cjs');
 const {
   UNIT_PHASE, dispatchedRows, gapReviewSince, bindQuestion, bindSpec, closeUnbriefed, refusedReports,
 } = require('./agent-state.cjs');
@@ -473,7 +473,7 @@ const { cachedSurvivors } = require('./verify.cjs');
 const { accountPath, accountOwed, landingStage, reviewOverWay } = require('./task-account.cjs');
 const { directiveOf } = require('./directives.cjs');
 const {
-  TESTS, TESTS_LETTER, roundRefusal, readsWords, areaReportPath, unitCalls,
+  TESTS, TESTS_LETTER, roundRefusal, readsWords, areaReportPath, unitCalls, fixPhase,
 } = require('./review-phase.cjs');
 const { reviewHeld } = require('./review-entry.cjs');
 const { reading, reposOf } = require('./phase-checks.cjs');
@@ -1427,7 +1427,7 @@ function phaseOf({ unit, phase, phases }) {
 }
 
 /** The unit's cut, its phases in build order. @param {Filling} filling @returns {CutPhase[]} */
-const cutOf = (filling) => unitManifest(filling).cut.phases;
+const cutOf = (filling) => /** @type {CutPhase[]} */ (cutPhases(unitManifest(filling)));
 
 /** A task as a list draws it: its number, its title and where it stands. @param {TaskDetail} task */
 const taskLine = ({ ref, title, status }) => `- ${shownTask(ref)} ${title}, ${STATUS_WORDS[status]}`;
@@ -1811,7 +1811,7 @@ function areaNamed(filling, warnings) {
 /** The whole change, read once a fill (review-change.cjs). */
 const changeHeld = oncePerFill(/** @param {Filling} filling @param {string[]} warnings */ (filling, warnings) => {
   const { rounds } = reviewOf(filling, warnings);
-  return changeOf(filling.cwd, unitOf(filling), cutOf(filling).length + rounds.length, filling.given.base ?? null, reposOf(reviewReading(filling, warnings)));
+  return changeOf(filling.cwd, unitOf(filling), fixPhase(unitManifest(filling), rounds.length), filling.given.base ?? null, reposOf(reviewReading(filling, warnings)));
 });
 
 /** @param {Filling} filling @param {string[]} warnings */

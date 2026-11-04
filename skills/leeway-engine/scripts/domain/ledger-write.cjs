@@ -32,9 +32,10 @@
 //   number the raise's to mint there. A task closed in the build is taken off
 //   its questions by an `unparked` line naming the parks it is taken off,
 //   landed the same way (task-parks.cjs). While a question waits in the
-//   build, `decide` on it, `move` and `merge` of it, and `replace` of the
-//   decision it would replace are refused under the lock, naming its raise:
-//   the person answers it there alone (questions.cjs).
+//   build, `decide` on it, `move` and `merge` of it, `replace` of the
+//   decision it would replace, and a merge naming that decision its
+//   duplicate are refused under the lock, naming its raise: the person
+//   answers it there alone (questions.cjs).
 // - What: the content comes as one JSON object on stdin, the links as flags,
 //   and the task an entry is made for, `--task {phase}.{n}`, a flag taken
 //   at the build's places alone (12.12.5), its entry's `task` null
@@ -365,16 +366,18 @@ function linksUnchecked() {}
 
 /**
  * A decision on, a move or a merge of, or a replacement of, what a question
- * waiting in the build is about, refused in the words of `said`: the person
- * answers it through its raise alone (questions.cjs).
+ * waiting in the build is about — a merge's duplicate among them, which sets
+ * aside the decision a replacement waiting would replace — refused in the
+ * words of `said`: the person answers it through its raise alone
+ * (questions.cjs).
  * @param {string} said
  * @returns {LinksCheck}
  */
 function unparked(said) {
-  return ({ answers, question, replaces }, read) => checkUnparked(read, {
-    answers: oneId(answers ?? question),
-    replaces: oneId(replaces),
-  }, said);
+  return ({ answers, question, replaces, duplicate }, read) => {
+    checkUnparked(read, { answers: oneId(answers ?? question), replaces: oneId(replaces) }, said);
+    if (typeof duplicate === 'string') checkUnparked(read, { replaces: duplicate }, said);
+  };
 }
 
 /** A link naming one entry, or null. @param {string|string[]|null|undefined} linked */
@@ -417,7 +420,7 @@ const WRITES = Object.freeze({
   ], { checkLinked: checkDuplicate }),
 });
 
-/** The writes that would end a question's wait in the build, which its raise alone may. */
+/** The writes refused while a question waits in the build on what they name: its raise alone answers it. */
 const ANSWERING = new Set([WRITES.decide, WRITES.replace, WRITES.move, WRITES.merge]);
 
 /**
