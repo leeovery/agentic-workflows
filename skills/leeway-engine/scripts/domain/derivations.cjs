@@ -723,8 +723,10 @@ function computeInProgressPhases(manifest, pipeline, specWritten = false) {
  * between the last topic completion and `workunit complete`). But a reopened
  * earlier phase means the unit is mid-revisit, not finalising: the phase in
  * flight is the next action, and completing the unit now would abandon the
- * revisit. The one derivation both the start dashboard and the single-topic
- * work-unit detail read, so the two can never disagree.
+ * revisit. A unit waiting on the migration's cut is never finalising: it
+ * offers no way on but the migration (P12). The one derivation both the start
+ * dashboard and the single-topic work-unit detail read, so the two can never
+ * disagree.
  * @param {object} manifest
  * @param {string[]} pipeline  the work type's pipeline phases, in order
  * @param {boolean} [specWritten]  the unit's spec is written (phaseStatus)
@@ -742,7 +744,7 @@ function computeUnitPhaseState(manifest, pipeline, specWritten = false) {
   return {
     next_phase: nextPhase,
     phase_label: phaseLabel,
-    finalising: nextPhase === 'done',
+    finalising: nextPhase === 'done' && !awaitsCut(manifest),
     in_progress_phases: inProgress,
   };
 }

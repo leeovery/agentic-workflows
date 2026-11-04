@@ -304,28 +304,11 @@ function validateSet(segments, value, fieldSegments = segments) {
       return;
     }
 
-    // Staging task decisions (field staging.<cycle>.tasks.<n>)
-    if (fieldSegments[0] === 'staging' && fieldSegments.length >= 2
-        && fieldSegments[fieldSegments.length - 2] === 'tasks') {
-      if (typeof value !== 'string' || !['pending', 'approved', 'skipped', 'rejected'].includes(value)) {
-        fail(`Invalid staging task status ${JSON.stringify(value)}. Must be one of: pending, approved, skipped, rejected`);
-      }
-      return;
-    }
-
     // Analysis candidate gate state (field analysis_staging.<analysis>.candidates.<name>.…)
     if (fieldSegments[0] === 'analysis_staging' && fieldSegments.length >= 2) {
       const leaf = fieldSegments[fieldSegments.length - 1];
       if (leaf === 'status' && (typeof value !== 'string' || !['pending', 'approved', 'skipped', 'resolved'].includes(value))) {
         fail(`Invalid candidate status ${JSON.stringify(value)}. Must be one of: pending, approved, skipped, resolved`);
-      }
-      return;
-    }
-
-    // Tracking-file completion state (field tracking.<stem>)
-    if (fieldSegments[0] === 'tracking' && fieldSegments.length === 2) {
-      if (typeof value !== 'string' || !['in-progress', 'complete'].includes(value)) {
-        fail(`Invalid tracking status ${JSON.stringify(value)}. Must be one of: in-progress, complete`);
       }
       return;
     }
@@ -370,7 +353,7 @@ function refuseShadowField(phase, topic, fieldSegments) {
 // Vocabulary-guarded state containers take leaf writes only — a wholesale
 // set could land any shape unvalidated. Delete clears them; apply/set write
 // their leaves.
-const GUARDED_CONTAINERS = ['staging', 'tracking', 'analysis_staging', 'experiments'];
+const GUARDED_CONTAINERS = ['analysis_staging', 'experiments'];
 
 /** @param {string[]} fieldSegments */
 function refuseContainerWrite(fieldSegments) {
@@ -603,8 +586,8 @@ function deleteByPath(obj, segments) {
 
 /**
  * JSON first (arrays, objects, numbers, booleans), string fallback. A bare
- * `~` is null (YAML convention), matching `task complete --next-task '~'` —
- * one sentinel spelling across the whole surface.
+ * `~` is null (YAML convention), one sentinel spelling across the whole
+ * surface.
  * @param {string} raw
  */
 function parseValue(raw) {

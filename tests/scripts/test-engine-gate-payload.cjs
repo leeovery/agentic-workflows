@@ -172,9 +172,9 @@ describe('gate payload — a render surface', () => {
 
   it('a display-only surface carries no gate', () => {
     seedInvestigation(dir);
-    const out = output(dir, ['render', 'phase-paused', 'auth', '--phase', 'discussion'], { env: ANNOUNCED });
+    const out = output(dir, ['render', 'phase-completed', 'auth', '--phase', 'investigation'], { env: ANNOUNCED });
 
-    assert.match(out, /^=== DISPLAY: phase paused/);
+    assert.match(out, /^=== DISPLAY: phase completed/);
     assert.strictEqual(gateOf(out), null);
   });
 
@@ -221,7 +221,7 @@ describe('gate payload — a render surface', () => {
     seedInvestigation(dir);
     const first = output(dir, CANCEL, { env: ANNOUNCED });
     output(dir, ['render', 'conclude-gate', 'auth.investigation.auth'], { env: ANNOUNCED });
-    output(dir, ['render', 'phase-paused', 'auth', '--phase', 'discussion'], { env: ANNOUNCED });
+    output(dir, ['render', 'phase-completed', 'auth', '--phase', 'investigation'], { env: ANNOUNCED });
     const last = output(dir, CANCEL, { env: ANNOUNCED });
 
     assert.deepStrictEqual(gateOf(last), gateOf(first));

@@ -115,14 +115,5 @@ describe('pipeline simulation: bugfix', () => {
     // Past its spec the investigation is not reopened: a change is settled
     // in the spec.
     sim.refuses(['topic', 'reopen', wu, 'investigation', wu], /^crash-fix has its spec — a topic exists only before it/);
-
-    sim.run(['workunit', 'complete', wu, '-m', `workflow(${wu}): pipeline complete`]);
-    assert.strictEqual(sim.manifest(wu).status, 'completed');
-    // Completed, the unit takes no message and opens no topic, each refusal
-    // naming the way on, the message's scratch kept.
-    sim.write('.leeway/.cache/scratch/late-message.md', 'A late thought\n');
-    sim.refuses(['topic', 'send', wu, wu, '--from', wu, '--content', '.leeway/.cache/scratch/late-message.md', '--slug', 'late-thought'], /^crash-fix is completed — new work starts from the start menu$/);
-    assert.ok(fs.existsSync(path.join(sim.dir, '.leeway/.cache/scratch/late-message.md')), 'the refused send keeps its scratch');
-    sim.refuses(['handoff', 'topic', wu, wu], /^crash-fix is completed — new work starts from the start menu$/);
   });
 });

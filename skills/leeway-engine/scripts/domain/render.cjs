@@ -10,9 +10,8 @@
 // gated and auto output.
 //
 // Surfaces read; they never write a state commit takes, and write three
-// things beside. `code-gate`'s empty path beats the addressed topic, because
-// claiming the code slot and reading it are the same act: the read that
-// finds the slot free is what takes it. `map` moves the last-looked mark as
+// things beside. `phase-note` beats the addressed topic, since announcing a
+// phase's start is the session taking it. `map` moves the last-looked mark as
 // it draws, since the map shown in the conversation is the person looking
 // (5.8.14). `decided --file` stages Claude's payload in the topic's cache,
 // what the gate's yes lands (decided.cjs); `start-this-work --file` and
@@ -39,8 +38,7 @@ const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { readMetadata } = require('../kernel/knowledge/store.cjs');
 const { ENGINE_COMMAND, messageOf } = require('../kernel/call.cjs');
 const { githubSquashNested } = require('./github-setup.cjs');
-const { heldCodeSessions, beatQuietly, CODE_PHASES } = require('./presence.cjs');
-const { codeGate: drawCodeGate } = require('./projections/enter.cjs');
+const { beatQuietly } = require('./presence.cjs');
 const { roadmapState, hasRoadmapNode, validateKind, markedKind, planRoadmapBatch, DEFAULT_KIND } = require('./roadmap.cjs');
 const {
   roadmapMapView,
@@ -50,11 +48,10 @@ const {
 } = require('./projections/roadmap.cjs');
 const { revisitPhasesSection } = require('./projections/workunit.cjs');
 const { experimentRegister, experimentApprovalGate, experimentPick, experimentNextGate, experimentSpawnGate } = require('./projections/experiment.cjs');
-const { phasePaused, owedWaits } = require('./projections/wait.cjs');
-const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, WAITING_PHASES, TOPIC_PHASES } = require('../kernel/manifest-schema.cjs');
+const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, TOPIC_PHASES } = require('../kernel/manifest-schema.cjs');
 const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, phaseTargets } = require('./workunit-detail.cjs');
 const {
-  phaseItems, computeNextPhase, computeTopicLifecycle, awaitedExperiments, waits, itemOf,
+  computeNextPhase, computeTopicLifecycle, awaitedExperiments, itemOf,
   UNIT_PHASES, liveUnitItems, discoveryUnitExists, cancelPlan,
   postponePlan, postponeTarget, postponedItem, openExperiments, mailboxFiles,
   topicTitle, topicTitles, titled, itemTitle, goesBy, dismissedNames, topicKey, noTopicRefusal, briefFile, buildByCut,
@@ -1406,30 +1403,6 @@ function phaseCompleted(cwd, { dotpath, phase, paths }) {
 }
 
 /**
- * The epic menu's paused banner — `phase-completed`'s sibling for a phase
- * leaving on a pause. Derived, never told: the phase's in-progress items
- * still awaiting something, each named with what it awaits. A peer can land
- * what was awaited between the pause and the banner, so no holder left
- * renders the bare line rather than refusing.
- * @param {string} cwd
- * @param {{dotpath: string, phase?: string}} args
- * @returns {string}
- */
-function phasePausedSurface(cwd, { dotpath, phase }) {
-  const { workUnit, manifest } = resolveWorkUnit(cwd, dotpath, 'phase-paused');
-  if (!isFilled(phase)) throw new Error('render phase-paused: --phase is required');
-  if (!WAITING_PHASES.includes(phase)) {
-    throw new Error(`render phase-paused: --phase must be <${WAITING_PHASES.join('|')}> — the phases that pause; got "${phase}"`);
-  }
-  const titles = topicTitles(manifest);
-  const holders = phaseItems(manifest, phase)
-    .filter((item) => item.status === 'in-progress')
-    .map((item) => ({ topic: item.name, title: itemTitle(titles, phase, item.name), owed: owedWaits(waits(manifest, phase, item.name)) }))
-    .filter((holder) => holder.owed !== '');
-  return phasePaused(phase, workUnit, holders);
-}
-
-/**
  * The one stop between a completed phase and the next: every way forward
  * offered together — continue; complete without review, on the review hop
  * alone, of a unit not built by its cut; revisit an earlier phase, where one
@@ -1641,8 +1614,8 @@ function postponeGate(cwd, { dotpath, horizon }) {
 // phase-note — the one-line status notes a phase's start renders (Resuming /
 // Starting / Reopening …). Address-backed; the verb is the caller's word, the
 // noun defaults to the phase segment. Only ever rendered where a phase
-// starts, for its own topic, so it beats the addressed topic — the code-gate
-// precedent: claiming the slot is the same act as announcing the start.
+// starts, for its own topic, so it beats the addressed topic: announcing
+// the start is the same act as claiming it.
 // ---------------------------------------------------------------------------
 
 /**
@@ -1693,50 +1666,6 @@ function formatVersionCheck(cwd, { file }) {
     section('DISPLAY: version blocker', emitAs('properties'), blocker),
     section('DISPLAY: version guidance', emitAs('markdown', STOP_CLAUSE), guidance),
   ].join('\n');
-}
-
-// ---------------------------------------------------------------------------
-// code-gate — the one-code-session rule at the entry chokepoint. Everything
-// else in the system partitions by topic; the tree and the index do not, so
-// a second implementation or review session anywhere in the checkout writes
-// the same files as the first. The gate states who holds the slot and lets
-// the user through anyway — the machine can verify that a process still
-// runs, never that its session still matters. An empty response means the
-// slot is free, and taking it is the same act as reading it: the empty path
-// beats the addressed topic, so the slot is held from entry rather than from
-// the session's first code commit.
-// ---------------------------------------------------------------------------
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string}} args
- * @returns {string} the gate's sections, or '' when no other session holds code
- */
-function codeGate(cwd, { dotpath }) {
-  const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'code-gate');
-  if (!CODE_PHASES.includes(phase)) {
-    throw new Error(`render code-gate: the code rule covers ${CODE_PHASES.join('|')} only, got "${phase}"`);
-  }
-  // The empty path beats this address, and a beat is silent on a name it
-  // cannot write — so a malformed topic would claim nothing while rendering a
-  // free slot. The item itself may not exist yet (a fresh entry gates before
-  // it initialises anything); the name must still be a name.
-  if (/[\\/]/.test(topic) || topic.includes('..')) {
-    throw new Error(`render code-gate: invalid topic name "${topic}" — no separators or ".."`);
-  }
-  const holders = heldCodeSessions(cwd);
-  if (holders.length === 0) {
-    // The slot is free, and this session is taking it. This check is the
-    // chokepoint every route into a code phase passes through, so it is the
-    // session's first structurally self-referential act on its own topic —
-    // and the beat here is what closes the window between entering the phase
-    // and the first code commit, during which a second session would read
-    // the slot as free. A session's own rows never gate it, so a re-render
-    // stays empty and simply refreshes the hold.
-    beatQuietly(cwd, workUnit, phase, topic);
-    return '';
-  }
-  return drawCodeGate(holders);
 }
 
 // ---------------------------------------------------------------------------
@@ -2477,10 +2406,8 @@ const SURFACES = {
   'scoping-questions': scopingQuestions,
   'complexity-gate': complexityGate,
   'phase-completed': phaseCompleted,
-  'phase-paused': phasePausedSurface,
   'phase-note': phaseNote,
   'format-version-check': formatVersionCheck,
-  'code-gate': codeGate,
   'next-phase-gate': nextPhaseGate,
   'cancel-gate': cancelGate,
   'postpone-gate': postponeGate,

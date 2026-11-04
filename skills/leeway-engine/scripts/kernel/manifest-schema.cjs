@@ -168,13 +168,8 @@ function isImportOrigin(origin) {
 // spawning discussion's own item, `awaiting_experiments`.
 const EXPERIMENT_SPAWN_PHASES = ['discussion'];
 
-// Every phase whose conclusion leaves on a pause rather than a conclusion
-// while it waits on an experiment: the paused banner and the handoff into
-// the epic menu address these and no others.
-const WAITING_PHASES = [...EXPERIMENT_SPAWN_PHASES];
-
-// A walk's gate mode (`staging.<key>.gate_mode`,
-// `analysis_staging.<name>.gate_mode`): `auto` runs the walk to its end.
+// A walk's gate mode (`analysis_staging.<name>.gate_mode`): `auto` runs the
+// walk to its end.
 const VALID_GATE_MODES = ['gated', 'auto'];
 
 const VALID_WORK_UNIT_STATUSES = ['in-progress', 'completed', 'cancelled'];
@@ -254,7 +249,6 @@ module.exports = {
   IMPORT_PHASES,
   isImportOrigin,
   EXPERIMENT_SPAWN_PHASES,
-  WAITING_PHASES,
   VALID_GATE_MODES,
   VALID_WORK_UNIT_STATUSES,
   BUILD_POSITIONS,

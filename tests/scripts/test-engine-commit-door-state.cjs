@@ -275,13 +275,13 @@ describe('engine commit --state: the analysis scopes', () => {
   });
 
   it('the global form takes .leeway/.state and nothing else', () => {
-    writeState(dir, layout.projectState('environment-setup.md'), '# Environment\n');
+    writeState(dir, layout.migrations, '062\n');
     writeState(dir, layout.doc('payments', 'investigation', 'topic-b'), '# Topic B\npeer session dirt\n');
     writeState(dir, layout.manifest('payments'), JSON.stringify(epicManifest(), null, 2) + '\n\n');
 
-    const res = ok(dir, ['commit', '--state', '-m', 'chore: record environment setup']);
+    const res = ok(dir, ['commit', '--state', '-m', 'chore: record the migrations run']);
 
-    assert.deepStrictEqual(headFiles(dir), [layout.projectState('environment-setup.md')]);
+    assert.deepStrictEqual(headFiles(dir), [layout.migrations]);
     assert.match(res.committed, /^[0-9a-f]+$/);
     assert.deepStrictEqual(
       statusLines(dir).sort(),

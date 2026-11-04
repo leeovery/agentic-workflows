@@ -45,12 +45,12 @@ const {
 const { recordGateShown } = require(path.join(SCRIPTS, 'domain/gate.cjs'));
 const { readTrustLog } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 const { renderSurface } = require(path.join(SCRIPTS, 'domain/render.cjs'));
+const { codeGate } = require(path.join(SCRIPTS, 'domain/projections/enter.cjs'));
 const { announced } = require('./gate-audit.cjs');
 
 // A Claude Code session's id.
 const SESSION = 'c0ffee00-1234-4abc-8def-0123456789ab';
 const ANNOUNCED = { LEEWAY_GATE_SURFACE: '1' };
-const CODE_GATE = ['code-gate', 'pay.implementation.pay'];
 const CODE_QUESTION = 'Proceed anyway?';
 
 const config = useTempFolder('gate-config-');
@@ -60,11 +60,7 @@ let dir;
 
 before(() => {
   dir = setupFixture('gate-');
-  createManifest(dir, 'pay', { phases: { implementation: { items: { pay: { status: 'in-progress' } } } } });
-  createManifest(dir, 'ship', {});
-  const hold = statePath(dir, layout.cache('ship', 'implementation', 'checkout-flow', 'presence'));
-  fs.mkdirSync(path.dirname(hold), { recursive: true });
-  fs.writeFileSync(hold, JSON.stringify({ pid: 1, pid_start: null, session_id: 'peer', checkout: dir }) + '\n');
+  createManifest(dir, 'pay', {});
 });
 
 after(() => cleanupFixture(dir));
@@ -124,6 +120,22 @@ function showMenu(declared, rows, env = {}) {
     });
     recordGateShown();
     return payloads;
+  });
+}
+
+/**
+ * The code gate (12.7.8) shown the conversation as the build's entry draws
+ * it, a peer implementing ship's checkout flow — `env` over the command's
+ * environment.
+ * @param {Record<string, string|undefined>} [env]
+ */
+function showCodeGate(env = {}) {
+  inConversation(() => {
+    withEnv(env, () => {
+      openGate();
+      codeGate([{ work_unit: 'ship', phase: 'implementation', topic: 'checkout-flow', age_seconds: 60 }]);
+    });
+    recordGateShown();
   });
 }
 
@@ -272,7 +284,7 @@ describe('the gate shown (3.S6)', () => {
 
 describe('gate (6.6, 6.S18)', () => {
   it('a row picked over the one the engine recommended: the trust log gains the gate\'s name, the recommended row and the row picked, typed', () => {
-    render(CODE_GATE);
+    showCodeGate();
 
     assert.deepStrictEqual(answer(['code gate', '--pick', 'y']), {
       ok: true, gate: 'code gate', picked: 'y', recommended: 'b', via: 'typed', next: null,
@@ -284,7 +296,7 @@ describe('gate (6.6, 6.S18)', () => {
   });
 
   it('with both mods running, the row the person pressed is logged pressed, though the rows mod spent the send\'s record as the row entered the transcript', () => {
-    render(CODE_GATE, ANNOUNCED);
+    showCodeGate(ANNOUNCED);
     fs.writeFileSync(inFolder('sent.json'), JSON.stringify({ answer: 'yes', question: CODE_QUESTION, label: 'Enter anyway' }));
     pressed(1000);
     fs.writeFileSync(inFolder('sent.json'), 'null');
@@ -302,7 +314,7 @@ describe('gate (6.6, 6.S18)', () => {
       ['before the gate was shown', () => pressed(-1000)],
     ];
     for (const [what, press] of typed) {
-      render(CODE_GATE, ANNOUNCED);
+      showCodeGate(ANNOUNCED);
       press();
       assert.strictEqual(answer(['code gate', '--pick', 'y'], ANNOUNCED).via, 'typed', what);
     }
@@ -310,7 +322,7 @@ describe('gate (6.6, 6.S18)', () => {
   });
 
   it('with the mod off, the answer is still logged — typed, even where a press names it', () => {
-    render(CODE_GATE);
+    showCodeGate();
     pressed(1000);
 
     assert.strictEqual(answer(['code gate', '--pick', 'y']).via, 'typed');
@@ -337,7 +349,7 @@ describe('gate (6.6, 6.S18)', () => {
   });
 
   it('free text naming no row: logged as free text, its reading left to the separate call, leading nowhere', () => {
-    render(CODE_GATE, ANNOUNCED);
+    showCodeGate(ANNOUNCED);
 
     assert.deepStrictEqual(answer(['code gate', '--typed'], ANNOUNCED), {
       ok: true, gate: 'code gate', picked: null, recommended: 'b', via: 'typed', next: null,
@@ -346,24 +358,24 @@ describe('gate (6.6, 6.S18)', () => {
   });
 
   it('the answer is marked on the gate shown, and a gate answered takes no second answer until it is shown again', () => {
-    render(CODE_GATE);
+    showCodeGate();
     answer(['code gate', '--pick', 'y']);
     const { answered } = shown();
 
     assert.deepStrictEqual({ ...answered, at: typeof answered.at }, { at: 'string', picked: 'y', via: 'typed' });
     assert.strictEqual(refused(['code gate', '--pick', 'b']), 'gate: "code gate" is answered — render it again to answer it again');
     assert.strictEqual(events().length, 1);
-    render(CODE_GATE);
+    showCodeGate();
     assert.strictEqual(answer(['code gate', '--pick', 'b']).picked, 'b');
     assert.strictEqual(events().length, 2);
   });
 
   it('a rerun after a kill between the log and the mark logs the same event again under the same id, read once (16.13.3); the gate shown again is a new event', () => {
-    render(CODE_GATE);
+    showCodeGate();
     answer(['code gate', '--pick', 'y']);
     fs.writeFileSync(inFolder('gate-shown.json'), JSON.stringify({ ...shown(), answered: null }));
     answer(['code gate', '--pick', 'y']);
-    render(CODE_GATE);
+    showCodeGate();
     answer(['code gate', '--pick', 'b']);
 
     const [first, again, next] = events().map((event) => event.id);
@@ -408,7 +420,7 @@ describe('gate (6.6, 6.S18)', () => {
 
 describe('gate — refusals, logging nothing', () => {
   it('with no session id: there is no conversation to answer in', () => {
-    render(CODE_GATE);
+    showCodeGate();
     const record = shown();
 
     assert.match(refused(['code gate', '--pick', 'y'], { CLAUDE_CODE_SESSION_ID: undefined }), /^gate: no conversation to answer in/);
@@ -504,7 +516,7 @@ describe('the mod\'s record of a press, as `gate` reads it', () => {
   });
 
   it('a send that failed leaves over its press the record `gate` reads as no press', () => {
-    render(CODE_GATE, ANNOUNCED);
+    showCodeGate(ANNOUNCED);
     pressed(1000);
     press(literal(REGISTER, 'NOTHING_SENT'));
 

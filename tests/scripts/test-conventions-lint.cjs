@@ -1745,7 +1745,7 @@ test('check 10 (attribution) — catches missing/wrong attribution, skips output
     const sharedForm = write(dir, 'skills/x/references/d.md', '# D\n\n*Shared reference for all workflow skills.*\n');
     assert.strictEqual(checkAttribution([refForm, sharedForm]).length, 0, 'sanctioned forms must pass');
 
-    const of = write(dir, 'skills/leeway-planning-process/references/output-formats/tick/reading.md', '# Reading\n\n## Listing Tasks\n');
+    const of = write(dir, 'skills/leeway-scoping-process/references/output-formats/x/reading.md', '# Reading\n\n## Listing Tasks\n');
     assert.strictEqual(checkAttribution([of]).length, 0, 'output-format adapters must be exempt');
   });
 });
@@ -2114,7 +2114,7 @@ test('check 23 (a question at a gate sets it aside) — catches a question branc
       'Answer it. The exchange sets the gate aside; once it looks settled, ask in conversation whether they are ready to move on, and on yes put it back — re-fetch the gate and emit its MENU section verbatim per its marker:',
       '',
       '```bash',
-      'engine render executor-block-gate x.implementation.x',
+      'engine render finish x',
       '```',
       '',
       '#### If the user asks a question',

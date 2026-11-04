@@ -17,7 +17,7 @@ const assert = require('node:assert');
 const { output, refuses } = require('./engine-harness.cjs');
 const { setupFixture, cleanupFixture, createManifest, createFile, readManifest, writeState, layout } = require('./discovery-test-utils.cjs');
 const { auditMarkers } = require('./gate-audit.cjs');
-const { VALID_WORK_TYPES, WORK_TYPE_PIPELINES, WAITING_PHASES } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
+const { VALID_WORK_TYPES, WORK_TYPE_PIPELINES } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
 const { HANDOFF_TARGETS } = require('../../skills/leeway-engine/scripts/domain/handoff.cjs');
 
 const ANNOUNCED = { LEEWAY_HANDOFF: '1' };
@@ -25,9 +25,6 @@ const ANNOUNCED = { LEEWAY_HANDOFF: '1' };
 const DATA_MARKER = '=== DATA (reason from this — never display or parse the sections below) ===';
 const DISPLAY_MARKER = '=== DISPLAY: handoff (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===';
 const HANDOFF_MARKER = '=== HANDOFF (json for the gate mod — never display) ===';
-
-// Every phase an epic's conclusion can name: its discovery, then its pipeline.
-const EPIC_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
 
 // The skill each phase runs in — the one a handoff into the phase lands on.
 /** @type {Record<string, string>} */
@@ -151,7 +148,7 @@ describe('engine handoff — the composed answer for every target', () => {
       inlineAnswer('leeway-continue-epic', 'fumi', '→ Epic · fumi'));
     assert.strictEqual(inline(dir, ['leeway-continue-epic', 'fumi', 'discovery', 'completed']),
       inlineAnswer('leeway-continue-epic', 'fumi discovery completed', '→ Epic · fumi'));
-    for (const outcome of ['completed', 'paused', 'cancelled', 'postponed']) {
+    for (const outcome of ['completed', 'cancelled', 'postponed']) {
       assert.strictEqual(payloadOf(carried(dir, ['leeway-continue-epic', 'fumi', 'discussion', outcome])).args,
         `fumi discussion ${outcome}`);
     }
@@ -161,13 +158,6 @@ describe('engine handoff — the composed answer for every target', () => {
     createManifest(dir, 'done-epic', { work_type: 'epic', status: 'completed' });
     assert.strictEqual(inline(dir, ['leeway-continue-epic', 'done-epic', 'review', 'completed']),
       inlineAnswer('leeway-continue-epic', 'done-epic review completed', '→ Epic · done-epic'));
-  });
-
-  it('the epic menu takes a pause from every phase its paused banner names', () => {
-    for (const phase of WAITING_PHASES) {
-      assert.strictEqual(payloadOf(carried(dir, ['leeway-continue-epic', 'fumi', phase, 'paused'])).args,
-        `fumi ${phase} paused`);
-    }
   });
 
   it('discovery into an existing epic takes the work type epic or none, and no seeds', () => {
@@ -378,7 +368,7 @@ describe('engine handoff — refusals', () => {
       [['leeway-roadmap', 'open', 'extra'], /^Usage: engine handoff leeway-roadmap open$/],
       [['leeway-continue-epic'], /^Usage: engine handoff leeway-continue-epic <epic> \[<completed-phase> <outcome>\]$/],
       [['leeway-continue-epic', 'fumi', 'discussion'], /^Usage: engine handoff leeway-continue-epic /],
-      [['leeway-continue-epic', 'fumi', 'discussion', 'paused', 'extra'], /^Usage: engine handoff leeway-continue-epic /],
+      [['leeway-continue-epic', 'fumi', 'discussion', 'completed', 'extra'], /^Usage: engine handoff leeway-continue-epic /],
       [['leeway-discussion-process', 'feature'], /^Usage: engine handoff leeway-discussion-process <epic\|feature\|cross-cutting> <work-unit> \[<topic>\]$/],
       [['leeway-scoping-process', 'quick-fix', 'a', 'b', 'c'], /^Usage: engine handoff leeway-scoping-process <quick-fix> <work-unit> \[<topic>\]$/],
     ];
@@ -430,7 +420,7 @@ describe('engine handoff — refusals', () => {
     refused(dir, ['leeway-continue-epic', 'note-window'], /^work unit "note-window" is of type feature, not epic$/);
     refused(dir, ['leeway-continue-epic', 'none'], /^work unit "none" not found$/);
     refused(dir, ['leeway-continue-epic', 'fumi', 'investigation', 'completed'], /^the phase must be one of discovery\|experiment\|discussion\|specification\|implementation\|review — got "investigation"$/);
-    refused(dir, ['leeway-continue-epic', 'fumi', 'discussion', 'abandoned'], /^the outcome must be one of completed\|paused\|cancelled\|postponed — got "abandoned"$/);
+    refused(dir, ['leeway-continue-epic', 'fumi', 'discussion', 'abandoned'], /^the outcome must be one of completed\|cancelled\|postponed — got "abandoned"$/);
   });
 
   it('the epic menu refuses a completed epic but where finish hands it its review completed, and a completed feature however handed', () => {
@@ -443,11 +433,8 @@ describe('engine handoff — refusals', () => {
     refused(dir, ['leeway-continue-epic', 'done-feature', 'review', 'completed'], /^work unit "done-feature" is of type feature, not epic$/);
   });
 
-  it('the epic menu refuses a pause from a phase its paused banner cannot name', () => {
-    for (const phase of EPIC_PHASES.filter((p) => !WAITING_PHASES.includes(p))) {
-      refused(dir, ['leeway-continue-epic', 'fumi', phase, 'paused'],
-        new RegExp(`^the phase that paused must be discussion — got "${phase}"$`));
-    }
+  it('the epic menu refuses a pause: no phase leaves on one', () => {
+    refused(dir, ['leeway-continue-epic', 'fumi', 'discussion', 'paused'], /^the outcome must be one of completed\|cancelled\|postponed — got "paused"$/);
   });
 
   it('every epic phase entered at a topic refuses the epic alone — the epic menu names the topic before it hands off', () => {

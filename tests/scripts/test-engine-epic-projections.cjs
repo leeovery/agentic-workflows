@@ -780,7 +780,7 @@ describe('epic projections: presence join', () => {
     const { keys } = epicMenu('v1', d, { presence: [heldRow] });
     const gate = epicInSessionGate('v1', keys.find((k) => k.in_session), {});
     assert.match(gate, /second concurrent session on the same discussion/, 'the doc consequence is the only one left');
-    assert.doesNotMatch(gate, /Code phases run one at a time/, 'the code wording belongs to the code-gate surface');
+    assert.doesNotMatch(gate, /Code phases run one at a time/, 'the code wording belongs to the code gate the build\'s entry draws');
   });
 
   it('the dashboard cues held map rows on their ↳ state lines, with the session\'s last-active age', () => {

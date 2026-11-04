@@ -21,64 +21,6 @@ const path = require('path');
 const { DOTS, CONTINUE_CLAUSE } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
 const { renderSurface, NB, setup, teardown, writeManifest, writePayload } = require('./render-surfaces-world.cjs');
 
-describe('phase-paused — the epic menu\'s banner for a phase leaving on a pause', () => {
-  let dir;
-  beforeEach(() => { dir = setup(); });
-  afterEach(() => { teardown(dir); });
-
-  const HEADER = '=== DISPLAY: phase paused (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===';
-
-  it('a linear unit names what its one conversation awaits, the topic name dropped — the unit is the topic', () => {
-    writeManifest(dir, 'ledger', {
-      work_type: 'feature',
-      phases: {
-        discussion: { items: { ledger: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
-      },
-    });
-    assert.strictEqual(renderSurface(dir, 'phase-paused', { dotpath: 'ledger', phase: 'discussion' }),
-      `${HEADER}\nDiscussion paused for "Ledger" — awaiting experiment evidence (E1).\n`);
-  });
-
-  it('an epic names each paused conversation with its waits', () => {
-    writeManifest(dir, 'pay', {
-      phases: {
-        discussion: {
-          items: {
-            billing: { status: 'in-progress', awaiting_experiments: ['E1', 'E2'] },
-            auth: { status: 'in-progress', awaiting_experiments: ['E1'] },
-            done: { status: 'completed', awaiting_experiments: ['E9'] },
-          },
-        },
-      },
-    });
-    assert.strictEqual(renderSurface(dir, 'phase-paused', { dotpath: 'pay', phase: 'discussion' }),
-      `${HEADER}\nDiscussion paused for "Pay" — "Billing" awaits experiment evidence (E1, E2); "Auth" awaits experiment evidence (E1).\n`,
-      'only in-progress holders are paused conversations — a completed item\'s stale field is never a wait');
-  });
-
-  it('nothing left awaited renders the bare line — a peer landed the wait between the gate and the banner', () => {
-    writeManifest(dir, 'pay', {
-      work_type: 'feature',
-      phases: {
-        discussion: { items: { pay: { status: 'in-progress' } } },
-      },
-    });
-    assert.strictEqual(renderSurface(dir, 'phase-paused', { dotpath: 'pay', phase: 'discussion' }),
-      `${HEADER}\nDiscussion paused for "Pay".\n`);
-  });
-
-  it('is loud on a missing phase, a phase that never pauses, a dotted address, and an unknown unit', () => {
-    writeManifest(dir, 'pay', { phases: { discussion: { items: { pay: { status: 'in-progress' } } } } });
-    assert.throws(() => renderSurface(dir, 'phase-paused', { dotpath: 'pay' }), /--phase is required/);
-    for (const phase of ['research', 'specification', 'planning', 'implementation']) {
-      assert.throws(() => renderSurface(dir, 'phase-paused', { dotpath: 'pay', phase }),
-        new RegExp(`--phase must be <discussion> — the phases that pause; got "${phase}"`));
-    }
-    assert.throws(() => renderSurface(dir, 'phase-paused', { dotpath: 'pay.discussion.pay', phase: 'discussion' }), /must be a bare <work_unit>/);
-    assert.throws(() => renderSurface(dir, 'phase-paused', { dotpath: 'nope', phase: 'discussion' }), /work unit "nope" not found/);
-  });
-});
-
 describe('render inbox-content and the archived item receipts', () => {
   let dir;
   beforeEach(() => { dir = setup(); });

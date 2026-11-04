@@ -772,8 +772,8 @@ function epicMenu(workUnit, detail, opts = {}) {
  * gate that displays it. Never blocks: the machine can verify that a process
  * still runs, never that its session still matters, so the gate states the
  * fact, names the consequence and the release, and lets the user decide. Document phases only — a code entry's
- * hold is the checkout's one slot, and the `code-gate` surface at the entry
- * skill owns that conversation, so the user meets one gate per attempt.
+ * hold is the checkout's one slot, and the code gate the build's entry
+ * draws owns that conversation, so the user meets one gate per attempt.
  * @param {string} workUnit  this epic — the holder of the topic this entry would open
  * @param {MenuKey} entry
  * @param {Record<string, string>} titles  the epic's topic titles (EpicDetail's `titles`)

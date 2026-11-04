@@ -292,9 +292,9 @@ function emptyMenu(detail) {
   if (roadmapRow) options.push(roadmapRow);
   options.push(
     { key: 's', word: 'start', action: 'start_new', pre_seed: 'none', route: null, label: "Not sure what kind yet — describe it and we'll shape it" },
-    { key: 'f', word: 'feature', action: 'start_new', pre_seed: 'feature', route: null, label: 'Single topic: discussion → spec → plan → implement → review' },
-    { key: 'e', word: 'epic', action: 'start_new', pre_seed: 'epic', route: null, label: 'Multiple topics, multi-session, same pipeline per topic' },
-    { key: 'b', word: 'bugfix', action: 'start_new', pre_seed: 'bugfix', route: null, label: 'Investigation → spec → plan → implement → review' },
+    { key: 'f', word: 'feature', action: 'start_new', pre_seed: 'feature', route: null, label: 'Single topic: discussion → spec → build → review' },
+    { key: 'e', word: 'epic', action: 'start_new', pre_seed: 'epic', route: null, label: 'Multiple topics, multi-session: each discussed, then one spec → build → review' },
+    { key: 'b', word: 'bugfix', action: 'start_new', pre_seed: 'bugfix', route: null, label: 'Investigation → spec → build → review' },
     { key: 'q', word: 'quick-fix', action: 'start_new', pre_seed: 'quick-fix', route: null, label: 'Scoping → implement → review (no formal planning)' },
     { key: 'c', word: 'cross-cutting', action: 'start_new', pre_seed: 'cross-cutting', route: null, label: 'Discussion → spec (patterns or policies that inform other work)' },
   );

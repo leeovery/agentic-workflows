@@ -44,18 +44,18 @@ describe('leeway-continue-linear discovery', () => {
     assert.strictEqual(activeWorkUnit(dir, 'ghost'), null);
   });
 
-  it('surfaces a finished pipeline still in-progress as finalising, whatever the type', () => {
-    for (const [type, phases] of /** @type {[string, string[]][]} */ ([
-      ['feature', ['discussion', 'specification', 'planning', 'implementation', 'review']],
-      ['bugfix', ['investigation', 'specification', 'planning', 'implementation', 'review']],
-      ['quick-fix', ['scoping', 'implementation', 'review']],
-      ['cross-cutting', ['discussion', 'specification']],
+  it('surfaces a finished pipeline still in-progress as finalising — a quick-fix\'s or a cross-cutting unit\'s, never one built under the old plan (P12)', () => {
+    for (const [type, phases, finalising] of /** @type {[string, string[], boolean][]} */ ([
+      ['feature', ['discussion', 'specification', 'planning', 'implementation', 'review'], false],
+      ['bugfix', ['investigation', 'specification', 'planning', 'implementation', 'review'], false],
+      ['quick-fix', ['scoping', 'implementation', 'review'], true],
+      ['cross-cutting', ['discussion', 'specification'], true],
     ])) {
       const name = `done-${type}`;
       createManifest(dir, name, { work_type: type, phases: items(name, phases, 'completed') });
       const { unit } = activeWorkUnit(dir, name);
       assert.strictEqual(unit.next_phase, 'done', type);
-      assert.strictEqual(unit.finalising, true, type);
+      assert.strictEqual(unit.finalising, finalising, type);
       assert.strictEqual(unit.phase_label, 'pipeline complete', type);
     }
   });

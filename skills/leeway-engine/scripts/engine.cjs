@@ -368,10 +368,8 @@ ${REVIEW_USAGE.replace(/^/gm, '  ')}
   render scoping-questions <wu> --open <what,where,why,exclusions>
   render complexity-gate  <wu> --file <payload.json>
   render phase-completed   <wu> --phase <phase> [--paths]
-  render phase-paused      <wu> --phase discussion
   render phase-note        <wu.phase.topic> --verb <Word> [--noun <word>]
   render format-version-check --file <payload.json>
-  render code-gate         <wu.phase.topic>          (implementation|review — empty when the code slot is free)
   render next-phase-gate   <wu> --prev <phase> --next <phase>  (empty when continuing is the only way forward)
   render cancel-gate       <wu.discovery.name>
   render postpone-gate     <wu.discovery.topic> --horizon "<horizon>"
@@ -2116,7 +2114,7 @@ function runCommit(call, argv) {
     }
     /** @type {string|string[]} */ let scope;
     if (globalState) {
-      // `.state` — migrations, environment setup: project-level bookkeeping
+      // `.state` — the migrations ledger: project-level bookkeeping
       // written from inside whatever session happened to need it.
       scope = '.state';
     } else if (workflows) {

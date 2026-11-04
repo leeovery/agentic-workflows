@@ -83,19 +83,10 @@ describe('pipeline simulation: feature', () => {
     // records — the topic's, and the unit's own, which holds the line.
     assert.deepStrictEqual(sim.engine(['knowledge', 'check']), { stdout: 'ready\n', stderr: '', code: 0 });
     assert.match(sim.engine(['knowledge', 'status']).stdout, /^By phase:\n {2}record: 3\n\n/m);
-    // A hop short of review carries no skip row, and the decided discussion
-    // behind it is no revisit — it reopens by a message — so the hop asks
-    // nothing.
-    sim.render(['next-phase-gate', wu, '--prev', 'discussion', '--next', 'specification'], { expect: 'empty' });
     // The spec, entered at the unit, lands citing what was decided, is
-    // reviewed and cut into phases; ready to build's pick begins the build.
+    // reviewed and cut into phases; ready to build's pick begins the build,
+    // which the build and review sims carry on.
     specToBuild(sim, wu, [wu]);
-
-    const done = sim.run(['workunit', 'complete', wu, '-m', `workflow(${wu}): pipeline complete`]);
-    assert.strictEqual(done.status, 'completed');
-    assert.strictEqual(sim.manifest(wu).status, 'completed');
-    assert.match(sim.render(['workunit-receipt', wu, '--verb', 'complete', '--pipeline'], { expect: 'content' }),
-      /Feature Completed/, 'pipeline completion renders the banner receipt');
   });
 
   it('start: a working set of inbox ideas hands discovery its seeds, which start this work lands', () => {

@@ -291,7 +291,7 @@ class Sim {
     return res.stdout.trim();
   }
 
-  /** Render surface: must exit 0 (an entry-gate that passes renders empty). */
+  /** Render surface: must exit 0 (a surface with nothing to show renders empty). */
   render(args, { expect, identity = null } = {}) {
     const res = this.engine(['render', ...args], identity);
     assert.strictEqual(res.code, 0,
@@ -497,16 +497,15 @@ function bridgeTo(sim, wu, phase) {
   handoff(sim, /** @type {string} */ (dump.match(/^next_route: (.*)$/m)?.[1]));
 }
 
-// An epic phase's conclusion, pause or in-session exit hands off to the epic
-// menu, which labels the work unit and leads with the banner for what just
-// concluded or paused — none after a cancel or a postpone, whose receipt was
-// the session's. Answers the banner rendered, empty when none is.
+// An epic phase's conclusion or in-session exit hands off to the epic menu,
+// which labels the work unit and leads with the banner for what just
+// concluded — none after a cancel or a postpone, whose receipt was the
+// session's. Answers the banner rendered, empty when none is.
 /** @param {Sim} sim @param {string} wu @param {string} phase @param {string} [outcome] @returns {string} */
 function arriveAtEpicMenu(sim, wu, phase, outcome = 'completed') {
   handoff(sim, `/leeway-continue-epic ${wu} ${phase} ${outcome}`);
   arrive(sim, wu);
-  const banner = { completed: 'phase-completed', paused: 'phase-paused' }[outcome];
-  return banner ? sim.render([banner, wu, '--phase', phase], { expect: 'content' }) : '';
+  return outcome === 'completed' ? sim.render(['phase-completed', wu, '--phase', phase], { expect: 'content' }) : '';
 }
 
 // A discussion leaving its topic — a pause, a postpone, a cancel or a

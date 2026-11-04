@@ -4,7 +4,7 @@
 // The pipeline simulation's concurrent sessions on one checkout, interleaved:
 // an investigation and a discussion whose commits stay confined, the
 // discussion's log riding along with every state commit; the code slot
-// taken at its entry and freed as its conversation ends; a dead peer's
+// taken at the build's entry and freed as its conversation ends; a dead peer's
 // leavings swept; and the terminal clear that frees a finished topic's slot.
 //
 // Layer: simulation. World: the project every scenario starts from
@@ -23,7 +23,7 @@ const { spawnSync } = require('child_process');
 const ROOT = path.join(__dirname, '../..');
 const { git, stateGit } = require('./engine-harness.cjs');
 const { STATE_DIR_NAME } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
-const { Sim, mappedEpic, handoff, decideTopic, sessionLog } = require('./pipeline-world.cjs');
+const { Sim, mappedEpic, decideTopic, discussed, specToBuild, sessionLog } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: concurrency', () => {
   let sim;
@@ -45,10 +45,14 @@ describe('pipeline simulation: concurrency', () => {
   it('concurrent sessions: interleaved commits stay confined, the code slot holds, a dead peer is swept', () => {
     const wu = 'relay';
     const bug = 'replay-crash';
+    const built = 'dispatch';
 
     // --- the work the sessions inherit -------------------------------------
-    mappedEpic(sim, wu, ['ranking', 'metrics', 'dispatch']);
+    mappedEpic(sim, wu, ['ranking', 'metrics']);
     sim.run(['workunit', 'create', bug, 'bugfix', '--description', 'Replay crashes', '--session-log-file', sessionLog(sim, bug)]);
+    sim.run(['workunit', 'create', built, 'feature', '--description', 'Dispatch events', '--session-log-file', sessionLog(sim, built)]);
+    discussed(sim, built, built);
+    specToBuild(sim, built, [built]);
     sim.run(['commit', wu, '-m', `workflow(${wu}): set the board`]);
 
     // The setup ran as one session: its entries and starts beat and its
@@ -152,24 +156,24 @@ describe('pipeline simulation: concurrency', () => {
       `the deferral section rides the scan the dispatch prose reads it from: ${sim.sections}`);
 
     // --- the code slot ------------------------------------------------------
-    // The slot is taken at the entry chokepoint, not at the first commit:
-    // reading a free slot is how a code session claims it, so the window
-    // between entering the phase and writing anything is not a window.
-    const codeSlot = path.join(sim.dir, '.leeway/.cache', wu, 'implementation/dispatch/presence');
+    // The slot is taken at the build's entry, not at the first commit: the
+    // entry that finds it free claims it, so the window between entering the
+    // phase and writing anything is not a window.
+    const codeSlot = path.join(sim.dir, '.leeway/.cache', built, 'implementation', built, 'presence');
     assert.ok(!fs.existsSync(codeSlot), 'nobody holds the code slot before anyone enters');
-    codeSession.render(['code-gate', `${wu}.implementation.dispatch`], { expect: 'empty' });
+    assert.strictEqual(codeSession.run(['enter', 'implementation', built]).entered, true);
     assert.strictEqual(JSON.parse(fs.readFileSync(codeSlot, 'utf8')).session_id, 'code-session',
-      "the code gate's read is the claim");
+      "the entry is the claim");
 
     // A second code entrant — a different session, a different pid — is
-    // gated; the holder reading the same surface is not gated against itself.
-    const gate = secondCoder.render(['code-gate', `${wu}.review.dispatch`], { expect: 'content' });
-    assert.match(gate, /Another session is implementing "Dispatch" \(relay\)/,
+    // gated; the holder entering again is not gated against itself.
+    assert.strictEqual(secondCoder.run(['enter', 'implementation', built]).entered, false);
+    assert.match(sim.sections, /Another session is implementing "Dispatch" \(dispatch\)/,
       'the gate names who holds the slot, where, and for how long');
-    assert.match(gate, /Code phases run one at a time/);
-    // Backing out of the gate on an epic hands the work to the epic menu.
-    handoff(sim, `/leeway-continue-epic ${wu}`);
-    codeSession.render(['code-gate', `${wu}.implementation.dispatch`], { expect: 'empty' });
+    assert.match(sim.sections, /Code phases run one at a time/);
+    // Backing out of the gate on a feature leaves the build to that session.
+    assert.deepStrictEqual(secondCoder.run(['gate', 'code gate', '--pick', 'b']).next, { kind: 'continue' });
+    assert.strictEqual(codeSession.run(['enter', 'implementation', built]).entered, true);
 
     // --- a document session commits while the code session holds ------------
     // The doc commit never takes code dirt: each half of the checkout is the
@@ -187,7 +191,7 @@ describe('pipeline simulation: concurrency', () => {
     const holding = sim.run(['presence', 'scan']);
     assert.strictEqual(holding.held, 3, 'two document sessions and one code session hold');
     assert.strictEqual(sim.run(['presence', 'scan', wu]).held_sources, 1, 'a held code session defers no analysis either');
-    assert.strictEqual(rowOf(holding, 'implementation', 'dispatch').session_id, 'code-session');
+    assert.strictEqual(rowOf(holding, 'implementation', built).session_id, 'code-session');
 
     // --- the dead peer's leavings ------------------------------------------
     // A discussion session died mid-write: its log is uncommitted and its
@@ -239,7 +243,7 @@ describe('pipeline simulation: concurrency', () => {
     // The code session's conversation ends, and the session-end sweep frees
     // the checkout's one code slot with it, not when the process dies.
     codeSession.run(['presence', 'cleanup', 'code-session']);
-    assert.strictEqual(rowOf(sim.run(['presence', 'scan', wu]), 'implementation', 'dispatch'), undefined,
+    assert.strictEqual(rowOf(sim.run(['presence', 'scan', built]), 'implementation', built), undefined,
       'the conversation\'s end released the slot');
     assert.strictEqual(
       require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/presence.cjs')).heldCodeSessions(sim.dir).length, 0,

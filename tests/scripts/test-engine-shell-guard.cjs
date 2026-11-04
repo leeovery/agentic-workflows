@@ -219,7 +219,7 @@ describe('ordinary commands pass silently, writing nothing', () => {
       `cat <<EOF > notes.md\necho '{}' >> ${ledger}\nEOF`,
       `echo "- tried the form" >> ${inState(layout.topic(UNIT, UNIT, 'log.md'))} && sed -i '' s/draft/final/ ${spec} && cp draft.md ${spec}`,
       `echo '{}' > manifest.json && sed -i '' s/a/b/ ${layout.manifest(UNIT)} && echo '{}' >> ${layout.ledger} && rm -f ${path.join(os.tmpdir(), 'manifest.json')}`,
-      'node .claude/skills/leeway-engine/scripts/engine.cjs commit --paths src/card.js -m "Take the card" --for pay implementation/pay',
+      'node .claude/skills/leeway-engine/scripts/engine.cjs commit --paths src/card.js --task pay 1.1 -m "Take the card"',
       'npm test -- --grep "git commit"',
       `ls ${conversation} && cat ${path.join(conversation, 'position.json')}`,
       'cat "$LEEWAY_CONFIG_DIR/trust.jsonl" "$(dirname "$X")/briefs/b1.md"',

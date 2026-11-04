@@ -4,7 +4,7 @@
 
 ---
 
-What the menu leads with: the banner for a phase that just concluded or paused.
+What the menu leads with: the banner for a phase that just concluded.
 
 #### If `outcome` is `completed`
 
@@ -12,16 +12,6 @@ Render and emit the section verbatim per its marker:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs render phase-completed {work_unit} --phase {completed_phase}
-```
-
-→ Return to caller.
-
-#### If `outcome` is `paused`
-
-The phase left on a wait — the banner names what it awaits, never a completion. Render and emit the section verbatim per its marker:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render phase-paused {work_unit} --phase {completed_phase}
 ```
 
 → Return to caller.

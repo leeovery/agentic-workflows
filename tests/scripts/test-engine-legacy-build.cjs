@@ -7,9 +7,10 @@
 // start menu's rows and the board's tabs with them — and every way into its
 // work is closed until 29.17's migration cuts it: the bridge routes it
 // nowhere and revisits nothing, the linear and epic menus show the
-// migration's line and the way back alone, the epic's completed topics are
-// its decided discussions, the next-phase gate offers no revisit and the
-// revisit list refuses it. This file goes with the migration.
+// migration's line and the way back alone, the start menu never offers to
+// finalise it nor manage to mark it done, the epic's completed topics are
+// its decided discussions, and the revisit list refuses it. This file goes
+// with the migration.
 //
 // Layer: verb. World: the project world (setupFixture), eight old-shape
 // units written once by hand — no verb writes a shape the design has left.
@@ -20,7 +21,8 @@ require('./hermetic-env.cjs');
 const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert');
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
-const { call, output } = require('./engine-harness.cjs');
+const { manageDetail } = require('../../skills/leeway-engine/scripts/domain/workunit-manage.cjs');
+const { call } = require('./engine-harness.cjs');
 const { phaseStatus, computeNextPhase } = require('../../skills/leeway-engine/scripts/domain/derivations.cjs');
 const { loadManifest } = require('../../skills/leeway-engine/scripts/domain/reads.cjs');
 const { WORK_TYPE_PIPELINES } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
@@ -85,11 +87,12 @@ describe('a unit built under the old plan reads its items and waits on the migra
     assert.deepStrictEqual(dumps, Object.fromEntries(LIVE.map((name) => [name, ['revisitable_phases: (none)', 'next_route: (none)', 'revisit_routes: (none)']])));
   });
 
-  it('the linear menu shows the migration\'s line and the way back alone, its tree drawn from its items', () => {
+  it('the linear menu shows the migration\'s line and the way back alone, its tree drawn from its items, nothing finalising', () => {
     for (const name of LIVE) {
       const view = linear.view(dir, name);
       assert.deepStrictEqual(lines(view, /^  ([a-z]|[0-9])  /), [`  b  back  back  ${name}  → (internal)`], name);
       assert.ok(view.includes(`· · · · · · · · · · · ·\n${waiting(name)}\n\n**\`◆ What next?\`**\n\n**\`b/back\`** → Return to the start menu`), name);
+      assert.ok(view.includes('\nfinalising: false\n') && !view.includes('ready to finalise'), name);
     }
     assert.deepStrictEqual(lines(linear.view(dir, 'old-bugfix'), /^  [├└]─ /), [
       '  ├─ ✓ Investigation     [completed]',
@@ -108,7 +111,7 @@ describe('a unit built under the old plan reads its items and waits on the migra
       [['1', 'discussion', 'alpha'], ['2', 'discussion', 'beta'], ['b', null, null]]);
   });
 
-  it('the start menu reads its next phase off its items, and a closed one its last', () => {
+  it('the start menu reads its next phase off its items, never offering to finalise it, and a closed one its last', () => {
     const menu = start.discover(dir);
     assert.deepStrictEqual({
       units: ['epics', 'features', 'bugfixes'].flatMap((group) => menu[group].work_units.map((u) => `${u.name}: ${u.phase_label}${u.finalising ? ', finalising' : ''}`)),
@@ -118,7 +121,7 @@ describe('a unit built under the old plan reads its items and waits on the migra
         'old-epic: implementation (in-progress)',
         'built-feature: ready for review',
         'plan-feature: planning (in-progress)',
-        'reviewed-feature: pipeline complete, finalising',
+        'reviewed-feature: pipeline complete',
         'reviewing-feature: review (in-progress)',
         'old-bugfix: ready for review',
       ],
@@ -126,12 +129,8 @@ describe('a unit built under the old plan reads its items and waits on the migra
     });
   });
 
-  it('the next-phase gate offers it no revisit, and the revisit list refuses it', () => {
-    assert.deepStrictEqual(lines(output(dir, ['render', 'next-phase-gate', 'built-feature', '--prev', 'implementation', '--next', 'review']), /^\*\*`/), [
-      '**`◆ Proceed to review?`**',
-      '**`y/yes`**  → Proceed to review',
-      '**`d/done`** → Complete without review',
-    ]);
+  it('manage offers it no done, and the revisit list refuses it', () => {
+    assert.deepStrictEqual(LIVE.filter((name) => manageDetail(dir, name).implementation_completed), []);
     assert.strictEqual(JSON.parse(call(dir, ['render', 'revisit-phases', 'built-feature']).stderr).error,
       'render revisit-phases: "built-feature" has no completed earlier phase to revisit');
   });

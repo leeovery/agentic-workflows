@@ -8,8 +8,7 @@
 // the question is the whole answer: the held-topic gate, worded as the epic
 // menu's in-session gate words it (18.4.21) — the one home of that wording.
 // Where another session holds the checkout's code, it is the code gate
-// (12.7.8), which `render code-gate` draws too — the one home of its
-// wording, each row's way on the entry's alone.
+// (12.7.8), each row's way on the entry's alone.
 // ---------------------------------------------------------------------------
 
 const { section, dataSection, menu, menuFrame, cmdOption, emitAs, MENU_INSTRUCTION } = require('./surfaces.cjs');

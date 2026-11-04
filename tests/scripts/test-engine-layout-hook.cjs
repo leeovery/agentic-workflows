@@ -195,6 +195,12 @@ describe('the layout, held (6.2.1, 6.2.3)', () => {
     }
   });
 
+  it('a stray file in the review phase\'s folder is outside the layout — no place there takes a name a round\'s reports are not', () => {
+    for (const rel of [layout.unit('pay', 'review', 'round-1', 'stray.md'), layout.unit('pay', 'review', 'auth', 'report.md')]) {
+      assertRefused(guard(dir, path.join(root, rel)), rel, outsideReason(rel));
+    }
+  });
+
   it('a place named in another case is that place where the filesystem ignores case, and a path the layout has no place for where it keeps it', () => {
     const rel = layout.unit('PAY', 'Topics', 'auth', 'LOG.md');
     const res = guard(dir, path.join(root, rel));

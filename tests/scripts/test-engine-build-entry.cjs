@@ -24,11 +24,9 @@
 // the tracker, the checklists and the landing hold it, and the build
 // finished only once every phase of the cut has closed, so nothing ready
 // with a phase not yet written never reads finished (7.4.3, 12.6.7, 12.S16,
-// 3.S3). The code gate's wording is render code-gate's
-// (test-engine-render-surfaces.cjs); a phase's checklists,
-// test-engine-build-checklists-*.cjs's; a task at its step gate,
-// test-engine-build-gates-standing.cjs's; the review's fix phases in the
-// standing, test-engine-review-fix-phases.cjs's.
+// 3.S3). A phase's checklists are test-engine-build-checklists-*.cjs's; a
+// task at its step gate, test-engine-build-gates-standing.cjs's; the
+// review's fix phases in the standing, test-engine-review-fix-phases.cjs's.
 //
 // Layer: verb. World, built once and copied: the ledger suites' epic,
 // `fumi`, its build begun in auto, its cut three phases — Cards and Reports

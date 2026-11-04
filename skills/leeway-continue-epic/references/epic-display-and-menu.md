@@ -97,7 +97,7 @@ node .claude/skills/leeway-continue-epic/scripts/gateway.cjs in-session-gate {wo
 
 → Proceed to **C. Route Selection**.
 
-**Otherwise:**
+**If the selected entry carries no `(in session: …)` marker:**
 
 → Proceed to **C. Route Selection**.
 

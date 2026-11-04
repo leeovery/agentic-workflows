@@ -179,7 +179,7 @@ function inSessionGate(workUnit, key) {
     return engine.gateway.dataBlock({ work_unit: workUnit, error: `entry "${key}" is not held by another session — no gate to render` });
   }
   if (entry.code_session) {
-    return engine.gateway.dataBlock({ work_unit: workUnit, error: `entry "${key}" is a code phase — the code slot is gated where the phase starts (render code-gate), never here` });
+    return engine.gateway.dataBlock({ work_unit: workUnit, error: `entry "${key}" is a code phase — the code slot is gated where the build is entered (enter implementation|review), never here` });
   }
   return engine.project.epicInSessionGate(workUnit, entry, d.titles);
 }

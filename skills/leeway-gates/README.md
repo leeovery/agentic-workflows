@@ -131,7 +131,7 @@ line and the skill stay. As the turn ends the mod clears the conversation and,
 in the conversation that follows, leaves what it sends with the line as
 `sent.json` in that conversation's folder, then sends the continuation, which
 Claude acts on there, and shows a toast naming where the work went
-(`Handed off → Planning · auth-flow`) for eight seconds. The clear runs from
+(`Handed off → Specification · auth-flow`) for eight seconds. The clear runs from
 a timer started at the turn's end, whatever else there fails: a mod cannot run
 a command inside a hook the turn waits on. A send that is dropped or fails
 goes into the prompt box for Enter instead; where the box will not take it
@@ -183,7 +183,7 @@ conversation's folder (`position.json`). The drawing alone changes, never what
 Claude reads. The mod reads the position once for each conversation the
 spinner draws in, and again after each engine call that moves it (`enter`,
 `session label`, `session repair`, `boot`, `task start`, `task done`, `task
-close`, `task complete`), never per frame. At a work unit's menu or the start
+close`), never per frame. At a work unit's menu or the start
 menu it keeps Claude Code's word, and on the Desktop app a step that names
 itself (`Creating notes.md`) keeps its words.
 

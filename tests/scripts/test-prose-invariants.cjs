@@ -567,7 +567,7 @@ describe('dispatches — what a held dispatch carried', () => {
     tool_use_id: id, tool_name: 'Agent', tool_input: { subagent_type: agent, description: 'd', prompt },
   });
   const run = (records, dispatches) => invariants.check([], { dispatches }, records)[0];
-  const FLOOR = '.claude/skills/leeway-implementation-process/references/finding-floor.md';
+  const FLOOR = '.claude/skills/leeway-implementation-process/references/the-task-loop.md';
 
   it('passes a dispatch that carried every declared input', () => {
     const result = run([call('input-review', 'Source: .workflows/pay/discussion/pay.md\nCycle: 1')],
@@ -593,12 +593,12 @@ describe('dispatches — what a held dispatch carried', () => {
   });
 
   it('holds carries for every dispatch of the agent unless nth picks one', () => {
-    const records = [call('reviewer', 'cycle 1', 't1'), call('reviewer', 'cycle 2, settled: review-traceability-tracking-c1.md', 't2')];
-    const every = run(records, [{ agent: 'reviewer', carries: ['review-traceability-tracking-c1.md'] }]);
+    const records = [call('reviewer', 'cycle 1', 't1'), call('reviewer', 'cycle 2, settled: round-1-a.md', 't2')];
+    const every = run(records, [{ agent: 'reviewer', carries: ['round-1-a.md'] }]);
     assert.equal(every.ok, false);
     assert.match(every.detail, /reviewer #1 does not carry/);
-    assert.equal(run(records, [{ agent: 'reviewer', nth: 2, carries: ['review-traceability-tracking-c1.md'] }]).ok, true);
-    assert.equal(run(records, [{ agent: 'reviewer', nth: 1, lacks: ['review-traceability-tracking-c1.md'] }]).ok, true);
+    assert.equal(run(records, [{ agent: 'reviewer', nth: 2, carries: ['round-1-a.md'] }]).ok, true);
+    assert.equal(run(records, [{ agent: 'reviewer', nth: 1, lacks: ['round-1-a.md'] }]).ok, true);
   });
 
   it('fails an nth past the dispatches made', () => {
@@ -631,14 +631,14 @@ describe('dispatches — what a held dispatch carried', () => {
   });
 
   it('matches an agent by its subagent_type exactly', () => {
-    assert.equal(run([call('leeway-planning-review-traceability', 'x')], [{ agent: 'leeway-planning-review' }]).ok, false);
+    assert.equal(run([call('leeway-spec-reviewer', 'x')], [{ agent: 'leeway-spec' }]).ok, false);
   });
 });
 
 describe('dispatches — the sends that continued an agent', () => {
   // A held dispatch's id is its tool_use_id; a send continues the agent
   // whose dispatch was given the id it went to.
-  const EXECUTOR = 'leeway-implementation-task-executor';
+  const EXECUTOR = 'leeway-builder';
   const dispatched = (id, agent = EXECUTOR) => ({
     tool_use_id: id, tool_name: 'Agent', tool_input: { subagent_type: agent, description: 'd', prompt: 'task content' },
   });
@@ -654,7 +654,7 @@ describe('dispatches — the sends that continued an agent', () => {
       { agent: EXECUTOR, send: true, count: 1, carries: ['Next attempt'] },
     ]);
     assert.equal(result.ok, true, result.detail);
-    assert.match(result.detail, /sends to leeway-implementation-task-executor \(1 send\)/);
+    assert.match(result.detail, /sends to leeway-builder \(1 send\)/);
   });
 
   it('fails a retry made as a second fresh dispatch — it is no send', () => {
@@ -663,14 +663,14 @@ describe('dispatches — the sends that continued an agent', () => {
       { agent: EXECUTOR, send: true, count: 1 },
     ]);
     assert.equal(result.ok, false);
-    assert.match(result.detail, /leeway-implementation-task-executor was dispatched 2 times, not 1; leeway-implementation-task-executor was sent to 0 times, not 1/);
+    assert.match(result.detail, /leeway-builder was dispatched 2 times, not 1; leeway-builder was sent to 0 times, not 1/);
   });
 
   it('attributes a send to no agent when no dispatch was given the id it went to', () => {
     const records = [dispatched('toolu_d1'), sent('toolu_s1', EXECUTOR, 'Next attempt')];
     const result = run(records, [{ agent: EXECUTOR, send: true }]);
     assert.equal(result.ok, false);
-    assert.match(result.detail, /leeway-implementation-task-executor was never sent to/);
+    assert.match(result.detail, /leeway-builder was never sent to/);
   });
 
   it('attributes a send to the agent its target dispatch named, never another', () => {
@@ -687,10 +687,10 @@ describe('dispatches — the sends that continued an agent', () => {
     ];
     const every = run(records, [{ agent: EXECUTOR, send: true, carries: ['Next attempt'] }]);
     assert.equal(every.ok, false);
-    assert.match(every.detail, /send #2 to leeway-implementation-task-executor does not carry: Next attempt/);
+    assert.match(every.detail, /send #2 to leeway-builder does not carry: Next attempt/);
     assert.equal(run(records, [{ agent: EXECUTOR, send: true, nth: 1, carries: ['Next attempt'] }]).ok, true);
     const lacking = run(records, [{ agent: EXECUTOR, send: true, nth: 2, lacks: ['review notes'] }]);
-    assert.match(lacking.detail, /send #2 to leeway-implementation-task-executor carries what it must not: review notes/);
+    assert.match(lacking.detail, /send #2 to leeway-builder carries what it must not: review notes/);
     assert.match(run(records, [{ agent: EXECUTOR, send: true, nth: 3 }]).detail, /sent to 2 times — there is no send #3/);
   });
 
@@ -746,12 +746,12 @@ describe('calls_in_order — send: tokens', () => {
     { tool_use_id: 'toolu_d1', tool_name: 'Agent', tool_input: { subagent_type: 'executor', prompt: 'p' } },
     { tool_use_id: 'toolu_s1', tool_name: 'SendMessage', tool_input: { to: 'toolu_d1', message: 'm' } },
   ];
-  const GATE = `${ENGINE} render executor-block-gate pay.implementation.pay --result failed`;
+  const GATE = `${ENGINE} render validation-gate pay.investigation.pay`;
 
   it('orders the send continuing an agent against the calls around it', () => {
     const rows = [dispatchRow('executor', 'toolu_d1'), bash(GATE), sendRow('toolu_d1', 'toolu_s1')];
     const [result] = invariants.check(rows, {
-      calls_in_order: ['dispatch:executor', 'executor-block-gate', 'send:executor'],
+      calls_in_order: ['dispatch:executor', 'validation-gate', 'send:executor'],
     }, records);
     assert.equal(result.ok, true, result.detail);
   });
@@ -759,17 +759,17 @@ describe('calls_in_order — send: tokens', () => {
   it('never lets a fresh dispatch stand in for the send, nor a send for a dispatch', () => {
     const redispatched = [dispatchRow('executor', 'toolu_d1'), bash(GATE), dispatchRow('executor', 'toolu_d2')];
     const [result] = invariants.check(redispatched, {
-      calls_in_order: ['executor-block-gate', 'send:executor'],
+      calls_in_order: ['validation-gate', 'send:executor'],
     }, records);
     assert.equal(result.ok, false);
-    assert.match(result.detail, /"send:executor" never ran after "executor-block-gate"/);
+    assert.match(result.detail, /"send:executor" never ran after "validation-gate"/);
     const sentOnly = [bash(GATE), sendRow('toolu_d1', 'toolu_s1')];
-    assert.equal(invariants.check(sentOnly, { calls_in_order: ['executor-block-gate', 'dispatch:executor'] }, records)[0].ok, false);
+    assert.equal(invariants.check(sentOnly, { calls_in_order: ['validation-gate', 'dispatch:executor'] }, records)[0].ok, false);
   });
 
   it('matches no agent for a send to an id no dispatch was given', () => {
     const rows = [bash(GATE), sendRow('executor', 'toolu_s1')];
-    assert.equal(invariants.check(rows, { calls_in_order: ['executor-block-gate', 'send:executor'] }, records)[0].ok, false);
+    assert.equal(invariants.check(rows, { calls_in_order: ['validation-gate', 'send:executor'] }, records)[0].ok, false);
   });
 });
 

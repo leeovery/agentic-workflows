@@ -839,7 +839,7 @@ describe('leeway-continue-epic CLI dispatch', () => {
     const gate = run(['in-session-gate', 'v1', key]);
     assert.strictEqual(gate.status, 0, gate.stderr);
     assert.ok(!gate.stdout.includes('MENU: in-session gate'), `no gate section for a code entry:\n${gate.stdout}`);
-    assert.ok(gate.stdout.includes('the code slot is gated where the phase starts'), gate.stdout);
+    assert.ok(gate.stdout.includes('the code slot is gated where the build is entered (enter implementation|review)'), gate.stdout);
   });
 
   it('the caller\'s own hold marks nothing — a session never strikes through itself', () => {

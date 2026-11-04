@@ -30,8 +30,8 @@ Load **[framework.md](../leeway-shared/references/framework.md)** and follow its
 
 This skill receives positional arguments — one not given is unset, whatever an earlier skill in this conversation held under the same name:
 - `$0` — **work_unit**: the epic to continue. Held downstream as `{work_unit}`.
-- `$1` — **completed_phase** (optional): the phase that just concluded or paused, where the epic arrives from one. Held downstream as `{completed_phase}`.
-- `$2` — **outcome**: given with `$1` — `completed`, `paused`, `cancelled` or `postponed`. Held downstream as `{outcome}`.
+- `$1` — **completed_phase** (optional): the phase that just concluded, or whose topic left, where the epic arrives from one. Held downstream as `{completed_phase}`.
+- `$2` — **outcome**: given with `$1` — `completed`, `cancelled` or `postponed`. Held downstream as `{outcome}`.
 
 Run the scoped discovery for the epic and hold its output as **the most recent discovery output** — Steps 2–4 read `discovery_map`, `analysis_caches` and `needs_sequencing` from it; display and routing come from the `view` snapshot at Step 5:
 

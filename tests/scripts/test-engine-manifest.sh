@@ -570,37 +570,6 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: set rejects invalid gate modes${NC}"
-setup_fixture
-create_wu gate-check feature "Gate"
-assert_exit_code 1 "Invalid gate mode rejected" set gate-check.discussion.gate-check staging.c1.gate_mode manual
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: set accepts valid gate modes${NC}"
-setup_fixture
-create_wu gate-valid feature "Gate"
-run_cli set gate-valid.discussion.gate-valid staging.c1.gate_mode auto >/dev/null 2>&1
-output=$(run_cli_stdout get gate-valid.discussion.gate-valid staging.c1.gate_mode)
-
-assert_equals "$output" "auto" "Gate mode set to auto"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: set refuses a gate mode on a phase item, and a bound${NC}"
-setup_fixture
-create_wu gate-home feature "Gate"
-assert_exit_code 1 "a phase item carries no gate mode" set gate-home.discussion.gate-home finding_gate_mode auto
-assert_exit_code 1 "bounded refused on a walk's gate_mode" set gate-home.discussion.gate-home staging.c1.gate_mode bounded
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
 echo -e "${YELLOW}Test: set rejects invalid work_type${NC}"
 setup_fixture
 create_wu wt-check feature "WT"
@@ -1168,9 +1137,9 @@ echo -e "${YELLOW}Test: delete topic-level field for feature${NC}"
 setup_fixture
 create_wu del-feat feature "Delete feat"
 run_cli set del-feat.discussion.del-feat status in-progress >/dev/null 2>&1
-run_cli set del-feat.discussion.del-feat staging.c1.gate_mode auto >/dev/null 2>&1
-run_cli delete del-feat.discussion.del-feat staging >/dev/null 2>&1
-output=$(run_cli_stdout exists del-feat.discussion.del-feat staging)
+run_cli set del-feat.discussion.del-feat analysis_cache '{"checksum":"abc"}' >/dev/null 2>&1
+run_cli delete del-feat.discussion.del-feat analysis_cache >/dev/null 2>&1
+output=$(run_cli_stdout exists del-feat.discussion.del-feat analysis_cache)
 
 assert_equals "$output" "false" "Deleted topic-level field gone"
 

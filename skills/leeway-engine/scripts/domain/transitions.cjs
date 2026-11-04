@@ -276,8 +276,8 @@ function assertLegalTopicName(topic) {
  * clear it, and the series item has none. A phase a topic is in flags
  * nothing: the spec keeps no items, and a concluded spec is never corrected
  * (11.9.1). A `completed` item takes the flag (value = the upstream phase
- * name, consumed and cleared by the reconcile advisory where the phase
- * starts; an existing flag is never clobbered).
+ * name, shown as its input moved wherever the item is listed; an existing
+ * flag is never clobbered).
  *
  * Mutates the loaded manifest; the caller saves under its own lock.
  * @param {Record<string, any>} manifest

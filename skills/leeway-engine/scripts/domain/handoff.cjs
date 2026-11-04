@@ -27,7 +27,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { VALID_WORK_TYPES, WORK_TYPE_PIPELINES, EPIC_PHASES, WAITING_PHASES, NO_ARGUMENT, assertLegalName } = require('../kernel/manifest-schema.cjs');
+const { VALID_WORK_TYPES, WORK_TYPE_PIPELINES, EPIC_PHASES, NO_ARGUMENT, assertLegalName } = require('../kernel/manifest-schema.cjs');
 const { loadWorkUnitManifest, readProjectManifest } = require('../kernel/manifest.cjs');
 const { parseInboxPaths, ROADMAP_SEED } = require('./inbox.cjs');
 const { titlecase } = require('./conventions.cjs');
@@ -41,7 +41,7 @@ const HANDOFF_ENV = 'LEEWAY_HANDOFF';
 /** Discovery's way in for a piece of work of no kind yet. */
 const START = 'start';
 
-const OUTCOMES = ['completed', 'paused', 'cancelled', 'postponed'];
+const OUTCOMES = ['completed', 'cancelled', 'postponed'];
 
 // Every phase some work type's pipeline holds is entered by a handoff.
 const PIPELINE_PHASES = [...new Set(Object.values(WORK_TYPE_PIPELINES).flat())];
@@ -212,7 +212,6 @@ const TARGETS = {
       if (phase !== undefined) {
         assertOneOf('the phase', phase, EPIC_PHASES);
         assertOneOf('the outcome', outcome, OUTCOMES);
-        if (outcome === 'paused') assertOneOf('the phase that paused', phase, WAITING_PHASES);
       }
       if (phase === 'review' && outcome === 'completed' && finishedEpic(cwd, unit)) return;
       assertWorkUnit(cwd, unit, 'epic');
