@@ -278,6 +278,18 @@ slate has not started, lavender this view and every button — a section's
 heading with its rule and count, one line per item, its state at the right, a
 complete section folding to its heading.
 
+In the build, This session shows the build's progress, then what waits on you,
+each question with its `▸ discuss`, then the phases, each task on its line with
+its state at the right. A task opens its page: its standing, the evidence its
+runs gave, what it does, what it fixes, what was done and what differs from the
+task, its reviews and Claude's calls, each a press away, a scenario opening on
+what its run drove and checked and the evidence kept with the run. In the
+review phase it shows the round: each area's read, the fix tasks a failing
+round brought, what was found, the checks not proven, what went to the inbox
+and the verdict, finish waiting on you once the review is over. A line whose
+words carry a state, a standing or what waits on you wraps under its mark and
+is never cut at the edge; only a title gives way, with `…`.
+
 Both draw the board's model as `engine board <session-id>` answers it for where
 the person is on the pane (`--tab`, `--unit`, `--page`, `--page-unit`): read
 afresh after every engine call, the conversation's or a subagent's, without

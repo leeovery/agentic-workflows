@@ -24,21 +24,18 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { pathToFileURL } = require('url');
 const {
-  ok, refusedPristine, treeSnapshot, head, git, cleanupFixture, withEnv, readState, readManifest, layout, holdLock, lockAttempts, statePath,
+  ok, refusedPristine, treeSnapshot, head, git, cleanupFixture, withEnv, readState, writeState, readManifest, layout, holdLock, lockAttempts, statePath,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, QUESTIONS, taskText, buildScreensWorld, buildScreenHelpers } = require('./build-screens-world.cjs');
+const { fixture, misfits, shapeOf } = require('./board-fixture-shape.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { BOARD_VERSION } = require(path.join(SCRIPTS, 'domain/board-model.cjs'));
 const { storeBrief } = require(path.join(SCRIPTS, 'domain/brief.cjs'));
 const { issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { titlecase } = require(path.join(SCRIPTS, 'domain/conventions.cjs'));
-
-// The mod's tests import it, and can import nothing outside the mod's folder or named other than as code.
-const FIXTURE = path.join(__dirname, '../../skills/leeway-gates/tests/fixtures/board-build.mjs');
 
 let dir = ''; // the project
 let config = ''; // the system config: the conversations' folders
@@ -69,6 +66,15 @@ const refused = (args) => refusedPristine(dir, ['board', ...args], { env: env() 
 
 /** The conversation entered into the unit's build. */
 const enterBuild = () => ok(dir, ['enter', 'implementation', UNIT], { env: env() });
+
+/** The unit's spec: its first scenario parted at its "then", its second. */
+const SPEC = [
+  '# Payments', '',
+  '## 1. Cards', '', '### 1.1 The card', '', '1.1.1 A card shows its last four digits.', '', '### 1.2 The receipt', '', '1.2.1 A charge prints its receipt.', '',
+  '## 1-S. Scenarios for §1', '',
+  '1.S1 Given a till, when a card is taken, then it shows the card\'s last four digits. (1.1.1)', '',
+  '1.S2 Given a charge, when it lands, then a receipt prints. (1.2.1)', '',
+].join('\n');
 
 /** The project's name, as All work and the banner say it. */
 const project = () => titlecase(path.basename(dir));
@@ -181,6 +187,15 @@ describe('the build on the board (20.5)', () => {
     });
   });
 
+  it('20.S10: This session follows the session from its specification into its build, the yes at ready to build entering it (20.3.4)', () => {
+    ok(dir, ['session', 'label', UNIT, 'specification', UNIT], { env: env() });
+    const inSpec = board();
+    enterBuild();
+    const inBuild = board();
+
+    assert.deepStrictEqual([[inSpec.place.phase, inSpec.view.kind], [inBuild.place.phase, inBuild.view.kind]], [['specification', 'spec'], ['implementation', 'build']]);
+  });
+
   it('a task in progress builds, or is in review, by the last brief this conversation issued for it, since it was issued — the builder\'s and a fix round\'s building, a reviewer\'s in review (P15)', () => {
     enterBuild();
     fs.rmSync(path.join(dir, '.leeway', UNIT, 'build/tasks/1.1/figures.json'));
@@ -248,7 +263,7 @@ describe('the build on the board (20.5)', () => {
     assert.ok(!Number.isNaN(Date.parse(since)), since);
   });
 
-  it('the build stops once every task waits on the person: the progress says so, and the banner leads with it, plain, the waiting count flagged (20.2.4, 20.5.1, 20.S27, D6)', async () => {
+  it('the build stops once every task waits on the person: the progress says so, and the banner says it after the type and the phase, plain, the waiting count flagged (20.2.4, 20.5.1, 20.S27, D6, D20)', async () => {
     enterBuild();
     await parkOn(['1.1', '1.2', '2.1']);
     const { view, banner } = board();
@@ -256,7 +271,7 @@ describe('the build on the board (20.5)', () => {
     assert.deepStrictEqual({ stopped: view.progress.stopped, running: view.progress.running, banner }, {
       stopped: true,
       running: 0,
-      banner: { name: 'Pay', state: 'needs', facts: [{ text: 'stopped', needs: false }, { text: 'feature', needs: false }, { text: 'build', needs: false }, { text: '1 waiting on you', needs: true }] },
+      banner: { name: 'Pay', state: 'needs', facts: [{ text: 'feature', needs: false }, { text: 'build', needs: false }, { text: 'stopped', needs: false }, { text: '1 waiting on you', needs: true }] },
     });
   });
 
@@ -371,7 +386,64 @@ describe('a task\'s pages (20.5.4–20.5.7)', () => {
       calls: [{ id: board(['--page', 'task:1.1']).view.calls[0].id, text: 'The till masks the digits' }],
       ran: [{ scenario: '1.S1', criterion: 'A card is taken at the till.', standing: 'proven' }],
       question: null,
+      fixes: [],
     });
+  });
+
+  it('a scenario opens on the run that decides it: what it proved and when, what it drives and checks by the spec\'s words parted at their "then", and each text evidence kept with it, read whole (15.2.14, D16)', () => {
+    enterBuild();
+    writeState(dir, layout.unit(UNIT, 'spec.md'), SPEC);
+    const run = layout.unit(UNIT, 'build/runs/1.S1/run-001.json');
+    writeState(dir, run, JSON.stringify({ ...JSON.parse(readState(dir, run)), evidence: [{ name: 'till screen', text: 'CARD ****4242\nTAKEN\n' }] }));
+
+    assert.deepStrictEqual([board(['--page', 'task:1.1:scenario:1.S1']).view, board(['--page', 'task:1.1:scenario:1.S1:evidence:1']).view], [
+      {
+        kind: 'scenario',
+        unit: UNIT,
+        task: '1.1',
+        title: 'Take a card',
+        scenario: '1.S1',
+        criterion: 'A card is taken at the till.',
+        standing: 'proven',
+        at: JSON.parse(readState(dir, run)).at,
+        drive: 'Given a till, when a card is taken',
+        check: 'it shows the card\'s last four digits. (1.1.1)',
+        evidence: [{ name: 'till screen', lines: 2 }],
+      },
+      { kind: 'evidence', unit: UNIT, task: '1.1', scenario: '1.S1', name: 'till screen', text: 'CARD ****4242\nTAKEN\n' },
+    ]);
+  });
+
+  it('a scenario no run proved opens not proven, no run deciding it, its words whole where no "then" parts them; one the task does not hold, and an evidence its run does not keep, unavailable, saying why', () => {
+    enterBuild();
+    writeState(dir, layout.unit(UNIT, 'spec.md'), SPEC.replace('1.S2 Given a charge, when it lands, then a receipt prints.', '1.S2 A charge prints its receipt.'));
+    const unproven = board(['--page', 'task:1.2:scenario:1.S2']).view;
+
+    assert.deepStrictEqual(
+      [{ standing: unproven.standing, at: unproven.at, drive: unproven.drive, check: unproven.check, evidence: unproven.evidence }, board(['--page', 'task:1.2:scenario:1.S1']).view, board(['--page', 'task:1.1:scenario:1.S1:evidence:1']).view],
+      [
+        { standing: 'not proven', at: null, drive: 'A charge prints its receipt. (1.2.1)', check: null, evidence: [] },
+        { kind: 'unavailable', reason: 'task 1.2 of pay holds no scenario 1.S1' },
+        { kind: 'unavailable', reason: 'no run of 1.S1 keeps an evidence 1' },
+      ],
+    );
+  });
+
+  it('a fix task lists each finding of the review that went to it (D17)', () => {
+    enterBuild();
+    writeState(dir, layout.unit(UNIT, 'review/round-1.json'), JSON.stringify({
+      reports: [], passed: false, can_now: [], settled: null, scenarios: [],
+      findings: [
+        { area: '1-cards', scope: 'in', call: 'bug', text: 'The receipt is never sent.', from: [], fix: '1.2' },
+        { area: '1-cards', scope: 'in', call: 'bug', text: 'The digits show whole.', from: [], fix: '1.1' },
+        { area: 'tests', scope: 'in', call: 'bug', text: 'No test sends a receipt.', from: [], fix: '1.2' },
+      ],
+    }));
+
+    assert.deepStrictEqual(board(['--page', 'task:1.2']).view.fixes, [
+      { round: 1, finding: 1, area: '1-cards', text: 'The receipt is never sent.' },
+      { round: 1, finding: 3, area: 'tests', text: 'No test sends a receipt.' },
+    ]);
   });
 
   it('a task with no account, parked: none, nothing reviewed or called, never started, and the question it waits on with its line (20.5.6)', async () => {
@@ -512,36 +584,27 @@ describe('the tabs (20.3)', () => {
 });
 
 describe('the contract with the mod (14.16)', () => {
-  /** Two shapes as one: an object's keys from both, an empty list or a null taking the other's. @param {any} a @param {any} b @returns {any} */
-  const merged = (a, b) => {
-    if (a === 'null' || (Array.isArray(a) && a.length === 0)) return b;
-    if (b === 'null' || (Array.isArray(b) && b.length === 0)) return a;
-    if (Array.isArray(a)) return [merged(a[0], b[0])];
-    if (typeof a === 'object') return Object.fromEntries([...new Set([...Object.keys(a), ...Object.keys(b)])].sort().map((key) => [key, merged(a[key] ?? 'null', b[key] ?? 'null')]));
-    return a;
-  };
-  /** A value's shape: each object's keys, every element of a list as one, each leaf's type. @param {unknown} value @returns {unknown} */
-  const shapeOf = (value) => {
-    if (Array.isArray(value)) return value.length === 0 ? [] : [value.map(shapeOf).reduce(merged)];
-    if (value !== null && typeof value === 'object') return Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, held]) => [key, shapeOf(held)]));
-    return value === null ? 'null' : typeof value;
-  };
-
   it('the fixture the mod reads is a board of this version, shaped as the engine answers a build with a question waiting, the waiting count alone flagged on its banner (20.2.4)', async () => {
     enterBuild();
     await parkOn(['1.2']);
     issued('builder', '1.1', '2026-10-21T10:00:00.000Z');
     fs.rmSync(path.join(dir, '.leeway', UNIT, 'build/tasks/1.1/figures.json'));
-    const { default: fixture } = await import(pathToFileURL(FIXTURE).href);
+    const held = await fixture('board-build.mjs');
     const answer = board();
-    const forShape = (/** @type {any} */ held) => ({ ...held, view: { ...held.view, phases: held.view.phases.filter((/** @type {any} */ phase) => phase.tasks.length > 0) } });
+    const forShape = (/** @type {any} */ board) => ({ ...board, view: { ...board.view, phases: board.view.phases.filter((/** @type {any} */ phase) => phase.tasks.length > 0) } });
 
-    const flagged = (/** @type {any} */ held) => held.banner.facts.filter((/** @type {any} */ { needs }) => needs).map((/** @type {any} */ { text }) => text);
+    const flagged = (/** @type {any} */ board) => board.banner.facts.filter((/** @type {any} */ { needs }) => needs).map((/** @type {any} */ { text }) => text);
 
     assert.deepStrictEqual(
-      { version: fixture.version, shape: shapeOf(forShape(fixture)), flagged: [flagged(fixture), flagged(answer)] },
+      { version: held.version, shape: shapeOf(forShape(held)), flagged: [flagged(held), flagged(answer)] },
       { version: BOARD_VERSION, shape: shapeOf(forShape(answer)), flagged: [['3 waiting on you'], ['1 waiting on you']] },
     );
+  });
+
+  it('the task page the mod reads is shaped as the engine answers a done task\'s page, with its account, rounds, calls and runs (20.5.4)', async () => {
+    enterBuild();
+
+    assert.deepStrictEqual(misfits(await fixture('board-task.mjs'), board(['--page', 'task:1.1']).view), []);
   });
 });
 

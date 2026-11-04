@@ -18,7 +18,10 @@
 //   discussion, the specification, an epic's discovery, an experiment —
 //   the unit's page at its menu and in a phase whose view comes later
 //   (29.14.2), a quick-fix's implementation among them, and All work at the
-//   start menu or a project-level place.
+//   start menu or a project-level place — and once a unit's finish completes
+//   it from its review phase (20.10.4), the session handed to the start
+//   menu while its position still names that review, All work too, the
+//   banner the unit's close (D38); an epic's finish goes to its menu.
 // - The unit's tab shows the unit `--unit` names, else the session's: an
 //   epic's page for an epic (20.15.2), the unit's page for any other.
 //   All work shows the project (20.16), and `--page unit:{unit}` another
@@ -68,9 +71,8 @@ const { trackedUnit } = require('./task-verbs.cjs');
 const { parseShownTask } = require('./task-id.cjs');
 const { buildBegun } = require('./derivations.cjs');
 const { titlecase } = require('./conventions.cjs');
-const { projectName } = require('./state-checks.cjs');
 const { BOARD_VERSION, TABS } = require('./board-model.cjs');
-const { buildView, buildBanner, taskPage, writtenPage, roundPage } = require('./projections/board-build.cjs');
+const { buildView, buildBanner, taskPage, writtenPage, roundPage, scenarioPage, evidencePage } = require('./projections/board-build.cjs');
 const { reviewView, reviewBanner, findingPage, checkPage } = require('./projections/board-review.cjs');
 const { discussionView, discussionBanner, entryPage, messagePage, reviewReportPage } = require('./projections/board-discussion.cjs');
 const { specView, specBanner, sectionPage, passPage } = require('./projections/board-spec.cjs');
@@ -231,6 +233,8 @@ const PAGES = Object.freeze([
   { ref: 'task:{N.n}', shape: /^task:([^:]+)$/, draw: taskPage, task: true },
   { ref: 'task:{N.n}:written', shape: /^task:([^:]+):written$/, draw: writtenPage, task: true },
   { ref: 'task:{N.n}:round:{k}', shape: /^task:([^:]+):round:([^:]+)$/, draw: roundPage, task: true },
+  { ref: 'task:{N.n}:scenario:{id}', shape: /^task:([^:]+):scenario:([^:]+)$/, draw: scenarioPage, task: true },
+  { ref: 'task:{N.n}:scenario:{id}:evidence:{k}', shape: /^task:([^:]+):scenario:([^:]+):evidence:([^:]+)$/, draw: evidencePage, task: true },
   { ref: 'entry:{id}', shape: /^entry:([^:]+)$/, draw: entryPage },
   { ref: 'finding:{round}:{k}', shape: /^finding:([^:]+):([^:]+)$/, draw: findingPage },
   { ref: 'check:{round}:{scenario}', shape: /^check:([^:]+):([^:]+)$/, draw: checkPage },
@@ -265,6 +269,13 @@ function pageOf(tab, ref, pageUnit) {
   }
   throw new Error(`no page is named "${ref}" — a page is ${PAGES.map((page) => page.ref).join(', ')}`);
 }
+
+/**
+ * Whether the session's unit was finished from its review phase, the start
+ * menu next (the header's): its position still names that review.
+ * @param {BoardAt|null} here
+ */
+const finishedHere = (here) => here !== null && here.manifest.status === 'completed' && here.place.phase === 'review' && here.manifest.work_type !== 'epic';
 
 /** A view drawn, or why it cannot be. @param {() => View} draw @returns {View} */
 function drawn(draw) {
@@ -318,10 +329,12 @@ function boardOf(cwd, positional, opts) {
   const tabAt = tabUnit === null ? null : at(tabUnit);
   const pageAt = pageUnit === null ? null : at(pageUnit);
   const here = place.unit === null ? null : at(place.unit);
-  const own = here === null ? null : ownRead(here, warnings);
+  const finished = finishedHere(here);
+  const own = here === null || finished ? null : ownRead(here, warnings);
   const read = own === null || 'failed' in own ? null : own;
+  const atStart = position === null || finished;
   const tabView = () => {
-    if (tab === 'all' || here === null && tab === 'this') return allView(cwd, here, position === null, warnings).view;
+    if (tab === 'all' || (here === null || finished) && tab === 'this') return allView(cwd, here, atStart, warnings).view;
     if (tab === 'unit') return unitPage(/** @type {BoardAt} */ (tabAt), tabAt === here && place.phase === null).view;
     if (own !== null && 'failed' in own) throw new Error(own.failed);
     return /** @type {Read} */ (read).view;
@@ -329,7 +342,7 @@ function boardOf(cwd, positional, opts) {
   return {
     version: BOARD_VERSION,
     place,
-    banner: here === null ? { name: projectName(cwd), ...allBanner(position) } : { name: here.title, ...(read?.banned ?? placeBanner(here)) },
+    banner: here === null || finished ? allBanner(cwd, position, finished ? here : null) : { name: here.title, ...(read?.banned ?? placeBanner(here)) },
     unit: tabAt === null ? null : { unit: tabAt.unit, title: tabAt.title },
     tab,
     view: page === null ? drawn(tabView) : drawn(() => {

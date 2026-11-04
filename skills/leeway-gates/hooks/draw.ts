@@ -57,14 +57,15 @@ export type Part = { text: string; color?: string; bold?: boolean; dim?: boolean
 export type Button = { key: string; label: string }
 
 /**
- * A drawn line: the mark a wrapped line hangs from, a button it leads with,
- * its words, which wrap or are cut at the edge, a button at its end; and
- * the key a press anywhere on its words addresses, where the line itself
- * opens something.
+ * A drawn line: the mark a wrapped line hangs from — one run, or several,
+ * as the progress bar's cells — a button it leads with, its words, which
+ * wrap or are cut at the edge, a button at its end; and the key a press
+ * anywhere on its words addresses, where the line itself opens something.
  */
 export type Line = {
   key: string
   mark?: Part
+  marks?: Part[]
   lead?: Button
   parts: Part[]
   wraps?: boolean
@@ -212,6 +213,9 @@ export const textOf = (els: ElementTable, part: Part) =>
 export const buttonOf = (els: ElementTable, { key, label }: Button) =>
   els.Button({ key, plain: true, onPress: () => undefined, children: [els.Text({ color: COLOUR.thisView, children: [label] })] })
 
+/** The runs a line's words hang beside: its marks, else its mark. */
+const marksOf = (line: Line): Part[] => line.marks ?? (line.mark === undefined ? [] : [line.mark])
+
 /** The rows `text` takes wrapped at word breaks in `room` cells, a word longer than the room broken across rows. */
 function wrappedRows(text: string, room: number): number {
   let rows = 1
@@ -245,7 +249,7 @@ export function rowsOf(line: Line, width: number): number {
   }
 
   const beside = widthOf([
-    ...(line.mark === undefined ? [] : [line.mark]),
+    ...marksOf(line),
     ...[line.lead, line.button].flatMap(button => (button === undefined ? [] : [{ text: button.label }])),
   ])
 
@@ -260,7 +264,7 @@ export function drawLine(els: ElementTable, line: Line): RenderElement {
   return Box({
     key: line.key,
     children: [
-      ...(line.mark === undefined ? [] : [textOf(els, line.mark)]),
+      ...marksOf(line).map(mark => textOf(els, mark)),
       ...(line.lead === undefined ? [] : [buttonOf(els, line.lead)]),
       line.press === undefined
         ? Text({ wrap: line.wraps ? 'wrap' : 'truncate-end', children: words })
@@ -269,3 +273,60 @@ export function drawLine(els: ElementTable, line: Line): RenderElement {
     ],
   })
 }
+
+/** A list item's opening: its bullet or number, and its words. */
+const ITEM = /^\s*(?:[-*]|(\d+)\.)\s+(.*)$/
+
+/** A fenced block's fence. */
+const FENCE = /^\s*```/
+
+/** A heading's opening. */
+const HEADING = /^#+\s+(.*)$/
+
+/**
+ * A body of prose as the board draws it (20.4.5): each paragraph one line
+ * wrapping at the edge; each list item one line hung under its mark, its
+ * number for a numbered one; a heading's words bold; and a fenced block —
+ * a diagram, a captured screen — each of its lines as written, cut at the
+ * edge, never wrapped.
+ */
+export function prose(key: string, text: string, color: string = COLOUR.body, markColor: string = COLOUR.secondary): Line[] {
+  const lines: Line[] = []
+  let open: Line | null = null
+  let isFenced = false
+  const add = (line: Omit<Line, 'key'>): Line => {
+    const added: Line = { key: `${key}:${lines.length}`, ...line }
+
+    lines.push(added)
+
+    return added
+  }
+
+  for (const raw of text.split('\n')) {
+    const item = ITEM.exec(raw)
+    const titled = HEADING.exec(raw)
+
+    if (FENCE.test(raw)) {
+      isFenced = !isFenced
+      open = null
+    } else if (isFenced) {
+      add({ parts: [{ text: raw === '' ? ' ' : raw, color }] })
+    } else if (raw.trim() === '') {
+      open = null
+    } else if (item !== null) {
+      open = add({ mark: { text: item[1] === undefined ? '· ' : `${item[1]}. `, color: markColor }, wraps: true, parts: [{ text: item[2] ?? '', color }] })
+    } else if (titled !== null) {
+      open = null
+      add({ parts: [{ text: titled[1] ?? '', color, bold: true }] })
+    } else if (open === null) {
+      open = add({ wraps: true, parts: [{ text: raw.trim(), color }] })
+    } else {
+      open.parts = open.parts.map(part => ({ ...part, text: `${part.text} ${raw.trim()}` }))
+    }
+  }
+
+  return lines
+}
+
+/** A count and its noun: "1 acceptance criterion", "6 acceptance criteria". */
+export const counted = (count: number, one: string, many = `${one}s`) => `${count} ${count === 1 ? one : many}`

@@ -254,15 +254,16 @@ describe('the banner', () => {
     expect(facts({ discussing: 'Q1', ready: ['Q3'] })).toEqual(['feature · build · ⚑ Discussing Q1 · task 6.7 "Every abort at the review gate unwinds" · 1 queued', '▸ send to Claude ▸ cancel'])
   })
 
-  test('20.2.4, 12.13.22: a build stopped keeps "stopped" leading the facts, and its mark, while questions are queued or discussed; a question parking no task names none', () => {
-    const stopped = { ...banner, state: 'needs' as const, facts: [{ text: 'stopped', needs: false }, ...banner.facts] }
+  test('20.2.4, 12.13.22, D20: a build stopped keeps its mark while questions are queued or discussed, the queue or the discussion taking the place of "stopped" after its type and phase; a question parking no task names none', () => {
+    const [type, phase, ...rest] = banner.facts
+    const stopped = { ...banner, state: 'needs' as const, facts: [type!, phase!, { text: 'stopped', needs: false }, ...rest] }
     const [question] = QUESTIONS
     const drawn = (given: Partial<Discussion>) => discussedBanner(stopped, discussion(given), [{ ...question!, parks: [] }]).banner
 
     expect(drawn({ discussing: 'Q1' }).state).toBe('needs')
     expect([drawn({ discussing: 'Q1' }), drawn({ ready: ['Q1'] })].map(({ facts }) => facts.map(fact => fact.text))).toEqual([
-      ['stopped', 'feature', 'build', 'Discussing Q1'],
-      ['stopped', 'feature', 'build', '1 queued to discuss'],
+      ['feature', 'build', 'Discussing Q1'],
+      ['feature', 'build', '1 queued to discuss'],
     ])
   })
 })

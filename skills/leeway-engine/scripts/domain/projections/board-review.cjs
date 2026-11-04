@@ -24,16 +24,21 @@
 // - Its fix tasks are a build phase past the cut (P14): the recorded
 //   round's own where it made any, else the round before's, each task by its
 //   line, from the unit's one read of the tracker (board.cjs).
+// - Finish waits on the person once the review phase is over (D18): a round
+//   ended it and its fix tasks and builders' notes are done.
 // - A check opens on its page (20.10.3): where it stands in the round that
 //   recorded it, with its scenario's words from the spec.
+// - The banner (D36, D37): the round reading; once recorded, a failing
+//   round's fix tasks building while any is not done; a round that ended the
+//   phase passed or settled; and finish waiting on the person, flagged.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const { statePath } = require('../../kernel/state-root.cjs');
 const { readReport } = require('../round-report.cjs');
-const { specPath, specReading } = require('../spec-sections.cjs');
+const { projectName } = require('../state-checks.cjs');
 const { fixesOf, fixPhase, reportNames, areaReportPath, recordedRounds, TESTS } = require('../review-phase.cjs');
-const { taskLine, standingAt, reviewStandingAt } = require('./board-build.cjs');
+const { taskLine, standingAt, reviewStandingAt, scenarioWording } = require('./board-build.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
 /** @typedef {import('../board-model.cjs').ReviewView} ReviewView */
@@ -112,7 +117,7 @@ function reviewView(at) {
   const round = shownRound(standing);
   const record = standing.rounds[round - 1];
   const built = standingAt(at).phases.flatMap(({ tasks }) => tasks).filter(({ status }) => status === 'done').length;
-  const head = { kind: /** @type {const} */ ('review'), unit: at.unit, title: at.title, type: at.manifest.work_type, built, round };
+  const head = { kind: /** @type {const} */ ('review'), unit: at.unit, title: at.title, project: projectName(at.cwd), type: at.manifest.work_type, built, round, finish: standing.over };
   if (record === undefined) {
     const taken = new Set(standing.reads ?? standing.required);
     return {
@@ -137,25 +142,32 @@ function reviewView(at) {
         ? { area, title, state: 'read', ran: ranIn(record, area), found: record.findings.filter((finding) => finding.area === name).length, since: null }
         : unchanged({ area, title }))),
       found: foundOf(record, round),
-      not_proven: record.scenarios.filter(({ standing: stands }) => stands !== 'proven'),
-      inbox: record.findings.flatMap(({ inbox, text }) => (typeof inbox === 'string' ? [text] : [])),
+      not_proven: record.scenarios.filter(({ standing: stands }) => stands !== 'proven').map(({ scenario, standing: stands }) => ({ scenario, standing: stands, text: scenarioWording(at, scenario) })),
+      inbox: record.findings.flatMap(({ inbox, text }, k) => (typeof inbox === 'string' ? [{ finding: k + 1, text }] : [])),
       verdict: verdictOf(record),
       fixes: fixesAt(at, standing.rounds, round),
     },
   };
 }
 
+/** Where a recorded round stands on the banner, by its verdict. @param {ReviewView} view */
+function verdictFact({ round, verdict, fixes }) {
+  if (verdict === 'passed') return `round ${round} passes`;
+  if (verdict === 'settled') return `round ${round} settled`;
+  const building = fixes?.round === round && fixes.tasks.some(({ state }) => state !== 'done' && state !== 'closed');
+  return building ? `round ${round} fails · fix tasks building` : `round ${round} fails`;
+}
+
 /**
- * The banner's facts in the review phase (20.2.4): the round reading, or
- * its verdict once recorded; done once a round ended the phase.
- * @param {ReviewView} view @returns {{state: 'running'|'done', facts: {text: string, needs: boolean}[]}}
+ * The banner's facts in the review phase (the header's): finish waiting on
+ * the person, else the round reading, or where it stands once recorded.
+ * @param {ReviewView} view @returns {{state: 'running'|'needs', facts: {text: string, needs: boolean}[]}}
  */
-function reviewBanner({ type, round, verdict }) {
-  const fact = (/** @type {string} */ text) => ({ text, needs: false });
-  return {
-    state: verdict === 'passed' || verdict === 'settled' ? 'done' : 'running',
-    facts: [fact(type), fact('review'), fact(`round ${round} ${verdict ?? 'reading'}`)],
-  };
+function reviewBanner(view) {
+  const fact = (/** @type {string} */ text, needs = false) => ({ text, needs });
+  const where = [fact(view.type), fact('review')];
+  if (view.finish) return { state: 'needs', facts: [...where, fact('finish waits on you'), fact('1 waiting on you', true)] };
+  return { state: 'running', facts: [...where, fact(view.verdict === null ? `round ${view.round} reading` : verdictFact(view))] };
 }
 
 /**
@@ -181,9 +193,7 @@ function checkPage(at, said, scenario) {
   const round = Number(said);
   const check = recordedRounds(at.cwd, at.unit)[round - 1]?.scenarios.find((held) => held.scenario === scenario);
   if (check === undefined) throw new Error(`round ${said} of ${at.unit}'s review ran no check of ${scenario}`);
-  const file = specPath(at.cwd, at.unit);
-  const written = fs.existsSync(file) ? specReading(fs.readFileSync(file, 'utf8')).lines.find(({ kind, number }) => kind === 'scenario' && number === scenario) : undefined;
-  return { kind: 'check', unit: at.unit, round, scenario, standing: check.standing, text: written?.wording ?? null };
+  return { kind: 'check', unit: at.unit, round, scenario, standing: check.standing, text: scenarioWording(at, scenario) };
 }
 
 module.exports = { reviewView, reviewBanner, findingPage, checkPage };

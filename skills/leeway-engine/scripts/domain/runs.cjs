@@ -146,10 +146,11 @@ function behindHead(root, commits, head) {
 }
 
 /**
- * What a scenario's runs of the change prove, and the runs that count: at the
- * head or before it, where a head is given.
+ * What a scenario's runs of the change prove, the runs that count — at the
+ * head or before it, where a head is given — and the run that decides, null
+ * where none was run.
  * @param {string} cwd @param {string} unit @param {string} scenario @param {RepoCommit[]} [head]
- * @returns {{standing: Standing, runs: (Run & {file: string})[]}}
+ * @returns {{standing: Standing, runs: (Run & {file: string})[], decided: (Run & {file: string})|null}}
  */
 function runsOf(cwd, unit, scenario, head) {
   const all = readRuns(cwd, unit, scenario).filter((run) => !run.unfixed);
@@ -160,9 +161,10 @@ function runsOf(cwd, unit, scenario, head) {
   });
   const runs = counted.map(({ run }) => run);
   const ran = counted.filter(({ run }) => run.verdict !== 'skipped');
-  if (ran.length === 0) return { standing: runs.length > 0 ? 'named, not run' : 'not proven', runs };
+  if (ran.length === 0) return { standing: runs.length > 0 ? 'named, not run' : 'not proven', runs, decided: null };
   const nearest = ran.filter(({ distance }) => distance === Math.min(...ran.map((at) => at.distance)));
-  return { standing: nearest[nearest.length - 1].run.verdict === 'pass' ? 'proven' : 'not proven', runs };
+  const decided = nearest[nearest.length - 1].run;
+  return { standing: decided.verdict === 'pass' ? 'proven' : 'not proven', runs, decided };
 }
 
 module.exports = { VERDICTS, SCENARIO, runsRel, recordRun, recordingPath, readRuns, behindHead, runsOf };

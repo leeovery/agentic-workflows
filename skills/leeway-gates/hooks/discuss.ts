@@ -262,10 +262,10 @@ const questionOf = (questions: readonly Question[], number: string) => questions
 const PHASE = 'build'
 
 /**
- * The banner's facts in a build that say where the session is: "stopped"
- * where nothing can proceed, then its type and phase, as the build's banner
- * leads with them. A queue or a discussion takes the place of everything
- * after them, as the locked board draws it.
+ * The banner's facts in a build that say where the session is: its type
+ * and phase, as the build's banner leads with them. A queue or a discussion
+ * takes the place of everything after them, "stopped" among it, as the
+ * locked board draws it.
  */
 function whereOf(facts: readonly Fact[]): Fact[] {
   return facts.slice(0, facts.findIndex(({ text }) => text === PHASE) + 1)

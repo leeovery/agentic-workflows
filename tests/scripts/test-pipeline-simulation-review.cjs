@@ -138,7 +138,7 @@ describe('pipeline simulation: the review phase, as its skill runs it', () => {
     sim.render(['review-report', WU], { expect: 'content' });
     const board = () => JSON.parse(sim.read(['board', sim.env.CLAUDE_CODE_SESSION_ID]));
     const failed = board().view;
-    assert.deepStrictEqual([failed.verdict, failed.found.length, failed.inbox, failed.fixes?.tasks.map(({ task }) => task)], ['failed', 1, ['Importing an old ledger drops its dates.'], [`${phase}.1`]],
+    assert.deepStrictEqual([failed.verdict, failed.found.length, failed.inbox, failed.fixes?.tasks.map(({ task }) => task)], ['failed', 1, [{ finding: 2, text: 'Importing an old ledger drops its dates.' }], [`${phase}.1`]],
       'the board draws the round failed, its finding in scope, what went to the inbox and its fix task (20.10.1)');
 
     // The fix built through the task loop; round 2 reads the area it changed.
@@ -152,8 +152,8 @@ describe('pipeline simulation: the review phase, as its skill runs it', () => {
     areaRead(sim, WU, undefined, 1);
     sim.run(['review', 'round', WU, '--file', sim.write(`.leeway/.cache/${WU}/review/round.json`, { can_now: ['Keep a ledger whose entries are checked.'], findings: [] })]);
     const passed = board();
-    assert.deepStrictEqual([passed.view.round, passed.view.verdict, passed.view.areas.map(({ state }) => state), passed.banner.state], [2, 'passed', ['read', 'unchanged', 'unchanged'], 'done'],
-      'the board draws round 2 passed, the area read and the rest unchanged, the banner done (20.10.2)');
+    assert.deepStrictEqual([passed.view.round, passed.view.verdict, passed.view.areas.map(({ state }) => state), passed.view.finish, passed.banner.state], [2, 'passed', ['read', 'unchanged', 'unchanged'], true, 'needs'],
+      'the board draws round 2 passed, the area read and the rest unchanged, finish waiting on the person (20.10.2, D18, D37)');
     sim.render(['review-report', WU], { expect: 'content' });
     sim.render(['review-calls', WU], { expect: 'content' });
 
