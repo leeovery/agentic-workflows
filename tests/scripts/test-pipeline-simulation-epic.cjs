@@ -5,7 +5,8 @@
 // approved at discovery's gates; a topic's discussion, with a
 // message raised and answered through the topic's one mailbox; a topic
 // landed in discovery started from its own row; an arrival that backfills;
-// and the last review handing off to the menu. The map's own lifecycle is
+// and the map's provenance recovery, with the discovery-gap candidates
+// landing on it. The map's own lifecycle is
 // test-pipeline-simulation-epic-map.cjs; the sweep before the spec,
 // test-pipeline-simulation-epic-sweep.cjs; the spec's side, from its entry
 // to ready to build, test-pipeline-simulation-epic-spec.cjs; a discussion walked
@@ -28,7 +29,7 @@ const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/script
 const { epicMenu } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
 const { drawLabel } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
 const {
-  Sim, mapTopics, sessionLog, send, decideTopic, discussed, mappedEpic, arrive, menuEntry, enterEntry, handoff, arriveAtEpicMenu, epicPick, startNew, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, carryOn, presenceRow, keptOldSpec,
+  Sim, mapTopics, sessionLog, send, decideTopic, discussed, mappedEpic, arrive, menuEntry, enterEntry, handoff, arriveAtEpicMenu, epicPick, startNew, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, carryOn, presenceRow,
 } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: epic', () => {
@@ -101,7 +102,6 @@ describe('pipeline simulation: epic', () => {
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.alpha.status, 'in-progress');
     assert.deepStrictEqual(rows('alpha'), [['continue_discussion', 'Continue "Alpha" — *discussion* · mail waiting']]);
     assert.match(sim.render(['send-report', `${wu}.alpha`, '--sent', decision.message_path], { expect: 'content' }), /^\/leeway orbit alpha$/m);
-    sim.render(['epic-soft-gate', wu, '--action', 'continue_discussion', '--topic', 'alpha'], { expect: 'empty' });
     // The entry raises the waiting message before anything is read; the
     // question it raised is asked, and the message answered by it leaves.
     enterEntry(sim, wu, 'discussion', 'alpha');
@@ -136,12 +136,11 @@ describe('pipeline simulation: epic', () => {
     decideTopic(sim, wu, 'alpha');
   });
 
-  it('epic: the d door is never the soft gate\'s, and a topic landed in discovery has its own start row, whose entry starts it', () => {
+  it('epic: an epic enters discussion at a topic, and a topic landed in discovery has its own start row, whose entry starts it', () => {
     const wu = 'lumen';
     mappedEpic(sim, wu, ['alpha']);
     handoff(sim, `/leeway-continue-epic ${wu}`);
     arrive(sim, wu);
-    sim.refuses(['render', 'epic-soft-gate', wu, '--action', 'new_topic'], /unknown --action "new_topic"/);
     sim.refuses(['handoff', '/leeway-discussion-process', 'epic', wu], /^an epic enters discussion at a topic/);
 
     const topic = 'omega';
@@ -195,31 +194,64 @@ describe('pipeline simulation: epic', () => {
     assert.deepStrictEqual(toRecover(), [], 'the fresh menu finds nothing to recover');
   });
 
-  it('epic: the last review hands off to the menu, which banners it and offers to complete the epic', () => {
-    const wu = 'wrapup';
-    mappedEpic(sim, wu, ['alpha']);
-    discussed(sim, wu, 'alpha');
-    keptOldSpec(sim, wu, 'alpha');
-    sim.run(['build-order', 'sequence', wu, 'alpha=1']);
-    sim.run(['topic', 'start', wu, 'planning', 'alpha']);
-    sim.run(['manifest', 'set', `${wu}.planning.alpha`, 'format=local-markdown', 'task_map.alpha-1-1=alpha-1-1', 'storage_paths=[]']);
-    sim.run(['topic', 'complete', wu, 'planning', 'alpha']);
-    sim.run(['task', 'init', wu, 'alpha']);
-    sim.run(['task', 'start', wu, 'alpha', 'alpha-1-1']);
-    sim.run(['task', 'complete', wu, 'alpha', 'alpha-1-1', '--phase', '1', '--next-task', '~']);
-    sim.run(['manifest', 'push', `${wu}.implementation.alpha`, 'consolidated_phases', '1']);
-    sim.run(['task', 'complete', wu, 'alpha', 'alpha-1-1', '--phase', '1', '--phase-complete']);
-    sim.run(['topic', 'complete', wu, 'implementation', 'alpha']);
-    // Short of the last review the menu shows the banner and no offer.
-    assert.match(arriveAtEpicMenu(sim, wu, 'implementation'), /Implementation completed for "Wrapup"\./);
-    assert.match(EPIC_GATEWAY.formatScoped(wu, EPIC_GATEWAY.discover(sim.dir, wu)), /^all_done: false$/m);
-    sim.run(['topic', 'start', wu, 'review', 'alpha']);
-    sim.run(['topic', 'complete', wu, 'review', 'alpha']);
-
-    assert.match(EPIC_GATEWAY.formatScoped(wu, EPIC_GATEWAY.discover(sim.dir, wu)), /^all_done: true$/m);
-    assert.match(arriveAtEpicMenu(sim, wu, 'review'), /Review completed for "Wrapup"\./);
-    assert.match(sim.render(['epic-all-done-gate', wu], { expect: 'content' }), /◆ Mark it completed\?/);
-    sim.run(['workunit', 'complete', wu, '-m', `workflow(${wu}): complete epic pipeline`]);
-    assert.match(sim.render(['workunit-receipt', wu, '--verb', 'complete', '--pipeline'], { expect: 'content' }), /Epic Completed/);
+  it('epic: the map\'s provenance recovery, and the discovery-gap candidates landing on it', () => {
+    const wu = 'overhaul';
+    sim.run(['workunit', 'create', wu, 'epic', '--description', 'Payments overhaul', '--session-log-file', sessionLog(sim, wu)]);
+    /** @param {string} topic @param {string} [text] */
+    const draft = (topic, text = `# Brief — ${topic}\n`) => sim.write(`.leeway/.cache/${wu}/discovery/${topic}/brief-draft.md`, text);
+    sim.run(['topic', 'add-batch', wu, '--file', sim.write(`.leeway/.cache/${wu}/discovery/topics.json`, [
+      { name: 'alpha', summary: 'Alpha summary', brief: draft('alpha') },
+      { name: 'beta', summary: 'Beta summary', brief: draft('beta') },
+      { name: 'gamma-prime', summary: 'Gamma, sharpened', brief: draft('gamma-prime') },
+    ])]);
+    sim.run(['topic', 'order', wu, 'alpha=1', 'beta=2', 'gamma-prime=3']);
+    sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): synthesise 3 topics`]);
+    // The map as its lifecycle leaves it: alpha and beta decided,
+    // gamma-prime cancelled, delta a row a message opened.
+    for (const topic of ['alpha', 'beta']) discussed(sim, wu, topic);
+    sim.run(['topic', 'cancel', wu, 'discovery', 'gamma-prime']);
+    sim.run(['topic', 'add', wu, 'delta', '--source', 'message:alpha', '--summary', 'Delta summary', '--brief', draft('delta'), '--re-add']);
+    // The map's provenance recovery has its own two stops (summary-backfill
+    // B and D). Every row landed with its summary and no description: the
+    // batch shows each summary it keeps, and no line of it is edited here.
+    const summaries = sim.write(`.leeway/.cache/${wu}/discovery/summaries.json`, { summaries: {} });
+    assert.match(sim.render(['summary-backfill-gate', wu, '--variant', 'batch', '--file', summaries], { expect: 'content' }),
+      /Proposed summaries for 4 topic\(s\):[\s\S]*3\. Delta\n {7}Delta summary {2}\(already populated\)/);
+    assert.match(sim.render(['summary-backfill-gate', wu, '--variant', 'proposed', '--file', summaries], { expect: 'content' }), /Delta summary/);
+    const unsourced = sim.write(`.leeway/.cache/${wu}/discovery/unsourced.json`, { names: ['delta'] });
+    assert.match(sim.render(['summary-backfill-gate', wu, '--variant', 'unsourced', '--file', unsourced],
+      { expect: 'content' }), /1 topic\(s\) have no source file to draft from:/);
+    // The discovery-gap-analysis approval gate: candidates staged under the
+    // analysis' own subtree, decided one at a time, an approved candidate
+    // landing on the map with the analysis' provenance and a brief of its
+    // own, and the subtree cleared when the analysis closes.
+    sim.run(['manifest', 'set', `${wu}.discovery`,
+      'analysis_staging.discovery-gap-analysis.gate_mode=gated',
+      'analysis_staging.discovery-gap-analysis.candidates.epsilon.status=pending',
+      'analysis_staging.discovery-gap-analysis.candidates.zeta.status=pending']);
+    assert.match(sim.render(['candidate-gate', wu, '--variant', 'announce'], { expect: 'content' }),
+      /Gap analysis surfaced 2 candidate topic\(s\)\./, 'the walk opens on the pending count');
+    // The gate itself renders from the staged subtree — gated mode answers
+    // with the menu, and a candidate the manifest no longer marks pending
+    // never renders at all.
+    sim.write('.leeway/.cache/scratch/candidate.json', JSON.stringify({
+      name: 'epsilon', summary: 'Epsilon summary',
+    }));
+    assert.match(
+      sim.render(['candidate-gate', wu, '--file', '.leeway/.cache/scratch/candidate.json'], { expect: 'content' }),
+      /Add this topic to the map\?/, 'the gated candidate stops for a decision');
+    sim.run(['manifest', 'set', `${wu}.discovery`, 'analysis_staging.discovery-gap-analysis.candidates.epsilon.status', 'approved']);
+    sim.run(['manifest', 'set', `${wu}.discovery`, 'analysis_staging.discovery-gap-analysis.candidates.zeta.status', 'skipped']);
+    sim.refuses(['manifest', 'set', `${wu}.discovery`, 'analysis_staging.discovery-gap-analysis.candidates.zeta.status', 'later'],
+      /Invalid candidate status/);
+    // An approved gap candidate lands with its brief, as a harvested topic
+    // does.
+    const brief = '# Discovery Brief — Epsilon\n\nDrawn from the discovery-gap analysis, read out of alpha and beta.\n';
+    sim.run(['topic', 'add', wu, 'epsilon', '--summary', 'Epsilon summary', '--source', 'gap-analysis', '--brief', draft('epsilon', brief)]);
+    assert.strictEqual(sim.manifest(wu).phases.discovery.items.epsilon.source, 'gap-analysis');
+    assert.strictEqual(fs.readFileSync(path.join(sim.dir, `.leeway/${wu}/topics/epsilon/brief.md`), 'utf8'), brief);
+    sim.run(['manifest', 'delete', `${wu}.discovery`, 'analysis_staging.discovery-gap-analysis']);
+    assert.strictEqual(sim.read(['manifest', 'exists', `${wu}.discovery`, 'analysis_staging.discovery-gap-analysis']).trim(), 'false');
+    assert.match(sim.render(['candidate-gate', wu, '--variant', 'announce'], { expect: 'content' }), /Nothing new to review\./);
   });
 });

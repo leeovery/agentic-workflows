@@ -85,7 +85,7 @@ describe('engine commit --topic: pathspec isolation', () => {
     assert.strictEqual(clean.committed, null);
     assert.strictEqual(clean.note, 'nothing to commit');
 
-    const missing = ok(dir, ['commit', 'payments', '-m', 'noop', '--topic', 'review/never-started']);
+    const missing = ok(dir, ['commit', 'payments', '-m', 'noop', '--topic', 'investigation/never-started']);
     assert.strictEqual(missing.committed, null);
     assert.strictEqual(missing.note, 'nothing to commit');
   });
@@ -613,7 +613,7 @@ describe('engine commit --migrations: the state and the paths the workflows own'
     assert.match(refuses(dir, ['commit', '--migrations', '--state', '-m', 'x']).error, /Usage/);
     assert.match(refuses(dir, ['commit', 'payments', '--migrations', '-m', 'x']).error, /Usage/);
     assert.match(refuses(dir, ['commit', '--paths', 'src/app.js', '--migrations', '-m', 'x',
-      '--for', 'payments', 'implementation/topic-a']).error, /Usage/);
+      '--task', 'payments', '1.1']).error, /Usage/);
     assert.match(refuses(dir, ['commit', '--migrations']).error, /Usage/);
   });
 

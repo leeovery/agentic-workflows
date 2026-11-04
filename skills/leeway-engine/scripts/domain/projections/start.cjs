@@ -18,7 +18,7 @@
 const { renderTree } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, titlecase } = require('../conventions.cjs');
 const { combinedInbox } = require('../inbox-set.cjs');
-const { menuFrame: dotMenu, menu, cmdOption, bareOption, promptOption, rangeOption, actionsTable, section: labelled, MENU_INSTRUCTION, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, autoSelectLine } = require('./surfaces.cjs');
+const { menuFrame: dotMenu, menu, cmdOption, bareOption, promptOption, rangeOption, actionsTable, section: labelled, MENU_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION } = require('./surfaces.cjs');
 const { escapeMarkdown } = require('./worklist.cjs');
 const { dayMonth } = require('../dates.cjs');
 
@@ -672,28 +672,6 @@ function absorbConfirmGate() {
   );
 }
 
-/**
- * The view-plan topic pick, served by `render plan-topics` at the step that
- * shows it: an epic with one plan proceeds with it, several take the
- * selection menu. Numbering follows `planning_topics` order.
- * @param {ManageDetail} md
- * @returns {string}
- */
-function planTopicsPick(md) {
-  if (md.planning_topics.length === 1) {
-    return labelled('DISPLAY: plan topic auto-select', CONTINUE_INSTRUCTION, autoSelectLine(md.planning_topics[0].name));
-  }
-  return labelled(
-    'MENU: plan topics',
-    MENU_INSTRUCTION,
-    dotMenu([
-      'Which plan would you like to view?',
-      '',
-      ...md.planning_topics.map((t, i) => cmdOption(String(i + 1), null, { head: titlecase(t.name), tail: t.status })),
-    ]),
-  );
-}
-
 // ---------------------------------------------------------------------------
 // Completed & cancelled
 // ---------------------------------------------------------------------------
@@ -775,7 +753,6 @@ module.exports = {
   manageUnitView,
   absorbTargetMenu,
   absorbConfirmGate,
-  planTopicsPick,
   completedView,
   completedActions,
 };

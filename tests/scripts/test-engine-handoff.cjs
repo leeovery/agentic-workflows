@@ -37,10 +37,12 @@ const PHASE_SKILLS = {
   investigation: 'leeway-investigation-process',
   scoping: 'leeway-scoping-process',
   specification: 'leeway-specification-process',
-  planning: 'leeway-planning-process',
   implementation: 'leeway-implementation-process',
   review: 'leeway-review-process',
 };
+
+// The phases entered at the work unit: the spec, and the build's two places.
+const AT_UNIT = ['specification', 'implementation', 'review'];
 
 const IDEA = '.leeway/.inbox/ideas/2026-01-01--dark-mode.md';
 const BUG = '.leeway/.inbox/bugs/2026-01-02--flaky-login.md';
@@ -174,14 +176,14 @@ describe('engine handoff — the composed answer for every target', () => {
     assert.strictEqual(payloadOf(carried(dir, ['leeway-discovery', 'none', 'fumi', 'none'])).args, 'none fumi "none"');
   });
 
-  it('the skill each phase is entered through takes each work type its pipeline holds — the line names the phase and the topic, else the unit; the spec, entered at the unit, an epic\'s with no topic, and refusing a topic (4.11.2)', () => {
+  it('the skill each phase is entered through takes each work type its pipeline holds — the line names the phase and the topic, else the unit; the spec and the build\'s two places, entered at the unit, an epic\'s with no topic, and refusing a topic (4.11.2)', () => {
     for (const type of VALID_WORK_TYPES) {
       const unit = `${type}-unit`;
       createManifest(dir, unit, { work_type: type });
       for (const phase of WORK_TYPE_PIPELINES[type]) {
         const skill = PHASE_SKILLS[phase];
         const name = phase.charAt(0).toUpperCase() + phase.slice(1);
-        const atUnit = phase === 'specification';
+        const atUnit = AT_UNIT.includes(phase);
         if (type !== 'epic' || atUnit) {
           assert.strictEqual(inline(dir, [skill, type, unit]),
             inlineAnswer(skill, `${type} ${unit}`, `→ ${name} · ${unit}`), `${skill} ${type}`);
@@ -196,15 +198,13 @@ describe('engine handoff — the composed answer for every target', () => {
     }
   });
 
-  it('the build is entered at the unit once it runs by its cut, an epic\'s with no topic and refusing one — a unit built under the old plan at its topic as before (P12)', () => {
-    createManifest(dir, 'cards', { work_type: 'epic', build: { position: 'auto' } });
+  it('a unit built under the old plan is handed into its build at the unit as any other is, never at a topic — its entry says it waits on the cut (P12)', () => {
     createManifest(dir, 'kept', { work_type: 'epic', build: { position: 'auto' }, phases: { specification: { items: { kept: { status: 'completed' } } } } });
-    const skill = 'leeway-implementation-process';
-
-    assert.strictEqual(inline(dir, [skill, 'epic', 'cards']), inlineAnswer(skill, 'epic cards', '→ Implementation · cards'));
-    refused(dir, [skill, 'epic', 'cards', 'checkout'], /^cards enters implementation at the work unit — name no topic$/);
-    assert.strictEqual(inline(dir, [skill, 'epic', 'kept', 'checkout']), inlineAnswer(skill, 'epic kept checkout', '→ Implementation · checkout'));
-    refused(dir, [skill, 'epic', 'kept'], /^an epic enters implementation at a topic$/);
+    for (const [phase, skill] of [['implementation', 'leeway-implementation-process'], ['review', 'leeway-review-process']]) {
+      const name = phase.charAt(0).toUpperCase() + phase.slice(1);
+      assert.strictEqual(inline(dir, [skill, 'epic', 'kept']), inlineAnswer(skill, 'epic kept', `→ ${name} · kept`), skill);
+      refused(dir, [skill, 'epic', 'kept', 'checkout'], new RegExp(`^Usage: engine handoff ${skill} <[^>]+> <work-unit>$`));
+    }
   });
 
   it('a topic the work unit does not hold yet is named all the same — the phase starts it', () => {
@@ -429,7 +429,7 @@ describe('engine handoff — refusals', () => {
   it('the epic menu refuses a unit that is no epic, a phase outside the epic\'s, and an unknown outcome', () => {
     refused(dir, ['leeway-continue-epic', 'note-window'], /^work unit "note-window" is of type feature, not epic$/);
     refused(dir, ['leeway-continue-epic', 'none'], /^work unit "none" not found$/);
-    refused(dir, ['leeway-continue-epic', 'fumi', 'investigation', 'completed'], /^the phase must be one of discovery\|experiment\|discussion\|specification\|planning\|implementation\|review — got "investigation"$/);
+    refused(dir, ['leeway-continue-epic', 'fumi', 'investigation', 'completed'], /^the phase must be one of discovery\|experiment\|discussion\|specification\|implementation\|review — got "investigation"$/);
     refused(dir, ['leeway-continue-epic', 'fumi', 'discussion', 'abandoned'], /^the outcome must be one of completed\|paused\|cancelled\|postponed — got "abandoned"$/);
   });
 
@@ -446,12 +446,12 @@ describe('engine handoff — refusals', () => {
   it('the epic menu refuses a pause from a phase its paused banner cannot name', () => {
     for (const phase of EPIC_PHASES.filter((p) => !WAITING_PHASES.includes(p))) {
       refused(dir, ['leeway-continue-epic', 'fumi', phase, 'paused'],
-        new RegExp(`^the phase that paused must be one of ${WAITING_PHASES.join('\\|')} — got "${phase}"$`));
+        new RegExp(`^the phase that paused must be discussion — got "${phase}"$`));
     }
   });
 
   it('every epic phase entered at a topic refuses the epic alone — the epic menu names the topic before it hands off', () => {
-    for (const phase of WORK_TYPE_PIPELINES.epic.filter((each) => each !== 'specification')) {
+    for (const phase of WORK_TYPE_PIPELINES.epic.filter((each) => !AT_UNIT.includes(each))) {
       refused(dir, [PHASE_SKILLS[phase], 'epic', 'fumi'], new RegExp(`^an epic enters ${phase} at a topic$`));
     }
   });
@@ -464,18 +464,18 @@ describe('engine handoff — refusals', () => {
         refused(dir, [skill, type, `${type}-unit`], new RegExp(`^the work type must be .* — got "${type}"$`));
       }
     }
-    refused(dir, ['leeway-planning-process', 'saga', 'note-window'], /^the work type must be one of epic\|feature\|bugfix — got "saga"$/);
+    refused(dir, ['leeway-discussion-process', 'saga', 'note-window'], /^the work type must be one of epic\|feature\|cross-cutting — got "saga"$/);
   });
 
   it('a phase\'s skill refuses a work unit the project does not hold, or holds as another type', () => {
-    refused(dir, ['leeway-planning-process', 'feature', 'ghost'], /^work unit "ghost" not found$/);
-    refused(dir, ['leeway-planning-process', 'epic', 'note-window', 'auth'], /^work unit "note-window" is of type feature, not epic$/);
-    refused(dir, ['leeway-planning-process', 'feature', 'none'], /^work unit "none" not found$/);
+    refused(dir, ['leeway-discussion-process', 'feature', 'ghost'], /^work unit "ghost" not found$/);
+    refused(dir, ['leeway-discussion-process', 'epic', 'note-window', 'auth'], /^work unit "note-window" is of type feature, not epic$/);
+    refused(dir, ['leeway-discussion-process', 'feature', 'none'], /^work unit "none" not found$/);
   });
 
   it('a work unit whose manifest does not parse refuses as corrupt, never as a unit not found', () => {
     createFile(dir, '.leeway/broken/manifest.json', '{not json');
-    refused(dir, ['leeway-planning-process', 'feature', 'broken'], /^invalid JSON in .*\/\.leeway\/broken\/manifest\.json: /);
+    refused(dir, ['leeway-discussion-process', 'feature', 'broken'], /^invalid JSON in .*\/\.leeway\/broken\/manifest\.json: /);
     refused(dir, ['leeway-continue-epic', 'broken'], /^invalid JSON in /);
   });
 
@@ -487,7 +487,7 @@ describe('engine handoff — refusals', () => {
   });
 
   it('a name that would break addressing refuses before anything is read', () => {
-    refused(dir, ['leeway-planning-process', 'feature', '../note-window'], /^"\.\.\/note-window" is not a legal work unit name/);
+    refused(dir, ['leeway-discussion-process', 'feature', '../note-window'], /^"\.\.\/note-window" is not a legal work unit name/);
     refused(dir, ['leeway-discussion-process', 'epic', 'fumi', 'pay.ments'], /^"pay\.ments" is not a legal topic name/);
     refused(dir, ['leeway-discussion-process', 'epic', 'fumi', 'pay/ments'], /^"pay\/ments" is not a legal topic name/);
     refused(dir, ['leeway-discussion-process', 'epic', 'fumi', ''], /^"" is not a legal topic name/);

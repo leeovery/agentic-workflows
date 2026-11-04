@@ -324,6 +324,17 @@ describe('task phase and task create (7.1.3, 7.4.1, 12.4.1)', () => {
       'the tracker already holds task 1.4 of pay');
   });
 
+  it('the tracker\'s verbs are the whole of `task`: the old plan\'s bookkeeping, its fix count and its analysis cycles answer the usage, a start by topic its own (3.S10, 13.S5)', () => {
+    const usage = 'Usage: engine task <phase|create|add|type|link|ready|start|done|close|list|show|worktree|stopped|account|settle|note> …';
+    refusePristine([
+      [['task', 'init', UNIT, UNIT], usage],
+      [['task', 'fix-attempt', UNIT, UNIT], usage],
+      [['task', 'complete', UNIT, UNIT, `${UNIT}-1-1`], usage],
+      [['task', 'analysis-cycle', UNIT, UNIT], usage],
+      [['task', 'start', UNIT, UNIT, `${UNIT}-1-1`], 'Usage: engine task start <unit> <task>'],
+    ]);
+  });
+
   it('refuses a task file the template does not hold, naming every fault; a phase already written or not yet written; a title breaking its line; a unit the project lacks; a task the tracker lacks; and any verb\'s arguments out of shape — writing nothing', () => {
     const file = taskFile(dir, 'write', template('Write the ledger'));
     const blank = taskFile(dir, 'blank', '\n \n');

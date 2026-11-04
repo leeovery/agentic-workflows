@@ -1,6 +1,6 @@
 # Cancelling the Topic
 
-*Shared reference. Loaded by the phase processing skills when the work under way is called off.*
+*Shared reference. Loaded by the investigation and scoping processing skills when the work under way is called off.*
 
 ---
 
@@ -25,12 +25,6 @@ node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit} wo
 The unit is the topic — the map row with its discussion and experiments together.
 
 → Proceed to **B. Confirm**.
-
-#### If work type is `epic` and `phase` is `planning`, `implementation` or `review`
-
-A topic past the spec never cancels. Tell the user in one line: what was built from the spec is fixed forward through new work, and abandoning the whole epic is the work-unit cancel on the start menu's manage view.
-
-→ Return to caller.
 
 #### Otherwise
 

@@ -196,18 +196,17 @@ function commitPathspecScoped(cwd, pathspec, message) {
  * submodule. A repo whose commit fails fails the call, naming itself and the
  * commits already made; re-running it is the retry, as those repos have
  * nothing left in the paths and a moved pointer is recorded whatever moved
- * it. With `finishMerges`, a repo with a merge in progress finishes it, its
- * paths the resolution (`commitMerge`).
+ * it. A repo with a merge in progress finishes it, its paths the
+ * resolution (`commitMerge`).
  * @param {{repo: import('../kernel/repos.cjs').Repo, paths: string[]}[]} groups
  * @param {string} message
- * @param {boolean} [finishMerges]
  * @returns {{repo: string, sha: string}[]} the commits made, `.` naming the root
  */
-function commitAcrossRepos(groups, message, finishMerges = false) {
+function commitAcrossRepos(groups, message) {
   /** @type {{repo: string, sha: string}[]} */
   const committed = [];
   for (const { repo, paths } of groups) {
-    const sha = commitInRepo(repo, paths, message, committed, finishMerges);
+    const sha = commitInRepo(repo, paths, message, committed);
     if (sha !== null) committed.push({ repo: repoName(repo), sha });
   }
   return committed;
@@ -219,12 +218,11 @@ function commitAcrossRepos(groups, message, finishMerges = false) {
  * @param {string[]} paths as the repo names them
  * @param {string} message
  * @param {{repo: string, sha: string}[]} committed the commits the call made before this one
- * @param {boolean} finishMerges
  * @returns {string|null}
  */
-function commitInRepo(repo, paths, message, committed, finishMerges) {
+function commitInRepo(repo, paths, message, committed) {
   try {
-    return withCommitLock(repo.path, () => (finishMerges && mergeInProgress(repo.path)
+    return withCommitLock(repo.path, () => (mergeInProgress(repo.path)
       ? commitMerge(repo.path, paths, message, repo.heldOut)
       : commitPathspec(repo.path, paths, message, repo.heldOut)));
   } catch (err) {

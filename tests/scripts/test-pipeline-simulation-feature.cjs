@@ -1,10 +1,10 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The pipeline simulation's feature scenarios: the whole pipeline from
-// discovery to a completed review, its spec entered at the unit, landed,
-// reviewed and cut into phases, and ready to build's pick beginning the
-// build; the start menu's working set of inbox ideas seeding discovery; a
+// The pipeline simulation's feature scenarios: the pipeline from discovery
+// into the build, its spec entered at the unit, landed, reviewed and cut
+// into phases, and ready to build's pick beginning the build, the unit then
+// completed; the start menu's working set of inbox ideas seeding discovery; a
 // discussion entered through `enter`, begun and then resumed by a later
 // conversation.
 //
@@ -25,7 +25,7 @@ const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/leeway-engine/scripts/
 const BRIDGE = require(path.join(ROOT, 'skills/leeway-bridge/scripts/gateway.cjs'));
 const { statePath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
 const {
-  Sim, sessionLog, enterEntry, carryOn, handoff, answerGate, decideTopic, startKeys, startNew, shapedInTheProduct, briefDraft, startThisWork, workTheSet, walkDeliveryPhases, specToBuild,
+  Sim, sessionLog, enterEntry, carryOn, handoff, answerGate, decideTopic, startKeys, startNew, shapedInTheProduct, briefDraft, startThisWork, workTheSet, specToBuild,
 } = require('./pipeline-world.cjs');
 
 const { shellWords } = require('./pipeline-oracle.cjs');
@@ -35,7 +35,7 @@ describe('pipeline simulation: feature', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('feature: discovery → discussion → spec → plan → implement → review → complete', () => {
+  it('feature: discovery → discussion → spec → into the build → complete', () => {
     const wu = 'pay';
     // The start menu's new-feature pick hands the work to discovery, which
     // shapes it in the product's conversation; start this work's yes creates
@@ -91,15 +91,6 @@ describe('pipeline simulation: feature', () => {
     // reviewed and cut into phases; ready to build's pick begins the build.
     specToBuild(sim, wu, [wu]);
 
-    walkDeliveryPhases(sim, wu, wu);
-
-    // The bridge's one stop before review: proceed, complete without
-    // review, or revisit — the delivery phases behind it are completed, so
-    // all three.
-    const gate = sim.render(['next-phase-gate', wu, '--prev', 'implementation', '--next', 'review'], { expect: 'content' });
-    assert.match(gate, /\*\*`y\/yes`\*\* +→ Proceed to review/);
-    assert.match(gate, /\*\*`d\/done`\*\* +→ Complete without review/);
-    assert.match(gate, /\*\*`r\/revisit`\*\* → Revisit an earlier phase/);
     const done = sim.run(['workunit', 'complete', wu, '-m', `workflow(${wu}): pipeline complete`]);
     assert.strictEqual(done.status, 'completed');
     assert.strictEqual(sim.manifest(wu).status, 'completed');

@@ -25,7 +25,6 @@ const { currentPhase } = require('./build.cjs');
 /** @typedef {import('../epic-detail.cjs').EpicDetail} EpicDetail */
 /** @typedef {import('../epic-detail.cjs').MapRow} MapRow */
 /** @typedef {import('../epic-detail.cjs').PhaseEntry} PhaseEntry */
-/** @typedef {import('../epic-detail.cjs').DepBlocking} DepBlocking */
 /** @typedef {import('../epic-detail.cjs').ItemRef} ItemRef */
 /** @typedef {import('../epic-detail.cjs').UnitStage} UnitStage */
 /** @typedef {import('../epic-detail.cjs').CancelledUnit} CancelledUnit */
@@ -69,7 +68,7 @@ const TOPIC_ROW_PHASES = EPIC_PIPELINE.filter((p) => p !== 'specification' && !D
 // the pipeline lacks.
 const STAGE_OF = {
   experiment: 'DISCOVERY', discussion: 'DISCOVERY',
-  specification: 'DEFINITION', planning: 'DEFINITION',
+  specification: 'DEFINITION',
   implementation: 'DELIVERY', review: 'DELIVERY',
 };
 
@@ -89,25 +88,9 @@ const STATUS_ORDER = ['proposed', 'unstarted', 'in-progress', 'completed', 'canc
 const ACTION_PHASE = {
   ...Object.fromEntries(Object.entries(CONVERSATION_ACTIONS).flatMap(([phase, actions]) => actions.map((a) => [a, phase]))),
   continue_experiment: 'experiment',
-  start_planning: 'planning',
-  continue_planning: 'planning',
-  start_implementation: 'implementation',
-  continue_implementation: 'implementation',
-  start_review: 'review',
-  continue_review: 'review',
   enter_implementation: 'implementation',
   enter_review: 'review',
 };
-
-// Every action the epic menu can hand the soft gate: the phase actions plus
-// the command options the selection flow routes through it. One home — the
-// gate refuses anything outside it, so a rename here can never silently
-// stop a gate firing.
-const SOFT_GATE_ACTIONS = [
-  ...Object.keys(ACTION_PHASE),
-  'continue_discovery',
-  'enter_specification',
-];
 
 /** The build's row, by its place: the build, then its review phase. */
 const BUILD_ACTIONS = ['enter_implementation', 'enter_review'];
@@ -138,32 +121,22 @@ function sourceName(src) {
   return src.topic || src.name || '';
 }
 
-/** Cross-plan dep reference — `{plan}:{task}` when the task id is known. @param {DepBlocking} dep */
-function depRef(dep) {
-  return dep.internal_id ? `${dep.topic}:${dep.internal_id}` : dep.topic;
-}
-
 /** Spec phase shows proposed items first, then the rest in existing order. @param {string} phase @param {PhaseEntry[]} items */
 function displayOrder(phase, items) {
   if (phase !== 'specification') return items;
   return [...items.filter((i) => i.status === 'proposed'), ...items.filter((i) => i.status !== 'proposed')];
 }
 
-/** The tree tag one build/flat-phase item carries — a completed item with a live reconcile flag reads `input moved`, a dep-blocked one `blocked`. @param {PhaseEntry} item */
+/** The tree tag one build/flat-phase item carries — a completed item with a live reconcile flag reads `input moved`. @param {PhaseEntry} item */
 function statusTag(item) {
-  if (item.status === 'completed' && item.reconcile_needed !== undefined) return 'completed · input moved';
-  const depBlocked = Array.isArray(item.deps_blocking) && item.deps_blocking.length > 0;
-  return depBlocked ? `${item.status} · blocked` : item.status;
+  return item.status === 'completed' && item.reconcile_needed !== undefined ? 'completed · input moved' : item.status;
 }
 
 /** Build the tree nodes for one build/flat phase. @param {string} phase @param {PhaseEntry[]} items @param {Record<string, string>} titles */
 function phaseNodes(phase, items, titles) {
   return displayOrder(phase, items).map((item) => {
-    const tagText = statusTag(item);
+    const tag = statusTag(item);
     const head = title({ label: itemTitle(titles, phase, item.name) });
-    // The plan format rides inside the tag rather than after it: anything
-    // appended past the tag column would break the alignment for every row.
-    const tag = phase === 'planning' && item.format ? `${tagText} · ${item.format}` : tagText;
     /** @type {{title: string, tag?: string}[]} */
     const children = [];
     if (phase === 'specification' && Array.isArray(item.sources)) {
@@ -321,28 +294,9 @@ function postponedLine(detail) {
   return wrapWithPrefix(`postponed: ${named}`, { width: TREE_WIDTH, prefix: '  ' }).join('\n');
 }
 
-/** Plans-not-ready ⚑ block, or null when no plan is blocked. @param {EpicDetail} detail */
-function plansNotReadyBlock(detail) {
-  const blocked = (detail.phases.planning || [])
-    .filter((p) => Array.isArray(p.deps_blocking) && p.deps_blocking.length > 0);
-  if (blocked.length === 0) return null;
-  const parts = [
-    '⚑ Plans not ready for implementation:\n'
-    + wrapWithPrefix('These plans have unresolved dependencies that must be addressed first.',
-      { width: TREE_WIDTH, prefix: '  ' }).join('\n'),
-  ];
-  for (const p of blocked) {
-    parts.push(
-      `  ${titlecase(p.name)}\n`
-      + renderTree((p.deps_blocking || []).map((dep) => ({ title: `Blocked by ${depRef(dep)}` })), { width: TREE_WIDTH })
-    );
-  }
-  return parts.join('\n\n').replace(/\n+$/, '');
-}
-
 /**
  * Section A — the epic state display. One code-block string: stage
- * dividers, map/phase trees, recommendation, and the plans-not-ready block.
+ * dividers, map/phase trees and the recommendation.
  * @param {string} workUnit
  * @param {EpicDetail} detail
  * @param {{newArrivals?: NewArrivals, presence?: PresenceRow[]}} [opts]
@@ -408,9 +362,6 @@ function epicDashboard(workUnit, detail, opts = {}) {
     if (rec) out += '\n' + flaggedCallout(rec) + '\n';
   }
 
-  const notReady = plansNotReadyBlock(detail);
-  if (notReady) out += '\n' + notReady + '\n';
-
   return out.replace(/\n+$/, '\n');
 }
 
@@ -427,24 +378,15 @@ const KEY_STATUS =
   + '    cancelled   — topic removed from active work\n'
   + '    promoted    — moved to its own cross-cutting work unit';
 
-const KEY_BLOCKING =
-  '  Blocking reason:\n'
-  + '    blocked by {plan}:{task} — depends on another plan\'s task\n'
-  + '    blocked by {plan}        — dependency unresolved';
-
 const CUE_RECONCILE =
   '    input moved             — an upstream artifact was revised since\n'
   + '                              this item last moved; the item\'s entry\n'
   + '                              flow reconciles it';
 
-const CUE_PLAN_BLOCKED =
-  '    blocked (planning)      — implementation waits on another plan;\n'
-  + '                              the ⚑ list names the dependency';
-
 /**
  * Section B — the Key block, showing only categories present in the display
  * whose vocabulary the rows don't spell out themselves: phase-item status
- * tags, the `input moved` cue, and blocking reasons. Map-row lifecycle and
+ * tags and the `input moved` cue. Map-row lifecycle and
  * session state need no legend — their `↳` state lines carry the words.
  * Empty string when nothing on screen earns a legend.
  * @param {EpicDetail} detail
@@ -455,8 +397,6 @@ function epicKey(detail) {
   const phaseNames = Object.keys(detail.phases);
   if (!hasMap && phaseNames.length === 0) return '';
 
-  const anyBlocked = (detail.phases.planning || [])
-    .some((p) => Array.isArray(p.deps_blocking) && p.deps_blocking.length > 0);
   // The cue legend mirrors the display: with a map only build phases render
   // item rows; without a map every phase renders.
   const cuePhases = hasMap ? BUILD_PHASES : Object.keys(detail.phases);
@@ -466,9 +406,7 @@ function epicKey(detail) {
   if (!hasMap || BUILD_PHASES.some((p) => (detail.phases[p] || []).length > 0)) blocks.push(KEY_STATUS);
   const cueLines = [];
   if (anyFlagged) cueLines.push(CUE_RECONCILE);
-  if (anyBlocked) cueLines.push(CUE_PLAN_BLOCKED);
   if (cueLines.length > 0) blocks.push('  Cue:\n' + cueLines.join('\n'));
-  if (anyBlocked) blocks.push(KEY_BLOCKING);
   if (blocks.length === 0) return '';
   return 'Key:\n' + blocks.join('\n\n');
 }
@@ -1098,4 +1036,4 @@ function epicPullForwardMenu(detail) {
   return selectionSubView('Postponed Topics', 'No postponed topics waiting.', 'Which topic would you like to pull forward?', 'pull-forward', rows);
 }
 
-module.exports = { epicDashboard, epicKey, epicMenu, epicMenuKeys, epicInSessionGate, epicCompletedMenu, epicCancelMenu, epicReactivateMenu, epicPostponeMenu, epicPullForwardMenu, SOFT_GATE_ACTIONS };
+module.exports = { epicDashboard, epicKey, epicMenu, epicMenuKeys, epicInSessionGate, epicCompletedMenu, epicCancelMenu, epicReactivateMenu, epicPostponeMenu, epicPullForwardMenu };

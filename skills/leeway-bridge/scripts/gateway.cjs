@@ -24,7 +24,6 @@ function phaseFileExists(cwd, workUnit, phase, manifest) {
     case 'investigation':  return listFiles(dir, '.md').length > 0;
     case 'scoping':        return phaseStatus(manifest, phase) !== null;
     case 'specification':  return fileExists(specPath(cwd, workUnit));
-    case 'planning':       return phaseStatus(manifest, phase) !== null;
     case 'implementation': return phaseStatus(manifest, phase) !== null;
     default: return false;
   }

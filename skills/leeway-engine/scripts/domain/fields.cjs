@@ -30,7 +30,6 @@ const {
   VALID_PHASE_STATUSES,
   DERIVED_PHASES,
   VALID_GATE_MODES,
-  GATE_FIELDS,
   VALID_WORK_UNIT_STATUSES,
   VALID_EXPERIMENT_STATUSES,
   EXPERIMENT_ID_PATTERN,
@@ -210,37 +209,15 @@ function validatePhase(phase) {
 }
 
 /**
- * A gate-mode write. The value must be in the vocabulary; a phase item's
- * `*_gate_mode` must be a gate GATE_FIELDS places on that phase, and
- * `bounded` lands only where the gate names a bound. A walk's nested
- * `gate_mode` (a staging row) takes no bound.
+ * A gate-mode write: a walk's nested `gate_mode` (a staging row), in the
+ * vocabulary. No phase item carries a gate mode.
  * @param {string[]} segments the resolved internal path @param {*} value
  */
 function validateGateMode(segments, value) {
+  const field = segments[segments.length - 1];
+  if (field !== 'gate_mode') fail(`"${field}" is not a gate the schema knows — a gate mode is a walk's, its staging row's gate_mode`);
   if (typeof value !== 'string' || !VALID_GATE_MODES.includes(value)) {
     fail(`Invalid gate mode ${JSON.stringify(value)}. Must be one of: ${VALID_GATE_MODES.join(', ')}`);
-  }
-  const field = segments[segments.length - 1];
-  if (field === 'gate_mode') {
-    if (value === 'bounded') {
-      fail('"bounded" is not defined for a walk\'s gate_mode — a walk\'s gate has no bound; use gated or auto');
-    }
-    return;
-  }
-  const onItem = segments.length === 5 && segments[0] === 'phases' && segments[2] === 'items';
-  const gates = onItem ? GATE_FIELDS[segments[1]] : undefined;
-  if (!gates || !(field in gates)) {
-    const homes = Object.keys(GATE_FIELDS).filter((phase) => field in GATE_FIELDS[phase]);
-    if (homes.length === 0) {
-      const known = Object.entries(GATE_FIELDS).map(([phase, g]) => `${phase}: ${Object.keys(g).join(', ')}`).join('; ');
-      fail(`"${field}" is not a gate the schema knows — gates by phase: ${known}`);
-    }
-    fail(`"${field}" is a gate of the ${homes.join(' and ')} phase${homes.length > 1 ? 's' : ''} — write it on that phase's item (<work-unit>.${homes[0]}.<topic> ${field})`);
-  }
-  if (value === 'bounded' && gates[field] === null) {
-    const bounded = Object.entries(GATE_FIELDS)
-      .flatMap(([phase, g]) => Object.entries(g).filter(([, bound]) => bound !== null).map(([f, bound]) => `${phase}.${f} (${bound})`));
-    fail(`"bounded" is not defined for "${field}" — the gate has no bound; gates with a bound: ${bounded.join(', ')}`);
   }
 }
 
@@ -272,8 +249,7 @@ function validateSet(segments, value, fieldSegments = segments) {
     return;
   }
 
-  // A phase item's `order` (the build order; the discovery map's sibling) is
-  // a positive integer — a quoted number would land silently through apply
+  // A phase item's `order` (the discovery map's) is a positive integer — a quoted number would land silently through apply
   // and read as unordered everywhere.
   if (segments.length === 5 && segments[0] === 'phases' && segments[2] === 'items'
     && segments[4] === 'order') {
@@ -289,8 +265,7 @@ function validateSet(segments, value, fieldSegments = segments) {
     return;
   }
 
-  // Gate modes — a phase item's `*_gate_mode` where GATE_FIELDS places it,
-  // a walk's nested `gate_mode` under its staging row.
+  // Gate modes — a walk's nested `gate_mode` under its staging row.
   const last = segments[segments.length - 1];
   if (last.endsWith('_gate_mode') || last === 'gate_mode') {
     if (segments[0] === 'phases' && segments.length >= 2) validatePhase(segments[1]);

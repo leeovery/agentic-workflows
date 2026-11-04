@@ -19,7 +19,6 @@ const ENGINE = `${ROOT}/.claude/skills/leeway-engine/scripts/engine.cjs`
 
 const BUILDER = 'leeway-builder'
 const REVIEWER = 'leeway-reviewer'
-const EXECUTOR = 'leeway-implementation-task-executor'
 
 /** A dispatch of the build's agents carries its brief's pointer alone. */
 const POINTER = 'brief:Kq3xW9'
@@ -56,9 +55,9 @@ const LAUNCHED = {
   outputFile: '/tmp/agent-output',
 }
 
-/** The engine's run that records an agent, by its agent id, and the brief its dispatch named, where it named one. */
-const recording = (agentId: string, brief?: string) => ({
-  argv: ['node', ENGINE, 'conversation', 'builder', 's0', agentId, ...(brief === undefined ? [] : ['--brief', brief])],
+/** The engine's run that records an agent, by its agent id, and the brief its dispatch named. */
+const recording = (agentId: string, brief: string) => ({
+  argv: ['node', ENGINE, 'conversation', 'builder', 's0', agentId, '--brief', brief],
   cwd: ROOT,
   timeoutMs: 15_000,
 })
@@ -122,7 +121,7 @@ function world(
 const dispatchOf = (subagent_type: string | undefined, over: { agentId?: string; prompt?: string } = {}) => ({
   tool: 'Agent' as const,
   description: 'Build task 2.3',
-  prompt: subagent_type === EXECUTOR ? 'Implement task 2.3.' : POINTER,
+  prompt: POINTER,
   ...(subagent_type === undefined ? {} : { subagent_type }),
   ...over,
 })
@@ -147,14 +146,6 @@ describe('a task\'s builder and reviewers, recorded as they are dispatched', () 
       })
     }
   }
-
-  test('the plan\'s executor, which carries no brief, is handed over without one', async ($, on) => {
-    const { runs, clock } = world(on)
-
-    await dispatched($, clock, dispatchOf(EXECUTOR))
-
-    expect(runs).toEqual([recording(COMPLETED.agentId)])
-  })
 
   test('answers the dispatch at once, the record made after it', async ($, on) => {
     const { runs, clock } = world(on)

@@ -34,7 +34,7 @@ If a second task is needed (e.g., separate pass for config files, test file upda
 
 ## B. Write Task Files
 
-Load the chosen format's **[authoring.md](../../leeway-planning-process/references/output-formats/{format}/authoring.md)** and follow its task storage instructions.
+Load the chosen format's **[authoring.md](output-formats/{format}/authoring.md)** and follow its task storage instructions.
 
 **Task content** — each task file includes:
 
@@ -79,7 +79,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs manifest set project.defaul
 Then register everything — settings, position, and the whole task map — in ONE batched set (one lock, one write): the fixed fields, the phase mapping (`task_map.{topic}-1` = the phase's external ID), one `task_map.{internal_id}={external_id}` pair per task, and `storage_paths` — the fenced JSON array in the format's authoring.md → Storage Pathspecs, copied exactly as declared:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} format={chosen-format} spec_commit={commit-hash} task_list_gate_mode=auto author_gate_mode=auto finding_gate_mode=auto review_cycle=0 phase=1 task='~' external_id={plan_external_id} task_map.{topic}-1={phase_external_id} task_map.{internal_id}={external_id} storage_paths='{format storage pathspecs}'
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} format={chosen-format} spec_commit={commit-hash} review_cycle=0 phase=1 task='~' external_id={plan_external_id} task_map.{topic}-1={phase_external_id} task_map.{internal_id}={external_id} storage_paths='{format storage pathspecs}'
 ```
 
 ```bash

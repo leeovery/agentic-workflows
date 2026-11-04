@@ -30,7 +30,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { git, tryGit, dirtyEntries, pathsTouchedBySubject } = require('./git.cjs');
+const { git, tryGit, dirtyEntries } = require('./git.cjs');
 const { stateRoot } = require('./state-root.cjs');
 const { codeRoot } = require('./code-root.cjs');
 
@@ -253,16 +253,7 @@ function projectDirtyEntries(repos, { kept = () => true, renames = true } = {}) 
     .map((entry) => ({ path: projectPath(repo.dir, entry.path), status: entry.status })));
 }
 
-/**
- * `pathsTouchedBySubject` across the project, in project paths.
- * @param {Repo[]} repos @param {string} prefix
- * @returns {Set<string>}
- */
-function projectPathsTouchedBySubject(repos, prefix) {
-  return new Set(repos.flatMap((repo) => [...pathsTouchedBySubject(repo.path, prefix)].map((p) => projectPath(repo.dir, p))));
-}
-
 module.exports = {
   projectRepos, mappedSubmodules, repoOf, repoPath, repoName, projectPath, childrenFirst, commitGroups,
-  codeHeldOut, projectDirtyEntries, projectPathsTouchedBySubject,
+  codeHeldOut, projectDirtyEntries,
 };

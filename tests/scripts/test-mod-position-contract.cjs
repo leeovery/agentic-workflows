@@ -8,8 +8,8 @@
 // spinner reads the position file the engine keeps, by its name and keys,
 // again after the entry and each task verb the engine moves it with;
 // and the gate mod records each task's builder and reviewers, the brief
-// named by the pointer the engine issues, and the plan's executor, through
-// the verb the engine answers, which the note then names.
+// named by the pointer the engine issues, through the verb the engine
+// answers, which the note then names.
 // Each literal is read off the mod's source — a mod cannot import the engine
 // — and held against a real answer.
 
@@ -51,6 +51,24 @@ function answer() {
   const at = lines.findIndex((line) => line.startsWith(literal('skills/leeway-gates/hooks/compaction.ts', 'POSITION_MARKER')));
   assert.notStrictEqual(at, -1, out);
   return { out, json: JSON.parse(lines[at + 1]) };
+}
+
+/**
+ * Task 1.1 of the unit's build in flight in this conversation, through the
+ * tracker's verbs, and the agent its brief `id` was issued for recorded
+ * against it as the gate mod records one.
+ * @param {string} id @param {'builder'|'reviewer'} role @param {string} agentId
+ */
+function building(id, role, agentId) {
+  fs.writeFileSync(path.join(dir, '.leeway/pay/manifest.json'), JSON.stringify({ name: 'pay', work_type: 'epic', status: 'in-progress', phases: {}, build: { position: 'auto' } }));
+  harness.commitAll(dir, 'the build begun');
+  harness.ok(dir, ['task', 'phase', 'pay', '1', '--title', 'Ledger'], { env: env() });
+  const file = path.join(config, 'task.md');
+  fs.writeFileSync(file, '# Keep the ledger\n\n## Type\nfeat\n\n## Problem\nA.\n\n## Solution\nB.\n\n## Outcome\nC.\n\n## Acceptance scenarios\n- Given a, when b, then c.\n\n## Spec reference\n§1\n');
+  harness.ok(dir, ['task', 'create', 'pay', '1', '--file', file], { env: env() });
+  harness.ok(dir, ['task', 'start', 'pay', '1.1'], { env: env() });
+  harness.withEnv({ LEEWAY_CONFIG_DIR: config }, () => storeBrief('sess-1', id, `Brief ${id}\n`, { role, agent: ROLES[role].agent, unit: 'pay', task: '1.1', topic: null }));
+  assert.deepStrictEqual(harness.ok(dir, ['conversation', 'builder', 'sess-1', agentId, '--brief', id], { env: env() }), { ok: true, recorded: true });
 }
 
 beforeEach(() => {
@@ -103,16 +121,11 @@ describe('the mods read conversation position as the engine writes it', () => {
   });
 
   it('the spinner reads the position file the engine writes, by the keys it writes, each task in flight as `{phase}.{n}` with its agents', () => {
-    fs.writeFileSync(path.join(dir, '.leeway/pay/manifest.json'), JSON.stringify({
-      name: 'pay', work_type: 'epic', status: 'in-progress',
-      phases: { implementation: { items: { ledger: { status: 'in-progress', current_task: null, fix_attempts: 0 } } } },
-    }));
-    harness.ok(dir, ['task', 'start', 'pay', 'ledger', 'ledger-2-3'], { env: env() });
-    harness.ok(dir, ['conversation', 'builder', 'sess-1', 'aa76bd7f82a2ef3e4'], { env: env() });
+    building(newId(), 'builder', 'aa76bd7f82a2ef3e4');
     const file = path.join(config, 'conversations', 'sess-1', literal('skills/leeway-gates/hooks/folder.ts', 'POSITION'));
     assert.ok(fs.existsSync(file), 'the engine keeps the position under the name the mod reads');
     const written = JSON.parse(fs.readFileSync(file, 'utf8'));
-    assert.deepStrictEqual(written, { name: 'pay', phase: 'implementation', topic: 'ledger', tasks: [{ task: '2.3', builder: 'aa76bd7f82a2ef3e4', reviewers: [] }] });
+    assert.deepStrictEqual(written, { name: 'pay', phase: 'implementation', topic: 'pay', tasks: [{ task: '1.1', builder: 'aa76bd7f82a2ef3e4', reviewers: [] }] });
     /** The keys a type the mod declares names. @param {string} name */
     const keysOf = (name) => {
       const type = new RegExp(`export type ${name} = \\{([^}]*)\\}`).exec(source('skills/leeway-gates/hooks/position.ts'));
@@ -125,7 +138,7 @@ describe('the mods read conversation position as the engine writes it', () => {
     assert.match(source('skills/leeway-gates/hooks/position.ts'), /`\$\{tasks\.length\} tasks`/, 'and several by their count');
   });
 
-  it('the spinner reads the position again after each task verb that moves it — the tracker\'s start, done and close, and the plan\'s complete', () => {
+  it('the spinner reads the position again after each task verb that moves it — the tracker\'s start, done and close', () => {
     const moves = /const MOVES =\s*\/(.+)\/\n/.exec(source('skills/leeway-gates/hooks/spinner.ts'));
     assert.ok(moves, 'the spinner declares the calls that move the position');
     const engine = literal('skills/leeway-gates/hooks/folder.ts', 'ENGINE');
@@ -133,7 +146,6 @@ describe('the mods read conversation position as the engine writes it', () => {
       assert.ok(Object.hasOwn(TASK_VERBS, verb), `the engine dispatches task ${verb}`);
       assert.match(`node ${engine} task ${verb} pay 1.1`, new RegExp(moves[1]), `task ${verb}`);
     }
-    assert.match(`node ${engine} task complete pay ledger ledger-1-1`, new RegExp(moves[1]), 'task complete');
   });
 
   it('the spinner reads the position again after the entry the engine records it through', () => {
@@ -162,7 +174,7 @@ describe('the mods read conversation position as the engine writes it', () => {
     assert.deepStrictEqual(words('PLACE_WORDS'), [...PROJECT_IDENTITIES].sort());
   });
 
-  it('the gate mod records the agents a build dispatches, the brief named by the pointer the engine issues, and the plan\'s executor, through the verb the engine answers', () => {
+  it('the gate mod records the agents a build dispatches, the brief named by the pointer the engine issues, through the verb the engine answers', () => {
     const builder = 'skills/leeway-gates/hooks/builder.ts';
     assert.deepStrictEqual([literal(builder, 'BUILDER'), literal(builder, 'REVIEWER')], [ROLES.builder.agent, ROLES.reviewer.agent], 'the agents the builder\'s and the reviewer\'s briefs are issued for');
     assert.strictEqual(literal(builder, 'POINTER'), POINTER);
@@ -170,10 +182,6 @@ describe('the mods read conversation position as the engine writes it', () => {
     assert.ok(pointed, 'the gate mod reads the brief\'s id off the pointer');
     const id = newId();
     assert.strictEqual(new RegExp(`^${POINTER}${pointed[1]}$`).exec(pointerOf(id))?.[1], id, 'the gate mod reads the id off the pointer the engine issues');
-    const executor = literal(builder, 'EXECUTOR');
-    assert.ok(fs.existsSync(path.join(ROOT, 'agents', `${executor}.md`)), `the workflows ship the agent "${executor}"`);
-    assert.ok(source('skills/leeway-implementation-process/references/invoke-executor.md').includes(`\`${executor}\``),
-      'the implementation dispatches the agent the mod watches for');
     const call = /\['node', `\$\{root\}\/\$\{ENGINE\}`, '(\w+)', '(\w+)', await \$\.session\.id\(\), agentId, \.\.\.brief\]/.exec(source(builder));
     assert.ok(call, 'the gate mod runs the engine with the session id, the agent id and the brief');
     assert.match(source(builder), /\['--brief', id\]/, 'the brief is handed as the engine takes it');
@@ -181,14 +189,11 @@ describe('the mods read conversation position as the engine writes it', () => {
     assert.ok(engine.startsWith('.claude/') && fs.existsSync(path.join(ROOT, engine.slice('.claude/'.length))), `the gate mod runs the engine where a project installs it (${engine})`);
     const file = path.join(config, 'conversations', 'sess-1', literal('skills/leeway-gates/hooks/folder.ts', 'POSITION'));
 
-    fs.writeFileSync(path.join(dir, '.leeway/pay/manifest.json'), JSON.stringify({
-      name: 'pay', work_type: 'epic', status: 'in-progress',
-      phases: { implementation: { items: { pay: { status: 'in-progress', current_task: null, fix_attempts: 0 } } } },
-    }));
-    harness.ok(dir, ['task', 'start', 'pay', 'pay', 'pay-1-1'], { env: env() });
-    harness.withEnv({ LEEWAY_CONFIG_DIR: config }, () => storeBrief('sess-1', id, `Brief ${id}\n`, { role: 'reviewer', agent: ROLES.reviewer.agent, unit: 'pay', task: '1.1', topic: null }));
-    assert.deepStrictEqual(harness.ok(dir, [call[1], call[2], 'sess-1', 'ab12cd34', '--brief', id], { env: env() }), { ok: true, recorded: true });
-    assert.deepStrictEqual(harness.ok(dir, [call[1], call[2], 'sess-1', 'aa76bd7f82a2ef3e4'], { env: env() }), { ok: true, recorded: true });
+    assert.deepStrictEqual([call[1], call[2]], ['conversation', 'builder'], 'the verb the engine records a dispatch through');
+    building(id, 'reviewer', 'ab12cd34');
+    const builderBrief = newId();
+    harness.withEnv({ LEEWAY_CONFIG_DIR: config }, () => storeBrief('sess-1', builderBrief, `Brief ${builderBrief}\n`, { role: 'builder', agent: ROLES.builder.agent, unit: 'pay', task: '1.1', topic: null }));
+    assert.deepStrictEqual(harness.ok(dir, [call[1], call[2], 'sess-1', 'aa76bd7f82a2ef3e4', '--brief', builderBrief], { env: env() }), { ok: true, recorded: true });
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(file, 'utf8')).tasks, [{ task: '1.1', builder: 'aa76bd7f82a2ef3e4', reviewers: ['ab12cd34'] }]);
   });
 

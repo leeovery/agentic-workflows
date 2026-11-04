@@ -110,11 +110,16 @@ function workUnitStatus(type, unit) {
  * exist, and `back` to the start menu wherever the menu renders. `rendered` is
  * the dotted-gate markdown block — empty when there is nothing to revisit and
  * nothing to finalise (the calling skill routes straight through, no stop).
+ * A unit waiting on the migration's cut has its line and `back` alone (P12).
  * @param {string} type  a WORK_UNIT_TYPES key
  * @param {WorkUnitEntry} unit
  * @returns {{keys: WorkUnitMenuKey[], rendered: string}}
  */
 function workUnitMenu(type, unit) {
+  if (unit.waiting !== null) {
+    const back = { key: 'b', word: 'back', action: 'back', topic: unit.name, route: null, label: 'Return to the start menu' };
+    return { keys: [back], rendered: menu(unit.waiting, [cmdOption(back.key, back.word, back.label)], { question: 'What next?' }) };
+  }
   const revisitable = unit.revisit;
   const gated = unit.finalising || revisitable.length > 0;
 

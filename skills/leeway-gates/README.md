@@ -233,9 +233,7 @@ agent id the dispatch answers with, foreground or background, and the brief's
 id to the engine's `conversation builder`, which records it on the position
 against the task the brief was issued for — a builder in place of any before
 it, a reviewer beside the pair's other; with that task not in flight it
-records nothing. The plan's `leeway-implementation-task-executor` carries no
-brief, and is recorded as the builder of the one task in flight. The ids ride
-with their task and go when it ends, so a compaction's note names each task
+records nothing. The ids ride with their task and go when it ends, so a compaction's note names each task
 with its agents (``on task 2.3 (internal id `ledger-2-3`), its builder agent
 `aa76bd7f82a2ef3e4`, its reviewer agents `ab12` and `cd34` ``) and the next
 round continues them rather than dispatching fresh ones. Another agent, a

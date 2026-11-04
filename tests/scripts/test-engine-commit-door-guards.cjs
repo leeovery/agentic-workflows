@@ -15,7 +15,7 @@
 
 require('./hermetic-env.cjs');
 
-const { describe, it, beforeEach, afterEach } = require('node:test');
+const { describe, it, before, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
@@ -24,7 +24,7 @@ const { execFileSync, spawn } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
 const { ENGINE, ok, refuses, git, stateGit, commitAll, cleanupFixture, fixtureFrom, setupGitFixture, STATE_DIR_NAME, statePath, layout, createFile, writeState, readState } = harness;
-const { headFiles, statusLines, codeHeadFiles, codeStatusLines, holdStateRef, epicManifest, implementing, setupTwoTopicFixture } = require('./commit-door-world.cjs');
+const { headFiles, statusLines, codeHeadFiles, codeStatusLines, holdStateRef, epicManifest, implementing, setupTwoTopicFixture, building, FOR_TASK, startBuilding } = require('./commit-door-world.cjs');
 const { withCommitLock, commitAcrossRepos, commitPathspecScoped } = require('../../skills/leeway-engine/scripts/domain/commit.cjs');
 
 describe('mechanical heartbeats: the self-referential rule', () => {
@@ -34,11 +34,6 @@ describe('mechanical heartbeats: the self-referential rule', () => {
 
   const beatFile = (phase, topic) => statePath(dir, layout.cache('payments', phase, topic, 'presence'));
   const beaten = (phase, topic) => fs.existsSync(beatFile(phase, topic));
-  /** The epic's build begun, so a plan may be born. */
-  const building = () => {
-    writeState(dir, layout.manifest('payments'), JSON.stringify({ ...epicManifest(), build: { position: 'auto' } }, null, 2) + '\n');
-    commitAll(dir, 'the build begun');
-  };
 
   it('the session-cadence commit beats; the conclusion commit clears; --sweep suppresses', () => {
     writeState(dir, layout.doc('payments', 'investigation', 'topic-a'), '# Topic A\nprogress\n');
@@ -132,9 +127,9 @@ describe('mechanical heartbeats: the self-referential rule', () => {
   });
 
   it('no field write beats — a three-segment set is often a cross-phase write', () => {
-    // Storage-path backfills, review's `updated` stamp and the epic menu's
-    // unblock all write one phase's item from another phase's session. A beat
-    // there mints a hold on a topic nobody is in.
+    // The gap analysis's `source` stamp and a brief's `brief_incorporated`
+    // mark write one phase's item from another phase's session. A beat there
+    // mints a hold on a topic nobody is in.
     ok(dir, ['manifest', 'set', 'payments.discussion.topic-a', 'status', 'in-progress']);
     assert.ok(!beaten('discussion', 'topic-a'), 'a field write is not a session claiming the topic');
 
@@ -148,45 +143,28 @@ describe('mechanical heartbeats: the self-referential rule', () => {
   });
 
   it('the close releases the slot, and every commit after it keeps it released', () => {
-    building();
-    ok(dir, ['topic', 'start', 'payments', 'planning', 'topic-a']);
-    assert.ok(beaten('planning', 'topic-a'), 'start opens the topic');
+    ok(dir, ['topic', 'start', 'payments', 'investigation', 'topic-a']);
+    assert.ok(beaten('investigation', 'topic-a'), 'start opens the topic');
 
-    ok(dir, ['topic', 'complete', 'payments', 'planning', 'topic-a']);
-    assert.ok(!beaten('planning', 'topic-a'), 'complete is the release');
+    ok(dir, ['topic', 'complete', 'payments', 'investigation', 'topic-a']);
+    assert.ok(!beaten('investigation', 'topic-a'), 'complete is the release');
 
-    // The conclude-plan commit that follows must not re-take what the close
-    // let go — a terminal item is finished, whatever the session does next.
-    writeState(dir, layout.plan('payments', 'topic-a'), '# Plan\nconcluded\n');
-    ok(dir, ['commit', 'payments', '-m', 'planning(payments): conclude topic-a', '--topic', 'planning/topic-a']);
-    assert.ok(!beaten('planning', 'topic-a'), 'a post-completion cadence commit stays released');
-  });
-
-  it('the review sequence leaves no held row behind', () => {
-    // `topic complete review` then the session's own artifact commit — the
-    // shape review's conclusion runs. Under a held row the checkout's code
-    // slot would read taken until the process died.
-    ok(dir, ['topic', 'start', 'payments', 'review', 'topic-a']);
-    assert.ok(beaten('review', 'topic-a'));
-
-    writeState(dir, layout.unit('payments', 'review', 'topic-a', 'report.md'), '# Report\n');
-    ok(dir, ['topic', 'complete', 'payments', 'review', 'topic-a']);
-    ok(dir, ['commit', 'payments', '-m', 'review(payments): complete topic-a', '--topic', 'review/topic-a']);
-
-    assert.ok(!beaten('review', 'topic-a'), 'the code slot is free the moment review closes');
+    // The conclusion commit that follows must not re-take what the close let
+    // go — a terminal item is finished, whatever the session does next.
+    writeState(dir, layout.doc('payments', 'investigation', 'topic-a'), '# Topic A\nconcluded\n');
+    ok(dir, ['commit', 'payments', '-m', 'investigation(payments): conclude topic-a', '--topic', 'investigation/topic-a']);
+    assert.ok(!beaten('investigation', 'topic-a'), 'a post-completion cadence commit stays released');
   });
 
   it('a reopened item beats again', () => {
-    building();
-    ok(dir, ['topic', 'start', 'payments', 'planning', 'topic-a']);
-    writeState(dir, layout.plan('payments', 'topic-a'), '# Plan\n');
-    ok(dir, ['topic', 'complete', 'payments', 'planning', 'topic-a']);
-    assert.ok(!beaten('planning', 'topic-a'), 'closed and released');
+    ok(dir, ['topic', 'start', 'payments', 'investigation', 'topic-a']);
+    ok(dir, ['topic', 'complete', 'payments', 'investigation', 'topic-a']);
+    assert.ok(!beaten('investigation', 'topic-a'), 'closed and released');
 
-    ok(dir, ['topic', 'reopen', 'payments', 'planning', 'topic-a']);
-    writeState(dir, layout.plan('payments', 'topic-a'), '# Plan\nreopened\n');
-    ok(dir, ['commit', 'payments', '-m', 'planning(payments/topic-a): reconcile', '--topic', 'planning/topic-a']);
-    assert.ok(beaten('planning', 'topic-a'), 'a live item\'s cadence commit is its heartbeat again');
+    ok(dir, ['topic', 'reopen', 'payments', 'investigation', 'topic-a']);
+    writeState(dir, layout.doc('payments', 'investigation', 'topic-a'), '# Topic A\nreopened\n');
+    ok(dir, ['commit', 'payments', '-m', 'investigation(payments/topic-a): reconcile', '--topic', 'investigation/topic-a']);
+    assert.ok(beaten('investigation', 'topic-a'), 'a live item\'s cadence commit is its heartbeat again');
   });
 
   it('a --topic commit on a topic with no manifest item neither beats nor clears', () => {
@@ -311,6 +289,7 @@ describe('commit door: a confined commit that does not land leaves the index as 
 });
 
 describe('commit door: index.lock retry and the commit lock', () => {
+  before(startBuilding);
   const setup = fixtureFrom('engine-commit-', implementing);
   let dir;
   beforeEach(() => {
@@ -319,7 +298,7 @@ describe('commit door: index.lock retry and the commit lock', () => {
   });
   afterEach(() => { cleanupFixture(dir); });
 
-  const task = ['commit', '--paths', 'src/app.js', '-m', 'feat(topic-a): the task', '--for', 'payments', 'implementation/topic-a'];
+  const task = ['commit', '--paths', 'src/app.js', '-m', 'feat(topic-a): the task', ...FOR_TASK];
 
   it('retries through transient index.lock contention', () => {
     const indexLock = path.join(dir, '.git', 'index.lock');
@@ -329,7 +308,7 @@ describe('commit door: index.lock retry and the commit lock', () => {
       detached: true, stdio: 'ignore',
     }).unref();
 
-    const res = ok(dir, task);
+    const res = ok(dir, task, building);
 
     assert.deepStrictEqual(res.committed, [{ repo: '.', sha: git(dir, ['rev-parse', '--short', 'HEAD']).trim() }]);
   });
@@ -337,7 +316,7 @@ describe('commit door: index.lock retry and the commit lock', () => {
   it('surfaces the git error once the retry budget is exhausted, and releases the commit lock', () => {
     fs.writeFileSync(path.join(dir, '.git', 'index.lock'), '');
 
-    const res = refuses(dir, task, { env: { LEEWAY_GIT_LOCK_BUDGET_MS: '200' } });
+    const res = refuses(dir, task, { env: { ...building.env, LEEWAY_GIT_LOCK_BUDGET_MS: '200' } });
 
     assert.match(res.error, /index\.lock/);
     assert.ok(!fs.existsSync(path.join(dir, '.git', 'leeway-commit.lock')), 'commit lock released on failure');
@@ -349,7 +328,7 @@ describe('commit door: index.lock retry and the commit lock', () => {
     const past = new Date(Date.now() - 360000);
     fs.utimesSync(lock, past, past);
 
-    const res = ok(dir, task);
+    const res = ok(dir, task, building);
 
     assert.strictEqual(res.committed.length, 1);
     assert.ok(!fs.existsSync(lock), 'stale lock cleared');
@@ -548,25 +527,17 @@ describe('commit door: transaction-tail degrade', () => {
   it('every narrowed tail prescribes its own scope, never a work-unit sweep', () => {
     const manifest = epicManifest();
     manifest.phases.discovery.active_session = '001';
-    manifest.phases.specification = { items: {
-      'topic-a': { status: 'in-progress', sources: [] },
-      'topic-b': { status: 'in-progress', sources: [] },
-    } };
     writeState(dir, layout.manifest('payments'), JSON.stringify(manifest, null, 2) + '\n');
     writeState(dir, layout.session('payments', '001'), '# Session 001\n');
     writeState(dir, layout.projectManifest, JSON.stringify({ ...JSON.parse(readState(dir, layout.projectManifest)), product_session: '001' }, null, 2));
     writeState(dir, layout.productSession('001'), '# Product session 001\n');
-    commitAll(dir, 'a discovery session, the product\'s, and two specs');
+    commitAll(dir, 'a discovery session, and the product\'s');
     ok(dir, ['topic', 'cancel', 'payments', 'discovery', 'topic-b']);
     holdStateRef(dir);
 
     const reactivated = ok(dir, ['topic', 'reactivate', 'payments', 'discovery', 'topic-b']);
     assert.strictEqual(reactivated.note, 'commit pending — state saved; retry with engine commit',
       'reactivate wrote the manifest alone, like the cancel it undoes — narrower than the state scope, so its retry stays generic');
-
-    const sequenced = ok(dir, ['build-order', 'sequence', 'payments', 'topic-a=1', 'topic-b=2']);
-    assert.match(sequenced.note, /engine commit payments --state -m/,
-      'build-order writes the manifest alone — the work unit\'s state scope covers it');
 
     const mapped = ok(dir, ['topic', 'order', 'payments', 'topic-a=1']);
     assert.match(mapped.note, /engine commit payments --discovery -m/, 'the map lives in the discovery scope');

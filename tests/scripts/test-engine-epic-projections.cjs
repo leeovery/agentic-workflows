@@ -9,7 +9,7 @@ const fs = require('fs');
 const { execFileSync } = require('child_process');
 
 const { setupFixture, cleanupFixture, createManifest, readManifest } = require('./discovery-test-utils.cjs');
-const { ok, output } = require('./engine-harness.cjs');
+const { ok } = require('./engine-harness.cjs');
 const { epicDetail } = require('../../skills/leeway-engine/scripts/domain/epic-detail.cjs');
 const { discover } = require('../../skills/leeway-continue-epic/scripts/gateway.cjs');
 const {
@@ -120,9 +120,6 @@ describe('epic projections: dashboard (map branch)', () => {
     '  └─ Roles And Permissions    [completed]',
     '     ├─ Menu Admin            [incorporated]',
     '     └─ Auth Flow             [pending]',
-    '',
-    'PLANNING (1 completed)',
-    '  └─ Roles And Permissions    [completed · tick]',
     '',
     '── DELIVERY ─────────────────────────────────────────────────────',
     '',
@@ -290,41 +287,6 @@ describe('epic projections: dashboard (map branch)', () => {
     assert.ok(key.includes('input moved             — an upstream artifact was revised'), key);
   });
 
-  it('the completed-topics picker carries the input-moved cue on flagged rows', () => {
-    const d = detailFor(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        discussion: { items: { fees: { status: 'completed' } } },
-        specification: { items: { fees: { status: 'completed' } } },
-        planning: { items: { fees: { status: 'completed', reconcile_needed: 'specification' } } },
-      },
-    });
-    const sub = epicCompletedMenu('v1', d);
-    assert.ok(sub.display.includes('Fees [completed · input moved]'), sub.display);
-    const entry = sub.keys.find((k) => k.phase === 'planning');
-    assert.strictEqual(drawLabel(entry.label), 'Resume "Fees" — *planning* · input moved');
-    const clean = sub.keys.find((k) => k.phase === 'discussion');
-    assert.strictEqual(drawLabel(clean.label), 'Resume "Fees" — *discussion*');
-  });
-
-  it('all-done-but-flagged: the reconcile route (resume completed) is the recommendation, not analyze/regroup', () => {
-    const d = detailFor(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        discovery: { items: { fees: { source: 'discovery', order: 1 } } },
-        discussion: { items: { fees: { status: 'completed' } } },
-        specification: { items: { fees: { status: 'completed', sources: { fees: { status: 'incorporated' } } } } },
-        planning: { items: { fees: { status: 'completed' } } },
-        implementation: { items: { fees: { status: 'completed' } } },
-        review: { items: { fees: { status: 'completed', reconcile_needed: 'implementation' } } },
-      },
-    });
-    const { keys } = epicMenu('v1', d);
-    const cOption = keys.find((k) => k.action === 'resume_completed');
-    assert.ok(cOption, 'completed option present');
-    assert.strictEqual(cOption.recommended, true, 'the reconcile route leads');
-  });
-
   it('an unstarted stub renders fresh with the mail waiting cue and counts as fresh', () => {
     const d = detailFor(dir, 'v1', {
       work_type: 'epic',
@@ -365,25 +327,6 @@ describe('epic projections: dashboard (no-map and brand-new branches)', () => {
         '',
       ].join('\n')
     );
-  });
-
-  it('appends the plans-not-ready block after the stages', () => {
-    const d = detailFor(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        planning: { items: { billing: { status: 'completed', external_dependencies: { auth: { description: 'd', state: 'unresolved' } } } } },
-      },
-    });
-    const out = epicDashboard('v1', d);
-    assert.ok(out.endsWith([
-      '⚑ Plans not ready for implementation:',
-      '  These plans have unresolved dependencies that must be addressed',
-      '  first.',
-      '',
-      '  Billing',
-      '  └─ Blocked by auth',
-      '',
-    ].join('\n')));
   });
 
   it('a promoted discussion shows promoted, as its promoted specification does — and is no topic to resume', () => {
@@ -429,11 +372,6 @@ describe('epic projections: key', () => {
     '    cancelled   — topic removed from active work',
     '    promoted    — moved to its own cross-cutting work unit',
   ].join('\n');
-  const BLOCKING = [
-    '  Blocking reason:',
-    "    blocked by {plan}:{task} — depends on another plan's task",
-    '    blocked by {plan}        — dependency unresolved',
-  ].join('\n');
 
   it('map with no build items produces no key (the ↳ state lines carry the words)', () => {
     const d = detailFor(dir, 'v1', {
@@ -441,19 +379,6 @@ describe('epic projections: key', () => {
       phases: { discovery: { items: { topic: { source: 'discovery', order: 1 } } } },
     });
     assert.strictEqual(epicKey(d), '');
-  });
-
-  it('map + build items + blocked plan shows the Status and Blocking categories', () => {
-    const d = detailFor(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        discovery: { items: { topic: { source: 'discovery', order: 1 } } },
-        planning: { items: { billing: { status: 'completed', external_dependencies: { auth: { description: 'd', state: 'unresolved' } } } } },
-      },
-    });
-    assert.strictEqual(epicKey(d), 'Key:\n' + STATUS
-      + '\n\n  Cue:\n    blocked (planning)      — implementation waits on another plan;\n                              the \u2691 list names the dependency'
-      + '\n\n' + BLOCKING);
   });
 
   it('no-map branch shows the Status block', () => {
@@ -709,12 +634,8 @@ describe('epic projections: the build\'s row (18.4.6, 12.15.3)', () => {
     assert.strictEqual(epicDetail(dir, readManifest(dir, 'v1')).build, null);
   });
 
-  it('the review phase\'s row, as the build\'s, passes the soft gate, which raises nothing, and is struck by a code session elsewhere, never then recommended (18.4.6, 12.7.8)', () => {
-    const softGate = (/** @type {string} */ action) => output(dir, ['render', 'epic-soft-gate', 'v1', '--action', action, '--topic', 'v1']);
-    detailFor(dir, 'v1', built());
-    assert.strictEqual(softGate('enter_implementation'), '');
+  it('the review phase\'s row, as the build\'s, is struck by a code session elsewhere, never then recommended (12.7.8)', () => {
     const d = detailFor(dir, 'v1', built({ checklists: { 'phase-1-close': CLOSED, 'phase-2-close': CLOSED } }));
-    assert.strictEqual(softGate('enter_review'), '');
     const codeRow = { work_unit: 'ship', phase: 'implementation', topic: 'checkout-flow', age_seconds: 300, held: true, session_id: 'peer' };
     const review = epicMenu('v1', d, { presence: [], codeHeld: [codeRow] }).keys.find((k) => k.action === 'enter_review');
     assert.deepStrictEqual([review?.in_session, review?.code_session, review?.recommended === true], [true, true, false]);
@@ -921,9 +842,6 @@ describe('epic projections: selection sub-views', () => {
       '  ├─ 2. Kitchen Hardware [completed]',
       '  └─ 3. Session Storage [completed]',
       '',
-      'Planning',
-      '  └─ 4. Roles And Permissions [completed]',
-      '',
     ].join('\n'));
     assert.strictEqual(view.rendered, [
       '· · · · · · · · · · · ·',
@@ -932,7 +850,6 @@ describe('epic projections: selection sub-views', () => {
       '**`1`**      → Resume "Auth Flow" — *discussion*',
       '**`2`**      → Resume "Kitchen Hardware" — *discussion*',
       '**`3`**      → Resume "Session Storage" — *discussion*',
-      '**`4`**      → Resume "Roles And Permissions" — *planning*',
       '**`b/back`** → Return to menu',
     ].join('\n'));
     assert.deepStrictEqual(
@@ -941,7 +858,6 @@ describe('epic projections: selection sub-views', () => {
         ['1', 'resume', 'auth-flow', 'discussion', '/leeway-discussion-process epic quiz-competition-v1 auth-flow'],
         ['2', 'resume', 'kitchen-hardware', 'discussion', '/leeway-discussion-process epic quiz-competition-v1 kitchen-hardware'],
         ['3', 'resume', 'session-storage', 'discussion', '/leeway-discussion-process epic quiz-competition-v1 session-storage'],
-        ['4', 'resume', 'roles-and-permissions', 'planning', '/leeway-planning-process epic quiz-competition-v1 roles-and-permissions'],
         ['b', 'back', null, null, null],
       ]
     );
@@ -1262,28 +1178,6 @@ describe('epic projections: selection sub-views', () => {
     assert.ok(view.display.includes('  ├─ 1. Menu Admin [discussing]'), view.display);
     assert.ok(view.display.includes('  └─ 2. Parked Topic [fresh · mail waiting]'), view.display);
     assert.ok(/\*\*`2`\*\* +→ Cancel "Parked Topic" — \*fresh · mail waiting\*/.test(view.rendered), view.rendered);
-  });
-
-  it('a dep-blocked planning row carries the blocked cue; a clean one does not; a cancelled one never does', () => {
-    const d = detailFor(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        discussion: { items: { blocked: { status: 'completed' }, clean: { status: 'completed' } } },
-        planning: {
-          items: {
-            blocked: { status: 'completed', external_dependencies: { upstream: { description: 'd', state: 'unresolved' } } },
-            clean: { status: 'completed' },
-            dead: { status: 'cancelled', previous_status: 'completed', external_dependencies: { upstream: { description: 'd', state: 'unresolved' } } },
-          },
-        },
-      },
-    });
-    const out = epicDashboard('v1', d);
-    assert.match(out, /Blocked    \[completed · blocked\]/);
-    assert.match(out, /Clean      \[completed\]/);
-    assert.match(out, /Dead       \[cancelled\]/);
-    // The terminal item carries no deps at all — no ⚑ row.
-    assert.ok(!out.includes('Dead\n  └─ Blocked'), out);
   });
 
   it('reactivate-menu: a topic cancelled per phase names the item that returns', () => {

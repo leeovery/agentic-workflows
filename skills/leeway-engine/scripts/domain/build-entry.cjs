@@ -11,9 +11,9 @@
 // moves onto the build with the reshape's 29.15 (P9); a unit built under
 // the old plan, its old spec's, planning's or implementation's items
 // standing until the reshape's 29.17 migration cuts it (`legacyBuild`,
-// P12), which a handoff still sends into the phase's skill at its topic;
-// and a unit whose build has not begun, ready to build's yes beginning it
-// (11.8.3). Another
+// P12), which the menus show waiting on that cut with no route; and a unit
+// whose build has not begun, ready to build's yes beginning it (11.8.3).
+// Another
 // session holding the checkout's code stops it with the code gate alone,
 // nothing written, and `--take` enters all the same (12.7.8) — the refusals
 // and the gate the review phase's entry makes too (review-entry.cjs). It starts
@@ -92,7 +92,7 @@ const { ENGINE_COMMAND, ENGINE_RUN, messageOf } = require('../kernel/call.cjs');
 const { statePath, stateRoot } = require('../kernel/state-root.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
-const { buildBegun, buildFinished, phaseStarted, phaseClosed, legacyBuild, buildByCut, cutPhases, cutLength } = require('./derivations.cjs');
+const { buildBegun, buildFinished, phaseStarted, phaseClosed, buildRefusal, cutPhases, cutLength } = require('./derivations.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { STATUS_WORDS, goesOn, turnOf } = require('./task-verbs.cjs');
 const { heldCodeSessions } = require('./presence.cjs');
@@ -157,18 +157,6 @@ const buildLogOf = (unit) => `${unit}/build/log.md`;
 function phaseNamed(manifest, phase) {
   const cut = cutLength(manifest);
   return phase > cut ? `the review's fixes, round ${phase - cut}` : cutPhases(manifest)[phase - 1].name ?? '';
-}
-
-/**
- * Why the unit's build cannot be entered, with its way on, or null where it
- * can: a quick-fix, a unit built under the old plan, a build not begun.
- * @param {Record<string, any>} manifest @returns {string|null}
- */
-function buildRefusal(manifest) {
-  const unit = manifest.name;
-  if (manifest.work_type === 'quick-fix') return `${unit} is a quick-fix, whose delivery is built with the reshape's 29.15 — until then a quick-fix stops at its scoping`;
-  if (legacyBuild(manifest)) return `${unit} was built under the old plan, and its build is entered once the reshape's 29.17 migration has cut it`;
-  return buildBegun(manifest) ? null : `${unit}'s build has not begun — ready to build's yes begins it: render ready-to-build ${unit}`;
 }
 
 /** The readings of an entry, one each, shared by what it closes and what it reads. @type {WeakMap<Record<string, any>, Reading>} */
@@ -549,7 +537,6 @@ function codeHeld({ cwd }, { take, menu }) {
 /** @type {Entry} */
 const IMPLEMENTATION = Object.freeze({
   level: /** @type {const} */ ('unit'),
-  takes: buildByCut,
   standing: ({ manifest }) => buildRefusal(manifest),
   held: codeHeld,
   unstarted: () => false,
@@ -560,5 +547,5 @@ const IMPLEMENTATION = Object.freeze({
 });
 
 module.exports = {
-  IMPLEMENTATION, phaseNamed, buildStanding, standingOf, buildPhases, builtUnit, cutCount, buildRecovery, ownInFlight, inFlightLines, takeInFlight, readingOf, buildRefusal, codeHeld, buildLogOf,
+  IMPLEMENTATION, phaseNamed, buildStanding, standingOf, buildPhases, builtUnit, cutCount, buildRecovery, ownInFlight, inFlightLines, takeInFlight, readingOf, codeHeld, buildLogOf,
 };

@@ -685,6 +685,17 @@ describe('the templates and the store', () => {
     }
   });
 
+  it('every agent on the roster is one a skill dispatches: no second pass over a phase\'s tasks and no gap checker stands on it uncalled (12.S10, 26.S12)', () => {
+    const skills = path.join(__dirname, '../../skills');
+    const shipped = /** @type {string[]} */ (fs.readdirSync(skills, { recursive: true }))
+      .filter((file) => /\.(md|cjs)$/.test(file))
+      .map((file) => fs.readFileSync(path.join(skills, file), 'utf8'))
+      .join('\n');
+    const uncalled = fs.readdirSync(AGENTS).filter((file) => file.endsWith('.md')).map((file) => file.slice(0, -3))
+      .filter((agent) => !new RegExp(`(?<![\\w-])${agent}(?![\\w-])`).test(shipped));
+    assert.deepStrictEqual(uncalled, []);
+  });
+
   it('a template is refused for a slot not alone on its line, one no record answers, one its role does not draw on, and a record\'s slot missing or twice', () => {
     const builder = '{{engine}}\n{{task}}\n{{spec-sections}}\n{{decided-calls}}\n{{linters}}\n{{chain}}\n{{account-to}}\n{{setup-to}}\n';
     assert.strictEqual(templateOf('builder', builder), builder);

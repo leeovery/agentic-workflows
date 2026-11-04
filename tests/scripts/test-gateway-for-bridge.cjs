@@ -127,7 +127,6 @@ describe('leeway-bridge discovery', () => {
       phases: {
         discussion: { items: { full: { status: 'completed' } } },
         specification: { items: { full: { status: 'completed' } } },
-        planning: { items: { full: { status: 'completed' } } },
         implementation: { items: { full: { status: 'completed' } } },
         review: { items: { full: { status: 'completed' } } },
       },
@@ -137,21 +136,7 @@ describe('leeway-bridge discovery', () => {
     const r = discover(dir, 'full');
     assert.strictEqual(r.phases.discussion.exists, true);
     assert.strictEqual(r.phases.specification.exists, true);
-    assert.strictEqual(r.phases.planning.exists, true);
     assert.strictEqual(r.phases.implementation.exists, true);
-  });
-
-  it('detects planning existence from manifest not files', () => {
-    createManifest(dir, 'auth', {
-      work_type: 'feature',
-      phases: {
-        discussion: { items: { auth: { status: 'completed' } } },
-        specification: { items: { auth: { status: 'completed' } } },
-        planning: { items: { auth: { status: 'in-progress' } } },
-      },
-    });
-    const r = discover(dir, 'auth');
-    assert.strictEqual(r.phases.planning.exists, true);
   });
 
   it('detects implementation existence from manifest not files', () => {
@@ -251,7 +236,7 @@ describe('leeway-bridge format', () => {
     ].join('\n'));
   });
 
-  it('mid-pipeline feature pins the full dump byte-exactly', () => {
+  it('a unit built under the old plan pins the full dump byte-exactly — no route into its build, nothing to revisit (P12)', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
       phases: {
@@ -267,9 +252,9 @@ describe('leeway-bridge format', () => {
       'next_phase: implementation',
       'completed_phases: discussion, specification, planning',
       'reconcile_pending: (none)',
-      'revisitable_phases: planning',
-      'next_route: /leeway-implementation-process feature auth',
-      'revisit_routes: /leeway-planning-process feature auth',
+      'revisitable_phases: (none)',
+      'next_route: (none)',
+      'revisit_routes: (none)',
       '',
     ].join('\n'));
   });
@@ -378,16 +363,16 @@ describe('leeway-bridge format', () => {
   });
 
   it('a bugfix\'s routes name the skill each phase is entered through — the concluded spec never a revisit', () => {
-    createManifest(dir, 'stall', {
-      work_type: 'bugfix',
-      phases: {
-        investigation: { items: { stall: { status: 'completed' } } },
-        specification: { items: { stall: { status: 'completed' } } },
-      },
-    });
-    const out = format(discover(dir, 'stall'));
-    assert.match(out, /^next_route: \/leeway-planning-process bugfix stall$/m);
-    assert.match(out, /^revisit_routes: \/leeway-investigation-process bugfix stall$/m);
+    const investigated = { work_type: 'bugfix', phases: { investigation: { items: { stall: { status: 'completed' } } } } };
+    createManifest(dir, 'stall', investigated);
+    const concluded = format(discover(dir, 'stall'));
+    createManifest(dir, 'stall', { ...investigated, build: { position: 'auto' }, cut: { phases: [{ name: 'One', scenarios: [], sections: ['1'], relies_on: [] }] } });
+    const built = format(discover(dir, 'stall'));
+
+    assert.match(concluded, /^next_route: \/leeway-specification-process bugfix stall$/m);
+    assert.match(concluded, /^revisit_routes: \/leeway-investigation-process bugfix stall$/m);
+    assert.match(built, /^next_route: \/leeway-implementation-process bugfix stall$/m);
+    assert.match(built, /^revisit_routes: \(none\)$/m);
   });
 
   it('a promoted unit routes to its moved discussions by name — the discussion in flight, then the specification\'s reconcile', () => {

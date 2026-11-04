@@ -23,7 +23,7 @@ The output is one snapshot in demarcated sections:
 - **DATA** — reasoning surface: state flags (`work_type`, `next_phase`, `phase_label`, `finalising`, `completed_phases`, `revisit_available`) and the `ACTIONS` table — one line per key, `key  word  action  topic  → route` — or, where no unit by that name is in progress, an `error`. Reason from it; never display or restate it.
 - **TITLE** — the view's chrome heading. Emit verbatim per its marker, directly above the display.
 - **DISPLAY** — the status block, or the not-found display. Emit verbatim per its marker. Never redraw, reflow, or trim it.
-- **MENU** — the proceed/revisit menu, present only when there is something to revisit or finalise. Emit verbatim per its marker.
+- **MENU** — the proceed/revisit menu, present only when there is something to revisit or finalise, or when the unit waits on the migration's cut. Emit verbatim per its marker.
 
 #### If the DATA carries an `error`
 
@@ -31,7 +31,7 @@ Emit the `DISPLAY: not found` section verbatim per its marker.
 
 **STOP.** Do not proceed — terminal condition.
 
-#### If `revisit_available` is `false`
+#### If the snapshot carries no MENU section
 
 Emit the TITLE section, then the DISPLAY section, each verbatim per its marker.
 

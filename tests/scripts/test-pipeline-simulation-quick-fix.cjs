@@ -2,9 +2,9 @@
 
 // ---------------------------------------------------------------------------
 // The pipeline simulation's quick-fix scenarios: scoping registering the
-// specification and the plan in one pass, verification, review and the unit
-// complete; and a quick-fix promoted to a feature, its pipeline carrying on,
-// or to a bugfix, handed to its investigation.
+// specification and the plan in one pass, its delivery refused until the
+// reshape's 29.15 builds it (P9); and a quick-fix promoted to a feature, its
+// pipeline carrying on, or to a bugfix, handed to its investigation.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -23,7 +23,7 @@ describe('pipeline simulation: quick-fix', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('quick-fix: scoping registers spec+plan in one pass → verification → review → complete, each gate answered through `gate`', () => {
+  it('quick-fix: scoping registers spec+plan in one pass, each gate answered through `gate`, and its delivery waits on 29.15', () => {
     // Setup offers the GitHub rule; the person declines, and the flow runs
     // what the row leads to rather than branching on the answer itself.
     sim.render(['github-rule-gate'], { expect: 'content' });
@@ -61,8 +61,7 @@ describe('pipeline simulation: quick-fix', () => {
       /\*\*`1`\*\* → Sample Format/);
     sim.run(['manifest', 'set', `${wu}.planning.${wu}`,
       'format=local-markdown', `spec_commit=${baseline.committed}`,
-      'task_list_gate_mode=auto', 'author_gate_mode=auto',
-      'finding_gate_mode=auto', 'review_cycle=0', 'phase=1', 'task=~',
+      'review_cycle=0', 'phase=1', 'task=~',
       `external_id=${wu}`, `task_map.${wu}-1=${wu}-1`,
       `task_map.${wu}-1-1=${wu}-1-1`, 'storage_paths=[]']);
     sim.run(['topic', 'complete', wu, 'planning', wu]);
@@ -74,28 +73,17 @@ describe('pipeline simulation: quick-fix', () => {
     // which hands off where the bridge does.
     assert.strictEqual(linearPick(sim, wu, 'continue').line, `→ Implementation · ${wu}`);
 
-    // Implementation (verification workflow) + review — task init creates.
-    bridgeTo(sim, wu, 'implementation');
-    const init = sim.run(['task', 'init', wu, wu]);
-    assert.strictEqual(init.mode, 'created', 'fresh implementation takes the created arm');
-    sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`, '--topic', `implementation/${wu}`]);
-    assert.strictEqual(sim.run(['task', 'start', wu, wu, `${wu}-1-1`]).do_banking, false,
-      'a quick-fix task never banks — no boundary would ever drain the deposit');
-    // Quick-fix takes no consolidation boundary (its plan never grows), so the
-    // completion keeps the fused --phase-complete.
-    sim.run(['task', 'complete', wu, wu, `${wu}-1-1`, '--phase', '1', '--next-task', '~', '--phase-complete']);
-    sim.run(['topic', 'complete', wu, 'implementation', wu]);
-    // Scoping is the quick-fix's one revisit candidate — the review hop
-    // still offers all three rows.
-    const qfGate = sim.render(['next-phase-gate', wu, '--prev', 'implementation', '--next', 'review'], { expect: 'content' });
-    assert.match(qfGate, /\*\*`d\/done`\*\* +→ Complete without review/);
+    // The bridge's hop out of scoping: on into implementation, or back into
+    // scoping, the quick-fix's one revisit candidate — and no skipping review
+    // off this hop.
+    const qfGate = sim.render(['next-phase-gate', wu, '--prev', 'scoping', '--next', 'implementation'], { expect: 'content' });
     assert.match(qfGate, /\*\*`r\/revisit`\*\* → Revisit an earlier phase/);
+    assert.doesNotMatch(qfGate, /d\/done/);
     answerGate(sim, 'next phase gate', '--pick', 'y');
-    bridgeTo(sim, wu, 'review');
-    sim.run(['topic', 'start', wu, 'review', wu]);
-    sim.run(['topic', 'complete', wu, 'review', wu]);
-
-    sim.run(['workunit', 'complete', wu, '-m', `workflow(${wu}): pipeline complete`]);
+    bridgeTo(sim, wu, 'implementation');
+    // Until 29.15 a quick-fix stops at its scoping (P9): the build's entry
+    // refuses it, naming the reshape that builds its delivery.
+    sim.refuses(['enter', 'implementation', wu], /^typo is a quick-fix, whose delivery is built with the reshape's 29\.15 — until then a quick-fix stops at its scoping/);
   });
 
   it('quick-fix promotion: work_type flips to feature and the pipeline continues', () => {

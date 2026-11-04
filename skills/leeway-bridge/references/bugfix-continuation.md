@@ -6,7 +6,7 @@
 
 Route a bugfix to its next pipeline phase, with an option to revisit earlier phases.
 
-Bugfix pipeline: Investigation → Specification → Planning → Implementation → Review
+Bugfix pipeline: Investigation → Specification → Implementation → Review
 
 ## A. Check Terminal
 

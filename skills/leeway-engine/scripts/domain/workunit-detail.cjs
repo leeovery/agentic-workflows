@@ -25,6 +25,8 @@ const {
   ownNamedItems,
   inputMoved,
   buildByCut,
+  awaitsCut,
+  buildRefusal,
 } = require('./derivations.cjs');
 
 /**
@@ -71,6 +73,7 @@ const WORK_UNIT_TYPES = {
  * @property {string} name
  * @property {string} next_phase
  * @property {string|null} next_topic  the item the route into next_phase names, null for the unit alone (see phaseTargets)
+ * @property {string|null} waiting  the line a unit built under the old plan shows while it waits on the migration's cut, with no route (P12); null for any other
  * @property {string[]} revisit   the revisit candidates' phases, in pipeline order (see phaseTargets)
  * @property {string} phase_label
  * @property {boolean} finalising      pipeline finished (`next_phase: done`), no phase in
@@ -133,11 +136,13 @@ const UNREVISITABLE = [...DERIVED_PHASES, 'discussion', 'specification'];
  * discussion, which reopens through a message sent to it, nor the spec, which
  * is never corrected once concluded (11.9.1), nor, once the unit is past its
  * spec, a phase entered at a topic — the spec closes every topic (4.11.2) —
- * nor a build by its cut, which runs straight into its review (24.1.6).
- * @param {string} cwd @param {object} manifest @param {string} nextPhase
- * @returns {{next: PhaseTarget, revisit: string[]}}
+ * nor a build by its cut, which runs straight into its review (24.1.6). A
+ * unit waiting on the migration's cut is entered nowhere (P12).
+ * @param {string} cwd @param {Record<string, any>} manifest @param {string} nextPhase
+ * @returns {{next: PhaseTarget|null, revisit: string[]}}
  */
 function phaseTargets(cwd, manifest, nextPhase) {
+  if (awaitsCut(manifest)) return { next: null, revisit: [] };
   const cfg = typeConfig(manifest.work_type);
   const nextIdx = cfg.pipeline.indexOf(nextPhase);
   const own = ownNamedItems(manifest, nextPhase);
@@ -170,7 +175,8 @@ function activeWorkUnit(cwd, name) {
   const unit = {
     name: m.name,
     next_phase: state.next_phase,
-    next_topic: targets.next.topic,
+    next_topic: targets.next?.topic ?? null,
+    waiting: awaitsCut(m) ? buildRefusal(m) : null,
     revisit: targets.revisit,
     phase_label: state.phase_label,
     finalising: state.finalising,

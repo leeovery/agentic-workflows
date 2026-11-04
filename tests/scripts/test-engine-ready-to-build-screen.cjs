@@ -152,13 +152,11 @@ describe('a verdict on each call the person changed among the spec\'s gap answer
 });
 
 describe('nothing raised before it (11.8.4, 11.S12)', () => {
-  it('leaves no construction, finding, re-loop or sign-off gate to raise at the spec — the finding gate is the plan review\'s alone', () => {
+  it('leaves no construction, finding, re-loop or sign-off gate to raise at the spec', () => {
     const at = { dotpath: `${UNIT}.specification.${UNIT}`, file: 'finding.json' };
-    for (const surface of ['construction-gate', 'finding-batch', 'spec-review-gate', 'spec-completion-gate']) {
+    for (const surface of ['construction-gate', 'finding', 'finding-batch', 'spec-review-gate', 'spec-completion-gate']) {
       assert.throws(() => renderSurface(dir(), surface, at), new RegExp(`^Error: render: unknown surface "${surface}"`), surface);
     }
-    assert.throws(() => renderSurface(dir(), 'finding', at),
-      /^Error: render finding: address must be <work_unit>\.<planning>\.<topic> — the plan under review; got phase "specification"$/);
   });
 });
 

@@ -55,8 +55,9 @@ const simWorld = fixtureFrom('pipeline-sim-', (dir) => {
   fs.writeFileSync(statePath(dir, KNOWLEDGE_DIR, 'config.json'), '{ "knowledge": { "provider": null } }\n');
   // The skills a conversation carries on in after a compaction, installed
   // as a project installs them — kept out of git's sight, so no commit or
-  // dirt check ever meets them.
-  const skills = [...schema.VALID_PHASES.map((phase) => skillAt('unit', phase)), ...schema.PROJECT_IDENTITIES.map((name) => skillAt(name))];
+  // dirt check ever meets them. Planning has none: its items are scoping's.
+  const phases = schema.VALID_PHASES.filter((phase) => phase !== 'planning');
+  const skills = [...phases.map((phase) => skillAt('unit', phase)), ...schema.PROJECT_IDENTITIES.map((name) => skillAt(name))];
   for (const skill of /** @type {string[]} */ (skills)) {
     fs.mkdirSync(path.join(dir, '.claude/skills', skill), { recursive: true });
     fs.copyFileSync(path.join(ROOT, 'skills', skill, 'SKILL.md'), path.join(dir, '.claude/skills', skill, 'SKILL.md'));
@@ -385,8 +386,6 @@ function carryOn(sim, identity = null) {
   return answer;
 }
 
-// Shared phase walk used by the linear pipelines: planning → implementation
-// (→ review), with the bookkeeping each phase records.
 // Every place labels itself on arrival: a navigation skill, the bridge and
 // the roadmap label the place alone (`arrive`), and every
 // phase skill's Step 0 records its place before anything else
@@ -501,18 +500,13 @@ function bridgeTo(sim, wu, phase) {
 // An epic phase's conclusion, pause or in-session exit hands off to the epic
 // menu, which labels the work unit and leads with the banner for what just
 // concluded or paused — none after a cancel or a postpone, whose receipt was
-// the session's — and the completion offer wherever the scoped dump reads
-// all done. Answers the banner rendered, empty when none is.
+// the session's. Answers the banner rendered, empty when none is.
 /** @param {Sim} sim @param {string} wu @param {string} phase @param {string} [outcome] @returns {string} */
 function arriveAtEpicMenu(sim, wu, phase, outcome = 'completed') {
   handoff(sim, `/leeway-continue-epic ${wu} ${phase} ${outcome}`);
   arrive(sim, wu);
   const banner = { completed: 'phase-completed', paused: 'phase-paused' }[outcome];
-  const shown = banner ? sim.render([banner, wu, '--phase', phase], { expect: 'content' }) : '';
-  if (/^all_done: true$/m.test(EPIC_GATEWAY.formatScoped(wu, EPIC_GATEWAY.discover(sim.dir, wu)))) {
-    sim.render(['epic-all-done-gate', wu], { expect: 'content' });
-  }
-  return shown;
+  return banner ? sim.render([banner, wu, '--phase', phase], { expect: 'content' }) : '';
 }
 
 // A discussion leaving its topic — a pause, a postpone, a cancel or a
@@ -540,16 +534,14 @@ function epicPick(sim, wu, action, topic) {
 }
 
 // The epic menu's build row picked as epic-display-and-menu.md picks it
-// (18.4.6): the menu reached and its row recommended, the soft gate raising
-// nothing, and the row's route handed off into the build or its review
-// phase, whose skill starts in a fresh conversation. Answers the row.
+// (18.4.6): the menu reached and its row recommended, and the row's route
+// handed off into the build or its review phase, whose skill starts in a fresh conversation. Answers the row.
 /** @param {Sim} sim @param {string} wu @param {'enter_implementation'|'enter_review'} action */
 function epicBuildPick(sim, wu, action) {
   menuEntry(sim, wu);
   const { keys } = epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu));
   const row = keys.find((k) => k.action === action);
   assert.ok(row?.recommended, `the menu recommends ${action}`);
-  sim.render(['epic-soft-gate', wu, '--action', action, '--topic', wu], { expect: 'empty' });
   pickRoute(sim, keys, action, wu);
   sim.handOver();
   return row;
@@ -766,398 +758,6 @@ function pullFromRoadmap(sim, items) {
 function workTheSet(sim, paths) {
   const set = LIB.detail.workingSetDetail(sim.dir, paths);
   return toDiscovery(sim, set.set_type, set.items.map((/** @type {{path: string}} */ item) => item.path).join(','));
-}
-
-// Planning reads the old spec's item until the build is rewired (29.14): a
-// delivery walk gives the unit the item a unit whose building began under
-// the old spec keeps (29.17), with its spec where that spec stands.
-/** @param {Sim} sim @param {string} wu @param {string} topic */
-function keptOldSpec(sim, wu, topic) {
-  sim.run(['manifest', 'set', `${wu}.specification.${topic}`, 'status', 'completed']);
-  sim.write(`.leeway/${wu}/specification/${topic}/specification.md`, `# Spec — ${topic}\n`);
-}
-
-function walkToLiveImplementation(sim, wu, topic) {
-  keptOldSpec(sim, wu, topic);
-  handoffEntry(sim, wu, 'planning', topic);
-  sim.run(['topic', 'start', wu, 'planning', topic]);
-  sim.run(['manifest', 'set', `${wu}.planning.${topic}`,
-    'format=local-markdown', 'task_list_gate_mode=gated', 'author_gate_mode=gated',
-    'finding_gate_mode=gated', 'review_cycle=0', 'phase=1', 'task=~',
-    `task_map.${topic}-1-1=${topic}-1-1`, 'storage_paths=[]']);
-  sim.run(['topic', 'complete', wu, 'planning', topic]);
-  // Implementation is the one phase whose prose never issues `topic start`:
-  // task init owns creation (implementation-process Step 0, created arm).
-  handoffEntry(sim, wu, 'implementation', topic);
-  const init = sim.run(['task', 'init', wu, topic]);
-  assert.strictEqual(init.mode, 'created', 'fresh implementation takes the created arm');
-}
-
-function walkDeliveryPhasesToImplementation(sim, wu, topic) {
-  walkToLiveImplementation(sim, wu, topic);
-  sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`, '--topic', `implementation/${topic}`]);
-  sim.run(['task', 'start', wu, topic, `${topic}-1-1`]);
-  assert.deepStrictEqual(carryOn(sim).position, { name: wu, phase: 'implementation', topic, tasks: [{ task: '1.1', builder: null, reviewers: [] }] },
-    'task start puts the task in flight on the position');
-  // Phase boundary: the completion defers its flag, the consolidation pass
-  // finds nothing, and the re-record closes the phase (consolidation-pass.md F).
-  sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--phase', '1', '--next-task', '~']);
-  assert.deepStrictEqual(carryOn(sim).position, { name: wu, phase: 'implementation', topic },
-    'the task\'s completion takes it off');
-  assert.match(sim.render(['step-opening', `${wu}.implementation.${topic}`, '--step', 'consolidation'], { expect: 'content' }),
-    /□ Consolidation Pass \(phase 1\)[\s\S]*> Phase 1's tasks are done\./);
-  sim.run(['manifest', 'push', `${wu}.implementation.${topic}`, 'consolidated_phases', '1']);
-  sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--phase', '1', '--phase-complete']);
-  sim.run(['topic', 'complete', wu, 'implementation', topic]);
-}
-
-/** @param {Sim} sim @param {string} wu @param {string} topic */
-function walkDeliveryPhases(sim, wu, topic) {
-  keptOldSpec(sim, wu, topic);
-
-  // Planning. A fresh plan opens on the context offer (initialize-plan A),
-  // which the plan's own birth closes — a plan under way reconciles instead.
-  bridgeTo(sim, wu, 'planning');
-  sim.render(['entry-gate', `${wu}.planning.${topic}`], { expect: 'empty' });
-  handoffEntry(sim, wu, 'planning', topic);
-  assert.strictEqual(sim.read(['manifest', 'get', `${wu}.planning.${topic}`, 'status']), '', 'no planning item — a first start');
-  sim.render(['plan-context-gate', `${wu}.planning.${topic}`], { expect: 'content' });
-  sim.run(['topic', 'start', wu, 'planning', topic]);
-  sim.refuses(['render', 'plan-context-gate', `${wu}.planning.${topic}`],
-    /planning item "[^"]+" is in-progress — the context offer opens a fresh plan/);
-  sim.write(`.leeway/${wu}/planning/${topic}/planning.md`, `# Plan — ${topic}\n`);
-  sim.run(['manifest', 'set', `${wu}.planning.${topic}`,
-    'format=local-markdown', 'task_list_gate_mode=gated', 'author_gate_mode=gated',
-    'finding_gate_mode=gated', 'review_cycle=0', 'phase=1', 'task=~',
-    `task_map.${topic}-1-1=${topic}-1-1`, 'storage_paths=[]']);
-  // Plan init records the project default (initialize-plan E); the offer the
-  // next plan opens on reads it back rather than being told (initialize-plan C).
-  sim.run(['manifest', 'set', 'project.defaults.plan_format', 'local-markdown']);
-  sim.render(['plan-format-gate'], { expect: 'content' });
-  // Declining that offer opens the catalogue (output-formats.md): which
-  // formats a project ships is the planning skill's to name, so the rows ride
-  // a payload and the surface numbers them in order.
-  const formats = sim.write(`.leeway/.cache/${wu}/planning/${topic}/format-offer.json`, {
-    formats: [{ name: 'sample-format', label: 'Sample Format — the row the payload named' }],
-  });
-  assert.match(sim.render(['plan-format-gate', '--variant', 'select', '--file', formats], { expect: 'content' }),
-    /◆ Which output format\?[\s\S]*\*\*`1`\*\* → Sample Format/);
-
-  // The phase structure gate (define-phases B) sits under its tree; a
-  // `v/view full` shows the full structure in the tree's place and puts the
-  // gate back alone beneath it.
-  const phaseTree = sim.write(`.leeway/.cache/${wu}/planning/${topic}/phase-tree.json`,
-    { phases: [{ name: 'Foundation', detail: [['Goal', 'the core lands']] }] });
-  assert.match(sim.render(['phase-tree', `${wu}.planning.${topic}`, '--file', phaseTree, '--approve'], { expect: 'content' }),
-    /=== DISPLAY: phase tree[\s\S]*=== MENU: phase structure gate/);
-  const gateAlone = sim.render(['phase-tree', `${wu}.planning.${topic}`, '--menu-only'], { expect: 'content' });
-  assert.match(gateAlone, /^=== MENU: phase structure gate/);
-  assert.doesNotMatch(gateAlone, /DISPLAY: phase tree/);
-
-  // Approvals and authoring decisions are manifest state, vocabulary-guarded.
-  sim.run(['manifest', 'set', `${wu}.planning.${topic}`, 'approvals.structure', '2026-07-23']);
-  sim.run(['manifest', 'set', `${wu}.planning.${topic}`, 'approvals.tasks.p1', '2026-07-23']);
-  sim.run(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'pending']);
-  // The gate-mode check over the phase answers empty while gated; each task
-  // then shows its detail above its gate.
-  sim.render(['author-task-gate', `${wu}.planning.${topic}`, '--phase', '1'], { expect: 'empty' });
-  const authorTask = sim.write(`.leeway/.cache/${wu}/planning/${topic}/author-task.json`, { content: '### Task 1: Land the core' });
-  assert.match(sim.render(['author-task-gate', `${wu}.planning.${topic}`, '--m', '1', '--total', '1', '--title', 'Land the core', '--file', authorTask], { expect: 'content' }),
-    /=== DISPLAY: authored task[\s\S]*=== MENU: author task gate/);
-  sim.run(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'rejected']);
-  // The amendment resets a rejected row to pending only after the rewrite
-  // validates (author-tasks C) — the mismatch that never settles stops at its
-  // own gate first, beneath the two lists that disagree.
-  const counts = sim.write(`.leeway/.cache/${wu}/planning/${topic}/task-count.json`, { table: [`${topic}-1-1`], detail: [] });
-  assert.match(sim.render(['task-count-gate', `${wu}.planning.${topic}`, '--file', counts], { expect: 'content' }),
-    /Task detail file: {9}0 tasks — none[\s\S]*=== MENU: task count gate/);
-  sim.run(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'pending']);
-  // Under auto the check answers the phase's line instead, and the rows are
-  // approved together.
-  sim.run(['manifest', 'set', `${wu}.planning.${topic}`, 'author_gate_mode', 'auto']);
-  assert.match(sim.render(['author-task-gate', `${wu}.planning.${topic}`, '--phase', '1'], { expect: 'content' }),
-    /Phase 1: 1 task authored\. Auto-approved\. Writing to plan\./);
-  sim.run(['manifest', 'set', `${wu}.planning.${topic}`, 'author_gate_mode', 'gated']);
-  sim.run(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'approved']);
-  sim.refuses(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'maybe'], /Invalid staging task status/);
-  // Guarded containers refuse the writes no prose ever makes — wholesale, pushed, or non-canonically spelt.
-  sim.refuses(['manifest', 'set', `${wu}.planning.${topic}`, 'staging', '{}'], /guarded state container/);
-  sim.refuses(['manifest', 'push', `${wu}.planning.${topic}`, 'staging.author-p1.tasks', 'x'], /guarded state container/);
-  sim.refuses(['manifest', 'set', `${wu}.planning`, `items.${topic}.staging.author-p1.tasks.${topic}-1-1`, 'bogus'], /"items" is the topic tree/);
-  sim.refuses(['manifest', 'set', wu, `phases.planning.items.${topic}.staging.author-p1.tasks.${topic}-1-1`, 'bogus'], /"phases" is the phase tree/);
-  sim.run(['manifest', 'delete', `${wu}.planning.${topic}`, 'staging.author-p1']);
-  // The construction's close counts the plan off task_map.
-  assert.match(sim.render(['plan-progress', `${wu}.planning.${topic}`, '--variant', 'construction-complete'], { expect: 'content' }),
-    /The plan has \*\*1 phase\*\* with \*\*1 task\*\* total\./);
-
-  // The graph approval with the grapher's report beneath it, then the review
-  // loop's two gates and the conclusion's consent, each fetched where the
-  // flow displays it.
-  const graph = sim.write(`.leeway/.cache/${wu}/planning/${topic}/task-graph.json`, {
-    notes: 'One task — nothing to order.', dependencies: [], priorities: [],
-  });
-  assert.match(sim.render(['dependency-approval-gate', `${wu}.planning.${topic}`, '--variant', 'graph', '--file', graph], { expect: 'content' }),
-    /I've analyzed all 1 task and the natural execution order is already correct[\s\S]*=== MENU: dependency approval gate/);
-  assert.match(sim.render(['dependency-approval-gate', `${wu}.planning.${topic}`, '--variant', 'updated-graph', '--file', graph], { expect: 'content' }),
-    /\*\*Dependencies\*\* \(0 relationships\):/);
-  // Review opens: the cycle and the plan's word baseline land in one write,
-  // the way plan-review stamps them.
-  sim.run(['manifest', 'set', `${wu}.planning.${topic}`, 'review_cycle=1', 'review_baseline_words=63929']);
-  assert.strictEqual(sim.read(['manifest', 'get', `${wu}.planning.${topic}`, 'review_baseline_words']), '63929',
-    'the plan baseline survives as a number the growth diagnostic can read');
-  sim.render(['plan-review-gate', `${wu}.planning.${topic}`, '--variant', 'continue'], { expect: 'content' });
-  sim.render(['plan-review-gate', `${wu}.planning.${topic}`, '--variant', 'reloop'], { expect: 'content' });
-  sim.write('.leeway/.cache/scratch/plan-findings-summary.json', JSON.stringify({
-    review_label: 'Traceability Review',
-    items: [{ title: 'Missing retry bound', tag: 'missing', summary: 'No task bounds the retries.', status: 'approved' }],
-  }));
-  sim.render(['findings-summary', `${wu}.planning.${topic}`, '--file', '.leeway/.cache/scratch/plan-findings-summary.json'], { expect: 'content' });
-  sim.write('.leeway/.cache/scratch/plan-finding.json', JSON.stringify({
-    n: 1, total: 1, title: 'Missing Retry Bound', meta: [['Type', 'Missing from plan']], move: 'settled',
-    problem: 'Retries run unbounded.', proposal: 'The specification bounds them at four.',
-    diff: { current: [], proposed: ['Retries stop after four attempts.'] },
-  }));
-  sim.render(['finding', `${wu}.planning.${topic}`, '--file', '.leeway/.cache/scratch/plan-finding.json'], { expect: 'content' });
-  // The escalation diagnostic reads the plan's growth the way the spec loop
-  // reads the construction's — same surface, the plan named as the document.
-  sim.write('.leeway/.cache/scratch/plan-convergence.json', JSON.stringify({
-    loop_type: 'planning-review', latest_cycle: 2, trend: 'churning',
-    resolved: [{ title: 'Probe reads the wrong descriptor', last_seen_cycle: 1 }],
-    recurring: [], new: [{ title: 'Escape byte dispatched as a keystroke' }],
-    stream_counts: [{ label: 'traceability', count: 1 }, { label: 'integrity', count: 1 }],
-    review_baseline_words: 63929, live_words: 90000,
-  }));
-  const planDiagnostic = sim.render(['convergence-diagnostic', `${wu}.planning.${topic}`, '--file', '.leeway/.cache/scratch/plan-convergence.json'], { expect: 'content' });
-  assert.match(planDiagnostic, /\(\+26071 net across review\)/);
-  assert.match(planDiagnostic.replace(/\n\s+/g, ' '), /the review is writing mechanism the specification never decided/,
-    'the churn-growth warning reads for the plan');
-  assert.match(planDiagnostic.replace(/\n\s+/g, ' '), /Review has added 26071 words to a 63929-word plan/,
-    'the growth note names the plan, never a construction');
-  // The conclusion asks the wait gate first: a settled specification holds
-  // nothing, so the gate is empty and the conclude gate is what renders.
-  sim.render(['wait-gate', `${wu}.planning.${topic}`], { expect: 'empty' });
-  sim.render(['conclude-gate', `${wu}.planning.${topic}`], { expect: 'content' });
-
-  sim.run(['commit', wu, '-m', `plan(${wu}): author`, '--plan', topic]);
-  sim.run(['topic', 'complete', wu, 'planning', topic]);
-  assert.match(sim.render(['plan-progress', `${wu}.planning.${topic}`, '--variant', 'concluded'], { expect: 'content' }),
-    /Planning is complete for \*\*[^*]+\*\*\.[\s\S]*\*\*1 phase\*\* with \*\*1 task\*\* total/);
-
-  // Implementation — no `topic start` in prose; task init creates. The
-  // code-slot read comes first: nothing else in this sim holds implementation
-  // or review, so the slot is free and the gate renders empty.
-  bridgeTo(sim, wu, 'implementation');
-  sim.render(['code-gate', `${wu}.implementation.${topic}`], { expect: 'empty' });
-  sim.render(['entry-gate', `${wu}.implementation.${topic}`], { expect: 'empty' });
-  handoffEntry(sim, wu, 'implementation', topic);
-  assert.strictEqual(sim.read(['manifest', 'get', `${wu}.implementation.${topic}`, 'status']), '', 'no implementation item — a first start');
-  const implInit = sim.run(['task', 'init', wu, topic]);
-  assert.strictEqual(implInit.mode, 'created', 'fresh implementation takes the created arm');
-  sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`, '--topic', `implementation/${topic}`]);
-  assert.strictEqual(sim.run(['task', 'start', wu, topic, `${topic}-1-1`]).do_banking, true,
-    'the first plan task banks — the deposits below are made while its phase is still open');
-  const onTask = carryOn(sim);
-  assert.deepStrictEqual(onTask.position, { name: wu, phase: 'implementation', topic, tasks: [{ task: '1.1', builder: null, reviewers: [] }] });
-  assert.strictEqual(onTask.skill, path.join(sim.dir, '.claude/skills/leeway-implementation-process/SKILL.md'));
-  assert.match(onTask.text, new RegExp(`^The conversation was just compacted\\. This conversation is working in the implementation of .*, on task 1\\.1 \\(internal id \`${topic}-1-1\`\\)\\.`));
-  // The executor's dispatch: the gate mod hands the engine its agent id, the
-  // builder of the one task in flight, which rides on the position with the
-  // task — through the recovery steps' re-run of `task start` — so the note
-  // names the agent the later rounds continue.
-  assert.strictEqual(sim.run(['conversation', 'builder', sim.env.CLAUDE_CODE_SESSION_ID, 'aa76bd7f82a2ef3e4']).recorded, true);
-  sim.run(['task', 'start', wu, topic, `${topic}-1-1`]);
-  const withExecutor = carryOn(sim);
-  assert.strictEqual(withExecutor.position.tasks[0].builder, 'aa76bd7f82a2ef3e4', 'the recovery re-run of task start keeps the executor');
-  assert.match(withExecutor.text, new RegExp(`, on task 1\\.1 \\(internal id \`${topic}-1-1\`\\), its builder agent \`aa76bd7f82a2ef3e4\`\\.`));
-  // The loop's two stops: an executor that comes back blocked or failed
-  // (task-loop C), and the analysis loop's checkpoint over files
-  // implementation never wrote.
-  const sides = sim.write(`.leeway/.cache/${wu}/implementation/${topic}/block-sides.json`, {
-    options: ['Restore the order as paid, refund behind it', { summary: 'Keep the cancellation, return the payment', recommended: true }],
-  });
-  const blockGate = sim.render(['executor-block-gate', `${wu}.implementation.${topic}`, '--result', 'blocked', '--file', sides], { expect: 'content' });
-  assert.match(blockGate, /\*\*`1`\*\*\s+→ Keep the cancellation, return the payment \(recommended\)/, 'the recommended side renders first');
-  sim.render(['executor-block-gate', `${wu}.implementation.${topic}`, '--result', 'failed'], { expect: 'content' });
-  // The task's code commit: declared paths, validated and confined, with the
-  // residual dirt answered back so nothing the task touched is left behind.
-  // Code has no layout to derive a scope from — this is the one commit whose
-  // paths Claude names. The task's code lives in the clone, so its commit
-  // lands in the clone's history and the root takes none.
-  sim.write(`api/src/${topic}.js`, `module.exports = ${JSON.stringify(topic)};\n`);
-  // A framework's routing file names itself with brackets; the code commit
-  // takes it literally.
-  const routeFile = `routes/[${topic}].js`;
-  sim.write(`api/${routeFile}`, '// a file this task did not write\n');
-  // The product summary at the task gate (report-register.md) draws on the
-  // task's uncommitted change: the clone's untracked files read as
-  // additions, named from the project.
-  assert.match(sim.read(['code', 'diff']), new RegExp(`^diff --git a/api/src/${topic}\\.js b/api/src/${topic}\\.js$`, 'm'),
-    'the product summary reads the clone\'s new file');
-  assert.match(sim.render(['task-gate', `${wu}.implementation.${topic}`], { expect: 'content' }), /MENU: task gate/);
-  // The task commit's file list (task-loop.md H) and the analysis loop's
-  // checkpoint (analysis-loop.md B) read the uncommitted code from every
-  // repo, named from the project — each untracked file on its own, never
-  // the clone's new folder.
-  assert.deepStrictEqual(JSON.parse(sim.read(['code', 'status'])).files,
-    [{ path: `api/${routeFile}`, status: '??' }, { path: `api/src/${topic}.js`, status: '??' }],
-    'the clone\'s dirt is read from the project, file by file, .leeway/ held out');
-  // Where code is dirty the checkpoint gate sorts it: nothing an `impl(…):`
-  // commit touched yet, so both files are unexpected and the gate stands.
-  assert.match(sim.render(['checkpoint-files-gate', `${wu}.implementation.${topic}`], { expect: 'content' }),
-    new RegExp(`implementation_files \\(0\\):\\nunexpected_files \\(2\\):\\n {2}api/routes/\\[${topic}\\]\\.js\\n {2}api/src/${topic}\\.js\\n`
-      + `[\\s\\S]*- api/routes/\\[${topic}\\]\\.js \\(untracked\\)\\n- api/src/${topic}\\.js \\(untracked\\)[\\s\\S]*MENU: checkpoint files gate`));
-  const rootHead = git(sim.dir, ['rev-parse', 'HEAD']).trim();
-  const taskBase = git(sim.api, ['rev-parse', 'HEAD']).trim();
-  const codeCommit = sim.run(['commit', '--paths', `api/src/${topic}.js`, '-m', `impl(${wu}): T${topic}-1-1 — the task`,
-    '--for', wu, `implementation/${topic}`]);
-  assert.deepStrictEqual(codeCommit.committed, [{ repo: 'api', sha: git(sim.api, ['rev-parse', '--short', 'HEAD']).trim() }],
-    'the commit lands in the clone that owns the file');
-  assert.strictEqual(git(sim.api, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim(), `src/${topic}.js`);
-  assert.strictEqual(git(sim.dir, ['rev-parse', 'HEAD']).trim(), rootHead, 'the root takes no code commit');
-  assert.deepStrictEqual(codeCommit.left_dirty, [`api/${routeFile}`],
-    'the forgotten path comes back as the reconcile signal, named from the project');
-  sim.run(['commit', '--paths', `api/${routeFile}`, '-m', `chore(${topic}): the rest`,
-    '--for', wu, `implementation/${topic}`]);
-  assert.strictEqual(git(sim.api, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim(), routeFile);
-  // Each executor and reviewer report's BANK entries deposit the moment the
-  // report arrives (bank-deposit.md, loaded while `do_banking` is true) —
-  // durable on the manifest, emptied at the phase boundary.
-  const bankPush = sim.run(['manifest', 'push', `${wu}.implementation.${topic}`, 'bank',
-    `{"task":"${topic}-1-1","source":"executor","summary":"helper duplicated from a sibling task","failure":"a rule change lands in one copy and not the other — the two callers disagree silently","detail":"src/a.js:12 mirrors src/b.js:40","files":["src/a.js","src/b.js"]}`]);
-  assert.strictEqual(bankPush.length, 1, 'first bank deposit creates the array');
-  sim.run(['manifest', 'push', `${wu}.implementation.${topic}`, 'bank',
-    `{"task":"${topic}-1-1","source":"reviewer","summary":"dead scaffolding a later task orphaned","failure":"a reader wires the orphaned export into new code and ships a path nothing tests","detail":"src/c.js:8 export unused","files":["src/c.js"]}`]);
-  const bank = JSON.parse(sim.read(['manifest', 'get', `${wu}.implementation.${topic}`, 'bank']));
-  assert.strictEqual(bank.length, 2, 'bank accumulates entries');
-  assert.strictEqual(bank[0].source, 'executor', 'entries store as objects, not strings');
-  // Phase boundary: the completion defers its flag, the consolidation pass
-  // empties the bank — every entry folded into a finding or dropped by the
-  // finder — marks the boundary, and the re-record closes the phase
-  // (consolidation-pass.md F). Nothing crosses the boundary.
-  sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--phase', '1', '--next-task', '~']);
-  assert.deepStrictEqual(carryOn(sim).position, { name: wu, phase: 'implementation', topic },
-    'the task\'s completion takes it off, its executor with it');
-  assert.match(sim.render(['step-opening', `${wu}.implementation.${topic}`, '--step', 'consolidation'], { expect: 'content' }),
-    /□ Consolidation Pass \(phase 1\)/, 'the pass opens on the phase in flight');
-  // The finder's scope is the phase's task commits (invoke-consolidation-
-  // finder.md), and it reads their change: the clone's, named from the
-  // project.
-  assert.deepStrictEqual(JSON.parse(sim.read(['code', 'log', wu, topic, '--phase', '1'])).files, [`api/src/${topic}.js`],
-    'the phase\'s files are the clone\'s, named from the project');
-  assert.match(sim.read(['code', 'diff', wu, topic, '--phase', '1']),
-    new RegExp(`^diff --git a/api/src/${topic}\\.js b/api/src/${topic}\\.js$`, 'm'));
-  assert.strictEqual(sim.read(['manifest', 'exists', `${wu}.implementation.${topic}`, 'bank']), 'true',
-    'the guard reads the field before the delete — an absent bank refuses the delete');
-  sim.run(['manifest', 'delete', `${wu}.implementation.${topic}`, 'bank']);
-  sim.run(['manifest', 'push', `${wu}.implementation.${topic}`, 'consolidated_phases', '1']);
-  sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--phase', '1', '--phase-complete']);
-  assert.strictEqual(sim.manifest(wu).phases.implementation.items[topic].current_task, null,
-    'a closed phase leaves no task in flight');
-  assert.strictEqual('bank' in sim.manifest(wu).phases.implementation.items[topic], false,
-    'the boundary leaves no bank behind');
-  // Conclude's backstop (conclude-implementation.md) guards the same way: the
-  // field is gone, so the delete is never issued — and would refuse if it were.
-  assert.strictEqual(sim.read(['manifest', 'exists', `${wu}.implementation.${topic}`, 'bank']), 'false',
-    'nothing for the backstop to delete');
-  sim.refuses(['manifest', 'delete', `${wu}.implementation.${topic}`, 'bank'], /not found/);
-  sim.render(['conclude-gate', `${wu}.implementation.${topic}`], { expect: 'content' });
-  sim.run(['topic', 'complete', wu, 'implementation', topic]);
-
-  // Review — verification, then the prepped pipeline: out-of-scope
-  // findings bank durably on the manifest, the report is produced from
-  // the action list after the do-now apply, the outcome renders through
-  // its surfaces — naming the criteria the review could not measure — and
-  // the pass completes the phase. The banked set is decided before the
-  // gate renders, and the decision deletes the field.
-  bridgeTo(sim, wu, 'review');
-  sim.render(['code-gate', `${wu}.review.${topic}`], { expect: 'empty' });
-  sim.render(['entry-gate', `${wu}.review.${topic}`], { expect: 'empty' });
-  handoffEntry(sim, wu, 'review', topic);
-  assert.strictEqual(sim.read(['manifest', 'get', `${wu}.review.${topic}`, 'status']), '', 'no review item — a first start');
-  sim.run(['topic', 'start', wu, 'review', topic]);
-  // The verifiers' scope is read across every repo before any task is
-  // recorded reviewed — the task verifiers' files (invoke-task-verifiers.md
-  // A): the topic's task commit landed in the clone, so its files are the
-  // clone's, named from the project.
-  assert.deepStrictEqual(JSON.parse(sim.read(['code', 'log', wu, topic])).files, [`api/src/${topic}.js`]);
-  sim.run(['manifest', 'push', `${wu}.review.${topic}`, 'reviewed_tasks', `${topic}-1-1`]);
-  sim.render(['resume-gate', `${wu}.review.${topic}`, '--variant', 'review'], { expect: 'content' });
-  // The change-set verification reads the declared linter names for its brief
-  // (invoke-change-set-verifiers.md B); each verifier it dispatches then reads
-  // the commits, bases and change for itself — all of it the clone's.
-  sim.read(['manifest', 'get', `${wu}.implementation.${topic}`, 'linters']);
-  const taskLog = JSON.parse(sim.read(['code', 'log', wu, topic]));
-  assert.deepStrictEqual(taskLog.commits.map((c) => [c.repo, c.subject]), [['api', `impl(${wu}): T${topic}-1-1 — the task`]]);
-  assert.deepStrictEqual(taskLog.repos, [{ repo: 'api', base: taskBase }], 'the change set starts at the clone\'s parent of the task commit');
-  assert.deepStrictEqual(sim.read(['code', 'diff', wu, topic]).split('\n').filter((l) => l.startsWith('diff --git ')),
-    [`diff --git a/api/src/${topic}.js b/api/src/${topic}.js`]);
-  // The verifiers write one file per section per cycle beside the per-task
-  // reports; prep's checkpoint commit carries both classes under the review
-  // topic's scope.
-  sim.write(`.leeway/${wu}/review/${topic}/report-1-1.md`, 'TASK: 1-1\n\nFINDINGS:\n- None\n');
-  sim.write(`.leeway/${wu}/review/${topic}/change-set-c1-specification.md`, 'SECTION: specification\n\nFINDINGS:\n- None\n');
-  // The verifiers leave the tree as they found it: the check reads every
-  // repo — a leftover in the clone stops the review until it is gone — and
-  // answers empty, the review's own artifacts sitting under .leeway/.
-  sim.write(`api/src/${topic}.probe.js`, '// a verifier\'s leftover\n');
-  assert.match(sim.render(['change-set-tree', `${wu}.review.${topic}`], { expect: 'content' }),
-    new RegExp(`modified or untracked: \`api/src/${topic}\\.probe\\.js\`\\.`));
-  fs.rmSync(path.join(sim.api, `src/${topic}.probe.js`));
-  sim.render(['change-set-tree', `${wu}.review.${topic}`], { expect: 'empty' });
-  // Prep's synthesis writes the action list the rest of the review reads.
-  sim.write(`.leeway/.cache/${wu}/review/${topic}/actions.json`, {
-    verdict: 'pass',
-    actions: [
-      { id: 'A1', route: 'do-now', ids: ['1-1-1'], files: [`api/src/${topic}.js`] },
-      { id: 'A2', route: 'do-now', ids: ['1-1-2'], files: [`api/src/${topic}.js`] },
-      { id: 'A3', route: 'out-of-scope', kind: 'quick-fix', ids: ['9-2-1'] },
-    ],
-  });
-  sim.run(['commit', wu, '-m', `review(${wu}): verification and prep`, '--topic', `review/${topic}`]);
-  sim.run(['manifest', 'push', `${wu}.review.${topic}`, 'out_of_scope',
-    '{"id":"A3","kind":"quick-fix","summary":"a guard the spec never asked for"}']);
-  assert.match(sim.render(['step-opening', `${wu}.review.${topic}`, '--step', 'do-now'], { expect: 'content' }),
-    /□ Apply Do-Now[\s\S]*> Applying 2 contained corrections — /);
-  // The apply starts from a clean tree (apply-do-now.md B), read from every
-  // repo — the review's own artifacts sit under .leeway/, held out.
-  assert.deepStrictEqual(JSON.parse(sim.read(['code', 'status'])).files, [], 'nothing uncommitted before the first batch');
-  // The apply lane writes code: in-scope, contained findings land in-session
-  // as one commit, through the same declared-paths door the task loop uses —
-  // beating the review topic, which is the code slot this session holds. The
-  // fix verifier reads the applied work, and the commit is confirmed against
-  // it (apply-do-now.md C–D): the uncommitted change, the clone's.
-  sim.write(`api/src/${topic}.js`, `module.exports = ${JSON.stringify(topic)}; // guarded\n`);
-  assert.deepStrictEqual(JSON.parse(sim.read(['code', 'status'])).files, [{ path: `api/src/${topic}.js`, status: ' M' }]);
-  assert.match(sim.read(['code', 'diff']), new RegExp(`^\\+module\\.exports = "${topic}"; // guarded$`, 'm'));
-  const applied = sim.run(['commit', '--paths', `api/src/${topic}.js`,
-    '-m', `review(${wu}): ${topic} cycle 1 — apply do-now findings`, '--for', wu, `review/${topic}`]);
-  assert.deepStrictEqual(applied.committed.map((c) => c.repo), ['api'], 'the fixes land where the code lives');
-  assert.strictEqual(git(sim.api, ['log', '-1', '--format=%s']).trim(), `review(${wu}): ${topic} cycle 1 — apply do-now findings`);
-  assert.deepStrictEqual(applied.left_dirty, [], 'the apply lane names everything it touched');
-  // The report reads the apply commit back by its subject.
-  assert.match(sim.read(['code', 'diff', '--subject', `review(${wu}): ${topic} cycle 1 — apply do-now findings`]),
-    new RegExp(`^\\+module\\.exports = "${topic}"; // guarded$`, 'm'));
-  sim.write(`.leeway/${wu}/review/${topic}/report.md`, `# Review — ${topic}\n`);
-  sim.run(['commit', wu, '-m', `review(${wu}): complete review`, '--topic', `review/${topic}`]);
-  const presentation = sim.write(`.leeway/.cache/${wu}/review/${topic}/presentation.json`, {
-    topic,
-    verdict: 'pass',
-    corrected: { applied: 2, reverted: 0, suite: 'green' },
-    out_of_scope: 1,
-    discarded: 1,
-    not_measured: 2,
-  });
-  assert.match(sim.render(['review-presentation', `${wu}.review.${topic}`, '--file', presentation], { expect: 'content' }),
-    /Not measured: 2 criteria — named in the report\./, 'the presentation discloses what the review could not measure');
-  assert.strictEqual(sim.read(['manifest', 'exists', `${wu}.review.${topic}`, 'out_of_scope']), 'true',
-    'the banked set is still waiting on the user when the presentation lands');
-  sim.run(['manifest', 'delete', `${wu}.review.${topic}`, 'out_of_scope']);
-  const gate = sim.render(['review-gate', `${wu}.review.${topic}`, '--verdict', 'pass'], { expect: 'content' });
-  assert.match(gate, /\*\*`c\/complete`\*\* → Complete the review and (return to the epic|finish the [a-z-]+)/,
-    'the completion names where completing lands for this work type');
-  assert.ok(!gate.includes('i/inbox'), 'the out-of-scope decision is never a gate option');
-  sim.run(['topic', 'complete', wu, 'review', topic]);
-  sim.run(['commit', wu, '-m', `review(${wu}): complete review phase`, '--topic', `review/${topic}`]);
 }
 
 // The spec's corridor as the skill runs it (11.3–11.8): entered at the unit,
@@ -1642,6 +1242,6 @@ function finished(sim, wu) {
 }
 
 module.exports = {
-  Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicBuildPick, linearBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, keptOldSpec, briefOf, placeIn, landed,
+  Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicBuildPick, linearBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, placeIn, landed,
   builders, taskBuilt, firstPhaseBuilt, cutClosed, areaRead, testsRead, reviewNext, reviewCall, strayRound, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic,
 };

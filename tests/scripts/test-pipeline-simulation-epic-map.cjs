@@ -390,7 +390,7 @@ describe('pipeline simulation: epic map', () => {
 
     // Zeta: a topic a message names that waits on the roadmap as an idea of
     // its name. The add refuses to stand beside it, and lands again taking it
-    // in, as create-discovery-topic does.
+    // in, as discovery's change to the map does.
     sim.run(['roadmap', 'horizon', 'add', 'later']);
     sim.run(['roadmap', 'add', 'zeta', '--horizon', 'later', '--summary', 'Zeta, waiting']);
     const zeta = ['topic', 'add', wu, 'zeta', '--source', 'message:alpha', '--summary', 'Zeta summary', '--brief', draft('zeta'), '--re-add'];

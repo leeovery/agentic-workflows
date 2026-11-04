@@ -221,7 +221,7 @@ describe('what cannot be entered is refused, naming the way on, and nothing is w
   });
 
   it('a phase the unit\'s work type has no place for', () => {
-    assert.strictEqual(refused(['discussion', 'crash']), 'a bugfix has no discussion — its phases are investigation, specification, planning, implementation, review');
+    assert.strictEqual(refused(['discussion', 'crash']), 'a bugfix has no discussion — its phases are investigation, specification, implementation, review');
   });
 
   it('a topic missing from an epic, not a legal name, or not the unit\'s', () => {

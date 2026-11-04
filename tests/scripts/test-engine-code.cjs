@@ -9,7 +9,7 @@
 
 require('./hermetic-env.cjs');
 
-const { describe, it, beforeEach, afterEach } = require('node:test');
+const { describe, it, before, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
@@ -19,6 +19,7 @@ const harness = require('./engine-harness.cjs');
 
 const { git, commitAll, initRepo, setupGitFixture, addSubmodule, cleanupFixture, createFile, writeState, statePath, layout } = harness;
 const { diffPatch } = require('../../skills/leeway-engine/scripts/kernel/git.cjs');
+const { building, FOR_TASK, TASK_BRANCH, startBuilding } = require('./commit-door-world.cjs');
 
 const EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
 const PREFIX = 'impl(pay): T1-';
@@ -27,6 +28,11 @@ const sha = (dir, rev = 'HEAD') => git(dir, ['rev-parse', rev]).trim();
 
 /** The `diff --git` header lines of a patch, in order. */
 const headers = (patch) => patch.split('\n').filter((line) => line.startsWith('diff --git '));
+
+/** The unit a code commit's task is in, as the door reads it. @param {string} dir */
+const taskUnit = (dir) => writeState(dir, layout.manifest('payments'), JSON.stringify({ name: 'payments', work_type: 'feature', status: 'in-progress', phases: {} }));
+
+before(startBuilding);
 
 
 describe('engine code log and diff --subject: the commits a subject prefix selects', () => {
@@ -136,8 +142,8 @@ describe('engine code log and diff with a selection: what a commit carries', () 
     git(api, ['mv', 'src/old.ts', 'src/new.ts']);
     git(api, ['commit', '-q', '-m', 'impl(pay): Tmv-1-1 — the move']);
 
-    assert.deepStrictEqual(harness.ok(dir, ['code', 'log', 'pay', 'mv']).files, ['api/src/new.ts', 'api/src/old.ts']);
-    const patch = harness.output(dir, ['code', 'diff', 'pay', 'mv']);
+    assert.deepStrictEqual(harness.ok(dir, ['code', 'log', '--subject', 'impl(pay): Tmv-']).files, ['api/src/new.ts', 'api/src/old.ts']);
+    const patch = harness.output(dir, ['code', 'diff', '--subject', 'impl(pay): Tmv-']);
     assert.deepStrictEqual(headers(patch), ['diff --git a/api/src/new.ts b/api/src/new.ts', 'diff --git a/api/src/old.ts b/api/src/old.ts']);
     assert.ok(patch.includes('deleted file mode 100644\nindex '), 'the old path\'s deletion is part of the change');
     assert.ok(patch.includes('--- a/api/src/old.ts\n+++ /dev/null\n'));
@@ -156,7 +162,7 @@ describe('engine code log and diff with a selection: what a commit carries', () 
     git(dir, ['config', 'log.showSignature', 'true']);
     assert.match(git(dir, ['log', '-1']), /signature/, 'the fixture prints a signature with each commit');
 
-    assert.deepStrictEqual(harness.ok(dir, ['code', 'log', 'pay', 'sig']).files, ['src/signed-1.ts', 'src/signed-2.ts']);
+    assert.deepStrictEqual(harness.ok(dir, ['code', 'log', '--subject', 'impl(pay): Tsig-']).files, ['src/signed-1.ts', 'src/signed-2.ts']);
   });
 
   it('a submodule\'s pointer is never its parent\'s change: the pointer\'s own commit drops out, a commit carrying more keeps the rest', () => {
@@ -174,14 +180,14 @@ describe('engine code log and diff with a selection: what a commit carries', () 
     git(dir, ['add', 'vendor/sdk', 'src/caller.ts']);
     git(dir, ['commit', '-q', '-m', 'impl(pay): Tsdk-1-2 — the client and its caller']);
 
-    const log = harness.ok(dir, ['code', 'log', 'pay', 'sdk']);
+    const log = harness.ok(dir, ['code', 'log', '--subject', 'impl(pay): Tsdk-']);
     assert.deepStrictEqual(log.commits.map((c) => [c.repo, c.subject]), [
       ['.', 'impl(pay): Tsdk-1-2 — the client and its caller'],
       ['vendor/sdk', 'impl(pay): Tsdk-1-1 — the client'],
       ['vendor/sdk', 'impl(pay): Tsdk-1-2 — the client and its caller'],
     ]);
     assert.deepStrictEqual(log.files, ['src/caller.ts', 'vendor/sdk/lib.js']);
-    const patch = harness.output(dir, ['code', 'diff', 'pay', 'sdk']);
+    const patch = harness.output(dir, ['code', 'diff', '--subject', 'impl(pay): Tsdk-']);
     assert.deepStrictEqual(headers(patch), ['diff --git a/src/caller.ts b/src/caller.ts', 'diff --git a/vendor/sdk/lib.js b/vendor/sdk/lib.js']);
     assert.ok(!patch.includes('Subproject commit'));
   });
@@ -300,12 +306,10 @@ describe('engine code diff and status: the change not yet committed', () => {
   });
 
   it('status names each untracked file in a new folder on its own, so a commit naming the task\'s file leaves a stranger\'s in left_dirty by name', () => {
-    writeState(dir, layout.manifest('pay'), JSON.stringify({
-      name: 'pay', work_type: 'feature', status: 'in-progress',
-      phases: { implementation: { items: { pay: { status: 'in-progress' } } } },
-    }));
-    harness.stateGit(dir, ['add', layout.manifest('pay')]);
+    taskUnit(dir);
+    harness.stateGit(dir, ['add', layout.manifest('payments')]);
     harness.stateGit(dir, ['commit', '-q', '-m', 'chore: the work unit']);
+    git(dir, ['checkout', '-q', '-b', TASK_BRANCH]);
     createFile(dir, 'src/billing/charge.js', 'the task\'s\n');
     createFile(dir, 'src/billing/stranger.js', 'not the task\'s\n');
     createFile(api, 'src/billing/refund.js', 'not the task\'s\n');
@@ -315,7 +319,7 @@ describe('engine code diff and status: the change not yet committed', () => {
       { path: 'src/billing/stranger.js', status: '??' },
       { path: 'api/src/billing/refund.js', status: '??' },
     ]);
-    const res = harness.ok(dir, ['commit', '--paths', 'src/billing/charge.js', '-m', 'impl(pay): Tpay-1-1 — the charge', '--for', 'pay', 'implementation/pay']);
+    const res = harness.ok(dir, ['commit', '--paths', 'src/billing/charge.js', '-m', 'feat(payments): the charge', ...FOR_TASK], building);
     assert.deepStrictEqual(git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim(), 'src/billing/charge.js');
     assert.deepStrictEqual(res.left_dirty, ['src/billing/stranger.js', 'api/src/billing/refund.js']);
   });
@@ -353,12 +357,7 @@ describe('engine code: the state held out of the code\'s dirt where nothing igno
   let side;
   beforeEach(() => {
     dir = setupGitFixture('engine-code-unignored-');
-    writeState(dir, layout.manifest('pay'), JSON.stringify({
-      name: 'pay',
-      work_type: 'feature',
-      status: 'in-progress',
-      phases: { implementation: { items: { pay: { status: 'in-progress' } } } },
-    }, null, 2) + '\n');
+    taskUnit(dir);
     createFile(dir, 'src/app.js', '1\n');
     commitAll(dir, 'init');
     // Tracked files alone: an `add -A` would take the unignored state in as
@@ -366,7 +365,7 @@ describe('engine code: the state held out of the code\'s dirt where nothing igno
     createFile(dir, '.gitignore', '');
     git(dir, ['commit', '-q', '-am', 'nothing ignored']);
     side = `${dir}-side`;
-    git(dir, ['worktree', 'add', '-q', '-b', 'side', side]);
+    git(dir, ['worktree', 'add', '-q', '-b', TASK_BRANCH, side]);
   });
   afterEach(() => {
     cleanupFixture(side);
@@ -378,12 +377,19 @@ describe('engine code: the state held out of the code\'s dirt where nothing igno
     createFile(state, layout.unit('pay', 'notes.md'), 'a doc session\'s own\n');
     assert.match(git(dir, ['status', '--porcelain']), /^\?\? \.leeway\/$/m, 'git sees the state: the hold-out alone keeps it out');
 
-    for (const [where, checkout] of [[dir, dir], [side, side], [state, dir]]) {
+    /** @param {string} where @param {string} checkout the code checkout `where` commits in */
+    const commitFrom = (where, checkout) => {
       assert.deepStrictEqual(harness.ok(where, ['code', 'status']).files, [], `code status from ${where}`);
       createFile(checkout, 'src/app.js', `${where}\n`);
-      const res = harness.ok(where, ['commit', '--paths', path.join(checkout, 'src/app.js'), '-m', 'impl(pay): the app', '--for', 'pay', 'implementation/pay']);
+      const res = harness.ok(where, ['commit', '--paths', path.join(checkout, 'src/app.js'), '-m', 'feat(payments): the app', ...FOR_TASK], building);
       assert.deepStrictEqual(res.left_dirty, [], `left_dirty from ${where}`);
-    }
+    };
+    commitFrom(side, side);
+    // The task's branch moves to the main checkout, the one the state's code is.
+    git(side, ['checkout', '-q', '--detach']);
+    git(dir, ['checkout', '-q', TASK_BRANCH]);
+    commitFrom(dir, dir);
+    commitFrom(state, dir);
   });
 });
 
@@ -429,92 +435,6 @@ describe('engine code in a project of one repo: what git answers', () => {
   });
 });
 
-describe('engine code log and diff <work-unit> <topic>: a topic\'s task commits', () => {
-  let dir;
-  let api;
-  beforeEach(() => {
-    dir = setupGitFixture('engine-code-task-');
-    createFile(dir, '.gitignore', '.leeway/\napi/\n');
-    commitAll(dir, 'chore: init');
-    createFile(dir, 'src/auth.js', '1\n');
-    commitAll(dir, 'impl(pay): Tauth-1-1 — login');
-    createFile(dir, 'src/logout.js', '1\n');
-    commitAll(dir, 'impl(pay): Tauth-2-1 — logout');
-    createFile(dir, 'src/stray.js', '1\n');
-    commitAll(dir, 'impl(pay): Tauth-1-1x — no internal id');
-    // The state's own commit, on the state branch: never a task commit of the code.
-    writeState(dir, layout.manifest('pay'), '{}\n');
-    commitAll(dir, 'impl(pay): record Tauth-1-1');
-    api = initRepo(path.join(dir, 'api'));
-    createFile(api, 'src/flow.js', '1\n');
-    commitAll(api, 'impl(pay): Tauth-flow-1-1 — the sibling topic');
-    createFile(api, 'src/api.js', '1\n');
-    commitAll(api, 'impl(pay): Tauth-1-2');
-  });
-  afterEach(() => cleanupFixture(dir));
-
-  it('log: every task commit of the topic across the repos — never a sibling topic whose name extends it, never a subject whose id runs on', () => {
-    const res = harness.ok(dir, ['code', 'log', 'pay', 'auth']);
-
-    assert.deepStrictEqual(res.commits.map((c) => [c.repo, c.subject]), [
-      ['.', 'impl(pay): Tauth-1-1 — login'],
-      ['.', 'impl(pay): Tauth-2-1 — logout'],
-      ['api', 'impl(pay): Tauth-1-2'],
-    ]);
-    assert.deepStrictEqual(res.files, ['api/src/api.js', 'src/auth.js', 'src/logout.js']);
-    assert.deepStrictEqual(res.repos, [{ repo: '.', base: sha(dir, 'HEAD~3') }, { repo: 'api', base: sha(api, 'HEAD~1') }]);
-    assert.deepStrictEqual(harness.ok(dir, ['code', 'log', 'pay', 'auth-flow']).commits.map((c) => c.subject),
-      ['impl(pay): Tauth-flow-1-1 — the sibling topic']);
-  });
-
-  it('log: an id ends the subject or meets a character no id continues with — a colon, an em dash with no space', () => {
-    const subjects = [
-      'impl(pay): Tauth-1-3: the colon',
-      'impl(pay): Tauth-1-4—no space',
-      'impl(pay): Tauth-1-5',
-      'impl(pay): Tauth-1-12 — runs to its own end',
-      'impl(pay): Tauth-1-1_x — an underscore runs on',
-      'impl(pay): Tauth-2-1-1 — the auth-2 topic',
-    ];
-    subjects.forEach((subject, i) => {
-      createFile(dir, `src/edge-${i}.js`, '1\n');
-      commitAll(dir, subject);
-    });
-
-    assert.deepStrictEqual(harness.ok(dir, ['code', 'log', 'pay', 'auth', '--phase', '1']).commits.map((c) => c.subject), [
-      'impl(pay): Tauth-1-1 — login',
-      'impl(pay): Tauth-1-3: the colon',
-      'impl(pay): Tauth-1-4—no space',
-      'impl(pay): Tauth-1-5',
-      'impl(pay): Tauth-1-12 — runs to its own end',
-      'impl(pay): Tauth-1-2',
-    ]);
-    assert.deepStrictEqual(harness.ok(dir, ['code', 'log', 'pay', 'auth-2']).commits.map((c) => c.subject),
-      ['impl(pay): Tauth-2-1-1 — the auth-2 topic'], 'and auth\'s own Tauth-2-1 is never auth-2\'s');
-  });
-
-  it('log --phase: only that phase\'s task commits, and each repo\'s base from its earliest of them', () => {
-    const res = harness.ok(dir, ['code', 'log', 'pay', 'auth', '--phase', '2']);
-
-    assert.deepStrictEqual(res.commits.map((c) => [c.repo, c.subject]), [['.', 'impl(pay): Tauth-2-1 — logout']]);
-    assert.deepStrictEqual(res.files, ['src/logout.js']);
-    assert.deepStrictEqual(res.repos, [{ repo: '.', base: sha(dir, 'HEAD~2') }]);
-    assert.deepStrictEqual(harness.ok(dir, ['code', 'log', 'pay', 'auth', '--phase', '1']).files, ['api/src/api.js', 'src/auth.js']);
-  });
-
-  it('diff: the change the selected commits made, confined to their files', () => {
-    assert.deepStrictEqual(headers(harness.output(dir, ['code', 'diff', 'pay', 'auth', '--phase', '1'])), [
-      'diff --git a/src/auth.js b/src/auth.js',
-      'diff --git a/api/src/api.js b/api/src/api.js',
-    ]);
-    assert.deepStrictEqual(headers(harness.output(dir, ['code', 'diff', 'pay', 'auth'])), [
-      'diff --git a/src/auth.js b/src/auth.js',
-      'diff --git a/src/logout.js b/src/logout.js',
-      'diff --git a/api/src/api.js b/api/src/api.js',
-    ]);
-  });
-});
-
 describe('engine code in a project nested inside a larger repository: the project\'s folder alone, named from it', () => {
   let dir;
   let project;
@@ -542,7 +462,7 @@ describe('engine code in a project nested inside a larger repository: the projec
   afterEach(() => cleanupFixture(dir));
 
   it('log: a commit that touched nothing in the project is none of its, and every path is the project\'s', () => {
-    const res = harness.ok(project, ['code', 'log', 'pay', 'web']);
+    const res = harness.ok(project, ['code', 'log', '--subject', 'impl(pay): Tweb-']);
 
     assert.deepStrictEqual(res.commits.map((c) => [c.repo, c.subject]), [
       ['.', 'impl(pay): Tweb-1-1 — the project and its sibling'],
@@ -553,7 +473,7 @@ describe('engine code in a project nested inside a larger repository: the projec
   });
 
   it('diff with a selection: headers named from the project, nothing outside it', () => {
-    assert.deepStrictEqual(headers(harness.output(project, ['code', 'diff', 'pay', 'web'])), [
+    assert.deepStrictEqual(headers(harness.output(project, ['code', 'diff', '--subject', 'impl(pay): Tweb-'])), [
       'diff --git a/src/app.js b/src/app.js',
       'diff --git a/api/src/handler.js b/api/src/handler.js',
     ]);
@@ -587,7 +507,7 @@ describe('engine code: usage', () => {
   beforeEach(() => { dir = setupGitFixture('engine-code-usage-'); });
   afterEach(() => cleanupFixture(dir));
 
-  it('refuses a missing or empty prefix, the two forms mixed, a phase that is no phase number, an unknown flag, a stray positional and an unknown verb', () => {
+  it('refuses a missing or empty prefix, a second prefix, a plan\'s work unit and topic, a phase, an unknown flag, a stray positional and an unknown verb', () => {
     for (const args of [
       ['code'],
       ['code', 'nope'],
@@ -597,15 +517,10 @@ describe('engine code: usage', () => {
       ['code', 'log', '--subject', 'a', '--subject', 'b'],
       ['code', 'log', '--subject', 'a', 'extra'],
       ['code', 'log', '--subject', 'a', '--phase', '1'],
-      ['code', 'log', 'pay', 'auth', '--subject', 'a'],
-      ['code', 'log', 'pay'],
-      ['code', 'log', 'pay', 'auth', 'extra'],
-      ['code', 'log', 'pay', ''],
-      ['code', 'log', 'pay', 'auth', '--phase'],
-      ['code', 'log', 'pay', 'auth', '--phase', 'two'],
-      ['code', 'log', 'pay', 'auth', '--phase', '0'],
-      ['code', 'log', 'pay', 'auth', '--phase', '1', '--phase', '2'],
+      ['code', 'log', 'pay', 'auth'],
+      ['code', 'log', 'pay', 'auth', '--phase', '1'],
       ['code', 'log', '--phase', '1'],
+      ['code', 'diff', 'pay', 'auth'],
       ['code', 'log', '--grep', 'a'],
       ['code', 'diff', '--subject'],
       ['code', 'diff', '--bogus', 'x'],
@@ -616,7 +531,7 @@ describe('engine code: usage', () => {
       ['code', 'status', 'extra'],
     ]) {
       assert.match(harness.refuses(dir, args).error,
-        /^Usage: engine code log \(<work-unit> <topic> \[--phase <N>\] \| --subject <prefix>\) \| engine code diff \[<work-unit> <topic> \[--phase <N>\] \| --subject <prefix>\] \| engine code status$/,
+        /^Usage: engine code log --subject <prefix> \| engine code diff \[--subject <prefix>\] \| engine code status$/,
         args.join(' '));
     }
   });

@@ -4,7 +4,7 @@
 
 ---
 
-Select the plan output format using the same project-default logic as the planning skill.
+Select the plan output format, the project's default offered first.
 
 ## A. Check Format Recommendation
 
@@ -44,9 +44,9 @@ Emit the call's MENU section verbatim per its marker.
 
 ## B. Select Format
 
-→ Load **[output-formats.md](../../leeway-planning-process/references/output-formats.md)** with phase = `scoping`.
+→ Load **[output-formats.md](output-formats.md)** with phase = `scoping`.
 
-→ Load the chosen format's **[about.md](../../leeway-planning-process/references/output-formats/{chosen-format}/about.md)** and follow its Setup section — complete any prerequisites (installation, initialisation, MCP configuration) before tasks are written.
+→ Load the chosen format's **[about.md](output-formats/{chosen-format}/about.md)** and follow its Setup section — complete any prerequisites (installation, initialisation, MCP configuration) before tasks are written.
 
 → Load **[format-version-check.md](../../leeway-shared/references/format-version-check.md)** with format = `{chosen-format}`, work_unit = `{work_unit}`, phase = `scoping`, topic = `{topic}`.
 

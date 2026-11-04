@@ -15,7 +15,6 @@
 
 const { wrap } = require('../../kernel/render.cjs');
 const { displayWidth } = require('../../kernel/terminal.cjs');
-const { titlecase } = require('../conventions.cjs');
 
 const DOTS = '· · · · · · · · · · · ·';
 
@@ -509,18 +508,15 @@ const MENU_INSTRUCTION = emitAs('markdown', STOP_CLAUSE);
 // instruction ends the turn. Two facts, never blurred:
 // CONTINUE is for displays where no gate exists at all (the word "gate"
 // never appears — naming one would imply something to skip); AUTO_GATE is
-// for a real gate the user's a/auto or b/bounded choice bypasses, and says exactly
-// that. Neither names a next step: where the flow goes is the prose's to
-// own, and an engine string that duplicated it would be a second routing
-// source to keep in sync. The markdown variants serve surfaces whose
-// register cannot live in a fence — worklist strikethrough and code-span
-// tags, the task brief's and result header's emphasis.
+// for a real gate the user's a/auto choice bypasses, and says exactly that.
+// Neither names a next step: where the flow goes is the prose's to own, and
+// an engine string that duplicated it would be a second routing source to
+// keep in sync. The markdown variant serves surfaces whose register cannot
+// live in a fence — worklist strikethrough and code-span tags.
 const CONTINUE_CLAUSE = ' — do not stop; continue as the workflow instructs';
 const AUTO_GATE_CLAUSE = ' — the user set this gate to auto: do not stop; continue as the workflow instructs';
 const CONTINUE_INSTRUCTION = emitAs('text', CONTINUE_CLAUSE);
 const CONTINUE_MARKDOWN_INSTRUCTION = emitAs('markdown', CONTINUE_CLAUSE);
-const AUTO_GATE_INSTRUCTION = emitAs('text', AUTO_GATE_CLAUSE);
-const AUTO_GATE_MARKDOWN_INSTRUCTION = emitAs('markdown', AUTO_GATE_CLAUSE);
 
 // The view's chrome heading (CONVENTIONS.md: The Design System, Chrome):
 // one markdown H1 in the chrome family's heaviest register — bold inline code with the
@@ -779,27 +775,6 @@ function clipped(text, max) {
 }
 
 /**
- * The line a flow shows where one actionable item leaves nothing to pick.
- * @param {string} name
- * @returns {string}
- */
-function autoSelectLine(name) {
-  return `Automatically proceeding with "${titlecase(name)}".`;
-}
-
-/**
- * Glyphed sub-detail (`· `) within a numbered item: quiet marker on the
- * first line, continuations aligned under the text — never column zero.
- * @param {string} text
- * @param {{indent?: string, width?: number}} [opts]
- * @returns {string}
- */
-function subDetail(text, { indent = '   ', width = displayWidth() } = {}) {
-  const segs = wrap(text, width - indent.length - 2);
-  return segs.map((s, i) => (i === 0 ? `${indent}· ${s}` : `${indent}  ${s}`)).join('\n');
-}
-
-/**
  * Flat wrapped tree list (`├─`/`└─`): one item per branch, item text wrapped
  * with continuations aligned under the text column (gutter `│` while
  * siblings remain, blank under the last).
@@ -820,5 +795,5 @@ function treeList(items, { indent = '     ', width = displayWidth() } = {}) {
   return out.join('\n');
 }
 
-module.exports = { DOTS, NBSP, MENU_GLYPH, gateSurfaceAnnounced, openGate, gateShown, illustrate, section, GATE_MOD_INSTRUCTION, RENDER_FORMS, emitAs, timedInstruction, STOP_CLAUSE, MENU_INSTRUCTION, titleSection, TITLE_INSTRUCTION, dataSection, DATA_INSTRUCTION, actionsTable, CONTINUE_CLAUSE, AUTO_GATE_CLAUSE, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, menuFrame, alignOptions, menu, labelParts, drawLabel, cmdOption, bareOption, promptOption, rangeOption, optionDetail, callout, indentedBody, bulletRow, clipped, autoSelectLine, subDetail, treeList };
+module.exports = { DOTS, NBSP, gateSurfaceAnnounced, openGate, gateShown, illustrate, section, GATE_MOD_INSTRUCTION, RENDER_FORMS, emitAs, timedInstruction, STOP_CLAUSE, MENU_INSTRUCTION, titleSection, TITLE_INSTRUCTION, dataSection, DATA_INSTRUCTION, actionsTable, CONTINUE_CLAUSE, AUTO_GATE_CLAUSE, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, menuFrame, alignOptions, menu, labelParts, drawLabel, cmdOption, bareOption, promptOption, rangeOption, optionDetail, callout, indentedBody, bulletRow, clipped, treeList };
 

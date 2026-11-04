@@ -402,8 +402,8 @@ describe('reads + derivations', () => {
   });
 
   describe('computeNextPhase', () => {
-    it('returns done when review completed', () => {
-      const r = computeNextPhase({ name: 'test', work_type: 'feature', phases: { review: { items: { test: { status: 'completed' } } } } });
+    it('returns done when an old unit\'s review completed', () => {
+      const r = computeNextPhase({ name: 'test', work_type: 'feature', phases: { implementation: { items: { test: { status: 'completed' } } }, review: { items: { test: { status: 'completed' } } } } });
       assert.strictEqual(r.next_phase, 'done');
     });
 

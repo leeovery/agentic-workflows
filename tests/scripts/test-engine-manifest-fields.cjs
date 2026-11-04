@@ -194,45 +194,30 @@ describe('engine manifest — mutations answer with the engine JSON contract', (
     writeWorkUnit(dir, 'auth', 'feature');
     assert.match(runFails(dir, ['set', 'auth.discussion.auth', 'status', 'concluded']).error, /Invalid status/);
     assert.match(runFails(dir, ['set', 'auth', 'work_type', 'saga']).error, /Invalid work_type/);
-    assert.match(runFails(dir, ['set', 'auth.planning.auth', 'task_gate_mode', 'manual']).error, /Invalid gate mode/);
-    for (const mode of ['gated', 'auto', 'bounded']) {
-      runJson(dir, ['set', 'auth.implementation.auth', 'task_gate_mode', mode]);
-      assert.strictEqual(readWorkUnit(dir, 'auth').phases.implementation.items.auth.task_gate_mode, mode);
+    assert.match(runFails(dir, ['set', 'auth.discovery', 'analysis_staging.discovery-gap-analysis.gate_mode', 'manual']).error, /Invalid gate mode/);
+    for (const mode of ['gated', 'auto']) {
+      runJson(dir, ['set', 'auth.discovery', 'analysis_staging.discovery-gap-analysis.gate_mode', mode]);
+      assert.strictEqual(readWorkUnit(dir, 'auth').phases.discovery.analysis_staging['discovery-gap-analysis'].gate_mode, mode);
     }
     assert.strictEqual(runFails(dir, ['set', 'auth.discovery.topic', 'status', 'in-progress']).error,
       'Phase "discovery" items carry no status field — lifecycle is computed at render time; create map items with `engine topic add`');
     assert.match(runFails(dir, ['set', 'ghost', 'status', 'completed']).error, /Work unit "ghost" not found/);
   });
 
-  it('a gate lands only on the phase the schema places it, and bounded only where the gate has a bound', () => {
+  it('a gate mode is a walk\'s alone, gated or auto — no phase item carries one, and no gate has a bound', () => {
     writeWorkUnit(dir, 'auth', 'feature');
-    // The door refuses a gate on the wrong phase — before the value can land
-    // where no flow reads it.
-    assert.match(runFails(dir, ['set', 'auth.planning.auth', 'task_gate_mode', 'auto']).error,
-      /"task_gate_mode" is a gate of the implementation phase — write it on that phase's item/);
-    assert.match(runFails(dir, ['set', 'auth.implementation.auth', 'ghost_gate_mode', 'gated']).error,
-      /"ghost_gate_mode" is not a gate the schema knows — gates by phase: planning: /);
-    // The spec keeps no gates — finding_gate_mode is planning's alone.
-    runJson(dir, ['set', 'auth.planning.auth', 'finding_gate_mode', 'auto']);
-    assert.match(runFails(dir, ['set', 'auth.specification.auth', 'finding_gate_mode', 'auto']).error,
-      /"finding_gate_mode" is a gate of the planning phase — write it on that phase's item/);
-    // bounded reaches only a gate with a declared bound; the refusal names them.
-    runJson(dir, ['set', 'auth.implementation.auth', 'fix_gate_mode', 'bounded']);
-    assert.match(runFails(dir, ['set', 'auth.implementation.auth', 'consolidation_gate_mode', 'bounded']).error,
-      /"bounded" is not defined for "consolidation_gate_mode" — the gate has no bound; gates with a bound: implementation\.task_gate_mode \(plan-phase\), implementation\.fix_gate_mode \(plan-phase\)/);
-    assert.match(runFails(dir, ['set', 'auth.planning.auth', 'task_list_gate_mode', 'bounded']).error, /has no bound/);
-    // A walk's own gate takes gated/auto and never a bound.
-    runJson(dir, ['set', 'auth.review.auth', 'staging.c1.gate_mode', 'auto']);
-    assert.match(runFails(dir, ['set', 'auth.review.auth', 'staging.c1.gate_mode', 'bounded']).error, /a walk's gate has no bound/);
-    assert.match(runFails(dir, ['set', 'auth.discovery', 'analysis_staging.discovery-gap-analysis.gate_mode', 'bounded']).error, /a walk's gate has no bound/);
-    // Vocabulary still fails first, and a batch with one bad gate writes nothing.
-    assert.match(runFails(dir, ['set', 'auth.implementation.auth', 'task_gate_mode', 'manual']).error, /Invalid gate mode/);
-    assert.match(runFails(dir, ['set', 'auth.implementation.auth', 'task_gate_mode=gated', 'consolidation_gate_mode=bounded']).error, /has no bound/);
-    const m = readWorkUnit(dir, 'auth');
-    assert.strictEqual(m.phases.implementation.items.auth.fix_gate_mode, 'bounded', 'the earlier accepted write stands');
-    assert.strictEqual(m.phases.implementation.items.auth.task_gate_mode, undefined, 'the refused batch wrote nothing — not even its valid pair');
-    assert.strictEqual(m.phases.implementation.items.auth.consolidation_gate_mode, undefined);
-    assert.strictEqual(m.phases.planning.items.auth.task_gate_mode, undefined, 'the wrong-phase write landed nothing');
+    for (const [dotpath, field] of [['auth.discussion.auth', 'finding_gate_mode'], ['auth.investigation.auth', 'task_gate_mode']]) {
+      assert.strictEqual(runFails(dir, ['set', dotpath, field, 'auto']).error,
+        `"${field}" is not a gate the schema knows — a gate mode is a walk's, its staging row's gate_mode`);
+    }
+    runJson(dir, ['set', 'auth.discussion.auth', 'staging.c1.gate_mode', 'auto']);
+    assert.match(runFails(dir, ['set', 'auth.discussion.auth', 'staging.c1.gate_mode', 'bounded']).error, /Invalid gate mode "bounded"\. Must be one of: gated, auto/);
+    // A batch with one bad gate writes nothing.
+    assert.match(runFails(dir, ['set', 'auth.discussion.auth', 'staging.c1.gate_mode=gated', 'staging.c2.gate_mode=bounded']).error, /Invalid gate mode/);
+    const item = readWorkUnit(dir, 'auth').phases.discussion.items.auth;
+    assert.strictEqual(item.staging.c1.gate_mode, 'auto', 'the earlier accepted write stands');
+    assert.strictEqual(item.staging.c2, undefined, 'the refused batch wrote nothing — not even its valid pair');
+    assert.strictEqual(item.finding_gate_mode, undefined, 'the refused write landed nothing');
   });
 
   it('a typed field refuses NON-string values — number, boolean, ~→null, object bypass nothing', () => {
@@ -243,8 +228,8 @@ describe('engine manifest — mutations answer with the engine JSON contract', (
     assert.match(runFails(dir, ['set', 'auth', 'status', 'true']).error, /Invalid status true\b/);
     assert.match(runFails(dir, ['set', 'auth', 'status', '~']).error, /Invalid status null\b/);
     assert.match(runFails(dir, ['set', 'auth', 'work_type', '42']).error, /Invalid work_type 42\b/);
-    assert.match(runFails(dir, ['set', 'auth.planning.auth', 'task_gate_mode', '5']).error, /Invalid gate mode 5\b/);
-    assert.match(runFails(dir, ['set', 'auth.planning.auth', 'fix_gate_mode', '{}']).error, /Invalid gate mode \{\}/);
+    assert.match(runFails(dir, ['set', 'auth.discussion.auth', 'staging.c1.gate_mode', '5']).error, /Invalid gate mode 5\b/);
+    assert.match(runFails(dir, ['set', 'auth.discussion.auth', 'staging.c1.gate_mode', '{}']).error, /Invalid gate mode \{\}/);
     assert.match(runFails(dir, ['set', 'auth.discussion.auth', 'status', '3']).error, /Invalid status 3 for phase "discussion"/);
     // None of the refused writes touched the manifest.
     const m = readWorkUnit(dir, 'auth');

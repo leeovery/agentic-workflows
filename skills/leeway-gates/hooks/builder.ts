@@ -5,10 +5,9 @@
  * with, and the brief its pointer names, to the engine's `conversation
  * builder`, which records it on the position against the task the brief was
  * issued for, so the note a compaction ends on names the agents each task's
- * later rounds go back to. The plan's executor carries no brief, and is
- * recorded as the builder of the one task in flight. The result goes back
- * unchanged and at once, the record made after it, so whatever the engine
- * answers costs the dispatch nothing.
+ * later rounds go back to. The result goes back unchanged and at once, the
+ * record made after it, so whatever the engine answers costs the dispatch
+ * nothing.
  */
 import type { EngineInterface, On, ToolCallResult } from 'claude-code'
 
@@ -17,9 +16,6 @@ import { ENGINE, ENGINE_TIMEOUT_MS, MARKER, folderOf } from './folder.ts'
 /** The build's agents for a task, each dispatched with its brief's pointer. */
 const BUILDER = 'leeway-builder'
 const REVIEWER = 'leeway-reviewer'
-
-/** The plan's task executor, dispatched with no brief. */
-const EXECUTOR = 'leeway-implementation-task-executor'
 
 /** What a dispatch carries in place of its brief, before the brief's id. */
 const POINTER = 'brief:'
@@ -72,14 +68,10 @@ function agentIdOf(dispatched: ToolCallResult<'Agent'>): string | null {
 
 /**
  * What a dispatch is recorded with beside its agent id: the brief its
- * pointer names, for the build's agents; nothing, for the plan's executor;
- * null for any other agent, or a build's agent carrying no pointer.
+ * pointer names, for the build's agents; null for any other agent, or a
+ * build's agent carrying no pointer.
  */
 function briefOf(subagentType: string | undefined, prompt: string): string[] | null {
-  if (subagentType === EXECUTOR) {
-    return []
-  }
-
   const id = POINTED.exec(prompt)?.[1]
 
   return (subagentType === BUILDER || subagentType === REVIEWER) && id !== undefined ? ['--brief', id] : null

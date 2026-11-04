@@ -26,7 +26,7 @@ const START_GATEWAY = require(path.join(ROOT, 'skills/leeway/scripts/gateway.cjs
 const LIB = require(path.join(ROOT, 'skills/leeway-engine/scripts/lib.cjs'));
 const { stateGit } = require('./engine-harness.cjs');
 const {
-  Sim, sessionLog, carryOn, arrive, handoff, handoffEntry, enterEntry, discussed, pickRoute, startKeys, walkToLiveImplementation, literal,
+  Sim, sessionLog, carryOn, arrive, handoff, handoffEntry, enterEntry, discussed, pickRoute, startKeys, specEntry, literal,
   shapedInTheProduct, briefDraft, startThisWork, approveTheMap, pullFromRoadmap,
 } = require('./pipeline-world.cjs');
 
@@ -298,22 +298,21 @@ describe('pipeline simulation: roadmap', () => {
     assert.strictEqual(stateGit(sim.dir, ['status', '--porcelain', '--', 'manifest.json']), '', 'the add committed itself');
   });
 
-  it('backlogging: the ambiguity gate, the horizon pick, and the park confirm from a live implementation item', () => {
+  it('backlogging: the ambiguity gate, the horizon pick, and the park confirm from inside the spec', () => {
     const wu = 'orders';
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Orders', '--session-log-file', sessionLog(sim, wu)]);
     discussed(sim, wu, wu);
-    walkToLiveImplementation(sim, wu, wu);
+    specEntry(sim, wu, [wu]);
     // The park's source is the record the session is writing, relative to
-    // `.leeway/` — backlogging's table — and on disk, as the specification
-    // phase left it.
-    const spec = `${wu}/specification/${wu}/specification.md`;
-    sim.write(`.leeway/${spec}`, '# Specification: Orders\n');
+    // `.leeway/` — backlogging's table — and on disk, as the writer left it.
+    const spec = `${wu}/spec.md`;
+    sim.write(`.leeway/${spec}`, '# Orders\n');
 
     // The words left the home open, so the door stops at the gate rather
     // than deciding for the person.
-    const payload = sim.write(`.leeway/.cache/${wu}/implementation/${wu}/backlog.json`,
+    const payload = sim.write(`.leeway/.cache/${wu}/specification/${wu}/backlog.json`,
       { title: "a CSV export of the day's orders" });
-    assert.match(sim.render(['backlog-gate', `${wu}.implementation.${wu}`, '--file', payload], { expect: 'content' }),
+    assert.match(sim.render(['backlog-gate', `${wu}.specification.${wu}`, '--file', payload], { expect: 'content' }),
       /Setting \*\*a CSV export of the day's orders\*\* aside\.[\s\S]*`r\/roadmap`[\s\S]*`i\/inbox`/);
 
     // Roadmap chosen, but nothing to pick from: a name is content, not a

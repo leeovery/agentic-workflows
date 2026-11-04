@@ -246,20 +246,16 @@ describe('the spinner', () => {
     })
   }
 
-  test('a task\'s completion takes it off the word, its implementation kept', async ($, on) => {
-    const { places } = world(on, { positions: { s0: { name: 'pay', phase: 'implementation', topic: 'ledger', tasks: inFlight('2.3') } } })
+  test('the old plan\'s `task complete` moves nothing — the word is read again only where the tracker\'s verbs move it', async ($, on) => {
+    const { places, counts } = world(on, { positions: { s0: { name: 'pay', phase: 'implementation', topic: 'pay', tasks: inFlight('2.3') } } })
 
     expect(textOf(await drawn($, spinnerOf('terminal')))).toBe('Implementing task 2.3…')
 
-    places({ name: 'pay', phase: 'implementation', topic: 'ledger' })
+    places({ name: 'pay', phase: 'implementation', topic: 'pay' })
     await $.tool.call({ tool: 'Bash', command: `${ENGINE} task complete pay ledger ledger-2-3 --next-task ~` })
 
-    expect(textOf(await drawn($, spinnerOf('terminal')))).toBe('Implementing…')
-
-    places({ name: 'pay', phase: 'implementation', topic: 'ledger', tasks: inFlight('2.4') })
-    await $.tool.call({ tool: 'Bash', command: `${ENGINE} task start pay ledger ledger-2-4` })
-
-    expect(textOf(await drawn($, spinnerOf('terminal')))).toBe('Implementing task 2.4…')
+    expect(textOf(await drawn($, spinnerOf('terminal')))).toBe('Implementing task 2.3…')
+    expect(counts.reads).toBe(1)
   })
 
   test('at the review phase, a fix task in flight by its number, several by their count', async ($, on) => {

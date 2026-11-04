@@ -1490,7 +1490,7 @@ function write(dir, relPath, content) {
 const CORPUS = corpusFiles();
 
 test('corpus is non-empty and covers all three scan roots', () => {
-  assert.ok(CORPUS.length > 250, `expected a large corpus, found ${CORPUS.length}`);
+  assert.ok(CORPUS.length > 200, `expected a large corpus, found ${CORPUS.length}`);
   assert.ok(CORPUS.some((f) => f.includes(`${path.sep}agents${path.sep}`)), 'agents/*.md not scanned');
   assert.ok(CORPUS.some((f) => f.includes('create-output-format')), 'create-output-format not scanned');
 });

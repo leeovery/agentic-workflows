@@ -1,6 +1,6 @@
 # Postponing the Topic
 
-*Shared reference. Loaded by the `## Postponing the Topic` section on the investigation, scoping, planning, implementation, and review processing skills, by discovery's map operations, by the epic menu's postpone sub-view, and by the gap-analysis approval gate.*
+*Shared reference. Loaded by the `## Postponing the Topic` section on the investigation and scoping processing skills, by the epic menu's postpone sub-view, and by the gap-analysis approval gate.*
 
 ---
 

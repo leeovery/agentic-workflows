@@ -44,7 +44,7 @@ Improvement ideas live in `ideas/`, indexed by `ideas/INDEX.md`. The index holds
 
 ### Stages and phases
 
-The phases group into three **stages**, the top-level grouping of the epic dashboard: **Discovery** (discovery, experiment, discussion, investigation) — explore and decide; **Definition** (scoping, specification, planning) — specify and plan; **Delivery** (implementation, review) — build and verify.
+The phases group into three **stages**, the top-level grouping of the epic dashboard: **Discovery** (discovery, experiment, discussion, investigation) — explore and decide; **Definition** (scoping, specification) — specify and plan; **Delivery** (implementation, review) — build and verify.
 
 1. **Discovery** (`leeway-discovery`) — one conversation at two levels, where nothing is decided: the product's, which finds each piece of work's type and creates its unit at start this work, its other output the roadmap; and an epic's, whose map of topics lands with each topic's brief at approve the map.
 2. **Experiment** (`leeway-experiment-process`) — the laboratory a discussion spawns to measure what a decision rests on; never a topic's first phase.
@@ -52,17 +52,16 @@ The phases group into three **stages**, the top-level grouping of the epic dashb
 4. **Investigation** (`leeway-investigation-process`) — bugfix: symptoms and code analysis to a root cause.
 5. **Scoping** (`leeway-scoping-process`) — quick-fix: context, spec and plan in one pass.
 6. **Specification** (`leeway-specification-process`) — turn a unit's decided topics (a bugfix's investigation) into its one spec, cut into phases and approved at ready to build, where the build's position is chosen.
-7. **Planning** (`leeway-planning-process`) — phases, tasks and acceptance criteria; the code's mechanism stays the implementer's.
-8. **Implementation** (`leeway-implementation-process`) — execute the plan by TDD (a verification workflow for a quick-fix).
-9. **Review** (`leeway-review-process`) — verify the delivered change-set against the plan and the specification.
+7. **Implementation** (`leeway-implementation-process`) — the build: one conversation through every phase of the spec's cut, each task built by TDD.
+8. **Review** (`leeway-review-process`) — verify the built change against the specification, its findings landing as fix tasks.
 
 ### Work types and topics
 
 A *work type* is one of five pipeline shapes; a *work unit* is a named instance of one, with its own directory under `.workflows/` and its own `manifest.json`.
 
-- **Epic**: multi-topic, multi-session — Discovery → Experiment (opt.) → Discussion → Specification → Planning → Implementation → Review
-- **Feature**: single-topic — Discovery → Experiment (opt.) → Discussion → Specification → Planning → Implementation → Review
-- **Bugfix**: Discovery → Investigation → Specification → Planning → Implementation → Review
+- **Epic**: multi-topic, multi-session — Discovery → Experiment (opt.) → Discussion → Specification → Implementation → Review
+- **Feature**: single-topic — Discovery → Experiment (opt.) → Discussion → Specification → Implementation → Review
+- **Bugfix**: Discovery → Investigation → Specification → Implementation → Review
 - **Quick-fix**: Discovery → Scoping → Implementation → Review
 - **Cross-cutting**: project-level — Discovery → Experiment (opt.) → Discussion → Specification (terminal)
 
@@ -94,7 +93,7 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - `.workflows/{work_unit}/topics/{topic}/` — a topic's own place: `brief.md` its brief, `log.md` its conversation's log, `experiments/{id}-{slug}/` one experiment record, `mail/` the messages waiting for it
 - `.workflows/{work_unit}/investigation/{topic}.md`
 - `.workflows/{work_unit}/spec.md` — the unit's one spec
-- `.workflows/{work_unit}/planning/{topic}/planning.md` — plus `phase-{N}-tasks.md` and the task files
+- `.workflows/{work_unit}/planning/{topic}/planning.md` — a quick-fix's plan, written by scoping, plus `phase-{N}-tasks.md` and the task files
 - `.workflows/{work_unit}/implementation/{topic}/`
 - `.workflows/{work_unit}/review/{topic}/report.md`
 - `.workflows/{work_unit}/imports/` — files the user shared
@@ -115,15 +114,14 @@ Workflow state is engine-owned (CONVENTIONS.md, What the Engine Owns). Never han
 
 ## Adding New Output Formats
 
-Use `/create-output-format` to scaffold a new plan output format: five files under `skills/leeway-planning-process/references/output-formats/{format}/` (`about.md`, `authoring.md`, `reading.md`, `updating.md`, `graph.md`). The contract and templates live in `.claude/skills/create-output-format/references/`.
+Use `/create-output-format` to scaffold a new plan output format: five files under `skills/leeway-scoping-process/references/output-formats/{format}/` (`about.md`, `authoring.md`, `reading.md`, `updating.md`, `graph.md`). The contract and templates live in `.claude/skills/create-output-format/references/`.
 
 ## Output Format References (IMPORTANT)
 
 **NEVER list output format names (tick, linear, local-markdown, etc.) anywhere except:**
-- `skills/leeway-planning-process/references/output-formats.md` - the authoritative list
-- `skills/leeway-planning-process/references/output-formats/{format}/` - individual format directories
+- `skills/leeway-scoping-process/references/output-formats.md` - the authoritative list
+- `skills/leeway-scoping-process/references/output-formats/{format}/` - individual format directories
 - `README.md` - user-facing documentation where format options are presented
-- `skills/leeway-engine/content/walkthrough/fixtures/` - the one recorded exception: the walkthrough's sample surfaces render from these fixtures through the real projections, and a planning row carries its plan's format in its tag, so the fixture behind the epic-dashboard sample has to name one, and the test that pins that sample's render carries it too
 - `skills/leeway-engine/scripts/drivers/**` - the drivers, the only engine code that names a tool
 - `tests/drivers/**` - a driver's test fixtures, which find and pin its real tool; a new suite generic over drivers names none
 

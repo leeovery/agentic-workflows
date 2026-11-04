@@ -48,14 +48,12 @@ const { codeChanges, linksHeldOut, stagedHeldOut } = require('./domain/worktree-
 const { quoted } = require('./domain/landing-git.cjs');
 const { TERMINAL_STATUSES, isParentExperimentId } = require('./kernel/manifest-schema.cjs');
 const { sequenceMap, addTopic, addTopics, editTopic, renameTopic, removeTopic, rewriteBrief } = require('./domain/discovery-map.cjs');
-const { sequenceBuildOrder } = require('./domain/build-order.cjs');
 const { startTopic, completeTopic, reopenTopic, cancelTopic, reactivateTopic, postponeTopic } = require('./domain/transitions.cjs');
 const { mailboxDir, mailPhase } = require('./domain/derivations.cjs');
 const { SEND_USAGE, MAILBOX_USAGE, ANSWERED_USAGE, sendMessage, mailboxOf, answerMessage } = require('./domain/mail.cjs');
 const { loadWorkUnitManifest } = require('./kernel/manifest.cjs');
 const { createExperiment, advanceExperiment, approveExperiment, recordRuns, concludeExperiment, abandonExperiment } = require('./domain/experiment.cjs');
 const { seriesDir } = require('./domain/experiment-paths.cjs');
-const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = require('./domain/tasks.cjs');
 const { TASK_VERBS, runTaskVerb } = require('./domain/task-verbs.cjs');
 const { archiveItems, restoreItems, deleteItems, fileItem } = require('./domain/inbox.cjs');
 const { stampAnalysisCache } = require('./domain/cache.cjs');
@@ -93,10 +91,10 @@ const { REVIEW_USAGE, runReviewVerb } = require('./domain/review-verbs.cjs');
 const { FINISH_USAGE, runFinishVerb } = require('./domain/finish.cjs');
 const { MEASURES_USAGE, runMeasuresVerb } = require('./domain/measures.cjs');
 const { BOARD_USAGE, boardOf } = require('./domain/board.cjs');
-const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, clearOwnQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
+const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, clearOwnQuietly, scanPresence, scanProject, cleanupPresence, deferralSection } = require('./domain/presence.cjs');
 const { arriveAt, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
 const { markConversation, endConversation, isAgentId } = require('./domain/conversation.cjs');
-const { recordTask, recordBuilder, clearTask, positionReads, positionSections } = require('./domain/position.cjs');
+const { recordBuilder, positionReads, positionSections } = require('./domain/position.cjs');
 const { isBriefId } = require('./domain/brief-names.cjs');
 const { ENTER_USAGE, enter } = require('./domain/enter.cjs');
 const { createWorkUnit } = require('./domain/workunit-create.cjs');
@@ -111,7 +109,7 @@ const { resolveHandoff, topicHandoff, handoffSections, TOPIC_HANDOFF_USAGE } = r
 const { leaveNext } = require('./domain/topic-leave.cjs');
 const roadmap = require('./domain/roadmap.cjs');
 const brownfield = require('./domain/brownfield.cjs');
-const { subjectSelector, taskSelector, codeLog, selectedDiff, uncommittedDiff, codeStatus } = require('./domain/code.cjs');
+const { subjectSelector, codeLog, selectedDiff, uncommittedDiff, codeStatus } = require('./domain/code.cjs');
 const walkthrough = require('./domain/walkthrough.cjs');
 const { runKnowledge, knowledgeWaits } = require('./domain/knowledge/commands.cjs');
 const { ExitSignal, messageOf, exitCodeOf, hookInput, hookProjectDir, processCall } = require('./kernel/call.cjs');
@@ -238,7 +236,6 @@ ${VERDICT_USAGE.replace(/^/gm, '  ')}
   workunit pivot <work-unit>
   workunit absorb <feature> --into <epic> --topic <name>
   ${POSITION_USAGE}
-  build-order sequence <work-unit> <topic>=<order> [<topic>=<order> …]
   discovery-session close <work-unit|product> -m <message>
 ${LOG_USAGE.replace(/^/gm, '  ')}
   topic start <work-unit> <phase> <topic>
@@ -257,7 +254,7 @@ ${Object.values(MAP_USAGE).map((usage) => `  ${usage}`).join('\n')}
   session resume [session-id]
   conversation end
   conversation position [session-id]
-  conversation builder <session-id> <agent-id> [--brief <id>]
+  conversation builder <session-id> <agent-id> --brief <id>
   ${ENTER_USAGE}
   layout guard                       (hook before Write, Edit and NotebookEdit; its JSON on stdin)
   shell guard                        (hook before Bash; its JSON on stdin)
@@ -289,12 +286,6 @@ ${Object.values(MAP_USAGE).map((usage) => `  ${usage}`).join('\n')}
   task settle <work-unit> <task> --file <why>
   task settle <work-unit> --phase <N> --file <why> [--fixes <task>,…]
   task note <work-unit> --file <note> [--phase <N>]
-  task init <work-unit> <topic>
-  task start <work-unit> <topic> <internal-id>
-  task fix-attempt <work-unit> <topic> <internal-id> --findings-file <path>
-  task complete <work-unit> <topic> (<internal-id> | --external <id>) [--skipped]
-                [--next-task <id|~>] [--phase <N>] [--phase-complete]
-  task analysis-cycle <work-unit> <topic>
 ${LAND_USAGE.replace(/^/gm, '  ')}
 ${BRIEF_USAGE.replace(/^/gm, '  ')}
   brief guard                        (hook before Agent and SendMessage; its JSON on stdin)
@@ -346,81 +337,44 @@ ${REVIEW_USAGE.replace(/^/gm, '  ')}
   agent incorporate <work-unit> <phase> <topic> <id>
   commit <work-unit> -m <message> [--plan <topic> | --discovery | --imports | --state | --topic <phase>/<topic> [--sweep]]
   commit --paths <file> … -m <message> --task <work-unit> <N.M>
-  commit --paths <file> … -m <message> --for <work-unit> <implementation|review>/<topic>
   commit --state -m <message>
   commit --inbox -m <message>
   commit --product -m <message>
   commit --workflows -m <message>
   commit --migrations -m <message>
-  code log    <work-unit> <topic> [--phase <N>]
   code log    --subject <prefix>
-  code diff   [<work-unit> <topic> [--phase <N>] | --subject <prefix>]
+  code diff   [--subject <prefix>]
   code status
-  render resume-gate <wu.phase.topic> [--mail N] [--variant plan|review|scoping|session]  (session: bare <wu>)
-  render task-list   <wu.planning.topic> --file <payload.json>
-  render plan-progress <wu.planning.topic> --variant construction-complete|concluded
-  render findings-summary <wu.phase.topic> --file <payload.json>
-  render finding          <wu.planning.topic> --file <payload.json> [--view full]
-  render review-presentation <wu.review.topic> --file <payload.json>
-  render review-gate      <wu.review.topic> --verdict pass|fail [--replan N]
+  render resume-gate <wu.phase.topic> [--mail N] [--variant scoping|session]  (session: bare <wu>)
   render hypothesis-board <wu.investigation.topic> --file <payload.json> --variant plan|resume|check-in|pivot
   render findings-signoff-gate <wu.investigation.topic>
   render fix-direction     <wu.investigation.topic> --file <payload.json>
   render validation-gate   <wu.investigation.topic> --variant root-cause
   render validation-report <wu.investigation.topic> --file <payload.json> --variant root-cause|fix
-  render project-skills   <wu.implementation.topic> --variant confirm|discovery|skipped [--file <payload.json>]
-  render linters          <wu.implementation.topic> --variant confirm|discovery|skipped [--file <payload.json>]
-  render convergence-diagnostic <wu.phase.topic> --file <payload.json>
   render mail-announce    <wu.phase.topic>
   render mail-offer       <wu.phase.topic> --file <payload.json>
   render mail-block       <wu.phase.topic>
   render backlog-gate     <wu.phase.topic> --file <payload.json>
   render candidate-gate   <wu> --file <payload.json> | <wu> --variant announce
   render send-closed-target <wu.discovery.target>
-  render conclude-gate    <wu.phase.topic>   (investigation|implementation|planning)
+  render conclude-gate    <wu.investigation.topic>
   render experiment-register <wu.experiment.topic>
   render experiment-approval-gate <wu.experiment.topic> --id <E{n}>
   render experiment-pick <wu.experiment.topic>
   render experiment-next-gate <wu.experiment.topic>
   render experiment-spawn-gate <wu.discussion.topic> --id <E{n}>
-  render wait-gate        <wu.planning.topic>  (empty when the item holds no wait)
   render summary-backfill-gate <wu> --variant batch|proposed|unsourced [--file <payload.json>]
-  render external-dependency-gate <wu.planning.topic> --variant blocking|pick|exit --blocking <topic,topic,…>
-  render checkpoint-files-gate <wu.implementation.topic>  (DATA alone when no file is unexpected)
-  render change-set-tree  <wu.review.topic>  (empty when the tree is clean)
-  render executor-block-gate <wu.implementation.topic> --result blocked --file <sides.json> | --result failed
-  render dependency-approval-gate <wu.planning.topic> --variant graph|updated-graph --file <payload.json> | --variant resolution
-  render task-count-gate  <wu.planning.topic> --file <payload.json>
-  render plan-context-gate <wu.planning.topic>
-  render cross-cutting-gate --file <payload.json>
-  render cross-cutting-references --file <payload.json>
   render plan-format-gate [--variant select --file <payload.json>]
-  render plan-review-gate <wu.planning.topic> --variant continue|reloop
   render scoping-questions <wu> --open <what,where,why,exclusions>
   render complexity-gate  <wu> --file <payload.json>
-  render proposed-task    <wu.phase.topic> --file <payload.json> --gate gated|auto [--comment-hint STR]
-  render tasks-overview   <wu.phase.topic> --file <payload.json>
-  render author-task-gate <wu.planning.topic> --m N --total N --title STR --file <payload.json> | --phase N  (--phase: empty while gated)
-  render phase-tree       <wu.planning.topic> --file <payload.json> [--approve] | --menu-only
   render phase-completed   <wu> --phase <phase> [--paths]
-  render phase-paused      <wu> --phase <discussion|planning>
+  render phase-paused      <wu> --phase discussion
   render phase-note        <wu.phase.topic> --verb <Word> [--noun <word>]
-  render step-opening      <wu.phase.topic> --step conclude|consolidation|do-now
   render format-version-check --file <payload.json>
-  render entry-gate        <wu.phase.topic>  (planning|implementation|review)
   render code-gate         <wu.phase.topic>          (implementation|review — empty when the code slot is free)
   render next-phase-gate   <wu> --prev <phase> --next <phase>  (empty when continuing is the only way forward)
   render cancel-gate       <wu.discovery.name>
   render postpone-gate     <wu.discovery.topic> --horizon "<horizon>"
-  render epic-all-done-gate <wu>
-  render epic-soft-gate <wu> --action <action> [--topic <topic>]
-  render task-brief        <wu.implementation.topic> --file <payload.json>
-  render task-result       <wu.implementation.topic> --file <payload.json> --result approved|needs-changes|blocked|failed
-  render task-gate         <wu.implementation.topic>
-  render fix-gate          <wu.implementation.topic>
-  render blocked-tasks     <wu.implementation.topic> --file <payload.json>
-  render cycle-limit       <wu.implementation.topic>
-  render cycle-gate
   render workunit-receipt  <wu> --verb complete|cancel|reactivate|pivot [--pipeline [--skipped-review]] [--warn] [--inbox <n>]
   render topic-receipt     <wu.phase.topic> --verb complete [--warn]
   render topic-receipt     <wu.discovery.name> --verb cancel|reactivate [--warn] [--inbox <n>]
@@ -432,8 +386,6 @@ ${REVIEW_USAGE.replace(/^/gm, '  ')}
   render pivot-continuation <wu>
   render absorb-target     <feature>
   render absorb-confirm-gate <feature>
-  render plan-topics       <wu>
-  render plan-summary      <wu.planning.topic> --file <payload.json>
   render archived-actions  --path <archived path>
   render archived-delete-gate --path <archived path>
   render inbox-content     --path <inbox path>[,<inbox path>…]
@@ -501,9 +453,10 @@ ${REVIEW_USAGE.replace(/^/gm, '  ')}
 // (set/push/pull/delete) answer with the engine's one-line JSON response.
 //
 // No field write heartbeats. A three-segment `set` looks self-referential and
-// frequently is not: review's `updated` stamp and the epic menu's unblock
-// both write one phase's item from another phase's session, and a beat there
-// manufactures a hold on a topic nobody is in (P8).
+// frequently is not: the gap analysis's `source` stamp and a brief's
+// `brief_incorporated` mark both write a discovery item from another
+// phase's session, and a beat there manufactures a hold on a topic nobody
+// is in (P8).
 // The session's cadence commit is its heartbeat; `apply`, the cross-topic
 // batch door, never beat either.
 // ---------------------------------------------------------------------------
@@ -777,35 +730,6 @@ function parseOrderPairs(pairs) {
 }
 
 // ---------------------------------------------------------------------------
-// build-order — the spec-side twin of discovery-map sequencing. One verb:
-// `sequence` records the whole live set's order in one transaction and
-// clears `build_order_stale`. Validation (full coverage, contiguous 1..N)
-// lives in the domain op.
-// ---------------------------------------------------------------------------
-
-/** @param {Call} call @param {string[]} argv */
-function runBuildOrder(call, argv) {
-  const [command, ...rest] = argv;
-  const { cwd } = call;
-
-  try {
-    if (command !== 'sequence') {
-      throw new Error('Usage: engine build-order sequence <work-unit> <topic>=<order> [<topic>=<order> …]');
-    }
-    const { positional } = parseArgs(rest, []);
-    const [workUnit] = positional;
-    if (!workUnit || positional.length < 2) {
-      throw new Error('Usage: engine build-order sequence <work-unit> <topic>=<order> [<topic>=<order> …]');
-    }
-    const orders = parseOrderPairs(positional.slice(1));
-    respond(call, sequenceBuildOrder(cwd, workUnit, orders));
-  } catch (err) {
-    failJson(call, err);
-  }
-}
-
-
-// ---------------------------------------------------------------------------
 // discovery-session — the close of discovery's sessions, an epic's or the
 // product's (domain/discovery-session.cjs): it clears the place's marker and
 // commits the place's scope with the caller's message. `enter` opens them.
@@ -1031,11 +955,10 @@ function runConversation(call, argv) {
     if (command === 'builder') {
       // The gate mod's target, as a builder or a reviewer is dispatched.
       const [sessionId, agentId, flag, briefId] = rest;
-      const briefed = rest.length === 4 && flag === '--brief' && isBriefId(briefId);
-      if ((rest.length !== 2 && !briefed) || !sessionId || !isAgentId(agentId)) {
-        throw new Error('Usage: engine conversation builder <session-id> <agent-id> [--brief <id>] — the agent id letters, digits, - and _ alone, the brief\'s id as `engine brief` answers it');
+      if (rest.length !== 4 || flag !== '--brief' || !isBriefId(briefId) || !sessionId || !isAgentId(agentId)) {
+        throw new Error('Usage: engine conversation builder <session-id> <agent-id> --brief <id> — the agent id letters, digits, - and _ alone, the brief\'s id as `engine brief` answers it');
       }
-      respond(call, recordBuilder(sessionId, agentId, briefed ? briefId : undefined));
+      respond(call, recordBuilder(sessionId, agentId, briefId));
       return;
     }
     throw new Error('Usage: engine conversation <end|position|builder> …');
@@ -1119,8 +1042,8 @@ function runTopic(call, argv) {
     const result = fn(call.cwd, workUnit, phase, topic);
     if (TOPIC_BEATS.includes(command)) beatQuietly(call.cwd, workUnit, phase, topic);
     // The close releases the slot. Everything after it — the conclusion
-    // commit, a plan or implementation wrap-up — is a session tidying a topic
-    // it has finished, and none of it should re-take the hold.
+    // commit, scoping's plan wrap-up — is a session tidying a topic it has
+    // finished, and none of it should re-take the hold.
     if (command === 'complete') clearQuietly(call.cwd, workUnit, phase, topic);
     respond(call, result);
   } catch (err) {
@@ -1204,66 +1127,15 @@ function runExperiment(call, argv) {
 // committing what it wrote to the state branch; worktree, the task's
 // worktree laid out for its builder (domain/task-worktree.cjs); and stopped,
 // its builder's stop held on the conversation's position (domain/position.cjs).
-//
-// Beside them, until the plan's loops go, the implementation-task
-// bookkeeping: format-blind, manifest-side only — init, the three-argument
-// start, fix-attempt, complete and analysis-cycle. The session does the plan
-// surgery and these record it, with no git commit — the per-task commit is
-// the session's. Each verb answers with its one-line JSON only; the loop's
-// brief, result header, and gate sections are fetched by their own `render`
-// calls (task-brief, task-result, task-gate, fix-gate, blocked-tasks,
-// cycle-limit, cycle-gate) at the stage that displays them.
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */
 function runTask(call, argv) {
   const [command, ...rest] = argv;
-  const { cwd } = call;
   try {
-    const { opts, flags, positional } = parseArgs(rest, ['skipped', 'phase-complete']);
-    const [workUnit, topic, internalId] = positional;
-    if (Object.hasOwn(TASK_VERBS, command) && !(command === 'start' && positional.length === 3)) {
-      respond(call, runTaskVerb(cwd, command, positional, opts));
-    } else if (command === 'init' || command === 'analysis-cycle') {
-      if (!workUnit || !topic) throw new Error(`Usage: engine task ${command} <work-unit> <topic>`);
-      if (command === 'init') {
-        respond(call, initTasks(cwd, workUnit, topic));
-      } else {
-        respond(call, analysisCycle(cwd, workUnit, topic));
-      }
-    } else if (command === 'start') {
-      const started = startTask(cwd, workUnit, topic, internalId);
-      recordTask(cwd, workUnit, topic, internalId);
-      respond(call, started);
-    } else if (command === 'fix-attempt') {
-      if (!workUnit || !topic || !internalId || !opts['findings-file']) {
-        throw new Error('Usage: engine task fix-attempt <work-unit> <topic> <internal-id> --findings-file <path>');
-      }
-      respond(call, fixAttempt(cwd, workUnit, topic, internalId, opts['findings-file']));
-    } else if (command === 'complete') {
-      if (!workUnit || !topic) {
-        throw new Error('Usage: engine task complete <work-unit> <topic> (<internal-id> | --external <id>) [--skipped] [--next-task <id|~>] [--phase <N>] [--phase-complete]');
-      }
-      /** @type {number|undefined} */
-      let phase;
-      if (opts.phase !== undefined) {
-        phase = parseInt(opts.phase, 10);
-        if (!Number.isInteger(phase)) throw new Error(`--phase must be a number (got "${opts.phase}")`);
-      }
-      const next = opts['next-task'];
-      const result = completeTask(cwd, workUnit, topic, {
-        internalId: internalId ?? null,
-        externalId: opts.external ?? null,
-        skipped: flags.has('skipped'),
-        nextTask: next === undefined ? undefined : next === '~' ? null : next,
-        phase,
-        phaseComplete: flags.has('phase-complete'),
-      });
-      clearTask(workUnit, topic, result.internal_id);
-      respond(call, result);
-    } else {
-      throw new Error(`Usage: engine task <${[...Object.keys(TASK_VERBS), 'init', 'fix-attempt', 'complete', 'analysis-cycle'].join('|')}> …`);
-    }
+    if (!Object.hasOwn(TASK_VERBS, command)) throw new Error(`Usage: engine task <${Object.keys(TASK_VERBS).join('|')}> …`);
+    const { opts, positional } = parseArgs(rest, []);
+    respond(call, runTaskVerb(call.cwd, command, positional, opts));
   } catch (err) {
     failJson(call, err);
   }
@@ -1976,7 +1848,7 @@ function runStateMerge(call, argv) {
 // (`--discovery`), the imports home and the manifest that records its
 // entries (`--imports`). The code
 // tree's commit on the branch checked out: declared code paths (`--paths`),
-// for the task in flight (`--task`) or a code topic (`--for`).
+// for the task in flight (`--task`).
 // Two forms make one commit on each side: a plan (`--plan`), its state and
 // its declared storage, and the migration review (`--migrations`), the state
 // and the files the workflows own in the code tree. A clean scope is fine:
@@ -1993,9 +1865,6 @@ const TOPIC_COMMIT_ARTIFACTS = /** @type {Record<string, (wu: string, topic: str
   discussion: (wu, t) => [`${wu}/topics/${t}/log.md`, mailboxDir(wu, t)],
   investigation: (wu, t) => [`${wu}/investigation/${t}.md`, mailboxDir(wu, t)],
   specification: (wu, t) => [`${wu}/specification/${t}`],
-  planning: (wu, t) => [`${wu}/planning/${t}`],
-  implementation: (wu, t) => [`${wu}/implementation/${t}`],
-  review: (wu, t) => [`${wu}/review/${t}`],
 });
 
 // A topic whose item reads one of these is finished: nothing further a
@@ -2087,14 +1956,14 @@ function assertCommittable(repos, spec, given) {
  * it must be on a branch: a commit on a detached HEAD (a submodule after
  * `git submodule update`) is orphaned by the next checkout there. The
  * operation is asked first, as a rebase detaches HEAD while it runs. Nor
- * may it have the state branch checked out (4.9.3). Where `merging`, a
- * merge in progress is the one the commit finishes, its group's paths
- * staging what still conflicts.
- * @param {import('./kernel/repos.cjs').Repo} repo @param {string[]} paths as the repo names them @param {boolean} merging
+ * may it have the state branch checked out (4.9.3). A merge in progress is
+ * the one the commit finishes, its group's paths staging what still
+ * conflicts.
+ * @param {import('./kernel/repos.cjs').Repo} repo @param {string[]} paths as the repo names them
  */
-function assertCommitsHere(repo, paths, merging) {
+function assertCommitsHere(repo, paths) {
   const open = operationInProgress(repo.path);
-  if (open !== null && merging && open.marker === 'MERGE_HEAD') {
+  if (open !== null && open.marker === 'MERGE_HEAD') {
     const left = unmergedPast(repo.path, paths);
     if (left.length > 0) throw new Error(`commit --paths: the merge in progress in ${repoName(repo)} still conflicts in ${left.join(', ')} — resolve each and name it, then run the commit again`);
   } else if (open !== null) {
@@ -2107,37 +1976,17 @@ function assertCommitsHere(repo, paths, merging) {
 }
 
 /**
- * The `--for` target must be real. It is what the commit beats, and a beat on
- * a mistyped topic mints a hold no session owns and nothing clears — the code
- * slot then reads taken until the machine reboots. Every prose site that
- * commits code does so from inside a live code phase, so the item always
- * exists by then; a miss is a typo, and it fails loudly.
- * @param {string} cwd @param {{workUnit: string, phase: string, topic: string}} target
- */
-function assertCodeTarget(cwd, target) {
-  const { workUnit, phase, topic } = target;
-  if (workUnit.includes('/') || workUnit.includes('..')) throw new Error(`invalid work unit name "${workUnit}"`);
-  if (topic.includes('..')) throw new Error(`invalid topic name "${topic}"`);
-  if (!fs.existsSync(statePath(cwd, workUnit))) {
-    throw new Error(`commit --paths: no work unit directory: ${statePath(cwd, workUnit)}`);
-  }
-  if (topicItem(cwd, workUnit, phase, topic) === null) {
-    throw new Error(`commit --paths: no ${phase} item "${topic}" in "${workUnit}" — check the --for target`);
-  }
-}
-
-/**
  * @typedef {{task?: string, checks?: import('./domain/commit-task.cjs').CheckRun[]}} CodeCommitTask
  * @typedef {{committed: {repo: string, sha: string}[], left_dirty: string[], note?: string} & CodeCommitTask} CodeCommitted
  */
 
 /**
  * The project's repos and the code commit's share of the declared paths in
- * each, every path and every repo checked before any repo commits — where
- * `merging`, a merge in progress among them (`assertCommitsHere`).
- * @param {string} cwd @param {string[]} paths @param {boolean} [merging]
+ * each, every path and every repo checked before any repo commits, a merge
+ * in progress among them (`assertCommitsHere`).
+ * @param {string} cwd @param {string[]} paths
  */
-function checkedGroups(cwd, paths, merging = false) {
+function checkedGroups(cwd, paths) {
   const read = projectRepos(cwd);
   const { repos, links } = linksHeldOut(read);
   const groups = commitGroups(repos, paths.map((p) => codePathSpec(cwd, repos, p)));
@@ -2147,7 +1996,7 @@ function checkedGroups(cwd, paths, merging = false) {
       throw new Error(`commit --paths: ${linked.map((p) => `"${p}"`).join(', ')} in ${repoName(repo)} ${linked.length === 1 ? 'is a link' : 'are links'} the worktree's preparation made, as worktree.symlinkDirectories names, never the work's — leave ${linked.length === 1 ? 'it' : 'them'} out`);
     }
     refuseStagedHeldOut(read, /** @type {import('./kernel/repos.cjs').Repo} */ (read.find(({ dir }) => dir === repo.dir)));
-    assertCommitsHere(repo, own, merging);
+    assertCommitsHere(repo, own);
   });
   return { repos, groups };
 }
@@ -2181,26 +2030,11 @@ function codeCommitted(repos, committed, more = {}) {
 }
 
 /**
- * The code commit for a code topic: the declared paths, each committed
- * confined in the repo that owns it under that repo's commit lock, and the
- * topic beaten.
- * @param {string} cwd @param {string[]} paths @param {string} message
- * @param {{workUnit: string, phase: string, topic: string}} target
- * @returns {CodeCommitted}
- */
-function commitCodePaths(cwd, paths, message, target) {
-  assertCodeTarget(cwd, target);
-  const { repos, groups } = checkedGroups(cwd, paths);
-  const committed = commitAcrossRepos(groups, message);
-  beatQuietly(cwd, target.workUnit, target.phase, target.topic);
-  return codeCommitted(repos, committed);
-}
-
-/**
  * The code commit for a task in flight in the calling conversation
  * (domain/commit-task.cjs): the task and the paths checked, then the
- * project's checks run — before any lock is taken — then the paths
- * committed as `commitCodePaths` commits them, under a message naming the
+ * project's checks run — before any lock is taken — then the paths, each
+ * committed confined in the repo that owns it under that repo's commit
+ * lock, under a message naming the
  * task — a merge in progress in a repo, the chain's tip merged back onto the
  * task's branch, finished there with them its resolution, every conflict
  * named. Answers the task's id and each check run.
@@ -2208,30 +2042,13 @@ function commitCodePaths(cwd, paths, message, target) {
  */
 function commitTaskPaths(cwd, paths, message, unit, given) {
   const ref = inFlightTask(cwd, unit, given);
-  const { repos, groups } = checkedGroups(cwd, paths, true);
+  const { repos, groups } = checkedGroups(cwd, paths);
   const checks = runChecks(cwd);
-  const committed = commitAcrossRepos(groups, workMessage(message, ref), true);
+  const committed = commitAcrossRepos(groups, workMessage(message, ref));
   return codeCommitted(repos, committed, { task: taskId(ref), checks });
 }
 
-/**
- * The code commit its target names: `--task <unit> <N.M>`, or today's
- * `--for <work-unit> <implementation|review>/<topic>`.
- * @param {string} cwd @param {string[]} paths @param {string} message @param {string[]} forSpec @param {string[]} taskSpec
- */
-function commitCode(cwd, paths, message, forSpec, taskSpec) {
-  if (taskSpec.length > 0) {
-    const [unit, given] = taskSpec;
-    if (forSpec.length > 0 || taskSpec.length !== 2 || !unit || !given) throw new Error(COMMIT_USAGE);
-    return commitTaskPaths(cwd, paths, message, unit, given);
-  }
-  const [workUnit, topicSpec] = forSpec;
-  const [phase, topic, ...more] = (topicSpec || '').split('/');
-  if (forSpec.length !== 2 || !workUnit || more.length > 0 || !CODE_PHASES.includes(phase) || !topic) throw new Error(COMMIT_USAGE);
-  return commitCodePaths(cwd, paths, message, { workUnit, phase, topic });
-}
-
-const COMMIT_USAGE = 'Usage: engine commit <work-unit> -m <message> [--plan <topic> | --discovery | --imports | --state | --topic <phase>/<topic> [--sweep]] | engine commit --paths <file> … -m <message> --task <work-unit> <N.M> | engine commit --paths <file> … -m <message> --for <work-unit> <implementation|review>/<topic> | engine commit --state -m <message> | engine commit --inbox -m <message> | engine commit --product -m <message> | engine commit --workflows -m <message> | engine commit --migrations -m <message>';
+const COMMIT_USAGE = 'Usage: engine commit <work-unit> -m <message> [--plan <topic> | --discovery | --imports | --state | --topic <phase>/<topic> [--sweep]] | engine commit --paths <file> … -m <message> --task <work-unit> <N.M> | engine commit --state -m <message> | engine commit --inbox -m <message> | engine commit --product -m <message> | engine commit --workflows -m <message> | engine commit --migrations -m <message>';
 
 /** @param {Call} call @param {string[]} argv */
 function runCommit(call, argv) {
@@ -2241,7 +2058,6 @@ function runCommit(call, argv) {
     /** @type {string|null} */ let plan = null;
     /** @type {string|null} */ let topicSpec = null;
     /** @type {string[]} */ const files = [];
-    /** @type {string[]} */ const forSpec = [];
     /** @type {string[]} */ const taskSpec = [];
     let paths = false;
     let discovery = false;
@@ -2258,10 +2074,7 @@ function runCommit(call, argv) {
       else if (a === '--plan') plan = argv[++i];
       else if (a === '--topic') topicSpec = argv[++i];
       else if (a === '--paths') paths = true;
-      // The code commit's target, each in containment order: the work unit
-      // and phase/topic, for the beat and nothing else, or the unit and the
-      // task in flight.
-      else if (a === '--for') forSpec.push(argv[++i], argv[++i]);
+      // The code commit's target: the unit and the task in flight.
       else if (a === '--task') taskSpec.push(argv[++i], argv[++i]);
       else if (a === '--sweep') sweep = true;
       else if (a === '--discovery') discovery = true;
@@ -2284,7 +2097,9 @@ function runCommit(call, argv) {
           || discovery || importsScope || stateScope || inbox || workflows || migrationsScope || productScope || sweep || workUnit !== null) {
         throw new Error(COMMIT_USAGE);
       }
-      respond(call, commitCode(cwd, files, message, forSpec, taskSpec));
+      const [unit, given] = taskSpec;
+      if (taskSpec.length !== 2 || !unit || !given) throw new Error(COMMIT_USAGE);
+      respond(call, commitTaskPaths(cwd, files, message, unit, given));
       return;
     }
 
@@ -2293,7 +2108,7 @@ function runCommit(call, argv) {
     const globalState = stateScope && workUnit === null;
     const scopeCount = [inbox, workflows, migrationsScope, productScope, globalState, workUnit !== null].filter(Boolean).length;
     const workUnitFlags = [plan !== null, topicSpec !== null, discovery, importsScope, stateScope && workUnit !== null].filter(Boolean).length;
-    if (!message || scopeCount !== 1 || forSpec.length > 0 || taskSpec.length > 0 || (workUnitFlags > 0 && workUnit === null) ||
+    if (!message || scopeCount !== 1 || taskSpec.length > 0 || (workUnitFlags > 0 && workUnit === null) ||
         workUnitFlags > 1 || plan === '' || plan === undefined ||
         topicSpec === '' || topicSpec === undefined ||
         (sweep && topicSpec === null)) {
@@ -2349,9 +2164,9 @@ function runCommit(call, argv) {
         //
         // Otherwise the item's own status decides. A terminal item is
         // finished, so every commit that follows its close — the conclusion,
-        // the plan wrap-up, review's complete-then-commit — releases the slot
-        // rather than re-taking it until the process dies. Anything else is
-        // the session's own cadence commit, and that is its heartbeat.
+        // scoping's plan wrap-up — releases the slot rather than re-taking it
+        // until the process dies. Anything else is the session's own cadence
+        // commit, and that is its heartbeat.
         if (!sweep) {
           const status = topicStatus(cwd, wu, phase, topic);
           if (status !== null) {
@@ -2455,14 +2270,14 @@ function bothSides(state, code) {
 
 // ---------------------------------------------------------------------------
 // code — the code change, read across every repo in the project
-// (domain/code.cjs). `log` and the selecting `diff` take a topic's task
-// commits by identity, or any commits by subject prefix. `log` and `status`
+// (domain/code.cjs). `log` and the selecting `diff` take the commits by
+// subject prefix. `log` and `status`
 // answer the engine's JSON line; the two `diff` forms answer the unified diff
 // itself, empty when there is none, read as `git diff` is read. Nothing is
 // written.
 // ---------------------------------------------------------------------------
 
-const CODE_USAGE = 'Usage: engine code log (<work-unit> <topic> [--phase <N>] | --subject <prefix>) | engine code diff [<work-unit> <topic> [--phase <N>] | --subject <prefix>] | engine code status';
+const CODE_USAGE = 'Usage: engine code log --subject <prefix> | engine code diff [--subject <prefix>] | engine code status';
 
 /**
  * The commits a `code` call selects, or null where it names none.
@@ -2470,22 +2285,12 @@ const CODE_USAGE = 'Usage: engine code log (<work-unit> <topic> [--phase <N>] | 
  * @returns {import('./domain/code.cjs').Selector|null}
  */
 function codeSelector(args) {
-  const { opts, lists, positional } = parseArgs(args, [], ['subject', 'phase']);
+  const { opts, lists, positional } = parseArgs(args, [], ['subject']);
   const subjects = lists.subject || [];
-  const phases = lists.phase || [];
-  if (Object.keys(opts).length > 0 || subjects.length > 1 || phases.length > 1
-      || [...subjects, ...phases, ...positional].some((value) => !value)) {
+  if (Object.keys(opts).length > 0 || positional.length > 0 || subjects.length > 1 || subjects.some((value) => !value)) {
     throw new Error(CODE_USAGE);
   }
-  const [subject] = subjects;
-  const [phase] = phases;
-  if (subject !== undefined) {
-    if (positional.length > 0 || phase !== undefined) throw new Error(CODE_USAGE);
-    return subjectSelector(subject);
-  }
-  if (positional.length === 0 && phase === undefined) return null;
-  if (positional.length !== 2 || (phase !== undefined && !/^[1-9][0-9]*$/.test(phase))) throw new Error(CODE_USAGE);
-  return taskSelector(positional[0], positional[1], phase === undefined ? undefined : Number(phase));
+  return subjects.length === 0 ? null : subjectSelector(subjects[0]);
 }
 
 /** @param {Call} call @param {string[]} argv */
@@ -2520,7 +2325,7 @@ function runHandoff(call, argv) {
   }
 }
 
-const RENDER_FLAGS = ['approve', 'skipped-review', 'paths', 'warn', 'pipeline', 'menu-only', 'calls', 'sweep', 'page'];
+const RENDER_FLAGS = ['skipped-review', 'paths', 'warn', 'pipeline', 'menu-only', 'calls', 'sweep', 'page'];
 
 /** @param {Call} call @param {string[]} argv */
 function runRender(call, argv) {
@@ -2577,7 +2382,6 @@ const COMMANDS = Object.freeze({
   asset: runAsset,
   verdict: runVerdict,
   workunit: runWorkunit,
-  'build-order': runBuildOrder,
   'discovery-session': runDiscoverySession,
   'discovery-log': runDiscoveryLog,
   topic: runTopic,

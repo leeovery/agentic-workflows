@@ -470,7 +470,7 @@ describe('the experiment surfaces', () => {
   });
 });
 
-describe('experiment spawn gate + wait gate — the conversation\'s two pauses', () => {
+describe('experiment spawn gate — the conversation\'s pause for its laboratory', () => {
   let dir;
   beforeEach(() => { dir = setup(); });
   afterEach(() => { teardown(dir); });
@@ -506,27 +506,6 @@ describe('experiment spawn gate + wait gate — the conversation\'s two pauses',
     }
   });
 
-  it('the wait gate refuses a discussion, whose waits are its map\'s and whose close is the decided screen (9.S22)', () => {
-    holderWith('discussion', ['E1']);
-    assert.throws(() => renderSurface(dir, 'wait-gate', { dotpath: 'lab.discussion.timing' }),
-      /render wait-gate: address must be <work_unit>\.<planning>\.<topic> — the waiting item itself; got phase "discussion"$/);
-  });
-});
-
-describe('wait-gate — the blocked-conclusion gate over every wait', () => {
-  let dir;
-  beforeEach(() => { dir = setup(); });
-  afterEach(() => { teardown(dir); });
-
-  it('a plan waits on no specification — the gate is empty, whatever its old item reads', () => {
-    writeManifest(dir, 'lab', {
-      phases: {
-        specification: { items: { billing: { status: 'completed', sources: { talks: { status: 'stale' } } } } },
-        planning: { items: { billing: { status: 'in-progress' } } },
-      },
-    });
-    assert.strictEqual(renderSurface(dir, 'wait-gate', { dotpath: 'lab.planning.billing' }), '');
-  });
 });
 
 describe('render resume-gate', () => {
@@ -576,7 +555,7 @@ describe('render resume-gate', () => {
   });
 
   it('rejects an unknown variant and --mail combined with a variant', () => {
-    assert.throws(() => renderSurface(dir, 'resume-gate', { dotpath: 'pay.discussion.auth-flow', variant: 'nope' }), /--variant must be "plan", "review", "scoping", or "session"/);
+    assert.throws(() => renderSurface(dir, 'resume-gate', { dotpath: 'pay.discussion.auth-flow', variant: 'nope' }), /--variant must be "scoping" or "session"/);
     assert.throws(() => renderSurface(dir, 'resume-gate', { dotpath: 'pay.scoping.auth-flow', variant: 'scoping', mail: '2' }), /--mail only applies to the default variant/);
   });
 });
@@ -585,95 +564,6 @@ describe('render resume-gate variants', () => {
   let dir;
   beforeEach(() => { dir = setup(); });
   afterEach(() => teardown(dir));
-
-  /** The prior run's planning files — what makes `continue` an option. */
-  const planFiles = (workUnit, topic) => {
-    fs.mkdirSync(path.join(dir, '.leeway', workUnit, 'planning', topic), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.leeway', workUnit, 'planning', topic, 'planning.md'), '# Plan\n');
-  };
-
-  it('plan derives the position parenthetical from the planning item', () => {
-    writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress', phase: 3, task: 2 } } } } });
-    planFiles('pay', 'portal');
-    const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.planning.portal', variant: 'plan' });
-    assert.ok(out.includes('Found existing plan for **Portal** (previously reached phase 3, task 2).'));
-    assert.ok(/\*\*`c\/continue`\*\* +→ Walk through the plan from the start\. You can review, amend, or navigate at any point — including straight to the leading edge\./.test(unwrap(out)));
-    assert.ok(/\*\*`r\/restart`\*\* +→ Erase all planning work for this topic and start fresh\. This deletes the planning file, authored tasks, and clears manifest state\. Other topics are unaffected\./.test(unwrap(out)));
-  });
-
-  it('plan omits the parenthetical when the position fields are absent', () => {
-    writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress' } } } } });
-    planFiles('pay', 'portal');
-    const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.planning.portal', variant: 'plan' });
-    assert.ok(out.includes('Found existing plan for **Portal**.\n'));
-    assert.ok(!out.includes('previously reached'));
-  });
-
-  it('plan keeps the phase anchor when only the phase is known (post-advance interrupt)', () => {
-    writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress', phase: 3, task: null } } } } });
-    planFiles('pay', 'portal');
-    const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.planning.portal', variant: 'plan' });
-    assert.ok(out.includes('Found existing plan for **Portal** (previously reached phase 3).'));
-  });
-
-  it('plan offers the restart alone when the prior run\'s files are already gone', () => {
-    // A restart deletes the planning directory, then the manifest entry. A
-    // crash between the two commits leaves an entry with nothing to continue,
-    // and offering `continue` there sends the session at an empty directory.
-    writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress', phase: 3, task: 2 } } } } });
-    const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.planning.portal', variant: 'plan' });
-    assert.ok(out.includes("Found a planning entry for **Portal**, but the prior run's files are already cleared."));
-    assert.ok(out.includes('r/restart'));
-    assert.ok(!out.includes('c/continue'), 'there is nothing to continue');
-    assert.ok(!out.includes('previously reached'), 'and no position to report');
-  });
-
-  it('review renders the coverage menu while unreviewed tasks remain', () => {
-    writeManifest(dir, 'pay', { phases: {
-      implementation: { items: { portal: { status: 'completed', completed_tasks: ['a', 'b', 'c'] } } },
-      review: { items: { portal: { status: 'in-progress', reviewed_tasks: ['a'] } } },
-    } });
-    const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.review.portal', variant: 'review' });
-    assert.ok(out.includes('Found existing review for **Portal**.\nReview covered 1 of 3 tasks. 2 task(s) not yet reviewed.'));
-    assert.ok(/\*\*`c\/continue`\*\* +→ Review the 2 unreviewed tasks/.test(out));
-    assert.ok(/\*\*`r\/restart`\*\* +→ Delete review, re-review all 3 tasks/.test(out));
-  });
-
-  it('review coverage tolerates reviewed ids outside completed_tasks — restart-skips count as covered', () => {
-    // The verifier flow records backend-skipped/cancelled ids as covered even
-    // when they never entered completed_tasks (restart-skips). The negative
-    // difference must fall through to all-reviewed, never a phantom count.
-    writeManifest(dir, 'pay', { phases: {
-      implementation: { items: { portal: { status: 'completed', completed_tasks: ['a', 'b'] } } },
-      review: { items: { portal: { status: 'in-progress', reviewed_tasks: ['a', 'b', 'restart-skipped-1'] } } },
-    } });
-    const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.review.portal', variant: 'review' });
-    assert.ok(out.includes('All 2 tasks have been reviewed.'), 'excluded-by-design ids never surface as unreviewed');
-  });
-
-  it('review coverage counts distinct ids — duplicate pushes never inflate it', () => {
-    writeManifest(dir, 'pay', { phases: {
-      implementation: { items: { portal: { status: 'completed', completed_tasks: ['a', 'b', 'c'] } } },
-      review: { items: { portal: { status: 'in-progress', reviewed_tasks: ['a', 'a', 'b'] } } },
-    } });
-    const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.review.portal', variant: 'review' });
-    assert.ok(out.includes('Review covered 2 of 3 tasks. 1 task(s) not yet reviewed.'));
-  });
-
-  it('review renders the all-reviewed menu when coverage is complete, and the bare menu with no tracking', () => {
-    writeManifest(dir, 'pay', { phases: {
-      implementation: { items: { portal: { status: 'completed', completed_tasks: ['a', 'b'] } } },
-      review: { items: { portal: { status: 'in-progress', reviewed_tasks: ['a', 'b'] } } },
-    } });
-    const all = renderSurface(dir, 'resume-gate', { dotpath: 'pay.review.portal', variant: 'review' });
-    assert.ok(all.includes('Found existing review for **Portal**.\nAll 2 tasks have been reviewed.'));
-    assert.ok(/\*\*`c\/continue`\*\* +→ Continue from current review state/.test(all));
-
-    writeManifest(dir, 'pay', { phases: { review: { items: { portal: { status: 'in-progress' } } } } });
-    const bare = renderSurface(dir, 'resume-gate', { dotpath: 'pay.review.portal', variant: 'review' });
-    assert.ok(bare.includes('Found existing review for **Portal**.\n\n'), 'no tracking — label only, no coverage line');
-    assert.ok(/\*\*`r\/restart`\*\* +→ Delete review, start fresh/.test(bare));
-  });
 
   it('scoping renders the revisit wording', () => {
     writeManifest(dir, 'pay', { phases: { scoping: { items: { pay: { status: 'in-progress' } } } } });
@@ -795,169 +685,32 @@ describe('render mailbox surfaces', () => {
   });
 });
 
-describe('render convergence-diagnostic', () => {
-  let dir;
-  const base = {
-    loop_type: 'planning-review', latest_cycle: 5, trend: 'converging',
-    resolved: [{ title: 'Marker semantics restated twice', last_seen_cycle: 4 }],
-    recurring: [{ title: 'Guard scope drifts per section', cycles: '3, 4, 5', hypothesis: 'Each fix re-words the guard where it lands instead of at its home.' }],
-    new: [{ title: 'Sweep table omits the two below-the-line files' }],
-    stream_counts: [{ label: 'traceability', count: 1 }, { label: 'integrity', count: 1 }],
-    review_baseline_words: 6835, live_words: 13637,
-  };
-  const flagText = (s) => s.slice(s.indexOf('⚑')).replace(/\n\s+/g, ' ').trim();
-  beforeEach(() => {
-    dir = setup();
-    writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress' } } } } });
-  });
-  afterEach(() => teardown(dir));
-
-  it('the churn trend is loop-neutral — a fix loop carries the same sentence, alone', () => {
-    writeManifest(dir, 'pay', { phases: { implementation: { items: { portal: { status: 'in-progress' } } } } });
-    const file = writePayload(dir, 'ch.json', { loop_type: 'fix', latest_cycle: 2, trend: 'churning', resolved: [{ title: 'Off-by-one', last_seen_cycle: 1 }], recurring: [], new: [{ title: 'Missing guard' }] });
-    const out = renderSurface(dir, 'convergence-diagnostic', { dotpath: 'pay.implementation.portal', file });
-    assert.strictEqual(flagText(out), '⚑ Findings resolve but are replaced at the same rate — the edits are generating the next cycle\'s findings.');
-  });
-
-  it('planning-review carries growth too — the flags name the plan and the mechanism', () => {
-    writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress' } } } } });
-    const file = writePayload(dir, 'pr.json', {
-      ...base, loop_type: 'planning-review', trend: 'churning',
-      stream_counts: [{ label: 'traceability', count: 1 }, { label: 'integrity', count: 1 }],
-    });
-    const out = renderSurface(dir, 'convergence-diagnostic', { dotpath: 'pay.planning.portal', file });
-    assert.ok(out.includes('── Plan Review — cycle 5 diagnostic ─'));
-    assert.ok(out.includes('  Per stream: traceability 1 · integrity 1'));
-    assert.ok(out.includes('  Document growth: 6835 → 13637 words (+6802 net across review)'));
-    assert.match(flagText(out), /the review is writing mechanism the specification never decided/, 'the churn-growth warning reads for the plan');
-    assert.match(flagText(out), /a corrected mechanism is the builder's\./, 'the warning leaves mechanism to the builder');
-    assert.match(flagText(out), /Review has added 6802 words to a 6835-word plan\./, 'the growth note names the plan, never a construction');
-    assert.match(flagText(out), /growth from review-authored mechanism is the review deciding for the builder\./);
-    assert.ok(!flagText(out).includes('writing rules the record never decided'), 'the spec loop\'s wording stays with the spec loop');
-  });
-
-  it('every trend callout describes what the cycles show — none prescribes a next move', () => {
-    writeManifest(dir, 'pay', { phases: { implementation: { items: { portal: { status: 'in-progress' } } } } });
-    const lines = {
-      churning: '⚑ Findings resolve but are replaced at the same rate — the edits are generating the next cycle\'s findings.',
-      converging: '⚑ Resolved findings outnumber new ones — the cycles are closing ground.',
-      stable: '⚑ Resolved and new findings match cycle for cycle — the loop is holding where it is.',
-      diverging: '⚑ New findings outnumber resolved ones — the fixes are introducing new issues.',
-    };
-    for (const [trend, line] of Object.entries(lines)) {
-      const file = writePayload(dir, `t-${trend}.json`, { loop_type: 'fix', latest_cycle: 2, trend, resolved: [], recurring: [], new: [{ title: 'Missing guard' }] });
-      const out = renderSurface(dir, 'convergence-diagnostic', { dotpath: 'pay.implementation.portal', file });
-      assert.strictEqual(flagText(out), line, `the ${trend} callout states the reading and stops there`);
-    }
-  });
-
-  it('single-stream loops skip streams and growth; a fix-loop shape renders lean', () => {
-    writeManifest(dir, 'pay', { phases: { implementation: { items: { portal: { status: 'in-progress' } } } } });
-    const file = writePayload(dir, 'f.json', { loop_type: 'fix', latest_cycle: 3, trend: 'stable', resolved: [], recurring: [{ title: 'Assertion drifts', cycles: '2, 3', hypothesis: 'The fixture regenerates with a shifting seed.' }], new: [] });
-    const out = renderSurface(dir, 'convergence-diagnostic', { dotpath: 'pay.implementation.portal', file });
-    assert.ok(out.includes('── Fix Loop — cycle 3 diagnostic ─'));
-    assert.ok(!out.includes('Per stream'));
-    assert.ok(!out.includes('Document growth'));
-    assert.ok(!out.includes('Resolved:'), 'empty sections are skipped');
-    assert.ok(out.includes('  ⚑ Resolved and new findings match cycle for cycle — the loop is\n    holding where it is.'), 'the stable flag wraps via the callout');
-  });
-
-  it('a long finding wraps with its continuation under the text, never at column 0', () => {
-    writeManifest(dir, 'pay', { phases: { implementation: { items: { portal: { status: 'in-progress' } } } } });
-    const file = writePayload(dir, 'w.json', {
-      loop_type: 'fix', latest_cycle: 3, trend: 'converging',
-      resolved: [{ title: 'Detached-element mute is a no-op — a re-parented <style> goes live in the app document', last_seen_cycle: 1 }],
-      recurring: [{ title: 'A hostile document stylesheet still reaches the application chrome (criterion 3)', cycles: '1, 2, 3', hypothesis: 'Containment rests on two mechanisms of unequal strength — the engine\'s own @scope matching, which has held under every probe, and a fallback the tests never reach.' }],
-      new: [{ title: 'Nothing verifies the composed stylesheet\'s structure before it is published' }],
-    });
-    const out = renderSurface(dir, 'convergence-diagnostic', { dotpath: 'pay.implementation.portal', file });
-    const body = out.split('\n').slice(1).filter((l) => l !== '' && !l.startsWith('==='));
-    assert.ok(body.every((l) => [...l].length <= 65), 'every line fits the pinned width');
-    assert.ok(body.every((l) => l === body[0] || l.startsWith('  ')), 'only the heading sits at column 0');
-    assert.ok(out.includes('    • Detached-element mute is a no-op — a re-parented <style>\n      goes live in the app document (fixed in cycle 1)'), 'a resolved row wraps under its text');
-    assert.ok(out.includes('    • A hostile document stylesheet still reaches the application\n      chrome (criterion 3) (cycles 1, 2, 3)\n      · Containment rests on two mechanisms of unequal strength —\n        the engine\'s own @scope matching, which has held under\n        every probe, and a fallback the tests never reach.'), 'the hypothesis wraps under its own marker at the bullet-text column');
-    assert.ok(out.includes('    • Nothing verifies the composed stylesheet\'s structure before\n      it is published'), 'a new row wraps under its text');
-  });
-
-  it('short content renders one line per item, unchanged', () => {
-    writeManifest(dir, 'pay', { phases: { implementation: { items: { portal: { status: 'in-progress' } } } } });
-    const file = writePayload(dir, 's.json', {
-      loop_type: 'fix', latest_cycle: 2, trend: 'converging',
-      resolved: [{ title: 'Off-by-one', last_seen_cycle: 1 }],
-      recurring: [{ title: 'Flaky seed', cycles: '1, 2', hypothesis: 'The fixture reseeds.' }],
-      new: [{ title: 'Missing guard' }],
-    });
-    const out = renderSurface(dir, 'convergence-diagnostic', { dotpath: 'pay.implementation.portal', file });
-    assert.strictEqual(out, [
-      '=== DISPLAY: convergence diagnostic (emit verbatim as a text code block (```text fence)) ===',
-      `── Fix Loop — cycle 2 diagnostic ${'─'.repeat(32)}`,
-      '',
-      '  Trend: converging',
-      '  Latest cycle: 2 findings (1 new, 1 recurring)',
-      '',
-      '  Resolved:',
-      '    • Off-by-one (fixed in cycle 1)',
-      '',
-      '  Recurring:',
-      '    • Flaky seed (cycles 1, 2)',
-      '      · The fixture reseeds.',
-      '',
-      '  New this cycle:',
-      '    • Missing guard',
-      '',
-      '  ⚑ Resolved findings outnumber new ones — the cycles are closing',
-      '    ground.',
-      '',
-    ].join('\n'));
-  });
-
-  it('a head line past the budget wraps beneath its indent', () => {
-    const file = writePayload(dir, 'g.json', { ...base, review_baseline_words: 123456, live_words: 234567 });
-    const out = renderSurface(dir, 'convergence-diagnostic', { dotpath: 'pay.planning.portal', file });
-    assert.ok(out.includes('  Document growth: 123456 → 234567 words (+111111 net across\n  review)'), 'the growth line wraps at the head indent');
-  });
-
-  it('validates loudly: enums, cycle floor, shapes, stream and growth pairing', () => {
-    const cases = [
-      [{ ...base, loop_type: 'review' }, /"loop_type" must be one of fix\/analysis\/planning-review/],
-      [{ ...base, trend: 'oscillating' }, /"trend" must be one of/],
-      [{ ...base, latest_cycle: 1 }, /"latest_cycle" must be an integer ≥ 2/],
-      [{ ...base, recurring: [{ title: 'x', cycles: '2, 3' }] }, /recurring\[0\] is missing "hypothesis"/],
-      [{ ...base, stream_counts: undefined }, /"planning-review" carries "stream_counts"/],
-      [{ ...base, loop_type: 'fix', review_baseline_words: undefined, live_words: undefined, stream_counts: [{ label: 'a', count: 1 }, { label: 'b', count: 2 }] }, /"fix" is single-stream/],
-      [{ ...base, loop_type: 'analysis', stream_counts: undefined }, /document growth belongs to planning-review/],
-      [{ ...base, live_words: undefined }, /"review_baseline_words" and "live_words" travel together/],
-    ];
-    cases.forEach(([payload, re], i) => {
-      const file = writePayload(dir, `bad-${i}.json`, payload);
-      assert.throws(() => renderSurface(dir, 'convergence-diagnostic', { dotpath: 'pay.planning.portal', file }), re);
-    });
-  });
-});
-
 describe('pipeline continuation surfaces', () => {
   let dir;
   beforeEach(() => {
     dir = setup();
-    // A feature with everything before review completed — the
-    // implementation → review hop, every way forward on offer.
     writeManifest(dir, 'pay', {
       work_type: 'feature',
+      phases: { discussion: { items: { pay: { status: 'completed' } } } },
+    });
+    // A quick-fix with everything before review completed — the
+    // implementation → review hop, every way forward on offer: its skip-review
+    // row is a unit's not built by its cut, which a quick-fix never is.
+    writeManifest(dir, 'fix', {
+      work_type: 'quick-fix',
       phases: {
-        discussion: { items: { pay: { status: 'completed' } } },
-        specification: { items: { pay: { status: 'completed' } } },
-        planning: { items: { pay: { status: 'completed' } } },
-        implementation: { items: { pay: { status: 'completed' } } },
+        scoping: { items: { fix: { status: 'completed' } } },
+        implementation: { items: { fix: { status: 'completed' } } },
       },
     });
   });
   afterEach(() => teardown(dir));
 
   it('next-phase-gate: the review hop offers proceed, complete without review, and revisit — byte-stable', () => {
-    assert.strictEqual(renderSurface(dir, 'next-phase-gate', { dotpath: 'pay', prev: 'implementation', next: 'review' }), [
+    assert.strictEqual(renderSurface(dir, 'next-phase-gate', { dotpath: 'fix', prev: 'implementation', next: 'review' }), [
       "=== MENU: next phase gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
-      'Implementation completed for "Pay".',
+      'Implementation completed for "Fix".',
       '',
       '**`◆ Proceed to review?`**',
       '',
@@ -969,8 +722,8 @@ describe('pipeline continuation surfaces', () => {
   });
 
   it('next-phase-gate: a non-review hop carries no d/done — proceed or revisit', () => {
-    const out = renderSurface(dir, 'next-phase-gate', { dotpath: 'pay', prev: 'planning', next: 'implementation' });
-    assert.ok(out.includes('Planning completed for "Pay".'), out);
+    const out = renderSurface(dir, 'next-phase-gate', { dotpath: 'fix', prev: 'scoping', next: 'implementation' });
+    assert.ok(out.includes('Scoping completed for "Fix".'), out);
     assert.match(out, /`◆ Proceed to implementation\?`/);
     assert.match(out, /\*\*`y\/yes`\*\* +→ Proceed to implementation/);
     assert.match(out, /\*\*`r\/revisit`\*\* → Revisit an earlier phase/);
@@ -979,7 +732,7 @@ describe('pipeline continuation surfaces', () => {
 
   it('next-phase-gate: no r/revisit while no earlier phase is completed — the review hop still offers d/done', () => {
     writeManifest(dir, 'fresh', {
-      work_type: 'feature',
+      work_type: 'quick-fix',
       phases: { implementation: { items: { fresh: { status: 'in-progress' } } } },
     });
     const out = renderSurface(dir, 'next-phase-gate', { dotpath: 'fresh', prev: 'implementation', next: 'review' });
@@ -998,10 +751,9 @@ describe('pipeline continuation surfaces', () => {
 
   it('next-phase-gate: the review hop names a live reconcile flag — skipping review is an informed choice', () => {
     writeManifest(dir, 'moved', {
-      work_type: 'feature',
+      work_type: 'quick-fix',
       phases: {
-        specification: { items: { moved: { status: 'completed' } } },
-        planning: { items: { moved: { status: 'completed' } } },
+        scoping: { items: { moved: { status: 'completed' } } },
         implementation: { items: { moved: { status: 'completed' } } },
         review: { items: { moved: { status: 'completed', reconcile_needed: 'implementation' } } },
       },
@@ -1009,10 +761,10 @@ describe('pipeline continuation surfaces', () => {
     const out = renderSurface(dir, 'next-phase-gate', { dotpath: 'moved', prev: 'implementation', next: 'review' });
     assert.ok(out.includes('Implementation completed for "Moved". ⚑ Input moved beneath review/moved (implementation) — completing without review carries the pending reconcile unresolved.'), out);
     // The cue informs the skip — a hop with no d/done carries none, flag or not.
-    const implementation = renderSurface(dir, 'next-phase-gate', { dotpath: 'moved', prev: 'planning', next: 'implementation' });
-    assert.ok(implementation.includes('Planning completed for "Moved".') && !implementation.includes('⚑'), implementation);
+    const implementation = renderSurface(dir, 'next-phase-gate', { dotpath: 'moved', prev: 'scoping', next: 'implementation' });
+    assert.ok(implementation.includes('Scoping completed for "Moved".') && !implementation.includes('⚑'), implementation);
     // No flag, no cue.
-    assert.ok(!renderSurface(dir, 'next-phase-gate', { dotpath: 'pay', prev: 'implementation', next: 'review' }).includes('⚑'));
+    assert.ok(!renderSurface(dir, 'next-phase-gate', { dotpath: 'fix', prev: 'implementation', next: 'review' }).includes('⚑'));
   });
 
   it('a derived phase says the session is complete, never the phase — sibling records may still live', () => {
@@ -1029,10 +781,7 @@ describe('pipeline continuation surfaces', () => {
     assert.strictEqual(renderSurface(dir, 'next-phase-gate', { dotpath: 'lab', prev: 'experiment', next: 'specification' }), '');
   });
 
-  it('epic-all-done-gate and phase-completed carry their statements', () => {
-    const allDone = renderSurface(dir, 'epic-all-done-gate', { dotpath: 'pay' });
-    assert.ok(allDone.includes('All topics have completed review for "Pay".'));
-
+  it('phase-completed carries its statement', () => {
     const note = renderSurface(dir, 'phase-completed', { dotpath: 'pay', phase: 'discussion' });
     assert.ok(note.includes('Discussion completed for "Pay".'));
   });
@@ -1052,7 +801,7 @@ describe('pipeline continuation surfaces', () => {
 
   it('next-phase-gate: refuses a phase outside the type\'s pipeline — a typo, done, or review on a type that has none', () => {
     assert.throws(() => renderSurface(dir, 'next-phase-gate', { dotpath: 'pay', prev: 'implementation', next: 'reveiw' }),
-      /unknown --next "reveiw" for a feature \(pipeline: experiment, discussion, specification, planning, implementation, review\)/);
+      /unknown --next "reveiw" for a feature \(pipeline: experiment, discussion, specification, implementation, review\)/);
     assert.throws(() => renderSurface(dir, 'next-phase-gate', { dotpath: 'pay', prev: 'review', next: 'done' }), /unknown --next "done" for a feature/);
     assert.throws(() => renderSurface(dir, 'next-phase-gate', { dotpath: 'pay', prev: 'banana', next: 'review' }), /unknown --prev "banana" for a feature/);
     // Cross-cutting ends at specification: a review hop is a relay slip, and
@@ -1070,15 +819,15 @@ describe('pipeline continuation surfaces', () => {
 
   it('next-phase-gate: several live reconcile flags join into one cue', () => {
     writeManifest(dir, 'moved2', {
-      work_type: 'feature',
+      work_type: 'quick-fix',
       phases: {
-        specification: { items: { moved2: { status: 'completed', reconcile_needed: 'discussion' } } },
+        scoping: { items: { moved2: { status: 'completed', reconcile_needed: 'discussion' } } },
         implementation: { items: { moved2: { status: 'completed' } } },
         review: { items: { moved2: { status: 'completed', reconcile_needed: 'implementation' } } },
       },
     });
     const out = renderSurface(dir, 'next-phase-gate', { dotpath: 'moved2', prev: 'implementation', next: 'review' });
-    assert.ok(out.includes('⚑ Input moved beneath specification/moved2 (discussion), review/moved2 (implementation) — completing without review carries the pending reconcile unresolved.'), out);
+    assert.ok(out.includes('⚑ Input moved beneath scoping/moved2 (discussion), review/moved2 (implementation) — completing without review carries the pending reconcile unresolved.'), out);
   });
 });
 
@@ -1096,47 +845,6 @@ describe('render phase-note', () => {
     assert.ok(renderSurface(dir, 'phase-note', { dotpath: 'pay.planning.auth-flow', verb: 'Reopening', noun: 'plan' })
       .includes('Reopening plan: Auth Flow'));
     assert.throws(() => renderSurface(dir, 'phase-note', { dotpath: 'pay.investigation.auth-flow' }), /--verb is required/);
-  });
-});
-
-describe('render step-opening', () => {
-  let dir;
-  beforeEach(() => { dir = setup(); });
-  afterEach(() => teardown(dir));
-
-  const MARKER = '=== DISPLAY: step opening (emit verbatim as markdown (not a code block) — do not stop; continue as the workflow instructs) ===';
-  const opening = (name, signpost) => [MARKER, `**\`□ ${name}\`**`, '', `> ${signpost}`, ''].join('\n');
-
-  it('consolidation: the pass names the phase in flight, read from the implementation item', () => {
-    writeManifest(dir, 'pay', { phases: { implementation: { items: { checkout: { status: 'in-progress', current_phase: 2 } } } } });
-    assert.strictEqual(renderSurface(dir, 'step-opening', { dotpath: 'pay.implementation.checkout', step: 'consolidation' }), opening('Consolidation Pass (phase 2)',
-      "Phase 2's tasks are done. Before the phase closes: one sweep over what they built side by side — consolidation the plan could not author, plus everything banked along the way."));
-    assert.throws(() => renderSurface(dir, 'step-opening', { dotpath: 'pay.implementation.other', step: 'consolidation' }),
-      /implementation "other" records no current_phase — the pass runs at a phase boundary/);
-  });
-
-  it('do-now: counts the do-now actions the review synthesis wrote, the noun following the count', () => {
-    writeManifest(dir, 'pay', {});
-    const actions = (list) => writePayload(dir, '.leeway/.cache/pay/review/checkout/actions.json', { verdict: 'pass', actions: list });
-    actions([{ id: 'A1', route: 'do-now' }, { id: 'A2', route: 'replan' }, { id: 'A3', route: 'do-now' }]);
-    assert.strictEqual(renderSurface(dir, 'step-opening', { dotpath: 'pay.review.checkout', step: 'do-now' }), opening('Apply Do-Now',
-      'Applying 2 contained corrections — low-impact, blast radius minimised. The whole body of work is verified and the suite run before anything lands.'));
-    actions([{ id: 'A1', route: 'do-now' }]);
-    assert.match(renderSurface(dir, 'step-opening', { dotpath: 'pay.review.checkout', step: 'do-now' }), /> Applying 1 contained correction — /);
-    actions([{ id: 'A1', route: 'out-of-scope' }]);
-    assert.throws(() => renderSurface(dir, 'step-opening', { dotpath: 'pay.review.checkout', step: 'do-now' }),
-      /actions\.json holds no do-now action — the step opens only over work to apply/);
-    assert.throws(() => renderSurface(dir, 'step-opening', { dotpath: 'pay.review.other', step: 'do-now' }),
-      /\.leeway\/\.cache\/pay\/review\/other\/actions\.json is missing or not valid JSON — the do-now step follows the review synthesis/);
-  });
-
-  it('refuses a missing or unknown step, and a step outside its phase', () => {
-    writeManifest(dir, 'pay', {});
-    assert.throws(() => renderSurface(dir, 'step-opening', { dotpath: 'pay.implementation.auth' }),
-      /--step must be one of consolidation, do-now, got ""/);
-    assert.throws(() => renderSurface(dir, 'step-opening', { dotpath: 'pay.implementation.auth', step: 'conclude' }), /got "conclude"/);
-    assert.throws(() => renderSurface(dir, 'step-opening', { dotpath: 'pay.planning.auth', step: 'consolidation' }),
-      /the consolidation step opens in implementation, got phase "planning"/);
   });
 });
 
@@ -1362,54 +1070,6 @@ describe('render code-gate', () => {
     assert.strictEqual(renderSurface(dir, 'code-gate', { dotpath: 'pay.implementation.never-inited' }), '');
     assert.ok(fs.existsSync(path.join(dir, '.leeway/.cache/pay/implementation/never-inited/presence')),
       'and the slot is claimed all the same');
-  });
-});
-
-describe('render entry-gate', () => {
-  let dir;
-  beforeEach(() => { dir = setup(); });
-  afterEach(() => teardown(dir));
-
-  function manifestWith(phases, workType = 'feature') {
-    writeManifest(dir, 'pay', { work_type: workType, phases });
-  }
-
-  it('planning: every specification state maps to its blocker; completed is clear', () => {
-    manifestWith({});
-    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth' }), /⚑ No specification found for "Auth"/);
-    manifestWith({ specification: { items: { auth: { status: 'in-progress' } } } });
-    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth' }), /⚑ The specification for "Auth" is not yet completed/);
-    manifestWith({ specification: { items: { auth: { status: 'proposed' } } } });
-    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth' }), /proposed grouping[\s\S]*Start the specification first/);
-    manifestWith({ specification: { items: { auth: { status: 'superseded', superseded_by: 'core-auth' } } } });
-    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth' }), /consolidated into "Core Auth"[\s\S]*Plan the superseding specification/);
-    manifestWith({ specification: { items: { auth: { status: 'promoted', promoted_to: 'cc-auth' } } } });
-    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth' }), /promoted to the cross-cutting work unit "cc-auth"/);
-    manifestWith({ specification: { items: { auth: { status: 'completed' } } } });
-    assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth' }), '');
-  });
-
-  it('implementation and review derive their plan/implementation blockers', () => {
-    manifestWith({});
-    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.implementation.auth' }), /⚑ No plan found for "Auth"[\s\S]*A completed plan is required for implementation\./);
-    manifestWith({ planning: { items: { auth: { status: 'in-progress' } } } });
-    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.implementation.auth' }), /⚑ The plan for "Auth" is not yet completed/);
-    manifestWith({ planning: { items: { auth: { status: 'completed' } } } });
-    assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.implementation.auth' }), '');
-
-    manifestWith({});
-    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.review.auth' }), /⚑ No plan found for "Auth"[\s\S]*plan and completed implementation are required for review\./);
-    manifestWith({ planning: { items: { auth: { status: 'completed' } } } });
-    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.review.auth' }), /⚑ No implementation found for "Auth"/);
-    manifestWith({ planning: { items: { auth: { status: 'completed' } } }, implementation: { items: { auth: { status: 'in-progress' } } } });
-    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.review.auth' }), /⚑ The implementation for "Auth" is not yet completed/);
-    manifestWith({ planning: { items: { auth: { status: 'completed' } } }, implementation: { items: { auth: { status: 'completed' } } } });
-    assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.review.auth' }), '');
-  });
-
-  it('an unsupported phase is a loud error', () => {
-    manifestWith({});
-    assert.throws(() => renderSurface(dir, 'entry-gate', { dotpath: 'pay.research.auth' }), /no prerequisite rules for phase "research"/);
   });
 });
 
@@ -2274,66 +1934,33 @@ describe('render — the adopted phase gates', () => {
       phases: {
         discussion: { items: { checkout: { status: 'in-progress' } } },
         investigation: { items: { checkout: { status: 'in-progress' } } },
-        implementation: { items: { checkout: { status: 'in-progress' } } },
-        planning: {
-          items: {
-            checkout: {
-              status: 'in-progress',
-              external_dependencies: {
-                'data-model': { description: 'the shared row shape', state: 'unresolved' },
-                'auth-flow': { description: 'session tokens', state: 'resolved', internal_id: 'auth-1-2' },
-              },
-            },
-          },
-        },
       },
     });
   });
   afterEach(() => teardown(dir));
 
-  it('conclude-gate: one surface, the address\'s phase picking the wording', () => {
+  it('conclude-gate: the investigation\'s closing consent — a yes, and a keep-going beside it', () => {
     const investigation = renderSurface(dir, 'conclude-gate', { dotpath: 'pay.investigation.checkout' });
-    assert.match(investigation, /`◆ Investigation complete\. Ready to conclude\?`/);
-    assert.match(investigation, /\*\*`y\/yes`\*\*\s+→ Conclude investigation/);
-    assert.match(investigation, /\*\*Keep going\*\* → Tell me what else to explore/);
-
-    // Implementation and planning have hit their end — the arm beside yes is
-    // an ask, never a way back.
-    const implementation = renderSurface(dir, 'conclude-gate', { dotpath: 'pay.implementation.checkout' });
-    assert.strictEqual(implementation, [
+    assert.strictEqual(investigation, [
       "=== MENU: conclude gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
-      '**`◆ Ready to mark implementation as completed?`**',
+      '**`◆ Investigation complete. Ready to conclude?`**',
       '',
-      '**`y/yes`** → Mark as completed',
-      "**Ask**   → Ask questions about the implementation (doesn't mark it",
-      `${NB(8)}complete)`,
-      '',
-    ].join('\n'));
-    assert.doesNotMatch(implementation, /`n\/no`/);
-
-    const planning = renderSurface(dir, 'conclude-gate', { dotpath: 'pay.planning.checkout' });
-    assert.strictEqual(planning, [
-      "=== MENU: conclude gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      DOTS,
-      '**`◆ Ready to conclude?`**',
-      '',
-      '**`y/yes`** → Conclude plan and mark as completed',
-      "**Ask**   → Ask questions about the plan (doesn't mark it complete)",
+      '**`y/yes`**      → Conclude investigation',
+      '**Keep going** → Tell me what else to explore',
       '',
     ].join('\n'));
-    assert.doesNotMatch(planning, /`n\/no`/);
   });
 
   it('conclude-gate: refuses a phase that concludes some other way — a discussion closes at the decided screen (9.7)', () => {
-    for (const phase of ['research', 'discussion']) {
+    for (const phase of ['research', 'discussion', 'implementation', 'planning']) {
       assert.throws(() => renderSurface(dir, 'conclude-gate', { dotpath: `pay.${phase}.checkout` }),
-        new RegExp(`phase must be one of investigation, implementation, planning, got "${phase}"`));
+        new RegExp(`phase must be investigation, got "${phase}"`));
     }
-    assert.throws(() => renderSurface(dir, 'conclude-gate', { dotpath: 'pay.planning' }),
+    assert.throws(() => renderSurface(dir, 'conclude-gate', { dotpath: 'pay.investigation' }),
       /address must be <work_unit>\.<phase>\.<topic>/);
-    assert.throws(() => renderSurface(dir, 'conclude-gate', { dotpath: 'pay.implementation.ghost' }),
-      /no implementation item "ghost" — nothing to conclude/);
+    assert.throws(() => renderSurface(dir, 'conclude-gate', { dotpath: 'pay.investigation.ghost' }),
+      /no investigation item "ghost" — nothing to conclude/);
   });
 
   // A map whose rows are missing a summary (one drafted, one with no source
@@ -2449,448 +2076,11 @@ describe('render — the adopted phase gates', () => {
     }), /"names" must be a non-empty array of topic names/);
   });
 
-  it('external-dependency-gate: the blocking gate stands beneath the named set, the pick reads its descriptions from the plan', () => {
-    const blocking = renderSurface(dir, 'external-dependency-gate', {
-      dotpath: 'pay.planning.checkout', variant: 'blocking', blocking: 'auth-flow,data-model',
-    });
-    assert.strictEqual(blocking, [
-      '=== DISPLAY: missing dependencies (emit verbatim as a text code block (```text fence)) ===',
-      'Missing Dependencies',
-      '',
-      '  Data Model',
-      '  ├─ the shared row shape',
-      '  └─ No plan exists',
-      '',
-      '  Auth Flow',
-      '  ├─ session tokens',
-      '  └─ Waiting on auth-flow:auth-1-2',
-      '',
-      "=== MENU: blocking dependencies gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      DOTS,
-      '**`◆ How would you like to proceed?`**',
-      '',
-      '**`s/satisfied`** → Mark a dependency as satisfied externally',
-      '**`i/implement`** → Exit to implement blocking dependencies first',
-      '',
-    ].join('\n'), 'no-plan dependencies first, then those waiting on a task');
-
-    const pick = renderSurface(dir, 'external-dependency-gate', {
-      dotpath: 'pay.planning.checkout', variant: 'pick', blocking: 'data-model,auth-flow',
-    });
-    assert.strictEqual(pick, [
-      "=== MENU: dependency pick (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      DOTS,
-      '**`◆ Which dependency has been satisfied?`**',
-      '',
-      '**`1`** → Data Model — the shared row shape',
-      '**`2`** → Auth Flow — session tokens',
-      '',
-    ].join('\n'));
-  });
-
-  it('external-dependency-gate: a set of one leaves nothing to pick — the pick proceeds with it', () => {
-    assert.strictEqual(renderSurface(dir, 'external-dependency-gate', {
-      dotpath: 'pay.planning.checkout', variant: 'pick', blocking: 'data-model',
-    }), [
-      '=== DISPLAY: auto-select (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
-      'Automatically proceeding with "Data Model".',
-      '',
-    ].join('\n'));
-  });
-
-  it('external-dependency-gate: the exit is the terminal blocker over the plan', () => {
-    assert.strictEqual(renderSurface(dir, 'external-dependency-gate', {
-      dotpath: 'pay.planning.checkout', variant: 'exit', blocking: 'data-model,auth-flow',
-    }), [
-      '=== DISPLAY: entry blocker (emit verbatim as a properties code block (```properties fence)) ===',
-      '⚑ "Checkout" is blocked until these dependencies are resolved',
-      '',
-      '=== DISPLAY: blocker guidance (emit verbatim as markdown (not a code block), then STOP — terminal condition) ===',
-      '> Use /leeway to navigate to the blocking work.',
-      '',
-    ].join('\n'));
-  });
-
-  it('external-dependency-gate: refuses a foreign name, an empty set, a dependency that does not block and a non-planning address', () => {
-    for (const variant of ['blocking', 'pick', 'exit']) {
-      assert.throws(() => renderSurface(dir, 'external-dependency-gate', { dotpath: 'pay.planning.checkout', variant }),
-        /--blocking <topic,topic,…> is required/);
-    }
-    assert.throws(() => renderSurface(dir, 'external-dependency-gate', {
-      dotpath: 'pay.planning.checkout', variant: 'pick', blocking: 'ghost',
-    }), /"ghost" is not an external dependency of "checkout"/);
-    assert.throws(() => renderSurface(dir, 'external-dependency-gate', { dotpath: 'pay.implementation.checkout', variant: 'blocking' }),
-      /address must be <work_unit>\.planning\.<topic>, got phase "implementation"/);
-    assert.throws(() => renderSurface(dir, 'external-dependency-gate', { dotpath: 'pay.planning.checkout', variant: 'nope' }),
-      /--variant must be "blocking", "pick" or "exit", got "nope"/);
-    writeManifest(dir, 'pay', {
-      phases: {
-        planning: {
-          items: {
-            checkout: {
-              status: 'in-progress',
-              external_dependencies: {
-                billing: { description: 'invoices', state: 'satisfied_externally' },
-                reports: { description: 'the export', state: 'resolved' },
-              },
-            },
-          },
-        },
-      },
-    });
-    assert.throws(() => renderSurface(dir, 'external-dependency-gate', {
-      dotpath: 'pay.planning.checkout', variant: 'blocking', blocking: 'billing',
-    }), /"billing" is satisfied_externally — only an unresolved or resolved dependency blocks/);
-    assert.throws(() => renderSurface(dir, 'external-dependency-gate', {
-      dotpath: 'pay.planning.checkout', variant: 'blocking', blocking: 'reports',
-    }), /"reports" is resolved but names no internal_id/);
-  });
-
-  describe('checkpoint-files-gate: the dirty code read from git', () => {
-    const { git, initRepo, testIdentity } = require('./engine-harness.cjs');
-    const write = (rel, text) => {
-      fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
-      fs.writeFileSync(path.join(dir, rel), text);
-    };
-    const commit = (message, ...paths) => {
-      git(dir, ['add', '--', ...paths]);
-      git(dir, ['commit', '-q', '-m', message]);
-    };
-    beforeEach(() => {
-      git(dir, ['init', '-q', '-b', 'main']);
-      testIdentity(dir);
-      write('src/cart.js', '1');
-      write('src/billing file.js', '1');
-      write('README.md', '1');
-      commit('impl(pay): Tcheckout-1-1 — the cart', 'src/cart.js', 'src/billing file.js');
-      commit('docs: impl(pay): named mid-subject, not a task commit', 'README.md');
-    });
-    const checkpoint = () => renderSurface(dir, 'checkpoint-files-gate', { dotpath: 'pay.implementation.checkout' });
-
-    it('names both sets in DATA, lists the unexpected files with their state, and asks what the commit carries', () => {
-      write('src/cart.js', '2');
-      write('src/billing file.js', '2');
-      write('README.md', '2');
-      write('scratch/notes.txt', 'x');
-      write('.leeway/pay/implementation/checkout/notes.md', 'x');
-      assert.strictEqual(checkpoint(), [
-        '=== DATA (reason from this — never display or parse the sections below) ===',
-        'implementation_files (2):',
-        '  src/billing file.js',
-        '  src/cart.js',
-        'unexpected_files (2):',
-        '  README.md',
-        '  scratch/notes.txt',
-        '',
-        '=== DISPLAY: unexpected files (emit verbatim as a text code block (```text fence)) ===',
-        'Pre-analysis checkpoint — unexpected files detected:',
-        '- README.md (modified)',
-        '- scratch/notes.txt (untracked)',
-        '',
-        "=== MENU: checkpoint files gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-        DOTS,
-        '**`◆ Include unexpected files in the checkpoint commit?`**',
-        '',
-        '**`y/yes`**   → Include all',
-        '**`s/skip`**  → Exclude unexpected files, commit only implementation',
-        `${NB(10)}files`,
-        '**Comment** → Specify which to include',
-        '',
-      ].join('\n'));
-    });
-
-    it('with nothing unexpected, the DATA alone — no display, no gate', () => {
-      write('src/cart.js', '2');
-      assert.strictEqual(checkpoint(), [
-        '=== DATA (reason from this — never display or parse the sections below) ===',
-        'implementation_files (1):',
-        '  src/cart.js',
-        'unexpected_files (0):',
-        '',
-      ].join('\n'));
-    });
-
-    it('refuses a non-implementation address', () => {
-      assert.throws(() => renderSurface(dir, 'checkpoint-files-gate', { dotpath: 'pay.planning.checkout' }),
-        /address must be <work_unit>\.implementation\.<topic>, got phase "planning"/);
-    });
-
-    it('reads every repo in the project — a nested repo\'s file its own impl commit touched is an implementation file', () => {
-      write('.gitignore', 'api/\n');
-      commit('chore: the clone is its own repo', '.gitignore');
-      const api = initRepo(path.join(dir, 'api'));
-      write('api/src/routes.js', '1');
-      git(api, ['add', '-A']);
-      git(api, ['commit', '-q', '-m', 'init']);
-      write('api/src/handler.js', '1');
-      git(api, ['add', '-A']);
-      git(api, ['commit', '-q', '-m', 'impl(pay): Tcheckout-1-2 — the handler']);
-      initRepo(path.join(dir, 'fresh'));
-      write('fresh/notes.txt', 'x');
-      write('api/src/handler.js', '2');
-      write('api/src/routes.js', '2');
-
-      const out = checkpoint();
-
-      assert.ok(out.startsWith([
-        '=== DATA (reason from this — never display or parse the sections below) ===',
-        'implementation_files (1):',
-        '  api/src/handler.js',
-        'unexpected_files (2):',
-        '  api/src/routes.js',
-        '  fresh/notes.txt',
-        '',
-      ].join('\n')), out);
-      assert.match(out, /- api\/src\/routes\.js \(modified\)\n- fresh\/notes\.txt \(untracked\)\n/,
-        'a repo with no commits yet is read too — its folder in the parent never is');
-    });
-  });
-
-  it('executor-block-gate: a block renders the fork\'s sides recommended-first, a failure offers the retry', () => {
-    const sides = writePayload(dir, 'sides.json', {
-      options: ['Restore the order as paid, refund behind it', { summary: 'Keep the cancellation, return the payment', recommended: true }],
-    });
-    assert.strictEqual(renderSurface(dir, 'executor-block-gate', {
-      dotpath: 'pay.implementation.checkout', result: 'blocked', file: sides,
-    }), [
-      "=== MENU: executor block gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      DOTS,
-      '**`◆ Which way?`**',
-      '',
-      '**`1`**       → Keep the cancellation, return the payment (recommended)',
-      '**`2`**       → Restore the order as paid, refund behind it',
-      "**Comment** → Ask about the options, or tell me what I've missed",
-      '',
-    ].join('\n'));
-
-    assert.strictEqual(renderSurface(dir, 'executor-block-gate', {
-      dotpath: 'pay.implementation.checkout', result: 'failed',
-    }), [
-      "=== MENU: executor block gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      DOTS,
-      '**`◆ How would you like to proceed?`**',
-      '',
-      '**`r/retry`** → Run the executor again with the guidance above and',
-      `${NB(10)}anything you add`,
-      '**Comment** → Ask about the failure, or steer the next attempt',
-      '',
-    ].join('\n'));
-  });
-
-  it('executor-block-gate: the override line heads a block under auto or bounded, and the payload is validated', () => {
-    const sides = writePayload(dir, 'sides.json', { options: ['A side', 'Another side'] });
-    for (const mode of ['auto', 'bounded']) {
-      writeManifest(dir, 'pay', { phases: { implementation: { items: { checkout: { status: 'in-progress', task_gate_mode: mode } } } } });
-      const out = renderSurface(dir, 'executor-block-gate', { dotpath: 'pay.implementation.checkout', result: 'blocked', file: sides });
-      assert.ok(out.startsWith([
-        "=== MENU: executor block gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-        DOTS,
-        '**Auto is on — stopping anyway:** this is one of the calls auto never makes for you.',
-        '',
-        '**`◆ Which way?`**',
-      ].join('\n')), out);
-      assert.match(unwrap(out), /\*\*`1`\*\*\s+→ A side\n\*\*`2`\*\*\s+→ Another side/);
-    }
-    writeManifest(dir, 'pay', { phases: { implementation: { items: { checkout: { status: 'in-progress', task_gate_mode: 'gated' } } } } });
-    assert.ok(!renderSurface(dir, 'executor-block-gate', { dotpath: 'pay.implementation.checkout', result: 'blocked', file: sides }).includes('Auto is on'));
-
-    assert.throws(() => renderSurface(dir, 'executor-block-gate', { dotpath: 'pay.implementation.checkout', result: 'blocked' }),
-      /--file <sides\.json> is required with --result blocked/);
-    assert.throws(() => renderSurface(dir, 'executor-block-gate', { dotpath: 'pay.implementation.checkout', result: 'failed', file: sides }),
-      /--file belongs to --result blocked/);
-    const one = writePayload(dir, 'one.json', { options: ['Only one'] });
-    assert.throws(() => renderSurface(dir, 'executor-block-gate', { dotpath: 'pay.implementation.checkout', result: 'blocked', file: one }),
-      /"options" must be an array of 2–4 sides/);
-    const two = writePayload(dir, 'two.json', { options: [{ summary: 'A', recommended: true }, { summary: 'B', recommended: true }] });
-    assert.throws(() => renderSurface(dir, 'executor-block-gate', { dotpath: 'pay.implementation.checkout', result: 'blocked', file: two }),
-      /at most one option may be recommended/);
-    const bare = writePayload(dir, 'bare.json', { options: ['A', { recommended: true }] });
-    assert.throws(() => renderSurface(dir, 'executor-block-gate', { dotpath: 'pay.implementation.checkout', result: 'blocked', file: bare }),
-      /options\[1\] must be a non-empty string or an object carrying "summary"/);
-  });
-
-  it('executor-block-gate: refuses a missing or unknown result, and a non-implementation address', () => {
-    assert.throws(() => renderSurface(dir, 'executor-block-gate', { dotpath: 'pay.implementation.checkout' }),
-      /--result must be one of blocked, failed, got "undefined"/);
-    assert.throws(() => renderSurface(dir, 'executor-block-gate', { dotpath: 'pay.implementation.checkout', result: 'needs-changes' }),
-      /--result must be one of blocked, failed, got "needs-changes"/);
-    assert.throws(() => renderSurface(dir, 'executor-block-gate', { dotpath: 'pay.planning.checkout', result: 'failed' }),
-      /address must be <work_unit>\.implementation\.<topic>, got phase "planning"/);
-  });
-
   // The grapher worked over the plan's authored tasks — three in task_map,
   // beside the phase key, which is no task.
   const graphed = (/** @type {Record<string, any>} */ extra = {}) => writeManifest(dir, 'pay', { phases: { planning: { items: {
     checkout: { status: 'in-progress', task_map: { 'checkout-1': 'p1', 'checkout-1-1': 'a', 'checkout-1-2': 'b', 'checkout-1-3': 'c' }, ...extra },
   } } } });
-
-  it('dependency-approval-gate graph: the grapher\'s notes beneath the natural-order line, byte-stable', () => {
-    graphed();
-    const file = writePayload(dir, 'tg.json', { notes: 'Every task builds on the one before it.' });
-    assert.strictEqual(renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'graph', file }), [
-      '=== DISPLAY: task graph (emit verbatim as markdown (not a code block)) ===',
-      "I've analyzed all 3 tasks and the natural execution order is already correct — no explicit dependencies or priorities are needed.",
-      '',
-      'Every task builds on the one before it.',
-      '',
-      "=== MENU: dependency approval gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      DOTS,
-      '**`◆ Approve the dependency graph?`**',
-      '',
-      '**`y/yes`**                  → Proceed',
-      '**Tell me what to change** → which priorities or dependencies to',
-      `${NB(25)}adjust`,
-      '',
-    ].join('\n'));
-    const blank = writePayload(dir, 'blank.json', { notes: ' ' });
-    assert.throws(() => renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'graph', file: blank }),
-      /"notes" must be the grapher's notes, a non-empty string/);
-    assert.throws(() => renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'graph' }),
-      /--file <payload\.json> is required — the grapher's report/);
-  });
-
-  it('dependency-approval-gate updated-graph: the applied rows, counted, with notes only where given', () => {
-    graphed();
-    const file = writePayload(dir, 'tg.json', {
-      dependencies: ['checkout-1-2 depends on checkout-1-1 — the wrapper exists first', 'checkout-1-3 depends on checkout-1-2 — it drops the wait'],
-      priorities: ['checkout-1-1: 1 — everything waits on it'],
-      notes: 'No isolated tasks.',
-    });
-    assert.strictEqual(renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'updated-graph', file }).split('=== MENU')[0], [
-      '=== DISPLAY: task graph (emit verbatim as markdown (not a code block)) ===',
-      "I've analyzed and applied dependencies and priorities across all 3 tasks:",
-      '',
-      '**Dependencies** (2 relationships):',
-      '- checkout-1-2 depends on checkout-1-1 — the wrapper exists first',
-      '- checkout-1-3 depends on checkout-1-2 — it drops the wait',
-      '',
-      '**Priorities**:',
-      '- checkout-1-1: 1 — everything waits on it',
-      '',
-      'No isolated tasks.',
-      '',
-      '',
-    ].join('\n'));
-    const bare = writePayload(dir, 'bare.json', { dependencies: ['checkout-1-2 depends on checkout-1-1 — first'], priorities: [] });
-    const out = renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'updated-graph', file: bare });
-    assert.ok(out.includes('**Dependencies** (1 relationship):\n- checkout-1-2 depends on checkout-1-1 — first\n\n**Priorities**:\n\n=== MENU'), out);
-    assert.match(out, /`◆ Approve the updated graph\?`/);
-
-    const noRows = writePayload(dir, 'norows.json', { priorities: [] });
-    assert.throws(() => renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'updated-graph', file: noRows }),
-      /"dependencies" must be an array of the grapher's dependencies rows, each a non-empty string/);
-    const blankRow = writePayload(dir, 'blankrow.json', { dependencies: [], priorities: [''] });
-    assert.throws(() => renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'updated-graph', file: blankRow }),
-      /"priorities" must be an array/);
-    const blankNotes = writePayload(dir, 'blanknotes.json', { dependencies: [], priorities: [], notes: '' });
-    assert.throws(() => renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'updated-graph', file: blankNotes }),
-      /"notes" must be a non-empty string when present/);
-  });
-
-  it('dependency-approval-gate graph variants refuse a plan with no authored task', () => {
-    writeManifest(dir, 'pay', { phases: { planning: { items: { checkout: { status: 'in-progress' } } } } });
-    const file = writePayload(dir, 'tg.json', { notes: 'n' });
-    assert.throws(() => renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'graph', file }),
-      /"checkout" has no authored tasks in task_map/);
-  });
-
-  it('dependency-approval-gate resolution: the plan\'s dependencies and every resolution onto its tasks, read off the planning items', () => {
-    writeManifest(dir, 'pay', { phases: { planning: { items: {
-      checkout: { status: 'in-progress', external_dependencies: {
-        'data-model': { description: 'the shared row shape', state: 'unresolved' },
-        'auth-flow': { description: 'session tokens', state: 'resolved', internal_id: 'auth-flow-1-2' },
-        billing: { description: 'invoices', state: 'satisfied_externally' },
-      } },
-      'order-history': { status: 'in-progress', external_dependencies: { checkout: { description: 'the paid order', state: 'resolved', internal_id: 'checkout-2-1' } } },
-      refunds: { status: 'in-progress', external_dependencies: { checkout: { description: 'the capture', state: 'unresolved' } } },
-      'auth-flow': { status: 'completed' },
-    } } } });
-    assert.strictEqual(renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'resolution' }), [
-      '=== DISPLAY: external dependencies (emit verbatim as a text code block (```text fence)) ===',
-      'External Dependencies',
-      '',
-      '  Data Model (unresolved)',
-      '',
-      '  Auth Flow (resolved)',
-      '  └─ auth-flow-1-2',
-      '',
-      '  Billing (satisfied_externally)',
-      '',
-      'Reverse resolutions:',
-      '  Order History → Checkout:checkout-2-1',
-      '',
-      "=== MENU: dependency approval gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      DOTS,
-      '**`◆ Approve the dependency resolution?`**',
-      '',
-      '**`y/yes`**                  → Proceed',
-      '**Tell me what to change** → which resolutions to adjust or links to',
-      `${NB(25)}add`,
-      '',
-    ].join('\n'));
-  });
-
-  it('dependency-approval-gate resolution: no reverse heading without a reverse resolution; a broken row and --file refuse', () => {
-    const out = renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'resolution' });
-    assert.ok(out.includes('  Data Model (unresolved)\n\n  Auth Flow (resolved)\n  └─ auth-1-2\n\n=== MENU'), out);
-    assert.ok(!out.includes('Reverse resolutions'), out);
-    const file = writePayload(dir, 'tg.json', { notes: 'n' });
-    assert.throws(() => renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'resolution', file }),
-      /--file belongs to the graph variants/);
-    writeManifest(dir, 'pay', { phases: { planning: { items: { checkout: { status: 'in-progress', external_dependencies: { x: { state: 'resolved' } } } } } } });
-    assert.throws(() => renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'resolution' }),
-      /external dependency "x" is resolved but names no internal_id/);
-    writeManifest(dir, 'pay', { phases: { planning: { items: { checkout: { status: 'in-progress', external_dependencies: { y: { description: 'd' } } } } } } });
-    assert.throws(() => renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'resolution' }),
-      /external dependency "y" carries no state/);
-  });
-
-  it('dependency-approval-gate: refuses an unknown variant and a non-planning address', () => {
-    assert.throws(() => renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout' }),
-      /--variant must be one of graph, updated-graph, resolution, got "undefined"/);
-    assert.throws(() => renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.discussion.checkout', variant: 'graph' }),
-      /address must be <work_unit>\.planning\.<topic>/);
-  });
-
-  it('task-count-gate: the two id lists aligned in one column above the retry/adjust stop, byte-stable', () => {
-    const file = writePayload(dir, 'tc.json', {
-      table: ['checkout-1-1', 'checkout-1-2', 'checkout-1-3', 'checkout-1-4', 'checkout-1-5'],
-      detail: ['checkout-1-1'],
-    });
-    assert.strictEqual(renderSurface(dir, 'task-count-gate', { dotpath: 'pay.planning.checkout', file }), [
-      '=== DISPLAY: task count mismatch (emit verbatim as a text code block (```text fence)) ===',
-      'Task count mismatch persists after 2 authoring attempts.',
-      '',
-      'Planning file task table: 5 tasks — checkout-1-1, checkout-1-2,',
-      '                          checkout-1-3, checkout-1-4,',
-      '                          checkout-1-5',
-      'Task detail file:         1 task — checkout-1-1',
-      '',
-      "=== MENU: task count gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      DOTS,
-      "**`◆ How would you like to proceed?`**",
-      '',
-      '**`r/retry`** → Re-invoke the author agent once more',
-      '**Adjust**  → Tell me what to correct (the task table or the detail',
-      `${NB(10)}file), and I'll apply it and re-validate`,
-      '',
-    ].join('\n'));
-    const empty = writePayload(dir, 'empty.json', { table: ['checkout-1-1'], detail: [] });
-    assert.ok(renderSurface(dir, 'task-count-gate', { dotpath: 'pay.planning.checkout', file: empty }).includes('Task detail file:         0 tasks — none'));
-  });
-
-  it('task-count-gate: refuses a missing payload, a malformed list, an empty table, and a non-planning address', () => {
-    assert.throws(() => renderSurface(dir, 'task-count-gate', { dotpath: 'pay.planning.checkout' }), /--file <payload\.json> is required — the two lists of internal ids/);
-    const noDetail = writePayload(dir, 'nd.json', { table: ['a'] });
-    assert.throws(() => renderSurface(dir, 'task-count-gate', { dotpath: 'pay.planning.checkout', file: noDetail }), /"detail" must be an array of internal ids, each a non-empty string/);
-    const blankId = writePayload(dir, 'bi.json', { table: [' '], detail: [] });
-    assert.throws(() => renderSurface(dir, 'task-count-gate', { dotpath: 'pay.planning.checkout', file: blankId }), /"table" must be an array of internal ids/);
-    const noTable = writePayload(dir, 'nt.json', { table: [], detail: ['a'] });
-    assert.throws(() => renderSurface(dir, 'task-count-gate', { dotpath: 'pay.planning.checkout', file: noTable }), /"table" must name the planning file's tasks/);
-    const file = writePayload(dir, 'tc.json', { table: ['a'], detail: [] });
-    assert.throws(() => renderSurface(dir, 'task-count-gate', { dotpath: 'pay.implementation.checkout', file }),
-      /address must be <work_unit>\.planning\.<topic>/);
-  });
 
   it('plan-format-gate: names the project default, and refuses when none is set', () => {
     assert.throws(() => renderSurface(dir, 'plan-format-gate', {}),
@@ -2943,25 +2133,6 @@ describe('render — the adopted phase gates', () => {
     const labelless = writePayload(dir, 'labelless.json', { formats: [{ name: 'alpha' }] });
     assert.throws(() => renderSurface(dir, 'plan-format-gate', { variant: 'select', file: labelless }),
       /every format needs a non-empty "name" and "label"/);
-  });
-
-  it('plan-review-gate: the loop\'s two gates', () => {
-    const cont = renderSurface(dir, 'plan-review-gate', { dotpath: 'pay.planning.checkout', variant: 'continue' });
-    assert.match(cont, /MENU: plan review continue gate/);
-    assert.match(cont, /`◆ Continue with review\?`/);
-    assert.match(cont, /\*\*`y\/yes`\*\*\s+→ Continue review/);
-    assert.match(cont, /\*\*`s\/skip`\*\*\s+→ Skip review, proceed to completion/);
-
-    const reloop = renderSurface(dir, 'plan-review-gate', { dotpath: 'pay.planning.checkout', variant: 'reloop' });
-    assert.match(reloop, /MENU: plan review reloop gate/);
-    assert.match(reloop, /`◆ Run another review round\?`/);
-    assert.match(unwrap(reloop), /\*\*`y\/yes`\*\*\s+→ Run another round \(traceability \+ integrity\)/);
-    assert.match(reloop, /\*\*`p\/proceed`\*\*\s+→ Proceed to conclusion/);
-
-    assert.throws(() => renderSurface(dir, 'plan-review-gate', { dotpath: 'pay.planning.checkout' }),
-      /--variant must be "continue" or "reloop"/);
-    assert.throws(() => renderSurface(dir, 'plan-review-gate', { dotpath: 'pay.discussion.checkout', variant: 'continue' }),
-      /address must be <work_unit>\.planning\.<topic>/);
   });
 
 });

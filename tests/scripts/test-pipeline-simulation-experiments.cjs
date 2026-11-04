@@ -93,7 +93,6 @@ describe('pipeline simulation: experiments, in an epic', () => {
     assert.strictEqual(expEntries.some((k) => k.recommended), true, 'a live experiment leads the recommendations');
     assert.match(expEntries[0].route, new RegExp(`^/leeway-experiment-process epic ${wu} timing$`));
     assert.match(drawLabel(expEntries[0].label), /1 experiment queued/);
-    sim.render(['epic-soft-gate', wu, '--action', 'continue_experiment', '--topic', 'timing'], { expect: 'empty' });
 
     // Neither waiting conversation answers the question its experiment
     // measures while the evidence is out.

@@ -596,17 +596,6 @@ function commitsBySubject(cwd, grep, selects, exclude = []) {
 }
 
 /**
- * Every path under `cwd`, named from it, that a commit whose subject opens
- * `prefix` touched, across the whole history (`commitsBySubject`).
- * @param {string} cwd
- * @param {string} prefix
- * @returns {Set<string>}
- */
-function pathsTouchedBySubject(cwd, prefix) {
-  return new Set(commitsBySubject(cwd, prefix, (subject) => subject.startsWith(prefix)).flatMap((commit) => commit.paths));
-}
-
-/**
  * What a diff from a commit's parent starts at: the parent, or the empty
  * tree where the commit has none.
  * @param {string} cwd @param {string} sha
@@ -682,7 +671,7 @@ function diffWithUntracked(cwd, base, args, exclude) {
 }
 
 module.exports = {
-  READ_BUDGET_BYTES, git, tryGit, GitError, gitPath, commitPathspec, commitStaged, dirtyEntries, hasCommits, commitsBySubject, pathsTouchedBySubject,
+  READ_BUDGET_BYTES, git, tryGit, GitError, gitPath, commitPathspec, commitStaged, dirtyEntries, hasCommits, commitsBySubject,
   parentOrEmptyTree, emptyTree, diffPatch, diffWithUntracked, literally, excluding,
   stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, operationInProgress, addRefused, mergeInProgress, unmergedPast, commitMerge,
 };
