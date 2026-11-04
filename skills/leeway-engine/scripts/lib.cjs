@@ -117,7 +117,6 @@ module.exports = {
     epicReactivateMenu: epicProjections.epicReactivateMenu,
     epicPostponeMenu: epicProjections.epicPostponeMenu,
     epicPullForwardMenu: epicProjections.epicPullForwardMenu,
-    epicUnblockMenu: epicProjections.epicUnblockMenu,
     roadmapTitle: roadmapProjections.roadmapTitle,
     roadmapMapView: roadmapProjections.roadmapMapView,
     roadmapProposalView: roadmapProjections.roadmapProposalView,

@@ -41,9 +41,8 @@
 //   it writes `build: {position}` on the unit's manifest — the first pick of
 //   the position, its record the gate's answer (E14) — concluding the spec
 //   (P7), and commits the manifest with the record, if any, a failed commit
-//   retried in the unit's scope, which holds both. It answers an
-//   epic's menu as what comes next (E7); a feature or a bugfix carries on,
-//   the linear menu being no handoff's target.
+//   retried in the unit's scope, which holds both. Its `next` hands off
+//   into the build, whatever the unit's type (24.1.2).
 // - A switch of position is stated intent (3.3.7): `workunit position`
 //   writes the build's new position and logs a `position-switch` event in
 //   the trust log, and commits the manifest. It refuses a unit whose build
@@ -70,6 +69,7 @@ const { handedTag } = require('./topic-map.cjs');
 const { record } = require('./trust-log.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { refusing } = require('./staged-payload.cjs');
+const { phaseSkill } = require('./handoff.cjs');
 const { readyToBuildScreen } = require('./projections/ready-to-build.cjs');
 
 /** @typedef {import('./ledger-read.cjs').Shower} Shower */
@@ -188,13 +188,11 @@ function waitingLine({ number, conversation }) {
 }
 
 /**
- * Where the work goes once the build has begun, until the build's own entry
- * (E7): an epic's menu; a single-topic unit carries on in the conversation,
- * its menu being no handoff's target.
+ * Where the work goes once the build has begun: into the build (24.1.2).
  * @param {Record<string, any>} manifest @returns {import('./projections/surfaces.cjs').Next}
  */
 function nextAfterYes(manifest) {
-  return manifest.work_type === 'epic' ? { kind: 'handoff', skill: 'leeway-continue-epic', args: [manifest.name] } : { kind: 'continue' };
+  return { kind: 'handoff', skill: phaseSkill('implementation'), args: [manifest.work_type, manifest.name] };
 }
 
 /**

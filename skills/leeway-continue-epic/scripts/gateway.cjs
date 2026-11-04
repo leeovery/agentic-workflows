@@ -11,9 +11,8 @@
 //   gateway.cjs completed-menu {work_unit}     → Resume Completed sub-view (D)
 //   gateway.cjs cancel-menu {work_unit}        → Cancel Topic sub-view (E)
 //   gateway.cjs reactivate-menu {work_unit}    → Reactivate Topic sub-view (F)
-//   gateway.cjs unblock-menu {work_unit}       → Unblock Plan sub-view (G)
-//   gateway.cjs postpone-menu {work_unit}      → Postpone Topic sub-view (H)
-//   gateway.cjs pull-forward-menu {work_unit}  → Pull Forward Topic sub-view (I)
+//   gateway.cjs postpone-menu {work_unit}      → Postpone Topic sub-view (G)
+//   gateway.cjs pull-forward-menu {work_unit}  → Pull Forward Topic sub-view (H)
 //   gateway.cjs in-session-gate {work_unit} {key} → the in-session confirm over one held entry
 //
 // Those calls are the whole legal surface: the bare call, a verb without its
@@ -34,7 +33,6 @@ const GATES = Object.freeze({
   reactivate: 'reactivate pick',
   postpone: 'postpone pick',
   pullForward: 'pull forward pick',
-  unblock: 'unblock pick',
 });
 
 /** @typedef {import('../../leeway-engine/scripts/domain/epic-detail.cjs').EpicDetail} EpicDetail */
@@ -217,7 +215,7 @@ function inSessionGate(workUnit, key) {
 
 /** @typedef {(name: string, detail: object, opts: {presence: object[]}) => {keys: object[], title: string, display: string, rendered: string}} SubViewProjection */
 
-// One selection sub-view (sections D–G): the keys table as DATA, the view's
+// One selection sub-view (sections D–H): the keys table as DATA, the view's
 // heading as TITLE, the grouped list as DISPLAY, the pick menu as MENU,
 // stating the gate `gate`. The presence scan rides along as the view's does —
 // a held unit's row carries its in-session age, a cue and never a lock.
@@ -247,7 +245,7 @@ function subView(workUnit, gate, projection) {
   ].join('\n');
 }
 
-const USAGE = 'Usage: gateway.cjs {work_unit} | gateway.cjs view {work_unit} [new_arrivals_json] | gateway.cjs (completed-menu|cancel-menu|reactivate-menu|postpone-menu|pull-forward-menu|unblock-menu) {work_unit} | gateway.cjs in-session-gate {work_unit} {key}';
+const USAGE = 'Usage: gateway.cjs {work_unit} | gateway.cjs view {work_unit} [new_arrivals_json] | gateway.cjs (completed-menu|cancel-menu|reactivate-menu|postpone-menu|pull-forward-menu) {work_unit} | gateway.cjs in-session-gate {work_unit} {key}';
 
 /** Reject the call: the reason to stderr, exit 1. @param {string} message @returns {string} */
 function reject(message) {
@@ -279,7 +277,6 @@ if (require.main === module) {
     'reactivate-menu': subViewHandler('reactivate-menu', GATES.reactivate, (name, d, opts) => engine.project.epicReactivateMenu(d, opts)),
     'postpone-menu': subViewHandler('postpone-menu', GATES.postpone, (name, d, opts) => engine.project.epicPostponeMenu(d, opts)),
     'pull-forward-menu': subViewHandler('pull-forward-menu', GATES.pullForward, (name, d) => engine.project.epicPullForwardMenu(d)),
-    'unblock-menu': subViewHandler('unblock-menu', GATES.unblock, (name, d) => engine.project.epicUnblockMenu(d)),
     'in-session-gate': (workUnit, key, ...rest) => (!workUnit || !key || rest.length > 0
       ? usageError('in-session-gate takes a work unit and a menu key')
       : inSessionGate(workUnit, key)),

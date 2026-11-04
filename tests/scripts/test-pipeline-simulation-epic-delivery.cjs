@@ -3,8 +3,8 @@
 // ---------------------------------------------------------------------------
 // The pipeline simulation's epic delivery, on a unit whose building began
 // under the old spec, keeping its spec's item, which planning reads until
-// the build is rewired (29.14): the map's provenance recovery; a dependency
-// held and satisfied; review remediation through its plan phases; and the
+// 29.17 migrates it: the map's provenance recovery; a dependency's stops
+// and its satisfying; review remediation through its plan phases; and the
 // discovery-gap candidates.
 //
 // Layer: simulation. World: the project every scenario starts from
@@ -19,9 +19,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const ROOT = path.join(__dirname, '../..');
-const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
-const { Sim, sessionLog, arriveAtEpicMenu, epicPick, discussed, keptOldSpec } = require('./pipeline-world.cjs');
+const { Sim, sessionLog, discussed, keptOldSpec } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: epic delivery', () => {
   let sim;
@@ -57,17 +55,8 @@ describe('pipeline simulation: epic delivery', () => {
       { expect: 'content' }), /1 topic\(s\) have no source file to draft from:/);
     // Beta's building began under the old spec, whose item it keeps.
     keptOldSpec(sim, wu, 'beta');
-    // The soft gate is engine-rendered and empty when nothing sits ahead —
-    // beta is the whole live set, so planning it raises no message.
-    sim.render(['epic-soft-gate', wu, '--action', 'start_planning', '--topic', 'beta'], { expect: 'empty' });
-    epicPick(sim, wu, 'start_planning', 'beta');
-
-    // A dep-blocked plan loses its implementation row; the u/unblock option
-    // and the unblock-menu sub-view are the escape hatch, and marking the
-    // dependency satisfied externally restores the row.
     sim.run(['topic', 'start', wu, 'planning', 'beta']);
     sim.run(['topic', 'complete', wu, 'planning', 'beta']);
-    arriveAtEpicMenu(sim, wu, 'planning');
     sim.run(['manifest', 'set', `${wu}.planning.beta`,
       'external_dependencies.alpha.description=Needs alpha shipped',
       'external_dependencies.alpha.state=unresolved']);
@@ -81,23 +70,10 @@ describe('pipeline simulation: epic delivery', () => {
     assert.match(sim.render(['external-dependency-gate', `${wu}.planning.beta`, '--variant', 'exit',
       '--blocking', 'alpha'], { expect: 'content' }), /⚑ "Beta" is blocked until these dependencies are resolved/);
     sim.render(['dependency-approval-gate', `${wu}.planning.beta`, '--variant', 'resolution'], { expect: 'content' });
-    const epicDetailNow = () => EPIC_GATEWAY.discover(sim.dir, wu);
-    const menuNow = () => require(path.join(ROOT, 'skills/leeway-engine/scripts/lib.cjs')).project.epicMenu(wu, epicDetailNow());
-    let keys = menuNow().keys;
-    assert.ok(!keys.some((k) => k.action === 'start_implementation' && k.topic === 'beta'),
-      'a dep-blocked implementation start carries no menu row');
-    assert.ok(keys.some((k) => k.action === 'unblock_plan'), 'the unblock option surfaces');
-    const unblockView = require(path.join(ROOT, 'skills/leeway-engine/scripts/lib.cjs')).project.epicUnblockMenu(epicDetailNow());
-    assert.deepStrictEqual(unblockView.keys.map((k) => [k.key, k.action, k.topic, k.dep ?? null])[0],
-      ['1', 'unblock', 'beta', 'alpha']);
-    // mark-dependency-satisfied.md, which the unblock and implementation's
-    // dependency check both load: the record, then the confined sweep commit.
+    // mark-dependency-satisfied.md, which implementation's dependency check
+    // loads: the record, then the confined sweep commit.
     sim.run(['manifest', 'set', `${wu}.planning.beta`, 'external_dependencies.alpha.state', 'satisfied_externally']);
     sim.run(['commit', wu, '--topic', 'planning/beta', '--sweep', '-m', `impl(${wu}): mark alpha dependency as satisfied externally`]);
-    keys = menuNow().keys;
-    assert.ok(keys.some((k) => k.action === 'start_implementation' && k.topic === 'beta'),
-      'a satisfied dependency restores the implementation row');
-    assert.ok(!keys.some((k) => k.action === 'unblock_plan'), 'the unblock option withdraws');
 
     // Review's staging walks the manifest with validated vocabularies.
     sim.run(['manifest', 'set', `${wu}.review.beta`, 'staging.c1.gate_mode=gated', 'staging.c1.tasks.1=pending', 'staging.c1.tasks.2=pending']);

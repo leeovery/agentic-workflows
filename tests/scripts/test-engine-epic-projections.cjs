@@ -8,10 +8,12 @@ const path = require('path');
 const fs = require('fs');
 const { execFileSync } = require('child_process');
 
-const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
+const { setupFixture, cleanupFixture, createManifest, readManifest } = require('./discovery-test-utils.cjs');
+const { ok } = require('./engine-harness.cjs');
+const { epicDetail } = require('../../skills/leeway-engine/scripts/domain/epic-detail.cjs');
 const { discover } = require('../../skills/leeway-continue-epic/scripts/gateway.cjs');
 const {
-  epicDashboard, epicKey, epicMenu, epicInSessionGate, epicCompletedMenu, epicCancelMenu, epicReactivateMenu, epicPostponeMenu, epicPullForwardMenu, epicUnblockMenu,
+  epicDashboard, epicKey, epicMenu, epicInSessionGate, epicCompletedMenu, epicCancelMenu, epicReactivateMenu, epicPostponeMenu, epicPullForwardMenu,
 } = require('../../skills/leeway-engine/scripts/domain/projections/epic.cjs');
 const { TREE_WIDTH } = require('../../skills/leeway-engine/scripts/domain/conventions.cjs');
 const { drawLabel } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
@@ -32,6 +34,11 @@ const NB = (n) => '\u00a0'.repeat(n);
 // mailbox of every topic with an `unstarted` item, and takes it back when a
 // later manifest in the same test drops the stub.
 const STUB_MESSAGE = '000-parked.md';
+
+/** A cut of two phases, the second relying on the first. */
+const TWO_PHASES = Object.freeze({
+  phases: [{ name: 'Cards', scenarios: [], sections: ['1'], relies_on: [] }, { name: 'Refunds', scenarios: [], sections: ['2'], relies_on: [1] }],
+});
 
 /** A topic's mailbox. @param {string} dir @param {string} name @param {string} topic */
 const mailboxOf = (dir, name, topic) => path.join(dir, '.leeway', name, 'topics', topic, 'mail');
@@ -262,7 +269,7 @@ describe('epic projections: dashboard (map branch)', () => {
     );
   });
 
-  it('a flagged completed item carries the input-moved cue on the dashboard, key, and menu', () => {
+  it('a flagged completed item carries the input-moved cue on the dashboard and key', () => {
     const d = detailFor(dir, 'v1', {
       work_type: 'epic',
       phases: {
@@ -281,13 +288,6 @@ describe('epic projections: dashboard (map branch)', () => {
     assert.match(out, /Menu Admin\s+\[completed · input moved\]/, out);
     const key = epicKey(d);
     assert.ok(key.includes('input moved             — an upstream artifact was revised'), key);
-    const { keys } = epicMenu('v1', d);
-    const start = keys.find((k) => k.action === 'start_implementation');
-    assert.ok(start, 'start_implementation entry present');
-    assert.strictEqual(drawLabel(start.label), 'Start implementation of "Menu Admin" — *plan completed* · input moved');
-    const cont = keys.find((k) => k.action === 'continue_planning');
-    assert.ok(cont, 'continue_planning entry present');
-    assert.strictEqual(drawLabel(cont.label), 'Continue "Other Topic" — *planning [in-progress]* · input moved');
   });
 
   it('the completed-topics picker carries the input-moved cue on flagged rows', () => {
@@ -323,25 +323,6 @@ describe('epic projections: dashboard (map branch)', () => {
     const cOption = keys.find((k) => k.action === 'resume_completed');
     assert.ok(cOption, 'completed option present');
     assert.strictEqual(cOption.recommended, true, 'the reconcile route leads');
-  });
-
-  it('an input-moved start entry is never the recommendation', () => {
-    const world = (phases) => detailFor(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        discovery: { items: { fees: { source: 'discovery', order: 1 } } },
-        discussion: { items: { fees: { status: 'completed' } } },
-        ...phases,
-      },
-    });
-    const flaggedPlan = world({
-      specification: { items: { fees: { status: 'completed', sources: { fees: { status: 'incorporated' } } } } },
-      planning: { items: { fees: { status: 'completed', reconcile_needed: 'specification' } } },
-    });
-    const start = epicMenu('v1', flaggedPlan).keys.find((k) => k.action === 'start_implementation');
-    assert.ok(start, 'start_implementation entry present');
-    assert.strictEqual(start.input_moved, true);
-    assert.notStrictEqual(start.recommended, true, 'flagged-source start never recommended');
   });
 
   it('an unstarted stub renders fresh with the mail waiting cue and counts as fresh', () => {
@@ -471,7 +452,7 @@ describe('epic projections: key', () => {
       },
     });
     assert.strictEqual(epicKey(d), 'Key:\n' + STATUS
-      + '\n\n  Cue:\n    blocked (planning)      — implementation waits on another plan;\n                              the \u2691 list names the dependency,\n                              u/unblock is the override'
+      + '\n\n  Cue:\n    blocked (planning)      — implementation waits on another plan;\n                              the \u2691 list names the dependency'
       + '\n\n' + BLOCKING);
   });
 
@@ -494,101 +475,32 @@ describe('epic projections: menu', () => {
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  // Hand-built detail: a settled map on a unit whose building began under the
-  // old spec, its items kept, so it draws no spec row, plus a next_phase_ready
-  // set that includes a gated-out start_planning and a blocked
-  // start_implementation. Mirrors the discovery detail shape exactly; built
-  // by hand because a real manifest can't hold a start_planning entry while
-  // its gate is closed.
-  function settledDetail() {
-    return {
-      phases: {
-        specification: [
-          { name: 'billing', status: 'completed' },
-          { name: 'reporting', status: 'completed' },
-          { name: 'user-profiles', status: 'completed' },
-        ],
-        planning: [
-          { name: 'reporting', status: 'completed', deps_satisfied: false, deps_blocking: [{ topic: 'core-features', internal_id: 'core-2-3', reason: 'task not yet completed' }] },
-        ],
-        implementation: [{ name: 'billing', status: 'completed' }],
-      },
-      in_progress: [],
-      completed: [{ name: 'reporting', phase: 'planning' }, { name: 'billing', phase: 'implementation' }],
-      cancellable: [{ name: 'menu-admin', stage: 'discovery', state: 'decided' }],
-      postponable: [{ name: 'menu-admin', stage: 'discovery', state: 'decided' }],
-      postponed: [],
-      cancelled: [],
-      spec_row: null,
-      map_closed: false,
-      next_phase_ready: [
-        { name: 'billing', action: 'start_review', label: 'implementation completed' },
-        { name: 'user-profiles', action: 'start_planning', label: 'spec completed' },
-        {
-          name: 'reporting', action: 'start_implementation', label: 'plan completed',
-          blocked: true, deps_blocking: [{ topic: 'core-features', internal_id: 'core-2-3', reason: 'task not yet completed' }],
-        },
-      ],
-      discovery_map: [
-        { name: 'menu-admin', summary_present: true, summary: 'x', description_present: true, source: 'discovery', source_provenance: null, order: 1, lifecycle: 'decided', tier: '✓', current_phase: 'discussion', next_action: null },
-      ],
-      convergence_state: 'settled',
-      needs_sequencing: false,
-      map_summary: { total: 1, decided: 1, in_flight: 0, fresh: 0, cancelled: 0, postponed: 0 },
-      imports_count: 0,
-      seeds_count: 0,
-      analysis_caches: {
-        gap_analysis: { status: 'absent', generated: null, files: [] },
-      },
-      gating: {
-        can_start_planning: false, // gates the user-profiles start_planning out
-        can_start_implementation: true,
-        can_start_review: true,
-      },
-    };
-  }
+  // A settled map on a unit whose building began under the old spec, its
+  // spec, planning and implementation items kept — a plan blocked on
+  // another, an implementation done — so it draws no spec row.
+  const OLD_ITEMS = {
+    discovery: { items: { 'menu-admin': { source: 'discovery', order: 1, summary: 'x', description: 'x' } } },
+    discussion: { items: { 'menu-admin': { status: 'completed' } } },
+    specification: { items: { billing: { status: 'completed' }, reporting: { status: 'completed' }, 'user-profiles': { status: 'completed' } } },
+    planning: { items: { reporting: { status: 'completed', external_dependencies: { 'core-features': { description: 'd', state: 'unresolved' } } } } },
+    implementation: { items: { billing: { status: 'completed' } } },
+  };
 
-  it('orders the recommendation first, filters gated starts, and carries no row for a blocked start', () => {
-    const menu = epicMenu('quiz-competition-v1', settledDetail());
+  it('a unit in the old shape says it waits on the migration\'s cut in place of its plan rows, and offers no way into its build (P12, 18.4.11, 12.6.1)', () => {
+    const menu = epicMenu('quiz-competition-v1', detailFor(dir, 'quiz-competition-v1', { work_type: 'epic', phases: OLD_ITEMS }));
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
+      'quiz-competition-v1 was built under the old plan, and its build is entered once the reshape\'s 29.17 migration has cut it',
+      '',
       '**`◆ What would you like to do?`**',
       '',
-      '**`1`**           → Start review for "Billing" — *implementation*',
-      `${NB(14)}*completed* (recommended)`,
       '**`d/discuss`**   → Start a discussion on a new topic',
       '**`i/discovery`** → Continue discovery',
       '**`c/completed`** → Resume a completed topic',
       '**`a/cancel`**    → Cancel a topic',
       '**`p/postpone`**  → Postpone a topic to the roadmap',
-      '**`u/unblock`**   → Unblock a plan — mark a dependency as satisfied',
-      `${NB(14)}externally`,
-      '**`o/order`**     → Re-sequence the build order',
       '**`b/back`**      → Return to the start menu',
     ].join('\n'));
-  });
-
-  it('keys carry actions, topics, and routes; a blocked start never surfaces', () => {
-    const { keys } = epicMenu('quiz-competition-v1', settledDetail());
-    assert.deepStrictEqual(
-      keys.map((k) => [k.key, k.action, k.topic, k.route]),
-      [
-        ['1', 'start_review', 'billing', '/leeway-review-process epic quiz-competition-v1 billing'],
-        ['d', 'new_topic', null, '/leeway-discovery none quiz-competition-v1'],
-        ['i', 'continue_discovery', null, '/leeway-discovery epic quiz-competition-v1'],
-        ['c', 'resume_completed', null, null],
-        ['a', 'cancel_topic', null, null],
-        ['p', 'postpone_topic', null, null],
-        ['u', 'unblock_plan', null, null],
-        ['o', 'resequence_build_order', null, null],
-        ['b', 'back', null, null],
-      ]
-    );
-    assert.strictEqual(keys[0].recommended, true);
-    // A dep-blocked implementation start carries no menu row — the ⚑ block
-    // and the u/unblock option carry the state instead.
-    assert.ok(!keys.some((k) => k.action === 'start_implementation'), 'blocked start never surfaces');
-    assert.ok(!keys.some((k) => k.action === 'start_planning'), 'gated start_planning never surfaces');
   });
 
   it('in-progress map recommends the top discovery row; ✓/⊘ rows get no entry', () => {
@@ -653,35 +565,6 @@ describe('epic projections: menu', () => {
       ['1', 'continue_discussion', 'inflight'],
       ['2', 'start_discussion', 'fresh'],
     ]);
-  });
-
-  it('implementation continue label names the task in flight, not the completed count', () => {
-    const d = detailFor(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        discussion: { items: { roles: { status: 'completed' } } },
-        specification: { items: { roles: { status: 'completed', sources: { roles: { status: 'incorporated' } } } } },
-        planning: { items: { roles: { status: 'completed' } } },
-        implementation: { items: { roles: { status: 'in-progress', current_phase: 2, current_task: 'r-2-2', completed_tasks: ['r-1-1', 'r-1-2', 'r-2-1'] } } },
-      },
-    });
-    const { rendered } = epicMenu('v1', d);
-    assert.ok(rendered.includes(`→ Continue "Roles" — *implementation (Phase 2, Task*\n${NB(14)}*r-2-2)*`), rendered);
-    assert.ok(!rendered.includes('Task 3'), 'completed count must not masquerade as a task position');
-  });
-
-  it('implementation continue label falls back to the completed count when no task is in flight', () => {
-    const d = detailFor(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        discussion: { items: { roles: { status: 'completed' } } },
-        specification: { items: { roles: { status: 'completed', sources: { roles: { status: 'incorporated' } } } } },
-        planning: { items: { roles: { status: 'completed' } } },
-        implementation: { items: { roles: { status: 'in-progress', current_phase: 2, current_task: null, completed_tasks: ['r-1-1', 'r-1-2', 'r-2-1'] } } },
-      },
-    });
-    const { rendered } = epicMenu('v1', d);
-    assert.ok(rendered.includes(`→ Continue "Roles" — *implementation (Phase 2, 3*\n${NB(14)}*task(s) completed)*`), rendered);
   });
 
   it('an unstarted stub is offered as Start with the mail waiting suffix — never Continue', () => {
@@ -773,7 +656,7 @@ describe('epic projections: the spec row (18.4.6)', () => {
   });
 
   it('is gone once the build has begun', () => {
-    assert.deepStrictEqual(specRow(settled({}, { build: { position: 'auto' } })), []);
+    assert.deepStrictEqual(specRow(settled({}, { build: { position: 'auto' }, cut: TWO_PHASES })), []);
   });
 
   it('leaves the closed map\'s rows off the menu once spec.md is written — no discovery, new topic, cancel, postpone, reactivate or pull forward — the spec and completed rows standing (18.4.19)', () => {
@@ -787,6 +670,43 @@ describe('epic projections: the spec row (18.4.6)', () => {
     fs.writeFileSync(path.join(dir, '.leeway', 'v1', 'spec.md'), '# V1\n');
 
     assert.deepStrictEqual([before, keys()], [['s', 'd', 'i', 'c', 'a', 'p', 'e', 'f', 'b'], ['s', 'c', 'b']]);
+  });
+});
+
+describe('epic projections: the build\'s row (18.4.6, 12.15.3)', () => {
+  let dir;
+  beforeEach(() => { dir = setupFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  const CLOSED = Object.freeze({ items: {}, closed: '2026-11-01T00:00:00.000Z' });
+
+  /** An epic built by its cut, decided whole, `more` laid over it. @param {Record<string, any>} [more] */
+  const built = (more = {}) => ({
+    work_type: 'epic', build: { position: 'auto' }, cut: TWO_PHASES,
+    phases: { discovery: { items: { cards: { source: 'discovery', order: 1 } } }, discussion: { items: { cards: { status: 'completed' } } } },
+    ...more,
+  });
+
+  /** The menu's numbered rows, as key, action, topic, route, label and recommendation. @param {any} detail */
+  const rows = (detail) => epicMenu('v1', detail).keys.filter((k) => /^\d+$/.test(k.key))
+    .map((k) => [k.key, k.action, k.topic, k.route, drawLabel(k.label), k.recommended === true]);
+
+  it('offers the build at the phase it is in, of its cut\'s, entered at the unit and recommended, in place of the plan rows', () => {
+    assert.deepStrictEqual(rows(detailFor(dir, 'v1', built())), [['1', 'enter_implementation', 'v1', '/leeway-implementation-process epic v1', 'Build — *phase 1 of 2*', true]]);
+  });
+
+  it('names the first phase of the cut not closed, as the build reads where it stands', () => {
+    createManifest(dir, 'v1', built());
+    ok(dir, ['task', 'phase', 'v1', '1', '--title', 'Cards']);
+    const d = detailFor(dir, 'v1', built({ checklists: { 'phase-1-close': CLOSED } }));
+    assert.deepStrictEqual(rows(d).map((row) => row[4]), ['Build — *phase 2 of 2*']);
+  });
+
+  it('offers the review phase once every phase of the cut has closed, and nothing once finish has completed the unit (24.1.6, 14.5)', () => {
+    const through = built({ checklists: { 'phase-1-close': CLOSED, 'phase-2-close': CLOSED } });
+    assert.deepStrictEqual(rows(detailFor(dir, 'v1', through)), [['1', 'enter_review', 'v1', '/leeway-review-process epic v1', 'Review', true]]);
+    createManifest(dir, 'v1', { ...through, status: 'completed' });
+    assert.strictEqual(epicDetail(dir, readManifest(dir, 'v1')).build, null);
   });
 });
 
@@ -863,15 +783,13 @@ describe('epic projections: presence join', () => {
     ].join('\n'));
   });
 
-  // A plan ready to implement — the state a code entry needs on the menu.
+  // A build begun — the state a code entry needs on the menu.
   function readyToImplementDetail() {
     return detailFor(dir, 'v1', {
-      work_type: 'epic',
+      work_type: 'epic', build: { position: 'auto' }, cut: TWO_PHASES,
       phases: {
         discovery: { items: { 'topic-a': { source: 'discovery', order: 1 } } },
         discussion: { items: { 'topic-a': { status: 'completed' } } },
-        specification: { items: { 'topic-a': { status: 'completed', order: 1, sources: { 'topic-a': { status: 'incorporated' } } } } },
-        planning: { items: { 'topic-a': { status: 'completed', format: 'local-markdown' } } },
       },
     });
   }
@@ -882,52 +800,45 @@ describe('epic projections: presence join', () => {
     // checkout.
     const codeRow = { work_unit: 'ship', phase: 'implementation', topic: 'checkout-flow', age_seconds: 300, held: true, session_id: 'peer' };
     const { keys, rendered } = epicMenu('v1', d, { presence: [], codeHeld: [codeRow] });
-    const code = keys.find((k) => k.action === 'start_implementation');
-    assert.ok(code, 'the implementation entry is on the menu');
+    const code = keys.find((k) => k.action === 'enter_implementation');
+    assert.ok(code, 'the build\'s entry is on the menu');
     assert.strictEqual(code.in_session, true, 'the code entry is marked though the holder is elsewhere');
     assert.deepStrictEqual(code.session_holder, { work_unit: 'ship', phase: 'implementation', topic: 'checkout-flow' });
     assert.match(rendered.replace(/\n\u00a0+/g, ' '), /~~[^~]*~~ · code session in ship\/checkout-flow \(last active 5m ago\)/,
       `the struck row names the holder:\n${rendered}`);
     assert.ok(!code.recommended, 'a struck row is never the recommendation');
     assert.strictEqual(code.code_session, true, 'the marker says the slot, so this menu never gates it');
-    assert.ok(!keys.some((k) => k.action !== 'start_implementation' && k.in_session),
+    assert.ok(!keys.some((k) => k.action !== 'enter_implementation' && k.in_session),
       'doc entries are untouched by the code slot');
   });
 
-  it('a code entry is marked by its own held topic too, and still carries the slot marker', () => {
+  it('a code entry is marked by its own unit\'s build held too, and still carries the slot marker', () => {
     const d = readyToImplementDetail();
-    const ownRow = { phase: 'implementation', topic: 'topic-a', age_seconds: 30, held: true, session_id: 'peer' };
+    const ownRow = { phase: 'implementation', topic: 'v1', age_seconds: 30, held: true, session_id: 'peer' };
     const { keys, rendered } = epicMenu('v1', d, { presence: [ownRow], codeHeld: [] });
-    const code = keys.find((k) => k.action === 'start_implementation');
+    const code = keys.find((k) => k.action === 'enter_implementation');
     assert.strictEqual(code.in_session, true);
     assert.strictEqual(code.code_session, true, 'own-topic or elsewhere, a code hold is the one slot');
     // The word names what holds the row, and it is the slot either way. Only
-    // the holder's address is conditional — a hold on this very topic needs
-    // none.
+    // the holder's address is conditional — a hold on this very unit's build
+    // needs none.
     assert.match(rendered.replace(/\n +/g, ' '), /~~[^~]*~~ · code session \(last active 30s ago\)/,
       `the struck row says code session without an address:\n${rendered}`);
   });
 
   it('a no-map epic never recommends a row the code slot has struck through', () => {
-    // The map branch has skipped held rows since the gate family landed; the
-    // no-map branch picks by phase-completion state and had no such guard, so
-    // it recommended the very entry it drew struck.
     const d = detailFor(dir, 'v2', {
-      work_type: 'epic',
-      phases: {
-        discussion: { items: { 'topic-a': { status: 'completed' } } },
-        specification: { items: { 'topic-a': { status: 'completed', sources: { 'topic-a': { status: 'incorporated' } } } } },
-        planning: { items: { 'topic-a': { status: 'completed', format: 'local-markdown' } } },
-      },
+      work_type: 'epic', build: { position: 'auto' }, cut: TWO_PHASES,
+      phases: { discussion: { items: { 'topic-a': { status: 'completed' } } } },
     });
     const codeRow = { work_unit: 'ship', phase: 'implementation', topic: 'checkout-flow', age_seconds: 300, held: true, session_id: 'peer' };
 
     const free = epicMenu('v2', d, { presence: [], codeHeld: [] });
-    assert.strictEqual(free.keys.find((k) => k.action === 'start_implementation').recommended, true,
+    assert.strictEqual(free.keys.find((k) => k.action === 'enter_implementation').recommended, true,
       'with the slot free it is the obvious next move');
 
     const { keys } = epicMenu('v2', d, { presence: [], codeHeld: [codeRow] });
-    const code = keys.find((k) => k.action === 'start_implementation');
+    const code = keys.find((k) => k.action === 'enter_implementation');
     assert.strictEqual(code.in_session, true, 'the slot is held elsewhere');
     assert.ok(!code.recommended, 'so the menu does not point at it');
   });
@@ -1342,44 +1253,6 @@ describe('epic projections: selection sub-views', () => {
     assert.ok(/\*\*`2`\*\* +→ Cancel "Parked Topic" — \*fresh · mail waiting\*/.test(view.rendered), view.rendered);
   });
 
-  it('unblock-menu: one row per blocking dependency, dep carried on the key', () => {
-    const d = detailFor(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        planning: {
-          items: {
-            reporting: {
-              status: 'completed',
-              external_dependencies: {
-                'core-features': { description: 'd', state: 'resolved', internal_id: 'core-2-3' },
-                'auth': { description: 'd', state: 'unresolved' },
-              },
-            },
-            clean: { status: 'completed' },
-          },
-        },
-      },
-    });
-    const view = epicUnblockMenu(d);
-    assert.strictEqual(view.title, 'Blocked Plans');
-    assert.strictEqual(view.display, [
-      'Planning',
-      '  ├─ 1. Reporting — blocked by core-features:core-2-3 (task',
-      '        not yet completed)',
-      '  └─ 2. Reporting — blocked by auth (dependency unresolved)',
-      '',
-    ].join('\n'));
-    assert.deepStrictEqual(
-      view.keys.map((k) => [k.key, k.action, k.topic, k.dep ?? null]),
-      [
-        ['1', 'unblock', 'reporting', 'core-features'],
-        ['2', 'unblock', 'reporting', 'auth'],
-        ['b', 'back', null, null],
-      ]
-    );
-    assert.ok(/Which dependency has been satisfied\?/.test(view.rendered), view.rendered);
-  });
-
   it('a dep-blocked planning row carries the blocked cue; a clean one does not; a cancelled one never does', () => {
     const d = detailFor(dir, 'v1', {
       work_type: 'epic',
@@ -1398,55 +1271,8 @@ describe('epic projections: selection sub-views', () => {
     assert.match(out, /Blocked    \[completed · blocked\]/);
     assert.match(out, /Clean      \[completed\]/);
     assert.match(out, /Dead       \[cancelled\]/);
-    // The terminal item carries no deps at all — no ⚑ row, no unblock offer.
+    // The terminal item carries no deps at all — no ⚑ row.
     assert.ok(!out.includes('Dead\n  └─ Blocked'), out);
-    const menu = epicMenu('v1', d);
-    const unblock = menu.keys.find((k) => k.action === 'unblock_plan');
-    assert.ok(unblock, 'unblock option present for the live blocked plan');
-    const { epicUnblockMenu: unblockMenu } = require('../../skills/leeway-engine/scripts/domain/projections/epic.cjs');
-    const rows = unblockMenu(d).keys.filter((k) => k.action === 'unblock');
-    assert.deepStrictEqual(rows.map((r) => r.topic), ['blocked'], 'the cancelled plan takes no row');
-  });
-
-  it('two different blocked plans list in build order', () => {
-    const d = detailFor(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        specification: { items: {
-          zeta: { status: 'completed', order: 1 }, alpha: { status: 'completed', order: 2 },
-        } },
-        planning: {
-          items: {
-            alpha: { status: 'completed', external_dependencies: { up: { description: 'd', state: 'unresolved' } } },
-            zeta: { status: 'completed', external_dependencies: { up: { description: 'd', state: 'unresolved' } } },
-          },
-        },
-      },
-    });
-    const { epicUnblockMenu: unblockMenu } = require('../../skills/leeway-engine/scripts/domain/projections/epic.cjs');
-    const rows = unblockMenu(d).keys.filter((k) => k.action === 'unblock');
-    assert.deepStrictEqual(rows.map((r) => r.topic), ['zeta', 'alpha']);
-  });
-
-  it('o/order withdraws when no live spec topic exists', () => {
-    const d = detailFor(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        specification: { items: { gone: { status: 'cancelled', previous_status: 'in-progress' } } },
-        discussion: { items: { auth: { status: 'in-progress' } } },
-      },
-    });
-    const { keys } = epicMenu('v1', d);
-    assert.ok(!keys.some((k) => k.action === 'resequence_build_order'), 'no live spec — no re-sequence');
-  });
-
-  it('unblock-menu: empty state when no plan is blocked', () => {
-    const d = detailFor(dir, 'v1', {
-      work_type: 'epic',
-      phases: { planning: { items: { clean: { status: 'completed' } } } },
-    });
-    const view = epicUnblockMenu(d);
-    assert.strictEqual(view.display, 'No blocked plans.\n');
   });
 
   it('reactivate-menu: a topic cancelled per phase names the item that returns', () => {

@@ -89,7 +89,7 @@ describe('pipeline simulation: feature', () => {
     sim.render(['next-phase-gate', wu, '--prev', 'discussion', '--next', 'specification'], { expect: 'empty' });
     // The spec, entered at the unit, lands citing what was decided, is
     // reviewed and cut into phases; ready to build's pick begins the build.
-    assert.deepStrictEqual(specToBuild(sim, wu, [wu]).next, { kind: 'continue' });
+    specToBuild(sim, wu, [wu]);
 
     walkDeliveryPhases(sim, wu, wu);
 

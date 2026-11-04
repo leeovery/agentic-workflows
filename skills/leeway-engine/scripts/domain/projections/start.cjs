@@ -602,8 +602,8 @@ function manageListView(detail) {
 
 /**
  * One work unit's manage snapshot: the action menu offering exactly the
- * actions its state allows. The absorb-target and view-plan topic gates are
- * served by their own render surfaces, fetched at each gate.
+ * actions its state allows. The absorb-target gate is served by its own
+ * render surface, fetched at the gate.
  * @param {ManageDetail} md
  * @returns {{data: string, menu: string}}
  */
@@ -613,7 +613,7 @@ function manageUnitView(md) {
   if (md.implementation_completed) keys.push({ key: 'd', word: 'done', action: 'mark_completed', label: 'Mark as completed' });
   if (md.work_type === 'feature') keys.push({ key: 'p', word: 'pivot', action: 'pivot', label: 'Convert to epic (enables multiple topics)' });
   if (md.absorb_available) keys.push({ key: 'a', word: 'absorb', action: 'absorb', label: 'Merge into an existing epic' });
-  if (md.has_plan) keys.push({ key: 'v', word: 'view-plan', action: 'view_plan', label: 'View the implementation plan' });
+  if (md.has_build) keys.push({ key: 'v', word: 'view-build', action: 'view_build', label: 'View the build\'s phases and tasks' });
   keys.push(
     { key: 'c', word: 'cancel', action: 'cancel', label: 'Mark as cancelled' },
     { key: 'b', word: 'back', action: 'back', label: 'Return' },
@@ -628,12 +628,11 @@ function manageUnitView(md) {
     `work_type: ${md.work_type}`,
     `status: ${md.status}`,
     `implementation_completed: ${md.implementation_completed}`,
-    `has_plan: ${md.has_plan}`,
+    `has_build: ${md.has_build}`,
     `has_spec: ${md.has_spec}`,
     `has_discussion: ${md.has_discussion}`,
     `absorb_available: ${md.absorb_available}`,
     `available_epics: ${md.available_epics.join(', ') || '(none)'}`,
-    `planning_topics: ${md.planning_topics.map((t) => `${t.name} [${t.status}]`).join(', ') || '(none)'}`,
     ...actionsTable(['action'], keys, (k) => [k.action]),
   ].join('\n');
 

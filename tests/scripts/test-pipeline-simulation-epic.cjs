@@ -210,11 +210,9 @@ describe('pipeline simulation: epic', () => {
     sim.run(['manifest', 'push', `${wu}.implementation.alpha`, 'consolidated_phases', '1']);
     sim.run(['task', 'complete', wu, 'alpha', 'alpha-1-1', '--phase', '1', '--phase-complete']);
     sim.run(['topic', 'complete', wu, 'implementation', 'alpha']);
-    // Short of the last review the menu shows the banner and no offer, and
-    // its review row hands off to the review.
+    // Short of the last review the menu shows the banner and no offer.
     assert.match(arriveAtEpicMenu(sim, wu, 'implementation'), /Implementation completed for "Wrapup"\./);
     assert.match(EPIC_GATEWAY.formatScoped(wu, EPIC_GATEWAY.discover(sim.dir, wu)), /^all_done: false$/m);
-    assert.strictEqual(epicPick(sim, wu, 'start_review', 'alpha').line, '→ Review · alpha');
     sim.run(['topic', 'start', wu, 'review', 'alpha']);
     sim.run(['topic', 'complete', wu, 'review', 'alpha']);
 

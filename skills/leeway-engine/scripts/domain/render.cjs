@@ -62,7 +62,7 @@ const {
   phaseItems, computeNextPhase, computeTopicLifecycle, awaitedExperiments, waits, itemOf,
   UNIT_PHASES, liveUnitItems, discoveryUnitExists, cancelPlan,
   postponePlan, postponeTarget, postponedItem, openExperiments, mailboxFiles,
-  topicTitle, topicTitles, titled, itemTitle, goesBy, dismissedNames, topicKey, noTopicRefusal, briefFile,
+  topicTitle, topicTitles, titled, itemTitle, goesBy, dismissedNames, topicKey, noTopicRefusal, briefFile, buildByCut,
 } = require('./derivations.cjs');
 const { sendReportOf } = require('./mail.cjs');
 const { mapSurface } = require('./topic-map.cjs');
@@ -3229,7 +3229,8 @@ function phasePausedSurface(cwd, { dotpath, phase }) {
 /**
  * The one stop between a completed phase and the next: every way forward
  * offered together — continue; complete without review, on the review hop
- * alone; revisit an earlier phase, where one is completed.
+ * alone, of a unit not built by its cut; revisit an earlier phase, where one
+ * is completed.
  * @param {string} cwd
  * @param {{dotpath: string, prev?: string, next?: string}} args
  * @returns {string} one MENU section, or '' when continuing is the only way forward
@@ -3248,7 +3249,7 @@ function nextPhaseGate(cwd, { dotpath, prev, next }) {
       throw new Error(`render next-phase-gate: unknown ${flag} "${phase}" for a ${type} (pipeline: ${cfg.pipeline.join(', ')})`);
     }
   }
-  const skipReview = next === 'review';
+  const skipReview = next === 'review' && !buildByCut(manifest);
   const revisitable = phaseTargets(cwd, manifest, next).revisit;
   if (!skipReview && revisitable.length === 0) return '';
 

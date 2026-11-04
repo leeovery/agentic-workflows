@@ -45,28 +45,6 @@ Emit the TITLE section, then the DISPLAY section, then the MENU section, each ve
 
 Match the user's input to its `ACTIONS` entry — a number or a command option's letter by `key`, its long form by `word`. Every decision below reads the entry's `action` value, never its label text.
 
-#### If `action` is `unblock_plan`
-
-→ Proceed to **G. Unblock Plan**.
-
-#### If `action` is `resequence_build_order`
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Sequence Build Order`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Re-deriving the build order across the specification topics.
-```
-
-→ Load **[sequence-build-order.md](../../leeway-shared/references/sequence-build-order.md)** with work_unit = `{work_unit}`.
-
-→ On return, return to **A. State Display and Menu**.
-
 #### If `action` is `resume_completed`
 
 → Proceed to **D. Resume Completed**.
@@ -81,11 +59,11 @@ Match the user's input to its `ACTIONS` entry — a number or a command option's
 
 #### If `action` is `postpone_topic`
 
-→ Proceed to **H. Postpone Topic**.
+→ Proceed to **G. Postpone Topic**.
 
 #### If `action` is `pull_forward_topic`
 
-→ Proceed to **I. Pull Forward Topic**.
+→ Proceed to **H. Pull Forward Topic**.
 
 #### If `action` is `new_topic`
 
@@ -289,33 +267,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs render topic-receipt {work_
 
 ---
 
-## G. Unblock Plan
-
-A dep-blocked plan carries no implementation row — this is its escape hatch. Render the blocked-plans list and pick menu:
-
-```bash
-node .claude/skills/leeway-continue-epic/scripts/gateway.cjs unblock-menu {work_unit}
-```
-
-Emit the TITLE section, then the DISPLAY section, then the MENU section, each verbatim per its marker. Match the user's input to its `ACTIONS` entry by `key` or `word`.
-
-**STOP.** Wait for user response.
-
-#### If user chose `back`
-
-→ Return to **A. State Display and Menu**.
-
-#### If user chose a numbered dependency
-
-Store the selected entry's `topic` (the plan) and the `(dep: …)` value on its `ACTIONS` row (the dependency to mark — the key it is recorded under; the `{plan}:{task}` reference the menu row shows names the blocking task, never the key).
-
-→ Load **[mark-dependency-satisfied.md](../../leeway-shared/references/mark-dependency-satisfied.md)** with work_unit = `{work_unit}`, topic = `{topic}`, dep = `{dep}`.
-
-→ On return, return to **A. State Display and Menu**.
-
----
-
-## H. Postpone Topic
+## G. Postpone Topic
 
 Render the postponable-topics list and pick menu — one row per Discovery unit, the topic with its discussion and experiments together. Every unit is listed: a locked one carries its reason and no key, a unit a live session holds carries its in-session age (a cue, not a lock); when every row is locked the menu opens on a statement over `b/back` alone:
 
@@ -335,7 +287,7 @@ Emit the TITLE section, then the DISPLAY section, then the MENU section, each ve
 
 A locked row's name is the usual case — the row carries its reason. Tell the user in one line: the reason from the row for a locked unit, or that the input matched no option; then re-present the sub-view.
 
-→ Return to **H. Postpone Topic**.
+→ Return to **G. Postpone Topic**.
 
 #### If user chose a numbered topic
 
@@ -347,7 +299,7 @@ Store the selected entry's `topic` as `{name}`. The horizon, the confirm, and th
 
 ---
 
-## I. Pull Forward Topic
+## H. Pull Forward Topic
 
 The postpone's return leg: this menu let the topic go, so this menu takes it back. Render the postponed-topics list and pick menu — one row per topic this epic postponed that still waits on the roadmap, the horizon it waits under on the row. A topic whose item another epic has since taken is not among them:
 
@@ -367,7 +319,7 @@ Emit the TITLE section, then the DISPLAY section, then the MENU section, each ve
 
 Tell the user in one line that the input matched no option, then re-present the sub-view.
 
-→ Return to **I. Pull Forward Topic**.
+→ Return to **H. Pull Forward Topic**.
 
 #### If user chose a numbered topic
 

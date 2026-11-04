@@ -438,7 +438,6 @@ describe('gate payload — every gateway verb', () => {
       'reactivate-menu': [gated('reactivate-menu', 'v1')],
       'postpone-menu': [gated('postpone-menu', 'v1')],
       'pull-forward-menu': [gated('pull-forward-menu', 'v1')],
-      'unblock-menu': [gated('unblock-menu', 'v1')],
       'in-session-gate': [gated('in-session-gate', 'v1', '1')],
       fallback: [ungated('v1')],
     },

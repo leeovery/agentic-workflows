@@ -26,6 +26,9 @@ const {
   postponePlan,
   postponedItem,
   buildBegun,
+  buildByCut,
+  buildPlaceStatus,
+  legacyBuild,
   topicTitles,
 } = require('./derivations.cjs');
 const { computeBuildOrderNeedsSequencing, sortItemsByBuildOrder } = require('./build-order.cjs');
@@ -166,6 +169,15 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {string} [reason]
  */
 
+/** @typedef {import('./build-entry.cjs').BuildStanding} BuildStanding */
+
+/**
+ * Where the epic's build stands as its menu offers it (18.4.6): building,
+ * with where its build stands; in its review phase; or built under the old
+ * plan, the line it shows while it waits on the migration's cut (P12).
+ * @typedef {{state: 'building', standing: BuildStanding}|{state: 'reviewing'}|{state: 'old', line: string}} BuildRow
+ */
+
 /**
  * @typedef {object} EpicDetail
  * @property {Record<string, PhaseEntry[]>} phases  build phases with items (discovery excluded)
@@ -180,6 +192,8 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  *                             while a topic is open, once the build has begun, and on a unit keeping the old spec's items
  * @property {boolean} map_closed  the unit is past its spec, so its map is closed (18.4.19): no topic is added, cancelled,
  *                             postponed, pulled forward or reactivated, nor the map talked over in discovery
+ * @property {BuildRow|null} build  the build the menu offers in place of the plan rows; null before ready to build's yes, and
+ *                             once finish has completed the unit
  * @property {MapRow[]} discovery_map
  * @property {Record<string, string>} titles  the titles a rename gave started topics, by key (derivations' `topicTitles`)
  * @property {string|null} active_session  in-progress discovery session number, or null
@@ -364,6 +378,23 @@ function specRow(cwd, manifest) {
 }
 
 /**
+ * The build the menu offers (the typedef's): one in the old shape names the
+ * migration's cut as the build's entry refuses it; one by its cut is in its
+ * review phase or building, its standing read for the phase it is at.
+ * @param {string} cwd @param {Record<string, any>} manifest
+ * @returns {BuildRow|null}
+ */
+function buildRow(cwd, manifest) {
+  // Required here: build-entry.cjs reaches this module back through the handoff table.
+  const { buildRefusal, buildStanding } = require('./build-entry.cjs');
+  if (legacyBuild(manifest)) return { state: 'old', line: /** @type {string} */ (buildRefusal(manifest)) };
+  if (!buildByCut(manifest)) return null;
+  const review = buildPlaceStatus(manifest, 'review');
+  if (review === 'completed') return null;
+  return review === 'in-progress' ? { state: 'reviewing' } : { state: 'building', standing: buildStanding(cwd, manifest.name, []) };
+}
+
+/**
  * @param {string} cwd
  * @param {object} manifest
  * @returns {{gap_analysis: AnalysisCache}}
@@ -540,6 +571,7 @@ function epicDetail(cwd, manifest) {
     next_phase_ready: nextPhaseReady,
     spec_row: specRow(cwd, manifest),
     map_closed: pastItsSpec(cwd, manifest),
+    build: buildRow(cwd, manifest),
     discovery_map: discoveryMap,
     titles: topicTitles(manifest),
     active_session: (manifest.phases && manifest.phases.discovery && typeof manifest.phases.discovery.active_session === 'string')

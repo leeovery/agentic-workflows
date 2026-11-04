@@ -46,7 +46,7 @@ const { pastItsSpec } = require('../spec-standing.cjs');
 const { specPath, specReading } = require('../spec-sections.cjs');
 const { waitingGaps } = require('../spec-passes.cjs');
 const { unitHistory } = require('../state-history.cjs');
-const { computeTopicLifecycle, mailboxFiles, phaseStatus, buildBegun, buildFinished, cutLength, roadmapItems, topicTitle } = require('../derivations.cjs');
+const { computeTopicLifecycle, mailboxFiles, phaseStatus, buildPlaceStatus, buildBegun, buildFinished, cutLength, roadmapItems, topicTitle } = require('../derivations.cjs');
 const { counted } = require('./map.cjs');
 const { buildView, buildWords, buildMoments } = require('./board-build.cjs');
 const { reviewStandingAt } = require('./board-build.cjs');
@@ -193,9 +193,7 @@ const wordsOf = (at, reads) => /** @type {Record<string, (at: BoardAt) => string
 
 /** A phase on the unit's tab, by the status of the phase it reads. @param {BoardAt} at @param {string} phase @param {string} reads @returns {UnitPhase} */
 function linearPhase(at, phase, reads) {
-  const status = reads === 'review'
-    ? (at.manifest.status === 'completed' ? 'completed' : buildFinished(at.manifest) ? 'in-progress' : null)
-    : phaseStatus(at.manifest, reads, pastItsSpec(at.cwd, at.manifest));
+  const status = reads === 'review' ? buildPlaceStatus(at.manifest, reads) : phaseStatus(at.manifest, reads, pastItsSpec(at.cwd, at.manifest));
   if (status === 'completed') return { phase, state: 'complete', words: wordsOf(at, reads) };
   if (status !== 'in-progress') return { phase, state: 'later', words: '' };
   return { phase, state: 'running', words: wordsOf(at, reads) };

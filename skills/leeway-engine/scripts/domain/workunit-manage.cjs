@@ -4,14 +4,14 @@
 // Domain ring: the manage detail — one work unit's lifecycle-action
 // availability, computed for the manage action menu. Which actions the menu
 // offers is the unit's state (work type, phase presence, whether it is past
-// its spec, implementation completion, in-progress epics before their spec
-// for absorption), so it is derived here, in one place, never re-derived by
-// the session. Pure over the project's
+// its spec, implementation completion, a build by its cut, in-progress epics
+// before their spec for absorption), so it is derived here, in one place,
+// never re-derived by the session. Pure over the project's
 // state: same files, same answer.
 // ---------------------------------------------------------------------------
 
 const { loadManifest, loadActiveManifests } = require('./reads.cjs');
-const { phaseItems } = require('./derivations.cjs');
+const { phaseItems, buildByCut } = require('./derivations.cjs');
 const { pastItsSpec } = require('./spec-standing.cjs');
 
 /**
@@ -26,7 +26,8 @@ const { pastItsSpec } = require('./spec-standing.cjs');
  * @property {string} work_type
  * @property {string} status
  * @property {boolean} implementation_completed  any implementation item completed → `done` offered
- * @property {boolean} has_plan                  planning phase present → `view-plan` offered
+ * @property {boolean} has_plan                  planning phase present — the plan-topics pick reads it
+ * @property {boolean} has_build                 a build by its cut → `view-build` offered (12.12.11)
  * @property {boolean} has_spec                  past its spec, written or concluded (absorb guard)
  * @property {boolean} has_discussion            discussion phase present (absorb guard)
  * @property {string[]} available_epics          in-progress epic names before their spec — absorb targets
@@ -62,6 +63,7 @@ function manageDetail(cwd, workUnit) {
     status: manifest.status,
     implementation_completed: phaseItems(manifest, 'implementation').some((i) => i.status === 'completed'),
     has_plan: phasePresent(manifest, 'planning'),
+    has_build: buildByCut(manifest),
     has_spec: hasSpec,
     has_discussion: hasDiscussion,
     available_epics: availableEpics,

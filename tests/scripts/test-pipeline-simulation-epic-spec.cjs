@@ -12,7 +12,8 @@
 // onto the open page — the close voided and the review reopened until a
 // pass on the re-land and the checklist closed again — the marks read back
 // and stored before the screen is drawn, then the pick taking them read
-// back fresh, the build begun and its position switched. The sweep before
+// back fresh, the build begun and handed off into, and its position
+// switched. The sweep before
 // the spec is test-pipeline-simulation-epic-sweep.cjs's.
 //
 // Layer: simulation. World: the project every scenario starts from
@@ -28,7 +29,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  Sim, discussed, mappedEpic, arrive, specEntry, handoff, answerGate, specReviewed, cutTheSpec, readyToBuild,
+  Sim, discussed, mappedEpic, specEntry, handoff, answerGate, specReviewed, cutTheSpec, readyToBuild, intoTheBuild,
 } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: epic, the spec', () => {
@@ -36,7 +37,7 @@ describe('pipeline simulation: epic, the spec', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('epic: with the other topic postponed, the last decided goes into the spec, entered at the unit, the writer\'s spec lands citing what was decided, the review\'s one pass settles it, it is cut into phases and ready to build is closed, whose review row builds the page, its marks read back, the wording agreed re-landed onto the open page — voiding the close and reopening the review until a pass and a close again — and the pick over the open page begins the build, its position switched after (24.S3, 11.S1, 11.S2, 11.S3, 11.S11, 11.S5, 11.S33, 11.S26, 3.S14)', () => {
+  it('epic: with the other topic postponed, the last decided goes into the spec, entered at the unit, the writer\'s spec lands citing what was decided, the review\'s one pass settles it, it is cut into phases and ready to build is closed, whose review row builds the page, its marks read back, the wording agreed re-landed onto the open page — voiding the close and reopening the review until a pass and a close again — and the pick over the open page begins the build, handing off into it, its position switched after (24.S3, 24.S4, 11.S1, 11.S2, 11.S3, 11.S11, 11.S5, 11.S33, 11.S26, 3.S14)', () => {
     const wu = 'ledgerly';
     mappedEpic(sim, wu, ['alpha', 'beta']);
     sim.run(['topic', 'postpone', wu, 'beta', '--horizon', 'next']);
@@ -99,7 +100,7 @@ describe('pipeline simulation: epic, the spec', () => {
     // The page open, its marks are read back and stored before the screen is
     // drawn — the comment answered, none waits — and the pick hands on them
     // read back fresh; the yes records the review and begins the build,
-    // handing to the epic's menu.
+    // handing off into it.
     const answered = { s1: { m: { '1-1-1': { s: 'comment', t: { p1000: { by: 'p', x: 'Say it holds?' }, c3000: { by: 'c', x: 'It holds now.' } } } } } };
     readBackAs(answered);
     assert.deepStrictEqual(sim.run(['spec', 'marks', wu, '--file', readBack]).waiting, []);
@@ -107,10 +108,7 @@ describe('pipeline simulation: epic, the spec', () => {
     readBackAs(answered);
     const picked = answerGate(sim, 'ready to build', '--pick', 'a');
     assert.deepStrictEqual(picked.next.argv.slice(-2), ['--marks', readBack]);
-    const begun = sim.run(picked.next.argv);
-    assert.deepStrictEqual([begun.record, begun.next], [`${wu}/spec-review.json`, { kind: 'handoff', skill: 'leeway-continue-epic', args: [wu] }]);
-    handoff(sim, `/leeway-continue-epic ${wu}`);
-    arrive(sim, wu);
+    assert.strictEqual(intoTheBuild(sim, wu, sim.run(picked.next.argv)).record, `${wu}/spec-review.json`);
     sim.run(['workunit', 'position', wu, 'step']);
   });
 });

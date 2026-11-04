@@ -1,0 +1,172 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// A unit whose building began under the old spec (P12): its planning,
+// implementation and review items read alone, so every caller of
+// phaseStatus and computeNextPhase answers as it did before the build by its
+// cut — the derivations themselves, the bridge's dump, the linear menu, the
+// start menu's rows, the next-phase gate and the revisit list, the lifecycle
+// verbs' refusals, and the board's unit and All work tabs. The bridge until
+// 29.17's migration cuts every such unit; this file goes with it.
+//
+// Layer: verb. World: the project world (setupFixture), eight old-shape
+// units written once by hand — no verb writes a shape the design has left.
+// ---------------------------------------------------------------------------
+
+require('./hermetic-env.cjs');
+
+const { describe, it, before, after } = require('node:test');
+const assert = require('node:assert');
+const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
+const { call, output } = require('./engine-harness.cjs');
+const { phaseStatus, computeNextPhase } = require('../../skills/leeway-engine/scripts/domain/derivations.cjs');
+const { loadManifest } = require('../../skills/leeway-engine/scripts/domain/reads.cjs');
+const { WORK_TYPE_PIPELINES } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
+const bridge = require('../../skills/leeway-bridge/scripts/gateway.cjs');
+const linear = require('../../skills/leeway-continue-linear/scripts/gateway.cjs');
+const start = require('../../skills/leeway/scripts/gateway.cjs');
+
+const done = (...names) => Object.fromEntries(names.map((n) => [n, { status: 'completed' }]));
+const at = (name, status) => ({ [name]: { status } });
+const through = (name, ...phases) => Object.fromEntries(phases.map((p) => [p, { items: done(name) }]));
+
+const UNITS = {
+  'plan-feature': { phases: { ...through('plan-feature', 'discussion', 'specification'), planning: { items: at('plan-feature', 'in-progress') } } },
+  'built-feature': {
+    build: { position: 'auto' },
+    cut: { phases: [{ name: 'One', scenarios: [], sections: [], relies_on: [] }] },
+    phases: through('built-feature', 'discussion', 'specification', 'planning', 'implementation'),
+  },
+  'reviewing-feature': { phases: { ...through('reviewing-feature', 'discussion', 'specification', 'planning', 'implementation'), review: { items: at('reviewing-feature', 'in-progress') } } },
+  'reviewed-feature': { phases: through('reviewed-feature', 'discussion', 'specification', 'planning', 'implementation', 'review') },
+  'old-bugfix': { work_type: 'bugfix', phases: through('old-bugfix', 'investigation', 'specification', 'planning', 'implementation') },
+  'old-epic': { work_type: 'epic', phases: { discussion: { items: done('alpha', 'beta') }, specification: { items: done('alpha') }, planning: { items: done('alpha') }, implementation: { items: at('alpha', 'in-progress') } } },
+  'done-feature': { status: 'completed', phases: through('done-feature', 'discussion', 'specification', 'planning', 'implementation', 'review') },
+  'dropped-feature': { status: 'cancelled', phases: { ...through('dropped-feature', 'discussion', 'specification', 'planning'), implementation: { items: at('dropped-feature', 'in-progress') } } },
+};
+const NAMES = Object.keys(UNITS);
+const SESSION = { env: { CLAUDE_CODE_SESSION_ID: 'sess-1' } };
+const lines = (text, re) => text.split('\n').filter((line) => re.test(line));
+
+describe('a unit built under the old spec answers as before the build by its cut (P12)', () => {
+  let dir;
+  before(() => {
+    dir = setupFixture('legacy-build-');
+    for (const [name, data] of Object.entries(UNITS)) createManifest(dir, name, data);
+  });
+  after(() => cleanupFixture(dir));
+
+  it('phaseStatus and computeNextPhase read its items alone', () => {
+    const answers = Object.fromEntries(NAMES.map((name) => {
+      const manifest = loadManifest(dir, name);
+      const { next_phase, phase_label } = computeNextPhase(manifest);
+      return [name, [WORK_TYPE_PIPELINES[manifest.work_type].map((phase) => phaseStatus(manifest, phase)).join(' '), `${next_phase}: ${phase_label}`]];
+    }));
+    assert.deepStrictEqual(answers, {
+      'plan-feature': [' completed completed in-progress  ', 'planning: planning (in-progress)'],
+      'built-feature': [' completed completed completed completed ', 'review: ready for review'],
+      'reviewing-feature': [' completed completed completed completed in-progress', 'review: review (in-progress)'],
+      'reviewed-feature': [' completed completed completed completed completed', 'done: pipeline complete'],
+      'old-bugfix': ['completed completed completed completed ', 'review: ready for review'],
+      'old-epic': [' completed completed completed in-progress ', 'implementation: implementation (in-progress)'],
+      'done-feature': [' completed completed completed completed completed', 'done: pipeline complete'],
+      'dropped-feature': [' completed completed completed in-progress ', 'implementation: implementation (in-progress)'],
+    });
+  });
+
+  it('the bridge routes it through its old phases, each revisitable', () => {
+    const dumps = Object.fromEntries(NAMES.map((name) => [name, lines(bridge.format(bridge.discover(dir, name)), /^(next_phase|revisitable_phases|next_route): /)]));
+    assert.deepStrictEqual(dumps, {
+      'plan-feature': ['next_phase: planning', 'revisitable_phases: (none)', 'next_route: /leeway-planning-process feature plan-feature'],
+      'built-feature': ['next_phase: review', 'revisitable_phases: planning, implementation', 'next_route: /leeway-review-process feature built-feature'],
+      'reviewing-feature': ['next_phase: review', 'revisitable_phases: planning, implementation', 'next_route: /leeway-review-process feature reviewing-feature'],
+      'reviewed-feature': ['next_phase: done', 'revisitable_phases: (none)', 'next_route: (none)'],
+      'old-bugfix': ['next_phase: review', 'revisitable_phases: investigation, planning, implementation', 'next_route: /leeway-review-process bugfix old-bugfix'],
+      'old-epic': ['next_phase: implementation'],
+      'done-feature': ['next_phase: done', 'revisitable_phases: (none)', 'next_route: (none)'],
+      'dropped-feature': ['next_phase: implementation', 'revisitable_phases: planning', 'next_route: /leeway-implementation-process feature dropped-feature'],
+    });
+  });
+
+  it('the linear menu continues it into its old phase and revisits its built ones', () => {
+    const rows = (name) => lines(linear.view(dir, name), /^  ([a-z]|[0-9])  /);
+    assert.deepStrictEqual(rows('built-feature'), [
+      '  y  yes  continue  built-feature  → /leeway-review-process feature built-feature',
+      '  r  revisit  revisit  built-feature  → (internal)',
+      '  b  back  back  built-feature  → (internal)',
+      '  1  —  revisit_phase  built-feature  → /leeway-planning-process feature built-feature',
+      '  2  —  revisit_phase  built-feature  → /leeway-implementation-process feature built-feature',
+    ]);
+    assert.deepStrictEqual(rows('reviewing-feature').filter((row) => row.includes('revisit_phase')), [
+      '  1  —  revisit_phase  reviewing-feature  → /leeway-planning-process feature reviewing-feature',
+      '  2  —  revisit_phase  reviewing-feature  → /leeway-implementation-process feature reviewing-feature',
+    ]);
+    assert.deepStrictEqual(rows('reviewed-feature')[0], '  y  yes  finalise  reviewed-feature  → (internal)');
+    assert.deepStrictEqual(lines(linear.view(dir, 'old-bugfix'), /^  └─ /), ['  └─ → Review            [ready]']);
+  });
+
+  it('the start menu reads its next phase off its items, and a closed one its last', () => {
+    const menu = start.discover(dir);
+    assert.deepStrictEqual({
+      units: ['epics', 'features', 'bugfixes'].flatMap((group) => menu[group].work_units.map((u) => `${u.name}: ${u.phase_label}${u.finalising ? ', finalising' : ''}`)),
+      closed: [...menu.completed, ...menu.cancelled].map((u) => `${u.name}: ${u.last_phase}`),
+    }, {
+      units: [
+        'old-epic: implementation (in-progress)',
+        'built-feature: ready for review',
+        'plan-feature: planning (in-progress)',
+        'reviewed-feature: pipeline complete, finalising',
+        'reviewing-feature: review (in-progress)',
+        'old-bugfix: ready for review',
+      ],
+      closed: ['done-feature: review', 'dropped-feature: planning'],
+    });
+  });
+
+  it('the review hop still offers completing without review, and the revisit list its built phases', () => {
+    const rows = (args) => lines(output(dir, ['render', ...args]), /^\*\*`/);
+    assert.deepStrictEqual(rows(['next-phase-gate', 'built-feature', '--prev', 'implementation', '--next', 'review']), [
+      '**`◆ Proceed to review?`**',
+      '**`y/yes`**     → Proceed to review',
+      '**`d/done`**    → Complete without review',
+      '**`r/revisit`** → Revisit an earlier phase',
+    ]);
+    assert.deepStrictEqual(rows(['revisit-phases', 'built-feature']), [
+      '**`◆ Which phase would you like to revisit?`**',
+      '**`1`**      → Planning — *completed*',
+      '**`2`**      → Implementation — *completed*',
+      '**`b/back`** → Return to the previous menu',
+    ]);
+  });
+
+  it('the lifecycle verbs refuse it as before', () => {
+    const refusal = (args) => JSON.parse(call(dir, args).stderr).error;
+    assert.deepStrictEqual([
+      refusal(['workunit', 'complete', 'dropped-feature', '-m', 'x']),
+      refusal(['handoff', 'topic', 'old-bugfix', 'old-bugfix']),
+    ], [
+      'work unit "dropped-feature" is cancelled — reactivate it first',
+      'the topic "old-bugfix" is concluded — its work goes on in review, from the start menu, and a message sent to it reopens it',
+    ]);
+  });
+
+  it('the board places it by its items', () => {
+    const board = (tab, unit) => JSON.parse(call(dir, ['board', 'sess-1', '--tab', tab, ...(unit ? ['--unit', unit] : [])], SESSION).stdout).view;
+    const places = Object.fromEntries(['plan-feature', 'reviewing-feature', 'old-bugfix', 'dropped-feature']
+      .map((name) => [name, board('unit', name).phases.map(({ phase, state }) => `${phase} ${state}`).slice(-2).join(', ')]));
+    assert.deepStrictEqual(places, {
+      'plan-feature': 'build later, review later',
+      'reviewing-feature': 'build complete, review later',
+      'old-bugfix': 'build complete, review later',
+      'dropped-feature': 'build running, review later',
+    });
+    assert.deepStrictEqual(board('all').units.map(({ unit, phase }) => `${unit}: ${phase}`), [
+      'built-feature: build',
+      'old-bugfix: review',
+      'old-epic: build',
+      'plan-feature: build',
+      'reviewed-feature: done',
+      'reviewing-feature: review',
+    ]);
+  });
+});

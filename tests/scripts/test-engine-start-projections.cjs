@@ -848,12 +848,11 @@ describe('start projections: manage unit', () => {
       'work_type: feature',
       'status: in-progress',
       'implementation_completed: false',
-      'has_plan: false',
+      'has_build: false',
       'has_spec: false',
       'has_discussion: false',
       'absorb_available: false',
       'available_epics: (none)',
-      'planning_topics: (none)',
       'ACTIONS (key  word  action):',
       '  p  pivot  pivot',
       '  c  cancel  cancel',
@@ -896,7 +895,7 @@ describe('start projections: manage unit', () => {
     ].join('\n'));
   });
 
-  it('completed implementation offers done; a plan offers view-plan', () => {
+  it('completed implementation offers done; a plan offers no view of itself', () => {
     createManifest(dir, 'hotfix', {
       work_type: 'quick-fix',
       phases: {
@@ -912,21 +911,33 @@ describe('start projections: manage unit', () => {
       '',
       '**`◆ What would you like to do?`**',
       '',
-      '**`d/done`**      → Mark as completed',
-      '**`v/view-plan`** → View the implementation plan',
-      '**`c/cancel`**    → Mark as cancelled',
-      '**`b/back`**      → Return',
-      '**Ask**         → Ask a question about this work unit',
+      '**`d/done`**   → Mark as completed',
+      '**`c/cancel`** → Mark as cancelled',
+      '**`b/back`**   → Return',
+      '**Ask**      → Ask a question about this work unit',
     ].join('\n'));
     assert.ok(v.data.endsWith([
       'ACTIONS (key  word  action):',
       '  d  done  mark_completed',
-      '  v  view-plan  view_plan',
       '  c  cancel  cancel',
       '  b  back  back',
     ].join('\n')), 'every row the menu offers resolves by its key or its word');
     assert.ok(!v.menu.includes('pivot'));
     assert.strictEqual(v.sections, undefined, 'the manage snapshot carries no deferred sections');
+  });
+
+  it('a build by its cut offers its phases and tasks, and no done: finish completes it (12.12.11)', () => {
+    createManifest(dir, 'ledger', { build: { position: 'auto' }, cut: { phases: [{ name: 'One', scenarios: [], sections: [], relies_on: [] }] } });
+    const v = manageUnitView(manageDetail(dir, 'ledger'));
+    assert.ok(v.data.includes('\nhas_build: true\n'));
+    assert.ok(v.data.endsWith([
+      'ACTIONS (key  word  action):',
+      '  p  pivot  pivot',
+      '  v  view-build  view_build',
+      '  c  cancel  cancel',
+      '  b  back  back',
+    ].join('\n')), 'every row the menu offers resolves by its key or its word');
+    assert.match(v.menu, /^\*\*`v\/view-build`\*\* +→ View the build's phases and tasks$/m);
   });
 
   it('multi-plan epic renders the plan-topics menu via its builder; a single plan the auto-select line', () => {
@@ -950,7 +961,6 @@ describe('start projections: manage unit', () => {
       '**`2`** → Topic B — *in-progress*',
       '',
     ].join('\n'));
-    assert.ok(multi.data.includes('planning_topics: topic-a [completed], topic-b [in-progress]'));
     const singleMd = manageDetail(dir, 'v2');
     const single = manageUnitView(singleMd);
     assert.strictEqual(single.sections, undefined, 'the manage snapshot carries no deferred sections');

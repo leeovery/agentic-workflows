@@ -34,7 +34,7 @@ const fs = require('fs');
 const path = require('path');
 const { treeSnapshot } = require('./engine-harness.cjs');
 const {
-  Sim, worldFrom, mappedEpic, discussed, specEntry, specReviewed, cutTheSpec, readyToBuild, answerGate, firstPhaseBuilt, carryOn, handoff,
+  Sim, worldFrom, mappedEpic, discussed, specEntry, specReviewed, cutTheSpec, readyToBuild, answerGate, intoTheBuild, firstPhaseBuilt, carryOn, handoff,
   writePhaseTasks, builders, taskBuilt, areaRead, testsRead, reviewNext, reviewCall, finished,
 } = require('./pipeline-world.cjs');
 
@@ -63,8 +63,7 @@ const reviewWorld = worldFrom('pipeline-review-', (sim) => {
   specReviewed(sim, WU);
   cutTheSpec(sim, WU, [{ name: 'The ledger', goal: 'Entries kept and exported.', scenarios: ['1.S1'], sections: ['1', '2'], relies_on: [] }]);
   readyToBuild(sim, WU);
-  sim.run(answerGate(sim, 'ready to build', '--pick', 'a').next.argv);
-  sim.handOver();
+  intoTheBuild(sim, WU, sim.run(answerGate(sim, 'ready to build', '--pick', 'a').next.argv));
   firstPhaseBuilt(sim, WU, 'The ledger', 'Keep the ledger', 'src/ledger.js');
 });
 

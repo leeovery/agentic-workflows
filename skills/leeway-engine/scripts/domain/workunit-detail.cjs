@@ -24,6 +24,7 @@ const {
   mailPhases,
   ownNamedItems,
   inputMoved,
+  buildByCut,
 } = require('./derivations.cjs');
 
 /**
@@ -131,7 +132,8 @@ const UNREVISITABLE = [...DERIVED_PHASES, 'discussion', 'specification'];
  * verdict stands and a new spawn is what reopens the series, nor a decided
  * discussion, which reopens through a message sent to it, nor the spec, which
  * is never corrected once concluded (11.9.1), nor, once the unit is past its
- * spec, a phase entered at a topic — the spec closes every topic (4.11.2).
+ * spec, a phase entered at a topic — the spec closes every topic (4.11.2) —
+ * nor a build by its cut, which runs straight into its review (24.1.6).
  * @param {string} cwd @param {object} manifest @param {string} nextPhase
  * @returns {{next: PhaseTarget, revisit: string[]}}
  */
@@ -142,7 +144,7 @@ function phaseTargets(cwd, manifest, nextPhase) {
   const entered = own.find((i) => i.status === 'in-progress')
     ?? own.find((i) => i.status === 'unstarted')
     ?? own.find(inputMoved);
-  const closed = pastItsSpec(cwd, manifest) ? [...UNREVISITABLE, ...TOPIC_PHASES] : UNREVISITABLE;
+  const closed = [...UNREVISITABLE, ...(pastItsSpec(cwd, manifest) ? TOPIC_PHASES : []), ...(buildByCut(manifest) ? ['implementation'] : [])];
   return {
     next: { phase: nextPhase, topic: entered ? entered.name : null },
     revisit: completedPhases(cfg, manifest)

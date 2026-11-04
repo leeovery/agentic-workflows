@@ -44,7 +44,7 @@ node .claude/skills/leeway/scripts/gateway.cjs manage {selected.name}
 
 The response carries demarcated sections:
 
-- **DATA** — reasoning surface: lifecycle flags (`implementation_completed`, `has_plan`, `absorb_available`, …), `available_epics`, `planning_topics`, and the `ACTIONS` key table. Reason from it; never display or restate it.
+- **DATA** — reasoning surface: lifecycle flags (`implementation_completed`, `has_build`, `absorb_available`, …), `available_epics`, and the `ACTIONS` key table. Reason from it; never display or restate it.
 - **MENU** — the action menu, offering exactly the actions this work unit's state allows. Emit verbatim per its marker at this section's gate below.
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -103,9 +103,13 @@ This skill ends. The invoked skill will load into context and provide additional
 
 → Return to caller.
 
-#### If user chose `v/view-plan`
+#### If user chose `v/view-build`
 
-→ Load **[view-plan.md](view-plan.md)** and follow its instructions as written.
+Fetch the build's phases and tasks and emit its sections verbatim per their markers:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs render build-progress {selected.name}
+```
 
 → Return to **B. Action Menu**.
 
