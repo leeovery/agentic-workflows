@@ -280,4 +280,4 @@ function restoreTree(cwd, unit, listed) {
   };
 }
 
-module.exports = { reviewTreeSurface, restoreTree, driftPrint, setAside };
+module.exports = { reviewTreeSurface, restoreTree, driftPrint };

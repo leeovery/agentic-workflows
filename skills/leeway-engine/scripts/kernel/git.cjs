@@ -427,9 +427,10 @@ function unmergedPast(cwd, specs) {
  * ordinary commit stages them (`stagingOf`), the nested folders `nested`
  * names held out, and a submodule's pointer named staged as its folder
  * stands; then the merge committed whole — everything the merge staged with
- * them, as a merge commit is. A path left unmerged that `specs` does not
- * stage is the caller's to refuse first (`unmergedPast`), and so is an index
- * holding what the door never commits.
+ * them, as a merge commit is. A path left unmerged under `cwd` that `specs`
+ * does not stage is the caller's to refuse first (`unmergedPast`), and so is
+ * an index holding what the door never commits; one outside `cwd`, git's
+ * own commit refuses.
  * @param {string} cwd the repo's root @param {string[]} specs as the repo names them @param {string} message @param {string[]} [nested]
  * @returns {string} the short commit sha
  */

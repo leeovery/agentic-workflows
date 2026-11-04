@@ -194,9 +194,9 @@ describe('verify mutants: the mutation tool over a phase\'s lines (15.6.3, 15.6.
     const app = path.join(dir, 'app');
     fs.mkdirSync(app);
     for (const folder of ['verify', 'src']) git(dir, ['mv', folder, `app/${folder}`]);
-    for (const [file, text] of Object.entries({ 'README.md': 'the larger repository\n', 'app/.gitignore': '.env\nvendor/\n', 'app/.worktreeinclude': '.env\n' })) createFile(dir, file, text);
+    for (const [file, text] of Object.entries({ 'README.md': 'the larger repository\n', 'app/.gitignore': '.env\nvendor/\nconfig/\n*.key\n', 'app/.worktreeinclude': '.env\nconfig/*.json\n!config/skip.json\n/top.key\n**/deep.key\n' })) createFile(dir, file, text);
     commitCode(dir, 'chore: the project moves into app/');
-    createFile(app, '.env', 'KEY=1\n');
+    for (const [file, text] of Object.entries({ '.env': 'KEY=1\n', 'src/.env': 'KEY=2\n', 'config/secrets.json': 'S=1\n', 'config/skip.json': 'skip\n', 'top.key': 'T=1\n', 'src/top.key': 'T=2\n', 'src/deep.key': 'D=1\n' })) createFile(app, file, text);
     createFile(app, '.claude/settings.local.json', JSON.stringify({ worktree: { symlinkDirectories: ['vendor'] } }));
     steering(dir, 'verdict', 'pass\n');
     ok(app, setupArgs(dir, SETUP));
@@ -210,7 +210,7 @@ describe('verify mutants: the mutation tool over a phase\'s lines (15.6.3, 15.6.
     git(lib, ['checkout', '-q', '-b', branchOf(1)]);
     commitWith(lib, { 'x.js': 'y\n' }, 'Leeway-Task: pay-1-1');
     git(lib, ['checkout', '-q', 'main']);
-    steering(dir, 'look', '.env\nlib/x.js\nlib/vendor\n');
+    steering(dir, 'look', '.env\nsrc/.env\nconfig/secrets.json\nconfig/skip.json\ntop.key\nsrc/top.key\nsrc/deep.key\nlib/x.js\nlib/vendor\n');
     surviving([]);
 
     ok(app, ['verify', 'mutants', UNIT, '1']);
@@ -218,7 +218,8 @@ describe('verify mutants: the mutation tool over a phase\'s lines (15.6.3, 15.6.
     const read = (/** @type {string} */ name) => fs.readFileSync(path.join(steer(dir), name), 'utf8');
     assert.strictEqual(read('ran-in').trim(), path.join(scratch(), 'app'));
     assert.deepStrictEqual(JSON.parse(read('changed.json')), [{ path: 'src/card.js', lines: [[2, 2]] }, { path: 'lib/x.js', lines: [[1, 1]] }]);
-    assert.deepStrictEqual(read('looked').trimEnd().split('\n'), ['.env holds KEY=1', 'lib/x.js holds y', `lib/vendor linked to ${fs.realpathSync(path.join(lib, 'vendor'))}`]);
+    assert.deepStrictEqual(read('looked').trimEnd().split('\n'), [
+      '.env holds KEY=1', 'src/.env holds KEY=2', 'config/secrets.json holds S=1', 'config/skip.json is not there', 'top.key holds T=1', 'src/top.key is not there', 'src/deep.key holds D=1', 'lib/x.js holds y', `lib/vendor linked to ${fs.realpathSync(path.join(lib, 'vendor'))}`]);
     assert.strictEqual(fs.existsSync(scratch()), false, 'taken apart');
   });
 

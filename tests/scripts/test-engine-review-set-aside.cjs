@@ -23,15 +23,13 @@ const fs = require('fs');
 const path = require('path');
 const { output, sectionOf } = require('./engine-harness.cjs');
 const {
-  UNIT, SESSION_ID, EVERY, useWorld, env, enter, reported, recorded, firstRoundReady, fixBuilt, named, RECEIPT, stateText, commitFile, ok, statePath, git, initRepo, assert,
+  UNIT, SESSION_ID, EVERY, FAILING, useWorld, env, enter, reported, recorded, firstRoundReady, fixPhaseWritten, fixBuilt, named, RECEIPT, stateText, commitFile, ok, okSections, statePath, git, initRepo, assert,
 } = require('./review-world.cjs');
 const {
   ASIDE, flat, excluded, treeKit,
 } = require('./review-tree-world.cjs');
 
 const { workUnitNameRefusal } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
-const { projectRepos } = require('../../skills/leeway-engine/scripts/kernel/repos.cjs');
-const { setAside } = require('../../skills/leeway-engine/scripts/domain/review-tree.cjs');
 
 /** @type {string} */
 let dir;
@@ -112,13 +110,17 @@ describe('what put back sets aside (12.7.8, 14.S13)', () => {
     fs.writeFileSync(path.join(web, 'src/card.js'), 'export const card = 1;\n');
     git(dir, ['add', 'apps/web/src/card.js']);
     git(dir, ['commit', '-q', '-m', 'the web app']);
+    okSections(web, ['enter', 'review', UNIT], { env: env() });
+    reported(1, EVERY, FAILING);
+    fixPhaseWritten(3, [['Send the receipt', '§1.2']]);
     fs.writeFileSync(path.join(web, 'src/card.js'), 'export const card = \'staged\';\n');
     git(web, ['add', 'src/card.js']);
     fs.writeFileSync(path.join(web, 'src/card.js'), 'export const card = \'worked on\';\n');
+    const fromWeb = treeKit(() => web);
 
-    setAside(web, UNIT, 1, projectRepos(web), [{ of: 'src/card.js', then: null, now: null }], (reason) => { throw new Error(reason); });
+    fromWeb.putBack({ staged: { 'src/card.js': 'export const card = \'staged\';\n' } });
 
-    assert.deepStrictEqual(asideHeld(), { 'round-1/put-1/src/card.js': 'export const card = \'worked on\';\n', 'round-1/put-1/src/card.js.staged': 'export const card = \'staged\';\n' });
+    assert.deepStrictEqual([fromWeb.held('src/card.js'), asideHeld()], ['export const card = 1;\n', { 'round-1/put-1/src/card.js': 'export const card = \'worked on\';\n', 'round-1/put-1/src/card.js.staged': 'export const card = \'staged\';\n' }]);
   });
 
   it('a second put back keeps its own folder, put-2, the first\'s copies as they were; a later round\'s is its own folder', () => {
