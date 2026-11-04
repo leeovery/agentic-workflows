@@ -18,8 +18,9 @@
 // `if_version` (11.11.6, 11.11.17, 11.S28, 11.S33); each refusal writing
 // nothing; and the page's own rules, its state functions run from the
 // template: Claude's tick never over a line changed since the person's tick,
-// the person's untick holding on any wording, and To do the lines waiting
-// on the person (11.11.4, 11.11.6, 11.11.16, 11.11.19).
+// the person's untick holding on any wording, To do the lines waiting on
+// the person, and a line the person marked under a filter staying in its
+// view (11.11.4, 11.11.6, 11.11.16, 11.11.19).
 //
 // Layer: verb; the page's rules, unit. World, built once and copied: an epic, `payments`, its one
 // topic `cards` decided, its entries written through the ledger's verbs — a
@@ -457,6 +458,7 @@ describe('the page\'s own rules, its state functions run from the template (11.1
       assess: { '1-1-1': { ...SOFT, h: 'now' } },
       state: {},
       filter: 'all',
+      held: new Set(),
     });
     vm.runInContext(NAMES.map((name) => declared(fs.readFileSync(TEMPLATE, 'utf8'), name)).join('\n'), context);
     return context;
@@ -493,5 +495,15 @@ describe('the page\'s own rules, its state functions run from the template (11.1
     const answered = { s: 'comment', t: { p1000: { by: 'p', x: 'Why?' }, c2000: { by: 'c', x: 'Your decision.' } } };
     const talkedThenChanged = { s: 'tick', h: 'before', t: { p1000: { by: 'p', x: 'Why?' } } };
     assert.deepStrictEqual([shown(answered), shown(talkedThenChanged), shown(undefined), shown({ s: 'tick', h: 'now' })], [true, true, false, false]);
+  });
+
+  it('a line the person marked under a filter stays shown by it, though it no longer matches', () => {
+    const context = page();
+    context.filter = 'todo';
+    context.state = { '1-1-1': context.view('1-1-1', { s: 'tick', h: 'now' }) };
+    const shown = () => context.matches({ dataset: { id: '1-1-1', flags: '' } });
+    const before = shown();
+    context.held.add('1-1-1');
+    assert.deepStrictEqual([before, shown()], [false, true]);
   });
 });

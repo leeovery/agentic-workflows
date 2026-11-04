@@ -329,6 +329,8 @@ mark.sc.add { background: var(--add-bg); }
   let db = null;
   let canWrite = false;
   let filter = 'all';
+  // lines the person marked under the current filter stay in view until the filter changes, so a tick never pulls the page from under them
+  const held = new Set();
   let focused = null;
   // the lines showing their changes, by id; each line's toggle is its own
   const showing = new Set();
@@ -683,9 +685,13 @@ mark.sc.add { background: var(--add-bg); }
       });
     });
     if (!touched.size) return;
+    const anchor = topLine();
     touched.forEach(id => { settle(id); applyMark(id); });
     recount();
-    if (filter !== 'all') applyFilter();
+    if (filter !== 'all') {
+      applyFilter();
+      keepAnchor(anchor);
+    }
   }
 
   // a change's notes sit on every line it touched, and on every line whose past it replaced
@@ -918,6 +924,7 @@ mark.sc.add { background: var(--add-bg); }
 
   // ---- filters ----
   function matches(el) {
+    if (held.has(el.dataset.id)) return true;
     const m = state[el.dataset.id] || {};
     const flags = el.dataset.flags;
     switch (filter) {
@@ -1020,6 +1027,7 @@ mark.sc.add { background: var(--add-bg); }
 
   function mark(id, patch) {
     if (!canWrite) return;
+    if (filter !== 'all') held.add(id);
     const p = Object.assign({}, patch, { at: new Date().toISOString() });
     raw[id] = deepMerge(raw[id] || {}, p);
     settle(id);
@@ -1118,22 +1126,26 @@ mark.sc.add { background: var(--add-bg); }
     const vis = visible();
     const next = vis.slice(vis.indexOf(el) + 1).find(x => (state[x.dataset.id] || {}).s !== 'tick');
     if (!next) return;
-    glide(next.querySelector('.tk').getBoundingClientRect().top - y);
+    glide(next.querySelector('.tk'), y);
     focused = next;
     store.set('lastLine', next.dataset.id);
     next.focus({ preventScroll: true });
   }
 
-  // a quick scroll, fast enough never to wait on, slow enough to see the ticked line go up and the next one arrive;
-  // a tick during it starts the next glide from wherever the page has got to
+  // a quick scroll bringing `target` to `y`, fast enough never to wait on, slow enough to see the ticked line go up and
+  // the next one arrive. Each frame moves its share of whatever distance is left, so the page shifting mid-way (a
+  // line hidden or redrawn above) still ends with the target at `y`; a tick during it starts the next glide from there
   let gliding = 0;
-  function glide(dy) {
+  function glide(target, y) {
     cancelAnimationFrame(gliding);
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) { window.scrollBy(0, dy); return; }
-    const from = window.scrollY, t0 = performance.now(), ms = 240;
+    const left = () => target.getBoundingClientRect().top - y;
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) { window.scrollBy(0, left()); return; }
+    const t0 = performance.now(), ms = 240;
+    let done = 0;
     const step = now => {
-      const p = Math.min(1, (now - t0) / ms);
-      window.scrollTo(0, from + dy * (1 - Math.pow(1 - p, 3)));
+      const p = Math.min(1, (now - t0) / ms), eased = 1 - Math.pow(1 - p, 3);
+      window.scrollBy(0, left() * (eased - done) / (1 - done));
+      done = eased;
       if (p < 1) gliding = requestAnimationFrame(step);
     };
     gliding = requestAnimationFrame(step);
@@ -1321,6 +1333,7 @@ mark.sc.add { background: var(--add-bg); }
   document.querySelectorAll('.filters button').forEach(b => b.addEventListener('click', () => {
     filter = b.dataset.filter;
     store.set('filter', filter);
+    held.clear();
     applyFilter();
     recount();
   }));
@@ -1353,7 +1366,9 @@ mark.sc.add { background: var(--add-bg); }
   }
 
   function keepAnchor(anchor) {
-    if (anchor && byId.get(anchor.id)) window.scrollBy(0, byId.get(anchor.id).getBoundingClientRect().top - anchor.y);
+    const el = anchor && byId.get(anchor.id);
+    // a line the redraw hid has no place to hold
+    if (el && el.getClientRects().length) window.scrollBy(0, el.getBoundingClientRect().top - anchor.y);
     spy();
   }
 
@@ -1473,6 +1488,7 @@ mark.sc.add { background: var(--add-bg); }
     };
     let first = true;
     db.collection('marks').onSnapshot(snap => {
+      const anchor = topLine();
       snap.docChanges().forEach(ch => {
         const docId = ch.doc.id;
         const sec = docId.slice(1);
@@ -1492,7 +1508,10 @@ mark.sc.add { background: var(--add-bg); }
         });
       });
       recount();
-      if (filter !== 'all') applyFilter();
+      if (filter !== 'all') {
+        applyFilter();
+        keepAnchor(anchor);
+      }
       if (first) {
         first = false;
         arrived();
