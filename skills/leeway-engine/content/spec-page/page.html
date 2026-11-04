@@ -1096,8 +1096,12 @@ mark.sc.add { background: var(--add-bg); }
     const btn = e.target.closest('button');
     if (!btn) return;
     const act = btn.dataset.act;
-    if (btn.classList.contains('tk') || act === 'tick') toggleTick(el);
-    else if (btn.classList.contains('cm')) {
+    if (btn.classList.contains('tk') || act === 'tick') {
+      const was = (state[el.dataset.id] || {}).s === 'tick';
+      const y = btn.getBoundingClientRect().top;
+      toggleTick(el);
+      if (!was && (state[el.dataset.id] || {}).s === 'tick') bringNext(el, y);
+    } else if (btn.classList.contains('cm')) {
       if (el.dataset.compose) closeCompose(el, false); else startMessage(el);
     } else if (act === 'send') closeCompose(el, true);
     else if (act === 'cancel') closeCompose(el, false);
@@ -1109,12 +1113,46 @@ mark.sc.add { background: var(--add-bg); }
 
   function visible() { return lines.filter(el => !el.hidden && !(el.closest('section.sec') || {}).hidden); }
 
+  // after a tick, the next line not yet ticked comes up so its tick sits where the pointer is: ticking goes on in place
+  function bringNext(el, y) {
+    const vis = visible();
+    const next = vis.slice(vis.indexOf(el) + 1).find(x => (state[x.dataset.id] || {}).s !== 'tick');
+    if (!next) return;
+    glide(next.querySelector('.tk').getBoundingClientRect().top - y);
+    focused = next;
+    store.set('lastLine', next.dataset.id);
+    next.focus({ preventScroll: true });
+  }
+
+  // a quick scroll, fast enough never to wait on, slow enough to see the ticked line go up and the next one arrive;
+  // a tick during it starts the next glide from wherever the page has got to
+  let gliding = 0;
+  function glide(dy) {
+    cancelAnimationFrame(gliding);
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) { window.scrollBy(0, dy); return; }
+    const from = window.scrollY, t0 = performance.now(), ms = 240;
+    const step = now => {
+      const p = Math.min(1, (now - t0) / ms);
+      window.scrollTo(0, from + dy * (1 - Math.pow(1 - p, 3)));
+      if (p < 1) gliding = requestAnimationFrame(step);
+    };
+    gliding = requestAnimationFrame(step);
+  }
+
+  // a line brought into view lands near the top, a little room under the bar, where reading starts
+  function land(el) {
+    const bar = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bar-h')) || 0;
+    const room = Math.min(140, window.innerHeight * 0.2);
+    window.scrollTo({ top: window.scrollY + el.getBoundingClientRect().top - bar - room,
+      behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  }
+
   function focusLine(el) {
     if (!el) return;
     focused = el;
     store.set('lastLine', el.dataset.id);
     el.focus({ preventScroll: true });
-    el.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    land(el);
   }
 
   // the earliest line from the top still waiting on the person: never marked, changed since its tick, or answered by Claude
@@ -1242,7 +1280,7 @@ mark.sc.add { background: var(--add-bg); }
     if (el.hidden || (el.closest('section.sec') || {}).hidden) { filter = 'all'; store.set('filter', filter); applyFilter(); recount(); }
     if (panelOpen && covers()) setPanel(false);
     if (byId.get(id)) focusLine(el);
-    else el.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    else land(el);
   }
 
   $('changesbtn').addEventListener('click', () => setPanel(!panelOpen));
