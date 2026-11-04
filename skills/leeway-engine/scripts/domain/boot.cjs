@@ -10,6 +10,9 @@
 //
 // Before all of it, boot reads the git on the PATH, once: one older than the
 // engine's floor, or none, stops boot with nothing written (git-floor.cjs).
+// Then a folder in no git repository stops it, with nothing written either:
+// Leeway runs inside a repository and never sets one up. A project that is a
+// folder inside a larger repository is in one, and boots.
 //
 // The state comes first, before anything writes it (state-checks.cjs): the
 // state folder kept out of every branch, the branch and its worktree put in
@@ -77,7 +80,7 @@
 
 const { spawnSync } = require('child_process');
 const { withProjectLock } = require('../kernel/manifest.cjs');
-const { stateRoot, statePath } = require('../kernel/state-root.cjs');
+const { stateRoot, statePath, outsideRepository } = require('../kernel/state-root.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { systemConfigPath } = require('../kernel/knowledge/config.cjs');
@@ -152,17 +155,22 @@ const DIRECTIVE_MARKER = /^---DIRECTIVE: (\S+)---$/m;
  */
 
 /**
- * Boot stopped before anything wrote the state: `git`, the git on the PATH
- * older than the engine's floor, or none, read before anything else runs —
- * `render git-floor-stop` draws the stop; `lost`, the state
- * branch gone here and on the remote in a project holding the workflows'
- * trace — `render state-lost-gate` draws the stop, and its yes is `boot
- * --start-again`; `migrate`, the project on the layout before the state
- * branch, its state in `.workflows/` on its code branch — the migration
- * moves it; `merge`, the catch-up stopped by a field both clones changed —
- * `render state-merge-gate` draws it, and `state-merge pick` answers it.
+ * Boot's stops before anything wrote the state, each by the surface that
+ * draws it, which the start skill draws: `git`, the git on the PATH older
+ * than the engine's floor, or none, read before anything else runs; `repo`,
+ * the folder in no git repository, read next; `lost`, the state branch gone
+ * here and on the remote in a project holding the workflows' trace, its
+ * yes `boot --start-again`; `migrate`, the project on the layout before the
+ * state branch, its state in `.workflows/` on its code branch, with no
+ * screen — the reshape's migration moves it; `merge`, the catch-up stopped
+ * by a field both clones changed, each row's answer its `state-merge pick`.
+ */
+const BOOT_STOPS = Object.freeze({ git: 'git-floor-stop', repo: 'repo-stop', lost: 'state-lost-gate', migrate: null, merge: 'state-merge-gate' });
+
+/**
+ * Boot stopped before anything wrote the state (`BOOT_STOPS`).
  * @typedef {object} BootStop
- * @property {'git'|'lost'|'migrate'|'merge'} state
+ * @property {keyof typeof BOOT_STOPS} state
  * @property {string[]} warnings
  */
 
@@ -274,6 +282,7 @@ function trimReport(stdout) {
  */
 function boot(cwd, { startAgain = false } = {}) {
   if (gitShortfall() !== null) return { state: 'git', warnings: [] };
+  if (outsideRepository(cwd)) return { state: 'repo', warnings: [] };
   dropPosition(handedSession());
   /** @type {string[]} */
   const warnings = [];
@@ -417,4 +426,4 @@ function installSessionHooks(cwd, commit, warnings) {
   return sync.changed;
 }
 
-module.exports = { boot, detectSystemConfig };
+module.exports = { BOOT_STOPS, boot, detectSystemConfig };

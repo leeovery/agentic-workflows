@@ -430,6 +430,7 @@ ${REVIEW_USAGE.replace(/^/gm, '  ')}
   render migration-gate
   render state-lost-gate
   render git-floor-stop
+  render repo-stop
   render github-rule-gate
   render github-squash-gate
   render label-gate

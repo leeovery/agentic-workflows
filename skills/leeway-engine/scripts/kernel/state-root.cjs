@@ -24,7 +24,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { mainCheckout } = require('./isolated-git.cjs');
+const { NotARepository, mainCheckout } = require('./isolated-git.cjs');
 
 const STATE_DIR_NAME = '.leeway';
 const STATE_BRANCH = 'leeway-state';
@@ -51,11 +51,27 @@ function stateRoot(cwd) {
   try {
     main = mainCheckout(from);
   } catch (err) {
-    throw new Error(`no workflows state for ${from}: ${err instanceof Error ? err.message : String(err)}`);
+    throw new Error(`no workflows state for ${from}: ${err instanceof Error ? err.message : String(err)}`, { cause: err });
   }
   const root = path.join(main, STATE_DIR_NAME);
   roots.set(from, root);
   return root;
+}
+
+/**
+ * Whether the folder is in no git repository at all — boot's `repo` stop.
+ * A repository the state cannot sit in — bare, or a copied worktree — is
+ * still one, and `stateRoot` names why.
+ * @param {string} cwd
+ * @returns {boolean}
+ */
+function outsideRepository(cwd) {
+  try {
+    stateRoot(cwd);
+    return false;
+  } catch (err) {
+    return err instanceof Error && err.cause instanceof NotARepository;
+  }
 }
 
 /**
@@ -235,6 +251,6 @@ function cacheScratch(cwd, given, flag) {
 }
 
 module.exports = {
-  STATE_DIR_NAME, STATE_BRANCH, BRANCH_REF, stateRoot, pinStateRoot, findStateRoot, statePath, stateSpec, stateRelative, insideState,
+  STATE_DIR_NAME, STATE_BRANCH, BRANCH_REF, stateRoot, outsideRepository, pinStateRoot, findStateRoot, statePath, stateSpec, stateRelative, insideState,
   cacheScratch, resolvedPath, ignoresCase,
 };

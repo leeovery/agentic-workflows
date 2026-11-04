@@ -4,8 +4,8 @@
 // Domain ring: leeway's boot gates — the menus Step 0 puts to the
 // user before any work is on the table: the state lost, the GitHub rule's
 // offer, the migration confirm, the label opt-in, the brownfield offer — the
-// stops on a git below the engine's floor and at a directive of the
-// migration not yet done, and the knowledge gate's displays. Pure renderers;
+// stops on a git below the engine's floor, in a folder in no git repository
+// and at a directive of the migration not yet done, and the knowledge gate's displays. Pure renderers;
 // none reads state (the calling prose branches on the boot response and
 // fetches the gate at its display point, and the render surface reads what
 // a display names).
@@ -58,7 +58,8 @@ function migrationGate() {
 /**
  * Boot's stop where the state branch is gone here and on the remote, in a
  * project whose code tree holds the workflows' trace (4.4.5): what was lost,
- * the other clone that can put it back, and the fresh start on yes.
+ * the other clone that can put it back, and the fresh start on yes, `boot
+ * --start-again`; a no ends the start with nothing written.
  * @param {string} project the project's name
  * @returns {string}
  */
@@ -75,7 +76,7 @@ function stateLostGate(project) {
     section('DISPLAY: state lost stop', emitAs('properties'), "⚑ Boot stopped: Leeway's state branch is gone"),
     section('DISPLAY: state lost account', emitAs('markdown'), account.join('\n')),
     section('MENU: state lost gate', MENU_INSTRUCTION, menu('', [
-      cmdOption('y', 'yes', { head: 'Start again', tail: `a fresh state branch, then the product researcher reads ${name}'s code to rebuild what it can` }),
+      cmdOption('y', 'yes', { head: 'Start again', tail: `a fresh state branch, then the product researcher reads ${name}'s code to rebuild what it can` }, { next: { kind: 'engine', argv: ['boot', '--start-again'] } }),
       cmdOption('n', 'no', { head: 'Not now', tail: 'look for another clone first; nothing is written' }),
     ], { question: 'Start again with a fresh state?' })),
   ].join('\n');
@@ -100,6 +101,24 @@ function gitFloorStop(floor, found) {
   return [
     section('DISPLAY: git floor stop', emitAs('properties'), `⚑ Boot stopped: ${title}`),
     section('DISPLAY: git floor account', emitAs('markdown'), account.join('\n')),
+  ].join('\n');
+}
+
+/**
+ * Boot's stop in a folder in no git repository: Leeway runs inside one, and
+ * the way on is the person's — never a repository set up for them.
+ * @param {string} folder absolute
+ * @returns {string}
+ */
+function repoStop(folder) {
+  const account = [
+    `> Leeway runs inside a git repository, and \`${folder}\` is in none.`,
+    '>',
+    '> Make this folder a repository, or open Leeway in the repository the work lives in, then run `/leeway` again.',
+  ];
+  return [
+    section('DISPLAY: repo stop', emitAs('properties'), '⚑ Boot stopped: this folder is in no git repository'),
+    section('DISPLAY: repo account', emitAs('markdown'), account.join('\n')),
   ].join('\n');
 }
 
@@ -326,4 +345,4 @@ function knowledgeReady(store) {
   return section('DISPLAY: knowledge ready', CONTINUE_INSTRUCTION, `Knowledge base ready — ${configurationName(store)}.`);
 }
 
-module.exports = { migrationsApplied, migrationGate, stateLostGate, gitFloorStop, directiveStop, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS };
+module.exports = { migrationsApplied, migrationGate, stateLostGate, gitFloorStop, repoStop, directiveStop, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS };

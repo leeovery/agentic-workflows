@@ -21,7 +21,7 @@ const fs = require('fs');
 const path = require('path');
 const { holdLock, lockAttempts, ok, output, refuses, remoteTip, layout, commitOnState } = require('./engine-harness.cjs');
 const { announced, auditGate, auditMarkers } = require('./gate-audit.cjs');
-const { openGate } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
+const { openGate, gateShown } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const MERGE = path.join(SCRIPTS, 'domain/state-merge.cjs');
@@ -219,6 +219,19 @@ describe('the stop\'s screen (4.7.6)', () => {
     assert.strictEqual(gate.gate, 'state merge gate');
     assert.strictEqual(gate.question, 'Which horizon does "A lifetime tier" keep?');
     assert.deepStrictEqual(gate.options.map((o) => [o.key, o.head, o.tail]), [['1', 'next', "this machine's"], ['2', 'someday', "the remote's"]]);
+  });
+
+  it('leads each row to its pick of the choice shown — a field\'s two sides, a notice\'s one row carrying on', () => {
+    const notices = [
+      { file: '.store/tasks.jsonl', uncommitted: false, beside: '.store/tasks.0123abcd.jsonl', pick: null, madeTwice: [{ kind: 'task', said: 'task 2.2 of pay' }], again: [] },
+      { file: 'pay/build/phases/phase-2/consolidation.md', uncommitted: false, beside: 'pay/build/phases/phase-2/consolidation.0123abcd.md', pick: null, setAside: { phase: 2, stays: true, renumbered: [{ from: 3, to: 4 }] } },
+    ];
+    for (const conflicts of [stopOf({}).conflicts, ...notices.map((notice) => [notice])]) {
+      openGate();
+      stateMergeGate({ conflicts });
+      const pick = (/** @type {string} */ key) => ({ kind: 'engine', argv: ['state-merge', 'pick', key, choiceId(conflicts[0])] });
+      assert.deepStrictEqual(gateShown()?.options.map((o) => o.next), conflicts[0].field ? [pick('1'), pick('2')] : [pick('1')]);
+    }
   });
 
   it('shows the first conflict still open, counted among them all', () => {
