@@ -28,7 +28,7 @@ const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
 
-const { ok, output, refuses, git, createFile, initRepo, accountTaken } = require('./engine-harness.cjs');
+const { ok, output, refuses, git, createFile, initRepo, commitAll, accountTaken } = require('./engine-harness.cjs');
 const { UNIT, taskWorktreeWorld, as, building, isolation, layOut, statusOf } = require('./task-worktree-world.cjs');
 
 const project = taskWorktreeWorld('engine-task-worktree-held-out-');
@@ -98,6 +98,25 @@ describe('a task\'s worktree: the links its preparation made and the nested clon
     assert.deepStrictEqual([committed.left_dirty, staged, status, diff, own, takenOver], [[], 'lib-fees.txt', [], '', [{ path: 'lib/kit', status: '??' }], a]);
     assert.strictEqual(named, 'commit --paths: "vendor" in lib is a link the worktree\'s preparation made, as worktree.symlinkDirectories names, never the work\'s — leave it out');
     assert.deepStrictEqual([statusOf(at.dir, '3.1'), statusOf(at.dir, '3.2'), fs.readFileSync(path.join(at.lib, 'vendor', 'kit.txt'), 'utf8')], ['done', 'closed', 'kit\n']);
+  });
+
+  it('7.2.17: in a project that is a folder of a larger repository, a link its worktree\'s preparation made at a folder the project\'s own settings name is no change of a task\'s — the door stages none of it though a folder named holds it, and code status reads none', () => {
+    const at = project();
+    createFile(at.dir, 'app/.gitignore', 'deps/vendor/\n');
+    commitAll(at.dir, 'the app');
+    createFile(at.dir, 'app/deps/vendor/kit.txt', 'kit\n');
+    createFile(at.dir, 'app/.claude/settings.local.json', JSON.stringify({ worktree: { symlinkDirectories: ['deps/vendor'] } }));
+    const session = building(at.dir, ['3.1']);
+    const app = path.join(isolation(at.dir, 'a'), 'app');
+    fs.mkdirSync(path.join(app, 'deps'));
+    fs.symlinkSync(path.join(at.dir, 'app', 'deps', 'vendor'), path.join(app, 'deps', 'vendor'), 'dir');
+    ok(app, layOut('3.1'), as(session));
+    createFile(app, 'deps/fees.txt', 'fees\n');
+
+    const committed = ok(app, ['commit', '--paths', 'deps', '--task', UNIT, '3.1', '-m', 'feat(pay): add fees'], as(session));
+    const status = ok(app, ['code', 'status'], as(session)).files;
+
+    assert.deepStrictEqual([committed.left_dirty, git(app, ['show', '--name-only', '--format=', 'HEAD']).trim(), status], [[], 'app/deps/fees.txt', []]);
   });
 
   it('S1 (12.14): a merge committed through the door stages as any commit does — naming a child\'s folder holding a prepared link and a nested clone commits neither, the merge whole beside them', () => {

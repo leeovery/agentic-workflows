@@ -59,7 +59,7 @@ const path = require('path');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { git, literally } = require('../kernel/git.cjs');
-const { repoOf, repoPath, repoName } = require('../kernel/repos.cjs');
+const { repoOf, repoPath, repoName, topPath } = require('../kernel/repos.cjs');
 const { fingerprint } = require('../kernel/fingerprint.cjs');
 const { refusing } = require('./staged-payload.cjs');
 const { refuserFor } = require('./task-account.cjs');
@@ -187,8 +187,8 @@ function stagedApart(repos, back) {
   return [...byRepo].flatMap(([repo, paths]) => {
     const names = new Map(paths.map((of) => [repoPath(repo, of), of]));
     const pathspec = ['--', ...literally([...names.keys()])];
-    const staged = namesOf(repo.path, ['diff', '--cached', '--name-only', '--no-renames', '-z', ...pathspec]);
-    const apart = namesOf(repo.path, ['diff', '--name-only', '--no-renames', '-z', ...pathspec]);
+    const staged = namesOf(repo.path, ['diff', '--cached', '--name-only', '--relative', '--no-renames', '-z', ...pathspec]);
+    const apart = namesOf(repo.path, ['diff', '--name-only', '--relative', '--no-renames', '-z', ...pathspec]);
     return [...names].filter(([rel]) => staged.has(rel) && apart.has(rel)).map(([rel, of]) => ({ repo, rel, of }));
   });
 }
@@ -219,9 +219,10 @@ function setAside(cwd, unit, round, repos, back, refuse) {
     for (const { repo, rel, of } of stagedApart(repos, back)) {
       copying = `${of}'s staged version`;
       const index = path.join(making, '.index');
+      // checkout-index writes the file at its path from the repository's top, whatever the cwd.
       git(repo.path, ['checkout-index', `--prefix=${index}${path.sep}`, '--', rel]);
       fs.mkdirSync(path.dirname(path.join(making, of)), { recursive: true });
-      fs.renameSync(path.join(index, rel), path.join(making, `${of}.staged`));
+      fs.renameSync(path.join(index, topPath(repo, rel)), path.join(making, `${of}.staged`));
       fs.rmSync(index, { recursive: true, force: true });
       paths.push(`${of}.staged`);
     }

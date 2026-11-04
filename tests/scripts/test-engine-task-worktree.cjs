@@ -293,6 +293,38 @@ describe('task worktree: every repository laid out (12.7.10, 7.2.21)', () => {
     assert.deepStrictEqual(readPosition(session)?.tasks, [{ task: '3.1', builder: null, reviewers: [], worktree: b }]);
   });
 
+  it('7.2.17: in a project that is a folder of a larger repository, a worktree is read at the project\'s folder alone — its branch made already where that folder holds changes not committed refused, a change beside the folder passed over; and a /clear\'s take-over passes a change outside the folder and the project\'s own untracked clone in it, refusing a change inside it, named from the folder', () => {
+    const at = project();
+    createFile(at.dir, 'app/readme.txt', 'app\n');
+    createFile(at.dir, 'pnpm-lock.yaml', 'lock: 1\n');
+    commitAll(at.dir, 'the app, and the repository\'s lockfile');
+    const svc = initRepo(path.join(at.dir, 'app', 'svc'));
+    createFile(svc, 'svc.txt', 'svc\n');
+    git(svc, ['add', 'svc.txt']);
+    git(svc, ['commit', '-q', '-m', 'svc']);
+    git(at.dir, ['branch', SHOW, 'main']);
+    const first = building(at.dir, ['3.1', '3.2']);
+    const [a, c] = ['a', 'c'].map((name) => isolation(at.dir, name));
+    createFile(c, 'app/mine.txt', 'mine\n');
+    createFile(c, 'pnpm-lock.yaml', 'lock: 3\n');
+    const madeAlready = refuses(path.join(c, 'app'), layOut('3.2'), as(first)).error;
+    ok(path.join(a, 'app'), layOut('3.1'), as(first));
+    createFile(a, 'pnpm-lock.yaml', 'lock: 2\n');
+    createFile(a, 'app/mine.txt', 'mine\n');
+    const session = building(at.dir, ['3.1']);
+    const b = isolation(at.dir, 'b');
+
+    const inside = refuses(path.join(b, 'app'), layOut('3.1'), as(session)).error;
+    fs.rmSync(path.join(a, 'app', 'mine.txt'));
+    const answer = ok(path.join(b, 'app'), layOut('3.1'), as(session));
+
+    assert.deepStrictEqual([madeAlready, inside], [
+      `task worktree: ${SHOW} is made already, and ${path.join(c, 'app')} has changes not committed: mine.txt, so nothing was laid out — commit them, or move them out of the way, then run it again`,
+      `task worktree: task 3.1 of pay's branch ${FEES} is checked out at ${a}, with changes not committed — ${path.join(a, 'app')}: mine.txt — so it was not taken over, and nothing was laid out — commit them, or move them out of the way, then run it again`,
+    ]);
+    assert.deepStrictEqual(answer.taken_over, { worktree: a, removed: [path.join(a, 'app', 'svc')] });
+  });
+
   it('names a branch held by a worktree whose folder is gone, the way on removing it as the landing\'s remedy does — and lays out once each is followed', () => {
     const at = project();
     const session = building(at.dir, ['3.1']);

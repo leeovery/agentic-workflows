@@ -10,8 +10,9 @@
 // checkout:
 //
 // - the files its `.worktreeinclude` names that git ignores, copied — the
-//   patterns read as `.gitignore`'s, a file tracked or not ignored never
-//   one of them, a directory linked below never walked;
+//   patterns read as `.gitignore`'s, from the file's own folder, a file
+//   tracked or not ignored never one of them, a directory linked below
+//   never walked;
 // - each directory the project's Claude Code settings name in
 //   `worktree.symlinkDirectories` (`.claude/settings.json`, then
 //   `.claude/settings.local.json`, settings.cjs), linked where the checkout
@@ -40,7 +41,7 @@
 const fs = require('fs');
 const path = require('path');
 const { git, dirtyEntries, hasCommits, emptyTree, literally } = require('../kernel/git.cjs');
-const { projectDirtyEntries, mappedSubmodules } = require('../kernel/repos.cjs');
+const { projectDirtyEntries, mappedSubmodules, checkoutTop } = require('../kernel/repos.cjs');
 const { readSettings } = require('./settings.cjs');
 const { projectCheckout } = require('./landing-git.cjs');
 
@@ -70,17 +71,36 @@ function linkedDirectories(root) {
 }
 
 /**
- * The files of the checkout at `checkout` its `.worktreeinclude` names that
- * git ignores, by path from its root, never under a directory in `linked`.
- * @param {string} checkout @param {string[]} linked @returns {string[]}
+ * A line of a `.worktreeinclude` whose folder is `prefix` deep in its
+ * repository, anchored there for git, which reads a pattern handed it from
+ * the repository's top; null where the line holds none.
+ * @param {string} prefix @param {string} line @returns {string|null}
  */
-function includedFiles(checkout, linked) {
-  if (!fs.existsSync(path.join(checkout, INCLUDE))) return [];
+function anchoredAt(prefix, line) {
+  const pattern = line.replace(/(?<!\\) +$/, '');
+  if (pattern === '' || pattern.startsWith('#')) return null;
+  if (prefix === '') return pattern;
+  const negated = pattern.startsWith('!') ? '!' : '';
+  const body = pattern.slice(negated.length);
+  const folder = `/${prefix.replace(/[*?[\\]/g, '\\$&')}`;
+  if (body.startsWith('/')) return `${negated}${folder}${body.slice(1)}`;
+  return `${negated}${folder}${body.replace(/\/+$/, '').includes('/') ? '' : '**/'}${body}`;
+}
+
+/**
+ * The files of `repo`'s checkout its `.worktreeinclude` names that git
+ * ignores, by path from its folder, never under a directory in `linked`.
+ * @param {{path: string, prefix: string}} repo @param {string[]} linked @returns {string[]}
+ */
+function includedFiles(repo, linked) {
+  const file = path.join(repo.path, INCLUDE);
+  if (!fs.existsSync(file)) return [];
+  const patterns = fs.readFileSync(file, 'utf8').split(/\r?\n/).map((line) => anchoredAt(repo.prefix, line)).filter((pattern) => pattern !== null);
   const listed = (/** @type {string} */ out) => out.split('\0').filter((entry) => entry !== '');
-  const ignored = listed(git(checkout, ['ls-files', '-z', '--others', '--ignored', '--exclude-standard', '--directory']))
+  const ignored = listed(git(repo.path, ['ls-files', '-z', '--others', '--ignored', '--exclude-standard', '--directory']))
     .filter((entry) => !linked.includes(entry.replace(/\/+$/, '')));
-  if (ignored.length === 0) return [];
-  return listed(git(checkout, ['ls-files', '-z', '--others', '--ignored', `--exclude-from=${path.join(checkout, INCLUDE)}`, '--', ...ignored]));
+  if (patterns.length === 0 || ignored.length === 0) return [];
+  return listed(git(repo.path, ['ls-files', '-z', '--others', '--ignored', ...patterns.map((pattern) => `--exclude=${pattern}`), '--', ...ignored]));
 }
 
 /** `from` copied to `to`, its mode kept, where `to` is not there. @param {string} from @param {string} to */
@@ -106,13 +126,13 @@ function linked(from, to) {
  * Each repository of `repos`, laid out at its place in `laid` by the same
  * order, prepared as the header says, the settings read from the project's
  * own checkout, `repos`' first unless named.
- * @param {Laid[]} repos the checkouts @param {Laid[]} laid @param {string} [project] the project's own checkout
+ * @param {Repo[]} repos the checkouts @param {Laid[]} laid @param {string} [project] the project's own checkout
  */
 function prepareWorktree(repos, laid, project = repos[0].path) {
   const directories = linkedDirectories(project);
   repos.forEach((repo, at) => {
     for (const name of directories) linked(path.join(repo.path, name), path.join(laid[at].path, name));
-    for (const file of includedFiles(repo.path, directories)) copied(path.join(repo.path, file), path.join(laid[at].path, file));
+    for (const file of includedFiles(repo, directories)) copied(path.join(repo.path, file), path.join(laid[at].path, file));
   });
 }
 
@@ -141,18 +161,18 @@ function preparedLinkOf(project) {
 }
 
 /** The predicate of a link preparation made, for the project whose repositories are `repos`, from any checkout of it. @param {Repo[]} repos */
-const preparedIn = (repos) => preparedLinkOf(() => projectCheckout(repos[0].path));
+const preparedIn = (repos) => preparedLinkOf(() => projectCheckout(repos[0].path, repos[0]));
 
 /**
- * The links preparation made in the checkout at `at` of one of the
- * project's repositories removed, so git takes that worktree apart as a
- * clean one; none where its folder is gone.
- * @param {string} at @param {() => string} project the project's own checkout
+ * The links preparation made in a checkout of one of the project's
+ * repositories, `repo`'s folder there at `at`, removed, so git takes that
+ * worktree apart as a clean one; none where its folder is gone.
+ * @param {Repo} repo @param {string} at @param {() => string} project the project's own checkout
  */
-function removePreparedLinks(at, project) {
+function removePreparedLinks(repo, at, project) {
   if (!fs.existsSync(at)) return;
   const prepared = preparedLinkOf(project);
-  for (const entry of dirtyEntries(at)) if (prepared(at, entry)) fs.unlinkSync(path.join(at, entry.path));
+  for (const entry of dirtyEntries(at, repo.prefix)) if (prepared(at, entry)) fs.unlinkSync(path.join(at, entry.path));
 }
 
 /**
@@ -176,7 +196,7 @@ function codeChanges(repos, { renames = true } = {}) {
  */
 function linksHeldOut(repos) {
   const prepared = preparedIn(repos);
-  const links = new Map(repos.map((repo) => [repo.dir, dirtyEntries(repo.path, repo.heldOut).filter((entry) => prepared(repo.path, entry)).map(({ path: entry }) => entry)]));
+  const links = new Map(repos.map((repo) => [repo.dir, dirtyEntries(repo.path, repo.prefix, repo.heldOut).filter((entry) => prepared(repo.path, entry)).map(({ path: entry }) => entry)]));
   return { repos: repos.map((repo) => ({ ...repo, heldOut: [...repo.heldOut, .../** @type {string[]} */ (links.get(repo.dir))] })), links };
 }
 
@@ -196,8 +216,8 @@ function stagedHeldOut(repos, repo) {
   const staged = raw.flatMap((record, i) => (record.startsWith(':') ? [{ mode: record.split(' ')[1], name: raw[i + 1] }] : []))
     .filter(({ mode }) => mode !== '000000');
   if (staged.length === 0) return [];
-  const directories = linkedDirectories(projectCheckout(repos[0].path));
-  const mapped = mappedSubmodules(repo.path);
+  const directories = linkedDirectories(projectCheckout(repos[0].path, repos[0]));
+  const mapped = mappedSubmodules({ top: checkoutTop(repo, repo.path), prefix: repo.prefix });
   /** @type {Map<string, boolean>} */
   const nestedAt = new Map();
   const inNested = (/** @type {string} */ name) => {

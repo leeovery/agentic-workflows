@@ -28,7 +28,7 @@
 
 const path = require('path');
 const { git } = require('../kernel/git.cjs');
-const { repoOf, repoPath } = require('../kernel/repos.cjs');
+const { repoOf, repoPath, topPath, checkoutTop, folderUnder } = require('../kernel/repos.cjs');
 const lg = require('./landing-git.cjs');
 const { prepareWorktree } = require('./worktree-prep.cjs');
 
@@ -77,7 +77,7 @@ function heldIn(repos, repo) {
  */
 function pointedAt(repos, repo, commit) {
   const { holder, folder } = heldIn(repos, repo);
-  const [pointers] = lg.pointersAt(holder.path, [commit], [`${holder.dir === '' ? lg.prefixOf(holder.path) : ''}${folder}`]);
+  const [pointers] = lg.pointersAt(holder.path, [commit], [topPath(holder, folder)]);
   return [...pointers.values()][0] ?? commitOf(repo.path, 'HEAD');
 }
 
@@ -108,17 +108,11 @@ function startOf(repos, repo, parts) {
   return pointedAt(repos, repo, /** @type {Part} */ (parts.get(heldIn(repos, repo).holder.dir)).commit);
 }
 
-/** The project's folder in the worktree whose top is `top`. @param {string} top @param {string} project the project's folder in any checkout of it */
-const folderIn = (top, project) => path.join(top, lg.prefixOf(project));
-
-/** The top of the worktree a repository's part sits in: the own repository's above its project's folder. @param {Part} part */
-const topOf = ({ repo, at }) => (repo.dir === '' ? path.join(at, ...lg.prefixOf(repo.path).split('/').filter(Boolean).map(() => '..')) : at);
-
 /** A part laid out as its plan says. @param {Part} part @param {string|null} branch */
 function layOutPart(part, branch) {
   const { at, make } = part;
   if (make === null) return;
-  if (!make.inPlace) lg.addWorktree(part.repo.path, topOf(part), branch, make.start);
+  if (!make.inPlace) lg.addWorktree(part.repo.path, checkoutTop(part.repo, at), branch, make.start);
   else if (make.start === null) lg.switchTo(at, /** @type {string} */ (branch));
   else lg.branchInPlace(at, /** @type {string} */ (branch), make.start);
 }
@@ -142,7 +136,7 @@ function layOut(parts, branch, project) {
  * @returns {Repo[]}
  */
 function layOutAt(project, unit, repos, tips, top) {
-  const folder = folderIn(top, repos[0].path);
+  const folder = folderUnder(repos[0], top);
   const starts = startsAt(project, unit, repos, tips);
   /** @type {Map<string, Part>} */
   const parts = new Map();
@@ -154,4 +148,4 @@ function layOutAt(project, unit, repos, tips, top) {
   return [...parts.values()].map(({ repo, at }) => ({ ...repo, path: at }));
 }
 
-module.exports = { commitOf, heldIn, pointedAt, startsAt, startOf, folderIn, layOut, layOutAt };
+module.exports = { commitOf, heldIn, pointedAt, startsAt, startOf, layOut, layOutAt };

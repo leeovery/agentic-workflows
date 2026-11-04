@@ -103,10 +103,10 @@
 const fs = require('fs');
 const path = require('path');
 const { handedSession } = require('../kernel/process.cjs');
-const { git, tryGit, dirtyEntries } = require('../kernel/git.cjs');
+const { tryGit, dirtyEntries } = require('../kernel/git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { realpathOrSelf, within } = require('../kernel/isolated-git.cjs');
-const { projectRepos, repoOf, repoPath, repoName, mappedSubmodules } = require('../kernel/repos.cjs');
+const { projectRepos, repoOf, repoPath, repoName, mappedSubmodules, placeOf, folderUnder } = require('../kernel/repos.cjs');
 const { tasksInFlight, taskAt } = require('./conversation.cjs');
 const { recordWorktree } = require('./position.cjs');
 const { recordLaidOut } = require('./round-report.cjs');
@@ -124,6 +124,7 @@ const below = () => require('./review-change.cjs');
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
 /** @typedef {import('./landing-git.cjs').Worktree} Worktree */
 /** @typedef {import('../kernel/repos.cjs').Repo} Repo */
+/** @typedef {import('../kernel/repos.cjs').Place} Place */
 
 /** A child repository's worktree, with its repository. @typedef {{repo: Repo, tree: Worktree}} ChildTree */
 
@@ -163,15 +164,16 @@ function buildingConversation(ref) {
 
 /**
  * The worktree the call is made in — its top and the code root in it, each
- * with its links resolved, and the repository's worktrees — refused where
- * it is the project's own checkout, or the worktree of another task in
- * flight.
+ * with its links resolved, where the code root sits in it, and the
+ * repository's worktrees — refused where it is the project's own checkout,
+ * or the worktree of another task in flight.
  * @param {string} cwd @param {string} session @param {TaskRef} ref
- * @returns {{top: string, root: string, trees: Worktree[]}}
+ * @returns {{top: string, root: string, place: Place, trees: Worktree[]}}
  */
 function worktreeHere(cwd, session, ref) {
   const root = fs.realpathSync(codeRoot(cwd));
-  const top = fs.realpathSync(git(root, ['rev-parse', '--show-toplevel']).trim());
+  const place = placeOf(root);
+  const top = fs.realpathSync(place.top);
   const trees = lg.worktrees(root);
   if (lg.samePlace(top, trees[0].path)) {
     throw refusal(`${top} is the project's own checkout — run it in the worktree made for ${taskName(ref)}`);
@@ -180,7 +182,7 @@ function worktreeHere(cwd, session, ref) {
   if (owner !== null && (owner.unit !== ref.unit || owner.task !== shownTask(ref))) {
     throw refusal(`this worktree, ${owner.worktree}, is task ${owner.task} of ${owner.unit}'s — build ${taskName(ref)} in a worktree of its own`);
   }
-  return { top, root, trees };
+  return { top, root, place, trees };
 }
 
 /**
@@ -205,15 +207,20 @@ function childTreesIn(repos, top) {
     .sort((a, b) => b.tree.path.length - a.tree.path.length);
 }
 
+/** A repository's folder in a worktree of it: the worktree's top, but for a root inside a larger repository. @param {Repo} repo @param {Worktree} tree */
+const folderIn = (repo, tree) => folderUnder(repo, tree.path);
+
 /**
- * Each worktree of `trees` there that holds changes not committed, as a
- * refusal names it: its path, and what it holds.
+ * Each worktree of `trees` there whose repository's folder holds changes not
+ * committed, as a refusal names it: the worktree, that folder, and what it
+ * holds.
  * @param {Repo[]} repos @param {ChildTree[]} trees
  */
 function dirtIn(repos, trees) {
   return trees.filter(({ tree }) => fs.existsSync(tree.path)).flatMap(({ repo, tree }) => {
-    const dirt = uncommitted(repos, repo, tree.path);
-    return dirt.length === 0 ? [] : [{ tree, dirt }];
+    const at = folderIn(repo, tree);
+    const dirt = uncommitted(repos, repo, at);
+    return dirt.length === 0 ? [] : [{ tree, at, dirt }];
   });
 }
 
@@ -225,7 +232,7 @@ function dirtIn(repos, trees) {
  */
 function removeChildTrees(repos, trees) {
   return trees.map(({ repo, tree }) => {
-    removePreparedLinks(tree.path, () => repos[0].path);
+    removePreparedLinks(repo, folderIn(repo, tree), () => repos[0].path);
     lg.removeWorktree(repo.path, tree.path);
     if (gitlinkAt(tree.path)) fs.mkdirSync(tree.path);
     return tree.path;
@@ -247,7 +254,7 @@ function takeOverFrom(ref, repos, holder, what, session) {
   const children = childTreesIn(repos, holder.path);
   const dirt = dirtIn(repos, [{ repo: repos[0], tree: holder }, ...children]);
   if (dirt.length > 0) {
-    throw refusal(`${what}, with changes not committed — ${dirt.map(({ tree, dirt: held }) => `${tree.path}: ${held.join(', ')}`).join('; ')} — so it was not taken over, and nothing was laid out — commit them, or move them out of the way, then run it again`);
+    throw refusal(`${what}, with changes not committed — ${dirt.map(({ at, dirt: held }) => `${at}: ${held.join(', ')}`).join('; ')} — so it was not taken over, and nothing was laid out — commit them, or move them out of the way, then run it again`);
   }
   return { tree: holder, children };
 }
@@ -275,11 +282,11 @@ function heldElsewhere(ref, repos, repo, branch, trees, session) {
 }
 
 /**
- * What a worktree of `repo` at `at` holds not committed, named from there:
- * its own files, and a nested submodule's pointer moved, staged or not —
- * never what a nested repository holds, its own to answer for, the folder
- * of a clone nested in it, which it never tracks, nor a link the
- * worktree's preparation made (worktree-prep.cjs).
+ * What `repo`'s folder at `at`, in a worktree of it, holds not committed,
+ * named from there: its own files, and a nested submodule's pointer moved,
+ * staged or not — never what a nested repository holds, its own to answer
+ * for, the folder of a clone nested in it, which it never tracks, nor a
+ * link the worktree's preparation made (worktree-prep.cjs).
  * @param {Repo[]} repos the project's, in its own checkout @param {Repo} repo @param {string} at
  * @returns {string[]}
  */
@@ -287,7 +294,7 @@ function uncommitted(repos, repo, at) {
   const clones = repos.slice(1).map((other) => heldIn(repos, other))
     .filter(({ holder, submodule }) => holder === repo && !submodule).map(({ folder }) => `${folder}/`);
   const prepared = preparedLinkOf(() => repos[0].path);
-  return dirtyEntries(at, [], true).filter((entry) => !(entry.status === '??' && clones.includes(entry.path)) && !prepared(at, entry)).map((entry) => lg.plain(entry.path));
+  return dirtyEntries(at, repo.prefix, [], true).filter((entry) => !(entry.status === '??' && clones.includes(entry.path)) && !prepared(at, entry)).map((entry) => lg.plain(entry.path));
 }
 
 /**
@@ -378,7 +385,7 @@ function layOutTask(cwd, ref, read) {
     throw refusal(`${taskName(ref)} has no type in the tracker, and its branch is named from it — give it one with \`engine task type ${ref.unit} ${shownTask(ref)} <type>\`, then run it again`);
   }
   const branch = taskBranch(ref, type, title);
-  const project = lg.projectCheckout(here.root, here.trees);
+  const project = lg.projectCheckout(here.root, here.place, here.trees);
   const repos = projectRepos(project);
   const base = startsAt(project, ref.unit, repos, below().belowTips(project, ref.unit, ref.phase, repos));
   const own = ownPart(ref, repos, here, branch, session, base);
@@ -414,7 +421,7 @@ function layOutTask(cwd, ref, read) {
 function gitlinkAt(at) {
   const parent = path.dirname(at);
   if (!fs.existsSync(parent) || !(tryGit(parent, ['ls-files', '--stage', '--', path.basename(at)]) ?? '').startsWith('160000 ')) return false;
-  return mappedSubmodules(parent).includes(path.basename(at));
+  return mappedSubmodules(placeOf(parent)).includes(path.basename(at));
 }
 
 /**

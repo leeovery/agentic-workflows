@@ -12,7 +12,8 @@
 // committed (6.S9, 15.S11); a merge in progress — the chain's tip
 // merged back onto the task's branch — finished through the door, its
 // resolution named, the checks run and the trailer on the merge commit,
-// refused while a conflict stays unnamed, a child repository merged first
+// refused while a conflict stays unnamed, in a project at a repository's top
+// or a folder of it, a child repository merged first
 // and its holder's pointer resolved to the child's merged tip, staged by the
 // builder as the chain slot says or by the door (12.14); and
 // a tree with the state branch checked out is refused before any check runs
@@ -308,6 +309,15 @@ describe('commit --task: a merge in progress, the chain merged back (12.14)', ()
 
     assert.deepStrictEqual([res.task, res.checks, merging(dir), mergeCommit(dir)], ['pay-1-1', [{ name: 'tests', exit: 0 }], false, { parents: 2, task: 'pay-1-1' }]);
     assert.deepStrictEqual([git(dir, ['show', 'HEAD:src/card.js']), git(dir, ['show', 'HEAD:src/fee.js'])], ['const card = 2;\nconst chained = 3;\n', 'const fee = 1;\n'], 'the resolution and what the merge brought, committed whole');
+  });
+
+  it('7.2.17: finishes the merge in a project that is a folder of a larger repository, the resolution named from the folder', () => {
+    conflicted();
+    createFile(dir, 'src/card.js', 'const card = 2;\nconst chained = 3;\n');
+
+    ok(path.join(dir, 'src'), commitArgs('1.1', ['card.js']), as(BUILDING));
+
+    assert.deepStrictEqual([merging(dir), mergeCommit(dir), git(dir, ['show', 'HEAD:src/card.js'])], [false, { parents: 2, task: 'pay-1-1' }, 'const card = 2;\nconst chained = 3;\n']);
   });
 
   it('refuses, before any check runs and committing nothing, while a path the merge conflicts in is not named', () => {

@@ -8,13 +8,15 @@
 
 require('./hermetic-env.cjs');
 
-const { describe, it, beforeEach, afterEach } = require('node:test');
+const { describe, it, before, after, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
 const { git, commitCode, initRepo, setupGitFixture, addSubmodule, cleanupFixture, createFile, writeState, layout } = require('./engine-harness.cjs');
-const { projectRepos, repoOf, commitGroups, projectDirtyEntries } = require('../../skills/leeway-engine/scripts/kernel/repos.cjs');
+const {
+  projectRepos, repoOf, commitGroups, projectDirtyEntries, placeOf, topPath, folderPath, checkoutTop, folderUnder,
+} = require('../../skills/leeway-engine/scripts/kernel/repos.cjs');
 
 /** A repo of its own at `rel` inside `dir`, one commit holding `file`. */
 function nestedRepo(dir, rel, file = 'index.js') {
@@ -59,7 +61,7 @@ describe('projectRepos: the repos a project holds', () => {
     const sha = git(dir, ['rev-parse', 'HEAD']).trim();
     git(dir, ['update-index', '--add', '--cacheinfo', `160000,${sha},libs/absent`]);
 
-    assert.deepStrictEqual(projectRepos(dir), [{ dir: '', path: dir, heldOut: [], submodules: [] }]);
+    assert.deepStrictEqual(projectRepos(dir), [{ dir: '', path: dir, prefix: '', heldOut: [], submodules: [] }]);
   });
 
   it('a linked worktree of the project\'s own repository is no repo of its own — its folder stays the root\'s dirt', () => {
@@ -153,9 +155,42 @@ describe('projectRepos: the repos a project holds', () => {
     nestedRepo(project, 'service');
 
     assert.deepStrictEqual(projectRepos(project), [
-      { dir: '', path: project, heldOut: ['service'], submodules: [] },
-      { dir: 'service', path: path.join(project, 'service'), heldOut: [], submodules: [] },
+      { dir: '', path: project, prefix: 'apps/web/', heldOut: ['service'], submodules: [] },
+      { dir: 'service', path: path.join(project, 'service'), prefix: '', heldOut: [], submodules: [] },
     ]);
+  });
+});
+
+describe('where the project sits in its repository', () => {
+  let dir;
+  before(() => {
+    dir = setupGitFixture('engine-repos-place-');
+    createFile(dir, 'apps/web/src/app.js', '1\n');
+    commitCode(dir, 'init');
+  });
+  after(() => cleanupFixture(dir));
+
+  it('at the repository\'s top: the top the folder itself, no prefix, a path the same from either', () => {
+    const place = placeOf(dir);
+
+    assert.deepStrictEqual(place, { top: fs.realpathSync(dir), prefix: '' });
+    assert.strictEqual(topPath(place, 'src/app.js'), 'src/app.js');
+    assert.strictEqual(folderPath(place, 'src/app.js'), 'src/app.js');
+    assert.strictEqual(checkoutTop(place, '/tree'), '/tree');
+    assert.strictEqual(folderUnder(place, '/tree'), '/tree');
+  });
+
+  it('a folder inside a larger repository: the larger one\'s top, the folder from there, and a path crossing between the two both ways', () => {
+    const project = path.join(dir, 'apps/web');
+    const place = placeOf(project);
+
+    assert.deepStrictEqual(place, { top: fs.realpathSync(dir), prefix: 'apps/web/' });
+    assert.strictEqual(topPath(place, 'src/app.js'), 'apps/web/src/app.js');
+    assert.strictEqual(folderPath(place, 'apps/web/src/app.js'), 'src/app.js');
+    assert.strictEqual(folderPath(place, 'apps/website/x.js'), null, 'a sibling sharing the folder\'s name is outside it');
+    assert.strictEqual(folderPath(place, 'tools/x.js'), null);
+    assert.strictEqual(checkoutTop(place, '/tree/apps/web'), '/tree');
+    assert.strictEqual(folderUnder(place, '/tree'), '/tree/apps/web');
   });
 });
 
