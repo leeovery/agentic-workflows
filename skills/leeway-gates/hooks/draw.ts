@@ -75,14 +75,17 @@ export type Line = {
 /**
  * What a view draws with beyond its model: the pane's width, whether a
  * folding section is open, and what runs — its turning mark, and its clock
- * read at the drawing's time. What runs and what is clocked are recorded,
- * so the pane turns and ticks only a drawing that holds them.
+ * read at the drawing's time; and WAITING ON YOU, the questions waiting on
+ * the person with where each stands in the discussion (`discuss.ts`), for a
+ * view to place where its drawing has it. What runs and what is clocked are
+ * recorded, so the pane turns and ticks only a drawing that holds them.
  */
 export type Kit = {
   width: number
   isOpened: (key: string) => boolean
   spinner: () => Part
   clock: (since: string) => string
+  waiting: () => Line[]
 }
 
 /** A kit and what the drawing it served holds: anything turning, any clock. */
@@ -170,9 +173,15 @@ export function clockOf(since: string, now: number): string {
 
 /**
  * A kit for one drawing at `width`, `now` and the spinner's `frame`, the
- * folding sections open in `opened`.
+ * folding sections open in `opened`, WAITING ON YOU drawn by `waiting`.
  */
-export function kitOf(width: number, now: number, frame: number, opened: ReadonlySet<string>): Drawn {
+export function kitOf(
+  width: number,
+  now: number,
+  frame: number,
+  opened: ReadonlySet<string>,
+  waiting: () => Line[] = () => [],
+): Drawn {
   const holds = { turns: false, clocks: false }
 
   return {
@@ -190,6 +199,7 @@ export function kitOf(width: number, now: number, frame: number, opened: Readonl
 
         return clockOf(since, now)
       },
+      waiting,
     },
   }
 }

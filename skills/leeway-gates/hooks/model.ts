@@ -30,6 +30,19 @@ export type Banner = {
   facts: Fact[]
 }
 
+/**
+ * A question waiting on the person a press can queue (12.13, 20.5.3): its
+ * number, what it asks, each task it parks with its title, the tasks
+ * waiting after those, and when it parked; oldest first.
+ */
+export type Question = {
+  question: string
+  asks: string
+  parks: { task: string; title: string }[]
+  after: string[]
+  since: string
+}
+
 /** A view or page, by its kind; each kind's fields are its drawing's to read. */
 export type View = { kind: string } & Record<string, unknown>
 
@@ -51,7 +64,7 @@ export type Board = {
   tab: Tab
   view: View
   beneath: View | null
-  questions: unknown[]
+  questions: Question[]
   warnings: string[]
 }
 
@@ -73,7 +86,8 @@ const isBoard = (value: Record<string, unknown>): boolean =>
   (value.banner === null || isObject(value.banner)) &&
   (value.unit === null || isObject(value.unit)) &&
   isView(value.view) &&
-  (value.beneath === null || isView(value.beneath))
+  (value.beneath === null || isView(value.beneath)) &&
+  Array.isArray(value.questions)
 
 /** A JSON text's value; undefined for text that is not JSON. */
 function parsed(text: string): unknown {

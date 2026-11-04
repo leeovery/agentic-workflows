@@ -69,6 +69,13 @@
 //   compacted.json every note the mod appended to a compaction, with the
 //                  place it carries on in (the mod's own; the rows mod reads
 //                  it)
+//   discussing.json
+//                  the questions waiting the person sent from the board to
+//                  discuss, `{"discussing", "queue"}` by number — the one
+//                  under discussion and those after it — which the mod
+//                  writes as the person presses and as Claude records each,
+//                  and `raise` reads for the next its receipt names
+//                  (questions.cjs)
 //   rows.json      each row the rows mod redrew of what the mod sent, by
 //                  message id (its own)
 //

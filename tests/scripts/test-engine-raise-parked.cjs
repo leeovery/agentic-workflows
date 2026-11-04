@@ -840,6 +840,35 @@ describe('raise aside (12.13.17)', () => {
   });
 });
 
+describe('the discussion queue the gate mod keeps (P16, 20.6.9)', () => {
+  /** A string constant as the gate mod's source spells it: a mod cannot import the engine. @param {string} name */
+  const modLiteral = (name) => {
+    const found = new RegExp(`const ${name} = '([^']*)'`).exec(fs.readFileSync(path.join(__dirname, '../../skills/leeway-gates/hooks/discuss.ts'), 'utf8'));
+    assert.ok(found, `discuss.ts names ${name}`);
+    return found[1];
+  };
+
+  it('the engine reads the queue by the file the mod writes and the shape it writes it in, the next the first still waiting after those recorded; its receipts open with the words the mod reads them by; a queue emptied names none', () => {
+    parked(1, '2.3');
+    parked(2, '2.4', { question: full(made.size) });
+    parked(3, '2.5', { question: full(made.title) });
+    assert.strictEqual(modLiteral('DISCUSSING'), DISCUSSING);
+
+    discussing({ discussing: 'Q1', queue: ['Q2', 'Q3'] });
+    const aside = ok(dir, ['raise', 'aside', UNIT, 'Q1'], { env: conversation() });
+    discussing({ discussing: 'Q2', queue: ['Q3'] });
+    const { receipt: answered } = drawnAndPicked('Q2');
+    discussing({ discussing: null, queue: [] });
+    const quiet = ok(dir, ['raise', 'aside', UNIT, 'Q3'], { env: conversation() });
+
+    assert.deepStrictEqual([aside, answered, quiet], [
+      { ok: true, receipt: `Q1 ${modLiteral('SET_ASIDE')} · still waiting · 3 waiting on you · next: Q2` },
+      `Q2 ${modLiteral('ANSWERED')} · task 2.4 builds again · 2 waiting on you · next: Q3`,
+      { ok: true, receipt: `Q3 ${modLiteral('SET_ASIDE')} · still waiting · 2 waiting on you` },
+    ]);
+  });
+});
+
 describe('calls carry their task (12.12.5, 20.5.4)', () => {
   it('ledger decide, find, replace and ask take --task in the build, kept on the entry; elsewhere an entry\'s task is null', () => {
     const decided = write('decide', BUILD, ['--answers', made.where, '--task', '2.3'], { ...MADE, text: 'On the cursor\'s screen.', why: 'It follows the person.' }).id;

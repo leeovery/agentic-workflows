@@ -35,7 +35,8 @@
  * task's builder and reviewers recorded as they are dispatched
  * (`builder.ts`), and the workflows board, its pane beside the conversation
  * and its banner on a line of its own beneath the band's rows
- * (`workflows-board.ts`).
+ * (`workflows-board.ts`), where the questions waiting are queued to discuss
+ * with Claude (`discuss.ts`).
  *
  * All of it happens in Claude Code's terminal app and the Desktop app's Code
  * tab alone, from 2.1.287. Elsewhere — the VS Code extension, Claude Code on
