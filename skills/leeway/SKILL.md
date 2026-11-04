@@ -63,6 +63,54 @@ Migrations must never half-run silently. Surface the reported error to the user.
 
 **STOP.** Do not proceed — terminal condition.
 
+#### If `state` is `repo`
+
+Fetch the stop's screen and emit its sections verbatim per their markers:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs render repo-stop
+```
+
+**STOP.** Do not proceed — terminal condition.
+
+#### If `state` is `git`
+
+Fetch the stop's screen and emit its sections verbatim per their markers:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs render git-floor-stop
+```
+
+**STOP.** Do not proceed — terminal condition.
+
+#### If `state` is `lost`
+
+If the boot response carries `warnings`, surface them first. Then fetch the stop's gate and emit its sections verbatim per their markers:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs render state-lost-gate
+```
+
+A `next` is a boot: run it as this step runs boot, with `dangerouslyDisableSandbox: true`, and branch on its response from the top of **Step 0.1**. A null `next` ends the start: **STOP.** Do not proceed — terminal condition.
+
+#### If `state` is `merge`
+
+If the boot response carries `warnings`, surface them first. Then fetch the stop's gate and emit its sections verbatim per their markers:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs render state-merge-gate
+```
+
+Each row's `next` is the person's pick, which leaves the merge at its next question or finishes it.
+
+→ Once the pick has run, run **Step 0.1** again.
+
+#### If `state` is `migrate`
+
+If the boot response carries `warnings`, surface them first. Say `This project is on the layout before Leeway's: the reshape's migration moves it, and nothing runs here until it has.`
+
+**STOP.** Do not proceed — terminal condition.
+
 #### If `state` is `directive`
 
 Load **[migration-directive.md](references/migration-directive.md)** and follow its instructions as written, with directive = `{id}` and file = `{file}`.

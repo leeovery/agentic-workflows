@@ -295,6 +295,9 @@ function refuseCopiedWorktree(cwd, gitDir) {
   );
 }
 
+/** The refusal of a folder that is in no git repository at all. */
+class NotARepository extends Error {}
+
 /**
  * The repository's main checkout, from any cwd inside the repository — its
  * own folder, a linked worktree, or a folder below either: the folder
@@ -308,7 +311,7 @@ function mainCheckout(cwd) {
   // `--path-format=absolute` is git 2.31's: the relative answer resolves
   // against the cwd it was asked from.
   const out = isolatedGit(cwd).tryRun(['rev-parse', '--git-common-dir', '--absolute-git-dir']);
-  if (out === null) throw new Error(`${cwd} is not inside a git repository`);
+  if (out === null) throw new NotARepository(`${cwd} is not inside a git repository`);
   const [commonDir, gitDir] = out.trim().split('\n');
   const common = fs.realpathSync(path.resolve(cwd, commonDir));
   if (path.basename(common) !== '.git') {
@@ -333,4 +336,4 @@ function workTree(cwd) {
   return fs.realpathSync(out.trim());
 }
 
-module.exports = { REPOSITORY_ENV, CALL_TIMEOUT_MS, isolatedGit, withVerbReads, mainCheckout, workTree, gitfileTarget, realpathOrSelf, within };
+module.exports = { REPOSITORY_ENV, CALL_TIMEOUT_MS, isolatedGit, withVerbReads, NotARepository, mainCheckout, workTree, gitfileTarget, realpathOrSelf, within };

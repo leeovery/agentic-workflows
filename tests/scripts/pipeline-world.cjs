@@ -291,9 +291,12 @@ class Sim {
     return res.stdout.trim();
   }
 
-  /** Render surface: must exit 0 (a surface with nothing to show renders empty). */
-  render(args, { expect, identity = null } = {}) {
-    const res = this.engine(['render', ...args], identity);
+  /**
+   * Render surface: must exit 0 (a surface with nothing to show renders
+   * empty) — from the project, or from `cwd`, a folder the session opened.
+   */
+  render(args, { expect, identity = null, cwd = this.dir } = {}) {
+    const res = engine.run(['render', ...args], { cwd, env: this.envOf(identity), stdin: '' });
     assert.strictEqual(res.code, 0,
       `[render ${args.join(' ')}] crashed or refused\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
     if (expect === 'content') {
@@ -302,7 +305,7 @@ class Sim {
     if (expect === 'empty') {
       assert.strictEqual(res.stdout.trim(), '', `[render ${args.join(' ')}] expected a pass (empty render)`);
     }
-    auditGatePayload(this, args, identity);
+    auditGatePayload(this, args, identity, cwd);
     return res.stdout;
   }
 

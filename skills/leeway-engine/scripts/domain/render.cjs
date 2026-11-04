@@ -33,7 +33,7 @@ const { brownfieldOffer } = require('./brownfield.cjs');
 const {
   ORIGINS: WALKTHROUGH_ORIGINS, loadScreen, loadCard, walkthroughOffer, walkthroughScreen, walkthroughHome, walkthroughTopics, walkthroughTopic,
 } = require('./projections/walkthrough.cjs');
-const { migrationsApplied, migrationGate, stateLostGate, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS } = require('./projections/boot.cjs');
+const { migrationsApplied, migrationGate, stateLostGate, repoStop, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS } = require('./projections/boot.cjs');
 const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { readMetadata } = require('../kernel/knowledge/store.cjs');
 const { ENGINE_COMMAND, messageOf } = require('../kernel/call.cjs');
@@ -68,7 +68,7 @@ const { reviewTreeSurface } = require('./review-tree.cjs');
 const { finishSurface } = require('./finish.cjs');
 const { discoveryMapScreen } = require('./projections/discovery-map.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
-const { stateRoot, statePath } = require('../kernel/state-root.cjs');
+const { stateRoot, statePath, outsideRepository } = require('../kernel/state-root.cjs');
 const { stateMergeGateSurface } = require('./state-merge.cjs');
 const { ledgerStopSurface } = require('./ledger.cjs');
 const { directiveStopSurface } = require('./directives.cjs');
@@ -2231,6 +2231,17 @@ function migrationsAppliedSurface(cwd, { file }) {
 }
 
 /**
+ * Boot's `repo` stop, naming the folder it was called from; refused where
+ * that folder is in a repository, as nothing stopped boot.
+ * @param {string} cwd @returns {string}
+ */
+function repoStopSurface(cwd) {
+  const folder = path.resolve(cwd);
+  if (!outsideRepository(folder)) throw new Error(`render repo-stop: ${folder} is in a git repository — nothing stopped boot`);
+  return repoStop(folder);
+}
+
+/**
  * A command's error output beneath a callout heading: each line two columns
  * in, keeping its own indentation, wrapped at the display width.
  * @param {string} output @returns {string[]}
@@ -2445,6 +2456,7 @@ const SURFACES = {
   'migration-gate': () => migrationGate(),
   'state-lost-gate': (cwd) => stateLostGate(projectName(cwd)),
   'git-floor-stop': () => gitFloorStopSurface(),
+  'repo-stop': repoStopSurface,
   'github-rule-gate': (cwd) => githubRuleGate(projectName(cwd)),
   'github-squash-gate': (cwd) => githubSquashGate(projectName(cwd), githubSquashNested(cwd)),
   'label-gate': () => labelGate(),

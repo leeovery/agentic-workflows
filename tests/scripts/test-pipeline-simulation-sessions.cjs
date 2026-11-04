@@ -3,8 +3,9 @@
 // ---------------------------------------------------------------------------
 // The pipeline simulation's sessions: background agents from dispatch to
 // incorporation; restarts committing in order; the migration gate's yes;
-// and boot's lost-state screen and the GitHub offer. Concurrent sessions
-// are test-pipeline-simulation-concurrency.cjs.
+// and boot's stops — an old git, a folder in no repository, lost state and
+// its yes through the gate — and the GitHub offer. Concurrent sessions are
+// test-pipeline-simulation-concurrency.cjs.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -22,7 +23,7 @@ const ROOT = path.join(__dirname, '../..');
 const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/knowledge/files.cjs'));
 const { githubOffline, git, stateGit } = require('./engine-harness.cjs');
 const { STATE_DIR_NAME, statePath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
-const { Sim, sessionLog, mappedEpic, enterEntry, decideTopic, askedOn } = require('./pipeline-world.cjs');
+const { Sim, sessionLog, mappedEpic, enterEntry, decideTopic, askedOn, answerGate } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: sessions', () => {
   let sim;
@@ -223,14 +224,19 @@ describe('pipeline simulation: sessions', () => {
     assert.strictEqual(stateGit(sim.dir, ['status', '--porcelain', '--', wu]).trim(), '', 'the question\'s commit carries the log along');
   });
 
-  it('boot: a git below the floor stops at its screen; lost state stops at its screen and the yes starts it again; a GitHub remote gets the rule\'s offer and the squash default\'s once each, and each no is recorded', () => {
+  it('boot: a git below the floor stops at its screen, as a folder in no repository does at its own; lost state stops at its screen and the gate\'s yes starts it again; a GitHub remote gets the rule\'s offer and the squash default\'s once each, and each no is recorded', () => {
     // A machine whose git is older than the engine's floor stops before
     // anything runs.
     const bin = fs.mkdtempSync(path.join(sim.configDir, 'old-git-'));
     fs.writeFileSync(path.join(bin, 'git'), "#!/bin/sh\necho 'git version 2.39.5 (Apple Git-154)'\n", { mode: 0o755 });
     const oldGit = { PATH: bin };
-    assert.deepStrictEqual(sim.run(['boot'], oldGit), { ok: true, state: 'git', warnings: [] });
-    assert.match(sim.render(['git-floor-stop'], { expect: 'content', identity: oldGit }), /Leeway runs on git 2\.40\.0 or newer/);
+    assert.strictEqual(sim.run(['boot'], oldGit).state, 'git');
+    sim.render(['git-floor-stop'], { expect: 'content', identity: oldGit });
+
+    // Opened in a folder in no repository, boot stops at its screen.
+    const plain = fs.mkdtempSync(path.join(sim.configDir, 'plain-'));
+    assert.strictEqual(sim.runIn(plain, ['boot']).state, 'repo');
+    sim.render(['repo-stop'], { expect: 'content', cwd: plain });
 
     // The state branch and its worktree gone, the code tree still ignoring
     // the state: lost, here and with no remote to restore it from.
@@ -240,7 +246,7 @@ describe('pipeline simulation: sessions', () => {
     assert.deepStrictEqual(sim.run(['boot']), { ok: true, state: 'lost', warnings: [] });
     assert.ok(!fs.existsSync(statePath(sim.dir)), 'the stop wrote state');
     assert.match(sim.render(['state-lost-gate'], { expect: 'content' }), /Start again with a fresh state\?/);
-    const restarted = sim.run(['boot', '--start-again']);
+    const restarted = sim.run(answerGate(sim, 'state lost gate', '--pick', 'y').next.argv);
     assert.deepStrictEqual([restarted.state, restarted.github_rule_offer, restarted.github_squash_offer], ['restarted', false, false]);
     assert.strictEqual(stateGit(sim.dir, ['rev-list', '--max-parents=0', 'leeway-state']).trim().split('\n').length, 1, 'the fresh state is one orphan line');
 

@@ -430,6 +430,7 @@ ${REVIEW_USAGE.replace(/^/gm, '  ')}
   render migration-gate
   render state-lost-gate
   render git-floor-stop
+  render repo-stop
   render github-rule-gate
   render github-squash-gate
   render label-gate
@@ -1696,7 +1697,8 @@ function runAgent(call, argv) {
 
 // ---------------------------------------------------------------------------
 // boot — the entry pipeline: a git below the engine's floor, or none, stops
-// it first; the state put in place and caught up (a lost state or a merge
+// it first, then a folder in no git repository; the state put in place and
+// caught up (a lost state, the layout before the state branch, or a merge
 // waiting on a pick stops it), migrations (hard error on failure),
 // knowledge check (failure reports not-ready), and when ready the keyword
 // side brought in line, compacted and the vector fill launched

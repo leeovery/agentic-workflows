@@ -1,14 +1,19 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The git floor at boot (leeway-engine/scripts/domain/git-floor.cjs,
-// domain/boot.cjs): a git on the PATH below the engine's floor, or none,
+// Boot's stops before the state (leeway-engine/scripts/domain/boot.cjs): a
+// git on the PATH below the engine's floor, or none (domain/git-floor.cjs),
 // stops boot before anything runs, with nothing written, and `render
-// git-floor-stop` draws the stop; a git at the floor or above passes.
+// git-floor-stop` draws the stop; a git at the floor or above passes. Then a
+// folder in no git repository stops it, writing nothing anywhere, the
+// config directories included, and `render repo-stop` draws the stop; a
+// folder in a repository passes. A project that is a folder inside a larger
+// repository boots on (test-engine-boot-state-setup.cjs).
 //
 // Layer: verb. World: a plain temp folder, a conversation holding a
-// position, and a stand-in `git` that answers `--version` or fails, reached
-// through the PATH the call runs under.
+// position, fresh config directories, and a stand-in `git` that answers
+// `--version` or fails, reached through the PATH the call runs under, else
+// the git this machine runs.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -17,9 +22,11 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { ok, output, refuses } = require('./engine-harness.cjs');
+const { ok, output, refuses, initRepo, withEnv } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const { conversationDir } = require('../../skills/leeway-engine/scripts/domain/conversation.cjs');
+const { trustEvent } = require('../../skills/leeway-engine/scripts/domain/trust-events.cjs');
+const { newId } = require('../../skills/leeway-engine/scripts/domain/ledger-ids.cjs');
 
 const folder = useTempFolder('engine-boot-git-floor-');
 
@@ -41,26 +48,51 @@ const answering = (answer) => pathWith(`echo '${answer}'`);
 /** Apple's stand-in for git on a Mac without the command-line tools: it runs, and fails. */
 const XCRUN_SHIM = "echo 'xcrun: error: invalid active developer path (/Library/Developer/CommandLineTools), missing xcrun at: /Library/Developer/CommandLineTools/usr/bin/xcrun' >&2\nexit 1";
 
+/** Every file under `dir`, named from it. @param {string} dir @returns {string[]} */
+const filesUnder = (dir) => fs.readdirSync(dir, { recursive: true, withFileTypes: true })
+  .filter((entry) => !entry.isDirectory())
+  .map((entry) => path.relative(dir, path.join(entry.parentPath, entry.name)))
+  .sort();
+
+/** A file at `file`, its folders made, holding `content`. @param {string} file @param {string} content */
+function placed(file, content) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, content);
+  return file;
+}
+
 /**
  * Boot in an empty project under `env`, from a conversation holding a
- * position: its answer, the project left empty and the position kept, and
- * the stop's screen.
- * @param {{PATH: string}} env
+ * position, the config directories fresh but for a trust-log event another
+ * conversation keeps waiting: its answer, the project left empty, the
+ * position and the event left where they were and no trust log begun, and
+ * the stop's screen, drawn by `surface`.
+ * @param {string} surface @param {{PATH?: string}} [env]
  */
-function stopped(env) {
+function stopped(surface, env = {}) {
   const project = fs.mkdtempSync(path.join(folder(), 'project-'));
+  const config = { LEEWAY_CONFIG_DIR: fs.mkdtempSync(path.join(folder(), 'config-')), CLAUDE_CONFIG_DIR: fs.mkdtempSync(path.join(folder(), 'claude-')) };
+  const held = { ...env, ...config };
   const session = path.basename(project);
-  const position = path.join(conversationDir(session), 'position.json');
-  fs.mkdirSync(path.dirname(position), { recursive: true });
-  fs.writeFileSync(position, '{"name":"payments"}');
-  try {
-    const answer = ok(project, ['boot'], { env: { ...env, CLAUDE_CODE_SESSION_ID: session } });
-    assert.deepStrictEqual(fs.readdirSync(project), [], 'the stop wrote nothing');
-    assert.ok(fs.existsSync(position), 'the stop left the conversation\'s position');
-    return { answer, screen: output(project, ['render', 'git-floor-stop'], { env }) };
-  } finally {
-    fs.rmSync(conversationDir(session), { recursive: true, force: true });
-  }
+  const [position, pending] = withEnv(config, () => [
+    placed(path.join(conversationDir(session), 'position.json'), '{"name":"payments"}'),
+    placed(path.join(conversationDir(WAITING_SESSION), 'trust-pending.jsonl'), waitingEvent()),
+  ]);
+
+  const answer = ok(project, ['boot'], { env: { ...held, CLAUDE_CODE_SESSION_ID: session } });
+
+  assert.deepStrictEqual(fs.readdirSync(project), [], 'the stop wrote nothing in the project');
+  assert.deepStrictEqual([filesUnder(config.LEEWAY_CONFIG_DIR), filesUnder(config.CLAUDE_CONFIG_DIR)], [[position, pending].map((file) => path.relative(config.LEEWAY_CONFIG_DIR, file)).sort(), []],
+    'the stop wrote nothing in the config directories: the position kept, the waiting event still waiting, no trust log begun');
+  return { answer, screen: output(project, ['render', surface], { env: held }), project };
+}
+
+const WAITING_SESSION = '6f1c2b9a-0d4e-4a7b-9c3e-2f5a8b7d1e40';
+
+/** A trust-log event a conversation keeps waiting, as one line. */
+function waitingEvent() {
+  const header = { id: newId(), at: '2026-10-28T10:00:00Z', project: null, project_name: null, model: null, session: WAITING_SESSION };
+  return `${JSON.stringify(trustEvent('call', header, { entry: newId(), kind: null, label: null, sort: null }))}\n`;
 }
 
 /** The stop's screen: its title, then what boot found. @param {string} title @param {string} found */
@@ -75,13 +107,25 @@ const screen = (title, found) => [
   '',
 ].join('\n');
 
+/** The repository stop's screen, naming `at`. @param {string} at */
+const repoScreen = (at) => [
+  '=== DISPLAY: repo stop (emit verbatim as a properties code block (```properties fence)) ===',
+  '⚑ Boot stopped: this folder is in no git repository',
+  '',
+  '=== DISPLAY: repo account (emit verbatim as markdown (not a code block)) ===',
+  `> Leeway runs inside a git repository, and \`${at}\` is in none.`,
+  '>',
+  '> Make this folder a repository, or open Leeway in the repository the work lives in, then run `/leeway` again.',
+  '',
+].join('\n');
+
 const NONE = ['Leeway found no git to run', 'and boot found no git it could run on this machine.'];
 
 const MEETS = /render git-floor-stop: this git meets the floor, 2\.40\.0 — nothing stopped boot/;
 
 describe('the git floor at boot', () => {
   it('a git below the floor stops boot with nothing written — the conversation\'s position kept — and its screen names the floor, the version found and where to get one', () => {
-    const { answer, screen: shown } = stopped(answering('git version 2.39.5 (Apple Git-154)'));
+    const { answer, screen: shown } = stopped('git-floor-stop', answering('git version 2.39.5 (Apple Git-154)'));
 
     assert.deepStrictEqual(answer, { ok: true, state: 'git', warnings: [] });
     assert.strictEqual(shown, screen('this git is older than Leeway needs', 'and the git on this machine is 2.39.5.'));
@@ -89,7 +133,7 @@ describe('the git floor at boot', () => {
 
   it('no git on the PATH stops boot too, as does one that runs and fails, as Apple\'s stand-in does without the command-line tools — the screen saying none runs', () => {
     for (const [what, env] of [['none', pathWith()], ['the xcrun stand-in', pathWith(XCRUN_SHIM)]]) {
-      const { answer, screen: shown } = stopped(env);
+      const { answer, screen: shown } = stopped('git-floor-stop', env);
 
       assert.deepStrictEqual(answer, { ok: true, state: 'git', warnings: [] }, what);
       assert.strictEqual(shown, screen(...NONE), what);
@@ -101,5 +145,24 @@ describe('the git floor at boot', () => {
       assert.match(refuses(folder(), ['render', 'git-floor-stop'], { env: answering(answer) }).error, MEETS, answer);
     }
     assert.match(refuses(folder(), ['render', 'git-floor-stop']).error, MEETS);
+  });
+});
+
+describe('a folder in no git repository at boot', () => {
+  it('stops boot with nothing written anywhere — the conversation\'s position kept, the config directories as they were — and its screen names the folder and the way on, offering nothing to run', () => {
+    const { answer, screen: shown, project } = stopped('repo-stop');
+
+    assert.deepStrictEqual(answer, { ok: true, state: 'repo', warnings: [] });
+    assert.strictEqual(shown, repoScreen(project));
+  });
+
+  it('the stop has nothing to draw in a repository, or in a folder inside one', () => {
+    const repo = initRepo(path.join(folder(), 'mono'));
+    const app = path.join(repo, 'app');
+    fs.mkdirSync(app);
+
+    for (const at of [repo, app]) {
+      assert.match(refuses(at, ['render', 'repo-stop']).error, /^render repo-stop: .* is in a git repository — nothing stopped boot$/, at);
+    }
   });
 });

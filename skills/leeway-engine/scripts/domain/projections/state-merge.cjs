@@ -12,7 +12,8 @@
 // numbered rows answer it as the spec draws them, where every conflict at
 // once would need a key per side per field. The DATA section carries the
 // shown choice's identity, which the pick passes back, so a pick only ever
-// answers the question its screen showed.
+// answers the question its screen showed; each row's `next` is that pick,
+// `state-merge pick`, which `gate` hands back (gate.cjs).
 //
 // The merge asks in two steps: the branch's fields, then, once those are
 // picked, the fields this machine's uncommitted copies changed differently
@@ -191,9 +192,18 @@ function madeTwiceGate(notice) {
     section('DISPLAY: state merge stop', emitAs('properties'), `⚑ The state merge stopped: ${escapeMarkdown(title)} made on both machines`),
     section('DISPLAY: state merge account', emitAs('markdown'), account.join('\n')),
     section('MENU: state merge gate', MENU_INSTRUCTION, menu('', [
-      cmdOption('1', null, { head: 'Carry on', tail }),
+      cmdOption('1', null, { head: 'Carry on', tail }, picking('1', notice)),
     ], { question: 'Carry on with the merge?' })),
   ].join('\n');
+}
+
+/**
+ * What answering a row leads to: the pick of the choice the screen shows.
+ * @param {string} key @param {Conflict} asked
+ * @returns {{next: import('./surfaces.cjs').Next}}
+ */
+function picking(key, asked) {
+  return { next: { kind: 'engine', argv: ['state-merge', 'pick', key, choiceId(asked)] } };
 }
 
 /**
@@ -219,7 +229,7 @@ function setAsideGate(notice) {
     section('DISPLAY: state merge stop', emitAs('properties'), `⚑ The state merge stopped: ${report} set aside`),
     section('DISPLAY: state merge account', emitAs('markdown'), account.join('\n')),
     section('MENU: state merge gate', MENU_INSTRUCTION, menu('', [
-      cmdOption('1', null, { head: 'Carry on', tail: `this machine's ${copy} is kept beside` }),
+      cmdOption('1', null, { head: 'Carry on', tail: `this machine's ${copy} is kept beside` }, picking('1', notice)),
     ], { question: 'Carry on with the merge?' })),
   ].join('\n');
 }
@@ -275,7 +285,7 @@ function stateMergeGate({ conflicts }) {
     '>',
     '> The engine takes a field from one side only where the other left it alone or set it the same, so it stops here for you to pick.',
   ];
-  const rows = step.sides.map(([key, side, whose]) => cmdOption(key, null, { head: escapeMarkdown(clipped(shown(conflict[side]), ROW_VALUE_MAX)), tail: whose }));
+  const rows = step.sides.map(([key, side, whose]) => cmdOption(key, null, { head: escapeMarkdown(clipped(shown(conflict[side]), ROW_VALUE_MAX)), tail: whose }, picking(key, conflict)));
   return [
     dataSection([`choice: ${choiceId(conflict)}`]),
     section('DISPLAY: state merge stop', emitAs('properties'), `⚑ The state merge stopped: ${step.title(fields.length)}${then === null ? '' : `, and ${then.title}`}`),

@@ -19,6 +19,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { RENDER_FORMS: FORMS } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
 const { HANDOFF_TARGETS } = require('../../skills/leeway-engine/scripts/domain/handoff.cjs');
+const { BOOT_STOPS } = require('../../skills/leeway-engine/scripts/domain/boot.cjs');
 
 const REPO = path.resolve(__dirname, '..', '..');
 const DOT = '·'; // MIDDLE DOT (U+00B7)
@@ -1352,6 +1353,58 @@ function checkBuildProse(files) {
 }
 
 // ---------------------------------------------------------------------------
+// Check 35 — the start skill draws every one of boot's stops. Its boot step
+// carries a branch for each stop boot answers (`BOOT_STOPS`), and the branch
+// fetches the surface that stop names, where it names one: a stop with no
+// branch falls through to the start going on.
+// ---------------------------------------------------------------------------
+
+const START_SKILL = 'leeway';
+const BOOT_STEP = /^### Step 0\.1\b/;
+
+/** The H4 branches of the start skill's boot step, each heading's stop and the lines under it. @param {string[]} lines */
+function bootBranches(lines) {
+  const from = lines.findIndex((line) => BOOT_STEP.test(line));
+  if (from === -1) return null;
+  const to = lines.findIndex((line, i) => i > from && /^#{1,3}\s/.test(line));
+  /** @type {Map<string, {line: number, body: string[]}>} */
+  const branches = new Map();
+  /** @type {string[]|null} */
+  let body = null;
+  for (let i = from + 1; i < (to === -1 ? lines.length : to); i++) {
+    const heading = /^#### If `state` is `([a-z]+)`$/.exec(lines[i]);
+    if (heading !== null) {
+      body = [];
+      branches.set(heading[1], { line: i + 1, body });
+    } else if (/^####\s/.test(lines[i])) {
+      body = null;
+    } else if (body !== null) {
+      body.push(lines[i]);
+    }
+  }
+  return { line: from + 1, branches };
+}
+
+function checkBootStops(files, stops = BOOT_STOPS) {
+  const out = [];
+  for (const file of files.filter((f) => skillNameOf(f) === START_SKILL)) {
+    const found = bootBranches(readLines(file));
+    if (found === null) {
+      out.push({ file, line: 1, message: 'the start skill has no boot step, Step 0.1' });
+      continue;
+    }
+    for (const [stop, surface] of Object.entries(stops)) {
+      const branch = found.branches.get(stop);
+      if (branch === undefined) out.push({ file, line: found.line, message: `boot's \`${stop}\` stop has no branch in Step 0.1` });
+      else if (surface !== null && !branch.body.some((line) => line.includes(`engine.cjs render ${surface}`))) {
+        out.push({ file, line: branch.line, message: `the \`${stop}\` branch does not fetch \`render ${surface}\`` });
+      }
+    }
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Registry + reporting
 // ---------------------------------------------------------------------------
 
@@ -1387,6 +1440,7 @@ const CHECKS = [
   ['32: a Bash grant names the state under .leeway/', checkGrantsNameTheStateRoot],
   ['33: nothing writes the project\'s CLAUDE.md', (files) => checkNoClaudeMdWrites(files, codeFiles())],
   ['34: the build\'s prose prescribes nothing the builder does unprompted', checkBuildProse],
+  ['35: the start skill draws every one of boot\'s stops', checkBootStops],
 ];
 
 // ---------------------------------------------------------------------------
@@ -2659,6 +2713,27 @@ test('check 34 (the build\'s prose) — 12.S46: catches a personal skill, a red-
     ], `each line is caught once, at its line, got ${report(v)}`);
     const clean = write(dir, `skills/${BUILD_SKILL}/references/loop.md`, '# Loop\n\nThe checklist holds it; Invoke `/leeway-review-process epic x`; run `.claude/skills/leeway-engine/scripts/engine.cjs`.\n');
     assert.strictEqual(checkBuildProse([skill, clean]).filter((x) => x.file === clean).length, 0, 'the workflows\' own skills and checklists are no personal skill and no instruction');
+  });
+});
+
+test('check 35 (boot\'s stops) — catches a stop with no branch in the start skill\'s boot step and a branch that fetches no screen of its stop; permits a stop with no screen, and passes every other skill by', () => {
+  withTemp((dir) => {
+    const stops = { lost: 'state-lost-gate', repo: 'repo-stop', merge: 'state-merge-gate', migrate: null };
+    const skill = write(dir, 'skills/leeway/SKILL.md', [
+      '## Step 0: Initialisation', '', '### Step 0.1: Boot', '',
+      '#### If `state` is `lost`', '', '```bash', 'node .claude/skills/leeway-engine/scripts/engine.cjs render state-lost-gate', '```', '',
+      '#### If `state` is `repo`', '', 'Say the folder is in no repository.', '',
+      '#### If `state` is `migrate`', '', '**STOP.**', '',
+      '### Step 0.2: Setup', '', '#### If `state` is `merge`', '', 'node .claude/skills/leeway-engine/scripts/engine.cjs render state-merge-gate', '',
+    ].join('\n'));
+    const other = write(dir, 'skills/leeway-bridge/SKILL.md', '### Step 0.1: Boot\n');
+    const v = checkBootStops([skill, other], stops);
+    assert.deepStrictEqual(v.map((x) => [posix(path.relative(dir, x.file)), x.line, x.message]), [
+      ['skills/leeway/SKILL.md', 11, 'the `repo` branch does not fetch `render repo-stop`'],
+      ['skills/leeway/SKILL.md', 3, "boot's `merge` stop has no branch in Step 0.1"],
+    ], `a branch outside the boot step is none of it, got ${report(v)}`);
+    const stepless = write(dir, 'skills/leeway/SKILL.md', '## Step 0: Initialisation\n');
+    assert.deepStrictEqual(checkBootStops([stepless], stops).map((x) => x.message), ['the start skill has no boot step, Step 0.1']);
   });
 });
 

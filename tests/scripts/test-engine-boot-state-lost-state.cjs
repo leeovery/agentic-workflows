@@ -285,6 +285,12 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
     const gate = announced(() => auditGate(engine.output(main, ['render', 'state-lost-gate']), 'state lost gate'));
     assert.strictEqual(gate.question, 'Start again with a fresh state?');
     assert.deepStrictEqual(gate.options.map((o) => o.key), ['y', 'n']);
+    const conversation = { CLAUDE_CODE_SESSION_ID: 'lost-state', LEEWAY_CONFIG_DIR: fs.mkdtempSync(path.join(world(), 'config-')) };
+    const next = (/** @type {string} */ key) => {
+      engine.output(main, ['render', 'state-lost-gate'], { env: conversation });
+      return engine.ok(main, ['gate', 'state lost gate', '--pick', key], { env: conversation }).next;
+    };
+    assert.deepStrictEqual([next('y'), next('n')], [{ kind: 'engine', argv: ['boot', '--start-again'] }, null], 'the yes leads to the fresh start, the no to nothing');
   });
 
   it('on yes, `boot --start-again` makes a fresh orphan branch and says the state was started again — the baseline signal reads all the code as before the workflows', () => {
