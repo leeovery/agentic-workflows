@@ -26,6 +26,15 @@
 // first. The state is a worktree of the root's own repository, so never a
 // repo of the project; in the main checkout, where its folder sits, a read
 // of the root's code holds it out, so it is never code dirt.
+//
+// Where the project sits in its repository is read here alone (`placeOf`):
+// the top of the checkout the code root is in, and the code root's folder
+// from there, its prefix — `''` at the top. A nested repo is the top of its
+// own checkout, so only a root has a prefix, and it is the same in every
+// checkout of its repository. Each repo carries its prefix, so a path
+// crosses between the repo's folder and its repository's top
+// (`topPath`, `folderPath`), and a folder between a checkout's top and the
+// repo's folder in it (`checkoutTop`, `folderUnder`), with no read.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -35,12 +44,51 @@ const { stateRoot } = require('./state-root.cjs');
 const { codeRoot } = require('./code-root.cjs');
 
 /**
- * A repo in the project: `dir` its folder from the project root (`''` for
- * the root), `path` that folder absolute, `heldOut` the folders its git
- * holds out — the nested clones and submodules directly inside it, as it
- * names them — and `submodules` those of them `.gitmodules` maps.
- * @typedef {{dir: string, path: string, heldOut: string[], submodules: string[]}} Repo
+ * Where a folder sits in its repository: `top` the top of the checkout it
+ * is in, as git names it, and `prefix` the folder from there — `''` at the
+ * top, else ending in `/`.
+ * @typedef {{top: string, prefix: string}} Place
  */
+
+/**
+ * A repo in the project: `dir` its folder from the project root (`''` for
+ * the root), `path` that folder absolute, `prefix` that folder from its
+ * repository's top (`Place`), `heldOut` the folders its git holds out — the
+ * nested clones and submodules directly inside it, as it names them — and
+ * `submodules` those of them `.gitmodules` maps.
+ * @typedef {{dir: string, path: string, prefix: string, heldOut: string[], submodules: string[]}} Repo
+ */
+
+/** Where the folder `dir` sits in its repository. @param {string} dir @returns {Place} */
+function placeOf(dir) {
+  const [top, prefix] = git(dir, ['rev-parse', '--show-toplevel', '--show-prefix']).split('\n');
+  return { top, prefix };
+}
+
+/** A path from the folder, as its repository's top names it. @param {{prefix: string}} at @param {string} rel */
+function topPath({ prefix }, rel) {
+  return `${prefix}${rel}`;
+}
+
+/**
+ * A path from the repository's top, as the folder names it — null where it
+ * lies outside the folder.
+ * @param {{prefix: string}} at @param {string} topRel
+ * @returns {string|null}
+ */
+function folderPath({ prefix }, topRel) {
+  return topRel.startsWith(prefix) ? topRel.slice(prefix.length) : null;
+}
+
+/** The top of the checkout holding `folder`, a folder `at`'s prefix deep. @param {{prefix: string}} at @param {string} folder */
+function checkoutTop({ prefix }, folder) {
+  return path.join(folder, ...prefix.split('/').filter(Boolean).map(() => '..'));
+}
+
+/** The folder `at`'s prefix deep in the checkout whose top is `top`. @param {{prefix: string}} at @param {string} top */
+function folderUnder({ prefix }, top) {
+  return path.join(top, prefix);
+}
 
 /**
  * The NUL-separated entries a git listing answers.
@@ -70,17 +118,15 @@ function commonDir(dir) {
 }
 
 /**
- * The folders the `.gitmodules` at the top of the repo at `cwd` maps to a
- * submodule, as that repo names them from `cwd`; none where it has none.
- * @param {string} cwd @returns {string[]}
+ * The folders the `.gitmodules` at the top of a folder's repository maps to
+ * a submodule, as that folder names them; none where it has none.
+ * @param {Place} place the folder's @returns {string[]}
  */
-function mappedSubmodules(cwd) {
-  const [top, prefix = ''] = git(cwd, ['rev-parse', '--show-toplevel', '--show-prefix']).split('\n');
-  const file = path.join(top, '.gitmodules');
-  const mapping = fs.existsSync(file) ? tryGit(cwd, ['config', '--file', file, '-z', '--get-regexp', '^submodule\\..*\\.path$']) : null;
+function mappedSubmodules(place) {
+  const file = path.join(place.top, '.gitmodules');
+  const mapping = fs.existsSync(file) ? tryGit(place.top, ['config', '--file', file, '-z', '--get-regexp', '^submodule\\..*\\.path$']) : null;
   return (mapping ?? '').split('\0').filter(Boolean)
-    .map((record) => record.slice(record.indexOf('\n') + 1))
-    .filter((folder) => folder.startsWith(prefix)).map((folder) => folder.slice(prefix.length));
+    .flatMap((record) => folderPath(place, record.slice(record.indexOf('\n') + 1)) ?? []);
 }
 
 /**
@@ -90,10 +136,10 @@ function mappedSubmodules(cwd) {
  * not map — the submodules, the `160000` entries it maps, and the ignored
  * ones. A folder holding a worktree of the repo at `cwd`, or a `.git` git
  * cannot read, holds no repo of its own.
- * @param {string} cwd
+ * @param {string} cwd @param {Place} place the repo's
  * @returns {{untracked: string[], submodules: string[], ignored: string[]}}
  */
-function nestedRepoFolders(cwd) {
+function nestedRepoFolders(cwd, place) {
   /** @type {string|null|undefined} */
   let own;
   const holdsRepo = (/** @type {string} */ rel) => {
@@ -108,7 +154,7 @@ function nestedRepoFolders(cwd) {
   const gitlinks = [...new Set(listed(cwd, ['ls-files', '--stage', '-z'])
     .filter((entry) => entry.startsWith('160000 '))
     .map((entry) => entry.slice(entry.indexOf('\t') + 1)))];
-  const mapped = gitlinks.length === 0 ? [] : mappedSubmodules(cwd);
+  const mapped = gitlinks.length === 0 ? [] : mappedSubmodules(place);
   return {
     untracked: [...folders(['ls-files', '--others', '--exclude-standard', '-z']), ...gitlinks.filter((folder) => !mapped.includes(folder))].filter(holdsRepo),
     submodules: gitlinks.filter((folder) => mapped.includes(folder)).filter(holdsRepo),
@@ -126,14 +172,18 @@ function projectPath(dir, repoRel) {
 }
 
 /**
- * The repo at `dir`, then every repo nested inside it, at any depth.
- * @param {string} dir @param {string} abs
+ * The repo at `dir`, then every repo nested inside it, at any depth — each
+ * nested one the top of its own checkout.
+ * @param {string} dir @param {string} abs @param {Place} place the repo's
  * @returns {Repo[]}
  */
-function searched(dir, abs) {
-  const { untracked, submodules, ignored } = nestedRepoFolders(abs);
-  const nested = [...untracked, ...submodules, ...ignored].flatMap((rel) => searched(projectPath(dir, rel), path.join(abs, rel)));
-  return [{ dir, path: abs, heldOut: [...untracked, ...submodules], submodules }, ...nested];
+function searched(dir, abs, place) {
+  const { untracked, submodules, ignored } = nestedRepoFolders(abs, place);
+  const nested = [...untracked, ...submodules, ...ignored].flatMap((rel) => {
+    const at = path.join(abs, rel);
+    return searched(projectPath(dir, rel), at, { top: at, prefix: '' });
+  });
+  return [{ dir, path: abs, prefix: place.prefix, heldOut: [...untracked, ...submodules], submodules }, ...nested];
 }
 
 /**
@@ -143,7 +193,8 @@ function searched(dir, abs) {
  * @returns {Repo[]}
  */
 function projectRepos(cwd) {
-  const [rootRepo, ...nested] = searched('', codeRoot(cwd));
+  const root = codeRoot(cwd);
+  const [rootRepo, ...nested] = searched('', root, placeOf(root));
   return [rootRepo, ...nested.sort((a, b) => (a.dir < b.dir ? -1 : 1))];
 }
 
@@ -249,11 +300,11 @@ function codeHeldOut(repo) {
  * @returns {{path: string, status: string}[]}
  */
 function projectDirtyEntries(repos, { kept = () => true, renames = true } = {}) {
-  return repos.flatMap((repo) => dirtyEntries(repo.path, codeHeldOut(repo), false, renames).filter((entry) => kept(repo, entry))
+  return repos.flatMap((repo) => dirtyEntries(repo.path, repo.prefix, codeHeldOut(repo), false, renames).filter((entry) => kept(repo, entry))
     .map((entry) => ({ path: projectPath(repo.dir, entry.path), status: entry.status })));
 }
 
 module.exports = {
   projectRepos, mappedSubmodules, repoOf, repoPath, repoName, projectPath, childrenFirst, commitGroups,
-  codeHeldOut, projectDirtyEntries,
+  codeHeldOut, projectDirtyEntries, placeOf, topPath, folderPath, checkoutTop, folderUnder,
 };

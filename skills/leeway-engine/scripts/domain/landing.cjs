@@ -102,7 +102,7 @@ const names = require('./landing-names.cjs');
 const lg = require('./landing-git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { messageOf } = require('../kernel/call.cjs');
-const { projectRepos, projectPath, childrenFirst } = require('../kernel/repos.cjs');
+const { projectRepos, projectPath, childrenFirst, topPath } = require('../kernel/repos.cjs');
 const { STATE_DIR_NAME, stateRoot } = require('../kernel/state-root.cjs');
 
 // A phase's checks, and what a fix phase is built on, loaded at their call:
@@ -217,12 +217,11 @@ function contextOf(project, repo) {
 function mergingIn(project, repo, walking) {
   const ctx = contextOf(project, repo);
   if (repo.submodules.length === 0) return ctx;
-  const prefix = lg.prefixOf(repo.path);
   const subs = repo.submodules.flatMap((folder) => walking.filter((sub) => sub.dir === projectPath(repo.dir, folder)).map((sub) => ({ folder, sub })));
   return {
     ...ctx,
-    gitlinks: repo.submodules.map((folder) => `${prefix}${folder}`),
-    submodules: subs.map(({ folder, sub }) => ({ path: `${prefix}${folder}`, ctx: contextOf(project, sub) })),
+    gitlinks: repo.submodules.map((folder) => topPath(repo, folder)),
+    submodules: subs.map(({ folder, sub }) => ({ path: topPath(repo, folder), ctx: contextOf(project, sub) })),
   };
 }
 
@@ -422,8 +421,7 @@ function touching(project, driver, task, holding) {
  */
 function refuseUnheldMoves(project, repo, task, from) {
   if (repo.submodules.length === 0) return;
-  const prefix = lg.prefixOf(repo.path);
-  const paths = repo.submodules.map((folder) => `${prefix}${folder}`);
+  const paths = repo.submodules.map((folder) => topPath(repo, folder));
   const [before, after] = lg.pointersAt(repo.path, [from, task.branch], paths);
   repo.submodules.forEach((folder, i) => {
     const sha = after.get(paths[i]) ?? null;

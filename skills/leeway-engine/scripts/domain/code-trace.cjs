@@ -36,6 +36,7 @@ const path = require('path');
 const { isolatedGit } = require('../kernel/isolated-git.cjs');
 const { operationInProgress } = require('../kernel/git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
+const { placeOf, topPath } = require('../kernel/repos.cjs');
 const { STATE_DIR_NAME, stateRoot } = require('../kernel/state-root.cjs');
 const { commitOwnChange } = require('./commit.cjs');
 const { SETTINGS_SPEC, parseSettings } = require('./settings.cjs');
@@ -146,10 +147,11 @@ function textsCheckedOut(git, rel) {
  * @returns {boolean}
  */
 function holdsTrace(cwd) {
-  const git = isolatedGit(codeRoot(cwd));
-  const prefix = git.run(['rev-parse', '--show-prefix']).trim();
+  const root = codeRoot(cwd);
+  const git = isolatedGit(root);
+  const place = placeOf(root);
   return Object.entries(TRACED).some(([spec, carries]) => {
-    const rel = `${prefix}${spec}`;
+    const rel = topPath(place, spec);
     return textsCheckedOut(git, rel).some(carries) || textsAcrossBranches(git, rel).some(carries);
   });
 }

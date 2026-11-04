@@ -135,11 +135,11 @@ function isShallow(cwd) {
  * The pathspec a repo's history is read through: none at a repository's
  * top, and the folder itself for a project inside a larger repository, so
  * its history is the commits that touched the project.
- * @param {string} cwd
+ * @param {Repo} repo
  * @returns {string[]}
  */
-function scopeOf(cwd) {
-  return git(cwd, ['rev-parse', '--show-prefix']).trim() === '' ? [] : ['--', '.'];
+function scopeOf(repo) {
+  return repo.prefix === '' ? [] : ['--', '.'];
 }
 
 /**
@@ -317,7 +317,7 @@ function baselineSignal(cwd) {
     if (isShallow(root.path)) return null;
     const arrival = arrivalIn(cwd);
     const accounts = [
-      ...(hasCommits(root.path) ? [accountOf(root, cutAt(root.path, arrival), scopeOf(root.path))] : []),
+      ...(hasCommits(root.path) ? [accountOf(root, cutAt(root.path, arrival), scopeOf(root))] : []),
       ...nested.filter((repo) => hasCommits(repo.path)).map((repo) => nestedAccount(repo, cutAt(repo.path, arrival))),
     ];
     const commitsTotal = sum(accounts.map((a) => a.commits));

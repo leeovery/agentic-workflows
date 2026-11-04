@@ -40,7 +40,7 @@
 const fs = require('fs');
 const path = require('path');
 const { git, dirtyEntries, hasCommits, emptyTree, literally } = require('../kernel/git.cjs');
-const { projectDirtyEntries, mappedSubmodules } = require('../kernel/repos.cjs');
+const { projectDirtyEntries, mappedSubmodules, placeOf } = require('../kernel/repos.cjs');
 const { readSettings } = require('./settings.cjs');
 const { projectCheckout } = require('./landing-git.cjs');
 
@@ -141,18 +141,18 @@ function preparedLinkOf(project) {
 }
 
 /** The predicate of a link preparation made, for the project whose repositories are `repos`, from any checkout of it. @param {Repo[]} repos */
-const preparedIn = (repos) => preparedLinkOf(() => projectCheckout(repos[0].path));
+const preparedIn = (repos) => preparedLinkOf(() => projectCheckout(repos[0].path, repos[0]));
 
 /**
- * The links preparation made in the checkout at `at` of one of the
- * project's repositories removed, so git takes that worktree apart as a
- * clean one; none where its folder is gone.
- * @param {string} at @param {() => string} project the project's own checkout
+ * The links preparation made in a checkout of one of the project's
+ * repositories, `repo`'s folder there at `at`, removed, so git takes that
+ * worktree apart as a clean one; none where its folder is gone.
+ * @param {Repo} repo @param {string} at @param {() => string} project the project's own checkout
  */
-function removePreparedLinks(at, project) {
+function removePreparedLinks(repo, at, project) {
   if (!fs.existsSync(at)) return;
   const prepared = preparedLinkOf(project);
-  for (const entry of dirtyEntries(at)) if (prepared(at, entry)) fs.unlinkSync(path.join(at, entry.path));
+  for (const entry of dirtyEntries(at, repo.prefix)) if (prepared(at, entry)) fs.unlinkSync(path.join(at, entry.path));
 }
 
 /**
@@ -176,7 +176,7 @@ function codeChanges(repos, { renames = true } = {}) {
  */
 function linksHeldOut(repos) {
   const prepared = preparedIn(repos);
-  const links = new Map(repos.map((repo) => [repo.dir, dirtyEntries(repo.path, repo.heldOut).filter((entry) => prepared(repo.path, entry)).map(({ path: entry }) => entry)]));
+  const links = new Map(repos.map((repo) => [repo.dir, dirtyEntries(repo.path, repo.prefix, repo.heldOut).filter((entry) => prepared(repo.path, entry)).map(({ path: entry }) => entry)]));
   return { repos: repos.map((repo) => ({ ...repo, heldOut: [...repo.heldOut, .../** @type {string[]} */ (links.get(repo.dir))] })), links };
 }
 
@@ -196,8 +196,8 @@ function stagedHeldOut(repos, repo) {
   const staged = raw.flatMap((record, i) => (record.startsWith(':') ? [{ mode: record.split(' ')[1], name: raw[i + 1] }] : []))
     .filter(({ mode }) => mode !== '000000');
   if (staged.length === 0) return [];
-  const directories = linkedDirectories(projectCheckout(repos[0].path));
-  const mapped = mappedSubmodules(repo.path);
+  const directories = linkedDirectories(projectCheckout(repos[0].path, repos[0]));
+  const mapped = mappedSubmodules(placeOf(repo.path));
   /** @type {Map<string, boolean>} */
   const nestedAt = new Map();
   const inNested = (/** @type {string} */ name) => {

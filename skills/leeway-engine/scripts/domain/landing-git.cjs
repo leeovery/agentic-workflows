@@ -68,6 +68,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { git: personGit, tryGit: personTryGit, operationInProgress, dirtyEntries, GitError, READ_BUDGET_BYTES } = require('../kernel/git.cjs');
+const { placeOf, folderUnder } = require('../kernel/repos.cjs');
 const { STATE_BRANCH, NETWORK_ENV, PUSH_TIMEOUT_MS, FETCH_TIMEOUT_MS } = require('./state-worktree.cjs');
 const names = require('./landing-names.cjs');
 
@@ -269,11 +270,6 @@ function commitWithTree(root, from, to, tree) {
 /** The trees of every commit `to` holds past `from`. @param {string} root @param {string} from @param {string} to @returns {Set<string>} */
 function treesPast(root, from, to) {
   return new Set(git(root, ['log', '--format=%T', `${from}..${to}`]).split('\n').filter(Boolean));
-}
-
-/** The folder the code root is of its repository, from the repository's top: `''` at the top, else ending in `/`. @param {string} root */
-function prefixOf(root) {
-  return git(root, ['rev-parse', '--show-prefix']).trim();
 }
 
 /**
@@ -547,9 +543,13 @@ function mainCheckout(listed) {
   return tryGit(listed, ['rev-parse', '--show-toplevel'])?.trim() || listed;
 }
 
-/** The project's folder in its own checkout, from the code root of any worktree of it. @param {string} root @param {Worktree[]} [trees] the repository's, where read */
-function projectCheckout(root, trees = worktrees(root)) {
-  return path.join(trees[0].path, prefixOf(root));
+/**
+ * The project's folder in its own checkout, from the code root of any
+ * worktree of it.
+ * @param {string} root @param {{prefix: string}} [at] where the code root sits in its repository, where read @param {Worktree[]} [trees] the repository's, where read
+ */
+function projectCheckout(root, at = placeOf(root), trees = worktrees(root)) {
+  return folderUnder(at, trees[0].path);
 }
 
 /**
@@ -670,7 +670,7 @@ function quoted(word) {
  * @param {string} root @param {string} tree
  */
 function ownCheckout(root, tree) {
-  return samePlace(git(root, ['rev-parse', '--show-toplevel']).trim(), tree);
+  return samePlace(placeOf(root).top, tree);
 }
 
 /** Git as a remedy runs it in a worktree: plainly in the person's own checkout, by `-C` elsewhere. @param {string} root @param {string} tree */
@@ -965,11 +965,11 @@ function rebaseBlock(root, branch, trees = worktrees(root)) {
  * The tracked changes not committed in a worktree, by path — but for a
  * submodule's own checkout, its commit or its files, which no move there
  * touches (`PINNED`); a pointer staged there is the worktree's own.
- * @param {string} tree
+ * @param {string} tree the worktree's top
  * @returns {string[]}
  */
 function changesAt(tree) {
-  const entries = dirtyEntries(tree).filter((entry) => entry.status !== '??');
+  const entries = dirtyEntries(tree, '').filter((entry) => entry.status !== '??');
   const unstaged = entries.filter((entry) => entry.status[0] === ' ').map((entry) => `:(literal)${entry.path}`);
   if (unstaged.length === 0) return entries.map((entry) => entry.path);
   const submodules = new Set(git(tree, ['ls-files', '--stage', '-z', '--', ...unstaged]).split('\0')
@@ -1166,7 +1166,7 @@ function defaultBranch(root, remote, nested = false) {
 
 module.exports = {
   short, readOnce, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranch, refsUnder, updateRefs, isAncestor, mergeBase, treesOf, firstParentLine, messagesPast, messagesNaming, commitsNamed, messageOf, commitWithTree, treesPast,
-  prefixOf, pointersAt, treeWithPointers, pointedLike, holdsCommit, pointerAhead, stackMoves, commitsPast, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, remedy, moveTo, movedSinceOpened, rewrite, scratchBlock, rebaseBlock, checkoutBlock, pathsChanged, dirtBlock, moveBranch,
+  pointersAt, treeWithPointers, pointedLike, holdsCommit, pointerAhead, stackMoves, commitsPast, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, remedy, moveTo, movedSinceOpened, rewrite, scratchBlock, rebaseBlock, checkoutBlock, pathsChanged, dirtBlock, moveBranch,
   defaultBranch, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, nothingPast,
   worktrees, taskWorktree, mainCheckoutOf, projectCheckout, holderOf, samePlace, removing, branchInPlace, addWorktree, switchTo, removeWorktree, detach, scratchRoot, scratchTree,
 };

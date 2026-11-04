@@ -345,11 +345,11 @@ function stagedAside(cwd, paths, stage) {
     return landed;
   } finally {
     if (landed === null) {
-      const top = git(cwd, ['rev-parse', '--show-toplevel']).trim();
       const had = new Set(before.map(entryPath));
-      const added = indexEntries(cwd, paths).map(entryPath).filter((p) => !had.has(p));
-      if (added.length > 0) gitIndexed(top, ['update-index', '--force-remove', '--', ...added]);
-      if (before.length > 0) gitIndexed(top, ['update-index', '-z', '--index-info'], before.map((entry) => `${entry}\0`).join(''));
+      const added = indexEntries(cwd, paths).filter((entry) => !had.has(entryPath(entry)));
+      // An entry of mode 0 removes its path from the index.
+      const restored = [...added.map((entry) => entry.replace(/^\d+/, '0')), ...before];
+      if (restored.length > 0) gitIndexed(cwd, ['update-index', '-z', '--index-info'], restored.map((entry) => `${entry}\0`).join(''));
     }
   }
 }
@@ -528,21 +528,21 @@ function commitIndexEntries(cwd, specs, message) {
  * never its folder, whatever the user's `status.showUntrackedFiles` — named
  * from `cwd`, each with its two-letter porcelain status (`??` untracked),
  * `exclude` held out. A nested repo git still names by its folder. Porcelain
- * names a path from the repository's top whatever the cwd, so a cwd below
- * the top has its own prefix taken off. NUL-separated so paths with spaces
- * or non-ASCII bytes survive; a rename record's second field (the source
- * path) is consumed with it. With `pointersOnly`, a submodule differs only
- * where its pointer moved, staged or not, never for what it holds itself.
- * With `renames` off, a rename reads as its two paths, the source deleted
- * and the target added.
+ * names a path from the repository's top whatever the cwd, so `prefix`, the
+ * cwd's folder from there (kernel/repos, `placeOf`), is taken off.
+ * NUL-separated so paths with spaces or non-ASCII bytes survive; a rename
+ * record's second field (the source path) is consumed with it. With
+ * `pointersOnly`, a submodule differs only where its pointer moved, staged
+ * or not, never for what it holds itself. With `renames` off, a rename reads
+ * as its two paths, the source deleted and the target added.
  * @param {string} cwd
+ * @param {string} prefix
  * @param {string[]} [exclude]
  * @param {boolean} [pointersOnly]
  * @param {boolean} [renames]
  * @returns {{path: string, status: string}[]}
  */
-function dirtyEntries(cwd, exclude = [], pointersOnly = false, renames = true) {
-  const cwdPrefix = git(cwd, ['rev-parse', '--show-prefix']).trim();
+function dirtyEntries(cwd, prefix, exclude = [], pointersOnly = false, renames = true) {
   const submodules = pointersOnly ? ['--ignore-submodules=dirty'] : [];
   const pairs = renames ? [] : ['--no-renames'];
   const fields = git(cwd, ['status', '--porcelain', '-z', '--untracked-files=all', ...pairs, ...submodules, '--', '.', ...excluding(exclude)]).split('\0');
@@ -551,7 +551,7 @@ function dirtyEntries(cwd, exclude = [], pointersOnly = false, renames = true) {
   for (let i = 0; i < fields.length; i++) {
     const entry = fields[i];
     if (entry.length < 4) continue;
-    entries.push({ path: entry.slice(3 + cwdPrefix.length), status: entry.slice(0, 2) });
+    entries.push({ path: entry.slice(3 + prefix.length), status: entry.slice(0, 2) });
     if (entry[0] === 'R' || entry[0] === 'C') i += 1;
   }
   return entries;

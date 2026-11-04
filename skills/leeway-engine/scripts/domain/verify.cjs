@@ -114,7 +114,7 @@ const { readProjectManifest, writeProjectManifestAtomic, withProjectLock } = req
 const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 const { stateRoot, statePath, STATE_DIR_NAME } = require('../kernel/state-root.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
-const { projectRepos, projectPath, repoName } = require('../kernel/repos.cjs');
+const { projectRepos, projectPath, repoName, folderUnder } = require('../kernel/repos.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { runShellCommand, tailText } = require('../kernel/shell-command.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
@@ -129,7 +129,7 @@ const { holdsScenario } = require('./task-file.cjs');
 const { trackedTask, trackedPhase } = require('./task-verbs.cjs');
 const { phaseStack } = require('./phase-stack.cjs');
 const { mainCheckoutOf } = require('./landing-git.cjs');
-const { folderIn, layOutAt } = require('./project-layout.cjs');
+const { layOutAt } = require('./project-layout.cjs');
 const { isoNow } = require('./dates.cjs');
 const { VERIFY_PARTS, SETUP_PLACES, setupFaults, verifySetup } = require('./environment.cjs');
 const { VERDICTS, SCENARIO, recordRun, recordingPath, behindHead, runsOf } = require('./runs.cjs');
@@ -660,7 +660,7 @@ const scratchTop = (own, unit, phase) => path.join(mainCheckoutOf(own.path), '.c
  * @param {Repo[]} repos the project's @param {string} top
  */
 function takeApart(repos, top) {
-  const folder = folderIn(top, repos[0].path);
+  const folder = folderUnder(repos[0], top);
   for (let at = repos.length - 1; at >= 0; at -= 1) {
     const { dir, path: root } = repos[at];
     tryGit(root, ['worktree', 'remove', '--force', '--force', dir === '' ? top : path.join(folder, dir)]);
