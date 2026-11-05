@@ -5,8 +5,10 @@
  *
  * Its facts line ends in where the review stands, and wraps rather than lose
  * those words at the edge, as each gap's and call's facts do under their
- * indent. WAITING ON YOU lists each question asked in the conversation,
- * never queued, and ready to build while it waits on the person's yes. A
+ * indent. WAITING ON YOU lists what waits on the person in the unit, the
+ * engine's one list: each gap asked in the conversation, never queued, with
+ * its facts, ready to build while it waits on the person's yes, and any
+ * other wait by its words, each opening its page where it has one. A
  * pass's findings each stand with the person: ⚑ while the question it was
  * asked as waits on them, ✓ once they answered it, ◇ Claude's call (D23).
  */
@@ -18,7 +20,7 @@ import { READ, factLines, header, section, sectionsOf, titled } from './words.ts
 
 type Section = { number: string; title: string; changed_by: number[]; reading: boolean }
 type Pass = { pass: number; found: number; calls: number; yours: number; state: 'running' | 'landed' | 'lost' | 'read'; since: string | null; reads: string[] | null }
-type Gap = { id: string; text: string; pass: number | null; finding: string | null; sections: string[] }
+type Gap = { kind: string; id: string; text: string; page: string | null; pass: number | null; finding: string | null; sections: string[] }
 type Call = { id: string; text: string; question: string | null; pass: number | null; finding: string | null; sections: string[] }
 type Standing = 'waits' | 'yours' | 'claude'
 type Cut = { phase: number; name: string; scenarios: number; sections: string[] }
@@ -33,7 +35,6 @@ type Spec = {
   waiting: Gap[]
   since: Call[]
   cut: Cut[]
-  ready: 'review' | 'person'
 }
 
 /** The pass out, where one is. */
@@ -42,8 +43,11 @@ const outOf = ({ passes: [latest] }: Spec) => (latest === undefined || latest.st
 /** The passes reported. */
 const reportedOf = ({ passes }: Spec) => passes.filter(({ state }) => state === 'read')
 
-/** Whether ready to build waits on the person's yes. */
-const isReady = (view: Spec) => view.ready === 'person' && view.waiting.length === 0 && outOf(view) === null
+/** The gaps waiting on the person. */
+const gapsOf = ({ waiting }: Spec) => waiting.filter(({ kind }) => kind === 'gap')
+
+/** Whether ready to build waits on the person's yes, as the engine lists it. */
+const isReady = ({ waiting }: Spec) => waiting.some(({ kind }) => kind === 'ready')
 
 /** Where the review stands, at the end of the facts line. */
 function standingOf(view: Spec, kit: Kit): Part[] {
@@ -58,7 +62,7 @@ function standingOf(view: Spec, kit: Kit): Part[] {
     return [{ text: out.state === 'landed' ? `${MARK.round} pass ${out.pass}'s report in` : `${MARK.difference} pass ${out.pass} lost`, color: COLOUR.secondary }]
   }
 
-  if (view.waiting.length > 0) {
+  if (gapsOf(view).length > 0) {
     return [{ text: `${MARK.needs} pass ${next} waits on your answer`, color: COLOUR.needs }]
   }
 
@@ -77,7 +81,7 @@ function factsLine(view: Spec, kit: Kit): Line {
   return { key: 'spec:facts', wraps: true, parts: [{ text: said, color: COLOUR.secondary }, ...standingOf(view, kit)] }
 }
 
-/** What a gap's or call's ▸ read opens: the finding that raised it, else its entry. */
+/** What a call's ▸ read opens: the finding that asked its question, else its entry. */
 const readOf = ({ id, pass, finding }: { id: string; pass: number | null; finding: string | null }) => (pass === null || finding === null ? `entry:${id}` : `pass:${pass}:${finding}`)
 
 /** A gap's or a call's lines: its words under its mark, then its facts under their indent, ▸ read on the last row — on its own row where it has no facts. */
@@ -90,19 +94,22 @@ function readLines(key: string, mark: Part, words: string, said: string, width: 
 /** A gap's facts: the pass that found it and the sections it touches, each where it has one. */
 const gapSaid = ({ pass, sections }: Gap) => [...(pass === null ? [] : [`found by pass ${pass}`]), ...(sections.length === 0 ? [] : [`touches ${sectionsOf(sections)}`])].join(' · ')
 
-/** WAITING ON YOU: each question asked in the conversation, and ready to build's yes while it waits. */
-function waitingLines(view: Spec, width: number): Line[] {
-  const ready: Line[] = isReady(view)
-    ? [{ key: 'spec:ready:ask', mark: { text: `${MARK.needs} `, color: COLOUR.needs }, wraps: true, parts: [{ text: 'Ready to build: the outline and the phase cut, for your yes', color: COLOUR.body }] }]
-    : []
-  const count = view.waiting.length + ready.length
+/** A wait other than a gap: its words under its mark, opening its page where it has one. */
+const askLine = (waiting: Gap): Line => ({
+  key: `spec:ask:${waiting.id}`,
+  mark: { text: `${MARK.needs} `, color: COLOUR.needs },
+  wraps: true,
+  parts: [{ text: waiting.text, color: COLOUR.body }],
+  ...(waiting.page === null ? {} : { press: pageKey(waiting.page) }),
+})
 
+/** WAITING ON YOU: what waits on the person in the unit, each gap with its facts and ▸ read, every other wait by its words. */
+function waitingLines(view: Spec, width: number): Line[] {
   return section(
-    heading('spec:waiting', { text: 'WAITING ON YOU', bold: true, color: COLOUR.needs }, [{ text: `${count} · asked in the conversation`, color: COLOUR.secondary }], width),
-    [
-      ...view.waiting.flatMap(gap => readLines(`spec:gap:${gap.id}`, { text: MARK.needs, color: COLOUR.needs }, gap.text, gapSaid(gap), width, readOf(gap))),
-      ...ready,
-    ],
+    heading('spec:waiting', { text: 'WAITING ON YOU', bold: true, color: COLOUR.needs }, [{ text: `${view.waiting.length} · asked in the conversation`, color: COLOUR.secondary }], width),
+    view.waiting.flatMap(waiting =>
+      waiting.kind === 'gap' && waiting.page !== null ? readLines(`spec:gap:${waiting.id}`, { text: MARK.needs, color: COLOUR.needs }, waiting.text, gapSaid(waiting), width, waiting.page) : [askLine(waiting)],
+    ),
   )
 }
 
@@ -121,7 +128,7 @@ function sinceLines(view: Spec, width: number): Line[] {
 function nextLine(view: Spec): Line[] {
   const next = reportedOf(view).length + 1
 
-  if (outOf(view) !== null || view.ready === 'person' || view.sections.length === 0) {
+  if (outOf(view) !== null || isReady(view) || view.sections.length === 0) {
     return []
   }
 
@@ -133,7 +140,7 @@ function nextLine(view: Spec): Line[] {
       parts: [
         { text: MARK.waiting, color: COLOUR.notStarted },
         { text: ` Pass ${next}`, color: COLOUR.body },
-        { text: ` · ${reads}${view.waiting.length > 0 ? ', once you answer' : ', next'}`, color: COLOUR.notStarted },
+        { text: ` · ${reads}${gapsOf(view).length > 0 ? ', once you answer' : ', next'}`, color: COLOUR.notStarted },
       ],
     },
   ]

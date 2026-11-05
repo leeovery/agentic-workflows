@@ -4,10 +4,12 @@
  * the messages waiting for it beneath — and a spike's page (20.11.3).
  *
  * Its facts line ends in whether the map waits on the person, and wraps
- * rather than lose those words at the edge. Nothing on a brief is a
- * decision: it says the topic is decided in its discussion.
+ * rather than lose those words at the edge. WAITING ON YOU lists what waits
+ * on the person in the unit by its words, from the engine's one list.
+ * Nothing on a brief is a decision: it says the topic is decided in its
+ * discussion.
  */
-import { COLOUR, INDENT, MARK, blank, cutTo, dayOf, heading, prose, type Kit, type Line, type Part } from '../draw.ts'
+import { COLOUR, INDENT, MARK, blank, counted, cutTo, dayOf, heading, prose, type Kit, type Line, type Part } from '../draw.ts'
 import type { View } from '../model.ts'
 import { pageKey } from '../pane.ts'
 import { messageList } from './discussion.ts'
@@ -23,7 +25,7 @@ type Discovery = {
   type: string
   session: number | null
   started: string | null
-  waits: boolean
+  waiting: { kind: string; id: string; text: string }[]
   map: MapLine[]
   roadmap: { title: string; horizon: string }[]
   not_taken: { direction: string; why: string }[]
@@ -31,32 +33,24 @@ type Discovery = {
   spikes: Spike[]
 }
 
-const topics = (count: number) => `${count} ${count === 1 ? 'topic' : 'topics'}`
-
 /** What it shapes: the topics on the map, what goes to the roadmap, and whether the map waits on the person or is being shaped. */
 function factsLine(view: Discovery, kit: Kit): Line {
-  const standing: Part[] = view.waits
+  const standing: Part[] = view.waiting.some(({ kind }) => kind === 'map')
     ? [{ text: `${MARK.needs} the map waits on you`, color: COLOUR.needs }]
     : [kit.spinner(), { text: ' shaping', color: COLOUR.running }]
 
   return {
     key: 'd:facts',
     wraps: true,
-    parts: [{ text: `${topics(view.map.length)} on the map · ${view.roadmap.length} to the roadmap · `, color: COLOUR.secondary }, ...standing],
+    parts: [{ text: `${counted(view.map.length, 'topic')} on the map · ${view.roadmap.length} to the roadmap · `, color: COLOUR.secondary }, ...standing],
   }
 }
 
 const approveLines = (view: Discovery, width: number): Line[] =>
-  view.waits
-    ? section(heading('d:waiting', { text: 'WAITING ON YOU', bold: true, color: COLOUR.needs }, [{ text: '1 · asked in the conversation', color: COLOUR.secondary }], width), [
-        {
-          key: 'd:approve',
-          mark: { text: `${MARK.needs} `, color: COLOUR.needs },
-          wraps: true,
-          parts: [{ text: `Approve the map: ${topics(view.map.length)} in this order, and ${view.roadmap.length} to the roadmap`, color: COLOUR.body }],
-        },
-      ])
-    : []
+  section(
+    heading('d:waiting', { text: 'WAITING ON YOU', bold: true, color: COLOUR.needs }, [{ text: `${view.waiting.length} · asked in the conversation`, color: COLOUR.secondary }], width),
+    view.waiting.map(waiting => ({ key: `d:waiting:${waiting.id}`, mark: { text: `${MARK.needs} `, color: COLOUR.needs }, wraps: true, parts: [{ text: waiting.text, color: COLOUR.body }] })),
+  )
 
 const mapLines = (view: Discovery, width: number): Line[] =>
   section(

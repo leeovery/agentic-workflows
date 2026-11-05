@@ -1,55 +1,57 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: where a unit stands on the board — the one derivation the
-// unit's tab, the epic's page, All work's row and count and WAITING ON YOU
-// read, from the records each phase's banner reads, so no view knows less
-// of a unit than another.
+// Domain ring: where a unit stands on the board — the one derivation every
+// view reads, the banner in every phase and at the unit's menu, the unit's
+// tab, the epic's page and its stages, and All work's row and count, so no
+// view knows less of a unit than another.
 //
 // - Its phases run from discovery through its type's pipeline (20.15.2),
 //   each complete, under way, or later, by the phase's status
 //   (derivations.cjs); an epic's discovery runs until its map is first
-//   approved, each phase after it later until then. A phase complete
-//   carries the day it closed, as its records keep it: a linear unit's
-//   discovery the day the unit was made, an epic's the map last approved
-//   (state-history.cjs), the discussion its last topic decided, the
-//   specification ready to build's yes, the build its last phase closed,
-//   the review the unit completed.
-// - Where it has come to (`now`): the furthest phase under way, else the
-//   first not complete — an epic past its discovery by its stages, the
-//   specification once every topic is decided, the build once begun, the
-//   review once the build has finished — or complete, since the day the
-//   phase before it closed.
-// - How the phase it is in stands: stopped where nothing of its build, the
-//   review's fix tasks among it, can go on without an answer
+//   approved, as the yes records it (`phases.discovery.approved_at`,
+//   approve-map.cjs), each phase after it later until then. The
+//   specification is under way from its entry, once the topics are settled
+//   (spec-standing.cjs). A phase complete carries the day it closed, as its
+//   records keep it: a linear unit's discovery the day the unit was made,
+//   an epic's the map last approved, the discussion its last topic decided,
+//   the specification ready to build's yes, the build its last phase
+//   closed, the review the unit completed.
+// - Where it has come to (`now`): the first phase not complete — an epic
+//   past its discovery by its stages, the specification once the topics are
+//   settled, the build once begun, the review once the build has finished —
+//   or complete, since the day the phase before it closed.
+// - How the phase it is in stands: stopped where nothing of a build run by
+//   its cut, the review's fix tasks among it, can go on without an answer
 //   (board-build.cjs); waiting on the person where something asked in the
 //   conversation waits — the map, a gap, ready to build's yes, finish; else
 //   under way.
-// - What waits on the person, in order: approve the map while a map is
-//   staged; the spec's gaps (spec-passes.cjs) and then ready to build's yes,
-//   while it is written and the build not begun; the questions its build
-//   and the review's fix tasks wait on (questions.cjs); and finish, once a
-//   round ended the review and its fix tasks and builders' notes are done
-//   (D18) — the unit's tracker read for that alone, once a round ended it.
+// - What waits on the person is the unit's one list, in order, each wait
+//   with its words and the page a press on it opens, where it opens one:
+//   approve the map while a map is staged, the sweep's candidates among it
+//   after the sweep (8.10.9); the spec's gaps (spec-passes.cjs), each
+//   opening the finding that raised it, and then ready to build's yes, while
+//   the spec is under way and the build not begun; the questions a build
+//   run by its cut and the review's fix tasks wait on (questions.cjs), each
+//   opening the page of the first task it parks; and finish, once a round
+//   ended the review and its fix tasks and builders' notes are done (D18).
+// - The banner counts that list, flagged — the map alone by its own words —
+//   and at a menu says it unflagged (D40).
 // ---------------------------------------------------------------------------
 
-const fs = require('fs');
-const { stagedOrNone, liveInOrder } = require('../approve-map.cjs');
-const { pastItsSpec } = require('../spec-standing.cjs');
-const { specPath } = require('../spec-sections.cjs');
-const { waitingGaps } = require('../spec-passes.cjs');
+const { stagedOrNone } = require('../approve-map.cjs');
+const { pastItsSpec, topicsSettled } = require('../spec-standing.cjs');
 const { waitingAndFreed } = require('../questions.cjs');
 const { recordedRounds, endsReview } = require('../review-phase.cjs');
-const { mapApproved } = require('../state-history.cjs');
-const { dayBefore } = require('../dates.cjs');
-const { phaseStatus, buildPlaceStatus, buildBegun, buildFinished } = require('../derivations.cjs');
+const { phaseStatus, buildPlaceStatus, buildBegun, buildByCut, buildFinished } = require('../derivations.cjs');
 const { counted } = require('./map.cjs');
 const { buildView, reviewStandingAt } = require('./board-build.cjs');
-const { readyWaits } = require('./board-spec.cjs');
+const { specWaits } = require('./board-spec.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
 /** @typedef {import('../board-model.cjs').UnitNow} UnitNow */
 /** @typedef {import('../board-model.cjs').WaitingLine} WaitingLine */
+/** @typedef {import('../board-model.cjs').Fact} Fact */
 /** @typedef {'complete'|'running'|'later'} Status */
 /** A phase of a unit, by its tab's name and the phase whose status it reads, where it stands and the day it closed. @typedef {{phase: string, reads: string, status: Status, on: string|null}} PhaseAt */
 /** How the phase a unit is in stands (the header's). @typedef {'running'|'stopped'|'waits'|'complete'} PhaseStanding */
@@ -69,12 +71,18 @@ const startedOf = ({ manifest }) => (typeof manifest.created === 'string' ? mani
 /** The latest of the days given, null where none is one. @param {unknown[]} days @returns {string|null} */
 const latest = (days) => /** @type {string[]} */ (days.filter((day) => typeof day === 'string')).sort().at(-1) ?? null;
 
-/** When the unit's map was last approved, read once a call. @param {BoardAt} at @returns {string|null} */
-const approvedAt = (at) => at.once('map-approved', () => mapApproved(at.cwd, at.unit, dayBefore(at.manifest.created)));
+/** When an epic's map was last approved, null while it never was. @param {Record<string, any>} manifest @returns {string|null} */
+function approvedOn(manifest) {
+  const at = manifest.phases?.discovery?.approved_at;
+  return typeof at === 'string' ? at : null;
+}
+
+/** Whether an epic is past its discovery: its map approved at least once. @param {Record<string, any>} manifest */
+const pastDiscovery = (manifest) => manifest.work_type === 'epic' && approvedOn(manifest) !== null;
 
 /** The day each phase closed, by the phase it reads (the header's). @type {Readonly<Record<string, (at: BoardAt) => string|null>>} */
 const CLOSED = Object.freeze({
-  discovery: (at) => (at.manifest.work_type === 'epic' ? approvedAt(at) : startedOf(at)),
+  discovery: (at) => (at.manifest.work_type === 'epic' ? approvedOn(at.manifest) : startedOf(at)),
   discussion: ({ manifest }) => latest(Object.values(manifest.checklists?.decided ?? {}).map((record) => record?.closed)),
   specification: ({ manifest }) => latest([manifest.checklists?.['ready-to-build']?.closed]),
   implementation: ({ manifest }) => latest(Object.entries(manifest.checklists ?? {}).filter(([key]) => /^phase-\d+-close$/.test(key)).map(([, record]) => record?.closed)),
@@ -84,13 +92,13 @@ const CLOSED = Object.freeze({
 /** The day a phase closed, by the phase it reads, null where its records keep none. @param {BoardAt} at @param {string} reads */
 const closedOn = (at, reads) => /** @type {Record<string, (at: BoardAt) => string|null>} */ (CLOSED)[reads]?.(at) ?? null;
 
-/** Whether an epic has a topic yet: its map approved at least once. @param {Record<string, any>} manifest */
-const hasTopics = (manifest) => Object.keys(manifest.phases?.discovery?.items ?? {}).length > 0;
+/** Whether the unit's specification is under way or done: from its entry, once the topics are settled, or once written. @param {BoardAt} at */
+const specBegun = (at) => topicsSettled(at.manifest) || pastItsSpec(at.cwd, at.manifest);
 
 /** Where a phase stands, by the status of the phase it reads. @param {BoardAt} at @param {string} reads @returns {Status} */
 function statusOf(at, reads) {
   if (reads === 'discovery') return 'complete';
-  const status = reads === 'review' ? buildPlaceStatus(at.manifest, reads) : phaseStatus(at.manifest, reads, pastItsSpec(at.cwd, at.manifest));
+  const status = reads === 'review' ? buildPlaceStatus(at.manifest, reads) : phaseStatus(at.manifest, reads, reads === 'specification' && specBegun(at));
   if (status === 'completed') return 'complete';
   return status === 'in-progress' ? 'running' : 'later';
 }
@@ -98,7 +106,7 @@ function statusOf(at, reads) {
 /** The unit's phases from discovery (the header's), read once a call. @param {BoardAt} at @returns {PhaseAt[]} */
 const phasesAt = (at) => at.once('phases', () => {
   const after = LINEAR_PHASES[at.manifest.work_type] ?? [];
-  const shaping = at.manifest.work_type === 'epic' && !hasTopics(at.manifest);
+  const shaping = at.manifest.work_type === 'epic' && !pastDiscovery(at.manifest);
   /** @param {string} phase @param {string} reads @returns {PhaseAt} */
   const of = (phase, reads) => {
     const status = shaping ? (reads === 'discovery' ? 'running' : 'later') : statusOf(at, reads);
@@ -113,43 +121,40 @@ function epicNow(at) {
   if (manifest.status === 'completed') return { phase: 'complete', since: closedOn(at, 'review') };
   if (buildFinished(manifest)) return { phase: 'review', since: closedOn(at, 'implementation') };
   if (buildBegun(manifest)) return { phase: 'build', since: closedOn(at, 'specification') };
-  if (pastItsSpec(at.cwd, manifest)) return { phase: 'specification', since: closedOn(at, 'discussion') };
+  if (specBegun(at)) return { phase: 'specification', since: closedOn(at, 'discussion') };
   return { phase: 'discussion', since: closedOn(at, 'discovery') };
 }
 
-/** Where any other unit has come to: complete, else the furthest phase under way — the first not complete where none is — since the one before it closed. @param {BoardAt} at @returns {UnitNow} */
+/** Where any other unit has come to: the first phase not complete, since the one before it closed, else complete. @param {BoardAt} at @returns {UnitNow} */
 function linearNow(at) {
   const phases = phasesAt(at);
-  const running = phases.map(({ status }) => status).lastIndexOf('running');
-  const now = running === -1 ? phases.findIndex(({ status }) => status !== 'complete') : running;
+  const now = phases.findIndex(({ status }) => status !== 'complete');
   if (at.manifest.status === 'completed' || now === -1) return { phase: 'complete', since: closedOn(at, 'review') };
   return { phase: phases[now].phase, since: phases[now - 1]?.on ?? null };
 }
 
 /** Where the unit has come to (the header's). @param {BoardAt} at @returns {UnitNow} */
-const nowOf = (at) => at.once('now', () => (at.manifest.work_type === 'epic' && hasTopics(at.manifest) ? epicNow(at) : linearNow(at)));
+const nowOf = (at) => at.once('now', () => (pastDiscovery(at.manifest) ? epicNow(at) : linearNow(at)));
 
-/** Approve the map, while a map is staged: its topics and what it parks on the roadmap. @param {BoardAt} at @returns {WaitingLine[]} */
+/**
+ * Approve the map, while a map is staged: its topics in order and what it
+ * parks on the roadmap, or after the sweep its candidates to take or strike.
+ * @param {BoardAt} at @returns {WaitingLine[]}
+ */
 function mapWaits(at) {
   const staged = at.manifest.work_type === 'epic' ? stagedOrNone(at.cwd, at.unit) : null;
   if (staged === null) return [];
   const parks = staged.parks?.length ?? 0;
-  return [{ kind: 'map', id: 'approve-the-map', text: `${counted(staged.topics.length, 'topic')} in this order${parks === 0 ? '' : `, and ${parks} to the roadmap`}` }];
+  const holds = staged.candidates === undefined
+    ? `${counted(staged.topics.length, 'topic')} in this order${parks === 0 ? '' : `, and ${parks} to the roadmap`}`
+    : `${counted(staged.candidates.length, 'candidate')} the sweep found, to take or strike`;
+  return [{ kind: 'map', id: 'approve-the-map', text: `Approve the map: ${holds}`, page: null }];
 }
 
-/** The spec's gaps and then ready to build's yes, while it is written and the build not begun. @param {BoardAt} at @returns {WaitingLine[]} */
-function specWaits(at) {
-  if (buildBegun(at.manifest) || !fs.existsSync(specPath(at.cwd, at.unit))) return [];
-  return [
-    ...waitingGaps(at.cwd, at.unit, at.warnings).map(({ short, text }) => ({ kind: /** @type {const} */ ('gap'), id: short, text })),
-    ...(readyWaits(at.cwd, at.unit, at.warnings) ? [{ kind: /** @type {const} */ ('ready'), id: 'ready-to-build', text: '' }] : []),
-  ];
-}
-
-/** The questions its build and the review's fix tasks wait on, oldest first. @param {BoardAt} at @returns {WaitingLine[]} */
+/** The questions its build and the review's fix tasks wait on, oldest first, each opening the page of the first task it parks, which holds it whole. @param {BoardAt} at @returns {WaitingLine[]} */
 function questionWaits(at) {
-  if (!buildBegun(at.manifest)) return [];
-  return waitingAndFreed(at.cwd, at.unit, at.warnings).waiting.map(({ question, asks }) => ({ kind: /** @type {const} */ ('question'), id: question, text: asks }));
+  if (!buildByCut(at.manifest)) return [];
+  return waitingAndFreed(at.cwd, at.unit, at.warnings).waiting.map(({ question, asks, parks }) => ({ kind: /** @type {const} */ ('question'), id: question, text: `${question} ${asks}`, page: `task:${parks[0]}` }));
 }
 
 /** Finish, once the review is over: a round ended it, and its fix tasks and builders' notes are done (D18). @param {BoardAt} at @returns {boolean} */
@@ -159,23 +164,37 @@ function finishWaits(at) {
   return last !== undefined && endsReview(last) && reviewStandingAt(at).over;
 }
 
+/** Finish, as what waits on the person. @type {WaitingLine} */
+const FINISH = Object.freeze({ kind: 'finish', id: 'finish', text: 'Finish: the report of every round, and your verdict on each call you changed', page: null });
+
 /** What waits on the person in the unit (the header's), read once a call. @param {BoardAt} at @returns {WaitingLine[]} */
 const waitingOn = (at) => at.once('waiting-on', () => [
   ...mapWaits(at),
-  ...specWaits(at),
+  ...(buildBegun(at.manifest) || !specBegun(at) ? [] : specWaits(at)),
   ...questionWaits(at),
-  ...(finishWaits(at) ? [{ kind: /** @type {const} */ ('finish'), id: 'finish', text: '' }] : []),
+  ...(finishWaits(at) ? [FINISH] : []),
 ]);
 
-/** What waits on the person that is asked in the conversation, holding the phase: all but a build's questions. @param {WaitingLine} line */
+/** Whether a wait is asked in the conversation, holding the phase: all but a build's questions. @param {WaitingLine} line */
 const holds = ({ kind }) => kind !== 'question';
 
 /** How the phase the unit is in stands (the header's). @param {BoardAt} at @returns {PhaseStanding} */
 function standingOf(at) {
-  const { phase } = nowOf(at);
-  if (phase === 'complete') return 'complete';
+  if (nowOf(at).phase === 'complete') return 'complete';
   if (waitingOn(at).some(holds)) return 'waits';
-  return buildBegun(at.manifest) && buildView(at).view.progress.stopped ? 'stopped' : 'running';
+  return buildByCut(at.manifest) && buildView(at).view.progress.stopped ? 'stopped' : 'running';
 }
 
-module.exports = { phasesAt, nowOf, waitingOn, standingOf, closedOn, startedOf, hasTopics };
+/**
+ * The banner's fact for what waits on the person (the header's): how many,
+ * the map alone by its own words; flagged in a phase, said unflagged at a
+ * menu (D40); none where nothing waits.
+ * @param {WaitingLine[]} waiting @param {boolean} atMenu @returns {Fact[]}
+ */
+function waitsFacts(waiting, atMenu) {
+  if (waiting.length === 0) return [];
+  const text = waiting.every(({ kind }) => kind === 'map') ? 'the map waits on you' : `${waiting.length} waiting on you`;
+  return [atMenu ? { text, needs: false, waits: true } : { text, needs: true }];
+}
+
+module.exports = { phasesAt, nowOf, waitingOn, standingOf, holds, waitsFacts, closedOn, startedOf, pastDiscovery };

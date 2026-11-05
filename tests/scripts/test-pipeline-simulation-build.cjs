@@ -67,7 +67,7 @@ describe('pipeline simulation: the build', () => {
   it('12.S1, 24.S6: an epic in auto, its first phase built by one orchestrator in one conversation — the fix round to the same builder, the nit committed under its task, the phase\'s mutation run named by its last task\'s chain — and on into its second phase with no handoff', () => {
     const handedOff = sim.handoffs.length;
     const entered = buildEntry(sim, WU);
-    const tab = JSON.parse(sim.read(['board', conversation, '--tab', 'unit'])).view;
+    const tab = JSON.parse(sim.read(['board', sim.env.CLAUDE_CODE_SESSION_ID, '--tab', 'unit'])).view;
     assert.deepStrictEqual({ now: tab.now, spec: tab.spec, build: tab.build }, { now: { phase: 'build', since: sim.manifest(WU).checklists['ready-to-build'].closed }, spec: { state: 'complete', session: null }, build: { state: 'building', session: 'this' } },
       'S2, 20.8.2: the epic builds since ready to build\'s yes, its specification complete, this session in its build');
     assert.deepStrictEqual(entered.filter((line) => line.startsWith('phase: ')), ['phase: phase 1 of 2, "Settling": not yet written', 'phase: phase 2 of 2, "Showing": not yet written']);
@@ -133,7 +133,7 @@ describe('pipeline simulation: the build', () => {
       'task-writer': ['leeway-task-writer'], builder: ['leeway-builder'], reviewer: ['leeway-reviewer'], fix: ['leeway-builder'], 'phase-review': ['leeway-reviewer'],
     }, 'the agents run as defined');
   });
-  it('S1: an epic whose one task in flight a question parks has stopped, on its DELIVERY and on the banner alike, All work counting the question', async () => {
+  it('S1: an epic whose one task in flight a question parks has stopped, on its DELIVERY and on the banner alike, its page listing the question opening the task it parks, All work\'s row stopped and counting it', async () => {
     const conversation = sim.env.CLAUDE_CODE_SESSION_ID;
     buildEntry(sim, WU);
     sim.run(['task', 'phase', WU, '1', '--title', 'Settling']);
@@ -146,9 +146,9 @@ describe('pipeline simulation: the build', () => {
     await sim.runAsync(['raise', build, '--answers', asked, '--parks', '1.1'], null, JSON.stringify({ ...leaningCall('Yes.', 'No.'), question: 'Does a settled entry lock the ledger?' }));
 
     assert.deepStrictEqual(standingOn((args) => JSON.parse(sim.read(['board', conversation, ...args])), WU), {
-      tab: { now: 'build', spec: 'complete', build: 'stopped', waiting: [] },
-      all: { phase: 'build', standing: '0 of 1 task done', waiting: 1, total: 1 },
-      banner: { state: 'needs', flagged: ['1 waiting on you'] },
+      tab: { now: 'build', spec: 'complete', build: 'stopped', waiting: ['question Q1 → task:1.1'] },
+      all: { phase: 'build', standing: 'stopped · 0 of 1 task done', waiting: 1, total: 1 },
+      banner: { state: 'needs', waits: ['⚑ 1 waiting on you'] },
     });
   });
 });

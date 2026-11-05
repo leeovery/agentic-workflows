@@ -4,6 +4,8 @@ export type Topic = { topic: string; title: string; state: string; decided: numb
 
 export declare const epicTopic: (title: string, state: string, more?: Partial<Topic>) => Topic
 
+export declare const restaged: { kind: string; id: string; text: string; page: string | null }
+
 export declare const decidedTopics: (...titles: string[]) => Topic[]
 
 declare const view: View

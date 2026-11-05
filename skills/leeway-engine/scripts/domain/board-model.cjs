@@ -229,7 +229,13 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * reads, each null for one read.
  * @typedef {{pass: number, found: number, calls: number, yours: number, state: 'running'|'landed'|'lost'|'read', since: string|null, reads: string[]|null}} SpecPass
  */
-/** A gap waiting on the person (20.9.1): its entry, its words, the pass and finding that raised it, each null where none did, and the sections it touches. @typedef {{id: string, text: string, pass: number|null, finding: string|null, sections: string[]}} GapLine */
+/**
+ * What waits on the person in a specification (20.9.1), as the unit's one
+ * list holds it (WaitingLine); a gap with the pass and finding that raised
+ * it, each null where none did, and the sections it touches, every other
+ * wait with none.
+ * @typedef {WaitingLine & {pass: number|null, finding: string|null, sections: string[]}} GapLine
+ */
 /**
  * A call of Claude's at the spec since the person last looked (20.9.1): its
  * entry and words, the question it answers, the pass and finding that asked
@@ -241,15 +247,14 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * A specification's This session (20.9.1): the unit, its title and type,
  * and the project's name;
  * each section; the review's passes, newest first; what waits on the
- * person, each asked in the conversation; Claude's calls since the calls
- * list was last drawn in the conversation, read without looking (5.8.14);
- * the phases cut, each with its scenario count and the sections it draws
- * on; and what ready to build waits on — the review settling, or the
- * person's yes.
+ * person, from the unit's one list, each asked in the conversation;
+ * Claude's calls since the calls list was last drawn in the conversation,
+ * read without looking (5.8.14); and the phases cut, each with its scenario
+ * count and the sections it draws on.
  * @typedef {{
  *   kind: 'spec', unit: string, title: string, type: string, project: string, sections: SpecSection[],
  *   passes: SpecPass[], waiting: GapLine[], since: SpecCallLine[],
- *   cut: {phase: number, name: string, scenarios: number, sections: string[]}[], ready: 'review'|'person',
+ *   cut: {phase: number, name: string, scenarios: number, sections: string[]}[],
  * }} SpecView
  */
 /** A section read in full: its number, title, the passes that changed it, and its text. @typedef {{kind: 'section', unit: string, number: string, title: string, changed_by: number[], text: string}} SectionPage */
@@ -284,13 +289,13 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
 /**
  * Discovery's This session (20.11.1): the unit, its title and type; its
  * session's number and the day it started, each null before its first;
- * whether approve the map waits on the person; the map's topics in order;
+ * what waits on the person, the unit's one list; the map's topics in order;
  * what goes to the roadmap, each with its horizon; the directions not
  * taken, each with why; the person's views of the
  * product; and the unit's spikes, in the order they started.
  * @typedef {{
  *   kind: 'discovery', unit: string, title: string, type: string, session: number|null, started: string|null,
- *   waits: boolean, map: MapLine[], roadmap: {title: string, horizon: string}[],
+ *   waiting: WaitingLine[], map: MapLine[], roadmap: {title: string, horizon: string}[],
  *   not_taken: {direction: string, why: string}[], views: string[], spikes: SpikeLine[],
  * }} DiscoveryView
  */
@@ -355,16 +360,18 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
 /**
  * The epic's page (20.8, 20.15.2): the unit, its title, what it is for and
  * the day it started, null where its manifest holds none; where it has come
- * to; whether the session is at its menu; its topics decided of all, and how
- * many are in discussion; its topics in the map's order; the specification
+ * to; whether the session is at its menu, and in the unit (`here`), whose
+ * questions the board holds; its topics decided of all, and how many are in
+ * discussion; what waits on the person, the unit's one list; its topics in
+ * the map's order; the specification
  * — waiting on the person's answer while a gap does, and on their yes at
  * ready to build — and the build and review — stopped where nothing can go
  * on, or finish waiting on the person — each by where it stands and the
  * session in it, this one or another, else null; the topics set aside; and
  * what happened lately, newest first.
  * @typedef {{
- *   kind: 'epic', unit: string, title: string, about: string, started: string|null, now: UnitNow, at_menu: boolean,
- *   progress: {decided: number, total: number, discussing: number}, topics: TopicLine[],
+ *   kind: 'epic', unit: string, title: string, about: string, started: string|null, now: UnitNow, at_menu: boolean, here: boolean,
+ *   progress: {decided: number, total: number, discussing: number}, waiting: WaitingLine[], topics: TopicLine[],
  *   spec: {state: 'waits'|'running'|'asking'|'ready'|'complete', session: 'this'|'other'|null},
  *   build: {state: 'waits'|'building'|'reviewing'|'stopped'|'finish'|'complete', session: 'this'|'other'|null},
  *   set_aside: {topic: string, title: string, state: 'cancelled'|'postponed', horizon: string|null}[], lately: Moment[],
@@ -373,18 +380,25 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
 
 /**
  * A phase on a unit's tab: its name, its state — the phase the unit is in
- * stopped, or waiting on the person, as its standing has it — and its words — what a
- * phase complete or running produced, what one later waits on — empty where
- * the records say none; the day a phase complete closed, null where its
- * records keep none or it is not complete; the session in it, this one or
- * another, else null; and whether it opens on a page of its own.
- * @typedef {{phase: string, state: 'complete'|'running'|'stopped'|'waits'|'later', words: string, on: string|null, session: 'this'|'other'|null, page: boolean}} UnitPhase
+ * stopped, or waiting on the person, as its standing has it — and its
+ * words — what a phase complete or under way produced, what one later waits
+ * on — empty where the records say none; what a phase under way is doing,
+ * the specification where it stands as its banner says it, else empty; the
+ * day a phase complete closed, null where its records keep none or it is
+ * not complete; the session in it, this one or another, else null; and
+ * whether it opens on a page of its own.
+ * @typedef {{
+ *   phase: string, state: 'complete'|'running'|'stopped'|'waits'|'later', words: string, doing: string, on: string|null,
+ *   session: 'this'|'other'|null, page: boolean,
+ * }} UnitPhase
  */
 /**
- * What waits on the person in a unit: approve the map, with the topics it
- * holds and what it parks; a gap of its spec, or ready to build's yes; a
- * question of its build; or finish — by its number or entry and its words.
- * @typedef {{kind: 'map'|'gap'|'ready'|'question'|'finish', id: string, text: string}} WaitingLine
+ * What waits on the person in a unit, the unit's one list every view reads
+ * (board-standing.cjs): approve the map, with the topics it holds and what
+ * it parks, or the sweep's candidates; a gap of its spec, or ready to
+ * build's yes; a question of its build; or finish — by its number or entry,
+ * its words, and the page a press on it opens, null where none.
+ * @typedef {{kind: 'map'|'gap'|'ready'|'question'|'finish', id: string, text: string, page: string|null}} WaitingLine
  */
 /**
  * A unit's tab (20.15.1), and an epic's while discovery runs before any

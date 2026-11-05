@@ -1,4 +1,7 @@
-// Fumi's first discovery session as engine board answers it, shaping a map of ten, held to its shape by tests/scripts/test-engine-board-discovery.cjs.
+// Fumi's first discovery session as engine board answers it, shaping a map of ten, held to its shape by tests/scripts/test-engine-board-discovery.cjs with the map staged (`approval`).
+
+/** Approve the map, waiting on the person, as the unit's one list holds it. */
+export const approval = (text) => ({ kind: 'map', id: 'approve-the-map', text: `Approve the map: ${text}`, page: null })
 
 /** A topic on the map, its key from its title. */
 export const mapTopic = (title, summary) => ({ topic: title.toLowerCase().replaceAll(' ', '-'), title, summary })
@@ -10,7 +13,7 @@ export default {
   type: 'epic',
   session: 1,
   started: '2026-07-17',
-  waits: false,
+  waiting: [],
   map: [
     mapTopic('Note model', 'What a fumi is: a Markdown body with a stable UID, an optional first-line-derived title'),
     mapTopic('Storage and sync', 'File-based Markdown store in a user-chosen folder (local or iCloud)'),

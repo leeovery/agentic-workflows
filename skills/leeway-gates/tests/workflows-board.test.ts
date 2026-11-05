@@ -1143,8 +1143,8 @@ describe('the build and the review on the pane', () => {
     expect((await underTabs(pane))[0]).toBe('Token-aware diff sizing · review')
   })
 
-  test('2.S8, 12.S40: a done task\'s page shows its account as written on the pane, and opening it reaches neither the conversation nor the prompt box', async ($, on) => {
-    const { clock, sent } = world(on, { replies: args => boardReply(args.includes('--page') ? taskOver(BUILD_BOARD) : BUILD_BOARD) })
+  test('2.S8, 12.S40: a done task\'s page shows its account as written on the pane, and opening it reaches neither the conversation nor the prompt box; a call\'s ▸ read opens its entry\'s page', async ($, on) => {
+    const { clock, sent, boards } = world(on, { replies: args => boardReply(args.includes('--page') ? taskOver(BUILD_BOARD) : BUILD_BOARD) })
     const pane = await mounted($, clock, PANE_MOUNT)
 
     await pane.press({ key: 'fold:phase:1' })
@@ -1155,5 +1155,9 @@ describe('the build and the review on the pane', () => {
     expect(shown.filter(line => /^(WHAT WAS DONE|DIFFERS FROM THE TASK|REVIEWS|CALLS MADE) /.test(line))).toHaveLength(4)
     expect(shown.join(' ')).toContain('With no timeout set at any level, a release-notes call now gets 180 seconds per attempt')
     expect(sent).toEqual([])
+
+    expect((await pane.find({ key: 'page:entry:e3a1' }))?.text).toBe('▸ read')
+    await pane.press({ key: 'page:entry:e3a1' })
+    expect(boards.at(-1)?.args).toEqual(['--page', 'entry:e3a1', '--page-unit', 'token-aware-diff-sizing'])
   })
 })

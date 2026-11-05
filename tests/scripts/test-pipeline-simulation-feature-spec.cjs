@@ -52,20 +52,21 @@ describe('pipeline simulation: feature, the spec', () => {
     const board = (/** @type {string[]} */ args) => JSON.parse(sim.read(['board', sim.env.CLAUDE_CODE_SESSION_ID, ...args]));
     const { tab: { waiting: [asked], ...tab }, ...asking } = standingOn(board, wu);
     assert.deepStrictEqual({ tab, ...asking }, {
-      tab: { now: 'specification', state: 'waits', words: '1 section' },
-      all: { phase: 'specification', standing: '', waiting: 1, total: 1 },
-      banner: { state: 'needs', flagged: ['1 waiting on you'] },
+      tab: { now: 'specification', state: 'waits', words: '1 section · 1 pass' },
+      all: { phase: 'specification', standing: 'pass 2 waits on you', waiting: 1, total: 1 },
+      banner: { state: 'needs', waits: ['⚑ 1 waiting on you'] },
     }, 'S1: a gap waiting holds the specification on the feature\'s tab, All work counting it, as the banner has it');
-    assert.ok(asked.startsWith('gap ') && question.startsWith(asked.slice(4)), `the tab lists the gap asked as a question, by its entry: ${asked}`);
+    const [gap, opens] = asked.split(' → ');
+    assert.ok(gap.startsWith('gap ') && question.startsWith(gap.slice(4)) && opens.startsWith('pass:1:'), `the tab lists the gap asked as a question, by its entry, opening the finding that raised it: ${asked}`);
     sim.run(['raise', 'answer', raise, '--pick', '1'], null, JSON.stringify({ why: 'A tally counts what was decided.' }));
     sim.run(['brief', 'spec-writer', wu]);
     sim.run(['spec', 'land', wu]);
     cutTheSpec(sim, wu, [{ name: 'Counting', goal: 'The tally counts.', scenarios: ['1.S1'], sections: ['1'], relies_on: [] }]);
     readyToBuild(sim, wu);
     assert.deepStrictEqual(standingOn(board, wu), {
-      tab: { now: 'specification', state: 'waits', words: '1 section · 1 build phase', waiting: ['ready ready-to-build'] },
-      all: { phase: 'specification', standing: '', waiting: 1, total: 1 },
-      banner: { state: 'needs', flagged: ['1 waiting on you'] },
+      tab: { now: 'specification', state: 'waits', words: '1 section · 1 pass', waiting: ['ready ready-to-build'] },
+      all: { phase: 'specification', standing: 'ready to build', waiting: 1, total: 1 },
+      banner: { state: 'needs', waits: ['⚑ 1 waiting on you'] },
     }, 'S1, N1: ready to build\'s yes holds the specification on the feature\'s tab, listed under what waits, All work counting it, as the banner has it');
     intoTheBuild(sim, wu, sim.run(answerGate(sim, 'ready to build', '--pick', 's').next.argv));
     sim.run(['workunit', 'position', wu, 'auto']);

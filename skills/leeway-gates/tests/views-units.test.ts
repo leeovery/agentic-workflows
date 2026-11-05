@@ -2,9 +2,11 @@ import { describe, expect, test, tier } from 'claude-code/testing'
 
 import { COLOUR, RUNNING_FRAMES, type Line } from '../hooks/draw.ts'
 import type { View } from '../hooks/model.ts'
+import { ALL } from '../hooks/views/all.ts'
 import { EPIC, PHASE, UNIT } from '../hooks/views/unit.ts'
 import { NOW, block, drawn, markOf, ownMarkOf, pressOf } from './drawing.ts'
-import FUMI, { epicTopic, decidedTopics } from './fixtures/board-epic.mjs'
+import MINT_WORK from './fixtures/board-all.mjs'
+import FUMI, { epicTopic, decidedTopics, restaged } from './fixtures/board-epic.mjs'
 import MINT, { phase } from './fixtures/board-unit.mjs'
 
 tier('user')
@@ -46,6 +48,25 @@ DISCOVERY ───────────────────────�
      17 messages waiting
 `),
     )
+  })
+
+  test('S1: what waits on the person stands under the head as WAITING ON YOU, the map restaged by what it holds, before DISCOVERY', () => {
+    expect(drawn(EPIC, { ...FUMI, waiting: [restaged] } as View, { now: NOW }).text.slice(4, 9)).toEqual(
+      block(`
+▰▰▰▰▰▱▱▱  9 of 15 topics decided · 5 in discussion
+
+WAITING ON YOU ───────────────── 1 · asked in the conversation
+⚑ Approve the map: 16 topics in this order
+
+`).slice(0, 5),
+    )
+  })
+
+  test('N4: a title too long for the head gives way with "…", the type and "at its menu" kept whole', () => {
+    const long = 'Token-aware diff sizing plus graceful handling of oversized diffs'
+
+    expect(drawn(EPIC, { ...FUMI, title: long } as View, { now: NOW }).text[0]).toBe('Token-aware diff sizing plus graceful ha… · epic · at its menu')
+    expect(drawn(UNIT, { ...MINT, title: long } as View).text[0]).toBe('Token-aware diff sizing plus graceful handling of o… · feature')
   })
 
   test('then the specification and the build after it, what is set aside, and LATELY: an intake one row with its count, a message by its sender', () => {
@@ -235,7 +256,7 @@ LATELY ────────────────────────�
   })
 
   test('S3: another unit\'s page lists its own questions by their words, never the ones the board holds for this session, though their numbers match', () => {
-    const other = { ...MINT, unit: 'rate-limit-aware-publish', title: 'Rate-limit-aware publish', here: false, waiting: [{ kind: 'question', id: 'Q1', text: 'Should a rate-limited publish wait for the reset?' }] } as View
+    const other = { ...MINT, unit: 'rate-limit-aware-publish', title: 'Rate-limit-aware publish', here: false, waiting: [{ kind: 'question', id: 'Q1', text: 'Q1 Should a rate-limited publish wait for the reset?', page: 'task:2.1' }] } as View
     const { text } = drawn(UNIT, other, { waiting: HELD })
 
     expect(text.slice(6, 8)).toEqual(['WAITING ON YOU ───────────────────────────────────────────── 1', '⚑ Q1 Should a rate-limited publish wait for the reset?'])
@@ -247,7 +268,7 @@ LATELY ────────────────────────�
       ...MINT,
       now: { phase: 'specification', since: '2026-10-17T12:00:00' },
       progress: { complete: 2, total: 5 },
-      waiting: [{ kind: 'gap', id: 'g1', text: "The halving progress line's part count" }],
+      waiting: [{ kind: 'gap', id: 'g1', text: "The halving progress line's part count", page: 'pass:4:F2' }],
       phases: [...(MINT.phases as object[]).slice(0, 2), phase('specification', 'waits', '18 sections · 4 passes'), phase('build', 'later'), phase('review', 'later')],
     } as View
 
@@ -273,7 +294,7 @@ PHASES ────────────────────────�
     const ready = {
       ...MINT,
       now: { phase: 'specification', since: '2026-10-17T12:00:00' },
-      waiting: [{ kind: 'ready', id: 'ready-to-build', text: '' }],
+      waiting: [{ kind: 'ready', id: 'ready-to-build', text: 'Ready to build: the outline and the phase cut, for your yes', page: null }],
       phases: [...(MINT.phases as object[]).slice(0, 2), phase('specification', 'waits', '18 sections · 8 build phases'), phase('build', 'later'), phase('review', 'later')],
     } as View
     const { text } = drawn(UNIT, ready, { waiting: HELD })
@@ -285,13 +306,13 @@ PHASES ────────────────────────�
   test('S1: its build stopped, flagged as stopped; its review waiting on finish, flagged, finish listed under what waits; approve the map listed with what it holds, discovery flagged', () => {
     const at = (phases: object[], waiting: object[] = []) => drawn(UNIT, { ...MINT, here: false, waiting, phases: [...(MINT.phases as object[]).slice(0, 3), ...phases] } as View).text
     const stopped = at([phase('build', 'stopped', '62 of 68 tasks done'), phase('review', 'later')])
-    const finish = at([phase('build', 'complete', '99 tasks done', { on: '2026-10-21T12:00:00' }), phase('review', 'waits', 'round 2')], [{ kind: 'finish', id: 'finish', text: '' }])
+    const finish = at([phase('build', 'complete', '99 tasks done', { on: '2026-10-21T12:00:00' }), phase('review', 'waits', 'round 2')], [{ kind: 'finish', id: 'finish', text: 'Finish: the report of every round, and your verdict on each call you changed', page: null }])
     const shaping = drawn(UNIT, {
       ...MINT,
       type: 'epic',
       here: false,
       now: { phase: 'discovery', since: null },
-      waiting: [{ kind: 'map', id: 'approve-the-map', text: '12 topics in this order, and 4 to the roadmap' }],
+      waiting: [{ kind: 'map', id: 'approve-the-map', text: 'Approve the map: 12 topics in this order, and 4 to the roadmap', page: null }],
       phases: [phase('discovery', 'waits', '12 topics'), phase('discussion', 'later', 'once the map is approved'), phase('specification', 'later', 'once every topic is decided'), phase('build', 'later'), phase('review', 'later')],
     } as View).text
 
@@ -317,7 +338,7 @@ PHASES ────────────────────────�
       now: { phase: 'review', since: '2026-10-21T10:00:00' },
       progress: { complete: 4, total: 5 },
       waiting: [],
-      phases: [...(MINT.phases as object[]).slice(0, 3), phase('build', 'complete', '99 tasks done', { on: '2026-10-21T10:00:00' }), phase('review', 'running', 'round 1', { session: 'this' })],
+      phases: [...(MINT.phases as object[]).slice(0, 3), phase('build', 'complete', '99 tasks done', { on: '2026-10-21T10:00:00' }), phase('review', 'running', 'round 1', { doing: 'reviewing', session: 'this' })],
       lately: [],
     } as View
 
@@ -348,7 +369,7 @@ PHASES ────────────────────────�
       waiting: [],
       phases: [
         phase('discovery', 'complete', 'from your inbox note', { on: '2026-08-16T10:00:00', page: true }),
-        phase('investigation', 'running', '6 hypotheses', { session: 'this' }),
+        phase('investigation', 'running', '6 hypotheses', { doing: 'investigating', session: 'this' }),
         phase('specification', 'later'),
         phase('build', 'later'),
         phase('review', 'later'),
@@ -370,7 +391,7 @@ PHASES ────────────────────────�
       now: { phase: 'implementation', since: '2026-07-15T09:00:00' },
       progress: { complete: 1, total: 2 },
       waiting: [],
-      phases: [phase('discovery', 'complete', 'your note, confirmed', { on: '2026-07-15T09:00:00', page: true }), phase('implementation', 'running', '4 of 6 done', { session: 'this' })],
+      phases: [phase('discovery', 'complete', 'your note, confirmed', { on: '2026-07-15T09:00:00', page: true }), phase('implementation', 'running', '4 of 6 done', { doing: 'working', session: 'this' })],
       lately: [],
     } as View
 
@@ -401,7 +422,7 @@ PHASES ────────────────────────�
       progress: { complete: 0, total: 5 },
       waiting: [],
       phases: [
-        phase('discovery', 'running', '3 topics', { session: 'this' }),
+        phase('discovery', 'running', '3 topics', { doing: 'shaping', session: 'this' }),
         phase('discussion', 'later', 'once the map is approved'),
         phase('specification', 'later', 'once every topic is decided'),
         phase('build', 'later'),
@@ -446,5 +467,71 @@ describe('a finished phase read in full (20.15.3)', () => {
 
     expect(text.slice(1)).toEqual(['✓ complete 17 Oct · 2 decisions', '', 'DECISIONS ────────────────────────────────────────────────── 2', 'Oversize Knob: No setting.', 'When the Merge Fails: No concatenation rung.'])
     expect(markOf(lines, 'phase:0')?.color).toBe(COLOUR.done)
+  })
+})
+
+describe('All work (20.16)', () => {
+  test('is §20.16\'s drawing at 64 columns, a unit\'s second line wrapping under its indent, a topic postponed out of an epic named with the epic, each inbox item one line', () => {
+    expect(drawn(ALL, MINT_WORK).text).toEqual(
+      block(`
+All work · Mint
+3 in progress · ⚑ 5 waiting on you · 2 complete
+
+IN PROGRESS ──────────────────────────────────────────────── 3
+◐ Token-aware diff sizing                          ⚑ 3 waiting
+     feature · build · 58 of 68 tasks done · this session
+◐ Rate-limit-aware publish                         ⚑ 2 waiting
+     feature · specification · pass 2 waits on you · another
+     session
+○ Publish failure swallows gh stderr
+     bugfix · investigation
+
+ROADMAP ──────────────────────────────────────────── 3 waiting
+Next
+◇ Headline first release notes
+◇ Changelog site · postponed from Release notes overhaul
+Later
+◇ Agent guide for running releases
+
+INBOX ──────────────────────────────────────── 1 idea · 2 bugs
+◇ Mint CLI UI/UX overhaul
+✗ Single-version regenerate prepends changelog entry at top i…
+✗ Publish heal hint: wrong diagnosis, wrong command form
+
+COMPLETE ──────────────────────────────────────────── 2 ▸ show
+`),
+    )
+  })
+
+  test('a unit opens its page; this session\'s opens its tab; COMPLETE opens to its units', () => {
+    const { lines } = drawn(ALL, MINT_WORK)
+    const opened = drawn(ALL, MINT_WORK, { opened: ['all:complete'] }).text
+
+    expect(lines.filter(line => line.press !== undefined).map(line => line.press)).toEqual(['tab:unit', 'page:unit:rate-limit-aware-publish', 'page:unit:publish-failure'])
+    expect(opened.slice(-5)).toEqual(['COMPLETE ──────────────────────────────────────────── 2 ▾ hide', '✓ Release notes overhaul', '     epic', '✓ Tag signing', '     feature'])
+  })
+
+  test('N4: a postponed topic\'s title too long for its row gives way with "…", the epic it came from kept whole', () => {
+    const long = { ...MINT_WORK, roadmap: [{ horizon: 'Next', items: [{ title: 'A website for the app, with its pricing and its download', from: 'Fumi' }] }] } as View
+
+    expect(drawn(ALL, long).text).toContain('◇ A website for the app, with its prici… · postponed from Fumi')
+  })
+
+  test('D34: quick-fixes are counted as their own kind, each marked ◇', () => {
+    const { text } = drawn(ALL, { ...MINT_WORK, inbox: [{ kind: 'idea', title: 'Fumi stacks' }, { kind: 'quick-fix', title: 'Tidy the footer' }] } as View)
+
+    expect(text).toContain('INBOX ────────────────────────── 1 idea · 0 bugs · 1 quick-fix')
+    expect(text).toContain('◇ Tidy the footer')
+  })
+
+  test('D35: the epic at its menu after the map is approved, this session in it', () => {
+    const fumi = { ...MINT_WORK, project: 'Fumi', waiting: 0, units: [{ unit: 'fumi', title: 'Fumi', type: 'epic', phase: 'discussion', standing: '0 of 12 topics decided', waiting: 0, session: 'this' }], complete: [] } as View
+
+    expect(drawn(ALL, fumi).text.slice(0, 6)).toEqual(['All work · Fumi', '1 in progress · 0 complete', '', 'IN PROGRESS ──────────────────────────────────────────────── 1', '◐ Fumi', '     epic · discussion · 0 of 12 topics decided · this session'])
+  })
+
+  test('at the start menu it says so; a project\'s name too long for the head gives way with "…", never where the session stands', () => {
+    expect(drawn(ALL, { ...MINT_WORK, at_start: true } as View).text[0]).toBe('All work · Mint · at the start menu')
+    expect(drawn(ALL, { ...MINT_WORK, project: 'Agentic Engineering Workflows for Claude Code', at_start: true } as View).text[0]).toBe('All work · Agentic Engineering Workflows … · at the start menu')
   })
 })

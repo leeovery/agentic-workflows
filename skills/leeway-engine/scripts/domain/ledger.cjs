@@ -12,7 +12,9 @@
 //   writer lock, which the landing holds, once a landing a kill cut short is
 //   finished (state-merge-landing.cjs), before the engine stops. What that
 //   landing says on the way is handed to the reader or the appender, even
-//   where the engine then stops.
+//   where the engine then stops. A verb that writes nothing may take its
+//   reads as one (`withOneCheck`): the ledger checked once, at its first
+//   read, each read after meeting it as that check passed it.
 // - The ledger is read a line at a time, never whole and never through a
 //   pipe (kernel/file-stream), each line validated against the shape its
 //   version names, a field a later version added taking its default
@@ -50,6 +52,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { AsyncLocalStorage } = require('async_hooks');
 const { isolatedGit, gitfileTarget } = require('../kernel/isolated-git.cjs');
 const { fdLines, lineAt, endsWithNewline } = require('../kernel/file-stream.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
@@ -104,13 +107,29 @@ function ledgerChange(root) {
  * @param {string[]} notes what a landing finished here said, pushed to before any stop
  */
 function checkLedger(root, notes) {
-  if (ledgerChange(root) === null) return;
-  withStateLock(root, () => {
-    const worktree = openWorktree(root);
-    if (worktree.opened) notes.push(...finishLanding(worktree, STATE_BRANCH));
-    const change = ledgerChange(root);
-    if (change !== null) throw ledgerStopped(checkedTree(root), change, 'the engine stops here');
-  });
+  const checked = checkedRoots.getStore();
+  if (checked?.has(root)) return;
+  if (ledgerChange(root) !== null) {
+    withStateLock(root, () => {
+      const worktree = openWorktree(root);
+      if (worktree.opened) notes.push(...finishLanding(worktree, STATE_BRANCH));
+      const change = ledgerChange(root);
+      if (change !== null) throw ledgerStopped(checkedTree(root), change, 'the engine stops here');
+    });
+  }
+  checked?.add(root);
+}
+
+/** The state roots whose ledger the reads running as one have checked (`withOneCheck`). @type {AsyncLocalStorage<Set<string>>} */
+const checkedRoots = new AsyncLocalStorage();
+
+/**
+ * Run `fn`, a verb that writes nothing, as one read of the ledger (the
+ * header's): checked at its first read, never again while `fn` runs.
+ * @template T @param {() => T} fn @returns {T}
+ */
+function withOneCheck(fn) {
+  return checkedRoots.run(new Set(), fn);
 }
 
 /** A line read as an entry, refused where it is none. @typedef {(line: string, number: number) => {id?: unknown}} EntryReader */
@@ -427,4 +446,4 @@ function ledgerStopSurface(cwd, _args) {
   return ledgerStop(projectName(cwd), stop, shortIdOf(root, stop.found));
 }
 
-module.exports = { ledgerFile, checkLedger, checkLines, commitUncommitted, commitLedger, withLedger, appendEntry, appendEntries, carrying, ledgerStopSurface };
+module.exports = { ledgerFile, checkLedger, withOneCheck, checkLines, commitUncommitted, commitLedger, withLedger, appendEntry, appendEntries, carrying, ledgerStopSurface };

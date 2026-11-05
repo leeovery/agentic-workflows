@@ -23,7 +23,7 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
-const { stateGit } = require('./engine-harness.cjs');
+const { readManifest } = require('./engine-harness.cjs');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
 const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
@@ -73,9 +73,9 @@ describe('pipeline simulation: epic', () => {
     arrive(sim, wu);
     assert.strictEqual(epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu)).keys.find((key) => key.recommended)?.topic, 'note-model');
     const { now, lately: [moment] } = JSON.parse(sim.read(['board', sim.env.CLAUDE_CODE_SESSION_ID])).view;
-    const yes = new Date(stateGit(sim.dir, ['log', '-1', '--format=%cI', '--fixed-strings', `--grep=discovery(${wu}): approve the map`]).trim()).toISOString();
+    const yes = readManifest(sim.dir, wu).phases.discovery.approved_at;
     assert.deepStrictEqual([now, moment.kind, moment.detail], [{ phase: 'discussion', since: yes }, 'map-approved', '2 topics, 0 to the roadmap'],
-      'S2, N8, 20.11.4: at its menu, the epic\'s discovery closed when the map\'s yes was committed, the moment saying what the map took in');
+      'S2, N8, 20.11.4: at its menu, the epic\'s discovery closed when the map\'s yes recorded its approval, the moment saying what the map took in');
   });
 
   it('epic: a message lands in the topic\'s one mailbox, raised at the entry and answered by the question it raised; one to the decided topic sets it back in progress', () => {

@@ -17,7 +17,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  ok, refuses, refusedPristine, treeSnapshot, head, layout, writeState, commitAll, fixtureFrom, cleanupFixture,
+  ok, refuses, refusedPristine, treeSnapshot, head, layout, writeState, commitAll, fixtureFrom, cleanupFixture, FROZEN_AT,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { ledgerHelpers } = require('./ledger-world.cjs');
@@ -52,12 +52,12 @@ const WRITER = 'the writer\'s brief carries what waits for it, and the spec\'s l
 /** The Claude process a pass's dispatch names as its owner: this one, which runs, or none, never verified alive. */
 const OWNER = Object.freeze({ running: Object.freeze({ CLAUDE_PID: String(process.pid) }), none: Object.freeze({ CLAUDE_PID: undefined }) });
 
-/** The epic's manifest, each topic's discussion as `status` gives it. @param {string} dir @param {Record<string, string>} [status] @param {Record<string, unknown>} [more] */
+/** The epic's manifest, its map approved, each topic's discussion as `status` gives it. @param {string} dir @param {Record<string, string>} [status] @param {Record<string, unknown>} [more] */
 function payments(dir, status = {}, more = {}) {
   createManifest(dir, UNIT, {
     work_type: 'epic',
     phases: {
-      discovery: { items: { cards: { order: 1, summary: 'The form', source: 'discovery', title: 'card form' }, refunds: { order: 2, summary: 'Refunds', source: 'discovery' } } },
+      discovery: { approved_at: FROZEN_AT, items: { cards: { order: 1, summary: 'The form', source: 'discovery', title: 'card form' }, refunds: { order: 2, summary: 'Refunds', source: 'discovery' } } },
       discussion: { items: { cards: { status: status.cards ?? 'completed' }, refunds: { status: status.refunds ?? 'completed' } } },
     },
     ...more,

@@ -70,7 +70,7 @@ const world = fixtureFrom('decided-', (dir) => {
   createManifest(dir, UNIT, {
     work_type: 'epic',
     phases: {
-      discovery: { items: { 'note-window': row(1, 'The note window'), 'space-homing': row(2, 'Where notes open') }, dismissed: ['dock-badge'] },
+      discovery: { approved_at: '2026-09-30T09:00:00.000Z', items: { 'note-window': row(1, 'The note window'), 'space-homing': row(2, 'Where notes open') }, dismissed: ['dock-badge'] },
       discussion: { items: { 'note-window': { status: 'in-progress' }, 'space-homing': { status: 'in-progress' } } },
     },
     checklists: { decided: { 'note-window': { items: markedItems(first) } } },

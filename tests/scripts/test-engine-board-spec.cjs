@@ -23,6 +23,7 @@ const assert = require('node:assert');
 const path = require('path');
 const fs = require('fs');
 const { ok, readState, writeState, readManifest, layout } = require('./engine-harness.cjs');
+const { datedAt } = require('./discovery-test-utils.cjs');
 const { fixture, misfits, emptyLists, standingOn } = require('./board-world.cjs');
 const { ledgerHelpers } = require('./ledger-world.cjs');
 const {
@@ -48,6 +49,17 @@ function board(args = []) {
 
 /** A banner fact. @param {string} text @param {boolean} [needs] */
 const fact = (text, needs = false) => ({ text, needs });
+
+/**
+ * A gap waiting on the person as the specification lists it: by its entry
+ * and words, the finding of pass 1 that raised it, where one did, opening
+ * that finding's page, else its entry's, and the sections it touches.
+ * @param {string} id @param {string} text @param {string|null} [finding] @param {string[]} [sections]
+ */
+const gap = (id, text, finding = null, sections = []) => ({ kind: 'gap', id, text, page: finding === null ? `entry:${id}` : `pass:1:${finding}`, pass: finding === null ? null : 1, finding, sections });
+
+/** Ready to build's yes, waiting on the person, as the unit's one list holds it. */
+const READY = { kind: 'ready', id: 'ready-to-build', text: 'Ready to build: the outline and the phase cut, for your yes', page: null };
 
 /** Claude's call the world made on a topic of the unit, which no look has shown: no pass asked its question. */
 const RADIUS = () => ({ id: made.radius, text: 'Ten points.', question: 'What radius are the corners?', pass: null, finding: null, sections: [] });
@@ -107,7 +119,7 @@ describe('a specification on the board (20.9)', () => {
   it('before the spec is written: no section, no pass, nothing waiting; the banner says it is being written; the view names the project, as the drawing does', () => {
     assert.deepStrictEqual(board(), {
       view: {
-        kind: 'spec', unit: UNIT, title: 'Payments', type: 'epic', project: titlecase(path.basename(dir())), sections: [], passes: [], waiting: [], since: [RADIUS()], cut: [], ready: 'review',
+        kind: 'spec', unit: UNIT, title: 'Payments', type: 'epic', project: titlecase(path.basename(dir())), sections: [], passes: [], waiting: [], since: [RADIUS()], cut: [],
       },
       banner: { name: 'Payments', state: 'running', facts: [fact('epic'), fact('specification'), fact('being written')] },
     });
@@ -153,10 +165,7 @@ describe('a specification on the board (20.9)', () => {
 
     assert.deepStrictEqual({ passes: view.passes, waiting: view.waiting, banner }, {
       passes: [{ pass: 1, found: 2, calls: 1, yours: 1, state: 'read', since: null, reads: null }],
-      waiting: [
-        { id: asked, text: 'Is a refund ever split?', pass: null, finding: null, sections: [] },
-        { id: made.where, text: 'Back to the card.', pass: 1, finding: 'F1', sections: ['2'] },
-      ],
+      waiting: [gap(asked, 'Is a refund ever split?'), gap(made.where, 'Back to the card.', 'F1', ['2'])],
       banner: { name: 'Payments', state: 'needs', facts: [fact('epic'), fact('specification'), fact('pass 2 waits on you'), fact('2 waiting on you', true)] },
     });
   });
@@ -177,8 +186,8 @@ describe('a specification on the board (20.9)', () => {
     const reworded = write('replace', AT_SPEC, ['--replaces', asked, '--reason', 'was-wrong'], { ...MADE, drops: [], text: 'Is a refund ever split in two?', cites: [{ path: `${UNIT}/spec.md`, section: '2. Refunds' }] }).id;
 
     assert.deepStrictEqual([linked, board().view.waiting], [
-      [{ id: asked, text: 'Is a refund ever split?', pass: 1, finding: 'F1', sections: ['2'] }, { id: loose, text: 'Is a refund ever late?', pass: null, finding: null, sections: [] }],
-      [{ id: loose, text: 'Is a refund ever late?', pass: null, finding: null, sections: [] }, { id: reworded, text: 'Is a refund ever split in two?', pass: 1, finding: 'F1', sections: ['2'] }],
+      [gap(asked, 'Is a refund ever split?', 'F1', ['2']), gap(loose, 'Is a refund ever late?')],
+      [gap(loose, 'Is a refund ever late?'), gap(reworded, 'Is a refund ever split in two?', 'F1', ['2'])],
     ]);
   });
 
@@ -214,25 +223,27 @@ describe('a specification on the board (20.9)', () => {
     assert.deepStrictEqual([open, claudes, standing()], ['waits', 'claude', 'yours']);
   });
 
-  it('20.15.1 LATELY: each reported pass, when it was dispatched, with what it found as its findings stand — the first reading the whole spec — and the spec landed with its sections', () => {
+  it('20.15.1 LATELY: each reported pass, when it was dispatched, with what it found as its findings stand — the first reading the whole spec — each question a pass asked the person, when it was asked, and the spec landed with its sections', () => {
     const first = lanedPass();
     const asked = askedAs(first, 'Is a refund ever split?');
     write('decide', AT_SPEC, ['--answers', asked], { ...PERSON, given: 'own', text: 'Never split.', why: 'A refund returns the whole charge.' });
+    const askedOn = entries().find(({ id }) => id.startsWith(asked) || id === asked)?.at;
     writeSpec(spec({ instant: '2.1.2 Refunds are instant, always.' }));
-    // A commit is dated to the second: the land waits for the next one, so it stands after the first pass, dated to the millisecond.
-    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1000 - (Date.now() % 1000));
-    land();
+    const later = (/** @type {number} */ s) => new Date(Date.parse(lastAt()) + s * 1000).toISOString();
+    dispatchedAt(first, later(1));
+    datedAt(later(2), land);
     const second = dispatchReview();
     issued(['spec-reviewer', UNIT, '--agent', second.id]);
     reportIn(second, LANED);
     acked(second, ['F1', 'F2']);
-    const created = (/** @type {{id: string}} */ { id }) => new Date(JSON.parse(readState(dir(), STORE)).agents[id].created).toISOString();
+    dispatchedAt(second, later(3));
     const { lately } = board(['--tab', 'unit']).view;
 
-    assert.deepStrictEqual(lately.filter(({ kind }) => kind === 'pass' || kind === 'spec-landed').map(({ kind, at, detail }) => [kind, kind === 'pass' ? at : null, detail]), [
-      ['pass', created(second), '2 found 2 · 2 calls, 0 yours'],
+    assert.deepStrictEqual(lately.filter(({ kind }) => kind === 'pass' || kind === 'spec-landed' || kind === 'asked').map(({ kind, at, detail }) => [kind, kind === 'spec-landed' ? null : at, detail]), [
+      ['pass', later(3), '2 found 2 · 2 calls, 0 yours'],
       ['spec-landed', null, '2 sections'],
-      ['pass', created(first), '1 read the whole specification · found 2'],
+      ['pass', later(1), '1 read the whole specification · found 2'],
+      ['asked', askedOn, '1 asked you: Is a refund ever split?'],
       ['spec-landed', null, '2 sections'],
     ]);
   });
@@ -265,7 +276,7 @@ describe('a specification on the board (20.9)', () => {
     acked(pass, ['F1', 'F2']);
     const { view, banner } = board();
 
-    assert.deepStrictEqual([view.passes.map(({ state, found }) => [state, found]), view.ready, banner.facts], [[['read', 2]], 'review', [fact('epic'), fact('specification'), fact('being written')]]);
+    assert.deepStrictEqual([view.passes.map(({ state, found }) => [state, found]), view.waiting, banner.facts], [[['read', 2]], [], [fact('epic'), fact('specification'), fact('being written')]]);
   });
 
   it('D39: once the review settles, ready to build waits on the person, the banner counting its yes as waiting on them (20.2.4)', () => {
@@ -273,7 +284,7 @@ describe('a specification on the board (20.9)', () => {
     cleanPass();
     const { view, banner } = board();
 
-    assert.deepStrictEqual([view.ready, banner], ['person', { name: 'Payments', state: 'needs', facts: [fact('epic'), fact('specification'), fact('ready to build'), fact('1 waiting on you', true)] }]);
+    assert.deepStrictEqual([view.waiting, banner], [[{ ...READY, pass: null, finding: null, sections: [] }], { name: 'Payments', state: 'needs', facts: [fact('epic'), fact('specification'), fact('ready to build'), fact('1 waiting on you', true)] }]);
   });
 
   it('5.8.14: Claude\'s calls on the unit since the list was last drawn stay listed however often the board is drawn, and none once it is', () => {
@@ -330,13 +341,13 @@ describe('a specification on the board (20.9)', () => {
     ]);
   });
 
-  it('S1: a gap waiting stands on every view that reads the unit — the epic\'s DEFINITION waiting on the person\'s answer, All work\'s count and total — as the banner has it (20.16, 20.8.2, 20.2.4)', () => {
-    askedAs(lanedPass(), 'Is a refund ever split?');
+  it('S1: a gap waiting stands on every view that reads the unit — the epic\'s DEFINITION waiting on the person\'s answer, its page listing it opening the finding that raised it, All work\'s row, count and total — as the banner has it (20.16, 20.8.2, 20.2.4)', () => {
+    const asked = askedAs(lanedPass(), 'Is a refund ever split?');
 
     assert.deepStrictEqual(standingOn(board, UNIT), {
-      tab: { now: 'specification', spec: 'asking', build: 'waits', waiting: [] },
-      all: { phase: 'specification', standing: '2 of 2 topics decided', waiting: 1, total: 1 },
-      banner: { state: 'needs', flagged: ['1 waiting on you'] },
+      tab: { now: 'specification', spec: 'asking', build: 'waits', waiting: [`gap ${asked} → pass:1:F1`] },
+      all: { phase: 'specification', standing: 'pass 2 waits on you', waiting: 1, total: 1 },
+      banner: { state: 'needs', waits: ['⚑ 1 waiting on you'] },
     });
   });
 
@@ -346,9 +357,9 @@ describe('a specification on the board (20.9)', () => {
 
     assert.deepStrictEqual([standingOn(board, UNIT), board(['--tab', 'all']).view.units.map(({ unit, waiting }) => [unit, waiting])], [
       {
-        tab: { now: 'specification', spec: 'ready', build: 'waits', waiting: [] },
-        all: { phase: 'specification', standing: '2 of 2 topics decided', waiting: 1, total: 1 },
-        banner: { state: 'needs', flagged: ['1 waiting on you'] },
+        tab: { now: 'specification', spec: 'ready', build: 'waits', waiting: ['ready ready-to-build'] },
+        all: { phase: 'specification', standing: 'ready to build', waiting: 1, total: 1 },
+        banner: { state: 'needs', waits: ['⚑ 1 waiting on you'] },
       },
       [['billing', 0], [UNIT, 1]],
     ]);

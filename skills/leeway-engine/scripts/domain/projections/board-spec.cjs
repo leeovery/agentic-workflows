@@ -25,10 +25,13 @@
 //   that sent it — since it was dispatched and with the sections it reads:
 //   those changed since the land the latest reported pass reviewed. Newest
 //   first. Each pass after the first read what the one before it changed.
-// - The banner says where the review stands: a pass out by its state; else,
-//   while a question waits, the next pass waiting on the person; else ready
-//   to build, its yes counted as waiting on them; else the spec being
-//   written.
+// - Where the spec stands, as its banner, the unit's tab and All work say
+//   it: a pass out by its state; else, while a gap waits, the next pass
+//   waiting on the person; else ready to build while its yes waits; else
+//   the spec being written. What waits on the person is counted on the
+//   banner from the unit's one list (board-standing.cjs), the gaps and the
+//   yes among it, each gap opening the finding that raised it, else its
+//   entry.
 // - What waits on the person is each gap the review waits on them for, a
 //   question asked at the spec or a replacement a pass raised — asked in
 //   the conversation, never queued (20.9.1) — each by its entry and words,
@@ -41,7 +44,8 @@
 //   and the sections it touches, as a gap's are.
 // - Ready to build waits on the review settling, then on the person's yes.
 // - Each reported pass is a moment of the unit lately, when it was
-//   dispatched, with what it found as its findings stand.
+//   dispatched, with what it found as its findings stand; and each question
+//   a pass asked the person, when it was asked (D23).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -61,6 +65,7 @@ const { counted } = require('./map.cjs');
 /** @typedef {import('../board-model.cjs').SpecView} SpecView */
 /** @typedef {import('../board-model.cjs').SpecPass} SpecPass */
 /** @typedef {import('../board-model.cjs').GapLine} GapLine */
+/** @typedef {import('../board-model.cjs').WaitingLine} WaitingLine */
 /** @typedef {import('../board-model.cjs').FindingStanding} FindingStanding */
 /** @typedef {import('../spec-passes.cjs').Gap} Gap */
 /** @typedef {ReturnType<typeof reportedPasses>[number]} Reported */
@@ -152,17 +157,23 @@ function foundBy(standings) {
 /**
  * Each reported pass as a moment of the unit lately, when it was
  * dispatched: the first read the whole spec, each after it what it found
- * and whose its findings are, as they stand.
+ * and whose its findings are, as they stand; and each question a pass asked
+ * the person (D23), when it was asked, by its words.
  * @param {BoardAt} at @returns {import('../board-model.cjs').Moment[]}
  */
 function passMoments(at) {
   const reported = reportedPasses(at.cwd, at.unit);
   if (reported.length === 0) return [];
-  return passStandings(at, reported).map((standings, k) => {
+  const passes = passStandings(at, reported).map((standings, k) => {
     const { found, calls, yours } = foundBy(standings);
     const said = k === 0 ? `read the whole specification · found ${found}` : `found ${found} · ${counted(calls, 'call')}, ${yours} yours`;
     return { kind: 'pass', at: new Date(reported[k].created).toISOString(), topic: null, detail: `${k + 1} ${said}` };
   });
+  const asked = withUnitEntries(at.cwd, at.unit, at.warnings, ({ entries }) => reported.flatMap((pass, k) => pass.asked.flatMap(({ entry }) => {
+    const line = entries.get(entry)?.line;
+    return line === undefined ? [] : [{ kind: 'asked', at: String(line.at), topic: null, detail: `${k + 1} asked you: ${String(line.text)}` }];
+  })));
+  return [...passes, ...asked];
 }
 
 /**
@@ -204,9 +215,10 @@ function touched(at, reading, entry, cites) {
 /** A reported pass's number, null where none is the pass named. @param {Reported[]} reported @param {string|null} id */
 const passNumber = (reported, id) => (id === null ? null : reported.findIndex((pass) => pass.id === id) + 1 || null);
 
-/** A gap waiting on the person (the header's). @param {BoardAt} at @param {Gap} gap @param {Reported[]} reported @param {SpecReading|null} reading @returns {GapLine} */
+/** A gap waiting on the person (the header's), opening the finding that raised it, else its entry. @param {BoardAt} at @param {Gap} gap @param {Reported[]} reported @param {SpecReading|null} reading @returns {GapLine} */
 function gapLine(at, { entry, short, text, cites, pass, finding }, reported, reading) {
-  return { id: short, text, pass: passNumber(reported, pass), finding, sections: touched(at, reading, entry, cites) };
+  const number = passNumber(reported, pass);
+  return { kind: 'gap', id: short, text, page: number === null || finding === null ? `entry:${short}` : `pass:${number}:${finding}`, pass: number, finding, sections: touched(at, reading, entry, cites) };
 }
 
 /**
@@ -236,8 +248,57 @@ function callLines(at, calls, reported, reading) {
 /** Whether ready to build waits on the person's yes: the spec written, and its review settled. @param {string} cwd @param {string} unit @param {string[]} warnings */
 const readyWaits = (cwd, unit, warnings) => fs.existsSync(specPath(cwd, unit)) && reviewSettled(cwd, unit, warnings);
 
-/** The specification's This session (the header's). @param {BoardAt} at @returns {{view: SpecView}} */
-function specView(at) {
+/**
+ * What waits on the person in the unit as the specification lists it: each
+ * gap with the pass and finding that raised it and the sections it
+ * touches, every other wait with none.
+ * @param {BoardAt} at @param {WaitingLine[]} waiting @param {Reported[]} reported @param {SpecReading|null} reading @returns {GapLine[]}
+ */
+function gapsWith(at, waiting, reported, reading) {
+  const gaps = waiting.some(({ kind }) => kind === 'gap') ? new Map(waitingGaps(at.cwd, at.unit, at.warnings).map((gap) => [gap.short, gapLine(at, gap, reported, reading)])) : new Map();
+  return waiting.map((line) => gaps.get(line.id) ?? { ...line, pass: null, finding: null, sections: [] });
+}
+
+/**
+ * The spec's gaps and then ready to build's yes, as what waits on the
+ * person in the unit: each gap by its words, opening the finding that
+ * raised it, else its entry.
+ * @param {BoardAt} at @returns {WaitingLine[]}
+ */
+function specWaits(at) {
+  const reported = reportedPasses(at.cwd, at.unit);
+  return [
+    ...waitingGaps(at.cwd, at.unit, at.warnings).map((gap) => {
+      const { kind, id, text, page } = gapLine(at, gap, reported, null);
+      return { kind, id, text, page };
+    }),
+    ...(readyWaits(at.cwd, at.unit, at.warnings) ? [{ kind: /** @type {const} */ ('ready'), id: 'ready-to-build', text: 'Ready to build: the outline and the phase cut, for your yes', page: null }] : []),
+  ];
+}
+
+/**
+ * Where the spec stands, as its banner, its row on the unit's tab and All
+ * work say it (the header's): a pass out by its state; else the next pass
+ * waiting on the person while a gap does; else ready to build while its yes
+ * waits; else being written.
+ * @param {BoardAt} at @param {WaitingLine[]} waiting what waits on the person in the unit
+ */
+function specDoing(at, waiting) {
+  const reported = reportedPasses(at.cwd, at.unit).length;
+  const out = passesInFlight(at.cwd, at.unit);
+  const latest = out.at(-1);
+  if (latest !== undefined) return OUT[latest.stands](reported + out.length);
+  if (waiting.some(({ kind }) => kind === 'gap')) return `pass ${reported + 1} waits on you`;
+  return waiting.some(({ kind }) => kind === 'ready') ? 'ready to build' : 'being written';
+}
+
+/**
+ * The specification's This session (the header's), what waits on the
+ * person read from the unit's one list, each gap with the sections it
+ * touches.
+ * @param {BoardAt} at @param {WaitingLine[]} waiting @returns {{view: SpecView}}
+ */
+function specView(at, waiting) {
   const text = specText(at);
   const reading = text === null ? null : specReading(text);
   const reported = reportedPasses(at.cwd, at.unit);
@@ -257,10 +318,9 @@ function specView(at) {
         number: String(number), title, changed_by: changed.get(String(number)) ?? [], reading: beingRead?.includes(String(number)) ?? false,
       })),
       passes: passesOf(passStandings(at, reported), out, reads),
-      waiting: waitingGaps(at.cwd, at.unit, at.warnings).map((gap) => gapLine(at, gap, reported, reading)),
+      waiting: gapsWith(at, waiting, reported, reading),
       since: since.length === 0 ? [] : callLines(at, since, reported, reading),
       cut: cutPhases(at.manifest).map(({ name = '', scenarios, sections }, k) => ({ phase: k + 1, name, scenarios: scenarios.length, sections })),
-      ready: readyWaits(at.cwd, at.unit, at.warnings) ? 'person' : 'review',
     },
   };
 }
@@ -273,21 +333,14 @@ const OUT = Object.freeze({
 });
 
 /**
- * The banner's facts in a specification (20.2.4): where the review stands —
- * a pass out by its state; else, while a question waits, the next pass
- * waiting on the person; else ready to build; else the spec being written —
- * then how many wait on the person: the questions while any does, ready to
- * build's yes while it waits.
- * @param {SpecView} view @returns {{state: 'running'|'needs', facts: {text: string, needs: boolean}[]}}
+ * The banner's facts in a specification (20.2.4): the type, the phase and
+ * where the spec stands (`specDoing`); what waits on the person is the
+ * board's, from the unit's one list (board.cjs).
+ * @param {BoardAt} at @param {WaitingLine[]} waiting @returns {{state: 'running', facts: {text: string, needs: boolean}[]}}
  */
-function specBanner({ type, passes, waiting, ready }) {
-  const fact = (/** @type {string} */ text, needs = false) => ({ text, needs });
-  const head = [fact(type), fact('specification')];
-  const [latest] = passes;
-  const out = latest === undefined || latest.state === 'read' ? null : fact(OUT[latest.state](latest.pass));
-  if (waiting.length > 0) return { state: 'needs', facts: [...head, out ?? fact(`pass ${(latest?.pass ?? 0) + 1} waits on you`), fact(`${waiting.length} waiting on you`, true)] };
-  if (ready === 'person') return { state: 'needs', facts: [...head, fact('ready to build'), fact('1 waiting on you', true)] };
-  return { state: 'running', facts: [...head, out ?? fact('being written')] };
+function specBanner(at, waiting) {
+  const fact = (/** @type {string} */ text) => ({ text, needs: false });
+  return { state: 'running', facts: [fact(at.manifest.work_type), fact('specification'), fact(specDoing(at, waiting))] };
 }
 
 /**
@@ -381,4 +434,4 @@ function specFindingPage(at, said, id) {
   };
 }
 
-module.exports = { specView, specBanner, sectionPage, passPage, specFindingPage, readyWaits, passMoments };
+module.exports = { specView, specBanner, specDoing, specWaits, sectionPage, passPage, specFindingPage, passMoments };

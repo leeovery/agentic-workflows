@@ -24,10 +24,10 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const { ok, output, writeState, readManifest, stateGit, layout, withFrozenClock, FROZEN_AT } = require('./engine-harness.cjs');
-const { useDecidedWorld, decidedHelpers, writeIn, answeredIn, NOTE_MAP, NO_PAYLOAD } = require('./decided-world.cjs');
+const { useDecidedWorld, decidedHelpers, writeIn, answeredIn, NOTE_MAP, NO_PAYLOAD, SOLO } = require('./decided-world.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, SESSION, SESSION_ID, MADE, NOTE, SPACE } = require('./ledger-world.cjs');
-const { fixture, misfits, emptyLists } = require('./board-world.cjs');
+const { fixture, fixtureModule, misfits, emptyLists } = require('./board-world.cjs');
 
 const dir = useDecidedWorld();
 const { close, staged, answer, run } = decidedHelpers(dir);
@@ -43,6 +43,26 @@ function board(args = []) {
 
 /** The conversation's position at a place, as its labelling records it. @param {string[]} place */
 const at = (place) => ok(dir(), ['session', 'label', ...place], { env: SESSION });
+
+/** When the world's epic had its map approved, as its manifest records it. */
+const approvedOn = () => readManifest(dir(), UNIT).phases.discovery.approved_at;
+
+/** The solo feature's topic decided, as the decided gate's yes decides it: when its checklist closed. */
+function soloDecided() {
+  close(SOLO, SOLO);
+  staged(NO_PAYLOAD, `${SOLO}.${SOLO}`);
+  run(answer('decided', 'y'));
+  return readManifest(dir(), SOLO).checklists.decided[SOLO].closed;
+}
+
+/** The solo feature's spec written, one section on the cart. */
+const soloSpec = () => writeState(dir(), `${SOLO}/spec.md`, '# Solo\n\n## 1. Tally\n\n### 1.1 Reset\n\n1.1.1 A tally resets at midnight.\n');
+
+/** A unit made as the workflows make one, of `type`: when its manifest was stamped. @param {string} name @param {string} type */
+function made(name, type) {
+  ok(dir(), ['workunit', 'create', name, type, '--description', `The ${name} work`, '--session-log-file', writeState(dir(), layout.cache(name, 'session-001.md'), `# ${name}\n`)]);
+  return readManifest(dir(), name).created;
+}
 
 /** The map shown in the conversation: the person has looked (5.8.14). */
 const looked = () => output(dir(), ['render', 'map', `${UNIT}.note-window`], { env: SESSION });
@@ -300,9 +320,11 @@ describe('an epic\'s page (20.8)', () => {
         title: 'Fumi',
         about: 'Test: fumi',
         started: null,
-        now: { phase: 'discussion', since: null },
+        now: { phase: 'discussion', since: approvedOn() },
         at_menu: true,
+        here: true,
         progress: { decided: 0, total: 2, discussing: 2 },
+        waiting: [],
         topics: [
           { topic: 'note-window', title: 'Note Window', state: 'discussing', decided: 1, total: 1, session: null, messages: 0, experiment: null },
           { topic: 'space-homing', title: 'Space Homing', state: 'discussing', decided: 0, total: 0, session: null, messages: 0, experiment: null },
@@ -328,9 +350,11 @@ describe('an epic\'s page (20.8)', () => {
     ]);
   });
 
-  it('N8, 20.8.2: messages one topic took in one after another are one moment, counted — a message taken in alone names its sender — and the map approved says what it took in', () => {
+  it('N8, 20.8.2: messages one topic took in one after another are one moment, counted — a message taken in alone names its sender — and the map approved again says what it took in', () => {
+    ok(dir(), ['enter', 'discovery', UNIT], { env: SESSION });
+    output(dir(), ['render', 'approve-map', UNIT, '--file', writeState(dir(), layout.cache('scratch', 'map.json'), JSON.stringify({ topics: [{ name: 'note-window' }, { name: 'space-homing' }], parks: [] }))], { env: SESSION });
+    ok(dir(), ['approve-map', 'yes', UNIT], { env: SESSION });
     at([UNIT]);
-    stateGit(dir(), ['commit', '-q', '--allow-empty', '-m', `discovery(${UNIT}): approve the map — 2 topics, 1 to the roadmap`]);
     sent('space-homing', 'note-window', 'Notes open on their Space');
     const [first] = fs.readdirSync(path.join(dir(), '.leeway', UNIT, 'topics', 'note-window', 'mail'));
     ok(dir(), ['topic', 'answered', UNIT, 'note-window', first.replace(/\.md$/, ''), '--entry', writeIn(dir(), 'ask', NOTE, [], { ...MADE, text: 'Do notes open on their Space?' })], { env: SESSION });
@@ -346,7 +370,7 @@ describe('an epic\'s page (20.8)', () => {
     assert.deepStrictEqual([said(alone), lately.slice(0, 2).map(said), said(lately.find(({ kind }) => kind === 'map-approved'))], [
       { kind: 'answered', topic: 'Note Window', detail: 'Space Homing', count: 1 },
       [{ kind: 'answered', topic: 'Note Window', detail: null, count: 2 }, { kind: 'sent', topic: 'Note Window', detail: 'Space Homing', count: undefined }],
-      { kind: 'map-approved', topic: null, detail: '2 topics, 1 to the roadmap', count: undefined },
+      { kind: 'map-approved', topic: null, detail: '2 topics, 0 to the roadmap', count: undefined },
     ]);
   });
 
@@ -411,13 +435,13 @@ describe('an epic\'s page (20.8)', () => {
 });
 
 describe('other units\' pages (20.15)', () => {
-  it('20.15.2: an epic whose discovery runs before any topic exists shows its phases, each after discovery with what it waits on', () => {
-    createManifest(dir(), 'atlas', { work_type: 'epic' });
+  it('20.15.2: an epic whose map was never approved shows its phases, discovery shaping and each after it with what it waits on', () => {
+    made('atlas', 'epic');
 
-    const later = { on: null, session: null, page: false };
+    const later = { doing: '', on: null, session: null, page: false };
 
     assert.deepStrictEqual(board(['--tab', 'unit', '--unit', 'atlas']).view.phases, [
-      { phase: 'discovery', state: 'running', words: '', ...later },
+      { phase: 'discovery', state: 'running', words: '', ...later, doing: 'shaping' },
       { phase: 'discussion', state: 'later', words: 'once the map is approved', ...later },
       { phase: 'specification', state: 'later', words: 'once every topic is decided', ...later },
       { phase: 'build', state: 'later', words: '', ...later },
@@ -426,15 +450,13 @@ describe('other units\' pages (20.15)', () => {
   });
 
   it('20.15.1, 20.8.2: a unit started the day its manifest was made, as the manifest stamps it — an epic\'s page and any other unit\'s tab alike — and none is said where it holds no stamp', () => {
-    writeState(dir(), layout.manifest(UNIT), JSON.stringify({ ...readManifest(dir(), UNIT), created: '2026-07-15' }));
-    createManifest(dir(), 'atlas', { work_type: 'epic', created: '2026-07-17' });
-    createManifest(dir(), 'tidy', { work_type: 'feature' });
+    const created = made('atlas', 'epic');
     const started = (/** @type {string} */ unit) => {
       const { kind, started: day } = board(['--tab', 'unit', '--unit', unit]).view;
       return [kind, day];
     };
 
-    assert.deepStrictEqual([UNIT, 'atlas', 'tidy'].map(started), [['epic', '2026-07-15'], ['unit', '2026-07-17'], ['unit', null]]);
+    assert.deepStrictEqual([UNIT, 'atlas'].map(started), [['epic', null], ['unit', created]]);
   });
 
   it('20.15.2: a quick-fix\'s one session is its implementation, which This session shows as the unit\'s page', () => {
@@ -445,46 +467,49 @@ describe('other units\' pages (20.15)', () => {
     assert.deepStrictEqual([view.kind, view.phases.map(({ phase, state }) => [phase, state])], ['unit', [['discovery', 'complete'], ['implementation', 'running']]]);
   });
 
-  it('20.15.1: a unit\'s tab, its spec written and its build not begun, lists each gap its spec\'s review waits on the person for', () => {
-    createManifest(dir(), 'shop', { phases: { discussion: { items: { shop: { status: 'completed' } } } } });
-    writeState(dir(), 'shop/spec.md', '# Shop\n\n## 1. Cart\n\n1.1.1 A cart holds items.\n');
-    const asked = writeIn(dir(), 'ask', 'shop.specification', [], { ...MADE, text: 'Is a cart ever shared?' });
+  it('20.15.1: a unit\'s tab, its spec written and its build not begun, lists each gap its spec\'s review waits on the person for, opening its entry where no pass raised it', () => {
+    soloDecided();
+    soloSpec();
+    const asked = writeIn(dir(), 'ask', `${SOLO}.specification`, [], { ...MADE, text: 'Is a tally ever shared?' });
 
-    assert.deepStrictEqual(board(['--tab', 'unit', '--unit', 'shop']).view.waiting, [{ kind: 'gap', id: asked, text: 'Is a cart ever shared?' }]);
+    assert.deepStrictEqual(board(['--tab', 'unit', '--unit', SOLO]).view.waiting, [{ kind: 'gap', id: asked, text: 'Is a tally ever shared?', page: `entry:${asked}` }]);
   });
 
   it('S3, 20.15.1: a unit\'s tab says whether it is the unit the session is in, whose questions the board holds', () => {
-    createManifest(dir(), 'shop', {});
     at([UNIT]);
 
-    assert.deepStrictEqual([board(['--tab', 'unit', '--unit', 'shop']).view.here, board(['--tab', 'unit', '--unit', UNIT]).view.kind], [false, 'epic']);
-    at(['shop']);
+    assert.deepStrictEqual([board(['--tab', 'unit', '--unit', SOLO]).view.here, board(['--tab', 'unit', '--unit', UNIT]).view.kind], [false, 'epic']);
+    at([SOLO]);
     assert.strictEqual(board(['--tab', 'unit']).view.here, true);
   });
 
-  it('20.15.1, 20.15.3: a linear unit\'s phases each finished with the day it closed and what it produced — discovery the note it began from, the discussion its decisions — each opening in full; the phase it is in since the one before it closed; a phase that is not finished opens on no page', () => {
-    createManifest(dir(), 'shop', {
-      created: '2026-06-26',
-      seeds: [{ path: 'seeds/cart.md', source: 'inbox:idea', seeded_at: '2026-06-26T09:00:00Z' }],
-      phases: { discussion: { items: { shop: { status: 'completed' } } } },
-      checklists: { decided: { shop: { items: {}, closed: '2026-10-17T12:00:00.000Z' } } },
-    });
-    writeState(dir(), 'shop/seeds/cart.md', '# A cart\n\nA cart holds what the shopper picks.\n\nIt keeps them a week.\n');
-    writeState(dir(), 'shop/spec.md', '# Shop\n\n## 1. Cart\n\n1.1.1 A cart holds items.\n');
-    const asked = writeIn(dir(), 'ask', 'shop.discussion.shop', [], { by: 'person', who_moved_whom: 'none', text: 'How long is a cart kept?' });
-    writeIn(dir(), 'decide', 'shop.discussion.shop', ['--answers', asked], { by: 'person', who_moved_whom: 'none', given: 'own', text: 'A week.', why: 'Shoppers come back within days.' });
-    const { view } = board(['--tab', 'unit', '--unit', 'shop']);
-    const phase = (/** @type {string} */ name) => board(['--tab', 'unit', '--unit', 'shop', '--page', `phase:${name}`]).view;
+  it('N1: a feature\'s specification is the phase it is in from the spec\'s entry, its topic decided, before its spec is written — under way, as its banner says it — and its tab\'s row says where the spec stands once written', () => {
+    const closed = soloDecided();
+    const before = board(['--tab', 'unit', '--unit', SOLO]).view;
+    soloSpec();
+    at([SOLO, 'specification', SOLO]);
+    const { view, banner } = board(['--tab', 'unit']);
+    const row = (/** @type {any} */ tab) => tab.phases.find(({ phase }) => phase === 'specification');
 
-    assert.deepStrictEqual([view.now, view.phases.slice(0, 3)], [{ phase: 'specification', since: '2026-10-17T12:00:00.000Z' }, [
-      { phase: 'discovery', state: 'complete', words: 'from your inbox note', on: '2026-06-26', session: null, page: true },
-      { phase: 'discussion', state: 'complete', words: '1 decision', on: '2026-10-17T12:00:00.000Z', session: null, page: true },
-      { phase: 'specification', state: 'running', words: '1 section', on: null, session: null, page: false },
+    assert.deepStrictEqual({ before: [before.now, row(before)], written: [row(view), banner.facts.at(-1).text] }, {
+      before: [{ phase: 'specification', since: closed }, { phase: 'specification', state: 'running', words: '', doing: 'being written', on: null, session: null, page: false }],
+      written: [{ phase: 'specification', state: 'running', words: '1 section · 0 passes', doing: 'being written', on: null, session: 'this', page: false }, 'being written'],
+    });
+  });
+
+  it('20.15.1, 20.15.3: a linear unit\'s phases each finished with the day it closed and what it produced — the discussion its decisions — each opening in full; the phase it is in since the one before it closed; a phase that is not finished opens on no page', () => {
+    const closed = soloDecided();
+    soloSpec();
+    const { view } = board(['--tab', 'unit', '--unit', SOLO]);
+    const phase = (/** @type {string} */ name) => board(['--tab', 'unit', '--unit', SOLO, '--page', `phase:${name}`]).view;
+
+    assert.deepStrictEqual([view.now, view.phases.slice(1, 3)], [{ phase: 'specification', since: closed }, [
+      { phase: 'discussion', state: 'complete', words: '1 decision', doing: '', on: closed, session: null, page: true },
+      { phase: 'specification', state: 'running', words: '1 section · 0 passes', doing: 'being written', on: null, session: null, page: false },
     ]]);
-    assert.deepStrictEqual([phase('discovery'), phase('discussion'), phase('specification')], [
-      { kind: 'phase', unit: 'shop', title: 'Shop', phase: 'discovery', on: '2026-06-26', words: 'from your inbox note', sections: [{ heading: 'Your note', text: '# A cart\n\nA cart holds what the shopper picks.\n\nIt keeps them a week.\n' }] },
-      { kind: 'phase', unit: 'shop', title: 'Shop', phase: 'discussion', on: '2026-10-17T12:00:00.000Z', words: '1 decision', sections: [{ heading: 'Decisions', text: 'How long is a cart kept?: A week.' }] },
-      { kind: 'unavailable', reason: 'shop has no finished specification that opens in full — a linear unit\'s discovery and discussion do, once complete' },
+    assert.deepStrictEqual([phase('discussion'), phase('specification')], [
+      { kind: 'phase', unit: SOLO, title: 'Solo', phase: 'discussion', on: closed, words: '1 decision', sections: [{ heading: 'Decisions', text: 'Does a tally reset daily?: At midnight.' }] },
+      { kind: 'unavailable', reason: 'solo has no finished specification that opens in full — a linear unit\'s discovery and discussion do, once complete' },
     ]);
   });
 
@@ -495,14 +520,13 @@ describe('other units\' pages (20.15)', () => {
   });
 
   it('This session that cannot be drawn says why in its tab and among the warnings, the banner at the session\'s place, while the unit\'s tab still draws', () => {
-    createManifest(dir(), 'shop', {});
-    at(['shop', 'implementation', 'shop']);
+    at([SOLO, 'implementation', SOLO]);
     const { view, banner, warnings } = board();
 
     assert.deepStrictEqual({ view, banner, warnings, tab: board(['--tab', 'unit']).view.kind }, {
-      view: { kind: 'unavailable', reason: 'shop\'s build has not begun' },
-      banner: { name: 'Shop', state: 'running', facts: ['feature', 'implementation'].map((text) => ({ text, needs: false })) },
-      warnings: ['This session cannot be drawn — shop\'s build has not begun'],
+      view: { kind: 'unavailable', reason: 'solo\'s build has not begun' },
+      banner: { name: 'Solo', state: 'running', facts: ['feature', 'implementation'].map((text) => ({ text, needs: false })) },
+      warnings: ['This session cannot be drawn — solo\'s build has not begun'],
       tab: 'unit',
     });
   });
@@ -525,11 +549,14 @@ describe('the views the mod draws, shaped as the engine answers them (N8)', () =
     ok(dir(), ['topic', 'postpone', UNIT, 'space-homing', '--horizon', 'later'], { env: SESSION });
     writeState(dir(), '.inbox/ideas/2026-10-30--fumi-stacks.md', '# Fumi stacks\n\nNotes stacked on a Space.\n');
     createManifest(dir(), 'tag-signing', { status: 'completed' });
+    ok(dir(), ['enter', 'discovery', UNIT], { env: SESSION });
+    output(dir(), ['render', 'approve-map', UNIT, '--file', writeState(dir(), layout.cache('scratch', 'map.json'), JSON.stringify({ topics: [{ name: 'note-window' }], parks: [] }))], { env: SESSION });
     at([UNIT]);
     const [epic, all] = [board().view, board(['--tab', 'all']).view];
+    const held = await fixtureModule('board-epic.mjs');
 
     assert.deepStrictEqual(
-      [fits(await fixture('board-discussion.mjs'), discussion), fits(await fixture('board-epic.mjs'), epic), fits(await fixture('board-all.mjs'), all)],
+      [fits(await fixture('board-discussion.mjs'), discussion), fits({ ...held.default, waiting: [held.restaged] }, epic), fits(await fixture('board-all.mjs'), all)],
       [FITS, FITS, FITS],
     );
   });
@@ -549,17 +576,11 @@ describe('the views the mod draws, shaped as the engine answers them (N8)', () =
   });
 
   it('a linear unit\'s tab, its discussion decided, a gap of its spec waiting and its moments lately', async () => {
-    createManifest(dir(), 'shop', {
-      created: '2026-06-26',
-      seeds: [{ path: 'seeds/cart.md', source: 'inbox:idea', seeded_at: '2026-06-26T09:00:00Z' }],
-      phases: { discussion: { items: { shop: { status: 'completed' } } } },
-      checklists: { decided: { shop: { items: {}, closed: '2026-10-17T12:00:00.000Z' } } },
-    });
-    writeState(dir(), 'shop/seeds/cart.md', '# A cart\n\nA cart holds what the shopper picks.\n');
-    writeState(dir(), 'shop/spec.md', '# Shop\n\n## 1. Cart\n\n1.1.1 A cart holds items.\n');
-    writeIn(dir(), 'ask', 'shop.specification', [], { ...MADE, text: 'Is a cart ever shared?' });
-    stateGit(dir(), ['commit', '-q', '--allow-empty', '-m', 'discovery(shop): create work unit (feature)']);
+    soloDecided();
+    soloSpec();
+    ok(dir(), ['spec', 'land', SOLO]);
+    writeIn(dir(), 'ask', `${SOLO}.specification`, [], { ...MADE, text: 'Is a tally ever shared?' });
 
-    assert.deepStrictEqual(fits(await fixture('board-unit.mjs'), board(['--tab', 'unit', '--unit', 'shop']).view), FITS);
+    assert.deepStrictEqual(fits(await fixture('board-unit.mjs'), board(['--tab', 'unit', '--unit', SOLO]).view), FITS);
   });
 });

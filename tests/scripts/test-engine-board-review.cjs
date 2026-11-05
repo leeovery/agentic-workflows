@@ -23,7 +23,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  UNIT, SESSION_ID, EVERY, RECEIPT, FOUND, FAILING, useWorld, env, enter, inStep, reportText, reported, named, recorded, issued, fixPhaseWritten, cutUnmerged, fixBranch, fixBuilt, fixParked, reviewCall, filed, firstRoundReady, firstRoundFailed, secondRoundReady, commitFile, ok, writeState, statePath, git,
+  UNIT, SESSION_ID, EVERY, RECEIPT, FOUND, FAILING, useWorld, env, enter, inStep, reportText, reported, named, recorded, issued, fixPhaseWritten, cutUnmerged, fixBranch, fixBuilt, fixClosed, fixParked, taskMade, reviewCall, filed, firstRoundReady, firstRoundFailed, secondRoundReady, commitFile, ok, writeState, statePath, git,
 } = require('./review-world.cjs');
 const { withEnv, treeSnapshot, head: stateHead, holdLock, lockAttempts, layout } = require('./engine-harness.cjs');
 const { fixture, misfits, standingOn } = require('./board-world.cjs');
@@ -179,7 +179,7 @@ describe('a round recorded (20.10.1, 20.10.2)', () => {
     ]);
     assert.deepStrictEqual(board(['--tab', 'unit']).view.phases.slice(2).map(({ phase, state, words }) => ({ phase, state, words })), [
       { phase: 'specification', state: 'complete', words: '2 sections · 2 build phases' },
-      { phase: 'build', state: 'complete', words: '4 of 4 tasks done' },
+      { phase: 'build', state: 'complete', words: '3 tasks done' },
       { phase: 'review', state: 'running', words: 'round 2' },
     ]);
     const check = { kind: 'check', unit: UNIT, round: 1, scenario: '1.S2', standing: 'not proven', text: 'Given a charge, when it lands, then a receipt follows.' };
@@ -303,49 +303,65 @@ describe('a question its fix tasks wait on (20.5.3, 20.2.4, S1)', () => {
       banner,
       page: page.questions,
       fits: [misfits(fixing, page), lists(fixing), lists(page)],
+      standing: standingOn(board, UNIT),
     }, {
       questions: [['Q1', ['3.1']]],
       view: ['review', ['Q1'], true],
       banner: { name: 'Pay', state: 'needs', facts: facts('feature', 'review', 'stopped', 'round 1 fails', ['1 waiting on you']) },
       page: questions,
       fits: [[], [true, true], [true, true]],
+      standing: {
+        tab: { now: 'review', state: 'stopped', words: 'round 1 fails', waiting: ['question Q1 → task:3.1'] },
+        all: { phase: 'review', standing: 'round 1 fails', waiting: 1, total: 1 },
+        banner: { state: 'needs', waits: ['⚑ 1 waiting on you'] },
+      },
     });
   });
 });
 
 describe('where the review stands on every view that reads it (S1)', () => {
-  it('a failing round\'s fix tasks building: the tab\'s review says so as the banner does, and nothing waits on the person', () => {
+  it('a failing round\'s fix tasks building while any task of its fix phase is not done — one written beyond its findings among them (N7) — the tab\'s review and All work\'s row say so as the banner does, and nothing waits on the person', () => {
     firstRoundFailed();
+    const building = standingOn(board, UNIT);
+    fixBuilt(3, 1, 'Send the receipt', 'main', 'src/send.js');
+    const built = standingOn(board, UNIT).tab.words;
+    taskMade(3, 'Mail the receipt twice', '§1.2');
+    const beyond = standingOn(board, UNIT).tab.words;
+    ok(dir, ['session', 'label', UNIT, 'review', UNIT], { env: env() });
+    const { fixes } = board().view;
 
-    assert.deepStrictEqual(standingOn(board, UNIT), {
-      tab: { now: 'review', state: 'running', words: 'round 1 fails · fix tasks building', waiting: [] },
-      all: { phase: 'review', standing: '', waiting: 0, total: 0 },
-      banner: { state: 'running', flagged: [] },
+    assert.deepStrictEqual({ building, built, beyond, fixes: fixes.tasks.map(({ task, state }) => [task, state]) }, {
+      building: {
+        tab: { now: 'review', state: 'running', words: 'round 1 fails · fix tasks building', waiting: [] },
+        all: { phase: 'review', standing: 'round 1 fails · fix tasks building', waiting: 0, total: 0 },
+        banner: { state: 'running', waits: [] },
+      },
+      built: 'round 1 fails',
+      beyond: 'round 1 fails · fix tasks building',
+      fixes: [['3.1', 'done'], ['3.2', 'not-started']],
     });
   });
 
-  it('a question parking the only fix task: the tab\'s review stopped, its fix tasks not said to build, the question waiting there, All work counting it', async () => {
-    firstRoundFailed();
-    enter();
-    await fixParked();
-
-    assert.deepStrictEqual(standingOn(board, UNIT), {
-      tab: { now: 'review', state: 'stopped', words: 'round 1 fails', waiting: ['question Q1'] },
-      all: { phase: 'review', standing: '', waiting: 1, total: 1 },
-      banner: { state: 'needs', flagged: ['1 waiting on you'] },
-    });
-  });
-
-  it('the phase over: finish waits on the person on the tab, in WAITING ON YOU and in All work\'s count and row (D18, D37)', () => {
+  it('the phase over: finish waits on the person on the tab, in WAITING ON YOU and in All work\'s count and row (D18, D37) — and not while a task of the round\'s fix phase is still to be done', () => {
     enter();
     reported(1, EVERY);
     recorded({ can_now: ['Pay by card.'], findings: [] });
+    fixPhaseWritten(3, [['Mail the receipt', '§1.2']]);
+    const fixing = standingOn(board, UNIT);
+    fixClosed(3, 1);
 
-    assert.deepStrictEqual(standingOn(board, UNIT), {
-      tab: { now: 'review', state: 'waits', words: 'round 1 passes', waiting: ['finish finish'] },
-      all: { phase: 'review', standing: 'finish waits on you', waiting: 1, total: 1 },
-      banner: { state: 'needs', flagged: ['1 waiting on you'] },
-    });
+    assert.deepStrictEqual([fixing, standingOn(board, UNIT)], [
+      {
+        tab: { now: 'review', state: 'running', words: 'round 1 passes', waiting: [] },
+        all: { phase: 'review', standing: 'round 1 passes', waiting: 0, total: 0 },
+        banner: { state: 'running', waits: [] },
+      },
+      {
+        tab: { now: 'review', state: 'waits', words: 'round 1 passes', waiting: ['finish finish'] },
+        all: { phase: 'review', standing: 'finish waits on you', waiting: 1, total: 1 },
+        banner: { state: 'needs', waits: ['⚑ 1 waiting on you'] },
+      },
+    ]);
   });
 });
 

@@ -5,8 +5,9 @@
  * waiting on the person, ✓ done, none where neither — then the work's name
  * in bold and its facts in grey, each one that waits on the person in peach
  * behind a ⚑, and one that says what waits beside them — the messages
- * waiting in a topic — in peach with no ⚑; at its right, the buttons the questions waiting give it
- * (`discuss.ts`), then the board's. A banner too long for the band is cut
+ * waiting in a topic, and at a unit's menu what waits on the person there —
+ * in peach with no ⚑; at its right, the buttons the questions waiting give
+ * it (`discuss.ts`), then the board's. A banner too long for the band is cut
  * from its right end, its buttons kept.
  */
 import type { ElementTable, RenderElement } from 'claude-code'

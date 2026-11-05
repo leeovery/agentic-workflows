@@ -122,7 +122,7 @@ describe('the board at the start menu (20.3.3, 20.16)', () => {
         project: project(),
         at_start: true,
         waiting: 0,
-        units: [{ unit: UNIT, title: 'Pay', type: 'feature', phase: 'build', standing: '', waiting: 0, session: null }],
+        units: [{ unit: UNIT, title: 'Pay', type: 'feature', phase: 'build', standing: '0 of 4 tasks done', waiting: 0, session: null }],
         roadmap: [],
         inbox: [],
         complete: [],
@@ -246,11 +246,20 @@ describe('the build on the board (20.5)', () => {
     assert.strictEqual(board().view.phases[0].tasks[0].state, 'building');
   });
 
-  it('a question parks its task: the task waits on it, the question lists what it parks and the tasks after those, and the banner counts it waiting on the person (20.5.3, 20.2.4)', async () => {
+  it('a question parks its task: the task waits on it, the question lists what it parks and the tasks after those, and the banner counts it waiting on the person (20.5.3, 20.2.4); S1: every view that reads the unit stands it so — its tab building, the question waiting there opening the task it parks, All work counting it', async () => {
     enterBuild();
     await parkOn(['1.2']);
     const { view, questions, banner } = board();
     const [{ since, ...question }] = questions;
+    const standing = standingOn(board, UNIT);
+    const parked = board(['--page', standing.tab.waiting[0].split(' → ')[1]]).view;
+
+    assert.deepStrictEqual({ ...standing, tab: { ...standing.tab, waiting: standing.tab.waiting.map((line) => line.split(' → ')[0]) }, parked: [parked.kind, parked.line.task] }, {
+      tab: { now: 'build', state: 'running', words: '0 of 4 tasks done', waiting: ['question Q1'] },
+      all: { phase: 'build', standing: '0 of 4 tasks done', waiting: 1, total: 1 },
+      banner: { state: 'running', waits: ['⚑ 1 waiting on you'] },
+      parked: ['task', '1.2'],
+    });
 
     assert.deepStrictEqual(
       { tasks: view.phases[0].tasks.slice(1), waiting: view.waiting, question, banner: banner.facts.at(-1) },
@@ -264,26 +273,18 @@ describe('the build on the board (20.5)', () => {
     assert.ok(!Number.isNaN(Date.parse(since)), since);
   });
 
-  it('the build stops once every task waits on the person: the progress says so, and the banner says it after the type and the phase, plain, the waiting count flagged (20.2.4, 20.5.1, 20.S27, D6, D20)', async () => {
+  it('the build stops once every task waits on the person: the progress says so, and the banner says it after the type and the phase, plain, the waiting count flagged (20.2.4, 20.5.1, 20.S27, D6, D20); S1: every view that reads the unit stands it so — the tab\'s build stopped, its question waiting there, All work\'s row stopped and counting it', async () => {
     enterBuild();
     await parkOn(['1.1', '1.2', '2.1']);
     const { view, banner } = board();
+    const { tab, all } = standingOn(board, UNIT);
 
-    assert.deepStrictEqual({ stopped: view.progress.stopped, running: view.progress.running, banner }, {
+    assert.deepStrictEqual({ stopped: view.progress.stopped, running: view.progress.running, banner, tab: { ...tab, waiting: tab.waiting.map((line) => line.split(' → ')[0]) }, all }, {
       stopped: true,
       running: 0,
       banner: { name: 'Pay', state: 'needs', facts: [{ text: 'feature', needs: false }, { text: 'build', needs: false }, { text: 'stopped', needs: false }, { text: '1 waiting on you', needs: true }] },
-    });
-  });
-
-  it('S1: a stopped build stands so on every view that reads it — the tab\'s build stopped, its question waiting there, All work counting it — as the banner has it', async () => {
-    enterBuild();
-    await parkOn(['1.1', '1.2', '2.1']);
-
-    assert.deepStrictEqual(standingOn(board, UNIT), {
       tab: { now: 'build', state: 'stopped', words: '0 of 4 tasks done', waiting: ['question Q1'] },
-      all: { phase: 'build', standing: '0 of 4 tasks done', waiting: 1, total: 1 },
-      banner: { state: 'needs', flagged: ['1 waiting on you'] },
+      all: { phase: 'build', standing: 'stopped · 0 of 4 tasks done', waiting: 1, total: 1 },
     });
   });
 
@@ -529,15 +530,12 @@ describe('a task\'s pages (20.5.4–20.5.7)', () => {
 
 describe('the tabs (20.3)', () => {
   it('the unit\'s tab shows the unit\'s page: each phase from discovery to review with what its records hold and the day each finished closed, the phase it is in since the one before closed, the session in its build, what waits on the person, and what happened lately, newest first (20.15.1)', async () => {
-    const manifest = readManifest(dir, UNIT);
-    createManifest(dir, UNIT, {
-      ...manifest,
-      created: '2026-06-26',
-      checklists: { ...manifest.checklists, decided: { [UNIT]: { items: {}, closed: '2026-10-17T16:00:00.000Z' } }, 'ready-to-build': { items: {}, closed: '2026-10-19T10:00:00.000Z' } },
-    });
     enterBuild();
     await parkOn(['1.2']);
     const { view } = board(['--tab', 'unit']);
+    const { checklists } = readManifest(dir, UNIT);
+    const ready = checklists?.['ready-to-build']?.closed ?? null;
+    const decided = checklists?.decided?.[UNIT]?.closed ?? null;
 
     assert.deepStrictEqual({ ...view, lately: view.lately.map(({ kind, detail }) => [kind, detail]) }, {
       kind: 'unit',
@@ -545,18 +543,18 @@ describe('the tabs (20.3)', () => {
       title: 'Pay',
       type: 'feature',
       about: 'Test: pay',
-      started: '2026-06-26',
-      now: { phase: 'build', since: '2026-10-19T10:00:00.000Z' },
+      started: null,
+      now: { phase: 'build', since: ready },
       at_menu: false,
       here: true,
       progress: { complete: 3, total: 5 },
-      waiting: [{ kind: 'question', id: 'Q1', text: QUESTIONS[0] }],
+      waiting: [{ kind: 'question', id: 'Q1', text: `Q1 ${QUESTIONS[0]}`, page: view.waiting[0].page }],
       phases: [
-        { phase: 'discovery', state: 'complete', words: 'the seed', on: '2026-06-26', session: null, page: true },
-        { phase: 'discussion', state: 'complete', words: '0 decisions', on: '2026-10-17T16:00:00.000Z', session: null, page: true },
-        { phase: 'specification', state: 'complete', words: '', on: '2026-10-19T10:00:00.000Z', session: null, page: false },
-        { phase: 'build', state: 'running', words: '0 of 4 tasks done', on: null, session: 'this', page: false },
-        { phase: 'review', state: 'later', words: '', on: null, session: null, page: false },
+        { phase: 'discovery', state: 'complete', words: 'the seed', doing: '', on: null, session: null, page: true },
+        { phase: 'discussion', state: 'complete', words: '0 decisions', doing: '', on: decided, session: null, page: true },
+        { phase: 'specification', state: 'complete', words: '', doing: '', on: ready, session: null, page: false },
+        { phase: 'build', state: 'running', words: '0 of 4 tasks done', doing: 'building', on: null, session: 'this', page: false },
+        { phase: 'review', state: 'later', words: '', doing: '', on: null, session: null, page: false },
       ],
       lately: [['raised', 'Q1'], ['task-started', '1.1']],
     });
@@ -579,10 +577,13 @@ describe('the tabs (20.3)', () => {
       return { here, waiting };
     };
 
-    assert.deepStrictEqual([tab(UNIT), tab('till')], [
-      { here: true, waiting: [{ kind: 'question', id: 'Q1', text: QUESTIONS[0] }] },
-      { here: false, waiting: [{ kind: 'question', id: 'Q1', text: 'Does the drawer lock?' }] },
+    const [pay, till] = [tab(UNIT), tab('till')];
+
+    assert.deepStrictEqual([pay, till], [
+      { here: true, waiting: [{ kind: 'question', id: 'Q1', text: `Q1 ${QUESTIONS[0]}`, page: pay.waiting[0].page }] },
+      { here: false, waiting: [{ kind: 'question', id: 'Q1', text: 'Q1 Does the drawer lock?', page: till.waiting[0].page }] },
     ]);
+    assert.deepStrictEqual([pay.waiting[0].page, till.waiting[0].page], ['task:1.2', 'task:1.1']);
   });
 
   it('a task done says when it finished among the unit\'s moments, as its account was taken', () => {

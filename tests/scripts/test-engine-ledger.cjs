@@ -15,7 +15,7 @@
 // lock; a rewritten, removed, swapped or truncated line, or a shorter file,
 // stopping the read and refusing the commit, in a sha1 repository and a
 // sha256 one, the branch read before the file and a failed check made again
-// under the lock; the entries an append left uncommitted counted past the
+// under the lock, and made once in reads taken as one; the entries an append left uncommitted counted past the
 // committed ledger, where the disk starts with it, and committed with no
 // push; and a migration's converted copy, its every event through
 // with the same ids in the same order, let through for its own commit
@@ -42,7 +42,7 @@ const { MADE } = require('./ledger-world.cjs');
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const LEDGER_MODULE = path.join(SCRIPTS, 'domain/ledger.cjs');
 const CONVERSION_MODULE = path.join(SCRIPTS, 'domain/ledger-conversion.cjs');
-const { checkLedger, commitUncommitted, withLedger, appendEntry, ledgerStopSurface } = require(LEDGER_MODULE);
+const { checkLedger, withOneCheck, commitUncommitted, withLedger, appendEntry, ledgerStopSurface } = require(LEDGER_MODULE);
 const { LEDGER, LEDGER_VERSION, SCHEMA, LedgerLineError, LedgerNewer, validEvent, parseEntry } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 const { ID_LENGTH, newId, shortIds, resolveId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { LedgerChanged, checkLedgerCommit, keptStop } = require(path.join(SCRIPTS, 'domain/ledger-check.cjs'));
@@ -603,6 +603,21 @@ describe('the append-only check on a read', () => {
     }
     fs.rmSync(path.join(root, LEDGER));
     assert.deepStrictEqual(stopped(root), { line: 1, found: null });
+  });
+
+  it('checks the ledger once in reads taken as one: a line rewritten after the first check passed reads unchecked until they end, and stops the first read after; a first check that stops stops them', () => {
+    const { root } = codeProject(world, FUMI);
+    const [a, b, c] = threeCommitted(root);
+    const rewritten = b.replace('A near-frameless floating note.', 'A floating note.');
+
+    withOneCheck(() => {
+      checkLedger(root, []);
+      writeLedger(root, `${a}\n${rewritten}\n${c}\n`);
+      checkLedger(root, []);
+    });
+
+    assert.deepStrictEqual(stopped(root), { line: 2, found: rewritten });
+    assert.throws(() => withOneCheck(() => checkLedger(root, [])), LedgerChanged);
   });
 
   it('hashes the file against the blob in a repository whose objects are named by sha256 too', () => {

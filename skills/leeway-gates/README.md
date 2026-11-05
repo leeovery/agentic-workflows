@@ -253,11 +253,12 @@ while another screen — Remote Control's, say — is attached beside the band's
 The banner names the work and where it stands: the session's mark — ◐ running,
 ⚑ waiting on you, ✓ done, none where neither — the work's name in bold, then
 its facts in grey, each one that waits on you in peach behind a ⚑ — the
-messages waiting in a topic peach with no ⚑ — and at its right the buttons Ready to discuss gives it (below), then `▸ show board`
-while the pane is hidden, `hide board` while it is up. A banner too long for
-the band is cut from its right end, its buttons kept. It
-sits beneath a gate's rows, which are drawn in the rows it leaves; a survey
-holds the band alone.
+messages waiting in a topic, and at a unit's menu what waits on you there,
+peach with no ⚑ — and at its right the buttons Ready to discuss gives it
+(below), then `▸ show board` while the pane is hidden, `hide board` while it
+is up. A banner too long for the band is cut from its right end, its buttons
+kept. It sits beneath a gate's rows, which are drawn in the rows it leaves; a
+survey holds the band alone.
 
 The pane has three tabs: `⌂ This session`, the unit's own (`≡ {unit}`), and
 `≡ All work`. This session shows the most specific place the session is, and

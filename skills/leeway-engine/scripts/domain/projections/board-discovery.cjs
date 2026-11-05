@@ -12,6 +12,8 @@
 // - The map is the staged one while approve the map waits on the person, its
 //   topics and parks; else the epic's map, its live topics in order, and
 //   nothing parked yet.
+// - What waits on the person is the unit's one list (board-standing.cjs),
+//   approve the map among it while a map is staged.
 // - A topic opens on its discussion's page once its discussion is under
 //   way or decided, or was cancelled after it started (20.8.3); else — not
 //   started, postponed, or cancelled before it started — on its brief, each
@@ -33,6 +35,7 @@ const { headedSections } = require('../markdown-sections.cjs');
 const { titlecase } = require('../conventions.cjs');
 const { briefFile, computeTopicLifecycle, itemOf, topicKey, topicTitle } = require('../derivations.cjs');
 const { messagesIn } = require('./board-discussion.cjs');
+const { counted } = require('./map.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
 /** @typedef {import('../board-model.cjs').DiscoveryView} DiscoveryView */
@@ -69,8 +72,18 @@ function spikesAt(at) {
   });
 }
 
-/** Discovery's This session (the header's). @param {BoardAt} at @returns {{view: DiscoveryView}} */
-function discoveryView(at) {
+/**
+ * The map discovery shows: the staged one while approve the map waits on the
+ * person, else the epic's live topics in order.
+ * @param {BoardAt} at @param {ReturnType<typeof stagedOrNone>} staged
+ */
+function mapOf(at, staged) {
+  if (staged === null) return liveInOrder(at.manifest).map((topic) => mapLine(at, topic));
+  return staged.topics.map(({ name, summary }) => (summary === undefined ? mapLine(at, name) : { topic: name, title: topicTitle(at.manifest, name), summary }));
+}
+
+/** Discovery's This session (the header's), what waits on the person read from the unit's one list. @param {BoardAt} at @param {import('../board-model.cjs').WaitingLine[]} waiting @returns {{view: DiscoveryView}} */
+function discoveryView(at, waiting) {
   const staged = stagedOrNone(at.cwd, at.unit);
   const session = logsAt(at).at(-1);
   const { notTaken, views } = heardAt(at);
@@ -82,10 +95,8 @@ function discoveryView(at) {
       type: at.manifest.work_type,
       session: session?.number ?? null,
       started: session === undefined ? null : sessionStarted(session.text),
-      waits: staged !== null,
-      map: staged === null
-        ? liveInOrder(at.manifest).map((topic) => mapLine(at, topic))
-        : staged.topics.map(({ name, summary }) => (summary === undefined ? mapLine(at, name) : { topic: name, title: topicTitle(at.manifest, name), summary })),
+      waiting,
+      map: mapOf(at, staged),
       roadmap: (staged?.parks ?? []).map(({ summary, horizon }) => ({ title: summary, horizon })),
       not_taken: notTaken,
       views,
@@ -95,16 +106,14 @@ function discoveryView(at) {
 }
 
 /**
- * The banner's facts in discovery (20.2.4): the topics on the map, and the
- * map waiting on the person while approve the map does.
- * @param {DiscoveryView} view @returns {{state: 'running'|'needs', facts: {text: string, needs: boolean}[]}}
+ * The banner's facts in discovery (20.2.4): the topics on the map; the map
+ * waiting on the person, from the unit's one list, is the board's
+ * (board.cjs).
+ * @param {DiscoveryView} view @returns {{state: 'running', facts: {text: string, needs: boolean}[]}}
  */
-function discoveryBanner({ type, map, waits }) {
-  const fact = (/** @type {string} */ text, needs = false) => ({ text, needs });
-  return {
-    state: waits ? 'needs' : 'running',
-    facts: [fact(type), fact('discovery'), fact(`${map.length} ${map.length === 1 ? 'topic' : 'topics'} on the map`), ...(waits ? [fact('the map waits on you', true)] : [])],
-  };
+function discoveryBanner({ type, map }) {
+  const fact = (/** @type {string} */ text) => ({ text, needs: false });
+  return { state: 'running', facts: [fact(type), fact('discovery'), fact(`${counted(map.length, 'topic')} on the map`)] };
 }
 
 /** The lifecycles of a topic whose discussion has started and stands: under way, or decided. */
@@ -135,9 +144,10 @@ const textOf = (file) => (fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : 
  */
 function briefPage(at, said) {
   const topic = topicKey(at.manifest, said);
-  const staged = stagedOrNone(at.cwd, at.unit)?.topics.find(({ name }) => name === topic);
+  const staging = stagedOrNone(at.cwd, at.unit);
+  const staged = staging?.topics.find(({ name }) => name === topic);
   if (staged === undefined && itemOf(at.manifest, 'discovery', topic) === undefined) throw new Error(`${at.unit}'s map holds no topic "${said}"`);
-  const { map } = discoveryView(at).view;
+  const map = mapOf(at, staging);
   const place = map.findIndex((line) => line.topic === topic);
   const { title, summary } = place === -1 ? mapLine(at, topic) : map[place];
   return {

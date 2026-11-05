@@ -225,11 +225,11 @@ function drawBuild(at) {
 
 /**
  * The banner's facts in a build (20.2.4): the type and the phase, then
- * stopped where nothing can go on (D20), how many build and are in review,
- * and the questions waiting on the person.
+ * stopped where nothing can go on (D20), and how many build and are in
+ * review; what waits on the person is counted by the board (board.cjs).
  * @param {BuildView} view @returns {{state: 'running'|'needs', facts: Fact[]}}
  */
-function buildBanner({ type, progress, phases, waiting }) {
+function buildBanner({ type, progress, phases }) {
   const lines = phases.flatMap(({ tasks }) => tasks);
   const count = (/** @type {TaskState} */ state) => lines.filter((line) => line.state === state).length;
   const fact = (/** @type {string} */ text, needs = false) => ({ text, needs });
@@ -241,7 +241,6 @@ function buildBanner({ type, progress, phases, waiting }) {
       ...(progress.stopped ? [fact('stopped')] : []),
       ...(count('building') > 0 ? [fact(`${count('building')} building`)] : []),
       ...(count('in-review') > 0 ? [fact(`${count('in-review')} in review`)] : []),
-      ...(waiting.length > 0 ? [fact(`${waiting.length} waiting on you`, true)] : []),
     ],
   };
 }

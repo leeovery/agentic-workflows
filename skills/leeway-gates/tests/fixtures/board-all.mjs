@@ -6,8 +6,8 @@ export default {
   waiting: 5,
   units: [
     { unit: 'token-aware-diff-sizing', title: 'Token-aware diff sizing', type: 'feature', phase: 'build', standing: '58 of 68 tasks done', waiting: 3, session: 'this' },
-    { unit: 'rate-limit-aware-publish', title: 'Rate-limit-aware publish', type: 'feature', phase: 'specification', standing: '18 sections', waiting: 2, session: 'other' },
-    { unit: 'publish-failure', title: 'Publish failure swallows gh stderr', type: 'bugfix', phase: 'investigation', standing: 'cause found, not yet confirmed', waiting: 0, session: null },
+    { unit: 'rate-limit-aware-publish', title: 'Rate-limit-aware publish', type: 'feature', phase: 'specification', standing: 'pass 2 waits on you', waiting: 2, session: 'other' },
+    { unit: 'publish-failure', title: 'Publish failure swallows gh stderr', type: 'bugfix', phase: 'investigation', standing: '', waiting: 0, session: null },
   ],
   roadmap: [
     { horizon: 'Next', items: [{ title: 'Headline first release notes', from: null }, { title: 'Changelog site', from: 'Release notes overhaul' }] },

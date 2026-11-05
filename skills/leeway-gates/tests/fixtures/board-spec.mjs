@@ -9,6 +9,9 @@ export const readPass = (pass, found, calls, yours) => ({ pass, found, calls, yo
 /** A phase of the cut, with its scenarios and the sections it draws on. */
 export const cutPhase = (at, name, scenarios, ...sections) => ({ phase: at, name, scenarios, sections: sections.map(String) })
 
+/** Ready to build's yes, waiting on the person, as the unit's one list holds it. */
+export const READY = { kind: 'ready', id: 'ready-to-build', text: 'Ready to build: the outline and the phase cut, for your yes', page: null, pass: null, finding: null, sections: [] }
+
 export default {
   kind: 'spec',
   unit: 'token-aware-diff-sizing',
@@ -36,7 +39,7 @@ export default {
     specSection(18, 'Documentation and the Setup Guide', 1, 3, 4),
   ],
   passes: [readPass(4, 6, 4, 2), readPass(3, 5, 4, 1), readPass(2, 3, 2, 1), readPass(1, 10, 8, 2)],
-  waiting: [{ id: 'g1', text: "The halving progress line's part count", pass: 4, finding: 'F2', sections: ['16'] }],
+  waiting: [{ kind: 'gap', id: 'g1', text: "The halving progress line's part count", page: 'pass:4:F2', pass: 4, finding: 'F2', sections: ['16'] }],
   since: [
     { id: 'c1', text: 'r re-runs only the merge call.', question: "r at single-version regenerate's review gate on chunked notes", pass: 4, finding: 'F3', sections: ['1', '15'] },
     { id: 'c2', text: 'The example merges four parts.', question: 'The progress example merges fewer parts than its own halving left', pass: 4, finding: 'F4', sections: ['8', '16'] },
@@ -53,5 +56,4 @@ export default {
     cutPhase(7, 'Per-verb exclusion lists and the exclusion check', 109, 2, 4, 5, 6, 7, 9, 10, 12, 13, 14, 15, 16, 17, 18),
     cutPhase(8, 'Recording exclusion answers', 53, 5, 6, 7, 9, 11, 12, 13, 14, 15, 16, 18),
   ],
-  ready: 'review',
 }

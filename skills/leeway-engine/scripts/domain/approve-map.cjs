@@ -32,8 +32,10 @@
 //   new topic's brief, the roadmap — the items taken in and bound joined to
 //   their topics, the parks on their horizons, each with its origin and the
 //   logs that shaped it — and the epic's manifest: the new topics, every
-//   topic's order (8.S10), and the epic's open discovery session closed
-//   (8.14.11). A failure part-way leaves no change. One commit takes it all.
+//   topic's order (8.S10), the epic's open discovery session closed
+//   (8.14.11), and when the map was approved (`phases.discovery.approved_at`),
+//   each yes its own. A failure part-way leaves no change. One commit takes
+//   it all.
 // - What comes next is the epic's menu, the first topic in the map's order
 //   marked next there (8.8.13).
 //
@@ -80,6 +82,7 @@ const {
 const { commitStateTail, noteCommitOutcome, discoveryScope, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { filled, shaped, listed, readPayload, stage, stagedAt, refusing } = require('./staged-payload.cjs');
 const { approveMapScreen, sweptMapScreen, sweptStrikePick } = require('./projections/discovery-gates.cjs');
+const { counted } = require('./projections/map.cjs');
 
 /**
  * A topic as staged: one on the map by its key alone; a new one with its
@@ -521,8 +524,9 @@ function landOnRoadmap(project, unit, { topics, parks, binds, candidates = [] })
  * The epic's half of the yes, on the manifest given: the new topics, then
  * the candidates taken, their source the sweep, and the struck ones' names
  * recorded as the person's answer; the earlier record each carries; every
- * topic's order, the candidates after the map's topics; and the open
- * discovery session closed. Answers the session closed, or null.
+ * topic's order, the candidates after the map's topics; the open discovery
+ * session closed; and when the map was approved. Answers the session
+ * closed, or null.
  * @param {Record<string, any>} manifest @param {Staged} staged @param {Record<string, {work_unit: string, topic: string}>} priors
  * @returns {string|null}
  */
@@ -538,6 +542,7 @@ function landOnMap(manifest, { topics, candidates = [] }, priors) {
   [...topics, ...taken].forEach(({ name }, at) => { items[name].order = at + 1; });
   const closed = typeof manifest.phases.discovery.active_session === 'string' ? manifest.phases.discovery.active_session : null;
   delete manifest.phases.discovery.active_session;
+  manifest.phases.discovery.approved_at = new Date().toISOString();
   return closed;
 }
 
@@ -619,7 +624,7 @@ function approveMapYes(cwd, unit) {
   /** @type {string[]} */
   const warnings = [];
   const topics = [...staged.topics, ...taken].map(({ name }) => name);
-  const took = `${topics.length} ${topics.length === 1 ? 'topic' : 'topics'}, ${staged.parks.length} to the roadmap`;
+  const took = `${counted(topics.length, 'topic')}, ${staged.parks.length} to the roadmap`;
   const outcome = commitStateTail(cwd, [...discoveryScope(cwd, unit), PROJECT_MANIFEST_SPEC], `discovery(${unit}): approve the map — ${took}`, warnings);
   const swept = staged.candidates !== undefined;
   /** @type {Record<string, unknown>} */

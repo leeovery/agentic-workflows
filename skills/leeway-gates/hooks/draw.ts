@@ -81,8 +81,9 @@ export type Line = {
  * and WAITING ON YOU, the questions waiting on the person with where each
  * stands in the discussion (`discuss.ts`), for a view to place where its
  * drawing has it — the session's, or a unit's own a page holds, which a
- * press queues only where they are the session's unit's. What runs and what is clocked are recorded, so the pane turns and
- * ticks only a drawing that holds them.
+ * press queues only where they are the session's unit's. What runs and what
+ * is clocked are recorded, so the pane turns and ticks only a drawing that
+ * holds them.
  */
 export type Kit = {
   width: number
@@ -387,6 +388,7 @@ export function endedRows(key: string, indent: string, words: Part, right: reado
     { key, parts: spread(fits ? [row(ending)] : [], right, end), ...(button === undefined ? {} : { button }) },
   ]
 }
+
 /** The indent a second line takes under an item's mark. */
 export const INDENT = '     '
 

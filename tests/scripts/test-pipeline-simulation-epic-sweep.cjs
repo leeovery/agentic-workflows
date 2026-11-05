@@ -22,6 +22,7 @@ const assert = require('node:assert');
 const {
   Sim, worldFrom, discussed, mappedEpic, arrive, specEntry, handoff, answerGate,
 } = require('./pipeline-world.cjs');
+const { standingOn } = require('./board-world.cjs');
 
 const WU = 'tessera';
 
@@ -54,6 +55,12 @@ describe('pipeline simulation: epic, the sweep before the spec', () => {
     const taken = sim.run(['sweep', 'take', WU]);
     assert.deepStrictEqual(taken.next, { kind: 'engine', argv: ['render', 'approve-map', WU, '--sweep'] });
     sim.render(taken.next.argv.slice(1), { expect: 'content' });
+    const board = (/** @type {string[]} */ args) => JSON.parse(sim.read(['board', sim.env.CLAUDE_CODE_SESSION_ID, ...args]));
+    assert.deepStrictEqual([standingOn(board, WU), board(['--tab', 'unit']).view.waiting.map((/** @type {{text: string}} */ { text }) => text)], [{
+      tab: { now: 'discussion', spec: 'waits', build: 'waits', waiting: ['map approve-the-map'] },
+      all: { phase: 'discussion', standing: '1 of 2 topics decided', waiting: 1, total: 1 },
+      banner: { state: 'needs', waits: ['⚑ the map waits on you'] },
+    }, ['Approve the map: 2 candidates the sweep found, to take or strike']], 'S1: the sweep\'s candidates wait on the person at approve the map on every view that reads the epic — its message having reopened beta, back in discussion — as the banner has it');
     sim.render(answerGate(sim, 'approve the map', '--pick', 's').next.argv.slice(1), { expect: 'content' });
     sim.render(sim.run(answerGate(sim, 'approve the map strike', '--pick', '2').next.argv).next.argv.slice(1), { expect: 'content' });
     const yes = sim.run(answerGate(sim, 'approve the map', '--pick', 'y').next.argv);

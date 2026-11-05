@@ -16,9 +16,14 @@ const { pathToFileURL } = require('url');
 /** The mod's fixtures, which its tests import and which can import nothing outside the mod's folder or named other than as code. */
 const FIXTURES = path.join(__dirname, '../../skills/leeway-gates/tests/fixtures');
 
-/** A fixture of the mod's, by its file's name. @param {string} name @returns {Promise<any>} */
+/** A fixture module of the mod's, by its file's name. @param {string} name @returns {Promise<any>} */
+async function fixtureModule(name) {
+  return import(pathToFileURL(path.join(FIXTURES, name)).href);
+}
+
+/** A fixture of the mod's, its default export, by its file's name. @param {string} name @returns {Promise<any>} */
 async function fixture(name) {
-  return (await import(pathToFileURL(path.join(FIXTURES, name)).href)).default;
+  return (await fixtureModule(name)).default;
 }
 
 /** Two shapes as one: an object's keys from both, an empty list or a null taking the other's. @param {any} a @param {any} b @returns {any} */
@@ -76,9 +81,10 @@ function emptyLists(value) {
 /**
  * Where a unit stands on every view that reads it, from `board`, a suite's
  * read of the board for its args: on its tab, the phase it is in — an
- * epic's page its two stages — and what waits on the person there; its row
- * on All work and the total waiting there; and the banner's state and what
- * it flags.
+ * epic's page its two stages — and what waits on the person there, each by
+ * its kind and id and the page it opens; its row on All work and the total
+ * waiting there; and the banner's state and what it says waits, flagged or
+ * not.
  * @param {(args: string[]) => any} board @param {string} unit
  */
 function standingOn(board, unit) {
@@ -89,10 +95,10 @@ function standingOn(board, unit) {
     ? { spec: tab.spec.state, build: tab.build.state }
     : (({ state, words }) => ({ state, words }))(tab.phases.find((/** @type {{phase: string}} */ held) => held.phase === tab.now.phase));
   return {
-    tab: { now: tab.now.phase, ...now, waiting: (tab.waiting ?? []).map((/** @type {{kind: string, id: string}} */ { kind, id }) => `${kind} ${id}`) },
+    tab: { now: tab.now.phase, ...now, waiting: tab.waiting.map((/** @type {{kind: string, id: string, page: string|null}} */ { kind, id, page }) => `${kind} ${id}${page === null ? '' : ` → ${page}`}`) },
     all: { phase, standing, waiting, total: all.waiting },
-    banner: { state: banner.state, flagged: banner.facts.filter((/** @type {{needs: boolean}} */ fact) => fact.needs).map((/** @type {{text: string}} */ fact) => fact.text) },
+    banner: { state: banner.state, waits: banner.facts.filter((/** @type {{needs: boolean, waits?: true}} */ fact) => fact.needs || fact.waits).map((/** @type {{text: string, needs: boolean}} */ fact) => `${fact.needs ? '⚑ ' : ''}${fact.text}`) },
   };
 }
 
-module.exports = { fixture, shapeOf, misfits, emptyLists, standingOn };
+module.exports = { fixture, fixtureModule, shapeOf, misfits, emptyLists, standingOn };

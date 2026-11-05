@@ -143,7 +143,7 @@ function decided(dir, address, question, decision, { flags = [], task } = {}) {
 const calls = {};
 
 const world = fixtureFrom('review-', (dir) => {
-  createManifest(dir, UNIT, { build: { position: 'auto' }, cut: CUT, checklists: closedChecklists([1, 2]) });
+  createManifest(dir, UNIT, { phases: { discussion: { items: { [UNIT]: { status: 'completed' } } } }, build: { position: 'auto' }, cut: CUT, checklists: closedChecklists([1, 2]) });
   createManifest(dir, 'half', { build: { position: 'auto' }, cut: CUT, checklists: closedChecklists([1]) });
   createManifest(dir, 'open', { build: { position: 'auto' }, cut: CUT });
   createManifest(dir, 'solo', { build: { position: 'auto' }, cut: { phases: [CUT.phases[0]] }, checklists: closedChecklists([1]) });

@@ -8,11 +8,13 @@
  * A topic, a stage or a phase under way that a session is in turns its ◐;
  * one no session is in is sky blue and still. Each line whose words carry
  * what waits — a topic's session and messages, the specification's count to
- * go — wraps under its mark rather than lose them at the edge. WAITING ON
- * YOU draws the questions the board holds only on the page of the unit the
- * session is in; any other unit's lists its own by their words.
+ * go — wraps under its mark rather than lose them at the edge; a page's
+ * head gives its name way with "…", never its type or where the session
+ * stands. WAITING ON YOU, on the epic's page and the tab alike, draws the
+ * questions the board holds only on the page of the unit the session is
+ * in; any other unit's lists its own by their words, each opening its page.
  */
-import { BAR_CELLS, COLOUR, INDENT, MARK, blank, counted, dayOf, heading, progressBar, prose, spread, type Kit, type Line, type Part } from '../draw.ts'
+import { BAR_CELLS, COLOUR, INDENT, MARK, blank, counted, cutTo, dayOf, heading, progressBar, prose, spread, widthOf, type Kit, type Line, type Part } from '../draw.ts'
 import type { View } from '../model.ts'
 import { pageKey, tabKey } from '../pane.ts'
 import type { ViewDrawing } from './index.ts'
@@ -33,6 +35,7 @@ type TopicLine = {
 }
 
 type Stage<State> = { state: State; session: Session }
+type Waiting = { kind: 'map' | 'gap' | 'ready' | 'question' | 'finish'; id: string; text: string; page: string | null }
 
 type Epic = {
   unit: string
@@ -41,7 +44,9 @@ type Epic = {
   started: string | null
   now: Now
   at_menu: boolean
+  here: boolean
   progress: { decided: number; total: number; discussing: number }
+  waiting: Waiting[]
   topics: TopicLine[]
   spec: Stage<'waits' | 'running' | 'asking' | 'ready' | 'complete'>
   build: Stage<'waits' | 'building' | 'reviewing' | 'stopped' | 'finish' | 'complete'>
@@ -49,11 +54,12 @@ type Epic = {
   lately: Moment[]
 }
 
-/** The head of a unit's page: its name and type, at its menu where the session is. */
-const headOf = (title: string, type: string, atMenu: boolean): Line => ({
-  key: 'unit:head',
-  parts: [{ text: title, bold: true }, { text: ` · ${type}`, color: COLOUR.secondary }, ...(atMenu ? [{ text: ' · at its menu', color: COLOUR.running }] : [])],
-})
+/** The head of a unit's page: its name, giving way with "…", then its type, and at its menu where the session is. */
+function headOf(title: string, type: string, atMenu: boolean, width: number): Line {
+  const standing: Part[] = [{ text: ` · ${type}`, color: COLOUR.secondary }, ...(atMenu ? [{ text: ' · at its menu', color: COLOUR.running }] : [])]
+
+  return { key: 'unit:head', parts: [...cutTo([{ text: title, bold: true }], width - widthOf(standing)), ...standing] }
+}
 
 /** What a unit is doing in each phase, as its dates line says it. */
 const DOING: Readonly<Record<string, string>> = {
@@ -226,7 +232,7 @@ function epicLines(view: Epic, kit: Kit): Line[] {
   const of = `${decided} of ${total}`
 
   return [
-    headOf(view.title, 'epic', view.at_menu),
+    headOf(view.title, 'epic', view.at_menu, kit.width),
     ...prose('unit:about', view.about),
     datesOf(view.started, epicStanding(view)),
     {
@@ -234,6 +240,7 @@ function epicLines(view: Epic, kit: Kit): Line[] {
       parts: [...progressBar(decided, total, BAR_CELLS), { text: `  ${decided} of ${counted(total, 'topic')} decided${discussing > 0 ? ` · ${discussing} in discussion` : ''}`, color: COLOUR.secondary }],
     },
     blank('unit:head'),
+    ...waitingLines(view, kit),
     stageHeading('epic:discovery', 'DISCOVERY', kit.width, [{ text: `${of} decided`, color: COLOUR.secondary }]),
     ...view.topics.flatMap(topic => topicLines(topic, kit)),
     blank('epic:discovery'),
@@ -251,8 +258,7 @@ function epicLines(view: Epic, kit: Kit): Line[] {
   ]
 }
 
-type Phase = { phase: string; state: 'complete' | 'running' | 'stopped' | 'waits' | 'later'; words: string; on: string | null; session: Session; page: boolean }
-type Waiting = { kind: 'map' | 'gap' | 'ready' | 'question' | 'finish'; id: string; text: string }
+type Phase = { phase: string; state: 'complete' | 'running' | 'stopped' | 'waits' | 'later'; words: string; doing: string; on: string | null; session: Session; page: boolean }
 
 type Unit = {
   unit: string
@@ -269,17 +275,6 @@ type Unit = {
   lately: Moment[]
 }
 
-/** What a phase under way is doing, at its row's right. */
-const RUNNING: Readonly<Record<string, string>> = {
-  discovery: 'shaping',
-  discussion: 'discussing',
-  investigation: 'investigating',
-  specification: 'in review',
-  build: 'building',
-  review: 'reviewing',
-  implementation: 'working',
-}
-
 /** The types whose tab's progress line names the phase the unit is in. */
 const SAYS_PHASE: ReadonlySet<string> = new Set(['feature', 'cross-cutting'])
 
@@ -292,7 +287,7 @@ function phasesOf(view: Unit): Phase[] {
     return view.phases
   }
 
-  return [...view.phases.filter(({ phase }) => phase !== 'build' && phase !== 'review'), { phase: 'build and review', state: 'later', words: '', on: null, session: null, page: false }]
+  return [...view.phases.filter(({ phase }) => phase !== 'build' && phase !== 'review'), { phase: 'build and review', state: 'later', words: '', doing: '', on: null, session: null, page: false }]
 }
 
 /** What a press on a phase's row opens: This session for the phase the session is in, else a finished phase's own page. */
@@ -319,7 +314,7 @@ function phaseLine(phase: Phase, before: Phase | undefined, kit: Kit): Line {
   }
 
   if (phase.state === 'running') {
-    return row(runningMark(phase.session, kit), { text: RUNNING[phase.phase] ?? 'under way', color: COLOUR.running })
+    return row(runningMark(phase.session, kit), { text: phase.doing, color: COLOUR.running })
   }
 
   const after = phase.words !== '' ? phase.words : before === undefined ? '' : `after the ${before.phase}`
@@ -327,25 +322,16 @@ function phaseLine(phase: Phase, before: Phase | undefined, kit: Kit): Line {
   return row(LATER, { text: after, color: COLOUR.notStarted })
 }
 
-/** What waits on the person, by its words: the map with what it holds, a gap by its words, ready to build's yes, a question by its number, finish. */
-const WAITING_WORDS: Readonly<Record<Waiting['kind'], (waiting: Waiting) => string>> = {
-  map: ({ text }) => `Approve the map: ${text}`,
-  gap: ({ text }) => text,
-  ready: () => 'Ready to build: the outline and the phase cut, for your yes',
-  question: ({ id, text }) => `${id} ${text}`,
-  finish: () => 'Finish: the report of every round, and your verdict on each call you changed',
-}
-
 /** WAITING ON YOU's count: a build's questions wait on the board, a spec's gaps and its yes are asked in the conversation. */
 const waitingCount = (waiting: readonly Waiting[]) => (waiting.every(({ kind }) => kind === 'question') ? `${waiting.length}` : `${waiting.length} · asked in the conversation`)
 
 /**
- * WAITING ON YOU on the unit's tab: on the unit the session is in, its
- * build's questions as every view lists them, the board holding them; else
- * each by its words — a build's waiting on the board, the rest asked in the
- * conversation.
+ * WAITING ON YOU on the epic's page and the unit's tab: on the unit the
+ * session is in, its build's questions as every view lists them, the board
+ * holding them; else each by its words, opening its page where it has one —
+ * a build's waiting on the board, the rest asked in the conversation.
  */
-function waitingLines(view: Unit, kit: Kit): Line[] {
+function waitingLines(view: { here: boolean; waiting: readonly Waiting[] }, kit: Kit): Line[] {
   if (view.waiting.length === 0) {
     return []
   }
@@ -362,7 +348,8 @@ function waitingLines(view: Unit, kit: Kit): Line[] {
       key: `unit:waiting:${waiting.id}`,
       mark: { text: `${MARK.needs} `, color: COLOUR.needs },
       wraps: true,
-      parts: [{ text: WAITING_WORDS[waiting.kind](waiting), color: COLOUR.body }],
+      parts: [{ text: waiting.text, color: COLOUR.body }],
+      ...(waiting.page === null ? {} : { press: pageKey(waiting.page) }),
     })),
   )
 }
@@ -373,7 +360,7 @@ function unitLines(view: Unit, kit: Kit): Line[] {
   const inPhase = SAYS_PHASE.has(view.type) && !UNNAMED.has(view.now.phase) ? ` · in ${view.now.phase}` : ''
 
   return [
-    headOf(view.title, view.type, view.at_menu),
+    headOf(view.title, view.type, view.at_menu, kit.width),
     ...prose('unit:about', view.about),
     datesOf(view.started, nowWords(view.now)),
     { key: 'unit:progress', parts: [...progressBar(complete, phases.length, phases.length), { text: `  ${complete} of ${counted(phases.length, 'phase')} complete${inPhase}`, color: COLOUR.secondary }] },

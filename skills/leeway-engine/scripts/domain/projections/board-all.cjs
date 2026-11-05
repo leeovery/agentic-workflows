@@ -8,11 +8,14 @@
 // - Each unit's phase, and what waits on the person in it, counted, are its
 //   standing's (board-standing.cjs), as its tab and its banner have them,
 //   and the project's total sums them.
-// - How far a unit has come: an epic in discovery its topics on the map, any
-//   other epic its topics decided of all; finish waiting on the person; the
-//   session's unit's build its tasks done of all. A unit's tracker is read
-//   for the session's unit's build, and for another's only where a round
-//   has ended its review, whose finish may wait on the person.
+// - How far a unit has come, by the phase it is in: finish waiting on the
+//   person; an epic's discovery its topics on the map, its discussion its
+//   topics decided of all; the specification where it stands, as its
+//   banner says it; the build its tasks done of all, stopped where nothing
+//   can go on; the review its round, as its banner says it; nothing for a
+//   linear unit's discussion or investigation, nor for a build or review
+//   under the old plan. A unit's tracker is read once its build runs by its
+//   cut.
 // - A session is in a unit where this one is, or another holds a presence
 //   in it.
 // - The roadmap is its waiting items, those no unit has pulled, under their
@@ -27,10 +30,12 @@ const { scanProject } = require('../presence.cjs');
 const { discoverInbox } = require('../start.cjs');
 const { projectName } = require('../state-checks.cjs');
 const { titlecase } = require('../conventions.cjs');
-const { roadmapItems, itemJoin, itemPostponedFrom, topicTitle } = require('../derivations.cjs');
+const { roadmapItems, itemJoin, itemPostponedFrom, topicTitle, buildByCut } = require('../derivations.cjs');
 const { buildView, buildWords } = require('./board-build.cjs');
+const { roundWords } = require('./board-review.cjs');
+const { specDoing } = require('./board-spec.cjs');
 const { epicWords } = require('./board-unit.cjs');
-const { nowOf, waitingOn } = require('./board-standing.cjs');
+const { nowOf, waitingOn, standingOf } = require('./board-standing.cjs');
 const { mapCount } = require('./board-discovery.cjs');
 const { counted } = require('./map.cjs');
 
@@ -38,12 +43,23 @@ const { counted } = require('./map.cjs');
 /** @typedef {import('../board-model.cjs').AllView} AllView */
 /** @typedef {import('../board-model.cjs').WorkLine} WorkLine */
 
-/** How far a unit has come (the header's). @param {BoardAt} at @param {boolean} own whether it is the session's unit @param {string} phase */
-function workStanding(at, own, phase) {
+/** How far a unit has come, by the phase it is in (the header's). @type {Readonly<Record<string, (at: BoardAt) => string>>} */
+const HOW_FAR = Object.freeze({
+  discovery: (at) => (at.manifest.work_type === 'epic' ? `${counted(mapCount(at.cwd, at.manifest), 'topic')} on the map` : ''),
+  discussion: (at) => (at.manifest.work_type === 'epic' ? epicWords(at.manifest) : ''),
+  specification: (at) => specDoing(at, waitingOn(at)),
+  build: (at) => (buildByCut(at.manifest) ? `${standingOf(at) === 'stopped' ? 'stopped · ' : ''}${buildWords(buildView(at).view)}` : ''),
+  review: (at) => {
+    if (!buildByCut(at.manifest)) return '';
+    const { round, words } = roundWords(at);
+    return words ?? `round ${round} reading`;
+  },
+});
+
+/** How far a unit has come (the header's). @param {BoardAt} at @param {string} phase */
+function workStanding(at, phase) {
   if (waitingOn(at).some(({ kind }) => kind === 'finish')) return 'finish waits on you';
-  if (own && phase === 'build') return buildWords(buildView(at).view);
-  if (at.manifest.work_type !== 'epic') return '';
-  return phase === 'discovery' ? `${counted(mapCount(at.cwd, at.manifest), 'topic')} on the map` : epicWords(at.manifest);
+  return /** @type {Record<string, (at: BoardAt) => string>} */ (HOW_FAR)[phase]?.(at) ?? '';
 }
 
 /**
@@ -59,7 +75,7 @@ function workLine(at, here, others) {
     title: at.title,
     type: at.manifest.work_type,
     phase,
-    standing: workStanding(at, own, phase),
+    standing: workStanding(at, phase),
     waiting: waitingOn(at).length,
     session: own ? 'this' : others.has(at.unit) ? 'other' : null,
   };

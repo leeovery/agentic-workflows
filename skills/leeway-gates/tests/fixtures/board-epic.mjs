@@ -1,4 +1,4 @@
-// Fumi's page at its menu as engine board answers it, LATELY as the spike has it, held to its shape by tests/scripts/test-engine-board-views.cjs.
+// Fumi's page at its menu as engine board answers it, LATELY as the spike has it, held to its shape by tests/scripts/test-engine-board-views.cjs, with the map staged again (8.8.21) waiting on the person.
 
 /** A topic on the epic's page, by its title and state, the rest as given. */
 export const epicTopic = (title, state, more = {}) => ({
@@ -13,6 +13,9 @@ export const epicTopic = (title, state, more = {}) => ({
   ...more,
 })
 
+/** Fumi's map staged again, waiting on the person (8.8.21). */
+export const restaged = { kind: 'map', id: 'approve-the-map', text: 'Approve the map: 16 topics in this order', page: null }
+
 /** Topics decided, by their titles. */
 export const decidedTopics = (...titles) => titles.map(title => epicTopic(title, 'decided'))
 
@@ -24,7 +27,9 @@ export default {
   started: '2026-07-17',
   now: { phase: 'discussion', since: '2026-07-17T15:00:00' },
   at_menu: true,
+  here: true,
   progress: { decided: 9, total: 15, discussing: 5 },
+  waiting: [],
   topics: [
     ...decidedTopics('Note model', 'Storage and sync', 'Note window', 'Engine architecture', 'Space homing', 'Platform support', 'Search and retrieval', 'Status and alerts', 'Agent surface'),
     epicTopic('Management window', 'discussing', { decided: 36, total: 36, messages: 1 }),
