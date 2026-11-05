@@ -69,7 +69,7 @@ const DRAWN = Object.freeze({
   'pay/spec.md': 'file {unit}/spec.md',
   'pay/spec-review.json': 'engine {unit}/spec-review.json',
   'pay/sweep-taken.json': 'engine {unit}/sweep-taken.json',
-  'pay/summary.md': 'file {unit}/summary.md',
+  'pay/summary.md': 'engine {unit}/summary.md',
   'pay/build/log.md': 'log {unit}/build/log.md',
   'pay/build/notes.md': 'engine {unit}/build/notes.md',
   'pay/build/tasks/1.2.md': 'file {unit}/build/tasks/{task}.md',
@@ -126,7 +126,7 @@ const OUTSIDE = Object.freeze([
 const named = (at) => (at === null ? null : `${at.kind} ${at.path}`);
 
 describe('4.11\'s places (4.11.17)', () => {
-  it('every place the tree draws holds its sample, of its kind — the engine\'s alone the manifests, the ledger, spec-review.json and a verification run (6.2.3), sweep-taken.json (8.10.3), a topic\'s brief (8.7.6), the notes for later (task note), a task\'s figures (task account) and the settlement of its failed round (task settle) — and every place has one', () => {
+  it('every place the tree draws holds its sample, of its kind — the engine\'s alone the manifests, the ledger, spec-review.json and a verification run (6.2.3), sweep-taken.json (8.10.3), a topic\'s brief (8.7.6), a quick-fix\'s short record (quick-fix record), the notes for later (task note), a task\'s figures (task account) and the settlement of its failed round (task settle) — and every place has one', () => {
     assert.deepStrictEqual(Object.fromEntries(Object.keys(DRAWN).map((rel) => [rel, named(layoutPlace(rel))])), DRAWN);
     assert.deepStrictEqual(new Set(Object.values(DRAWN)), new Set(LAYOUT.map(named)));
   });

@@ -54,10 +54,10 @@ const { withStateLock } = require('./state-worktree.cjs');
 const { phaseNamed, buildStanding, builtUnit, ownInFlight } = require('./build-entry.cjs');
 const { reading, phaseLists, phaseLanded, reviewRefusalOf } = require('./phase-checks.cjs');
 const { reviewStanding, reviewGoesOn } = require('./review-phase.cjs');
-const { cutPhases, cutLength } = require('./derivations.cjs');
+const { cutPhases, cutLength, quickFixBuild } = require('./derivations.cjs');
 const { trackedTask, trackedLists, goingOn, phaseOpen, turnRefusal, ENDED, STATUS_WORDS } = require('./task-verbs.cjs');
 const { engineItemsHold } = require('./checklist.cjs');
-const { fieldOf, criteriaTexts, criterionWords, holdsScenario, namesScenario } = require('./task-file.cjs');
+const { fieldOf, criteriaTexts, criterionWords, holdsScenario, namesScenario, scenarioIds } = require('./task-file.cjs');
 const { finishedUnits } = require('./ledger-units.cjs');
 const { accountPath, takenFigures, readAccount } = require('./task-account.cjs');
 const { taskRounds } = require('./round-report.cjs');
@@ -156,14 +156,16 @@ function callsOf(cwd, ref) {
 const NOT_RUN = Object.freeze({ standing: 'not proven', runs: [] });
 
 /**
- * What running the product proved of each of the task's scenarios of the
- * cut, at the tips of its branch — null where it holds none, not run where
- * the task has no branch yet — and whether a run there counts, one skipped
- * never.
+ * What running the product proved of each of the task's scenarios — of the
+ * cut, or a quick-fix's fix's own, which it names (F2) — at the tips of its
+ * branch: null where it holds none, not run where the task has no branch
+ * yet; and whether a run there counts, one skipped never.
  * @param {string} cwd @param {Record<string, any>} manifest @param {TaskRef} ref @param {TaskDetail} task @param {string[]} criteria
  */
 function ranOf(cwd, manifest, ref, task, criteria) {
-  const scenarios = cutPhases(manifest).flatMap(({ scenarios: held }) => held).filter((scenario) => holdsScenario(task.text, scenario));
+  const scenarios = quickFixBuild(manifest)
+    ? scenarioIds(task.text)
+    : cutPhases(manifest).flatMap(({ scenarios: held }) => held).filter((scenario) => holdsScenario(task.text, scenario));
   if (scenarios.length === 0) return { ran: null, recorded: false };
   const stack = heldStack(cwd, ref.unit, ref.phase, [task]);
   const head = stack === null ? null : tipCommits(stack);

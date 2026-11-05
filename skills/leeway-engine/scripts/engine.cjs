@@ -92,6 +92,7 @@ const { FINISH_USAGE, runFinishVerb } = require('./domain/finish.cjs');
 const { MEASURES_USAGE, runMeasuresVerb } = require('./domain/measures.cjs');
 const { BOARD_USAGE, boardOf } = require('./domain/board.cjs');
 const { SCRATCH_USAGE, runScratchVerb } = require('./domain/scratch.cjs');
+const { QUICK_FIX_USAGE, runQuickFixVerb } = require('./domain/quick-fix-record.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, clearOwnQuietly, scanPresence, scanProject, cleanupPresence, deferralSection } = require('./domain/presence.cjs');
 const { arriveAt, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
 const { markConversation, endConversation, isAgentId } = require('./domain/conversation.cjs');
@@ -319,6 +320,7 @@ ${REVIEW_USAGE.replace(/^/gm, '  ')}
   ${MEASURES_USAGE}
   ${BOARD_USAGE}
 ${SCRATCH_USAGE.replace(/^/gm, '  ')}
+  ${QUICK_FIX_USAGE}
   brownfield record <native|skipped|accepted|completed>
   walkthrough record <walked|skipped>
   handoff <skill|/skill> [args …]
@@ -1444,6 +1446,21 @@ function runFinish(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
+// quick-fix — a quick-fix's short record of a fix, written into its
+// summary.md, committed and indexed (domain/quick-fix-record.cjs).
+// ---------------------------------------------------------------------------
+
+/** @param {Call} call @param {string[]} argv */
+function runQuickFix(call, argv) {
+  const { opts, positional } = parseArgs(argv);
+  try {
+    respond(call, runQuickFixVerb(call.cwd, positional, opts));
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // scratch — a reviewer's scratch worktree laid out and taken apart
 // (domain/scratch.cjs). It writes no state.
 // ---------------------------------------------------------------------------
@@ -2501,6 +2518,7 @@ const COMMANDS = Object.freeze({
   scratch: runScratch,
   'investigation-log': runInvestigationLog,
   investigation: runInvestigation,
+  'quick-fix': runQuickFix,
 });
 
 // Every command dispatched runs whole under the writer lock, its writes and

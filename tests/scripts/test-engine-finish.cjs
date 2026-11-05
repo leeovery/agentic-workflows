@@ -19,7 +19,8 @@
 // knowledge base set up but not reading said on the screen, in the yes and
 // in a refusal of the landing, its records left unchecked. Every refusal
 // writes and commits nothing. The fix phases' order at finish
-// (7.S10) is test-engine-landing-conformance.cjs's.
+// (7.S10) is test-engine-landing-conformance.cjs's, and a quick-fix's
+// close test-engine-quick-fix-close.cjs's.
 //
 // Layer: verb. World: review-world.cjs's, copied for each test.
 // ---------------------------------------------------------------------------
@@ -195,7 +196,7 @@ describe('render finish (14.5.1)', () => {
     assert.match(screen(), /=== MENU: finish /);
   });
 
-  it('refuses a unit the project lacks, one not in progress, a quick-fix, one built under the old plan, a build not begun, a checklist open, and an engine item failing since its close, writing nothing', () => {
+  it('refuses a unit the project lacks, one not in progress, one built under the old plan, a build not begun, a checklist open, and an engine item failing since its close, writing nothing', () => {
     const open = refused(['render', 'finish', UNIT]);
     finishClosed();
     keywordOnlyKnowledge(dir);
@@ -204,12 +205,11 @@ describe('render finish (14.5.1)', () => {
     commitAll(dir, 'half completed');
 
     assert.deepStrictEqual([
-      refused(['render', 'finish', 'nope']), refused(['render', 'finish', 'half']), refused(['render', 'finish', 'tweak']),
+      refused(['render', 'finish', 'nope']), refused(['render', 'finish', 'half']),
       refused(['render', 'finish', 'old']), refused(['render', 'finish', 'fresh']), open, stale,
     ], [
       'render finish: there is no work unit "nope" — the start menu lists the work in progress',
       'render finish: half is completed — new work starts from the start menu',
-      'render finish: tweak is a quick-fix, whose close and review are built with the reshape\'s 29.15 — until then its fixes are built at enter implementation tweak',
       'render finish: old was built under the old plan, and its build is entered once the reshape\'s 29.17 migration has cut it',
       'render finish: fresh\'s build has not begun — ready to build\'s yes begins it: render ready-to-build fresh',
       `render finish: finish is open — its items are worked, then it is closed: checklist close finish ${UNIT}`,

@@ -14,11 +14,20 @@
 // none is, finish's gate, an authority gate that always stops: an
 // invitation to ask about what was built, answered before finishing, then
 // yes and a comment. No measure adds a line to it (17.2.2).
+//
+// A quick-fix's close, its finish gate (19.5.13), is drawn the same but for
+// its title, `{Title} — ready to close`; what running the product proved,
+// under its title — PROVEN BY RUNNING {PRODUCT}, each fix's scenario a line,
+// ✓ where proven, else its standing — or one line saying the project has
+// no way to run it (P9); each departure asked its verdict at the verdict
+// point `close` (16.10.4); and its gate, `Close it?`: the yes, merging its
+// pull requests, a review asked for, and questions about the change. Its
+// rows and words are Claude's in the spec (18.10.8).
 // ---------------------------------------------------------------------------
 
-const { section, menu, cmdOption, promptOption, callout, MENU_INSTRUCTION, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
+const { section, menu, cmdOption, promptOption, callout, treeList, MENU_INSTRUCTION, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
 const { TREE_WIDTH } = require('../conventions.cjs');
-const { verdictBlock, verdictGate } = require('./closing.cjs');
+const { block, verdictBlock, verdictGate } = require('./closing.cjs');
 const { asideBlock } = require('./review-phase.cjs');
 
 /**
@@ -40,17 +49,20 @@ function skippedAt(checklist) {
   return phase === null ? checklist : `phase ${phase[1]}'s ${phase[2]}`;
 }
 
-/** The screen's display: each block that has something to show. @param {FinishView} view */
-function finishDisplay({
-  title, skips, verdict, warnings, aside,
+/** The blocks under the screen's title, each that has something to show. @param {FinishView} view @returns {string[]} */
+function finishBlocks({
+  skips, verdict, warnings, aside,
 }) {
-  const blocks = [`${title} — finish`];
+  const blocks = [];
   if (warnings.length > 0) blocks.push(warnings.map((warning) => callout(warning, { width: TREE_WIDTH })).join('\n'));
   if (skips.length > 0) blocks.push(skips.map(({ checklist, text, reason }) => callout(`Skipped at ${skippedAt(checklist)}: ${text} — ${reason}`, { width: TREE_WIDTH })).join('\n'));
   blocks.push(...asideBlock(aside));
   if (verdict !== null) blocks.push(verdictBlock(verdict));
-  return blocks.join('\n\n');
+  return blocks;
 }
+
+/** The screen's display: its title, then each block that has something to show. @param {FinishView} view */
+const finishDisplay = (view) => [`${view.title} — finish`, ...finishBlocks(view)].join('\n\n');
 
 /** Finish's gate: questions about what was built invited, then the yes and a comment. @param {FinishView} view */
 function finishGate({ unit }) {
@@ -71,4 +83,44 @@ function finishScreen(view) {
   return display + (view.verdict === null ? finishGate(view) : verdictGate(view.verdict, 'finish'));
 }
 
-module.exports = { finishScreen };
+/**
+ * A quick-fix's close as it is drawn: finish's, with the product's name,
+ * what running it proved of each fix's scenarios — null where the project
+ * has no way to run it — and how many fixes it lands.
+ * @typedef {FinishView & {product: string, proven: import('./build.cjs').Ran[]|null, fixes: number}} CloseView
+ */
+
+/** A scenario's line under what was proven: its glyph, and its standing where short of proven. @param {import('./build.cjs').Ran} ran */
+const provenLine = ({ criterion, standing }) => (standing === 'proven' ? `✓ ${criterion}` : `△ ${standing === 'not proven' ? 'Not proven' : 'Named, not run'}: ${criterion}`);
+
+/** What running the product proved, or the one line saying the project has no way to run it (P9). @param {CloseView} view */
+function provenBlock({ product, proven }) {
+  if (proven === null) return `Nothing was proven by running ${product} — the project has no way to run it`;
+  const lines = proven.length === 0 ? '  No fix names a scenario to run.' : treeList(proven.map(provenLine), { indent: '  ', width: TREE_WIDTH });
+  return block(`PROVEN BY RUNNING ${product.toUpperCase()}`, lines);
+}
+
+/** The close's display: its title and what was proven, then each block of finish's that has something to show. @param {CloseView} view */
+const closeDisplay = (view) => [`${view.title} — ready to close`, provenBlock(view), ...finishBlocks(view)].join('\n\n');
+
+/** The close's gate: the yes, a review asked for, and questions about the change. @param {CloseView} view */
+function closeGate({ unit, fixes }) {
+  return section('MENU: finish', MENU_INSTRUCTION, menu('', [
+    cmdOption('y', 'yes', `Close it — merge its ${fixes === 1 ? 'pull request' : 'pull requests'} and mark it complete`, { next: { kind: 'engine', argv: ['finish', 'yes', unit] } }),
+    cmdOption('r', 'review', 'Have it reviewed before it closes'),
+    promptOption('Ask', 'Ask about the change before it closes'),
+  ], { question: 'Close it?' }));
+}
+
+/**
+ * A quick-fix's close (19.5.13): its display, then the verdict gate while a
+ * departure waits to be asked, else its own gate.
+ * @param {CloseView} view
+ * @returns {string}
+ */
+function closeScreen(view) {
+  const display = section('DISPLAY: finish', CONTINUE_INSTRUCTION, closeDisplay(view));
+  return display + (view.verdict === null ? closeGate(view) : verdictGate(view.verdict, 'close'));
+}
+
+module.exports = { finishScreen, closeScreen };

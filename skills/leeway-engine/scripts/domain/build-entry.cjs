@@ -119,6 +119,7 @@ const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manife
 const { isoNow } = require('./dates.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { seedFiles } = require('./reads.cjs');
+const { summaryFile } = require('./knowledge/artifacts.cjs');
 const { STATUS_WORDS, goesOn, turnOf, writePhase, trackedPhase } = require('./task-verbs.cjs');
 const { heldCodeSessions } = require('./presence.cjs');
 const { codeGate } = require('./projections/enter.cjs');
@@ -571,9 +572,6 @@ function buildReads(at) {
   ];
 }
 
-/** A quick-fix's short record after the work, state-relative (4.11.6, 19.5.6). @param {string} unit */
-const summaryOf = (unit) => `${unit}/summary.md`;
-
 /** A quick-fix's fixes as the tracker holds them on arrival, null where their phase is not written. @param {Standing} at */
 const fixesOf = (at) => phaseLists(readingOf(at), [FIXES_PHASE.number])[0];
 
@@ -583,7 +581,7 @@ const fixWords = ({ ref, title, status }) => `${shownTask(ref)} "${title}" ${STA
 /** A quick-fix's change and its fixes, as its entry and its note read them (the header's). @param {Standing} at @returns {Line[]} */
 function fixesLines(at) {
   const fixes = fixesOf(at) ?? [];
-  const summary = statePath(at.cwd, summaryOf(at.unit));
+  const summary = statePath(at.cwd, summaryFile(at.unit));
   return [
     ['change', at.manifest.description],
     ...seedFiles(at.cwd, at.unit, at.manifest).map((seed) => /** @type {Line} */ (['seed', seed])),
@@ -671,5 +669,5 @@ const IMPLEMENTATION = Object.freeze({
 });
 
 module.exports = {
-  IMPLEMENTATION, phaseNamed, buildStanding, standingOf, buildPhases, builtUnit, cutCount, buildRecovery, ownInFlight, inFlightLines, waitingLines, takeInFlight, readingOf, codeHeld, buildLogOf, summaryOf,
+  IMPLEMENTATION, phaseNamed, buildStanding, standingOf, buildPhases, builtUnit, cutCount, buildRecovery, ownInFlight, inFlightLines, waitingLines, takeInFlight, readingOf, codeHeld, buildLogOf,
 };

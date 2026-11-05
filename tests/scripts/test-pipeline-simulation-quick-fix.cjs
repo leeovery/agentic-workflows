@@ -3,12 +3,13 @@
 // ---------------------------------------------------------------------------
 // The pipeline simulation's quick-fix scenarios: scoping registering the
 // specification and the plan in one pass, its build refused as one under
-// the old plan until the reshape's 29.17 cuts it (P12); and a quick-fix
-// moved mid-fix to a feature through start this work's screen, its
-// pipeline carrying on to the build — ready to build showing the call its
-// fix made among Claude's, the build's task writer's brief and task 1.1
-// meeting none of the quick-fix's calls — or to a bugfix, handed to its
-// investigation (19.5.9).
+// the old plan until the reshape's 29.17 cuts it (P12); a quick-fix built
+// by the build's own arm, its fix's short record written and the unit
+// closed (19.5.6, 19.5.15); and a quick-fix moved mid-fix to a feature
+// through start this work's screen, its pipeline carrying on to the build —
+// ready to build showing the call its fix made among Claude's, the build's
+// task writer's brief and task 1.1 meeting none of the quick-fix's calls —
+// or to a bugfix, handed to its investigation (19.5.9).
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -20,9 +21,11 @@ require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
+const fs = require('fs');
+const path = require('path');
 const {
   Sim, sessionLog, handoffEntry, handoff, answerGate, discussed, bridgeTo, linearPick, startNew, briefDraft, specWritten, specReviewed, cutTheSpec, readyToBuild, intoTheBuild,
-  linearBuildPick, buildEntry, briefOf, writePhaseTasks, startPhase,
+  linearBuildPick, buildEntry, briefOf, writePhaseTasks, startPhase, startUnit, writeTasks, finished, literal,
 } = require('./pipeline-world.cjs');
 
 /**
@@ -104,6 +107,25 @@ describe('pipeline simulation: quick-fix', () => {
     // Scoping's spec and plan items stand on the manifest, so the build's
     // entry refuses the quick-fix as one built under the old plan (P12).
     sim.refuses(['enter', 'implementation', wu], /^typo was built under the old plan, and its build is entered once the reshape's 29\.17 migration has cut it$/);
+  });
+
+  it('quick-fix: its build entered, a fix built in the project\'s checkout, landed and done, its short record written, and the close landing it and naming the start menu', () => {
+    const wu = 'typo';
+    startUnit(sim, 'quick-fix', wu, 'The --color flag is spelt --colour');
+    assert.strictEqual(sim.run(['enter', 'implementation', wu]).entered, true);
+    const [fix] = writeTasks(sim, wu, 1, [{ title: 'Spell the flag --colour', type: 'fix', reference: 'none', scenarios: ['1.S1 Given the help, when it is read, then it names --colour.'] }]);
+    sim.run(['task', 'start', wu, fix]);
+    sim.write('src/flag.js', 'const flag = \'colour\';\n');
+    sim.run(['commit', '--paths', 'src/flag.js', '--task', wu, fix, '-m', `fix(${wu}): spell the flag --colour`]);
+    sim.run(['land', 'open', wu, fix]);
+    sim.run(['task', 'done', wu, fix]);
+    sim.refuses(['render', 'finish', wu], new RegExp(`closes once each fix done has its record — ${literal(fix)} has none`));
+    const record = sim.write(`.leeway/.cache/${wu}/build/record.md`, '## What changed\nThe flag reads --colour.\n\n## Why\nIt was spelt the American way.\n\n## Leaves out\nOld scripts.\n');
+    sim.run(['quick-fix', 'record', wu, fix, '--file', record]);
+    sim.write(`.leeway/${wu}/build/log.md`, '# The fixes\n');
+
+    assert.deepStrictEqual(finished(sim, wu), { landed: [[1]], next: { kind: 'handoff', skill: 'leeway', args: [] } });
+    assert.deepStrictEqual([sim.manifest(wu).status, fs.readdirSync(path.join(sim.dir, '.leeway', wu)).filter((entry) => ['build', 'summary.md', 'topics', 'spec.md'].includes(entry)).sort()], ['completed', ['build', 'summary.md']]);
   });
 
   it('quick-fix moved to a feature: start this work\'s screen, its yes re-typing the unit, and the pipeline carrying on — the call its fix made read on the topic\'s record and shown at ready to build among Claude\'s, and none of the feature\'s build\'s', () => {

@@ -11,7 +11,8 @@
 // the tip of the fix before it, so a set's fixes stack as their pull
 // requests chain (7.2.3). It refuses, before the tracker moves, a checkout
 // holding changes not committed outside the state, naming each
-// (`codeStatus`, code.cjs). The commit door takes a fix's commit on its
+// (`codeStatus`, code.cjs), as the close does before anything lands. The
+// commit door takes a fix's commit on its
 // branch alone (commit-task.cjs). Only the project's own repository moves;
 // a repository nested in it keeps its branch. Taking the checkout back to
 // the branch it lands on is the close's, and a move's that leaves the fixes
@@ -64,14 +65,23 @@ const fixesLandOn = (cwd, root) => landsOn(cwd, /** @type {import('../kernel/rep
 const dirtOf = (cwd) => codeStatus(cwd).files.map(({ path }) => path);
 
 /**
- * Refuse to start a fix while the project's checkout holds changes not
- * committed outside the state, naming each.
- * @param {string} cwd @param {TaskRef} ref
+ * Refuse a move of the project's checkout while it holds changes not
+ * committed outside the state, the refusal naming them.
+ * @param {string} cwd @param {(dirty: string) => string} refusal
  */
-function refuseDirty(cwd, ref) {
+function refuseDirt(cwd, refusal) {
   const dirty = dirtOf(cwd);
-  if (dirty.length === 0) return;
-  throw new Error(`${taskName(ref)} is built in the project's own checkout, which holds changes not committed — ${dirty.join(', ')} — so it was not put on the fix's branch: commit them or set them aside, then start the fix again`);
+  if (dirty.length > 0) throw new Error(refusal(dirty.join(', ')));
+}
+
+/** Refuse to start a fix while the project's checkout holds changes not committed. @param {string} cwd @param {TaskRef} ref */
+function refuseDirty(cwd, ref) {
+  refuseDirt(cwd, (dirty) => `${taskName(ref)} is built in the project's own checkout, which holds changes not committed — ${dirty} — so it was not put on the fix's branch: commit them or set them aside, then start the fix again`);
+}
+
+/** Refuse a quick-fix's close while the project's checkout holds changes not committed. @param {string} cwd @param {string} unit */
+function refuseDirtyClose(cwd, unit) {
+  refuseDirt(cwd, (dirty) => `${unit}'s fixes were built in the project's own checkout, which holds changes not committed — ${dirty} — so nothing was landed: commit them or set them aside, then close it again`);
 }
 
 /**
@@ -204,4 +214,4 @@ function checkOutLanding(cwd, unit) {
   return lands;
 }
 
-module.exports = { refuseDirty, checkOutFix, fixWayOn, keptFixes, setFixesAside, keptBranches, checkOutLanding };
+module.exports = { refuseDirty, refuseDirtyClose, checkOutFix, fixWayOn, keptFixes, setFixesAside, keptBranches, checkOutLanding };

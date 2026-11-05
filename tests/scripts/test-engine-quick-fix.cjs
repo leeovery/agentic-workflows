@@ -27,7 +27,7 @@
 //
 // Layer: git. World: a quick-fix made through `workunit create` from an
 // inbox note, its code and the build's skill committed, and a feature beside
-// it whose code a peer may hold; and the same entered by a conversation gone
+// it whose code a peer may hold (quick-fix-world.cjs); and the same entered by a conversation gone
 // since, its fix 1.1 created and started there, putting the checkout on its
 // branch, and a question asked at its place — each built once and copied.
 // Each test's conversations keep their records in a config folder of their
@@ -40,26 +40,22 @@ require('./hermetic-env.cjs');
 const { describe, it, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const {
-  ok, okSections, okSectionsAsync, refusesAsync, refusedPristine, output, git, stateGit, statePath, layout, writeState, readState, createFile, commitAll, fixtureFrom, cleanupFixture,
+  ok, okSections, okSectionsAsync, refusesAsync, refusedPristine, output, git, stateGit, statePath, layout, writeState, readState, createFile, fixtureFrom, cleanupFixture,
   head, readManifest,
 } = require('./engine-harness.cjs');
-const { createManifest, useTempFolder } = require('./discovery-test-utils.cjs');
+const { useTempFolder } = require('./discovery-test-utils.cjs');
 const { MADE, ledgerHelpers } = require('./ledger-world.cjs');
 const { raiseHelpers } = require('./raise-world.cjs');
+const { UNIT, PLACE, DESCRIPTION, quickFix, createFix, asGone, entered: enteredBy } = require('./quick-fix-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { isFixPhase } = require(path.join(SCRIPTS, 'domain/derivations.cjs'));
 const { taskBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
 const { fixPhase } = require(path.join(SCRIPTS, 'domain/review-phase.cjs'));
 
-const UNIT = 'typo';
-const PLACE = `${UNIT}.implementation`;
 const ENGINE = 'node .claude/skills/leeway-engine/scripts/engine.cjs';
-const DESCRIPTION = 'The --color flag is spelt --colour';
-const NOTE = layout.inbox('quickfixes', '2026-06-03--colour-flag.md');
 const TITLE = 'Spell the flag --colour';
 const SECOND = 'Spell the help --colour';
 const BRANCH = taskBranch({ unit: UNIT, phase: 1, n: 1 }, 'fix', TITLE);
@@ -67,12 +63,6 @@ const MESSAGE = 'fix(typo): spell the flag --colour';
 const AT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
 // A process that runs and is not this suite's.
 const PEER = String(process.ppid);
-
-/** Fix `n`'s task file, titled `title`, its one scenario `{n}.S1`. @param {number} n @param {string} title */
-const fixFile = (n, title) => [
-  `# ${title}`, '', '## Type', 'fix', '', '## Problem', 'The flag reads --color.', '', '## Solution', 'Rename the flag.', '',
-  '## Outcome', 'The flag reads --colour.', '', '## Acceptance scenarios', `- ${n}.S1 Given the help, when it is read, then it names --colour.`, '', '## Spec reference', 'none',
-].join('\n');
 
 /** Claude's call on what the old spelling does, as the raise suites make one. */
 const CALL = Object.freeze({
@@ -91,34 +81,15 @@ const CALL = Object.freeze({
 /** The question the world asks at the quick-fix's place: its short id. */
 const asked = { alias: '' };
 
-/** The quick-fix made from its inbox note, beside a feature, the code committed. @param {string} dir */
-function quickFix(dir) {
-  createFile(dir, 'src/flag.js', 'const flag = \'color\';\n');
-  createFile(dir, '.claude/skills/leeway-implementation-process/SKILL.md', '# The build\n');
-  writeState(dir, NOTE, '# The colour flag\n');
-  createManifest(dir, 'other', {});
-  commitAll(dir, 'init');
-  const log = writeState(dir, layout.cache(UNIT, 'session-001.md'), '# Discovery Session 001\n');
-  ok(dir, ['workunit', 'create', UNIT, 'quick-fix', '--description', DESCRIPTION, '--session-log-file', log, '--seed', `.leeway/${NOTE}`]);
-}
-
-/** Fix `n` made through the tracker's verb. @param {string} dir @param {number} n @param {string} title */
-const createFix = (dir, n, title) => ok(dir, ['task', 'create', UNIT, '1', '--file', writeState(dir, layout.cache(`fix-${n}.md`), fixFile(n, title))]);
-
 const fresh = fixtureFrom('quick-fix-', quickFix);
 
 const entered = fixtureFrom('quick-fix-entered-', (dir) => {
   quickFix(dir);
-  const gone = fs.mkdtempSync(path.join(os.tmpdir(), 'quick-fix-world-'));
-  const as = { env: { LEEWAY_CONFIG_DIR: gone, CLAUDE_CODE_SESSION_ID: 'gone', TMUX: undefined, TMUX_PANE: undefined } };
-  try {
-    okSections(dir, ['enter', 'implementation', UNIT], as);
-    ok(dir, ['presence', 'clear', UNIT, 'implementation', UNIT], as);
+  asGone((as) => {
+    enteredBy(dir, as);
     createFix(dir, 1, TITLE);
     ok(dir, ['task', 'start', UNIT, '1.1'], as);
-  } finally {
-    fs.rmSync(gone, { recursive: true, force: true });
-  }
+  });
   asked.alias = ledgerHelpers(() => dir).write('ask', PLACE, [], { ...MADE, text: 'Does --color still work?' }).id;
 });
 

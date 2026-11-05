@@ -612,7 +612,7 @@ describe('conversation position', () => {
     ]);
   });
 
-  it('a build not to be entered carries nothing on, at either of its places — a unit built under the old plan, and a quick-fix\'s review, its close not yet built (P12)', () => {
+  it('a build not to be entered carries nothing on, at either of its places — a unit built under the old plan, and a quick-fix\'s review, which the person has not asked for (P12, 19.5.14)', () => {
     install('leeway-implementation-process');
     install('leeway-review-process');
     workUnit('pay', 'epic', { implementation: { items: { ledger: { status: 'in-progress' } } } }, { build: { position: 'auto' } });
@@ -626,7 +626,7 @@ describe('conversation position', () => {
     assert.deepStrictEqual(notes, [
       [null, [], 'This conversation was working in the implementation of the epic "pay", but pay was built under the old plan, and its build is entered once the reshape\'s 29.17 migration has cut it, so there is nothing to carry on from.'],
       [null, [], 'This conversation was working in the review of the epic "pay", but pay was built under the old plan, and its build is entered once the reshape\'s 29.17 migration has cut it, so there is nothing to carry on from.'],
-      [null, [], 'This conversation was working in the review of the quick-fix "fix", but fix is a quick-fix, whose close and review are built with the reshape\'s 29.15 — until then its fixes are built at enter implementation fix, so there is nothing to carry on from.'],
+      [null, [], 'This conversation was working in the review of the quick-fix "fix", but fix is a quick-fix, whose review runs only once the person asks for one at its close — the review on request is built with the reshape\'s 29.15, so there is nothing to carry on from.'],
     ]);
   });
 
