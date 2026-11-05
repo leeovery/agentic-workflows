@@ -1316,15 +1316,22 @@ function reviewNext(sim, wu) {
   return { move, data, fixPhase };
 }
 
-// Finish (14.5): Claude's items marked, its checklist closed, its gate
-// drawn, and the person's yes at it run. Answers the phases each landing
-// landed, and where the yes goes next.
-/** @param {Sim} sim @param {string} wu @returns {{landed: number[][], next: Record<string, any>}} */
-function finished(sim, wu) {
+// Finish's checklist (14.5): Claude's items marked, then closed, so its
+// gate draws.
+/** @param {Sim} sim @param {string} wu */
+function finishClosed(sim, wu) {
   for (const { key, by, state } of JSON.parse(sim.read(['checklist', 'show', 'finish', wu])).items) {
     if (by === 'claude' && state === 'open') sim.run(['checklist', 'done', 'finish', wu, key]);
   }
   sim.run(['checklist', 'close', 'finish', wu]);
+}
+
+// Finish (14.5): its checklist closed where `closed` does not say it is
+// already, its gate drawn, and the person's yes at it run. Answers the
+// phases each landing landed, and where the yes goes next.
+/** @param {Sim} sim @param {string} wu @param {{closed?: boolean}} [opts] @returns {{landed: number[][], next: Record<string, any>}} */
+function finished(sim, wu, { closed = false } = {}) {
+  if (!closed) finishClosed(sim, wu);
   sim.render(['finish', wu], { expect: 'content' });
   const yes = sim.run(answerGate(sim, 'finish', '--pick', 'y').next.argv);
   return { landed: yes.landed.map((/** @type {{phases: {phase: number}[]}} */ { phases }) => phases.map(({ phase }) => phase)), next: yes.next };
@@ -1332,5 +1339,5 @@ function finished(sim, wu) {
 
 module.exports = {
   Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicBuildPick, linearBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed,
-  builders, taskBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic,
+  builders, taskBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finishClosed, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic,
 };

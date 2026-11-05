@@ -289,8 +289,8 @@ const REVIEW_BOARD: Board = {
     state: 'running',
     name: 'Token-aware diff sizing',
     facts: [
-      { text: 'feature', needs: false },
-      { text: 'review', needs: false },
+      { text: 'feature', needs: false, place: true },
+      { text: 'review', needs: false, place: true },
       { text: 'round 1 reading', needs: false },
     ],
   },
@@ -659,6 +659,42 @@ describe('what turns', () => {
     await clock.advance(5000)
 
     expect([counts.invalidations, boards.length]).toEqual([0, 1])
+  })
+
+  test('20.S12: up with a task building, it turns; hidden, nothing turns, however long the clock runs', async ($, on) => {
+    const { clock, counts } = world(on, { replies: () => boardReply(BUILD_BOARD) })
+    const band = await mounted($, clock)
+
+    await band.press({ key: 'board:toggle' })
+    const pane = await mounted($, clock, PANE_MOUNT)
+    counts.invalidations = 0
+    await clock.advance(1000)
+    const up = counts.invalidations
+    await pane.unmount()
+    await band.press({ key: 'board:toggle' })
+    await clock.settle()
+    counts.invalidations = 0
+    await clock.advance(5000)
+
+    expect([up > 0, counts.invalidations]).toEqual([true, 0])
+  })
+
+  test('20.S12: a render of the pane landing as its close goes through neither opens it nor starts its clocks', async ($, on) => {
+    const { clock, counts } = world(on, { replies: () => boardReply(BUILD_BOARD) })
+    const band = await mounted($, clock)
+
+    await band.press({ key: 'board:toggle' })
+    const pane = await mounted($, clock, PANE_MOUNT)
+    counts.invalidations = 0
+    await clock.advance(1000)
+    const up = counts.invalidations
+    await band.press({ key: 'board:toggle' })
+    await clock.settle()
+    await pane.unmount()
+    counts.invalidations = 0
+    await clock.advance(5000)
+
+    expect([up > 0, counts.invalidations]).toEqual([true, 0])
   })
 
   test('with the board up and nothing running in it, the clock redraws nothing and reads nothing', async ($, on) => {

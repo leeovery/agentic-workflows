@@ -41,7 +41,7 @@ afterEach(() => {
   fs.rmSync(config, { recursive: true, force: true });
 });
 
-const { env, screen, refused, position, parkOn } = buildScreenHelpers(() => dir, () => config);
+const { env, screen, refused, position, parkOn, raisedOutside, phaseOneDone } = buildScreenHelpers(() => dir, () => config);
 
 /** The product's name as running it is said. */
 const product = () => titlecase(path.basename(dir)).toUpperCase();
@@ -362,6 +362,13 @@ describe('the stop report (12.12.9, 12.13.22)', () => {
       '        1.1 Take a card',
       '',
     ].join('\n'));
+  });
+
+  it('is refused while a question parking no task waits and every task of a phase not closed is done, naming the phase\'s close that goes on (20.5.1, 20.S27, 12.13.22)', async () => {
+    await raisedOutside();
+    phaseOneDone();
+
+    assert.strictEqual(refused(['build-stop', UNIT]), 'render build-stop: pay\'s build goes on with phase 1\'s close: its notes, its phase review and its stack\'s merge — it stops only where nothing can go on without the person\'s answer (12.13.22)');
   });
 
   it('is refused while no question waits, and while a task can still be built — one in progress, or one ready that task start would take, that no question parks — writing nothing; and stops where the only task ready is of a phase whose start the engine holds — Refunds relying on Cards, written ahead, which task start refuses — refused once only Claude\'s own items stand before that start, Refunds relying on nothing (12.12.9, 12.13.22, 12.7.7, 12.7.5, 6.4.8)', async () => {

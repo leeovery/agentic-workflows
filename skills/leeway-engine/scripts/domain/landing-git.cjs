@@ -20,7 +20,9 @@
 // - The default branch: the one the project's remote names its HEAD; else
 //   the first the repository has of the one `init.defaultBranch` names,
 //   `main` and `master`. Never the branch a checkout happens to be on, and
-//   never the state branch (4.9.4).
+//   never the state branch (4.9.4). A repository of the project is read for
+//   it once for each read of the project's repositories (`landsOn`): nothing
+//   a call does names another.
 // - A repository holds a task's branch where it names it: the project's own
 //   always, a nested one only where the branch holds a commit no branch
 //   there but the unit's holds (7.2.17) — the rule the landing walks by and
@@ -71,6 +73,7 @@ const { git: personGit, tryGit: personTryGit, operationInProgress, dirtyEntries,
 const { placeOf, folderUnder } = require('../kernel/repos.cjs');
 const { STATE_BRANCH, NETWORK_ENV, PUSH_TIMEOUT_MS, FETCH_TIMEOUT_MS } = require('./state-worktree.cjs');
 const names = require('./landing-names.cjs');
+const { remoteName, nestedRemoteName } = require('./remote.cjs');
 
 /**
  * A worktree of the repository: where it is, the branch it has checked out,
@@ -1205,9 +1208,31 @@ function defaultBranch(root, remote, nested = false) {
   return named;
 }
 
+/** What each repository of the project lands on, by the read of the project's repositories that gave it (`landsOn`). @type {WeakMap<Repo, {branch: string}|{refused: unknown}>} */
+const LANDS_ON = new WeakMap();
+
+/**
+ * The default branch a repository of the project lands on, by its own
+ * remote, refused as `defaultBranch` refuses; read once for each read of
+ * the project's repositories (the header's).
+ * @param {string} cwd @param {Repo} repo @returns {string}
+ */
+function landsOn(cwd, repo) {
+  if (!LANDS_ON.has(repo)) {
+    try {
+      LANDS_ON.set(repo, { branch: defaultBranch(repo.path, repo.dir === '' ? remoteName(cwd) : nestedRemoteName(repo.path), repo.dir !== '') });
+    } catch (refused) {
+      LANDS_ON.set(repo, { refused });
+    }
+  }
+  const read = /** @type {{branch: string}|{refused: unknown}} */ (LANDS_ON.get(repo));
+  if ('refused' in read) throw read.refused;
+  return read.branch;
+}
+
 module.exports = {
   short, readOnce, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranches, holdingBranch, refsUnder, updateRefs, isAncestor, latestOf, mergeBase, treesOf, firstParentLine, messagesPast, messagesNaming, commitsNamed, messageOf, commitWithTree, treesPast,
   pointersAt, treeWithPointers, pointedLike, holdsCommit, pointerAhead, stackMoves, commitsPast, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, remedy, moveTo, movedSinceOpened, rewrite, scratchBlock, rebaseBlock, checkoutBlock, pathsChanged, dirtBlock, moveBranch,
-  defaultBranch, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, nothingPast,
+  defaultBranch, landsOn, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, nothingPast,
   worktrees, taskWorktree, mainCheckoutOf, projectCheckout, holderOf, samePlace, removing, branchInPlace, addWorktree, switchTo, removeWorktree, detach, scratchRoot, scratchTree,
 };

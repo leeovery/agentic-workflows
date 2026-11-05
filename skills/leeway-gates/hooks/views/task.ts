@@ -94,7 +94,7 @@ function tookOf(started: string, finished: string): string {
 }
 
 /** A section's heading, its count or summary where it has one. */
-const section = (key: string, name: string, color: string, width: number, summary?: string): Line =>
+export const section = (key: string, name: string, color: string, width: number, summary?: string): Line =>
   heading(key, { text: name, bold: true, color }, summary === undefined ? [] : [{ text: summary, color: COLOUR.secondary }], width)
 
 /** A rule beneath a page's title. */

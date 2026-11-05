@@ -30,24 +30,25 @@
 //   with its words and the page a press on it opens, where it opens one:
 //   approve the map while a map is staged, the sweep's candidates among it
 //   after the sweep (8.10.9); the spec's gaps (spec-passes.cjs), each
-//   opening the finding that raised it, and then ready to build's yes, while
-//   the spec is under way and the build not begun; the questions the build
-//   and the review wait on (questions.cjs), each opening the page of the
-//   first task it parks, one parking none its question's entry — a
-//   replacement's, the decision it would replace; and finish, once a round
-//   ended the review, its fix tasks and builders' notes are done, and no
-//   question waits (D18), finish's own checks.
+//   opening the finding that raised it, and then ready to build's yes once
+//   its screen draws (ready-to-build.cjs, `readyDraws`), while the build has
+//   not begun; the questions the build and the review wait on
+//   (questions.cjs), each opening the page of the first task it parks, one
+//   parking none its question's entry — a replacement's, the decision it
+//   would replace; and finish once its screen draws (finish.cjs,
+//   `finishDraws`) and no question waits (D18). Each gate's wait is read by
+//   that gate's own check, never a copy of it.
 // - The banner counts that list, flagged — the map alone by its own words —
 //   and at a menu says it unflagged (D40).
 // ---------------------------------------------------------------------------
 
-const { stagedOrNone } = require('../approve-map.cjs');
+const { stagedOrNone, candidatesStanding } = require('../approve-map.cjs');
 const { pastItsSpec, topicsSettled } = require('../spec-standing.cjs');
 const { waitingAndFreed } = require('../questions.cjs');
-const { recordedRounds, endsReview } = require('../review-phase.cjs');
 const { phaseStatus, buildPlaceStatus, buildBegun, buildFinished } = require('../derivations.cjs');
 const { counted } = require('./map.cjs');
-const { buildView, reviewStandingAt } = require('./board-build.cjs');
+const { finishDraws } = require('../finish.cjs');
+const { buildView } = require('./board-build.cjs');
 const { specWaits } = require('./board-spec.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
@@ -140,7 +141,8 @@ const nowOf = (at) => at.once('now', () => (pastDiscovery(at.manifest) ? epicNow
 
 /**
  * Approve the map, while a map is staged: its topics in order and what it
- * parks on the roadmap, or after the sweep its candidates to take or strike.
+ * parks on the roadmap, or after the sweep its candidates still standing,
+ * to take or strike.
  * @param {BoardAt} at @returns {WaitingLine[]}
  */
 function mapWaits(at) {
@@ -149,7 +151,7 @@ function mapWaits(at) {
   const parks = staged.parks?.length ?? 0;
   const holds = staged.candidates === undefined
     ? `${counted(staged.topics.length, 'topic')} in this order${parks === 0 ? '' : `, and ${parks} to the roadmap`}`
-    : `${counted(staged.candidates.length, 'candidate')} the sweep found, to take or strike`;
+    : `${counted(candidatesStanding(staged.candidates).length, 'candidate')} the sweep found, to take or strike`;
   return [{ kind: 'map', id: 'approve-the-map', text: `Approve the map: ${holds}`, page: null }];
 }
 
@@ -167,12 +169,8 @@ function questionWaits(at) {
   }));
 }
 
-/** Finish, once the review is over: a round ended it, and its fix tasks and builders' notes are done (D18). @param {BoardAt} at @returns {boolean} */
-function finishWaits(at) {
-  if (at.manifest.status === 'completed' || !buildFinished(at.manifest)) return false;
-  const last = recordedRounds(at.cwd, at.unit).at(-1);
-  return last !== undefined && endsReview(last) && reviewStandingAt(at).over;
-}
+/** Finish, once its screen draws: its checklist closed, every item the engine checks of it holding — the review over among them (D18). @param {BoardAt} at @returns {boolean} */
+const finishWaits = (at) => finishDraws(at.cwd, at.unit);
 
 /** Finish, as what waits on the person. @type {WaitingLine} */
 const FINISH = Object.freeze({ kind: 'finish', id: 'finish', text: 'Finish: the report of every round, and your verdict on each call you changed', page: null });

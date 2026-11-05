@@ -5,9 +5,11 @@
 // screens that report; test-engine-build-gates.cjs, the gates;
 // test-engine-build-gates-standing.cjs, a task at its gate;
 // test-engine-build-step.cjs and test-engine-build-step-order.cjs, step's
-// one task at a time): the world, built once a process and copied
-// (`buildScreensWorld`), and over a test's project and system config, the
-// calls its tests make (`buildScreenHelpers`, and step's `stepHelpers`).
+// one task at a time) and the board's build suites (test-engine-board.cjs,
+// test-engine-board-build.cjs, test-engine-board-pages.cjs): the world,
+// built once a process and copied (`buildScreensWorld`), and over a test's
+// project and system config, the calls its tests make
+// (`buildScreenHelpers`, step's `stepHelpers`, the board's `boardHelpers`).
 //
 // The world: a feature, `pay`, its discussion concluded, its spec cut,
 // and its build begun in step, its cut three phases — Cards and Reports
@@ -30,7 +32,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {
-  ok, okSections, okSectionsAsync, output, refusedPristine, git, writeState, createFile, layout, commitAll, fixtureFrom, ledgerEntries, statePath, FROZEN_AT,
+  ok, okSections, okSectionsAsync, output, refusedPristine, git, writeState, createFile, layout, commitAll, fixtureFrom, ledgerEntries, statePath, withEnv, FROZEN_AT,
 } = require('./engine-harness.cjs');
 const { createManifest, templateFolder } = require('./discovery-test-utils.cjs');
 const { SESSION, raiseHelpers } = require('./raise-world.cjs');
@@ -39,8 +41,17 @@ const { MADE } = require('./ledger-world.cjs');
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { taskBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
 const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
+const { listDrivers } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
+const { storeBrief } = require(path.join(SCRIPTS, 'domain/brief.cjs'));
+const { issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
+const { titlecase } = require(path.join(SCRIPTS, 'domain/conventions.cjs'));
+
+const [DRIVER] = listDrivers('task').filter((driver) => driver.isDefault);
 
 const UNIT = 'pay';
+
+/** The conversation the suites' calls run in. */
+const SESSION_ID = 'sess-1';
 
 const CUT = {
   phases: [
@@ -210,7 +221,7 @@ const CALL = Object.freeze({
  */
 function buildScreenHelpers(dir, config) {
   /** The engine as the conversation runs it. */
-  const env = () => ({ LEEWAY_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: 'sess-1' });
+  const env = () => ({ LEEWAY_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: SESSION_ID });
 
   /** A screen that must draw: its sections. @param {string[]} args */
   const screen = (args) => output(dir(), ['render', ...args], { env: env() });
@@ -233,6 +244,18 @@ function buildScreenHelpers(dir, config) {
     for (const task of tasks) {
       await okSectionsAsync(into, ['raise', `${UNIT}.implementation`, '--answers', made.asked[at], '--parks', task], { env: conversation(), stdin: JSON.stringify(call) });
     }
+  }
+
+  /** One of the world's questions, the first unless `at` says, raised in the build parking no task, as the task writer's call raises one. @param {number} [at] */
+  async function raisedOutside(at = 0) {
+    const call = { ...CALL, question: QUESTIONS[at] };
+    const { conversation } = raiseHelpers(dir, config, call);
+    await okSectionsAsync(dir(), ['raise', `${UNIT}.implementation`, '--answers', made.asked[at]], { env: conversation(), stdin: JSON.stringify(call) });
+  }
+
+  /** Every task of phase 1 done in the tracker, as each lands: what is left of the phase is its close. */
+  function phaseOneDone() {
+    for (const n of [1, 2, 3]) DRIVER.done(statePath(dir()), { unit: UNIT, phase: 1, n });
   }
 
   /**
@@ -259,8 +282,48 @@ function buildScreenHelpers(dir, config) {
     return [...lines.filter((line) => /^(phase: phase 1 |in flight: )/.test(line)), ...note.filter((line) => line.startsWith('in flight: '))];
   }
 
-  return { env, screen, refused, position, parkOn, proposeOn, takenOver };
+  return { env, screen, refused, position, parkOn, raisedOutside, phaseOneDone, proposeOn, takenOver };
 }
+
+/**
+ * The calls the board's suites make beside `buildScreenHelpers`, over a
+ * test's project and its system config: the board drawn for the
+ * conversation, the build entered, a brief issued for a task at a time,
+ * and the project's name as the board says it.
+ * @param {() => string} dir @param {() => string} config
+ */
+function boardHelpers(dir, config) {
+  const { env } = buildScreenHelpers(dir, config);
+
+  /** The board's answer, its `ok` dropped. @param {string[]} [args] */
+  function board(args = []) {
+    const { ok: _ok, ...answer } = ok(dir(), ['board', SESSION_ID, ...args], { env: env() });
+    return answer;
+  }
+
+  /** The conversation entered into the unit's build. */
+  const enterBuild = () => ok(dir(), ['enter', 'implementation', UNIT], { env: env() });
+
+  /**
+   * A brief the conversation issued for a task, by its role, at `at`.
+   * @param {string} role @param {string} task @param {string} at @param {string} [id]
+   */
+  function issued(role, task, at, id = `${role}${task.replace('.', '')}${Date.parse(at)}`) {
+    withEnv({ LEEWAY_CONFIG_DIR: config() }, () => {
+      storeBrief(SESSION_ID, id, 'a brief', { role, agent: 'leeway-builder', unit: UNIT, task, topic: null });
+      const when = new Date(at);
+      fs.utimesSync(issuedPath(SESSION_ID, id), when, when);
+    });
+  }
+
+  /** The project's name, as All work and the banner say it. */
+  const project = () => titlecase(path.basename(dir()));
+
+  return { board, enterBuild, issued, project };
+}
+
+/** A task's line, as the board's build lists it. @param {string} task @param {string} title @param {string} state @param {{since?: string|null, on?: string[]}} [more] */
+const line = (task, title, state, { since = null, on = [] } = {}) => ({ task, title, state, since, on });
 
 /**
  * The calls step's suites make beside `buildScreenHelpers`, over a test's
@@ -321,4 +384,4 @@ function stepHelpers(dir, config) {
   return { answered, events, parkedQuestion, decidedFor, written, UNANSWERED_ENDS, startRefused, beside, behind, bothParked };
 }
 
-module.exports = { UNIT, QUESTIONS, CALL, ACCOUNT_DRAWN, taskText, reportOf, buildScreensWorld, buildScreenHelpers, stepHelpers };
+module.exports = { UNIT, SESSION_ID, QUESTIONS, CALL, ACCOUNT_DRAWN, taskText, reportOf, buildScreensWorld, buildScreenHelpers, boardHelpers, stepHelpers, line };

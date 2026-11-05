@@ -24,6 +24,7 @@ const { ok, output, readManifest, withFrozenClock, FROZEN_AT } = require('./engi
 const { useDecidedWorld, decidedHelpers, decidedBoardHelpers, writeIn, answeredIn, NOTE_MAP } = require('./decided-world.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, SESSION, MADE, NOTE, SPACE } = require('./ledger-world.cjs');
+const { place } = require('./board-world.cjs');
 
 const dir = useDecidedWorld();
 const { answer, run } = decidedHelpers(dir);
@@ -71,7 +72,7 @@ describe('a discussion on the board (20.7)', () => {
         ],
         sent: [],
       },
-      banner: { name: 'Fumi', state: 'running', facts: ['epic', 'discussion', 'Note Window', 'nothing of yours open'].map((text) => ({ text, needs: false })) },
+      banner: { name: 'Fumi', state: 'running', facts: [place('epic'), place('discussion'), ...['Note Window', 'nothing of yours open'].map((text) => ({ text, needs: false }))] },
     });
   });
 
@@ -198,7 +199,7 @@ describe('an experiment on the board (20.13)', () => {
         runs: [],
         report: false,
       },
-      banner: { name: 'Fumi', state: 'running', facts: ['epic', 'experiment E1', 'conceived'].map((text) => ({ text, needs: false })) },
+      banner: { name: 'Fumi', state: 'running', facts: [place('epic'), place('experiment E1'), { text: 'conceived', needs: false }] },
       row: { experiment: { id: 'E1', running: true }, session: 'this' },
     });
   });

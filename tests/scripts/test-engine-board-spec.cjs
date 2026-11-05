@@ -22,9 +22,9 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const fs = require('fs');
-const { ok, readState, writeState } = require('./engine-harness.cjs');
+const { ok, output, readState, writeState, layout } = require('./engine-harness.cjs');
 const { datedAt } = require('./discovery-test-utils.cjs');
-const { fixture, misfits, emptyLists, standingOn } = require('./board-world.cjs');
+const { fixture, misfits, emptyLists, standingOn, place } = require('./board-world.cjs');
 const { ledgerHelpers } = require('./ledger-world.cjs');
 const {
   UNIT, SESSION_ID, SESSION, MADE, PERSON, AT_SPEC, LANED, OWNER, STORE, made, useSpecReviewWorld, specReviewHelpers,
@@ -82,6 +82,19 @@ function landed() {
   land();
 }
 
+/** The spec written with every statement traced, and landed. */
+function tracedLanded() {
+  writeSpec(spec({ instant: `2.1.2 Refunds are instant. [${made.where}]` }));
+  land();
+}
+
+/** The spec cut into one phase of every section, and ready to build's checklist worked and closed: its screen draws. */
+function readyClosed() {
+  ok(dir(), ['cut', UNIT, '--file', writeState(dir(), layout.cache(UNIT, 'specification', 'cut.json'), JSON.stringify({ phases: [{ name: 'All', goal: 'A card is charged and refunded.', scenarios: ['1.S1'], sections: ['1', '2'], relies_on: [] }] }))]);
+  for (const item of ['replacements-checked', 'invariants-checked']) ok(dir(), ['checklist', 'done', 'ready-to-build', UNIT, item]);
+  ok(dir(), ['checklist', 'close', 'ready-to-build', UNIT]);
+}
+
 /** A pass reported with LANED's two findings and acknowledged with them, the spec written and landed. */
 function lanedPass() {
   landed();
@@ -119,9 +132,9 @@ describe('a specification on the board (20.9)', () => {
   it('before the spec is written: no section, no pass, nothing waiting; the banner says it is being written; the view names the project, as the drawing does', () => {
     assert.deepStrictEqual(board(), {
       view: {
-        kind: 'spec', unit: UNIT, title: 'Payments', type: 'epic', project: titlecase(path.basename(dir())), sections: [], passes: [], waiting: [], since: [RADIUS()], cut: [],
+        kind: 'spec', unit: UNIT, title: 'Payments', type: 'epic', project: titlecase(path.basename(dir())), sections: [], passes: [], waiting: [], since: [RADIUS()], cut: [], given: false,
       },
-      banner: { name: 'Payments', state: 'running', facts: [fact('epic'), fact('specification'), fact('being written')] },
+      banner: { name: 'Payments', state: 'running', facts: [place('epic'), place('specification'), fact('being written')] },
     });
   });
 
@@ -134,7 +147,10 @@ describe('a specification on the board (20.9)', () => {
     issued(['spec-reviewer', UNIT, '--agent', running.id]);
     const [{ created }] = passesInFlight(dir(), UNIT);
     const { view, banner } = board();
+    const epic = board(['--tab', 'unit', '--unit', UNIT]).view.spec;
+    const all = board(['--tab', 'all']).view.units.find((/** @type {{unit: string}} */ line) => line.unit === UNIT).standing;
 
+    assert.deepStrictEqual([epic, all], [{ state: 'running', words: 'pass 2 reading', session: 'this' }, 'pass 2 reading'], 'N4: the epic\'s page says what the spec is doing as All work and the banner do');
     assert.deepStrictEqual({ sections: view.sections, passes: view.passes, facts: banner.facts.slice(2) }, {
       sections: [{ number: '1', title: 'Cards', changed_by: [], reading: false }, { number: '2', title: 'Refunds', changed_by: [1], reading: true }],
       passes: [
@@ -166,7 +182,7 @@ describe('a specification on the board (20.9)', () => {
     assert.deepStrictEqual({ passes: view.passes, waiting: view.waiting, banner }, {
       passes: [{ pass: 1, found: 2, calls: 1, yours: 1, state: 'read', since: null, reads: null }],
       waiting: [gap(asked, 'Is a refund ever split?'), gap(made.where, 'Back to the card.', 'F1', ['2'])],
-      banner: { name: 'Payments', state: 'needs', facts: [fact('epic'), fact('specification'), fact('pass 2 waits on you'), fact('2 waiting on you', true)] },
+      banner: { name: 'Payments', state: 'needs', facts: [place('epic'), place('specification'), fact('pass 2 waits on you'), fact('2 waiting on you', true)] },
     });
   });
 
@@ -276,15 +292,29 @@ describe('a specification on the board (20.9)', () => {
     acked(pass, ['F1', 'F2']);
     const { view, banner } = board();
 
-    assert.deepStrictEqual([view.passes.map(({ state, found }) => [state, found]), view.waiting, banner.facts], [[['read', 2]], [], [fact('epic'), fact('specification'), fact('being written')]]);
+    assert.deepStrictEqual([view.passes.map(({ state, found }) => [state, found]), view.waiting, banner.facts], [[['read', 2]], [], [place('epic'), place('specification'), fact('being written')]]);
   });
 
-  it('D39: once the review settles, ready to build waits on the person, the banner counting its yes as waiting on them (20.2.4)', () => {
-    landed();
+  it('D39: ready to build waits on the person once its screen draws — the review settled, the spec cut and its checklist closed — the banner counting its yes as waiting on them; never before, while its render refuses (20.2.4)', () => {
+    tracedLanded();
     cleanPass();
+    const settled = board();
+    readyClosed();
     const { view, banner } = board();
 
-    assert.deepStrictEqual([view.waiting, banner], [[{ ...READY, pass: null, finding: null, sections: [] }], { name: 'Payments', state: 'needs', facts: [fact('epic'), fact('specification'), fact('ready to build'), fact('1 waiting on you', true)] }]);
+    assert.deepStrictEqual([settled.view.waiting, settled.banner.facts.map(({ text }) => text)], [[], ['epic', 'specification', 'being written']]);
+    assert.deepStrictEqual([view.waiting, banner], [[{ ...READY, pass: null, finding: null, sections: [] }], { name: 'Payments', state: 'needs', facts: [place('epic'), place('specification'), fact('ready to build'), fact('1 waiting on you', true)] }]);
+  });
+
+  it('the yes given at ready to build, before the session moves into the build: the view reads it as given and the banner says so, nothing waiting on the person', () => {
+    tracedLanded();
+    cleanPass();
+    readyClosed();
+    output(dir(), ['render', 'ready-to-build', UNIT], { env: SESSION });
+    ok(dir(), ['ready-to-build', 'yes', UNIT, '--position', 'auto'], { env: SESSION });
+    const { view, banner } = board();
+
+    assert.deepStrictEqual([view.given, view.waiting, banner.facts.map(({ text }) => text)], [true, [], ['epic', 'specification', 'ready to build, your yes given']]);
   });
 
   it('5.8.14: Claude\'s calls on the unit since the list was last drawn stay listed however often the board is drawn, and none once it is', () => {
@@ -352,8 +382,9 @@ describe('a specification on the board (20.9)', () => {
   });
 
   it('S1, N1: ready to build\'s yes stands on every view that reads the unit — the epic\'s DEFINITION waiting on it, All work\'s count and total, no other unit counted — as the banner has it (20.16, 20.8.2, 20.2.4)', () => {
-    landed();
+    tracedLanded();
     cleanPass();
+    readyClosed();
 
     assert.deepStrictEqual([standingOn(board, UNIT), board(['--tab', 'all']).view.units.map(({ unit, waiting }) => [unit, waiting])], [
       {

@@ -56,4 +56,5 @@ export default {
     cutPhase(7, 'Per-verb exclusion lists and the exclusion check', 109, 2, 4, 5, 6, 7, 9, 10, 12, 13, 14, 15, 16, 17, 18),
     cutPhase(8, 'Recording exclusion answers', 53, 5, 6, 7, 9, 11, 12, 13, 14, 15, 16, 18),
   ],
+  given: false,
 }

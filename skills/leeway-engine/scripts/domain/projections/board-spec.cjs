@@ -49,17 +49,19 @@
 //   when it was asked (D23).
 // ---------------------------------------------------------------------------
 
+const { fact, placeFact } = require('../board-model.cjs');
 const fs = require('fs');
 const { specPath, specReading, SPEC_FILE } = require('../spec-sections.cjs');
 const { reportedPasses, passesInFlight } = require('../agent-state.cjs');
-const { reviewSettled, waitingGaps, sectionsToReview, changedSince, changedBetween, askedBy, gapsIn, raisedBy } = require('../spec-passes.cjs');
+const { waitingGaps, sectionsToReview, changedSince, changedBetween, askedBy, gapsIn, raisedBy } = require('../spec-passes.cjs');
 const { findingText } = require('../spec-report.cjs');
 const { factsOf, currentsOf, answersOf, questionStands } = require('../ledger-fold.cjs');
 const { withUnitEntries } = require('../unit-entries.cjs');
 const { readShown } = require('../ledger-read.cjs');
 const { answerSince } = require('../ledger-since.cjs');
-const { cutPhases } = require('../derivations.cjs');
+const { cutPhases, buildBegun } = require('../derivations.cjs');
 const { projectName } = require('../state-checks.cjs');
+const { readyDraws } = require('../ready-to-build.cjs');
 const { counted } = require('./map.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
@@ -253,9 +255,6 @@ function callLines(at, calls, reported, reading) {
   }));
 }
 
-/** Whether ready to build waits on the person's yes: the spec written, and its review settled. @param {string} cwd @param {string} unit @param {string[]} warnings */
-const readyWaits = (cwd, unit, warnings) => fs.existsSync(specPath(cwd, unit)) && reviewSettled(cwd, unit, warnings);
-
 /**
  * What waits on the person in the unit as the specification lists it: each
  * gap with the pass and finding that raised it and the sections it
@@ -270,7 +269,7 @@ function gapsWith(at, waiting, reported, reading) {
 /**
  * The spec's gaps and then ready to build's yes, as what waits on the
  * person in the unit: each gap by its words, opening the finding that
- * raised it, else its entry.
+ * raised it, else its entry; the yes once its screen draws (`readyDraws`).
  * @param {BoardAt} at @returns {WaitingLine[]}
  */
 function specWaits(at) {
@@ -280,7 +279,7 @@ function specWaits(at) {
     return { kind, id, text, page };
   });
   if (gaps.length > 0) return gaps;
-  return readyWaits(at.cwd, at.unit, at.warnings) ? [{ kind: /** @type {const} */ ('ready'), id: 'ready-to-build', text: 'Ready to build: the outline and the phase cut, for your yes', page: null }] : [];
+  return readyDraws(at.cwd, at.unit) ? [{ kind: /** @type {const} */ ('ready'), id: 'ready-to-build', text: 'Ready to build: the outline and the phase cut, for your yes', page: null }] : [];
 }
 
 /**
@@ -291,6 +290,7 @@ function specWaits(at) {
  * @param {BoardAt} at @param {WaitingLine[]} waiting what waits on the person in the unit
  */
 function specDoing(at, waiting) {
+  if (buildBegun(at.manifest)) return 'ready to build, your yes given';
   const reported = reportedOf(at).length;
   const out = passesInFlight(at.cwd, at.unit);
   const latest = out.at(-1);
@@ -328,6 +328,7 @@ function specView(at, waiting) {
       waiting: gapsWith(at, waiting, reported, reading),
       since: since.length === 0 ? [] : callLines(at, since, reported, reading),
       cut: cutPhases(at.manifest).map(({ name = '', scenarios, sections }, k) => ({ phase: k + 1, name, scenarios: scenarios.length, sections })),
+      given: buildBegun(at.manifest),
     },
   };
 }
@@ -346,8 +347,7 @@ const OUT = Object.freeze({
  * @param {BoardAt} at @param {WaitingLine[]} waiting @returns {{state: 'running', facts: {text: string, needs: boolean}[]}}
  */
 function specBanner(at, waiting) {
-  const fact = (/** @type {string} */ text) => ({ text, needs: false });
-  return { state: 'running', facts: [fact(at.manifest.work_type), fact('specification'), fact(specDoing(at, waiting))] };
+  return { state: 'running', facts: [placeFact(at.manifest.work_type), placeFact('specification'), fact(specDoing(at, waiting))] };
 }
 
 /**

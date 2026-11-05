@@ -74,15 +74,17 @@ const { phaseName, shownTask } = require('./task-id.cjs');
 
 /**
  * What a call's checks read the unit by: the unit and its manifest, the
- * warnings its reads give, and what it has read already, by what it is,
- * kept for its other checks.
- * @typedef {{cwd: string, unit: string, manifest: Record<string, any>, warnings: string[], reads: Map<string, any>}} Reading
+ * warnings its reads give, the call's own read of the project's
+ * repositories where it keeps one for every unit it reads (`repos`), and
+ * what it has read already, by what it is, kept for its other checks.
+ * @typedef {{cwd: string, unit: string, manifest: Record<string, any>, warnings: string[], repos?: () => Repo[], reads: Map<string, any>}} Reading
  */
+/** @typedef {import('../kernel/repos.cjs').Repo} Repo */
 
 /** A phase review's reports read: what stands in the way of reading them all, and those read. @typedef {{faults: string[], reports: PhaseReport[]}} Reviewed */
 
-/** @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {string[]} [warnings] @returns {Reading} */
-const reading = (cwd, unit, manifest, warnings = []) => ({ cwd, unit, manifest, warnings, reads: new Map() });
+/** @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {string[]} [warnings] @param {() => Repo[]} [repos] the call's read of the project's repositories @returns {Reading} */
+const reading = (cwd, unit, manifest, warnings = [], repos) => ({ cwd, unit, manifest, warnings, repos, reads: new Map() });
 
 /**
  * What `read` answers, read once a call.
@@ -93,8 +95,8 @@ function once(at, key, read) {
   return at.reads.get(key);
 }
 
-/** The project's repos, read once a call. @param {Reading} at @returns {import('../kernel/repos.cjs').Repo[]} */
-const reposOf = (at) => once(at, 'repos', () => projectRepos(codeRoot(at.cwd)));
+/** The project's repos, read once a call. @param {Reading} at @returns {Repo[]} */
+const reposOf = (at) => once(at, 'repos', () => at.repos?.() ?? projectRepos(codeRoot(at.cwd)));
 
 /**
  * `read` under the state's lock, as every reader of the tracker takes it,

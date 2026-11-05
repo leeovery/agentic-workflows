@@ -278,7 +278,7 @@ describe('the banner', () => {
 
   test('20.2.4, 12.13.22, D20, D42: a build stopped keeps its mark and "stopped" after its type and phase while questions are queued or discussed, the queue or the discussion taking the place of what follows; a question parking no task names none', () => {
     const [type, phase, ...rest] = banner.facts
-    const stopped = { ...banner, state: 'needs' as const, facts: [type!, phase!, { text: 'stopped', needs: false }, ...rest] }
+    const stopped = { ...banner, state: 'needs' as const, facts: [type!, phase!, { text: 'stopped', needs: false, place: true as const }, ...rest] }
     const [question] = QUESTIONS
     const drawn = (given: Partial<Discussion>) => discussedBanner(stopped, discussion(given), [{ ...question!, parks: [] }]).banner
 
@@ -291,7 +291,8 @@ describe('the banner', () => {
 
   test('S1, D42: in the review phase a question its fix tasks wait on is discussed as in the build, its type, phase and "stopped" kept, the discussion taking the place of the round', () => {
     const fact = (text: string, needs = false) => ({ text, needs })
-    const review = { name: 'Pay', state: 'needs' as const, facts: [fact('feature'), fact('review'), fact('stopped'), fact('round 1 fails · fix tasks building'), fact('1 waiting on you', true)] }
+    const place = (text: string) => ({ text, needs: false, place: true as const })
+    const review = { name: 'Pay', state: 'needs' as const, facts: [place('feature'), place('review'), place('stopped'), fact('round 1 fails · fix tasks building'), fact('1 waiting on you', true)] }
     const [question] = QUESTIONS
 
     expect(discussedBanner(review, discussion({ discussing: 'Q1' }), [question!]).banner.facts.map(({ text }) => text)).toEqual(['feature', 'review', 'stopped', 'Discussing Q1', 'task 6.7 "Every abort at the review gate unwinds"'])

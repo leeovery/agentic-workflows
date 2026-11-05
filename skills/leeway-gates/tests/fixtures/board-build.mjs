@@ -13,11 +13,13 @@ export default {
     "facts": [
       {
         "text": "feature",
-        "needs": false
+        "needs": false,
+        "place": true
       },
       {
         "text": "build",
-        "needs": false
+        "needs": false,
+        "place": true
       },
       {
         "text": "1 building",

@@ -43,7 +43,7 @@ const { unitInProgress } = require('./topic-standing.cjs');
 const { finishClose } = require('./checklist.cjs');
 const { landFinish } = require('./landing.cjs');
 const { completeWorkUnit } = require('./workunit-lifecycle.cjs');
-const { refusing } = require('./staged-payload.cjs');
+const { refusing, stands } = require('./staged-payload.cjs');
 const { READERS, readersDone } = require('./scratch.cjs');
 const { finishScreen } = require('./projections/finish.cjs');
 const { setAsideHeld } = require('./review-phase.cjs');
@@ -53,16 +53,28 @@ const { setAsideHeld } = require('./review-phase.cjs');
 const FINISH_USAGE = 'finish yes <work-unit>';
 
 /**
+ * The close the screen stands on, refused where finish cannot show: the
+ * unit's own refusals, then its checklist's close (`finishClose`).
+ * @param {string} cwd @param {string} unit
+ */
+function finishStanding(cwd, unit) {
+  const manifest = unitInProgress(cwd, unit);
+  const refused = buildRefusal(manifest);
+  if (refused !== null) throw new Error(refused);
+  return { manifest, ...finishClose(cwd, unit) };
+}
+
+/** Whether finish's screen draws, as `render finish` stands on it: what the board lists waiting on the person. @param {string} cwd @param {string} unit */
+const finishDraws = (cwd, unit) => stands(() => finishStanding(cwd, unit));
+
+/**
  * What the screen and the yes stand on, refused where finish cannot show:
  * the unit's manifest, the skips its close shows, and the verdict asked of
  * the first departure in the build still owed one.
  * @param {string} cwd @param {string} unit
  */
 function standing(cwd, unit) {
-  const manifest = unitInProgress(cwd, unit);
-  const refused = buildRefusal(manifest);
-  if (refused !== null) throw new Error(refused);
-  const { closed, skips, warnings } = finishClose(cwd, unit);
+  const { manifest, closed, skips, warnings } = finishStanding(cwd, unit);
   const root = stateRoot(cwd);
   try {
     const verdict = readShown(root, warnings, (shower) => verdictAsked(shower, root, (facts) => facts.unit === unit && BUILD_PHASES.includes(facts.phase), closed));
@@ -140,4 +152,4 @@ function runFinishVerb(cwd, [verb, ...args], opts) {
   return refusing('finish yes', () => finishYes(cwd, args[0]));
 }
 
-module.exports = { FINISH_USAGE, finishSurface, runFinishVerb };
+module.exports = { FINISH_USAGE, finishSurface, finishDraws, runFinishVerb };

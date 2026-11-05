@@ -35,6 +35,7 @@ type Spec = {
   waiting: Gap[]
   since: Call[]
   cut: Cut[]
+  given: boolean
 }
 
 /** The pass out, where one is. */
@@ -64,6 +65,10 @@ function standingOf(view: Spec, kit: Kit): Part[] {
 
   if (gapsOf(view).length > 0) {
     return [{ text: `${MARK.needs} pass ${next} waits on your answer`, color: COLOUR.needs }]
+  }
+
+  if (view.given) {
+    return [{ text: `${MARK.done} ready to build, your yes given`, color: COLOUR.done }]
   }
 
   if (isReady(view)) {
@@ -128,7 +133,7 @@ function sinceLines(view: Spec, width: number): Line[] {
 function nextLine(view: Spec): Line[] {
   const next = reportedOf(view).length + 1
 
-  if (outOf(view) !== null || isReady(view) || view.sections.length === 0) {
+  if (outOf(view) !== null || isReady(view) || view.given || view.sections.length === 0) {
     return []
   }
 
@@ -212,15 +217,19 @@ function cutLines(view: Spec, width: number): Line[] {
   )
 }
 
-function readyLines(view: Spec, width: number): Line[] {
-  const ready = isReady(view)
+/** READY TO BUILD's row: the yes given, put to the person, or still to come. */
+function readyRow(view: Spec): Line {
+  if (view.given) {
+    return { key: 'spec:ready:row', parts: [{ text: `${MARK.done} `, color: COLOUR.done }, { text: 'your yes given, the build begun', color: COLOUR.body }] }
+  }
 
-  return [
-    heading('spec:ready', { text: 'READY TO BUILD', bold: true, color: ready ? COLOUR.needs : COLOUR.sky }, [], width),
-    ready
-      ? { key: 'spec:ready:row', parts: [{ text: `${MARK.needs} `, color: COLOUR.needs }, { text: 'the outline and the phase cut, put to you', color: COLOUR.body }] }
-      : { key: 'spec:ready:row', parts: [{ text: `${MARK.waiting} `, color: COLOUR.notStarted }, { text: 'once a pass changes nothing', color: COLOUR.notStarted }] },
-  ]
+  return isReady(view)
+    ? { key: 'spec:ready:row', parts: [{ text: `${MARK.needs} `, color: COLOUR.needs }, { text: 'the outline and the phase cut, put to you', color: COLOUR.body }] }
+    : { key: 'spec:ready:row', parts: [{ text: `${MARK.waiting} `, color: COLOUR.notStarted }, { text: 'once a pass changes nothing', color: COLOUR.notStarted }] }
+}
+
+function readyLines(view: Spec, width: number): Line[] {
+  return [heading('spec:ready', { text: 'READY TO BUILD', bold: true, color: isReady(view) ? COLOUR.needs : COLOUR.sky }, [], width), readyRow(view)]
 }
 
 const specLines = (view: Spec, kit: Kit): Line[] => [

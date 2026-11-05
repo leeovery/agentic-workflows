@@ -258,20 +258,13 @@ export function recordedIn(stdout: string): string[] {
 /** The question by its number. */
 const questionOf = (questions: readonly Question[], number: string) => questions.find(({ question }) => question === number)
 
-/** The banner's words for the phases whose questions wait: the build's and the review phase's (domain/projections/board-build.cjs, board-review.cjs). */
-const PHASES = ['build', 'review']
-
 /**
- * The banner's facts that say where the session is: its type and phase, as
- * the banner leads with them, and "stopped" where it follows them (D42). A
- * queue or a discussion takes the place of everything after them, as the
- * locked board draws it.
+ * The banner's facts that say where the session is, as the engine marks
+ * them (`place`): its type and phase, as the banner leads with them, and
+ * "stopped" where it follows them (D42). A queue or a discussion takes the
+ * place of everything after them, as the locked board draws it.
  */
-function whereOf(facts: readonly Fact[]): Fact[] {
-  const end = facts.findIndex(({ text }) => PHASES.includes(text)) + 1
-
-  return facts.slice(0, facts[end]?.text === 'stopped' ? end + 1 : end)
-}
+const whereOf = (facts: readonly Fact[]): Fact[] => facts.filter(({ place }) => place === true)
 
 const fact = (text: string, needs = false): Fact => ({ text, needs })
 

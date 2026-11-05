@@ -317,6 +317,10 @@ describe('the review phase\'s This session (20.10)', () => {
     ])
   })
 
+  test('one task built is counted as one (D41)', () => {
+    expect(drawnRows(reviewLines(review({ built: 1 }), kitAt(NOW)).slice(1, 2))).toEqual(['Mint · feature · 1 task built'])
+  })
+
   test('the edge rule: on the line beneath, the project\'s name gives way with "…", its type and the tasks built never do', () => {
     expect(drawnRows(reviewLines(review({ project: 'A project whose name runs long past forty characters' }), kitAt(NOW)).slice(1, 2))).toEqual([
       'A project whose name runs long pas… · feature · 99 tasks built',
@@ -350,6 +354,13 @@ describe('a question its fix tasks wait on (S1, 20.5.3)', () => {
         '     parks 9.1 · waiting 1h                          ▸ discuss',
       ],
       ['FIX TASKS · PHASE 9 ────────────────────────────── 0 of 1 done', '⚑ 9.1 The notes stage\'s live line after a failed … waits on Q1'],
+    ])
+  })
+
+  test('N5: the fix phase stopped on its question: the facts line says the round fails and the review stopped until the person answers, as the build\'s This session says it (D6), no fix task said to build', () => {
+    expect(drawnRows(reviewLines(review({ stopped: true }, parked), kitAt(NOW)).slice(2, 3))).toEqual([
+      'round 1 · 19 of 19 areas read · ✗ round 1 fails · ⚑ stopped',
+      'until you answer',
     ])
   })
 

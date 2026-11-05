@@ -24,6 +24,7 @@
 //   opens on its page (20.11.3).
 // ---------------------------------------------------------------------------
 
+const { fact, placeFact } = require('../board-model.cjs');
 const fs = require('fs');
 const path = require('path');
 const { statePath, cacheScratch } = require('../../kernel/state-root.cjs');
@@ -112,8 +113,7 @@ function discoveryView(at, waiting) {
  * @param {DiscoveryView} view @returns {{state: 'running', facts: {text: string, needs: boolean}[]}}
  */
 function discoveryBanner({ type, map }) {
-  const fact = (/** @type {string} */ text) => ({ text, needs: false });
-  return { state: 'running', facts: [fact(type), fact('discovery'), fact(`${counted(map.length, 'topic')} on the map`)] };
+  return { state: 'running', facts: [placeFact(type), placeFact('discovery'), fact(`${counted(map.length, 'topic')} on the map`)] };
 }
 
 /** The lifecycles of a topic whose discussion has started and stands: under way, or decided. */
@@ -132,7 +132,7 @@ function topicStarted(at, said) {
 /** How many topics an epic's map holds: the staged map's while approve the map waits on the person, else its live topics. @param {string} cwd @param {Record<string, any>} manifest */
 const mapCount = (cwd, manifest) => stagedOrNone(cwd, manifest.name)?.topics.length ?? liveInOrder(manifest).length;
 
-/** A brief's text from its file, empty where none is written. @param {string} file */
+/** A file's text, empty where none is written. @param {string} file */
 const textOf = (file) => (fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '');
 
 /**
@@ -175,4 +175,4 @@ function spikePage(at, spike) {
   return { kind: 'spike', unit: at.unit, ...line, path: path.posix.join(at.unit, 'spikes', spike), link };
 }
 
-module.exports = { discoveryView, discoveryBanner, briefPage, topicStarted, spikePage, mapCount };
+module.exports = { discoveryView, discoveryBanner, briefPage, topicStarted, spikePage, mapCount, textOf };

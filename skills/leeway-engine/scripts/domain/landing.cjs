@@ -733,10 +733,9 @@ function allChained(cwd, unit, tasks) {
  */
 function landedTasks(cwd, unit, repos, from = null) {
   return new Set(repos.flatMap((repo) => {
-    const nested = repo.dir !== '';
     let into;
     try {
-      into = lg.defaultBranch(repo.path, nested ? nestedRemoteName(repo.path) : remoteName(cwd), nested);
+      into = lg.landsOn(cwd, repo);
     } catch {
       return [];
     }

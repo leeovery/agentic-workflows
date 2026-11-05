@@ -13,18 +13,13 @@
 
 const { laidOutOf } = require('./round-report.cjs');
 const { taskBranch } = require('./landing-names.cjs');
-const { branches, branchesHeldBy, defaultBranch, isAncestor, latestOf } = require('./landing-git.cjs');
-const { remoteName, nestedRemoteName } = require('./remote.cjs');
+const { branches, branchesHeldBy, defaultBranch, landsOn, isAncestor, latestOf } = require('./landing-git.cjs');
+const { remoteName } = require('./remote.cjs');
 const { workBelow } = require('./review-change.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** @typedef {import('../kernel/repos.cjs').Repo} Repo */
-
-/** The branch a repository lands on (landing-git.cjs). @param {string} cwd @param {Repo} repo */
-function landsOn(cwd, repo) {
-  return defaultBranch(repo.path, repo.dir === '' ? remoteName(cwd) : nestedRemoteName(repo.path), repo.dir !== '');
-}
 
 /** The branch the project's own repository lands on, its child repositories unread. @param {string} cwd */
 const projectLandsOn = (cwd) => defaultBranch(codeRoot(cwd), remoteName(cwd), false);
@@ -53,4 +48,4 @@ function builtOnBases(cwd, ref, holding, branch) {
   });
 }
 
-module.exports = { landsOn, projectLandsOn, baseRev, builtOnBases };
+module.exports = { projectLandsOn, baseRev, builtOnBases };

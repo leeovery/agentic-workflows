@@ -48,7 +48,7 @@ type Epic = {
   progress: { decided: number; total: number; discussing: number }
   waiting: Waiting[]
   topics: TopicLine[]
-  spec: Stage<'waits' | 'running' | 'map' | 'asking' | 'ready' | 'complete'>
+  spec: Stage<'waits' | 'running' | 'map' | 'asking' | 'ready' | 'complete'> & { words: string }
   build: Stage<'waits' | 'building' | 'reviewing' | 'stopped' | 'finish' | 'complete'>
   set_aside: { topic: string; title: string; state: 'cancelled' | 'postponed'; horizon: string | null }[]
   lately: Moment[]
@@ -162,7 +162,7 @@ const STAGE_NEEDS: Readonly<Record<string, string>> = {
 /** A stage's row while it waits on the person: flagged, saying for what. */
 const needsLine = (key: string, name: string, state: string): Line => stageLine(key, NEEDS, name, { text: STAGE_NEEDS[state] ?? '', color: COLOUR.needs })
 
-/** The specification's row: what it waits on, being written, held by the map the sweep staged, the person's answer or their yes, or complete. */
+/** The specification's row: what it waits on, what it is doing while written as the banner says it, held by the map the sweep staged, the person's answer or their yes, or complete. */
 function specLine({ spec, progress }: Epic, kit: Kit): Line {
   const name = 'Specification'
 
@@ -175,7 +175,7 @@ function specLine({ spec, progress }: Epic, kit: Kit): Line {
   }
 
   if (spec.state === 'running') {
-    return stageLine('epic:spec', runningMark(spec.session, kit), name, { text: 'being written', color: COLOUR.secondary })
+    return stageLine('epic:spec', runningMark(spec.session, kit), name, { text: spec.words, color: COLOUR.secondary })
   }
 
   const left = progress.total - progress.decided

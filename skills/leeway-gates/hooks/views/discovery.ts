@@ -56,8 +56,8 @@ const mapLines = (view: Discovery, width: number): Line[] =>
   section(
     heading('d:map', { text: 'THE MAP', bold: true, color: COLOUR.sky }, [{ text: `${view.map.length} · foundations first`, color: COLOUR.secondary }], width),
     view.map.flatMap((topic, at) => [
-      { key: `d:topic:${topic.topic}`, parts: [{ text: `${String(at + 1).padStart(2)} `, color: COLOUR.secondary }, { text: topic.title, color: COLOUR.body }], press: pageKey(`topic:${topic.topic}`) },
-      { key: `d:topic:${topic.topic}:summary`, parts: cutTo([{ text: `${INDENT}${topic.summary}`, color: COLOUR.secondary }], width) },
+      { key: `d:topic:${topic.topic}`, parts: cutTo([{ text: `${String(at + 1).padStart(2)} `, color: COLOUR.secondary }, { text: topic.title, color: COLOUR.body }], width), press: pageKey(`topic:${topic.topic}`) },
+      ...(topic.summary === '' ? [] : [{ key: `d:topic:${topic.topic}:summary`, parts: cutTo([{ text: `${INDENT}${topic.summary}`, color: COLOUR.secondary }], width) }]),
     ]),
   )
 

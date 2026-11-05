@@ -25,7 +25,7 @@ const assert = require('node:assert');
 const { ok, writeState, readState, readManifest, layout, withFrozenClock, FROZEN_AT } = require('./engine-harness.cjs');
 const { EPIC, SESSION, useGatesWorld, gatesHelpers } = require('./discovery-gates-world.cjs');
 const { SESSION_ID } = require('./ledger-world.cjs');
-const { fixture, fixtureModule, misfits, emptyLists, standingOn } = require('./board-world.cjs');
+const { fixture, fixtureModule, misfits, emptyLists, standingOn, place } = require('./board-world.cjs');
 
 const PRODUCT = 'product';
 
@@ -73,7 +73,7 @@ describe('discovery on the board (20.11)', () => {
   it('the epic\'s map as it stands, nothing waiting on the person', () => {
     assert.deepStrictEqual(board(), {
       view: { kind: 'discovery', unit: EPIC, title: 'Fumi', type: 'epic', session: 1, started: null, waiting: [], map: [], roadmap: [], not_taken: [], views: [], spikes: [] },
-      banner: { name: 'Fumi', state: 'running', facts: [fact('epic'), fact('discovery'), fact('0 topics on the map')] },
+      banner: { name: 'Fumi', state: 'running', facts: [place('epic'), place('discovery'), fact('0 topics on the map')] },
     });
   });
 
@@ -95,7 +95,7 @@ describe('discovery on the board (20.11)', () => {
         views: [],
         spikes: [],
       },
-      banner: { name: 'Fumi', state: 'needs', facts: [fact('epic'), fact('discovery'), fact('2 topics on the map'), fact('the map waits on you', true)] },
+      banner: { name: 'Fumi', state: 'needs', facts: [place('epic'), place('discovery'), fact('2 topics on the map'), fact('the map waits on you', true)] },
     });
   });
 
@@ -144,7 +144,7 @@ describe('discovery on the board (20.11)', () => {
     assert.deepStrictEqual(board(['--tab', 'unit']).view.waiting, [{ ...APPROVAL, text: 'Approve the map: 2 topics in this order' }]);
     ok(dir(), ['session', 'label', EPIC], { env: SESSION });
     assert.deepStrictEqual(ok(dir(), ['board', SESSION_ID], { env: SESSION }).banner, {
-      name: 'Fumi', state: 'running', facts: [fact('epic'), fact('at its menu'), fact('0 of 2 topics decided'), { text: 'the map waits on you', needs: false, waits: true }],
+      name: 'Fumi', state: 'running', facts: [place('epic'), place('at its menu'), fact('0 of 2 topics decided'), { text: 'the map waits on you', needs: false, waits: true }],
     }, 'D40: at the epic\'s menu the banner says what waits, unflagged, the banner not waiting on the person');
     withFrozenClock(() => run(answer('approve the map', 'y')));
     assert.deepStrictEqual([first === FROZEN_AT, readManifest(dir(), EPIC).phases.discovery.approved_at], [false, FROZEN_AT]);

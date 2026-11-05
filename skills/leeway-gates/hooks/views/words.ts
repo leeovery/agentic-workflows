@@ -27,16 +27,22 @@ export const titled = (key: string, title: Part[], standing: readonly Part[], wi
 /** The button that reads a line in full. */
 export const READ = '▸ read'
 
-/** A line's facts under its indent, wrapping, the button that reads `ref` in full on its last row. */
+/**
+ * A line's facts under its indent, wrapping, the button that reads `ref` in
+ * full on its last row — that row wrapped again to leave the cell between
+ * its words and the button, so no word of it is cut at the edge.
+ */
 export function factLines(key: string, said: string, width: number, ref?: string): Line[] {
   const button = ref === undefined ? undefined : { key: pageKey(ref), label: READ }
   const room = width - (button?.label.length ?? 0)
-  const rows = wrappedRows(said, room - INDENT.length)
+  const wrapped = wrappedRows(said, room - INDENT.length)
+  const rows = button === undefined ? wrapped : [...wrapped.slice(0, -1), ...wrappedRows(wrapped.at(-1) ?? '', room - INDENT.length - 1)]
 
   return rows.map((row, at) => {
     const parts = [{ text: `${INDENT}${row}`, color: COLOUR.notStarted }]
 
-    return at < rows.length - 1 ? { key: `${key}:${at}`, parts } : { key, parts: spread(parts, [], room), button }
+    if (at < rows.length - 1) return { key: `${key}:${at}`, parts }
+    return button === undefined ? { key, parts } : { key, parts: spread(parts, [], room), button }
   })
 }
 

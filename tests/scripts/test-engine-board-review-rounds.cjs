@@ -19,10 +19,10 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const {
-  UNIT, SESSION_ID, EVERY, RECEIPT, FOUND, useWorld, env, enter, reported, named, recorded, fixPhaseWritten, fixBuilt, reviewCall, filed, firstRoundReady, secondRoundReady, ok, git,
+  UNIT, SESSION_ID, EVERY, RECEIPT, FOUND, useWorld, env, enter, reported, named, recorded, fixPhaseWritten, fixBuilt, reviewCall, filed, finishClosed, firstRoundReady, secondRoundReady, ok, git,
 } = require('./review-world.cjs');
 const { treeSnapshot, head: stateHead } = require('./engine-harness.cjs');
-const { fixture, misfits } = require('./board-world.cjs');
+const { fixture, misfits, place } = require('./board-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { projectName } = require(path.join(SCRIPTS, 'domain/state-checks.cjs'));
@@ -53,6 +53,9 @@ const head = (round, finish = false) => ({ kind: 'review', unit: UNIT, title: 'P
 
 /** The banner's facts, each plain unless flagged. @param {...(string|[string])} facts */
 const facts = (...facts) => facts.map((fact) => (typeof fact === 'string' ? { text: fact, needs: false } : { text: fact[0], needs: true }));
+
+/** The banner's facts that say where the session is, then the rest as `facts` takes them. @param {string[]} where @param {...(string|[string])} rest */
+const placed = (where, ...rest) => [...where.map(place), ...facts(...rest)];
 
 /** Round 1 recorded failing: area 1's receipt fixed by task 3.1, not yet built, and a card's expiry, out of scope, filed to the inbox. */
 function roundOneFiled() {
@@ -159,18 +162,15 @@ describe('a round recorded (20.10.1, 20.10.2)', () => {
     recorded({ can_now: ['Pay by card.'], findings: [{ area: '1-cards', scope: 'in', call: 'nit', text: 'The receipt says Reciept.', from: ['1-cards-a#1'], fix: '3.1' }] });
     const { view, banner } = board();
 
-    assert.deepStrictEqual([view.verdict, view.waiting, banner], ['passed', [], { name: 'Pay', state: 'running', facts: facts('feature', 'review', 'round 1 passes') }]);
+    assert.deepStrictEqual([view.verdict, view.waiting, banner], ['passed', [], { name: 'Pay', state: 'running', facts: placed(['feature', 'review'], 'round 1 passes') }]);
   });
 
   it('a round that passed shows what it found, what could not be proven with its scenario\'s words, and its verdict; the phase over, finish waits on the person, and the banner flags it (D18, D37); once finish completes the unit from its review phase, This session is All work at the start menu, the banner the unit\'s close, through the boot that brings the start menu, until the session goes somewhere (20.10.4, D38)', () => {
     enter();
     reported(1, EVERY);
     recorded({ can_now: ['Pay by card.'], findings: [] });
+    finishClosed();
     const over = board();
-    ok(dir, ['checklist', 'skip', 'phase-start', UNIT, '1', 'design-settled', '--reason', 'One task alone.'], { env: env() });
-    ok(dir, ['checklist', 'skip', 'finish', UNIT, 'inbox-closed', '--reason', 'No inbox item was resolved.'], { env: env() });
-    ok(dir, ['checklist', 'done', 'finish', UNIT, 'build-log-closed'], { env: env() });
-    ok(dir, ['checklist', 'close', 'finish', UNIT], { env: env() });
     ok(dir, ['finish', 'yes', UNIT], { env: env() });
     const read = () => {
       const { view, banner, unit, questions } = ok(dir, ['board', SESSION_ID], { env: env() });
@@ -180,7 +180,7 @@ describe('a round recorded (20.10.1, 20.10.2)', () => {
     ok(dir, ['boot'], { env: env() });
     const booted = read();
     ok(dir, ['session', 'label', 'roadmap'], { env: env() });
-    const close = { name: 'Pay', state: 'done', facts: facts('feature', 'complete', 'at the start menu') };
+    const close = { name: 'Pay', state: 'done', facts: [...facts('feature', 'complete'), place('at the start menu')] };
 
     assert.deepStrictEqual(over, {
       view: {
@@ -196,12 +196,12 @@ describe('a round recorded (20.10.1, 20.10.2)', () => {
         verdict: 'passed',
         fixes: null,
       },
-      banner: { name: 'Pay', state: 'needs', facts: facts('feature', 'review', 'finish waits on you', ['1 waiting on you']) },
+      banner: { name: 'Pay', state: 'needs', facts: placed(['feature', 'review'], 'finish waits on you', ['1 waiting on you']) },
     });
     assert.deepStrictEqual([finished, booted, read().banner], [
       { view: ['all', true, [UNIT]], banner: close, unit: { unit: UNIT, title: 'Pay' }, questions: [] },
       { view: ['all', true, [UNIT]], banner: close, unit: null, questions: [] },
-      { name: projectName(dir), state: 'idle', facts: facts('roadmap') },
+      { name: projectName(dir), state: 'idle', facts: [place('roadmap')] },
     ]);
   });
 
@@ -229,6 +229,7 @@ describe('a round settled (20.10.1, 14.S15)', () => {
       ],
       settled: 'Task 3.1 sends the receipt; its test proves it.',
     });
+    finishClosed();
     const { view, banner } = board();
 
     assert.deepStrictEqual(reading, [area('1', 'Cards', 'read', { found: 2 }), area('2', 'Refunds', 'unchanged'), tests('unchanged')]);

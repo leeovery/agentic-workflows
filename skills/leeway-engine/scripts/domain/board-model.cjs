@@ -52,8 +52,10 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * 20.2.4) — the questions waiting on the person, the map waiting on
  * approve the map, or ready to build's yes; and, unflagged, whether it says
  * what waits beside them (`waits`), the messages waiting in a topic; every
- * other fact plain, `stopped` among them.
- * @typedef {{text: string, needs: boolean, waits?: true}} Fact
+ * other fact plain, `stopped` among them; and whether it says where the
+ * session is (`place`): the type and the phase the banner leads with, and
+ * `stopped` after them.
+ * @typedef {{text: string, needs: boolean, waits?: true, place?: true}} Fact
  */
 /**
  * The banner (20.2.4): its state, the work's name, and its facts in order.
@@ -249,12 +251,13 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * each section; the review's passes, newest first; what waits on the
  * person, from the unit's one list, each asked in the conversation;
  * Claude's calls since the calls list was last drawn in the conversation,
- * read without looking (5.8.14); and the phases cut, each with its scenario
- * count and the sections it draws on.
+ * read without looking (5.8.14); the phases cut, each with its scenario
+ * count and the sections it draws on; and whether ready to build's yes is
+ * given, the build begun (`given`).
  * @typedef {{
  *   kind: 'spec', unit: string, title: string, type: string, project: string, sections: SpecSection[],
  *   passes: SpecPass[], waiting: GapLine[], since: SpecCallLine[],
- *   cut: {phase: number, name: string, scenarios: number, sections: string[]}[],
+ *   cut: {phase: number, name: string, scenarios: number, sections: string[]}[], given: boolean,
  * }} SpecView
  */
 /** A section read in full: its number, title, the passes that changed it, and its text. @typedef {{kind: 'section', unit: string, number: string, title: string, changed_by: number[], text: string}} SectionPage */
@@ -372,7 +375,7 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * @typedef {{
  *   kind: 'epic', unit: string, title: string, about: string, started: string|null, now: UnitNow, at_menu: boolean, here: boolean,
  *   progress: {decided: number, total: number, discussing: number}, waiting: WaitingLine[], topics: TopicLine[],
- *   spec: {state: 'waits'|'running'|'map'|'asking'|'ready'|'complete', session: 'this'|'other'|null},
+ *   spec: {state: 'waits'|'running'|'map'|'asking'|'ready'|'complete', words: string, session: 'this'|'other'|null},
  *   build: {state: 'waits'|'building'|'reviewing'|'stopped'|'finish'|'complete', session: 'this'|'other'|null},
  *   set_aside: {topic: string, title: string, state: 'cancelled'|'postponed', horizon: string|null}[], lately: Moment[],
  * }} EpicView
@@ -455,4 +458,10 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * }} Board
  */
 
-module.exports = { BOARD_VERSION, TABS };
+/** A plain fact of the banner. @param {string} text @returns {Fact} */
+const fact = (text) => ({ text, needs: false });
+
+/** A fact of the banner that says where the session is. @param {string} text @returns {Fact} */
+const placeFact = (text) => ({ text, needs: false, place: true });
+
+module.exports = { BOARD_VERSION, TABS, fact, placeFact };

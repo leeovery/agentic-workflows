@@ -68,7 +68,7 @@ const { pageOpen, readBackFile, reviewStates, settleReview } = require('./spec-r
 const { handedTag } = require('./topic-map.cjs');
 const { record } = require('./trust-log.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
-const { refusing } = require('./staged-payload.cjs');
+const { refusing, stands } = require('./staged-payload.cjs');
 const { phaseSkill } = require('./handoff.cjs');
 const { readyToBuildScreen } = require('./projections/ready-to-build.cjs');
 
@@ -121,6 +121,20 @@ function callsAtSpec(shower, unit) {
 }
 
 /**
+ * The close the screen stands on, refused where ready to build cannot show:
+ * the unit's own refusals, then its checklist's close (`readyClose`).
+ * @param {string} cwd @param {string} unit
+ */
+function readyStanding(cwd, unit) {
+  const refused = unitRefusal(cwd, unit);
+  if (refused !== null) throw new Error(refused);
+  return readyClose(cwd, unit);
+}
+
+/** Whether ready to build's screen draws, as `render ready-to-build` stands on it: what the board lists waiting on the person's yes. @param {string} cwd @param {string} unit */
+const readyDraws = (cwd, unit) => stands(() => readyStanding(cwd, unit));
+
+/**
  * What the screen and the yes stand on, refused where ready to build
  * cannot show: the unit's manifest, its checklist's close and skips, the
  * landed spec the close seals, and, read in one pass of the ledger, Claude's
@@ -128,9 +142,7 @@ function callsAtSpec(shower, unit) {
  * @param {string} cwd @param {string} unit
  */
 function standing(cwd, unit) {
-  const refused = unitRefusal(cwd, unit);
-  if (refused !== null) throw new Error(refused);
-  const { closed, skips, warnings, landed } = readyClose(cwd, unit);
+  const { closed, skips, warnings, landed } = readyStanding(cwd, unit);
   const root = stateRoot(cwd);
   try {
     const read = readShown(root, warnings, (shower) => ({
@@ -283,4 +295,4 @@ function runPositionVerb(cwd, args) {
   return refusing('workunit position', () => switchPosition(cwd, args[0], to));
 }
 
-module.exports = { READY_TO_BUILD_USAGE, POSITION_USAGE, readyToBuildSurface, runReadyToBuildVerb, runPositionVerb };
+module.exports = { READY_TO_BUILD_USAGE, POSITION_USAGE, readyToBuildSurface, readyDraws, runReadyToBuildVerb, runPositionVerb };

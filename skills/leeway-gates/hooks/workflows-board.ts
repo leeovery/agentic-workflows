@@ -82,6 +82,7 @@ type State = {
   read: { id: string; answer: Answer } | null
   nav: Nav
   isOpen: boolean
+  isHidden: boolean
   frame: number
   turning: Timer | null
   ticking: Timer | null
@@ -325,10 +326,19 @@ function clocks($: EngineInterface, state: State, holds: { turns: boolean; clock
   }
 }
 
-/** The pane hidden: nothing turns, and the banner's button says it can be shown. */
+/** The clocks stopped. */
+const STILL = Object.freeze({ turns: false, clocks: false })
+
+/**
+ * The pane hidden: nothing turns, and the banner's button says it can be
+ * shown. Hidden is held until the banner shows the pane again, so a render
+ * of the pane landing while its close goes through neither opens it nor
+ * starts its clocks.
+ */
 function hidden($: EngineInterface, state: State) {
   state.isOpen = false
-  clocks($, state, { turns: false, clocks: false })
+  state.isHidden = true
+  clocks($, state, STILL)
   $.ui.invalidate('ui.render')
 }
 
@@ -340,6 +350,7 @@ async function toggle($: EngineInterface, state: State) {
     return
   }
 
+  state.isHidden = false
   await $.ui.open({ id: PANE, title: TITLE, ...SIZE })
   state.isOpen = true
   $.ui.invalidate('ui.render')
@@ -363,6 +374,7 @@ export function workflowsBoard(on: On) {
     read: null,
     nav: HOME,
     isOpen: false,
+    isHidden: false,
     frame: 0,
     turning: null,
     ticking: null,
@@ -425,12 +437,12 @@ export function workflowsBoard(on: On) {
   // A pane drawn is up, a reload's among them, which finds it still open.
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e, next) => {
     if (!(await isDrawn($))) {
-      clocks($, state, { turns: false, clocks: false })
+      clocks($, state, STILL)
 
       return next(e)
     }
 
-    state.isOpen = true
+    state.isOpen = !state.isHidden
 
     const answer = await answerFor($, state)
     const questions = questionsIn(state)
@@ -442,7 +454,7 @@ export function workflowsBoard(on: On) {
     const drawn = framed(answer, state.nav, VIEWS, kit)
     const foot = { lines: readyLines(questions, discussion, width), placement: e.props.placement, bodyRows: e.props.scroll.bodyRows, offset: 0 }
 
-    clocks($, state, holds)
+    clocks($, state, state.isHidden ? STILL : holds)
     state.pinned = isPinned(foot) ? lastOffset(drawn, foot, width) : null
     state.offset = Math.min(state.offset, state.pinned ?? 0)
 
