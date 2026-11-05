@@ -46,20 +46,18 @@ useWorld((at) => { dir = at; });
 /** A question asked at `at`, which must succeed, `flags` given. @param {string} at @param {string} by @param {string} text @param {string[]} [flags] @param {string} [cwd] */
 const asked = (at, by, text, flags = [], cwd = dir) => ok(cwd, ['ledger', 'ask', at, ...flags], { env: env(), stdin: JSON.stringify({ by, who_moved_whom: 'none', text }) });
 
-/** A review round recorded for `unit`, ending the review where `passed` or `settled`. @param {string} at @param {string} unit @param {number} round @param {{passed?: boolean, settled?: string}} how */
-const reviewRound = (at, unit, round, { passed = false, settled }) => writeState(at, `${unit}/review/round-${round}.json`, JSON.stringify({
-  reports: [], passed, can_now: [], findings: [], settled: settled ?? null, scenarios: [],
-}));
-
-/** A bugfix whose investigation concluded, recording what the bug is in. @param {string} at @param {string} name @param {{fixes?: string, area?: string}} bug */
-const bugfix = (at, name, bug) => createManifest(at, name, {
-  work_type: 'bugfix', phases: { investigation: { items: { [name]: { status: 'completed', concluded_at: '2026-11-01T09:00:00.000Z', ...bug } } } },
+/**
+ * A bugfix whose investigation concluded on `day` of November, keeping what
+ * the bug is in as its conclude does.
+ * @param {string} at @param {string} name @param {number} day @param {{fixes?: string, after_review?: boolean, area?: string}} bug
+ */
+const bugfix = (at, name, day, bug) => createManifest(at, name, {
+  work_type: 'bugfix', phases: { investigation: { items: { [name]: { status: 'completed', concluded_at: `2026-11-${String(day).padStart(2, '0')}T09:00:00.000Z`, ...bug } } } },
 });
 
 const other = fixtureFrom('measures-other-', (at) => {
   createManifest(at, 'shop', {});
-  reviewRound(at, 'shop', 1, { passed: true });
-  bugfix(at, 'lost-basket', { fixes: 'shop', area: 'checkout' });
+  bugfix(at, 'lost-basket', 1, { fixes: 'shop', after_review: true, area: 'checkout' });
   commitAll(at, 'init');
   asked('shop.specification', 'review', 'Does a basket outlive the session?', [], at);
 });
@@ -98,7 +96,7 @@ describe('measures findings (17.1.5, 17.2.4)', () => {
           { phase: 'specification', findings: 2 },
           { phase: 'task-writer', findings: 1 },
           { phase: 'build', findings: 3, calls: { serious: 1, bug: 0, nit: 2 }, rounds: 3, failed: 1 },
-          { phase: 'review', findings: 1, calls: { serious: 0, bug: 1, nit: 0 }, rounds: 2, failed: 1 },
+          { phase: 'review', findings: 1, calls: { serious: 0, bug: 1, nit: 0 }, rounds: 1, failed: 1 },
         ],
       });
       assert.deepStrictEqual(unread.map((/** @type {string} */ line) => line.split(' — ')[0]), [path.join(dir, '.leeway', UNIT, 'build', 'tasks', '1.2', 'round-1-a.md')]);
@@ -133,22 +131,20 @@ describe('measures findings (17.1.5, 17.2.4)', () => {
 });
 
 describe('measures bugs (17.1.6, 17.3.1)', () => {
-  it('17.S4, 17.S6: counts each bugfix by the unit whose code it fixes once that unit\'s review ended, passed or settled, grouped by area, each project\'s own, then by the unit — a bug in code no unit built, or in a unit never through a review, counting under none — beside the findings per phase over the same projects, in one call', () => {
-    createManifest(dir, 'cards', {});
-    reviewRound(dir, 'cards', 1, { passed: true });
-    createManifest(dir, 'refunds', {});
-    reviewRound(dir, 'refunds', 1, {});
-    reviewRound(dir, 'refunds', 2, { settled: 'The rounding finding is a nit at heart.' });
-    createManifest(dir, 'draft', {});
-    reviewRound(dir, 'draft', 1, {});
-    bugfix(dir, 'double-charge', { fixes: 'cards', area: 'checkout' });
-    bugfix(dir, 'card-declined', { fixes: 'cards', area: 'checkout' });
-    bugfix(dir, 'refund-twice', { fixes: 'refunds', area: 'checkout' });
-    bugfix(dir, 'refund-rounding', { fixes: 'refunds', area: 'refunds' });
-    bugfix(dir, 'odd-total', { fixes: 'cards' });
-    bugfix(dir, 'early', { fixes: 'draft', area: 'checkout' });
-    bugfix(dir, 'stray', {});
-    createManifest(dir, 'moved', { phases: { investigation: { items: { moved: { status: 'completed', fixes: 'cards', area: 'checkout' } } } } });
+  it('17.S4, 17.S6: counts each bugfix by the unit whose code it fixes where its conclude found that unit\'s review ended, grouped by area — folded for case and spacing, by its first spelling — each project\'s own, then by the unit, each in name order; beside the findings per phase over the same projects, in one call', () => {
+    bugfix(dir, 'double-charge', 2, { fixes: 'cards', after_review: true, area: 'Checkout' });
+    bugfix(dir, 'card-declined', 3, { fixes: 'cards', after_review: true, area: ' checkout ' });
+    bugfix(dir, 'refund-twice', 4, { fixes: 'refunds', after_review: true, area: 'CHECKOUT' });
+    bugfix(dir, 'refund-rounding', 5, { fixes: 'refunds', after_review: true, area: 'card  refunds' });
+    bugfix(dir, 'card-refund', 7, { fixes: 'cards', after_review: true, area: 'Card refunds' });
+    bugfix(dir, 'odd-total', 6, { fixes: 'cards', after_review: true });
+    bugfix(dir, 'early', 8, { fixes: 'draft', after_review: false, area: 'checkout' });
+    bugfix(dir, 'old-code', 9, { area: 'checkout' });
+    ok(dir, ['manifest', 'set', 'card-refund', 'status', 'cancelled']);
+    createManifest(dir, 'moved', { phases: { investigation: { items: { moved: { status: 'completed', fixes: 'cards', after_review: true, area: 'checkout' } } } } });
+    const project = JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'manifest.json'), 'utf8'));
+    const units = fs.readdirSync(path.join(dir, '.leeway'), { withFileTypes: true }).filter((e) => e.isDirectory() && !e.name.startsWith('.')).map((e) => e.name).sort().reverse();
+    writeState(dir, 'manifest.json', JSON.stringify({ ...project, work_units: Object.fromEntries(units.map((unit) => [unit, project.work_units?.[unit] ?? {}])) }, null, 2));
     const elsewhere = other();
 
     try {
@@ -157,12 +153,12 @@ describe('measures bugs (17.1.6, 17.3.1)', () => {
         ok: true,
         projects: [dir, elsewhere],
         bugs: [
-          { project: dir, area: 'checkout', count: 3, fixed: [{ unit: 'cards', bugfixes: ['card-declined', 'double-charge'] }, { unit: 'refunds', bugfixes: ['refund-twice'] }] },
-          { project: dir, area: 'refunds', count: 1, fixed: [{ unit: 'refunds', bugfixes: ['refund-rounding'] }] },
+          { project: dir, area: 'card  refunds', count: 2, fixed: [{ unit: 'cards', bugfixes: ['card-refund'] }, { unit: 'refunds', bugfixes: ['refund-rounding'] }] },
+          { project: dir, area: 'Checkout', count: 3, fixed: [{ unit: 'cards', bugfixes: ['card-declined', 'double-charge'] }, { unit: 'refunds', bugfixes: ['refund-twice'] }] },
           { project: dir, area: null, count: 1, fixed: [{ unit: 'cards', bugfixes: ['odd-total'] }] },
           { project: elsewhere, area: 'checkout', count: 1, fixed: [{ unit: 'shop', bugfixes: ['lost-basket'] }] },
         ],
-      });
+      }, 'a bug in code no unit built, one concluded before its unit\'s review ended, and a unit moved off bugfix are left out; a cancelled bugfix counts');
       const findings = ok(dir, ['measures', 'findings', '--project', dir, '--project', elsewhere]);
       assert.deepStrictEqual({ phases, unread }, { phases: findings.phases, unread: findings.unread }, 'the findings per phase beside them, as measures findings answers them');
     } finally {

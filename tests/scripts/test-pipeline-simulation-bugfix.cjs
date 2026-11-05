@@ -5,10 +5,9 @@
 // own verbs — entered at its one topic, the hunt logged on its entries, the
 // plan and check-in gates, both validations briefed and taken in, the fix
 // direction raised, and the conclude gate's yes handing off into the spec —
-// reopened by a gap before the spec and concluded again, naming this time
-// the unit whose code the bug is in, which the bugs found after review read
-// once that unit's review has ended; then the specification with its source
-// pinned to the topic, into the build.
+// reopened by a gap before the spec and concluded again, its recap naming
+// this time the unit whose code the bug is in; then the specification with
+// its source pinned to the topic, into the build.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -173,8 +172,6 @@ describe('pipeline simulation: bugfix', () => {
     sim.refuses(['enter', 'specification', wu], /^crash-fix's spec waits until its investigation concludes/);
     enterEntry(sim, wu, 'investigation', wu);
     concluded(sim, wu, { fixes: 'saving' });
-    assert.strictEqual(JSON.parse(sim.read(['manifest', 'get', `${wu}.investigation.${wu}`])).fixes, 'saving', 'the conclude keeps the unit whose code the bug is in (17.1.9)');
-    assert.deepStrictEqual(sim.run(['measures', 'bugs']).bugs, [], 'a bug in code never through a review counts under none (17.1.6)');
 
     // The spec, entered at the unit — its route naming no topic — through its
     // corridor to ready to build's pick; the spec is never indexed (11.1.2).

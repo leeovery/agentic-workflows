@@ -39,13 +39,16 @@
 // what they stand on.
 //
 // A bug found after review is a bugfix unit whose investigation's conclude
-// recorded the unit whose code it fixes, `fixes` on its item, and the area
-// of the verify setup's feature map it sits in, `area`, where Claude named
-// one (investigation-conclude.cjs, 17.1.9) — counted once that unit's
-// review phase has ended, a round of its passed or settled (14.6.3). The
-// bugs are counted by area, each project's own, then by the unit fixed; a
-// bugfix that names no unit, in code no unit built, counts under none, and
-// so does one whose unit's code was never through a review.
+// recorded the unit whose code it fixes and found that unit's review phase
+// ended then, a round of its passed or settled (14.6.3) — judged at the
+// conclude, the one moment that knows it, never when the count is read
+// (bug-records.cjs, investigation-conclude.cjs). The bugs are counted by
+// area, each project's own, an area known folded for case and spacing by
+// its first spelling, then by the unit fixed. Left out, since no review ran
+// on it: a bug in code no unit built, and one concluded before its unit's
+// review ended, whatever that review did later. A cancelled bugfix counts,
+// one moved to another type does not, and a reopened investigation's record
+// stands until it concludes again (bug-records.cjs).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -55,14 +58,14 @@ const { listWorkUnitManifests } = require('../kernel/manifest-io.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { foldLedger, ID_FACTS } = require('./ledger-fold.cjs');
 const { readReport } = require('./round-report.cjs');
-const { recordedRounds, endsReview } = require('./review-phase.cjs');
+const { recordedRounds } = require('./review-phase.cjs');
+const { byName, areaKey, bugRecords, areaSpellings } = require('./bug-records.cjs');
 const { refusing } = require('./staged-payload.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').IdFacts} IdFacts */
 /** @typedef {'serious'|'bug'|'nit'} Call */
 /** What a phase's reviews found: how many findings, and, where its reviews run in rounds, the findings by call, the rounds and those failed. @typedef {{phase: string, findings: number, calls?: Record<Call, number>, rounds?: number, failed?: number}} PhaseFindings */
-/** A round as the count reads it: its findings' calls, whether it failed, and whether it ended the review phase. @typedef {{calls: string[], failed: boolean, ended?: boolean}} CountedRound */
-/** A bug found after review: the bugfix, the unit whose code it fixes, and its area, null where none was named. @typedef {{bugfix: string, unit: string, area: string|null}} FoundBug */
+/** A round as the count reads it: its findings' calls, and whether it failed. @typedef {{calls: string[], failed: boolean}} CountedRound */
 /** The bugs found after review in one area of a project: how many, and by the unit fixed. @typedef {{project: string, area: string|null, count: number, fixed: Array<{unit: string, bugfixes: string[]}>}} AreaBugs */
 
 const MEASURES = Object.freeze(['findings', 'bugs']);
@@ -124,7 +127,7 @@ function buildGroups(root, unit) {
 /** A unit's review rounds as the count reads them, a record that does not read named in `unread`. @param {string} cwd @param {string} unit @param {string[]} unread @returns {CountedRound[]} */
 function reviewRounds(cwd, unit, unread) {
   try {
-    return recordedRounds(cwd, unit).map((round) => ({ calls: round.findings.map(({ call }) => call), failed: !round.passed, ended: endsReview(round) }));
+    return recordedRounds(cwd, unit).map(({ findings, passed }) => ({ calls: findings.map(({ call }) => call), failed: !passed }));
   } catch (err) {
     unread.push(messageOf(err));
     return [];
@@ -140,26 +143,25 @@ function countRounds(phase, rounds) {
   return { phase, findings: calls.length, calls: byCall, rounds: rounds.length, failed: rounds.filter(({ failed }) => failed).length };
 }
 
-/** Text sorted, null last. @param {string|null} a @param {string|null} b */
-const nullLast = (a, b) => (a === b ? 0 : a === null ? 1 : b === null ? -1 : a.localeCompare(b));
-
 /**
- * A project's bugs found after review, by area, then by the unit fixed.
+ * A project's bugs found after review, by area — no area named last — then
+ * by the unit fixed.
  * @param {string} project @param {Array<Record<string, any>>} manifests
- * @param {Map<string, CountedRound[]>} reviews each unit's review rounds
  * @returns {AreaBugs[]}
  */
-function bugsByArea(project, manifests, reviews) {
-  const reviewed = (/** @type {string} */ unit) => (reviews.get(unit) ?? []).some(({ ended }) => ended);
-  /** @type {FoundBug[]} */
-  const found = manifests.flatMap((manifest) => {
-    const item = manifest.work_type === 'bugfix' ? manifest.phases?.investigation?.items?.[manifest.name] : undefined;
-    return typeof item?.fixes === 'string' && reviewed(item.fixes) ? [{ bugfix: manifest.name, unit: item.fixes, area: item.area ?? null }] : [];
-  });
-  return [...new Set(found.map(({ area }) => area))].sort(nullLast).map((area) => {
+function bugsByArea(project, manifests) {
+  const records = bugRecords(manifests);
+  const spelt = areaSpellings(records);
+  const found = records.flatMap(({ bugfix, fixes, after_review: after, area }) => (
+    fixes !== null && after ? [{ bugfix, fixes, area: area === null ? null : String(spelt.get(areaKey(area))) }] : []));
+  const named = [...new Set(found.flatMap(({ area }) => (area === null ? [] : [area])))].sort(byName);
+  const areas = found.some(({ area }) => area === null) ? [...named, null] : named;
+  return areas.map((area) => {
     const inArea = found.filter((bug) => bug.area === area);
-    const units = [...new Set(inArea.map(({ unit }) => unit))].sort();
-    return { project, area, count: inArea.length, fixed: units.map((unit) => ({ unit, bugfixes: inArea.filter((bug) => bug.unit === unit).map(({ bugfix }) => bugfix).sort() })) };
+    const units = [...new Set(inArea.map(({ fixes }) => fixes))].sort(byName);
+    return {
+      project, area, count: inArea.length, fixed: units.map((unit) => ({ unit, bugfixes: inArea.filter(({ fixes }) => fixes === unit).map(({ bugfix }) => bugfix).sort(byName) })),
+    };
   });
 }
 
@@ -173,12 +175,11 @@ function projectFindings(cwd, unread, warnings) {
   const root = stateRoot(cwd);
   const manifests = listWorkUnitManifests(root);
   const units = manifests.map(({ name }) => /** @type {string} */ (name));
-  const reviews = new Map(units.map((unit) => [unit, reviewRounds(cwd, unit, unread)]));
   return {
     questions: [.../** @type {Map<string, IdFacts>} */ (foldLedger(root, ID_FACTS, warnings)).values()].filter((facts) => facts.event === 'asked'),
     build: units.flatMap((unit) => readRounds(buildGroups(root, unit), unread)),
-    review: [...reviews.values()].flat(),
-    bugs: bugsByArea(cwd, manifests, reviews),
+    review: units.flatMap((unit) => reviewRounds(cwd, unit, unread)),
+    bugs: bugsByArea(cwd, manifests),
   };
 }
 

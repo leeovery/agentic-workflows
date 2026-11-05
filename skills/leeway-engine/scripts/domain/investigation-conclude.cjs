@@ -23,36 +23,39 @@
 //   "area"?}`, is staged in the topic's cache with `--file`, against the
 //   root cause and the fix as they stand, and when it was staged; the
 //   screen draws from it again without `--file`, refused where nothing is
-//   staged, or it was staged before the root cause or the fix changed. The screen shows the recap,
-//   the symptoms in the person's words from the log, the root cause told
-//   against them and the fix direction (19.4.23); each departure the person
-//   made in the investigation that this machine logged is asked its verdict
-//   there first, one at a time — `verdict give … --at conclusion` — none
-//   asked where none was made (16.10.5, 16.10.11); then the conclude gate:
-//   yes, keep going, and a comment. The yes's call carries what the recap
-//   recorded of the code the bug is in, `--fixes` and `--area`, drawn on no
-//   line of the screen (17.2.2).
-// - What the bug is in, for the bugs found after review (17.1.6,
-//   measures.cjs): `fixes`, the unit whose code it fixes — a unit of the
-//   project but this one — named where it lies in code a unit built, none
-//   where no unit built it; and
-//   `area`, the area of the verify setup's feature map it sits in, named
-//   only with `fixes` and only where a verify setup is recorded, the map
-//   beside it. The feature map is the product's, in its own words, so the
-//   area is Claude's reading of it, one line of words.
+//   staged, or it was staged before the root cause or the fix changed. The
+//   screen shows the recap, the symptoms in the person's words from the
+//   log, the root cause told against them and the fix direction (19.4.23);
+//   each departure the person made in the investigation that this machine
+//   logged is asked its verdict there first, one at a time — `verdict give
+//   … --at conclusion` — none asked where none was made (16.10.5,
+//   16.10.11); then the conclude gate: yes, keep going, and a comment. Its
+//   DATA names the areas this project's bugfixes have recorded, each as
+//   first spelt (bug-records.cjs), so Claude names an area alike.
+// - What the bug is in, for the bugs found after review (17.1.6, 17.1.9),
+//   is the recap's, drawn on no line of the screen (17.2.2): `fixes`, the
+//   unit whose code it fixes — a unit of the project but this one — left
+//   out where no unit built that code; and `area`, the area of the verify
+//   setup's feature map it sits in, only where a verify setup is recorded.
+//   The map is the product's, in its own words, so the area is Claude's
+//   reading of it, one line of words, never checked against the map.
 // - The yes stands on the screen as drawn: what is staged was staged
-//   against the root cause and the fix as they stand, and no verdict is
-//   still to ask. Then, under the writer lock, in one manifest save, it
-//   completes the investigation's item and stamps its close, `concluded_at`,
-//   the instant (P2) — what the board dates the investigation by, its
-//   standing read from the item as every phase's is — with `fixes` and
-//   `area` as the yes gives them, none kept from an earlier close, and
-//   commits it, the log riding along; the staged recap goes. It answers `next`, the handoff
-//   into the spec.
+//   against the root cause and the fix as they stand, what the bug is in
+//   still holds, and no verdict is still to ask. Then, under the writer
+//   lock, in one manifest save, it completes the investigation's item and
+//   stamps its close, `concluded_at`, the instant (P2) — what the board
+//   dates the investigation by, its standing read from the item as every
+//   phase's is — with what the bug is in, as staged, none kept from an
+//   earlier close: `fixes` and `area` where named and, with `fixes`,
+//   `after_review`, whether that unit's review phase had ended — a round of
+//   its passed or settled (14.6.3) — judged now, the one moment that knows
+//   whether the bug got past the review. It commits it, the log riding
+//   along; the staged recap goes. It answers `next`, the handoff into the
+//   spec.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
-const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock } = require('../kernel/manifest.cjs');
+const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, listWorkUnitManifests } = require('../kernel/manifest.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { carrying } = require('./ledger.cjs');
 const { mapOf } = require('./ledger-fold.cjs');
@@ -63,6 +66,8 @@ const { mailboxDepth, topicTitle } = require('./derivations.cjs');
 const { validationFor } = require('./agent-state.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { verifySetup } = require('./environment.cjs');
+const { recordedRounds, endsReview } = require('./review-phase.cjs');
+const { byName, bugRecords, areaSpellings } = require('./bug-records.cjs');
 const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 const { huntOf, huntEntries, openInvestigation } = require('./investigation-log.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
@@ -74,7 +79,7 @@ const { concludeScreen } = require('./projections/investigation.cjs');
 /** @typedef {import('./unit-entries.cjs').UnitView} UnitView */
 
 const PHASE = 'investigation';
-const CONCLUDE_USAGE = 'investigation conclude <bugfix> [--fixes <unit> [--area <area>]]';
+const CONCLUDE_USAGE = 'investigation conclude <bugfix>';
 const SURFACE_USAGE = 'render conclude <bugfix> [--file <recap.json>]';
 
 /**
@@ -191,21 +196,25 @@ const oneLine = (value) => filled(value) && !/[\r\n]/.test(value);
 
 /**
  * What the bug is in, refused where the bugfix cannot record it: a unit the
- * project lacks, or this one; an area with no unit, an area where no verify
- * setup is recorded, and an area past one line of words.
+ * project lacks, or this one; an area where no verify setup is recorded, or
+ * past one line of words.
  * @param {string} cwd @param {string} unit @param {Record<string, unknown>} given @returns {BugIn}
  */
 function bugIn(cwd, unit, { fixes, area }) {
-  if (fixes === undefined) {
-    if (area !== undefined) throw new Error('an area is named with the unit whose code the bug is in — --fixes <unit> --area <area>');
-    return {};
+  if (fixes !== undefined) {
+    if (typeof fixes !== 'string' || workUnitNameRefusal(fixes) !== null || manifestOf(stateRoot(cwd), fixes) === null) {
+      throw new Error(`there is no work unit "${fixes}" to fix — the recap's fixes names the unit whose code the bug is in, left out where no unit built it`);
+    }
+    if (fixes === unit) throw new Error(`${unit} cannot fix its own code — the recap's fixes names the unit whose code the bug is in`);
   }
-  if (typeof fixes !== 'string' || workUnitNameRefusal(fixes) !== null || manifestOf(stateRoot(cwd), fixes) === null) throw new Error(`there is no work unit "${fixes}" to fix — --fixes names the unit whose code the bug is in, and none where no unit built it`);
-  if (fixes === unit) throw new Error(`${unit} cannot fix its own code — --fixes names the unit whose code the bug is in`);
-  if (area === undefined) return { fixes };
-  if (!oneLine(area)) throw new Error('the area is one line of words, an area of the verify setup\'s feature map');
-  if (verifySetup(cwd) === null) throw new Error('no verify setup is recorded, so no feature map names an area — leave the area out');
-  return { fixes, area: area.trim() };
+  if (area !== undefined) {
+    if (!oneLine(area)) throw new Error('the area is one line of words, an area of the verify setup\'s feature map');
+    if (verifySetup(cwd) === null) throw new Error('no verify setup is recorded, so no feature map names an area — leave the area out');
+  }
+  return {
+    ...(fixes === undefined ? {} : { fixes: /** @type {string} */ (fixes) }),
+    ...(area === undefined ? {} : { area: /** @type {string} */ (area).trim() }),
+  };
 }
 
 /**
@@ -218,10 +227,15 @@ function recapOf(cwd, unit, file) {
   return { hunt: hunt.trim(), ...bugIn(cwd, unit, rest) };
 }
 
-/** The conclude's yes as the engine runs it, carrying what the bug is in. @param {string} unit @param {BugIn} bug */
-const yesCall = (unit, { fixes, area }) => [
-  'investigation', 'conclude', unit, ...(fixes === undefined ? [] : ['--fixes', fixes]), ...(area === undefined ? [] : ['--area', area]),
-];
+/** The areas this project's bugfixes have recorded, each as first spelt. @param {string} cwd */
+const recordedAreas = (cwd) => [...areaSpellings(bugRecords(listWorkUnitManifests(cwd))).values()].sort(byName);
+
+/**
+ * What the yes keeps of the bug: what the recap named, and with a unit,
+ * whether its review phase has ended.
+ * @param {string} cwd @param {BugIn} bug
+ */
+const kept = (cwd, bug) => (bug.fixes === undefined ? bug : { ...bug, after_review: recordedRounds(cwd, bug.fixes).some(endsReview) });
 
 /**
  * `render conclude <bugfix> [--file <recap.json>]`: the conclude, Claude's
@@ -239,13 +253,14 @@ function concludeSurface(cwd, { dotpath: unit = '', file }) {
         ? stagedFor(cwd, unit, rootCause, fix)
         : stage(stagedFile(cwd, unit), { at: new Date().toISOString(), ...recapOf(cwd, unit, file), root_cause: rootCause.id, fix: fix.id });
       return concludeScreen({
+        unit,
         title: topicTitle(manifest, unit),
         hunt: staged.hunt,
         symptoms: hunt.symptoms.map(({ text }) => text),
         rootCause: rootCause.text,
         fix: fix.text,
         verdict: verdictOf(cwd, unit, staged.at, warnings),
-        yes: yesCall(unit, staged),
+        areas: recordedAreas(cwd),
       });
     } catch (err) {
       throw carrying(err, warnings);
@@ -254,25 +269,24 @@ function concludeSurface(cwd, { dotpath: unit = '', file }) {
 }
 
 /**
- * `investigation conclude <bugfix> [--fixes <unit> [--area <area>]]`: the
- * conclude gate's yes, closing the investigation, recording what the bug is
- * in, and handing the work into its spec.
- * @param {string} cwd @param {string} unit @param {Record<string, string>} given
+ * `investigation conclude <bugfix>`: the conclude gate's yes, closing the
+ * investigation, keeping what the bug is in, and handing the work into its
+ * spec.
+ * @param {string} cwd @param {string} unit
  */
-function concludeInvestigation(cwd, unit, given) {
+function concludeInvestigation(cwd, unit) {
   /** @type {string[]} */
   const warnings = [];
   const concludedAt = new Date().toISOString();
   try {
     const { rootCause, fix } = closing(cwd, unit, 'investigation conclude', warnings);
     const staged = stagedFor(cwd, unit, rootCause, fix);
-    const bug = bugIn(cwd, unit, given);
+    const bug = kept(cwd, bugIn(cwd, unit, staged));
     if (verdictOf(cwd, unit, staged.at, warnings) !== null) throw new Error(`a verdict is still to ask — engine render conclude ${unit} asks each before the yes`);
     const manifest = withWorkUnitLock(cwd, unit, () => {
       const fresh = loadWorkUnitManifest(cwd, unit);
       const item = fresh.phases[PHASE].items[unit];
-      delete item.fixes;
-      delete item.area;
+      for (const field of ['fixes', 'area', 'after_review']) delete item[field];
       Object.assign(item, { status: 'completed', concluded_at: concludedAt, ...bug });
       saveWorkUnitManifest(cwd, unit, fresh);
       return fresh;
@@ -298,8 +312,8 @@ function concludeInvestigation(cwd, unit, given) {
  * @returns {Record<string, unknown>}
  */
 function runInvestigationVerb(cwd, [verb, ...args], opts) {
-  if (verb !== 'conclude' || args.length !== 1 || Object.entries(opts).some(([flag, value]) => !['fixes', 'area'].includes(flag) || value === undefined)) throw new Error(`Usage: engine ${CONCLUDE_USAGE}`);
-  return refusing('investigation conclude', () => concludeInvestigation(cwd, args[0], opts));
+  if (verb !== 'conclude' || args.length !== 1 || Object.keys(opts).length > 0) throw new Error(`Usage: engine ${CONCLUDE_USAGE}`);
+  return refusing('investigation conclude', () => concludeInvestigation(cwd, args[0]));
 }
 
 module.exports = { CONCLUDE_USAGE, concludeSurface, runInvestigationVerb };

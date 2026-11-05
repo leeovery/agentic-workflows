@@ -24,9 +24,9 @@
 // open and no mail waiting, which completes the item, stamps its close,
 // releases its place and hands off into the spec (19.S10, 19.S15, 19.S34,
 // 24.S17, 16.10.5); and what the bug is in, the unit whose code it fixes and
-// the feature map's area, carried from the recap to the yes on no line of
-// the screen, and kept on the item for the bugs found after review
-// (17.1.9, 17.S4's record).
+// the feature map's area, staged with the recap on no line of the screen,
+// and kept by the yes on the item with whether that unit's review had ended
+// then, for the bugs found after review (17.1.9, 17.S4).
 //
 // Layer: verb. World, built once and copied: a bugfix, `crash`, from two
 // seeds, with its brief and discovery's log, not yet started; a bugfix,
@@ -866,7 +866,7 @@ describe('the conclude — a learned process gate, and its yes (19.4.23, 24.1.2)
     validated(dir, RIPE, 'fix-validation', env());
     const stale = `the conclude was drawn before the root cause or the fix changed — it is staged again with engine render conclude ${RIPE} --file <recap.json>`;
     assert.deepStrictEqual([refused(['investigation', 'conclude', RIPE]), refused(['render', 'conclude', RIPE])], [`investigation conclude: ${stale}`, `render conclude: ${stale}`]);
-    assert.deepStrictEqual([['investigation', 'conclude'], ['investigation', 'conclude', RIPE, '--unit', FEATURE], ['investigation', 'conclude', RIPE, '--fixes'], ['investigation', 'close', RIPE]].map((args) => refused(args)), Array(4).fill('Usage: engine investigation conclude <bugfix> [--fixes <unit> [--area <area>]]'));
+    assert.deepStrictEqual([['investigation', 'conclude'], ['investigation', 'conclude', RIPE, '--fixes', FEATURE], ['investigation', 'conclude', RIPE, '--area', 'session restore'], ['investigation', 'close', RIPE]].map((args) => refused(args)), Array(4).fill('Usage: engine investigation conclude <bugfix>'));
     assert.strictEqual(refused(['investigation', 'conclude', HUNT]), `investigation conclude: no root cause is logged — log it: engine investigation-log root-cause ${HUNT} --entry <decision>`);
   });
 
@@ -881,46 +881,71 @@ describe('the conclude — a learned process gate, and its yes (19.4.23, 24.1.2)
     commitAll(dir, 'the verify setup');
   }
 
-  it('17.1.9: what the bug is in rides the recap to the yes on no line of the screen, and the yes keeps it on the investigation\'s item — the unit whose code it fixes and the feature map\'s area — none kept from an earlier close', () => {
+  /** The verify setup taken off the project. */
+  function verifyGone() {
+    const { environment, ...project } = JSON.parse(readState(dir, layout.projectManifest));
+    writeState(dir, layout.projectManifest, JSON.stringify(project, null, 2));
+    commitAll(dir, 'no verify setup');
+  }
+
+  /** `ripe`'s investigation reopened as the product reopens it: a message to the topic, the question it raised answered. */
+  function reopened() {
+    writeState(dir, '.cache/scratch/also.md', 'Also on reboot\n\nIt happens on a reboot too.\n');
+    run(['topic', 'send', RIPE, RIPE, '--from', RIPE, '--content', at('.cache/scratch/also.md'), '--slug', 'also-on-reboot']);
+    const asked = wrote('ask', [], { ...CLAUDE, text: 'Does a reboot lose sessions too?' });
+    wrote('decide', ['--answers', asked], { ...PERSON, text: 'Yes, the same way.', why: 'The person saw it.' });
+    run(['topic', 'answered', RIPE, RIPE, '001-also-on-reboot', '--entry', asked]);
+  }
+
+  /** The fixed unit's review phase ended: a round of its passed. */
+  const reviewPassed = () => writeState(dir, `${FEATURE}/review/round-1.json`, JSON.stringify({ reports: [], passed: true, can_now: [], findings: [], settled: null, scenarios: [] }));
+
+  it('17.1.9: what the bug is in is the recap\'s, on no line of the screen, and the yes keeps it on the investigation\'s item with whether the unit\'s review had ended then — judged then, never later; a second conclude judges again and keeps nothing of the first; the areas recorded named in the DATA (17.S4)', () => {
     const plain = conclude();
     verifySetUp();
-    const named = conclude(RIPE, { ...RECAP, fixes: FEATURE, area: 'session restore' });
+    const named = conclude(RIPE, { ...RECAP, fixes: FEATURE, area: ' Session restore ' });
 
-    assert.strictEqual(named.slice(0, named.indexOf('=== MENU')), plain.slice(0, plain.indexOf('=== MENU')), 'the person sees no flag for it (17.2.2)');
+    assert.strictEqual(named, plain, 'the person sees no flag for it (17.2.2)');
     const { next } = run(['gate', 'conclude gate', '--pick', 'y']);
-    assert.deepStrictEqual(next, { kind: 'engine', argv: ['investigation', 'conclude', RIPE, '--fixes', FEATURE, '--area', 'session restore'] });
+    assert.deepStrictEqual(next, { kind: 'engine', argv: ['investigation', 'conclude', RIPE] });
     withFrozenClock(() => run(next.argv));
-    assert.deepStrictEqual(readManifest(dir, RIPE).phases.investigation.items[RIPE], { status: 'completed', concluded_at: FROZEN_AT, fixes: FEATURE, area: 'session restore' });
+    assert.deepStrictEqual(readManifest(dir, RIPE).phases.investigation.items[RIPE], {
+      status: 'completed', concluded_at: FROZEN_AT, fixes: FEATURE, area: 'Session restore', after_review: false,
+    });
+    reviewPassed();
+    assert.deepStrictEqual(run(['measures', 'bugs']).bugs, [], 'a bug concluded while its unit was still building is not counted once that unit\'s review passes');
 
-    run(['manifest', 'set', `${RIPE}.investigation.${RIPE}`, 'status', 'in-progress']);
-    conclude(RIPE, { ...RECAP, fixes: FEATURE });
-    assert.deepStrictEqual(run(['gate', 'conclude gate', '--pick', 'y']).next.argv, ['investigation', 'conclude', RIPE, '--fixes', FEATURE]);
-    run(['investigation', 'conclude', RIPE]);
-    const { fixes, area } = readManifest(dir, RIPE).phases.investigation.items[RIPE];
-    assert.deepStrictEqual([fixes, area], [undefined, undefined], 'a bug in code no unit built names none, and nothing is kept from the earlier close');
+    reopened();
+    assert.ok(conclude(RIPE, { ...RECAP, fixes: FEATURE }).startsWith(data(['area: Session restore'])), 'the areas recorded, so Claude names one alike');
+    run(run(['gate', 'conclude gate', '--pick', 'y']).next.argv);
+    const { fixes, area, after_review: after } = readManifest(dir, RIPE).phases.investigation.items[RIPE];
+    assert.deepStrictEqual([fixes, area, after], [FEATURE, undefined, true], 'judged again, and nothing kept of the earlier close');
+    assert.deepStrictEqual(run(['measures', 'bugs']).bugs, [{ project: dir, area: null, count: 1, fixed: [{ unit: FEATURE, bugfixes: [RIPE] }] }]);
   });
 
-  it('refuses what the bug is in, writing nothing: a unit the project lacks or this one, an area with no unit, an area where no verify setup is recorded, and one past a line', () => {
+  it('refuses what the bug is in, writing nothing — a unit the project lacks or this one, an area where no verify setup is recorded or past a line — at the gate, and at the yes once it no longer holds; an area with no unit is kept, a bug in code no unit built', () => {
     const recap = (/** @type {Record<string, string>} */ bug) => concludeRefused(RIPE, { ...RECAP, ...bug });
     assert.deepStrictEqual([
       recap({ fixes: 'nowhere' }),
+      recap({ fixes: '.' }),
       recap({ fixes: RIPE }),
       recap({ area: 'session restore' }),
-      recap({ fixes: FEATURE, area: 'session restore' }),
     ], [
-      'render conclude: there is no work unit "nowhere" to fix — --fixes names the unit whose code the bug is in, and none where no unit built it',
-      `render conclude: ${RIPE} cannot fix its own code — --fixes names the unit whose code the bug is in`,
-      'render conclude: an area is named with the unit whose code the bug is in — --fixes <unit> --area <area>',
+      'render conclude: there is no work unit "nowhere" to fix — the recap\'s fixes names the unit whose code the bug is in, left out where no unit built it',
+      'render conclude: there is no work unit "." to fix — the recap\'s fixes names the unit whose code the bug is in, left out where no unit built it',
+      `render conclude: ${RIPE} cannot fix its own code — the recap's fixes names the unit whose code the bug is in`,
       'render conclude: no verify setup is recorded, so no feature map names an area — leave the area out',
     ]);
     verifySetUp();
     assert.strictEqual(recap({ fixes: FEATURE, area: 'session\nrestore' }), 'render conclude: the area is one line of words, an area of the verify setup\'s feature map');
 
-    conclude();
-    assert.deepStrictEqual([['--fixes', 'nowhere'], ['--area', 'session restore']].map((flags) => refused(['investigation', 'conclude', RIPE, ...flags])), [
-      'investigation conclude: there is no work unit "nowhere" to fix — --fixes names the unit whose code the bug is in, and none where no unit built it',
-      'investigation conclude: an area is named with the unit whose code the bug is in — --fixes <unit> --area <area>',
-    ]);
+    conclude(RIPE, { ...RECAP, area: 'session restore' });
+    verifyGone();
+    assert.strictEqual(refused(['investigation', 'conclude', RIPE]), 'investigation conclude: no verify setup is recorded, so no feature map names an area — leave the area out');
+    verifySetUp();
+    run(['investigation', 'conclude', RIPE]);
+    const { fixes, area, after_review: after } = readManifest(dir, RIPE).phases.investigation.items[RIPE];
+    assert.deepStrictEqual([fixes, area, after], [undefined, 'session restore', undefined]);
   });
 
   it('16.10.5: a call the person changed in the investigation is asked its verdict first, at the conclusion, and the yes waits for it; none changed, none asked', async () => {
