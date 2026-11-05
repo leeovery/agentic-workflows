@@ -45,10 +45,10 @@ const { counted } = require('./map.cjs');
  */
 
 /**
- * The conclude as it is drawn: the bugfix, the topic as screens title it,
- * Claude's recap, the symptoms in the person's words, the root cause and the
- * fix, each in its words, and the verdict asked.
- * @typedef {{unit: string, title: string, hunt: string, symptoms: string[], rootCause: string, fix: string, verdict: import('../ledger-verdicts.cjs').AskedVerdict|null}} ConcludeView
+ * The conclude as it is drawn: the topic as screens title it, Claude's
+ * recap, the symptoms in the person's words, the root cause and the fix,
+ * each in its words, the verdict asked, and the engine call its yes runs.
+ * @typedef {{title: string, hunt: string, symptoms: string[], rootCause: string, fix: string, verdict: import('../ledger-verdicts.cjs').AskedVerdict|null, yes: string[]}} ConcludeView
  */
 
 const INDENT = '  ';
@@ -131,7 +131,7 @@ function checkInScreen({ title, hypotheses, resolved, experiments, next }) {
  * else the conclude gate.
  * @param {ConcludeView} view @returns {string}
  */
-function concludeScreen({ unit, title, hunt, symptoms, rootCause, fix, verdict }) {
+function concludeScreen({ title, hunt, symptoms, rootCause, fix, verdict, yes }) {
   const blocks = [header(title, 'conclude'), block('THE HUNT', indented(hunt))];
   if (symptoms.length > 0) blocks.push(block(`SYMPTOMS (${symptoms.length})`, symptoms.map(bulleted).join('\n')));
   blocks.push(block('ROOT CAUSE', indented(rootCause)), block('FIX DIRECTION', indented(fix)));
@@ -139,7 +139,7 @@ function concludeScreen({ unit, title, hunt, symptoms, rootCause, fix, verdict }
   const display = section('DISPLAY: investigation conclude', CONTINUE_INSTRUCTION, blocks.join('\n\n'));
   if (verdict !== null) return display + verdictGate(verdict, 'conclusion');
   return display + section('MENU: conclude gate', MENU_INSTRUCTION, menu('', [
-    cmdOption('y', 'yes', 'Conclude it, and move on to the spec', { next: { kind: 'engine', argv: ['investigation', 'conclude', unit] } }),
+    cmdOption('y', 'yes', 'Conclude it, and move on to the spec', { next: { kind: 'engine', argv: yes } }),
     cmdOption('k', 'keep going', 'Keep investigating — there is more to look at', GO),
     promptOption('Comment', 'Tell me what does not match what you saw'),
   ], { question: 'Conclude the investigation?' }));

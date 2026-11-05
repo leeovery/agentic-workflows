@@ -1443,8 +1443,9 @@ function runScratch(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
-// measures — the authors' queries over their own projects
-// (domain/measures.cjs): review findings per phase. A read.
+// measures — the measures read over the projects named
+// (domain/measures.cjs): review findings per phase, and bugs found after
+// review beside them. A read.
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */
