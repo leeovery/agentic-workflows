@@ -32,10 +32,11 @@
 //   — its findings' fixes and any other the tracker holds there, as the
 //   review waits on them (review-phase.cjs) — from the unit's one read of
 //   the tracker (board.cjs).
-// - Finish waits on the person once the review phase is over (D18): a round
-//   ended it and its fix tasks and builders' notes are done.
-// - The questions its fix tasks wait on are the build's (board-build.cjs):
-//   WAITING ON YOU, each a press can queue, and whether they stop it.
+// - What waits on the person is the unit's one list (board-standing.cjs):
+//   the questions the review waits on, each a press can queue, or finish
+//   once the phase is over and no question waits (D18). The review has
+//   stopped where nothing of it can go on without an answer, as the stop
+//   has it (board-build.cjs).
 // - A check opens on its page (20.10.3): where it stands in the round that
 //   recorded it, or round 1's at the change's tips while it is read, with
 //   its scenario's words from the spec.
@@ -237,11 +238,13 @@ function roundRecorded(at, standing, record, round) {
 }
 
 /**
- * The review phase's This session (the header's), and the questions its
- * fix tasks wait on, as the build's view reads them.
- * @param {BoardAt} at @returns {{view: ReviewView, questions: import('../board-model.cjs').Question[]}}
+ * The review phase's This session (the header's), what waits on the person
+ * the unit's one list (board-standing.cjs), and the questions the review
+ * waits on, as the build's view reads them.
+ * @param {BoardAt} at @param {import('../board-model.cjs').WaitingLine[]} waiting
+ * @returns {{view: ReviewView, questions: import('../board-model.cjs').Question[]}}
  */
-function reviewView(at) {
+function reviewView(at, waiting) {
   const standing = reviewStandingAt(at);
   const round = shownRound(standing);
   const record = standing.rounds[round - 1];
@@ -256,8 +259,7 @@ function reviewView(at) {
       type: at.manifest.work_type,
       built,
       round,
-      finish: standing.over,
-      waiting: build.view.waiting,
+      waiting,
       stopped: build.view.progress.stopped,
       ...(record === undefined ? roundUnderWay(at, standing, round) : roundRecorded(at, standing, record, round)),
     },

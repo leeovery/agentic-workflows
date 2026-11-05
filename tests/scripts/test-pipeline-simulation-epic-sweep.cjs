@@ -69,6 +69,24 @@ describe('pipeline simulation: epic, the sweep before the spec', () => {
     arrive(sim, WU);
   });
 
+  it('S1, N4: the sweep\'s candidates alone, no topic reopened, hold the specification on the epic\'s DEFINITION by the map waiting, as the banner and All work have it (8.10.9)', () => {
+    specEntry(sim, WU, ['alpha', 'beta']);
+    sim.run(['brief', 'sweep', WU]);
+    sim.write(`.leeway/.cache/${WU}/specification/sweep.json`, {
+      candidates: [{ name: 'gamma', reason: 'Alpha and beta each lean on an export neither owns.', brief: '# Gamma\n\nThe export both lean on.\n' }],
+      messages: [],
+      builder_calls: [],
+    });
+    sim.render(sim.run(['sweep', 'take', WU]).next.argv.slice(1), { expect: 'content' });
+    const board = (/** @type {string[]} */ args) => JSON.parse(sim.read(['board', sim.env.CLAUDE_CODE_SESSION_ID, ...args]));
+
+    assert.deepStrictEqual(standingOn(board, WU), {
+      tab: { now: 'specification', spec: 'map', build: 'waits', waiting: ['map approve-the-map'] },
+      all: { phase: 'specification', standing: 'being written', waiting: 1, total: 1 },
+      banner: { state: 'needs', waits: ['⚑ the map waits on you'] },
+    });
+  });
+
   it('epic: the empty sweep taken, the spec carries on and lands (8.10.3, 11.S3)', () => {
     specEntry(sim, WU, ['alpha', 'beta']);
     sim.run(['brief', 'sweep', WU]);

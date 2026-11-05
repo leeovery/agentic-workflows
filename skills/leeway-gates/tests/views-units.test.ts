@@ -1,6 +1,6 @@
 import { describe, expect, test, tier } from 'claude-code/testing'
 
-import { COLOUR, RUNNING_FRAMES, type Line } from '../hooks/draw.ts'
+import { COLOUR, MARK, RUNNING_FRAMES, type Line } from '../hooks/draw.ts'
 import type { View } from '../hooks/model.ts'
 import { ALL } from '../hooks/views/all.ts'
 import { EPIC, PHASE, UNIT } from '../hooks/views/unit.ts'
@@ -169,13 +169,15 @@ LATELY ────────────────────────�
     expect([complete[3], complete.at(-1)]).toEqual(['started 17 Jul · complete 24 Oct', '✓ Build and review · complete'])
   })
 
-  test('S1: the specification waiting on the person\'s answer, and the build stopped or finish waiting, each flagged on its stage, saying for what', () => {
+  test('S1: the specification held by the sweep\'s map or the person\'s answer, and the build stopped or finish waiting, each flagged on its stage, saying for what', () => {
     const stages = (spec: object, build: object) => drawn(EPIC, fumiAt({ progress: { decided: 15, total: 15, discussing: 0 }, spec, build }))
+    const map = stages({ state: 'map', session: 'this' }, { state: 'waits', session: null })
     const asking = stages({ state: 'asking', session: 'this' }, { state: 'waits', session: null })
     const stopped = stages({ state: 'complete', session: null }, { state: 'stopped', session: 'this' })
     const finish = stages({ state: 'complete', session: null }, { state: 'finish', session: null })
 
-    expect([asking.text.find(row => row.includes('Specification')), stopped.text.at(-1), finish.text.at(-1)]).toEqual([
+    expect([map.text.find(row => row.includes('Specification')), asking.text.find(row => row.includes('Specification')), stopped.text.at(-1), finish.text.at(-1)]).toEqual([
+      '⚑ Specification · the map waits on you',
       '⚑ Specification · waits on your answer',
       '⚑ Build and review · stopped',
       '⚑ Build and review · finish waits on you',
@@ -229,17 +231,20 @@ LATELY ────────────────────────�
     )
   })
 
-  test('20.15.1 LATELY: each pass of the spec\'s review with what it found, and the specification written with its counts', () => {
+  test('20.15.1 LATELY: each pass of the spec\'s review with what it found, each question a pass asked the person flagged, and the specification written with its counts', () => {
     const lately = [
       { kind: 'pass', at: '2026-10-21T13:20:00', topic: null, detail: '2 found 3 · 2 calls, 1 yours' },
+      { kind: 'asked', at: '2026-10-21T13:10:00', topic: null, detail: "2 asked you about the halving line's part count" },
       { kind: 'spec-landed', at: '2026-10-21T13:00:00', topic: null, detail: '18 sections, 8 phases cut' },
     ]
-    const { text } = drawn(UNIT, { ...MINT, lately } as View, { waiting: HELD, now: NOW })
+    const { text, lines } = drawn(UNIT, { ...MINT, lately } as View, { waiting: HELD, now: NOW })
 
-    expect(text.slice(-2)).toEqual([
+    expect(text.slice(-3)).toEqual([
       '◆ Pass 2 found 3 · 2 calls, 1 yours                    10m ago',
+      "⚑ Pass 2 asked you about the halving line's part count 20m ago",
       '✓ Specification written · 18 sections, 8 phases cut    30m ago',
     ])
+    expect(lines.find(line => line.key === 'unit:lately:1')?.parts[0]).toEqual({ text: MARK.needs, color: COLOUR.needs })
   })
 
   test('20.3.7: a phase the session is in opens This session; a finished phase that reads in full opens its page; any other presses nothing', () => {

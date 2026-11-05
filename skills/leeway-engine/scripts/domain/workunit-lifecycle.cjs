@@ -230,7 +230,8 @@ function reactivateWorkUnit(cwd, workUnit) {
 
 /**
  * Pivot a feature to an epic: flip `work_type` in the work-unit manifest AND
- * the project manifest's registration, register the feature's single topic
+ * the project manifest's registration, the epic's map approved at the pivot
+ * (`phases.discovery.approved_at`, 18.3.5), register the feature's single topic
  * (topic name = work unit name) on the discovery map with backfill semantics
  * (summary-backfill drafts summary/description on the next epic entry),
  * re-index the unit so chunk metadata carries the new work_type
@@ -265,6 +266,7 @@ function pivotWorkUnit(cwd, workUnit) {
     readProjectManifest(cwd);
 
     loaded.work_type = 'epic';
+    ensureContainer(ensureContainer(loaded, 'phases', 'phases'), 'discovery', 'phases.discovery').approved_at = new Date().toISOString();
     saveWorkUnitManifest(cwd, workUnit, loaded);
   });
 

@@ -202,7 +202,7 @@ function unitAt(cwd, session, place, unit, inFlight, warnings, task) {
  */
 const PHASE_VIEWS = Object.freeze({
   implementation: { read: buildView, banner: (_, view) => buildBanner(view), of: (type) => type !== 'quick-fix' },
-  review: { read: reviewView, banner: (at, view) => reviewBanner(view, roundWords(at), waitingOn(at)) },
+  review: { read: (at) => reviewView(at, waitingOn(at)), banner: (at, view) => reviewBanner(view, roundWords(at), waitingOn(at)) },
   discussion: { read: discussionView, banner: (_, view) => discussionBanner(view) },
   specification: { read: (at) => specView(at, waitingOn(at)), banner: (at) => specBanner(at, waitingOn(at)) },
   discovery: { read: (at) => discoveryView(at, waitingOn(at)), banner: (_, view) => discoveryBanner(view), of: (type) => type === 'epic' },

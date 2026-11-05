@@ -1,4 +1,4 @@
-// Mint's All work as engine board answers it, this session in its build and a topic of another unit's on the roadmap, held to its shape by tests/scripts/test-engine-board-views.cjs.
+// Mint's All work as engine board answers it, this session in its build and a topic of another unit's on the roadmap, held to its shape by tests/scripts/test-engine-board-units.cjs.
 export default {
   kind: 'all',
   project: 'Mint',

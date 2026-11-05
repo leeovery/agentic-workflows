@@ -9,7 +9,7 @@ const os = require('os');
 const path = require('path');
 
 const {
-  git, stateGit, commitAll, setupFixtureAt, okSections, refuses, output, keywordOnlyKnowledge, unreadableKnowledge, indexedFiles,
+  git, stateGit, commitAll, setupFixtureAt, okSections, refuses, output, keywordOnlyKnowledge, unreadableKnowledge, indexedFiles, withFrozenClock, FROZEN_AT,
 } = require('./engine-harness.cjs');
 const store = require('../../skills/leeway-engine/scripts/kernel/knowledge/store.cjs');
 
@@ -109,12 +109,12 @@ describe('engine workunit pivot — happy path', () => {
   let fix;
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
-  it('flips work_type in BOTH manifests, registers the backfill map item, re-indexes, commits', () => {
+  it('flips work_type in BOTH manifests, the map approved at the pivot, registers the backfill map item, re-indexes, commits', () => {
     fix = setupFixture();
     indexUnit(fix);
     assert.deepStrictEqual(chunkWorkTypes(fix), ['feature']);
     writeFile(fix.project, 'unrelated.txt', 'outside the scope\n');
-    const res = engine(fix, ['workunit', 'pivot', 'auth-flow']);
+    const res = withFrozenClock(() => engine(fix, ['workunit', 'pivot', 'auth-flow']));
 
     assert.deepStrictEqual(res, {
       ok: true,
@@ -142,6 +142,7 @@ describe('engine workunit pivot — happy path', () => {
     assert.deepStrictEqual(m.phases.discovery.items, {
       'auth-flow': { source: 'discovery' },
     });
+    assert.strictEqual(m.phases.discovery.approved_at, FROZEN_AT, 'the map it lands approved at the pivot (18.3.5)');
     // The project-manifest registration flips too; siblings untouched.
     assert.deepStrictEqual(readProjectManifest(fix).work_units, {
       'auth-flow': { work_type: 'epic' },

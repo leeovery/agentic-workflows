@@ -605,7 +605,7 @@ describe('the append-only check on a read', () => {
     assert.deepStrictEqual(stopped(root), { line: 1, found: null });
   });
 
-  it('checks the ledger once in reads taken as one: a line rewritten after the first check passed reads unchecked until they end, and stops the first read after; a first check that stops stops them', () => {
+  it('checks the ledger once in reads taken as one: a line rewritten after the first check passed reads unchecked until they end, and stops the first read after; a check that stops stops every read after it', () => {
     const { root } = codeProject(world, FUMI);
     const [a, b, c] = threeCommitted(root);
     const rewritten = b.replace('A near-frameless floating note.', 'A floating note.');
@@ -617,7 +617,10 @@ describe('the append-only check on a read', () => {
     });
 
     assert.deepStrictEqual(stopped(root), { line: 2, found: rewritten });
-    assert.throws(() => withOneCheck(() => checkLedger(root, [])), LedgerChanged);
+    withOneCheck(() => {
+      assert.throws(() => checkLedger(root, []), LedgerChanged);
+      assert.throws(() => checkLedger(root, []), LedgerChanged, 'a check that stopped marks nothing: the next read checks again');
+    });
   });
 
   it('hashes the file against the blob in a repository whose objects are named by sha256 too', () => {

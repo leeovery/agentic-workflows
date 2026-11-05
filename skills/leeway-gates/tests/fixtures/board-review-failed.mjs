@@ -7,7 +7,6 @@ export default {
   "type": "feature",
   "built": 99,
   "round": 1,
-  "finish": false,
   "waiting": [],
   "stopped": false,
   "recorded": true,

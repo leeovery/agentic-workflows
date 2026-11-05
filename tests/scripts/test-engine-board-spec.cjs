@@ -243,7 +243,7 @@ describe('a specification on the board (20.9)', () => {
       ['pass', later(3), '2 found 2 · 2 calls, 0 yours'],
       ['spec-landed', null, '2 sections'],
       ['pass', later(1), '1 read the whole specification · found 2'],
-      ['asked', askedOn, '1 asked you: Is a refund ever split?'],
+      ['asked', askedOn, '1 asked you about is a refund split?'],
       ['spec-landed', null, '2 sections'],
     ]);
   });

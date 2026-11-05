@@ -236,7 +236,7 @@ const bareRow = (key: string, mark: Part, text: string, ref: string, width: numb
 })
 
 const discussionLines = (view: Discussion, kit: Kit): Line[] => [
-  ...header('talk', view.topic_title, [{ text: ' · discussion', color: COLOUR.secondary }], `${view.title} · ${view.type}`),
+  ...header('talk', view.topic_title, [{ text: ' · discussion', color: COLOUR.secondary }], `${view.title} · ${view.type}`, kit.width),
   ...(view.live ? liveLines(view, kit) : pageLines(view, kit)),
 ]
 

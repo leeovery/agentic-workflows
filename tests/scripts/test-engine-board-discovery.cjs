@@ -22,7 +22,7 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { ok, writeState, readState, readManifest, layout } = require('./engine-harness.cjs');
+const { ok, writeState, readState, readManifest, layout, withFrozenClock, FROZEN_AT } = require('./engine-harness.cjs');
 const { EPIC, SESSION, useGatesWorld, gatesHelpers } = require('./discovery-gates-world.cjs');
 const { SESSION_ID } = require('./ledger-world.cjs');
 const { fixture, fixtureModule, misfits, emptyLists, standingOn } = require('./board-world.cjs');
@@ -114,25 +114,25 @@ describe('discovery on the board (20.11)', () => {
     ok(dir(), ['topic', 'add', EPIC, 'pricing', '--summary', 'What it costs', '--brief', scratch('# Pricing\n')]);
     const shaping = { tab: board(['--tab', 'unit']).view, all: board(['--tab', 'all']).view.units.find(({ unit }) => unit === EPIC) };
     screen(['approve-map', EPIC], { topics: [{ name: 'pricing' }, { name: 'note-model', summary: 'What a note is', brief: scratch(NOTE_BRIEF) }], parks: [] });
-    const before = new Date().toISOString();
-    run(answer('approve the map', 'y'));
+    withFrozenClock(() => run(answer('approve the map', 'y')));
     const approved = readManifest(dir(), EPIC).phases.discovery.approved_at;
     const page = board(['--tab', 'unit']).view;
 
     assert.deepStrictEqual({
       shaping: { kind: shaping.tab.kind, now: shaping.tab.now, all: [shaping.all.phase, shaping.all.standing] },
-      approved: approved >= before && approved <= new Date().toISOString(),
+      approved,
       page: { kind: page.kind, now: page.now },
     }, {
       shaping: { kind: 'unit', now: { phase: 'discovery', since: null }, all: ['discovery', '1 topic on the map'] },
-      approved: true,
-      page: { kind: 'epic', now: { phase: 'discussion', since: approved } },
+      approved: FROZEN_AT,
+      page: { kind: 'epic', now: { phase: 'discussion', since: FROZEN_AT } },
     });
   });
 
-  it('S1, 8.8.21: the map staged again once approved waits on every view that reads the epic — its page under what waits, All work counting it — as the banner flags it', () => {
+  it('S1, 8.8.21: the map staged again once approved waits on every view that reads the epic — its page under what waits, All work counting it — as the banner flags it, and at the menu says unflagged; its yes records the new approval', () => {
     staged();
     run(answer('approve the map', 'y'));
+    const first = readManifest(dir(), EPIC).phases.discovery.approved_at;
     ok(dir(), ['enter', 'discovery', EPIC], { env: SESSION });
     screen(['approve-map', EPIC], { topics: [{ name: 'sharing' }, { name: 'note-model' }], parks: [] });
 
@@ -142,6 +142,12 @@ describe('discovery on the board (20.11)', () => {
       banner: { state: 'needs', waits: ['⚑ the map waits on you'] },
     });
     assert.deepStrictEqual(board(['--tab', 'unit']).view.waiting, [{ ...APPROVAL, text: 'Approve the map: 2 topics in this order' }]);
+    ok(dir(), ['session', 'label', EPIC], { env: SESSION });
+    assert.deepStrictEqual(ok(dir(), ['board', SESSION_ID], { env: SESSION }).banner, {
+      name: 'Fumi', state: 'running', facts: [fact('epic'), fact('at its menu'), fact('0 of 2 topics decided'), { text: 'the map waits on you', needs: false, waits: true }],
+    }, 'D40: at the epic\'s menu the banner says what waits, unflagged, the banner not waiting on the person');
+    withFrozenClock(() => run(answer('approve the map', 'y')));
+    assert.deepStrictEqual([first === FROZEN_AT, readManifest(dir(), EPIC).phases.discovery.approved_at], [false, FROZEN_AT]);
   });
 
   it('20.11.2: a topic of the staged map opens on its brief\'s draft, at its place on the map, by its sections, one with nothing in it left out; one the map lacks is unavailable, saying why', () => {

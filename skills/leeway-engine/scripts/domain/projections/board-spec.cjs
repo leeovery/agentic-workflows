@@ -45,7 +45,8 @@
 // - Ready to build waits on the review settling, then on the person's yes.
 // - Each reported pass is a moment of the unit lately, when it was
 //   dispatched, with what it found as its findings stand; and each question
-//   a pass asked the person, when it was asked (D23).
+//   a pass asked the person, by the label of the finding it was asked as,
+//   when it was asked (D23).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -69,6 +70,12 @@ const { counted } = require('./map.cjs');
 /** @typedef {import('../board-model.cjs').FindingStanding} FindingStanding */
 /** @typedef {import('../spec-passes.cjs').Gap} Gap */
 /** @typedef {ReturnType<typeof reportedPasses>[number]} Reported */
+
+/** The unit's passes reported, read once a call. @param {BoardAt} at @returns {Reported[]} */
+const reportedOf = (at) => at.once('reported-passes', () => reportedPasses(at.cwd, at.unit));
+
+/** The unit's gaps waiting on the person, read once a call. @param {BoardAt} at @returns {ReturnType<typeof waitingGaps>} */
+const gapsOf = (at) => at.once('waiting-gaps', () => waitingGaps(at.cwd, at.unit, at.warnings));
 /** @typedef {import('../spec-sections.cjs').SpecReading} SpecReading */
 /** @typedef {import('../unit-entries.cjs').UnitView} Entries */
 
@@ -162,16 +169,17 @@ function foundBy(standings) {
  * @param {BoardAt} at @returns {import('../board-model.cjs').Moment[]}
  */
 function passMoments(at) {
-  const reported = reportedPasses(at.cwd, at.unit);
+  const reported = reportedOf(at);
   if (reported.length === 0) return [];
   const passes = passStandings(at, reported).map((standings, k) => {
     const { found, calls, yours } = foundBy(standings);
     const said = k === 0 ? `read the whole specification · found ${found}` : `found ${found} · ${counted(calls, 'call')}, ${yours} yours`;
     return { kind: 'pass', at: new Date(reported[k].created).toISOString(), topic: null, detail: `${k + 1} ${said}` };
   });
-  const asked = withUnitEntries(at.cwd, at.unit, at.warnings, ({ entries }) => reported.flatMap((pass, k) => pass.asked.flatMap(({ entry }) => {
+  const asked = withUnitEntries(at.cwd, at.unit, at.warnings, ({ entries }) => reported.flatMap((pass, k) => pass.asked.flatMap(({ finding, entry }) => {
     const line = entries.get(entry)?.line;
-    return line === undefined ? [] : [{ kind: 'asked', at: String(line.at), topic: null, detail: `${k + 1} asked you: ${String(line.text)}` }];
+    const about = pass.findings.find(({ id }) => id === finding)?.label ?? String(line?.text);
+    return line === undefined ? [] : [{ kind: 'asked', at: String(line.at), topic: null, detail: `${k + 1} asked you about ${about}` }];
   })));
   return [...passes, ...asked];
 }
@@ -255,7 +263,7 @@ const readyWaits = (cwd, unit, warnings) => fs.existsSync(specPath(cwd, unit)) &
  * @param {BoardAt} at @param {WaitingLine[]} waiting @param {Reported[]} reported @param {SpecReading|null} reading @returns {GapLine[]}
  */
 function gapsWith(at, waiting, reported, reading) {
-  const gaps = waiting.some(({ kind }) => kind === 'gap') ? new Map(waitingGaps(at.cwd, at.unit, at.warnings).map((gap) => [gap.short, gapLine(at, gap, reported, reading)])) : new Map();
+  const gaps = waiting.some(({ kind }) => kind === 'gap') ? new Map(gapsOf(at).map((gap) => [gap.short, gapLine(at, gap, reported, reading)])) : new Map();
   return waiting.map((line) => gaps.get(line.id) ?? { ...line, pass: null, finding: null, sections: [] });
 }
 
@@ -266,14 +274,13 @@ function gapsWith(at, waiting, reported, reading) {
  * @param {BoardAt} at @returns {WaitingLine[]}
  */
 function specWaits(at) {
-  const reported = reportedPasses(at.cwd, at.unit);
-  return [
-    ...waitingGaps(at.cwd, at.unit, at.warnings).map((gap) => {
-      const { kind, id, text, page } = gapLine(at, gap, reported, null);
-      return { kind, id, text, page };
-    }),
-    ...(readyWaits(at.cwd, at.unit, at.warnings) ? [{ kind: /** @type {const} */ ('ready'), id: 'ready-to-build', text: 'Ready to build: the outline and the phase cut, for your yes', page: null }] : []),
-  ];
+  const reported = reportedOf(at);
+  const gaps = gapsOf(at).map((gap) => {
+    const { kind, id, text, page } = gapLine(at, gap, reported, null);
+    return { kind, id, text, page };
+  });
+  if (gaps.length > 0) return gaps;
+  return readyWaits(at.cwd, at.unit, at.warnings) ? [{ kind: /** @type {const} */ ('ready'), id: 'ready-to-build', text: 'Ready to build: the outline and the phase cut, for your yes', page: null }] : [];
 }
 
 /**
@@ -284,7 +291,7 @@ function specWaits(at) {
  * @param {BoardAt} at @param {WaitingLine[]} waiting what waits on the person in the unit
  */
 function specDoing(at, waiting) {
-  const reported = reportedPasses(at.cwd, at.unit).length;
+  const reported = reportedOf(at).length;
   const out = passesInFlight(at.cwd, at.unit);
   const latest = out.at(-1);
   if (latest !== undefined) return OUT[latest.stands](reported + out.length);
@@ -301,7 +308,7 @@ function specDoing(at, waiting) {
 function specView(at, waiting) {
   const text = specText(at);
   const reading = text === null ? null : specReading(text);
-  const reported = reportedPasses(at.cwd, at.unit);
+  const reported = reportedOf(at);
   const out = passesInFlight(at.cwd, at.unit);
   const reads = text === null || out.length === 0 ? null : [...areasOf(sectionsToReview(at.cwd, at.unit, text).changed)];
   const beingRead = out.some(({ stands }) => stands === 'running') ? reads : null;
@@ -354,7 +361,7 @@ function sectionPage(at, number) {
   const reading = text === null ? null : specReading(text);
   const heading = reading?.headings.find((held) => held.kind === 'area' && String(held.number) === number);
   if (reading === null || heading === undefined) throw new Error(`${at.unit}'s spec holds no section ${number}`);
-  const changed = changedBy(changesOf(reportedPasses(at.cwd, at.unit), text));
+  const changed = changedBy(changesOf(reportedOf(at), text));
   return { kind: 'section', unit: at.unit, number, title: heading.title, changed_by: changed.get(number) ?? [], text: sectionProse(reading, number) };
 }
 
@@ -384,7 +391,7 @@ function reportedPass(at, reported, said) {
  * @param {BoardAt} at @param {string} said @returns {import('../board-model.cjs').PassPage}
  */
 function passPage(at, said) {
-  const reported = reportedPasses(at.cwd, at.unit);
+  const reported = reportedOf(at);
   const pass = reportedPass(at, reported, said);
   const k = Number(said) - 1;
   const changes = changesOf(reported, specText(at));
@@ -408,7 +415,7 @@ function passPage(at, said) {
  * @param {BoardAt} at @param {string} said @param {string} id @returns {import('../board-model.cjs').SpecFindingPage}
  */
 function specFindingPage(at, said, id) {
-  const reported = reportedPasses(at.cwd, at.unit);
+  const reported = reportedOf(at);
   const pass = reportedPass(at, reported, said);
   const finding = pass.findings.find((held) => held.id === id);
   if (finding === undefined) throw new Error(`${at.unit}'s pass ${said} holds no finding ${id}`);
@@ -434,4 +441,4 @@ function specFindingPage(at, said, id) {
   };
 }
 
-module.exports = { specView, specBanner, specDoing, specWaits, sectionPage, passPage, specFindingPage, passMoments };
+module.exports = { specView, specBanner, specDoing, specWaits, reportedOf, sectionPage, passPage, specFindingPage, passMoments };

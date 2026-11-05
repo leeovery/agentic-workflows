@@ -8,12 +8,12 @@
  * than lose those words at the edge, the button that reads it in full on
  * the last of its rows.
  */
-import { COLOUR, INDENT, MARK, RUNNING_FRAMES, blank, heading, prose, spread, whenOf, wrappedRows, type Kit, type Line, type Part } from '../draw.ts'
+import { COLOUR, INDENT, MARK, RUNNING_FRAMES, blank, heading, prose, spread, titledLine, whenOf, wrappedRows, type Kit, type Line, type Part } from '../draw.ts'
 import { pageKey } from '../pane.ts'
 
-/** A view's two header lines: its title in bold with what it is, then its facts. */
-export const header = (key: string, title: string, rest: readonly Part[], facts: string): Line[] => [
-  { key: `${key}:head`, parts: [{ text: title, bold: true }, ...rest] },
+/** A view's two header lines, `width` cells across: its title in bold, giving way with "…", with what it is whole, then its facts. */
+export const header = (key: string, title: string, rest: readonly Part[], facts: string, width: number): Line[] => [
+  titledLine(`${key}:head`, { text: title, bold: true }, rest, width),
   { key: `${key}:where`, parts: [{ text: facts, color: COLOUR.secondary }] },
 ]
 
@@ -82,6 +82,7 @@ const MOMENTS: Readonly<Record<string, (moment: Moment) => [Part, string]>> = {
   answered: moment => [mark(MARK.message, COLOUR.gold), tookIn(moment)],
   'spec-landed': ({ detail }) => [mark(MARK.done, COLOUR.done), `Specification written${detail === null ? '' : ` · ${detail}`}`],
   pass: ({ detail }) => [mark(MARK.round, COLOUR.violet), `Pass ${detail}`],
+  asked: ({ detail }) => [mark(MARK.needs, COLOUR.needs), `Pass ${detail}`],
   round: ({ detail }) => [mark(MARK.round, COLOUR.violet), `Review round ${detail}`],
   completed: () => [mark(MARK.done, COLOUR.done), 'Complete'],
   started: ({ topic, detail }) => [mark(RUNNING_FRAMES[0], COLOUR.running), `${topic ?? phaseName(detail ?? 'a phase')} started`],

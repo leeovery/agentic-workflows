@@ -21,8 +21,9 @@
 //   running, stopped, or waiting on the person — and the unit's one list of
 //   what waits on them, which the epic's page and the tab both show.
 // - The specification waits until every topic is decided, is written until
-//   the build begins — waiting on the person's answer while something asked
-//   in the conversation does, and on their yes at ready to build — and is
+//   the build begins — held by what waits on the person first in the
+//   unit's list, the map the sweep staged, a gap, or ready to build's yes —
+//   and is
 //   complete then; the build and review build until every phase of the cut
 //   has closed, review until the unit completes, and are complete then,
 //   stopped where nothing can go on and waiting on the person while finish
@@ -61,7 +62,6 @@ const { rowStanding, answersOn } = require('../topic-map.cjs');
 const { scanProject } = require('../presence.cjs');
 const { liveInOrder } = require('../approve-map.cjs');
 const { specPath, specReading } = require('../spec-sections.cjs');
-const { reportedPasses } = require('../agent-state.cjs');
 const { unitHistory, sentMail } = require('../state-history.cjs');
 const { ROADMAP_SEED } = require('../inbox.cjs');
 const { dayBefore } = require('../dates.cjs');
@@ -69,10 +69,10 @@ const { computeTopicLifecycle, mailboxFiles, buildBegun, buildFinished, cutLengt
 const { counted } = require('./map.cjs');
 const { buildView, buildMoments } = require('./board-build.cjs');
 const { roundWords } = require('./board-review.cjs');
-const { passMoments, specDoing } = require('./board-spec.cjs');
+const { passMoments, reportedOf, specDoing } = require('./board-spec.cjs');
 const { sentBy } = require('./board-discussion.cjs');
 const { mapCount } = require('./board-discovery.cjs');
-const { phasesAt, nowOf, waitingOn, standingOf, closedOn, startedOf, pastDiscovery } = require('./board-standing.cjs');
+const { phasesAt, nowOf, waitingOn, standingOf, holds, closedOn, startedOf, pastDiscovery } = require('./board-standing.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
 /** @typedef {import('../board-model.cjs').EpicView} EpicView */
@@ -187,17 +187,21 @@ function latelyOf(at) {
 /** The topic this session is in, in its discussion or its experiment, null where it is in none of the unit's. @param {BoardAt} at */
 const sessionTopic = ({ place, unit }) => (place.unit === unit && place.phase !== null && TOPIC_PHASES.includes(place.phase) ? place.topic : null);
 
+/** What holds the specification on the epic's page, by the first wait of the unit's one list that holds it. @type {Readonly<Record<string, EpicView['spec']['state']>>} */
+const SPEC_HELD = Object.freeze({ map: 'map', gap: 'asking', ready: 'ready' });
+
 /**
  * Where the specification stands on the epic's page: waiting on the topics,
- * being written, waiting on the person's answer or their yes, or complete.
+ * being written, held by what waits on the person — the map the sweep
+ * staged, a gap, or ready to build's yes — or complete.
  * @param {BoardAt} at @returns {EpicView['spec']['state']}
  */
 function specState(at) {
   const { phase } = nowOf(at);
   if (phase === 'discussion') return 'waits';
   if (phase !== 'specification') return 'complete';
-  if (standingOf(at) !== 'waits') return 'running';
-  return waitingOn(at).some(({ kind }) => kind === 'ready') ? 'ready' : 'asking';
+  const held = waitingOn(at).find(holds);
+  return held === undefined ? 'running' : SPEC_HELD[held.kind];
 }
 
 /** Where the build and review stand on the epic's page, by the derivation's phase and standing. @type {Readonly<Record<string, EpicView['build']['state']>>} */
@@ -292,7 +296,7 @@ function specAreas(at) {
 function specWords(at) {
   const areas = specAreas(at);
   if (areas === null) return '';
-  const after = buildBegun(at.manifest) ? counted(cutLength(at.manifest), 'build phase') : counted(reportedPasses(at.cwd, at.unit).length, 'pass', 'passes');
+  const after = buildBegun(at.manifest) ? counted(cutLength(at.manifest), 'build phase') : counted(reportedOf(at).length, 'pass', 'passes');
   return `${counted(areas, 'section')} · ${after}`;
 }
 

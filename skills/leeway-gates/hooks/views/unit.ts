@@ -14,7 +14,7 @@
  * questions the board holds only on the page of the unit the session is
  * in; any other unit's lists its own by their words, each opening its page.
  */
-import { BAR_CELLS, COLOUR, INDENT, MARK, blank, counted, cutTo, dayOf, heading, progressBar, prose, spread, widthOf, type Kit, type Line, type Part } from '../draw.ts'
+import { BAR_CELLS, COLOUR, INDENT, MARK, blank, counted, dayOf, heading, progressBar, prose, spread, titledLine, type Kit, type Line, type Part } from '../draw.ts'
 import type { View } from '../model.ts'
 import { pageKey, tabKey } from '../pane.ts'
 import type { ViewDrawing } from './index.ts'
@@ -48,7 +48,7 @@ type Epic = {
   progress: { decided: number; total: number; discussing: number }
   waiting: Waiting[]
   topics: TopicLine[]
-  spec: Stage<'waits' | 'running' | 'asking' | 'ready' | 'complete'>
+  spec: Stage<'waits' | 'running' | 'map' | 'asking' | 'ready' | 'complete'>
   build: Stage<'waits' | 'building' | 'reviewing' | 'stopped' | 'finish' | 'complete'>
   set_aside: { topic: string; title: string; state: 'cancelled' | 'postponed'; horizon: string | null }[]
   lately: Moment[]
@@ -58,7 +58,7 @@ type Epic = {
 function headOf(title: string, type: string, atMenu: boolean, width: number): Line {
   const standing: Part[] = [{ text: ` · ${type}`, color: COLOUR.secondary }, ...(atMenu ? [{ text: ' · at its menu', color: COLOUR.running }] : [])]
 
-  return { key: 'unit:head', parts: [...cutTo([{ text: title, bold: true }], width - widthOf(standing)), ...standing] }
+  return titledLine('unit:head', { text: title, bold: true }, standing, width)
 }
 
 /** What a unit is doing in each phase, as its dates line says it. */
@@ -152,6 +152,7 @@ const NEEDS: Part = { text: MARK.needs, color: COLOUR.needs }
 
 /** What waits on the person in a stage, in its words. */
 const STAGE_NEEDS: Readonly<Record<string, string>> = {
+  map: 'the map waits on you',
   asking: 'waits on your answer',
   ready: 'ready to build · waits on you',
   stopped: 'stopped',
@@ -161,7 +162,7 @@ const STAGE_NEEDS: Readonly<Record<string, string>> = {
 /** A stage's row while it waits on the person: flagged, saying for what. */
 const needsLine = (key: string, name: string, state: string): Line => stageLine(key, NEEDS, name, { text: STAGE_NEEDS[state] ?? '', color: COLOUR.needs })
 
-/** The specification's row: what it waits on, being written, waiting on the person's answer or their yes, or complete. */
+/** The specification's row: what it waits on, being written, held by the map the sweep staged, the person's answer or their yes, or complete. */
 function specLine({ spec, progress }: Epic, kit: Kit): Line {
   const name = 'Specification'
 
@@ -169,7 +170,7 @@ function specLine({ spec, progress }: Epic, kit: Kit): Line {
     return stageLine('epic:spec', DONE, name, { text: 'complete', color: COLOUR.secondary })
   }
 
-  if (spec.state === 'asking' || spec.state === 'ready') {
+  if (spec.state === 'map' || spec.state === 'asking' || spec.state === 'ready') {
     return needsLine('epic:spec', name, spec.state)
   }
 

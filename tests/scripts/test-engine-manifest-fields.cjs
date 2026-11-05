@@ -606,6 +606,15 @@ describe('candidate and experiment state is vocabulary-guarded', () => {
       /Invalid candidate status/);
   });
 
+  it('the map\'s approval takes only an instant: anything else would read as no approval, the epic back in its discovery', () => {
+    for (const bad of ['true', '"2026-07-15"', '"soon"', '"2026-13-45T00:00:00Z"']) {
+      assert.match(runFails(dir, ['set', 'pay.discovery', 'approved_at', bad]).error, /Invalid approved_at .* must be an ISO-8601 UTC instant/, bad);
+    }
+    assert.strictEqual(readWorkUnit(dir, 'pay').phases.discovery.approved_at, undefined, 'nothing persisted');
+    runJson(dir, ['set', 'pay.discovery', 'approved_at', '2026-07-15T09:30:00.000Z']);
+    assert.strictEqual(readWorkUnit(dir, 'pay').phases.discovery.approved_at, '2026-07-15T09:30:00.000Z');
+  });
+
   it('the non-canonical spellings of guarded locations are refused, not silently unvalidated', () => {
     // work-unit level via a phases.-prefixed field
     assert.match(runFails(dir, ['set', 'pay', 'phases.discovery.analysis_staging.discovery-gap-analysis.candidates.auth.status', 'bogus']).error,

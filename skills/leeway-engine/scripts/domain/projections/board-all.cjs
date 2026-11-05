@@ -11,11 +11,12 @@
 // - How far a unit has come, by the phase it is in: finish waiting on the
 //   person; an epic's discovery its topics on the map, its discussion its
 //   topics decided of all; the specification where it stands, as its
-//   banner says it; the build its tasks done of all, stopped where nothing
-//   can go on; the review its round, as its banner says it; nothing for a
-//   linear unit's discussion or investigation, nor for a build or review
-//   under the old plan. A unit's tracker is read once its build runs by its
-//   cut.
+//   banner says it; the build its tasks done of all, the review its round,
+//   as its banner says it, each stopped where nothing can go on; nothing
+//   for a linear unit's discussion or investigation, nor a build or review
+//   not run by its cut — under the old plan, its tracker not the cut's
+//   until 29.17. A unit's tracker is read once its build runs by its cut,
+//   one copy of its store a call.
 // - A session is in a unit where this one is, or another holds a presence
 //   in it.
 // - The roadmap is its waiting items, those no unit has pulled, under their
@@ -43,16 +44,19 @@ const { counted } = require('./map.cjs');
 /** @typedef {import('../board-model.cjs').AllView} AllView */
 /** @typedef {import('../board-model.cjs').WorkLine} WorkLine */
 
+/** Where a unit's build or review has stopped, as its row leads with it. @param {BoardAt} at */
+const stoppedWords = (at) => (standingOf(at) === 'stopped' ? 'stopped · ' : '');
+
 /** How far a unit has come, by the phase it is in (the header's). @type {Readonly<Record<string, (at: BoardAt) => string>>} */
 const HOW_FAR = Object.freeze({
   discovery: (at) => (at.manifest.work_type === 'epic' ? `${counted(mapCount(at.cwd, at.manifest), 'topic')} on the map` : ''),
   discussion: (at) => (at.manifest.work_type === 'epic' ? epicWords(at.manifest) : ''),
   specification: (at) => specDoing(at, waitingOn(at)),
-  build: (at) => (buildByCut(at.manifest) ? `${standingOf(at) === 'stopped' ? 'stopped · ' : ''}${buildWords(buildView(at).view)}` : ''),
+  build: (at) => (buildByCut(at.manifest) ? `${stoppedWords(at)}${buildWords(buildView(at).view)}` : ''),
   review: (at) => {
     if (!buildByCut(at.manifest)) return '';
     const { round, words } = roundWords(at);
-    return words ?? `round ${round} reading`;
+    return `${stoppedWords(at)}${words ?? `round ${round} reading`}`;
   },
 });
 

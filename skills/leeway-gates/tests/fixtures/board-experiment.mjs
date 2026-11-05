@@ -1,4 +1,4 @@
-// Fumi's E1 as engine board answers it, 26 of its 40 runs in, held to its shape by tests/scripts/test-engine-board-views.cjs.
+// Fumi's E1 as engine board answers it, 26 of its 40 runs in, held to its shape by tests/scripts/test-engine-board-units.cjs.
 export default {
   kind: 'experiment',
   unit: 'fumi',

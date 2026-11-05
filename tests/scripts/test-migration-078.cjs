@@ -738,6 +738,7 @@ describe('migration 078: the move into the layout in .leeway/', () => {
         phases: {
           discovery: {
             active_session: '002',
+            approved_at: '2026-01-01T00:00:00.000Z',
             items: {
               alpha: { source: 'discovery', summary: 'Alpha', order: 1 },
               beta: { source: 'message:alpha', summary: 'Beta', order: 2 },
@@ -806,7 +807,7 @@ describe('migration 078: the move into the layout in .leeway/', () => {
 
     it('drops staging, review cycles, the spec\'s gate modes, plan review tracking and dependencies, keeping the build\'s standing and its spec items for the cut', () => {
       assert.deepStrictEqual(manifestOf('shop').phases, {
-        discovery: { items: { ranking: { source: 'discovery', summary: 'Ranking' } } },
+        discovery: { items: { ranking: { source: 'discovery', summary: 'Ranking' } }, approved_at: '2026-01-01T00:00:00.000Z' },
         discussion: { items: { ranking: { status: 'completed' }, 'event-tracking': { status: 'completed' }, 'usage-analysis': { status: 'completed' } } },
         specification: { items: { ranking: { status: 'completed', sources: { ranking: { status: 'incorporated' } } } } },
         planning: { items: { ranking: { status: 'completed', format: 'sample-format', phase: 2, task: 1, reconcile_needed: 'specification', task_map: { 'ranking-1-1': 'ext-a1' }, storage_paths: ['.tracker'] } } },
@@ -903,6 +904,24 @@ describe('migration 078: a small project', () => {
       assert.strictEqual(git(dir, ['diff', '--cached', '--name-status']).trim(), 'M\t.claude/settings.json\nA\t.gitignore\nD\t.worktreeinclude');
       assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/.gitignore'), 'utf8'), STATE_GITIGNORE);
       assert.deepStrictEqual([fs.existsSync(user.old), fs.existsSync(user.leeway)], [false, false]);
+    } finally {
+      cleanupFixture(dir);
+    }
+  });
+
+  it('records the map of an epic with topics on it approved at the earliest moment the old record shows, the day the unit was made — no old manifest stamps its discovery\'s close or a discussion\'s start; an epic with no topic yet still shapes its map', () => {
+    dir = tempProject('migration-078-approved-');
+    try {
+      write(dir, '.workflows/manifest.json', json({ work_units: { mapped: { work_type: 'epic' }, blank: { work_type: 'epic' } } }));
+      write(dir, '.workflows/mapped/manifest.json', json({ ...unit('mapped', 'epic', 'in-progress', {
+        discovery: { items: { first: { source: 'discovery', summary: 'First', order: 1 } } },
+        discussion: { items: { first: { status: 'in-progress' } } },
+      }), created: '2026-03-04' }));
+      write(dir, '.workflows/blank/manifest.json', json(unit('blank', 'epic', 'in-progress', {})));
+      commitAll(dir);
+      run(dir);
+      const approved = (/** @type {string} */ name) => JSON.parse(fs.readFileSync(path.join(dir, `.leeway/${name}/manifest.json`), 'utf8')).phases?.discovery?.approved_at ?? null;
+      assert.deepStrictEqual([approved('mapped'), approved('blank')], ['2026-03-04T00:00:00.000Z', null]);
     } finally {
       cleanupFixture(dir);
     }

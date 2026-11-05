@@ -21,8 +21,8 @@
 //   past its discovery by its stages, the specification once the topics are
 //   settled, the build once begun, the review once the build has finished —
 //   or complete, since the day the phase before it closed.
-// - How the phase it is in stands: stopped where nothing of a build run by
-//   its cut, the review's fix tasks among it, can go on without an answer
+// - How the phase it is in stands: stopped where nothing of its build, the
+//   review's round and fix tasks among it, can go on without an answer
 //   (board-build.cjs); waiting on the person where something asked in the
 //   conversation waits — the map, a gap, ready to build's yes, finish; else
 //   under way.
@@ -31,10 +31,11 @@
 //   approve the map while a map is staged, the sweep's candidates among it
 //   after the sweep (8.10.9); the spec's gaps (spec-passes.cjs), each
 //   opening the finding that raised it, and then ready to build's yes, while
-//   the spec is under way and the build not begun; the questions a build
-//   run by its cut and the review's fix tasks wait on (questions.cjs), each
-//   opening the page of the first task it parks; and finish, once a round
-//   ended the review and its fix tasks and builders' notes are done (D18).
+//   the spec is under way and the build not begun; the questions the build
+//   and the review wait on (questions.cjs), each opening the page of the
+//   first task it parks, one parking none its question's entry; and finish,
+//   once a round ended the review, its fix tasks and builders' notes are
+//   done, and no question waits (D18), finish's own checks.
 // - The banner counts that list, flagged — the map alone by its own words —
 //   and at a menu says it unflagged (D40).
 // ---------------------------------------------------------------------------
@@ -43,7 +44,7 @@ const { stagedOrNone } = require('../approve-map.cjs');
 const { pastItsSpec, topicsSettled } = require('../spec-standing.cjs');
 const { waitingAndFreed } = require('../questions.cjs');
 const { recordedRounds, endsReview } = require('../review-phase.cjs');
-const { phaseStatus, buildPlaceStatus, buildBegun, buildByCut, buildFinished } = require('../derivations.cjs');
+const { phaseStatus, buildPlaceStatus, buildBegun, buildFinished } = require('../derivations.cjs');
 const { counted } = require('./map.cjs');
 const { buildView, reviewStandingAt } = require('./board-build.cjs');
 const { specWaits } = require('./board-spec.cjs');
@@ -151,10 +152,17 @@ function mapWaits(at) {
   return [{ kind: 'map', id: 'approve-the-map', text: `Approve the map: ${holds}`, page: null }];
 }
 
-/** The questions its build and the review's fix tasks wait on, oldest first, each opening the page of the first task it parks, which holds it whole. @param {BoardAt} at @returns {WaitingLine[]} */
+/**
+ * The questions its build and the review wait on, oldest first, each
+ * opening the page of the first task it parks, which holds it whole, or
+ * one parking none its question's entry.
+ * @param {BoardAt} at @returns {WaitingLine[]}
+ */
 function questionWaits(at) {
-  if (!buildByCut(at.manifest)) return [];
-  return waitingAndFreed(at.cwd, at.unit, at.warnings).waiting.map(({ question, asks, parks }) => ({ kind: /** @type {const} */ ('question'), id: question, text: `${question} ${asks}`, page: `task:${parks[0]}` }));
+  if (!buildBegun(at.manifest)) return [];
+  return waitingAndFreed(at.cwd, at.unit, at.warnings).waiting.map(({ question, asks, about, parks }) => ({
+    kind: /** @type {const} */ ('question'), id: question, text: `${question} ${asks}`, page: parks.length === 0 ? `entry:${about}` : `task:${parks[0]}`,
+  }));
 }
 
 /** Finish, once the review is over: a round ended it, and its fix tasks and builders' notes are done (D18). @param {BoardAt} at @returns {boolean} */
@@ -168,12 +176,15 @@ function finishWaits(at) {
 const FINISH = Object.freeze({ kind: 'finish', id: 'finish', text: 'Finish: the report of every round, and your verdict on each call you changed', page: null });
 
 /** What waits on the person in the unit (the header's), read once a call. @param {BoardAt} at @returns {WaitingLine[]} */
-const waitingOn = (at) => at.once('waiting-on', () => [
-  ...mapWaits(at),
-  ...(buildBegun(at.manifest) || !specBegun(at) ? [] : specWaits(at)),
-  ...questionWaits(at),
-  ...(finishWaits(at) ? [FINISH] : []),
-]);
+const waitingOn = (at) => at.once('waiting-on', () => {
+  const questions = questionWaits(at);
+  return [
+    ...mapWaits(at),
+    ...(buildBegun(at.manifest) || !specBegun(at) ? [] : specWaits(at)),
+    ...questions,
+    ...(questions.length === 0 && finishWaits(at) ? [FINISH] : []),
+  ];
+});
 
 /** Whether a wait is asked in the conversation, holding the phase: all but a build's questions. @param {WaitingLine} line */
 const holds = ({ kind }) => kind !== 'question';
@@ -182,7 +193,7 @@ const holds = ({ kind }) => kind !== 'question';
 function standingOf(at) {
   if (nowOf(at).phase === 'complete') return 'complete';
   if (waitingOn(at).some(holds)) return 'waits';
-  return buildByCut(at.manifest) && buildView(at).view.progress.stopped ? 'stopped' : 'running';
+  return buildBegun(at.manifest) && buildView(at).view.progress.stopped ? 'stopped' : 'running';
 }
 
 /**

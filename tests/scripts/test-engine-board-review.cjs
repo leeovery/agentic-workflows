@@ -23,7 +23,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  UNIT, SESSION_ID, EVERY, RECEIPT, FOUND, FAILING, useWorld, env, enter, inStep, reportText, reported, named, recorded, issued, fixPhaseWritten, cutUnmerged, fixBranch, fixBuilt, fixClosed, fixParked, taskMade, reviewCall, filed, firstRoundReady, firstRoundFailed, secondRoundReady, commitFile, ok, writeState, statePath, git,
+  UNIT, SESSION_ID, EVERY, RECEIPT, FOUND, FAILING, useWorld, env, enter, inStep, reportText, reported, named, recorded, issued, fixPhaseWritten, cutUnmerged, fixBranch, fixBuilt, fixClosed, fixParked, raisedAtReview, taskMade, reviewCall, filed, firstRoundReady, firstRoundFailed, secondRoundReady, commitFile, ok, writeState, statePath, git,
 } = require('./review-world.cjs');
 const { withEnv, treeSnapshot, head: stateHead, holdLock, lockAttempts, layout } = require('./engine-harness.cjs');
 const { fixture, misfits, standingOn } = require('./board-world.cjs');
@@ -51,8 +51,11 @@ const area = (area, title, state, { ran = 0, found = 0, since = null } = {}) => 
 /** The tests' reader's line. @param {string} state @param {{ran?: number, found?: number, since?: string|null}} [more] */
 const tests = (state, more) => area('tests', 'Tests held against the specification', state, more);
 
+/** Finish, waiting on the person, as the unit's one list holds it. */
+const FINISH = { kind: 'finish', id: 'finish', text: 'Finish: the report of every round, and your verdict on each call you changed', page: null };
+
 /** The view's head: the unit, the project and the tasks built, finish waiting where `finish` says, no question waiting. @param {number} round @param {boolean} [finish] */
-const head = (round, finish = false) => ({ kind: 'review', unit: UNIT, title: 'Pay', project: projectName(dir), type: 'feature', built: 3, round, finish, waiting: [], stopped: false });
+const head = (round, finish = false) => ({ kind: 'review', unit: UNIT, title: 'Pay', project: projectName(dir), type: 'feature', built: 3, round, waiting: finish ? [FINISH] : [], stopped: false });
 
 /** The banner's facts, each plain unless flagged. @param {...(string|[string])} facts */
 const facts = (...facts) => facts.map((fact) => (typeof fact === 'string' ? { text: fact, needs: false } : { text: fact[0], needs: true }));
@@ -232,7 +235,7 @@ describe('a round recorded (20.10.1, 20.10.2)', () => {
     recorded({ can_now: ['Pay by card.'], findings: [{ area: '1-cards', scope: 'in', call: 'nit', text: 'The receipt says Reciept.', from: ['1-cards-a#1'], fix: '3.1' }] });
     const { view, banner } = board();
 
-    assert.deepStrictEqual([view.verdict, view.finish, banner], ['passed', false, { name: 'Pay', state: 'running', facts: facts('feature', 'review', 'round 1 passes') }]);
+    assert.deepStrictEqual([view.verdict, view.waiting, banner], ['passed', [], { name: 'Pay', state: 'running', facts: facts('feature', 'review', 'round 1 passes') }]);
   });
 
   it('a round that passed shows what it found, what could not be proven with its scenario\'s words, and its verdict; the phase over, finish waits on the person, and the banner flags it (D18, D37); once finish completes the unit from its review phase, This session is All work at the start menu, the banner the unit\'s close, through the boot that brings the start menu, until the session goes somewhere (20.10.4, D38)', () => {
@@ -306,13 +309,13 @@ describe('a question its fix tasks wait on (20.5.3, 20.2.4, S1)', () => {
       standing: standingOn(board, UNIT),
     }, {
       questions: [['Q1', ['3.1']]],
-      view: ['review', ['Q1'], true],
+      view: ['review', [{ kind: 'question', id: 'Q1', text: 'Q1 Is the receipt mailed or printed?', page: 'task:3.1' }], true],
       banner: { name: 'Pay', state: 'needs', facts: facts('feature', 'review', 'stopped', 'round 1 fails', ['1 waiting on you']) },
       page: questions,
       fits: [[], [true, true], [true, true]],
       standing: {
         tab: { now: 'review', state: 'stopped', words: 'round 1 fails', waiting: ['question Q1 → task:3.1'] },
-        all: { phase: 'review', standing: 'round 1 fails', waiting: 1, total: 1 },
+        all: { phase: 'review', standing: 'stopped · round 1 fails', waiting: 1, total: 1 },
         banner: { state: 'needs', waits: ['⚑ 1 waiting on you'] },
       },
     });
@@ -320,6 +323,33 @@ describe('a question its fix tasks wait on (20.5.3, 20.2.4, S1)', () => {
 });
 
 describe('where the review stands on every view that reads it (S1)', () => {
+  it('N1, N2: a question the review raises parking no task, while round 2\'s readers read, leaves the review going on, never stopped, on every view as the stop has it, and opens its question\'s entry; once the round passes with it still waiting, finish waits on no view and the review has stopped on it, as the stop draws it', async () => {
+    firstRoundFailed();
+    fixBuilt(3, 1, 'Send the receipt', 'main', 'src/send.js');
+    enter();
+    named(['1-cards']);
+    await raisedAtReview('Is a refund ever split?');
+    const reading = standingOn(board, UNIT);
+    const [, opens] = reading.tab.waiting[0].split(' → ');
+    const entry = board(['--page', opens]).view;
+    reported(2, ['1-cards']);
+    recorded({ can_now: ['Pay by card.', 'Mail the receipt.'], findings: [] });
+
+    assert.deepStrictEqual({ reading, entry: [entry.kind, entry.text], passed: standingOn(board, UNIT) }, {
+      reading: {
+        tab: { now: 'review', state: 'running', words: 'round 2', waiting: [`question Q1 → ${opens}`] },
+        all: { phase: 'review', standing: 'round 2 reading', waiting: 1, total: 1 },
+        banner: { state: 'running', waits: ['⚑ 1 waiting on you'] },
+      },
+      entry: ['entry', 'Is a refund ever split?'],
+      passed: {
+        tab: { now: 'review', state: 'stopped', words: 'round 2 passes', waiting: [`question Q1 → ${opens}`] },
+        all: { phase: 'review', standing: 'stopped · round 2 passes', waiting: 1, total: 1 },
+        banner: { state: 'needs', waits: ['⚑ 1 waiting on you'] },
+      },
+    });
+  });
+
   it('a failing round\'s fix tasks building while any task of its fix phase is not done — one written beyond its findings among them (N7) — the tab\'s review and All work\'s row say so as the banner does, and nothing waits on the person', () => {
     firstRoundFailed();
     const building = standingOn(board, UNIT);
@@ -383,8 +413,8 @@ describe('a round settled (20.10.1, 14.S15)', () => {
     const { view, banner } = board();
 
     assert.deepStrictEqual(reading, [area('1', 'Cards', 'read', { found: 2 }), area('2', 'Refunds', 'unchanged'), tests('unchanged')]);
-    assert.deepStrictEqual({ round: view.round, verdict: view.verdict, finish: view.finish, inbox: view.inbox, state: banner.state, fact: banner.facts.at(-1) }, {
-      round: 2, verdict: 'settled', finish: true, inbox: [{ round: 2, finding: 2, text: 'A card\'s expiry is checked nowhere.' }], state: 'needs', fact: { text: '1 waiting on you', needs: true },
+    assert.deepStrictEqual({ round: view.round, verdict: view.verdict, waiting: view.waiting, inbox: view.inbox, state: banner.state, fact: banner.facts.at(-1) }, {
+      round: 2, verdict: 'settled', waiting: [FINISH], inbox: [{ round: 2, finding: 2, text: 'A card\'s expiry is checked nowhere.' }], state: 'needs', fact: { text: '1 waiting on you', needs: true },
     });
   });
 });

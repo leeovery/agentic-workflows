@@ -26,9 +26,11 @@
 //   done, one at least; not yet written, written or running as its
 //   standing says.
 // - The build has stopped (20.5.1, D6) while a question waits and nothing
-//   can be built without an answer: the stop report's rule (`goesOn`, its
+//   can go on without an answer: the stop report's rule (`goesOn`, its
 //   phases let go on by `phaseLets`), over every phase the unit has written,
-//   the review's fixes among them.
+//   the review's fixes among them, and once the build has finished, the
+//   review's round going on with nothing to answer (`reviewGoesOn`) never
+//   stopped.
 // - A question (20.5.3) parks its tasks, and the tasks linked after those
 //   wait after it.
 // - A task's page lists what running the product proved of each of its
@@ -47,7 +49,8 @@
 const fs = require('fs');
 const { statePath } = require('../../kernel/state-root.cjs');
 const { standingOf, buildPhases } = require('../build-entry.cjs');
-const { reviewStanding, recordedRounds } = require('../review-phase.cjs');
+const { reviewStanding, reviewGoesOn, recordedRounds } = require('../review-phase.cjs');
+const { buildFinished } = require('../derivations.cjs');
 const { reading } = require('../phase-checks.cjs');
 const { goesOn } = require('../task-verbs.cjs');
 const { phaseNamed, phaseLets, takenAccount, callsOf, ranOf } = require('../build-screens.cjs');
@@ -137,7 +140,8 @@ const running = ({ state }) => state === 'building' || state === 'in-review';
 function stoppedOf(at, standing) {
   if (standing.waiting.length === 0) return false;
   const parked = new Set(standing.waiting.flatMap(({ parks }) => parks));
-  return goesOn(parked, at.tracker(), phaseLets(at.cwd, at.unit, at.manifest, readingAt(at).reads)).length === 0;
+  if (goesOn(parked, at.tracker(), phaseLets(at.cwd, at.unit, at.manifest, readingAt(at).reads)).length > 0) return false;
+  return !buildFinished(at.manifest) || reviewGoesOn(at.cwd, at.unit, reviewStandingAt(at)) === null;
 }
 
 /** The questions a press can queue, oldest first (the header's). @param {BuildStanding} standing @returns {Question[]} */

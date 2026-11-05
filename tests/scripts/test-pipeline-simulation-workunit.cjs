@@ -66,6 +66,11 @@ describe('pipeline simulation: workunit', () => {
 
     sim.run(['workunit', 'pivot', wu]);
     assert.strictEqual(sim.manifest(wu).work_type, 'epic');
+    const board = (/** @type {string[]} */ args) => JSON.parse(sim.read(['board', sim.env.CLAUDE_CODE_SESSION_ID, ...args])).view;
+    const page = board(['--tab', 'unit', '--unit', wu]);
+    const row = board(['--tab', 'all']).units.find((/** @type {{unit: string}} */ { unit }) => unit === wu);
+    assert.deepStrictEqual([page.kind, page.now, row.phase], ['epic', { phase: 'discussion', since: sim.manifest(wu).phases.discovery.approved_at }, 'discussion'],
+      'S1, 18.3.5: the pivot approves the map it lands, so the epic stands past its discovery on its page and in All work, its discovery closed at the pivot');
     assert.match(sim.render(['pivot-continuation', wu], { expect: 'content' }),
       /MENU: pivot continuation/, 'the manage flow can fetch the continuation menu post-pivot');
 

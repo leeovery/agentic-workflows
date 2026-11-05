@@ -155,9 +155,9 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * The review phase's This session (20.10): the unit, its title, the project
  * and the unit's type, how many tasks were built, the review's fix tasks
  * among them; the round shown — the one under way once it has opened, else
- * the last recorded — whether finish waits on the person, the phase over
- * (D18); the questions its fix tasks wait on, by number, and whether they
- * stop it, as the build's; whether the round is recorded, and each of its
+ * the last recorded — what waits on the person, the unit's one list, its
+ * questions or finish (D18), and whether nothing can go on without an
+ * answer, as the build's; whether the round is recorded, and each of its
  * areas; what it found — once recorded each finding in scope, else each
  * its landed reports hold; each check not proven, by the round that
  * recorded it, or round 1 while it is read, with its scenario's words, null
@@ -166,7 +166,7 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * build's phase they make, null where there are none.
  * @typedef {{
  *   kind: 'review', unit: string, title: string, project: string, type: string, built: number,
- *   round: number, finish: boolean, waiting: string[], stopped: boolean, recorded: boolean, areas: AreaLine[],
+ *   round: number, waiting: WaitingLine[], stopped: boolean, recorded: boolean, areas: AreaLine[],
  *   found: FoundLine[], not_proven: {round: number, scenario: string, standing: string, text: string|null}[],
  *   inbox: {round: number, finding: number, text: string}[],
  *   verdict: 'passed'|'failed'|'settled'|null, fixes: {phase: number, round: number, tasks: TaskLine[]}|null,
@@ -372,7 +372,7 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * @typedef {{
  *   kind: 'epic', unit: string, title: string, about: string, started: string|null, now: UnitNow, at_menu: boolean, here: boolean,
  *   progress: {decided: number, total: number, discussing: number}, waiting: WaitingLine[], topics: TopicLine[],
- *   spec: {state: 'waits'|'running'|'asking'|'ready'|'complete', session: 'this'|'other'|null},
+ *   spec: {state: 'waits'|'running'|'map'|'asking'|'ready'|'complete', session: 'this'|'other'|null},
  *   build: {state: 'waits'|'building'|'reviewing'|'stopped'|'finish'|'complete', session: 'this'|'other'|null},
  *   set_aside: {topic: string, title: string, state: 'cancelled'|'postponed', horizon: string|null}[], lately: Moment[],
  * }} EpicView

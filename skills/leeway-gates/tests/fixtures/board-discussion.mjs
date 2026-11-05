@@ -1,4 +1,4 @@
-// Fumi's Onboarding and permissions in its discussion as engine board answers it, its third review round running for 4:12, held to its shape by tests/scripts/test-engine-board-views.cjs.
+// Fumi's Onboarding and permissions in its discussion as engine board answers it, its third review round running for 4:12, held to its shape by tests/scripts/test-engine-board-units.cjs.
 
 /** Decisions whose they are, each with its words. */
 export const decision = (who, ...texts) => texts.map((text, at) => ({ id: `${who}${at}${text.length}`, text, who }))

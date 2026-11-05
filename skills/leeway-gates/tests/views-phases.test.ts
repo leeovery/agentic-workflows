@@ -622,6 +622,20 @@ READY TO BUILD ─────────────────────�
     )
   })
 
+  test('a title too long for the head gives way with "…" in the specification, the discussion and discovery, what the view is kept whole', () => {
+    const long = 'Token-aware diff sizing plus graceful handling of oversized diffs'
+
+    expect([
+      drawn(SPEC, { ...MINT_SPEC, title: long } as View).text[0],
+      drawn(DISCUSSION, { ...ONBOARDING, topic_title: long } as View, { now: NOW }).text[0],
+      drawn(DISCOVERY, { ...FUMI_DISCOVERY, title: long } as View).text[0],
+    ]).toEqual([
+      'Token-aware diff sizing plus graceful handlin… · specification',
+      'Token-aware diff sizing plus graceful handling o… · discussion',
+      'Token-aware diff sizing plus graceful handling of… · discovery',
+    ])
+  })
+
   test('D21: the facts line ends in where the review stands, whole, whatever it stands at', () => {
     const facts = (view: View) => drawn(SPEC, view).text.slice(2, 4).join(' ')
     const running = { ...MINT_SPEC, waiting: [], passes: [{ pass: 5, found: 0, calls: 0, yours: 0, state: 'running', since: '2026-10-21T13:29:00', reads: ['12', '16'] }, ...(MINT_SPEC.passes as object[])] } as View

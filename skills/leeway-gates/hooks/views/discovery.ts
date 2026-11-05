@@ -119,7 +119,7 @@ const viewsLines = (view: Discovery, width: number): Line[] =>
 const sessionOf = ({ session, started }: Discovery) => [...(session === null ? [] : [`session ${session}`]), ...(started === null ? [] : [`started ${dayOf(started)}`])]
 
 const discoveryLines = (view: Discovery, kit: Kit): Line[] => [
-  ...header('d', view.title, [{ text: ' · discovery', color: COLOUR.secondary }], [view.title, view.type, ...sessionOf(view)].join(' · ')),
+  ...header('d', view.title, [{ text: ' · discovery', color: COLOUR.secondary }], [view.title, view.type, ...sessionOf(view)].join(' · '), kit.width),
   factsLine(view, kit),
   blank('d:head'),
   ...approveLines(view, kit.width),

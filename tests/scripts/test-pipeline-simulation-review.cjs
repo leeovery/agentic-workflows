@@ -168,7 +168,7 @@ describe('pipeline simulation: the review phase, as its skill runs it', () => {
       all: { phase: 'review', standing: 'finish waits on you', waiting: 1, total: 1 },
       banner: { state: 'needs', waits: ['⚑ 1 waiting on you'] },
     }, 'S1: finish waits on the person on the epic\'s DELIVERY, on its page and in All work\'s row and count, as the banner has it (D18, D37)');
-    assert.deepStrictEqual([passed.view.round, passed.view.verdict, passed.view.areas.map(({ state }) => state), passed.view.finish, passed.banner.state], [2, 'passed', ['read', 'unchanged', 'unchanged'], true, 'needs'],
+    assert.deepStrictEqual([passed.view.round, passed.view.verdict, passed.view.areas.map(({ state }) => state), passed.view.waiting.map(({ kind }) => kind), passed.banner.state], [2, 'passed', ['read', 'unchanged', 'unchanged'], ['finish'], 'needs'],
       'the board draws round 2 passed, the area read and the rest unchanged, finish waiting on the person (20.10.2, D18, D37)');
     sim.render(['review-report', WU], { expect: 'content' });
     sim.render(['review-calls', WU], { expect: 'content' });

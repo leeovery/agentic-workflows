@@ -7,8 +7,9 @@
 // that it writes nothing — and the build on it (domain/projections/
 // board-build.cjs): its progress, phases, tasks and their states, the
 // questions a press can queue, and a task's pages. The review phase on the
-// board is test-engine-board-review.cjs; every other view,
-// test-engine-board-views.cjs.
+// board is test-engine-board-review.cjs; a discussion and an experiment,
+// test-engine-board-views.cjs; a unit's page and All work,
+// test-engine-board-units.cjs.
 //
 // Layer: verb. World: the build screens' world (build-screens-world.cjs),
 // copied for each test — `pay` building in step, task 1.1 in progress with

@@ -1,4 +1,4 @@
-// Token-aware diff sizing's tab in its build as engine board answers it, three questions waiting, held to its shape by tests/scripts/test-engine-board-views.cjs.
+// Token-aware diff sizing's tab in its build as engine board answers it, three questions waiting, held to its shape by tests/scripts/test-engine-board-units.cjs.
 
 /** A phase on a unit's tab, the rest as given. */
 export const phase = (name, state, words = '', more = {}) => ({ phase: name, state, words, doing: '', on: null, session: null, page: false, ...more })

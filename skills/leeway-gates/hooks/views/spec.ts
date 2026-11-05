@@ -224,7 +224,7 @@ function readyLines(view: Spec, width: number): Line[] {
 }
 
 const specLines = (view: Spec, kit: Kit): Line[] => [
-  ...header('spec', view.title, [{ text: ' · specification', color: COLOUR.secondary }], `${view.project} · ${view.type}`),
+  ...header('spec', view.title, [{ text: ' · specification', color: COLOUR.secondary }], `${view.project} · ${view.type}`, kit.width),
   factsLine(view, kit),
   blank('spec:head'),
   ...waitingLines(view, kit.width),
