@@ -17,8 +17,12 @@
 // the branch it lands on is the close's, and a move's that leaves the fixes
 // (workunit-move.cjs) where the checkout has one of the unit's fixes'
 // branches out: refused, nothing moved, while it holds changes not
-// committed outside the state, naming each; the fixes' own branches kept,
-// each with its commits unlanded (`keptFixes`).
+// committed outside the state, naming each. The move then sets the fixes'
+// branches aside (`setFixesAside`): one holding commits the branch the
+// fixes land on lacks is kept, its commits unlanded, renamed to
+// `moved/{branch}`, a name no landing reads as the unit's (`taskOfBranch`,
+// `phaseOfBranch`, landing-names.cjs), so the new type's build, numbering
+// its own tasks from 1.1, never meets it; one holding none is deleted.
 // ---------------------------------------------------------------------------
 
 const { codeRoot } = require('../kernel/code-root.cjs');
@@ -95,21 +99,49 @@ function fixWayOn(root, ref) {
   return `a quick-fix's fix is built in the project's own checkout, on its branch${held === null ? '' : `, ${held}`} — ${start} puts the checkout on it`;
 }
 
+/** The name a move keeps a fix's branch under (the header's). @param {string} branch */
+const movedBranch = (branch) => `moved/${branch}`;
+
 /**
- * The unit's fixes' branches holding commits the branch the fixes land on
- * does not, in the order of their fixes: where a move leaves each fix's
- * commits, unlanded.
+ * The unit's fixes' branches, in the order of their fixes, each with
+ * whether it holds commits the branch the fixes land on does not.
+ * @param {string} root @param {string} cwd @param {string} unit
+ * @returns {{branch: string, holds: boolean}[]}
+ */
+function fixBranches(root, cwd, unit) {
+  const lands = fixesLandOn(cwd, root);
+  return [...branches(root).keys()]
+    .flatMap((branch) => {
+      const of = taskOfBranch(unit, branch);
+      return of === null ? [] : [{ branch, of, holds: holdsBeyond(root, [branch], [lands]) }];
+    })
+    .sort((a, b) => a.of.phase - b.of.phase || a.of.n - b.of.n)
+    .map(({ branch, holds }) => ({ branch, holds }));
+}
+
+/**
+ * The names a move keeps the unit's fixes' branches holding unlanded
+ * commits under, in the order of their fixes.
  * @param {string} cwd @param {string} unit
  * @returns {string[]}
  */
 function keptFixes(cwd, unit) {
+  return fixBranches(codeRoot(cwd), cwd, unit).flatMap(({ branch, holds }) => (holds ? [movedBranch(branch)] : []));
+}
+
+/**
+ * The unit's fixes' branches set aside for its move (the header's): each
+ * holding unlanded commits renamed to the name it is kept under, the rest
+ * deleted. Answers the kept names, in the order of their fixes.
+ * @param {string} cwd @param {string} unit
+ * @returns {string[]}
+ */
+function setFixesAside(cwd, unit) {
   const root = codeRoot(cwd);
-  const lands = fixesLandOn(cwd, root);
-  const kept = [...branches(root).keys()].flatMap((branch) => {
-    const of = taskOfBranch(unit, branch);
-    return of !== null && holdsBeyond(root, [branch], [lands]) ? [{ branch, of }] : [];
+  return fixBranches(root, cwd, unit).flatMap(({ branch, holds }) => {
+    git(root, holds ? ['branch', '-m', branch, movedBranch(branch)] : ['branch', '-D', branch]);
+    return holds ? [movedBranch(branch)] : [];
   });
-  return kept.sort((a, b) => a.of.phase - b.of.phase || a.of.n - b.of.n).map(({ branch }) => branch);
 }
 
 /**
@@ -134,4 +166,4 @@ function checkOutLanding(cwd, unit) {
   return lands;
 }
 
-module.exports = { refuseDirty, checkOutFix, fixWayOn, keptFixes, checkOutLanding };
+module.exports = { refuseDirty, checkOutFix, fixWayOn, keptFixes, setFixesAside, checkOutLanding };

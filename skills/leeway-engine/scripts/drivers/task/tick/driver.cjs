@@ -31,7 +31,9 @@
 // which the store alone holds. Tick's own ids in a refusal it makes are put
 // in the engine's words. A task's text is its
 // description, its type its one tag, an addition a note naming whose it is,
-// and a link a dependency; a closed task is cancelled, its reason a note.
+// and a link a dependency; a closed task is cancelled, its reason a note; a
+// phase removed is Tick's remove of it, which takes its tasks with it and
+// drops every link to them.
 // Tick counts a cancelled task, as a done one, as holding nothing up, and
 // ready answers only tasks not yet started. Tick ends a parent itself once every child has ended — marking
 // the change its own — and makes no child under a cancelled one, so a phase
@@ -358,6 +360,11 @@ function close(root, ref, reason) {
   tick(root, ['cancel', id]);
 }
 
+/** @param {string} root @param {string} unit @param {number} phase */
+function removePhase(root, unit, phase) {
+  tick(root, ['remove', '--force', idOf(idsIn(root), phaseRef(unit, phase))]);
+}
+
 /** @param {string} root @param {string} unit @param {number} phase @returns {TaskRow[]|null} */
 function list(root, unit, phase) {
   const ids = idsIn(root);
@@ -440,6 +447,7 @@ module.exports = {
   start,
   done,
   close,
+  removePhase,
   list,
   show,
   tasks,

@@ -42,19 +42,23 @@
 //   lock, for a quick-fix, the project's checkout taken back to the branch
 //   the fixes land on where it has one of the unit's fixes' branches out —
 //   refused first, nothing moved, while it holds changes not committed —
-//   and each fix not yet ended closed, its commits kept unlanded on its
-//   branch (fix-branch.cjs); then the unit re-typed with its new
-//   description, a quick-fix's fixes' record and a bugfix's investigation
-//   item dropped, and its registration, in one save; the brief written; the
-//   carry appended, its lines read again once the fixes have closed. The
-//   knowledge base is re-indexed, its chunks carrying the type
-//   (warn-don't-block), and one commit takes the unit, the project manifest
-//   and the ledger where lines were carried. It answers the handoff into
-//   the new type's first phase (24.1.2).
-// - Known edges: the closed fixes stay in the tracker's phase 1 and their
-//   branches stay, which the new type's build, numbering its own phase 1
-//   and tasks 1.n, meets; a quick-fix named like a waiting roadmap idea
-//   moves beside it, its name being kept.
+//   and each fix not yet ended closed. Then the move leaves nothing the new
+//   type's build, numbering its own phase 1 and tasks 1.n, can meet: the
+//   fixes' branches set aside, one holding unlanded commits kept under
+//   `moved/{branch}`, out of every landing's reading, the rest deleted
+//   (fix-branch.cjs), and the fixes' phase taken out of the tracker for
+//   good, its tasks with it (`removePhase`) — the fixes' record kept in the
+//   carried lines and the kept branches. Then the unit re-typed with its
+//   new description, a quick-fix's fixes' record and a bugfix's
+//   investigation item dropped, and its registration, in one save; the
+//   brief written; the carry appended, its lines read again once the fixes
+//   have closed. The knowledge base is re-indexed, its chunks carrying the
+//   type (warn-don't-block), and one commit takes the unit, the project
+//   manifest, the tracker's store where the phase was taken out, and the
+//   ledger where lines were carried. It answers the handoff into the new
+//   type's first phase (24.1.2).
+// - Known edge: a quick-fix named like a waiting roadmap idea moves beside
+//   it, its name being kept.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -77,21 +81,21 @@ const { retiredRefusal, legacyBuild, fixesBegun, FIXES_PHASE, itemOf, briefFile 
 const { assertBeforeSpec } = require('./spec-standing.cjs');
 const { draftIn, writeBrief } = require('./discovery-map.cjs');
 const { filled, shaped, readPayload, stage } = require('./staged-payload.cjs');
-const { trackedPhase, runTaskVerb, ENDED } = require('./task-verbs.cjs');
+const { trackedPhase, removePhase, runTaskVerb, ENDED } = require('./task-verbs.cjs');
 const { openedTasks } = require('./landing.cjs');
-const { keptFixes, checkOutLanding } = require('./fix-branch.cjs');
+const { keptFixes, setFixesAside, checkOutLanding } = require('./fix-branch.cjs');
 const { linesOf } = require('./workunit-absorb.cjs');
 const { reindexWorkUnit } = require('./workunit-lifecycle.cjs');
 const { shownTask } = require('./task-id.cjs');
 const { stagedFile, nextAfter, OPENS_IN } = require('./start-this-work.cjs');
 const { startThisWorkScreen, aType } = require('./projections/discovery-gates.cjs');
 
-/** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
+/** @typedef {import('./drivers.cjs').TaskRow} TaskRow */
 
 /**
  * A move as staged: the unit by its name, the type it moves to, Claude's
  * description, reason and brief draft, and the type it moves from with the
- * branches its fixes' commits stay on.
+ * names the branches holding its fixes' commits are kept under.
  * @typedef {{type: string, name: string, description: string, reason: string, brief: string, moves: {from: string, branches: string[]}}} StagedMove
  */
 
@@ -125,29 +129,29 @@ function assertInvestigating(manifest) {
 }
 
 /**
- * A quick-fix's fixes not yet ended, as the tracker holds them: refused
- * where any fix has its pull request opened or landed — finished first,
- * the new work started on its own. None before its fixes begin.
+ * A quick-fix's fixes as the tracker holds them, null where their phase is
+ * not written: refused where any fix has its pull request opened or landed
+ * — finished first, the new work started on its own.
  * @param {string} cwd @param {Record<string, any>} manifest @param {string} to
- * @returns {TaskRef[]}
+ * @returns {TaskRow[]|null}
  */
-function openFixes(cwd, manifest, to) {
-  if (!fixesBegun(manifest)) return [];
+function fixesOf(cwd, manifest, to) {
+  if (!fixesBegun(manifest)) return null;
   const unit = manifest.name;
-  const fixes = trackedPhase(cwd, unit, FIXES_PHASE.number).tasks ?? [];
-  const opened = openedTasks(cwd, unit, fixes.map(({ ref }) => ref));
+  const fixes = trackedPhase(cwd, unit, FIXES_PHASE.number).tasks;
+  const opened = openedTasks(cwd, unit, (fixes ?? []).map(({ ref }) => ref));
   if (opened.length > 0) {
     const named = opened.length === 1 ? `fix ${opened[0]} has its pull request` : `fixes ${opened.join(', ')} have their pull requests`;
     throw new Error(`${unit}'s ${named} opened — finish the quick-fix, then start the ${to} as work of its own`);
   }
-  return fixes.filter(({ status }) => !ENDED.includes(status)).map(({ ref }) => ref);
+  return fixes;
 }
 
 /**
- * The unit's move to `to` checked as it stands: its fixes not yet ended,
- * for a quick-fix.
+ * The unit's move to `to` checked as it stands: a quick-fix's fixes, as
+ * `fixesOf` answers them; null for a bugfix.
  * @param {string} cwd @param {Record<string, any>} manifest @param {string} to
- * @returns {TaskRef[]}
+ * @returns {TaskRow[]|null}
  */
 function checkMove(cwd, manifest, to) {
   const unit = manifest.name;
@@ -159,7 +163,7 @@ function checkMove(cwd, manifest, to) {
   if (from === 'quick-fix' && legacyBuild(manifest)) throw new Error(`${unit} was scoped under the old plan, and moves once the reshape's 29.17 migration has cut it`);
   assertBeforeSpec(cwd, manifest, 'ownWork');
   if (from === 'bugfix') assertInvestigating(manifest);
-  return from === 'quick-fix' ? openFixes(cwd, manifest, to) : [];
+  return from === 'quick-fix' ? fixesOf(cwd, manifest, to) : null;
 }
 
 /**
@@ -247,6 +251,37 @@ function carriedLines(root, unit, from, warnings) {
 }
 
 /**
+ * What a quick-fix's move leaves of its fixes: the branch the checkout was
+ * taken back to, null where it was not; the fixes it closed; the names
+ * their branches are kept under; and the tracker's files its removed phase
+ * changed, for the move's commit.
+ * @typedef {{checkout: string|null, closed: string[], branches: string[], store: string[]}} LeftFixes
+ */
+
+/** A bugfix's move, which leaves no fixes. @type {LeftFixes} */
+const NOTHING_LEFT = Object.freeze({ checkout: null, closed: [], branches: [], store: [] });
+
+/**
+ * A quick-fix's fixes left for its move (the header's): the checkout taken
+ * back to the branch they land on, each not yet ended closed, their
+ * branches set aside, and their phase taken out of the tracker.
+ * @param {string} cwd @param {string} unit @param {TaskRow[]|null} fixes the tracker's, null where their phase is not written
+ * @param {string} to @param {string[]} warnings
+ * @returns {LeftFixes}
+ */
+function leaveFixes(cwd, unit, fixes, to, warnings) {
+  const checkout = checkOutLanding(cwd, unit);
+  const closed = (fixes ?? []).filter(({ status }) => !ENDED.includes(status)).map(({ ref }) => {
+    const { warnings: said = [] } = /** @type {{warnings?: string[]}} */ (runTaskVerb(cwd, 'close', [unit, shownTask(ref)], { reason: `${unit} moved to ${aType(to)}` }));
+    warnings.push(...said);
+    return shownTask(ref);
+  });
+  const branches = setFixesAside(cwd, unit);
+  const store = fixes === null ? [] : removePhase(cwd, unit, FIXES_PHASE.number);
+  return { checkout, closed, branches, store };
+}
+
+/**
  * `start-this-work yes` over a staged move: the unit moved as one
  * transaction (the header's), handing off into the new type's first phase.
  * @param {string} cwd @param {StagedMove} staged
@@ -264,12 +299,7 @@ function moveYes(cwd, staged) {
   carriedLines(root, unit, from, warnings);
 
   return withStateLock(root, () => {
-    const checkout = from === 'quick-fix' ? checkOutLanding(cwd, unit) : null;
-    const closed = fixes.map((ref) => {
-      const { warnings: said = [] } = /** @type {{warnings?: string[]}} */ (runTaskVerb(cwd, 'close', [unit, shownTask(ref)], { reason: `${unit} moved to ${aType(to)}` }));
-      warnings.push(...said);
-      return shownTask(ref);
-    });
+    const left = from === 'quick-fix' ? leaveFixes(cwd, unit, fixes, to, warnings) : NOTHING_LEFT;
     const lines = carriedLines(root, unit, from, warnings);
     saveMoved(cwd, unit, to, description);
     writeBrief(cwd, unit, unit, draft.content);
@@ -280,7 +310,7 @@ function moveYes(cwd, staged) {
     fs.rmSync(stagedFile(cwd), { force: true });
 
     reindexWorkUnit(cwd, unit, warnings, { clearFirst: true });
-    const paths = [unit, PROJECT_MANIFEST_SPEC];
+    const paths = [unit, PROJECT_MANIFEST_SPEC, ...left.store];
     const message = `workflow(${unit}): move ${from} to ${to}`;
     const outcome = lines.length > 0 ? commitLedger(cwd, message, warnings, paths) : commitStateTail(cwd, paths, message, warnings);
     /** @type {Record<string, unknown>} */
@@ -289,9 +319,9 @@ function moveYes(cwd, staged) {
       work_type: to,
       from,
       brief: statePath(cwd, briefFile(unit, unit)),
-      fixes_closed: closed,
-      branches: from === 'quick-fix' ? keptFixes(cwd, unit) : [],
-      checkout,
+      fixes_closed: left.closed,
+      branches: left.branches,
+      checkout: left.checkout,
       committed: outcome.committed,
       next: nextAfter(to, unit),
     };

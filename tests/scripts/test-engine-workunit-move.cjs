@@ -4,15 +4,19 @@
 // A unit's move to another type (leeway-engine/scripts/domain/
 // workunit-move.cjs; 19.4.22, 19.5.9, 19.5.16, P7): `workunit move` staging
 // Claude's payload where start this work stages a start and drawing its
-// screen, a quick-fix's fixes' branches named in one line, nothing moved;
-// the yes, `start-this-work yes`, moving the unit in place — re-typed in
-// both manifests in one save, its brief written, a quick-fix's open fixes
-// closed, its checkout taken back to the branch the fixes land on and its
-// fixes' commits left unlanded on their branches, its lines carried to the
-// new topic, the knowledge base re-indexed, one commit — and handing off
-// into the new type's first phase (19.S24, 19.S30, 24.1.2); a bugfix's
-// investigation log read at the feature's first opening as the topic's
-// earlier log (enter.cjs); a moved quick-fix's lines read at the epic's
+// screen, the names a quick-fix's fixes' branches are kept under in one
+// line, nothing moved; the yes, `start-this-work yes`, moving the unit in
+// place — re-typed in both manifests in one save, its brief written, a
+// quick-fix's open fixes closed, its checkout taken back to the branch the
+// fixes land on, its fixes' commits kept unlanded on their branches renamed
+// under moved/ and a branch holding none deleted, the fixes' phase taken
+// out of the tracker, its lines carried to the new topic, the knowledge
+// base re-indexed, one commit — and handing off into the new type's first
+// phase (19.S24, 19.S30, 24.1.2); the new type's build meeting nothing of
+// the fixes — a feature's phase 1 written and task 1.1's branch laid, a
+// bugfix's reproducing task 1.1 created, on the local landing driver; a
+// bugfix's investigation log read at the feature's first opening as the
+// topic's earlier log (enter.cjs); a moved quick-fix's lines read at the epic's
 // topic once the feature it became is absorbed (ledger-rehomed.cjs); and
 // every refusal, writing nothing: a fix's pull request opened, a checkout
 // holding changes, a unit past its spec, a type that does not move, a
@@ -22,8 +26,9 @@
 // the quick-fix typo, entered, its fix 1.1 started and committed on its
 // branch, the project's checkout left there, a question asked at its place
 // linking an asset; the quick-fix shipped, its fix's pull request opened;
-// the bugfix hunt in its investigation, its log written and a finding on
-// it; and beside them an epic, a feature, a quick-fix today's scoping made,
+// the quick-fix begun, its fix 1.1 started with nothing committed; the
+// bugfix hunt in its investigation, its log written and a finding on it;
+// and beside them an epic, a feature, a quick-fix today's scoping made,
 // and bugfixes past their spec, concluded and not begun. The knowledge base
 // is keyword-only.
 // ---------------------------------------------------------------------------
@@ -36,31 +41,33 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {
-  ok, okSections, output, refusedPristine, git, stateGit, statePath, layout, writeState, readState, readManifest, createFile, commitAll, fixtureFrom, cleanupFixture,
-  head, lastMessage, sectionOf, keywordOnlyKnowledge,
+  ok, okSections, output, refuses, refusedPristine, git, stateGit, statePath, layout, writeState, readState, readManifest, createFile, commitAll, fixtureFrom, cleanupFixture,
+  head, sectionOf, keywordOnlyKnowledge,
 } = require('./engine-harness.cjs');
 const { createManifest, useTempFolder } = require('./discovery-test-utils.cjs');
 const { MADE, ledgerHelpers } = require('./ledger-world.cjs');
 const store = require('../../skills/leeway-engine/scripts/kernel/knowledge/store.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
-const { taskBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
+const { taskBranch, isUnitBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
 
 const QF = 'typo';
 const SHIPPED = 'shipped';
+const BEGUN = 'begun';
 const BUG = 'hunt';
 const EPIC = 'payments';
 const ENGINE = 'node .claude/skills/leeway-engine/scripts/engine.cjs';
 const NOTE = layout.inbox('quickfixes', '2026-06-03--colour-flag.md');
 const TITLE = 'Spell the flag --colour';
 const BRANCH = taskBranch({ unit: QF, phase: 1, n: 1 }, 'fix', TITLE);
+const KEPT = `moved/${BRANCH}`;
 const SHOT = `${QF}/assets/shot.png`;
 const STAGED = layout.cache('product', 'discovery', 'product', 'start-this-work.json');
 const INVESTIGATION_LOG = layout.unit(BUG, 'topics', BUG, 'log.md');
 
-/** A fix's task file, its one scenario `{n}.S1`. @param {number} n @param {string} title */
-const fixFile = (n, title) => [
-  `# ${title}`, '', '## Type', 'fix', '', '## Problem', 'It is spelt wrong.', '', '## Solution', 'Spell it right.', '',
+/** A task file, its one scenario `{n}.S1`. @param {number} n @param {string} title @param {string} [type] */
+const fixFile = (n, title, type = 'fix') => [
+  `# ${title}`, '', '## Type', type, '', '## Problem', 'It is spelt wrong.', '', '## Solution', 'Spell it right.', '',
   '## Outcome', 'It is spelt right.', '', '## Acceptance scenarios', `- ${n}.S1 Given the help, when it is read, then it is spelt right.`, '', '## Spec reference', 'none',
 ].join('\n');
 
@@ -70,8 +77,8 @@ const made = { asked: '', link: '', found: '' };
 /**
  * A quick-fix made from `seed`, entered by a conversation gone since, its
  * fix 1.1 created and started there — putting the checkout on its branch —
- * and its change committed through the door.
- * @param {string} dir @param {string} unit @param {string} title @param {string} file the code file it changes
+ * and, given the code file it changes, its change committed through the door.
+ * @param {string} dir @param {string} unit @param {string} title @param {string} [file]
  */
 function startedFix(dir, unit, title, file) {
   const gone = fs.mkdtempSync(path.join(os.tmpdir(), 'workunit-move-world-'));
@@ -83,6 +90,7 @@ function startedFix(dir, unit, title, file) {
     ok(dir, ['presence', 'clear', unit, 'implementation', unit], as);
     ok(dir, ['task', 'create', unit, '1', '--file', writeState(dir, layout.cache(`${unit}-fix.md`), fixFile(1, title))]);
     ok(dir, ['task', 'start', unit, '1.1'], as);
+    if (file === undefined) return;
     createFile(dir, file, `// ${title}\n`);
     ok(dir, ['commit', '--paths', file, '--task', unit, '1.1', '-m', `fix(${unit}): ${title.toLowerCase()}`], as);
   } finally {
@@ -111,6 +119,7 @@ const world = fixtureFrom('workunit-move-', (dir) => {
 
   startedFix(dir, SHIPPED, 'Ship the flag', 'src/ship.js');
   ok(dir, ['land', 'open', SHIPPED, '1.1']);
+  startedFix(dir, BEGUN, 'Trim the flag');
   startedFix(dir, QF, TITLE, 'src/flag.js');
 
   const { write } = ledgerHelpers(() => dir);
@@ -185,7 +194,7 @@ describe('workunit move, the stage (19.5.9, P7)', () => {
       'The typo work, as feature work.',
       '↳ It needs a decision from you beyond a quick call.',
       '⚑ Its fix\'s commits stay unlanded on',
-      `  ${BRANCH}`,
+      `  ${KEPT}`,
       '',
     ].join('\n'));
     assert.strictEqual(sectionOf(sections, 'MENU: start this work'), [
@@ -198,14 +207,14 @@ describe('workunit move, the stage (19.5.9, P7)', () => {
       '**Keep shaping** → Tell me what I\'m missing',
       '',
     ].join('\n'));
-    assert.deepStrictEqual([head(dir), readState(dir, layout.manifest(QF)), JSON.parse(readState(dir, STAGED)).moves], [before.head, before.manifest, { from: 'quick-fix', branches: [BRANCH] }]);
+    assert.deepStrictEqual([head(dir), readState(dir, layout.manifest(QF)), JSON.parse(readState(dir, STAGED)).moves], [before.head, before.manifest, { from: 'quick-fix', branches: [KEPT] }]);
     assert.deepStrictEqual(ok(dir, ['gate', 'start this work', '--pick', 'y'], { env: env() }).next, { kind: 'engine', argv: ['start-this-work', 'yes'] });
     assert.match(sectionOf(output(dir, ['render', 'start-this-work'], { env: env() }), 'MENU: start this work'), /Move it — the quick-fix becomes a feature/, 'read again, the screen draws the staged move');
   });
 });
 
 describe('the yes: a quick-fix moved (19.S24, 19.5.16)', () => {
-  it('re-types it in place in both manifests, writes its brief, closes its open fix, takes the checkout back to main with the fix\'s commit left on its branch, carries its lines to the topic, re-indexes it, commits once, and hands off into the feature\'s discussion', () => {
+  it('re-types it in place in both manifests, writes its brief, closes its open fix, takes the checkout back to main, keeps the fix\'s commit unlanded on its branch renamed under moved/, takes its phase out of the tracker, carries its lines to the topic, re-indexes it, commits once, and hands off into the feature\'s discussion', () => {
     dir = world();
     assert.deepStrictEqual(chunkTypes(QF), ['quick-fix']);
     const fixCommit = git(dir, ['rev-parse', BRANCH]).trim();
@@ -218,7 +227,7 @@ describe('the yes: a quick-fix moved (19.S24, 19.5.16)', () => {
       from: 'quick-fix',
       brief: statePath(dir, layout.brief(QF, QF)),
       fixes_closed: ['1.1'],
-      branches: [BRANCH],
+      branches: [KEPT],
       checkout: 'main',
       committed: head(dir).slice(0, res.committed.length),
       next: { kind: 'handoff', skill: 'leeway-discussion-process', args: ['feature', QF] },
@@ -228,14 +237,14 @@ describe('the yes: a quick-fix moved (19.S24, 19.5.16)', () => {
       ['feature', 'The typo work, as feature work.', undefined, { discussion: { items: { [QF]: { status: 'unstarted' } } } }, 1]);
     assert.deepStrictEqual(readManifest(dir, '.').work_units[QF], { work_type: 'feature' });
     assert.strictEqual(readState(dir, layout.brief(QF, QF)), '# typo\n\nWhat the work showed.\n');
-    assert.deepStrictEqual(fixes(), [{ task: '1.1', status: 'closed' }]);
-    assert.deepStrictEqual([branchOut(), git(dir, ['rev-parse', BRANCH]).trim(), git(dir, ['rev-list', '--count', `main..${BRANCH}`]).trim()], ['main', fixCommit, '1']);
+    assert.strictEqual(refuses(dir, ['task', 'list', QF, '1']).error, `phase 1 of ${QF} is not written`);
+    assert.deepStrictEqual([branchOut(), git(dir, ['branch', '--list', BRANCH]), git(dir, ['rev-parse', KEPT]).trim(), git(dir, ['rev-list', '--count', `main..${KEPT}`]).trim()], ['main', '', fixCommit, '1']);
     const { v: _v, id: _id, at: _at, ...carry } = ledgerLines().at(-1);
     assert.deepStrictEqual(carry, { event: 'rehomed', unit: QF, topic: QF, phase: 'discussion', session: 'sess-1', lines: [ledgerLines().find((l) => l.id.startsWith(made.asked)).id, ledgerLines().find((l) => l.event === 'asset').id], files: [] });
     const record = ok(dir, ['ledger', 'record', QF, QF]);
     assert.deepStrictEqual([record.questions.map((q) => [q.unit, q.topic, q.phase]), record.questions[0].assets.map((a) => a.path)], [[[QF, QF, 'implementation']], [SHOT]]);
     assert.deepStrictEqual(chunkTypes(QF), ['feature']);
-    assert.strictEqual(lastMessage(dir), `workflow(${QF}): move quick-fix to feature`);
+    assert.deepStrictEqual(stateGit(dir, ['log', '-2', '--format=%s']).trim().split('\n'), [`workflow(${QF}): move quick-fix to feature`, `task(${QF}): close 1.1`]);
     assert.deepStrictEqual([fs.existsSync(statePath(dir, STAGED)), stateGit(dir, ['status', '--porcelain'])], [false, '']);
   });
 
@@ -286,6 +295,14 @@ describe('the yes: a quick-fix moved (19.S24, 19.5.16)', () => {
     assert.deepStrictEqual(readManifest(dir, 'small').phases, { discussion: { items: { small: { status: 'unstarted' } } } });
   });
 
+  it('deletes a fix\'s branch holding nothing the branch the fixes land on lacks, keeping none, and leaves the checkout on another unit\'s branch', () => {
+    dir = world();
+    const res = moved(BEGUN, 'feature');
+
+    assert.deepStrictEqual([res.fixes_closed, res.branches, res.checkout, branchOut()], [['1.1'], [], null, BRANCH]);
+    assert.deepStrictEqual([git(dir, ['branch', '--list', `*/${BEGUN}-*`]), git(dir, ['branch', '--list', `moved/*/${BEGUN}-*`])], ['', '']);
+  });
+
   it('a feature it became, absorbed into an epic, has its lines read at the epic\'s topic, the file they link where the absorb moved it — the later carry winning', () => {
     dir = world();
     moved(QF, 'feature');
@@ -295,6 +312,37 @@ describe('the yes: a quick-fix moved (19.S24, 19.5.16)', () => {
 
     const record = ok(dir, ['ledger', 'record', EPIC, 'colour']);
     assert.deepStrictEqual(record.questions.map((q) => [q.text, q.unit, q.topic, q.assets.map((a) => a.path)]), [['Should --color still work?', EPIC, 'colour', [`${EPIC}/assets/shot.png`]]]);
+  });
+});
+
+describe('what the new type\'s build meets: nothing of the fixes (19.5.16)', () => {
+  /** Task 1.1 of the moved quick-fix created from a task file of `type`: its answer. @param {string} type @param {string} title */
+  function firstTask(type, title) {
+    ok(dir, ['task', 'phase', QF, '1', '--title', 'The flag']);
+    return ok(dir, ['task', 'create', QF, '1', '--file', writeState(dir, layout.cache(`${QF}-task.md`), fixFile(1, title, type))]);
+  }
+
+  it('a quick-fix moved mid-fix to a feature: its build writes phase 1 and lays task 1.1\'s branch, the fix\'s kept branch untouched and read by no landing as the unit\'s', () => {
+    dir = world();
+    const fixCommit = git(dir, ['rev-parse', BRANCH]).trim();
+    moved(QF, 'feature');
+    const title = 'Take both spellings';
+    assert.strictEqual(firstTask('feat', title).task, '1.1');
+    ok(dir, ['task', 'start', QF, '1.1'], { env: env() });
+    const tree = path.join(fs.realpathSync(config()), 'builder');
+    git(dir, ['worktree', 'add', '-q', '-b', 'worktree-agent-builder', tree, 'HEAD']);
+    const laid = ok(tree, ['task', 'worktree', QF, '1.1'], { env: env() });
+
+    assert.deepStrictEqual([laid.branch, git(dir, ['rev-parse', KEPT]).trim(), isUnitBranch(QF, KEPT)], [taskBranch({ unit: QF, phase: 1, n: 1 }, 'feat', title), fixCommit, false]);
+  });
+
+  it('a quick-fix moved to a bugfix: its reproducing task, 1.1, created', () => {
+    dir = world();
+    moved(QF, 'bugfix');
+
+    const created = firstTask('test', 'Prove the flag is misspelt');
+
+    assert.deepStrictEqual([created.task, ok(dir, ['task', 'list', QF, '1']).tasks.map(({ task, title, status }) => [task, title, status])], ['1.1', [['1.1', 'Prove the flag is misspelt', 'open']]]);
   });
 });
 
