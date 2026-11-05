@@ -5,7 +5,7 @@
 // (20.11.1, 20.11.3) — written by `discovery-log`, read by the board. Claude
 // writes the rest of the log as the conversation goes, in sections under
 // headings of its own; these three are lists only the verb writes, an entry
-// a line:
+// a line, written and read as every log's fixed lists are (log-lists.cjs):
 //
 //   ## Not taken              `- {direction} — {why}`
 //   ## Views of the product   `- {view}`
@@ -43,20 +43,13 @@ const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { activeSession, sessionLogsAt } = require('./discovery-session.cjs');
 const { spikesOf } = require('./asset.cjs');
-const { fencedLines } = require('./spec-sections.cjs');
-const { BULLET } = require('./list-items.cjs');
+const { listedIn, beyondListsOf, withEntry, oneLine, unbroken, fitsShape } = require('./log-lists.cjs');
 const { conversationsIn } = require('./topic-log.cjs');
+
+const SAID = 'discovery-log';
 
 /** The fixed headings, as the log writes them. */
 const LOG_HEADINGS = Object.freeze({ notTaken: 'Not taken', views: 'Views of the product', spikes: 'Spikes' });
-
-const ITEM = new RegExp(`^${BULLET}(.*)$`);
-
-/** A line indented beneath an entry. */
-const INDENTED = /^\s+\S/;
-
-/** A level-two heading, as headedSections reads one. */
-const HEADING = /^## +(.+?)\s*$/;
 
 /** What divides a direction from its why, and a spike's tool from what it showed. */
 const DASH = ' — ';
@@ -75,28 +68,6 @@ const WEB_ADDRESS = /^[a-z][a-z0-9+.-]*:\/\/[^\s()<>[\]]+$/i;
  * What the logs say under their fixed headings.
  * @typedef {{notTaken: {direction: string, why: string}[], views: string[], spikes: Map<string, SpikeSaid>}} Heard
  */
-
-/**
- * A log's lines read: whether each is in a fenced block, and the fixed
- * heading each stands under, its heading's own line among them, else null.
- * @param {string[]} lines @returns {{fenced: boolean[], under: (string|null)[]}}
- */
-function linesUnder(lines) {
-  const fenced = fencedLines(lines);
-  /** @type {string|null} */
-  let under = null;
-  return {
-    fenced,
-    under: lines.map((line, at) => {
-      const heading = fenced[at] ? null : HEADING.exec(line);
-      if (heading !== null) under = Object.hasOwn(READS, heading[1]) ? heading[1] : null;
-      return under;
-    }),
-  };
-}
-
-/** Whether a log's line is an entry under a fixed heading: at the margin, outside a fence. @param {{fenced: boolean[], under: (string|null)[]}} read @param {string[]} lines @param {number} at */
-const isEntry = ({ fenced, under }, lines, at) => under[at] !== null && !fenced[at] && ITEM.test(lines[at]);
 
 /** A direction not taken and why, null where the entry does not read as one. @param {string} entry */
 function notTakenOf(entry) {
@@ -138,6 +109,9 @@ const READS = Object.freeze({
   },
 });
 
+/** The fixed headings the lists stand under. */
+const HEADINGS = Object.keys(READS);
+
 /**
  * What the logs say under their fixed headings, in order, each a log's
  * text, read once, with its path from the state root, and the epic's spikes
@@ -148,40 +122,21 @@ function heardIn(logs, spikes, warnings) {
   /** @type {Heard} */
   const heard = { notTaken: [], views: [], spikes: new Map() };
   for (const { rel, text } of logs) {
-    const lines = text.split(/\r\n?|\n/);
-    const read = linesUnder(lines);
-    lines.forEach((line, at) => {
-      if (!isEntry(read, lines, at)) return;
-      const heading = /** @type {string} */ (read.under[at]);
-      const entry = /** @type {RegExpExecArray} */ (ITEM.exec(line))[1].trim();
+    for (const { heading, entry } of listedIn(text, HEADINGS)) {
       const passed = READS[heading](heard, entry, spikes);
       if (passed !== null) warnings.push(`${rel}: "${entry}" under ## ${heading} ${passed}, and is passed over`);
-    });
+    }
   }
   return heard;
 }
 
 /** A log's lines outside its fixed lists, their headings left out with them. @param {string[]} lines */
 function beyondLists(lines) {
-  const { under } = linesUnder(lines);
-  return lines.filter((_, at) => under[at] === null);
+  return beyondListsOf(lines, HEADINGS);
 }
 
 /** The day a session started, from its log's text, null before a conversation has written it. @param {string} text */
 const sessionStarted = (text) => conversationsIn(text)[0]?.date ?? null;
-
-/** A value of the person's or Claude's words, refused missing, empty or past one line. @param {string|undefined} value @param {string} flag */
-function oneLine(value, flag) {
-  if (typeof value !== 'string' || value.trim() === '' || /[\r\n]/.test(value)) throw new Error(`discovery-log: --${flag} is one line of words, not empty`);
-  return value.trim();
-}
-
-/** Refuses a value holding what would break its line's shape. @param {string} value @param {string} flag @param {string[]} breaks */
-function unbroken(value, flag, breaks) {
-  const held = breaks.find((mark) => value.includes(mark));
-  if (held !== undefined) throw new Error(`discovery-log: --${flag} holds "${held.trim()}", which its line's shape keeps for itself`);
-  return value;
-}
 
 /**
  * Each entry the verb writes: its heading, its usage after `discovery-log`,
@@ -195,14 +150,14 @@ const ENTRIES = Object.freeze({
     usage: 'not-taken <epic> --direction "<direction>" --why "<why>"',
     takes: 0,
     flags: ['direction', 'why'],
-    line: (_root, _unit, _positional, opts) => `${unbroken(oneLine(opts.direction, 'direction'), 'direction', [DASH])}${DASH}${oneLine(opts.why, 'why')}`,
+    line: (_root, _unit, _positional, opts) => `${unbroken(SAID, oneLine(SAID, opts.direction, 'direction'), 'direction', [DASH])}${DASH}${oneLine(SAID, opts.why, 'why')}`,
   },
   view: {
     heading: LOG_HEADINGS.views,
     usage: 'view <epic> --text "<view>"',
     takes: 0,
     flags: ['text'],
-    line: (_root, _unit, _positional, opts) => oneLine(opts.text, 'text'),
+    line: (_root, _unit, _positional, opts) => oneLine(SAID, opts.text, 'text'),
   },
   spike: {
     heading: LOG_HEADINGS.spikes,
@@ -211,10 +166,10 @@ const ENTRIES = Object.freeze({
     flags: ['tool', 'showed'],
     may: ['link'],
     line: (root, unit, [spike], opts) => {
-      if (!spikesOf(root, unit).includes(spike)) throw new Error(`discovery-log: ${unit} has no spike "${spike}" — name it as asset spike answered it, its spike`);
-      const tool = unbroken(oneLine(opts.tool, 'tool'), 'tool', [DASH, '[', ']']);
-      if (opts.link !== undefined && !WEB_ADDRESS.test(opts.link)) throw new Error(`discovery-log: --link is the spike's live link, a web address, not "${opts.link}"`);
-      return `${spike} · ${opts.link === undefined ? tool : `[${tool}](${opts.link})`}${DASH}${oneLine(opts.showed, 'showed')}`;
+      if (!spikesOf(root, unit).includes(spike)) throw new Error(`${SAID}: ${unit} has no spike "${spike}" — name it as asset spike answered it, its spike`);
+      const tool = unbroken(SAID, oneLine(SAID, opts.tool, 'tool'), 'tool', [DASH, '[', ']']);
+      if (opts.link !== undefined && !WEB_ADDRESS.test(opts.link)) throw new Error(`${SAID}: --link is the spike's live link, a web address, not "${opts.link}"`);
+      return `${spike} · ${opts.link === undefined ? tool : `[${tool}](${opts.link})`}${DASH}${oneLine(SAID, opts.showed, 'showed')}`;
     },
   },
 });
@@ -222,42 +177,8 @@ const ENTRIES = Object.freeze({
 const LOG_USAGE = Object.values(ENTRIES).map(({ usage }) => `discovery-log ${usage}`).join('\n');
 
 /** Refuses arguments out of an entry's shape, with its usage. @param {typeof ENTRIES[string]} entry @param {string[]} positional @param {Record<string, string>} opts */
-function checkShape({ usage, takes, flags, may = [] }, positional, opts) {
-  const given = Object.keys(opts);
-  if (positional.length !== takes + 1 || !flags.every((flag) => given.includes(flag)) || !given.every((flag) => flags.includes(flag) || may.includes(flag))) {
-    throw new Error(`Usage: engine discovery-log ${usage}`);
-  }
-}
-
-/**
- * `text` with `line` put as an entry under the last `## {heading}` outside a
- * fenced block — after its last entry and the lines indented beneath it, or
- * as its first — else under the heading added at the end.
- * @param {string} text @param {string} heading @param {string} line
- */
-function withEntry(text, heading, line) {
-  const lines = text.split('\n');
-  const read = linesUnder(lines);
-  let at = -1;
-  lines.forEach((held, i) => { if (!read.fenced[i] && HEADING.exec(held)?.[1] === heading) at = i; });
-  if (at === -1) {
-    const gap = text === '' || text.endsWith('\n\n') ? '' : text.endsWith('\n') ? '\n' : '\n\n';
-    return `${text}${gap}## ${heading}\n\n- ${line}\n`;
-  }
-  let section = at + 1;
-  while (section < lines.length && read.under[section] === heading) section += 1;
-  let last = -1;
-  for (let i = at + 1; i < section; i += 1) if (isEntry(read, lines, i)) last = i;
-  if (last === -1) {
-    let first = at + 1;
-    while (first < lines.length && lines[first].trim() === '') first += 1;
-    lines.splice(at + 1, first - at - 1, '', `- ${line}`, '');
-    return lines.join('\n');
-  }
-  let after = last + 1;
-  while (after < section && INDENTED.test(lines[after])) after += 1;
-  lines.splice(after, 0, `- ${line}`);
-  return lines.join('\n');
+function checkShape(entry, positional, opts) {
+  if (!fitsShape(entry, positional, opts)) throw new Error(`Usage: engine discovery-log ${entry.usage}`);
 }
 
 /**
@@ -273,14 +194,14 @@ function logHeard(cwd, kind, positional, opts) {
   const [unit, ...rest] = positional;
   const root = stateRoot(cwd);
   const manifest = manifestOf(root, unit);
-  if (manifest === null) throw new Error(`discovery-log: there is no work unit "${unit}"`);
-  if (manifest.work_type !== 'epic') throw new Error(`discovery-log: ${unit} is a ${manifest.work_type} — the fixed lists are an epic's discovery's`);
+  if (manifest === null) throw new Error(`${SAID}: there is no work unit "${unit}"`);
+  if (manifest.work_type !== 'epic') throw new Error(`${SAID}: ${unit} is a ${manifest.work_type} — the fixed lists are an epic's discovery's`);
   const session = activeSession(cwd, unit);
-  if (session === null) throw new Error(`discovery-log: no discovery session is open for ${unit} — enter discovery ${unit} opens one`);
+  if (session === null) throw new Error(`${SAID}: no discovery session is open for ${unit} — enter discovery ${unit} opens one`);
   const line = entry.line(root, unit, rest, opts);
   const rel = path.posix.join(sessionLogsAt(unit), `session-${session}.md`);
   const file = statePath(cwd, rel);
-  fs.writeFileSync(file, withEntry(fs.readFileSync(file, 'utf8'), entry.heading, line));
+  fs.writeFileSync(file, withEntry(fs.readFileSync(file, 'utf8'), HEADINGS, entry.heading, line));
   return { log: rel, heading: entry.heading, line: `- ${line}` };
 }
 

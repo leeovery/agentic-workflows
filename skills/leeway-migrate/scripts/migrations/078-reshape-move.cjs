@@ -56,9 +56,10 @@
 // (`product_session`). The inbox and the environment setup file are carried as
 // they are, but for an inbox file whose name is no item's
 // (`{ideas,bugs,quickfixes}/{YYYY-MM-DD}--{slug}.md`, archived or not), left
-// behind. `.roadmap/` is `.product/` (21.5.7): its sessions as they are,
-// each note out of its kind's folder under its inbox name, and `imports/` as
-// `assets/`, the documents' links to an import rewritten as a unit's are.
+// behind. `.roadmap/` is `.product/` (21.5.7): its sessions as they are
+// but for their headings, demoted as a log's documents are, each note out
+// of its kind's folder under its inbox name, and `imports/` as `assets/`,
+// the documents' links to an import rewritten as a unit's are.
 // `.baseline/`'s docs are reference in `.product/assets/baseline/`, names
 // kept, and so is each interview agenda in `.baseline/.state/`, beside them:
 // it holds the person's answers, which an area under way has woven into no
@@ -91,9 +92,14 @@
 // the old migrations record are left where they are (21.5.10).
 //
 // Each unit, a folder under `.workflows/` holding a manifest:
+//   - every old document a log takes — a topic's, a discovery session's, the
+//     product's — keeps its words, each of its headings outside a fenced
+//     block one level deeper, a sixth-level one as it is, so none of them is
+//     read as a heading of the log, a fixed list's among them
+//     (log-lists.cjs);
 //   - a topic's log, `topics/{topic}/log.md`, is its research, its discussion
-//     and its investigation, each verbatim under a heading of its own, in that
-//     order (21.5.2, 21.5.3). A topic is a name the unit's map, discussions or
+//     and its investigation, each under a heading of its own, its words
+//     kept and its headings demoted, in that order (21.5.2, 21.5.3). A topic is a name the unit's map, discussions or
 //     investigations hold, or, for a feature, bugfix or cross-cutting unit,
 //     the unit's own name; research under any other name fed the topics it
 //     was split into or spawned, and goes to a discovery session of its own,
@@ -105,7 +111,7 @@
 //     `.workflows/.cache/{unit}/{phase}/{topic}/`, a promoted topic's in the
 //     unit it came from too — that landed and was never folded in, its
 //     report not in the log already, is appended to the topic's log, the
-//     report verbatim under `## Review {id}, never folded in` (21.5.12); a
+//     report demoted under `## Review {id}, never folded in` (21.5.12); a
 //     report the store holds no row for, a legacy `review-*.md`, is not;
 //   - its mail, from every box it had, is one sequence in `topics/{topic}/
 //     mail/`, renumbered where it had more than one box (21.5.5); the mail of
@@ -119,7 +125,8 @@
 //   - nothing lands in a topic's folder no topic owns: a brief, experiment
 //     records, a discussion or an investigation under any other name is left
 //     behind, and the experiments' manifest items with them;
-//   - discovery's sessions are `discovery/session-NNN.md`, numbers kept;
+//   - discovery's sessions are `discovery/session-NNN.md`, numbers kept,
+//     their headings demoted;
 //   - `imports/` is `assets/`, and every moved document's links to a file
 //     there (`../imports/{name}`, the name one `imports/` holds) are
 //     rewritten to the asset's place from the document's own; each
@@ -766,14 +773,43 @@ function relocate(move, rel, to) {
   move.relocations.set(`${move.unit}/${rel}`, to);
 }
 
+/** A heading markdown reads, the deepest aside, its marks after the indent. */
+const DEMOTABLE = /^( {0,3})(#{1,5})(?=[ \t]|$)/;
+
+/** A line opening or closing a fenced block. */
+const FENCE = /^ {0,3}(`{3,}|~{3,})/;
+
+/**
+ * An old document as a log holds it: each heading outside a fenced block one
+ * level deeper, so none of its own is read as one of the log's.
+ * @param {string} text
+ */
+function demoted(text) {
+  /** @type {{mark: string, length: number}|null} */
+  let fence = null;
+  return text.split('\n').map((line) => {
+    const opens = FENCE.exec(line);
+    if (fence !== null) {
+      if (opens !== null && opens[1][0] === fence.mark && opens[1].length >= fence.length && line.trim() === opens[1]) fence = null;
+      return line;
+    }
+    if (opens !== null) {
+      fence = { mark: opens[1][0], length: opens[1].length };
+      return line;
+    }
+    return line.replace(DEMOTABLE, '$1#$2');
+  }).join('\n');
+}
+
 /** @param {string} phase @param {string} text */
-const logPart = (phase, text) => `## ${LOG_HEADINGS[phase]}\n\n${endLine(text)}`;
+const logPart = (phase, text) => `## ${LOG_HEADINGS[phase]}\n\n${endLine(demoted(text))}`;
 
 /**
  * The reviews of a topic's old agent store, its own unit's and the one it
  * was promoted from, that landed and were never folded in, each its report
- * under a heading of its own; a report `log` holds already is not. A topic
- * promoted away has its reviews folded where it went.
+ * under a heading of its own, demoted; a report the topic's documents,
+ * `log`, hold already is not. A topic promoted away has its reviews folded
+ * where it went.
  * @param {UnitMove} move @param {string} topic @param {string} log @returns {string[]}
  */
 function unfoldedReviews(move, topic, log) {
@@ -786,7 +822,7 @@ function unfoldedReviews(move, topic, log) {
     return rows.filter((row) => isObject(row) && row.kind === 'review' && row.status !== 'incorporated' && typeof row.id === 'string').flatMap((row) => {
       const report = path.join(dir, `${row.id}.md`);
       const text = fs.existsSync(report) ? fs.readFileSync(report, 'utf8').trim() : '';
-      return text === '' || log.includes(text) ? [] : [`## Review ${row.id}, never folded in\n\n${text}\n`];
+      return text === '' || log.includes(text) ? [] : [`## Review ${row.id}, never folded in\n\n${demoted(text)}\n`];
     });
   }));
 }
@@ -801,8 +837,8 @@ function unfoldedReviews(move, topic, log) {
  * @param {UnitMove} move
  */
 function moveLogs(move) {
-  /** @type {Map<string, string[]>} */
-  const logs = new Map(move.incoming.map(({ topic, text }) => [topic, [logPart('research', text)]]));
+  /** @type {Map<string, {phase: string, text: string}[]>} */
+  const logs = new Map(move.incoming.map(({ topic, text }) => [topic, [{ phase: 'research', text }]]));
   /** @type {{rel: string, text: string}[]} */
   const spread = [];
   for (const phase of LOG_PHASES) {
@@ -815,16 +851,17 @@ function moveLogs(move) {
         continue;
       }
       if (!move.topics.has(topic)) {
-        if (phase === 'research') spread.push({ rel, text: `## Research: ${topic}\n\n${endLine(takeDocument(move, rel, `${move.unit}/discovery/session.md`))}` });
+        if (phase === 'research') spread.push({ rel, text: `## Research: ${topic}\n\n${endLine(demoted(takeDocument(move, rel, `${move.unit}/discovery/session.md`)))}` });
         continue;
       }
-      logs.set(topic, [...(logs.get(topic) ?? []), logPart(phase, takeDocument(move, rel, `${move.unit}/topics/${topic}/log.md`))]);
+      logs.set(topic, [...(logs.get(topic) ?? []), { phase, text: takeDocument(move, rel, `${move.unit}/topics/${topic}/log.md`) }]);
       relocate(move, rel, `${move.unit}/topics/${topic}/log.md`);
     }
   }
   for (const topic of move.topics) {
-    const parts = logs.get(topic) ?? [];
-    const folded = move.outgoing.has(topic) ? parts : [...parts, ...unfoldedReviews(move, topic, parts.join('\n'))];
+    const documents = logs.get(topic) ?? [];
+    const parts = documents.map(({ phase, text }) => logPart(phase, text));
+    const folded = move.outgoing.has(topic) ? parts : [...parts, ...unfoldedReviews(move, topic, documents.map(({ text }) => text).join('\n'))];
     if (folded.length > 0) put(move, `topics/${topic}/log.md`, folded.join('\n'));
   }
   if (spread.length === 0) return;
@@ -1035,6 +1072,7 @@ function moveUnit(workflows, state, unit, manifest, promoted, relocations, holde
       continue;
     }
     if (!rel.endsWith('.md') || Object.hasOwn(CARRIED, rel.split('/')[0])) put(move, at, take(move, rel), mode);
+    else if (SESSION.test(rel)) put(move, at, demoted(takeDocument(move, rel, `${unit}/${at}`)), mode);
     else put(move, at, takeDocument(move, rel, `${unit}/${at}`), mode);
     relocate(move, rel, `${unit}/${at}`);
   }
@@ -1227,7 +1265,7 @@ function baselinePlace(rel) {
 
 /**
  * `.roadmap/` as `.product/`, its documents' links to its imports pointed at
- * the assets (21.5.7), and `.baseline/`'s docs and its interview agendas,
+ * the assets (21.5.7) and its sessions' headings demoted, and `.baseline/`'s docs and its interview agendas,
  * which hold the person's answers, in `.product/assets/baseline/` as
  * reference, only its status fields and its dossiers gone (21.11.1, 4.10.3):
  * each file's place recorded in `relocations`. A note whose name another
@@ -1239,20 +1277,21 @@ function moveProduct(from, state, relocations) {
   const roadmap = path.join(from, ROADMAP);
   const imported = importedNames(roadmap);
   const files = [
-    ...filesUnder(roadmap).map((rel) => ({ source: `${ROADMAP}/${rel}`, at: productPlace(rel), relink: rel.endsWith('.md') && !rel.startsWith('imports/') })),
+    ...filesUnder(roadmap).map((rel) => ({ source: `${ROADMAP}/${rel}`, at: productPlace(rel), relink: rel.endsWith('.md') && !rel.startsWith('imports/'), log: ROADMAP_SESSION.test(rel) })),
     ...filesUnder(path.join(from, BASELINE)).flatMap((rel) => {
       const at = baselinePlace(rel);
-      return at === null ? [] : [{ source: `${BASELINE}/${rel}`, at, relink: false }];
+      return at === null ? [] : [{ source: `${BASELINE}/${rel}`, at, relink: false, log: false }];
     }),
   ];
   /** @type {Set<string>} */
   const taken = new Set();
-  return files.flatMap(({ source, at, relink }) => {
+  return files.flatMap(({ source, at, relink, log }) => {
     if (at === null || taken.has(at)) return [source];
     taken.add(at);
     const file = path.join(from, source);
     const to = `${PRODUCT}/${at}`;
-    writeFile(path.join(state, to), relink ? relinked(fs.readFileSync(file, 'utf8'), to, PRODUCT, imported) : fs.readFileSync(file), modeOf(file));
+    const text = relink ? relinked(fs.readFileSync(file, 'utf8'), to, PRODUCT, imported) : fs.readFileSync(file);
+    writeFile(path.join(state, to), log ? demoted(text.toString()) : text, modeOf(file));
     relocations.set(source, to);
     return [];
   });

@@ -4,10 +4,11 @@
 // Domain ring: a raise's screen (16.9.2) — one MENU, drawn from the raise's
 // seal alone (raise.cjs), read cold and product first: where the question
 // stands — for a question waiting in the build, its number and the tasks it
-// parks besides (16.9.5, 12.12.5) — the question, Claude's lean, what the person
-// would notice with each row, why it asks, and, with the toggle on, the
-// mechanism; then the
-// rows, the lean recommended, the toggle, "I don't follow" and a comment.
+// parks besides (16.9.5, 12.12.5) — the question, what Claude found stepping
+// back from the problem where its call says (19.4.21), Claude's lean, what
+// the person would notice with each row, why it asks, and, with the toggle
+// on, the mechanism; then the rows, the lean recommended, the toggle, "I
+// don't follow" and a comment.
 // A raise on a replacement draws Claude's proposals, then the row its seal
 // holds for keeping the entry as it stands, never recommended. A fact draws
 // no lean and recommends no row, asks for the answer, and draws what the
@@ -80,10 +81,16 @@ function header({ place: { unit, topic }, parks }, titles) {
   ].join(' · ');
 }
 
+/** What Claude found stepping back, where its call says; a fact's says none. @param {Seal['call']} call @returns {string[]} */
+function steppedBack(call) {
+  const found = 'stepped_back' in call ? call.stepped_back : undefined;
+  return found === undefined ? [] : ['WHAT I FOUND STEPPING BACK', '', ...found.map((line) => `- ${escapeMarkdown(line)}`), ''];
+}
+
 /**
- * The lines above the rows, each block apart: the header, the question, the
- * lean, what the person would notice, why it asks, and the mechanism where
- * it is shown.
+ * The lines above the rows, each block apart: the header, the question,
+ * what the step back found, the lean, what the person would notice, why it
+ * asks, and the mechanism where it is shown.
  * @param {Seal} seal @param {boolean} technical @param {Record<string, string>} titles
  * @returns {string[]}
  */
@@ -96,6 +103,7 @@ function statement(seal, technical, titles) {
     '',
     escapeMarkdown(call.question),
     '',
+    ...steppedBack(call),
     ...(lean === undefined ? [] : [`I lean: ${escapeMarkdown(lean.text)}`, '']),
     ...(rows.length === 0 ? [] : [
       'WHAT YOU\'D NOTICE',

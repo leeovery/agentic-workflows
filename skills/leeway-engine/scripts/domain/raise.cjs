@@ -13,9 +13,15 @@
 //   notice}` — the key, a short name for what the person would notice, the
 //   answer's text and what they would notice; the lean, a row's key; why
 //   Claude leans so; the sort, `one` or `several` (16.3.7); the mechanism,
-//   behind the screen's toggle; and whether the answer is product-wide.
-//   Every field of text is one line but the mechanism, drawn as written;
-//   nothing else is taken.
+//   behind the screen's toggle; whether the answer is product-wide; and,
+//   where Claude stepped back from the problem before setting out its rows,
+//   what that found (`stepped_back`, 19.4.13, 19.4.21), lines drawn above
+//   the lean — never in the build, whose park keeps the call's own fields
+//   alone in the ledger, nor at an investigation's place, where it makes the
+//   screen the fix direction's, while the root cause points at no current
+//   entry (investigation-log.cjs); the fix direction's log line takes it
+//   from the seal as its body (`steppedBackSealed`). Every field of text is
+//   one line but the mechanism, drawn as written; nothing else is taken.
 // - A raise on a replacement (16.5.7, 29.5.2): `raise <unit>.<phase>[.<topic>]
 //   --replaces <entry> --reason <reason> [--cause <id>] [--relies-on <id>
 //   …]`, the same call on stdin, its rows Claude's proposed answers in place
@@ -218,13 +224,13 @@ const { conversationDir } = require('./conversation.cjs');
 const { newId, shortId } = require('./ledger-ids.cjs');
 const { carrying } = require('./ledger.cjs');
 const { ROW_FIELDS, CALL_FIELDS: CALL_SHAPE, entryKind } = require('./ledger-events.cjs');
-const { ID_FACTS, readFolded, foldLedger, questionStands, laterOf, answersOf, notCurrent } = require('./ledger-fold.cjs');
+const { ID_FACTS, readFolded, foldLedger, questionStands, laterOf, answersOf, notCurrent, factsOf, replacementsOf } = require('./ledger-fold.cjs');
 const { liveness, manifestOf } = require('./ledger-units.cjs');
 const { topicTitles } = require('./derivations.cjs');
 const { verbUsage, writePlaced, landRaised, callLogged, staleness } = require('./ledger-write.cjs');
 const { OVER_THE_LEAN, BACK_TO_THE_LEAN, derivedMove } = require('./ledger-verdicts.cjs');
 const { judgeDecisionAsync } = require('./ledger-one-decision.cjs');
-const { type, TEXT, KEY, listOf } = require('./event-fields.cjs');
+const { type, TEXT, KEY, LINE, listOf } = require('./event-fields.cjs');
 const { isShownTask, parseShownTask } = require('./task-id.cjs');
 const { markChanged, beingRead } = require('./round-report.cjs');
 const { stepTurn } = require('./task-verbs.cjs');
@@ -235,6 +241,7 @@ const { RAISE_SHOWN, raiseMenu, clearGateShown, isPressed } = require('./gate.cj
 const { drawnRows, raiseScreen } = require('./projections/raise.cjs');
 const decisionPoint = require('./decision-point.cjs');
 const questions = require('./questions.cjs');
+const { assertRootCauseAt } = require('./investigation-log.cjs');
 
 /** @typedef {import('./event-fields.cjs').Type} Type */
 /** @typedef {import('./decision-point.cjs').Decision} Decision */
@@ -243,7 +250,7 @@ const questions = require('./questions.cjs');
 /** @typedef {{key: string, name: string, text: string, notice: string}} Row */
 /**
  * Claude's call, as the draw takes it on stdin.
- * @typedef {{question: string, rows: Row[], lean: string, why: string, sort: 'one'|'several', mechanism: string, product_wide: boolean}} Call
+ * @typedef {{question: string, rows: Row[], lean: string, why: string, sort: 'one'|'several', mechanism: string, product_wide: boolean, stepped_back?: string[]}} Call
  */
 /**
  * A fact only the person holds, as the draw takes it on stdin: no lean, no
@@ -358,6 +365,9 @@ const MOVED = type('who moved whom', () => true);
 /** What the call holds, each field's type: its rows checked one by one (`checkEachRow`). @type {Readonly<Record<string, Type>>} */
 const CALL_FIELDS = Object.freeze({ ...CALL_SHAPE, rows: ROWS });
 
+/** What the call may hold besides: what Claude's step back found. @type {Readonly<Record<string, Type>>} */
+const CALL_MAY = Object.freeze({ stepped_back: type('a list of lines, one at least', (v) => Array.isArray(v) && v.length > 0 && v.every((line) => LINE.test(line))) });
+
 /** What a fact holds, each field's type. @type {Readonly<Record<string, Type>>} */
 const FACT_FIELDS = Object.freeze({ question: CALL_SHAPE.question, rows: ROWS, mechanism: CALL_SHAPE.mechanism, product_wide: CALL_SHAPE.product_wide });
 
@@ -431,7 +441,7 @@ function checkRows({ rows, lean }, replacing) {
  */
 function callOf(stdin, replacing) {
   const call = stdinObject(stdin, SAID, 'the call');
-  checkFields(call, CALL_FIELDS, 'raise: the call');
+  checkFields(call, CALL_FIELDS, 'raise: the call', CALL_MAY);
   checkRows(/** @type {Call} */ (call), replacing);
   return /** @type {Call} */ (call);
 }
@@ -578,6 +588,37 @@ function readSeals(session) {
 /** @param {unknown} value @returns {value is Seal} */
 function isSeal(value) {
   return isObject(value) && value.v === SEAL_VERSION;
+}
+
+/**
+ * The question's chain in `folded`: the question, every wording of it, and
+ * each decision that answered it or replaced one that did.
+ * @param {Folded} folded @param {string} question @returns {{root: string, decisions: Set<string>}}
+ */
+function questionChain(folded, question) {
+  const root = factsOf(folded, question).root;
+  const answered = factsOf(folded, root).answered_by;
+  return { root, decisions: new Set([...answered, ...answered.flatMap((id) => replacementsOf(folded, id))]) };
+}
+
+/**
+ * What the step back found, as the calling conversation's latest raise down
+ * the question's chain sealed it — one answering the question, or one
+ * replacing a decision of its chain; null where the conversation sealed none
+ * holding it, or no conversation is handed.
+ * @param {Folded} folded @param {string} question @returns {string[]|null}
+ */
+function steppedBackSealed(folded, question) {
+  const session = handedSession();
+  if (session === null) return null;
+  const { root, decisions } = questionChain(folded, question);
+  const down = (/** @type {Seal} */ seal) => (seal.answers !== null && folded.facts.get(seal.answers)?.root === root)
+    || (seal.replaces !== null && decisions.has(seal.replaces.entry));
+  const sealed = Object.values(readSeals(session))
+    .filter((seal) => isSeal(seal) && !seal.fact && seal.call.stepped_back !== undefined && down(seal))
+    .sort((a, b) => /** @type {Seal} */ (a).at.localeCompare(/** @type {Seal} */ (b).at));
+  const latest = /** @type {CallSeal|undefined} */ (sealed.at(-1));
+  return latest?.call.stepped_back ?? null;
 }
 
 /**
@@ -919,6 +960,8 @@ async function drawRaise(cwd, args, stdin) {
   const inBuild = checkBuildPlace(cwd, place, parks);
   if (!inBuild) questions.checkUnparked(read, subjectOf(target), SAID);
   const given = fact ? factOf(stdin()) : callOf(stdin(), target.replaces !== null);
+  if (inBuild && 'stepped_back' in given) throw new Error('raise: a raise in the build takes no stepped_back — its call parks in the ledger, which keeps the call\'s own fields alone');
+  if (place.phase === 'investigation' && 'stepped_back' in given) assertRootCauseAt(cwd, place.unit, SAID, warnings);
   if (target.replaces !== null) checkProposals(/** @type {Call} */ (given), target.replaces, short(target.replaces.entry));
   if (inBuild) return parkedRaise(cwd, place, target, fact ? { call: /** @type {Fact} */ (given), fact: true } : { call: /** @type {Call} */ (given), fact: false }, parks, warnings);
   const open = openSeal(readSeals(session), place, target, null);
@@ -1380,4 +1423,4 @@ function raiseScreenOf(cwd, seal, { technical = false } = {}) {
   return raiseScreen(seal, { technical, titles: topicTitles(manifest ?? {}) });
 }
 
-module.exports = { RAISE_USAGE, drawRaise, drawParked, showRaise, answerRaise, raiseWaits, unraised, raiseScreenOf };
+module.exports = { RAISE_USAGE, drawRaise, drawParked, showRaise, answerRaise, raiseWaits, unraised, raiseScreenOf, steppedBackSealed };

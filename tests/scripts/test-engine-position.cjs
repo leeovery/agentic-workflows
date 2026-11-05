@@ -618,12 +618,14 @@ describe('conversation position', () => {
     ok(['session', 'label', 'pay', 'investigation', 'ledger']);
     assert.deepStrictEqual(reads().files, []);
     assert.strictEqual(reads().text, note('the investigation of "ledger" in the epic "pay"', 'leeway-investigation-process', []));
+    write('.leeway/pay/topics/ledger/log.md');
+    assert.deepStrictEqual(reads().files, [abs('.leeway/pay/topics/ledger/log.md')]);
     write('.leeway/pay/investigation/ledger.md');
-    assert.deepStrictEqual(reads().files, [abs('.leeway/pay/investigation/ledger.md')]);
+    assert.deepStrictEqual(reads().files, ['.leeway/pay/topics/ledger/log.md', '.leeway/pay/investigation/ledger.md'].map(abs));
   });
 
   it('a place whose skill this project lacks carries nothing on, whatever documents it has', () => {
-    write('.leeway/pay/investigation/ledger.md');
+    write('.leeway/pay/topics/ledger/log.md');
     ok(['session', 'label', 'pay', 'investigation', 'ledger']);
     assert.deepStrictEqual(reads(), {
       session_id: 'sess-1',
@@ -638,7 +640,7 @@ describe('conversation position', () => {
   it('each phase names its own documents', () => {
     workUnit('fix', 'quick-fix');
     const cases = [
-      ['investigation', 'ledger', ['.leeway/pay/investigation/ledger.md']],
+      ['investigation', 'ledger', ['.leeway/pay/topics/ledger/log.md', '.leeway/pay/investigation/ledger.md']],
     ];
     for (const [phase, topic, files] of cases) {
       install(`leeway-${phase}-process`);
@@ -866,14 +868,14 @@ describe('conversation position', () => {
     const root = harness.setupFixtureAt(path.join(dir, 'code', 'my-repo.app'));
     fs.mkdirSync(path.join(root, '.claude', 'skills', 'leeway-investigation-process'), { recursive: true });
     fs.writeFileSync(path.join(root, '.claude', 'skills', 'leeway-investigation-process', 'SKILL.md'), '# investigation\n');
-    fs.mkdirSync(path.join(root, '.leeway', 'pay', 'investigation'), { recursive: true });
+    fs.mkdirSync(path.join(root, '.leeway', 'pay', 'topics', 'ledger'), { recursive: true });
     fs.writeFileSync(path.join(root, '.leeway', 'pay', 'manifest.json'), JSON.stringify({ name: 'pay', work_type: 'epic', status: 'in-progress', phases: {} }));
-    fs.writeFileSync(path.join(root, '.leeway', 'pay', 'investigation', 'ledger.md'), '# ledger\n');
+    fs.writeFileSync(path.join(root, '.leeway', 'pay', 'topics', 'ledger', 'log.md'), '# ledger\n');
     writePosition({ name: 'pay', phase: 'investigation', topic: 'ledger' });
     const out = harness.output(root, ['conversation', 'position'], { env: env() });
     const answer = JSON.parse(out.slice(out.indexOf('=== POSITION')).split('\n')[1]);
-    assert.deepStrictEqual(answer.files, [path.join(root, '.leeway/pay/investigation/ledger.md')]);
-    assert.ok(answer.text.endsWith(`\n- ${root}/.leeway/pay/investigation/ledger.md`), answer.text);
+    assert.deepStrictEqual(answer.files, [path.join(root, '.leeway/pay/topics/ledger/log.md')]);
+    assert.ok(answer.text.endsWith(`\n- ${root}/.leeway/pay/topics/ledger/log.md`), answer.text);
   });
 
   it('reads another conversation by its id, from any project the call runs in; the calling one\'s by default', () => {

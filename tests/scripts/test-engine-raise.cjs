@@ -6,18 +6,20 @@
 // `engine raise <place> --answers <question>`, Claude's call on stdin, put
 // through the decision point, every row judged by the one-decision check at
 // once, each run logged, sealed in the conversation's folder and drawn as
-// one MENU (16.S30); `raise show`, drawing it again from the seal alone, the
-// mechanism behind its toggle; every refusal drawing and sealing nothing; a
-// second raise of the question keeping the first seal (P6); and a raise that
-// is no gate, clearing the gate shown.
+// one MENU (16.S30), what Claude's step back found above its lean (19.S13);
+// `raise show`, drawing it again from the seal alone, the mechanism behind
+// its toggle; every refusal drawing and sealing nothing; a second raise of
+// the question keeping the first seal (P6); and a raise that is no gate,
+// clearing the gate shown.
 //
 // Layer: verb. World: the ledger suites' unit with four questions asked —
 // three on one topic, one on another — and a feature with one, built once
-// and only read but for one decision and a question moved to the roadmap: a
-// raise writes the conversation's folder alone. Each test keeps its conversation
-// in a config folder of its own. The separate call is the stub binary
-// (claude-stub.cjs): unarmed it has no login, so every row is drawn
-// unchecked; armed per test where the check is the subject.
+// and only read but for one decision, a question moved to the roadmap and
+// one asked in the build: a raise writes the conversation's folder alone.
+// Each test keeps its conversation in a config folder of its own. The
+// separate call is the stub binary (claude-stub.cjs): unarmed it has no
+// login, so every row is drawn unchecked; armed per test where the check is
+// the subject.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -191,6 +193,19 @@ describe('the draw (16.S30, 16.9.2)', () => {
     const { sections } = await draw(CALL, { at: FEATURE_AT, answers: asked.capture });
 
     assert.strictEqual(sections.split('\n')[2], 'Quick Capture');
+  });
+
+  it('19.S13: what Claude found stepping back is drawn above its lean, escaped as the rest; the seal keeps it, and raise show draws it again (19.4.21)', async () => {
+    const steppedBack = ['The window opens where the code says; a *second* screen is a case it never met.', 'Another way: open each note where the last one was.'];
+    const { res, sections } = await draw({ ...CALL, stepped_back: steppedBack });
+
+    const drawn = screen(res.raise).replace('\nI lean:', [
+      '', 'WHAT I FOUND STEPPING BACK', '', '- The window opens where the code says; a \\*second\\* screen is a case it never met.', '- Another way: open each note where the last one was.', '', 'I lean:',
+    ].join('\n'));
+    assert.strictEqual(sections, drawn);
+    assert.deepStrictEqual(seals()[res.raise].call.stepped_back, steppedBack);
+    assert.strictEqual(show([res.raise]).sections, drawn);
+    auditGate(show([res.raise], { env: { LEEWAY_GATE_SURFACE: '1' } }).sections, 'raise show, stepped back');
   });
 
   it('the mechanism keeps its lines as written, each from its first word, escaped as the rest', async () => {
@@ -493,7 +508,7 @@ describe('the draw\'s refusals, drawing and sealing nothing', () => {
   it('a field the call does not hold, one it lacks, and one of another type — a line break among them', async () => {
     const { mechanism, ...lacking } = CALL;
     for (const [call, error] of /** @type {[unknown, string][]} */ ([
-      [{ ...CALL, kind: 'look' }, 'raise: the call has no field kind — it holds question, rows, lean, why, sort, mechanism, product_wide'],
+      [{ ...CALL, kind: 'look' }, 'raise: the call has no field kind — it holds question, rows, lean, why, sort, mechanism, product_wide, stepped_back'],
       [lacking, 'raise: the call needs mechanism'],
       [{ ...CALL, sort: 'maybe' }, 'raise: the call\'s sort is not one of one, several'],
       [{ ...CALL, product_wide: 'no' }, 'raise: the call\'s product_wide is not true or false'],
@@ -503,9 +518,20 @@ describe('the draw\'s refusals, drawing and sealing nothing', () => {
       [{ ...CALL, rows: [CURSOR, { ...MAIN, why: 'Because.' }] }, 'raise: the call\'s rows[1] has no field why — it holds key, name, text, notice'],
       [{ ...CALL, rows: [CURSOR, { key: '2', name: 'Main', text: 'On the main screen' }] }, 'raise: the call\'s rows[1] needs notice'],
       [{ ...CALL, rows: [CURSOR, 'On the main screen'] }, 'raise: the call\'s rows[1] is not a row — {key, name, text, notice}'],
+      ...[[], ['Found it.\nAnd more.'], 'Found it.'].map((steppedBack) => [{ ...CALL, stepped_back: steppedBack }, 'raise: the call\'s stepped_back is not a list of lines, one at least']),
     ])) {
       assert.strictEqual(await refusedCall(call), error, JSON.stringify(call));
     }
+  });
+
+  it('what the step back found, in the build, whose park keeps the call\'s own fields alone in the ledger', async () => {
+    const { write, ledgerText } = ledgerHelpers(() => dir);
+    const built = write('ask', 'fumi.implementation', [], { ...MADE, text: 'Where does a built note open?' }, WRITER).id;
+    const before = ledgerText();
+
+    assert.strictEqual(await refusedDraw(['fumi.implementation', '--answers', built], JSON.stringify({ ...CALL, stepped_back: ['Found it.'] })),
+      'raise: a raise in the build takes no stepped_back — its call parks in the ledger, which keeps the call\'s own fields alone');
+    assert.strictEqual(ledgerText(), before);
   });
 
   it('fewer than two rows', async () => {
