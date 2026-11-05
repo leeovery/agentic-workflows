@@ -209,7 +209,7 @@ describe('render finish (14.5.1)', () => {
     ], [
       'render finish: there is no work unit "nope" — the start menu lists the work in progress',
       'render finish: half is completed — new work starts from the start menu',
-      'render finish: tweak is a quick-fix, whose delivery is built with the reshape\'s 29.15 — until then a quick-fix stops at its scoping',
+      'render finish: tweak is a quick-fix, whose close and review are built with the reshape\'s 29.15 — until then its fixes are built at enter implementation tweak',
       'render finish: old was built under the old plan, and its build is entered once the reshape\'s 29.17 migration has cut it',
       'render finish: fresh\'s build has not begun — ready to build\'s yes begins it: render ready-to-build fresh',
       `render finish: finish is open — its items are worked, then it is closed: checklist close finish ${UNIT}`,

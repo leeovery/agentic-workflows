@@ -58,21 +58,55 @@ function buildFinished(manifest) {
 
 /**
  * Whether a phase is one of the review phase's fix phases: numbered past
- * the cut of a build through every phase of it (P14, 14.3.2).
+ * the build's own (`buildLength`) — of a build through every phase of its
+ * cut, or of a quick-fix, whose fixes are its one phase (P14, 14.3.2).
  * @param {Record<string, any>} manifest @param {number} phase
  */
 function isFixPhase(manifest, phase) {
-  return buildFinished(manifest) && phase > cutLength(manifest);
+  return (quickFixBuild(manifest) || buildFinished(manifest)) && phase > buildLength(manifest);
 }
 
 /**
- * Whether the unit was built under the old plan: its old spec's, planning's
- * or implementation's items standing on its manifest, which 29.17's cut
- * takes (P12).
+ * Whether the unit was built under the old plan: its old scoping's, spec's,
+ * planning's or implementation's items standing on its manifest, which
+ * 29.17's cut takes (P12).
  * @param {Record<string, any>} manifest
  */
 function legacyBuild(manifest) {
-  return ['specification', 'planning', 'implementation'].some((phase) => phaseItems(manifest, phase).length > 0);
+  return ['scoping', 'specification', 'planning', 'implementation'].some((phase) => phaseItems(manifest, phase).length > 0);
+}
+
+/** A quick-fix's one phase, the fixes, each fix its own task (19.5.4, E4). */
+const FIXES_PHASE = Object.freeze({ number: 1, name: 'the fixes' });
+
+/**
+ * Whether the unit is built as a quick-fix: its own tasks in its one phase,
+ * with no cut, no ready to build and no position (19.5.4, E4) — a quick-fix
+ * with nothing of the old plan standing. The one place a quick-fix's build
+ * is told from a build by its cut, whose readers never see one.
+ * @param {Record<string, any>} manifest
+ */
+function quickFixBuild(manifest) {
+  return manifest.work_type === 'quick-fix' && !legacyBuild(manifest);
+}
+
+/**
+ * Whether a quick-fix's fixes have begun: its entry's record, on its
+ * manifest, of their phase written (19.5.4), read so the tracker need not
+ * be.
+ * @param {Record<string, any>} manifest
+ */
+function fixesBegun(manifest) {
+  return isObject(manifest.fixes);
+}
+
+/**
+ * How many phases the unit's build holds of its own, the review phase's fix
+ * phases numbered on past them (P14): its cut's, or a quick-fix's one.
+ * @param {Record<string, any>} manifest
+ */
+function buildLength(manifest) {
+  return quickFixBuild(manifest) ? FIXES_PHASE.number : cutLength(manifest);
 }
 
 /**
@@ -96,14 +130,17 @@ function buildByCut(manifest) {
 }
 
 /**
- * Why the unit's build cannot be entered, with its way on, or null where it
- * can: a quick-fix, a unit built under the old plan, a build not begun.
+ * Why the unit's build by its cut cannot be entered, nor its review phase
+ * or its finish reached, with its way on, or null where it can: a unit
+ * built under the old plan, a quick-fix — its fixes built at its own arm of
+ * the build's entry (`quickFixBuild`), its close and its review on request
+ * not yet — and a build not begun.
  * @param {Record<string, any>} manifest @returns {string|null}
  */
 function buildRefusal(manifest) {
   const unit = manifest.name;
-  if (manifest.work_type === 'quick-fix') return `${unit} is a quick-fix, whose delivery is built with the reshape's 29.15 — until then a quick-fix stops at its scoping`;
   if (legacyBuild(manifest)) return `${unit} was built under the old plan, and its build is entered once the reshape's 29.17 migration has cut it`;
+  if (quickFixBuild(manifest)) return `${unit} is a quick-fix, whose close and review are built with the reshape's 29.15 — until then its fixes are built at enter implementation ${unit}`;
   return buildBegun(manifest) ? null : `${unit}'s build has not begun — ready to build's yes begins it: render ready-to-build ${unit}`;
 }
 
@@ -123,11 +160,22 @@ function buildPlaceStatus(manifest, phase) {
 }
 
 /**
+ * Where a quick-fix's implementation stands, read from its own record:
+ * in progress once its fixes have begun, completed with the unit.
+ * @param {Record<string, any>} manifest @returns {'in-progress'|'completed'|null}
+ */
+function fixesStatus(manifest) {
+  if (manifest.status === 'completed') return 'completed';
+  return fixesBegun(manifest) ? 'in-progress' : null;
+}
+
+/**
  * A phase's status over its live items. The one spec a unit writes keeps no
  * items: it reads completed once its build has begun, in progress while its
  * `spec.md` is written — the state's to say, so the caller says it
  * (spec-standing.cjs) — and none before. A build by the cut reads its build
- * and its review phase off its own records (`buildPlaceStatus`). A unit
+ * and its review phase off its own records (`buildPlaceStatus`), and a
+ * quick-fix its implementation off its own (`fixesStatus`). A unit
  * whose building began under the old spec keeps that spec's items, which
  * are read alone.
  * @param {Record<string, any>} manifest @param {string} phase @param {boolean} [specWritten]
@@ -135,6 +183,7 @@ function buildPlaceStatus(manifest, phase) {
  */
 function phaseStatus(manifest, phase, specWritten = false) {
   if (BUILD_PHASES.includes(phase) && buildByCut(manifest)) return buildPlaceStatus(manifest, /** @type {'implementation'|'review'} */ (phase));
+  if (phase === 'implementation' && quickFixBuild(manifest)) return fixesStatus(manifest);
   const p = (manifest.phases || {})[phase] || {};
   const keys = p.items && typeof p.items === 'object' ? Object.keys(p.items) : [];
   if (keys.length > 0) {
@@ -1260,6 +1309,10 @@ module.exports = {
   awaitsCut,
   buildByCut,
   buildRefusal,
+  FIXES_PHASE,
+  quickFixBuild,
+  fixesBegun,
+  buildLength,
   buildPlaceStatus,
   phaseStatus,
   UNIT_PHASES,

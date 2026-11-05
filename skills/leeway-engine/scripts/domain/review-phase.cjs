@@ -103,7 +103,7 @@ const { resolveId } = require('./ledger-ids.cjs');
 const { handedTag } = require('./topic-map.cjs');
 const { phaseLists, mergeWaiting } = require('./phase-checks.cjs');
 const { shownTask } = require('./task-id.cjs');
-const { cutLength } = require('./derivations.cjs');
+const { buildLength } = require('./derivations.cjs');
 const { STATUS_WORDS } = require('./task-verbs.cjs');
 const { notesUntaken } = require('./notes.cjs');
 const { reviewReportFaults } = require('./review-report.cjs');
@@ -244,8 +244,8 @@ const fixesOf = (round) => [...new Set(round.findings.flatMap(({ fix }) => (type
 /** Whether a round ends the review phase: it passed, or Claude settled it (14.6.3). @param {RoundRecord} round */
 const endsReview = (round) => round.passed || round.settled !== null;
 
-/** The build phase a round's fix tasks make: round k's, the k-th past the cut (P14). @param {Record<string, any>} manifest @param {number} round */
-const fixPhase = (manifest, round) => cutLength(manifest) + round;
+/** The build phase a round's fix tasks make: round k's, the k-th past the build's own — its cut's, or a quick-fix's fixes (P14). @param {Record<string, any>} manifest @param {number} round */
+const fixPhase = (manifest, round) => buildLength(manifest) + round;
 
 /** The reads every area and the test surface make: round 1's. @param {Area[]} areas */
 const everyRead = (areas) => [...areas.map(({ name }) => name), TESTS];

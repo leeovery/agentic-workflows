@@ -61,7 +61,7 @@ const { handedSession } = require('../kernel/process.cjs');
 const { positionPath, leftPath, readPosition, isMarked, markConversation, runningTranscript } = require('./conversation.cjs');
 const { ROLES, issuedOf } = require('./brief-names.cjs');
 const { loadManifest, loadProjectManifest } = require('./reads.cjs');
-const { buildBegun, buildRefusal, isFixPhase, computeTopicLifecycle, itemOf, openRecords, phaseData, UNIT_PHASES } = require('./derivations.cjs');
+const { buildBegun, buildRefusal, quickFixBuild, isFixPhase, computeTopicLifecycle, itemOf, openRecords, phaseData, UNIT_PHASES } = require('./derivations.cjs');
 const { recordDir } = require('./experiment-paths.cjs');
 const { latestSessionLog, productSession } = require('./discovery-session.cjs');
 const { PRODUCT_SESSIONS } = require('./layout.cjs');
@@ -435,7 +435,8 @@ function dropPosition(sessionId) {
 // implementation's, once the unit's build has begun, what its entry reads
 // to carry it on — the entries affected and the unit's record by their
 // calls, the build's log, and where the build stands, its tasks in flight
-// and its questions waiting (build-entry.cjs, 12.1.6, 24.2.2); and the
+// and its questions waiting (build-entry.cjs, 12.1.6, 24.2.2), a
+// quick-fix's what its arm reads, its change and its fixes; and the
 // review phase's, of a unit whose build runs by its cut, what its entry
 // reads, its fix tasks in flight among it (review-entry.cjs). Every other
 // phase's note sends Claude to its skill's own steps, with its documents.
@@ -655,8 +656,9 @@ function placeLine({ name, phase, topic }, separator) {
  * Why a work unit's place is no longer open to carry on from, or null where
  * it is: the work unit gone from this project or closed, its spec concluded
  * at the spec's place, its build not to be entered at the build's places
- * (P12), the place's item closed, or — in a phase a topic on the map holds —
- * the topic cancelled or postponed.
+ * (P12) — a quick-fix's implementation entered by its own arm, its review
+ * not yet — the place's item closed, or — in a phase a topic on the map
+ * holds — the topic cancelled or postponed.
  * @param {Position} position @param {Manifest} manifest
  * @returns {string|null}
  */
@@ -666,7 +668,7 @@ function closedReason(position, manifest) {
   if (manifest === null) return `this project has no work unit "${name}"`;
   if (manifest.status !== 'in-progress') return `"${name}" is ${typeof manifest.status === 'string' ? manifest.status : 'not in progress'}`;
   if (phase === 'specification' && buildBegun(manifest)) return 'its spec is concluded';
-  if (phase !== undefined && BUILD_PLACES.includes(phase)) {
+  if (phase !== undefined && BUILD_PLACES.includes(phase) && !(phase === 'implementation' && quickFixBuild(manifest))) {
     const refused = buildRefusal(manifest);
     if (refused !== null) return refused;
   }

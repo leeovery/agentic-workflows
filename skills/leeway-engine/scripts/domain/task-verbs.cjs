@@ -17,44 +17,46 @@
 // it never waits on a writer (`trackedUnit`, `withStoreCopy`).
 // A unit's phases are written into the tracker as each starts, so it holds
 // only those (7.4.1); a task is made from the task template in a file, one
-// call per task (7.1.3, 12.5.3), and its id is the engine's (task-id.cjs),
-// numbered after the highest its phase holds. An addition goes onto a task
-// not yet ended, marked as the orchestrator's or the person's, its text from
-// a file (13.11.3), the task marked changed after the last round reported
-// of its review, which its pair reads again (round-report.cjs); a task not
-// yet ended takes a new type, as the migration gives one (21.5.21). A link
-// holds a task after one of its own phase's or an earlier phase's, still
-// unfinished, and only a task not yet ended is linked (12.6.4); ready
-// answers every task waiting with nothing before it and no question parking
-// it (7.1.5, 13.4.6), and, in step, the task in progress whose turn has come
-// where an answer freed it — its builder sent back in, never a new one —
-// until its builder's brief is next issued, and never while its pair reads
-// a round of it (`stepTurn`, round-report.cjs, 12.7.9); start, refused for
-// a phase the cut holds before its start checklist has closed (6.4.8,
-// 12.S7), and in step for any task but the one in flight or at its gate —
-// in progress
-// in any phase written, the review's fixes past the cut among them, here or
-// in another conversation, no question parking it, and ahead of any other
-// going on (12.7.9) — puts the task in flight on the conversation's
-// position, beside any others in flight there — a task already in flight
-// kept as it stands, its builder and reviewers with it — and done and close
-// take it off, each first taking the task's worktree apart (6.3.3,
-// 24.2.4); done refuses a task a question waiting parks, and a bugfix's
-// reproducing task until its test's series proves the bug (bug-proven.cjs,
-// 15.5.3); close ends a task without it being done, with a reason — a
-// bugfix's reproducing task never (15.5.5) — takes it off every question
-// parking it (task-parks.cjs), and frees what waits on it as done does
-// (7.1.12); worktree lays the task's worktree out for its builder, reading
-// the task as show does (task-worktree.cjs); stopped records, against the
-// task in flight in the calling conversation, that its builder stopped,
-// unable to build past a problem (13.11.9, position.cjs). The verbs
-// refuse in the engine's words: a tool the driver needs missing or
-// failing, a phase not written, a task the tracker lacks or already holds,
-// a task already ended. Beside them, three take the build's records, each
-// its own module's: account, a task's account and its rounds' reports, and
-// settle, the orchestrator's settlement of a failed round
-// (task-account.cjs) or, with `--phase`, of a phase review that failed
-// (phase-settlement.cjs); and note, a note for later (notes.cjs).
+// call per task (7.1.3, 12.5.3) — a quick-fix's referencing no spec, since it
+// has none (19.5.5), fix 1.n naming its scenarios n.S1 and on — its id the
+// engine's (task-id.cjs), numbered after the highest its phase holds. An
+// addition goes onto a task not yet ended, marked as the orchestrator's or
+// the person's, its text from a file (13.11.3), the task marked changed after
+// the last round reported of its review, which its pair reads again
+// (round-report.cjs); a task not yet ended takes a new type, as the migration
+// gives one (21.5.21). A link holds a task after one of its own phase's or an
+// earlier phase's, still unfinished, and only a task not yet ended is linked
+// (12.6.4); ready answers every task waiting with nothing before it and no
+// question parking it (7.1.5, 13.4.6), and, in step, the task in progress
+// whose turn has come where an answer freed it — its builder sent back in,
+// never a new one — until its builder's brief is next issued, and never while
+// its pair reads a round of it (`stepTurn`, round-report.cjs, 12.7.9); start,
+// refused for a phase the cut holds before its start checklist has closed
+// (6.4.8, 12.S7) — a quick-fix's fixes, held by no cut, have none — and in
+// step for any task but the one in flight or at its gate — in progress in any
+// phase written, the review's fixes past the cut among them, here or in
+// another conversation, no question parking it, and ahead of any other going
+// on (12.7.9) — puts the task in flight on the conversation's position,
+// beside any others in flight there — a task already in flight kept as it
+// stands, its builder and reviewers with it; a quick-fix's fix, built in the
+// project's own checkout, puts that checkout on the fix's branch
+// (fix-branch.cjs) — and done and close take it off, each first taking the
+// task's worktree apart (6.3.3, 24.2.4); done refuses a task a question
+// waiting parks, and a bugfix's reproducing task until its test's series
+// proves the bug (bug-proven.cjs, 15.5.3); close ends a task without it being
+// done, with a reason — a bugfix's reproducing task never (15.5.5) — takes it
+// off every question parking it (task-parks.cjs), and frees what waits on it
+// as done does (7.1.12); worktree lays the task's worktree out for its
+// builder, reading the task as show does (task-worktree.cjs); stopped
+// records, against the task in flight in the calling conversation, that its
+// builder stopped, unable to build past a problem (13.11.9, position.cjs).
+// The verbs refuse in the engine's words: a tool the driver needs missing or
+// failing, a phase not written, a task the tracker lacks or already holds, a
+// task already ended. Beside them, three take the build's records, each its
+// own module's: account, a task's account and its rounds' reports, and
+// settle, the orchestrator's settlement of a failed round (task-account.cjs)
+// or, with `--phase`, of a phase review that failed (phase-settlement.cjs);
+// and note, a note for later (notes.cjs).
 //
 // Every verb runs under the writer lock (engine.cjs), the tool's own lock
 // inside it. Before anything else reaches the driver, the project's setting
@@ -90,9 +92,9 @@ const { resolveDriver, settingOf, needsRefusal } = require('./drivers.cjs');
 const { ignoreInState, withIgnored } = require('./state-worktree.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { taskId, shownTask, parseShownTask, parsePhase, taskName, phaseName } = require('./task-id.cjs');
-const { TASK_TYPES, breaksLine, readTaskText } = require('./task-file.cjs');
+const { TASK_TYPES, NO_SPEC, breaksLine, readTaskText, specReferenceOf, scenarioIds } = require('./task-file.cjs');
 const { recordTask, clearTask, recordStop } = require('./position.cjs');
-const { phaseStarted, cutLength } = require('./derivations.cjs');
+const { phaseStarted, cutLength, quickFixBuild, FIXES_PHASE } = require('./derivations.cjs');
 const { reproducingHold, reproducingClose } = require('./bug-proven.cjs');
 const { layOutTask, takeWorktreeApart } = require('./task-worktree.cjs');
 const { markChanged, briefedOf, beingRead } = require('./round-report.cjs');
@@ -101,6 +103,7 @@ const { markChanged, briefedOf, beingRead } = require('./round-report.cjs');
 // run, loaded at their call: each reads the task through this module.
 const parks = () => require('./task-parks.cjs');
 const landing = () => require('./landing.cjs');
+const fixBranch = () => require('./fix-branch.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskDriver} TaskDriver */
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
@@ -289,7 +292,7 @@ function commitSetup(cwd, unit, setUp) {
  * @param {string} cwd @param {string} unit @param {string|null} verb
  * @param {(driver: TaskDriver, root: string) => T} act
  * @param {(answer: T) => string} [describe]
- * @returns {T & {committed?: string|null, warnings?: string[]}}
+ * @returns {T & {committed?: string|null, note?: string, warnings?: string[]}}
  */
 function withTracker(cwd, unit, verb, act, describe = () => /** @type {string} */ (verb)) {
   const root = stateRoot(cwd);
@@ -332,16 +335,43 @@ function writePhase(cwd, unit, given, title) {
   });
 }
 
+/**
+ * A task file's task, refused where the template does not hold it, or where
+ * the unit is a quick-fix and the task references a spec, which it has none
+ * of (19.5.5).
+ * @param {string} cwd @param {string} unit @param {string} file @param {boolean} quickFix whether the unit is built as one
+ */
+function fileTask(cwd, unit, file, quickFix) {
+  const task = readTaskText(fs.readFileSync(path.resolve(cwd, file), 'utf8'));
+  const reference = specReferenceOf(task.text);
+  if (quickFix && reference !== NO_SPEC) {
+    throw new Error(`${unit} is a quick-fix, which has no spec — its task's Spec reference is ${NO_SPEC}, not "${reference}"`);
+  }
+  return task;
+}
+
+/**
+ * Refuse a quick-fix's fix naming a scenario of another number: fix 1.n's
+ * are n.S1, n.S2 and on, so each fix owns its runs.
+ * @param {TaskRef} ref @param {string} text
+ */
+function refuseOthersScenarios(ref, text) {
+  const others = scenarioIds(text).filter((id) => id.split('.')[0] !== String(ref.n));
+  if (others.length > 0) throw new TaskRefusal(`${taskName(ref)}, a quick-fix's fix, names its scenarios ${ref.n}.S1, ${ref.n}.S2 and on — not ${others.join(', ')}`);
+}
+
 /** `task create`: a task of the phase from a task file, numbered after its highest. @param {string} cwd @param {string} unit @param {string} given @param {string} file */
 function createTask(cwd, unit, given, file) {
   const phase = parsePhase(given);
   requireUnit(cwd, unit);
-  const task = readTaskText(fs.readFileSync(path.resolve(cwd, file), 'utf8'));
+  const quickFix = quickFixBuild(loadWorkUnitManifest(cwd, unit));
+  const task = fileTask(cwd, unit, file, quickFix);
   return withTracker(cwd, unit, `create in phase ${phase}`, (driver, root) => {
     const rows = driver.list(root, unit, phase);
     if (rows === null) throw unwritten(unit, phase);
     const ref = { unit, phase, n: Math.max(0, ...rows.map((row) => row.ref.n)) + 1 };
     if (driver.show(root, ref) !== null) throw new TaskRefusal(`the tracker already holds ${taskName(ref)}`);
+    if (quickFix && phase === FIXES_PHASE.number) refuseOthersScenarios(ref, task.text);
     driver.createTask(root, ref, task);
     return named(ref);
   }, ({ task: shown }) => `create ${shown}`);
@@ -724,8 +754,9 @@ function ending(rule, after = () => ({})) {
 /**
  * Whether the phase's tasks may start: for a phase the unit's cut holds,
  * once its start checklist has closed, so no builder starts before its
- * tasks are written (6.4.8, 12.S7); a phase past the cut, a fix phase of
- * the review's, has no start checklist (P14).
+ * tasks are written (6.4.8, 12.S7); a phase past the cut — a fix phase of
+ * the review's (P14), or a quick-fix's, which has no cut — has no start
+ * checklist.
  * @param {Record<string, any>} manifest @param {number} phase
  */
 const phaseOpen = (manifest, phase) => phase > cutLength(manifest) || phaseStarted(manifest, phase);
@@ -757,9 +788,13 @@ const startTask = moving('start', (driver, root, ref) => {
   const manifest = loadWorkUnitManifest(cwd, ref.unit);
   refuseUnstarted(ref, manifest);
   refuseSecondInStep(cwd, ref, manifest);
+  const fix = quickFixBuild(manifest) && ref.phase === FIXES_PHASE.number;
+  if (fix) fixBranch().refuseDirty(cwd, ref);
   return () => {
     recordTask(cwd, ref.unit, taskId(ref));
-    return {};
+    if (!fix) return {};
+    const { type, title } = trackedTask(cwd, ref);
+    return { branch: fixBranch().checkOutFix(cwd, ref, /** @type {string} */ (type), title) };
   };
 });
 
@@ -768,10 +803,10 @@ const CLOSE_RULE = 'only a task not yet ended is closed';
 
 /**
  * `task done`: refused while a question waiting parks it, where its account
- * is not taken of its review as it stands (task-account.cjs), and for a
- * bugfix's reproducing task while its test's series on the unfixed code
- * does not prove the bug (bug-proven.cjs); else its worktree taken apart,
- * then done, and off the position.
+ * is not taken of its review as it stands (task-account.cjs) — a
+ * quick-fix's owing none — and for a bugfix's reproducing task while its
+ * test's series on the unfixed code does not prove the bug (bug-proven.cjs);
+ * else its worktree taken apart, then done, and off the position.
  */
 const doneTask = moving('done', (driver, root, ref) => {
   refuseEnded(driver, root, ref, DONE_RULE);
@@ -892,4 +927,4 @@ function runTaskVerb(cwd, verb, positional, opts) {
   return run(cwd, positional, ...values, .../** @type {string[]} */ (given));
 }
 
-module.exports = { TASK_VERBS, ENDED, STATUS_WORDS, runTaskVerb, trackedTask, trackedPhases, trackedLists, trackedPhase, trackedUnit, goingOn, goesOn, phaseOpen, stepTurn, turnOf, turnRefusal, phaseWritten, givenText, trackedStart, copiedTasks };
+module.exports = { TASK_VERBS, ENDED, STATUS_WORDS, runTaskVerb, writePhase, trackedTask, trackedPhases, trackedLists, trackedPhase, trackedUnit, goingOn, goesOn, phaseOpen, stepTurn, turnOf, turnRefusal, phaseWritten, givenText, trackedStart, copiedTasks };

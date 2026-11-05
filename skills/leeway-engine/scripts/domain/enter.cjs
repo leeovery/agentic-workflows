@@ -32,17 +32,18 @@
 // left in flight, taken onto this one's — and what of its own holds it
 // beyond its place: the build's, another session holding the checkout's
 // code, whose question comes before the place's own and is answered as it
-// is (12.7.8). A topic-level row refuses
-// an epic entered at no topic, a topic once the unit has its spec (4.11.2),
-// and a topic the unit lacks; a unit-level row takes no topic, and is
-// entered after the spec as before it. Discussion is the first row,
-// discovery the second (discovery-entry.cjs), specification the third
-// (spec-entry.cjs), implementation, the build, the fourth
-// (build-entry.cjs), the review phase the fifth (review-entry.cjs),
-// whose arrival snapshots the working tree, and a bugfix's investigation
-// the sixth, entered at its one topic as a feature's discussion is, its log
-// the investigation (19.4.3); each later phase adds its own as its rewrite
-// moves it onto the entry. A unit-level place is the unit itself, as a
+// is (12.7.8). A topic-level row refuses an epic entered at no topic, a
+// topic once the unit has its spec (4.11.2), and a topic the unit lacks; a
+// unit-level row takes no topic, and is entered after the spec as before
+// it. Discussion is the first row, discovery the second
+// (discovery-entry.cjs), specification the third (spec-entry.cjs),
+// implementation, the build, the fourth (build-entry.cjs) — which hands a
+// quick-fix to an arm of its own, the row read from the unit once it is
+// found — the review phase the fifth (review-entry.cjs), whose arrival
+// snapshots the working tree, and a bugfix's investigation the sixth,
+// entered at its one topic as a feature's discussion is, its log the
+// investigation (19.4.3); each later phase adds its own as its rewrite moves
+// it onto the entry. A unit-level place is the unit itself, as a
 // single-topic unit's topic is; the product's is `product`, a project place
 // with no manifest of its own, whose marker and lock are the project
 // manifest's.
@@ -52,11 +53,12 @@
 // row's departure writes what leaving writes, and the move's commit takes it
 // with any start.
 //
-// The refusals, the question and the reads take no lock. The start and the
-// move hold the writer lock around their writes and the commit; the
-// position, the label, the presence, what a row closes in the cache and the
-// line a row writes into its log are outside the state's commits, the log
-// riding the next.
+// The refusals, the question and the reads take no lock, but a read of the
+// tracker, which takes the state's lock as every reader of it does
+// (phase-checks.cjs). The start and the move hold the writer lock around
+// their writes and the commit; the position, the label, the presence, what
+// a row closes in the cache and the line a row writes into its log are
+// outside the state's commits, the log riding the next.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -66,6 +68,7 @@ const { withWorkUnitLock, withProjectLock, readProjectManifest } = require('../k
 const { statePath } = require('../kernel/state-root.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { liveTopics } = require('./ledger-units.cjs');
+const { seedFiles } = require('./reads.cjs');
 const { computeTopicLifecycle, itemOf, briefFile, topicTitle, topicKey } = require('./derivations.cjs');
 const { unitInProgress, assertPhaseHeld, phaseStanding } = require('./topic-standing.cjs');
 const { startTopic } = require('./transitions.cjs');
@@ -123,14 +126,20 @@ const { earlierRecord, earlierReads } = require('./earlier-record.cjs');
  * for a row that takes one, which keeps a log; what it closes as the
  * conversation arrives, before it reads, for a row that closes anything;
  * and the question it puts where something of its own holds it beyond its
- * place, drawn whole, for a row that has such a hold.
+ * place, drawn whole, for a row that has such a hold. A start that commits
+ * a write of its own through the tracker's verbs, which commit their own
+ * (task-verbs.cjs), answers what that commit warned of. A row may hand a
+ * unit to an arm of its own, where its work type is built by another rule
+ * — the build's, a quick-fix's (build-entry.cjs) — the arm entering at the
+ * row's level.
  * @typedef {object} Entry
  * @property {'topic'|'unit'} level
  * @property {boolean} [product]
+ * @property {(manifest: Record<string, any>) => Entry|null} [arm]
  * @property {(at: Standing) => string|null} standing
  * @property {(at: Standing, ways: HeldWays) => string|null} [held]
  * @property {(at: Standing) => boolean} unstarted
- * @property {(cwd: string, unit: string, topic?: string) => void} start
+ * @property {(cwd: string, unit: string, topic?: string) => string[]|void} start
  * @property {(at: Entering) => string[]} questions
  * @property {(at: Entering) => Line[]} reads
  * @property {(at: Entering) => string} [log]
@@ -196,12 +205,11 @@ const as = (key) => (value) => [key, value];
  */
 function openingReads({ cwd, unit, topic = '', manifest }) {
   const own = topic === unit;
-  const seeds = Array.isArray(manifest.seeds) ? manifest.seeds.filter((seed) => typeof seed?.path === 'string') : [];
   return [
     ...waitingMessages(cwd, unit, topic).map(({ path: message }) => as('mail')(message)),
     ...existing([statePath(cwd, briefFile(unit, topic))]).map(as('brief')),
     ...(own ? discoveryLogs(cwd, unit) : []).map(as('discovery log')),
-    ...(own ? existing(seeds.map((seed) => statePath(cwd, unit, seed.path))) : []).map(as('seed')),
+    ...(own ? seedFiles(cwd, unit, manifest) : []).map(as('seed')),
   ];
 }
 
@@ -381,7 +389,8 @@ function heldAt(cwd, phase, unit, place) {
  * Start what the row starts, and leave where a level move leaves, committing
  * both in one hold of the writer lock: the response's commit fields. The
  * start commits the manifest it wrote, and the move the logs leaving wrote,
- * a topic's sitting among them; every log changed rides along.
+ * a topic's sitting among them; every log changed rides along — a start's
+ * own commit's warnings, where it made one, among the response's.
  * @param {string} cwd @param {Entry} entry @param {Entering} at @param {Held} held @param {Departure|null} departure
  * @returns {{committed: string|null, note?: string, warnings?: string[]}}
  */
@@ -393,7 +402,7 @@ function settle(cwd, entry, at, held, departure) {
     ? `${phase}(${unit}): carried on from ${departure.line}`
     : topic === undefined ? `${phase}(${unit}): start` : `${phase}(${unit}): start ${topic}`;
   const outcome = held.lock(() => {
-    if (started) entry.start(cwd, unit, topic);
+    if (started) warnings.push(...(entry.start(cwd, unit, topic) ?? []));
     departure?.leave(statePath(cwd, /** @type {NonNullable<Entry['log']>} */ (entry.log)(at)), unit);
     return commitStateTail(cwd, [...(started ? [held.manifest] : []), ...(departure?.logs ?? [])], message, warnings);
   });
@@ -442,8 +451,9 @@ function heldQuestion(entry, at, place, move) {
  */
 function enterThrough(entries, cwd, argv) {
   const { phase, unit, named, take, move } = parseEntry(entries, argv);
-  const entry = entries[phase];
-  const at = standingOf(entry, cwd, phase, unit, named);
+  const row = entries[phase];
+  const at = standingOf(row, cwd, phase, unit, named);
+  const entry = row.arm?.(at.manifest) ?? row;
   const standing = entry.standing(at);
   if (standing !== null) throw new Error(standing);
   const departure = move ? /** @type {NonNullable<Entry['move']>} */ (entry.move)(at) : null;

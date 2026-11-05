@@ -98,13 +98,15 @@
 //   stood; either logged as a call carrying the sort. A blind ask is
 //   refused until it is built.
 // - A raise is no gate (gate.cjs): drawing it clears the gate shown.
-// - In the build (12.13): a raise at a build place, `<unit>.implementation`
-//   or `<unit>.review`, names the task it is for, `--parks <phase>.<n>`,
-//   where it is made in one — the tracker holding it, not yet ended
-//   (task-parks.cjs) — and takes it nowhere else; it takes no `--task`, the
-//   flag `ledger` takes there. A call made outside any task —
-//   the task writer's, the consolidation agent's, the phase review's — names
-//   none (12.5.5, 12.12.12). A proceed lands Claude's call for its task, or
+// - In the build (12.13) — a quick-fix's aside, whose fixes Claude builds in
+//   the conversation with no builder to park, so a raise there is drawn as
+//   anywhere else and takes no `--parks` (19.5.3, E5): a raise at a build
+//   place, `<unit>.implementation` or `<unit>.review`, names the task it is
+//   for, `--parks <phase>.<n>`, where it is made in one — the tracker
+//   holding it, not yet ended (task-parks.cjs) — and takes it nowhere else;
+//   it takes no `--task`, the flag `ledger` takes there. A call made outside
+//   any task — the task writer's, the consolidation agent's, the phase
+//   review's — names none (12.5.5, 12.12.12). A proceed lands Claude's call for its task, or
 //   for none. One that asks, and a fact (16.3.8), which always asks and
 //   never meets the decision point, draw nothing and seal nothing in the
 //   conversation: each parks its task (12.13.2, 12.13.9), or, with none,
@@ -226,7 +228,7 @@ const { carrying } = require('./ledger.cjs');
 const { ROW_FIELDS, CALL_FIELDS: CALL_SHAPE, entryKind } = require('./ledger-events.cjs');
 const { ID_FACTS, readFolded, foldLedger, questionStands, laterOf, answersOf, notCurrent, factsOf, replacementsOf } = require('./ledger-fold.cjs');
 const { liveness, manifestOf } = require('./ledger-units.cjs');
-const { topicTitles } = require('./derivations.cjs');
+const { topicTitles, quickFixBuild } = require('./derivations.cjs');
 const { verbUsage, writePlaced, landRaised, callLogged, staleness } = require('./ledger-write.cjs');
 const { OVER_THE_LEAN, BACK_TO_THE_LEAN, derivedMove } = require('./ledger-verdicts.cjs');
 const { judgeDecisionAsync } = require('./ledger-one-decision.cjs');
@@ -492,17 +494,30 @@ function parksFlag(args) {
 }
 
 /**
- * Whether a raise is made in the build, refused where it names a task it
- * parks elsewhere, and where the task it parks is one the tracker lacks or
- * that has ended.
+ * Why a raise at the place parks nothing, drawn in the conversation as
+ * anywhere else, or null where it is made in the build, which parks: a
+ * place outside the build; and a quick-fix's, whose fixes Claude builds in
+ * the conversation, with no builder to park (19.5.3, E5).
+ * @param {string} cwd @param {Place} place @returns {string|null}
+ */
+function unparkedAt(cwd, { unit, phase }) {
+  if (!BUILD_PHASES.includes(phase)) return `${phase} is none of its phases — ${BUILD_PHASES.join(' or ')}`;
+  const manifest = /** @type {Record<string, any>} */ (manifestOf(/** @type {string} */ (findStateRoot(cwd)), unit));
+  return quickFixBuild(manifest) ? `${unit} is a quick-fix, whose fixes Claude builds in the conversation with no builder to park — raised without ${PARKS}, it is drawn here (19.5.3)` : null;
+}
+
+/**
+ * Whether a raise is made in the build, which parks (`unparkedAt`), refused
+ * where it names a task it parks elsewhere, and where the task it parks is
+ * one the tracker lacks or that has ended.
  * @param {string} cwd @param {Place} place @param {string|null} parks
  * @returns {boolean}
  */
-function checkBuildPlace(cwd, { unit, phase }, parks) {
-  const inBuild = BUILD_PHASES.includes(phase);
-  if (!inBuild && parks !== null) throw new Error(`raise ${PARKS} parks a task in the build, and ${phase} is none of its phases — ${BUILD_PHASES.join(' or ')}`);
-  if (parks !== null) require('./task-parks.cjs').checkParkable(cwd, unit, parks, SAID);
-  return inBuild;
+function checkBuildPlace(cwd, place, parks) {
+  const unparked = unparkedAt(cwd, place);
+  if (unparked !== null && parks !== null) throw new Error(`raise ${PARKS} parks a task in the build, and ${unparked}`);
+  if (parks !== null) require('./task-parks.cjs').checkParkable(cwd, place.unit, parks, SAID);
+  return unparked === null;
 }
 
 /**

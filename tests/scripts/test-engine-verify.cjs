@@ -7,9 +7,10 @@
 // once all five parts have run end to end for a scenario of the cut, leaving
 // the checkout as clean as they found it, its drive an executable script under
 // its place run with plain arguments, never one placed under `.leeway/`
-// (15.S1, 15.S2, 15.S17); `verify run` runs a scenario of the cut through the
-// setup's parts in the calling checkout, clean, and records the verdict the
-// drive's script wrote, never Claude's, with its text evidence, its
+// (15.S1, 15.S2, 15.S17); `verify run` runs a scenario of the cut — a
+// quick-fix's, which has no cut, one its fix owns, n.Sk of fix 1.n (F2) —
+// through the setup's parts in the calling checkout, clean, and records the
+// verdict the drive's script wrote, never Claude's, with its text evidence, its
 // recordings in the cache under their hash, each repository's HEAD it ran
 // against and the task in flight it ran for (15.S4, 15.S7, 4.S28); and
 // `runsOf` reads what a scenario's runs prove, whatever their numbers — the
@@ -37,6 +38,7 @@ const {
   ok, refusedPristine, git, commitCode, commitAll, initRepo, cleanupFixture, statePath, layout, createFile, readState, writeState, lastMessage, touched, stateGit, output, holdLock, lockAttempts,
 } = require('./engine-harness.cjs');
 const { UNIT, SETUP, steer, steering, partsRan, fiveParts, setupFile, setupArgs, unrecorded, world } = require('./verify-world.cjs');
+const { createManifest } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { runsOf } = require(path.join(SCRIPTS, 'domain/runs.cjs'));
@@ -58,6 +60,12 @@ const codeHead = (dir) => git(dir, ['rev-parse', 'HEAD']).trim();
 
 /** The state's HEAD, short. @param {string} dir */
 const stateHead = (dir) => stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim();
+
+/** A quick-fix's fix, its acceptance scenario `scenario`, referencing no spec. @param {string} scenario */
+const fixTask = (scenario) => [
+  '# Spell the flag', '', '## Type', 'fix', '', '## Problem', 'The flag is spelt --color.', '', '## Solution', 'Spell it --colour.', '',
+  '## Outcome', 'The flag reads --colour.', '', '## Acceptance scenarios', `- ${scenario}`, '', '## Spec reference', 'none',
+].join('\n');
 
 /** A call's options in the conversation `session`. @param {string} session */
 const as = (session) => ({ env: { CLAUDE_CODE_SESSION_ID: session } });
@@ -368,6 +376,28 @@ describe('verify run: a scenario run and its run recorded (15.4.1, 15.4.2, 15.4.
       USAGE,
     ]);
     assert.deepStrictEqual(partsRan(dir), []);
+  });
+
+  it('F2: a quick-fix, having no cut, runs a scenario its fix owns — n.Sk of fix 1.n — each fix\'s runs its own, recorded as any run is; one its fix closed, or no fix, owns is refused — by verify setup as well — nothing run', () => {
+    createManifest(dir, 'typo', { work_type: 'quick-fix' });
+    commitAll(dir, 'a quick-fix');
+    ok(dir, ['task', 'phase', 'typo', '1', '--title', 'the fixes']);
+    for (const scenario of ['1.S1', '2.S1', '3.S1']) ok(dir, ['task', 'create', 'typo', '1', '--file', writeState(dir, layout.cache('fix.md'), fixTask(scenario))]);
+    ok(dir, ['task', 'close', 'typo', '1.3', '--reason', 'the flag was spelt right already']);
+    steering(dir, 'verdict', 'pass\n');
+
+    const refused = [
+      refusedPristine(dir, ['verify', 'run', 'typo', '3.S1']).error,
+      refusedPristine(dir, ['verify', 'run', 'typo', '1.S2']).error,
+      refusedPristine(dir, ['verify', 'run', 'typo', '4.S1']).error,
+      refusedPristine(dir, ['verify', 'setup', 'typo', '--file', setupFile(dir, SETUP), '--scenario', '1.S2']).error,
+    ];
+    const ran = partsRan(dir);
+    const runs = ['1.S1', '2.S1'].map((scenario) => ok(dir, ['verify', 'run', 'typo', scenario]).run);
+
+    const notAFix = (/** @type {string} */ scenario) => `${scenario} is no acceptance scenario of a fix of typo — fix 1.n names its own, n.S1 and on: engine task show typo 1.<n>`;
+    assert.deepStrictEqual(refused, [`verify run: ${notAFix('3.S1')}`, `verify run: ${notAFix('1.S2')}`, `verify run: ${notAFix('4.S1')}`, `verify setup: ${notAFix('1.S2')}`]);
+    assert.deepStrictEqual([ran, runs, partsRan(dir)], [[], [layout.run('typo', '1.S1', '001'), layout.run('typo', '2.S1', '001')], [...fiveParts('1.S1', dir), ...fiveParts('2.S1', dir)]]);
   });
 
   it('before a setup is recorded, verify run and verify mutants refuse, naming verify setup', () => {

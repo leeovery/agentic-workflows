@@ -72,6 +72,7 @@
 const fs = require('fs');
 const path = require('path');
 const { statePath } = require('../kernel/state-root.cjs');
+const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { git, excluding } = require('../kernel/git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { projectRepos } = require('../kernel/repos.cjs');
@@ -81,6 +82,7 @@ const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { headingLevels } = require('./spec-sections.cjs');
 const { BULLET, listItems, saysNone, saysNoneIn } = require('./list-items.cjs');
 const { criteriaOf } = require('./task-file.cjs');
+const { quickFixBuild } = require('./derivations.cjs');
 const { parseShownTask, shownTask, taskId, taskName } = require('./task-id.cjs');
 const { taskBranch } = require('./landing-names.cjs');
 const { holdingBranch, taskWorktree } = require('./landing-git.cjs');
@@ -455,11 +457,13 @@ function reviewOverWay(cwd, ref) {
  * of its review as it stands (12.14): one a question parks, which waits on
  * the answer and owes none yet; one changed under its last round; one whose
  * account was never taken, or was taken over fewer rounds than its review
- * now holds — each naming its way on.
+ * now holds — each naming its way on. A quick-fix's task owes none: Claude
+ * builds it in the conversation, and no pair reviews it (19.5.3, 19.5.7).
  * @param {string} cwd @param {TaskRef} ref @param {string} said
  */
 function refuseUnaccounted(cwd, ref, said) {
   refuseParked(cwd, ref, said);
+  if (quickFixBuild(loadWorkUnitManifest(cwd, ref.unit))) return;
   const rounds = refusing(said, () => taskRounds(cwd, ref));
   const changed = changedUnder(cwd, ref, rounds);
   if (changed !== null) throw new Error(`${said}: ${changedRefusal(ref, changed)}`);

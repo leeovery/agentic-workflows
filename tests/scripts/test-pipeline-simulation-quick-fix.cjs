@@ -2,9 +2,10 @@
 
 // ---------------------------------------------------------------------------
 // The pipeline simulation's quick-fix scenarios: scoping registering the
-// specification and the plan in one pass, its delivery refused until the
-// reshape's 29.15 builds it (P9); and a quick-fix promoted to a feature, its
-// pipeline carrying on, or to a bugfix, handed to its investigation.
+// specification and the plan in one pass, its build refused as one under
+// the old plan until the reshape's 29.17 cuts it (P12); and a quick-fix
+// promoted to a feature, its pipeline carrying on, or to a bugfix, handed
+// to its investigation.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -23,7 +24,7 @@ describe('pipeline simulation: quick-fix', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('quick-fix: scoping registers spec+plan in one pass, each gate answered through `gate`, and its delivery waits on 29.15', () => {
+  it('quick-fix: scoping registers spec+plan in one pass, each gate answered through `gate`, and its build waits on 29.17\'s cut', () => {
     // Setup offers the GitHub rule; the person declines, and the flow runs
     // what the row leads to rather than branching on the answer itself.
     sim.render(['github-rule-gate'], { expect: 'content' });
@@ -81,9 +82,9 @@ describe('pipeline simulation: quick-fix', () => {
     assert.doesNotMatch(qfGate, /d\/done/);
     answerGate(sim, 'next phase gate', '--pick', 'y');
     bridgeTo(sim, wu, 'implementation');
-    // Until 29.15 a quick-fix stops at its scoping (P9): the build's entry
-    // refuses it, naming the reshape that builds its delivery.
-    sim.refuses(['enter', 'implementation', wu], /^typo is a quick-fix, whose delivery is built with the reshape's 29\.15 — until then a quick-fix stops at its scoping/);
+    // Scoping's spec and plan items stand on the manifest, so the build's
+    // entry refuses the quick-fix as one built under the old plan (P12).
+    sim.refuses(['enter', 'implementation', wu], /^typo was built under the old plan, and its build is entered once the reshape's 29\.17 migration has cut it$/);
   });
 
   it('quick-fix promotion: work_type flips to feature and the pipeline continues', () => {

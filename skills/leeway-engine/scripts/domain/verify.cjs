@@ -103,6 +103,10 @@
 //   phase's tip in each repository holding its work (`cachedSurvivors`,
 //   brief-records.cjs), so the tool runs once a review, outside any lock.
 //
+// A quick-fix has no cut: its run and its setup take a scenario its fix
+// owns, n.Sk of fix 1.n, not closed, among that fix's acceptance scenarios
+// (F2), and refuse any other.
+//
 // Each refuses, opening on its command and recording nothing: a unit the
 // project lacks; no verify setup recorded, naming `verify setup`, for the
 // run and the mutants; a scenario that is none of the cut's, or a phase
@@ -142,7 +146,7 @@ const { projectRepos, projectPath, repoName } = require('../kernel/repos.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { runShellCommand, tailText } = require('../kernel/shell-command.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
-const { cutPhases, cutLength, buildFinished } = require('./derivations.cjs');
+const { cutPhases, cutLength, buildFinished, quickFixBuild, FIXES_PHASE } = require('./derivations.cjs');
 const { tasksInFlight, taskAt } = require('./conversation.cjs');
 const { codeStatus } = require('./code.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
@@ -214,8 +218,20 @@ function recordedSetup(cwd, unit) {
   return setup;
 }
 
-/** Refuses a scenario that is none of the unit's cut. @param {Record<string, any>} manifest @param {string} unit @param {string} scenario */
-function assertCutScenario(manifest, unit, scenario) {
+/**
+ * Refuses a scenario that is none of the unit's cut — for a quick-fix,
+ * which has no cut, none its fix owns: n.Sk, of the acceptance scenarios of
+ * fix 1.n, not closed (F2).
+ * @param {string} cwd @param {Record<string, any>} manifest @param {string} unit @param {string} scenario
+ */
+function assertScenario(cwd, manifest, unit, scenario) {
+  if (quickFixBuild(manifest)) {
+    const owner = SCENARIO.test(scenario) ? Number(scenario.split('.')[0]) : null;
+    const fixes = owner === null ? [] : withStateLock(stateRoot(cwd), () => trackedPhase(cwd, unit, FIXES_PHASE.number).tasks ?? []);
+    const fix = fixes.find((task) => task.ref.n === owner);
+    if (fix !== undefined && fix.status !== 'closed' && holdsScenario(fix.text, scenario)) return;
+    throw new Error(`${scenario} is no acceptance scenario of a fix of ${unit} — fix ${FIXES_PHASE.number}.n names its own, n.S1 and on: engine task show ${unit} ${FIXES_PHASE.number}.<n>`);
+  }
   if (!SCENARIO.test(scenario) || !cutPhases(manifest).some((phase) => phase.scenarios.includes(scenario))) {
     throw new Error(`${scenario} is no scenario of ${unit}'s cut — engine manifest get ${unit} cut lists them`);
   }
@@ -412,7 +428,7 @@ function taskOfRun(cwd, root, unit, scenario) {
  * @returns {Record<string, unknown>}
  */
 function verifyScenario(cwd, unit, scenario) {
-  assertCutScenario(unitManifest(cwd, unit), unit, scenario);
+  assertScenario(cwd, unitManifest(cwd, unit), unit, scenario);
   const setup = recordedSetup(cwd, unit);
   const root = codeRoot(cwd);
   const commits = cleanCommits(root);
@@ -622,7 +638,7 @@ function checkPlaces(root, setup) {
  * @returns {Record<string, unknown>}
  */
 function recordSetup(cwd, unit, file, scenario) {
-  assertCutScenario(unitManifest(cwd, unit), unit, scenario);
+  assertScenario(cwd, unitManifest(cwd, unit), unit, scenario);
   const setup = setupIn(cwd, file);
   const root = codeRoot(cwd);
   checkPlaces(root, setup);
