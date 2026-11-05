@@ -343,12 +343,12 @@ describe('a question parked in the build (12.13.2–12.13.4, 12.13.9, 12.S28, 12
     assert.deepStrictEqual([res.parked, lastEntry()], ['Q1', { ...parkedLine({ task: '2.5' }), id: full(res.id) }]);
   });
 
-  it('12.S8: a call made outside any task asks, at the build\'s place or its review\'s — the task writer\'s, the consolidation agent\'s, the phase review\'s: its question waits in the build\'s queue parking none, listed with no task and its screen headed by its number alone; made again outside any task it parks nothing, and a task meeting it joins it', async () => {
+  it('12.S8: a call made outside any task asks, at the build\'s place or its review\'s — the task writer\'s, the consolidation agent\'s, the phase review\'s: its question waits in the build\'s queue parking none, listed with no task and its screen headed by its number alone, its line saying the build or the review carries on as its place is; made again outside any task it parks nothing, and a task meeting it joins it', async () => {
     const { res, sections } = await outsideTask(made.where, REVIEW);
 
     assert.deepStrictEqual([res, sections], [{
       ok: true, decision: 'ask', reason: EVERY_CALL_ASKS, parked: 'Q1', task: null, id: res.id, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(),
-      line: 'Q1 waits for you, parking no task: When you make a new note, where should its window open? The build carries on.',
+      line: 'Q1 waits for you, parking no task: When you make a new note, where should its window open? The review carries on.',
     }, '']);
     assert.deepStrictEqual(lastEntry(), { ...parkedLine({ phase: 'review', task: null }), id: full(res.id) });
     assert.deepStrictEqual(waiting().map((/** @type {{question: string, parks: string[]}} */ q) => [q.question, q.parks]), [['Q1', []]]);
@@ -572,7 +572,7 @@ describe('the answer and its receipt (12.13.15, 12.13.16, 20.6.9, 12.S35, 20.S6)
   });
 
   /** The mark a change left on `task`, or null where it left none. @param {string} task */
-  const marked = (task) => (fs.existsSync(statePath(dir, `${UNIT}/build/tasks/${task}/changed.json`)) ? JSON.parse(fs.readFileSync(statePath(dir, `${UNIT}/build/tasks/${task}/changed.json`), 'utf8')) : null);
+  const marked = (task) => (fs.existsSync(statePath(dir, `.cache/${UNIT}/build/tasks/${task}/changed.json`)) ? JSON.parse(fs.readFileSync(statePath(dir, `.cache/${UNIT}/build/tasks/${task}/changed.json`), 'utf8')) : null);
 
   /** `task`'s pair briefed for round `round` in this conversation. @param {string} task @param {number} round */
   const briefedHere = (task, round) => {

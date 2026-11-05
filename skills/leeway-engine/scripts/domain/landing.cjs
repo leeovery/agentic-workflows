@@ -108,6 +108,7 @@ const { STATE_DIR_NAME, stateRoot } = require('../kernel/state-root.cjs');
 // A phase's checks, and what a fix phase is built on, loaded at their call:
 // they read what landed through this module.
 const phaseChecks = () => require('./phase-checks.cjs');
+const scratch = () => require('./scratch.cjs');
 const reviewChange = () => require('./review-change.cjs');
 const account = () => require('./task-account.cjs');
 const notes = () => require('./notes.cjs');
@@ -652,6 +653,7 @@ function landPhase(cwd, unit, given) {
     const steps = mergeSteps(project, driver, walked(project, driver, ofPhase), (ctx) => driver.mergePhase(ctx, phase));
     const answers = walk(steps, (answer) => (answer.already ? null : `phase ${phase} merged`));
     if (answers.length === 0) throw new Error(`land: phase ${phase} of ${unit} has no task opened — open its tasks first`);
+    scratch().readersDone(cwd, scratch().READERS.phase(unit, phase));
     const already = answers.every((answer) => answer.already) ? { already: true } : {};
     return { phase, ...already, ...answered(answers, (answer) => !answer.already) };
   });

@@ -4,8 +4,8 @@
 // Finish (leeway-engine/scripts/domain/finish.cjs, its screen
 // domain/projections/finish.cjs, its engine items domain/finish-checks.cjs):
 // finish's checklist (6.4.10) — the review phase over, read from its
-// rounds' records, only where the unit has a review phase, and the unit's
-// records indexed, only where the checkout's knowledge base is set up, each
+// rounds' records, only where the unit has a review phase, no question
+// waiting on the person, and the unit's records indexed, only where the checkout's knowledge base is set up, each
 // the engine's; Claude's items worked in its own order, one skipped, and the
 // close (2.S2); `engine render finish <unit>`, standing on that close — every
 // checklist item skipped on the way, with its reason, read from the
@@ -28,8 +28,9 @@ require('./hermetic-env.cjs');
 
 const { describe, it } = require('node:test');
 const { output, callAsync, sectionOf, keywordOnlyKnowledge, unreadableKnowledge, readState, layout, commitAll } = require('./engine-harness.cjs');
+const { leaningCall } = require('./ledger-world.cjs');
 const {
-  UNIT, EVERY, calls, reviewCall, useWorld, env, enter, reported, recorded, fixPhaseWritten, fixBuilt, readManifest, writeState, stateGit, refusedPristine, ok, assert,
+  UNIT, EVERY, calls, reviewCall, useWorld, env, enter, reported, recorded, fixPhaseWritten, taskMade, fixBuilt, fixClosed, readManifest, writeState, stateGit, refusedPristine, ok, assert,
 } = require('./review-world.cjs');
 
 /** What finish says of a knowledge base set up over a store that does not load. */
@@ -73,27 +74,46 @@ const overruled = (at, entry, text) => ok(dir, ['ledger', 'replace', at, '--repl
 }).id;
 
 describe('finish\'s checklist (6.4.10, 2.S2)', () => {
-  it('reads the review phase passed from its rounds\' records — open in round 1 with the way in, open while a passing round\'s fix task waits, done once it is built — never marked', () => {
+  it('reads the review phase passed from its rounds\' records — open in round 1 with the way in, open while a task of a passing round\'s fix phase waits, one written beyond its findings among them, done once each is built or closed — never marked', () => {
     const before = items();
     enter();
     reported(1, EVERY, { '2-refunds-a': ['nit: A refund\'s label is terse.'] });
     fixPhaseWritten(3, [['Word the label', '§2.1']]);
     recorded({ can_now: ['Pay by card.'], findings: [{ area: '2-refunds', scope: 'in', call: 'nit', text: 'A refund\'s label is terse.', from: ['2-refunds-a#1'], fix: '3.1' }] });
+    taskMade(3, 'Mail the receipt', '§1.2');
     const waiting = items();
     fixBuilt(3, 1, 'Word the label', 'main', 'src/label.js');
+    const beyond = items();
+    fixClosed(3, 2);
 
-    assert.deepStrictEqual([before, waiting, items()], [
-      [`review-passed engine open — ${UNIT}'s review phase is in round 1 — enter review ${UNIT}`, 'inbox-closed claude open', 'build-log-closed claude open'],
-      [`review-passed engine open — ${UNIT}'s review phase passed in round 1 — its fix tasks are built, then finish: task 3.1 not started`, 'inbox-closed claude open', 'build-log-closed claude open'],
-      ['review-passed engine done', 'inbox-closed claude open', 'build-log-closed claude open'],
+    assert.deepStrictEqual([before, waiting, beyond, items()], [
+      [`review-passed engine open — ${UNIT}'s review phase is in round 1 — enter review ${UNIT}`, 'questions-answered engine done', 'inbox-closed claude open', 'build-log-closed claude open'],
+      [`review-passed engine open — ${UNIT}'s review phase passed in round 1 — its fix tasks are built, then finish: task 3.1 not started, task 3.2 not started`, 'questions-answered engine done', 'inbox-closed claude open', 'build-log-closed claude open'],
+      [`review-passed engine open — ${UNIT}'s review phase passed in round 1 — its fix tasks are built, then finish: task 3.2 not started`, 'questions-answered engine done', 'inbox-closed claude open', 'build-log-closed claude open'],
+      ['review-passed engine done', 'questions-answered engine done', 'inbox-closed claude open', 'build-log-closed claude open'],
     ]);
     assert.strictEqual(refused(['checklist', 'done', 'finish', UNIT, 'review-passed']), 'checklist done: review-passed is the engine\'s to check, never marked — it reads done once it holds');
+  });
+
+  it('12.13.22: holds the unit open while a question of it waits on the person, wherever it was raised, naming each and the stop — a close made before one was raised standing at neither the gate nor the yes', async () => {
+    finishClosed();
+    const asks = 'Should a refund name its card?';
+    const asked = ok(dir, ['ledger', 'ask', `${UNIT}.review`], { env: env(), stdin: JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: asks }) }).id;
+    const raised = await callAsync(dir, ['raise', `${UNIT}.review`, '--answers', asked], { env: env(), stdin: JSON.stringify({ ...leaningCall('A refund names it.', 'A refund names none.'), question: asks }) });
+    assert.strictEqual(raised.code, 0, raised.stderr);
+    const { parked } = JSON.parse(raised.stdout.split('\n')[0]);
+
+    assert.deepStrictEqual([items()[1], refused(['render', 'finish', UNIT]), refused(['finish', 'yes', UNIT])], [
+      `questions-answered engine open — ${parked}, ${asks} — the unit never finishes over a question waiting on the person: stop for them, render build-stop ${UNIT}, and take each once they are ready to discuss it`,
+      'render finish: finish has items open since its close: questions-answered — they are worked, and it is closed again',
+      'finish yes: finish has items open since its close: questions-answered — they are worked, and it is closed again',
+    ]);
   });
 
   it('names the review\'s entry refusal as the way on where the review cannot be entered yet, and holds no review item for a quick-fix', () => {
     assert.deepStrictEqual([items('half')[0], items('tweak')], [
       'review-passed engine open — half\'s review phase starts once every phase of its cut has closed — phase 2 of 2 has not: enter implementation half',
-      ['inbox-closed claude open', 'build-log-closed claude open'],
+      ['questions-answered engine done', 'inbox-closed claude open', 'build-log-closed claude open'],
     ]);
   });
 
@@ -103,7 +123,7 @@ describe('finish\'s checklist (6.4.10, 2.S2)', () => {
     const open = checklist(['show', 'finish', UNIT]).items.at(-1);
     assert.strictEqual((await callAsync(dir, ['knowledge', 'index', '--work-unit', UNIT], { env: env() })).code, 0);
 
-    assert.deepStrictEqual([unset.length, open, items().at(-1)], [3, {
+    assert.deepStrictEqual([unset.length, open, items().at(-1)], [4, {
       key: 'records-indexed', text: 'the records indexed', by: 'engine', state: 'open',
       way: `the knowledge base does not hold .knowledge/records/${UNIT}.md as it stands — knowledge index --work-unit ${UNIT}`,
     }, 'records-indexed engine done']);

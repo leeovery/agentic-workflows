@@ -107,11 +107,13 @@ describe('pipeline simulation: the review phase, as its skill runs it', () => {
   });
 
   it('an epic in auto: the build runs straight into the review phase in one conversation; round 1 reads both areas and the tests, files one finding out of scope and drops another by Claude\'s calls, its fix phase the one the entry names, built; round 2 reads only the area it changed and passes; finish lands the fix phase and hands off to the epic\'s menu; the finished folder holds what the layout lays out (14.S1, 24.S7, 12.S43, 14.S3, 14.S5, 4.S21, 4.S22, 20.10.1, 20.10.2)', () => {
-    const conversation = sim.env.CLAUDE_CODE_SESSION_ID;
+    const handedOff = sim.handoffs.length;
     sim.run(['enter', 'implementation', WU]);
+    assert.deepStrictEqual(sim.sections.split('\n').filter((line) => line.startsWith('finished: ')), [`finished: every phase of the cut has closed — the review phase is next: enter review ${WU}`],
+      'the build\'s entry names the review phase next, in the same conversation');
     const { move, data, fixPhase: phase } = reviewNext(sim, WU);
     const here = carryOn(sim);
-    assert.deepStrictEqual([sim.env.CLAUDE_CODE_SESSION_ID, here.position], [conversation, { name: WU, phase: 'review', topic: WU }],
+    assert.deepStrictEqual([sim.handoffs.slice(handedOff), here.position], [[], { name: WU, phase: 'review', topic: WU }],
       'the build\'s own conversation carries on into the review phase, with no handoff and no menu between (14.S1, 24.S7)');
     assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills/leeway-review-process/SKILL.md'), 'a compaction there carries on in the review phase\'s skill');
     assert.deepStrictEqual([move, data.reads], ['round', ['1-entries, 2-export, the test surface (tests)']], 'round 1 reads every area, none merged, and the test surface');

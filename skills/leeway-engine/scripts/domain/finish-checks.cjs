@@ -10,10 +10,16 @@
 //   review phase — every type the build takes but a quick-fix, whose review
 //   runs only when the person asks (19.5.14) — the review phase over, as
 //   its rounds' records say (review-phase.cjs): a round passed or settled,
-//   its report written by `review round` as it recorded it, and every fix
-//   task that round made done or closed. Its way on is the entry's
+//   its report written by `review round` as it recorded it, and every task
+//   of that round's fix phase done or closed, its findings' fixes and any
+//   written there beyond them. Its way on is the entry's
 //   refusal where the review cannot be entered yet, else what the review
 //   waits on.
+// - No question waiting on the person: the unit's questions waiting, as
+//   `raise waiting` reads them (questions.cjs) — the build never concludes
+//   over one (12.13.22), wherever it was raised, the review phase's among
+//   them. Its way on names each, and the build's stop that puts them to
+//   the person (build-screens.cjs).
 // - The records indexed: where this checkout's knowledge base is set up —
 //   setting it up is the person's choice (knowledge/sync.cjs) — every
 //   record of the unit's (22.6.2) held by the store as it stands now
@@ -30,6 +36,7 @@ const { once } = require('./phase-checks.cjs');
 const { reviewRefusal } = require('./review-entry.cjs');
 const { reviewStanding, endedRefusal } = require('./review-phase.cjs');
 const { readiness, unindexedRecords } = require('./knowledge/status.cjs');
+const { waitingAndFreed } = require('./questions.cjs');
 
 /** @typedef {import('./phase-checks.cjs').Reading} Reading */
 /** @typedef {import('./review-phase.cjs').ReviewStanding} ReviewStanding */
@@ -55,6 +62,18 @@ function reviewWay(at) {
   const { refused, standing } = reviewRead(at);
   if (standing === null) return refused;
   return endedRefusal(at.unit, standing) ?? `${at.unit}'s review phase is in round ${standing.round} — enter review ${at.unit}`;
+}
+
+/** The unit's questions waiting on the person: read once a call. @param {Reading} at */
+const waiting = (at) => once(at, 'questions', () => waitingAndFreed(at.cwd, at.unit, at.warnings).waiting);
+
+/** No question of the unit waits on the person. @param {Reading} at */
+const questionsAnswered = (at) => waiting(at).length === 0;
+
+/** The questions waiting, with the way on. @param {Reading} at */
+function questionsWay(at) {
+  const asked = waiting(at).map(({ question, asks }) => `${question}, ${asks}`).join('; ');
+  return `${asked} — the unit never finishes over a question waiting on the person: stop for them, render build-stop ${at.unit}, and take each once they are ready to discuss it`;
 }
 
 /**
@@ -86,4 +105,6 @@ function recordsWay(at) {
   return `the knowledge base does not hold ${files.join(', ')} as ${files.length === 1 ? 'it stands' : 'they stand'} — knowledge index --work-unit ${at.unit}`;
 }
 
-module.exports = { hasReviewPhase, reviewPassed, reviewWay, knowledgeSetUp, recordsIndexed, recordsWay };
+module.exports = {
+  hasReviewPhase, reviewPassed, reviewWay, questionsAnswered, questionsWay, knowledgeSetUp, recordsIndexed, recordsWay,
+};

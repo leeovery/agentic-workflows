@@ -84,9 +84,9 @@
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
-const crypto = require('crypto');
 const path = require('path');
 const { statePath } = require('../kernel/state-root.cjs');
+const { fingerprint } = require('../kernel/fingerprint.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { tryGit } = require('../kernel/git.cjs');
 const { writeJsonAtomic, isObject, isStringList } = require('../kernel/manifest-io.cjs');
@@ -106,6 +106,7 @@ const { shownTask } = require('./task-id.cjs');
 const { cutLength } = require('./derivations.cjs');
 const { STATUS_WORDS } = require('./task-verbs.cjs');
 const { notesUntaken } = require('./notes.cjs');
+const { reviewReportFaults } = require('./review-report.cjs');
 
 /** @typedef {import('./ledger-read.cjs').Shower} Shower */
 /** @typedef {import('./phase-checks.cjs').Reading} Reading */
@@ -264,20 +265,24 @@ function fixedReads(areas, round) {
 }
 
 /**
- * What comes after the last round waits on (14.3.3): its fix tasks neither
- * done nor closed, each with where it stands; and once none is, in step,
- * the lowest phase up to its fix phase whose stack waits at its merge gate
- * (`mergeWaiting`, phase-checks.cjs) — that fix phase's own, or one below
- * it a switch from auto left unmerged — null where none waits.
+ * What comes after the last round waits on (14.3.3): every task of its fix
+ * phase neither done nor closed — its findings' fixes, and any other the
+ * tracker holds there, such as one a find beyond them wrote — each with
+ * where it stands, a fix not in the tracker said so; and once none is, in
+ * step, the lowest phase up to its fix phase whose stack waits at its merge
+ * gate (`mergeWaiting`, phase-checks.cjs) — that fix phase's own, or one
+ * below it a switch from auto left unmerged — null where none waits.
  * @param {Reading} at @param {RoundRecord[]} rounds
  * @returns {{waiting: string[], merging: number|null}}
  */
 function fixesWaiting(at, rounds) {
   const last = rounds.at(-1);
-  if (last === undefined || fixesOf(last).length === 0) return { waiting: [], merging: null };
+  if (last === undefined) return { waiting: [], merging: null };
   const phase = fixPhase(at.manifest, rounds.length);
   const statuses = new Map((phaseLists(at, [phase])[0] ?? []).map(({ ref, status }) => [shownTask(ref), status]));
-  const waiting = fixesOf(last).filter((fix) => !['done', 'closed'].includes(statuses.get(fix) ?? ''))
+  const fixes = [...new Set([...fixesOf(last), ...statuses.keys()])];
+  if (fixes.length === 0) return { waiting: [], merging: null };
+  const waiting = fixes.filter((fix) => !['done', 'closed'].includes(statuses.get(fix) ?? ''))
     .map((fix) => `${fix} ${STATUS_WORDS[statuses.get(fix) ?? ''] ?? 'not in the tracker'}`);
   return { waiting, merging: waiting.length > 0 ? null : mergeWaiting(at, phase) };
 }
@@ -316,6 +321,32 @@ function reviewStanding(at) {
   }
   const round = rounds.length + 1;
   return { areas, rounds, round, ended: false, over: false, waiting, merging, required: fixedReads(areas, last), reads: namedReads(cwd, unit, round), notes };
+}
+
+/**
+ * Each report of the round under review already in and reading as a
+ * reviewer's, by its path; none once the phase has ended or while the
+ * round's reads are not named.
+ * @param {string} cwd @param {string} unit @param {ReviewStanding} standing @returns {string[]}
+ */
+function reportsIn(cwd, unit, { round, reads, ended }) {
+  if (ended || reads === null) return [];
+  return reportNames(reads).map((name) => statePath(cwd, `${roundFolder(unit, round)}/${name}`)).filter((file) => fs.existsSync(file) && reviewReportFaults(file) === null);
+}
+
+/**
+ * What the round under review goes on with that needs no answer, or null:
+ * its reads to name, or its readers to brief or still reading, each report
+ * not yet in named. Null once every report of the round is in, and while
+ * a round ended the phase or fix tasks or their merge hold it.
+ * @param {string} cwd @param {string} unit @param {ReviewStanding} standing @returns {string|null}
+ */
+function reviewGoesOn(cwd, unit, standing) {
+  if (standing.ended || standing.waiting.length > 0 || standing.merging !== null) return null;
+  if (standing.reads === null) return `round ${standing.round}'s reads are named next: review reads ${unit} <area> …`;
+  const landed = new Set(reportsIn(cwd, unit, standing).map((file) => path.basename(file)));
+  const out = reportNames(standing.reads).filter((name) => !landed.has(name)).map((name) => path.basename(name, '.md'));
+  return out.length === 0 ? null : `round ${standing.round}'s readers are still to brief or reading: ${out.join(', ')}`;
 }
 
 /** How the round that ended the review phase did, as a sentence says it. @param {string} unit @param {ReviewStanding} standing */
@@ -378,19 +409,14 @@ const snapshotPath = (cwd, unit) => statePath(cwd, '.cache', unit, 'review', 'tr
 /** What a path in the tree holds, as its fingerprint; null where it is gone or no file. @param {string} file absolute */
 function heldPrint(file) {
   try {
-    return contentPrint(fs.readFileSync(file));
+    return fingerprint(fs.readFileSync(file));
   } catch {
     return null;
   }
 }
 
-/** The fingerprint of what a file holds, as a snapshot keeps it. @param {Buffer} content */
-function contentPrint(content) {
-  return crypto.createHash('sha256').update(content).digest('hex').slice(0, 12);
-}
-
 /** The fingerprint of an empty file's content. */
-const EMPTY_PRINT = contentPrint(Buffer.alloc(0));
+const EMPTY_PRINT = fingerprint(Buffer.alloc(0));
 
 /** The working tree outside `.leeway/` (the header's), its ignored entries aside. @param {string} root the code root @param {Repo[]} repos @returns {{heads: Record<string, string|null>, paths: Record<string, string>}} */
 function treeNow(root, repos) {
@@ -537,7 +563,7 @@ const forThePerson = ({ by, given }) => claudesCall({ by, given });
 const inTheBuild = ({ phase }) => BUILD_PHASES.includes(phase);
 
 module.exports = {
-  TESTS, TESTS_LETTER, NOTES, isBuilderNote, SET_ASIDE, setAsideFolder, setAsideHeld, EMPTY_PRINT, reportNames, recordedRounds, fixesOf, endsReview, fixPhase, reviewStanding, everyRead,
+  TESTS, TESTS_LETTER, NOTES, isBuilderNote, SET_ASIDE, setAsideFolder, setAsideHeld, filesUnder, EMPTY_PRINT, reportNames, recordedRounds, fixesOf, endsReview, fixPhase, reviewStanding, reportsIn, reviewGoesOn, everyRead,
   endedWords, endedRefusal, openRefusal, roundRefusal, readsWords, mergingWords,
   roundRecordPath, roundReportFile, roundChecksFile, roundReadsPath, roundFolder, areaReportPath,
   takeSnapshot, openSnapshot, snapshotRound, dropSnapshot, treeDrift, movedWords, treeChanges, unitCalls, reviewCallFault, forThePerson, inTheBuild,

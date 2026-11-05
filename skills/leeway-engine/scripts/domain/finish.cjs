@@ -44,6 +44,7 @@ const { finishClose } = require('./checklist.cjs');
 const { landFinish } = require('./landing.cjs');
 const { completeWorkUnit } = require('./workunit-lifecycle.cjs');
 const { refusing } = require('./staged-payload.cjs');
+const { READERS, readersDone } = require('./scratch.cjs');
 const { finishScreen } = require('./projections/finish.cjs');
 const { setAsideHeld } = require('./review-phase.cjs');
 
@@ -118,6 +119,7 @@ function finishYes(cwd, unit) {
   const stands = standing(cwd, unit);
   const { manifest, warnings } = stands;
   const landed = landStanding(cwd, unit, stands);
+  readersDone(cwd, READERS.unit(unit));
   const completed = completeWorkUnit(cwd, unit, { message: `finish(${unit}): completed` });
   const said = [...warnings, ...(landed.warnings ?? []), ...completed.warnings];
   /** @type {Record<string, unknown>} */

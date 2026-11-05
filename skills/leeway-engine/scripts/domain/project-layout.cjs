@@ -2,14 +2,16 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: the project laid out at given tips in a worktree of its own
-// repository, by one routine for a task's worktree (task-worktree.cjs) and
-// the mutation run's scratch worktree (verify.cjs) alike (12.7.10, 15.6.3,
-// 7.2.17):
+// repository, by one routine for a task's worktree (task-worktree.cjs), the
+// mutation run's scratch worktree (verify.cjs) and a reviewer's
+// (scratch.cjs) alike (12.7.10, 15.6.3, 7.2.17):
 //
-// - Where each repository starts (`startsAt`): at the tip of the branch
-//   given for it, where one is; else the project's own repository and each
-//   clone at the tip of the branch it lands on, as the landing driver reads
-//   it (landing.cjs, `landingTips`); and a submodule at the commit its
+// - Where each repository starts, where no commit is given for it as a
+//   reviewer's brief gives each (`layOutCommits`): at the tip of the
+//   branch given for it, where one is (`startsAt`); else the project's own
+//   repository and each clone at the tip of the branch it lands on, as the
+//   landing driver reads it (landing.cjs, `landingTips`); and a submodule
+//   at the commit its
 //   holder, as laid out, points it at — its own checkout's where that
 //   points it nowhere, as a checkout of that commit lays it out
 //   (`startOf`).
@@ -24,13 +26,17 @@
 //   switched to. Each worktree the layout adds is prepared as Claude Code
 //   prepares an isolation worktree (worktree-prep.cjs); the root of a
 //   task's worktree is Claude Code's own isolation's, prepared already.
+// - A scratch worktree sits beside the builders' isolation worktrees, in
+//   `.claude/worktrees/` of the project's main checkout, by its name
+//   (`scratchTop`), and is taken apart deepest first (`takeApart`).
 // ---------------------------------------------------------------------------
 
+const fs = require('fs');
 const path = require('path');
-const { git } = require('../kernel/git.cjs');
+const { git, tryGit } = require('../kernel/git.cjs');
 const { repoOf, repoPath, topPath, checkoutTop, folderUnder } = require('../kernel/repos.cjs');
 const lg = require('./landing-git.cjs');
-const { prepareWorktree } = require('./worktree-prep.cjs');
+const { prepareWorktree, LAYOUTS, LAYOUT } = require('./worktree-prep.cjs');
 
 // Where a repository lands, loaded at its call: the landing reads the
 // tracker, whose verbs lay a task out through this module.
@@ -136,16 +142,61 @@ function layOut(parts, branch, project) {
  * @returns {Repo[]}
  */
 function layOutAt(project, unit, repos, tips, top) {
-  const folder = folderUnder(repos[0], top);
   const starts = startsAt(project, unit, repos, tips);
   /** @type {Map<string, Part>} */
   const parts = new Map();
   for (const repo of repos) {
     const commit = starts.get(repo.dir) ?? startOf(repos, repo, parts);
-    parts.set(repo.dir, { repo, at: path.join(folder, repo.dir), commit, make: { inPlace: false, start: commit } });
+    parts.set(repo.dir, { repo, at: '', commit, make: null });
   }
-  layOut([...parts.values()], null, project);
-  return [...parts.values()].map(({ repo, at }) => ({ ...repo, path: at }));
+  return layOutCommits(project, repos, new Map([...parts].map(([dir, { commit }]) => [dir, commit])), top);
 }
 
-module.exports = { commitOf, heldIn, pointedAt, startsAt, startOf, layOut, layOutAt };
+/**
+ * The project laid out afresh in a worktree whose top is `top`, each
+ * repository detached at the commit `commits` names for its folder, and
+ * prepared (the header's): each, by `repos`' order, as laid out there.
+ * @param {string} project the project's folder in its own checkout @param {Repo[]} repos @param {Map<string, string>} commits by folder @param {string} top
+ * @returns {Repo[]}
+ */
+function layOutCommits(project, repos, commits, top) {
+  const folder = folderUnder(repos[0], top);
+  const parts = repos.map((repo) => {
+    const commit = /** @type {string} */ (commits.get(repo.dir));
+    return { repo, at: path.join(folder, repo.dir), commit, make: { inPlace: false, start: commit } };
+  });
+  layOut(parts, null, project);
+  return parts.map(({ repo, at }) => ({ ...repo, path: at }));
+}
+
+/** Whether `root` is its repository's main checkout, read with no git: its `.git` a folder, not a linked worktree's file. @param {string} root */
+const isMainCheckout = (root) => fs.statSync(path.join(root, '.git'), { throwIfNoEntry: false })?.isDirectory() === true;
+
+/** The folder the engine's own layouts sit in, beside the builders' isolation worktrees: the main checkout's (worktree-prep.cjs, `LAYOUTS`). @param {string} root a checkout of the project's own repository */
+const layoutsFolder = (root) => path.join(isMainCheckout(root) ? root : lg.mainCheckoutOf(root), ...LAYOUTS.split('/'));
+
+/** A layout's folder name, by its name. @param {string} name */
+const layoutFolderName = (name) => `${LAYOUT}${name}`;
+
+/**
+ * A scratch worktree's top: beside the builders' isolation worktrees, in
+ * `.claude/worktrees/` of the project's main checkout, by its name.
+ * @param {Repo} own the project's own repository @param {string} name
+ */
+const scratchTop = (own, name) => path.join(layoutsFolder(own.path), layoutFolderName(name));
+
+/**
+ * A scratch worktree at `top` taken apart, deepest first, each
+ * repository's registration of it with it; one not there passed over.
+ * @param {Repo[]} repos the project's @param {string} top
+ */
+function takeApart(repos, top) {
+  const folder = folderUnder(repos[0], top);
+  for (let at = repos.length - 1; at >= 0; at -= 1) {
+    const { dir, path: root } = repos[at];
+    tryGit(root, ['worktree', 'remove', '--force', '--force', dir === '' ? top : path.join(folder, dir)]);
+    tryGit(root, ['worktree', 'prune']);
+  }
+}
+
+module.exports = { commitOf, heldIn, pointedAt, startsAt, startOf, layOut, layOutAt, layOutCommits, layoutsFolder, layoutFolderName, scratchTop, takeApart };

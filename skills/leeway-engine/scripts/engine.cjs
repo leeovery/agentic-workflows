@@ -91,6 +91,7 @@ const { REVIEW_USAGE, runReviewVerb } = require('./domain/review-verbs.cjs');
 const { FINISH_USAGE, runFinishVerb } = require('./domain/finish.cjs');
 const { MEASURES_USAGE, runMeasuresVerb } = require('./domain/measures.cjs');
 const { BOARD_USAGE, boardOf } = require('./domain/board.cjs');
+const { SCRATCH_USAGE, runScratchVerb } = require('./domain/scratch.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, clearOwnQuietly, scanPresence, scanProject, cleanupPresence, deferralSection } = require('./domain/presence.cjs');
 const { arriveAt, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
 const { markConversation, endConversation, isAgentId } = require('./domain/conversation.cjs');
@@ -311,6 +312,7 @@ ${REVIEW_USAGE.replace(/^/gm, '  ')}
   ${FINISH_USAGE}
   ${MEASURES_USAGE}
   ${BOARD_USAGE}
+${SCRATCH_USAGE.replace(/^/gm, '  ')}
   brownfield record <native|skipped|accepted|completed>
   walkthrough record <walked|skipped>
   handoff <skill|/skill> [args …]
@@ -1383,6 +1385,21 @@ function runFinish(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
+// scratch — a reviewer's scratch worktree laid out and taken apart
+// (domain/scratch.cjs). It writes no state.
+// ---------------------------------------------------------------------------
+
+/** @param {Call} call @param {string[]} argv */
+function runScratch(call, argv) {
+  const { opts, positional } = parseArgs(argv);
+  try {
+    respond(call, runScratchVerb(call.cwd, positional, opts));
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // measures — the authors' queries over their own projects
 // (domain/measures.cjs): review findings per phase. A read.
 // ---------------------------------------------------------------------------
@@ -2421,6 +2438,7 @@ const COMMANDS = Object.freeze({
   finish: runFinish,
   measures: runMeasures,
   board: runBoard,
+  scratch: runScratch,
 });
 
 // Every command dispatched runs whole under the writer lock, its writes and
@@ -2447,7 +2465,8 @@ const COMMANDS = Object.freeze({
 // `topic mailbox` refreshes write only the session files the state ignores,
 // as `enter` does beside its start; a conversation's folder is outside the
 // project; `gate` writes the trust log, under its own lock, and the
-// conversation's folder; and the rest read: `layout guard` among them, run
+// conversation's folder; `scratch` lays out and takes apart a reviewer's
+// worktree, outside the state; and the rest read: `layout guard` among them, run
 // before every file Claude writes, `brief guard`, before every dispatch of
 // an agent, `shell guard`, before every shell command, `checklist show`,
 // `migrate check`, `measures` and `board`.
@@ -2479,6 +2498,7 @@ const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */
   verify: '*',
   measures: '*',
   board: '*',
+  scratch: '*',
 }));
 
 /** @param {string[]} argv @returns {boolean} */

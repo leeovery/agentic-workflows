@@ -36,32 +36,34 @@
 // reports are not; the fix phase a failing round's fixes are under way in —
 // the last round's while its fix tasks wait, else, once the round under
 // review has its reads, its own, where its fix tasks are written (P14);
-// each fix task of the last round not yet done, and in step its fix phase
+// each task of the last round's fix phase not yet done, its findings'
+// fixes and any written there beyond them, and in step its fix phase
 // waiting at its merge's gate once they are (14.6.2); each builder's note
 // standing, `notes#{k}`, answered by the round under review or, once the
 // round that ended the phase has its fix tasks done, on its own, with the
 // notes' file (14.3.5); what the review's put backs set aside, the folder
-// and each copy, while it holds anything; each of the
-// conversation's fix tasks in flight, as the build's entry gives it;
-// each round's report; the spec; the unit's record, by its call; and the
-// build's log. Its recovery note re-reads the same, the fix tasks in
-// flight those of the conversation the note is for.
+// and each copy, while it holds anything; the branch the unit's work lands
+// on, each reader's base (task-base.cjs); each of the conversation's fix
+// tasks in flight, and each question waiting on the person, as the build's
+// entry gives them (12.13.7); each round's report; the spec; the unit's
+// record, by its call; and the build's log. Its recovery note re-reads the
+// same, the fix tasks in flight those of the conversation the note is for.
 // ---------------------------------------------------------------------------
 
-const fs = require('fs');
 const { ENGINE_COMMAND, ENGINE_RUN, messageOf } = require('../kernel/call.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { buildFinished, phaseClosed, buildRefusal, cutPhases, cutLength } = require('./derivations.cjs');
 const { reading, reposOf, mergeWaiting } = require('./phase-checks.cjs');
 const {
-  codeHeld, buildLogOf, buildStanding, ownInFlight, inFlightLines, takeInFlight, readingOf,
+  codeHeld, buildLogOf, buildStanding, ownInFlight, inFlightLines, waitingLines, takeInFlight, readingOf,
 } = require('./build-entry.cjs');
+const { projectLandsOn } = require('./task-base.cjs');
+const { waitingAndFreed } = require('./questions.cjs');
 const { specPath } = require('./spec-sections.cjs');
 const { notesPath } = require('./notes.cjs');
-const { reviewReportFaults } = require('./review-report.cjs');
 const {
-  reviewStanding, endedWords, readsWords, mergingWords, roundReportFile, openSnapshot, fixPhase, reportNames, roundFolder, setAsideHeld,
+  reviewStanding, reportsIn, endedWords, readsWords, mergingWords, roundReportFile, openSnapshot, fixPhase, setAsideHeld,
 } = require('./review-phase.cjs');
 
 /** @typedef {import('./enter.cjs').Entry} Entry */
@@ -151,17 +153,6 @@ function fixPhaseWords(manifest, { rounds, round, ended, waiting, reads }) {
   return `phase ${fixPhase(manifest, round)}, where round ${round}'s fix tasks are written`;
 }
 
-/**
- * Each report of the round under review already in and reading as a
- * reviewer's, by its path; none once the phase has ended or while the
- * round's reads are not named.
- * @param {string} cwd @param {string} unit @param {ReviewStanding} standing @returns {string[]}
- */
-function reportsIn(cwd, unit, { round, reads, ended }) {
-  if (ended || reads === null) return [];
-  return reportNames(reads).map((name) => statePath(cwd, `${roundFolder(unit, round)}/${name}`)).filter((file) => fs.existsSync(file) && reviewReportFaults(file) === null);
-}
-
 /** Where the review phase stands, a line each: the round, the areas, the reads, the reports in, the fix phase, the fix tasks waiting and, in step, their phase's merge. @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {ReviewStanding} standing @returns {Line[]} */
 function standingLines(cwd, unit, manifest, standing) {
   const fixes = fixPhaseWords(manifest, standing);
@@ -180,10 +171,17 @@ function standingLines(cwd, unit, manifest, standing) {
 
 /**
  * The conversation `session`'s fix tasks in flight, a line each, as the
- * build's entry gives them; none where it has none.
- * @param {string} cwd @param {string} unit @param {InFlight[]} inFlight @param {string|null} session @returns {Line[]}
+ * build's entry gives them, its standing read only where one is; and the
+ * questions waiting on the person, read from the ledger alone.
+ * @param {Reading} at @param {InFlight[]} inFlight @param {string|null} session @returns {Line[]}
  */
-const fixesInFlight = (cwd, unit, inFlight, session) => (inFlight.length === 0 ? [] : inFlightLines(cwd, session, buildStanding(cwd, unit, inFlight)));
+function buildLines(at, inFlight, session) {
+  const inFlightPart = inFlight.length === 0 ? [] : inFlightLines(at.cwd, session, buildStanding(at.cwd, at.unit, inFlight));
+  return [...inFlightPart, ...waitingLines(waitingAndFreed(at.cwd, at.unit, at.warnings))];
+}
+
+/** The branch the unit's work lands on, each reader's base. @param {Reading} at @returns {Line} */
+const baseLine = (at) => ['base', `${projectLandsOn(at.cwd)} — the branch the unit's work lands on, the --base of each reader's brief`];
 
 /** Each round's report recorded, by its path. @param {string} cwd @param {string} unit @param {ReviewStanding} standing */
 const roundReports = (cwd, unit, { rounds }) => rounds.map((_, at) => statePath(cwd, roundReportFile(unit, at + 1)));
@@ -201,7 +199,8 @@ function reviewReads(at, inFlight, session) {
   const standing = reviewStanding(at);
   return [
     ...standingLines(cwd, unit, manifest, standing),
-    ...fixesInFlight(cwd, unit, inFlight, session),
+    baseLine(at),
+    ...buildLines(at, inFlight, session),
     ...roundReports(cwd, unit, standing).map((report) => /** @type {Line} */ (['round report', report])),
     ['spec', specPath(cwd, unit)],
     ['record', `\`${recordCall(unit)}\``],

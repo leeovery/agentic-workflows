@@ -77,8 +77,9 @@
 // add`), or a call raised for it decided other than its lean (raise.cjs),
 // marks it, as it lands, with the round its pair was briefed for then,
 // reported or not, and the count of its changes,
-// `build/tasks/{task}/changed.json`, `{"round": N, "n": K}`
-// (`markChanged`) — none before any round is briefed, round 1 reading it.
+// `.cache/{unit}/build/tasks/{task}/changed.json`, `{"round": N, "n": K}`
+// (`markChanged`), beside the briefs' record it is read against — none
+// before any round is briefed, round 1 reading it.
 // A change the builder's last brief did not go past (`pendingChange`) is
 // its brief's to carry, sent again before a fix round's (brief-records.cjs).
 // A round briefed and not yet reported whole (`roundStanding`) stands
@@ -236,9 +237,9 @@ function phaseReviewPath(unit, phase, letter) {
   return `${phaseFolder(unit, phase)}/review-${letter}.md`;
 }
 
-/** The mark of a change to a task after a round of its review, state-relative. @param {TaskRef} ref */
+/** The mark of a change to a task after a round of its review, in the cache, state-relative. @param {TaskRef} ref */
 function changedPath(ref) {
-  return `${taskFolder(ref)}/changed.json`;
+  return `.cache/${taskFolder(ref)}/changed.json`;
 }
 
 /** The record of a task's briefs (the header's), in the cache, state-relative. @param {TaskRef} ref */

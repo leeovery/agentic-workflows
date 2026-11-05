@@ -3,7 +3,8 @@
 // ---------------------------------------------------------------------------
 // The builder's and the reviewer's briefs beside the rounds (leeway-engine/
 // scripts/domain/brief-records.cjs): the reviewer's scratch worktree laid
-// out as the builder's worktree held each repository (13.2.2); where the
+// out as the builder's worktree held each repository, and the calls laying
+// it out at those commits (13.2.2); where the
 // verify setup goes (15.2.11); the builder's own call among the decided
 // calls its reviewers read (13.S17); and the builder's branch against its
 // phase's chain, the merge back it owes where the chain moved past it —
@@ -32,6 +33,7 @@ const {
   commitFile,
   useWorld,
   issued,
+  scratchCalls,
   refusedUnissued,
   taskText,
   pathDrawn,
@@ -48,8 +50,8 @@ let dir;
 describe('the reviewer\'s scratch worktree (13.2.2)', () => {
   useWorld((at) => { dir = at; });
 
-  /** The scratch worktree's layout task 1.2's reviewer is briefed with. */
-  const laidOut = () => /# Laying out your scratch worktree\n\n([^#]*)\n\n#/.exec(issued(['reviewer', UNIT, '1.2', '--base', 'main', '--letter', 'a']).brief)?.[1];
+  /** The scratch worktree's layout task 1.2's reviewer is briefed with: its list, and the calls laying it out. */
+  const laidOut = () => /# Laying out your scratch worktree\n\n([^#]*?)\n\n(Lay it out[^#]*)\n\n#/.exec(issued(['reviewer', UNIT, '1.2', '--base', 'main', '--letter', 'a']).brief)?.slice(1);
 
   it('a task touching the project\'s repository alone lays out every repository, as the builder\'s worktree held them: the project\'s at the range\'s tip, a submodule at the commit that tip points it at, a clone on the task\'s branch, or the branch it lands on where that is not made there', () => {
     const source = initRepo(path.join(dir, '..', 'ext-source'));
@@ -69,9 +71,11 @@ describe('the reviewer\'s scratch worktree (13.2.2)', () => {
 
     const own = `- the project's repository: \`${branchOf(1, 2)}\` — the range's tip there`;
     const ext = `- \`ext\`: \`${first}\` — a submodule, at the commit the project's repository points it at as laid out`;
-    assert.strictEqual(laidOut(), [own, ext, `- \`${NESTED}\`: \`${branchOf(1, 2)}\` — the task's branch`].join('\n'));
+    const commitOf = (/** @type {string} */ at, /** @type {string} */ rev) => git(at, ['rev-parse', rev]).trim();
+    const calls = (/** @type {string} */ held) => scratchCalls(`${UNIT}-1.2-a`, commitOf(dir, branchOf(1, 2)), [`ext=${first}`, `${NESTED}=${commitOf(nested, held)}`]);
+    assert.deepStrictEqual(laidOut(), [[own, ext, `- \`${NESTED}\`: \`${branchOf(1, 2)}\` — the task's branch`].join('\n'), calls(branchOf(1, 2))]);
     git(nested, ['branch', '-D', branchOf(1, 2)]);
-    assert.strictEqual(laidOut(), [own, ext, `- \`${NESTED}\`: \`main\` — the branch it lands on, the task's branch not made there`].join('\n'));
+    assert.deepStrictEqual(laidOut(), [[own, ext, `- \`${NESTED}\`: \`main\` — the branch it lands on, the task's branch not made there`].join('\n'), calls('main')]);
   });
 });
 

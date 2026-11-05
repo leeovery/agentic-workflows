@@ -362,7 +362,7 @@ describe('task account (12.14.4, 6.3.13)', () => {
     return path.join(folder(), name);
   };
 
-  it('12.S42, 13.S4: a task through two rounds, its last passing on a nit — the account, both rounds\' four reports and its figures committed in one state commit, the figures answered, counting every addition the task holds, whoever made it, each made while its pair read round 1, whose mark goes with them (13.11.3, 12.1.4)', () => {
+  it('12.S42, 13.S4: a task through two rounds, its last passing on a nit — the account, both rounds\' four reports and its figures committed in one state commit, the figures answered, counting every addition the task holds, whoever made it, each made while its pair read round 1, whose mark stays in the checkout\'s cache (13.11.3, 12.1.4)', () => {
     recordReviewer(dir, TASK, 1, 'a', SESSION.CLAUDE_CODE_SESSION_ID);
     for (const by of ['orchestrator', 'person']) ok(dir, ['task', 'add', UNIT, '1.2', '--file', fileOf('addition.md', 'Mask the reprint.\n'), '--by', by]);
     const res = withFrozenClock(take);
@@ -375,7 +375,7 @@ describe('task account (12.14.4, 6.3.13)', () => {
     assert.deepStrictEqual(res, { ok: true, task: '1.2', id: 'pay-1-2', rounds: 2, figures, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim() });
     assert.strictEqual(lastMessage(dir), 'task(pay): account 1.2');
     assert.deepStrictEqual(touched(statePath(dir), 'HEAD'), [
-      'A\tpay/build/tasks/1.2.md', 'A\tpay/build/tasks/1.2/figures.json', 'A\tpay/build/tasks/1.2/changed.json',
+      'A\tpay/build/tasks/1.2.md', 'A\tpay/build/tasks/1.2/figures.json',
       ...Object.keys(ROUNDS).map((at) => `A\t${at}`),
     ].sort());
     assert.deepStrictEqual(JSON.parse(readState(dir, layout.unit(UNIT, 'build/tasks/1.2/figures.json'))), figures);

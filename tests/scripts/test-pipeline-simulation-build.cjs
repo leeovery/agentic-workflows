@@ -17,7 +17,8 @@
 // account taken, the landing summary shown and no gate after it in auto;
 // its chain, the last of the phase, naming the phase's mutation run, which
 // lays the phase out at its tips wherever it is run. The phase's review,
-// its stack merged with no gate, its close; then the second phase written
+// its stack merged with no gate, the scratch worktree a phase reviewer died
+// in taken apart as it merges, its close; then the second phase written
 // in the same conversation, the bug held for it reaching its writer.
 //
 // Layer: simulation. World: this file's own, built once from the project
@@ -37,7 +38,7 @@ const fs = require('fs');
 const path = require('path');
 const { git } = require('./engine-harness.cjs');
 const {
-  Sim, worldFrom, twoPhaseEpic, buildEntry, startPhase, writeTasks, briefOf, landed, placeIn, carryOn, buildLoop, VERIFY_FILES,
+  Sim, worldFrom, twoPhaseEpic, buildEntry, startPhase, writeTasks, briefOf, deadReader, laidBeside, landed, placeIn, carryOn, buildLoop, VERIFY_FILES,
 } = require('./pipeline-world.cjs');
 
 const WU = 'ledgerly';
@@ -60,7 +61,7 @@ describe('pipeline simulation: the build', () => {
   });
 
   it('12.S1, 24.S6: an epic in auto, its first phase built by one orchestrator in one conversation — the fix round to the same builder, the nit committed under its task, the phase\'s mutation run named by its last task\'s chain — and on into its second phase with no handoff', () => {
-    const conversation = sim.env.CLAUDE_CODE_SESSION_ID;
+    const handedOff = sim.handoffs.length;
     const entered = buildEntry(sim, WU);
     assert.deepStrictEqual(entered.filter((line) => line.startsWith('phase: ')), ['phase: phase 1 of 2, "Settling": not yet written', 'phase: phase 2 of 2, "Showing": not yet written']);
     for (const call of [['ledger', 'record', WU], ['ledger', 'affected', WU]]) sim.read(call);
@@ -100,17 +101,23 @@ describe('pipeline simulation: the build', () => {
     assert.deepStrictEqual(loop.landedTask('1.1')?.argv, ['verify', 'mutants', WU, '1'], 'the phase\'s last task chained names its mutation run, which lays the phase out at its tips wherever it runs');
 
     // Phase 1's close: no note of its own to take, its review passing, its
-    // stack merged with no gate in auto.
+    // stack merged with no gate in auto, the scratch worktree a dead phase
+    // reviewer left taken apart as it merges, and no other — not a task's
+    // reviewer's of the next phase, nor its review's (14.2.2).
     const notes = JSON.parse(sim.read(['checklist', 'show', 'phase-close', WU, '1'])).items.find((/** @type {{key: string}} */ item) => item.key === 'notes-consolidated');
     assert.strictEqual(notes.state, 'done', 'a note held for a later phase is not this phase\'s to take');
-    for (const letter of ['a', 'b']) landed(placeIn(sim, loop.brief(['phase-review', WU, '1', '--letter', letter]), 'Where your report goes'), PASSED);
+    const reviews = ['a', 'b'].map((letter) => loop.brief(['phase-review', WU, '1', '--letter', letter]));
+    const deadReviewer = deadReader(sim, reviews[0]);
+    const beside = [laidBeside(sim, reviews[0], `${WU}-2.1-a`), laidBeside(sim, reviews[0], `${WU}-phase-2-a`)];
+    for (const review of reviews) landed(placeIn(sim, review, 'Where your report goes'), PASSED);
     sim.refuses(['render', 'phase-merge-gate', WU, '1'], /a phase's stack merges with no gate/);
     sim.run(['land', 'phase', WU, '1']);
+    assert.deepStrictEqual([deadReviewer, ...beside].map((top) => fs.existsSync(top)), [false, true, true], 'the dead phase reviewer\'s scratch worktree taken apart as the phase merges, no other');
     sim.run(['checklist', 'close', 'phase-close', WU, '1']);
     fs.appendFileSync(path.join(sim.dir, `.leeway/${WU}/build/log.md`), '\nPhase 1 closed.\n');
 
     // Phase 2 starts with no handoff: the same conversation, the same skill.
-    assert.strictEqual(sim.env.CLAUDE_CODE_SESSION_ID, conversation, 'no handoff at the phase boundary');
+    assert.deepStrictEqual(sim.handoffs.slice(handedOff), [], 'no handoff at the phase boundary');
     assert.deepStrictEqual(carryOn(sim).position.phase, 'implementation');
     sim.run(['task', 'phase', WU, '2', '--title', 'Showing']);
     assert.ok(briefOf(sim, loop.brief(['task-writer', WU, '2'])).includes('A shown entry never checks its hash.'), 'the note held for the phase reaches its writer');

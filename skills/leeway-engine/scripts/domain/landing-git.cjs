@@ -167,20 +167,61 @@ function holdsWork(unit, repo, picks) {
 }
 
 /**
- * The repositories holding a task's branch, in the order given: each naming
- * it, a nested one only where the branch holds work there (`holdsWork`);
- * and whether any names it at all.
+ * The commits among `tips` that none of `others` holds. @param {string} root @param {string[]} tips @param {string[]} others
+ * @returns {Set<string>}
+ */
+function tipsBeyond(root, tips, others) {
+  return new Set(git(root, ['rev-list', ...tips, '--not', ...others]).split('\n').filter((commit) => tips.includes(commit)));
+}
+
+/**
+ * The repositories holding each of the unit's task branches `asked`, in the
+ * order given: each naming it, a nested one only where the branch holds
+ * work there, as `holdsWork` reads it; and whether any names it at all.
+ * Each repository's branches, and what they hold beyond its others, are
+ * read once however many branches are asked.
+ * @param {string} unit @param {Repo[]} repos @param {string[]} asked
+ * @returns {{named: boolean, holding: Repo[]}[]}
+ */
+function holdingBranches(unit, repos, asked) {
+  const held = asked.map(() => ({ named: false, holding: /** @type {Repo[]} */ ([]) }));
+  for (const repo of repos) {
+    const local = branches(repo.path);
+    const named = asked.flatMap((branch, at) => (local.has(branch) ? [at] : []));
+    if (named.length === 0) continue;
+    const tipOf = (/** @type {number} */ at) => /** @type {string} */ (local.get(asked[at]));
+    const others = [...local].flatMap(([branch, tip]) => (names.isUnitBranch(unit, branch) ? [] : [tip]));
+    const beyond = repo.dir === '' ? null : tipsBeyond(repo.path, named.map(tipOf), others);
+    for (const at of named) {
+      held[at].named = true;
+      if (beyond === null || beyond.has(tipOf(at))) held[at].holding.push(repo);
+    }
+  }
+  return held;
+}
+
+/**
+ * The repositories holding a task's branch (`holdingBranches`).
  * @param {string} unit @param {Repo[]} repos @param {string} branch
  * @returns {{named: boolean, holding: Repo[]}}
  */
-function holdingBranch(unit, repos, branch) {
-  const named = repos.filter((repo) => branches(repo.path).has(branch));
-  return { named: named.length > 0, holding: named.filter((repo) => repo.dir === '' || holdsWork(unit, repo, (held) => held === branch)) };
-}
+const holdingBranch = (unit, repos, branch) => holdingBranches(unit, repos, [branch])[0];
 
 /** Whether `ancestor` is `commit` or one it descends from. @param {string} root @param {string} ancestor @param {string} commit @returns {boolean} */
 function isAncestor(root, ancestor, commit) {
   return tryGit(root, ['merge-base', '--is-ancestor', ancestor, commit]) !== null;
+}
+
+/**
+ * Where among `commits`, each in full, the first stands that every other is
+ * an ancestor of — the tip of the one line they make — or -1 where none
+ * is; read in one call however many are given.
+ * @param {string} root @param {string[]} commits @returns {number}
+ */
+function latestOf(root, commits) {
+  if (commits.length <= 1) return commits.length - 1;
+  const independent = git(root, ['merge-base', '--independent', ...commits]).trim().split('\n');
+  return independent.length === 1 ? commits.indexOf(independent[0]) : -1;
 }
 
 /** The best common ancestor of two commits. @param {string} root @param {string} a @param {string} b @returns {string} */
@@ -1165,7 +1206,7 @@ function defaultBranch(root, remote, nested = false) {
 }
 
 module.exports = {
-  short, readOnce, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranch, refsUnder, updateRefs, isAncestor, mergeBase, treesOf, firstParentLine, messagesPast, messagesNaming, commitsNamed, messageOf, commitWithTree, treesPast,
+  short, readOnce, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranches, holdingBranch, refsUnder, updateRefs, isAncestor, latestOf, mergeBase, treesOf, firstParentLine, messagesPast, messagesNaming, commitsNamed, messageOf, commitWithTree, treesPast,
   pointersAt, treeWithPointers, pointedLike, holdsCommit, pointerAhead, stackMoves, commitsPast, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, remedy, moveTo, movedSinceOpened, rewrite, scratchBlock, rebaseBlock, checkoutBlock, pathsChanged, dirtBlock, moveBranch,
   defaultBranch, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, nothingPast,
   worktrees, taskWorktree, mainCheckoutOf, projectCheckout, holderOf, samePlace, removing, branchInPlace, addWorktree, switchTo, removeWorktree, detach, scratchRoot, scratchTree,

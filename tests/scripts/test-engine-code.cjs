@@ -3,7 +3,8 @@
 //
 // Tests for `engine code` (domain/code.cjs): the code change read across
 // every repo in the project — the commits a subject prefix selects, the
-// change they made, the change not yet committed, and the dirt — named from
+// change they made, the change not yet committed, and the dirt, the
+// engine's own layouts beside Claude Code's worktrees passed over — named from
 // the project, and in a project of one repo what git itself answers.
 //
 
@@ -322,6 +323,21 @@ describe('engine code diff and status: the change not yet committed', () => {
     const res = harness.ok(dir, ['commit', '--paths', 'src/billing/charge.js', '-m', 'feat(payments): the charge', ...FOR_TASK], building);
     assert.deepStrictEqual(git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim(), 'src/billing/charge.js');
     assert.deepStrictEqual(res.left_dirty, ['src/billing/stranger.js', 'api/src/billing/refund.js']);
+  });
+
+  it('status and a commit\'s left_dirty pass over the engine\'s own layouts beside Claude Code\'s worktrees, and those alone — a builder\'s worktree there, the person\'s file there and a child repository\'s own folder of that name each named', () => {
+    taskUnit(dir);
+    harness.stateGit(dir, ['add', layout.manifest('payments')]);
+    harness.stateGit(dir, ['commit', '-q', '-m', 'chore: the work unit']);
+    git(dir, ['checkout', '-q', '-b', TASK_BRANCH]);
+    for (const tree of ['leeway-scratch-payments-1.1-a', 'leeway-mutants-payments-1', 'agent-1']) git(dir, ['worktree', 'add', '-q', '--detach', path.join(dir, '.claude/worktrees', tree)]);
+    createFile(dir, '.claude/worktrees/notes.txt', 'the person\'s\n');
+    git(api, ['worktree', 'add', '-q', '--detach', path.join(api, '.claude/worktrees/leeway-scratch-payments-1.1-a')]);
+    createFile(dir, 'src/charge.js', 'the task\'s\n');
+    const named = ['.claude/worktrees/agent-1/', '.claude/worktrees/notes.txt', 'api/.claude/worktrees/leeway-scratch-payments-1.1-a/'];
+
+    assert.deepStrictEqual(harness.ok(dir, ['code', 'status']).files.map(({ path: at }) => at), [...named.slice(0, 2), 'src/charge.js', named[2]]);
+    assert.deepStrictEqual(harness.ok(dir, ['commit', '--paths', 'src/charge.js', '-m', 'feat(payments): the charge', ...FOR_TASK], building).left_dirty, named);
   });
 
   it('a repo inside the project\'s .leeway/ is the workflows\' own — never a repo of the project, its dirt and commits never code', () => {

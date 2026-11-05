@@ -53,9 +53,7 @@ Nothing is finished while the cut holds a phase not yet written: no task ready w
 
 ### The Person
 
-The build runs start to finish without the person, stopping only where the engine stops it. In the build, every question for the person goes through `raise`: one asked in plain prose is a slip. A question that waits parks its task, and whatever depends on it, while everything else carries on; say so in the one line the raise answers. A waiting question is never a gate, and the build never goes back to a menu for one.
-
-When nothing left can go on without an answer, the build stops with its report: fetch `render build-stop {work_unit}` and emit its sections verbatim per their markers, which ends the turn. It refuses while anything can go on, naming what: take that on instead.
+The build runs start to finish without the person, stopping only where the engine stops it. In the build, every question for the person goes through `raise`: one asked in plain prose is a slip. A waiting question is never a gate, and the build never goes back to a menu for one.
 
 ### The Build Log
 
@@ -84,7 +82,7 @@ Invoke `/leeway-review-process {work_type} {work_unit}`.
 
 ## Something Outside the Plan
 
-A bug the person reports, a gap or a find an agent reports beyond its task, anything the plan never held. Load **[outside-the-plan.md](references/outside-the-plan.md)** and follow its instructions as written.
+A bug the person reports, a gap or a find an agent reports beyond its task, anything the plan never held. Load **[outside-the-plan.md](references/outside-the-plan.md)** and follow its instructions as written, with place = `implementation`.
 
 ## Ready to Discuss a Question
 

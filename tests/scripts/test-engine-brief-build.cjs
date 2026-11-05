@@ -279,9 +279,9 @@ describe('the build\'s templates', () => {
     ]) assert.ok(words.includes(rule), rule);
   });
 
-  it('13.2.2: the reviewer tests in a detached scratch worktree of its own, every repository laid out where its brief names, and never moves another checkout; the phase review\'s template points to it and never repeats it', () => {
-    const rule = 'Run the tests, and make any break, in a detached scratch worktree of your own: every repository of the project at its folder, as the project lays them out, each at the commit your brief names for it under "Laying out your scratch worktree". Remove it after. Never check out, detach or switch anything in another checkout.';
-    assert.ok(fs.readFileSync(path.join(AGENTS, 'leeway-reviewer.md'), 'utf8').includes(rule));
+  it('13.2.2: the reviewer and the test reader test in the scratch worktree their brief lays out, taking it apart after, and never move another checkout; the phase review\'s template points to it and never repeats it', () => {
+    const rule = 'Run the tests, and make any break, in the scratch worktree your brief lays out under "Laying out your scratch worktree", as it says. Never check out, detach or switch anything in another checkout.';
+    for (const agent of ['leeway-reviewer', 'leeway-test-surface']) assert.ok(fs.readFileSync(path.join(AGENTS, `${agent}.md`), 'utf8').includes(rule), agent);
     for (const role of ['reviewer', 'phase-review']) assert.ok(!template(role).includes('Run the tests, and make any break'), role);
     assert.ok(template('reviewer').includes('# Laying out your scratch worktree\n\n{{scratch-layout}}\n'));
     assert.ok(template('phase-review').includes('# Laying out your scratch worktree\n\n{{phase-scratch-layout}}\n'));

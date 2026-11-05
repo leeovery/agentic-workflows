@@ -76,6 +76,7 @@ describe('pipeline simulation: the build with two tasks side by side', () => {
 
   it('13.S16, 12.S44, 12.1.4, 24.S7: two tasks side by side — a stopped builder sent back in with what the task lacked, a decision replaced at the build\'s place parking the other task, the stop report, the person answering against the lean so the task\'s pair reads it again — and on into the review phase with no handoff', async () => {
     const conversation = sim.env.CLAUDE_CODE_SESSION_ID;
+    const handedOff = sim.handoffs.length;
     const ready = sim.run(['task', 'ready', WU]).tasks.map((/** @type {{task: string}} */ t) => t.task);
     assert.deepStrictEqual(ready, ['1.1', '1.2'], 'two tasks sharing no files run side by side');
     for (const task of ready) sim.run(['task', 'start', WU, task]);
@@ -180,7 +181,7 @@ describe('pipeline simulation: the build with two tasks side by side', () => {
 
     // The cut through, the review phase is entered in the same conversation.
     assert.strictEqual(sim.run(['enter', 'review', WU]).entered, true);
-    assert.strictEqual(sim.env.CLAUDE_CODE_SESSION_ID, conversation, 'no handoff into the review phase');
+    assert.deepStrictEqual(sim.handoffs.slice(handedOff), [], 'no handoff into the review phase');
     assert.deepStrictEqual(Object.fromEntries([...loop.agents].map(([role, named]) => [role, [...named]])), {
       builder: ['leeway-builder'], reviewer: ['leeway-reviewer'], consolidation: ['leeway-consolidation'], 'phase-review': ['leeway-reviewer'],
     }, 'the agents run as defined');

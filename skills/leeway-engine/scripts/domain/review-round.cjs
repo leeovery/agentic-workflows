@@ -80,6 +80,7 @@ const { withStateLock } = require('./state-worktree.cjs');
 const { trackedLists } = require('./task-verbs.cjs');
 const { parseShownTask, shownTask, phaseName } = require('./task-id.cjs');
 const { filled, shaped, listed, readPayload, refusing } = require('./staged-payload.cjs');
+const { READERS, readersDone } = require('./scratch.cjs');
 const { refuserFor, committed } = require('./task-account.cjs');
 const { readReviewReport } = require('./review-report.cjs');
 const { readShown } = require('./ledger-read.cjs');
@@ -395,6 +396,7 @@ function recordRound(cwd, unit, file) {
   fs.writeFileSync(statePath(cwd, rels[1]), `${reportText(cwd, unit, manifest, recorded, null, warnings)}\n`);
   fs.writeFileSync(statePath(cwd, rels[2]), checksText(round, reports));
   dropSnapshot(cwd, unit);
+  readersDone(cwd, READERS.round(unit));
   const fixes = fixesOf(record);
   const ends = endsReview(record);
   return committed(cwd, [...rels, ...reports.map(({ name }) => `${roundFolder(unit, round)}/${name}`)], `review(${unit}): round ${round}`, warnings, {

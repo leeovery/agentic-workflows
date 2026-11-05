@@ -13,9 +13,10 @@
 
 const { laidOutOf } = require('./round-report.cjs');
 const { taskBranch } = require('./landing-names.cjs');
-const { branches, defaultBranch, isAncestor } = require('./landing-git.cjs');
+const { branches, branchesHeldBy, defaultBranch, isAncestor, latestOf } = require('./landing-git.cjs');
 const { remoteName, nestedRemoteName } = require('./remote.cjs');
 const { workBelow } = require('./review-change.cjs');
+const { codeRoot } = require('../kernel/code-root.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** @typedef {import('../kernel/repos.cjs').Repo} Repo */
@@ -24,6 +25,9 @@ const { workBelow } = require('./review-change.cjs');
 function landsOn(cwd, repo) {
   return defaultBranch(repo.path, repo.dir === '' ? remoteName(cwd) : nestedRemoteName(repo.path), repo.dir !== '');
 }
+
+/** The branch the project's own repository lands on, its child repositories unread. @param {string} cwd */
+const projectLandsOn = (cwd) => defaultBranch(codeRoot(cwd), remoteName(cwd), false);
 
 /** A base as git names it: a commit as it is, a branch by its ref. @param {string} base */
 const baseRev = (base) => (/^[0-9a-f]{40}$/.test(base) ? base : `refs/heads/${base}`);
@@ -38,10 +42,15 @@ function builtOnBases(cwd, ref, holding, branch) {
   const laid = laidOutOf(cwd, ref);
   const below = workBelow(cwd, ref.unit, ref.phase).flatMap((task) => (task.type === null ? [] : [taskBranch(task.ref, task.type, task.title)]));
   return holding.map((repo) => {
-    const named = [laid[repo.dir] ?? [], below.filter((other) => other !== branch && branches(repo.path).has(other))].flat();
-    const under = named.filter((base) => isAncestor(repo.path, baseRev(base), `refs/heads/${branch}`));
-    return under.find((base) => under.every((other) => isAncestor(repo.path, baseRev(other), baseRev(base)))) ?? landsOn(cwd, repo);
+    const local = branches(repo.path);
+    const merged = branchesHeldBy(repo.path, `refs/heads/${branch}`);
+    const at = laid[repo.dir];
+    const under = [
+      ...(at !== undefined && isAncestor(repo.path, at, `refs/heads/${branch}`) ? [{ base: at, commit: at }] : []),
+      ...below.filter((other) => other !== branch && merged.has(other)).map((other) => ({ base: other, commit: /** @type {string} */ (local.get(other)) })),
+    ];
+    return under[latestOf(repo.path, under.map(({ commit }) => commit))]?.base ?? landsOn(cwd, repo);
   });
 }
 
-module.exports = { landsOn, baseRev, builtOnBases };
+module.exports = { landsOn, projectLandsOn, baseRev, builtOnBases };

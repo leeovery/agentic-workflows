@@ -18,7 +18,7 @@ While `notes-consolidated` is open, brief the consolidation agent, then make the
 node .claude/skills/leeway-engine/scripts/engine.cjs brief consolidation {work_unit} {N}
 ```
 
-It drops what the code already settled and records the rest as tasks of the phase, which go through the task loop like any other. A note needing the person's call goes through the door for a call (**[outside-the-plan.md](outside-the-plan.md)**), parking each written task it bears on.
+It drops what the code already settled and records the rest as tasks of the phase, which go through the task loop like any other. A note needing the person's call goes through the door for a call (**[outside-the-plan.md](outside-the-plan.md)**, place = `implementation`), parking each written task it bears on. Load **[waiting-on-the-person.md](waiting-on-the-person.md)** and follow its instructions as written.
 
 ## The Phase Review
 
@@ -28,13 +28,13 @@ Once every task of the phase is done or closed, the consolidation's among them, 
 node .claude/skills/leeway-engine/scripts/engine.cjs brief phase-review {work_unit} {N} --letter {letter}
 ```
 
-A report that does not read — the checklist naming it, or `land phase` refusing it — goes back to its reviewer: its brief again, by SendMessage to its id, which names the report it replaces. A review every reviewer passes leaves the merge. Where one fails, read its findings and judge what the phase owes. Each fix it owes is a task of the phase, written as **[outside-the-plan.md](outside-the-plan.md)** writes one; then settle the review, naming them — or naming none where the findings ask nothing of this phase — with why written to `.leeway/.cache/{work_unit}/build/settle.md`:
+A report that does not read — the checklist naming it, or `land phase` refusing it — goes back to its reviewer: its brief again, by SendMessage to its id, which names the report it replaces. A review every reviewer passes leaves the merge. Where one fails, read its findings and judge what the phase owes. Each fix it owes is a task of the phase, written as **[outside-the-plan.md](outside-the-plan.md)** writes one, place = `implementation`; then settle the review, naming them — or naming none where the findings ask nothing of this phase — with why written to `.leeway/.cache/{work_unit}/build/settle.md`:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs task settle {work_unit} --phase {N} --file .leeway/.cache/{work_unit}/build/settle.md [--fixes {task},…]
 ```
 
-The fix tasks go through the task loop, each passed by its pair; no phase review runs over them again. A finding for a later phase, or a note for later in the review's reports, lands through the doors (**[outside-the-plan.md](outside-the-plan.md)**).
+The fix tasks go through the task loop, each passed by its pair; no phase review runs over them again. A finding for a later phase, or a note for later in the review's reports, lands through the doors (**[outside-the-plan.md](outside-the-plan.md)**, place = `implementation`).
 
 ## The Merge
 

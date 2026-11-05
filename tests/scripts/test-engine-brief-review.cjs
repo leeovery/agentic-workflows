@@ -31,7 +31,7 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const fs = require('fs');
 const path = require('path');
-const { template, filledTemplate } = require('./brief-build-world.cjs');
+const { template, filledTemplate, scratchCalls, ENGINE_DRAWN } = require('./brief-build-world.cjs');
 const {
   UNIT, OTHER, AREAS, EVERY, RECEIPT, calls, useWorld, env, enter, reported, named, recorded, firstRoundReady, fixBranch, fixBuilt, commitFile, stateText, issued, storedBriefs, areaText,
   refusedPristine, statePath, writeState, reportText, git, initRepo, assert,
@@ -54,6 +54,9 @@ function refusedBrief(args) {
   assert.deepStrictEqual(storedBriefs(), before);
   return error;
 }
+
+/** The commit the project's `main` is at. */
+const mainCommit = () => git(dir, ['rev-parse', 'main']).trim();
 
 /** A path drawn as a brief draws it. @param {string} rel the path from the state root */
 const pathDrawn = (rel) => `\`${statePath(dir, rel)}\``;
@@ -96,6 +99,7 @@ describe('the area review\'s brief, the reviewer\'s third template (14.1, 14.2)'
       { role: 'review-area', agent: 'leeway-reviewer', unit: UNIT, task: null, topic: null, area: '1', round: 1 },
     ]);
     assert.strictEqual(brief, `Brief ${res.id} — the area review's, for ${UNIT}\n\n${filledTemplate('review-area', {
+      engine: ENGINE_DRAWN,
       'area-sections': [pathDrawn(`${UNIT}/spec.md`), areaText(spec, 1)].join('\n\n'),
       'area-meets': `The other areas:\n\n- §2 Refunds\n\nWhere they meet it:\n\n- §2.1 relies on §1.2: 2.1.1 cites ${calls.refund}, which relies on ${calls.copy}, cited by 1.2.1`,
       'unit-calls': [
@@ -107,7 +111,7 @@ describe('the area review\'s brief, the reviewer\'s third template (14.1, 14.2)'
         `- ${calls.refund}, the person's, at ${UNIT}.specification: A refund's receipt names the shop.\n  It answers: What does a refund's receipt say?\n  Why: As its charge's did.`,
       ].join('\n'),
       'change-commits': projectCommits(),
-      'change-scratch-layout': '- the project\'s repository: `main` — the change\'s tip there',
+      'change-scratch-layout': `- the project's repository: \`main\` — the change's tip there\n\n${scratchCalls(`${UNIT}-area-1-b`, mainCommit())}`,
       'area-runs': [
         '- 1.S1: proven', '  Given a card form, when the number is typed, then it is checked. (1.1.1)', run('1.S1', 'pass', 0),
         '- 1.S2: not proven', '  Given a charge, when it lands, then a receipt follows. (1.2.1)', run('1.S2', 'fail', 1),
@@ -178,7 +182,7 @@ describe('the test surface\'s brief (14.2.4)', () => {
         '- 2.S1, of §2 Refunds: Given a charge, when it is refunded whole, then the card is credited. (2.1.1)',
       ].join('\n'),
       'change-commits': projectCommits(),
-      'change-scratch-layout': '- the project\'s repository: `main` — the change\'s tip there',
+      'change-scratch-layout': `- the project's repository: \`main\` — the change's tip there\n\n${scratchCalls(`${UNIT}-tests`, mainCommit())}`,
       linters: '- eslint: npx eslint .',
       'tests-report-to': pathDrawn(`${UNIT}/review/round-1/tests-a.md`),
     })}`);
@@ -226,7 +230,8 @@ describe('the templates', () => {
       'A finding names the failure it prevents: what goes wrong, for whom, and how it would be noticed. One that cannot is not written.',
       'the unit\'s calls read whole: a call fine alone and wrong in combination with another is a finding;',
       'A scenario its runs leave "not proven", or "named, not run", at the change\'s tips is a finding, and reads so in your report, in those words.',
-      'each scenario of the area\'s above through the project\'s verify setup, one at a time: `node .claude/skills/leeway-engine/scripts/engine.cjs verify run {unit} {scenario}`, the unit this brief is for.',
+      'each scenario of the area\'s above through the project\'s verify setup, one at a time: the engine\'s `verify run {unit} {scenario}`, the unit this brief is for.',
+      '# The engine\n\n{{engine}}\n',
       'Where the project has no verify setup recorded, say so in your report instead of running.',
     ]) assert.ok(area.includes(rule), rule);
     assert.notStrictEqual(phaseTail, tail(template('phase-review')));

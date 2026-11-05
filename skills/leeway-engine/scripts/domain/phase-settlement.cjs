@@ -42,6 +42,7 @@ const { withStateLock } = require('./state-worktree.cjs');
 const { parsePhase, parseShownTask, phaseName, shownTask } = require('./task-id.cjs');
 const { trackedLists, givenText } = require('./task-verbs.cjs');
 const { refusing } = require('./staged-payload.cjs');
+const { READERS, readersDone } = require('./scratch.cjs');
 const { phaseFolder, phaseReports } = require('./round-report.cjs');
 const { refuserFor, committed } = require('./task-account.cjs');
 
@@ -126,6 +127,7 @@ function settlePhase(cwd, unit, given, file, fixes) {
   writeJsonAtomic(statePath(cwd, rel), {
     why, fixes: named, reports: Object.fromEntries(reports.map(({ file: report, print }) => [path.posix.basename(report), print])),
   });
+  readersDone(cwd, READERS.phase(unit, phase));
   return committed(cwd, [rel, ...reports.map(({ file: report }) => report)], `task(${unit}): settle phase ${phase}'s review`, [...warnings], { phase, fixes: named });
 }
 

@@ -1,0 +1,61 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// The pipeline simulation's review phase with a question asked in a round,
+// parking nothing, as its skill runs it: a feature whose build has closed
+// its cut, in auto, round 1 failing on a bug its fix task builds. In round
+// 2 a question only the person can answer is raised at the review's place;
+// the round passes, and finish holds the unit open until the person, at the
+// stop, answers it; then finish goes through (12.13.22). A fix task parked
+// on the person is test-pipeline-simulation-review-park.cjs's.
+//
+// Layer: simulation. World: this file's own, built once from the project
+// every scenario starts from (pipeline-world.cjs) — a feature through its
+// spec to ready to build's pick, its cut one phase, built and closed — a
+// copy per scenario, which replays the engine calls the review phase's
+// skill makes, in order, the oracle (pipeline-oracle.cjs) auditing the
+// whole state after every mutation.
+// ---------------------------------------------------------------------------
+
+require('./hermetic-env.cjs');
+
+const { describe, it, beforeEach, afterEach } = require('node:test');
+const assert = require('node:assert');
+const {
+  Sim, worldFrom, cutClosed, builtAside, areaRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, finished, handoff,
+} = require('./pipeline-world.cjs');
+const { leaningCall } = require('./ledger-world.cjs');
+
+const WU = 'ledger';
+
+/** A feature through its spec to ready to build's pick, its cut's one phase built, reviewed, merged and closed. */
+const questionsWorld = worldFrom('pipeline-review-questions-', (sim) => cutClosed(sim, WU));
+
+describe('pipeline simulation: a question asked in a review round', () => {
+  let sim;
+  beforeEach(() => {
+    sim = new Sim(questionsWorld);
+  });
+  afterEach(() => {
+    sim.destroy();
+  });
+
+  it('12.13.22: a question raised in round 2, parking nothing, and the round passing: finish holds the unit open until the person answers it at the stop; then finish goes through', async () => {
+    const task = failedHashRound(sim, WU);
+    builtAside(sim, WU, task, 'src/hash.js');
+    sim.run(['review', 'reads', WU, '1-the-work']);
+    areaRead(sim, WU);
+    await raisedAtReview(sim, WU, 'Should the export check hashes in this work?', leaningCall('The export checks them.', 'The export is left as it is.'));
+    sim.run(['review', 'round', WU, '--file', sim.write(`.leeway/.cache/${WU}/review/round.json`, { can_now: ['Keep a ledger whose entries are checked.'], findings: [] })]);
+
+    assert.strictEqual(reviewNext(sim, WU).move, 'closing');
+    sim.write(`.leeway/${WU}/build/log.md`, '# The build\n\nPhase 1 built; the review fixed the hash on read in round 1 and passed in round 2.\n');
+    for (const key of ['inbox-closed', 'build-log-closed']) sim.run(['checklist', 'done', 'finish', WU, key]);
+    sim.refuses(['checklist', 'close', 'finish', WU], null);
+
+    answeredAtStop(sim, WU);
+    assert.deepStrictEqual(finished(sim, WU).next, { kind: 'handoff', skill: 'leeway', args: [] });
+    handoff(sim, '/leeway');
+    assert.strictEqual(sim.manifest(WU).status, 'completed', 'the unit finishes once nothing waits on the person');
+  });
+});

@@ -5,9 +5,9 @@
 // drawn from where the build stands (build-entry.cjs) and a task's records
 // (build-screens.cjs) — the same whatever order Claude works in (12.12.2):
 // - the step marker, `□ Build (phase N of M) · {position}`, the phase the
-//   first of the build's not yet closed — once the cut is through, one of
-//   the review's fixes, `□ Build (the review's fixes, round k) · {position}`
-//   (3.3.10);
+//   first of the build's not yet closed — once the cut is through, the
+//   review's, `□ Review[ (the review's fixes, round k)] · {position}`, the
+//   first of its fix phases not closed named while one is open (3.3.10);
 // - the headline as work starts: the tasks started together in one block,
 //   each with its number, title and phase, what it is about to change and
 //   what to watch when it lands, those two Claude's (12.12.4);
@@ -24,7 +24,7 @@
 //   gate before a phase's stack merges in step (7.2.4);
 // - the stop report, when nothing can go on without an answer: the
 //   questions front and centre, what was built, and what each answer lets
-//   run (12.12.9, 12.13.22);
+//   run (12.12.9, 12.13.22) — once the cut is through, the review stopped;
 // - the build's phases and tasks, each with its state and what holds it,
 //   a phase not yet written drawn from the cut, the review's fix phases
 //   after it, and in step a task behind the task in flight, or at its gate
@@ -91,8 +91,11 @@ const numbered = ({ phase, round }, of) => (round === null ? `${phase} of ${of}`
 /** The step marker, naming the build's phase — a fix phase by its round — and position (3.3.10). @param {BuildStanding} standing */
 function markerSection(standing) {
   const current = currentPhase(standing);
-  const at = current.round === null ? `phase ${numbered(current, cutCount(standing))}` : current.name;
-  return section('DISPLAY: build marker', CONTINUE_MARKDOWN_INSTRUCTION, `**\`□ Build (${at}) · ${standing.position}\`**`);
+  if (standing.finished) {
+    const at = current.round !== null && !closedPhase(current) ? ` (${current.name})` : '';
+    return section('DISPLAY: build marker', CONTINUE_MARKDOWN_INSTRUCTION, `**\`□ Review${at} · ${standing.position}\`**`);
+  }
+  return section('DISPLAY: build marker', CONTINUE_MARKDOWN_INSTRUCTION, `**\`□ Build (phase ${numbered(current, cutCount(standing))}) · ${standing.position}\`**`);
 }
 
 /** Text wrapped at the display's width beneath `indent`, its lines after the first `hang` further in. @param {string} text @param {string} indent @param {number} [hang] */
@@ -352,12 +355,14 @@ function afterAnswers(standing) {
 
 /**
  * The stop report, when nothing can go on without an answer (12.12.9): the
- * build stopped, the questions waiting first, what was built, and what each
- * answer lets run.
+ * build stopped — the review, once every phase of the cut has closed — the
+ * questions waiting first, what was built, and what each answer lets run.
  * @param {BuildStanding} standing @param {Finished} finished
  */
 function stopScreen(standing, finished) {
-  const stopped = section('DISPLAY: build stop', emitAs('properties'), '⚑ The build has stopped: nothing more can be built until you answer');
+  const stopped = section('DISPLAY: build stop', emitAs('properties'), standing.finished
+    ? '⚑ The review has stopped: nothing more can go on until you answer'
+    : '⚑ The build has stopped: nothing more can be built until you answer');
   const report = [
     waitingBlock(standing.waiting),
     block('WHAT WAS BUILT', `  ${taskCounts(standing)}\n${phaseTree(standing, finished)}`),

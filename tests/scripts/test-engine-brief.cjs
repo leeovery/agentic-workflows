@@ -63,6 +63,7 @@ const {
   ok, refusedPristine, statePath, layout, writeState, readState, commitAll, commitCode, git, initRepo, stateGit, lastMessage, fixtureFrom, cleanupFixture, lockAttempts, holdLock,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
+const { scratchCalls } = require('./brief-build-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { templateOf, storeBrief } = require(path.join(SCRIPTS, 'domain/brief.cjs'));
@@ -444,7 +445,9 @@ describe('the reviewer\'s brief (13.2.2, 13.11.5)', () => {
 
     assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'reviewer', agent: 'leeway-reviewer', pointer: `brief:${res.id}` });
     const ranges = takeACardRanges('main', 'main');
-    const laid = `- the project's repository: \`${PAY_BRANCH}\` — the range's tip there\n- \`${NESTED}\`: \`${PAY_BRANCH}\` — the range's tip there`;
+    const tipIn = (/** @type {string} */ at) => git(at, ['rev-parse', PAY_BRANCH]).trim();
+    const laid = `- the project's repository: \`${PAY_BRANCH}\` — the range's tip there\n- \`${NESTED}\`: \`${PAY_BRANCH}\` — the range's tip there\n\n${
+      scratchCalls(`${UNIT}-1.1-a`, tipIn(dir), [`${NESTED}=${tipIn(path.join(dir, NESTED))}`])}`;
     assert.strictEqual(brief, `Brief ${res.id} — the reviewer's, for pay task 1.1\n\n${filledTemplate('reviewer', { ...drawnForTakeACard(), 'diff-range': ranges, 'scratch-layout': laid, 'round-report-to': `\`${statePath(dir, roundAt('1.1', 2, 'a'))}\`` })}`);
     assert.ok(!brief.includes(CHANGED), 'the diff\'s text reaches no brief');
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'reviewer', agent: 'leeway-reviewer', unit: UNIT, task: '1.1', topic: null });
@@ -454,7 +457,7 @@ describe('the reviewer\'s brief (13.2.2, 13.11.5)', () => {
     const { brief } = issued(['reviewer', 'refund', '1.1', '--base', 'main', '--letter', 'a']);
 
     assert.ok(brief.includes(`# The diff's range\n\n${rangeDrawn('the project\'s repository', REFUND_BRANCH, DEEP)}\n\n# Laying out your scratch worktree\n\n`
-      + `- the project's repository: \`${REFUND_BRANCH}\` — the range's tip there\n- \`${NESTED}\`: \`${REFUND_BRANCH}\` — the task's branch\n\n# The linters\n`), brief);
+      + `- the project's repository: \`${REFUND_BRANCH}\` — the range's tip there\n- \`${NESTED}\`: \`${REFUND_BRANCH}\` — the task's branch\n\nLay it out`), brief);
   });
 
   it('7.2.17: in a project that is a folder of a larger repository, the range\'s stat holds the folder alone, each path named from it', () => {
