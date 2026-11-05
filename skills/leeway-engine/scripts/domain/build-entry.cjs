@@ -470,7 +470,7 @@ function standingLines(cwd, session, standing) {
   ];
 }
 
-/** The questions waiting on the person, a line each, as the entries and the notes give them. @param {BuildStanding} standing @returns {Line[]} */
+/** The questions waiting on the person, a line each, as the entries and the notes give them. @param {{waiting: Waiting[]}} standing @returns {Line[]} */
 const waitingLines = ({ waiting }) => waiting.map(({ question, asks, parks }) => /** @type {Line} */ (['waiting', `${question} — ${asks} — parks ${parkedTasks(parks)}`]));
 
 /** The ledger's calls the build reads beside its log: the entries affected since the spec concluded, and the unit's record. @param {string} unit */

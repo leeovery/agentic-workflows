@@ -474,6 +474,7 @@ const { ENDED, STATUS_WORDS } = require('./task-verbs.cjs');
 const { notesToTake, notesHeldFor, consolidationPath } = require('./notes.cjs');
 const { runsOf } = require('./runs.cjs');
 const { cachedSurvivors } = require('./verify.cjs');
+const { scratchName } = require('./scratch.cjs');
 const { accountPath, accountOwed, landingStage, reviewOverWay } = require('./task-account.cjs');
 const { directiveOf } = require('./directives.cjs');
 const {
@@ -699,7 +700,7 @@ function drawScratchLayout(filling) {
   const { repos, branch, holding } = taskHolding(filling);
   return layoutOf(repos, new Map(holding.map((repo) => [repo, branch])), RANGE_TIP, (repo) => (
     branches(repo.path).has(branch) ? onBranch(repo, branch, 'the task\'s branch') : onBranch(repo, landsOn(filling.cwd, repo), 'the branch it lands on, the task\'s branch not made there')
-  ), `${ref.unit}-${shownTask(ref)}-${letterOf(filling)}`);
+  ), scratchName.task(ref.unit, shownTask(ref), letterOf(filling)));
 }
 
 /**
@@ -1603,7 +1604,7 @@ function drawPhaseDiffRange(filling, warnings) {
 function drawPhaseScratchLayout(filling, warnings) {
   const { repos, tips } = phaseHolding(filling, warnings);
   const { unit, phase } = phaseOf(filling);
-  return layoutOf(repos, tips, RANGE_TIP, (repo) => onBranch(repo, landsOn(filling.cwd, repo), 'the branch it lands on'), `${unit}-phase-${phase}-${letterOf(filling)}`);
+  return layoutOf(repos, tips, RANGE_TIP, (repo) => onBranch(repo, landsOn(filling.cwd, repo), 'the branch it lands on'), scratchName.phase(unit, phase, letterOf(filling)));
 }
 
 /**
@@ -1873,8 +1874,9 @@ function partDrawn(repo, { from, to, landed, branch }) {
 /** @param {Filling} filling @param {string[]} warnings */
 function drawChangeScratchLayout(filling, warnings) {
   const { repos, holding } = changeHeld(filling, warnings);
-  const reader = filling.given.area === undefined ? TESTS : `area-${filling.given.area}-${letterOf(filling)}`;
-  return layoutOf(repos, new Map(holding.map(({ repo, tip }) => [repo, tip])), 'the change\'s tip there', (repo) => onBranch(repo, landsOn(filling.cwd, repo), 'the branch it lands on'), `${unitOf(filling)}-${reader}`);
+  const unit = unitOf(filling);
+  const named = filling.given.area === undefined ? scratchName.tests(unit) : scratchName.area(unit, filling.given.area, letterOf(filling));
+  return layoutOf(repos, new Map(holding.map(({ repo, tip }) => [repo, tip])), 'the change\'s tip there', (repo) => onBranch(repo, landsOn(filling.cwd, repo), 'the branch it lands on'), named);
 }
 
 /** @param {Filling} filling @param {string[]} warnings */

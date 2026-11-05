@@ -24,7 +24,9 @@
 //   gate before a phase's stack merges in step (7.2.4);
 // - the stop report, when nothing can go on without an answer: the
 //   questions front and centre, what was built, and what each answer lets
-//   run (12.12.9, 12.13.22);
+//   run (12.12.9, 12.13.22) — once the cut is through, the review stopped,
+//   under its own marker, `□ Review[ (the review's fixes, round k)] ·
+//   {position}`;
 // - the build's phases and tasks, each with its state and what holds it,
 //   a phase not yet written drawn from the cut, the review's fix phases
 //   after it, and in step a task behind the task in flight, or at its gate
@@ -351,19 +353,32 @@ function afterAnswers(standing) {
 }
 
 /**
+ * The review's marker once every phase of the cut has closed: the fix phase
+ * running, where one is, and the position.
+ * @param {BuildStanding} standing
+ */
+function reviewMarker(standing) {
+  const current = currentPhase(standing);
+  const at = current.round !== null && !closedPhase(current) ? ` (${current.name})` : '';
+  return section('DISPLAY: build marker', CONTINUE_MARKDOWN_INSTRUCTION, `**\`□ Review${at} · ${standing.position}\`**`);
+}
+
+/**
  * The stop report, when nothing can go on without an answer (12.12.9): the
- * build stopped, the questions waiting first, what was built, and what each
- * answer lets run.
+ * build stopped — the review, once every phase of the cut has closed — the
+ * questions waiting first, what was built, and what each answer lets run.
  * @param {BuildStanding} standing @param {Finished} finished
  */
 function stopScreen(standing, finished) {
-  const stopped = section('DISPLAY: build stop', emitAs('properties'), '⚑ The build has stopped: nothing more can be built until you answer');
+  const stopped = section('DISPLAY: build stop', emitAs('properties'), standing.finished
+    ? '⚑ The review has stopped: nothing more can go on until you answer'
+    : '⚑ The build has stopped: nothing more can be built until you answer');
   const report = [
     waitingBlock(standing.waiting),
     block('WHAT WAS BUILT', `  ${taskCounts(standing)}\n${phaseTree(standing, finished)}`),
     block('WHAT RUNS ONCE YOU ANSWER', afterAnswers(standing)),
   ].join('\n\n');
-  return markerSection(standing) + stopped + section('DISPLAY: build stop report', CONTINUE_INSTRUCTION, report);
+  return (standing.finished ? reviewMarker(standing) : markerSection(standing)) + stopped + section('DISPLAY: build stop report', CONTINUE_INSTRUCTION, report);
 }
 
 module.exports = { landingScreen, accountScreen, stepGateScreen, phaseMergeGateScreen, headlineScreen, progressScreen, stopScreen, currentPhase };

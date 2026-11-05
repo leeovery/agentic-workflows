@@ -58,7 +58,8 @@ const { reading, reposOf, mergeWaiting } = require('./phase-checks.cjs');
 const {
   codeHeld, buildLogOf, buildStanding, ownInFlight, inFlightLines, waitingLines, takeInFlight, readingOf,
 } = require('./build-entry.cjs');
-const { landsOn } = require('./task-base.cjs');
+const { projectLandsOn } = require('./task-base.cjs');
+const { waitingAndFreed } = require('./questions.cjs');
 const { specPath } = require('./spec-sections.cjs');
 const { notesPath } = require('./notes.cjs');
 const { reviewReportFaults } = require('./review-report.cjs');
@@ -181,17 +182,18 @@ function standingLines(cwd, unit, manifest, standing) {
 }
 
 /**
- * The conversation `session`'s fix tasks in flight, a line each, and the
- * questions waiting on the person, as the build's entry gives them.
- * @param {string} cwd @param {string} unit @param {InFlight[]} inFlight @param {string|null} session @returns {Line[]}
+ * The conversation `session`'s fix tasks in flight, a line each, as the
+ * build's entry gives them, its standing read only where one is; and the
+ * questions waiting on the person, read from the ledger alone.
+ * @param {Reading} at @param {InFlight[]} inFlight @param {string|null} session @returns {Line[]}
  */
-function buildLines(cwd, unit, inFlight, session) {
-  const standing = buildStanding(cwd, unit, inFlight);
-  return [...inFlightLines(cwd, session, standing), ...waitingLines(standing)];
+function buildLines(at, inFlight, session) {
+  const inFlightPart = inFlight.length === 0 ? [] : inFlightLines(at.cwd, session, buildStanding(at.cwd, at.unit, inFlight));
+  return [...inFlightPart, ...waitingLines(waitingAndFreed(at.cwd, at.unit, at.warnings))];
 }
 
 /** The branch the unit's work lands on, each reader's base. @param {Reading} at @returns {Line} */
-const baseLine = (at) => ['base', `${landsOn(at.cwd, reposOf(at)[0])} — the branch the unit's work lands on, the --base of each reader's brief`];
+const baseLine = (at) => ['base', `${projectLandsOn(at.cwd)} — the branch the unit's work lands on, the --base of each reader's brief`];
 
 /** Each round's report recorded, by its path. @param {string} cwd @param {string} unit @param {ReviewStanding} standing */
 const roundReports = (cwd, unit, { rounds }) => rounds.map((_, at) => statePath(cwd, roundReportFile(unit, at + 1)));
@@ -210,7 +212,7 @@ function reviewReads(at, inFlight, session) {
   return [
     ...standingLines(cwd, unit, manifest, standing),
     baseLine(at),
-    ...buildLines(cwd, unit, inFlight, session),
+    ...buildLines(at, inFlight, session),
     ...roundReports(cwd, unit, standing).map((report) => /** @type {Line} */ (['round report', report])),
     ['spec', specPath(cwd, unit)],
     ['record', `\`${recordCall(unit)}\``],

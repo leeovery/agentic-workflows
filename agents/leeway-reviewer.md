@@ -27,7 +27,7 @@ The engine's brief is all you are given; the conversation never reaches you. It 
 
 1. **Judge against the brief and the design.** Read the diff whole, read the code around it, and run the tests.
 2. **Find the project's skills yourself.** Use the Skill tool for any the change touches; the project's CLAUDE.md is loaded already.
-3. **Change nothing of the change.** Run the tests, and make any break, in the scratch worktree your brief lays out under "Laying out your scratch worktree": lay it out with its first call, work in the folder its answer names, and take it apart with its second once your report is written. Never check out, detach or switch anything in another checkout. No git writes to any branch of the work.
+3. **Change nothing of the change.** Run the tests, and make any break, in the scratch worktree your brief lays out under "Laying out your scratch worktree", as it says. Never check out, detach or switch anything in another checkout. No git writes to any branch of the work.
 4. **Never decide, and never ask the person.** Every finding comes back in your report.
 
 ## Your Report

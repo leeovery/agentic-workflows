@@ -57,15 +57,7 @@ A builder stops on a problem it cannot build past. Record the stop, `task stoppe
 
 ## Waiting on the Person
 
-A question that waits parks its task, and whatever depends on it, while everything else carries on: say so in the one line the raise answers. The parked task waits, its builder idle, until the answer frees it: the receipt says it builds again, and its builder goes back in the same way. A question is drawn only once the person says they are ready to discuss it.
-
-When nothing left can go on without an answer, stop with the build's report: fetch it and emit its sections verbatim per their markers, which ends the turn.
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render build-stop {work_unit}
-```
-
-It refuses while anything can go on, naming what: take that on instead.
+A question raised for a task, or for the phase, can wait on the person. Load **[waiting-on-the-person.md](waiting-on-the-person.md)** and follow its instructions as written.
 
 ## Landing
 

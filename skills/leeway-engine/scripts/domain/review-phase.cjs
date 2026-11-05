@@ -264,20 +264,24 @@ function fixedReads(areas, round) {
 }
 
 /**
- * What comes after the last round waits on (14.3.3): its fix tasks neither
- * done nor closed, each with where it stands; and once none is, in step,
- * the lowest phase up to its fix phase whose stack waits at its merge gate
- * (`mergeWaiting`, phase-checks.cjs) — that fix phase's own, or one below
- * it a switch from auto left unmerged — null where none waits.
+ * What comes after the last round waits on (14.3.3): every task of its fix
+ * phase neither done nor closed — its findings' fixes, and any other the
+ * tracker holds there, such as one a find beyond them wrote — each with
+ * where it stands, a fix not in the tracker said so; and once none is, in
+ * step, the lowest phase up to its fix phase whose stack waits at its merge
+ * gate (`mergeWaiting`, phase-checks.cjs) — that fix phase's own, or one
+ * below it a switch from auto left unmerged — null where none waits.
  * @param {Reading} at @param {RoundRecord[]} rounds
  * @returns {{waiting: string[], merging: number|null}}
  */
 function fixesWaiting(at, rounds) {
   const last = rounds.at(-1);
-  if (last === undefined || fixesOf(last).length === 0) return { waiting: [], merging: null };
+  if (last === undefined) return { waiting: [], merging: null };
   const phase = fixPhase(at.manifest, rounds.length);
   const statuses = new Map((phaseLists(at, [phase])[0] ?? []).map(({ ref, status }) => [shownTask(ref), status]));
-  const waiting = fixesOf(last).filter((fix) => !['done', 'closed'].includes(statuses.get(fix) ?? ''))
+  const fixes = [...new Set([...fixesOf(last), ...statuses.keys()])];
+  if (fixes.length === 0) return { waiting: [], merging: null };
+  const waiting = fixes.filter((fix) => !['done', 'closed'].includes(statuses.get(fix) ?? ''))
     .map((fix) => `${fix} ${STATUS_WORDS[statuses.get(fix) ?? ''] ?? 'not in the tracker'}`);
   return { waiting, merging: waiting.length > 0 ? null : mergeWaiting(at, phase) };
 }

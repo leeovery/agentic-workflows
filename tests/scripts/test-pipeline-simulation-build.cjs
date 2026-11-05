@@ -17,7 +17,8 @@
 // account taken, the landing summary shown and no gate after it in auto;
 // its chain, the last of the phase, naming the phase's mutation run, which
 // lays the phase out at its tips wherever it is run. The phase's review,
-// its stack merged with no gate, its close; then the second phase written
+// its stack merged with no gate, the scratch worktree a phase reviewer died
+// in taken apart as it merges, its close; then the second phase written
 // in the same conversation, the bug held for it reaching its writer.
 //
 // Layer: simulation. World: this file's own, built once from the project
@@ -37,7 +38,7 @@ const fs = require('fs');
 const path = require('path');
 const { git } = require('./engine-harness.cjs');
 const {
-  Sim, worldFrom, twoPhaseEpic, buildEntry, startPhase, writeTasks, briefOf, landed, placeIn, carryOn, buildLoop, VERIFY_FILES,
+  Sim, worldFrom, twoPhaseEpic, buildEntry, startPhase, writeTasks, briefOf, deadReader, landed, placeIn, carryOn, buildLoop, VERIFY_FILES,
 } = require('./pipeline-world.cjs');
 
 const WU = 'ledgerly';
@@ -100,12 +101,16 @@ describe('pipeline simulation: the build', () => {
     assert.deepStrictEqual(loop.landedTask('1.1')?.argv, ['verify', 'mutants', WU, '1'], 'the phase\'s last task chained names its mutation run, which lays the phase out at its tips wherever it runs');
 
     // Phase 1's close: no note of its own to take, its review passing, its
-    // stack merged with no gate in auto.
+    // stack merged with no gate in auto, the scratch worktree a dead phase
+    // reviewer left taken apart as it merges (14.2.2).
     const notes = JSON.parse(sim.read(['checklist', 'show', 'phase-close', WU, '1'])).items.find((/** @type {{key: string}} */ item) => item.key === 'notes-consolidated');
     assert.strictEqual(notes.state, 'done', 'a note held for a later phase is not this phase\'s to take');
-    for (const letter of ['a', 'b']) landed(placeIn(sim, loop.brief(['phase-review', WU, '1', '--letter', letter]), 'Where your report goes'), PASSED);
+    const reviews = ['a', 'b'].map((letter) => loop.brief(['phase-review', WU, '1', '--letter', letter]));
+    const deadReviewer = deadReader(sim, reviews[0]);
+    for (const review of reviews) landed(placeIn(sim, review, 'Where your report goes'), PASSED);
     sim.refuses(['render', 'phase-merge-gate', WU, '1'], /a phase's stack merges with no gate/);
     sim.run(['land', 'phase', WU, '1']);
+    assert.strictEqual(fs.existsSync(deadReviewer), false, 'the dead phase reviewer\'s scratch worktree taken apart as the phase merges');
     sim.run(['checklist', 'close', 'phase-close', WU, '1']);
     fs.appendFileSync(path.join(sim.dir, `.leeway/${WU}/build/log.md`), '\nPhase 1 closed.\n');
 

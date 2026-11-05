@@ -36,6 +36,13 @@
 // holds one staged already, a nested clone's gitlink, or a file in a nested
 // repository's folder is the door's to refuse before it commits by either
 // route (`stagedHeldOut`).
+//
+// The engine lays its own worktrees out beside Claude Code's, in
+// `.claude/worktrees/` of the main checkout, each named `leeway-…` — the
+// mutation run's and each reader's scratch (project-layout.cjs). Where the
+// project does not ignore that folder, git names each untracked in the
+// project's own checkout; none is ever the person's change, so every read
+// of what the checkout holds passes over them (`codeChanges`).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -46,6 +53,15 @@ const { readSettings } = require('./settings.cjs');
 const { projectCheckout } = require('./landing-git.cjs');
 
 const INCLUDE = '.worktreeinclude';
+
+/** Where Claude Code lays out its isolation worktrees in the main checkout, and the engine its own beside them. */
+const LAYOUTS = '.claude/worktrees';
+
+/** How each of the engine's own layouts there is named, before its name. */
+const LAYOUT = 'leeway-';
+
+/** One of the engine's own layouts, as git names it untracked in the project's own checkout. */
+const OWN_LAYOUT = new RegExp(`^${LAYOUTS}/${LAYOUT}[^/]+/$`);
 const SETTINGS = ['.claude/settings.json', '.claude/settings.local.json'];
 
 /** @typedef {{dir: string, path: string}} Laid a repository by its folder from the project's root, at `path` */
@@ -175,16 +191,19 @@ function removePreparedLinks(repo, at, project) {
   for (const entry of dirtyEntries(at, repo.prefix)) if (prepared(at, entry)) fs.unlinkSync(path.join(at, entry.path));
 }
 
+/** Whether a change git names in a checkout of `repo` is one of the engine's own layouts (the header's). @param {Repo} repo @param {Entry} entry */
+const ownLayout = (repo, { path: entry, status }) => repo.dir === '' && status === '??' && OWN_LAYOUT.test(entry);
+
 /**
  * What the checkouts of `repos`, the project's, hold not committed, in
  * project paths (kernel/repos.cjs, `projectDirtyEntries`), less the links
- * preparation made in each; a rename read as its two paths where `renames`
- * is off.
+ * preparation made in each and the engine's own layouts; a rename read as
+ * its two paths where `renames` is off.
  * @param {Repo[]} repos @param {{renames?: boolean}} [opts] @returns {Entry[]}
  */
 function codeChanges(repos, { renames = true } = {}) {
   const prepared = preparedIn(repos);
-  return projectDirtyEntries(repos, { kept: (repo, entry) => !prepared(repo.path, entry), renames });
+  return projectDirtyEntries(repos, { kept: (repo, entry) => !prepared(repo.path, entry) && !ownLayout(repo, entry), renames });
 }
 
 /**
@@ -237,4 +256,4 @@ function stagedHeldOut(repos, repo) {
   });
 }
 
-module.exports = { prepareWorktree, preparedLinkOf, removePreparedLinks, codeChanges, linksHeldOut, stagedHeldOut };
+module.exports = { LAYOUTS, LAYOUT, prepareWorktree, preparedLinkOf, removePreparedLinks, codeChanges, linksHeldOut, stagedHeldOut };

@@ -280,7 +280,7 @@ describe('the build\'s templates', () => {
   });
 
   it('13.2.2: the reviewer and the test reader test in the scratch worktree their brief lays out, taking it apart after, and never move another checkout; the phase review\'s template points to it and never repeats it', () => {
-    const rule = 'Run the tests, and make any break, in the scratch worktree your brief lays out under "Laying out your scratch worktree": lay it out with its first call, work in the folder its answer names, and take it apart with its second once your report is written. Never check out, detach or switch anything in another checkout.';
+    const rule = 'Run the tests, and make any break, in the scratch worktree your brief lays out under "Laying out your scratch worktree", as it says. Never check out, detach or switch anything in another checkout.';
     for (const agent of ['leeway-reviewer', 'leeway-test-surface']) assert.ok(fs.readFileSync(path.join(AGENTS, `${agent}.md`), 'utf8').includes(rule), agent);
     for (const role of ['reviewer', 'phase-review']) assert.ok(!template(role).includes('Run the tests, and make any break'), role);
     assert.ok(template('reviewer').includes('# Laying out your scratch worktree\n\n{{scratch-layout}}\n'));

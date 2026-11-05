@@ -24,13 +24,22 @@
 // - `scratch remove <name>`: that worktree taken apart, each repository's
 //   registration of it with it; one not there passes.
 //
-// Neither writes the state.
+// Neither writes the state. Each reader's layout is named for the reader
+// (`scratchName`): a task's reviewer `{unit}-{task}-{letter}`, a phase
+// review's `{unit}-phase-{N}-{letter}`, an area's reader
+// `{unit}-area-{n}-{letter}` and the test surface's `{unit}-tests`. A
+// reader that dies leaves its layout, so the engine takes apart every one
+// left once its readers are known to be done (`readersDone`): a task's at its
+// account, a phase review's at its settlement or its phase's merge, a
+// round's readers' as the round is recorded, and all the unit's at finish.
+// No tree check counts one as the person's change (worktree-prep.cjs).
 // ---------------------------------------------------------------------------
 
+const fs = require('fs');
 const { tryGit } = require('../kernel/git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { projectRepos } = require('../kernel/repos.cjs');
-const { layOutCommits, scratchTop, takeApart } = require('./project-layout.cjs');
+const { layOutCommits, scratchTop, layoutsFolder, layoutFolderName, takeApart } = require('./project-layout.cjs');
 const { refusing } = require('./staged-payload.cjs');
 const { repoNamed } = require('./phase-stack.cjs');
 
@@ -43,6 +52,49 @@ const SCRATCH_USAGE = [
 
 /** A scratch worktree's name: lowercase words, digits, dots and dashes. */
 const NAME = /^[a-z0-9][a-z0-9.-]*$/;
+
+/** What a scratch worktree's layout is named before its own name, apart from the mutation run's (project-layout.cjs). */
+const SCRATCH = 'scratch-';
+
+/**
+ * A reader's scratch worktree's name (the header's): a task's reviewer's, a
+ * phase review's, an area's reader's, or the test surface's.
+ */
+const scratchName = Object.freeze({
+  task: (/** @type {string} */ unit, /** @type {string} */ task, /** @type {string} */ letter) => `${unit}-${task}-${letter}`,
+  phase: (/** @type {string} */ unit, /** @type {number} */ phase, /** @type {string} */ letter) => `${unit}-phase-${phase}-${letter}`,
+  area: (/** @type {string} */ unit, /** @type {number|string} */ area, /** @type {string} */ letter) => `${unit}-area-${area}-${letter}`,
+  tests: (/** @type {string} */ unit) => `${unit}-tests`,
+});
+
+/** A name as a pattern matches it, every character of it as it is. @param {string} text */
+const literal = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * The readers whose layouts are done with, as each pattern matches their
+ * names: a task's, a phase review's, a round's, or every one of the unit's.
+ */
+const READERS = Object.freeze({
+  task: (/** @type {string} */ unit, /** @type {string} */ task) => new RegExp(`^${literal(unit)}-${literal(task)}-[a-z]$`),
+  phase: (/** @type {string} */ unit, /** @type {number} */ phase) => new RegExp(`^${literal(unit)}-phase-${phase}-[a-z]$`),
+  round: (/** @type {string} */ unit) => new RegExp(`^${literal(unit)}-(area-\\d+-[a-z]|tests)$`),
+  unit: (/** @type {string} */ unit) => new RegExp(`^${literal(unit)}-(\\d+\\.\\d+-[a-z]|phase-\\d+-[a-z]|area-\\d+-[a-z]|tests)$`),
+});
+
+/**
+ * Each scratch layout left whose readers `readers` names, taken apart: the
+ * names taken apart, none read where the folder holds none.
+ * @param {string} cwd @param {RegExp} readers @returns {string[]}
+ */
+function readersDone(cwd, readers) {
+  const folder = layoutsFolder(codeRoot(cwd));
+  const prefix = layoutFolderName(SCRATCH);
+  const left = fs.existsSync(folder) ? fs.readdirSync(folder).filter((entry) => entry.startsWith(prefix)).map((entry) => entry.slice(prefix.length)).filter((name) => readers.test(name)) : [];
+  if (left.length === 0) return [];
+  const repos = projectRepos(codeRoot(cwd));
+  for (const name of left) takeApart(repos, scratchTop(repos[0], `${SCRATCH}${name}`));
+  return left;
+}
 
 /**
  * Each repository's commit, in full, by its folder: the project's own the
@@ -75,7 +127,7 @@ function commitsGiven(repos, own, children) {
 function scratchOf(cwd, name) {
   if (!NAME.test(name)) throw new Error(`"${name}" is no scratch worktree's name — lowercase words, digits, dots and dashes`);
   const repos = projectRepos(codeRoot(cwd));
-  return { repos, top: scratchTop(repos[0], `scratch-${name}`) };
+  return { repos, top: scratchTop(repos[0], `${SCRATCH}${name}`) };
 }
 
 /** `scratch lay`. @param {string} cwd @param {string} name @param {string} own @param {string[]} children */
@@ -107,4 +159,4 @@ function runScratchVerb(cwd, [verb, name, ...rest], opts) {
   throw new Error(`Usage: ${SCRATCH_USAGE.split('\n').map((line) => `engine ${line}`).join(' | ')}`);
 }
 
-module.exports = { SCRATCH_USAGE, runScratchVerb };
+module.exports = { SCRATCH_USAGE, scratchName, READERS, readersDone, runScratchVerb };

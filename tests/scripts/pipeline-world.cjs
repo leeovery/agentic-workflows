@@ -939,6 +939,18 @@ function literal(text) {
 /** A brief as the conversation stored it. @param {Sim} sim @param {{id: string}} res */
 const briefOf = (sim, res) => withEnv({ LEEWAY_CONFIG_DIR: sim.configDir }, () => fs.readFileSync(briefPath(sim.env.CLAUDE_CODE_SESSION_ID, res.id), 'utf8'));
 
+/** The engine calls a reader's brief names to lay out its scratch worktree and take it apart, each by its argv. @param {string} brief */
+function scratchCalls(brief) {
+  const calls = [...brief.matchAll(/^node (\S+) (scratch .*)$/gm)];
+  assert.ok(calls.every(([, engine]) => path.isAbsolute(engine)), 'the brief runs the engine by its absolute path');
+  return calls.map(([, , call]) => call.split(' '));
+}
+
+// A reader that lays out its scratch worktree by its brief's first call and
+// dies, never taking it apart: the project's folder there.
+/** @param {Sim} sim @param {{id: string}} res its brief */
+const deadReader = (sim, res) => sim.run(scratchCalls(briefOf(sim, res))[0]).path;
+
 /** The file a brief names under its heading `heading`. @param {Sim} sim @param {{id: string}} res @param {string} heading */
 function placeIn(sim, res, heading) {
   const brief = briefOf(sim, res);
@@ -1204,6 +1216,50 @@ function strayRound(sim, wu, account, key) {
   return sim.run(['review', 'round', wu, '--file', file]);
 }
 
+// A task built as the build's loop builds it (`taskBuilt`), in a worktree
+// its builder's isolation makes and removes once it is done, adding `file`.
+/** @param {Sim} sim @param {string} wu @param {string} task @param {string} file */
+function builtAside(sim, wu, task, file) {
+  const tree = builders.make(`agent-${task}`);
+  taskBuilt(sim, wu, task, tree, { [file]: 'export const fix = 1;\n' }, false);
+  builders.remove(sim, tree);
+}
+
+// Round 1 of the review failing on a read that never checks its hash, its
+// one fix task written into the fix phase the entry names: the fix task.
+/** @param {Sim} sim @param {string} wu */
+function failedHashRound(sim, wu) {
+  const { fixPhase: phase } = reviewNext(sim, wu);
+  areaRead(sim, wu, '## Findings\n\n- bug: the ledger never checks its hash on read\n  Scenario: an entry read back\n\nVerdict: fail\n');
+  testsRead(sim, wu);
+  writePhaseTasks(sim, wu, phase, 'The review\'s fixes', [{ title: 'Check the hash on read', type: 'fix', scenarios: ['an entry read back'], reference: '§1' }]);
+  sim.run(['review', 'round', wu, '--file', sim.write(`.leeway/.cache/${wu}/review/round.json`, {
+    can_now: ['Keep a ledger.'],
+    findings: [{ area: '1-the-work', scope: 'in', call: 'bug', text: 'The ledger never checks its hash on read.', from: ['1-the-work-a#1'], fix: `${phase}.1` }],
+  })]);
+  return `${phase}.1`;
+}
+
+// A question only the person can answer, asked at the review's place and
+// raised with `call`, Claude's lean among its rows, parking `task` where one
+// is given (12.13.7): what the raise answered.
+/** @param {Sim} sim @param {string} wu @param {string} asks @param {object} call @param {string} [task] */
+function raisedAtReview(sim, wu, asks, call, task) {
+  const onTask = task === undefined ? [] : ['--task', task];
+  const asked = sim.run(['ledger', 'ask', `${wu}.review`, ...onTask], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: asks })).id;
+  const parks = task === undefined ? [] : ['--parks', task];
+  return sim.runAsync(['raise', `${wu}.review`, '--answers', asked, ...parks], null, JSON.stringify({ ...call, question: asks }));
+}
+
+// Nothing able to go on, the stop drawn; the person, ready, answering Q1
+// through its raise with the lean (12.13.22).
+/** @param {Sim} sim @param {string} wu */
+function answeredAtStop(sim, wu) {
+  sim.render(['build-stop', wu], { expect: 'content' });
+  const drawn = sim.run(['raise', 'draw', wu, 'Q1']);
+  sim.run(['raise', 'answer', drawn.raise, '--pick', '1'], null, JSON.stringify({ why: 'A read should not trust the disk.' }));
+}
+
 // The round under review's read of the test surface, by its one reader
 // (14.2): its report `report`.
 /** @param {Sim} sim @param {string} wu @param {string} [report] */
@@ -1249,6 +1305,6 @@ function finished(sim, wu) {
 }
 
 module.exports = {
-  Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicBuildPick, linearBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, placeIn, landed,
-  builders, taskBuilt, firstPhaseBuilt, cutClosed, areaRead, testsRead, reviewNext, reviewCall, strayRound, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic,
+  Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicBuildPick, linearBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, placeIn, landed,
+  builders, taskBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic,
 };

@@ -64,7 +64,7 @@ Each move once the one before it holds:
 
 ### A Round That Fails Again
 
-A round that fails on findings its fix tasks already addressed is yours to settle, as a stuck task is: judge what is wrong and settle it. Where the fix missed, a new fix task carries what it missed, and its finding's text says so: the earlier round's fix missed it, and what the new task carries. Where the findings were fixed in an earlier round or are rightly dropped, the round makes no fix task and its `settled` says how. The report shows either. No count stops the rounds, and settling one stops for the person only where the answer needs them: a question to them goes through `raise`.
+A round that fails on findings its fix tasks already addressed is yours to settle, as a stuck task is: judge what is wrong and settle it. Where the fix missed, a new fix task carries what it missed, and its finding's text says so: the earlier round's fix missed it, and what the new task carries. Where the findings were fixed in an earlier round or are rightly dropped, the round makes no fix task and its `settled` says how. The report shows either. No count stops the rounds, and settling one stops for the person only where the answer needs them: a question to them goes through `raise` (**The Person**).
 
 ### The Working Tree
 
@@ -102,7 +102,7 @@ Once a round's fix tasks are done, the next round reads again, whole, every area
 
 ## The Person
 
-The review runs without the person but for its reports and finish. Every question for them goes through `raise`, at the review's place, and waits as one in the build does: it parks the fix tasks it bears on while the rest carries on, and you say so in the one line the raise answers. A waiting question is never a gate, and the unit never finishes over one.
+The review runs without the person but for its reports and finish. Every question for them goes through `raise`, at the review's place: one asked in plain prose is a slip. One that waits — raised in a round, as one is settled, or for a fix task — is never a gate: load **[waiting-on-the-person.md](../leeway-implementation-process/references/waiting-on-the-person.md)** and follow its instructions as written.
 
 ## Doors
 

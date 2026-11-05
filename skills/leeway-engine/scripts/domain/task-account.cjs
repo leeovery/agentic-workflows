@@ -88,6 +88,7 @@ const { trackedTask, trackedStart, givenText, ENDED } = require('./task-verbs.cj
 const { refuseParked, parkedOf } = require('./task-parks.cjs');
 const { baseRev, builtOnBases } = require('./task-base.cjs');
 const { refusing } = require('./staged-payload.cjs');
+const { READERS, readersDone } = require('./scratch.cjs');
 const {
   taskFolder, settlementPath, taskRounds, pairPassed, changedUnder, changedRefusal,
 } = require('./round-report.cjs');
@@ -365,6 +366,7 @@ function takeAccount(cwd, unit, given) {
   if (task.type === null) refuse(`${taskName(ref)} has no type in the tracker, and its branch is named from it`);
   const figures = figuresOf(cwd, ref, task, rounds.length, refuse);
   writeJsonAtomic(statePath(cwd, figuresPath(ref)), figures);
+  readersDone(cwd, READERS.task(unit, shownTask(ref)));
   const files = [
     accountPath(ref),
     ...rounds.flatMap(({ round, reports, settled }) => [...reports.map(({ file }) => file), ...(settled ? [settlementPath(ref, round)] : [])]),

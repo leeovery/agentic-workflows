@@ -18,7 +18,8 @@
 // `engine render review-calls <unit>`, every call decided for the
 // person across the unit, grouped by kind in the ledger's order of kinds,
 // those that change what the product does first, then process and
-// internals, the unlabelled last (14.4.4, 16.11.3, P11).
+// internals, the unlabelled last (14.4.4, 16.11.3, P11); and the stop once
+// the cut is through, the review's own (12.13.22).
 //
 // Layer: verb. World: review-world.cjs's, copied for each test.
 // ---------------------------------------------------------------------------
@@ -28,7 +29,7 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const { output, refuses, sectionOf } = require('./engine-harness.cjs');
 const {
-  UNIT, EVERY, FAILING, RECEIPT, useWorld, env, enter, reported, named, recorded, firstRoundReady, reviewCall, filed, fixPhaseWritten, fixBranch, fixBuilt, fixClosed, stateText, decided, assert,
+  UNIT, EVERY, FAILING, RECEIPT, useWorld, env, enter, reported, named, recorded, firstRoundReady, firstRoundFailed, raisedAtReview, reviewCall, filed, fixPhaseWritten, fixBranch, fixBuilt, fixClosed, stateText, decided, assert,
 } = require('./review-world.cjs');
 
 /** @type {string} */
@@ -233,5 +234,17 @@ describe('render review-calls: the calls decided for the person (14.4.4)', () =>
 
   it('a unit whose calls were all the person\'s says so', () => {
     assert.ok(screen(['review-calls', 'solo']).startsWith('Solo — 0 calls decided for you\n\n  None — every call in this work unit was yours.'));
+  });
+});
+
+describe('render build-stop: the review stopped (12.13.22)', () => {
+  it('once every phase of the cut has closed, the review has stopped, under its own marker naming the fix phase running and the position', async () => {
+    firstRoundFailed();
+    await raisedAtReview('Should a receipt be sent by email?', '3.1');
+    const out = output(dir, ['render', 'build-stop', UNIT], { env: env() });
+
+    assert.deepStrictEqual([sectionOf(out, 'DISPLAY: build marker'), sectionOf(out, 'DISPLAY: build stop')], [
+      '**`□ Review (the review\'s fixes, round 1) · auto`**\n', '⚑ The review has stopped: nothing more can go on until you answer\n',
+    ]);
   });
 });

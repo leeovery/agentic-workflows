@@ -18,8 +18,11 @@
 // or built in, numbered from the cut (P14), the fix tasks waited on, none
 // closed, and in step their phase's merge at its gate (14.6.2), each
 // round's report, the spec, the record and the build's log; once a round
-// ends the review phase, how it ended and what is next; and the recovery
-// note, re-reading what the entry reads (24.2.2). A fix task in flight there, taken over at the
+// ends the review phase, how it ended and what is next; each question
+// waiting on the person, by the ledger alone, the build's standing read
+// only while something is in flight, so an idle entry's cost stays flat
+// (12.13.22); and the recovery note, re-reading what the entry reads
+// (24.2.2). A fix task in flight there, taken over at the
 // entry, is test-engine-review-fix-tasks.cjs's.
 //
 // Layer: verb. World: review-world.cjs's, copied for each test.
@@ -30,9 +33,9 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const fs = require('fs');
 const path = require('path');
-const { output } = require('./engine-harness.cjs');
+const { output, traced } = require('./engine-harness.cjs');
 const {
-  UNIT, inStep, ENGINE, ENGINE_LINE, SESSION_ID, AREAS, EVERY, FIVE, RECEIPT, FAILING, useWorld, env, enter, reportText, reported, named, recorded, refusedRound, firstRoundFailed, fixPhaseWritten, cutUnmerged, fixBuilt, fixClosed, data,
+  UNIT, inStep, ENGINE, ENGINE_LINE, SESSION_ID, AREAS, EVERY, FIVE, RECEIPT, FAILING, useWorld, env, enter, reportText, reported, named, recorded, refusedRound, firstRoundFailed, fixPhaseWritten, cutUnmerged, fixBuilt, fixClosed, raisedAtReview, data,
   ok, okSections, refusedPristine, statePath, writeState, git, stateGit, assert,
 } = require('./review-world.cjs');
 
@@ -71,6 +74,11 @@ const reportLine = (round) => `round report: ${statePath(dir, `${UNIT}/review/ro
 
 /** The fix phase line: the phase a round's fix tasks are `written` or `built` in. @param {number} phase @param {number} round @param {'written'|'built'} how */
 const fixPhaseLine = (phase, round, how) => `fix phase: phase ${phase}, where round ${round}'s fix tasks are ${how}`;
+
+// The most git commands an entry runs with nothing in flight, waiting on a
+// fix task: its own reads, nine of them; reading the build's standing too
+// would more than double them.
+const IDLE_ENTRY = 12;
 
 /** The reads line while round 2's are not yet named. */
 const UNNAMED = `reads: not yet named — once round 1's fix tasks are done, review reads ${UNIT} names them from what those changed, among them 1-cards`;
@@ -238,6 +246,27 @@ describe('the answer: the round under review, the spec\'s areas, and what the ro
       'round: the review phase passed in round 1 — its fix tasks are built, then finish', ...AREA_LINES, fixPhaseLine(3, 1, 'built'), 'fix task waiting: 3.1 not started', BASE_LINE, reportLine(1), ...readsAfter(),
     ]));
     assert.strictEqual(enter().sections, data(['round: the review phase passed in round 1 — finish is next', ...AREA_LINES, BASE_LINE, reportLine(1), ...readsAfter()]));
+  });
+});
+
+describe('the questions waiting on the person (12.13.22)', () => {
+  it('names each waiting, with the task it parks or none', async () => {
+    firstRoundFailed();
+    await raisedAtReview('Should a receipt be sent by email?', '3.1');
+    await raisedAtReview('Should a refund send a receipt too?');
+
+    assert.deepStrictEqual(enter().sections.split('\n').filter((line) => line.startsWith('waiting: ')), [
+      'waiting: Q1 — Should a receipt be sent by email? — parks task 3.1',
+      'waiting: Q2 — Should a refund send a receipt too? — parks no task',
+    ]);
+  });
+
+  it('reads them from the ledger alone while nothing is in flight: an idle entry runs no more git than its own reads need', () => {
+    firstRoundFailed();
+    enter();
+    const { commands } = traced(() => enter());
+
+    assert.ok(commands.length <= IDLE_ENTRY, `an idle entry ran ${commands.length} git commands:\n${commands.join('\n')}`);
   });
 });
 

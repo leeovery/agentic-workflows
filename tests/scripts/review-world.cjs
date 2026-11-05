@@ -351,11 +351,22 @@ const MAILED = Object.freeze({
   product_wide: false,
 });
 
+/**
+ * A question only the person can answer, asked at the review's place and
+ * raised with MAILED's call, parking `task` where one is given: the raise's
+ * response.
+ * @param {string} question @param {string} [task]
+ */
+async function raisedAtReview(question, task) {
+  const asked = ok(dir, ['ledger', 'ask', `${UNIT}.review`], { env: env(), stdin: JSON.stringify({ ...MADE, by: 'claude', text: question }) }).id;
+  const parks = task === undefined ? [] : ['--parks', task];
+  return (await okSectionsAsync(dir, ['raise', `${UNIT}.review`, '--answers', asked, ...parks], { env: env(), stdin: JSON.stringify({ ...MAILED, question }) })).res;
+}
+
 /** Fix task 3.1 started, then parked on Q1, the question its builder raises (MAILED). */
 async function fixParked() {
   ok(dir, ['task', 'start', UNIT, '3.1'], { env: env() });
-  const question = ok(dir, ['ledger', 'ask', `${UNIT}.review`], { env: env(), stdin: JSON.stringify({ ...MADE, by: 'claude', text: MAILED.question }) }).id;
-  await okSectionsAsync(dir, ['raise', `${UNIT}.review`, '--answers', question, '--parks', '3.1'], { env: env(), stdin: JSON.stringify(MAILED) });
+  await raisedAtReview(MAILED.question, '3.1');
 }
 
 /** Round 1 recorded failing, its fix task 3.1 built and done, and round 2 under review: entered, area 1 named its read, its reports written, `found` its findings. @param {Record<string, string[]>} [found] */
@@ -376,6 +387,6 @@ function storedBriefs() {
 module.exports = {
   UNIT, OTHER, ENGINE, ENGINE_LINE, SESSION_ID, areaText, AREAS, EVERY, FIVE, calls,
   useWorld, env, enter, inStep, payload, reportText, reported, named, recorded, refusedRound, taskMade, fixPhaseWritten, cutUnmerged, fixBranch, fixBuilt, fixClosed, commitFile, data, stateText, lastStateCommit, issued, storedBriefs,
-  decided, reviewCall, filed, FOUND, RECEIPT, FAILING, firstRoundReady, firstRoundFailed, secondRoundReady, fixParked,
+  decided, reviewCall, filed, raisedAtReview, FOUND, RECEIPT, FAILING, firstRoundReady, firstRoundFailed, secondRoundReady, fixParked,
   ok, okSections, refusedPristine, statePath, writeState, readManifest, git, stateGit, createManifest, initRepo, assert,
 };

@@ -10,7 +10,10 @@
 // project's checkout is, proves the area's scenario there through the
 // engine its brief names by its absolute path, and takes the worktree apart
 // by the second once its report is written; the round passes, and its
-// report reads the scenario proven by running it.
+// report reads the scenario proven by running it. A reader that dies
+// leaves its layout, which the project here does not ignore: the round,
+// its tree check passing over each, takes its readers' apart, and finish
+// any of the unit's still left.
 //
 // Layer: simulation. World: this file's own, built once from the project
 // every scenario starts from (pipeline-world.cjs) — a feature through its
@@ -29,7 +32,7 @@ const fs = require('fs');
 const path = require('path');
 const { git } = require('./engine-harness.cjs');
 const {
-  Sim, worldFrom, cutClosed, testsRead, reviewNext, briefOf, placeIn, landed, PASSED_REPORT,
+  Sim, worldFrom, cutClosed, testsRead, reviewNext, briefOf, scratchCalls, deadReader, placeIn, landed, finished, PASSED_REPORT,
 } = require('./pipeline-world.cjs');
 
 const WU = 'ledger';
@@ -65,13 +68,6 @@ describe('pipeline simulation: an area read in its reader\'s scratch worktree', 
     sim.destroy();
   });
 
-  /** The engine calls a reader's brief names to lay out its scratch worktree and take it apart, each by its argv. @param {string} brief */
-  function scratchCalls(brief) {
-    const calls = [...brief.matchAll(/^node (\S+) (scratch .*)$/gm)];
-    assert.ok(calls.every(([, engine]) => path.isAbsolute(engine)), 'the brief runs the engine by its absolute path');
-    return calls.map(([, , call]) => call.split(' '));
-  }
-
   it('13.2.2, 14.2.2: an area\'s reader lays out its scratch worktree by its brief\'s calls, prepared as the project\'s checkout is, proves the area\'s scenario there and takes it apart; the round passes, its report reading the scenario proven by running it', () => {
     assert.strictEqual(reviewNext(sim, WU).move, 'round');
     const reader = sim.run(['brief', 'review-area', WU, '--area', '1', '--base', 'main', '--letter', 'a']);
@@ -89,5 +85,28 @@ describe('pipeline simulation: an area read in its reader\'s scratch worktree', 
     testsRead(sim, WU);
     sim.run(['review', 'round', WU, '--file', sim.write(`.leeway/.cache/${WU}/review/round.json`, { can_now: ['Keep a ledger.'], findings: [] })]);
     assert.match(sim.render(['review-report', WU], { expect: 'content' }), /PROVEN BY RUNNING IT \(1 of 1\)\n\s*└─ 1\.S1 /, 'the round\'s report reads the scenario proven');
+  });
+
+  it('14.2.2: a dead reader\'s layout is never the person\'s change — the round, its tree check passing over each, takes its readers\' apart, and finish any of the unit\'s still left', () => {
+    reviewNext(sim, WU);
+    /** A reader's brief whose reader lays out its scratch worktree, lands its report and dies. @param {string[]} argv */
+    const dies = (argv) => {
+      const reader = sim.run(argv);
+      const project = deadReader(sim, reader);
+      landed(placeIn(sim, reader, 'Where your report goes'), PASSED_REPORT);
+      return { project, lay: scratchCalls(briefOf(sim, reader))[0] };
+    };
+    const readers = [
+      dies(['brief', 'review-area', WU, '--area', '1', '--base', 'main', '--letter', 'a']),
+      dies(['brief', 'review-area', WU, '--area', '1', '--base', 'main', '--letter', 'b']),
+      dies(['brief', 'test-surface', WU, '--base', 'main']),
+    ];
+    const { path: leftover } = sim.run(['scratch', 'lay', `${WU}-phase-1-a`, ...readers[0].lay.slice(3)]);
+    assert.match(git(sim.dir, ['status', '--porcelain', '--untracked-files=all']), /^\?\? \.claude\/worktrees\/leeway-scratch-ledger-tests\/$/m, 'the project does not ignore the layouts');
+
+    sim.run(['review', 'round', WU, '--file', sim.write(`.leeway/.cache/${WU}/review/round.json`, { can_now: ['Keep a ledger.'], findings: [] })]);
+    assert.deepStrictEqual([...readers.map(({ project }) => project), leftover].map((top) => fs.existsSync(top)), [false, false, false, true], 'the round\'s readers\' taken apart, no other');
+    finished(sim, WU);
+    assert.strictEqual(fs.existsSync(leftover), false, 'finish takes apart the unit\'s left');
   });
 });

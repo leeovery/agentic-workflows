@@ -7,7 +7,8 @@
 // the project lays them out, prepared as Claude Code prepares an isolation
 // worktree — the files `.worktreeinclude` names copied, the directories
 // `worktree.symlinkDirectories` names linked — answering the project's
-// folder there; `scratch remove` takes it apart, the links alone; and what
+// folder there; `scratch remove` takes it apart, the links alone and no
+// worktree beside it; and what
 // they refuse, writing nothing (13.2.2, 14.2.2). How the layout prepares
 // each repository is test-engine-verify-mutants.cjs's, the same routine's.
 //
@@ -62,7 +63,10 @@ beforeEach(() => {
 afterEach(() => cleanupFixture(dir));
 
 describe('scratch lay and remove (13.2.2, 14.2.2)', () => {
-  it('lays the project out at the commits given, each repository detached and nested, prepared as its checkout is, answering its folder; laid again, afresh; removed, the links alone, every registration with it', () => {
+  it('lays the project out at the commits given, each repository detached and nested, prepared as its checkout is, answering its folder; laid again, afresh; removed, the links alone and no worktree beside it, every registration with it', () => {
+    const builder = path.join(fs.realpathSync(dir), '.claude', 'worktrees', 'agent-1');
+    git(dir, ['worktree', 'add', '-q', '--detach', builder]);
+    ok(dir, ['scratch', 'lay', 'pay-1.1-b', own[0], `lib=${libs[0]}`]);
     const before = [registered(dir), registered(lib)];
     const first = ok(dir, ['scratch', 'lay', NAME, own[0], `lib=${libs[0]}`]);
     const top = scratchAt();
@@ -79,6 +83,7 @@ describe('scratch lay and remove (13.2.2, 14.2.2)', () => {
     assert.deepStrictEqual(again, [own[1], libs[1], false], 'laid out afresh at the new commits, nothing of the last left');
     assert.deepStrictEqual(removed, { ok: true, name: NAME, removed: true });
     assert.deepStrictEqual([fs.existsSync(top), fs.readFileSync(path.join(dir, 'node_modules/dep/index.js'), 'utf8'), registered(dir), registered(lib)], [false, 'dep\n', ...before]);
+    assert.deepStrictEqual([builder, scratchAt('pay-1.1-b')].map((beside) => fs.existsSync(beside)), [true, true], 'the worktrees beside it left whole');
     assert.deepStrictEqual(ok(dir, ['scratch', 'remove', NAME]), removed, 'one not there passes');
   });
 
