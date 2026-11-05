@@ -43,10 +43,11 @@
 //   read without moving the mark.
 // - Each unit is read once a call, whichever tabs and pages draw it, and its
 //   tracker in one read, once its build has begun, of a copy of its store
-//   (task-verbs.cjs) — its phases, the fix phases past the cut, the tasks
-//   ready, and the task a page names — which its build's checks read too,
-//   the stop's asked of a phase's start among them; All work reads no other
-//   unit's tracker.
+//   (task-verbs.cjs) — its phases, the fix phases past the cut, each one's
+//   tasks whole, the tasks ready, and the task a page names — which its
+//   build's checks read too, the stop's asked of a phase's start among them,
+//   and the review phase's change (review-change.cjs); All work reads no
+//   other unit's tracker.
 // - Each tab is answered on its own: a view or page that cannot be drawn
 //   answers `unavailable`, saying why, the banner and the questions standing
 //   apart from it; This session's view that cannot be drawn leaves the

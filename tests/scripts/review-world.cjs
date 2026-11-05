@@ -29,7 +29,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {
-  ok, okSections, refusedPristine, statePath, layout, writeState, readState, readManifest, commitAll, git, initRepo, stateGit, fixtureFrom, cleanupFixture, withEnv, withFrozenClock, FROZEN_AT,
+  ok, okSections, okSectionsAsync, refusedPristine, statePath, layout, writeState, readState, readManifest, commitAll, git, initRepo, stateGit, fixtureFrom, cleanupFixture, withEnv, withFrozenClock, FROZEN_AT,
   accountTaken,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
@@ -337,6 +337,27 @@ function firstRoundFailed() {
   recorded({ can_now: ['Pay by card.'], findings: [RECEIPT] });
 }
 
+/** Claude's call on a fix task's question of the product's, which asks the person. */
+const MAILED = Object.freeze({
+  question: 'Is the receipt mailed or printed?',
+  rows: [
+    { key: '1', name: 'Mailed', text: 'The receipt is mailed', notice: 'the customer finds it in their inbox' },
+    { key: '2', name: 'Printed', text: 'The receipt is printed', notice: 'the till prints it' },
+  ],
+  lean: '1',
+  why: 'A customer keeps proof.',
+  sort: 'several',
+  mechanism: 'The gateway mails the receipt.',
+  product_wide: false,
+});
+
+/** Fix task 3.1 started, then parked on Q1, the question its builder raises (MAILED). */
+async function fixParked() {
+  ok(dir, ['task', 'start', UNIT, '3.1'], { env: env() });
+  const question = ok(dir, ['ledger', 'ask', `${UNIT}.review`], { env: env(), stdin: JSON.stringify({ ...MADE, by: 'claude', text: MAILED.question }) }).id;
+  await okSectionsAsync(dir, ['raise', `${UNIT}.review`, '--answers', question, '--parks', '3.1'], { env: env(), stdin: JSON.stringify(MAILED) });
+}
+
 /** Round 1 recorded failing, its fix task 3.1 built and done, and round 2 under review: entered, area 1 named its read, its reports written, `found` its findings. @param {Record<string, string[]>} [found] */
 function secondRoundReady(found = {}) {
   firstRoundFailed();
@@ -355,6 +376,6 @@ function storedBriefs() {
 module.exports = {
   UNIT, OTHER, ENGINE, ENGINE_LINE, SESSION_ID, areaText, AREAS, EVERY, FIVE, calls,
   useWorld, env, enter, inStep, payload, reportText, reported, named, recorded, refusedRound, taskMade, fixPhaseWritten, cutUnmerged, fixBranch, fixBuilt, fixClosed, commitFile, data, stateText, lastStateCommit, issued, storedBriefs,
-  decided, reviewCall, filed, FOUND, RECEIPT, FAILING, firstRoundReady, firstRoundFailed, secondRoundReady,
+  decided, reviewCall, filed, FOUND, RECEIPT, FAILING, firstRoundReady, firstRoundFailed, secondRoundReady, fixParked,
   ok, okSections, refusedPristine, statePath, writeState, readManifest, git, stateGit, createManifest, initRepo, assert,
 };

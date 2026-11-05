@@ -97,7 +97,7 @@ describe('the review phase\'s This session (20.10)', () => {
     ])
   })
 
-  test('the locked board\'s replay, step 2: round 1 failed — its fix tasks the build\'s next phase, each finding in scope marked by its call, its checks not proven, what it filed, and its verdict hung under its mark; the facts line wrapping so it says so whole (D12, D19, 20.10.2)', () => {
+  test('the locked board\'s replay, step 2: round 1 failed — its fix tasks the build\'s next phase, each finding in scope marked by its call — ✗ the calls that fail a round, serious and bug, △ a nit — its checks not proven, what it filed, and its verdict hung under its mark; the facts line wrapping so it says so whole (D12, D19, 20.10.2)', () => {
     expect(paneDrawn(answered(FAILED), { now: NOW })).toEqual([
       '⌂ This session   ≡ Token-aware diff sizing   ≡ All work',
       '━━━━━━━━━━━━━━────────────────────────────────────────────────',
@@ -113,12 +113,12 @@ describe('the review phase\'s This session (20.10)', () => {
       '○ 9.3 Correct the 11 comments that no longer match th… waiting',
       '',
       'FOUND ──────────────────────────────────────────── 16 in scope',
-      '△ tests no test drives mint release regenerate <version> agai…',
+      '✗ tests no test drives mint release regenerate <version> agai…',
       '△ §18 the generousTimeout comment still says tests exist "so …',
       '△ §4 The comment above the regeneration stage says every exit…',
-      '△ tests The criterion names three verbs, but only mint releas…',
-      '△ tests assertNoTag still counts the pre-3-8 argv git tag -a …',
-      '△ tests Regenerate\'s production chunk-notes store is built in…',
+      '✗ tests The criterion names three verbs, but only mint releas…',
+      '✗ tests assertNoTag still counts the pre-3-8 argv git tag -a …',
+      '✗ tests Regenerate\'s production chunk-notes store is built in…',
       '△ §12 The Edit method doc says "A non-nil error means no edit…',
       '△ §12 The file header (lines 19-22) says batch skip-and-conti…',
       '△ §18 GenerateWithContext\'s doc still says "It is the AI supp…',
@@ -225,7 +225,7 @@ describe('the review phase\'s This session (20.10)', () => {
     ])
   })
 
-  test('N2: round 1 under way — FOUND each finding its landed reports hold, "found" not "in scope", marked by its call, opening nothing until the round is recorded; its checks not proven, opening nothing; nothing to the inbox yet', () => {
+  test('N2, N4: round 1 under way — FOUND each finding its landed reports hold, "found" not "in scope", marked by its call, each opening its page by its report item; its checks not proven at the change\'s tips, each opening its page; nothing to the inbox yet', () => {
     const reading = review({
       round: 1,
       finish: false,
@@ -234,10 +234,10 @@ describe('the review phase\'s This session (20.10)', () => {
       fixes: null,
       inbox: [],
       found: [
-        { round: 1, finding: null, area: '4-the-per-call-size-cap', call: 'nit', text: 'The comment above the regeneration stage says every exit closes it.' },
-        { round: 1, finding: null, area: '16-progress-narration', call: 'serious', text: 'In pretty mode, a failed check kills the notes stage\'s live line.' },
+        { round: 1, finding: null, from: '4-the-per-call-size-cap-a#1', area: '4-the-per-call-size-cap', call: 'nit', text: 'The comment above the regeneration stage says every exit closes it.' },
+        { round: 1, finding: null, from: '16-progress-narration-b#1', area: '16-progress-narration', call: 'bug', text: 'In pretty mode, a failed check kills the notes stage\'s live line.' },
       ],
-      not_proven: [{ round: null, scenario: '13.S1', standing: 'not proven', text: 'Afterwards notes.md is still untracked.' }],
+      not_proven: [{ round: 1, scenario: '13.S1', standing: 'not proven', text: 'Afterwards notes.md is still untracked.' }],
       areas: AREAS.map((area, at) => ({ ...area, state: at < 17 ? 'read' : 'reading', since: at < 17 ? null : '2026-10-21T14:57:42.000Z' })),
     })
     const lines = reviewLines(reading, kitAt(NOW))
@@ -252,7 +252,30 @@ describe('the review phase\'s This session (20.10)', () => {
       ['NOT PROVEN ──────────────────────────────── 1 could not be run', '△ Afterwards notes.md is still untracked.'],
       false,
     ])
-    expect(lines.filter(line => line.key.startsWith('review:found:') || line.key.startsWith('review:unproven:')).map(line => line.press)).toEqual([undefined, undefined, undefined])
+    expect(lines.filter(line => line.key.startsWith('review:found:') || line.key.startsWith('review:unproven:')).map(line => line.press)).toEqual([
+      'page:finding:1:4-the-per-call-size-cap-a#1',
+      'page:finding:1:16-progress-narration-b#1',
+      'page:check:1:13.S1',
+    ])
+  })
+
+  test('N2: what each round filed to the inbox is its own line, two rounds\' finding 2 never one key', () => {
+    const filed = review({ inbox: [{ round: 1, finding: 2, text: 'A card\'s expiry is checked nowhere.' }, { round: 2, finding: 2, text: 'A refund\'s expiry is checked nowhere.' }] })
+    const lines = reviewLines(filed, kitAt(NOW)).filter(line => line.key.startsWith('review:inbox:'))
+
+    expect([lines.map(line => line.key), lines.map(line => line.press)]).toEqual([
+      ['review:inbox:1:2', 'review:inbox:2:2'],
+      ['page:finding:1:2', 'page:finding:2:2'],
+    ])
+  })
+
+  test('the facts line once a round passes with fix tasks still to build, before finish waits, and once Claude settled the round that ended the phase (N6)', () => {
+    const facts = (change: Record<string, unknown>) => drawnRows(reviewLines(review({ finish: false, ...change }), kitAt(NOW)))[2]
+
+    expect([facts({ round: 1, verdict: 'passed' }), facts({ verdict: 'settled' })]).toEqual([
+      'round 1 · 19 of 19 areas read · ✓ round 1 passes',
+      'round 2 · 19 of 19 areas read · ✓ round 2 settled',
+    ])
   })
 
   test('20.10.3, D17: each fix task opens its task\'s page, each finding recorded its own, each check recorded its own, and what went to the inbox its finding', () => {
@@ -291,6 +314,12 @@ describe('the review phase\'s This session (20.10)', () => {
   test('the edge rule: in the header the title gives way with "…", "· review" never does', () => {
     expect(drawnRows(reviewLines(review({ title: 'A title long enough that it would run past the edge of the pane' }), kitAt(NOW)).slice(0, 1))).toEqual([
       'A title long enough that it would run past the edge … · review',
+    ])
+  })
+
+  test('the edge rule: on the line beneath, the project\'s name gives way with "…", its type and the tasks built never do', () => {
+    expect(drawnRows(reviewLines(review({ project: 'A project whose name runs long past forty characters' }), kitAt(NOW)).slice(1, 2))).toEqual([
+      'A project whose name runs long pas… · feature · 99 tasks built',
     ])
   })
 })
@@ -349,6 +378,7 @@ describe('a finding\'s and a check\'s pages (20.10.3)', () => {
     text: 'The comment above the regeneration stage says every exit closes it via "success via the timed completion closure, a transport failure via the spinner-stopping AI-failure Warn …, any other failure via surface\'s StageFailed". This task added the over-cap branch at run.go:681-684.',
     fix: '9.1',
     inbox: null,
+    reviewer: null,
   }
 
   test('a finding in scope: its opening words, whole words on three rows at most, where it went under its mark and its area, then its words in full', () => {
@@ -376,6 +406,19 @@ describe('a finding\'s and a check\'s pages (20.10.3)', () => {
     expect([went({ inbox: '.leeway/.inbox/bugs/2026-10-21--process-one-version.md' }), went({ inbox: null })]).toEqual([
       ['» out of scope · filed to the inbox, Claude\'s call · §12 ·', '  round 1'],
       ['– out of scope · dropped, Claude\'s call · §12 · round 1'],
+    ])
+  })
+
+  test('N4: a finding while its round is read: its opening words, that it is being read under its mark by its call, its call, area and reviewer, then its words in full', () => {
+    const read = { ...finding, finding: null, scope: null, fix: null, reviewer: 'b', text: 'The comment above the regeneration stage says every exit closes it.' }
+
+    expect(drawnRows(findingLines(read, kitAt(NOW)))).toEqual([
+      'The comment above the regeneration stage says every exit',
+      'closes it.',
+      '✗ round 1 · being read · bug · §4 · reviewer b',
+      ' ────────────────────────────────────────────────────────────',
+      'The comment above the regeneration stage says every exit',
+      'closes it.',
     ])
   })
 

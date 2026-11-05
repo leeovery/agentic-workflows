@@ -390,13 +390,16 @@ describe('a task\'s pages (20.5.4–20.5.7)', () => {
     });
   });
 
-  it('a scenario opens on the run that decides it: what it proved and when, what it drives and checks by the spec\'s words parted at their "then", and each text evidence kept with it, read whole (15.2.14, D16)', () => {
+  it('a scenario opens on the run that decides it: what it proved and when, what it drives and checks by the spec\'s words parted at their "then", and each text evidence kept with it, read whole (15.2.14, D16); the mod\'s fixtures of both pages are shaped as these, each list holding one (N6)', async () => {
     enterBuild();
     writeState(dir, layout.unit(UNIT, 'spec.md'), SPEC);
     const run = layout.unit(UNIT, 'build/runs/1.S1/run-001.json');
     writeState(dir, run, JSON.stringify({ ...JSON.parse(readState(dir, run)), evidence: [{ name: 'till screen', text: 'CARD ****4242\nTAKEN\n' }] }));
+    const pages = [board(['--page', 'task:1.1:scenario:1.S1']).view, board(['--page', 'task:1.1:scenario:1.S1:evidence:1']).view];
+    const [scenario, evidence] = [await fixture('board-scenario.mjs'), await fixture('board-evidence.mjs')];
 
-    assert.deepStrictEqual([board(['--page', 'task:1.1:scenario:1.S1']).view, board(['--page', 'task:1.1:scenario:1.S1:evidence:1']).view], [
+    assert.deepStrictEqual([misfits(scenario, pages[0]), misfits(evidence, pages[1]), scenario.evidence.length > 0], [[], [], true]);
+    assert.deepStrictEqual(pages, [
       {
         kind: 'scenario',
         unit: UNIT,
@@ -429,14 +432,16 @@ describe('a task\'s pages (20.5.4–20.5.7)', () => {
     );
   });
 
-  it('a task with no account, parked: none, nothing reviewed or called, never started, and the question it waits on with its line (20.5.6)', async () => {
+  it('a task with no account, parked: none, nothing reviewed or called, never started, and the question it waits on whole, with its line; the session gone to the start menu, the page still holds it (20.5.6, 20.3.5, N1)', async () => {
     enterBuild();
     await parkOn(['1.3']);
-    const { view } = board(['--page', 'task:1.3']);
+    const { view, questions } = board(['--page', 'task:1.3']);
+    fs.rmSync(path.join(config, 'conversations', SESSION, 'position.json'));
+    const atStart = board(['--page', 'task:1.3', '--page-unit', UNIT]);
 
     assert.deepStrictEqual(
-      { line: view.line, started: view.started, finished: view.finished, account: view.account, reviews: view.reviews, calls: view.calls, ran: view.ran, questions: view.questions },
-      { line: line('1.3', 'Mail the receipt', 'waits', { on: ['Q1'] }), started: null, finished: null, account: null, reviews: [], calls: [], ran: null, questions: ['Q1'] },
+      [{ line: view.line, started: view.started, finished: view.finished, account: view.account, reviews: view.reviews, calls: view.calls, ran: view.ran }, view.questions.map(({ question }) => question), atStart.view.questions, atStart.questions],
+      [{ line: line('1.3', 'Mail the receipt', 'waits', { on: ['Q1'] }), started: null, finished: null, account: null, reviews: [], calls: [], ran: null }, ['Q1'], questions, []],
     );
   });
 

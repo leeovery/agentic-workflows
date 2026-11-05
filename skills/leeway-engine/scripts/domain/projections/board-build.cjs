@@ -33,7 +33,9 @@
 //   wait after it.
 // - A task's page lists what running the product proved of each of its
 //   scenarios (15.2.14), and a fix task's what it fixes: each finding of the
-//   review's rounds that went to it (20.10.3). A scenario opens on the run
+//   review's rounds that went to it (20.10.3); and each question parking
+//   it, whole, as the unit's build has it, so the page holds them wherever
+//   the session goes while it is open (20.3.5). A scenario opens on the run
 //   that decides its standing (runs.cjs) — the scenario's words split at
 //   their "then" into what the run drives and what it checks — and each of
 //   that run's text evidence opens whole.
@@ -50,7 +52,7 @@ const { reading } = require('../phase-checks.cjs');
 const { goesOn } = require('../task-verbs.cjs');
 const { phaseNamed, phaseLets, takenAccount, callsOf, ranOf } = require('../build-screens.cjs');
 const { fieldOf, criteriaTexts, criterionWords, holdsScenario, namesScenario, FIELDS } = require('../task-file.cjs');
-const { specPath, specReading } = require('../spec-sections.cjs');
+const { specPath, specReading, DRAWS_ON } = require('../spec-sections.cjs');
 const { phaseStack, tipCommits } = require('../phase-stack.cjs');
 const { runsOf } = require('../runs.cjs');
 const { figuresPath, takenFigures } = require('../task-account.cjs');
@@ -296,13 +298,10 @@ function taskPage(at, given) {
     reviews: account?.reviews.map(({ heading, summary }) => ({ round: heading, summary })) ?? [],
     calls: callsOf(at.cwd, ref),
     ran: ranOf(at.cwd, at.manifest, ref, task, criteria).ran,
-    questions: line?.state === 'waits' ? line.on : [],
-    fixes: recordedRounds(at.cwd, at.unit).flatMap(({ findings }, r) => findings.flatMap(({ fix, area, call, text }, k) => (fix === given ? [{ round: r + 1, finding: k + 1, area, call, text }] : []))),
+    questions: buildView(at).questions.filter(({ parks }) => parks.some(({ task: parked }) => parked === given)),
+    fixes: recordedRounds(at.cwd, at.unit).flatMap(({ findings }, r) => findings.flatMap(({ fix, area, call, text }, k) => (fix === given ? [{ round: r + 1, finding: k + 1, from: null, area, call, text }] : []))),
   };
 }
-
-/** The statements a scenario's words end by citing, `(1.1.1, 1.1.2)`. */
-const CITATION = /\s*\(\d+(?:\.\d+)+(?:,\s*\d+(?:\.\d+)+)*\)\s*$/;
 
 /**
  * A scenario's words as the unit's spec holds them, the statements they
@@ -314,7 +313,7 @@ function scenarioWording(at, scenario) {
     const file = specPath(at.cwd, at.unit);
     return fs.existsSync(file) ? specReading(fs.readFileSync(file, 'utf8')).lines : [];
   });
-  return lines.find(({ kind, number }) => kind === 'scenario' && number === scenario)?.wording.replace(CITATION, '') ?? null;
+  return lines.find(({ kind, number }) => kind === 'scenario' && number === scenario)?.wording.replace(DRAWS_ON, '').trimEnd() ?? null;
 }
 
 /** Where a scenario's words turn from what is done to what follows: its first "then". */

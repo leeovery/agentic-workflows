@@ -22,7 +22,7 @@
  * always the engine's (`board.questions`): a question no longer waiting
  * leaves the box and the discussion wherever it stood in them.
  */
-import { COLOUR, MARK, blank, endedRows, heading, spread, type Button, type Line, type Part } from './draw.ts'
+import { COLOUR, MARK, blank, endedRows, heading, spread, type Asked, type Button, type Line, type Part } from './draw.ts'
 import type { Banner, Fact, Question } from './model.ts'
 
 /** The file the discussion is kept in, in the conversation's folder. */
@@ -360,17 +360,21 @@ const INDENT = '     '
 
 /**
  * A question's standing: what it parks and how long it has waited, wrapping
- * under its indent and never cut, then where it stands in the discussion at
- * the right of its last row — "being discussed" with "▸ skip" while more
- * follow it, else "▸ cancel"; "after Q1" behind it; "queued" with
- * "▸ unqueue" in the box; else "▸ discuss".
+ * under its indent and never cut, then, where the session can discuss it,
+ * where it stands in the discussion at the right of its last row — "being
+ * discussed" with "▸ skip" while more follow it, else "▸ cancel"; "after
+ * Q1" behind it; "queued" with "▸ unqueue" in the box; else "▸ discuss".
  */
-function standingOf(question: Question, discussion: Discussion, width: number, now: number): Line[] {
+function standingOf(question: Question, discussion: Discussion, width: number, now: number, discussable: boolean): Line[] {
   const key = `qt:${question.question}`
   const said: Part = { text: `${parksOf(question)} · ${waitedOf(question.since, now)}`, color: COLOUR.notStarted }
   const talk = talkOf(discussion)
   const place = talk.indexOf(question.question)
   const at = (right: Part[], button?: Button): Line[] => endedRows(key, INDENT, said, right, width, button)
+
+  if (!discussable) {
+    return at([])
+  }
 
   if (place === 0) {
     return at(
@@ -395,15 +399,17 @@ function standingOf(question: Question, discussion: Discussion, width: number, n
  * "▸ cancel all" while more follow the one discussed, else "▸ discuss all"
  * while more than one waits and any is neither queued nor discussed; each
  * question by its number and full wording, then what it parks, how long it
- * has waited and where it stands. Nothing while none waits.
+ * has waited and, where the session can discuss them, where it stands.
+ * Nothing while none waits.
  */
-export function waitingLines(questions: readonly Question[], discussion: Discussion, width: number, now: number): Line[] {
+export function waitingLines(questions: readonly Question[], discussion: Discussion, width: number, now: number, discussable = true): Line[] {
   if (questions.length === 0) {
     return []
   }
 
-  const button: Button | undefined =
-    discussion.discussing !== null && discussion.queue.length > 0
+  const button: Button | undefined = !discussable
+    ? undefined
+    : discussion.discussing !== null && discussion.queue.length > 0
       ? CANCEL_ALL_BUTTON
       : questions.length > 1 && looseOf(discussion, questions).length > 0
         ? { key: DISCUSS_ALL, label: '▸ discuss all' }
@@ -424,10 +430,24 @@ export function waitingLines(questions: readonly Question[], discussion: Discuss
         wraps: true,
         parts: [{ text: `${question.question} ${question.asks}`, color: COLOUR.body }],
       },
-      ...standingOf(question, discussion, width, now),
+      ...standingOf(question, discussion, width, now, discussable),
     ]),
     blank('waiting'),
   ]
+}
+
+/**
+ * WAITING ON YOU as a drawing asks for it (draw.ts's kit): the session's
+ * questions; or a unit's own a page holds, where they stand in the
+ * discussion, a press away, only where that unit is the session's (`here`),
+ * the discussion being the session's.
+ */
+export function waitingOf(asked: Asked | undefined, here: string | null, questions: readonly Question[], discussion: Discussion, width: number, now: number): Line[] {
+  if (asked === undefined) {
+    return waitingLines(questions, discussion, width, now)
+  }
+
+  return asked.unit === here ? waitingLines(asked.questions, discussion, width, now) : waitingLines(asked.questions, QUIET, width, now, false)
 }
 
 /**

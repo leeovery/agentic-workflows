@@ -86,11 +86,10 @@ const { readShown } = require('./ledger-read.cjs');
 const { parseInboxPath, FOLDER_KIND } = require('./inbox.cjs');
 const { titleOf } = require('./start.cjs');
 const { unitInProgress } = require('./topic-standing.cjs');
-const { itemTitle, topicTitles, cutPhases } = require('./derivations.cjs');
+const { itemTitle, topicTitles } = require('./derivations.cjs');
 const { reading, reposOf } = require('./phase-checks.cjs');
 const { readSpec, specStatements } = require('./spec-sections.cjs');
-const { runsOf } = require('./runs.cjs');
-const { changeOf, changeTips } = require('./review-change.cjs');
+const { changeOf, cutStandings } = require('./review-change.cjs');
 const { reviewHeld } = require('./review-entry.cjs');
 const {
   NOTES, isBuilderNote, reportNames, reviewStanding, roundRefusal, endedWords, recordedRounds, fixesOf, endsReview, fixPhase, roundRecordPath, roundReportFile, roundChecksFile, roundFolder,
@@ -318,8 +317,7 @@ function phaseStatuses(cwd, unit, phase) {
  * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {number} round @param {Repo[]} repos
  */
 function scenarioStandings(cwd, unit, manifest, round, repos) {
-  const tips = changeTips(changeOf(cwd, unit, fixPhase(manifest, round), null, repos));
-  return cutPhases(manifest).flatMap(({ scenarios }) => scenarios).map((scenario) => ({ scenario, standing: runsOf(cwd, unit, scenario, tips).standing }));
+  return cutStandings(cwd, unit, manifest, changeOf(cwd, unit, fixPhase(manifest, round), null, repos));
 }
 
 /**

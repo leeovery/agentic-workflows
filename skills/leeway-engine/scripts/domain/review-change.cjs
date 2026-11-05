@@ -38,15 +38,20 @@
 //   that stack's tip where the repository holds such work, else its base.
 // A repository with neither landings nor work not landed holds none of the
 // change. Refused where no repository holds any.
+// The cut's scenarios stand where their runs at or behind the change's tips
+// put them (`cutStandings`), as a round records them and the board shows
+// round 1's while it is read, the board reading the change from its one
+// read of the tracker, no writer lock taken (`trackedChange`).
 // ---------------------------------------------------------------------------
 
-const { git, tryGit } = require('../kernel/git.cjs');
+const { git } = require('../kernel/git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { projectRepos, repoName } = require('../kernel/repos.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
-const { isFixPhase } = require('./derivations.cjs');
+const { isFixPhase, cutPhases } = require('./derivations.cjs');
+const { runsOf } = require('./runs.cjs');
 const { trackedLists, trackedPhase } = require('./task-verbs.cjs');
 const { landedTasks } = require('./landing.cjs');
 const { tasksOfMessage } = require('./landing-names.cjs');
@@ -57,6 +62,7 @@ const { shownTask } = require('./task-id.cjs');
 
 /** @typedef {import('../kernel/repos.cjs').Repo} Repo */
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
+/** @typedef {import('./drivers.cjs').TaskRow} TaskRow */
 /** @typedef {import('./runs.cjs').RepoCommit} RepoCommit */
 
 /**
@@ -81,9 +87,10 @@ function landsOn(cwd, repo) {
   }
 }
 
-/** Where a part starting before a commit starts: its first parent, or the empty tree before a first commit. @param {Repo} repo @param {string} commit */
-function before(repo, commit) {
-  return tryGit(repo.path, ['rev-parse', '--verify', `${commit}^`])?.trim() ?? git(repo.path, ['hash-object', '-t', 'tree', '--stdin'], undefined, '').trim();
+/** Where a part starting before a commit starts: its first parent, of the parents `parents` names, or the empty tree before a first commit. @param {Repo} repo @param {string} parents */
+function before(repo, parents) {
+  const [first] = parents.split(' ').filter(Boolean);
+  return first ?? git(repo.path, ['hash-object', '-t', 'tree', '--stdin'], undefined, '').trim();
 }
 
 /**
@@ -92,11 +99,11 @@ function before(repo, commit) {
  * @param {Repo} repo @param {string} branch @param {string} unit @returns {ChangePart[]}
  */
 function landings(repo, branch, unit) {
-  const logged = git(repo.path, ['log', '--first-parent', '--reverse', '-z', '--format=%H%n%s%n%B', '--fixed-strings', `--grep=Task: ${unit}-`, `refs/heads/${branch}`, '--']);
+  const logged = git(repo.path, ['log', '--first-parent', '--reverse', '-z', '--format=%H%n%P%n%s%n%B', '--fixed-strings', `--grep=Task: ${unit}-`, `refs/heads/${branch}`, '--']);
   return logged.split('\0').filter(Boolean).flatMap((entry) => {
-    const [commit, subject, ...message] = entry.split('\n');
+    const [commit, parents, subject, ...message] = entry.split('\n');
     if (tasksOfMessage(unit, message.join('\n')).length === 0) return [];
-    return [{ from: before(repo, commit), to: commit, landed: { commit, subject }, branch: null }];
+    return [{ from: before(repo, parents), to: commit, landed: { commit, subject }, branch: null }];
   });
 }
 
@@ -111,16 +118,29 @@ const reposOr = (cwd, repos) => repos ?? projectRepos(codeRoot(cwd));
 
 /**
  * The unit's tasks done and not landed, whole, in each of the phases
- * `numbers`, in order.
+ * `numbers`, in order, from each phase's list `lists` holds, the tasks
+ * landed `landedOf` reads, and the tasks whole `wholeOf` reads of the
+ * phases among them holding any.
+ * @param {number[]} numbers @param {(TaskRow[]|null|undefined)[]} lists
+ * @param {() => Set<string>} landedOf @param {(phases: number[]) => TaskDetail[][]} wholeOf
+ * @returns {TaskDetail[]}
+ */
+function notLanded(numbers, lists, landedOf, wholeOf) {
+  if (!lists.some((list) => (list ?? []).some(({ status }) => status === 'done'))) return [];
+  const landed = landedOf();
+  const waiting = (/** @type {TaskRow} */ { ref, status }) => status === 'done' && !landed.has(shownTask(ref));
+  return wholeOf(numbers.filter((_, at) => (lists[at] ?? []).some(waiting))).flatMap((tasks) => tasks.filter(waiting));
+}
+
+/**
+ * The unit's tasks done and not landed, whole, in each of the phases
+ * `numbers`, in order, as the tracker holds them under the writer lock.
  * @param {string} cwd @param {string} unit @param {number[]} numbers @param {Repo[]} [repos] the project's, where read already
  * @returns {TaskDetail[]}
  */
 function unlandedTasks(cwd, unit, numbers, repos) {
   const lists = withStateLock(stateRoot(cwd), () => trackedLists(cwd, unit, numbers).phases);
-  if (!lists.some((list) => (list ?? []).some(({ status }) => status === 'done'))) return [];
-  const landed = landedTasks(cwd, unit, reposOr(cwd, repos));
-  const waiting = (/** @type {{ref: import('./task-id.cjs').TaskRef, status: string}} */ { ref, status }) => status === 'done' && !landed.has(shownTask(ref));
-  return withStateLock(stateRoot(cwd), () => numbers.filter((_, at) => (lists[at] ?? []).some(waiting)).flatMap((phase) => (trackedPhase(cwd, unit, phase).tasks ?? []).filter(waiting)));
+  return notLanded(numbers, lists, () => landedTasks(cwd, unit, reposOr(cwd, repos)), (phases) => withStateLock(stateRoot(cwd), () => phases.map((phase) => trackedPhase(cwd, unit, phase).tasks ?? [])));
 }
 
 /**
@@ -184,9 +204,32 @@ function fixBase(cwd, unit, phase, repos) {
  * @param {string} cwd @param {string} unit @param {number} phases @param {string|null} given the base named, or null for each repository's own @param {Repo[]} repos the project's
  * @returns {Change}
  */
-function changeOf(cwd, unit, phases, given, repos) {
+const changeOf = (cwd, unit, phases, given, repos) => changeOn(cwd, unit, unlandedTasks(cwd, unit, phasesTo(phases), repos), given, repos);
+
+/**
+ * The whole change, each repository at its own base, its work not landed
+ * read from the unit's phases to `phases` as one read of the tracker holds
+ * them (task-verbs.cjs) — each phase's list, and the tasks whole of each
+ * holding one done — and the tasks landed as the caller read them, for a
+ * reader that never takes the writer lock.
+ * @param {string} cwd @param {string} unit @param {number} phases @param {import('./task-verbs.cjs').TrackedUnit} tracked
+ * @param {Set<string>} landed @param {Repo[]} repos the project's
+ * @returns {Change}
+ */
+function trackedChange(cwd, unit, phases, { phases: lists, written }, landed, repos) {
+  const numbers = phasesTo(phases);
+  const whole = (/** @type {number[]} */ held) => held.map((phase) => written[phase - 1] ?? []);
+  return changeOn(cwd, unit, notLanded(numbers, numbers.map((phase) => lists[phase - 1]), () => landed, whole), null, repos);
+}
+
+/**
+ * The whole change (the header's), its work not landed `pending`.
+ * @param {string} cwd @param {string} unit @param {TaskDetail[]} pending @param {string|null} given the base named, or null for each repository's own @param {Repo[]} repos the project's
+ * @returns {Change}
+ */
+function changeOn(cwd, unit, pending, given, repos) {
   if (given !== null && !repos.some((repo) => branches(repo.path).has(given))) throw new Error(`the base ${given} is no local branch in any repository of the project`);
-  const stack = new Map([...unlandedStack(cwd, unit, phases, `${unit}'s build`, repos)].map(([repo, tip]) => [repo.path, tip]));
+  const stack = new Map([...stackTips(cwd, unit, pending, `${unit}'s build`, repos)].map(([repo, tip]) => [repo.path, tip]));
   const holding = repos.flatMap((repo) => {
     const base = given !== null && branches(repo.path).has(given) ? given : landsOn(cwd, repo);
     if (base === null) return [];
@@ -207,4 +250,15 @@ function changeOf(cwd, unit, phases, given, repos) {
 /** The change's tips, each repository by its name at its tip's commit, as a run names its commits. @param {Change} change @returns {RepoCommit[]} */
 const changeTips = ({ holding }) => holding.map(({ repo, commit }) => ({ repo: repoName(repo), commit }));
 
-module.exports = { changeOf, changeTips, fixBase, workBelow, belowTips };
+/**
+ * What each scenario of the cut stands at, at a change's tips: the code a
+ * round reads (runs.cjs, 15.3.3).
+ * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {Change} change
+ * @returns {{scenario: string, standing: string}[]}
+ */
+function cutStandings(cwd, unit, manifest, change) {
+  const tips = changeTips(change);
+  return cutPhases(manifest).flatMap(({ scenarios }) => scenarios).map((/** @type {string} */ scenario) => ({ scenario, standing: runsOf(cwd, unit, scenario, tips).standing }));
+}
+
+module.exports = { changeOf, trackedChange, changeTips, cutStandings, fixBase, workBelow, belowTips };

@@ -34,7 +34,7 @@ import {
   readyLines,
   recorded,
   recordedIn,
-  waitingLines,
+  waitingOf,
   type Discussion,
 } from './discuss.ts'
 import { kitOf } from './draw.ts'
@@ -437,7 +437,8 @@ export function workflowsBoard(on: On) {
     const discussion = await discussionNow($, state)
     const now = await $.clock.now()
     const width = widthIn(e.props.bodyColumns)
-    const { kit, holds } = kitOf(width, now, state.frame, state.nav.opened, () => waitingLines(questions, discussion, width, now))
+    const here = boardIn(state)?.place.unit ?? null
+    const { kit, holds } = kitOf(width, now, state.frame, state.nav.opened, asked => waitingOf(asked, here, questions, discussion, width, now))
     const drawn = framed(answer, state.nav, VIEWS, kit)
     const foot = { lines: readyLines(questions, discussion, width), placement: e.props.placement, bodyRows: e.props.scroll.bodyRows, offset: 0 }
 

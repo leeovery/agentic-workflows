@@ -16,8 +16,16 @@ export default {
     { scenario: '16.S1', criterion: 'A failed check leaves the live line running', standing: 'proven' },
     { scenario: '16.S2', criterion: 'The stage\'s last line names the failed check', standing: 'not proven' },
   ],
-  questions: ['Q1'],
+  questions: [
+    {
+      question: 'Q1',
+      asks: 'Should a failed check stop the live line, or keep it running?',
+      parks: [{ task: '9.1', title: 'The notes stage\'s live line after a failed check' }],
+      after: [],
+      since: '2026-10-21T14:00:00.000Z',
+    },
+  ],
   fixes: [
-    { round: 1, finding: 12, area: '16-progress-narration', call: 'serious', text: 'In pretty mode, a failed check kills the notes stage\'s live line for the rest of the stage.' },
+    { round: 1, finding: 12, from: null, area: '16-progress-narration', call: 'serious', text: 'In pretty mode, a failed check kills the notes stage\'s live line for the rest of the stage.' },
   ],
 }

@@ -1,12 +1,14 @@
 import { describe, expect, test, tier } from 'claude-code/testing'
 
-import { QUIET, waitingLines } from '../hooks/discuss.ts'
+import { QUIET, pressedOn } from '../hooks/discuss.ts'
 import type { Answer, Board, Question, View } from '../hooks/model.ts'
-import { HOME, pressed, type Page } from '../hooks/pane.ts'
+import { HOME, framed, pressed, type Page } from '../hooks/pane.ts'
 import { VIEWS } from '../hooks/views/index.ts'
 import { roundLines, scenarioLines, taskLines, writtenLines } from '../hooks/views/task.ts'
-import { WIDTH, drawnRows, kitAt, paneDrawn, sectionOf } from './drawing.ts'
+import { drawnRows, kitAt, paneDrawn, sectionOf } from './drawing.ts'
 import BUILD from './fixtures/board-build.mjs'
+import EVIDENCE from './fixtures/board-evidence.mjs'
+import SCENARIO from './fixtures/board-scenario.mjs'
 import FIXING from './fixtures/board-task-fix.mjs'
 import TASK from './fixtures/board-task.mjs'
 
@@ -110,23 +112,49 @@ describe('a task\'s page (20.5.4–20.5.7)', () => {
     ])
   })
 
-  test('20.5.6: a parked task\'s page shows every question it waits on in full, each with its "▸ discuss", and none it does not', () => {
-    const questions = BUILD.questions as Question[]
-    const parks = questions.map(question => ({ ...question, parks: [{ task: '6.4', title: '' }], after: [] }))
-    const waiting = () => waitingLines([...parks, { ...questions[0]!, question: 'Q4' }], QUIET, WIDTH, NOW)
-    const page = task({ line: lineOf('waits', ['Q1', 'Q3']), finished: null, account: null, reviews: [], calls: [], questions: ['Q1', 'Q3'] })
-
-    expect(sectionOf(drawnRows(taskLines(page, kitAt(NOW, waiting))), 'WAITING ON YOU')).toEqual([
+  describe('a parked task\'s questions, as its page holds them (20.5.6, 20.3.5)', () => {
+    const questions = (BUILD.questions as Question[]).filter(({ question }) => question !== 'Q2').map(question => ({ ...question, parks: [{ task: '6.4', title: '' }], after: [] }))
+    const page = task({ line: lineOf('waits', ['Q1', 'Q3']), finished: null, account: null, reviews: [], calls: [], questions })
+    const waitingOn = (board: Partial<Board>) =>
+      sectionOf(paneDrawn({ kind: 'board', board: { ...BUILD, view: page, beneath: BUILD.view, ...board } as Board }, { nav: { ...HOME, pages: [OVER_BUILD] }, now: NOW }), 'WAITING ON YOU')
+    const first = [
       'WAITING ON YOU ──────────────────────────────────────────────',
       '⚑ Q1 If the terminal closes while the review gate waits,',
       '  should the release unwind as a decline does, or keep its',
       '  commit for the operator to finish by hand?',
-      '     parks 6.4 · waiting 4h                          ▸ discuss',
+    ]
+    const third = [
       '⚑ Q3 While a regeneration runs as chunks, should plain mode',
       '  (CI and agents) print a line as each part finishes, or one',
       '  line when the whole wave is done?',
-      '     parks 6.4 · waiting 10m                         ▸ discuss',
-    ])
+    ]
+
+    test('in the session\'s unit, every question it waits on in full, each with its "▸ discuss", and none it does not', () => {
+      expect(waitingOn({})).toEqual([
+        ...first,
+        '     parks 6.4 · waiting 4h                          ▸ discuss',
+        ...third,
+        '     parks 6.4 · waiting 10m                         ▸ discuss',
+      ])
+    })
+
+    test('the session gone to the start menu, or into another unit whose own Q1 waits, the page still holds its own questions, none a press away (N1)', () => {
+      const elsewhere = { question: 'Q1', asks: 'Does the other unit ship first?', parks: [{ task: '2.1', title: 'Ship it' }], after: [], since: '2026-10-21T14:00:00.000Z' }
+      const unpressed = [...first, '     parks 6.4 · waiting 4h', ...third, '     parks 6.4 · waiting 10m']
+
+      expect([
+        waitingOn({ place: { unit: null, type: null, phase: null, topic: null }, questions: [] }),
+        waitingOn({ place: { ...BUILD.place, unit: 'other-unit' }, questions: [elsewhere] }),
+      ]).toEqual([unpressed, unpressed])
+    })
+  })
+
+  test('20.S15: no press on a done task\'s page is one the discussion answers, so none says anything to Claude or fills the prompt box: each opens a page, folds, goes back or moves tab', () => {
+    const answer: Answer = { kind: 'board', board: { ...BUILD, view: TASK, beneath: BUILD.view } as Board }
+    const drawn = framed(answer, { ...HOME, pages: [OVER_BUILD] }, VIEWS, kitAt(NOW))
+    const keys = [...(drawn.tabs ?? []).map(tab => tab.key), ...drawn.lines.flatMap(line => [line.lead?.key, line.button?.key, line.press].filter(key => key !== undefined))]
+
+    expect([keys.length > 4, keys.filter(key => pressedOn(key, QUIET, BUILD.questions as Question[]) !== null), keys.filter(key => !/^(page:|fold:|tab:|back$)/.test(key))]).toEqual([true, [], []])
   })
 
   test('the way back from a page over a task names the task by its number, as 15.2.14 draws it', () => {
@@ -239,20 +267,7 @@ describe('its evidence (15.2.14, D16)', () => {
   })
 
   test('15.2.14\'s drawing of a scenario\'s evidence, 2.S9: what it proved and when, what its run drives and checks, and the evidence kept with the run, each a press away', () => {
-    const scenario: View = {
-      kind: 'scenario',
-      unit: UNIT,
-      task: '6.1',
-      title: '`r` on chunked notes re-runs only the merge',
-      scenario: '6.S1',
-      criterion: 'r at the review gate re-runs only the merge',
-      standing: 'proven',
-      at: new Date(2026, 9, 21, 9, 38).toISOString(),
-      drive: 'mint release on the fixture repository, whose diff is over the cap; at the review gate, r',
-      check: 'one AI call, for the merge; no chunk call; the review gate shown again with the merged notes',
-      evidence: [{ name: 'captured screen', lines: 41 }],
-    }
-    const lines = scenarioLines(scenario, kitAt(NOW))
+    const lines = scenarioLines(SCENARIO, kitAt(NOW))
 
     expect(drawnRows(lines)).toEqual([
       'r at the review gate re-runs only the merge',
@@ -273,9 +288,7 @@ describe('its evidence (15.2.14, D16)', () => {
   })
 
   test('a text evidence opens whole, each of its lines as captured, cut at the edge, never wrapped', () => {
-    const evidence: View = { kind: 'evidence', unit: UNIT, task: '6.1', scenario: '6.S1', name: 'captured screen', text: `◆ Review the notes\n\n${'x'.repeat(70)}\n` }
-
-    expect(onPage(evidence, [OVER_BUILD, { ref: 'task:6.1:scenario:6.S1', unit: UNIT, over: '6.S1' }]).slice(3)).toEqual([
+    expect(onPage(EVIDENCE, [OVER_BUILD, { ref: 'task:6.1:scenario:6.S1', unit: UNIT, over: '6.S1' }]).slice(3)).toEqual([
       '← back to 6.S1',
       '',
       'captured screen · 6.S1',

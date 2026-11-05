@@ -10,6 +10,7 @@
  * never the theme's keys.
  */
 import type { ElementTable, RenderElement } from 'claude-code'
+import type { Question } from './model.ts'
 
 /** Each colour means one thing, on the board and on the banner alike. */
 export const COLOUR = {
@@ -78,16 +79,21 @@ export type Line = {
  * folding section is open, and what runs — its turning mark, and its clock
  * read at the drawing's time; and WAITING ON YOU, the questions waiting on
  * the person with where each stands in the discussion (`discuss.ts`), for a
- * view to place where its drawing has it. What runs and what is clocked are
- * recorded, so the pane turns and ticks only a drawing that holds them.
+ * view to place where its drawing has it — the session's, or a unit's own
+ * a page holds, which a press queues only where they are the session's
+ * unit's. What runs and what is clocked are recorded, so the pane turns and
+ * ticks only a drawing that holds them.
  */
 export type Kit = {
   width: number
   isOpened: (key: string) => boolean
   spinner: () => Part
   clock: (since: string) => string
-  waiting: () => Line[]
+  waiting: (asked?: Asked) => Line[]
 }
+
+/** Questions of a unit's a page holds, whatever unit the session is in. */
+export type Asked = { unit: string; questions: readonly Question[] }
 
 /** A kit and what the drawing it served holds: anything turning, any clock. */
 export type Drawn = { kit: Kit; holds: { turns: boolean; clocks: boolean } }
@@ -181,7 +187,7 @@ export function kitOf(
   now: number,
   frame: number,
   opened: ReadonlySet<string>,
-  waiting: () => Line[] = () => [],
+  waiting: (asked?: Asked) => Line[] = () => [],
 ): Drawn {
   const holds = { turns: false, clocks: false }
 

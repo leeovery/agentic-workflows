@@ -9,23 +9,25 @@
  * product proved of each of its scenarios, each opening on `▸ see`, or
  * `▸ read` where it is not proven (D16); WHAT IT DOES, with its count of
  * acceptance criteria and `▸ read the task`; for a fix task, WHAT IT FIXES
- * (D17); for a parked task, each question it waits on, with its `▸ discuss`
- * (20.5.6); once done, WHAT WAS DONE from its account, or that none was
+ * (D17); for a parked task, each question it waits on, as the page holds
+ * it wherever the session has gone, with its `▸ discuss` while the session
+ * is in the task's unit (20.5.6, 20.3.5); once done, WHAT WAS DONE from its account, or that none was
  * written (D8), DIFFERS FROM THE TASK, always, saying so where nothing
  * differs (D14), and REVIEWS, each round's `▸ read` opening its two reports
  * (D15); and CALLS MADE. Nothing on it sends the account to the
  * conversation (20.5.7).
  */
 import { COLOUR, MARK, blank, counted, cutTo, heading, prose, spread, widthOf, type Button, type Kit, type Line, type Part } from '../draw.ts'
-import type { View } from '../model.ts'
+import type { Question, View } from '../model.ts'
 import { pageKey } from '../pane.ts'
 import { taskMark, taskState, type TaskLine } from './build.ts'
 
 /** A finding of the review, as the engine's model holds it. */
-export type Found = { round: number; finding: number | null; area: string; call: string; text: string }
+export type Found = { round: number; finding: number | null; from: string | null; area: string; call: string; text: string }
 
 /** A task's page, as the engine's model holds it. */
 type TaskPage = View & {
+  unit: string
   phase: number
   phase_name: string
   line: TaskLine
@@ -43,7 +45,7 @@ type TaskPage = View & {
   reviews: { round: string; summary: string }[]
   calls: { id: string; text: string }[]
   ran: { scenario: string; criterion: string; standing: string }[] | null
-  questions: string[]
+  questions: Question[]
   fixes: Found[]
 }
 
@@ -176,8 +178,12 @@ const fixesOf = ({ fixes }: TaskPage, kit: Kit): Line[] =>
 /** Whether a line of WAITING ON YOU is one of a question's rows: its words, or its standing's. */
 const isRowOf = (key: string, question: string) => key === `q:${question}` || key === `qt:${question}` || key.startsWith(`qt:${question}:`)
 
-/** The questions parking the task, as WAITING ON YOU draws them, each with its "▸ discuss" (20.5.6). */
-function parkedOn({ questions }: TaskPage, kit: Kit): Line[] {
+/**
+ * The questions parking the task, as the page holds them and WAITING ON YOU
+ * draws them, each with its "▸ discuss" where the session is in the task's
+ * unit (20.5.6, 20.3.5).
+ */
+function parkedOn({ unit, questions }: TaskPage, kit: Kit): Line[] {
   if (questions.length === 0) {
     return []
   }
@@ -185,7 +191,7 @@ function parkedOn({ questions }: TaskPage, kit: Kit): Line[] {
   return [
     blank('asks'),
     section('asks', 'WAITING ON YOU', COLOUR.needs, kit.width),
-    ...kit.waiting().filter(line => questions.some(question => isRowOf(line.key, question))),
+    ...kit.waiting({ unit, questions }).filter(line => questions.some(({ question }) => isRowOf(line.key, question))),
   ]
 }
 

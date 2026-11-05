@@ -693,5 +693,5 @@ function readCitedSections(cwd, unit, reference) {
 
 module.exports = {
   SPEC_FILE, specPath, readSpec, headingLevels, citedSections, specSections, scenarioBlocks, specReading, specStatements, specScenarios, sectionsCited, readCitedSections,
-  specIntroduction, fencedLines,
+  specIntroduction, fencedLines, DRAWS_ON,
 };

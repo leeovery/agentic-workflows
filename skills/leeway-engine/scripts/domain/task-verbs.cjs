@@ -560,7 +560,7 @@ function goesOn(parked, { phases, ready }, lets) {
 /**
  * What a read of the whole unit takes from the tracker, in one read: each
  * phase it has written, as `writtenPhases` gives them; each phase's tasks
- * whole where it holds one not yet ended, else null; the tasks ready to
+ * whole where it holds one not closed, else null; the tasks ready to
  * start; when each task in progress first moved into it, by task; and,
  * where `task` names one, that task whole — null where the tracker lacks
  * it — and when it first moved into progress.
@@ -606,7 +606,7 @@ function trackedUnit(cwd, unit, manifest, task = null) {
     const running = phases.flatMap((rows) => (rows ?? []).filter(({ status }) => status === 'in-progress'));
     return {
       phases,
-      written: phases.map((rows, i) => (rows?.some(({ status }) => status === 'open' || status === 'in-progress') ? driver.tasks(root, unit, i + 1) : null)),
+      written: phases.map((rows, i) => (rows?.some(({ status }) => status !== 'closed') ? driver.tasks(root, unit, i + 1) : null)),
       ready: driver.ready(root, unit, null) ?? [],
       starts: Object.fromEntries(running.map(({ ref }) => [shownTask(ref), driver.started(root, ref)])),
       task: task === null ? null : driver.show(root, task),

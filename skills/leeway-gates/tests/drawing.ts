@@ -7,8 +7,8 @@
  * hung under its marks; any other line is one row, cut at the edge with
  * "…". Trailing spaces are dropped.
  */
-import { QUIET, waitingLines } from '../hooks/discuss.ts'
-import { kitOf, type Kit, type Line, type Part } from '../hooks/draw.ts'
+import { QUIET, waitingOf } from '../hooks/discuss.ts'
+import { kitOf, type Asked, type Kit, type Line, type Part } from '../hooks/draw.ts'
 import type { Answer } from '../hooks/model.ts'
 import { HOME, framed, type Nav } from '../hooks/pane.ts'
 import { VIEWS } from '../hooks/views/index.ts'
@@ -71,20 +71,21 @@ export const drawnRows = (lines: readonly Line[], width = WIDTH): string[] => li
 
 /**
  * The pane as it draws the engine's answer at `nav`, WAITING ON YOU drawn
- * from its questions with nothing queued: the tabs' row, then each line's
+ * from its questions with nothing queued, as the pane draws it for the
+ * session's place: the tabs' row, then each line's
  * rows. The clock reads `clocked` where given, as the locked board's frozen
  * scene reads 0:00, else the time since at `now`.
  */
 export function paneDrawn(answer: Answer, { nav = HOME, now = 0, clocked }: { nav?: Nav; now?: number; clocked?: string } = {}): string[] {
-  const questions = answer?.kind === 'board' ? answer.board.questions : []
-  const { kit } = kitOf(WIDTH, now, 0, nav.opened, () => waitingLines(questions, QUIET, WIDTH, now))
+  const board = answer?.kind === 'board' ? answer.board : null
+  const { kit } = kitOf(WIDTH, now, 0, nav.opened, asked => waitingOf(asked, board?.place.unit ?? null, board?.questions ?? [], QUIET, WIDTH, now))
   const drawn = framed(answer, nav, VIEWS, clocked === undefined ? kit : { ...kit, clock: () => clocked })
 
   return [...(drawn.tabs === null ? [] : [drawn.tabs.map(tab => tab.label).join('   ')]), ...drawnRows(drawn.lines)]
 }
 
 /** A kit at the pane's width, the clock at `now`, nothing open and nothing waiting unless given. */
-export const kitAt = (now = 0, waiting: () => Line[] = () => [], opened: readonly string[] = []): Kit => kitOf(WIDTH, now, 0, new Set(opened), waiting).kit
+export const kitAt = (now = 0, waiting: (asked?: Asked) => Line[] = () => [], opened: readonly string[] = []): Kit => kitOf(WIDTH, now, 0, new Set(opened), waiting).kit
 
 /** The rows of a section, from its heading to the next blank, else the drawing's end. */
 export function sectionOf(rows: readonly string[], heading: string): string[] {
