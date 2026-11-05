@@ -88,7 +88,7 @@ describe('enter review: what cannot be entered is refused, naming the way on, an
     assert.deepStrictEqual([refused(['half']), refused(['open']), refused(['tweak']), refused(['old']), refused(['fresh']), refused([UNIT, 'cards'])], [
       'half\'s review phase starts once every phase of its cut has closed — phase 2 of 2 has not: enter implementation half',
       'open\'s review phase starts once every phase of its cut has closed — phases 1, 2 of 2 have not: enter implementation open',
-      'tweak is a quick-fix, whose delivery is built with the reshape\'s 29.15 — until then a quick-fix stops at its scoping',
+      'tweak is a quick-fix, whose close and review are built with the reshape\'s 29.15 — until then its fixes are built at enter implementation tweak',
       'old was built under the old plan, and its build is entered once the reshape\'s 29.17 migration has cut it',
       'fresh\'s build has not begun — ready to build\'s yes begins it: render ready-to-build fresh',
       `review is entered at the work unit — name no topic: engine enter review ${UNIT}`,

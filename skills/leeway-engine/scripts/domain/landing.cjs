@@ -6,7 +6,8 @@
 // request, `chain` it into its phase's stack, merge a `phase` whole, and
 // `finish`, which merges every phase still standing — the review phase's fix
 // phases, after every other (7.2.6). `open` and `chain` refuse a task with
-// no account taken of its review as it stands (task-account.cjs, 12.14);
+// no account taken of its review as it stands (task-account.cjs, 12.14) —
+// a quick-fix's, which no pair reviews, owing none (19.5.3);
 // `open` a bugfix's reproducing task until its test's series proves the
 // bug at its tip (bug-proven.cjs, 15.5.3), and a task of a fix phase whose
 // branch does not descend from the unit's work not landed below it, which

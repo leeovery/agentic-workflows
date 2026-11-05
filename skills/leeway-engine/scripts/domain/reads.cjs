@@ -71,6 +71,17 @@ function loadManifest(cwd, name) {
 }
 
 /**
+ * A unit's seeds on disk, as absolute paths, in the order its manifest
+ * holds them.
+ * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest the unit's
+ * @returns {string[]}
+ */
+function seedFiles(cwd, unit, manifest) {
+  const seeds = Array.isArray(manifest.seeds) ? manifest.seeds.filter((seed) => typeof seed?.path === 'string') : [];
+  return seeds.map((seed) => path.join(stateRoot(cwd), unit, seed.path)).filter((file) => fileExists(file));
+}
+
+/**
  * Get work unit names from the project manifest, falling back to filesystem scanning.
  */
 function workUnitNames(cwd) {
@@ -106,6 +117,7 @@ module.exports = {
   listDirs,
   fileExists,
   loadManifest,
+  seedFiles,
   filesChecksum,
   loadActiveManifests,
   loadAllManifests,

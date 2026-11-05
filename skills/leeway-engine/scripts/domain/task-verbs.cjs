@@ -17,7 +17,8 @@
 // it never waits on a writer (`trackedUnit`, `withStoreCopy`).
 // A unit's phases are written into the tracker as each starts, so it holds
 // only those (7.4.1); a task is made from the task template in a file, one
-// call per task (7.1.3, 12.5.3), and its id is the engine's (task-id.cjs),
+// call per task (7.1.3, 12.5.3) — a quick-fix's referencing no spec, since
+// it has none (19.5.5) — and its id is the engine's (task-id.cjs),
 // numbered after the highest its phase holds. An addition goes onto a task
 // not yet ended, marked as the orchestrator's or the person's, its text from
 // a file (13.11.3), the task marked changed after the last round reported
@@ -31,7 +32,8 @@
 // until its builder's brief is next issued, and never while its pair reads
 // a round of it (`stepTurn`, round-report.cjs, 12.7.9); start, refused for
 // a phase the cut holds before its start checklist has closed (6.4.8,
-// 12.S7), and in step for any task but the one in flight or at its gate —
+// 12.S7) — a quick-fix's fixes, held by no cut, have none — and in step for
+// any task but the one in flight or at its gate —
 // in progress
 // in any phase written, the review's fixes past the cut among them, here or
 // in another conversation, no question parking it, and ahead of any other
@@ -90,9 +92,9 @@ const { resolveDriver, settingOf, needsRefusal } = require('./drivers.cjs');
 const { ignoreInState, withIgnored } = require('./state-worktree.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { taskId, shownTask, parseShownTask, parsePhase, taskName, phaseName } = require('./task-id.cjs');
-const { TASK_TYPES, breaksLine, readTaskText } = require('./task-file.cjs');
+const { TASK_TYPES, NO_SPEC, breaksLine, readTaskText, specReferenceOf } = require('./task-file.cjs');
 const { recordTask, clearTask, recordStop } = require('./position.cjs');
-const { phaseStarted, cutLength } = require('./derivations.cjs');
+const { phaseStarted, cutLength, quickFixBuild } = require('./derivations.cjs');
 const { reproducingHold, reproducingClose } = require('./bug-proven.cjs');
 const { layOutTask, takeWorktreeApart } = require('./task-worktree.cjs');
 const { markChanged, briefedOf, beingRead } = require('./round-report.cjs');
@@ -289,7 +291,7 @@ function commitSetup(cwd, unit, setUp) {
  * @param {string} cwd @param {string} unit @param {string|null} verb
  * @param {(driver: TaskDriver, root: string) => T} act
  * @param {(answer: T) => string} [describe]
- * @returns {T & {committed?: string|null, warnings?: string[]}}
+ * @returns {T & {committed?: string|null, note?: string, warnings?: string[]}}
  */
 function withTracker(cwd, unit, verb, act, describe = () => /** @type {string} */ (verb)) {
   const root = stateRoot(cwd);
@@ -332,11 +334,26 @@ function writePhase(cwd, unit, given, title) {
   });
 }
 
+/**
+ * A task file's task, refused where the template does not hold it, or where
+ * the unit is a quick-fix and the task references a spec, which it has none
+ * of (19.5.5).
+ * @param {string} cwd @param {string} unit @param {string} file
+ */
+function fileTask(cwd, unit, file) {
+  const task = readTaskText(fs.readFileSync(path.resolve(cwd, file), 'utf8'));
+  const reference = specReferenceOf(task.text);
+  if (quickFixBuild(loadWorkUnitManifest(cwd, unit)) && reference !== NO_SPEC) {
+    throw new Error(`${unit} is a quick-fix, which has no spec — its task's Spec reference is ${NO_SPEC}, not "${reference}"`);
+  }
+  return task;
+}
+
 /** `task create`: a task of the phase from a task file, numbered after its highest. @param {string} cwd @param {string} unit @param {string} given @param {string} file */
 function createTask(cwd, unit, given, file) {
   const phase = parsePhase(given);
   requireUnit(cwd, unit);
-  const task = readTaskText(fs.readFileSync(path.resolve(cwd, file), 'utf8'));
+  const task = fileTask(cwd, unit, file);
   return withTracker(cwd, unit, `create in phase ${phase}`, (driver, root) => {
     const rows = driver.list(root, unit, phase);
     if (rows === null) throw unwritten(unit, phase);
@@ -724,8 +741,9 @@ function ending(rule, after = () => ({})) {
 /**
  * Whether the phase's tasks may start: for a phase the unit's cut holds,
  * once its start checklist has closed, so no builder starts before its
- * tasks are written (6.4.8, 12.S7); a phase past the cut, a fix phase of
- * the review's, has no start checklist (P14).
+ * tasks are written (6.4.8, 12.S7); a phase past the cut — a fix phase of
+ * the review's (P14), or a quick-fix's, which has no cut — has no start
+ * checklist.
  * @param {Record<string, any>} manifest @param {number} phase
  */
 const phaseOpen = (manifest, phase) => phase > cutLength(manifest) || phaseStarted(manifest, phase);
@@ -768,10 +786,10 @@ const CLOSE_RULE = 'only a task not yet ended is closed';
 
 /**
  * `task done`: refused while a question waiting parks it, where its account
- * is not taken of its review as it stands (task-account.cjs), and for a
- * bugfix's reproducing task while its test's series on the unfixed code
- * does not prove the bug (bug-proven.cjs); else its worktree taken apart,
- * then done, and off the position.
+ * is not taken of its review as it stands (task-account.cjs) — a
+ * quick-fix's owing none — and for a bugfix's reproducing task while its
+ * test's series on the unfixed code does not prove the bug (bug-proven.cjs);
+ * else its worktree taken apart, then done, and off the position.
  */
 const doneTask = moving('done', (driver, root, ref) => {
   refuseEnded(driver, root, ref, DONE_RULE);
@@ -892,4 +910,4 @@ function runTaskVerb(cwd, verb, positional, opts) {
   return run(cwd, positional, ...values, .../** @type {string[]} */ (given));
 }
 
-module.exports = { TASK_VERBS, ENDED, STATUS_WORDS, runTaskVerb, trackedTask, trackedPhases, trackedLists, trackedPhase, trackedUnit, goingOn, goesOn, phaseOpen, stepTurn, turnOf, turnRefusal, phaseWritten, givenText, trackedStart, copiedTasks };
+module.exports = { TASK_VERBS, ENDED, STATUS_WORDS, runTaskVerb, writePhase, trackedTask, trackedPhases, trackedLists, trackedPhase, trackedUnit, goingOn, goesOn, phaseOpen, stepTurn, turnOf, turnRefusal, phaseWritten, givenText, trackedStart, copiedTasks };

@@ -9,17 +9,22 @@
 // from which the landing names the task's branch and pull request. A file
 // missing a field, holding one twice or empty, holding a heading the template
 // lacks, typed outside the kinds, or titled over more than one line, is
-// refused, every fault named at once. A title is one line wherever the
-// engine takes one, a phase's too: no character that breaks a line anywhere
-// in it, the task file's own line ending aside. A verb of another kind
-// reads a task's fields, its spec reference, its acceptance scenarios and
-// the criteria they hold, from its text as the tracker holds it.
+// refused, every fault named at once. A quick-fix's task references no spec,
+// its unit having none: its spec reference is `none` (19.5.5). A title is
+// one line wherever the engine takes one, a phase's too: no character that
+// breaks a line anywhere in it, the task file's own line ending aside. A
+// verb of another kind reads a task's fields, its spec reference, its
+// acceptance scenarios and the criteria they hold, from its text as the
+// tracker holds it.
 // ---------------------------------------------------------------------------
 
 const { BULLET, listItems } = require('./list-items.cjs');
 
 /** The kinds a task's type is one of. */
 const TASK_TYPES = Object.freeze(['feat', 'fix', 'refactor', 'perf', 'test', 'docs', 'build', 'ci', 'chore']);
+
+/** The spec reference of a task whose unit has no spec: a quick-fix's (19.5.5). */
+const NO_SPEC = 'none';
 
 /** The template's fields, as their headings read. */
 const FIELDS = Object.freeze(['Type', 'Problem', 'Solution', 'Outcome', 'Acceptance scenarios', 'Spec reference']);
@@ -161,4 +166,4 @@ function criterionWords(criterion) {
   return criterion.replace(/^\d+\.S\d+\s+/, '') || criterion;
 }
 
-module.exports = { FIELDS, TASK_TYPES, breaksLine, readTaskText, fieldOf, specReferenceOf, scenariosOf, criteriaTexts, criteriaOf, namesScenario, holdsScenario, criterionWords };
+module.exports = { FIELDS, TASK_TYPES, NO_SPEC, breaksLine, readTaskText, fieldOf, specReferenceOf, scenariosOf, criteriaTexts, criteriaOf, namesScenario, holdsScenario, criterionWords };

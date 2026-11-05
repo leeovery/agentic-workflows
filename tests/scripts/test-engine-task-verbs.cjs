@@ -13,7 +13,7 @@
 // pushed, never a code commit (7.S17, 7.S21); a refusal writing nothing, or
 // committing what setting up and the verb wrote before it, under a message
 // saying so; a tool missing or failing named; a task numbered after its
-// phase's highest; the tasks in flight on the conversation's position, and
+// phase's highest, a quick-fix's referencing no spec; the tasks in flight on the conversation's position, and
 // `task stopped`, a builder's stop held against one; and
 // the writer lock around every verb, reads included. What a driver does
 // with a task is the conformance suite's.
@@ -314,6 +314,17 @@ describe('task phase and task create (7.1.3, 7.4.1, 12.4.1)', () => {
 
     SIDE.removeTask(statePath(dir), 'Sort the ledger');
     assert.strictEqual(create(dir, 'Sum the ledger').task, '1.5');
+  });
+
+  it('task create takes a quick-fix\'s task referencing no spec, it having none, and refuses one referencing a spec, naming it, writing nothing (19.5.5)', () => {
+    createManifest(dir, 'typo', { work_type: 'quick-fix' });
+    commitAll(dir, 'a quick-fix');
+    ok(dir, ['task', 'phase', 'typo', '1', '--title', 'the fixes']);
+
+    const refused = refusesPristine(['task', 'create', 'typo', '1', '--file', taskFile(dir, 'spelt', template('Spell the flag'))]);
+    const created = ok(dir, ['task', 'create', 'typo', '1', '--file', taskFile(dir, 'unspecced', template('Spell the flag', { 'Spec reference': 'none' }))]).task;
+
+    assert.deepStrictEqual([refused, created], ['typo is a quick-fix, which has no spec — its task\'s Spec reference is none, not "§7.1"', '1.1']);
   });
 
   it('task create refuses a number the tracker already holds, made by hand, naming it, writing nothing', () => {
