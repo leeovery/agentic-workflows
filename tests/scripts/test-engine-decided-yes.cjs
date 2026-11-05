@@ -3,7 +3,8 @@
 // ---------------------------------------------------------------------------
 // A topic's decided gate answered (leeway-engine/scripts/domain/
 // decided.cjs): `engine decided yes`, the person's yes landing each line as
-// a product-wide decision of its own at the unit's level (8.S25), the
+// a product-wide decision of its own at the unit's level (8.S25) — a
+// principle decided in a topic is a product-wide entry (19.S26) — the
 // candidates not struck on the epic's map with their briefs (8.S59), by
 // every check `topic add-batch` makes, a roadmap twin among them (8.1.6),
 // or in a unit with one topic parked on the roadmap (8.S31), the struck
@@ -71,7 +72,7 @@ describe('the decided gate\'s yes (8.S25, 8.S28, 9.7.3)', () => {
     assert.deepStrictEqual(ok(dir(), ['ledger', 'map', UNIT, 'note-window']).questions, map, 'the topic\'s map is as it was: a line answers none of its questions');
     const product = ok(dir(), ['ledger', 'product']);
     assert.deepStrictEqual([product.findings, product.decisions.map((/** @type {{text: string}} */ d) => d.text), product.discovery], [[], ['Sync stays off until you turn it on.', 'First run shows the product before it asks.'], []],
-      '8.S28: with no product conversation, the product record holds the lines the yes landed and nothing else');
+      '8.S28, 19.S26: with no product conversation, the product record holds the lines the yes landed and nothing else');
     const manifest = readManifest(dir(), UNIT);
     assert.deepStrictEqual(manifest.phases.discovery.items['removing-fumi'], { source: 'topic:note-window', summary: 'Nothing decides what removing Fumi takes back.' });
     assert.strictEqual(readState(dir(), layout.unit(UNIT, 'topics/removing-fumi/brief.md')), '# removing-fumi\n\nWhat it is, where it was read, why it matters, its open questions.\n',

@@ -198,8 +198,8 @@ describe('workunit create, its imports and its log (until 29.15)', () => {
 });
 
 describe('workunit create, refused', () => {
-  it('refuses an illegal type through the shared schema vocabulary, and a name a unit has', () => {
-    assert.match(refusedPristine(dir(), createArgs('payments', 'saga')).error, /Invalid work_type "saga"\. Must be one of: epic, feature, bugfix, cross-cutting, quick-fix/);
+  it('refuses an illegal type through the shared schema vocabulary — cross-cutting among them, a type the reshape retires (19.S1) — and a name a unit has', () => {
+    assert.match(refusedPristine(dir(), createArgs('payments', 'cross-cutting')).error, /Invalid work_type "cross-cutting"\. Must be one of: epic, feature, bugfix, quick-fix$/);
     assert.match(refusedPristine(dir(), createArgs('atlas', 'epic')).error, /work unit "atlas" already exists — pick a different name/);
   });
 

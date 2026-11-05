@@ -24,10 +24,9 @@ describe('leeway-continue-linear discovery', () => {
     createManifest(dir, 'auth', { work_type: 'feature', phases: { discussion: { items: { auth: { status: 'in-progress' } } } } });
     createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { items: { crash: { status: 'in-progress' } } } } });
     createManifest(dir, 'rename-api', { work_type: 'quick-fix', phases: { scoping: { items: { 'rename-api': { status: 'in-progress' } } } } });
-    createManifest(dir, 'caching', { work_type: 'cross-cutting', phases: { discussion: { items: { caching: { status: 'in-progress' } } } } });
     assert.deepStrictEqual(
-      ['auth', 'crash', 'rename-api', 'caching'].map((name) => [activeWorkUnit(dir, name).type, activeWorkUnit(dir, name).unit.name]),
-      [['feature', 'auth'], ['bugfix', 'crash'], ['quick-fix', 'rename-api'], ['cross-cutting', 'caching']],
+      ['auth', 'crash', 'rename-api'].map((name) => [activeWorkUnit(dir, name).type, activeWorkUnit(dir, name).unit.name]),
+      [['feature', 'auth'], ['bugfix', 'crash'], ['quick-fix', 'rename-api']],
     );
   });
 
@@ -44,12 +43,11 @@ describe('leeway-continue-linear discovery', () => {
     assert.strictEqual(activeWorkUnit(dir, 'ghost'), null);
   });
 
-  it('surfaces a finished pipeline still in-progress as finalising — a quick-fix\'s or a cross-cutting unit\'s, never one built under the old plan (P12)', () => {
+  it('surfaces a finished pipeline still in-progress as finalising — a quick-fix\'s, never one built under the old plan (P12)', () => {
     for (const [type, phases, finalising] of /** @type {[string, string[], boolean][]} */ ([
       ['feature', ['discussion', 'specification', 'planning', 'implementation', 'review'], false],
       ['bugfix', ['investigation', 'specification', 'planning', 'implementation', 'review'], false],
       ['quick-fix', ['scoping', 'implementation', 'review'], true],
-      ['cross-cutting', ['discussion', 'specification'], true],
     ])) {
       const name = `done-${type}`;
       createManifest(dir, name, { work_type: type, phases: items(name, phases, 'completed') });
@@ -91,15 +89,7 @@ describe('leeway-continue-linear discovery', () => {
         planning: { items: { auth: { status: 'in-progress' } } },
       },
     });
-    createManifest(dir, 'caching', {
-      work_type: 'cross-cutting',
-      phases: {
-        discussion: { items: { caching: { status: 'completed' } } },
-        specification: { items: { caching: { status: 'in-progress' } } },
-      },
-    });
     assert.deepStrictEqual(activeWorkUnit(dir, 'auth').unit.completed_phases, ['discussion', 'specification']);
-    assert.deepStrictEqual(activeWorkUnit(dir, 'caching').unit.completed_phases, ['discussion']);
   });
 
   describe('edge cases', () => {
@@ -252,13 +242,6 @@ describe('leeway-continue-linear view', () => {
       assert.ok(out.includes(`  1  —  revisit_phase  ${name}  → /leeway-${done}-process ${type} ${name}\n`), out);
       assert.ok(out.includes('**`b/back`**    → Return to the start menu'), out);
     }
-    // A decided discussion is no revisit — it reopens by a message — so the
-    // cross-cutting concern behind one hands straight on.
-    createManifest(dir, 'logging', { work_type: 'cross-cutting', phases: { discussion: { items: { logging: { status: 'completed' } } } } });
-    const out = view(dir, 'logging');
-    assert.ok(out.includes('work_type: cross-cutting\n'), out);
-    assert.ok(out.includes('  y  yes  continue  logging  → /leeway-specification-process cross-cutting logging\n'), out);
-    assert.doesNotMatch(out, /revisit_phase|^=== MENU/m, out);
   });
 
   it('routes a feature or a bugfix built by its cut into the build, then into its review phase, handing straight on — its build never revisited, its review never skipped (24.1.6, 14.6.1)', () => {

@@ -12,7 +12,7 @@
 // unit the project lacks; a concluded spec — the build begun on it — which is
 // never corrected (11.9.1); a unit `enter specification` refuses, in its
 // words (spec-entry.cjs) — one not in progress, a topic not yet settled, a
-// quick-fix, a cross-cutting unit; an epic owing the sweep before its spec,
+// quick-fix, a unit of a retired type; an epic owing the sweep before its spec,
 // more than one of its topics live, whose sweep is not taken, or whose
 // sweep's candidates wait on approve the map (sweep.cjs, 8.10.3, 8.10.9); a
 // unit with no `spec.md`; a spec its

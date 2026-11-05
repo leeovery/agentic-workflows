@@ -33,6 +33,9 @@ const renderSurface = auditingRender(require('../../skills/leeway-engine/scripts
 // rule) — goldens spell them explicitly.
 const NB = (n) => '\u00a0'.repeat(n);
 
+/** A quick-fix's phases, each completed: its pipeline finished. */
+const FINISHED_QUICK_FIX = Object.fromEntries(['scoping', 'implementation', 'review'].map((phase) => [phase, { items: { 'rename-api': { status: 'completed' } } }]));
+
 // Golden tests: byte-exact expected strings for the leeway overview
 // and menu projections. Fixtures go through real manifests and inbox files in
 // temp dirs (the same shapes the discovery tests produce).
@@ -47,7 +50,7 @@ function writeBrownfieldOffer(dir, answer) {
   fs.writeFileSync(p, JSON.stringify({ ...existing, brownfield_offer: answer }, null, 2));
 }
 
-/** All five type sections populated, plus inbox and completed/cancelled. */
+/** All four type sections populated, plus inbox and completed/cancelled. */
 function fullFixture(dir) {
   createManifest(dir, 'dark-mode', {
     phases: { discussion: { items: { 'dark-mode': { status: 'in-progress' } } } },
@@ -59,10 +62,6 @@ function fullFixture(dir) {
   createManifest(dir, 'rename-api', {
     work_type: 'quick-fix',
     phases: { scoping: { items: { 'rename-api': { status: 'in-progress' } } } },
-  });
-  createManifest(dir, 'caching', {
-    work_type: 'cross-cutting',
-    phases: { discussion: { items: { caching: { status: 'in-progress' } } } },
   });
   createManifest(dir, 'quiz-competition-v1', {
     work_type: 'epic',
@@ -83,7 +82,7 @@ describe('start projections: overview', () => {
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('renders all five type sections, the inbox section, and the counts line byte-for-byte', () => {
+  it('renders all four type sections, the inbox section, and the counts line byte-for-byte', () => {
     assert.strictEqual(startOverview(fullFixture(dir)), [
       'Features',
       '  ├─ 1. Auth Flow',
@@ -95,11 +94,8 @@ describe('start projections: overview', () => {
       'Quick Fixes',
       '  └─ 4. Rename Api',
       '',
-      'Cross-Cutting',
-      '  └─ 5. Caching',
-      '',
       'Epics',
-      '  └─ 6. Quiz Competition V1',
+      '  └─ 5. Quiz Competition V1',
       '',
       'Inbox',
       '  ├─ Smart Retry [idea]',
@@ -154,16 +150,10 @@ describe('start projections: overview', () => {
   });
 
   it('finalising unit renders a plain row (finalising state lives in the menu tail)', () => {
-    createManifest(dir, 'caching', {
-      work_type: 'cross-cutting',
-      phases: {
-        discussion: { items: { caching: { status: 'completed' } } },
-        specification: { items: { caching: { status: 'completed' } } },
-      },
-    });
+    createManifest(dir, 'rename-api', { work_type: 'quick-fix', phases: FINISHED_QUICK_FIX });
     assert.strictEqual(startOverview(startDetail(dir)), [
-      'Cross-Cutting',
-      '  └─ 1. Caching',
+      'Quick Fixes',
+      '  └─ 1. Rename Api',
       '',
     ].join('\n'));
   });
@@ -192,28 +182,25 @@ describe('start projections: menu', () => {
       '· · · · · · · · · · · ·',
       '**`◆ What would you like to do?`**',
       '',
-      '**`1`**               → Continue "Auth Flow" — *feature, ready for*',
-      `${NB(18)}*specification*`,
-      '**`2`**               → Continue "Dark Mode" — *feature, discussion*',
-      `${NB(18)}*(in-progress)*`,
-      '**`3`**               → Continue "Login Crash" — *bugfix, ready for*',
-      `${NB(18)}*investigation*`,
-      '**`4`**               → Continue "Rename Api" — *quick-fix, scoping*',
-      `${NB(18)}*(in-progress)*`,
-      '**`5`**               → Continue "Caching" — *cross-cutting, discussion*',
-      `${NB(18)}*(in-progress)*`,
-      '**`6`**               → Continue "Quiz Competition V1" — *epic*',
-      '**`p/product`**       → Talk about the product',
-      '**`s/start`**         → Start something new (not sure what kind yet)',
-      '**`f/feature`**       → Start new feature',
-      '**`e/epic`**          → Start new epic',
-      '**`b/bugfix`**        → Start new bugfix',
-      '**`q/quick-fix`**     → Start new quick-fix',
-      '**`c/cross-cutting`** → Start new cross-cutting concern',
-      '**`i/inbox`**         → View the inbox and triage its items',
-      '**`v/view`**          → View completed & cancelled work units',
-      '**`m/manage`**        → Manage a work unit\'s lifecycle',
-      '**`h/help`**          → How the workflows work',
+      '**`1`**           → Continue "Auth Flow" — *feature, ready for*',
+      `${NB(14)}*specification*`,
+      '**`2`**           → Continue "Dark Mode" — *feature, discussion*',
+      `${NB(14)}*(in-progress)*`,
+      '**`3`**           → Continue "Login Crash" — *bugfix, ready for*',
+      `${NB(14)}*investigation*`,
+      '**`4`**           → Continue "Rename Api" — *quick-fix, scoping*',
+      `${NB(14)}*(in-progress)*`,
+      '**`5`**           → Continue "Quiz Competition V1" — *epic*',
+      '**`p/product`**   → Talk about the product',
+      '**`s/start`**     → Start something new (not sure what kind yet)',
+      '**`f/feature`**   → Start new feature',
+      '**`e/epic`**      → Start new epic',
+      '**`b/bugfix`**    → Start new bugfix',
+      '**`q/quick-fix`** → Start new quick-fix',
+      '**`i/inbox`**     → View the inbox and triage its items',
+      '**`v/view`**      → View completed & cancelled work units',
+      '**`m/manage`**    → Manage a work unit\'s lifecycle',
+      '**`h/help`**      → How the workflows work',
     ].join('\n'));
   });
 
@@ -224,33 +211,26 @@ describe('start projections: menu', () => {
       '· · · · · · · · · · · ·',
       '**`◆ What would you like to do?`**',
       '',
-      '**`1`**               → Continue "Auth Flow" — *feature, ready for*',
-      `${NB(18)}*discussion*`,
-      '**`p/product`**       → Talk about the product',
-      '**`s/start`**         → Start something new (not sure what kind yet)',
-      '**`f/feature`**       → Start new feature',
-      '**`e/epic`**          → Start new epic',
-      '**`b/bugfix`**        → Start new bugfix',
-      '**`q/quick-fix`**     → Start new quick-fix',
-      '**`c/cross-cutting`** → Start new cross-cutting concern',
-      '**`m/manage`**        → Manage a work unit\'s lifecycle',
-      '**`h/help`**          → How the workflows work',
+      '**`1`**           → Continue "Auth Flow" — *feature, ready for*',
+      `${NB(14)}*discussion*`,
+      '**`p/product`**   → Talk about the product',
+      '**`s/start`**     → Start something new (not sure what kind yet)',
+      '**`f/feature`**   → Start new feature',
+      '**`e/epic`**      → Start new epic',
+      '**`b/bugfix`**    → Start new bugfix',
+      '**`q/quick-fix`** → Start new quick-fix',
+      '**`m/manage`**    → Manage a work unit\'s lifecycle',
+      '**`h/help`**      → How the workflows work',
     ].join('\n'));
   });
 
   it('finalising unit gets a Finalise entry that still routes to the linear continue menu', () => {
-    createManifest(dir, 'caching', {
-      work_type: 'cross-cutting',
-      phases: {
-        discussion: { items: { caching: { status: 'completed' } } },
-        specification: { items: { caching: { status: 'completed' } } },
-      },
-    });
+    createManifest(dir, 'rename-api', { work_type: 'quick-fix', phases: FINISHED_QUICK_FIX });
     const menu = startMenu(startDetail(dir));
-    assert.ok(/\*\*`1`\*\* +→ Finalise "Caching" — \*cross-cutting, pipeline\*\n\u00a0+\*complete\*/.test(menu.rendered));
+    assert.ok(/\*\*`1`\*\* +→ Finalise "Rename Api" — \*quick-fix, pipeline\*\n\u00a0+\*complete\*/.test(menu.rendered), menu.rendered);
     const entry = menu.keys.find((k) => k.key === '1');
     assert.strictEqual(entry.action, 'continue_work_unit');
-    assert.strictEqual(entry.route, '/leeway-continue-linear caching');
+    assert.strictEqual(entry.route, '/leeway-continue-linear rename-api');
   });
 
   it('shows v with cancelled-only work units', () => {
@@ -270,15 +250,13 @@ describe('start projections: menu', () => {
         ['2', 'continue_work_unit', 'dark-mode', '/leeway-continue-linear dark-mode', null],
         ['3', 'continue_work_unit', 'login-crash', '/leeway-continue-linear login-crash', null],
         ['4', 'continue_work_unit', 'rename-api', '/leeway-continue-linear rename-api', null],
-        ['5', 'continue_work_unit', 'caching', '/leeway-continue-linear caching', null],
-        ['6', 'continue_work_unit', 'quiz-competition-v1', '/leeway-continue-epic quiz-competition-v1', null],
+        ['5', 'continue_work_unit', 'quiz-competition-v1', '/leeway-continue-epic quiz-competition-v1', null],
         ['p', 'open_product', null, '/leeway-discovery none none', null],
         ['s', 'start_new', null, null, 'none'],
         ['f', 'start_new', null, null, 'feature'],
         ['e', 'start_new', null, null, 'epic'],
         ['b', 'start_new', null, null, 'bugfix'],
         ['q', 'start_new', null, null, 'quick-fix'],
-        ['c', 'start_new', null, null, 'cross-cutting'],
         ['i', 'view_inbox', null, null, null],
         ['v', 'view_completed', null, null, null],
         ['m', 'manage', null, null, null],
@@ -287,7 +265,7 @@ describe('start projections: menu', () => {
     );
     assert.deepStrictEqual(
       keys.filter((k) => k.action === 'continue_work_unit').map((k) => k.work_type),
-      ['feature', 'feature', 'bugfix', 'quick-fix', 'cross-cutting', 'epic']
+      ['feature', 'feature', 'bugfix', 'quick-fix', 'epic']
     );
   });
 });
@@ -311,19 +289,15 @@ describe('start projections: empty state', () => {
       DOTS,
       '**`◆ What would you like to start?`**',
       '',
-      '**`p/product`**       → Talk about the product',
-      "**`s/start`**         → Not sure what kind yet — describe it and we'll",
-      `${NB(18)}shape it`,
-      '**`f/feature`**       → Single topic: discussion → spec → build →',
-      `${NB(18)}review`,
-      '**`e/epic`**          → Multiple topics, multi-session: each discussed,',
-      `${NB(18)}then one spec → build → review`,
-      '**`b/bugfix`**        → Investigation → spec → build → review',
-      '**`q/quick-fix`**     → Scoping → implement → review (no formal',
-      `${NB(18)}planning)`,
-      '**`c/cross-cutting`** → Discussion → spec (patterns or policies that',
-      `${NB(18)}inform other work)`,
-      '**`h/help`**          → How the workflows work',
+      '**`p/product`**   → Talk about the product',
+      "**`s/start`**     → Not sure what kind yet — describe it and we'll",
+      `${NB(14)}shape it`,
+      '**`f/feature`**   → Single topic: discussion → spec → build → review',
+      '**`e/epic`**      → Multiple topics, multi-session: each discussed,',
+      `${NB(14)}then one spec → build → review`,
+      '**`b/bugfix`**    → Investigation → spec → build → review',
+      '**`q/quick-fix`** → Scoping → implement → review (no formal planning)',
+      '**`h/help`**      → How the workflows work',
     ].join('\n'));
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.pre_seed || null]),
@@ -334,7 +308,6 @@ describe('start projections: empty state', () => {
         ['e', 'start_new', 'epic'],
         ['b', 'start_new', 'bugfix'],
         ['q', 'start_new', 'quick-fix'],
-        ['c', 'start_new', 'cross-cutting'],
         ['h', 'open_help', null],
       ]
     );
@@ -355,7 +328,7 @@ describe('start projections: empty state', () => {
     assert.ok(/\*\*`i\/inbox`\*\* +→ View the inbox and triage its items \(1 item\)/.test(menu.rendered));
     assert.ok(/\*\*`v\/view`\*\* +→ View completed & cancelled work units/.test(menu.rendered));
     assert.deepStrictEqual(
-      menu.keys.map((k) => k.action).slice(7),
+      menu.keys.map((k) => k.action).slice(6),
       ['view_inbox', 'view_completed', 'open_help']
     );
   });
@@ -654,14 +627,13 @@ describe('start projections: manage list', () => {
   it('numbers continuously across type sections, matching the overview', () => {
     const v = manageListView(fullFixture(dir));
     assert.strictEqual(v.data, [
-      'unit_count: 6',
+      'unit_count: 5',
       'UNITS (n  work_type  work_unit):',
       '  1  feature  auth-flow',
       '  2  feature  dark-mode',
       '  3  bugfix  login-crash',
       '  4  quick-fix  rename-api',
-      '  5  cross-cutting  caching',
-      '  6  epic  quiz-competition-v1',
+      '  5  epic  quiz-competition-v1',
     ].join('\n'));
     assert.strictEqual(v.menu, [
       DOTS,
@@ -671,8 +643,7 @@ describe('start projections: manage list', () => {
       '**`2`**      → Dark Mode — *feature*',
       '**`3`**      → Login Crash — *bugfix*',
       '**`4`**      → Rename Api — *quick-fix*',
-      '**`5`**      → Caching — *cross-cutting*',
-      '**`6`**      → Quiz Competition V1 — *epic*',
+      '**`5`**      → Quiz Competition V1 — *epic*',
       '**`b/back`** → Return',
     ].join('\n'));
     assert.strictEqual(v.display, undefined, 'the menu is the list — no display beside it');

@@ -77,10 +77,6 @@ Load **[bugfix-continuation.md](references/bugfix-continuation.md)** and follow 
 
 Load **[quickfix-continuation.md](references/quickfix-continuation.md)** and follow its instructions as written.
 
-#### If work type is `cross-cutting`
-
-Load **[cross-cutting-continuation.md](references/cross-cutting-continuation.md)** and follow its instructions as written.
-
 #### If work type is `epic`
 
 Load **[epic-continuation.md](references/epic-continuation.md)** and follow its instructions as written.

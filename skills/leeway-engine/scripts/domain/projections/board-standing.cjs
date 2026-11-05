@@ -20,7 +20,8 @@
 // - Where it has come to (`now`): the first phase not complete — an epic
 //   past its discovery by its stages, the specification once the topics are
 //   settled, the build once begun, the review once the build has finished —
-//   or complete, since the day the phase before it closed.
+//   or complete, since the day the phase before it closed; a migrated unit
+//   of a type the reshape retires, the migration's cut it waits on (E6).
 // - How the phase it is in stands: stopped where nothing of its build, the
 //   review's round and fix tasks among it, can go on without an answer
 //   (board-build.cjs); waiting on the person where something asked in the
@@ -45,7 +46,7 @@
 const { stagedOrNone, candidatesStanding } = require('../approve-map.cjs');
 const { pastItsSpec, topicsSettled } = require('../spec-standing.cjs');
 const { waitingAndFreed } = require('../questions.cjs');
-const { phaseStatus, buildPlaceStatus, buildBegun, buildFinished } = require('../derivations.cjs');
+const { phaseStatus, buildPlaceStatus, buildBegun, buildFinished, retiredRefusal } = require('../derivations.cjs');
 const { counted } = require('./map.cjs');
 const { finishDraws } = require('../finish.cjs');
 const { buildView } = require('./board-build.cjs');
@@ -65,7 +66,6 @@ const LINEAR_PHASES = Object.freeze({
   feature: [['discussion', 'discussion'], ['specification', 'specification'], ['build', 'implementation'], ['review', 'review']],
   bugfix: [['investigation', 'investigation'], ['specification', 'specification'], ['build', 'implementation'], ['review', 'review']],
   'quick-fix': [['implementation', 'implementation']],
-  'cross-cutting': [['discussion', 'discussion'], ['specification', 'specification']],
 });
 
 /** The day the unit started, null where its manifest holds none. @param {BoardAt} at */
@@ -136,8 +136,17 @@ function linearNow(at) {
   return { phase: phases[now].phase, since: phases[now - 1]?.on ?? null };
 }
 
+/** Where a unit of a type the reshape retires has come to: the migration's cut, which it waits on. @type {UnitNow} */
+const AT_THE_CUT = Object.freeze({ phase: 'cut', since: null });
+
 /** Where the unit has come to (the header's). @param {BoardAt} at @returns {UnitNow} */
-const nowOf = (at) => at.once('now', () => (pastDiscovery(at.manifest) ? epicNow(at) : linearNow(at)));
+function unitNow(at) {
+  if (retiredRefusal(at.manifest) !== null) return AT_THE_CUT;
+  return pastDiscovery(at.manifest) ? epicNow(at) : linearNow(at);
+}
+
+/** Where the unit has come to, read once a call. @param {BoardAt} at @returns {UnitNow} */
+const nowOf = (at) => at.once('now', () => unitNow(at));
 
 /**
  * Approve the map, while a map is staged: its topics in order and what it

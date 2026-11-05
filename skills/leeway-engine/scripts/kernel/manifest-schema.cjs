@@ -10,7 +10,14 @@
 // constants and grammar helpers — no IO.
 // ---------------------------------------------------------------------------
 
-const VALID_WORK_TYPES = ['epic', 'feature', 'bugfix', 'cross-cutting', 'quick-fix'];
+const VALID_WORK_TYPES = ['epic', 'feature', 'bugfix', 'quick-fix'];
+
+// The types the reshape retires, each with the phases its units' items were
+// written in: a migrated unit of one is read, never created, until the
+// reshape's 29.17 cut takes it (19.6.7).
+const LEGACY_WORK_TYPES = Object.freeze({
+  'cross-cutting': ['experiment', 'discussion', 'specification'],
+});
 
 const VALID_PHASES = [
   'discovery', 'experiment', 'discussion', 'investigation', 'scoping',
@@ -28,7 +35,6 @@ const WORK_TYPE_PIPELINES = {
   feature:         ['experiment', 'discussion', 'specification', 'implementation', 'review'],
   bugfix:          ['investigation', 'specification', 'implementation', 'review'],
   'quick-fix':     ['scoping', 'implementation', 'review'],
-  'cross-cutting': ['experiment', 'discussion', 'specification'],
 };
 
 /** Every phase an epic holds: discovery, its map, then its pipeline. */
@@ -230,6 +236,7 @@ const DRIVER_KINDS = /** @type {const} */ (['task', 'landing']);
 
 module.exports = {
   VALID_WORK_TYPES,
+  LEGACY_WORK_TYPES,
   VALID_PHASES,
   WORK_TYPE_PIPELINES,
   EPIC_PHASES,

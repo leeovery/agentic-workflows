@@ -2,7 +2,8 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: the single-topic work-unit detail — the one entry behind the
-// linear continue menu (feature / bugfix / quick-fix / cross-cutting). The
+// linear continue menu (feature / bugfix / quick-fix, and a migrated unit of a
+// type the reshape retires, shown waiting on the migration's cut). The
 // types share one shape (topic = work unit — a promoted unit's moved
 // discussions excepted, see phaseTargets — linear pipeline); everything that
 // varies between them — pipeline phases, the seeds and imports they surface —
@@ -15,7 +16,7 @@
 
 const { loadManifest } = require('./reads.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
-const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, TOPIC_PHASES } = require('../kernel/manifest-schema.cjs');
+const { WORK_TYPE_PIPELINES, LEGACY_WORK_TYPES, DERIVED_PHASES, TERMINAL_STATUSES, TOPIC_PHASES } = require('../kernel/manifest-schema.cjs');
 const { pastItsSpec } = require('./spec-standing.cjs');
 const {
   phaseStatus,
@@ -53,11 +54,7 @@ const WORK_UNIT_TYPES = {
     pipeline: WORK_TYPE_PIPELINES['quick-fix'],
     surfacesSeeds: false,
   },
-  'cross-cutting': {
-    workType: 'cross-cutting',
-    pipeline: WORK_TYPE_PIPELINES['cross-cutting'],
-    surfacesSeeds: false,
-  },
+  ...Object.fromEntries(Object.entries(LEGACY_WORK_TYPES).map(([workType, pipeline]) => [workType, { workType, pipeline, surfacesSeeds: false }])),
 };
 
 /**
@@ -159,8 +156,8 @@ function phaseTargets(cwd, manifest, nextPhase) {
 
 /**
  * One single-topic unit in progress, by name: its type, read from its
- * manifest, and its entry with next-phase state — null where no feature,
- * bugfix, quick-fix or cross-cutting concern by that name is in progress.
+ * manifest, and its entry with next-phase state — null where no
+ * single-topic unit by that name is in progress.
  * @param {string} cwd  project root
  * @param {string} name
  * @returns {{type: string, unit: WorkUnitEntry}|null}

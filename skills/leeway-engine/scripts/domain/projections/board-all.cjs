@@ -59,6 +59,7 @@ const HOW_FAR = Object.freeze({
     const { round, words } = roundWords(at);
     return `${stoppedWords(at)}${words ?? `round ${round} reading`}`;
   },
+  cut: () => 'waiting on the migration\'s cut',
 });
 
 /** How far a unit has come (the header's). @param {BoardAt} at @param {string} phase */

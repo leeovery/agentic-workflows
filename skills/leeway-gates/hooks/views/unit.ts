@@ -61,7 +61,7 @@ function headOf(title: string, type: string, atMenu: boolean, width: number): Li
   return titledLine('unit:head', { text: title, bold: true }, standing, width)
 }
 
-/** What a unit is doing in each phase, as its dates line says it. */
+/** What a unit is doing in each phase, as its dates line says it — a migrated unit of a retired type at the cut it waits on. */
 const DOING: Readonly<Record<string, string>> = {
   discovery: 'in discovery',
   discussion: 'in discussion',
@@ -69,6 +69,7 @@ const DOING: Readonly<Record<string, string>> = {
   specification: 'specifying',
   build: 'building',
   review: 'in review',
+  cut: 'waiting on the migration\'s cut',
 }
 
 /** Where a unit has come to, on its dates line: the phase it is in since the day it began, its one session, or complete. */
@@ -277,7 +278,7 @@ type Unit = {
 }
 
 /** The types whose tab's progress line names the phase the unit is in. */
-const SAYS_PHASE: ReadonlySet<string> = new Set(['feature', 'cross-cutting'])
+const SAYS_PHASE: ReadonlySet<string> = new Set(['feature'])
 
 /** Where a unit has come to that its tab's progress line never names: discovery, where it begins, and complete. */
 const UNNAMED: ReadonlySet<string> = new Set(['discovery', 'complete'])

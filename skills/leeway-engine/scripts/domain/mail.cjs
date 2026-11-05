@@ -56,7 +56,7 @@ const { EXPERIMENT_ID_PATTERN, KEBAB_SLUG_PATTERN, WORK_TYPE_PIPELINES, illegalN
 const { stateRoot, statePath, stateRelative, cacheScratch } = require('../kernel/state-root.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
-const { computeTopicLifecycle, mailboxDir, mailboxFiles, mailPhase, dismissedNames, topicTitle, topicTitles, itemTitle, topicKey } = require('./derivations.cjs');
+const { computeTopicLifecycle, mailboxDir, mailboxFiles, mailPhase, dismissedNames, topicTitle, topicTitles, itemTitle, topicKey, retiredRefusal } = require('./derivations.cjs');
 const { parkMessageItem, assertLegalTopicName } = require('./transitions.cjs');
 const { liveness, manifestOf } = require('./ledger-units.cjs');
 const { ID_FACTS, foldLedger, movedToBy } = require('./ledger-fold.cjs');
@@ -330,12 +330,14 @@ function toMailbox(cwd, manifest, phase, topic, message, slug) {
 /**
  * Where a message to a topic of a unit in progress lands: the inbox for a
  * cancelled or removed topic, else its mailbox — refused where the topic
- * takes nothing.
+ * takes nothing, or the unit is of a type the reshape retires.
  * @param {string} cwd @param {Record<string, any>} manifest @param {string} topic @param {string} message the message with its sender line
  * @param {string} slug @returns {Landed}
  */
 function toTopic(cwd, manifest, topic, message, slug) {
   assertInProgress(manifest);
+  const retired = retiredRefusal(manifest);
+  if (retired !== null) throw new Error(retired);
   const phase = mailPhase(manifest.work_type);
   if (phase === null) throw new Error(`a ${manifest.work_type} has no conversation for a message to wait in`);
   if (removedTopic(manifest, topic)) return toInbox(cwd, manifest.name, `${topic} was removed`, message, slug);

@@ -4,7 +4,7 @@ user-invocable: false
 allowed-tools: Bash(node .claude/skills/leeway-continue-linear/scripts/gateway.cjs *), Bash(node .claude/skills/leeway/scripts/gateway.cjs *), Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *)
 ---
 
-Continue an in-progress feature, bugfix, quick-fix or cross-cutting concern. Determines the current phase and hands the work off to its phase skill.
+Continue an in-progress feature, bugfix or quick-fix. Determines the current phase and hands the work off to its phase skill.
 
 > **⚠️ ZERO OUTPUT RULE**: Do not narrate your processing. Produce no output until a step or reference file explicitly specifies display content. No "proceeding with...", no discovery summaries, no routing decisions, no transition text. Your first output must be content explicitly called for by the instructions.
 

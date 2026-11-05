@@ -33,7 +33,7 @@ const { parseInboxPaths, ROADMAP_SEED } = require('./inbox.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { section, dataSection, CONTINUE_INSTRUCTION, GATE_MOD_INSTRUCTION } = require('./projections/surfaces.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
-const { mailPhase, topicTitles, itemName, topicKey, roadmapSeedRefusal } = require('./derivations.cjs');
+const { mailPhase, topicTitles, itemName, topicKey, roadmapSeedRefusal, retiredRefusal } = require('./derivations.cjs');
 const { unitInProgress, assertEnterable } = require('./topic-standing.cjs');
 
 const HANDOFF_ENV = 'LEEWAY_HANDOFF';
@@ -261,13 +261,16 @@ const TOPIC_HANDOFF_USAGE = 'handoff topic <work-unit> <topic>';
  * The handoff into a topic named by its unit and its key or title alone:
  * into the phase its topics are talked through — a bugfix's investigation,
  * else its discussion — refused where that phase's entry would refuse the
- * topic, or the unit has no topics to name.
+ * topic, or the unit has no topics to name, or is of a type the reshape
+ * retires.
  * @param {string} cwd @param {string[]} args @returns {Handoff}
  */
 function topicHandoff(cwd, args) {
   if (args.length !== 2) throw new Error(`Usage: engine ${TOPIC_HANDOFF_USAGE}`);
   const [unit, said] = args;
   const manifest = unitInProgress(cwd, unit);
+  const retired = retiredRefusal(manifest);
+  if (retired !== null) throw new Error(retired);
   const phase = mailPhase(manifest.work_type);
   if (phase === null) throw new Error(`${unit} is a ${manifest.work_type}, with no topics to open by name — it carries on from the start menu`);
   const topic = topicKey(manifest, said);

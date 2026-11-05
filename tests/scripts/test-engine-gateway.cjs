@@ -195,7 +195,7 @@ describe('gateway: a head-of-skill insert is never a gate', () => {
   beforeEach(() => {
     dir = setupFixture();
     const items = (phase, name, status) => ({ [phase]: { items: { [name]: { status } } } });
-    for (const [type, phase] of [['epic', 'discussion'], ['feature', 'discussion'], ['bugfix', 'investigation'], ['quick-fix', 'scoping'], ['cross-cutting', 'discussion']]) {
+    for (const [type, phase] of [['epic', 'discussion'], ['feature', 'discussion'], ['bugfix', 'investigation'], ['quick-fix', 'scoping']]) {
       createManifest(dir, `live-${type}`, { work_type: type, phases: items(phase, type === 'epic' ? 'auth' : `live-${type}`, 'in-progress') });
       createManifest(dir, `done-${type}`, { work_type: type, status: 'completed', phases: items(phase, type === 'epic' ? 'auth' : `done-${type}`, 'completed') });
     }
@@ -321,9 +321,9 @@ describe('an ACTIONS table resolves every row its MENU offers', () => {
     });
   }
 
-  // Every linear unit with an earlier phase to revisit — a decided discussion
-  // and a concluded spec being none, the cross-cutting concern is
-  // finalising; the epic holds a cancelled topic, a topic postponed to the
+  // Every linear unit with an earlier phase to revisit, and a migrated unit
+  // of a retired type waiting on the migration's cut, its way back alone;
+  // the epic holds a cancelled topic, a topic postponed to the
   // roadmap and a plan blocked on a dependency, so each of its sub-views
   // offers rows.
   const WORLDS = {

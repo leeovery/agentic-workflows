@@ -36,7 +36,7 @@
 // build. Beside it a feature, `solo`, its build begun; another feature whose
 // code a peer may hold; a feature cut and not yet built; a quick-fix
 // mid-scoping; an epic built under the old plan, and a feature whose old spec
-// stands; a cross-cutting concern; and the build's skill installed. Each
+// stands; a migrated cross-cutting unit; and the build's skill installed. Each
 // test's conversations keep their records in a config folder of their own.
 // ---------------------------------------------------------------------------
 
@@ -204,7 +204,7 @@ const PHASE_LINES = Object.freeze([
 ]);
 
 describe('enter implementation: what cannot be entered is refused, naming the way on, and nothing is written', () => {
-  it('a unit built under the old plan (P12) — a quick-fix mid-scoping among them — a build not begun (11.8.3), a work type with no build, and a topic named', () => {
+  it('a unit built under the old plan (P12) — a quick-fix mid-scoping among them — a build not begun (11.8.3), a migrated unit of a retired type, and a topic named', () => {
     assert.deepStrictEqual([refused(['tweak']), refused(['old']), refused(['kept']), refused(['fresh']), refused([UNIT, 'note-window'])], [
       'tweak was built under the old plan, and its build is entered once the reshape\'s 29.17 migration has cut it',
       'old was built under the old plan, and its build is entered once the reshape\'s 29.17 migration has cut it',
@@ -212,7 +212,7 @@ describe('enter implementation: what cannot be entered is refused, naming the wa
       'fresh\'s build has not begun — ready to build\'s yes begins it: render ready-to-build fresh',
       `implementation is entered at the work unit — name no topic: engine enter implementation ${UNIT}`,
     ]);
-    assert.match(refused(['concern']), /^a cross-cutting has no implementation — its phases are /);
+    assert.strictEqual(refused(['concern']), 'concern is a cross-cutting unit, a type the reshape retires — it waits on the reshape\'s 29.17 migration, and nothing is done in it until then');
   });
 });
 

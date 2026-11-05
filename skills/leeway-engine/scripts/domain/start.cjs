@@ -37,7 +37,7 @@ const ALL_PHASES = VALID_PHASES.filter((p) => p !== 'discovery');
 
 /**
  * The type's pipeline phases, from the schema's one home for pipeline order.
- * An unknown type (grouped with features) falls back to every phase.
+ * An unknown type — a retired one among them — falls back to every phase.
  * @param {string} workType
  * @returns {string[]}
  */
@@ -48,6 +48,7 @@ function pipelineOf(workType) {
 /**
  * @typedef {object} WorkUnitEntry
  * @property {string} name
+ * @property {string} work_type
  * @property {string} next_phase
  * @property {string} phase_label
  * @property {boolean} finalising        pipeline finished (`next_phase: done`), no phase in
@@ -101,7 +102,6 @@ function pipelineOf(workType) {
  * @property {number} feature_count
  * @property {number} bugfix_count
  * @property {number} quickfix_count
- * @property {number} cross_cutting_count
  * @property {boolean} has_inbox
  * @property {number} inbox_count
  * @property {boolean} has_archived
@@ -114,7 +114,6 @@ function pipelineOf(workType) {
  * @property {TypeGroup} features
  * @property {TypeGroup} bugfixes
  * @property {TypeGroup} quick_fixes
- * @property {TypeGroup} cross_cutting
  * @property {ClosedEntry[]} completed
  * @property {ClosedEntry[]} cancelled
  * @property {number} completed_count
@@ -217,14 +216,13 @@ function startDetail(cwd) {
   const bugfixes = [];
   /** @type {WorkUnitEntry[]} */
   const quick_fixes = [];
-  /** @type {WorkUnitEntry[]} */
-  const cross_cutting = [];
 
   for (const m of manifests) {
     const state = computeUnitPhaseState(m, pipelineOf(m.work_type), pastItsSpec(cwd, m));
     /** @type {WorkUnitEntry} */
     const unit = {
       name: m.name,
+      work_type: m.work_type,
       next_phase: state.next_phase,
       phase_label: state.phase_label,
       finalising: state.finalising,
@@ -258,9 +256,9 @@ function startDetail(cwd) {
       bugfixes.push(unit);
     } else if (m.work_type === 'quick-fix') {
       quick_fixes.push(unit);
-    } else if (m.work_type === 'cross-cutting') {
-      cross_cutting.push(unit);
     } else {
+      // A feature, or a migrated unit of a type the reshape retires, waiting
+      // on the migration's cut.
       features.push(unit);
     }
   }
@@ -287,7 +285,6 @@ function startDetail(cwd) {
     features: { work_units: features, count: features.length },
     bugfixes: { work_units: bugfixes, count: bugfixes.length },
     quick_fixes: { work_units: quick_fixes, count: quick_fixes.length },
-    cross_cutting: { work_units: cross_cutting, count: cross_cutting.length },
     completed,
     cancelled,
     completed_count: completed.length,
@@ -297,12 +294,11 @@ function startDetail(cwd) {
     product: productConversation(cwd),
     research_owed: researchOwed(loadProjectManifest(cwd)),
     state: {
-      has_any_work: (epics.length + features.length + bugfixes.length + quick_fixes.length + cross_cutting.length) > 0,
+      has_any_work: (epics.length + features.length + bugfixes.length + quick_fixes.length) > 0,
       epic_count: epics.length,
       feature_count: features.length,
       bugfix_count: bugfixes.length,
       quickfix_count: quick_fixes.length,
-      cross_cutting_count: cross_cutting.length,
       has_inbox: inbox.total_count > 0,
       inbox_count: inbox.total_count,
       has_archived: inbox.archived.total_count > 0,

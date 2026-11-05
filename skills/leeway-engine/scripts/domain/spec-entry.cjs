@@ -4,9 +4,8 @@
 // Domain ring: specification's row of the entry (enter.cjs) — `enter
 // specification <unit>`, at the work unit, whose one spec it is (11.3.1).
 // Whether the unit can enter it is spec-standing.cjs's: once its topics are
-// settled, and never for a cross-cutting concern. The entry asks nothing
-// first, starts nothing and keeps no log, so it writes nothing but where the
-// conversation is working.
+// settled. The entry asks nothing first, starts nothing and keeps no log, so
+// it writes nothing but where the conversation is working.
 //
 // What carries the spec on, read alike by its entry and its recovery note
 // (position.cjs): each live topic's record, by its engine call, and its log

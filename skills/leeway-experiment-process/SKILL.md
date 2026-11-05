@@ -17,7 +17,7 @@ Walk one experiment record from its conceived question to its one-line verdict �
 ### What This Skill Needs
 
 Positional arguments:
-- `$0` — **work_type**: `epic`, `feature`, or `cross-cutting`.
+- `$0` — **work_type**: `epic` or `feature`.
 - `$1` — **work_unit**: the work unit name.
 - `$2` — **topic**: the topic whose series holds the record. A single-topic unit's topic is the work unit, so it may be left off: topic = `$2`, or `$1` where `work_type` is not `epic`.
 

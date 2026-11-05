@@ -1,18 +1,22 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A unit whose building began under the old plan (P12): its old spec's,
-// planning's, implementation's and review's items still read — phaseStatus
-// and computeNextPhase answer from them as before the build by its cut, the
-// start menu's rows and the board's tabs with them — and every way into its
-// work is closed until 29.17's migration cuts it: the bridge routes it
-// nowhere and revisits nothing, the linear and epic menus show the
-// migration's line and the way back alone, the start menu never offers to
-// finalise it nor manage to mark it done, the epic's completed topics are
-// its decided discussions, and the revisit list refuses it. This file goes
-// with the migration.
+// A unit whose building began under the old plan (P12), and a migrated unit
+// of a type the reshape retires, cross-cutting (19.6.7, E6): their items
+// still read — phaseStatus and computeNextPhase answer from them as before
+// the build by its cut, the start menu's rows and the board's tabs with them,
+// a retired type's unit waiting on the cut — and every way into their work is
+// closed until 29.17's migration cuts them: the bridge routes them nowhere and
+// revisits nothing, the linear and epic menus show the migration's line and
+// the way back alone, the start menu never offers to finalise them nor manage
+// to mark them done, the epic's completed topics are its decided discussions,
+// and the revisit list refuses them. A retired type's unit is listed with the
+// features, by its own type, waiting on the cut whatever it has in flight,
+// the board placing it there too; its manifest is read by every verb, and no
+// phase or topic of it is entered or sent to; the type is refused only where
+// a unit is made. This file goes with the migration.
 //
-// Layer: verb. World: the project world (setupFixture), eight old-shape
+// Layer: verb. World: the project world (setupFixture), eleven old-shape
 // units written once by hand — no verb writes a shape the design has left.
 // ---------------------------------------------------------------------------
 
@@ -20,17 +24,21 @@ require('./hermetic-env.cjs');
 
 const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert');
+const fs = require('fs');
+const path = require('path');
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
 const { manageDetail } = require('../../skills/leeway-engine/scripts/domain/workunit-manage.cjs');
 const { call } = require('./engine-harness.cjs');
 const { phaseStatus, computeNextPhase } = require('../../skills/leeway-engine/scripts/domain/derivations.cjs');
 const { loadManifest } = require('../../skills/leeway-engine/scripts/domain/reads.cjs');
-const { WORK_TYPE_PIPELINES } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
+const { WORK_TYPE_PIPELINES, LEGACY_WORK_TYPES } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
 const { epicMenu, epicCompletedMenu } = require('../../skills/leeway-engine/scripts/domain/projections/epic.cjs');
 const bridge = require('../../skills/leeway-bridge/scripts/gateway.cjs');
 const linear = require('../../skills/leeway-continue-linear/scripts/gateway.cjs');
 const epic = require('../../skills/leeway-continue-epic/scripts/gateway.cjs');
 const start = require('../../skills/leeway/scripts/gateway.cjs');
+const { startMenu, manageListView } = require('../../skills/leeway-engine/scripts/domain/projections/start.cjs');
+const { drawLabel } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
 
 const done = (...names) => Object.fromEntries(names.map((n) => [n, { status: 'completed' }]));
 const at = (name, status) => ({ [name]: { status } });
@@ -49,12 +57,21 @@ const UNITS = {
   'old-epic': { work_type: 'epic', phases: { discussion: { items: done('alpha', 'beta') }, specification: { items: done('alpha') }, planning: { items: done('alpha') }, implementation: { items: at('alpha', 'in-progress') } } },
   'done-feature': { status: 'completed', phases: through('done-feature', 'discussion', 'specification', 'planning', 'implementation', 'review') },
   'dropped-feature': { status: 'cancelled', phases: { ...through('dropped-feature', 'discussion', 'specification', 'planning'), implementation: { items: at('dropped-feature', 'in-progress') } } },
+  // Cross-cutting units as the reshape's move leaves them: their spec items
+  // dropped, a discussion in flight, an experiment in flight, and one decided.
+  'old-concern': { work_type: 'cross-cutting', phases: { discussion: { items: at('old-concern', 'in-progress') } } },
+  'lab-concern': { work_type: 'cross-cutting', phases: { experiment: { items: at('lab-concern', 'in-progress') }, discussion: { items: at('lab-concern', 'in-progress') } } },
+  'done-concern': { work_type: 'cross-cutting', phases: through('done-concern', 'discussion') },
 };
 const NAMES = Object.keys(UNITS);
-const LIVE = ['plan-feature', 'built-feature', 'reviewing-feature', 'reviewed-feature', 'old-bugfix'];
+const RETIRED_UNITS = ['done-concern', 'lab-concern', 'old-concern'];
+const LIVE = ['plan-feature', 'built-feature', 'reviewing-feature', 'reviewed-feature', 'old-bugfix', ...RETIRED_UNITS];
 const SESSION = { env: { CLAUDE_CODE_SESSION_ID: 'sess-1' } };
 const lines = (text, re) => text.split('\n').filter((line) => re.test(line));
-const waiting = (name) => `${name} was built under the old plan, and its build is entered once the reshape's 29.17 migration has cut it`;
+const retired = (name) => `${name} is a cross-cutting unit, a type the reshape retires — it waits on the reshape's 29.17 migration, and nothing is done in it until then`;
+const RETIRED = retired('old-concern');
+const waiting = (name) => (RETIRED_UNITS.includes(name) ? retired(name) : `${name} was built under the old plan, and its build is entered once the reshape's 29.17 migration has cut it`);
+const AT_THE_CUT = 'waiting on the migration\'s cut';
 
 describe('a unit built under the old plan reads its items and waits on the migration\'s cut (P12)', () => {
   let dir;
@@ -68,7 +85,8 @@ describe('a unit built under the old plan reads its items and waits on the migra
     const answers = Object.fromEntries(NAMES.map((name) => {
       const manifest = loadManifest(dir, name);
       const { next_phase, phase_label } = computeNextPhase(manifest);
-      return [name, [WORK_TYPE_PIPELINES[manifest.work_type].map((phase) => phaseStatus(manifest, phase)).join(' '), `${next_phase}: ${phase_label}`]];
+      const pipeline = WORK_TYPE_PIPELINES[manifest.work_type] ?? LEGACY_WORK_TYPES[manifest.work_type];
+      return [name, [pipeline.map((phase) => phaseStatus(manifest, phase)).join(' '), `${next_phase}: ${phase_label}`]];
     }));
     assert.deepStrictEqual(answers, {
       'plan-feature': [' completed completed  ', 'planning: planning (in-progress)'],
@@ -79,6 +97,9 @@ describe('a unit built under the old plan reads its items and waits on the migra
       'old-epic': [' completed completed in-progress ', 'implementation: implementation (in-progress)'],
       'done-feature': [' completed completed completed completed', 'done: pipeline complete'],
       'dropped-feature': [' completed completed in-progress ', 'implementation: implementation (in-progress)'],
+      'old-concern': [' in-progress ', `done: ${AT_THE_CUT}`],
+      'lab-concern': ['in-progress in-progress ', `done: ${AT_THE_CUT}`],
+      'done-concern': [' completed ', `done: ${AT_THE_CUT}`],
     });
   });
 
@@ -100,6 +121,11 @@ describe('a unit built under the old plan reads its items and waits on the migra
       '  ├─ ✓ Implementation    [completed]',
       '  └─ → Review            [ready]',
     ]);
+    assert.deepStrictEqual(Object.fromEntries(RETIRED_UNITS.map((name) => [name, lines(linear.view(dir, name), /^  [├└]─ |^(work_type|phase_label): /)])), {
+      'done-concern': ['work_type: cross-cutting', `phase_label: ${AT_THE_CUT}`, '  └─ ✓ Discussion    [completed]'],
+      'lab-concern': ['work_type: cross-cutting', `phase_label: ${AT_THE_CUT}`, '  ├─ ◐ Experiment    [in-progress]', '  └─ ◐ Discussion    [in-progress]'],
+      'old-concern': ['work_type: cross-cutting', `phase_label: ${AT_THE_CUT}`, '  └─ ◐ Discussion    [in-progress]'],
+    }, 'a retired type\'s unit waits on the cut whatever its items have in flight');
   });
 
   it('the epic menu shows the migration\'s line and no way into its build, its completed topics its decided discussions', () => {
@@ -120,6 +146,9 @@ describe('a unit built under the old plan reads its items and waits on the migra
       units: [
         'old-epic: implementation (in-progress)',
         'built-feature: ready for review',
+        `done-concern: ${AT_THE_CUT}`,
+        `lab-concern: ${AT_THE_CUT}`,
+        `old-concern: ${AT_THE_CUT}`,
         'plan-feature: planning (in-progress)',
         'reviewed-feature: pipeline complete',
         'reviewing-feature: review (in-progress)',
@@ -127,6 +156,36 @@ describe('a unit built under the old plan reads its items and waits on the migra
       ],
       closed: ['done-feature: review', 'dropped-feature: planning'],
     });
+  });
+
+  it('a retired type\'s unit: listed with the features by its own type, on the start menu and manage\'s list, read by every verb, no phase or topic of it entered nor sent to, the type refused only where a unit is made', () => {
+    const detail = start.discover(dir);
+    const row = startMenu(detail).keys.find((k) => k.work_unit === 'old-concern');
+    assert.deepStrictEqual([row.work_type, row.route, drawLabel(row.label)],
+      ['cross-cutting', '/leeway-continue-linear old-concern', `Continue "Old Concern" — *cross-cutting, ${AT_THE_CUT}*`]);
+    assert.deepStrictEqual(manageListView(detail).rows.filter((r) => RETIRED_UNITS.includes(r.work_unit)).map((r) => r.work_type), ['cross-cutting', 'cross-cutting', 'cross-cutting']);
+    assert.strictEqual(call(dir, ['manifest', 'get', 'old-concern', 'work_type']).stdout.trim(), 'cross-cutting');
+    const message = path.join(dir, '.leeway', '.cache', 'message.md');
+    fs.mkdirSync(path.dirname(message), { recursive: true });
+    fs.writeFileSync(message, '# A note\n');
+    const refusal = (args) => JSON.parse(call(dir, args, SESSION).stderr).error;
+    assert.deepStrictEqual([
+      refusal(['enter', 'discovery', 'old-concern']),
+      refusal(['enter', 'discussion', 'old-concern']),
+      refusal(['enter', 'specification', 'old-concern']),
+      refusal(['handoff', 'topic', 'old-concern', 'old-concern']),
+      refusal(['topic', 'send', 'old-concern', 'old-concern', '--from', 'old-bugfix.old-bugfix', '--content', message, '--slug', 'a-note']),
+      refusal(['handoff', 'leeway-discussion-process', 'cross-cutting', 'old-concern']),
+      refusal(['manifest', 'set', 'plan-feature', 'work_type', 'cross-cutting']),
+    ], [
+      RETIRED,
+      RETIRED,
+      RETIRED,
+      RETIRED,
+      RETIRED,
+      'the work type must be one of epic|feature — got "cross-cutting"',
+      'Invalid work_type "cross-cutting". Must be one of: epic, feature, bugfix, quick-fix',
+    ]);
   });
 
   it('manage offers it no done, and the revisit list refuses it', () => {
@@ -146,7 +205,7 @@ describe('a unit built under the old plan reads its items and waits on the migra
     ]);
   });
 
-  it('the board places it by its items', () => {
+  it('the board places it by its items, a retired type\'s unit at the cut it waits on', () => {
     const board = (tab, unit) => JSON.parse(call(dir, ['board', 'sess-1', '--tab', tab, ...(unit ? ['--unit', unit] : [])], SESSION).stdout).view;
     const places = Object.fromEntries(['plan-feature', 'reviewing-feature', 'old-bugfix', 'dropped-feature']
       .map((name) => [name, board('unit', name).phases.map(({ phase, state }) => `${phase} ${state}`).slice(-2).join(', ')]));
@@ -159,12 +218,16 @@ describe('a unit built under the old plan reads its items and waits on the migra
     const all = board('all').units;
     assert.deepStrictEqual(all.map(({ unit, phase }) => `${unit}: ${phase}`), [
       'built-feature: review',
+      'done-concern: cut',
+      'lab-concern: cut',
       'old-bugfix: review',
+      'old-concern: cut',
       'old-epic: discovery',
       'plan-feature: build',
       'reviewed-feature: review',
       'reviewing-feature: review',
     ]);
+    assert.deepStrictEqual([board('unit', 'old-concern').now, all.find(({ unit }) => unit === 'old-concern').standing], [{ phase: 'cut', since: null }, AT_THE_CUT]);
     const drawn = all.filter(({ unit }) => unit !== 'built-feature');
     assert.deepStrictEqual(drawn.map(({ phase }) => phase), drawn.map(({ unit }) => board('unit', unit).now.phase), 'S1: All work places each unit where its tab does');
   });

@@ -46,8 +46,8 @@ const { dayMonth } = require('../dates.cjs');
 /**
  * @typedef {object} TypeSection
  * @property {string} label
- * @property {'features'|'bugfixes'|'quick_fixes'|'cross_cutting'|'epics'} group
- * @property {'feature'|'bugfix'|'quick-fix'|'cross-cutting'|'epic'} type
+ * @property {'features'|'bugfixes'|'quick_fixes'|'epics'} group
+ * @property {'feature'|'bugfix'|'quick-fix'|'epic'} type
  */
 
 // Display and numbering order of the type sections.
@@ -56,7 +56,6 @@ const SECTIONS = [
   { label: 'Features:', group: 'features', type: 'feature' },
   { label: 'Bugfixes:', group: 'bugfixes', type: 'bugfix' },
   { label: 'Quick Fixes:', group: 'quick_fixes', type: 'quick-fix' },
-  { label: 'Cross-Cutting:', group: 'cross_cutting', type: 'cross-cutting' },
   { label: 'Epics:', group: 'epics', type: 'epic' },
 ];
 
@@ -180,15 +179,17 @@ function startOverview(detail) {
 // ---------------------------------------------------------------------------
 
 // A finalising unit's entry reads `Finalise …` — the continue skill it routes
-// to presents the completion gate. Messages waiting on the unit's topic cue
-// `mail waiting` after the tail, as the epic rows carry it.
+// to presents the completion gate. Its tail names the unit's own type: a
+// migrated unit of a retired type is listed with the features. Messages
+// waiting on the unit's topic cue `mail waiting` after the tail, as the epic
+// rows carry it.
 /** @param {WorkUnitEntry} unit @param {TypeSection['type']} type @returns {LabelParts} */
 function continueLabel(unit, type) {
   const t = titlecase(unit.name);
   if (type === 'epic') return { head: `Continue "${t}"`, tail: 'epic' };
   return {
     head: `${unit.finalising ? 'Finalise' : 'Continue'} "${t}"`,
-    tail: `${type}, ${unit.phase_label}`,
+    tail: `${unit.work_type}, ${unit.phase_label}`,
     cue: (unit.mail_phases || []).length > 0 ? 'mail waiting' : undefined,
   };
 }
@@ -211,7 +212,7 @@ function startMenu(detail) {
       numbered.push({
         key: String(numbered.length + 1),
         action: 'continue_work_unit',
-        work_type: s.type,
+        work_type: u.work_type,
         work_unit: u.name,
         route: `/${continueSkill(s.type)} ${u.name}`,
         label: continueLabel(u, s.type),
@@ -229,7 +230,6 @@ function startMenu(detail) {
     { key: 'e', word: 'epic', action: 'start_new', pre_seed: 'epic', route: null, label: 'Start new epic' },
     { key: 'b', word: 'bugfix', action: 'start_new', pre_seed: 'bugfix', route: null, label: 'Start new bugfix' },
     { key: 'q', word: 'quick-fix', action: 'start_new', pre_seed: 'quick-fix', route: null, label: 'Start new quick-fix' },
-    { key: 'c', word: 'cross-cutting', action: 'start_new', pre_seed: 'cross-cutting', route: null, label: 'Start new cross-cutting concern' },
   );
   if (detail.state.has_inbox) {
     options.push({ key: 'i', word: 'inbox', action: 'view_inbox', route: null, label: 'View the inbox and triage its items' });
@@ -278,7 +278,7 @@ function emptyOverview(detail) {
 
 /**
  * The empty-state start menu — the product's conversation and the roadmap
- * once it exists, then the six start-new options with
+ * once it exists, then the five start-new options with
  * pipeline-shape labels, `i` only with a live inbox, `v` only with closed
  * work units. Same key shape as startMenu, so the ACTIONS table and routing
  * are uniform.
@@ -296,7 +296,6 @@ function emptyMenu(detail) {
     { key: 'e', word: 'epic', action: 'start_new', pre_seed: 'epic', route: null, label: 'Multiple topics, multi-session: each discussed, then one spec → build → review' },
     { key: 'b', word: 'bugfix', action: 'start_new', pre_seed: 'bugfix', route: null, label: 'Investigation → spec → build → review' },
     { key: 'q', word: 'quick-fix', action: 'start_new', pre_seed: 'quick-fix', route: null, label: 'Scoping → implement → review (no formal planning)' },
-    { key: 'c', word: 'cross-cutting', action: 'start_new', pre_seed: 'cross-cutting', route: null, label: 'Discussion → spec (patterns or policies that inform other work)' },
   );
   if (detail.state.has_inbox) {
     const n = detail.state.inbox_count;
@@ -581,7 +580,7 @@ function workingSetDropGate(ws) {
  */
 function manageListView(detail) {
   /** @type {ManageRow[]} */
-  const rows = SECTIONS.flatMap((s) => detail[s.group].work_units.map((u) => ({ work_type: s.type, work_unit: u.name })))
+  const rows = SECTIONS.flatMap((s) => detail[s.group].work_units.map((u) => ({ work_type: u.work_type, work_unit: u.name })))
     .map((r, i) => ({ n: i + 1, ...r }));
 
   const data = [

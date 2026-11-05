@@ -400,7 +400,7 @@ describe('gate payload — every gateway verb', () => {
     },
     'leeway-continue-linear': {
       index: [refused()],
-      view: [ungated('view', 'checkout'), gated('view', 'crash-fix'), gated('view', 'typo'), ungated('view', 'logging'), ungated('view', 'nowhere')],
+      view: [ungated('view', 'checkout'), gated('view', 'crash-fix'), gated('view', 'typo'), ungated('view', 'nowhere')],
       fallback: [refused('checkout')],
     },
     'leeway-continue-epic': {
@@ -498,7 +498,6 @@ describe('gate payload — every gateway verb', () => {
     concluded('checkout', 'feature', 'discussion', 'specification');
     concluded('crash-fix', 'bugfix', 'investigation', 'specification');
     concluded('typo', 'quick-fix', 'scoping', 'implementation');
-    concluded('logging', 'cross-cutting', 'discussion', 'specification');
     createManifest(dir, 'payments', { phases: { discussion: { items: { payments: { status: 'in-progress' } } } } });
     createFile(dir, '.leeway/payments/topics/payments/mail/001.md', '# A message\n');
     createManifest(dir, 'done-feat', { status: 'completed', phases: { review: { items: { 'done-feat': { status: 'completed' } } } } });

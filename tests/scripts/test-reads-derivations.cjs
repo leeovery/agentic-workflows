@@ -1455,7 +1455,7 @@ describe('reads + derivations', () => {
     });
 
     it('mail is raised in the phase a work type talks its topics through — a bugfix\'s investigation, a quick-fix\'s none', () => {
-      assert.deepStrictEqual(['epic', 'feature', 'cross-cutting', 'bugfix', 'quick-fix'].map(mailPhase), ['discussion', 'discussion', 'discussion', 'investigation', null]);
+      assert.deepStrictEqual(['epic', 'feature', 'bugfix', 'quick-fix'].map(mailPhase), ['discussion', 'discussion', 'investigation', null]);
     });
 
     it('a single-topic unit\'s mail phases read its one mailbox', () => {

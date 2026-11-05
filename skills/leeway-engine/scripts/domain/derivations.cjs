@@ -13,7 +13,7 @@ const { fileExists, filesChecksum, loadProjectManifest } = require('./reads.cjs'
 const { titlecase } = require('./conventions.cjs');
 const { RECORDS_DIR } = require('../kernel/knowledge/files.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
-const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TOPIC_PHASES, TERMINAL_STATUSES, BUILD_PHASES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, illegalNameReason, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
+const { WORK_TYPE_PIPELINES, LEGACY_WORK_TYPES, DERIVED_PHASES, TOPIC_PHASES, TERMINAL_STATUSES, BUILD_PHASES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, illegalNameReason, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
 
 /**
  * Whether the unit's build has begun: ready to build's yes recorded on its
@@ -110,14 +110,25 @@ function buildLength(manifest) {
 }
 
 /**
- * Whether the unit waits on the migration's cut: built under the old plan,
- * of a type the build serves — never a quick-fix, whose scoping keeps its
- * own spec and plan items, nor a cross-cutting concern, which builds
- * nothing. Its menus show it waiting, with no route into its work (P12).
+ * Why a unit of a type the reshape retires has no way into its work, or null
+ * for any other: it is read until the reshape's 29.17 cut takes it (19.6.7).
+ * @param {Record<string, any>} manifest @returns {string|null}
+ */
+function retiredRefusal(manifest) {
+  return Object.hasOwn(LEGACY_WORK_TYPES, manifest.work_type)
+    ? `${manifest.name} is a ${manifest.work_type} unit, a type the reshape retires — it waits on the reshape's 29.17 migration, and nothing is done in it until then`
+    : null;
+}
+
+/**
+ * Whether the unit waits on the migration's cut: of a type the reshape
+ * retires, or built under the old plan, of a type the build serves — never
+ * a quick-fix, whose scoping keeps its own spec and plan items. Its menus
+ * show it waiting, with no route into its work (P12).
  * @param {Record<string, any>} manifest
  */
 function awaitsCut(manifest) {
-  return ['epic', 'feature', 'bugfix'].includes(manifest.work_type) && legacyBuild(manifest);
+  return retiredRefusal(manifest) !== null || (['epic', 'feature', 'bugfix'].includes(manifest.work_type) && legacyBuild(manifest));
 }
 
 /**
@@ -131,14 +142,16 @@ function buildByCut(manifest) {
 
 /**
  * Why the unit's build by its cut cannot be entered, nor its review phase
- * or its finish reached, with its way on, or null where it can: a unit
- * built under the old plan, a quick-fix — its fixes built at its own arm of
- * the build's entry (`quickFixBuild`), its close and its review on request
- * not yet — and a build not begun.
+ * or its finish reached, with its way on, or null where it can: a unit of a
+ * retired type, a unit built under the old plan, a quick-fix — its fixes
+ * built at its own arm of the build's entry (`quickFixBuild`), its close and
+ * its review on request not yet — and a build not begun.
  * @param {Record<string, any>} manifest @returns {string|null}
  */
 function buildRefusal(manifest) {
   const unit = manifest.name;
+  const retired = retiredRefusal(manifest);
+  if (retired !== null) return retired;
   if (legacyBuild(manifest)) return `${unit} was built under the old plan, and its build is entered once the reshape's 29.17 migration has cut it`;
   if (quickFixBuild(manifest)) return `${unit} is a quick-fix, whose close and review are built with the reshape's 29.15 — until then its fixes are built at enter implementation ${unit}`;
   return buildBegun(manifest) ? null : `${unit}'s build has not begun — ready to build's yes begins it: render ready-to-build ${unit}`;
@@ -651,18 +664,18 @@ function legacyNext(manifest) {
   if (ps('planning') === 'completed') return { next_phase: 'implementation', phase_label: 'ready for implementation' };
   if (ps('planning') === 'in-progress') return { next_phase: 'planning', phase_label: 'planning (in-progress)' };
   if (ps('specification') !== 'completed') return null;
-  return manifest.work_type === 'cross-cutting'
-    ? { next_phase: 'done', phase_label: 'pipeline complete' }
-    : { next_phase: 'planning', phase_label: 'ready for planning' };
+  return { next_phase: 'planning', phase_label: 'ready for planning' };
 }
 
 /**
  * Where the unit's work goes next, and the label the menus show for it,
- * `specWritten` saying whether its spec is written (phaseStatus).
+ * `specWritten` saying whether its spec is written (phaseStatus). A unit of
+ * a retired type goes nowhere: it waits on the migration's cut.
  * @param {Record<string, any>} manifest @param {boolean} [specWritten]
  * @returns {{next_phase: string, phase_label: string}}
  */
 function computeNextPhase(manifest, specWritten = false) {
+  if (retiredRefusal(manifest) !== null) return { next_phase: 'done', phase_label: 'waiting on the migration\'s cut' };
   if (buildByCut(manifest)) return buildNext(manifest);
   const wt = manifest.work_type;
 
@@ -773,7 +786,8 @@ function computeInProgressPhases(manifest, pipeline, specWritten = false) {
  * earlier phase means the unit is mid-revisit, not finalising: the phase in
  * flight is the next action, and completing the unit now would abandon the
  * revisit. A unit waiting on the migration's cut is never finalising: it
- * offers no way on but the migration (P12). The one derivation both the start
+ * offers no way on but the migration (P12); a retired type's keeps its
+ * waiting label, whatever its items have in flight. The one derivation both the start
  * dashboard and the single-topic work-unit detail read, so the two can never
  * disagree.
  * @param {object} manifest
@@ -786,7 +800,7 @@ function computeUnitPhaseState(manifest, pipeline, specWritten = false) {
   const inProgress = computeInProgressPhases(manifest, pipeline, specWritten);
   let nextPhase = state.next_phase;
   let phaseLabel = state.phase_label;
-  if (nextPhase === 'done' && inProgress.length > 0) {
+  if (nextPhase === 'done' && inProgress.length > 0 && retiredRefusal(manifest) === null) {
     nextPhase = inProgress[0];
     phaseLabel = `${inProgress[0]} (in-progress)`;
   }
@@ -1307,6 +1321,7 @@ module.exports = {
   isFixPhase,
   legacyBuild,
   awaitsCut,
+  retiredRefusal,
   buildByCut,
   buildRefusal,
   FIXES_PHASE,

@@ -7,7 +7,8 @@
 // spec's refusal (spec-entry.cjs) holds the unit to its first two parts.
 // - The unit: one this project has, in progress — a cancelled unit
 //   reactivated first, a completed one closed to new work.
-// - Its phase: one its work type's pipeline holds.
+// - Its phase: one its work type's pipeline holds — a type the reshape
+//   retires holds none.
 // - The topic: a name that is one, a topic the unit holds — an epic's map
 //   names them, a single-topic unit's is the unit — and none once the unit
 //   is past its spec (spec-standing.cjs), from which a change is settled in
@@ -26,7 +27,7 @@
 const { PRODUCT, WORK_TYPE_PIPELINES, illegalNameReason, workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { hasTopic, manifestOf } = require('./ledger-units.cjs');
-const { computeNextPhase, computeTopicLifecycle, itemOf, postponedStillWaits } = require('./derivations.cjs');
+const { computeNextPhase, computeTopicLifecycle, itemOf, postponedStillWaits, retiredRefusal } = require('./derivations.cjs');
 const { pastSpecRefusal } = require('./spec-standing.cjs');
 
 /**
@@ -75,11 +76,14 @@ function unitInProgress(cwd, unit) {
 }
 
 /**
- * Why the unit's work type has no place for the phase, naming its phases,
- * or null where it has; never discovery, which every work type opens on.
+ * Why the unit's work type has no place for the phase, naming its phases —
+ * a retired type none, its discovery among them — or null where it has;
+ * never discovery for any other, which every work type opens on.
  * @param {Record<string, any>} manifest @param {string} phase @returns {string|null}
  */
 function phaseHeldRefusal(manifest, phase) {
+  const retired = retiredRefusal(manifest);
+  if (retired !== null) return retired;
   if (phase === 'discovery') return null;
   const pipeline = WORK_TYPE_PIPELINES[/** @type {keyof typeof WORK_TYPE_PIPELINES} */ (manifest.work_type)] ?? [];
   return pipeline.includes(phase) ? null : `a ${manifest.work_type} has no ${phase} — its phases are ${pipeline.join(', ')}`;
