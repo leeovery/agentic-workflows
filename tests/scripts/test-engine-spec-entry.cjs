@@ -8,9 +8,10 @@
 // postponed, each named by the name it goes by, let in once they are
 // postponed to the roadmap (11.S1, 18.S21, 18.5.2), and an epic with no
 // live topic, its map unshaped or every topic set aside; a feature's topic
-// not yet decided, a bugfix's investigation not yet concluded; a quick-fix
-// (11.1.6) and a migrated cross-cutting unit, a type the reshape retires
-// (19.6.1); a topic named; and, for
+// not yet closed into its spec — its decided checklist closed, nothing
+// delivered to it since (11.2.1, 9.7.9) — a bugfix's investigation not yet
+// concluded; a quick-fix (11.1.6) and a migrated cross-cutting unit, a type
+// the reshape retires (19.6.1); a topic named; and, for
 // every verb that holds the spec to its refusal, a unit not in progress.
 // What it writes: nothing but where the conversation is working (4.11.2),
 // starting nothing and committing nothing. What it reads: each live topic's
@@ -55,6 +56,9 @@ const MADE = Object.freeze({ by: 'claude', who_moved_whom: 'none' });
 
 // A process that no longer runs.
 const GONE = '2147483646';
+
+/** The refusal of the feature `solo` while its topic has not closed into its spec. */
+const SOLO_WAITS = 'solo\'s spec waits until its discussion closes, nothing of the person\'s open and its closing pass run — its discussion carries on: engine enter discussion solo';
 
 /** A map row. @param {number} order @param {Record<string, unknown>} [marks] */
 const row = (order, marks = {}) => ({ order, summary: `Topic ${order}`, source: 'discovery', ...marks });
@@ -173,12 +177,18 @@ describe('what cannot enter the spec is refused, naming the way on, and nothing 
     assert.deepStrictEqual([refused(['unshaped']), refused(['aside'])], [none('unshaped'), none('aside')]);
   });
 
-  it('a feature whose topic is not decided, and a bugfix whose investigation has not concluded; each enters once it has', () => {
-    assert.deepStrictEqual([refused(['solo']), refused(['crash'])], [
-      'solo\'s spec waits until its topic is decided — its discussion carries on: engine enter discussion solo',
-      'crash\'s spec waits until its investigation concludes — the investigation carries on, from the start menu',
-    ]);
+  it('a feature whose topic has not closed, and a bugfix whose investigation has not concluded; each enters once it has', () => {
+    assert.deepStrictEqual([refused(['solo']), refused(['crash'])], [SOLO_WAITS, 'crash\'s spec waits until its investigation concludes — the investigation carries on, from the start menu']);
     assert.deepStrictEqual([enter('tally').res.entered, enter('fixed').res.entered], [true, true]);
+  });
+
+  it('a feature\'s topic once it has closed into its spec, undecided: its decided checklist closed, a message delivered since voiding the close until it closes again (11.2.1, 9.7.9)', () => {
+    const states = [{ closed: '2026-10-01T09:00:00.000Z' }, { closed: '2026-10-01T09:00:00.000Z', voided: '2026-10-01T10:00:00.000Z' }, { closed: '2026-10-01T11:00:00.000Z', voided: '2026-10-01T10:00:00.000Z' }].map((record) => {
+      createManifest(dir, 'solo', { ...readManifest(dir, 'solo'), checklists: { decided: { solo: { items: {}, ...record } } } });
+      return specEntryRefusal(dir, 'solo');
+    });
+    assert.deepStrictEqual(states, [null, SOLO_WAITS, null]);
+    assert.strictEqual(readManifest(dir, 'solo').phases.discussion.items.solo.status, 'in-progress', 'the one screen marks it decided');
   });
 
   it('a quick-fix, which has no spec (11.1.6), a migrated cross-cutting unit, whose type goes (19.6.1), and a topic named', () => {

@@ -113,7 +113,7 @@ describe('a topic set back in progress (P9, 10.2.7)', () => {
     assert.strictEqual(refusedPristine(dir(), ['decided', 'yes', UNIT, 'note-window'], { env: SESSION }).error, `decided yes: ${voided}`);
     markAllButTheClosingPass(dir(), UNIT, 'note-window');
     close();
-    const earlier = 'what is staged for note-window was drawn for an earlier close — it is staged again with --file';
+    const earlier = 'what is staged for note-window was drawn for an earlier close — render decided fumi.note-window --file <payload.json> stages it again';
     assert.strictEqual(refusedPristine(dir(), ['render', 'decided', `${UNIT}.note-window`], { env: SESSION }).error, `render decided: ${earlier}`);
     assert.strictEqual(refusedPristine(dir(), ['decided', 'yes', UNIT, 'note-window'], { env: SESSION }).error, `decided yes: ${earlier}`);
   });

@@ -592,6 +592,9 @@ function answerGate(sim, name, ...answer) {
   return answered;
 }
 
+/** The gates the person answered, in order, as the trust log has them. @param {Sim} sim @returns {string[]} */
+const gatesAnswered = (sim) => trustLines(sim).map((line) => JSON.parse(line)).filter(({ type }) => type === 'gate').map(({ gate }) => gate);
+
 /** Claude's items of the decided checklist; the engine works out the rest. */
 const DECIDED_ITEMS = ['closing-pass', 'decisions-entered', 'replacements-checked', 'conflicts-read', 'findings-rerun', 'product-lines-shown'];
 
@@ -599,7 +602,9 @@ const DECIDED_ITEMS = ['closing-pass', 'decisions-entered', 'replacements-checke
  * A discussion closed as the prose closes it (9.7): the map drawn, no agent
  * left to wait for, the decided checklist worked and closed, Claude's
  * payload staged on the decided screen, and the person's yes at its gate
- * run. Answers what the yes answered.
+ * run — a feature's topic closing into its spec with no gate, its payload
+ * staged for ready to build's screen (11.2.1). Answers what the yes, or a
+ * feature's stage, answered.
  * @param {Sim} sim @param {string} wu @param {string} topic
  * @param {{lines: object[], candidates: object[]}} [payload]
  */
@@ -609,6 +614,7 @@ function decideTopic(sim, wu, topic, payload = { lines: [], candidates: [] }) {
   for (const item of DECIDED_ITEMS) sim.run(['checklist', 'done', 'decided', wu, topic, item]);
   sim.run(['checklist', 'close', 'decided', wu, topic]);
   const file = sim.write(`.leeway/.cache/scratch/decided-${topic}.json`, payload);
+  if (sim.manifest(wu).work_type === 'feature') return sim.run(['decided', 'stage', wu, topic, '--file', file]);
   assert.match(sim.render(['decided', `${wu}.${topic}`, '--file', file], { expect: 'content' }), /^=== MENU: decided /m);
   const { next } = answerGate(sim, 'decided', '--pick', 'y');
   return sim.run(next.argv);
@@ -1339,6 +1345,6 @@ function finished(sim, wu, { closed = false } = {}) {
 }
 
 module.exports = {
-  Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicBuildPick, linearBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed,
+  Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, gatesAnswered, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicBuildPick, linearBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed,
   builders, taskBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finishClosed, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic,
 };

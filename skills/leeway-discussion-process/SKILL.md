@@ -20,7 +20,7 @@ Load **[framework.md](../leeway-shared/references/framework.md)** and follow its
 
 ## Done When
 
-The topic's `decided` checklist is closed and the person has said yes at its decided gate: the engine then holds the topic decided, with the product-record lines and the candidates the yes covered.
+The topic's `decided` checklist is closed and the person has said yes at its decided gate: the engine then holds the topic decided, with the product-record lines and the candidates the yes covered. A feature's topic has no decided gate: it is done once its checklist is closed and its payload staged into the spec, the person's yes given at ready to build.
 
 ## Entering
 
@@ -86,7 +86,7 @@ Once the conversation has got going, a background review reads the topic with a 
 
 ### Other Topics
 
-A detail that informs a decision within this topic stays here: token refresh in an auth topic. A point whose home is another topic — the caching strategy that surfaces because tokens need caching — is not this topic's to settle, and a decision another topic owns changes only through its mailbox: load **[sending-a-message.md](references/sending-a-message.md)** and follow its instructions as written. Talk that rises past every topic, to the epic as a whole or to the product, is **Moving Up**.
+A detail that informs a decision within this topic stays here: token refresh in an auth topic. A point whose home is another topic — the caching strategy that surfaces because tokens need caching — is not this topic's to settle, nor in a single-topic unit is a point that needs decisions of its own, and a decision another topic owns changes only through its mailbox: load **[sending-a-message.md](references/sending-a-message.md)** and follow its instructions as written. Talk that rises past every topic, to the epic as a whole or to the product, is **Moving Up**.
 
 ### The Log
 
@@ -104,14 +104,14 @@ Content is one JSON object on stdin; `{place}` is `{work_unit}.discussion.{topic
 - A call you lean on → `raise {place} --answers {id}`; a fact only the person holds → the same with `--fact`; a decision you would replace → `raise {place} --replaces {id} --reason {reason}`.
 - The topic as it stands → `ledger record|map|since|affected|product {work_unit} {topic}`, `render map {work_unit}.{topic}`.
 - A spike, and the files an entry links → `asset spike|add|status|lift`.
-- Mail → `topic mailbox`, `topic answered`; a message out → `topic send`.
+- Mail → `topic mailbox`, `topic answered`; a message out → `topic send`; a single-topic unit's point of its own → `workunit pivot`, `topic add`.
 - An agent → `agent dispatch`, then `brief {role}`, then the Agent call with the agent and the pointer it answers; its report → `agent scan|ack|surface|incorporate`.
 - Earlier work → `knowledge query "{term}" …`; a search in depth after one → `brief plain-search`.
 - An experiment → `experiment create`, then `render experiment-spawn-gate`.
 - Something put off for later → `render horizon-pick --park`, `roadmap add`, then for a question `ledger move --to roadmap:{item}`.
 - A topic leaving → `render postpone-gate|horizon-pick|cancel-gate`, whose `next` runs `topic postpone`, `topic cancel` or `workunit cancel`; then `render topic-receipt|workunit-receipt`.
 - The talk moving up → `render wait-agents`, then `enter discovery {work_unit}|product --move`.
-- The close → `checklist show|done|skip|close decided {work_unit} {topic}`, `render wait-agents`, `render decided`, `decided unstrike`.
+- The close → `checklist show|done|skip|close decided {work_unit} {topic}`, `render wait-agents`, `render decided`, `decided unstrike`; a feature's → `decided stage`.
 - A gate's answer → `gate "{name}" --pick {key}`, or `--typed {key}` for a typed row such as a Comment.
 
 ## Closing
@@ -126,15 +126,21 @@ When nothing of the person's is open, the topic closes on its `decided` checklis
 
    Once it is written, mark the item done.
 4. Close it: `checklist close decided {work_unit} {topic}`.
-5. Stage the payload and draw the screen, emitting its sections verbatim per their markers:
+5. Stage the payload. An epic's topic draws the decided screen, emitting its sections verbatim per their markers:
 
    ```bash
    node .claude/skills/leeway-engine/scripts/engine.cjs render decided {work_unit}.{topic} --file .leeway/.cache/{work_unit}/discussion/{topic}/decided-payload.json
    ```
 
+   A feature's topic closes into its spec with no gate, what it decided shown with ready to build; stage it and follow its `next`:
+
+   ```bash
+   node .claude/skills/leeway-engine/scripts/engine.cjs decided stage {work_unit} {topic} --file .leeway/.cache/{work_unit}/discussion/{topic}/decided-payload.json
+   ```
+
    A line widening a decision the product record already widens is refused, naming that entry: leave the line out of the payload, stage it again, and say in a line that it is in the record already. A line widening the replacement of a decision a product-record line rests on replaces that line at the yes, and the screen shows what it replaces. The yes refuses while a product-record line rests on a decision of this topic replaced since and nothing staged replaces or withdraws it, naming the line. Where the rule still holds, stage a line widening the replacement, in the same words; where it should go, withdraw the line. Then draw the screen again.
 
-The screen asks a verdict of each call the person changed, one at a time: each answer goes to `gate`, whose `next` gives the verdict; then draw `render decided {work_unit}.{topic}` again. A Comment that changes a product-record line changes the payload, staged again with `--file`. One keeping a struck candidate after all undoes its strike, `decided unstrike {work_unit} {topic} {n}`, whose `next` draws the screen. Something new on the topic after the close — a message, a question opened — is worked, the checklist closed again and the payload staged again. A refused yes names what to fix: fix it, then draw the screen again. The yes answers a `next`: follow it.
+An epic's screen asks a verdict of each call the person changed, one at a time: each answer goes to `gate`, whose `next` gives the verdict; then draw `render decided {work_unit}.{topic}` again. A Comment that changes a product-record line changes the payload, staged again with `--file`. One keeping a struck candidate after all undoes its strike, `decided unstrike {work_unit} {topic} {n}`, whose `next` draws the screen. Something new on the topic after the close — a message, a question opened — is worked, the checklist closed again and the payload staged again. A refused yes names what to fix: fix it, then draw the screen again. The yes answers a `next`: follow it.
 
 ## Backlogging
 

@@ -6,7 +6,13 @@
 
 A point another topic owns goes to it as a message, and that topic's session decides it in its own frame. Never visit the target: its record and log stay out of this conversation, and no agent carries the message.
 
-- **Only between topics.** A single-topic unit has no other topic: the point goes aside through the skill's **Backlogging**, or, where the work has outgrown one topic, load **[pivot-to-epic.md](../../leeway-shared/references/pivot-to-epic.md)** with work_unit = `{work_unit}` first.
+- **Only between topics.** A single-topic unit has no other topic: the point goes aside through the skill's **Backlogging**, or, where it needs decisions of its own, offer the pivot to an epic in a line; only the person's yes moves it. On it, load **[pivot-to-epic.md](../../leeway-shared/references/pivot-to-epic.md)** with work_unit = `{work_unit}`, then add the point to the map as a new topic, its brief drafted at `.leeway/.cache/{work_unit}/discussion/{topic}/brief-{name}.md` — what the point is, where it came up, why it matters, and its open questions — and emit its DISPLAY section verbatim per its marker:
+
+  ```bash
+  node .claude/skills/leeway-engine/scripts/engine.cjs topic add {work_unit} {name} --summary "{summary}" --brief .leeway/.cache/{work_unit}/discussion/{topic}/brief-{name}.md
+  ```
+
+  The message goes to it, and the conversation carries on in this topic.
 - **A topic on the map.** Name the target as the map names it, never a part of one. Work no topic owns is no message: it is a candidate for the decided screen.
 - **One ask.** What this topic found, the reasoning, and what the target is asked to decide. A change to a decision the target owns is asked for, never written here.
 - **A question that moves.** A question on this topic's map moves first, `ledger move {work_unit}.discussion.{topic} --question {id} --to {target}`; the message carries it.

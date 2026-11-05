@@ -2,10 +2,19 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: a topic's close (9.7) — the decided screen, `render decided`,
-// and the answers its gates lead to, `decided yes|strike`; and the wait for
-// the topic's agents still running, `render wait-agents` (9.7.8). Its
-// screens are drawn by projections/decided.cjs.
+// and the answers its gates lead to, `decided yes|strike`; a feature's close
+// into its spec, `decided stage`; and the wait for the topic's agents still
+// running, `render wait-agents` (9.7.8). Its screens are drawn by
+// projections/decided.cjs.
 //
+// - A feature's topic closes into its spec with no gate (11.2.1): once its
+//   checklist is closed, `decided stage` stages Claude's payload as the
+//   screen's `--file` does, and answers the handoff into the spec — or,
+//   staged again once the spec is written, carries on there. Its decided
+//   shows on ready to build's screen, whose yes takes the close as the
+//   decided gate's yes does (ready-to-build.cjs, 9.7.6), so the decided
+//   screen and its yes refuse a feature, naming the way on; its strike is
+//   the decided strike, drawing ready to build again.
 // - The screen shows once the topic's `decided` checklist is closed, every
 //   engine item holding still and the close not taken by an earlier yes
 //   (checklist.cjs): a topic a message set back in progress (10.2.7) is
@@ -74,12 +83,12 @@
 //   topic it added counts and one set aside meanwhile does not: an epic
 //   whose every live topic is now decided goes into its spec, at the unit,
 //   any other epic to its menu, where the person picks the next topic
-//   (24.1.2, 8.8.13); a unit of one topic into its spec, at the unit
-//   (9.7.6 waits on 29.15).
+//   (24.1.2, 8.8.13); any other unit into its spec, at the unit.
 // - `decided strike <n>` strikes the n-th candidate, numbered as the screen
 //   shows them, in the staged payload alone, and answers the screen again
-//   as what comes next (P8); `decided unstrike <n>` undoes it, for a person
-//   who keeps the candidate after all.
+//   as what comes next (P8) — a feature's ready to build, `--page` carried
+//   to it; `decided unstrike <n>` undoes it, for a person who keeps the
+//   candidate after all.
 // - The wait for agents shows only while one of the topic's agents is
 //   running, and is empty otherwise; a report that lands after the session
 //   left is taken in at the next entry (enter.cjs).
@@ -99,7 +108,7 @@ const { verdictAsked } = require('./ledger-verdicts.cjs');
 const { landRaised, checkRaised } = require('./ledger-write.cjs');
 const { itemOf, topicTitle, dismissedNames } = require('./derivations.cjs');
 const { unitInProgress } = require('./topic-standing.cjs');
-const { topicsSettled } = require('./spec-standing.cjs');
+const { topicsSettled, specStanding } = require('./spec-standing.cjs');
 const { decidedClose, takeDecidedClose } = require('./checklist.cjs');
 const { checkTopics, placeTopics, installBriefs, landedPaths, dismiss } = require('./discovery-map.cjs');
 const { planRoadmapBatch, parkItems } = require('./roadmap.cjs');
@@ -145,8 +154,9 @@ const { filled, shaped, readPayload, stage: writeStaged, stagedAt, refusedAs, re
 const PHASE = 'discussion';
 const DECIDED_USAGE = [
   'decided yes <work-unit> <topic>',
-  'decided strike <work-unit> <topic> <n>',
-  'decided unstrike <work-unit> <topic> <n>',
+  'decided strike <work-unit> <topic> <n> [--page]',
+  'decided unstrike <work-unit> <topic> <n> [--page]',
+  'decided stage <work-unit> <topic> --file <payload.json>',
 ].join('\n');
 
 /** Where the topic's staged payload sits in its cache. @param {string} cwd @param {string} unit @param {string} topic */
@@ -167,6 +177,22 @@ function openTopic(cwd, unit, topic) {
   if (status === undefined) throw new Error(`${unit} has no discussion of "${topic}"`);
   if (status === 'completed') throw new Error(`${topic} is decided already — a message to it sets it back in progress`);
   if (status !== 'in-progress') throw new Error(`${topic}'s discussion is ${status}, not in progress`);
+  return manifest;
+}
+
+/** Whether the unit is a feature, whose topic closes into its spec with no gate, its decided shown on ready to build's screen (11.2.1, 9.7.6). @param {Record<string, any>} manifest */
+const closesIntoSpec = (manifest) => manifest.work_type === 'feature';
+
+/**
+ * The topic open as the decided gate stands on it: refused, past
+ * `openTopic`'s refusals, for a feature, naming the way on.
+ * @param {string} cwd @param {string} unit @param {string} topic
+ */
+function gateTopic(cwd, unit, topic) {
+  const manifest = openTopic(cwd, unit, topic);
+  if (closesIntoSpec(manifest)) {
+    throw new Error(`${unit} is a feature, whose topic closes into its spec with no gate, its decided shown with ready to build — once decided's checklist is closed, decided stage ${unit} ${topic} --file <payload.json> stages Claude's lines and candidates and hands off into the spec`);
+  }
   return manifest;
 }
 
@@ -428,13 +454,16 @@ function stagedBefore(cwd, unit, topic) {
 
 /**
  * The payload staged for the topic's close: refused where none is, or it
- * was staged against an earlier close.
- * @param {string} cwd @param {string} unit @param {string} topic @param {string} closed
+ * was staged against an earlier close, each refusal naming the call that
+ * stages it.
+ * @param {string} cwd @param {Record<string, any>} manifest @param {string} topic @param {string} closed
  * @returns {Staged}
  */
-function stagedFor(cwd, unit, topic, closed) {
-  const staged = /** @type {Staged} */ (stagedAt(stagedFile(cwd, unit, topic), `nothing is staged for ${topic} — render decided ${unit}.${topic} --file <payload.json> stages Claude's lines and candidates`));
-  if (staged.closed !== closed) throw new Error(`what is staged for ${topic} was drawn for an earlier close — it is staged again with --file`);
+function stagedFor(cwd, manifest, topic, closed) {
+  const unit = manifest.name;
+  const stages = `${closesIntoSpec(manifest) ? `decided stage ${unit} ${topic}` : `render decided ${unit}.${topic}`} --file <payload.json>`;
+  const staged = /** @type {Staged} */ (stagedAt(stagedFile(cwd, unit, topic), `nothing is staged for ${topic} — ${stages} stages Claude's lines and candidates`));
+  if (staged.closed !== closed) throw new Error(`what is staged for ${topic} was drawn for an earlier close — ${stages} stages it again`);
   return staged;
 }
 
@@ -459,24 +488,47 @@ function recordSide(shower, root, unit, topic, closed) {
 
 /**
  * What the decided screen needs, refused where it cannot show: the topic
- * open, its checklist closed and the close not taken, and the record read;
- * and `then`, given what it read, the payload staged or read back.
+ * open — as the gate stands on it, or as `open` opens it — its checklist
+ * closed and the close not taken, and the record read; and `then`, given
+ * what it read, the payload staged or read back.
  * @template T
  * @param {string} cwd @param {string} unit @param {string} topic
  * @param {(read: {shower: Shower, root: string, manifest: Record<string, any>, closed: string, skips: import('./checklist.cjs').Skip[], side: ReturnType<typeof recordSide>}) => T} then
+ * @param {typeof openTopic} [open]
  * @returns {T}
  */
-function onClosedTopic(cwd, unit, topic, then) {
+function onClosedTopic(cwd, unit, topic, then, open = gateTopic) {
   /** @type {string[]} */
   const warnings = [];
   try {
-    const manifest = openTopic(cwd, unit, topic);
+    const manifest = open(cwd, unit, topic);
     const { closed, skips } = decidedClose(cwd, unit, topic);
     const root = stateRoot(cwd);
     return readShown(root, warnings, (shower) => then({ shower, root, manifest, closed, skips, side: recordSide(shower, root, unit, topic, closed) }));
   } catch (err) {
     throw carrying(err, warnings);
   }
+}
+
+/**
+ * The topic's close as a screen draws it (closing.cjs), from the record's
+ * side and the payload staged.
+ * @param {Record<string, any>} manifest @param {string} topic @param {ReturnType<typeof recordSide>} side @param {Staged} staged
+ * @returns {import('./projections/closing.cjs').TopicClose}
+ */
+function closeShown(manifest, topic, side, staged) {
+  return {
+    unit: manifest.name,
+    topic,
+    decided: side.decided,
+    carried: side.carried,
+    moved: side.moved,
+    called: side.calls.length,
+    lines: staged.lines.map(({ text, replaces }) => ({ text, replaces: replaces?.text ?? null })),
+    withdrawals: staged.withdrawals.map(({ text, why }) => ({ text, why })),
+    parks: parksCandidates(manifest),
+    candidates: staged.candidates.map(({ name, reason, struck, horizon }) => ({ name, reason, struck, horizon: horizon ?? null })),
+  };
 }
 
 /**
@@ -490,20 +542,12 @@ function decidedSurface(cwd, { dotpath, file, calls }) {
   try {
     const { unit, topic } = topicAddress(stateRoot(cwd), dotpath, 'decided');
     return onClosedTopic(cwd, unit, topic, ({ shower, manifest, closed, skips, side }) => {
-      const staged = file === undefined ? stagedFor(cwd, unit, topic, closed) : stage(cwd, unit, topic, file, { shower, rows: side.rows, manifest, closed });
+      const staged = file === undefined ? stagedFor(cwd, manifest, topic, closed) : stage(cwd, unit, topic, file, { shower, rows: side.rows, manifest, closed });
       return decidedScreen({
-        unit,
-        topic,
+        ...closeShown(manifest, topic, side, staged),
         title: topicTitle(manifest, topic),
-        decided: side.decided,
-        carried: side.carried,
-        moved: side.moved,
         calls: side.calls,
         listed: calls !== undefined,
-        lines: staged.lines.map(({ text, replaces }) => ({ text, replaces: replaces?.text ?? null })),
-        withdrawals: staged.withdrawals.map(({ text, why }) => ({ text, why })),
-        parks: parksCandidates(manifest),
-        candidates: staged.candidates.map(({ name, reason, struck, horizon }) => ({ name, reason, struck, horizon: horizon ?? null })),
         skips: skips.map(({ text, reason }) => ({ text, reason })),
         verdict: side.verdict,
       });
@@ -514,19 +558,32 @@ function decidedSurface(cwd, { dotpath, file, calls }) {
 }
 
 /**
- * `render decided-strike <unit>.<topic>`: the pick of the candidate to
- * strike, from the staged payload, where more than one stands.
- * @param {string} cwd @param {{dotpath?: string}} args
+ * The screen the topic's close is drawn on, by its name and what draws it:
+ * the decided screen, or a feature's ready to build, `--page` carried to it.
+ * @param {Record<string, any>} manifest @param {string} topic @param {boolean} page
+ */
+function closeScreen(manifest, topic, page) {
+  const unit = manifest.name;
+  return closesIntoSpec(manifest)
+    ? { to: 'ready to build', argv: ['render', 'ready-to-build', unit, ...(page ? ['--page'] : [])] }
+    : { to: 'the decided screen', argv: ['render', 'decided', `${unit}.${topic}`] };
+}
+
+/**
+ * `render decided-strike <unit>.<topic> [--page]`: the pick of the
+ * candidate to strike, from the staged payload, where more than one stands.
+ * @param {string} cwd @param {{dotpath?: string, page?: string}} args
  * @returns {string}
  */
-function decidedStrikeSurface(cwd, { dotpath }) {
+function decidedStrikeSurface(cwd, { dotpath, page }) {
   try {
     const { unit, topic } = topicAddress(stateRoot(cwd), dotpath, 'decided-strike');
     const manifest = openTopic(cwd, unit, topic);
     const { closed } = decidedClose(cwd, unit, topic);
-    const { candidates } = stagedFor(cwd, unit, topic, closed);
-    if (candidates.filter(({ struck }) => !struck).length < 2) throw new Error('the pick is for more than one candidate standing — the decided gate strikes a lone one itself');
-    return strikePick({ unit, topic, parks: parksCandidates(manifest), candidates });
+    const { candidates } = stagedFor(cwd, manifest, topic, closed);
+    if (candidates.filter(({ struck }) => !struck).length < 2) throw new Error('the pick is for more than one candidate standing — the gate strikes a lone one itself');
+    const flags = page === undefined ? [] : ['--page'];
+    return strikePick({ unit, topic, parks: parksCandidates(manifest), candidates, flags, back: closeScreen(manifest, topic, page !== undefined) });
   } catch (err) {
     throw refusedAs('render decided-strike', err);
   }
@@ -547,8 +604,7 @@ function waitAgentsSurface(cwd, { dotpath }) {
 
 /**
  * What comes after a topic is decided: an epic's spec once its every live
- * topic is decided, else its menu; a unit of one topic's spec, until a
- * feature's decided is its ready to build (29.15).
+ * topic is decided, else its menu; any other unit's spec.
  * @param {Record<string, any>} manifest as the yes saved it @param {string} unit
  * @returns {import('./projections/surfaces.cjs').Next}
  */
@@ -601,13 +657,14 @@ function withdrawalRaise(unit, { id, line, text, why, now }) {
 }
 
 /**
- * Refused where a product-record line standing relies on a decision of the
- * topic replaced since and nothing staged replaces or withdraws it: the
- * rule it states is widened afresh from the replacement or withdrawn, or
- * the record holds two.
+ * Why the yes refuses where a product-record line standing relies on a
+ * decision of the topic replaced since and nothing staged replaces or
+ * withdraws it — the rule it states is widened afresh from the replacement
+ * or withdrawn, or the record holds two — or null where none does.
  * @param {Shower} shower @param {string} unit @param {string} topic @param {Staged} staged
+ * @returns {string|null}
  */
-function checkReplacedLines(shower, unit, topic, { lines, withdrawals }) {
+function unreplacedLine(shower, unit, topic, { lines, withdrawals }) {
   const { folded } = shower;
   const replacedHere = (/** @type {string} */ id) => {
     const facts = factsOf(folded, id);
@@ -615,9 +672,8 @@ function checkReplacedLines(shower, unit, topic, { lines, withdrawals }) {
   };
   const covered = (/** @type {string} */ id) => lines.some((line) => line.replaces?.id === id) || withdrawals.some((w) => w.line === id);
   const left = productOf(folded).decisions.find((id) => factsOf(folded, id).relies_on.some(replacedHere) && !covered(id));
-  if (left !== undefined) {
-    throw new Error(`the product record's line ${shower.short(left)}, "${shower.show(left).text}", widens a decision of ${topic} replaced since, and nothing staged replaces or withdraws it — a line widening the replacement, or a withdrawal of the line, is staged with --file`);
-  }
+  if (left === undefined) return null;
+  return `the product record's line ${shower.short(left)}, "${shower.show(left).text}", widens a decision of ${topic} replaced since, and nothing staged replaces or withdraws it — a line widening the replacement, or a withdrawal of the line, is staged with --file`;
 }
 
 /**
@@ -642,49 +698,6 @@ function checkLines(cwd, unit, { lines, withdrawals }, warnings) {
 }
 
 /**
- * `decided yes <unit> <topic>`: the person's yes at the decided gate,
- * everything it writes checked before any of it is written.
- * @param {string} cwd @param {string} unit @param {string} topic
- */
-function decidedYes(cwd, unit, topic) {
-  if (handedSession() === null) throw new Error('no conversation to write in — Claude Code hands every command it runs a session id, and this one has none');
-  /** @type {string[]} */
-  const warnings = [];
-  const staged = onClosedTopic(cwd, unit, topic, ({ shower, closed, side }) => {
-    const ready = stagedFor(cwd, unit, topic, closed);
-    if (side.verdict !== null) throw new Error('a verdict is still to ask — render decided asks each before the yes');
-    checkReplacedLines(shower, unit, topic, ready);
-    return ready;
-  });
-  const added = staged.candidates.filter(({ struck }) => !struck);
-  const struck = staged.candidates.filter((candidate) => candidate.struck).map(({ name }) => name);
-  const drafts = checkCandidates(cwd, loadWorkUnitManifest(cwd, unit), topic, added);
-  checkLines(cwd, unit, staged, warnings);
-  const lines = staged.lines.map((line) => lineRaises(unit, line).map((raised) => landRaised(cwd, raised, warnings).landed.id).at(-1));
-  const withdrawn = staged.withdrawals.map((withdrawal) => landRaised(cwd, withdrawalRaise(unit, withdrawal), warnings).landed.id);
-  const at = new Date().toISOString();
-  const { manifest, paths, parked } = withWorkUnitLock(cwd, unit, () => {
-    const fresh = loadWorkUnitManifest(cwd, unit);
-    const taken = landCandidates(cwd, fresh, topic, added);
-    if (struck.length > 0) dismiss(fresh, struck);
-    fresh.phases[PHASE].items[topic].status = 'completed';
-    takeDecidedClose(fresh, topic, at);
-    saveWorkUnitManifest(cwd, unit, fresh);
-    const briefs = taken.entries === null ? [] : installBriefs(cwd, unit, taken.entries, drafts);
-    const paths = [...landedPaths(unit, { briefs, takes: taken.takes }), ...(taken.parked.length > 0 ? [PROJECT_MANIFEST_SPEC] : [])];
-    return { manifest: fresh, paths, parked: taken.parked };
-  });
-  const outcome = commitStateTail(cwd, paths, `decided(${unit}): ${topic}`, warnings);
-  fs.rmSync(stagedFile(cwd, unit, topic), { force: true });
-  /** @type {Record<string, unknown>} */
-  const result = { unit, topic, decided: at, lines, withdrawn, candidates: added.map(({ name }) => name), struck, committed: outcome.committed, next: nextAfter(manifest, unit) };
-  if (parksCandidates(manifest)) result.parked = parked;
-  if (warnings.length > 0) result.warnings = warnings;
-  noteCommitOutcome(result, outcome, `${unit} --state`);
-  return result;
-}
-
-/**
  * The candidates taken, landed under the writer lock the yes holds, before
  * the manifest is saved: an epic's put on its map, as `topic add-batch`
  * puts them, a one-topic unit's parked on the roadmap. Answers what the map
@@ -703,36 +716,154 @@ function landCandidates(cwd, manifest, topic, added) {
   return { ...none, entries, takes: placeTopics(cwd, manifest.name, manifest, entries, landOpts(topic)).takes };
 }
 
+/** @typedef {ReturnType<typeof landCandidates>} Taken */
+
 /**
- * `decided strike|unstrike <unit> <topic> <n>`: the n-th candidate struck,
- * or its strike undone, in the staged payload, answering the screen as
- * what comes next.
- * @param {string} cwd @param {string} unit @param {string} topic @param {string} n @param {boolean} struck
+ * The yes over a topic's staged close — the decided gate's, or a feature's
+ * ready to build's (9.7.6) — every candidate and line checked as its
+ * landing checks it before anything is written, so a refused yes writes
+ * nothing. Answers its steps, run in order: `land`, each line and
+ * withdrawal through the ledger's lock with its commit, their ids; `take`,
+ * under the writer lock before the manifest is saved, the candidates
+ * landed, the struck ones' names recorded as the person's answer, the topic
+ * marked decided and the yes recorded as taking its close, what the
+ * candidates took; `paths`, once the manifest is saved, each brief
+ * installed and what the yes's commit carries; and `done`, once committed,
+ * the staged payload gone.
+ * @param {string} cwd @param {string} unit @param {string} topic @param {Staged} staged @param {string[]} warnings
  */
-function decidedStrike(cwd, unit, topic, n, struck) {
-  openTopic(cwd, unit, topic);
+function closingYes(cwd, unit, topic, staged, warnings) {
+  if (handedSession() === null) throw new Error('no conversation to write in — Claude Code hands every command it runs a session id, and this one has none');
+  const added = staged.candidates.filter(({ struck }) => !struck);
+  const struck = staged.candidates.filter((candidate) => candidate.struck).map(({ name }) => name);
+  const drafts = checkCandidates(cwd, loadWorkUnitManifest(cwd, unit), topic, added);
+  checkLines(cwd, unit, staged, warnings);
+  return {
+    candidates: added.map(({ name }) => name),
+    struck,
+    land: () => ({
+      lines: staged.lines.map((line) => lineRaises(unit, line).map((raised) => landRaised(cwd, raised, warnings).landed.id).at(-1)),
+      withdrawn: staged.withdrawals.map((withdrawal) => landRaised(cwd, withdrawalRaise(unit, withdrawal), warnings).landed.id),
+    }),
+    /** @param {Record<string, any>} manifest @param {string} at @returns {Taken} */
+    take: (manifest, at) => {
+      const taken = landCandidates(cwd, manifest, topic, added);
+      if (struck.length > 0) dismiss(manifest, struck);
+      manifest.phases[PHASE].items[topic].status = 'completed';
+      takeDecidedClose(manifest, topic, at);
+      return taken;
+    },
+    /** @param {Taken} taken */
+    paths: (taken) => {
+      const briefs = taken.entries === null ? [] : installBriefs(cwd, unit, taken.entries, drafts);
+      return [...landedPaths(unit, { briefs, takes: taken.takes }), ...(taken.parked.length > 0 ? [PROJECT_MANIFEST_SPEC] : [])];
+    },
+    done: () => fs.rmSync(stagedFile(cwd, unit, topic), { force: true }),
+  };
+}
+
+/**
+ * `decided yes <unit> <topic>`: the person's yes at the decided gate,
+ * everything it writes checked before any of it is written.
+ * @param {string} cwd @param {string} unit @param {string} topic
+ */
+function decidedYes(cwd, unit, topic) {
+  /** @type {string[]} */
+  const warnings = [];
+  const staged = onClosedTopic(cwd, unit, topic, ({ shower, manifest, closed, side }) => {
+    const ready = stagedFor(cwd, manifest, topic, closed);
+    if (side.verdict !== null) throw new Error('a verdict is still to ask — render decided asks each before the yes');
+    const unreplaced = unreplacedLine(shower, unit, topic, ready);
+    if (unreplaced !== null) throw new Error(unreplaced);
+    return ready;
+  });
+  const yes = closingYes(cwd, unit, topic, staged, warnings);
+  const { lines, withdrawn } = yes.land();
+  const at = new Date().toISOString();
+  const { manifest, paths, parked } = withWorkUnitLock(cwd, unit, () => {
+    const fresh = loadWorkUnitManifest(cwd, unit);
+    const taken = yes.take(fresh, at);
+    saveWorkUnitManifest(cwd, unit, fresh);
+    return { manifest: fresh, paths: yes.paths(taken), parked: taken.parked };
+  });
+  const outcome = commitStateTail(cwd, paths, `decided(${unit}): ${topic}`, warnings);
+  yes.done();
+  /** @type {Record<string, unknown>} */
+  const result = { unit, topic, decided: at, lines, withdrawn, candidates: yes.candidates, struck: yes.struck, committed: outcome.committed, next: nextAfter(manifest, unit) };
+  if (parksCandidates(manifest)) result.parked = parked;
+  if (warnings.length > 0) result.warnings = warnings;
+  noteCommitOutcome(result, outcome, `${unit} --state`);
+  return result;
+}
+
+/**
+ * A feature's topic's close as its one screen, decided and ready to build,
+ * draws it (9.7.6, 11.8.5), read in that screen's pass of the ledger from
+ * the close standing, `closed` (`decidedClose`): refused with nothing
+ * staged for it; else the close as drawn, Claude's calls on the topic, the
+ * departure it asks a verdict of, the payload staged, and why its yes would
+ * refuse, null where it would not.
+ * @param {Shower} shower @param {string} root @param {string} cwd @param {Record<string, any>} manifest @param {string} closed
+ */
+function featureClose(shower, root, cwd, manifest, closed) {
+  const unit = manifest.name;
+  const staged = stagedFor(cwd, manifest, unit, closed);
+  const side = recordSide(shower, root, unit, unit, closed);
+  return { close: closeShown(manifest, unit, side, staged), calls: side.calls, verdict: side.verdict, staged, unreplaced: unreplacedLine(shower, unit, unit, staged) };
+}
+
+/**
+ * `decided stage <unit> <topic> --file <payload.json>`: a feature's topic
+ * closed into its spec (11.2.1) — Claude's payload staged against the
+ * close, as the decided screen's `--file` stages it — answering the handoff
+ * into the spec, or, staged again once the spec is written, carrying on
+ * there to ready to build's screen.
+ * @param {string} cwd @param {string} unit @param {string} topic @param {string} file
+ */
+function decidedStage(cwd, unit, topic, file) {
+  const staged = onClosedTopic(cwd, unit, topic, ({ shower, manifest, closed, side }) => {
+    if (!closesIntoSpec(manifest)) throw new Error(`${unit} is ${manifest.work_type === 'epic' ? 'an epic' : `a ${manifest.work_type}`}, whose topic closes at its decided screen — render decided ${unit}.${topic} --file <payload.json> stages Claude's lines and candidates`);
+    return stage(cwd, unit, topic, file, { shower, rows: side.rows, manifest, closed });
+  }, openTopic);
+  /** @type {import('./projections/surfaces.cjs').Next} */
+  const next = specStanding(cwd, unit) === 'none' ? { kind: 'handoff', skill: 'leeway-specification-process', args: ['feature', unit] } : { kind: 'continue' };
+  return { unit, topic, lines: staged.lines.length, withdrawals: staged.withdrawals.length, candidates: staged.candidates.map(({ name }) => name), next };
+}
+
+/**
+ * `decided strike|unstrike <unit> <topic> <n> [--page]`: the n-th candidate
+ * struck, or its strike undone, in the staged payload, answering the screen
+ * as what comes next — a feature's ready to build, `--page` carried to it.
+ * @param {string} cwd @param {string} unit @param {string} topic @param {string} n @param {boolean} struck @param {boolean} page
+ */
+function decidedStrike(cwd, unit, topic, n, struck, page) {
+  const manifest = openTopic(cwd, unit, topic);
   const { closed } = decidedClose(cwd, unit, topic);
-  const staged = stagedFor(cwd, unit, topic, closed);
+  const staged = stagedFor(cwd, manifest, topic, closed);
   const at = /^[1-9][0-9]*$/.test(n) ? Number(n) : 0;
   const candidate = staged.candidates[at - 1];
   if (candidate === undefined) throw new Error(`there is no candidate ${n} — the candidates are 1 to ${staged.candidates.length}`);
   if (candidate.struck === struck) throw new Error(`"${candidate.name}" is ${struck ? 'struck already' : 'not struck'}`);
   candidate.struck = struck;
   writeStaged(stagedFile(cwd, unit, topic), staged);
-  return { unit, topic, [struck ? 'struck' : 'unstruck']: candidate.name, next: { kind: 'engine', argv: ['render', 'decided', `${unit}.${topic}`] } };
+  return { unit, topic, [struck ? 'struck' : 'unstruck']: candidate.name, next: { kind: 'engine', argv: closeScreen(manifest, topic, page).argv } };
 }
 
 /**
- * `decided <yes|strike|unstrike> …`: the verb's answer, every refusal
+ * `decided <yes|strike|unstrike|stage> …`: the verb's answer, every refusal
  * opening on its command.
- * @param {string} cwd @param {string[]} argv
+ * @param {string} cwd @param {string[]} positional @param {Record<string, string>} opts @param {Set<string>} flags
  * @returns {Record<string, unknown>}
  */
-function runDecidedVerb(cwd, [verb, ...args]) {
+function runDecidedVerb(cwd, [verb, ...args], opts, flags) {
   const usage = () => new Error(`Usage: ${DECIDED_USAGE.split('\n').map((line) => `engine ${line}`).join(' | ')}`);
-  if (verb === 'yes' && args.length === 2) return refusing('decided yes', () => decidedYes(cwd, args[0], args[1]));
-  if ((verb === 'strike' || verb === 'unstrike') && args.length === 3) return refusing(`decided ${verb}`, () => decidedStrike(cwd, args[0], args[1], args[2], verb === 'strike'));
+  const given = [...Object.keys(opts), ...flags].join();
+  if (verb === 'yes' && args.length === 2 && given === '') return refusing('decided yes', () => decidedYes(cwd, args[0], args[1]));
+  if ((verb === 'strike' || verb === 'unstrike') && args.length === 3 && ['', 'page'].includes(given)) {
+    return refusing(`decided ${verb}`, () => decidedStrike(cwd, args[0], args[1], args[2], verb === 'strike', flags.has('page')));
+  }
+  if (verb === 'stage' && args.length === 2 && given === 'file') return refusing('decided stage', () => decidedStage(cwd, args[0], args[1], opts.file));
   throw usage();
 }
 
-module.exports = { DECIDED_USAGE, runDecidedVerb, decidedSurface, decidedStrikeSurface, waitAgentsSurface };
+module.exports = { DECIDED_USAGE, runDecidedVerb, decidedSurface, decidedStrikeSurface, waitAgentsSurface, closesIntoSpec, featureClose, closingYes };

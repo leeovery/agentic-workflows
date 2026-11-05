@@ -5,7 +5,7 @@
 // conversation routed to the laboratory and back, decided over a concluded
 // experiment and on to its specification; the question on the map an
 // experiment measures, and its report reaching the topic as a message once
-// that question closed; and the single-topic backs re-rendering the start
+// that question closed, voiding the topic's close into its spec; and the single-topic backs re-rendering the start
 // menu. An epic's are test-pipeline-simulation-experiments.cjs's.
 //
 // Layer: simulation. World: the project every scenario starts from
@@ -120,7 +120,7 @@ describe('pipeline simulation: experiments, in a feature', () => {
     bridgeTo(sim, wu, 'specification');
   });
 
-  it('the question an experiment measures: waiting on the map while it runs, held from Claude\'s close, and once the person closed it first, the topic decided goes on to its specification and the report reopens it as a message', () => {
+  it('the question an experiment measures: waiting on the map while it runs, held from Claude\'s close, and once the person closed it first, the topic closed into its specification, which its report, a message, holds until it closes again', () => {
     const wu = 'cold-start';
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Launch time', '--session-log-file', sessionLog(sim, wu)]);
     menuEntry(sim, wu);
@@ -139,9 +139,9 @@ describe('pipeline simulation: experiments, in a feature', () => {
       JSON.stringify({ ...made, text: 'Under a second.', why: 'It feels instant.' }));
 
     // The laboratory runs while the person closes the question themselves
-    // and decides the topic: the pipeline goes on to the specification as
-    // the yes said, the experiment running beside it, and the report then
-    // reaches the topic as a message, reopening it.
+    // and the topic closes into its spec: the pipeline goes on to the
+    // specification, the experiment running beside it, and the report then
+    // reaches the topic as a message, voiding its close.
     bridgeTo(sim, wu, 'experiment');
     handoffEntry(sim, wu, 'experiment', wu);
     for (const step of ['advance', 'approve', 'advance']) sim.run(['experiment', step, wu, wu, 'E1']);
@@ -150,8 +150,10 @@ describe('pipeline simulation: experiments, in a feature', () => {
     bridgeTo(sim, wu, 'specification');
     sim.write(path.relative(sim.dir, path.join(e1.dir, 'report.md')), '# Report — E1\n\nCold launch lands at 0.8 s.\n');
     const concluded = sim.run(['experiment', 'conclude', wu, wu, 'E1', '--verdict', 'under a second holds']);
-    assert.deepStrictEqual([concluded.report_sent.topic, concluded.report_sent.reopened], [wu, true], 'the question closed where it was asked, so the report goes back there');
+    assert.strictEqual(concluded.report_sent.topic, wu, 'the question closed where it was asked, so the report goes back there');
     assert.ok(fs.existsSync(concluded.report_sent.message_path), 'the report waits in the topic\'s mailbox');
     sim.run(['commit', wu, '-m', `experiment(${wu}): conclude E1`, '--topic', `experiment/${wu}`]);
+    sim.refuses(['enter', 'specification', wu], /^cold-start's spec waits until its discussion closes/);
+    bridgeTo(sim, wu, 'discussion');
   });
 });

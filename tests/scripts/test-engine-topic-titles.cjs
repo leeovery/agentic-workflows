@@ -376,7 +376,7 @@ describe('every screen names a topic through one helper', () => {
       'render.cjs › hypothesisBoard › topic',
     ],
     'a name not on the map yet, or not on it any more': [
-      'projections/decided.cjs › candidateTree › name',
+      'projections/closing.cjs › candidateTree › name',
       'projections/decided.cjs › strikePick › name',
       'projections/discovery-map.cjs › struckBlock › name',
       'projections/transactions.cjs › absorbReceipt › topic',

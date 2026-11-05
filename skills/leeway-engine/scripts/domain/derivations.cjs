@@ -24,6 +24,20 @@ function buildBegun(manifest) {
   return isObject(manifest.build);
 }
 
+/**
+ * Whether a feature's one topic has closed into its spec, with no gate
+ * (11.2.1): its decided checklist closed, and neither a message delivered to
+ * it nor a yes taken since (checklist.cjs). The one screen, decided and
+ * ready to build, marks it decided after (11.8.5).
+ * @param {Record<string, any>} manifest
+ */
+function closedIntoSpec(manifest) {
+  const record = manifest.work_type === 'feature' && isObject(manifest.checklists?.decided) ? manifest.checklists.decided[manifest.name] : undefined;
+  const closed = isObject(record) ? record.closed : undefined;
+  if (typeof closed !== 'string') return false;
+  return [record.voided, record.taken].every((since) => typeof since !== 'string' || since < closed);
+}
+
 /** The key a phase's start or close keeps its checklist under (6.4.12). @param {number} number @param {'start'|'close'} end */
 const phaseKey = (number, end) => `phase-${number}-${end}`;
 
@@ -617,9 +631,11 @@ function settleItemStatus(item) {
 
 // In-progress items of one spawn phase holding a live evidence wait — the
 // state that blocks their conclusion and routes the linear pipeline to the
-// experiment. A decided one waits on nothing: the experiment it spawned
-// runs on, and its report reaches the topic as mail.
+// experiment. A decided one waits on nothing, nor a feature's discussion
+// closed into its spec: the experiment it spawned runs on, and its report
+// reaches the topic as mail.
 function waitingItems(manifest, phase) {
+  if (phase === 'discussion' && closedIntoSpec(manifest)) return [];
   return phaseItems(manifest, phase)
     .filter((i) => i.status === 'in-progress'
       && Array.isArray(i.awaiting_experiments) && i.awaiting_experiments.length > 0);
@@ -698,7 +714,7 @@ function computeNextPhase(manifest, specWritten = false) {
       // experiment. Linear types only — an epic's next_phase is
       // phase-coarse, and its topic-grain experiment rows carry the route
       // instead.
-      if (ps(phase) === 'in-progress') {
+      if (ps(phase) === 'in-progress' && !(phase === 'discussion' && closedIntoSpec(manifest))) {
         const awaiting = DERIVED_PHASES.includes(phase)
           ? EXPERIMENT_SPAWN_PHASES.some((p) => waitingItems(manifest, p).length > 0)
           : EXPERIMENT_SPAWN_PHASES.includes(phase) && waitingItems(manifest, phase).length > 0;
@@ -756,7 +772,7 @@ function computeNextPhase(manifest, specWritten = false) {
     return { next_phase: 'investigation', phase_label: 'ready for investigation' };
   }
 
-  if (ps('discussion') === 'completed') {
+  if (ps('discussion') === 'completed' || closedIntoSpec(manifest)) {
     return { next_phase: 'specification', phase_label: 'ready for specification' };
   }
   if (ps('discussion') === 'in-progress') {
@@ -1309,6 +1325,7 @@ function buildDiscoveryMap(manifest, stateDir) {
 }
 
 module.exports = {
+  closedIntoSpec,
   phaseData,
   phaseItems,
   buildBegun,

@@ -27,17 +27,16 @@ const { UNIT, SESSION, MADE, NOTE, SPACE } = require('./ledger-world.cjs');
 const { fixture, fixtureModule, misfits, emptyLists, place } = require('./board-world.cjs');
 
 const dir = useDecidedWorld();
-const { close, staged, answer, run } = decidedHelpers(dir);
+const { close, staged, payload, answer, run } = decidedHelpers(dir);
 const { board, at, made, sent, spawned } = decidedBoardHelpers(dir);
 
 /** When the world's epic had its map approved, as its manifest records it. */
 const approvedOn = () => readManifest(dir(), UNIT).phases.discovery.approved_at;
 
-/** The solo feature's topic decided, as the decided gate's yes decides it: when its checklist closed. */
+/** The solo feature's topic closed into its spec, staged with nothing for the record: when its checklist closed. */
 function soloDecided() {
   close(SOLO, SOLO);
-  staged(NO_PAYLOAD, `${SOLO}.${SOLO}`);
-  run(answer('decided', 'y'));
+  ok(dir(), ['decided', 'stage', SOLO, SOLO, '--file', payload(NO_PAYLOAD)], { env: SESSION });
   return readManifest(dir(), SOLO).checklists.decided[SOLO].closed;
 }
 

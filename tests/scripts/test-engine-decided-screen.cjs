@@ -135,14 +135,14 @@ describe('the decided screen (9.7.3, 9.S21)', () => {
     const manifest = readManifest(dir(), SOLO);
     createManifest(dir(), SOLO, { ...manifest, phases: { ...manifest.phases, discovery: { dismissed: ['tally-widget'] } } });
     ok(dir(), ['roadmap', 'add', 'streak-freeze', '--horizon', 'later', '--summary', 'Freeze a streak.'], { env: SESSION });
-    const solo = (/** @type {unknown[]} */ candidates) => refusedPristine(dir(), ['render', 'decided', `${SOLO}.${SOLO}`, '--file', payload({ lines: [], candidates })], { env: SESSION }).error;
+    const solo = (/** @type {unknown[]} */ candidates) => refusedPristine(dir(), ['decided', 'stage', SOLO, SOLO, '--file', payload({ lines: [], candidates })], { env: SESSION }).error;
     const parked = (/** @type {string} */ name) => solo([{ name, reason: 'R.', horizon: 'next' }]);
     assert.deepStrictEqual([solo([candidate('streaks', 'R.')]), solo([{ name: 'streaks', reason: 'R.', horizon: ' ' }]), parked('tally-widget'), parked('streak-freeze')], [
-      'render decided: candidate 1 has no horizon — the horizon is the person\'s — where they named none, render horizon-pick --park <name> asks them',
-      'render decided: candidate 1\'s horizon is a non-empty string',
-      'render decided: the candidates: "tally-widget" was struck before — nothing was added; the person can roadmap it themselves',
-      'render decided: the candidates: "streak-freeze" is already on the roadmap — edit it, or pick a different name',
-    ], 'a one-topic unit\'s candidate parks with the horizon the person named, never a brief, and never under a name the person struck or the roadmap holds (8.10.2, 8.10.11, 18.8.2)');
+      'decided stage: candidate 1 has no horizon — the horizon is the person\'s — where they named none, render horizon-pick --park <name> asks them',
+      'decided stage: candidate 1\'s horizon is a non-empty string',
+      'decided stage: the candidates: "tally-widget" was struck before — nothing was added; the person can roadmap it themselves',
+      'decided stage: the candidates: "streak-freeze" is already on the roadmap — edit it, or pick a different name',
+    ], 'a feature\'s candidate, staged as its topic closes into its spec, parks with the horizon the person named, never a brief, and never under a name the person struck or the roadmap holds (8.10.2, 8.10.11, 18.8.2)');
     assert.ok(!fs.existsSync(statePath(dir(), '.cache', UNIT, 'discussion', 'note-window', 'decided.json')));
   });
 
@@ -155,7 +155,7 @@ describe('the decided screen (9.7.3, 9.S21)', () => {
     assert.match(sectionOf(staged(NO_PAYLOAD, `${UNIT}.space-homing`), 'DISPLAY: decided'),
       /\nWHAT YOU DECIDED \(0\)\n {2}Nothing of yours — every question was a call of mine, carried over or moved on\n\nCARRIED OVER \(1\)\n {2}└─ Does a space keep its own notes\?\n\nCLAUDE'S CALLS \(1\)\n/);
 
-    createManifest(dir(), 'bare', { phases: { discussion: { items: { bare: { status: 'in-progress' } } } } });
+    createManifest(dir(), 'bare', { work_type: 'epic', phases: { discussion: { items: { bare: { status: 'in-progress' } } } } });
     markAllButTheClosingPass(dir(), 'bare', 'bare');
     close('bare', 'bare');
     assert.match(staged(NO_PAYLOAD, 'bare.bare'), /\nWHAT YOU DECIDED \(0\)\n {2}Nothing of yours — no question was asked\n/);

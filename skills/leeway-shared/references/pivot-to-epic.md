@@ -1,6 +1,6 @@
 # Pivot to Epic
 
-*Shared reference. Loaded by `leeway` (manage menu) and `leeway-discussion-process` (a point another topic would own) to convert a single-topic feature into an epic.*
+*Shared reference. Loaded by `leeway` (manage menu) and `leeway-discussion-process` (a point needing decisions of its own) to convert a single-topic feature into an epic.*
 
 ---
 
