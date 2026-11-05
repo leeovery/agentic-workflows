@@ -25,10 +25,14 @@
 // never its process — and never re-dispatched by the engine.
 //
 // A discussion review or closing pass is stamped with the ledger's mark at
-// its dispatch (ledger-moves.cjs). The background review's back-off arms on
-// the topic's moves since the last review's mark (9.8.14), and a gap review
-// has run since the topic's last decision where a review or a closing pass
-// dispatched after it has reported (9.9.6).
+// its dispatch (ledger-moves.cjs), and so is an investigation's validation.
+// The background review's back-off arms on the topic's moves since the last
+// review's mark (9.8.14), and a gap review has run since the topic's last
+// decision where a review or a closing pass dispatched after it has
+// reported (9.9.6). A validation has been taken in for an entry where one
+// of its kind dispatched after the entry was made reported and was
+// incorporated (19.4.7): a root cause or a fix replaced since is validated
+// afresh.
 //
 // A unit's own dispatches — the spec's, which is the unit's — keep their
 // store at the unit's spec, `.cache/{wu}/specification/{wu}/`, the place the
@@ -94,6 +98,12 @@ const MOVEMENT_CAP = 3;
 
 /** The discussion kinds that read the topic's record whole, each stamped with the ledger's mark at its dispatch. */
 const REVIEWING_KINDS = ['review', 'closing-pass'];
+
+/** An investigation's validations, each stamped with the ledger's mark at its dispatch. */
+const VALIDATION_KINDS = ['root-cause-validation', 'fix-validation'];
+
+/** Whether a dispatch of `kind` at `phase` is stamped with the ledger's mark. @param {string} phase @param {string} kind */
+const markedAt = (phase, kind) => (phase === 'discussion' && REVIEWING_KINDS.includes(kind)) || (phase === 'investigation' && VALIDATION_KINDS.includes(kind));
 
 /** @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic */
 function statePath(cwd, workUnit, phase, topic) {
@@ -349,6 +359,19 @@ function gapReviewSince(cwd, workUnit, topic) {
 }
 
 /**
+ * Whether a validation of `kind` at the bugfix's investigation was taken in
+ * for the entry at `line` of the ledger: one dispatched after it, its mark
+ * at or past that line, reported and incorporated. Read without promoting or
+ * saving anything, tolerant of the store.
+ * @param {string} cwd @param {string} workUnit @param {string} kind
+ * @param {import('./ledger-moves.cjs').Facts} facts @param {number} line
+ */
+function takenInFor(cwd, workUnit, kind, facts, line) {
+  const dir = agentDir(cwd, workUnit, 'investigation', workUnit);
+  return derivationRows(dir).some((row) => row.kind === kind && row.status === 'incorporated' && lineOf(facts, row.ledger_mark) >= line && reportBacked(row, dir));
+}
+
+/**
  * A topic's rows in scan's public shape, read without side effects — in the
  * order they were dispatched, so a pair keeps the order its labels were
  * given in. A render reads them to word a line or a gate; nothing is
@@ -380,7 +403,8 @@ function latestReview(cwd, workUnit, topic) {
  * would read, so the report would be stale on arrival — and while unarmed
  * (`reviewArming`); `final: true` bypasses the movement gate. Every discussion review and closing pass row is stamped
  * with the ledger's mark, `ledger_mark`, which arming and the gap review
- * measure from.
+ * measure from, and every investigation's validation, which whether it was
+ * taken in for an entry measures from.
  * Numbering starts after both existing rows AND any legacy files already in
  * the cache dir (pre-programme skeletons keep their names; ids never collide).
  * Each row names the dispatching process and conversation (`pid`,
@@ -416,7 +440,7 @@ function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set, fi
     throw new Error('--final bypasses a discussion review\'s movement gate — legal only with --kind review in the discussion phase');
   }
   return io.withWorkUnitLock(stateRoot(cwd), workUnit, () => {
-    const facts = phase === 'discussion' && REVIEWING_KINDS.includes(kind) ? ledgerFacts(cwd) : null;
+    const facts = markedAt(phase, kind) ? ledgerFacts(cwd) : null;
     if (kind === 'review' && phase === 'discussion') {
       const waiting = mailboxDepth(stateRoot(cwd), workUnit, topic);
       if (waiting > 0) {
@@ -1045,6 +1069,7 @@ module.exports = {
   inFlightStandings,
   latestReview,
   gapReviewSince,
+  takenInFor,
   dispatchedRows,
   bindQuestion,
   bindSpec,

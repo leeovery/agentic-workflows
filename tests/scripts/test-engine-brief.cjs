@@ -577,6 +577,7 @@ describe('the refusals, nothing written and no brief stored', () => {
       'spec-writer <unit> [--wording <file>]', 'spec-reviewer <unit> --agent <id>',
       'task-writer <unit> <N>', 'consolidation <unit> <N> [--base <branch>]', 'phase-review <unit> <N> [--base <branch>] --letter <a|b>',
       'review-area <unit> --area <N> --base <branch> --letter <a|b>', 'test-surface <unit> --base <branch>',
+      'root-cause-validation <unit> --agent <id>', 'fix-validation <unit> --agent <id>',
     ].map((line) => `engine brief ${line.replace(/[|[\]]/g, '\\$&')}`).join(' \\| ')}$`);
     for (const args of [
       [], ['scribe', UNIT, '1.1'], ['builder'], ['builder', UNIT], ['builder', UNIT, '1.1', 'more'], ['product-researcher', UNIT],
@@ -615,6 +616,8 @@ describe('the refusals, nothing written and no brief stored', () => {
       'phase-review': [UNIT, '1', '--base', 'main', '--letter', 'a'],
       'review-area': [UNIT, '--area', '1', '--base', 'main', '--letter', 'a'],
       'test-surface': [UNIT, '--base', 'main'],
+      'root-cause-validation': [UNIT, '--agent', 'root-cause-validation-001'],
+      'fix-validation': [UNIT, '--agent', 'fix-validation-001'],
     };
     for (const role of Object.keys(ROLES)) {
       for (const [flag, value] of [['--note', 'be quick'], ...(taking[role].includes('--base') ? [] : [['--base', 'main']]), ['--report-a', 'a.md']]) {
@@ -689,11 +692,12 @@ describe('the templates and the store', () => {
     for (const [role, { agent }] of Object.entries(ROLES)) assert.ok(agent.startsWith(OURS) && agent.length > OURS.length, `${role}: ${agent}`);
   });
 
-  it('every role\'s agent is a definition on the roster fixing Opus at medium (26.4.1, 26.5.3)', () => {
+  it('26.S10: every role\'s agent is a definition on the roster fixing Opus at medium, the root cause\'s validator at extra-high (26.4.1, 26.4.7–26.4.10, 26.5.3)', () => {
     for (const [role, { agent }] of Object.entries(ROLES)) {
       assert.ok(fs.existsSync(path.join(AGENTS, `${agent}.md`)), `${role}: ${agent}`);
       const frontmatter = /^---\n([\s\S]*?)\n---\n/.exec(fs.readFileSync(path.join(AGENTS, `${agent}.md`), 'utf8'))?.[1] ?? '';
-      assert.deepStrictEqual(['name', 'model', 'effort'].map((key) => new RegExp(`^${key}: (.*)$`, 'm').exec(frontmatter)?.[1]), [agent, 'opus', 'medium'], role);
+      const effort = role === 'root-cause-validation' ? 'xhigh' : 'medium';
+      assert.deepStrictEqual(['name', 'model', 'effort'].map((key) => new RegExp(`^${key}: (.*)$`, 'm').exec(frontmatter)?.[1]), [agent, 'opus', effort], role);
     }
   });
 

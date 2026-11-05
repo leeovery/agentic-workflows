@@ -17,6 +17,7 @@ The engine's brief is all you are given; the conversation never reaches you. It 
 - **Your task**, **what a statement says** and **the spec's shape** — the rules every line keeps, and the form the engine reads.
 - **Where the spec goes** — the path of `spec.md`, which you write.
 - **The records** — every live topic's current entries, under a heading naming the topic, then the unit's own: each by its short id, its kind and its text.
+- **The investigation** — for a bugfix, the root cause and the fix its investigation rests on and the rules the fix keeps, each by its short id; none for any other unit.
 - **The topics' logs** — the path of each topic's log, its journey: read it where a statement needs a why.
 - **Canonical assets** — the files the spec links.
 - **The builder's calls** — the calls the sweep left to the builder, or none.

@@ -77,6 +77,7 @@ describe('the spec writer\'s brief (11.1.5, 11.3.2, 11.S2)', () => {
     assert.strictEqual(brief, `Brief ${res.id} — the spec writer's, for ${UNIT}\n\n${filledTemplate('spec-writer', {
       'spec-to': `\`${statePath(dir(), SPEC)}\``,
       'unit-records': RECORDS(),
+      investigation: 'None recorded.',
       'topic-logs': [`- \`${statePath(dir(), layout.topic(UNIT, 'cards', 'log.md'))}\``, `- \`${statePath(dir(), layout.topic(UNIT, 'refunds', 'log.md'))}\``].join('\n'),
       'canonical-assets': `- \`${statePath(dir(), layout.assets(UNIT, 'flow.md'))}\``,
       'builder-calls': 'None recorded.',

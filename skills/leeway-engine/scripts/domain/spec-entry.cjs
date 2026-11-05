@@ -10,7 +10,9 @@
 //
 // What carries the spec on, read alike by its entry and its recovery note
 // (position.cjs): each live topic's record, by its engine call, and its log
-// — a bugfix's its investigation — then the unit's own record, the gaps
+// — a bugfix's its investigation (19.4.3, 19.4.15), and beside it, while
+// today's investigation writes one until 29.15 retires it, its document —
+// then the unit's own record, the gaps
 // asked at the spec and their answers; the files the unit's current entries link
 // as canonical, which the spec links (11.6.3); once the spec is written, the
 // spec; the cut, by its call, once the manifest holds one; and while the
@@ -73,10 +75,10 @@ const PHASE = 'specification';
 function specSources(cwd, manifest, warnings) {
   const unit = manifest.name;
   const topics = specTopics(manifest);
-  const logOf = manifest.work_type === 'bugfix' ? INDEXED_ARTIFACTS.investigation : topicLog;
+  const logsOf = (/** @type {string} */ topic) => [topicLog(unit, topic), ...(manifest.work_type === 'bugfix' ? [INDEXED_ARTIFACTS.investigation(unit, topic)] : [])];
   return {
     records: [...topics.map((topic) => recordCall(unit, topic)), `${ENGINE_COMMAND} ledger record ${unit}`],
-    logs: topics.map((topic) => statePath(cwd, logOf(unit, topic))).filter((log) => fs.existsSync(log)),
+    logs: topics.flatMap(logsOf).map((log) => statePath(cwd, log)).filter((log) => fs.existsSync(log)),
     assets: canonicalAssets(stateRoot(cwd), unit, warnings).map((asset) => statePath(cwd, asset)),
     spec: [specPath(cwd, unit)].filter((spec) => fs.existsSync(spec)),
     cut: isObject(manifest.cut) ? [`${ENGINE_COMMAND} manifest get ${unit} cut`] : [],

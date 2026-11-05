@@ -231,8 +231,30 @@
 //   report-refusal each pass refused since the last whose report was taken
 //                  in, with what of its report did not read (agent-state.cjs)
 //   unit-report-to where the agent writes its report: the file of the
-//                  dispatch `--agent` names in the unit's agent store, of the
-//                  kind its role is briefed for and still in flight
+//                  dispatch `--agent` names in the unit's agent store — a
+//                  validation's, its investigation's — of the kind its role
+//                  is briefed for and still in flight
+//   investigation  for a bugfix, what its spec is assembled from (19.4.15):
+//                  the root cause and the fix its investigation rests on,
+//                  each where it rests on one (investigation-log.cjs), and
+//                  the rules it keeps — the investigation's other current
+//                  decisions — each by its short id and its text; none
+//                  recorded for any other type
+//
+// A bugfix's validations' records, each of the unit the brief is for, its
+// investigation open (investigation-log.cjs, 19.4.7):
+//
+//   hunt-log       the path of its investigation's log, the topic's
+//                  (19.4.3), for the agent to read
+//   hunt-record    its topic's record as `ledger record` answers it, fenced
+//                  as JSON
+//   hunt-root-cause the root cause its investigation rests on, by its short
+//                  id with its text; refused where it rests on none
+//   hunt-fix       the fix it rests on, the current answer of the fix
+//                  direction's question, by its short id with its text,
+//                  then that question; refused likewise
+//   code           each repository of the project, by its absolute path,
+//                  where the code is read as it stands
 //
 // A build phase's records, each of the phase of the unit's cut the brief is
 // for (11.5), its tasks read from the tracker — each phase to it as its
@@ -449,6 +471,7 @@ const {
   SPEC_FILE, readCitedSections, headingLevels, readSpec, specPath, specSections, specStatements,
 } = require('./spec-sections.cjs');
 const { withUnitEntries, unitEntries } = require('./unit-entries.cjs');
+const { huntOf, huntLog, huntEntries, openInvestigation } = require('./investigation-log.cjs');
 const { specTopics } = require('./spec-standing.cjs');
 const { sweepPath, builderCalls, sweepTaken, sweepWait } = require('./sweep.cjs');
 const { sweepRefusal } = require('./sweep-take.cjs');
@@ -856,13 +879,15 @@ function drawDismissed(filling) {
 
 /**
  * The agent store a brief's dispatch is in, and how a refusal names it: the
- * topic's discussion store, or for a unit's role the unit's own.
+ * topic's discussion store, or for a unit's role the unit's own — at its
+ * spec, or at the phase its role names.
  * @param {Filling} filling @returns {{unit: string, phase: string, topic: string, where: string}}
  */
 function storeOf(filling) {
   if (filling.place !== null) return { ...filling.place, phase: 'discussion', where: `${filling.place.unit}/${filling.place.topic}` };
   const unit = unitOf(filling);
-  return { unit, phase: UNIT_PHASE, topic: unit, where: `${unit}'s spec` };
+  const phase = ROLES[filling.role].phase ?? UNIT_PHASE;
+  return { unit, phase, topic: unit, where: phase === UNIT_PHASE ? `${unit}'s spec` : `${unit}'s ${phase}` };
 }
 
 /**
@@ -1290,6 +1315,62 @@ const drawTopicLogs = (filling, warnings) => listed(sourcesOf(filling, warnings)
 
 /** @param {Filling} filling @param {string[]} warnings */
 const drawCanonicalAssets = (filling, warnings) => listed(sourcesOf(filling, warnings).assets.map((asset) => `- \`${asset}\``));
+
+/** @typedef {import('./investigation-log.cjs').Rested} Rested */
+
+/** What a bugfix's hunt rests on, as its log holds it against its entries: read once a fill. */
+const huntRead = oncePerFill((filling, warnings) => {
+  const unit = unitOf(filling);
+  return huntEntries(unit, unitView(filling, warnings), huntOf(filling.cwd, unit, warnings));
+});
+
+/**
+ * What the hunt rests on for a validation's brief, its investigation open,
+ * refused where it rests on none.
+ * @template {Rested} T @param {Filling} filling @param {string[]} warnings @param {(read: ReturnType<typeof huntEntries>) => T|{fault: string}} pick
+ * @returns {T}
+ */
+function restedOn(filling, warnings, pick) {
+  openInvestigation(filling.cwd, unitOf(filling), 'brief');
+  const entry = pick(huntRead(filling, warnings));
+  if ('fault' in entry) throw new Error(`brief: ${entry.fault}`);
+  return entry;
+}
+
+/** An entry the hunt rests on, as a brief draws it. @param {Rested} entry */
+const restedLine = ({ short, text }) => `${short}: ${indented(text)}`;
+
+/** @param {Filling} filling */
+const drawHuntLog = (filling) => `\`${statePath(filling.cwd, huntLog(unitOf(filling)))}\``;
+
+/** @param {Filling} filling @param {string[]} warnings */
+const drawHuntRecord = (filling, warnings) => recordJson(ledgerRead(filling.cwd, 'record', [unitOf(filling), unitOf(filling)], warnings));
+
+/** @param {Filling} filling @param {string[]} warnings */
+const drawRootCause = (filling, warnings) => restedLine(restedOn(filling, warnings, ({ rootCause }) => rootCause));
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawFix(filling, warnings) {
+  const fix = restedOn(filling, warnings, (read) => read.fix);
+  return `${restedLine(fix)}\n\nIt answers ${restedLine(fix.question)}`;
+}
+
+/** @param {Filling} filling */
+const drawCode = (filling) => listed(projectRepos(codeRoot(filling.cwd)).map((repo) => `- \`${repo.path}\``));
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawInvestigation(filling, warnings) {
+  const unit = unitOf(filling);
+  if (unitManifest(filling).work_type !== 'bugfix') return NONE;
+  const { rootCause, fix } = huntRead(filling, warnings);
+  const rests = [rootCause, fix].flatMap((entry) => ('fault' in entry ? [] : [entry.id]));
+  const kept = [...unitView(filling, warnings).entries].filter(([id, { kind, stands }]) => kind === 'decision' && stands.unit === unit && stands.topic === unit && !rests.includes(id));
+  return listed([
+    ...('fault' in rootCause ? [] : [`- The root cause, ${restedLine(rootCause)}`]),
+    ...('fault' in fix ? [] : [`- The fix, ${restedLine(fix)}`]),
+    ...kept.map(([, { short, line }]) => `- A rule it keeps, ${short}: ${indented(String(line.text))}`),
+  ]);
+}
 
 /** @param {Filling} filling */
 const drawBuilderCalls = (filling) => listed(builderCalls(filling.cwd, unitOf(filling)).map(({ id, call, why }) => `- ${id}: ${indented(call)}\n  Why: ${indented(why)}`));
@@ -2019,6 +2100,12 @@ const RECORDS = Object.freeze({
   'area-runs': { of: 'unit', flags: [AREA, BASE], draw: drawAreaRuns },
   'area-report-to': { of: 'unit', flags: [AREA, LETTER], draw: drawAreaReportTo },
   'tests-report-to': { of: 'unit', draw: drawTestsReportTo },
+  investigation: { of: 'unit', draw: drawInvestigation },
+  'hunt-log': { of: 'unit', draw: drawHuntLog },
+  'hunt-record': { of: 'unit', draw: drawHuntRecord },
+  'hunt-root-cause': { of: 'unit', draw: drawRootCause },
+  'hunt-fix': { of: 'unit', draw: drawFix },
+  code: { of: null, draw: drawCode },
 });
 
 /** The records that place a read of the review phase's round. */
