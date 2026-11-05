@@ -24,7 +24,8 @@
 //   which reads the ledger under the lock before it appends. A line a
 //   newer release wrote stops the engine. A read that shows entries keeps
 //   where each line sits and reads the ones it shows again, from the file
-//   it opened.
+//   it opened; a read may first scan that file for the lines of one event,
+//   parsing those alone.
 // - An entry is appended under the writer lock, its id, version and time
 //   the engine's own, the time taken under the lock so the lines' order is
 //   their times': the ledger is checked, then copied beside itself with the
@@ -66,8 +67,12 @@ const { finishLanding } = require('./state-merge-landing.cjs');
 const { projectName } = require('./state-checks.cjs');
 const { ledgerStop, ledgerNewerStop, idInLine } = require('./projections/ledger.cjs');
 
-/** What an asset link's line holds and no other line can: inside a value, a quote is escaped. */
-const ASSET_LINK = '"event":"asset"';
+/** What a line of event `name` holds and no other line can: inside a value, a quote is escaped. @param {string} name */
+function eventMark(name) {
+  return `"event":${JSON.stringify(name)}`;
+}
+
+const ASSET_LINK = eventMark('asset');
 
 /** The fields the engine assigns an entry, never its caller. */
 const ASSIGNED = ['v', 'id', 'at'];
@@ -206,14 +211,15 @@ function linkedPaths(root) {
 
 /**
  * The ledger committed on the state branch with the files its asset links
- * name (`linkedPaths`), as a write's tail: a commit git refuses is a
+ * name (`linkedPaths`), and `paths` beside it where a transaction's write
+ * takes the ledger along, as a write's tail: a commit git refuses is a
  * warning, the entry standing for the next. The caller holds the writer
  * lock.
- * @param {string} cwd @param {string} message @param {string[]} warnings
+ * @param {string} cwd @param {string} message @param {string[]} warnings @param {string[]} [paths] state-relative
  * @returns {{committed: string|null, failed: boolean, held?: true}}
  */
-function commitLedger(cwd, message, warnings) {
-  return commitStateTail(cwd, LEDGER, message, warnings, { kept: linkedPaths(stateRoot(cwd)) });
+function commitLedger(cwd, message, warnings, paths = []) {
+  return commitStateTail(cwd, [LEDGER, ...paths], message, warnings, { kept: linkedPaths(stateRoot(cwd)) });
 }
 
 /**
@@ -284,10 +290,28 @@ function* entriesAt(root, fd) {
 }
 
 /**
+ * The entries of the ledger open at `fd` that are events named `name`, in
+ * order, each with where its line sits: found by a scan that reads those
+ * lines alone.
+ * @param {string} root @param {number} fd @param {string} name
+ * @returns {Generator<{event: Record<string, unknown>, place: EntryPlace}>}
+ */
+function* namedAt(root, fd, name) {
+  const mark = eventMark(name);
+  let number = 0;
+  for (const { text, span } of fdLines(fd)) {
+    number += 1;
+    if (text.includes(mark)) yield { event: entryAt(root, text, number), place: { number, ...span } };
+  }
+}
+
+/**
  * The ledger as `withLedger` hands it over: its entries in order, each with
- * where its line sits, and the entry at any place read again.
+ * where its line sits; those of one event alone, by a scan; and the entry at
+ * any place read again.
  * @typedef {{
  *   entries: () => Generator<{event: Record<string, unknown>, place: EntryPlace}>,
+ *   named: (name: string) => Generator<{event: Record<string, unknown>, place: EntryPlace}>,
  *   entryAt: (place: EntryPlace) => Record<string, unknown>,
  * }} OpenLedger
  */
@@ -295,6 +319,7 @@ function* entriesAt(root, fd) {
 /** @type {OpenLedger} */
 const NO_LEDGER = Object.freeze({
   * entries() {},
+  * named() {},
   entryAt: () => {
     throw new Error(`there is no ${LEDGER} to read an entry from`);
   },
@@ -316,6 +341,7 @@ function withLedger(root, notes, read) {
   try {
     return read({
       entries: () => entriesAt(root, fd),
+      named: (name) => namedAt(root, fd, name),
       entryAt: (place) => entryAt(root, lineAt(fd, place), place.number),
     });
   } finally {

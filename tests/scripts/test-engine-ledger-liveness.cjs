@@ -8,7 +8,8 @@
 // confirmation made there counts for nothing meanwhile, while a question
 // moved away stays where it was moved, and another unit's replacement of an
 // entry there stands where it was made; and the write verbs decide by the
-// same rule.
+// same rule. A line a carry lists is read as made where the carry is, live
+// while that place is.
 //
 // Layer: verb. World: a project with its state worktree from the fixture
 // library, the work unit's manifest written there; the lifecycle verbs
@@ -19,10 +20,11 @@ require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
-const { ok, refuses, cleanupFixture } = require('./engine-harness.cjs');
+const { ok, refuses, cleanupFixture, statePath } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
+const { appendEntry } = require('../../skills/leeway-engine/scripts/domain/ledger.cjs');
 
-const { UNIT, SESSION, MADE, NOTE, SPACE, ids, ledgerReadHelpers, ledgerWorld } = require('./ledger-world.cjs');
+const { UNIT, SESSION, SESSION_ID, MADE, NOTE, SPACE, ids, ledgerReadHelpers, ledgerWorld } = require('./ledger-world.cjs');
 
 /** @type {string} */
 let dir;
@@ -35,7 +37,7 @@ afterEach(() => {
   cleanupFixture(dir);
 });
 
-const { write, ask, find, decide, change, read, rawLines, line, current, shownMerge, answered, assertAgree, mint } = ledgerReadHelpers(() => dir);
+const { write, ask, find, decide, change, read, rawLines, full, line, current, shownMerge, answered, assertAgree, mint } = ledgerReadHelpers(() => dir);
 
 describe('liveness (5.8.17)', () => {
   /**
@@ -251,5 +253,46 @@ describe('liveness (5.8.17)', () => {
 
     ok(dir, ['topic', 'reactivate', UNIT, 'discovery', 'note-window']);
     assert.deepStrictEqual({ record: read('record', UNIT, 'space-homing'), map: read('map', UNIT, 'space-homing') }, before);
+  });
+});
+
+describe('carried lines (5.8.18)', () => {
+  const EMPTY = Object.freeze({ questions: [], findings: [], decisions: [], moved: [], merged: [], other_topics: [] });
+
+  /**
+   * Mint's question and its answer, carried to the note window by the line
+   * an absorb writes, appended in process: their short ids.
+   */
+  function carriedFromMint() {
+    mint();
+    const question = ask('mint.discussion.mint', 'Does a note float?');
+    const decided = decide('mint.discussion.mint', question, 'It floats.');
+    appendEntry(statePath(dir), { event: 'rehomed', unit: UNIT, topic: 'note-window', phase: 'discussion', session: SESSION_ID, lines: [question, decided].map(full) }, []);
+    return { question, decided };
+  }
+
+  it('reads every line a carry lists as made at the carry\'s place, shown there, however the unit it came from stands — which holds none of them', () => {
+    const { question, decided } = carriedFromMint();
+    const note = read('record', UNIT, 'note-window');
+
+    assert.deepStrictEqual([ids(note.questions), ids(note.decisions)], [[question], [decided]]);
+    assert.deepStrictEqual([...note.questions, ...note.decisions].map((e) => [e.unit, e.topic, e.phase]), [[UNIT, 'note-window', 'discussion'], [UNIT, 'note-window', 'discussion']]);
+    assert.deepStrictEqual(answered('note-window'), [[question, 'answered', [decided]]]);
+    assert.deepStrictEqual(read('record', 'mint', 'mint'), { ok: true, unit: 'mint', topic: 'mint', live: true, ...EMPTY });
+
+    ok(dir, ['workunit', 'cancel', 'mint']);
+    assert.deepStrictEqual(read('record', UNIT, 'note-window'), note);
+  });
+
+  it('holds a carried line live while the place it was carried to is: that topic cancelled takes it out of every read, reactivated brings it back', () => {
+    carriedFromMint();
+    const before = read('record', UNIT, 'note-window');
+
+    ok(dir, ['topic', 'cancel', UNIT, 'discovery', 'note-window']);
+    assert.deepStrictEqual(read('record', UNIT, 'note-window'), { ok: true, unit: UNIT, topic: 'note-window', live: false, ...EMPTY });
+    assert.deepStrictEqual(read('map', UNIT, 'note-window').questions, []);
+
+    ok(dir, ['topic', 'reactivate', UNIT, 'discovery', 'note-window']);
+    assert.deepStrictEqual(read('record', UNIT, 'note-window'), before);
   });
 });

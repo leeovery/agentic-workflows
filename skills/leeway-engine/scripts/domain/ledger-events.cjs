@@ -89,6 +89,12 @@
 //   those alone, so the task reopened and parked again parks again. It
 //   names no maker and is no entry; a question it leaves parking nothing
 //   still waits.
+// - rehomed: the lines made at the places a unit gives up, carried to the
+//   place this line is made at, listed by id (5.8.18, 18.3.5): an absorbed
+//   feature's — its unit's level, its discussion and its experiments — at
+//   the epic's topic it became. Every read takes a line it lists as made
+//   here from then on, live while this place is, however the unit it came
+//   from stands (ledger-fold.cjs). It names no maker and is no entry.
 //
 // Every entry may cite where it came from (21.6.3, 21.6.4): sections of
 // files — a topic's log, a spec — each by its path from the state root and
@@ -256,6 +262,11 @@ function unparkHolds({ parks }) {
   return parks.length === 0 ? 'a task taken off its questions names the parks it is taken off' : null;
 }
 
+/** Why a carry lists no line, or null. @param {Record<string, any>} rehomed */
+function rehomeHolds({ lines }) {
+  return lines.length === 0 ? 'a carry lists the lines it carries' : null;
+}
+
 /** @type {Schema} */
 const SCHEMA = {
   version: 1,
@@ -301,6 +312,7 @@ const SCHEMA = {
       field('why_asking', LINE),
     ], 1, parkHolds),
     unparked: event([field('task', TASK), field('parks', listOf(ID))], 1, unparkHolds),
+    rehomed: event([field('lines', listOf(ID))], 1, rehomeHolds),
   },
 };
 
@@ -311,8 +323,8 @@ const ENTRY_EVENTS = Object.freeze({ asked: 'question', found: 'finding', decide
 
 /**
  * The kind of entry an event is, or null for an event that is no entry: a
- * confirmation, a move, a merge, a check, a keep, an asset, a park or a
- * task taken off its questions.
+ * confirmation, a move, a merge, a check, a keep, an asset, a park, a task
+ * taken off its questions or a carry.
  * @param {Record<string, unknown>} event
  * @returns {EntryKind|null}
  */
