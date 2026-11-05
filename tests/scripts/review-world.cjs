@@ -143,7 +143,7 @@ function decided(dir, address, question, decision, { flags = [], task } = {}) {
 const calls = {};
 
 const world = fixtureFrom('review-', (dir) => {
-  createManifest(dir, UNIT, { build: { position: 'auto' }, cut: CUT, checklists: closedChecklists([1, 2]) });
+  createManifest(dir, UNIT, { phases: { discussion: { items: { [UNIT]: { status: 'completed' } } } }, build: { position: 'auto' }, cut: CUT, checklists: closedChecklists([1, 2]) });
   createManifest(dir, 'half', { build: { position: 'auto' }, cut: CUT, checklists: closedChecklists([1]) });
   createManifest(dir, 'open', { build: { position: 'auto' }, cut: CUT });
   createManifest(dir, 'solo', { build: { position: 'auto' }, cut: { phases: [CUT.phases[0]] }, checklists: closedChecklists([1]) });
@@ -363,6 +363,15 @@ async function raisedAtReview(question, task) {
   return (await okSectionsAsync(dir, ['raise', `${UNIT}.review`, '--answers', asked, ...parks], { env: env(), stdin: JSON.stringify({ ...MAILED, question }) })).res;
 }
 
+/**
+ * A replacement of `replaces` proposed at the review's place, parking no
+ * task: the raise's response.
+ * @param {string} replaces
+ */
+async function replacedAtReview(replaces) {
+  return (await okSectionsAsync(dir, ['raise', `${UNIT}.review`, '--replaces', replaces, '--reason', 'was-wrong'], { env: env(), stdin: JSON.stringify(MAILED) })).res;
+}
+
 /** Fix task 3.1 started, then parked on Q1, the question its builder raises (MAILED). */
 async function fixParked() {
   ok(dir, ['task', 'start', UNIT, '3.1'], { env: env() });
@@ -387,6 +396,6 @@ function storedBriefs() {
 module.exports = {
   UNIT, OTHER, ENGINE, ENGINE_LINE, SESSION_ID, areaText, AREAS, EVERY, FIVE, calls,
   useWorld, env, enter, inStep, payload, reportText, reported, named, recorded, refusedRound, taskMade, fixPhaseWritten, cutUnmerged, fixBranch, fixBuilt, fixClosed, commitFile, data, stateText, lastStateCommit, issued, storedBriefs,
-  decided, reviewCall, filed, raisedAtReview, FOUND, RECEIPT, FAILING, firstRoundReady, firstRoundFailed, secondRoundReady, fixParked,
+  decided, reviewCall, filed, raisedAtReview, replacedAtReview, FOUND, RECEIPT, FAILING, firstRoundReady, firstRoundFailed, secondRoundReady, fixParked,
   ok, okSections, refusedPristine, statePath, writeState, readManifest, git, stateGit, createManifest, initRepo, assert,
 };

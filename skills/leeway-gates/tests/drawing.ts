@@ -4,14 +4,16 @@
  * `drawLine`), so a view reads as §20 and the locked board draw it. A line
  * that wraps breaks at word breaks in the cells its marks and buttons leave,
  * a word longer than them broken across rows, each row after the first
- * hung under its marks; any other line is one row, cut at the edge with
- * "…". Trailing spaces are dropped.
+ * hung under its marks, its end button at the right of the first; any
+ * other line is one row, cut at the edge with "…", and one pressed whole
+ * must fit, its words drawn in a button that never cuts them. Trailing
+ * spaces are dropped.
  */
 import { QUIET, waitingOf } from '../hooks/discuss.ts'
-import { kitOf, type Asked, type Kit, type Line, type Part } from '../hooks/draw.ts'
-import type { Answer } from '../hooks/model.ts'
+import { kitOf, wrappedRows, type Asked, type Kit, type Line, type Part } from '../hooks/draw.ts'
+import type { Answer, View } from '../hooks/model.ts'
 import { HOME, framed, type Nav } from '../hooks/pane.ts'
-import { VIEWS } from '../hooks/views/index.ts'
+import { VIEWS, type ViewDrawing } from '../hooks/views/index.ts'
 
 /** The pane's width at 64 columns, inside its padding, as every drawing in §20 is. */
 export const WIDTH = 62
@@ -20,36 +22,6 @@ const cells = (text: string) => [...text].length
 
 const textOf = (parts: readonly Part[]) => parts.map(part => part.text).join('')
 
-/** The words broken into rows of `room` cells at word breaks, a word longer than the room broken across rows. */
-function wrapped(text: string, room: number): string[] {
-  const rows: string[] = []
-  let row = ''
-
-  for (const word of text.split(' ')) {
-    const joined = row === '' ? word : `${row} ${word}`
-
-    if (cells(joined) <= room) {
-      row = joined
-      continue
-    }
-
-    if (row !== '') {
-      rows.push(row)
-    }
-
-    let rest = [...word]
-
-    while (rest.length > room) {
-      rows.push(rest.slice(0, room).join(''))
-      rest = rest.slice(room)
-    }
-
-    row = rest.join('')
-  }
-
-  return [...rows, row]
-}
-
 /** The rows a line takes `width` cells across. */
 export function rowsDrawn(line: Line, width = WIDTH): string[] {
   const lead = textOf([...(line.marks ?? (line.mark === undefined ? [] : [line.mark])), ...(line.lead === undefined ? [] : [{ text: line.lead.label }])])
@@ -57,13 +29,17 @@ export function rowsDrawn(line: Line, width = WIDTH): string[] {
   const room = width - cells(lead) - cells(end)
   const words = textOf(line.parts)
 
+  if (line.press !== undefined && line.wraps !== true && cells(words) > room) {
+    throw new Error(`the pressed line ${line.key} overflows its ${room} cells: ${words}`)
+  }
+
   if (line.wraps !== true) {
     const cut = cells(words) <= room ? words : `${[...words].slice(0, room - 1).join('')}…`
 
     return [`${lead}${cut}${end}`.trimEnd()]
   }
 
-  return wrapped(words, room).map((row, at) => (at === 0 ? `${lead}${row}${end}` : `${' '.repeat(cells(lead))}${row}`).trimEnd())
+  return wrappedRows(words, room).map((row, at) => (at === 0 ? `${lead}${end === '' ? row : row + ' '.repeat(room - cells(row))}${end}` : `${' '.repeat(cells(lead))}${row}`).trimEnd())
 }
 
 /** Every row the lines take. */
@@ -93,4 +69,32 @@ export function sectionOf(rows: readonly string[], heading: string): string[] {
   const to = rows.indexOf('', from)
 
   return rows.slice(from, to === -1 ? undefined : to)
+}
+
+/** The drawings' clock: 21 Oct, 13:30. */
+export const NOW = Date.parse('2026-10-21T13:30:00')
+
+/** A drawing's text block, as §20 prints it, one row a line. */
+export const block = (text: string) => text.replace(/^\n/, '').replace(/\n$/, '').split('\n')
+
+/** What a line's first part is, by its key. */
+export const markOf = (lines: readonly Line[], key: string) => lines.find(line => line.key === key)?.parts[0]
+
+/** A line's mark, by its key. */
+export const ownMarkOf = (lines: readonly Line[], key: string) => lines.find(line => line.key === key)?.mark
+
+/** What a line presses, by its key. */
+export const pressOf = (lines: readonly Line[], key: string) => lines.find(line => line.key === key)?.press
+
+/** A view drawn at the pane's width at `now`, its folds opened, with what WAITING ON YOU would draw: its lines, its rows less the blank ones it ends on, and what it holds. */
+export function drawn(drawing: ViewDrawing, view: View, { now = NOW, opened = [] as string[], waiting = [] as Line[] } = {}) {
+  const { kit, holds } = kitOf(WIDTH, now, 0, new Set(opened), () => waiting)
+  const lines = drawing.lines(view, kit)
+  const text = drawnRows(lines)
+
+  while (text.at(-1) === '') {
+    text.pop()
+  }
+
+  return { lines, text, holds }
 }

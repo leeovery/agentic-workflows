@@ -15,41 +15,63 @@
 //   the sessions' presence; and its messages waiting. Those cancelled or
 //   postponed are set aside, a postponed one with the horizon the roadmap
 //   holds it on.
-// - The specification waits until it is written, runs until the build
-//   begins, and is complete then; the build runs until every phase of the
-//   cut has closed.
-// - Any other unit's phases run from discovery, which made it, through its
-//   type's pipeline (20.15.2), each complete, running, or later, by the
-//   phase's status (derivations.cjs); an epic's while discovery runs before
-//   any topic exists, discovery running and each after it later, with what
-//   it waits on. A phase complete or running says what its records hold:
-//   the discussion its decisions, the specification its sections and the
-//   build phases cut, the build its tasks done of its tasks, the review its
-//   round.
+// - Where the unit stands is read from its one derivation (board-standing.cjs):
+//   its phases, each complete, under way or later, and the day each complete
+//   one closed; where it has come to; how the phase it is in stands —
+//   running, stopped, or waiting on the person — and the unit's one list of
+//   what waits on them, which the epic's page and the tab both show.
+// - The specification waits until every topic is decided, is written until
+//   the build begins — held by what waits on the person first in the
+//   unit's list, the map the sweep staged, a gap, or ready to build's yes —
+//   and is complete then; the build and review build until every phase of
+//   the cut has closed, review until the unit completes, and are complete
+//   then, stopped where nothing can go on and waiting on the person while
+//   finish does.
+// - Any other unit's tab shows each phase from discovery, an epic's until
+//   its map is first approved with what each after it waits on (20.15.2). A
+//   phase complete or under way says what its records hold: discovery the
+//   note it began from, an epic's the topics on its map, the discussion its
+//   decisions, the specification its sections with the build phases cut
+//   once complete and its passes reported until then, the build its cut's
+//   tasks done — of them while it runs — the review its round and, once
+//   recorded, where it stands as the banner says it; a phase under way says
+//   what it is doing, the specification where it stands as its banner says
+//   it; a phase, or a stage, says whether a session is in it, this one or
+//   another.
 // - A unit started the day its manifest was made, as the manifest stamps it
-//   (20.15.1).
-// - What waits on the person in a unit is each question its build waits on,
-//   and each gap its specification's review waits on while the spec is
-//   written and the build not begun (spec-passes.cjs).
+//   (20.15.1). The tab says whether it is the unit this session is in,
+//   whose questions the board holds (`here`).
+// - A finished phase opens in full (20.15.3): a linear unit's discovery on
+//   the note it began from — the inbox's or the roadmap's, else its brief —
+//   and the discussion on its decisions.
 // - Lately is the unit's moments, newest first, the latest `LATELY_SHOWN`:
-//   from the state's history (state-history.cjs) and, once its build has
-//   begun, from its build (board-build.cjs), each topic by its title.
+//   from the state's history (state-history.cjs), its spec's review passes
+//   (board-spec.cjs) and, once its build has begun, from its build
+//   (board-build.cjs), each topic by its title, the spec landed with its
+//   sections and phases cut, each
+//   message sent with its sender, and each run of messages one topic took in
+//   one moment with their count.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const { readProjectManifest } = require('../../kernel/manifest.cjs');
+const { statePath } = require('../../kernel/state-root.cjs');
 const { readShown, answerMap } = require('../ledger-read.cjs');
-const { rowStanding } = require('../topic-map.cjs');
+const { rowStanding, answersOn } = require('../topic-map.cjs');
 const { scanProject } = require('../presence.cjs');
 const { liveInOrder } = require('../approve-map.cjs');
-const { pastItsSpec } = require('../spec-standing.cjs');
 const { specPath, specReading } = require('../spec-sections.cjs');
-const { waitingGaps } = require('../spec-passes.cjs');
-const { unitHistory } = require('../state-history.cjs');
-const { computeTopicLifecycle, mailboxFiles, phaseStatus, buildPlaceStatus, buildBegun, buildFinished, cutLength, roadmapItems, topicTitle } = require('../derivations.cjs');
+const { unitHistory, sentMail } = require('../state-history.cjs');
+const { ROADMAP_SEED } = require('../inbox.cjs');
+const { dayBefore } = require('../dates.cjs');
+const { computeTopicLifecycle, mailboxFiles, buildBegun, buildFinished, cutLength, roadmapItems, topicTitle, briefFile } = require('../derivations.cjs');
 const { counted } = require('./map.cjs');
-const { buildView, buildWords, buildMoments } = require('./board-build.cjs');
-const { reviewStandingAt } = require('./board-build.cjs');
+const { buildView, buildMoments } = require('./board-build.cjs');
+const { roundWords } = require('./board-review.cjs');
+const { passMoments, reportedOf, specDoing } = require('./board-spec.cjs');
+const { sentBy } = require('./board-discussion.cjs');
+const { mapCount } = require('./board-discovery.cjs');
+const { phasesAt, nowOf, waitingOn, standingOf, holds, closedOn, startedOf, pastDiscovery } = require('./board-standing.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
 /** @typedef {import('../board-model.cjs').EpicView} EpicView */
@@ -57,7 +79,9 @@ const { reviewStandingAt } = require('./board-build.cjs');
 /** @typedef {import('../board-model.cjs').UnitPhase} UnitPhase */
 /** @typedef {import('../board-model.cjs').TopicLine} TopicLine */
 /** @typedef {import('../board-model.cjs').Moment} Moment */
+/** @typedef {import('../board-model.cjs').PhasePage} PhasePage */
 /** @typedef {import('../topic-map.cjs').Row} Row */
+/** @typedef {'this'|'other'|null} SessionIn */
 
 /** How many moments a unit's page shows lately. */
 const LATELY_SHOWN = 10;
@@ -65,26 +89,34 @@ const LATELY_SHOWN = 10;
 /** The phases a session works in a topic of an epic. */
 const TOPIC_PHASES = Object.freeze(['discussion', 'experiment']);
 
-/** Each type's phases after discovery, as its tab names them, each with the phase whose status it reads. @type {Readonly<Record<string, [string, string][]>>} */
-const LINEAR_PHASES = Object.freeze({
-  epic: [['discussion', 'discussion'], ['specification', 'specification'], ['build', 'implementation'], ['review', 'review']],
-  feature: [['discussion', 'discussion'], ['specification', 'specification'], ['build', 'implementation'], ['review', 'review']],
-  bugfix: [['investigation', 'investigation'], ['specification', 'specification'], ['build', 'implementation'], ['review', 'review']],
-  'quick-fix': [['implementation', 'implementation']],
-  'cross-cutting': [['discussion', 'discussion'], ['specification', 'specification']],
-});
-
 /** What an epic's phases wait on while its discovery runs (20.15.2). @type {Readonly<Record<string, string>>} */
 const EPIC_WAITS = Object.freeze({ discussion: 'once the map is approved', specification: 'once every topic is decided' });
 
-/** The day the unit started (the header's), null where its manifest holds none. @param {BoardAt} at */
-const startedOf = ({ manifest }) => (typeof manifest.created === 'string' ? manifest.created : null);
+/** The sessions the project holds, read once a call. @param {BoardAt} at @returns {ReturnType<typeof scanProject>['sessions']} */
+const presenceOf = (at) => at.once('presence', () => scanProject(at.cwd).sessions);
 
 /** The sessions held elsewhere in the unit's topics, by topic: whether another session is in each. @param {BoardAt} at @returns {Set<string>} */
 function othersIn(at) {
-  return new Set(scanProject(at.cwd).sessions
+  return new Set(presenceOf(at)
     .filter(({ work_unit: unit, phase, held, session_id: session }) => unit === at.unit && TOPIC_PHASES.includes(phase) && held && session !== at.session)
     .map(({ topic }) => topic));
+}
+
+/** The session in each of the unit's phases, by phase: this one where it is, else another holding its presence there. @param {BoardAt} at @returns {Map<string, 'this'|'other'>} */
+function sessionsIn(at) {
+  /** @type {Map<string, 'this'|'other'>} */
+  const by = new Map(presenceOf(at)
+    .filter(({ work_unit: unit, held, session_id: session }) => unit === at.unit && held && session !== at.session)
+    .map(({ phase }) => [phase, 'other']));
+  if (at.place.unit === at.unit && at.place.phase !== null) by.set(at.place.phase, 'this');
+  return by;
+}
+
+/** The session in any of the phases given, this one first. @param {Map<string, 'this'|'other'>} sessions @param {string[]} phases @returns {SessionIn} */
+function sessionOf(sessions, phases) {
+  const found = phases.map((phase) => sessions.get(phase));
+  if (found.includes('this')) return 'this';
+  return found.includes('other') ? 'other' : null;
 }
 
 /**
@@ -108,17 +140,87 @@ function mapsOf(at, topics) {
   })));
 }
 
+/** Who sent each message to the unit's topics since `from`, by the topic and the message's file. @param {BoardAt} at @param {string} from @returns {Map<string, string>} */
+function sendersOf(at, from) {
+  return new Map(sentMail(at.cwd, at.unit, from).map(({ to, file, from: sender }) => [`${to}/${file}`, sentBy(sender).from]));
+}
+
+/** A message sent or taken in, with its sender in place of its file, where the mail names one; one taken in counted. @param {Map<string, string>} senders @param {Moment} moment @returns {Moment} */
+function withSender(senders, moment) {
+  if (moment.kind !== 'sent' && moment.kind !== 'answered') return moment;
+  const sender = senders.get(`${moment.topic}/${moment.detail}`) || null;
+  return moment.kind === 'answered' ? { ...moment, detail: sender, count: 1 } : { ...moment, detail: sender };
+}
+
+/** The moments, each run of messages one topic took in made one with their count, its sender kept only where it was one. @param {Moment[]} moments @returns {Moment[]} */
+function intakes(moments) {
+  /** @type {Moment[]} */
+  const out = [];
+  for (const moment of moments) {
+    const last = out.at(-1);
+    if (moment.kind === 'answered' && last?.kind === 'answered' && last.topic === moment.topic) out[out.length - 1] = { ...last, detail: null, count: (last.count ?? 1) + 1 };
+    else out.push(moment);
+  }
+  return out;
+}
+
+/**
+ * How far back a message LATELY shows was sent: by the oldest moment of mail
+ * it shows — one taken in was sent before it, so from the unit's start for
+ * that; one sent, from its own time.
+ * @param {BoardAt} at @param {Moment} oldest
+ */
+const sentSince = (at, oldest) => (oldest.kind === 'sent' ? oldest.at : dayBefore(at.manifest.created) ?? oldest.at);
+
 /** The unit's moments, newest first, the latest shown (the header's). @param {BoardAt} at @returns {Moment[]} */
 function latelyOf(at) {
-  const moments = [...unitHistory(at.cwd, at.unit), ...(buildBegun(at.manifest) ? buildMoments(at) : [])];
-  return moments
-    .sort((a, b) => b.at.localeCompare(a.at))
+  const moments = [...unitHistory(at.cwd, at.unit), ...passMoments(at), ...(buildBegun(at.manifest) ? buildMoments(at) : [])].sort((a, b) => b.at.localeCompare(a.at));
+  const mail = moments.filter(({ kind }) => kind === 'sent' || kind === 'answered');
+  const oldest = mail.at(-1);
+  const senders = oldest === undefined ? new Map() : sendersOf(at, sentSince(at, oldest));
+  return intakes(moments.map((moment) => withSender(senders, moment)))
     .slice(0, LATELY_SHOWN)
-    .map((moment) => ({ ...moment, topic: moment.topic === null ? null : topicTitle(at.manifest, moment.topic) }));
+    .map((moment) => ({ ...moment, topic: moment.topic === null ? null : topicTitle(at.manifest, moment.topic), ...(moment.kind === 'spec-landed' ? { detail: landedWords(at) } : {}) }));
 }
 
 /** The topic this session is in, in its discussion or its experiment, null where it is in none of the unit's. @param {BoardAt} at */
 const sessionTopic = ({ place, unit }) => (place.unit === unit && place.phase !== null && TOPIC_PHASES.includes(place.phase) ? place.topic : null);
+
+/** What holds the specification on the epic's page, by the first wait of the unit's one list that holds it. @type {Readonly<Record<string, EpicView['spec']['state']>>} */
+const SPEC_HELD = Object.freeze({ map: 'map', gap: 'asking', ready: 'ready' });
+
+/**
+ * Where the specification stands on the epic's page: waiting on the topics,
+ * being written, held by what waits on the person — the map the sweep
+ * staged, a gap, or ready to build's yes — or complete.
+ * @param {BoardAt} at @returns {EpicView['spec']['state']}
+ */
+function specState(at) {
+  const { phase } = nowOf(at);
+  if (phase === 'discussion') return 'waits';
+  if (phase !== 'specification') return 'complete';
+  const held = waitingOn(at).find(holds);
+  return held === undefined ? 'running' : SPEC_HELD[held.kind];
+}
+
+/** Where the build and review stand on the epic's page, by the derivation's phase and standing. @type {Readonly<Record<string, EpicView['build']['state']>>} */
+const UNDER_WAY = Object.freeze({ build: 'building', review: 'reviewing' });
+
+/**
+ * Where the build and review stand on the epic's page: after the
+ * specification, building or in review, stopped, finish waiting on the
+ * person, or complete.
+ * @param {BoardAt} at @returns {EpicView['build']['state']}
+ */
+function buildState(at) {
+  const { phase } = nowOf(at);
+  if (phase === 'complete') return 'complete';
+  const running = UNDER_WAY[phase];
+  if (running === undefined) return 'waits';
+  const standing = standingOf(at);
+  if (standing === 'stopped') return 'stopped';
+  return standing === 'waits' && waitingOn(at).some(({ kind }) => kind === 'finish') ? 'finish' : running;
+}
 
 /** An epic's page (the header's). @param {BoardAt} at @param {boolean} atMenu @returns {EpicView} */
 function epicView(at, atMenu) {
@@ -126,6 +228,7 @@ function epicView(at, atMenu) {
   const lifecycles = new Map(live.map((topic) => [topic, computeTopicLifecycle(at.manifest, topic).lifecycle]));
   const maps = mapsOf(at, live);
   const others = othersIn(at);
+  const sessions = sessionsIn(at);
   const here = sessionTopic(at);
   const fresh = live.filter((topic) => lifecycles.get(topic) === 'fresh');
   const next = fresh.length === live.length ? fresh[0] : undefined;
@@ -149,8 +252,11 @@ function epicView(at, atMenu) {
     title: at.title,
     about: String(at.manifest.description ?? ''),
     started: startedOf(at),
+    now: nowOf(at),
     at_menu: atMenu,
+    here: at.place.unit === at.unit,
     progress: { decided: live.filter((topic) => lifecycles.get(topic) === 'decided').length, total: live.length, discussing: live.filter((topic) => lifecycles.get(topic) === 'discussing').length },
+    waiting: waitingOn(at),
     topics: live.map((topic) => {
       const { decided = 0, total = 0, experiment = null } = maps.get(topic) ?? {};
       return {
@@ -164,70 +270,139 @@ function epicView(at, atMenu) {
         experiment,
       };
     }),
-    spec: buildBegun(at.manifest) ? 'complete' : pastItsSpec(at.cwd, at.manifest) ? 'running' : 'waits',
-    build: buildFinished(at.manifest) ? 'complete' : buildBegun(at.manifest) ? 'running' : 'waits',
+    spec: { state: specState(at), session: sessionOf(sessions, ['specification']) },
+    build: { state: buildState(at), session: sessionOf(sessions, ['implementation', 'review']) },
     set_aside: setAside,
     lately: latelyOf(at),
   };
 }
 
-/** The spec's sections and the build phases cut, as the tab says them. @param {BoardAt} at */
-function specWords(at) {
-  const file = specPath(at.cwd, at.unit);
-  if (!fs.existsSync(file)) return '';
-  const areas = specReading(fs.readFileSync(file, 'utf8')).headings.filter(({ kind }) => kind === 'area').length;
+/** The spec's sections and the phases cut, as LATELY says them of the spec landed, null where the spec is not written. @param {BoardAt} at */
+function landedWords(at) {
+  const areas = specAreas(at);
+  if (areas === null) return null;
   const cut = cutLength(at.manifest);
-  return [counted(areas, 'section'), ...(cut > 0 ? [counted(cut, 'build phase')] : [])].join(' · ');
+  return [counted(areas, 'section'), ...(cut > 0 ? [`${counted(cut, 'phase')} cut`] : [])].join(', ');
+}
+
+/** How many sections the unit's spec holds, null where it is not written. @param {BoardAt} at */
+function specAreas(at) {
+  const file = specPath(at.cwd, at.unit);
+  return fs.existsSync(file) ? specReading(fs.readFileSync(file, 'utf8')).headings.filter(({ kind }) => kind === 'area').length : null;
+}
+
+/** The spec's sections, and the build phases cut once it is complete, else the passes reported, as the tab says them. @param {BoardAt} at */
+function specWords(at) {
+  const areas = specAreas(at);
+  if (areas === null) return '';
+  const after = buildBegun(at.manifest) ? counted(cutLength(at.manifest), 'build phase') : counted(reportedOf(at).length, 'pass', 'passes');
+  return `${counted(areas, 'section')} · ${after}`;
+}
+
+/** The cut's tasks done, of them while the build runs, as the tab says them; the review's fix tasks are not the build's. @param {BoardAt} at */
+function buildTasks(at) {
+  const cut = buildView(at).view.phases.filter(({ phase }) => phase <= cutLength(at.manifest));
+  const done = cut.reduce((sum, phase) => sum + phase.done, 0);
+  return buildFinished(at.manifest) ? `${counted(done, 'task')} done` : `${done} of ${counted(cut.reduce((sum, phase) => sum + phase.total, 0), 'task')} done`;
+}
+
+/** The notes the unit was started from, as its manifest lists them. @param {BoardAt} at @returns {{path: string, source: string}[]} */
+const seedsOf = ({ manifest }) => (Array.isArray(manifest.seeds) ? manifest.seeds : []);
+
+/** Whether a note the unit was started from is the roadmap's. @param {{source: string}} seed */
+const fromRoadmap = ({ source }) => String(source).startsWith(ROADMAP_SEED);
+
+/** Where a linear unit's discovery began, as the tab says it: an inbox note, the roadmap's, or the seed. @param {BoardAt} at */
+function seedWords(at) {
+  const [seed] = seedsOf(at);
+  if (seed === undefined) return 'the seed';
+  return fromRoadmap(seed) ? 'from the roadmap' : 'from your inbox note';
 }
 
 /** What each phase's records hold, as the tab says it, by the phase it reads. @type {Readonly<Record<string, (at: BoardAt) => string>>} */
 const PHASE_WORDS = Object.freeze({
+  discovery: seedWords,
   discussion: (at) => counted(mapsOf(at, [at.unit]).get(at.unit)?.decisions ?? 0, 'decision'),
   specification: specWords,
-  implementation: (at) => (buildBegun(at.manifest) ? buildWords(buildView(at).view) : ''),
-  review: (at) => `round ${reviewStandingAt(at).round}`,
+  implementation: (at) => (buildBegun(at.manifest) ? buildTasks(at) : ''),
+  review: (at) => {
+    const { round, words } = roundWords(at);
+    return words ?? `round ${round}`;
+  },
 });
 
 /** A phase's words, where its records say any. @param {BoardAt} at @param {string} reads */
 const wordsOf = (at, reads) => /** @type {Record<string, (at: BoardAt) => string>} */ (PHASE_WORDS)[reads]?.(at) ?? '';
 
-/** A phase on the unit's tab, by the status of the phase it reads. @param {BoardAt} at @param {string} phase @param {string} reads @returns {UnitPhase} */
-function linearPhase(at, phase, reads) {
-  const status = reads === 'review' ? buildPlaceStatus(at.manifest, reads) : phaseStatus(at.manifest, reads, pastItsSpec(at.cwd, at.manifest));
-  if (status === 'completed') return { phase, state: 'complete', words: wordsOf(at, reads) };
-  if (status !== 'in-progress') return { phase, state: 'later', words: '' };
-  return { phase, state: 'running', words: wordsOf(at, reads) };
+/** What a phase under way is doing, by the phase it reads: the specification where it stands, as its banner says it. @type {Readonly<Record<string, (at: BoardAt) => string>>} */
+const DOING = Object.freeze({
+  discovery: () => 'shaping',
+  discussion: () => 'discussing',
+  investigation: () => 'investigating',
+  specification: (at) => specDoing(at, waitingOn(at)),
+  implementation: (at) => (at.manifest.work_type === 'quick-fix' ? 'working' : 'building'),
+  review: () => 'reviewing',
+});
+
+/** What a phase under way is doing, by the phase it reads. @param {BoardAt} at @param {string} reads */
+const doingOf = (at, reads) => /** @type {Record<string, (at: BoardAt) => string>} */ (DOING)[reads]?.(at) ?? '';
+
+/** A file's text, empty where none is written. @param {string} file */
+const textOf = (file) => (fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '');
+
+/** A linear unit's discovery in full: each note it was started from, else its brief. @param {BoardAt} at @returns {PhasePage['sections']} */
+function seedSections(at) {
+  const seeds = seedsOf(at);
+  if (seeds.length === 0) return [{ heading: 'The seed', text: textOf(statePath(at.cwd, briefFile(at.unit, at.unit))) }];
+  return seeds.map((seed) => ({ heading: fromRoadmap(seed) ? 'The roadmap\'s note' : 'Your note', text: textOf(statePath(at.cwd, at.unit, seed.path)) }));
 }
 
-/** An epic's phase while its discovery runs, before any topic exists. @param {string} phase @returns {UnitPhase} */
-const epicPhase = (phase) => ({ phase, state: 'later', words: EPIC_WAITS[phase] ?? '' });
+/** A linear unit's discussion in full: each decision on its map, its question with its answer. @param {BoardAt} at @returns {PhasePage['sections']} */
+function decisionSections(at) {
+  const rows = readShown(at.root, at.warnings, (shower) => /** @type {Row[]} */ (answerMap(shower, { unit: at.unit, topic: at.unit }, at.root).questions));
+  const said = (/** @type {string} */ text) => text.replace(/\s+/g, ' ').trim();
+  const decided = rows.filter((row) => !['open', 'moved'].includes(rowStanding(row)));
+  return [{ heading: 'Decisions', text: decided.map((row) => `${said(row.text)}: ${answersOn(row).map(({ text }) => said(text)).join(' ')}`).join('\n\n') }];
+}
+
+/** The finished phases of a linear unit that open in full, each with what its page shows. @type {Readonly<Record<string, (at: BoardAt) => PhasePage['sections']>>} */
+const PHASE_PAGES = Object.freeze({ discovery: seedSections, discussion: decisionSections });
 
 /**
- * What waits on the person in a unit (the header's): its build's questions
- * once the build has begun, else its spec's gaps once the spec is written.
- * @param {string} cwd @param {Record<string, any>} manifest @returns {'question'|'gap'|null}
+ * A phase on the unit's tab: where it stands — the phase the unit is in as
+ * it stands — what its records hold, and the day it closed.
+ * @param {BoardAt} at @param {Map<string, 'this'|'other'>} sessions @param {import('./board-standing.cjs').PhaseAt} held @returns {UnitPhase}
  */
-function waitsOn(cwd, manifest) {
-  if (buildBegun(manifest)) return 'question';
-  return fs.existsSync(specPath(cwd, manifest.name)) ? 'gap' : null;
+function phaseLine(at, sessions, { phase, reads, status, on }) {
+  const session = sessionOf(sessions, [reads]);
+  if (status === 'complete') return { phase, state: 'complete', words: wordsOf(at, reads), doing: '', on, session, page: Object.hasOwn(PHASE_PAGES, reads) };
+  if (status !== 'running') return { phase, state: 'later', words: '', doing: '', on: null, session, page: false };
+  return { phase, state: standingOf(at), words: wordsOf(at, reads), doing: doingOf(at, reads), on: null, session, page: false };
 }
 
-/** What waits on the person in the unit (the header's). @param {BoardAt} at @returns {UnitView['waiting']} */
-function waitingIn(at) {
-  const kind = waitsOn(at.cwd, at.manifest);
-  if (kind === 'question') return (buildView(at).questions ?? []).map(({ question, asks }) => ({ kind, id: question, text: asks }));
-  if (kind === null) return [];
-  return waitingGaps(at.cwd, at.unit, at.warnings).map(({ short, text }) => ({ kind, id: short, text }));
+/** What an epic's discovery has on its map so far, as the tab says it, empty while it holds none. @param {BoardAt} at */
+function mapWords(at) {
+  const topics = mapCount(at.cwd, at.manifest);
+  return topics === 0 ? '' : counted(topics, 'topic');
 }
 
-/** A unit's tab (the header's): an epic's only while its discovery runs before any topic exists. @param {BoardAt} at @param {boolean} atMenu @returns {UnitView} */
+/**
+ * An epic's phase while its discovery runs, before any topic exists:
+ * discovery with the topics on its map, waiting on the person while the map
+ * does; each after it with what it waits on.
+ * @param {BoardAt} at @param {Map<string, 'this'|'other'>} sessions @param {import('./board-standing.cjs').PhaseAt} held @returns {UnitPhase}
+ */
+function shapingPhase(at, sessions, { phase }) {
+  const session = sessionOf(sessions, [phase]);
+  if (phase !== 'discovery') return { phase, state: 'later', words: EPIC_WAITS[phase] ?? '', doing: '', on: null, session, page: false };
+  return { phase, state: standingOf(at), words: mapWords(at), doing: doingOf(at, phase), on: null, session, page: false };
+}
+
+/** A unit's tab (the header's): an epic's only until its map is first approved. @param {BoardAt} at @param {boolean} atMenu @returns {UnitView} */
 function linearView(at, atMenu) {
-  const epic = at.manifest.work_type === 'epic';
-  const after = LINEAR_PHASES[at.manifest.work_type] ?? [];
-  const phases = [
-    { phase: 'discovery', state: /** @type {UnitPhase['state']} */ (epic ? 'running' : 'complete'), words: '' },
-    ...after.map(([phase, reads]) => (epic ? epicPhase(phase) : linearPhase(at, phase, reads))),
-  ];
+  const line = at.manifest.work_type === 'epic' ? shapingPhase : phaseLine;
+  const sessions = sessionsIn(at);
+  const phases = phasesAt(at).map((held) => line(at, sessions, held));
   return {
     kind: 'unit',
     unit: at.unit,
@@ -235,23 +410,35 @@ function linearView(at, atMenu) {
     type: at.manifest.work_type,
     about: String(at.manifest.description ?? ''),
     started: startedOf(at),
+    now: nowOf(at),
     at_menu: atMenu,
+    here: at.place.unit === at.unit,
     progress: { complete: phases.filter(({ state }) => state === 'complete').length, total: phases.length },
-    waiting: waitingIn(at),
+    waiting: waitingOn(at),
     phases,
     lately: latelyOf(at),
   };
 }
 
-/** Whether an epic has a topic yet: its map approved at least once. @param {Record<string, any>} manifest */
-const hasTopics = (manifest) => Object.keys(manifest.phases?.discovery?.items ?? {}).length > 0;
-
-/** A unit's page: an epic's page once it has topics, else its tab. @param {BoardAt} at @param {boolean} atMenu @returns {{view: EpicView|UnitView}} */
+/** A unit's page: an epic's page once its map is approved, else its tab. @param {BoardAt} at @param {boolean} atMenu @returns {{view: EpicView|UnitView}} */
 function unitPage(at, atMenu) {
-  return { view: at.manifest.work_type === 'epic' && hasTopics(at.manifest) ? epicView(at, atMenu) : linearView(at, atMenu) };
+  return { view: pastDiscovery(at.manifest) ? epicView(at, atMenu) : linearView(at, atMenu) };
 }
 
-/** The banner at the session's place, from the place alone: its type and the phase, or the menu. @param {BoardAt} at @returns {{state: 'running'|'idle', facts: {text: string, needs: boolean}[]}} */
+/**
+ * A finished phase of a linear unit read in full (20.15.3), by its name:
+ * the day it closed, what it produced, and its sections; refused for a
+ * phase that opens on no page of its own, or is not finished.
+ * @param {BoardAt} at @param {string} phase @returns {PhasePage}
+ */
+function phasePage(at, phase) {
+  const sections = /** @type {Record<string, (at: BoardAt) => PhasePage['sections']>} */ (PHASE_PAGES)[phase];
+  const finished = sections !== undefined && at.manifest.work_type !== 'epic' && phasesAt(at).some(({ reads, status }) => reads === phase && status === 'complete');
+  if (!finished) throw new Error(`${at.unit} has no finished ${phase} that opens in full — a linear unit's discovery and discussion do, once complete`);
+  return { kind: 'phase', unit: at.unit, title: at.title, phase, on: closedOn(at, phase), words: wordsOf(at, phase), sections: sections(at) };
+}
+
+/** The banner at the session's place, from the place alone: its type and the phase, or the menu; what waits on the person is the board's (board.cjs). @param {BoardAt} at @returns {{state: 'running'|'idle', facts: {text: string, needs: boolean}[]}} */
 function placeBanner(at) {
   const fact = (/** @type {string} */ text) => ({ text, needs: false });
   return { state: at.place.phase === null ? 'idle' : 'running', facts: [fact(at.manifest.work_type), fact(at.place.phase ?? 'at its menu')] };
@@ -260,7 +447,7 @@ function placeBanner(at) {
 /**
  * The banner's facts at a unit's page (20.2.4): at an epic's page its
  * topics decided of all; elsewhere the phase the session is in, or the
- * menu.
+ * menu; what waits on the person is the board's (board.cjs).
  * @param {BoardAt} at @param {EpicView|UnitView} view @returns {{state: 'running'|'idle', facts: {text: string, needs: boolean}[]}}
  */
 function unitBanner(at, view) {
@@ -269,10 +456,10 @@ function unitBanner(at, view) {
   return { state: 'running', facts: [fact('epic'), fact(at.place.phase ?? 'at its menu'), fact(`${view.progress.decided} of ${view.progress.total} topics decided`)] };
 }
 
-/** How far an epic has come, as All work says it: its topics decided of all. @param {Record<string, any>} manifest */
+/** How far an epic in its discussion has come, as All work says it: its topics decided of all. @param {Record<string, any>} manifest */
 function epicWords(manifest) {
   const live = liveInOrder(manifest);
   return `${live.filter((topic) => computeTopicLifecycle(manifest, topic).lifecycle === 'decided').length} of ${counted(live.length, 'topic')} decided`;
 }
 
-module.exports = { unitPage, unitBanner, placeBanner, epicWords, waitsOn };
+module.exports = { unitPage, phasePage, unitBanner, placeBanner, epicWords };

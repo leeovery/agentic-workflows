@@ -21,7 +21,7 @@ const path = require('path');
 const ROOT = path.join(__dirname, '../..');
 const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
 const { epicDashboard } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
-const { stateGit } = require('./engine-harness.cjs');
+const { stateGit, sectionOf } = require('./engine-harness.cjs');
 const { Sim, sessionLog, menuEntry, enterEntry, discussed } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: workunit', () => {
@@ -66,12 +66,32 @@ describe('pipeline simulation: workunit', () => {
 
     sim.run(['workunit', 'pivot', wu]);
     assert.strictEqual(sim.manifest(wu).work_type, 'epic');
+    const board = (/** @type {string[]} */ args) => JSON.parse(sim.read(['board', sim.env.CLAUDE_CODE_SESSION_ID, ...args])).view;
+    const page = board(['--tab', 'unit', '--unit', wu]);
+    const row = board(['--tab', 'all']).units.find((/** @type {{unit: string}} */ { unit }) => unit === wu);
+    assert.deepStrictEqual([page.kind, page.now, row.phase], ['epic', { phase: 'discussion', since: sim.manifest(wu).phases.discovery.approved_at }, 'discussion'],
+      'S1, 18.3.5: the pivot approves the map it lands, so the epic stands past its discovery on its page and in All work, its discovery closed at the pivot');
     assert.match(sim.render(['pivot-continuation', wu], { expect: 'content' }),
       /MENU: pivot continuation/, 'the manage flow can fetch the continuation menu post-pivot');
 
     // The pivoted epic's map and phases still derive; the topic is decided
     // as any epic topic is, and, the epic's last, the yes goes into its spec.
     assert.deepStrictEqual(discussed(sim, wu, wu).next, { kind: 'handoff', skill: 'leeway-specification-process', args: ['epic', wu] });
+  });
+
+  it('pivot: the map it lands is approved in its order, so its first re-shape marks a topic added as new (8.8.21, 8.S48)', () => {
+    const wu = 'bigger';
+    sim.run(['workunit', 'create', wu, 'feature', '--description', 'Outgrew itself', '--session-log-file', sessionLog(sim, wu)]);
+    enterEntry(sim, wu, 'discussion', wu);
+    sim.write(`.leeway/${wu}/topics/${wu}/log.md`, '# Discussion\n');
+    sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
+    sim.run(['workunit', 'pivot', wu]);
+    sim.run(['enter', 'discovery', wu]);
+    const brief = sim.write('.leeway/.cache/briefs/extra.md', '# Extra\n\nWhat it is.\n');
+    const map = sim.write('.leeway/.cache/scratch/approve-map.json', { topics: [{ name: wu }, { name: 'extra', summary: 'An extra point', brief }], parks: [] });
+
+    const screen = sectionOf(sim.render(['approve-map', wu, '--file', map], { expect: 'content' }), 'DISPLAY: approve the map');
+    assert.deepStrictEqual(screen.split('\n').filter((line) => /─ \d\./.test(line)), ['  ├─ 1. Bigger', '  └─ 2. Extra    [new]']);
   });
 
   it('absorption: a feature folds into an epic as a new topic and disappears', () => {

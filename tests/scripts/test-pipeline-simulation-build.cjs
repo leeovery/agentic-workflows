@@ -19,7 +19,9 @@
 // lays the phase out at its tips wherever it is run. The phase's review,
 // its stack merged with no gate, the scratch worktree a phase reviewer died
 // in taken apart as it merges, its close; then the second phase written
-// in the same conversation, the bug held for it reaching its writer.
+// in the same conversation, the bug held for it reaching its writer. And
+// the epic stopped, its one task in flight parked on a question, as every
+// view that reads it stands it.
 //
 // Layer: simulation. World: this file's own, built once from the project
 // every scenario starts from (pipeline-world.cjs, `twoPhaseEpic`), a copy
@@ -37,6 +39,8 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const { git } = require('./engine-harness.cjs');
+const { standingOn } = require('./board-world.cjs');
+const { leaningCall } = require('./ledger-world.cjs');
 const {
   Sim, worldFrom, twoPhaseEpic, buildEntry, startPhase, writeTasks, briefOf, deadReader, laidBeside, landed, placeIn, carryOn, buildLoop, VERIFY_FILES,
 } = require('./pipeline-world.cjs');
@@ -63,6 +67,9 @@ describe('pipeline simulation: the build', () => {
   it('12.S1, 24.S6: an epic in auto, its first phase built by one orchestrator in one conversation — the fix round to the same builder, the nit committed under its task, the phase\'s mutation run named by its last task\'s chain — and on into its second phase with no handoff', () => {
     const handedOff = sim.handoffs.length;
     const entered = buildEntry(sim, WU);
+    const tab = JSON.parse(sim.read(['board', sim.env.CLAUDE_CODE_SESSION_ID, '--tab', 'unit'])).view;
+    assert.deepStrictEqual({ now: tab.now, spec: tab.spec, build: tab.build }, { now: { phase: 'build', since: sim.manifest(WU).checklists['ready-to-build'].closed }, spec: { state: 'complete', session: null }, build: { state: 'building', session: 'this' } },
+      'S2, 20.8.2: the epic builds since ready to build\'s yes, its specification complete, this session in its build');
     assert.deepStrictEqual(entered.filter((line) => line.startsWith('phase: ')), ['phase: phase 1 of 2, "Settling": not yet written', 'phase: phase 2 of 2, "Showing": not yet written']);
     for (const call of [['ledger', 'record', WU], ['ledger', 'affected', WU]]) sim.read(call);
     sim.write(`.leeway/${WU}/build/log.md`, '# The build\n\nPhase 1: its tasks are being written.\n');
@@ -125,5 +132,23 @@ describe('pipeline simulation: the build', () => {
     assert.deepStrictEqual(Object.fromEntries([...loop.agents].map(([role, named]) => [role, [...named]])), {
       'task-writer': ['leeway-task-writer'], builder: ['leeway-builder'], reviewer: ['leeway-reviewer'], fix: ['leeway-builder'], 'phase-review': ['leeway-reviewer'],
     }, 'the agents run as defined');
+  });
+  it('S1: an epic whose one task in flight a question parks has stopped, on its DELIVERY and on the banner alike, its page listing the question opening the task it parks, All work\'s row stopped and counting it', async () => {
+    const conversation = sim.env.CLAUDE_CODE_SESSION_ID;
+    buildEntry(sim, WU);
+    sim.run(['task', 'phase', WU, '1', '--title', 'Settling']);
+    loop.brief(['task-writer', WU, '1']);
+    writeTasks(sim, WU, 1, [{ title: 'Settle an entry', scenarios: ['1.S1'] }]);
+    startPhase(sim, WU, 1);
+    sim.run(['task', 'start', WU, '1.1']);
+    const build = `${WU}.implementation`;
+    const asked = sim.run(['ledger', 'ask', build, '--task', '1.1'], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'Does a settled entry lock the ledger?' })).id;
+    await sim.runAsync(['raise', build, '--answers', asked, '--parks', '1.1'], null, JSON.stringify({ ...leaningCall('Yes.', 'No.'), question: 'Does a settled entry lock the ledger?' }));
+
+    assert.deepStrictEqual(standingOn((args) => JSON.parse(sim.read(['board', conversation, ...args])), WU), {
+      tab: { now: 'build', spec: 'complete', build: 'stopped', waiting: ['question Q1 → task:1.1'] },
+      all: { phase: 'build', standing: 'stopped · 0 of 1 task done', waiting: 1, total: 1 },
+      banner: { state: 'needs', waits: ['⚑ 1 waiting on you'] },
+    });
   });
 });

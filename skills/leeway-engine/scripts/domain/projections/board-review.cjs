@@ -28,12 +28,15 @@
 //   are the round before's until it is recorded. What went to the inbox is
 //   every recorded round's to the one shown, each by its round.
 // - Its fix tasks are a build phase past the cut (P14): the latest round's
-//   up to the one shown that made any, each task by its line, from the
-//   unit's one read of the tracker (board.cjs).
-// - Finish waits on the person once the review phase is over (D18): a round
-//   ended it and its fix tasks and builders' notes are done.
-// - The questions its fix tasks wait on are the build's (board-build.cjs):
-//   WAITING ON YOU, each a press can queue, and whether they stop it.
+//   up to the one shown that made any, each task of that phase by its line
+//   — its findings' fixes and any other the tracker holds there, as the
+//   review waits on them (review-phase.cjs) — from the unit's one read of
+//   the tracker (board.cjs).
+// - What waits on the person is the unit's one list (board-standing.cjs):
+//   the questions the review waits on, each a press can queue, or finish
+//   once the phase is over and no question waits (D18). The review has
+//   stopped where nothing of it can go on without an answer, as the stop
+//   has it (board-build.cjs).
 // - A check opens on its page (20.10.3): where it stands in the round that
 //   recorded it, or round 1's at the change's tips while it is read, with
 //   its scenario's words from the spec.
@@ -41,11 +44,12 @@
 //   recorded — one opened by its report item while the round was read, as
 //   the round's finding answering that item — else as its reviewer's report
 //   holds it.
-// - The banner (D36, D37): finish waiting on the person, flagged; else
-//   stopped where nothing can go on, the round reading or, once recorded, a
-//   failing round's fix tasks building while any is not done and it has not
-//   stopped, a round that ended the phase passed or settled; and the
-//   questions waiting, flagged.
+// - The banner (D36, D37): finish waiting on the person; else stopped
+//   where nothing can go on, the round reading or, once recorded, a failing
+//   round's fix tasks building while any task of its fix phase is not done
+//   and it has not stopped, a round that ended the phase passed or settled;
+//   what waits on the person counted from the unit's one list, flagged
+//   (board-standing.cjs).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -173,15 +177,19 @@ const verdictOf = ({ passed, settled }) => (passed ? 'passed' : settled === null
 
 /**
  * The fix tasks of the latest round up to `round` that made any, as the
- * build's phase they make, each task by its line; null where none did.
+ * build's phase they make, each task of it by its line — its findings'
+ * fixes and any other the tracker holds there, as the review waits on them
+ * (review-phase.cjs); null where none did.
  * @param {BoardAt} at @param {RoundRecord[]} rounds @param {number} round @returns {ReviewView['fixes']}
  */
 function fixesAt(at, rounds, round) {
-  const made = rounds.slice(0, round).reduce((latest, record, k) => (fixesOf(record).length > 0 ? k + 1 : latest), 0);
+  const recorded = rounds.slice(0, round);
+  if (recorded.length === 0) return null;
+  const { phases } = standingAt(at);
+  const tasksOf = (/** @type {number} */ k) => phases.find((held) => held.phase === fixPhase(at.manifest, k))?.tasks ?? [];
+  const made = recorded.reduce((latest, record, k) => (fixesOf(record).length > 0 || tasksOf(k + 1).length > 0 ? k + 1 : latest), 0);
   if (made === 0) return null;
-  const phase = fixPhase(at.manifest, made);
-  const tasks = (standingAt(at).phases.find((held) => held.phase === phase)?.tasks ?? []).map((task) => taskLine(at, task));
-  return { phase, round: made, tasks };
+  return { phase: fixPhase(at.manifest, made), round: made, tasks: tasksOf(made).map((task) => taskLine(at, task)) };
 }
 
 /**
@@ -230,11 +238,13 @@ function roundRecorded(at, standing, record, round) {
 }
 
 /**
- * The review phase's This session (the header's), and the questions its
- * fix tasks wait on, as the build's view reads them.
- * @param {BoardAt} at @returns {{view: ReviewView, questions: import('../board-model.cjs').Question[]}}
+ * The review phase's This session (the header's), what waits on the person
+ * the unit's one list (board-standing.cjs), and the questions the review
+ * waits on, as the build's view reads them.
+ * @param {BoardAt} at @param {import('../board-model.cjs').WaitingLine[]} waiting
+ * @returns {{view: ReviewView, questions: import('../board-model.cjs').Question[]}}
  */
-function reviewView(at) {
+function reviewView(at, waiting) {
   const standing = reviewStandingAt(at);
   const round = shownRound(standing);
   const record = standing.rounds[round - 1];
@@ -249,8 +259,7 @@ function reviewView(at) {
       type: at.manifest.work_type,
       built,
       round,
-      finish: standing.over,
-      waiting: build.view.waiting,
+      waiting,
       stopped: build.view.progress.stopped,
       ...(record === undefined ? roundUnderWay(at, standing, round) : roundRecorded(at, standing, record, round)),
     },
@@ -258,34 +267,38 @@ function reviewView(at) {
   };
 }
 
-/** Where a recorded round stands on the banner, by its verdict; its fix tasks building only while it has not stopped. @param {ReviewView} view */
-function verdictFact({ round, verdict, fixes, stopped }) {
-  if (verdict === 'passed') return `round ${round} passes`;
-  if (verdict === 'settled') return `round ${round} settled`;
-  const building = !stopped && fixes?.round === round && fixes.tasks.some(({ state }) => state !== 'done' && state !== 'closed');
-  return building ? `round ${round} fails · fix tasks building` : `round ${round} fails`;
+/**
+ * The round shown and where it stands once recorded, as the banner and the
+ * unit's tab say it: passing, settled, or failing — its fix tasks building
+ * while any is not done and the build has not stopped; null while it is
+ * read.
+ * @param {BoardAt} at @returns {{round: number, words: string|null}}
+ */
+function roundWords(at) {
+  const standing = reviewStandingAt(at);
+  const round = shownRound(standing);
+  const record = standing.rounds[round - 1];
+  if (record === undefined) return { round, words: null };
+  if (record.passed) return { round, words: `round ${round} passes` };
+  if (record.settled !== null) return { round, words: `round ${round} settled` };
+  const building = standing.waiting.length > 0 && !buildView(at).view.progress.stopped;
+  return { round, words: `round ${round} fails${building ? ' · fix tasks building' : ''}` };
 }
 
 /**
- * The banner's facts in the review phase (the header's): finish waiting on
- * the person; else the type and the phase, stopped where nothing can go on,
- * the round reading or where it stands once recorded, and the questions its
- * fix tasks wait on, flagged, as the build's banner has them.
- * @param {ReviewView} view @returns {{state: 'running'|'needs', facts: {text: string, needs: boolean}[]}}
+ * The banner's facts in the review phase (the header's): the type and the
+ * phase, then finish waiting on the person, from the unit's one list; else
+ * stopped where nothing can go on, and the round reading or where it stands
+ * once recorded. What waits on the person is counted by the board
+ * (board.cjs).
+ * @param {ReviewView} view @param {ReturnType<typeof roundWords>} shown @param {import('../board-model.cjs').WaitingLine[]} waiting
+ * @returns {{state: 'running'|'needs', facts: {text: string, needs: boolean}[]}}
  */
-function reviewBanner(view) {
-  const fact = (/** @type {string} */ text, needs = false) => ({ text, needs });
+function reviewBanner(view, { round, words }, waiting) {
+  const fact = (/** @type {string} */ text) => ({ text, needs: false });
   const where = [fact(view.type), fact('review')];
-  if (view.finish) return { state: 'needs', facts: [...where, fact('finish waits on you'), fact('1 waiting on you', true)] };
-  return {
-    state: view.stopped ? 'needs' : 'running',
-    facts: [
-      ...where,
-      ...(view.stopped ? [fact('stopped')] : []),
-      fact(view.verdict === null ? `round ${view.round} reading` : verdictFact(view)),
-      ...(view.waiting.length > 0 ? [fact(`${view.waiting.length} waiting on you`, true)] : []),
-    ],
-  };
+  if (waiting.some(({ kind }) => kind === 'finish')) return { state: 'needs', facts: [...where, fact('finish waits on you')] };
+  return { state: view.stopped ? 'needs' : 'running', facts: [...where, ...(view.stopped ? [fact('stopped')] : []), fact(words ?? `round ${round} reading`)] };
 }
 
 /**
@@ -340,4 +353,4 @@ function checkPage(at, said, scenario) {
   return { kind: 'check', unit: at.unit, round, scenario, standing: check.standing, text: scenarioWording(at, scenario) };
 }
 
-module.exports = { reviewView, reviewBanner, findingPage, checkPage };
+module.exports = { reviewView, reviewBanner, roundWords, findingPage, checkPage };

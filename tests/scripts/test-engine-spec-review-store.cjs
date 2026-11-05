@@ -41,6 +41,7 @@ const fs = require('fs');
 const path = require('path');
 const { ok, output } = require('./engine-harness.cjs');
 const { ledgerHelpers } = require('./ledger-world.cjs');
+const { createManifest } = require('./discovery-test-utils.cjs');
 const {
   UNIT, SESSION, MADE, AT_SPEC, FOUND, LANED, OWNER, made, useSpecReviewWorld, specReviewHelpers, section, unchangedSince,
 } = require('./spec-review-world.cjs');
@@ -127,7 +128,7 @@ describe('a pass of the spec\'s review in the store (11.7.1, 11.7.2, 11.7.6)', (
     const short = storeRefusal('ack', fewer.id, '--findings', 'F1');
     for (const { id } of passes) ok(dir(), ['agent', 'ack', UNIT, 'specification', UNIT, id, '--findings', 'F1,F2']);
 
-    assert.deepStrictEqual(read, passes.map(({ id }) => ({ id, findings: [{ id: 'F1', lane: 'gap' }, { id: 'F2', lane: 'fact' }] })));
+    assert.deepStrictEqual(read, passes.map(({ id }) => ({ id, findings: [{ id: 'F1', lane: 'gap', label: 'is a refund split?' }, { id: 'F2', lane: 'fact', label: 'a charge is slower' }] })));
     assert.strictEqual(short, `Agent "${fewer.id}" is a spec review whose report holds F1, F2 — it is acknowledged with exactly its report's findings`);
     assert.deepStrictEqual([reviewSettled(), nothingToRead()], ['open', unchangedSince(fewer, `the review's findings wait to be surfaced: ${passes.map(laned).join(', ')}`)]);
   });
@@ -222,6 +223,38 @@ describe('a pass of the spec\'s review in the store (11.7.1, 11.7.2, 11.7.6)', (
     const [{ raised }] = reportedPasses(dir(), UNIT);
     assert.deepStrictEqual(raised.map(({ finding, replaces, reason }) => [finding, replaces.startsWith(made.where), reason]), [['F1', true, 'changed-mind']]);
     assert.match(String(raised[0].mark), /^[0-9A-Za-z]+$/);
+  });
+
+  it('D23: a gap asked as a question is surfaced with it, one finding at a time — never with a replacement as well — the question one asked at the unit\'s spec, kept on the pass by its full id', () => {
+    writeSpec(spec());
+    land();
+    const pass = dispatchReview();
+    issued(['spec-reviewer', UNIT, '--agent', pass.id]);
+    reportIn(pass, LANED);
+    acked(pass, ['F1', 'F2']);
+    const asked = write('ask', AT_SPEC, [], { ...MADE, text: 'Is a refund ever split?' }).id;
+    const atBuild = write('ask', `${UNIT}.implementation`, [], { ...MADE, text: 'Is a card kept?' }).id;
+    createManifest(dir(), 'till', {});
+    const elsewhere = write('ask', 'till.specification', [], { ...MADE, text: 'Does the drawer lock?' }).id;
+
+    assert.deepStrictEqual([
+      storeRefusal('surface', pass.id, 'F1,F2', '--question', asked),
+      storeRefusal('surface', pass.id, 'F1', '--question', asked, '--replaces', made.where, '--reason', 'changed-mind'),
+      storeRefusal('surface', pass.id, 'F1', '--question', made.where),
+      storeRefusal('surface', pass.id, 'F1', '--question', made.taken),
+      storeRefusal('surface', pass.id, 'F1', '--question', atBuild),
+      storeRefusal('surface', pass.id, 'F1', '--question', elsewhere),
+    ], [
+      '--question surfaces one finding, asked as that question',
+      'a finding is raised as a replacement with --replaces, or asked as a question with --question, never both',
+      `--question names a question asked at ${UNIT}.specification, and ${made.where} is none`,
+      `--question names a question asked at ${UNIT}.specification, and ${made.taken} is none`,
+      `--question names a question asked at ${UNIT}.specification, and ${atBuild} is none`,
+      `--question names a question asked at ${UNIT}.specification, and ${elsewhere} is none`,
+    ]);
+    ok(dir(), ['agent', 'surface', UNIT, 'specification', UNIT, pass.id, 'F1', '--question', asked.slice(0, 8)]);
+    const [{ asked: links }] = reportedPasses(dir(), UNIT);
+    assert.deepStrictEqual(links.map(({ finding, entry }) => [finding, entry.startsWith(asked), entry.length > asked.length]), [['F1', true, true]]);
   });
 
   it('a pass in flight holds the review though a later pass reviewed the spec as it stands and reported clean — one running, waited for; one lost with the process that dispatched it, abandoned; one whose report is on disk, taken in by a scan — and a dispatch whose brief was refused holds nothing', () => {

@@ -97,9 +97,10 @@ const { liveness, manifestOf } = require('./ledger-units.cjs');
  */
 /**
  * A waiting question as `raise waiting` answers it: its number, its first
- * park's short id, what it asks, the tasks it parks, when it parked and how
- * many whole minutes it has waited.
- * @typedef {{question: string, id: string, asks: string, parks: string[], since: string, waited_minutes: number}} Waiting
+ * park's short id, what it asks, the short id of what it is about — its
+ * question as worded now, or the decision it would replace — the tasks it
+ * parks, when it parked and how many whole minutes it has waited.
+ * @typedef {{question: string, id: string, asks: string, about: string, parks: string[], since: string, waited_minutes: number}} Waiting
  */
 /**
  * A question found waiting: its parks, its first park's line, what it asks
@@ -426,10 +427,12 @@ function waitingAndFreed(cwd, unit, warnings) {
 function waitingIn(read, entryAt, unit, now) {
   return waitingOf(read, unit).map((question) => {
     const line = entryAt(factsOf(read, question.park).place);
+    const { asks, answers } = askedNow(read, entryAt, line);
     return {
       question: numbered(question.number),
       id: shortId(question.park, read.facts.keys()),
-      asks: askedNow(read, entryAt, line).asks,
+      asks,
+      about: shortId(answers ?? line.replaces, read.facts.keys()),
       parks: question.tasks,
       since: line.at,
       waited_minutes: Math.max(0, Math.floor((now - Date.parse(line.at)) / 60000)),

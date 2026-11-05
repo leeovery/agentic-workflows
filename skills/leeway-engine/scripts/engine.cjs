@@ -335,7 +335,7 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   agent dispatch <work-unit> <phase> <topic> --kind <kind> [--label <slug> …] [--set <NNN>] [--final]
   agent scan     <work-unit> <phase> <topic>
   agent ack      <work-unit> <phase> <topic> <id> (--findings <F1,F2,…> | --clean)
-  agent surface  <work-unit> <phase> <topic> <id> <finding>[,<finding>…] [--replaces <decision> --reason <reason>]
+  agent surface  <work-unit> <phase> <topic> <id> <finding>[,<finding>…] [--replaces <decision> --reason <reason> | --question <question>]
   agent incorporate <work-unit> <phase> <topic> <id>
   commit <work-unit> -m <message> [--plan <topic> | --discovery | --imports | --state | --topic <phase>/<topic> [--sweep]]
   commit --paths <file> … -m <message> --task <work-unit> <N.M>
@@ -1701,9 +1701,9 @@ function runAgent(call, argv) {
     }
     if (command === 'surface') {
       if (!workUnit || !phase || !topic || !id || !finding || positional.length !== 5 || (opts.replaces === undefined) !== (opts.reason === undefined)) {
-        throw new Error('Usage: engine agent surface <work-unit> <phase> <topic> <id> <finding>[,<finding>…] [--replaces <decision> --reason <reason>]');
+        throw new Error('Usage: engine agent surface <work-unit> <phase> <topic> <id> <finding>[,<finding>…] [--replaces <decision> --reason <reason> | --question <question>]');
       }
-      answer(agentState.surfaceFinding(cwd, workUnit, phase, topic, id, finding, opts.replaces === undefined ? undefined : { decision: opts.replaces, reason: opts.reason }));
+      answer(agentState.surfaceFinding(cwd, workUnit, phase, topic, id, finding, opts.replaces === undefined ? undefined : { decision: opts.replaces, reason: opts.reason }, opts.question));
       return;
     }
     throw new Error('Usage: engine agent <dispatch|scan|ack|surface|incorporate> <work-unit> <phase> <topic> …');

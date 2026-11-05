@@ -514,12 +514,26 @@ describe('the pane', () => {
     expect(boards.slice(before).map(({ args }) => args), 'the next call reads This session alone').toEqual([[], ['--tab', 'all'], []])
   })
 
+  test('a line that wraps keeps its words whole in the room before its ▸ read, a button at the right that opens its page', async ($, on) => {
+    const verdict = '0.68 s for the 25 real fumis, under the 1 second the rule set: eager restore stands as designed'
+    const experiment = { kind: 'experiment', unit: 'fumi', title: 'Fumi', type: 'epic', id: 'E1', question: 'What does a real fumi cost?', topic: 'scale', topic_title: 'Scale', status: 'concluded', approved: '2026-09-02', verdict, reason: null, problem: '', design: [], runs: [], report: true }
+    const { clock, boards } = world(on, { replies: () => boardReply({ ...BUILD_BOARD, view: experiment }) })
+    const pane = await mounted($, clock, PANE_MOUNT)
+
+    expect((await pane.findAll({ type: 'Box', text: verdict })).map(found => found.props.flexGrow)).toContain(1)
+    expect((await pane.findAll({ type: 'Text', text: verdict })).map(found => found.props.wrap)).toContain('wrap')
+    expect((await pane.find({ key: 'x:verdict' }))?.text).toBe(`✓ ${verdict}▸ read`)
+    expect((await pane.find({ key: 'page:report:scale:E1' }))?.text).toBe('▸ read')
+    await pane.press({ key: 'page:report:scale:E1' })
+    expect(boards.at(-1)?.args).toEqual(['--page', 'report:scale:E1', '--page-unit', 'fumi'])
+  })
+
   test('a version this board does not know is refused: no banner, and the pane says so in a line', async ($, on) => {
-    const { clock } = world(on, { replies: () => boardReply({ ...BUILD_BOARD, version: 3 }) })
+    const { clock } = world(on, { replies: () => boardReply({ ...BUILD_BOARD, version: 4 }) })
 
     expect(await drawnOf(await mounted($, clock))).toEqual(BENEATH)
     expect(await paneLines(await mounted($, clock, PANE_MOUNT))).toEqual([
-      "This board draws version 2 of the engine's board, and the engine answers version 3: nothing is drawn until they match.",
+      "This board draws version 3 of the engine's board, and the engine answers version 4: nothing is drawn until they match.",
     ])
   })
 
@@ -1129,8 +1143,8 @@ describe('the build and the review on the pane', () => {
     expect((await underTabs(pane))[0]).toBe('Token-aware diff sizing · review')
   })
 
-  test('2.S8, 12.S40: a done task\'s page shows its account as written on the pane, and opening it reaches neither the conversation nor the prompt box', async ($, on) => {
-    const { clock, sent } = world(on, { replies: args => boardReply(args.includes('--page') ? taskOver(BUILD_BOARD) : BUILD_BOARD) })
+  test('2.S8, 12.S40: a done task\'s page shows its account as written on the pane, and opening it reaches neither the conversation nor the prompt box; a call\'s ▸ read opens its entry\'s page', async ($, on) => {
+    const { clock, sent, boards } = world(on, { replies: args => boardReply(args.includes('--page') ? taskOver(BUILD_BOARD) : BUILD_BOARD) })
     const pane = await mounted($, clock, PANE_MOUNT)
 
     await pane.press({ key: 'fold:phase:1' })
@@ -1141,5 +1155,9 @@ describe('the build and the review on the pane', () => {
     expect(shown.filter(line => /^(WHAT WAS DONE|DIFFERS FROM THE TASK|REVIEWS|CALLS MADE) /.test(line))).toHaveLength(4)
     expect(shown.join(' ')).toContain('With no timeout set at any level, a release-notes call now gets 180 seconds per attempt')
     expect(sent).toEqual([])
+
+    expect((await pane.find({ key: 'page:entry:e3a1' }))?.text).toBe('▸ read')
+    await pane.press({ key: 'page:entry:e3a1' })
+    expect(boards.at(-1)?.args).toEqual(['--page', 'entry:e3a1', '--page-unit', 'token-aware-diff-sizing'])
   })
 })

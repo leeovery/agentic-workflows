@@ -12,6 +12,8 @@
 // - The person's questions are their rows, open, decided by them or gone on;
 //   decided are theirs, Claude's — handed over among them — and those
 //   carried over, as the map counts them (9.5.3).
+// - Its closing pass runs while the store stands its agent's row in flight
+//   and running (agent-state.cjs).
 // - Its reviews are its review agent's rounds (agent-state.cjs), newest
 //   first, each since it was dispatched: one in flight where the store
 //   stands it — running, its report in and not yet taken, or lost with the
@@ -20,8 +22,13 @@
 // - What the topic sent is every message the state's history shows added to
 //   another topic's mailbox of the unit naming it as its sender, as the
 //   screens title it (10.4.2) — newest first, each still waiting where its
-//   file is still in that mailbox.
+//   file is still in that mailbox, else taken in where the history shows
+//   that topic answered it, else moved to the inbox.
 // - A message waiting, and a review's report, open in full (20.7.3).
+// - The view is This session while the session is in the topic's
+//   discussion (`live`); else a page read over it, which carries the
+//   topic's summary on the map (20.8.3).
+// - On the banner the messages waiting say they wait, unflagged (`waits`).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -32,10 +39,10 @@ const { carrying } = require('../ledger.cjs');
 const { rowStanding, claudesCalls } = require('../topic-map.cjs');
 const { waitingMessages } = require('../mail.cjs');
 const { agentRows, agentDir, inFlightStandings } = require('../agent-state.cjs');
-const { sentMail } = require('../state-history.cjs');
+const { sentMail, takenIn } = require('../state-history.cjs');
 const { dayBefore } = require('../dates.cjs');
 const { withUnitEntries } = require('../unit-entries.cjs');
-const { topicTitle, topicKey, mailboxFiles } = require('../derivations.cjs');
+const { itemOf, topicTitle, topicKey, mailboxFiles } = require('../derivations.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
 /** @typedef {import('../board-model.cjs').DiscussionView} DiscussionView */
@@ -49,6 +56,13 @@ function sentBy(line) {
 }
 
 /**
+ * The messages waiting in a topic's mailbox, each by its file, title,
+ * sender and day.
+ * @param {BoardAt} at @param {string} topic @returns {DiscussionView['messages']}
+ */
+const messagesIn = (at, topic) => waitingMessages(at.cwd, at.unit, topic).map((message) => ({ file: path.basename(message.path), title: message.title, ...sentBy(message.from) }));
+
+/**
  * Claude's calls since the person last looked, each with the question it
  * answers on the map, as the map draws them.
  * @param {Row[]} rows @param {{id: string, text: string}[]} calls @returns {CallLine[]}
@@ -56,6 +70,12 @@ function sentBy(line) {
 function callLines(rows, calls) {
   const questions = new Map(claudesCalls(rows).map((call) => [call.answer.id, call.question]));
   return calls.map(({ id, text }) => ({ id, text, question: questions.get(id) ?? null }));
+}
+
+/** Whether the topic's closing pass runs (the header's). @param {BoardAt} at @param {string} topic */
+function closingRuns(at, topic) {
+  const standings = inFlightStandings(at.cwd, at.unit, 'discussion', topic);
+  return agentRows(at.cwd, at.unit, 'discussion', topic).some(({ id, kind }) => kind === 'closing-pass' && standings.get(id) === 'running');
 }
 
 /** The topic's review rounds, newest first (the header's). @param {BoardAt} at @param {string} topic @returns {import('../board-model.cjs').ReviewLine[]} */
@@ -74,9 +94,14 @@ function reviewsOf(at, topic) {
  * @param {BoardAt} at @param {string} topic @param {string} title @returns {import('../board-model.cjs').DiscussionView['sent']}
  */
 function sentFrom(at, topic, title) {
-  return sentMail(at.cwd, at.unit, dayBefore(at.manifest.created))
-    .filter(({ to, from }) => to !== topic && sentBy(from).from === title)
-    .map(({ to, file, title: sent, at: when }) => ({ title: sent, to: topicTitle(at.manifest, to), file, at: when, waiting: mailboxFiles(at.root, at.unit, to).includes(file) }));
+  const sent = sentMail(at.cwd, at.unit, dayBefore(at.manifest.created)).filter(({ to, from }) => to !== topic && sentBy(from).from === title);
+  const taken = sent.length === 0 ? new Set() : takenIn(at.cwd, at.unit, sent.at(-1)?.at ?? null);
+  /** @param {string} to @param {string} file @returns {'waiting'|'taken'|'inbox'} */
+  const where = (to, file) => {
+    if (mailboxFiles(at.root, at.unit, to).includes(file)) return 'waiting';
+    return taken.has(`${to}/${file}`) ? 'taken' : 'inbox';
+  };
+  return sent.map(({ to, file, title: said, at: when }) => ({ title: said, to: topicTitle(at.manifest, to), file, at: when, stands: where(to, file) }));
 }
 
 /**
@@ -112,9 +137,12 @@ function discussionView(at, said = /** @type {string} */ (at.place.topic)) {
       type: at.manifest.work_type,
       topic,
       topic_title: title,
+      summary: String(itemOf(at.manifest, 'discovery', topic)?.summary ?? ''),
+      live: at.place.unit === at.unit && at.place.phase === 'discussion' && at.place.topic === topic,
       progress: { decided: yours, yours: yours + open.length + moved, calls: claudesCalls(rows).length },
+      closing: closingRuns(at, topic),
       open,
-      messages: waitingMessages(at.cwd, at.unit, topic).map((message) => ({ file: path.basename(message.path), title: message.title, ...sentBy(message.from) })),
+      messages: messagesIn(at, topic),
       since: callLines(rows, since),
       reviews: reviewsOf(at, topic),
       decided,
@@ -134,8 +162,8 @@ function carryingWarnings(at, read) {
 
 /**
  * The banner's facts in a discussion (20.2.4): the topic, how many of the
- * person's questions are open, and the messages waiting.
- * @param {DiscussionView} view @returns {{state: 'running', facts: {text: string, needs: boolean}[]}}
+ * person's questions are open, and the messages waiting, which wait.
+ * @param {DiscussionView} view @returns {{state: 'running', facts: import('../board-model.cjs').Fact[]}}
  */
 function discussionBanner({ type, topic_title: title, open, messages }) {
   const fact = (/** @type {string} */ text) => ({ text, needs: false });
@@ -144,7 +172,7 @@ function discussionBanner({ type, topic_title: title, open, messages }) {
     facts: [
       fact(type), fact('discussion'), fact(title),
       fact(open.length === 0 ? 'nothing of yours open' : `${open.length} of yours open`),
-      ...(messages.length === 0 ? [] : [fact(`${messages.length} ${messages.length === 1 ? 'message' : 'messages'} waiting`)]),
+      ...(messages.length === 0 ? [] : [{ ...fact(`${messages.length} ${messages.length === 1 ? 'message' : 'messages'} waiting`), waits: /** @type {const} */ (true) }]),
     ],
   };
 }
@@ -196,7 +224,7 @@ function reviewReportPage(at, said, id) {
   const row = agentRows(at.cwd, at.unit, 'discussion', topic).find((held) => held.kind === 'review' && held.id === id);
   const file = path.join(agentDir(at.cwd, at.unit, 'discussion', topic), `${id}.md`);
   if (row === undefined || !fs.existsSync(file)) throw new Error(`${topicTitle(at.manifest, topic)}'s review holds no report ${id}`);
-  return { kind: 'review-report', unit: at.unit, topic, id, round: Number(row.set), text: fs.readFileSync(file, 'utf8') };
+  return { kind: 'review-report', unit: at.unit, topic, topic_title: topicTitle(at.manifest, topic), id, round: Number(row.set), text: fs.readFileSync(file, 'utf8') };
 }
 
-module.exports = { discussionView, discussionBanner, entryPage, messagePage, reviewReportPage };
+module.exports = { discussionView, discussionBanner, entryPage, messagePage, reviewReportPage, messagesIn, sentBy };

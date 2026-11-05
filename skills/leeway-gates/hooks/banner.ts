@@ -4,14 +4,16 @@
  * the board at its right. Its mark is the session's state — ◐ running, ⚑
  * waiting on the person, ✓ done, none where neither — then the work's name
  * in bold and its facts in grey, each one that waits on the person in peach
- * behind a ⚑; at its right, the buttons the questions waiting give it
- * (`discuss.ts`), then the board's. A banner too long for the band is cut
+ * behind a ⚑, and one that says what waits beside them — the messages
+ * waiting in a topic, and at a unit's menu what waits on the person there —
+ * in peach with no ⚑; at its right, the buttons the questions waiting give
+ * it (`discuss.ts`), then the board's. A banner too long for the band is cut
  * from its right end, its buttons kept.
  */
 import type { ElementTable, RenderElement } from 'claude-code'
 
 import { COLOUR, MARK, RUNNING_FRAMES, buttonOf, textOf, type Button, type Part } from './draw.ts'
-import type { Banner } from './model.ts'
+import type { Banner, Fact } from './model.ts'
 
 /** The key of the banner's button that shows or hides the board. */
 export const TOGGLE = 'board:toggle'
@@ -26,6 +28,15 @@ const MARKS: Readonly<Record<Banner['state'], Part | null>> = {
 
 const SEPARATOR: Part = { text: ' · ', color: COLOUR.secondary }
 
+/** A fact as drawn: flagged in peach where it waits on the person, peach where it says what waits, else grey. */
+function factPart({ text, needs, waits }: Fact): Part {
+  if (needs) {
+    return { text: `${MARK.needs} ${text}`, color: COLOUR.needs }
+  }
+
+  return { text, color: waits === true ? COLOUR.needs : COLOUR.secondary }
+}
+
 /** The banner's words: its mark, the work's name, and each fact after a separator. */
 export function bannerParts({ state, name, facts }: Banner): Part[] {
   const mark = MARKS[state]
@@ -33,10 +44,7 @@ export function bannerParts({ state, name, facts }: Banner): Part[] {
   return [
     ...(mark === null ? [] : [mark]),
     { text: name, bold: true },
-    ...facts.flatMap(({ text, needs }) => [
-      SEPARATOR,
-      needs ? { text: `${MARK.needs} ${text}`, color: COLOUR.needs } : { text, color: COLOUR.secondary },
-    ]),
+    ...facts.flatMap(fact => [SEPARATOR, factPart(fact)]),
   ]
 }
 

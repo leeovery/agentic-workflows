@@ -49,16 +49,19 @@ function row(order, summary) {
   return { order, summary, source: 'discovery' };
 }
 
-// The unit's two topics, each mapped and under discussion.
+/** When the unit's map was approved, as approve the map's yes records it. */
+const APPROVED = '2026-09-30T09:00:00.000Z';
+
+// The unit's two topics, each mapped, the map approved, and under discussion.
 const PHASES = Object.freeze({
-  discovery: { items: { 'note-window': row(1, 'The note window'), 'space-homing': row(2, 'Where notes open') } },
+  discovery: { approved_at: APPROVED, items: { 'note-window': row(1, 'The note window'), 'space-homing': row(2, 'Where notes open') } },
   discussion: { items: { 'note-window': { status: 'in-progress' }, 'space-homing': { status: 'in-progress' } } },
 });
 
 // The write suites' unit: a third topic, the menu bar, on the map and not
 // yet under discussion.
 const WRITE_PHASES = Object.freeze({
-  discovery: { items: { 'note-window': {}, 'space-homing': {}, 'menu-bar': {} } },
+  discovery: { approved_at: APPROVED, items: { 'note-window': {}, 'space-homing': {}, 'menu-bar': {} } },
   discussion: { items: { 'note-window': { status: 'in-progress' }, 'space-homing': { status: 'in-progress' } } },
 });
 

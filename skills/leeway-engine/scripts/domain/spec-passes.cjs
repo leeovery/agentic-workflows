@@ -64,6 +64,9 @@
 //   of a decision, surfaced with it (agent-state.cjs), finds the decision
 //   current and kept by no answer since; it holds the writer's brief until
 //   the person's call lands, its refusal naming the raise that asks again.
+//   A gap's pass and finding are those that raised it: a replacement's on
+//   its pass's row, a question's the finding a pass asked as it, or as a
+//   question it grew into — reworded, replaced or merged.
 // - The review has settled where (a) the latest reported pass reviewed the
 //   spec as it stands — nothing changed since its land — (c) no gap waits,
 //   and (d) nothing waits: no pass in flight, nothing for the writer and
@@ -77,7 +80,7 @@ const { statePath, stateRoot } = require('../kernel/state-root.cjs');
 const { writeJsonAtomic, isObject } = require('../kernel/manifest-io.cjs');
 const { fingerprint } = require('../kernel/fingerprint.cjs');
 const { specSections, scenarioBlocks, specIntroduction, readSpec } = require('./spec-sections.cjs');
-const { ID_FACTS, foldLedger, factsOf, questionStands, isCurrent, keptOf, standingOf } = require('./ledger-fold.cjs');
+const { ID_FACTS, foldLedger, factsOf, questionStands, isCurrent, keptOf, standingOf, currentsOf } = require('./ledger-fold.cjs');
 const { markOf, lineOf } = require('./ledger-moves.cjs');
 const { withUnitEntries } = require('./unit-entries.cjs');
 const { UNIT_PHASE, reportedPasses, passesInFlight } = require('./agent-state.cjs');
@@ -339,11 +342,13 @@ function sectionsToReview(cwd, unit, text) {
  * A gap waiting on the person: what it is, its entry's words, and the raise
  * that puts it to them again; the entry it is about — the question, or the
  * decision a replacement would replace — whole and short, when that entry
- * was made and what it cites; and the pass that raised a replacement, null
- * for a question.
+ * was made and what it cites; and the pass and finding that raised it — a
+ * replacement's on its pass's row, a question's the finding its pass asked
+ * as it, or as a question it grew into — each null for a question no pass
+ * asked.
  * @typedef {{
  *   gap: string, text: string, again: string,
- *   entry: string, short: string, at: string, cites: {path: string, section: string}[], pass: string|null,
+ *   entry: string, short: string, at: string, cites: {path: string, section: string}[], pass: string|null, finding: string|null,
  * }} Gap
  */
 
@@ -357,9 +362,25 @@ function gapEntry(id, entry) {
 
 /** A review's finding raised as a replacement, with the pass that raised it. @typedef {Pass['raised'][number] & {pass: string}} Raised */
 
+/** Every replacement the passes given raised, each with its pass. @param {Pass[]} passes @returns {Raised[]} */
+const raisedBy = (passes) => passes.flatMap((pass) => pass.raised.map((raise) => ({ ...raise, pass: pass.id })));
+
 /** Every replacement the unit's review passes raised. @param {string} cwd @param {string} unit @returns {Raised[]} */
-function raisedIn(cwd, unit) {
-  return reportedPasses(cwd, unit).flatMap((pass) => pass.raised.map((raise) => ({ ...raise, pass: pass.id })));
+const raisedIn = (cwd, unit) => raisedBy(reportedPasses(cwd, unit));
+
+/**
+ * The pass and finding that asked the current question `id`: a finding its
+ * pass asked as the question, or as one the question grew into since —
+ * reworded, replaced or merged; each null where no pass asked it.
+ * @param {import('./ledger-fold.cjs').Folded} folded @param {Pass[]} passes @param {string} id
+ * @returns {{pass: string|null, finding: string|null}}
+ */
+function askedBy(folded, passes, id) {
+  for (const pass of passes) {
+    const link = pass.asked.find(({ entry }) => currentsOf(folded, entry).includes(id));
+    if (link !== undefined) return { pass: pass.id, finding: link.finding };
+  }
+  return { pass: null, finding: null };
 }
 
 /**
@@ -390,18 +411,19 @@ function gapsIn(folded, unit, ids, raised) {
  * @returns {Gap[]}
  */
 function waitingGaps(cwd, unit, warnings) {
-  const all = raisedIn(cwd, unit);
+  const passes = reportedPasses(cwd, unit);
   return withUnitEntries(cwd, unit, warnings, ({ folded, entries, short }) => {
-    const { asked, raised } = gapsIn(folded, unit, entries.keys(), all);
+    const { asked, raised } = gapsIn(folded, unit, entries.keys(), raisedBy(passes));
     return [
       ...asked.map((id) => ({
-        gap: `the gap ${short(id)}, asked at the spec,`, again: `engine raise ${unit}.specification --answers ${short(id)}`, ...gapEntry(id, entries.get(id)), pass: null,
+        gap: `the gap ${short(id)}, asked at the spec,`, again: `engine raise ${unit}.specification --answers ${short(id)}`, ...gapEntry(id, entries.get(id)), ...askedBy(folded, passes, id),
       })),
-      ...raised.map(({ replaces, reason, pass }) => ({
+      ...raised.map(({ replaces, reason, pass, finding }) => ({
         gap: `the replacement of ${short(replaces)}, raised at the spec,`,
         again: `engine raise ${unit}.specification --replaces ${short(replaces)} --reason ${reason}`,
         ...gapEntry(replaces, entries.get(replaces)),
         pass,
+        finding,
       })),
     ];
   });
@@ -487,5 +509,5 @@ function reviewSettled(cwd, unit, warnings) {
 }
 
 module.exports = {
-  ownTexts, printOf, changedSince, changedBetween, recordLand, lastLand, recordTaking, recordCutTaking, recordCut, cutRequests, outstanding, reviewedSpec, sectionsToReview, raisedIn, gapsIn, waitingGaps, gapsWaiting, passesRunningOn, waitingOn, reviewSettled,
+  ownTexts, printOf, changedSince, changedBetween, recordLand, lastLand, recordTaking, recordCutTaking, recordCut, cutRequests, outstanding, reviewedSpec, sectionsToReview, raisedBy, raisedIn, askedBy, gapsIn, waitingGaps, gapsWaiting, passesRunningOn, waitingOn, reviewSettled,
 };

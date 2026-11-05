@@ -7,8 +7,11 @@
 // that it writes nothing — and the build on it (domain/projections/
 // board-build.cjs): its progress, phases, tasks and their states, the
 // questions a press can queue, and a task's pages. The review phase on the
-// board is test-engine-board-review.cjs; every other view,
-// test-engine-board-views.cjs.
+// board is test-engine-board-review.cjs, its rounds recorded
+// test-engine-board-review-rounds.cjs, and where it stands on every view
+// test-engine-board-review-standing.cjs; a discussion and an experiment,
+// test-engine-board-views.cjs; a unit's page and All work,
+// test-engine-board-units.cjs.
 //
 // Layer: verb. World: the build screens' world (build-screens-world.cjs),
 // copied for each test — `pay` building in step, task 1.1 in progress with
@@ -25,11 +28,12 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {
-  ok, refusedPristine, treeSnapshot, head, git, cleanupFixture, withEnv, readState, writeState, readManifest, layout, holdLock, lockAttempts, statePath,
+  ok, okSectionsAsync, refusedPristine, treeSnapshot, head, git, cleanupFixture, withEnv, readState, writeState, readManifest, layout, holdLock, lockAttempts, statePath,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
-const { UNIT, QUESTIONS, taskText, buildScreensWorld, buildScreenHelpers } = require('./build-screens-world.cjs');
-const { fixture, misfits, shapeOf } = require('./board-world.cjs');
+const { UNIT, QUESTIONS, CALL, taskText, buildScreensWorld, buildScreenHelpers } = require('./build-screens-world.cjs');
+const { fixture, misfits, shapeOf, standingOn } = require('./board-world.cjs');
+const { raiseHelpers } = require('./raise-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { BOARD_VERSION } = require(path.join(SCRIPTS, 'domain/board-model.cjs'));
@@ -121,7 +125,7 @@ describe('the board at the start menu (20.3.3, 20.16)', () => {
         project: project(),
         at_start: true,
         waiting: 0,
-        units: [{ unit: UNIT, title: 'Pay', type: 'feature', phase: 'build', standing: '', waiting: 0, session: null }],
+        units: [{ unit: UNIT, title: 'Pay', type: 'feature', phase: 'build', standing: '0 of 4 tasks done', waiting: 0, session: null }],
         roadmap: [],
         inbox: [],
         complete: [],
@@ -245,11 +249,20 @@ describe('the build on the board (20.5)', () => {
     assert.strictEqual(board().view.phases[0].tasks[0].state, 'building');
   });
 
-  it('a question parks its task: the task waits on it, the question lists what it parks and the tasks after those, and the banner counts it waiting on the person (20.5.3, 20.2.4)', async () => {
+  it('a question parks its task: the task waits on it, the question lists what it parks and the tasks after those, and the banner counts it waiting on the person (20.5.3, 20.2.4); S1: every view that reads the unit stands it so — its tab building, the question waiting there opening the task it parks, All work counting it', async () => {
     enterBuild();
     await parkOn(['1.2']);
     const { view, questions, banner } = board();
     const [{ since, ...question }] = questions;
+    const standing = standingOn(board, UNIT);
+    const parked = board(['--page', standing.tab.waiting[0].split(' → ')[1]]).view;
+
+    assert.deepStrictEqual({ ...standing, tab: { ...standing.tab, waiting: standing.tab.waiting.map((line) => line.split(' → ')[0]) }, parked: [parked.kind, parked.line.task] }, {
+      tab: { now: 'build', state: 'running', words: '0 of 4 tasks done', waiting: ['question Q1'] },
+      all: { phase: 'build', standing: '0 of 4 tasks done', waiting: 1, total: 1 },
+      banner: { state: 'running', waits: ['⚑ 1 waiting on you'] },
+      parked: ['task', '1.2'],
+    });
 
     assert.deepStrictEqual(
       { tasks: view.phases[0].tasks.slice(1), waiting: view.waiting, question, banner: banner.facts.at(-1) },
@@ -263,15 +276,18 @@ describe('the build on the board (20.5)', () => {
     assert.ok(!Number.isNaN(Date.parse(since)), since);
   });
 
-  it('the build stops once every task waits on the person: the progress says so, and the banner says it after the type and the phase, plain, the waiting count flagged (20.2.4, 20.5.1, 20.S27, D6, D20)', async () => {
+  it('the build stops once every task waits on the person: the progress says so, and the banner says it after the type and the phase, plain, the waiting count flagged (20.2.4, 20.5.1, 20.S27, D6, D20); S1: every view that reads the unit stands it so — the tab\'s build stopped, its question waiting there, All work\'s row stopped and counting it', async () => {
     enterBuild();
     await parkOn(['1.1', '1.2', '2.1']);
     const { view, banner } = board();
+    const { tab, all } = standingOn(board, UNIT);
 
-    assert.deepStrictEqual({ stopped: view.progress.stopped, running: view.progress.running, banner }, {
+    assert.deepStrictEqual({ stopped: view.progress.stopped, running: view.progress.running, banner, tab: { ...tab, waiting: tab.waiting.map((line) => line.split(' → ')[0]) }, all }, {
       stopped: true,
       running: 0,
       banner: { name: 'Pay', state: 'needs', facts: [{ text: 'feature', needs: false }, { text: 'build', needs: false }, { text: 'stopped', needs: false }, { text: '1 waiting on you', needs: true }] },
+      tab: { now: 'build', state: 'stopped', words: '0 of 4 tasks done', waiting: ['question Q1'] },
+      all: { phase: 'build', standing: 'stopped · 0 of 4 tasks done', waiting: 1, total: 1 },
     });
   });
 
@@ -516,10 +532,13 @@ describe('a task\'s pages (20.5.4–20.5.7)', () => {
 });
 
 describe('the tabs (20.3)', () => {
-  it('the unit\'s tab shows the unit\'s page: each phase from discovery to review with what its records hold, what waits on the person, and what happened lately, newest first (20.15.1)', async () => {
+  it('the unit\'s tab shows the unit\'s page: each phase from discovery to review with what its records hold and the day each finished closed, the phase it is in since the one before closed, the session in its build, what waits on the person, and what happened lately, newest first (20.15.1)', async () => {
     enterBuild();
     await parkOn(['1.2']);
     const { view } = board(['--tab', 'unit']);
+    const { checklists } = readManifest(dir, UNIT);
+    const ready = checklists?.['ready-to-build']?.closed ?? null;
+    const decided = checklists?.decided?.[UNIT]?.closed ?? null;
 
     assert.deepStrictEqual({ ...view, lately: view.lately.map(({ kind, detail }) => [kind, detail]) }, {
       kind: 'unit',
@@ -528,18 +547,46 @@ describe('the tabs (20.3)', () => {
       type: 'feature',
       about: 'Test: pay',
       started: null,
+      now: { phase: 'build', since: ready },
       at_menu: false,
+      here: true,
       progress: { complete: 3, total: 5 },
-      waiting: [{ kind: 'question', id: 'Q1', text: QUESTIONS[0] }],
+      waiting: [{ kind: 'question', id: 'Q1', text: `Q1 ${QUESTIONS[0]}`, page: view.waiting[0].page }],
       phases: [
-        { phase: 'discovery', state: 'complete', words: '' },
-        { phase: 'discussion', state: 'complete', words: '0 decisions' },
-        { phase: 'specification', state: 'complete', words: '' },
-        { phase: 'build', state: 'running', words: '0 of 4 tasks done' },
-        { phase: 'review', state: 'later', words: '' },
+        { phase: 'discovery', state: 'complete', words: 'the seed', doing: '', on: null, session: null, page: true },
+        { phase: 'discussion', state: 'complete', words: '0 decisions', doing: '', on: decided, session: null, page: true },
+        { phase: 'specification', state: 'complete', words: '', doing: '', on: ready, session: null, page: false },
+        { phase: 'build', state: 'running', words: '0 of 4 tasks done', doing: 'building', on: null, session: 'this', page: false },
+        { phase: 'review', state: 'later', words: '', doing: '', on: null, session: null, page: false },
       ],
       lately: [['raised', 'Q1'], ['task-started', '1.1']],
     });
+  });
+
+  it('S3, 20.15.1: two units in their builds, each with a Q1 of its own: each unit\'s tab lists its own, and only the one the session is in is here', async () => {
+    const { phases, cut } = readManifest(dir, UNIT);
+    createManifest(dir, 'till', { phases: { discussion: { items: { till: phases.discussion.items[UNIT] } } }, build: { position: 'step' }, cut });
+    ok(dir, ['task', 'phase', 'till', '1', '--title', 'Drawer']);
+    const task = path.join(config, 'till-task.md');
+    fs.writeFileSync(task, taskText('Open the drawer', ['The drawer opens on a sale.']));
+    ok(dir, ['task', 'create', 'till', '1', '--file', task]);
+    const asked = ok(dir, ['ledger', 'ask', 'till.implementation'], { env: env(), stdin: JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'Does the drawer lock?' }) }).id;
+    const { conversation } = raiseHelpers(() => dir, () => config, { ...CALL, question: 'Does the drawer lock?' });
+    await okSectionsAsync(dir, ['raise', 'till.implementation', '--answers', asked, '--parks', '1.1'], { env: conversation(), stdin: JSON.stringify({ ...CALL, question: 'Does the drawer lock?' }) });
+    enterBuild();
+    await parkOn(['1.2']);
+    const tab = (/** @type {string} */ unit) => {
+      const { here, waiting } = board(['--tab', 'unit', '--unit', unit]).view;
+      return { here, waiting };
+    };
+
+    const [pay, till] = [tab(UNIT), tab('till')];
+
+    assert.deepStrictEqual([pay, till], [
+      { here: true, waiting: [{ kind: 'question', id: 'Q1', text: `Q1 ${QUESTIONS[0]}`, page: pay.waiting[0].page }] },
+      { here: false, waiting: [{ kind: 'question', id: 'Q1', text: 'Q1 Does the drawer lock?', page: till.waiting[0].page }] },
+    ]);
+    assert.deepStrictEqual([pay.waiting[0].page, till.waiting[0].page], ['task:1.2', 'task:1.1']);
   });
 
   it('a task done says when it finished among the unit\'s moments, as its account was taken', () => {

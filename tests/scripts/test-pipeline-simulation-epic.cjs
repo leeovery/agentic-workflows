@@ -23,6 +23,7 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
+const { readManifest } = require('./engine-harness.cjs');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
 const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
@@ -54,16 +55,27 @@ describe('pipeline simulation: epic', () => {
     assert.match(rest.find((line) => line !== '') ?? '', /^## /, 'the conversation\'s line follows the pointer');
     assert.ok(presenceRow(sim.run(['presence', 'scan', wu]), 'discovery', wu)?.held, 'the presence is the epic\'s');
     assert.match(carryOn(sim).text, /render discovery-map fumi`/, 'a compaction re-reads the epic\'s map');
-    const approved = approveTheMap(sim, wu, {
+    const map = {
       topics: [
         { name: 'note-model', summary: 'What a note is', brief: briefDraft(sim, wu, 'note-model') },
         { name: 'sync', summary: 'Notes between Macs', brief: briefDraft(sim, wu, 'sync') },
       ],
-    });
+    };
+    sim.render(['approve-map', wu, '--file', sim.write('.leeway/.cache/scratch/staged-map.json', map)], { expect: 'content' });
+    const drawn = (/** @type {string[]} */ args) => JSON.parse(sim.read(['board', sim.env.CLAUDE_CODE_SESSION_ID, ...args])).view;
+    const [shaping] = drawn(['--tab', 'unit']).phases;
+    const { phase, standing } = drawn(['--tab', 'all']).units.find((/** @type {{unit: string}} */ { unit }) => unit === wu);
+    assert.deepStrictEqual([shaping.phase, shaping.words, phase, standing], ['discovery', '2 topics', 'discovery', '2 topics on the map'],
+      'N1, 20.15.2, 20.16.1: while the map waits, the epic\'s tab and All work say it is in discovery with the map\'s topics');
+    const approved = approveTheMap(sim, wu, map);
     assert.deepStrictEqual(approved.next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [wu] });
     handoff(sim, `/leeway-continue-epic ${wu}`);
     arrive(sim, wu);
     assert.strictEqual(epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu)).keys.find((key) => key.recommended)?.topic, 'note-model');
+    const { now, lately: [moment] } = JSON.parse(sim.read(['board', sim.env.CLAUDE_CODE_SESSION_ID])).view;
+    const yes = readManifest(sim.dir, wu).phases.discovery.approved_at;
+    assert.deepStrictEqual([now, moment.kind, moment.detail], [{ phase: 'discussion', since: yes }, 'map-approved', '2 topics, 0 to the roadmap'],
+      'S2, N8, 20.11.4: at its menu, the epic\'s discovery closed when the map\'s yes recorded its approval, the moment saying what the map took in');
   });
 
   it('epic: a message lands in the topic\'s one mailbox, raised at the entry and answered by the question it raised; one to the decided topic sets it back in progress', () => {

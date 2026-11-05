@@ -7,7 +7,7 @@
  */
 
 /** The view model's version this mod draws. */
-export const BOARD_VERSION = 2
+export const BOARD_VERSION = 3
 
 /** The board's tabs: This session, the unit's, All work. */
 export type Tab = 'this' | 'unit' | 'all'
@@ -20,8 +20,8 @@ export type Place = {
   topic: string | null
 }
 
-/** A fact on the banner: its words, and whether it waits on the person. */
-export type Fact = { text: string; needs: boolean }
+/** A fact on the banner: its words, whether it waits on the person, and, unflagged, whether it says what waits beside them. */
+export type Fact = { text: string; needs: boolean; waits?: true }
 
 /** The banner: running, waiting on the person, done, or neither; the work's name; its facts in order. */
 export type Banner = {

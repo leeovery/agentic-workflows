@@ -38,16 +38,22 @@
 //   tab's unit alone, never a page's, so the tabs stand as they would with
 //   no page open. The answer carries beside the page the view the tab shows
 //   beneath it (`beneath`), which its way back returns to.
-// - The banner is the session's place's (20.2.4), whichever tab is shown.
+// - The banner is the session's place's (20.2.4), whichever tab is shown,
+//   with what waits on the person in the session's unit, counted from its
+//   one list (board-standing.cjs): flagged in a phase, the banner waiting on
+//   the person where it is asked in the conversation, and unflagged at the
+//   unit's menu (D40); none where This session cannot be drawn.
 // - Never a look (5.8.14): Claude's calls since the person last looked are
-//   read without moving the mark.
+//   read without moving the mark. The ledger is checked once a call, at its
+//   first read (ledger.cjs).
 // - Each unit is read once a call, whichever tabs and pages draw it, and its
 //   tracker in one read, once its build has begun, of a copy of its store
 //   (task-verbs.cjs) — its phases, the fix phases past the cut, the tasks
 //   ready, and the task a page names — which its build's checks read too,
 //   the stop's asked of a phase's start among them; the review's change
 //   reads the tasks of its phases all ended from another copy, only where
-//   it is drawn (board-review.cjs); All work reads no other unit's tracker.
+//   it is drawn (board-review.cjs); All work reads a unit's tracker once
+//   its build has begun, for how far it has come (board-all.cjs).
 // - Each tab is answered on its own: a view or page that cannot be drawn
 //   answers `unavailable`, saying why, the banner and the questions standing
 //   apart from it; This session's view that cannot be drawn leaves the
@@ -69,18 +75,20 @@ const { messageOf } = require('../kernel/call.cjs');
 const { readPosition, readLeft, conversationDir } = require('./conversation.cjs');
 const { BRIEFS } = require('./brief-names.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
+const { withOneCheck } = require('./ledger.cjs');
 const { trackedUnit } = require('./task-verbs.cjs');
 const { parseShownTask } = require('./task-id.cjs');
 const { buildBegun } = require('./derivations.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { BOARD_VERSION, TABS } = require('./board-model.cjs');
 const { buildView, buildBanner, taskPage, writtenPage, roundPage, scenarioPage, evidencePage } = require('./projections/board-build.cjs');
-const { reviewView, reviewBanner, findingPage, checkPage } = require('./projections/board-review.cjs');
+const { reviewView, reviewBanner, roundWords, findingPage, checkPage } = require('./projections/board-review.cjs');
 const { discussionView, discussionBanner, entryPage, messagePage, reviewReportPage } = require('./projections/board-discussion.cjs');
-const { specView, specBanner, sectionPage, passPage } = require('./projections/board-spec.cjs');
+const { specView, specBanner, sectionPage, passPage, specFindingPage } = require('./projections/board-spec.cjs');
+const { waitingOn, holds, waitsFacts } = require('./projections/board-standing.cjs');
 const { discoveryView, discoveryBanner, briefPage, topicStarted, spikePage } = require('./projections/board-discovery.cjs');
 const { experimentView, experimentBanner, reportPage } = require('./projections/board-experiment.cjs');
-const { unitPage, unitBanner, placeBanner } = require('./projections/board-unit.cjs');
+const { unitPage, phasePage, unitBanner, placeBanner } = require('./projections/board-unit.cjs');
 const { allView, allBanner } = require('./projections/board-all.cjs');
 
 /** @typedef {import('./board-model.cjs').Board} Board */
@@ -194,10 +202,10 @@ function unitAt(cwd, session, place, unit, inFlight, warnings, task) {
  */
 const PHASE_VIEWS = Object.freeze({
   implementation: { read: buildView, banner: (_, view) => buildBanner(view), of: (type) => type !== 'quick-fix' },
-  review: { read: reviewView, banner: (_, view) => reviewBanner(view) },
+  review: { read: (at) => reviewView(at, waitingOn(at)), banner: (at, view) => reviewBanner(view, roundWords(at), waitingOn(at)) },
   discussion: { read: discussionView, banner: (_, view) => discussionBanner(view) },
-  specification: { read: specView, banner: (_, view) => specBanner(view) },
-  discovery: { read: discoveryView, banner: (_, view) => discoveryBanner(view), of: (type) => type === 'epic' },
+  specification: { read: (at) => specView(at, waitingOn(at)), banner: (at) => specBanner(at, waitingOn(at)) },
+  discovery: { read: (at) => discoveryView(at, waitingOn(at)), banner: (_, view) => discoveryBanner(view), of: (type) => type === 'epic' },
   experiment: { read: experimentView, banner: (_, view) => experimentBanner(view) },
 });
 
@@ -223,6 +231,20 @@ function sessionRead(at) {
   return { ...read, banned: unitBanner(at, read.view) };
 }
 
+/**
+ * The banner's state and facts with what waits on the person in the unit,
+ * from its one list (board-standing.cjs): counted after the place's facts —
+ * flagged in a phase, the banner then waiting on the person where it is
+ * asked in the conversation, and unflagged at a menu (D40).
+ * @param {BoardAt} at @param {Banned} banned @returns {Banned}
+ */
+function withWaits(at, banned) {
+  const waiting = waitingOn(at);
+  const atMenu = at.place.phase === null;
+  const state = !atMenu && waiting.some(holds) ? 'needs' : banned.state;
+  return { state, facts: [...banned.facts, ...waitsFacts(waiting, atMenu)] };
+}
+
 /** A topic's page: its discussion once started, else its brief. @param {BoardAt} at @param {string} topic */
 const topicPage = (at, topic) => (topicStarted(at, topic) ? discussionView(at, topic).view : briefPage(at, topic));
 
@@ -242,11 +264,13 @@ const PAGES = Object.freeze([
   { ref: 'check:{round}:{scenario}', shape: /^check:([^:]+):([^:]+)$/, draw: checkPage },
   { ref: 'section:{n}', shape: /^section:([^:]+)$/, draw: sectionPage },
   { ref: 'pass:{k}', shape: /^pass:([^:]+)$/, draw: passPage },
+  { ref: 'pass:{k}:{finding}', shape: /^pass:([^:]+):([^:]+)$/, draw: specFindingPage },
   { ref: 'topic:{topic}', shape: /^topic:([^:]+)$/, draw: topicPage },
   { ref: 'message:{topic}:{file}', shape: /^message:([^:]+):([^:]+)$/, draw: messagePage },
   { ref: 'review:{topic}:{id}', shape: /^review:([^:]+):([^:]+)$/, draw: reviewReportPage },
   { ref: 'spike:{folder}', shape: /^spike:([^:]+)$/, draw: spikePage },
   { ref: 'report:{topic}:{id}', shape: /^report:([^:]+):([^:]+)$/, draw: reportPage },
+  { ref: 'phase:{phase}', shape: /^phase:([^:]+)$/, draw: phasePage },
 ]);
 
 /** A unit's own page, opened from All work, which names its unit. */
@@ -303,10 +327,14 @@ function ownRead(here, warnings) {
 }
 
 /**
- * `engine board` (the header's).
+ * `engine board` (the header's), its reads one read of the ledger
+ * (ledger.cjs).
  * @param {string} cwd @param {string[]} positional @param {Record<string, string>} opts @returns {Board}
  */
-function boardOf(cwd, positional, opts) {
+const boardOf = (cwd, positional, opts) => withOneCheck(() => boardRead(cwd, positional, opts));
+
+/** @param {string} cwd @param {string[]} positional @param {Record<string, string>} opts @returns {Board} */
+function boardRead(cwd, positional, opts) {
   if (positional.length !== 1) throw new Error(`Usage: engine ${BOARD_USAGE}`);
   const [session] = positional;
   const tab = /** @type {Board['tab']} */ (opts.tab ?? 'this');
@@ -341,7 +369,7 @@ function boardOf(cwd, positional, opts) {
   const read = own === null || 'failed' in own ? null : own;
   const atStart = position === null || finished !== null;
   const tabView = () => {
-    if (tab === 'all' || (here === null || finished !== null) && tab === 'this') return allView(cwd, here, atStart, warnings).view;
+    if (tab === 'all' || (here === null || finished !== null) && tab === 'this') return allView(cwd, at, here, atStart).view;
     if (tab === 'unit') return unitPage(/** @type {BoardAt} */ (tabAt), tabAt === here && place.phase === null).view;
     if (own !== null && 'failed' in own) throw new Error(own.failed);
     return /** @type {Read} */ (read).view;
@@ -349,7 +377,7 @@ function boardOf(cwd, positional, opts) {
   return {
     version: BOARD_VERSION,
     place,
-    banner: here === null || finished !== null ? allBanner(cwd, position, finished) : { name: here.title, ...(read?.banned ?? placeBanner(here)) },
+    banner: here === null || finished !== null ? allBanner(cwd, position, finished) : { name: here.title, ...(read === null ? placeBanner(here) : withWaits(here, read.banned)) },
     unit: tabAt === null ? null : { unit: tabAt.unit, title: tabAt.title },
     tab,
     view: page === null ? drawn(tabView) : drawn(() => {

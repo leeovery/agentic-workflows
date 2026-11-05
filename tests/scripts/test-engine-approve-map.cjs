@@ -227,7 +227,7 @@ describe('approve the map, the yes (8.8.3, 8.8.13, 8.14.11)', () => {
       { work_unit: EPIC, topic: 'sharing' },
       ['later', 'next', 'someday'],
     ]);
-    assert.strictEqual(lastMessage(dir()), `discovery(${EPIC}): approve the map`);
+    assert.strictEqual(lastMessage(dir()), `discovery(${EPIC}): approve the map — ${map.topics.length} topics, 2 to the roadmap`);
     assert.deepStrictEqual(touched(statePath(dir()), 'HEAD'), [
       ...map.topics.map(({ name }) => `A\t${layout.brief(EPIC, name)}`),
       `M\t${layout.manifest(EPIC)}`,

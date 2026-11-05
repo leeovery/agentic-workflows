@@ -3,9 +3,10 @@
  *
  * This session: its header, the project, type and how many tasks were
  * built; the round, its areas read of all and where it stands, the line
- * wrapping so a failing round's fix tasks show whole (D12); WAITING ON YOU
- * while finish waits on the person (D18), and where the kit draws it, the
- * questions the fix tasks wait on; the latest fix tasks as the build's
+ * wrapping so a failing round's fix tasks show whole (D12); WAITING ON YOU,
+ * the unit's one list: the questions the review waits on, as the kit draws
+ * them, or finish, asked in the conversation (D18) — never both, since
+ * finish waits only once no question does; the latest fix tasks as the build's
  * phase past the cut, each opening its task's page (20.10.2, D17); FOUND,
  * each finding with its mark by its call and its area — in scope once the
  * round is recorded, else every one its landed reports hold; the round's
@@ -36,7 +37,7 @@ type ReviewView = View & {
   type: string
   built: number
   round: number
-  finish: boolean
+  waiting: { kind: string; id: string; text: string; page: string | null }[]
   recorded: boolean
   areas: AreaLine[]
   found: Found[]
@@ -77,11 +78,14 @@ const SEPARATOR: Part = { text: ' · ', color: COLOUR.secondary }
 /** The fix tasks of the round shown still to build. */
 const toBuild = ({ fixes }: ReviewView) => fixes?.tasks.filter(({ state }) => state !== 'done' && state !== 'closed').length ?? 0
 
+/** Whether finish waits on the person, as the unit's one list holds it. */
+const finishes = ({ waiting }: ReviewView) => waiting.some(({ kind }) => kind === 'finish')
+
 /** Where the round stands, at the end of its facts line. */
 function standingOf(view: ReviewView, kit: Kit): Part[] {
-  const { round, verdict, finish, areas } = view
+  const { round, verdict, areas } = view
 
-  if (finish) {
+  if (finishes(view)) {
     return [SEPARATOR, { text: `${MARK.needs} finish waits on you`, color: COLOUR.needs }]
   }
 
@@ -123,20 +127,20 @@ function headOf(view: ReviewView, kit: Kit): Line[] {
   ]
 }
 
-/** WAITING ON YOU while finish waits on the person, asked in the conversation (D18). */
-const finishOf = ({ finish }: ReviewView, kit: Kit): Line[] =>
-  finish
-    ? [
-        section('review:finish', 'WAITING ON YOU', COLOUR.needs, kit.width, '1 · asked in the conversation'),
-        {
-          key: 'review:finish:ask',
-          mark: { text: `${MARK.needs} `, color: COLOUR.needs },
-          wraps: true,
-          parts: [{ text: 'Finish: the report of every round, and your verdict on each call you changed', color: COLOUR.body }],
-        },
-        blank('review:finish'),
-      ]
-    : []
+/** WAITING ON YOU (the header's): finish, asked in the conversation, where it waits, else the questions as the kit draws them. */
+function waitingOf(view: ReviewView, kit: Kit): Line[] {
+  const finish = view.waiting.find(({ kind }) => kind === 'finish')
+
+  if (finish === undefined) {
+    return kit.waiting()
+  }
+
+  return [
+    section('review:finish', 'WAITING ON YOU', COLOUR.needs, kit.width, '1 · asked in the conversation'),
+    { key: 'review:finish:ask', mark: { text: `${MARK.needs} `, color: COLOUR.needs }, wraps: true, parts: [{ text: finish.text, color: COLOUR.body }] },
+    blank('review:finish'),
+  ]
+}
 
 /** FIX TASKS · PHASE N: a failing round's fix tasks as the build's next phase, each with its state. */
 function fixesOf({ fixes }: ReviewView, kit: Kit): Line[] {
@@ -265,8 +269,7 @@ export function reviewLines(view: View, kit: Kit): Line[] {
 
   return [
     ...headOf(review, kit),
-    ...finishOf(review, kit),
-    ...kit.waiting(),
+    ...waitingOf(review, kit),
     ...fixesOf(review, kit),
     ...foundOf(review, kit),
     ...areasOf(review, kit),

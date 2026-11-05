@@ -2,7 +2,9 @@
 
 // ---------------------------------------------------------------------------
 // The decided suites' world and helpers (test-engine-decided-screen.cjs,
-// test-engine-decided-yes.cjs, test-engine-decided-close.cjs): an epic, `fumi`, its two topics under
+// test-engine-decided-yes.cjs, test-engine-decided-close.cjs, and the
+// board's over it, test-engine-board-views.cjs and
+// test-engine-board-units.cjs): an epic, `fumi`, its two topics under
 // discussion, the note window's map written through the ledger's verbs —
 // the person's own answer, Claude's calls of two kinds and one unlabelled,
 // a call handed over — and its decided checklist marked but for the closing
@@ -16,9 +18,9 @@ const path = require('path');
 const { beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 
-const { ok, output, readManifest, statePath, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
+const { ok, output, readManifest, statePath, writeState, layout, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest, useTempFolder } = require('./discovery-test-utils.cjs');
-const { UNIT, SESSION, MADE, NOTE, row } = require('./ledger-world.cjs');
+const { UNIT, SESSION, SESSION_ID, MADE, NOTE, row } = require('./ledger-world.cjs');
 
 const SOLO = 'solo';
 const SOLO_AT = `${SOLO}.discussion.${SOLO}`;
@@ -70,7 +72,7 @@ const world = fixtureFrom('decided-', (dir) => {
   createManifest(dir, UNIT, {
     work_type: 'epic',
     phases: {
-      discovery: { items: { 'note-window': row(1, 'The note window'), 'space-homing': row(2, 'Where notes open') }, dismissed: ['dock-badge'] },
+      discovery: { approved_at: '2026-09-30T09:00:00.000Z', items: { 'note-window': row(1, 'The note window'), 'space-homing': row(2, 'Where notes open') }, dismissed: ['dock-badge'] },
       discussion: { items: { 'note-window': { status: 'in-progress' }, 'space-homing': { status: 'in-progress' } } },
     },
     checklists: { decided: { 'note-window': { items: markedItems(first) } } },
@@ -168,6 +170,42 @@ function decidedHelpers(dir) {
   return { close, payload, candidate, screen, staged, answer, run, reverse };
 }
 
+/**
+ * The board's suites' helpers over the world, over the project `dir()` names.
+ * @param {() => string} dir
+ */
+function decidedBoardHelpers(dir) {
+  /** The board's answer for the world's conversation, its `ok` dropped. @param {string[]} [args] */
+  function board(args = []) {
+    const { ok: _ok, ...answer } = ok(dir(), ['board', SESSION_ID, ...args], { env: SESSION });
+    return answer;
+  }
+
+  /** The conversation's position at a place, as its labelling records it. @param {string[]} place */
+  const at = (place) => ok(dir(), ['session', 'label', ...place], { env: SESSION });
+
+  /** A unit made as the workflows make one, of `type`: when its manifest was stamped. @param {string} name @param {string} type */
+  function made(name, type) {
+    ok(dir(), ['workunit', 'create', name, type, '--description', `The ${name} work`, '--session-log-file', writeState(dir(), layout.cache(name, 'session-001.md'), `# ${name}\n`)]);
+    return readManifest(dir(), name).created;
+  }
+
+  /** A message sent from one topic of the epic to another, its title given. @param {string} from @param {string} to @param {string} title */
+  function sent(from, to, title) {
+    const file = writeState(dir(), layout.cache(`${from}-${to}.md`), `# ${title}\n\nIt bears on you.\n`);
+    ok(dir(), ['topic', 'send', UNIT, to, '--from', from, '--content', file, '--slug', 'bears'], { env: SESSION });
+  }
+
+  /** An experiment, E1, spawned from the note window's discussion to measure a question of the person's. */
+  function spawned() {
+    const question = writeIn(dir(), 'ask', NOTE, [], { by: 'person', who_moved_whom: 'none', text: 'How fast does a note open?' });
+    const problem = writeState(dir(), layout.cache(UNIT, 'scratch', 'note-open-problem.md'), '# Problem — note-open\n');
+    ok(dir(), ['experiment', 'create', UNIT, 'note-window', '--slug', 'note-open', '--from', 'discussion', '--problem', problem, '--question', question], { env: SESSION });
+  }
+
+  return { board, at, made, sent, spawned };
+}
+
 module.exports = {
-  SOLO, SOLO_AT, SOLO_LOG, PERSON, NO_PAYLOAD, NOTE_MAP, writeIn, answeredIn, markAllButTheClosingPass, useDecidedWorld, decidedHelpers,
+  SOLO, SOLO_AT, SOLO_LOG, PERSON, NO_PAYLOAD, NOTE_MAP, writeIn, answeredIn, markAllButTheClosingPass, useDecidedWorld, decidedHelpers, decidedBoardHelpers,
 };

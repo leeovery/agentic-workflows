@@ -36,6 +36,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const { treeSnapshot, sectionOf } = require('./engine-harness.cjs');
+const { standingOn } = require('./board-world.cjs');
 const LIB = require('../../skills/leeway-engine/scripts/lib.cjs');
 const {
   Sim, worldFrom, mappedEpic, discussed, specEntry, specReviewed, cutTheSpec, readyToBuild, answerGate, intoTheBuild, epicBuildPick, menuEntry, firstPhaseBuilt, carryOn, handoff,
@@ -111,6 +112,14 @@ describe('pipeline simulation: the review phase, as its skill runs it', () => {
     sim.run(['enter', 'implementation', WU]);
     assert.deepStrictEqual(sim.sections.split('\n').filter((line) => line.startsWith('finished: ')), [`finished: every phase of the cut has closed — the review phase is next: enter review ${WU}`],
       'the build\'s entry names the review phase next, in the same conversation');
+    /** Where the epic stands on its tab: the phase it is in and since when, its specification, its build and review. */
+    const standing = () => {
+      const { now, spec, build } = JSON.parse(sim.read(['board', sim.env.CLAUDE_CODE_SESSION_ID, '--tab', 'unit', '--unit', WU])).view;
+      return { now, spec, build };
+    };
+    const closes = () => sim.manifest(WU).checklists;
+    assert.deepStrictEqual(standing(), { now: { phase: 'review', since: closes()['phase-1-close'].closed }, spec: { state: 'complete', session: null }, build: { state: 'reviewing', session: 'this' } },
+      'S2, 20.8.2: the epic is in review since its last phase closed, its build and review under way with this session in it');
     const { move, data, fixPhase: phase } = reviewNext(sim, WU);
     const here = carryOn(sim);
     assert.deepStrictEqual([sim.handoffs.slice(handedOff), here.position], [[], { name: WU, phase: 'review', topic: WU }],
@@ -154,7 +163,12 @@ describe('pipeline simulation: the review phase, as its skill runs it', () => {
     areaRead(sim, WU, undefined, 1);
     sim.run(['review', 'round', WU, '--file', sim.write(`.leeway/.cache/${WU}/review/round.json`, { can_now: ['Keep a ledger whose entries are checked.'], findings: [] })]);
     const passed = board();
-    assert.deepStrictEqual([passed.view.round, passed.view.verdict, passed.view.areas.map(({ state }) => state), passed.view.finish, passed.banner.state], [2, 'passed', ['read', 'unchanged', 'unchanged'], true, 'needs'],
+    assert.deepStrictEqual(standingOn((args) => JSON.parse(sim.read(['board', sim.env.CLAUDE_CODE_SESSION_ID, ...args])), WU), {
+      tab: { now: 'review', spec: 'complete', build: 'finish', waiting: ['finish finish'] },
+      all: { phase: 'review', standing: 'finish waits on you', waiting: 1, total: 1 },
+      banner: { state: 'needs', waits: ['⚑ 1 waiting on you'] },
+    }, 'S1: finish waits on the person on the epic\'s DELIVERY, on its page and in All work\'s row and count, as the banner has it (D18, D37)');
+    assert.deepStrictEqual([passed.view.round, passed.view.verdict, passed.view.areas.map(({ state }) => state), passed.view.waiting.map(({ kind }) => kind), passed.banner.state], [2, 'passed', ['read', 'unchanged', 'unchanged'], ['finish'], 'needs'],
       'the board draws round 2 passed, the area read and the rest unchanged, finish waiting on the person (20.10.2, D18, D37)');
     sim.render(['review-report', WU], { expect: 'content' });
     sim.render(['review-calls', WU], { expect: 'content' });
@@ -164,6 +178,8 @@ describe('pipeline simulation: the review phase, as its skill runs it', () => {
     sim.write(`.leeway/${WU}/build/log.md`, '# The build\n\nPhase 1 built; the review fixed the hash on read in round 1 and passed in round 2. Nothing is in flight.\n');
     const { landed, next } = finished(sim, WU);
     assert.deepStrictEqual(landed, [[phase]], 'finish lands the fix phase, the cut\'s merged before it');
+    assert.deepStrictEqual(standing(), { now: { phase: 'complete', since: sim.manifest(WU).completed_at }, spec: { state: 'complete', session: null }, build: { state: 'complete', session: 'this' } },
+      'S2, 20.8.2: finished, the epic is complete the day it completed, its build and review complete');
     handoff(sim, `/${next.skill} ${next.args.join(' ')}`);
 
     const files = unitFiles(sim);

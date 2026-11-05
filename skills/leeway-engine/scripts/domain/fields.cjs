@@ -232,6 +232,9 @@ function validatePhaseStatus(phase, value) {
   }
 }
 
+/** An ISO-8601 UTC instant, to the second or the millisecond. */
+const INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
+
 /**
  * Validate a set operation from the resolved internal path, the caller's
  * field segments, and the value. Every
@@ -277,6 +280,16 @@ function validateSet(segments, value, fieldSegments = segments) {
   if (segments.length >= 2 && segments[0] === 'phases') {
     const phase = segments[1];
     validatePhase(phase);
+
+    // phases.discovery.approved_at — when an epic's map was last approved,
+    // which every view reads to place the epic past its discovery: an
+    // instant, never a value that reads as no approval.
+    if (segments.length === 3 && phase === 'discovery' && segments[2] === 'approved_at') {
+      if (typeof value !== 'string' || !INSTANT.test(value) || Number.isNaN(Date.parse(value))) {
+        fail(`Invalid approved_at ${JSON.stringify(value)} — must be an ISO-8601 UTC instant (2026-07-15T09:30:00.000Z)`);
+      }
+      return;
+    }
 
     // phases.<phase>.items.<item>.status
     if (segments.length === 5 && segments[2] === 'items' && segments[4] === 'status') {

@@ -411,7 +411,7 @@ describe('a question parked in the build (12.13.2–12.13.4, 12.13.9, 12.S28, 12
 });
 
 describe('what waits (12.13.6, 12.13.7)', () => {
-  it('raise waiting lists the unit\'s questions waiting, oldest first: each by its number and its park\'s id, what it asks, the tasks it parks, when it parked and how many minutes it has waited', async (t) => {
+  it('raise waiting lists the unit\'s questions waiting, oldest first: each by its number and its park\'s id, what it asks and the question it is about, the tasks it parks, when it parked and how many minutes it has waited', async (t) => {
     const q1 = (await park(made.where, '2.3')).res;
     const q2 = (await park(made.size, '2.4', { call: { ...CALL, question: 'How big should a new note be?' } })).res;
     const since = (/** @type {string} */ short) => /** @type {string} */ (entries().find((e) => e.id === full(short)).at);
@@ -421,10 +421,18 @@ describe('what waits (12.13.6, 12.13.7)', () => {
       ok: true,
       unit: UNIT,
       waiting: [
-        { question: 'Q1', id: q1.id, asks: CALL.question, parks: ['2.3'], since: since(q1.id), waited_minutes: 90 },
-        { question: 'Q2', id: q2.id, asks: 'How big should a new note be?', parks: ['2.4'], since: since(q2.id), waited_minutes: Math.floor((Date.parse(since(q1.id)) + 90.5 * 60000 - Date.parse(since(q2.id))) / 60000) },
+        { question: 'Q1', id: q1.id, asks: CALL.question, about: made.where, parks: ['2.3'], since: since(q1.id), waited_minutes: 90 },
+        { question: 'Q2', id: q2.id, asks: 'How big should a new note be?', about: made.size, parks: ['2.4'], since: since(q2.id), waited_minutes: Math.floor((Date.parse(since(q1.id)) + 90.5 * 60000 - Date.parse(since(q2.id))) / 60000) },
       ],
     });
+  });
+
+  it('a question reworded while it waits is about its wording now, and a replacement proposed about the decision it would replace', () => {
+    parked(1, '2.3');
+    parkedReplacement(2);
+    const reworded = write('replace', BUILD, ['--replaces', made.where, '--reason', 'changed-mind'], { ...MADE, drops: ['where it opens'], text: 'On which screen does a new note open?' }).id;
+
+    assert.deepStrictEqual(waiting().map((/** @type {{about: string}} */ q) => q.about), [reworded, made.frameless]);
   });
 
   it('a question waits no longer once merged into another\'s answer or moved to the roadmap as later, a replacement proposed once its decision is no longer current — each as a clone\'s merge lays it — and nothing waits in a cancelled unit', () => {

@@ -30,7 +30,7 @@ const READ_AGAIN = new Set(['4', '5', '6', '12', '16', '18', 'tests'])
 
 /** Round 2 under way, each area it reads again being read, as the replay's step 5 draws it. */
 const secondReading = review({
-  finish: false,
+  waiting: [],
   recorded: false,
   verdict: null,
   found: [],
@@ -228,7 +228,7 @@ describe('the review phase\'s This session (20.10)', () => {
   test('N2, N4: round 1 under way — FOUND each finding its landed reports hold, "found" not "in scope", marked by its call, each opening its page by its report item; its checks not proven at the change\'s tips, each opening its page; nothing to the inbox yet', () => {
     const reading = review({
       round: 1,
-      finish: false,
+      waiting: [],
       recorded: false,
       verdict: null,
       fixes: null,
@@ -270,7 +270,7 @@ describe('the review phase\'s This session (20.10)', () => {
   })
 
   test('the facts line once a round passes with fix tasks still to build, before finish waits, and once Claude settled the round that ended the phase (N6)', () => {
-    const facts = (change: Record<string, unknown>) => drawnRows(reviewLines(review({ finish: false, ...change }), kitAt(NOW)))[2]
+    const facts = (change: Record<string, unknown>) => drawnRows(reviewLines(review({ waiting: [], ...change }), kitAt(NOW)))[2]
 
     expect([facts({ round: 1, verdict: 'passed' }), facts({ verdict: 'settled' })]).toEqual([
       'round 1 · 19 of 19 areas read · ✓ round 1 passes',
@@ -294,7 +294,7 @@ describe('the review phase\'s This session (20.10)', () => {
     const since = '2026-10-21T14:57:42.000Z'
     const reading = review({
       round: 1,
-      finish: false,
+      waiting: [],
       recorded: false,
       verdict: null,
       fixes: null,
@@ -333,11 +333,14 @@ describe('a question its fix tasks wait on (S1, 20.5.3)', () => {
     since: '2026-10-21T14:00:00.000Z',
   }
   const parked = review({
+    waiting: [{ kind: 'question', id: 'Q1', text: 'Q1 Should a failed check stop the live line, or keep it running?', page: 'task:9.1' }],
     fixes: { phase: 9, round: 1, tasks: [{ task: '9.1', title: 'The notes stage\'s live line after a failed check', state: 'waits', since: null, on: ['Q1'] }] },
   }, FAILED)
 
-  test('WAITING ON YOU stands in the review\'s This session with the question and its "▸ discuss", the fix task waiting on it', () => {
+  test('N3: WAITING ON YOU stands once in the review\'s This session, the unit\'s one list, with the question and its "▸ discuss", the fix task waiting on it', () => {
     const rows = paneDrawn(answered(parked, [question]), { now: NOW })
+
+    expect(rows.filter(row => row.startsWith('WAITING ON YOU')).length).toBe(1)
 
     expect([sectionOf(rows, 'WAITING ON YOU'), sectionOf(rows, 'FIX TASKS')]).toEqual([
       [

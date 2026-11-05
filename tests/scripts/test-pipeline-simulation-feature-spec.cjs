@@ -20,15 +20,17 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const {
-  Sim, handoff, answerGate, discussed, startUnit, specEntry, specReviewed, cutTheSpec, readyToBuild, intoTheBuild,
+  Sim, handoff, answerGate, discussed, startUnit, specEntry, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, intoTheBuild,
 } = require('./pipeline-world.cjs');
+const { standingOn } = require('./board-world.cjs');
+const { leaningCall } = require('./ledger-world.cjs');
 
 describe('pipeline simulation: feature, the spec', () => {
   let sim;
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('feature: its spec written, landed, reviewed — a rewrite taken by the writer, a gap declined — and cut, ready to build\'s pick begins the build in step, handing off into it; the position switched to auto after (11.8.1, 11.7.6, 24.S4, 3.3.6)', () => {
+  it('feature: its spec written, landed, reviewed — a rewrite taken by the writer, a gap declined, a gap asked as a question and surfaced with it, the person answering through the raise — and cut, ready to build\'s pick begins the build in step, handing off into it; the position switched to auto after (11.8.1, 11.7.6, 24.S4, 3.3.6)', async () => {
     const wu = 'tally';
     startUnit(sim, 'feature', wu, 'A tally of its own');
     handoff(sim, `/leeway-discussion-process feature ${wu}`);
@@ -42,11 +44,30 @@ describe('pipeline simulation: feature, the spec', () => {
       '## 1-S. Scenarios for §1', '', '1.S1 Given a tally, when it counts, then it counts as decided. (1.1.1)', '',
     ].join('\n'));
     sim.run(['spec', 'land', wu]);
-    specReviewed(sim, wu, [{ lane: 'rewrite' }, { lane: 'gap', declined: true }]);
+    const findings = /** @type {const} */ ([{ lane: 'rewrite' }, { lane: 'gap', declined: true }, { lane: 'gap' }]);
+    const pass = passTakenIn(sim, wu, [...findings]);
+    const question = sim.run(['ledger', 'ask', `${wu}.specification`], null, JSON.stringify({ by: 'review', who_moved_whom: 'none', text: 'Does a tally ever reset?' })).id;
+    const { raise } = await sim.runAsync(['raise', `${wu}.specification`, '--answers', question], null, JSON.stringify(leaningCall('Never.', 'At each release.')));
+    passSurfaced(sim, wu, pass, [...findings], { 2: question });
+    const board = (/** @type {string[]} */ args) => JSON.parse(sim.read(['board', sim.env.CLAUDE_CODE_SESSION_ID, ...args]));
+    const { tab: { waiting: [asked], ...tab }, ...asking } = standingOn(board, wu);
+    assert.deepStrictEqual({ tab, ...asking }, {
+      tab: { now: 'specification', state: 'waits', words: '1 section · 1 pass' },
+      all: { phase: 'specification', standing: 'pass 2 waits on you', waiting: 1, total: 1 },
+      banner: { state: 'needs', waits: ['⚑ 1 waiting on you'] },
+    }, 'S1: a gap waiting holds the specification on the feature\'s tab, All work counting it, as the banner has it');
+    const [gap, opens] = asked.split(' → ');
+    assert.ok(gap.startsWith('gap ') && question.startsWith(gap.slice(4)) && opens.startsWith('pass:1:'), `the tab lists the gap asked as a question, by its entry, opening the finding that raised it: ${asked}`);
+    sim.run(['raise', 'answer', raise, '--pick', '1'], null, JSON.stringify({ why: 'A tally counts what was decided.' }));
     sim.run(['brief', 'spec-writer', wu]);
     sim.run(['spec', 'land', wu]);
     cutTheSpec(sim, wu, [{ name: 'Counting', goal: 'The tally counts.', scenarios: ['1.S1'], sections: ['1'], relies_on: [] }]);
     readyToBuild(sim, wu);
+    assert.deepStrictEqual(standingOn(board, wu), {
+      tab: { now: 'specification', state: 'waits', words: '1 section · 1 pass', waiting: ['ready ready-to-build'] },
+      all: { phase: 'specification', standing: 'ready to build', waiting: 1, total: 1 },
+      banner: { state: 'needs', waits: ['⚑ 1 waiting on you'] },
+    }, 'S1, N1: ready to build\'s yes holds the specification on the feature\'s tab, listed under what waits, All work counting it, as the banner has it');
     intoTheBuild(sim, wu, sim.run(answerGate(sim, 'ready to build', '--pick', 's').next.argv));
     sim.run(['workunit', 'position', wu, 'auto']);
   });

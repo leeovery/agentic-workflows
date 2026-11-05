@@ -22,6 +22,7 @@ const assert = require('node:assert');
 const {
   Sim, worldFrom, discussed, mappedEpic, arrive, specEntry, handoff, answerGate,
 } = require('./pipeline-world.cjs');
+const { standingOn } = require('./board-world.cjs');
 
 const WU = 'tessera';
 
@@ -54,12 +55,36 @@ describe('pipeline simulation: epic, the sweep before the spec', () => {
     const taken = sim.run(['sweep', 'take', WU]);
     assert.deepStrictEqual(taken.next, { kind: 'engine', argv: ['render', 'approve-map', WU, '--sweep'] });
     sim.render(taken.next.argv.slice(1), { expect: 'content' });
+    const board = (/** @type {string[]} */ args) => JSON.parse(sim.read(['board', sim.env.CLAUDE_CODE_SESSION_ID, ...args]));
+    assert.deepStrictEqual([standingOn(board, WU), board(['--tab', 'unit']).view.waiting.map((/** @type {{text: string}} */ { text }) => text)], [{
+      tab: { now: 'discussion', spec: 'waits', build: 'waits', waiting: ['map approve-the-map'] },
+      all: { phase: 'discussion', standing: '1 of 2 topics decided', waiting: 1, total: 1 },
+      banner: { state: 'needs', waits: ['⚑ the map waits on you'] },
+    }, ['Approve the map: 2 candidates the sweep found, to take or strike']], 'S1: the sweep\'s candidates wait on the person at approve the map on every view that reads the epic — its message having reopened beta, back in discussion — as the banner has it');
     sim.render(answerGate(sim, 'approve the map', '--pick', 's').next.argv.slice(1), { expect: 'content' });
     sim.render(sim.run(answerGate(sim, 'approve the map strike', '--pick', '2').next.argv).next.argv.slice(1), { expect: 'content' });
     const yes = sim.run(answerGate(sim, 'approve the map', '--pick', 'y').next.argv);
     assert.deepStrictEqual(yes.next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [WU] });
     handoff(sim, `/leeway-continue-epic ${WU}`);
     arrive(sim, WU);
+  });
+
+  it('S1, N4: the sweep\'s candidates alone, no topic reopened, hold the specification on the epic\'s DEFINITION by the map waiting, as the banner and All work have it (8.10.9)', () => {
+    specEntry(sim, WU, ['alpha', 'beta']);
+    sim.run(['brief', 'sweep', WU]);
+    sim.write(`.leeway/.cache/${WU}/specification/sweep.json`, {
+      candidates: [{ name: 'gamma', reason: 'Alpha and beta each lean on an export neither owns.', brief: '# Gamma\n\nThe export both lean on.\n' }],
+      messages: [],
+      builder_calls: [],
+    });
+    sim.render(sim.run(['sweep', 'take', WU]).next.argv.slice(1), { expect: 'content' });
+    const board = (/** @type {string[]} */ args) => JSON.parse(sim.read(['board', sim.env.CLAUDE_CODE_SESSION_ID, ...args]));
+
+    assert.deepStrictEqual(standingOn(board, WU), {
+      tab: { now: 'specification', spec: 'map', build: 'waits', waiting: ['map approve-the-map'] },
+      all: { phase: 'specification', standing: 'being written', waiting: 1, total: 1 },
+      banner: { state: 'needs', waits: ['⚑ the map waits on you'] },
+    });
   });
 
   it('epic: the empty sweep taken, the spec carries on and lands (8.10.3, 11.S3)', () => {

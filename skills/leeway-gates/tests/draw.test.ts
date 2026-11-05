@@ -1,6 +1,6 @@
 import { describe, expect, test, tier } from 'claude-code/testing'
 
-import { RUNNING_FRAMES, blank, clockOf, cutTo, folding, heading, kitOf, rowsOf, spread, widthOf, type Part } from '../hooks/draw.ts'
+import { RUNNING_FRAMES, blank, clockOf, cutTo, folding, heading, kitOf, rowsOf, spread, whenOf, widthOf, type Part } from '../hooks/draw.ts'
 
 tier('user')
 
@@ -60,6 +60,18 @@ describe('a section\'s heading', () => {
 
     expect(folding('phase:5', name, summary, kit().kit).button).toEqual({ key: 'fold:phase:5', label: '▸ show' })
     expect(folding('phase:5', name, summary, kit(['phase:5']).kit).button).toEqual({ key: 'fold:phase:5', label: '▾ hide' })
+  })
+})
+
+describe('when a moment was', () => {
+  test('just now within the minute, minutes then hours ago within the day, the day and time within the week, else the day', () => {
+    const now = Date.parse('2026-10-21T13:30:00')
+    const at = (ago: number) => new Date(now - ago).toISOString()
+    const minute = 60_000
+
+    expect([0, 59_999, minute, 59 * minute, 60 * minute, 23 * 60 * minute + 59 * minute].map(ago => whenOf(at(ago), now))).toEqual(['just now', 'just now', '1m ago', '59m ago', '1h ago', '23h ago'])
+    expect(whenOf('2026-10-20T09:05:00', now)).toBe('20 Oct 09:05')
+    expect(whenOf('2026-10-13T09:05:00', now)).toBe('13 Oct')
   })
 })
 

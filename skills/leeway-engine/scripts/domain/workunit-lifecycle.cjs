@@ -28,7 +28,7 @@ const {
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { purgeWorkUnitCache } = require('./cache.cjs');
 const { syncKnowledge } = require('./knowledge/sync.cjs');
-const { addItem } = require('./discovery-map.cjs');
+const { addBatchTo, discoveryItems } = require('./discovery-map.cjs');
 const { revertJoins } = require('./roadmap.cjs');
 const { moveUnitMailToInbox } = require('./mail.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
@@ -230,10 +230,12 @@ function reactivateWorkUnit(cwd, workUnit) {
 
 /**
  * Pivot a feature to an epic: flip `work_type` in the work-unit manifest AND
- * the project manifest's registration, register the feature's single topic
- * (topic name = work unit name) on the discovery map with backfill semantics
- * (summary-backfill drafts summary/description on the next epic entry),
- * re-index the unit so chunk metadata carries the new work_type
+ * the project manifest's registration; in the same save, the feature's single
+ * topic (topic name = work unit name) on the discovery map with backfill
+ * semantics (summary-backfill drafts summary/description on the next epic
+ * entry), first in its order, and the map approved at the pivot
+ * (`phases.discovery.approved_at`, 18.3.5), as approve-map's yes orders and
+ * approves a map; re-index the unit so chunk metadata carries the new work_type
  * (warn-don't-block), and commit both manifests. Only an in-progress feature
  * before its spec pivots, its topic gone past it (4.11.2).
  * @param {string} cwd project root
@@ -249,8 +251,6 @@ function pivotWorkUnit(cwd, workUnit) {
     if (loaded.status !== 'in-progress') {
       throw new Error(`work unit "${workUnit}" is not in-progress (status: ${loaded.status ?? 'none'}) — reactivate it first`);
     }
-    // The map add runs mid-transaction — prove it can succeed before flipping
-    // anything.
     assertBeforeSpec(cwd, loaded, 'ownWork');
     const phases = loaded.phases && typeof loaded.phases === 'object' ? loaded.phases : {};
     const discovery = phases.discovery && typeof phases.discovery === 'object' ? phases.discovery : {};
@@ -265,12 +265,13 @@ function pivotWorkUnit(cwd, workUnit) {
     readProjectManifest(cwd);
 
     loaded.work_type = 'epic';
+    addBatchTo(loaded, [{ name: workUnit, summary: '' }], null);
+    const item = discoveryItems(loaded)[workUnit];
+    delete item.summary;
+    item.order = 1;
+    loaded.phases.discovery.approved_at = new Date().toISOString();
     saveWorkUnitManifest(cwd, workUnit, loaded);
   });
-
-  // The feature's single topic joins the map (no summary/description —
-  // backfill semantics). Its own locked read-modify-write.
-  addItem(cwd, workUnit, workUnit, { backfill: true });
 
   // The registration must agree with the manifest — a fresh read under the
   // project lock, upserted, so a legacy unit that predates registration is

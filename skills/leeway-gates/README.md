@@ -252,12 +252,13 @@ while another screen — Remote Control's, say — is attached beside the band's
 
 The banner names the work and where it stands: the session's mark — ◐ running,
 ⚑ waiting on you, ✓ done, none where neither — the work's name in bold, then
-its facts in grey, each one that waits on you in peach behind a ⚑, and at its
-right the buttons Ready to discuss gives it (below), then `▸ show board`
-while the pane is hidden, `hide board` while it is up. A banner too long for
-the band is cut from its right end, its buttons kept. It
-sits beneath a gate's rows, which are drawn in the rows it leaves; a survey
-holds the band alone.
+its facts in grey, each one that waits on you in peach behind a ⚑ — the
+messages waiting in a topic, and at a unit's menu what waits on you there,
+peach with no ⚑ — and at its right the buttons Ready to discuss gives it
+(below), then `▸ show board` while the pane is hidden, `hide board` while it
+is up. A banner too long for the band is cut from its right end, its buttons
+kept. It sits beneath a gate's rows, which are drawn in the rows it leaves; a
+survey holds the band alone.
 
 The pane has three tabs: `⌂ This session`, the unit's own (`≡ {unit}`), and
 `≡ All work`. This session shows the most specific place the session is, and
@@ -276,7 +277,11 @@ kind (`hooks/views/`), with the drawing kit (`hooks/draw.ts`): colours with one
 meaning each — peach waits on you, seafoam runs, sage is done, rose failed,
 slate has not started, lavender this view and every button — a section's
 heading with its rule and count, one line per item, its state at the right, a
-complete section folding to its heading.
+complete section folding to its heading. A line whose words say what is
+happening or what waits — a facts line, a progress line, a unit's standing —
+wraps under its mark or indent rather than lose them at the edge; a title
+gives way with "…". A topic under way that a session is in turns its ◐ in
+seafoam; one no session is in is sky blue and still.
 
 In the build, This session shows the build's progress, then what waits on you,
 each question with its `▸ discuss`, then the phases, each task on its line with
@@ -288,9 +293,10 @@ evidence kept with the run. The page holds its questions wherever the session
 goes; each has its `▸ discuss` while the session is in the task's unit, the
 discussion being the session's. In the review phase it shows the round: each
 area's read, the fix tasks a failing round brought, what was found, the
-checks not proven, what went to the inbox and the verdict, finish waiting on
-you once the review is over; a finding opens its page, while the round is
-read as its reviewer's report holds it. A line whose
+checks not proven, what went to the inbox and the verdict, and what waits on
+you: the review's own questions, as the build's do, and finish once the
+review is over and no question waits; a finding opens its page, while the
+round is read as its reviewer's report holds it. A line whose
 words carry a state, a standing or what waits on you wraps under its mark and
 is never cut at the edge; only a title gives way, with `…`.
 
