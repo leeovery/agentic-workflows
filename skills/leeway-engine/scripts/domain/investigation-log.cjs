@@ -39,9 +39,9 @@
 //   one answering the question, or one replacing a decision that did or
 //   replaced one that did (raise.cjs) — and `--body`, one finding a line as
 //   the seal's are, where it sealed none: a body given besides is passed
-//   over, said among the warnings. Nothing is committed: every state commit takes the log
-//   along (6.3.2). It answers what the reads passed over, the log's lines
-//   among them, as warnings.
+//   over, said among the warnings. Nothing is committed: every state commit
+//   takes the log along (6.3.2). It answers what the reads passed over, the
+//   log's lines among them, as warnings.
 // - It refuses, writing nothing: a kind it lacks, an argument out of its
 //   shape; a place whose investigation cannot take work — as the entry
 //   refuses one (topic-standing.cjs) — or has not started; a value missing,
