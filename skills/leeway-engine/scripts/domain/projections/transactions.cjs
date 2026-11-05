@@ -52,7 +52,6 @@ const TYPE_LABELS = {
   feature: 'Feature',
   bugfix: 'Bugfix',
   'quick-fix': 'Quick-Fix',
-  'cross-cutting': 'Cross-Cutting',
   epic: 'Epic',
 };
 

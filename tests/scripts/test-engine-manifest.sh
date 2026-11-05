@@ -2049,7 +2049,7 @@ echo ""
 
 echo -e "${YELLOW}Test: phases.discovery accepts writes for every work type${NC}"
 setup_fixture
-for wt in epic feature bugfix quick-fix cross-cutting; do
+for wt in epic feature bugfix quick-fix; do
     name="${wt//-/_}-disc"
     create_wu "$name" "$wt" "Discovery cross-type $wt"
     run_cli set "$name.discovery" active_session 1 >/dev/null 2>&1
@@ -2071,7 +2071,7 @@ echo ""
 
 echo -e "${YELLOW}Test: discovery status refusal names the map contract for every work type${NC}"
 setup_fixture
-for wt in epic feature bugfix quick-fix cross-cutting; do
+for wt in epic feature bugfix quick-fix; do
     name="${wt//-/_}-disc-item"
     create_wu "$name" "$wt" "Discovery item $wt"
     output=$(run_cli set "$name.discovery.topic-one" status in-progress 2>&1 || true)
@@ -2084,7 +2084,7 @@ echo ""
 
 echo -e "${YELLOW}Test: discovery item status writes refused for every work type${NC}"
 setup_fixture
-for wt in epic feature bugfix quick-fix cross-cutting; do
+for wt in epic feature bugfix quick-fix; do
     name="${wt//-/_}-disc-guard"
     create_wu "$name" "$wt" "Guard $wt"
     assert_exit_code 1 "$wt: discovery item status completed rejected" \

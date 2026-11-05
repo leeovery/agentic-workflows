@@ -65,7 +65,6 @@ function format(result) {
   emitSection('features', result.features.work_units);
   emitSection('bugfixes', result.bugfixes.work_units);
   emitSection('quick-fixes', result.quick_fixes.work_units);
-  emitSection('cross-cutting', result.cross_cutting.work_units);
 
   if (result.completed.length > 0) {
     lines.push('=== COMPLETED ===');
@@ -93,7 +92,7 @@ function format(result) {
 
   lines.push('=== STATE ===');
   lines.push(`has_any_work: ${result.state.has_any_work}`);
-  lines.push(`counts: ${result.state.epic_count} epic, ${result.state.feature_count} feature, ${result.state.bugfix_count} bugfix, ${result.state.quickfix_count} quick-fix, ${result.state.cross_cutting_count} cross-cutting`);
+  lines.push(`counts: ${result.state.epic_count} epic, ${result.state.feature_count} feature, ${result.state.bugfix_count} bugfix, ${result.state.quickfix_count} quick-fix`);
   lines.push(`completed_count: ${result.completed_count}`);
   lines.push(`cancelled_count: ${result.cancelled_count}`);
   lines.push(`has_inbox: ${result.state.has_inbox}`);
@@ -115,7 +114,7 @@ function view() {
 
   const dataLines = [];
   dataLines.push(`has_any_work: ${detail.state.has_any_work}`);
-  dataLines.push(`counts: ${detail.state.epic_count} epic, ${detail.state.feature_count} feature, ${detail.state.bugfix_count} bugfix, ${detail.state.quickfix_count} quick-fix, ${detail.state.cross_cutting_count} cross-cutting`);
+  dataLines.push(`counts: ${detail.state.epic_count} epic, ${detail.state.feature_count} feature, ${detail.state.bugfix_count} bugfix, ${detail.state.quickfix_count} quick-fix`);
   dataLines.push(`inbox_count: ${detail.state.inbox_count}`);
   dataLines.push(`completed_count: ${detail.completed_count}`);
   dataLines.push(`cancelled_count: ${detail.cancelled_count}`);

@@ -8,8 +8,8 @@
 //
 // - Claude's payload is staged in the product's cache with `--file`, and
 //   nothing is created before the person's yes (8.S16). It names the work's
-//   type — a feature, an epic, a bugfix or a quick-fix, never cross-cutting
-//   (8.2.4) — its name, its description, the one-line reason for the type,
+//   type — a feature, an epic, a bugfix or a quick-fix (8.2.4, 19.1.1) —
+//   its name, its description, the one-line reason for the type,
 //   the inbox items and the roadmap items it starts from, and the places in
 //   the product's sessions that shaped it (8.14.3); a feature or a bugfix
 //   also its one topic's brief (8.7.7), the topic being the unit, which is
@@ -87,7 +87,6 @@ function stagedFile(cwd) {
 
 /** Refuses a type start this work does not create. @param {unknown} type @returns {string} */
 function startType(type) {
-  if (type === 'cross-cutting') throw new Error('discovery never calls work cross-cutting — it is a feature, an epic, a bugfix or a quick-fix');
   if (typeof type !== 'string' || !STARTS.includes(type)) throw new Error(`the type is one of ${STARTS.join(', ')} — got ${JSON.stringify(type)}`);
   return type;
 }

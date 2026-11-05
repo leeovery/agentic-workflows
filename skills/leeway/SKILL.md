@@ -237,7 +237,7 @@ node .claude/skills/leeway/scripts/gateway.cjs
 
 Parse the output to understand the current workflow state:
 
-**From the per-type sections** (`=== EPICS ===` through `=== CROSS-CUTTING ===`):
+**From the per-type sections** (`=== EPICS ===` through `=== QUICK-FIXES ===`):
 - one line per active work unit — the name
 
 **From `=== COMPLETED ===` / `=== CANCELLED ===`** (present only when non-empty):

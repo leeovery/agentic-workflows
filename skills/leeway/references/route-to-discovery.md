@@ -8,7 +8,7 @@ Hand new work to discovery at no work unit, the product's conversation. Every ne
 
 Parameters the caller provides via context before loading:
 
-- `work_type` — `epic` / `feature` / `bugfix` / `quick-fix` / `cross-cutting`, or `none`.
+- `work_type` — `epic` / `feature` / `bugfix` / `quick-fix`, or `none`.
 - `inbox_seeds` — comma-joined path(s) of the chosen inbox file(s), one or more, or `none`.
 
 `{way_in}` is `work_type`, or `start` where it is `none`.

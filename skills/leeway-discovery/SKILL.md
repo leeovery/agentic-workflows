@@ -10,7 +10,7 @@ The person talks the product through, and the work takes shape before anything i
 
 ## Arguments
 
-- `$0` — **way_in**: how the conversation was come to. A work type — `epic`, `feature`, `bugfix` or `quick-fix` — is the person starting a piece of work of that kind; `start`, a piece of work of no kind yet, as `cross-cutting` reads; `none`, the conversation itself, the product's or the epic's.
+- `$0` — **way_in**: how the conversation was come to. A work type — `epic`, `feature`, `bugfix` or `quick-fix` — is the person starting a piece of work of that kind; `start`, a piece of work of no kind yet; `none`, the conversation itself, the product's or the epic's.
 - `$1` — **home**: an epic, its own discovery; or `none`, the product's conversation.
 - `$2` — **seeds**: comma-joined, what new work starts from — each a live inbox path, or a waiting roadmap item, `roadmap:{item}` — or `none`; absent reads `none`.
 

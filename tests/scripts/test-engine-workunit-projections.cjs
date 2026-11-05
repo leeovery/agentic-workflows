@@ -12,7 +12,7 @@ const { activeWorkUnit, typeConfig } = require('../../skills/leeway-engine/scrip
 const { workUnitStatus, workUnitMenu, workUnitData, revisitPhasesSection } = require('../../skills/leeway-engine/scripts/domain/projections/workunit.cjs');
 
 // Golden tests: byte-exact expected strings for the work-unit status display
-// and proceed/revisit menu, across all four single-topic types. Fixtures go
+// and proceed/revisit menu, across the three single-topic types. Fixtures go
 // through real manifests in temp dirs (the same shapes the discovery tests
 // produce).
 
@@ -128,28 +128,28 @@ describe('workunit projections: status display', () => {
       [['y', 'continue', '/leeway-specification-process feature pay']]);
   });
 
-  it('cross-cutting: a flagged completed phase carries the cue, the ⚑ line, and takes next_phase', () => {
-    createManifest(dir, 'auth-flow', {
-      work_type: 'cross-cutting',
+  it('quick-fix: a flagged completed phase carries the cue, the ⚑ line, and takes next_phase', () => {
+    createManifest(dir, 'rename-api', {
+      work_type: 'quick-fix',
       phases: {
-        discussion: { items: { 'auth-flow': { status: 'completed' } } },
-        specification: { items: { 'auth-flow': { status: 'completed', reconcile_needed: 'discussion' } } },
+        scoping: { items: { 'rename-api': { status: 'completed' } } },
+        implementation: { items: { 'rename-api': { status: 'completed', reconcile_needed: 'scoping' } } },
       },
     });
-    const unit = unitOf(dir, 'cross-cutting', 'auth-flow');
-    assert.strictEqual(workUnitStatus('cross-cutting', unit), [
-      'PIPELINE (cross-cutting)',
-      '  ├─ ✓ Discussion       [completed]',
-      '  └─ ✓ Specification    [completed · input moved]',
+    const unit = unitOf(dir, 'quick-fix', 'rename-api');
+    assert.strictEqual(workUnitStatus('quick-fix', unit), [
+      'PIPELINE (quick-fix)',
+      '  ├─ ✓ Scoping           [completed]',
+      '  └─ ✓ Implementation    [completed · input moved]',
       '',
-      '  ⚑ Specification input moved — discussion revised since it completed.',
+      '  ⚑ Implementation input moved — scoping revised since it completed.',
       '',
     ].join('\n'));
-    assert.strictEqual(unit.next_phase, 'specification');
-    assert.strictEqual(unit.phase_label, 'specification (input moved — reconcile)');
-    const menu = workUnitMenu('cross-cutting', unit);
-    assert.strictEqual(menu.keys[0].route, '/leeway-specification-process cross-cutting auth-flow');
-    assert.match(workUnitData('cross-cutting', unit, menu), /^reconcile_pending: specification \(discussion\)$/m);
+    assert.strictEqual(unit.next_phase, 'implementation');
+    assert.strictEqual(unit.phase_label, 'implementation (input moved — reconcile)');
+    const menu = workUnitMenu('quick-fix', unit);
+    assert.strictEqual(menu.keys[0].route, '/leeway-implementation-process quick-fix rename-api');
+    assert.match(workUnitData('quick-fix', unit, menu), /^reconcile_pending: implementation \(scoping\)$/m);
   });
 
   it('bugfix: completed investigation and a ready next phase', () => {
@@ -177,33 +177,20 @@ describe('workunit projections: status display', () => {
     ].join('\n'));
   });
 
-  it('cross-cutting: a completed discussion and a ready terminal phase', () => {
-    createManifest(dir, 'caching', {
-      work_type: 'cross-cutting',
+  it('quick-fix: finalising unit renders all-completed rows and the finalise callout', () => {
+    createManifest(dir, 'rename-api', {
+      work_type: 'quick-fix',
       phases: {
-        discussion: { items: { caching: { status: 'completed' } } },
+        scoping: { items: { 'rename-api': { status: 'completed' } } },
+        implementation: { items: { 'rename-api': { status: 'completed' } } },
+        review: { items: { 'rename-api': { status: 'completed' } } },
       },
     });
-    assert.strictEqual(workUnitStatus('cross-cutting', unitOf(dir, 'cross-cutting', 'caching')), [
-      'PIPELINE (cross-cutting)',
-      '  ├─ ✓ Discussion       [completed]',
-      '  └─ → Specification    [ready]',
-      '',
-    ].join('\n'));
-  });
-
-  it('cross-cutting: finalising unit renders all-completed rows and the finalise callout', () => {
-    createManifest(dir, 'caching', {
-      work_type: 'cross-cutting',
-      phases: {
-        discussion: { items: { caching: { status: 'completed' } } },
-        specification: { items: { caching: { status: 'completed' } } },
-      },
-    });
-    assert.strictEqual(workUnitStatus('cross-cutting', unitOf(dir, 'cross-cutting', 'caching')), [
-      'PIPELINE (cross-cutting)',
-      '  ├─ ✓ Discussion       [completed]',
-      '  └─ ✓ Specification    [completed]',
+    assert.strictEqual(workUnitStatus('quick-fix', unitOf(dir, 'quick-fix', 'rename-api')), [
+      'PIPELINE (quick-fix)',
+      '  ├─ ✓ Scoping           [completed]',
+      '  ├─ ✓ Implementation    [completed]',
+      '  └─ ✓ Review            [completed]',
       '',
       '  ⚑ All phases complete — ready to finalise.',
       '',
@@ -230,24 +217,28 @@ describe('workunit projections: status display', () => {
     assert.match(workUnitStatus('feature', drained), /◐ Discussion +\[in-progress\]/);
   });
 
-  it('cross-cutting: a reopened phase behind the completed last one is in-progress, never finalising', () => {
-    createManifest(dir, 'caching', {
-      work_type: 'cross-cutting',
+  it('quick-fix: a reopened phase behind the completed last one is in-progress, never finalising — its continue resumes it', () => {
+    createManifest(dir, 'rename-api', {
+      work_type: 'quick-fix',
       phases: {
-        discussion: { items: { caching: { status: 'in-progress' } } },
-        specification: { items: { caching: { status: 'completed' } } },
+        scoping: { items: { 'rename-api': { status: 'in-progress' } } },
+        implementation: { items: { 'rename-api': { status: 'completed' } } },
+        review: { items: { 'rename-api': { status: 'completed' } } },
       },
     });
-    const unit = unitOf(dir, 'cross-cutting', 'caching');
+    const unit = unitOf(dir, 'quick-fix', 'rename-api');
     assert.strictEqual(unit.finalising, false);
-    assert.strictEqual(unit.next_phase, 'discussion');
-    assert.strictEqual(unit.phase_label, 'discussion (in-progress)');
-    assert.strictEqual(workUnitStatus('cross-cutting', unit), [
-      'PIPELINE (cross-cutting)',
-      '  ├─ ◐ Discussion       [in-progress]',
-      '  └─ ✓ Specification    [completed]',
+    assert.strictEqual(unit.next_phase, 'scoping');
+    assert.strictEqual(unit.phase_label, 'scoping (in-progress)');
+    assert.strictEqual(workUnitStatus('quick-fix', unit), [
+      'PIPELINE (quick-fix)',
+      '  ├─ ◐ Scoping           [in-progress]',
+      '  ├─ ✓ Implementation    [completed]',
+      '  └─ ✓ Review            [completed]',
       '',
     ].join('\n'));
+    assert.deepStrictEqual(workUnitMenu('quick-fix', unit).keys.map((k) => [k.key, k.action, k.route]),
+      [['y', 'continue', '/leeway-scoping-process quick-fix rename-api']], 'no finalise entry mid-revisit');
   });
 
   it('feature: every in-flight phase row renders, even beside the next one', () => {
@@ -390,121 +381,6 @@ describe('workunit projections: menu', () => {
     );
   });
 
-  it('cross-cutting: a reopened phase behind the completed last one continues into that phase, never finalise', () => {
-    // `y` must resume the reopened discussion — a finalise entry here would
-    // abandon the revisit.
-    createManifest(dir, 'caching', {
-      work_type: 'cross-cutting',
-      phases: {
-        discussion: { items: { caching: { status: 'in-progress' } } },
-        specification: { items: { caching: { status: 'completed' } } },
-      },
-    });
-    const menu = workUnitMenu('cross-cutting', unitOf(dir, 'cross-cutting', 'caching'));
-    assert.ok(!menu.keys.some((k) => k.action === 'finalise'), 'no finalise entry mid-revisit');
-    assert.deepStrictEqual(
-      menu.keys.map((k) => [k.key, k.action, k.route]),
-      [['y', 'continue', '/leeway-discussion-process cross-cutting caching']]
-    );
-    assert.strictEqual(menu.rendered, '');
-  });
-
-  it('cross-cutting: neither the decided discussion nor the spec is a revisit — ready for specification, a lone continue; finalising, the finalise and the way back alone', () => {
-    createManifest(dir, 'caching', {
-      work_type: 'cross-cutting',
-      phases: {
-        discussion: { items: { caching: { status: 'completed' } } },
-      },
-    });
-    const ready = workUnitMenu('cross-cutting', unitOf(dir, 'cross-cutting', 'caching'));
-    assert.strictEqual(ready.rendered, '');
-    assert.deepStrictEqual(ready.keys.map((k) => [k.key, k.action, k.route]),
-      [['y', 'continue', '/leeway-specification-process cross-cutting caching']]);
-
-    createManifest(dir, 'caching', {
-      work_type: 'cross-cutting',
-      phases: {
-        discussion: { items: { caching: { status: 'completed' } } },
-        specification: { items: { caching: { status: 'completed' } } },
-      },
-    });
-    const finalising = workUnitMenu('cross-cutting', unitOf(dir, 'cross-cutting', 'caching'));
-    assert.deepStrictEqual(
-      finalising.keys.map((k) => [k.key, k.action, k.phase || null, k.route]),
-      [['y', 'finalise', null, null], ['b', 'back', null, null]],
-    );
-  });
-});
-
-describe('workunit projections: a promoted unit routes to its moved discussions by name', () => {
-  let dir;
-  beforeEach(() => { dir = setupFixture(); });
-  afterEach(() => { cleanupFixture(dir); });
-
-  /** A reactivated cross-cutting unit promoted with two discussions, neither named after it. @param {Record<string, any>} [overrides] */
-  function promoted(overrides = {}) {
-    createManifest(dir, 'fees', {
-      work_type: 'cross-cutting',
-      source_work_unit: 'billing',
-      source_topic: 'fees',
-      phases: {
-        discussion: { items: { 'fee-rules': { status: 'completed' }, 'fee-display': { status: 'completed' }, ...overrides.discussion } },
-        specification: { items: { fees: {
-          status: 'completed',
-          sources: { 'fee-rules': { status: 'incorporated' }, 'fee-display': { status: 'incorporated' } },
-          ...overrides.specification,
-        } } },
-      },
-    });
-    return unitOf(dir, 'cross-cutting', 'fees');
-  }
-
-  it('offers no revisit into a moved discussion, nor into the spec', () => {
-    const menu = workUnitMenu('cross-cutting', promoted());
-    assert.deepStrictEqual(
-      menu.keys.map((k) => [k.key, k.action, k.topic, k.phase || null, k.route]),
-      [['y', 'finalise', 'fees', null, null], ['b', 'back', 'fees', null, null]],
-    );
-  });
-
-  it('continues into the moved discussion in flight, by name', () => {
-    const unit = promoted({ discussion: { 'fee-rules': { status: 'in-progress' } } });
-    assert.strictEqual(unit.next_phase, 'discussion');
-    assert.strictEqual(unit.next_topic, 'fee-rules');
-    assert.strictEqual(workUnitMenu('cross-cutting', unit).keys[0].route, '/leeway-discussion-process cross-cutting fees fee-rules');
-  });
-
-  it('cues a message waiting on a moved discussion as mail waiting', () => {
-    assert.strictEqual(promoted().mail_phases, undefined);
-    createFile(dir, '.leeway/fees/topics/fee-display/mail/001-rounding.md', '# Rounding\n');
-    const unit = unitOf(dir, 'cross-cutting', 'fees');
-    assert.deepStrictEqual(unit.mail_phases, ['discussion']);
-    assert.match(workUnitStatus('cross-cutting', unit), /Discussion +\[completed\]/);
-    assert.match(workUnitMenu('cross-cutting', unit).rendered, /· mail waiting\./);
-  });
-
-  it('continues into the specification\'s reconcile once the discussion concludes again — by the unit alone', () => {
-    const unit = promoted({ specification: { reconcile_needed: 'discussion', sources: { 'fee-rules': { status: 'stale' }, 'fee-display': { status: 'incorporated' } } } });
-    assert.strictEqual(unit.phase_label, 'specification (input moved — reconcile)');
-    assert.strictEqual(unit.next_topic, null);
-    const menu = workUnitMenu('cross-cutting', unit);
-    assert.strictEqual(menu.keys[0].route, '/leeway-specification-process cross-cutting fees');
-    assert.deepStrictEqual(menu.keys.filter((k) => k.action === 'revisit_phase'), [],
-      'the discussions decided and the specification next, nothing is behind it to revisit');
-  });
-
-  it('routes a promoted unit whose one discussion carries its name exactly as any unit', () => {
-    createManifest(dir, 'naming', {
-      work_type: 'cross-cutting',
-      phases: {
-        discussion: { items: { naming: { status: 'completed' } } },
-        specification: { items: { naming: { status: 'completed', sources: { naming: { status: 'incorporated' } } } } },
-      },
-    });
-    const unit = unitOf(dir, 'cross-cutting', 'naming');
-    assert.deepStrictEqual(unit.revisit, []);
-    assert.deepStrictEqual(workUnitMenu('cross-cutting', unit).keys.map((k) => [k.key, k.action, k.topic]), [['y', 'finalise', 'naming'], ['b', 'back', 'naming']]);
-  });
 });
 
 describe('workunit projections: data body', () => {

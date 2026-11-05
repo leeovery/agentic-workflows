@@ -277,7 +277,7 @@ type Unit = {
 }
 
 /** The types whose tab's progress line names the phase the unit is in. */
-const SAYS_PHASE: ReadonlySet<string> = new Set(['feature', 'cross-cutting'])
+const SAYS_PHASE: ReadonlySet<string> = new Set(['feature'])
 
 /** Where a unit has come to that its tab's progress line never names: discovery, where it begins, and complete. */
 const UNNAMED: ReadonlySet<string> = new Set(['discovery', 'complete'])

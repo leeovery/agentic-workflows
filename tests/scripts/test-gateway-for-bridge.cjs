@@ -375,49 +375,6 @@ describe('leeway-bridge format', () => {
     assert.match(built, /^revisit_routes: \(none\)$/m);
   });
 
-  it('a promoted unit routes to its moved discussions by name — the discussion in flight, then the specification\'s reconcile', () => {
-    /** @param {Record<string, any>} discussions @param {Record<string, any>} spec */
-    const promoted = (discussions, spec) => createManifest(dir, 'fees', {
-      work_type: 'cross-cutting',
-      phases: {
-        discussion: { items: { 'fee-rules': { status: 'completed' }, 'fee-display': { status: 'completed' }, ...discussions } },
-        specification: { items: { fees: {
-          status: 'completed',
-          sources: { 'fee-rules': { status: 'incorporated' }, 'fee-display': { status: 'incorporated' } },
-          ...spec,
-        } } },
-      },
-    });
-
-    promoted({ 'fee-rules': { status: 'in-progress' } }, { reconcile_needed: 'discussion', sources: { 'fee-rules': { status: 'stale' }, 'fee-display': { status: 'incorporated' } } });
-    assert.strictEqual(format(discover(dir, 'fees')), [
-      '=== fees (cross-cutting) ===',
-      'next_phase: discussion',
-      'completed_phases: specification',
-      'reconcile_pending: specification/fees (discussion)',
-      'revisitable_phases: (none)',
-      'next_route: /leeway-discussion-process cross-cutting fees fee-rules',
-      'revisit_routes: (none)',
-      '',
-    ].join('\n'));
-
-    promoted({}, { reconcile_needed: 'discussion', sources: { 'fee-rules': { status: 'stale' }, 'fee-display': { status: 'incorporated' } } });
-    assert.strictEqual(format(discover(dir, 'fees')), [
-      '=== fees (cross-cutting) ===',
-      'next_phase: specification',
-      'completed_phases: discussion, specification',
-      'reconcile_pending: specification/fees (discussion)',
-      'revisitable_phases: (none)',
-      'next_route: /leeway-specification-process cross-cutting fees',
-      'revisit_routes: (none)',
-      '',
-    ].join('\n'));
-    // A decided discussion reopens by a message, never a revisit: no menu
-    // numbers one, and the hop asks nothing.
-    assert.throws(() => renderSurface(dir, 'revisit-phases', { dotpath: 'fees' }), /"fees" has no completed earlier phase to revisit/);
-    assert.strictEqual(renderSurface(dir, 'next-phase-gate', { dotpath: 'fees', prev: 'discussion', next: 'specification' }), '');
-  });
-
   it('carries no per-phase status or file-existence lines — completed_phases is the surface', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',

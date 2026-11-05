@@ -240,45 +240,6 @@ describe('leeway discovery', () => {
     assert.strictEqual(r.state.inbox_count, 2);
   });
 
-  it('groups cross-cutting work units separately', () => {
-    createManifest(dir, 'caching', { work_type: 'cross-cutting', phases: { discussion: { items: { caching: { status: 'in-progress' } } } } });
-    createManifest(dir, 'auth', { work_type: 'feature' });
-    const r = discover(dir);
-    assert.strictEqual(r.state.cross_cutting_count, 1);
-    assert.strictEqual(r.cross_cutting.work_units[0].name, 'caching');
-    assert.strictEqual(r.state.feature_count, 1);
-    assert.strictEqual(r.state.has_any_work, true);
-  });
-
-  it('cross-cutting includes phase_label', () => {
-    createManifest(dir, 'caching', {
-      work_type: 'cross-cutting',
-      phases: { discussion: { items: { caching: { status: 'in-progress' } } } },
-    });
-    const r = discover(dir);
-    assert.strictEqual(r.cross_cutting.work_units[0].phase_label, 'discussion (in-progress)');
-  });
-
-  it('cross-cutting done is surfaced as finalising', () => {
-    createManifest(dir, 'done-cc', {
-      work_type: 'cross-cutting',
-      phases: {
-        discussion: { items: { 'done-cc': { status: 'completed' } } },
-        specification: { items: { 'done-cc': { status: 'completed' } } },
-      },
-    });
-    const r = discover(dir);
-    assert.strictEqual(r.cross_cutting.count, 1);
-    assert.strictEqual(r.cross_cutting.work_units[0].finalising, true);
-  });
-
-  it('cross-cutting completed shows in completed array', () => {
-    createManifest(dir, 'done-cc', { work_type: 'cross-cutting', status: 'completed' });
-    const r = discover(dir);
-    assert.strictEqual(r.completed_count, 1);
-    assert.strictEqual(r.completed[0].work_type, 'cross-cutting');
-  });
-
   it('epic active_phases ignores flat status with no items', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
@@ -431,10 +392,9 @@ describe('leeway format', () => {
       '=== FEATURES ===',
       '=== BUGFIXES ===',
       '=== QUICK-FIXES ===',
-      '=== CROSS-CUTTING ===',
       '=== STATE ===',
       'has_any_work: false',
-      'counts: 0 epic, 0 feature, 0 bugfix, 0 quick-fix, 0 cross-cutting',
+      'counts: 0 epic, 0 feature, 0 bugfix, 0 quick-fix',
       'completed_count: 0',
       'cancelled_count: 0',
       'has_inbox: false',
@@ -455,7 +415,6 @@ describe('leeway format', () => {
     createManifest(dir, 'auth', { work_type: 'feature', phases: { discussion: { items: { auth: { status: 'in-progress' } } } } });
     createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { items: { crash: { status: 'in-progress' } } } } });
     createManifest(dir, 'rename-api', { work_type: 'quick-fix', phases: { scoping: { items: { 'rename-api': { status: 'in-progress' } } } } });
-    createManifest(dir, 'caching', { work_type: 'cross-cutting', phases: { discussion: { items: { caching: { status: 'in-progress' } } } } });
     createManifest(dir, 'done-feat', { work_type: 'feature', status: 'completed', phases: { review: { items: { 'done-feat': { status: 'completed' } } } } });
     createManifest(dir, 'dropped', { work_type: 'bugfix', status: 'cancelled', phases: { investigation: { items: { dropped: { status: 'completed' } } } } });
     createFile(dir, '.leeway/.inbox/ideas/2026-03-19--smart-retry.md', '# Smart Retry\n\nContent.');
@@ -472,8 +431,6 @@ describe('leeway format', () => {
       '  crash',
       '=== QUICK-FIXES ===',
       '  rename-api',
-      '=== CROSS-CUTTING ===',
-      '  caching',
       '=== COMPLETED ===',
       '  done-feat (feature, last phase: review)',
       '=== CANCELLED ===',
@@ -486,7 +443,7 @@ describe('leeway format', () => {
       '  old-idea (idea, 2026-03-01) — Old Idea',
       '=== STATE ===',
       'has_any_work: true',
-      'counts: 1 epic, 1 feature, 1 bugfix, 1 quick-fix, 1 cross-cutting',
+      'counts: 1 epic, 1 feature, 1 bugfix, 1 quick-fix',
       'completed_count: 1',
       'cancelled_count: 1',
       'has_inbox: true',

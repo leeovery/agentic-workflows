@@ -9,8 +9,7 @@
 //   gateway.cjs view {work_unit}
 //       → DATA + TITLE + DISPLAY snapshot, with the proceed/revisit MENU when
 //         there is anything to revisit or finalise; the not-found display
-//         when no feature, bugfix, quick-fix or cross-cutting concern by that
-//         name is in progress
+//         when no feature, bugfix or quick-fix by that name is in progress
 //
 // That call is the whole legal surface: the bare call, an unknown verb, a
 // bare positional, or excess arguments is a usage error (stderr, exit 1).

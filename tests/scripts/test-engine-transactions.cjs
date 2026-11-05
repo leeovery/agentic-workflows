@@ -414,7 +414,6 @@ describe('pipeline completion banner matrix', () => {
     assert.ok(banner('feature').includes('Feature Completed\n\n"Pay X" has completed all pipeline phases.'));
     assert.ok(banner('bugfix').includes('Bugfix Completed\n\n"Pay X" has completed all pipeline phases.'));
     assert.ok(banner('quick-fix').includes('Quick-Fix Completed\n\n"Pay X" has completed all pipeline phases.'));
-    assert.ok(banner('cross-cutting').includes('Cross-Cutting Completed\n\n"Pay X" has completed all pipeline phases.'));
     assert.ok(banner('epic').includes('Epic Completed\n\n"Pay X" has completed all topics through review.'));
     assert.ok(banner('epic', { skippedReview: true }).includes('Epic Completed\n\n"Pay X" completed — review skipped.'));
   });
@@ -642,20 +641,20 @@ const setupFeatureFixture = harness.fixtureFrom('engine-tx-', (dir) => {
   commitAll(dir, 'init');
 });
 
-/** A cross-cutting unit whose pipeline is finished (derived next phase `done`). */
-const setupFinishedCrossCuttingFixture = harness.fixtureFrom('engine-tx-', (dir) => {
+/** A quick-fix whose pipeline is finished (derived next phase `done`). */
+const setupFinishedQuickFixFixture = harness.fixtureFrom('engine-tx-', (dir) => {
   writeFile(dir, '.leeway/caching/manifest.json', JSON.stringify({
     name: 'caching',
-    work_type: 'cross-cutting',
+    work_type: 'quick-fix',
     status: 'in-progress',
     phases: {
-      discussion: { items: { caching: { status: 'completed' } } },
-      specification: { items: { caching: { status: 'completed' } } },
+      scoping: { items: { caching: { status: 'completed' } } },
+      implementation: { items: { caching: { status: 'completed' } } },
+      review: { items: { caching: { status: 'completed' } } },
     },
   }, null, 2) + '\n');
-  // The completed phase artifacts on disk, so the re-index discovers them (it
+  // The completed phase's artifact on disk, so the re-index discovers it (it
   // skips artifacts whose files are absent).
-  writeFile(dir, '.leeway/caching/topics/caching/log.md', '# Discussion\n');
   writeFile(dir, '.leeway/caching/specification/caching/specification.md', '# Spec\n');
   // Deterministic KB failure: a store that cannot be loaded.
   writeFile(dir, '.leeway/.gitignore', '.knowledge/\n');
@@ -742,9 +741,9 @@ describe('engine workunit complete', () => {
     // A cancelled finished pipeline completes directly (reactivate stays open
     // as the revisit path) — and cancellation removed the unit's chunks, so
     // the transition re-indexes them (warn-don't-block).
-    const ccDir = setupFinishedCrossCuttingFixture();
+    const ccDir = setupFinishedQuickFixFixture();
     engine(ccDir, ['workunit', 'cancel', 'caching']);
-    const res = engine(ccDir, ['workunit', 'complete', 'caching', '-m', 'workflow(caching): complete cross-cutting pipeline']);
+    const res = engine(ccDir, ['workunit', 'complete', 'caching', '-m', 'workflow(caching): complete quick-fix pipeline']);
 
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.status, 'completed');
@@ -758,7 +757,7 @@ describe('engine workunit complete', () => {
     const m = readManifest(ccDir, 'caching');
     assert.strictEqual(m.status, 'completed');
     assert.strictEqual(m.completed_at, new Date().toISOString().slice(0, 10));
-    assert.strictEqual(lastMessage(ccDir), 'workflow(caching): complete cross-cutting pipeline');
+    assert.strictEqual(lastMessage(ccDir), 'workflow(caching): complete quick-fix pipeline');
     cleanupFixture(ccDir);
   });
 });
@@ -882,8 +881,8 @@ describe('engine workunit reactivate', () => {
   it('reactivates a completed unit whose pipeline is finished — the revisit path stays open', () => {
     // The unit surfaces as finalising (or in-progress once a topic is
     // reopened) — reactivate must not deadlock the reopen path.
-    const ccDir = setupFinishedCrossCuttingFixture();
-    engine(ccDir, ['workunit', 'complete', 'caching', '-m', 'workflow(caching): complete cross-cutting pipeline']);
+    const ccDir = setupFinishedQuickFixFixture();
+    engine(ccDir, ['workunit', 'complete', 'caching', '-m', 'workflow(caching): complete quick-fix pipeline']);
     const res = engine(ccDir, ['workunit', 'reactivate', 'caching']);
 
     assert.strictEqual(res.ok, true);
@@ -899,7 +898,7 @@ describe('engine workunit reactivate', () => {
   });
 
   it('reactivates a cancelled unit whose pipeline is finished — complete stays open as the other path', () => {
-    const ccDir = setupFinishedCrossCuttingFixture();
+    const ccDir = setupFinishedQuickFixFixture();
     engine(ccDir, ['workunit', 'cancel', 'caching']);
     const res = engine(ccDir, ['workunit', 'reactivate', 'caching']);
 

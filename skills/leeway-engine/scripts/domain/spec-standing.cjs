@@ -23,8 +23,7 @@
 //   the way on: an epic's topics still open are worked from its menu or
 //   postponed to the roadmap (18.5.2), and an epic with none live has its
 //   map shaped in its discovery or a topic pulled forward from the roadmap.
-//   A cross-cutting concern writes no spec, its type going (19.6.1); a
-//   quick-fix's pipeline holds none (11.1.6, topic-standing.cjs).
+//   A quick-fix's pipeline holds none (11.1.6, topic-standing.cjs).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -121,11 +120,6 @@ function topicsSettled(manifest) {
   return topics.length > 0 && topics.every((topic) => settled(manifest, topic));
 }
 
-/** @type {Readonly<Record<string, (unit: string) => string>>} */
-const NO_SPEC = Object.freeze({
-  'cross-cutting': (unit) => `${unit} is a cross-cutting concern, which writes no spec — cancel it through manage on the start menu; its decisions stay in the ledger`,
-});
-
 /**
  * Why a single-topic unit's topic holds its spec back.
  * @type {Readonly<Record<string, (unit: string) => string>>}
@@ -153,13 +147,10 @@ function epicOpen(manifest) {
 
 /**
  * Why the unit, in progress and its pipeline holding the spec, cannot enter
- * it, or null where it can: a cross-cutting concern, which writes none, or
- * its topics not yet settled.
+ * it, or null where it can: its topics not yet settled.
  * @param {Record<string, any>} manifest @returns {string|null}
  */
 function entryRefusal(manifest) {
-  const none = NO_SPEC[manifest.work_type];
-  if (none !== undefined) return none(manifest.name);
   if (topicsSettled(manifest)) return null;
   return manifest.work_type === 'epic' ? epicOpen(manifest) : OPEN_TOPIC[manifest.work_type](manifest.name);
 }

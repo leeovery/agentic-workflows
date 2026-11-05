@@ -65,7 +65,6 @@ const LINEAR_PHASES = Object.freeze({
   feature: [['discussion', 'discussion'], ['specification', 'specification'], ['build', 'implementation'], ['review', 'review']],
   bugfix: [['investigation', 'investigation'], ['specification', 'specification'], ['build', 'implementation'], ['review', 'review']],
   'quick-fix': [['implementation', 'implementation']],
-  'cross-cutting': [['discussion', 'discussion'], ['specification', 'specification']],
 });
 
 /** The day the unit started, null where its manifest holds none. @param {BoardAt} at */

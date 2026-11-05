@@ -57,15 +57,14 @@ The phases group into three **stages**, the top-level grouping of the epic dashb
 
 ### Work types and topics
 
-A *work type* is one of five pipeline shapes; a *work unit* is a named instance of one, with its own directory under `.workflows/` and its own `manifest.json`.
+A *work type* is one of four pipeline shapes; a *work unit* is a named instance of one, with its own directory under `.workflows/` and its own `manifest.json`.
 
 - **Epic**: multi-topic, multi-session — Discovery → Experiment (opt.) → Discussion → Specification → Implementation → Review
 - **Feature**: single-topic — Discovery → Experiment (opt.) → Discussion → Specification → Implementation → Review
 - **Bugfix**: Discovery → Investigation → Specification → Implementation → Review
 - **Quick-fix**: Discovery → Scoping → Implementation → Review
-- **Cross-cutting**: project-level — Discovery → Experiment (opt.) → Discussion → Specification (terminal)
 
-A *topic* is the item within a phase; every phase keeps per-topic items in the manifest. For the four single-topic types the topic is the work unit (a cross-cutting unit promoted from an epic specification keeps its moved discussions' epic names). An epic names its topics apart from the work unit. Lifecycle operations — work-unit status, pivot, absorb, topic cancel, postpone and reactivate, the soft gates and hard blocks, staleness — are in `docs/lifecycle-operations.md` and `docs/reliability.md`.
+A *topic* is the item within a phase; every phase keeps per-topic items in the manifest. For the three single-topic types the topic is the work unit. An epic names its topics apart from the work unit. Lifecycle operations — work-unit status, pivot, absorb, topic cancel, postpone and reactivate, the soft gates and hard blocks, staleness — are in `docs/lifecycle-operations.md` and `docs/reliability.md`.
 
 ### Skills and agents
 

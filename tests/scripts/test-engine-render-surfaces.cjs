@@ -799,22 +799,11 @@ describe('pipeline continuation surfaces', () => {
     assert.throws(() => renderSurface(dir, 'phase-completed', { dotpath: 'pay' }), /--phase is required/);
   });
 
-  it('next-phase-gate: refuses a phase outside the type\'s pipeline — a typo, done, or review on a type that has none', () => {
+  it('next-phase-gate: refuses a phase outside the type\'s pipeline — a typo, or done', () => {
     assert.throws(() => renderSurface(dir, 'next-phase-gate', { dotpath: 'pay', prev: 'implementation', next: 'reveiw' }),
       /unknown --next "reveiw" for a feature \(pipeline: experiment, discussion, specification, implementation, review\)/);
     assert.throws(() => renderSurface(dir, 'next-phase-gate', { dotpath: 'pay', prev: 'review', next: 'done' }), /unknown --next "done" for a feature/);
     assert.throws(() => renderSurface(dir, 'next-phase-gate', { dotpath: 'pay', prev: 'banana', next: 'review' }), /unknown --prev "banana" for a feature/);
-    // Cross-cutting ends at specification: a review hop is a relay slip, and
-    // the skip-review row it would render has no arm in that continuation.
-    writeManifest(dir, 'xc', {
-      work_type: 'cross-cutting',
-      phases: { discussion: { items: { xc: { status: 'completed' } } } },
-    });
-    assert.throws(() => renderSurface(dir, 'next-phase-gate', { dotpath: 'xc', prev: 'discussion', next: 'review' }),
-      /unknown --next "review" for a cross-cutting \(pipeline: experiment, discussion, specification\)/);
-    // The hop it has asks nothing: no skip, and a decided discussion is no
-    // revisit — it reopens by a message.
-    assert.strictEqual(renderSurface(dir, 'next-phase-gate', { dotpath: 'xc', prev: 'discussion', next: 'specification' }), '');
   });
 
   it('next-phase-gate: several live reconcile flags join into one cue', () => {

@@ -425,7 +425,7 @@ describe('the transactions\' knowledge changes — a real store, its other chunk
   const IMPORT = 'payments/imports/notes.md';
   const OTHER_UNIT = 'billing/imports/rates.md';
   // An epic with a topic still in discussion and two decided; and a
-  // finished cross-cutting unit beside it. Each unit holds one indexed
+  // finished quick-fix beside it. Each unit holds one indexed
   // import.
   const indexedWorld = world((dir) => {
     writeFile(dir, '.leeway/payments/manifest.json', json({
@@ -437,8 +437,8 @@ describe('the transactions\' knowledge changes — a real store, its other chunk
       imports: [{ path: 'imports/notes.md', imported_at: '2026-01-01T00:00:00Z', origin: 'discovery' }],
     }));
     writeFile(dir, '.leeway/billing/manifest.json', json({
-      name: 'billing', work_type: 'cross-cutting', status: 'in-progress',
-      phases: { discussion: { items: { billing: { status: 'completed' } } }, specification: { items: { billing: { status: 'completed' } } } },
+      name: 'billing', work_type: 'quick-fix', status: 'in-progress',
+      phases: { scoping: { items: { billing: { status: 'completed' } } }, implementation: { items: { billing: { status: 'completed' } } }, review: { items: { billing: { status: 'completed' } } } },
       imports: [{ path: 'imports/rates.md', imported_at: '2026-01-01T00:00:00Z', origin: 'discovery' }],
     }));
     for (const file of [IMPORT, OTHER_UNIT]) writeFile(dir, `.leeway/${file}`, `# ${path.basename(file, '.md')}\n\nIts notes.\n`);

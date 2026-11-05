@@ -369,14 +369,14 @@ describe('engine handoff — refusals', () => {
       [['leeway-continue-epic'], /^Usage: engine handoff leeway-continue-epic <epic> \[<completed-phase> <outcome>\]$/],
       [['leeway-continue-epic', 'fumi', 'discussion'], /^Usage: engine handoff leeway-continue-epic /],
       [['leeway-continue-epic', 'fumi', 'discussion', 'completed', 'extra'], /^Usage: engine handoff leeway-continue-epic /],
-      [['leeway-discussion-process', 'feature'], /^Usage: engine handoff leeway-discussion-process <epic\|feature\|cross-cutting> <work-unit> \[<topic>\]$/],
+      [['leeway-discussion-process', 'feature'], /^Usage: engine handoff leeway-discussion-process <epic\|feature> <work-unit> \[<topic>\]$/],
       [['leeway-scoping-process', 'quick-fix', 'a', 'b', 'c'], /^Usage: engine handoff leeway-scoping-process <quick-fix> <work-unit> \[<topic>\]$/],
     ];
     for (const [args, pattern] of cases) refused(dir, args, pattern);
   });
 
-  it('discovery refuses a pre-seed outside the work types, and a work unit that is no epic the project holds', () => {
-    refused(dir, ['leeway-discovery', 'saga', 'none'], /^the work type must be one of epic\|feature\|bugfix\|cross-cutting\|quick-fix\|start\|none — got "saga"$/);
+  it('discovery refuses a pre-seed outside the work types, cross-cutting among them (19.S1), and a work unit that is no epic the project holds', () => {
+    refused(dir, ['leeway-discovery', 'cross-cutting', 'none'], /^the work type must be one of epic\|feature\|bugfix\|quick-fix\|start\|none — got "cross-cutting"$/);
     refused(dir, ['leeway-discovery', 'epic', 'note-window'], /^work unit "note-window" is of type feature, not epic$/);
     refused(dir, ['leeway-discovery', 'epic', 'ghost'], /^work unit "ghost" not found$/);
   });
@@ -451,7 +451,7 @@ describe('engine handoff — refusals', () => {
         refused(dir, [skill, type, `${type}-unit`], new RegExp(`^the work type must be .* — got "${type}"$`));
       }
     }
-    refused(dir, ['leeway-discussion-process', 'saga', 'note-window'], /^the work type must be one of epic\|feature\|cross-cutting — got "saga"$/);
+    refused(dir, ['leeway-discussion-process', 'saga', 'note-window'], /^the work type must be one of epic\|feature — got "saga"$/);
   });
 
   it('a phase\'s skill refuses a work unit the project does not hold, or holds as another type', () => {

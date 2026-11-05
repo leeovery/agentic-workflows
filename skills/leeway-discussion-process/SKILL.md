@@ -10,7 +10,7 @@ One topic, talked through with the person until what the product does there is d
 
 ## Arguments
 
-- `$0` — **work_type**: `epic`, `feature` or `cross-cutting`.
+- `$0` — **work_type**: `epic` or `feature`.
 - `$1` — **work_unit**.
 - `$2` — **topic**. A single-topic unit's topic is the unit: topic = `$2`, or `$1` where it is left off.
 

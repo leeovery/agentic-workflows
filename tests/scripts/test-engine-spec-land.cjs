@@ -10,7 +10,8 @@
 // builder by its id (11.4.4) — is committed alone on the
 // state branch with the files it links in the assets, answering its
 // statements, none invented, and every section changed, the title and
-// introduction among them (11.S3); a statement
+// introduction among them (11.S3), and no topic of it can then be promoted
+// into a cross-cutting unit (19.S28); a statement
 // or a screen that does not trace — a question cited, a builder's line
 // citing nothing or a call the sweep never left among the reasons, and a
 // feature's builder's line citing a call, a feature taking no sweep — is
@@ -158,6 +159,19 @@ describe('a spec landed (11.4.1, 11.4.3, 11.S3)', () => {
     assert.deepStrictEqual(answer, { ok: true, unit: UNIT, statements: 5, invented: [], changed: ['introduction', '1', '1.1', '2', '2.1'], committed: answer.committed });
     assert.deepStrictEqual([lastMessage(dir), stateTouched()], [`spec(${UNIT}): landed`, [`A\t${layout.unit(UNIT, 'assets', 'flow.md')}`, `A\t${SPEC}`]]);
     assert.strictEqual(stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(), answer.committed);
+  });
+
+  it('19.S28: with an epic\'s spec written, no topic of it can be promoted into a cross-cutting unit — no verb promotes, and no item takes the promoted status', () => {
+    writeSpec(spec([`1.1.1 Visa and Mastercard are taken. [${made.cards}]`]));
+    land();
+
+    assert.deepStrictEqual([
+      refusedPristine(dir, ['workunit', 'promote', UNIT, 'cards', '--to', 'card-rules', '--description', 'Card rules']).error,
+      refusedPristine(dir, ['manifest', 'set', `${UNIT}.discussion.cards`, 'status', 'promoted']).error,
+    ], [
+      'Usage: engine workunit <create|import|complete|cancel|reactivate|pivot|absorb|position> …',
+      'Invalid status "promoted" for phase "discussion". Must be one of: unstarted, in-progress, completed, cancelled, postponed',
+    ]);
   });
 
   it('11.S4: lists each statement and screen that does not trace, with why, and lands the spec all the same', () => {

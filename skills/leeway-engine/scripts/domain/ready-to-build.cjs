@@ -13,7 +13,7 @@
 //   to build's checklist is closed and nothing has landed or been cut since,
 //   every engine item holding still (checklist.cjs, E12). It refuses a unit
 //   `enter specification` refuses (spec-entry.cjs) — one the project lacks,
-//   one not in progress, a quick-fix, a cross-cutting unit, topics not
+//   one not in progress, a quick-fix, a unit of a retired type, topics not
 //   settled; a unit keeping the old spec's items, which never reaches this
 //   gate, the migration's cut for built units carrying it across (29.17);
 //   and a unit whose build has begun, the gate raised once per spec

@@ -9,10 +9,10 @@
 // the product's sessions (8.S64), the product's session closed, and what
 // comes next for each type (8.S47, 24.S1, 24.S2, 24.S15); and every refusal,
 // at the screen and at a yes the project moved under, writing nothing —
-// cross-cutting (8.S2), a taken or numbered name (8.S57), a one-topic unit
-// beside a waiting roadmap idea of its name (8.1.6), and a failure part-way
-// leaving no unit. The seeds an inbox item and a roadmap item's note give
-// it, the item as it stood recorded and put back by a cancel (4.S35). What a created unit holds, whatever door made
+// a type it does not create, cross-cutting among them (8.S2, 19.S1), a
+// taken or numbered name (8.S57), a one-topic unit beside a waiting roadmap
+// idea of its name (8.1.6), and a failure part-way leaving no unit. The
+// seeds an inbox item and a roadmap item's note give it, the item as it stood recorded and put back by a cancel (4.S35). What a created unit holds, whatever door made
 // it, is test-engine-workunit-create.cjs's.
 //
 // Layer: verb. World: discovery's gate suites' (discovery-gates-world.cjs).
@@ -175,8 +175,8 @@ describe('start this work, the yes (8.8.1, 8.14.3, 8.14.11)', () => {
 });
 
 describe('start this work, refused (8.2.4, 8.8.18)', () => {
-  it('refuses cross-cutting: discovery calls only the four types (8.S2)', () => {
-    assert.strictEqual(refusedStage({ ...FUMI, type: 'cross-cutting' }), 'render start-this-work: discovery never calls work cross-cutting — it is a feature, an epic, a bugfix or a quick-fix');
+  it('refuses cross-cutting as no type: discovery calls only the four (8.S2, 19.S1)', () => {
+    assert.strictEqual(refusedStage({ ...FUMI, type: 'cross-cutting' }), 'render start-this-work: the type is one of feature, epic, bugfix, quick-fix — got "cross-cutting"');
   });
 
   it('refuses a taken name, and a taken name numbered — a more specific one passes, never a number (8.S57)', () => {
