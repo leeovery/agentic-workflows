@@ -18,7 +18,7 @@ While `notes-consolidated` is open, brief the consolidation agent, then make the
 node .claude/skills/leeway-engine/scripts/engine.cjs brief consolidation {work_unit} {N}
 ```
 
-It drops what the code already settled and records the rest as tasks of the phase, which go through the task loop like any other. A note needing the person's call goes through the door for a call (**[outside-the-plan.md](outside-the-plan.md)**, place = `implementation`), parking each written task it bears on.
+It drops what the code already settled and records the rest as tasks of the phase, which go through the task loop like any other. A note needing the person's call goes through the door for a call (**[outside-the-plan.md](outside-the-plan.md)**, place = `implementation`), parking each written task it bears on. Load **[waiting-on-the-person.md](waiting-on-the-person.md)** and follow its instructions as written.
 
 ## The Phase Review
 

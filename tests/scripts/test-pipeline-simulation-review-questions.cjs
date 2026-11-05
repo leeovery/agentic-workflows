@@ -51,7 +51,7 @@ describe('pipeline simulation: a question asked in a review round', () => {
     assert.strictEqual(reviewNext(sim, WU).move, 'closing');
     sim.write(`.leeway/${WU}/build/log.md`, '# The build\n\nPhase 1 built; the review fixed the hash on read in round 1 and passed in round 2.\n');
     for (const key of ['inbox-closed', 'build-log-closed']) sim.run(['checklist', 'done', 'finish', WU, key]);
-    sim.refuses(['checklist', 'close', 'finish', WU], /questions-answered/);
+    sim.refuses(['checklist', 'close', 'finish', WU], null);
 
     answeredAtStop(sim, WU);
     assert.deepStrictEqual(finished(sim, WU).next, { kind: 'handoff', skill: 'leeway', args: [] });

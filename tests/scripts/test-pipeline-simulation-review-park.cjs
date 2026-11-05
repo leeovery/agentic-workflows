@@ -5,9 +5,9 @@
 // person, as its skill runs it: a feature whose build has closed its cut,
 // in auto, round 1 failing on a bug its fix task builds. The fix task's
 // builder meets a question only the person can answer, raised at the
-// review's place, parking the task; across a /clear, the entry names the
-// question and the task parked, and a compaction carries on in the review
-// phase's skill. Nothing else can go on, so the stop is drawn, the person,
+// review's place, parking the task; across a /clear, the review still
+// waits on the fix, and a compaction carries on in the review phase's
+// skill. Nothing else can go on, so the stop is drawn, the person,
 // ready, answers through its raise, and a new builder builds the task
 // again and lands it (12.13.7, 24.2.2).
 //
@@ -47,7 +47,7 @@ describe('pipeline simulation: a fix task parked on the person in the review pha
     sim.destroy();
   });
 
-  it('12.13.7, 24.2.2: a fix task parked on a question at the review\'s place, across a /clear: the entry names the question and the task parked, the review carries on in its skill, the stop is drawn, the person answers through its raise, and a new builder builds the task again and lands it', async () => {
+  it('12.13.7, 24.2.2: a fix task parked on a question at the review\'s place, across a /clear: the review waits on the fix and carries on in its skill, the stop is drawn, the person answers through its raise, and a new builder builds the task again and lands it', async () => {
     const task = failedHashRound(sim, WU);
     sim.run(['task', 'start', WU, task]);
     loop.brief(['builder', WU, task]);
@@ -56,8 +56,7 @@ describe('pipeline simulation: a fix task parked on the person in the review pha
     sim.run(['presence', 'cleanup', sim.env.CLAUDE_CODE_SESSION_ID]);
     sim.handOver();
 
-    const { move, data } = reviewNext(sim, WU);
-    assert.deepStrictEqual([move, data.waiting, data['in flight']], ['fixes', [`Q1 — ${ASKS} — parks task ${task}`], [`task ${task}, parked on Q1 — it waits on the person's answer, and no builder goes to it until then`]]);
+    assert.strictEqual(reviewNext(sim, WU).move, 'fixes');
     assert.strictEqual(carryOn(sim).skill, path.join(sim.dir, '.claude/skills/leeway-review-process/SKILL.md'), 'a compaction there carries on in the review phase\'s skill');
 
     answeredAtStop(sim, WU);

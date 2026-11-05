@@ -32,7 +32,7 @@ const fs = require('fs');
 const path = require('path');
 const { git } = require('./engine-harness.cjs');
 const {
-  Sim, worldFrom, cutClosed, testsRead, reviewNext, briefOf, scratchCalls, deadReader, placeIn, landed, finished, PASSED_REPORT,
+  Sim, worldFrom, cutClosed, testsRead, reviewNext, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed, finished, PASSED_REPORT,
 } = require('./pipeline-world.cjs');
 
 const WU = 'ledger';
@@ -94,14 +94,14 @@ describe('pipeline simulation: an area read in its reader\'s scratch worktree', 
       const reader = sim.run(argv);
       const project = deadReader(sim, reader);
       landed(placeIn(sim, reader, 'Where your report goes'), PASSED_REPORT);
-      return { project, lay: scratchCalls(briefOf(sim, reader))[0] };
+      return { reader, project };
     };
     const readers = [
       dies(['brief', 'review-area', WU, '--area', '1', '--base', 'main', '--letter', 'a']),
       dies(['brief', 'review-area', WU, '--area', '1', '--base', 'main', '--letter', 'b']),
       dies(['brief', 'test-surface', WU, '--base', 'main']),
     ];
-    const { path: leftover } = sim.run(['scratch', 'lay', `${WU}-phase-1-a`, ...readers[0].lay.slice(3)]);
+    const leftover = laidBeside(sim, readers[0].reader, `${WU}-phase-1-a`);
     assert.match(git(sim.dir, ['status', '--porcelain', '--untracked-files=all']), /^\?\? \.claude\/worktrees\/leeway-scratch-ledger-tests\/$/m, 'the project does not ignore the layouts');
 
     sim.run(['review', 'round', WU, '--file', sim.write(`.leeway/.cache/${WU}/review/round.json`, { can_now: ['Keep a ledger.'], findings: [] })]);

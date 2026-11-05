@@ -19,7 +19,8 @@
 // person across the unit, grouped by kind in the ledger's order of kinds,
 // those that change what the product does first, then process and
 // internals, the unlabelled last (14.4.4, 16.11.3, P11); and the stop once
-// the cut is through, the review's own (12.13.22).
+// the cut is through, the review's own, refused while the review goes on
+// without the person, naming what (12.13.22).
 //
 // Layer: verb. World: review-world.cjs's, copied for each test.
 // ---------------------------------------------------------------------------
@@ -27,7 +28,7 @@
 require('./hermetic-env.cjs');
 
 const { describe, it } = require('node:test');
-const { output, refuses, sectionOf } = require('./engine-harness.cjs');
+const { call, output, refuses, sectionOf } = require('./engine-harness.cjs');
 const {
   UNIT, EVERY, FAILING, RECEIPT, useWorld, env, enter, reported, named, recorded, firstRoundReady, firstRoundFailed, raisedAtReview, reviewCall, filed, fixPhaseWritten, fixBranch, fixBuilt, fixClosed, stateText, decided, assert,
 } = require('./review-world.cjs');
@@ -245,6 +246,33 @@ describe('render build-stop: the review stopped (12.13.22)', () => {
 
     assert.deepStrictEqual([sectionOf(out, 'DISPLAY: build marker'), sectionOf(out, 'DISPLAY: build stop')], [
       '**`□ Review (the review\'s fixes, round 1) · auto`**\n', '⚑ The review has stopped: nothing more can go on until you answer\n',
+    ]);
+  });
+
+  it('refuses while the review goes on without the person, naming what — a round\'s readers to brief or still reading, a fix task ready, the next round\'s reads to name; once every report of a round is in, it is drawn', async () => {
+    /** The stop's refusal, or 'drawn'. */
+    const stop = () => {
+      const res = call(dir, ['render', 'build-stop', UNIT], { env: env() });
+      return res.code === 0 ? 'drawn' : JSON.parse(res.stderr).error.replace(/ — it stops only where nothing can go on without the person's answer \(12\.13\.22\)$/, '');
+    };
+    enter();
+    await raisedAtReview('Should a refund send a receipt too?');
+    const briefing = stop();
+    reported(1, EVERY, FAILING);
+    const reportsIn = stop();
+    fixPhaseWritten(3, [['Send the receipt', '§1.2']]);
+    recorded({ can_now: ['Pay by card.'], findings: [RECEIPT] });
+    const fixing = stop();
+    fixBuilt(3, 1, 'Send the receipt', 'main', 'src/send.js');
+    const naming = stop();
+    named(['1-cards']);
+
+    assert.deepStrictEqual([briefing, reportsIn, fixing, naming, stop()], [
+      `render build-stop: ${UNIT}'s review goes on: round 1's readers are still to brief or reading: 1-cards-a, 1-cards-b, 2-refunds-a, 2-refunds-b, tests-a`,
+      'drawn',
+      `render build-stop: ${UNIT}'s build goes on with task 3.1, which no question parks`,
+      `render build-stop: ${UNIT}'s review goes on: round 2's reads are named next: review reads ${UNIT} <area> …`,
+      `render build-stop: ${UNIT}'s review goes on: round 2's readers are still to brief or reading: 1-cards-a, 1-cards-b`,
     ]);
   });
 });

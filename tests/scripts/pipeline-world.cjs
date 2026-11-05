@@ -951,6 +951,11 @@ function scratchCalls(brief) {
 /** @param {Sim} sim @param {{id: string}} res its brief */
 const deadReader = (sim, res) => sim.run(scratchCalls(briefOf(sim, res))[0]).path;
 
+// Another reader's layout, `name`, laid out beside it at the commits the
+// brief `res` lays its own at: the project's folder there.
+/** @param {Sim} sim @param {{id: string}} res @param {string} name */
+const laidBeside = (sim, res, name) => sim.run(['scratch', 'lay', name, ...scratchCalls(briefOf(sim, res))[0].slice(3)]).path;
+
 /** The file a brief names under its heading `heading`. @param {Sim} sim @param {{id: string}} res @param {string} heading */
 function placeIn(sim, res, heading) {
   const brief = briefOf(sim, res);
@@ -1305,6 +1310,6 @@ function finished(sim, wu) {
 }
 
 module.exports = {
-  Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicBuildPick, linearBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, placeIn, landed,
+  Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicBuildPick, linearBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed,
   builders, taskBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic,
 };

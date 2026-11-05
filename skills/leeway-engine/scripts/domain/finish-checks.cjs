@@ -10,8 +10,9 @@
 //   review phase — every type the build takes but a quick-fix, whose review
 //   runs only when the person asks (19.5.14) — the review phase over, as
 //   its rounds' records say (review-phase.cjs): a round passed or settled,
-//   its report written by `review round` as it recorded it, and every fix
-//   task that round made done or closed. Its way on is the entry's
+//   its report written by `review round` as it recorded it, and every task
+//   of that round's fix phase done or closed, its findings' fixes and any
+//   written there beyond them. Its way on is the entry's
 //   refusal where the review cannot be entered yet, else what the review
 //   waits on.
 // - No question waiting on the person: the unit's questions waiting, as

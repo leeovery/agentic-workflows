@@ -18,7 +18,7 @@ require('./hermetic-env.cjs');
 
 const { describe, it } = require('node:test');
 const {
-  UNIT, inStep, EVERY, FAILING, RECEIPT, useWorld, env, enter, reported, named, recorded, firstRoundReady, secondRoundReady, fixPhaseWritten, fixBuilt,
+  UNIT, inStep, EVERY, FAILING, RECEIPT, useWorld, env, enter, reported, named, recorded, firstRoundReady, secondRoundReady, fixPhaseWritten, taskMade, fixBuilt, fixClosed,
   refusedPristine, git, assert,
 } = require('./review-world.cjs');
 
@@ -30,25 +30,29 @@ useWorld((at) => { dir = at; });
 const refused = (args) => refusedPristine(dir, ['review', ...args], { env: env() }).error;
 
 describe('review reads: what it refuses, writing nothing (14.3.3)', () => {
-  it('round 1, a unit whose review phase cannot be entered, a name no area\'s, a read whose findings made fix tasks left out, a read named before dropped, fix tasks waiting, and a review over', () => {
+  it('round 1, a unit whose review phase cannot be entered, a name no area\'s, a read whose findings made fix tasks left out, a read named before dropped, fix tasks waiting — a task of their phase written beyond the findings among them — and a review over', () => {
     enter();
     const first = refused(['reads', UNIT, '1-cards']);
     const half = refused(['reads', 'half', '1-cards']);
     firstRoundReady();
     reported(1, EVERY, { '1-cards-a': ['bug: The receipt is never sent.'], 'tests-a': ['bug: No test sends a receipt.'] });
     recorded({ can_now: [], findings: [RECEIPT, { area: 'tests', scope: 'in', call: 'bug', text: 'No test sends a receipt.', from: ['tests-a#1'], fix: '3.1' }] });
+    taskMade(3, 'Mail the receipt', '§1.2');
     const waiting = refused(['reads', UNIT, '1-cards', 'tests']);
     fixBuilt(3, 1, 'Send the receipt', 'main', 'src/send.js');
+    const beyond = refused(['reads', UNIT, '1-cards', 'tests']);
+    fixClosed(3, 2);
     enter();
     const unknown = refused(['reads', UNIT, '1-cards', '3-reports', 'tests', 'cards']);
     const leftOut = refused(['reads', UNIT, '1-cards']);
     named(['1-cards', '2-refunds', 'tests']);
     const dropped = refused(['reads', UNIT, '1-cards', 'tests']);
 
-    assert.deepStrictEqual([first, half, waiting, unknown, leftOut, dropped], [
+    assert.deepStrictEqual([first, half, waiting, beyond, unknown, leftOut, dropped], [
       'review reads: round 1 reads every area and the test surface (tests) — a later round\'s are named',
       'review reads: half\'s review phase starts once every phase of its cut has closed — phase 2 of 2 has not: enter implementation half',
-      'review reads: round 2 is read once every fix task of round 1 is done — task 3.1 not started',
+      'review reads: round 2 is read once every fix task of round 1 is done — task 3.1 not started, task 3.2 not started',
+      'review reads: round 2 is read once every fix task of round 1 is done — task 3.2 not started',
       `review reads: 3-reports, cards are no area of ${UNIT}'s spec — name its areas by 1-cards, 2-refunds, tests`,
       'review reads: round 2 reads every area whose findings made fix tasks in round 1, and leaves out the test surface (tests)',
       'review reads: round 2 already reads 2-refunds — areas are added, never dropped',

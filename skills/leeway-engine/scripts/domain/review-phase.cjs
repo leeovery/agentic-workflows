@@ -106,6 +106,7 @@ const { shownTask } = require('./task-id.cjs');
 const { cutLength } = require('./derivations.cjs');
 const { STATUS_WORDS } = require('./task-verbs.cjs');
 const { notesUntaken } = require('./notes.cjs');
+const { reviewReportFaults } = require('./review-report.cjs');
 
 /** @typedef {import('./ledger-read.cjs').Shower} Shower */
 /** @typedef {import('./phase-checks.cjs').Reading} Reading */
@@ -322,6 +323,32 @@ function reviewStanding(at) {
   return { areas, rounds, round, ended: false, over: false, waiting, merging, required: fixedReads(areas, last), reads: namedReads(cwd, unit, round), notes };
 }
 
+/**
+ * Each report of the round under review already in and reading as a
+ * reviewer's, by its path; none once the phase has ended or while the
+ * round's reads are not named.
+ * @param {string} cwd @param {string} unit @param {ReviewStanding} standing @returns {string[]}
+ */
+function reportsIn(cwd, unit, { round, reads, ended }) {
+  if (ended || reads === null) return [];
+  return reportNames(reads).map((name) => statePath(cwd, `${roundFolder(unit, round)}/${name}`)).filter((file) => fs.existsSync(file) && reviewReportFaults(file) === null);
+}
+
+/**
+ * What the round under review goes on with that needs no answer, or null:
+ * its reads to name, or its readers to brief or still reading, each report
+ * not yet in named. Null once every report of the round is in, and while
+ * a round ended the phase or fix tasks or their merge hold it.
+ * @param {string} cwd @param {string} unit @param {ReviewStanding} standing @returns {string|null}
+ */
+function reviewGoesOn(cwd, unit, standing) {
+  if (standing.ended || standing.waiting.length > 0 || standing.merging !== null) return null;
+  if (standing.reads === null) return `round ${standing.round}'s reads are named next: review reads ${unit} <area> …`;
+  const landed = new Set(reportsIn(cwd, unit, standing).map((file) => path.basename(file)));
+  const out = reportNames(standing.reads).filter((name) => !landed.has(name)).map((name) => path.basename(name, '.md'));
+  return out.length === 0 ? null : `round ${standing.round}'s readers are still to brief or reading: ${out.join(', ')}`;
+}
+
 /** How the round that ended the review phase did, as a sentence says it. @param {string} unit @param {ReviewStanding} standing */
 function endedWords(unit, { rounds, round }) {
   return `${unit}'s review phase ${rounds[round - 1].passed ? 'passed' : 'was settled'} in round ${round}`;
@@ -536,7 +563,7 @@ const forThePerson = ({ by, given }) => claudesCall({ by, given });
 const inTheBuild = ({ phase }) => BUILD_PHASES.includes(phase);
 
 module.exports = {
-  TESTS, TESTS_LETTER, NOTES, isBuilderNote, SET_ASIDE, setAsideFolder, setAsideHeld, filesUnder, EMPTY_PRINT, reportNames, recordedRounds, fixesOf, endsReview, fixPhase, reviewStanding, everyRead,
+  TESTS, TESTS_LETTER, NOTES, isBuilderNote, SET_ASIDE, setAsideFolder, setAsideHeld, filesUnder, EMPTY_PRINT, reportNames, recordedRounds, fixesOf, endsReview, fixPhase, reviewStanding, reportsIn, reviewGoesOn, everyRead,
   endedWords, endedRefusal, openRefusal, roundRefusal, readsWords, mergingWords,
   roundRecordPath, roundReportFile, roundChecksFile, roundReadsPath, roundFolder, areaReportPath,
   takeSnapshot, openSnapshot, snapshotRound, dropSnapshot, treeDrift, movedWords, treeChanges, unitCalls, reviewCallFault, forThePerson, inTheBuild,

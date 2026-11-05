@@ -43,7 +43,7 @@ const os = require('os');
 const path = require('path');
 const { stateGit, git, sectionOf } = require('./engine-harness.cjs');
 const {
-  Sim, startUnit, discussed, specToBuild, buildEntry, startPhase, writePhaseTasks, worldFrom, carryOn, answerGate, briefOf, deadReader, placeIn, landed,
+  Sim, startUnit, discussed, specToBuild, buildEntry, startPhase, writePhaseTasks, worldFrom, carryOn, answerGate, briefOf, deadReader, laidBeside, placeIn, landed,
 } = require('./pipeline-world.cjs');
 
 const DOMAIN = path.join(__dirname, '../../skills/leeway-engine/scripts/domain');
@@ -117,16 +117,18 @@ describe('pipeline simulation: a phase of the cut', () => {
 
     // The pair report, the builder writes its account, and the account is
     // taken from where each was written (13.5.9, 12.14), taking apart the
-    // scratch worktree its reviewer a died in (14.2.2).
+    // scratch worktree its reviewer a died in and no other — not another
+    // task's reviewer's, nor the next phase's review's (14.2.2).
     const reviewers = ['a', 'b'].map((letter) => sim.run(['brief', 'reviewer', wu, '1.1', '--base', 'main', '--letter', letter]));
     const deadReviewer = deadReader(sim, reviewers[0]);
+    const beside = [laidBeside(sim, reviewers[0], `${wu}-1.2-a`), laidBeside(sim, reviewers[0], `${wu}-phase-2-a`)];
     for (const reviewer of reviewers) landed(placeIn(sim, reviewer, 'Where your report goes'), PASSED);
     landed(account, [
       '## What was done', 'The ledger is written.', '## Where in the code', '- verify/', '## What the tests prove', '- 1.S1, run through verify: its drive writes an entry and reads it back.',
       '## Differs from the task', 'None.', '## Reviews', '### Round 1', 'Passed.',
     ].join('\n\n'));
     assert.deepStrictEqual(sim.run(['task', 'account', wu, '1.1']).rounds, 1, 'the account and the round\'s reports are read where the agents wrote them');
-    assert.strictEqual(fs.existsSync(deadReviewer), false, 'the dead reviewer\'s scratch worktree taken apart at the account');
+    assert.deepStrictEqual([deadReviewer, ...beside].map((top) => fs.existsSync(top)), [false, true, true], 'the dead reviewer\'s scratch worktree taken apart at the account, no other');
 
     // The person switches the build to step: the task lands, its summary
     // printed, and its gate stops before it is done (12.12.5, 12.14.3).
@@ -161,7 +163,7 @@ describe('pipeline simulation: a phase of the cut', () => {
     assert.ok(buildEntry(sim, wu).some((line) => line.startsWith('fixes owed: phase 1\'s review failed, and no settlement answers it')), 'the standing says the fixes are owed');
     sim.refuses(['land', 'phase', wu, '1'], /— phase 1's review failed, and no settlement answers it — /);
     sim.run(['task', 'settle', wu, '--phase', '1', '--file', sim.write(`.leeway/.cache/${wu}/build/why.md`, 'Checking the hash on read is the next phase\'s.\n')]);
-    assert.deepStrictEqual(deadPhaseReviewers.map((top) => fs.existsSync(top)), [false, false], 'the dead phase reviewers\' scratch worktrees taken apart at the settlement');
+    assert.deepStrictEqual([...deadPhaseReviewers, ...beside].map((top) => fs.existsSync(top)), [false, false, true, true], 'the dead phase reviewers\' scratch worktrees taken apart at the settlement, no other');
 
     // The phase review settled, its stack merges at the gate before it, in
     // step, and the phase closes on the engine's items alone (7.2.4, 6.4.9).

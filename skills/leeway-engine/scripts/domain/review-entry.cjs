@@ -36,7 +36,8 @@
 // reports are not; the fix phase a failing round's fixes are under way in —
 // the last round's while its fix tasks wait, else, once the round under
 // review has its reads, its own, where its fix tasks are written (P14);
-// each fix task of the last round not yet done, and in step its fix phase
+// each task of the last round's fix phase not yet done, its findings'
+// fixes and any written there beyond them, and in step its fix phase
 // waiting at its merge's gate once they are (14.6.2); each builder's note
 // standing, `notes#{k}`, answered by the round under review or, once the
 // round that ended the phase has its fix tasks done, on its own, with the
@@ -49,7 +50,6 @@
 // same, the fix tasks in flight those of the conversation the note is for.
 // ---------------------------------------------------------------------------
 
-const fs = require('fs');
 const { ENGINE_COMMAND, ENGINE_RUN, messageOf } = require('../kernel/call.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
@@ -62,9 +62,8 @@ const { projectLandsOn } = require('./task-base.cjs');
 const { waitingAndFreed } = require('./questions.cjs');
 const { specPath } = require('./spec-sections.cjs');
 const { notesPath } = require('./notes.cjs');
-const { reviewReportFaults } = require('./review-report.cjs');
 const {
-  reviewStanding, endedWords, readsWords, mergingWords, roundReportFile, openSnapshot, fixPhase, reportNames, roundFolder, setAsideHeld,
+  reviewStanding, reportsIn, endedWords, readsWords, mergingWords, roundReportFile, openSnapshot, fixPhase, setAsideHeld,
 } = require('./review-phase.cjs');
 
 /** @typedef {import('./enter.cjs').Entry} Entry */
@@ -152,17 +151,6 @@ function fixPhaseWords(manifest, { rounds, round, ended, waiting, reads }) {
   if (waiting.length > 0) return `phase ${fixPhase(manifest, rounds.length)}, where round ${rounds.length}'s fix tasks are built`;
   if (ended || reads === null) return null;
   return `phase ${fixPhase(manifest, round)}, where round ${round}'s fix tasks are written`;
-}
-
-/**
- * Each report of the round under review already in and reading as a
- * reviewer's, by its path; none once the phase has ended or while the
- * round's reads are not named.
- * @param {string} cwd @param {string} unit @param {ReviewStanding} standing @returns {string[]}
- */
-function reportsIn(cwd, unit, { round, reads, ended }) {
-  if (ended || reads === null) return [];
-  return reportNames(reads).map((name) => statePath(cwd, `${roundFolder(unit, round)}/${name}`)).filter((file) => fs.existsSync(file) && reviewReportFaults(file) === null);
 }
 
 /** Where the review phase stands, a line each: the round, the areas, the reads, the reports in, the fix phase, the fix tasks waiting and, in step, their phase's merge. @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {ReviewStanding} standing @returns {Line[]} */

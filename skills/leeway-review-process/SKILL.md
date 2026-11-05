@@ -102,7 +102,7 @@ Once a round's fix tasks are done, the next round reads again, whole, every area
 
 ## The Person
 
-The review runs without the person but for its reports and finish. Every question for them goes through `raise`, at the review's place: one asked in plain prose is a slip. One that waits — raised in a round, as one is settled, or for a fix task — is never a gate: load **[waiting-on-the-person.md](../leeway-implementation-process/references/waiting-on-the-person.md)** and follow its instructions as written.
+The review runs without the person but for its reports and finish. Every question for them goes through `raise`, at the review's place: one asked in plain prose is a slip. One that waits — raised in a round, as one is settled, or for a fix task — is never a gate. Load **[waiting-on-the-person.md](../leeway-implementation-process/references/waiting-on-the-person.md)** and follow its instructions as written.
 
 ## Doors
 

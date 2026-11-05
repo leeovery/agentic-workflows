@@ -33,8 +33,10 @@
 //   nothing can be built without an answer: no task in progress, in any
 //   phase written, and none ready, that no question parks, of a phase
 //   started or one whose start waits on Claude's own items alone, every
-//   item the engine checks of it holding (checklist.cjs) (12.12.9,
-//   12.13.22).
+//   item the engine checks of it holding (checklist.cjs); and once the cut
+//   is through, the review's round with nothing to go on with, its reads
+//   named and every report of it in (review-phase.cjs, `reviewGoesOn`)
+//   (12.12.9, 12.13.22).
 // - `build-progress <unit>`: the build's phases and tasks.
 //
 // Each refuses, opening on its command: a unit the project lacks or whose
@@ -46,6 +48,7 @@ const { statePath, stateRoot } = require('../kernel/state-root.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { phaseNamed, buildStanding, builtUnit, ownInFlight } = require('./build-entry.cjs');
 const { reading, phaseLists, phaseLanded, reviewRefusalOf } = require('./phase-checks.cjs');
+const { reviewStanding, reviewGoesOn } = require('./review-phase.cjs');
 const { cutPhases, cutLength } = require('./derivations.cjs');
 const { trackedTask, trackedLists, goingOn, phaseOpen, turnRefusal, ENDED, STATUS_WORDS } = require('./task-verbs.cjs');
 const { engineItemsHold } = require('./checklist.cjs');
@@ -267,6 +270,8 @@ function buildStopSurface(cwd, { dotpath: unit = '' }) {
     const manifest = builtUnit(cwd, unit);
     const [next] = withStateLock(stateRoot(cwd), () => goingOn(cwd, unit, manifest, { ready: phaseLets(cwd, unit, manifest) })).tasks;
     if (next !== undefined) throw new Error(`${unit}'s build goes on with task ${next}, which no question parks — it stops only where nothing can go on without the person's answer (12.13.22)`);
+    const review = standing.finished ? reviewGoesOn(cwd, unit, reviewStanding(reading(cwd, unit, manifest))) : null;
+    if (review !== null) throw new Error(`${unit}'s review goes on: ${review} — it stops only where nothing can go on without the person's answer (12.13.22)`);
     return stopScreen(standing, finishedUnits(stateRoot(cwd)));
   });
 }

@@ -30,7 +30,7 @@ const { describe, it } = require('node:test');
 const { output, callAsync, sectionOf, keywordOnlyKnowledge, unreadableKnowledge, readState, layout, commitAll } = require('./engine-harness.cjs');
 const { leaningCall } = require('./ledger-world.cjs');
 const {
-  UNIT, EVERY, calls, reviewCall, useWorld, env, enter, reported, recorded, fixPhaseWritten, fixBuilt, readManifest, writeState, stateGit, refusedPristine, ok, assert,
+  UNIT, EVERY, calls, reviewCall, useWorld, env, enter, reported, recorded, fixPhaseWritten, taskMade, fixBuilt, fixClosed, readManifest, writeState, stateGit, refusedPristine, ok, assert,
 } = require('./review-world.cjs');
 
 /** What finish says of a knowledge base set up over a store that does not load. */
@@ -74,18 +74,22 @@ const overruled = (at, entry, text) => ok(dir, ['ledger', 'replace', at, '--repl
 }).id;
 
 describe('finish\'s checklist (6.4.10, 2.S2)', () => {
-  it('reads the review phase passed from its rounds\' records — open in round 1 with the way in, open while a passing round\'s fix task waits, done once it is built — never marked', () => {
+  it('reads the review phase passed from its rounds\' records — open in round 1 with the way in, open while a task of a passing round\'s fix phase waits, one written beyond its findings among them, done once each is built or closed — never marked', () => {
     const before = items();
     enter();
     reported(1, EVERY, { '2-refunds-a': ['nit: A refund\'s label is terse.'] });
     fixPhaseWritten(3, [['Word the label', '§2.1']]);
     recorded({ can_now: ['Pay by card.'], findings: [{ area: '2-refunds', scope: 'in', call: 'nit', text: 'A refund\'s label is terse.', from: ['2-refunds-a#1'], fix: '3.1' }] });
+    taskMade(3, 'Mail the receipt', '§1.2');
     const waiting = items();
     fixBuilt(3, 1, 'Word the label', 'main', 'src/label.js');
+    const beyond = items();
+    fixClosed(3, 2);
 
-    assert.deepStrictEqual([before, waiting, items()], [
+    assert.deepStrictEqual([before, waiting, beyond, items()], [
       [`review-passed engine open — ${UNIT}'s review phase is in round 1 — enter review ${UNIT}`, 'questions-answered engine done', 'inbox-closed claude open', 'build-log-closed claude open'],
-      [`review-passed engine open — ${UNIT}'s review phase passed in round 1 — its fix tasks are built, then finish: task 3.1 not started`, 'questions-answered engine done', 'inbox-closed claude open', 'build-log-closed claude open'],
+      [`review-passed engine open — ${UNIT}'s review phase passed in round 1 — its fix tasks are built, then finish: task 3.1 not started, task 3.2 not started`, 'questions-answered engine done', 'inbox-closed claude open', 'build-log-closed claude open'],
+      [`review-passed engine open — ${UNIT}'s review phase passed in round 1 — its fix tasks are built, then finish: task 3.2 not started`, 'questions-answered engine done', 'inbox-closed claude open', 'build-log-closed claude open'],
       ['review-passed engine done', 'questions-answered engine done', 'inbox-closed claude open', 'build-log-closed claude open'],
     ]);
     assert.strictEqual(refused(['checklist', 'done', 'finish', UNIT, 'review-passed']), 'checklist done: review-passed is the engine\'s to check, never marked — it reads done once it holds');

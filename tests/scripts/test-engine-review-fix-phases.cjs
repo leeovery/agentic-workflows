@@ -106,12 +106,12 @@ describe('the build\'s standing: the review\'s fix phases past the cut (P14)', (
 });
 
 describe('the build\'s screens: the review\'s fix phases (12.12.11, 3.3.10)', () => {
-  it('the progress draws each fix phase after the cut by its number alone, its tasks counted, under the marker naming the fix phase the build is at', () => {
+  it('the progress draws each fix phase after the cut by its number alone, its tasks counted, under the review\'s marker naming the fix phase it is at', () => {
     firstRoundFailed();
     ok(dir, ['task', 'start', UNIT, '3.1'], { env: env() });
     const out = output(dir, ['render', 'build-progress', UNIT], { env: env() });
 
-    assert.strictEqual(sectionOf(out, 'DISPLAY: build marker'), '**`□ Build (the review\'s fixes, round 1) · auto`**\n');
+    assert.strictEqual(sectionOf(out, 'DISPLAY: build marker'), '**`□ Review (the review\'s fixes, round 1) · auto`**\n');
     assert.strictEqual(sectionOf(out, 'DISPLAY: build progress'), [
       '3 of 4 tasks done · 1 running',
       '',

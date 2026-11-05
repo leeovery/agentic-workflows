@@ -35,7 +35,7 @@ const fs = require('fs');
 const path = require('path');
 const { output, traced } = require('./engine-harness.cjs');
 const {
-  UNIT, inStep, ENGINE, ENGINE_LINE, SESSION_ID, AREAS, EVERY, FIVE, RECEIPT, FAILING, useWorld, env, enter, reportText, reported, named, recorded, refusedRound, firstRoundFailed, fixPhaseWritten, cutUnmerged, fixBuilt, fixClosed, raisedAtReview, data,
+  UNIT, inStep, ENGINE, ENGINE_LINE, SESSION_ID, AREAS, EVERY, FIVE, RECEIPT, FAILING, useWorld, env, enter, reportText, reported, named, recorded, refusedRound, firstRoundFailed, fixPhaseWritten, taskMade, cutUnmerged, fixBuilt, fixClosed, raisedAtReview, data,
   ok, okSections, refusedPristine, statePath, writeState, git, stateGit, assert,
 } = require('./review-world.cjs');
 
@@ -186,14 +186,18 @@ describe('the answer: the round under review, the spec\'s areas, and what the ro
     assert.deepStrictEqual(sections.split('\n').filter((line) => /^(area|reads): /.test(line)), ['area: 1-cards — §1 Cards', 'reads: 1-cards, the test surface (tests)']);
   });
 
-  it('14.S3: after a round whose findings made fix tasks, the next waits on each until it is done, then its reads are named from what they changed — among them every area whose findings made one', () => {
+  it('14.S3: after a round whose findings made fix tasks, the next waits on each task of their phase until it is done — one written there beyond the findings among them, until it is done or closed — then its reads are named from what they changed, among them every area whose findings made one', () => {
     firstRoundFailed();
+    taskMade(3, 'Mail the receipt', '§1.2');
     const waiting = enter().sections;
     fixBuilt(3, 1, 'Send the receipt', 'main', 'src/send.js');
+    const beyond = enter().sections.split('\n').filter((line) => line.startsWith('fix task waiting: '));
+    fixClosed(3, 2);
     const unnamed = enter().sections;
     named(['2-refunds', '1-cards']);
 
-    assert.strictEqual(waiting, data(['round: round 2', ...AREA_LINES, UNNAMED, fixPhaseLine(3, 1, 'built'), 'fix task waiting: 3.1 not started', BASE_LINE, reportLine(1), ...readsAfter()]));
+    assert.strictEqual(waiting, data(['round: round 2', ...AREA_LINES, UNNAMED, fixPhaseLine(3, 1, 'built'), 'fix task waiting: 3.1 not started', 'fix task waiting: 3.2 not started', BASE_LINE, reportLine(1), ...readsAfter()]));
+    assert.deepStrictEqual(beyond, ['fix task waiting: 3.2 not started'], 'the task beyond the findings waited on once theirs is done');
     assert.strictEqual(unnamed, data(['round: round 2', ...AREA_LINES, UNNAMED, BASE_LINE, reportLine(1), ...readsAfter()]));
     assert.strictEqual(enter().sections, data(['round: round 2', ...AREA_LINES, 'reads: 1-cards, 2-refunds', fixPhaseLine(4, 2, 'written'), BASE_LINE, reportLine(1), ...readsAfter()]));
   });
@@ -250,22 +254,17 @@ describe('the answer: the round under review, the spec\'s areas, and what the ro
 });
 
 describe('the questions waiting on the person (12.13.22)', () => {
-  it('names each waiting, with the task it parks or none', async () => {
+  it('names each waiting, with the task it parks or none, read from the ledger alone while nothing is in flight: an idle entry runs no more git than its own reads need', async () => {
     firstRoundFailed();
     await raisedAtReview('Should a receipt be sent by email?', '3.1');
     await raisedAtReview('Should a refund send a receipt too?');
+    const lines = enter().sections.split('\n').filter((line) => line.startsWith('waiting: '));
+    const { commands } = traced(() => enter());
 
-    assert.deepStrictEqual(enter().sections.split('\n').filter((line) => line.startsWith('waiting: ')), [
+    assert.deepStrictEqual(lines, [
       'waiting: Q1 — Should a receipt be sent by email? — parks task 3.1',
       'waiting: Q2 — Should a refund send a receipt too? — parks no task',
     ]);
-  });
-
-  it('reads them from the ledger alone while nothing is in flight: an idle entry runs no more git than its own reads need', () => {
-    firstRoundFailed();
-    enter();
-    const { commands } = traced(() => enter());
-
     assert.ok(commands.length <= IDLE_ENTRY, `an idle entry ran ${commands.length} git commands:\n${commands.join('\n')}`);
   });
 });

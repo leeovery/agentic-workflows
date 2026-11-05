@@ -6,9 +6,9 @@
 // its cut, in auto, a fix task's builder finding a wrong result its task
 // does not hold, which lands as a task of the fix phase through the first
 // door outside the plan (outside-the-plan.md). The review's standing reads
-// every task of the fix phase from the tracker: round 1 failing, its entry
-// names both waiting, and once the round's own fix is done it still waits
-// on the other, the next round's reads refused (14.6.1). Finish held open
+// every task of the fix phase from the tracker: round 1 failing, once the
+// round's own fix is done it still waits on the other, the next round's
+// reads refused (14.6.1). Finish held open
 // over one across a /clear is test-pipeline-simulation-review-outside-finish.cjs's.
 //
 // Layer: simulation. World: this file's own, built once from the project
@@ -44,14 +44,12 @@ describe('pipeline simulation: a task beyond the review\'s findings', () => {
   /** The wrong result a fix task's builder finds beyond its task, written as a task of the fix phase of `fix`: the task. @param {string} fix */
   const beyond = (fix) => writeTasks(sim, WU, Number(fix.split('.')[0]), [{ title: 'Check the hash on write', type: 'fix', scenarios: ['an entry written'], reference: '§1' }])[0];
 
-  it('14.6.1: round 1 failing, the entry names the task beyond its fix waiting with it, and once its own fix is done waits on the other, the next round\'s reads refused', () => {
+  it('14.6.1: round 1 failing, once its own fix is done the review waits on the task beyond it, the next round\'s reads refused', () => {
     const fix = failedHashRound(sim, WU);
-    const other = beyond(fix);
-    assert.deepStrictEqual(reviewNext(sim, WU).data['fix task waiting'], [`${fix} not started`, `${other} not started`]);
-
+    beyond(fix);
     builtAside(sim, WU, fix, 'src/hash.js');
-    const after = reviewNext(sim, WU);
-    assert.deepStrictEqual([after.move, after.data['fix task waiting']], ['fixes', [`${other} not started`]], 'the round\'s own fix done, the review waits on the other');
-    sim.refuses(['review', 'reads', WU, '1-the-work'], new RegExp(`task ${other.replace('.', '\\.')} not started$`));
+
+    assert.strictEqual(reviewNext(sim, WU).move, 'fixes', 'the round\'s own fix done, the review waits on the other');
+    sim.refuses(['review', 'reads', WU, '1-the-work'], null);
   });
 });

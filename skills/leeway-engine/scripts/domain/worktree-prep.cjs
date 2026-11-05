@@ -61,7 +61,7 @@ const LAYOUTS = '.claude/worktrees';
 const LAYOUT = 'leeway-';
 
 /** One of the engine's own layouts, as git names it untracked in the project's own checkout. */
-const OWN_LAYOUT = new RegExp(`^${LAYOUTS}/${LAYOUT}[^/]+/$`);
+const OWN_LAYOUT = new RegExp(`^${LAYOUTS.replaceAll('.', '\\.')}/${LAYOUT}[^/]+/$`);
 const SETTINGS = ['.claude/settings.json', '.claude/settings.local.json'];
 
 /** @typedef {{dir: string, path: string}} Laid a repository by its folder from the project's root, at `path` */
