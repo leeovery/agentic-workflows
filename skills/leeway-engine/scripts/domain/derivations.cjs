@@ -116,7 +116,7 @@ function buildLength(manifest) {
  */
 function retiredRefusal(manifest) {
   return Object.hasOwn(LEGACY_WORK_TYPES, manifest.work_type)
-    ? `${manifest.name} is a ${manifest.work_type} unit, a type the reshape retires — its 29.17 migration turns its spec into product-wide entries`
+    ? `${manifest.name} is a ${manifest.work_type} unit, a type the reshape retires — it waits on the reshape's 29.17 migration, and nothing is done in it until then`
     : null;
 }
 
@@ -786,7 +786,8 @@ function computeInProgressPhases(manifest, pipeline, specWritten = false) {
  * earlier phase means the unit is mid-revisit, not finalising: the phase in
  * flight is the next action, and completing the unit now would abandon the
  * revisit. A unit waiting on the migration's cut is never finalising: it
- * offers no way on but the migration (P12). The one derivation both the start
+ * offers no way on but the migration (P12); a retired type's keeps its
+ * waiting label, whatever its items have in flight. The one derivation both the start
  * dashboard and the single-topic work-unit detail read, so the two can never
  * disagree.
  * @param {object} manifest
@@ -799,7 +800,7 @@ function computeUnitPhaseState(manifest, pipeline, specWritten = false) {
   const inProgress = computeInProgressPhases(manifest, pipeline, specWritten);
   let nextPhase = state.next_phase;
   let phaseLabel = state.phase_label;
-  if (nextPhase === 'done' && inProgress.length > 0) {
+  if (nextPhase === 'done' && inProgress.length > 0 && retiredRefusal(manifest) === null) {
     nextPhase = inProgress[0];
     phaseLabel = `${inProgress[0]} (in-progress)`;
   }

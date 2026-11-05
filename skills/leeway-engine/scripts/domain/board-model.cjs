@@ -346,7 +346,7 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * a task started, failed or finished.
  * @typedef {{kind: string, at: string, topic: string|null, detail: string|null, count?: number}} Moment
  */
-/** Where a unit has come to: the phase it is in, or complete, and the day it began, null where its records keep none. @typedef {{phase: string, since: string|null}} UnitNow */
+/** Where a unit has come to: the phase it is in, complete, or — a migrated unit of a retired type — the `cut` it waits on, and the day it began, null where its records keep none. @typedef {{phase: string, since: string|null}} UnitNow */
 
 /** A topic's state on the epic's page. @typedef {'decided'|'discussing'|'next'|'not-started'} TopicState */
 /**

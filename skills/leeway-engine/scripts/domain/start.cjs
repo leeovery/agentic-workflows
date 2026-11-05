@@ -26,7 +26,7 @@ const {
   lastCompletedPhase,
   mailPhases,
 } = require('./derivations.cjs');
-const { WORK_TYPE_PIPELINES, LEGACY_WORK_TYPES, VALID_PHASES } = require('../kernel/manifest-schema.cjs');
+const { WORK_TYPE_PIPELINES, VALID_PHASES } = require('../kernel/manifest-schema.cjs');
 
 // The epic pipeline — discussion → review, the completion / next-phase pipeline
 // and the start dashboard's active-phase row.
@@ -36,16 +36,13 @@ const EPIC_PIPELINE_PHASES = WORK_TYPE_PIPELINES.epic;
 const ALL_PHASES = VALID_PHASES.filter((p) => p !== 'discovery');
 
 /**
- * The type's pipeline phases, from the schema's one home for pipeline order,
- * a retired type's from its legacy list. An unknown type falls back to
- * every phase.
+ * The type's pipeline phases, from the schema's one home for pipeline order.
+ * An unknown type — a retired one among them — falls back to every phase.
  * @param {string} workType
  * @returns {string[]}
  */
 function pipelineOf(workType) {
-  return WORK_TYPE_PIPELINES[/** @type {keyof typeof WORK_TYPE_PIPELINES} */ (workType)]
-    || LEGACY_WORK_TYPES[/** @type {keyof typeof LEGACY_WORK_TYPES} */ (workType)]
-    || ALL_PHASES;
+  return WORK_TYPE_PIPELINES[/** @type {keyof typeof WORK_TYPE_PIPELINES} */ (workType)] || ALL_PHASES;
 }
 
 /**

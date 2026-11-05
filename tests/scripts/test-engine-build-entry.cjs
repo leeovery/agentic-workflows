@@ -212,7 +212,7 @@ describe('enter implementation: what cannot be entered is refused, naming the wa
       'fresh\'s build has not begun — ready to build\'s yes begins it: render ready-to-build fresh',
       `implementation is entered at the work unit — name no topic: engine enter implementation ${UNIT}`,
     ]);
-    assert.strictEqual(refused(['concern']), 'concern is a cross-cutting unit, a type the reshape retires — its 29.17 migration turns its spec into product-wide entries');
+    assert.strictEqual(refused(['concern']), 'concern is a cross-cutting unit, a type the reshape retires — it waits on the reshape\'s 29.17 migration, and nothing is done in it until then');
   });
 });
 

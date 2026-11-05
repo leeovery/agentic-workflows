@@ -419,6 +419,23 @@ PHASES ────────────────────────�
     )
   })
 
+  test('E6: a migrated unit of a retired type waits on the migration\'s cut, its progress line naming no phase', () => {
+    const migrated = {
+      ...MINT,
+      title: 'error-envelope',
+      type: 'cross-cutting',
+      about: '',
+      started: '2026-05-02',
+      now: { phase: 'cut', since: null },
+      progress: { complete: 1, total: 1 },
+      waiting: [],
+      phases: [phase('discovery', 'complete', 'the seed', { on: '2026-05-02T09:00:00', page: true })],
+      lately: [],
+    } as View
+
+    expect(drawn(UNIT, migrated).text.slice(0, 3)).toEqual(['error-envelope · cross-cutting', 'started 2 May · waiting on the migration\'s cut', '▰  1 of 1 phase complete'])
+  })
+
   test('20.15.2: an epic\'s while its discovery runs, before any topic exists — discovery under way, then what each phase waits on, the build and review one stage', () => {
     const shaping = {
       kind: 'unit',

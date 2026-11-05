@@ -77,14 +77,14 @@ function unitInProgress(cwd, unit) {
 
 /**
  * Why the unit's work type has no place for the phase, naming its phases —
- * a retired type none — or null where it has; never discovery, which every
- * work type opens on.
+ * a retired type none, its discovery among them — or null where it has;
+ * never discovery for any other, which every work type opens on.
  * @param {Record<string, any>} manifest @param {string} phase @returns {string|null}
  */
 function phaseHeldRefusal(manifest, phase) {
-  if (phase === 'discovery') return null;
   const retired = retiredRefusal(manifest);
   if (retired !== null) return retired;
+  if (phase === 'discovery') return null;
   const pipeline = WORK_TYPE_PIPELINES[/** @type {keyof typeof WORK_TYPE_PIPELINES} */ (manifest.work_type)] ?? [];
   return pipeline.includes(phase) ? null : `a ${manifest.work_type} has no ${phase} — its phases are ${pipeline.join(', ')}`;
 }

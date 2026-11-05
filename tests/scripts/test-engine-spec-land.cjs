@@ -161,17 +161,9 @@ describe('a spec landed (11.4.1, 11.4.3, 11.S3)', () => {
     assert.strictEqual(stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(), answer.committed);
   });
 
-  it('19.S28: with an epic\'s spec written, no topic of it can be promoted into a cross-cutting unit — no verb promotes, and no item takes the promoted status', () => {
-    writeSpec(spec([`1.1.1 Visa and Mastercard are taken. [${made.cards}]`]));
-    land();
-
-    assert.deepStrictEqual([
-      refusedPristine(dir, ['workunit', 'promote', UNIT, 'cards', '--to', 'card-rules', '--description', 'Card rules']).error,
-      refusedPristine(dir, ['manifest', 'set', `${UNIT}.discussion.cards`, 'status', 'promoted']).error,
-    ], [
-      'Usage: engine workunit <create|import|complete|cancel|reactivate|pivot|absorb|position> …',
-      'Invalid status "promoted" for phase "discussion". Must be one of: unstarted, in-progress, completed, cancelled, postponed',
-    ]);
+  it('19.S28: no topic of an epic\'s spec can be promoted into a cross-cutting unit — no item takes the promoted status, and the workunit verbs, whose usage test-engine-transactions.cjs pins, name no promote', () => {
+    assert.strictEqual(refusedPristine(dir, ['manifest', 'set', `${UNIT}.discussion.cards`, 'status', 'promoted']).error,
+      'Invalid status "promoted" for phase "discussion". Must be one of: unstarted, in-progress, completed, cancelled, postponed');
   });
 
   it('11.S4: lists each statement and screen that does not trace, with why, and lands the spec all the same', () => {
