@@ -143,7 +143,7 @@ function topicReceipt(verb, name, { warn = false, restored = [], horizon = null,
  * `experiments` counts top-level records only — a split is worked inside its
  * parent, so a series E1, E1.1, E2 is two experiments.
  * @param {string} feature @param {string} epic @param {string} topic
- * @param {{discussion: string, experiments?: number, seeds?: number, imports?: number}} facts
+ * @param {{discussion: string, brief?: boolean, mail?: number, experiments?: number, seeds?: number, imports?: number, assets?: number, spikes?: number}} facts
  * @returns {string}
  */
 function absorbSummary(feature, epic, topic, facts) {
@@ -153,25 +153,36 @@ function absorbSummary(feature, epic, topic, facts) {
     ['Topic:', topic],
     ['Discussion:', `[${facts.discussion}]`],
   ];
+  if (facts.mail) rows.push(['Mail:', `${facts.mail} message(s) waiting`]);
   if (facts.experiments) rows.push(['Experiments:', `${facts.experiments} experiment(s)`]);
   if (facts.seeds) rows.push(['Seed:', `${facts.seeds} file(s) (origin)`]);
   if (facts.imports) rows.push(['Imports:', `${facts.imports} file(s)`]);
+  if (facts.assets) rows.push(['Assets:', `${facts.assets} file(s)`]);
+  if (facts.spikes) rows.push(['Spikes:', `${facts.spikes} spike(s)`]);
   const width = Math.max(...rows.map(([label]) => label.length));
   const lines = ['Absorb Summary', ''];
   for (const [label, value] of rows) lines.push(`  ${label.padEnd(width)}  ${value}`);
-  lines.push('', '  Actions:', '  • Move discussion file to epic');
+  lines.push('', '  Actions:', '  • Move discussion log to epic');
+  if (facts.brief) lines.push('  • Move brief to epic');
+  if (facts.mail) lines.push('  • Move waiting message(s) to epic');
   if (facts.experiments) lines.push('  • Move experiment series to epic');
   if (facts.seeds) lines.push('  • Move seed file(s) to epic');
   if (facts.imports) lines.push('  • Move import file(s) to epic');
+  if (facts.assets) lines.push('  • Move asset(s) to epic');
+  if (facts.spikes) lines.push('  • Move spike(s) to epic');
   lines.push('  • Register topic in epic manifest', '  • Remove feature work unit and directory');
   return section('DISPLAY: absorb summary', CONTINUE_INSTRUCTION, lines.join('\n'));
 }
 
+/** What the receipt's `moved` may name, each with its line. */
+const ABSORB_MOVED = Object.freeze({ seeds: 'Seed', imports: 'Imports', assets: 'Assets', spikes: 'Spikes' });
+
 /**
- * workunit absorb — the post-absorption summary. `experiments` is the moved
- * series' top-level record count — 0 when the feature had no series;
- * `renamed` names the imports a filename collision renamed, whose links the
- * transaction rewrote in the documents it moved.
+ * workunit absorb — the post-absorption summary. `moved` names which of
+ * `ABSORB_MOVED` moved anything; `experiments` is the moved series'
+ * top-level record count — 0 when the feature had no series; `renamed` names
+ * the files and spikes a collision renamed, whose links the transaction
+ * rewrote in the documents it moved.
  * @param {string} epic @param {string} topic @param {string[]} moved
  * @param {{warn?: boolean, experiments?: number, renamed?: {from: string, to: string}[]}} [opts]
  * @returns {string}
@@ -187,8 +198,7 @@ function absorbReceipt(epic, topic, moved, { warn = false, experiments = 0, rena
     '  • Discussion: moved',
   ];
   if (experiments > 0) lines.push(`  • Experiments: ${experiments} moved`);
-  if (moved.includes('seeds')) lines.push('  • Seed: moved');
-  if (moved.includes('imports')) lines.push('  • Imports: moved');
+  for (const [home, label] of Object.entries(ABSORB_MOVED)) if (moved.includes(home)) lines.push(`  • ${label}: moved`);
   for (const rename of renamed) {
     lines.push(...bulletRow(`Renamed: ${rename.from} → ${rename.to} (links rewritten)`));
   }
@@ -305,4 +315,4 @@ function inboxDeleteReceipt(title) {
   return confirmation(`Deleted "${title}".`);
 }
 
-module.exports = { workunitReceipt, topicReceipt, mapReceipt, absorbSummary, absorbReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, inboxRestoreReceipt, inboxDeleteReceipt };
+module.exports = { workunitReceipt, topicReceipt, mapReceipt, absorbSummary, ABSORB_MOVED, absorbReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, inboxRestoreReceipt, inboxDeleteReceipt };

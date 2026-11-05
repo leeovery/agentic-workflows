@@ -25,7 +25,7 @@ const { displayWidth } = require('../kernel/terminal.cjs');
 const { titlecase, tag } = require('./conventions.cjs');
 const { section, dataSection, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, timedInstruction, menu, cmdOption, promptOption, callout, indentedBody, bulletRow, emitAs, STOP_CLAUSE, MENU_INSTRUCTION, AUTO_GATE_CLAUSE } = require('./projections/surfaces.cjs');
 const { worklist } = require('./projections/worklist.cjs');
-const { workunitReceipt, topicReceipt, absorbSummary, absorbReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, inboxRestoreReceipt, inboxDeleteReceipt } = require('./projections/transactions.cjs');
+const { workunitReceipt, topicReceipt, absorbSummary, ABSORB_MOVED, absorbReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, inboxRestoreReceipt, inboxDeleteReceipt } = require('./projections/transactions.cjs');
 const { absorbTargetMenu, absorbConfirmGate, archivedActions, archivedDeleteGate, inboxContent, completedActions } = require('./projections/start.cjs');
 const { archivedItem, inboxItems, liveItem, deletedItemTitle } = require('./inbox-set.cjs');
 const { sourceLines } = require('../kernel/knowledge/chunker.cjs');
@@ -69,6 +69,7 @@ const { reviewTreeSurface } = require('./review-tree.cjs');
 const { finishSurface } = require('./finish.cjs');
 const { discoveryMapScreen } = require('./projections/discovery-map.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
+const { absorbedMaterial } = require('./workunit-absorb.cjs');
 const { stateRoot, statePath, outsideRepository } = require('../kernel/state-root.cjs');
 const { stateMergeGateSurface } = require('./state-merge.cjs');
 const { ledgerStopSurface } = require('./ledger.cjs');
@@ -1816,6 +1817,7 @@ function absorbSummarySurface(cwd, args) {
     experiments,
     seeds: Array.isArray(manifest.seeds) ? manifest.seeds.length : 0,
     imports: Array.isArray(manifest.imports) ? manifest.imports.length : 0,
+    ...absorbedMaterial(cwd, workUnit),
   });
 }
 
@@ -1831,9 +1833,9 @@ function absorbReceiptSurface(cwd, args) {
     throw new Error(`render absorb-receipt: no discussion item "${topic}" on "${workUnit}" — the absorb has not run`);
   }
   const moved = (args.moved || '').split(',').map((s) => s.trim()).filter(Boolean);
-  const unknown = moved.filter((m) => !['seeds', 'imports'].includes(m));
+  const unknown = moved.filter((m) => !Object.hasOwn(ABSORB_MOVED, m));
   if (unknown.length > 0) {
-    throw new Error(`render absorb-receipt: --moved entries must be seeds or imports, got "${unknown.join(', ')}"`);
+    throw new Error(`render absorb-receipt: --moved entries must be ${Object.keys(ABSORB_MOVED).join(', ')}, got "${unknown.join(', ')}"`);
   }
   let experiments = 0;
   if (args.experiments !== undefined) {

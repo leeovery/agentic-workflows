@@ -22,7 +22,7 @@ const ROOT = path.join(__dirname, '../..');
 const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
 const { epicDashboard } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
 const { stateGit, sectionOf } = require('./engine-harness.cjs');
-const { Sim, sessionLog, menuEntry, enterEntry, discussed } = require('./pipeline-world.cjs');
+const { Sim, sessionLog, menuEntry, enterEntry, discussed, askedOn } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: workunit', () => {
   let sim;
@@ -102,8 +102,24 @@ describe('pipeline simulation: workunit', () => {
     enterEntry(sim, feat, 'discussion', feat);
     sim.write(`.leeway/${feat}/topics/${feat}/log.md`, '# Discussion — Stray\n');
     sim.run(['commit', feat, '-m', `discussion(${feat}): capture`, '--topic', `discussion/${feat}`]);
-    // An experiment travelling with the topic returns with 29.15, which
-    // carries the feature's ledger entries through the absorb (5.8.18).
+    // The discussion decides one question, linking the file the person
+    // shared, moves another to the roadmap as later, and spawns an
+    // experiment measuring a third, still awaiting its evidence: the series
+    // travels with the topic, wait and all, and every line the feature made
+    // goes with them, the link following its file (5.8.18).
+    const at = `${feat}.discussion.${feat}`;
+    const made = { by: 'claude', who_moved_whom: 'none' };
+    const owner = askedOn(sim, feat, feat, 'Who owns the cutover?');
+    const owned = sim.run(['ledger', 'decide', at, '--answers', owner], null, JSON.stringify({ ...made, text: 'The platform team.', why: 'They run the switch.' })).id;
+    sim.write(`.leeway/${feat}/assets/runbook.png`, 'the runbook the person shared\n');
+    sim.run(['asset', 'add', feat, `${feat}/assets/runbook.png`, '--entry', owned, '--status', 'reference']);
+    const rollback = askedOn(sim, feat, feat, 'Can a cutover roll back part way?');
+    sim.run(['roadmap', 'add', 'rollback', '--horizon', 'v2', '--summary', 'Rolling a cutover back']);
+    sim.run(['ledger', 'move', at, '--question', rollback, '--to', 'roadmap:rollback'], null, JSON.stringify(made));
+    const cost = askedOn(sim, feat, feat, 'What does a cutover cost?');
+    const spawned = sim.run(['experiment', 'create', feat, feat, '--slug', 'cutover-cost', '--from', 'discussion', '--question', cost,
+      '--problem', sim.write(`.leeway/.cache/${feat}/discussion/${feat}/problem.md`, '# Problem — what a cutover actually costs\n')]);
+    assert.ok(fs.existsSync(path.join(spawned.dir, 'problem.md')), 'the spawn installs the problem statement');
     // A peer sends a message to the topic — it waits in the topic's
     // mailbox, and the mailbox follows the topic.
     const scratch = sim.write(`.leeway/.cache/${feat}/discussion/${feat}/message-rollback-owner.md`,
@@ -115,7 +131,7 @@ describe('pipeline simulation: workunit', () => {
     assert.match(sim.render(['absorb-confirm-gate', feat], { expect: 'content' }),
       /MENU: absorb confirm gate/, 'the proceed consent renders for an absorbable feature');
     assert.match(sim.render(['absorb-summary', feat, '--into', epic, '--topic', 'stray-topic'], { expect: 'content' }),
-      /Discussion:/, 'the pre-confirm summary derives from the feature manifest');
+      /Experiments: {2}1 experiment\(s\)/, 'the pre-confirm summary derives from the feature manifest — top-level records only');
 
     const absorbed = sim.run(['workunit', 'absorb', feat, '--into', epic, '--topic', 'stray-topic']);
     assert.ok(!fs.existsSync(path.join(sim.dir, '.leeway', feat)), 'feature directory removed');
@@ -131,10 +147,53 @@ describe('pipeline simulation: workunit', () => {
     assert.ok(fs.existsSync(path.join(sim.dir, '.leeway', epic, 'topics', 'stray-topic', 'log.md')),
       'the discussion\'s log moved into the epic');
 
-    assert.match(sim.render(['absorb-receipt', epic, '--topic', 'stray-topic'], { expect: 'content' }),
-      /Stray Topic/, 'absorb receipt renders from the epic post-state');
+    // The series audits whole at its epic identity — item, record, wait,
+    // directory — and its register renders at the epic address.
+    const series = m.phases.experiment.items['stray-topic'];
+    assert.deepStrictEqual([series.status, series.experiments.E1.slug, series.experiments.E1.status], ['in-progress', 'cutover-cost', 'conceived'],
+      'the series travels whole — records and derived status intact');
+    assert.deepStrictEqual(m.phases.discussion.items['stray-topic'].awaiting_experiments, ['E1'], 'the evidence wait rides the moved discussion item');
+    assert.ok(fs.existsSync(path.join(sim.dir, '.leeway', epic, 'topics', 'stray-topic', 'experiments', 'E1-cutover-cost', 'problem.md')),
+      'the record directory moved under the topic name');
+    assert.match(sim.render(['experiment-register', `${epic}.experiment.stray-topic`], { expect: 'content' }),
+      /E1 cutover-cost/, 'the register renders the moved series at the epic address');
+
+    // The feature's lines are the epic topic's: its decision current there,
+    // its question moved to the roadmap still later, and the question its
+    // experiment measures held from Claude's answer while it runs.
+    const read = (/** @type {string[]} */ args) => JSON.parse(sim.read(['ledger', ...args]));
+    const shown = () => ({ record: read(['record', epic, 'stray-topic']), map: read(['map', epic, 'stray-topic']) });
+    const absorbedReads = shown();
+    assert.deepStrictEqual(absorbedReads.record.decisions.map((/** @type {{id: string, assets: {path: string}[]}} */ d) => [d.id, d.assets.map((a) => a.path)]),
+      [[owned, [`${epic}/assets/runbook.png`]]], 'the feature\'s decision is current at the epic topic, linking its file where it went');
+    const rows = new Map(absorbedReads.map.questions.map((/** @type {{id: string}} */ q) => [q.id, q]));
+    assert.deepStrictEqual([rows.get(owner).stands, rows.get(rollback).stands, rows.get(rollback).moved_to], ['answered', 'later', 'roadmap:rollback'],
+      'the move the feature made holds at the epic topic');
+    const epicAt = `${epic}.discussion.stray-topic`;
+    sim.refuses(['ledger', 'decide', epicAt, '--answers', cost], /is measured by experiment E1, still running/, null,
+      JSON.stringify({ ...made, text: 'A day.', why: 'A guess.' }));
+
+    assert.match(sim.render(['absorb-receipt', epic, '--topic', 'stray-topic', '--experiments', '1'], { expect: 'content' }),
+      /• Experiments: 1 moved/, 'absorb receipt renders from the epic post-state and names the moved series');
     assert.match(sim.render(['absorb-continuation', epic, '--feature', feat], { expect: 'content' }),
       /MENU: absorb continuation/, 'the continuation menu renders from the post-absorb state');
+
+    // A feature made again under the absorbed one's name holds none of it,
+    // and the epic topic keeps it all.
+    sim.run(['workunit', 'create', feat, 'feature', '--description', 'A stray feature, again', '--session-log-file', sessionLog(sim, feat)]);
+    enterEntry(sim, feat, 'discussion', feat);
+    assert.deepStrictEqual([read(['record', feat, feat]).questions, read(['map', feat, feat]).questions], [[], []],
+      'the name made again holds none of the carried lines');
+    assert.deepStrictEqual(shown(), absorbedReads);
+
+    // The release edge survives the move: walking E1 to its verdict at the
+    // epic address releases the wait, and the epic topic answers the
+    // question it measured.
+    for (const step of ['advance', 'approve', 'advance']) sim.run(['experiment', step, epic, 'stray-topic', 'E1']);
+    const settled = sim.run(['experiment', 'conclude', epic, 'stray-topic', 'E1', '--verdict', 'cutover costs a week — staged rollout adopted']);
+    assert.deepStrictEqual(settled.released_waits, [{ phase: 'discussion', released: ['E1'], remaining: [] }]);
+    const costed = sim.run(['ledger', 'decide', epicAt, '--answers', cost], null, JSON.stringify({ ...made, text: 'A week, staged.', why: 'E1 measured it.' })).id;
+    assert.deepStrictEqual(read(['record', epic, 'stray-topic']).decisions.map((/** @type {{id: string}} */ d) => d.id), [owned, costed]);
   });
 
   it('reference imports: a discussion lands files, absorb re-homes them over a collision', () => {

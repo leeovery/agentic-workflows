@@ -89,6 +89,14 @@
 //   those alone, so the task reopened and parked again parks again. It
 //   names no maker and is no entry; a question it leaves parking nothing
 //   still waits.
+// - rehomed: the lines made at the places a unit gives up, carried to the
+//   place this line is made at, listed by id (5.8.18, 18.3.5): an absorbed
+//   feature's — its unit's level, its discussion and its experiments — at
+//   the epic's topic it became; and `files`, each file those lines name
+//   that the move took elsewhere, `[from, to]`. Every read takes a line it
+//   lists as made here from then on, live while this place is, however the
+//   unit it came from stands, and naming each such file where it went
+//   (ledger-rehomed.cjs). It names no maker and is no entry.
 //
 // Every entry may cite where it came from (21.6.3, 21.6.4): sections of
 // files — a topic's log, a spec — each by its path from the state root and
@@ -138,6 +146,8 @@ const PATH = type('a path from the state root, written plain: no part of it empt
 const CODE_PATH = type('a path in the project from its root, written plain: no part of it empty, . or ..', isPlainPath);
 const CITE = type('a citation, {path, section}: a path from the state root and a heading', (v) => isObject(v)
   && Object.keys(v).length === 2 && PATH.test(v.path) && TEXT.test(v.section));
+const MOVED_FILE = type('a file moved, [from, to]: two paths from the state root', (v) => Array.isArray(v)
+  && v.length === 2 && PATH.test(v[0]) && PATH.test(v[1]) && v[0] !== v[1]);
 
 /** What an entry cites (21.6.3). */
 const CITES = field('cites', listOf(CITE));
@@ -256,6 +266,12 @@ function unparkHolds({ parks }) {
   return parks.length === 0 ? 'a task taken off its questions names the parks it is taken off' : null;
 }
 
+/** Why a carry lists no line, or a file twice, or null. @param {Record<string, any>} rehomed */
+function rehomeHolds({ lines, files }) {
+  if (lines.length === 0) return 'a carry lists the lines it carries';
+  return new Set(files.map((/** @type {string[]} */ [from]) => from)).size === files.length ? null : 'a carry names each file it moved once';
+}
+
 /** @type {Schema} */
 const SCHEMA = {
   version: 1,
@@ -301,6 +317,7 @@ const SCHEMA = {
       field('why_asking', LINE),
     ], 1, parkHolds),
     unparked: event([field('task', TASK), field('parks', listOf(ID))], 1, unparkHolds),
+    rehomed: event([field('lines', listOf(ID)), field('files', listOf(MOVED_FILE))], 1, rehomeHolds),
   },
 };
 
@@ -311,8 +328,8 @@ const ENTRY_EVENTS = Object.freeze({ asked: 'question', found: 'finding', decide
 
 /**
  * The kind of entry an event is, or null for an event that is no entry: a
- * confirmation, a move, a merge, a check, a keep, an asset, a park or a
- * task taken off its questions.
+ * confirmation, a move, a merge, a check, a keep, an asset, a park, a task
+ * taken off its questions or a carry.
  * @param {Record<string, unknown>} event
  * @returns {EntryKind|null}
  */

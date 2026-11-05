@@ -20,7 +20,9 @@
 //   on this machine, each topic's map and the spec's list alike, kept in the
 //   cache at `.cache/.marks/{unit}.json`. It sits outside the unit's own
 //   cache, which a cancel or a completion clears, so a unit reactivated or
-//   reopened keeps what was shown; it goes when the unit is absorbed. A call
+//   reopened keeps what was shown. When the unit is absorbed, what it holds
+//   joins the epic's mark and it goes, so a call seen in the feature stays
+//   seen where its line was carried (5.8.15, 5.8.18). A call
 //   is new until a look here has covered it, wherever it sits in the ledger:
 //   a catch-up merge lays the other machine's entries before this one's
 //   unpushed ones, and a call made there was never shown here. A look at any
@@ -193,4 +195,21 @@ function dropMarks(root, unit) {
   withMarkLock(root, unit, () => fs.rmSync(marksFile(root, unit), { force: true }));
 }
 
-module.exports = { answerSince, answerShown, dropMarks };
+/**
+ * Add the calls `from`'s mark holds to `into`'s, under `into`'s lock, then
+ * remove `from`'s under its own, as `from` goes into `into`: each lock
+ * taken alone. A mark that cannot be read is passed over, a warning naming
+ * it pushed to `warnings`: the calls only it holds show again.
+ * @param {string} root @param {string} from @param {string} into @param {string[]} warnings
+ */
+function carryMarks(root, from, into, warnings) {
+  const carried = otherMarks(root, from, warnings).shown;
+  if (carried.length > 0) {
+    withMarkLock(root, into, () => {
+      writeJsonAtomic(marksFile(root, into), { shown: [...otherMarks(root, into, warnings).shown, ...carried] });
+    });
+  }
+  dropMarks(root, from);
+}
+
+module.exports = { answerSince, answerShown, carryMarks };

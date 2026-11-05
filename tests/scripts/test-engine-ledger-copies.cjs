@@ -357,7 +357,7 @@ describe('a place set aside (5.8.17)', () => {
     assert.match(await byArea('floating'), /\[0 results\]/);
   });
 
-  it('follows every change to what is live, however it is made: a feature absorbed into an epic, and a topic set aside by a field write', async () => {
+  it('follows every change to what is live, however it is made: a feature absorbed into an epic, its lines then the epic topic\'s, and a topic set aside by a field write', async () => {
     const { decision } = floatingPanel();
     createManifest(dir(), 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
     change('mint.discussion.mint', decision, { text: 'A framed panel.', why: 'Mint frames its notes.' });
@@ -365,9 +365,11 @@ describe('a place set aside (5.8.17)', () => {
     fs.mkdirSync(statePath(dir(), 'mint/topics/mint'), { recursive: true });
     fs.writeFileSync(statePath(dir(), 'mint/topics/mint/log.md'), '# Mint\n');
 
-    ok(dir(), ['workunit', 'absorb', 'mint', '--into', UNIT, '--topic', 'mint-notes']);
-    assert.match(/** @type {string} */ (copy(NOTE_COPY)), /A floating panel\./);
-    assert.match(await byArea('framed'), /\[0 results\]/);
+    ok(dir(), ['workunit', 'absorb', 'mint', '--into', UNIT, '--topic', 'mint-notes'], { env: SESSION });
+    assert.strictEqual(copy(MINT_COPY), null);
+    assert.match(/** @type {string} */ (copy(layout.knowledge('records', UNIT, 'mint-notes.md'))), /A framed panel\./);
+    assert.match(/** @type {string} */ (copy(NOTE_COPY)), /A framed panel\./);
+    assert.match(await byArea('framed'), /\[record \| fumi\/mint-notes /);
 
     ok(dir(), ['manifest', 'set', `${UNIT}.discovery.note-window`, 'cancelled', 'true']);
     assert.strictEqual(copy(NOTE_COPY), null);

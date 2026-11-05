@@ -547,4 +547,4 @@ function runAssetVerb(cwd, verb, argv) {
   return RUNS[verb](cwd, positional, flags);
 }
 
-module.exports = { ASSET_USAGE, runAssetVerb, spikesOf, spikeStatuses };
+module.exports = { ASSET_USAGE, SPIKE_FOLDER, runAssetVerb, spikesOf, spikeStatuses };
