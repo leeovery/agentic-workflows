@@ -11,7 +11,7 @@ Merge a feature's discussion into an existing epic as a new topic, then remove t
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> This will move the feature's discussion, experiments, seed, and imports into the selected epic as a new topic and delete the feature work unit. Git history serves as provenance.
+> This will move the feature's discussion, experiments, seed, imports, assets and spikes into the selected epic as a new topic and delete the feature work unit. Git history serves as provenance.
 ```
 
 Fetch and emit the `MENU: absorb target` section verbatim per its marker (its numbering follows the DATA `available_epics` order):
@@ -89,7 +89,7 @@ One engine transaction moves the discussion (and any experiment series, imports,
 node .claude/skills/leeway-engine/scripts/engine.cjs workunit absorb {selected.name} --into {target_epic} --topic {topic}
 ```
 
-The JSON response reports what moved (`discussion`, `experiment`, `imports`, `seeds`), `renamed_imports` (the imports a name collision renamed, empty when none did), `committed`, and `warnings`.
+The JSON response reports what moved (`discussion`, `experiment`, `imports`, `seeds`, `assets`, `spikes`), `renamed_imports`, `renamed_assets` and `renamed_spikes` (what a name collision renamed, each empty when nothing was), `committed`, and `warnings`.
 
 #### If the command failed
 
@@ -117,7 +117,7 @@ The command succeeded.
 
 ## E. Post-Absorption
 
-Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` summary, each verbatim per its marker. `--moved` lists whichever of `seeds`, `imports` the absorb response reported non-empty (comma-separated; omit the flag when none moved), `--experiments` carries the count of top-level ids (no dot) in the response's `experiment.experiments` when a series moved (omit otherwise — a split is worked inside its parent, so subs never count), `--renamed` carries `{renamed}`, the response's `renamed_imports` joined as comma-separated `{from}:{to}` pairs — the imports a name collision renamed, whose links the absorb rewrote in the discussion it moved (omit the flag when the list is empty) — and `--warn` rides when the response's `warnings` is non-empty:
+Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` summary, each verbatim per its marker. `--moved` lists whichever of `seeds`, `imports`, `assets`, `spikes` the absorb response reported non-empty (comma-separated; omit the flag when none moved), `--experiments` carries the count of top-level ids (no dot) in the response's `experiment.experiments` when a series moved (omit otherwise — a split is worked inside its parent, so subs never count), `--renamed` carries `{renamed}`, the response's `renamed_imports`, `renamed_assets` and `renamed_spikes` joined as comma-separated `{from}:{to}` pairs — what a name collision renamed, whose links the absorb rewrote in the topic it moved (omit the flag when all three are empty) — and `--warn` rides when the response's `warnings` is non-empty:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs render absorb-receipt {target_epic} --topic {topic} [--moved {moved}] [--experiments {N}] [--renamed {renamed}] [--warn]

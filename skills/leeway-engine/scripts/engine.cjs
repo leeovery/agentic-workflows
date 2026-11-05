@@ -382,7 +382,7 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render topic-receipt     <wu.discovery.name> --verb cancel|reactivate [--warn] [--inbox <n>]
   render topic-receipt     <wu.discovery.topic> --verb postpone|restore [--warn]
   render absorb-summary    <feature> --into <epic> --topic <name>
-  render absorb-receipt    <epic> --topic <name> [--moved seeds,imports] [--experiments <N>] [--renamed <from>:<to>[,…]] [--warn]
+  render absorb-receipt    <epic> --topic <name> [--moved seeds,imports,assets,spikes] [--experiments <N>] [--renamed <from>:<to>[,…]] [--warn]
   render absorb-continuation <epic> --feature <name>
   render import-reprompt   --file <payload.json>   # {"missing": ["path", …]} — the re-prompt after a landing refused
   render pivot-continuation <wu>

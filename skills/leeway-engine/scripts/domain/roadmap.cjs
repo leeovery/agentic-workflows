@@ -1342,6 +1342,22 @@ function postponeToRoadmap(cwd, workUnit, topic, { goes, horizon, summary, sourc
  */
 
 /**
+ * Where `file` lands across a transaction's moves — `relocations`,
+ * state-relative `[from, to]` pairs, the first that takes it: a file at a
+ * moved path takes its landing, and one beneath a moved directory keeps its
+ * place beneath the landing; null where none moved it.
+ * @param {string} file @param {[string, string][]} relocations
+ * @returns {string|null}
+ */
+function landingOf(file, relocations) {
+  for (const [from, to] of relocations) {
+    if (file === from) return to;
+    if (file.startsWith(`${from}/`)) return to + file.slice(from.length);
+  }
+  return null;
+}
+
+/**
  * Carry the roadmap's sources across a transaction's moves — `relocations`,
  * state-relative `[from, to]` pairs: a source at a moved path takes
  * its landing, and one beneath a moved directory keeps its place beneath the
@@ -1356,13 +1372,6 @@ function postponeToRoadmap(cwd, workUnit, topic, { goes, horizon, summary, sourc
 function carrySources(items, relocations, { deleted } = {}) {
   /** @type {CarriedSources} */
   const out = { rewritten: [], dropped: [] };
-  const landing = (/** @type {string} */ source) => {
-    for (const [from, to] of relocations) {
-      if (source === from) return to;
-      if (source.startsWith(`${from}/`)) return to + source.slice(from.length);
-    }
-    return null;
-  };
   for (const [name, raw] of Object.entries(items)) {
     if (!raw || typeof raw !== 'object') continue;
     const item = /** @type {Record<string, any>} */ (raw);
@@ -1371,7 +1380,7 @@ function carrySources(items, relocations, { deleted } = {}) {
     const kept = [];
     let carried = false;
     for (const source of item.sources) {
-      const to = typeof source === 'string' ? landing(source) : null;
+      const to = typeof source === 'string' ? landingOf(source, relocations) : null;
       if (to !== null) {
         kept.push(to);
         out.rewritten.push({ item: name, from: source, to });
@@ -1471,6 +1480,7 @@ module.exports = {
   reaimJoins,
   revertJoins,
   carrySources,
+  landingOf,
   reaimAbsorbed,
   ensureHorizon,
   validateSummary,

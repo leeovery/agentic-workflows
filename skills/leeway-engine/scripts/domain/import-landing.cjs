@@ -55,24 +55,23 @@ function normaliseBasename(basename) {
 // or `../../assets/{name}` from a topic's log), the home's folder and the
 // basename. Anchoring on the hops is what keeps a project path that merely
 // ends in the home's name — a source tree's own `src/imports/foo` — out of
-// the match.
+// the match. A name ends where no name character follows it, or a dot no
+// name character follows: a sentence's full stop.
 const HOME_LINK_HOPS = '(?:\\.\\./)+';
-const HOME_NAME_CHARS = '[A-Za-z0-9._-]';
+const HOME_NAME_END = '(?![A-Za-z0-9_-]|\\.[A-Za-z0-9._-])';
 
 /**
- * The regex over a document's links into `home`, its unit's `imports`,
- * `seeds` or `assets`: group 1 is the relative hops, group 2 the linked
- * basename. Given names it matches those alone — a rename substitutes only
+ * The regex over a document's links into `home`, a folder of its unit's —
+ * `imports`, `seeds`, `assets` or `spikes` — to one of `names`: group 1 is
+ * the relative hops, group 2 the linked name. A rename substitutes only
  * what it broke, and the right-hand bound stops a name from matching the
- * head of a longer one; given none it captures every link.
- * @param {string} home @param {string[]} [names] basenames to bound the match to
+ * head of a longer one.
+ * @param {string} home @param {string[]} names basenames to bound the match to
  * @returns {RegExp}
  */
 function homeLinkPattern(home, names) {
-  const body = names === undefined
-    ? `${HOME_NAME_CHARS}+`
-    : names.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
-  return new RegExp(`(${HOME_LINK_HOPS})${home}/(${body})(?!${HOME_NAME_CHARS})`, 'g');
+  const body = names.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  return new RegExp(`(${HOME_LINK_HOPS})${home}/(${body})${HOME_NAME_END}`, 'g');
 }
 
 /**

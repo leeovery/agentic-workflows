@@ -1,96 +1,32 @@
 'use strict';
 
+// ---------------------------------------------------------------------------
+// `workunit absorb` (domain/workunit-absorb.cjs; 18.3.5): a feature merged
+// into an in-progress epic as a new topic and deleted, in one transaction —
+// its topic folder, imports, seeds, assets and spikes moved, each under the
+// landing's dedupe with the links a rename broke rewritten, its phase items
+// carried whole, its mailbox and its roadmap sources following, the
+// knowledge base re-synced, one commit; the screens before and after it;
+// and every refusal leaving both units as they were. What it does to the
+// ledger is test-engine-workunit-absorb-ledger.cjs's.
+//
+// Layer: verb. World: absorb-world.cjs's feature and epic, a project of
+// each test's own, or one built once and copied where a test's material
+// costs commits.
+// ---------------------------------------------------------------------------
+
 require('./hermetic-env.cjs');
 
 const { describe, it, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 
-const {
-  git, stateGit, okSections, refuses, output, keywordOnlyKnowledge, unreadableKnowledge, indexedFiles, commitAll, setupFixtureAt, fixtureFrom, layout,
-} = require('./engine-harness.cjs');
-const { SESSION, SESSION_ID, MADE, ids, ledgerHelpers, copiesHelpers } = require('./ledger-world.cjs');
+const { git, stateGit, output, unreadableKnowledge, indexedFiles, commitAll, fixtureFrom } = require('./engine-harness.cjs');
 const { holdsWriterLock } = require('../../skills/leeway-engine/scripts/kernel/manifest-io.cjs');
-
-function writeFile(dir, rel, content) {
-  const full = path.join(dir, rel);
-  fs.mkdirSync(path.dirname(full), { recursive: true });
-  fs.writeFileSync(full, content);
-}
-
-/** The absorbable feature: a discussion, an import, a seed. */
-function featureManifest(overrides = {}) {
-  return {
-    name: 'auth-flow',
-    work_type: 'feature',
-    status: 'in-progress',
-    created: '2026-06-01',
-    description: 'auth flow work',
-    imports: [{ path: 'imports/notes.md', imported_at: '2026-06-01T09:00:00Z', origin: 'discovery' }],
-    seeds: [{ path: 'seeds/seed.md', source: 'inbox:idea', seeded_at: '2026-06-02T10:00:00Z' }],
-    phases: {
-      discussion: { items: { 'auth-flow': { status: 'completed' } } },
-    },
-    ...overrides,
-  };
-}
-
-/** The target epic — carries a colliding import and a dismissed name. */
-function epicManifest(overrides = {}) {
-  return {
-    name: 'payments',
-    work_type: 'epic',
-    status: 'in-progress',
-    imports: [{ path: 'imports/roadmap.md', imported_at: '2026-05-01T08:00:00Z', origin: 'discovery' }],
-    phases: {
-      discovery: {
-        items: { 'fee-model': { source: 'discovery', summary: 'Fees' } },
-        dismissed: ['dead-idea'],
-      },
-    },
-    ...overrides,
-  };
-}
-
-/** The project at `project` carrying the feature and the epic, its state committed. */
-function fillFixture(project, { feature = featureManifest(), epic = epicManifest() } = {}) {
-  keywordOnlyKnowledge(project);
-  const setUp = JSON.parse(fs.readFileSync(path.join(project, '.leeway/manifest.json'), 'utf8'));
-  writeFile(project, '.leeway/manifest.json', JSON.stringify({
-    ...setUp,
-    work_units: { 'auth-flow': { work_type: 'feature' }, payments: { work_type: 'epic' } },
-  }, null, 2) + '\n');
-  writeFile(project, '.leeway/auth-flow/manifest.json', JSON.stringify(feature, null, 2) + '\n');
-  writeFile(project, '.leeway/auth-flow/topics/auth-flow/log.md', '# Discussion\n');
-  writeFile(project, '.leeway/auth-flow/imports/notes.md', '# Notes\n');
-  writeFile(project, '.leeway/auth-flow/seeds/seed.md', '# Seed\n');
-  writeFile(project, '.leeway/payments/manifest.json', JSON.stringify(epic, null, 2) + '\n');
-  writeFile(project, '.leeway/payments/imports/roadmap.md', '# Roadmap\n');
-  // A file-only collision in the epic's imports dir — dedupe must dodge it.
-  writeFile(project, '.leeway/payments/imports/notes.md', '# Epic notes\n');
-  commitAll(project, 'init');
-}
-
-/** A project of its own, its state committed, carrying the feature and the epic. */
-function setupFixture(manifests = {}) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-wu-absorb-'));
-  const project = setupFixtureAt(path.join(root, 'project'));
-  fillFixture(project, manifests);
-  return { root, project };
-}
-
-/** Run the engine expecting success; returns the parsed JSON response. */
-function engine(fix, args, env = {}) {
-  const { res, sections } = okSections(fix.project, args, { env });
-  engine.lastSections = sections;
-  return res;
-}
-engine.lastSections = '';
-
-/** Run the engine expecting failure; returns the parsed stderr JSON. */
-const engineFails = (fix, args, env = {}) => refuses(fix.project, args, { env });
+const {
+  ABSORB, writeFile, featureManifest, epicManifest, fillFixture, setupFixture, copyFixture, engine, engineFails, inEpic, readManifest, shortHead, headFiles, treeSnapshot,
+} = require('./absorb-world.cjs');
 
 /** Index each file as it stands, so the store holds chunks a transaction can remove. */
 function indexFiles(fix, files) {
@@ -102,40 +38,6 @@ const FEATURE_FILES = [
   'auth-flow/imports/notes.md',
   'auth-flow/seeds/seed.md',
 ];
-
-/** Where a path in the epic lands, absolute, as the response names it. @param {string} rel */
-function inEpic(fix, rel) {
-  return path.join(fix.project, '.leeway', 'payments', rel);
-}
-
-function readManifest(fix, wu) {
-  return JSON.parse(fs.readFileSync(path.join(fix.project, '.leeway', wu, 'manifest.json'), 'utf8'));
-}
-
-function shortHead(fix) {
-  return stateGit(fix.project, ['rev-parse', '--short', 'HEAD']).trim();
-}
-
-/** Every file under `.leeway/`, rel path → content — the pristine check. */
-function treeSnapshot(fix) {
-  /** @type {Record<string, string>} */
-  const files = {};
-  const walk = (dir) => {
-    for (const name of fs.readdirSync(dir)) {
-      const full = path.join(dir, name);
-      if (fs.statSync(full).isDirectory()) walk(full);
-      else files[path.relative(fix.project, full)] = fs.readFileSync(full, 'utf8');
-    }
-  };
-  walk(path.join(fix.project, '.leeway'));
-  return {
-    files,
-    commits: stateGit(fix.project, ['rev-list', '--count', 'HEAD']).trim(),
-    status: git(fix.project, ['status', '--porcelain']) + stateGit(fix.project, ['status', '--porcelain']),
-  };
-}
-
-const ABSORB = ['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'auth'];
 
 describe('engine workunit absorb — happy path', () => {
   let fix;
@@ -200,6 +102,8 @@ describe('engine workunit absorb — happy path', () => {
       renamed_imports: [{ from: 'notes.md', to: 'notes-2.md' }],
       assets: [],
       renamed_assets: [],
+      spikes: [],
+      renamed_spikes: [],
       seeds: [{ path: inEpic(fix, 'seeds/seed.md'), source: 'inbox:idea' }],
       committed: shortHead(fix),
       warnings: [],
@@ -543,6 +447,16 @@ describe('engine workunit absorb — imports follow the material', () => {
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/payments/imports/notes-2-2.md'), 'utf8'), '# Second notes\n');
   });
 
+  it('a link closing a sentence, its full stop after it, is rewritten — the dot ends the name', () => {
+    setupImporting();
+    writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/log.md', '# Discussion\n\nThe ask is in ../../imports/notes.md.\n');
+    commitAll(fix.project, 'a sentence');
+    engine(fix, ABSORB);
+
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/payments/topics/auth/log.md'), 'utf8'),
+      '# Discussion\n\nThe ask is in ../../imports/notes-2.md.\n');
+  });
+
   it("a prose mention of the product's own src/imports path is not a link — never rewritten", () => {
     setupImporting();
     writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/log.md',
@@ -621,40 +535,69 @@ describe('engine workunit absorb — the mailbox follows its topic', () => {
   });
 });
 
-describe('engine workunit absorb — the topic folder and the assets follow the material', () => {
+/**
+ * The world the material's tests start from, built once and copied: the
+ * feature's topic folder with a brief, a waiting message and an experiment
+ * record, each linking its assets and spikes; its assets, a dot-named one
+ * among them; its spikes, one with its twin in the cache; and the epic
+ * holding an asset of one's name and a spike of one's slug.
+ */
+const materialWorld = fixtureFrom('engine-wu-absorb-material-', (template) => {
+  const feature = featureManifest();
+  feature.phases.experiment = { items: { 'auth-flow': { status: 'in-progress', experiments: { E1: { slug: 'dup-rate', status: 'running' } } } } };
+  fillFixture(template, { feature });
+  writeFile(template, '.leeway/auth-flow/topics/auth-flow/log.md',
+    '# Discussion\n\n![flow](../../assets/flow.png) and ../../assets/diagrams/login.svg\nThe probe: ../../spikes/001-token-probe/notes.md\n');
+  writeFile(template, '.leeway/auth-flow/topics/auth-flow/brief.md', '# Brief\n\nSee ../../assets/flow.png for the flow.\n');
+  writeFile(template, '.leeway/auth-flow/topics/auth-flow/mail/001-rollback.md', 'Rollback\n\nWho owns it?\n');
+  writeFile(template, '.leeway/auth-flow/topics/auth-flow/experiments/E1-dup-rate/report.md', '# Report\n\n![flow](../../../../assets/flow.png)\n');
+  writeFile(template, '.leeway/auth-flow/assets/flow.png', 'feature png\n');
+  writeFile(template, '.leeway/auth-flow/assets/diagrams/login.svg', '<svg/>\n');
+  writeFile(template, '.leeway/auth-flow/assets/.draft.png', 'tooling state\n');
+  writeFile(template, '.leeway/auth-flow/spikes/001-token-probe/notes.md', '# Token probe\n');
+  writeFile(template, '.leeway/auth-flow/spikes/002-retry-bench/bench.md', '# Retry bench\n');
+  writeFile(template, '.leeway/.cache/auth-flow/spikes/001-token-probe/out.log', 'built\n');
+  writeFile(template, '.leeway/payments/assets/flow.png', 'epic png\n');
+  writeFile(template, '.leeway/payments/spikes/001-token-probe/notes.md', '# The epic\'s own probe\n');
+  writeFile(template, '.leeway/payments/topics/fee-model/brief.md', '# Fees\n\n![flow](../../assets/flow.png)\n');
+  commitAll(template, 'material');
+});
+
+describe('engine workunit absorb — the topic folder, the assets and the spikes follow the material', () => {
   let fix;
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   const read = (rel) => fs.readFileSync(path.join(fix.project, '.leeway', rel), 'utf8');
 
-  /** The feature's topic folder with a brief and an experiment record, each linking its assets, the epic holding an asset of the same name as one. */
-  function setupAssets() {
-    const feature = featureManifest();
-    feature.phases.experiment = { items: { 'auth-flow': { status: 'in-progress', experiments: { E1: { slug: 'dup-rate', status: 'running' } } } } };
-    fix = setupFixture({ feature });
-    writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/log.md', '# Discussion\n\n![flow](../../assets/flow.png) and ../../assets/diagrams/login.svg\n');
-    writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/brief.md', '# Brief\n\nSee ../../assets/flow.png for the flow.\n');
-    writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/experiments/E1-dup-rate/report.md', '# Report\n\n![flow](../../../../assets/flow.png)\n');
-    writeFile(fix.project, '.leeway/auth-flow/assets/flow.png', 'feature png\n');
-    writeFile(fix.project, '.leeway/auth-flow/assets/diagrams/login.svg', '<svg/>\n');
-    writeFile(fix.project, '.leeway/auth-flow/assets/.draft.png', 'tooling state\n');
-    writeFile(fix.project, '.leeway/payments/assets/flow.png', 'epic png\n');
-    writeFile(fix.project, '.leeway/payments/topics/fee-model/brief.md', '# Fees\n\n![flow](../../assets/flow.png)\n');
-    commitAll(fix.project, 'assets');
-  }
+  it('the consent screen names everything the absorb moves — the brief, the waiting mail, the assets but a dot-named one, the spikes', () => {
+    fix = copyFixture(materialWorld);
+    const summary = output(fix.project, ['render', 'absorb-summary', 'auth-flow', '--into', 'payments', '--topic', 'auth']);
+
+    assert.match(summary, /Mail: {9}1 message\(s\) waiting\n {2}Experiments: {2}1 experiment\(s\)\n {2}Seed: {9}1 file\(s\) \(origin\)\n {2}Imports: {6}1 file\(s\)\n {2}Assets: {7}2 file\(s\)\n {2}Spikes: {7}2 spike\(s\)\n/);
+    assert.ok(summary.includes([
+      '  • Move discussion log to epic',
+      '  • Move brief to epic',
+      '  • Move waiting message(s) to epic',
+      '  • Move experiment series to epic',
+      '  • Move seed file(s) to epic',
+      '  • Move import file(s) to epic',
+      '  • Move asset(s) to epic',
+      '  • Move spike(s) to epic',
+    ].join('\n')));
+  });
 
   it('moves the topic folder whole — its brief beside its log — in the absorb\'s one commit', () => {
-    setupAssets();
+    fix = copyFixture(materialWorld);
     engine(fix, ABSORB);
 
     assert.strictEqual(read('payments/topics/auth/brief.md'), '# Brief\n\nSee ../../assets/flow-2.png for the flow.\n');
-    const staged = stateGit(fix.project, ['show', '--name-only', '--no-renames', '--pretty=format:', 'HEAD']).trim().split('\n');
+    const staged = headFiles(fix, ['--no-renames']);
     assert.ok(staged.includes('auth-flow/topics/auth-flow/brief.md') && staged.includes('payments/topics/auth/brief.md'), 'the brief\'s move is committed');
     assert.strictEqual(stateGit(fix.project, ['status', '--porcelain']), '');
   });
 
   it('moves the assets under the dedupe, rewriting the links its rename broke in every document of the moved folder, a dot-named one going with the feature', () => {
-    setupAssets();
+    fix = copyFixture(materialWorld);
     const res = engine(fix, ABSORB);
 
     assert.deepStrictEqual([res.assets, res.renamed_assets], [
@@ -664,133 +607,44 @@ describe('engine workunit absorb — the topic folder and the assets follow the 
     assert.deepStrictEqual([read('payments/assets/flow-2.png'), read('payments/assets/diagrams/login.svg'), read('payments/assets/flow.png')],
       ['feature png\n', '<svg/>\n', 'epic png\n'], 'the feature\'s assets land beside the epic\'s, which are untouched');
     assert.deepStrictEqual(fs.readdirSync(path.join(fix.project, '.leeway/payments/assets')).sort(), ['diagrams', 'flow-2.png', 'flow.png']);
-    assert.strictEqual(read('payments/topics/auth/log.md'), '# Discussion\n\n![flow](../../assets/flow-2.png) and ../../assets/diagrams/login.svg\n');
     assert.strictEqual(read('payments/topics/auth/experiments/E1-dup-rate/report.md'), '# Report\n\n![flow](../../../../assets/flow-2.png)\n');
     assert.strictEqual(read('payments/topics/fee-model/brief.md'), '# Fees\n\n![flow](../../assets/flow.png)\n', 'the epic\'s own document names the epic\'s own asset');
     assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/auth-flow')));
   });
 
-  it('a feature with no assets moves none, and the epic gains no folder for them', () => {
+  it('moves the spikes under their numbers, a slug the epic\'s spikes hold suffixed and its links rewritten, each twin in the cache with it — and the receipt names them', () => {
+    fix = copyFixture(materialWorld);
+    const res = engine(fix, ABSORB);
+
+    assert.deepStrictEqual([res.spikes, res.renamed_spikes], [
+      [{ path: inEpic(fix, 'spikes/001-token-probe-2') }, { path: inEpic(fix, 'spikes/002-retry-bench') }],
+      [{ from: '001-token-probe', to: '001-token-probe-2' }],
+    ]);
+    assert.deepStrictEqual([read('payments/spikes/001-token-probe-2/notes.md'), read('payments/spikes/002-retry-bench/bench.md'), read('payments/spikes/001-token-probe/notes.md')],
+      ['# Token probe\n', '# Retry bench\n', '# The epic\'s own probe\n']);
+    assert.strictEqual(read('.cache/payments/spikes/001-token-probe-2/out.log'), 'built\n');
+    assert.strictEqual(read('payments/topics/auth/log.md'),
+      '# Discussion\n\n![flow](../../assets/flow-2.png) and ../../assets/diagrams/login.svg\nThe probe: ../../spikes/001-token-probe-2/notes.md\n');
+
+    const receipt = output(fix.project, ['render', 'absorb-receipt', 'payments', '--topic', 'auth', '--moved', 'seeds,imports,assets,spikes', '--renamed', 'flow.png:flow-2.png']);
+    assert.ok(receipt.includes([
+      '  • Seed: moved',
+      '  • Imports: moved',
+      '  • Assets: moved',
+      '  • Spikes: moved',
+      '  • Renamed: flow.png → flow-2.png (links rewritten)',
+    ].join('\n')));
+    assert.match(engineFails(fix, ['render', 'absorb-receipt', 'payments', '--topic', 'auth', '--moved', 'mail']).error,
+      /--moved entries must be seeds, imports, assets, spikes, got "mail"/);
+  });
+
+  it('a feature with no assets and no spikes moves none, and the epic gains no folder for them', () => {
     fix = setupFixture();
     const res = engine(fix, ABSORB);
 
-    assert.deepStrictEqual([res.assets, res.renamed_assets], [[], []]);
+    assert.deepStrictEqual([res.assets, res.renamed_assets, res.spikes, res.renamed_spikes], [[], [], [], []]);
     assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/payments/assets')));
-  });
-});
-
-describe('engine workunit absorb — the ledger follows the topic (5.8.18)', () => {
-  let fix;
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
-
-  const project = () => fix.project;
-  const { rawLines, entries, full } = ledgerHelpers(project);
-  const { copy, indexedText } = copiesHelpers(project);
-  /** @param {string[]} args */
-  const ledger = (...args) => engine(fix, ['ledger', ...args]);
-  const AT_FEATURE = 'auth-flow.discussion.auth-flow';
-  const TOPIC_COPY = layout.knowledge('records', 'payments', 'auth.md');
-  const FEATURE_COPIES = [layout.knowledge('records', 'auth-flow', 'auth-flow.md'), layout.knowledge('records', 'auth-flow.md')];
-
-  /** The short ids of the lines `linesWorld` made, filled as it is first built. */
-  const made = /** @type {Record<'found'|'question'|'decided'|'measured'|'own', string>} */ ({});
-
-  /**
-   * The world every test here starts from, built once and copied: the
-   * feature running a series, a line made at each of its places — its unit's
-   * level, its discussion, its experiment — and one of the epic's own.
-   */
-  const linesWorld = fixtureFrom('engine-wu-absorb-lines-', (template) => {
-    const feature = featureManifest({ phases: {
-      discussion: { items: { 'auth-flow': { status: 'in-progress' } } },
-      experiment: { items: { 'auth-flow': { status: 'in-progress', experiments: { E1: { slug: 'dup-rate', status: 'running' } } } } },
-    } });
-    const epic = epicManifest();
-    epic.phases.discussion = { items: { 'fee-model': { status: 'in-progress' } } };
-    fillFixture(template, { feature, epic });
-    writeFile(template, '.leeway/auth-flow/topics/auth-flow/experiments/E1-dup-rate/problem.md', '# Problem\n');
-    commitAll(template, 'series');
-    const { write } = ledgerHelpers(() => template);
-    const { ask, decide } = copiesHelpers(() => template);
-    const find = (/** @type {string} */ address, /** @type {string} */ text) => write('find', address, [], { ...MADE, text, how: 'seen in a spike', known: 'spike' }).id;
-    const found = find('auth-flow.discovery', 'Logins fail at peak.');
-    const question = ask(AT_FEATURE, 'Does a session outlive its token?');
-    Object.assign(made, {
-      found,
-      question,
-      decided: decide(AT_FEATURE, question, 'No: it ends with its token.'),
-      measured: find('auth-flow.experiment.auth-flow', 'A token expires mid-session one time in twenty.'),
-      own: ask('payments.discussion.fee-model', 'Who pays the fee?'),
-    });
-  });
-
-  /** A copy of `linesWorld` for the running test: the ids its lines were made with. */
-  function setupWithLines() {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-wu-absorb-'));
-    fix = { root, project: linesWorld(path.join(root, 'project')) };
-    return made;
-  }
-
-  it('carries every line the feature made — at its unit\'s level, its discussion, its experiment — in one line at the epic topic, the epic\'s own left out, in the absorb\'s one commit', () => {
-    const made = setupWithLines();
-    const before = rawLines();
-    const commits = Number(stateGit(fix.project, ['rev-list', '--count', 'HEAD']));
-    engine(fix, ABSORB, SESSION);
-
-    assert.deepStrictEqual(rawLines().slice(0, -1), before, 'every line before the carry is kept as written');
-    const { v: _v, id: _id, at: _at, ...carry } = entries().at(-1);
-    assert.deepStrictEqual(carry, {
-      event: 'rehomed', unit: 'payments', topic: 'auth', phase: 'discussion', session: SESSION_ID,
-      lines: [made.found, made.question, made.decided, made.measured].map(full),
-    });
-    assert.strictEqual(Number(stateGit(fix.project, ['rev-list', '--count', 'HEAD'])), commits + 1);
-    const staged = stateGit(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
-    assert.ok(staged.includes(layout.ledger), 'the carry rides the absorb\'s commit');
-    assert.strictEqual(stateGit(fix.project, ['status', '--porcelain']), '');
-  });
-
-  it('every read takes the carried lines as the epic topic\'s — its record and its map, each line shown where it now stands — and the copies follow: the feature\'s removed, the topic\'s written and indexed', () => {
-    const made = setupWithLines();
-    assert.ok(FEATURE_COPIES.every((rel) => copy(rel) !== null));
-    engine(fix, ABSORB, SESSION);
-
-    const record = ledger('record', 'payments', 'auth');
-    assert.deepStrictEqual([ids(record.questions), ids(record.findings), ids(record.decisions)], [[made.question], [made.found, made.measured], [made.decided]]);
-    assert.deepStrictEqual([...record.questions, ...record.findings, ...record.decisions].map((e) => [e.unit, e.topic, e.phase]),
-      [['payments', 'auth', 'discussion'], ['payments', 'auth', 'discovery'], ['payments', 'auth', 'experiment'], ['payments', 'auth', 'discussion']]);
-    assert.deepStrictEqual(ledger('map', 'payments', 'auth').questions.map((r) => [r.id, r.stands, ids(r.answers)]), [[made.question, 'answered', [made.decided]]]);
-    assert.deepStrictEqual(ids(ledger('record', 'payments', 'fee-model').questions), [made.own]);
-    assert.deepStrictEqual(FEATURE_COPIES.map(copy), [null, null]);
-    assert.match(/** @type {string} */ (copy(TOPIC_COPY)), /No: it ends with its token\./);
-    assert.match(indexedText(), /No: it ends with its token\./);
-  });
-
-  it('a unit made later under the feature\'s name holds none of the carried lines, and the epic topic keeps them', () => {
-    setupWithLines();
-    engine(fix, ABSORB, SESSION);
-    const record = ledger('record', 'payments', 'auth');
-
-    const project = JSON.parse(fs.readFileSync(path.join(fix.project, '.leeway/manifest.json'), 'utf8'));
-    project.work_units['auth-flow'] = { work_type: 'feature' };
-    writeFile(fix.project, '.leeway/manifest.json', JSON.stringify(project, null, 2) + '\n');
-    writeFile(fix.project, '.leeway/auth-flow/manifest.json', JSON.stringify(featureManifest({ imports: [], seeds: [] }), null, 2) + '\n');
-    writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/log.md', '# Discussion\n');
-    commitAll(fix.project, 'the name made again');
-
-    const empty = { questions: [], findings: [], decisions: [], moved: [], merged: [], other_topics: [] };
-    assert.deepStrictEqual(ledger('record', 'auth-flow', 'auth-flow'), { ok: true, unit: 'auth-flow', topic: 'auth-flow', live: true, ...empty });
-    assert.deepStrictEqual(ledger('map', 'auth-flow', 'auth-flow').questions, []);
-    assert.deepStrictEqual(ledger('record', 'auth-flow').findings, []);
-    assert.deepStrictEqual(ledger('record', 'payments', 'auth'), record);
-    assert.deepStrictEqual(FEATURE_COPIES.map(copy), [null, null]);
-  });
-
-  it('refuses a feature holding lines where no conversation names the session the carry is made in, both units pristine', () => {
-    setupWithLines();
-    const before = treeSnapshot(fix);
-    assert.match(engineFails(fix, ABSORB).error,
-      /^feature "auth-flow" holds ledger entries, which the absorb carries to the epic topic in this conversation — Claude Code hands every command it runs a session id, and this one has none$/);
-    assert.deepStrictEqual(treeSnapshot(fix), before);
+    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/payments/spikes')));
   });
 });
 

@@ -38,8 +38,10 @@
 //   (ledger-events.cjs), as additions and edits alone, never a removal: a
 //   file enters the state when a link names it, its edits and a linked
 //   folder's new files land with every ledger commit after, and a link
-//   whose commit was refused is caught up with the next. Only an asset
-//   link's line is parsed for it, so a ledger holding none pays a scan.
+//   whose commit was refused is caught up with the next; a carried link's
+//   file at the path its carry moved it to (ledger-rehomed.cjs). Only an
+//   asset link's line and a carry's are parsed for it, so a ledger holding
+//   neither pays a scan.
 // - Entries a write appended and a kill, or a commit git refused, left
 //   uncommitted are committed whole by the next commit of the ledger: a
 //   write's, or boot's before its catch-up (4.7.8). Boot counts them past
@@ -60,6 +62,7 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 const { isoNow } = require('./dates.cjs');
 const { LEDGER, LEDGER_VERSION, LedgerLineError, LedgerNewer, parseEntry, validEvent } = require('./ledger-events.cjs');
 const { newId, shortId } = require('./ledger-ids.cjs');
+const { rehomedPlaces, asRehomed } = require('./ledger-rehomed.cjs');
 const { idOf, idsOf, keepStop, keptStop, ledgerStopped, diskChange, ledgerBlobs, fileStartsWith } = require('./ledger-check.cjs');
 const { STATE_BRANCH, BRANCH_REF, openWorktree, withStateLock, commitHere } = require('./state-worktree.cjs');
 const { commitStateTail } = require('./commit.cjs');
@@ -73,6 +76,7 @@ function eventMark(name) {
 }
 
 const ASSET_LINK = eventMark('asset');
+const REHOMED = eventMark('rehomed');
 
 /** The fields the engine assigns an entry, never its caller. */
 const ASSIGNED = ['v', 'id', 'at'];
@@ -186,27 +190,32 @@ function uncommittedEntries(root, read) {
 
 /**
  * Every path the ledger's asset links name, once each, in the order first
- * linked — what every commit of the ledger takes besides it. The caller
- * holds the writer lock.
+ * linked, a carried link's where its carry moved the file
+ * (ledger-rehomed.cjs) — what every commit of the ledger takes besides it.
+ * The caller holds the writer lock.
  * @param {string} root
  * @returns {string[]}
  */
 function linkedPaths(root) {
   const file = ledgerFile(root);
   if (!fs.existsSync(file)) return [];
-  /** @type {Set<string>} */
-  const paths = new Set();
+  /** @type {Record<string, unknown>[]} */
+  const links = [];
+  /** @type {Record<string, unknown>[]} */
+  const carries = [];
   const fd = fs.openSync(file, 'r');
   try {
     for (const { text } of fdLines(fd)) {
-      if (!text.includes(ASSET_LINK)) continue;
+      if (!text.includes(ASSET_LINK) && !text.includes(REHOMED)) continue;
       const line = JSON.parse(text);
-      if (line.event === 'asset') paths.add(line.path);
+      if (line.event === 'asset') links.push(line);
+      else if (line.event === 'rehomed') carries.push(line);
     }
   } finally {
     fs.closeSync(fd);
   }
-  return [...paths];
+  const places = rehomedPlaces(carries);
+  return [...new Set(links.map((link) => /** @type {string} */ (asRehomed(places, link).path)))];
 }
 
 /**

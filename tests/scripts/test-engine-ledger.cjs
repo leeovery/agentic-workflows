@@ -166,7 +166,7 @@ describe('the events and their schemas', () => {
     appendEntry(root, { event: 'asset', ...TAGS, entry: r, path: 'fumi/assets/note-window.png', status: 'canonical', into: null }, []);
     const parkedId = /** @type {string} */ (appendEntry(root, parked(q), []).id);
     appendEntry(root, { event: 'unparked', ...TAGS, topic: null, phase: 'implementation', task: '2.3', parks: [parkedId] }, []);
-    appendEntry(root, { event: 'rehomed', ...TAGS, lines: [q, d] }, []);
+    appendEntry(root, { event: 'rehomed', ...TAGS, lines: [q, d], files: [['mint/assets/note.png', 'fumi/assets/note.png']] }, []);
 
     const text = ledgerText(root);
     assert.ok(text.endsWith('\n') && !text.includes('\r'), 'a line ends with LF alone');
@@ -184,7 +184,7 @@ describe('the events and their schemas', () => {
       [...HEADER, 'entry', 'path', 'status', 'into'],
       [...HEADER, 'question', 'replaces', 'reason', 'cause', 'relies_on', 'task', 'number', 'call', 'rows_judged', 'why_asking'],
       [...HEADER, 'task', 'parks'],
-      [...HEADER, 'lines'],
+      [...HEADER, 'lines', 'files'],
     ]);
     assert.deepStrictEqual(Object.keys(SCHEMA.events).sort(), ['asked', 'asset', 'checked', 'decided', 'found', 'kept', 'merged', 'moved', 'parked', 'rehomed', 'replaced', 'still-holds', 'unparked']);
   });
@@ -229,13 +229,19 @@ describe('the events and their schemas', () => {
     for (const [value, message] of cases) assert.throws(() => validEvent(value), (err) => err instanceof LedgerLineError && message.test(err.message), `${JSON.stringify(value)} was not refused as ${message}`);
   });
 
-  it('holds a carry to its shape: the lines it carries, by id, never none — and no maker, as no entry', () => {
-    const carry = { v: LEDGER_VERSION, id: newId(), event: 'rehomed', ...TAGS, at: AT, lines: [newId(), newId()] };
+  it('holds a carry to its shape: the lines it carries, by id, never none, and each file it moved once, from one plain path to another — and no maker, as no entry', () => {
+    const carry = { v: LEDGER_VERSION, id: newId(), event: 'rehomed', ...TAGS, at: AT, lines: [newId(), newId()], files: [['mint/assets/note.png', 'fumi/assets/note-2.png']] };
     assert.deepStrictEqual(validEvent(carry), carry);
+    assert.deepStrictEqual(validEvent({ ...carry, files: [] }), { ...carry, files: [] });
     assert.strictEqual(entryKind(carry), null);
+    const notMoved = /its files is not a list of a file moved, \[from, to\]: two paths from the state root/;
     const cases = [
       [{ ...carry, lines: [] }, /a carry lists the lines it carries/],
       [{ ...carry, lines: ['Q1'] }, /its lines is not a list of an entry id/],
+      [{ ...carry, files: [['mint/assets/note.png']] }, notMoved],
+      [{ ...carry, files: [['mint/../note.png', 'fumi/assets/note.png']] }, notMoved],
+      [{ ...carry, files: [['fumi/assets/note.png', 'fumi/assets/note.png']] }, notMoved],
+      [{ ...carry, files: [['mint/a.png', 'fumi/a.png'], ['mint/a.png', 'fumi/b.png']] }, /a carry names each file it moved once/],
     ];
     for (const [value, message] of cases) assert.throws(() => validEvent(value), (err) => err instanceof LedgerLineError && message.test(err.message), `${JSON.stringify(value)} was not refused as ${message}`);
   });

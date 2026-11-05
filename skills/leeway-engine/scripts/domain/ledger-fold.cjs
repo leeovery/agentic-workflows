@@ -28,14 +28,13 @@
 // unchecked (16.19.8).
 //
 // Every fold, and every line a read shows, takes a line a carry lists
-// (`rehomed`, ledger-events.cjs) as made in the unit and on the topic the
-// carry is made at, its phase its own. A carry sits after the lines it
-// carries, so the carries are collected before any line is folded. An
-// absorbed feature's lines are the epic topic's, live while it is (5.8.18,
-// 18.3.5), and a unit made later under the feature's name holds none of
-// them. A unit gives up places holding one topic at most, so a move among
-// the lines it carries went to the roadmap, never to a topic its `to` would
-// name in the unit given up.
+// (`rehomed`) as made in the unit and on the topic the carry is made at,
+// its phase its own, each file it names where the move took it
+// (ledger-rehomed.cjs). An absorbed feature's lines are the epic topic's,
+// live while it is (5.8.18, 18.3.5), and a unit made later under the
+// feature's name holds none of them. A unit gives up places holding one
+// topic at most, so a move among the lines it carries went to the roadmap,
+// never to a topic its `to` would name in the unit given up.
 //
 // Read against liveness, the state answers:
 // - Whether an event is live: the unit and topic it was made on are
@@ -151,6 +150,7 @@
 // ---------------------------------------------------------------------------
 
 const { withLedger } = require('./ledger.cjs');
+const { rehomedPlaces, asRehomed } = require('./ledger-rehomed.cjs');
 const { PRODUCT, entryKind, claudesCall, roadmapItemOf } = require('./ledger-events.cjs');
 
 /** @typedef {import('./ledger.cjs').EntryPlace} EntryPlace */
@@ -321,34 +321,10 @@ const ID_FACTS = {
 };
 
 /**
- * Where each carried line is made, by its id: the unit and topic of the
- * carry listing it.
- * @param {import('./ledger.cjs').OpenLedger} ledger
- * @returns {Map<string, Standing>}
- */
-function carriedPlaces(ledger) {
-  /** @type {Map<string, Standing>} */
-  const places = new Map();
-  for (const { event } of ledger.named('rehomed')) {
-    for (const id of /** @type {string[]} */ (event.lines)) places.set(id, { unit: /** @type {string} */ (event.unit), topic: idOrNull(event.topic) });
-  }
-  return places;
-}
-
-/**
- * `event` as every read takes it: made where the carry listing it is, if one
- * does. @param {Map<string, Standing>} carried @param {Record<string, unknown>} event
- */
-function asCarried(carried, event) {
-  const at = carried.get(/** @type {string} */ (event.id));
-  return at === undefined ? event : { ...event, ...at };
-}
-
-/**
  * `answer` given the ledger folded by `fold` in one streamed pass, and the
  * entry at any place read again, the file held open between — each line a
- * carry lists, folded and read again, as made at the place the carry is:
- * the carries are collected first, as each sits after the lines it carries.
+ * carry lists, folded and read again, where the carry took it
+ * (ledger-rehomed.cjs): the carries are gathered first.
  * @template S, T
  * @param {string} root @param {Fold<S>} fold
  * @param {string[]} notes what a landing the read's check finished said, pushed to
@@ -357,10 +333,10 @@ function asCarried(carried, event) {
  */
 function readFolded(root, fold, notes, answer) {
   return withLedger(root, notes, (ledger) => {
-    const carried = carriedPlaces(ledger);
+    const carried = rehomedPlaces([...ledger.named('rehomed')].map(({ event }) => event));
     const state = fold.start();
-    for (const { event, place } of ledger.entries()) fold.step(state, asCarried(carried, event), place);
-    return answer(state, (place) => asCarried(carried, ledger.entryAt(place)));
+    for (const { event, place } of ledger.entries()) fold.step(state, asRehomed(carried, event), place);
+    return answer(state, (place) => asRehomed(carried, ledger.entryAt(place)));
   });
 }
 

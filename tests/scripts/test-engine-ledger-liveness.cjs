@@ -267,7 +267,7 @@ describe('carried lines (5.8.18)', () => {
     mint();
     const question = ask('mint.discussion.mint', 'Does a note float?');
     const decided = decide('mint.discussion.mint', question, 'It floats.');
-    appendEntry(statePath(dir), { event: 'rehomed', unit: UNIT, topic: 'note-window', phase: 'discussion', session: SESSION_ID, lines: [question, decided].map(full) }, []);
+    appendEntry(statePath(dir), { event: 'rehomed', unit: UNIT, topic: 'note-window', phase: 'discussion', session: SESSION_ID, lines: [question, decided].map(full), files: [] }, []);
     return { question, decided };
   }
 
@@ -284,13 +284,14 @@ describe('carried lines (5.8.18)', () => {
     assert.deepStrictEqual(read('record', UNIT, 'note-window'), note);
   });
 
-  it('holds a carried line live while the place it was carried to is: that topic cancelled takes it out of every read, reactivated brings it back', () => {
+  it('holds a carried line live while the place it was carried to is: that topic cancelled takes it out of every read, the unit it came from holding none of it meanwhile, reactivated brings it back', () => {
     carriedFromMint();
     const before = read('record', UNIT, 'note-window');
 
     ok(dir, ['topic', 'cancel', UNIT, 'discovery', 'note-window']);
     assert.deepStrictEqual(read('record', UNIT, 'note-window'), { ok: true, unit: UNIT, topic: 'note-window', live: false, ...EMPTY });
     assert.deepStrictEqual(read('map', UNIT, 'note-window').questions, []);
+    assert.deepStrictEqual(read('record', 'mint', 'mint'), { ok: true, unit: 'mint', topic: 'mint', live: true, ...EMPTY }, 'a carry holds whatever its own place\'s liveness');
 
     ok(dir, ['topic', 'reactivate', UNIT, 'discovery', 'note-window']);
     assert.deepStrictEqual(read('record', UNIT, 'note-window'), before);

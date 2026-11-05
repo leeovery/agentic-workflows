@@ -259,8 +259,9 @@ function auditState(dir, label) {
 // row is neither cancelled nor postponed, and the product's place, which no
 // unit holds, always — what it shows is `ledger product`'s, under discovery,
 // never a record's, and it has no copy; a line an absorb's carry lists is
-// made in the unit and on the topic the carry is, its phase its own, and
-// shown so; an event is in a live place while
+// made in the unit and on the topic the carry is, its phase its own, the
+// file a link names where the carry moved it, and shown so; an event
+// is in a live place while
 // the unit and topic it was made on are live — a move while its unit is, a
 // question's wording made on the topic the last move its unit made of the
 // question to a topic in a live place took it to; a move to the roadmap
@@ -313,8 +314,14 @@ function auditLedger(dir, ctx) {
   const root = statePath(dir);
   /** @type {Record<string, any>[]} */
   const written = fs.readFileSync(path.join(root, LEDGER), 'utf8').split('\n').slice(0, -1).map((line) => JSON.parse(line));
-  const carriedTo = new Map(written.filter((e) => e.event === 'rehomed').flatMap((c) => c.lines.map((/** @type {string} */ id) => [id, { unit: c.unit, topic: c.topic }])));
-  const events = written.map((e) => (carriedTo.has(e.id) ? { ...e, ...carriedTo.get(e.id) } : e));
+  const carriedBy = new Map(written.filter((e) => e.event === 'rehomed').flatMap((c) => c.lines.map((/** @type {string} */ id) => [id, c])));
+  /** A carried line where its carry took it, a link's file where the carry moved it. @param {Record<string, any>} e */
+  const carried = (e) => {
+    const carry = carriedBy.get(e.id);
+    const moved = carry.files.find((/** @type {string[]} */ [from]) => from === e.path);
+    return { ...e, unit: carry.unit, topic: carry.topic, ...(e.event === 'asset' && moved ? { path: moved[1] } : {}) };
+  };
+  const events = written.map((e) => (carriedBy.has(e.id) ? carried(e) : e));
   const byId = new Map(events.map((e) => [e.id, e]));
   /** @param {string} short */
   const full = (short) => /** @type {Record<string, any>} */ (events.find((e) => e.id.startsWith(short))).id;

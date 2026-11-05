@@ -102,14 +102,17 @@ describe('pipeline simulation: workunit', () => {
     enterEntry(sim, feat, 'discussion', feat);
     sim.write(`.leeway/${feat}/topics/${feat}/log.md`, '# Discussion — Stray\n');
     sim.run(['commit', feat, '-m', `discussion(${feat}): capture`, '--topic', `discussion/${feat}`]);
-    // The discussion decides one question, moves another to the roadmap as
-    // later, and spawns an experiment measuring a third, still awaiting its
-    // evidence: the series travels with the topic, wait and all, and every
-    // line the feature made goes with them (5.8.18).
+    // The discussion decides one question, linking the file the person
+    // shared, moves another to the roadmap as later, and spawns an
+    // experiment measuring a third, still awaiting its evidence: the series
+    // travels with the topic, wait and all, and every line the feature made
+    // goes with them, the link following its file (5.8.18).
     const at = `${feat}.discussion.${feat}`;
     const made = { by: 'claude', who_moved_whom: 'none' };
     const owner = askedOn(sim, feat, feat, 'Who owns the cutover?');
     const owned = sim.run(['ledger', 'decide', at, '--answers', owner], null, JSON.stringify({ ...made, text: 'The platform team.', why: 'They run the switch.' })).id;
+    sim.write(`.leeway/${feat}/assets/runbook.png`, 'the runbook the person shared\n');
+    sim.run(['asset', 'add', feat, `${feat}/assets/runbook.png`, '--entry', owned, '--status', 'reference']);
     const rollback = askedOn(sim, feat, feat, 'Can a cutover roll back part way?');
     sim.run(['roadmap', 'add', 'rollback', '--horizon', 'v2', '--summary', 'Rolling a cutover back']);
     sim.run(['ledger', 'move', at, '--question', rollback, '--to', 'roadmap:rollback'], null, JSON.stringify(made));
@@ -158,9 +161,11 @@ describe('pipeline simulation: workunit', () => {
     // The feature's lines are the epic topic's: its decision current there,
     // its question moved to the roadmap still later, and the question its
     // experiment measures held from Claude's answer while it runs.
-    const shown = () => ({ record: sim.run(['ledger', 'record', epic, 'stray-topic']), map: sim.run(['ledger', 'map', epic, 'stray-topic']) });
+    const read = (/** @type {string[]} */ args) => JSON.parse(sim.read(['ledger', ...args]));
+    const shown = () => ({ record: read(['record', epic, 'stray-topic']), map: read(['map', epic, 'stray-topic']) });
     const absorbedReads = shown();
-    assert.deepStrictEqual(absorbedReads.record.decisions.map((/** @type {{id: string}} */ d) => d.id), [owned], 'the feature\'s decision is current at the epic topic');
+    assert.deepStrictEqual(absorbedReads.record.decisions.map((/** @type {{id: string, assets: {path: string}[]}} */ d) => [d.id, d.assets.map((a) => a.path)]),
+      [[owned, [`${epic}/assets/runbook.png`]]], 'the feature\'s decision is current at the epic topic, linking its file where it went');
     const rows = new Map(absorbedReads.map.questions.map((/** @type {{id: string}} */ q) => [q.id, q]));
     assert.deepStrictEqual([rows.get(owner).stands, rows.get(rollback).stands, rows.get(rollback).moved_to], ['answered', 'later', 'roadmap:rollback'],
       'the move the feature made holds at the epic topic');
@@ -177,22 +182,18 @@ describe('pipeline simulation: workunit', () => {
     // and the epic topic keeps it all.
     sim.run(['workunit', 'create', feat, 'feature', '--description', 'A stray feature, again', '--session-log-file', sessionLog(sim, feat)]);
     enterEntry(sim, feat, 'discussion', feat);
-    assert.deepStrictEqual([sim.run(['ledger', 'record', feat, feat]).questions, sim.run(['ledger', 'map', feat, feat]).questions], [[], []],
+    assert.deepStrictEqual([read(['record', feat, feat]).questions, read(['map', feat, feat]).questions], [[], []],
       'the name made again holds none of the carried lines');
     assert.deepStrictEqual(shown(), absorbedReads);
 
     // The release edge survives the move: walking E1 to its verdict at the
     // epic address releases the wait, and the epic topic answers the
     // question it measured.
-    sim.run(['experiment', 'advance', epic, 'stray-topic', 'E1']);
-    sim.run(['experiment', 'approve', epic, 'stray-topic', 'E1']);
-    sim.run(['experiment', 'advance', epic, 'stray-topic', 'E1']);
-    sim.run(['experiment', 'runs', epic, 'stray-topic', 'E1', '--file', sim.write(`.leeway/.cache/${epic}/experiment/stray-topic/E1-runs.json`,
-      JSON.stringify([{ condition: 'a staged cutover', of: 3, values: [5, 6, 5], unit: 'days' }]))]);
+    for (const step of ['advance', 'approve', 'advance']) sim.run(['experiment', step, epic, 'stray-topic', 'E1']);
     const settled = sim.run(['experiment', 'conclude', epic, 'stray-topic', 'E1', '--verdict', 'cutover costs a week — staged rollout adopted']);
     assert.deepStrictEqual(settled.released_waits, [{ phase: 'discussion', released: ['E1'], remaining: [] }]);
     const costed = sim.run(['ledger', 'decide', epicAt, '--answers', cost], null, JSON.stringify({ ...made, text: 'A week, staged.', why: 'E1 measured it.' })).id;
-    assert.deepStrictEqual(sim.run(['ledger', 'record', epic, 'stray-topic']).decisions.map((/** @type {{id: string}} */ d) => d.id), [owned, costed]);
+    assert.deepStrictEqual(read(['record', epic, 'stray-topic']).decisions.map((/** @type {{id: string}} */ d) => d.id), [owned, costed]);
   });
 
   it('reference imports: a discussion lands files, absorb re-homes them over a collision', () => {

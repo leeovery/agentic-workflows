@@ -9,35 +9,50 @@
 //
 // - The writer lock is held around the whole of it: the feature's ledger
 //   lines read, the manifests, the moves and the carry's append. The
-//   feature's last-looked mark goes under the mark's own lock, taken inside
-//   it (ledger-since.cjs).
+//   feature's last-looked mark joins the epic's and goes, each under the
+//   mark's own lock, taken inside it (ledger-since.cjs).
 // - Validation is complete before any mutation: on failure both work units
 //   are byte-identical to before the call.
 // - What moves: the feature's topic folder whole — its log, brief, mail and
 //   experiments — to the epic topic's (4.11.5); its imports, seeds and
-//   assets into the epic's, each under the landing's dedupe; each phase item
-//   whole; and a map row with no summary, in the same save as the items. A
-//   dot-named asset is tooling state, never material. The feature's
-//   discovery logs and spikes go with it.
+//   assets into the epic's, each under the landing's dedupe; its spikes into
+//   the epic's, a slug the epic's spikes hold already suffixed `-2`, `-3`,
+//   so no two spikes share one, each spike's twin in the cache with it; each
+//   phase item whole; and a map row with no summary, in the same save as
+//   the items. A dot-named asset is tooling state, never material. The
+//   feature's discovery logs go with it.
 // - The link rewrite: the engine rewrites only a path its own rename broke,
-//   in a document its own move relocated — an import's, a seed's or an
-//   asset's the dedupe renamed, in each markdown file of the moved topic
-//   folder.
+//   in a document its own move relocated — an import's, a seed's, an
+//   asset's or a spike's the dedupe renamed, in each markdown file of the
+//   moved topic folder.
 // - The ledger (5.8.18): one carry at the epic's topic,
 //   `{epic}.discussion.{topic}`, listing by id every line made at a place of
-//   the feature — its unit's level, its discussion and its experiments — so
-//   every read takes them as the epic topic's (ledger-fold.cjs). It lands
-//   once the epic's manifest holds the topic, so no read meets the lines on
-//   a topic the epic lacks, and before the feature is deleted. A feature
-//   holding none writes no line. A line another clone writes at the feature
-//   after the absorb is no line it lists: merged in, it stands in a unit that
-//   is gone (a known edge).
+//   the feature — its unit's level, its discussion and its experiments —
+//   and, as `[from, to]`, each file those lines cite or link that the move
+//   took elsewhere, so every read takes them as the epic topic's, naming
+//   the files where they went (ledger-rehomed.cjs). It lands once the epic's
+//   manifest holds the topic, so no read meets the lines on a topic the
+//   epic lacks, and before the feature is deleted. A feature holding none
+//   writes no line.
 // - The manifest writes are the source of truth; the knowledge base is a
 //   derived index (warn-don't-block). One state commit covers the feature's
 //   deletion, the epic, the project manifest and the ledger. The record
 //   copies follow, rendered and indexed as after any command that changes
 //   what is live (ledger-copies.cjs): the feature's removed, the epic
 //   topic's written.
+// - Known edges:
+//   - A kill between the epic's save and the carry's append — the ledger's
+//     check, its copy, the rename — leaves the topic in the epic and the
+//     lines in the feature, whose log has moved, so the absorb refuses to
+//     run again. A kill between the carry and the commit leaves boot to
+//     commit the carry alone, the manifests uncommitted.
+//   - The verb takes a feature whatever its status; the manage flow offers
+//     the absorb for one in progress alone.
+//   - A file in the moved folder that is not markdown — an experiment's
+//     harness script — keeps a link a rename broke.
+//   - A line another clone writes at the feature after the absorb is no
+//     line the carry lists: merged in, it stands in a unit that is gone, or
+//     in one made later under the name.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -53,7 +68,7 @@ const {
 } = require('../kernel/manifest.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { purgeWorkUnitCache } = require('./cache.cjs');
-const { dropMarks } = require('./ledger-since.cjs');
+const { carryMarks } = require('./ledger-since.cjs');
 const { appendEntry, commitLedger } = require('./ledger.cjs');
 const { foldLedger } = require('./ledger-fold.cjs');
 const { syncKnowledge } = require('./knowledge/sync.cjs');
@@ -61,13 +76,14 @@ const { dedupe, isIndexableImport, importArtifact, homeLinkPattern } = require('
 const { IMPORT_PHASES } = require('../kernel/manifest-schema.cjs');
 const { addBatchTo, discoveryItems, topicNameRefusal } = require('./discovery-map.cjs');
 const { topicLog } = require('./topic-log.cjs');
-const { reaimAbsorbed } = require('./roadmap.cjs');
-const { topicDir, mailboxDir, mailboxDepth } = require('./derivations.cjs');
+const { reaimAbsorbed, landingOf } = require('./roadmap.cjs');
+const { topicDir, mailboxDir, mailboxDepth, briefFile } = require('./derivations.cjs');
 const { seriesDir } = require('./experiment-paths.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { filesUnder } = require('./review-phase.cjs');
+const { SPIKE_FOLDER, spikesOf } = require('./asset.cjs');
 const { assertBeforeSpec } = require('./spec-standing.cjs');
 
 /**
@@ -81,6 +97,8 @@ const { assertBeforeSpec } = require('./spec-standing.cjs');
  * @property {{from: string, to: string}[]} renamed_imports  imports the dedupe renamed, links rewritten in the moved topic folder
  * @property {{path: string}[]} assets  moved assets (absolute)
  * @property {{from: string, to: string}[]} renamed_assets  assets the dedupe renamed, links rewritten in the moved topic folder
+ * @property {{path: string}[]} spikes  moved spikes' folders (absolute)
+ * @property {{from: string, to: string}[]} renamed_spikes  spikes whose slug the epic's spikes held, links rewritten in the moved topic folder
  * @property {{path: string, source: string}[]} seeds  moved seed entries (absolute)
  * @property {{path: string, count: number}} [mail_moved]  the messages waiting for the feature's topic, moved to the new topic's mailbox (absolute)
  * @property {string[]} [roadmap_reaimed]  roadmap items whose joins now name the epic topic
@@ -137,22 +155,49 @@ function planTrackedMoves(cwd, feature, epic, field, entries) {
 }
 
 /**
- * The feature's assets, each file or folder at the top of them, planned into
- * the epic's under the dedupe; a dot-named one is tooling state, and goes
- * with the feature.
+ * The files and folders at the top of the feature's assets the absorb
+ * moves: all but a dot-named one, which is tooling state and goes with the
+ * feature.
+ * @param {string} cwd @param {string} feature
+ * @returns {string[]}
+ */
+function assetNames(cwd, feature) {
+  const from = statePath(cwd, feature, 'assets');
+  return fs.existsSync(from) ? fs.readdirSync(from).filter((name) => !name.startsWith('.')).sort() : [];
+}
+
+/**
+ * The feature's assets planned into the epic's under the dedupe.
  * @param {string} cwd @param {string} feature @param {string} epic
  * @returns {Move[]}
  */
 function planAssets(cwd, feature, epic) {
-  const from = statePath(cwd, feature, 'assets');
-  if (!fs.existsSync(from)) return [];
   const destDir = statePath(cwd, epic, 'assets');
   /** @type {Set<string>} */
   const taken = new Set();
-  return fs.readdirSync(from).filter((name) => !name.startsWith('.')).sort().map((basename) => {
+  return assetNames(cwd, feature).map((basename) => {
     const dest = dedupe(basename, destDir, taken);
     taken.add(dest);
     return { basename, dest };
+  });
+}
+
+/**
+ * The feature's spikes, each planned into the epic's under its own number,
+ * its slug suffixed `-2`, `-3`, … where one of the epic's spikes, or one
+ * planned before it, holds it.
+ * @param {string} root @param {string} feature @param {string} epic
+ * @returns {Move[]}
+ */
+function planSpikes(root, feature, epic) {
+  const slugOf = (/** @type {string} */ folder) => /** @type {RegExpExecArray} */ (SPIKE_FOLDER.exec(folder))[2];
+  const taken = new Set(spikesOf(root, epic).map(slugOf));
+  return spikesOf(root, feature).map((basename) => {
+    const [, number, slug] = /** @type {RegExpExecArray} */ (SPIKE_FOLDER.exec(basename));
+    let free = slug;
+    for (let n = 2; taken.has(free); n++) free = `${slug}-${n}`;
+    taken.add(free);
+    return { basename, dest: `${number}-${free}` };
   });
 }
 
@@ -199,18 +244,36 @@ function rewriteLinks(file, home, renames) {
 }
 
 /**
- * The ids of every line made at a place of `unit`, in the ledger's order:
- * written there, or carried there by an earlier carry (ledger-fold.cjs).
+ * Every line made at a place of `unit`, in the ledger's order: their ids,
+ * and each file they name — a citation's, an asset link's — once.
  * @param {string} root @param {string} unit @param {string[]} warnings
- * @returns {string[]}
+ * @returns {{ids: string[], files: Set<string>}}
  */
 function linesOf(root, unit, warnings) {
   return foldLedger(root, {
-    start: () => /** @type {string[]} */ ([]),
-    step: (ids, event) => {
-      if (event.unit === unit) ids.push(/** @type {string} */ (event.id));
+    start: () => ({ ids: /** @type {string[]} */ ([]), files: /** @type {Set<string>} */ (new Set()) }),
+    step: (lines, event) => {
+      if (event.unit !== unit) return;
+      lines.ids.push(/** @type {string} */ (event.id));
+      if (Array.isArray(event.cites)) for (const cite of event.cites) lines.files.add(cite.path);
+      if (event.event === 'asset') lines.files.add(/** @type {string} */ (event.path));
     },
   }, warnings);
+}
+
+/**
+ * Each of `files` the absorb's `relocations` moved, `[from, to]`.
+ * @param {Set<string>} files @param {[string, string][]} relocations
+ * @returns {[string, string][]}
+ */
+function movedFiles(files, relocations) {
+  /** @type {[string, string][]} */
+  const moved = [];
+  for (const file of files) {
+    const to = landingOf(file, relocations);
+    if (to !== null) moved.push([file, to]);
+  }
+  return moved;
 }
 
 /**
@@ -247,9 +310,9 @@ function placeTopic(cwd, epicManifest, into, topic, series) {
 
 /**
  * Absorb a feature into an in-progress epic as `topic`: move its topic
- * folder, imports, seeds and assets into the epic — manifest entries
+ * folder, imports, seeds, assets and spikes into the epic — manifest entries
  * carrying their original timestamps, filename collisions suffixed on the
- * shared landing discipline (a renamed import or asset has its links
+ * shared landing discipline (a renamed file or spike has its links
  * rewritten in the moved topic folder, and a feature-session import origin is
  * re-aimed at the topic) — carry each phase item whole onto the epic beside
  * its map row, carry the feature's ledger lines to the epic topic, remove
@@ -313,8 +376,9 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
       const importPlan = planTrackedMoves(cwd, feature, into, 'imports', Array.isArray(featureManifest.imports) ? featureManifest.imports : []);
       const seedPlan = planTrackedMoves(cwd, feature, into, 'seeds', Array.isArray(featureManifest.seeds) ? featureManifest.seeds : []);
       const assetPlan = planAssets(cwd, feature, into);
+      const spikePlan = planSpikes(root, feature, into);
       /** @type {[string, Move[]][]} */
-      const homes = [['imports', importPlan], ['seeds', seedPlan], ['assets', assetPlan]];
+      const homes = [['imports', importPlan], ['seeds', seedPlan], ['assets', assetPlan], ['spikes', spikePlan]];
       const waiting = mailboxDepth(root, feature, feature);
 
       // Read (and refuse corrupt JSON) before anything mutates; the
@@ -322,7 +386,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
       readProjectManifest(cwd);
       const lines = linesOf(root, feature, warnings);
       const session = handedSession();
-      if (lines.length > 0 && session === null) {
+      if (lines.ids.length > 0 && session === null) {
         throw new Error(`feature "${feature}" holds ledger entries, which the absorb carries to the epic topic in this conversation — Claude Code hands every command it runs a session id, and this one has none`);
       }
 
@@ -335,6 +399,12 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
         if (moves.length > 0) fs.mkdirSync(statePath(cwd, into, home), { recursive: true });
         for (const move of moves) fs.renameSync(statePath(cwd, feature, home, move.basename), statePath(cwd, into, home, move.dest));
         for (const document of documents) rewriteLinks(document, home, renamesOf(moves));
+      }
+      for (const move of spikePlan) {
+        const twin = statePath(cwd, '.cache', feature, 'spikes', move.basename);
+        if (!fs.existsSync(twin)) continue;
+        fs.mkdirSync(statePath(cwd, '.cache', into, 'spikes'), { recursive: true });
+        fs.renameSync(twin, statePath(cwd, '.cache', into, 'spikes', move.dest));
       }
 
       // Every move above, as state-relative `[from, to]`: the topic folder,
@@ -370,8 +440,10 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
         epicManifest.seeds.push({ ...move.entry, path: `seeds/${move.dest}` });
       }
       saveWorkUnitManifest(cwd, into, epicManifest);
-      if (lines.length > 0) {
-        appendEntry(root, { event: 'rehomed', unit: into, topic, phase: 'discussion', session, lines }, warnings);
+      if (lines.ids.length > 0) {
+        appendEntry(root, {
+          event: 'rehomed', unit: into, topic, phase: 'discussion', session, lines: lines.ids, files: movedFiles(lines.files, relocations),
+        }, warnings);
       }
 
       return {
@@ -379,12 +451,13 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
         importPlan,
         seedPlan,
         assetPlan,
+        spikePlan,
         experimentMove: experimentItem
           ? { status: experimentItem.status, ids: Object.keys(experimentItem.experiments || {}) }
           : null,
         waiting,
         relocations,
-        carried: lines.length > 0,
+        carried: lines.ids.length > 0,
       };
     });
 
@@ -416,7 +489,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     ], warnings);
 
     purgeWorkUnitCache(cwd, feature);
-    dropMarks(root, feature);
+    carryMarks(root, feature, into, warnings);
     const paths = [feature, into, 'manifest.json'];
     const message = `workflow(${feature}): absorb into ${into}`;
     const outcome = moved.carried ? commitLedger(cwd, message, warnings, paths) : commitStateTail(cwd, paths, message, warnings);
@@ -431,6 +504,8 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
       renamed_imports: renamesOf(moved.importPlan),
       assets: moved.assetPlan.map((move) => ({ path: statePath(cwd, into, 'assets', move.dest) })),
       renamed_assets: renamesOf(moved.assetPlan),
+      spikes: moved.spikePlan.map((move) => ({ path: statePath(cwd, into, 'spikes', move.dest) })),
+      renamed_spikes: renamesOf(moved.spikePlan),
       seeds: moved.seedPlan.map((move) => ({ path: statePath(cwd, into, 'seeds', move.dest), source: move.entry.source })),
       committed: outcome.committed,
       warnings,
@@ -447,4 +522,21 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
   });
 }
 
-module.exports = { absorbWorkUnit };
+/**
+ * What the absorb moves of the feature's own besides its manifest's
+ * entries: whether its topic holds a brief, the messages waiting for it,
+ * and how many assets and spikes it holds.
+ * @param {string} cwd @param {string} feature
+ * @returns {{brief: boolean, mail: number, assets: number, spikes: number}}
+ */
+function absorbedMaterial(cwd, feature) {
+  const root = stateRoot(cwd);
+  return {
+    brief: fs.existsSync(statePath(cwd, briefFile(feature, feature))),
+    mail: mailboxDepth(root, feature, feature),
+    assets: assetNames(cwd, feature).length,
+    spikes: spikesOf(root, feature).length,
+  };
+}
+
+module.exports = { absorbWorkUnit, absorbedMaterial };
