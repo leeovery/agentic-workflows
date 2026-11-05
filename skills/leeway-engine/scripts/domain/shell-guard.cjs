@@ -128,7 +128,7 @@ const COMMITTING = Object.freeze({
   merge: { passes: [['--no-ff', '--no-commit'], ['--abort'], ['--quit']], way: MERGED, continued: 'name each file you resolved, and commit the merge through the door, which finishes it' },
   pull: { passes: [], way: `fetch, then ${MERGED}` },
   'cherry-pick': { passes: [['--no-commit'], ['-n'], ['--abort'], ['--quit']], way: 'pick with --no-commit, then commit through the door' },
-  revert: { passes: [['--no-commit'], ['-n'], ['--abort'], ['--quit']], way: 'revert with --no-commit, then commit through the door' },
+  revert: { passes: [['--no-commit'], ['-n'], ['--abort'], ['--quit']], way: 'revert with --no-commit, end the revert with --quit, which keeps its change, then commit through the door' },
   am: { passes: [['--abort'], ['--quit']], way: 'apply the patch with git apply, then commit through the door' },
   rebase: { passes: [['--abort'], ['--quit']], way: `rather than rebase, ${MERGED}` },
 });

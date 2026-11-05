@@ -107,7 +107,7 @@ describe('pipeline simulation: quick-fix', () => {
     sim.refuses(['enter', 'implementation', wu], /^typo was built under the old plan, and its build is entered once the reshape's 29\.17 migration has cut it$/);
   });
 
-  it('quick-fix: its build entered, a fix built in the project\'s checkout, landed and done, its short record written, and the close landing it and naming the start menu', () => {
+  it('quick-fix: its build entered, a fix built in the project\'s checkout, its short record written, opened to land and done, and the close landing it and naming the start menu', () => {
     const wu = 'typo';
     startUnit(sim, 'quick-fix', wu, 'The --color flag is spelt --colour');
     assert.strictEqual(sim.run(['enter', 'implementation', wu]).entered, true);
@@ -115,10 +115,10 @@ describe('pipeline simulation: quick-fix', () => {
     sim.run(['task', 'start', wu, fix]);
     sim.write('src/flag.js', 'const flag = \'colour\';\n');
     sim.run(['commit', '--paths', 'src/flag.js', '--task', wu, fix, '-m', `fix(${wu}): spell the flag --colour`]);
-    sim.run(['land', 'open', wu, fix]);
-    sim.run(['task', 'done', wu, fix]);
     const record = sim.write(`.leeway/.cache/${wu}/build/record.md`, '## What changed\nThe flag reads --colour.\n\n## Why\nIt was spelt the American way.\n\n## Leaves out\nOld scripts.\n');
     sim.run(['quick-fix', 'record', wu, fix, '--file', record]);
+    sim.run(['land', 'open', wu, fix]);
+    sim.run(['task', 'done', wu, fix]);
     sim.write(`.leeway/${wu}/build/log.md`, '# The fixes\n');
 
     assert.deepStrictEqual(finished(sim, wu), { landed: [[1]], next: { kind: 'handoff', skill: 'leeway', args: [] } });

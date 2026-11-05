@@ -341,7 +341,7 @@ describe('raw commits (6.3.7, 6.3.12, 12.9.8)', () => {
       ...[`git merge ${branch}`, `git merge --no-edit ${branch}`, `git merge --no-ff ${branch}`, `git merge --no-commit ${branch}`].map((command) => [command, refused('merge', merged)]),
       ...['git pull', 'git pull --rebase origin main'].map((command) => [command, refused('pull', `fetch, then ${merged}`)]),
       ...['git cherry-pick abc123', 'git cherry-pick --continue'].map((command) => [command, refused('cherry-pick', 'pick with --no-commit, then commit through the door')]),
-      ['git revert abc123', refused('revert', 'revert with --no-commit, then commit through the door')],
+      ['git revert abc123', refused('revert', 'revert with --no-commit, end the revert with --quit, which keeps its change, then commit through the door')],
       ['git am fix.patch', refused('am', 'apply the patch with git apply, then commit through the door')],
       ...['git rebase main', 'git rebase --continue', 'git rebase -i main'].map((command) => [command, refused('rebase', `rather than rebase, ${merged}`)]),
     ];

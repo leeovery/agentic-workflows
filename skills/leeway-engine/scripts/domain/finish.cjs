@@ -16,7 +16,11 @@
 //   fixes ended and each done with its record written (quick-fix-record.cjs,
 //   `recordedFixes`), and on each fix done landed or chained into the
 //   set's stack as it stands, the read the build's phase close makes of its
-//   tasks (landing.cjs, `unchained`) — refused naming each.
+//   tasks (landing.cjs, `unchained`) — refused naming each, the lowest's
+//   opening the way on; where that read refuses and every phase is merged
+//   where it lands (`allMerged`), as a merge made by hand on a host leaves
+//   the branch here without it, naming `land phase`, which brings that
+//   branch to the merge, as the driver's own remedy does.
 // - It shows every checklist item skipped on the way, with its reason,
 //   read from the unit's manifest (6.4.5, 6.4.12); then asks, one at a
 //   time, the verdict of each departure this machine logged in the build
@@ -31,7 +35,9 @@
 //   product proved of each fix done, each scenario it names from its runs
 //   at its branch's tips (build-screens.cjs, `ranOf`), or in one line that
 //   the project has no way to run it, no verify setup recorded (P9); then
-//   its gate, the yes, a review asked for, and questions about the change.
+//   its gate, the yes — saying it merges the pull requests of the fixes not
+//   yet landed, where any is — a review asked for, and questions about the
+//   change.
 //   What its reads warned of — a knowledge base set up that does not read
 //   among it (finish-checks.cjs) — is said on the screen, and on the yes's
 //   answer.
@@ -56,10 +62,11 @@ const { projectRepos } = require('../kernel/repos.cjs');
 const { carrying } = require('./ledger.cjs');
 const { readShown } = require('./ledger-read.cjs');
 const { verdictAsked } = require('./ledger-verdicts.cjs');
-const { itemTitle, topicTitles, buildRefusal, quickFixBuild } = require('./derivations.cjs');
+const { itemTitle, topicTitles, buildRefusal, quickFixBuild, FIXES_PHASE } = require('./derivations.cjs');
 const { unitInProgress } = require('./topic-standing.cjs');
 const { finishClose } = require('./checklist.cjs');
-const { landFinish, landedTasks, unchained } = require('./landing.cjs');
+const { landFinish, landedTasks, unchained, allMerged } = require('./landing.cjs');
+const { landsOn } = require('./landing-git.cjs');
 const { completeWorkUnit } = require('./workunit-lifecycle.cjs');
 const { refusing, stands } = require('./staged-payload.cjs');
 const { READERS, readersDone } = require('./scratch.cjs');
@@ -76,6 +83,7 @@ const { dayBefore } = require('./dates.cjs');
 
 /** @typedef {import('./projections/surfaces.cjs').Next} Next */
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
+/** @typedef {import('../kernel/repos.cjs').Repo} Repo */
 /** @typedef {import('./projections/build.cjs').Ran} Ran */
 
 const FINISH_USAGE = 'finish yes <work-unit>';
@@ -84,34 +92,45 @@ const FINISH_USAGE = 'finish yes <work-unit>';
  * The close the screen stands on, refused where finish cannot show: the
  * unit's own refusals, a quick-fix's fixes not ended or not recorded, then
  * its checklist's close (`finishClose`), then a quick-fix's fixes done not
- * landed nor chained to land — with a quick-fix's fixes done, null for any
- * other unit.
+ * landed nor chained to land — with a quick-fix's fixes done and how many
+ * of them are still to land, null for any other unit.
  * @param {string} cwd @param {string} unit
  */
 function finishStanding(cwd, unit) {
   const manifest = unitInProgress(cwd, unit);
   const refused = buildRefusal(manifest);
   if (refused !== null) throw new Error(refused);
-  if (!quickFixBuild(manifest)) return { manifest, fixes: null, ...finishClose(cwd, unit) };
+  if (!quickFixBuild(manifest)) return { manifest, fixes: null, landing: 0, ...finishClose(cwd, unit) };
   const fixes = recordedFixes(cwd, manifest);
   const close = finishClose(cwd, unit);
-  refuseUnlanded(cwd, manifest, fixes);
-  return { manifest, fixes, ...close };
+  return { manifest, fixes, landing: unlandedFixes(cwd, manifest, fixes).length, ...close };
 }
 
 /**
- * Refuse a quick-fix's close while a fix done has neither landed nor is
- * chained into the set's stack as it stands (`unchained`, landing.cjs) —
- * the read the build's phase close makes of its tasks — naming each and
- * the way on.
+ * The fixes done not yet landed, refused while one is not chained into the
+ * set's stack as it stands either (`unchained`, landing.cjs) — the read the
+ * build's phase close makes of its tasks — naming each and the lowest's
+ * opening; where that read refuses and every phase is merged where it
+ * lands, naming `land phase`, which brings the branch here to the merge.
  * @param {string} cwd @param {Record<string, any>} manifest @param {TaskDetail[]} fixes the fixes done
+ * @returns {TaskDetail[]}
  */
-function refuseUnlanded(cwd, manifest, fixes) {
+function unlandedFixes(cwd, manifest, fixes) {
   const unit = manifest.name;
-  const landed = landedTasks(cwd, unit, projectRepos(codeRoot(cwd)), dayBefore(manifest.created));
-  const owed = unchained(cwd, unit, fixes.filter(({ ref }) => !landed.has(shownTask(ref)))).map(({ ref }) => shownTask(ref));
-  if (owed.length === 0) return;
-  throw new Error(`${unit} closes once each fix done is opened to land — ${owed.join(', ')} ${owed.length === 1 ? 'is' : 'are'} not: land open ${unit} ${owed[0]}`);
+  const repos = projectRepos(codeRoot(cwd));
+  const landed = landedTasks(cwd, unit, repos, dayBefore(manifest.created));
+  const unlanded = fixes.filter(({ ref }) => !landed.has(shownTask(ref)));
+  if (unlanded.length === 0) return unlanded;
+  let owed;
+  try {
+    owed = unchained(cwd, unit, unlanded).map(({ ref }) => shownTask(ref));
+  } catch (err) {
+    if (!allMerged(cwd, unit)) throw err;
+    const into = landsOn(cwd, /** @type {Repo} */ (repos.find((repo) => repo.dir === '')));
+    throw new Error(`${unit}'s fixes are merged where they land, and ${into} here lacks them — land phase ${unit} ${FIXES_PHASE.number} brings ${into} to them`);
+  }
+  if (owed.length > 0) throw new Error(`${unit} closes once each fix done is opened to land — ${owed.join(', ')} ${owed.length === 1 ? 'is' : 'are'} not: land open ${unit} ${owed[0]}`);
+  return unlanded;
 }
 
 /** Whether finish's screen draws, as `render finish` stands on it: what the board lists waiting on the person. @param {string} cwd @param {string} unit */
@@ -119,16 +138,17 @@ const finishDraws = (cwd, unit) => stands(() => finishStanding(cwd, unit));
 
 /**
  * What the screen and the yes stand on, refused where finish cannot show:
- * the unit's manifest, a quick-fix's fixes done, the skips its close shows,
- * and the verdict asked of the first departure in the build still owed one.
+ * the unit's manifest, a quick-fix's fixes done and how many are still to
+ * land, the skips its close shows, and the verdict asked of the first
+ * departure in the build still owed one.
  * @param {string} cwd @param {string} unit
  */
 function standing(cwd, unit) {
-  const { manifest, fixes, closed, skips, warnings } = finishStanding(cwd, unit);
+  const { manifest, fixes, landing, closed, skips, warnings } = finishStanding(cwd, unit);
   const root = stateRoot(cwd);
   try {
     const verdict = readShown(root, warnings, (shower) => verdictAsked(shower, root, (facts) => (facts.unit === unit && BUILD_PHASES.includes(facts.phase) ? closed : null)));
-    return { manifest, fixes, skips, warnings, verdict };
+    return { manifest, fixes, landing, skips, warnings, verdict };
   } catch (err) {
     throw carrying(err, warnings);
   }
@@ -153,7 +173,7 @@ function provenOf(cwd, manifest, fixes) {
  */
 function finishSurface(cwd, { dotpath: unit = '' }) {
   return refusing('render finish', () => {
-    const { manifest, fixes, skips, verdict, warnings } = standing(cwd, unit);
+    const { manifest, fixes, landing, skips, verdict, warnings } = standing(cwd, unit);
     const view = {
       unit,
       title: itemTitle(topicTitles(manifest), 'review', unit),
@@ -163,7 +183,7 @@ function finishSurface(cwd, { dotpath: unit = '' }) {
       aside: setAsideHeld(cwd, unit),
     };
     if (fixes === null) return finishScreen(view);
-    return closeScreen({ ...view, product: projectName(cwd), proven: provenOf(cwd, manifest, fixes), fixes: fixes.length });
+    return closeScreen({ ...view, product: projectName(cwd), proven: provenOf(cwd, manifest, fixes), fixes: fixes.length, landing });
   });
 }
 

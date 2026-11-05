@@ -8,13 +8,14 @@
 // chain — each fix's pull request based on the fix before it, carrying
 // nothing of it, and the close landing them bottom to top, each under its
 // fix's subject with only its own change — the checkout put back on the
-// default branch, holding the landing. The close stands on the landing: a
-// fix done and recorded but never opened refuses it, naming its opening,
-// and lands once opened; a fix closed is never built on — the fix after it
-// laid on the default branch — and none of its work lands. A driver's side
+// default branch, holding the landing. A fix is done only once it is
+// opened itself: `task done` refuses it before, naming its opening, so no
+// fix laid on it opens carrying its work; opened, it and the fix laid on it
+// land, each with only its own change. A driver's side
 // (tests/drivers/{name}/landing.cjs) readies the world and reads what
 // landed where; this file names no driver and no tool. The close itself is
-// test-engine-quick-fix-close.cjs's. Conformance layer: the quick-fix of
+// test-engine-quick-fix-close.cjs's, how a fix ends
+// test-engine-quick-fix-end.cjs's. Conformance layer: the quick-fix of
 // quick-fix-world.cjs, its code tagged `landing-base`, built once per
 // driver and copied for each test.
 // ---------------------------------------------------------------------------
@@ -28,11 +29,11 @@ const path = require('path');
 const harness = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const { own } = require('./landing-world.cjs');
-const { UNIT, quickFix, entered, fixChanged, fixBuilt, recordFile } = require('./quick-fix-world.cjs');
+const { UNIT, quickFix, entered, fixChanged, fixBuilt, recordFile, checklistClosed } = require('./quick-fix-world.cjs');
 const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
 const { taskBranch } = require('../../skills/leeway-engine/scripts/domain/landing-names.cjs');
 
-const { ok, git, tip, fixtureFrom, cleanupFixture, writeState, layout } = harness;
+const { ok, git, tip, fixtureFrom, cleanupFixture } = harness;
 
 /** @typedef {import('./landing-world.cjs').DriverSide} DriverSide */
 
@@ -75,13 +76,6 @@ for (const { name } of listDrivers('landing')) {
     /** Fix `n`'s record written. @param {string} at @param {number} n */
     const record = (at, n) => ok(at, ['quick-fix', 'record', UNIT, `1.${n}`, '--file', recordFile(at, n, { changed: `${FIXES[n - 1].title}.`, why: 'It was spelt the American way.', leaves: 'Nothing.' })], as());
 
-    /** Finish's checklist worked and closed. @param {string} at */
-    function checklistClosed(at) {
-      writeState(at, layout.unit(UNIT, 'build', 'log.md'), '# The fixes\n');
-      for (const key of ['inbox-closed', 'build-log-closed']) ok(at, ['checklist', 'done', 'finish', UNIT, key], as());
-      ok(at, ['checklist', 'close', 'finish', UNIT], as());
-    }
-
     /** What the default branch gained, each landing by its subject and the paths it changed. @param {string} at */
     const landed = (at) => side.landed(at).map((/** @type {any} */ { subject, paths }) => [subject, paths]);
 
@@ -89,7 +83,7 @@ for (const { name } of listDrivers('landing')) {
       const at = project();
       const bases = FIXES.map(({ title, file, text }, n) => own(fixBuilt(at, n + 1, title, file, text, as())).base);
       FIXES.forEach((_, n) => record(at, n + 1));
-      checklistClosed(at);
+      checklistClosed(at, as());
       const closed = ok(at, ['finish', 'yes', UNIT], as());
 
       assert.deepStrictEqual(bases, ['main', BRANCHES[0], BRANCHES[1]]);
@@ -98,33 +92,20 @@ for (const { name } of listDrivers('landing')) {
       assert.deepStrictEqual([git(at, ['symbolic-ref', '--short', 'HEAD']).trim(), tip(at, 'main')], ['main', side.defaultTip(at)]);
     });
 
-    it('refuses the close while a fix done and recorded was never opened, naming its opening; opened, the close lands it', () => {
-      const at = project();
-      fixBuilt(at, 1, FIXES[0].title, FIXES[0].file, FIXES[0].text, as());
-      fixChanged(at, 2, FIXES[1].title, FIXES[1].file, FIXES[1].text, as());
-      ok(at, ['task', 'done', UNIT, '1.2'], as());
-      record(at, 1);
-      record(at, 2);
-      checklistClosed(at);
-      const unopened = harness.refuses(at, ['render', 'finish', UNIT], as()).error;
-      ok(at, ['land', 'open', UNIT, '1.2'], as());
-      harness.output(at, ['render', 'finish', UNIT], as());
-      ok(at, ['finish', 'yes', UNIT], as());
-
-      assert.strictEqual(unopened, `render finish: ${UNIT} closes once each fix done is opened to land — 1.2 is not: land open ${UNIT} 1.2`);
-      assert.deepStrictEqual(landed(at), FIXES.slice(0, 2).map(({ title, file }) => [`fix(${UNIT}): ${title}`, [file]]));
-    });
-
-    it('lays the fix after a closed fix on the default branch, and the close lands none of the closed fix\'s work', () => {
+    it('refuses a fix done before it is opened, naming its opening, so no fix laid on it carries its work; opened, both land, each with only its own change', () => {
       const at = project();
       fixChanged(at, 1, FIXES[0].title, FIXES[0].file, FIXES[0].text, as());
-      ok(at, ['task', 'close', UNIT, '1.1', '--reason', 'The flag stays as it is.'], as());
-      const base = own(fixBuilt(at, 2, FIXES[1].title, FIXES[1].file, FIXES[1].text, as())).base;
+      const unopened = harness.refuses(at, ['task', 'done', UNIT, '1.1'], as()).error;
+      ok(at, ['land', 'open', UNIT, '1.1'], as());
+      ok(at, ['task', 'done', UNIT, '1.1'], as());
+      fixBuilt(at, 2, FIXES[1].title, FIXES[1].file, FIXES[1].text, as());
+      record(at, 1);
       record(at, 2);
-      checklistClosed(at);
+      checklistClosed(at, as());
       ok(at, ['finish', 'yes', UNIT], as());
 
-      assert.deepStrictEqual([base, landed(at)], ['main', [[`fix(${UNIT}): ${FIXES[1].title}`, [FIXES[1].file]]]]);
+      assert.strictEqual(unopened, `task done: task 1.1 of ${UNIT} is not opened to land as its branch stands — a fix is done once it lands: land open ${UNIT} 1.1`);
+      assert.deepStrictEqual(landed(at), FIXES.slice(0, 2).map(({ title, file }) => [`fix(${UNIT}): ${title}`, [file]]));
     });
   });
 }

@@ -28,9 +28,10 @@
 // phase's tasks are each in its stack (`allChained`); for a quick-fix's
 // move, which of its fixes have a pull request opened or landed
 // (`openedTasks`, workunit-move.cjs), and for its close, which of its fixes
-// are not (`unchained`); and, for a task with
-// nothing of its unit's below it, where it starts in each repository
-// (`landingTips`).
+// are not (`unchained`), and whether every phase is merged where it lands,
+// as a merge made by hand on a host leaves it before the default branch
+// here is brought to it (`allMerged`); and, for a task with nothing of its
+// unit's below it, where it starts in each repository (`landingTips`).
 //
 // What every driver shares is settled here: the names (landing-names.cjs);
 // the default branch everything lands on in each repository, never the
@@ -104,11 +105,10 @@ const { trackedTask, trackedPhase, ENDED } = require('./task-verbs.cjs');
 const { taskRounds, pairPassed, changedUnder, changedRefusal, phaseReviewBegun } = require('./round-report.cjs');
 const { verifySetup } = require('./environment.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
-const { cutLength, quickFixBuild, FIXES_PHASE } = require('./derivations.cjs');
+const { cutLength } = require('./derivations.cjs');
 const { reproducingHold } = require('./bug-proven.cjs');
 const names = require('./landing-names.cjs');
 const lg = require('./landing-git.cjs');
-const { closedFixes, refuseClosedBeneath } = require('./fix-branch.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
@@ -557,24 +557,13 @@ function refuseUnproven(cwd, ref) {
 }
 
 /**
- * Refuse a quick-fix's fix laid on the work of a fix closed since
- * (`refuseClosedBeneath`, fix-branch.cjs); nothing for any other task.
- * @param {string} cwd @param {TaskRef} ref
- */
-function refuseOnClosedFix(cwd, ref) {
-  const manifest = manifestOf(stateRoot(cwd), ref.unit);
-  if (manifest === null || !quickFixBuild(manifest) || ref.phase !== FIXES_PHASE.number) return;
-  refuseClosedBeneath(cwd, ref, closedFixes(trackedPhase(cwd, ref.unit, ref.phase).tasks ?? []));
-}
-
-/**
  * The task's pull request opened in every repository its change touches —
  * locally, its change squashed onto its phase's branch there — under the
  * type and title the tracker holds for it; `already` where it is opened
  * wherever it touches, so a rerun reads finished work as done. A task the
  * tracker lacks is refused as the read finds it; a bugfix's reproducing
- * task while its bug is not proven, a fix phase's off the work below it,
- * and a quick-fix's fix on a closed fix's work, before anything opens.
+ * task while its bug is not proven, and a fix phase's off the work below
+ * it, before anything opens.
  * @param {string} cwd @param {string} unit @param {string} task shown, `{phase}.{n}`
  */
 function landOpen(cwd, unit, task) {
@@ -587,7 +576,6 @@ function landOpen(cwd, unit, task) {
   carrying(warnings ?? [], () => account().refuseUnaccounted(cwd, ref, 'land'));
   carrying(warnings ?? [], () => refuseUnproven(cwd, ref));
   carrying(warnings ?? [], () => refuseOffBase(cwd, project, landing));
-  carrying(warnings ?? [], () => refuseOnClosedFix(cwd, ref));
   return withDriver(cwd, (driver) => {
     const steps = touching(project, driver, landing, holding).map(({ ctx, tip }) => ({ ctx, act: () => driver.open(ctx, landing, tip) }));
     const already = steps.length === 0 ? { already: true } : {};
@@ -803,6 +791,21 @@ function openedTasks(cwd, unit, refs) {
 }
 
 /**
+ * Whether every phase of the unit's is merged where it lands, as the driver
+ * reads it (`nextMerge`), in each repository holding its work — read off
+ * git and the host, writing and fetching nothing.
+ * @param {string} cwd @param {string} unit
+ */
+function allMerged(cwd, unit) {
+  const project = projectOf(cwd, unit);
+  const driver = /** @type {LandingDriver} */ (chosenDriver(cwd, 'landing').driver);
+  return walked(project, driver, (branch) => names.isUnitBranch(unit, branch)).every((repo) => {
+    const ctx = contextOf(project, repo);
+    return inRepo(ctx.repo, () => driver.nextMerge(ctx) === null);
+  });
+}
+
+/**
  * The unit's tasks landed, shown: each a landing on the default branch of a
  * repository of the project names by its `Task:` line, as every driver
  * lands a task (landing-names.cjs), searched from the time `from` names
@@ -826,4 +829,4 @@ function landedTasks(cwd, unit, repos, from = null, on = (repo) => [`refs/heads/
   }));
 }
 
-module.exports = { LAND_USAGE, landOpen, landChain, landPhase, landFinish, landedTasks, openedTasks, allChained, landingTips, mutationRun, unchained };
+module.exports = { LAND_USAGE, landOpen, landChain, landPhase, landFinish, landedTasks, openedTasks, allChained, landingTips, mutationRun, unchained, allMerged };

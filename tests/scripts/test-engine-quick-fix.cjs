@@ -276,6 +276,8 @@ describe('the quick-fix\'s fix, built in the project\'s own checkout (12.7.8, 19
       ran: { unit: UNIT, scenario: '1.S1', verdict: 'pass', commits: [{ repo: '.', commit: null }], at: '2026-06-03T09:00:00Z' },
     } });
     createFix(dir, 2, SECOND);
+    commitFix();
+    ok(dir, ['land', 'open', UNIT, '1.1']);
     ok(dir, ['task', 'done', UNIT, '1.1'], { env: env() });
     const closed = ok(dir, ['task', 'close', UNIT, '1.2', '--reason', 'the help was spelt right already'], { env: env() });
 

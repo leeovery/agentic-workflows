@@ -20,9 +20,10 @@
 // under its title — PROVEN BY RUNNING {PRODUCT}, each fix's scenario a line,
 // ✓ where proven, else its standing — or one line saying the project has
 // no way to run it (P9); each departure asked its verdict at the verdict
-// point `close` (16.10.4); and its gate, `Close it?`: the yes, merging its
-// pull requests, a review asked for, and questions about the change. Its
-// rows and words are Claude's in the spec (18.10.8).
+// point `close` (16.10.4); and its gate, `Close it?`: the yes, merging the
+// pull requests of its fixes still to land, or saying they have landed, a
+// review asked for, and questions about the change. Its rows and words are
+// Claude's in the spec (18.10.8).
 // ---------------------------------------------------------------------------
 
 const { section, menu, cmdOption, promptOption, callout, treeList, MENU_INSTRUCTION, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
@@ -86,8 +87,9 @@ function finishScreen(view) {
 /**
  * A quick-fix's close as it is drawn: finish's, with the product's name,
  * what running it proved of each fix's scenarios — null where the project
- * has no way to run it — and how many fixes it lands.
- * @typedef {FinishView & {product: string, proven: import('./build.cjs').Ran[]|null, fixes: number}} CloseView
+ * has no way to run it — how many fixes are done, and how many of them are
+ * still to land.
+ * @typedef {FinishView & {product: string, proven: import('./build.cjs').Ran[]|null, fixes: number, landing: number}} CloseView
  */
 
 /** A scenario's line under what was proven: its glyph, and its standing where short of proven. @param {import('./build.cjs').Ran} ran */
@@ -103,16 +105,21 @@ function provenBlock({ product, proven }) {
 /** The close's display: its title and what was proven, then each block of finish's that has something to show. @param {CloseView} view */
 const closeDisplay = (view) => [`${view.title} — ready to close`, provenBlock(view), ...finishBlocks(view)].join('\n\n');
 
-/** What the yes does: merge each fix's pull request, where any fix is done, and mark it complete. @param {number} fixes the fixes done */
-function closeWords(fixes) {
+/**
+ * What the yes does: merge the pull request of each fix done still to land,
+ * or, where every one has landed, say so — and mark it complete.
+ * @param {CloseView} view
+ */
+function closeWords({ fixes, landing }) {
+  if (landing > 0) return `Close it — merge its ${landing === 1 ? 'pull request' : 'pull requests'} and mark it complete`;
   if (fixes === 0) return 'Close it — mark it complete';
-  return `Close it — merge its ${fixes === 1 ? 'pull request' : 'pull requests'} and mark it complete`;
+  return `Close it — ${fixes === 1 ? 'its fix has' : 'its fixes have'} landed, so mark it complete`;
 }
 
 /** The close's gate: the yes, a review asked for, and questions about the change. @param {CloseView} view */
-function closeGate({ unit, fixes }) {
+function closeGate(view) {
   return section('MENU: finish', MENU_INSTRUCTION, menu('', [
-    cmdOption('y', 'yes', closeWords(fixes), { next: { kind: 'engine', argv: ['finish', 'yes', unit] } }),
+    cmdOption('y', 'yes', closeWords(view), { next: { kind: 'engine', argv: ['finish', 'yes', view.unit] } }),
     cmdOption('r', 'review', 'Have it reviewed before it closes'),
     promptOption('Ask', 'Ask about the change before it closes'),
   ], { question: 'Close it?' }));

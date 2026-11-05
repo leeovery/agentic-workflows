@@ -10,32 +10,34 @@
 // the repository lands on (`landsOn`, landing-git.cjs), a later fix's on the
 // tip of the nearest fix before it not closed, so a set's fixes stack as
 // their pull requests chain (7.2.3) and a closed fix's work never lands
-// (`fixBase`). A fix laid on one closed since is refused its opening, naming
-// the branch it is laid on now (`refuseClosedBeneath`, landing.cjs). The
-// commit door takes a fix's commit on its branch alone (commit-task.cjs).
-// The close, once its fixes have landed, puts the checkout back on the
-// branch the repository lands on (finish.cjs), as a move that leaves the
-// fixes does (workunit-move.cjs) where the checkout has one of the unit's
-// fixes' branches out: refused, nothing moved, while it holds changes not
-// committed outside the state, naming each. The move then sets the fixes'
-// branches aside (`setFixesAside`): one holding commits of its own past its
-// base — the branch the fixes land on, or the fix before it it was laid from
-// — is kept, its commits unlanded, renamed to `moved/{branch}`, a name no
-// landing reads as the unit's (`taskOfBranch`, `phaseOfBranch`,
-// landing-names.cjs), so the new type's build, numbering its own tasks from
-// 1.1, never meets it; one holding none is deleted. The kept names are what
-// the topic's first opening names (`keptBranches`). Each move refuses first
-// a checkout holding changes not committed outside the state, naming each
-// (`codeStatus`, code.cjs): a fix's start before the tracker moves, the
-// close before anything lands. Only the project's own repository moves; a
-// repository nested in it keeps its branch.
+// (`fixBase`). A fix's own work is a commit its branch holds past the branch
+// it is laid on (`fixWork`), which a later fix not closed is laid on where
+// its branch holds a commit of it (`laidOn`) — what a fix's end reads
+// (fix-end.cjs) and its record (quick-fix-record.cjs). The commit door takes
+// a fix's commit on its branch alone (commit-task.cjs). The close, once its
+// fixes have landed, puts the checkout back on the branch the repository
+// lands on (finish.cjs), as a move that leaves the fixes does
+// (workunit-move.cjs) where the checkout has one of the unit's fixes'
+// branches out: refused, nothing moved, while it holds changes not committed
+// outside the state, naming each. The move then sets the fixes' branches
+// aside (`setFixesAside`): one holding commits of its own past its base —
+// the branch the fixes land on, or the fix before it it was laid from — is
+// kept, its commits unlanded, renamed to `moved/{branch}`, a name no landing
+// reads as the unit's (`taskOfBranch`, `phaseOfBranch`, landing-names.cjs),
+// so the new type's build, numbering its own tasks from 1.1, never meets it;
+// one holding none is deleted. The kept names are what the topic's first
+// opening names (`keptBranches`). Each move refuses first a checkout holding
+// changes not committed outside the state, naming each (`codeStatus`,
+// code.cjs): a fix's start before the tracker moves, the close before
+// anything lands. Only the project's own repository moves; a repository
+// nested in it keeps its branch.
 // ---------------------------------------------------------------------------
 
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { tryGit, git } = require('../kernel/git.cjs');
 const { projectRepos } = require('../kernel/repos.cjs');
 const { codeStatus } = require('./code.cjs');
-const { branches, holdsBeyond, landsOn, switchTo, isAncestor } = require('./landing-git.cjs');
+const { branches, landsOn, switchTo, isAncestor, holdsBeyond, mergeBase } = require('./landing-git.cjs');
 const { taskBranch, taskOfBranch } = require('./landing-names.cjs');
 const { shownTask, taskName } = require('./task-id.cjs');
 
@@ -50,17 +52,26 @@ const branchOut = (root) => tryGit(root, ['symbolic-ref', '-q', '--short', 'HEAD
 const ownRepo = (root) => /** @type {Repo} */ (projectRepos(root).find((repo) => repo.dir === ''));
 
 /**
- * The fix's own branch where the repository holds it, else that of the
- * nearest fix before it, of the unit's fixes `phase` holds; null for none.
+ * The branches of the unit's fixes `phase` holds that the repository holds,
+ * of the fix numbers `wanted`, each with its fix's number.
+ * @param {string} root @param {TaskRef} ref @param {(n: number) => boolean} wanted
+ * @returns {{branch: string, n: number}[]}
+ */
+function phaseFixes(root, ref, wanted) {
+  return [...branches(root).keys()].flatMap((branch) => {
+    const of = taskOfBranch(ref.unit, branch);
+    return of !== null && of.phase === ref.phase && wanted(of.n) ? [{ branch, n: of.n }] : [];
+  });
+}
+
+/**
+ * The branch of the highest-numbered fix of those `wanted` the repository
+ * holds, of the unit's fixes `phase` holds; null for none.
  * @param {string} root @param {TaskRef} ref @param {(n: number) => boolean} wanted the fix numbers looked for
  * @returns {string|null}
  */
 function nearestFix(root, ref, wanted) {
-  const held = [...branches(root).keys()].flatMap((branch) => {
-    const of = taskOfBranch(ref.unit, branch);
-    return of !== null && of.phase === ref.phase && wanted(of.n) ? [{ branch, n: of.n }] : [];
-  });
-  return held.sort((a, b) => b.n - a.n)[0]?.branch ?? null;
+  return phaseFixes(root, ref, wanted).sort((a, b) => b.n - a.n)[0]?.branch ?? null;
 }
 
 /** The fix's branch, where the repository holds it. @param {string} root @param {TaskRef} ref */
@@ -122,23 +133,34 @@ function checkOutFix(cwd, ref, type, title, closed) {
 }
 
 /**
- * Refuse to open a fix whose branch holds the work of a fix before it that
- * was closed since it was laid there, naming the branch it is laid on now
- * (`fixBase`) — never the closed fix as one to open first.
- * @param {string} cwd @param {TaskRef} ref @param {number[]} closed the set's fixes closed, by number
+ * A fix's work: its branch, where the repository holds it, with the branch
+ * it is laid on (`fixBase`) and whether it holds a commit of its own past
+ * it; null where the repository holds no branch of it.
+ * @param {string} cwd @param {TaskRef} ref @param {TaskDetail[]} fixes the set's, as the tracker holds them
+ * @returns {{branch: string, base: string, own: boolean}|null}
  */
-function refuseClosedBeneath(cwd, ref, closed) {
+function fixWork(cwd, ref, fixes) {
   const root = codeRoot(cwd);
-  const own = fixBranchOf(root, ref);
-  if (own === null) return;
-  const landing = landsOn(cwd, ownRepo(root));
-  const beneath = closed.filter((n) => n < ref.n).flatMap((n) => {
-    const branch = fixBranchOf(root, { ...ref, n });
-    return branch !== null && isAncestor(root, branch, own) && !isAncestor(root, branch, landing) ? [{ n, branch }] : [];
-  });
-  if (beneath.length === 0) return;
-  const tasks = beneath.map(({ n }) => shownTask({ ...ref, n })).join(', ');
-  throw new Error(`land: ${taskName(ref)}'s branch ${own} holds ${beneath.map(({ branch }) => branch).join(', ')}, the work of ${tasks}, closed — rebase its own commits onto ${fixBase(cwd, ref, closed)}, the branch it is laid on, leaving that work out, then open it again`);
+  const branch = fixBranchOf(root, ref);
+  if (branch === null) return null;
+  const base = fixBase(cwd, ref, closedFixes(fixes));
+  return { branch, base, own: holdsBeyond(root, [branch], [base]) };
+}
+
+/**
+ * The later fixes not closed laid on a fix's own work — each whose branch
+ * holds a commit of it — by number, lowest first.
+ * @param {string} cwd @param {TaskRef} ref @param {{branch: string, base: string}} work the fix's (`fixWork`)
+ * @param {TaskDetail[]} fixes the set's, as the tracker holds them
+ * @returns {number[]}
+ */
+function laidOn(cwd, ref, work, fixes) {
+  const root = codeRoot(cwd);
+  const closed = closedFixes(fixes);
+  return phaseFixes(root, ref, (n) => n > ref.n && !closed.includes(n))
+    .filter(({ branch }) => !isAncestor(root, mergeBase(root, work.branch, branch), work.base))
+    .map(({ n }) => n)
+    .sort((a, b) => a - b);
 }
 
 /**
@@ -256,4 +278,4 @@ function checkOutLanding(cwd, unit) {
   return lands;
 }
 
-module.exports = { refuseDirty, refuseDirtyClose, checkOutFix, checkOutLanding, fixWayOn, closedFixes, refuseClosedBeneath, keptFixes, setFixesAside, keptBranches };
+module.exports = { refuseDirty, refuseDirtyClose, checkOutFix, checkOutLanding, fixWayOn, closedFixes, fixWork, laidOn, keptFixes, setFixesAside, keptBranches };

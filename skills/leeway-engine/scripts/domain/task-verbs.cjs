@@ -46,10 +46,12 @@
 // proves the bug (bug-proven.cjs, 15.5.3); close ends a task without it being
 // done, with a reason — a bugfix's reproducing task never (15.5.5) — takes it
 // off every question parking it (task-parks.cjs), and frees what waits on it
-// as done does (7.1.12); worktree lays the task's worktree out for its
-// builder, reading the task as show does (task-worktree.cjs); stopped
-// records, against the task in flight in the calling conversation, that its
-// builder stopped, unable to build past a problem (13.11.9, position.cjs).
+// as done does (7.1.12) — a quick-fix's fix ending as fix-end.cjs says, its
+// close committing beside the tracker's store the record it takes out;
+// worktree lays the task's worktree out for its builder, reading the task
+// as show does (task-worktree.cjs); stopped records, against the task in
+// flight in the calling conversation, that its builder stopped, unable to
+// build past a problem (13.11.9, position.cjs).
 // The verbs refuse in the engine's words: a tool the driver needs missing or
 // failing, a phase not written, a task the tracker lacks or already holds, a
 // task already ended. Beside them, three take the build's records, each its
@@ -106,6 +108,7 @@ const { markChanged, briefedOf, beingRead } = require('./round-report.cjs');
 const parks = () => require('./task-parks.cjs');
 const landing = () => require('./landing.cjs');
 const fixBranch = () => require('./fix-branch.cjs');
+const fixEnd = () => require('./fix-end.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskDriver} TaskDriver */
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
@@ -282,21 +285,22 @@ function commitSetup(cwd, unit, setUp) {
 /**
  * `act` against the project's task driver in the state root, the driver
  * set up first; then the state commit (the header's), `verb` naming it —
- * `describe` where the answer names it better — or null for a read. A
- * refusal, the driver's missing tools named in it where any is, commits
- * what of setting up the branch does not yet hold — the store made, the
- * setting, the ignore lines, and nothing else of the manifest or the ignore
- * file — under "set up the tracker", or, where the verb wrote before it was
- * refused, that and the store under `verb` refused; the commit's warnings
- * are carried in the refusal. A refusal with nothing of either commits
- * nothing.
+ * `describe` where the answer names it better — or null for a read, the
+ * state files `beside` names, those `act` wrote beside the store, committed
+ * with it. A refusal, the driver's missing tools named in it where any is,
+ * commits what of setting up the branch does not yet hold — the store made,
+ * the setting, the ignore lines, and nothing else of the manifest or the
+ * ignore file — under "set up the tracker", or, where the verb wrote before
+ * it was refused, that and what it wrote under `verb` refused; the commit's
+ * warnings are carried in the refusal. A refusal with nothing of either
+ * commits nothing.
  * @template {object} T
  * @param {string} cwd @param {string} unit @param {string|null} verb
  * @param {(driver: TaskDriver, root: string) => T} act
- * @param {(answer: T) => string} [describe]
+ * @param {{describe?: (answer: T) => string, beside?: () => string[]}} [opts]
  * @returns {T & {committed?: string|null, note?: string, warnings?: string[]}}
  */
-function withTracker(cwd, unit, verb, act, describe = () => /** @type {string} */ (verb)) {
+function withTracker(cwd, unit, verb, act, { describe = () => /** @type {string} */ (verb), beside = () => [] } = {}) {
   const root = stateRoot(cwd);
   const driver = /** @type {TaskDriver} */ (resolveDriver(cwd, 'task').driver);
   /** @type {string|null} */
@@ -314,13 +318,13 @@ function withTracker(cwd, unit, verb, act, describe = () => /** @type {string} *
     const wrote = held !== null && storeHeld(root, driver.storeFiles()) !== held;
     const setUp = setupUncommitted(root, driver);
     if (wrote || anySetup(setUp)) {
-      const { warnings } = commitTracker(cwd, wrote ? driver.storeFiles() : [], `task(${unit}): ${wrote ? `${verb} refused — what it wrote kept` : 'set up the tracker'}`, setUp);
+      const { warnings } = commitTracker(cwd, wrote ? [...driver.storeFiles(), ...beside()] : [], `task(${unit}): ${wrote ? `${verb} refused — what it wrote kept` : 'set up the tracker'}`, setUp);
       if (warnings !== undefined && err instanceof Error) err.message = `${err.message} — and ${warnings.join('; ')}`;
     }
     throw err;
   }
   const setUp = setupUncommitted(root, driver);
-  if (verb !== null) return Object.assign({}, answer, commitTracker(cwd, driver.storeFiles(), `task(${unit}): ${describe(answer)}`, setUp));
+  if (verb !== null) return Object.assign({}, answer, commitTracker(cwd, [...driver.storeFiles(), ...beside()], `task(${unit}): ${describe(answer)}`, setUp));
   return Object.assign({}, answer, commitSetup(cwd, unit, setUp));
 }
 
@@ -376,7 +380,7 @@ function createTask(cwd, unit, given, file) {
     if (quickFix && phase === FIXES_PHASE.number) refuseOthersScenarios(ref, task.text);
     driver.createTask(root, ref, task);
     return named(ref);
-  }, ({ task: shown }) => `create ${shown}`);
+  }, { describe: ({ task: shown }) => `create ${shown}` });
 }
 
 /** `task link`: the task held after another, unfinished, of its phase or an earlier one. @param {string} cwd @param {string} unit @param {string} given @param {string} afterGiven */
@@ -725,10 +729,12 @@ function showTask(cwd, unit, given) {
 /**
  * A verb that moves one task on, then the position with it: `prepare`, run
  * before the tracker moves, answers what settles the rest once it has, and
- * that answers what it adds to the verb's answer.
+ * that answers what it adds to the verb's answer. The move answers the
+ * state files it wrote beside the tracker's store, committed with it, which
+ * the settling is told.
  * @param {string} verb
- * @param {(driver: TaskDriver, root: string, ref: TaskRef, ...more: string[]) => void} move
- * @param {(cwd: string, ref: TaskRef, verb: string) => () => object} prepare
+ * @param {(cwd: string, driver: TaskDriver, root: string, ref: TaskRef, ...more: string[]) => string[]|void} move
+ * @param {(cwd: string, ref: TaskRef, verb: string) => (written: string[]) => object} prepare
  * @returns {(cwd: string, unit: string, given: string, ...more: string[]) => object}
  */
 function moving(verb, move, prepare) {
@@ -736,12 +742,14 @@ function moving(verb, move, prepare) {
     const ref = parseShownTask(unit, given);
     requireUnit(cwd, unit);
     const settle = prepare(cwd, ref, verb);
+    /** @type {string[]} */
+    let written = [];
     const answer = withTracker(cwd, unit, `${verb} ${shownTask(ref)}`, (driver, root) => {
-      move(driver, root, ref, ...more);
+      written = move(cwd, driver, root, ref, ...more) ?? [];
       return named(ref);
-    });
+    }, { beside: () => written });
     /** @type {{warnings?: string[]}} */
-    const settled = settle();
+    const settled = settle(written);
     const warnings = [...(answer.warnings ?? []), ...(settled.warnings ?? [])];
     return { ...answer, ...settled, ...(warnings.length > 0 ? { warnings } : {}) };
   };
@@ -799,7 +807,7 @@ function refuseSecondInStep(cwd, ref, manifest) {
 }
 
 /** `task start`: refused before its phase has started, and in step beside another task; else in progress — where it is not already — and in flight on the position beside any others. */
-const startTask = moving('start', (driver, root, ref) => {
+const startTask = moving('start', (_cwd, driver, root, ref) => {
   if (refuseEnded(driver, root, ref, 'only a task not yet ended is started').status !== 'in-progress') driver.start(root, ref);
 }, (cwd, ref) => {
   const manifest = loadWorkUnitManifest(cwd, ref.unit);
@@ -822,11 +830,12 @@ const CLOSE_RULE = 'only a task not yet ended is closed';
 /**
  * `task done`: refused while a question waiting parks it, where its account
  * is not taken of its review as it stands (task-account.cjs) — a
- * quick-fix's owing none — and for a bugfix's reproducing task while its
- * test's series on the unfixed code does not prove the bug (bug-proven.cjs);
- * else its worktree taken apart, then done, and off the position.
+ * quick-fix's owing none — for a bugfix's reproducing task while its
+ * test's series on the unfixed code does not prove the bug (bug-proven.cjs),
+ * and for a quick-fix's fix as its end refuses it (fix-end.cjs); else its
+ * worktree taken apart, then done, and off the position.
  */
-const doneTask = moving('done', (driver, root, ref) => {
+const doneTask = moving('done', (_cwd, driver, root, ref) => {
   refuseEnded(driver, root, ref, DONE_RULE);
   driver.done(root, ref);
 }, (cwd, ref, verb) => {
@@ -834,26 +843,31 @@ const doneTask = moving('done', (driver, root, ref) => {
   account().refuseUnaccounted(cwd, ref, `task ${verb}`);
   const unproven = reproducingHold(cwd, loadWorkUnitManifest(cwd, ref.unit), ref, 'is done');
   if (unproven !== null) throw new Error(`task ${verb}: ${unproven}`);
+  fixEnd().refuseUndone(cwd, ref, `task ${verb}`);
   return ending(DONE_RULE)(cwd, ref, verb);
 });
 
 /**
- * `task close`: refused for a bugfix's reproducing task (bug-proven.cjs);
- * where a question parks it, refused with no session before anything
- * moves; its worktree taken apart, then off every question parking it,
- * then closed without being done, its reason kept, and off the position —
- * the last of its phase's to end, another done, naming the phase's
- * mutation run (landing.cjs, `mutationRun`).
+ * `task close`: refused for a bugfix's reproducing task (bug-proven.cjs),
+ * and for a quick-fix's fix as its end refuses it (fix-end.cjs); where a
+ * question parks it, refused with no session before anything moves; its
+ * worktree taken apart, then off every question parking it, then closed
+ * without being done, its reason kept — a quick-fix's fix's record taken
+ * out in the same commit, the knowledge base brought in line after — and
+ * off the position — the last of its phase's to end, another done, naming
+ * the phase's mutation run (landing.cjs, `mutationRun`).
  */
-const closeTask = moving('close', (driver, root, ref, reason) => {
+const closeTask = moving('close', (cwd, driver, root, ref, reason) => {
   refuseEnded(driver, root, ref, CLOSE_RULE);
   driver.close(root, ref, reason);
+  return fixEnd().closedRecord(cwd, ref);
 }, (cwd, ref, verb) => {
   const kept = reproducingClose(loadWorkUnitManifest(cwd, ref.unit), ref);
   if (kept !== null) throw new Error(`task ${verb}: ${kept}`);
+  fixEnd().refuseHeld(cwd, ref, `task ${verb}`);
   const parking = parks().parkingOf(cwd, ref, `task ${verb}`);
   const settle = ending(CLOSE_RULE, () => parks().takeOff(cwd, ref, `task ${verb}`, parking))(cwd, ref, verb);
-  return () => ({ ...settle(), ...landing().mutationRun(cwd, ref, false) });
+  return (written) => ({ ...settle(), ...landing().mutationRun(cwd, ref, false), ...fixEnd().recordReindexed(cwd, ref, written) });
 });
 
 /**
