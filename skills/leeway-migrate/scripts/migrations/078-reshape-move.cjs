@@ -163,9 +163,11 @@
 // fresh once its topics are decided (21.8.2, 21.8.3); a unit whose building
 // started keeps them for the cut and the merges, and a quick-fix's scoping
 // keeps its own. An epic's topics are on its map — one that was not in
-// progress when 038 seeded the maps gains them, in the order its old record
-// lists their discussions — and an epic with topics is past its map, its
-// approval recorded (`phases.discovery.approved_at`) at the earliest moment
+// progress when 038 seeded the maps gains them from its discussions — each
+// holding its place in the order: a topic with no order, as 038 left every
+// one, takes the next after the highest the map uses, in the order its old
+// record lists them. An epic with topics is past its map, its approval
+// recorded (`phases.discovery.approved_at`) at the earliest moment
 // its old record shows: the unit's creation, the old manifest stamping
 // neither its discovery's close nor a discussion's start.
 // Everything else carries as it stood, the fields 21.5.9 names among them.
@@ -610,27 +612,33 @@ function settleDeadEnds(manifest, reshaped) {
 }
 
 /**
- * An epic's topics off its map put on it, after the topics it holds, in the
- * order its old record lists their discussions: an epic that was not in
- * progress when its map was first seeded (038) has discussions and no map.
- * A cancelled topic's row is marked and its order stashed, as the cancel
- * leaves one.
+ * An epic's topics off its map put on it, and every topic on it holding its
+ * place in the order, as approve-map's yes leaves them: a row holding an
+ * order or a stashed one keeps it; every other takes the next number after
+ * the highest the map uses, in the order of its old record — the map's rows
+ * as listed, then the topics its discussions add, as an epic that was not in
+ * progress when 038 seeded the maps has discussions and no map, and 038
+ * wrote no order. A live row takes the number as its order, a closed one
+ * stashes it, as the cancel and the postpone leave one.
  * @param {Record<string, any>} reshaped
  */
 function mapTopics(reshaped) {
-  const discussion = itemsOf(reshaped, 'discussion');
-  const off = Object.keys(discussion).filter((topic) => !Object.hasOwn(itemsOf(reshaped, 'discovery'), topic));
-  if (off.length === 0) return;
   const discovery = isObject(reshaped.phases.discovery) ? reshaped.phases.discovery : {};
   const items = isObject(discovery.items) ? discovery.items : {};
-  const orders = Object.values(items).flatMap((row) => (isObject(row) ? [row.order, row.previous_order] : [])).filter(Number.isInteger);
-  const last = Math.max(0, ...orders);
-  off.forEach((topic, at) => {
-    const order = last + at + 1;
-    items[topic] = discussion[topic]?.status === 'cancelled'
-      ? { source: 'migration-seeded', cancelled: true, previous_order: order }
-      : { source: 'migration-seeded', order };
-  });
+  const discussion = itemsOf(reshaped, 'discussion');
+  for (const topic of Object.keys(discussion)) {
+    if (Object.hasOwn(items, topic)) continue;
+    items[topic] = { source: 'migration-seeded', ...(discussion[topic]?.status === 'cancelled' ? { cancelled: true } : {}) };
+  }
+  if (Object.keys(items).length === 0) return;
+  const rows = Object.values(items).filter(isObject);
+  let last = Math.max(0, ...rows.flatMap((row) => [row.order, row.previous_order]).filter(Number.isInteger));
+  for (const row of rows) {
+    if (Number.isInteger(row.order) || Number.isInteger(row.previous_order)) continue;
+    last += 1;
+    if (row.cancelled === true || row.postponed === true) row.previous_order = last;
+    else row.order = last;
+  }
   reshaped.phases.discovery = { ...discovery, items };
 }
 
@@ -654,8 +662,8 @@ function createdAt({ created }) {
  * of names no topic holds going with their records' place, a completed
  * quick-fix's spec and plan with their files, and the spec and planning
  * items of a unit that writes its spec fresh; an epic's topics on its map,
- * and an epic with topics past its map, approved when it was made; each
- * import's path following its file.
+ * every one in the order, and an epic with topics past its map, approved
+ * when it was made; each import's path following its file.
  * @param {Record<string, any>} manifest @param {Set<string>} topics
  * @returns {Record<string, any>}
  */

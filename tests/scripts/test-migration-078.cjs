@@ -742,12 +742,12 @@ describe('migration 078: the move into the layout in .leeway/', () => {
             items: {
               alpha: { source: 'discovery', summary: 'Alpha', order: 1 },
               beta: { source: 'message:alpha', summary: 'Beta', order: 2 },
-              gamma: { source: 'discovery', summary: 'Gamma' },
+              gamma: { source: 'discovery', summary: 'Gamma', order: 5 },
               delta: { source: 'discovery', summary: 'Delta', cancelled: true, previous_order: 4 },
-              epsilon: { source: 'discovery', summary: 'Epsilon' },
-              eta: { source: 'discovery', summary: 'Eta', postponed: true },
-              theta: { source: 'discovery', summary: 'Theta' },
-              iota: { source: 'discovery', summary: 'Iota' },
+              epsilon: { source: 'discovery', summary: 'Epsilon', order: 6 },
+              eta: { source: 'discovery', summary: 'Eta', postponed: true, previous_order: 7 },
+              theta: { source: 'discovery', summary: 'Theta', order: 8 },
+              iota: { source: 'discovery', summary: 'Iota', order: 9 },
             },
           },
           discussion: {
@@ -805,10 +805,10 @@ describe('migration 078: the move into the layout in .leeway/', () => {
       ]);
     });
 
-    it('drops staging, review cycles, the spec\'s gate modes, plan review tracking and dependencies, keeping the build\'s standing and its spec items for the cut; its topics off the map put on it', () => {
+    it('drops staging, review cycles, the spec\'s gate modes, plan review tracking and dependencies, keeping the build\'s standing and its spec items for the cut; its topics off the map put on it, every topic in the order', () => {
       assert.deepStrictEqual(manifestOf('shop').phases, {
         discovery: {
-          items: { ranking: { source: 'discovery', summary: 'Ranking' }, 'event-tracking': { source: 'migration-seeded', order: 1 }, 'usage-analysis': { source: 'migration-seeded', order: 2 } },
+          items: { ranking: { source: 'discovery', summary: 'Ranking', order: 1 }, 'event-tracking': { source: 'migration-seeded', order: 2 }, 'usage-analysis': { source: 'migration-seeded', order: 3 } },
           approved_at: '2026-01-01T00:00:00.000Z',
         },
         discussion: { items: { ranking: { status: 'completed' }, 'event-tracking': { status: 'completed' }, 'usage-analysis': { status: 'completed' } } },
@@ -957,6 +957,33 @@ describe('migration 078: a small project', () => {
           approved_at: '2025-07-02T00:00:00.000Z',
         },
       ]);
+    } finally {
+      cleanupFixture(dir);
+    }
+  });
+
+  it('orders every topic on an old epic\'s map that holds none after the highest it uses, in the order the old record lists them — a closed one stashing its number — each that holds one keeping it', () => {
+    dir = tempProject('migration-078-ordered-');
+    try {
+      write(dir, '.workflows/manifest.json', json({ work_units: { mixed: { work_type: 'epic' } } }));
+      write(dir, '.workflows/mixed/manifest.json', json(unit('mixed', 'epic', 'in-progress', {
+        discovery: {
+          items: {
+            seeded: { source: 'migration-seeded' },
+            second: { source: 'discovery', summary: 'Second', order: 2 },
+            parked: { source: 'discovery', summary: 'Parked', postponed: true },
+            stashed: { source: 'discovery', summary: 'Stashed', cancelled: true, previous_order: 4 },
+            first: { source: 'discovery', summary: 'First', order: 1 },
+          },
+        },
+        discussion: { items: { seeded: { status: 'in-progress' }, second: { status: 'in-progress' }, first: { status: 'in-progress' }, later: { status: 'in-progress' } } },
+      })));
+      commitAll(dir);
+      run(dir);
+      const { items } = JSON.parse(fs.readFileSync(path.join(dir, '.leeway/mixed/manifest.json'), 'utf8')).phases.discovery;
+      assert.deepStrictEqual(Object.fromEntries(Object.entries(items).map(([topic, { order, previous_order: stashed }]) => [topic, [order ?? null, stashed ?? null]])), {
+        seeded: [5, null], second: [2, null], parked: [null, 6], stashed: [null, 4], first: [1, null], later: [7, null],
+      });
     } finally {
       cleanupFixture(dir);
     }
