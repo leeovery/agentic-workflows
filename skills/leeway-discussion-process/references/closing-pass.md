@@ -4,7 +4,7 @@
 
 ---
 
-The closing pass has two readers: a fresh agent, unanchored by the conversation, and you, who were in it. Mark each item as it holds, `checklist done decided {work_unit} {topic} {item}`, or skip it with its reason, `checklist skip decided {work_unit} {topic} {item} --reason "{reason}"`; a skip shows on the decided screen.
+The closing pass has two readers: a fresh agent, unanchored by the conversation, and you, who were in it. Mark each item as it holds, `checklist done decided {work_unit} {topic} {item}`, or skip it with its reason, `checklist skip decided {work_unit} {topic} {item} --reason "{reason}"`; a skip shows on the screen that shows the close.
 
 ## The Fresh Reader
 
@@ -15,7 +15,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs agent dispatch {work_unit} 
 node .claude/skills/leeway-engine/scripts/engine.cjs brief closing-pass-reader {work_unit} {topic} --agent {id}
 ```
 
-Its findings are taken as a review's are: load **[reviews.md](reviews.md)** and follow its instructions as written, where this conversation has not loaded it already. A `product` finding is a line for the decided screen's payload, written nowhere before the person's yes. Every point the pass finds lands — an entry, a question on the map, a message, later on the roadmap, a product-record line, or a candidate — never left in the log as a thread no one owns.
+Its findings are taken as a review's are: load **[reviews.md](reviews.md)** and follow its instructions as written, where this conversation has not loaded it already. A `product` finding is a line for the close's payload, written nowhere before the person's yes. Every point the pass finds lands — an entry, a question on the map, a message, later on the roadmap, a product-record line, or a candidate — never left in the log as a thread no one owns.
 
 Where the pass changed what the topic decides — a question opened, an answer replaced — another pass reads what changed, unasked, once the conversation has closed what it opened. The passes end at one that changes nothing, and `closing-pass` is done.
 

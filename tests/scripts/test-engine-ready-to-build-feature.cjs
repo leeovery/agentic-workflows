@@ -9,12 +9,15 @@
 // lines, the candidates parking on the roadmap and their strike — beside the
 // outline and the cut, Claude's calls on the topic counted with those at the
 // spec, decided's skips first, and decided's verdicts asked at decided
-// before the spec's (3.S5, 9.S23, 11.S14, 9.7.6, 11.8.2); a strike draws it
-// again, `--page` carried; and its yes takes the close as the decided gate's
-// yes does — the line landed, the candidates parked, the struck recorded,
-// the topic decided and its close taken — with the build begun, in one
-// commit, every line and candidate checked before anything is written and
-// landed only once the review has settled (8.S31, 8.10.2, 8.10.11).
+// before the spec's, counted across the whole close (3.S5, 9.S23, 11.S14,
+// 9.7.3, 9.7.6, 11.8.2); a staged line whose decision changed at the spec
+// refused until staged afresh; a strike draws it again, `--page` carried;
+// and its yes takes the close as the decided gate's yes does — the line
+// landed through the ledger, then in the yes's own commit the candidates
+// parked, the struck recorded, the topic decided and its close taken, with
+// the build begun — every line and candidate checked before anything is
+// written, the review page's marks among it, and landed only once the
+// review has settled (8.S31, 8.10.2, 8.10.11).
 //
 // Layer: verb. World: the ready to build world's feature, and the same with
 // the person's changes of Claude's calls (ready-to-build-world.cjs), copied
@@ -26,8 +29,9 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
-const { ok, output, refuses, refusedPristine, sectionOf, statePath, layout, readState, readManifest, stateGit, lastMessage } = require('./engine-harness.cjs');
-const { FEATURE, DECIDED_ITEMS, SESSION, made, feature, featureDeparted, worldConfig, useReadyWorld, readyHelpers, commented } = require('./ready-to-build-world.cjs');
+const { ok, output, refuses, refusedPristine, sectionOf, statePath, layout, readState, writeState, readManifest, stateGit, lastMessage } = require('./engine-harness.cjs');
+const { DECIDED_ITEMS } = require('./pipeline-world.cjs');
+const { FEATURE, FEATURE_PHASE, SESSION, write, written, cut, closeReady, made, feature, featureDeparted, worldConfig, useReadyWorld, readyHelpers, commented } = require('./ready-to-build-world.cjs');
 
 /** Each block of the screen's display, by its first line. @param {string} out */
 const blocks = (out) => sectionOf(out, 'DISPLAY: ready to build').split('\n\n').map((block) => block.split('\n')[0]);
@@ -66,6 +70,18 @@ describe('the one screen (3.S5, 9.S23, 11.S14)', () => {
       ['each measured finding the topic\'s decisions rest on re-run', 'every invariant names a check or says none can']);
   });
 
+  it('refuses to draw a staged line whose decision was changed at the spec since, naming the restage, and draws again once the line is staged afresh (9.7.6)', () => {
+    const now = write(dir(), 'replace', `${FEATURE}.specification`, ['--replaces', made.resets, '--reason', 'changed-mind'], { by: 'person', who_moved_whom: 'none', drops: ['At midnight.'], text: 'At four in the morning.', why: 'A comment at ready to build.' });
+    written(dir(), ['# Tally', '', '## 1. Counting', '', '### 1.1 The reset', '', `1.1.1 A tally resets at four in the morning. [${now}]`, '', `1.1.2 A reset is not logged. [${made.logged}]`, '',
+      '## 1-S. Scenarios for §1', '', '1.S1 Given a tally at four, when the day turns, then it resets. (1.1.1, 1.1.2)', ''].join('\n'), FEATURE);
+    cut(dir(), [FEATURE_PHASE], FEATURE);
+    closeReady(dir(), FEATURE);
+    assert.match(refused(['render', 'ready-to-build', FEATURE]), /^render ready-to-build: line 1 cannot land — .*; decided stage tally tally --file <payload\.json> stages it again$/);
+    const payload = { lines: [{ text: 'A tally resets at four in the morning, wherever it is shown.', why: 'The reset holds for the whole product.', widens: now }], candidates: [] };
+    ok(dir(), ['decided', 'stage', FEATURE, FEATURE, '--file', writeState(dir(), layout.cache('scratch', 'restaged.json'), JSON.stringify(payload))], { env: SESSION });
+    assert.match(screen(), /MENU: ready to build/);
+  });
+
   it('strikes a candidate on x, through the pick where two stand, drawing the screen again with the review page\'s flag carried', () => {
     screen();
     assert.deepStrictEqual(pick('ready to build', 'x'), { kind: 'engine', argv: ['render', 'decided-strike', `${FEATURE}.${FEATURE}`] });
@@ -89,15 +105,18 @@ describe('the one screen\'s verdicts (16.10.2, 16.10.11)', () => {
     process.env.LEEWAY_CONFIG_DIR = worldConfig(dir());
   });
 
-  it('asks decided\'s first, given at decided, then the spec\'s, given at ready to build, the yes refused until each is asked', () => {
+  it('asks decided\'s first, given at decided, then the spec\'s, given at ready to build, counted across the whole close, the yes refused until each is asked (9.7.3)', () => {
     const asked = [];
+    const counts = [];
     for (let out = screen(); !out.includes('MENU: ready to build'); out = screen()) {
+      counts.push(/YOUR VERDICT \((.*?) you changed\)/.exec(out)?.[1]);
       assert.strictEqual(refused(['ready-to-build', 'yes', FEATURE, '--position', 'auto']), 'ready-to-build yes: a verdict is still to ask — render ready-to-build asks each before the yes');
       const { argv } = pick('verdict', 'n');
       asked.push([argv[2], argv.at(-1)]);
       ok(dir(), argv, { env: SESSION });
     }
     assert.deepStrictEqual(asked.map(([entry, at]) => [[made.onTopic, made.atSpec].findIndex((id) => entry.startsWith(id)), at]), [[0, 'decided'], [1, 'ready-to-build']]);
+    assert.deepStrictEqual(counts, ['1 of 2 calls', '2 of 2 calls']);
   });
 });
 
@@ -108,7 +127,7 @@ describe('the one screen\'s yes (9.7.6, 8.S31)', () => {
   /** The ledger's entries, by their event. */
   const ledgerEvents = () => readState(dir(), layout.ledger).trim().split('\n').map((line) => JSON.parse(line).event);
 
-  it('lands the product-record line, parks each candidate standing on its horizon, records a struck one as the person\'s answer, marks the topic decided and its close taken, and begins the build, in one commit', () => {
+  it('lands the product-record line, parks each candidate standing on its horizon, records a struck one as the person\'s answer, marks the topic decided and its close taken, and begins the build: the line through the ledger, the rest in the yes\'s own commit', () => {
     ok(dir(), ['decided', 'strike', FEATURE, FEATURE, '2'], { env: SESSION });
     const before = ledgerEvents().length;
     screen();
@@ -128,10 +147,13 @@ describe('the one screen\'s yes (9.7.6, 8.S31)', () => {
     ok(dir(), ['roadmap', 'add', 'tally-widget', '--horizon', 'next', '--summary', 'A widget.'], { env: SESSION });
   });
 
-  it('checks every candidate before it writes anything: a twin on the roadmap since refuses it, writing nothing', () => {
+  it('checks every candidate before it writes anything: a twin on the roadmap since refuses it, writing nothing — with the review page open, not even its marks', () => {
     ok(dir(), ['roadmap', 'add', 'streak-freeze', '--horizon', 'later', '--summary', 'Freeze a streak.'], { env: SESSION });
-    assert.strictEqual(refusedPristine(dir(), ['ready-to-build', 'yes', FEATURE, '--position', 'auto'], { env: SESSION }).error,
-      'ready-to-build yes: the candidates: "streak-freeze" is already on the roadmap — edit it, or pick a different name');
+    const twin = 'ready-to-build yes: the candidates: "streak-freeze" is already on the roadmap — edit it, or pick a different name';
+    assert.strictEqual(refusedPristine(dir(), ['ready-to-build', 'yes', FEATURE, '--position', 'auto'], { env: SESSION }).error, twin);
+    publish();
+    const marks = readBack({ s1: { m: { '1-1-1': { s: 'tick' } } } });
+    assert.strictEqual(refusedPristine(dir(), ['ready-to-build', 'yes', FEATURE, '--position', 'auto', '--marks', marks], { env: SESSION }).error, twin);
   });
 
   it('lands nothing while a comment on the review page waits for Claude', () => {

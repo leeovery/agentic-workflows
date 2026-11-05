@@ -69,7 +69,8 @@ const { BUILD_POSITIONS } = require('../kernel/manifest-schema.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { carrying } = require('./ledger.cjs');
 const { claudesCall } = require('./ledger-events.cjs');
-const { isCurrent } = require('./ledger-fold.cjs');
+const { isCurrent, factsOf } = require('./ledger-fold.cjs');
+/** @typedef {import('./ledger-fold.cjs').IdFacts} IdFacts */
 const { readShown } = require('./ledger-read.cjs');
 const { verdictAsked } = require('./ledger-verdicts.cjs');
 const { buildBegun, itemTitle, phaseItems, topicTitles, cutPhases } = require('./derivations.cjs');
@@ -155,8 +156,9 @@ const readyDraws = (cwd, unit) => stands(() => readyStanding(cwd, unit));
  * What the screen and the yes stand on, refused where ready to build
  * cannot show: the unit's manifest, the skips its checklists show, the
  * landed spec the close seals, and, read in one pass of the ledger, a
- * feature's topic's close, Claude's calls, and the verdict asked — a
- * feature's decided's first — with the point it is given at.
+ * feature's topic's close, Claude's calls, and the verdict asked — for a
+ * feature, counted across its topic's departures and the spec's, the
+ * topic's first — with the point it is given at.
  * @param {string} cwd @param {string} unit
  */
 function standing(cwd, unit) {
@@ -165,13 +167,18 @@ function standing(cwd, unit) {
   try {
     const manifest = loadWorkUnitManifest(cwd, unit);
     const read = readShown(root, warnings, (shower) => {
-      const topic = decided === null ? null : featureClose(shower, root, cwd, manifest, decided.closed);
-      const asked = topic?.verdict ?? null;
+      const topic = decided === null ? null : featureClose(shower, root, cwd, manifest, decided.closed, warnings);
+      const onTopic = (/** @type {IdFacts} */ facts) => decided !== null && facts.topic === unit;
+      const verdict = verdictAsked(shower, root, (facts) => {
+        if (facts.unit !== unit) return null;
+        if (onTopic(facts)) return /** @type {{closed: string}} */ (decided).closed;
+        return facts.phase === PHASE ? closed : null;
+      });
       return {
         topic,
         calls: [...(topic?.calls ?? []), ...callsAtSpec(shower, unit)],
-        verdict: asked ?? verdictAsked(shower, root, (facts) => facts.unit === unit && facts.phase === PHASE, closed),
-        point: asked === null ? 'ready-to-build' : 'decided',
+        verdict,
+        point: verdict !== null && onTopic(factsOf(shower.folded, verdict.entry)) ? 'decided' : 'ready-to-build',
       };
     });
     return { manifest, skips: [...(decided?.skips ?? []), ...skips], warnings: [...(decided?.warnings ?? []), ...warnings], landed, ...read };

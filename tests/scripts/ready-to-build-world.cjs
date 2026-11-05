@@ -29,6 +29,7 @@ const { beforeEach, afterEach } = require('node:test');
 const { ok, output, refusedPristine, sectionOf, layout, writeState, commitAll, fixtureFrom, cleanupFixture, withEnv } = require('./engine-harness.cjs');
 const { createManifest, useTempFolder } = require('./discovery-test-utils.cjs');
 const { MADE } = require('./ledger-world.cjs');
+const { DECIDED_ITEMS } = require('./pipeline-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { trustLogPath } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
@@ -144,9 +145,6 @@ function closeReady(at, unit = UNIT) {
 /** The feature's cut's one phase. */
 const FEATURE_PHASE = Object.freeze({ name: 'Counting', goal: 'A tally counts and resets.', scenarios: ['1.S1'], sections: ['1'], relies_on: [] });
 
-/** Claude's items of decided's checklist. */
-const DECIDED_ITEMS = Object.freeze(['closing-pass', 'decisions-entered', 'replacements-checked', 'conflicts-read', 'findings-rerun', 'product-lines-shown']);
-
 /** The feature's payload as its topic closes: a product-record line, and two candidates parking on the roadmap. */
 const featurePayload = () => ({
   lines: [{ text: 'A tally resets at midnight, wherever it is shown.', why: 'The reset holds for the whole product.', widens: made.resets }],
@@ -255,5 +253,5 @@ function readyHelpers(dir, unit = UNIT) {
 const commented = (id, text) => ({ [id]: { s: 'comment', t: { p1000: { by: 'p', x: text } } } });
 
 module.exports = {
-  UNIT, FEATURE, FEATURE_AT, FEATURE_PHASE, DECIDED_ITEMS, SESSION, SPEC_AT, READ_BACK, CARDS, REFUNDS, made, write, answered, cut, reviewPass, landReviewed, written, closeReady, landed, closed, feature, featureDeparted, worldConfig, useReadyWorld, readyHelpers, commented,
+  UNIT, FEATURE, FEATURE_AT, FEATURE_PHASE, SESSION, SPEC_AT, READ_BACK, CARDS, REFUNDS, made, write, answered, cut, reviewPass, landReviewed, written, closeReady, landed, closed, feature, featureDeparted, worldConfig, useReadyWorld, readyHelpers, commented,
 };

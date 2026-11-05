@@ -148,6 +148,11 @@
 //   released: the entry's short id, the commit, and as warnings a push that
 //   failed and what a landing finished on the way said, which a refusal
 //   carries too.
+//   A question asked on a topic, or moved onto one, while the topic's
+//   decided close stands voids that close on the unit's manifest, under the
+//   same lock and in the same commit (checklist.cjs, 9.7.9), so the
+//   manifest alone says whether a close stands. Past the unit's spec no
+//   topic takes a write: a change is the spec's, asked for there (4.11.2).
 //   Then, the lock released, the knowledge base's copies are rendered
 //   against the ledger and indexed (ledger-copies.cjs), a failure a warning
 //   on an entry that stands (22.6.15).
@@ -170,6 +175,9 @@ const { derivedMove, movedRefusal, reverses } = require('./ledger-verdicts.cjs')
 const { heldAgainst } = require('./ledger-affected.cjs');
 const { newEvent, keepEvent, landKept } = require('./trust-log.cjs');
 const { checkUnparked } = require('./questions.cjs');
+const { voidDecidedClose } = require('./derivations.cjs');
+const { pastItsSpec } = require('./spec-standing.cjs');
+const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manifest.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').IdFacts} IdFacts */
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
@@ -573,6 +581,9 @@ function addressOf(cwd, said, dotpath, write) {
     throw new Error(`${said}: a topic exists only before the spec, and ${phase} is the unit's — write at ${unit}.${phase}`);
   }
   checkItemHeld(said, { unit, phase, topic }, () => manifest);
+  if (topic !== null && pastItsSpec(cwd, manifest)) {
+    throw new Error(`${said}: ${unit} has its spec — a topic exists only before it, and a change the person asks for is settled at ${unit}.specification`);
+  }
   const at = { dotpath, root, unit, manifest, phase, topic };
   checkPlaceLive(said, at, liveness(root));
   return at;
@@ -1240,8 +1251,34 @@ function ledgerMessage(unit, event, id, topic) {
  * commit git refuses a warning.
  * @param {string} cwd @param {Request} request @param {string} id @param {string[]} warnings
  */
-function commitEntry(cwd, { at, write }, id, warnings) {
-  return commitLedger(cwd, ledgerMessage(at.unit, write.event, id, at.topic), warnings);
+function commitEntry(cwd, { at, write }, id, warnings, paths = []) {
+  return commitLedger(cwd, ledgerMessage(at.unit, write.event, id, at.topic), warnings, paths);
+}
+
+/**
+ * The topic a write opens a question on — asked there, or moved onto it —
+ * or null for any other write.
+ * @param {Address} at @param {Write} write @param {Record<string, unknown>} fields @returns {string|null}
+ */
+function opensOn(at, write, fields) {
+  if (write.event === 'asked') return at.topic;
+  if (write.event === 'moved' && typeof fields.to === 'string' && roadmapItemOf(fields.to) === null) return fields.to;
+  return null;
+}
+
+/**
+ * The decided close of the topic a write opens a question on voided, where
+ * one stands, under the writer lock the caller holds: the manifest's path
+ * for the commit where it was, else none.
+ * @param {string} cwd @param {Address} at @param {Write} write @param {Record<string, unknown>} fields @returns {string[]}
+ */
+function voidOnQuestion(cwd, at, write, fields) {
+  const topic = opensOn(at, write, fields);
+  if (topic === null || at.manifest === null) return [];
+  const manifest = loadWorkUnitManifest(cwd, at.unit);
+  if (!voidDecidedClose(manifest, topic, new Date().toISOString())) return [];
+  saveWorkUnitManifest(cwd, at.unit, manifest);
+  return [`${at.unit}/manifest.json`];
 }
 
 /**
@@ -1279,9 +1316,10 @@ function land(cwd, request, warnings) {
     const { type, fields: own } = logs({ ...fields, id });
     keepEvent(newEvent(type, own, cwd), at.root, id);
   }
+  const voided = voidOnQuestion(cwd, at, write, fields);
   const line = appendEntry(at.root, fields, warnings, id);
   if (logs !== null) landKept(cwd, warnings);
-  return { id: short, outcome: commitEntry(cwd, request, id, warnings), line, held: null };
+  return { id: short, outcome: commitEntry(cwd, request, id, warnings, voided), line, held: null };
 }
 
 /**

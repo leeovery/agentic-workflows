@@ -122,7 +122,6 @@ function project(dir) {
       discovery: { items: { cards: mapped(1), refunds: mapped(2) } },
       discussion: { items: { cards: { status: 'in-progress' }, refunds: { status: 'in-progress' } } },
     },
-    build: { position: 'auto' },
   });
   createManifest(dir, 'billing', {});
   createManifest(dir, 'solo', { phases: { discussion: { items: { solo: { status: 'in-progress' } } } } });
@@ -130,6 +129,7 @@ function project(dir) {
   const { write } = ledgerHelpers(() => dir);
   const radius = write('ask', `${UNIT}.discussion.cards`, [], { ...MADE, text: 'What radius are the corners?' }).id;
   write('decide', `${UNIT}.discussion.cards`, ['--answers', radius], { ...MADE, given: 'dont-care', text: 'Ten points.', why: 'Any radius serves.' });
+  createManifest(dir, UNIT, { ...readManifest(dir, UNIT), build: { position: 'auto' } });
   writeState(dir, layout.unit(UNIT, 'spec.md'), specIn(dir));
   commitAll(dir, 'spec written');
   cut(dir, [CARDS, REFUNDS]);
@@ -323,6 +323,9 @@ describe('the engine\'s own items, worked out at each call (6.4.3)', () => {
   eachOn(marked);
 
   it('reads a question of the person\'s still open as open, done once it is answered, open again for a new one, and open on the topic it is moved to, not the one it left — never marked (6.S13)', () => {
+    const { build, ...beforeItsSpec } = readManifest(dir, UNIT);
+    createManifest(dir, UNIT, beforeItsSpec);
+    fs.rmSync(statePath(dir, layout.unit(UNIT, 'spec.md')));
     const topic = `${UNIT}.discussion.cards`;
     const write = (/** @type {string} */ verb, /** @type {string[]} */ flags, /** @type {object} */ content) => ok(dir, ['ledger', verb, topic, ...flags], { env: SESSION, stdin: JSON.stringify({ by: 'claude', who_moved_whom: 'none', ...content }) }).id;
     const questions = (/** @type {string} */ on = 'cards') => itemState('questions-closed', 'decided', UNIT, on);
@@ -403,7 +406,7 @@ describe('the engine\'s own items, worked out at each call (6.4.3)', () => {
 
   it('reads the canonical assets linked once spec.md links every file the unit\'s current entries link as canonical — one a reference link names never needed, a link to a file elsewhere linking nothing (11.6.3, 11.S9)', () => {
     const linked = () => itemState('assets-linked', 'ready-to-build', UNIT);
-    const at = `${UNIT}.discussion.cards`;
+    const at = `${UNIT}.specification`;
     const write = (/** @type {string} */ verb, /** @type {string[]} */ flags, /** @type {object} */ content) => ok(dir, ['ledger', verb, at, ...flags], { env: SESSION, stdin: JSON.stringify({ by: 'claude', who_moved_whom: 'none', ...content }) }).id;
     const decided = write('decide', ['--answers', write('ask', [], { text: 'What does the form look like?' })], { text: 'As drawn.', why: 'The spike settled it.' });
     for (const [file, status] of [['form.png', 'canonical'], ['notes.md', 'reference']]) {
@@ -420,7 +423,7 @@ describe('the engine\'s own items, worked out at each call (6.4.3)', () => {
 
   it('reads a spike\'s folder linked as canonical linked by a link to it, with or without its trailing slash, or to a file it holds, never by a link beside it (11.6.3)', () => {
     const linked = () => itemState('assets-linked', 'ready-to-build', UNIT);
-    const at = `${UNIT}.discussion.cards`;
+    const at = `${UNIT}.specification`;
     const write = (/** @type {string} */ verb, /** @type {string[]} */ flags, /** @type {object} */ content) => ok(dir, ['ledger', verb, at, ...flags], { env: SESSION, stdin: JSON.stringify({ by: 'claude', who_moved_whom: 'none', ...content }) }).id;
     const decided = write('decide', ['--answers', write('ask', [], { text: 'How does the frame scroll?' })], { text: 'Smoothly.', why: 'The spike settled it.' });
     const spike = ok(dir, ['asset', 'spike', UNIT, 'frame']).path;
@@ -438,7 +441,7 @@ describe('the engine\'s own items, worked out at each call (6.4.3)', () => {
 
   it('keeps a canonical file gone from disk open however the spec links it, until it is set to reference, as its text says (11.6.3)', () => {
     const linked = () => itemState('assets-linked', 'ready-to-build', UNIT);
-    const at = `${UNIT}.discussion.cards`;
+    const at = `${UNIT}.specification`;
     const write = (/** @type {string} */ verb, /** @type {string[]} */ flags, /** @type {object} */ content) => ok(dir, ['ledger', verb, at, ...flags], { env: SESSION, stdin: JSON.stringify({ by: 'claude', who_moved_whom: 'none', ...content }) }).id;
     const decided = write('decide', ['--answers', write('ask', [], { text: 'What does the form look like?' })], { text: 'As drawn.', why: 'The mockup settled it.' });
     writeState(dir, layout.assets(UNIT, 'form.png'), 'form\n');

@@ -231,7 +231,7 @@ describe('the land\'s record (E4)', () => {
     land();
     const first = JSON.parse(readState(dir(), LANDED));
     const mark = ledgerLines().at(-1).id;
-    write('find', CARDS, [], { ...MADE, text: 'Amex is asked for.', how: 'read in the support tickets', known: 'documented' });
+    write('find', AT_SPEC, [], { ...MADE, text: 'Amex is asked for.', how: 'read in the support tickets', known: 'documented' });
     writeSpec(spaced(spec({ charge: `1.2.1 A charge is one request, and takes 300 ms. [${made.one}]` })));
     const answer = land();
     const second = JSON.parse(readState(dir(), LANDED));

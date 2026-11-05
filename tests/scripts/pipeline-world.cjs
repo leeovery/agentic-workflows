@@ -596,7 +596,7 @@ function answerGate(sim, name, ...answer) {
 const gatesAnswered = (sim) => trustLines(sim).map((line) => JSON.parse(line)).filter(({ type }) => type === 'gate').map(({ gate }) => gate);
 
 /** Claude's items of the decided checklist; the engine works out the rest. */
-const DECIDED_ITEMS = ['closing-pass', 'decisions-entered', 'replacements-checked', 'conflicts-read', 'findings-rerun', 'product-lines-shown'];
+const DECIDED_ITEMS = Object.freeze(['closing-pass', 'decisions-entered', 'replacements-checked', 'conflicts-read', 'findings-rerun', 'product-lines-shown']);
 
 /**
  * A discussion closed as the prose closes it (9.7): the map drawn, no agent
@@ -621,11 +621,13 @@ function decideTopic(sim, wu, topic, payload = { lines: [], candidates: [] }) {
 }
 
 /**
- * A discussion worked from its entry to its yes as the prose works it (9.3,
- * 9.7): the entry; the reads — every other decided topic's record and the
- * product record; each waiting message raised as a question and answered off
- * the mailbox; the opening question asked and the person's answer decided,
- * the log written; then the close. Answers what the yes answered.
+ * A discussion worked from its entry to its close as the prose works it
+ * (9.3, 9.7): the entry; the reads — every other decided topic's record and
+ * the product record; each waiting message raised as a question and answered
+ * off the mailbox; the opening question asked and the person's answer
+ * decided, the log written; then the close — an epic's topic's through its
+ * decided gate's yes, a feature's staged into its spec. Answers what the yes,
+ * or the stage, answered.
  * @param {Sim} sim @param {string} wu @param {string} topic
  * @param {{question?: string, answer?: string, payload?: {lines: object[], candidates: object[]}}} [opts]
  */
@@ -1346,5 +1348,5 @@ function finished(sim, wu, { closed = false } = {}) {
 
 module.exports = {
   Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, gatesAnswered, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicBuildPick, linearBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed,
-  builders, taskBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finishClosed, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic,
+  DECIDED_ITEMS, builders, taskBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finishClosed, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic,
 };

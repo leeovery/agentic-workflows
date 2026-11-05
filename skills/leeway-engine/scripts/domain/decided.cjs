@@ -453,6 +453,13 @@ function stagedBefore(cwd, unit, topic) {
 }
 
 /**
+ * The call that stages the topic's close: a feature's into its spec, an
+ * epic's topic's on its decided screen.
+ * @param {Record<string, any>} manifest @param {string} topic
+ */
+const stagingCall = (manifest, topic) => `${closesIntoSpec(manifest) ? `decided stage ${manifest.name} ${topic}` : `render decided ${manifest.name}.${topic}`} --file <payload.json>`;
+
+/**
  * The payload staged for the topic's close: refused where none is, or it
  * was staged against an earlier close, each refusal naming the call that
  * stages it.
@@ -461,7 +468,7 @@ function stagedBefore(cwd, unit, topic) {
  */
 function stagedFor(cwd, manifest, topic, closed) {
   const unit = manifest.name;
-  const stages = `${closesIntoSpec(manifest) ? `decided stage ${unit} ${topic}` : `render decided ${unit}.${topic}`} --file <payload.json>`;
+  const stages = stagingCall(manifest, topic);
   const staged = /** @type {Staged} */ (stagedAt(stagedFile(cwd, unit, topic), `nothing is staged for ${topic} — ${stages} stages Claude's lines and candidates`));
   if (staged.closed !== closed) throw new Error(`what is staged for ${topic} was drawn for an earlier close — ${stages} stages it again`);
   return staged;
@@ -483,7 +490,7 @@ function recordSide(shower, root, unit, topic, closed) {
     kind: /** @type {string|null} */ (shower.show(resolveId(answer.id, shower.folded.facts.keys())).kind),
     handed: handedTag(answer),
   }));
-  return { rows, decided: textsOf('yours'), carried: textsOf('carried'), moved: textsOf('moved').length, calls, verdict: verdictAsked(shower, root, (facts) => facts.unit === unit && facts.topic === topic, closed) };
+  return { rows, decided: textsOf('yours'), carried: textsOf('carried'), moved: textsOf('moved').length, calls, verdict: verdictAsked(shower, root, (facts) => (facts.unit === unit && facts.topic === topic ? closed : null)) };
 }
 
 /**
@@ -661,10 +668,11 @@ function withdrawalRaise(unit, { id, line, text, why, now }) {
  * decision of the topic replaced since and nothing staged replaces or
  * withdraws it — the rule it states is widened afresh from the replacement
  * or withdrawn, or the record holds two — or null where none does.
- * @param {Shower} shower @param {string} unit @param {string} topic @param {Staged} staged
+ * @param {Shower} shower @param {Record<string, any>} manifest @param {string} topic @param {Staged} staged
  * @returns {string|null}
  */
-function unreplacedLine(shower, unit, topic, { lines, withdrawals }) {
+function unreplacedLine(shower, manifest, topic, { lines, withdrawals }) {
+  const unit = manifest.name;
   const { folded } = shower;
   const replacedHere = (/** @type {string} */ id) => {
     const facts = factsOf(folded, id);
@@ -673,17 +681,19 @@ function unreplacedLine(shower, unit, topic, { lines, withdrawals }) {
   const covered = (/** @type {string} */ id) => lines.some((line) => line.replaces?.id === id) || withdrawals.some((w) => w.line === id);
   const left = productOf(folded).decisions.find((id) => factsOf(folded, id).relies_on.some(replacedHere) && !covered(id));
   if (left === undefined) return null;
-  return `the product record's line ${shower.short(left)}, "${shower.show(left).text}", widens a decision of ${topic} replaced since, and nothing staged replaces or withdraws it — a line widening the replacement, or a withdrawal of the line, is staged with --file`;
+  return `the product record's line ${shower.short(left)}, "${shower.show(left).text}", widens a decision of ${topic} replaced since, and nothing staged replaces or withdraws it — a line widening the replacement, or a withdrawal of the line, is staged with ${stagingCall(manifest, topic)}`;
 }
 
 /**
  * Refused where a staged line or withdrawal could not land as the ledger
  * stands — the decision it widens or the line it replaces no longer
- * current — by the link check its first landing makes, writing nothing;
- * the unit taking writes is the topic's own check (`openTopic`).
- * @param {string} cwd @param {string} unit @param {Staged} staged @param {string[]} warnings
+ * current — by the link check its first landing makes, writing nothing,
+ * naming the call that stages it again; the unit taking writes is the
+ * topic's own check (`openTopic`).
+ * @param {string} cwd @param {Record<string, any>} manifest @param {string} topic @param {Staged} staged @param {string[]} warnings
  */
-function checkLines(cwd, unit, { lines, withdrawals }, warnings) {
+function checkLines(cwd, manifest, topic, { lines, withdrawals }, warnings) {
+  const unit = manifest.name;
   const firsts = [
     ...lines.map((line, at) => ({ what: `line ${at + 1}`, raised: lineRaises(unit, line)[0] })),
     ...withdrawals.map((withdrawal, at) => ({ what: `withdrawal ${at + 1}`, raised: withdrawalRaise(unit, withdrawal) })),
@@ -692,7 +702,7 @@ function checkLines(cwd, unit, { lines, withdrawals }, warnings) {
     try {
       checkRaised(cwd, raised, warnings);
     } catch (err) {
-      throw new Error(`${what} cannot land — ${messageOf(err).replace(/^decided yes: /, '')}; it is staged again with --file`);
+      throw new Error(`${what} cannot land — ${messageOf(err).replace(/^decided yes: /, '')}; ${stagingCall(manifest, topic)} stages it again`);
     }
   }
 }
@@ -736,8 +746,9 @@ function closingYes(cwd, unit, topic, staged, warnings) {
   if (handedSession() === null) throw new Error('no conversation to write in — Claude Code hands every command it runs a session id, and this one has none');
   const added = staged.candidates.filter(({ struck }) => !struck);
   const struck = staged.candidates.filter((candidate) => candidate.struck).map(({ name }) => name);
-  const drafts = checkCandidates(cwd, loadWorkUnitManifest(cwd, unit), topic, added);
-  checkLines(cwd, unit, staged, warnings);
+  const manifest = loadWorkUnitManifest(cwd, unit);
+  const drafts = checkCandidates(cwd, manifest, topic, added);
+  checkLines(cwd, manifest, topic, staged, warnings);
   return {
     candidates: added.map(({ name }) => name),
     struck,
@@ -773,7 +784,7 @@ function decidedYes(cwd, unit, topic) {
   const staged = onClosedTopic(cwd, unit, topic, ({ shower, manifest, closed, side }) => {
     const ready = stagedFor(cwd, manifest, topic, closed);
     if (side.verdict !== null) throw new Error('a verdict is still to ask — render decided asks each before the yes');
-    const unreplaced = unreplacedLine(shower, unit, topic, ready);
+    const unreplaced = unreplacedLine(shower, manifest, topic, ready);
     if (unreplaced !== null) throw new Error(unreplaced);
     return ready;
   });
@@ -800,16 +811,19 @@ function decidedYes(cwd, unit, topic) {
  * A feature's topic's close as its one screen, decided and ready to build,
  * draws it (9.7.6, 11.8.5), read in that screen's pass of the ledger from
  * the close standing, `closed` (`decidedClose`): refused with nothing
- * staged for it; else the close as drawn, Claude's calls on the topic, the
- * departure it asks a verdict of, the payload staged, and why its yes would
- * refuse, null where it would not.
- * @param {Shower} shower @param {string} root @param {string} cwd @param {Record<string, any>} manifest @param {string} closed
+ * staged for it, or a staged line or withdrawal that could no longer land —
+ * the decision it widens changed at the spec since, say — so the person
+ * never picks against a stale payload; else the close as drawn, Claude's
+ * calls on the topic, the payload staged, and why its yes would refuse,
+ * null where it would not.
+ * @param {Shower} shower @param {string} root @param {string} cwd @param {Record<string, any>} manifest @param {string} closed @param {string[]} warnings
  */
-function featureClose(shower, root, cwd, manifest, closed) {
+function featureClose(shower, root, cwd, manifest, closed, warnings) {
   const unit = manifest.name;
   const staged = stagedFor(cwd, manifest, unit, closed);
+  checkLines(cwd, manifest, unit, staged, warnings);
   const side = recordSide(shower, root, unit, unit, closed);
-  return { close: closeShown(manifest, unit, side, staged), calls: side.calls, verdict: side.verdict, staged, unreplaced: unreplacedLine(shower, unit, unit, staged) };
+  return { close: closeShown(manifest, unit, side, staged), calls: side.calls, staged, unreplaced: unreplacedLine(shower, manifest, unit, staged) };
 }
 
 /**

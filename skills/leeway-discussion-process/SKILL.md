@@ -20,7 +20,7 @@ Load **[framework.md](../leeway-shared/references/framework.md)** and follow its
 
 ## Done When
 
-The topic's `decided` checklist is closed and the person has said yes at its decided gate: the engine then holds the topic decided, with the product-record lines and the candidates the yes covered. A feature's topic has no decided gate: it is done once its checklist is closed and its payload staged into the spec, the person's yes given at ready to build.
+The topic's `decided` checklist is closed and the person has said yes at its decided gate: the engine then holds the topic decided, with the product-record lines and the candidates the yes covered. A feature's topic has no decided gate: it is done once its checklist is closed and its payload staged into the spec.
 
 ## Entering
 
@@ -120,7 +120,7 @@ When nothing of the person's is open, the topic closes on its `decided` checklis
 
 1. Fetch `render wait-agents {work_unit}.{topic}`. Where it draws a MENU, emit it verbatim per its marker and follow the answer's `next`. Then go on.
 2. Load **[closing-pass.md](references/closing-pass.md)** and follow its instructions as written: the closing pass and the reads beside it.
-3. `product-lines-shown` — the product-record lines and any candidates written for the decided screen. Write its payload to `.leeway/.cache/{work_unit}/discussion/{topic}/decided-payload.json` — `{"lines": [{"text", "why", "widens"}], "withdraws": [{"line", "why"}], "candidates": [...]}`: each product-record line the closing pass found, `widens` the id of the decision it makes a rule for the whole product, one line to a decision; where a rule of the record should go, its line by id with why, `withdraws` left out where none should; and each candidate, work no topic owns that holds a call the person would make, with its reason.
+3. `product-lines-shown` — the product-record lines and any candidates written for the screen that shows the close — an epic's decided screen, a feature's ready to build. Write its payload to `.leeway/.cache/{work_unit}/discussion/{topic}/decided-payload.json` — `{"lines": [{"text", "why", "widens"}], "withdraws": [{"line", "why"}], "candidates": [...]}`: each product-record line the closing pass found, `widens` the id of the decision it makes a rule for the whole product, one line to a decision; where a rule of the record should go, its line by id with why, `withdraws` left out where none should; and each candidate, work no topic owns that holds a call the person would make, with its reason.
    - **An epic's candidate** is `{"name", "reason", "brief"}`, named as a topic, `brief` the path of its brief's draft under `.leeway/.cache/{work_unit}/discussion/{topic}/`: what the work is, where it was read, why it matters, and its open questions. One matching a waiting roadmap item takes it in, `"from_roadmap": "{item}"`.
    - **A single-topic unit's candidate** parks on the roadmap at the yes: `{"name", "reason", "horizon"}`, named as a roadmap item, on the horizon the person named. Where they named none, ask with `render horizon-pick --park {name}` before writing the payload, emit its MENU verbatim per its marker, and take the horizon picked, or the one the person names; a pick that refuses has none to offer, so ask in the conversation.
 
@@ -138,7 +138,7 @@ When nothing of the person's is open, the topic closes on its `decided` checklis
    node .claude/skills/leeway-engine/scripts/engine.cjs decided stage {work_unit} {topic} --file .leeway/.cache/{work_unit}/discussion/{topic}/decided-payload.json
    ```
 
-   A line widening a decision the product record already widens is refused, naming that entry: leave the line out of the payload, stage it again, and say in a line that it is in the record already. A line widening the replacement of a decision a product-record line rests on replaces that line at the yes, and the screen shows what it replaces. The yes refuses while a product-record line rests on a decision of this topic replaced since and nothing staged replaces or withdraws it, naming the line. Where the rule still holds, stage a line widening the replacement, in the same words; where it should go, withdraw the line. Then draw the screen again.
+   A line widening a decision the product record already widens is refused, naming that entry: leave the line out of the payload, stage it again, and say in a line that it is in the record already. A line widening the replacement of a decision a product-record line rests on replaces that line at the yes, and the screen shows what it replaces. At an epic's decided gate, the yes refuses while a product-record line rests on a decision of this topic replaced since and nothing staged replaces or withdraws it, naming the line. Where the rule still holds, stage a line widening the replacement, in the same words; where it should go, withdraw the line. Then draw the screen again.
 
 An epic's screen asks a verdict of each call the person changed, one at a time: each answer goes to `gate`, whose `next` gives the verdict; then draw `render decided {work_unit}.{topic}` again. A Comment that changes a product-record line changes the payload, staged again with `--file`. One keeping a struck candidate after all undoes its strike, `decided unstrike {work_unit} {topic} {n}`, whose `next` draws the screen. Something new on the topic after the close — a message, a question opened — is worked, the checklist closed again and the payload staged again. A refused yes names what to fix: fix it, then draw the screen again. The yes answers a `next`: follow it.
 
@@ -156,7 +156,7 @@ A refused add records nothing; a name already on the roadmap takes another. A qu
 node .claude/skills/leeway-engine/scripts/engine.cjs ledger move {work_unit}.discussion.{topic} --question {id} --to roadmap:{name}
 ```
 
-Work no topic owns that the person has not put off is a candidate for the decided screen (**Closing**), and a point another topic owns is a message (**A Message to Another Topic**).
+Work no topic owns that the person has not put off is a candidate at the close (**Closing**), and a point another topic owns is a message (**A Message to Another Topic**).
 
 ## Postponing the Topic
 

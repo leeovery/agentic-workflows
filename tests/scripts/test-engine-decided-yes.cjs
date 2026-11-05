@@ -127,7 +127,7 @@ describe('the decided gate\'s yes (8.S25, 8.S28, 9.7.3)', () => {
     staged({ lines, candidates: [] });
     const replacement = writeIn(dir(), 'replace', NOTE, ['--replaces', NOTE_MAP.sync.answer, '--reason', 'changed-mind'], { ...MADE, drops: ['on by default'], text: 'Sync is off until turned on.', why: 'A comment at the gate.' });
     const before = entries().length;
-    assert.match(refusedPristine(dir(), ['decided', 'yes', UNIT, 'note-window'], { env: SESSION }).error, /^decided yes: line 2 cannot land — .*; it is staged again with --file$/);
+    assert.match(refusedPristine(dir(), ['decided', 'yes', UNIT, 'note-window'], { env: SESSION }).error, /^decided yes: line 2 cannot land — .*; render decided fumi\.note-window --file <payload\.json> stages it again$/);
     assert.strictEqual(entries().length, before, 'line 1 never landed');
     staged({ lines: [lines[0], { ...lines[1], text: 'Sync is off until turned on.', widens: replacement }], candidates: [candidate('removing-fumi', 'R.')] });
     ok(dir(), ['topic', 'add', UNIT, 'removing-fumi', '--summary', 'Added at the map meanwhile.', '--brief', candidate('removing-fumi', 'R.').brief], { env: SESSION });

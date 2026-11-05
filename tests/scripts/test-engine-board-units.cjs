@@ -34,7 +34,7 @@ const { board, at, made, sent, spawned } = decidedBoardHelpers(dir);
 const approvedOn = () => readManifest(dir(), UNIT).phases.discovery.approved_at;
 
 /** The solo feature's topic closed into its spec, staged with nothing for the record: when its checklist closed. */
-function soloDecided() {
+function soloClosed() {
   close(SOLO, SOLO);
   ok(dir(), ['decided', 'stage', SOLO, SOLO, '--file', payload(NO_PAYLOAD)], { env: SESSION });
   return readManifest(dir(), SOLO).checklists.decided[SOLO].closed;
@@ -197,7 +197,7 @@ describe('other units\' pages (20.15)', () => {
   });
 
   it('20.15.1: a unit\'s tab, its spec written and its build not begun, lists each gap its spec\'s review waits on the person for, opening its entry where no pass raised it', () => {
-    soloDecided();
+    soloClosed();
     soloSpec();
     const asked = writeIn(dir(), 'ask', `${SOLO}.specification`, [], { ...MADE, text: 'Is a tally ever shared?' });
 
@@ -212,8 +212,8 @@ describe('other units\' pages (20.15)', () => {
     assert.strictEqual(board(['--tab', 'unit']).view.here, true);
   });
 
-  it('N1: a feature\'s specification is the phase it is in from the spec\'s entry, its topic decided, before its spec is written — under way, as its banner says it — and its tab\'s row says where the spec stands once written', () => {
-    const closed = soloDecided();
+  it('N1: a feature\'s specification is the phase it is in from the spec\'s entry, its topic closed into it, before its spec is written — under way, as its banner says it — and its tab\'s row says where the spec stands once written', () => {
+    const closed = soloClosed();
     const before = board(['--tab', 'unit', '--unit', SOLO]).view;
     soloSpec();
     at([SOLO, 'specification', SOLO]);
@@ -227,7 +227,7 @@ describe('other units\' pages (20.15)', () => {
   });
 
   it('20.15.1, 20.15.3: a linear unit\'s phases each finished with the day it closed and what it produced — the discussion its decisions — each opening in full; the phase it is in since the one before it closed; a phase that is not finished opens on no page', () => {
-    const closed = soloDecided();
+    const closed = soloClosed();
     soloSpec();
     const { view } = board(['--tab', 'unit', '--unit', SOLO]);
     const phase = (/** @type {string} */ name) => board(['--tab', 'unit', '--unit', SOLO, '--page', `phase:${name}`]).view;
@@ -304,8 +304,8 @@ describe('the views the mod draws, shaped as the engine answers them (N8)', () =
     assert.deepStrictEqual(fits(await fixture('board-experiment.mjs'), board().view), FITS);
   });
 
-  it('a linear unit\'s tab, its discussion decided, a gap of its spec waiting and its moments lately', async () => {
-    soloDecided();
+  it('a linear unit\'s tab, its discussion closed into its spec, a gap of its spec waiting and its moments lately', async () => {
+    soloClosed();
     soloSpec();
     ok(dir(), ['spec', 'land', SOLO]);
     writeIn(dir(), 'ask', `${SOLO}.specification`, [], { ...MADE, text: 'Is a tally ever shared?' });

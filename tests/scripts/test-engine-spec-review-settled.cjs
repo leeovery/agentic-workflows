@@ -27,7 +27,7 @@ const assert = require('node:assert');
 const { ok, okSectionsAsync, statePath, writeState, layout } = require('./engine-harness.cjs');
 const { ledgerHelpers, leaningCall } = require('./ledger-world.cjs');
 const {
-  UNIT, SPEC, SESSION, PERSON, MADE, AT_SPEC, CARDS, FOUND, LANED, WRITER, made, useSpecReviewWorld, specReviewHelpers, section, spaced, unchangedSince,
+  UNIT, SPEC, SESSION, PERSON, MADE, AT_SPEC, FOUND, LANED, WRITER, made, useSpecReviewWorld, specReviewHelpers, section, spaced, unchangedSince,
 } = require('./spec-review-world.cjs');
 
 const dir = useSpecReviewWorld();
@@ -43,7 +43,7 @@ function moved(text, first, second, end) {
 }
 
 describe('review-settled (6.4.7, 11.7.6, 11.S11, E3)', () => {
-  it('(a): holds once the latest reported pass reviewed the spec as it stands — open before any pass, while the first runs, once a section changes, landed or not, and while the pass on it was abandoned unreported; blank lines, and areas and parts moved, change nothing, a pass refused as having nothing to read; an entry made at another unit\'s spec, though it stands on this one, or on a topic, leaves it so', () => {
+  it('(a): holds once the latest reported pass reviewed the spec as it stands — open before any pass, while the first runs, once a section changes, landed or not, and while the pass on it was abandoned unreported; blank lines, and areas and parts moved, change nothing, a pass refused as having nothing to read; an entry made at another unit\'s spec, though it stands on this one, leaves it so', () => {
     const states = [reviewSettled()];
     writeSpec(spec());
     land();
@@ -69,7 +69,6 @@ describe('review-settled (6.4.7, 11.7.6, 11.S11, E3)', () => {
     states.push(reviewSettled());
     cleanPass();
     write('replace', 'billing.specification', ['--replaces', made.posted, '--reason', 'was-wrong'], { ...MADE, drops: ['a day'], text: 'A refund posts within two days.', how: 'read in the code', known: 'read' });
-    write('find', CARDS, [], { ...MADE, text: 'Amex is asked for.', how: 'read in the support tickets', known: 'documented' });
     states.push(reviewSettled());
 
     assert.deepStrictEqual([reordered, refused], [[], unchangedSince(first, 'its review has settled')]);

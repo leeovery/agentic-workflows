@@ -659,6 +659,34 @@ describe('the question on the map an experiment measures (9.1.11)', () => {
     const res = refusedPristine(dir, ['experiment', 'conclude', 'lab', 'timing', 'E1', '--verdict', 'top left wins']);
     assert.match(res.error, /experiment E1 \("timing"\) has no report\.md — its question left the topic's open questions while it ran, so the report reaches "timing" as a message/);
   });
+
+  it('a report owed as a message past the unit\'s spec refuses the conclusion before it writes anything, so no report is lost (4.11.2)', () => {
+    const placement = ask('Where does a new window open?');
+    measure(placement);
+    walkTo(dir, 'E1', 'running');
+    personDecides(placement);
+    fs.writeFileSync(statePath(dir, layout.experiment('lab', 'timing', 'E1-window-placement', 'report.md')), '# Report — E1\n\nTop left.\n');
+    fs.writeFileSync(statePath(dir, layout.unit('lab', 'spec.md')), '# Lab\n');
+    const res = refusedPristine(dir, ['experiment', 'conclude', 'lab', 'timing', 'E1', '--verdict', 'top left wins']);
+    assert.strictEqual(res.error, 'experiment E1 ("timing") owes its report to "timing" as a message, and lab has its spec — a topic exists only before it: abandon the experiment, and settle what it found in the spec');
+    assert.strictEqual(readManifest(dir, 'lab').phases.experiment.items.timing.experiments.E1.status, 'running');
+  });
+
+  it('a spawn from a discussion whose decided close stands voids the close: the discussion has gone on (9.7.9)', () => {
+    const placement = ask('Where does a new window open?');
+    const m = readManifest(dir, 'lab');
+    m.checklists = { decided: { timing: { items: {}, closed: '2026-01-01T00:00:00.000Z' } } };
+    writeManifest(dir, 'lab', m);
+    measure(placement);
+    assert.strictEqual(typeof readManifest(dir, 'lab').checklists.decided.timing.voided, 'string');
+  });
+
+  it('refuses a spawn from a discussion past its unit\'s spec, writing nothing: a topic exists only before it (4.11.2)', () => {
+    const placement = ask('Where does a new window open?');
+    fs.writeFileSync(statePath(dir, layout.unit('lab', 'spec.md')), '# Lab\n');
+    const args = ['experiment', 'create', 'lab', 'timing', '--slug', 'window-placement', '--from', 'discussion', '--problem', problemScratch(dir, 'window-placement'), '--question', placement];
+    assert.match(refusedPristine(dir, args).error, /^lab has its spec — a topic exists only before it, and a change is settled in the spec from here$/);
+  });
 });
 
 describe('the experiment item is derived bookkeeping — no hand lifecycle', () => {

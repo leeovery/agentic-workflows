@@ -22,7 +22,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 
-const { ok, output, refusedPristine, sectionOf, readManifest, statePath, killedAt } = require('./engine-harness.cjs');
+const { ok, output, refusedPristine, sectionOf, readManifest, statePath, killedAt, stateGit, layout } = require('./engine-harness.cjs');
 const { UNIT, SESSION, MADE, NOTE, ledgerHelpers } = require('./ledger-world.cjs');
 const { PERSON, NO_PAYLOAD, NOTE_MAP, writeIn, markAllButTheClosingPass, useDecidedWorld, decidedHelpers } = require('./decided-world.cjs');
 
@@ -68,7 +68,7 @@ describe('a topic set back in progress (P9, 10.2.7)', () => {
     const local = writeIn(dir(), 'replace', NOTE, ['--replaces', NOTE_MAP.shape.answer, '--reason', 'changed-mind'], { ...PERSON, drops: ['the tour'], text: 'The note window first.', why: 'Only this topic opens on it.' });
     staged(NO_PAYLOAD);
     const yes = ['decided', 'yes', UNIT, 'note-window'];
-    const unreplaced = (/** @type {{id: string, text: string}} */ line) => `decided yes: the product record's line ${line.id}, "${line.text}", widens a decision of note-window replaced since, and nothing staged replaces or withdraws it — a line widening the replacement, or a withdrawal of the line, is staged with --file`;
+    const unreplaced = (/** @type {{id: string, text: string}} */ line) => `decided yes: the product record's line ${line.id}, "${line.text}", widens a decision of note-window replaced since, and nothing staged replaces or withdraws it — a line widening the replacement, or a withdrawal of the line, is staged with render decided fumi.note-window --file <payload.json>`;
     assert.strictEqual(refusedPristine(dir(), yes, { env: SESSION }).error, unreplaced(widened));
     const replacing = { text: 'Sync is off until you turn it on.', why: 'It holds for the product.', widens: resync };
     staged({ lines: [replacing], candidates: [] });
@@ -83,7 +83,7 @@ describe('a topic set back in progress (P9, 10.2.7)', () => {
     assert.match(sectionOf(both, 'DISPLAY: decided'), /\nFOR THE PRODUCT RECORD \(1 line · 1 withdrawn\)\n {2}· Sync is off until you turn it on\.\n {4}↳ Replaces: Sync is on once a folder is picked\.\n {2}· Only the note window opens on the tour now\.\n {4}↳ Withdraws: First run shows the product before it asks\.\n/);
     assert.match(sectionOf(both, 'MENU: decided'), /^Your yes marks Note Window decided, with the product-record line and the withdrawal\.$/m);
     const reshaped = writeIn(dir(), 'replace', NOTE, ['--replaces', local, '--reason', 'changed-mind'], { ...PERSON, drops: ['first'], text: 'The note window, then the tour.', why: 'The tour still helps.' });
-    assert.match(refusedPristine(dir(), yes, { env: SESSION }).error, /^decided yes: withdrawal 1 cannot land — .*; it is staged again with --file$/, 'a withdrawal whose decision was replaced since it was staged lands nothing, the line beside it neither');
+    assert.match(refusedPristine(dir(), yes, { env: SESSION }).error, /^decided yes: withdrawal 1 cannot land — .*; render decided fumi\.note-window --file <payload\.json> stages it again$/, 'a withdrawal whose decision was replaced since it was staged lands nothing, the line beside it neither');
     staged({ lines: [replacing], withdraws: [withdrawing], candidates: [] });
     killedAt({ method: 'renameSync', file: `${UNIT}/manifest.json`, when: 'before' }, dir(), yes, { env: SESSION });
     const landed = entries().length;
@@ -108,7 +108,7 @@ describe('a topic set back in progress (P9, 10.2.7)', () => {
     ok(dir(), ['topic', 'send', UNIT, 'note-window', '--from', 'space-homing', '--content', scratch, '--slug', 'sync-off'], { env: SESSION });
     const asked = NOTE_MAP.sync.question;
     ok(dir(), ['topic', 'answered', UNIT, 'note-window', '001-sync-off', '--entry', asked], { env: SESSION });
-    const voided = 'decided.note-window was closed before a message delivered to note-window — its items are worked afresh and it is closed again';
+    const voided = 'decided.note-window was closed before note-window\'s discussion went on — a message delivered to it, or the discussion entered again — its items are worked afresh and it is closed again';
     assert.strictEqual(refusedPristine(dir(), ['render', 'decided', `${UNIT}.note-window`], { env: SESSION }).error, `render decided: ${voided}`);
     assert.strictEqual(refusedPristine(dir(), ['decided', 'yes', UNIT, 'note-window'], { env: SESSION }).error, `decided yes: ${voided}`);
     markAllButTheClosingPass(dir(), UNIT, 'note-window');
@@ -118,20 +118,26 @@ describe('a topic set back in progress (P9, 10.2.7)', () => {
     assert.strictEqual(refusedPristine(dir(), ['decided', 'yes', UNIT, 'note-window'], { env: SESSION }).error, `decided yes: ${earlier}`);
   });
 
-  it('voids the close with a question opened on the topic since — asked there, or moved to it — and never with a decision changed', () => {
+  it('voids the close with a question opened on the topic since — asked there, or moved to it, each stamping the void on the manifest in its own commit — and never with a decision changed', () => {
     close();
     staged(NO_PAYLOAD);
     writeIn(dir(), 'replace', NOTE, ['--replaces', NOTE_MAP.title.answer, '--reason', 'changed-mind'], { ...MADE, drops: ['welcome'], text: 'Hello.', why: 'A comment at the gate.' });
     assert.match(screen(), /MENU: decided/, 'a decision changed at a comment leaves the close standing');
+    const voided = () => readManifest(dir(), UNIT).checklists.decided['note-window'].voided;
+    assert.strictEqual(voided(), undefined);
     const opened = 'was closed before a question opened on note-window — its items are worked afresh and it is closed again';
     writeIn(dir(), 'decide', NOTE, ['--answers', writeIn(dir(), 'ask', NOTE, [], { ...MADE, text: 'Is the window resizable?' })], { ...MADE, text: 'Yes.', why: 'Because.' });
     assert.strictEqual(refusedPristine(dir(), ['render', 'decided', `${UNIT}.note-window`], { env: SESSION }).error, `render decided: decided.note-window ${opened}`);
+    assert.strictEqual(typeof voided(), 'string');
     markAllButTheClosingPass(dir(), UNIT, 'note-window');
     close();
     assert.match(staged(NO_PAYLOAD), /MENU: decided/);
     const homing = `${UNIT}.discussion.space-homing`;
     const moved = writeIn(dir(), 'ask', homing, [], { ...MADE, text: 'Does a note remember its space?' });
+    const before = voided();
     writeIn(dir(), 'move', homing, ['--question', moved, '--to', 'note-window'], MADE);
+    assert.ok(voided() > before, 'the move stamps the void afresh');
+    assert.deepStrictEqual(stateGit(dir(), ['show', '--name-only', '--format=', 'HEAD']).trim().split('\n').sort(), [layout.ledger, layout.manifest(UNIT)].sort());
     assert.match(refusedPristine(dir(), ['render', 'decided', `${UNIT}.note-window`], { env: SESSION }).error, new RegExp(opened));
   });
 });

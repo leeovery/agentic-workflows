@@ -460,7 +460,7 @@ function reopenTopic(cwd, workUnit, phase, topic) {
   assertNotBuildPlace(phase);
   assertNotDerived(phase, 'the experiment item is derived bookkeeping — a new spawn reopens the series (experiment create), never topic reopen');
   if (phase === 'discussion') {
-    throw new Error('a decided discussion reopens through a message sent to it (topic send), never topic reopen');
+    throw new Error('a discussion decided, or closed into its spec, reopens through a message sent to it (topic send), never topic reopen');
   }
   return withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);

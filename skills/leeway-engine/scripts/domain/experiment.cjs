@@ -27,10 +27,12 @@
 // The question an experiment measures stays open on the map, waiting on it,
 // until the discussion writes the result (9.1.11). A report concluding after
 // that question closed reaches the topic as a message, through `topic send`,
-// which reopens a decided topic and commits its own delivery. Known edge: a
-// report owed to a promoted topic, or to a unit given its spec.md while the
-// experiment ran, is refused by the send after the conclusion has committed,
-// and never arrives.
+// which reopens a decided topic and commits its own delivery. A report owed
+// past the unit's spec is refused before the conclusion writes anything, as
+// is a spawn from a discussion past it (4.11.2); a spawn voids the
+// discussion's decided close where one stands (9.7.9). Known edge: a report
+// owed to a promoted topic is refused by the send after the conclusion has
+// committed, and never arrives.
 //
 // While it runs, `runs` records the tally of its runs from Claude's payload,
 // each condition with the runs its design gives it, those done and their
@@ -60,9 +62,10 @@ const {
   isParentExperimentId,
   EXPERIMENT_SPAWN_PHASES,
 } = require('../kernel/manifest-schema.cjs');
-const { settleItemStatus, mailboxDir } = require('./derivations.cjs');
+const { settleItemStatus, mailboxDir, voidDecidedClose } = require('./derivations.cjs');
 const { releaseExperimentWaits, assertLegalTopicName } = require('./transitions.cjs');
 const { sendMessage } = require('./mail.cjs');
+const { pastItsSpec, assertBeforeSpec } = require('./spec-standing.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { measuredQuestion, reportRoute } = require('./experiment-question.cjs');
 const { rebaseLinks } = require('./markdown-links.cjs');
@@ -191,7 +194,8 @@ function liveSubs(item, parentId) {
  * (creating it, or setting a completed series back to in-progress — a new
  * spawn reopens the series), and locks the spawning item:
  * `awaiting_experiments` gains the id on the in-progress discussion the
- * question came from. `question`, required on a spawn, names by a prefix of
+ * question came from, whose decided close, where one stands, the spawn
+ * voids (9.7.9). `question`, required on a spawn, names by a prefix of
  * its ledger id the question open on the topic's map the experiment measures; the record keeps
  * its full id, and the map shows the question waiting on it. A split (`parent`
  * names a running experiment) allocates `E{n}.{m}` under it — no lock moves
@@ -274,7 +278,9 @@ function createExperiment(cwd, workUnit, topic, { slug, from, parent, problem, q
     }
 
     // The spawn is recorded mid-conversation, from the session that raised
-    // the question — the spawning item must be open to hold the lock.
+    // the question — the spawning item must be open to hold the lock, and its
+    // topic still before the spec (4.11.2).
+    if (from === 'discussion') assertBeforeSpec(cwd, manifest, 'change');
     const phases = manifest && typeof manifest.phases === 'object' ? manifest.phases : {};
     const spawnItems = phases[/** @type {string} */ (from)] && typeof phases[/** @type {string} */ (from)] === 'object'
       ? phases[/** @type {string} */ (from)].items : undefined;
@@ -299,6 +305,7 @@ function createExperiment(cwd, workUnit, topic, { slug, from, parent, problem, q
     experiments[id] = { slug, status: 'conceived', ...(measured === null ? {} : { question: measured.id }) };
     const awaiting = Array.isArray(spawner.awaiting_experiments) ? spawner.awaiting_experiments : [];
     spawner.awaiting_experiments = [...awaiting, id];
+    if (from === 'discussion') voidDecidedClose(manifest, topic, new Date().toISOString());
     const dir = statePath(cwd, recordDir(workUnit, topic, id, experiments));
     // The problem file lands before the manifest names the record — a crash
     // between the two writes must never leave a conceived record with no
@@ -415,7 +422,9 @@ function approveExperiment(cwd, workUnit, topic, id) {
  * question that no longer stands open on the spawning topic's map — the
  * person closed or moved it while the experiment ran — to the topic the
  * question stands on now (`reportRoute`). Null where none is owed; refused
- * where one is owed and the record holds no report to send.
+ * where one is owed and the record holds no report to send, or the unit is
+ * past its spec, where no topic takes a message (4.11.2) — each before the
+ * conclusion writes anything, so no report is lost.
  * @param {string} cwd @param {string} workUnit @param {string} topic @param {string} id @param {string[]} warnings
  * @returns {{record: string, to: string}|null}
  */
@@ -426,6 +435,9 @@ function reportOwed(cwd, workUnit, topic, id, warnings) {
   if (record.status !== 'running' || record.question === undefined) return null;
   const to = reportRoute(cwd, workUnit, topic, record.question, warnings);
   if (to === null) return null;
+  if (pastItsSpec(cwd, loadWorkUnitManifest(cwd, workUnit))) {
+    throw new Error(`experiment ${id} ("${topic}") owes its report to "${to}" as a message, and ${workUnit} has its spec — a topic exists only before it: abandon the experiment, and settle what it found in the spec`);
+  }
   const dir = recordDir(workUnit, topic, id, /** @type {Record<string, ExperimentRecord>} */ (item.experiments));
   if (!fs.existsSync(statePath(cwd, `${dir}/report.md`))) {
     throw new Error(`experiment ${id} ("${topic}") has no report.md — its question left the topic's open questions while it ran, so the report reaches "${to}" as a message; write the report first`);

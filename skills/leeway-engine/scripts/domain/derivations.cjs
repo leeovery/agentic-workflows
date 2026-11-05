@@ -25,18 +25,38 @@ function buildBegun(manifest) {
 }
 
 /**
- * Whether a feature's one topic has closed into its spec, with no gate
- * (11.2.1): its decided checklist closed, and neither a message delivered to
- * it nor a yes taken since (checklist.cjs). The one screen, decided and
- * ready to build, marks it decided after (11.8.5).
- * @param {Record<string, any>} manifest
+ * Whether the topic's decided close stands: its checklist closed, and
+ * neither voided — its discussion gone on since (checklist.cjs) — nor taken
+ * by a yes since.
+ * @param {Record<string, any>} manifest @param {string} topic
  */
-function closedIntoSpec(manifest) {
-  const record = manifest.work_type === 'feature' && isObject(manifest.checklists?.decided) ? manifest.checklists.decided[manifest.name] : undefined;
+function decidedCloseStands(manifest, topic) {
+  const record = isObject(manifest.checklists?.decided) ? manifest.checklists.decided[topic] : undefined;
   const closed = isObject(record) ? record.closed : undefined;
   if (typeof closed !== 'string') return false;
   return [record.voided, record.taken].every((since) => typeof since !== 'string' || since < closed);
 }
+
+/**
+ * Record on the unit's manifest, as it is saved, that the topic's
+ * discussion has gone on — a message delivered, an experiment's report, the
+ * discussion entered again, a question asked or moved onto it — so its
+ * decided close, where one stands, is void (9.7.9): whether it was.
+ * @param {Record<string, any>} manifest @param {string} topic @param {string} at
+ */
+function voidDecidedClose(manifest, topic, at) {
+  if (!decidedCloseStands(manifest, topic)) return false;
+  manifest.checklists.decided[topic].voided = at;
+  return true;
+}
+
+/**
+ * Whether a feature's one topic has closed into its spec, with no gate
+ * (11.2.1): its decided close standing. The one screen, decided and ready to
+ * build, marks it decided after (11.8.5).
+ * @param {Record<string, any>} manifest
+ */
+const closedIntoSpec = (manifest) => manifest.work_type === 'feature' && decidedCloseStands(manifest, manifest.name);
 
 /** The key a phase's start or close keeps its checklist under (6.4.12). @param {number} number @param {'start'|'close'} end */
 const phaseKey = (number, end) => `phase-${number}-${end}`;
@@ -631,11 +651,9 @@ function settleItemStatus(item) {
 
 // In-progress items of one spawn phase holding a live evidence wait — the
 // state that blocks their conclusion and routes the linear pipeline to the
-// experiment. A decided one waits on nothing, nor a feature's discussion
-// closed into its spec: the experiment it spawned runs on, and its report
-// reaches the topic as mail.
+// experiment. A decided one waits on nothing: the experiment it spawned
+// runs on, and its report reaches the topic as mail.
 function waitingItems(manifest, phase) {
-  if (phase === 'discussion' && closedIntoSpec(manifest)) return [];
   return phaseItems(manifest, phase)
     .filter((i) => i.status === 'in-progress'
       && Array.isArray(i.awaiting_experiments) && i.awaiting_experiments.length > 0);
@@ -1325,6 +1343,8 @@ function buildDiscoveryMap(manifest, stateDir) {
 }
 
 module.exports = {
+  decidedCloseStands,
+  voidDecidedClose,
   closedIntoSpec,
   phaseData,
   phaseItems,

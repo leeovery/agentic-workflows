@@ -13,7 +13,7 @@ A point another topic owns goes to it as a message, and that topic's session dec
   ```
 
   The message goes to it, and the conversation carries on in this topic.
-- **A topic on the map.** Name the target as the map names it, never a part of one. Work no topic owns is no message: it is a candidate for the decided screen.
+- **A topic on the map.** Name the target as the map names it, never a part of one. Work no topic owns is no message: it is a candidate at the close.
 - **One ask.** What this topic found, the reasoning, and what the target is asked to decide. A change to a decision the target owns is asked for, never written here.
 - **A question that moves.** A question on this topic's map moves first, `ledger move {work_unit}.discussion.{topic} --question {id} --to {target}`; the message carries it.
 

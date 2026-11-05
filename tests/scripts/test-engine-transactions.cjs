@@ -565,7 +565,7 @@ describe('engine topic reopen', () => {
     const before = fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8');
     for (const topic of ['session-model', 'refund-policy']) {
       assert.strictEqual(engineFails(dir, ['topic', 'reopen', 'payments', 'discussion', topic]).error,
-        'a decided discussion reopens through a message sent to it (topic send), never topic reopen');
+        'a discussion decided, or closed into its spec, reopens through a message sent to it (topic send), never topic reopen');
     }
     assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'), before);
   });
