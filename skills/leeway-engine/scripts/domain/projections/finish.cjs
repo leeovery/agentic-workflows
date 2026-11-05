@@ -103,10 +103,16 @@ function provenBlock({ product, proven }) {
 /** The close's display: its title and what was proven, then each block of finish's that has something to show. @param {CloseView} view */
 const closeDisplay = (view) => [`${view.title} — ready to close`, provenBlock(view), ...finishBlocks(view)].join('\n\n');
 
+/** What the yes does: merge each fix's pull request, where any fix is done, and mark it complete. @param {number} fixes the fixes done */
+function closeWords(fixes) {
+  if (fixes === 0) return 'Close it — mark it complete';
+  return `Close it — merge its ${fixes === 1 ? 'pull request' : 'pull requests'} and mark it complete`;
+}
+
 /** The close's gate: the yes, a review asked for, and questions about the change. @param {CloseView} view */
 function closeGate({ unit, fixes }) {
   return section('MENU: finish', MENU_INSTRUCTION, menu('', [
-    cmdOption('y', 'yes', `Close it — merge its ${fixes === 1 ? 'pull request' : 'pull requests'} and mark it complete`, { next: { kind: 'engine', argv: ['finish', 'yes', unit] } }),
+    cmdOption('y', 'yes', closeWords(fixes), { next: { kind: 'engine', argv: ['finish', 'yes', unit] } }),
     cmdOption('r', 'review', 'Have it reviewed before it closes'),
     promptOption('Ask', 'Ask about the change before it closes'),
   ], { question: 'Close it?' }));

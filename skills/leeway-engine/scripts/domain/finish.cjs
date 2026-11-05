@@ -13,8 +13,10 @@
 //   the project lacks or holds not in progress, and one the build's entry
 //   refuses: a unit built under the old plan, a build by its cut not begun
 //   (build-entry.cjs). A quick-fix's close stands besides on each of its
-//   fixes ended and each done with its record written, refused naming each
-//   (quick-fix-record.cjs, `recordedFixes`).
+//   fixes ended and each done with its record written (quick-fix-record.cjs,
+//   `recordedFixes`), and on each fix done landed or chained into the
+//   set's stack as it stands, the read the build's phase close makes of its
+//   tasks (landing.cjs, `unchained`) — refused naming each.
 // - It shows every checklist item skipped on the way, with its reason,
 //   read from the unit's manifest (6.4.5, 6.4.12); then asks, one at a
 //   time, the verdict of each departure this machine logged in the build
@@ -49,13 +51,15 @@
 
 const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
+const { codeRoot } = require('../kernel/code-root.cjs');
+const { projectRepos } = require('../kernel/repos.cjs');
 const { carrying } = require('./ledger.cjs');
 const { readShown } = require('./ledger-read.cjs');
 const { verdictAsked } = require('./ledger-verdicts.cjs');
 const { itemTitle, topicTitles, buildRefusal, quickFixBuild } = require('./derivations.cjs');
 const { unitInProgress } = require('./topic-standing.cjs');
 const { finishClose } = require('./checklist.cjs');
-const { landFinish } = require('./landing.cjs');
+const { landFinish, landedTasks, unchained } = require('./landing.cjs');
 const { completeWorkUnit } = require('./workunit-lifecycle.cjs');
 const { refusing, stands } = require('./staged-payload.cjs');
 const { READERS, readersDone } = require('./scratch.cjs');
@@ -67,6 +71,8 @@ const { ranOf } = require('./build-screens.cjs');
 const { verifySetup } = require('./environment.cjs');
 const { projectName } = require('./state-checks.cjs');
 const { criteriaTexts } = require('./task-file.cjs');
+const { shownTask } = require('./task-id.cjs');
+const { dayBefore } = require('./dates.cjs');
 
 /** @typedef {import('./projections/surfaces.cjs').Next} Next */
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
@@ -77,16 +83,35 @@ const FINISH_USAGE = 'finish yes <work-unit>';
 /**
  * The close the screen stands on, refused where finish cannot show: the
  * unit's own refusals, a quick-fix's fixes not ended or not recorded, then
- * its checklist's close (`finishClose`) — with a quick-fix's fixes done,
- * null for any other unit.
+ * its checklist's close (`finishClose`), then a quick-fix's fixes done not
+ * landed nor chained to land — with a quick-fix's fixes done, null for any
+ * other unit.
  * @param {string} cwd @param {string} unit
  */
 function finishStanding(cwd, unit) {
   const manifest = unitInProgress(cwd, unit);
   const refused = buildRefusal(manifest);
   if (refused !== null) throw new Error(refused);
-  const fixes = quickFixBuild(manifest) ? recordedFixes(cwd, unit) : null;
-  return { manifest, fixes, ...finishClose(cwd, unit) };
+  if (!quickFixBuild(manifest)) return { manifest, fixes: null, ...finishClose(cwd, unit) };
+  const fixes = recordedFixes(cwd, manifest);
+  const close = finishClose(cwd, unit);
+  refuseUnlanded(cwd, manifest, fixes);
+  return { manifest, fixes, ...close };
+}
+
+/**
+ * Refuse a quick-fix's close while a fix done has neither landed nor is
+ * chained into the set's stack as it stands (`unchained`, landing.cjs) —
+ * the read the build's phase close makes of its tasks — naming each and
+ * the way on.
+ * @param {string} cwd @param {Record<string, any>} manifest @param {TaskDetail[]} fixes the fixes done
+ */
+function refuseUnlanded(cwd, manifest, fixes) {
+  const unit = manifest.name;
+  const landed = landedTasks(cwd, unit, projectRepos(codeRoot(cwd)), dayBefore(manifest.created));
+  const owed = unchained(cwd, unit, fixes.filter(({ ref }) => !landed.has(shownTask(ref)))).map(({ ref }) => shownTask(ref));
+  if (owed.length === 0) return;
+  throw new Error(`${unit} closes once each fix done is opened to land — ${owed.join(', ')} ${owed.length === 1 ? 'is' : 'are'} not: land open ${unit} ${owed[0]}`);
 }
 
 /** Whether finish's screen draws, as `render finish` stands on it: what the board lists waiting on the person. @param {string} cwd @param {string} unit */

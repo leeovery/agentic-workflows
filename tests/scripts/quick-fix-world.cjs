@@ -6,10 +6,11 @@
 // the quick-fix, made through `workunit create` from an inbox note, its code
 // and the build's skill committed, and a feature beside it (`quickFix`); a
 // fix's task file, fix `n` naming its one scenario `{n}.S1` (`fixFile`), and
-// its creation through the tracker's verb (`createFix`); a fix built as
-// Claude builds one in the conversation — started, putting the checkout on
-// its branch, its change committed through the door, its pull request
-// opened and the fix done (`fixBuilt`); its short record's file
+// its creation through the tracker's verb (`createFix`); a fix's change
+// made as Claude makes one in the conversation — started, putting the
+// checkout on its branch, its change committed through the door
+// (`fixChanged`) — and the fix built, its pull request then opened and the
+// fix done (`fixBuilt`); its short record's file
 // (`recordFile`); and a world built by a conversation gone since, its
 // records in a config folder of its own, removed once the world is built
 // (`asGone`).
@@ -51,19 +52,27 @@ function quickFix(dir) {
 const createFix = (dir, n, title, as) => ok(dir, ['task', 'create', UNIT, '1', '--file', writeState(dir, layout.cache(`fix-${n}.md`), fixFile(n, title))], as);
 
 /**
- * Fix `n` built as Claude builds one in the conversation `as` names: made,
- * started — the checkout put on its branch — `file` written with `text` and
- * committed through the door, its pull request opened, and done.
+ * Fix `n`'s change made in the conversation `as` names: the fix made,
+ * started — the checkout put on its branch — and `file` written with
+ * `text` and committed through the door.
+ * @param {string} dir @param {number} n @param {string} title @param {string} file @param {string} text @param {As} as
+ */
+function fixChanged(dir, n, title, file, text, as) {
+  createFix(dir, n, title, as);
+  ok(dir, ['task', 'start', UNIT, `1.${n}`], as);
+  createFile(dir, file, text);
+  ok(dir, ['commit', '--paths', file, '--task', UNIT, `1.${n}`, '-m', `fix(${UNIT}): ${title.toLowerCase()}`], as);
+}
+
+/**
+ * Fix `n` built as Claude builds one in the conversation `as` names: its
+ * change made (`fixChanged`), its pull request opened, and done.
  * @param {string} dir @param {number} n @param {string} title @param {string} file @param {string} text @param {As} as
  */
 function fixBuilt(dir, n, title, file, text, as) {
-  const task = `1.${n}`;
-  createFix(dir, n, title, as);
-  ok(dir, ['task', 'start', UNIT, task], as);
-  createFile(dir, file, text);
-  ok(dir, ['commit', '--paths', file, '--task', UNIT, task, '-m', `fix(${UNIT}): ${title.toLowerCase()}`], as);
-  const opened = ok(dir, ['land', 'open', UNIT, task], as);
-  ok(dir, ['task', 'done', UNIT, task], as);
+  fixChanged(dir, n, title, file, text, as);
+  const opened = ok(dir, ['land', 'open', UNIT, `1.${n}`], as);
+  ok(dir, ['task', 'done', UNIT, `1.${n}`], as);
   return opened;
 }
 
@@ -90,4 +99,4 @@ function entered(dir, as) {
   ok(dir, ['presence', 'clear', UNIT, 'implementation', UNIT], as);
 }
 
-module.exports = { UNIT, PLACE, DESCRIPTION, NOTE, fixFile, quickFix, createFix, fixBuilt, recordFile, asGone, entered };
+module.exports = { UNIT, PLACE, DESCRIPTION, NOTE, fixFile, quickFix, createFix, fixChanged, fixBuilt, recordFile, asGone, entered };

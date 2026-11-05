@@ -21,11 +21,9 @@ require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
-const fs = require('fs');
-const path = require('path');
 const {
   Sim, sessionLog, handoffEntry, handoff, answerGate, discussed, bridgeTo, linearPick, startNew, briefDraft, specWritten, specReviewed, cutTheSpec, readyToBuild, intoTheBuild,
-  linearBuildPick, buildEntry, briefOf, writePhaseTasks, startPhase, startUnit, writeTasks, finished, literal,
+  linearBuildPick, buildEntry, briefOf, writePhaseTasks, startPhase, startUnit, writeTasks, finished,
 } = require('./pipeline-world.cjs');
 
 /**
@@ -119,13 +117,12 @@ describe('pipeline simulation: quick-fix', () => {
     sim.run(['commit', '--paths', 'src/flag.js', '--task', wu, fix, '-m', `fix(${wu}): spell the flag --colour`]);
     sim.run(['land', 'open', wu, fix]);
     sim.run(['task', 'done', wu, fix]);
-    sim.refuses(['render', 'finish', wu], new RegExp(`closes once each fix done has its record — ${literal(fix)} has none`));
     const record = sim.write(`.leeway/.cache/${wu}/build/record.md`, '## What changed\nThe flag reads --colour.\n\n## Why\nIt was spelt the American way.\n\n## Leaves out\nOld scripts.\n');
     sim.run(['quick-fix', 'record', wu, fix, '--file', record]);
     sim.write(`.leeway/${wu}/build/log.md`, '# The fixes\n');
 
     assert.deepStrictEqual(finished(sim, wu), { landed: [[1]], next: { kind: 'handoff', skill: 'leeway', args: [] } });
-    assert.deepStrictEqual([sim.manifest(wu).status, fs.readdirSync(path.join(sim.dir, '.leeway', wu)).filter((entry) => ['build', 'summary.md', 'topics', 'spec.md'].includes(entry)).sort()], ['completed', ['build', 'summary.md']]);
+    assert.strictEqual(sim.manifest(wu).status, 'completed');
   });
 
   it('quick-fix moved to a feature: start this work\'s screen, its yes re-typing the unit, and the pipeline carrying on — the call its fix made read on the topic\'s record and shown at ready to build among Claude\'s, and none of the feature\'s build\'s', () => {

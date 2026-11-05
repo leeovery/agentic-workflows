@@ -8,11 +8,11 @@
 // The record's file is markdown under three level-two headings, in this
 // order, and no other heading at level one or two: `## What changed`,
 // `## Why` and `## Leaves out`, none empty. The verb writes it into the
-// unit's `summary.md`, a file only the engine writes (layout.cjs), after
-// every record before it — each written once its fix is done, so in the
-// order the fixes landed — under the fix's title as the tracker holds it,
-// a heading of its own, each section an item, its lines after the first
-// beneath it:
+// unit's `summary.md`, a file only the engine writes (layout.cjs), at its
+// fix's place in the set's order — after the record of every fix numbered
+// before it, as the fixes land bottom to top — under the fix's title as
+// the tracker holds it, a heading of its own, each section an item, its
+// lines after the first beneath it:
 //
 //   ## {fix title}
 //
@@ -20,32 +20,34 @@
 //   - Why: …
 //   - Leaves out: …
 //
-// It commits `summary.md` alone, then indexes it where this checkout's
-// knowledge base is set up, each fix's record a chunk of its own
-// (knowledge/artifacts.cjs), an index that fails a warning. It refuses,
-// writing and committing nothing, every refusal opening `quick-fix record:
-// `: a unit the project lacks or holds not in progress; one that is no
-// quick-fix built by its own arm (`quickFixBuild`, derivations.cjs) — a
-// quick-fix today's scoping made among them; a task that is none of its
-// fixes, phase 1's, or one the tracker lacks; a fix not done; a fix whose
-// record is written already, its title a heading of `summary.md`; and a
-// file that does not read as a record, every fault named.
+// A record is the fix's, by its task: the fixes recorded are kept beside
+// the fixes on the unit's manifest, by task id in the set's order
+// (`fixes.recorded`), written with `summary.md` under the unit's lock and
+// committed with it, so the two never part. It then indexes `summary.md`
+// where this checkout's knowledge base is set up, each fix's record a
+// chunk of its own (knowledge/artifacts.cjs), an index that fails a
+// warning. It refuses, writing and committing nothing, every refusal
+// opening `quick-fix record: `: a unit the project lacks or holds not in
+// progress; one that is no quick-fix built by its own arm (`quickFixBuild`,
+// derivations.cjs) — a quick-fix today's scoping made among them; a task
+// that is none of its fixes, phase 1's, or one the tracker lacks; a fix
+// not done; a fix recorded already; and a file that does not read as a
+// record, every fault named.
 //
 // The close stands on every fix ended, done or closed, and each fix done
-// with its record written (`recordedFixes`). Known edge: a record is found
-// by its fix's title, so of two fixes with one title the second's is
-// refused as written already.
+// recorded (`recordedFixes`).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { writeTextAtomic } = require('../kernel/manifest-io.cjs');
+const { withWorkUnitLock, saveWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { unitInProgress } = require('./topic-standing.cjs');
 const { quickFixBuild, buildRefusal, FIXES_PHASE } = require('./derivations.cjs');
-const { parseShownTask, shownTask, taskId, taskName } = require('./task-id.cjs');
+const { parseShownTask, parseTaskId, shownTask, taskId, taskName } = require('./task-id.cjs');
 const { trackedTask, copiedTasks, givenText, ENDED, STATUS_WORDS } = require('./task-verbs.cjs');
 const { headingLevels } = require('./spec-sections.cjs');
 const { committed } = require('./task-account.cjs');
@@ -54,6 +56,7 @@ const { summaryFile } = require('./knowledge/artifacts.cjs');
 const { syncKnowledge } = require('./knowledge/sync.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
+/** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 
 const QUICK_FIX_USAGE = 'quick-fix record <work-unit> <task> --file <record.md>';
 
@@ -104,8 +107,26 @@ function summaryText(cwd, unit) {
   return fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
 }
 
-/** The titles of the fixes whose records `summary.md` holds. @param {string} cwd @param {string} unit @returns {Set<string>} */
-const recordedTitles = (cwd, unit) => new Set(levelTwo(summaryText(cwd, unit).split('\n')).values());
+/** The fixes whose records `summary.md` holds, by task id, in the set's order (`fixes.recorded`). @param {Record<string, any>} manifest @returns {string[]} */
+const recordedIds = (manifest) => manifest.fixes.recorded ?? [];
+
+/** The set's order: by each fix's number. @param {string} a @param {string} b */
+const bySetOrder = (a, b) => parseTaskId(a).n - parseTaskId(b).n;
+
+/**
+ * `summary.md` with a fix's record written at its fix's place in the set's
+ * order — after the record of every fix numbered before it, before the
+ * rest — each record its own run of lines from its heading.
+ * @param {string} text the file as it stands @param {string[]} recorded the fixes it holds, in the set's order
+ * @param {TaskRef} ref the fix's @param {string} block its record
+ */
+function placed(text, recorded, ref, block) {
+  const lines = text.trimEnd().split('\n');
+  const starts = [...levelTwo(lines).keys()];
+  const blocks = starts.map((at, i) => lines.slice(at, starts[i + 1] ?? lines.length).join('\n').trimEnd());
+  blocks.splice(recorded.filter((id) => parseTaskId(id).n < ref.n).length, 0, block);
+  return `${blocks.join('\n\n')}\n`;
+}
 
 /**
  * The unit's manifest, refused where it is no quick-fix built by its own
@@ -121,14 +142,15 @@ function quickFixOf(cwd, unit) {
 /**
  * The fix the record is for, as the tracker holds it, refused where it is
  * none of the unit's fixes, not done, or its record is written already.
- * @param {string} cwd @param {string} unit @param {string} given
+ * @param {string} cwd @param {Record<string, any>} manifest the unit's @param {string} given
  */
-function doneFix(cwd, unit, given) {
+function doneFix(cwd, manifest, given) {
+  const unit = manifest.name;
   const ref = parseShownTask(unit, given);
   if (ref.phase !== FIXES_PHASE.number) throw new Error(`${taskName(ref)} is none of its fixes — a quick-fix's fixes are its phase ${FIXES_PHASE.number}, ${FIXES_PHASE.number}.n`);
   const fix = trackedTask(cwd, ref, `${taskName(ref)} is not in the tracker — its fixes are listed by task list ${unit} ${FIXES_PHASE.number}`);
   if (fix.status !== 'done') throw new Error(`${taskName(ref)} is ${STATUS_WORDS[fix.status]} — a fix's record is written once it is done: task done ${unit} ${shownTask(ref)}`);
-  if (recordedTitles(cwd, unit).has(fix.title)) throw new Error(`${taskName(ref)}'s record is written already — ${summaryFile(unit)} holds \`## ${fix.title}\``);
+  if (recordedIds(manifest).includes(taskId(ref))) throw new Error(`${taskName(ref)}'s record is written already — ${summaryFile(unit)} holds it, under \`## ${fix.title}\``);
   return { ref, fix };
 }
 
@@ -152,21 +174,27 @@ function indexSummary(cwd, unit, warnings) {
 }
 
 /**
- * `quick-fix record`: the fix's record written into `summary.md` after
- * every record before it, committed, and indexed.
+ * `quick-fix record`: the fix's record written into `summary.md` at its
+ * place in the set's order, the fix recorded beside the fixes on the
+ * manifest, both committed together, then `summary.md` indexed.
  * @param {string} cwd @param {string} unit @param {string} given @param {string} file
  */
 function recordFix(cwd, unit, given, file) {
-  quickFixOf(cwd, unit);
-  const { ref, fix } = doneFix(cwd, unit, given);
-  const record = givenRecord(cwd, file);
-  const before = summaryText(cwd, unit).trimEnd();
-  const at = statePath(cwd, summaryFile(unit));
-  fs.mkdirSync(path.dirname(at), { recursive: true });
-  writeTextAtomic(at, `${before === '' ? '' : `${before}\n\n`}${recordBlock(fix.title, record)}\n`);
   /** @type {string[]} */
-  const warnings = [...(fix.warnings ?? [])];
-  const answer = committed(cwd, [summaryFile(unit)], `quick-fix(${unit}): record ${shownTask(ref)}`, warnings, { unit, task: shownTask(ref), id: taskId(ref), summary: at });
+  const warnings = [];
+  const answer = withWorkUnitLock(cwd, unit, () => {
+    const manifest = quickFixOf(cwd, unit);
+    const { ref, fix } = doneFix(cwd, manifest, given);
+    const record = givenRecord(cwd, file);
+    const recorded = recordedIds(manifest);
+    const at = statePath(cwd, summaryFile(unit));
+    fs.mkdirSync(path.dirname(at), { recursive: true });
+    writeTextAtomic(at, placed(summaryText(cwd, unit), recorded, ref, recordBlock(fix.title, record)));
+    manifest.fixes = { ...manifest.fixes, recorded: [...recorded, taskId(ref)].sort(bySetOrder) };
+    saveWorkUnitManifest(cwd, unit, manifest);
+    warnings.push(...(fix.warnings ?? []));
+    return committed(cwd, [summaryFile(unit), `${unit}/manifest.json`], `quick-fix(${unit}): record ${shownTask(ref)}`, warnings, { unit, task: shownTask(ref), id: taskId(ref), summary: at });
+  });
   indexSummary(cwd, unit, warnings);
   return warnings.length > 0 ? { ...answer, warnings } : answer;
 }
@@ -176,9 +204,10 @@ function recordFix(cwd, unit, given, file) {
  * copy of the tracker's store, so the board asking whether the close draws
  * never waits on a writer — refused while a fix is not ended, or one done
  * has no record, naming each and the way on.
- * @param {string} cwd @param {string} unit @returns {TaskDetail[]}
+ * @param {string} cwd @param {Record<string, any>} manifest the unit's @returns {TaskDetail[]}
  */
-function recordedFixes(cwd, unit) {
+function recordedFixes(cwd, manifest) {
+  const unit = manifest.name;
   const [fixes] = copiedTasks(cwd, unit, [FIXES_PHASE.number]);
   const open = fixes.filter(({ status }) => !ENDED.includes(status));
   if (open.length > 0) {
@@ -186,8 +215,8 @@ function recordedFixes(cwd, unit) {
     throw new Error(`${unit} closes once each of its fixes has ended — ${standing}: each is done once it lands, or closed with its reason`);
   }
   const done = fixes.filter(({ status }) => status === 'done');
-  const recorded = recordedTitles(cwd, unit);
-  const owed = done.filter(({ title }) => !recorded.has(title)).map(({ ref }) => shownTask(ref));
+  const recorded = recordedIds(manifest);
+  const owed = done.filter(({ ref }) => !recorded.includes(taskId(ref))).map(({ ref }) => shownTask(ref));
   if (owed.length > 0) {
     throw new Error(`${unit} closes once each fix done has its record — ${owed.join(', ')} ${owed.length === 1 ? 'has' : 'have'} none: quick-fix record ${unit} ${owed[0]} --file <record.md>`);
   }

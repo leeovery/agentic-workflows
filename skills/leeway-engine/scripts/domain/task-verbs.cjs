@@ -810,8 +810,9 @@ const startTask = moving('start', (driver, root, ref) => {
   return () => {
     recordTask(cwd, ref.unit, taskId(ref));
     if (!fix) return {};
-    const { type, title } = trackedTask(cwd, ref);
-    return { branch: fixBranch().checkOutFix(cwd, ref, /** @type {string} */ (type), title) };
+    const fixes = trackedPhase(cwd, ref.unit, ref.phase).tasks ?? [];
+    const { type, title } = /** @type {TaskDetail} */ (fixes.find(({ ref: held }) => held.n === ref.n));
+    return { branch: fixBranch().checkOutFix(cwd, ref, /** @type {string} */ (type), title, fixBranch().closedFixes(fixes)) };
   };
 });
 
