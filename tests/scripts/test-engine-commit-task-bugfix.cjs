@@ -19,8 +19,12 @@
 // the fix is not in (15.5.4); the reproducing task's own commits land with
 // the tests failing, the answer saying so, the linters held as ever (6.3.5,
 // F1); and the reproducing task lands (`land open`) and is done (`task
-// done`) once its series proves the bug at its tip (landing.cjs,
-// task-verbs.cjs, 15.5.3). The series itself is
+// done`) once its series proves the bug at its tip — task 1.1's branch, in
+// a child repository holding it with no work, behind the commit the series
+// ran at there counting — and in step stands at its gate then too, its
+// landing summary and gate refused and the build's standing naming the
+// series till then (landing.cjs, task-verbs.cjs, build-screens.cjs,
+// build-entry.cjs, 15.5.3), and is never closed (15.5.5). The series itself is
 // test-engine-verify-unfixed.cjs's; a unit of another type, read no further
 // than its manifest, test-engine-commit-task.cjs's; the door after a phase
 // lands through the landing's own verbs,
@@ -28,9 +32,11 @@
 //
 // Layer: git. World: bug-proven-world.cjs's, copied for each test, the
 // project's tests and its linter each logging its name where the test logs
-// its runs; one conversation building tasks 1.1, 1.2 and 2.1, each started
-// through `task start`, its hook before Bash asked as Claude Code asks it,
-// and another, building none, landing and ending them.
+// its runs, a child repository cloned in it, `api`, where a test says so;
+// one conversation building tasks 1.1, 1.2 and 2.1, each started through
+// `task start`, its hook before Bash asked as Claude Code asks it; another,
+// building none, landing and ending them; and a third stepping through the
+// build, task 1.1 in flight there.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -40,7 +46,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  call, ok, refusedPristine, cleanupFixture, createFile, git, setEnvironment, accountTaken,
+  call, ok, refusedPristine, cleanupFixture, createFile, git, initRepo, setEnvironment, accountTaken,
 } = require('./engine-harness.cjs');
 const {
   UNIT, TEST, BUGGY, FIXED, CRASH_TEST, branchOf, HARDEN_BRANCH, landedOnMain, logging, testRuns, unfixedArgs, unproven, proven,
@@ -48,9 +54,11 @@ const {
 
 const BUGFIXING = 'commit-task-bugfixing';
 const ENDING = 'commit-task-bugfix-ending';
+const STEPPING = 'commit-task-bugfix-stepping';
 const CONFIG = /** @type {string} */ (process.env.LEEWAY_CONFIG_DIR);
 const building = Object.freeze({ env: Object.freeze({ CLAUDE_CODE_SESSION_ID: BUGFIXING }) });
 const ending = Object.freeze({ env: Object.freeze({ CLAUDE_CODE_SESSION_ID: ENDING }) });
+const stepping = Object.freeze({ env: Object.freeze({ CLAUDE_CODE_SESSION_ID: STEPPING }) });
 const CHECKS = Object.freeze({ run: { tests: logging('tests') }, linters: [{ name: 'eslint', command: logging('eslint') }] });
 
 /** @type {string} */ let dir;
@@ -92,7 +100,7 @@ function refusedUncommitted(args) {
  * @param {string} refusal
  */
 function mergedAsNamed(refusal) {
-  const command = /`(git merge --no-ff --no-commit [^`]+)`/.exec(refusal)?.[1];
+  const command = /`(git (?:-C \S+ )?merge --no-ff --no-commit [^`]+)`/.exec(refusal)?.[1];
   assert.ok(command !== undefined, `no merge named in: ${refusal}`);
   const input = {
     session_id: BUGFIXING, transcript_path: `/t/${BUGFIXING}.jsonl`, cwd: dir, permission_mode: 'default', hook_event_name: 'PreToolUse', tool_name: 'Bash', tool_input: { command, description: 'Merge it in' },
@@ -122,8 +130,32 @@ function testReworked() {
 /** Task 1.1 landed and ended: `land open`, then `task done`. */
 const LANDED = [['land', 'open', UNIT, '1.1'], ['task', 'done', UNIT, '1.1']];
 
+/** Why task 1.1 waits on its bug proven, with no series run and with one the test passed in. */
+const NO_SERIES = `no series of it has run on the unfixed code — run it there five times: engine verify run ${UNIT} <scenario> --unfixed --test '<the command that runs that test alone>', its scenario one of task 1.1's`;
+const PASSED = `the test passed on the unfixed code in its series, so it proves nothing — rework the test, a new commit on task 1.1, then run a new series: engine verify run ${UNIT} 1.S1 --unfixed --test true`;
+
+/** Why task 1.1 does `outcome` only once the bug is proven at its tip: `why`. @param {string} outcome @param {string} why */
+const unprovenFor = (outcome, why) => `${UNIT} is a bugfix, so task 1.1 of ${UNIT}, its reproducing task, ${outcome} once the test it wrote proves the bug, failing five times on the unfixed code at its tip (15.5.3): ${why}`;
+
 /** The refusals of task 1.1's landing and of its end while the bug is not proven at its tip: `why`. @param {string} why */
-const heldBack = (why) => [['land', 'lands'], ['task done', 'is done']].map(([verb, outcome]) => `${verb}: ${UNIT} is a bugfix, so task 1.1 of ${UNIT}, its reproducing task, ${outcome} once the test it wrote proves the bug, failing five times on the unfixed code at its tip (15.5.3): ${why}`);
+const heldBack = (why) => [`land: ${unprovenFor('lands', why)}`, `task done: ${unprovenFor('is done', why)}`];
+
+/** A child repository, `api`, cloned in the project and ignored by it, task 1.1's branch there at its main: its folder. */
+function apiCloned() {
+  const api = initRepo(path.join(dir, 'api'));
+  committedIn(api, 'README.md', 'init');
+  fs.mkdirSync(path.join(dir, '.git/info'), { recursive: true });
+  fs.appendFileSync(path.join(dir, '.git/info/exclude'), 'api/\n');
+  git(api, ['branch', branchOf(1)]);
+  return api;
+}
+
+/** A commit in the repository at `repo`, on the branch it has out, adding `file`. @param {string} repo @param {string} file @param {string} message */
+function committedIn(repo, file, message) {
+  createFile(repo, file, `${message}\n`);
+  git(repo, ['add', '-A']);
+  git(repo, ['commit', '-q', '-m', message]);
+}
 
 before(() => {
   const world = unproven();
@@ -132,7 +164,7 @@ before(() => {
 });
 
 after(() => {
-  for (const session of [BUGFIXING, ENDING]) fs.rmSync(path.join(CONFIG, 'conversations', session), { recursive: true, force: true });
+  for (const session of [BUGFIXING, ENDING, STEPPING]) fs.rmSync(path.join(CONFIG, 'conversations', session), { recursive: true, force: true });
 });
 
 afterEach(() => cleanupFixture(dir));
@@ -256,10 +288,7 @@ describe('land open and task done: a bugfix\'s reproducing task lands and is don
     // refuses task 1.1 while its branch holds one of a task not opened.
     git(dir, ['checkout', '-q', '-B', branchOf(2), branchOf(1)]);
 
-    assert.deepStrictEqual([none, passed], [
-      heldBack(`no series of it has run on the unfixed code — run it there five times: engine verify run ${UNIT} <scenario> --unfixed --test '<the command that runs that test alone>', its scenario one of task 1.1's`),
-      heldBack(`the test passed on the unfixed code in its series, so it proves nothing — rework the test, a new commit on task 1.1, then run a new series: engine verify run ${UNIT} 1.S1 --unfixed --test true`),
-    ]);
+    assert.deepStrictEqual([none, passed], [heldBack(NO_SERIES), heldBack(PASSED)]);
     assert.deepStrictEqual(LANDED.map((args) => ok(dir, args, ending).task), ['1.1', '1.1']);
   });
 
@@ -269,6 +298,75 @@ describe('land open and task done: a bugfix\'s reproducing task lands and is don
     testReworked();
 
     assert.deepStrictEqual(held(), heldBack(`task 1.1's branch ${branchOf(1)} has moved past the commits its series ran at, so the test as it stands is not proven — run a new series: ${SERIES_CALL}`));
+  });
+
+  it('a child repository holding task 1.1\'s branch with no work on it, its main moved after the branch was laid and before the series: the branch there behind the commit the series ran at, task 1.1 lands and the fix commits', () => {
+    dir = unproven();
+    const api = apiCloned();
+    committedIn(api, 'CHANGES.md', 'the person\'s own work');
+    ok(dir, unfixedArgs());
+    accountTaken(dir, UNIT, '1.1');
+
+    assert.deepStrictEqual([ok(dir, LANDED[0], ending).task, ok(dir, fixAttempted(), building).task], ['1.1', `${UNIT}-1-2`]);
+  });
+
+  it('task close refuses it, nothing moved, naming its test\'s rework and the unit\'s cancel (15.5.5)', () => {
+    dir = unproven();
+
+    assert.strictEqual(refusedPristine(dir, ['task', 'close', UNIT, '1.1', '--reason', 'given up'], ending).error, `task close: ${UNIT} is a bugfix, so task 1.1 of ${UNIT}, its reproducing task, is never closed: `
+      + 'the test it writes proves the bug, which is what a bugfix is (15.5.5) — where its test proves nothing, rework it, its builder sent back in with what its series showed: '
+      + `engine task add ${UNIT} 1.1 --file <addition> --by orchestrator; where the bugfix is given up, cancel it: engine workunit cancel ${UNIT}`);
+  });
+});
+
+describe('the step gate: a bugfix\'s reproducing task stands at its gate once its bug is proven at its tip (15.5.3, 12.7.9)', () => {
+  /** The build in step, task 1.1 in flight in the stepping conversation and its account taken. */
+  function stepped() {
+    ok(dir, ['workunit', 'position', UNIT, 'step']);
+    ok(dir, ['task', 'start', UNIT, '1.1'], stepping);
+    accountTaken(dir, UNIT, '1.1');
+  }
+
+  /** Task 1.1's line in the build's standing, as the entry gives it to the stepping conversation. */
+  const lineOf = () => call(dir, ['enter', 'implementation', UNIT], stepping).stdout.split('\n').find((line) => line.startsWith('in flight: task 1.1,'));
+
+  it('its landing summary and its gate refused, nothing moved, and its line naming the series, with no series run and after one the test passed in', () => {
+    dir = unproven();
+    stepped();
+    const held = () => [...['task-landed', 'step-gate'].map((surface) => refusedPristine(dir, ['render', surface, UNIT, '1.1'], stepping).error), lineOf()];
+
+    const none = held();
+    ok(dir, unfixedArgs('true'));
+    const passed = held();
+
+    const waits = (/** @type {string} */ why) => [
+      `render task-landed: ${unprovenFor('lands', why)}`, `render step-gate: ${unprovenFor('lands', why)}`, `in flight: task 1.1, its account taken, its bug not yet proven — ${unprovenFor('lands', why)}`,
+    ];
+    assert.deepStrictEqual([none, passed], [waits(NO_SERIES), waits(PASSED)]);
+  });
+
+  it('its bug proven, it stands at its gate', () => {
+    dir = proven();
+    stepped();
+
+    assert.strictEqual(lineOf(), `in flight: task 1.1, at its gate — it waits on the person's go there, the gate drawn again with render step-gate ${UNIT} 1.1, and its builder is never sent afresh`);
+  });
+});
+
+describe('commit --task: a child repository holding task 1.1\'s work', () => {
+  it('a commit not built on it there is refused, naming that repository and the merge run in its folder; merged in as named, the merge lands through the door', () => {
+    dir = unproven();
+    const api = apiCloned();
+    git(api, ['checkout', '-q', branchOf(1)]);
+    committedIn(api, 'test/api.sh', 'reproduce the crash in the api');
+    git(api, ['checkout', '-q', 'main']);
+    ok(dir, unfixedArgs());
+
+    const behind = refusedUncommitted(fixAttempted());
+    mergedAsNamed(behind);
+
+    assert.strictEqual(behind, unprovenRefusal(`in \`api\`, this commit holds neither ${branchOf(1)}, task 1.1's branch, where the test was proven, nor its landing — merge it in with \`git -C api merge --no-ff --no-commit ${branchOf(1)}\`, ${THROUGH_THE_DOOR}`));
+    assert.strictEqual(ok(dir, ['commit', '--paths', 'src/app.js', 'api/test/api.sh', '--task', UNIT, '1.2', '-m', `fix(${UNIT}): hold the checkout`], building).task, `${UNIT}-1-2`);
   });
 });
 

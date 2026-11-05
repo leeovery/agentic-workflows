@@ -25,7 +25,11 @@
 //   (`task done`, task-verbs.cjs) once the build's series proves the bug at
 //   task 1.1's tip — its branch, in each repository holding it, at or
 //   behind the commit the series ran at there — so a test that passed is
-//   reworked before anything of it lands (15.5.3).
+//   reworked before anything of it lands (15.5.3); in step its gate comes
+//   then too, the landing summary and the gate refused and the build's
+//   standing naming the series until it does (build-screens.cjs,
+//   build-entry.cjs). It is never closed (`task close`), since its test
+//   proving the bug is what a bugfix is (15.5.5).
 // - The door (commit-task.cjs), for a bugfix's code commit: the reproducing
 //   task's own commits run the project's tests allowed to fail, the linters
 //   as ever (F1); any other task's is refused, before any check runs, until
@@ -39,7 +43,7 @@
 //   names the way on, and one of a commit not built on task 1.1's work the
 //   repository behind; a branch is taken in by a merge through the door,
 //   the way the hook before Bash lets a task in flight make one
-//   (shell-guard.cjs). What it reads: for a bugfix, the runs of phase 1's
+//   (shell-guard.cjs), run in that repository's folder for a nested one. What it reads: for a bugfix, the runs of phase 1's
 //   scenarios and each repository's branches, and where the commit is not
 //   built on task 1.1's tip, the landings it holds; for any other unit,
 //   nothing beyond its manifest.
@@ -189,12 +193,16 @@ function builtOn(cwd, unit, { repo, tip }, from) {
   return revs.some((rev) => isAncestor(repo.path, tip, rev)) || landedIn(cwd, unit, repo, from, revs);
 }
 
+/** Git run in a repository of the checkout: in its own folder for a nested one, as the landing's ways on run it. @param {Repo} repo */
+const gitIn = (repo) => (repo.dir === '' ? 'git' : `git -C ${quoted(repo.dir)}`);
+
 /**
- * The way on that takes `rev` in, named `named`: a merge through the door,
- * as the hook before Bash lets a task in flight make one (shell-guard.cjs).
- * @param {string} named @param {string} rev
+ * The way on that takes `rev` in, named `named`, in the repository git runs
+ * in as `git`: a merge through the door, as the hook before Bash lets a task
+ * in flight make one (shell-guard.cjs).
+ * @param {string} named @param {string} rev @param {string} [git]
  */
-const mergeWay = (named, rev) => `merge ${named} in with \`git merge --no-ff --no-commit ${rev}\`, resolve what conflicts, then commit the merge through the door, which finishes it`;
+const mergeWay = (named, rev, git = 'git') => `merge ${named} in with \`${git} merge --no-ff --no-commit ${rev}\`, resolve what conflicts, then commit the merge through the door, which finishes it`;
 
 /**
  * Why the commit being made is not built on task 1.1's work, naming the
@@ -212,9 +220,10 @@ function builtOnWhy(cwd, manifest, ref, held) {
   const { repo, branch } = behind;
   const into = landsOn(cwd, repo);
   const where = `in ${repoNamed(repo)}, this commit holds neither ${branch}, task 1.1's branch, where the test was proven, nor its landing`;
-  if (landedIn(cwd, ref.unit, repo, from)) return `${where}, which is on ${into} — ${mergeWay(into, into)}`;
-  if (ref.phase !== REPRODUCING.phase) return `${where} — task 1.1 lands with ${phaseName(ref.unit, REPRODUCING.phase)}: once that phase has merged, ${mergeWay(into, into)}`;
-  return `${where} — ${mergeWay('it', branch)}`;
+  const git = gitIn(repo);
+  if (landedIn(cwd, ref.unit, repo, from)) return `${where}, which is on ${into} — ${mergeWay(into, into, git)}`;
+  if (ref.phase !== REPRODUCING.phase) return `${where} — task 1.1 lands with ${phaseName(ref.unit, REPRODUCING.phase)}: once that phase has merged, ${mergeWay(into, into, git)}`;
+  return `${where} — ${mergeWay('it', branch, git)}`;
 }
 
 /**
@@ -257,6 +266,21 @@ function reproducingHold(cwd, manifest, ref, outcome) {
 }
 
 /**
+ * Why a bugfix's task `ref` is not closed, with the way on: the reproducing
+ * task, whose test proving the bug is what a bugfix is (15.5.5), never is —
+ * its test reworked where it proves nothing, or the unit cancelled where
+ * the bugfix is given up; null for any other task or unit.
+ * @param {Record<string, any>} manifest @param {TaskRef} ref
+ * @returns {string|null}
+ */
+function reproducingClose(manifest, ref) {
+  if (!isBugfix(manifest) || !isReproducing(ref)) return null;
+  return `${ref.unit} is a bugfix, so ${taskName(ref)}, its reproducing task, is never closed: the test it writes proves the bug, which is what a bugfix is (15.5.5) — `
+    + `where its test proves nothing, rework it, its builder sent back in with what its series showed: engine task add ${ref.unit} ${REPRODUCING_SHOWN} --file <addition> --by orchestrator; `
+    + `where the bugfix is given up, cancel it: engine workunit cancel ${ref.unit}`;
+}
+
+/**
  * Why round 1 of a bugfix's review cannot be recorded yet, with the way on,
  * or null where a re-run is recorded since the review began (15.5.6).
  * @param {string} unit @param {{series: Series|null, reruns: ReadRun[]}} runs
@@ -271,5 +295,5 @@ function rerunRefusal(unit, { series, reruns }) {
 const rerunPassed = (reruns) => reruns.some(({ verdict }) => verdict === 'pass');
 
 module.exports = {
-  REPRODUCING, REPRODUCING_SHOWN, SERIES_RUNS, UNFIXED_ITEM, isBugfix, isReproducing, reproducingRef, firstScenarios, bugRuns, proves, seriesCall, runVerb, doorGate, reproducingHold, rerunRefusal, rerunPassed,
+  REPRODUCING, REPRODUCING_SHOWN, SERIES_RUNS, UNFIXED_ITEM, isBugfix, isReproducing, reproducingRef, firstScenarios, bugRuns, proves, seriesCall, runVerb, doorGate, reproducingHold, reproducingClose, rerunRefusal, rerunPassed,
 };

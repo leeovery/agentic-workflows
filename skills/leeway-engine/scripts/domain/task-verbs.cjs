@@ -41,20 +41,20 @@
 // take it off, each first taking the task's worktree apart (6.3.3,
 // 24.2.4); done refuses a task a question waiting parks, and a bugfix's
 // reproducing task until its test's series proves the bug (bug-proven.cjs,
-// 15.5.3); close ends a task without it being done, with a reason, takes
-// it off every question parking it (task-parks.cjs), and frees what waits
-// on it as done does (7.1.12); worktree lays the task's worktree out for
-// its builder, reading the task as show does (task-worktree.cjs); stopped
-// records, against the task in flight in the calling conversation, that
-// its builder stopped, unable to build past a problem (13.11.9,
-// position.cjs). The verbs refuse in the engine's words: a tool the driver
-// needs missing or failing, a phase not written, a task the tracker lacks
-// or already holds, a task already ended. Beside them, three take the
-// build's records, each its own module's: account, a task's account and
-// its rounds' reports, and settle, the orchestrator's settlement of a
-// failed round (task-account.cjs) or, with `--phase`, of a phase review
-// that failed (phase-settlement.cjs); and note, a note for later
-// (notes.cjs).
+// 15.5.3); close ends a task without it being done, with a reason — a
+// bugfix's reproducing task never (15.5.5) — takes it off every question
+// parking it (task-parks.cjs), and frees what waits on it as done does
+// (7.1.12); worktree lays the task's worktree out for its builder, reading
+// the task as show does (task-worktree.cjs); stopped records, against the
+// task in flight in the calling conversation, that its builder stopped,
+// unable to build past a problem (13.11.9, position.cjs). The verbs
+// refuse in the engine's words: a tool the driver needs missing or
+// failing, a phase not written, a task the tracker lacks or already holds,
+// a task already ended. Beside them, three take the build's records, each
+// its own module's: account, a task's account and its rounds' reports, and
+// settle, the orchestrator's settlement of a failed round
+// (task-account.cjs) or, with `--phase`, of a phase review that failed
+// (phase-settlement.cjs); and note, a note for later (notes.cjs).
 //
 // Every verb runs under the writer lock (engine.cjs), the tool's own lock
 // inside it. Before anything else reaches the driver, the project's setting
@@ -93,7 +93,7 @@ const { taskId, shownTask, parseShownTask, parsePhase, taskName, phaseName } = r
 const { TASK_TYPES, breaksLine, readTaskText } = require('./task-file.cjs');
 const { recordTask, clearTask, recordStop } = require('./position.cjs');
 const { phaseStarted, cutLength } = require('./derivations.cjs');
-const { reproducingHold } = require('./bug-proven.cjs');
+const { reproducingHold, reproducingClose } = require('./bug-proven.cjs');
 const { layOutTask, takeWorktreeApart } = require('./task-worktree.cjs');
 const { markChanged, briefedOf, beingRead } = require('./round-report.cjs');
 
@@ -785,16 +785,19 @@ const doneTask = moving('done', (driver, root, ref) => {
 });
 
 /**
- * `task close`: where a question parks it, refused with no session before
- * anything moves; its worktree taken apart, then off every question parking
- * it, then closed without being done, its reason kept, and off the position
- * — the last of its phase's to end, another done, naming the phase's
+ * `task close`: refused for a bugfix's reproducing task (bug-proven.cjs);
+ * where a question parks it, refused with no session before anything
+ * moves; its worktree taken apart, then off every question parking it,
+ * then closed without being done, its reason kept, and off the position —
+ * the last of its phase's to end, another done, naming the phase's
  * mutation run (landing.cjs, `mutationRun`).
  */
 const closeTask = moving('close', (driver, root, ref, reason) => {
   refuseEnded(driver, root, ref, CLOSE_RULE);
   driver.close(root, ref, reason);
 }, (cwd, ref, verb) => {
+  const kept = reproducingClose(loadWorkUnitManifest(cwd, ref.unit), ref);
+  if (kept !== null) throw new Error(`task ${verb}: ${kept}`);
   const parking = parks().parkingOf(cwd, ref, `task ${verb}`);
   const settle = ending(CLOSE_RULE, () => parks().takeOff(cwd, ref, `task ${verb}`, parking))(cwd, ref, verb);
   return () => ({ ...settle(), ...landing().mutationRun(cwd, ref, false) });

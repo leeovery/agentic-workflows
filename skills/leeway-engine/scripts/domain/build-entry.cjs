@@ -78,8 +78,9 @@
 // nothing added to it since and nothing changed under its last round
 // (round-report.cjs) — an addition, the person's Comment at its gate among
 // them (13.11.3), is reworked and read again first, the task in progress
-// until a new account counts it — until the person's go there and `task
-// done`. The
+// until a new account counts it — and, a bugfix's reproducing task, its
+// bug proven, its line naming the series until then (bug-proven.cjs) —
+// until the person's go there and `task done`. The
 // build is finished once every phase of the cut has closed, so "nothing
 // ready" with a phase not yet written never reads finished (7.4.3, 12.6.7)
 // — the rule `phaseStatus` reads off the manifest (derivations.cjs) — its
@@ -105,6 +106,7 @@ const { takenFigures, reviewOverWay } = require('./task-account.cjs');
 const { recordedRounds, mergingWords } = require('./review-phase.cjs');
 const { shownTask, parseShownTask } = require('./task-id.cjs');
 const { roundStanding, taskRounds, pairPassed } = require('./round-report.cjs');
+const { reproducingHold } = require('./bug-proven.cjs');
 
 /** @typedef {import('./enter.cjs').Entry} Entry */
 /** @typedef {import('./enter.cjs').Entering} Entering */
@@ -124,8 +126,9 @@ const { roundStanding, taskRounds, pairPassed } = require('./round-report.cjs');
 /**
  * A task of a phase: its id shown, its title, where it stands, the
  * questions waiting that park it, by number, and, one not started, the
- * tasks not yet done it is linked after.
- * @typedef {{task: string, title: string, status: TaskState, parked: string[], after: string[]}} StandingTask
+ * tasks not yet done it is linked after; and, a bugfix's reproducing task
+ * that would stand at its gate, why it waits on its bug proven first.
+ * @typedef {{task: string, title: string, status: TaskState, parked: string[], after: string[], unproven?: string}} StandingTask
  */
 /**
  * A phase of the build: its number and name; the review round whose fixes
@@ -245,10 +248,18 @@ function turnIn(at, lists, parked, freed) {
   return turnOf(goesOn(parked, { phases: lists, ready: [] }, () => false), () => freed);
 }
 
-/** Where a task stands as the standing gives it (the header's). @param {Reading} at @param {TaskRow} row @param {string[]} parked @param {Set<string>} behind @returns {TaskState} */
+/**
+ * Where a task stands as the standing gives it (the header's), and, a
+ * bugfix's reproducing task that would stand at its gate, why it waits on
+ * its bug proven first.
+ * @param {Reading} at @param {TaskRow} row @param {string[]} parked @param {Set<string>} behind
+ * @returns {{status: TaskState, unproven?: string}}
+ */
 function taskState(at, row, parked, behind) {
-  if (behind.has(shownTask(row.ref))) return 'behind';
-  return atGate(at, row, parked) ? 'at-gate' : row.status;
+  if (behind.has(shownTask(row.ref))) return { status: 'behind' };
+  if (!atGate(at, row, parked)) return { status: row.status };
+  const unproven = reproducingHold(at.cwd, at.manifest, row.ref, 'lands');
+  return unproven === null ? { status: 'at-gate' } : { status: row.status, unproven };
 }
 
 /**
@@ -261,7 +272,8 @@ function standingTasks(at, phase, rows, parked, statuses, behind) {
   return (rows ?? []).map((row) => {
     const task = shownTask(row.ref);
     const on = parked.get(task) ?? [];
-    return { task, title: row.title, status: taskState(at, row, on, behind), parked: on, after: after.get(task) ?? [] };
+    const { status, unproven } = taskState(at, row, on, behind);
+    return { task, title: row.title, status, parked: on, after: after.get(task) ?? [], ...(unproven === undefined ? {} : { unproven }) };
   });
 }
 
@@ -352,7 +364,8 @@ const taskWords = ({ task, status, parked }) => (parked.length > 0 ? `${task} pa
 /**
  * What holds a task in flight, as its line says it after its agents: a
  * question parking it, its builder's stop, the task in flight it waits
- * behind, or its gate; null where nothing does.
+ * behind, a bugfix's reproducing task's bug not yet proven, or its gate;
+ * null where nothing does.
  * @param {string} unit @param {InFlight} inFlight @param {StandingTask|undefined} standing the task as the standing gives it
  * @returns {{holds: string, then: string}|null}
  */
@@ -363,6 +376,7 @@ function heldBy(unit, { task, stopped }, standing) {
     return { holds: 'its builder stopped, unable to build past a problem', then: `send its builder back in with brief builder ${unit} ${task}, or raise what stopped it to the person` };
   }
   if (standing?.status === 'behind') return { holds: STATUS_WORDS.behind, then: 'it goes on once that task is done, and no builder goes to it until then' };
+  if (standing?.unproven !== undefined) return { holds: 'its account taken, its bug not yet proven', then: standing.unproven };
   if (standing?.status === 'at-gate') {
     return { holds: STATUS_WORDS['at-gate'], then: `it waits on the person's go there, the gate drawn again with render step-gate ${unit} ${task}, and its builder is never sent afresh` };
   }
