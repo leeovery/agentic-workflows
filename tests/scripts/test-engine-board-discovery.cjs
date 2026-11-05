@@ -106,6 +106,7 @@ describe('discovery on the board (20.11)', () => {
         of: 2,
         summary: 'What a note is',
         sections: [{ heading: null, text: 'What discovery heard.' }, { heading: 'Leans', text: 'A note is plain text.' }, { heading: 'Open questions', text: 'Can a note hold a picture?' }],
+        messages: [],
       },
       { kind: 'unavailable', reason: 'fumi\'s map holds no topic "search"' },
     ]);
@@ -206,5 +207,34 @@ describe('discovery on the board (20.11)', () => {
     ok(dir(), ['topic', 'start', EPIC, 'discussion', 'note-model'], { env: SESSION });
 
     assert.deepStrictEqual([approved, states()], [[['note-model', 'next'], ['sharing', 'not-started']], [['note-model', 'discussing'], ['sharing', 'not-started']]]);
+  });
+
+  it('D29: a topic not started opens on its brief, the messages waiting for it beneath; one postponed opens on its brief too, and one under way on its discussion (20.11.2, 20.8.3)', () => {
+    staged();
+    run(answer('approve the map', 'y'));
+    writeState(dir(), '.cache/tour.md', '# The tour opens first\n\nIt bears on you.\n');
+    ok(dir(), ['topic', 'send', EPIC, 'sharing', '--from', 'note-model', '--content', '.leeway/.cache/tour.md', '--slug', 'tour'], { env: SESSION });
+    const fresh = board(['--page', 'topic:sharing']).view;
+    ok(dir(), ['topic', 'start', EPIC, 'discussion', 'note-model'], { env: SESSION });
+    const started = board(['--page', 'topic:note-model']).view.kind;
+    ok(dir(), ['topic', 'postpone', EPIC, 'sharing', '--horizon', 'later'], { env: SESSION });
+    const postponed = board(['--page', 'topic:sharing']).view;
+
+    assert.deepStrictEqual({ fresh: [fresh.kind, fresh.messages.map(({ title, from }) => [title, from])], started, postponed: [postponed.kind, postponed.order] }, {
+      fresh: ['brief', [['The tour opens first', 'Note Model']]],
+      started: 'discussion',
+      postponed: ['brief', null],
+    });
+  });
+
+  it('D35: the map approved and the session at the epic\'s menu, All work lists the epic in its discussion, none of its topics decided, this session in it (20.16.1)', () => {
+    staged();
+    run(answer('approve the map', 'y'));
+    ok(dir(), ['session', 'label', EPIC], { env: SESSION });
+    const { view } = ok(dir(), ['board', SESSION_ID, '--tab', 'all'], { env: SESSION });
+
+    assert.deepStrictEqual(view.units.filter(({ unit }) => unit === EPIC).map(({ type, phase, standing, session }) => ({ type, phase, standing, session })), [
+      { type: 'epic', phase: 'discussion', standing: '0 of 2 topics decided', session: 'this' },
+    ]);
   });
 });

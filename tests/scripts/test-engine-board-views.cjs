@@ -8,8 +8,9 @@
 // (5.8.14) — its review rounds, what is decided and everything it sent; a
 // message's and a review report's pages; an experiment, its design and its
 // report; the epic's page, its topics' experiments and what happened lately,
-// and a topic's page from it; other units' pages, and This session that
-// cannot be drawn.
+// and a topic's page from it — a started one's discussion, a cancelled one's
+// once it started; other units' pages, the roadmap's topics postponed out of
+// the epic, and This session that cannot be drawn.
 //
 // Layer: verb. World: the decided suites' (decided-world.cjs) — the epic
 // `fumi`, its note window's map written, its two topics under discussion —
@@ -23,11 +24,12 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const { ok, output, writeState, readManifest, stateGit, layout, withFrozenClock, FROZEN_AT } = require('./engine-harness.cjs');
-const { useDecidedWorld, writeIn, answeredIn, NOTE_MAP } = require('./decided-world.cjs');
+const { useDecidedWorld, decidedHelpers, writeIn, answeredIn, NOTE_MAP, NO_PAYLOAD } = require('./decided-world.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, SESSION, SESSION_ID, MADE, NOTE, SPACE } = require('./ledger-world.cjs');
 
 const dir = useDecidedWorld();
+const { close, staged, answer, run } = decidedHelpers(dir);
 
 /** A dispatch's owner, this test's own process, which runs while it reads. */
 const OWNED = Object.freeze({ CLAUDE_PID: String(process.pid) });
@@ -74,7 +76,10 @@ describe('a discussion on the board (20.7)', () => {
         type: 'epic',
         topic: 'note-window',
         topic_title: 'Note Window',
+        summary: readManifest(dir(), UNIT).phases.discovery.items['note-window'].summary,
+        live: true,
         progress: { decided: 1, yours: 1, calls: 5 },
+        closing: false,
         open: [],
         messages: [],
         since: CALLS(),
@@ -89,7 +94,7 @@ describe('a discussion on the board (20.7)', () => {
     });
   });
 
-  it('a question of the person\'s still open, and a message waiting, each counted on the banner; what the topic sent, and nothing another sent, waits in the other\'s mailbox', () => {
+  it('a question of the person\'s still open, and a message waiting, each counted on the banner, the messages as waiting unflagged (D40); what the topic sent, and nothing another sent, waits in the other\'s mailbox', () => {
     at([UNIT, 'discussion', 'note-window']);
     writeIn(dir(), 'ask', NOTE, [], { by: 'person', who_moved_whom: 'none', text: 'Does a note float?' });
     sent('space-homing', 'note-window', 'Notes open on their Space');
@@ -97,11 +102,11 @@ describe('a discussion on the board (20.7)', () => {
     sent('fumi.specification', 'space-homing', 'The spec asks a question');
     const { view, banner } = board();
 
-    assert.deepStrictEqual({ open: view.open.map(({ text, from, experiment }) => ({ text, from, experiment })), messages: view.messages.map(({ title, from }) => ({ title, from })), sent: view.sent.map(({ title, to, waiting }) => ({ title, to, waiting })), facts: banner.facts.slice(3) }, {
+    assert.deepStrictEqual({ open: view.open.map(({ text, from, experiment }) => ({ text, from, experiment })), messages: view.messages.map(({ title, from }) => ({ title, from })), sent: view.sent.map(({ title, to, stands }) => ({ title, to, stands })), facts: banner.facts.slice(3) }, {
       open: [{ text: 'Does a note float?', from: null, experiment: null }],
       messages: [{ title: 'Notes open on their Space', from: 'Space Homing' }],
-      sent: [{ title: 'The tour opens first', to: 'Space Homing', waiting: true }],
-      facts: [{ text: '1 of yours open', needs: false }, { text: '1 message waiting', needs: false }],
+      sent: [{ title: 'The tour opens first', to: 'Space Homing', stands: 'waiting' }],
+      facts: [{ text: '1 of yours open', needs: false }, { text: '1 message waiting', needs: false, waits: true }],
     });
   });
 
@@ -116,10 +121,18 @@ describe('a discussion on the board (20.7)', () => {
     const { view } = board();
     const [{ file }] = view.messages;
 
-    assert.deepStrictEqual({ sent: view.sent.map(({ title, to, waiting }) => ({ title, to, waiting })), page: board(['--page', `message:note-window:${file}`]).view }, {
-      sent: [{ title: 'The tour opens first', to: 'Space Homing', waiting: false }],
+    assert.deepStrictEqual({ sent: view.sent.map(({ title, to, stands }) => ({ title, to, stands })), page: board(['--page', `message:note-window:${file}`]).view }, {
+      sent: [{ title: 'The tour opens first', to: 'Space Homing', stands: 'taken' }],
       page: { kind: 'message', unit: UNIT, topic: 'note-window', file, title: 'Notes open on their Space', from: 'Space Homing', when: view.messages[0].when, text: 'It bears on you.' },
     });
+  });
+
+  it('a message the topic sent that left its mailbox untaken — its topic cancelled, its mail to the inbox — stands moved to the inbox, never taken in (20.7.1)', () => {
+    at([UNIT, 'discussion', 'note-window']);
+    sent('note-window', 'space-homing', 'The tour opens first');
+    ok(dir(), ['topic', 'cancel', UNIT, 'discovery', 'space-homing'], { env: SESSION });
+
+    assert.deepStrictEqual(board().view.sent.map(({ title, stands }) => [title, stands]), [['The tour opens first', 'inbox']]);
   });
 
   it('its review rounds, newest first, each since it was dispatched: one running while the conversation that sent it runs, a read one with its findings taken in and waiting; a report opens in full (20.7.1, 20.7.3)', () => {
@@ -132,13 +145,25 @@ describe('a discussion on the board (20.7)', () => {
     const second = ok(dir(), ['agent', 'dispatch', UNIT, 'discussion', 'note-window', '--kind', 'review', '--final'], { env: { ...SESSION, ...OWNED } });
     const { reviews } = board().view;
 
-    assert.deepStrictEqual({ reviews, page: board(['--page', `review:note-window:${first.id}`]).view.text }, {
+    const { text, topic_title: of } = board(['--page', `review:note-window:${first.id}`]).view;
+
+    assert.deepStrictEqual({ reviews, page: [text, of] }, {
       reviews: [
         { id: second.id, round: 2, state: 'running', since: reviews[0].since, findings: 0, taken: 0, waiting: 0 },
         { id: first.id, round: 1, state: 'read', since: reviews[1].since, findings: 2, taken: 1, waiting: 1 },
       ],
-      page: fs.readFileSync(first.file, 'utf8'),
+      page: [fs.readFileSync(first.file, 'utf8'), 'Note Window'],
     });
+  });
+
+  it('N2, 20.7.1: the closing pass runs while its agent runs, and not once the conversation that sent it is gone', () => {
+    at([UNIT, 'discussion', 'note-window']);
+    const before = board().view.closing;
+    ok(dir(), ['agent', 'dispatch', UNIT, 'discussion', 'note-window', '--kind', 'closing-pass'], { env: { ...SESSION, ...OWNED } });
+    const running = board().view.closing;
+    ok(dir(), ['agent', 'dispatch', UNIT, 'discussion', 'space-homing', '--kind', 'closing-pass'], { env: { ...SESSION, CLAUDE_PID: undefined } });
+
+    assert.deepStrictEqual([before, running, board(['--page', 'topic:space-homing']).view.closing], [false, true, false]);
   });
 
   it('a round in flight stands where the agent store stands it: lost once the conversation that sent it is gone, and its report in, not yet taken, once written (20.7.1)', () => {
@@ -220,7 +245,7 @@ describe('an experiment on the board (20.13)', () => {
     assert.deepStrictEqual({ design: view.design, report: view.report, page: board(['--page', 'report:note-window:E1']).view, row: board().view.topics[0].experiment }, {
       design: [{ heading: 'Question', text: 'How fast does a note open?' }, { heading: 'Decision rule', text: 'Under 100 ms wins.' }],
       report: true,
-      page: { kind: 'experiment-report', unit: UNIT, topic: 'note-window', id: 'E1', text: '# Report\n\nIt opens in 80 ms.\n' },
+      page: { kind: 'experiment-report', unit: UNIT, topic: 'note-window', topic_title: 'Note Window', id: 'E1', status: 'concluded', text: '# Report\n\nIt opens in 80 ms.\n' },
       row: { id: 'E1', running: false },
     });
   });
@@ -274,14 +299,15 @@ describe('an epic\'s page (20.8)', () => {
         title: 'Fumi',
         about: 'Test: fumi',
         started: null,
+        now: { phase: 'discussion', since: null },
         at_menu: true,
         progress: { decided: 0, total: 2, discussing: 2 },
         topics: [
           { topic: 'note-window', title: 'Note Window', state: 'discussing', decided: 1, total: 1, session: null, messages: 0, experiment: null },
           { topic: 'space-homing', title: 'Space Homing', state: 'discussing', decided: 0, total: 0, session: null, messages: 0, experiment: null },
         ],
-        spec: 'waits',
-        build: 'waits',
+        spec: { state: 'waits', session: null },
+        build: { state: 'waits', session: null },
         set_aside: [],
         lately: view.lately,
       },
@@ -289,7 +315,7 @@ describe('an epic\'s page (20.8)', () => {
     });
   });
 
-  it('20.8.2 LATELY: what the state\'s history says happened in the epic, newest first, each topic by its title', () => {
+  it('20.8.2 LATELY: what the state\'s history says happened in the epic, newest first, each topic by its title, a message sent with its sender', () => {
     at([UNIT]);
     sent('note-window', 'space-homing', 'The tour opens first');
     ok(dir(), ['topic', 'postpone', UNIT, 'space-homing', '--horizon', 'later'], { env: SESSION });
@@ -297,16 +323,81 @@ describe('an epic\'s page (20.8)', () => {
 
     assert.deepStrictEqual(lately.slice(0, 2).map(({ kind, topic, detail }) => ({ kind, topic, detail })), [
       { kind: 'postponed', topic: 'Space Homing', detail: 'later' },
-      { kind: 'sent', topic: 'Space Homing', detail: '001-bears.md' },
+      { kind: 'sent', topic: 'Space Homing', detail: 'Note Window' },
     ]);
+  });
+
+  it('N8, 20.8.2: messages one topic took in one after another are one moment, counted — a message taken in alone names its sender — and the map approved says what it took in', () => {
+    at([UNIT]);
+    stateGit(dir(), ['commit', '-q', '--allow-empty', '-m', `discovery(${UNIT}): approve the map — 2 topics, 1 to the roadmap`]);
+    sent('space-homing', 'note-window', 'Notes open on their Space');
+    const [first] = fs.readdirSync(path.join(dir(), '.leeway', UNIT, 'topics', 'note-window', 'mail'));
+    ok(dir(), ['topic', 'answered', UNIT, 'note-window', first.replace(/\.md$/, ''), '--entry', writeIn(dir(), 'ask', NOTE, [], { ...MADE, text: 'Do notes open on their Space?' })], { env: SESSION });
+    const alone = board().view.lately[0];
+    sent('space-homing', 'note-window', 'A note keeps its Space');
+    sent('space-homing', 'note-window', 'A note follows its window');
+    for (const file of fs.readdirSync(path.join(dir(), '.leeway', UNIT, 'topics', 'note-window', 'mail'))) {
+      ok(dir(), ['topic', 'answered', UNIT, 'note-window', file.replace(/\.md$/, ''), '--entry', writeIn(dir(), 'ask', NOTE, [], { ...MADE, text: `Is ${file} so?` })], { env: SESSION });
+    }
+    const said = (/** @type {any} */ { kind, topic, detail, count }) => ({ kind, topic, detail, count });
+    const { lately } = board().view;
+
+    assert.deepStrictEqual([said(alone), lately.slice(0, 2).map(said), said(lately.find(({ kind }) => kind === 'map-approved'))], [
+      { kind: 'answered', topic: 'Note Window', detail: 'Space Homing', count: 1 },
+      [{ kind: 'answered', topic: 'Note Window', detail: null, count: 2 }, { kind: 'sent', topic: 'Note Window', detail: 'Space Homing', count: undefined }],
+      { kind: 'map-approved', topic: null, detail: '2 topics, 1 to the roadmap', count: undefined },
+    ]);
+  });
+
+  it('20.8.2: the map approved before its subject carried its counts reads as approved, saying nothing of what it took in', () => {
+    at([UNIT]);
+    stateGit(dir(), ['commit', '-q', '--allow-empty', '-m', `discovery(${UNIT}): approve the map`]);
+    const { kind, detail } = board().view.lately[0];
+
+    assert.deepStrictEqual([kind, detail], ['map-approved', null]);
   });
 
   it('20.8.2 LATELY shows the latest ten of the epic\'s moments, newest first', () => {
     at([UNIT]);
-    for (let k = 1; k <= 11; k += 1) stateGit(dir(), ['commit', '-q', '--allow-empty', '-m', `mail(${UNIT}): send m${k}.md to note-window`]);
+    for (let k = 1; k <= 11; k += 1) stateGit(dir(), ['commit', '-q', '--allow-empty', '-m', `review(${UNIT}): round ${k}`]);
     const { lately } = board().view;
 
-    assert.deepStrictEqual(lately.map(({ detail }) => detail), Array.from({ length: 10 }, (_, k) => `m${11 - k}.md`));
+    assert.deepStrictEqual(lately.map(({ detail }) => detail), Array.from({ length: 10 }, (_, k) => `${11 - k}`));
+  });
+
+  it('S1, N4, 20.16.1: All work\'s roadmap lists a topic postponed out of an epic by its title, not its summary, with the epic\'s title', () => {
+    at([UNIT]);
+    const summary = 'Where someone meets Fumi before paying: the only place a prospective buyer sees it work, carrying Buy, the download and the terms';
+    ok(dir(), ['topic', 'add', UNIT, 'website', '--summary', summary, '--brief', writeState(dir(), layout.cache('scratch', 'website.md'), '# Website\n')], { env: SESSION });
+    ok(dir(), ['topic', 'postpone', UNIT, 'website', '--horizon', 'later'], { env: SESSION });
+    const item = board(['--tab', 'all']).view.roadmap.find(({ horizon }) => horizon === 'later').items.find(({ from }) => from !== null);
+
+    assert.deepStrictEqual(item, { title: 'Website', from: 'Fumi' });
+  });
+
+  it('N5, D29: a topic decided, and one cancelled once its discussion started, open on the discussion\'s page; one cancelled before it started — though a message waited for it — and one postponed, on its brief', () => {
+    at([UNIT]);
+    close();
+    staged(NO_PAYLOAD);
+    run(answer('decided', 'y'));
+    ok(dir(), ['topic', 'cancel', UNIT, 'discovery', 'space-homing'], { env: SESSION });
+    for (const topic of ['tray-icon', 'dock-menu']) ok(dir(), ['topic', 'add', UNIT, topic, '--summary', `The ${topic}`, '--brief', writeState(dir(), layout.cache('scratch', `${topic}.md`), `# ${topic}\n`)], { env: SESSION });
+    sent('note-window', 'tray-icon', 'The tray shows the note count');
+    ok(dir(), ['topic', 'cancel', UNIT, 'discovery', 'tray-icon'], { env: SESSION });
+    ok(dir(), ['topic', 'postpone', UNIT, 'dock-menu', '--horizon', 'later'], { env: SESSION });
+    const page = (/** @type {string} */ topic) => board(['--tab', 'unit', '--page', `topic:${topic}`]).view.kind;
+
+    assert.deepStrictEqual(['note-window', 'space-homing', 'tray-icon', 'dock-menu'].map(page), ['discussion', 'discussion', 'brief', 'brief']);
+    assert.strictEqual(readManifest(dir(), UNIT).phases.discussion.items['tray-icon']?.previous_status, 'unstarted', 'the message parked an unstarted discussion item, which the cancel set aside');
+  });
+
+  it('20.8.3: a started topic\'s page, read over the session, carries its summary on the map and is no live discussion; the topic the session is in is', () => {
+    at([UNIT, 'discussion', 'note-window']);
+    const summary = readManifest(dir(), UNIT).phases.discovery.items['space-homing'].summary;
+    const page = board(['--tab', 'unit', '--page', 'topic:space-homing']).view;
+
+    assert.deepStrictEqual([page.summary, page.live, board().view.live], [summary, false, true]);
+    assert.notStrictEqual(summary, '');
   });
 
   it('on the epic\'s tab the topic the session is in is this session\'s, and a topic opens on its own page (20.8.3, 20.15.2)', () => {
@@ -322,12 +413,14 @@ describe('other units\' pages (20.15)', () => {
   it('20.15.2: an epic whose discovery runs before any topic exists shows its phases, each after discovery with what it waits on', () => {
     createManifest(dir(), 'atlas', { work_type: 'epic' });
 
+    const later = { on: null, session: null, page: false };
+
     assert.deepStrictEqual(board(['--tab', 'unit', '--unit', 'atlas']).view.phases, [
-      { phase: 'discovery', state: 'running', words: '' },
-      { phase: 'discussion', state: 'later', words: 'once the map is approved' },
-      { phase: 'specification', state: 'later', words: 'once every topic is decided' },
-      { phase: 'build', state: 'later', words: '' },
-      { phase: 'review', state: 'later', words: '' },
+      { phase: 'discovery', state: 'running', words: '', ...later },
+      { phase: 'discussion', state: 'later', words: 'once the map is approved', ...later },
+      { phase: 'specification', state: 'later', words: 'once every topic is decided', ...later },
+      { phase: 'build', state: 'later', words: '', ...later },
+      { phase: 'review', state: 'later', words: '', ...later },
     ]);
   });
 
@@ -357,6 +450,41 @@ describe('other units\' pages (20.15)', () => {
     const asked = writeIn(dir(), 'ask', 'shop.specification', [], { ...MADE, text: 'Is a cart ever shared?' });
 
     assert.deepStrictEqual(board(['--tab', 'unit', '--unit', 'shop']).view.waiting, [{ kind: 'gap', id: asked, text: 'Is a cart ever shared?' }]);
+  });
+
+  it('S3, 20.15.1: a unit\'s tab says whether it is the unit the session is in, whose questions the board holds', () => {
+    createManifest(dir(), 'shop', {});
+    at([UNIT]);
+
+    assert.deepStrictEqual([board(['--tab', 'unit', '--unit', 'shop']).view.here, board(['--tab', 'unit', '--unit', UNIT]).view.kind], [false, 'epic']);
+    at(['shop']);
+    assert.strictEqual(board(['--tab', 'unit']).view.here, true);
+  });
+
+  it('20.15.1, 20.15.3: a linear unit\'s phases each finished with the day it closed and what it produced — discovery the note it began from, the discussion its decisions — each opening in full; the phase it is in since the one before it closed; a phase that is not finished opens on no page', () => {
+    createManifest(dir(), 'shop', {
+      created: '2026-06-26',
+      seeds: [{ path: 'seeds/cart.md', source: 'inbox:idea', seeded_at: '2026-06-26T09:00:00Z' }],
+      phases: { discussion: { items: { shop: { status: 'completed' } } } },
+      checklists: { decided: { shop: { items: {}, closed: '2026-10-17T12:00:00.000Z' } } },
+    });
+    writeState(dir(), 'shop/seeds/cart.md', '# A cart\n\nA cart holds what the shopper picks.\n\nIt keeps them a week.\n');
+    writeState(dir(), 'shop/spec.md', '# Shop\n\n## 1. Cart\n\n1.1.1 A cart holds items.\n');
+    const asked = writeIn(dir(), 'ask', 'shop.discussion.shop', [], { by: 'person', who_moved_whom: 'none', text: 'How long is a cart kept?' });
+    writeIn(dir(), 'decide', 'shop.discussion.shop', ['--answers', asked], { by: 'person', who_moved_whom: 'none', given: 'own', text: 'A week.', why: 'Shoppers come back within days.' });
+    const { view } = board(['--tab', 'unit', '--unit', 'shop']);
+    const phase = (/** @type {string} */ name) => board(['--tab', 'unit', '--unit', 'shop', '--page', `phase:${name}`]).view;
+
+    assert.deepStrictEqual([view.now, view.phases.slice(0, 3)], [{ phase: 'specification', since: '2026-10-17T12:00:00.000Z' }, [
+      { phase: 'discovery', state: 'complete', words: 'from your inbox note', on: '2026-06-26', session: null, page: true },
+      { phase: 'discussion', state: 'complete', words: '1 decision', on: '2026-10-17T12:00:00.000Z', session: null, page: true },
+      { phase: 'specification', state: 'running', words: '1 section', on: null, session: null, page: false },
+    ]]);
+    assert.deepStrictEqual([phase('discovery'), phase('discussion'), phase('specification')], [
+      { kind: 'phase', unit: 'shop', title: 'Shop', phase: 'discovery', on: '2026-06-26', words: 'from your inbox note', sections: [{ heading: 'Your note', text: '# A cart\n\nA cart holds what the shopper picks.\n\nIt keeps them a week.\n' }] },
+      { kind: 'phase', unit: 'shop', title: 'Shop', phase: 'discussion', on: '2026-10-17T12:00:00.000Z', words: '1 decision', sections: [{ heading: 'Decisions', text: 'How long is a cart kept?: A week.' }] },
+      { kind: 'unavailable', reason: 'shop has no finished specification that opens in full — a linear unit\'s discovery and discussion do, once complete' },
+    ]);
   });
 
   it('20.16.1: All work says how far an epic has come by its topics decided of all, and nothing of a unit it reads no further', () => {

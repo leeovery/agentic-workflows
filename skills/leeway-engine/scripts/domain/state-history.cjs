@@ -11,8 +11,14 @@
 //   cancelled or back, a message sent to a topic or taken in by it, the
 //   spec landed, a review round recorded, the unit completed — newest
 //   first, each with when it was committed, its topic where it names one,
-//   and what it names besides: the type, the horizon, the message, the
-//   round, the phase started.
+//   and what it names besides: the type, what the map took in, the horizon,
+//   the message, the round, the phase started.
+// - When the map was last approved (`mapApproved`): the latest commit of
+//   the unit's approve the map since the time given.
+// - What each topic took in (`takenIn`): every message a commit says a
+//   topic of the unit answered since the time given.
+// - Each read that reaches past the latest commits is bounded by a time
+//   (`--since`): the unit's life, or the oldest moment it serves.
 // - What each topic was sent (`sentMail`): every message a commit added to
 //   one of the unit's mailboxes since the day before it was made, newest
 //   first, each with the topic it went to, its file, its title and the
@@ -39,7 +45,7 @@ const LOOK_BACK = 60;
  */
 const MOMENTS = Object.freeze([
   { kind: 'created', scope: 'discovery', said: /^(?:create work unit|start this work) \((?<detail>[^)]+)\)$/ },
-  { kind: 'map-approved', scope: 'discovery', said: /^approve the map$/ },
+  { kind: 'map-approved', scope: 'discovery', said: /^approve the map(?: — (?<detail>.+))?$/ },
   { kind: 'postponed', scope: 'workflow', said: /^postpone (?<topic>\S+) → (?<detail>.+)$/ },
   { kind: 'cancelled', scope: 'workflow', said: /^cancel (?<topic>\S+) \(discovery\)$/ },
   { kind: 'reactivated', scope: 'workflow', said: /^reactivate (?<topic>\S+) \(discovery\)$/ },
@@ -80,6 +86,25 @@ function unitHistory(cwd, unit) {
   });
 }
 
+/** `--since` for the time given, none where it is null. @param {string|null} from */
+const since = (from) => (from === null ? [] : [`--since=${from}`]);
+
+/** Every message one of the unit's topics took in since `from`, by the topic and the message's file. @param {string} cwd @param {string} unit @param {string|null} from @returns {Set<string>} */
+function takenIn(cwd, unit, from) {
+  const out = isolatedGit(stateRoot(cwd)).tryRun(['log', '--no-show-signature', '-z', '--format=%s', ...since(from), '--fixed-strings', `--grep=mail(${unit}): `, 'HEAD', '--']);
+  return new Set((out ?? '').split('\0').flatMap((subject) => {
+    const moment = momentOf(unit, new Date(0).toISOString(), subject.trim());
+    return moment?.kind === 'answered' ? [`${moment.topic}/${moment.detail}`] : [];
+  }));
+}
+
+/** When the unit's map was last approved since `from`, null where it was not. @param {string} cwd @param {string} unit @param {string|null} from @returns {string|null} */
+function mapApproved(cwd, unit, from) {
+  const out = isolatedGit(stateRoot(cwd)).tryRun(['log', '--no-show-signature', '-n1', '--format=%cI', ...since(from), '--fixed-strings', `--grep=discovery(${unit}): approve the map`, 'HEAD', '--']);
+  const at = (out ?? '').trim();
+  return at === '' ? null : isoOf(at);
+}
+
 /**
  * Each message a commit's patch adds, with the topic it went to.
  * @param {string} unit @param {string} at @param {string} patch @returns {SentMail[]}
@@ -105,7 +130,7 @@ function addedMail(unit, at, patch) {
  */
 function sentMail(cwd, unit, from) {
   const out = isolatedGit(stateRoot(cwd)).tryRun([
-    'log', '--no-show-signature', '--no-color', '--no-ext-diff', '--diff-filter=A', '-p', '--format=%x01%cI', ...(from === null ? [] : [`--since=${from}`]), 'HEAD', '--', `:(glob)${unit}/topics/*/mail/*.md`,
+    'log', '--no-show-signature', '--no-color', '--no-ext-diff', '--diff-filter=A', '-p', '--format=%x01%cI', ...since(from), 'HEAD', '--', `:(glob)${unit}/topics/*/mail/*.md`,
   ]);
   return (out ?? '').split('\x01').filter(Boolean).flatMap((commit) => {
     const [at, ...patch] = commit.split('\n');
@@ -113,4 +138,4 @@ function sentMail(cwd, unit, from) {
   });
 }
 
-module.exports = { unitHistory, sentMail };
+module.exports = { unitHistory, mapApproved, takenIn, sentMail };

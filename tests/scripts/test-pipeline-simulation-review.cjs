@@ -111,6 +111,14 @@ describe('pipeline simulation: the review phase, as its skill runs it', () => {
     sim.run(['enter', 'implementation', WU]);
     assert.deepStrictEqual(sim.sections.split('\n').filter((line) => line.startsWith('finished: ')), [`finished: every phase of the cut has closed — the review phase is next: enter review ${WU}`],
       'the build\'s entry names the review phase next, in the same conversation');
+    /** Where the epic stands on its tab: the phase it is in and since when, its specification, its build and review. */
+    const standing = () => {
+      const { now, spec, build } = JSON.parse(sim.read(['board', sim.env.CLAUDE_CODE_SESSION_ID, '--tab', 'unit', '--unit', WU])).view;
+      return { now, spec, build };
+    };
+    const closes = () => sim.manifest(WU).checklists;
+    assert.deepStrictEqual(standing(), { now: { phase: 'review', since: closes()['phase-1-close'].closed }, spec: { state: 'complete', session: null }, build: { state: 'reviewing', session: 'this' } },
+      'S2, 20.8.2: the epic is in review since its last phase closed, its build and review under way with this session in it');
     const { move, data, fixPhase: phase } = reviewNext(sim, WU);
     const here = carryOn(sim);
     assert.deepStrictEqual([sim.handoffs.slice(handedOff), here.position], [[], { name: WU, phase: 'review', topic: WU }],
@@ -164,6 +172,8 @@ describe('pipeline simulation: the review phase, as its skill runs it', () => {
     sim.write(`.leeway/${WU}/build/log.md`, '# The build\n\nPhase 1 built; the review fixed the hash on read in round 1 and passed in round 2. Nothing is in flight.\n');
     const { landed, next } = finished(sim, WU);
     assert.deepStrictEqual(landed, [[phase]], 'finish lands the fix phase, the cut\'s merged before it');
+    assert.deepStrictEqual(standing(), { now: { phase: 'complete', since: sim.manifest(WU).completed_at }, spec: { state: 'complete', session: null }, build: { state: 'complete', session: 'this' } },
+      'S2, 20.8.2: finished, the epic is complete the day it completed, its build and review complete');
     handoff(sim, `/${next.skill} ${next.args.join(' ')}`);
 
     const files = unitFiles(sim);

@@ -94,7 +94,7 @@ function reportPage(at, said, id) {
   const held = at.manifest.phases?.experiment?.items?.[topic]?.experiments?.[id];
   const text = held === undefined ? '' : recordText(at, topic, id, 'report.md');
   if (text.trim() === '') throw new Error(`${topicTitle(at.manifest, topic)}'s experiment ${id} has no report written`);
-  return { kind: 'experiment-report', unit: at.unit, topic, id, text };
+  return { kind: 'experiment-report', unit: at.unit, topic, topic_title: topicTitle(at.manifest, topic), id, status: String(held.status), text };
 }
 
 /**

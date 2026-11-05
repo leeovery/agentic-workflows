@@ -618,12 +618,14 @@ function approveMapYes(cwd, unit) {
 
   /** @type {string[]} */
   const warnings = [];
-  const outcome = commitStateTail(cwd, [...discoveryScope(cwd, unit), PROJECT_MANIFEST_SPEC], `discovery(${unit}): approve the map`, warnings);
+  const topics = [...staged.topics, ...taken].map(({ name }) => name);
+  const took = `${topics.length} ${topics.length === 1 ? 'topic' : 'topics'}, ${staged.parks.length} to the roadmap`;
+  const outcome = commitStateTail(cwd, [...discoveryScope(cwd, unit), PROJECT_MANIFEST_SPEC], `discovery(${unit}): approve the map — ${took}`, warnings);
   const swept = staged.candidates !== undefined;
   /** @type {Record<string, unknown>} */
   const result = {
     unit,
-    topics: [...staged.topics, ...taken].map(({ name }) => name),
+    topics,
     added: [...briefs.keys()].map((name) => ({ name, brief: statePath(cwd, briefFile(unit, name)) })),
     parked: staged.parks.map(({ name, horizon }) => ({ name, horizon })),
     bound: staged.binds,

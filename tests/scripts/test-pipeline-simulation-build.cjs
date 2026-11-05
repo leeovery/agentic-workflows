@@ -63,6 +63,9 @@ describe('pipeline simulation: the build', () => {
   it('12.S1, 24.S6: an epic in auto, its first phase built by one orchestrator in one conversation — the fix round to the same builder, the nit committed under its task, the phase\'s mutation run named by its last task\'s chain — and on into its second phase with no handoff', () => {
     const handedOff = sim.handoffs.length;
     const entered = buildEntry(sim, WU);
+    const tab = JSON.parse(sim.read(['board', conversation, '--tab', 'unit'])).view;
+    assert.deepStrictEqual({ now: tab.now, spec: tab.spec, build: tab.build }, { now: { phase: 'build', since: sim.manifest(WU).checklists['ready-to-build'].closed }, spec: { state: 'complete', session: null }, build: { state: 'building', session: 'this' } },
+      'S2, 20.8.2: the epic builds since ready to build\'s yes, its specification complete, this session in its build');
     assert.deepStrictEqual(entered.filter((line) => line.startsWith('phase: ')), ['phase: phase 1 of 2, "Settling": not yet written', 'phase: phase 2 of 2, "Showing": not yet written']);
     for (const call of [['ledger', 'record', WU], ['ledger', 'affected', WU]]) sim.read(call);
     sim.write(`.leeway/${WU}/build/log.md`, '# The build\n\nPhase 1: its tasks are being written.\n');

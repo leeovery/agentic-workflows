@@ -26,14 +26,14 @@
 
 const { messageOf } = require('../kernel/call.cjs');
 
-/** @typedef {{id: string, lane: string}} ReportFinding */
+/** A finding of a report: its id, its lane, and its label, empty where its heading gives none. @typedef {{id: string, lane: string, label: string}} ReportFinding */
 /** A line of a report: its text, its end trimmed, its number, and whether a fence holds it. @typedef {{line: string, number: number, fenced: boolean}} ReportLine */
 /** The block quotes a fence opened in, and the indent its list item's lines take within them. @typedef {{quotes: number, indent: number}} Container */
 /** A fence open: the run that opened it, its line, and the container it opened in, null where none. @typedef {{run: string, number: number, container: Container|null}} Fence */
 
 const NO_FINDING = 'None identified.';
 const SECTION = '## Findings';
-const FINDING = /^### (F\d+)(?::\s.*)?$/;
+const FINDING = /^### (F\d+)(?::\s(.*))?$/;
 const LANE = /^\*\*Lane:\*\* (rewrite|gap|fact)$/;
 const LANE_LINE = /^\*\*Lane:\*\*/;
 /** What may open a line before its heading or its fence: a block quote's marker, a list item's, and spaces. */
@@ -168,7 +168,7 @@ function reportFindings(text) {
     if (heading[1] !== id) throw new Error(`line ${number}: ${heading[1]} where ${id} comes next — findings are numbered F1, F2, … in order`);
     const lane = LANE.exec(section[i + 1]?.line ?? '');
     if (lane === null) throw new Error(`line ${number}: ${id}'s next line is its lane, \`**Lane:** rewrite\`, \`gap\` or \`fact\`, the bare word`);
-    findings.push({ id, lane: lane[1] });
+    findings.push({ id, lane: lane[1], label: (heading[2] ?? '').trim() });
   });
   return findings;
 }
@@ -185,4 +185,21 @@ function readReport(text) {
   }
 }
 
-module.exports = { reportFindings, readReport };
+/**
+ * A finding's text in a report that reads, its heading and its lane
+ * dropped; empty where the report holds no finding of that id.
+ * @param {string} text @param {string} id
+ */
+function findingText(text, id) {
+  const lines = reportLines(text);
+  const section = lines.findIndex(({ line, fenced }) => !fenced && line === SECTION);
+  const heads = lines.flatMap((at, index) => (index > section && !at.fenced && FINDING.test(at.line) ? [index] : []));
+  const start = heads.find((index) => FINDING.exec(lines[index].line)?.[1] === id);
+  if (start === undefined) return '';
+  const end = heads.find((index) => index > start) ?? lines.length;
+  const body = lines.slice(start + 1, end).map(({ line }) => line);
+  const lane = body.findIndex((line) => LANE.test(line));
+  return body.filter((_, index) => index !== lane).join('\n').trim();
+}
+
+module.exports = { reportFindings, readReport, findingText };

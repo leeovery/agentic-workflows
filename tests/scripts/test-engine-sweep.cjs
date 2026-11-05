@@ -452,7 +452,7 @@ describe('approve the map after the sweep (8.8.4, 8.10.9, 8.S50)', () => {
     });
     assert.deepStrictEqual([discovery.items['backing-up-notes'], discovery.dismissed], [{ source: 'sweep', summary: BACKUPS.reason, order: 3 }, ['dock-badge', 'exporting-notes']]);
     assert.strictEqual(readState(dir, layout.topic(UNIT, 'backing-up-notes', 'brief.md')), `${BACKUPS.brief}\n`);
-    assert.deepStrictEqual([lastMessage(dir), touched(statePath(dir), 'HEAD').sort()], [`discovery(${UNIT}): approve the map`, [`A\t${layout.topic(UNIT, 'backing-up-notes', 'brief.md')}`, `M\t${layout.manifest(UNIT)}`]]);
+    assert.deepStrictEqual([lastMessage(dir), touched(statePath(dir), 'HEAD').sort()], [`discovery(${UNIT}): approve the map — 3 topics, 0 to the roadmap`, [`A\t${layout.topic(UNIT, 'backing-up-notes', 'brief.md')}`, `M\t${layout.manifest(UNIT)}`]]);
     assert.strictEqual(fs.existsSync(statePath(dir, STAGED)), false);
   });
 

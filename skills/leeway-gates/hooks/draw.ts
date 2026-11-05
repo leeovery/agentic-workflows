@@ -77,7 +77,8 @@ export type Line = {
 /**
  * What a view draws with beyond its model: the pane's width, whether a
  * folding section is open, and what runs — its turning mark, and its clock
- * read at the drawing's time; and WAITING ON YOU, the questions waiting on
+ * read at the drawing's time; the drawing's time, for when a moment was;
+ * and WAITING ON YOU, the questions waiting on
  * the person with where each stands in the discussion (`discuss.ts`), for a
  * view to place where its drawing has it — the session's, or a unit's own
  * a page holds, which a press queues only where they are the session's
@@ -89,6 +90,7 @@ export type Kit = {
   isOpened: (key: string) => boolean
   spinner: () => Part
   clock: (since: string) => string
+  now: number
   waiting: (asked?: Asked) => Line[]
 }
 
@@ -206,6 +208,7 @@ export function kitOf(
 
         return clockOf(since, now)
       },
+      now,
       waiting,
     },
   }
@@ -222,26 +225,34 @@ export const buttonOf = (els: ElementTable, { key, label }: Button) =>
 /** The runs a line's words hang beside: its marks, else its mark. */
 const marksOf = (line: Line): Part[] => line.marks ?? (line.mark === undefined ? [] : [line.mark])
 
-/** The rows `text` takes wrapped at word breaks in `room` cells, a word longer than the room broken across rows. */
-function wrappedRows(text: string, room: number): number {
-  let rows = 1
-  let used = 0
+/** `text` wrapped at word breaks into rows of `room` cells, a word longer than the room broken across rows. */
+export function wrappedRows(text: string, room: number): string[] {
+  const rows: string[] = []
+  let row = ''
 
   for (const word of text.split(' ')) {
-    const cells = [...word].length
-    const needs = used === 0 ? cells : used + 1 + cells
+    const joined = row === '' ? word : `${row} ${word}`
 
-    if (needs <= room) {
-      used = needs
-    } else {
-      const spans = Math.max(1, Math.ceil(cells / room))
-
-      rows += spans - (used === 0 ? 1 : 0)
-      used = cells - (spans - 1) * room
+    if ([...joined].length <= room) {
+      row = joined
+      continue
     }
+
+    if (row !== '') {
+      rows.push(row)
+    }
+
+    let rest = [...word]
+
+    while (rest.length > room) {
+      rows.push(rest.slice(0, room).join(''))
+      rest = rest.slice(room)
+    }
+
+    row = rest.join('')
   }
 
-  return rows
+  return [...rows, row]
 }
 
 /**
@@ -259,7 +270,7 @@ export function rowsOf(line: Line, width: number): number {
     ...[line.lead, line.button].flatMap(button => (button === undefined ? [] : [{ text: button.label }])),
   ])
 
-  return wrappedRows(line.parts.map(part => part.text).join(''), Math.max(1, width - beside))
+  return wrappedRows(line.parts.map(part => part.text).join(''), Math.max(1, width - beside)).length
 }
 
 /** A line as the pane draws it. */
@@ -374,4 +385,56 @@ export function endedRows(key: string, indent: string, words: Part, right: reado
     ...before.map((text, at): Line => ({ key: `${key}:${at}`, parts: [row(text)] })),
     { key, parts: spread(fits ? [row(ending)] : [], right, end), ...(button === undefined ? {} : { button }) },
   ]
+}
+/** The indent a second line takes under an item's mark. */
+export const INDENT = '     '
+
+/** How many cells a progress bar has at most. */
+export const BAR_CELLS = 8
+
+/** A progress bar of `cells`, `done` of `total` filled in sage, the rest in the rule's slate. */
+export function progressBar(done: number, total: number, cells: number): Part[] {
+  const filled = total === 0 ? 0 : Math.round((done / total) * cells)
+
+  return [
+    { text: '▰'.repeat(filled), color: COLOUR.done },
+    { text: '▱'.repeat(cells - filled), color: COLOUR.rule },
+  ]
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const
+
+/** A day as the board says it, "17 Jul", from an ISO date or time; the words as given where they read as no date. */
+export function dayOf(at: string): string {
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(at) ? new Date(`${at}T00:00:00`) : new Date(at)
+
+  return Number.isNaN(day.getTime()) ? at : `${day.getDate()} ${MONTHS[day.getMonth()]}`
+}
+
+const MINUTE = 60_000
+const HOUR = 60 * MINUTE
+const DAY = 24 * HOUR
+
+/**
+ * When a moment was, at `now`: "just now", minutes or hours ago within the
+ * day, the day and time within the week, else the day.
+ */
+export function whenOf(at: string, now: number): string {
+  const ago = now - Date.parse(at)
+
+  if (ago < MINUTE) {
+    return 'just now'
+  }
+
+  if (ago < HOUR) {
+    return `${Math.floor(ago / MINUTE)}m ago`
+  }
+
+  if (ago < DAY) {
+    return `${Math.floor(ago / HOUR)}h ago`
+  }
+
+  const time = new Date(at)
+
+  return ago < 7 * DAY ? `${dayOf(at)} ${String(time.getHours()).padStart(2, '0')}:${String(time.getMinutes()).padStart(2, '0')}` : dayOf(at)
 }

@@ -12,9 +12,11 @@
 // - The map is the staged one while approve the map waits on the person, its
 //   topics and parks; else the epic's map, its live topics in order, and
 //   nothing parked yet.
-// - A topic opens on its brief before it starts (20.11.2), each of the
-//   brief's sections by its heading, and on its discussion's page once it
-//   has (20.8.3).
+// - A topic opens on its discussion's page once its discussion is under
+//   way or decided, or was cancelled after it started (20.8.3); else — not
+//   started, postponed, or cancelled before it started — on its brief, each
+//   of the brief's sections by its heading, with the messages waiting in
+//   its mailbox (20.11.2).
 // - Its spikes are the unit's spike folders, in the order they started,
 //   each reference or canonical as its links give it (asset.cjs), and each
 //   opens on its page (20.11.3).
@@ -30,6 +32,7 @@ const { spikesOf, spikeStatuses } = require('../asset.cjs');
 const { headedSections } = require('../markdown-sections.cjs');
 const { titlecase } = require('../conventions.cjs');
 const { briefFile, computeTopicLifecycle, itemOf, topicKey, topicTitle } = require('../derivations.cjs');
+const { messagesIn } = require('./board-discussion.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
 /** @typedef {import('../board-model.cjs').DiscoveryView} DiscoveryView */
@@ -104,18 +107,30 @@ function discoveryBanner({ type, map, waits }) {
   };
 }
 
-/** Whether a topic of the unit has started: its lifecycle is past fresh. @param {BoardAt} at @param {string} said */
+/** The lifecycles of a topic whose discussion has started and stands: under way, or decided. */
+const STARTED = Object.freeze(['discussing', 'decided']);
+
+/** Whether a topic's discussion ran before it was cancelled: its item stood past unstarted when the cancel set it aside. @param {Record<string, any>|undefined} item */
+const ranBeforeCancel = (item) => item !== undefined && item.status === 'cancelled' && typeof item.previous_status === 'string' && item.previous_status !== 'unstarted';
+
+/** Whether a topic of the unit opens on its discussion (the header's). @param {BoardAt} at @param {string} said */
 function topicStarted(at, said) {
-  return computeTopicLifecycle(at.manifest, topicKey(at.manifest, said)).lifecycle !== 'fresh';
+  const topic = topicKey(at.manifest, said);
+  const { lifecycle } = computeTopicLifecycle(at.manifest, topic);
+  return STARTED.includes(lifecycle) || (lifecycle === 'cancelled' && ranBeforeCancel(itemOf(at.manifest, 'discussion', topic)));
 }
+
+/** How many topics an epic's map holds: the staged map's while approve the map waits on the person, else its live topics. @param {string} cwd @param {Record<string, any>} manifest */
+const mapCount = (cwd, manifest) => stagedOrNone(cwd, manifest.name)?.topics.length ?? liveInOrder(manifest).length;
 
 /** A brief's text from its file, empty where none is written. @param {string} file */
 const textOf = (file) => (fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '');
 
 /**
- * A topic's brief (20.11.2): its place on the map, its summary and its
+ * A topic's brief (20.11.2): its place on the map, its summary, its
  * brief's sections — while approve the map waits, the staged map's, a topic
- * new to it read from its draft; refused where the map lacks the topic.
+ * new to it read from its draft — and the messages waiting for it; refused
+ * where the map lacks the topic.
  * @param {BoardAt} at @param {string} said @returns {import('../board-model.cjs').BriefPage}
  */
 function briefPage(at, said) {
@@ -134,6 +149,7 @@ function briefPage(at, said) {
     of: map.length,
     summary,
     sections: headedSections(textOf(staged?.brief === undefined ? statePath(at.cwd, briefFile(at.unit, topic)) : cacheScratch(at.cwd, staged.brief, 'the brief\'s draft'))),
+    messages: messagesIn(at, topic),
   };
 }
 
@@ -149,4 +165,4 @@ function spikePage(at, spike) {
   return { kind: 'spike', unit: at.unit, ...line, path: path.posix.join(at.unit, 'spikes', spike), link };
 }
 
-module.exports = { discoveryView, discoveryBanner, briefPage, topicStarted, spikePage };
+module.exports = { discoveryView, discoveryBanner, briefPage, topicStarted, spikePage, mapCount };

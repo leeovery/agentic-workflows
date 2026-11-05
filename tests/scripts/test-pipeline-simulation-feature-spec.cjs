@@ -20,15 +20,16 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const {
-  Sim, handoff, answerGate, discussed, startUnit, specEntry, specReviewed, cutTheSpec, readyToBuild, intoTheBuild,
+  Sim, handoff, answerGate, discussed, startUnit, specEntry, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, intoTheBuild,
 } = require('./pipeline-world.cjs');
+const { leaningCall } = require('./ledger-world.cjs');
 
 describe('pipeline simulation: feature, the spec', () => {
   let sim;
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('feature: its spec written, landed, reviewed — a rewrite taken by the writer, a gap declined — and cut, ready to build\'s pick begins the build in step, handing off into it; the position switched to auto after (11.8.1, 11.7.6, 24.S4, 3.3.6)', () => {
+  it('feature: its spec written, landed, reviewed — a rewrite taken by the writer, a gap declined, a gap asked as a question and surfaced with it, the person answering through the raise — and cut, ready to build\'s pick begins the build in step, handing off into it; the position switched to auto after (11.8.1, 11.7.6, 24.S4, 3.3.6)', async () => {
     const wu = 'tally';
     startUnit(sim, 'feature', wu, 'A tally of its own');
     handoff(sim, `/leeway-discussion-process feature ${wu}`);
@@ -42,7 +43,12 @@ describe('pipeline simulation: feature, the spec', () => {
       '## 1-S. Scenarios for §1', '', '1.S1 Given a tally, when it counts, then it counts as decided. (1.1.1)', '',
     ].join('\n'));
     sim.run(['spec', 'land', wu]);
-    specReviewed(sim, wu, [{ lane: 'rewrite' }, { lane: 'gap', declined: true }]);
+    const findings = /** @type {const} */ ([{ lane: 'rewrite' }, { lane: 'gap', declined: true }, { lane: 'gap' }]);
+    const pass = passTakenIn(sim, wu, [...findings]);
+    const question = sim.run(['ledger', 'ask', `${wu}.specification`], null, JSON.stringify({ by: 'review', who_moved_whom: 'none', text: 'Does a tally ever reset?' })).id;
+    const { raise } = await sim.runAsync(['raise', `${wu}.specification`, '--answers', question], null, JSON.stringify(leaningCall('Never.', 'At each release.')));
+    passSurfaced(sim, wu, pass, [...findings], { 2: question });
+    sim.run(['raise', 'answer', raise, '--pick', '1'], null, JSON.stringify({ why: 'A tally counts what was decided.' }));
     sim.run(['brief', 'spec-writer', wu]);
     sim.run(['spec', 'land', wu]);
     cutTheSpec(sim, wu, [{ name: 'Counting', goal: 'The tally counts.', scenarios: ['1.S1'], sections: ['1'], relies_on: [] }]);

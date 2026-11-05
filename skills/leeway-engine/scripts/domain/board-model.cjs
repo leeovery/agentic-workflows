@@ -24,16 +24,17 @@
 //   once it leaves the unit: `task:{N.n}`, `task:{N.n}:written`,
 //   `task:{N.n}:round:{k}`, `task:{N.n}:scenario:{id}`,
 //   `task:{N.n}:scenario:{id}:evidence:{k}`, `entry:{id}`, `finding:{round}:{k}`,
-//   `check:{round}:{scenario}`, `section:{n}`, `pass:{k}`, `topic:{topic}`,
-//   `message:{topic}:{file}`, `review:{topic}:{id}`, `spike:{folder}`,
-//   `report:{topic}:{id}`; and from All work `unit:{unit}`. The way back is
+//   `check:{round}:{scenario}`, `section:{n}`, `pass:{k}`,
+//   `pass:{k}:{finding}`, `topic:{topic}`, `message:{topic}:{file}`,
+//   `review:{topic}:{id}`, `spike:{folder}`, `report:{topic}:{id}`,
+//   `phase:{phase}`; and from All work `unit:{unit}`. The way back is
 //   the mod's, which names the page it was opened over, else `beneath`.
 // - Each tab is answered on its own: a view or page that cannot be drawn
 //   is `unavailable`, saying why, and the banner and questions still stand.
 // ---------------------------------------------------------------------------
 
 /** The view model's version (the header's). */
-const BOARD_VERSION = 2;
+const BOARD_VERSION = 3;
 
 /** The board's tabs (20.3.1). */
 const TABS = Object.freeze(['this', 'unit', 'all']);
@@ -48,10 +49,11 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
 /** A banner's state: running, waiting on the person, done, or neither. @typedef {'running'|'needs'|'done'|'idle'} BannerState */
 /**
  * A fact on the banner: its words, and whether it is drawn flagged (⚑,
- * 20.2.4) — the questions waiting on the person, or the map waiting on
- * approve the map; every other fact plain, `stopped` and what a
- * specification waits on among them.
- * @typedef {{text: string, needs: boolean}} Fact
+ * 20.2.4) — the questions waiting on the person, the map waiting on
+ * approve the map, or ready to build's yes; and, unflagged, whether it says
+ * what waits beside them (`waits`), the messages waiting in a topic; every
+ * other fact plain, `stopped` among them.
+ * @typedef {{text: string, needs: boolean, waits?: true}} Fact
  */
 /**
  * The banner (20.2.4): its state, the work's name, and its facts in order.
@@ -193,22 +195,25 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * @typedef {{id: string, round: number, state: 'running'|'landed'|'lost'|'read', since: string, findings: number, taken: number, waiting: number}} ReviewLine
  */
 /**
- * A discussion's This session (20.7.1): the unit, its title and type; the
- * topic and its title; the person's questions decided of theirs and Claude's
- * calls; what of theirs is still open; the messages waiting, each by its
+ * A discussion's This session (20.7.1), and a started topic's page (20.8.3):
+ * the unit, its title and type; the topic, its title and its summary on the
+ * map; whether this session is in its discussion (`live`), else it is a
+ * page read over the session; the person's questions decided of theirs and Claude's
+ * calls; whether its closing pass runs; what of theirs is still open; the messages waiting, each by its
  * file, title, sender and day; Claude's calls since the person last looked,
  * read without looking (5.8.14); its review's rounds, newest first; every
  * decision; and everything the topic sent, newest first, each with where
- * it went, when, and whether it still waits in that topic's mailbox.
+ * it went, when, and where it stands — waiting in that topic's mailbox,
+ * taken in, or moved to the inbox.
  * @typedef {{
- *   kind: 'discussion', unit: string, title: string, type: string, topic: string, topic_title: string,
- *   progress: {decided: number, yours: number, calls: number},
+ *   kind: 'discussion', unit: string, title: string, type: string, topic: string, topic_title: string, summary: string, live: boolean,
+ *   progress: {decided: number, yours: number, calls: number}, closing: boolean,
  *   open: OpenLine[], messages: {file: string, title: string, from: string, when: string}[], since: CallLine[],
- *   reviews: ReviewLine[], decided: DecidedLine[], sent: {title: string, to: string, file: string, at: string, waiting: boolean}[],
+ *   reviews: ReviewLine[], decided: DecidedLine[], sent: {title: string, to: string, file: string, at: string, stands: 'waiting'|'taken'|'inbox'}[],
  * }} DiscussionView
  */
 /** A message waiting in a topic's mailbox read in full (20.7.3): its file, title, sender, day and text. @typedef {{kind: 'message', unit: string, topic: string, file: string, title: string, from: string, when: string, text: string}} MessagePage */
-/** A round of a discussion's review read in full (20.7.3): its agent's id, its round and its report. @typedef {{kind: 'review-report', unit: string, topic: string, id: string, round: number, text: string}} ReviewReportPage */
+/** A round of a discussion's review read in full (20.7.3): its topic and the topic's title, its agent's id, its round and its report. @typedef {{kind: 'review-report', unit: string, topic: string, topic_title: string, id: string, round: number, text: string}} ReviewReportPage */
 
 /**
  * A section of the spec: its number and title; the passes whose findings
@@ -224,9 +229,17 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * reads, each null for one read.
  * @typedef {{pass: number, found: number, calls: number, yours: number, state: 'running'|'landed'|'lost'|'read', since: string|null, reads: string[]|null}} SpecPass
  */
-/** A gap waiting on the person (20.9.1): its entry, its words, the pass that found it, null where none did, and the sections it touches. @typedef {{id: string, text: string, pass: number|null, sections: string[]}} GapLine */
+/** A gap waiting on the person (20.9.1): its entry, its words, the pass and finding that raised it, each null where none did, and the sections it touches. @typedef {{id: string, text: string, pass: number|null, finding: string|null, sections: string[]}} GapLine */
 /**
- * A specification's This session (20.9.1): the unit, its title and type;
+ * A call of Claude's at the spec since the person last looked (20.9.1): its
+ * entry and words, the question it answers, the pass and finding that asked
+ * that question, each null where none did, and the sections it touches.
+ * @typedef {{id: string, text: string, question: string|null, pass: number|null, finding: string|null, sections: string[]}} SpecCallLine
+ */
+/** Where a finding of the spec's review stands with the person (D23): waiting on them, theirs, or Claude's. @typedef {'waits'|'yours'|'claude'} FindingStanding */
+/**
+ * A specification's This session (20.9.1): the unit, its title and type,
+ * and the project's name;
  * each section; the review's passes, newest first; what waits on the
  * person, each asked in the conversation; Claude's calls since the calls
  * list was last drawn in the conversation, read without looking (5.8.14);
@@ -234,13 +247,31 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * on; and what ready to build waits on — the review settling, or the
  * person's yes.
  * @typedef {{
- *   kind: 'spec', unit: string, title: string, type: string, sections: SpecSection[],
- *   passes: SpecPass[], waiting: GapLine[], since: CallLine[],
+ *   kind: 'spec', unit: string, title: string, type: string, project: string, sections: SpecSection[],
+ *   passes: SpecPass[], waiting: GapLine[], since: SpecCallLine[],
  *   cut: {phase: number, name: string, scenarios: number, sections: string[]}[], ready: 'review'|'person',
  * }} SpecView
  */
-/** A section read in full: its number, title and text. @typedef {{kind: 'section', unit: string, number: string, title: string, text: string}} SectionPage */
-/** A pass of the spec's review read in full (20.9.2): its number, what it found, its calls and the person's, and its report. @typedef {{kind: 'pass', unit: string, pass: number, found: number, calls: number, yours: number, text: string}} PassPage */
+/** A section read in full: its number, title, the passes that changed it, and its text. @typedef {{kind: 'section', unit: string, number: string, title: string, changed_by: number[], text: string}} SectionPage */
+/**
+ * A pass of the spec's review read in full (20.9.2): its number; what it
+ * read — the sections the pass before it changed, null for the whole spec —
+ * and what it changed; and each finding by its id and label, as it stands
+ * with the person.
+ * @typedef {{
+ *   kind: 'pass', unit: string, title: string, pass: number, reads: string[]|null, changed: string[],
+ *   found: {finding: string, label: string, standing: FindingStanding}[],
+ * }} PassPage
+ */
+/**
+ * A finding of the spec's review read in full (20.9.2): its pass, id,
+ * label and lane; where it stands with the person; the sections the entry
+ * it was raised as touches; and its text in the pass's report.
+ * @typedef {{
+ *   kind: 'spec-finding', unit: string, title: string, pass: number, finding: string, label: string, lane: string,
+ *   standing: FindingStanding, sections: string[], text: string,
+ * }} SpecFindingPage
+ */
 
 /** A section of a document Claude writes: its heading, null for what stands before the first, and its text. @typedef {{heading: string|null, text: string}} HeadedSection */
 /** A topic on the map: its key, title and summary. @typedef {{topic: string, title: string, summary: string}} MapLine */
@@ -263,7 +294,16 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  *   not_taken: {direction: string, why: string}[], views: string[], spikes: SpikeLine[],
  * }} DiscoveryView
  */
-/** A topic's brief (20.11.2): its place on the map of how many, its summary, and the brief's sections. @typedef {{kind: 'brief', unit: string, topic: string, title: string, order: number|null, of: number, summary: string, sections: HeadedSection[]}} BriefPage */
+/**
+ * A topic's brief (20.11.2), on which a topic not started or set aside
+ * opens: its place on the map of how many, null for one off it, its summary,
+ * the brief's sections, and the messages waiting in its mailbox, each by its
+ * file, title, sender and day.
+ * @typedef {{
+ *   kind: 'brief', unit: string, topic: string, title: string, order: number|null, of: number, summary: string, sections: HeadedSection[],
+ *   messages: {file: string, title: string, from: string, when: string}[],
+ * }} BriefPage
+ */
 /** A spike's page (20.11.3): its line, where it is kept, from the state root, and its live link, null where the log names none. @typedef {{kind: 'spike', unit: string} & SpikeLine & {path: string, link: string|null}} SpikePage */
 
 /**
@@ -285,16 +325,20 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  *   status: string, approved: string|null, verdict: string|null, reason: string|null, problem: string, design: HeadedSection[], runs: RunsLine[], report: boolean,
  * }} ExperimentView
  */
-/** An experiment's report read in full (20.13.1). @typedef {{kind: 'experiment-report', unit: string, topic: string, id: string, text: string}} ReportPage */
+/** An experiment's report read in full (20.13.1): its topic and the topic's title, where the experiment stands, and the report. @typedef {{kind: 'experiment-report', unit: string, topic: string, topic_title: string, id: string, status: string, text: string}} ReportPage */
 
 /**
  * A moment of the unit lately: its kind, when, its topic, and what it names
- * besides — from the state's history the unit made, the map approved, a
- * phase or topic started, a topic postponed, cancelled or back, a message
- * sent or taken in, the spec landed, a review round, the unit completed;
- * from its build a question raised, a task started, failed or finished.
- * @typedef {{kind: string, at: string, topic: string|null, detail: string|null}} Moment
+ * besides — from the state's history the unit made, the map approved with
+ * what it took in, a phase or topic started, a topic postponed, cancelled
+ * or back, a message sent with its sender, messages taken in, counted, with
+ * the sender of one, the spec landed with its sections and phases cut, a
+ * review round, the unit completed; from its spec's review each pass
+ * reported, its number and what it found; from its build a question raised,
+ * a task started, failed or finished.
+ * @typedef {{kind: string, at: string, topic: string|null, detail: string|null, count?: number}} Moment
  */
+/** Where a unit has come to: the phase it is in, or complete, and the day it began, null where its records keep none. @typedef {{phase: string, since: string|null}} UnitNow */
 
 /** A topic's state on the epic's page. @typedef {'decided'|'discussing'|'next'|'not-started'} TopicState */
 /**
@@ -310,15 +354,17 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  */
 /**
  * The epic's page (20.8, 20.15.2): the unit, its title, what it is for and
- * the day it started, null where its manifest holds none; whether the
- * session is at its menu; its topics decided of all, and how
+ * the day it started, null where its manifest holds none; where it has come
+ * to; whether the session is at its menu; its topics decided of all, and how
  * many are in discussion; its topics in the map's order; the specification
- * and the build, each by where it stands; the topics set aside; and what
- * happened lately, newest first.
+ * and the build and review, each by where it stands and the session in it,
+ * this one or another, else null; the topics set aside; and what happened
+ * lately, newest first.
  * @typedef {{
- *   kind: 'epic', unit: string, title: string, about: string, started: string|null, at_menu: boolean,
- *   progress: {decided: number, total: number, discussing: number},
- *   topics: TopicLine[], spec: 'waits'|'running'|'complete', build: 'waits'|'running'|'complete',
+ *   kind: 'epic', unit: string, title: string, about: string, started: string|null, now: UnitNow, at_menu: boolean,
+ *   progress: {decided: number, total: number, discussing: number}, topics: TopicLine[],
+ *   spec: {state: 'waits'|'running'|'ready'|'complete', session: 'this'|'other'|null},
+ *   build: {state: 'waits'|'building'|'reviewing'|'complete', session: 'this'|'other'|null},
  *   set_aside: {topic: string, title: string, state: 'cancelled'|'postponed', horizon: string|null}[], lately: Moment[],
  * }} EpicView
  */
@@ -326,34 +372,48 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
 /**
  * A phase on a unit's tab: its name, its state, and its words — what a
  * phase complete or running produced, what one later waits on — empty where
- * the records say none.
- * @typedef {{phase: string, state: 'complete'|'running'|'waits'|'later', words: string}} UnitPhase
+ * the records say none; the day a phase complete closed, null where its
+ * records keep none or it is not complete; the session in it, this one or
+ * another, else null; and whether it opens on a page of its own.
+ * @typedef {{phase: string, state: 'complete'|'running'|'waits'|'later', words: string, on: string|null, session: 'this'|'other'|null, page: boolean}} UnitPhase
  */
-/** What waits on the person in a unit: a question of its build, or a gap of its spec, by its number or entry and its words. @typedef {{kind: 'question'|'gap', id: string, text: string}} WaitingLine */
+/**
+ * What waits on the person in a unit: a question of its build, a gap of its
+ * spec, or ready to build's yes, by its number or entry and its words.
+ * @typedef {{kind: 'question'|'gap'|'ready', id: string, text: string}} WaitingLine
+ */
 /**
  * A unit's tab (20.15.1), and an epic's while discovery runs before any
  * topic exists (20.15.2): the unit, its title, type, what it is for and the
- * day it started, null where its manifest holds none; whether the session
- * is at its menu; its phases complete of all; what
- * waits on the person; each phase from discovery to review; and what
- * happened lately, newest first.
+ * day it started, null where its manifest holds none; where it has come to;
+ * whether the session is at its menu, and in the unit (`here`), whose
+ * questions the board holds; its phases complete of all; what waits on the
+ * person; each phase from discovery to review; and what happened lately,
+ * newest first.
  * @typedef {{
- *   kind: 'unit', unit: string, title: string, type: string, about: string, started: string|null, at_menu: boolean,
+ *   kind: 'unit', unit: string, title: string, type: string, about: string, started: string|null, now: UnitNow, at_menu: boolean, here: boolean,
  *   progress: {complete: number, total: number}, waiting: WaitingLine[], phases: UnitPhase[], lately: Moment[],
  * }} UnitView
+ */
+/**
+ * A finished phase of a linear unit read in full (20.15.3): the unit, its
+ * title, the phase, the day it closed, null where its records keep none,
+ * what it produced, and its sections, each by its heading and its text.
+ * @typedef {{kind: 'phase', unit: string, title: string, phase: string, on: string|null, words: string, sections: {heading: string, text: string}[]}} PhasePage
  */
 
 /**
  * A unit on All work: its key, title, type and phase; how far it has come;
- * how many questions wait on the person in it; and whether a session is in
- * it, this one or another.
+ * how many wait on the person in it, as its banner counts them; and whether
+ * a session is in it, this one or another.
  * @typedef {{unit: string, title: string, type: string, phase: string, standing: string, waiting: number, session: 'this'|'other'|null}} WorkLine
  */
 /**
  * All work (20.16): the project; whether the session is at the start menu;
- * how many questions wait on the person across the units in progress; those
- * units; the roadmap's waiting items by horizon; the inbox by kind; and the
- * units complete.
+ * how many wait on the person across the units in progress; those units;
+ * the roadmap's waiting items by horizon, each with the title of the epic a
+ * topic was postponed from, else null; the inbox by kind; and the units
+ * complete.
  * @typedef {{
  *   kind: 'all', project: string, at_start: boolean, waiting: number, units: WorkLine[],
  *   roadmap: {horizon: string, items: {title: string, from: string|null}[]}[],
@@ -366,7 +426,7 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
 /**
  * A view or page the board shows.
  * @typedef {BuildView|TaskPage|ScenarioPage|EvidencePage|WrittenPage|RoundPage|EntryPage|ReviewView|FindingPage|CheckPage|DiscussionView|MessagePage|ReviewReportPage
- *   |SpecView|SectionPage|PassPage|DiscoveryView|BriefPage|SpikePage|ExperimentView|ReportPage|EpicView|UnitView|AllView|Unavailable} View
+ *   |SpecView|SectionPage|PassPage|SpecFindingPage|DiscoveryView|BriefPage|SpikePage|ExperimentView|ReportPage|EpicView|UnitView|PhasePage|AllView|Unavailable} View
  */
 
 /**

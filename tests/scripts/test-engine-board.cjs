@@ -25,11 +25,12 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {
-  ok, refusedPristine, treeSnapshot, head, git, cleanupFixture, withEnv, readState, writeState, readManifest, layout, holdLock, lockAttempts, statePath,
+  ok, okSectionsAsync, refusedPristine, treeSnapshot, head, git, cleanupFixture, withEnv, readState, writeState, readManifest, layout, holdLock, lockAttempts, statePath,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
-const { UNIT, QUESTIONS, taskText, buildScreensWorld, buildScreenHelpers } = require('./build-screens-world.cjs');
+const { UNIT, QUESTIONS, CALL, taskText, buildScreensWorld, buildScreenHelpers } = require('./build-screens-world.cjs');
 const { fixture, misfits, shapeOf } = require('./board-world.cjs');
+const { raiseHelpers } = require('./raise-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { BOARD_VERSION } = require(path.join(SCRIPTS, 'domain/board-model.cjs'));
@@ -516,7 +517,13 @@ describe('a task\'s pages (20.5.4–20.5.7)', () => {
 });
 
 describe('the tabs (20.3)', () => {
-  it('the unit\'s tab shows the unit\'s page: each phase from discovery to review with what its records hold, what waits on the person, and what happened lately, newest first (20.15.1)', async () => {
+  it('the unit\'s tab shows the unit\'s page: each phase from discovery to review with what its records hold and the day each finished closed, the phase it is in since the one before closed, the session in its build, what waits on the person, and what happened lately, newest first (20.15.1)', async () => {
+    const manifest = readManifest(dir, UNIT);
+    createManifest(dir, UNIT, {
+      ...manifest,
+      created: '2026-06-26',
+      checklists: { ...manifest.checklists, decided: { [UNIT]: { items: {}, closed: '2026-10-17T16:00:00.000Z' } }, 'ready-to-build': { items: {}, closed: '2026-10-19T10:00:00.000Z' } },
+    });
     enterBuild();
     await parkOn(['1.2']);
     const { view } = board(['--tab', 'unit']);
@@ -527,19 +534,44 @@ describe('the tabs (20.3)', () => {
       title: 'Pay',
       type: 'feature',
       about: 'Test: pay',
-      started: null,
+      started: '2026-06-26',
+      now: { phase: 'build', since: '2026-10-19T10:00:00.000Z' },
       at_menu: false,
+      here: true,
       progress: { complete: 3, total: 5 },
       waiting: [{ kind: 'question', id: 'Q1', text: QUESTIONS[0] }],
       phases: [
-        { phase: 'discovery', state: 'complete', words: '' },
-        { phase: 'discussion', state: 'complete', words: '0 decisions' },
-        { phase: 'specification', state: 'complete', words: '' },
-        { phase: 'build', state: 'running', words: '0 of 4 tasks done' },
-        { phase: 'review', state: 'later', words: '' },
+        { phase: 'discovery', state: 'complete', words: 'the seed', on: '2026-06-26', session: null, page: true },
+        { phase: 'discussion', state: 'complete', words: '0 decisions', on: '2026-10-17T16:00:00.000Z', session: null, page: true },
+        { phase: 'specification', state: 'complete', words: '', on: '2026-10-19T10:00:00.000Z', session: null, page: false },
+        { phase: 'build', state: 'running', words: '0 of 4 tasks done', on: null, session: 'this', page: false },
+        { phase: 'review', state: 'later', words: '', on: null, session: null, page: false },
       ],
       lately: [['raised', 'Q1'], ['task-started', '1.1']],
     });
+  });
+
+  it('S3, 20.15.1: two units in their builds, each with a Q1 of its own: each unit\'s tab lists its own, and only the one the session is in is here', async () => {
+    const { phases, cut } = readManifest(dir, UNIT);
+    createManifest(dir, 'till', { phases: { discussion: { items: { till: phases.discussion.items[UNIT] } } }, build: { position: 'step' }, cut });
+    ok(dir, ['task', 'phase', 'till', '1', '--title', 'Drawer']);
+    const task = path.join(config, 'till-task.md');
+    fs.writeFileSync(task, taskText('Open the drawer', ['The drawer opens on a sale.']));
+    ok(dir, ['task', 'create', 'till', '1', '--file', task]);
+    const asked = ok(dir, ['ledger', 'ask', 'till.implementation'], { env: env(), stdin: JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'Does the drawer lock?' }) }).id;
+    const { conversation } = raiseHelpers(() => dir, () => config, { ...CALL, question: 'Does the drawer lock?' });
+    await okSectionsAsync(dir, ['raise', 'till.implementation', '--answers', asked, '--parks', '1.1'], { env: conversation(), stdin: JSON.stringify({ ...CALL, question: 'Does the drawer lock?' }) });
+    enterBuild();
+    await parkOn(['1.2']);
+    const tab = (/** @type {string} */ unit) => {
+      const { here, waiting } = board(['--tab', 'unit', '--unit', unit]).view;
+      return { here, waiting };
+    };
+
+    assert.deepStrictEqual([tab(UNIT), tab('till')], [
+      { here: true, waiting: [{ kind: 'question', id: 'Q1', text: QUESTIONS[0] }] },
+      { here: false, waiting: [{ kind: 'question', id: 'Q1', text: 'Does the drawer lock?' }] },
+    ]);
   });
 
   it('a task done says when it finished among the unit\'s moments, as its account was taken', () => {

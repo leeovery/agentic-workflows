@@ -252,8 +252,8 @@ while another screen — Remote Control's, say — is attached beside the band's
 
 The banner names the work and where it stands: the session's mark — ◐ running,
 ⚑ waiting on you, ✓ done, none where neither — the work's name in bold, then
-its facts in grey, each one that waits on you in peach behind a ⚑, and at its
-right the buttons Ready to discuss gives it (below), then `▸ show board`
+its facts in grey, each one that waits on you in peach behind a ⚑ — the
+messages waiting in a topic peach with no ⚑ — and at its right the buttons Ready to discuss gives it (below), then `▸ show board`
 while the pane is hidden, `hide board` while it is up. A banner too long for
 the band is cut from its right end, its buttons kept. It
 sits beneath a gate's rows, which are drawn in the rows it leaves; a survey
@@ -276,7 +276,11 @@ kind (`hooks/views/`), with the drawing kit (`hooks/draw.ts`): colours with one
 meaning each — peach waits on you, seafoam runs, sage is done, rose failed,
 slate has not started, lavender this view and every button — a section's
 heading with its rule and count, one line per item, its state at the right, a
-complete section folding to its heading.
+complete section folding to its heading. A line whose words say what is
+happening or what waits — a facts line, a progress line, a unit's standing —
+wraps under its mark or indent rather than lose them at the edge; a title
+gives way with "…". A topic under way that a session is in turns its ◐ in
+seafoam; one no session is in is sky blue and still.
 
 In the build, This session shows the build's progress, then what waits on you,
 each question with its `▸ discuss`, then the phases, each task on its line with

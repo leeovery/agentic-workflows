@@ -337,6 +337,22 @@ describe('a round settled (20.10.1, 14.S15)', () => {
   });
 });
 
+describe('the unit\'s tab in the review phase (20.15.1)', () => {
+  it('each phase says what its records hold: the spec its sections and the build phases cut, the build its tasks done, the review\'s fix tasks among them, the review its round', () => {
+    firstRoundReady();
+    recorded({ can_now: ['Pay by card.'], findings: [RECEIPT] });
+    fixBuilt(3, 1, 'Send the receipt', 'main', 'src/send.js');
+    enter();
+    named(['1-cards']);
+
+    assert.deepStrictEqual(board(['--tab', 'unit']).view.phases.slice(2), [
+      { phase: 'specification', state: 'complete', words: '2 sections · 2 build phases', on: null, session: null, page: false },
+      { phase: 'build', state: 'complete', words: '4 of 4 tasks done', on: '2026-01-01T00:00:00.000Z', session: null, page: false },
+      { phase: 'review', state: 'running', words: 'round 2', on: null, session: 'this', page: false },
+    ]);
+  });
+});
+
 describe('the build past the cut (P14, 7.2.4, 12.7.9)', () => {
   it('in step, lists the review\'s fixes after the cut\'s phases, a fix task behind the one in flight, naming it, and the phase whose merge waits at its gate, which the banner leaves to the gate — drawn while a peer holds the writer lock, never trying it', (t) => {
     fixPhaseWritten(3, [['Send the receipt', '§1.2'], ['Send it once', '§1.2']]);

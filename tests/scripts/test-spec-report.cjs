@@ -9,7 +9,9 @@
 // finding's heading. The report's `## Findings` section runs to its end and
 // reads `None identified.` alone, or holds its findings, each opening
 // `### F{n}: {label}`, numbered F1, F2, … in order, its first line its lane,
-// `**Lane:** rewrite`, `gap` or `fact`, the bare word. Everything else is
+// `**Lane:** rewrite`, `gap` or `fact`, the bare word, the label kept with
+// it; a finding's text is what follows its lane, up to the next finding,
+// a finding inside a fenced block none. Everything else is
 // refused, naming what does not read and where: no such section, an empty
 // one, a line before the first finding, a finding's heading before the
 // section, any other heading within it — a finding after a heading among
@@ -27,7 +29,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 
-const { reportFindings, readReport } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/spec-report.cjs'));
+const { reportFindings, readReport, findingText } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/spec-report.cjs'));
 
 /** A report: its title, summary, and the Findings section's lines. @param {string[]} findings */
 const report = (findings) => ['# Spec Review — spec-review-001', '', '## Summary', '', 'Read it all.', '', '## Findings', '', ...findings].join('\n');
@@ -39,9 +41,20 @@ describe('a spec review\'s report read (11.7.1)', () => {
   it('reads its findings, each with its lane, in order — none where it reads None identified.', () => {
     const three = report([...finding('F1', '**Lane:** gap'), ...finding('F2', '**Lane:** fact'), ...finding('F3', '**Lane:** rewrite')]);
 
-    assert.deepStrictEqual(reportFindings(three), [{ id: 'F1', lane: 'gap' }, { id: 'F2', lane: 'fact' }, { id: 'F3', lane: 'rewrite' }]);
+    assert.deepStrictEqual(reportFindings(three), [{ id: 'F1', lane: 'gap', label: 'a label' }, { id: 'F2', lane: 'fact', label: 'a label' }, { id: 'F3', lane: 'rewrite', label: 'a label' }]);
     assert.deepStrictEqual(reportFindings(report(['None identified.'])), []);
-    assert.deepStrictEqual(reportFindings(report(['### F1', '**Lane:** gap'])), [{ id: 'F1', lane: 'gap' }]);
+    assert.deepStrictEqual(reportFindings(report(['### F1', '**Lane:** gap'])), [{ id: 'F1', lane: 'gap', label: '' }]);
+  });
+
+  it('a finding\'s text is what follows its lane, its paragraphs kept, up to the next finding — a heading in a fenced block among it — and none for a finding the report lacks', () => {
+    const two = report([
+      '### F1: is a refund split?', '', '**Lane:** gap', '', 'No entry decides it.', '', 'The spec reads:', '', '```', '### the heading', '```', '',
+      '### F2: a charge is slower', '', '**Lane:** fact', '', 'The bench gives 450 ms.',
+    ]);
+
+    assert.deepStrictEqual([findingText(two, 'F1'), findingText(two, 'F2'), findingText(two, 'F3')], [
+      'No entry decides it.\n\nThe spec reads:\n\n```\n### the heading\n```', 'The bench gives 450 ms.', '',
+    ]);
   });
 
   it('a line inside a fenced block is text — a #, ## or ### line, a lane, a shorter run of its marker, a run of the other or one in a block quote, the Findings heading quoted before the section — and a block quote or list item holds a fence closed within it', () => {
@@ -53,7 +66,7 @@ describe('a spec review\'s report read (11.7.1)', () => {
       '### F2: is a refund split?', '', '**Lane:** gap', '', 'No entry decides it.',
     ].join('\n');
 
-    assert.deepStrictEqual(reportFindings(quoted), [{ id: 'F1', lane: 'fact' }, { id: 'F2', lane: 'gap' }]);
+    assert.deepStrictEqual(reportFindings(quoted).map(({ id, lane }) => ({ id, lane })), [{ id: 'F1', lane: 'fact' }, { id: 'F2', lane: 'gap' }]);
   });
 
   it('a backtick run with a backtick in the text after it opens no fence, as in markdown — inline code on a line of its own, or opening one', () => {
@@ -62,7 +75,7 @@ describe('a spec review\'s report read (11.7.1)', () => {
       '### F2: a refund is split', '', '**Lane:** gap', '', '```bash', 'npm test', '```',
     ]);
 
-    assert.deepStrictEqual(reportFindings(inline), [{ id: 'F1', lane: 'fact' }, { id: 'F2', lane: 'gap' }]);
+    assert.deepStrictEqual(reportFindings(inline).map(({ id, lane }) => ({ id, lane })), [{ id: 'F1', lane: 'fact' }, { id: 'F2', lane: 'gap' }]);
   });
 
   it('refuses a report outside the grammar, naming what does not read and where', () => {

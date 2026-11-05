@@ -814,14 +814,16 @@ function intoTheBuild(sim, wu, begun) {
 // it: a pass dispatched and briefed, its report written where the dispatch
 // said — clean, or holding `findings`, each by its lane, a gap or a fact
 // the record already answers declined — taken in by the scan and
-// acknowledged with every finding it holds; each finding but a rewrite or
-// one declined surfaced; and the pass incorporated, whatever closed it
-// first.
+// acknowledged with every finding it holds (`passTakenIn`); each finding but
+// a rewrite or one declined surfaced — a gap asked as a question with the
+// question it was asked as — and the pass incorporated, whatever closed it
+// first (`passSurfaced`). A gap asked is asked between the two, as the
+// prose asks it: on the ledger, then raised.
 /**
- * @param {Sim} sim @param {string} wu @param {{lane: 'rewrite'|'gap'|'fact', declined?: boolean}[]} [findings]
+ * @param {Sim} sim @param {string} wu @param {{lane: 'rewrite'|'gap'|'fact', declined?: boolean}[]} findings
  * @returns {{id: string, file: string}} the pass
  */
-function specReviewed(sim, wu, findings = []) {
+function passTakenIn(sim, wu, findings) {
   const pass = sim.run(['agent', 'dispatch', wu, 'specification', wu, '--kind', 'spec-review']);
   sim.run(['brief', 'spec-reviewer', wu, '--agent', pass.id]);
   const body = findings.length === 0 ? 'None identified.' : findings.map(({ lane }, at) => `### F${at + 1}: a ${lane} finding\n\n**Lane:** ${lane}\n\nWhat the pass found.`).join('\n\n');
@@ -829,10 +831,29 @@ function specReviewed(sim, wu, findings = []) {
   sim.run(['agent', 'scan', wu, 'specification', wu]);
   const ids = findings.map((_, at) => `F${at + 1}`);
   sim.run(['agent', 'ack', wu, 'specification', wu, pass.id, ...(ids.length === 0 ? ['--clean'] : ['--findings', ids.join(',')])]);
+  return pass;
+}
+
+/**
+ * @param {Sim} sim @param {string} wu @param {{id: string}} pass @param {{lane: 'rewrite'|'gap'|'fact', declined?: boolean}[]} findings
+ * @param {Record<number, string>} [asked] the question each gap was asked as, by its finding's place
+ */
+function passSurfaced(sim, wu, pass, findings, asked = {}) {
   for (const [at, { lane, declined }] of findings.entries()) {
-    if (lane !== 'rewrite' && !declined) sim.run(['agent', 'surface', wu, 'specification', wu, pass.id, ids[at]]);
+    if (lane === 'rewrite' || declined) continue;
+    sim.run(['agent', 'surface', wu, 'specification', wu, pass.id, `F${at + 1}`, ...(asked[at] === undefined ? [] : ['--question', asked[at]])]);
   }
   sim.run(['agent', 'incorporate', wu, 'specification', wu, pass.id]);
+}
+
+/**
+ * A pass taken in and surfaced, with no gap asked.
+ * @param {Sim} sim @param {string} wu @param {{lane: 'rewrite'|'gap'|'fact', declined?: boolean}[]} [findings]
+ * @returns {{id: string, file: string}} the pass
+ */
+function specReviewed(sim, wu, findings = []) {
+  const pass = passTakenIn(sim, wu, findings);
+  passSurfaced(sim, wu, pass, findings);
   return pass;
 }
 
@@ -1310,6 +1331,6 @@ function finished(sim, wu) {
 }
 
 module.exports = {
-  Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicBuildPick, linearBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed,
+  Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicBuildPick, linearBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed,
   builders, taskBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic,
 };

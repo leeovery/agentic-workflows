@@ -55,6 +55,9 @@
 // surfaced with that decision, the reason and the ledger's mark, `raised` on
 // its row: no question stands for it on the ledger, so the spec's loop
 // (spec-passes.cjs) holds the writer on it until the person's call lands.
+// A gap finding asked as a question is surfaced with the question's entry,
+// `asked` on its row, the link the board follows from the finding to its
+// answer.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -149,7 +152,7 @@ function loadState(cwd, workUnit, phase, topic) {
   if (!parsed.agents || typeof parsed.agents !== 'object') parsed.agents = {};
   for (const [id, row] of Object.entries(parsed.agents)) {
     if (!row || typeof row !== 'object' || Array.isArray(row) || !AGENT_STATUSES.includes(row.status)
-      || ['findings', 'surfaced', 'report_findings', 'raised'].some((list) => list in row && !Array.isArray(row[list]))) {
+      || ['findings', 'surfaced', 'report_findings', 'raised', 'asked'].some((list) => list in row && !Array.isArray(row[list]))) {
       throw new Error(`Corrupt agent state at ${file}: row "${id}" is not a valid agent row`);
     }
   }
@@ -741,18 +744,36 @@ function requireReportFindings(row, findings) {
 }
 
 /**
+ * The question a spec review's finding was asked as, by its full id:
+ * refused for an id no entry, or several, begin, and for an entry that is
+ * no question asked at the unit's spec.
+ * @param {string} cwd @param {string} workUnit @param {string} question
+ */
+function askedAs(cwd, workUnit, question) {
+  const facts = ledgerFacts(cwd);
+  const entry = resolveId(question, facts.keys());
+  const made = /** @type {Record<string, any>} */ (facts.get(entry));
+  if (made.kind !== 'question' || made.unit !== workUnit || made.topic !== null || made.phase !== UNIT_PHASE) {
+    throw new Error(`--question names a question asked at ${workUnit}.specification, and ${question} is none`);
+  }
+  return entry;
+}
+
+/**
  * Surface one finding, or a comma-separated batch of them — a lane's whole
  * screen lands in one call. Every id is validated before any is recorded, so
  * a bad entry fails the batch whole. When the last unsurfaced finding is
  * raised the row incorporates automatically — the response's `status` says so.
  * One finding raised as the replacement of a decision is surfaced with it,
  * `replacing`: the decision by a prefix of its id and the reason, kept with
- * the ledger's mark.
+ * the ledger's mark. One finding asked as a question is surfaced with it,
+ * `question`: the question by a prefix of its id, kept by its full id on the
+ * row's `asked`, so the board follows the finding to its answer.
  * @param {string} cwd @param {string} workUnit @param {string} phase
  * @param {string} topic @param {string} id @param {string} finding
- * @param {{decision: string, reason: string}} [replacing]
+ * @param {{decision: string, reason: string}} [replacing] @param {string} [question]
  */
-function surfaceFinding(cwd, workUnit, phase, topic, id, finding, replacing) {
+function surfaceFinding(cwd, workUnit, phase, topic, id, finding, replacing, question) {
   requireWorkUnit(cwd, workUnit);
   validatePhase(phase);
   validateSegment(topic, 'topic');
@@ -763,8 +784,11 @@ function surfaceFinding(cwd, workUnit, phase, topic, id, finding, replacing) {
   if (new Set(batch).size !== batch.length) {
     throw new Error('Invalid findings: duplicate ids');
   }
+  if (replacing !== undefined && question !== undefined) throw new Error('a finding is raised as a replacement with --replaces, or asked as a question with --question, never both');
   if (replacing !== undefined && batch.length > 1) throw new Error('--replaces surfaces one finding, raised as the replacement of that decision');
+  if (question !== undefined && batch.length > 1) throw new Error('--question surfaces one finding, asked as that question');
   const raised = replacing === undefined ? null : raisedAs(cwd, replacing);
+  const asked = question === undefined ? null : askedAs(cwd, workUnit, question);
   return io.withWorkUnitLock(stateRoot(cwd), workUnit, () => {
     const state = loadState(cwd, workUnit, phase, topic);
     const row = requireRow(state, phase, topic, id);
@@ -781,6 +805,7 @@ function surfaceFinding(cwd, workUnit, phase, topic, id, finding, replacing) {
     }
     row.surfaced.push(...batch);
     if (raised !== null) row.raised = [...(Array.isArray(row.raised) ? row.raised : []), { finding: batch[0], ...raised }];
+    if (asked !== null) row.asked = [...(Array.isArray(row.asked) ? row.asked : []), { finding: batch[0], entry: asked }];
     if (unsurfaced(row).length === 0) row.status = 'incorporated';
     saveState(cwd, workUnit, phase, topic, state);
     return { work_unit: workUnit, phase, topic, ...publicRow(row) };
@@ -946,10 +971,14 @@ const specReviewRows = (cwd, workUnit) => derivationRows(agentDir(cwd, workUnit,
  * The unit's review passes whose report was taken in, in the order they
  * were dispatched, each bound to a land: when it was dispatched, its
  * report's file, the findings it was taken in with, its status, and the
- * findings it was acknowledged with and surfaced. A pass refused, or closed in flight, is
- * never taken in. Read as a derivation reads, tolerant of the store.
+ * findings it was acknowledged with and surfaced, and those raised as a
+ * replacement or asked as a question, each with what it was raised or asked
+ * as. A pass refused, or closed in flight, is never taken in. Read as a derivation reads, tolerant of the store.
  * @param {string} cwd @param {string} workUnit
- * @returns {{id: string, created: string, land: Landed, file: string, findings: ReportFinding[], status: string, acknowledged: string[], surfaced: string[], raised: {finding: string, replaces: string, reason: string, mark: string|null}[]}[]}
+ * @returns {{
+ *   id: string, created: string, land: Landed, file: string, findings: ReportFinding[], status: string, acknowledged: string[], surfaced: string[],
+ *   raised: {finding: string, replaces: string, reason: string, mark: string|null}[], asked: {finding: string, entry: string}[],
+ * }[]}
  */
 function reportedPasses(cwd, workUnit) {
   const dir = agentDir(cwd, workUnit, UNIT_PHASE, workUnit);
@@ -965,6 +994,7 @@ function reportedPasses(cwd, workUnit) {
       acknowledged: Array.isArray(row.findings) ? row.findings : [],
       surfaced: Array.isArray(row.surfaced) ? row.surfaced : [],
       raised: Array.isArray(row.raised) ? row.raised : [],
+      asked: Array.isArray(row.asked) ? row.asked : [],
     }));
 }
 

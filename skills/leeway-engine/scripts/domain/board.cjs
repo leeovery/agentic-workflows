@@ -77,10 +77,10 @@ const { BOARD_VERSION, TABS } = require('./board-model.cjs');
 const { buildView, buildBanner, taskPage, writtenPage, roundPage, scenarioPage, evidencePage } = require('./projections/board-build.cjs');
 const { reviewView, reviewBanner, findingPage, checkPage } = require('./projections/board-review.cjs');
 const { discussionView, discussionBanner, entryPage, messagePage, reviewReportPage } = require('./projections/board-discussion.cjs');
-const { specView, specBanner, sectionPage, passPage } = require('./projections/board-spec.cjs');
+const { specView, specBanner, sectionPage, passPage, specFindingPage } = require('./projections/board-spec.cjs');
 const { discoveryView, discoveryBanner, briefPage, topicStarted, spikePage } = require('./projections/board-discovery.cjs');
 const { experimentView, experimentBanner, reportPage } = require('./projections/board-experiment.cjs');
-const { unitPage, unitBanner, placeBanner } = require('./projections/board-unit.cjs');
+const { unitPage, phasePage, unitBanner, placeBanner } = require('./projections/board-unit.cjs');
 const { allView, allBanner } = require('./projections/board-all.cjs');
 
 /** @typedef {import('./board-model.cjs').Board} Board */
@@ -242,11 +242,13 @@ const PAGES = Object.freeze([
   { ref: 'check:{round}:{scenario}', shape: /^check:([^:]+):([^:]+)$/, draw: checkPage },
   { ref: 'section:{n}', shape: /^section:([^:]+)$/, draw: sectionPage },
   { ref: 'pass:{k}', shape: /^pass:([^:]+)$/, draw: passPage },
+  { ref: 'pass:{k}:{finding}', shape: /^pass:([^:]+):([^:]+)$/, draw: specFindingPage },
   { ref: 'topic:{topic}', shape: /^topic:([^:]+)$/, draw: topicPage },
   { ref: 'message:{topic}:{file}', shape: /^message:([^:]+):([^:]+)$/, draw: messagePage },
   { ref: 'review:{topic}:{id}', shape: /^review:([^:]+):([^:]+)$/, draw: reviewReportPage },
   { ref: 'spike:{folder}', shape: /^spike:([^:]+)$/, draw: spikePage },
   { ref: 'report:{topic}:{id}', shape: /^report:([^:]+):([^:]+)$/, draw: reportPage },
+  { ref: 'phase:{phase}', shape: /^phase:([^:]+)$/, draw: phasePage },
 ]);
 
 /** A unit's own page, opened from All work, which names its unit. */
