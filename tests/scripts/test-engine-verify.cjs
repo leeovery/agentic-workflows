@@ -47,6 +47,7 @@ const BUILDING = 'verify-building';
 const PARALLEL = 'verify-parallel';
 const LAID_OUT = 'verify-laid-out';
 const AT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
+const USAGE = 'Usage: engine verify run <work-unit> <scenario> | engine verify run <work-unit> <scenario> --unfixed --test <command> | engine verify setup <work-unit> --file <setup.json> --scenario <scenario> | engine verify mutants <work-unit> <N>';
 const IGNORES_CASE = ignoresCase(fs.realpathSync(os.tmpdir()));
 
 /** The project manifest as it stands. @param {string} dir */
@@ -188,7 +189,7 @@ describe('verify setup: recorded once it runs end to end (15.2.5, 15.2.7, 15.2.1
         + 'feature_map is not a path inside the code, from its root; launch is not a command; drive is not a command; mutation is not a command',
       `verify setup: the place drive is not in the checkout at ${dir} — record the setup from the checkout it was built in`,
       'verify setup: 3.S1 is no scenario of pay\'s cut — engine manifest get pay cut lists them',
-      'Usage: engine verify run <work-unit> <scenario> | engine verify setup <work-unit> --file <setup.json> --scenario <scenario> | engine verify mutants <work-unit> <N>',
+      USAGE,
     ]);
     assert.deepStrictEqual(partsRan(dir), []);
   });
@@ -364,7 +365,7 @@ describe('verify run: a scenario run and its run recorded (15.4.1, 15.4.2, 15.4.
       'verify run: 3.S1 is no scenario of pay\'s cut — engine manifest get pay cut lists them',
       'verify run: cards is no scenario of pay\'s cut — engine manifest get pay cut lists them',
       'verify run: there is no work unit "setup"',
-      'Usage: engine verify run <work-unit> <scenario> | engine verify setup <work-unit> --file <setup.json> --scenario <scenario> | engine verify mutants <work-unit> <N>',
+      USAGE,
     ]);
     assert.deepStrictEqual(partsRan(dir), []);
   });

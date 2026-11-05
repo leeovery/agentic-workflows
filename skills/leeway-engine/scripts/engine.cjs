@@ -38,7 +38,7 @@ const path = require('path');
 const { signpost, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/render.cjs');
 const { resetDisplayWidth } = require('./kernel/terminal.cjs');
 const { commitPathspecScoped, commitAcrossRepos, commitStagedScoped, commitStateScoped, discoveryScope, PRODUCT_SCOPE, onStateBranch, STATE_BRANCH_HELD, OWNED_PATHS } = require('./domain/commit.cjs');
-const { inFlightTask, runChecks, workMessage } = require('./domain/commit-task.cjs');
+const { inFlightTask, checksFor, runChecks, workMessage } = require('./domain/commit-task.cjs');
 const { taskId } = require('./domain/task-id.cjs');
 const {
   stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, operationInProgress, addRefused, unmergedPast,
@@ -84,7 +84,7 @@ const { DECIDED_USAGE, runDecidedVerb } = require('./domain/decided.cjs');
 const { runStartThisWorkVerb } = require('./domain/start-this-work.cjs');
 const { APPROVE_MAP_USAGE, runApproveMapVerb } = require('./domain/approve-map.cjs');
 const { SWEEP_USAGE, runSweepVerb } = require('./domain/sweep-take.cjs');
-const { VERIFY_USAGE, runVerifyVerb } = require('./domain/verify.cjs');
+const { VERIFY_USAGE, VERIFY_FLAGS, runVerifyVerb } = require('./domain/verify.cjs');
 const { READY_TO_BUILD_USAGE, POSITION_USAGE, runReadyToBuildVerb, runPositionVerb } = require('./domain/ready-to-build.cjs');
 const { MIGRATE_USAGE, runMigrateVerb } = require('./domain/directives.cjs');
 const { REVIEW_USAGE, runReviewVerb } = require('./domain/review-verbs.cjs');
@@ -1359,15 +1359,16 @@ function runReadyToBuild(call, argv) {
 
 // ---------------------------------------------------------------------------
 // verify — a scenario of the cut run through the verify setup and its run
-// recorded, the setup recorded once it runs end to end, and the mutation
-// tool run over a phase's lines (domain/verify.cjs).
+// recorded, a bugfix's reproducing test run on the unfixed code, the setup
+// recorded once it runs end to end, and the mutation tool run over a
+// phase's lines (domain/verify.cjs).
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */
 function runVerify(call, argv) {
-  const { opts, positional } = parseArgs(argv);
+  const { opts, flags, positional } = parseArgs(argv, [...VERIFY_FLAGS]);
   try {
-    respond(call, runVerifyVerb(call.cwd, positional, opts));
+    respond(call, runVerifyVerb(call.cwd, positional, opts, flags));
   } catch (err) {
     failJson(call, err);
   }
@@ -2079,9 +2080,9 @@ function codeCommitted(repos, committed, more = {}) {
  * @param {string} cwd @param {string[]} paths @param {string} message @param {string} unit @param {string} given
  */
 function commitTaskPaths(cwd, paths, message, unit, given) {
-  const ref = inFlightTask(cwd, unit, given);
+  const { ref, manifest } = inFlightTask(cwd, unit, given);
   const { repos, groups } = checkedGroups(cwd, paths);
-  const checks = runChecks(cwd);
+  const checks = runChecks(cwd, checksFor(cwd, manifest, ref));
   const committed = commitAcrossRepos(groups, workMessage(message, ref));
   return codeCommitted(repos, committed, { task: taskId(ref), checks });
 }

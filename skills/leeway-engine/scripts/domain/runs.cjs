@@ -11,6 +11,9 @@
 //               Claude's (15.4.2)
 //   unfixed     whether it ran on the unfixed code, the bug-proven run's
 //               (15.5): false for a run of the change
+//   command     a run on the unfixed code's alone: the reproducing test's
+//               command, its exit the verdict — `pass` where it is 0, else
+//               `fail` (bug-proven.cjs)
 //   at          when it was recorded
 //   checkout    the code root of the checkout it ran in
 //   commits     each repository of that checkout, `{repo, commit}` — `.`
@@ -18,7 +21,9 @@
 //               HEAD it ran against, null before its first commit; every
 //               repository clean, so the code it ran is those commits
 //   task        the task in flight it ran for, `{phase}.{n}`, null where
-//               none can be told
+//               none can be told; a run on the unfixed code is the
+//               reproducing task's, `1.1`, in the build, and no task's in
+//               the review phase
 //   evidence    its text evidence, each `{name, text}` (15.4.4)
 //   recordings  its recordings and images, each `{name, sha256}`, kept in
 //               the unit's cache at the run's path there, under their hash
@@ -44,6 +49,11 @@
 // decides makes it proven where it passed, so a regression after a pass
 // reads not proven; named, not run where every run counted was skipped; not
 // proven otherwise, a scenario with none among them.
+//
+// The runs on the unfixed code are read in series (`latestSeries`): a series
+// is consecutive runs at the same commits, in every repository, so a test
+// run again with no new commit carries on the series it ran in, a pass
+// among it standing, and a new commit begins another.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -58,9 +68,16 @@ const { tryGit } = require('../kernel/git.cjs');
 /** @typedef {{name: string, sha256: string}} Recording */
 /** @typedef {{repo: string, commit: string|null}} RepoCommit */
 /**
- * @typedef {{verdict: Verdict, unfixed: boolean, at: string, checkout: string, commits: RepoCommit[], task: string|null, evidence: Evidence[], recordings: Recording[]}} Run
+ * @typedef {{verdict: Verdict, unfixed: boolean, command?: string, at: string, checkout: string, commits: RepoCommit[], task: string|null, evidence: Evidence[], recordings: Recording[]}} Run
  */
 /** @typedef {'proven'|'not proven'|'named, not run'} Standing */
+/** A run read from its scenario's folder: its file, state-relative, and its scenario. @typedef {Run & {file: string, scenario: string}} ReadRun */
+/**
+ * A series of runs on the unfixed code: its runs, in order; the scenario,
+ * the command and the commits of its last; how many failed, and whether any
+ * passed.
+ * @typedef {{runs: ReadRun[], scenario: string, command: string, commits: RepoCommit[], failures: number, passed: boolean}} Series
+ */
 
 /** The verdicts a drive's script writes. @type {readonly Verdict[]} */
 const VERDICTS = Object.freeze(['pass', 'fail', 'skipped']);
@@ -167,4 +184,43 @@ function runsOf(cwd, unit, scenario, head) {
   return { standing: decided.verdict === 'pass' ? 'proven' : 'not proven', runs, decided };
 }
 
-module.exports = { VERDICTS, SCENARIO, runsRel, recordRun, recordingPath, readRuns, behindHead, runsOf };
+/**
+ * The runs on the unfixed code of each of `scenarios`, each with its
+ * scenario, in the order they were recorded — a tie by the scenarios'
+ * order, then by number.
+ * @param {string} cwd @param {string} unit @param {string[]} scenarios
+ * @returns {ReadRun[]}
+ */
+function unfixedRuns(cwd, unit, scenarios) {
+  return scenarios
+    .flatMap((scenario) => readRuns(cwd, unit, scenario).filter((run) => run.unfixed).map((run) => ({ ...run, scenario })))
+    .sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+}
+
+/** The code a run ran, as one key whatever order its repositories are named in. @param {RepoCommit[]} commits */
+const codeKey = (commits) => commits.map(({ repo, commit }) => `${repo}\0${commit}`).sort().join('\n');
+
+/**
+ * The latest series among runs on the unfixed code, in the order they were
+ * recorded (the header's): the runs that end them at the commits the last
+ * ran at; null where there are none.
+ * @param {ReadRun[]} runs @returns {Series|null}
+ */
+function latestSeries(runs) {
+  const last = runs.at(-1);
+  if (last === undefined) return null;
+  const key = codeKey(last.commits);
+  let from = runs.length - 1;
+  while (from > 0 && codeKey(runs[from - 1].commits) === key) from -= 1;
+  const series = runs.slice(from);
+  return {
+    runs: series,
+    scenario: last.scenario,
+    command: /** @type {string} */ (last.command),
+    commits: last.commits,
+    failures: series.filter(({ verdict }) => verdict === 'fail').length,
+    passed: series.some(({ verdict }) => verdict === 'pass'),
+  };
+}
+
+module.exports = { VERDICTS, SCENARIO, runsRel, recordRun, recordingPath, readRuns, behindHead, runsOf, unfixedRuns, latestSeries };

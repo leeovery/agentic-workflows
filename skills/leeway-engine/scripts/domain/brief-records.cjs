@@ -270,6 +270,12 @@
 //                  task's file in, for `task create --file`: the phase's,
 //                  `.cache/{unit}/build/phase-{N}/{role}`, the task writer's
 //                  apart from the consolidation agent's
+//   reproducing-test for a bugfix's phase 1, that its first task, 1.1,
+//                  writes the test that reproduces the bug and nothing else,
+//                  of type `test`, holding the phase's scenario the bug
+//                  breaks, and names the command that runs that test alone
+//                  (bug-proven.cjs, 15.5.1); for any other phase, that it
+//                  has none
 //   phase-notes    the notes the phase has to take at its end (notes.cjs),
 //                  each verbatim under its heading
 //   phase-tasks    each task of the phase, whole, as `task` draws it, under
@@ -474,6 +480,7 @@ const { ENDED, STATUS_WORDS } = require('./task-verbs.cjs');
 const { notesToTake, notesHeldFor, consolidationPath } = require('./notes.cjs');
 const { runsOf } = require('./runs.cjs');
 const { cachedSurvivors } = require('./verify.cjs');
+const { REPRODUCING, isBugfix } = require('./bug-proven.cjs');
 const { scratchName } = require('./scratch.cjs');
 const { accountPath, accountOwed, landingStage, reviewOverWay } = require('./task-account.cjs');
 const { directiveOf } = require('./directives.cjs');
@@ -1540,6 +1547,19 @@ function drawTaskFilesTo(filling) {
   return `\`${statePath(filling.cwd, '.cache', unit, 'build', `phase-${phase}`, filling.role)}\``;
 }
 
+/** The reproducing task, as a bugfix's phase 1's task writer is told of it. */
+const REPRODUCING_TEST = [
+  'This phase opens on the test that reproduces the bug. Record that task first, so it is task 1.1. It writes the test and nothing else, its type `test` and its acceptance scenario the scenario of this phase the bug breaks; '
+    + 'its solution names the command that runs that test alone, as `npx vitest run test/checkout.test.ts`. The test is run by that command on the unfixed code, and no other task\'s code lands until it fails there five times out of five.',
+  'The task that fixes the bug is linked after 1.1. Its acceptance scenarios say in its own words what it makes true, since the scenario is 1.1\'s.',
+].join('\n\n');
+
+/** @param {Filling} filling */
+function drawReproducingTest(filling) {
+  const { phase } = phaseOf(filling);
+  return phase === REPRODUCING.phase && isBugfix(unitManifest(filling)) ? REPRODUCING_TEST : 'None: only a bugfix\'s first phase opens on a test that reproduces its bug.';
+}
+
 /** The phase's tasks, refused where it is not written. @param {Filling} filling @returns {TaskDetail[]} */
 function writtenPhase(filling) {
   const { unit, phase } = phaseOf(filling);
@@ -1979,6 +1999,7 @@ const RECORDS = Object.freeze({
   'build-calls': { of: 'unit', draw: drawBuildCalls },
   'affected-entries': { of: 'unit', draw: drawAffectedEntries },
   'task-files-to': { of: 'phase', draw: drawTaskFilesTo },
+  'reproducing-test': { of: 'phase', draw: drawReproducingTest },
   'phase-notes': { of: 'phase', draw: drawPhaseNotes },
   'phase-tasks': { of: 'phase', draw: drawPhaseTasks },
   'phase-criteria': { of: 'phase', draw: drawPhaseCriteria },

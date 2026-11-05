@@ -7,10 +7,11 @@
 // `engine brief <role> <unit> <N> [--base <branch>]` for a phase of the
 // unit's cut. The task writer's brief — the phase from the cut, its
 // sections verbatim and which of them it builds first, never the rest of
-// the spec (12.S9, 11.S17), its scenarios, the notes held for it, its tasks
-// written so far, the earlier phases' unfinished tasks, the calls made in
-// the build, the entries a replacement affects, and where its task files go
-// — and its template: the six principles, the task template, one `task
+// the spec (12.S9, 11.S17), its scenarios, for a bugfix's first phase the
+// test that reproduces its bug, task 1.1's (15.5.1), the notes held for it,
+// its tasks written so far, the earlier phases' unfinished tasks, the calls
+// made in the build, the entries a replacement affects, and where its task
+// files go — and its template: the six principles, the task template, one `task
 // create` per task linked after what it waits on, every scenario given to a
 // task, shared design settled while writing, an invariant's check in the
 // phase that first builds it (12.3–12.5, 7.S3, 15.S12). The consolidation
@@ -80,6 +81,9 @@ const {
 /** @type {string} */
 let dir;
 
+/** What the task writer is told of a test that reproduces a bug where its phase opens on none. */
+const NO_REPRODUCING_TEST = 'None: only a bugfix\'s first phase opens on a test that reproduces its bug.';
+
 describe('the task writer\'s brief (12.5, 12.S9, 11.S17)', () => {
   useWorld((at) => { dir = at; });
 
@@ -103,6 +107,7 @@ describe('the task writer\'s brief (12.5, 12.S9, 11.S17)', () => {
       ].join('\n'),
       'affected-entries': `\`\`\`json\n${JSON.stringify(affected, null, 2)}\n\`\`\``,
       'task-files-to': pathDrawn('.cache/pay/build/phase-3/task-writer'),
+      'reproducing-test': NO_REPRODUCING_TEST,
     })}`);
   });
 
@@ -129,6 +134,20 @@ describe('the task writer\'s brief (12.5, 12.S9, 11.S17)', () => {
     commitAll(dir, 'a part before its area');
 
     assert.ok(issued(['task-writer', UNIT, '2']).brief.includes('# Its sections\n\n' + `\`${statePath(dir, layout.unit(UNIT, SPEC_FILE))}\`` + '\n\n- §1, first built in phase 1\n'));
+  });
+
+  it('15.5.1: a bugfix\'s first phase opens on the test that reproduces its bug, recorded first so it is task 1.1, of type `test`, naming the command that runs it alone, the fix linked after it; its later phases, as any other unit\'s, open on none', () => {
+    const manifest = JSON.parse(readState(dir, layout.manifest(UNIT)));
+    writeState(dir, layout.manifest(UNIT), JSON.stringify({ ...manifest, work_type: 'bugfix' }));
+    commitAll(dir, 'a bugfix');
+    const section = (/** @type {string} */ brief) => brief.slice(brief.indexOf('# The test that reproduces the bug\n'), brief.indexOf('# Notes held for this phase\n'));
+
+    assert.deepStrictEqual([section(issued(['task-writer', UNIT, '1']).brief), section(issued(['task-writer', UNIT, '2']).brief)], [
+      '# The test that reproduces the bug\n\nThis phase opens on the test that reproduces the bug. Record that task first, so it is task 1.1. It writes the test and nothing else, its type `test` and its acceptance scenario the scenario of this phase the bug breaks; '
+        + 'its solution names the command that runs that test alone, as `npx vitest run test/checkout.test.ts`. The test is run by that command on the unfixed code, and no other task\'s code lands until it fails there five times out of five.\n\n'
+        + 'The task that fixes the bug is linked after 1.1. Its acceptance scenarios say in its own words what it makes true, since the scenario is 1.1\'s.\n\n',
+      `# The test that reproduces the bug\n\n${NO_REPRODUCING_TEST}\n\n`,
+    ]);
   });
 
   it('a phase naming an area and a part of it draws the area once, the part within it', () => {

@@ -30,7 +30,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { ok, refuses, refusedPristine, git, tip, createFile, initRepo, addSubmodule, statePath, layout, readState, writeState, accountTaken } = require('./engine-harness.cjs');
+const { ok, refuses, refusedPristine, git, tip, createFile, initRepo, addSubmodule, statePath, accountTaken, setEnvironment } = require('./engine-harness.cjs');
 const { NESTED, landedOn } = require('./landing-world.cjs');
 const { readPosition } = require('../../skills/leeway-engine/scripts/domain/conversation.cjs');
 const { SIDE, UNIT, FEES, SHOW, taskWorktreeWorld, as, building, isolation, layOut, checkoutsOf, statusOf } = require('./task-worktree-world.cjs');
@@ -39,12 +39,6 @@ const project = taskWorktreeWorld('engine-task-worktree-end-');
 
 /** The worktrees a repository has registered, by their paths. @param {string} repo */
 const registered = (repo) => git(repo, ['worktree', 'list', '--porcelain']).split('\n').filter((line) => line.startsWith('worktree ')).map((line) => line.slice('worktree '.length));
-
-/** The project's environment setup set to `environment`. @param {string} dir @param {unknown} environment */
-function setEnvironment(dir, environment) {
-  const manifest = JSON.parse(readState(dir, layout.projectManifest));
-  writeState(dir, layout.projectManifest, JSON.stringify({ ...manifest, environment }, null, 2));
-}
 
 /** The tasks a default branch gained past the base, oldest first. @param {string} dir @param {string} into */
 const tasksOn = (dir, into) => landedOn(dir, into).map(({ task }) => task);
