@@ -38,9 +38,11 @@
 // entered after the spec as before it. Discussion is the first row,
 // discovery the second (discovery-entry.cjs), specification the third
 // (spec-entry.cjs), implementation, the build, the fourth
-// (build-entry.cjs) and the review phase the fifth (review-entry.cjs),
-// whose arrival snapshots the working tree; each later phase adds its own
-// as its rewrite moves it onto the entry. A unit-level place is the unit itself, as a
+// (build-entry.cjs), the review phase the fifth (review-entry.cjs),
+// whose arrival snapshots the working tree, and a bugfix's investigation
+// the sixth, entered at its one topic as a feature's discussion is, its log
+// the investigation (19.4.3); each later phase adds its own as its rewrite
+// moves it onto the entry. A unit-level place is the unit itself, as a
 // single-topic unit's topic is; the product's is `product`, a project place
 // with no manifest of its own, whose marker and lock are the project
 // manifest's.
@@ -183,59 +185,112 @@ function earlierLines(cwd, manifest, unit, topic) {
   ];
 }
 
+/** A DATA line's key, put to each value. @param {string} key @returns {(value: string) => Line} */
+const as = (key) => (value) => [key, value];
+
 /**
- * What a discussion reads before its opening (9.3.2–9.3.6, 8.7.7): each
- * message waiting, its name the one `topic answered` takes; the topic's
- * brief — for the unit's one topic, discovery's log and the unit's
- * seeds; the record of every other topic decided so far, never its log; the
- * product record, with what discovery found of the product and of the unit,
- * which no topic's record shows, and of the topic, which a first opening
- * reads no record for (9.3.6, 9.3.12); the unit's spikes; and, at a first
- * opening, the earlier record of a topic postponed elsewhere. Resuming
- * adds the topic's own record (9.3.11), its map, and the entries a
- * replacement changed under it, each confirmed or replaced in the
- * conversation (9.3.6), and the reports of the agents the topic was left
- * with, landed since, with those lost with a process that no longer runs
- * (9.7.8). The log comes with every entry's.
+ * What a topic reads first at its opening (9.3.2, 8.7.7): each message
+ * waiting, its name the one `topic answered` takes; the topic's brief; and
+ * for the unit's one topic, discovery's log and the unit's seeds.
  * @param {Entering} at @returns {Line[]}
  */
-function discussionReads({ cwd, unit, topic = '', manifest, started }) {
+function openingReads({ cwd, unit, topic = '', manifest }) {
   const own = topic === unit;
   const seeds = Array.isArray(manifest.seeds) ? manifest.seeds.filter((seed) => typeof seed?.path === 'string') : [];
-  const decided = liveTopics(unit, manifest).filter((other) => other !== topic && computeTopicLifecycle(manifest, other).lifecycle === 'decided');
-  const agents = agentsLeft(cwd, unit, 'discussion', topic);
-  /** @param {string} key @returns {(value: string) => Line} */
-  const as = (key) => (value) => [key, value];
   return [
     ...waitingMessages(cwd, unit, topic).map(({ path: message }) => as('mail')(message)),
     ...existing([statePath(cwd, briefFile(unit, topic))]).map(as('brief')),
     ...(own ? discoveryLogs(cwd, unit) : []).map(as('discovery log')),
     ...(own ? existing(seeds.map((seed) => statePath(cwd, unit, seed.path))) : []).map(as('seed')),
+  ];
+}
+
+/** The product record's call, with what discovery found of the product, of the unit and of the topic. @param {Entering} at @returns {Line} */
+const productRead = ({ unit, topic = '' }) => as('product')(`\`${productCall(unit, topic)}\``);
+
+/**
+ * The calls a resumed topic reads its views of the ledger by, `views` those
+ * its phase reads; none at a first opening.
+ * @param {Entering} at @param {readonly ('record'|'map'|'affected')[]} views @returns {Line[]}
+ */
+function resumedReads({ unit, topic = '', started }, views) {
+  return started ? [] : views.map((view) => as(view)(`\`${ledgerView(view, unit, topic)}\``));
+}
+
+/**
+ * The reports of the agents the topic was left with in its phase, landed
+ * since, with those lost with a process that no longer runs (9.7.8).
+ * @param {Entering} at @returns {Line[]}
+ */
+function agentReads({ cwd, unit, phase, topic = '' }) {
+  const agents = agentsLeft(cwd, unit, phase, topic);
+  return [...agents.landed.map(({ file }) => as('landed')(file)), ...agents.lost.map(as('lost'))];
+}
+
+/**
+ * What a discussion reads before its opening (9.3.2–9.3.6, 8.7.7): what a
+ * topic reads first; the record of every other topic decided so far, never
+ * its log; the product record, with what discovery found of the product and
+ * of the unit, which no topic's record shows, and of the topic, which a
+ * first opening reads no record for (9.3.6, 9.3.12); the unit's spikes; and,
+ * at a first opening, the earlier record of a topic postponed elsewhere.
+ * Resuming adds the topic's own record (9.3.11), its map, and the entries a
+ * replacement changed under it, each confirmed or replaced in the
+ * conversation (9.3.6); then the agents the topic was left with. The log
+ * comes with every entry's.
+ * @param {Entering} at @returns {Line[]}
+ */
+function discussionReads(at) {
+  const { cwd, unit, topic = '', manifest, started } = at;
+  const decided = liveTopics(unit, manifest).filter((other) => other !== topic && computeTopicLifecycle(manifest, other).lifecycle === 'decided');
+  return [
+    ...openingReads(at),
     ...decided.map((other) => as('decided')(`\`${recordCall(unit, other)}\``)),
-    as('product')(`\`${productCall(unit, topic)}\``),
+    productRead(at),
     ...filesIn(statePath(cwd, unit, 'spikes')).map(as('spike')),
     ...(started ? earlierLines(cwd, manifest, unit, topic) : []),
-    ...(started ? [] : /** @type {const} */ (['record', 'map', 'affected']).map((view) => as(view)(`\`${ledgerView(view, unit, topic)}\``))),
-    ...agents.landed.map(({ file }) => as('landed')(file)),
-    ...agents.lost.map(as('lost')),
+    ...resumedReads(at, ['record', 'map', 'affected']),
+    ...agentReads(at),
   ];
+}
+
+/**
+ * What an investigation reads before its opening (8.7.7): what a topic
+ * reads first, and the product record; resuming adds its record and its
+ * map; then the agents it was left with. The log, the investigation itself
+ * (19.4.3), comes with every entry's.
+ * @param {Entering} at @returns {Line[]}
+ */
+function investigationReads(at) {
+  return [...openingReads(at), productRead(at), ...resumedReads(at, ['record', 'map']), ...agentReads(at)];
+}
+
+/**
+ * The row of a phase talked through at a topic, whose item it starts as
+ * `topic start` does, raising waiting mail first and keeping the topic's log:
+ * discussion's, and a bugfix's investigation, its one topic the unit.
+ * @param {'discussion'|'investigation'} phase @param {(at: Entering) => Line[]} reads @returns {Entry}
+ */
+function topicRow(phase, reads) {
+  return {
+    level: 'topic',
+    standing: phaseStanding(phase),
+    unstarted: ({ manifest, topic = '' }) => ['unstarted', undefined].includes(itemOf(manifest, phase, topic)?.status),
+    start: (cwd, unit, topic = '') => { startTopic(cwd, unit, phase, topic); },
+    questions: mailRaised,
+    reads,
+    log: ({ unit, topic = '' }) => topicLog(unit, topic),
+  };
 }
 
 /** @type {Readonly<Record<string, Entry>>} */
 const ENTRIES = Object.freeze({
-  discussion: {
-    level: 'topic',
-    standing: phaseStanding('discussion'),
-    unstarted: ({ manifest, topic = '' }) => ['unstarted', undefined].includes(itemOf(manifest, 'discussion', topic)?.status),
-    start: (cwd, unit, topic = '') => { startTopic(cwd, unit, 'discussion', topic); },
-    questions: mailRaised,
-    reads: discussionReads,
-    log: ({ unit, topic = '' }) => topicLog(unit, topic),
-  },
+  discussion: topicRow('discussion', discussionReads),
   discovery: DISCOVERY,
   specification: SPECIFICATION,
   implementation: IMPLEMENTATION,
   review: REVIEW,
+  investigation: topicRow('investigation', investigationReads),
 });
 
 const TAKE = '--take';

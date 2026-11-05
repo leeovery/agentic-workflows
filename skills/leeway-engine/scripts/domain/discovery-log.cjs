@@ -5,7 +5,7 @@
 // (20.11.1, 20.11.3) — written by `discovery-log`, read by the board. Claude
 // writes the rest of the log as the conversation goes, in sections under
 // headings of its own; these three are lists only the verb writes, an entry
-// a line:
+// a line, written and read as every log's fixed lists are (log-lists.cjs):
 //
 //   ## Not taken              `- {direction} — {why}`
 //   ## Views of the product   `- {view}`
@@ -43,20 +43,11 @@ const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { activeSession, sessionLogsAt } = require('./discovery-session.cjs');
 const { spikesOf } = require('./asset.cjs');
-const { fencedLines } = require('./spec-sections.cjs');
-const { BULLET } = require('./list-items.cjs');
+const { listedIn, beyondListsOf, withEntry } = require('./log-lists.cjs');
 const { conversationsIn } = require('./topic-log.cjs');
 
 /** The fixed headings, as the log writes them. */
 const LOG_HEADINGS = Object.freeze({ notTaken: 'Not taken', views: 'Views of the product', spikes: 'Spikes' });
-
-const ITEM = new RegExp(`^${BULLET}(.*)$`);
-
-/** A line indented beneath an entry. */
-const INDENTED = /^\s+\S/;
-
-/** A level-two heading, as headedSections reads one. */
-const HEADING = /^## +(.+?)\s*$/;
 
 /** What divides a direction from its why, and a spike's tool from what it showed. */
 const DASH = ' — ';
@@ -75,28 +66,6 @@ const WEB_ADDRESS = /^[a-z][a-z0-9+.-]*:\/\/[^\s()<>[\]]+$/i;
  * What the logs say under their fixed headings.
  * @typedef {{notTaken: {direction: string, why: string}[], views: string[], spikes: Map<string, SpikeSaid>}} Heard
  */
-
-/**
- * A log's lines read: whether each is in a fenced block, and the fixed
- * heading each stands under, its heading's own line among them, else null.
- * @param {string[]} lines @returns {{fenced: boolean[], under: (string|null)[]}}
- */
-function linesUnder(lines) {
-  const fenced = fencedLines(lines);
-  /** @type {string|null} */
-  let under = null;
-  return {
-    fenced,
-    under: lines.map((line, at) => {
-      const heading = fenced[at] ? null : HEADING.exec(line);
-      if (heading !== null) under = Object.hasOwn(READS, heading[1]) ? heading[1] : null;
-      return under;
-    }),
-  };
-}
-
-/** Whether a log's line is an entry under a fixed heading: at the margin, outside a fence. @param {{fenced: boolean[], under: (string|null)[]}} read @param {string[]} lines @param {number} at */
-const isEntry = ({ fenced, under }, lines, at) => under[at] !== null && !fenced[at] && ITEM.test(lines[at]);
 
 /** A direction not taken and why, null where the entry does not read as one. @param {string} entry */
 function notTakenOf(entry) {
@@ -138,6 +107,9 @@ const READS = Object.freeze({
   },
 });
 
+/** The fixed headings the lists stand under. */
+const HEADINGS = Object.keys(READS);
+
 /**
  * What the logs say under their fixed headings, in order, each a log's
  * text, read once, with its path from the state root, and the epic's spikes
@@ -148,23 +120,17 @@ function heardIn(logs, spikes, warnings) {
   /** @type {Heard} */
   const heard = { notTaken: [], views: [], spikes: new Map() };
   for (const { rel, text } of logs) {
-    const lines = text.split(/\r\n?|\n/);
-    const read = linesUnder(lines);
-    lines.forEach((line, at) => {
-      if (!isEntry(read, lines, at)) return;
-      const heading = /** @type {string} */ (read.under[at]);
-      const entry = /** @type {RegExpExecArray} */ (ITEM.exec(line))[1].trim();
+    for (const { heading, entry } of listedIn(text, HEADINGS)) {
       const passed = READS[heading](heard, entry, spikes);
       if (passed !== null) warnings.push(`${rel}: "${entry}" under ## ${heading} ${passed}, and is passed over`);
-    });
+    }
   }
   return heard;
 }
 
 /** A log's lines outside its fixed lists, their headings left out with them. @param {string[]} lines */
 function beyondLists(lines) {
-  const { under } = linesUnder(lines);
-  return lines.filter((_, at) => under[at] === null);
+  return beyondListsOf(lines, HEADINGS);
 }
 
 /** The day a session started, from its log's text, null before a conversation has written it. @param {string} text */
@@ -230,37 +196,6 @@ function checkShape({ usage, takes, flags, may = [] }, positional, opts) {
 }
 
 /**
- * `text` with `line` put as an entry under the last `## {heading}` outside a
- * fenced block — after its last entry and the lines indented beneath it, or
- * as its first — else under the heading added at the end.
- * @param {string} text @param {string} heading @param {string} line
- */
-function withEntry(text, heading, line) {
-  const lines = text.split('\n');
-  const read = linesUnder(lines);
-  let at = -1;
-  lines.forEach((held, i) => { if (!read.fenced[i] && HEADING.exec(held)?.[1] === heading) at = i; });
-  if (at === -1) {
-    const gap = text === '' || text.endsWith('\n\n') ? '' : text.endsWith('\n') ? '\n' : '\n\n';
-    return `${text}${gap}## ${heading}\n\n- ${line}\n`;
-  }
-  let section = at + 1;
-  while (section < lines.length && read.under[section] === heading) section += 1;
-  let last = -1;
-  for (let i = at + 1; i < section; i += 1) if (isEntry(read, lines, i)) last = i;
-  if (last === -1) {
-    let first = at + 1;
-    while (first < lines.length && lines[first].trim() === '') first += 1;
-    lines.splice(at + 1, first - at - 1, '', `- ${line}`, '');
-    return lines.join('\n');
-  }
-  let after = last + 1;
-  while (after < section && INDENTED.test(lines[after])) after += 1;
-  lines.splice(after, 0, `- ${line}`);
-  return lines.join('\n');
-}
-
-/**
  * `discovery-log <entry> <epic> …` (the header's): the entry's line put in
  * the log of the epic's open session. Answers the log, from the state root,
  * the heading and the line.
@@ -280,7 +215,7 @@ function logHeard(cwd, kind, positional, opts) {
   const line = entry.line(root, unit, rest, opts);
   const rel = path.posix.join(sessionLogsAt(unit), `session-${session}.md`);
   const file = statePath(cwd, rel);
-  fs.writeFileSync(file, withEntry(fs.readFileSync(file, 'utf8'), entry.heading, line));
+  fs.writeFileSync(file, withEntry(fs.readFileSync(file, 'utf8'), HEADINGS, entry.heading, line));
   return { log: rel, heading: entry.heading, line: `- ${line}` };
 }
 

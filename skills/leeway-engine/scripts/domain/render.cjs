@@ -63,6 +63,7 @@ const { startThisWorkSurface } = require('./start-this-work.cjs');
 const { approveMapSurface, approveMapStrikeSurface } = require('./approve-map.cjs');
 const { readyToBuildSurface } = require('./ready-to-build.cjs');
 const { buildHeadlineSurface, taskLandedSurface, taskAccountSurface, stepGateSurface, phaseMergeGateSurface, buildStopSurface, buildProgressSurface } = require('./build-screens.cjs');
+const { investigationPlanSurface, investigationCheckInSurface } = require('./investigation.cjs');
 const { reviewReportSurface, reviewCallsSurface } = require('./review-round.cjs');
 const { reviewTreeSurface } = require('./review-tree.cjs');
 const { finishSurface } = require('./finish.cjs');
@@ -2486,6 +2487,8 @@ const SURFACES = {
   'review-calls': reviewCallsSurface,
   'review-tree': reviewTreeSurface,
   'finish': finishSurface,
+  'investigation-plan': investigationPlanSurface,
+  'investigation-check-in': investigationCheckInSurface,
 };
 
 /**

@@ -104,6 +104,7 @@ const { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = 
 const { absorbWorkUnit } = require('./domain/workunit-absorb.cjs');
 const { closeDiscoverySession } = require('./domain/discovery-session.cjs');
 const { LOG_USAGE, logHeard } = require('./domain/discovery-log.cjs');
+const { HUNT_USAGE, logHunt } = require('./domain/investigation-log.cjs');
 const { runFieldCommand, isRead } = require('./domain/fields.cjs');
 const { renderSurface, SURFACES } = require('./domain/render.cjs');
 const { resolveHandoff, topicHandoff, handoffSections, TOPIC_HANDOFF_USAGE } = require('./domain/handoff.cjs');
@@ -239,6 +240,7 @@ ${VERDICT_USAGE.replace(/^/gm, '  ')}
   ${POSITION_USAGE}
   discovery-session close <work-unit|product> -m <message>
 ${LOG_USAGE.replace(/^/gm, '  ')}
+${HUNT_USAGE.replace(/^/gm, '  ')}
   topic start <work-unit> <phase> <topic>
 ${Object.values(MAP_USAGE).map((usage) => `  ${usage}`).join('\n')}
   ${SEND_USAGE}
@@ -427,6 +429,8 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render review-calls <work-unit>
   render review-tree <work-unit>
   render finish <work-unit>
+  render investigation-plan <bugfix> --file <plan.json> [--revised]
+  render investigation-check-in <bugfix> --file <check-in.json>
   render discovery-map <work-unit>
   render migrations-applied --file <payload.json>
   render migration-gate
@@ -773,6 +777,23 @@ function runDiscoveryLog(call, argv) {
   try {
     const { opts, positional } = parseArgs(rest);
     respond(call, logHeard(call.cwd, kind, positional, opts));
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// investigation-log — an entry under one of the fixed headings of a bugfix's
+// investigation log (domain/investigation-log.cjs), never committed: every
+// state commit takes the log along.
+// ---------------------------------------------------------------------------
+
+/** @param {Call} call @param {string[]} argv */
+function runInvestigationLog(call, argv) {
+  const [kind, ...rest] = argv;
+  try {
+    const { opts, positional } = parseArgs(rest);
+    respond(call, logHunt(call.cwd, kind, positional, opts));
   } catch (err) {
     failJson(call, err);
   }
@@ -2342,7 +2363,7 @@ function runHandoff(call, argv) {
   }
 }
 
-const RENDER_FLAGS = ['skipped-review', 'paths', 'warn', 'pipeline', 'menu-only', 'calls', 'sweep', 'page'];
+const RENDER_FLAGS = ['skipped-review', 'paths', 'warn', 'pipeline', 'menu-only', 'calls', 'sweep', 'page', 'revised'];
 
 /** @param {Call} call @param {string[]} argv */
 function runRender(call, argv) {
@@ -2439,6 +2460,7 @@ const COMMANDS = Object.freeze({
   measures: runMeasures,
   board: runBoard,
   scratch: runScratch,
+  'investigation-log': runInvestigationLog,
 });
 
 // Every command dispatched runs whole under the writer lock, its writes and

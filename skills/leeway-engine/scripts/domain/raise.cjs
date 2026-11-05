@@ -13,9 +13,12 @@
 //   notice}` — the key, a short name for what the person would notice, the
 //   answer's text and what they would notice; the lean, a row's key; why
 //   Claude leans so; the sort, `one` or `several` (16.3.7); the mechanism,
-//   behind the screen's toggle; and whether the answer is product-wide.
-//   Every field of text is one line but the mechanism, drawn as written;
-//   nothing else is taken.
+//   behind the screen's toggle; whether the answer is product-wide; and,
+//   where Claude stepped back from the problem before setting out its rows,
+//   what that found (`stepped_back`, 19.4.13, 19.4.21), lines drawn above
+//   the lean — never in the build, whose park keeps the call's own fields
+//   alone in the ledger. Every field of text is one line but the mechanism,
+//   drawn as written; nothing else is taken.
 // - A raise on a replacement (16.5.7, 29.5.2): `raise <unit>.<phase>[.<topic>]
 //   --replaces <entry> --reason <reason> [--cause <id>] [--relies-on <id>
 //   …]`, the same call on stdin, its rows Claude's proposed answers in place
@@ -224,7 +227,7 @@ const { topicTitles } = require('./derivations.cjs');
 const { verbUsage, writePlaced, landRaised, callLogged, staleness } = require('./ledger-write.cjs');
 const { OVER_THE_LEAN, BACK_TO_THE_LEAN, derivedMove } = require('./ledger-verdicts.cjs');
 const { judgeDecisionAsync } = require('./ledger-one-decision.cjs');
-const { type, TEXT, KEY, listOf } = require('./event-fields.cjs');
+const { type, TEXT, KEY, LINE, listOf } = require('./event-fields.cjs');
 const { isShownTask, parseShownTask } = require('./task-id.cjs');
 const { markChanged, beingRead } = require('./round-report.cjs');
 const { stepTurn } = require('./task-verbs.cjs');
@@ -243,7 +246,7 @@ const questions = require('./questions.cjs');
 /** @typedef {{key: string, name: string, text: string, notice: string}} Row */
 /**
  * Claude's call, as the draw takes it on stdin.
- * @typedef {{question: string, rows: Row[], lean: string, why: string, sort: 'one'|'several', mechanism: string, product_wide: boolean}} Call
+ * @typedef {{question: string, rows: Row[], lean: string, why: string, sort: 'one'|'several', mechanism: string, product_wide: boolean, stepped_back?: string[]}} Call
  */
 /**
  * A fact only the person holds, as the draw takes it on stdin: no lean, no
@@ -358,6 +361,9 @@ const MOVED = type('who moved whom', () => true);
 /** What the call holds, each field's type: its rows checked one by one (`checkEachRow`). @type {Readonly<Record<string, Type>>} */
 const CALL_FIELDS = Object.freeze({ ...CALL_SHAPE, rows: ROWS });
 
+/** What the call may hold besides: what Claude's step back found. @type {Readonly<Record<string, Type>>} */
+const CALL_MAY = Object.freeze({ stepped_back: type('a list of lines, one at least', (v) => Array.isArray(v) && v.length > 0 && v.every((line) => LINE.test(line))) });
+
 /** What a fact holds, each field's type. @type {Readonly<Record<string, Type>>} */
 const FACT_FIELDS = Object.freeze({ question: CALL_SHAPE.question, rows: ROWS, mechanism: CALL_SHAPE.mechanism, product_wide: CALL_SHAPE.product_wide });
 
@@ -431,7 +437,7 @@ function checkRows({ rows, lean }, replacing) {
  */
 function callOf(stdin, replacing) {
   const call = stdinObject(stdin, SAID, 'the call');
-  checkFields(call, CALL_FIELDS, 'raise: the call');
+  checkFields(call, CALL_FIELDS, 'raise: the call', CALL_MAY);
   checkRows(/** @type {Call} */ (call), replacing);
   return /** @type {Call} */ (call);
 }
@@ -919,6 +925,7 @@ async function drawRaise(cwd, args, stdin) {
   const inBuild = checkBuildPlace(cwd, place, parks);
   if (!inBuild) questions.checkUnparked(read, subjectOf(target), SAID);
   const given = fact ? factOf(stdin()) : callOf(stdin(), target.replaces !== null);
+  if (inBuild && 'stepped_back' in given) throw new Error('raise: a raise in the build takes no stepped_back — its call parks in the ledger, which keeps the call\'s own fields alone');
   if (target.replaces !== null) checkProposals(/** @type {Call} */ (given), target.replaces, short(target.replaces.entry));
   if (inBuild) return parkedRaise(cwd, place, target, fact ? { call: /** @type {Fact} */ (given), fact: true } : { call: /** @type {Call} */ (given), fact: false }, parks, warnings);
   const open = openSeal(readSeals(session), place, target, null);

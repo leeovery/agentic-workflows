@@ -58,7 +58,8 @@ const CODE_PHASES = ['implementation', 'review'];
 // The corpora the epic-wide analyses read. A held session in any other phase
 // is no reason to defer an analysis that never looks at its material.
 const SOURCE_PHASES = ['discussion'];
-// The phases whose document a specification extracts from — what the
+// The phases whose topic's log a specification is drawn from — a
+// discussion's, and a bugfix's investigation's (19.4.3) — what the
 // spec-side held-doc check looks for a holder on.
 const DOCUMENT_PHASES = ['discussion', 'investigation'];
 
