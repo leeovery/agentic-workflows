@@ -13,9 +13,10 @@
 // pushed, never a code commit (7.S17, 7.S21); a refusal writing nothing, or
 // committing what setting up and the verb wrote before it, under a message
 // saying so; a tool missing or failing named; a task numbered after its
-// phase's highest, a quick-fix's referencing no spec; the tasks in flight on the conversation's position, and
-// `task stopped`, a builder's stop held against one; and
-// the writer lock around every verb, reads included. What a driver does
+// phase's highest, a quick-fix's referencing no spec, its fix 1.n naming
+// its scenarios n.S1 and on; the tasks in flight on the conversation's
+// position, and `task stopped`, a builder's stop held against one; and the
+// writer lock around every verb, reads included. What a driver does
 // with a task is the conformance suite's.
 //
 // Layer: verb. World: a project with its state worktree and one work unit,
@@ -316,15 +317,24 @@ describe('task phase and task create (7.1.3, 7.4.1, 12.4.1)', () => {
     assert.strictEqual(create(dir, 'Sum the ledger').task, '1.5');
   });
 
-  it('task create takes a quick-fix\'s task referencing no spec, it having none, and refuses one referencing a spec, naming it, writing nothing (19.5.5)', () => {
+  it('task create takes a quick-fix\'s fix referencing no spec, it having none, fix 1.n naming its scenarios n.S1 and on, so each owns its runs; one referencing a spec, or naming another fix\'s scenario, is refused, naming it, writing nothing (19.5.5)', () => {
     createManifest(dir, 'typo', { work_type: 'quick-fix' });
     commitAll(dir, 'a quick-fix');
     ok(dir, ['task', 'phase', 'typo', '1', '--title', 'the fixes']);
+    /** A fix's file, referencing no spec, its scenarios those given. @param {string} name @param {string[]} ids */
+    const fix = (name, ids) => taskFile(dir, name, template('Spell the flag', { 'Spec reference': 'none', 'Acceptance scenarios': ids.map((id) => `- ${id} Given the help, when it is read, then it names --colour.`).join('\n') }));
 
-    const refused = refusesPristine(['task', 'create', 'typo', '1', '--file', taskFile(dir, 'spelt', template('Spell the flag'))]);
-    const created = ok(dir, ['task', 'create', 'typo', '1', '--file', taskFile(dir, 'unspecced', template('Spell the flag', { 'Spec reference': 'none' }))]).task;
+    const specced = refusesPristine(['task', 'create', 'typo', '1', '--file', taskFile(dir, 'spelt', template('Spell the flag'))]);
+    const first = ok(dir, ['task', 'create', 'typo', '1', '--file', fix('first', ['1.S1', '1.S2'])]).task;
+    const another = refusesPristine(['task', 'create', 'typo', '1', '--file', fix('another', ['2.S1', '1.S2', '11.S1'])]);
+    const second = ok(dir, ['task', 'create', 'typo', '1', '--file', fix('second', ['2.S1'])]).task;
 
-    assert.deepStrictEqual([refused, created], ['typo is a quick-fix, which has no spec — its task\'s Spec reference is none, not "§7.1"', '1.1']);
+    assert.deepStrictEqual([specced, another, first, second], [
+      'typo is a quick-fix, which has no spec — its task\'s Spec reference is none, not "§7.1"',
+      'task 1.2 of typo, a quick-fix\'s fix, names its scenarios 2.S1, 2.S2 and on — not 1.S2, 11.S1',
+      '1.1',
+      '1.2',
+    ]);
   });
 
   it('task create refuses a number the tracker already holds, made by hand, naming it, writing nothing', () => {

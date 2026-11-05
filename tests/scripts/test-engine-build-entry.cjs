@@ -5,39 +5,38 @@
 // build-entry.cjs): `engine enter implementation <unit>`. What it refuses,
 // naming the way on and writing nothing — a unit built under the old plan
 // (P12), a quick-fix today's scoping made among them, a build not begun
-// (11.8.3), a work type with no build, and a topic named; another session holding the checkout's code
-// stopped at the code gate alone, nothing written, `--take` entering and
-// back leaving it to that session (12.7.8); the tasks another conversation
-// left in flight taken onto this conversation's record with no builder and
-// no pair, this conversation's own kept as they stand, the other's record
-// left alone, a parked one waiting on its question with no builder until
-// the answer (12.13.2); and the answer, which is the recovery note too
-// (12.1.6, 12.2.2, 24.2.2, 24.2.5, 12.S4, 24.S13), none for a unit built
-// under the old plan: where each phase of the cut stands with its tasks,
-// its review's fixes owed until it is settled (13.10.1), the tasks in
-// flight with their builders, one whose builder stopped with the way on
-// (20.4.9) — the entry's of its own unit alone, the note's those of the
-// conversation it is asked for, whoever asks — the
+// (11.8.3), a work type with no build, and a topic named; another session
+// holding the checkout's code stopped at the code gate alone, nothing
+// written, `--take` entering and back leaving it to that session (12.7.8);
+// the tasks another conversation left in flight taken onto this
+// conversation's record with no builder and no pair, this conversation's own
+// kept as they stand, the other's record left alone, a parked one waiting on
+// its question with no builder until the answer (12.13.2); and the answer,
+// which is the recovery note too (12.1.6, 12.2.2, 24.2.2, 24.2.5, 12.S4,
+// 24.S13), none for a unit built under the old plan: where each phase of the
+// cut stands with its tasks, its review's fixes owed until it is settled
+// (13.10.1), the tasks in flight with their builders, one whose builder
+// stopped with the way on (20.4.9) — the entry's of its own unit alone, the
+// note's those of the conversation it is asked for, whoever asks — the
 // questions waiting and the tasks they park, the entries affected and the
 // unit's record by their calls, and the build's log. The standing (P13): each
 // phase not yet written, written, running, in review, closed or merged, as
-// the tracker, the checklists and the landing hold it, and the build
-// finished only once every phase of the cut has closed, so nothing ready
-// with a phase not yet written never reads finished (7.4.3, 12.6.7, 12.S16,
-// 3.S3). A phase's checklists are test-engine-build-checklists-*.cjs's; a
-// task at its step gate, test-engine-build-gates-standing.cjs's; the
-// review's fix phases in the standing, test-engine-review-fix-phases.cjs's.
+// the tracker, the checklists and the landing hold it, and the build finished
+// only once every phase of the cut has closed, so nothing ready with a phase
+// not yet written never reads finished (7.4.3, 12.6.7, 12.S16, 3.S3). A
+// phase's checklists are test-engine-build-checklists-*.cjs's; a task at its
+// step gate, test-engine-build-gates-standing.cjs's; the review's fix phases
+// in the standing, test-engine-review-fix-phases.cjs's.
 //
-// Layer: verb. World, built once and copied: the ledger suites' epic,
-// `fumi`, its build begun in auto, its cut three phases — Cards and Reports
-// relying on nothing, Refunds on Cards — Cards started, its tasks 1.1 done,
-// 1.2 in progress, started by another conversation, and 1.3 not started;
-// Refunds written, 2.1 not started; Reports not yet written; a question
-// asked in its build. Beside it a feature, `solo`, its build begun; another
-// feature whose code a peer may hold; a feature cut and not yet built; a
-// quick-fix mid-scoping; an epic built under the old plan, and a feature
-// whose old spec stands; a cross-cutting concern; and the build's skill
-// installed. Each
+// Layer: verb. World, built once and copied: the ledger suites' epic, `fumi`,
+// its build begun in auto, its cut three phases — Cards and Reports relying
+// on nothing, Refunds on Cards — Cards started, its tasks 1.1 done, 1.2 in
+// progress, started by another conversation, and 1.3 not started; Refunds
+// written, 2.1 not started; Reports not yet written; a question asked in its
+// build. Beside it a feature, `solo`, its build begun; another feature whose
+// code a peer may hold; a feature cut and not yet built; a quick-fix
+// mid-scoping; an epic built under the old plan, and a feature whose old spec
+// stands; a cross-cutting concern; and the build's skill installed. Each
 // test's conversations keep their records in a config folder of their own.
 // ---------------------------------------------------------------------------
 

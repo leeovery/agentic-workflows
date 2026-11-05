@@ -94,13 +94,17 @@
 // code gate first (12.7.8, 19.5.18), with no cut, no ready to build and no
 // position: its build is its one phase, the fixes, each fix its own task,
 // which the arm starts — the phase written into the tracker where it is
-// missing, the tracker's verb committing it — and the review's fixes, asked
-// for at its close, numbered past it (`buildLength`, P14). The tasks in
-// progress are put in flight as the row puts them. It answers, as the
-// tracker held its fixes on arrival: the change, the unit's description,
-// then each of its seeds; each fix by its id and title and where it stands,
-// none yet before the first; its short record, `summary.md`, once written
-// (19.5.6); the unit's record, by its call; the build's log; and the engine.
+// missing, the tracker's verb committing it, and the fixes' beginning
+// recorded on the manifest (`fixesBegun`), which the entry commits and the
+// phase's status reads — and the review's fixes, asked for at its close,
+// numbered past it (`buildLength`, P14). The tasks in progress are put in
+// flight as the row puts them. It answers, as the tracker held its fixes on
+// arrival: the change, the unit's description, then each of its seeds; each
+// fix by its id and title and where it stands, none yet before the first;
+// its short record, `summary.md`, once written (19.5.6); the unit's record,
+// by its call; the build's log; and the engine. Its recovery note re-reads
+// the same, the record by its call, the build's log, then the change and
+// the fixes a line each (`fixesRecovery`).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -109,11 +113,13 @@ const { statePath, stateRoot } = require('../kernel/state-root.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 const {
-  buildBegun, buildFinished, phaseStarted, phaseClosed, buildRefusal, cutPhases, cutLength, buildLength, quickFixBuild, FIXES_PHASE,
+  buildBegun, buildFinished, phaseStarted, phaseClosed, buildRefusal, cutPhases, cutLength, buildLength, quickFixBuild, fixesBegun, FIXES_PHASE,
 } = require('./derivations.cjs');
+const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manifest.cjs');
+const { isoNow } = require('./dates.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { seedFiles } = require('./reads.cjs');
-const { STATUS_WORDS, goesOn, turnOf, writePhase } = require('./task-verbs.cjs');
+const { STATUS_WORDS, goesOn, turnOf, writePhase, trackedPhase } = require('./task-verbs.cjs');
 const { heldCodeSessions } = require('./presence.cjs');
 const { codeGate } = require('./projections/enter.cjs');
 const { tasksInFlight } = require('./conversation.cjs');
@@ -129,7 +135,6 @@ const { reproducingHold } = require('./bug-proven.cjs');
 /** @typedef {import('./enter.cjs').Entry} Entry */
 /** @typedef {import('./enter.cjs').Entering} Entering */
 /** @typedef {import('./enter.cjs').Line} Line */
-/** @typedef {import('./enter.cjs').Committed} Committed */
 /** @typedef {import('./enter.cjs').HeldWays} HeldWays */
 /** @typedef {import('./topic-standing.cjs').Standing} Standing */
 /** @typedef {import('./phase-checks.cjs').Reading} Reading */
@@ -139,6 +144,7 @@ const { reproducingHold } = require('./bug-proven.cjs');
 /** @typedef {import('./conversation.cjs').InFlight} InFlight */
 /** @typedef {import('./questions.cjs').Waiting} Waiting */
 /** @typedef {import('./task-verbs.cjs').StepTurn} StepTurn */
+/** What a recovery note re-reads beside its skill: the calls, the documents, and the lines where the work stands. @typedef {{calls: string[], documents: string[], lines: string[]}} Recovery */
 
 /** Where a phase of the build stands. @typedef {'not yet written'|'written'|'running'|'in review'|'closed'|'merged'} PhaseState */
 /** Where a task of the build stands: as the tracker holds it, or, in step, behind the task in flight or at its gate. @typedef {TaskStatus|'behind'|'at-gate'} TaskState */
@@ -517,11 +523,14 @@ const ledgerCalls = (unit) => [`${ENGINE_COMMAND} ledger affected ${unit}`, `${E
  * reads it: the ledger's calls, the build's log, and where the build
  * stands, a line each — its tasks in flight those of the conversation the
  * note is for, `session`, as its position holds them, never the calling
- * process's — or why that cannot be read, in their place.
+ * process's — or why that cannot be read, in their place; a quick-fix's,
+ * as its arm reads it (`fixesRecovery`).
  * @param {string} cwd @param {string} unit @param {InFlight[]} inFlight @param {string} session
- * @returns {{calls: string[], documents: string[], lines: string[]}}
+ * @returns {Recovery}
  */
 function buildRecovery(cwd, unit, inFlight, session) {
+  const manifest = manifestOf(stateRoot(cwd), unit);
+  if (manifest !== null && quickFixBuild(manifest)) return fixesRecovery({ cwd, phase: 'implementation', unit, manifest });
   /** @type {string[]} */
   let lines;
   try {
@@ -571,31 +580,55 @@ const fixesOf = (at) => phaseLists(readingOf(at), [FIXES_PHASE.number])[0];
 /** A fix as its quick-fix's line of them says it: its id, its title and where it stands. @param {TaskRow} row */
 const fixWords = ({ ref, title, status }) => `${shownTask(ref)} "${title}" ${STATUS_WORDS[status]}`;
 
-/** What a quick-fix's entry reads (the header's). @param {Entering} at @returns {Line[]} */
-function fixesReads(at) {
+/** A quick-fix's change and its fixes, as its entry and its note read them (the header's). @param {Standing} at @returns {Line[]} */
+function fixesLines(at) {
   const fixes = fixesOf(at) ?? [];
-  at.notes.push(...readingOf(at).warnings);
   const summary = statePath(at.cwd, summaryOf(at.unit));
   return [
     ['change', at.manifest.description],
     ...seedFiles(at.cwd, at.unit, at.manifest).map((seed) => /** @type {Line} */ (['seed', seed])),
     ['tasks', fixes.length === 0 ? 'none yet' : fixes.map(fixWords).join(', ')],
     ...(fs.existsSync(summary) ? [/** @type {Line} */ (['summary', summary])] : []),
-    ['record', `\`${ledgerCalls(at.unit)[1]}\``],
-    ['build log', statePath(at.cwd, buildLogOf(at.unit))],
-    ENGINE_LINE,
   ];
 }
 
+/** What a quick-fix's entry reads (the header's). @param {Entering} at @returns {Line[]} */
+function fixesReads(at) {
+  at.notes.push(...readingOf(at).warnings);
+  return [...fixesLines(at), ['record', `\`${ledgerCalls(at.unit)[1]}\``], ['build log', statePath(at.cwd, buildLogOf(at.unit))], ENGINE_LINE];
+}
+
 /**
- * A quick-fix's one phase, the fixes, written into the tracker as its
- * start, the tracker's verb committing it.
- * @param {string} cwd @param {string} unit
- * @returns {Committed}
+ * What a quick-fix's recovery note re-reads beside its skill, as its entry
+ * reads it: the record's call, the build's log, and its change and fixes, a
+ * line each — or why they cannot be read, in their place.
+ * @param {Standing} at @returns {Recovery}
  */
-function writeFixes(cwd, unit) {
-  const { phase: _phase, committed = null, ...rest } = writePhase(cwd, unit, String(FIXES_PHASE.number), FIXES_PHASE.name);
-  return { committed, ...rest };
+function fixesRecovery(at) {
+  /** @type {string[]} */
+  let lines;
+  try {
+    lines = fixesLines(at).map(([key, value]) => `${key}: ${value}`);
+  } catch (err) {
+    lines = [`Where the fixes stand could not be read: ${messageOf(err)}`];
+  }
+  return { calls: [ledgerCalls(at.unit)[1]], documents: [statePath(at.cwd, buildLogOf(at.unit))], lines };
+}
+
+/**
+ * A quick-fix's fixes begun, as its start: their one phase written into the
+ * tracker where it lacks it, the tracker's verb committing it, then the
+ * record of their beginning on the manifest, which the entry commits —
+ * answering what the tracker's commit warned of.
+ * @param {string} cwd @param {string} unit @returns {string[]}
+ */
+function beginFixes(cwd, unit) {
+  const written = trackedPhase(cwd, unit, FIXES_PHASE.number).tasks !== null;
+  const { warnings = [] } = written ? {} : writePhase(cwd, unit, String(FIXES_PHASE.number), FIXES_PHASE.name);
+  const manifest = loadWorkUnitManifest(cwd, unit);
+  manifest.fixes = { began: isoNow() };
+  saveWorkUnitManifest(cwd, unit, manifest);
+  return warnings;
 }
 
 /**
@@ -617,8 +650,8 @@ const QUICK_FIX = Object.freeze({
   level: /** @type {const} */ ('unit'),
   standing: () => null,
   held: codeHeld,
-  unstarted: (at) => fixesOf(at) === null,
-  start: writeFixes,
+  unstarted: ({ manifest }) => !fixesBegun(manifest),
+  start: beginFixes,
   questions: () => [],
   reads: fixesReads,
   closes: takeInFlight,

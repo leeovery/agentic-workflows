@@ -611,12 +611,12 @@ describe('conversation position', () => {
     ]);
   });
 
-  it('a build not to be entered carries nothing on, at either of its places — a unit built under the old plan, a quick-fix (P12)', () => {
+  it('a build not to be entered carries nothing on, at either of its places — a unit built under the old plan, and a quick-fix\'s review, its close not yet built (P12)', () => {
     install('leeway-implementation-process');
     install('leeway-review-process');
     workUnit('pay', 'epic', { implementation: { items: { ledger: { status: 'in-progress' } } } }, { build: { position: 'auto' } });
-    workUnit('fix', 'quick-fix', {}, { build: { position: 'auto' } });
-    const notes = [['pay', 'implementation'], ['pay', 'review'], ['fix', 'implementation']].map(([unit, phase]) => {
+    workUnit('fix', 'quick-fix');
+    const notes = [['pay', 'implementation'], ['pay', 'review'], ['fix', 'review']].map(([unit, phase]) => {
       writePosition({ name: unit, phase, topic: unit });
       const { skill, files, text } = reads();
       return [skill, files, text];
@@ -625,8 +625,18 @@ describe('conversation position', () => {
     assert.deepStrictEqual(notes, [
       [null, [], 'This conversation was working in the implementation of the epic "pay", but pay was built under the old plan, and its build is entered once the reshape\'s 29.17 migration has cut it, so there is nothing to carry on from.'],
       [null, [], 'This conversation was working in the review of the epic "pay", but pay was built under the old plan, and its build is entered once the reshape\'s 29.17 migration has cut it, so there is nothing to carry on from.'],
-      [null, [], 'This conversation was working in the implementation of the quick-fix "fix", but fix is a quick-fix, whose close and review are built with the reshape\'s 29.15 — until then its fixes are built at enter implementation fix, so there is nothing to carry on from.'],
+      [null, [], 'This conversation was working in the review of the quick-fix "fix", but fix is a quick-fix, whose close and review are built with the reshape\'s 29.15 — until then its fixes are built at enter implementation fix, so there is nothing to carry on from.'],
     ]);
+  });
+
+  it('a quick-fix\'s implementation, which its own arm enters, carries on as its entry reads it: the unit\'s record by its call, then its change and its fixes', () => {
+    install('leeway-implementation-process');
+    workUnit('fix', 'quick-fix', {}, { description: 'Spell the flag --colour' });
+    writePosition({ name: 'fix', phase: 'implementation', topic: 'fix' });
+    const { skill, text } = reads();
+
+    assert.strictEqual(skill, abs('.claude/skills/leeway-implementation-process/SKILL.md'));
+    for (const line of ['ledger record fix`', 'change: Spell the flag --colour', 'tasks: none yet']) assert.ok(text.includes(line), `the note names ${line}\n${text}`);
   });
 
   it('names only what this project has — a missing document is left out', () => {

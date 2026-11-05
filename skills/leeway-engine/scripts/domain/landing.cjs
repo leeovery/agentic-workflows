@@ -6,21 +6,21 @@
 // request, `chain` it into its phase's stack, merge a `phase` whole, and
 // `finish`, which merges every phase still standing — the review phase's fix
 // phases, after every other (7.2.6). `open` and `chain` refuse a task with
-// no account taken of its review as it stands (task-account.cjs, 12.14) —
-// a quick-fix's, which no pair reviews, owing none (19.5.3);
-// `open` a bugfix's reproducing task until its test's series proves the
-// bug at its tip (bug-proven.cjs, 15.5.3), and a task of a fix phase whose
-// branch does not descend from the unit's work not landed below it, which
-// a fix phase is built on (review-change.cjs, 7.2.6); `chain` a task its
-// pair has not passed, read off its rounds' reports, or one changed under
-// its last round since (round-report.cjs, 12.1.4); and `phase` a phase the
-// cut holds until its phase review has passed and its fixes are done, as
-// the phase's close reads it (phase-checks.cjs, 7.2.4). `chain` answers,
-// where the task chained is the last of a phase of the cut not yet ended,
-// the phase's notes consolidated (notes.cjs), its phase review not begun
-// and the verify setup naming a mutation tool, the phase's mutation run as
-// its `next` (verify.cjs, 15.6.3), once for the phase: a task the
-// consolidation writes ends after it.
+// no account taken of its review as it stands (task-account.cjs, 12.14),
+// `open` taking a quick-fix's, which no pair reviews and which owes none
+// (19.5.3); `open` a bugfix's reproducing task until its test's series
+// proves the bug at its tip (bug-proven.cjs, 15.5.3), and a task of a fix
+// phase whose branch does not descend from the unit's work not landed below
+// it, which a fix phase is built on (review-change.cjs, 7.2.6); `chain` a
+// task its pair has not passed, read off its rounds' reports, or one
+// changed under its last round since (round-report.cjs, 12.1.4); and
+// `phase` a phase the cut holds until its phase review has passed and its
+// fixes are done, as the phase's close reads it (phase-checks.cjs, 7.2.4).
+// `chain` answers, where the task chained is the last of a phase of the cut
+// not yet ended, the phase's notes consolidated (notes.cjs), its phase
+// review not begun and the verify setup naming a mutation tool, the phase's
+// mutation run as its `next` (verify.cjs, 15.6.3), once for the phase: a
+// task the consolidation writes ends after it.
 // Which of a unit's tasks landed — each one a default branch's landing
 // names — is read here for the phase's close, the build's standing and a
 // bugfix's door, which reads the landings a commit being made holds too
@@ -101,7 +101,7 @@ const { trackedTask, trackedPhase, ENDED } = require('./task-verbs.cjs');
 const { taskRounds, pairPassed, changedUnder, changedRefusal, phaseReviewBegun } = require('./round-report.cjs');
 const { verifySetup } = require('./environment.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
-const { isFixPhase } = require('./derivations.cjs');
+const { cutLength } = require('./derivations.cjs');
 const { reproducingHold } = require('./bug-proven.cjs');
 const names = require('./landing-names.cjs');
 const lg = require('./landing-git.cjs');
@@ -609,12 +609,13 @@ function refuseUnpassed(cwd, ref) {
  * phase of the cut's tasks (the header's) — its chain, or its close where
  * another of the phase's is done — once its notes are consolidated, its
  * phase review not begun and the verify setup naming a mutation tool;
- * nothing else.
+ * nothing else, and nothing for a phase past the cut — the review's fixes, a
+ * quick-fix's — which no phase review reads (15.6.3).
  * @param {string} cwd @param {TaskRef} ref @param {boolean} [chained] whether the task ending holds work of its own
  */
 function mutationRun(cwd, ref, chained = true) {
   const manifest = manifestOf(stateRoot(cwd), ref.unit);
-  if (manifest === null || isFixPhase(manifest, ref.phase) || phaseReviewBegun(cwd, ref.unit, ref.phase)) return {};
+  if (manifest === null || ref.phase > cutLength(manifest) || phaseReviewBegun(cwd, ref.unit, ref.phase)) return {};
   if (verifySetup(cwd)?.mutation === undefined) return {};
   if (notes().consolidationFaults(cwd, ref.unit, ref.phase).length > 0) return {};
   const others = (trackedPhase(cwd, ref.unit, ref.phase).tasks ?? []).filter((task) => shownTask(task.ref) !== shownTask(ref));

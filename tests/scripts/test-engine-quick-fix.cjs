@@ -3,30 +3,36 @@
 // ---------------------------------------------------------------------------
 // A quick-fix's work in the build (leeway-engine/scripts/domain/
 // build-entry.cjs, its quick-fix arm, chosen where derivations.cjs's
-// `quickFixBuild` says): `engine enter implementation <quick-fix>` —
-// another session holding the checkout's code stopped at the code gate
-// alone, nothing written (12.7.8, 19.5.18); no cut, no ready to build and no
-// position, its one phase, the fixes, written into the tracker where it is
-// missing and committed, and the tasks in progress put in flight (E4); and
-// what it reads: the change, the fixes, the record once written, the
-// unit's record, the build's log and the engine. Its fix through the doors
-// any task takes (19.S20): the commit door running the tests then the
-// linters (12.9.9), `land open` and `task done` owing no account, no pair
-// reviewing it (19.5.3, 19.5.15). A raise at its place drawn in the
-// conversation, `--parks` refused (19.5.3, E5); the review's fix phases
-// numbered past the fixes (P14); and the cut's screens refusing it. The task
-// file's rule is test-engine-task-verbs.cjs's, its verify run
-// test-engine-verify.cjs's, and a quick-fix today's scoping made
-// test-engine-build-entry.cjs's.
+// `quickFixBuild` says; fix-branch.cjs): `engine enter implementation
+// <quick-fix>` — another session holding the checkout's code stopped at the
+// code gate alone, nothing written (12.7.8, 19.5.18); no cut, no ready to
+// build and no position, its fixes begun — their one phase written into the
+// tracker where it is missing, their beginning recorded on the manifest and
+// committed — and the tasks in progress put in flight (E4); what it reads,
+// its recovery note re-reading the same: the change, the fixes, the record
+// once written, the unit's record, the build's log and the engine. Its fix
+// built in the project's own checkout: `task start` putting the checkout on
+// the fix's branch — the first laid from the branch it lands on, a later
+// one on the fix before it — refused while the checkout holds changes not
+// committed; and through the doors any task takes (19.S20): the commit door,
+// refusing a commit on another branch, naming the fix's (12.9.9), `land
+// open` and `task done` owing no account, no pair reviewing it (19.5.3,
+// 19.5.15), and the last fix closed naming no mutation run, there being no
+// phase review (15.6.3). A raise at its place drawn in the conversation,
+// `--parks` refused (19.5.3, E5); the review's fix phases numbered past the
+// fixes (P14); and the cut's screens refusing it. The task file's rules are
+// test-engine-task-verbs.cjs's, its verify run test-engine-verify.cjs's, the
+// board's row test-engine-board-units.cjs's, and a quick-fix today's scoping
+// made test-engine-build-entry.cjs's and test-engine-legacy-build.cjs's.
 //
 // Layer: git. World: a quick-fix made through `workunit create` from an
-// inbox note, its code committed, and a feature beside it whose code a peer
-// may hold; and the same with its fixes written as the entry writes them,
-// fix 1.1 created and started by a conversation gone since, a question
-// asked at its place and the checkout on the fix's branch — each built once
-// and copied. Each test's conversations keep their records in a config
-// folder of their own. The separate call is the stub binary, unarmed, so a
-// raise's rows are drawn unjudged.
+// inbox note, its code and the build's skill committed, and a feature beside
+// it whose code a peer may hold; and the same entered by a conversation gone
+// since, its fix 1.1 created and started there, putting the checkout on its
+// branch, and a question asked at its place — each built once and copied.
+// Each test's conversations keep their records in a config folder of their
+// own. The separate call is the stub binary, unarmed, so a raise's rows are
+// drawn unjudged.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -37,8 +43,8 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {
-  ok, okSections, okSectionsAsync, refusesAsync, refusedPristine, git, stateGit, statePath, layout, writeState, readState, createFile, commitAll, fixtureFrom, cleanupFixture,
-  head, lastMessage, readManifest,
+  ok, okSections, okSectionsAsync, refusesAsync, refusedPristine, output, git, stateGit, statePath, layout, writeState, readState, createFile, commitAll, fixtureFrom, cleanupFixture,
+  head, readManifest,
 } = require('./engine-harness.cjs');
 const { createManifest, useTempFolder } = require('./discovery-test-utils.cjs');
 const { MADE, ledgerHelpers } = require('./ledger-world.cjs');
@@ -55,14 +61,17 @@ const ENGINE = 'node .claude/skills/leeway-engine/scripts/engine.cjs';
 const DESCRIPTION = 'The --color flag is spelt --colour';
 const NOTE = layout.inbox('quickfixes', '2026-06-03--colour-flag.md');
 const TITLE = 'Spell the flag --colour';
+const SECOND = 'Spell the help --colour';
 const BRANCH = taskBranch({ unit: UNIT, phase: 1, n: 1 }, 'fix', TITLE);
 const MESSAGE = 'fix(typo): spell the flag --colour';
+const AT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
 // A process that runs and is not this suite's.
 const PEER = String(process.ppid);
 
-const FIX = [
-  `# ${TITLE}`, '', '## Type', 'fix', '', '## Problem', 'The flag reads --color.', '', '## Solution', 'Rename the flag.', '',
-  '## Outcome', 'The flag reads --colour.', '', '## Acceptance scenarios', '- 1.S1 Given the help, when it is read, then it names --colour.', '', '## Spec reference', 'none',
+/** Fix `n`'s task file, titled `title`, its one scenario `{n}.S1`. @param {number} n @param {string} title */
+const fixFile = (n, title) => [
+  `# ${title}`, '', '## Type', 'fix', '', '## Problem', 'The flag reads --color.', '', '## Solution', 'Rename the flag.', '',
+  '## Outcome', 'The flag reads --colour.', '', '## Acceptance scenarios', `- ${n}.S1 Given the help, when it is read, then it names --colour.`, '', '## Spec reference', 'none',
 ].join('\n');
 
 /** Claude's call on what the old spelling does, as the raise suites make one. */
@@ -85,6 +94,7 @@ const asked = { alias: '' };
 /** The quick-fix made from its inbox note, beside a feature, the code committed. @param {string} dir */
 function quickFix(dir) {
   createFile(dir, 'src/flag.js', 'const flag = \'color\';\n');
+  createFile(dir, '.claude/skills/leeway-implementation-process/SKILL.md', '# The build\n');
   writeState(dir, NOTE, '# The colour flag\n');
   createManifest(dir, 'other', {});
   commitAll(dir, 'init');
@@ -92,20 +102,24 @@ function quickFix(dir) {
   ok(dir, ['workunit', 'create', UNIT, 'quick-fix', '--description', DESCRIPTION, '--session-log-file', log, '--seed', `.leeway/${NOTE}`]);
 }
 
+/** Fix `n` made through the tracker's verb. @param {string} dir @param {number} n @param {string} title */
+const createFix = (dir, n, title) => ok(dir, ['task', 'create', UNIT, '1', '--file', writeState(dir, layout.cache(`fix-${n}.md`), fixFile(n, title))]);
+
 const fresh = fixtureFrom('quick-fix-', quickFix);
 
 const entered = fixtureFrom('quick-fix-entered-', (dir) => {
   quickFix(dir);
-  ok(dir, ['task', 'phase', UNIT, '1', '--title', 'the fixes']);
-  ok(dir, ['task', 'create', UNIT, '1', '--file', writeState(dir, layout.cache('fix.md'), FIX)]);
   const gone = fs.mkdtempSync(path.join(os.tmpdir(), 'quick-fix-world-'));
+  const as = { env: { LEEWAY_CONFIG_DIR: gone, CLAUDE_CODE_SESSION_ID: 'gone', TMUX: undefined, TMUX_PANE: undefined } };
   try {
-    ok(dir, ['task', 'start', UNIT, '1.1'], { env: { LEEWAY_CONFIG_DIR: gone, CLAUDE_CODE_SESSION_ID: 'gone' } });
+    okSections(dir, ['enter', 'implementation', UNIT], as);
+    ok(dir, ['presence', 'clear', UNIT, 'implementation', UNIT], as);
+    createFix(dir, 1, TITLE);
+    ok(dir, ['task', 'start', UNIT, '1.1'], as);
   } finally {
     fs.rmSync(gone, { recursive: true, force: true });
   }
   asked.alias = ledgerHelpers(() => dir).write('ask', PLACE, [], { ...MADE, text: 'Does --color still work?' }).id;
-  git(dir, ['checkout', '-q', '-b', BRANCH]);
 });
 
 let dir = ''; // the project
@@ -126,15 +140,35 @@ function position() {
   try { return JSON.parse(fs.readFileSync(path.join(config(), 'conversations', 'sess-1', 'position.json'), 'utf8')); } catch { return null; }
 }
 
+/** The state's last `count` commit subjects, newest first. @param {number} count */
+const subjects = (count) => stateGit(dir, ['log', `-${count}`, '--format=%s']).trim().split('\n');
+
+/** The branch the project's checkout has out. */
+const branchOut = () => git(dir, ['symbolic-ref', '--short', 'HEAD']).trim();
+
+/** A commit's sha. @param {string} rev */
+const sha = (rev) => git(dir, ['rev-parse', rev]).trim();
+
+/** The project's environment, the parts given set. @param {Record<string, unknown>} parts */
+function environment(parts) {
+  const project = JSON.parse(readState(dir, layout.projectManifest));
+  writeState(dir, layout.projectManifest, JSON.stringify({ ...project, environment: { ...project.environment, ...parts } }, null, 2));
+}
+
 /** A DATA section of `lines`, as the entry draws it. @param {string[]} lines */
 const data = (lines) => `=== DATA (reason from this — never display or parse the sections below) ===\n${lines.join('\n')}\n`;
 
-/** The entry's DATA, its fixes as `tasks` says them and the record where written. @param {string} tasks @param {boolean} [summary] */
-const quickFixData = (tasks, summary = false) => data([
+/** The change and its fixes, as the entry and the note read them, the record where written. @param {string} tasks @param {boolean} [summary] */
+const fixesLines = (tasks, summary = false) => [
   `change: ${DESCRIPTION}`,
   `seed: ${statePath(dir, layout.unit(UNIT, 'seeds/2026-06-03-colour-flag.md'))}`,
   `tasks: ${tasks}`,
   ...(summary ? [`summary: ${statePath(dir, layout.unit(UNIT, 'summary.md'))}`] : []),
+];
+
+/** The entry's DATA, its fixes as `tasks` says them and the record where written. @param {string} tasks @param {boolean} [summary] */
+const quickFixData = (tasks, summary = false) => data([
+  ...fixesLines(tasks, summary),
   `record: \`${ENGINE} ledger record ${UNIT}\``,
   `build log: ${statePath(dir, layout.unit(UNIT, 'build/log.md'))}`,
   `engine: \`node ${path.join(SCRIPTS, 'engine.cjs')}\` — the engine by its absolute path, for a call made from a task's worktree`,
@@ -144,39 +178,54 @@ const quickFixData = (tasks, summary = false) => data([
 const fixes = () => ok(dir, ['task', 'list', UNIT, '1']).tasks.map(({ task, title, status }) => ({ task, title, status }));
 
 describe('enter implementation <quick-fix>: its fixes, with no cut, no ready to build and no position (19.5.1, 19.5.4, E4)', () => {
-  it('a first entry writes its one phase, the fixes, into the tracker, the tracker committing it, and reads the change, no fix yet, the record\'s call, the build log and the engine', () => {
+  it('a first entry begins its fixes — their one phase written into the tracker, which commits it, and their beginning recorded on the manifest, which the entry commits — and reads the change, no fix yet, the record\'s call, the build log and the engine', () => {
     dir = fresh();
     const { res, sections } = enter();
 
-    assert.deepStrictEqual([res, lastMessage(dir), fixes()], [
+    assert.deepStrictEqual([res, subjects(2), fixes()], [
       { ok: true, phase: 'implementation', unit: UNIT, entered: true, started: true, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim() },
-      `task(${UNIT}): write phase 1`,
+      [`implementation(${UNIT}): start`, `task(${UNIT}): write phase 1`],
       [],
     ]);
+    assert.match(readManifest(dir, UNIT).fixes.began, AT);
     assert.strictEqual(sections, quickFixData('none yet'));
     assert.deepStrictEqual(position(), { name: UNIT, phase: 'implementation', topic: UNIT });
   });
 
-  it('entered again, starts nothing and commits nothing', () => {
+  it('entered again, starts nothing and commits nothing; its phase written with no beginning recorded, it records the beginning alone', () => {
     dir = fresh();
     enter();
     const before = head(dir);
-    const { res, sections } = enter();
+    const again = enter();
+    const unmoved = head(dir) === before;
+    const read = quickFixData('none yet');
+    cleanupFixture(dir);
+    dir = fresh();
+    ok(dir, ['task', 'phase', UNIT, '1', '--title', 'the fixes']);
+    const recorded = enter().res.started;
 
-    assert.deepStrictEqual([res, head(dir), sections], [{ ok: true, phase: 'implementation', unit: UNIT, entered: true, started: false }, before, quickFixData('none yet')]);
+    assert.deepStrictEqual([again.res, unmoved, again.sections], [{ ok: true, phase: 'implementation', unit: UNIT, entered: true, started: false }, true, read]);
+    assert.deepStrictEqual([recorded, subjects(2)], [true, [`implementation(${UNIT}): start`, `task(${UNIT}): write phase 1`]]);
   });
 
-  it('puts in flight the fix another conversation left in progress, reading each fix by its id, title and where it stands, and its record once written', () => {
+  it('puts in flight the fix another conversation left in progress, reading each fix by its id, title and where it stands, and its record once written; its recovery note re-reads the same', () => {
     dir = entered();
     writeState(dir, layout.unit(UNIT, 'summary.md'), `## ${TITLE}\n`);
     const { res, sections } = enter();
+    writeState(dir, layout.unit(UNIT, 'build', 'log.md'), '# The fixes\n');
+    const note = output(dir, ['conversation', 'position'], { env: env() });
 
     assert.deepStrictEqual(res, { ok: true, phase: 'implementation', unit: UNIT, entered: true, started: false });
     assert.strictEqual(sections, quickFixData(`1.1 "${TITLE}" in progress`, true));
     assert.deepStrictEqual(position(), { name: UNIT, phase: 'implementation', topic: UNIT, tasks: [{ task: '1.1', builder: null, reviewers: [] }] });
+    for (const line of [
+      path.join(dir, '.claude/skills/leeway-implementation-process/SKILL.md'), `\`${ENGINE} ledger record ${UNIT}\``, statePath(dir, `${UNIT}/build/log.md`), ...fixesLines(`1.1 "${TITLE}" in progress`, true),
+    ]) {
+      assert.ok(note.includes(line), `the note names ${line}\n${note}`);
+    }
   });
 
-  it('another session holding the checkout\'s code stops it at the code gate alone, nothing written and the fixes not written; --take enters all the same (12.7.8, 19.5.18)', () => {
+  it('another session holding the checkout\'s code stops it at the code gate alone, nothing written and the fixes not begun; --take enters all the same (12.7.8, 19.5.18)', () => {
     dir = fresh();
     okSections(dir, ['presence', 'beat', 'other', 'implementation', 'other'], { env: { ...env(), CLAUDE_CODE_SESSION_ID: 'peer', CLAUDE_PID: PEER } });
     const before = head(dir);
@@ -189,40 +238,54 @@ describe('enter implementation <quick-fix>: its fixes, with no cut, no ready to 
     assert.deepStrictEqual(taken, { ok: true, phase: 'implementation', unit: UNIT, entered: true, started: true, committed: taken.committed });
   });
 
-  it('the review\'s fix phases, asked for at the close, number past the fixes (P14)', () => {
-    dir = fresh();
-    const manifest = readManifest(dir, UNIT);
-    assert.deepStrictEqual([isFixPhase(manifest, 1), isFixPhase(manifest, 2), fixPhase(manifest, 1)], [false, true, 2]);
-  });
-
   it('the screens of a build by its cut refuse it, naming its entry', () => {
     dir = fresh();
     assert.strictEqual(refusedPristine(dir, ['render', 'build-progress', UNIT]).error, `render build-progress: ${UNIT} is a quick-fix, whose fixes have no cut to build by — they are entered at enter implementation ${UNIT}`);
   });
 });
 
-describe('the quick-fix\'s fix through the doors any task takes (19.S20, 12.9.9, 19.5.15)', () => {
-  /** The file each marking check appends to, out of the code's tree. */
-  const marker = () => path.join(dir, '.git', 'checks.log');
+describe('the review\'s fix phases, asked for at the close, number past the fixes (P14)', () => {
+  it('phase 1 is the fixes, and the first round\'s fix phase is 2', () => {
+    const manifest = { name: UNIT, work_type: 'quick-fix', status: 'in-progress', phases: {} };
+    assert.deepStrictEqual([isFixPhase(manifest, 1), isFixPhase(manifest, 2), fixPhase(manifest, 1)], [false, true, 2]);
+  });
+});
 
-  /** A check that marks its name. @param {string} name */
-  const marking = (name) => `echo ${name} >> "${marker()}"`;
-
-  /** The fix taken into this conversation and committed through the door. */
+describe('the quick-fix\'s fix, built in the project\'s own checkout (12.7.8, 19.5.3, 19.5.18)', () => {
+  /** The fix taken into this conversation and its change committed through the door. */
   function commitFix() {
     ok(dir, ['task', 'start', UNIT, '1.1'], { env: env() });
     createFile(dir, 'src/flag.js', 'const flag = \'colour\';\n');
     return ok(dir, ['commit', '--paths', 'src/flag.js', '--task', UNIT, '1.1', '-m', MESSAGE], { env: env() });
   }
 
-  it('19.S20: the commit door takes the fix in flight with no plan — its tests, then each linter, run first — the commit naming its task', () => {
+  it('the first fix\'s start put the checkout on its branch, laid from the branch it lands on; a later fix of the set is laid on the fix before it, a checkout holding changes not committed refused first, naming them, nothing moved', () => {
     dir = entered();
-    const project = JSON.parse(readState(dir, layout.projectManifest));
-    writeState(dir, layout.projectManifest, JSON.stringify({ ...project, environment: { run: { tests: marking('tests') }, linters: [{ name: 'eslint', command: marking('eslint') }] } }, null, 2));
-    const res = commitFix();
+    const laid = [branchOut(), sha(BRANCH) === sha('main')];
+    commitFix();
+    createFix(dir, 2, SECOND);
+    createFile(dir, 'src/help.js', 'const help = 1;\n');
+    const refused = refusedPristine(dir, ['task', 'start', UNIT, '1.2'], { env: env() }).error;
+    const unmoved = [branchOut(), fixes()[1].status];
+    fs.rmSync(path.join(dir, 'src/help.js'));
+    const second = ok(dir, ['task', 'start', UNIT, '1.2'], { env: env() }).branch;
 
-    assert.deepStrictEqual([res.task, res.checks, fs.readFileSync(marker(), 'utf8')], [`${UNIT}-1-1`, [{ name: 'tests', exit: 0 }, { name: 'eslint', exit: 0 }], 'tests\neslint\n']);
-    assert.strictEqual(git(dir, ['log', '-1', '--format=%B']).trim(), `${MESSAGE}\n\nLeeway-Task: ${UNIT}-1-1`);
+    assert.deepStrictEqual(laid, [BRANCH, true]);
+    assert.strictEqual(refused, `task 1.2 of ${UNIT} is built in the project's own checkout, which holds changes not committed — src/help.js — so it was not put on the fix's branch: commit them or set them aside, then start the fix again`);
+    assert.deepStrictEqual(unmoved, [BRANCH, 'open']);
+    assert.deepStrictEqual([second, branchOut(), sha(second) === sha(BRANCH)], [taskBranch({ unit: UNIT, phase: 1, n: 2 }, 'fix', SECOND), second, true]);
+  });
+
+  it('19.S20: the commit door takes the fix in flight with no plan, the tests and the linters run, the commit naming its task; one on another branch is refused, naming the fix\'s and the start that puts the checkout there (12.9.9)', () => {
+    dir = entered();
+    environment({ run: { tests: 'true' }, linters: [{ name: 'eslint', command: 'true' }] });
+    const res = commitFix();
+    git(dir, ['switch', '-q', 'main']);
+    createFile(dir, 'src/flag.js', 'const flag = \'colour!\';\n');
+    const { error } = refusedPristine(dir, ['commit', '--paths', 'src/flag.js', '--task', UNIT, '1.1', '-m', MESSAGE], { env: env() });
+
+    assert.deepStrictEqual([res.task, res.checks.map(({ name }) => name).sort(), git(dir, ['log', '-1', '--format=%B', BRANCH]).trim()], [`${UNIT}-1-1`, ['eslint', 'tests'], `${MESSAGE}\n\nLeeway-Task: ${UNIT}-1-1`]);
+    assert.strictEqual(error, `commit --task: this checkout has main out, not task 1.1 of ${UNIT}'s branch, so its commit would land on another branch — a quick-fix's fix is built in the project's own checkout, on its branch, ${BRANCH} — \`engine task start ${UNIT} 1.1\` puts the checkout on it`);
   });
 
   it('land open opens the fix\'s pull request with no account, no pair having reviewed it, and task done ends it, owing none (19.5.3, 19.5.7)', () => {
@@ -233,6 +296,19 @@ describe('the quick-fix\'s fix through the doors any task takes (19.S20, 12.9.9,
 
     assert.deepStrictEqual([opened.task, opened.branch, opened.repos.map(({ repo, base }) => ({ repo, base }))], ['1.1', BRANCH, [{ repo: '.', base: 'main' }]]);
     assert.deepStrictEqual(fixes(), [{ task: '1.1', title: TITLE, status: 'done' }]);
+  });
+
+  it('the last of the fixes closed, another done, names no mutation run, there being no phase review (15.6.3)', () => {
+    dir = entered();
+    environment({ verify: {
+      place: 'verify', feature_map: 'verify/features.md', launch: 'true', health: 'true', drive: 'verify/drive.sh', evidence: 'true', cleanup: 'true', mutation: 'true',
+      ran: { unit: UNIT, scenario: '1.S1', verdict: 'pass', commits: [{ repo: '.', commit: null }], at: '2026-06-03T09:00:00Z' },
+    } });
+    createFix(dir, 2, SECOND);
+    ok(dir, ['task', 'done', UNIT, '1.1'], { env: env() });
+    const closed = ok(dir, ['task', 'close', UNIT, '1.2', '--reason', 'the help was spelt right already'], { env: env() });
+
+    assert.deepStrictEqual([closed.task, closed.next], ['1.2', undefined]);
   });
 });
 

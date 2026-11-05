@@ -101,13 +101,12 @@
 // - In the build (12.13) — a quick-fix's aside, whose fixes Claude builds in
 //   the conversation with no builder to park, so a raise there is drawn as
 //   anywhere else and takes no `--parks` (19.5.3, E5): a raise at a build
-//   place, `<unit>.implementation`
-//   or `<unit>.review`, names the task it is for, `--parks <phase>.<n>`,
-//   where it is made in one — the tracker holding it, not yet ended
-//   (task-parks.cjs) — and takes it nowhere else; it takes no `--task`, the
-//   flag `ledger` takes there. A call made outside any task —
-//   the task writer's, the consolidation agent's, the phase review's — names
-//   none (12.5.5, 12.12.12). A proceed lands Claude's call for its task, or
+//   place, `<unit>.implementation` or `<unit>.review`, names the task it is
+//   for, `--parks <phase>.<n>`, where it is made in one — the tracker
+//   holding it, not yet ended (task-parks.cjs) — and takes it nowhere else;
+//   it takes no `--task`, the flag `ledger` takes there. A call made outside
+//   any task — the task writer's, the consolidation agent's, the phase
+//   review's — names none (12.5.5, 12.12.12). A proceed lands Claude's call for its task, or
 //   for none. One that asks, and a fact (16.3.8), which always asks and
 //   never meets the decision point, draw nothing and seal nothing in the
 //   conversation: each parks its task (12.13.2, 12.13.9), or, with none,

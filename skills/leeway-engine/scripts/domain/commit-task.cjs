@@ -19,7 +19,10 @@
 //   laid out for it from anywhere else, naming the worktree; and, from a
 //   checkout on a branch other than the task's, any task, naming the
 //   worktree that has its branch out, so no task's commit lands on another
-//   branch. A task with none recorded commits from where its branch is out.
+//   branch. A task with none recorded commits from where its branch is out
+//   — a quick-fix's fix from the project's own checkout, on its branch, a
+//   commit on any other naming that branch and the start that puts the
+//   checkout there (fix-branch.cjs).
 // - The project's checks run before the commit (15.8.3): its tests,
 //   `environment.run.tests`, then each of its linters, `environment.linters`
 //   (environment.cjs), in that order, each by `sh -c` in the code root of the
@@ -53,6 +56,9 @@ const { manifestOf } = require('./ledger-units.cjs');
 const { tasksInFlight, taskAt } = require('./conversation.cjs');
 const { taskOfBranch } = require('./landing-names.cjs');
 const { taskWorktree } = require('./landing-git.cjs');
+const { fixWayOn } = require('./fix-branch.cjs');
+const { quickFixBuild, FIXES_PHASE } = require('./derivations.cjs');
+const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { parseShownTask, shownTask, taskId, taskName } = require('./task-id.cjs');
 const { isBugfix, doorGate } = require('./bug-proven.cjs');
 const environment = require('./environment.cjs');
@@ -109,26 +115,34 @@ function fromItsWorktree(session, cwd, ref, worktree) {
   if (worktree !== undefined && owner === null) {
     throw new Error(`commit --task: ${taskName(ref)} is built in its worktree at ${worktree}, and its branch is checked out there alone — commit its work from there`);
   }
-  refuseOtherBranch(codeRoot(cwd), ref);
+  refuseOtherBranch(cwd, ref);
   return ref;
 }
 
 /**
  * Refuse a commit of the task from a checkout on a branch other than the
  * task's, naming the worktree that has the task's branch out — or, where
- * none has, the verb that lays one out. A detached HEAD and the state
- * branch are the door's own to refuse (engine.cjs).
- * @param {string} root the calling checkout's code root @param {TaskRef} ref
+ * none has, the verb that lays one out; a quick-fix's fix, built in the
+ * project's own checkout, naming its branch and the start that puts the
+ * checkout there (fix-branch.cjs). A detached HEAD and the state branch are
+ * the door's own to refuse (engine.cjs).
+ * @param {string} cwd @param {TaskRef} ref
  */
-function refuseOtherBranch(root, ref) {
+function refuseOtherBranch(cwd, ref) {
+  const root = codeRoot(cwd);
   const branch = tryGit(root, ['symbolic-ref', '-q', '--short', 'HEAD'])?.trim();
   const own = branch === undefined ? null : taskOfBranch(ref.unit, branch);
   if (branch === undefined || branch === STATE_BRANCH || (own !== null && own.phase === ref.phase && own.n === ref.n)) return;
+  throw new Error(`commit --task: this checkout has ${branch} out, not ${taskName(ref)}'s branch, so its commit would land on another branch — ${wayOn(cwd, root, ref)}`);
+}
+
+/** Where the task's commit is made instead (`refuseOtherBranch`). @param {string} cwd @param {string} root @param {TaskRef} ref */
+function wayOn(cwd, root, ref) {
+  if (quickFixBuild(loadWorkUnitManifest(cwd, ref.unit)) && ref.phase === FIXES_PHASE.number) return fixWayOn(root, ref);
   const holder = taskWorktree(root, ref);
-  const where = holder === undefined
+  return holder === undefined
     ? `no worktree has it out — \`engine task worktree ${ref.unit} ${shownTask(ref)}\` lays one out, from a worktree of Claude Code's isolation`
     : `commit it from ${holder.path}, where its branch is checked out`;
-  throw new Error(`commit --task: this checkout has ${branch} out, not ${taskName(ref)}'s branch, so its commit would land on another branch — ${where}`);
 }
 
 /** The unit's task a shown id names; refused where it does not read as one. @param {string} unit @param {string} given */

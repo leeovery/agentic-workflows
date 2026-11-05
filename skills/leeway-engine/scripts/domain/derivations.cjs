@@ -91,6 +91,16 @@ function quickFixBuild(manifest) {
 }
 
 /**
+ * Whether a quick-fix's fixes have begun: its entry's record, on its
+ * manifest, of their phase written (19.5.4), read so the tracker need not
+ * be.
+ * @param {Record<string, any>} manifest
+ */
+function fixesBegun(manifest) {
+  return isObject(manifest.fixes);
+}
+
+/**
  * How many phases the unit's build holds of its own, the review phase's fix
  * phases numbered on past them (P14): its cut's, or a quick-fix's one.
  * @param {Record<string, any>} manifest
@@ -150,11 +160,22 @@ function buildPlaceStatus(manifest, phase) {
 }
 
 /**
+ * Where a quick-fix's implementation stands, read from its own record:
+ * in progress once its fixes have begun, completed with the unit.
+ * @param {Record<string, any>} manifest @returns {'in-progress'|'completed'|null}
+ */
+function fixesStatus(manifest) {
+  if (manifest.status === 'completed') return 'completed';
+  return fixesBegun(manifest) ? 'in-progress' : null;
+}
+
+/**
  * A phase's status over its live items. The one spec a unit writes keeps no
  * items: it reads completed once its build has begun, in progress while its
  * `spec.md` is written — the state's to say, so the caller says it
  * (spec-standing.cjs) — and none before. A build by the cut reads its build
- * and its review phase off its own records (`buildPlaceStatus`). A unit
+ * and its review phase off its own records (`buildPlaceStatus`), and a
+ * quick-fix its implementation off its own (`fixesStatus`). A unit
  * whose building began under the old spec keeps that spec's items, which
  * are read alone.
  * @param {Record<string, any>} manifest @param {string} phase @param {boolean} [specWritten]
@@ -162,6 +183,7 @@ function buildPlaceStatus(manifest, phase) {
  */
 function phaseStatus(manifest, phase, specWritten = false) {
   if (BUILD_PHASES.includes(phase) && buildByCut(manifest)) return buildPlaceStatus(manifest, /** @type {'implementation'|'review'} */ (phase));
+  if (phase === 'implementation' && quickFixBuild(manifest)) return fixesStatus(manifest);
   const p = (manifest.phases || {})[phase] || {};
   const keys = p.items && typeof p.items === 'object' ? Object.keys(p.items) : [];
   if (keys.length > 0) {
@@ -1289,6 +1311,7 @@ module.exports = {
   buildRefusal,
   FIXES_PHASE,
   quickFixBuild,
+  fixesBegun,
   buildLength,
   buildPlaceStatus,
   phaseStatus,

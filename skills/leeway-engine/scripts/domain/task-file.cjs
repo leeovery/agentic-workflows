@@ -10,12 +10,13 @@
 // missing a field, holding one twice or empty, holding a heading the template
 // lacks, typed outside the kinds, or titled over more than one line, is
 // refused, every fault named at once. A quick-fix's task references no spec,
-// its unit having none: its spec reference is `none` (19.5.5). A title is
-// one line wherever the engine takes one, a phase's too: no character that
-// breaks a line anywhere in it, the task file's own line ending aside. A
-// verb of another kind reads a task's fields, its spec reference, its
-// acceptance scenarios and the criteria they hold, from its text as the
-// tracker holds it.
+// its unit having none: its spec reference is `none` (19.5.5); and, there
+// being no spec to number them, fix 1.n names its scenarios n.S1, n.S2 and
+// on, so each fix owns its runs. A title is one line wherever the engine
+// takes one, a phase's too: no character that breaks a line anywhere in it,
+// the task file's own line ending aside. A verb of another kind reads a
+// task's fields, its spec reference, its acceptance scenarios and the
+// criteria they hold, from its text as the tracker holds it.
 // ---------------------------------------------------------------------------
 
 const { BULLET, listItems } = require('./list-items.cjs');
@@ -156,6 +157,11 @@ function namesScenario(text, scenario) {
   return new RegExp(`(?<![\\w.])${scenario.replace('.', '\\.')}(?!\\w)`).test(text);
 }
 
+/** The scenario ids a task's acceptance scenarios name, `N.Sk`, each once, in the order named. @param {string} text */
+function scenarioIds(text) {
+  return [...new Set([...scenariosOf(text).matchAll(/(?<![\w.])[1-9][0-9]*\.S[1-9][0-9]*(?!\w)/g)].map(([id]) => id))];
+}
+
 /** Whether a task's acceptance scenarios hold a scenario, by its id. @param {string} text the task's, as the tracker holds it @param {string} scenario */
 function holdsScenario(text, scenario) {
   return namesScenario(scenariosOf(text), scenario);
@@ -166,4 +172,4 @@ function criterionWords(criterion) {
   return criterion.replace(/^\d+\.S\d+\s+/, '') || criterion;
 }
 
-module.exports = { FIELDS, TASK_TYPES, NO_SPEC, breaksLine, readTaskText, fieldOf, specReferenceOf, scenariosOf, criteriaTexts, criteriaOf, namesScenario, holdsScenario, criterionWords };
+module.exports = { FIELDS, TASK_TYPES, NO_SPEC, breaksLine, readTaskText, fieldOf, specReferenceOf, scenariosOf, scenarioIds, criteriaTexts, criteriaOf, namesScenario, holdsScenario, criterionWords };

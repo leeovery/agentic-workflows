@@ -99,8 +99,6 @@ const { earlierRecord, earlierReads } = require('./earlier-record.cjs');
 
 /** @typedef {import('./topic-standing.cjs').Standing} Standing */
 
-/** A start's commit, as the response gives it. @typedef {{committed: string|null, note?: string, warnings?: string[]}} Committed */
-
 /**
  * What a row reads from once it is entered: where the entry is, whether
  * this entry started it, and what a read of the ledger said on the way.
@@ -129,11 +127,11 @@ const { earlierRecord, earlierReads } = require('./earlier-record.cjs');
  * conversation arrives, before it reads, for a row that closes anything;
  * and the question it puts where something of its own holds it beyond its
  * place, drawn whole, for a row that has such a hold. A start that commits
- * what it writes itself — through the tracker's verbs, which commit their
- * own writes (task-verbs.cjs) — answers that commit, at a row that takes no
- * move. A row may hand a unit to an arm of its own, where its work type is
- * built by another rule — the build's, a quick-fix's (build-entry.cjs) —
- * the arm entering at the row's level.
+ * a write of its own through the tracker's verbs, which commit their own
+ * (task-verbs.cjs), answers what that commit warned of. A row may hand a
+ * unit to an arm of its own, where its work type is built by another rule
+ * — the build's, a quick-fix's (build-entry.cjs) — the arm entering at the
+ * row's level.
  * @typedef {object} Entry
  * @property {'topic'|'unit'} level
  * @property {boolean} [product]
@@ -141,7 +139,7 @@ const { earlierRecord, earlierReads } = require('./earlier-record.cjs');
  * @property {(at: Standing) => string|null} standing
  * @property {(at: Standing, ways: HeldWays) => string|null} [held]
  * @property {(at: Standing) => boolean} unstarted
- * @property {(cwd: string, unit: string, topic?: string) => Committed|void} start
+ * @property {(cwd: string, unit: string, topic?: string) => string[]|void} start
  * @property {(at: Entering) => string[]} questions
  * @property {(at: Entering) => Line[]} reads
  * @property {(at: Entering) => string} [log]
@@ -390,37 +388,28 @@ function heldAt(cwd, phase, unit, place) {
 /**
  * Start what the row starts, and leave where a level move leaves, committing
  * both in one hold of the writer lock: the response's commit fields. The
- * start commits the manifest it wrote, or answers the commit it made itself,
- * and the move the logs leaving wrote, a topic's sitting among them; every
- * log changed rides along.
+ * start commits the manifest it wrote, and the move the logs leaving wrote,
+ * a topic's sitting among them; every log changed rides along — a start's
+ * own commit's warnings, where it made one, among the response's.
  * @param {string} cwd @param {Entry} entry @param {Entering} at @param {Held} held @param {Departure|null} departure
- * @returns {Committed}
+ * @returns {{committed: string|null, note?: string, warnings?: string[]}}
  */
 function settle(cwd, entry, at, held, departure) {
   const { phase, unit, topic, started } = at;
+  /** @type {string[]} */
+  const warnings = [];
   const message = departure !== null
     ? `${phase}(${unit}): carried on from ${departure.line}`
     : topic === undefined ? `${phase}(${unit}): start` : `${phase}(${unit}): start ${topic}`;
-  return held.lock(() => {
-    const own = started ? entry.start(cwd, unit, topic) : undefined;
+  const outcome = held.lock(() => {
+    if (started) warnings.push(...(entry.start(cwd, unit, topic) ?? []));
     departure?.leave(statePath(cwd, /** @type {NonNullable<Entry['log']>} */ (entry.log)(at)), unit);
-    return own ?? committedState(cwd, [...(started ? [held.manifest] : []), ...(departure?.logs ?? [])], message, held.retry);
+    return commitStateTail(cwd, [...(started ? [held.manifest] : []), ...(departure?.logs ?? [])], message, warnings);
   });
-}
-
-/**
- * The state commit of what the entry wrote, as the response gives it.
- * @param {string} cwd @param {string[]} paths state-relative @param {string} message @param {string} retry
- * @returns {Committed}
- */
-function committedState(cwd, paths, message, retry) {
-  /** @type {string[]} */
-  const warnings = [];
-  const outcome = commitStateTail(cwd, paths, message, warnings);
-  /** @type {Committed} */
+  /** @type {{committed: string|null, note?: string, warnings?: string[]}} */
   const result = { committed: outcome.committed };
   if (warnings.length > 0) result.warnings = warnings;
-  noteCommitOutcome(result, outcome, retry);
+  noteCommitOutcome(result, outcome, held.retry);
   return result;
 }
 

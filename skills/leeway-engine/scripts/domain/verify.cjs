@@ -103,9 +103,9 @@
 //   phase's tip in each repository holding its work (`cachedSurvivors`,
 //   brief-records.cjs), so the tool runs once a review, outside any lock.
 //
-// A quick-fix has no cut: its run and its setup take a scenario a task of
-// its fixes not closed holds among its acceptance scenarios (F2), and
-// refuse any other.
+// A quick-fix has no cut: its run and its setup take a scenario its fix
+// owns, n.Sk of fix 1.n, not closed, among that fix's acceptance scenarios
+// (F2), and refuse any other.
 //
 // Each refuses, opening on its command and recording nothing: a unit the
 // project lacks; no verify setup recorded, naming `verify setup`, for the
@@ -220,15 +220,17 @@ function recordedSetup(cwd, unit) {
 
 /**
  * Refuses a scenario that is none of the unit's cut — for a quick-fix,
- * which has no cut, none of its fixes' own, the acceptance scenarios of a
- * task of its fixes not closed (F2).
+ * which has no cut, none its fix owns: n.Sk, of the acceptance scenarios of
+ * fix 1.n, not closed (F2).
  * @param {string} cwd @param {Record<string, any>} manifest @param {string} unit @param {string} scenario
  */
 function assertScenario(cwd, manifest, unit, scenario) {
   if (quickFixBuild(manifest)) {
-    const fixes = withStateLock(stateRoot(cwd), () => trackedPhase(cwd, unit, FIXES_PHASE.number).tasks ?? []);
-    if (SCENARIO.test(scenario) && fixes.some((task) => task.status !== 'closed' && holdsScenario(task.text, scenario))) return;
-    throw new Error(`${scenario} is no acceptance scenario of a fix of ${unit} — each fix's task names its own: engine task show ${unit} ${FIXES_PHASE.number}.<n>`);
+    const owner = SCENARIO.test(scenario) ? Number(scenario.split('.')[0]) : null;
+    const fixes = owner === null ? [] : withStateLock(stateRoot(cwd), () => trackedPhase(cwd, unit, FIXES_PHASE.number).tasks ?? []);
+    const fix = fixes.find((task) => task.ref.n === owner);
+    if (fix !== undefined && fix.status !== 'closed' && holdsScenario(fix.text, scenario)) return;
+    throw new Error(`${scenario} is no acceptance scenario of a fix of ${unit} — fix ${FIXES_PHASE.number}.n names its own, n.S1 and on: engine task show ${unit} ${FIXES_PHASE.number}.<n>`);
   }
   if (!SCENARIO.test(scenario) || !cutPhases(manifest).some((phase) => phase.scenarios.includes(scenario))) {
     throw new Error(`${scenario} is no scenario of ${unit}'s cut — engine manifest get ${unit} cut lists them`);

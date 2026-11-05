@@ -8,7 +8,7 @@
 // the checkout as clean as they found it, its drive an executable script under
 // its place run with plain arguments, never one placed under `.leeway/`
 // (15.S1, 15.S2, 15.S17); `verify run` runs a scenario of the cut — a
-// quick-fix's, which has no cut, one a fix's task still standing names (F2) —
+// quick-fix's, which has no cut, one its fix owns, n.Sk of fix 1.n (F2) —
 // through the setup's parts in the calling checkout, clean, and records the
 // verdict the drive's script wrote, never Claude's, with its text evidence, its
 // recordings in the cache under their hash, each repository's HEAD it ran
@@ -378,25 +378,26 @@ describe('verify run: a scenario run and its run recorded (15.4.1, 15.4.2, 15.4.
     assert.deepStrictEqual(partsRan(dir), []);
   });
 
-  it('F2: a quick-fix, having no cut, runs a scenario one of its fixes\' tasks names, recorded as any run is; one only a closed fix names, or none does, is refused — by verify setup as well — nothing run', () => {
+  it('F2: a quick-fix, having no cut, runs a scenario its fix owns — n.Sk of fix 1.n — each fix\'s runs its own, recorded as any run is; one its fix closed, or no fix, owns is refused — by verify setup as well — nothing run', () => {
     createManifest(dir, 'typo', { work_type: 'quick-fix' });
     commitAll(dir, 'a quick-fix');
     ok(dir, ['task', 'phase', 'typo', '1', '--title', 'the fixes']);
-    for (const scenario of ['1.S1', '1.S2']) ok(dir, ['task', 'create', 'typo', '1', '--file', writeState(dir, layout.cache('fix.md'), fixTask(scenario))]);
-    ok(dir, ['task', 'close', 'typo', '1.2', '--reason', 'the flag was spelt right already']);
+    for (const scenario of ['1.S1', '2.S1', '3.S1']) ok(dir, ['task', 'create', 'typo', '1', '--file', writeState(dir, layout.cache('fix.md'), fixTask(scenario))]);
+    ok(dir, ['task', 'close', 'typo', '1.3', '--reason', 'the flag was spelt right already']);
     steering(dir, 'verdict', 'pass\n');
 
     const refused = [
+      refusedPristine(dir, ['verify', 'run', 'typo', '3.S1']).error,
       refusedPristine(dir, ['verify', 'run', 'typo', '1.S2']).error,
-      refusedPristine(dir, ['verify', 'run', 'typo', '1.S3']).error,
-      refusedPristine(dir, ['verify', 'setup', 'typo', '--file', setupFile(dir, SETUP), '--scenario', '1.S3']).error,
+      refusedPristine(dir, ['verify', 'run', 'typo', '4.S1']).error,
+      refusedPristine(dir, ['verify', 'setup', 'typo', '--file', setupFile(dir, SETUP), '--scenario', '1.S2']).error,
     ];
     const ran = partsRan(dir);
-    const res = ok(dir, ['verify', 'run', 'typo', '1.S1']);
+    const runs = ['1.S1', '2.S1'].map((scenario) => ok(dir, ['verify', 'run', 'typo', scenario]).run);
 
-    const notAFix = (/** @type {string} */ scenario) => `${scenario} is no acceptance scenario of a fix of typo — each fix's task names its own: engine task show typo 1.<n>`;
-    assert.deepStrictEqual(refused, [`verify run: ${notAFix('1.S2')}`, `verify run: ${notAFix('1.S3')}`, `verify setup: ${notAFix('1.S3')}`]);
-    assert.deepStrictEqual([ran, res.run, res.verdict, partsRan(dir)], [[], layout.run('typo', '1.S1', '001'), 'pass', fiveParts('1.S1', dir)]);
+    const notAFix = (/** @type {string} */ scenario) => `${scenario} is no acceptance scenario of a fix of typo — fix 1.n names its own, n.S1 and on: engine task show typo 1.<n>`;
+    assert.deepStrictEqual(refused, [`verify run: ${notAFix('3.S1')}`, `verify run: ${notAFix('1.S2')}`, `verify run: ${notAFix('4.S1')}`, `verify setup: ${notAFix('1.S2')}`]);
+    assert.deepStrictEqual([ran, runs, partsRan(dir)], [[], [layout.run('typo', '1.S1', '001'), layout.run('typo', '2.S1', '001')], [...fiveParts('1.S1', dir), ...fiveParts('2.S1', dir)]]);
   });
 
   it('before a setup is recorded, verify run and verify mutants refuse, naming verify setup', () => {
