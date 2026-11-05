@@ -12,9 +12,11 @@
 //   (investigation-log.cjs, `openInvestigation`); the log's root cause and
 //   its fix each resting on one of the unit's current entries, the fix the
 //   answer of the fix direction's question (`huntEntries`); both validations
-//   run and taken in since the entry each validates was made — the root
-//   cause's for the root cause, the fix's for the fix — so one replaced
-//   since is validated again (19.4.7, agent-state.cjs `takenInFor`); no
+//   run and taken in since what each validates was made — the root cause's
+//   since the root cause, the fix's since the fix and the root cause it is
+//   checked against (26.4.10) — so either replaced since is validated again
+//   (19.4.7, agent-state.cjs `validationFor`), one dispatched since and not
+//   yet taken in named by where it stands, never dispatched again; no
 //   question of the person's open at the place, no row of its map standing
 //   open; and no mail waiting in the topic's mailbox.
 // - Claude's recap of the hunt, `{"hunt": "<one paragraph>"}`, is staged in
@@ -47,7 +49,7 @@ const { readShown } = require('./ledger-read.cjs');
 const { verdictAsked } = require('./ledger-verdicts.cjs');
 const { withUnitEntries } = require('./unit-entries.cjs');
 const { mailboxDepth, topicTitle } = require('./derivations.cjs');
-const { takenInFor } = require('./agent-state.cjs');
+const { validationFor } = require('./agent-state.cjs');
 const { huntOf, huntEntries, openInvestigation } = require('./investigation-log.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { phaseSkill } = require('./handoff.cjs');
@@ -70,11 +72,28 @@ const SURFACE_USAGE = 'render conclude <bugfix> [--file <recap.json>]';
 /** Where the recap is staged, in the topic's cache. @param {string} cwd @param {string} unit */
 const stagedFile = (cwd, unit) => statePath(cwd, '.cache', unit, PHASE, unit, 'conclude.json');
 
-/** Each validation, the entry of the hunt it is taken in for, and how a refusal names it. */
+/**
+ * Each validation, the entry of the hunt it validates, the entries it is
+ * taken in since — the fix's checked against the root cause it rests on, so
+ * a root cause replaced voids it (26.4.10) — and how a refusal names them.
+ * @type {ReadonlyArray<{kind: string, of: 'rootCause'|'fix', since: ReadonlyArray<'rootCause'|'fix'>, what: string, logged: string}>}
+ */
 const VALIDATIONS = Object.freeze([
-  { kind: 'root-cause-validation', of: 'rootCause', what: 'root cause' },
-  { kind: 'fix-validation', of: 'fix', what: 'fix' },
+  { kind: 'root-cause-validation', of: 'rootCause', since: ['rootCause'], what: 'root cause', logged: 'it was logged' },
+  { kind: 'fix-validation', of: 'fix', since: ['rootCause', 'fix'], what: 'fix', logged: 'it, or the root cause it rests on, was logged' },
 ]);
+
+/**
+ * A validation dispatched and still to be taken in, said as its way on by
+ * where it stands. @type {Readonly<Record<string, (unit: string, id: string) => string>>}
+ */
+const WAITING = Object.freeze({
+  running: (unit, id) => `${id} is still running — the conclude waits for its report`,
+  lost: (unit, id) => `${id} was lost with the process that dispatched it — engine agent incorporate ${unit} ${PHASE} ${unit} ${id} abandons it, and another is dispatched`,
+  landed: (unit, id) => `${id}'s report is in — engine agent scan ${unit} ${PHASE} ${unit} reads it in, then engine agent ack ${unit} ${PHASE} ${unit} ${id} with its findings, or --clean`,
+  pending: (unit, id) => `${id}'s report is in — engine agent ack ${unit} ${PHASE} ${unit} ${id} with its findings, or --clean`,
+  acknowledged: (unit, id) => `${id}'s findings are acknowledged — once each is acted on, engine agent incorporate ${unit} ${PHASE} ${unit} ${id} takes it in`,
+});
 
 /** An entry the hunt rests on, refused where it rests on none. @template {Rested} T @param {T|{fault: string}} entry @returns {T} */
 function rested(entry) {
@@ -83,13 +102,19 @@ function rested(entry) {
 }
 
 /**
- * The validation of `kind` not yet taken in for `entry`, refused with the
- * way on: dispatched, briefed and taken in.
- * @param {string} cwd @param {string} unit @param {UnitView} view @param {{kind: string, what: string}} validation @param {Rested} entry
+ * The validation not yet taken in since the entries it rests on were made,
+ * refused with the way on: the one dispatched since, by where it stands,
+ * or, where none was, its dispatch, its brief and its report taken in.
+ * @param {string} cwd @param {string} unit @param {UnitView} view
+ * @param {(typeof VALIDATIONS)[number]} validation @param {{rootCause: Rested, fix: Rested}} rests
  */
-function assertValidated(cwd, unit, { folded }, { kind, what }, entry) {
-  if (takenInFor(cwd, unit, kind, folded.facts, folded.facts.get(entry.id)?.place.number ?? Infinity)) return;
-  throw new Error(`the ${what} ${entry.short} has not been validated since it was logged — both validations always run: engine agent dispatch ${unit} ${PHASE} ${unit} --kind ${kind}, its brief engine brief ${kind} ${unit} --agent <id>, and its report taken in`);
+function assertValidated(cwd, unit, { folded }, { kind, of, since, what, logged }, rests) {
+  const line = Math.max(...since.map((at) => folded.facts.get(rests[at].id)?.place.number ?? Infinity));
+  const validation = validationFor(cwd, unit, kind, folded.facts, line);
+  if (validation?.stands === 'taken-in') return;
+  const named = `the ${what} ${rests[of].short}`;
+  if (validation !== null) throw new Error(`${named} is being validated — ${WAITING[validation.stands](unit, validation.id)}`);
+  throw new Error(`${named} has not been validated since ${logged} — both validations always run: engine agent dispatch ${unit} ${PHASE} ${unit} --kind ${kind}, its brief engine brief ${kind} ${unit} --agent <id>, and its report taken in`);
 }
 
 /** Refused while a question of the person's is open at the place. @param {string} unit @param {UnitView} view */
@@ -112,7 +137,7 @@ function closing(cwd, unit, said, warnings) {
   return withUnitEntries(cwd, unit, warnings, (view) => {
     const entries = huntEntries(unit, view, hunt);
     const rests = { rootCause: rested(entries.rootCause), fix: rested(entries.fix) };
-    for (const validation of VALIDATIONS) assertValidated(cwd, unit, view, validation, rests[/** @type {'rootCause'|'fix'} */ (validation.of)]);
+    for (const validation of VALIDATIONS) assertValidated(cwd, unit, view, validation, rests);
     assertQuestionsClosed(unit, view);
     const waiting = mailboxDepth(stateRoot(cwd), unit, unit);
     if (waiting > 0) throw new Error(`${waiting} message(s) wait in its mailbox — raise and answer each first: engine topic mailbox ${unit} ${unit}`);

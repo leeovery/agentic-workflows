@@ -21,8 +21,9 @@
 // conclude gate, `render conclude`, a verdict owed asked first, and its yes,
 // `investigation conclude`, standing only once the root cause and the fix
 // rest on current entries, both validated since, nothing of the person's
-// open and no mail waiting, which completes the item, stamps its close and
-// hands off into the spec (19.S10, 19.S34, 24.S17, 16.10.5).
+// open and no mail waiting, which completes the item, stamps its close,
+// releases its place and hands off into the spec (19.S10, 19.S15, 19.S34,
+// 24.S17, 16.10.5).
 //
 // Layer: verb. World, built once and copied: a bugfix, `crash`, from two
 // seeds, with its brief and discovery's log, not yet started; a bugfix,
@@ -750,7 +751,10 @@ describe('the conclude — a learned process gate, and its yes (19.4.23, 24.1.2)
     assert.deepStrictEqual(run(['gate', 'conclude gate', '--pick', 'y']).next, { kind: 'engine', argv: ['investigation', 'conclude', RIPE] });
   });
 
-  it('24.S17: the yes completes the investigation, stamps its close and commits it, the log riding along, and hands off into the spec; the investigation is concluded, and its spec opens', () => {
+  it('24.S17, 19.S15: the yes completes the investigation, stamps its close and commits it, the log riding along, releases its place and hands off into the spec, whose entry reads the investigation and whose writer\'s brief draws the root cause, the fix and each rule the fix keeps — never the spec\'s own', () => {
+    run(['enter', 'investigation', RIPE]);
+    const held = () => run(['presence', 'scan', RIPE]).sessions.map(({ phase, topic }) => `${phase} ${topic}`);
+    assert.deepStrictEqual(held(), [`investigation ${RIPE}`]);
     conclude();
     writeState(dir, layout.topic(RIPE, RIPE, 'log.md'), `${readState(dir, layout.topic(RIPE, RIPE, 'log.md'))}\nThe conversation's last words.\n`);
 
@@ -763,6 +767,7 @@ describe('the conclude — a learned process gate, and its yes (19.4.23, 24.1.2)
     assert.strictEqual(lastMessage(dir), `investigation(${RIPE}): conclude`);
     assert.strictEqual(stateGit(dir, ['status', '--porcelain']).trim(), '', 'the log rode along');
     assert.strictEqual(fs.existsSync(stagedRecap()), false, 'the staged recap goes');
+    assert.deepStrictEqual(held(), [], 'the conclude releases the investigation\'s place');
     assert.strictEqual(refused(['enter', 'investigation', RIPE]), `the topic "${RIPE}" is concluded — its work goes on in specification, from the start menu, and a message sent to it reopens it`);
     const { sections } = drawn(['enter', 'specification', RIPE]);
     assert.deepStrictEqual(sections.split('\n').filter((line) => /^(record|topic log): /.test(line)), [
@@ -770,11 +775,9 @@ describe('the conclude — a learned process gate, and its yes (19.4.23, 24.1.2)
       `record: \`${ENGINE} ledger record ${RIPE}\``,
       `topic log: ${at(layout.topic(RIPE, RIPE, 'log.md'))}`,
     ], 'the spec reads the investigation\'s record and its log (19.4.15, 11.1.6)');
-  });
-
-  it('19.S15: the spec writer\'s brief for a bugfix draws its investigation: the root cause, the fix, and each rule the fix keeps', () => {
-    conclude();
-    run(['investigation', 'conclude', RIPE]);
+    const { write } = ledgerHelpers(() => dir);
+    const gap = write('ask', `${RIPE}.specification`, [], { ...CLAUDE, text: 'How many saves does restore keep?' }, env()).id;
+    write('decide', `${RIPE}.specification`, ['--answers', gap], { ...PERSON, text: 'Three saves.', why: 'Enough to fall back on.' }, env());
 
     const { id } = run(['brief', 'spec-writer', RIPE]);
 
@@ -786,20 +789,37 @@ describe('the conclude — a learned process gate, and its yes (19.4.23, 24.1.2)
     ].join('\n'));
   });
 
-  it('a root cause replaced after its validation is validated again before the conclude stands, and so is a fix; a validation in flight, or closed unread, is not taken in (19.4.7)', () => {
+  it('a root cause replaced is validated again, and so is the fix checked against it, kept or replaced; one dispatched since and not yet taken in is named where it stands, never dispatched again, and one of the other kind, or closed unread, never counts (19.4.7, 26.4.10)', () => {
+    const store = `${RIPE} investigation ${RIPE}`;
+    /** The refusal of what has not been validated since it was logged. @param {string} what @param {string} short @param {string} kind @param {string} logged */
+    const unvalidated = (what, short, kind, logged) => `render conclude: the ${what} ${short} has not been validated since ${logged} — both validations always run: engine agent dispatch ${store} --kind ${kind}, its brief engine brief ${kind} ${RIPE} --agent <id>, and its report taken in`;
+    /** The refusal of what is being validated, by where its validation stands. @param {string} what @param {string} short @param {string} stands */
+    const being = (what, short, stands) => `render conclude: the ${what} ${short} is being validated — ${stands}`;
+    const fixSince = 'it, or the root cause it rests on, was logged';
     const rootCause = wrote('replace', ['--replaces', ripe.rootCause, '--reason', 'was-wrong'], { ...CLAUDE, drops: ['the whole truth'], text: 'A save trusts a capture taken mid-shutdown.', why: 'The trace showed it.' });
     ok(dir, ['investigation-log', 'root-cause', RIPE, '--entry', rootCause]);
-    const unvalidated = `render conclude: the root cause ${rootCause} has not been validated since it was logged — both validations always run: engine agent dispatch ${RIPE} investigation ${RIPE} --kind root-cause-validation, its brief engine brief root-cause-validation ${RIPE} --agent <id>, and its report taken in`;
-    assert.strictEqual(concludeRefused(), unvalidated);
-    const inFlight = run(['agent', 'dispatch', RIPE, 'investigation', RIPE, '--kind', 'root-cause-validation']).id;
-    assert.strictEqual(concludeRefused(), unvalidated, 'in flight');
-    run(['agent', 'incorporate', RIPE, 'investigation', RIPE, inFlight]);
-    assert.strictEqual(concludeRefused(), unvalidated, 'closed unread');
-    validated(dir, RIPE, 'root-cause-validation', env());
+    assert.strictEqual(concludeRefused(), unvalidated('root cause', rootCause, 'root-cause-validation', 'it was logged'));
+
+    const row = run(['agent', 'dispatch', RIPE, 'investigation', RIPE, '--kind', 'root-cause-validation']);
+    assert.strictEqual(concludeRefused(), being('root cause', rootCause, `${row.id} is still running — the conclude waits for its report`));
+    fs.writeFileSync(row.file, `# Validation — ${row.id}\n\n## Summary\n\nIt holds, but for one path.\n\n## Findings\n\n### F1: A reboot\n\nA reboot saves before the capture.\n`);
+    assert.strictEqual(concludeRefused(), being('root cause', rootCause, `${row.id}'s report is in — engine agent scan ${store} reads it in, then engine agent ack ${store} ${row.id} with its findings, or --clean`));
+    run(['agent', 'scan', RIPE, 'investigation', RIPE]);
+    assert.strictEqual(concludeRefused(), being('root cause', rootCause, `${row.id}'s report is in — engine agent ack ${store} ${row.id} with its findings, or --clean`));
+    run(['agent', 'ack', RIPE, 'investigation', RIPE, row.id, '--findings', 'F1']);
+    assert.strictEqual(concludeRefused(), being('root cause', rootCause, `${row.id}'s findings are acknowledged — once each is acted on, engine agent incorporate ${store} ${row.id} takes it in`));
+    run(['agent', 'incorporate', RIPE, 'investigation', RIPE, row.id]);
+    assert.strictEqual(concludeRefused(), unvalidated('fix', ripe.fix, 'fix-validation', fixSince), 'the fix kept was validated against the root cause replaced');
+
+    const lost = ok(dir, ['agent', 'dispatch', RIPE, 'investigation', RIPE, '--kind', 'fix-validation'], { env: { ...env(), CLAUDE_PID: GONE } }).id;
+    assert.strictEqual(concludeRefused(), being('fix', ripe.fix, `${lost} was lost with the process that dispatched it — engine agent incorporate ${store} ${lost} abandons it, and another is dispatched`));
+    run(['agent', 'incorporate', RIPE, 'investigation', RIPE, lost]);
+    assert.strictEqual(concludeRefused(), unvalidated('fix', ripe.fix, 'fix-validation', fixSince), 'closed unread');
+    validated(dir, RIPE, 'fix-validation', env());
     conclude();
 
     const fix = wrote('replace', ['--replaces', ripe.fix, '--reason', 'changed-mind'], { ...CLAUDE, drops: ['over a full one'], text: 'Keep the last few saves, and restore from the newest with sessions in it.', why: 'A save gone wrong falls back.' });
-    assert.strictEqual(concludeRefused(), `render conclude: the fix ${fix} has not been validated since it was logged — both validations always run: engine agent dispatch ${RIPE} investigation ${RIPE} --kind fix-validation, its brief engine brief fix-validation ${RIPE} --agent <id>, and its report taken in`);
+    assert.strictEqual(concludeRefused(), unvalidated('fix', fix, 'fix-validation', fixSince));
     validated(dir, RIPE, 'fix-validation', env());
     assert.match(conclude(), /^FIX DIRECTION\n {2}Keep the last few saves, and restore from the newest with\n {2}sessions in it\.$/m);
   });

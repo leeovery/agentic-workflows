@@ -208,6 +208,9 @@ function derivationRows(dir) {
   }
 }
 
+/** Rows in the order they were dispatched. @param {any} a @param {any} b */
+const byDispatch = (a, b) => String(a.created).localeCompare(String(b.created)) || a.id.localeCompare(b.id);
+
 /**
  * A row that delivered — findings recorded, or its report on disk. An
  * abandoned row closed by the dead-session arm never produced one.
@@ -268,7 +271,7 @@ function completedReviewCycles(cwd, workUnit, topic) {
 function anchorReviewRow(dir) {
   return derivationRows(dir)
     .filter((r) => REVIEWING_KINDS.includes(r.kind) && reportBacked(r, dir))
-    .sort((a, b) => String(a.created).localeCompare(String(b.created)) || a.id.localeCompare(b.id))
+    .sort(byDispatch)
     .pop() || null;
 }
 
@@ -359,16 +362,26 @@ function gapReviewSince(cwd, workUnit, topic) {
 }
 
 /**
- * Whether a validation of `kind` at the bugfix's investigation was taken in
- * for the entry at `line` of the ledger: one dispatched after it, its mark
- * at or past that line, reported and incorporated. Read without promoting or
- * saving anything, tolerant of the store.
+ * Where a validation of `kind` at the bugfix's investigation stands for
+ * what was made at `line` of the ledger, by the rows dispatched since — their
+ * mark at or past that line: `taken-in` where one reported and was
+ * incorporated; else the latest still to be, by where it stands — in flight
+ * (`inFlightStanding`), its report scanned in (`pending`), or acknowledged
+ * with findings it has not yet been incorporated past; null where none was
+ * dispatched since. Read without promoting or saving anything, tolerant of
+ * the store.
  * @param {string} cwd @param {string} workUnit @param {string} kind
  * @param {import('./ledger-moves.cjs').Facts} facts @param {number} line
+ * @returns {{id: string, stands: 'taken-in'|'landed'|'running'|'lost'|'pending'|'acknowledged'}|null}
  */
-function takenInFor(cwd, workUnit, kind, facts, line) {
+function validationFor(cwd, workUnit, kind, facts, line) {
   const dir = agentDir(cwd, workUnit, 'investigation', workUnit);
-  return derivationRows(dir).some((row) => row.kind === kind && row.status === 'incorporated' && lineOf(facts, row.ledger_mark) >= line && reportBacked(row, dir));
+  const since = derivationRows(dir).filter((row) => row.kind === kind && lineOf(facts, row.ledger_mark) >= line).sort(byDispatch);
+  const taken = since.find((row) => row.status === 'incorporated' && reportBacked(row, dir));
+  if (taken !== undefined) return { id: taken.id, stands: 'taken-in' };
+  const waiting = since.filter((row) => row.status !== 'incorporated').at(-1);
+  if (waiting === undefined) return null;
+  return { id: waiting.id, stands: waiting.status === 'in-flight' ? inFlightStanding(cwd, workUnit)(waiting) : waiting.status };
 }
 
 /**
@@ -620,7 +633,7 @@ function agentsLeft(cwd, workUnit, phase, topic) {
   const left = { landed: [], lost: [] };
   const untaken = derivationRows(dir)
     .filter((row) => row.status === 'in-flight' || row.status === 'pending')
-    .sort((a, b) => String(a.created).localeCompare(String(b.created)) || a.id.localeCompare(b.id));
+    .sort(byDispatch);
   for (const row of untaken) {
     const alive = ownerAlive(row, startOf);
     if (alive && !ownsRow(row)) continue;
@@ -642,7 +655,7 @@ function runningAgents(cwd, workUnit, phase, topic) {
   const standing = inFlightStanding(cwd, workUnit);
   return derivationRows(agentDir(cwd, workUnit, phase, topic))
     .filter((row) => row.status === 'in-flight' && standing(row) === 'running')
-    .sort((a, b) => String(a.created).localeCompare(String(b.created)) || a.id.localeCompare(b.id))
+    .sort(byDispatch)
     .map(({ id, kind }) => ({ id, kind }));
 }
 
@@ -989,7 +1002,7 @@ const takenIn = (row) => Array.isArray(row.report_findings);
 /** A unit's spec reviews, in dispatch order. @param {string} cwd @param {string} workUnit */
 const specReviewRows = (cwd, workUnit) => derivationRows(agentDir(cwd, workUnit, UNIT_PHASE, workUnit))
   .filter((row) => row.kind === 'spec-review')
-  .sort((a, b) => String(a.created).localeCompare(String(b.created)) || a.id.localeCompare(b.id));
+  .sort(byDispatch);
 
 /**
  * The unit's review passes whose report was taken in, in the order they
@@ -1069,7 +1082,7 @@ module.exports = {
   inFlightStandings,
   latestReview,
   gapReviewSince,
-  takenInFor,
+  validationFor,
   dispatchedRows,
   bindQuestion,
   bindSpec,

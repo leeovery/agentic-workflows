@@ -811,7 +811,10 @@ function runInvestigationLog(call, argv) {
 function runInvestigation(call, argv) {
   try {
     const { opts, positional } = parseArgs(argv);
-    respond(call, runInvestigationVerb(call.cwd, positional, opts));
+    const answer = runInvestigationVerb(call.cwd, positional, opts);
+    // The conclude releases the investigation's slot, as a conclusion does.
+    clearQuietly(call.cwd, positional[1], 'investigation', positional[1]);
+    respond(call, answer);
   } catch (err) {
     failJson(call, err);
   }

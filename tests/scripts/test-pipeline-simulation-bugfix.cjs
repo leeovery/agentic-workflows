@@ -27,16 +27,10 @@ const { startMenu } = require(path.join(ROOT, 'skills/leeway-engine/scripts/doma
 const { workUnitStatus } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/workunit.cjs'));
 const { drawLabel } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
 const {
-  Sim, startUnit, handoff, answerGate, placeIn, landed, linearMenu, linearPick, backToStart, startNew, specToBuild,
+  Sim, startUnit, enterEntry, handoff, answerGate, placeIn, landed, linearMenu, linearPick, backToStart, startNew, specToBuild,
 } = require('./pipeline-world.cjs');
 
 const CLAUDE = Object.freeze({ by: 'claude', who_moved_whom: 'none' });
-
-/** The investigation entered in a fresh conversation, as a handoff or a menu's pick lands on it. @param {import('./pipeline-world.cjs').Sim} sim @param {string} wu */
-function entered(sim, wu) {
-  sim.handOver();
-  assert.strictEqual(sim.run(['enter', 'investigation', wu]).entered, true);
-}
 
 /** Claude's recap of the hunt, staged for the conclude gate. @param {import('./pipeline-world.cjs').Sim} sim */
 const recap = (sim) => sim.write('.leeway/.cache/scratch/recap.json', { hunt: 'Two hypotheses; the save wrote a null on every crash, and nothing checked it.' });
@@ -68,7 +62,7 @@ async function hunted(sim, wu) {
   const at = `${wu}.investigation.${wu}`;
   const log = (/** @type {string} */ kind, /** @type {string[]} */ args) => sim.run(['investigation-log', kind, wu, ...args]);
   const ledger = (/** @type {string} */ verb, /** @type {string[]} */ flags, /** @type {object} */ content) => sim.run(['ledger', verb, at, ...flags], null, JSON.stringify(content)).id;
-  entered(sim, wu);
+  enterEntry(sim, wu, 'investigation', wu);
   log('symptom', ['--text', 'The app crashes when I save']);
   log('hypothesis', ['--title', 'The save writes a null']);
   log('hypothesis', ['--title', 'The disk is full']);
@@ -169,7 +163,7 @@ describe('pipeline simulation: bugfix', () => {
     assert.strictEqual(startRow(), 'Continue "Crash Fix" — *bugfix, investigation (in-progress)*', 'the answered mailbox retires the cue');
     assert.strictEqual(bugfixUnit().mail_phases, undefined);
     sim.refuses(['enter', 'specification', wu], /^crash-fix's spec waits until its investigation concludes/);
-    entered(sim, wu);
+    enterEntry(sim, wu, 'investigation', wu);
     concluded(sim, wu);
 
     // The spec, entered at the unit — its route naming no topic — through its
