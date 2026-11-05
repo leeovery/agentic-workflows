@@ -23,6 +23,7 @@ const assert = require('node:assert');
 const { ok, writeState, readState, layout } = require('./engine-harness.cjs');
 const { EPIC, SESSION, useGatesWorld, gatesHelpers } = require('./discovery-gates-world.cjs');
 const { SESSION_ID } = require('./ledger-world.cjs');
+const { fixture, misfits, emptyLists, standingOn } = require('./board-world.cjs');
 
 const PRODUCT = 'product';
 
@@ -91,6 +92,17 @@ describe('discovery on the board (20.11)', () => {
       },
       banner: { name: 'Fumi', state: 'needs', facts: [fact('epic'), fact('discovery'), fact('2 topics on the map'), fact('the map waits on you', true)] },
     });
+  });
+
+  it('S1: while approve the map waits, it stands on every view that reads the epic — its tab\'s discovery waiting on the person, the map listed under what waits with its topics and parks; All work\'s epic in discovery with its topics on the map, counted — as the banner has it', () => {
+    staged();
+
+    assert.deepStrictEqual(standingOn(board, EPIC), {
+      tab: { now: 'discovery', state: 'waits', words: '2 topics', waiting: ['map approve-the-map'] },
+      all: { phase: 'discovery', standing: '2 topics on the map', waiting: 1, total: 1 },
+      banner: { state: 'needs', flagged: ['the map waits on you'] },
+    });
+    assert.deepStrictEqual(board(['--tab', 'unit']).view.waiting, [{ kind: 'map', id: 'approve-the-map', text: '2 topics in this order, and 1 to the roadmap' }]);
   });
 
   it('20.11.2: a topic of the staged map opens on its brief\'s draft, at its place on the map, by its sections, one with nothing in it left out; one the map lacks is unavailable, saying why', () => {
@@ -236,5 +248,30 @@ describe('discovery on the board (20.11)', () => {
     assert.deepStrictEqual(view.units.filter(({ unit }) => unit === EPIC).map(({ type, phase, standing, session }) => ({ type, phase, standing, session })), [
       { type: 'epic', phase: 'discussion', standing: '0 of 2 topics decided', session: 'this' },
     ]);
+  });
+});
+
+describe('the views the mod draws, shaped as the engine answers them (N8)', () => {
+  /** Where a fixture and the engine's answer part, and each list either holds no entry of. @param {any} held @param {any} view */
+  const fits = (held, view) => ({ misfits: misfits(held, view), fixture: emptyLists(held), engine: emptyLists(view) });
+  const FITS = { misfits: [], fixture: [], engine: [] };
+
+  it('discovery while approve the map waits, with what it parks, the directions not taken, the person\'s views and the spikes', async () => {
+    for (const slug of ['frame', 'sync']) ok(dir(), ['asset', 'spike', EPIC, slug]);
+    logged(['not-taken', EPIC, '--direction', 'The Mac App Store', '--why', 'the private Spaces APIs — an automatic rejection']);
+    logged(['view', EPIC, '--text', 'Clean, well-structured, beautiful, and it just works']);
+    logged(['spike', EPIC, '001-frame', '--tool', 'Paper', '--link', 'https://paper.design/f/1', '--showed', 'Luminous glass — reads at a glance']);
+    staged();
+
+    assert.deepStrictEqual(fits(await fixture('board-discovery.mjs'), board().view), FITS);
+  });
+
+  it('a topic not started, its brief by its sections with the messages waiting for it', async () => {
+    staged();
+    run(answer('approve the map', 'y'));
+    writeState(dir(), '.cache/tour.md', '# The tour opens first\n\nIt bears on you.\n');
+    ok(dir(), ['topic', 'send', EPIC, 'note-model', '--from', 'sharing', '--content', '.leeway/.cache/tour.md', '--slug', 'tour'], { env: SESSION });
+
+    assert.deepStrictEqual(fits(await fixture('board-brief.mjs'), board(['--page', 'topic:note-model']).view), FITS);
   });
 });

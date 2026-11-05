@@ -3,39 +3,10 @@ import { describe, expect, test, tier } from 'claude-code/testing'
 import { COLOUR, RUNNING_FRAMES } from '../hooks/draw.ts'
 import type { View } from '../hooks/model.ts'
 import { EXPERIMENT, EXPERIMENT_REPORT } from '../hooks/views/experiment.ts'
-import { block, drawn, markOf } from './board-text.ts'
+import { block, drawn, markOf } from './drawing.ts'
+import E1 from './fixtures/board-experiment.mjs'
 
 tier('user')
-
-/** Fumi's E1, as §20.13 draws it, 26 of its 40 runs in. */
-const E1: View = {
-  kind: 'experiment',
-  unit: 'fumi',
-  title: 'Fumi',
-  type: 'epic',
-  id: 'E1',
-  question: 'What does a real fumi cost at launch?',
-  topic: 'scale-and-performance',
-  topic_title: 'Scale and performance',
-  status: 'running',
-  approved: '2026-09-02',
-  verdict: null,
-  reason: null,
-  problem: 'Measured so far: sixteen bare NSWindows created, placed one per Space and shown non-activating in 242 ms total.',
-  design: [
-    { heading: 'Question', text: '- Measures the time from launch to the last fumi shown on its Space' },
-    { heading: 'Setup', text: '- 20 cold launches of 16 bare windows: the floor, again\n- 20 cold launches of 25 real fumis, the top of your open set (~20–25)' },
-    {
-      heading: 'Decision rule',
-      text: '- The rule: if the 25th real fumi is on screen in under 1 second, eager restore stands as decided; at 1 second or more, placing fumis beyond the active Space lazily is open again.',
-    },
-  ],
-  runs: [
-    { condition: '16 bare windows', of: 20, done: 20, median: 0.24, unit: 's' },
-    { condition: '25 real fumis', of: 20, done: 6, median: 0.67, unit: 's' },
-  ],
-  report: false,
-}
 
 describe('an experiment on the board (20.13)', () => {
   test('20.S21: This session in an experiment running is §20.13\'s drawing at 64 columns: the question, the design frozen at approval with its rule, each condition\'s runs and median so far, and the topic that waits on it', () => {

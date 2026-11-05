@@ -21,7 +21,9 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
+const fs = require('fs');
 const { ok, readState, writeState, readManifest, layout } = require('./engine-harness.cjs');
+const { fixture, misfits, emptyLists, standingOn } = require('./board-world.cjs');
 const { ledgerHelpers } = require('./ledger-world.cjs');
 const {
   UNIT, SESSION_ID, SESSION, MADE, PERSON, AT_SPEC, LANED, OWNER, STORE, made, useSpecReviewWorld, specReviewHelpers,
@@ -217,6 +219,8 @@ describe('a specification on the board (20.9)', () => {
     const asked = askedAs(first, 'Is a refund ever split?');
     write('decide', AT_SPEC, ['--answers', asked], { ...PERSON, given: 'own', text: 'Never split.', why: 'A refund returns the whole charge.' });
     writeSpec(spec({ instant: '2.1.2 Refunds are instant, always.' }));
+    // A commit is dated to the second: the land waits for the next one, so it stands after the first pass, dated to the millisecond.
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1000 - (Date.now() % 1000));
     land();
     const second = dispatchReview();
     issued(['spec-reviewer', UNIT, '--agent', second.id]);
@@ -326,16 +330,51 @@ describe('a specification on the board (20.9)', () => {
     ]);
   });
 
-  it('N1: ready to build\'s yes waits on the person wherever what waits is counted — All work\'s unit and its total, the epic\'s page standing it ready, and a feature\'s tab listing it under what waits (20.16, 20.15.1, 20.8.2)', () => {
+  it('S1: a gap waiting stands on every view that reads the unit — the epic\'s DEFINITION waiting on the person\'s answer, All work\'s count and total — as the banner has it (20.16, 20.8.2, 20.2.4)', () => {
+    askedAs(lanedPass(), 'Is a refund ever split?');
+
+    assert.deepStrictEqual(standingOn(board, UNIT), {
+      tab: { now: 'specification', spec: 'asking', build: 'waits', waiting: [] },
+      all: { phase: 'specification', standing: '2 of 2 topics decided', waiting: 1, total: 1 },
+      banner: { state: 'needs', flagged: ['1 waiting on you'] },
+    });
+  });
+
+  it('S1, N1: ready to build\'s yes stands on every view that reads the unit — the epic\'s DEFINITION waiting on it, All work\'s count and total, no other unit counted — as the banner has it (20.16, 20.8.2, 20.2.4)', () => {
     landed();
     cleanPass();
-    const all = board(['--tab', 'all']).view;
-    const epic = board(['--tab', 'unit']).view;
-    writeState(dir(), layout.manifest(UNIT), JSON.stringify({ ...readManifest(dir(), UNIT), work_type: 'feature' }));
-    const tab = board(['--tab', 'unit']).view;
 
-    assert.deepStrictEqual([all.units.map(({ unit, waiting }) => [unit, waiting]), all.waiting, epic.spec, tab.waiting], [
-      [['billing', 0], [UNIT, 1]], 1, { state: 'ready', session: 'this' }, [{ kind: 'ready', id: 'ready-to-build', text: '' }],
+    assert.deepStrictEqual([standingOn(board, UNIT), board(['--tab', 'all']).view.units.map(({ unit, waiting }) => [unit, waiting])], [
+      {
+        tab: { now: 'specification', spec: 'ready', build: 'waits', waiting: [] },
+        all: { phase: 'specification', standing: '2 of 2 topics decided', waiting: 1, total: 1 },
+        banner: { state: 'needs', flagged: ['1 waiting on you'] },
+      },
+      [['billing', 0], [UNIT, 1]],
     ]);
+  });
+});
+
+describe('the views the mod draws, shaped as the engine answers them (N8)', () => {
+  it('the specification with its sections and the passes that changed them, a pass that found a gap still waiting, Claude\'s calls since and the phase cut; and a pass\'s page, what it changed and each finding as it stands', async () => {
+    lanedPass();
+    writeSpec(spec({ instant: '2.1.2 Refunds are instant, always.' }));
+    land();
+    const second = dispatchReview();
+    issued(['spec-reviewer', UNIT, '--agent', second.id]);
+    reportIn(second, LANED);
+    acked(second, ['F1', 'F2']);
+    askedAs(second, 'Is a refund ever split?');
+    const cut = path.join(dir(), '.leeway', '.cache', 'cut.json');
+    fs.mkdirSync(path.dirname(cut), { recursive: true });
+    fs.writeFileSync(cut, JSON.stringify({ phases: [{ name: 'Cards', goal: 'A card is charged.', scenarios: ['1.S1'], sections: ['1'], relies_on: [] }] }));
+    ok(dir(), ['cut', UNIT, '--file', cut]);
+    const fits = (/** @type {any} */ held, /** @type {any} */ view) => ({ misfits: misfits(held, view), fixture: emptyLists(held), engine: emptyLists(view) });
+    const FITS = { misfits: [], fixture: [], engine: [] };
+
+    assert.deepStrictEqual(
+      [fits(await fixture('board-spec.mjs'), board().view), fits(await fixture('board-pass.mjs'), board(['--page', 'pass:1']).view)],
+      [FITS, FITS],
+    );
   });
 });

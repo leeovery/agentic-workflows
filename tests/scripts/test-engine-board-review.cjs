@@ -26,7 +26,7 @@ const {
   UNIT, SESSION_ID, EVERY, RECEIPT, FOUND, FAILING, useWorld, env, enter, inStep, reportText, reported, named, recorded, issued, fixPhaseWritten, cutUnmerged, fixBranch, fixBuilt, fixParked, reviewCall, filed, firstRoundReady, firstRoundFailed, secondRoundReady, commitFile, ok, writeState, statePath, git,
 } = require('./review-world.cjs');
 const { withEnv, treeSnapshot, head: stateHead, holdLock, lockAttempts, layout } = require('./engine-harness.cjs');
-const { fixture, misfits } = require('./board-world.cjs');
+const { fixture, misfits, standingOn } = require('./board-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
@@ -177,7 +177,7 @@ describe('a round recorded (20.10.1, 20.10.2)', () => {
       ['running', 'round 1 fails'],
       ['running', 'round 2 reading'],
     ]);
-    assert.deepStrictEqual(board(['--tab', 'unit']).view.phases.slice(2), [
+    assert.deepStrictEqual(board(['--tab', 'unit']).view.phases.slice(2).map(({ phase, state, words }) => ({ phase, state, words })), [
       { phase: 'specification', state: 'complete', words: '2 sections · 2 build phases' },
       { phase: 'build', state: 'complete', words: '4 of 4 tasks done' },
       { phase: 'review', state: 'running', words: 'round 2' },
@@ -313,6 +313,42 @@ describe('a question its fix tasks wait on (20.5.3, 20.2.4, S1)', () => {
   });
 });
 
+describe('where the review stands on every view that reads it (S1)', () => {
+  it('a failing round\'s fix tasks building: the tab\'s review says so as the banner does, and nothing waits on the person', () => {
+    firstRoundFailed();
+
+    assert.deepStrictEqual(standingOn(board, UNIT), {
+      tab: { now: 'review', state: 'running', words: 'round 1 fails · fix tasks building', waiting: [] },
+      all: { phase: 'review', standing: '', waiting: 0, total: 0 },
+      banner: { state: 'running', flagged: [] },
+    });
+  });
+
+  it('a question parking the only fix task: the tab\'s review stopped, its fix tasks not said to build, the question waiting there, All work counting it', async () => {
+    firstRoundFailed();
+    enter();
+    await fixParked();
+
+    assert.deepStrictEqual(standingOn(board, UNIT), {
+      tab: { now: 'review', state: 'stopped', words: 'round 1 fails', waiting: ['question Q1'] },
+      all: { phase: 'review', standing: '', waiting: 1, total: 1 },
+      banner: { state: 'needs', flagged: ['1 waiting on you'] },
+    });
+  });
+
+  it('the phase over: finish waits on the person on the tab, in WAITING ON YOU and in All work\'s count and row (D18, D37)', () => {
+    enter();
+    reported(1, EVERY);
+    recorded({ can_now: ['Pay by card.'], findings: [] });
+
+    assert.deepStrictEqual(standingOn(board, UNIT), {
+      tab: { now: 'review', state: 'waits', words: 'round 1 passes', waiting: ['finish finish'] },
+      all: { phase: 'review', standing: 'finish waits on you', waiting: 1, total: 1 },
+      banner: { state: 'needs', flagged: ['1 waiting on you'] },
+    });
+  });
+});
+
 describe('a round settled (20.10.1, 14.S15)', () => {
   it('the next round reads only the areas its fix tasks changed, every other unchanged, not read again (20.S11); a round Claude settled ends the phase settled, what went to the inbox listed by its finding, and finish waits on the person (D37)', () => {
     secondRoundReady({ '1-cards-a': ['bug: The receipt is never sent.'], '1-cards-b': ['bug: A card\'s expiry is checked nowhere.'] });
@@ -334,22 +370,6 @@ describe('a round settled (20.10.1, 14.S15)', () => {
     assert.deepStrictEqual({ round: view.round, verdict: view.verdict, finish: view.finish, inbox: view.inbox, state: banner.state, fact: banner.facts.at(-1) }, {
       round: 2, verdict: 'settled', finish: true, inbox: [{ round: 2, finding: 2, text: 'A card\'s expiry is checked nowhere.' }], state: 'needs', fact: { text: '1 waiting on you', needs: true },
     });
-  });
-});
-
-describe('the unit\'s tab in the review phase (20.15.1)', () => {
-  it('each phase says what its records hold: the spec its sections and the build phases cut, the build its tasks done, the review\'s fix tasks among them, the review its round', () => {
-    firstRoundReady();
-    recorded({ can_now: ['Pay by card.'], findings: [RECEIPT] });
-    fixBuilt(3, 1, 'Send the receipt', 'main', 'src/send.js');
-    enter();
-    named(['1-cards']);
-
-    assert.deepStrictEqual(board(['--tab', 'unit']).view.phases.slice(2), [
-      { phase: 'specification', state: 'complete', words: '2 sections · 2 build phases', on: null, session: null, page: false },
-      { phase: 'build', state: 'complete', words: '4 of 4 tasks done', on: '2026-01-01T00:00:00.000Z', session: null, page: false },
-      { phase: 'review', state: 'running', words: 'round 2', on: null, session: 'this', page: false },
-    ]);
   });
 });
 

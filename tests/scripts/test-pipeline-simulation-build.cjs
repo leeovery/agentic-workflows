@@ -19,7 +19,9 @@
 // lays the phase out at its tips wherever it is run. The phase's review,
 // its stack merged with no gate, the scratch worktree a phase reviewer died
 // in taken apart as it merges, its close; then the second phase written
-// in the same conversation, the bug held for it reaching its writer.
+// in the same conversation, the bug held for it reaching its writer. And
+// the epic stopped, its one task in flight parked on a question, as every
+// view that reads it stands it.
 //
 // Layer: simulation. World: this file's own, built once from the project
 // every scenario starts from (pipeline-world.cjs, `twoPhaseEpic`), a copy
@@ -37,6 +39,8 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const { git } = require('./engine-harness.cjs');
+const { standingOn } = require('./board-world.cjs');
+const { leaningCall } = require('./ledger-world.cjs');
 const {
   Sim, worldFrom, twoPhaseEpic, buildEntry, startPhase, writeTasks, briefOf, deadReader, laidBeside, landed, placeIn, carryOn, buildLoop, VERIFY_FILES,
 } = require('./pipeline-world.cjs');
@@ -128,5 +132,23 @@ describe('pipeline simulation: the build', () => {
     assert.deepStrictEqual(Object.fromEntries([...loop.agents].map(([role, named]) => [role, [...named]])), {
       'task-writer': ['leeway-task-writer'], builder: ['leeway-builder'], reviewer: ['leeway-reviewer'], fix: ['leeway-builder'], 'phase-review': ['leeway-reviewer'],
     }, 'the agents run as defined');
+  });
+  it('S1: an epic whose one task in flight a question parks has stopped, on its DELIVERY and on the banner alike, All work counting the question', async () => {
+    const conversation = sim.env.CLAUDE_CODE_SESSION_ID;
+    buildEntry(sim, WU);
+    sim.run(['task', 'phase', WU, '1', '--title', 'Settling']);
+    loop.brief(['task-writer', WU, '1']);
+    writeTasks(sim, WU, 1, [{ title: 'Settle an entry', scenarios: ['1.S1'] }]);
+    startPhase(sim, WU, 1);
+    sim.run(['task', 'start', WU, '1.1']);
+    const build = `${WU}.implementation`;
+    const asked = sim.run(['ledger', 'ask', build, '--task', '1.1'], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'Does a settled entry lock the ledger?' })).id;
+    await sim.runAsync(['raise', build, '--answers', asked, '--parks', '1.1'], null, JSON.stringify({ ...leaningCall('Yes.', 'No.'), question: 'Does a settled entry lock the ledger?' }));
+
+    assert.deepStrictEqual(standingOn((args) => JSON.parse(sim.read(['board', conversation, ...args])), WU), {
+      tab: { now: 'build', spec: 'complete', build: 'stopped', waiting: [] },
+      all: { phase: 'build', standing: '0 of 1 task done', waiting: 1, total: 1 },
+      banner: { state: 'needs', flagged: ['1 waiting on you'] },
+    });
   });
 });

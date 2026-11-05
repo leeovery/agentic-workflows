@@ -156,13 +156,16 @@ describe('a unit built under the old plan reads its items and waits on the migra
       'old-bugfix': 'build complete, review later',
       'dropped-feature': 'build running, review later',
     });
-    assert.deepStrictEqual(board('all').units.map(({ unit, phase }) => `${unit}: ${phase}`), [
-      'built-feature: build',
+    const all = board('all').units;
+    assert.deepStrictEqual(all.map(({ unit, phase }) => `${unit}: ${phase}`), [
+      'built-feature: review',
       'old-bugfix: review',
-      'old-epic: build',
+      'old-epic: discovery',
       'plan-feature: build',
-      'reviewed-feature: done',
+      'reviewed-feature: review',
       'reviewing-feature: review',
     ]);
+    const drawn = all.filter(({ unit }) => unit !== 'built-feature');
+    assert.deepStrictEqual(drawn.map(({ phase }) => phase), drawn.map(({ unit }) => board('unit', unit).now.phase), 'S1: All work places each unit where its tab does');
   });
 });

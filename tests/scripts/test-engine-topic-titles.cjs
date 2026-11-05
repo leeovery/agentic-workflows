@@ -326,7 +326,6 @@ describe('every screen names a topic through one helper', () => {
       'mail.cjs › topicSender › unit',
       'projections/board-all.cjs › allView › name',
       'projections/board-all.cjs › roadmapLine › from.work_unit',
-      'projections/board-all.cjs › workLine › manifest.name',
       'projections/discovery-gates.cjs › approveMapScreen › unit',
       'projections/discovery-gates.cjs › startDisplay › name',
       'projections/mail.cjs › sendReport › unit',

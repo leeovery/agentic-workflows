@@ -29,7 +29,7 @@ const {
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, QUESTIONS, CALL, taskText, buildScreensWorld, buildScreenHelpers } = require('./build-screens-world.cjs');
-const { fixture, misfits, shapeOf } = require('./board-world.cjs');
+const { fixture, misfits, shapeOf, standingOn } = require('./board-world.cjs');
 const { raiseHelpers } = require('./raise-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
@@ -273,6 +273,17 @@ describe('the build on the board (20.5)', () => {
       stopped: true,
       running: 0,
       banner: { name: 'Pay', state: 'needs', facts: [{ text: 'feature', needs: false }, { text: 'build', needs: false }, { text: 'stopped', needs: false }, { text: '1 waiting on you', needs: true }] },
+    });
+  });
+
+  it('S1: a stopped build stands so on every view that reads it — the tab\'s build stopped, its question waiting there, All work counting it — as the banner has it', async () => {
+    enterBuild();
+    await parkOn(['1.1', '1.2', '2.1']);
+
+    assert.deepStrictEqual(standingOn(board, UNIT), {
+      tab: { now: 'build', state: 'stopped', words: '0 of 4 tasks done', waiting: ['question Q1'] },
+      all: { phase: 'build', standing: '0 of 4 tasks done', waiting: 1, total: 1 },
+      banner: { state: 'needs', flagged: ['1 waiting on you'] },
     });
   });
 

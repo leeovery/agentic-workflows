@@ -2,35 +2,10 @@ import { describe, expect, test, tier } from 'claude-code/testing'
 
 import type { View } from '../hooks/model.ts'
 import { ALL } from '../hooks/views/all.ts'
-import { block, drawn } from './board-text.ts'
+import { block, drawn } from './drawing.ts'
+import MINT_WORK from './fixtures/board-all.mjs'
 
 tier('user')
-
-/** Mint's work, as §20.16 draws it, this session in its build and a topic of another unit's on the roadmap. */
-const MINT_WORK: View = {
-  kind: 'all',
-  project: 'Mint',
-  at_start: false,
-  waiting: 5,
-  units: [
-    { unit: 'token-aware-diff-sizing', title: 'Token-aware diff sizing', type: 'feature', phase: 'build', standing: '58 of 68 tasks done', waiting: 3, session: 'this' },
-    { unit: 'rate-limit-aware-publish', title: 'Rate-limit-aware publish', type: 'feature', phase: 'specification', standing: '18 sections', waiting: 2, session: 'other' },
-    { unit: 'publish-failure', title: 'Publish failure swallows gh stderr', type: 'bugfix', phase: 'investigation', standing: 'cause found, not yet confirmed', waiting: 0, session: null },
-  ],
-  roadmap: [
-    { horizon: 'Next', items: [{ title: 'Headline first release notes', from: null }, { title: 'Changelog site', from: 'Release notes overhaul' }] },
-    { horizon: 'Later', items: [{ title: 'Agent guide for running releases', from: null }] },
-  ],
-  inbox: [
-    { kind: 'idea', title: 'Mint CLI UI/UX overhaul' },
-    { kind: 'bug', title: 'Single-version regenerate prepends changelog entry at top instead of semver position' },
-    { kind: 'bug', title: 'Publish heal hint: wrong diagnosis, wrong command form' },
-  ],
-  complete: [
-    { unit: 'release-notes-overhaul', title: 'Release notes overhaul', type: 'epic' },
-    { unit: 'tag-signing', title: 'Tag signing', type: 'feature' },
-  ],
-}
 
 describe('All work (20.16)', () => {
   test('is §20.16\'s drawing at 64 columns, a unit\'s second line wrapping under its indent, a topic postponed out of an epic named with the epic, each inbox item one line', () => {

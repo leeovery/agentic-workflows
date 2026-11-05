@@ -357,30 +357,34 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * the day it started, null where its manifest holds none; where it has come
  * to; whether the session is at its menu; its topics decided of all, and how
  * many are in discussion; its topics in the map's order; the specification
- * and the build and review, each by where it stands and the session in it,
- * this one or another, else null; the topics set aside; and what happened
- * lately, newest first.
+ * — waiting on the person's answer while a gap does, and on their yes at
+ * ready to build — and the build and review — stopped where nothing can go
+ * on, or finish waiting on the person — each by where it stands and the
+ * session in it, this one or another, else null; the topics set aside; and
+ * what happened lately, newest first.
  * @typedef {{
  *   kind: 'epic', unit: string, title: string, about: string, started: string|null, now: UnitNow, at_menu: boolean,
  *   progress: {decided: number, total: number, discussing: number}, topics: TopicLine[],
- *   spec: {state: 'waits'|'running'|'ready'|'complete', session: 'this'|'other'|null},
- *   build: {state: 'waits'|'building'|'reviewing'|'complete', session: 'this'|'other'|null},
+ *   spec: {state: 'waits'|'running'|'asking'|'ready'|'complete', session: 'this'|'other'|null},
+ *   build: {state: 'waits'|'building'|'reviewing'|'stopped'|'finish'|'complete', session: 'this'|'other'|null},
  *   set_aside: {topic: string, title: string, state: 'cancelled'|'postponed', horizon: string|null}[], lately: Moment[],
  * }} EpicView
  */
 
 /**
- * A phase on a unit's tab: its name, its state, and its words — what a
+ * A phase on a unit's tab: its name, its state — the phase the unit is in
+ * stopped, or waiting on the person, as its standing has it — and its words — what a
  * phase complete or running produced, what one later waits on — empty where
  * the records say none; the day a phase complete closed, null where its
  * records keep none or it is not complete; the session in it, this one or
  * another, else null; and whether it opens on a page of its own.
- * @typedef {{phase: string, state: 'complete'|'running'|'waits'|'later', words: string, on: string|null, session: 'this'|'other'|null, page: boolean}} UnitPhase
+ * @typedef {{phase: string, state: 'complete'|'running'|'stopped'|'waits'|'later', words: string, on: string|null, session: 'this'|'other'|null, page: boolean}} UnitPhase
  */
 /**
- * What waits on the person in a unit: a question of its build, a gap of its
- * spec, or ready to build's yes, by its number or entry and its words.
- * @typedef {{kind: 'question'|'gap'|'ready', id: string, text: string}} WaitingLine
+ * What waits on the person in a unit: approve the map, with the topics it
+ * holds and what it parks; a gap of its spec, or ready to build's yes; a
+ * question of its build; or finish — by its number or entry and its words.
+ * @typedef {{kind: 'map'|'gap'|'ready'|'question'|'finish', id: string, text: string}} WaitingLine
  */
 /**
  * A unit's tab (20.15.1), and an epic's while discovery runs before any

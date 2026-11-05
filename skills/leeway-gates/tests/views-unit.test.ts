@@ -3,60 +3,11 @@ import { describe, expect, test, tier } from 'claude-code/testing'
 import { COLOUR, RUNNING_FRAMES, type Line } from '../hooks/draw.ts'
 import type { View } from '../hooks/model.ts'
 import { EPIC, PHASE, UNIT } from '../hooks/views/unit.ts'
-import { NOW, block, drawn, markOf, ownMarkOf, pressOf } from './board-text.ts'
+import { NOW, block, drawn, markOf, ownMarkOf, pressOf } from './drawing.ts'
+import FUMI, { epicTopic, decidedTopics } from './fixtures/board-epic.mjs'
+import MINT, { phase } from './fixtures/board-unit.mjs'
 
 tier('user')
-
-type Topic = { topic: string; title: string; state: string; decided: number; total: number; session: string | null; messages: number; experiment: { id: string; running: boolean } | null }
-
-const epicTopic = (title: string, state: string, more: Partial<Topic> = {}): Topic => ({
-  topic: title.toLowerCase().replaceAll(' ', '-'),
-  title,
-  state,
-  decided: 0,
-  total: 0,
-  session: null,
-  messages: 0,
-  experiment: null,
-  ...more,
-})
-
-const decidedTopics = (...titles: string[]) => titles.map(title => epicTopic(title, 'decided'))
-
-/** Fumi's page at its menu, as §20.8 draws it and the spike's LATELY has it. */
-const FUMI: View = {
-  kind: 'epic',
-  unit: 'fumi',
-  title: 'Fumi',
-  about: 'Fumi — a smarter macOS Stickies alternative: notes assigned to specific macOS Spaces',
-  started: '2026-07-17',
-  now: { phase: 'discussion', since: '2026-07-17T15:00:00' },
-  at_menu: true,
-  progress: { decided: 9, total: 15, discussing: 5 },
-  topics: [
-    ...decidedTopics('Note model', 'Storage and sync', 'Note window', 'Engine architecture', 'Space homing', 'Platform support', 'Search and retrieval', 'Status and alerts', 'Agent surface'),
-    epicTopic('Management window', 'discussing', { decided: 36, total: 36, messages: 1 }),
-    epicTopic('Onboarding and permissions', 'discussing', { decided: 11, total: 12, session: 'this', messages: 1 }),
-    epicTopic('Commercialization', 'discussing', { decided: 25, total: 25, messages: 1 }),
-    epicTopic('Licensing and trial integrity', 'discussing', { decided: 10, total: 15, session: 'other', messages: 2 }),
-    epicTopic('Support and diagnostics', 'discussing', { decided: 0, total: 6, session: 'other' }),
-    epicTopic('Build and release', 'not-started', { messages: 17 }),
-  ],
-  spec: { state: 'waits', session: null },
-  build: { state: 'waits', session: null },
-  set_aside: [
-    { topic: 'positioning-and-audience', title: 'Positioning and audience', state: 'cancelled', horizon: null },
-    { topic: 'website', title: 'Website', state: 'postponed', horizon: 'next' },
-  ],
-  lately: [
-    { kind: 'answered', at: '2026-10-21T13:10:00', topic: 'Licensing and trial integrity', detail: null, count: 8 },
-    { kind: 'answered', at: '2026-10-21T12:10:00', topic: 'Onboarding and permissions', detail: 'Management window', count: 1 },
-    { kind: 'sent', at: '2026-10-21T12:10:00', topic: 'Management window', detail: 'Onboarding and permissions' },
-    { kind: 'started', at: '2026-10-20T20:40:00', topic: 'Support and diagnostics', detail: 'discussion' },
-    { kind: 'postponed', at: '2026-10-20T20:28:00', topic: 'Website', detail: 'next' },
-    { kind: 'created', at: '2026-07-17T09:00:00', topic: null, detail: 'epic' },
-  ],
-}
 
 /** The epic's page with its stages and dates as given. */
 const fumiAt = (more: object) => ({ ...FUMI, at_menu: false, set_aside: [], lately: [], ...more }) as View
@@ -197,6 +148,20 @@ LATELY ────────────────────────�
     expect([complete[3], complete.at(-1)]).toEqual(['started 17 Jul · complete 24 Oct', '✓ Build and review · complete'])
   })
 
+  test('S1: the specification waiting on the person\'s answer, and the build stopped or finish waiting, each flagged on its stage, saying for what', () => {
+    const stages = (spec: object, build: object) => drawn(EPIC, fumiAt({ progress: { decided: 15, total: 15, discussing: 0 }, spec, build }))
+    const asking = stages({ state: 'asking', session: 'this' }, { state: 'waits', session: null })
+    const stopped = stages({ state: 'complete', session: null }, { state: 'stopped', session: 'this' })
+    const finish = stages({ state: 'complete', session: null }, { state: 'finish', session: null })
+
+    expect([asking.text.find(row => row.includes('Specification')), stopped.text.at(-1), finish.text.at(-1)]).toEqual([
+      '⚑ Specification · waits on your answer',
+      '⚑ Build and review · stopped',
+      '⚑ Build and review · finish waits on you',
+    ])
+    expect([ownMarkOf(asking.lines, 'epic:spec'), ownMarkOf(stopped.lines, 'epic:build')]).toEqual([{ text: '⚑ ', color: COLOUR.needs }, { text: '⚑ ', color: COLOUR.needs }])
+  })
+
   test('one topic is counted as one: 1 of 1 topic decided', () => {
     expect(drawn(EPIC, fumiAt({ progress: { decided: 1, total: 1, discussing: 0 }, topics: decidedTopics('Note model') })).text[4]).toBe('▰▰▰▰▰▰▰▰  1 of 1 topic decided')
   })
@@ -208,37 +173,6 @@ LATELY ────────────────────────�
     expect(writing('this')).toEqual({ text: `${RUNNING_FRAMES[0]} `, color: COLOUR.running })
   })
 })
-
-const phase = (name: string, state: string, words = '', more: object = {}) => ({ phase: name, state, words, on: null, session: null, page: false, ...more })
-
-/** Token-aware diff sizing's tab in its build, three questions waiting, as the spike draws it. */
-const MINT: View = {
-  kind: 'unit',
-  unit: 'token-aware-diff-sizing',
-  title: 'Token-aware diff sizing',
-  type: 'feature',
-  about: 'Token-aware diff sizing plus graceful handling of oversized diffs',
-  started: '2026-06-26',
-  now: { phase: 'build', since: '2026-10-19T16:00:00' },
-  at_menu: false,
-  here: true,
-  progress: { complete: 3, total: 5 },
-  waiting: [
-    { kind: 'question', id: 'Q1', text: 'If the terminal closes, should the release unwind?' },
-    { kind: 'question', id: 'Q2', text: 'When a re-merge fails, should the notes stay?' },
-  ],
-  phases: [
-    phase('discovery', 'complete', 'the seed', { on: '2026-06-26', page: true }),
-    phase('discussion', 'complete', '52 decisions', { on: '2026-10-17T12:00:00', page: true }),
-    phase('specification', 'complete', '18 sections · 8 build phases', { on: '2026-10-19T16:00:00' }),
-    phase('build', 'running', '58 of 68 tasks done', { session: 'this' }),
-    phase('review', 'later'),
-  ],
-  lately: [
-    { kind: 'raised', at: '2026-10-21T13:20:00', topic: null, detail: 'Q3' },
-    { kind: 'task-failed', at: '2026-10-21T13:12:00', topic: null, detail: '6.6' },
-  ],
-}
 
 /** WAITING ON YOU as the board's questions draw it, which are always this session's. */
 const HELD: Line[] = [
@@ -314,7 +248,7 @@ LATELY ────────────────────────�
       now: { phase: 'specification', since: '2026-10-17T12:00:00' },
       progress: { complete: 2, total: 5 },
       waiting: [{ kind: 'gap', id: 'g1', text: "The halving progress line's part count" }],
-      phases: [...(MINT.phases as object[]).slice(0, 2), phase('specification', 'running', '18 sections · 4 passes'), phase('build', 'later'), phase('review', 'later')],
+      phases: [...(MINT.phases as object[]).slice(0, 2), phase('specification', 'waits', '18 sections · 4 passes'), phase('build', 'later'), phase('review', 'later')],
     } as View
 
     expect(drawn(UNIT, specifying, { waiting: HELD }).text.slice(3, 15)).toEqual(
@@ -340,12 +274,41 @@ PHASES ────────────────────────�
       ...MINT,
       now: { phase: 'specification', since: '2026-10-17T12:00:00' },
       waiting: [{ kind: 'ready', id: 'ready-to-build', text: '' }],
-      phases: [...(MINT.phases as object[]).slice(0, 2), phase('specification', 'running', '18 sections · 8 build phases'), phase('build', 'later'), phase('review', 'later')],
+      phases: [...(MINT.phases as object[]).slice(0, 2), phase('specification', 'waits', '18 sections · 8 build phases'), phase('build', 'later'), phase('review', 'later')],
     } as View
     const { text } = drawn(UNIT, ready, { waiting: HELD })
 
     expect(text.slice(6, 8)).toEqual(['WAITING ON YOU ───────────────── 1 · asked in the conversation', '⚑ Ready to build: the outline and the phase cut, for your yes'])
     expect(text).toContain('⚑ Specification · 18 sections · 8 build phases    waits on you')
+  })
+
+  test('S1: its build stopped, flagged as stopped; its review waiting on finish, flagged, finish listed under what waits; approve the map listed with what it holds, discovery flagged', () => {
+    const at = (phases: object[], waiting: object[] = []) => drawn(UNIT, { ...MINT, here: false, waiting, phases: [...(MINT.phases as object[]).slice(0, 3), ...phases] } as View).text
+    const stopped = at([phase('build', 'stopped', '62 of 68 tasks done'), phase('review', 'later')])
+    const finish = at([phase('build', 'complete', '99 tasks done', { on: '2026-10-21T12:00:00' }), phase('review', 'waits', 'round 2')], [{ kind: 'finish', id: 'finish', text: '' }])
+    const shaping = drawn(UNIT, {
+      ...MINT,
+      type: 'epic',
+      here: false,
+      now: { phase: 'discovery', since: null },
+      waiting: [{ kind: 'map', id: 'approve-the-map', text: '12 topics in this order, and 4 to the roadmap' }],
+      phases: [phase('discovery', 'waits', '12 topics'), phase('discussion', 'later', 'once the map is approved'), phase('specification', 'later', 'once every topic is decided'), phase('build', 'later'), phase('review', 'later')],
+    } as View).text
+
+    expect(stopped).toContain('⚑ Build · 62 of 68 tasks done                          stopped')
+    expect(finish).toContain('⚑ Review · round 2                                waits on you')
+    expect(finish).toContain('⚑ Finish: the report of every round, and your verdict on each')
+    expect(shaping.slice(6, 13)).toEqual(
+      block(`
+WAITING ON YOU ───────────────── 1 · asked in the conversation
+⚑ Approve the map: 12 topics in this order, and 4 to the
+  roadmap
+
+PHASES ──────────────────────────────────────────────────────
+⚑ Discovery · 12 topics                           waits on you
+○ Discussion                          once the map is approved
+`),
+    )
   })
 
   test('in its review, the build complete on its day and the review under way', () => {

@@ -43,8 +43,8 @@ type Epic = {
   at_menu: boolean
   progress: { decided: number; total: number; discussing: number }
   topics: TopicLine[]
-  spec: Stage<'waits' | 'running' | 'ready' | 'complete'>
-  build: Stage<'waits' | 'building' | 'reviewing' | 'complete'>
+  spec: Stage<'waits' | 'running' | 'asking' | 'ready' | 'complete'>
+  build: Stage<'waits' | 'building' | 'reviewing' | 'stopped' | 'finish' | 'complete'>
   set_aside: { topic: string; title: string; state: 'cancelled' | 'postponed'; horizon: string | null }[]
   lately: Moment[]
 }
@@ -142,8 +142,20 @@ const stageLine = (key: string, mark: Part, name: string, words: Part): Line => 
 
 const DONE: Part = { text: MARK.done, color: COLOUR.done }
 const LATER: Part = { text: MARK.waiting, color: COLOUR.notStarted }
+const NEEDS: Part = { text: MARK.needs, color: COLOUR.needs }
 
-/** The specification's row: what it waits on, being written, waiting on the person's yes, or complete. */
+/** What waits on the person in a stage, in its words. */
+const STAGE_NEEDS: Readonly<Record<string, string>> = {
+  asking: 'waits on your answer',
+  ready: 'ready to build · waits on you',
+  stopped: 'stopped',
+  finish: 'finish waits on you',
+}
+
+/** A stage's row while it waits on the person: flagged, saying for what. */
+const needsLine = (key: string, name: string, state: string): Line => stageLine(key, NEEDS, name, { text: STAGE_NEEDS[state] ?? '', color: COLOUR.needs })
+
+/** The specification's row: what it waits on, being written, waiting on the person's answer or their yes, or complete. */
 function specLine({ spec, progress }: Epic, kit: Kit): Line {
   const name = 'Specification'
 
@@ -151,8 +163,8 @@ function specLine({ spec, progress }: Epic, kit: Kit): Line {
     return stageLine('epic:spec', DONE, name, { text: 'complete', color: COLOUR.secondary })
   }
 
-  if (spec.state === 'ready') {
-    return stageLine('epic:spec', { text: MARK.needs, color: COLOUR.needs }, name, { text: 'ready to build · waits on you', color: COLOUR.needs })
+  if (spec.state === 'asking' || spec.state === 'ready') {
+    return needsLine('epic:spec', name, spec.state)
   }
 
   if (spec.state === 'running') {
@@ -164,7 +176,7 @@ function specLine({ spec, progress }: Epic, kit: Kit): Line {
   return stageLine('epic:spec', LATER, name, { text: left === 0 ? 'next' : `waits until every topic is decided · ${left} to go`, color: COLOUR.notStarted })
 }
 
-/** The build and review's row: after the specification, building, in review, or complete. */
+/** The build and review's row: after the specification, building, in review, stopped, finish waiting on the person, or complete. */
 function buildLine({ build }: Epic, kit: Kit): Line {
   const name = 'Build and review'
 
@@ -174,6 +186,10 @@ function buildLine({ build }: Epic, kit: Kit): Line {
 
   if (build.state === 'complete') {
     return stageLine('epic:build', DONE, name, { text: 'complete', color: COLOUR.secondary })
+  }
+
+  if (build.state === 'stopped' || build.state === 'finish') {
+    return needsLine('epic:build', name, build.state)
   }
 
   return stageLine('epic:build', runningMark(build.session, kit), name, { text: build.state === 'building' ? 'building' : 'in review', color: COLOUR.secondary })
@@ -235,8 +251,8 @@ function epicLines(view: Epic, kit: Kit): Line[] {
   ]
 }
 
-type Phase = { phase: string; state: 'complete' | 'running' | 'waits' | 'later'; words: string; on: string | null; session: Session; page: boolean }
-type Waiting = { kind: 'question' | 'gap' | 'ready'; id: string; text: string }
+type Phase = { phase: string; state: 'complete' | 'running' | 'stopped' | 'waits' | 'later'; words: string; on: string | null; session: Session; page: boolean }
+type Waiting = { kind: 'map' | 'gap' | 'ready' | 'question' | 'finish'; id: string; text: string }
 
 type Unit = {
   unit: string
@@ -288,8 +304,8 @@ function phasePress(phase: Phase): string | undefined {
   return phase.page ? pageKey(`phase:${phase.phase}`) : undefined
 }
 
-/** A phase's row: what it produced, and where it stands — complete on its day, under way, waiting on the person, or what it comes after. */
-function phaseLine(phase: Phase, before: Phase | undefined, waits: boolean, kit: Kit): Line {
+/** A phase's row: what it produced, and where it stands — complete on its day, under way, stopped, waiting on the person, or what it comes after. */
+function phaseLine(phase: Phase, before: Phase | undefined, kit: Kit): Line {
   const name: Part[] = [{ text: ` ${phaseName(phase.phase)}`, color: COLOUR.body }, ...(phase.words === '' || phase.state === 'later' ? [] : [{ text: ` · ${phase.words}`, color: COLOUR.secondary }])]
   const press = phasePress(phase)
   const row = (mark: Part, standing: Part): Line => ({ key: `unit:phase:${phase.phase}`, parts: spread([mark, ...name], [standing], kit.width), ...(press === undefined ? {} : { press }) })
@@ -298,8 +314,8 @@ function phaseLine(phase: Phase, before: Phase | undefined, waits: boolean, kit:
     return row(DONE, { text: phase.on === null ? 'complete' : `complete ${dayOf(phase.on)}`, color: COLOUR.done })
   }
 
-  if (phase.state === 'running' && waits) {
-    return row({ text: MARK.needs, color: COLOUR.needs }, { text: 'waits on you', color: COLOUR.needs })
+  if (phase.state === 'stopped' || phase.state === 'waits') {
+    return row(NEEDS, { text: phase.state === 'stopped' ? 'stopped' : 'waits on you', color: COLOUR.needs })
   }
 
   if (phase.state === 'running') {
@@ -311,11 +327,13 @@ function phaseLine(phase: Phase, before: Phase | undefined, waits: boolean, kit:
   return row(LATER, { text: after, color: COLOUR.notStarted })
 }
 
-/** What waits on the person, by its words: a question by its number, a gap by its words, ready to build's yes. */
+/** What waits on the person, by its words: the map with what it holds, a gap by its words, ready to build's yes, a question by its number, finish. */
 const WAITING_WORDS: Readonly<Record<Waiting['kind'], (waiting: Waiting) => string>> = {
-  question: ({ id, text }) => `${id} ${text}`,
+  map: ({ text }) => `Approve the map: ${text}`,
   gap: ({ text }) => text,
   ready: () => 'Ready to build: the outline and the phase cut, for your yes',
+  question: ({ id, text }) => `${id} ${text}`,
+  finish: () => 'Finish: the report of every round, and your verdict on each call you changed',
 }
 
 /** WAITING ON YOU's count: a build's questions wait on the board, a spec's gaps and its yes are asked in the conversation. */
@@ -352,7 +370,6 @@ function waitingLines(view: Unit, kit: Kit): Line[] {
 function unitLines(view: Unit, kit: Kit): Line[] {
   const phases = phasesOf(view)
   const complete = phases.filter(({ state }) => state === 'complete').length
-  const waits = view.waiting.some(({ kind }) => kind !== 'question')
   const inPhase = SAYS_PHASE.has(view.type) && !UNNAMED.has(view.now.phase) ? ` · in ${view.now.phase}` : ''
 
   return [
@@ -363,7 +380,7 @@ function unitLines(view: Unit, kit: Kit): Line[] {
     blank('unit:head'),
     ...waitingLines(view, kit),
     heading('unit:phases', { text: 'PHASES', bold: true, color: COLOUR.sky }, [], kit.width),
-    ...phases.map((phase, at) => phaseLine(phase, phases[at - 1], waits, kit)),
+    ...phases.map((phase, at) => phaseLine(phase, phases[at - 1], kit)),
     blank('unit:phases'),
     ...latelyLines('unit:lately', view.lately, kit),
   ]

@@ -78,11 +78,10 @@ export type Line = {
  * What a view draws with beyond its model: the pane's width, whether a
  * folding section is open, and what runs — its turning mark, and its clock
  * read at the drawing's time; the drawing's time, for when a moment was;
- * and WAITING ON YOU, the questions waiting on
- * the person with where each stands in the discussion (`discuss.ts`), for a
- * view to place where its drawing has it — the session's, or a unit's own
- * a page holds, which a press queues only where they are the session's
- * unit's. What runs and what is clocked are recorded, so the pane turns and
+ * and WAITING ON YOU, the questions waiting on the person with where each
+ * stands in the discussion (`discuss.ts`), for a view to place where its
+ * drawing has it — the session's, or a unit's own a page holds, which a
+ * press queues only where they are the session's unit's. What runs and what is clocked are recorded, so the pane turns and
  * ticks only a drawing that holds them.
  */
 export type Kit = {
@@ -273,7 +272,7 @@ export function rowsOf(line: Line, width: number): number {
   return wrappedRows(line.parts.map(part => part.text).join(''), Math.max(1, width - beside)).length
 }
 
-/** A line as the pane draws it. */
+/** A line as the pane draws it: the words of one that wraps taking the room before its end button, which stands at the right. */
 export function drawLine(els: ElementTable, line: Line): RenderElement {
   const { Box, Text, Button } = els
   const words = line.parts.map(part => textOf(els, part))
@@ -283,9 +282,11 @@ export function drawLine(els: ElementTable, line: Line): RenderElement {
     children: [
       ...marksOf(line).map(mark => textOf(els, mark)),
       ...(line.lead === undefined ? [] : [buttonOf(els, line.lead)]),
-      line.press === undefined
-        ? Text({ wrap: line.wraps ? 'wrap' : 'truncate-end', children: words })
-        : Button({ key: line.press, plain: true, onPress: () => undefined, children: words }),
+      line.press !== undefined
+        ? Button({ key: line.press, plain: true, onPress: () => undefined, children: words })
+        : line.wraps === true && line.button !== undefined
+          ? Box({ flexGrow: 1, children: [Text({ wrap: 'wrap', children: words })] })
+          : Text({ wrap: line.wraps ? 'wrap' : 'truncate-end', children: words }),
       ...(line.button === undefined ? [] : [buttonOf(els, line.button)]),
     ],
   })

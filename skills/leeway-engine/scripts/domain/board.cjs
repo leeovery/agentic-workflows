@@ -47,7 +47,8 @@
 //   ready, and the task a page names — which its build's checks read too,
 //   the stop's asked of a phase's start among them; the review's change
 //   reads the tasks of its phases all ended from another copy, only where
-//   it is drawn (board-review.cjs); All work reads no other unit's tracker.
+//   it is drawn (board-review.cjs); All work reads another unit's tracker
+//   only where a round has ended its review (board-standing.cjs).
 // - Each tab is answered on its own: a view or page that cannot be drawn
 //   answers `unavailable`, saying why, the banner and the questions standing
 //   apart from it; This session's view that cannot be drawn leaves the
@@ -75,7 +76,7 @@ const { buildBegun } = require('./derivations.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { BOARD_VERSION, TABS } = require('./board-model.cjs');
 const { buildView, buildBanner, taskPage, writtenPage, roundPage, scenarioPage, evidencePage } = require('./projections/board-build.cjs');
-const { reviewView, reviewBanner, findingPage, checkPage } = require('./projections/board-review.cjs');
+const { reviewView, reviewBanner, roundWords, findingPage, checkPage } = require('./projections/board-review.cjs');
 const { discussionView, discussionBanner, entryPage, messagePage, reviewReportPage } = require('./projections/board-discussion.cjs');
 const { specView, specBanner, sectionPage, passPage, specFindingPage } = require('./projections/board-spec.cjs');
 const { discoveryView, discoveryBanner, briefPage, topicStarted, spikePage } = require('./projections/board-discovery.cjs');
@@ -194,7 +195,7 @@ function unitAt(cwd, session, place, unit, inFlight, warnings, task) {
  */
 const PHASE_VIEWS = Object.freeze({
   implementation: { read: buildView, banner: (_, view) => buildBanner(view), of: (type) => type !== 'quick-fix' },
-  review: { read: reviewView, banner: (_, view) => reviewBanner(view) },
+  review: { read: reviewView, banner: (at, view) => reviewBanner(view, roundWords(at)) },
   discussion: { read: discussionView, banner: (_, view) => discussionBanner(view) },
   specification: { read: specView, banner: (_, view) => specBanner(view) },
   discovery: { read: discoveryView, banner: (_, view) => discoveryBanner(view), of: (type) => type === 'epic' },
@@ -343,7 +344,7 @@ function boardOf(cwd, positional, opts) {
   const read = own === null || 'failed' in own ? null : own;
   const atStart = position === null || finished !== null;
   const tabView = () => {
-    if (tab === 'all' || (here === null || finished !== null) && tab === 'this') return allView(cwd, here, atStart, warnings).view;
+    if (tab === 'all' || (here === null || finished !== null) && tab === 'this') return allView(cwd, at, here, atStart).view;
     if (tab === 'unit') return unitPage(/** @type {BoardAt} */ (tabAt), tabAt === here && place.phase === null).view;
     if (own !== null && 'failed' in own) throw new Error(own.failed);
     return /** @type {Read} */ (read).view;

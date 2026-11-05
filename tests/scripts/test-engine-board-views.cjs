@@ -27,6 +27,7 @@ const { ok, output, writeState, readManifest, stateGit, layout, withFrozenClock,
 const { useDecidedWorld, decidedHelpers, writeIn, answeredIn, NOTE_MAP, NO_PAYLOAD } = require('./decided-world.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, SESSION, SESSION_ID, MADE, NOTE, SPACE } = require('./ledger-world.cjs');
+const { fixture, misfits, emptyLists } = require('./board-world.cjs');
 
 const dir = useDecidedWorld();
 const { close, staged, answer, run } = decidedHelpers(dir);
@@ -504,5 +505,61 @@ describe('other units\' pages (20.15)', () => {
       warnings: ['This session cannot be drawn — shop\'s build has not begun'],
       tab: 'unit',
     });
+  });
+});
+
+describe('the views the mod draws, shaped as the engine answers them (N8)', () => {
+  /** Where a fixture and the engine's answer part, and each list either holds no entry of. @param {any} held @param {any} view */
+  const fits = (held, view) => ({ misfits: misfits(held, view), fixture: emptyLists(held), engine: emptyLists(view) });
+  const FITS = { misfits: [], fixture: [], engine: [] };
+
+  it('a discussion with its review round, what is open, the messages each way and the calls since; the epic\'s page with a topic set aside and an intake lately; and All work with the roadmap, the inbox and a unit complete', async () => {
+    at([UNIT, 'discussion', 'note-window']);
+    ok(dir(), ['agent', 'dispatch', UNIT, 'discussion', 'note-window', '--kind', 'review', '--final'], { env: SESSION });
+    writeIn(dir(), 'ask', NOTE, [], { by: 'person', who_moved_whom: 'none', text: 'Does a note float?' });
+    sent('space-homing', 'note-window', 'Notes open on their Space');
+    sent('note-window', 'space-homing', 'The tour opens first');
+    const discussion = board().view;
+    const [delivered] = fs.readdirSync(path.join(dir(), '.leeway', UNIT, 'topics', 'space-homing', 'mail'));
+    ok(dir(), ['topic', 'answered', UNIT, 'space-homing', delivered.replace(/\.md$/, ''), '--entry', writeIn(dir(), 'ask', SPACE, [], { ...MADE, text: 'Does the tour open first?' })], { env: SESSION });
+    ok(dir(), ['topic', 'postpone', UNIT, 'space-homing', '--horizon', 'later'], { env: SESSION });
+    writeState(dir(), '.inbox/ideas/2026-10-30--fumi-stacks.md', '# Fumi stacks\n\nNotes stacked on a Space.\n');
+    createManifest(dir(), 'tag-signing', { status: 'completed' });
+    at([UNIT]);
+    const [epic, all] = [board().view, board(['--tab', 'all']).view];
+
+    assert.deepStrictEqual(
+      [fits(await fixture('board-discussion.mjs'), discussion), fits(await fixture('board-epic.mjs'), epic), fits(await fixture('board-all.mjs'), all)],
+      [FITS, FITS, FITS],
+    );
+  });
+
+  it('an experiment approved with its design and its runs by condition', async () => {
+    spawned();
+    const record = path.join(dir(), '.leeway', UNIT, 'topics', 'note-window', 'experiments', 'E1-note-open');
+    fs.writeFileSync(path.join(record, 'design.md'), '# E1: Note open\n\n## Question\n\nHow fast does a note open?\n\n## Decision rule\n\nUnder 100 ms wins.\n');
+    for (const step of ['advance', 'approve', 'advance']) ok(dir(), ['experiment', step, UNIT, 'note-window', 'E1'], { env: SESSION });
+    const tally = '.leeway/.cache/fumi/experiment/note-window/runs.json';
+    fs.mkdirSync(path.join(dir(), path.dirname(tally)), { recursive: true });
+    fs.writeFileSync(path.join(dir(), tally), JSON.stringify([{ condition: '16 bare windows', of: 2, values: [0.24, 0.26], unit: 's' }]));
+    ok(dir(), ['experiment', 'runs', UNIT, 'note-window', 'E1', '--file', tally], { env: SESSION });
+    at([UNIT, 'experiment', 'note-window']);
+
+    assert.deepStrictEqual(fits(await fixture('board-experiment.mjs'), board().view), FITS);
+  });
+
+  it('a linear unit\'s tab, its discussion decided, a gap of its spec waiting and its moments lately', async () => {
+    createManifest(dir(), 'shop', {
+      created: '2026-06-26',
+      seeds: [{ path: 'seeds/cart.md', source: 'inbox:idea', seeded_at: '2026-06-26T09:00:00Z' }],
+      phases: { discussion: { items: { shop: { status: 'completed' } } } },
+      checklists: { decided: { shop: { items: {}, closed: '2026-10-17T12:00:00.000Z' } } },
+    });
+    writeState(dir(), 'shop/seeds/cart.md', '# A cart\n\nA cart holds what the shopper picks.\n');
+    writeState(dir(), 'shop/spec.md', '# Shop\n\n## 1. Cart\n\n1.1.1 A cart holds items.\n');
+    writeIn(dir(), 'ask', 'shop.specification', [], { ...MADE, text: 'Is a cart ever shared?' });
+    stateGit(dir(), ['commit', '-q', '--allow-empty', '-m', 'discovery(shop): create work unit (feature)']);
+
+    assert.deepStrictEqual(fits(await fixture('board-unit.mjs'), board(['--tab', 'unit', '--unit', 'shop']).view), FITS);
   });
 });

@@ -258,12 +258,22 @@ function reviewView(at) {
   };
 }
 
-/** Where a recorded round stands on the banner, by its verdict; its fix tasks building only while it has not stopped. @param {ReviewView} view */
-function verdictFact({ round, verdict, fixes, stopped }) {
-  if (verdict === 'passed') return `round ${round} passes`;
-  if (verdict === 'settled') return `round ${round} settled`;
-  const building = !stopped && fixes?.round === round && fixes.tasks.some(({ state }) => state !== 'done' && state !== 'closed');
-  return building ? `round ${round} fails · fix tasks building` : `round ${round} fails`;
+/**
+ * The round shown and where it stands once recorded, as the banner and the
+ * unit's tab say it: passing, settled, or failing — its fix tasks building
+ * while any is not done and the build has not stopped; null while it is
+ * read.
+ * @param {BoardAt} at @returns {{round: number, words: string|null}}
+ */
+function roundWords(at) {
+  const standing = reviewStandingAt(at);
+  const round = shownRound(standing);
+  const record = standing.rounds[round - 1];
+  if (record === undefined) return { round, words: null };
+  if (record.passed) return { round, words: `round ${round} passes` };
+  if (record.settled !== null) return { round, words: `round ${round} settled` };
+  const building = fixesOf(record).length > 0 && standing.waiting.length > 0 && !buildView(at).view.progress.stopped;
+  return { round, words: `round ${round} fails${building ? ' · fix tasks building' : ''}` };
 }
 
 /**
@@ -271,9 +281,9 @@ function verdictFact({ round, verdict, fixes, stopped }) {
  * the person; else the type and the phase, stopped where nothing can go on,
  * the round reading or where it stands once recorded, and the questions its
  * fix tasks wait on, flagged, as the build's banner has them.
- * @param {ReviewView} view @returns {{state: 'running'|'needs', facts: {text: string, needs: boolean}[]}}
+ * @param {ReviewView} view @param {ReturnType<typeof roundWords>} shown @returns {{state: 'running'|'needs', facts: {text: string, needs: boolean}[]}}
  */
-function reviewBanner(view) {
+function reviewBanner(view, { round, words }) {
   const fact = (/** @type {string} */ text, needs = false) => ({ text, needs });
   const where = [fact(view.type), fact('review')];
   if (view.finish) return { state: 'needs', facts: [...where, fact('finish waits on you'), fact('1 waiting on you', true)] };
@@ -282,7 +292,7 @@ function reviewBanner(view) {
     facts: [
       ...where,
       ...(view.stopped ? [fact('stopped')] : []),
-      fact(view.verdict === null ? `round ${view.round} reading` : verdictFact(view)),
+      fact(words ?? `round ${round} reading`),
       ...(view.waiting.length > 0 ? [fact(`${view.waiting.length} waiting on you`, true)] : []),
     ],
   };
@@ -340,4 +350,4 @@ function checkPage(at, said, scenario) {
   return { kind: 'check', unit: at.unit, round, scenario, standing: check.standing, text: scenarioWording(at, scenario) };
 }
 
-module.exports = { reviewView, reviewBanner, findingPage, checkPage };
+module.exports = { reviewView, reviewBanner, roundWords, findingPage, checkPage };

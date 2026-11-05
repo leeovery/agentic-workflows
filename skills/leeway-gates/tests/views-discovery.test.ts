@@ -2,47 +2,11 @@ import { describe, expect, test, tier } from 'claude-code/testing'
 
 import type { View } from '../hooks/model.ts'
 import { BRIEF, DISCOVERY, SPIKE } from '../hooks/views/discovery.ts'
-import { block, drawn, pressOf } from './board-text.ts'
+import { block, drawn, pressOf } from './drawing.ts'
+import FUMI_DISCOVERY, { mapTopic } from './fixtures/board-discovery.mjs'
+import NOTE_MODEL_BRIEF from './fixtures/board-brief.mjs'
 
 tier('user')
-
-const mapTopic = (title: string, summary: string) => ({ topic: title.toLowerCase().replaceAll(' ', '-'), title, summary })
-
-/** Fumi's first discovery session, as §20.11 draws it, shaping a map of ten. */
-const FUMI_DISCOVERY: View = {
-  kind: 'discovery',
-  unit: 'fumi',
-  title: 'Fumi',
-  type: 'epic',
-  session: 1,
-  started: '2026-07-17',
-  waits: false,
-  map: [
-    mapTopic('Note model', 'What a fumi is: a Markdown body with a stable UID, an optional first-line-derived title'),
-    mapTopic('Storage and sync', 'File-based Markdown store in a user-chosen folder (local or iCloud)'),
-    mapTopic('Note window', 'The floating fumi as an on-screen object: near-frameless glass'),
-    mapTopic('Engine architecture', 'One always-on app over a local socket; note windows, menu bar'),
-    mapTopic('Space homing', 'Notes remember their macOS Space and return to it across relaunches'),
-    mapTopic('Positioning and audience', 'Positioning as a polished do-one-thing-well tool, user personas'),
-    mapTopic('Agent surface', 'The fumi CLI and MCP server over the engine socket: operations'),
-    mapTopic('Management window', 'The main app window as an organiser (browse/search/filter)'),
-    mapTopic('Onboarding and permissions', 'First-run permission wizard for the Accessibility permission'),
-    mapTopic('Commercialization', 'One-time ~$19 plus paid major upgrades, no subscription and no trial'),
-  ],
-  roadmap: [
-    { title: 'Fumi Sync, a hosted sync service', horizon: 'later' },
-    { title: 'Storage over a network: SFTP and a hosted API', horizon: 'later' },
-    { title: "A fumi's colour drawn from its tags", horizon: 'later' },
-    { title: 'A lifetime tier', horizon: 'later' },
-  ],
-  not_taken: [
-    { direction: 'The Mac App Store', why: 'the private Spaces APIs are an automatic rejection' },
-    { direction: 'Importing Stickies', why: 'a blank slate, no legacy baggage' },
-    { direction: 'A billing backend', why: 'the Merchant of Record covers checkout, tax and licences' },
-  ],
-  views: ['Clean, well-structured, beautiful, and it just works', 'Modern Swift, correctness over speed, no shortcuts'],
-  spikes: [{ spike: '001-note-window', title: 'Note window', status: 'reference', tool: 'Paper', showed: 'Luminous Liquid Glass and stronger type' }],
-}
 
 describe('discovery on the board (20.11)', () => {
   test('20.S16: This session in discovery is §20.11\'s drawing at 64 columns: the map in its order, each with its summary', () => {
@@ -136,27 +100,9 @@ YOUR VIEWS OF THE PRODUCT ──────── 2 · carried into the topics
   })
 })
 
-/** Note model's brief, as §20.11 draws it, a leaning or two of each. */
-const NOTE_MODEL_BRIEF: View = {
-  kind: 'brief',
-  unit: 'fumi',
-  topic: 'note-model',
-  title: 'Note model',
-  order: 1,
-  of: 10,
-  summary: 'What a fumi is: a Markdown body with a stable UID, an optional first-line-derived title, tags, and colour.',
-  sections: [
-    { heading: null, text: 'What discovery heard.' },
-    { heading: 'Leans', text: '- Content is Markdown — a single source of truth.\n- Identity = a stable per-note UID,\n  fixed for the note\'s life.' },
-    { heading: 'Paths not taken', text: '- RTF / rich text — predates Markdown.' },
-    { heading: 'Open questions', text: '- Tags: how they are created.' },
-  ],
-  messages: [],
-}
-
 describe('a topic\'s brief (20.11.2)', () => {
   test('20.S16: says the topic is decided in its discussion, not here, then its summary and each section of the brief by its heading', () => {
-    expect(drawn(BRIEF, NOTE_MODEL_BRIEF).text).toEqual(
+    expect(drawn(BRIEF, { ...NOTE_MODEL_BRIEF, messages: [] } as View).text).toEqual(
       block(`
 Note model · topic 1 of 10
 What discovery heard: decided in its discussion, not here
@@ -178,14 +124,14 @@ OPEN QUESTIONS ─────────────────────�
   })
 
   test('nothing on it is a decision: no mark of one, nor a section empty', () => {
-    const { text } = drawn(BRIEF, { ...NOTE_MODEL_BRIEF, sections: [{ heading: 'Leans', text: '- Plain text.' }, { heading: 'Paths not taken', text: '' }] } as View)
+    const { text } = drawn(BRIEF, { ...NOTE_MODEL_BRIEF, messages: [], sections: [{ heading: 'Leans', text: '- Plain text.' }, { heading: 'Paths not taken', text: '' }] } as View)
 
     expect(text.join('\n')).not.toMatch(/[✓◇]/)
     expect(text.filter(row => row.includes('───'))).toEqual(['LEANS ────────────────────────────────────────────────────── 1'])
   })
 
   test('D29: a topic not started or postponed, off the map, opens on its brief, the messages waiting for it beneath, each opening in full', () => {
-    const postponed = { ...NOTE_MODEL_BRIEF, order: null, sections: [], messages: [{ file: '001-tour.md', title: 'The tour opens first', from: 'Onboarding and permissions', when: '20 Oct' }] } as View
+    const postponed = { ...NOTE_MODEL_BRIEF, order: null, sections: [] } as View
     const { text, lines } = drawn(BRIEF, postponed)
 
     expect(text).toEqual([
