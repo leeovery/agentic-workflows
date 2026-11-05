@@ -108,11 +108,12 @@
 // run and the mutants; a scenario that is none of the cut's, or a phase
 // beyond it; for a run on the unfixed code, a unit but a bugfix, a scenario
 // none of phase 1's, task 1.1 not in the tracker, or not holding the
-// scenario, its branch holding no work, and in the review phase a command
-// but the build's series', or a repository the series names no commit for;
-// a setup file that does not hold one, a place under `.leeway/` (15.2.12),
-// one the checkout lacks, a place that is the code root, a drive that is no
-// script under the place; for a run or a setup, a repository of
+// scenario, its branch holding no work — in the project's own repository,
+// no commit beyond the branch it lands on — and in the review phase a
+// command but the build's series', or a repository the series names no
+// commit for; a setup file that does not hold one, a place under `.leeway/`
+// (15.2.12), one the checkout lacks, a place that is the code root, a drive
+// that is no script under the place; for a run or a setup, a repository of
 // the checkout holding an uncommitted change before the parts run, or a file
 // they left behind, naming each; a part that fails — the drive aside,
 // whose verdict is the file — naming it, its exit code and its output's last
@@ -152,7 +153,7 @@ const { holdsScenario } = require('./task-file.cjs');
 const { trackedTask, trackedPhase } = require('./task-verbs.cjs');
 const { phaseStack, repoNamed } = require('./phase-stack.cjs');
 const { taskBranch } = require('./landing-names.cjs');
-const { holdingBranch } = require('./landing-git.cjs');
+const { holdingBranch, holdsBeyond, landsOn } = require('./landing-git.cjs');
 const { layOutAt, layOutCommits, scratchTop, takeApart } = require('./project-layout.cjs');
 const { isoNow } = require('./dates.cjs');
 const { VERIFY_PARTS, SETUP_PLACES, setupFaults, verifySetup } = require('./environment.cjs');
@@ -466,11 +467,12 @@ function reproducingTask(cwd, unit, manifest, scenario) {
  * `lay` lays it at `top` (the header's): at the commits the build's series
  * ran at, in the review phase, refused for a command but the series' or a
  * repository it names no commit for; else at task 1.1's tip, refused where
- * its branch holds no work.
- * @param {string} unit @param {import('./drivers.cjs').TaskDetail} task @param {import('./runs.cjs').Series|null} series @param {string} command @param {Repo[]} repos
+ * its branch holds no work — in the project's own repository, no commit
+ * beyond the branch it lands on.
+ * @param {string} cwd @param {string} unit @param {import('./drivers.cjs').TaskDetail} task @param {import('./runs.cjs').Series|null} series @param {string} command @param {Repo[]} repos
  * @returns {(top: string) => Repo[]}
  */
-function unfixedLayout(unit, task, series, command, repos) {
+function unfixedLayout(cwd, unit, task, series, command, repos) {
   const [own] = repos;
   if (series !== null) {
     if (command !== series.command) throw new Error(`the review phase runs the test that reproduces the bug again as the build's series ran it (15.5.6): ${seriesCall(unit, series)}`);
@@ -482,8 +484,10 @@ function unfixedLayout(unit, task, series, command, repos) {
     return (top) => layOutCommits(own.path, repos, commits, top);
   }
   const branch = taskBranch(task.ref, /** @type {string} */ (task.type), task.title);
-  const { holding } = holdingBranch(unit, repos, branch);
-  if (holding.length === 0) throw new Error(`no repository of the project holds work on ${branch}, task 1.1's branch — its test is committed there through the door first (15.5.1)`);
+  const holding = holdingBranch(unit, repos, branch).holding.filter((repo) => repo.dir !== '' || holdsBeyond(repo.path, [branch], [landsOn(cwd, repo)]));
+  if (holding.length === 0) {
+    throw new Error(`no repository of the project holds a commit on ${branch}, task 1.1's branch, beyond the branch it lands on — its test is committed there through the door first: engine commit --paths <the test's files> --task ${unit} 1.1 -m "<message>" (15.5.1)`);
+  }
   return (top) => layOutAt(own.path, unit, repos, new Map(holding.map((repo) => [repo.dir, branch])), top);
 }
 
@@ -520,7 +524,7 @@ function verifyUnfixed(cwd, unit, scenario, command) {
   const task = reproducingTask(cwd, unit, manifest, scenario);
   const reviewing = buildFinished(manifest);
   const repos = projectRepos(codeRoot(cwd));
-  const lay = unfixedLayout(unit, task, reviewing ? bugRuns(cwd, unit, manifest).series : null, command, repos);
+  const lay = unfixedLayout(cwd, unit, task, reviewing ? bugRuns(cwd, unit, manifest).series : null, command, repos);
   const { checkout, commits, ran } = inScratch(repos, `unfixed-${unit}`, lay, (laid) => ({ checkout: laid[0].path, commits: headsOf(laid), ran: runsOnUnfixed(laid[0].path, command) }));
   const passedIn = ran.findIndex(({ verdict }) => verdict === 'pass') + 1;
   /** @type {string[]} */

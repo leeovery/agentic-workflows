@@ -93,7 +93,11 @@ node .claude/skills/leeway-engine/scripts/engine.cjs land open {work_unit} {task
 node .claude/skills/leeway-engine/scripts/engine.cjs land chain {work_unit} {task}
 ```
 
-`land open`, `land chain` and `task done` refuse a task with no account taken: send the builder its brief again, by SendMessage, and go on by its status. Where `land open` refuses a branch that does not descend from its chain's tip — a task built beside another that chained first — the brief again says to merge the tip back. Then end it:
+`land open`, `land chain` and `task done` refuse a task with no account taken: send the builder its brief again, by SendMessage, and go on by its status. Where `land open` refuses a branch that does not descend from its chain's tip — a task built beside another that chained first — the brief again says to merge the tip back.
+
+A bugfix's task 1.1 writes the test that reproduces the bug, and ends once that test has failed five times on the unfixed code at its tip: before ending it, run that series with the scenario and the command the task names, `verify run {work_unit} {scenario} --unfixed --test "{command}"`; a run that passes sends the test back to its builder to rework.
+
+Then end it:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs task done {work_unit} {task}

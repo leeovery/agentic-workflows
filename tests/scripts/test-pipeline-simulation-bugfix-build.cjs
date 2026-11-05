@@ -3,19 +3,21 @@
 // ---------------------------------------------------------------------------
 // The pipeline simulation's scenario of a bugfix's build, its bug proven
 // before it is fixed (15.5): a bugfix through its investigation and its
-// spec to ready to build's pick; the build, its first phase opening on the
-// test that reproduces the bug, task 1.1, the fix linked after it; that
-// test's series run on the unfixed code, five failures, before the fix's
-// commit, which the door takes, running the test as one of its checks; and
-// the review phase, whose entry reads the series and whose round 1 waits on
-// the test run on the unfixed code again, where it fails. The investigation
-// and the spec are test-pipeline-simulation-bugfix.cjs's; what the door
-// refuses, test-engine-commit-task-bugfix.cjs's.
+// spec, cut into two phases, to ready to build's pick; phase 1 opening on
+// the test that reproduces the bug, task 1.1, its series run on the unfixed
+// code before the task is done, then the fix linked after it, which the
+// door takes; phase 1 merged, every landing squashing it, and phase 2's
+// task, laid out on the branch it lands on, committing through the door,
+// built on task 1.1's work by its landing; and the review phase, whose round
+// 1 is recorded once the test has run on the unfixed code again, failing on
+// a finding, its fix task, laid out there too, committing through the door.
+// The investigation and the spec are test-pipeline-simulation-bugfix.cjs's;
+// what each verb answers and refuses, its own suite's.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
-// the skill prose makes, in prose order, and the oracle
-// (pipeline-oracle.cjs) audits the whole state after every mutation.
+// the skill prose makes, in prose order, and the oracle (pipeline-oracle.cjs)
+// audits the whole state after every mutation.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -23,15 +25,18 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const {
-  Sim, startUnit, handoffEntry, handoff, startNew, specToBuild, buildEntry, writePhaseTasks, startPhase, builders, taskBuilt, briefOf,
-  landed, placeIn, linearBuildPick, reviewNext, areaRead, testsRead, PASSED_REPORT, VERIFY_FILES,
+  Sim, startUnit, handoffEntry, handoff, startNew, specEntry, specReviewed, cutTheSpec, readyToBuild, answerGate, intoTheBuild, buildEntry, writePhaseTasks, startPhase,
+  builders, taskBuilt, landed, placeIn, linearBuildPick, reviewNext, areaRead, testsRead, PASSED_REPORT, VERIFY_FILES,
 } = require('./pipeline-world.cjs');
+
+/** @typedef {import('./pipeline-world.cjs').Sim} Sim */
 
 const WU = 'crash-fix';
 
 /** The test that reproduces the crash, run alone, failing until the fix lands its file. */
 const TEST = 'sh test/crash.sh';
-const CRASH_TEST = Object.freeze({ 'test/crash.sh': 'test -f src/fix.js\n' });
+
+const SECOND_BASKET = '## Findings\n\n- bug: the crash returns on a second basket\n  Scenario: a second basket\n\nVerdict: fail\n';
 
 /** A bugfix's investigation concluded on its root cause, the decision the spec cites written on its place (E9). @param {Sim} sim */
 function investigated(sim) {
@@ -48,11 +53,45 @@ function investigated(sim) {
   sim.run(['topic', 'complete', WU, 'investigation', WU]);
 }
 
-/** A task of the unit built in a worktree of its own, as the build's loop builds it, adding `files`. @param {Sim} sim @param {string} task @param {Record<string, string>} files @param {boolean} setup */
-function builtAlone(sim, task, files, setup) {
+/**
+ * The bugfix investigated, its spec of one area with a scenario for each
+ * phase landed and reviewed, cut into `phases` — the first holding 1.S1,
+ * each later one 1.S{k} and relying on the one before — and ready to
+ * build's yes in auto taken into the build.
+ * @param {Sim} sim @param {string[]} phases each phase's name
+ */
+function bugfixToBuild(sim, phases) {
+  investigated(sim);
+  specEntry(sim, WU, [WU]);
+  sim.run(['brief', 'spec-writer', WU]);
+  const [decision] = JSON.parse(sim.read(['ledger', 'record', WU, WU])).decisions;
+  sim.write(`.leeway/${WU}/spec.md`, [
+    `# ${WU}`, '', '## 1. The work', '', '### 1.1 As decided', '', `1.1.1 ${WU} holds as decided. [${decision.id}]`, '',
+    '## 1-S. Scenarios for §1', '', ...phases.flatMap((name, at) => [`1.S${at + 1} Given the work, when ${name.toLowerCase()} runs, then it holds as decided. (1.1.1)`, '']),
+  ].join('\n'));
+  sim.run(['spec', 'land', WU]);
+  specReviewed(sim, WU);
+  cutTheSpec(sim, WU, phases.map((name, at) => ({ name, goal: `${name} holds.`, scenarios: [`1.S${at + 1}`], sections: ['1'], relies_on: at === 0 ? [] : [at] })));
+  readyToBuild(sim, WU);
+  intoTheBuild(sim, WU, sim.run(answerGate(sim, 'ready to build', '--pick', 'a').next.argv));
+}
+
+/**
+ * A task of the unit built in a worktree of its own through the task loop,
+ * adding `files`, `ending` run before its done where given.
+ * @param {Sim} sim @param {string} task @param {Record<string, string>} files @param {boolean} setup @param {() => void} [ending]
+ */
+function builtAlone(sim, task, files, setup, ending) {
   const tree = builders.make(`agent-${task}`);
-  taskBuilt(sim, WU, task, tree, files, setup);
+  taskBuilt(sim, WU, task, tree, files, setup, { ending });
   builders.remove(sim, tree);
+}
+
+/** A phase of the unit's reviewed, its pair passing, then merged and closed. @param {Sim} sim @param {number} phase */
+function phaseMerged(sim, phase) {
+  for (const letter of ['a', 'b']) landed(placeIn(sim, sim.run(['brief', 'phase-review', WU, String(phase), '--letter', letter]), 'Where your report goes'), PASSED_REPORT);
+  sim.run(['land', 'phase', WU, String(phase)]);
+  sim.run(['checklist', 'close', 'phase-close', WU, String(phase)]);
 }
 
 describe('pipeline simulation: a bugfix\'s build', () => {
@@ -60,44 +99,40 @@ describe('pipeline simulation: a bugfix\'s build', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('the bug proven, then fixed: task 1.1 the test that reproduces it, its series five failures on the unfixed code, the fix through the door running it → round 1 of the review on the test run on the unfixed code again', () => {
-    investigated(sim);
-    specToBuild(sim, WU, [WU], 'a');
-
-    // The build: phase 1 opens on the test that reproduces the bug, task 1.1,
-    // the fix linked after it (15.5.1).
+  it('the bug proven, then fixed: task 1.1 the test that reproduces it, its series run on the unfixed code before it is done, the fix through the door; phase 1 merged by squash, phase 2\'s task through the door, built on task 1.1\'s landing → round 1 of the review recorded once the test has run on the unfixed code again, failing on a finding, its fix task through the door', () => {
+    bugfixToBuild(sim, ['The work', 'The hardening']);
     buildEntry(sim, WU);
-    assert.match(briefOf(sim, sim.run(['brief', 'task-writer', WU, '1'])), /# The test that reproduces the bug\n\nThis phase opens on the test that reproduces the bug\. Record that task first, so it is task 1\.1\./);
+    sim.run(['brief', 'task-writer', WU, '1']);
     writePhaseTasks(sim, WU, 1, 'The work', [
       { title: 'Reproduce the crash', type: 'test', scenarios: ['1.S1'] },
       { title: 'Fix the crash', type: 'fix', after: ['1.1'], scenarios: ['The work holds once the crash is fixed.'] },
     ]);
     startPhase(sim, WU, 1);
-    builtAlone(sim, '1.1', CRASH_TEST, false);
-
-    // Its series on the unfixed code, five failures, before the fix lands;
-    // the fix's commit then runs the test as one of the door's checks
-    // (15.5.2–15.5.4).
-    const series = sim.run(['verify', 'run', WU, '1.S1', '--unfixed', '--test', TEST]);
-    assert.deepStrictEqual([series.runs.map(({ verdict }) => verdict), series.proven], [Array(5).fill('fail'), true]);
+    builtAlone(sim, '1.1', { 'test/crash.sh': 'test -f src/fix.js\n' }, false, () => sim.run(['verify', 'run', WU, '1.S1', '--unfixed', '--test', TEST]));
     builtAlone(sim, '1.2', { ...VERIFY_FILES, 'src/fix.js': 'export const fix = 1;\n' }, true);
-    for (const letter of ['a', 'b']) landed(placeIn(sim, sim.run(['brief', 'phase-review', WU, '1', '--letter', letter]), 'Where your report goes'), PASSED_REPORT);
-    sim.run(['land', 'phase', WU, '1']);
-    sim.run(['checklist', 'close', 'phase-close', WU, '1']);
+    phaseMerged(sim, 1);
 
-    // The review phase reads the series, and round 1 waits on the test run on
-    // the unfixed code again, where it fails (15.5.6).
+    sim.run(['brief', 'task-writer', WU, '2']);
+    writePhaseTasks(sim, WU, 2, 'The hardening', [{ title: 'Harden the checkout', scenarios: ['1.S2'] }]);
+    startPhase(sim, WU, 2);
+    builtAlone(sim, '2.1', { 'src/hardened.js': 'export const hardened = 1;\n' }, false, () => sim.run(['verify', 'run', WU, '1.S2']));
+    phaseMerged(sim, 2);
+
     linearBuildPick(sim, WU, 'review');
-    const { data } = reviewNext(sim, WU);
-    assert.deepStrictEqual([data['unfixed run'].length, data.rerun], [5, [
-      `not yet — round 1 is recorded once the test runs on the unfixed code again, where it must fail: \`node .claude/skills/leeway-engine/scripts/engine.cjs verify run ${WU} 1.S1 --unfixed --test '${TEST}'\``,
-    ]]);
-    areaRead(sim, WU);
+    const { move, fixPhase } = reviewNext(sim, WU);
+    assert.strictEqual(move, 'round');
+    areaRead(sim, WU, SECOND_BASKET);
     testsRead(sim, WU);
-    const round = sim.write(`.leeway/.cache/${WU}/review/round.json`, { can_now: ['The work holds.'], findings: [] });
-    sim.refuses(['review', 'round', WU, '--file', round], /^review round: crash-fix is a bugfix, and round 1 is recorded once the test that reproduces its bug has run on the unfixed code again/);
-    assert.strictEqual(sim.run(['verify', 'run', WU, '1.S1', '--unfixed', '--test', TEST]).proven, true);
-    assert.strictEqual(sim.run(['review', 'round', WU, '--file', round]).passed, true);
-    assert.strictEqual(reviewNext(sim, WU).move, 'closing');
+    writePhaseTasks(sim, WU, /** @type {number} */ (fixPhase), 'The review\'s fixes', [{ title: 'Hold a second basket', type: 'fix', scenarios: ['a second basket'] }]);
+    const round = sim.write(`.leeway/.cache/${WU}/review/round.json`, {
+      can_now: ['The work holds.'],
+      findings: [{ area: '1-the-work', scope: 'in', call: 'bug', text: 'The crash returns on a second basket.', from: ['1-the-work-a#1'], fix: `${fixPhase}.1` }],
+    });
+    sim.refuses(['review', 'round', WU, '--file', round], null);
+    sim.run(['verify', 'run', WU, '1.S1', '--unfixed', '--test', TEST]);
+    sim.run(['review', 'round', WU, '--file', round]);
+    assert.strictEqual(reviewNext(sim, WU).move, 'fixes');
+    builtAlone(sim, `${fixPhase}.1`, { 'src/second.js': 'export const second = 1;\n' }, false);
+    assert.strictEqual(reviewNext(sim, WU).move, 'reads');
   });
 });

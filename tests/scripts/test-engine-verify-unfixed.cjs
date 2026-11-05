@@ -43,6 +43,9 @@ const runFiles = (from, count) => Array.from({ length: count }, (_, at) => `${UN
 /** Whether the scratch worktree is gone and no repository registers it. */
 const takenApart = () => !fs.existsSync(scratchOf(dir)) && !git(dir, ['worktree', 'list', '--porcelain']).includes(scratchOf(dir));
 
+/** The refusal of a series no repository has task 1.1's test committed for, of `unit`. @param {string} unit */
+const uncommitted = (unit) => `verify run: no repository of the project holds a commit on ${branchOf(1, unit)}, task 1.1's branch, beyond the branch it lands on — its test is committed there through the door first: engine commit --paths <the test's files> --task ${unit} 1.1 -m "<message>" (15.5.1)`;
+
 describe('verify run --unfixed: the reproducing test on the unfixed code (15.5.2)', () => {
   it('15.5.2: from a checkout holding none of it, the test runs five times at task 1.1\'s tip in one scratch worktree the engine lays out and takes apart — no verify setup asked — each run recorded unfixed with its command, its exit its verdict and its output its evidence, task 1.1\'s, the series committed alone and answered: five failures', () => {
     dir = unproven();
@@ -93,12 +96,15 @@ describe('verify run --unfixed: the reproducing test on the unfixed code (15.5.2
     assert.deepStrictEqual([res.proven, testRuns(dir).at(-1)], [true, `${scratchOf(dir)} ${tipOf(dir, branchOf(1))}`]);
   });
 
-  it('a run\'s evidence is its output\'s last 64 KB, from the first line that starts among them — one starting at their first byte among them', () => {
+  it('a run\'s evidence is at most its output\'s last 64 KB: from the first line that starts among them — one starting at their first byte among them — where that leaves something, else from the first character among them', () => {
     dir = unproven();
     const counter = '"$(git rev-parse --path-format=absolute --git-common-dir)/count"';
-    // Run k prints 1 to 19,999 + k: the first run's last 64 KB open on a
-    // line's start, the rest's mid-line.
-    ok(dir, unfixedArgs(`n=$(($(cat ${counter} 2>/dev/null || echo 0) + 1)); echo $n > ${counter}; seq 1 $((19999 + n)); exit 1`));
+    // Runs 1 and 2 print 1 to 19,999 + n, the first's last 64 KB opening on
+    // a line's start, the second's mid-line; run 3 a line of 70,000 bytes,
+    // its only line start among them past their end; runs 4 and 5 35,000
+    // two-byte characters and no newline, the last 64 KB opening mid-character.
+    const printed = 'case $n in 1|2) seq 1 $((19999 + n));; 3) awk \'BEGIN { for (i = 0; i < 70000; i++) printf "x"; print "" }\';; *) awk \'BEGIN { for (i = 0; i < 35000; i++) printf "\\303\\251"; printf "z" }\';; esac';
+    ok(dir, unfixedArgs(`n=$(($(cat ${counter} 2>/dev/null || echo 0) + 1)); echo $n > ${counter}; ${printed}; exit 1`));
 
     const kept = (/** @type {number} */ last) => {
       const output = Buffer.from(Array.from({ length: last }, (_, at) => `${at + 1}\n`).join(''));
@@ -106,7 +112,7 @@ describe('verify run --unfixed: the reproducing test on the unfixed code (15.5.2
       return tail.subarray(tail.indexOf(0x0a) + 1).toString('utf8');
     };
     assert.strictEqual(Buffer.byteLength(kept(20000)), 64 * 1024, 'the first run\'s last 64 KB open on a line\'s start');
-    assert.deepStrictEqual([1, 2, 3, 4, 5].map((n) => runAt(n).evidence), [1, 2, 3, 4, 5].map((n) => [{ name: 'output', text: kept(19999 + n) }]));
+    assert.deepStrictEqual([1, 2, 3, 4, 5].map((n) => runAt(n).evidence[0].text), [kept(20000), kept(20001), `${'x'.repeat(64 * 1024 - 1)}\n`, `${'é'.repeat(32767)}z`, `${'é'.repeat(32767)}z`]);
   });
 });
 
@@ -159,8 +165,16 @@ describe('verify run --unfixed: refused, recording nothing', () => {
       `verify run: 2.S1 is no scenario of phase 1 of ${UNIT}'s cut, where the reproducing task's lies — engine manifest get ${UNIT} cut lists them`,
       'verify run: 1.S2 is none of task 1.1\'s acceptance scenarios — a run on the unfixed code is of a scenario the reproducing task holds',
       'verify run: phase 1 of ghost has no task 1.1 yet — the reproducing task, phase 1\'s lowest-numbered, writes the test that reproduces the bug (15.5.1)',
-      `verify run: no repository of the project holds work on ${branchOf(1, 'slow')}, task 1.1's branch — its test is committed there through the door first (15.5.1)`,
+      uncommitted('slow'),
     ]);
+    assert.deepStrictEqual(testRuns(dir), [], 'the test never ran');
+  });
+
+  it('task 1.1\'s branch in the project\'s own repository holding no commit beyond the branch it lands on — its test not yet committed — naming the commit through the door', () => {
+    dir = unproven();
+    git(dir, ['branch', '-f', branchOf(1), 'main']);
+
+    assert.strictEqual(refusedPristine(dir, unfixedArgs()).error, uncommitted(UNIT));
     assert.deepStrictEqual(testRuns(dir), [], 'the test never ran');
   });
 

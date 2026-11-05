@@ -12,17 +12,20 @@
 // file in the repository's git directory and passes once the bug is gone;
 // task 1.2's branch starts at 1.1's tip, and the checkout has it out. Beside
 // it a bugfix whose task 1.1 has no branch, `slow`; one whose phase 1 is not
-// written in the tracker, `ghost`; and a feature, `pay`. `unproven` is that
-// world; `proven`, the same with the test's series run on the unfixed code
-// through `verify run … --unfixed`, five failures — each built once per
-// process and copied for each test.
+// written in the tracker, `ghost`; and a feature, `pay`. The tracker holds a
+// phase 2 of `crash` past its cut, its one task 2.1, which no branch holds.
+// `unproven` is that world; `proven`, the same with the test's series run
+// on the unfixed code through `verify run … --unfixed`, five failures —
+// each built once per process and copied for each test. A landing of phase
+// 1's tasks on main is made as every landing driver makes one, a commit
+// whose message names the task (`landedOnMain`).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
 const { ok, git, commitAll, commitCode, fixtureFrom, layout, createFile, writeState, readManifest, FROZEN_AT } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
-const { taskBranch } = require('../../skills/leeway-engine/scripts/domain/landing-names.cjs');
+const { taskBranch, landedMessage } = require('../../skills/leeway-engine/scripts/domain/landing-names.cjs');
 
 const UNIT = 'crash';
 
@@ -42,15 +45,26 @@ const taskText = (title, type, scenario) => [
   '## Outcome', 'The checkout holds.', '', '## Acceptance scenarios', `- ${scenario}`, '', '## Spec reference', '§1',
 ].join('\n');
 
-/** The reproducing task's and the fix's titles and types. */
+/** The reproducing task's, the fix's and phase 2's task's titles and types. */
 const REPRODUCE = Object.freeze({ title: 'Reproduce the crash', type: 'test' });
 const FIX = Object.freeze({ title: 'Fix the crash', type: 'fix' });
+const HARDEN = Object.freeze({ title: 'Harden the checkout', type: 'feat' });
 
-/** A task of a unit's branch, as the landing names it. @param {number} n @param {string} [unit] */
+/** A task of phase 1 of a unit's branch, as the landing names it. @param {number} n @param {string} [unit] */
 const branchOf = (n, unit = UNIT) => {
   const { title, type } = n === 1 ? REPRODUCE : FIX;
   return taskBranch({ unit, phase: 1, n }, type, title);
 };
+
+/** Task 2.1's branch, as the landing names it. */
+const HARDEN_BRANCH = taskBranch({ unit: UNIT, phase: 2, n: 1 }, HARDEN.type, HARDEN.title);
+
+/** The commit a landing makes of a task of phase 1 on main, as every landing driver squashes one: its files, and its message naming the task. @param {string} dir @param {number} n @param {Record<string, string>} files */
+function landedOnMain(dir, n, files) {
+  const { title, type } = n === 1 ? REPRODUCE : FIX;
+  for (const [file, text] of Object.entries(files)) createFile(dir, file, text);
+  commitCode(dir, landedMessage({ unit: UNIT, phase: 1, n }, type, title));
+}
 
 /** The test that reproduces the bug, run alone. */
 const TEST = 'sh test/crash.sh';
@@ -85,10 +99,10 @@ const scratchOf = (dir) => path.join(fs.realpathSync(dir), '.claude', 'worktrees
 /** `verify run … --unfixed`'s call for 1.S1, the command `test`. @param {string} [test] @param {string} [scenario] */
 const unfixedArgs = (test = TEST, scenario = '1.S1') => ['verify', 'run', UNIT, scenario, '--unfixed', '--test', test];
 
-/** A unit's phase 1 written in the tracker, its tasks each made from a file. @param {string} dir @param {string} unit @param {[string, string, string][]} tasks */
-function phaseWritten(dir, unit, tasks) {
-  ok(dir, ['task', 'phase', unit, '1', '--title', 'The fix']);
-  for (const [title, type, scenario] of tasks) ok(dir, ['task', 'create', unit, '1', '--file', writeState(dir, layout.cache('task.md'), taskText(title, type, scenario))]);
+/** A unit's phase written in the tracker, its tasks each made from a file. @param {string} dir @param {string} unit @param {[string, string, string][]} tasks @param {number} [phase] */
+function phaseWritten(dir, unit, tasks, phase = 1) {
+  ok(dir, ['task', 'phase', unit, String(phase), '--title', 'The fix']);
+  for (const [title, type, scenario] of tasks) ok(dir, ['task', 'create', unit, String(phase), '--file', writeState(dir, layout.cache('task.md'), taskText(title, type, scenario))]);
 }
 
 /** A bugfix, its spec, its cut and its build begun, the cut's phase started. @param {string} dir @param {string} unit */
@@ -104,6 +118,7 @@ function build(dir) {
   createFile(dir, 'src/app.js', BUGGY);
   commitAll(dir, 'init');
   phaseWritten(dir, UNIT, [[REPRODUCE.title, REPRODUCE.type, '1.S1'], [FIX.title, FIX.type, '1.S2']]);
+  phaseWritten(dir, UNIT, [[HARDEN.title, HARDEN.type, 'The checkout holds under load.']], 2);
   phaseWritten(dir, 'slow', [[REPRODUCE.title, REPRODUCE.type, '1.S1']]);
   git(dir, ['checkout', '-q', '-b', branchOf(1)]);
   createFile(dir, 'test/crash.sh', CRASH_TEST);
@@ -125,5 +140,5 @@ function buildFinished(dir) {
 }
 
 module.exports = {
-  UNIT, TEST, BUGGY, FIXED, branchOf, logging, testRuns, tipOf, scratchOf, unfixedArgs, buildFinished, unproven, proven,
+  UNIT, TEST, BUGGY, FIXED, CRASH_TEST, branchOf, HARDEN_BRANCH, landedOnMain, logging, testRuns, tipOf, scratchOf, unfixedArgs, buildFinished, unproven, proven,
 };

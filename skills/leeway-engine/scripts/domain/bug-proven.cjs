@@ -21,16 +21,24 @@
 //   `latestSeries`): consecutive runs at the same commits. Each call runs
 //   the test five times or stops at its pass, so a series proves the bug
 //   where no run in it passed: five failures at least (15.5.3).
+// - `task done` of the reproducing task (task-verbs.cjs) waits on the
+//   build's series proving the bug at task 1.1's tip — its branch, in each
+//   repository holding it, at or behind the commit the series ran at there
+//   — so a test that passed is reworked while the task is still in flight
+//   (15.5.3).
 // - The door (commit-task.cjs), for a bugfix's code commit: the reproducing
 //   task's own commits run the project's tests allowed to fail, the linters
 //   as ever (F1); any other task's is refused, before any check runs, until
-//   the build's series proves the bug at task 1.1's tip — its branch, in
-//   each repository holding it, at or behind the commit the series ran at
-//   there — and the calling checkout is built on that tip; then the series'
-//   command runs after the tests as one of the door's checks, and must pass
+//   the build's series proves the bug at task 1.1's tip and the calling
+//   checkout is built on task 1.1's work: in each repository holding its
+//   branch, HEAD descends from that branch's tip, or HEAD's branch holds
+//   task 1.1's landing, as the landing reads one (landing.cjs,
+//   `landedTasks`), since every landing squashes; then the series' command
+//   runs after the tests as one of the door's checks, and must pass
 //   (15.5.4). Every refusal names the way on. What it reads: for a bugfix,
-//   the runs of phase 1's scenarios and each repository's branches; for any
-//   other unit, nothing beyond its manifest.
+//   the runs of phase 1's scenarios and each repository's branches, and
+//   where HEAD is not built on task 1.1's tip, the landings its branch
+//   holds; for any other unit, nothing beyond its manifest.
 // - The review phase's round 1 is recorded once a re-run is (review-
 //   round.cjs); a re-run that passed is an item of the round, `unfixed#1`,
 //   serious, which a finding answers, and the round fails (15.5.6).
@@ -38,15 +46,24 @@
 // Known edges: a reworked test's new series replaces the old one, and a
 // task's branch built on the old tip is refused until it is rebased onto the
 // new; a test reworked by a fix task of the review phase is held to passing
-// alone, its series still the build's.
+// alone, its series still the build's; and a task of a phase relying on
+// nothing, started beside phase 1, lacks the test until phase 1 lands and
+// its branch takes the landing.
 // ---------------------------------------------------------------------------
 
-const { repoName } = require('../kernel/repos.cjs');
+const { projectRepos, repoName } = require('../kernel/repos.cjs');
+const { codeRoot } = require('../kernel/code-root.cjs');
+const { tryGit } = require('../kernel/git.cjs');
 const { cutPhases } = require('./derivations.cjs');
+const { dayBefore } = require('./dates.cjs');
 const { unfixedRuns, latestSeries } = require('./runs.cjs');
-const { shownTask, taskName } = require('./task-id.cjs');
+const { shownTask, taskName, phaseName } = require('./task-id.cjs');
 const { taskOfBranch } = require('./landing-names.cjs');
-const { branches, isAncestor, quoted } = require('./landing-git.cjs');
+const { branches, isAncestor, landsOn, quoted } = require('./landing-git.cjs');
+
+// What landed, loaded at its call: the landing reaches this module through
+// the task verbs.
+const landing = () => require('./landing.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** @typedef {import('./runs.cjs').Series} Series */
@@ -121,19 +138,22 @@ function reproducingBranch(unit, repo) {
   return null;
 }
 
+/** Task 1.1's branch where each repository holds it. @typedef {{repo: Repo, branch: string, tip: string}} Held */
+
+/** Each of `repos` holding task 1.1's branch, with it and its tip. @param {string} unit @param {Repo[]} repos @returns {Held[]} */
+const reproducingHeld = (unit, repos) => repos.flatMap((repo) => {
+  const branch = reproducingBranch(unit, repo);
+  return branch === null ? [] : [{ repo, ...branch }];
+});
+
 /**
- * Why the build's series does not yet prove the bug for a code commit from
- * the checkout whose repositories are `repos`, with the way on, or null
- * where it does (the header's).
- * @param {string} unit @param {Series|null} series @param {Repo[]} repos
+ * Why the build's series does not prove the bug at task 1.1's tip, where
+ * `held` holds its branch, with the way on; null where it does.
+ * @param {string} unit @param {Series|null} series @param {Held[]} held
  * @returns {string|null}
  */
-function unprovenWhy(unit, series, repos) {
+function seriesWhy(unit, series, held) {
   if (series === null) return `no series of it has run on the unfixed code — run it there five times: ${firstCall(unit)}`;
-  const held = repos.flatMap((repo) => {
-    const branch = reproducingBranch(unit, repo);
-    return branch === null ? [] : [{ repo, ...branch }];
-  });
   const ranAt = (/** @type {Repo} */ repo) => series.commits.find(({ repo: name }) => name === repoName(repo))?.commit ?? null;
   const moved = held.find(({ repo, tip }) => {
     const ran = ranAt(repo);
@@ -141,8 +161,43 @@ function unprovenWhy(unit, series, repos) {
   });
   if (moved !== undefined) return `task 1.1's branch ${moved.branch} has moved past the commits its series ran at, so the test as it stands is not proven — run a new series: ${seriesCall(unit, series)}`;
   if (series.passed) return `the test passed on the unfixed code in its series, so it proves nothing — rework the test, a new commit on task 1.1, then run a new series: ${seriesCall(unit, series)}`;
-  const behind = held.find(({ repo, tip }) => !isAncestor(repo.path, tip, 'HEAD'));
-  return behind === undefined ? null : `this checkout is not built on ${behind.branch}, task 1.1's branch, where the test was proven — rebase onto it, then commit again`;
+  return null;
+}
+
+/**
+ * Whether task 1.1 of `unit` has landed in a repository, as the landing
+ * reads what landed, searched from `from`: on the branch it lands on, or,
+ * where `on` names one, on that branch.
+ * @param {string} cwd @param {string} unit @param {Repo} repo @param {string|null} from @param {string} [on]
+ */
+const landedIn = (cwd, unit, repo, from, on) => landing().landedTasks(cwd, unit, [repo], from, on === undefined ? undefined : () => on).has(REPRODUCING_SHOWN);
+
+/** Whether the checkout's branch in a repository holds task 1.1's landing; false where it is on no branch. @param {string} cwd @param {string} unit @param {Repo} repo @param {string|null} from */
+function holdsLanding(cwd, unit, repo, from) {
+  const branch = tryGit(repo.path, ['symbolic-ref', '-q', '--short', 'HEAD'])?.trim();
+  return branch !== undefined && landedIn(cwd, unit, repo, from, branch);
+}
+
+/**
+ * Why the calling checkout is not built on task 1.1's work, where its tip
+ * is not below HEAD and its landing not on HEAD's branch, with the way on —
+ * merging the landing in where it has landed, phase 1's landing for a task
+ * of another phase, a rebase onto its branch for one of phase 1; null where
+ * it is (the header's).
+ * @param {string} cwd @param {Record<string, any>} manifest @param {TaskRef} ref @param {Held[]} held
+ * @returns {string|null}
+ */
+function builtOnWhy(cwd, manifest, ref, held) {
+  const from = dayBefore(manifest.created);
+  const behind = held.find(({ repo, tip }) => !isAncestor(repo.path, tip, 'HEAD') && !holdsLanding(cwd, ref.unit, repo, from));
+  if (behind === undefined) return null;
+  const into = landsOn(cwd, behind.repo);
+  const where = `this checkout holds neither ${behind.branch}, task 1.1's branch, where the test was proven, nor its landing`;
+  if (landedIn(cwd, ref.unit, behind.repo, from)) {
+    return `${where}, which is on ${into} — merge ${into} into this branch, then commit again`;
+  }
+  if (ref.phase !== REPRODUCING.phase) return `${where} — task 1.1 lands with ${phaseName(ref.unit, REPRODUCING.phase)}: once that phase has merged, merge ${into} into this branch, then commit again`;
+  return `this checkout is not built on ${behind.branch}, task 1.1's branch, where the test was proven — rebase onto it, then commit again`;
 }
 
 /**
@@ -157,7 +212,8 @@ function unprovenWhy(unit, series, repos) {
 function doorGate(cwd, manifest, ref, repos) {
   if (isReproducing(ref)) return { testsMayFail: true };
   const { series } = bugRuns(cwd, ref.unit, manifest);
-  const why = unprovenWhy(ref.unit, series, repos);
+  const held = reproducingHeld(ref.unit, repos);
+  const why = seriesWhy(ref.unit, series, held) ?? builtOnWhy(cwd, manifest, ref, held);
   if (why !== null) {
     return { unproven: `${ref.unit} is a bugfix, so ${taskName(ref)}'s code lands once its bug is proven by the test its reproducing task wrote — task 1.1, phase 1's lowest-numbered (15.5.3): ${why}` };
   }
@@ -167,6 +223,20 @@ function doorGate(cwd, manifest, ref, repos) {
     way: `the test task 1.1 wrote fails here, and passes once the bug is fixed (15.5.4) — fix what it reports and commit again; where its command fails for another reason, such as a wrong path, `
       + `run a new series with the right one: engine ${unfixedVerb(ref.unit, proven.scenario, COMMAND_SLOT)}`,
   };
+}
+
+/**
+ * Why a bugfix's task `ref` is not done yet, with the way on: the
+ * reproducing task, while the build's series does not prove the bug at its
+ * tip in the project's repositories (the header's); null for any other task
+ * or unit, and where it does.
+ * @param {string} cwd @param {Record<string, any>} manifest @param {TaskRef} ref
+ * @returns {string|null}
+ */
+function doneWhy(cwd, manifest, ref) {
+  if (!isBugfix(manifest) || !isReproducing(ref)) return null;
+  const why = seriesWhy(ref.unit, bugRuns(cwd, ref.unit, manifest).series, reproducingHeld(ref.unit, projectRepos(codeRoot(cwd))));
+  return why === null ? null : `${ref.unit} is a bugfix, so ${taskName(ref)}, its reproducing task, is done once the test it wrote proves the bug, failing five times on the unfixed code at its tip (15.5.3): ${why}`;
 }
 
 /**
@@ -184,5 +254,5 @@ function rerunRefusal(unit, { series, reruns }) {
 const rerunPassed = (reruns) => reruns.some(({ verdict }) => verdict === 'pass');
 
 module.exports = {
-  REPRODUCING, REPRODUCING_SHOWN, SERIES_RUNS, UNFIXED_ITEM, isBugfix, isReproducing, reproducingRef, firstScenarios, bugRuns, proves, seriesCall, runVerb, doorGate, rerunRefusal, rerunPassed,
+  REPRODUCING, REPRODUCING_SHOWN, SERIES_RUNS, UNFIXED_ITEM, isBugfix, isReproducing, reproducingRef, firstScenarios, bugRuns, proves, seriesCall, runVerb, doorGate, doneWhy, rerunRefusal, rerunPassed,
 };

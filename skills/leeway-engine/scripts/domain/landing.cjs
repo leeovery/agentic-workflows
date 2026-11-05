@@ -20,10 +20,12 @@
 // `next` (verify.cjs, 15.6.3), once for the phase: a task the
 // consolidation writes ends after it.
 // Which of a unit's tasks landed — each one a default branch's landing
-// names — is read here for the phase's close and the build's standing
-// (`landedTasks`); for the close in step, whether a phase's tasks are each
-// in its stack (`allChained`); and, for a task with nothing of its unit's
-// below it, where it starts in each repository (`landingTips`).
+// names — is read here for the phase's close, the build's standing and a
+// bugfix's door, which reads the landings a checkout's branch holds too
+// (`landedTasks`, bug-proven.cjs); for the close in step, whether a
+// phase's tasks are each in its stack (`allChained`); and, for a task with
+// nothing of its unit's below it, where it starts in each repository
+// (`landingTips`).
 //
 // What every driver shares is settled here: the names (landing-names.cjs);
 // the default branch everything lands on in each repository, never the
@@ -728,14 +730,18 @@ function allChained(cwd, unit, tasks) {
  * repository of the project names by its `Task:` line, as every driver
  * lands a task (landing-names.cjs), searched from the time `from` names
  * where given (`dayBefore` the unit was made, before which none of its work
- * landed). A repository with no default branch to land on holds none.
- * @param {string} cwd @param {string} unit @param {Repo[]} repos the project's @param {string|null} [from] @returns {Set<string>}
+ * landed). A repository with no default branch to land on holds none. Where
+ * `on` names another branch of each repository, the landings that branch
+ * holds: those a checkout on it is built on.
+ * @param {string} cwd @param {string} unit @param {Repo[]} repos the project's @param {string|null} [from]
+ * @param {(repo: Repo) => string} [on] the branch read in each repository
+ * @returns {Set<string>}
  */
-function landedTasks(cwd, unit, repos, from = null) {
+function landedTasks(cwd, unit, repos, from = null, on = (repo) => lg.landsOn(cwd, repo)) {
   return new Set(repos.flatMap((repo) => {
     let into;
     try {
-      into = lg.landsOn(cwd, repo);
+      into = on(repo);
     } catch {
       return [];
     }

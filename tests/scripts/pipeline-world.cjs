@@ -1021,14 +1021,14 @@ const builders = {
 // builder's brief again says it landed, and taken, its step gate drawn and
 // the person's yes given there where `gated` says so (12.7.9), chained into
 // its phase's stack — the chain's `next`, the phase's mutation run once its
-// last task chains — and done. Answers the note's number, null where none
-// was banked.
+// last task chains — `ending` run where given, then done. Answers the
+// note's number, null where none was banked.
 /**
  * @param {Sim} sim @param {string} wu @param {string} task @param {string} tree
- * @param {Record<string, string>} files @param {boolean} setup @param {{gated?: boolean, note?: string}} [opts]
+ * @param {Record<string, string>} files @param {boolean} setup @param {{gated?: boolean, note?: string, ending?: () => void}} [opts]
  * @returns {number|null}
  */
-function taskBuilt(sim, wu, task, tree, files, setup, { gated = false, note } = {}) {
+function taskBuilt(sim, wu, task, tree, files, setup, { gated = false, note, ending } = {}) {
   sim.run(['task', 'start', wu, task]);
   const builder = sim.run(['brief', 'builder', wu, task]);
   git(sim.dir, ['worktree', 'add', '-q', '-b', `worktree-agent-${task}`, tree, 'main']);
@@ -1060,6 +1060,7 @@ function taskBuilt(sim, wu, task, tree, files, setup, { gated = false, note } = 
   }
   sim.run(['land', 'open', wu, task]);
   const { next } = sim.run(['land', 'chain', wu, task]);
+  ending?.();
   sim.run(['task', 'done', wu, task]);
   if (next !== undefined) sim.run(next.argv);
   return banked;
