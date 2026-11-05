@@ -232,6 +232,9 @@ function validatePhaseStatus(phase, value) {
   }
 }
 
+/** An ISO-8601 UTC instant, to the second or the millisecond. */
+const INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
+
 /**
  * Validate a set operation from the resolved internal path, the caller's
  * field segments, and the value. Every
@@ -242,9 +245,6 @@ function validatePhaseStatus(phase, value) {
  * no guarded branch and pass, so legitimate non-string writes are unaffected.
  * @param {string[]} segments @param {*} value @param {string[]} [fieldSegments]
  */
-/** An ISO-8601 UTC instant, to the second or the millisecond. */
-const INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
-
 function validateSet(segments, value, fieldSegments = segments) {
   // Top-level status
   if (segments.length === 1 && segments[0] === 'status') {

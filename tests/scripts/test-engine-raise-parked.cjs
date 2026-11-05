@@ -427,6 +427,14 @@ describe('what waits (12.13.6, 12.13.7)', () => {
     });
   });
 
+  it('a question reworded while it waits is about its wording now, and a replacement proposed about the decision it would replace', () => {
+    parked(1, '2.3');
+    parkedReplacement(2);
+    const reworded = write('replace', BUILD, ['--replaces', made.where, '--reason', 'changed-mind'], { ...MADE, drops: ['where it opens'], text: 'On which screen does a new note open?' }).id;
+
+    assert.deepStrictEqual(waiting().map((/** @type {{about: string}} */ q) => q.about), [reworded, made.frameless]);
+  });
+
   it('a question waits no longer once merged into another\'s answer or moved to the roadmap as later, a replacement proposed once its decision is no longer current — each as a clone\'s merge lays it — and nothing waits in a cancelled unit', () => {
     parked(1, '2.3');
     parked(2, '2.4', { question: full(made.size) });

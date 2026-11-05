@@ -33,9 +33,10 @@
 //   opening the finding that raised it, and then ready to build's yes, while
 //   the spec is under way and the build not begun; the questions the build
 //   and the review wait on (questions.cjs), each opening the page of the
-//   first task it parks, one parking none its question's entry; and finish,
-//   once a round ended the review, its fix tasks and builders' notes are
-//   done, and no question waits (D18), finish's own checks.
+//   first task it parks, one parking none its question's entry — a
+//   replacement's, the decision it would replace; and finish, once a round
+//   ended the review, its fix tasks and builders' notes are done, and no
+//   question waits (D18), finish's own checks.
 // - The banner counts that list, flagged — the map alone by its own words —
 //   and at a menu says it unflagged (D40).
 // ---------------------------------------------------------------------------
@@ -155,7 +156,8 @@ function mapWaits(at) {
 /**
  * The questions its build and the review wait on, oldest first, each
  * opening the page of the first task it parks, which holds it whole, or
- * one parking none its question's entry.
+ * one parking none its question's entry — a replacement's, the decision it
+ * would replace.
  * @param {BoardAt} at @returns {WaitingLine[]}
  */
 function questionWaits(at) {

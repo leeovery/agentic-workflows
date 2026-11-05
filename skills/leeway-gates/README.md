@@ -293,9 +293,10 @@ evidence kept with the run. The page holds its questions wherever the session
 goes; each has its `▸ discuss` while the session is in the task's unit, the
 discussion being the session's. In the review phase it shows the round: each
 area's read, the fix tasks a failing round brought, what was found, the
-checks not proven, what went to the inbox and the verdict, finish waiting on
-you once the review is over; a finding opens its page, while the round is
-read as its reviewer's report holds it. A line whose
+checks not proven, what went to the inbox and the verdict, and what waits on
+you: the review's own questions, as the build's do, and finish once the
+review is over and no question waits; a finding opens its page, while the
+round is read as its reviewer's report holds it. A line whose
 words carry a state, a standing or what waits on you wraps under its mark and
 is never cut at the edge; only a title gives way, with `…`.
 

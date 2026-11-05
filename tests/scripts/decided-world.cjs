@@ -192,18 +192,14 @@ function decidedBoardHelpers(dir) {
 
   /** A message sent from one topic of the epic to another, its title given. @param {string} from @param {string} to @param {string} title */
   function sent(from, to, title) {
-    const file = path.join(dir(), '.leeway', '.cache', `${from}-${to}.md`);
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(file, `# ${title}\n\nIt bears on you.\n`);
+    const file = writeState(dir(), layout.cache(`${from}-${to}.md`), `# ${title}\n\nIt bears on you.\n`);
     ok(dir(), ['topic', 'send', UNIT, to, '--from', from, '--content', file, '--slug', 'bears'], { env: SESSION });
   }
 
   /** An experiment, E1, spawned from the note window's discussion to measure a question of the person's. */
   function spawned() {
     const question = writeIn(dir(), 'ask', NOTE, [], { by: 'person', who_moved_whom: 'none', text: 'How fast does a note open?' });
-    const problem = '.leeway/.cache/fumi/scratch/note-open-problem.md';
-    fs.mkdirSync(path.join(dir(), path.dirname(problem)), { recursive: true });
-    fs.writeFileSync(path.join(dir(), problem), '# Problem — note-open\n');
+    const problem = writeState(dir(), layout.cache(UNIT, 'scratch', 'note-open-problem.md'), '# Problem — note-open\n');
     ok(dir(), ['experiment', 'create', UNIT, 'note-window', '--slug', 'note-open', '--from', 'discussion', '--problem', problem, '--question', question], { env: SESSION });
   }
 

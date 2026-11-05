@@ -23,11 +23,10 @@
 // - The specification waits until every topic is decided, is written until
 //   the build begins — held by what waits on the person first in the
 //   unit's list, the map the sweep staged, a gap, or ready to build's yes —
-//   and is
-//   complete then; the build and review build until every phase of the cut
-//   has closed, review until the unit completes, and are complete then,
-//   stopped where nothing can go on and waiting on the person while finish
-//   does.
+//   and is complete then; the build and review build until every phase of
+//   the cut has closed, review until the unit completes, and are complete
+//   then, stopped where nothing can go on and waiting on the person while
+//   finish does.
 // - Any other unit's tab shows each phase from discovery, an epic's until
 //   its map is first approved with what each after it waits on (20.15.2). A
 //   phase complete or under way says what its records hold: discovery the

@@ -162,7 +162,9 @@
 // its specs and plans are reference assets now, and its one spec is written
 // fresh once its topics are decided (21.8.2, 21.8.3); a unit whose building
 // started keeps them for the cut and the merges, and a quick-fix's scoping
-// keeps its own. An epic with topics on its map is past it, its map's
+// keeps its own. An epic's topics are on its map — one that was not in
+// progress when 038 seeded the maps gains them, in the order its old record
+// lists their discussions — and an epic with topics is past its map, its
 // approval recorded (`phases.discovery.approved_at`) at the earliest moment
 // its old record shows: the unit's creation, the old manifest stamping
 // neither its discovery's close nor a discussion's start.
@@ -607,6 +609,31 @@ function settleDeadEnds(manifest, reshaped) {
   }
 }
 
+/**
+ * An epic's topics off its map put on it, after the topics it holds, in the
+ * order its old record lists their discussions: an epic that was not in
+ * progress when its map was first seeded (038) has discussions and no map.
+ * A cancelled topic's row is marked and its order stashed, as the cancel
+ * leaves one.
+ * @param {Record<string, any>} reshaped
+ */
+function mapTopics(reshaped) {
+  const discussion = itemsOf(reshaped, 'discussion');
+  const off = Object.keys(discussion).filter((topic) => !Object.hasOwn(itemsOf(reshaped, 'discovery'), topic));
+  if (off.length === 0) return;
+  const discovery = isObject(reshaped.phases.discovery) ? reshaped.phases.discovery : {};
+  const items = isObject(discovery.items) ? discovery.items : {};
+  const orders = Object.values(items).flatMap((row) => (isObject(row) ? [row.order, row.previous_order] : [])).filter(Number.isInteger);
+  const last = Math.max(0, ...orders);
+  off.forEach((topic, at) => {
+    const order = last + at + 1;
+    items[topic] = discussion[topic]?.status === 'cancelled'
+      ? { source: 'migration-seeded', cancelled: true, previous_order: order }
+      : { source: 'migration-seeded', order };
+  });
+  reshaped.phases.discovery = { ...discovery, items };
+}
+
 /** @param {Record<string, any>} manifest */
 const isQuickFix = (manifest) => manifest.work_type === 'quick-fix';
 
@@ -626,9 +653,9 @@ function createdAt({ created }) {
  * The unit's manifest less research and the retired state: the experiments
  * of names no topic holds going with their records' place, a completed
  * quick-fix's spec and plan with their files, and the spec and planning
- * items of a unit that writes its spec fresh; an epic with topics on its
- * map past it, approved when it was made; each import's path following its
- * file.
+ * items of a unit that writes its spec fresh; an epic's topics on its map,
+ * and an epic with topics past its map, approved when it was made; each
+ * import's path following its file.
  * @param {Record<string, any>} manifest @param {Set<string>} topics
  * @returns {Record<string, any>}
  */
@@ -642,6 +669,7 @@ function reshapedManifest(manifest, topics) {
     for (const name of Object.keys(experiments)) if (!topics.has(name)) delete experiments[name];
     if (quickFixDone(manifest)) for (const phase of QUICK_FIX_SPENT) delete out.phases[phase];
     if (writtenFresh(manifest)) for (const phase of ['specification', 'planning']) delete out.phases[phase];
+    if (out.work_type === 'epic') mapTopics(out);
     if (out.work_type === 'epic' && Object.keys(itemsOf(out, 'discovery')).length > 0) out.phases.discovery.approved_at = createdAt(manifest);
   }
   if (Array.isArray(out.imports)) out.imports = out.imports.map(asAsset);
