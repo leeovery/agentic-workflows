@@ -67,7 +67,11 @@ Once the builder reports its account written, take it:
 node .claude/skills/leeway-engine/scripts/engine.cjs task account {work_unit} {task}
 ```
 
-A refusal of the account goes back to the builder: its brief again, by SendMessage, names every fault. Then fetch the task's landing summary and emit its sections verbatim per their markers:
+A refusal of the account goes back to the builder: its brief again, by SendMessage, names every fault.
+
+A bugfix's task 1.1, the test that reproduces the bug, lands once that test has failed five times on the unfixed code at its tip: once its account is taken, run that series with the scenario and the command the task names, `verify run {work_unit} {scenario} --unfixed --test "{command}"`. A run that passes sends the test back to its builder: put the run that passed and its output onto the task, written to `.leeway/.cache/{work_unit}/build/addition.md`, `task add {work_unit} 1.1 --file .leeway/.cache/{work_unit}/build/addition.md --by orchestrator`, and send the builder back in, `brief builder {work_unit} 1.1` by SendMessage.
+
+Then fetch the task's landing summary and emit its sections verbatim per their markers:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs render task-landed {work_unit} {task}

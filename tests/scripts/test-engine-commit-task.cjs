@@ -39,7 +39,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {
-  ok, refusedPristine, git, commitAll, fixtureFrom, cleanupFixture, statePath, layout, createFile, readState, writeState, initRepo, addSubmodule, commitCode,
+  ok, refusedPristine, git, commitAll, fixtureFrom, cleanupFixture, statePath, createFile, initRepo, addSubmodule, commitCode, setEnvironment,
 } = require('./engine-harness.cjs');
 const { spawnSync } = require('child_process');
 const { createManifest, templateFolder } = require('./discovery-test-utils.cjs');
@@ -92,12 +92,6 @@ const marking = (dir, name) => `echo "${name} $(pwd -P) $(git rev-parse --short 
 
 /** What the marking checks wrote; '' where none ran. @param {string} dir */
 const marked = (dir) => (fs.existsSync(markerOf(dir)) ? fs.readFileSync(markerOf(dir), 'utf8') : '');
-
-/** The project's environment setup set to `environment`. @param {string} dir @param {unknown} environment */
-function setEnvironment(dir, environment) {
-  const project = JSON.parse(readState(dir, layout.projectManifest));
-  writeState(dir, layout.projectManifest, JSON.stringify({ ...project, environment }, null, 2));
-}
 
 /** The code's HEAD, short. @param {string} dir */
 const codeHead = (dir) => git(dir, ['rev-parse', '--short', 'HEAD']).trim();

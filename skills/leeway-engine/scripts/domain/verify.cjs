@@ -36,6 +36,25 @@
 //   is no task's. It is committed alone under the writer lock, pushed, and
 //   answers what the scenario's runs now prove at the commits it ran at, the
 //   checkout's HEAD in each of its repositories.
+// - `verify run <unit> <scenario> --unfixed --test "<command>"` runs a
+//   bugfix's reproducing test on the unfixed code (bug-proven.cjs, 15.5.2),
+//   needing no verify setup, its scenario one of phase 1 of the cut and of
+//   task 1.1's acceptance scenarios. The engine lays the project out in a
+//   scratch worktree of its own once a call, as for the mutants: in the
+//   build at task 1.1's tip, each repository holding its work at its branch;
+//   in the review phase, once every phase of the cut has closed, at the
+//   commits the build's series ran at, its command the series' (15.5.6), or
+//   at task 1.1's tip where the build recorded none. It runs the command by
+//   `sh -c` in the project's folder there up to five times, stopping at the
+//   first pass, which proves nothing (15.5.3), and takes the worktree apart
+//   whatever the command did. Each run is recorded `unfixed`, with the
+//   command, its exit as its verdict — `pass` at 0, else `fail` — its
+//   output's last 64 KB as its evidence, `output`, the commits it ran at,
+//   and the reproducing task in the build, no task in the review. The runs
+//   are committed together and alone under the writer lock, pushed, and it
+//   answers them, and whether the bug stands proven: in the build, the
+//   series proving it as the door reads it; in the review, no re-run since
+//   the review began passing.
 // - `verify setup <unit> --file <setup.json> --scenario <scenario>` records
 //   the verify setup on the project manifest, `environment.verify` (15.2.11,
 //   22.5.12): its place and the feature map's in the product's code, its five
@@ -87,7 +106,12 @@
 // Each refuses, opening on its command and recording nothing: a unit the
 // project lacks; no verify setup recorded, naming `verify setup`, for the
 // run and the mutants; a scenario that is none of the cut's, or a phase
-// beyond it; a setup file that does not hold one, a place under `.leeway/`
+// beyond it; for a run on the unfixed code, a unit but a bugfix, a scenario
+// none of phase 1's, task 1.1 not in the tracker, or not holding the
+// scenario, its branch holding no work — in the project's own repository,
+// no commit beyond the branch it lands on — and in the review phase a
+// command but the build's series', or a repository the series names no
+// commit for; a setup file that does not hold one, a place under `.leeway/`
 // (15.2.12), one the checkout lacks, a place that is the code root, a drive
 // that is no script under the place; for a run or a setup, a repository of
 // the checkout holding an uncommitted change before the parts run, or a file
@@ -118,7 +142,7 @@ const { projectRepos, projectPath, repoName } = require('../kernel/repos.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { runShellCommand, tailText } = require('../kernel/shell-command.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
-const { cutPhases, cutLength } = require('./derivations.cjs');
+const { cutPhases, cutLength, buildFinished } = require('./derivations.cjs');
 const { tasksInFlight, taskAt } = require('./conversation.cjs');
 const { codeStatus } = require('./code.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
@@ -127,11 +151,16 @@ const { stepOfId, parseShownTask } = require('./task-id.cjs');
 const { TRAILER } = require('./commit-task.cjs');
 const { holdsScenario } = require('./task-file.cjs');
 const { trackedTask, trackedPhase } = require('./task-verbs.cjs');
-const { phaseStack } = require('./phase-stack.cjs');
-const { layOutAt, scratchTop, takeApart } = require('./project-layout.cjs');
+const { phaseStack, repoNamed } = require('./phase-stack.cjs');
+const { taskBranch } = require('./landing-names.cjs');
+const { holdingBranch, holdsBeyond, landsOn } = require('./landing-git.cjs');
+const { layOutAt, layOutCommits, scratchTop, takeApart } = require('./project-layout.cjs');
 const { isoNow } = require('./dates.cjs');
 const { VERIFY_PARTS, SETUP_PLACES, setupFaults, verifySetup } = require('./environment.cjs');
 const { VERDICTS, SCENARIO, recordRun, recordingPath, behindHead, runsOf } = require('./runs.cjs');
+const {
+  SERIES_RUNS, REPRODUCING_SHOWN, isBugfix, reproducingRef, firstScenarios, bugRuns, proves, seriesCall, rerunPassed,
+} = require('./bug-proven.cjs');
 const { folding } = require('./layout.cjs');
 const { filled, refusing } = require('./staged-payload.cjs');
 
@@ -151,6 +180,7 @@ const { filled, refusing } = require('./staged-payload.cjs');
 
 const VERIFY_USAGE = [
   'verify run <work-unit> <scenario>',
+  'verify run <work-unit> <scenario> --unfixed --test <command>',
   'verify setup <work-unit> --file <setup.json> --scenario <scenario>',
   'verify mutants <work-unit> <N>',
 ].join('\n');
@@ -416,6 +446,107 @@ function verifyScenario(cwd, unit, scenario) {
   return result;
 }
 
+/**
+ * A bugfix's reproducing task, as the tracker holds it, holding `scenario`,
+ * one of phase 1 of the cut; refused for a unit but a bugfix, or where it
+ * is not so (the header's).
+ * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {string} scenario
+ * @returns {import('./drivers.cjs').TaskDetail}
+ */
+function reproducingTask(cwd, unit, manifest, scenario) {
+  if (!isBugfix(manifest)) throw new Error(`${unit} is a ${manifest.work_type}, and a run on the unfixed code is a bugfix's, proving its bug (15.5.5)`);
+  if (!firstScenarios(manifest).includes(scenario)) throw new Error(`${scenario} is no scenario of phase 1 of ${unit}'s cut, where the reproducing task's lies — engine manifest get ${unit} cut lists them`);
+  const lacking = `phase 1 of ${unit} has no task 1.1 yet — the reproducing task, phase 1's lowest-numbered, writes the test that reproduces the bug (15.5.1)`;
+  const task = withStateLock(stateRoot(cwd), () => trackedTask(cwd, reproducingRef(unit), lacking));
+  if (!holdsScenario(task.text, scenario)) throw new Error(`${scenario} is none of task 1.1's acceptance scenarios — a run on the unfixed code is of a scenario the reproducing task holds`);
+  return task;
+}
+
+/**
+ * Where the scratch worktree of a run on the unfixed code is laid out, as
+ * `lay` lays it at `top` (the header's): at the commits the build's series
+ * ran at, in the review phase, refused for a command but the series' or a
+ * repository it names no commit for; else at task 1.1's tip, refused where
+ * its branch holds no work — in the project's own repository, no commit
+ * beyond the branch it lands on.
+ * @param {string} cwd @param {string} unit @param {import('./drivers.cjs').TaskDetail} task @param {import('./runs.cjs').Series|null} series @param {string} command @param {Repo[]} repos
+ * @returns {(top: string) => Repo[]}
+ */
+function unfixedLayout(cwd, unit, task, series, command, repos) {
+  const [own] = repos;
+  if (series !== null) {
+    if (command !== series.command) throw new Error(`the review phase runs the test that reproduces the bug again as the build's series ran it (15.5.6): ${seriesCall(unit, series)}`);
+    const commits = new Map(repos.map((repo) => {
+      const ran = series.commits.find(({ repo: name }) => name === repoName(repo))?.commit ?? null;
+      if (ran === null) throw new Error(`the build's series names no commit for ${repoNamed(repo)}, so it cannot be laid out where the series ran`);
+      return [repo.dir, ran];
+    }));
+    return (top) => layOutCommits(own.path, repos, commits, top);
+  }
+  const branch = taskBranch(task.ref, /** @type {string} */ (task.type), task.title);
+  const holding = holdingBranch(unit, repos, branch).holding.filter((repo) => repo.dir !== '' || holdsBeyond(repo.path, [branch], [landsOn(cwd, repo)]));
+  if (holding.length === 0) {
+    throw new Error(`no repository of the project holds a commit on ${branch}, task 1.1's branch, beyond the branch it lands on — its test is committed there through the door first: engine commit --paths <the test's files> --task ${unit} 1.1 -m "<message>" (15.5.1)`);
+  }
+  return (top) => layOutAt(own.path, unit, repos, new Map(holding.map((repo) => [repo.dir, branch])), top);
+}
+
+/**
+ * The test run in `root` up to five times, stopping at the first pass: each
+ * run's verdict, its output's last 64 KB and when it ended.
+ * @param {string} root @param {string} command @returns {{verdict: Verdict, output: string, at: string}[]}
+ */
+function runsOnUnfixed(root, command) {
+  /** @type {{verdict: Verdict, output: string, at: string}[]} */
+  const ran = [];
+  while (ran.length < SERIES_RUNS && !ran.some(({ verdict }) => verdict === 'pass')) {
+    const { exit, output = '' } = runShellCommand(root, command, {}, { output: EVIDENCE_LIMIT });
+    ran.push({ verdict: exit === 0 ? 'pass' : 'fail', output, at: isoNow() });
+  }
+  return ran;
+}
+
+/** What a run on the unfixed code's answer says where the bug does not stand proven, with the way on. @param {boolean} reviewing */
+const unprovenNote = (reviewing) => (reviewing
+  ? 'the test passed on the unfixed code again, so round 1 carries it as a finding, unfixed#1, and fails (15.5.6)'
+  : 'the test passed on the unfixed code in its series, so it proves nothing — rework the test, a new commit on task 1.1, then run a new series (15.5.3)');
+
+/**
+ * `verify run <unit> <scenario> --unfixed --test "<command>"`: the
+ * reproducing test run on the unfixed code up to five times in a scratch
+ * worktree laid out for it, each run recorded and committed together (the
+ * header's).
+ * @param {string} cwd @param {string} unit @param {string} scenario @param {string} command
+ * @returns {Record<string, unknown>}
+ */
+function verifyUnfixed(cwd, unit, scenario, command) {
+  const manifest = unitManifest(cwd, unit);
+  const task = reproducingTask(cwd, unit, manifest, scenario);
+  const reviewing = buildFinished(manifest);
+  const repos = projectRepos(codeRoot(cwd));
+  const lay = unfixedLayout(cwd, unit, task, reviewing ? bugRuns(cwd, unit, manifest).series : null, command, repos);
+  const { checkout, commits, ran } = inScratch(repos, `unfixed-${unit}`, lay, (laid) => ({ checkout: laid[0].path, commits: headsOf(laid), ran: runsOnUnfixed(laid[0].path, command) }));
+  const passedIn = ran.findIndex(({ verdict }) => verdict === 'pass') + 1;
+  /** @type {string[]} */
+  const warnings = [];
+  const { rels, outcome } = withStateLock(stateRoot(cwd), () => {
+    const recorded = ran.map(({ verdict, output, at }) => recordRun(cwd, unit, scenario, {
+      verdict, unfixed: true, command, at, checkout, commits, task: reviewing ? null : REPRODUCING_SHOWN, evidence: [{ name: 'output', text: output }], recordings: [],
+    }));
+    const said = passedIn === 0 ? 'five failures' : `passed in run ${passedIn}`;
+    return { rels: recorded, outcome: commitStateTail(cwd, recorded, `verify(${unit}): ${scenario} on the unfixed code, ${said}`, warnings) };
+  });
+  const after = bugRuns(cwd, unit, manifest);
+  const proven = reviewing ? !rerunPassed(after.reruns) : proves(after.series);
+  /** @type {Record<string, unknown>} */
+  const result = {
+    unit, scenario, command, runs: rels.map((run, at) => ({ run, verdict: ran[at].verdict })), proven, committed: outcome.committed, ...(proven ? {} : { way: unprovenNote(reviewing) }),
+  };
+  if (warnings.length > 0) result.warnings = warnings;
+  noteCommitOutcome(result, outcome, `${unit} --state`);
+  return result;
+}
+
 /** A setup file's parts; refused where it does not hold a setup. @param {string} cwd @param {string} file @returns {SetupParts} */
 function setupIn(cwd, file) {
   let given;
@@ -636,11 +767,22 @@ function verifyMutants(cwd, unit, given) {
   if (mutation === undefined) throw new Error(NO_TOOL);
   const tasks = withStateLock(stateRoot(cwd), () => trackedPhase(cwd, unit, phase).tasks ?? []);
   const { repos, tips } = phaseStack(cwd, unit, phase, tasks);
-  const top = scratchTop(repos[0], `mutants-${unit}-phase-${phase}`);
+  const branches = new Map([...tips].map(([repo, tip]) => [repo.dir, tip]));
+  return inScratch(repos, `mutants-${unit}-phase-${phase}`, (top) => layOutAt(repos[0].path, unit, repos, branches, top), (laid) => mutantsAt(cwd, unit, phase, mutation, laid));
+}
+
+/**
+ * `fn` given the project as `lay` lays it out in a scratch worktree of the
+ * engine's own, `name`, beside the builders' isolation worktrees, taken
+ * apart before — what an interrupted run left — and after, whatever `fn`
+ * or the laying out did.
+ * @template T @param {Repo[]} repos the project's @param {string} name @param {(top: string) => Repo[]} lay @param {(laid: Repo[]) => T} fn @returns {T}
+ */
+function inScratch(repos, name, lay, fn) {
+  const top = scratchTop(repos[0], name);
   takeApart(repos, top);
   try {
-    const laid = layOutAt(repos[0].path, unit, repos, new Map([...tips].map(([repo, tip]) => [repo.dir, tip])), top);
-    return mutantsAt(cwd, unit, phase, mutation, laid);
+    return fn(lay(top));
   } finally {
     takeApart(repos, top);
   }
@@ -704,16 +846,20 @@ function cachedSurvivors(cwd, unit, phase, tips) {
   return atTips.survivors;
 }
 
+/** The `verify` verbs' boolean flags. */
+const VERIFY_FLAGS = Object.freeze(['unfixed']);
+
 /**
  * The `verify` verbs' answer, each refusal opening on its command.
- * @param {string} cwd @param {string[]} argv @param {Record<string, string>} opts
+ * @param {string} cwd @param {string[]} argv @param {Record<string, string>} opts @param {Set<string>} [flags] those of VERIFY_FLAGS given
  * @returns {Record<string, unknown>}
  */
-function runVerifyVerb(cwd, argv, opts) {
+function runVerifyVerb(cwd, argv, opts, flags = new Set()) {
   const [verb, ...rest] = argv;
-  const named = Object.keys(opts).sort().join();
+  const named = [...Object.keys(opts), ...flags].sort().join();
   const usage = () => new Error(`Usage: ${VERIFY_USAGE.split('\n').map((line) => `engine ${line}`).join(' | ')}`);
   if (verb === 'run' && rest.length === 2 && named === '') return refusing('verify run', () => verifyScenario(cwd, rest[0], rest[1]));
+  if (verb === 'run' && rest.length === 2 && named === 'test,unfixed' && opts.test) return refusing('verify run', () => verifyUnfixed(cwd, rest[0], rest[1], opts.test));
   if (verb === 'setup' && rest.length === 1 && named === 'file,scenario' && opts.file && opts.scenario) {
     return refusing('verify setup', () => recordSetup(cwd, rest[0], opts.file, opts.scenario));
   }
@@ -721,4 +867,4 @@ function runVerifyVerb(cwd, argv, opts) {
   throw usage();
 }
 
-module.exports = { VERIFY_USAGE, runVerifyVerb, cachedSurvivors };
+module.exports = { VERIFY_USAGE, VERIFY_FLAGS, runVerifyVerb, cachedSurvivors };

@@ -73,6 +73,10 @@ A gap — a call the record leaves open that is not yours to make — comes back
 
 {{phase-scenarios}}
 
+# The test that reproduces the bug
+
+{{reproducing-test}}
+
 # Notes held for this phase
 
 {{held-notes}}

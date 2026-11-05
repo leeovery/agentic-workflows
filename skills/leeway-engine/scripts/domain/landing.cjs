@@ -7,23 +7,26 @@
 // `finish`, which merges every phase still standing — the review phase's fix
 // phases, after every other (7.2.6). `open` and `chain` refuse a task with
 // no account taken of its review as it stands (task-account.cjs, 12.14);
-// `open` a task of a fix phase whose branch does not descend from the
-// unit's work not landed below it, which a fix phase is built on
-// (review-change.cjs, 7.2.6); `chain` a task its pair has not passed, read
-// off its rounds' reports, or one changed under its last round since
-// (round-report.cjs, 12.1.4); and `phase` a phase the cut holds until its
-// phase review has passed and its fixes are done, as the phase's close
-// reads it (phase-checks.cjs, 7.2.4). `chain` answers, where the task
-// chained is the last of a phase of the cut not yet ended, the phase's
-// notes consolidated (notes.cjs), its phase review not begun and the
-// verify setup naming a mutation tool, the phase's mutation run as its
-// `next` (verify.cjs, 15.6.3), once for the phase: a task the
+// `open` a bugfix's reproducing task until its test's series proves the
+// bug at its tip (bug-proven.cjs, 15.5.3), and a task of a fix phase whose
+// branch does not descend from the unit's work not landed below it, which
+// a fix phase is built on (review-change.cjs, 7.2.6); `chain` a task its
+// pair has not passed, read off its rounds' reports, or one changed under
+// its last round since (round-report.cjs, 12.1.4); and `phase` a phase the
+// cut holds until its phase review has passed and its fixes are done, as
+// the phase's close reads it (phase-checks.cjs, 7.2.4). `chain` answers,
+// where the task chained is the last of a phase of the cut not yet ended,
+// the phase's notes consolidated (notes.cjs), its phase review not begun
+// and the verify setup naming a mutation tool, the phase's mutation run as
+// its `next` (verify.cjs, 15.6.3), once for the phase: a task the
 // consolidation writes ends after it.
 // Which of a unit's tasks landed — each one a default branch's landing
-// names — is read here for the phase's close and the build's standing
-// (`landedTasks`); for the close in step, whether a phase's tasks are each
-// in its stack (`allChained`); and, for a task with nothing of its unit's
-// below it, where it starts in each repository (`landingTips`).
+// names — is read here for the phase's close, the build's standing and a
+// bugfix's door, which reads the landings a commit being made holds too
+// (`landedTasks`, bug-proven.cjs); for the close in step, whether a
+// phase's tasks are each in its stack (`allChained`); and, for a task with
+// nothing of its unit's below it, where it starts in each repository
+// (`landingTips`).
 //
 // What every driver shares is settled here: the names (landing-names.cjs);
 // the default branch everything lands on in each repository, never the
@@ -98,10 +101,12 @@ const { taskRounds, pairPassed, changedUnder, changedRefusal, phaseReviewBegun }
 const { verifySetup } = require('./environment.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { isFixPhase } = require('./derivations.cjs');
+const { reproducingHold } = require('./bug-proven.cjs');
 const names = require('./landing-names.cjs');
 const lg = require('./landing-git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { messageOf } = require('../kernel/call.cjs');
+const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { projectRepos, projectPath, childrenFirst, topPath } = require('../kernel/repos.cjs');
 const { STATE_DIR_NAME, stateRoot } = require('../kernel/state-root.cjs');
 
@@ -540,13 +545,20 @@ function refuseOffBase(cwd, project, task) {
   }
 }
 
+/** Refuse a bugfix's reproducing task while its bug is not proven at its tip, naming the series or the rework (bug-proven.cjs). @param {string} cwd @param {TaskRef} ref */
+function refuseUnproven(cwd, ref) {
+  const held = reproducingHold(cwd, loadWorkUnitManifest(cwd, ref.unit), ref, 'lands');
+  if (held !== null) throw new Error(`land: ${held}`);
+}
+
 /**
  * The task's pull request opened in every repository its change touches —
  * locally, its change squashed onto its phase's branch there — under the
  * type and title the tracker holds for it; `already` where it is opened
  * wherever it touches, so a rerun reads finished work as done. A task the
- * tracker lacks is refused as the read finds it; a fix phase's off the
- * work below it, before anything opens.
+ * tracker lacks is refused as the read finds it; a bugfix's reproducing
+ * task while its bug is not proven, and a fix phase's off the work below
+ * it, before anything opens.
  * @param {string} cwd @param {string} unit @param {string} task shown, `{phase}.{n}`
  */
 function landOpen(cwd, unit, task) {
@@ -557,6 +569,7 @@ function landOpen(cwd, unit, task) {
   const { committed, warnings, ...held } = trackedTask(cwd, ref, lacking);
   const { task: landing, holding } = carrying(warnings ?? [], () => landingOf(project, ref, held));
   carrying(warnings ?? [], () => account().refuseUnaccounted(cwd, ref, 'land'));
+  carrying(warnings ?? [], () => refuseUnproven(cwd, ref));
   carrying(warnings ?? [], () => refuseOffBase(cwd, project, landing));
   return withDriver(cwd, (driver) => {
     const steps = touching(project, driver, landing, holding).map(({ ctx, tip }) => ({ ctx, act: () => driver.open(ctx, landing, tip) }));
@@ -728,18 +741,22 @@ function allChained(cwd, unit, tasks) {
  * repository of the project names by its `Task:` line, as every driver
  * lands a task (landing-names.cjs), searched from the time `from` names
  * where given (`dayBefore` the unit was made, before which none of its work
- * landed). A repository with no default branch to land on holds none.
- * @param {string} cwd @param {string} unit @param {Repo[]} repos the project's @param {string|null} [from] @returns {Set<string>}
+ * landed). A repository with no default branch to land on holds none. Where
+ * `on` names other revisions of each repository, the landings they hold:
+ * those a commit made of them is built on.
+ * @param {string} cwd @param {string} unit @param {Repo[]} repos the project's @param {string|null} [from]
+ * @param {(repo: Repo) => string[]} [on] the revisions read in each repository
+ * @returns {Set<string>}
  */
-function landedTasks(cwd, unit, repos, from = null) {
+function landedTasks(cwd, unit, repos, from = null, on = (repo) => [`refs/heads/${lg.landsOn(cwd, repo)}`]) {
   return new Set(repos.flatMap((repo) => {
-    let into;
+    let read;
     try {
-      into = lg.landsOn(cwd, repo);
+      read = on(repo);
     } catch {
       return [];
     }
-    return lg.messagesNaming(repo.path, into, `Task: ${unit}-`, from).flatMap((message) => names.tasksOfMessage(unit, message).map(shownTask));
+    return lg.messagesNaming(repo.path, read, `Task: ${unit}-`, from).flatMap((message) => names.tasksOfMessage(unit, message).map(shownTask));
   }));
 }
 

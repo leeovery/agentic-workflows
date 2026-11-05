@@ -12,9 +12,10 @@
 // round reads, `tests` for the test surface — its scope, `in` or `out` of
 // the change, its call, its text, the items of the round's reports it
 // answers — each finding `{report}#{n}`, each note for later `{report}#n{k}`,
-// and each builder's note standing (review-phase.cjs) `notes#{k}`, a
-// finding answering those alone of the area `notes` — and where it landed,
-// one of:
+// each builder's note standing (review-phase.cjs) `notes#{k}`, a finding
+// answering those alone of the area `notes`, and in a bugfix's round 1
+// `unfixed#1`, serious, where its reproducing test passed on the unfixed
+// code again (bug-proven.cjs, 15.5.6) — and where it landed, one of:
 //   fix     a fix task, in scope: a task of the round's fix phase, past the
 //           cut (P14), the tracker holding it, not closed (14.3.2, 14.3.4);
 //   inbox   the item filed for it, out of scope: a live inbox item
@@ -31,10 +32,11 @@
 // answered by exactly one finding, two reviewers' one bug one finding, at no
 // lesser call than the findings it answers; a note lies beyond the change,
 // so a finding answering one is out of scope, filed or dropped, never a
-// fix; the round passes where every report does — Claude
-// never types a verdict. What each scenario of the cut stands at, read at
-// the change's tips (review-change.cjs, runs.cjs), is recorded with it
-// (15.3.3, 15.5.6). Then it writes the round's record, its report — the
+// fix; the round passes where every report does and, in a bugfix's round 1,
+// no run of its reproducing test on the unfixed code since the review
+// began passed — Claude never types a verdict. What each scenario of the
+// cut stands at, read at the change's tips (review-change.cjs, runs.cjs),
+// is recorded with it (15.3.3, 15.5.6). Then it writes the round's record, its report — the
 // closing report where the round ends the review phase (14.4.3), what each
 // round decided, its fix tasks as filed, and the calls decided for the
 // person counted as the round is recorded — and its checks, every report
@@ -54,7 +56,9 @@
 // It refuses, opening `review round: ` and writing nothing: a unit whose
 // review phase cannot be entered; a round that cannot be read — one ended
 // the phase, fix tasks of the round before wait, a later round's areas are
-// not named; no snapshot of the round's held, its cache lost or an earlier
+// not named; a bugfix's round 1 before its reproducing test has run on the
+// unfixed code again since the review began, naming the call that runs it
+// (15.5.6); no snapshot of the round's held, its cache lost or an earlier
 // round's held, each named, and `review accept-tree`, which on the person's
 // word takes the tree as it is; a working tree outside `.leeway/` changed
 // since the round's snapshot, naming every path, nothing put back unasked —
@@ -92,6 +96,9 @@ const { reading, reposOf } = require('./phase-checks.cjs');
 const { readSpec, specStatements } = require('./spec-sections.cjs');
 const { changeOf, cutStandings } = require('./review-change.cjs');
 const { reviewHeld } = require('./review-entry.cjs');
+const {
+  UNFIXED_ITEM, isBugfix, bugRuns, rerunRefusal, rerunPassed,
+} = require('./bug-proven.cjs');
 const {
   NOTES, isBuilderNote, reportNames, reviewStanding, roundRefusal, endedWords, recordedRounds, fixesOf, endsReview, fixPhase, roundRecordPath, roundReportFile, roundChecksFile, roundFolder,
   snapshotRound, dropSnapshot, treeChanges, setAsideHeld, unitCalls, reviewCallFault, forThePerson, inTheBuild,
@@ -146,15 +153,30 @@ const noteItems = (notes) => notes.map((item) => [item, NOTE]);
 /**
  * Every item of the round by its kind: each finding of its reports,
  * `{report}#{n}`, by its call; each note for later, `{report}#n{k}`, and
- * each builder's note standing, `notes#{k}`, a note.
- * @param {ReadReport[]} reports @param {string[]} notes @returns {Map<string, string>}
+ * each builder's note standing, `notes#{k}`, a note; and where a bugfix's
+ * reproducing test passed on the unfixed code again, `unfixed#1`, serious.
+ * @param {ReadReport[]} reports @param {string[]} notes @param {boolean} rerunPass @returns {Map<string, string>}
  */
-const roundItems = (reports, notes) => new Map([...reports.flatMap(({ name, calls, notes: noted }) => {
+const roundItems = (reports, notes, rerunPass) => new Map([...reports.flatMap(({ name, calls, notes: noted }) => {
   const report = name.replace(/\.md$/, '');
   /** @type {[string, string][]} */
   const findings = calls.map((call, at) => [`${report}#${at + 1}`, call]);
   return [...findings, ...Array.from({ length: noted }, (_, at) => /** @type {[string, string]} */ ([`${report}#n${at + 1}`, NOTE]))];
-}), ...noteItems(notes)]);
+}), ...noteItems(notes), ...(rerunPass ? [/** @type {[string, string]} */ ([UNFIXED_ITEM, CALLS[0]])] : [])]);
+
+/**
+ * A bugfix's round 1 held to its reproducing test run on the unfixed code
+ * again since the review began, refused where it has not (15.5.6): whether
+ * such a run passed; false for any other round or unit.
+ * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {number} round @param {(reason: string) => never} refuse
+ */
+function rerunHeld(cwd, unit, manifest, round, refuse) {
+  if (round !== 1 || !isBugfix(manifest)) return false;
+  const runs = bugRuns(cwd, unit, manifest);
+  const refused = rerunRefusal(unit, runs);
+  if (refused !== null) refuse(refused);
+  return rerunPassed(runs.reruns);
+}
 
 /** The calls above a nit. */
 const GRAVE = CALLS.slice(0, 2);
@@ -375,6 +397,7 @@ function recordRound(cwd, unit, file) {
   const {
     manifest, areas, rounds, round, reads, notes, repos,
   } = roundUnderReview(cwd, unit);
+  const rerunPass = rerunHeld(cwd, unit, manifest, round, refuse);
   treeHeld(cwd, unit, round, repos, refuse);
   const { faults, reports } = roundReports(cwd, unit, round, reads);
   if (faults.length > 0) refuse(faults.join('; '));
@@ -383,10 +406,15 @@ function recordRound(cwd, unit, file) {
   const warnings = [];
   const account = refusing(said, () => readShown(stateRoot(cwd), warnings, (shower) => accountOf({
     unit, phase, cwd, statuses: phaseStatuses(cwd, unit, phase), call: (id) => reviewCallFault(shower, unit, id),
-  }, readPayload(cwd, file), reads, roundItems(reports, notes))));
+  }, readPayload(cwd, file), reads, roundItems(reports, notes, rerunPass))));
   /** @type {RoundRecord} */
   const record = {
-    reports: reports.map(({ name }) => name), passed: reports.every(({ verdict }) => verdict === 'pass'), can_now: account.can_now, findings: account.findings, settled: account.settled, scenarios: [],
+    reports: reports.map(({ name }) => name),
+    passed: !rerunPass && reports.every(({ verdict }) => verdict === 'pass'),
+    can_now: account.can_now,
+    findings: account.findings,
+    settled: account.settled,
+    scenarios: [],
   };
   verdictHeld(round, unit, phase, record, refuse);
   record.scenarios = refusing(said, () => scenarioStandings(cwd, unit, manifest, round, repos));

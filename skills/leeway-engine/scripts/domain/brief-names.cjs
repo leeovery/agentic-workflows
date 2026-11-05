@@ -93,7 +93,7 @@ const ROLES = Object.freeze({
   'task-writer': {
     agent: 'leeway-task-writer',
     whose: 'the task writer\'s',
-    records: ['cut-phase', 'phase-sections', 'phase-scenarios', 'held-notes', 'written-tasks', 'earlier-tasks', 'build-calls', 'affected-entries', 'task-files-to'],
+    records: ['cut-phase', 'phase-sections', 'phase-scenarios', 'held-notes', 'written-tasks', 'earlier-tasks', 'build-calls', 'affected-entries', 'task-files-to', 'reproducing-test'],
   },
   consolidation: {
     agent: 'leeway-consolidation', whose: 'the consolidation agent\'s', records: ['phase-notes', 'phase-tasks', 'phase-diff-range', 'consolidation-to', 'task-files-to'],

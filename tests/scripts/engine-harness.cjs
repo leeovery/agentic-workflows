@@ -570,6 +570,12 @@ function buildDated(folder, { name, remote, state, objectFormat }) {
   if (state) createState(path.join(main, STATE_DIR_NAME));
 }
 
+/** The project's environment setup set to `environment`, on the project manifest. @param {string} dir @param {unknown} environment */
+function setEnvironment(dir, environment) {
+  const project = JSON.parse(readState(dir, layout.projectManifest));
+  writeState(dir, layout.projectManifest, JSON.stringify({ ...project, environment }, null, 2));
+}
+
 /** @type {Map<string, (dir: string) => string>} */
 const projects = new Map();
 
@@ -942,5 +948,5 @@ module.exports = {
   git, stateGit, commitOnState, head, lastMessage, touched, treeSnapshot, traced, configHooksFire, childLimits, ledgerEntries, tip, remoteTip,
   commitCode, commitAll, testIdentity, bareRepo, initRepo, cloneOf, githubOffline, failingPs, accountFiles, accountTaken,
   NO_SPACE, failingTrustAppends,
-  setupGitFixture, setupFixtureAt, fixtureFrom, folderFrom, codeProject, twoMachines, addSubmodule, cleanupFixture,
+  setupGitFixture, setupFixtureAt, fixtureFrom, folderFrom, codeProject, twoMachines, addSubmodule, cleanupFixture, setEnvironment,
 };

@@ -18,13 +18,15 @@
 //   each is about to change and what to watch when it lands, each a task
 //   in progress.
 // - `task-landed <unit> <task>`: a task's landing summary, once its account
-//   is taken.
+//   is taken — a bugfix's reproducing task's once its bug is proven too
+//   (bug-proven.cjs), as it lands.
 // - `task-account <unit> <task>`: any task's account, printed when asked —
 //   one not yet taken drawn without it.
 // - `step-gate <unit> <task>`: the gate after a task, in step alone, once
-//   its account is taken and before it is done, and for a task an answer
-//   freed while another went on, once that one is done (12.7.9); in auto
-//   none follows a task (12.12.7).
+//   its account is taken and before it is done — a bugfix's reproducing
+//   task's once its bug is proven too — and for a task an answer freed
+//   while another went on, once that one is done (12.7.9); in auto none
+//   follows a task (12.12.7).
 // - `phase-merge-gate <unit> <N>`: the gate before a phase's stack merges,
 //   in step alone, for a phase written and not yet merged: one of the cut
 //   once `land phase` would take it (7.2.4), one of the review's fixes
@@ -60,6 +62,7 @@ const { accountPath, takenFigures, readAccount } = require('./task-account.cjs')
 const { taskRounds } = require('./round-report.cjs');
 const { heldStack, tipCommits } = require('./phase-stack.cjs');
 const { runsOf } = require('./runs.cjs');
+const { reproducingHold } = require('./bug-proven.cjs');
 const { waitingQuestions } = require('./questions.cjs');
 const { unitEntries } = require('./unit-entries.cjs');
 const { projectName } = require('./state-checks.cjs');
@@ -164,10 +167,17 @@ function ranOf(cwd, manifest, ref, task, criteria) {
   };
 }
 
+/** Refuse a bugfix's reproducing task while its bug is not proven at its tip, naming the series or the rework: it lands once it is (bug-proven.cjs). @param {string} cwd @param {Record<string, any>} manifest @param {TaskRef} ref */
+function refuseUnproven(cwd, manifest, ref) {
+  const held = reproducingHold(cwd, manifest, ref, 'lands');
+  if (held !== null) throw new Error(held);
+}
+
 /** `render task-landed <unit> <task>`. @param {string} cwd @param {Args} args */
 function taskLandedSurface(cwd, args) {
   return refusing('render task-landed', () => {
     const { manifest, ref, task } = namedTask(cwd, args, 'task-landed');
+    refuseUnproven(cwd, manifest, ref);
     const account = requiredAccount(cwd, ref);
     const criteria = criteriaTexts(task.text);
     return landingScreen({
@@ -197,6 +207,7 @@ function stepGateSurface(cwd, args) {
     const { manifest, ref, task } = namedTask(cwd, args, 'step-gate');
     stepOnly(manifest, 'no gate follows a task');
     if (ENDED.includes(task.status)) throw new Error(`${taskName(ref)} is ${task.status} — its gate comes as it lands, before task done`);
+    refuseUnproven(cwd, manifest, ref);
     const behind = withStateLock(stateRoot(cwd), () => turnRefusal(cwd, ref, manifest));
     if (behind !== null) throw new Error(behind);
     return stepGateScreen(ref.unit, accountView(cwd, manifest, ref, task, requiredAccount(cwd, ref)));

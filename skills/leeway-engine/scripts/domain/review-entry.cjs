@@ -42,8 +42,13 @@
 // standing, `notes#{k}`, answered by the round under review or, once the
 // round that ended the phase has its fix tasks done, on its own, with the
 // notes' file (14.3.5); what the review's put backs set aside, the folder
-// and each copy, while it holds anything; the branch the unit's work lands
-// on, each reader's base (task-base.cjs); each of the conversation's fix
+// and each copy, while it holds anything; for a bugfix, the series the
+// build recorded on the unfixed code — its scenario, its command, how its
+// runs did and the commits they ran at, and each run's file — and, while
+// round 1 is under review, the test's run on the unfixed code again, which
+// that round waits on, or how those since the review began did
+// (bug-proven.cjs, 15.5.6); the branch the unit's work lands on, each
+// reader's base (task-base.cjs); each of the conversation's fix
 // tasks in flight, and each question waiting on the person, as the build's
 // entry gives them (12.13.7); each round's report; the spec; the unit's
 // record, by its call; and the build's log. Its recovery note re-reads the
@@ -65,6 +70,9 @@ const { notesPath } = require('./notes.cjs');
 const {
   reviewStanding, reportsIn, endedWords, readsWords, mergingWords, roundReportFile, openSnapshot, fixPhase, setAsideHeld,
 } = require('./review-phase.cjs');
+const {
+  UNFIXED_ITEM, isBugfix, bugRuns, runVerb, rerunPassed,
+} = require('./bug-proven.cjs');
 
 /** @typedef {import('./enter.cjs').Entry} Entry */
 /** @typedef {import('./enter.cjs').Entering} Entering */
@@ -180,6 +188,34 @@ function buildLines(at, inFlight, session) {
   return [...inFlightPart, ...waitingLines(waitingAndFreed(at.cwd, at.unit, at.warnings))];
 }
 
+/** The commits a series ran at, as a line names them. @param {import('./runs.cjs').RepoCommit[]} commits */
+const commitsWords = (commits) => commits.map(({ repo, commit }) => `${repo === '.' ? 'the project' : repo} at ${commit === null ? 'no commit' : commit.slice(0, 7)}`).join(', ');
+
+/** The build's series on the unfixed code, a line, then each of its runs by its file. @param {string} cwd @param {import('./runs.cjs').Series|null} series @returns {Line[]} */
+function seriesLines(cwd, series) {
+  if (series === null) return [['unfixed series', 'none — the build recorded no run of the reproducing test on the unfixed code']];
+  const { scenario, command, failures, runs, commits } = series;
+  return [
+    ['unfixed series', `${scenario}, \`${command}\` — ${failures} of its ${runs.length} runs failing on the unfixed code, ${commitsWords(commits)}`],
+    ...runs.map(({ file }) => /** @type {Line} */ (['unfixed run', statePath(cwd, file)])),
+  ];
+}
+
+/** Round 1's run of the test on the unfixed code again: the call it waits on, or how those since the review began did. @param {string} unit @param {ReturnType<typeof bugRuns>} runs */
+function rerunWords(unit, { series, reruns }) {
+  if (reruns.length === 0) return `not yet — round 1 is recorded once the test runs on the unfixed code again, where it must fail: \`${ENGINE_COMMAND} ${runVerb(unit, series)}\``;
+  const ran = `${reruns.length} since the review began`;
+  return rerunPassed(reruns) ? `${ran}, one passing — ${UNFIXED_ITEM}, a finding round 1 carries, so it fails` : `${ran}, every one failing`;
+}
+
+/** A bugfix's lines (the header's): the build's series, and while round 1 is under review its run again; none for any other unit. @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {ReviewStanding} standing @returns {Line[]} */
+function bugLines(cwd, unit, manifest, standing) {
+  if (!isBugfix(manifest)) return [];
+  const runs = bugRuns(cwd, unit, manifest);
+  const series = seriesLines(cwd, runs.series);
+  return standing.ended || standing.round !== 1 ? series : [...series, ['rerun', rerunWords(unit, runs)]];
+}
+
 /** The branch the unit's work lands on, each reader's base. @param {Reading} at @returns {Line} */
 const baseLine = (at) => ['base', `${projectLandsOn(at.cwd)} — the branch the unit's work lands on, the --base of each reader's brief`];
 
@@ -199,6 +235,7 @@ function reviewReads(at, inFlight, session) {
   const standing = reviewStanding(at);
   return [
     ...standingLines(cwd, unit, manifest, standing),
+    ...bugLines(cwd, unit, manifest, standing),
     baseLine(at),
     ...buildLines(at, inFlight, session),
     ...roundReports(cwd, unit, standing).map((report) => /** @type {Line} */ (['round report', report])),
