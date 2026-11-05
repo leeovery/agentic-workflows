@@ -279,13 +279,13 @@ function messagesPast(root, from, to) {
 }
 
 /**
- * The message of every commit `branch` holds whose message holds `text`,
- * committed at or after the time `since` names where it names one.
- * @param {string} root @param {string} branch @param {string} text @param {string|null} [since] @returns {string[]}
+ * The message of every commit the revisions `revs` hold whose message holds
+ * `text`, committed at or after the time `since` names where it names one.
+ * @param {string} root @param {string[]} revs @param {string} text @param {string|null} [since] @returns {string[]}
  */
-function messagesNaming(root, branch, text, since = null) {
+function messagesNaming(root, revs, text, since = null) {
   const bound = since === null ? [] : [`--since=${since}`];
-  return git(root, ['log', '-z', '--format=%B', '--fixed-strings', `--grep=${text}`, ...bound, `refs/heads/${branch}`, '--']).split('\0').filter(Boolean);
+  return git(root, ['log', '-z', '--format=%B', '--fixed-strings', `--grep=${text}`, ...bound, ...revs, '--']).split('\0').filter(Boolean);
 }
 
 /** Every commit `to` holds past `from`, oldest first, as a refusal names it: short, then its subject. @param {string} root @param {string} from @param {string} to @returns {string[]} */

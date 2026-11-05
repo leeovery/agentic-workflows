@@ -136,7 +136,7 @@ describe('the task writer\'s brief (12.5, 12.S9, 11.S17)', () => {
     assert.ok(issued(['task-writer', UNIT, '2']).brief.includes('# Its sections\n\n' + `\`${statePath(dir, layout.unit(UNIT, SPEC_FILE))}\`` + '\n\n- §1, first built in phase 1\n'));
   });
 
-  it('15.5.1: a bugfix\'s first phase opens on the test that reproduces its bug, recorded first so it is task 1.1, of type `test`, naming the command that runs it alone, the fix linked after it; its later phases, as any other unit\'s, open on none', () => {
+  it('15.5.1: a bugfix\'s first phase opens on the test that reproduces its bug, recorded first so it is task 1.1, of type `test`, naming the command that runs it alone, the fix linked after it and every other task of the phase after the fix; its later phases, as any other unit\'s, open on none', () => {
     const manifest = JSON.parse(readState(dir, layout.manifest(UNIT)));
     writeState(dir, layout.manifest(UNIT), JSON.stringify({ ...manifest, work_type: 'bugfix' }));
     commitAll(dir, 'a bugfix');
@@ -145,7 +145,7 @@ describe('the task writer\'s brief (12.5, 12.S9, 11.S17)', () => {
     assert.deepStrictEqual([section(issued(['task-writer', UNIT, '1']).brief), section(issued(['task-writer', UNIT, '2']).brief)], [
       '# The test that reproduces the bug\n\nThis phase opens on the test that reproduces the bug. Record that task first, so it is task 1.1. It writes the test and nothing else, its type `test` and its acceptance scenario the scenario of this phase the bug breaks; '
         + 'its solution names the command that runs that test alone, as `npx vitest run test/checkout.test.ts`. The test is run by that command on the unfixed code, and no other task\'s code lands until it fails there five times out of five.\n\n'
-        + 'The task that fixes the bug is linked after 1.1. Its acceptance scenarios say in its own words what it makes true, since the scenario is 1.1\'s.\n\n',
+        + 'The task that fixes the bug is linked after 1.1, and every other task of this phase after the fix, so none is built beside it. The fix\'s acceptance scenarios say in its own words what it makes true, since the scenario is 1.1\'s.\n\n',
       `# The test that reproduces the bug\n\n${NO_REPRODUCING_TEST}\n\n`,
     ]);
   });

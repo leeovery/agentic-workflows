@@ -21,31 +21,35 @@
 //   `latestSeries`): consecutive runs at the same commits. Each call runs
 //   the test five times or stops at its pass, so a series proves the bug
 //   where no run in it passed: five failures at least (15.5.3).
-// - `task done` of the reproducing task (task-verbs.cjs) waits on the
-//   build's series proving the bug at task 1.1's tip — its branch, in each
-//   repository holding it, at or behind the commit the series ran at there
-//   — so a test that passed is reworked while the task is still in flight
-//   (15.5.3).
+// - The reproducing task lands (`land open`, landing.cjs) and is done
+//   (`task done`, task-verbs.cjs) once the build's series proves the bug at
+//   task 1.1's tip — its branch, in each repository holding it, at or
+//   behind the commit the series ran at there — so a test that passed is
+//   reworked before anything of it lands (15.5.3).
 // - The door (commit-task.cjs), for a bugfix's code commit: the reproducing
 //   task's own commits run the project's tests allowed to fail, the linters
 //   as ever (F1); any other task's is refused, before any check runs, until
-//   the build's series proves the bug at task 1.1's tip and the calling
-//   checkout is built on task 1.1's work: in each repository holding its
-//   branch, HEAD descends from that branch's tip, or HEAD's branch holds
-//   task 1.1's landing, as the landing reads one (landing.cjs,
-//   `landedTasks`), since every landing squashes; then the series' command
-//   runs after the tests as one of the door's checks, and must pass
-//   (15.5.4). Every refusal names the way on. What it reads: for a bugfix,
-//   the runs of phase 1's scenarios and each repository's branches, and
-//   where HEAD is not built on task 1.1's tip, the landings its branch
-//   holds; for any other unit, nothing beyond its manifest.
+//   the build's series proves the bug at task 1.1's tip and the commit being
+//   made is built on task 1.1's work: in each repository holding its
+//   branch, HEAD — and, while a merge is in progress there, the commit it
+//   takes in, MERGE_HEAD — descends from that branch's tip or holds task
+//   1.1's landing, as the landing reads one (landing.cjs, `landedTasks`),
+//   since every landing squashes; then the series' command runs after the
+//   tests as one of the door's checks, and must pass (15.5.4). Every refusal
+//   names the way on, and one of a commit not built on task 1.1's work the
+//   repository behind; a branch is taken in by a merge through the door,
+//   the way the hook before Bash lets a task in flight make one
+//   (shell-guard.cjs). What it reads: for a bugfix, the runs of phase 1's
+//   scenarios and each repository's branches, and where the commit is not
+//   built on task 1.1's tip, the landings it holds; for any other unit,
+//   nothing beyond its manifest.
 // - The review phase's round 1 is recorded once a re-run is (review-
 //   round.cjs); a re-run that passed is an item of the round, `unfixed#1`,
 //   serious, which a finding answers, and the round fails (15.5.6).
 //
 // Known edges: a reworked test's new series replaces the old one, and a
-// task's branch built on the old tip is refused until it is rebased onto the
-// new; a test reworked by a fix task of the review phase is held to passing
+// task's branch built on the old tip is refused until it merges the new in;
+// a test reworked by a fix task of the review phase is held to passing
 // alone, its series still the build's; and a task of a phase relying on
 // nothing, started beside phase 1, lacks the test until phase 1 lands and
 // its branch takes the landing.
@@ -53,13 +57,14 @@
 
 const { projectRepos, repoName } = require('../kernel/repos.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
-const { tryGit } = require('../kernel/git.cjs');
+const { mergeInProgress } = require('../kernel/git.cjs');
 const { cutPhases } = require('./derivations.cjs');
 const { dayBefore } = require('./dates.cjs');
 const { unfixedRuns, latestSeries } = require('./runs.cjs');
 const { shownTask, taskName, phaseName } = require('./task-id.cjs');
 const { taskOfBranch } = require('./landing-names.cjs');
 const { branches, isAncestor, landsOn, quoted } = require('./landing-git.cjs');
+const { repoNamed } = require('./phase-stack.cjs');
 
 // What landed, loaded at its call: the landing reaches this module through
 // the task verbs.
@@ -114,6 +119,9 @@ const unfixedVerb = (unit, scenario, command) => `verify run ${unit} ${scenario}
 /** The command a refusal names where the person writes it. */
 const COMMAND_SLOT = '<the command that runs that test alone>';
 
+/** The fix's branch, as a refusal names it. */
+const FIX_SLOT = '<the fix\'s branch>';
+
 /** The verb that runs the series again, its scenario and command the series' own. @param {string} unit @param {Series} series */
 const seriesVerb = (unit, { scenario, command }) => unfixedVerb(unit, scenario, command);
 
@@ -167,37 +175,46 @@ function seriesWhy(unit, series, held) {
 /**
  * Whether task 1.1 of `unit` has landed in a repository, as the landing
  * reads what landed, searched from `from`: on the branch it lands on, or,
- * where `on` names one, on that branch.
- * @param {string} cwd @param {string} unit @param {Repo} repo @param {string|null} from @param {string} [on]
+ * where `revs` are given, in what they hold.
+ * @param {string} cwd @param {string} unit @param {Repo} repo @param {string|null} from @param {string[]} [revs]
  */
-const landedIn = (cwd, unit, repo, from, on) => landing().landedTasks(cwd, unit, [repo], from, on === undefined ? undefined : () => on).has(REPRODUCING_SHOWN);
+const landedIn = (cwd, unit, repo, from, revs) => landing().landedTasks(cwd, unit, [repo], from, revs === undefined ? undefined : () => revs).has(REPRODUCING_SHOWN);
 
-/** Whether the checkout's branch in a repository holds task 1.1's landing; false where it is on no branch. @param {string} cwd @param {string} unit @param {Repo} repo @param {string|null} from */
-function holdsLanding(cwd, unit, repo, from) {
-  const branch = tryGit(repo.path, ['symbolic-ref', '-q', '--short', 'HEAD'])?.trim();
-  return branch !== undefined && landedIn(cwd, unit, repo, from, branch);
+/** What the checkout's next commit in a repository is made of: HEAD, and the commit a merge in progress there takes in. @param {Repo} repo */
+const making = (repo) => (mergeInProgress(repo.path) ? ['HEAD', 'MERGE_HEAD'] : ['HEAD']);
+
+/** Whether the checkout's next commit where `held` is is built on task 1.1's work: its tip below it, or its landing in it. @param {string} cwd @param {string} unit @param {Held} held @param {string|null} from */
+function builtOn(cwd, unit, { repo, tip }, from) {
+  const revs = making(repo);
+  return revs.some((rev) => isAncestor(repo.path, tip, rev)) || landedIn(cwd, unit, repo, from, revs);
 }
 
 /**
- * Why the calling checkout is not built on task 1.1's work, where its tip
- * is not below HEAD and its landing not on HEAD's branch, with the way on —
- * merging the landing in where it has landed, phase 1's landing for a task
- * of another phase, a rebase onto its branch for one of phase 1; null where
- * it is (the header's).
+ * The way on that takes `rev` in, named `named`: a merge through the door,
+ * as the hook before Bash lets a task in flight make one (shell-guard.cjs).
+ * @param {string} named @param {string} rev
+ */
+const mergeWay = (named, rev) => `merge ${named} in with \`git merge --no-ff --no-commit ${rev}\`, resolve what conflicts, then commit the merge through the door, which finishes it`;
+
+/**
+ * Why the commit being made is not built on task 1.1's work, naming the
+ * repository behind, with the way on — a merge of the branch it landed on
+ * where it has landed, that merge once phase 1 has merged for a task of
+ * another phase, a merge of task 1.1's branch for one of phase 1; null
+ * where it is (the header's).
  * @param {string} cwd @param {Record<string, any>} manifest @param {TaskRef} ref @param {Held[]} held
  * @returns {string|null}
  */
 function builtOnWhy(cwd, manifest, ref, held) {
   const from = dayBefore(manifest.created);
-  const behind = held.find(({ repo, tip }) => !isAncestor(repo.path, tip, 'HEAD') && !holdsLanding(cwd, ref.unit, repo, from));
+  const behind = held.find((one) => !builtOn(cwd, ref.unit, one, from));
   if (behind === undefined) return null;
-  const into = landsOn(cwd, behind.repo);
-  const where = `this checkout holds neither ${behind.branch}, task 1.1's branch, where the test was proven, nor its landing`;
-  if (landedIn(cwd, ref.unit, behind.repo, from)) {
-    return `${where}, which is on ${into} — merge ${into} into this branch, then commit again`;
-  }
-  if (ref.phase !== REPRODUCING.phase) return `${where} — task 1.1 lands with ${phaseName(ref.unit, REPRODUCING.phase)}: once that phase has merged, merge ${into} into this branch, then commit again`;
-  return `this checkout is not built on ${behind.branch}, task 1.1's branch, where the test was proven — rebase onto it, then commit again`;
+  const { repo, branch } = behind;
+  const into = landsOn(cwd, repo);
+  const where = `in ${repoNamed(repo)}, this commit holds neither ${branch}, task 1.1's branch, where the test was proven, nor its landing`;
+  if (landedIn(cwd, ref.unit, repo, from)) return `${where}, which is on ${into} — ${mergeWay(into, into)}`;
+  if (ref.phase !== REPRODUCING.phase) return `${where} — task 1.1 lands with ${phaseName(ref.unit, REPRODUCING.phase)}: once that phase has merged, ${mergeWay(into, into)}`;
+  return `${where} — ${mergeWay('it', branch)}`;
 }
 
 /**
@@ -220,23 +237,23 @@ function doorGate(cwd, manifest, ref, repos) {
   const proven = /** @type {Series} */ (series);
   return {
     test: proven.command,
-    way: `the test task 1.1 wrote fails here, and passes once the bug is fixed (15.5.4) — fix what it reports and commit again; where its command fails for another reason, such as a wrong path, `
-      + `run a new series with the right one: engine ${unfixedVerb(ref.unit, proven.scenario, COMMAND_SLOT)}`,
+    way: `the test task 1.1 wrote fails here, and passes once the bug is fixed (15.5.4) — fix what it reports and commit again, or, for a task the fix is not in, once the fix's task is done, ${mergeWay('its branch', FIX_SLOT)}; `
+      + `where its command fails for another reason, such as a wrong path, run a new series with the right one: engine ${unfixedVerb(ref.unit, proven.scenario, COMMAND_SLOT)}`,
   };
 }
 
 /**
- * Why a bugfix's task `ref` is not done yet, with the way on: the
- * reproducing task, while the build's series does not prove the bug at its
- * tip in the project's repositories (the header's); null for any other task
- * or unit, and where it does.
- * @param {string} cwd @param {Record<string, any>} manifest @param {TaskRef} ref
+ * Why a bugfix's task `ref` does not yet do `outcome` — `lands`, `is done`
+ * — with the way on: the reproducing task, while the build's series does
+ * not prove the bug at its tip in the project's repositories (the
+ * header's); null for any other task or unit, and where it does.
+ * @param {string} cwd @param {Record<string, any>} manifest @param {TaskRef} ref @param {'lands'|'is done'} outcome
  * @returns {string|null}
  */
-function doneWhy(cwd, manifest, ref) {
+function reproducingHold(cwd, manifest, ref, outcome) {
   if (!isBugfix(manifest) || !isReproducing(ref)) return null;
   const why = seriesWhy(ref.unit, bugRuns(cwd, ref.unit, manifest).series, reproducingHeld(ref.unit, projectRepos(codeRoot(cwd))));
-  return why === null ? null : `${ref.unit} is a bugfix, so ${taskName(ref)}, its reproducing task, is done once the test it wrote proves the bug, failing five times on the unfixed code at its tip (15.5.3): ${why}`;
+  return why === null ? null : `${ref.unit} is a bugfix, so ${taskName(ref)}, its reproducing task, ${outcome} once the test it wrote proves the bug, failing five times on the unfixed code at its tip (15.5.3): ${why}`;
 }
 
 /**
@@ -254,5 +271,5 @@ function rerunRefusal(unit, { series, reruns }) {
 const rerunPassed = (reruns) => reruns.some(({ verdict }) => verdict === 'pass');
 
 module.exports = {
-  REPRODUCING, REPRODUCING_SHOWN, SERIES_RUNS, UNFIXED_ITEM, isBugfix, isReproducing, reproducingRef, firstScenarios, bugRuns, proves, seriesCall, runVerb, doorGate, doneWhy, rerunRefusal, rerunPassed,
+  REPRODUCING, REPRODUCING_SHOWN, SERIES_RUNS, UNFIXED_ITEM, isBugfix, isReproducing, reproducingRef, firstScenarios, bugRuns, proves, seriesCall, runVerb, doorGate, reproducingHold, rerunRefusal, rerunPassed,
 };

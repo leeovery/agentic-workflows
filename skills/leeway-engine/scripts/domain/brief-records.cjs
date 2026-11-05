@@ -274,8 +274,9 @@
 //                  writes the test that reproduces the bug and nothing else,
 //                  of type `test`, holding the phase's scenario the bug
 //                  breaks, and names the command that runs that test alone
-//                  (bug-proven.cjs, 15.5.1); for any other phase, that it
-//                  has none
+//                  (bug-proven.cjs, 15.5.1), the fix linked after it and
+//                  every other task of the phase after the fix; for any
+//                  other phase, that it has none
 //   phase-notes    the notes the phase has to take at its end (notes.cjs),
 //                  each verbatim under its heading
 //   phase-tasks    each task of the phase, whole, as `task` draws it, under
@@ -1551,7 +1552,7 @@ function drawTaskFilesTo(filling) {
 const REPRODUCING_TEST = [
   'This phase opens on the test that reproduces the bug. Record that task first, so it is task 1.1. It writes the test and nothing else, its type `test` and its acceptance scenario the scenario of this phase the bug breaks; '
     + 'its solution names the command that runs that test alone, as `npx vitest run test/checkout.test.ts`. The test is run by that command on the unfixed code, and no other task\'s code lands until it fails there five times out of five.',
-  'The task that fixes the bug is linked after 1.1. Its acceptance scenarios say in its own words what it makes true, since the scenario is 1.1\'s.',
+  'The task that fixes the bug is linked after 1.1, and every other task of this phase after the fix, so none is built beside it. The fix\'s acceptance scenarios say in its own words what it makes true, since the scenario is 1.1\'s.',
 ].join('\n\n');
 
 /** @param {Filling} filling */

@@ -67,7 +67,11 @@ Once the builder reports its account written, take it:
 node .claude/skills/leeway-engine/scripts/engine.cjs task account {work_unit} {task}
 ```
 
-A refusal of the account goes back to the builder: its brief again, by SendMessage, names every fault. Then fetch the task's landing summary and emit its sections verbatim per their markers:
+A refusal of the account goes back to the builder: its brief again, by SendMessage, names every fault.
+
+A bugfix's task 1.1, the test that reproduces the bug, lands once that test has failed five times on the unfixed code at its tip: once its account is taken, run that series with the scenario and the command the task names, `verify run {work_unit} {scenario} --unfixed --test "{command}"`. A run that passes sends the test back to its builder: put the run that passed and its output onto the task, written to `.leeway/.cache/{work_unit}/build/addition.md`, `task add {work_unit} 1.1 --file .leeway/.cache/{work_unit}/build/addition.md --by orchestrator`, and send the builder back in, `brief builder {work_unit} 1.1` by SendMessage.
+
+Then fetch the task's landing summary and emit its sections verbatim per their markers:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs render task-landed {work_unit} {task}
@@ -93,11 +97,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs land open {work_unit} {task
 node .claude/skills/leeway-engine/scripts/engine.cjs land chain {work_unit} {task}
 ```
 
-`land open`, `land chain` and `task done` refuse a task with no account taken: send the builder its brief again, by SendMessage, and go on by its status. Where `land open` refuses a branch that does not descend from its chain's tip — a task built beside another that chained first — the brief again says to merge the tip back.
-
-A bugfix's task 1.1 writes the test that reproduces the bug, and ends once that test has failed five times on the unfixed code at its tip: before ending it, run that series with the scenario and the command the task names, `verify run {work_unit} {scenario} --unfixed --test "{command}"`; a run that passes sends the test back to its builder to rework.
-
-Then end it:
+`land open`, `land chain` and `task done` refuse a task with no account taken: send the builder its brief again, by SendMessage, and go on by its status. Where `land open` refuses a branch that does not descend from its chain's tip — a task built beside another that chained first — the brief again says to merge the tip back. Then end it:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs task done {work_unit} {task}

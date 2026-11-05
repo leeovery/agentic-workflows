@@ -93,7 +93,7 @@ const { taskId, shownTask, parseShownTask, parsePhase, taskName, phaseName } = r
 const { TASK_TYPES, breaksLine, readTaskText } = require('./task-file.cjs');
 const { recordTask, clearTask, recordStop } = require('./position.cjs');
 const { phaseStarted, cutLength } = require('./derivations.cjs');
-const { doneWhy } = require('./bug-proven.cjs');
+const { reproducingHold } = require('./bug-proven.cjs');
 const { layOutTask, takeWorktreeApart } = require('./task-worktree.cjs');
 const { markChanged, briefedOf, beingRead } = require('./round-report.cjs');
 
@@ -779,7 +779,7 @@ const doneTask = moving('done', (driver, root, ref) => {
 }, (cwd, ref, verb) => {
   withTracker(cwd, ref.unit, null, (driver, root) => refuseEnded(driver, root, ref, DONE_RULE));
   account().refuseUnaccounted(cwd, ref, `task ${verb}`);
-  const unproven = doneWhy(cwd, loadWorkUnitManifest(cwd, ref.unit), ref);
+  const unproven = reproducingHold(cwd, loadWorkUnitManifest(cwd, ref.unit), ref, 'is done');
   if (unproven !== null) throw new Error(`task ${verb}: ${unproven}`);
   return ending(DONE_RULE)(cwd, ref, verb);
 });
