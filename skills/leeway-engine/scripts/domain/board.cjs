@@ -70,6 +70,8 @@
 const fs = require('fs');
 const path = require('path');
 const { stateRoot } = require('../kernel/state-root.cjs');
+const { codeRoot } = require('../kernel/code-root.cjs');
+const { projectRepos } = require('../kernel/repos.cjs');
 const { PROJECT_IDENTITIES } = require('../kernel/manifest-schema.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { readPosition, readLeft, conversationDir } = require('./conversation.cjs');
@@ -112,11 +114,12 @@ const BOARD_USAGE = 'board <session-id> [--tab this|unit|all] [--unit <work-unit
  * What the board reads at a call for one unit: the project; the unit with
  * its manifest and title; the conversation, its place, its tasks in flight
  * in the unit and the briefs it issued for it, oldest first; the unit's
- * tracker, read once — refused where its build has not begun; one read of
+ * tracker, read once — refused where its build has not begun; the
+ * project's repositories, read once a call for every unit; one read of
  * anything a call reads twice; and the warnings gathered.
  * @typedef {{
  *   cwd: string, root: string, session: string, place: Place, unit: string, manifest: Record<string, any>, title: string,
- *   inFlight: InFlight[], issued: Issued[], tracker: () => TrackedUnit,
+ *   inFlight: InFlight[], issued: Issued[], tracker: () => TrackedUnit, repos: () => import('../kernel/repos.cjs').Repo[],
  *   once: <T>(key: string, read: () => T) => T, warnings: string[],
  * }} BoardAt
  */
@@ -160,11 +163,13 @@ function placeOf(root, position) {
 
 /**
  * What the board reads for a unit at this call, refused where the project
- * lacks it; its tracker read once, with the task a page names.
+ * lacks it; its tracker read once, with the task a page names, and the
+ * call's one read of the project's repositories.
  * @param {string} cwd @param {string} session @param {Place} place @param {string} unit @param {InFlight[]} inFlight @param {string[]} warnings @param {TaskRef|null} task
+ * @param {BoardAt['repos']} repos
  * @returns {BoardAt}
  */
-function unitAt(cwd, session, place, unit, inFlight, warnings, task) {
+function unitAt(cwd, session, place, unit, inFlight, warnings, task, repos) {
   const root = stateRoot(cwd);
   const manifest = manifestOf(root, unit);
   if (manifest === null) throw new Error(`there is no work unit "${unit}"`);
@@ -189,6 +194,7 @@ function unitAt(cwd, session, place, unit, inFlight, warnings, task) {
       if (!buildBegun(manifest)) throw new Error(`${unit}'s build has not begun`);
       return trackedUnit(cwd, unit, manifest, task);
     }),
+    repos,
     once,
     warnings,
   };
@@ -352,8 +358,11 @@ function boardRead(cwd, positional, opts) {
   const pageTask = page === null || page.task === null ? null : parseShownTask(/** @type {string} */ (pageUnit), page.task);
   /** @type {Map<string, BoardAt>} */
   const units = new Map();
+  /** @type {import('../kernel/repos.cjs').Repo[]|undefined} */
+  let repos;
+  const reposRead = () => (repos ??= projectRepos(codeRoot(cwd)));
   const at = (/** @type {string} */ unit) => {
-    if (!units.has(unit)) units.set(unit, unitAt(cwd, session, place, unit, position?.tasks ?? [], warnings, unit === pageUnit ? pageTask : null));
+    if (!units.has(unit)) units.set(unit, unitAt(cwd, session, place, unit, position?.tasks ?? [], warnings, unit === pageUnit ? pageTask : null, reposRead));
     return /** @type {BoardAt} */ (units.get(unit));
   };
   const tabAt = tabUnit === null ? null : at(tabUnit);

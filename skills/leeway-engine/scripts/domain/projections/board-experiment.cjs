@@ -19,6 +19,7 @@
 //   banner counts them while it runs (20.2.4).
 // ---------------------------------------------------------------------------
 
+const { fact, placeFact } = require('../board-model.cjs');
 const fs = require('fs');
 const path = require('path');
 const { statePath } = require('../../kernel/state-root.cjs');
@@ -104,11 +105,10 @@ function reportPage(at, said, id) {
  * @param {ExperimentView} view @returns {{state: 'running'|'done', facts: {text: string, needs: boolean}[]}}
  */
 function experimentBanner({ type, id, status, runs }) {
-  const fact = (/** @type {string} */ text) => ({ text, needs: false });
   const ended = EXPERIMENT_TERMINAL_STATUSES.includes(status);
   const sum = (/** @type {'done'|'of'} */ key) => runs.reduce((total, line) => total + line[key], 0);
   const standing = ended || runs.length === 0 ? status : `${sum('done')} of ${sum('of')} runs`;
-  return { state: ended ? 'done' : 'running', facts: [fact(type), fact(`experiment ${id}`), fact(standing)] };
+  return { state: ended ? 'done' : 'running', facts: [placeFact(type), placeFact(`experiment ${id}`), fact(standing)] };
 }
 
 module.exports = { experimentView, experimentBanner, reportPage };

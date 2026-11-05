@@ -30,13 +30,15 @@
 //   once `land phase` would take it (7.2.4), one of the review's fixes
 //   once its tasks are done.
 // - `build-stop <unit>`: the stop report, while a question waits and
-//   nothing can be built without an answer: no task in progress, in any
-//   phase written, and none ready, that no question parks, of a phase
-//   started or one whose start waits on Claude's own items alone, every
-//   item the engine checks of it holding (checklist.cjs); and once the cut
-//   is through, the review's round with nothing to go on with, its reads
-//   named and every report of it in (review-phase.cjs, `reviewGoesOn`)
-//   (12.12.9, 12.13.22).
+//   nothing can go on without an answer (`buildGoesOn`, which the board
+//   reads too): no task in progress, in any phase written, and none ready,
+//   that no question parks, of a phase started or one whose start waits on
+//   Claude's own items alone, every item the engine checks of it holding
+//   (checklist.cjs); no phase's next step — a phase whose every task not
+//   closed is done its close, one closed its merge, and once a phase has
+//   closed the next one's writing; and once the cut is through, the
+//   review's round with nothing to go on with, its reads named and every
+//   report of it in (review-phase.cjs, `reviewGoesOn`) (12.12.9, 12.13.22).
 // - `build-progress <unit>`: the build's phases and tasks.
 //
 // Each refuses, opening on its command: a unit the project lacks or whose
@@ -56,7 +58,7 @@ const { fieldOf, criteriaTexts, criterionWords, holdsScenario, namesScenario } =
 const { finishedUnits } = require('./ledger-units.cjs');
 const { accountPath, takenFigures, readAccount } = require('./task-account.cjs');
 const { taskRounds } = require('./round-report.cjs');
-const { phaseStack, tipCommits } = require('./phase-stack.cjs');
+const { heldStack, tipCommits } = require('./phase-stack.cjs');
 const { runsOf } = require('./runs.cjs');
 const { waitingQuestions } = require('./questions.cjs');
 const { unitEntries } = require('./unit-entries.cjs');
@@ -68,6 +70,7 @@ const {
 } = require('./projections/build.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
+/** @typedef {import('./build-entry.cjs').BuildStanding} BuildStanding */
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
 /** @typedef {import('./round-report.cjs').Round} Round */
 /** @typedef {import('./projections/build.cjs').TaskHead} TaskHead */
@@ -139,17 +142,22 @@ function callsOf(cwd, ref) {
     .map(({ short, line }) => ({ id: short, text: String(line.text) }));
 }
 
+/** A scenario of a task with no branch yet: nothing run. */
+const NOT_RUN = Object.freeze({ standing: 'not proven', runs: [] });
+
 /**
  * What running the product proved of each of the task's scenarios of the
- * cut, at the tips of its branch — null where it holds none — and whether a
- * run there counts, one skipped never.
+ * cut, at the tips of its branch — null where it holds none, not run where
+ * the task has no branch yet — and whether a run there counts, one skipped
+ * never.
  * @param {string} cwd @param {Record<string, any>} manifest @param {TaskRef} ref @param {TaskDetail} task @param {string[]} criteria
  */
 function ranOf(cwd, manifest, ref, task, criteria) {
   const scenarios = cutPhases(manifest).flatMap(({ scenarios: held }) => held).filter((scenario) => holdsScenario(task.text, scenario));
   if (scenarios.length === 0) return { ran: null, recorded: false };
-  const head = tipCommits(phaseStack(cwd, ref.unit, ref.phase, [task]));
-  const read = scenarios.map((scenario) => ({ scenario, ...runsOf(cwd, ref.unit, scenario, head) }));
+  const stack = heldStack(cwd, ref.unit, ref.phase, [task]);
+  const head = stack === null ? null : tipCommits(stack);
+  const read = scenarios.map((scenario) => ({ scenario, ...(head === null ? NOT_RUN : runsOf(cwd, ref.unit, scenario, head)) }));
   return {
     ran: read.map(({ scenario, standing }) => ({ scenario, criterion: criterionWords(criteria.find((criterion) => namesScenario(criterion, scenario)) ?? scenario), standing })),
     recorded: read.some(({ runs }) => runs.some(({ verdict }) => verdict !== 'skipped')),
@@ -262,16 +270,58 @@ function phaseLets(cwd, unit, manifest, reads) {
   return (phase) => phaseOpen(manifest, phase) || engineItemsHold(cwd, 'phase-start', [unit, String(phase)], reads);
 }
 
+/**
+ * A phase of the cut's next step that needs no answer, or null: its close
+ * — its notes, its phase review, a settlement — once every task of it not
+ * closed is done; in step, its merge at its gate once it has closed; and
+ * the next phase's writing once the one before it has closed (12.7.5). The
+ * review's fix phases are the review's to go on with (`reviewGoesOn`).
+ * @param {BuildStanding['phases']} phases @param {number} cut
+ * @returns {string|null}
+ */
+function phaseStepOn(phases, cut) {
+  const cuts = phases.filter(({ phase }) => phase <= cut);
+  const closed = (/** @type {number} */ phase) => phase === 0 || ['closed', 'merged'].includes(cuts[phase - 1]?.state ?? '');
+  for (const { phase, state } of cuts) {
+    if (state === 'in review') return `phase ${phase}'s close: its notes, its phase review and its stack's merge`;
+    if (state === 'closed') return `phase ${phase}'s merge, at its gate`;
+    if (state === 'not yet written' && closed(phase - 1)) return `phase ${phase}'s writing`;
+  }
+  return null;
+}
+
+/**
+ * What the build goes on with that needs no answer, as its refusal says
+ * it, or null — the stop's
+ * rule (12.13.22), which `render build-stop` and the board both read: a task
+ * no question parks, in progress or ready where its phase lets it start
+ * (`tasks`); a phase's next step (`phaseStepOn`); and once the build has
+ * finished, the review's round (`review`, as `reviewGoesOn` answers it).
+ * Each is read only where the one before it is not going on.
+ * @param {BuildStanding} standing @param {number} cut
+ * @param {{tasks: () => string[], review: () => string|null}} reads
+ * @returns {string|null}
+ */
+function buildGoesOn(standing, cut, { tasks, review }) {
+  const [next] = tasks();
+  if (next !== undefined) return `build goes on with task ${next}, which no question parks`;
+  const step = phaseStepOn(standing.phases, cut);
+  if (step !== null) return `build goes on with ${step}`;
+  const round = standing.finished ? review() : null;
+  return round === null ? null : `review goes on: ${round}`;
+}
+
 /** `render build-stop <unit>`. @param {string} cwd @param {Args} args */
 function buildStopSurface(cwd, { dotpath: unit = '' }) {
   return refusing('render build-stop', () => {
     const standing = buildStanding(cwd, unit, ownInFlight(unit));
     if (standing.waiting.length === 0) throw new Error(`no question waits on the person in ${unit}'s build — it stops only where nothing can go on without their answer (12.13.22)`);
     const manifest = builtUnit(cwd, unit);
-    const [next] = withStateLock(stateRoot(cwd), () => goingOn(cwd, unit, manifest, { ready: phaseLets(cwd, unit, manifest) })).tasks;
-    if (next !== undefined) throw new Error(`${unit}'s build goes on with task ${next}, which no question parks — it stops only where nothing can go on without the person's answer (12.13.22)`);
-    const review = standing.finished ? reviewGoesOn(cwd, unit, reviewStanding(reading(cwd, unit, manifest))) : null;
-    if (review !== null) throw new Error(`${unit}'s review goes on: ${review} — it stops only where nothing can go on without the person's answer (12.13.22)`);
+    const on = buildGoesOn(standing, cutLength(manifest), {
+      tasks: () => withStateLock(stateRoot(cwd), () => goingOn(cwd, unit, manifest, { ready: phaseLets(cwd, unit, manifest) })).tasks,
+      review: () => reviewGoesOn(cwd, unit, reviewStanding(reading(cwd, unit, manifest))),
+    });
+    if (on !== null) throw new Error(`${unit}'s ${on} — it stops only where nothing can go on without the person's answer (12.13.22)`);
     return stopScreen(standing, finishedUnits(stateRoot(cwd)));
   });
 }
@@ -282,6 +332,6 @@ function buildProgressSurface(cwd, { dotpath: unit = '' }) {
 }
 
 module.exports = {
-  phaseNamed, phaseLets, taskOf, takenAccount, takenFigures, callsOf, ranOf,
+  phaseNamed, phaseLets, buildGoesOn, taskOf, takenAccount, takenFigures, callsOf, ranOf,
   buildHeadlineSurface, taskLandedSurface, taskAccountSurface, stepGateSurface, phaseMergeGateSurface, buildStopSurface, buildProgressSurface,
 };

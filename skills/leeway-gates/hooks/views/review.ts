@@ -3,7 +3,9 @@
  *
  * This session: its header, the project, type and how many tasks were
  * built; the round, its areas read of all and where it stands, the line
- * wrapping so a failing round's fix tasks show whole (D12); WAITING ON YOU,
+ * wrapping so a failing round's fix tasks show whole (D12), and stopped
+ * until the person answers where nothing can go on, as the build's This
+ * session says it (D6); WAITING ON YOU,
  * the unit's one list: the questions the review waits on, as the kit draws
  * them, or finish, asked in the conversation (D18) — never both, since
  * finish waits only once no question does; the latest fix tasks as the build's
@@ -25,7 +27,7 @@ import { COLOUR, MARK, blank, counted, cutTo, heading, prose, rowsOf, spread, ti
 import type { View } from '../model.ts'
 import { pageKey } from '../pane.ts'
 import { taskLineOf, type TaskLine } from './build.ts'
-import type { Found } from './task.ts'
+import { section, type Found } from './task.ts'
 
 /** An area of a round, as the engine's model holds it. */
 type AreaLine = { area: string; title: string; state: 'read' | 'reading' | 'waiting' | 'unchanged'; ran: number; found: number; since: string | null }
@@ -45,6 +47,7 @@ type ReviewView = View & {
   inbox: { round: number; finding: number; text: string }[]
   verdict: 'passed' | 'failed' | 'settled' | null
   fixes: { phase: number; round: number; tasks: TaskLine[] } | null
+  stopped: boolean
 }
 
 /** A finding read in full, as the engine's model holds it: its reviewer's while its round is read, else the round's. */
@@ -69,10 +72,6 @@ const TESTS = 'tests'
 /** An area as a line names it: its section, or the tests. */
 const areaOf = (area: string) => (area === TESTS ? TESTS : `§${area.split('-')[0] ?? area}`)
 
-/** A section's heading, its count or summary where it has one. */
-const section = (key: string, name: string, color: string, width: number, summary?: string): Line =>
-  heading(key, { text: name, bold: true, color }, summary === undefined ? [] : [{ text: summary, color: COLOUR.secondary }], width)
-
 const SEPARATOR: Part = { text: ' · ', color: COLOUR.secondary }
 
 /** The fix tasks of the round shown still to build. */
@@ -81,20 +80,28 @@ const toBuild = ({ fixes }: ReviewView) => fixes?.tasks.filter(({ state }) => st
 /** Whether finish waits on the person, as the unit's one list holds it. */
 const finishes = ({ waiting }: ReviewView) => waiting.some(({ kind }) => kind === 'finish')
 
-/** Where the round stands, at the end of its facts line. */
-function standingOf(view: ReviewView, kit: Kit): Part[] {
-  const { round, verdict, areas } = view
+/** The stop, as the build's This session draws its own (D6). */
+const STOP: Part[] = [SEPARATOR, { text: `${MARK.needs} stopped until you answer`, color: COLOUR.needs }]
 
+/** Where the round stands, at the end of its facts line, the stop after it where nothing can go on. */
+function standingOf(view: ReviewView, kit: Kit): Part[] {
   if (finishes(view)) {
     return [SEPARATOR, { text: `${MARK.needs} finish waits on you`, color: COLOUR.needs }]
   }
+
+  return view.stopped ? [...roundOf(view, kit), ...STOP] : roundOf(view, kit)
+}
+
+/** Where the round itself stands: its verdict, a failing one's fix tasks still to build while they can build, or the areas being read. */
+function roundOf(view: ReviewView, kit: Kit): Part[] {
+  const { round, verdict, areas } = view
 
   if (verdict === 'passed' || verdict === 'settled') {
     return [SEPARATOR, { text: `${MARK.done} round ${round} ${verdict === 'passed' ? 'passes' : 'settled'}`, color: COLOUR.done }]
   }
 
   if (verdict === 'failed') {
-    const left = toBuild(view)
+    const left = view.stopped ? 0 : toBuild(view)
 
     return [SEPARATOR, { text: `${MARK.failed} round ${round} fails${left === 0 ? '' : ` · ${counted(left, 'fix task')} to build`}`, color: COLOUR.failed }]
   }
@@ -106,7 +113,7 @@ function standingOf(view: ReviewView, kit: Kit): Part[] {
 
 /** Where the unit is built: the project, giving way to its type and the tasks built. */
 function whereOf({ project, type, built }: ReviewView, kit: Kit): Line {
-  const rest: Part = { text: ` · ${type} · ${built} tasks built`, color: COLOUR.secondary }
+  const rest: Part = { text: ` · ${type} · ${counted(built, 'task')} built`, color: COLOUR.secondary }
 
   return { key: 'review:where', parts: [...cutTo([{ text: project, color: COLOUR.secondary }], kit.width - widthOf([rest])), rest] }
 }

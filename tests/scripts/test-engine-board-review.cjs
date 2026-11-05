@@ -22,7 +22,8 @@ const path = require('path');
 const {
   UNIT, SESSION_ID, EVERY, RECEIPT, FOUND, FAILING, useWorld, env, enter, inStep, reportText, reported, named, recorded, issued, fixPhaseWritten, cutUnmerged, fixBranch, fixBuilt, firstRoundFailed, commitFile, ok, writeState, statePath, git,
 } = require('./review-world.cjs');
-const { withEnv, holdLock, lockAttempts, layout } = require('./engine-harness.cjs');
+const { place } = require('./board-world.cjs');
+const { withEnv, holdLock, lockAttempts, layout, traced } = require('./engine-harness.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
@@ -55,6 +56,9 @@ const head = (round, finish = false) => ({ kind: 'review', unit: UNIT, title: 'P
 
 /** The banner's facts, each plain unless flagged. @param {...(string|[string])} facts */
 const facts = (...facts) => facts.map((fact) => (typeof fact === 'string' ? { text: fact, needs: false } : { text: fact[0], needs: true }));
+
+/** The banner's facts that say where the session is, then the rest as `facts` takes them. @param {string[]} where @param {...(string|[string])} rest */
+const placed = (where, ...rest) => [...where.map(place), ...facts(...rest)];
 
 describe('the round under way (20.10.1)', () => {
   it('each area is waiting, being read since its brief was issued in this conversation (P15), or read with every finding its reports hold, as FOUND lists them (N5); FOUND each finding a landed report holds, by its call and report item, unnumbered; NOT PROVEN each scenario not proven at the change\'s tips — its work not landed among them, a later run on code since amended counting for nothing — as the round will judge it, and so its check\'s page, wherever the session has gone (N3); the banner says the round reads (N2)', () => {
@@ -93,7 +97,7 @@ describe('the round under way (20.10.1)', () => {
         verdict: null,
         fixes: null,
       },
-      banner: { name: 'Pay', state: 'running', facts: facts('feature', 'review', 'round 1 reading') },
+      banner: { name: 'Pay', state: 'running', facts: placed(['feature', 'review'], 'round 1 reading') },
     });
   });
 
@@ -118,6 +122,18 @@ describe('the round under way (20.10.1)', () => {
     const { res } = issued(['review-area', UNIT, '--area', '1', '--base', 'main', '--letter', 'a']);
 
     assert.deepStrictEqual([before, board().view.areas[0]], [area('1', 'Cards', 'waiting'), area('1', 'Cards', 'reading', { since: fs.statSync(issuedOf(res.id)).mtime.toISOString() })]);
+  });
+
+  it('a board call finds the project\'s repositories, and the branch each lands on, once — the tasks landed and the change both reading them (N6)', () => {
+    enter();
+    reported(1, ['2-refunds'], { '2-refunds-a': ['bug: A refund is lost.'], '2-refunds-b': [] });
+    const reads = (/** @type {string[]} */ args) => {
+      const { commands } = traced(() => board(args));
+      const times = (/** @type {RegExp} */ command) => commands.filter((each) => command.test(each)).length;
+      return [times(/^ls-files --stage -z$/), times(/config --get init\.defaultBranch$/)];
+    };
+
+    assert.deepStrictEqual([reads([]), reads(['--tab', 'all'])], [[1, 1], [1, 1]]);
   });
 });
 

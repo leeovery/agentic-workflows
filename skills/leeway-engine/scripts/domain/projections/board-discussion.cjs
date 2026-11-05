@@ -31,6 +31,7 @@
 // - On the banner the messages waiting say they wait, unflagged (`waits`).
 // ---------------------------------------------------------------------------
 
+const { fact, placeFact } = require('../board-model.cjs');
 const fs = require('fs');
 const path = require('path');
 const { readShown, answerMap } = require('../ledger-read.cjs');
@@ -166,11 +167,10 @@ function carryingWarnings(at, read) {
  * @param {DiscussionView} view @returns {{state: 'running', facts: import('../board-model.cjs').Fact[]}}
  */
 function discussionBanner({ type, topic_title: title, open, messages }) {
-  const fact = (/** @type {string} */ text) => ({ text, needs: false });
   return {
     state: 'running',
     facts: [
-      fact(type), fact('discussion'), fact(title),
+      placeFact(type), placeFact('discussion'), fact(title),
       fact(open.length === 0 ? 'nothing of yours open' : `${open.length} of yours open`),
       ...(messages.length === 0 ? [] : [{ ...fact(`${messages.length} ${messages.length === 1 ? 'message' : 'messages'} waiting`), waits: /** @type {const} */ (true) }]),
     ],

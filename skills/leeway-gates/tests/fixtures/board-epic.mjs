@@ -39,7 +39,7 @@ export default {
     epicTopic('Support and diagnostics', 'discussing', { decided: 0, total: 6, session: 'other' }),
     epicTopic('Build and release', 'not-started', { messages: 17 }),
   ],
-  spec: { state: 'waits', session: null },
+  spec: { state: 'waits', words: '', session: null },
   build: { state: 'waits', session: null },
   set_aside: [
     { topic: 'positioning-and-audience', title: 'Positioning and audience', state: 'cancelled', horizon: null },

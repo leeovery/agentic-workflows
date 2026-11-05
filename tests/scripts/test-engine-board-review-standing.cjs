@@ -18,9 +18,9 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const {
-  UNIT, SESSION_ID, EVERY, calls, useWorld, env, enter, reported, named, recorded, fixPhaseWritten, fixBuilt, fixClosed, fixParked, raisedAtReview, replacedAtReview, taskMade, firstRoundFailed, ok,
+  UNIT, SESSION_ID, EVERY, calls, useWorld, env, enter, reported, named, recorded, fixPhaseWritten, fixBuilt, fixClosed, fixParked, raisedAtReview, replacedAtReview, finishClosed, taskMade, firstRoundFailed, ok,
 } = require('./review-world.cjs');
-const { fixture, misfits, standingOn } = require('./board-world.cjs');
+const { fixture, misfits, standingOn, place } = require('./board-world.cjs');
 
 /** @type {string} */
 let dir;
@@ -36,6 +36,9 @@ function board(args = []) {
 
 /** The banner's facts, each plain unless flagged. @param {...(string|[string])} facts */
 const facts = (...facts) => facts.map((fact) => (typeof fact === 'string' ? { text: fact, needs: false } : { text: fact[0], needs: true }));
+
+/** The banner's facts that say where the session is, then the rest as `facts` takes them. @param {string[]} where @param {...(string|[string])} rest */
+const placed = (where, ...rest) => [...where.map(place), ...facts(...rest)];
 
 describe('a question its fix tasks wait on (20.5.3, 20.2.4, S1)', () => {
   it('a question parking the only fix task stands in the review phase as in the build: among the questions a press queues, the view waiting on it and stopped, the banner stopped with the count flagged, its fix tasks not said to build; and the task\'s page holds the question whole, its shape the mod\'s fixture of a parked fix task\'s page, with what it fixes (N7)', async () => {
@@ -57,7 +60,7 @@ describe('a question its fix tasks wait on (20.5.3, 20.2.4, S1)', () => {
     }, {
       questions: [['Q1', ['3.1']]],
       view: ['review', [{ kind: 'question', id: 'Q1', text: 'Q1 Is the receipt mailed or printed?', page: 'task:3.1' }], true],
-      banner: { name: 'Pay', state: 'needs', facts: facts('feature', 'review', 'stopped', 'round 1 fails', ['1 waiting on you']) },
+      banner: { name: 'Pay', state: 'needs', facts: placed(['feature', 'review', 'stopped'], 'round 1 fails', ['1 waiting on you']) },
       page: questions,
       fits: [[], [true, true], [true, true]],
       standing: {
@@ -129,13 +132,14 @@ describe('where the review stands on every view that reads it (S1)', () => {
     });
   });
 
-  it('the phase over: finish waits on the person on the tab, in WAITING ON YOU and in All work\'s count and row (D18, D37) — and not while a task of the round\'s fix phase is still to be done', () => {
+  it('the phase over and finish\'s checklist closed, so its screen draws: finish waits on the person on the tab, in WAITING ON YOU and in All work\'s count and row (D18, D37) — and not while a task of the round\'s fix phase is still to be done', () => {
     enter();
     reported(1, EVERY);
     recorded({ can_now: ['Pay by card.'], findings: [] });
     fixPhaseWritten(3, [['Mail the receipt', '§1.2']]);
     const fixing = standingOn(board, UNIT);
     fixClosed(3, 1);
+    finishClosed();
 
     assert.deepStrictEqual([fixing, standingOn(board, UNIT)], [
       {

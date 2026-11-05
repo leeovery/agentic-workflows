@@ -8,7 +8,8 @@ import { DISCUSSION, ENTRY, MESSAGE, REVIEW_REPORT } from '../hooks/views/discus
 import { EXPERIMENT, EXPERIMENT_REPORT } from '../hooks/views/experiment.ts'
 import { PASS, SECTION, SPEC, SPEC_FINDING } from '../hooks/views/spec.ts'
 import { PHASE } from '../hooks/views/unit.ts'
-import { NOW, block, drawn, markOf, pressOf } from './drawing.ts'
+import { factLines } from '../hooks/views/words.ts'
+import { NOW, block, drawn, drawnRows, markOf, pressOf } from './drawing.ts'
 import NOTE_MODEL_BRIEF from './fixtures/board-brief.mjs'
 import FUMI_DISCOVERY, { approval, mapTopic } from './fixtures/board-discovery.mjs'
 import ONBOARDING, { decision } from './fixtures/board-discussion.mjs'
@@ -83,6 +84,15 @@ YOUR VIEWS OF THE PRODUCT ──────── 2 · carried into the topics
 
     expect(pressOf(lines, 'd:topic:note-model')).toBe('page:topic:note-model')
     expect(pressOf(lines, 'd:spike:001-note-window')).toBe('page:spike:001-note-window')
+  })
+
+  test('a topic\'s title too long for its row gives way with "…"; a topic with no summary, a pivoted one\'s, draws no row for it', () => {
+    const long = mapTopic('A topic whose title runs on well past the width of the pane at its edge', 'Its summary')
+    const pivoted = mapTopic('Bigger', '')
+    const { text } = drawn(DISCOVERY, { ...FUMI_DISCOVERY, map: [long, pivoted] } as View)
+    const map = text.slice(text.findIndex(row => row.startsWith('THE MAP')) + 1)
+
+    expect(map.slice(0, 4)).toEqual([' 1 A topic whose title runs on well past the width of the pan…', '     Its summary', ' 2 Bigger', ''])
   })
 
   test('shaping turns its ◐; nothing turns while the map waits on the person', () => {
@@ -660,6 +670,12 @@ READY TO BUILD ─────────────────────�
     expect(holds).toEqual({ turns: true, clocks: true })
   })
 
+  test('the yes given, before the session moves into the build: ready to build reads as given, and no pass is to come', () => {
+    const { text } = drawn(SPEC, { ...MINT_SPEC, waiting: [], given: true } as View)
+
+    expect([text.slice(0, 5).join(' ').includes('✓ ready to build, your yes given'), text.some(row => / next$| next · /.test(row)), text.at(-1)]).toEqual([true, false, '✓ your yes given, the build begun'])
+  })
+
   test('D24: at ready to build, WAITING ON YOU lists its yes, which READY TO BUILD puts to the person; no pass is to come', () => {
     const { text } = drawn(SPEC, { ...MINT_SPEC, waiting: [READY], since: [] } as View)
 
@@ -706,5 +722,16 @@ describe('a specification\'s pages (20.9.2)', () => {
     ])
     expect(drawn(SPEC_FINDING, { ...page, standing: 'yours' }).text[1]).toBe('✓ yours · decided')
     expect(drawn(SPEC_FINDING, { ...page, standing: 'claude' }).text[1]).toBe("◇ Claude's call")
+  })
+})
+
+describe('a line\'s facts at the edge', () => {
+  test('N8: a last row as wide as the words wrap to, at 64 columns, goes on a row of its own beside its button, never cut', () => {
+    const said = 'pass 3 · §4, 7, 12 · touches an exclusion check twice'
+    const rows = drawnRows(factLines('k', said, 64, 'entry:x'), 64)
+
+    expect(rows.some(row => row.includes('…'))).toBe(false)
+    expect(rows.map(row => row.replace('▸ read', '').trim()).join(' ')).toBe(said)
+    expect(rows.at(-1)?.endsWith('▸ read')).toBe(true)
   })
 })

@@ -52,6 +52,7 @@
 //   (board-standing.cjs).
 // ---------------------------------------------------------------------------
 
+const { fact, placeFact } = require('../board-model.cjs');
 const fs = require('fs');
 const { statePath } = require('../../kernel/state-root.cjs');
 const { readReport } = require('../round-report.cjs');
@@ -295,10 +296,9 @@ function roundWords(at) {
  * @returns {{state: 'running'|'needs', facts: {text: string, needs: boolean}[]}}
  */
 function reviewBanner(view, { round, words }, waiting) {
-  const fact = (/** @type {string} */ text) => ({ text, needs: false });
-  const where = [fact(view.type), fact('review')];
+  const where = [placeFact(view.type), placeFact('review')];
   if (waiting.some(({ kind }) => kind === 'finish')) return { state: 'needs', facts: [...where, fact('finish waits on you')] };
-  return { state: view.stopped ? 'needs' : 'running', facts: [...where, ...(view.stopped ? [fact('stopped')] : []), fact(words ?? `round ${round} reading`)] };
+  return { state: view.stopped ? 'needs' : 'running', facts: [...where, ...(view.stopped ? [placeFact('stopped')] : []), fact(words ?? `round ${round} reading`)] };
 }
 
 /**

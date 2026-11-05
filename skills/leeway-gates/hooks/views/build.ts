@@ -10,7 +10,7 @@
  * A task's line, its mark and its state, are the review's fix tasks' too
  * (`views/review.ts`).
  */
-import { COLOUR, MARK, blank, folding, heading, spread, titledLine, type Kit, type Line, type Part } from '../draw.ts'
+import { BAR_CELLS, COLOUR, MARK, blank, folding, heading, progressBar, spread, titledLine, type Kit, type Line, type Part } from '../draw.ts'
 import type { View } from '../model.ts'
 import { pageKey } from '../pane.ts'
 
@@ -38,9 +38,6 @@ export type BuildView = View & {
   progress: { done: number; total: number; phase: number; phases: number; running: number; stopped: boolean }
   phases: BuildPhase[]
 }
-
-/** The progress bar's most cells. */
-const BAR_CELLS = 8
 
 /** What a running task's state reads, its clock where it has one. */
 const running = (words: string, since: string | null, kit: Kit): Part => ({
@@ -102,13 +99,7 @@ export const taskLineOf = (line: TaskLine, kit: Kit): Line => ({
 
 /** The progress bar's cells, done of all, filled in sage. */
 function barOf({ done, total }: BuildView['progress']): Part[] {
-  const cells = Math.min(BAR_CELLS, total)
-  const filled = total === 0 ? 0 : Math.round((done / total) * cells)
-
-  return [
-    { text: '▰'.repeat(filled), color: COLOUR.done },
-    { text: `${'▱'.repeat(cells - filled)}  `, color: COLOUR.rule },
-  ]
+  return [...progressBar(done, total, Math.min(BAR_CELLS, total)), { text: '  ' }]
 }
 
 /** How far the build has come, wrapping under its facts so the stop shows whole. */

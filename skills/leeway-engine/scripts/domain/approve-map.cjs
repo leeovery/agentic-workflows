@@ -334,7 +334,7 @@ function stagedOrNone(cwd, unit) {
 const sweptStaged = (cwd, unit) => stagedOrNone(cwd, unit)?.candidates !== undefined;
 
 /** The candidates standing, none of them struck. @param {StagedCandidate[]} candidates */
-const standing = (candidates) => candidates.filter(({ struck }) => !struck);
+const candidatesStanding = (candidates) => candidates.filter(({ struck }) => !struck);
 
 /**
  * The map after the sweep: every live topic in its order, and the sweep
@@ -350,7 +350,7 @@ function sweptMap(cwd, unit, manifest) {
   if (taken.candidates.length === 0) throw new Error('the sweep found no candidate holding the person\'s call — nothing comes to the map, so there is nothing to approve');
   const struck = new Set((stagedOrNone(cwd, unit)?.candidates ?? []).filter((candidate) => candidate.struck).map(({ name }) => name));
   const candidates = taken.candidates.map((candidate) => ({ ...candidate, struck: struck.has(candidate.name) }));
-  checkCandidates(cwd, unit, manifest, standing(candidates));
+  checkCandidates(cwd, unit, manifest, candidatesStanding(candidates));
   return { topics: liveInOrder(manifest).map((name) => ({ name })), parks: [], binds: [], candidates };
 }
 
@@ -490,7 +490,7 @@ function approveMapStrikeSurface(cwd, { dotpath: unit = '' }) {
   return refusing('render approve-map-strike', () => {
     const manifest = openMap(cwd, unit);
     const { candidates } = stagedCandidates(cwd, unit);
-    if (standing(candidates).length < 2) throw new Error('the pick is for more than one candidate standing — the screen strikes a lone one itself');
+    if (candidatesStanding(candidates).length < 2) throw new Error('the pick is for more than one candidate standing — the screen strikes a lone one itself');
     return sweptStrikePick({ unit, candidates: candidates.map(({ name, struck }) => ({ title: topicTitle(manifest, name), struck })) });
   });
 }
@@ -506,7 +506,7 @@ function approveMapStrikeSurface(cwd, { dotpath: unit = '' }) {
 function landOnRoadmap(project, unit, { topics, parks, binds, candidates = [] }) {
   /** @type {Record<string, {work_unit: string, topic: string}>} */
   const priors = {};
-  const taking = [...topics, ...standing(candidates)];
+  const taking = [...topics, ...candidatesStanding(candidates)];
   const joins = [...taking.flatMap(({ name, from_roadmap: item }) => (item === undefined ? [] : [{ item, topic: name }])), ...binds];
   for (const { item, topic } of joins) {
     const prior = joinToTopic(project, unit, item, topic);
@@ -533,7 +533,7 @@ function landOnRoadmap(project, unit, { topics, parks, binds, candidates = [] })
 function landOnMap(manifest, { topics, candidates = [] }, priors) {
   const added = topics.filter(({ brief }) => brief !== undefined);
   if (added.length > 0) addBatchTo(manifest, added.map(({ name, summary, description, from_roadmap: fromRoadmap }) => ({ name, summary: /** @type {string} */ (summary), description, from_roadmap: fromRoadmap })), 'approve-map yes');
-  const taken = standing(candidates);
+  const taken = candidatesStanding(candidates);
   if (taken.length > 0) addBatchTo(manifest, candidateEntries(taken), 'approve-map yes', { source: SWEEP_SOURCE });
   const struck = candidates.filter((candidate) => candidate.struck).map(({ name }) => name);
   if (struck.length > 0) dismiss(manifest, struck);
@@ -586,7 +586,7 @@ function stagedForYes(cwd, unit, manifest) {
   const { candidates, ...map } = /** @type {Staged} */ (stagedAt(stagedFile(cwd, unit), nothingStaged(unit)));
   const staged = checked(cwd, unit, manifest, map);
   if (candidates === undefined) return staged;
-  checkCandidates(cwd, unit, manifest, standing(candidates));
+  checkCandidates(cwd, unit, manifest, candidatesStanding(candidates));
   return { ...staged, candidates };
 }
 
@@ -612,7 +612,7 @@ const withNewline = (text) => (text.endsWith('\n') ? text : `${text}\n`);
 function approveMapYes(cwd, unit) {
   const staged = stagedForYes(cwd, unit, openMap(cwd, unit));
   const candidates = staged.candidates ?? [];
-  const taken = standing(candidates);
+  const taken = candidatesStanding(candidates);
   const drafts = staged.topics.flatMap(({ name, brief }) => (brief === undefined ? [] : [{ name, ...draftIn(cwd, brief, `"${name}"'s brief`) }]));
   /** @type {Map<string, string>} */
   const briefs = new Map(drafts.map(({ name, content }) => [name, content]));
@@ -674,4 +674,4 @@ function runApproveMapVerb(cwd, [verb, ...args]) {
   throw new Error(`Usage: ${APPROVE_MAP_USAGE.split('\n').map((line) => `engine ${line}`).join(' | ')}`);
 }
 
-module.exports = { APPROVE_MAP_USAGE, runApproveMapVerb, approveMapSurface, approveMapStrikeSurface, openMap, isLive, checkCandidates, stageSwept, sweptStaged, stagedOrNone, liveInOrder };
+module.exports = { APPROVE_MAP_USAGE, runApproveMapVerb, approveMapSurface, approveMapStrikeSurface, openMap, isLive, checkCandidates, stageSwept, sweptStaged, stagedOrNone, liveInOrder, candidatesStanding };

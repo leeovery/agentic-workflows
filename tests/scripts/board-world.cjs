@@ -101,4 +101,7 @@ function standingOn(board, unit) {
   };
 }
 
-module.exports = { fixture, fixtureModule, shapeOf, misfits, emptyLists, standingOn };
+/** A banner fact that says where the session is: the type and the phase the banner leads with, and stopped after them. @param {string} text */
+const place = (text) => ({ text, needs: false, place: true });
+
+module.exports = { fixture, fixtureModule, shapeOf, misfits, emptyLists, standingOn, place };

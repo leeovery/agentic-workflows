@@ -22,6 +22,10 @@
 //   first, each with the topic it went to, its file, its title and the
 //   line under it naming who sent it and when, read from the file as it
 //   was added, wherever it has gone since.
+//
+// Each subject is read as the current version writes it. A subject reworded
+// later drops the older moments of its kind from what happened, and is
+// never read in its old form.
 // ---------------------------------------------------------------------------
 
 const { stateRoot } = require('../kernel/state-root.cjs');
@@ -43,7 +47,7 @@ const LOOK_BACK = 60;
  */
 const MOMENTS = Object.freeze([
   { kind: 'created', scope: 'discovery', said: /^(?:create work unit|start this work) \((?<detail>[^)]+)\)$/ },
-  { kind: 'map-approved', scope: 'discovery', said: /^approve the map(?: — (?<detail>.+))?$/ },
+  { kind: 'map-approved', scope: 'discovery', said: /^approve the map — (?<detail>.+)$/ },
   { kind: 'postponed', scope: 'workflow', said: /^postpone (?<topic>\S+) → (?<detail>.+)$/ },
   { kind: 'cancelled', scope: 'workflow', said: /^cancel (?<topic>\S+) \(discovery\)$/ },
   { kind: 'reactivated', scope: 'workflow', said: /^reactivate (?<topic>\S+) \(discovery\)$/ },

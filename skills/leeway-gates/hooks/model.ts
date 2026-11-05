@@ -21,7 +21,7 @@ export type Place = {
 }
 
 /** A fact on the banner: its words, whether it waits on the person, and, unflagged, whether it says what waits beside them. */
-export type Fact = { text: string; needs: boolean; waits?: true }
+export type Fact = { text: string; needs: boolean; waits?: true; place?: true }
 
 /** The banner: running, waiting on the person, done, or neither; the work's name; its facts in order. */
 export type Banner = {

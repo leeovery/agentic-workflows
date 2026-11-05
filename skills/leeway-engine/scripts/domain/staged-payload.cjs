@@ -74,4 +74,14 @@ function refusing(said, answer) {
   }
 }
 
-module.exports = { filled, shaped, listed, readPayload, stage, stagedAt, refusedAs, refusing };
+/** Whether `check` stands, refusing nothing: a gate's own check, asked by a reader that shows where it stands. @param {() => unknown} check */
+function stands(check) {
+  try {
+    check();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+module.exports = { filled, shaped, listed, readPayload, stage, stagedAt, refusedAs, refusing, stands };

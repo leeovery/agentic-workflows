@@ -458,13 +458,13 @@ const { specReferenceOf, scenariosOf } = require('./task-file.cjs');
 const {
   taskFolder, taskRounds, roundReportPath, roundUnderReview, phaseReviewPath, reportFaults, roundStanding, readRefusal, recordReviewer, recordBuilder, pendingChange, briefedOf,
 } = require('./round-report.cjs');
-const { landsOn, builtOnBases } = require('./task-base.cjs');
+const { builtOnBases } = require('./task-base.cjs');
 const { freedAt } = require('./task-parks.cjs');
 const { reviewReportFaults } = require('./review-report.cjs');
 const { REVIEWER_LETTERS } = require('../kernel/reviewers.cjs');
 const { taskName, shownTask, phaseName } = require('./task-id.cjs');
 const { taskBranch } = require('./landing-names.cjs');
-const { branches, branchesHeldBy, holdingBranch, latestOf, quoted } = require('./landing-git.cjs');
+const { branches, branchesHeldBy, holdingBranch, landsOn, latestOf, quoted } = require('./landing-git.cjs');
 const { childrenFirst } = require('../kernel/repos.cjs');
 const { heldIn, pointedAt } = require('./project-layout.cjs');
 const { repoNamed, phaseStack, tipCommits } = require('./phase-stack.cjs');

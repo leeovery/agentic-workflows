@@ -53,6 +53,7 @@
 //   one moment with their count.
 // ---------------------------------------------------------------------------
 
+const { fact, placeFact } = require('../board-model.cjs');
 const fs = require('fs');
 const { readProjectManifest } = require('../../kernel/manifest.cjs');
 const { statePath } = require('../../kernel/state-root.cjs');
@@ -70,7 +71,7 @@ const { buildView, buildMoments } = require('./board-build.cjs');
 const { roundWords } = require('./board-review.cjs');
 const { passMoments, reportedOf, specDoing } = require('./board-spec.cjs');
 const { sentBy } = require('./board-discussion.cjs');
-const { mapCount } = require('./board-discovery.cjs');
+const { mapCount, textOf } = require('./board-discovery.cjs');
 const { phasesAt, nowOf, waitingOn, standingOf, holds, closedOn, startedOf, pastDiscovery } = require('./board-standing.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
@@ -203,6 +204,16 @@ function specState(at) {
   return held === undefined ? 'running' : SPEC_HELD[held.kind];
 }
 
+/**
+ * The specification on the epic's page: where it stands, and while it is
+ * written what it is doing as its banner and All work say it (`specDoing`).
+ * @param {BoardAt} at @param {SessionIn} session @returns {EpicView['spec']}
+ */
+function specOf(at, session) {
+  const state = specState(at);
+  return { state, words: state === 'running' ? specDoing(at, waitingOn(at)) : '', session };
+}
+
 /** Where the build and review stand on the epic's page, by the derivation's phase and standing. @type {Readonly<Record<string, EpicView['build']['state']>>} */
 const UNDER_WAY = Object.freeze({ build: 'building', review: 'reviewing' });
 
@@ -270,7 +281,7 @@ function epicView(at, atMenu) {
         experiment,
       };
     }),
-    spec: { state: specState(at), session: sessionOf(sessions, ['specification']) },
+    spec: specOf(at, sessionOf(sessions, ['specification'])),
     build: { state: buildState(at), session: sessionOf(sessions, ['implementation', 'review']) },
     set_aside: setAside,
     lately: latelyOf(at),
@@ -346,9 +357,6 @@ const DOING = Object.freeze({
 
 /** What a phase under way is doing, by the phase it reads. @param {BoardAt} at @param {string} reads */
 const doingOf = (at, reads) => /** @type {Record<string, (at: BoardAt) => string>} */ (DOING)[reads]?.(at) ?? '';
-
-/** A file's text, empty where none is written. @param {string} file */
-const textOf = (file) => (fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '');
 
 /** A linear unit's discovery in full: each note it was started from, else its brief. @param {BoardAt} at @returns {PhasePage['sections']} */
 function seedSections(at) {
@@ -440,8 +448,7 @@ function phasePage(at, phase) {
 
 /** The banner at the session's place, from the place alone: its type and the phase, or the menu; what waits on the person is the board's (board.cjs). @param {BoardAt} at @returns {{state: 'running'|'idle', facts: {text: string, needs: boolean}[]}} */
 function placeBanner(at) {
-  const fact = (/** @type {string} */ text) => ({ text, needs: false });
-  return { state: at.place.phase === null ? 'idle' : 'running', facts: [fact(at.manifest.work_type), fact(at.place.phase ?? 'at its menu')] };
+  return { state: at.place.phase === null ? 'idle' : 'running', facts: [placeFact(at.manifest.work_type), placeFact(at.place.phase ?? 'at its menu')] };
 }
 
 /**
@@ -452,8 +459,7 @@ function placeBanner(at) {
  */
 function unitBanner(at, view) {
   if (view.kind !== 'epic') return placeBanner(at);
-  const fact = (/** @type {string} */ text) => ({ text, needs: false });
-  return { state: 'running', facts: [fact('epic'), fact(at.place.phase ?? 'at its menu'), fact(`${view.progress.decided} of ${view.progress.total} topics decided`)] };
+  return { state: 'running', facts: [placeFact('epic'), placeFact(at.place.phase ?? 'at its menu'), fact(`${view.progress.decided} of ${view.progress.total} topics decided`)] };
 }
 
 /** How far an epic in its discussion has come, as All work says it: its topics decided of all. @param {Record<string, any>} manifest */

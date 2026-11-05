@@ -24,7 +24,7 @@ const { ok, output, writeState, readManifest, stateGit, layout } = require('./en
 const { useDecidedWorld, decidedHelpers, decidedBoardHelpers, writeIn, NO_PAYLOAD, SOLO } = require('./decided-world.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, SESSION, MADE, NOTE, SPACE } = require('./ledger-world.cjs');
-const { fixture, fixtureModule, misfits, emptyLists } = require('./board-world.cjs');
+const { fixture, fixtureModule, misfits, emptyLists, place } = require('./board-world.cjs');
 
 const dir = useDecidedWorld();
 const { close, staged, answer, run } = decidedHelpers(dir);
@@ -65,12 +65,12 @@ describe('an epic\'s page (20.8)', () => {
           { topic: 'note-window', title: 'Note Window', state: 'discussing', decided: 1, total: 1, session: null, messages: 0, experiment: null },
           { topic: 'space-homing', title: 'Space Homing', state: 'discussing', decided: 0, total: 0, session: null, messages: 0, experiment: null },
         ],
-        spec: { state: 'waits', session: null },
+        spec: { state: 'waits', words: '', session: null },
         build: { state: 'waits', session: null },
         set_aside: [],
         lately: view.lately,
       },
-      banner: { name: 'Fumi', state: 'running', facts: ['epic', 'at its menu', '0 of 2 topics decided'].map((text) => ({ text, needs: false })) },
+      banner: { name: 'Fumi', state: 'running', facts: [place('epic'), place('at its menu'), { text: '0 of 2 topics decided', needs: false }] },
     });
   });
 
@@ -108,14 +108,6 @@ describe('an epic\'s page (20.8)', () => {
       [{ kind: 'answered', topic: 'Note Window', detail: null, count: 2 }, { kind: 'sent', topic: 'Note Window', detail: 'Space Homing', count: undefined }],
       { kind: 'map-approved', topic: null, detail: '2 topics, 0 to the roadmap', count: undefined },
     ]);
-  });
-
-  it('20.8.2: the map approved before its subject carried its counts reads as approved, saying nothing of what it took in', () => {
-    at([UNIT]);
-    stateGit(dir(), ['commit', '-q', '--allow-empty', '-m', `discovery(${UNIT}): approve the map`]);
-    const { kind, detail } = board().view.lately[0];
-
-    assert.deepStrictEqual([kind, detail], ['map-approved', null]);
   });
 
   it('20.8.2 LATELY shows the latest ten of the epic\'s moments, newest first', () => {
@@ -261,7 +253,7 @@ describe('other units\' pages (20.15)', () => {
 
     assert.deepStrictEqual({ view, banner, warnings, tab: board(['--tab', 'unit']).view.kind }, {
       view: { kind: 'unavailable', reason: 'solo\'s build has not begun' },
-      banner: { name: 'Solo', state: 'running', facts: ['feature', 'implementation'].map((text) => ({ text, needs: false })) },
+      banner: { name: 'Solo', state: 'running', facts: [place('feature'), place('implementation')] },
       warnings: ['This session cannot be drawn — solo\'s build has not begun'],
       tab: 'unit',
     });

@@ -26,11 +26,11 @@
 //   done, one at least; not yet written, written or running as its
 //   standing says.
 // - The build has stopped (20.5.1, D6) while a question waits and nothing
-//   can go on without an answer: the stop report's rule (`goesOn`, its
-//   phases let go on by `phaseLets`), over every phase the unit has written,
-//   the review's fixes among them, and once the build has finished, the
-//   review's round going on with nothing to answer (`reviewGoesOn`) never
-//   stopped.
+//   can go on without an answer: the stop report's own rule
+//   (`buildGoesOn`, build-screens.cjs), over every phase the unit has
+//   written, the review's fixes among them — a task no question parks, a
+//   phase's next step, and once the build has finished, the review's
+//   round.
 // - A question (20.5.3) parks its tasks, and the tasks linked after those
 //   wait after it.
 // - A task's page lists what running the product proved of each of its
@@ -46,14 +46,15 @@
 //   a task's page takes its task from that read.
 // ---------------------------------------------------------------------------
 
+const { fact, placeFact } = require('../board-model.cjs');
 const fs = require('fs');
 const { statePath } = require('../../kernel/state-root.cjs');
 const { standingOf, buildPhases } = require('../build-entry.cjs');
 const { reviewStanding, reviewGoesOn, recordedRounds } = require('../review-phase.cjs');
-const { buildFinished } = require('../derivations.cjs');
+const { cutLength } = require('../derivations.cjs');
 const { reading } = require('../phase-checks.cjs');
 const { goesOn } = require('../task-verbs.cjs');
-const { phaseNamed, phaseLets, takenAccount, callsOf, ranOf } = require('../build-screens.cjs');
+const { phaseNamed, phaseLets, buildGoesOn, takenAccount, callsOf, ranOf } = require('../build-screens.cjs');
 const { fieldOf, criteriaTexts, criterionWords, holdsScenario, namesScenario, FIELDS } = require('../task-file.cjs');
 const { specPath, specReading, DRAWS_ON } = require('../spec-sections.cjs');
 const { phaseStack, tipCommits } = require('../phase-stack.cjs');
@@ -140,8 +141,10 @@ const running = ({ state }) => state === 'building' || state === 'in-review';
 function stoppedOf(at, standing) {
   if (standing.waiting.length === 0) return false;
   const parked = new Set(standing.waiting.flatMap(({ parks }) => parks));
-  if (goesOn(parked, at.tracker(), phaseLets(at.cwd, at.unit, at.manifest, readingAt(at).reads)).length > 0) return false;
-  return !buildFinished(at.manifest) || reviewGoesOn(at.cwd, at.unit, reviewStandingAt(at)) === null;
+  return buildGoesOn(standing, cutLength(at.manifest), {
+    tasks: () => goesOn(parked, at.tracker(), phaseLets(at.cwd, at.unit, at.manifest, readingAt(at).reads)),
+    review: () => reviewGoesOn(at.cwd, at.unit, reviewStandingAt(at)),
+  }) === null;
 }
 
 /** The questions a press can queue, oldest first (the header's). @param {BuildStanding} standing @returns {Question[]} */
@@ -159,7 +162,8 @@ function questionsOf(standing) {
 
 /**
  * What the board's unit's checks read it by, once a call, seeded with the
- * unit's one read of the tracker: each phase's list, and the tasks whole of
+ * call's one read of the project's repositories and the unit's one read of
+ * the tracker: each phase's list, and the tasks whole of
  * each phase holding one not yet ended; and each phase the build may have
  * written past the last it has as not written — the review's fix phases
  * are written in turn, so none past the first not written is.
@@ -167,7 +171,7 @@ function questionsOf(standing) {
  */
 const readingAt = (at) => at.once('reading', () => {
   const { phases, written } = at.tracker();
-  const read = reading(at.cwd, at.unit, at.manifest, at.warnings);
+  const read = reading(at.cwd, at.unit, at.manifest, at.warnings, at.repos);
   phases.forEach((rows, i) => read.reads.set(`list ${i + 1}`, rows));
   written.forEach((tasks, i) => {
     if (tasks !== null) read.reads.set(`tasks ${i + 1}`, tasks);
@@ -236,13 +240,12 @@ function drawBuild(at) {
 function buildBanner({ type, progress, phases }) {
   const lines = phases.flatMap(({ tasks }) => tasks);
   const count = (/** @type {TaskState} */ state) => lines.filter((line) => line.state === state).length;
-  const fact = (/** @type {string} */ text, needs = false) => ({ text, needs });
   return {
     state: progress.stopped ? 'needs' : 'running',
     facts: [
-      fact(type),
-      fact('build'),
-      ...(progress.stopped ? [fact('stopped')] : []),
+      placeFact(type),
+      placeFact('build'),
+      ...(progress.stopped ? [placeFact('stopped')] : []),
       ...(count('building') > 0 ? [fact(`${count('building')} building`)] : []),
       ...(count('in-review') > 0 ? [fact(`${count('in-review')} in review`)] : []),
     ],

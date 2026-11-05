@@ -190,10 +190,16 @@ LATELY ────────────────────────�
   })
 
   test('D30: a stage under way turns only where a session is in it', () => {
-    const writing = (session: string | null) => ownMarkOf(drawn(EPIC, fumiAt({ now: { phase: 'specification', since: null }, spec: { state: 'running', session } })).lines, 'epic:spec')
+    const writing = (session: string | null) => ownMarkOf(drawn(EPIC, fumiAt({ now: { phase: 'specification', since: null }, spec: { state: 'running', words: 'being written', session } })).lines, 'epic:spec')
 
     expect(writing(null)).toEqual({ text: `${RUNNING_FRAMES[0]} `, color: COLOUR.sky })
     expect(writing('this')).toEqual({ text: `${RUNNING_FRAMES[0]} `, color: COLOUR.running })
+  })
+
+  test('N4: the specification being written says what it is doing as the banner and All work say it: a pass out reading', () => {
+    const reading = drawn(EPIC, fumiAt({ now: { phase: 'specification', since: null }, progress: { decided: 15, total: 15, discussing: 0 }, spec: { state: 'running', words: 'pass 2 reading', session: 'this' } }))
+
+    expect(reading.text.find(row => row.includes('Specification'))).toBe(`${RUNNING_FRAMES[0]} Specification · pass 2 reading`)
   })
 })
 

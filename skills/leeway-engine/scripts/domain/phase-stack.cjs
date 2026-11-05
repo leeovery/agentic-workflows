@@ -58,18 +58,40 @@ function phaseStack(cwd, unit, phase, tasks) {
 }
 
 /**
+ * The phase's stack as `phaseStack` reads it, or null where no repository
+ * holds work on its tasks: a task not yet started has no branch.
+ * @param {string} cwd @param {string} unit @param {number} phase @param {TaskDetail[]} tasks the phase's, whole
+ * @returns {PhaseStack|null}
+ */
+function heldStack(cwd, unit, phase, tasks) {
+  return heldStackOf(projectRepos(codeRoot(cwd)), unit, tasks, phaseName(unit, phase));
+}
+
+/**
  * The stack the tasks not closed among `tasks` make (the header's).
  * @param {Repo[]} repos the project's @param {string} unit @param {TaskDetail[]} tasks whole @param {string} what the tasks' owner, as a refusal names it
  * @returns {PhaseStack}
  */
 function stackOf(repos, unit, tasks, what) {
+  const stack = heldStackOf(repos, unit, tasks, what);
+  if (stack === null) throw new Error(`no repository of the project holds work on ${what}'s tasks`);
+  return stack;
+}
+
+/**
+ * The stack `stackOf` reads, or null where no repository holds work on the
+ * tasks.
+ * @param {Repo[]} repos @param {string} unit @param {TaskDetail[]} tasks @param {string} what
+ * @returns {PhaseStack|null}
+ */
+function heldStackOf(repos, unit, tasks, what) {
   const named = tasks.filter(({ status }) => status !== 'closed').map((task) => {
     if (task.type === null) throw new Error(`${taskName(task.ref)} has no type in the tracker, and its branch is named from it`);
     return taskBranch(task.ref, task.type, task.title);
   });
   const held = holdingBranches(unit, repos, named).map(({ holding }) => holding);
   const holding = repos.map((repo) => ({ repo, on: named.filter((_, at) => held[at].includes(repo)) })).filter(({ on }) => on.length > 0);
-  if (holding.length === 0) throw new Error(`no repository of the project holds work on ${what}'s tasks`);
+  if (holding.length === 0) return null;
   return { repos, tips: new Map(holding.map(({ repo, on }) => [repo, stackTip(repo, on, what)])), what };
 }
 
@@ -78,4 +100,4 @@ function tipCommits({ tips }) {
   return [...tips].map(([repo, tip]) => ({ repo: repoName(repo), commit: git(repo.path, ['rev-parse', `refs/heads/${tip}`]).trim() }));
 }
 
-module.exports = { repoNamed, phaseStack, stackOf, tipCommits };
+module.exports = { repoNamed, phaseStack, heldStack, stackOf, tipCommits };

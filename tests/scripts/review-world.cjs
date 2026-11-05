@@ -372,6 +372,14 @@ async function replacedAtReview(replaces) {
   return (await okSectionsAsync(dir, ['raise', `${UNIT}.review`, '--replaces', replaces, '--reason', 'was-wrong'], { env: env(), stdin: JSON.stringify(MAILED) })).res;
 }
 
+/** Finish's checklist worked and closed, as Claude closes it before its screen: phase 1's design and the inbox skipped, the build's log closed. */
+function finishClosed() {
+  ok(dir, ['checklist', 'skip', 'phase-start', UNIT, '1', 'design-settled', '--reason', 'One task alone.'], { env: env() });
+  ok(dir, ['checklist', 'skip', 'finish', UNIT, 'inbox-closed', '--reason', 'No inbox item was resolved.'], { env: env() });
+  ok(dir, ['checklist', 'done', 'finish', UNIT, 'build-log-closed'], { env: env() });
+  ok(dir, ['checklist', 'close', 'finish', UNIT], { env: env() });
+}
+
 /** Fix task 3.1 started, then parked on Q1, the question its builder raises (MAILED). */
 async function fixParked() {
   ok(dir, ['task', 'start', UNIT, '3.1'], { env: env() });
@@ -396,6 +404,6 @@ function storedBriefs() {
 module.exports = {
   UNIT, OTHER, ENGINE, ENGINE_LINE, SESSION_ID, areaText, AREAS, EVERY, FIVE, calls,
   useWorld, env, enter, inStep, payload, reportText, reported, named, recorded, refusedRound, taskMade, fixPhaseWritten, cutUnmerged, fixBranch, fixBuilt, fixClosed, commitFile, data, stateText, lastStateCommit, issued, storedBriefs,
-  decided, reviewCall, filed, raisedAtReview, replacedAtReview, FOUND, RECEIPT, FAILING, firstRoundReady, firstRoundFailed, secondRoundReady, fixParked,
+  decided, reviewCall, filed, raisedAtReview, replacedAtReview, finishClosed, FOUND, RECEIPT, FAILING, firstRoundReady, firstRoundFailed, secondRoundReady, fixParked,
   ok, okSections, refusedPristine, statePath, writeState, readManifest, git, stateGit, createManifest, initRepo, assert,
 };

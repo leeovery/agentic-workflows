@@ -25,6 +25,7 @@
 //   captures by kind.
 // ---------------------------------------------------------------------------
 
+const { fact, placeFact } = require('../board-model.cjs');
 const { readProjectManifest, listWorkUnitManifests } = require('../../kernel/manifest.cjs');
 const { loadActiveManifests } = require('../reads.cjs');
 const { scanProject } = require('../presence.cjs');
@@ -142,9 +143,8 @@ function allView(cwd, at, here, atStart) {
  * @returns {import('../board-model.cjs').Banner}
  */
 function allBanner(cwd, position, finished) {
-  const fact = (/** @type {string} */ text) => ({ text, needs: false });
-  if (finished !== null) return { name: finished.title, state: 'done', facts: [fact(finished.manifest.work_type), fact('complete'), fact('at the start menu')] };
-  return { name: projectName(cwd), state: 'idle', facts: [fact(position === null ? 'at the start menu' : position.name)] };
+  if (finished !== null) return { name: finished.title, state: 'done', facts: [fact(finished.manifest.work_type), fact('complete'), placeFact('at the start menu')] };
+  return { name: projectName(cwd), state: 'idle', facts: [placeFact(position === null ? 'at the start menu' : position.name)] };
 }
 
 module.exports = { allView, allBanner };

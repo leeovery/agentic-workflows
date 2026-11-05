@@ -68,7 +68,7 @@ describe('pipeline simulation: the build', () => {
     const handedOff = sim.handoffs.length;
     const entered = buildEntry(sim, WU);
     const tab = JSON.parse(sim.read(['board', sim.env.CLAUDE_CODE_SESSION_ID, '--tab', 'unit'])).view;
-    assert.deepStrictEqual({ now: tab.now, spec: tab.spec, build: tab.build }, { now: { phase: 'build', since: sim.manifest(WU).checklists['ready-to-build'].closed }, spec: { state: 'complete', session: null }, build: { state: 'building', session: 'this' } },
+    assert.deepStrictEqual({ now: tab.now, spec: tab.spec, build: tab.build }, { now: { phase: 'build', since: sim.manifest(WU).checklists['ready-to-build'].closed }, spec: { state: 'complete', words: '', session: null }, build: { state: 'building', session: 'this' } },
       'S2, 20.8.2: the epic builds since ready to build\'s yes, its specification complete, this session in its build');
     assert.deepStrictEqual(entered.filter((line) => line.startsWith('phase: ')), ['phase: phase 1 of 2, "Settling": not yet written', 'phase: phase 2 of 2, "Showing": not yet written']);
     for (const call of [['ledger', 'record', WU], ['ledger', 'affected', WU]]) sim.read(call);

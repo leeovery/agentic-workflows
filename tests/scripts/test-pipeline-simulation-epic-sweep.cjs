@@ -63,6 +63,8 @@ describe('pipeline simulation: epic, the sweep before the spec', () => {
     }, ['Approve the map: 2 candidates the sweep found, to take or strike']], 'S1: the sweep\'s candidates wait on the person at approve the map on every view that reads the epic — its message having reopened beta, back in discussion — as the banner has it');
     sim.render(answerGate(sim, 'approve the map', '--pick', 's').next.argv.slice(1), { expect: 'content' });
     sim.render(sim.run(answerGate(sim, 'approve the map strike', '--pick', '2').next.argv).next.argv.slice(1), { expect: 'content' });
+    assert.deepStrictEqual(board(['--tab', 'unit']).view.waiting.map((/** @type {{text: string}} */ { text }) => text), ['Approve the map: 1 candidate the sweep found, to take or strike'],
+      'a candidate struck leaves the count of those still standing');
     const yes = sim.run(answerGate(sim, 'approve the map', '--pick', 'y').next.argv);
     assert.deepStrictEqual(yes.next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [WU] });
     handoff(sim, `/leeway-continue-epic ${WU}`);

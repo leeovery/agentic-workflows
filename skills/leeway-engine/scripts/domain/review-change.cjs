@@ -55,8 +55,7 @@ const { runsOf } = require('./runs.cjs');
 const { trackedLists, trackedPhase } = require('./task-verbs.cjs');
 const { landedTasks } = require('./landing.cjs');
 const { tasksOfMessage } = require('./landing-names.cjs');
-const { branches, defaultBranch, mergeBase } = require('./landing-git.cjs');
-const { remoteName, nestedRemoteName } = require('./remote.cjs');
+const { branches, landsOn, mergeBase } = require('./landing-git.cjs');
 const { stackOf } = require('./phase-stack.cjs');
 const { shownTask } = require('./task-id.cjs');
 
@@ -79,9 +78,9 @@ const { shownTask } = require('./task-id.cjs');
 /** The whole change: the project's repositories, and the change in each holding it, the project's own first. @typedef {{repos: Repo[], holding: ChangeIn[]}} Change */
 
 /** The branch a repository lands on, null where it names none. @param {string} cwd @param {Repo} repo */
-function landsOn(cwd, repo) {
+function landsOnOrNone(cwd, repo) {
   try {
-    return defaultBranch(repo.path, repo.dir === '' ? remoteName(cwd) : nestedRemoteName(repo.path), repo.dir !== '');
+    return landsOn(cwd, repo);
   } catch {
     return null;
   }
@@ -230,7 +229,7 @@ function changeOn(cwd, unit, pending, given, repos) {
   if (given !== null && !repos.some((repo) => branches(repo.path).has(given))) throw new Error(`the base ${given} is no local branch in any repository of the project`);
   const stack = new Map([...stackTips(cwd, unit, pending, `${unit}'s build`, repos)].map(([repo, tip]) => [repo.path, tip]));
   const holding = repos.flatMap((repo) => {
-    const base = given !== null && branches(repo.path).has(given) ? given : landsOn(cwd, repo);
+    const base = given !== null && branches(repo.path).has(given) ? given : landsOnOrNone(cwd, repo);
     if (base === null) return [];
     const parts = landings(repo, base, unit);
     const branch = stack.get(repo.path);
