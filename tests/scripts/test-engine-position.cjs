@@ -11,7 +11,8 @@
 // once both standing (24.2.4, 13.3.3, 12.S21) — the tracker's `task start`
 // and `task done` on the position are test-engine-task-verbs.cjs's; the
 // start menu's repair dropping it, a record racing the drop never bringing
-// it back; and `conversation position`,
+// it back, and boot's leaving it, the place it left kept until a position is
+// recorded again; and `conversation position`,
 // which answers what to re-read to carry on there: the skill that runs the
 // work, then the topic's documents this project has, each by its absolute
 // path under the project root, as the note a compaction hands up and one line
@@ -205,6 +206,20 @@ describe('the position every arrival records', () => {
     assert.deepStrictEqual(ok(['session', 'repair']), { ok: true, repaired: false });
     assert.strictEqual(position(), null);
     assert.deepStrictEqual(position('sess-2'), { name: 'pay' });
+  });
+
+  it('boot leaves the position for the start menu, keeping the place it left where that names a phase until a position is recorded again; at a unit\'s menu it keeps none (D38)', () => {
+    const left = () => {
+      try { return JSON.parse(fs.readFileSync(path.join(folder(), 'left.json'), 'utf8')); } catch { return null; }
+    };
+    ok(['session', 'label', 'pay', 'discussion', 'ledger']);
+    ok(['boot']);
+    const booted = [position(), left()];
+    ok(['session', 'label', 'pay']);
+    const arrived = [position(), left()];
+    ok(['boot']);
+
+    assert.deepStrictEqual([booted, arrived, [position(), left()]], [[null, { name: 'pay', phase: 'discussion' }], [{ name: 'pay' }, null], [null, null]]);
   });
 
   it('a position that cannot be written never fails the verb', () => {

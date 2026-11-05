@@ -21,12 +21,11 @@
 require('./hermetic-env.cjs');
 
 const { describe, it } = require('node:test');
-const { output, sectionOf, okSectionsAsync } = require('./engine-harness.cjs');
+const { output, sectionOf } = require('./engine-harness.cjs');
 const {
-  UNIT, inStep, ENGINE, ENGINE_LINE, RECEIPT, useWorld, env, enter, recorded, firstRoundReady, firstRoundFailed, fixPhaseWritten, cutUnmerged, fixBuilt, data,
+  UNIT, inStep, ENGINE, ENGINE_LINE, RECEIPT, useWorld, fixParked, env, enter, recorded, firstRoundReady, firstRoundFailed, fixPhaseWritten, cutUnmerged, fixBuilt, data,
   ok, okSections, refusedPristine, statePath, readManifest, createManifest, git, assert,
 } = require('./review-world.cjs');
-const { MADE } = require('./ledger-world.cjs');
 
 const { buildStanding } = require('../../skills/leeway-engine/scripts/domain/build-entry.cjs');
 
@@ -41,20 +40,6 @@ const landedOnMain = (task) => git(dir, ['commit', '-q', '--allow-empty', '-m', 
 const roundOneFixes = (state, status) => ({
   phase: 3, name: 'the review\'s fixes, round 1', round: 1, relies_on: [], state,
   tasks: [{ task: '3.1', title: 'Send the receipt', status, parked: [], after: [] }], fixes_owed: [],
-});
-
-/** Claude's call on a fix task's question, which asks the person. */
-const MAILED = Object.freeze({
-  question: 'Is the receipt mailed or printed?',
-  rows: [
-    { key: '1', name: 'Mailed', text: 'The receipt is mailed', notice: 'the customer finds it in their inbox' },
-    { key: '2', name: 'Printed', text: 'The receipt is printed', notice: 'the till prints it' },
-  ],
-  lean: '1',
-  why: 'A customer keeps proof.',
-  sort: 'several',
-  mechanism: 'The gateway mails the receipt.',
-  product_wide: false,
 });
 
 describe('the build\'s standing: the review\'s fix phases past the cut (P14)', () => {
@@ -147,9 +132,7 @@ describe('the build\'s screens: the review\'s fix phases (12.12.11, 3.3.10)', ()
   it('in step, the stop is refused while a fix task is ready beside the one a question parks — a fix phase has no start checklist, so its ready task goes on — and once the answer frees the parked one, it waits behind that task (12.13.22, 12.7.9)', async () => {
     inStep();
     fixPhaseWritten(3, [['Send the receipt', '§1.2'], ['Send it once', '§1.2']]);
-    ok(dir, ['task', 'start', UNIT, '3.1'], { env: env() });
-    const question = ok(dir, ['ledger', 'ask', `${UNIT}.review`], { env: env(), stdin: JSON.stringify({ ...MADE, text: MAILED.question }) }).id;
-    await okSectionsAsync(dir, ['raise', `${UNIT}.review`, '--answers', question, '--parks', '3.1'], { env: env(), stdin: JSON.stringify(MAILED) });
+    await fixParked();
     const stop = refusedPristine(dir, ['render', 'build-stop', UNIT], { env: env() }).error;
     ok(dir, ['task', 'start', UNIT, '3.2'], { env: env() });
     const drawn = okSections(dir, ['raise', 'draw', UNIT, 'Q1'], { env: env() }).res.raise;

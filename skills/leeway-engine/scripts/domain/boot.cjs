@@ -70,7 +70,8 @@
 // but one a write kept ahead of its entry, which lands, or goes, by this
 // project's ledger, under its writer lock.
 // The start menu is no position, so the calling conversation's own goes
-// first, before the migrations — a boot that fails leaves none.
+// first, before the migrations — a boot that fails leaves none — the place
+// it left kept for the board where it names a phase (position.cjs).
 //
 // Where a decision landed unchecked and no late check has judged it, boot
 // launches the late one-decision check, detached, as it hands vectors to the
@@ -98,7 +99,7 @@ const { gateSurface } = require('./gate-surface.cjs');
 const { gitShortfall } = require('./git-floor.cjs');
 const { tidyConversations } = require('./conversation.cjs');
 const { appendWaiting, holdsWaiting } = require('./trust-log.cjs');
-const { dropPosition } = require('./position.cjs');
+const { leavePosition } = require('./position.cjs');
 const { brownfieldOffer, baselineSignal } = require('./brownfield.cjs');
 const { walkthroughState } = require('./walkthrough.cjs');
 const { launchLateCheck } = require('./ledger-late-check.cjs');
@@ -283,7 +284,7 @@ function trimReport(stdout) {
 function boot(cwd, { startAgain = false } = {}) {
   if (gitShortfall() !== null) return { state: 'git', warnings: [] };
   if (outsideRepository(cwd)) return { state: 'repo', warnings: [] };
-  dropPosition(handedSession());
+  leavePosition(handedSession());
   /** @type {string[]} */
   const warnings = [];
   appendWaiting(cwd, warnings);

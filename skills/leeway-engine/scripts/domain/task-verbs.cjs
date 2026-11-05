@@ -616,6 +616,15 @@ function trackedUnit(cwd, unit, manifest, task = null) {
 }
 
 /**
+ * Each of a unit's phases' tasks whole, read from a copy of its store
+ * (`withStoreCopy`), for a reader that must never wait on a writer.
+ * @param {string} cwd @param {string} unit @param {number[]} phases @returns {TaskDetail[][]}
+ */
+function copiedTasks(cwd, unit, phases) {
+  return withStoreCopy(cwd, (driver, root) => phases.map((phase) => driver.tasks(root, unit, phase) ?? []));
+}
+
+/**
  * In step, the task in flight among those the build goes on with
  * (`goingOn`), and those behind it, which go on once it is done (12.7.9):
  * the one that went back in flight first — one never parked before any,
@@ -873,4 +882,4 @@ function runTaskVerb(cwd, verb, positional, opts) {
   return run(cwd, positional, ...values, .../** @type {string[]} */ (given));
 }
 
-module.exports = { TASK_VERBS, ENDED, STATUS_WORDS, runTaskVerb, trackedTask, trackedPhases, trackedLists, trackedPhase, trackedUnit, goingOn, goesOn, phaseOpen, stepTurn, turnOf, turnRefusal, phaseWritten, givenText, trackedStart };
+module.exports = { TASK_VERBS, ENDED, STATUS_WORDS, runTaskVerb, trackedTask, trackedPhases, trackedLists, trackedPhase, trackedUnit, goingOn, goesOn, phaseOpen, stepTurn, turnOf, turnRefusal, phaseWritten, givenText, trackedStart, copiedTasks };

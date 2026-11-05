@@ -6,6 +6,9 @@
  */
 import type { Kit, Line } from '../draw.ts'
 import type { View } from '../model.ts'
+import { buildLines } from './build.ts'
+import { checkLines, findingLines, reviewLines } from './review.ts'
+import { evidenceLines, evidenceName, roundLines, roundName, scenarioLines, scenarioName, taskLines, taskName, writtenLines, writtenName } from './task.ts'
 
 export type ViewDrawing = {
   lines: (view: View, kit: Kit) => Line[]
@@ -14,4 +17,14 @@ export type ViewDrawing = {
 
 export type Views = Readonly<Record<string, ViewDrawing>>
 
-export const VIEWS: Views = {}
+export const VIEWS: Views = {
+  build: { lines: buildLines, name: () => 'the build' },
+  task: { lines: taskLines, name: taskName },
+  'task-written': { lines: writtenLines, name: writtenName },
+  'task-round': { lines: roundLines, name: roundName },
+  scenario: { lines: scenarioLines, name: scenarioName },
+  evidence: { lines: evidenceLines, name: evidenceName },
+  review: { lines: reviewLines, name: () => 'the review' },
+  finding: { lines: findingLines, name: () => 'the finding' },
+  check: { lines: checkLines, name: () => 'the check' },
+}

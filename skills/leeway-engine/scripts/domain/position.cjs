@@ -37,7 +37,8 @@
 // the stop off.
 // They ride with their task and go with it. The start menu is no position:
 // boot drops the calling conversation's own before anything else it does,
-// and `session repair` drops it too.
+// keeping the place it left where that names a phase, until a position is
+// recorded again; and `session repair` drops it too.
 //
 // The engine is the file's one writer, and writes only for a conversation
 // that runs the workflows: recording a position marks the conversation first
@@ -57,7 +58,7 @@ const path = require('path');
 const { PRODUCT, PROJECT_IDENTITIES, TERMINAL_STATUSES, VALID_PHASES, illegalNameReason } = require('../kernel/manifest-schema.cjs');
 const { LOCK_TIMEOUT_MS, isObject, withStateLockFile, writeJsonAtomic } = require('../kernel/manifest-io.cjs');
 const { handedSession } = require('../kernel/process.cjs');
-const { positionPath, readPosition, isMarked, markConversation, runningTranscript } = require('./conversation.cjs');
+const { positionPath, leftPath, readPosition, isMarked, markConversation, runningTranscript } = require('./conversation.cjs');
 const { ROLES, issuedOf } = require('./brief-names.cjs');
 const { loadManifest, loadProjectManifest } = require('./reads.cjs');
 const { buildBegun, buildRefusal, isFixPhase, computeTopicLifecycle, itemOf, openRecords, phaseData, UNIT_PHASES } = require('./derivations.cjs');
@@ -140,6 +141,7 @@ function updatePosition(sessionId, change) {
     const next = change(readPosition(sessionId));
     if (next === null) return false;
     writeJsonAtomic(file, next);
+    fs.rmSync(leftPath(sessionId), { force: true });
     return true;
   });
 }
@@ -382,6 +384,22 @@ function clearTask(workUnit, internalId) {
     const place = buildPlaceOf(prior, workUnit) ?? implementationOf(workUnit);
     const held = tasksAt(prior, place);
     return held.some((t) => t.task === step) ? withTasks(place, held.filter((t) => t.task !== step)) : null;
+  });
+}
+
+/**
+ * The conversation `sessionId` leaves its position for the start menu, the
+ * place left kept where it names a phase, else none (conversation.cjs).
+ * @param {string|null|undefined} sessionId
+ */
+function leavePosition(sessionId) {
+  if (!sessionId) return;
+  underPositionLock(sessionId, (file) => {
+    const prior = readPosition(sessionId);
+    if (prior?.phase === undefined) fs.rmSync(leftPath(sessionId), { force: true });
+    else writeJsonAtomic(leftPath(sessionId), { name: prior.name, phase: prior.phase });
+    fs.rmSync(file, { force: true });
+    return true;
   });
 }
 
@@ -761,6 +779,6 @@ function positionSections(reads) {
 }
 
 module.exports = {
-  readPosition, assertPlace, isPlace, recordPosition, recordTask, recordTasksAt, recordBuilder, recordWorktree, recordStop, clearStop, clearTask, dropPosition,
+  readPosition, assertPlace, isPlace, recordPosition, recordTask, recordTasksAt, recordBuilder, recordWorktree, recordStop, clearStop, clearTask, leavePosition, dropPosition,
   placeLine, skillAt, positionReads, positionSections,
 };

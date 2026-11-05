@@ -22,7 +22,8 @@
 //   was opened in (`--page-unit`), else the tab's, whatever the session is
 //   doing, so a page stays while the session moves beneath it (20.3.5) and
 //   once it leaves the unit: `task:{N.n}`, `task:{N.n}:written`,
-//   `task:{N.n}:round:{k}`, `entry:{id}`, `finding:{round}:{k}`,
+//   `task:{N.n}:round:{k}`, `task:{N.n}:scenario:{id}`,
+//   `task:{N.n}:scenario:{id}:evidence:{k}`, `entry:{id}`, `finding:{round}:{k}`,
 //   `check:{round}:{scenario}`, `section:{n}`, `pass:{k}`, `topic:{topic}`,
 //   `message:{topic}:{file}`, `review:{topic}:{id}`, `spike:{folder}`,
 //   `report:{topic}:{id}`; and from All work `unit:{unit}`. The way back is
@@ -32,7 +33,7 @@
 // ---------------------------------------------------------------------------
 
 /** The view model's version (the header's). */
-const BOARD_VERSION = 1;
+const BOARD_VERSION = 2;
 
 /** The board's tabs (20.3.1). */
 const TABS = Object.freeze(['this', 'unit', 'all']);
@@ -103,14 +104,30 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * where none is; what it does and its count of acceptance criteria; its
  * account, null where none is taken; each round's summary; each call it
  * made; what running the product proved of its scenarios, null where it
- * holds none; and the question parking it, by number, else null.
+ * holds none; each question parking it, whole, none where none does;
+ * and, for a fix task, each finding of the review it fixes (D17), else none.
  * @typedef {{
  *   kind: 'task', unit: string, phase: number, phase_name: string, line: TaskLine, started: string|null, finished: string|null,
  *   does: string, criteria: number,
  *   account: {done: string, where: string, tests: string, differences: string[], figures: Figures}|null,
- *   reviews: {round: string, summary: string}[], calls: {id: string, text: string}[], ran: Ran[]|null, question: string|null,
+ *   reviews: {round: string, summary: string}[], calls: {id: string, text: string}[], ran: Ran[]|null, questions: Question[],
+ *   fixes: FoundLine[],
  * }} TaskPage
  */
+/**
+ * A scenario of a task read in full (15.2.14): the task, its title, the
+ * scenario and its criterion's words, what running the product proved of
+ * it and when the run that decides was recorded, null where none was run;
+ * what the run drives and what it checks, from the scenario's words parted
+ * at their "then" — the check null where nothing parts them, both where the
+ * spec lacks them — and each text evidence kept with that run, by its name
+ * and lines.
+ * @typedef {{
+ *   kind: 'scenario', unit: string, task: string, title: string, scenario: string, criterion: string, standing: string, at: string|null,
+ *   drive: string|null, check: string|null, evidence: {name: string, lines: number}[],
+ * }} ScenarioPage
+ */
+/** A text evidence of the run that decides a scenario, read whole: its task, scenario, name and text. @typedef {{kind: 'evidence', unit: string, task: string, scenario: string, name: string, text: string}} EvidencePage */
 /** The task as written: its number, title and each section by its heading. @typedef {{kind: 'task-written', unit: string, task: string, title: string, sections: {heading: string, text: string}[]}} WrittenPage */
 /** A round of a task's review read in full: each reviewer's report by its letter. @typedef {{kind: 'task-round', unit: string, task: string, title: string, round: number, reports: {letter: string, text: string}[]}} RoundPage */
 /**
@@ -119,6 +136,12 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * @typedef {{kind: 'entry', unit: string, id: string, entry: string, by: string, text: string, why: string|null, question: string|null}} EntryPage
  */
 
+/**
+ * A finding of a round: the round; its number in it once the round is
+ * recorded, else null, and while it is read the report item it is,
+ * `{report}#{n}`, else null; its area, call and words.
+ * @typedef {{round: number, finding: number|null, from: string|null, area: string, call: string, text: string}} FoundLine
+ */
 /** An area's state in a round: read, being read, waiting, or not read again (20.10.2). @typedef {'read'|'reading'|'waiting'|'unchanged'} AreaState */
 /**
  * An area of a round, or the reader over the tests (`tests`): its number
@@ -126,25 +149,38 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * found, and since when it is read, else null.
  * @typedef {{area: string, title: string, state: AreaState, ran: number, found: number, since: string|null}} AreaLine
  */
-/** A finding in scope of a recorded round: the round, its number in it, its area and words. @typedef {{round: number, finding: number, area: string, text: string}} FoundLine */
 /**
- * The review phase's This session (20.10): the unit, its title and type,
- * how many tasks were built, the review's fix tasks among them; the round
- * shown — the one under way once it has opened, else the last recorded —
- * whether it is recorded, and each of its areas; each finding in scope —
- * the round's once recorded, else the failing round's before it, which its
- * fix tasks fix; once recorded, each check not proven, what went to the
- * inbox and its verdict; and the fix tasks of the round before, or of this one once
- * recorded, as the build's phase they make, null where there are none.
+ * The review phase's This session (20.10): the unit, its title, the project
+ * and the unit's type, how many tasks were built, the review's fix tasks
+ * among them; the round shown — the one under way once it has opened, else
+ * the last recorded — whether finish waits on the person, the phase over
+ * (D18); the questions its fix tasks wait on, by number, and whether they
+ * stop it, as the build's; whether the round is recorded, and each of its
+ * areas; what it found — once recorded each finding in scope, else each
+ * its landed reports hold; each check not proven, by the round that
+ * recorded it, or round 1 while it is read, with its scenario's words, null
+ * where the spec lacks them; each finding that went to the inbox, by its
+ * round, number and words; its verdict; and the latest fix tasks, as the
+ * build's phase they make, null where there are none.
  * @typedef {{
- *   kind: 'review', unit: string, title: string, type: string, built: number,
- *   round: number, recorded: boolean, areas: AreaLine[],
- *   found: FoundLine[], not_proven: {scenario: string, standing: string}[], inbox: string[], verdict: 'passed'|'failed'|'settled'|null,
- *   fixes: {phase: number, round: number, tasks: TaskLine[]}|null,
+ *   kind: 'review', unit: string, title: string, project: string, type: string, built: number,
+ *   round: number, finish: boolean, waiting: string[], stopped: boolean, recorded: boolean, areas: AreaLine[],
+ *   found: FoundLine[], not_proven: {round: number, scenario: string, standing: string, text: string|null}[],
+ *   inbox: {round: number, finding: number, text: string}[],
+ *   verdict: 'passed'|'failed'|'settled'|null, fixes: {phase: number, round: number, tasks: TaskLine[]}|null,
  * }} ReviewView
  */
-/** A finding read in full: its round, area, scope, call, words, and the fix task or inbox item it went to. @typedef {{kind: 'finding', unit: string, round: number, finding: number, area: string, scope: string, call: string, text: string, fix: string|null, inbox: string|null}} FindingPage */
-/** A check a recorded round ran (20.10.3): its round, its scenario, where it stands, and the scenario's words, null where the spec lacks it. @typedef {{kind: 'check', unit: string, round: number, scenario: string, standing: string, text: string|null}} CheckPage */
+/**
+ * A finding read in full (20.10.3): its round; once the round is recorded,
+ * its number, scope, and the fix task or inbox item it went to, the
+ * reviewer null; while it is read, the letter of the reviewer whose report
+ * holds it, the rest null; its area, call and words.
+ * @typedef {{
+ *   kind: 'finding', unit: string, round: number, finding: number|null, area: string, scope: string|null, call: string, text: string,
+ *   fix: string|null, inbox: string|null, reviewer: string|null,
+ * }} FindingPage
+ */
+/** A check of a round (20.10.3), recorded or round 1's while it is read: its round, its scenario, where it stands, and the scenario's words, null where the spec lacks it. @typedef {{kind: 'check', unit: string, round: number, scenario: string, standing: string, text: string|null}} CheckPage */
 
 /** An open question of the person's on a topic: its entry, words, the topic whose message it came as, and the experiment it waits on. @typedef {{id: string, text: string, from: string|null, experiment: {id: string, running: boolean}|null}} OpenLine */
 /** A decision on a topic: its entry, the question's words, and whose it is. @typedef {{id: string, text: string, who: 'yours'|'claude'|'carried'}} DecidedLine */
@@ -329,7 +365,7 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
 
 /**
  * A view or page the board shows.
- * @typedef {BuildView|TaskPage|WrittenPage|RoundPage|EntryPage|ReviewView|FindingPage|CheckPage|DiscussionView|MessagePage|ReviewReportPage
+ * @typedef {BuildView|TaskPage|ScenarioPage|EvidencePage|WrittenPage|RoundPage|EntryPage|ReviewView|FindingPage|CheckPage|DiscussionView|MessagePage|ReviewReportPage
  *   |SpecView|SectionPage|PassPage|DiscoveryView|BriefPage|SpikePage|ExperimentView|ReportPage|EpicView|UnitView|AllView|Unavailable} View
  */
 

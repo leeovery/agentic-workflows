@@ -10,6 +10,7 @@
  * never the theme's keys.
  */
 import type { ElementTable, RenderElement } from 'claude-code'
+import type { Question } from './model.ts'
 
 /** Each colour means one thing, on the board and on the banner alike. */
 export const COLOUR = {
@@ -57,14 +58,15 @@ export type Part = { text: string; color?: string; bold?: boolean; dim?: boolean
 export type Button = { key: string; label: string }
 
 /**
- * A drawn line: the mark a wrapped line hangs from, a button it leads with,
- * its words, which wrap or are cut at the edge, a button at its end; and
- * the key a press anywhere on its words addresses, where the line itself
- * opens something.
+ * A drawn line: the mark a wrapped line hangs from — one run, or several,
+ * as the progress bar's cells — a button it leads with, its words, which
+ * wrap or are cut at the edge, a button at its end; and the key a press
+ * anywhere on its words addresses, where the line itself opens something.
  */
 export type Line = {
   key: string
   mark?: Part
+  marks?: Part[]
   lead?: Button
   parts: Part[]
   wraps?: boolean
@@ -77,16 +79,21 @@ export type Line = {
  * folding section is open, and what runs — its turning mark, and its clock
  * read at the drawing's time; and WAITING ON YOU, the questions waiting on
  * the person with where each stands in the discussion (`discuss.ts`), for a
- * view to place where its drawing has it. What runs and what is clocked are
- * recorded, so the pane turns and ticks only a drawing that holds them.
+ * view to place where its drawing has it — the session's, or a unit's own
+ * a page holds, which a press queues only where they are the session's
+ * unit's. What runs and what is clocked are recorded, so the pane turns and
+ * ticks only a drawing that holds them.
  */
 export type Kit = {
   width: number
   isOpened: (key: string) => boolean
   spinner: () => Part
   clock: (since: string) => string
-  waiting: () => Line[]
+  waiting: (asked?: Asked) => Line[]
 }
+
+/** Questions of a unit's a page holds, whatever unit the session is in. */
+export type Asked = { unit: string; questions: readonly Question[] }
 
 /** A kit and what the drawing it served holds: anything turning, any clock. */
 export type Drawn = { kit: Kit; holds: { turns: boolean; clocks: boolean } }
@@ -180,7 +187,7 @@ export function kitOf(
   now: number,
   frame: number,
   opened: ReadonlySet<string>,
-  waiting: () => Line[] = () => [],
+  waiting: (asked?: Asked) => Line[] = () => [],
 ): Drawn {
   const holds = { turns: false, clocks: false }
 
@@ -211,6 +218,9 @@ export const textOf = (els: ElementTable, part: Part) =>
 /** A button, drawn in the one colour every button on the board and the banner shares. */
 export const buttonOf = (els: ElementTable, { key, label }: Button) =>
   els.Button({ key, plain: true, onPress: () => undefined, children: [els.Text({ color: COLOUR.thisView, children: [label] })] })
+
+/** The runs a line's words hang beside: its marks, else its mark. */
+const marksOf = (line: Line): Part[] => line.marks ?? (line.mark === undefined ? [] : [line.mark])
 
 /** The rows `text` takes wrapped at word breaks in `room` cells, a word longer than the room broken across rows. */
 function wrappedRows(text: string, room: number): number {
@@ -245,7 +255,7 @@ export function rowsOf(line: Line, width: number): number {
   }
 
   const beside = widthOf([
-    ...(line.mark === undefined ? [] : [line.mark]),
+    ...marksOf(line),
     ...[line.lead, line.button].flatMap(button => (button === undefined ? [] : [{ text: button.label }])),
   ])
 
@@ -260,7 +270,7 @@ export function drawLine(els: ElementTable, line: Line): RenderElement {
   return Box({
     key: line.key,
     children: [
-      ...(line.mark === undefined ? [] : [textOf(els, line.mark)]),
+      ...marksOf(line).map(mark => textOf(els, mark)),
       ...(line.lead === undefined ? [] : [buttonOf(els, line.lead)]),
       line.press === undefined
         ? Text({ wrap: line.wraps ? 'wrap' : 'truncate-end', children: words })
@@ -268,4 +278,100 @@ export function drawLine(els: ElementTable, line: Line): RenderElement {
       ...(line.button === undefined ? [] : [buttonOf(els, line.button)]),
     ],
   })
+}
+
+/** A list item's opening: its bullet or number, and its words. */
+const ITEM = /^\s*(?:[-*]|(\d+)\.)\s+(.*)$/
+
+/** A fenced block's fence. */
+const FENCE = /^\s*```/
+
+/** A heading's opening. */
+const HEADING = /^#+\s+(.*)$/
+
+/**
+ * A body of prose as the board draws it (20.4.5): each paragraph one line
+ * wrapping at the edge; each list item one line hung under its mark, its
+ * number for a numbered one; a heading's words bold; and a fenced block —
+ * a diagram, a captured screen — each of its lines as written, cut at the
+ * edge, never wrapped.
+ */
+export function prose(key: string, text: string, color: string = COLOUR.body, markColor: string = COLOUR.secondary): Line[] {
+  const lines: Line[] = []
+  let open: Line | null = null
+  let isFenced = false
+  const add = (line: Omit<Line, 'key'>): Line => {
+    const added: Line = { key: `${key}:${lines.length}`, ...line }
+
+    lines.push(added)
+
+    return added
+  }
+
+  for (const raw of text.split('\n')) {
+    const item = ITEM.exec(raw)
+    const titled = HEADING.exec(raw)
+
+    if (FENCE.test(raw)) {
+      isFenced = !isFenced
+      open = null
+    } else if (isFenced) {
+      add({ parts: [{ text: raw === '' ? ' ' : raw, color }] })
+    } else if (raw.trim() === '') {
+      open = null
+    } else if (item !== null) {
+      open = add({ mark: { text: item[1] === undefined ? '· ' : `${item[1]}. `, color: markColor }, wraps: true, parts: [{ text: item[2] ?? '', color }] })
+    } else if (titled !== null) {
+      open = null
+      add({ parts: [{ text: titled[1] ?? '', color, bold: true }] })
+    } else if (open === null) {
+      open = add({ wraps: true, parts: [{ text: raw.trim(), color }] })
+    } else {
+      open.parts = open.parts.map(part => ({ ...part, text: `${part.text} ${raw.trim()}` }))
+    }
+  }
+
+  return lines
+}
+
+/** A count and its noun: "1 acceptance criterion", "6 acceptance criteria". */
+export const counted = (count: number, one: string, many = `${one}s`) => `${count} ${count === 1 ? one : many}`
+
+/** A title then the words after it, `width` cells across: the title giving way with "…", the words after it whole. */
+export const titledLine = (key: string, title: Part, after: readonly Part[], width: number): Line => ({
+  key,
+  parts: [...cutTo([title], width - widthOf(after)), ...after],
+})
+
+/**
+ * Words that carry what waits, then the state and the button that end them,
+ * `width` cells across: the words wrapped at word breaks under `indent`,
+ * never cut, the state and the button kept at the right of the last row —
+ * a row of their own where the words leave no room beside them. The last
+ * row is keyed `key`, each before it `{key}:{n}`.
+ */
+export function endedRows(key: string, indent: string, words: Part, right: readonly Part[], width: number, button?: Button): Line[] {
+  const room = width - [...indent].length
+  const end = width - (button === undefined ? 0 : [...button.label].length)
+  const rows: string[] = []
+
+  for (const word of words.text.split(' ')) {
+    const last = rows.at(-1)
+
+    if (last !== undefined && [...`${last} ${word}`].length <= room) {
+      rows[rows.length - 1] = `${last} ${word}`
+    } else {
+      rows.push(word)
+    }
+  }
+
+  const row = (text: string): Part => ({ ...words, text: `${indent}${text}` })
+  const ending = rows.at(-1) ?? ''
+  const fits = widthOf([row(ending)]) + 1 + widthOf(right) <= end
+  const before = fits ? rows.slice(0, -1) : rows
+
+  return [
+    ...before.map((text, at): Line => ({ key: `${key}:${at}`, parts: [row(text)] })),
+    { key, parts: spread(fits ? [row(ending)] : [], right, end), ...(button === undefined ? {} : { button }) },
+  ]
 }

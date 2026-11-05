@@ -133,12 +133,16 @@ function allView(cwd, here, atStart, warnings) {
 }
 
 /**
- * The banner at no unit: at the start menu, or the project-level place the
- * session is at.
- * @param {import('../conversation.cjs').Position|null} position @returns {{state: 'idle', facts: {text: string, needs: boolean}[]}}
+ * The banner at no unit: the project's, at the start menu or the
+ * project-level place the session is at; and, once a unit's finish hands the
+ * session to the start menu, that unit's close (D38).
+ * @param {string} cwd @param {import('../conversation.cjs').Position|null} position @param {BoardAt|null} finished
+ * @returns {import('../board-model.cjs').Banner}
  */
-function allBanner(position) {
-  return { state: 'idle', facts: [{ text: position === null ? 'at the start menu' : position.name, needs: false }] };
+function allBanner(cwd, position, finished) {
+  const fact = (/** @type {string} */ text) => ({ text, needs: false });
+  if (finished !== null) return { name: finished.title, state: 'done', facts: [fact(finished.manifest.work_type), fact('complete'), fact('at the start menu')] };
+  return { name: projectName(cwd), state: 'idle', facts: [fact(position === null ? 'at the start menu' : position.name)] };
 }
 
 module.exports = { allView, allBanner };

@@ -7,7 +7,7 @@
  */
 
 /** The view model's version this mod draws. */
-export const BOARD_VERSION = 1
+export const BOARD_VERSION = 2
 
 /** The board's tabs: This session, the unit's, All work. */
 export type Tab = 'this' | 'unit' | 'all'

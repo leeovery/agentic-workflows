@@ -3,6 +3,8 @@ import { describe, expect, mock, test, tier, type Engine, type Mounted as Mounte
 
 import type { Board } from '../hooks/model.ts'
 import BUILD from './fixtures/board-build.mjs'
+import REVIEW from './fixtures/board-review.mjs'
+import TASK from './fixtures/board-task.mjs'
 
 tier('user')
 
@@ -108,7 +110,7 @@ function world(
   const counts = { invalidations: 0 }
   const panes = new Set<string>(options.open)
   const environment: Record<string, string> = { HOME, ...env }
-  let replies = options.replies ?? (() => boardReply(BUILD_BOARD))
+  let replies = options.replies ?? (() => boardReply(UNDRAWN))
   let said = (_command: string): string => ENGINE_SAID
   let drops: string | undefined
   let fails = false
@@ -277,7 +279,7 @@ function world(
 const UNIT = 'token-aware-diff-sizing'
 
 /** The board with another banner, the rest as the build's. */
-const withBanner = (banner: Board['banner']): Board => ({ ...BUILD_BOARD, banner })
+const withBanner = (banner: Board['banner']): Board => ({ ...UNDRAWN, banner })
 
 /** The session moved on into the review phase. */
 const REVIEW_BOARD: Board = {
@@ -292,8 +294,15 @@ const REVIEW_BOARD: Board = {
       { text: 'round 1 reading', needs: false },
     ],
   },
-  view: { kind: 'review', unit: UNIT },
+  view: REVIEW,
+  questions: [],
 }
+
+/** The build's board with a view no drawing draws, so the pane holds its tabs alone. */
+const UNDRAWN: Board = { ...BUILD_BOARD, view: { kind: 'undrawn' } }
+
+/** Task 1.4's page open over `board`, This session's view beneath it. */
+const taskOver = (board: Board): Board => ({ ...board, view: TASK, beneath: board.view })
 
 /** A drawing as the tests read it, the band's or the pane's. */
 type Mounted = Pick<MountedOf<'terminal'>, 'drawn' | 'find' | 'findAll'>
@@ -316,6 +325,11 @@ async function toggleOf(ui: Mounted): Promise<string | undefined> {
 /** Each line the pane drew, its padding and rules squeezed. */
 async function paneLines(ui: Mounted): Promise<string[]> {
   return (await ui.findAll({ type: 'Box' })).slice(1).map(found => found.text.replace(/─+/g, '─').replace(/\s+/g, ' ').trim())
+}
+
+/** The pane's lines beneath its tabs and their rule, blanks left out. */
+async function underTabs(ui: Mounted): Promise<string[]> {
+  return (await paneLines(ui)).slice(2).filter(line => line !== '')
 }
 
 type Clock = ReturnType<typeof mock.clock>
@@ -459,7 +473,7 @@ describe('the pane', () => {
     let phase = 'build'
     const { clock, boards, answers } = world(on)
 
-    answers(args => boardReply(args.includes('--tab') ? { ...BUILD_BOARD, tab: 'unit' } : phase === 'build' ? BUILD_BOARD : REVIEW_BOARD))
+    answers(args => boardReply(args.includes('--tab') ? { ...UNDRAWN, tab: 'unit' } : phase === 'build' ? UNDRAWN : { ...REVIEW_BOARD, view: UNDRAWN.view }))
 
     const pane = await mounted($, clock, PANE_MOUNT)
     const band = await mounted($, clock)
@@ -478,7 +492,7 @@ describe('the pane', () => {
     let isGone = false
     const { clock, boards, answers } = world(on)
 
-    answers(args => (isGone && args.includes('--unit') ? refusal(`there is no work unit "${UNIT}"`) : boardReply(args.includes('--tab') ? { ...BUILD_BOARD, tab: args[1] } : BUILD_BOARD)))
+    answers(args => (isGone && args.includes('--unit') ? refusal(`there is no work unit "${UNIT}"`) : boardReply(args.includes('--tab') ? { ...UNDRAWN, tab: args[1] } : UNDRAWN)))
 
     const pane = await mounted($, clock, PANE_MOUNT)
     const band = await mounted($, clock)
@@ -501,11 +515,11 @@ describe('the pane', () => {
   })
 
   test('a version this board does not know is refused: no banner, and the pane says so in a line', async ($, on) => {
-    const { clock } = world(on, { replies: () => boardReply({ ...BUILD_BOARD, version: 2 }) })
+    const { clock } = world(on, { replies: () => boardReply({ ...BUILD_BOARD, version: 3 }) })
 
     expect(await drawnOf(await mounted($, clock))).toEqual(BENEATH)
     expect(await paneLines(await mounted($, clock, PANE_MOUNT))).toEqual([
-      "This board draws version 1 of the engine's board, and the engine answers version 2: nothing is drawn until they match.",
+      "This board draws version 2 of the engine's board, and the engine answers version 3: nothing is drawn until they match.",
     ])
   })
 
@@ -634,7 +648,7 @@ describe('what turns', () => {
   })
 
   test('with the board up and nothing running in it, the clock redraws nothing and reads nothing', async ($, on) => {
-    const { clock, boards, counts } = world(on)
+    const { clock, boards, counts } = world(on, { replies: () => boardReply(UNDRAWN) })
     const band = await mounted($, clock)
 
     await band.press({ key: 'board:toggle' })
@@ -690,10 +704,10 @@ async function keysIn(ui: Mounted, key: string): Promise<string[]> {
   return ((await ui.find({ key }))?.children ?? []).map(keyOf)
 }
 
-/** The build's board with only these questions waiting, oldest first. */
+/** The build's board with only these questions waiting, oldest first, its view undrawn. */
 const waitingOnly = (...numbers: string[]): Board => ({
-  ...BUILD_BOARD,
-  questions: BUILD_BOARD.questions.filter(({ question }) => numbers.includes(question)),
+  ...UNDRAWN,
+  questions: UNDRAWN.questions.filter(({ question }) => numbers.includes(question)),
 })
 
 /** A command recording what became of a question, as Claude runs it. */
@@ -757,8 +771,11 @@ describe('ready to discuss', () => {
     const pane = await mounted($, clock, PANE_MOUNT)
     const band = await mounted($, clock)
     const labels = new Set<string>()
+    const opens = (found: { props: { key?: unknown } }) => String(found.props.key).startsWith('page:') || String(found.props.key).startsWith('fold:')
     const seen = async () => {
-      for (const found of [...(await pane.findAll({ type: 'Button' })), ...(await band.findAll({ type: 'Button' }))]) labels.add(found.text)
+      for (const found of [...(await pane.findAll({ type: 'Button' })), ...(await band.findAll({ type: 'Button' }))]) {
+        if (!opens(found)) labels.add(found.text)
+      }
     }
 
     await seen()
@@ -783,7 +800,7 @@ describe('ready to discuss', () => {
 
     expect(sent).toEqual(['submit Ready to discuss 2 waiting questions, in this order: Q2, Q3.'])
     expect([...labels].sort()).toEqual(
-      ['▸ cancel all', '▸ discuss', '▸ discuss all', '▸ send to Claude', 'hide board', '▸ skip', '✕', '⌂ This session', '≡ All work', '≡ Token-aware diff sizing'].sort(),
+      ['▸ cancel all', '▸ discuss', '▸ discuss all', '▸ send to Claude', 'hide board', '▸ skip', '▸ unqueue', '✕', '⌂ This session', '≡ All work', '≡ Token-aware diff sizing'].sort(),
     )
   })
 
@@ -1011,7 +1028,7 @@ describe('ready to discuss', () => {
   })
 
   test('20.S14: docked, a pane grown past how far it was scrolled draws from the top again', async ($, on) => {
-    const { clock } = world(on)
+    const { clock } = world(on, { replies: () => boardReply(UNDRAWN) })
     const pane = await mounted($, clock, paneAt('dock', 6))
     const band = await mounted($, clock)
 
@@ -1027,7 +1044,7 @@ describe('ready to discuss', () => {
   })
 
   test('20.S14: docked, READY TO DISCUSS stays at the pane\'s foot while the person scrolls what is above it, no further than its last line', async ($, on) => {
-    const { clock, scrolled } = world(on)
+    const { clock, scrolled } = world(on, { replies: () => boardReply(UNDRAWN) })
     const pane = await mounted($, clock, paneAt('dock', 6))
     const band = await mounted($, clock)
     const box = ['blank:foot', 'ready', 'ready:Q1', 'ready:actions']
@@ -1052,7 +1069,7 @@ describe('ready to discuss', () => {
   })
 
   test('20.S25: inline, READY TO DISCUSS comes after the list and the board scrolls as one, Claude Code\'s', async ($, on) => {
-    const { clock, scrolled } = world(on)
+    const { clock, scrolled } = world(on, { replies: () => boardReply(UNDRAWN) })
     const pane = await mounted($, clock, paneAt('inline', 6))
     const band = await mounted($, clock)
 
@@ -1066,5 +1083,63 @@ describe('ready to discuss', () => {
     expect(drawn.props).not.toHaveProperty('height')
     expect((drawn.children as unknown[]).map(keyOf)).toEqual(['tabs', 'tabs:rule', 'blank:tabs', 'blank:foot', 'ready', 'ready:Q1', 'ready:actions'])
     expect(scrolled).toEqual([3])
+  })
+})
+
+describe('the build and the review on the pane', () => {
+  test('20.5.3: WAITING ON YOU stands in the build\'s This session, and a press on a row\'s "▸ discuss" there queues its question, saying nothing to Claude', async ($, on) => {
+    const { clock, sent } = world(on, { replies: () => boardReply(BUILD_BOARD) })
+    const pane = await mounted($, clock, PANE_MOUNT)
+
+    expect((await paneLines(pane)).filter(line => line.endsWith('▸ discuss'))).toHaveLength(3)
+
+    await pane.press({ key: 'discuss:Q2' })
+
+    const shown = await paneLines(pane)
+    const at = shown.findIndex(line => line.startsWith('parks 6.8'))
+
+    expect([await boxIn(pane), shown.slice(at, at + 2)]).toEqual([
+      ['READY TO DISCUSS ─ 1', "└ Q2 A failed re-merge aborts with every chunk's notes sav… ✕", '▸ send to Claude ▸ cancel all'],
+      ['parks 6.8, and 2 after it · waiting under a minute', 'queued ▸ unqueue'],
+    ])
+    expect(sent).toEqual([])
+  })
+
+  test('20.S8: a task\'s page stays while the session moves from the build into the review phase, and back names the review and shows it', async ($, on) => {
+    let phase = 'build'
+    const { clock, answers } = world(on)
+
+    answers(args => {
+      const board = phase === 'build' ? BUILD_BOARD : REVIEW_BOARD
+
+      return boardReply(args.includes('--page') ? taskOver(board) : board)
+    })
+
+    const pane = await mounted($, clock, PANE_MOUNT)
+
+    await pane.press({ key: 'fold:phase:1' })
+    await pane.press({ key: 'page:task:1.4' })
+    expect((await underTabs(pane))[0]).toBe('← back to the build')
+
+    phase = 'review'
+    await engineCall($, clock)
+    expect((await underTabs(pane)).slice(0, 2)).toEqual(['← back to the review', '1.4 180-second shipped release timeout'])
+
+    await pane.press({ key: 'back' })
+    expect((await underTabs(pane))[0]).toBe('Token-aware diff sizing · review')
+  })
+
+  test('2.S8, 12.S40: a done task\'s page shows its account as written on the pane, and opening it reaches neither the conversation nor the prompt box', async ($, on) => {
+    const { clock, sent } = world(on, { replies: args => boardReply(args.includes('--page') ? taskOver(BUILD_BOARD) : BUILD_BOARD) })
+    const pane = await mounted($, clock, PANE_MOUNT)
+
+    await pane.press({ key: 'fold:phase:1' })
+    await pane.press({ key: 'page:task:1.4' })
+
+    const shown = await paneLines(pane)
+
+    expect(shown.filter(line => /^(WHAT WAS DONE|DIFFERS FROM THE TASK|REVIEWS|CALLS MADE) /.test(line))).toHaveLength(4)
+    expect(shown.join(' ')).toContain('With no timeout set at any level, a release-notes call now gets 180 seconds per attempt')
+    expect(sent).toEqual([])
   })
 })

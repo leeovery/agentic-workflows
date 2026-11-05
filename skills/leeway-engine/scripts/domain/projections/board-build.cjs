@@ -31,6 +31,14 @@
 //   the review's fixes among them.
 // - A question (20.5.3) parks its tasks, and the tasks linked after those
 //   wait after it.
+// - A task's page lists what running the product proved of each of its
+//   scenarios (15.2.14), and a fix task's what it fixes: each finding of the
+//   review's rounds that went to it (20.10.3); and each question parking
+//   it, whole, as the unit's build has it, so the page holds them wherever
+//   the session goes while it is open (20.3.5). A scenario opens on the run
+//   that decides its standing (runs.cjs) — the scenario's words split at
+//   their "then" into what the run drives and what it checks — and each of
+//   that run's text evidence opens whole.
 // - Where the build stands is read from the unit's one read of the tracker
 //   (board.cjs), as the build's one reader of it reads it (build-entry.cjs);
 //   a task's page takes its task from that read.
@@ -39,11 +47,14 @@
 const fs = require('fs');
 const { statePath } = require('../../kernel/state-root.cjs');
 const { standingOf, buildPhases } = require('../build-entry.cjs');
-const { reviewStanding } = require('../review-phase.cjs');
+const { reviewStanding, recordedRounds } = require('../review-phase.cjs');
 const { reading } = require('../phase-checks.cjs');
 const { goesOn } = require('../task-verbs.cjs');
 const { phaseNamed, phaseLets, takenAccount, callsOf, ranOf } = require('../build-screens.cjs');
-const { fieldOf, criteriaTexts, FIELDS } = require('../task-file.cjs');
+const { fieldOf, criteriaTexts, criterionWords, holdsScenario, namesScenario, FIELDS } = require('../task-file.cjs');
+const { specPath, specReading, DRAWS_ON } = require('../spec-sections.cjs');
+const { phaseStack, tipCommits } = require('../phase-stack.cjs');
+const { runsOf } = require('../runs.cjs');
 const { figuresPath, takenFigures } = require('../task-account.cjs');
 const { roundReportPath } = require('../round-report.cjs');
 const { REVIEWER_LETTERS } = require('../../kernel/reviewers.cjs');
@@ -213,9 +224,9 @@ function drawBuild(at) {
 }
 
 /**
- * The banner's facts in a build (20.2.4): stopped first where nothing can
- * go on, then the type and the phase, how many build and are in review, and
- * the questions waiting on the person.
+ * The banner's facts in a build (20.2.4): the type and the phase, then
+ * stopped where nothing can go on (D20), how many build and are in review,
+ * and the questions waiting on the person.
  * @param {BuildView} view @returns {{state: 'running'|'needs', facts: Fact[]}}
  */
 function buildBanner({ type, progress, phases, waiting }) {
@@ -225,9 +236,9 @@ function buildBanner({ type, progress, phases, waiting }) {
   return {
     state: progress.stopped ? 'needs' : 'running',
     facts: [
-      ...(progress.stopped ? [fact('stopped')] : []),
       fact(type),
       fact('build'),
+      ...(progress.stopped ? [fact('stopped')] : []),
       ...(count('building') > 0 ? [fact(`${count('building')} building`)] : []),
       ...(count('in-review') > 0 ? [fact(`${count('in-review')} in review`)] : []),
       ...(waiting.length > 0 ? [fact(`${waiting.length} waiting on you`, true)] : []),
@@ -287,8 +298,82 @@ function taskPage(at, given) {
     reviews: account?.reviews.map(({ heading, summary }) => ({ round: heading, summary })) ?? [],
     calls: callsOf(at.cwd, ref),
     ran: ranOf(at.cwd, at.manifest, ref, task, criteria).ran,
-    question: line?.state === 'waits' ? line.on[0] : null,
+    questions: buildView(at).questions.filter(({ parks }) => parks.some(({ task: parked }) => parked === given)),
+    fixes: recordedRounds(at.cwd, at.unit).flatMap(({ findings }, r) => findings.flatMap(({ fix, area, call, text }, k) => (fix === given ? [{ round: r + 1, finding: k + 1, from: null, area, call, text }] : []))),
   };
+}
+
+/**
+ * A scenario's words as the unit's spec holds them, the statements they
+ * cite left out, the spec read once a call; null where it lacks them.
+ * @param {BoardAt} at @param {string} scenario @returns {string|null}
+ */
+function scenarioWording(at, scenario) {
+  const lines = at.once('spec-lines', () => {
+    const file = specPath(at.cwd, at.unit);
+    return fs.existsSync(file) ? specReading(fs.readFileSync(file, 'utf8')).lines : [];
+  });
+  return lines.find(({ kind, number }) => kind === 'scenario' && number === scenario)?.wording.replace(DRAWS_ON, '').trimEnd() ?? null;
+}
+
+/** Where a scenario's words turn from what is done to what follows: its first "then". */
+const THEN = /,\s+then\s+/i;
+
+/** A scenario's words as what its run drives and what it checks; all of them driven where no "then" parts them. @param {string|null} words */
+function drivenAndChecked(words) {
+  const at = words === null ? null : THEN.exec(words);
+  if (words === null || at === null) return { drive: words, check: null };
+  return { drive: words.slice(0, at.index), check: words.slice(at.index + at[0].length) };
+}
+
+/**
+ * A scenario of a task, with the run that decides what running the product
+ * proved of it at the tips of the task's branch (`ranOf`'s); refused where
+ * the task holds no such scenario.
+ * @param {BoardAt} at @param {string} given @param {string} scenario
+ */
+function taskScenario(at, given, scenario) {
+  const ref = parseShownTask(at.unit, given);
+  const task = pageTask(at, ref);
+  if (!holdsScenario(task.text, scenario)) throw new Error(`${taskName(ref)} holds no scenario ${scenario}`);
+  return { task, ...runsOf(at.cwd, at.unit, scenario, tipCommits(phaseStack(at.cwd, at.unit, ref.phase, [task]))) };
+}
+
+/** The lines a text evidence holds. @param {string} text */
+const linesIn = (text) => text.replace(/\n$/, '').split('\n').length;
+
+/**
+ * A scenario of a task read in full (15.2.14): what running the product
+ * proved of it, when the run that decides was recorded, null where none
+ * was run, what it drives and checks, and the text evidence kept with it.
+ * @param {BoardAt} at @param {string} given @param {string} scenario @returns {import('../board-model.cjs').ScenarioPage}
+ */
+function scenarioPage(at, given, scenario) {
+  const { task, standing, decided } = taskScenario(at, given, scenario);
+  const criterion = criteriaTexts(task.text).find((held) => namesScenario(held, scenario)) ?? scenario;
+  return {
+    kind: 'scenario',
+    unit: at.unit,
+    task: given,
+    title: task.title,
+    scenario,
+    criterion: criterionWords(criterion),
+    standing,
+    at: decided?.at ?? null,
+    ...drivenAndChecked(scenarioWording(at, scenario)),
+    evidence: (decided?.evidence ?? []).map(({ name, text }) => ({ name, lines: linesIn(text) })),
+  };
+}
+
+/**
+ * A text evidence of the run that decides a scenario, by its place among
+ * them, read whole; refused where that run holds none there.
+ * @param {BoardAt} at @param {string} given @param {string} scenario @param {string} k @returns {import('../board-model.cjs').EvidencePage}
+ */
+function evidencePage(at, given, scenario, k) {
+  const held = taskScenario(at, given, scenario).decided?.evidence[Number(k) - 1];
+  if (held === undefined) throw new Error(`no run of ${scenario} keeps an evidence ${k}`);
+  return { kind: 'evidence', unit: at.unit, task: given, scenario, name: held.name, text: held.text };
 }
 
 /** The task as written, each section by its heading (20.5.4's "▸ read the task"). @param {BoardAt} at @param {string} given @returns {import('../board-model.cjs').WrittenPage} */
@@ -346,4 +431,6 @@ function buildMoments(at) {
 /** How far the build has come, as All work and the unit's tab say it. @param {BuildView} view */
 const buildWords = ({ progress }) => `${progress.done} of ${counted(progress.total, 'task')} done`;
 
-module.exports = { buildView, buildBanner, taskLine, taskPage, writtenPage, roundPage, buildWords, buildMoments, standingAt, reviewStandingAt };
+module.exports = {
+  buildView, buildBanner, taskLine, taskPage, writtenPage, roundPage, scenarioPage, evidencePage, scenarioWording, buildWords, buildMoments, standingAt, readingAt, reviewStandingAt,
+};
