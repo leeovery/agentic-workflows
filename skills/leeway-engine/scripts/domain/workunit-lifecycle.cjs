@@ -295,4 +295,4 @@ function pivotWorkUnit(cwd, workUnit) {
   return result;
 }
 
-module.exports = { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit };
+module.exports = { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit, reindexWorkUnit };

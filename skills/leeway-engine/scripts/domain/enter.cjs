@@ -200,6 +200,18 @@ function earlierLines(cwd, manifest, unit, topic) {
 const as = (key) => (value) => [key, value];
 
 /**
+ * The log a topic holds before its discussion first opens — a bugfix's
+ * investigation, the unit moved to a feature (workunit-move.cjs) — read at
+ * that opening as the topic's earlier log, with the topic's record, as
+ * input it never changes: none where it holds none.
+ * @param {Entering} at @returns {Line[]}
+ */
+function loggedBefore({ cwd, unit, topic = '' }) {
+  const log = statePath(cwd, topicLog(unit, topic));
+  return fs.existsSync(log) ? [as('earlier record')(`\`${recordCall(unit, topic)}\``), as('earlier log')(log)] : [];
+}
+
+/**
  * What a topic reads first at its opening (9.3.2, 8.7.7): each message
  * waiting, its name the one `topic answered` takes; the topic's brief; and
  * for the unit's one topic, discovery's log and the unit's seeds.
@@ -243,7 +255,8 @@ function agentReads({ cwd, unit, phase, topic = '' }) {
  * its log; the product record, with what discovery found of the product and
  * of the unit, which no topic's record shows, and of the topic, which a
  * first opening reads no record for (9.3.6, 9.3.12); the unit's spikes; and,
- * at a first opening, the earlier record of a topic postponed elsewhere.
+ * at a first opening, the earlier record of a topic postponed elsewhere, and
+ * the log the topic holds from before it, with its record (`loggedBefore`).
  * Resuming adds the topic's own record (9.3.11), its map, and the entries a
  * replacement changed under it, each confirmed or replaced in the
  * conversation (9.3.6); then the agents the topic was left with. The log
@@ -258,7 +271,7 @@ function discussionReads(at) {
     ...decided.map((other) => as('decided')(`\`${recordCall(unit, other)}\``)),
     productRead(at),
     ...filesIn(statePath(cwd, unit, 'spikes')).map(as('spike')),
-    ...(started ? earlierLines(cwd, manifest, unit, topic) : []),
+    ...(started ? [...earlierLines(cwd, manifest, unit, topic), ...loggedBefore(at)] : []),
     ...resumedReads(at, ['record', 'map', 'affected']),
     ...agentReads(at),
   ];

@@ -127,11 +127,13 @@ class Sim {
   // advisory rides the dump, the view-family pattern; a raise's draw and
   // show — every raise command but its answer, an aside and the questions
   // waiting — whose sections are the screen the raise is drawn as, none
-  // where it parks its task or proceeds; and the entry, whose sections are what
-  // the phase reads on arrival.
+  // where it parks its task or proceeds; the entry, whose sections are what
+  // the phase reads on arrival; and a unit's move, whose sections are start
+  // this work's screen it stages.
   /** @param {string[]} args */
   static carriesSections([group, verb]) {
-    return group === 'presence' || group === 'enter' || (group === 'raise' && !RAISE_ANSWERS.includes(verb)) || (group === 'topic' && MAP_VERBS.includes(verb));
+    return group === 'presence' || group === 'enter' || (group === 'raise' && !RAISE_ANSWERS.includes(verb)) || (group === 'topic' && MAP_VERBS.includes(verb))
+      || (group === 'workunit' && verb === 'move');
   }
 
   /**

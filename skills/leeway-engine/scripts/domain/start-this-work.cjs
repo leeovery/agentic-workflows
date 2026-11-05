@@ -31,6 +31,13 @@
 //   investigation, a quick-fix into its scoping, each a handoff (24.1.2); an
 //   epic carries the conversation on into its own discovery, with no handoff,
 //   to shape its topics (8.8.13, 24.S15).
+// - A unit moved to a feature or a bugfix meets the same gate (19.4.22,
+//   19.5.9): `workunit move` stages its payload where a start's is staged
+//   and draws the same screen, and the yes moves the unit rather than
+//   creating one (workunit-move.cjs), handing off as a start of its new type
+//   does. Known edge: what is staged last is what the yes lands, so a
+//   start staged in the product's conversation between a move's screen and
+//   its yes is the one landed.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -50,6 +57,9 @@ const {
 } = require('./workunit-create.cjs');
 const { filled, shaped, listed, readPayload, stage, stagedAt, refusing } = require('./staged-payload.cjs');
 const { startThisWorkScreen } = require('./projections/discovery-gates.cjs');
+
+// The move's yes, loaded at its call: the move stages through this module.
+const move = () => require('./workunit-move.cjs');
 
 /** @typedef {import('./projections/surfaces.cjs').Next} Next */
 
@@ -231,7 +241,7 @@ function startThisWorkSurface(cwd, { dotpath, file }) {
   return refusing('render start-this-work', () => {
     if (dotpath !== undefined) throw new Error(`it takes no address — the unit is the payload's to name, got "${dotpath}"`);
     const staged = file === undefined
-      ? /** @type {Staged} */ (stagedAt(stagedFile(cwd), NOTHING_STAGED))
+      ? /** @type {Staged|import('./workunit-move.cjs').StagedMove} */ (stagedAt(stagedFile(cwd), NOTHING_STAGED))
       : stage(stagedFile(cwd), checked(cwd, readPayload(cwd, file)).staged);
     return startThisWorkScreen(staged);
   });
@@ -261,7 +271,9 @@ function writeProject(cwd, { type, name, roadmap }) {
  * @param {string} cwd
  */
 function startThisWorkYes(cwd) {
-  const { staged, seedItems } = checked(cwd, stagedAt(stagedFile(cwd), NOTHING_STAGED));
+  const given = stagedAt(stagedFile(cwd), NOTHING_STAGED);
+  if (move().isMove(given)) return move().moveYes(cwd, given);
+  const { staged, seedItems } = checked(cwd, given);
   const { type, name } = staged;
   const draft = staged.brief === undefined ? null : draftIn(cwd, staged.brief, 'the brief');
   const landed = writeWorkUnit(cwd, name, type, {
@@ -312,4 +324,4 @@ function runStartThisWorkVerb(cwd, argv) {
   return refusing('start-this-work yes', () => startThisWorkYes(cwd));
 }
 
-module.exports = { runStartThisWorkVerb, startThisWorkSurface };
+module.exports = { runStartThisWorkVerb, startThisWorkSurface, stagedFile, nextAfter, OPENS_IN };

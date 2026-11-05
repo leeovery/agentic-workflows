@@ -539,4 +539,4 @@ function absorbedMaterial(cwd, feature) {
   };
 }
 
-module.exports = { absorbWorkUnit, absorbedMaterial };
+module.exports = { absorbWorkUnit, absorbedMaterial, linesOf };

@@ -102,6 +102,7 @@ const { createWorkUnit } = require('./domain/workunit-create.cjs');
 const { importWorkUnitFiles } = require('./domain/workunit-import.cjs');
 const { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
 const { absorbWorkUnit } = require('./domain/workunit-absorb.cjs');
+const { stageMove } = require('./domain/workunit-move.cjs');
 const { closeDiscoverySession } = require('./domain/discovery-session.cjs');
 const { LOG_USAGE, logHeard } = require('./domain/discovery-log.cjs');
 const { HUNT_USAGE, logHunt } = require('./domain/investigation-log.cjs');
@@ -238,6 +239,7 @@ ${VERDICT_USAGE.replace(/^/gm, '  ')}
   workunit reactivate <work-unit>
   workunit pivot <work-unit>
   workunit absorb <feature> --into <epic> --topic <name>
+  workunit move <work-unit> --to feature|bugfix --file <payload.json>
   ${POSITION_USAGE}
   discovery-session close <work-unit|product> -m <message>
 ${LOG_USAGE.replace(/^/gm, '  ')}
@@ -571,6 +573,8 @@ function runVerdict(call, argv) {
 // import is create's landing once the unit exists: files into the same
 // `imports/` home, stamped with the origin that took them, one confined
 // commit — and a beat on that origin's topic when a phase session landed it.
+// move stages a quick-fix's or a bugfix's move to another type and draws
+// start this work's screen from it, its yes start this work's.
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */
@@ -636,10 +640,19 @@ function runWorkunit(call, argv) {
         throw new Error('Usage: engine workunit absorb <feature> --into <epic> --topic <name>');
       }
       respond(call, absorbWorkUnit(call.cwd, feature, { into: opts.into, topic: opts.topic }));
+    } else if (command === 'move') {
+      const { opts, positional } = parseArgs(rest);
+      const [workUnit] = positional;
+      if (!workUnit || positional.length !== 1 || !opts.to || !opts.file) {
+        throw new Error('Usage: engine workunit move <work-unit> --to feature|bugfix --file <payload.json>');
+      }
+      const { response, sections } = stageMove(call.cwd, workUnit, { to: opts.to, file: opts.file });
+      respond(call, response);
+      respondSections(call, sections);
     } else if (command === 'position') {
       respond(call, runPositionVerb(call.cwd, rest));
     } else {
-      throw new Error('Usage: engine workunit <create|import|complete|cancel|reactivate|pivot|absorb|position> …');
+      throw new Error('Usage: engine workunit <create|import|complete|cancel|reactivate|pivot|absorb|move|position> …');
     }
   } catch (err) {
     failJson(call, err);

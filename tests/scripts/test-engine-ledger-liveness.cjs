@@ -9,7 +9,8 @@
 // moved away stays where it was moved, and another unit's replacement of an
 // entry there stands where it was made; and the write verbs decide by the
 // same rule. A line a carry lists is read as made where the carry is, live
-// while that place is.
+// while that place is; carried twice, where the later carry took it, the
+// files it names followed through both carries' moves.
 //
 // Layer: verb. World: a project with its state worktree from the fixture
 // library, the work unit's manifest written there; the lifecycle verbs
@@ -282,6 +283,19 @@ describe('carried lines (5.8.18)', () => {
 
     ok(dir, ['workunit', 'cancel', 'mint']);
     assert.deepStrictEqual(read('record', UNIT, 'note-window'), note);
+  });
+
+  it('reads a line carried twice where the later carry took it, each file it names followed through every carry\'s moves in the ledger\'s order', () => {
+    mint();
+    const question = ask('mint.discussion.mint', 'Does a note float?');
+    const decided = decide('mint.discussion.mint', question, 'It floats.', [], { cites: [{ path: 'mint/assets/float.png', section: 'Float' }] });
+    const carry = (/** @type {string} */ topic, /** @type {string[][]} */ files) => appendEntry(statePath(dir), { event: 'rehomed', unit: UNIT, topic, phase: 'discussion', session: SESSION_ID, lines: [question, decided].map(full), files }, []);
+    carry('note-window', [['mint/assets/float.png', `${UNIT}/assets/float.png`]]);
+    carry('space-homing', [[`${UNIT}/assets/float.png`, `${UNIT}/assets/float-2.png`]]);
+
+    const space = read('record', UNIT, 'space-homing');
+    assert.deepStrictEqual([ids(space.questions), ids(space.decisions), space.decisions[0].cites], [[question], [decided], [{ path: `${UNIT}/assets/float-2.png`, section: 'Float' }]]);
+    assert.deepStrictEqual(read('record', UNIT, 'note-window'), { ok: true, unit: UNIT, topic: 'note-window', live: true, ...EMPTY });
   });
 
   it('holds a carried line live while the place it was carried to is: that topic cancelled takes it out of every read, the unit it came from holding none of it meanwhile, reactivated brings it back', () => {

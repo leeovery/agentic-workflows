@@ -32,9 +32,11 @@
 // its phase its own, each file it names where the move took it
 // (ledger-rehomed.cjs). An absorbed feature's lines are the epic topic's,
 // live while it is (5.8.18, 18.3.5), and a unit made later under the
-// feature's name holds none of them. A unit gives up places holding one
-// topic at most, so a move among the lines it carries went to the roadmap,
-// never to a topic its `to` would name in the unit given up.
+// feature's name holds none of them; a moved quick-fix's are its new
+// topic's (19.5.9), and a line carried twice is read where the latest
+// carry took it. A unit gives up places holding one topic at most, so a
+// move among the lines it carries went to the roadmap, never to a topic its
+// `to` would name in the unit given up.
 //
 // Read against liveness, the state answers:
 // - Whether an event is live: the unit and topic it was made on are

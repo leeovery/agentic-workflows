@@ -7,7 +7,10 @@
 // - start this work: the work's title and type, its description, and the
 //   one-line reason for the type beneath; then the gate, whose yes creates
 //   the unit and says what comes next — for an epic, shaping its topics and
-//   approving the map; for the others, the phase it opens in;
+//   approving the map; for the others, the phase it opens in. A unit moved
+//   to a feature or a bugfix (workunit-move.cjs) is drawn the same, its yes
+//   making the unit of the new type, and a quick-fix's fixes' branches its
+//   move leaves unlanded named in one line beneath the reason;
 // - approve the map: THE MAP, the topics numbered in their order, a re-shape
 //   marking each topic that is new and each that moved (8.8.21); TO THE
 //   ROADMAP, each park with the horizon the person gave it; then the gate,
@@ -27,7 +30,12 @@ const { counted } = require('./map.cjs');
 
 /** @typedef {import('./surfaces.cjs').Next} Next */
 
-/** @typedef {{name: string, type: string, description: string, reason: string}} StartView */
+/**
+ * The work as start this work draws it: its name, type, description and
+ * reason, and for a move, the type it moves from and the branches it leaves
+ * a fix's commits unlanded on.
+ * @typedef {{name: string, type: string, description: string, reason: string, moves?: {from: string, branches: string[]}}} StartView
+ */
 
 /**
  * The map as approve the map draws it: the epic, each topic by its title in
@@ -56,26 +64,45 @@ const OPENS = Object.freeze({
   'quick-fix': 'Its scoping opens next.',
 });
 
-/** The work as start this work shows it: its title and type, its description, and the reason for the type. @param {StartView} view */
-function startDisplay({ name, type, description, reason }) {
+/** A type with its article. @param {string} type */
+const aType = (type) => `${/^[aeiou]/.test(type) ? 'an' : 'a'} ${type}`;
+
+/** The line naming the branches a move leaves a fix's commits unlanded on, or none. @param {string[]} branches */
+function keptLine(branches) {
+  if (branches.length === 0) return [];
+  const whose = branches.length === 1 ? 'Its fix\'s commits stay' : 'Its fixes\' commits stay';
+  return wrapWithPrefix(`⚑ ${whose} unlanded on ${branches.join(', ')}`, { width: TREE_WIDTH, hang: 2 });
+}
+
+/**
+ * The work as start this work shows it: its title and type, its
+ * description, the reason for the type, and a move's branches left
+ * unlanded.
+ * @param {StartView} view
+ */
+function startDisplay({ name, type, description, reason, moves }) {
   return [
     `${titlecase(name)} (${type})`,
     ...wrapWithPrefix(description, { width: TREE_WIDTH }),
     ...wrapWithPrefix(`↳ ${reason}`, { width: TREE_WIDTH, hang: 2 }),
+    ...keptLine(moves?.branches ?? []),
   ].join('\n');
 }
 
 /**
  * Start this work (8.8.2): the work, then the authority gate whose yes
- * creates the unit.
+ * creates the unit — or for a move, makes it the new type.
  * @param {StartView} view
  * @returns {string}
  */
 function startThisWorkScreen(view) {
-  const { type } = view;
+  const { type, moves } = view;
+  const yes = moves === undefined
+    ? { lead: `Your yes creates the ${type}.`, label: `Start it — create the ${type}` }
+    : { lead: `Your yes makes the ${moves.from} ${aType(type)}.`, label: `Move it — the ${moves.from} becomes ${aType(type)}` };
   return section('DISPLAY: start this work', CONTINUE_INSTRUCTION, startDisplay(view))
-    + section('MENU: start this work', MENU_INSTRUCTION, menu(`Your yes creates the ${type}. ${OPENS[/** @type {keyof typeof OPENS} */ (type)]}`, [
-      cmdOption('y', 'yes', `Start it — create the ${type}`, runs(['start-this-work', 'yes'])),
+    + section('MENU: start this work', MENU_INSTRUCTION, menu(`${yes.lead} ${OPENS[/** @type {keyof typeof OPENS} */ (type)]}`, [
+      cmdOption('y', 'yes', yes.label, runs(['start-this-work', 'yes'])),
       promptOption('Keep shaping', 'Tell me what I\'m missing'),
     ], { question: 'Start this work?' }));
 }
@@ -177,4 +204,4 @@ function sweptStrikePick({ unit, candidates }) {
   return section('MENU: approve the map strike', MENU_INSTRUCTION, menu('', rows, { question: 'Which candidate should not become a topic?' }));
 }
 
-module.exports = { startThisWorkScreen, approveMapScreen, sweptMapScreen, sweptStrikePick };
+module.exports = { startThisWorkScreen, approveMapScreen, sweptMapScreen, sweptStrikePick, aType };
