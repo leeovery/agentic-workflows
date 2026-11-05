@@ -560,7 +560,7 @@ function goesOn(parked, { phases, ready }, lets) {
 /**
  * What a read of the whole unit takes from the tracker, in one read: each
  * phase it has written, as `writtenPhases` gives them; each phase's tasks
- * whole where it holds one not closed, else null; the tasks ready to
+ * whole where it holds one not yet ended, else null; the tasks ready to
  * start; when each task in progress first moved into it, by task; and,
  * where `task` names one, that task whole — null where the tracker lacks
  * it — and when it first moved into progress.
@@ -606,13 +606,22 @@ function trackedUnit(cwd, unit, manifest, task = null) {
     const running = phases.flatMap((rows) => (rows ?? []).filter(({ status }) => status === 'in-progress'));
     return {
       phases,
-      written: phases.map((rows, i) => (rows?.some(({ status }) => status !== 'closed') ? driver.tasks(root, unit, i + 1) : null)),
+      written: phases.map((rows, i) => (rows?.some(({ status }) => status === 'open' || status === 'in-progress') ? driver.tasks(root, unit, i + 1) : null)),
       ready: driver.ready(root, unit, null) ?? [],
       starts: Object.fromEntries(running.map(({ ref }) => [shownTask(ref), driver.started(root, ref)])),
       task: task === null ? null : driver.show(root, task),
       started: task === null ? null : driver.started(root, task),
     };
   });
+}
+
+/**
+ * Each of a unit's phases' tasks whole, read from a copy of its store
+ * (`withStoreCopy`), for a reader that must never wait on a writer.
+ * @param {string} cwd @param {string} unit @param {number[]} phases @returns {TaskDetail[][]}
+ */
+function copiedTasks(cwd, unit, phases) {
+  return withStoreCopy(cwd, (driver, root) => phases.map((phase) => driver.tasks(root, unit, phase) ?? []));
 }
 
 /**
@@ -873,4 +882,4 @@ function runTaskVerb(cwd, verb, positional, opts) {
   return run(cwd, positional, ...values, .../** @type {string[]} */ (given));
 }
 
-module.exports = { TASK_VERBS, ENDED, STATUS_WORDS, runTaskVerb, trackedTask, trackedPhases, trackedLists, trackedPhase, trackedUnit, goingOn, goesOn, phaseOpen, stepTurn, turnOf, turnRefusal, phaseWritten, givenText, trackedStart };
+module.exports = { TASK_VERBS, ENDED, STATUS_WORDS, runTaskVerb, trackedTask, trackedPhases, trackedLists, trackedPhase, trackedUnit, goingOn, goesOn, phaseOpen, stepTurn, turnOf, turnRefusal, phaseWritten, givenText, trackedStart, copiedTasks };

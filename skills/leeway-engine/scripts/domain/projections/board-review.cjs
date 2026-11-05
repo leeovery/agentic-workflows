@@ -23,7 +23,8 @@
 //   the report item it is, unnumbered and its scope unsaid until the round
 //   is recorded. Round 1's checks not proven are the cut's scenarios not
 //   proven at the change's tips, as `review round` judges them, read from
-//   the unit's one read of the tracker (review-change.cjs); a later round's
+//   the unit's read of the tracker and, where its work not landed is done,
+//   those phases' tasks whole (review-change.cjs); a later round's
 //   are the round before's until it is recorded. What went to the inbox is
 //   every recorded round's to the one shown, each by its round.
 // - Its fix tasks are a build phase past the cut (P14): the latest round's
@@ -54,6 +55,7 @@ const { projectName } = require('../state-checks.cjs');
 const { fixesOf, fixPhase, reportNames, areaReportPath, recordedRounds, TESTS } = require('../review-phase.cjs');
 const { trackedChange, cutStandings } = require('../review-change.cjs');
 const { reposOf, landedOf } = require('../phase-checks.cjs');
+const { copiedTasks } = require('../task-verbs.cjs');
 const { buildView, taskLine, standingAt, reviewStandingAt, readingAt, scenarioWording } = require('./board-build.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
@@ -136,14 +138,28 @@ const foundSoFar = (at, standing, round, taken) => readsOf(standing).filter(({ r
 const unprovenOf = (at, { scenarios }, round) => scenarios.filter(({ standing }) => standing !== 'proven').map(({ scenario, standing }) => ({ round, scenario, standing, text: scenarioWording(at, scenario) }));
 
 /**
+ * The tasks whole of each of `phases`: as the unit's read of the tracker
+ * holds them, the rest — phases whose tasks are all ended — read from a
+ * copy of the store only here, where the change is drawn.
+ * @param {BoardAt} at @param {number[]} phases @returns {import('../drivers.cjs').TaskDetail[][]}
+ */
+function wholeAt(at, phases) {
+  const { written } = at.tracker();
+  const ended = phases.filter((phase) => written[phase - 1] === null || written[phase - 1] === undefined);
+  const copied = new Map(ended.length === 0 ? [] : copiedTasks(at.cwd, at.unit, ended).map((tasks, k) => [ended[k], tasks]));
+  return phases.map((phase) => written[phase - 1] ?? copied.get(phase) ?? []);
+}
+
+/**
  * What each scenario of the cut stands at while round 1 is read: at the
- * change's tips, as `review round` judges it, from the unit's one read of
- * the tracker; read once a call.
+ * change's tips, as `review round` judges it, from the unit's read of the
+ * tracker; read once a call.
  * @param {BoardAt} at @returns {{scenario: string, standing: string}[]}
  */
 const firstStandings = (at) => at.once('first-standings', () => {
   const read = readingAt(at);
-  return cutStandings(at.cwd, at.unit, at.manifest, trackedChange(at.cwd, at.unit, fixPhase(at.manifest, 1), at.tracker(), landedOf(read), reposOf(read)));
+  const change = trackedChange(at.cwd, at.unit, fixPhase(at.manifest, 1), { lists: at.tracker().phases, landed: landedOf(read), wholeOf: (phases) => wholeAt(at, phases) }, reposOf(read));
+  return cutStandings(at.cwd, at.unit, at.manifest, change);
 });
 
 /** Round 1's checks not proven while it is read, each with its scenario's words. @param {BoardAt} at @returns {ReviewView['not_proven']} */

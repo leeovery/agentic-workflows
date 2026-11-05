@@ -40,8 +40,8 @@
 // change. Refused where no repository holds any.
 // The cut's scenarios stand where their runs at or behind the change's tips
 // put them (`cutStandings`), as a round records them and the board shows
-// round 1's while it is read, the board reading the change from its one
-// read of the tracker, no writer lock taken (`trackedChange`).
+// round 1's while it is read, the board reading the change from its read
+// of the tracker, no writer lock taken (`trackedChange`).
 // ---------------------------------------------------------------------------
 
 const { git } = require('../kernel/git.cjs');
@@ -208,18 +208,17 @@ const changeOf = (cwd, unit, phases, given, repos) => changeOn(cwd, unit, unland
 
 /**
  * The whole change, each repository at its own base, its work not landed
- * read from the unit's phases to `phases` as one read of the tracker holds
- * them (task-verbs.cjs) — each phase's list, and the tasks whole of each
- * holding one done — and the tasks landed as the caller read them, for a
- * reader that never takes the writer lock.
- * @param {string} cwd @param {string} unit @param {number} phases @param {import('./task-verbs.cjs').TrackedUnit} tracked
- * @param {Set<string>} landed @param {Repo[]} repos the project's
+ * read from the unit's phases to `phases` as the caller read them, for a
+ * reader that never takes the writer lock: each phase's list, the tasks
+ * landed, and the tasks whole of the phases holding one done and not
+ * landed, read only where any is.
+ * @param {string} cwd @param {string} unit @param {number} phases
+ * @param {{lists: (TaskRow[]|null)[], landed: Set<string>, wholeOf: (phases: number[]) => TaskDetail[][]}} read @param {Repo[]} repos the project's
  * @returns {Change}
  */
-function trackedChange(cwd, unit, phases, { phases: lists, written }, landed, repos) {
+function trackedChange(cwd, unit, phases, { lists, landed, wholeOf }, repos) {
   const numbers = phasesTo(phases);
-  const whole = (/** @type {number[]} */ held) => held.map((phase) => written[phase - 1] ?? []);
-  return changeOn(cwd, unit, notLanded(numbers, numbers.map((phase) => lists[phase - 1]), () => landed, whole), null, repos);
+  return changeOn(cwd, unit, notLanded(numbers, numbers.map((phase) => lists[phase - 1]), () => landed, wholeOf), null, repos);
 }
 
 /**
