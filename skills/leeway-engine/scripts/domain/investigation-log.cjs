@@ -35,9 +35,11 @@
 //   `--title`, its `--state` or both, says it as it is now, what it does not
 //   give carried, and stands over the earlier. An experiment is numbered as
 //   it is logged. The fix direction's body is what the step back found, as
-//   the conversation's raise of its question sealed it (raise.cjs), `--body`
-//   where it sealed none: a body given besides is passed over, said among
-//   the warnings. Nothing is committed: every state commit takes the log
+//   the conversation's latest raise down its question's chain sealed it —
+//   one answering the question, or one replacing a decision that did or
+//   replaced one that did (raise.cjs) — and `--body`, one finding a line as
+//   the seal's are, where it sealed none: a body given besides is passed
+//   over, said among the warnings. Nothing is committed: every state commit takes the log
 //   along (6.3.2). It answers what the reads passed over, the log's lines
 //   among them, as warnings.
 // - It refuses, writing nothing: a kind it lacks, an argument out of its
@@ -46,7 +48,7 @@
 //   empty or past one line, a title holding ` · ` or an experiment's
 //   ` — `, a finding of a validation holding ` — `; a state it lacks, an
 //   intended hypothesis with no `--by` and any other with one, a hypothesis
-//   the log does not hold, or logged again with nothing changed; an entry
+//   the log does not hold, or logged again reading as it does; an entry
 //   named that is not one of the unit's current entries of its kind — a
 //   finding, a decision, the person's decision for `--by`, a question; a
 //   fix direction while the root cause points at no current entry
@@ -58,6 +60,10 @@
 //   all its lines in order; the last root cause and the last fix direction,
 //   each one the latest; the rest as listed. An entry that does not read as
 //   its heading's shape is passed over, said among the warnings.
+//
+// Known edge, not built: an investigation the reshape's migration moved
+// mid-hunt holds its hunt in its old document, so its lists read empty
+// until it logs again.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -333,9 +339,10 @@ const ENTRIES = Object.freeze({
           const held = HYPOTHESIS_NAME.test(name) ? given.hunt.hypotheses.find((hypothesis) => hypothesis.name === name) : undefined;
           if (held === undefined) throw new Error(`${SAID}: the log holds no hypothesis "${name}" — a new one is logged with --title`);
           const { title, state, by } = given.opts;
-          if (title === undefined && state === undefined && by === undefined) throw new Error(`${SAID}: ${name} is logged again for what changed — give its --title, its --state, or both`);
           const carried = held.by === null ? stateWords(held.state) : `${INTENDED} [${held.by}]`;
-          return `${name}${DOT}${title === undefined ? held.title : titleOf(title)}${DOT}${state === undefined && by === undefined ? carried : stateOf(given)}`;
+          const now = `${name}${DOT}${title === undefined ? held.title : titleOf(title)}${DOT}${state === undefined && by === undefined ? carried : stateOf(given)}`;
+          if (now === `${name}${DOT}${held.title}${DOT}${carried}`) throw new Error(`${SAID}: ${name} reads so already — log it again with the --title or --state that changed`);
+          return now;
         },
       },
     ],
@@ -395,7 +402,7 @@ const ENTRIES = Object.freeze({
       },
       body: (given, line, warnings) => {
         // Required here, not above: raise.cjs requires this module.
-        const sealed = require('./raise.cjs').steppedBackSealed(/** @type {RegExpExecArray} */ (POINTED_LINE.exec(line))[2]);
+        const sealed = require('./raise.cjs').steppedBackSealed(given.view().folded, /** @type {RegExpExecArray} */ (POINTED_LINE.exec(line))[2]);
         if (sealed === null) return given.body();
         if (given.opts[BODY] !== undefined) warnings.push(`--${BODY} ${given.opts[BODY]} is passed over: the fix direction's body is what the step back found, as this conversation's raise of the question sealed it`);
         return sealed;

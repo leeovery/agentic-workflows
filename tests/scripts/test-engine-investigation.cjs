@@ -307,8 +307,18 @@ describe('investigation-log — the hunt under its fixed headings (19.4.1–19.4
     assert.strictEqual(huntIn(huntLog(), 'log.md', []).fixDirection?.entry, full(made.keep), 'the latest fix direction stands');
   });
 
-  /** A raise of the fix at the investigation's place, drawn in this conversation. @param {Record<string, unknown>} call */
-  const raised = (call) => okSectionsAsync(dir, ['raise', AT, '--answers', made.fix], { env: env(), stdin: JSON.stringify(call) });
+  /**
+   * A raise at the investigation's place, drawn in this conversation: of the
+   * fix, or of what `target` names.
+   * @param {Record<string, unknown>} call @param {string[]} [target]
+   */
+  const raised = (call, target = ['--answers', made.fix]) => okSectionsAsync(dir, ['raise', AT, ...target], { env: env(), stdin: JSON.stringify(call) });
+
+  /** The person's pick of a raise drawn: the decision it landed, by its full id. @param {string} raise @param {string} pick */
+  function picked(raise, pick) {
+    ok(dir, ['raise', 'answer', raise, '--pick', pick], { env: env(), stdin: JSON.stringify({ why: 'It is the cause.' }) });
+    return JSON.parse(readState(dir, '.ledger.jsonl').trim().split('\n').at(-1)).id;
+  }
 
   const FIX_CALL = Object.freeze({
     question: 'How should restore stop losing sessions?',
@@ -324,13 +334,29 @@ describe('investigation-log — the hunt under its fixed headings (19.4.1–19.4
   });
   const STEPPED_BACK = ['The capture is trusted whole wherever it is taken.', 'A kill and a shutdown are one case.'];
 
-  it('the fix direction carries what the step back found as its body, copied from this conversation\'s raise of the question — a body given besides passed over, said so', async () => {
+  it('the fix direction carries what the step back found as its body, copied from this conversation\'s raise of the question once the person picked — never another question\'s, drawn later; a body given besides passed over, said so', async () => {
     log('root-cause', ['--entry', made.rootCause]);
-    await raised({ ...FIX_CALL, stepped_back: STEPPED_BACK });
+    picked((await raised({ ...FIX_CALL, stepped_back: STEPPED_BACK })).res.raise, '1');
+    const { write } = ledgerHelpers(() => dir);
+    const warn = write('ask', AT, [], { ...CLAUDE, text: 'Should restore say what it lost?' }).id;
+    await raised({ ...FIX_CALL, question: 'Should restore say what it lost?', stepped_back: ['Not the fix\'s step back.'] }, ['--answers', warn]);
 
     const res = log('fix-direction', ['--question', made.fix, '--body', staged('fix.md', 'My own words.')]);
 
     assert.deepStrictEqual(res.warnings, [`--body ${path.join(config, 'fix.md')} is passed over: the fix direction's body is what the step back found, as this conversation's raise of the question sealed it`]);
+    assert.deepStrictEqual(huntIn(huntLog(), 'log.md', []).fixDirection?.body, STEPPED_BACK);
+  });
+
+  it('a fix the person picked, then replaced in the same conversation, carries the replacement\'s step back, the latest down the question\'s chain', async () => {
+    log('root-cause', ['--entry', made.rootCause]);
+    const decided = picked((await raised({ ...FIX_CALL, stepped_back: ['The first step back.'] })).res.raise, '1');
+    const replacing = await raised({
+      ...FIX_CALL, rows: [FIX_CALL.rows[1], { key: '3', name: 'Both', text: 'Refuse it and keep the last good save', notice: 'both' }], lean: '3', stepped_back: STEPPED_BACK,
+    }, ['--replaces', decided, '--reason', 'changed-mind']);
+    picked(replacing.res.raise, '3');
+
+    log('fix-direction', ['--question', made.fix]);
+
     assert.deepStrictEqual(huntIn(huntLog(), 'log.md', []).fixDirection?.body, STEPPED_BACK);
   });
 
@@ -369,7 +395,8 @@ describe('investigation-log — the hunt under its fixed headings (19.4.1–19.4
       [['hypothesis', HUNT, 'H1', '--state', 'confirmed', '--by', made.ruling], 'investigation-log: --by names the person\'s ruling an intended hypothesis rests on — a confirmed one takes none'],
       [['hypothesis', HUNT, 'H1', '--state', 'intended', '--by', made.rootCause], `investigation-log: --by names ${made.rootCause}, a call of Claude's — a hypothesis is intended on the person's ruling`],
       [['hypothesis', HUNT, 'H9', '--state', 'confirmed'], 'investigation-log: the log holds no hypothesis "H9" — a new one is logged with --title'],
-      [['hypothesis', HUNT, 'H1'], 'investigation-log: H1 is logged again for what changed — give its --title, its --state, or both'],
+      [['hypothesis', HUNT, 'H1'], 'investigation-log: H1 reads so already — log it again with the --title or --state that changed'],
+      [['hypothesis', HUNT, 'H1', '--state', 'suspected', '--title', 'Killing every session empties the state'], 'investigation-log: H1 reads so already — log it again with the --title or --state that changed'],
       [['hypothesis', HUNT, 'H1', '--by', made.ruling], 'investigation-log: --by names the person\'s ruling an intended hypothesis rests on — give it with --state intended'],
       [['hypothesis', HUNT, 'H1', '--title', 'One · two'], 'investigation-log: --title holds "·", which its line\'s shape keeps for itself'],
       [['experiment', HUNT, '--title', 'Kill — all', '--showed', 'x', '--entry', made.kill], 'investigation-log: --title holds "—", which its line\'s shape keeps for itself'],
@@ -537,10 +564,12 @@ describe('the plan and check-in gates — learned process gates (19.4.19)', () =
       refused(['render', 'investigation-plan', BUG, '--file', file]),
       refused(['render', 'investigation-check-in', 'fixed', '--file', file]),
       refused(['render', 'investigation-plan', HUNT]),
+      refused(['render', 'investigation-check-in', HUNT]),
     ], [
       `render investigation-plan: ${BUG}'s investigation has not started — engine enter investigation ${BUG} starts it`,
       'render investigation-check-in: the topic "fixed" is concluded — its work goes on in specification, from the start menu, and a message sent to it reopens it',
-      'render investigation-plan: Usage: engine render investigation-plan <bugfix> --file <plan.json>',
+      'render investigation-plan: Usage: engine render investigation-plan <bugfix> --file <plan.json> [--revised]',
+      'render investigation-check-in: Usage: engine render investigation-check-in <bugfix> --file <check-in.json>',
     ]);
   });
 });

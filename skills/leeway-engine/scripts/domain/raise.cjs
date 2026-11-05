@@ -20,8 +20,8 @@
 //   alone in the ledger, nor at an investigation's place, where it makes the
 //   screen the fix direction's, while the root cause points at no current
 //   entry (investigation-log.cjs); the fix direction's log line takes it
-//   from the seal as its body (`steppedBackSealed`). Every field of text is one line but the mechanism,
-//   drawn as written; nothing else is taken.
+//   from the seal as its body (`steppedBackSealed`). Every field of text is
+//   one line but the mechanism, drawn as written; nothing else is taken.
 // - A raise on a replacement (16.5.7, 29.5.2): `raise <unit>.<phase>[.<topic>]
 //   --replaces <entry> --reason <reason> [--cause <id>] [--relies-on <id>
 //   …]`, the same call on stdin, its rows Claude's proposed answers in place
@@ -224,7 +224,7 @@ const { conversationDir } = require('./conversation.cjs');
 const { newId, shortId } = require('./ledger-ids.cjs');
 const { carrying } = require('./ledger.cjs');
 const { ROW_FIELDS, CALL_FIELDS: CALL_SHAPE, entryKind } = require('./ledger-events.cjs');
-const { ID_FACTS, readFolded, foldLedger, questionStands, laterOf, answersOf, notCurrent } = require('./ledger-fold.cjs');
+const { ID_FACTS, readFolded, foldLedger, questionStands, laterOf, answersOf, notCurrent, factsOf, replacementsOf } = require('./ledger-fold.cjs');
 const { liveness, manifestOf } = require('./ledger-units.cjs');
 const { topicTitles } = require('./derivations.cjs');
 const { verbUsage, writePlaced, landRaised, callLogged, staleness } = require('./ledger-write.cjs');
@@ -591,16 +591,31 @@ function isSeal(value) {
 }
 
 /**
- * What the step back found, as the calling conversation's latest raise of
- * the question `answers` sealed it; null where the conversation sealed none
- * holding it, or no conversation is handed.
- * @param {string} answers @returns {string[]|null}
+ * The question's chain in `folded`: the question, every wording of it, and
+ * each decision that answered it or replaced one that did.
+ * @param {Folded} folded @param {string} question @returns {{root: string, decisions: Set<string>}}
  */
-function steppedBackSealed(answers) {
+function questionChain(folded, question) {
+  const root = factsOf(folded, question).root;
+  const answered = factsOf(folded, root).answered_by;
+  return { root, decisions: new Set([...answered, ...answered.flatMap((id) => replacementsOf(folded, id))]) };
+}
+
+/**
+ * What the step back found, as the calling conversation's latest raise down
+ * the question's chain sealed it — one answering the question, or one
+ * replacing a decision of its chain; null where the conversation sealed none
+ * holding it, or no conversation is handed.
+ * @param {Folded} folded @param {string} question @returns {string[]|null}
+ */
+function steppedBackSealed(folded, question) {
   const session = handedSession();
   if (session === null) return null;
+  const { root, decisions } = questionChain(folded, question);
+  const down = (/** @type {Seal} */ seal) => (seal.answers !== null && folded.facts.get(seal.answers)?.root === root)
+    || (seal.replaces !== null && decisions.has(seal.replaces.entry));
   const sealed = Object.values(readSeals(session))
-    .filter((seal) => isSeal(seal) && !seal.fact && seal.answers === answers && seal.call.stepped_back !== undefined)
+    .filter((seal) => isSeal(seal) && !seal.fact && seal.call.stepped_back !== undefined && down(seal))
     .sort((a, b) => /** @type {Seal} */ (a).at.localeCompare(/** @type {Seal} */ (b).at));
   const latest = /** @type {CallSeal|undefined} */ (sealed.at(-1));
   return latest?.call.stepped_back ?? null;

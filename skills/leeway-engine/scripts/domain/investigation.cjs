@@ -51,7 +51,7 @@ function lineOf(v, what) {
  * @param {string} cwd @param {Args} args @param {string} surface @param {string} payload what the payload is
  */
 function gateReads(cwd, { dotpath: unit = '', file }, surface, payload) {
-  if (unit === '' || file === undefined) throw new Error(`Usage: engine render ${surface} <bugfix> --file <${payload}.json>`);
+  if (unit === '' || file === undefined) throw new Error(`Usage: engine render ${surface} <bugfix> --file <${payload}.json>${surface === 'investigation-plan' ? ' [--revised]' : ''}`);
   const manifest = openInvestigation(cwd, unit, `render ${surface}`);
   /** @type {string[]} */
   const warnings = [];

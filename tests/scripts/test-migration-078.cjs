@@ -159,7 +159,6 @@ function run(dir) {
   return { ...counts, returned };
 }
 
-/** A message as today's send writes it. @param {string} title @param {string} from */
 // A bugfix's investigation as today's template lays it out, a fenced block
 // in it; and a discovery session with a heading of `discovery-log`'s name.
 const STALL_INVESTIGATION = [
@@ -169,6 +168,19 @@ const STALL_INVESTIGATION = [
   'The worker exits on a full disk.', '', '```text', '## Symptoms', '- a log line, kept as it is', '```', '', '## Fix Direction', '', '- Free the disk first', '',
 ].join('\n');
 const CORE_SESSION = '# Discovery Session 001\n\n## Not taken\n\n- Sharding — too early, the person said.\n';
+// Research whose headings and fences reach the edges of what is demoted: a
+// sixth-level heading, a `#` opening no heading, a tilde fence, and a fence
+// a shorter run never closes.
+const EDGES = [
+  '# Research: Epsilon', '', '###### Deepest', '', '#123 is an issue, not a heading.', '',
+  '~~~', '## Inside a tilde fence', '~~~', '', '````text', '## Inside a long fence', '```', '## Still inside: a shorter run closes nothing', '````', '',
+  '## After the fences', '',
+].join('\n');
+// A review never marked incorporated whose report, of two headings, the
+// discussion holds already, word for word.
+const FOLDED_REPORT = '### F1: Two saves\n\nOne wins.\n\n### F2: No lock\n\nNothing orders them.\n';
+
+/** A message as today's send writes it. @param {string} title @param {string} from */
 
 const message = (title, from) => `### ${title}\n*From: ${from} · discussion · 2026-01-01*\n\nDetails of ${title.toLowerCase()}.\n`;
 
@@ -334,7 +346,12 @@ function todaysProject(dir) {
   w('.state/environment-setup.md', 'No special setup required.\n');
   w('.state/migrations', '001\n072\n');
   w('.cache/core/discussion/alpha/session.json', '{"live":true}\n');
-  w('.cache/core/discussion/alpha/state.json', json({ agents: { 'review-001': { id: 'review-001', kind: 'review', status: 'acknowledged' }, 'review-002': { id: 'review-002', kind: 'review', status: 'incorporated' } } }));
+  w('.cache/core/discussion/alpha/state.json', json({ agents: {
+    'review-001': { id: 'review-001', kind: 'review', status: 'acknowledged' },
+    'review-002': { id: 'review-002', kind: 'review', status: 'incorporated' },
+    'review-004': { id: 'review-004', kind: 'review', status: 'acknowledged' },
+  } }));
+  w('.cache/core/discussion/alpha/review-004.md', FOLDED_REPORT);
   w('.cache/core/discussion/alpha/review-001.md', '### F1: Ranking ties\n\nTwo results of one age have no order.\n');
   w('.cache/core/discussion/alpha/review-002.md', '### F1: Stale\n\nFolded in long ago.\n');
   w('.cache/core/discussion/gamma/state.json', json({ agents: { 'review-003': { id: 'review-003', kind: 'review', status: 'acknowledged' } } }));
@@ -369,9 +386,9 @@ function todaysProject(dir) {
   w('core/research/.mailbox/exploration-superseded-2026-01-01-1200/001-cache-sizes.md', message('Cache sizes', 'alpha'));
   w('core/experiment/exploration-superseded-2026-01-01-1200/E3-cache-size/report.md', '# Report\n');
   w('core/research/alpha.md', '# Research: Alpha\n\nRead [notes](../imports/notes.md) and ![d](../imports/diagram.png), not [code](../imports/util.js).\n');
-  w('core/research/epsilon.md', '# Research: Epsilon\n');
+  w('core/research/epsilon.md', EDGES);
   w('core/research/exploration-superseded-2026-01-01-1200.md', '# Research: Exploration\n\nSee ../imports/notes.md.\n');
-  w('core/discussion/alpha.md', '# Discussion: Alpha\n\nThe research said so, and so do we.\n');
+  w('core/discussion/alpha.md', `# Discussion: Alpha\n\nThe research said so, and so do we.\n\n${FOLDED_REPORT}`);
   w('core/research/.mailbox/beta/001-first.md', message('First', 'alpha'));
   w('core/research/.mailbox/beta/002-second.md', message('Second', 'alpha'));
   w('core/discussion/.mailbox/beta/001-third.md', message('Third', 'gamma'));
@@ -557,7 +574,7 @@ describe('migration 078: the move into the layout in .leeway/', () => {
   });
 
   describe('the product (21.5.7, 21.11.1)', () => {
-    it('makes .roadmap/ .product/: its sessions as they are, each note out of its kind\'s folder, its imports as assets, and the baseline\'s docs and its interview agendas, holding the person\'s answers, as reference there, its dossiers gone', () => {
+    it('makes .roadmap/ .product/: its sessions as they are but for their headings, one level deeper, each note out of its kind\'s folder, its imports as assets, and the baseline\'s docs and its interview agendas, holding the person\'s answers, as reference there, its dossiers gone', () => {
       assert.deepStrictEqual(tree(state, '.product'), [
         'assets/baseline/agenda-auth.md',
         'assets/baseline/auth.md',
@@ -638,11 +655,13 @@ describe('migration 078: the move into the layout in .leeway/', () => {
       assert.ok(!fs.existsSync(path.join(state, 'core/topics/gamma/log.md')), 'not in the epic');
     });
 
-    it('folds each review the old agent store holds that landed and was never folded in into its topic\'s log, verbatim under a heading of its own, a promoted topic\'s from the unit it came from; one incorporated is not (21.5.12, 21.S19)', () => {
+    it('folds each review the old agent store holds that landed and was never folded in into its topic\'s log, demoted under a heading of its own, a promoted topic\'s from the unit it came from; one incorporated is not (21.5.12, 21.S19)', () => {
       const log = read('core/topics/alpha/log.md');
 
       assert.ok(log.endsWith('\n\n## Review review-001, never folded in\n\n#### F1: Ranking ties\n\nTwo results of one age have no order.\n'), log);
       assert.ok(!log.includes('Folded in long ago.'), log);
+      assert.ok(!log.includes('review-004'), 'a report the discussion holds word for word is not folded in again');
+      assert.strictEqual(log.split('One wins.').length, 2, log);
     });
 
     it('makes a bugfix\'s investigation its topic\'s log, every heading outside a fenced block one level deeper (21.S11)', () => {
@@ -658,13 +677,19 @@ describe('migration 078: the move into the layout in .leeway/', () => {
       const log = read('stall/topics/stall/log.md');
       const warnings = [];
       const hunt = huntIn(log, 'stall/topics/stall/log.md', warnings);
-      assert.deepStrictEqual({ hunt, warnings }, {
-        hunt: { symptoms: [], hypotheses: [], experiments: [], rootCause: null, validations: [], fixDirection: null }, warnings: [],
-      });
+      assert.deepStrictEqual([hunt.symptoms, hunt.hypotheses, hunt.experiments, hunt.rootCause, hunt.validations, hunt.fixDirection, warnings], [[], [], [], null, [], null, []]);
 
       const logged = withEntry(log, Object.values(HUNT_HEADINGS), HUNT_HEADINGS.symptoms, 'The queue stalls at noon');
       assert.strictEqual(logged, `${log}\n## Symptoms\n\n- The queue stalls at noon\n`);
       assert.deepStrictEqual(huntIn(logged, 'stall/topics/stall/log.md', []).symptoms, [{ text: 'The queue stalls at noon', body: [] }]);
+    });
+
+    it('leaves a sixth-level heading at six, a # opening no heading, and every line of a tilde fence or of a fence only a run as long closes, as they are', () => {
+      assert.strictEqual(read('core/topics/epsilon/log.md'), [
+        '## Research', '', '## Research: Epsilon', '', '###### Deepest', '', '#123 is an issue, not a heading.', '',
+        '~~~', '## Inside a tilde fence', '~~~', '', '````text', '## Inside a long fence', '```', '## Still inside: a shorter run closes nothing', '````', '',
+        '### After the fences', '',
+      ].join('\n'));
     });
 
     it('leaves none of an old discovery session\'s headings read as discovery-log\'s: its list reads empty, and a direction logged lands under the log\'s own ## Not taken', () => {

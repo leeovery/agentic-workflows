@@ -57,8 +57,9 @@
 // they are, but for an inbox file whose name is no item's
 // (`{ideas,bugs,quickfixes}/{YYYY-MM-DD}--{slug}.md`, archived or not), left
 // behind. `.roadmap/` is `.product/` (21.5.7): its sessions as they are
-// but for their headings, demoted as a log's documents are, each note out of its kind's folder under its inbox name, and `imports/` as
-// `assets/`, the documents' links to an import rewritten as a unit's are.
+// but for their headings, demoted as a log's documents are, each note out
+// of its kind's folder under its inbox name, and `imports/` as `assets/`,
+// the documents' links to an import rewritten as a unit's are.
 // `.baseline/`'s docs are reference in `.product/assets/baseline/`, names
 // kept, and so is each interview agenda in `.baseline/.state/`, beside them:
 // it holds the person's answers, which an area under way has woven into no
@@ -97,8 +98,8 @@
 //     read as a heading of the log, a fixed list's among them
 //     (log-lists.cjs);
 //   - a topic's log, `topics/{topic}/log.md`, is its research, its discussion
-//     and its investigation, each verbatim under a heading of its own, in that
-//     order (21.5.2, 21.5.3). A topic is a name the unit's map, discussions or
+//     and its investigation, each under a heading of its own, its words
+//     kept and its headings demoted, in that order (21.5.2, 21.5.3). A topic is a name the unit's map, discussions or
 //     investigations hold, or, for a feature, bugfix or cross-cutting unit,
 //     the unit's own name; research under any other name fed the topics it
 //     was split into or spawned, and goes to a discovery session of its own,
@@ -110,7 +111,7 @@
 //     `.workflows/.cache/{unit}/{phase}/{topic}/`, a promoted topic's in the
 //     unit it came from too — that landed and was never folded in, its
 //     report not in the log already, is appended to the topic's log, the
-//     report verbatim under `## Review {id}, never folded in` (21.5.12); a
+//     report demoted under `## Review {id}, never folded in` (21.5.12); a
 //     report the store holds no row for, a legacy `review-*.md`, is not;
 //   - its mail, from every box it had, is one sequence in `topics/{topic}/
 //     mail/`, renumbered where it had more than one box (21.5.5); the mail of
@@ -807,8 +808,8 @@ const logPart = (phase, text) => `## ${LOG_HEADINGS[phase]}\n\n${endLine(demoted
  * The reviews of a topic's old agent store, its own unit's and the one it
  * was promoted from, that landed and were never folded in, each its report
  * under a heading of its own, demoted; a report the topic's documents,
- * `log`, hold already is not. A topic
- * promoted away has its reviews folded where it went.
+ * `log`, hold already is not. A topic promoted away has its reviews folded
+ * where it went.
  * @param {UnitMove} move @param {string} topic @param {string} log @returns {string[]}
  */
 function unfoldedReviews(move, topic, log) {
