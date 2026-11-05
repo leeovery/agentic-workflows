@@ -60,6 +60,10 @@
 //   all its lines in order; the last root cause and the last fix direction,
 //   each one the latest; the rest as listed. An entry that does not read as
 //   its heading's shape is passed over, said among the warnings.
+// - What the hunt rests on (`huntEntries`), read by its conclude and its
+//   validations' briefs: the root cause, the current entry its line points
+//   at, and the fix, the current answer of the question the fix direction
+//   points at — each, where it rests on none, why, with the way on.
 //
 // Known edge, not built: an investigation the reshape's migration moved
 // mid-hunt holds its hunt in its old document, so its lists read empty
@@ -71,7 +75,7 @@ const path = require('path');
 const { messageOf } = require('../kernel/call.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { resolveId } = require('./ledger-ids.cjs');
-const { notCurrent, factsOf, standingOf } = require('./ledger-fold.cjs');
+const { notCurrent, factsOf, standingOf, answersOf } = require('./ledger-fold.cjs');
 const { claudesCall } = require('./ledger-events.cjs');
 const { withUnitEntries } = require('./unit-entries.cjs');
 const { itemOf } = require('./derivations.cjs');
@@ -256,15 +260,45 @@ function pointedAt({ folded, entries, short }, unit, flag, given, kind, { person
 /** The words of the unit's current entry `id`, on one line. @param {UnitView} view @param {string} id */
 const wordsOf = ({ entries }, id) => String(/** @type {import('./unit-entries.cjs').UnitEntry} */ (entries.get(id)).line.text).replace(/\s+/g, ' ').trim();
 
+/** Why the root cause logged rests on no current entry, or null where it does. @param {UnitView} view @param {Hunt} hunt */
+const rootCauseFault = ({ entries }, hunt) => (hunt.rootCause === null ? 'no root cause is logged'
+  : entries.has(hunt.rootCause.entry) ? null : 'the root cause logged points at no current entry');
+
 /**
  * Refuses, opening on `said`, while the root cause points at no current
  * entry: the fix direction comes after it (19.4.1).
  * @param {string} said @param {string} unit @param {UnitView} view @param {Hunt} hunt
  */
-function assertRootCause(said, unit, { entries }, hunt) {
-  const fault = hunt.rootCause === null ? 'no root cause is logged'
-    : entries.has(hunt.rootCause.entry) ? null : 'the root cause logged points at no current entry';
+function assertRootCause(said, unit, view, hunt) {
+  const fault = rootCauseFault(view, hunt);
   if (fault !== null) throw new Error(`${said}: the fix direction comes after the root cause, and ${fault} — log it first: engine investigation-log root-cause ${unit} --entry <decision>`);
+}
+
+/**
+ * An entry the hunt rests on: its full id, its short one and its words.
+ * @typedef {{id: string, short: string, text: string}} Rested
+ */
+
+/**
+ * The root cause and the fix the hunt rests on, each one of the unit's
+ * current entries — the fix the current answer of the fix direction's
+ * question, which it is set out by — or why it rests on none, with the way
+ * on.
+ * @param {string} unit @param {UnitView} view @param {Hunt} hunt
+ * @returns {{rootCause: Rested|{fault: string}, fix: (Rested & {question: Rested})|{fault: string}}}
+ */
+function huntEntries(unit, view, hunt) {
+  const rested = (/** @type {string} */ id) => ({ id, short: view.short(id), text: wordsOf(view, id) });
+  const rootFault = rootCauseFault(view, hunt);
+  const rootCause = rootFault === null
+    ? rested(/** @type {Pointed} */ (hunt.rootCause).entry)
+    : { fault: `${rootFault} — log it: engine investigation-log root-cause ${unit} --entry <decision>` };
+  const asked = hunt.fixDirection?.entry;
+  if (asked === undefined) return { rootCause, fix: { fault: `no fix direction is logged — log it once its question is raised: engine investigation-log fix-direction ${unit} --question <question>` } };
+  if (!view.entries.has(asked)) return { rootCause, fix: { fault: `the fix direction logged points at no current question — log the one that stands: engine investigation-log fix-direction ${unit} --question <question>` } };
+  const answer = answersOf(view.folded, asked).filter((id) => view.entries.has(id)).at(-1);
+  if (answer === undefined) return { rootCause, fix: { fault: `the fix direction's question ${view.short(asked)} has no answer yet — the fix is its answer, raised: engine raise ${unit}.investigation.${unit} --answers ${view.short(asked)}` } };
+  return { rootCause, fix: { ...rested(answer), question: rested(asked) } };
 }
 
 /**
@@ -479,4 +513,4 @@ function logHunt(cwd, kind, positional, opts) {
   return { log: huntLog(unit), heading: entry.heading, line: `- ${line}`, ...(warnings.length > 0 ? { warnings } : {}) };
 }
 
-module.exports = { HUNT_USAGE, HUNT_HEADINGS, huntIn, huntOf, huntLog, openInvestigation, assertRootCauseAt, logHunt };
+module.exports = { HUNT_USAGE, HUNT_HEADINGS, huntIn, huntOf, huntLog, openInvestigation, assertRootCauseAt, huntEntries, logHunt };

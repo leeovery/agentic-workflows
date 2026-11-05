@@ -615,6 +615,16 @@ describe('candidate and experiment state is vocabulary-guarded', () => {
     assert.strictEqual(readWorkUnit(dir, 'pay').phases.discovery.approved_at, '2026-07-15T09:30:00.000Z');
   });
 
+  it('an investigation\'s close takes only an instant: anything else would leave the board no date to draw it by (P2)', () => {
+    writeWorkUnit(dir, 'crash', 'bugfix', { phases: { investigation: { items: { crash: { status: 'completed' } } } } });
+    for (const bad of ['true', '"2026-07-15"', '"soon"', '"2026-13-45T00:00:00Z"']) {
+      assert.match(runFails(dir, ['set', 'crash.investigation.crash', 'concluded_at', bad]).error, /Invalid concluded_at .* must be an ISO-8601 UTC instant/, bad);
+    }
+    assert.strictEqual(readWorkUnit(dir, 'crash').phases.investigation.items.crash.concluded_at, undefined, 'nothing persisted');
+    runJson(dir, ['set', 'crash.investigation.crash', 'concluded_at', '2026-07-15T09:30:00.000Z']);
+    assert.strictEqual(readWorkUnit(dir, 'crash').phases.investigation.items.crash.concluded_at, '2026-07-15T09:30:00.000Z');
+  });
+
   it('the non-canonical spellings of guarded locations are refused, not silently unvalidated', () => {
     // work-unit level via a phases.-prefixed field
     assert.match(runFails(dir, ['set', 'pay', 'phases.discovery.analysis_staging.discovery-gap-analysis.candidates.auth.status', 'bogus']).error,

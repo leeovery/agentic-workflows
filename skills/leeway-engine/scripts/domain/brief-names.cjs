@@ -48,8 +48,10 @@ const BUILDING_ROLES = Object.freeze(['builder', 'fix']);
  * its first line says it is, the records its brief draws on, by their
  * slots, and, for a role whose agent writes its report into an agent store
  * — its topic's, or for a unit's role the unit's — the kind of dispatch it
- * is briefed for (agent-state.cjs).
- * @type {Readonly<Record<string, {agent: string, whose: string, records: readonly string[], kind?: string}>>}
+ * is briefed for (agent-state.cjs), and for a unit's role whose store is
+ * not at the unit's spec, the phase it is at: a bugfix's validations write
+ * into its investigation's.
+ * @type {Readonly<Record<string, {agent: string, whose: string, records: readonly string[], kind?: string, phase?: string}>>}
  */
 const ROLES = Object.freeze({
   builder: { agent: 'leeway-builder', whose: 'the builder\'s', records: ['engine', 'task', 'spec-sections', 'decided-calls', 'linters', 'chain', 'account-to', 'setup-to'] },
@@ -82,7 +84,7 @@ const ROLES = Object.freeze({
   'spec-writer': {
     agent: 'leeway-spec-writer',
     whose: 'the spec writer\'s',
-    records: ['spec-to', 'unit-records', 'topic-logs', 'canonical-assets', 'builder-calls', 'changed-entries', 'review-findings', 'wording-changes', 'held-numbers', 'invented-lines', 'land-refusal'],
+    records: ['spec-to', 'unit-records', 'investigation', 'topic-logs', 'canonical-assets', 'builder-calls', 'changed-entries', 'review-findings', 'wording-changes', 'held-numbers', 'invented-lines', 'land-refusal'],
   },
   'spec-reviewer': {
     agent: 'leeway-spec-reviewer',
@@ -106,6 +108,20 @@ const ROLES = Object.freeze({
   },
   'test-surface': {
     agent: 'leeway-test-surface', whose: 'the test surface\'s', records: ['spec-scenarios', 'change-commits', 'change-scratch-layout', 'linters', 'tests-report-to'],
+  },
+  'root-cause-validation': {
+    agent: 'leeway-investigation-root-cause-validation',
+    whose: 'the root-cause validation\'s',
+    kind: 'root-cause-validation',
+    phase: 'investigation',
+    records: ['hunt-log', 'hunt-record', 'hunt-root-cause', 'code', 'unit-report-to'],
+  },
+  'fix-validation': {
+    agent: 'leeway-investigation-fix-validation',
+    whose: 'the fix validation\'s',
+    kind: 'fix-validation',
+    phase: 'investigation',
+    records: ['hunt-log', 'hunt-record', 'hunt-root-cause', 'hunt-fix', 'code', 'unit-report-to'],
   },
 });
 

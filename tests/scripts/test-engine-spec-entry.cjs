@@ -13,7 +13,8 @@
 // every verb that holds the spec to its refusal, a unit not in progress.
 // What it writes: nothing but where the conversation is working (4.11.2),
 // starting nothing and committing nothing. What it reads: each live topic's
-// record and log — a bugfix's its investigation — and the files the unit's
+// record and log — a bugfix's its investigation's, and beside it the
+// document today's investigation writes — and the files the unit's
 // current entries link as canonical (11.6.3); once the spec is written, the
 // spec and the cut, and while the review page is open, its address and the
 // file its marks are read back to; then the unit's own record; and the
@@ -224,8 +225,12 @@ describe('what the spec reads at its entry', () => {
     ]));
   });
 
-  it('a bugfix\'s topic log is its investigation', () => {
-    assert.strictEqual(enter('fixed').sections, data([...records('fixed', 'fixed'), `topic log: ${at(layout.doc('fixed', 'investigation', 'fixed'))}`]));
+  it('a bugfix\'s topic logs: its investigation\'s log, and beside it, while there is one, the document today\'s investigation writes — each read once on disk (19.4.15)', () => {
+    const document = `topic log: ${at(layout.doc('fixed', 'investigation', 'fixed'))}`;
+    assert.strictEqual(enter('fixed').sections, data([...records('fixed', 'fixed'), document]));
+    writeState(dir, layout.topic('fixed', 'fixed', 'log.md'), '# Fixed\n');
+
+    assert.strictEqual(enter('fixed').sections, data([...records('fixed', 'fixed'), `topic log: ${at(layout.topic('fixed', 'fixed', 'log.md'))}`, document]));
   });
 
   it('once the spec is written, the spec and, once cut, the cut; and the agents the spec was left with, landed or lost with a process gone (9.7.8)', () => {

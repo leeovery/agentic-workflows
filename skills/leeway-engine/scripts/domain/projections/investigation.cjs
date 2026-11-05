@@ -10,12 +10,18 @@
 //   plan gate, the revised plan's too: yes goes ahead in that order;
 // - the check-in: every hypothesis and where it stands, those just resolved
 //   marked; the experiments, each with what it showed; and what is checked
-//   next. Its gate's yes carries on.
+//   next. Its gate's yes carries on;
+// - the conclude (19.4.23): THE HUNT, Claude's recap; the symptoms, in the
+//   person's words; the root cause told against them; and the fix
+//   direction. A departure still to be asked its verdict is asked first,
+//   under the verdict gate at the conclusion (16.10.11); then the conclude
+//   gate: yes concludes the investigation (investigation-conclude.cjs), keep
+//   going carries the hunt on.
 // Each gate's comment takes what the person would change.
 // ---------------------------------------------------------------------------
 
 const { section, menu, cmdOption, promptOption, MENU_INSTRUCTION, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
-const { block } = require('./closing.cjs');
+const { block, verdictBlock, verdictGate } = require('./closing.cjs');
 const { renderTree, wrapWithPrefix } = require('../../kernel/render.cjs');
 const { TREE_WIDTH } = require('../conventions.cjs');
 const { counted } = require('./map.cjs');
@@ -38,6 +44,13 @@ const { counted } = require('./map.cjs');
  * @typedef {{title: string, hypotheses: Hypothesis[], resolved: string[], experiments: Experiment[], next: string}} CheckInView
  */
 
+/**
+ * The conclude as it is drawn: the bugfix, the topic as screens title it,
+ * Claude's recap, the symptoms in the person's words, the root cause and the
+ * fix, each in its words, and the verdict asked.
+ * @typedef {{unit: string, title: string, hunt: string, symptoms: string[], rootCause: string, fix: string, verdict: import('../ledger-verdicts.cjs').AskedVerdict|null}} ConcludeView
+ */
+
 const INDENT = '  ';
 
 /** Each state's glyph, as 20.12.1 draws it. @type {Readonly<Record<string, string>>} */
@@ -53,6 +66,9 @@ const rowTitle = ({ name, title, state }) => `${GLYPHS[state]} ${name} ${title}`
 
 /** Words, wrapped under a block's heading. @param {string} text */
 const indented = (text) => wrapWithPrefix(text, { width: TREE_WIDTH, prefix: INDENT }).join('\n');
+
+/** Words as a bullet under a block's heading, wrapped beneath it. @param {string} text */
+const bulleted = (text) => wrapWithPrefix(text, { width: TREE_WIDTH, prefix: INDENT, hang: 2 }).map((line, at) => (at === 0 ? `${INDENT}• ${line.slice(INDENT.length)}` : line)).join('\n');
 
 /** The screen's header: the topic, and which screen. @param {string} title @param {string} which */
 const header = (title, which) => `${title} · ${which}`;
@@ -109,4 +125,24 @@ function checkInScreen({ title, hypotheses, resolved, experiments, next }) {
     ], { question: 'Carry on?' }));
 }
 
-module.exports = { planScreen, checkInScreen };
+/**
+ * The conclude: the recap, the symptoms, the root cause and the fix
+ * direction; then the verdict gate while a departure waits to be asked,
+ * else the conclude gate.
+ * @param {ConcludeView} view @returns {string}
+ */
+function concludeScreen({ unit, title, hunt, symptoms, rootCause, fix, verdict }) {
+  const blocks = [header(title, 'conclude'), block('THE HUNT', indented(hunt))];
+  if (symptoms.length > 0) blocks.push(block(`SYMPTOMS (${symptoms.length})`, symptoms.map(bulleted).join('\n')));
+  blocks.push(block('ROOT CAUSE', indented(rootCause)), block('FIX DIRECTION', indented(fix)));
+  if (verdict !== null) blocks.push(verdictBlock(verdict));
+  const display = section('DISPLAY: investigation conclude', CONTINUE_INSTRUCTION, blocks.join('\n\n'));
+  if (verdict !== null) return display + verdictGate(verdict, 'conclusion');
+  return display + section('MENU: conclude gate', MENU_INSTRUCTION, menu('', [
+    cmdOption('y', 'yes', 'Conclude it, and move on to the spec', { next: { kind: 'engine', argv: ['investigation', 'conclude', unit] } }),
+    cmdOption('k', 'keep going', 'Keep investigating — there is more to look at', GO),
+    promptOption('Comment', 'Tell me what does not match what you saw'),
+  ], { question: 'Conclude the investigation?' }));
+}
+
+module.exports = { planScreen, checkInScreen, concludeScreen };

@@ -17,6 +17,7 @@ A finding the records contradict, or one already answered, you leave, saying why
 - **From the records alone.** Each statement comes from the entries it cites: a decision's answer, or a finding. Say what they decided, never more; where the build would meet a detail no entry decides, that is a gap (below), never a line you fill in.
 - **The why, where the builder needs it.** Where a statement needs to say why a decision was made, take the why from the decision and from its topic's log. A why written in neither is a gap.
 - **Areas chosen by your judgement.** Choose the areas by how the product falls apart for someone building it, never by topic: a topic's entries may feed several areas, and an area draw on several topics.
+- **A bugfix's spec is assembled from its investigation**, under "The investigation": the root cause, the fix, and each rule the fix keeps, which names the check that holds it as an invariant does.
 - **Invariants name their check.** Each invariant — a rule that holds across the product — names the hard check that enforces it: an architecture test, a lint, an import-graph rule. One no check can enforce says so.
 - **Canonical assets linked.** Link each canonical asset below from the statement it informs, with a markdown link by its path from the spec's folder, `assets/{file}`.
 - **The builder's, only where the matrix made it so.** A statement resting on the person's "don't care" decision — a decision marked `don't care` below — is the builder's, `[builder: {its id}]`. One resting on a call the sweep left to the builder, under "The builder's calls", is the builder's citing the call, `[builder: {its id}]`, as `[builder: call-1]`. No other line is marked the builder's, and `[builder]` alone does not trace: a detail no entry decides is a gap.
@@ -71,6 +72,10 @@ A gap is a detail the build would meet that no entry decides, two entries that c
 # The records
 
 {{unit-records}}
+
+# The investigation
+
+{{investigation}}
 
 # The topics' logs
 

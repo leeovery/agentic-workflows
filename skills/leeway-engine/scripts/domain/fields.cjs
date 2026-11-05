@@ -235,6 +235,13 @@ function validatePhaseStatus(phase, value) {
 /** An ISO-8601 UTC instant, to the second or the millisecond. */
 const INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
 
+/** Refuses a field `name` that is no instant. @param {string} name @param {*} value */
+function assertInstant(name, value) {
+  if (typeof value !== 'string' || !INSTANT.test(value) || Number.isNaN(Date.parse(value))) {
+    fail(`Invalid ${name} ${JSON.stringify(value)} — must be an ISO-8601 UTC instant (2026-07-15T09:30:00.000Z)`);
+  }
+}
+
 /**
  * Validate a set operation from the resolved internal path, the caller's
  * field segments, and the value. Every
@@ -285,9 +292,14 @@ function validateSet(segments, value, fieldSegments = segments) {
     // which every view reads to place the epic past its discovery: an
     // instant, never a value that reads as no approval.
     if (segments.length === 3 && phase === 'discovery' && segments[2] === 'approved_at') {
-      if (typeof value !== 'string' || !INSTANT.test(value) || Number.isNaN(Date.parse(value))) {
-        fail(`Invalid approved_at ${JSON.stringify(value)} — must be an ISO-8601 UTC instant (2026-07-15T09:30:00.000Z)`);
-      }
+      assertInstant('approved_at', value);
+      return;
+    }
+
+    // phases.investigation.items.<item>.concluded_at — when a bugfix's
+    // investigation concluded, which the board dates it by: an instant.
+    if (segments.length === 5 && phase === 'investigation' && segments[2] === 'items' && segments[4] === 'concluded_at') {
+      assertInstant('concluded_at', value);
       return;
     }
 

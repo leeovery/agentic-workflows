@@ -105,6 +105,7 @@ const { absorbWorkUnit } = require('./domain/workunit-absorb.cjs');
 const { closeDiscoverySession } = require('./domain/discovery-session.cjs');
 const { LOG_USAGE, logHeard } = require('./domain/discovery-log.cjs');
 const { HUNT_USAGE, logHunt } = require('./domain/investigation-log.cjs');
+const { CONCLUDE_USAGE, runInvestigationVerb } = require('./domain/investigation-conclude.cjs');
 const { runFieldCommand, isRead } = require('./domain/fields.cjs');
 const { renderSurface, SURFACES } = require('./domain/render.cjs');
 const { resolveHandoff, topicHandoff, handoffSections, TOPIC_HANDOFF_USAGE } = require('./domain/handoff.cjs');
@@ -241,6 +242,7 @@ ${VERDICT_USAGE.replace(/^/gm, '  ')}
   discovery-session close <work-unit|product> -m <message>
 ${LOG_USAGE.replace(/^/gm, '  ')}
 ${HUNT_USAGE.replace(/^/gm, '  ')}
+  ${CONCLUDE_USAGE}
   topic start <work-unit> <phase> <topic>
 ${Object.values(MAP_USAGE).map((usage) => `  ${usage}`).join('\n')}
   ${SEND_USAGE}
@@ -431,6 +433,7 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render finish <work-unit>
   render investigation-plan <bugfix> --file <plan.json> [--revised]
   render investigation-check-in <bugfix> --file <check-in.json>
+  render conclude <bugfix> [--file <recap.json>]
   render discovery-map <work-unit>
   render migrations-applied --file <payload.json>
   render migration-gate
@@ -794,6 +797,24 @@ function runInvestigationLog(call, argv) {
   try {
     const { opts, positional } = parseArgs(rest);
     respond(call, logHunt(call.cwd, kind, positional, opts));
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// investigation — a bugfix investigation's conclude gate's yes, closing it
+// and handing the work into its spec (domain/investigation-conclude.cjs).
+// ---------------------------------------------------------------------------
+
+/** @param {Call} call @param {string[]} argv */
+function runInvestigation(call, argv) {
+  try {
+    const { opts, positional } = parseArgs(argv);
+    const answer = runInvestigationVerb(call.cwd, positional, opts);
+    // The conclude releases the investigation's slot, as a conclusion does.
+    clearQuietly(call.cwd, positional[1], 'investigation', positional[1]);
+    respond(call, answer);
   } catch (err) {
     failJson(call, err);
   }
@@ -2462,6 +2483,7 @@ const COMMANDS = Object.freeze({
   board: runBoard,
   scratch: runScratch,
   'investigation-log': runInvestigationLog,
+  investigation: runInvestigation,
 });
 
 // Every command dispatched runs whole under the writer lock, its writes and
