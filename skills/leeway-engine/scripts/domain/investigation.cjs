@@ -23,12 +23,17 @@
 // settled, one the log holds open left out, none open at all, and what
 // changed given without `--revised` or missing with it; the check-in's, one
 // still open, and none resolved.
+//
+// A line of the log the hunt's reader passes over is said ahead of the
+// gate, in a DATA section of `warning:` lines, so a line out of place is
+// said where Claude reads.
 // ---------------------------------------------------------------------------
 
 const { filled, shaped, listed, readPayload, refusing } = require('./staged-payload.cjs');
 const { huntOf, openInvestigation } = require('./investigation-log.cjs');
 const { topicTitle } = require('./derivations.cjs');
 const { planScreen, checkInScreen } = require('./projections/investigation.cjs');
+const { dataSection } = require('./projections/surfaces.cjs');
 
 /** @typedef {import('./investigation-log.cjs').Hypothesis} Hypothesis */
 /** @typedef {{dotpath?: string, file?: string, revised?: string}} Args */
@@ -41,7 +46,8 @@ function lineOf(v, what) {
 
 /**
  * What a gate is drawn from: the bugfix, its investigation open, its topic
- * as screens title it, the hunt its log holds, and the payload.
+ * as screens title it, the hunt its log holds and what its read passed
+ * over, and the payload.
  * @param {string} cwd @param {Args} args @param {string} surface @param {string} payload what the payload is
  */
 function gateReads(cwd, { dotpath: unit = '', file }, surface, payload) {
@@ -50,8 +56,11 @@ function gateReads(cwd, { dotpath: unit = '', file }, surface, payload) {
   /** @type {string[]} */
   const warnings = [];
   const hunt = huntOf(cwd, unit, warnings);
-  return { unit, title: topicTitle(manifest, unit), hunt, given: readPayload(cwd, file) };
+  return { unit, title: topicTitle(manifest, unit), hunt, warnings, given: readPayload(cwd, file) };
 }
+
+/** A gate's screen, what the read passed over said ahead of it. @param {string[]} warnings @param {string} screen */
+const warned = (warnings, screen) => (warnings.length === 0 ? '' : dataSection(warnings.map((warning) => `warning: ${warning}`))) + screen;
 
 /**
  * The hypotheses `names` names, each one the log holds, none twice; `what`
@@ -70,7 +79,7 @@ function namedHypotheses(held, names, what) {
 /** `render investigation-plan <bugfix> --file <plan.json> [--revised]`. @param {string} cwd @param {Args} args */
 function investigationPlanSurface(cwd, args) {
   return refusing('render investigation-plan', () => {
-    const { unit, title, hunt, given } = gateReads(cwd, args, 'investigation-plan', 'plan');
+    const { unit, title, hunt, warnings, given } = gateReads(cwd, args, 'investigation-plan', 'plan');
     const revised = args.revised !== undefined;
     const plan = shaped(given, 'the plan', revised ? ['order', 'changed'] : ['order']);
     const rows = listed(plan.order, 'the plan\'s order').map((row, at) => shaped(row, `the plan's order[${at}]`, ['hypothesis', 'check']));
@@ -81,25 +90,25 @@ function investigationPlanSurface(cwd, args) {
     if (settled !== undefined) throw new Error(`the plan orders ${settled.name}, which the log holds settled — a plan orders the hypotheses still open`);
     const left = open.find((hypothesis) => !order.includes(hypothesis));
     if (left !== undefined) throw new Error(`the plan leaves out ${left.name}, which the log holds open — order every open hypothesis, or log it ruled out`);
-    return planScreen({
+    return warned(warnings, planScreen({
       title,
       order: order.map((hypothesis, at) => ({ hypothesis, check: lineOf(rows[at].check, `the plan's order[${at}] check`) })),
       settled: hunt.hypotheses.filter(({ state }) => state !== 'suspected'),
       changed: revised ? lineOf(plan.changed, 'what the finding changed') : null,
-    });
+    }));
   });
 }
 
 /** `render investigation-check-in <bugfix> --file <check-in.json>`. @param {string} cwd @param {Args} args */
 function investigationCheckInSurface(cwd, args) {
   return refusing('render investigation-check-in', () => {
-    const { unit, title, hunt, given } = gateReads(cwd, args, 'investigation-check-in', 'check-in');
+    const { unit, title, hunt, warnings, given } = gateReads(cwd, args, 'investigation-check-in', 'check-in');
     const checkIn = shaped(given, 'the check-in', ['resolved', 'next']);
     const names = listed(checkIn.resolved, 'the check-in\'s resolved').map((name) => String(name));
     if (names.length === 0) throw new Error('the check-in names no hypothesis resolved — a check-in comes once one is');
     const open = namedHypotheses(hunt.hypotheses, names, 'the check-in').find(({ state }) => state === 'suspected');
     if (open !== undefined) throw new Error(`the check-in names ${open.name}, which the log holds open — log where it stands first: engine investigation-log hypothesis ${unit} ${open.name} --state <state>`);
-    return checkInScreen({ title, hypotheses: hunt.hypotheses, resolved: names, experiments: hunt.experiments, next: lineOf(checkIn.next, 'what is checked next') });
+    return warned(warnings, checkInScreen({ title, hypotheses: hunt.hypotheses, resolved: names, experiments: hunt.experiments, next: lineOf(checkIn.next, 'what is checked next') }));
   });
 }
 

@@ -43,8 +43,10 @@ const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { activeSession, sessionLogsAt } = require('./discovery-session.cjs');
 const { spikesOf } = require('./asset.cjs');
-const { listedIn, beyondListsOf, withEntry } = require('./log-lists.cjs');
+const { listedIn, beyondListsOf, withEntry, oneLine, unbroken, fitsShape } = require('./log-lists.cjs');
 const { conversationsIn } = require('./topic-log.cjs');
+
+const SAID = 'discovery-log';
 
 /** The fixed headings, as the log writes them. */
 const LOG_HEADINGS = Object.freeze({ notTaken: 'Not taken', views: 'Views of the product', spikes: 'Spikes' });
@@ -136,19 +138,6 @@ function beyondLists(lines) {
 /** The day a session started, from its log's text, null before a conversation has written it. @param {string} text */
 const sessionStarted = (text) => conversationsIn(text)[0]?.date ?? null;
 
-/** A value of the person's or Claude's words, refused missing, empty or past one line. @param {string|undefined} value @param {string} flag */
-function oneLine(value, flag) {
-  if (typeof value !== 'string' || value.trim() === '' || /[\r\n]/.test(value)) throw new Error(`discovery-log: --${flag} is one line of words, not empty`);
-  return value.trim();
-}
-
-/** Refuses a value holding what would break its line's shape. @param {string} value @param {string} flag @param {string[]} breaks */
-function unbroken(value, flag, breaks) {
-  const held = breaks.find((mark) => value.includes(mark));
-  if (held !== undefined) throw new Error(`discovery-log: --${flag} holds "${held.trim()}", which its line's shape keeps for itself`);
-  return value;
-}
-
 /**
  * Each entry the verb writes: its heading, its usage after `discovery-log`,
  * the positionals it takes after the epic, its flags and those it may be
@@ -161,14 +150,14 @@ const ENTRIES = Object.freeze({
     usage: 'not-taken <epic> --direction "<direction>" --why "<why>"',
     takes: 0,
     flags: ['direction', 'why'],
-    line: (_root, _unit, _positional, opts) => `${unbroken(oneLine(opts.direction, 'direction'), 'direction', [DASH])}${DASH}${oneLine(opts.why, 'why')}`,
+    line: (_root, _unit, _positional, opts) => `${unbroken(SAID, oneLine(SAID, opts.direction, 'direction'), 'direction', [DASH])}${DASH}${oneLine(SAID, opts.why, 'why')}`,
   },
   view: {
     heading: LOG_HEADINGS.views,
     usage: 'view <epic> --text "<view>"',
     takes: 0,
     flags: ['text'],
-    line: (_root, _unit, _positional, opts) => oneLine(opts.text, 'text'),
+    line: (_root, _unit, _positional, opts) => oneLine(SAID, opts.text, 'text'),
   },
   spike: {
     heading: LOG_HEADINGS.spikes,
@@ -177,10 +166,10 @@ const ENTRIES = Object.freeze({
     flags: ['tool', 'showed'],
     may: ['link'],
     line: (root, unit, [spike], opts) => {
-      if (!spikesOf(root, unit).includes(spike)) throw new Error(`discovery-log: ${unit} has no spike "${spike}" — name it as asset spike answered it, its spike`);
-      const tool = unbroken(oneLine(opts.tool, 'tool'), 'tool', [DASH, '[', ']']);
-      if (opts.link !== undefined && !WEB_ADDRESS.test(opts.link)) throw new Error(`discovery-log: --link is the spike's live link, a web address, not "${opts.link}"`);
-      return `${spike} · ${opts.link === undefined ? tool : `[${tool}](${opts.link})`}${DASH}${oneLine(opts.showed, 'showed')}`;
+      if (!spikesOf(root, unit).includes(spike)) throw new Error(`${SAID}: ${unit} has no spike "${spike}" — name it as asset spike answered it, its spike`);
+      const tool = unbroken(SAID, oneLine(SAID, opts.tool, 'tool'), 'tool', [DASH, '[', ']']);
+      if (opts.link !== undefined && !WEB_ADDRESS.test(opts.link)) throw new Error(`${SAID}: --link is the spike's live link, a web address, not "${opts.link}"`);
+      return `${spike} · ${opts.link === undefined ? tool : `[${tool}](${opts.link})`}${DASH}${oneLine(SAID, opts.showed, 'showed')}`;
     },
   },
 });
@@ -188,11 +177,8 @@ const ENTRIES = Object.freeze({
 const LOG_USAGE = Object.values(ENTRIES).map(({ usage }) => `discovery-log ${usage}`).join('\n');
 
 /** Refuses arguments out of an entry's shape, with its usage. @param {typeof ENTRIES[string]} entry @param {string[]} positional @param {Record<string, string>} opts */
-function checkShape({ usage, takes, flags, may = [] }, positional, opts) {
-  const given = Object.keys(opts);
-  if (positional.length !== takes + 1 || !flags.every((flag) => given.includes(flag)) || !given.every((flag) => flags.includes(flag) || may.includes(flag))) {
-    throw new Error(`Usage: engine discovery-log ${usage}`);
-  }
+function checkShape(entry, positional, opts) {
+  if (!fitsShape(entry, positional, opts)) throw new Error(`Usage: engine discovery-log ${entry.usage}`);
 }
 
 /**
@@ -208,10 +194,10 @@ function logHeard(cwd, kind, positional, opts) {
   const [unit, ...rest] = positional;
   const root = stateRoot(cwd);
   const manifest = manifestOf(root, unit);
-  if (manifest === null) throw new Error(`discovery-log: there is no work unit "${unit}"`);
-  if (manifest.work_type !== 'epic') throw new Error(`discovery-log: ${unit} is a ${manifest.work_type} — the fixed lists are an epic's discovery's`);
+  if (manifest === null) throw new Error(`${SAID}: there is no work unit "${unit}"`);
+  if (manifest.work_type !== 'epic') throw new Error(`${SAID}: ${unit} is a ${manifest.work_type} — the fixed lists are an epic's discovery's`);
   const session = activeSession(cwd, unit);
-  if (session === null) throw new Error(`discovery-log: no discovery session is open for ${unit} — enter discovery ${unit} opens one`);
+  if (session === null) throw new Error(`${SAID}: no discovery session is open for ${unit} — enter discovery ${unit} opens one`);
   const line = entry.line(root, unit, rest, opts);
   const rel = path.posix.join(sessionLogsAt(unit), `session-${session}.md`);
   const file = statePath(cwd, rel);

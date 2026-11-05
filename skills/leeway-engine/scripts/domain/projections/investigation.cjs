@@ -40,8 +40,8 @@ const { counted } = require('./map.cjs');
 
 const INDENT = '  ';
 
-/** Each state's glyph, as the board draws it. @type {Readonly<Record<string, string>>} */
-const GLYPHS = Object.freeze({ suspected: '○', confirmed: '✓', 'ruled-out': '–', intended: '✓' });
+/** Each state's glyph, as 20.12.1 draws it. @type {Readonly<Record<string, string>>} */
+const GLYPHS = Object.freeze({ suspected: '○', confirmed: '✓', 'ruled-out': '–', intended: '–' });
 
 /** Each state as a screen says it. @type {Readonly<Record<string, string>>} */
 const STATE_WORDS = Object.freeze({ suspected: 'open', confirmed: 'confirmed', 'ruled-out': 'ruled out', intended: 'intended' });

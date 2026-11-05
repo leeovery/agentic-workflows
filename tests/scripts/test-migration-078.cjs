@@ -54,6 +54,9 @@ const path = require('path');
 const { git, initRepo, cleanupFixture } = require('./engine-harness.cjs');
 const MIGRATION = require('../../skills/leeway-migrate/scripts/migrations/078-reshape-move.cjs');
 const { layoutPlace } = require('../../skills/leeway-engine/scripts/domain/layout.cjs');
+const { huntIn, HUNT_HEADINGS } = require('../../skills/leeway-engine/scripts/domain/investigation-log.cjs');
+const { heardIn } = require('../../skills/leeway-engine/scripts/domain/discovery-log.cjs');
+const { withEntry } = require('../../skills/leeway-engine/scripts/domain/log-lists.cjs');
 
 const TODAY = new Date().toISOString().slice(0, 10);
 const json = (/** @type {unknown} */ value) => JSON.stringify(value, null, 2) + '\n';
@@ -157,6 +160,16 @@ function run(dir) {
 }
 
 /** A message as today's send writes it. @param {string} title @param {string} from */
+// A bugfix's investigation as today's template lays it out, a fenced block
+// in it; and a discovery session with a heading of `discovery-log`'s name.
+const STALL_INVESTIGATION = [
+  '# Investigation: Stall', '', '## Symptoms', '', '### Manifestation', '', '- Jobs pile up in the queue', '',
+  '### Reproduction Steps', '', '1. Queue a thousand jobs', '', '### Impact', '', '- **Severity:** High', '', '---', '',
+  '## Analysis', '', '### Hypotheses', '', '- **H1: The worker dies** [confirmed]', '', '### Root Cause', '',
+  'The worker exits on a full disk.', '', '```text', '## Symptoms', '- a log line, kept as it is', '```', '', '## Fix Direction', '', '- Free the disk first', '',
+].join('\n');
+const CORE_SESSION = '# Discovery Session 001\n\n## Not taken\n\n- Sharding — too early, the person said.\n';
+
 const message = (title, from) => `### ${title}\n*From: ${from} · discussion · 2026-01-01*\n\nDetails of ${title.toLowerCase()}.\n`;
 
 /** A message as the move leaves it, its sender line as the waiting mail heads it. @param {string} title @param {string} sender */
@@ -348,7 +361,7 @@ function todaysProject(dir) {
   write(dir, '.worktreeinclude', WORKTREE_INCLUDE);
 
   w('core/manifest.json', json(CORE));
-  w('core/discovery/sessions/session-001.md', '# Discovery Session 001\n');
+  w('core/discovery/sessions/session-001.md', CORE_SESSION);
   w('core/discovery/sessions/session-002.md', '# Discovery Session 002\n\nSee [notes](../../imports/notes.md).\n');
   w('core/discovery/briefs/alpha.md', '# Alpha brief\n\nFrom [notes](../../imports/notes.md).\n');
   w('core/discovery/briefs/zeta.md', '# Zeta brief, its topic never mapped\n');
@@ -416,7 +429,7 @@ function todaysProject(dir) {
   w('tally/discussion/tally.md', '# Discussion: Tally\n\nCounting is hard, the research said.\n');
 
   w('stall/manifest.json', json(unit('stall', 'bugfix', 'in-progress', { investigation: { items: { stall: { status: 'in-progress' } } } })));
-  w('stall/investigation/stall.md', '# Investigation: Stall\n\nThe queue stalls.\n');
+  w('stall/investigation/stall.md', STALL_INVESTIGATION);
   w('stall/investigation/.mailbox/stall/001-retry-window.md', message('Retry window', 'pay'));
 
   w('typo/manifest.json', json(unit('typo', 'quick-fix', 'completed', quickFixPhases('typo', 'completed'))));
@@ -560,8 +573,8 @@ describe('migration 078: the move into the layout in .leeway/', () => {
       assert.strictEqual(read('.product/assets/baseline/agenda-auth.md'), '# Agenda: Auth\n\n- Why sessions expire: the person said an hour, for the auditors.\n');
     });
 
-    it('points the product\'s documents\' links into its imports at the assets, from where each now sits', () => {
-      assert.strictEqual(read('.product/sessions/session-001.md'), '# Roadmap Session 001\n\nSee [market](../assets/market.md).\n');
+    it('points the product\'s documents\' links into its imports at the assets, from where each now sits, a session\'s headings one level deeper', () => {
+      assert.strictEqual(read('.product/sessions/session-001.md'), '## Roadmap Session 001\n\nSee [market](../assets/market.md).\n');
       assert.strictEqual(read('.product/notes/2026-01-03--points-expiry.md'), '# Points expiry\n\nPer [market](../assets/market.md).\n');
     });
 
@@ -614,34 +627,63 @@ describe('migration 078: the move into the layout in .leeway/', () => {
   });
 
   describe('topics: logs, mail and experiments', () => {
-    it('makes a topic\'s log its research then its discussion, each verbatim under its own heading (21.S10)', () => {
+    it('makes a topic\'s log its research then its discussion, each under its own heading, its words kept and its headings one level deeper (21.S10)', () => {
       assert.strictEqual(read('tally/topics/tally/log.md'),
-        '## Research\n\n# Research: Tally\n\nCounting is hard.\n\n## Discussion\n\n# Discussion: Tally\n\nCounting is hard, the research said.\n');
+        '## Research\n\n## Research: Tally\n\nCounting is hard.\n\n## Discussion\n\n## Discussion: Tally\n\nCounting is hard, the research said.\n');
     });
 
     it('joins a promoted topic\'s research to its log in the cross-cutting unit, ahead of its discussion, its links to the imports it came with (21.5.2)', () => {
       assert.strictEqual(read('shared/topics/gamma/log.md'),
-        '## Research\n\n# Research: Gamma\n\nSee [notes](../../../core/assets/notes.md).\n\n## Discussion\n\n# Discussion: Gamma\n\n## Review review-003, never folded in\n\n### F1: Token reuse\n\nA token outlives its session.\n');
+        '## Research\n\n## Research: Gamma\n\nSee [notes](../../../core/assets/notes.md).\n\n## Discussion\n\n## Discussion: Gamma\n\n## Review review-003, never folded in\n\n#### F1: Token reuse\n\nA token outlives its session.\n');
       assert.ok(!fs.existsSync(path.join(state, 'core/topics/gamma/log.md')), 'not in the epic');
     });
 
     it('folds each review the old agent store holds that landed and was never folded in into its topic\'s log, verbatim under a heading of its own, a promoted topic\'s from the unit it came from; one incorporated is not (21.5.12, 21.S19)', () => {
       const log = read('core/topics/alpha/log.md');
 
-      assert.ok(log.endsWith('\n\n## Review review-001, never folded in\n\n### F1: Ranking ties\n\nTwo results of one age have no order.\n'), log);
+      assert.ok(log.endsWith('\n\n## Review review-001, never folded in\n\n#### F1: Ranking ties\n\nTwo results of one age have no order.\n'), log);
       assert.ok(!log.includes('Folded in long ago.'), log);
     });
 
-    it('makes a bugfix\'s investigation its topic\'s log (21.S11)', () => {
-      assert.strictEqual(read('stall/topics/stall/log.md'), '## Investigation\n\n# Investigation: Stall\n\nThe queue stalls.\n');
+    it('makes a bugfix\'s investigation its topic\'s log, every heading outside a fenced block one level deeper (21.S11)', () => {
+      assert.strictEqual(read('stall/topics/stall/log.md'), [
+        '## Investigation', '', '## Investigation: Stall', '', '### Symptoms', '', '#### Manifestation', '', '- Jobs pile up in the queue', '',
+        '#### Reproduction Steps', '', '1. Queue a thousand jobs', '', '#### Impact', '', '- **Severity:** High', '', '---', '',
+        '### Analysis', '', '#### Hypotheses', '', '- **H1: The worker dies** [confirmed]', '', '#### Root Cause', '',
+        'The worker exits on a full disk.', '', '```text', '## Symptoms', '- a log line, kept as it is', '```', '', '### Fix Direction', '', '- Free the disk first', '',
+      ].join('\n'));
+    });
+
+    it('leaves none of an old investigation\'s headings read as the hunt\'s: its lists read empty, and a symptom logged lands under the log\'s own ## Symptoms', () => {
+      const log = read('stall/topics/stall/log.md');
+      const warnings = [];
+      const hunt = huntIn(log, 'stall/topics/stall/log.md', warnings);
+      assert.deepStrictEqual({ hunt, warnings }, {
+        hunt: { symptoms: [], hypotheses: [], experiments: [], rootCause: null, validations: [], fixDirection: null }, warnings: [],
+      });
+
+      const logged = withEntry(log, Object.values(HUNT_HEADINGS), HUNT_HEADINGS.symptoms, 'The queue stalls at noon');
+      assert.strictEqual(logged, `${log}\n## Symptoms\n\n- The queue stalls at noon\n`);
+      assert.deepStrictEqual(huntIn(logged, 'stall/topics/stall/log.md', []).symptoms, [{ text: 'The queue stalls at noon', body: [] }]);
+    });
+
+    it('leaves none of an old discovery session\'s headings read as discovery-log\'s: its list reads empty, and a direction logged lands under the log\'s own ## Not taken', () => {
+      const log = read('core/discovery/session-001.md');
+      const warnings = [];
+      assert.strictEqual(log, '## Discovery Session 001\n\n### Not taken\n\n- Sharding — too early, the person said.\n');
+      assert.deepStrictEqual(heardIn([{ rel: 'core/discovery/session-001.md', text: log }], [], warnings).notTaken, []);
+
+      const logged = withEntry(log, ['Not taken', 'Views of the product', 'Spikes'], 'Not taken', 'Replicas — the cost');
+      assert.deepStrictEqual(heardIn([{ rel: 'core/discovery/session-001.md', text: logged }], [], warnings).notTaken, [{ direction: 'Replicas', why: 'the cost' }]);
+      assert.deepStrictEqual(warnings, []);
     });
 
     it('joins research feeding one topic to its log, and sends research feeding several to a discovery session of its own after the last (21.S12, F10)', () => {
-      assert.match(read('core/topics/alpha/log.md'), /^## Research\n\n# Research: Alpha\n[\s\S]*\n## Discussion\n\n# Discussion: Alpha\n/);
+      assert.match(read('core/topics/alpha/log.md'), /^## Research\n\n## Research: Alpha\n[\s\S]*\n## Discussion\n\n## Discussion: Alpha\n/);
       assert.strictEqual(read('core/discovery/session-003.md'), [
         '# Discovery Session 003', '', `Date: ${TODAY}`, 'Work unit: core', '',
         'Written by the migration: the research below fed several topics, so it is kept here, on the unit\'s discovery log, until the cut and the merges place it where it bears.',
-        '', '## Research: exploration-superseded-2026-01-01-1200', '', '# Research: Exploration', '', 'See ../assets/notes.md.', '',
+        '', '## Research: exploration-superseded-2026-01-01-1200', '', '## Research: Exploration', '', 'See ../assets/notes.md.', '',
       ].join('\n'));
     });
 
@@ -709,9 +751,9 @@ describe('migration 078: the move into the layout in .leeway/', () => {
       ]);
     });
 
-    it('moves its brief into its topic, its sessions numbers kept, its seeds and imports as they are, an unbuilt spec as a reference asset', () => {
+    it('moves its brief into its topic, its sessions numbers kept and their headings demoted, its seeds and imports as they are, an unbuilt spec as a reference asset', () => {
       assert.strictEqual(read('core/topics/alpha/brief.md'), '# Alpha brief\n\nFrom [notes](../../assets/notes.md).\n');
-      assert.strictEqual(read('core/discovery/session-001.md'), '# Discovery Session 001\n');
+      assert.strictEqual(read('core/discovery/session-001.md'), '## Discovery Session 001\n\n### Not taken\n\n- Sharding — too early, the person said.\n');
       assert.strictEqual(read('core/seeds/2026-01-01--search.md'), '# Search\n');
       assert.deepStrictEqual(fs.readFileSync(path.join(state, 'core/assets/diagram.png')), PNG);
       assert.strictEqual(read('core/assets/specs/search.md'), '# Specification: Search\n\n[n](../notes.md)\n');
@@ -1122,7 +1164,7 @@ describe('migration 078: a small project', () => {
       ]);
       assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(state, 'manifest.json'), 'utf8')),
         { project_id: 'CutShort0123456789abc', work_units: { tally: { work_type: 'feature' } } });
-      assert.strictEqual(fs.readFileSync(path.join(state, 'tally/topics/tally/log.md'), 'utf8'), '## Discussion\n\n# Discussion: Tally\n');
+      assert.strictEqual(fs.readFileSync(path.join(state, 'tally/topics/tally/log.md'), 'utf8'), '## Discussion\n\n## Discussion: Tally\n');
       assert.strictEqual(fs.readFileSync(path.join(state, `.inbox/ideas/${TODAY}--dropped.md`), 'utf8'), DROPPED_IDEA);
       assert.strictEqual(lockOf(dir, state), 'leeway state, do not remove');
       assert.strictEqual(fs.readFileSync(path.join(dir, '.gitignore'), 'utf8'), '.leeway/\n', 'the ignore line written once');
@@ -1145,7 +1187,7 @@ describe('migration 078: a small project', () => {
       const state = path.join(dir, '.leeway');
       assert.deepStrictEqual({ updates, skips }, { updates: 2, skips: 0 });
       assert.strictEqual(git(state, ['symbolic-ref', 'HEAD']).trim(), 'refs/heads/leeway-state');
-      assert.strictEqual(fs.readFileSync(path.join(state, 'tally/topics/tally/log.md'), 'utf8'), '## Discussion\n\n# Discussion: Tally\n');
+      assert.strictEqual(fs.readFileSync(path.join(state, 'tally/topics/tally/log.md'), 'utf8'), '## Discussion\n\n## Discussion: Tally\n');
       assert.ok(!fs.existsSync(path.join(app, '.leeway')), 'no state in the project folder');
       assert.strictEqual(fs.readFileSync(path.join(app, '.gitignore'), 'utf8'), '.leeway/\n');
       assert.ok(!fs.existsSync(path.join(dir, '.gitignore')), 'the repository\'s top untouched');
@@ -1165,7 +1207,7 @@ describe('migration 078: a small project', () => {
       git(dir, ['worktree', 'add', '--quiet', '-b', 'feat', linked]);
       fs.writeFileSync(branchCopy, '# Discussion: Tally, as the branch has it\n');
       const { returned } = run(path.join(linked, 'app'));
-      assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/tally/topics/tally/log.md'), 'utf8'), '## Discussion\n\n# Discussion: Tally\n');
+      assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/tally/topics/tally/log.md'), 'utf8'), '## Discussion\n\n## Discussion: Tally\n');
       assert.strictEqual(fs.readFileSync(path.join(dir, 'app/.gitignore'), 'utf8'), '.leeway/\n');
       assert.strictEqual(git(dir, ['diff', '--cached', '--name-only']).trim(), 'app/.gitignore');
       assert.ok(!fs.existsSync(path.join(linked, 'app/.gitignore')), 'the worktree\'s branch untouched');
@@ -1194,7 +1236,7 @@ describe('migration 078: a small project', () => {
       assert.strictEqual(git(state, ['symbolic-ref', 'HEAD']).trim(), 'refs/heads/leeway-state');
       assert.strictEqual(lockOf(dir, state), 'leeway state, do not remove');
       assert.strictEqual(fs.readFileSync(path.join(state, '.state/migrations'), 'utf8'), '001\n073\n');
-      assert.strictEqual(fs.readFileSync(path.join(state, 'tally/topics/tally/log.md'), 'utf8'), '## Discussion\n\n# Discussion: Tally\n');
+      assert.strictEqual(fs.readFileSync(path.join(state, 'tally/topics/tally/log.md'), 'utf8'), '## Discussion\n\n## Discussion: Tally\n');
     } finally {
       cleanupFixture(dir);
     }

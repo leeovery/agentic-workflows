@@ -620,6 +620,8 @@ describe('conversation position', () => {
     assert.strictEqual(reads().text, note('the investigation of "ledger" in the epic "pay"', 'leeway-investigation-process', []));
     write('.leeway/pay/topics/ledger/log.md');
     assert.deepStrictEqual(reads().files, [abs('.leeway/pay/topics/ledger/log.md')]);
+    write('.leeway/pay/investigation/ledger.md');
+    assert.deepStrictEqual(reads().files, ['.leeway/pay/topics/ledger/log.md', '.leeway/pay/investigation/ledger.md'].map(abs));
   });
 
   it('a place whose skill this project lacks carries nothing on, whatever documents it has', () => {
@@ -638,7 +640,7 @@ describe('conversation position', () => {
   it('each phase names its own documents', () => {
     workUnit('fix', 'quick-fix');
     const cases = [
-      ['investigation', 'ledger', ['.leeway/pay/topics/ledger/log.md']],
+      ['investigation', 'ledger', ['.leeway/pay/topics/ledger/log.md', '.leeway/pay/investigation/ledger.md']],
     ];
     for (const [phase, topic, files] of cases) {
       install(`leeway-${phase}-process`);

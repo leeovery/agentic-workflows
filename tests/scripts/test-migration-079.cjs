@@ -418,7 +418,7 @@ describe('against what the real move writes (078)', () => {
     MOVE.run({ projectDir: dir, reportUpdate: () => {}, reportSkip: () => {} });
 
     assert.deepStrictEqual(checked().unfinished, [{ name: 'fumi/search', problems: ['has no record yet'] }]);
-    assert.ok(readState(dir, layout.topic('fumi', 'search', 'log.md')).endsWith('\n## Review review-001, never folded in\n\n### F1: Ranking ties\n\nTwo results of one age have no order.\n'));
+    assert.ok(readState(dir, layout.topic('fumi', 'search', 'log.md')).endsWith('\n## Review review-001, never folded in\n\n#### F1: Ranking ties\n\nTwo results of one age have no order.\n'));
     assert.strictEqual(refused('fumi.discussion.search', []), breaks('fumi', 'search', [
       'its record is empty, and its log is not', 'ranking is decided on its map, and no entry carries it', 'typo-tolerance is still open on its map, and no open question carries it',
       'the thread index-size is still digging in its research, and no open question carries it', 'fumi/assets/notes.md came in from discussion/search, and no entry links it',

@@ -81,9 +81,9 @@ function header({ place: { unit, topic }, parks }, titles) {
   ].join(' · ');
 }
 
-/** What Claude found stepping back, where its call says: none on a fact. @param {Seal} seal @returns {string[]} */
-function steppedBack(seal) {
-  const found = seal.fact ? undefined : seal.call.stepped_back;
+/** What Claude found stepping back, where its call says; a fact's says none. @param {Seal['call']} call @returns {string[]} */
+function steppedBack(call) {
+  const found = 'stepped_back' in call ? call.stepped_back : undefined;
   return found === undefined ? [] : ['WHAT I FOUND STEPPING BACK', '', ...found.map((line) => `- ${escapeMarkdown(line)}`), ''];
 }
 
@@ -103,7 +103,7 @@ function statement(seal, technical, titles) {
     '',
     escapeMarkdown(call.question),
     '',
-    ...steppedBack(seal),
+    ...steppedBack(call),
     ...(lean === undefined ? [] : [`I lean: ${escapeMarkdown(lean.text)}`, '']),
     ...(rows.length === 0 ? [] : [
       'WHAT YOU\'D NOTICE',

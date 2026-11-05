@@ -17,7 +17,10 @@
 //   where Claude stepped back from the problem before setting out its rows,
 //   what that found (`stepped_back`, 19.4.13, 19.4.21), lines drawn above
 //   the lean — never in the build, whose park keeps the call's own fields
-//   alone in the ledger. Every field of text is one line but the mechanism,
+//   alone in the ledger, nor at an investigation's place, where it makes the
+//   screen the fix direction's, while the root cause points at no current
+//   entry (investigation-log.cjs); the fix direction's log line takes it
+//   from the seal as its body (`steppedBackSealed`). Every field of text is one line but the mechanism,
 //   drawn as written; nothing else is taken.
 // - A raise on a replacement (16.5.7, 29.5.2): `raise <unit>.<phase>[.<topic>]
 //   --replaces <entry> --reason <reason> [--cause <id>] [--relies-on <id>
@@ -238,6 +241,7 @@ const { RAISE_SHOWN, raiseMenu, clearGateShown, isPressed } = require('./gate.cj
 const { drawnRows, raiseScreen } = require('./projections/raise.cjs');
 const decisionPoint = require('./decision-point.cjs');
 const questions = require('./questions.cjs');
+const { assertRootCauseAt } = require('./investigation-log.cjs');
 
 /** @typedef {import('./event-fields.cjs').Type} Type */
 /** @typedef {import('./decision-point.cjs').Decision} Decision */
@@ -587,6 +591,22 @@ function isSeal(value) {
 }
 
 /**
+ * What the step back found, as the calling conversation's latest raise of
+ * the question `answers` sealed it; null where the conversation sealed none
+ * holding it, or no conversation is handed.
+ * @param {string} answers @returns {string[]|null}
+ */
+function steppedBackSealed(answers) {
+  const session = handedSession();
+  if (session === null) return null;
+  const sealed = Object.values(readSeals(session))
+    .filter((seal) => isSeal(seal) && !seal.fact && seal.answers === answers && seal.call.stepped_back !== undefined)
+    .sort((a, b) => /** @type {Seal} */ (a).at.localeCompare(/** @type {Seal} */ (b).at));
+  const latest = /** @type {CallSeal|undefined} */ (sealed.at(-1));
+  return latest?.call.stepped_back ?? null;
+}
+
+/**
  * The open seal of the question, or of the replacement of the decision,
  * `target` names: drawn for the question waiting in the build whose first
  * park is `park`, or, where it is null, raised at `place` for no question
@@ -926,6 +946,7 @@ async function drawRaise(cwd, args, stdin) {
   if (!inBuild) questions.checkUnparked(read, subjectOf(target), SAID);
   const given = fact ? factOf(stdin()) : callOf(stdin(), target.replaces !== null);
   if (inBuild && 'stepped_back' in given) throw new Error('raise: a raise in the build takes no stepped_back — its call parks in the ledger, which keeps the call\'s own fields alone');
+  if (place.phase === 'investigation' && 'stepped_back' in given) assertRootCauseAt(cwd, place.unit, SAID, warnings);
   if (target.replaces !== null) checkProposals(/** @type {Call} */ (given), target.replaces, short(target.replaces.entry));
   if (inBuild) return parkedRaise(cwd, place, target, fact ? { call: /** @type {Fact} */ (given), fact: true } : { call: /** @type {Call} */ (given), fact: false }, parks, warnings);
   const open = openSeal(readSeals(session), place, target, null);
@@ -1387,4 +1408,4 @@ function raiseScreenOf(cwd, seal, { technical = false } = {}) {
   return raiseScreen(seal, { technical, titles: topicTitles(manifest ?? {}) });
 }
 
-module.exports = { RAISE_USAGE, drawRaise, drawParked, showRaise, answerRaise, raiseWaits, unraised, raiseScreenOf };
+module.exports = { RAISE_USAGE, drawRaise, drawParked, showRaise, answerRaise, raiseWaits, unraised, raiseScreenOf, steppedBackSealed };

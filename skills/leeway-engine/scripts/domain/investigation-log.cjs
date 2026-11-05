@@ -4,12 +4,14 @@
 // Domain ring: an investigation's log — a bugfix's one topic log,
 // `{unit}/topics/{unit}/log.md`, the log of finding the cause, dead ends
 // included (19.4.3) — and the hunt it holds under fixed headings, written by
-// `investigation-log` and read by the investigation's gates and the board.
-// Claude writes the rest of the log as the conversation goes; these lists
-// are only the verb's, an entry a line, written and read as every log's
-// fixed lists are (log-lists.cjs), each line resting on a ledger entry
-// pointing at it by its full id: the ledger holds the root cause, the
-// findings and the fix, the log what led to them (P1).
+// `investigation-log` and read by the investigation's gates. Claude writes
+// the rest of the log as the conversation goes, under headings of its own;
+// these lists are only the verb's, an entry a line, written and read as
+// every log's fixed lists are (log-lists.cjs). An experiment, the root
+// cause, the fix direction and an intended hypothesis rest on a ledger
+// entry, pointing at it by its full id: the ledger holds the root cause, the
+// findings and the fix, the log what led to them (P1). A symptom, a
+// validation and a hypothesis not intended rest on none.
 //
 //   ## Symptoms       `- {symptom}`, in the person's words
 //   ## Hypotheses     `- H{n} · {title} · {state}` — suspected, confirmed,
@@ -23,35 +25,39 @@
 //   ## Fix direction  `- {the question's words} [{question}]`
 //
 // None is `## Investigation`, the heading the reshape's migration puts an
-// old investigation under, whose lists stay its prose.
+// old investigation under, its own headings one level deeper, so none of
+// them is read as one of these.
 //
 // - The verb (`investigation-log <kind> <bugfix> …`) puts its entry in the
 //   log, and an optional body (`--body <file>`), its lines beneath the entry
 //   for the board's pages (20.12.2). A hypothesis is numbered as it is
-//   first logged; a later line for it, `hypothesis <bugfix> H{n} --state`,
-//   says its state now, its title carried, and stands over the earlier. An
-//   experiment is numbered as it is logged. Nothing is committed: every state
-//   commit takes the log along (6.3.2).
+//   first logged; a later line for it, `hypothesis <bugfix> H{n}` with its
+//   `--title`, its `--state` or both, says it as it is now, what it does not
+//   give carried, and stands over the earlier. An experiment is numbered as
+//   it is logged. The fix direction's body is what the step back found, as
+//   the conversation's raise of its question sealed it (raise.cjs), `--body`
+//   where it sealed none: a body given besides is passed over, said among
+//   the warnings. Nothing is committed: every state commit takes the log
+//   along (6.3.2). It answers what the reads passed over, the log's lines
+//   among them, as warnings.
 // - It refuses, writing nothing: a kind it lacks, an argument out of its
 //   shape; a place whose investigation cannot take work — as the entry
 //   refuses one (topic-standing.cjs) — or has not started; a value missing,
 //   empty or past one line, a title holding ` · ` or an experiment's
 //   ` — `, a finding of a validation holding ` — `; a state it lacks, an
 //   intended hypothesis with no `--by` and any other with one, a hypothesis
-//   the log does not hold; an entry named that is not one of the unit's
-//   current entries of its kind — a finding, a decision, the person's
-//   decision for `--by`, a question; a fix direction while the root cause
-//   points at no current entry (19.4.1–19.4.3); and a body that cannot be
-//   read, holds nothing, or holds a blank line, which would end it.
+//   the log does not hold, or logged again with nothing changed; an entry
+//   named that is not one of the unit's current entries of its kind — a
+//   finding, a decision, the person's decision for `--by`, a question; a
+//   fix direction while the root cause points at no current entry
+//   (19.4.1–19.4.3), as a raise setting the fix out is
+//   (`assertRootCauseAt`); and a body that cannot be read, holds nothing, or
+//   holds a blank line, which would end it.
 // - The reader (`huntIn`) takes every entry under the fixed headings in
 //   order: each hypothesis by its number at its latest line, the bodies of
 //   all its lines in order; the last root cause and the last fix direction,
 //   each one the latest; the rest as listed. An entry that does not read as
 //   its heading's shape is passed over, said among the warnings.
-//
-// Known edge, not built: an investigation the reshape's migration moved in
-// progress keeps its hunt as prose under `## Investigation`, so its lists
-// read empty until it logs again.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -65,7 +71,7 @@ const { withUnitEntries } = require('./unit-entries.cjs');
 const { itemOf } = require('./derivations.cjs');
 const { unitInProgress, assertEnterable } = require('./topic-standing.cjs');
 const { topicLog } = require('./topic-log.cjs');
-const { listedIn, withEntry } = require('./log-lists.cjs');
+const { listedIn, withEntry, oneLine, unbroken, fitsShape } = require('./log-lists.cjs');
 
 /** @typedef {import('./unit-entries.cjs').UnitView} UnitView */
 
@@ -210,19 +216,6 @@ function openInvestigation(cwd, unit, said) {
   }
 }
 
-/** A value of the person's or Claude's words, refused missing, empty or past one line. @param {string|undefined} value @param {string} flag */
-function oneLine(value, flag) {
-  if (typeof value !== 'string' || value.trim() === '' || /[\r\n]/.test(value)) throw new Error(`${SAID}: --${flag} is one line of words, not empty`);
-  return value.trim();
-}
-
-/** Refuses a value holding what would break its line's shape. @param {string} value @param {string} flag @param {string[]} breaks */
-function unbroken(value, flag, breaks) {
-  const held = breaks.find((mark) => value.includes(mark));
-  if (held !== undefined) throw new Error(`${SAID}: --${flag} holds "${held.trim()}", which its line's shape keeps for itself`);
-  return value;
-}
-
 /** The kinds of entry a flag may name, each as a refusal says it. */
 const KIND_WORDS = Object.freeze({ finding: 'a finding', decision: 'a decision', question: 'a question' });
 
@@ -258,32 +251,51 @@ function pointedAt({ folded, entries, short }, unit, flag, given, kind, { person
 const wordsOf = ({ entries }, id) => String(/** @type {import('./unit-entries.cjs').UnitEntry} */ (entries.get(id)).line.text).replace(/\s+/g, ' ').trim();
 
 /**
- * Why the root cause points at no current entry, or null where it does.
- * @param {UnitView} view @param {Hunt} hunt @returns {string|null}
+ * Refuses, opening on `said`, while the root cause points at no current
+ * entry: the fix direction comes after it (19.4.1).
+ * @param {string} said @param {string} unit @param {UnitView} view @param {Hunt} hunt
  */
-function rootCauseFault({ entries }, hunt) {
-  if (hunt.rootCause === null) return 'no root cause is logged';
-  return entries.has(hunt.rootCause.entry) ? null : 'the root cause logged points at no current entry';
+function assertRootCause(said, unit, { entries }, hunt) {
+  const fault = hunt.rootCause === null ? 'no root cause is logged'
+    : entries.has(hunt.rootCause.entry) ? null : 'the root cause logged points at no current entry';
+  if (fault !== null) throw new Error(`${said}: the fix direction comes after the root cause, and ${fault} — log it first: engine investigation-log root-cause ${unit} --entry <decision>`);
+}
+
+/**
+ * `assertRootCause` against the bugfix's log and ledger as they stand, what
+ * the reads pass over said in `warnings`.
+ * @param {string} cwd @param {string} unit @param {string} said @param {string[]} warnings
+ */
+function assertRootCauseAt(cwd, unit, said, warnings) {
+  const hunt = huntOf(cwd, unit, warnings);
+  withUnitEntries(cwd, unit, warnings, (view) => assertRootCause(said, unit, view, hunt));
 }
 
 /**
  * What a call gives an entry: the unit, the positionals after it, its
- * flags, the hunt so far, and the unit's entries.
- * @typedef {{unit: string, positional: string[], opts: Record<string, string>, hunt: Hunt, view: () => UnitView}} Given
+ * flags, the hunt so far, the unit's entries, and the body `--body` names.
+ * @typedef {{unit: string, positional: string[], opts: Record<string, string>, hunt: Hunt, view: () => UnitView, body: () => string[]}} Given
  */
 
 /**
  * A form of an entry's call: its usage after `investigation-log`, the
  * positionals it takes after the unit, its flags and those it may be given,
- * and its line from what it is given, refused where one does not hold.
- * @typedef {{usage: string, takes: number, flags: string[], may: string[], line: (given: Given) => string}} Form
+ * and its line from what it is given, refused where one does not hold; and
+ * the body beneath it, where the form takes it from elsewhere than
+ * `--body` alone, what it passes over said in `warnings`.
+ * @typedef {{usage: string, takes: number, flags: string[], may: string[], line: (given: Given) => string, body?: (given: Given, line: string, warnings: string[]) => string[]}} Form
  */
+
+/** A hypothesis's title, one line holding no ` · `. @param {string|undefined} title */
+const titleOf = (title) => unbroken(SAID, oneLine(SAID, title, 'title'), 'title', [DOT]);
 
 /** The `--state` a hypothesis's call gives and its `--by`, refused where they do not hold together. @param {Given} given */
 function stateOf({ unit, opts, view }) {
   const state = opts.state ?? 'suspected';
   if (!Object.hasOwn(STATES, state)) throw new Error(`${SAID}: --state is ${Object.keys(STATES).join(', ')}, not "${state}"`);
-  if (state !== INTENDED && opts.by !== undefined) throw new Error(`${SAID}: --by names the person's ruling an intended hypothesis rests on — a ${stateWords(state)} one takes none`);
+  if (state !== INTENDED && opts.by !== undefined) {
+    throw new Error(`${SAID}: --by names the person's ruling an intended hypothesis rests on — ${opts.state === undefined ? 'give it with --state intended' : `a ${stateWords(state)} one takes none`}`);
+  }
   if (state !== INTENDED) return stateWords(state);
   if (opts.by === undefined) throw new Error(`${SAID}: an intended hypothesis rests on the person's ruling — name it: --by <decision>`);
   return `${INTENDED} [${pointedAt(view(), unit, 'by', opts.by, 'decision', { person: true })}]`;
@@ -295,7 +307,7 @@ const BODY = 'body';
 const ENTRIES = Object.freeze({
   symptom: {
     heading: HUNT_HEADINGS.symptoms,
-    forms: [{ usage: 'symptom <bugfix> --text "<the person\'s words>"', takes: 0, flags: ['text'], may: [BODY], line: ({ opts }) => oneLine(opts.text, 'text') }],
+    forms: [{ usage: 'symptom <bugfix> --text "<the person\'s words>"', takes: 0, flags: ['text'], may: [BODY], line: ({ opts }) => oneLine(SAID, opts.text, 'text') }],
   },
   hypothesis: {
     heading: HUNT_HEADINGS.hypotheses,
@@ -306,21 +318,24 @@ const ENTRIES = Object.freeze({
         flags: ['title'],
         may: ['state', 'by', BODY],
         line: (given) => {
-          const title = unbroken(oneLine(given.opts.title, 'title'), 'title', [DOT]);
+          const title = titleOf(given.opts.title);
           const next = Math.max(0, ...given.hunt.hypotheses.map(({ name }) => Number(name.slice(1)))) + 1;
           return `H${next}${DOT}${title}${DOT}${stateOf(given)}`;
         },
       },
       {
-        usage: `hypothesis <bugfix> H<n> --state ${Object.keys(STATES).join('|')} [--by <decision>]`,
+        usage: `hypothesis <bugfix> H<n> [--title "<title>"] [--state ${Object.keys(STATES).join('|')}] [--by <decision>]`,
         takes: 1,
-        flags: ['state'],
-        may: ['by', BODY],
+        flags: [],
+        may: ['title', 'state', 'by', BODY],
         line: (given) => {
           const [name] = given.positional;
           const held = HYPOTHESIS_NAME.test(name) ? given.hunt.hypotheses.find((hypothesis) => hypothesis.name === name) : undefined;
           if (held === undefined) throw new Error(`${SAID}: the log holds no hypothesis "${name}" — a new one is logged with --title`);
-          return `${name}${DOT}${held.title}${DOT}${stateOf(given)}`;
+          const { title, state, by } = given.opts;
+          if (title === undefined && state === undefined && by === undefined) throw new Error(`${SAID}: ${name} is logged again for what changed — give its --title, its --state, or both`);
+          const carried = held.by === null ? stateWords(held.state) : `${INTENDED} [${held.by}]`;
+          return `${name}${DOT}${title === undefined ? held.title : titleOf(title)}${DOT}${state === undefined && by === undefined ? carried : stateOf(given)}`;
         },
       },
     ],
@@ -333,8 +348,8 @@ const ENTRIES = Object.freeze({
       flags: ['title', 'showed', 'entry'],
       may: [BODY],
       line: ({ unit, opts, hunt, view }) => {
-        const title = unbroken(oneLine(opts.title, 'title'), 'title', [DOT, DASH]);
-        const showed = oneLine(opts.showed, 'showed');
+        const title = unbroken(SAID, oneLine(SAID, opts.title, 'title'), 'title', [DOT, DASH]);
+        const showed = oneLine(SAID, opts.showed, 'showed');
         return `E${hunt.experiments.length + 1}${DOT}${title}${DASH}${showed} [${pointedAt(view(), unit, 'entry', opts.entry, 'finding')}]`;
       },
     }],
@@ -361,8 +376,8 @@ const ENTRIES = Object.freeze({
       may: [BODY],
       line: ({ positional: [which], opts }) => {
         if (!Object.hasOwn(VALIDATIONS, which)) throw new Error(`${SAID}: a validation is the ${Object.keys(VALIDATIONS).join(' or the ')} one, not "${which}"`);
-        const found = unbroken(oneLine(opts.found, 'found'), 'found', [DASH]);
-        return `${VALIDATIONS[/** @type {keyof typeof VALIDATIONS} */ (which)]}${DOT}${found}${DASH}${oneLine(opts.did, 'did')}`;
+        const found = unbroken(SAID, oneLine(SAID, opts.found, 'found'), 'found', [DASH]);
+        return `${VALIDATIONS[/** @type {keyof typeof VALIDATIONS} */ (which)]}${DOT}${found}${DASH}${oneLine(SAID, opts.did, 'did')}`;
       },
     }],
   },
@@ -374,10 +389,16 @@ const ENTRIES = Object.freeze({
       flags: ['question'],
       may: [BODY],
       line: ({ unit, opts, hunt, view }) => {
-        const fault = rootCauseFault(view(), hunt);
-        if (fault !== null) throw new Error(`${SAID}: the fix direction comes after the root cause, and ${fault} — log it first: engine investigation-log root-cause ${unit} --entry <decision>`);
+        assertRootCause(SAID, unit, view(), hunt);
         const id = pointedAt(view(), unit, 'question', opts.question, 'question');
         return `${wordsOf(view(), id)} [${id}]`;
+      },
+      body: (given, line, warnings) => {
+        // Required here, not above: raise.cjs requires this module.
+        const sealed = require('./raise.cjs').steppedBackSealed(/** @type {RegExpExecArray} */ (POINTED_LINE.exec(line))[2]);
+        if (sealed === null) return given.body();
+        if (given.opts[BODY] !== undefined) warnings.push(`--${BODY} ${given.opts[BODY]} is passed over: the fix direction's body is what the step back found, as this conversation's raise of the question sealed it`);
+        return sealed;
       },
     }],
   },
@@ -392,11 +413,8 @@ const HUNT_USAGE = Object.values(ENTRIES)
  * @param {{forms: Form[]}} entry @param {string[]} positional @param {Record<string, string>} opts @returns {Form}
  */
 function formOf({ forms }, positional, opts) {
-  const given = Object.keys(opts);
-  const form = forms.find(({ takes }) => positional.length === takes + 1);
-  if (form === undefined || !form.flags.every((flag) => given.includes(flag)) || !given.every((flag) => form.flags.includes(flag) || form.may.includes(flag))) {
-    throw new Error(`Usage: engine ${forms.map(({ usage }) => `${SAID} ${usage} [--${BODY} <file>]`).join('\n')}`);
-  }
+  const form = forms.find((shape) => fitsShape(shape, positional, opts));
+  if (form === undefined) throw new Error(`Usage: engine ${forms.map(({ usage }) => `${SAID} ${usage} [--${BODY} <file>]`).join('\n')}`);
   return form;
 }
 
@@ -436,7 +454,7 @@ function logHunt(cwd, kind, positional, opts) {
   /** @type {string[]} */
   const warnings = [];
   const text = huntText(cwd, unit);
-  const hunt = huntIn(text, huntLog(unit), []);
+  const hunt = huntIn(text, huntLog(unit), warnings);
   /** @type {UnitView|null} */
   let read = null;
   const { [BODY]: file, ...flags } = opts;
@@ -444,12 +462,14 @@ function logHunt(cwd, kind, positional, opts) {
     read ??= withUnitEntries(cwd, unit, warnings, (unitView) => unitView);
     return /** @type {UnitView} */ (read);
   };
-  const line = form.line({ unit, positional: rest, opts: flags, hunt, view });
-  const body = bodyOf(cwd, file);
+  /** @type {Given} */
+  const given = { unit, positional: rest, opts: flags, hunt, view, body: () => bodyOf(cwd, file) };
+  const line = form.line(given);
+  const body = form.body === undefined ? given.body() : form.body({ ...given, opts }, line, warnings);
   const log = statePath(cwd, huntLog(unit));
   fs.mkdirSync(path.dirname(log), { recursive: true });
   fs.writeFileSync(log, withEntry(text, HEADINGS, entry.heading, line, body));
   return { log: huntLog(unit), heading: entry.heading, line: `- ${line}`, ...(warnings.length > 0 ? { warnings } : {}) };
 }
 
-module.exports = { HUNT_USAGE, HUNT_HEADINGS, huntIn, huntOf, huntLog, openInvestigation, logHunt };
+module.exports = { HUNT_USAGE, HUNT_HEADINGS, huntIn, huntOf, huntLog, openInvestigation, assertRootCauseAt, logHunt };

@@ -18,6 +18,10 @@
 //   has none. A body goes beneath its entry, each line indented by
 //   `BODY_INDENT`, deeper than a fence or a heading opens, so no line of a
 //   body is ever read as either.
+// - What every verb that writes a list holds its call to: arguments in its
+//   entry's shape (`fitsShape`), and each value one line of words
+//   (`oneLine`), holding nothing its line's shape keeps for itself
+//   (`unbroken`), refused in the verb's words.
 // ---------------------------------------------------------------------------
 
 const { fencedLines } = require('./spec-sections.cjs');
@@ -121,4 +125,31 @@ function withEntry(text, headings, heading, line, body = []) {
   return lines.join('\n');
 }
 
-module.exports = { listedIn, beyondListsOf, withEntry };
+/**
+ * A value of the person's or Claude's words, trimmed; refused, opening on
+ * `said`, missing, empty or past one line.
+ * @param {string} said @param {string|undefined} value @param {string} flag
+ */
+function oneLine(said, value, flag) {
+  if (typeof value !== 'string' || value.trim() === '' || /[\r\n]/.test(value)) throw new Error(`${said}: --${flag} is one line of words, not empty`);
+  return value.trim();
+}
+
+/** `value`, refused, opening on `said`, where it holds one of `breaks`, which its line's shape keeps for itself. @param {string} said @param {string} value @param {string} flag @param {string[]} breaks */
+function unbroken(said, value, flag, breaks) {
+  const held = breaks.find((mark) => value.includes(mark));
+  if (held !== undefined) throw new Error(`${said}: --${flag} holds "${held.trim()}", which its line's shape keeps for itself`);
+  return value;
+}
+
+/**
+ * Whether a call's arguments fit an entry's shape: the unit and `takes`
+ * positionals after it, every flag of `flags`, and none beyond them and `may`.
+ * @param {{takes: number, flags: string[], may?: string[]}} shape @param {string[]} positional @param {Record<string, string>} opts
+ */
+function fitsShape({ takes, flags, may = [] }, positional, opts) {
+  const given = Object.keys(opts);
+  return positional.length === takes + 1 && flags.every((flag) => given.includes(flag)) && given.every((flag) => flags.includes(flag) || may.includes(flag));
+}
+
+module.exports = { listedIn, beyondListsOf, withEntry, oneLine, unbroken, fitsShape };

@@ -67,6 +67,7 @@ const { latestSessionLog, productSession } = require('./discovery-session.cjs');
 const { PRODUCT_SESSIONS } = require('./layout.cjs');
 const { phaseSkill, HANDOFF_TARGETS } = require('./handoff.cjs');
 const { stepOfId, shownTask } = require('./task-id.cjs');
+const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 const { section, dataSection, GATE_MOD_INSTRUCTION } = require('./projections/surfaces.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
@@ -436,7 +437,8 @@ function dropPosition(sessionId) {
 // review phase's, of a unit whose build runs by its cut, what its entry
 // reads, its fix tasks in flight among it (review-entry.cjs). Every other
 // phase's note sends Claude to its skill's own steps, with its documents —
-// an investigation's, its topic's log, the investigation itself (19.4.3).
+// an investigation's, its topic's log (19.4.3) and the document its skill
+// writes today, `investigation/{topic}.md`.
 // ---------------------------------------------------------------------------
 
 /**
@@ -582,7 +584,7 @@ function workAt(cwd, position, manifest, sessionId) {
       return { skill, documents: [log], whole: { calls: [recordCall(name, topic)], log } };
     }
     case 'investigation':
-      return { skill, documents: [statePath(cwd, topicLog(name, topic))] };
+      return { skill, documents: [topicLog(name, topic), INDEXED_ARTIFACTS.investigation(name, topic)].map((rel) => statePath(cwd, rel)) };
     case 'specification': {
       // Required here, as the ledger read it makes requires this module; a
       // compaction's note has no reader for what that read says.
