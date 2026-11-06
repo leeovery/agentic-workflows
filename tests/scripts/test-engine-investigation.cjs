@@ -23,7 +23,10 @@
 // rest on current entries, both validated since, nothing of the person's
 // open and no mail waiting, which completes the item, stamps its close,
 // releases its place and hands off into the spec (19.S10, 19.S15, 19.S34,
-// 24.S17, 16.10.5).
+// 24.S17, 16.10.5); and what the bug is in, the unit whose code it fixes and
+// the feature map's area, staged with the recap on no line of the screen,
+// and kept by the yes on the item with whether that unit's review had ended
+// then, for the bugs found after review (17.1.9, 17.S4).
 //
 // Layer: verb. World, built once and copied: a bugfix, `crash`, from two
 // seeds, with its brief and discovery's log, not yet started; a bugfix,
@@ -842,7 +845,7 @@ describe('the conclude — a learned process gate, and its yes (19.4.23, 24.1.2)
     ]);
     wrote('decide', ['--answers', asked], { ...PERSON, text: 'Yes, in one line.', why: 'The person wants to know.' });
     assert.strictEqual(concludeRefused(RIPE, { hunt: 'two\nlines' }), 'render conclude: the recap\'s hunt is one paragraph of words, not empty');
-    assert.strictEqual(concludeRefused(RIPE, { recap: 'x' }), 'render conclude: the recap must be {hunt}');
+    assert.strictEqual(concludeRefused(RIPE, { recap: 'x' }), 'render conclude: the recap must be {hunt, fixes?, area?}');
 
     log('root-cause', ['--entry', made.rootCause]);
     assert.strictEqual(concludeRefused(HUNT), `render conclude: no fix direction is logged — log it once its question is raised: engine investigation-log fix-direction ${HUNT} --question <question>`);
@@ -863,8 +866,117 @@ describe('the conclude — a learned process gate, and its yes (19.4.23, 24.1.2)
     validated(dir, RIPE, 'fix-validation', env());
     const stale = `the conclude was drawn before the root cause or the fix changed — it is staged again with engine render conclude ${RIPE} --file <recap.json>`;
     assert.deepStrictEqual([refused(['investigation', 'conclude', RIPE]), refused(['render', 'conclude', RIPE])], [`investigation conclude: ${stale}`, `render conclude: ${stale}`]);
-    assert.deepStrictEqual([['investigation', 'conclude'], ['investigation', 'conclude', RIPE, '--fixes', HUNT], ['investigation', 'close', RIPE]].map((args) => refused(args)), Array(3).fill('Usage: engine investigation conclude <bugfix>'));
+    assert.deepStrictEqual([['investigation', 'conclude'], ['investigation', 'conclude', RIPE, '--fixes', FEATURE], ['investigation', 'conclude', RIPE, '--area', 'session restore'], ['investigation', 'close', RIPE]].map((args) => refused(args)), Array(4).fill('Usage: engine investigation conclude <bugfix>'));
     assert.strictEqual(refused(['investigation', 'conclude', HUNT]), `investigation conclude: no root cause is logged — log it: engine investigation-log root-cause ${HUNT} --entry <decision>`);
+  });
+
+  /** The project's verify setup recorded, its feature map beside it. */
+  function verifySetUp() {
+    const project = JSON.parse(readState(dir, layout.projectManifest));
+    const verify = {
+      place: 'verify', feature_map: 'verify/features.md', launch: 'true', health: 'true', drive: 'verify/drive.sh', evidence: 'true', cleanup: 'true',
+      ran: { unit: FEATURE, scenario: '1.S1', verdict: 'pass', commits: [{ repo: '.', commit: null }], at: '2026-11-01T09:00:00.000Z' },
+    };
+    writeState(dir, layout.projectManifest, JSON.stringify({ ...project, environment: { verify } }, null, 2));
+    commitAll(dir, 'the verify setup');
+  }
+
+  /** The verify setup taken off the project. */
+  function verifyGone() {
+    const { environment, ...project } = JSON.parse(readState(dir, layout.projectManifest));
+    writeState(dir, layout.projectManifest, JSON.stringify(project, null, 2));
+    commitAll(dir, 'no verify setup');
+  }
+
+  /** `ripe`'s investigation reopened as the product reopens it: a message to the topic, the question it raised answered. */
+  function reopened() {
+    writeState(dir, '.cache/scratch/also.md', 'Also on reboot\n\nIt happens on a reboot too.\n');
+    run(['topic', 'send', RIPE, RIPE, '--from', RIPE, '--content', at('.cache/scratch/also.md'), '--slug', 'also-on-reboot']);
+    const asked = wrote('ask', [], { ...CLAUDE, text: 'Does a reboot lose sessions too?' });
+    wrote('decide', ['--answers', asked], { ...PERSON, text: 'Yes, the same way.', why: 'The person saw it.' });
+    run(['topic', 'answered', RIPE, RIPE, '001-also-on-reboot', '--entry', asked]);
+  }
+
+  /** `unit`'s review phase ended by Claude settling its failing round, none passing. @param {string} unit */
+  function reviewSettled(unit) {
+    const round = (/** @type {string|null} */ settled) => JSON.stringify({ reports: [], passed: false, can_now: [], findings: [], settled, scenarios: [] });
+    writeState(dir, `${unit}/review/round-1.json`, round(null));
+    writeState(dir, `${unit}/review/round-2.json`, round('The finding was a nit at heart.'));
+  }
+
+  /** `ripe` concluded at its gate's yes, its recap naming `bug`: what its item keeps of the bug. @param {Record<string, string>} bug */
+  function closedWith(bug) {
+    conclude(RIPE, { ...RECAP, ...bug });
+    run(run(['gate', 'conclude gate', '--pick', 'y']).next.argv);
+    const { fixes, area, after_review: after } = readManifest(dir, RIPE).phases.investigation.items[RIPE];
+    return { fixes, area, after };
+  }
+
+  it('17.1.9: what the bug is in is the recap\'s, on no line of the screen, and the yes keeps it on the investigation\'s item with whether the unit\'s review had ended — judged at the first conclude naming it, kept by a later one naming it again, judged afresh for another unit or after none, dropped with none — counted only where it had (17.S4)', () => {
+    const plain = conclude();
+    verifySetUp();
+    const named = conclude(RIPE, { ...RECAP, fixes: FEATURE, area: ' Session restore ' });
+
+    assert.strictEqual(named, plain, 'the person sees no flag for it (17.2.2)');
+    const { next } = run(['gate', 'conclude gate', '--pick', 'y']);
+    assert.deepStrictEqual(next, { kind: 'engine', argv: ['investigation', 'conclude', RIPE] });
+    withFrozenClock(() => run(next.argv));
+    assert.deepStrictEqual(readManifest(dir, RIPE).phases.investigation.items[RIPE], {
+      status: 'completed', concluded_at: FROZEN_AT, fixes: FEATURE, area: 'Session restore', after_review: false,
+    });
+    reviewSettled(FEATURE);
+    reviewSettled(BUG);
+    assert.deepStrictEqual(run(['measures', 'bugs']).bugs, [], 'a bug concluded while its unit was still building is not counted once that unit\'s review ends');
+
+    reopened();
+    assert.deepStrictEqual(closedWith({ fixes: FEATURE }), { fixes: FEATURE, area: undefined, after: false }, 'the same unit named again keeps when the bug was found');
+    reopened();
+    assert.deepStrictEqual(closedWith({ fixes: BUG }), { fixes: BUG, area: undefined, after: true }, 'another unit judged afresh, its review settled');
+    reopened();
+    assert.deepStrictEqual(closedWith({}), { fixes: undefined, area: undefined, after: undefined }, 'none named drops it with the unit');
+    reopened();
+    assert.deepStrictEqual(closedWith({ fixes: FEATURE }), { fixes: FEATURE, area: undefined, after: true }, 'after none, judged afresh');
+    assert.deepStrictEqual(run(['measures', 'bugs']).bugs, [{ project: dir, area: null, count: 1, fixed: [{ unit: FEATURE, bugfixes: [RIPE] }] }]);
+  });
+
+  it('the conclude\'s DATA names every area the project\'s bugfixes have recorded, with or without a unit, folded for case and spacing, each as first spelt, in name order — so Claude names an area alike', () => {
+    verifySetUp();
+    const recorded = (/** @type {string} */ unit, /** @type {string} */ day, /** @type {Record<string, string>} */ fields) => {
+      for (const [field, value] of Object.entries({ concluded_at: `2026-10-${day}T09:00:00.000Z`, ...fields })) run(['manifest', 'set', `${unit}.investigation.${unit}`, field, value]);
+    };
+    recorded('fixed', '01', { area: 'session  restore' });
+    createManifest(dir, 'later', { work_type: 'bugfix', phases: { investigation: { items: { later: { status: 'completed' } } } } });
+    recorded('later', '02', { fixes: FEATURE, area: 'Session Restore' });
+    createManifest(dir, 'boot', { work_type: 'bugfix', phases: { investigation: { items: { boot: { status: 'completed' } } } } });
+    recorded('boot', '03', { fixes: FEATURE, area: 'Boot' });
+
+    const sections = conclude();
+    assert.strictEqual(sections.slice(0, sections.indexOf('=== DISPLAY')), data(['area: Boot', 'area: session  restore']));
+  });
+
+  it('refuses what the bug is in, writing nothing — a unit the project lacks or this one, an area where no verify setup is recorded or past a line — at the gate, and at the yes once it no longer holds; an area with no unit is kept, a bug in code no unit built', () => {
+    const recap = (/** @type {Record<string, string>} */ bug) => concludeRefused(RIPE, { ...RECAP, ...bug });
+    assert.deepStrictEqual([
+      recap({ fixes: 'nowhere' }),
+      recap({ fixes: '.' }),
+      recap({ fixes: RIPE }),
+      recap({ area: 'session restore' }),
+    ], [
+      'render conclude: there is no work unit "nowhere" to fix — the recap\'s fixes names the unit whose code the bug is in, left out where no unit built it',
+      'render conclude: there is no work unit "." to fix — the recap\'s fixes names the unit whose code the bug is in, left out where no unit built it',
+      `render conclude: ${RIPE} cannot fix its own code — the recap's fixes names the unit whose code the bug is in`,
+      'render conclude: no verify setup is recorded, so no feature map names an area — leave the area out',
+    ]);
+    verifySetUp();
+    assert.strictEqual(recap({ fixes: FEATURE, area: 'session\nrestore' }), 'render conclude: the area is one line of words, an area of the verify setup\'s feature map');
+
+    conclude(RIPE, { ...RECAP, area: 'session restore' });
+    verifyGone();
+    assert.strictEqual(refused(['investigation', 'conclude', RIPE]), `investigation conclude: no verify setup is recorded, so no feature map names an area — leave the area out — engine render conclude ${RIPE} --file <recap.json> stages it again`);
+    verifySetUp();
+    run(['investigation', 'conclude', RIPE]);
+    const { fixes, area, after_review: after } = readManifest(dir, RIPE).phases.investigation.items[RIPE];
+    assert.deepStrictEqual([fixes, area, after], [undefined, 'session restore', undefined]);
   });
 
   it('16.10.5: a call the person changed in the investigation is asked its verdict first, at the conclusion, and the yes waits for it; none changed, none asked', async () => {

@@ -5,8 +5,9 @@
 // own verbs — entered at its one topic, the hunt logged on its entries, the
 // plan and check-in gates, both validations briefed and taken in, the fix
 // direction raised, and the conclude gate's yes handing off into the spec —
-// reopened by a gap before the spec and concluded again; then the
-// specification with its source pinned to the topic, into the build.
+// reopened by a gap before the spec and concluded again, its recap naming
+// this time the unit whose code the bug is in; then the specification with
+// its source pinned to the topic, into the build.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -32,8 +33,12 @@ const {
 
 const CLAUDE = Object.freeze({ by: 'claude', who_moved_whom: 'none' });
 
-/** Claude's recap of the hunt, staged for the conclude gate. @param {import('./pipeline-world.cjs').Sim} sim */
-const recap = (sim) => sim.write('.leeway/.cache/scratch/recap.json', { hunt: 'Two hypotheses; the save wrote a null on every crash, and nothing checked it.' });
+/**
+ * Claude's recap of the hunt, staged for the conclude gate, with what the
+ * bug is in where `bug` names it.
+ * @param {import('./pipeline-world.cjs').Sim} sim @param {{fixes?: string}} [bug]
+ */
+const recap = (sim, bug = {}) => sim.write('.leeway/.cache/scratch/recap.json', { hunt: 'Two hypotheses; the save wrote a null on every crash, and nothing checked it.', ...bug });
 
 /**
  * A validation of `kind` as the investigation runs it (19.4.7): dispatched,
@@ -94,11 +99,12 @@ async function hunted(sim, wu) {
 
 /**
  * The conclude as the investigation closes (19.4.23): the recap staged at
- * its gate, and the yes run, handing off into the spec (24.S17).
- * @param {import('./pipeline-world.cjs').Sim} sim @param {string} wu
+ * its gate, with what the bug is in where `bug` names it, and the yes run,
+ * handing off into the spec (24.S17).
+ * @param {import('./pipeline-world.cjs').Sim} sim @param {string} wu @param {{fixes?: string}} [bug]
  */
-function concluded(sim, wu) {
-  sim.render(['conclude', wu, '--file', recap(sim)], { expect: 'content' });
+function concluded(sim, wu, bug) {
+  sim.render(['conclude', wu, '--file', recap(sim, bug)], { expect: 'content' });
   const { next } = sim.run(answerGate(sim, 'conclude gate', '--pick', 'y').next.argv);
   const route = `/leeway-specification-process bugfix ${wu}`;
   assert.strictEqual([`/${next.skill}`, ...next.args].join(' '), route, 'the conclude hands off into the spec');
@@ -112,6 +118,7 @@ describe('pipeline simulation: bugfix', () => {
 
   it('bugfix (19.S8, 22.S21, 24.S17, 11.S19): the investigation through its own verbs to its conclude → a gap answered before the spec, concluded again → the spec, entered at the unit, to ready to build', async () => {
     const wu = 'crash-fix';
+    startUnit(sim, 'feature', 'saving', 'Saving the file');
     startNew(sim, 'bugfix');
     const started = startUnit(sim, 'bugfix', wu, 'Fix the crash');
     assert.deepStrictEqual(started.next, { kind: 'handoff', skill: 'leeway-investigation-process', args: ['bugfix', wu] });
@@ -164,7 +171,7 @@ describe('pipeline simulation: bugfix', () => {
     assert.strictEqual(bugfixUnit().mail_phases, undefined);
     sim.refuses(['enter', 'specification', wu], /^crash-fix's spec waits until its investigation concludes/);
     enterEntry(sim, wu, 'investigation', wu);
-    concluded(sim, wu);
+    concluded(sim, wu, { fixes: 'saving' });
 
     // The spec, entered at the unit — its route naming no topic — through its
     // corridor to ready to build's pick; the spec is never indexed (11.1.2).

@@ -20,7 +20,7 @@
 // Each gate's comment takes what the person would change.
 // ---------------------------------------------------------------------------
 
-const { section, menu, cmdOption, promptOption, MENU_INSTRUCTION, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
+const { section, dataSection, menu, cmdOption, promptOption, MENU_INSTRUCTION, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
 const { block, verdictBlock, verdictGate } = require('./closing.cjs');
 const { renderTree, wrapWithPrefix } = require('../../kernel/render.cjs');
 const { TREE_WIDTH } = require('../conventions.cjs');
@@ -47,8 +47,9 @@ const { counted } = require('./map.cjs');
 /**
  * The conclude as it is drawn: the bugfix, the topic as screens title it,
  * Claude's recap, the symptoms in the person's words, the root cause and the
- * fix, each in its words, and the verdict asked.
- * @typedef {{unit: string, title: string, hunt: string, symptoms: string[], rootCause: string, fix: string, verdict: import('../ledger-verdicts.cjs').AskedVerdict|null}} ConcludeView
+ * fix, each in its words, the verdict asked, and the areas the project's
+ * bugfixes have recorded, for Claude alone.
+ * @typedef {{unit: string, title: string, hunt: string, symptoms: string[], rootCause: string, fix: string, verdict: import('../ledger-verdicts.cjs').AskedVerdict|null, areas: string[]}} ConcludeView
  */
 
 const INDENT = '  ';
@@ -131,12 +132,13 @@ function checkInScreen({ title, hypotheses, resolved, experiments, next }) {
  * else the conclude gate.
  * @param {ConcludeView} view @returns {string}
  */
-function concludeScreen({ unit, title, hunt, symptoms, rootCause, fix, verdict }) {
+function concludeScreen({ unit, title, hunt, symptoms, rootCause, fix, verdict, areas }) {
   const blocks = [header(title, 'conclude'), block('THE HUNT', indented(hunt))];
   if (symptoms.length > 0) blocks.push(block(`SYMPTOMS (${symptoms.length})`, symptoms.map(bulleted).join('\n')));
   blocks.push(block('ROOT CAUSE', indented(rootCause)), block('FIX DIRECTION', indented(fix)));
   if (verdict !== null) blocks.push(verdictBlock(verdict));
-  const display = section('DISPLAY: investigation conclude', CONTINUE_INSTRUCTION, blocks.join('\n\n'));
+  const data = areas.length === 0 ? '' : dataSection(areas.map((area) => `area: ${area}`));
+  const display = data + section('DISPLAY: investigation conclude', CONTINUE_INSTRUCTION, blocks.join('\n\n'));
   if (verdict !== null) return display + verdictGate(verdict, 'conclusion');
   return display + section('MENU: conclude gate', MENU_INSTRUCTION, menu('', [
     cmdOption('y', 'yes', 'Conclude it, and move on to the spec', { next: { kind: 'engine', argv: ['investigation', 'conclude', unit] } }),

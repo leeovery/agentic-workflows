@@ -1,12 +1,16 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: the measures this repo's authors read (17.2.1) — `measures
-// findings [--project <path>]…`, review findings per phase (17.1.5,
-// 17.2.4), over each project named, the calling one where none is: where
-// each gap was found, so the authors see where the build cuts corners.
-// Read alone, never kept, and never drawn on a gate the person reads
-// (17.2.2).
+// Domain ring: the measures read over each project named, the calling one
+// where none is — computed alone, never kept, and never drawn on a gate the
+// person reads (17.2.2):
+// - `measures findings [--project <path>]…`, review findings per phase
+//   (17.1.5, 17.2.4), this repo's authors' (17.2.1): where each gap was
+//   found, so the authors see where the build cuts corners;
+// - `measures bugs [--project <path>]…`, bugs found after review (17.1.6),
+//   the product's: answered beside the findings per phase over the same
+//   projects, in one call, since findings falling while bugs after review
+//   rise reads as the reviews weakening (17.3.1).
 //
 // Each phase of the pipeline, in its order, counts the gaps its reviews
 // found:
@@ -33,6 +37,19 @@
 //   by call, its rounds and those that failed.
 // A report that does not read is passed over and named, so the counts say
 // what they stand on.
+//
+// A bug found after review is a bugfix unit whose investigation's conclude
+// recorded the unit whose code it fixes and found that unit's review phase
+// ended then, a round of its passed or settled (14.6.3) — judged at the
+// conclude, the one moment that knows it, never when the count is read
+// (bug-records.cjs, investigation-conclude.cjs). The bugs are counted by
+// area, each project's own, an area known folded for case and spacing by
+// its first spelling, then by the unit fixed. Left out: a bug in code no
+// unit built, since no review ran on it; and one concluded before its
+// unit's review ended, since no review had ended on it, whatever that
+// review did later. A cancelled bugfix counts,
+// one moved to another type does not, and a reopened investigation's record
+// stands until it concludes again (bug-records.cjs).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -43,14 +60,17 @@ const { messageOf } = require('../kernel/call.cjs');
 const { foldLedger, ID_FACTS } = require('./ledger-fold.cjs');
 const { readReport } = require('./round-report.cjs');
 const { recordedRounds } = require('./review-phase.cjs');
+const { byName, areaKey, bugRecords, areaSpellings } = require('./bug-records.cjs');
 const { refusing } = require('./staged-payload.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').IdFacts} IdFacts */
 /** @typedef {'serious'|'bug'|'nit'} Call */
 /** What a phase's reviews found: how many findings, and, where its reviews run in rounds, the findings by call, the rounds and those failed. @typedef {{phase: string, findings: number, calls?: Record<Call, number>, rounds?: number, failed?: number}} PhaseFindings */
 /** A round as the count reads it: its findings' calls, and whether it failed. @typedef {{calls: string[], failed: boolean}} CountedRound */
+/** The bugs found after review in one area of a project: how many, and by the unit fixed. @typedef {{project: string, area: string|null, count: number, fixed: Array<{unit: string, bugfixes: string[]}>}} AreaBugs */
 
-const MEASURES_USAGE = 'measures findings [--project <path>]…';
+const MEASURES = Object.freeze(['findings', 'bugs']);
+const MEASURES_USAGE = `measures ${MEASURES.join('|')} [--project <path>]…`;
 
 /** A phase's place among the ledger's questions: whether a question is one of its findings. @type {ReadonlyArray<[string, (facts: IdFacts) => boolean]>} */
 const LEDGER_PHASES = Object.freeze([
@@ -125,26 +145,52 @@ function countRounds(phase, rounds) {
 }
 
 /**
- * What one project's reviews found, phase by phase.
+ * A project's bugs found after review, by area — no area named last — then
+ * by the unit fixed.
+ * @param {string} project @param {Array<Record<string, any>>} manifests
+ * @returns {AreaBugs[]}
+ */
+function bugsByArea(project, manifests) {
+  const records = bugRecords(manifests);
+  const spelt = areaSpellings(records);
+  const found = records.flatMap(({ bugfix, fixes, after_review: after, area }) => (
+    fixes !== null && after ? [{ bugfix, fixes, area: area === null ? null : String(spelt.get(areaKey(area))) }] : []));
+  const named = [...new Set(found.flatMap(({ area }) => (area === null ? [] : [area])))].sort(byName);
+  const areas = found.some(({ area }) => area === null) ? [...named, null] : named;
+  return areas.map((area) => {
+    const inArea = found.filter((bug) => bug.area === area);
+    const units = [...new Set(inArea.map(({ fixes }) => fixes))].sort(byName);
+    return {
+      project, area, count: inArea.length, fixed: units.map((unit) => ({ unit, bugfixes: inArea.filter(({ fixes }) => fixes === unit).map(({ bugfix }) => bugfix).sort(byName) })),
+    };
+  });
+}
+
+/**
+ * What one project's reviews found, phase by phase, and the bugs found
+ * after them.
  * @param {string} cwd the project @param {string[]} unread @param {string[]} warnings
- * @returns {{questions: IdFacts[], build: CountedRound[], review: CountedRound[]}}
+ * @returns {{questions: IdFacts[], build: CountedRound[], review: CountedRound[], bugs: AreaBugs[]}}
  */
 function projectFindings(cwd, unread, warnings) {
   const root = stateRoot(cwd);
-  const units = listWorkUnitManifests(root).map(({ name }) => /** @type {string} */ (name));
+  const manifests = listWorkUnitManifests(root);
+  const units = manifests.map(({ name }) => /** @type {string} */ (name));
   return {
     questions: [.../** @type {Map<string, IdFacts>} */ (foldLedger(root, ID_FACTS, warnings)).values()].filter((facts) => facts.event === 'asked'),
     build: units.flatMap((unit) => readRounds(buildGroups(root, unit), unread)),
     review: units.flatMap((unit) => reviewRounds(cwd, unit, unread)),
+    bugs: bugsByArea(cwd, manifests),
   };
 }
 
 /**
  * `measures findings`: review findings per phase over the projects named,
- * the calling one where none is.
- * @param {string} cwd @param {string[]} projects absolute or from cwd
+ * the calling one where none is; `measures bugs` the bugs found after
+ * review beside them.
+ * @param {string} cwd @param {string} measure @param {string[]} projects absolute or from cwd
  */
-function reviewFindings(cwd, projects) {
+function measured(cwd, measure, projects) {
   const named = (projects.length === 0 ? [cwd] : projects).map((project) => path.resolve(cwd, project));
   /** @type {string[]} */
   const unread = [];
@@ -158,18 +204,25 @@ function reviewFindings(cwd, projects) {
     countRounds('build', found.flatMap((each) => each.build)),
     countRounds('review', found.flatMap((each) => each.review)),
   ];
-  return { projects: named, phases, ...(unread.length > 0 ? { unread } : {}), ...(warnings.length > 0 ? { warnings } : {}) };
+  return {
+    projects: named,
+    ...(measure === 'bugs' ? { bugs: found.flatMap((each) => each.bugs) } : {}),
+    phases,
+    ...(unread.length > 0 ? { unread } : {}),
+    ...(warnings.length > 0 ? { warnings } : {}),
+  };
 }
 
 /**
- * `measures findings [--project <path>]…`: the verb's answer, its refusal
- * opening on its command.
+ * `measures findings|bugs [--project <path>]…`: the verb's answer, its
+ * refusal opening on its command.
  * @param {string} cwd @param {string[]} positional @param {Record<string, string>} opts @param {Record<string, string[]>} lists
  * @returns {Record<string, unknown>}
  */
 function runMeasuresVerb(cwd, positional, opts, lists) {
-  if (positional.join() !== 'findings' || Object.keys(opts).length > 0 || Object.keys(lists).some((flag) => flag !== 'project')) throw new Error(`Usage: engine ${MEASURES_USAGE}`);
-  return refusing('measures findings', () => reviewFindings(cwd, lists.project ?? []));
+  const [measure] = positional;
+  if (positional.length !== 1 || !MEASURES.includes(measure) || Object.keys(opts).length > 0 || Object.keys(lists).some((flag) => flag !== 'project')) throw new Error(`Usage: engine ${MEASURES_USAGE}`);
+  return refusing(`measures ${measure}`, () => measured(cwd, measure, lists.project ?? []));
 }
 
 module.exports = { MEASURES_USAGE, runMeasuresVerb };

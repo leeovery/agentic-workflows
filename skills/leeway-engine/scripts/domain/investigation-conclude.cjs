@@ -19,37 +19,60 @@
 //   yet taken in named by where it stands, never dispatched again; no
 //   question of the person's open at the place, no row of its map standing
 //   open; and no mail waiting in the topic's mailbox.
-// - Claude's recap of the hunt, `{"hunt": "<one paragraph>"}`, is staged in
-//   the topic's cache with `--file`, against the root cause and the fix as
-//   they stand, and when it was staged; the screen draws from it again
-//   without `--file`, refused where nothing is staged, or it was staged
-//   before the root cause or the fix changed. The screen shows the recap,
-//   the symptoms in the person's words from the log, the root cause told
-//   against them and the fix direction (19.4.23); each departure the person
-//   made in the investigation that this machine logged is asked its verdict
-//   there first, one at a time — `verdict give … --at conclusion` — none
-//   asked where none was made (16.10.5, 16.10.11); then the conclude gate:
-//   yes, keep going, and a comment.
+// - Claude's recap of the hunt, `{"hunt": "<one paragraph>", "fixes"?,
+//   "area"?}`, is staged in the topic's cache with `--file`, against the
+//   root cause and the fix as they stand, and when it was staged; the
+//   screen draws from it again without `--file`, refused where nothing is
+//   staged, or it was staged before the root cause or the fix changed. The
+//   screen shows the recap, the symptoms in the person's words from the
+//   log, the root cause told against them and the fix direction (19.4.23);
+//   each departure the person made in the investigation that this machine
+//   logged is asked its verdict there first, one at a time — `verdict give
+//   … --at conclusion` — none asked where none was made (16.10.5,
+//   16.10.11); then the conclude gate: yes, keep going, and a comment. Its
+//   DATA names the areas this project's bugfixes have recorded, each as
+//   first spelt (bug-records.cjs), so Claude names an area alike.
+// - What the bug is in, for the bugs found after review (17.1.6, 17.1.9),
+//   is the recap's, drawn on no line of the screen (17.2.2): `fixes`, the
+//   unit whose code it fixes — a unit of the project but this one — left
+//   out where no unit built that code; and `area`, the area of the verify
+//   setup's feature map it sits in, only where a verify setup is recorded.
+//   The map is the product's, in its own words, so the area is Claude's
+//   reading of it, one line of words, never checked against the map.
 // - The yes stands on the screen as drawn: what is staged was staged
-//   against the root cause and the fix as they stand, and no verdict is
-//   still to ask. Then, under the writer lock, in one manifest save, it
-//   completes the investigation's item and stamps its close, `concluded_at`,
-//   the instant (P2) — what the board dates the investigation by, its
-//   standing read from the item as every phase's is — and commits it, the
-//   log riding along; the staged recap goes. It answers `next`, the handoff
-//   into the spec.
+//   against the root cause and the fix as they stand, what the bug is in
+//   still holds, and no verdict is still to ask. Then, under the writer
+//   lock, in one manifest save, it completes the investigation's item and
+//   stamps its close, `concluded_at`, the instant (P2) — what the board
+//   dates the investigation by, its standing read from the item as every
+//   phase's is — with what the bug is in, as staged, none kept from an
+//   earlier close: `fixes` and `area` where named and, with `fixes`,
+//   `after_review`, whether that unit's review phase had ended — a round of
+//   its passed or settled (14.6.3) — judged at the first conclude naming
+//   that unit, the moment the bug was found: a later conclude naming the
+//   same unit keeps it, one naming another unit judges it afresh, and one
+//   naming none drops it with `fixes`. What the bug is in is checked again
+//   here, a refusal naming the restage. It commits it, the log riding
+//   along; the staged recap goes. It answers `next`, the handoff into the
+//   spec.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
-const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock } = require('../kernel/manifest.cjs');
+const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, listWorkUnitManifests } = require('../kernel/manifest.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { carrying } = require('./ledger.cjs');
+const { messageOf } = require('../kernel/call.cjs');
 const { mapOf } = require('./ledger-fold.cjs');
 const { readShown } = require('./ledger-read.cjs');
 const { verdictAsked } = require('./ledger-verdicts.cjs');
 const { withUnitEntries } = require('./unit-entries.cjs');
 const { mailboxDepth, topicTitle } = require('./derivations.cjs');
 const { validationFor } = require('./agent-state.cjs');
+const { manifestOf } = require('./ledger-units.cjs');
+const { verifySetup } = require('./environment.cjs');
+const { recordedRounds, endsReview } = require('./review-phase.cjs');
+const { byName, bugRecords, areaSpellings } = require('./bug-records.cjs');
+const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 const { huntOf, huntEntries, openInvestigation } = require('./investigation-log.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { phaseSkill } = require('./handoff.cjs');
@@ -64,9 +87,15 @@ const CONCLUDE_USAGE = 'investigation conclude <bugfix>';
 const SURFACE_USAGE = 'render conclude <bugfix> [--file <recap.json>]';
 
 /**
- * Claude's recap as staged: when, the recap, and the root cause and the fix
- * it was drawn against, by full id.
- * @typedef {{at: string, hunt: string, root_cause: string, fix: string}} Staged
+ * What the bug is in: the unit whose code it fixes, and the feature map's
+ * area, each where named.
+ * @typedef {{fixes?: string, area?: string}} BugIn
+ */
+
+/**
+ * Claude's recap as staged: when, the recap, what the bug is in, and the
+ * root cause and the fix it was drawn against, by full id.
+ * @typedef {{at: string, hunt: string, root_cause: string, fix: string} & BugIn} Staged
  */
 
 /** Where the recap is staged, in the topic's cache. @param {string} cwd @param {string} unit */
@@ -166,11 +195,68 @@ function stagedFor(cwd, unit, rootCause, fix) {
   return staged;
 }
 
-/** Claude's recap read from `file`, refused out of its shape. @param {string} cwd @param {string} file */
-function recapOf(cwd, file) {
-  const { hunt } = shaped(readPayload(cwd, file), 'the recap', ['hunt']);
-  if (!filled(hunt) || /[\r\n]/.test(hunt)) throw new Error('the recap\'s hunt is one paragraph of words, not empty');
-  return hunt.trim();
+/** Whether a value is one line of words. @param {unknown} value @returns {value is string} */
+const oneLine = (value) => filled(value) && !/[\r\n]/.test(value);
+
+/**
+ * What the bug is in, refused where the bugfix cannot record it: a unit the
+ * project lacks, or this one; an area where no verify setup is recorded, or
+ * past one line of words.
+ * @param {string} cwd @param {string} unit @param {Record<string, unknown>} given @returns {BugIn}
+ */
+function bugIn(cwd, unit, { fixes, area }) {
+  if (fixes !== undefined) {
+    if (typeof fixes !== 'string' || workUnitNameRefusal(fixes) !== null || manifestOf(stateRoot(cwd), fixes) === null) {
+      throw new Error(`there is no work unit "${fixes}" to fix — the recap's fixes names the unit whose code the bug is in, left out where no unit built it`);
+    }
+    if (fixes === unit) throw new Error(`${unit} cannot fix its own code — the recap's fixes names the unit whose code the bug is in`);
+  }
+  if (area !== undefined) {
+    if (!oneLine(area)) throw new Error('the area is one line of words, an area of the verify setup\'s feature map');
+    if (verifySetup(cwd) === null) throw new Error('no verify setup is recorded, so no feature map names an area — leave the area out');
+  }
+  return {
+    ...(fixes === undefined ? {} : { fixes: /** @type {string} */ (fixes) }),
+    ...(area === undefined ? {} : { area: /** @type {string} */ (area).trim() }),
+  };
+}
+
+/**
+ * Claude's recap read from `file`, refused out of its shape.
+ * @param {string} cwd @param {string} unit @param {string} file @returns {{hunt: string} & BugIn}
+ */
+function recapOf(cwd, unit, file) {
+  const { hunt, ...rest } = shaped(readPayload(cwd, file), 'the recap', ['hunt'], ['fixes', 'area']);
+  if (!oneLine(hunt)) throw new Error('the recap\'s hunt is one paragraph of words, not empty');
+  return { hunt: hunt.trim(), ...bugIn(cwd, unit, rest) };
+}
+
+/** The areas this project's bugfixes have recorded, each as first spelt. @param {string} cwd */
+const recordedAreas = (cwd) => [...areaSpellings(bugRecords(listWorkUnitManifests(cwd))).values()].sort(byName);
+
+/**
+ * What the staged recap says the bug is in, as the yes checks it again,
+ * a refusal naming the restage.
+ * @param {string} cwd @param {string} unit @param {Staged} staged @returns {BugIn}
+ */
+function stagedBug(cwd, unit, staged) {
+  try {
+    return bugIn(cwd, unit, staged);
+  } catch (err) {
+    throw new Error(`${messageOf(err)} — engine render conclude ${unit} --file <recap.json> stages it again`);
+  }
+}
+
+/**
+ * What the yes keeps of the bug: what the recap named, and with a unit,
+ * whether its review phase had ended when the bug was found — kept from the
+ * earlier close where that named the same unit, else judged now.
+ * @param {string} cwd @param {BugIn} bug @param {Record<string, unknown>} earlier the item as the last close left it
+ */
+function kept(cwd, bug, earlier) {
+  if (bug.fixes === undefined) return bug;
+  const after = earlier.fixes === bug.fixes && typeof earlier.after_review === 'boolean' ? earlier.after_review : recordedRounds(cwd, bug.fixes).some(endsReview);
+  return { ...bug, after_review: after };
 }
 
 /**
@@ -187,7 +273,7 @@ function concludeSurface(cwd, { dotpath: unit = '', file }) {
       const { manifest, hunt, rootCause, fix } = closing(cwd, unit, 'render conclude', warnings);
       const staged = file === undefined
         ? stagedFor(cwd, unit, rootCause, fix)
-        : stage(stagedFile(cwd, unit), { at: new Date().toISOString(), hunt: recapOf(cwd, file), root_cause: rootCause.id, fix: fix.id });
+        : stage(stagedFile(cwd, unit), { at: new Date().toISOString(), ...recapOf(cwd, unit, file), root_cause: rootCause.id, fix: fix.id });
       return concludeScreen({
         unit,
         title: topicTitle(manifest, unit),
@@ -196,6 +282,7 @@ function concludeSurface(cwd, { dotpath: unit = '', file }) {
         rootCause: rootCause.text,
         fix: fix.text,
         verdict: verdictOf(cwd, unit, staged.at, warnings),
+        areas: recordedAreas(cwd),
       });
     } catch (err) {
       throw carrying(err, warnings);
@@ -205,7 +292,8 @@ function concludeSurface(cwd, { dotpath: unit = '', file }) {
 
 /**
  * `investigation conclude <bugfix>`: the conclude gate's yes, closing the
- * investigation and handing the work into its spec.
+ * investigation, keeping what the bug is in, and handing the work into its
+ * spec.
  * @param {string} cwd @param {string} unit
  */
 function concludeInvestigation(cwd, unit) {
@@ -215,10 +303,14 @@ function concludeInvestigation(cwd, unit) {
   try {
     const { rootCause, fix } = closing(cwd, unit, 'investigation conclude', warnings);
     const staged = stagedFor(cwd, unit, rootCause, fix);
+    const bug = stagedBug(cwd, unit, staged);
     if (verdictOf(cwd, unit, staged.at, warnings) !== null) throw new Error(`a verdict is still to ask — engine render conclude ${unit} asks each before the yes`);
     const manifest = withWorkUnitLock(cwd, unit, () => {
       const fresh = loadWorkUnitManifest(cwd, unit);
-      Object.assign(fresh.phases[PHASE].items[unit], { status: 'completed', concluded_at: concludedAt });
+      const item = fresh.phases[PHASE].items[unit];
+      const record = kept(cwd, bug, item);
+      for (const field of ['fixes', 'area', 'after_review']) delete item[field];
+      Object.assign(item, { status: 'completed', concluded_at: concludedAt, ...record });
       saveWorkUnitManifest(cwd, unit, fresh);
       return fresh;
     });
