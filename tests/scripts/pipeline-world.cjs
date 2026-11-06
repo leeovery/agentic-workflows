@@ -783,6 +783,14 @@ function workTheSet(sim, paths) {
 // pick ran.
 /** @param {Sim} sim @param {string} wu @param {string[]} topics @param {'s'|'a'} [position] */
 function specToBuild(sim, wu, topics, position = 's') {
+  specWritten(sim, wu, topics);
+  return specBuilt(sim, wu, position);
+}
+
+// The corridor's first half: the spec entered, written and landed, its
+// one screen not yet answered.
+/** @param {Sim} sim @param {string} wu @param {string[]} topics */
+function specWritten(sim, wu, topics) {
   specEntry(sim, wu, topics);
   sim.run(['brief', 'spec-writer', wu]);
   const statements = topics.map((topic, i) => {
@@ -794,6 +802,12 @@ function specToBuild(sim, wu, topics, position = 's') {
     '## 1-S. Scenarios for §1', '', '1.S1 Given the work, when it runs, then it holds as decided. (1.1.1)', '',
   ].join('\n'));
   assert.deepStrictEqual(sim.run(['spec', 'land', wu]).invented, []);
+}
+
+// The corridor's second half, from a landed spec: reviewed and cut, and
+// ready to build's pick beginning the build. Answers what the pick ran.
+/** @param {Sim} sim @param {string} wu @param {'s'|'a'} [position] */
+function specBuilt(sim, wu, position = 's') {
   specReviewed(sim, wu);
   cutTheSpec(sim, wu, [{ name: 'The work', goal: 'The work holds as decided.', scenarios: ['1.S1'], sections: ['1'], relies_on: [] }]);
   const rows = readyToBuild(sim, wu).split('\n').flatMap((line) => {
@@ -1348,5 +1362,5 @@ function finished(sim, wu, { closed = false } = {}) {
 
 module.exports = {
   Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, gatesAnswered, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicBuildPick, linearBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed,
-  DECIDED_ITEMS, builders, taskBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finishClosed, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic,
+  DECIDED_ITEMS, specWritten, specBuilt, builders, taskBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finishClosed, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic,
 };

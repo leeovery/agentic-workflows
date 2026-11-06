@@ -151,8 +151,10 @@
 //   A question asked on a topic, or moved onto one, while the topic's
 //   decided close stands voids that close on the unit's manifest, under the
 //   same lock and in the same commit (checklist.cjs, 9.7.9), so the
-//   manifest alone says whether a close stands. Past the unit's spec no
-//   topic takes a write: a change is the spec's, asked for there (4.11.2).
+//   manifest alone says whether a close stands; a topic decided at its gate
+//   takes no question, asked there or moved to it — it reaches the topic as
+//   a message, which reopens it (10.2.7). Past the unit's spec no topic
+//   takes a write: a change is the spec's, asked for there (4.11.2).
 //   Then, the lock released, the knowledge base's copies are rendered
 //   against the ledger and indexed (ledger-copies.cjs), a failure a warning
 //   on an entry that stands (22.6.15).
@@ -175,7 +177,7 @@ const { derivedMove, movedRefusal, reverses } = require('./ledger-verdicts.cjs')
 const { heldAgainst } = require('./ledger-affected.cjs');
 const { newEvent, keepEvent, landKept } = require('./trust-log.cjs');
 const { checkUnparked } = require('./questions.cjs');
-const { voidDecidedClose } = require('./derivations.cjs');
+const { voidDecidedClose, itemOf } = require('./derivations.cjs');
 const { pastItsSpec } = require('./spec-standing.cjs');
 const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manifest.cjs');
 
@@ -584,6 +586,7 @@ function addressOf(cwd, said, dotpath, write) {
   if (topic !== null && pastItsSpec(cwd, manifest)) {
     throw new Error(`${said}: ${unit} has its spec — a topic exists only before it, and a change the person asks for is settled at ${unit}.specification`);
   }
+  if (write.event === 'asked' && topic !== null) checkUndecided(said, manifest, topic);
   const at = { dotpath, root, unit, manifest, phase, topic };
   checkPlaceLive(said, at, liveness(root));
   return at;
@@ -702,9 +705,23 @@ function checkDestination(said, at, given) {
 function checkDestinationLive(said, at, given, live) {
   const [to] = /** @type {string[]} */ (given.get('to'));
   if (roadmapItemOf(to) !== null) return;
-  if (!hasTopic(manifestOf(at.root, at.unit) ?? {}, to)) throw new Error(`${said}: ${at.unit} has no topic "${to}" to move the question to`);
+  const manifest = manifestOf(at.root, at.unit) ?? {};
+  if (!hasTopic(manifest, to)) throw new Error(`${said}: ${at.unit} has no topic "${to}" to move the question to`);
+  checkUndecided(said, manifest, to);
   const dead = live(at.unit, to);
   if (dead !== null) throw new Error(`${said}: --to names ${to}, which takes no question — ${dead}`);
+}
+
+/**
+ * Refuse, in the words of `said`, a question opened on a topic decided at
+ * its gate: it reaches the topic as a message, which reopens it (10.2.7),
+ * as the topic's entry says.
+ * @param {string} said @param {Record<string, any>} manifest @param {string} topic
+ */
+function checkUndecided(said, manifest, topic) {
+  if (itemOf(manifest, 'discussion', topic)?.status === 'completed') {
+    throw new Error(`${said}: the topic "${topic}" is decided — a question reaches it as a message sent to it, which reopens it: topic send`);
+  }
 }
 
 /** @param {IdFacts} facts */

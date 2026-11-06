@@ -460,6 +460,13 @@ function stagedBefore(cwd, unit, topic) {
 const stagingCall = (manifest, topic) => `${closesIntoSpec(manifest) ? `decided stage ${manifest.name} ${topic}` : `render decided ${manifest.name}.${topic}`} --file <payload.json>`;
 
 /**
+ * The verb a staged line's refusal names: a feature's, staged into its
+ * spec, `decided stage`; an epic's topic's, landed at its gate, `decided yes`.
+ * @param {Record<string, any>} manifest
+ */
+const linesSaid = (manifest) => (closesIntoSpec(manifest) ? 'decided stage' : 'decided yes');
+
+/**
  * The payload staged for the topic's close: refused where none is, or it
  * was staged against an earlier close, each refusal naming the call that
  * stages it.
@@ -626,13 +633,14 @@ function nextAfter(manifest, unit) {
  * The raises a staged line lands as, at the unit's level, the person's
  * product-wide decision relying on the decision it widens: its question
  * and the decision answering it; or, where it replaces a line, the
- * replacement of that line, the person's change of mind (8.9.2).
- * @param {string} unit @param {StagedLine} line
+ * replacement of that line, the person's change of mind (8.9.2); `said`
+ * the verb its refusal names (`linesSaid`).
+ * @param {string} unit @param {StagedLine} line @param {string} said
  * @returns {import('./ledger-write.cjs').Raised[]}
  */
-function lineRaises(unit, { id, question, asks, text, why, widens, replaces }) {
+function lineRaises(unit, { id, question, asks, text, why, widens, replaces }, said) {
   const place = { unit, phase: PHASE, topic: null };
-  const common = { said: 'decided yes', place, logs: null, checkRead: () => {} };
+  const common = { said, place, logs: null, checkRead: () => {} };
   const decision = { by: 'person', who_moved_whom: 'none', given: 'own', text, why, product_wide: true };
   if (replaces !== null) {
     return [{ ...common, lands: 'replace', linked: { replaces: replaces.id, reason: 'changed-mind', cause: null, relies_on: [widens] }, content: { ...decision, drops: [replaces.text] }, id }];
@@ -646,13 +654,14 @@ function lineRaises(unit, { id, question, asks, text, why, widens, replaces }) {
 /**
  * The raise a staged withdrawal lands as, at the unit's level: the
  * person's replacement of the line by the decision the one it widens now
- * stands as, not for the product (8.9.2).
- * @param {string} unit @param {StagedWithdrawal} withdrawal
+ * stands as, not for the product (8.9.2); `said` the verb its refusal
+ * names (`linesSaid`).
+ * @param {string} unit @param {StagedWithdrawal} withdrawal @param {string} said
  * @returns {import('./ledger-write.cjs').Raised}
  */
-function withdrawalRaise(unit, { id, line, text, why, now }) {
+function withdrawalRaise(unit, { id, line, text, why, now }, said) {
   return {
-    said: 'decided yes',
+    said,
     place: { unit, phase: PHASE, topic: null },
     lands: 'replace',
     linked: { replaces: line, reason: 'changed-mind', cause: null, relies_on: [now.id] },
@@ -694,15 +703,16 @@ function unreplacedLine(shower, manifest, topic, { lines, withdrawals }) {
  */
 function checkLines(cwd, manifest, topic, { lines, withdrawals }, warnings) {
   const unit = manifest.name;
+  const said = linesSaid(manifest);
   const firsts = [
-    ...lines.map((line, at) => ({ what: `line ${at + 1}`, raised: lineRaises(unit, line)[0] })),
-    ...withdrawals.map((withdrawal, at) => ({ what: `withdrawal ${at + 1}`, raised: withdrawalRaise(unit, withdrawal) })),
+    ...lines.map((line, at) => ({ what: `line ${at + 1}`, raised: lineRaises(unit, line, said)[0] })),
+    ...withdrawals.map((withdrawal, at) => ({ what: `withdrawal ${at + 1}`, raised: withdrawalRaise(unit, withdrawal, said) })),
   ];
   for (const { what, raised } of firsts) {
     try {
       checkRaised(cwd, raised, warnings);
     } catch (err) {
-      throw new Error(`${what} cannot land — ${messageOf(err).replace(/^decided yes: /, '')}; ${stagingCall(manifest, topic)} stages it again`);
+      throw new Error(`${what} cannot land — ${messageOf(err).replace(new RegExp(`^${said}: `), '')}; ${stagingCall(manifest, topic)} stages it again`);
     }
   }
 }
@@ -749,12 +759,13 @@ function closingYes(cwd, unit, topic, staged, warnings) {
   const manifest = loadWorkUnitManifest(cwd, unit);
   const drafts = checkCandidates(cwd, manifest, topic, added);
   checkLines(cwd, manifest, topic, staged, warnings);
+  const said = linesSaid(manifest);
   return {
     candidates: added.map(({ name }) => name),
     struck,
     land: () => ({
-      lines: staged.lines.map((line) => lineRaises(unit, line).map((raised) => landRaised(cwd, raised, warnings).landed.id).at(-1)),
-      withdrawn: staged.withdrawals.map((withdrawal) => landRaised(cwd, withdrawalRaise(unit, withdrawal), warnings).landed.id),
+      lines: staged.lines.map((line) => lineRaises(unit, line, said).map((raised) => landRaised(cwd, raised, warnings).landed.id).at(-1)),
+      withdrawn: staged.withdrawals.map((withdrawal) => landRaised(cwd, withdrawalRaise(unit, withdrawal, said), warnings).landed.id),
     }),
     /** @param {Record<string, any>} manifest @param {string} at @returns {Taken} */
     take: (manifest, at) => {

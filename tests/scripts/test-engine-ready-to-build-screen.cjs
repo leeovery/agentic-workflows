@@ -137,8 +137,15 @@ describe('a verdict on each call the person changed among the spec\'s gap answer
     const changed = write(dir(), 'replace', SPEC_AT, ['--replaces', call, '--reason', 'changed-mind'], { by: 'person', drops: ['never partial'], text: 'When the person asks.', why: 'The person wants it so.' });
     const spec = readState(dir(), layout.unit(UNIT, 'spec.md'));
     fs.rmSync(statePath(dir(), layout.unit(UNIT, 'spec.md')));
+    const cards = (/** @type {string} */ status) => {
+      const manifest = readManifest(dir(), UNIT);
+      manifest.phases.discussion.items.cards.status = status;
+      createManifest(dir(), UNIT, manifest);
+    };
+    cards('in-progress');
     const elsewhere = answered(dir(), `${UNIT}.discussion.cards`, 'Is a card saved?', { ...MADE, text: 'Never.' });
     write(dir(), 'replace', `${UNIT}.discussion.cards`, ['--replaces', elsewhere, '--reason', 'changed-mind'], { by: 'person', drops: ['never saved'], text: 'When asked.', why: 'The person wants it so.' });
+    cards('completed');
     written(dir(), spec.replace('\n## 2-S.', `\n2.1.3 A refund is partial when the person asks. [${changed}]\n\n## 2-S.`));
     cut(dir(), [CARDS, REFUNDS]);
     closeReady(dir());

@@ -87,7 +87,7 @@ const world = fixtureFrom('engine-mail-', (dir) => {
       },
       discussion: {
         items: {
-          commercialization: { status: 'in-progress' }, 'first-run': { status: 'completed' }, widgets: { status: 'postponed' },
+          commercialization: { status: 'in-progress' }, 'first-run': { status: 'in-progress' }, widgets: { status: 'postponed' },
           removal: { status: 'cancelled' }, export: { status: 'promoted', promoted_to: 'portability' },
         },
       },
@@ -107,6 +107,10 @@ const world = fixtureFrom('engine-mail-', (dir) => {
   for (const topic of ['commercialization', 'first-run']) {
     asked[topic] = ok(dir, ['ledger', 'ask', `${EPIC}.discussion.${topic}`], { env: SESSION, stdin: JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: `What of ${topic}?` }) }).id;
   }
+  const decided = readManifest(dir, EPIC);
+  decided.phases.discussion.items['first-run'].status = 'completed';
+  createManifest(dir, EPIC, decided);
+  commitAll(dir, 'first-run decided');
 });
 
 let dir;

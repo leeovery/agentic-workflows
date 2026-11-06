@@ -212,7 +212,7 @@ describe('striking a candidate (P8)', () => {
 });
 
 describe('what holds the close (9.S16, 9.S61)', () => {
-  it('closes with Claude\'s calls standing once nothing of the person\'s is open, and holds while an experiment still running measures a question', () => {
+  it('closes with Claude\'s calls standing once nothing of the person\'s is open, and holds while an experiment of the topic is still out, its question closed or not', () => {
     const timing = writeIn(dir(), 'ask', NOTE, [], { ...MADE, text: 'How fast does a note open?' });
     createManifest(dir(), UNIT, {
       ...readManifest(dir(), UNIT),
@@ -221,6 +221,10 @@ describe('what holds the close (9.S16, 9.S61)', () => {
     ok(dir(), ['checklist', 'done', 'decided', UNIT, 'note-window', 'closing-pass'], { env: SESSION });
     assert.match(refusedPristine(dir(), ['checklist', 'close', 'decided', UNIT, 'note-window'], { env: SESSION }).error, /has items open: questions-closed$/);
     writeIn(dir(), 'decide', NOTE, ['--answers', timing], { ...PERSON, text: 'Under a frame.', why: 'The person closed it while it ran.' });
+    assert.match(refusedPristine(dir(), ['checklist', 'close', 'decided', UNIT, 'note-window'], { env: SESSION }).error, /note-window's experiment E1 is still out/);
+    const ended = readManifest(dir(), UNIT);
+    ended.phases.experiment.items['note-window'] = { status: 'completed', experiments: { E1: { ...ended.phases.experiment.items['note-window'].experiments.E1, status: 'abandoned' } } };
+    createManifest(dir(), UNIT, ended);
     ok(dir(), ['checklist', 'close', 'decided', UNIT, 'note-window'], { env: SESSION });
   });
 });

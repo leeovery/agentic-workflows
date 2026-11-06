@@ -536,14 +536,16 @@ describe('conversation position', () => {
 
   it('a specification carries its recovery whole, at the unit: each live topic\'s record and its log, the unit\'s own record, the files linked canonical, then the spec once written and the cut once cut, and the review page while it is open, and no log of its own (24.2.6)', () => {
     install('leeway-specification-process');
-    workUnit('pay', 'epic', {
+    const pay = (/** @type {string} */ ledger) => workUnit('pay', 'epic', {
       discovery: { items: { ledger: { order: 1 }, refunds: { order: 2, cancelled: true } } },
-      discussion: { items: { ledger: { status: 'completed' }, refunds: { status: 'cancelled' } } },
+      discussion: { items: { ledger: { status: ledger }, refunds: { status: 'cancelled' } } },
     });
+    pay('in-progress');
     const log = write('.leeway/pay/topics/ledger/log.md');
     const made = { by: 'claude', who_moved_whom: 'none' };
     const asked = harness.ok(dir, ['ledger', 'ask', 'pay.discussion.ledger'], { env: env(), stdin: JSON.stringify({ ...made, text: 'What does the ledger hold?' }) }).id;
     const decided = harness.ok(dir, ['ledger', 'decide', 'pay.discussion.ledger', '--answers', asked], { env: env(), stdin: JSON.stringify({ ...made, text: 'Entries.', why: 'Because.' }) }).id;
+    pay('completed');
     const asset = write('.leeway/pay/assets/flow.png');
     ok(['asset', 'add', 'pay', 'pay/assets/flow.png', '--entry', decided, '--status', 'canonical']);
     ok(['session', 'label', 'pay', 'specification', 'pay']);

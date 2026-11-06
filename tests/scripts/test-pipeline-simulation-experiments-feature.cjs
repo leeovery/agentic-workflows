@@ -148,7 +148,7 @@ describe('pipeline simulation: experiments, in a feature', () => {
     for (const step of ['advance', 'approve', 'advance']) sim.run(['experiment', step, wu, wu, 'E1']);
     ledger(['decide', at, '--answers', budget], { by: 'person', who_moved_whom: 'none', text: 'Under a second.', why: 'It feels instant.' });
     for (const item of DECIDED_ITEMS) sim.run(['checklist', 'done', 'decided', wu, wu, item]);
-    sim.refuses(['checklist', 'close', 'decided', wu, wu], /^checklist close: cold-start's experiment E1 is still out — a feature's topic closes into its spec once each has concluded or been abandoned/);
+    sim.refuses(['checklist', 'close', 'decided', wu, wu], /^checklist close: cold-start's experiment E1 is still out — the topic closes once each has concluded or been abandoned/);
     sim.write(path.relative(sim.dir, path.join(e1.dir, 'report.md')), '# Report — E1\n\nCold launch lands at 0.8 s.\n');
     const concluded = sim.run(['experiment', 'conclude', wu, wu, 'E1', '--verdict', 'under a second holds']);
     assert.strictEqual(concluded.report_sent.topic, wu, 'the question closed where it was asked, so the report goes back there');

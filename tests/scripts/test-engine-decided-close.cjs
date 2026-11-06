@@ -11,7 +11,8 @@
 // 8.9.2); a message delivered or
 // a question opened since the close voiding it, the payload staged against
 // it refused by the screen and the yes alike, and a decision changed since
-// voiding nothing.
+// voiding nothing; a topic decided at its gate taking no question, asked
+// there or moved onto it.
 //
 // Layer: verb. World: the decided suites' (decided-world.cjs).
 // ---------------------------------------------------------------------------
@@ -108,7 +109,7 @@ describe('a topic set back in progress (P9, 10.2.7)', () => {
     ok(dir(), ['topic', 'send', UNIT, 'note-window', '--from', 'space-homing', '--content', scratch, '--slug', 'sync-off'], { env: SESSION });
     const asked = NOTE_MAP.sync.question;
     ok(dir(), ['topic', 'answered', UNIT, 'note-window', '001-sync-off', '--entry', asked], { env: SESSION });
-    const voided = 'decided.note-window was closed before note-window\'s discussion went on — a message delivered to it, or the discussion entered again — its items are worked afresh and it is closed again';
+    const voided = 'decided.note-window was closed before note-window\'s discussion went on — a message delivered to it, or a question opened on it — its items are worked afresh and it is closed again';
     assert.strictEqual(refusedPristine(dir(), ['render', 'decided', `${UNIT}.note-window`], { env: SESSION }).error, `render decided: ${voided}`);
     assert.strictEqual(refusedPristine(dir(), ['decided', 'yes', UNIT, 'note-window'], { env: SESSION }).error, `decided yes: ${voided}`);
     markAllButTheClosingPass(dir(), UNIT, 'note-window');
@@ -147,5 +148,20 @@ describe('a topic set back in progress (P9, 10.2.7)', () => {
     assert.ok(voided() > before, 'the move stamps the void afresh');
     assert.deepStrictEqual(stateGit(dir(), ['show', '--name-only', '--format=', 'HEAD']).trim().split('\n').sort(), [layout.ledger, layout.manifest(UNIT)].sort());
     assert.match(refusedPristine(dir(), ['render', 'decided', `${UNIT}.note-window`], { env: SESSION }).error, new RegExp(opened));
+  });
+});
+
+describe('a topic decided at its gate (10.2.7)', () => {
+  it('takes no question, asked there or moved onto it, each refusal naming the message that reopens it', () => {
+    close();
+    staged(NO_PAYLOAD);
+    run(answer('decided', 'y'));
+    assert.strictEqual(readManifest(dir(), UNIT).phases.discussion.items['note-window'].status, 'completed');
+    const decided = 'the topic "note-window" is decided — a question reaches it as a message sent to it, which reopens it: topic send';
+    const question = JSON.stringify({ ...MADE, text: 'Is the window resizable?' });
+    assert.strictEqual(refusedPristine(dir(), ['ledger', 'ask', NOTE], { env: SESSION, stdin: question }).error, `ledger ask: ${decided}`);
+    const homing = `${UNIT}.discussion.space-homing`;
+    const moved = writeIn(dir(), 'ask', homing, [], { ...MADE, text: 'Does a note remember its space?' });
+    assert.strictEqual(refusedPristine(dir(), ['ledger', 'move', homing, '--question', moved, '--to', 'note-window'], { env: SESSION, stdin: JSON.stringify(MADE) }).error, `ledger move: ${decided}`);
   });
 });

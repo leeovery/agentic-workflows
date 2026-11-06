@@ -29,8 +29,7 @@
 // that question closed reaches the topic as a message, through `topic send`,
 // which reopens a decided topic and commits its own delivery. A report owed
 // past the unit's spec is refused before the conclusion writes anything, as
-// is a spawn from a discussion past it (4.11.2); a spawn voids the
-// discussion's decided close where one stands (9.7.9). Known edge: a report
+// is a spawn from a discussion past it (4.11.2). Known edge: a report
 // owed to a promoted topic is refused by the send after the conclusion has
 // committed, and never arrives.
 //
@@ -62,7 +61,7 @@ const {
   isParentExperimentId,
   EXPERIMENT_SPAWN_PHASES,
 } = require('../kernel/manifest-schema.cjs');
-const { settleItemStatus, mailboxDir, voidDecidedClose } = require('./derivations.cjs');
+const { settleItemStatus, mailboxDir } = require('./derivations.cjs');
 const { releaseExperimentWaits, assertLegalTopicName } = require('./transitions.cjs');
 const { sendMessage } = require('./mail.cjs');
 const { pastItsSpec, assertBeforeSpec } = require('./spec-standing.cjs');
@@ -194,8 +193,7 @@ function liveSubs(item, parentId) {
  * (creating it, or setting a completed series back to in-progress — a new
  * spawn reopens the series), and locks the spawning item:
  * `awaiting_experiments` gains the id on the in-progress discussion the
- * question came from, whose decided close, where one stands, the spawn
- * voids (9.7.9). `question`, required on a spawn, names by a prefix of
+ * question came from. `question`, required on a spawn, names by a prefix of
  * its ledger id the question open on the topic's map the experiment measures; the record keeps
  * its full id, and the map shows the question waiting on it. A split (`parent`
  * names a running experiment) allocates `E{n}.{m}` under it — no lock moves
@@ -305,7 +303,6 @@ function createExperiment(cwd, workUnit, topic, { slug, from, parent, problem, q
     experiments[id] = { slug, status: 'conceived', ...(measured === null ? {} : { question: measured.id }) };
     const awaiting = Array.isArray(spawner.awaiting_experiments) ? spawner.awaiting_experiments : [];
     spawner.awaiting_experiments = [...awaiting, id];
-    if (from === 'discussion') voidDecidedClose(manifest, topic, new Date().toISOString());
     const dir = statePath(cwd, recordDir(workUnit, topic, id, experiments));
     // The problem file lands before the manifest names the record — a crash
     // between the two writes must never leave a conceived record with no

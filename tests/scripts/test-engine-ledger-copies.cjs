@@ -377,12 +377,13 @@ describe('a place set aside (5.8.17)', () => {
   });
 
   it('loses a unit\'s copies while it is cancelled, and has them back when it is completed from there', () => {
+    createManifest(dir(), 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
+    ask('mint.discussion.mint', 'Does Mint float its notes?');
     const finished = { items: { mint: { status: 'completed' } } };
     createManifest(dir(), 'mint', {
       work_type: 'feature',
       phases: { discussion: finished, specification: finished, planning: finished, implementation: finished, review: finished },
     });
-    ask('mint.discussion.mint', 'Does Mint float its notes?');
 
     ok(dir(), ['workunit', 'cancel', 'mint']);
     assert.strictEqual(copy(MINT_COPY), null);

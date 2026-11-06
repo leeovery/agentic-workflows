@@ -8,14 +8,12 @@
 // and what the phase's own row refuses. Where another live session holds the
 // place, or what the row holds beyond it, it asks first (18.4.21, 12.7.8) —
 // its question the whole answer, nothing written — and `--take` enters all
-// the same. Otherwise it starts what is
-// not yet started, writing nothing ahead of its opening (9.3.1), and commits
-// that start — discussion's entry at a feature's topic closed into its spec
-// voiding that close, the discussion going on (9.7.9), in the same commit:
-// an epic's decided gate reads a question opened since its close from the
-// ledger itself; records where the conversation is working — its position, the
-// tmux label and the place's presence, as `session label` and `topic start`
-// do; and answers what the phase needs to begin or resume, in sections: any
+// the same. Otherwise it starts what is not yet started, writing nothing
+// ahead of its opening (9.3.1), and commits that start — discussion's entry
+// at a feature's topic closed into its spec voiding that close, the
+// discussion going on (9.7.9), in the same commit; records where the
+// conversation is working — its position, the tmux label and the place's
+// presence, as `session label` and `topic start` do; and answers what the phase needs to begin or resume, in sections: any
 // question first, then a DATA naming what to read, as paths and engine
 // calls, never their contents, read as the place stood before the entry
 // wrote anything, and the log the conversation keeps, where it keeps one,
@@ -403,8 +401,9 @@ function voidOnEntry(cwd, unit, topic) {
 
 /**
  * Start what the row starts, void the close its entry goes on past, and
- * leave where a level move leaves, committing both in one hold of the writer lock: the response's commit fields. The
- * start commits the manifest it wrote, and the move the logs leaving wrote,
+ * leave where a level move leaves, committing all three in one hold of the
+ * writer lock: the response's commit fields. The start and the void commit
+ * the manifest they wrote, and the move the logs leaving wrote,
  * a topic's sitting among them; every log changed rides along — a start's
  * own commit's warnings, where it made one, among the response's.
  * @param {string} cwd @param {Entry} entry @param {Entering} at @param {Held} held @param {Departure|null} departure
