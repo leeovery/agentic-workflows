@@ -24,7 +24,8 @@
 //   descends from it, with something past it, is the seam's to check
 //   (landing.cjs).
 // - Holds: whether the task's pull request is in its phase's stack, read
-//   off GitHub and fetching nothing, as the close in step reads it (7.2.4).
+//   off GitHub and fetching nothing, as the close in step reads it (7.2.4);
+//   opened at, that pull request's head as GitHub holds it.
 // - Open: the task's branch pushed under its own name (7.2.14), then its
 //   pull request opened onto the chain's tip, titled with its landing's
 //   subject, its body the rest of that message, with the task's id. Refused,
@@ -289,6 +290,9 @@ function stacksFor(ctx, host, ref) {
 
 /** Whether its phase's stack holds the task's pull request, refused as `stacksFor` refuses it. @param {LandingContext} ctx @param {TaskRef} ref */
 const holds = (ctx, ref) => pullOf(stacksFor(ctx, hostOf(ctx), ref).own, ref) !== undefined;
+
+/** The head of the task's pull request in its phase's stack, as GitHub holds it — null where the stack holds none — refused as `stacksFor` refuses it. @param {LandingContext} ctx @param {TaskRef} ref */
+const openedAt = (ctx, ref) => pullOf(stacksFor(ctx, hostOf(ctx), ref).own, ref)?.oid ?? null;
 
 /**
  * The chain's tip a task lands on (see the header) — null where its phase's
@@ -786,6 +790,7 @@ module.exports = {
   landsOn: fetchedDefault,
   chainTip,
   holds,
+  openedAt,
   open,
   chain,
   mergePhase,

@@ -27,7 +27,8 @@ require('./hermetic-env.cjs');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { call, ok, okSections, writeState, createFile, commitAll, git, statePath, layout } = require('./engine-harness.cjs');
+const { spawnSync } = require('child_process');
+const { call, ok, okSections, writeState, createFile, commitAll, statePath, layout, GIT_TIMEOUT_MS } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
@@ -122,8 +123,9 @@ const summaryChunks = (dir) => store.allChunks(store.loadStore(knowledgeFiles(st
 /**
  * A git command run in the project as Claude runs one in the conversation
  * `as` names: the shell guard asked first, as Claude Code asks it before the
- * command, and the command run once it passes — a refusal failing the
- * test, in the guard's words. Its output.
+ * command, and the command run once it passes, its output taken as Claude
+ * Code takes it — a refusal, or the command failing, failing the test in
+ * the guard's words or git's. Its output.
  * @param {string} dir @param {string[]} args git's, none holding a space @param {As} as
  */
 function guardedGit(dir, args, as) {
@@ -133,7 +135,9 @@ function guardedGit(dir, args, as) {
     stdin: JSON.stringify({ hook_event_name: 'PreToolUse', cwd: dir, session_id: as.env.CLAUDE_CODE_SESSION_ID, tool_name: 'Bash', tool_input: { command } }),
   });
   if (asked.code !== 0) throw new Error(`the shell guard refuses \`${command}\`: ${asked.stderr.trim()}`);
-  return git(dir, args);
+  const ran = spawnSync('git', args, { cwd: dir, encoding: 'utf8', timeout: GIT_TIMEOUT_MS });
+  if (ran.status !== 0) throw new Error(`\`${command}\` failed: ${ran.stderr.trim()}`);
+  return ran.stdout;
 }
 
 /** Finish's checklist worked and closed in the conversation `as` names, the build's log written. @param {string} dir @param {As} as */

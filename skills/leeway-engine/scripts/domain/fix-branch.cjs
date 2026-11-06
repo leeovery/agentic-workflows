@@ -11,8 +11,9 @@
 // tip of the nearest fix before it not closed, so a set's fixes stack as
 // their pull requests chain (7.2.3) and a closed fix's work never lands
 // (`fixBase`). A fix's own work is a commit its branch holds past the branch
-// it is laid on (`fixWork`), which a later fix not closed is laid on where
-// its branch holds a commit of it (`laidOn`) — what a fix's end reads
+// it is laid on (`fixWork`), which another fix not closed is laid on where
+// its branch holds a commit of it — a later fix on an earlier one's
+// (`laidOn`, `laidBeneath`) — what a fix's opening and end read
 // (fix-end.cjs) and its record (quick-fix-record.cjs). The commit door takes
 // a fix's commit on its branch alone (commit-task.cjs). The close, once its
 // fixes have landed, puts the checkout back on the branch the repository
@@ -147,6 +148,12 @@ function fixWork(cwd, ref, fixes) {
   return { branch, base, own: holdsBeyond(root, [branch], [base]) };
 }
 
+/** Whether `branch` holds a commit of a fix's own work. @param {string} root @param {string} branch @param {{branch: string, base: string}} work the fix's */
+const holdsWorkOf = (root, branch, work) => !isAncestor(root, mergeBase(root, work.branch, branch), work.base);
+
+/** Fixes' numbers, lowest first. @param {{n: number}[]} fixes */
+const lowestFirst = (fixes) => fixes.map(({ n }) => n).sort((a, b) => a - b);
+
 /**
  * The later fixes not closed laid on a fix's own work — each whose branch
  * holds a commit of it — by number, lowest first.
@@ -157,10 +164,23 @@ function fixWork(cwd, ref, fixes) {
 function laidOn(cwd, ref, work, fixes) {
   const root = codeRoot(cwd);
   const closed = closedFixes(fixes);
-  return phaseFixes(root, ref, (n) => n > ref.n && !closed.includes(n))
-    .filter(({ branch }) => !isAncestor(root, mergeBase(root, work.branch, branch), work.base))
-    .map(({ n }) => n)
-    .sort((a, b) => a - b);
+  return lowestFirst(phaseFixes(root, ref, (n) => n > ref.n && !closed.includes(n)).filter(({ branch }) => holdsWorkOf(root, branch, work)));
+}
+
+/**
+ * The earlier fixes not closed a fix is laid on — each whose own work its
+ * branch holds a commit of — by number, lowest first; none where the
+ * repository holds no branch of it.
+ * @param {string} cwd @param {TaskRef} ref @param {TaskDetail[]} fixes the set's, as the tracker holds them
+ * @returns {number[]}
+ */
+function laidBeneath(cwd, ref, fixes) {
+  const root = codeRoot(cwd);
+  const branch = fixBranchOf(root, ref);
+  if (branch === null) return [];
+  const closed = closedFixes(fixes);
+  const below = phaseFixes(root, ref, (n) => n < ref.n && !closed.includes(n));
+  return lowestFirst(below.filter((fix) => holdsWorkOf(root, branch, { branch: fix.branch, base: fixBase(cwd, { ...ref, n: fix.n }, closed) })));
 }
 
 /**
@@ -278,4 +298,4 @@ function checkOutLanding(cwd, unit) {
   return lands;
 }
 
-module.exports = { refuseDirty, refuseDirtyClose, checkOutFix, checkOutLanding, fixWayOn, closedFixes, fixWork, laidOn, keptFixes, setFixesAside, keptBranches };
+module.exports = { refuseDirty, refuseDirtyClose, checkOutFix, checkOutLanding, fixWayOn, closedFixes, fixWork, laidOn, laidBeneath, keptFixes, setFixesAside, keptBranches };

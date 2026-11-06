@@ -936,16 +936,19 @@ function moveTo(branch, to, how) {
 /**
  * The refusal of a task whose branch has moved since it was opened at
  * `was`, to `now` — moved on, or rewritten: the branch kept as it stands,
- * a task of its own, and put back.
+ * a task of its own, and put back — opening on `said`, and ending on `then`
+ * once it is (`remedy`).
  * @param {string} root @param {string} shown @param {string} branch @param {string} was @param {string} now
+ * @param {{said?: string, then?: string}} [opts]
  * @returns {string}
  */
-function movedSinceOpened(root, shown, branch, was, now) {
+function movedSinceOpened(root, shown, branch, was, now, { said = 'land', then } = {}) {
   const [from, to] = [short(was), short(now)];
   const way = remedy(root, branch, moveTo(branch, from, `put ${branch} back`), {
+    then,
     note: (kept) => `the change from ${from} to ${to}, on ${kept}, is a task of its own`,
   });
-  return `land: task ${shown}'s branch ${branch} has moved since it was opened at ${from}, to ${to} — ${way}`;
+  return `${said}: task ${shown}'s branch ${branch} has moved since it was opened at ${from}, to ${to} — ${way}`;
 }
 
 /**

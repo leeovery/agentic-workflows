@@ -31,7 +31,8 @@
 //   (landing.cjs); putting a parallel task there is Claude's merge-back
 //   (12.7.1), so the driver never rebases.
 // - Holds: whether the task's phase's stack landed it, as the close in step
-//   reads it (7.2.4).
+//   reads it (7.2.4); opened at, where its branch stood when it opened, as
+//   its ref records it.
 // - Open: the squash commits the task's tree onto the phase's branch, which
 //   is exactly the task's own change while that branch's tree is the chain
 //   tip's, and the task holds no other task's work the tip does not and the
@@ -649,6 +650,7 @@ module.exports = {
   serves: () => false,
   chainTip,
   holds,
+  openedAt,
   open,
   chain,
   mergePhase,

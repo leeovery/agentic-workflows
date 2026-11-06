@@ -48,7 +48,7 @@ const METHODS = Object.freeze({
     optional: /** @type {const} */ ([]),
   },
   landing: {
-    required: /** @type {const} */ (['serves', 'chainTip', 'holds', 'open', 'chain', 'mergePhase', 'nextMerge']),
+    required: /** @type {const} */ (['serves', 'chainTip', 'holds', 'openedAt', 'open', 'chain', 'mergePhase', 'nextMerge']),
     optional: /** @type {const} */ (['assertServes', 'landsOn', 'finished', 'protectBranch', 'setSquashDefault']),
   },
 });
@@ -202,7 +202,10 @@ const METHODS = Object.freeze({
  * null where the task's phase's stack holds it already; `holds`, whether it
  * does, fetching and writing nothing, as the close in step asks it of every
  * task of a phase, the stacks read once on a context that keeps its reads
- * (landing-git.cjs, `readOnce`); `chain`, null where the task is not open
+ * (landing-git.cjs, `readOnce`); `openedAt`, the commit its pull request
+ * holds of its branch — fetching and writing nothing, null where nothing
+ * records one, as a task landed by hand leaves it — which the seam reads
+ * the branch as it stands against; `chain`, null where the task is not open
  * there; `mergePhase`, null where no task of the phase is open there, and
  * `already` where it is merged; a merge, what it was warned of.
  * `nextMerge` answers the merge finish makes next there — its phase, and
@@ -225,6 +228,7 @@ const METHODS = Object.freeze({
  *   setSquashDefault?: HostSetting,
  *   chainTip: (ctx: LandingContext, task: LandingTask) => ChainTip|null,
  *   holds: (ctx: LandingContext, ref: TaskRef) => boolean,
+ *   openedAt: (ctx: LandingContext, ref: TaskRef) => string|null,
  *   open: (ctx: LandingContext, task: LandingTask, tip: ChainTip) => {base: string},
  *   chain: (ctx: LandingContext, ref: TaskRef) => {stack: string[]}|null,
  *   mergePhase: (ctx: LandingContext, phase: number) => {into: string, merged: string[], warnings?: string[]}|{into: string, already: true, warnings?: string[]}|null,

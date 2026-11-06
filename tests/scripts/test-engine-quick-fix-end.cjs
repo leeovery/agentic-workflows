@@ -1,11 +1,15 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// How a quick-fix's fix ends (leeway-engine/scripts/domain/fix-end.cjs;
-// task-verbs.cjs; fix-branch.cjs; quick-fix-record.cjs): `task done` taking
-// a fix holding a commit of its own past the branch it is laid on, opened
-// to land as its branch stands — refused otherwise, naming its opening, or
-// its close as met where it holds none (R1); `task close` taking a fix
+// How a quick-fix's fix opens and ends (leeway-engine/scripts/domain/
+// fix-end.cjs; landing.cjs; task-verbs.cjs; fix-branch.cjs;
+// quick-fix-record.cjs): `land open` refusing a fix laid on earlier fixes
+// not opened, naming each and the lowest one's opening, passing over those
+// opened; `task done` taking a fix holding a commit of its own past the
+// branch it is laid on, opened to land — refused otherwise, naming its
+// opening, or its close as met where it holds none (R1), and one whose
+// branch moved past its pull request on every driver in the landing
+// conformance suite's quick-fix; `task close` taking a fix
 // holding no work of its own, even one a later fix is laid on — that fix
 // then opening onto the fix below, past the one closed (R4) — and one
 // holding work neither opened to land nor laid on by a later fix not
@@ -87,6 +91,18 @@ const held = (n, why) => `task close: task 1.${n} of ${UNIT} holds work of its o
 
 /** The records' headings in `summary.md`, in order. */
 const headings = () => readState(dir, layout.unit(UNIT, 'summary.md')).split('\n').filter((line) => line.startsWith('## '));
+
+describe('land open <quick-fix> <fix>', () => {
+  it('refuses a fix laid on earlier fixes not opened, naming each and the lowest one\'s opening, writing nothing — those opened, passing over them', () => {
+    dir = world();
+    changed(3, DOCS, 'docs/flags.md');
+    changed(4, MAN, 'docs/man.md');
+    changed(5, BACK, 'docs/back.md');
+    const refusal = refused(['land', 'open', UNIT, '1.5']);
+
+    assert.strictEqual(refusal, `land: task 1.5 of ${UNIT} is laid on 1.3, 1.4, not opened to land — a fix opens after each fix it is laid on: land open ${UNIT} 1.3`);
+  });
+});
 
 describe('task done <quick-fix> <fix> (R1)', () => {
   it('refuses a fix not opened to land, naming its opening, and one holding no commit of its own, naming its close as met — which closes it; opened, the fix is done', () => {

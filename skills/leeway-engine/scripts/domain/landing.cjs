@@ -8,12 +8,14 @@
 // phases, after every other (7.2.6). `open` and `chain` refuse a task with
 // no account taken of its review as it stands (task-account.cjs, 12.14),
 // `open` taking a quick-fix's, which no pair reviews and which owes none
-// (19.5.3); `open` a bugfix's reproducing task until its test's series
-// proves the bug at its tip (bug-proven.cjs, 15.5.3), and a task of a fix
-// phase whose branch does not descend from the unit's work not landed below
-// it, which a fix phase is built on (review-change.cjs, 7.2.6); `chain` a
-// task its pair has not passed, read off its rounds' reports, or one
-// changed under its last round since (round-report.cjs, 12.1.4); and
+// (19.5.3), and refusing a quick-fix's fix laid on one not opened, every
+// driver alike (fix-end.cjs); `open` a bugfix's reproducing task until its
+// test's series proves the bug at its tip (bug-proven.cjs, 15.5.3), and a
+// task of a fix phase whose branch does not descend from the unit's work
+// not landed below it, which a fix phase is built on (review-change.cjs,
+// 7.2.6); `chain` a task its pair has not passed, read off its rounds'
+// reports, or one changed under its last round since (round-report.cjs,
+// 12.1.4); and
 // `phase` a phase the cut holds until its phase review has passed and its
 // fixes are done, as the phase's close reads it (phase-checks.cjs, 7.2.4).
 // `chain` answers, where the task chained is the last of a phase of the cut
@@ -29,8 +31,10 @@
 // move, which of its fixes have a pull request opened or landed
 // (`openedTasks`, workunit-move.cjs), and for its close, which of its fixes
 // are not (`unchained`), and whether every phase is merged where it lands,
-// as a merge made by hand on a host leaves it before the default branch
-// here is brought to it (`allMerged`); and, for a task with nothing of its
+// as a merge made by hand on a host leaves it before the default branch here
+// is brought to it (`allMerged`); for a quick-fix's fix done, whether its
+// branch has moved past what its pull request holds (`movedSinceOpening`);
+// and, for a task with nothing of its
 // unit's below it, where it starts in each repository (`landingTips`).
 //
 // What every driver shares is settled here: the names (landing-names.cjs);
@@ -121,6 +125,7 @@ const phaseChecks = () => require('./phase-checks.cjs');
 const scratch = () => require('./scratch.cjs');
 const reviewChange = () => require('./review-change.cjs');
 const account = () => require('./task-account.cjs');
+const fixEnd = () => require('./fix-end.cjs');
 const notes = () => require('./notes.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
@@ -562,8 +567,8 @@ function refuseUnproven(cwd, ref) {
  * type and title the tracker holds for it; `already` where it is opened
  * wherever it touches, so a rerun reads finished work as done. A task the
  * tracker lacks is refused as the read finds it; a bugfix's reproducing
- * task while its bug is not proven, and a fix phase's off the work below
- * it, before anything opens.
+ * task while its bug is not proven, a fix phase's off the work below it,
+ * and a quick-fix's fix laid on one not opened, before anything opens.
  * @param {string} cwd @param {string} unit @param {string} task shown, `{phase}.{n}`
  */
 function landOpen(cwd, unit, task) {
@@ -576,6 +581,7 @@ function landOpen(cwd, unit, task) {
   carrying(warnings ?? [], () => account().refuseUnaccounted(cwd, ref, 'land'));
   carrying(warnings ?? [], () => refuseUnproven(cwd, ref));
   carrying(warnings ?? [], () => refuseOffBase(cwd, project, landing));
+  carrying(warnings ?? [], () => fixEnd().refuseOpenedBefore(cwd, ref));
   return withDriver(cwd, (driver) => {
     const steps = touching(project, driver, landing, holding).map(({ ctx, tip }) => ({ ctx, act: () => driver.open(ctx, landing, tip) }));
     const already = steps.length === 0 ? { already: true } : {};
@@ -791,6 +797,35 @@ function openedTasks(cwd, unit, refs) {
 }
 
 /**
+ * Where a task's branch has moved past what its pull request holds — the
+ * pull request not holding the branch's tip, in a repository its change
+ * touches: the refusal, the branch kept as it stands, a task of its own,
+ * and put back (`movedSinceOpened`, landing-git.cjs), opening on `said` and
+ * ending on `then`; null where its pull request holds the branch as it
+ * stands wherever it records one (`openedAt`). Read off git and the host,
+ * writing and fetching nothing.
+ * @param {string} cwd @param {string} unit @param {import('./drivers.cjs').TaskDetail} held
+ * @param {{said: string, then: string}} words
+ * @returns {string|null}
+ */
+function movedSinceOpening(cwd, unit, held, words) {
+  const project = projectOf(cwd, unit);
+  const driver = /** @type {LandingDriver} */ (chosenDriver(cwd, 'landing').driver);
+  const { task, holding } = landingOf(project, held.ref, held);
+  for (const repo of holding) {
+    const ctx = contextOf(project, repo);
+    const moved = inRepo(ctx.repo, () => {
+      const at = driver.openedAt(ctx, task.ref);
+      const tip = lg.branches(ctx.root).get(task.branch);
+      if (at === null || tip === undefined || lg.isAncestor(ctx.root, tip, at)) return null;
+      return lg.movedSinceOpened(ctx.root, shownTask(task.ref), task.branch, at, tip, words);
+    });
+    if (moved !== null) return moved;
+  }
+  return null;
+}
+
+/**
  * Whether every phase of the unit's is merged where it lands, as the driver
  * reads it (`nextMerge`), in each repository holding its work — read off
  * git and the host, writing and fetching nothing.
@@ -829,4 +864,4 @@ function landedTasks(cwd, unit, repos, from = null, on = (repo) => [`refs/heads/
   }));
 }
 
-module.exports = { LAND_USAGE, landOpen, landChain, landPhase, landFinish, landedTasks, openedTasks, allChained, landingTips, mutationRun, unchained, allMerged };
+module.exports = { LAND_USAGE, landOpen, landChain, landPhase, landFinish, landedTasks, openedTasks, allChained, landingTips, mutationRun, unchained, allMerged, movedSinceOpening };
