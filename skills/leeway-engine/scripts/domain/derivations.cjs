@@ -39,8 +39,8 @@ function decidedCloseStands(manifest, topic) {
 
 /**
  * Record on the unit's manifest, as it is saved, that the topic's
- * discussion has gone on — a message delivered, an experiment's report, the
- * discussion entered again, a question asked or moved onto it — so its
+ * discussion has gone on — a message delivered, an experiment's report, a
+ * feature's discussion entered again, a question asked or moved onto it — so its
  * decided close, where one stands, is void (9.7.9): whether it was.
  * @param {Record<string, any>} manifest @param {string} topic @param {string} at
  */

@@ -10,8 +10,10 @@
 // its question the whole answer, nothing written — and `--take` enters all
 // the same. Otherwise it starts what is
 // not yet started, writing nothing ahead of its opening (9.3.1), and commits
-// that start — discussion's entry at a topic whose decided close stands
-// voiding that close, the discussion going on (9.7.9), in the same commit; records where the conversation is working — its position, the
+// that start — discussion's entry at a feature's topic closed into its spec
+// voiding that close, the discussion going on (9.7.9), in the same commit:
+// an epic's decided gate reads a question opened since its close from the
+// ledger itself; records where the conversation is working — its position, the
 // tmux label and the place's presence, as `session label` and `topic start`
 // do; and answers what the phase needs to begin or resume, in sections: any
 // question first, then a DATA naming what to read, as paths and engine
@@ -70,7 +72,7 @@ const { statePath } = require('../kernel/state-root.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { liveTopics } = require('./ledger-units.cjs');
 const { seedFiles } = require('./reads.cjs');
-const { computeTopicLifecycle, itemOf, briefFile, topicTitle, topicKey, decidedCloseStands, voidDecidedClose } = require('./derivations.cjs');
+const { computeTopicLifecycle, itemOf, briefFile, topicTitle, topicKey, closedIntoSpec, voidDecidedClose } = require('./derivations.cjs');
 const { unitInProgress, assertPhaseHeld, phaseStanding } = require('./topic-standing.cjs');
 const { startTopic } = require('./transitions.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
@@ -287,7 +289,7 @@ function topicRow(phase, reads) {
     standing: phaseStanding(phase),
     unstarted: ({ manifest, topic = '' }) => ['unstarted', undefined].includes(itemOf(manifest, phase, topic)?.status),
     start: (cwd, unit, topic = '') => { startTopic(cwd, unit, phase, topic); },
-    ...(phase === 'discussion' ? { voids: (/** @type {Standing} */ { manifest, topic = '' }) => decidedCloseStands(manifest, topic) } : {}),
+    ...(phase === 'discussion' ? { voids: (/** @type {Standing} */ { manifest }) => closedIntoSpec(manifest) } : {}),
     questions: mailRaised,
     reads,
     log: ({ unit, topic = '' }) => topicLog(unit, topic),
@@ -389,8 +391,9 @@ function heldAt(cwd, phase, unit, place) {
 }
 
 /**
- * The topic's decided close voided as its discussion is entered again
- * (9.7.9), read and saved under the writer lock the caller holds.
+ * A feature's topic's close into its spec voided as its discussion is
+ * entered again (9.7.9), read and saved under the writer lock the caller
+ * holds.
  * @param {string} cwd @param {string} unit @param {string} topic
  */
 function voidOnEntry(cwd, unit, topic) {

@@ -20,7 +20,7 @@
 // as it closed. Decided's keeps `ledger_at`, the ledger's last line
 // as it closed; `voided?: at`, when the topic's discussion went on since
 // while the close stood — a message or an experiment's report delivered
-// (mail.cjs), the discussion entered again (enter.cjs), a question asked or
+// (mail.cjs), a feature's discussion entered again (enter.cjs), a question asked or
 // moved onto it (ledger-write.cjs), each through derivations.cjs's
 // `voidDecidedClose` — so the manifest alone says whether a close stands; and `taken?: at`, when the decided gate's yes took its
 // close (decided.cjs). What the engine checks is worked out at every call and
@@ -66,7 +66,7 @@
 // closed again — a decided topic a message set back in progress (10.2.7,
 // mail.cjs) — is worked afresh. The decided gate stands on a close nothing
 // new has come to since (`decidedClose`): a message delivered to the topic,
-// the discussion entered again, or a question opened on it — asked there,
+// a feature's discussion entered again, or a question opened on it — asked there,
 // or moved to it — after the close voids it, as the yes taking it does, so
 // the topic is worked afresh and closed again before its gate shows again,
 // every engine item holding still. A decision changed since voids nothing.

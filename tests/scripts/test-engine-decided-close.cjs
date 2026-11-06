@@ -118,6 +118,14 @@ describe('a topic set back in progress (P9, 10.2.7)', () => {
     assert.strictEqual(refusedPristine(dir(), ['decided', 'yes', UNIT, 'note-window'], { env: SESSION }).error, `decided yes: ${earlier}`);
   });
 
+  it('keeps an epic topic\'s close when its discussion is entered again between its close and its gate: the gate reads what was opened since from the ledger, and draws', () => {
+    close();
+    assert.match(staged(NO_PAYLOAD), /MENU: decided/);
+    ok(dir(), ['enter', 'discussion', UNIT, 'note-window', '--take'], { env: SESSION });
+    assert.strictEqual(readManifest(dir(), UNIT).checklists.decided['note-window'].voided, undefined);
+    assert.match(screen(), /MENU: decided/);
+  });
+
   it('voids the close with a question opened on the topic since — asked there, or moved to it, each stamping the void on the manifest in its own commit — and never with a decision changed', () => {
     close();
     staged(NO_PAYLOAD);
