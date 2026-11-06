@@ -385,7 +385,7 @@ function waitClause(blocking) {
  * artifact is knowledge-base indexed, index it (warn-don't-block). The item
  * must exist; a cancelled item must go through reactivate first; an item
  * holding a live wait — evidence it awaits — refuses naming it. A discussion
- * never completes here: it closes at its decided gate. No git commit.
+ * never completes here: it closes on its decided checklist. No git commit.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} phase
@@ -397,7 +397,7 @@ function completeTopic(cwd, workUnit, phase, topic) {
   assertNotBuildPlace(phase);
   assertNotDerived(phase, 'the experiment item is derived bookkeeping — each experiment concludes or is abandoned (experiment conclude/abandon), and the item closes itself when the last record ends');
   if (phase === 'discussion') {
-    throw new Error('a discussion closes at its decided gate — `checklist close decided`, then `render decided` and the yes, which runs `decided yes`');
+    throw new Error('a discussion closes on its decided checklist, `checklist close decided` — an epic\'s then at its decided gate, `render decided` and the yes, which runs `decided yes`; a feature\'s into its spec, `decided stage`, its close taken at ready to build');
   }
   withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
@@ -460,7 +460,7 @@ function reopenTopic(cwd, workUnit, phase, topic) {
   assertNotBuildPlace(phase);
   assertNotDerived(phase, 'the experiment item is derived bookkeeping — a new spawn reopens the series (experiment create), never topic reopen');
   if (phase === 'discussion') {
-    throw new Error('a decided discussion reopens through a message sent to it (topic send), never topic reopen');
+    throw new Error('a discussion decided, or closed into its spec, reopens through a message sent to it (topic send), never topic reopen');
   }
   return withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);

@@ -414,7 +414,7 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render send-report <work-unit>.<topic> --sent <path>
   render map <work-unit>.<topic>
   render decided <work-unit>.<topic> [--file <payload.json>] [--calls]
-  render decided-strike <work-unit>.<topic>
+  render decided-strike <work-unit>.<topic> [--page]
   render wait-agents <work-unit>.<topic>   (empty when no agent of the topic is running)
   render start-this-work [--file <payload.json>]
   render approve-map <work-unit> [--file <payload.json> | --sweep]
@@ -1309,16 +1309,19 @@ function runChecklist(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
-// decided — the person's yes at a topic's decided gate, and a candidate
-// struck from its screen or its strike undone (domain/decided.cjs).
+// decided — the person's yes at a topic's decided gate, a candidate struck
+// from its screen or its strike undone, and a feature's topic closed into
+// its spec (domain/decided.cjs).
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */
 function runDecided(call, argv) {
+  const { opts, flags, positional } = parseArgs(argv, ['page']);
   try {
-    const answer = runDecidedVerb(call.cwd, argv);
-    // The yes releases the topic's slot, as a conclusion does.
-    if (argv[0] === 'yes') clearQuietly(call.cwd, argv[1], 'discussion', argv[2]);
+    const answer = runDecidedVerb(call.cwd, positional, opts, flags);
+    // The yes, and a feature's close into its spec, release the topic's
+    // slot, as a conclusion does.
+    if (positional[0] === 'yes' || positional[0] === 'stage') clearQuietly(call.cwd, positional[1], 'discussion', positional[2]);
     respond(call, answer);
   } catch (err) {
     failJson(call, err);

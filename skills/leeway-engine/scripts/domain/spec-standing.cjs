@@ -18,7 +18,12 @@
 //   way on from what the person was doing there.
 // - The topics are settled once a live topic is decided and every live
 //   topic is — a cancelled or postponed topic is not live — and a bugfix's
-//   one topic once its investigation has concluded (11.2.1, 18.5.1).
+//   one topic once its investigation has concluded (11.2.1, 18.5.1). A
+//   feature's one topic is settled for its spec once nothing of the person's
+//   is open on it and its closing pass has run, before it is decided: its
+//   decided checklist closed and its close standing, so a message delivered
+//   to it since unsettles it (11.2.1, 9.7.9); the one screen, decided and
+//   ready to build, marks it decided (11.8.5).
 // - The spec is entered once the topics are settled, each refusal naming
 //   the way on: an epic's topics still open are worked from its menu or
 //   postponed to the roadmap (18.5.2), and an epic with none live has its
@@ -30,7 +35,7 @@ const fs = require('fs');
 const { PRODUCT } = require('../kernel/manifest-schema.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { manifestOf, liveTopics } = require('./ledger-units.cjs');
-const { buildBegun, computeTopicLifecycle, itemOf, topicTitles, goesBy } = require('./derivations.cjs');
+const { buildBegun, closedIntoSpec, computeTopicLifecycle, itemOf, topicTitles, goesBy } = require('./derivations.cjs');
 const { specPath } = require('./spec-sections.cjs');
 
 /** @typedef {'none'|'written'|'concluded'} SpecStanding */
@@ -107,11 +112,14 @@ function specTopics(manifest) {
   return manifest.work_type === 'epic' ? liveTopics(manifest.name, manifest) : [manifest.name];
 }
 
-/** Whether a topic is settled: decided, a bugfix's once its investigation has concluded. @param {Record<string, any>} manifest @param {string} topic */
+/**
+ * Whether a topic is settled: decided, a bugfix's once its investigation has
+ * concluded, a feature's once it has closed into its spec.
+ * @param {Record<string, any>} manifest @param {string} topic
+ */
 function settled(manifest, topic) {
-  return manifest.work_type === 'bugfix'
-    ? itemOf(manifest, 'investigation', topic)?.status === 'completed'
-    : computeTopicLifecycle(manifest, topic).lifecycle === 'decided';
+  if (manifest.work_type === 'bugfix') return itemOf(manifest, 'investigation', topic)?.status === 'completed';
+  return computeTopicLifecycle(manifest, topic).lifecycle === 'decided' || closedIntoSpec(manifest);
 }
 
 /** Whether the unit's topics are settled, so its spec can be written. @param {Record<string, any>} manifest */
@@ -125,7 +133,7 @@ function topicsSettled(manifest) {
  * @type {Readonly<Record<string, (unit: string) => string>>}
  */
 const OPEN_TOPIC = Object.freeze({
-  feature: (unit) => `${unit}'s spec waits until its topic is decided — its discussion carries on: engine enter discussion ${unit}`,
+  feature: (unit) => `${unit}'s spec waits until its discussion closes, nothing of the person's open and its closing pass run — its discussion carries on: engine enter discussion ${unit}`,
   bugfix: (unit) => `${unit}'s spec waits until its investigation concludes — the investigation carries on, from the start menu`,
 });
 

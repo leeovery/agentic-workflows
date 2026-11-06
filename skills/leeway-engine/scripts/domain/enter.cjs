@@ -8,11 +8,12 @@
 // and what the phase's own row refuses. Where another live session holds the
 // place, or what the row holds beyond it, it asks first (18.4.21, 12.7.8) —
 // its question the whole answer, nothing written — and `--take` enters all
-// the same. Otherwise it starts what is
-// not yet started, writing nothing ahead of its opening (9.3.1), and commits
-// that start; records where the conversation is working — its position, the
-// tmux label and the place's presence, as `session label` and `topic start`
-// do; and answers what the phase needs to begin or resume, in sections: any
+// the same. Otherwise it starts what is not yet started, writing nothing
+// ahead of its opening (9.3.1), and commits that start — discussion's entry
+// at a feature's topic closed into its spec voiding that close, the
+// discussion going on (9.7.9), in the same commit; records where the
+// conversation is working — its position, the tmux label and the place's
+// presence, as `session label` and `topic start` do; and answers what the phase needs to begin or resume, in sections: any
 // question first, then a DATA naming what to read, as paths and engine
 // calls, never their contents, read as the place stood before the entry
 // wrote anything, and the log the conversation keeps, where it keeps one,
@@ -64,12 +65,12 @@
 const fs = require('fs');
 const path = require('path');
 const { PRODUCT } = require('../kernel/manifest-schema.cjs');
-const { withWorkUnitLock, withProjectLock, readProjectManifest } = require('../kernel/manifest.cjs');
+const { withWorkUnitLock, withProjectLock, readProjectManifest, loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { liveTopics } = require('./ledger-units.cjs');
 const { seedFiles } = require('./reads.cjs');
-const { computeTopicLifecycle, itemOf, briefFile, topicTitle, topicKey } = require('./derivations.cjs');
+const { computeTopicLifecycle, itemOf, briefFile, topicTitle, topicKey, closedIntoSpec, voidDecidedClose } = require('./derivations.cjs');
 const { unitInProgress, assertPhaseHeld, phaseStanding } = require('./topic-standing.cjs');
 const { startTopic } = require('./transitions.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
@@ -102,7 +103,7 @@ const { earlierRecord, earlierReads } = require('./earlier-record.cjs');
 /**
  * What a row reads from once it is entered: where the entry is, whether
  * this entry started it, and what a read of the ledger said on the way.
- * @typedef {Standing & {started: boolean, notes: string[]}} Entering
+ * @typedef {Standing & {started: boolean, voided: boolean, notes: string[]}} Entering
  */
 
 /**
@@ -140,6 +141,7 @@ const { earlierRecord, earlierReads } = require('./earlier-record.cjs');
  * @property {(at: Standing, ways: HeldWays) => string|null} [held]
  * @property {(at: Standing) => boolean} unstarted
  * @property {(cwd: string, unit: string, topic?: string) => string[]|void} start
+ * @property {(at: Standing) => boolean} [voids]
  * @property {(at: Entering) => string[]} questions
  * @property {(at: Entering) => Line[]} reads
  * @property {(at: Entering) => string} [log]
@@ -285,6 +287,7 @@ function topicRow(phase, reads) {
     standing: phaseStanding(phase),
     unstarted: ({ manifest, topic = '' }) => ['unstarted', undefined].includes(itemOf(manifest, phase, topic)?.status),
     start: (cwd, unit, topic = '') => { startTopic(cwd, unit, phase, topic); },
+    ...(phase === 'discussion' ? { voids: (/** @type {Standing} */ { manifest }) => closedIntoSpec(manifest) } : {}),
     questions: mailRaised,
     reads,
     log: ({ unit, topic = '' }) => topicLog(unit, topic),
@@ -386,25 +389,38 @@ function heldAt(cwd, phase, unit, place) {
 }
 
 /**
- * Start what the row starts, and leave where a level move leaves, committing
- * both in one hold of the writer lock: the response's commit fields. The
- * start commits the manifest it wrote, and the move the logs leaving wrote,
+ * A feature's topic's close into its spec voided as its discussion is
+ * entered again (9.7.9), read and saved under the writer lock the caller
+ * holds.
+ * @param {string} cwd @param {string} unit @param {string} topic
+ */
+function voidOnEntry(cwd, unit, topic) {
+  const manifest = loadWorkUnitManifest(cwd, unit);
+  if (voidDecidedClose(manifest, topic, new Date().toISOString())) saveWorkUnitManifest(cwd, unit, manifest);
+}
+
+/**
+ * Start what the row starts, void the close its entry goes on past, and
+ * leave where a level move leaves, committing all three in one hold of the
+ * writer lock: the response's commit fields. The start and the void commit
+ * the manifest they wrote, and the move the logs leaving wrote,
  * a topic's sitting among them; every log changed rides along — a start's
  * own commit's warnings, where it made one, among the response's.
  * @param {string} cwd @param {Entry} entry @param {Entering} at @param {Held} held @param {Departure|null} departure
  * @returns {{committed: string|null, note?: string, warnings?: string[]}}
  */
 function settle(cwd, entry, at, held, departure) {
-  const { phase, unit, topic, started } = at;
+  const { phase, unit, topic, started, voided } = at;
   /** @type {string[]} */
   const warnings = [];
   const message = departure !== null
     ? `${phase}(${unit}): carried on from ${departure.line}`
-    : topic === undefined ? `${phase}(${unit}): start` : `${phase}(${unit}): start ${topic}`;
+    : topic === undefined ? `${phase}(${unit}): start` : `${phase}(${unit}): ${voided ? 'carry on' : 'start'} ${topic}`;
   const outcome = held.lock(() => {
     if (started) warnings.push(...(entry.start(cwd, unit, topic) ?? []));
+    if (voided) voidOnEntry(cwd, unit, /** @type {string} */ (topic));
     departure?.leave(statePath(cwd, /** @type {NonNullable<Entry['log']>} */ (entry.log)(at)), unit);
-    return commitStateTail(cwd, [...(started ? [held.manifest] : []), ...(departure?.logs ?? [])], message, warnings);
+    return commitStateTail(cwd, [...(started || voided ? [held.manifest] : []), ...(departure?.logs ?? [])], message, warnings);
   });
   /** @type {{committed: string|null, note?: string, warnings?: string[]}} */
   const result = { committed: outcome.committed };
@@ -463,12 +479,12 @@ function enterThrough(entries, cwd, argv) {
   const stop = take ? null : heldQuestion(entry, at, place, move);
   if (stop !== null) return { response: { phase, unit, ...atTopic, entered: false }, sections: stop };
   /** @type {Entering} */
-  const entering = { ...at, started: entry.unstarted(at), notes: [] };
+  const entering = { ...at, started: entry.unstarted(at), voided: entry.voids?.(at) ?? false, notes: [] };
   entry.closes?.(at);
   const reads = entry.reads(entering);
   const held = heldAt(cwd, phase, unit, place);
   /** @type {{committed?: string|null, note?: string, warnings?: string[]}} */
-  const commit = entering.started || departure !== null ? settle(cwd, entry, entering, held, departure) : {};
+  const commit = entering.started || entering.voided || departure !== null ? settle(cwd, entry, entering, held, departure) : {};
   held.arrive();
   beatQuietly(cwd, unit, phase, place);
   const lines = [...reads, ...logLines(cwd, entry, entering)];

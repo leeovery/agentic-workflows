@@ -56,7 +56,7 @@ const { EXPERIMENT_ID_PATTERN, KEBAB_SLUG_PATTERN, WORK_TYPE_PIPELINES, illegalN
 const { stateRoot, statePath, stateRelative, cacheScratch } = require('../kernel/state-root.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
-const { computeTopicLifecycle, mailboxDir, mailboxFiles, mailPhase, dismissedNames, topicTitle, topicTitles, itemTitle, topicKey, retiredRefusal } = require('./derivations.cjs');
+const { computeTopicLifecycle, mailboxDir, mailboxFiles, mailPhase, dismissedNames, topicTitle, topicTitles, itemTitle, topicKey, retiredRefusal, voidDecidedClose } = require('./derivations.cjs');
 const { parkMessageItem, assertLegalTopicName } = require('./transitions.cjs');
 const { liveness, manifestOf } = require('./ledger-units.cjs');
 const { ID_FACTS, foldLedger, movedToBy } = require('./ledger-fold.cjs');
@@ -65,7 +65,6 @@ const { resolveId, shortId } = require('./ledger-ids.cjs');
 const { todayStamp, dayMonth } = require('./dates.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { sendReport } = require('./projections/mail.cjs');
-const { voidDecidedClose } = require('./checklist.cjs');
 
 const SEND_USAGE = 'topic send <work-unit> <topic> --from <sender> --content <file> --slug <kebab>';
 const MAILBOX_USAGE = 'topic mailbox <work-unit> <topic>';

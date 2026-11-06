@@ -77,7 +77,7 @@ function standing(cwd, unit) {
   const { manifest, closed, skips, warnings } = finishStanding(cwd, unit);
   const root = stateRoot(cwd);
   try {
-    const verdict = readShown(root, warnings, (shower) => verdictAsked(shower, root, (facts) => facts.unit === unit && BUILD_PHASES.includes(facts.phase), closed));
+    const verdict = readShown(root, warnings, (shower) => verdictAsked(shower, root, (facts) => (facts.unit === unit && BUILD_PHASES.includes(facts.phase) ? closed : null)));
     return { manifest, skips, warnings, verdict };
   } catch (err) {
     throw carrying(err, warnings);

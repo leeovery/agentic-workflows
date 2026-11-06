@@ -10,7 +10,8 @@
 // the release edges, the question on the map an experiment measures and the
 // report that reaches as a message the topic that question stands on once it
 // has left the spawning topic's open questions, its relative links rebased
-// (9.1.11), the topic's cancel, and the field surface's guards.
+// (9.1.11), the topic's decided close held while one of its experiments is
+// out, the topic's cancel, and the field surface's guards.
 //
 // Layer: verb. World: a project with its state worktree from the fixture
 // library, the work unit's manifest written there, built once and copied:
@@ -28,6 +29,8 @@ const path = require('path');
 const harness = require('./engine-harness.cjs');
 
 const { cleanupFixture, commitAll, ok: engine, refuses: engineFails, refusedPristine, lastMessage, statePath, layout, withFrozenClock, FROZEN_AT, stateGit, output, fixtureFrom } = harness;
+
+const { DECIDED_ITEMS } = require('./pipeline-world.cjs');
 
 const setupGitFixture = () => harness.setupGitFixture('engine-exp-');
 
@@ -563,28 +566,24 @@ describe('the question on the map an experiment measures (9.1.11)', () => {
     assert.deepStrictEqual(map().map(([id, stands, waiting]) => [id, stands, waiting]), [[placement, 'answered', null]]);
   });
 
-  it('a report concluding after the person closed its question reaches the topic as a message, reopening it if decided', () => {
+  it('a report concluding after the person closed its question reaches the topic as a message, the topic held in progress while it ran', () => {
     const placement = ask('Where does a new window open?');
     measure(placement);
     walkTo(dir, 'E1', 'running');
     personDecides(placement);
-    const m = readManifest(dir, 'lab');
-    m.phases.discussion.items.timing.status = 'completed';
-    writeManifest(dir, 'lab', m);
     const report = '# Report — E1\n\nTop left is found fastest.\n';
     fs.writeFileSync(statePath(dir, layout.experiment('lab', 'timing', 'E1-window-placement', 'report.md')), report);
     const res = withFrozenClock(() => engine(dir, ['experiment', 'conclude', 'lab', 'timing', 'E1', '--verdict', 'top left wins']));
     const message = statePath(dir, layout.mailbox('lab', 'timing', '001-e1-report.md'));
-    assert.deepStrictEqual(res.report_sent, { topic: 'timing', message_path: message, reopened: true, committed: res.report_sent.committed });
+    assert.deepStrictEqual(res.report_sent, { topic: 'timing', message_path: message, reopened: false, committed: res.report_sent.committed });
     assert.strictEqual(fs.readFileSync(message, 'utf8'), '# Report — E1\nFrom Experiment E1 · 1 Jan\n\nTop left is found fastest.\n', 'the report reaches its own topic as written, from the experiment by its id');
     assert.strictEqual(lastMessage(dir), 'mail(lab): send 001-e1-report.md to timing');
-    assert.strictEqual(readManifest(dir, 'lab').phases.discussion.items.timing.status, 'in-progress', 'the decided topic reopens');
   });
 
-  it('a report whose question the person moved to another topic reaches that topic, whose map waits on the experiment until it writes the result', () => {
+  it('a report whose question the person moved to another topic, and decided there while it ran, reaches that topic as a message, reopening it once decided', () => {
     const m = readManifest(dir, 'lab');
     m.phases.discovery.items.sizing = { summary: 'Window sizing', order: 2 };
-    m.phases.discussion.items.sizing = { status: 'completed' };
+    m.phases.discussion.items.sizing = { status: 'in-progress' };
     writeManifest(dir, 'lab', m);
     commitAll(dir, 'sizing');
     const placement = ask('Where does a new window open?');
@@ -593,6 +592,10 @@ describe('the question on the map an experiment measures (9.1.11)', () => {
     engine(dir, ['ledger', 'move', 'lab.discussion.timing', '--question', placement, '--to', 'sizing'], { env: SESSION, stdin: JSON.stringify({ by: 'person', who_moved_whom: 'none' }) });
     const sizingMap = () => engine(dir, ['ledger', 'map', 'lab', 'sizing']).questions.map((/** @type {Record<string, unknown>} */ r) => [r.id, r.stands, r.waiting_on]);
     assert.deepStrictEqual(sizingMap(), [[placement, 'open', { experiment: 'E1', running: true }]]);
+    engine(dir, ['ledger', 'decide', 'lab.discussion.sizing', '--answers', placement], { env: SESSION, stdin: JSON.stringify({ by: 'person', who_moved_whom: 'none', text: 'Top left.', why: 'Where the eye lands.' }) });
+    const decided = readManifest(dir, 'lab');
+    decided.phases.discussion.items.sizing.status = 'completed';
+    writeManifest(dir, 'lab', decided);
     const record = layout.experiment('lab', 'timing', 'E1-window-placement');
     fs.writeFileSync(statePath(dir, `${record}/report.md`), '# Report — E1\n\nRuns in [the data](data/run.csv).\n');
     const res = withFrozenClock(() => engine(dir, ['experiment', 'conclude', 'lab', 'timing', 'E1', '--verdict', 'top left wins']));
@@ -606,10 +609,7 @@ describe('the question on the map an experiment measures (9.1.11)', () => {
     );
     assert.strictEqual(lastMessage(dir), 'mail(lab): send 001-e1-report.md to sizing');
     assert.ok(!fs.existsSync(statePath(dir, layout.mailbox('lab', 'timing'))), 'the topic the question left gets nothing');
-    const items = readManifest(dir, 'lab').phases.discussion.items;
-    assert.deepStrictEqual([items.timing.status, items.sizing.status], ['in-progress', 'in-progress'], 'the decided destination reopens');
-    assert.deepStrictEqual(sizingMap(), [[placement, 'open', { experiment: 'E1', running: false }]], 'the result is the destination\'s to write');
-    engine(dir, ['ledger', 'decide', 'lab.discussion.sizing', '--answers', placement], { env: SESSION, stdin: JSON.stringify({ ...MADE, text: 'Top left.', why: 'E1 measured it.' }) });
+    assert.strictEqual(readManifest(dir, 'lab').phases.discussion.items.sizing.status, 'in-progress', 'the decided destination reopens');
     assert.deepStrictEqual(sizingMap(), [[placement, 'answered', null]]);
   });
 
@@ -658,6 +658,38 @@ describe('the question on the map an experiment measures (9.1.11)', () => {
     personDecides(placement);
     const res = refusedPristine(dir, ['experiment', 'conclude', 'lab', 'timing', 'E1', '--verdict', 'top left wins']);
     assert.match(res.error, /experiment E1 \("timing"\) has no report\.md — its question left the topic's open questions while it ran, so the report reaches "timing" as a message/);
+  });
+
+  it('a report owed as a message past the unit\'s spec refuses the conclusion before it writes anything, so no report is lost (4.11.2)', () => {
+    const placement = ask('Where does a new window open?');
+    measure(placement);
+    walkTo(dir, 'E1', 'running');
+    personDecides(placement);
+    fs.writeFileSync(statePath(dir, layout.experiment('lab', 'timing', 'E1-window-placement', 'report.md')), '# Report — E1\n\nTop left.\n');
+    fs.writeFileSync(statePath(dir, layout.unit('lab', 'spec.md')), '# Lab\n');
+    const res = refusedPristine(dir, ['experiment', 'conclude', 'lab', 'timing', 'E1', '--verdict', 'top left wins']);
+    assert.strictEqual(res.error, 'experiment E1 ("timing") owes its report to "timing" as a message, and lab has its spec — a topic exists only before it: abandon the experiment, and settle what it found in the spec');
+    assert.strictEqual(readManifest(dir, 'lab').phases.experiment.items.timing.experiments.E1.status, 'running');
+  });
+
+  it('an epic topic\'s decided close is refused while an experiment of its own is out, conceived or further, and taken once each has ended (11.2.1)', () => {
+    const placement = ask('Where does a new window open?');
+    measure(placement);
+    personDecides(placement);
+    for (const item of DECIDED_ITEMS) engine(dir, ['checklist', 'done', 'decided', 'lab', 'timing', item], { env: SESSION });
+    const close = ['checklist', 'close', 'decided', 'lab', 'timing'];
+    assert.strictEqual(refusedPristine(dir, close, { env: SESSION }).error,
+      'checklist close: timing\'s experiment E1 is still out — the topic closes once each has concluded or been abandoned, and its report is read');
+    engine(dir, ['experiment', 'abandon', 'lab', 'timing', 'E1', '--reason', 'the person decided it']);
+    engine(dir, close, { env: SESSION });
+    assert.strictEqual(typeof readManifest(dir, 'lab').checklists.decided.timing.closed, 'string');
+  });
+
+  it('refuses a spawn from a discussion past its unit\'s spec, writing nothing: a topic exists only before it (4.11.2)', () => {
+    const placement = ask('Where does a new window open?');
+    fs.writeFileSync(statePath(dir, layout.unit('lab', 'spec.md')), '# Lab\n');
+    const args = ['experiment', 'create', 'lab', 'timing', '--slug', 'window-placement', '--from', 'discussion', '--problem', problemScratch(dir, 'window-placement'), '--question', placement];
+    assert.match(refusedPristine(dir, args).error, /^lab has its spec — a topic exists only before it, and a change is settled in the spec from here$/);
   });
 });
 

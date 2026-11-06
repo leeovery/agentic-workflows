@@ -50,7 +50,7 @@ describe('the decided screen drawn', () => {
   it('speaks of a one-topic unit\'s candidates as items for the roadmap, each tagged with its horizon, on the screen, the gate and the strike pick (8.10.2)', () => {
     const parked = [{ name: 'streak-freeze', reason: 'R.', struck: false, horizon: 'later' }, { name: 'tally-widget', reason: 'S.', struck: false, horizon: 'next' }];
     const screen = decidedScreen({ ...VIEW, parks: true, candidates: parked });
-    const pick = strikePick({ unit: 'solo', topic: 'solo', parks: true, candidates: parked });
+    const pick = strikePick({ unit: 'solo', topic: 'solo', parks: true, candidates: parked, flags: [], back: { to: 'ready to build', argv: ['render', 'ready-to-build', 'solo'] } });
     assert.deepStrictEqual([/^TO THE ROADMAP \(2\)$/m.test(screen), /○ Tally Widget +\[next\]$/m.test(screen), covers({ parks: true, candidates: parked }), /◆ Which candidate should stay off the roadmap\?/.test(pick)],
       [true, true, 'Your yes marks Note Window decided, with the two roadmap items.', true]);
   });

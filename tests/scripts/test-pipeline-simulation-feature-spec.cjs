@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The pipeline simulation's feature scenarios on the spec's side: a feature
-// discussed to its decided screen's yes, entered at its spec, the spec
+// discussed until its topic closes into its spec, entered at its spec, the spec
 // written from the writer's brief, landed, and reviewed — the first pass
 // holding a rewrite and a gap the record answers, declined, so the prose
 // incorporates it, the writer taking the rewrite and landing the spec

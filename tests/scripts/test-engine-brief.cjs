@@ -189,7 +189,6 @@ const TAKE_A_CARD = 'Refunds, §2;\nthe form, §1.1';
  */
 const unitWorld = fixtureFrom('brief-', (dir) => {
   createManifest(dir, UNIT, { phases: { discussion: { items: { [UNIT]: { status: 'in-progress' } } } } });
-  writeState(dir, layout.unit(UNIT, SPEC_FILE), SPEC);
   const project = JSON.parse(readState(dir, layout.projectManifest));
   writeState(dir, layout.projectManifest, JSON.stringify({ ...project, environment: { linters: LINTERS } }, null, 2));
   for (const { at, text } of REPORTS) writeState(dir, at, text);
@@ -228,6 +227,8 @@ const unitWorld = fixtureFrom('brief-', (dir) => {
     by: 'person', ...MADE, text: 'Refunds through the API.', why: 'They come weekly now.', drops: ['refunds by hand'],
   }).id;
   calls.topic = decided(dir, `${UNIT}.discussion.${UNIT}`, { by: 'person', text: 'Cards only.', why: 'Wallets later.' });
+  writeState(dir, layout.unit(UNIT, SPEC_FILE), SPEC);
+  commitAll(dir, 'the spec written');
 });
 
 /** @type {string} */

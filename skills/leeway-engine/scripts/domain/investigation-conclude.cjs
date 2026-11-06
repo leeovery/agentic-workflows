@@ -181,7 +181,7 @@ function closing(cwd, unit, said, warnings) {
  */
 function verdictOf(cwd, unit, at, warnings) {
   const root = stateRoot(cwd);
-  return readShown(root, warnings, (shower) => verdictAsked(shower, root, (facts) => facts.unit === unit && facts.phase === PHASE, at));
+  return readShown(root, warnings, (shower) => verdictAsked(shower, root, (facts) => (facts.unit === unit && facts.phase === PHASE ? at : null)));
 }
 
 /**

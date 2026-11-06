@@ -9,22 +9,34 @@
 // Claude's on `cards` that is not the spec's; its sweep taken, its spec
 // written from the writer's brief and landed citing them, the land's review
 // pass clean, and the spec cut into two phases — `landed`; and the same with ready to build's checklist worked
-// and closed — `closed`. Each built once per process and copied for each
-// test, its trust log in a config folder of the test's own.
+// and closed — `closed`. A feature, `tally`, its one topic closed into its
+// spec with no gate: the person's answer and a call of Claude's on it, its
+// decided checklist worked and closed, and its payload staged — a
+// product-record line and two candidates for the roadmap — then a call of
+// Claude's at the spec, its spec landed citing them, reviewed clean and cut
+// into one phase, and ready to build's checklist closed — `feature`; and the
+// same with the person's change of a call of Claude's on the topic before
+// its close and of one at the spec, logged in a trust log the world carries
+// (`worldConfig`) — `featureDeparted`. Each
+// built once per process and copied for each test, its trust log in a
+// config folder of the test's own.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
 const { beforeEach, afterEach } = require('node:test');
 
-const { ok, output, refusedPristine, sectionOf, layout, writeState, commitAll, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
+const { ok, output, refusedPristine, sectionOf, layout, writeState, commitAll, fixtureFrom, cleanupFixture, withEnv } = require('./engine-harness.cjs');
 const { createManifest, useTempFolder } = require('./discovery-test-utils.cjs');
 const { MADE } = require('./ledger-world.cjs');
+const { DECIDED_ITEMS } = require('./pipeline-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { trustLogPath } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 
 const UNIT = 'payments';
+const FEATURE = 'tally';
+const FEATURE_AT = `${FEATURE}.discussion.${FEATURE}`;
 const SESSION = Object.freeze({ CLAUDE_CODE_SESSION_ID: 'ready-to-build-session' });
 const PERSON = Object.freeze({ by: 'person', who_moved_whom: 'none' });
 const SPEC_AT = `${UNIT}.specification`;
@@ -78,31 +90,31 @@ const spec = () => [
 const CARDS = Object.freeze({ name: 'Cards', goal: 'Cards are taken as decided.', scenarios: ['1.S1', '1.S2'], sections: ['1'], relies_on: [] });
 const REFUNDS = Object.freeze({ name: 'Refunds', goal: 'Refunds reach the card.', scenarios: ['2.S1'], sections: ['2.1'], relies_on: [1] });
 
-/** The cut `phases` written by the verb from a file in the cache. @param {string} dir @param {object[]} phases */
-function cut(dir, phases) {
-  ok(dir, ['cut', UNIT, '--file', writeState(dir, layout.cache(UNIT, 'specification', 'cut.json'), JSON.stringify({ phases }))]);
+/** The cut `phases` written by the verb from a file in the cache. @param {string} dir @param {object[]} phases @param {string} [unit] */
+function cut(dir, phases, unit = UNIT) {
+  ok(dir, ['cut', unit, '--file', writeState(dir, layout.cache(unit, 'specification', 'cut.json'), JSON.stringify({ phases }))]);
 }
 
-/** A review pass on the spec's last land dispatched, briefed, and its clean report taken in and acknowledged. @param {string} dir */
-function reviewPass(dir) {
-  const pass = ok(dir, ['agent', 'dispatch', UNIT, 'specification', UNIT, '--kind', 'spec-review'], { env: { CLAUDE_PID: undefined } });
-  ok(dir, ['brief', 'spec-reviewer', UNIT, '--agent', pass.id], { env: SESSION });
+/** A review pass on the spec's last land dispatched, briefed, and its clean report taken in and acknowledged. @param {string} dir @param {string} [unit] */
+function reviewPass(dir, unit = UNIT) {
+  const pass = ok(dir, ['agent', 'dispatch', unit, 'specification', unit, '--kind', 'spec-review'], { env: { CLAUDE_PID: undefined } });
+  ok(dir, ['brief', 'spec-reviewer', unit, '--agent', pass.id], { env: SESSION });
   fs.writeFileSync(pass.file, '# Spec Review\n\n## Findings\n\nNone identified.\n');
-  ok(dir, ['agent', 'scan', UNIT, 'specification', UNIT]);
-  ok(dir, ['agent', 'ack', UNIT, 'specification', UNIT, pass.id, '--clean']);
+  ok(dir, ['agent', 'scan', unit, 'specification', unit]);
+  ok(dir, ['agent', 'ack', unit, 'specification', unit, pass.id, '--clean']);
 }
 
-/** The spec landed, and the land reviewed clean. @param {string} dir */
-function landReviewed(dir) {
-  ok(dir, ['spec', 'land', UNIT]);
-  reviewPass(dir);
+/** The spec landed, and the land reviewed clean. @param {string} dir @param {string} [unit] */
+function landReviewed(dir, unit = UNIT) {
+  ok(dir, ['spec', 'land', unit]);
+  reviewPass(dir, unit);
 }
 
-/** The spec written from the writer's brief as `text`, landed and reviewed clean. @param {string} dir @param {string} text */
-function written(dir, text) {
-  ok(dir, ['brief', 'spec-writer', UNIT], { env: SESSION });
-  writeState(dir, layout.unit(UNIT, 'spec.md'), text);
-  landReviewed(dir);
+/** The spec written from the writer's brief as `text`, landed and reviewed clean. @param {string} dir @param {string} text @param {string} [unit] */
+function written(dir, text, unit = UNIT) {
+  ok(dir, ['brief', 'spec-writer', unit], { env: SESSION });
+  writeState(dir, layout.unit(unit, 'spec.md'), text);
+  landReviewed(dir, unit);
 }
 
 /** The epic built through the verbs: its topics decided, the calls at the spec made, its sweep taken, its spec landed, reviewed and cut. @param {string} dir */
@@ -124,10 +136,51 @@ function buildLanded(dir) {
 /** Claude's items of ready to build's checklist. */
 const CLAUDES = Object.freeze(['replacements-checked', 'invariants-checked']);
 
-/** Claude's items of ready to build's checklist marked done, and the checklist closed: the close's answer. @param {string} at */
-function closeReady(at) {
-  for (const item of CLAUDES) ok(at, ['checklist', 'done', 'ready-to-build', UNIT, item]);
-  return ok(at, ['checklist', 'close', 'ready-to-build', UNIT]);
+/** Claude's items of ready to build's checklist marked done, and the checklist closed: the close's answer. @param {string} at @param {string} [unit] */
+function closeReady(at, unit = UNIT) {
+  for (const item of CLAUDES) ok(at, ['checklist', 'done', 'ready-to-build', unit, item]);
+  return ok(at, ['checklist', 'close', 'ready-to-build', unit]);
+}
+
+/** The feature's cut's one phase. */
+const FEATURE_PHASE = Object.freeze({ name: 'Counting', goal: 'A tally counts and resets.', scenarios: ['1.S1'], sections: ['1'], relies_on: [] });
+
+/** The feature's payload as its topic closes: a product-record line, and two candidates parking on the roadmap. */
+const featurePayload = () => ({
+  lines: [{ text: 'A tally resets at midnight, wherever it is shown.', why: 'The reset holds for the whole product.', widens: made.resets }],
+  candidates: [{ name: 'streak-freeze', reason: 'Nothing decides what a missed day costs.', horizon: 'later' }, { name: 'tally-widget', reason: 'Nothing owns a widget.', horizon: 'next' }],
+});
+
+/** The person's change of Claude's call at `at`: the departure's short id. @param {string} dir @param {string} at @param {string} call @param {string} text */
+const reversed = (dir, at, call, text) => write(dir, 'replace', at, ['--replaces', call, '--reason', 'changed-mind'], { by: 'person', drops: ['the call'], text, why: 'The person wants it so.' });
+
+/**
+ * The feature's topic closed into its spec, its payload staged, and its
+ * spec landed, reviewed, cut and closed for ready to build — `departed`,
+ * the person having changed a call of Claude's on the topic before its
+ * close, and one at the spec.
+ * @param {string} dir @param {{departed?: boolean}} [opts]
+ */
+function buildFeature(dir, { departed = false } = {}) {
+  createManifest(dir, FEATURE, { phases: { discussion: { items: { [FEATURE]: { status: 'in-progress' } } } } });
+  commitAll(dir, 'init');
+  made.resets = answered(dir, FEATURE_AT, 'When does a tally reset?', { ...PERSON, text: 'At midnight.' });
+  made.shown = answered(dir, FEATURE_AT, 'Where is the count shown?', { ...MADE, text: 'In the menu bar.', kind: 'look' });
+  if (departed) made.onTopic = reversed(dir, FEATURE_AT, made.shown, 'In the dock.');
+  writeState(dir, layout.doc(FEATURE, 'discussion', FEATURE), '# Tally\n\nA tally resets at midnight.\n');
+  for (const item of DECIDED_ITEMS) ok(dir, ['checklist', 'done', 'decided', FEATURE, FEATURE, item], { env: SESSION });
+  ok(dir, ['checklist', 'close', 'decided', FEATURE, FEATURE], { env: SESSION });
+  ok(dir, ['decided', 'stage', FEATURE, FEATURE, '--file', writeState(dir, layout.cache('scratch', 'decided-payload.json'), JSON.stringify(featurePayload()))], { env: SESSION });
+  made.logged = answered(dir, `${FEATURE}.specification`, 'Is a reset logged?', { ...MADE, text: 'Not logged.', kind: 'behaviour' });
+  if (departed) made.atSpec = reversed(dir, `${FEATURE}.specification`, answered(dir, `${FEATURE}.specification`, 'Is a reset undone?', { ...MADE, text: 'Never.' }), 'Within a minute.');
+  written(dir, [
+    '# Tally', '', '## 1. Counting', '', '### 1.1 The reset', '',
+    `1.1.1 A tally resets at midnight. [${made.resets}]`, '',
+    `1.1.2 A reset is not logged. [${made.logged}]`, '',
+    '## 1-S. Scenarios for §1', '', '1.S1 Given a tally at midnight, when the day turns, then it resets. (1.1.1, 1.1.2)', '',
+  ].join('\n'), FEATURE);
+  cut(dir, [FEATURE_PHASE], FEATURE);
+  closeReady(dir, FEATURE);
 }
 
 const landed = fixtureFrom('ready-to-build-', buildLanded);
@@ -136,6 +189,13 @@ const closed = fixtureFrom('ready-to-build-closed-', (at) => {
   buildLanded(at);
   closeReady(at);
 });
+
+const feature = fixtureFrom('ready-to-build-feature-', (dir) => buildFeature(dir));
+
+/** Where the departed world keeps the trust log its departures were logged in, carried with each copy. @param {string} dir */
+const worldConfig = (dir) => path.join(dir, '.trust');
+
+const featureDeparted = fixtureFrom('ready-to-build-feature-departed-', (dir) => withEnv({ LEEWAY_CONFIG_DIR: worldConfig(dir) }, () => buildFeature(dir, { departed: true })));
 
 /**
  * Each test of the calling file on a copy of `world`, removed after it, its
@@ -158,13 +218,14 @@ function useReadyWorld(world) {
 }
 
 /**
- * The ready to build suites' helpers, over the project `dir()` names.
- * @param {() => string} dir
+ * The ready to build suites' helpers, over the project `dir()` names, at
+ * `unit`.
+ * @param {() => string} dir @param {string} [unit]
  */
-function readyHelpers(dir) {
+function readyHelpers(dir, unit = UNIT) {
   return {
     /** The screen, `flags` given. @param {string[]} [flags] */
-    screen: (flags = []) => output(dir(), ['render', 'ready-to-build', UNIT, ...flags], { env: SESSION }),
+    screen: (flags = []) => output(dir(), ['render', 'ready-to-build', unit, ...flags], { env: SESSION }),
     /** The keys of the gate's rows, in order. @param {string} out */
     rowKeys: (out) => [...sectionOf(out, 'MENU: ready to build').matchAll(/^\*\*`?([a-zA-Z]+(?:\/[a-z]+)?)`?\*\*/gm)].map((m) => m[1]),
     /** What a row of the gate shown leads to. @param {string} name @param {string} key */
@@ -172,7 +233,7 @@ function readyHelpers(dir) {
     /** The refusal's error, nothing written or committed. @param {string[]} args */
     refused: (args) => refusedPristine(dir(), args, { env: SESSION }).error,
     /** The yes, `flags` after the unit. @param {string[]} flags */
-    yes: (flags) => ok(dir(), ['ready-to-build', 'yes', UNIT, ...flags], { env: SESSION }),
+    yes: (flags) => ok(dir(), ['ready-to-build', 'yes', unit, ...flags], { env: SESSION }),
     /** The trust log's events of `type`. @param {string} type */
     events(type) {
       const log = trustLogPath();
@@ -180,11 +241,11 @@ function readyHelpers(dir) {
     },
     /** The review page built and its publishing recorded, which opens it. */
     publish() {
-      ok(dir(), ['spec', 'page', UNIT]);
-      ok(dir(), ['spec', 'published', UNIT, 'https://claude.ai/public/artifacts/0123']);
+      ok(dir(), ['spec', 'page', unit]);
+      ok(dir(), ['spec', 'published', unit, 'https://claude.ai/public/artifacts/0123']);
     },
     /** Marks Claude read back from the page, written where the gate's rows take them: its path. @param {Record<string, object>} marks */
-    readBack: (marks) => writeState(dir(), READ_BACK, JSON.stringify(marks)),
+    readBack: (marks) => writeState(dir(), layout.cache(unit, 'specification', 'read-back.json'), JSON.stringify(marks)),
   };
 }
 
@@ -192,5 +253,5 @@ function readyHelpers(dir) {
 const commented = (id, text) => ({ [id]: { s: 'comment', t: { p1000: { by: 'p', x: text } } } });
 
 module.exports = {
-  UNIT, SESSION, SPEC_AT, READ_BACK, CARDS, REFUNDS, write, answered, cut, reviewPass, landReviewed, written, closeReady, landed, closed, useReadyWorld, readyHelpers, commented,
+  UNIT, FEATURE, FEATURE_AT, FEATURE_PHASE, SESSION, SPEC_AT, READ_BACK, CARDS, REFUNDS, made, write, answered, cut, reviewPass, landReviewed, written, closeReady, landed, closed, feature, featureDeparted, worldConfig, useReadyWorld, readyHelpers, commented,
 };

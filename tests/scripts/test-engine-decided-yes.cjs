@@ -7,12 +7,15 @@
 // principle decided in a topic is a product-wide entry (19.S26) — the
 // candidates not struck on the epic's map with their briefs (8.S59), by
 // every check `topic add-batch` makes, a roadmap twin among them (8.1.6),
-// or in a unit with one topic parked on the roadmap (8.S31), the struck
+// the struck
 // names recorded as the person's answer and refused when a later close
 // stages them (8.S60), the topic decided and
 // what comes next — an epic's menu while a live topic is left to work, a
 // topic its own yes lands among them, its spec once none is (24.S3) — the
-// counts it covers in words; a refused yes writing
+// counts it covers in words; a feature's topic closed into its spec with no
+// gate, its payload staged by `decided stage` and its screen and yes
+// refused, the one screen's yes parking its candidates
+// (test-engine-ready-to-build-feature.cjs, 8.S31); a refused yes writing
 // nothing, and a yes run again after a kill
 // landing nothing twice — a restage after it taking no second line; the
 // yes refused with nothing staged, a verdict still to ask, or no
@@ -30,7 +33,7 @@ const fs = require('fs');
 
 const { ok, refusedPristine, sectionOf, readManifest, readState, statePath, layout, stateGit, lastMessage, killedAt } = require('./engine-harness.cjs');
 const { UNIT, SESSION, MADE, NOTE, ledgerHelpers } = require('./ledger-world.cjs');
-const { SOLO, SOLO_LOG, NO_PAYLOAD, NOTE_MAP, writeIn, markAllButTheClosingPass, useDecidedWorld, decidedHelpers } = require('./decided-world.cjs');
+const { SOLO, NO_PAYLOAD, NOTE_MAP, writeIn, markAllButTheClosingPass, useDecidedWorld, decidedHelpers } = require('./decided-world.cjs');
 
 const dir = useDecidedWorld();
 const { close, payload, candidate, staged, answer, run, reverse } = decidedHelpers(dir);
@@ -115,24 +118,6 @@ describe('the decided gate\'s yes (8.S25, 8.S28, 9.7.3)', () => {
     assert.ok(committedPaths().includes(layout.projectManifest), 'the project manifest rides the yes\'s commit');
   });
 
-  it('8.S31: in a unit with one topic, the yes parks each candidate standing on the horizon the person named, from the topic and pointing into its log; a struck one is recorded as the person\'s answer, which they can roadmap themselves (8.10.11)', () => {
-    close(SOLO, SOLO);
-    const shown = staged({ lines: [], candidates: [{ name: 'streak-freeze', reason: 'Nothing decides what a missed day costs.', horizon: 'later' }, { name: 'tally-widget', reason: 'S.', horizon: 'next' }] }, `${SOLO}.${SOLO}`);
-    assert.match(sectionOf(shown, 'DISPLAY: decided'), /\nTO THE ROADMAP \(2\)\n {2}├─ ○ Streak Freeze +\[later\]\n/);
-    assert.match(sectionOf(shown, 'MENU: decided'), /^Your yes marks Solo decided, with the two roadmap items\.$/m);
-    assert.match(sectionOf(shown, 'MENU: decided'), /^\*\*`s\/strike`\*\* +→ Strike a candidate — it doesn't go on the roadmap$/m);
-    ok(dir(), ['decided', 'strike', SOLO, SOLO, '2'], { env: SESSION });
-
-    const res = run(answer('decided', 'y'));
-    assert.deepStrictEqual([res.candidates, res.parked, res.struck], [['streak-freeze'], [{ name: 'streak-freeze', horizon: 'later' }], ['tally-widget']]);
-    const { roadmap } = JSON.parse(readState(dir(), layout.projectManifest));
-    assert.deepStrictEqual([roadmap.horizons, roadmap.items['streak-freeze'], roadmap.items['tally-widget']],
-      [['later'], { horizon: 'later', summary: 'Nothing decides what a missed day costs.', kind: 'idea', origin: `topic:${SOLO}/${SOLO}`, sources: [SOLO_LOG] }, undefined]);
-    assert.deepStrictEqual(readManifest(dir(), SOLO).phases.discovery, { dismissed: ['tally-widget'] }, 'the struck name is the person\'s answer, and the unit gains no map');
-    assert.deepStrictEqual(committedPaths(), [layout.projectManifest, layout.manifest(SOLO)].sort(), 'the park rides the yes\'s commit');
-    ok(dir(), ['roadmap', 'add', 'tally-widget', '--horizon', 'next', '--summary', 'S.'], { env: SESSION });
-  });
-
   it('checks every line before it writes one: a refused yes lands nothing, and once staged again each line lands once', () => {
     close();
     const lines = [
@@ -142,7 +127,7 @@ describe('the decided gate\'s yes (8.S25, 8.S28, 9.7.3)', () => {
     staged({ lines, candidates: [] });
     const replacement = writeIn(dir(), 'replace', NOTE, ['--replaces', NOTE_MAP.sync.answer, '--reason', 'changed-mind'], { ...MADE, drops: ['on by default'], text: 'Sync is off until turned on.', why: 'A comment at the gate.' });
     const before = entries().length;
-    assert.match(refusedPristine(dir(), ['decided', 'yes', UNIT, 'note-window'], { env: SESSION }).error, /^decided yes: line 2 cannot land — .*; it is staged again with --file$/);
+    assert.match(refusedPristine(dir(), ['decided', 'yes', UNIT, 'note-window'], { env: SESSION }).error, /^decided yes: line 2 cannot land — .*; render decided fumi\.note-window --file <payload\.json> stages it again$/);
     assert.strictEqual(entries().length, before, 'line 1 never landed');
     staged({ lines: [lines[0], { ...lines[1], text: 'Sync is off until turned on.', widens: replacement }], candidates: [candidate('removing-fumi', 'R.')] });
     ok(dir(), ['topic', 'add', UNIT, 'removing-fumi', '--summary', 'Added at the map meanwhile.', '--brief', candidate('removing-fumi', 'R.').brief], { env: SESSION });
@@ -181,10 +166,22 @@ describe('the decided gate\'s yes (8.S25, 8.S28, 9.7.3)', () => {
     assert.deepStrictEqual(run(answer('decided', 'y')).next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [UNIT, 'discussion', 'completed'] });
   });
 
-  it('hands a feature\'s decided topic off to its specification', () => {
+  it('closes a feature\'s topic into its spec with no gate: its decided screen and yes refused, naming the stage, which stages the payload against the close and hands off into the spec, the topic not yet decided; an epic\'s stages with its screen (11.2.1, 9.7.6)', () => {
     close(SOLO, SOLO);
-    staged(NO_PAYLOAD, `${SOLO}.${SOLO}`);
-    assert.deepStrictEqual(run(answer('decided', 'y')).next, { kind: 'handoff', skill: 'leeway-specification-process', args: ['feature', SOLO] });
+    const way = 'solo is a feature, whose topic closes into its spec with no gate, its decided shown with ready to build — once decided\'s checklist is closed, decided stage solo solo --file <payload.json> stages Claude\'s lines and candidates and hands off into the spec';
+    assert.deepStrictEqual([
+      refusedPristine(dir(), ['render', 'decided', `${SOLO}.${SOLO}`], { env: SESSION }).error,
+      refusedPristine(dir(), ['decided', 'yes', SOLO, SOLO], { env: SESSION }).error,
+    ], [`render decided: ${way}`, `decided yes: ${way}`]);
+    const parked = { name: 'streak-freeze', reason: 'Nothing decides what a missed day costs.', horizon: 'later' };
+    const before = entries().length;
+    const stagedSolo = ok(dir(), ['decided', 'stage', SOLO, SOLO, '--file', payload({ lines: [], candidates: [parked] })], { env: SESSION });
+    assert.deepStrictEqual(stagedSolo, { ok: true, unit: SOLO, topic: SOLO, lines: 0, withdrawals: 0, candidates: ['streak-freeze'], next: { kind: 'handoff', skill: 'leeway-specification-process', args: ['feature', SOLO] } });
+    assert.deepStrictEqual([entries().length, readManifest(dir(), SOLO).phases.discussion.items[SOLO].status, JSON.parse(readState(dir(), '.cache/solo/discussion/solo/decided.json')).candidates],
+      [before, 'in-progress', [{ ...parked, struck: false }]], 'nothing lands before the one screen\'s yes');
+    close();
+    assert.strictEqual(refusedPristine(dir(), ['decided', 'stage', UNIT, 'note-window', '--file', payload(NO_PAYLOAD)], { env: SESSION }).error,
+      `decided stage: ${UNIT} is an epic, whose topic closes at its decided screen — render decided ${UNIT}.note-window --file <payload.json> stages Claude's lines and candidates`);
   });
 
   it('refuses with nothing staged, while a verdict is still to ask, and without a conversation, writing nothing', () => {

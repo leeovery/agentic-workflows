@@ -207,5 +207,5 @@ function decidedBoardHelpers(dir) {
 }
 
 module.exports = {
-  SOLO, SOLO_AT, SOLO_LOG, PERSON, NO_PAYLOAD, NOTE_MAP, writeIn, answeredIn, markAllButTheClosingPass, useDecidedWorld, decidedHelpers, decidedBoardHelpers,
+  SOLO, SOLO_AT, PERSON, NO_PAYLOAD, NOTE_MAP, writeIn, answeredIn, markAllButTheClosingPass, useDecidedWorld, decidedHelpers, decidedBoardHelpers,
 };

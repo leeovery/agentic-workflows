@@ -228,18 +228,22 @@ function departureRow(shower, id) {
 
 /**
  * The departure a verdict point asks its verdict of: the first this machine
- * logged in the work the point closes — each departure whose facts
- * `belongs` holds — never given a verdict here or anywhere, a skip among
- * them; with where it stands among the departures this close asks, those
- * given none before it closed. Null where none waits.
- * @param {Shower} shower @param {string} root @param {(facts: IdFacts) => boolean} belongs @param {string} closed when the point's checklist closed
+ * logged in the work the point closes — each departure `closeOf` gives the
+ * close it is asked under, when that work's checklist closed — never given
+ * a verdict here or anywhere, a skip among them; with where it stands among
+ * the departures this close asks, those given none before their close.
+ * Null where none waits.
+ * @param {Shower} shower @param {string} root @param {(facts: IdFacts) => string|null} closeOf
  * @returns {AskedVerdict|null}
  */
-function verdictAsked(shower, root, belongs, closed) {
+function verdictAsked(shower, root, closeOf) {
   const { folded } = shower;
   const evidence = evidenceOf(root);
-  const askedBefore = (/** @type {string} */ id) => (evidence.asked.get(id) ?? Infinity) < Date.parse(closed);
-  const departures = [...folded.facts.keys()].filter((id) => evidence.departures.has(id) && belongs(factsOf(folded, id)) && !askedBefore(id));
+  const askedBefore = (/** @type {string} */ id, /** @type {string} */ closed) => (evidence.asked.get(id) ?? Infinity) < Date.parse(closed);
+  const departures = [...folded.facts.keys()].filter((id) => {
+    const closed = evidence.departures.has(id) ? closeOf(factsOf(folded, id)) : null;
+    return closed !== null && !askedBefore(id, closed);
+  });
   const waiting = departures.filter((id) => !evidence.asked.has(id));
   if (waiting.length === 0) return null;
   const [entry] = waiting;

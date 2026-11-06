@@ -18,9 +18,13 @@
 // closed?: at}` (6.4.12): Claude's marks alone, each skip with its reason,
 // and the close. Ready to build's also keeps what the spec and the cut held
 // as it closed. Decided's keeps `ledger_at`, the ledger's last line
-// as it closed; `voided?: at`, when a message was delivered to the topic
-// since (mail.cjs); and `taken?: at`, when the decided gate's yes took its
-// close (decided.cjs). What the engine checks is worked out at every call and
+// as it closed; `voided?: at`, when the topic's discussion went on since
+// while the close stood — a message or an experiment's report delivered
+// (mail.cjs), a feature's discussion entered again (enter.cjs), a question
+// asked or moved onto it (ledger-write.cjs), each through derivations.cjs's
+// `voidDecidedClose` — so the manifest alone says whether a close stands;
+// and `taken?: at`, when the decided gate's yes took its close
+// (decided.cjs). What the engine checks is worked out at every call and
 // never kept (6.4.3), so it never goes stale: the person's questions open on
 // the topic's map (the ledger's fold); mail waiting in the topic's
 // `topics/{topic}/mail/`; the unit's topics settled, one live at least and
@@ -62,18 +66,19 @@
 // A mark counts only once made after the record's last close, so a point
 // closed again — a decided topic a message set back in progress (10.2.7,
 // mail.cjs) — is worked afresh. The decided gate stands on a close nothing
-// new has come to since (`decidedClose`): a message delivered to the topic
-// or a question opened on it — asked there, or moved to it — after the
-// close voids it, as the yes taking it does, so the topic is worked afresh
-// and closed again before its gate shows again, every engine item holding
-// still. A decision changed since voids nothing. Ready to build stands on
-// the landed spec alone (spec-landed.cjs): its close is refused while
-// `spec.md` holds changes that have not landed, and keeps `spec_hash` and
-// `cut_hash`, what the landed spec and the cut held as it closed; its gate
-// stands on a close neither has changed since (`readyClose`): a land or a
-// cut after it voids it (E12), and so does any engine item failing now, so
-// the checklist is worked afresh and closed again before the gate shows
-// again. A skip shows on the screen
+// new has come to since (`decidedClose`): a message delivered to the topic,
+// a feature's discussion entered again, or a question opened on it — asked
+// there, or moved to it — after the close voids it, as the yes taking it
+// does, so the topic is worked afresh and closed again before its gate shows
+// again, every engine item holding still. A decision changed since voids
+// nothing. A topic is refused its close while an experiment of its own is
+// still out. Ready to build stands on the landed spec alone
+// (spec-landed.cjs): its close is refused while `spec.md` holds changes that
+// have not landed, and keeps `spec_hash` and `cut_hash`, what the landed spec
+// and the cut held as it closed; its gate stands on a close neither has
+// changed since (`readyClose`): a land or a cut after it voids it (E12), and
+// so does any engine item failing now, so the checklist is worked afresh and
+// closed again before the gate shows again. A skip shows on the screen
 // of the next authority gate over its work (6.4.5): decided's, ready to
 // build's and finish's each their own, and finish's every phase start's and
 // close's too, as each record keeps them. An engine item is never marked or
@@ -87,7 +92,7 @@
 // ---------------------------------------------------------------------------
 
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, readProjectManifest, writeProjectManifestAtomic, withProjectLock } = require('../kernel/manifest.cjs');
-const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
+const { workUnitNameRefusal, EXPERIMENT_TERMINAL_STATUSES, isParentExperimentId } = require('../kernel/manifest-schema.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { hasTopic, manifestOf, liveness, liveTopics } = require('./ledger-units.cjs');
 const { ID_FACTS, foldLedger, mapOf } = require('./ledger-fold.cjs');
@@ -181,6 +186,19 @@ function ledgerPast(root, unit, topic, after, warnings) {
       if (opens && place.number > after) state.opened = true;
     },
   }, warnings);
+}
+
+/**
+ * Why a topic cannot close yet: an experiment of its own still out —
+ * conceived, designed, approved or running — its report owed, so something
+ * of the person's is open (11.2.1); or null where none is.
+ * @param {Named} named
+ */
+function experimentsOut({ manifest, topic }) {
+  const records = manifest.phases?.experiment?.items?.[/** @type {string} */ (topic)]?.experiments ?? {};
+  const out = Object.entries(records).filter(([id, record]) => isParentExperimentId(id) && !EXPERIMENT_TERMINAL_STATUSES.includes(record.status)).map(([id]) => id);
+  if (out.length === 0) return null;
+  return `${topic}'s experiment ${out.join(', ')} is still out — the topic closes once each has concluded or been abandoned, and its report is read`;
 }
 
 /** No message waiting in the topic's mail (10.2.7). @param {Named} named */
@@ -323,9 +341,10 @@ const POINTS = Object.freeze({
       { key: 'conflicts-read', text: 'the read for conflicting answers run within the topic' },
       { key: 'findings-rerun', text: 'each measured finding the topic\'s decisions rest on re-run' },
       { key: 'mailbox-empty', text: 'the topic\'s mailbox empty: every message raised and answered', check: mailboxEmpty },
-      { key: 'product-lines-shown', text: 'the product-record lines and any candidates written for the decided screen' },
+      { key: 'product-lines-shown', text: 'the product-record lines and any candidates written for the screen that shows the close' },
     ],
     shows: ownSkips,
+    refuses: experimentsOut,
     seals: ({ cwd, unit, topic, warnings }) => ({ ledger_at: ledgerPast(stateRoot(cwd), /** @type {string} */ (unit), /** @type {string} */ (topic), Infinity, warnings).last }),
   },
   'ready-to-build': {
@@ -614,9 +633,9 @@ function runChecklistVerb(cwd, verb, positional, opts) {
  * The close the decided gate stands on (9.7.3, 10.2.7): the record's close,
  * and the skips it shows (6.4.5), each marked before it. Refused while the
  * checklist is open: closed never; its close taken by the gate's yes
- * already, the topic set back in progress since; a message delivered to the
- * topic, or a question opened on it, since the close — each worked afresh
- * and closed again; or an item the engine checks failing now, as mail
+ * already, the topic set back in progress since; a question opened on the
+ * topic, or its discussion gone on otherwise, since the close — each worked
+ * afresh and closed again; or an item the engine checks failing now, as mail
  * waiting fails the mailbox's.
  * @param {string} cwd @param {string} unit @param {string} topic
  * @returns {{closed: string, skips: Skip[], warnings: string[]}}
@@ -630,11 +649,14 @@ function decidedClose(cwd, unit, topic) {
   if (record.taken !== undefined && record.taken >= closedAt) {
     throw new Error(`${name}'s close was taken by the decided gate's yes, and the topic was set back in progress since — its items are worked afresh and it is closed again`);
   }
-  if (record.voided !== undefined && record.voided >= closedAt) {
-    throw new Error(`${name} was closed before a message delivered to ${topic} — its items are worked afresh and it is closed again`);
-  }
   if (ledgerPast(stateRoot(cwd), unit, topic, /** @type {number} */ (record.ledger_at), checklist.warnings).opened) {
     throw new Error(`${name} was closed before a question opened on ${topic} — its items are worked afresh and it is closed again`);
+  }
+  if (record.voided !== undefined && record.voided >= closedAt) {
+    const ways = checklist.manifest.work_type === 'feature'
+      ? 'a message delivered to it, a question opened on it, or the discussion entered again'
+      : 'a message delivered to it, or a question opened on it';
+    throw new Error(`${name} was closed before ${topic}'s discussion went on — ${ways} — its items are worked afresh and it is closed again`);
   }
   return standingClose(checklist, record, closedAt);
 }
@@ -698,19 +720,6 @@ function standingClose(checklist, record, closedAt) {
 }
 
 /**
- * Record on the unit's manifest, as it is saved, that a message delivered
- * to the topic now voids its decided close, where it has one standing:
- * whether it did.
- * @param {Record<string, any>} manifest @param {string} topic @param {string} at
- */
-function voidDecidedClose(manifest, topic, at) {
-  const record = recordAt(manifest, ['decided', topic]);
-  if (record?.closed === undefined) return false;
-  record.voided = at;
-  return true;
-}
-
-/**
  * Record on the unit's manifest, as it is saved, that the decided gate's
  * yes took the topic's close.
  * @param {Record<string, any>} manifest @param {string} topic @param {string} at
@@ -719,4 +728,4 @@ function takeDecidedClose(manifest, topic, at) {
   /** @type {Checklist} */ (recordAt(manifest, ['decided', topic])).taken = at;
 }
 
-module.exports = { CHECKLIST_USAGE, runChecklistVerb, engineItemsHold, decidedClose, readyClose, finishClose, takeDecidedClose, voidDecidedClose };
+module.exports = { CHECKLIST_USAGE, runChecklistVerb, engineItemsHold, decidedClose, readyClose, finishClose, takeDecidedClose };

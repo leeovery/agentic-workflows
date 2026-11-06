@@ -6,8 +6,11 @@
 // its cut, in auto, round 1 failing on a bug its fix task builds. In round
 // 2 a question only the person can answer is raised at the review's place;
 // the round passes, and finish holds the unit open until the person, at the
-// stop, answers it; then finish goes through (12.13.22). A fix task parked
-// on the person is test-pipeline-simulation-review-park.cjs's.
+// stop, answers it; then finish goes through (12.13.22). From start this
+// work to finish the person is stopped at start this work, the one screen,
+// decided and ready to build, finish, and the question the ask rule sent,
+// and nowhere else (19.S6). A fix task parked on the person is
+// test-pipeline-simulation-review-park.cjs's.
 //
 // Layer: simulation. World: this file's own, built once from the project
 // every scenario starts from (pipeline-world.cjs) — a feature through its
@@ -22,14 +25,17 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const {
-  Sim, worldFrom, cutClosed, builtAside, areaRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, finished, handoff,
+  Sim, worldFrom, cutClosed, builtAside, areaRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, finished, handoff, gatesAnswered,
 } = require('./pipeline-world.cjs');
 const { leaningCall } = require('./ledger-world.cjs');
 
 const WU = 'ledger';
 
-/** A feature through its spec to ready to build's pick, its cut's one phase built, reviewed, merged and closed. */
-const questionsWorld = worldFrom('pipeline-review-questions-', (sim) => cutClosed(sim, WU));
+/** A feature from start this work through its spec to ready to build's pick in auto, its cut's one phase built, reviewed, merged and closed, the person stopped on the way at start this work and the one screen alone. */
+const questionsWorld = worldFrom('pipeline-review-questions-', (sim) => {
+  cutClosed(sim, WU);
+  assert.deepStrictEqual(gatesAnswered(sim), ['start this work', 'ready to build'], '19.S6: no gate stops the person between the one screen and the review');
+});
 
 describe('pipeline simulation: a question asked in a review round', () => {
   let sim;
@@ -57,5 +63,6 @@ describe('pipeline simulation: a question asked in a review round', () => {
     assert.deepStrictEqual(finished(sim, WU).next, { kind: 'handoff', skill: 'leeway', args: [] });
     handoff(sim, '/leeway');
     assert.strictEqual(sim.manifest(WU).status, 'completed', 'the unit finishes once nothing waits on the person');
+    assert.deepStrictEqual(gatesAnswered(sim), ['finish'], '19.S6: past the build, the person is stopped at finish, and at the question the ask rule sent');
   });
 });

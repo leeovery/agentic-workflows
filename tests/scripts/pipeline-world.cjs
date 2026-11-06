@@ -592,14 +592,19 @@ function answerGate(sim, name, ...answer) {
   return answered;
 }
 
+/** The gates the person answered, in order, as the trust log has them. @param {Sim} sim @returns {string[]} */
+const gatesAnswered = (sim) => trustLines(sim).map((line) => JSON.parse(line)).filter(({ type }) => type === 'gate').map(({ gate }) => gate);
+
 /** Claude's items of the decided checklist; the engine works out the rest. */
-const DECIDED_ITEMS = ['closing-pass', 'decisions-entered', 'replacements-checked', 'conflicts-read', 'findings-rerun', 'product-lines-shown'];
+const DECIDED_ITEMS = Object.freeze(['closing-pass', 'decisions-entered', 'replacements-checked', 'conflicts-read', 'findings-rerun', 'product-lines-shown']);
 
 /**
  * A discussion closed as the prose closes it (9.7): the map drawn, no agent
  * left to wait for, the decided checklist worked and closed, Claude's
  * payload staged on the decided screen, and the person's yes at its gate
- * run. Answers what the yes answered.
+ * run — a feature's topic closing into its spec with no gate, its payload
+ * staged for ready to build's screen (11.2.1). Answers what the yes, or a
+ * feature's stage, answered.
  * @param {Sim} sim @param {string} wu @param {string} topic
  * @param {{lines: object[], candidates: object[]}} [payload]
  */
@@ -609,17 +614,20 @@ function decideTopic(sim, wu, topic, payload = { lines: [], candidates: [] }) {
   for (const item of DECIDED_ITEMS) sim.run(['checklist', 'done', 'decided', wu, topic, item]);
   sim.run(['checklist', 'close', 'decided', wu, topic]);
   const file = sim.write(`.leeway/.cache/scratch/decided-${topic}.json`, payload);
+  if (sim.manifest(wu).work_type === 'feature') return sim.run(['decided', 'stage', wu, topic, '--file', file]);
   assert.match(sim.render(['decided', `${wu}.${topic}`, '--file', file], { expect: 'content' }), /^=== MENU: decided /m);
   const { next } = answerGate(sim, 'decided', '--pick', 'y');
   return sim.run(next.argv);
 }
 
 /**
- * A discussion worked from its entry to its yes as the prose works it (9.3,
- * 9.7): the entry; the reads — every other decided topic's record and the
- * product record; each waiting message raised as a question and answered off
- * the mailbox; the opening question asked and the person's answer decided,
- * the log written; then the close. Answers what the yes answered.
+ * A discussion worked from its entry to its close as the prose works it
+ * (9.3, 9.7): the entry; the reads — every other decided topic's record and
+ * the product record; each waiting message raised as a question and answered
+ * off the mailbox; the opening question asked and the person's answer
+ * decided, the log written; then the close — an epic's topic's through its
+ * decided gate's yes, a feature's staged into its spec. Answers what the yes,
+ * or the stage, answered.
  * @param {Sim} sim @param {string} wu @param {string} topic
  * @param {{question?: string, answer?: string, payload?: {lines: object[], candidates: object[]}}} [opts]
  */
@@ -775,6 +783,14 @@ function workTheSet(sim, paths) {
 // pick ran.
 /** @param {Sim} sim @param {string} wu @param {string[]} topics @param {'s'|'a'} [position] */
 function specToBuild(sim, wu, topics, position = 's') {
+  specWritten(sim, wu, topics);
+  return specBuilt(sim, wu, position);
+}
+
+// The corridor's first half: the spec entered, written and landed, its
+// one screen not yet answered.
+/** @param {Sim} sim @param {string} wu @param {string[]} topics */
+function specWritten(sim, wu, topics) {
   specEntry(sim, wu, topics);
   sim.run(['brief', 'spec-writer', wu]);
   const statements = topics.map((topic, i) => {
@@ -786,6 +802,12 @@ function specToBuild(sim, wu, topics, position = 's') {
     '## 1-S. Scenarios for §1', '', '1.S1 Given the work, when it runs, then it holds as decided. (1.1.1)', '',
   ].join('\n'));
   assert.deepStrictEqual(sim.run(['spec', 'land', wu]).invented, []);
+}
+
+// The corridor's second half, from a landed spec: reviewed and cut, and
+// ready to build's pick beginning the build. Answers what the pick ran.
+/** @param {Sim} sim @param {string} wu @param {'s'|'a'} [position] */
+function specBuilt(sim, wu, position = 's') {
   specReviewed(sim, wu);
   cutTheSpec(sim, wu, [{ name: 'The work', goal: 'The work holds as decided.', scenarios: ['1.S1'], sections: ['1'], relies_on: [] }]);
   const rows = readyToBuild(sim, wu).split('\n').flatMap((line) => {
@@ -1339,6 +1361,6 @@ function finished(sim, wu, { closed = false } = {}) {
 }
 
 module.exports = {
-  Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicBuildPick, linearBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed,
-  builders, taskBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finishClosed, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic,
+  Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, gatesAnswered, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicBuildPick, linearBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed,
+  DECIDED_ITEMS, specWritten, specBuilt, builders, taskBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finishClosed, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic,
 };

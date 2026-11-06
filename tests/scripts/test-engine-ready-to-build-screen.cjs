@@ -23,6 +23,7 @@ require('./hermetic-env.cjs');
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
+const fs = require('fs');
 const { ok, sectionOf, statePath, layout, readState, readManifest, commitAll } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { MADE } = require('./ledger-world.cjs');
@@ -134,9 +135,18 @@ describe('a verdict on each call the person changed among the spec\'s gap answer
   it('asks it before the gate, one at a time, given at ready to build, the yes refused until each is asked — a change made in a topic never asked here', () => {
     const call = answered(dir(), SPEC_AT, 'Is a refund ever partial?', { ...MADE, text: 'Never.' });
     const changed = write(dir(), 'replace', SPEC_AT, ['--replaces', call, '--reason', 'changed-mind'], { by: 'person', drops: ['never partial'], text: 'When the person asks.', why: 'The person wants it so.' });
+    const spec = readState(dir(), layout.unit(UNIT, 'spec.md'));
+    fs.rmSync(statePath(dir(), layout.unit(UNIT, 'spec.md')));
+    const cards = (/** @type {string} */ status) => {
+      const manifest = readManifest(dir(), UNIT);
+      manifest.phases.discussion.items.cards.status = status;
+      createManifest(dir(), UNIT, manifest);
+    };
+    cards('in-progress');
     const elsewhere = answered(dir(), `${UNIT}.discussion.cards`, 'Is a card saved?', { ...MADE, text: 'Never.' });
     write(dir(), 'replace', `${UNIT}.discussion.cards`, ['--replaces', elsewhere, '--reason', 'changed-mind'], { by: 'person', drops: ['never saved'], text: 'When asked.', why: 'The person wants it so.' });
-    written(dir(), readState(dir(), layout.unit(UNIT, 'spec.md')).replace('\n## 2-S.', `\n2.1.3 A refund is partial when the person asks. [${changed}]\n\n## 2-S.`));
+    cards('completed');
+    written(dir(), spec.replace('\n## 2-S.', `\n2.1.3 A refund is partial when the person asks. [${changed}]\n\n## 2-S.`));
     cut(dir(), [CARDS, REFUNDS]);
     closeReady(dir());
     const first = screen();

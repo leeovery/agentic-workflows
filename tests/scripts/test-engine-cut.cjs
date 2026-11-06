@@ -27,8 +27,8 @@
 // recorded (11.S5); nothing staged refused, naming where the agent writes
 // it; the decisions made at the spec since the cut landed — every one
 // before any cut — drawn with where each stands, the person's changes to
-// the cut among them, never a question or a finding made there, or a
-// decision made in a topic; every refusal of the
+// the cut among them, never a question or a finding made there; every
+// refusal of the
 // brief storing none, a cancelled unit's among them.
 //
 // Layer: verb. Worlds, each built once and copied: a project with two
@@ -421,14 +421,12 @@ describe('the cut\'s corridor (11.5.1, 11.5.6, 11.S5, 11.S7)', () => {
     assert.strictEqual(section(briefed().brief, 'The staged cut\'s refusal'), 'None recorded.');
   });
 
-  it('draws the decisions made at the spec since the cut landed — every one before any cut — each with where it stands and what it replaced: the person\'s changes to the cut among them; never a question or a finding made there, or a decision made in a topic', () => {
+  it('draws the decisions made at the spec since the cut landed — every one before any cut — each with where it stands and what it replaced: the person\'s changes to the cut among them; never a question or a finding made there', () => {
     const { write } = ledgerHelpers(() => dir);
     const requests = () => section(briefed().brief, REQUESTS);
     const asked = write('ask', AT_SPEC, [], { ...PERSON, text: 'Which refunds come first?' }).id;
     const first = write('decide', AT_SPEC, ['--answers', asked], { ...PERSON, text: 'Part refunds are built before whole ones.', why: 'They are asked for most.' }).id;
     write('find', AT_SPEC, [], { ...MADE, text: 'Refunds post nightly.', how: 'read in the code', known: 'read' });
-    const topicAsked = write('ask', `${EPIC}.discussion.refunds`, [], { ...PERSON, text: 'Are refunds emailed?' }).id;
-    write('decide', `${EPIC}.discussion.refunds`, ['--answers', topicAsked], { ...PERSON, text: 'Refunds are emailed.', why: 'The card holder asks.' });
 
     assert.strictEqual(requests(), `- ${first} decision, the unit's own: Part refunds are built before whole ones.`);
 

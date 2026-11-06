@@ -148,6 +148,13 @@
 //   released: the entry's short id, the commit, and as warnings a push that
 //   failed and what a landing finished on the way said, which a refusal
 //   carries too.
+//   A question asked on a topic, or moved onto one, while the topic's
+//   decided close stands voids that close on the unit's manifest, under the
+//   same lock and in the same commit (checklist.cjs, 9.7.9), so the
+//   manifest alone says whether a close stands; a topic decided at its gate
+//   takes no question, asked there or moved to it — it reaches the topic as
+//   a message, which reopens it, a move made once it is sent (10.2.7). Past the unit's spec no topic
+//   takes a write: a change is the spec's, asked for there (4.11.2).
 //   Then, the lock released, the knowledge base's copies are rendered
 //   against the ledger and indexed (ledger-copies.cjs), a failure a warning
 //   on an entry that stands (22.6.15).
@@ -170,6 +177,9 @@ const { derivedMove, movedRefusal, reverses } = require('./ledger-verdicts.cjs')
 const { heldAgainst } = require('./ledger-affected.cjs');
 const { newEvent, keepEvent, landKept } = require('./trust-log.cjs');
 const { checkUnparked } = require('./questions.cjs');
+const { voidDecidedClose, itemOf } = require('./derivations.cjs');
+const { pastItsSpec } = require('./spec-standing.cjs');
+const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manifest.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').IdFacts} IdFacts */
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
@@ -573,6 +583,10 @@ function addressOf(cwd, said, dotpath, write) {
     throw new Error(`${said}: a topic exists only before the spec, and ${phase} is the unit's — write at ${unit}.${phase}`);
   }
   checkItemHeld(said, { unit, phase, topic }, () => manifest);
+  if (topic !== null && pastItsSpec(cwd, manifest)) {
+    throw new Error(`${said}: ${unit} has its spec — a topic exists only before it, and a change the person asks for is settled at ${unit}.specification`);
+  }
+  if (write.event === 'asked' && topic !== null) checkUndecided(said, manifest, topic, 'topic send');
   const at = { dotpath, root, unit, manifest, phase, topic };
   checkPlaceLive(said, at, liveness(root));
   return at;
@@ -691,9 +705,23 @@ function checkDestination(said, at, given) {
 function checkDestinationLive(said, at, given, live) {
   const [to] = /** @type {string[]} */ (given.get('to'));
   if (roadmapItemOf(to) !== null) return;
-  if (!hasTopic(manifestOf(at.root, at.unit) ?? {}, to)) throw new Error(`${said}: ${at.unit} has no topic "${to}" to move the question to`);
+  const manifest = manifestOf(at.root, at.unit) ?? {};
+  if (!hasTopic(manifest, to)) throw new Error(`${said}: ${at.unit} has no topic "${to}" to move the question to`);
+  checkUndecided(said, manifest, to, 'topic send, then the move again');
   const dead = live(at.unit, to);
   if (dead !== null) throw new Error(`${said}: --to names ${to}, which takes no question — ${dead}`);
+}
+
+/**
+ * Refuse, in the words of `said`, a question opened on a topic decided at
+ * its gate: it reaches the topic as a message, which reopens it (10.2.7),
+ * as the topic's entry says, `way` the calls that take it there.
+ * @param {string} said @param {Record<string, any>} manifest @param {string} topic @param {string} way
+ */
+function checkUndecided(said, manifest, topic, way) {
+  if (itemOf(manifest, 'discussion', topic)?.status === 'completed') {
+    throw new Error(`${said}: the topic "${topic}" is decided — a question reaches it as a message sent to it, which reopens it: ${way}`);
+  }
 }
 
 /** @param {IdFacts} facts */
@@ -1240,8 +1268,34 @@ function ledgerMessage(unit, event, id, topic) {
  * commit git refuses a warning.
  * @param {string} cwd @param {Request} request @param {string} id @param {string[]} warnings
  */
-function commitEntry(cwd, { at, write }, id, warnings) {
-  return commitLedger(cwd, ledgerMessage(at.unit, write.event, id, at.topic), warnings);
+function commitEntry(cwd, { at, write }, id, warnings, paths = []) {
+  return commitLedger(cwd, ledgerMessage(at.unit, write.event, id, at.topic), warnings, paths);
+}
+
+/**
+ * The topic a write opens a question on — asked there, or moved onto it —
+ * or null for any other write.
+ * @param {Address} at @param {Write} write @param {Record<string, unknown>} fields @returns {string|null}
+ */
+function opensOn(at, write, fields) {
+  if (write.event === 'asked') return at.topic;
+  if (write.event === 'moved' && typeof fields.to === 'string' && roadmapItemOf(fields.to) === null) return fields.to;
+  return null;
+}
+
+/**
+ * The decided close of the topic a write opens a question on voided, where
+ * one stands, under the writer lock the caller holds: the manifest's path
+ * for the commit where it was, else none.
+ * @param {string} cwd @param {Address} at @param {Write} write @param {Record<string, unknown>} fields @returns {string[]}
+ */
+function voidOnQuestion(cwd, at, write, fields) {
+  const topic = opensOn(at, write, fields);
+  if (topic === null || at.manifest === null) return [];
+  const manifest = loadWorkUnitManifest(cwd, at.unit);
+  if (!voidDecidedClose(manifest, topic, new Date().toISOString())) return [];
+  saveWorkUnitManifest(cwd, at.unit, manifest);
+  return [`${at.unit}/manifest.json`];
 }
 
 /**
@@ -1279,9 +1333,10 @@ function land(cwd, request, warnings) {
     const { type, fields: own } = logs({ ...fields, id });
     keepEvent(newEvent(type, own, cwd), at.root, id);
   }
+  const voided = voidOnQuestion(cwd, at, write, fields);
   const line = appendEntry(at.root, fields, warnings, id);
   if (logs !== null) landKept(cwd, warnings);
-  return { id: short, outcome: commitEntry(cwd, request, id, warnings), line, held: null };
+  return { id: short, outcome: commitEntry(cwd, request, id, warnings, voided), line, held: null };
 }
 
 /**

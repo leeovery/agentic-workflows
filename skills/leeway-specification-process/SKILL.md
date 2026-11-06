@@ -19,7 +19,7 @@ Load **[framework.md](../leeway-shared/references/framework.md)** and follow its
 
 ## Done When
 
-The person has picked the build's position at ready to build: the engine then holds the spec concluded, its phase cut on the unit's manifest, and the build begun in that position.
+The person has picked the build's position at ready to build: the engine then holds the spec concluded, its phase cut on the unit's manifest, and the build begun in that position — a feature's topic decided with it, with the product-record lines and the candidates the pick covered.
 
 ## Entering
 
@@ -49,10 +49,10 @@ The person meets this phase at approve the map after the sweep, at a gap the mat
 - An agent → `brief sweep|spec-writer|phase-cut {work_unit}`, the writer with the wording the person agreed `--wording {file}`; a review pass → `agent dispatch {work_unit} specification {work_unit} --kind spec-review`, then `brief spec-reviewer {work_unit} --agent {dispatch_id}`, the id the dispatch answers; then the Agent call with the agent and the pointer `brief` answers. A pass's report → `agent scan|ack|surface|incorporate {work_unit} specification {work_unit}`.
 - The sweep's report → `sweep take {work_unit}`; its candidates → `render approve-map {work_unit} [--sweep]`, `approve-map strike|unstrike {work_unit} {n}`; the map changed at Keep shaping → discovery's `topic` verbs; a message to a started topic → `topic send {work_unit} {topic} --from {work_unit}.specification`, then `render send-report`.
 - The spec → `spec land {work_unit}`.
-- A gap → `raise {work_unit}.specification --replaces {decision_id} --reason {reason}` where it changes a decision; otherwise `ledger ask {work_unit}.specification`, then `raise {work_unit}.specification --answers {question_id}`; the person's own decision → `ledger decide|replace {work_unit}.specification`; a fact shown wrong → `ledger replace {work_unit}.specification --reason was-wrong`; what relied on it → `ledger affected {work_unit} {topic}`, `ledger hold`.
+- A gap → `raise {work_unit}.specification --replaces {decision_id} --reason {reason}` where it changes a decision; otherwise `ledger ask {work_unit}.specification`, then `raise {work_unit}.specification --answers {question_id}`; the person's own decision → `ledger decide|replace {work_unit}.specification`; a fact shown wrong → `ledger replace {work_unit}.specification --reason was-wrong`; what relied on it → `ledger affected {work_unit} {topic}`, `ledger hold {work_unit}.specification`.
 - The cut → `cut {work_unit}`.
 - The review page → `spec page|published|marks|push {work_unit}`.
-- The close → `checklist show|done|skip|close ready-to-build {work_unit}`, then `render ready-to-build {work_unit} [--page]`, whose picks run `ready-to-build yes`.
+- The close → `checklist show|done|skip|close ready-to-build {work_unit}`, then `render ready-to-build {work_unit} [--page]`, whose picks run `ready-to-build yes`; a feature's topic close, restaged → `decided stage|unstrike {work_unit} {work_unit}`.
 - The split → `render horizon-pick|postpone-gate {work_unit}.discovery.{topic}`, then `topic postpone` as the confirm's yes runs it, and `render topic-receipt`.
 - A gate's answer → `gate "{name}" --pick {key}`, or `--typed {key}` for a typed row such as a Comment.
 
@@ -74,7 +74,7 @@ An epic's outline or the read across its topics grows unwieldy, or the person as
 
 ## A Change at Ready to Build
 
-The person asks at ready to build for a change to the outline or the phase cut. Load **[ready-to-build.md](references/ready-to-build.md)** and follow its instructions as written, from **A Change Asked For**.
+The person asks at ready to build for a change to the outline or the phase cut, or at a feature's, to what they decided or a product-record line. Load **[ready-to-build.md](references/ready-to-build.md)** and follow its instructions as written, from **A Change Asked For**.
 
 ## Comments on the Review Page
 

@@ -3,170 +3,68 @@
 // ---------------------------------------------------------------------------
 // Domain ring: a topic's close as the person sees it (9.7), drawn from the
 // record and Claude's staged payload (decided.cjs):
-// - the decided screen (9.7.3): what the person decided, and apart from it
-//   what was carried over, never passing as theirs (21.6.5); Claude's calls
-//   counted by kind, a call not yet labelled counted as such until the
-//   labeller gives it one (16.11), opened to list them, one the person
-//   handed over marked so (9.5.4); the proposed product-record lines
-//   (8.9.7), one replacing a line the record holds shown with the text it
-//   replaces, and the record's lines withdrawn with the text each withdraws
-//   (8.9.2); the new-topic candidates, each with its
-//   reason, struck ones marked — in a unit with one topic, the items its yes
-//   parks on the roadmap, each with its horizon (8.10.2); and every
-//   checklist item skipped, with its
-//   reason (6.4.5). Then the first departure on the topic still to be asked
-//   its verdict (16.10.2) — the verdict gate, one at a time — and once none
-//   is, the decided gate, an authority gate that always stops (3.2.3): its
-//   yes covers the lines, the withdrawals and every candidate not struck,
-//   their counts in words;
-// - the pick of the candidate to strike, where more than one stands (P8);
+// - the decided screen (9.7.3): the topic's close (closing.cjs) — what the
+//   person decided and what was carried over, Claude's calls counted by
+//   kind, the product-record lines and withdrawals, and the candidates — and
+//   every checklist item skipped, with its reason (6.4.5). Then the first
+//   departure on the topic still to be asked its verdict (16.10.2) — the
+//   verdict gate, one at a time — and once none is, the decided gate, an
+//   authority gate that always stops (3.2.3): its yes covers the lines, the
+//   withdrawals and every candidate not struck, their counts in words;
+// - the pick of the candidate to strike, where more than one stands (P8),
+//   on the decided screen or a feature's ready to build, which shows its
+//   topic's close (9.7.6);
 // - the wait for the topic's agents still running (9.7.8), a process gate:
 //   its wait draws the gate again once their reports land, its go goes on.
 // ---------------------------------------------------------------------------
 
-const { section, menu, cmdOption, promptOption, callout, clipped, MENU_INSTRUCTION, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
-const { block, series, callsBlock, verdictBlock, verdictGate } = require('./closing.cjs');
-const { renderTree, wrapWithPrefix } = require('../../kernel/render.cjs');
+const { section, menu, cmdOption, promptOption, callout, MENU_INSTRUCTION, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
+const { runs, callsBlock, decidedBlocks, recordBlocks, candidateWords, marksDecided, strikeRows, verdictBlock, verdictGate } = require('./closing.cjs');
 const { TREE_WIDTH, titlecase } = require('../conventions.cjs');
-const { ROW_MAX, counted } = require('./map.cjs');
-
-/** @typedef {import('./surfaces.cjs').Next} Next */
+const { counted } = require('./map.cjs');
 
 /**
  * The decided screen as it is drawn, `title` the topic as screens title it.
- * @typedef {{
- *   unit: string, topic: string, title: string,
- *   decided: string[], carried: string[], moved: number,
+ * @typedef {Omit<import('./closing.cjs').TopicClose, 'called'> & {
+ *   title: string,
  *   calls: import('./closing.cjs').ShownCall[],
  *   listed: boolean,
- *   lines: {text: string, replaces: string|null}[],
- *   withdrawals: {text: string, why: string}[],
- *   parks: boolean,
- *   candidates: {name: string, reason: string, struck: boolean, horizon: string|null}[],
  *   skips: {text: string, reason: string}[],
  *   verdict: import('../ledger-verdicts.cjs').AskedVerdict|null,
  * }} DecidedView
  */
 
-const INDENT = '  ';
-const CONTINUED = '    ';
-
-/** The decided gate's address for its next steps. @param {{unit: string, topic: string}} view */
-function addressOf({ unit, topic }) {
-  return `${unit}.${topic}`;
-}
-
-/** What answering a row runs: an engine command, by its argv after `engine`. @param {string[]} argv @returns {{next: Next}} */
-function runs(argv) {
-  return { next: { kind: 'engine', argv } };
-}
-
-/** What stands where nothing was the person's decision: what every question was instead. @param {DecidedView} view */
-function noneOfYours({ calls, carried, moved }) {
-  const was = [...(calls.length > 0 ? ['a call of mine'] : []), ...(carried.length > 0 ? ['carried over'] : []), ...(moved > 0 ? ['moved on'] : [])];
-  return was.length === 0 ? 'Nothing of yours — no question was asked' : `Nothing of yours — every question was ${series(was, 'or')}`;
-}
-
-/** Rows by their question alone, each cut to the map's length. @param {string[]} texts */
-function questionTree(texts) {
-  return renderTree(texts.map((text) => ({ title: clipped(text, ROW_MAX) })), { width: TREE_WIDTH });
-}
-
-/** A row of the product-record block, its continuations hung under its text, and beneath it what it changes in the record. @param {string} text @param {string|null} beneath */
-function recordRow(text, beneath) {
-  const shown = wrapWithPrefix(`· ${text}`, { width: TREE_WIDTH, prefix: INDENT, hang: 2 });
-  if (beneath !== null) shown.push(...wrapWithPrefix(beneath, { width: TREE_WIDTH, prefix: `${INDENT}  `, hang: 2 }));
-  return shown.join('\n');
-}
-
-/** The product-record block: each line, the line it replaces beneath; then each line withdrawn, by why, its text beneath. @param {DecidedView} view */
-function recordBlock({ lines, withdrawals }) {
-  const counts = [...(lines.length > 0 ? [counted(lines.length, 'line')] : []), ...(withdrawals.length > 0 ? [`${withdrawals.length} withdrawn`] : [])];
-  return block(`FOR THE PRODUCT RECORD (${counts.join(' · ')})`, [
-    ...lines.map(({ text, replaces }) => recordRow(text, replaces === null ? null : `↳ Replaces: ${replaces}`)),
-    ...withdrawals.map(({ text, why }) => recordRow(why, `↳ Withdraws: ${text}`)),
-  ].join('\n'));
-}
-
-/**
- * How the screen speaks of the candidates: as topics for an epic's map, or
- * as items a one-topic unit parks on the roadmap (8.10.2).
- */
-const CANDIDATE_WORDS = Object.freeze({
-  map: { heading: 'NEW-TOPIC CANDIDATES', one: 'candidate', many: 'candidates', off: 'it doesn\'t become a topic', ask: 'Which candidate should not become a topic?' },
-  roadmap: { heading: 'TO THE ROADMAP', one: 'roadmap item', many: 'roadmap items', off: 'it doesn\'t go on the roadmap', ask: 'Which candidate should stay off the roadmap?' },
-});
-
-/** The words for the candidates of a unit that parks them or one that maps them. @param {boolean} parks */
-function candidateWords(parks) {
-  return CANDIDATE_WORDS[parks ? 'roadmap' : 'map'];
-}
-
-/** The candidates, each with its reason beneath, a struck one marked, one parking tagged with its horizon. @param {DecidedView['candidates']} candidates */
-function candidateTree(candidates) {
-  return renderTree(candidates.map(({ name, reason, struck, horizon }) => {
-    const tag = struck ? 'struck' : horizon;
-    return {
-      title: struck ? `⊘ ${titlecase(name)}` : `○ ${titlecase(name)}`,
-      ...(tag === null ? {} : { tag }),
-      body: [reason],
-    };
-  }), { width: TREE_WIDTH });
-}
+/** The topic's close the screen draws, its calls counted. @param {DecidedView} view @returns {import('./closing.cjs').TopicClose} */
+const closeOf = (view) => ({ ...view, called: view.calls.length });
 
 /**
  * The decided screen's display: each block that has something to show.
  * @param {DecidedView} view
  */
 function decidedDisplay(view) {
-  const { title, decided, carried, calls, listed, lines, withdrawals, parks, candidates, skips, verdict } = view;
-  const blocks = [`${title} — decided`];
-  blocks.push(block(`WHAT YOU DECIDED (${decided.length})`, decided.length === 0 ? `${INDENT}${noneOfYours(view)}` : questionTree(decided)));
-  if (carried.length > 0) blocks.push(block(`CARRIED OVER (${carried.length})`, questionTree(carried)));
+  const { title, calls, listed, skips, verdict } = view;
+  const blocks = [`${title} — decided`, ...decidedBlocks(closeOf(view))];
   if (calls.length > 0) blocks.push(callsBlock(calls, listed));
-  if (lines.length + withdrawals.length > 0) blocks.push(recordBlock(view));
-  if (candidates.length > 0) blocks.push(block(`${candidateWords(parks).heading} (${candidates.length})`, candidateTree(candidates)));
+  blocks.push(...recordBlocks(closeOf(view)));
   if (skips.length > 0) blocks.push(skips.map(({ text, reason }) => callout(`Skipped: ${text} — ${reason}`, { width: TREE_WIDTH })).join('\n'));
   if (verdict !== null) blocks.push(verdictBlock(verdict));
   return blocks.join('\n\n');
 }
 
-/** The numbers the gate says in words. */
-const IN_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
-
-/** `n` of a thing as the gate says it: `the line`, `the two lines`, `the 12 lines`; nothing for none. @param {number} n @param {string} one @param {string} many */
-function theCount(n, one, many) {
-  if (n === 0) return [];
-  return [n === 1 ? `the ${one}` : `the ${IN_WORDS[n] ?? n} ${many}`];
-}
-
-/** What the person's yes covers, said on the gate: the lines, the withdrawals and the candidates not struck. @param {DecidedView} view */
-function yesCovers({ title, lines, withdrawals, parks, candidates }) {
-  const words = candidateWords(parks);
-  const covers = [
-    ...theCount(lines.length, 'product-record line', 'product-record lines'),
-    ...theCount(withdrawals.length, 'withdrawal', 'withdrawals'),
-    ...theCount(candidates.filter(({ struck }) => !struck).length, words.one, words.many),
-  ];
-  return `Your yes marks ${title} decided${covers.length === 0 ? '' : `, with ${series(covers, 'and')}`}.`;
-}
-
 /**
  * The decided gate: the yes, Claude's calls opened where they are not
- * listed, the strike where a candidate stands — at once where one does,
- * through a pick where more do — and a comment.
+ * listed, the strike where a candidate stands, and a comment.
  * @param {DecidedView} view
  */
 function decidedGate(view) {
-  const { unit, topic, calls, listed, parks, candidates } = view;
-  const { off } = candidateWords(parks);
-  const standing = candidates.flatMap(({ struck }, at) => (struck ? [] : [at + 1]));
-  const rows = [cmdOption('y', 'yes', 'Mark it decided', runs(['decided', 'yes', unit, topic]))];
-  if (calls.length > 0 && !listed) rows.push(cmdOption('c', 'calls', `See Claude's ${counted(calls.length, 'call')}`, runs(['render', 'decided', addressOf(view), '--calls'])));
-  if (standing.length === 1) rows.push(cmdOption('s', 'strike', `Strike the candidate — ${off}`, runs(['decided', 'strike', unit, topic, String(standing[0])])));
-  if (standing.length > 1) rows.push(cmdOption('s', 'strike', `Strike a candidate — ${off}`, runs(['render', 'decided-strike', addressOf(view)])));
-  rows.push(promptOption('Comment', 'Tell me what to change — a product-record line included'));
-  return section('MENU: decided', MENU_INSTRUCTION, menu(yesCovers(view), rows, { question: 'Mark it decided?' }));
+  const { unit, topic, title, calls, listed } = view;
+  const rows = [
+    cmdOption('y', 'yes', 'Mark it decided', runs(['decided', 'yes', unit, topic])),
+    ...(calls.length > 0 && !listed ? [cmdOption('c', 'calls', `See Claude's ${counted(calls.length, 'call')}`, runs(['render', 'decided', `${unit}.${topic}`, '--calls']))] : []),
+    ...strikeRows(closeOf(view), 's'),
+    promptOption('Comment', 'Tell me what to change — a product-record line included'),
+  ];
+  return section('MENU: decided', MENU_INSTRUCTION, menu(`Your yes ${marksDecided(closeOf(view), title)}.`, rows, { question: 'Mark it decided?' }));
 }
 
 /**
@@ -182,16 +80,17 @@ function decidedScreen(view) {
 
 /**
  * The pick of the candidate to strike: each standing candidate by its
- * number on the screen, and back to the screen as it was.
- * @param {{unit: string, topic: string, parks: boolean, candidates: {name: string, struck: boolean}[]}} view
+ * number on the screen, `flags` carried into what it runs, and back to the
+ * screen the pick was made from, `back` its name and what draws it.
+ * @param {{unit: string, topic: string, parks: boolean, candidates: {name: string, struck: boolean}[], flags: string[], back: {to: string, argv: string[]}}} view
  * @returns {string}
  */
 function strikePick(view) {
-  const { unit, topic, parks, candidates } = view;
+  const { unit, topic, parks, candidates, flags, back } = view;
   const rows = candidates.flatMap(({ name, struck }, at) => (struck ? [] : [
-    cmdOption(String(at + 1), null, { head: titlecase(name) }, runs(['decided', 'strike', unit, topic, String(at + 1)])),
+    cmdOption(String(at + 1), null, { head: titlecase(name) }, runs(['decided', 'strike', unit, topic, String(at + 1), ...flags])),
   ]));
-  rows.push(cmdOption('b', 'back', 'Back to the decided screen — nothing struck', runs(['render', 'decided', addressOf(view)])));
+  rows.push(cmdOption('b', 'back', `Back to ${back.to} — nothing struck`, runs(back.argv)));
   return section('MENU: decided strike', MENU_INSTRUCTION, menu('', rows, { question: candidateWords(parks).ask }));
 }
 

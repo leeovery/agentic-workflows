@@ -10,7 +10,8 @@
 //   each complete, under way, or later, by the phase's status
 //   (derivations.cjs); an epic's discovery runs until its map is first
 //   approved, as the yes records it (`phases.discovery.approved_at`,
-//   approve-map.cjs), each phase after it later until then. The
+//   approve-map.cjs), each phase after it later until then. A feature's
+//   discussion is complete once it has closed into its spec (11.2.1). The
 //   specification is under way from its entry, once the topics are settled
 //   (spec-standing.cjs). A phase complete carries the day it closed, as its
 //   records keep it: a linear unit's discovery the day the unit was made,
@@ -46,7 +47,7 @@
 const { stagedOrNone, candidatesStanding } = require('../approve-map.cjs');
 const { pastItsSpec, topicsSettled } = require('../spec-standing.cjs');
 const { waitingAndFreed } = require('../questions.cjs');
-const { phaseStatus, buildPlaceStatus, buildBegun, buildFinished, retiredRefusal } = require('../derivations.cjs');
+const { phaseStatus, buildPlaceStatus, buildBegun, buildFinished, retiredRefusal, closedIntoSpec } = require('../derivations.cjs');
 const { counted } = require('./map.cjs');
 const { finishDraws } = require('../finish.cjs');
 const { buildView } = require('./board-build.cjs');
@@ -100,7 +101,7 @@ const specBegun = (at) => topicsSettled(at.manifest) || pastItsSpec(at.cwd, at.m
 
 /** Where a phase stands, by the status of the phase it reads. @param {BoardAt} at @param {string} reads @returns {Status} */
 function statusOf(at, reads) {
-  if (reads === 'discovery') return 'complete';
+  if (reads === 'discovery' || (reads === 'discussion' && closedIntoSpec(at.manifest))) return 'complete';
   const status = reads === 'review' ? buildPlaceStatus(at.manifest, reads) : phaseStatus(at.manifest, reads, reads === 'specification' && specBegun(at));
   if (status === 'completed') return 'complete';
   return status === 'in-progress' ? 'running' : 'later';

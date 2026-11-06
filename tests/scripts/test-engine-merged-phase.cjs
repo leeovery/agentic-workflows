@@ -99,8 +99,8 @@ describe('the screens name the merged phase discussion', () => {
     assert.doesNotMatch(card, /research/i);
   });
 
-  it('a discussion closes at its decided gate, never through topic complete', () => {
+  it('a discussion closes on its decided checklist, never through topic complete', () => {
     assert.match(refuses(dir, ['topic', 'complete', EPIC, 'discussion', 'alpha']).error,
-      /^a discussion closes at its decided gate — `checklist close decided`, then `render decided` and the yes, which runs `decided yes`$/);
+      /^a discussion closes on its decided checklist, `checklist close decided` — an epic's then at its decided gate, `render decided` and the yes, which runs `decided yes`; a feature's into its spec, `decided stage`, its close taken at ready to build$/);
   });
 });
