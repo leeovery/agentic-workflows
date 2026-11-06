@@ -76,7 +76,8 @@ describe('the one screen (3.S5, 9.S23, 11.S14)', () => {
       '## 1-S. Scenarios for §1', '', '1.S1 Given a tally at four, when the day turns, then it resets. (1.1.1, 1.1.2)', ''].join('\n'), FEATURE);
     cut(dir(), [FEATURE_PHASE], FEATURE);
     closeReady(dir(), FEATURE);
-    assert.match(refused(['render', 'ready-to-build', FEATURE]), /^render ready-to-build: line 1 cannot land — (?!.*decided yes).*; decided stage tally tally --file <payload\.json> stages it again$/, 'the refusal names no verb a feature cannot run');
+    assert.strictEqual(refused(['render', 'ready-to-build', FEATURE]),
+      `render ready-to-build: line 1 cannot land — decided stage --relies-on names ${made.resets}, which ${now} replaced — the current one is ${now}; decided stage tally tally --file <payload.json> stages it again`);
     const payload = { lines: [{ text: 'A tally resets at four in the morning, wherever it is shown.', why: 'The reset holds for the whole product.', widens: now }], candidates: [] };
     ok(dir(), ['decided', 'stage', FEATURE, FEATURE, '--file', writeState(dir(), layout.cache('scratch', 'restaged.json'), JSON.stringify(payload))], { env: SESSION });
     assert.match(screen(), /MENU: ready to build/);

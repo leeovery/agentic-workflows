@@ -180,9 +180,9 @@ describe('pipeline simulation: feature', () => {
 
     sim.run(['workunit', 'pivot', wu]);
     const added = sim.run(['topic', 'add', wu, 'sharing', '--summary', 'Who sees a shared filter', '--brief', briefDraft(sim, wu, 'sharing')]);
-    sim.run(['ledger', 'move', at, '--question', point, '--to', 'sharing'], null, JSON.stringify(person));
     const message = sim.write(`.leeway/.cache/${wu}/discussion/${wu}/message-team-sight.md`, 'Who sees a shared filter\n\nSharing needs decisions of its own.\n');
     const sent = sim.run(['topic', 'send', wu, 'sharing', '--from', wu, '--content', message, '--slug', 'team-sight']);
+    sim.run(['ledger', 'move', at, '--question', point, '--to', 'sharing'], null, JSON.stringify(person));
     assert.match(sim.render(['send-report', `${wu}.sharing`, '--sent', sent.message_path], { expect: 'content' }), /^Sent to Sharing, on Filters$/m);
 
     const manifest = sim.manifest(wu);

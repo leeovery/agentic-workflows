@@ -566,25 +566,21 @@ describe('the question on the map an experiment measures (9.1.11)', () => {
     assert.deepStrictEqual(map().map(([id, stands, waiting]) => [id, stands, waiting]), [[placement, 'answered', null]]);
   });
 
-  it('a report concluding after the person closed its question reaches the topic as a message, reopening it if decided', () => {
+  it('a report concluding after the person closed its question reaches the topic as a message, the topic held in progress while it ran', () => {
     const placement = ask('Where does a new window open?');
     measure(placement);
     walkTo(dir, 'E1', 'running');
     personDecides(placement);
-    const m = readManifest(dir, 'lab');
-    m.phases.discussion.items.timing.status = 'completed';
-    writeManifest(dir, 'lab', m);
     const report = '# Report — E1\n\nTop left is found fastest.\n';
     fs.writeFileSync(statePath(dir, layout.experiment('lab', 'timing', 'E1-window-placement', 'report.md')), report);
     const res = withFrozenClock(() => engine(dir, ['experiment', 'conclude', 'lab', 'timing', 'E1', '--verdict', 'top left wins']));
     const message = statePath(dir, layout.mailbox('lab', 'timing', '001-e1-report.md'));
-    assert.deepStrictEqual(res.report_sent, { topic: 'timing', message_path: message, reopened: true, committed: res.report_sent.committed });
+    assert.deepStrictEqual(res.report_sent, { topic: 'timing', message_path: message, reopened: false, committed: res.report_sent.committed });
     assert.strictEqual(fs.readFileSync(message, 'utf8'), '# Report — E1\nFrom Experiment E1 · 1 Jan\n\nTop left is found fastest.\n', 'the report reaches its own topic as written, from the experiment by its id');
     assert.strictEqual(lastMessage(dir), 'mail(lab): send 001-e1-report.md to timing');
-    assert.strictEqual(readManifest(dir, 'lab').phases.discussion.items.timing.status, 'in-progress', 'the decided topic reopens');
   });
 
-  it('a report whose question the person moved to another topic reaches that topic, whose map waits on the experiment until it writes the result', () => {
+  it('a report whose question the person moved to another topic, and decided there while it ran, reaches that topic as a message, reopening it once decided', () => {
     const m = readManifest(dir, 'lab');
     m.phases.discovery.items.sizing = { summary: 'Window sizing', order: 2 };
     m.phases.discussion.items.sizing = { status: 'in-progress' };
@@ -596,11 +592,15 @@ describe('the question on the map an experiment measures (9.1.11)', () => {
     engine(dir, ['ledger', 'move', 'lab.discussion.timing', '--question', placement, '--to', 'sizing'], { env: SESSION, stdin: JSON.stringify({ by: 'person', who_moved_whom: 'none' }) });
     const sizingMap = () => engine(dir, ['ledger', 'map', 'lab', 'sizing']).questions.map((/** @type {Record<string, unknown>} */ r) => [r.id, r.stands, r.waiting_on]);
     assert.deepStrictEqual(sizingMap(), [[placement, 'open', { experiment: 'E1', running: true }]]);
+    engine(dir, ['ledger', 'decide', 'lab.discussion.sizing', '--answers', placement], { env: SESSION, stdin: JSON.stringify({ by: 'person', who_moved_whom: 'none', text: 'Top left.', why: 'Where the eye lands.' }) });
+    const decided = readManifest(dir, 'lab');
+    decided.phases.discussion.items.sizing.status = 'completed';
+    writeManifest(dir, 'lab', decided);
     const record = layout.experiment('lab', 'timing', 'E1-window-placement');
     fs.writeFileSync(statePath(dir, `${record}/report.md`), '# Report — E1\n\nRuns in [the data](data/run.csv).\n');
     const res = withFrozenClock(() => engine(dir, ['experiment', 'conclude', 'lab', 'timing', 'E1', '--verdict', 'top left wins']));
     assert.deepStrictEqual(res.report_sent, {
-      topic: 'sizing', message_path: statePath(dir, layout.mailbox('lab', 'sizing', '001-e1-report.md')), reopened: false, committed: res.report_sent.committed,
+      topic: 'sizing', message_path: statePath(dir, layout.mailbox('lab', 'sizing', '001-e1-report.md')), reopened: true, committed: res.report_sent.committed,
     });
     const back = path.posix.relative(layout.mailbox('lab', 'sizing'), record);
     assert.strictEqual(
@@ -609,8 +609,7 @@ describe('the question on the map an experiment measures (9.1.11)', () => {
     );
     assert.strictEqual(lastMessage(dir), 'mail(lab): send 001-e1-report.md to sizing');
     assert.ok(!fs.existsSync(statePath(dir, layout.mailbox('lab', 'timing'))), 'the topic the question left gets nothing');
-    assert.deepStrictEqual(sizingMap(), [[placement, 'open', { experiment: 'E1', running: false }]], 'the result is the destination\'s to write');
-    engine(dir, ['ledger', 'decide', 'lab.discussion.sizing', '--answers', placement], { env: SESSION, stdin: JSON.stringify({ ...MADE, text: 'Top left.', why: 'E1 measured it.' }) });
+    assert.strictEqual(readManifest(dir, 'lab').phases.discussion.items.sizing.status, 'in-progress', 'the decided destination reopens');
     assert.deepStrictEqual(sizingMap(), [[placement, 'answered', null]]);
   });
 

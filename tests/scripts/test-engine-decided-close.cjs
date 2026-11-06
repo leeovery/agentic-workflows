@@ -8,11 +8,12 @@
 // line, the yes refused while a line widens a decision replaced since, a
 // line widening the replacement replacing it and a withdrawal taking a line
 // out, one rule standing, a yes killed after they landed run again (P9,
-// 8.9.2); a message delivered or
-// a question opened since the close voiding it, the payload staged against
-// it refused by the screen and the yes alike, and a decision changed since
-// voiding nothing; a topic decided at its gate taking no question, asked
-// there or moved onto it.
+// 8.9.2); a message delivered or a question opened since the close voiding
+// it, and a feature's discussion entered again, an epic's keeping it, the
+// payload staged against it refused by the screen and the yes alike, and a
+// decision changed since voiding nothing; a topic decided at its gate taking
+// no question, asked there or moved onto it, until a message sent to it
+// reopens it.
 //
 // Layer: verb. World: the decided suites' (decided-world.cjs).
 // ---------------------------------------------------------------------------
@@ -25,7 +26,7 @@ const fs = require('fs');
 
 const { ok, output, refusedPristine, sectionOf, readManifest, statePath, killedAt, stateGit, layout } = require('./engine-harness.cjs');
 const { UNIT, SESSION, MADE, NOTE, ledgerHelpers } = require('./ledger-world.cjs');
-const { PERSON, NO_PAYLOAD, NOTE_MAP, writeIn, markAllButTheClosingPass, useDecidedWorld, decidedHelpers } = require('./decided-world.cjs');
+const { SOLO, PERSON, NO_PAYLOAD, NOTE_MAP, writeIn, markAllButTheClosingPass, useDecidedWorld, decidedHelpers } = require('./decided-world.cjs');
 
 const dir = useDecidedWorld();
 const { close, payload, screen, staged, answer, run, reverse } = decidedHelpers(dir);
@@ -127,6 +128,13 @@ describe('a topic set back in progress (P9, 10.2.7)', () => {
     assert.match(screen(), /MENU: decided/);
   });
 
+  it('voids a feature\'s close into its spec with its discussion entered again, the stage refused naming every way a feature\'s close is voided', () => {
+    close(SOLO, SOLO);
+    ok(dir(), ['enter', 'discussion', SOLO, SOLO, '--take'], { env: SESSION });
+    assert.strictEqual(refusedPristine(dir(), ['decided', 'stage', SOLO, SOLO, '--file', payload(NO_PAYLOAD)], { env: SESSION }).error,
+      'decided stage: decided.solo was closed before solo\'s discussion went on — a message delivered to it, a question opened on it, or the discussion entered again — its items are worked afresh and it is closed again');
+  });
+
   it('voids the close with a question opened on the topic since — asked there, or moved to it, each stamping the void on the manifest in its own commit — and never with a decision changed', () => {
     close();
     staged(NO_PAYLOAD);
@@ -152,7 +160,7 @@ describe('a topic set back in progress (P9, 10.2.7)', () => {
 });
 
 describe('a topic decided at its gate (10.2.7)', () => {
-  it('takes no question, asked there or moved onto it, each refusal naming the message that reopens it', () => {
+  it('takes no question, asked there or moved onto it, each refusal naming the message that reopens it; sent first, the question moves onto it reopened', () => {
     close();
     staged(NO_PAYLOAD);
     run(answer('decided', 'y'));
@@ -162,6 +170,14 @@ describe('a topic decided at its gate (10.2.7)', () => {
     assert.strictEqual(refusedPristine(dir(), ['ledger', 'ask', NOTE], { env: SESSION, stdin: question }).error, `ledger ask: ${decided}`);
     const homing = `${UNIT}.discussion.space-homing`;
     const moved = writeIn(dir(), 'ask', homing, [], { ...MADE, text: 'Does a note remember its space?' });
-    assert.strictEqual(refusedPristine(dir(), ['ledger', 'move', homing, '--question', moved, '--to', 'note-window'], { env: SESSION, stdin: JSON.stringify(MADE) }).error, `ledger move: ${decided}`);
+    const move = ['ledger', 'move', homing, '--question', moved, '--to', 'note-window'];
+    assert.strictEqual(refusedPristine(dir(), move, { env: SESSION, stdin: JSON.stringify(MADE) }).error, `ledger move: ${decided}, then the move again`);
+    const scratch = payload(NO_PAYLOAD);
+    fs.writeFileSync(scratch, `A note's space\n\nSpace homing asks whether a note remembers its space: ${moved}.\n`);
+    ok(dir(), ['topic', 'send', UNIT, 'note-window', '--from', 'space-homing', '--content', scratch, '--slug', 'note-space'], { env: SESSION });
+    assert.strictEqual(readManifest(dir(), UNIT).phases.discussion.items['note-window'].status, 'in-progress', 'the send reopens it');
+    ok(dir(), move, { env: SESSION, stdin: JSON.stringify(MADE) });
+    const stands = (/** @type {string} */ topic) => ok(dir(), ['ledger', 'map', UNIT, topic]).questions.find((/** @type {{id: string}} */ row) => row.id === moved)?.stands;
+    assert.deepStrictEqual([stands('space-homing'), stands('note-window')], ['moved-away', 'open']);
   });
 });

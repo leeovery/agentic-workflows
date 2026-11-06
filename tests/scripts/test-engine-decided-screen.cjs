@@ -11,8 +11,8 @@
 // departure on the topic one at a time (16.S33), none where the person
 // changed none (16.S34), then the decided gate (9.S21); a payload the map
 // or the record refuses staging nothing; `engine decided strike|unstrike`
-// and `render decided-strike` (P8); a running experiment holding the close
-// (9.S61); and the wait for the topic's agents still running (9.S63).
+// and `render decided-strike` (P8); and the wait for the topic's agents
+// still running (9.S63).
 //
 // Layer: verb. World: the decided suites' (decided-world.cjs).
 // ---------------------------------------------------------------------------
@@ -26,11 +26,11 @@ const fs = require('fs');
 const { ok, output, refusedPristine, sectionOf, readManifest, statePath } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, SESSION, MADE, NOTE, SPACE, ledgerHelpers } = require('./ledger-world.cjs');
-const { SOLO, PERSON, NO_PAYLOAD, NOTE_MAP, writeIn, answeredIn, markAllButTheClosingPass, useDecidedWorld, decidedHelpers } = require('./decided-world.cjs');
+const { SOLO, NO_PAYLOAD, NOTE_MAP, writeIn, answeredIn, markAllButTheClosingPass, useDecidedWorld, decidedHelpers } = require('./decided-world.cjs');
 
 const dir = useDecidedWorld();
 const { close, payload, candidate, screen, staged, answer, run, reverse } = decidedHelpers(dir);
-const { full, carriedOver } = ledgerHelpers(dir);
+const { carriedOver } = ledgerHelpers(dir);
 /** The candidates staged for the note window, each struck or standing. */
 const stagedCandidates = () => JSON.parse(fs.readFileSync(statePath(dir(), '.cache', UNIT, 'discussion', 'note-window', 'decided.json'), 'utf8')).candidates;
 
@@ -208,24 +208,6 @@ describe('striking a candidate (P8)', () => {
     assert.match(again, /└─ ○ Removing Fumi\n/);
     assert.match(sectionOf(again, 'MENU: decided'), /^Your yes marks Note Window decided, with the candidate\.$/m);
     assert.strictEqual(refusedPristine(dir(), ['decided', 'unstrike', UNIT, 'note-window', '1'], { env: SESSION }).error, 'decided unstrike: "removing-fumi" is not struck');
-  });
-});
-
-describe('what holds the close (9.S16, 9.S61)', () => {
-  it('closes with Claude\'s calls standing once nothing of the person\'s is open, and holds while an experiment of the topic is still out, its question closed or not', () => {
-    const timing = writeIn(dir(), 'ask', NOTE, [], { ...MADE, text: 'How fast does a note open?' });
-    createManifest(dir(), UNIT, {
-      ...readManifest(dir(), UNIT),
-      phases: { ...readManifest(dir(), UNIT).phases, experiment: { items: { 'note-window': { status: 'in-progress', experiments: { E1: { slug: 'open-time', status: 'running', question: full(timing) } } } } } },
-    });
-    ok(dir(), ['checklist', 'done', 'decided', UNIT, 'note-window', 'closing-pass'], { env: SESSION });
-    assert.match(refusedPristine(dir(), ['checklist', 'close', 'decided', UNIT, 'note-window'], { env: SESSION }).error, /has items open: questions-closed$/);
-    writeIn(dir(), 'decide', NOTE, ['--answers', timing], { ...PERSON, text: 'Under a frame.', why: 'The person closed it while it ran.' });
-    assert.match(refusedPristine(dir(), ['checklist', 'close', 'decided', UNIT, 'note-window'], { env: SESSION }).error, /note-window's experiment E1 is still out/);
-    const ended = readManifest(dir(), UNIT);
-    ended.phases.experiment.items['note-window'] = { status: 'completed', experiments: { E1: { ...ended.phases.experiment.items['note-window'].experiments.E1, status: 'abandoned' } } };
-    createManifest(dir(), UNIT, ended);
-    ok(dir(), ['checklist', 'close', 'decided', UNIT, 'note-window'], { env: SESSION });
   });
 });
 

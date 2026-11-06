@@ -172,6 +172,13 @@ describe('what cannot enter the spec is refused, naming the way on, and nothing 
     assert.strictEqual(enter('fumi').res.entered, true);
   });
 
+  it('an epic whose topic has closed its decided checklist and not yet had its gate answered (11.2.1)', () => {
+    ok(dir, ['topic', 'postpone', 'fumi', 'licence', '--horizon', 'next'], { env: env() });
+    createManifest(dir, 'fumi', { ...readManifest(dir, 'fumi'), checklists: { decided: { onboarding: { items: {}, closed: '2026-10-01T09:00:00.000Z' } } } });
+    assert.strictEqual(refused(['fumi']),
+      'fumi\'s spec waits until every topic is decided, cancelled or postponed — still open: "onboarding"; work them from the epic\'s menu, or postpone them to the roadmap');
+  });
+
   it('an epic with no live topic decided — its map not yet shaped, or every topic set aside — the way on its discovery or the roadmap', () => {
     const none = (unit) => `${unit}'s spec waits until a topic is decided — none on its map is live: shape the map in its discovery, or pull a topic forward from the roadmap`;
     assert.deepStrictEqual([refused(['unshaped']), refused(['aside'])], [none('unshaped'), none('aside')]);

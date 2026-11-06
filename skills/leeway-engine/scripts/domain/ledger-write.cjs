@@ -153,7 +153,7 @@
 //   same lock and in the same commit (checklist.cjs, 9.7.9), so the
 //   manifest alone says whether a close stands; a topic decided at its gate
 //   takes no question, asked there or moved to it — it reaches the topic as
-//   a message, which reopens it (10.2.7). Past the unit's spec no topic
+//   a message, which reopens it, a move made once it is sent (10.2.7). Past the unit's spec no topic
 //   takes a write: a change is the spec's, asked for there (4.11.2).
 //   Then, the lock released, the knowledge base's copies are rendered
 //   against the ledger and indexed (ledger-copies.cjs), a failure a warning
@@ -586,7 +586,7 @@ function addressOf(cwd, said, dotpath, write) {
   if (topic !== null && pastItsSpec(cwd, manifest)) {
     throw new Error(`${said}: ${unit} has its spec — a topic exists only before it, and a change the person asks for is settled at ${unit}.specification`);
   }
-  if (write.event === 'asked' && topic !== null) checkUndecided(said, manifest, topic);
+  if (write.event === 'asked' && topic !== null) checkUndecided(said, manifest, topic, 'topic send');
   const at = { dotpath, root, unit, manifest, phase, topic };
   checkPlaceLive(said, at, liveness(root));
   return at;
@@ -707,7 +707,7 @@ function checkDestinationLive(said, at, given, live) {
   if (roadmapItemOf(to) !== null) return;
   const manifest = manifestOf(at.root, at.unit) ?? {};
   if (!hasTopic(manifest, to)) throw new Error(`${said}: ${at.unit} has no topic "${to}" to move the question to`);
-  checkUndecided(said, manifest, to);
+  checkUndecided(said, manifest, to, 'topic send, then the move again');
   const dead = live(at.unit, to);
   if (dead !== null) throw new Error(`${said}: --to names ${to}, which takes no question — ${dead}`);
 }
@@ -715,12 +715,12 @@ function checkDestinationLive(said, at, given, live) {
 /**
  * Refuse, in the words of `said`, a question opened on a topic decided at
  * its gate: it reaches the topic as a message, which reopens it (10.2.7),
- * as the topic's entry says.
- * @param {string} said @param {Record<string, any>} manifest @param {string} topic
+ * as the topic's entry says, `way` the calls that take it there.
+ * @param {string} said @param {Record<string, any>} manifest @param {string} topic @param {string} way
  */
-function checkUndecided(said, manifest, topic) {
+function checkUndecided(said, manifest, topic, way) {
   if (itemOf(manifest, 'discussion', topic)?.status === 'completed') {
-    throw new Error(`${said}: the topic "${topic}" is decided — a question reaches it as a message sent to it, which reopens it: topic send`);
+    throw new Error(`${said}: the topic "${topic}" is decided — a question reaches it as a message sent to it, which reopens it: ${way}`);
   }
 }
 
