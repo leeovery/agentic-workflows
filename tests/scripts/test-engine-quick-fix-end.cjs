@@ -8,10 +8,11 @@
 // opened; `task done` taking a fix holding a commit of its own past the
 // branch it is laid on, opened to land — refused otherwise, naming its
 // opening, or its close as met where it holds none (R1), and one whose
-// branch moved past its pull request on every driver in the landing
-// conformance suite's quick-fix; `task close` taking a fix
-// holding no work of its own, even one a later fix is laid on — that fix
-// then opening onto the fix below, past the one closed (R4) — and one
+// branch moved past its pull request on every driver in
+// test-engine-landing-conformance-quick-fix-moved.cjs; `task close`
+// taking a fix holding no work of its own, even one a later fix is laid
+// on — that fix then opening onto the fix below, past the one closed
+// (R4) — and one
 // holding work neither opened to land nor laid on by a later fix not
 // closed, the fix after it laid on the fix below and none of its work
 // landing; refused otherwise, naming the reversal, which lands as a fix of
