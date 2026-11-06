@@ -11,7 +11,9 @@
 //   too) — a builder's commands carry the conversation's id, so a commit
 //   from its worktree finds its task. Refused, each with the way on: no
 //   conversation, a unit the project lacks, a task id that does not read
-//   `{phase}.{n}`, no task in flight — `task start` puts it there, again
+//   `{phase}.{n}`, a task the tracker holds ended, which takes no start —
+//   naming the start of the next of its phase's not ended, and a task of
+//   its own made — no task in flight — `task start` puts it there, again
 //   after a `/clear`, which begins another conversation — and only other
 //   tasks in flight, each named; from a worktree `task worktree` laid out
 //   for another task in flight (task-worktree.cjs, conversation.cjs's
@@ -62,6 +64,7 @@ const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { parseShownTask, shownTask, taskId, taskName } = require('./task-id.cjs');
 const { isBugfix, doorGate } = require('./bug-proven.cjs');
 const environment = require('./environment.cjs');
+const { trackedPhase, ENDED } = require('./task-verbs.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** A check the door runs: its name and command, why it may fail where it may, and the way on where it fails and may not. @typedef {{name: string, command: string, allowed?: string, way?: string}} Check */
@@ -93,11 +96,30 @@ function inFlightTask(cwd, unit, given) {
   const inFlight = tasksInFlight(session);
   const named = inFlight.find((task) => task.unit === unit && task.task === shownTask(ref));
   if (named !== undefined) return { ref: fromItsWorktree(session, cwd, ref, named.worktree), manifest };
+  refuseEnded(cwd, ref);
   if (inFlight.length === 0) {
     throw new Error(`commit --task: no task is in flight in this conversation — start ${taskName(ref)} with ${startCall(unit, given)}, then commit again; a /clear begins another conversation, so a task started before one is started again after it`);
   }
   const others = inFlight.map((task) => `task ${task.task} of ${task.unit}`).join(', ');
   throw new Error(`commit --task: ${taskName(ref)} is not in flight in this conversation, ${others} ${inFlight.length === 1 ? 'is' : 'are'} — commit under the task the work is for, or start ${taskName(ref)} with ${startCall(unit, given)}`);
+}
+
+/**
+ * Refuse a commit under a task the tracker holds ended, which takes no more
+ * work and no start: naming the start of the next of its phase's tasks not
+ * ended, where one is, and the making of a task of its own.
+ * @param {string} cwd @param {TaskRef} ref
+ */
+function refuseEnded(cwd, ref) {
+  const tasks = trackedPhase(cwd, ref.unit, ref.phase).tasks ?? [];
+  const task = tasks.find((held) => held.ref.n === ref.n);
+  if (task === undefined || !ENDED.includes(task.status)) return;
+  const next = tasks.find((held) => held.ref.n > ref.n && !ENDED.includes(held.status));
+  const start = next === undefined ? '' : `start the next with ${startCall(ref.unit, shownTask(next.ref))}, `;
+  throw new Error(
+    `commit --task: ${taskName(ref)} is ${task.status}, and a task ended takes no more work — commit it under the task it is for: `
+    + `${start}or make it a task of its own with \`engine task create ${ref.unit} ${ref.phase} --file <task.md>\``,
+  );
 }
 
 /**

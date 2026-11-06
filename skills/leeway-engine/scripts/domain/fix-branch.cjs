@@ -12,35 +12,40 @@
 // their pull requests chain (7.2.3) and a closed fix's work never lands
 // (`fixBase`). A fix's own work is its own commits — those the commit door
 // stamped with its task (commit-task.cjs) — that its branch holds past the
-// branch the repository lands on (`fixWork`), so a merge back, a later fix
-// laid on it or a fix below it moving on neither hides it nor lends it.
-// Another fix not closed is laid on it where that fix's branch holds one of
-// them — a later fix on an earlier one's (`laidOn`, `laidBeneath`). These
-// are what a fix's opening and end read (fix-end.cjs), and its record
-// (quick-fix-record.cjs). The commit door takes a fix's commit on its branch
-// alone (commit-task.cjs). The close, once its fixes have landed, puts the
-// checkout back on the branch the repository lands on (finish.cjs), as a
-// move that leaves the fixes does (workunit-move.cjs) where the checkout has
-// one of the unit's fixes' branches out: refused, nothing moved, while it
-// holds changes not committed outside the state, naming each. The move then
-// sets the fixes' branches aside (`setFixesAside`): one holding commits of
-// its own past its base — the branch the fixes land on, or the fix before it
-// it was laid from — is kept, its commits unlanded, renamed to
-// `moved/{branch}`, a name no landing reads as the unit's (`taskOfBranch`,
-// `phaseOfBranch`, landing-names.cjs), so the new type's build, numbering
-// its own tasks from 1.1, never meets it; one holding none is deleted. The
-// kept names are what the topic's first opening names (`keptBranches`). Each
-// move refuses first a checkout holding changes not committed outside the
-// state, naming each (`codeStatus`, code.cjs): a fix's start before the
-// tracker moves, the close before anything lands. Only the project's own
-// repository moves; a repository nested in it keeps its branch.
+// branch the repository lands on, so a merge back, a later fix laid on it or
+// a fix below it moving on neither hides it nor lends it; and, once it has
+// landed, that branch's commits naming it, its landing or its own, as a
+// merge by hand by any method leaves them (`ownWork`, `landedHere`). Another
+// fix not closed is laid on it where that fix's branch holds one of its own
+// commits past that branch — a later fix on an earlier one's (`laidOn`,
+// `laidBeneath`). These are what a fix's opening and end read (fix-end.cjs),
+// and its record (quick-fix-record.cjs). The commit door takes a fix's
+// commit on its branch alone (commit-task.cjs). The close, once its fixes
+// have landed, puts the checkout back on the branch the repository lands on
+// (finish.cjs), as a move that leaves the fixes does (workunit-move.cjs)
+// where the checkout has one of the unit's fixes' branches out: refused,
+// nothing moved, while it holds changes not committed outside the state,
+// naming each. The move then sets the fixes' branches aside
+// (`setFixesAside`): one holding commits of its own past its base — the
+// branch the fixes land on, or the fix before it it was laid from — is kept,
+// its commits unlanded, renamed to `moved/{branch}`, a name no landing reads
+// as the unit's (`taskOfBranch`, `phaseOfBranch`, landing-names.cjs), so the
+// new type's build, numbering its own tasks from 1.1, never meets it; one
+// holding none is deleted. The kept names are what the topic's first opening
+// names (`keptBranches`). Each move refuses first a checkout holding changes
+// not committed outside the state, naming each (`codeStatus`, code.cjs): a
+// fix's start before the tracker moves, the close before anything lands.
+// Only the project's own repository moves; a repository nested in it keeps
+// its branch.
 // ---------------------------------------------------------------------------
 
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { tryGit, git } = require('../kernel/git.cjs');
 const { projectRepos } = require('../kernel/repos.cjs');
+const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { codeStatus } = require('./code.cjs');
-const { branches, holdsBeyond, landsOn, switchTo, trailersPast } = require('./landing-git.cjs');
+const { dayBefore } = require('./dates.cjs');
+const { branches, holdsBeyond, landsOn, switchTo, trailersPast, tasksNamedOn } = require('./landing-git.cjs');
 const { taskBranch, taskOfBranch } = require('./landing-names.cjs');
 const { shownTask, taskName, taskId } = require('./task-id.cjs');
 
@@ -148,16 +153,32 @@ function stampedOn(cwd, branch) {
   return trailersPast(root, branch, landsOn(cwd, ownRepo(root)), stamp());
 }
 
+/** The fix's branch, where the repository holds it, else null. @param {string} cwd @param {TaskRef} ref */
+const fixBranch = (cwd, ref) => fixBranchOf(codeRoot(cwd), ref);
+
 /**
- * A fix's work: its branch, where the repository holds it, and whether it
- * holds a commit of the fix's own; null where the repository holds no
- * branch of it.
- * @param {string} cwd @param {TaskRef} ref
- * @returns {{branch: string, own: boolean}|null}
+ * The fixes, by internal id, the branch the repository lands on holds a
+ * commit naming — a fix's landing, or one of its commits through the door,
+ * as a merge by hand that keeps them leaves them — since the day before the
+ * unit was made.
+ * @param {string} cwd @param {string} unit @returns {Set<string>}
  */
-function fixWork(cwd, ref) {
-  const branch = fixBranchOf(codeRoot(cwd), ref);
-  return branch === null ? null : { branch, own: stampedOn(cwd, branch).has(taskId(ref)) };
+function landedHere(cwd, unit) {
+  const root = codeRoot(cwd);
+  return tasksNamedOn(root, landsOn(cwd, ownRepo(root)), unit, stamp(), dayBefore(loadWorkUnitManifest(cwd, unit).created));
+}
+
+/**
+ * Whether the fix holds work of its own: a commit of its own its branch
+ * holds past the branch the repository lands on, or one that branch holds
+ * once the fix has landed (`landedHere`).
+ * @param {string} cwd @param {TaskRef} ref
+ */
+function ownWork(cwd, ref) {
+  const id = taskId(ref);
+  if (landedHere(cwd, ref.unit).has(id)) return true;
+  const branch = fixBranch(cwd, ref);
+  return branch !== null && stampedOn(cwd, branch).has(id);
 }
 
 /** Fixes' numbers, lowest first. @param {{n: number}[]} fixes */
@@ -305,4 +326,4 @@ function checkOutLanding(cwd, unit) {
   return lands;
 }
 
-module.exports = { refuseDirty, refuseDirtyClose, checkOutFix, checkOutLanding, fixWayOn, closedFixes, fixWork, laidOn, laidBeneath, keptFixes, setFixesAside, keptBranches };
+module.exports = { refuseDirty, refuseDirtyClose, checkOutFix, checkOutLanding, fixWayOn, closedFixes, fixBranch, ownWork, laidOn, laidBeneath, keptFixes, setFixesAside, keptBranches };

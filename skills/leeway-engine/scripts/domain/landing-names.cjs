@@ -23,7 +23,8 @@ const TYPE = /^[a-z]+$/;
 const NUMBER = '[1-9][0-9]*';
 const SLUG_MAX = 48;
 const NO_SLUG = 'task';
-const TRAILER = /^Task: (\S+)$/;
+// A task's id, as a line naming it ends in.
+const ID = /^\S+$/;
 // Every character that ends a line: CR and LF, NEL, and the line and paragraph separators.
 const LINE_BREAK = /[\r\n\u0085\u2028\u2029]/;
 
@@ -98,24 +99,26 @@ function landedMessage(ref, type, title) {
   return `${type}(${ref.unit}): ${titleOf(title)}\n\nTask: ${taskId(ref)}\n`;
 }
 
-/** The task a `Task:` line names, or null. @param {string} line @returns {TaskRef|null} */
-function taskOfLine(line) {
-  const named = TRAILER.exec(line);
-  if (named === null) return null;
+/** The task a line naming one by `key` names, or null. @param {string} line @param {string} key @returns {TaskRef|null} */
+function taskOfLine(line, key) {
+  const value = line.startsWith(`${key}: `) ? line.slice(key.length + 2) : '';
+  if (!ID.test(value)) return null;
   try {
-    return parseTaskId(named[1]);
+    return parseTaskId(value);
   } catch {
     return null;
   }
 }
 
 /**
- * The unit's tasks a landed commit's message names, each once, in its order.
- * @param {string} unit @param {string} message
+ * The unit's tasks a landed commit's message names, each once, in its order
+ * — by its `Task:` lines, or, where `key` is given, its lines naming a task
+ * by that key, as the door's stamp does (commit-task.cjs).
+ * @param {string} unit @param {string} message @param {string} [key]
  * @returns {TaskRef[]}
  */
-function tasksOfMessage(unit, message) {
-  const ids = new Set(message.split('\n').map(taskOfLine).filter((ref) => ref !== null && ref.unit === unit).map((ref) => taskId(/** @type {TaskRef} */ (ref))));
+function tasksOfMessage(unit, message, key = 'Task') {
+  const ids = new Set(message.split('\n').map((line) => taskOfLine(line, key)).filter((ref) => ref !== null && ref.unit === unit).map((ref) => taskId(/** @type {TaskRef} */ (ref))));
   return [...ids].map(parseTaskId);
 }
 

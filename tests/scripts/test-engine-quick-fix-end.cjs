@@ -9,10 +9,15 @@
 // holds nothing; `task done` taking a fix holding a commit of its own
 // through the door that the branch it lands on lacks, opened to land —
 // refused otherwise, naming its opening, or its close as met where it holds
-// none (R1, R8). A closed fix's opening, the order fixes open in and a fix
-// whose branch moved past its pull request, on every driver, are the
-// quick-fix landing conformance suites'; a fix given up,
-// test-engine-quick-fix-given-up.cjs's. Every refusal writes nothing.
+// none (R1, R8) — and one whose own commits that branch holds, moved to
+// them by hand, read as landed: done, its opening refused naming its done,
+// its close naming the reversal, and its done refused, as an opened fix's
+// is, once its branch has moved past what its pull request holds (R11). A
+// closed fix's opening, the order
+// fixes open in, a fix whose branch moved past its pull request and a fix
+// merged by hand, on every driver, are the quick-fix landing conformance
+// suites'; a fix given up, test-engine-quick-fix-given-up.cjs's. Every
+// refusal writes nothing.
 //
 // Layer: git. World: quick-fix-world.cjs's `twoFixesBuilt` — fixes 1.1 and
 // 1.2, 1.2 laid on 1.1, each built through the local driver and done —
@@ -25,7 +30,7 @@ require('./hermetic-env.cjs');
 const { describe, it, afterEach } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
-const { ok, refusedPristine, git, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
+const { ok, refusedPristine, git, createFile, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const { UNIT, HELP, createFix, fixChanged, twoFixesBuilt } = require('./quick-fix-world.cjs');
 
@@ -101,12 +106,30 @@ describe('task done <quick-fix> <fix> (R1)', () => {
     ]);
   });
 
-  it('reads a fix whose commits the branch it lands on holds already as holding none of its own, naming its close as met', () => {
+  it('R11: reads a fix whose own commits the branch it lands on holds, moved to them by hand, as landed — done, its opening refused naming its done, its close naming the reversal', () => {
     dir = world();
     changed(3, DOCS, 'docs/flags.md');
     git(dir, ['branch', '-f', 'main', taskBranch({ unit: UNIT, phase: 1, n: 3 }, 'fix', DOCS)]);
+    const opening = refused(['land', 'open', UNIT, '1.3']);
+    const closing = refused(['task', 'close', UNIT, '1.3', '--reason', 'Not wanted.']);
+    run(['task', 'done', UNIT, '1.3']);
 
-    assert.strictEqual(refused(['task', 'done', UNIT, '1.3']),
-      `task done: task 1.3 of ${UNIT} holds no commit of its own — a fix met already, or with nothing to change, is closed as met: task close ${UNIT} 1.3 --reason <why>`);
+    assert.deepStrictEqual([opening, closing, status(3)], [
+      `land: task 1.3 of ${UNIT} has landed — a fix is done once it lands: task done ${UNIT} 1.3`,
+      `task close: task 1.3 of ${UNIT} has landed — so it is done, and its change is given up as a landed change is, by a fix of its own whose commit through the door reverts it: task create ${UNIT} 1 --file <task.md>`,
+      'done',
+    ]);
+  });
+
+  it('R11: refuses a fix landed by hand done once its branch has moved past what its pull request holds, naming the way back', () => {
+    dir = world();
+    changed(3, DOCS, 'docs/flags.md');
+    run(['land', 'open', UNIT, '1.3']);
+    const branch = taskBranch({ unit: UNIT, phase: 1, n: 3 }, 'fix', DOCS);
+    git(dir, ['branch', '-f', 'main', branch]);
+    createFile(dir, 'docs/more.md', '--colour\n');
+    run(['commit', '--paths', 'docs/more.md', '--task', UNIT, '1.3', '-m', `fix(${UNIT}): spell more docs`]);
+
+    assert.ok(refused(['task', 'done', UNIT, '1.3']).startsWith(`task done: task 1.3's branch ${branch} has moved since it was opened at `));
   });
 });

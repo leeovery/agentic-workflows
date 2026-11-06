@@ -73,6 +73,7 @@ const { git: personGit, tryGit: personTryGit, operationInProgress, dirtyEntries,
 const { placeOf, folderUnder } = require('../kernel/repos.cjs');
 const { STATE_BRANCH, NETWORK_ENV, PUSH_TIMEOUT_MS, FETCH_TIMEOUT_MS } = require('./state-worktree.cjs');
 const names = require('./landing-names.cjs');
+const { taskId } = require('./task-id.cjs');
 const { remoteName, nestedRemoteName } = require('./remote.cjs');
 
 /**
@@ -296,6 +297,18 @@ function trailersPast(root, branch, other, key) {
 function messagesNaming(root, revs, text, since = null) {
   const bound = since === null ? [] : [`--since=${since}`];
   return git(root, ['log', '-z', '--format=%B', '--fixed-strings', `--grep=${text}`, ...bound, ...revs, '--']).split('\0').filter(Boolean);
+}
+
+/**
+ * The unit's tasks, by internal id, a commit the local branch `on` holds
+ * names — by its `Task:` line, as a landing does, or by the trailer `key` —
+ * committed at or after the time `since` names where it names one.
+ * @param {string} root @param {string} on @param {string} unit @param {string} key @param {string|null} since @returns {Set<string>}
+ */
+function tasksNamedOn(root, on, unit, key, since) {
+  const bound = since === null ? [] : [`--since=${since}`];
+  const messages = git(root, ['log', '-z', '--format=%B', '--fixed-strings', `--grep=Task: ${unit}-`, `--grep=${key}: ${unit}-`, ...bound, `${HEADS}${on}`, '--']).split('\0').filter(Boolean);
+  return new Set(messages.flatMap((message) => [...names.tasksOfMessage(unit, message), ...names.tasksOfMessage(unit, message, key)].map(taskId)));
 }
 
 /** Every commit `to` holds past `from`, oldest first, as a refusal names it: short, then its subject. @param {string} root @param {string} from @param {string} to @returns {string[]} */
@@ -1244,7 +1257,7 @@ function landsOn(cwd, repo) {
 }
 
 module.exports = {
-  short, readOnce, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranches, holdingBranch, refsUnder, updateRefs, isAncestor, latestOf, mergeBase, treesOf, firstParentLine, messagesPast, trailersPast, messagesNaming, commitsNamed, messageOf, commitWithTree, treesPast,
+  short, readOnce, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranches, holdingBranch, refsUnder, updateRefs, isAncestor, latestOf, mergeBase, treesOf, firstParentLine, messagesPast, trailersPast, messagesNaming, tasksNamedOn, commitsNamed, messageOf, commitWithTree, treesPast,
   pointersAt, treeWithPointers, pointedLike, holdsCommit, pointerAhead, stackMoves, commitsPast, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, remedy, moveTo, movedSinceOpened, rewrite, scratchBlock, rebaseBlock, checkoutBlock, pathsChanged, dirtBlock, moveBranch,
   defaultBranch, landsOn, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, nothingPast,
   worktrees, taskWorktree, mainCheckoutOf, projectCheckout, holderOf, samePlace, removing, branchInPlace, addWorktree, switchTo, removeWorktree, detach, scratchRoot, scratchTree,

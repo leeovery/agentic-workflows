@@ -8,8 +8,10 @@
 // phases, after every other (7.2.6). `open` and `chain` refuse a task with
 // no account taken of its review as it stands (task-account.cjs, 12.14),
 // `open` taking a quick-fix's, which no pair reviews and which owes none
-// (19.5.3), and refusing a quick-fix's fix closed, or laid on one not
-// opened, every driver alike (fix-end.cjs); `open` a bugfix's reproducing
+// (19.5.3), and refusing a quick-fix's fix closed, landed, or laid on one
+// neither opened nor landed, every driver alike (fix-end.cjs) — a fix
+// lands alone, its phase merged by hand no stack for it, so it opens onto
+// the default branch there; `open` a bugfix's reproducing
 // task until its test's series proves the bug at its tip (bug-proven.cjs,
 // 15.5.3), and a
 // task of a fix phase whose branch does not descend from the unit's work
@@ -18,7 +20,9 @@
 // reports, or one changed under its last round since (round-report.cjs,
 // 12.1.4); and
 // `phase` a phase the cut holds until its phase review has passed and its
-// fixes are done, as the phase's close reads it (phase-checks.cjs, 7.2.4).
+// fixes are done, as the phase's close reads it (phase-checks.cjs, 7.2.4);
+// `phase` and `finish` a quick-fix's set while a fix is neither done nor
+// closed, naming each (fix-end.cjs).
 // `chain` answers, where the task chained is the last of a phase of the cut
 // not yet ended, the phase's notes consolidated (notes.cjs), its phase
 // review not begun and the verify setup naming a mutation tool, the phase's
@@ -30,13 +34,13 @@
 // (`landedTasks`, bug-proven.cjs); for the close in step, whether a
 // phase's tasks are each in its stack (`allChained`); for a quick-fix's
 // move, which of its fixes have a pull request opened or landed
-// (`openedTasks`, workunit-move.cjs), and for its close, which of its fixes
-// are not (`unchained`), and whether every phase is merged where it lands,
-// as a merge made by hand on a host leaves it before the default branch here
-// is brought to it (`allMerged`); for a quick-fix's fix done, whether its
-// branch has moved past what its pull request holds (`movedSinceOpening`);
-// and, for a task with nothing of its
-// unit's below it, where it starts in each repository (`landingTips`).
+// (`openedTasks`, workunit-move.cjs), and for its fixes, their opening, end
+// and close, each one's landing read alone, never through its phase's merge
+// state, as a person's merge by hand, by any method, leaves it: landed,
+// opened or neither (`taskLandings`); for a quick-fix's fix done, whether
+// its branch has moved past what its pull request holds
+// (`movedSinceOpening`); and, for a task with nothing of its unit's below
+// it, where it starts in each repository (`landingTips`).
 //
 // What every driver shares is settled here: the names (landing-names.cjs);
 // the default branch everything lands on in each repository, never the
@@ -111,6 +115,7 @@ const { taskRounds, pairPassed, changedUnder, changedRefusal, phaseReviewBegun }
 const { verifySetup } = require('./environment.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { cutLength } = require('./derivations.cjs');
+const { dayBefore } = require('./dates.cjs');
 const { reproducingHold } = require('./bug-proven.cjs');
 const names = require('./landing-names.cjs');
 const lg = require('./landing-git.cjs');
@@ -128,6 +133,8 @@ const reviewChange = () => require('./review-change.cjs');
 const account = () => require('./task-account.cjs');
 const fixEnd = () => require('./fix-end.cjs');
 const notes = () => require('./notes.cjs');
+/** The trailer the door stamps a task's commit with, read when asked: commit-task.cjs reads the landing. */
+const stamp = () => require('./commit-task.cjs').TRAILER;
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** @typedef {import('./drivers.cjs').LandingDriver} LandingDriver */
@@ -146,8 +153,10 @@ const notes = () => require('./notes.cjs');
  */
 
 /**
- * A task to land: its id, its branch, and the message it lands under.
- * @typedef {{ref: TaskRef, branch: string, message: string}} LandingTask
+ * A task to land: its id, its branch, and the message it lands under; and
+ * whether it lands alone, as a quick-fix's fix does, its phase merged by
+ * hand then no stack for it.
+ * @typedef {{ref: TaskRef, branch: string, message: string, alone?: boolean}} LandingTask
  */
 
 /**
@@ -569,8 +578,8 @@ function refuseUnproven(cwd, ref) {
  * wherever it touches, so a rerun reads finished work as done. A task the
  * tracker lacks is refused as the read finds it; a bugfix's reproducing
  * task while its bug is not proven, a fix phase's off the work below it,
- * and a quick-fix's fix closed or laid on one not opened, before anything
- * opens.
+ * and a quick-fix's fix closed, landed, or laid on one neither opened nor
+ * landed, before anything opens — a fix opening alone (`LandingTask`).
  * @param {string} cwd @param {string} unit @param {string} task shown, `{phase}.{n}`
  */
 function landOpen(cwd, unit, task) {
@@ -580,7 +589,8 @@ function landOpen(cwd, unit, task) {
   const lacking = `land: task ${shown} of ${unit} is not in the tracker — open a task it holds, as \`task list ${unit} ${ref.phase}\` lists them`;
   const { committed, warnings, ...held } = trackedTask(cwd, ref, lacking);
   carrying(warnings ?? [], () => fixEnd().refuseOpening(cwd, ref));
-  const { task: landing, holding } = carrying(warnings ?? [], () => landingOf(project, ref, held));
+  const { task: opening, holding } = carrying(warnings ?? [], () => landingOf(project, ref, held));
+  const landing = fixEnd().isFix(cwd, ref) ? { ...opening, alone: true } : opening;
   carrying(warnings ?? [], () => account().refuseUnaccounted(cwd, ref, 'land'));
   carrying(warnings ?? [], () => refuseUnproven(cwd, ref));
   carrying(warnings ?? [], () => refuseOffBase(cwd, project, landing));
@@ -666,7 +676,8 @@ function landChain(cwd, unit, task) {
  * `already` where it is merged wherever it lands, so a rerun reads finished
  * work as done, with every warning bringing the default branch here to it
  * gave — refused before anything moves, for a phase the cut holds, until
- * its phase review has passed and its fixes are done (7.2.4, 12.11.3).
+ * its phase review has passed and its fixes are done (7.2.4, 12.11.3), and
+ * for a quick-fix's set while a fix is neither done nor closed.
  * @param {string} cwd @param {string} unit @param {string} given
  */
 function landPhase(cwd, unit, given) {
@@ -674,6 +685,7 @@ function landPhase(cwd, unit, given) {
   assertUnit(unit);
   const unreviewed = phaseChecks().phaseReviewRefusal(cwd, unit, phase);
   if (unreviewed !== null) throw new Error(`land: ${unreviewed}`);
+  fixEnd().refuseUnended(cwd, unit, phase);
   const project = projectOf(cwd, unit);
   const ofPhase = (/** @type {string} */ branch) => (names.taskOfBranch(unit, branch)?.phase ?? names.phaseOfBranch(unit, branch)) === phase;
   return withDriver(cwd, (driver) => {
@@ -715,11 +727,13 @@ function finishing(driver, ctx) {
 /**
  * Every phase still standing merged, after every other (7.2.6), in every
  * repository of the unit's, children first — answering those where a phase
- * merged.
+ * merged; refused, for a quick-fix's set, while a fix is neither done nor
+ * closed.
  * @param {string} cwd @param {string} unit
  */
 function landFinish(cwd, unit) {
   const project = projectOf(cwd, unit);
+  fixEnd().refuseUnended(cwd, unit);
   return withDriver(cwd, (driver) => {
     const steps = mergeSteps(project, driver, walked(project, driver, (branch) => names.isUnitBranch(unit, branch)), (ctx) => finishing(driver, ctx));
     const did = (/** @type {Answer} */ answer) => (answer.phases.length === 0 ? null : `phase ${answer.phases.map((/** @type {{phase: number}} */ merged) => merged.phase).join(', ')} merged`);
@@ -740,16 +754,6 @@ function landFinish(cwd, unit) {
 function allChained(cwd, unit, tasks) {
   const chained = chainedIn(cwd, unit);
   return tasks.every(chained);
-}
-
-/**
- * Of the tasks given, whole, those not chained into their phase's stack,
- * each read as `allChained` reads it.
- * @param {string} cwd @param {string} unit @param {import('./drivers.cjs').TaskDetail[]} tasks
- */
-function unchained(cwd, unit, tasks) {
-  const chained = chainedIn(cwd, unit);
-  return tasks.filter((held) => !chained(held));
 }
 
 /**
@@ -827,19 +831,41 @@ function movedSinceOpening(cwd, unit, held, words) {
   return null;
 }
 
+/** A task's landing (`taskLandings`): landed, opened or neither, and whether the branch it lands on here holds it. @typedef {{state: 'landed'|'opened'|null, here: boolean}} TaskLanding */
+
 /**
- * Whether every phase of the unit's is merged where it lands, as the driver
- * reads it (`nextMerge`), in each repository holding its work — read off
- * git and the host, writing and fetching nothing.
+ * Each task's landing, read alone, never through its phase's merge state —
+ * as a person's merge by hand, by any method, leaves it — in every
+ * repository holding its branch, else the project's own: `landed` where its
+ * change is on the branch it lands on, as the host reports it (the driver's
+ * `taskLanding`) or that branch here holds a commit naming it, its landing
+ * or one of its own through the door (commit-task.cjs), since the day
+ * before its unit was made; `opened` where its phase's stack holds it, not
+ * landed; null where neither. Landed once landed in each repository, opened
+ * once opened or landed in each; `here` once the branch here holds it in
+ * each. Read off git and the host, writing and fetching nothing, each
+ * repository's reads made once for every task asked; refused as the
+ * driver refuses its read.
  * @param {string} cwd @param {string} unit
+ * @returns {(held: import('./drivers.cjs').TaskDetail) => TaskLanding}
  */
-function allMerged(cwd, unit) {
-  const project = projectOf(cwd, unit);
+function taskLandings(cwd, unit) {
+  const project = { ...projectOf(cwd, unit), keepsReads: true };
   const driver = /** @type {LandingDriver} */ (chosenDriver(cwd, 'landing').driver);
-  return walked(project, driver, (branch) => names.isUnitBranch(unit, branch)).every((repo) => {
-    const ctx = contextOf(project, repo);
-    return inRepo(ctx.repo, () => driver.nextMerge(ctx) === null);
+  const since = dayBefore(manifestOf(stateRoot(cwd), unit)?.created);
+  /** @param {LandingContext} ctx @param {TaskRef} ref @returns {TaskLanding} */
+  const inOne = (ctx, ref) => inRepo(ctx.repo, () => {
+    const here = lg.readOnce(ctx, 'named', () => lg.tasksNamedOn(ctx.root, ctx.into, unit, stamp(), since)).has(taskId(ref));
+    if (here) return { state: 'landed', here };
+    driver.assertServes?.(ctx);
+    return { state: driver.taskLanding(ctx, ref), here };
   });
+  return (held) => {
+    const named = held.type === null ? [] : lg.holdingBranch(unit, project.repos, names.taskBranch(held.ref, held.type, held.title)).holding;
+    const read = (named.length > 0 ? named : project.repos.slice(0, 1)).map((repo) => inOne(contextOf(project, repo), held.ref));
+    const state = read.every((one) => one.state === 'landed') ? 'landed' : read.every((one) => one.state !== null) ? 'opened' : null;
+    return { state, here: read.every((one) => one.here) };
+  };
 }
 
 /**
@@ -866,4 +892,4 @@ function landedTasks(cwd, unit, repos, from = null, on = (repo) => [`refs/heads/
   }));
 }
 
-module.exports = { LAND_USAGE, landOpen, landChain, landPhase, landFinish, landedTasks, openedTasks, allChained, landingTips, mutationRun, unchained, allMerged, movedSinceOpening };
+module.exports = { LAND_USAGE, landOpen, landChain, landPhase, landFinish, landedTasks, openedTasks, allChained, landingTips, mutationRun, taskLandings, movedSinceOpening };

@@ -4,16 +4,20 @@
 // A quick-fix's fix given up (leeway-engine/scripts/domain/fix-end.cjs;
 // task-verbs.cjs; fix-branch.cjs): `task close` taking a fix holding no
 // work of its own, even one a later fix is laid on — that fix then opening
-// onto the fix below, past the one closed (R4) — and one holding work
-// neither opened to land nor laid on by a later fix not closed, the fix
-// after it laid on the fix below and none of its work landing. Refused,
-// naming the reversal, for a fix opened to land, whatever its own work
-// reads (R9), and for one holding work a later fix not closed is laid on —
-// a commit of it the later fix's branch holds, though the fix has moved on
-// since; the reversal landing as a fix of its own whose commit through the
-// door reverts the change, every git command asked of the shell guard
-// first (R3). Every refusal writes nothing. A recorded fix's record taken
-// out as it closes is test-engine-quick-fix-record.cjs's.
+// onto the fix below, past the one closed (R4) — and the door then refusing
+// a commit under it, which takes no more work, naming the next fix's start
+// and a fix of its own (commit-task.cjs). Refused, naming the
+// reversal, for a fix opened to land, whatever its own work reads (R9),
+// and for one holding work a later fix not closed is laid on — a commit of
+// it the later fix's branch holds, though the fix has moved on since; the
+// reversal landing as a fix of its own whose commit through the door
+// reverts the change, every git command asked of the shell guard first
+// (R3). Every refusal writes nothing. A fix holding work neither opened nor
+// laid on, closed, the fix after it then opening onto the fix below, on
+// every driver, is the quick-fix landing conformance suite's (closed); one
+// landed by hand, refused, the end suite's and the by-hand suite's; a
+// recorded fix's record taken out as it closes,
+// test-engine-quick-fix-record.cjs's.
 //
 // Layer: git. World: quick-fix-world.cjs's `twoFixesBuilt` — fixes 1.1 and
 // 1.2, 1.2 laid on 1.1, each built through the local driver and done —
@@ -29,7 +33,7 @@ const path = require('path');
 const { ok, output, refusedPristine, git, createFile, commitAll, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const {
-  UNIT, FLAG, HELP, RECORDS, createFix, fixChanged, fixBuilt, recordFile, twoFixesBuilt, guardedGit, checklistClosed,
+  UNIT, FLAG, HELP, RECORDS, createFix, fixChanged, recordFile, twoFixesBuilt, guardedGit, checklistClosed,
 } = require('./quick-fix-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
@@ -78,15 +82,21 @@ const held = (n, why) => `task close: task 1.${n} of ${UNIT} ${why} — so it la
   + `by a fix of its own whose commit through the door reverts it: task create ${UNIT} 1 --file <task.md>`;
 
 describe('task close <quick-fix> <fix> (R3, R4, R9)', () => {
-  it('R4: closes a fix holding no work of its own though a later fix is laid on it, that fix then opening onto the fix below it', () => {
+  it('R4: closes a fix holding no work of its own though a later fix is laid on it, that fix then opening onto the fix below it; the door then refuses a commit under it, naming the next fix\'s start and a fix of its own', () => {
     dir = world();
     createFix(dir, 3, DOCS, as());
     run(['task', 'start', UNIT, '1.3']);
     changed(4, MAN, 'docs/man.md');
     close(3);
     const opened = run(['land', 'open', UNIT, '1.4']);
+    createFile(dir, 'docs/late.md', '--colour\n');
+    const late = refusedPristine(dir, ['commit', '--paths', 'docs/late.md', '--task', UNIT, '1.3', '-m', `fix(${UNIT}): spell the docs late`], as()).error;
 
-    assert.deepStrictEqual([status(3), opened.repos.map((/** @type {any} */ { base }) => base)], ['closed', [branchOf(2, HELP)]]);
+    assert.deepStrictEqual([status(3), opened.repos.map((/** @type {any} */ { base }) => base), late], [
+      'closed', [branchOf(2, HELP)],
+      `commit --task: task 1.3 of ${UNIT} is closed, and a task ended takes no more work — commit it under the task it is for: start the next with \`engine task start ${UNIT} 1.4\`, `
+      + `or make it a task of its own with \`engine task create ${UNIT} 1 --file <task.md>\``,
+    ]);
   });
 
   it('refuses a fix holding work of its own that a later fix not closed is laid on, or that is opened to land, naming each and the reversal, writing nothing', () => {
@@ -147,21 +157,6 @@ describe('task close <quick-fix> <fix> (R3, R4, R9)', () => {
     assert.strictEqual(refusal, held(3, 'is opened to land'));
     assert.deepStrictEqual([git(dir, ['log', '--format=%s', `${main}..main`]).trim().split('\n'), git(dir, ['ls-tree', '--name-only', 'main', 'docs']).trim()], [
       [`fix(${UNIT}): ${BACK}`, `fix(${UNIT}): ${DOCS}`, `fix(${UNIT}): ${HELP}`, `fix(${UNIT}): ${FLAG}`], '',
-    ]);
-  });
-
-  it('closes a fix holding work of its own neither opened to land nor laid on; the fix after it laid on the fix below it, the close lands none of the closed fix\'s work', () => {
-    dir = world();
-    changed(3, DOCS, 'docs/flags.md');
-    close(3);
-    const { base } = fixBuilt(dir, 4, MAN, 'docs/man.md', '--colour\n', as()).repos[0];
-    for (const n of [1, 2, 4]) record(n);
-    checklistClosed(dir, as());
-    const main = git(dir, ['rev-parse', 'main']).trim();
-    run(['finish', 'yes', UNIT]);
-
-    assert.deepStrictEqual([base, git(dir, ['log', '--format=%s', `${main}..main`]).trim().split('\n'), git(dir, ['ls-tree', '-r', '--name-only', 'main', 'docs']).trim()], [
-      branchOf(2, HELP), [`fix(${UNIT}): ${MAN}`, `fix(${UNIT}): ${HELP}`, `fix(${UNIT}): ${FLAG}`], 'docs/man.md',
     ]);
   });
 });

@@ -14,13 +14,15 @@
 //   refuses: a unit built under the old plan, a build by its cut not begun
 //   (build-entry.cjs). A quick-fix's close stands besides on each of its
 //   fixes ended and each done with its record written (quick-fix-record.cjs,
-//   `recordedFixes`), and on each fix done landed or chained into the
-//   set's stack as it stands, the read the build's phase close makes of its
-//   tasks (landing.cjs, `unchained`) — refused naming each, the lowest's
-//   opening the way on; where that read refuses and every phase is merged
-//   where it lands (`allMerged`), as a merge made by hand on a host leaves
-//   the branch here without it, naming `land phase`, which brings that
-//   branch to the merge, as the driver's own remedy does.
+//   `recordedFixes`), and on each fix done landed or opened to land, read
+//   fix by fix, never through its phase's merge state, as a merge by hand
+//   on the host, by any method, leaves it (landing.cjs, `taskLandings`) —
+//   refused naming each neither, the lowest's opening the way on; and where
+//   every one has landed but the branch here lacks one, naming `land
+//   phase`, which brings that branch to the merge, as the driver's own
+//   remedy does. A stack merged in part
+//   by hand is the yes's to refuse, as its landing refuses it, naming the
+//   rest merged there too.
 // - It shows every checklist item skipped on the way, with its reason,
 //   read from the unit's manifest (6.4.5, 6.4.12); then asks, one at a
 //   time, the verdict of each departure this machine logged in the build
@@ -65,7 +67,7 @@ const { verdictAsked } = require('./ledger-verdicts.cjs');
 const { itemTitle, topicTitles, buildRefusal, quickFixBuild, FIXES_PHASE } = require('./derivations.cjs');
 const { unitInProgress } = require('./topic-standing.cjs');
 const { finishClose } = require('./checklist.cjs');
-const { landFinish, landedTasks, unchained, allMerged } = require('./landing.cjs');
+const { landFinish, taskLandings } = require('./landing.cjs');
 const { landsOn } = require('./landing-git.cjs');
 const { completeWorkUnit } = require('./workunit-lifecycle.cjs');
 const { refusing, stands } = require('./staged-payload.cjs');
@@ -79,7 +81,6 @@ const { verifySetup } = require('./environment.cjs');
 const { projectName } = require('./state-checks.cjs');
 const { criteriaTexts } = require('./task-file.cjs');
 const { shownTask } = require('./task-id.cjs');
-const { dayBefore } = require('./dates.cjs');
 
 /** @typedef {import('./projections/surfaces.cjs').Next} Next */
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
@@ -107,30 +108,24 @@ function finishStanding(cwd, unit) {
 }
 
 /**
- * The fixes done not yet landed, refused while one is not chained into the
- * set's stack as it stands either (`unchained`, landing.cjs) — the read the
- * build's phase close makes of its tasks — naming each and the lowest's
- * opening; where that read refuses and every phase is merged where it
- * lands, naming `land phase`, which brings the branch here to the merge.
+ * The fixes done not yet landed — each opened to land — read fix by fix
+ * (`taskLandings`, landing.cjs): refused while one is neither landed nor
+ * opened, naming each and the lowest's opening; and where every one has
+ * landed but the branch here lacks one, as a merge by hand on a host leaves
+ * it, naming `land phase`, which brings that branch to the merge.
  * @param {string} cwd @param {Record<string, any>} manifest @param {TaskDetail[]} fixes the fixes done
  * @returns {TaskDetail[]}
  */
 function unlandedFixes(cwd, manifest, fixes) {
   const unit = manifest.name;
-  const repos = projectRepos(codeRoot(cwd));
-  const landed = landedTasks(cwd, unit, repos, dayBefore(manifest.created));
-  const unlanded = fixes.filter(({ ref }) => !landed.has(shownTask(ref)));
-  if (unlanded.length === 0) return unlanded;
-  let owed;
-  try {
-    owed = unchained(cwd, unit, unlanded).map(({ ref }) => shownTask(ref));
-  } catch (err) {
-    if (!allMerged(cwd, unit)) throw err;
-    const into = landsOn(cwd, /** @type {Repo} */ (repos.find((repo) => repo.dir === '')));
-    throw new Error(`${unit}'s fixes are merged where they land, and ${into} here lacks them — land phase ${unit} ${FIXES_PHASE.number} brings ${into} to them`);
-  }
+  const landing = taskLandings(cwd, unit);
+  const read = fixes.map((fix) => ({ fix, ...landing(fix) }));
+  const owed = read.filter(({ state }) => state === null).map(({ fix }) => shownTask(fix.ref));
   if (owed.length > 0) throw new Error(`${unit} closes once each fix done is opened to land — ${owed.join(', ')} ${owed.length === 1 ? 'is' : 'are'} not: land open ${unit} ${owed[0]}`);
-  return unlanded;
+  const unlanded = read.filter(({ state }) => state === 'opened').map(({ fix }) => fix);
+  if (unlanded.length > 0 || read.every(({ here }) => here)) return unlanded;
+  const into = landsOn(cwd, /** @type {Repo} */ (projectRepos(codeRoot(cwd)).find((repo) => repo.dir === '')));
+  throw new Error(`${unit}'s fixes are merged where they land, and ${into} here lacks them — land phase ${unit} ${FIXES_PHASE.number} brings ${into} to them`);
 }
 
 /** Whether finish's screen draws, as `render finish` stands on it: what the board lists waiting on the person. @param {string} cwd @param {string} unit */

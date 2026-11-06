@@ -10,14 +10,31 @@
 // default branch there gained, each subject read past the " (#N)" GitHub
 // ends it with, what it holds is its tree there, and what the driver opened
 // is a pull request there. A merge there is refused while GitHub refuses
-// it, as for a required check.
+// it, as for a required check. A person merges a task by hand on GitHub's
+// site, its pull request onto main with a merge commit or squashed, then
+// pulls main.
 
 const path = require('path');
 const { git } = require('../../scripts/engine-harness.cjs');
 const { UNIT, setLandingDriver, landedOn, pathsOn } = require('../../scripts/landing-world.cjs');
 const names = require('../../../skills/leeway-engine/scripts/domain/landing-names.cjs');
 const { taskId } = require('../../../skills/leeway-engine/scripts/domain/task-id.cjs');
-const { GH_ENV, githubWorld, github, bareOf, squashFromPullRequests } = require('./world.cjs');
+const { GH_ENV, githubWorld, github, bareOf, squashFromPullRequests, mergeByHand } = require('./world.cjs');
+
+/** @typedef {import('../../../skills/leeway-engine/scripts/domain/task-id.cjs').TaskRef} TaskRef */
+
+/**
+ * The open pull request of a task's branch merged onto main by hand on
+ * GitHub by `method`, and main here then brought to it, as a person's pull
+ * does.
+ * @param {string} dir @param {string} branch @param {'merge'|'squash'} method
+ */
+function mergedAndPulled(dir, branch, method) {
+  const pull = github(dir).pulls.find((held) => held.head === branch && held.state === 'OPEN');
+  if (pull === undefined) throw new Error(`no pull request of ${branch} is open`);
+  mergeByHand(dir, pull.number, 'main', method);
+  git(dir, ['fetch', '-q', 'origin', 'main:main']);
+}
 
 module.exports = {
   /** The environment every call runs under. */
@@ -48,4 +65,11 @@ module.exports = {
   }))].sort(),
   /** A merge in the repository at `dir` refused by GitHub while its environment is the call's. @param {string} dir */
   refuseMerge: (dir) => ({ env: { GH_STUB_FAULT: 'unmergeable@pr merge', GH_STUB_FAULT_REPO: github(dir).repo }, undo: () => {} }),
+  /** The ways a person merges an opened task's pull request onto main on GitHub's site, then pulls main here, the checkout on another branch. */
+  byHand: {
+    /** Merged with a merge commit, the site's default button. @param {string} dir @param {TaskRef} _ref @param {string} branch */
+    'a merge commit on GitHub': (dir, _ref, branch) => mergedAndPulled(dir, branch, 'merge'),
+    /** Squashed. @param {string} dir @param {TaskRef} _ref @param {string} branch */
+    'a squash on GitHub': (dir, _ref, branch) => mergedAndPulled(dir, branch, 'squash'),
+  },
 };

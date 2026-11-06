@@ -12,20 +12,26 @@
 // task's pull request is the one whose head is the task's branch (its name
 // is the task's, landing-names.cjs), the latest of them, one closed only
 // where it has no other; a phase's stack is its tasks' pull requests, bottom
-// first by their bases, each based on the one before. A stack is merged
-// once every pull request of it is; one merged in part, or closed, by hand
-// on GitHub stops every verb that reaches its phase, saying what happened
-// and the way on.
+// first by their bases, each based on the one before — where any is not
+// merged, one merged that none not merged is built on is no part of it,
+// landed before it. A stack is merged once every pull request of it is; one
+// merged in part, or closed, by hand on GitHub stops every verb that
+// reaches its phase, saying what happened and the way on.
 //
 // - The chain's tip: the top of the task's phase's stack; for its first
 //   task, the top of the latest unmerged phase whose pull request the task's
 //   branch holds, which the phase then stacks on, as a fix phase does on the
-//   one before (7.2.6) — else the default branch. That the task's branch
-//   descends from it, with something past it, is the seam's to check
-//   (landing.cjs).
+//   one before (7.2.6) — else the default branch. A task that lands alone,
+//   a quick-fix's fix (landing.cjs), takes a phase merged for no stack, so it
+//   opens onto the default branch; any other task is refused there. That
+//   the task's branch descends from the tip, with something past it, is the
+//   seam's to check (landing.cjs).
 // - Holds: whether the task's pull request is in its phase's stack, read
 //   off GitHub and fetching nothing, as the close in step reads it (7.2.4);
-//   opened at, that pull request's head as GitHub holds it.
+//   opened at, its pull request's head as GitHub holds it, open or merged;
+//   its landing, read off that pull request alone, never its phase's: landed
+//   where it is merged, opened where it is open — refused where it was
+//   closed by hand.
 // - Open: the task's branch pushed under its own name (7.2.14), then its
 //   pull request opened onto the chain's tip, titled with its landing's
 //   subject, its body the rest of that message, with the task's id. Refused,
@@ -219,13 +225,31 @@ function chained(pulls) {
 }
 
 /**
- * The unit's stacks, by phase.
+ * A phase's pull requests, bottom first, as its stack stands: where any is
+ * not merged, those merged that no pull request not merged is built on
+ * left out, landed before it; else every one.
+ * @param {Pull[]} pulls
+ * @returns {Pull[]}
+ */
+function standingOf(pulls) {
+  const below = (/** @type {Pull} */ pull) => pulls.find(({ head }) => head === pull.base);
+  /** @type {Set<number>} */
+  const under = new Set();
+  for (const pull of pulls.filter(({ state }) => state !== 'MERGED')) {
+    for (let held = below(pull); held !== undefined && !under.has(held.number); held = below(held)) under.add(held.number);
+  }
+  const standing = pulls.filter((pull) => pull.state !== 'MERGED' || under.has(pull.number));
+  return standing.length > 0 ? standing : pulls;
+}
+
+/**
+ * The unit's stacks, by phase (`standingOf`).
  * @param {Pull[]} pulls
  * @returns {Map<number, Stack>}
  */
 function stacksOf(pulls) {
   const phases = [...new Set(pulls.map((pull) => pull.ref.phase))];
-  return new Map(phases.map((phase) => [phase, { phase, pulls: chained(pulls.filter((pull) => pull.ref.phase === phase)) }]));
+  return new Map(phases.map((phase) => [phase, { phase, pulls: standingOf(chained(pulls.filter((pull) => pull.ref.phase === phase))) }]));
 }
 
 /** Whether every pull request of a stack is merged. @param {Stack} stack */
@@ -237,6 +261,11 @@ const pullOf = (stack, ref) => stack?.pulls.find((pull) => sameTask(pull.ref, re
 /** Pull requests as a refusal names them. @param {Pull[]} pulls */
 const pullsNamed = (pulls) => pulls.map((pull) => `#${pull.number} (task ${shownTask(pull.ref)})`).join(', ');
 
+/** The refusal of a pull request closed by hand on GitHub without being merged, naming its reopening. @param {Pull} closed */
+const closedRefusal = (closed) => new Error(
+  `land: task ${shownTask(closed.ref)}'s pull request #${closed.number} was closed on GitHub without being merged — reopen it there, as \`gh pr reopen ${closed.number}\` does, and land again`,
+);
+
 /**
  * Refuse a stack something done by hand on GitHub stops: a pull request
  * closed without being merged, or the stack merged in part.
@@ -244,9 +273,7 @@ const pullsNamed = (pulls) => pulls.map((pull) => `#${pull.number} (task ${shown
  */
 function refuseHandled(stack) {
   const closed = stack.pulls.find((pull) => pull.state === 'CLOSED');
-  if (closed !== undefined) {
-    throw new Error(`land: task ${shownTask(closed.ref)}'s pull request #${closed.number} was closed on GitHub without being merged — reopen it there, as \`gh pr reopen ${closed.number}\` does, and land again`);
-  }
+  if (closed !== undefined) throw closedRefusal(closed);
   const merged = stack.pulls.filter((pull) => pull.state === 'MERGED');
   if (merged.length === 0 || merged.length === stack.pulls.length) return;
   const rest = stack.pulls.filter((pull) => pull.state !== 'MERGED');
@@ -272,27 +299,50 @@ function builtOn(ctx, stacks, phase, commit) {
   return reached[0];
 }
 
+/** The unit's pull requests on GitHub, read once on a context that keeps its reads (landing-git.cjs, `readOnce`). @param {LandingContext} ctx @param {Host} host */
+const pullsRead = (ctx, host) => lg.readOnce(ctx, 'pulls', () => pullsOf(ctx, host));
+
 /**
  * The stacks on GitHub and the task's phase's own — refused where something
- * done by hand stops it, or it is merged — the pull requests read once on a
- * context that keeps its reads (landing-git.cjs, `readOnce`).
- * @param {LandingContext} ctx @param {Host} host @param {TaskRef} ref
+ * done by hand stops it, or it is merged, but for a task that lands alone,
+ * for which a phase merged is no stack.
+ * @param {LandingContext} ctx @param {Host} host @param {TaskRef} ref @param {boolean} [alone]
  */
-function stacksFor(ctx, host, ref) {
-  const stacks = stacksOf(lg.readOnce(ctx, 'pulls', () => pullsOf(ctx, host)));
+function stacksFor(ctx, host, ref, alone = false) {
+  const stacks = stacksOf(pullsRead(ctx, host));
   const own = stacks.get(ref.phase);
-  if (own !== undefined) {
-    refuseHandled(own);
-    if (isMerged(own)) throw new Error(`land: phase ${ref.phase} is merged into ${ctx.into} — task ${shownTask(ref)} lands in a phase not yet merged, so number it in one`);
-  }
-  return { stacks, own };
+  if (own === undefined) return { stacks, own };
+  refuseHandled(own);
+  if (!isMerged(own)) return { stacks, own };
+  if (alone) return { stacks, own: undefined };
+  throw new Error(`land: phase ${ref.phase} is merged into ${ctx.into} — task ${shownTask(ref)} lands in a phase not yet merged, so number it in one`);
 }
 
 /** Whether its phase's stack holds the task's pull request, refused as `stacksFor` refuses it. @param {LandingContext} ctx @param {TaskRef} ref */
 const holds = (ctx, ref) => pullOf(stacksFor(ctx, hostOf(ctx), ref).own, ref) !== undefined;
 
-/** The head of the task's pull request in its phase's stack, as GitHub holds it — null where the stack holds none — refused as `stacksFor` refuses it. @param {LandingContext} ctx @param {TaskRef} ref */
-const openedAt = (ctx, ref) => pullOf(stacksFor(ctx, hostOf(ctx), ref).own, ref)?.oid ?? null;
+/** The task's pull request as GitHub holds it, where it has one. @param {LandingContext} ctx @param {TaskRef} ref */
+const pullOfTask = (ctx, ref) => pullsRead(ctx, hostOf(ctx)).find((pull) => sameTask(pull.ref, ref));
+
+/** The head of the task's pull request, as GitHub holds it — null where it has none, or one closed. @param {LandingContext} ctx @param {TaskRef} ref */
+function openedAt(ctx, ref) {
+  const pull = pullOfTask(ctx, ref);
+  return pull === undefined || pull.state === 'CLOSED' ? null : pull.oid;
+}
+
+/**
+ * The task's landing, read off its pull request alone: `landed` where it is
+ * merged, `opened` where it is open, null where it has none — refused where
+ * it was closed by hand.
+ * @param {LandingContext} ctx @param {TaskRef} ref
+ * @returns {'landed'|'opened'|null}
+ */
+function taskLanding(ctx, ref) {
+  const pull = pullOfTask(ctx, ref);
+  if (pull === undefined) return null;
+  if (pull.state === 'CLOSED') throw closedRefusal(pull);
+  return pull.state === 'MERGED' ? 'landed' : 'opened';
+}
 
 /**
  * The chain's tip a task lands on (see the header) — null where its phase's
@@ -305,7 +355,7 @@ const openedAt = (ctx, ref) => pullOf(stacksFor(ctx, hostOf(ctx), ref).own, ref)
 function chainTip(ctx, task) {
   const host = hostOf(ctx);
   const { phase } = task.ref;
-  const { stacks, own } = stacksFor(ctx, host, task.ref);
+  const { stacks, own } = stacksFor(ctx, host, task.ref, task.alone);
   if (pullOf(own, task.ref) !== undefined) return null;
   refuseUnpushed(ctx, host, shownTask(task.ref));
   const top = own ?? builtOn(ctx, stacks, phase, task.branch);
@@ -791,6 +841,7 @@ module.exports = {
   chainTip,
   holds,
   openedAt,
+  taskLanding,
   open,
   chain,
   mergePhase,

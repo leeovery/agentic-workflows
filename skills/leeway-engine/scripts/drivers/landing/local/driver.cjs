@@ -23,16 +23,20 @@
 // - The chain's tip: the last task opened in the phase; for its first, the
 //   last task of the latest unmerged phase the task was built on, which the
 //   phase then stacks on, as a fix phase does on the one before (7.2.6) —
-//   else the default branch. A task is built on another it holds the branch
-//   of, or, that branch deleted, a commit of with the tree its stack landed;
-//   a branch at the task's own tip counts for nothing but where its task's
-//   stack landed it, so a task cut from it with nothing of its own lands
-//   nothing. That the task descends from the tip is the seam's to check
-//   (landing.cjs); putting a parallel task there is Claude's merge-back
-//   (12.7.1), so the driver never rebases.
+//   else the default branch. A task that lands alone, a quick-fix's fix
+//   (landing.cjs), takes its phase merged for no stack, its stack beginning
+//   again; any other task is refused there. A task is built on another it
+//   holds the branch of, or, that branch deleted, a commit of with the tree
+//   its stack landed; a branch at the task's own tip counts for nothing but
+//   where its task's stack landed it, so a task cut from it with nothing of
+//   its own lands nothing. That the task descends from the tip is the
+//   seam's to check (landing.cjs); putting a parallel task there is
+//   Claude's merge-back (12.7.1), so the driver never rebases.
 // - Holds: whether the task's phase's stack landed it, as the close in step
 //   reads it (7.2.4); opened at, where its branch stood when it opened, as
-//   its ref records it.
+//   its ref records it; its landing, read off its phase's stack alone, never
+//   its phase's merge: opened where that stack, not merged, lands it — what
+//   the default branch holds being the seam's to read (landing.cjs).
 // - Open: the squash commits the task's tree onto the phase's branch, which
 //   is exactly the task's own change while that branch's tree is the chain
 //   tip's, and the task holds no other task's work the tip does not and the
@@ -328,26 +332,52 @@ function heldBy(ctx, task, refs, stacks) {
 }
 
 /**
- * The branches here, the stacks they hold, and the task's phase's own —
- * refused where it is merged, or something stops it — read once on a
- * context that keeps its reads (landing-git.cjs, `readOnce`).
- * @param {LandingContext} ctx @param {TaskRef} ref
+ * The branches here and the stacks they hold, read once on a context that
+ * keeps its reads (landing-git.cjs, `readOnce`).
+ * @param {LandingContext} ctx
  */
-function stacksFor(ctx, ref) {
-  const { refs, stacks } = lg.readOnce(ctx, 'stacks', () => {
-    const read = lg.branches(ctx.root);
-    return { refs: read, stacks: stacksOf(ctx, read) };
-  });
+const stacksRead = (ctx) => lg.readOnce(ctx, 'stacks', () => {
+  const read = lg.branches(ctx.root);
+  return { refs: read, stacks: stacksOf(ctx, read) };
+});
+
+/**
+ * The branches here, the stacks they hold, and the task's phase's own —
+ * refused where something stops it, or it is merged, but for a task that
+ * lands alone, for which a phase merged is no stack, left out of those
+ * answered.
+ * @param {LandingContext} ctx @param {TaskRef} ref @param {boolean} [alone]
+ */
+function stacksFor(ctx, ref, alone = false) {
+  const { refs, stacks } = stacksRead(ctx);
   const own = stacks.get(ref.phase);
-  if (own?.merged) {
-    throw new Error(`land: phase ${ref.phase} is merged into ${ctx.into} — task ${shownTask(ref)} lands in a phase not yet merged, so number it in one`);
+  if (own === undefined) return { refs, stacks, own };
+  if (!own.merged) {
+    refuseFaulty(ctx, refs, own);
+    return { refs, stacks, own };
   }
-  if (own !== undefined) refuseFaulty(ctx, refs, own);
-  return { refs, stacks, own };
+  if (alone) return { refs, stacks: new Map([...stacks].filter(([phase]) => phase !== ref.phase)), own: undefined };
+  throw new Error(`land: phase ${ref.phase} is merged into ${ctx.into} — task ${shownTask(ref)} lands in a phase not yet merged, so number it in one`);
 }
 
 /** Whether its phase's stack holds the task, refused as `stacksFor` refuses it. @param {LandingContext} ctx @param {TaskRef} ref */
 const holds = (ctx, ref) => lands(stacksFor(ctx, ref).own, ref);
+
+/**
+ * The task's landing, read off its phase's stack alone: `opened` where that
+ * stack, not merged, lands it, else null — refused where something stops
+ * the stack. Never `landed`: what lands here is what the default branch
+ * holds, which the seam reads (landing.cjs).
+ * @param {LandingContext} ctx @param {TaskRef} ref
+ * @returns {'opened'|null}
+ */
+function taskLanding(ctx, ref) {
+  const { refs, stacks } = stacksRead(ctx);
+  const own = stacks.get(ref.phase);
+  if (own === undefined || own.merged) return null;
+  refuseFaulty(ctx, refs, own);
+  return lands(own, ref) ? 'opened' : null;
+}
 
 /**
  * The chain's tip a task lands on, and what opening it takes (see the
@@ -359,7 +389,7 @@ const holds = (ctx, ref) => lands(stacksFor(ctx, ref).own, ref);
  */
 function chainTip(ctx, task) {
   const { phase } = task.ref;
-  const { refs, stacks, own } = stacksFor(ctx, task.ref);
+  const { refs, stacks, own } = stacksFor(ctx, task.ref, task.alone);
   if (lands(own, task.ref)) return null;
   const held = heldBy(ctx, task, refs, stacks);
   const reached = [...stacks.values()].filter((stack) => stack !== own && held.some(({ ref }) => lands(stack, ref))).sort((a, b) => b.phase - a.phase);
@@ -651,6 +681,7 @@ module.exports = {
   chainTip,
   holds,
   openedAt,
+  taskLanding,
   open,
   chain,
   mergePhase,

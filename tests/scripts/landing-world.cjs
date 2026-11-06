@@ -323,10 +323,14 @@ function useNestedWorld(prefix, ready = () => {}) {
 
 /**
  * A landing driver's side of the conformance suites (tests/drivers/{name}/landing.cjs).
+ * `byHand` names the ways a person merges a task opened onto the default
+ * branch outside the engine, two of them, each by what it does — the
+ * default branch here brought to the merge — told the task and its branch.
  * @typedef {{
  *   env: Record<string, string|undefined>, prepare: (dir: string) => void, nest: (dir: string, into: string) => void, on: (dir: string) => string,
  *   landed: (dir: string, into?: string) => {subject: string, task: string|null}[], holds: (dir: string, into?: string) => string[],
  *   defaultTip: (dir: string, into?: string) => string, opened: (dir: string) => string[], refuseMerge: (dir: string) => {env: Record<string, string>, undo: () => void},
+ *   byHand: Record<string, (dir: string, ref: import('../../skills/leeway-engine/scripts/domain/task-id.cjs').TaskRef, branch: string) => void>,
  * }} DriverSide
  */
 

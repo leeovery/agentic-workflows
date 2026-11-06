@@ -28,8 +28,9 @@
 // committed with it, so the two never part. It then indexes `summary.md`
 // where this checkout's knowledge base is set up, each fix's record a chunk
 // of its own (knowledge/artifacts.cjs), an index that fails a warning. It
-// takes a fix holding a commit of its own through the door (fix-branch.cjs,
-// `fixWork`), in flight or done. It refuses, writing and committing nothing,
+// takes a fix holding a commit of its own through the door, landed by hand
+// or not (fix-branch.cjs, `ownWork`), in flight or done. It refuses,
+// writing and committing nothing,
 // every refusal opening `quick-fix record: `: a unit the project lacks or
 // holds not in progress; one that is no quick-fix built by its own arm
 // (`quickFixBuild`, derivations.cjs) — a quick-fix today's scoping made
@@ -61,7 +62,7 @@ const { committed } = require('./task-account.cjs');
 const { refusing } = require('./staged-payload.cjs');
 const { summaryFile, SUMMARY_PHASE } = require('./knowledge/artifacts.cjs');
 const { syncKnowledge } = require('./knowledge/sync.cjs');
-const { fixWork } = require('./fix-branch.cjs');
+const { ownWork } = require('./fix-branch.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
@@ -194,7 +195,7 @@ function recordableFix(cwd, manifest, given) {
   if (fix === undefined) throw new Error(`${taskName(ref)} is not in the tracker — its fixes are listed by task list ${unit} ${FIXES_PHASE.number}`);
   if (fix.status === 'closed') throw new Error(`${taskName(ref)} is closed — a fix closed lands nothing, so it keeps no record`);
   if (recordedIds(manifest).includes(taskId(ref))) throw new Error(`${taskName(ref)}'s record is written already — ${summaryFile(unit)} holds it, under \`## ${fix.title}\``);
-  if (!fixWork(cwd, ref)?.own) throw new Error(`${taskName(ref)} holds no commit of its own — a fix's record is written once its change is committed through the door`);
+  if (!ownWork(cwd, ref)) throw new Error(`${taskName(ref)} holds no commit of its own — a fix's record is written once its change is committed through the door`);
   return { ref, fix, warnings };
 }
 

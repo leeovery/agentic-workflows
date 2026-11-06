@@ -7,9 +7,10 @@
 // fix in its stack, refuses a fix closed — a fix closed lands nothing —
 // alone in its set, where the close then lands nothing, and between two
 // fixes, where the fix after it opens onto the fix below and the close
-// lands those two alone. The chain itself is
-// test-engine-landing-conformance-quick-fix.cjs's. A driver's side
-// (tests/drivers/{name}/landing.cjs) readies the world and reads what
+// lands those two alone. That it refuses so before anything else it judges
+// is test-engine-landing-conformance-quick-fix-closed-first.cjs's; the
+// chain itself test-engine-landing-conformance-quick-fix.cjs's. A driver's
+// side (tests/drivers/{name}/landing.cjs) readies the world and reads what
 // landed where; this file names no driver and no tool. Conformance layer:
 // the quick-fix of quick-fix-world.cjs (`quickFixConformance`), built once
 // per driver and copied for each test.

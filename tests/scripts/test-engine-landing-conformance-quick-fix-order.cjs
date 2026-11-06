@@ -8,11 +8,12 @@
 // opened, on every driver alike: `task done` refuses a fix not opened,
 // naming its opening, and `land open` a fix laid on one not opened, naming
 // that one's — so no pull request carries a fix below it — and, opened in
-// turn, each lands with only its own change. A fix's own work is its own
-// commits through the door (R8): a fix opened over the fix below before
-// that one held any, the fix below then merged back onto it once it does,
-// is done in its turn, and both land, recorded. The chain itself is
-// test-engine-landing-conformance-quick-fix.cjs's. A driver's side
+// turn, each lands with only its own change. The chain itself is
+// test-engine-landing-conformance-quick-fix.cjs's; a fix below merged back
+// onto the fix laid on it (R8),
+// test-engine-landing-conformance-quick-fix-merge-back.cjs's; the set
+// landed only once each fix is done or closed (R11),
+// test-engine-landing-conformance-quick-fix-unended.cjs's. A driver's side
 // (tests/drivers/{name}/landing.cjs) readies the world and reads what
 // landed where; this file names no driver and no tool. Conformance layer:
 // the quick-fix of quick-fix-world.cjs (`quickFixConformance`), built once
@@ -24,14 +25,14 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { ok, refuses, createFile, readManifest } = require('./engine-harness.cjs');
+const { ok, refuses } = require('./engine-harness.cjs');
 const { own } = require('./landing-world.cjs');
-const { UNIT, CHAIN, createFix, guardedGit, checklistClosed, quickFixConformance } = require('./quick-fix-world.cjs');
+const { UNIT, CHAIN, quickFixConformance } = require('./quick-fix-world.cjs');
 const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
 const { taskBranch } = require('../../skills/leeway-engine/scripts/domain/landing-names.cjs');
 
 for (const { name } of listDrivers('landing')) {
-  const { as, project, changed, landed, closed, record } = quickFixConformance(name, `engine-landing-quick-fix-order-${name}-`);
+  const { as, project, changed, landed, closed } = quickFixConformance(name, `engine-landing-quick-fix-order-${name}-`);
   /** Fix `n` of the chain's branch. @param {number} n */
   const branchOf = (n) => taskBranch({ unit: UNIT, phase: 1, n }, 'fix', CHAIN[n - 1].title);
 
@@ -54,32 +55,6 @@ for (const { name } of listDrivers('landing')) {
         branchOf(1),
       ]);
       assert.deepStrictEqual(landed(at), CHAIN.slice(0, 2).map(({ title, file }) => [`fix(${UNIT}): ${title}`, [file]]));
-    });
-
-    it('R8: is done with a fix opened over the fix below before that one held a commit, the fix below merged back onto it once it did through the shell guard and the door, and both land, recorded', () => {
-      const at = project();
-      createFix(at, 1, CHAIN[0].title, as());
-      ok(at, ['task', 'start', UNIT, '1.1'], as());
-      changed(at, 2);
-      record(at, 2);
-      ok(at, ['land', 'open', UNIT, '1.2'], as());
-      ok(at, ['task', 'start', UNIT, '1.1'], as());
-      createFile(at, CHAIN[0].file, CHAIN[0].text);
-      ok(at, ['commit', '--paths', CHAIN[0].file, '--task', UNIT, '1.1', '-m', `fix(${UNIT}): spell the flag`], as());
-      record(at, 1);
-      const behind = refuses(at, ['land', 'open', UNIT, '1.1'], as()).error;
-      guardedGit(at, ['merge', '--no-ff', '--no-commit', branchOf(2)], as());
-      ok(at, ['commit', '--paths', CHAIN[1].file, '--task', UNIT, '1.1', '-m', `merge ${branchOf(2)} back`], as());
-      ok(at, ['land', 'open', UNIT, '1.1'], as());
-      ok(at, ['task', 'done', UNIT, '1.1'], as());
-      ok(at, ['task', 'done', UNIT, '1.2'], as());
-      checklistClosed(at, as());
-      ok(at, ['finish', 'yes', UNIT], as());
-
-      assert.strictEqual(behind.split(' — ')[1], `merge it back onto ${branchOf(2)} first`);
-      assert.deepStrictEqual([landed(at), readManifest(at, UNIT).fixes.recorded], [
-        [CHAIN[1], CHAIN[0]].map(({ title, file }) => [`fix(${UNIT}): ${title}`, [file]]), [`${UNIT}-1-1`, `${UNIT}-1-2`],
-      ]);
     });
   });
 }
