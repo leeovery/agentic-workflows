@@ -9,28 +9,33 @@
 // place — re-typed in both manifests in one save, its brief written, a
 // quick-fix's open fixes closed, its checkout taken back to the branch the
 // fixes land on, its fixes' commits kept unlanded on their branches renamed
-// under moved/ and a branch holding none deleted, the fixes' phase taken
-// out of the tracker, its lines carried to the new topic, the knowledge
-// base re-indexed, one commit — and handing off into the new type's first
-// phase (19.S24, 19.S30, 24.1.2); the new type's build meeting nothing of
-// the fixes — a feature's phase 1 written and task 1.1's branch laid, a
-// bugfix's reproducing task 1.1 created, on the local landing driver; a
-// bugfix's investigation log read at the feature's first opening as the
-// topic's earlier log (enter.cjs); a moved quick-fix's lines read at the epic's
-// topic once the feature it became is absorbed (ledger-rehomed.cjs); and
-// every refusal, writing nothing: a fix's pull request opened, a checkout
-// holding changes, a unit past its spec, a type that does not move, a
-// bugfix away from its investigation.
+// under moved/ and a branch with none of its own deleted, the fixes' phase
+// taken out of the tracker, every line but discovery's carried to the new
+// topic at its first phase, the old type's files set aside in the topic's
+// earlier material with each line citing one following it, the knowledge
+// base re-indexed, the move in the board's history — and handing off into
+// the new type's first phase (19.S24, 19.S30, 24.1.2); the yes's checks
+// made again, and the yes stopped before its save run again whole; the
+// new type's build meeting nothing of the fixes — a feature's phase 1
+// written and task 1.1's branch laid, a bugfix's reproducing task 1.1
+// created, on the local landing driver, and no call of its build the
+// quick-fix's; the topic's first opening reading what the move carried,
+// and a second none of it (enter.cjs); a moved quick-fix's lines read at
+// the epic's topic once the feature it became is absorbed
+// (ledger-rehomed.cjs); and every refusal, writing nothing: a fix's pull
+// request opened, a checkout holding changes, a unit past its spec, a type
+// that does not move, a bugfix away from its investigation.
 //
 // Layer: git. World: one project built once through the verbs and copied —
 // the quick-fix typo, entered, its fix 1.1 started and committed on its
-// branch, the project's checkout left there, a question asked at its place
-// linking an asset; the quick-fix shipped, its fix's pull request opened;
-// the quick-fix begun, its fix 1.1 started with nothing committed; the
-// bugfix hunt in its investigation, its log written and a finding on it;
-// and beside them an epic, a feature, a quick-fix today's scoping made,
-// and bugfixes past their spec, concluded and not begun. The knowledge base
-// is keyword-only.
+// branch, the project's checkout left there, a finding discovery made for
+// it, a question asked at its place linking an asset, its build's log, and
+// a call for 1.1 citing it; the quick-fix shipped, its fix's pull request
+// opened; the quick-fix begun, its fix 1.1 committed and closed and 1.2
+// laid from it and started; the bugfix hunt in its investigation, its log
+// written and a finding citing it; and beside them an epic, a feature, a
+// quick-fix today's scoping made, and bugfixes past their spec, concluded
+// and not begun. The knowledge base is keyword-only.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -42,7 +47,7 @@ const os = require('os');
 const path = require('path');
 const {
   ok, okSections, output, refuses, refusedPristine, git, stateGit, statePath, layout, writeState, readState, readManifest, createFile, commitAll, fixtureFrom, cleanupFixture,
-  head, sectionOf, keywordOnlyKnowledge,
+  head, sectionOf, keywordOnlyKnowledge, killedAt, STATE_DIR_NAME,
 } = require('./engine-harness.cjs');
 const { createManifest, useTempFolder } = require('./discovery-test-utils.cjs');
 const { MADE, ledgerHelpers } = require('./ledger-world.cjs');
@@ -50,6 +55,8 @@ const store = require('../../skills/leeway-engine/scripts/kernel/knowledge/store
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { taskBranch, isUnitBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
+const { callsOf } = require(path.join(SCRIPTS, 'domain/build-screens.cjs'));
+const { unitHistory } = require(path.join(SCRIPTS, 'domain/state-history.cjs'));
 
 const QF = 'typo';
 const SHIPPED = 'shipped';
@@ -62,8 +69,11 @@ const TITLE = 'Spell the flag --colour';
 const BRANCH = taskBranch({ unit: QF, phase: 1, n: 1 }, 'fix', TITLE);
 const KEPT = `moved/${BRANCH}`;
 const SHOT = `${QF}/assets/shot.png`;
+const KEEP = 'Keep the flag short';
 const STAGED = layout.cache('product', 'discovery', 'product', 'start-this-work.json');
 const INVESTIGATION_LOG = layout.unit(BUG, 'topics', BUG, 'log.md');
+const BUILD_LOG = layout.unit(QF, 'build', 'log.md');
+const EARLIER = (unit, name) => layout.unit(unit, 'topics', unit, 'earlier', name);
 
 /** A task file, its one scenario `{n}.S1`. @param {number} n @param {string} title @param {string} [type] */
 const fixFile = (n, title, type = 'fix') => [
@@ -72,15 +82,17 @@ const fixFile = (n, title, type = 'fix') => [
 ].join('\n');
 
 /** The ids the world's lines were made under, filled as it is first built. */
-const made = { asked: '', link: '', found: '' };
+const made = { discovered: '', asked: '', settled: '', call: '', found: '' };
 
 /**
  * A quick-fix made from `seed`, entered by a conversation gone since, its
  * fix 1.1 created and started there — putting the checkout on its branch —
- * and, given the code file it changes, its change committed through the door.
- * @param {string} dir @param {string} unit @param {string} title @param {string} [file]
+ * and its change committed through the door; then `then`, run as that
+ * conversation.
+ * @param {string} dir @param {string} unit @param {string} title @param {string} file
+ * @param {(as: {env: Record<string, string|undefined>}) => void} [then]
  */
-function startedFix(dir, unit, title, file) {
+function startedFix(dir, unit, title, file, then = () => {}) {
   const gone = fs.mkdtempSync(path.join(os.tmpdir(), 'workunit-move-world-'));
   const as = { env: { LEEWAY_CONFIG_DIR: gone, CLAUDE_CODE_SESSION_ID: 'gone', TMUX: undefined, TMUX_PANE: undefined } };
   try {
@@ -90,9 +102,9 @@ function startedFix(dir, unit, title, file) {
     ok(dir, ['presence', 'clear', unit, 'implementation', unit], as);
     ok(dir, ['task', 'create', unit, '1', '--file', writeState(dir, layout.cache(`${unit}-fix.md`), fixFile(1, title))]);
     ok(dir, ['task', 'start', unit, '1.1'], as);
-    if (file === undefined) return;
     createFile(dir, file, `// ${title}\n`);
     ok(dir, ['commit', '--paths', file, '--task', unit, '1.1', '-m', `fix(${unit}): ${title.toLowerCase()}`], as);
+    then(as);
   } finally {
     fs.rmSync(gone, { recursive: true, force: true });
   }
@@ -119,17 +131,31 @@ const world = fixtureFrom('workunit-move-', (dir) => {
 
   startedFix(dir, SHIPPED, 'Ship the flag', 'src/ship.js');
   ok(dir, ['land', 'open', SHIPPED, '1.1']);
-  startedFix(dir, BEGUN, 'Trim the flag');
+  startedFix(dir, BEGUN, 'Trim the flag', 'src/trim.js', (as) => {
+    ok(dir, ['task', 'close', BEGUN, '1.1', '--reason', 'Not needed.'], as);
+    ok(dir, ['task', 'create', BEGUN, '1', '--file', writeState(dir, layout.cache(`${BEGUN}-fix-2.md`), fixFile(2, KEEP))]);
+    ok(dir, ['task', 'start', BEGUN, '1.2'], as);
+  });
   startedFix(dir, QF, TITLE, 'src/flag.js');
 
   const { write } = ledgerHelpers(() => dir);
+  made.discovered = write('find', `${QF}.discovery`, [], { ...MADE, text: 'The flag is spelt three ways.', how: 'Grep.', known: 'read' }).id;
   made.asked = write('ask', `${QF}.implementation`, [], { ...MADE, text: 'Should --color still work?' }).id;
   writeState(dir, SHOT, 'the help, spelt\n');
-  made.link = ok(dir, ['asset', 'add', QF, SHOT, '--entry', made.asked, '--status', 'canonical'], { env: { CLAUDE_CODE_SESSION_ID: 'gone' } }).id;
+  ok(dir, ['asset', 'add', QF, SHOT, '--entry', made.asked, '--status', 'canonical'], { env: { CLAUDE_CODE_SESSION_ID: 'gone' } });
+  writeState(dir, BUILD_LOG, '# Build log\n\n## Fix 1.1\n\nThe help reads colour.\n');
+  writeState(dir, layout.unit(QF, 'summary.md'), '# Typo\n\nThe flag spelt.\n');
+  made.settled = write('ask', `${QF}.implementation`, [], { ...MADE, text: 'Which spelling does the help use?' }).id;
+  made.call = write('decide', `${QF}.implementation`, ['--answers', made.settled, '--task', '1.1'], {
+    ...MADE, text: 'The help says colour.', why: 'The flag is colour.', cites: [{ path: BUILD_LOG, section: 'Fix 1.1' }],
+  }).id;
+  ok(dir, ['commit', QF, '-m', 'build(typo): the log so far']);
 
   ok(dir, ['enter', 'investigation', BUG], { env: { CLAUDE_PID: undefined } });
   ok(dir, ['investigation-log', 'symptom', BUG, '--text', 'Restore brings nothing back after a kill']);
-  made.found = write('find', `${BUG}.investigation.${BUG}`, [], { ...MADE, text: 'Every save takes the session list as the whole truth.', how: 'Read the capture.', known: 'read' }).id;
+  made.found = write('find', `${BUG}.investigation.${BUG}`, [], {
+    ...MADE, text: 'Every save takes the session list as the whole truth.', how: 'Read the capture.', known: 'read', cites: [{ path: INVESTIGATION_LOG, section: 'Symptoms' }],
+  }).id;
   ok(dir, ['commit', BUG, '-m', 'investigation(hunt): the hunt so far']);
 });
 
@@ -182,6 +208,9 @@ function chunkTypes(unit) {
 /** The ledger's lines, parsed. */
 const ledgerLines = () => readState(dir, layout.ledger).trim().split('\n').map((line) => JSON.parse(line));
 
+/** The DATA lines an entry's sections give of what a topic holds from before it. @param {string} sections */
+const earlierReads = (sections) => sections.split('\n').filter((line) => /^(earlier [a-z ]+|kept branch): /.test(line));
+
 describe('workunit move, the stage (19.5.9, P7)', () => {
   it('stages the move where start this work stages a start and draws its screen, the quick-fix\'s fix\'s branch named in one line — nothing moved, and the gate\'s yes is start this work\'s', () => {
     dir = world();
@@ -214,11 +243,13 @@ describe('workunit move, the stage (19.5.9, P7)', () => {
 });
 
 describe('the yes: a quick-fix moved (19.S24, 19.5.16)', () => {
-  it('re-types it in place in both manifests, writes its brief, closes its open fix, takes the checkout back to main, keeps the fix\'s commit unlanded on its branch renamed under moved/, takes its phase out of the tracker, carries its lines to the topic, re-indexes it, commits once, and hands off into the feature\'s discussion', () => {
+  it('re-types it in place in both manifests, writes its brief, closes its open fix, takes the checkout back to main, keeps the fix\'s commit unlanded on its branch renamed under moved/, takes its phase out of the tracker, carries its lines to the topic at the discussion and sets its build aside there, the call following its log, re-indexes it, commits after the close, and hands off into the feature\'s discussion', () => {
     dir = world();
     assert.deepStrictEqual(chunkTypes(QF), ['quick-fix']);
     const fixCommit = git(dir, ['rev-parse', BRANCH]).trim();
     const res = moved(QF, 'feature');
+    const idOf = (/** @type {string} */ short) => ledgerLines().find((l) => l.id.startsWith(short)).id;
+    const link = ledgerLines().find((l) => l.event === 'asset').id;
 
     assert.deepStrictEqual(res, {
       ok: true,
@@ -240,21 +271,46 @@ describe('the yes: a quick-fix moved (19.S24, 19.5.16)', () => {
     assert.strictEqual(refuses(dir, ['task', 'list', QF, '1']).error, `phase 1 of ${QF} is not written`);
     assert.deepStrictEqual([branchOut(), git(dir, ['branch', '--list', BRANCH]), git(dir, ['rev-parse', KEPT]).trim(), git(dir, ['rev-list', '--count', `main..${KEPT}`]).trim()], ['main', '', fixCommit, '1']);
     const { v: _v, id: _id, at: _at, ...carry } = ledgerLines().at(-1);
-    assert.deepStrictEqual(carry, { event: 'rehomed', unit: QF, topic: QF, phase: 'discussion', session: 'sess-1', lines: [ledgerLines().find((l) => l.id.startsWith(made.asked)).id, ledgerLines().find((l) => l.event === 'asset').id], files: [] });
+    assert.deepStrictEqual(carry, {
+      event: 'rehomed', unit: QF, topic: QF, phase: 'discussion', session: 'sess-1',
+      lines: [idOf(made.asked), link, idOf(made.settled), idOf(made.call)], files: [[BUILD_LOG, EARLIER(QF, 'build/log.md')]],
+    });
     const record = ok(dir, ['ledger', 'record', QF, QF]);
-    assert.deepStrictEqual([record.questions.map((q) => [q.unit, q.topic, q.phase]), record.questions[0].assets.map((a) => a.path)], [[[QF, QF, 'implementation']], [SHOT]]);
+    assert.deepStrictEqual([
+      record.questions.map((q) => [q.text, q.unit, q.topic, q.phase]),
+      record.questions[0].assets.map((a) => a.path),
+      record.decisions.map((d) => [d.text, d.phase, d.cites.map((c) => c.path)]),
+    ], [
+      [['Should --color still work?', QF, QF, 'discussion'], ['Which spelling does the help use?', QF, QF, 'discussion']],
+      [SHOT],
+      [['The help says colour.', 'discussion', [EARLIER(QF, 'build/log.md')]]],
+    ]);
+    assert.deepStrictEqual(callsOf(dir, { unit: QF, phase: 1, n: 1 }), [], 'the call its fix made is no call of the build\'s');
+    assert.deepStrictEqual(
+      [fs.existsSync(statePath(dir, QF, 'build')), readState(dir, EARLIER(QF, 'build/log.md')), fs.existsSync(statePath(dir, QF, 'summary.md')), readState(dir, EARLIER(QF, 'summary.md'))],
+      [false, '# Build log\n\n## Fix 1.1\n\nThe help reads colour.\n', false, '# Typo\n\nThe flag spelt.\n'],
+    );
     assert.deepStrictEqual(chunkTypes(QF), ['feature']);
     assert.deepStrictEqual(stateGit(dir, ['log', '-2', '--format=%s']).trim().split('\n'), [`workflow(${QF}): move quick-fix to feature`, `task(${QF}): close 1.1`]);
     assert.deepStrictEqual([fs.existsSync(statePath(dir, STAGED)), stateGit(dir, ['status', '--porcelain'])], [false, '']);
+    assert.deepStrictEqual(unitHistory(dir, QF).slice(0, 1).map(({ kind, detail }) => [kind, detail]), [['moved', 'feature']]);
+    assert.deepStrictEqual(ok(dir, ['ledger', 'product', QF, QF], { env: env() }).discovery.map((e) => [e.text, e.unit, e.topic, e.phase]), [['The flag is spelt three ways.', QF, null, 'discovery']],
+      'what discovery found stays at the unit\'s own level, read as any unit\'s');
   });
 
-  it('to a bugfix, carries its lines to the investigation and hands off into it', () => {
+  it('to a bugfix, carries its lines to the investigation and hands off into it, whose first opening reads what the move carried', () => {
     dir = world();
     const res = moved(QF, 'bugfix');
 
     assert.deepStrictEqual([res.work_type, res.next], ['bugfix', { kind: 'handoff', skill: 'leeway-investigation-process', args: ['bugfix', QF] }]);
     assert.deepStrictEqual([ledgerLines().at(-1).event, ledgerLines().at(-1).phase], ['rehomed', 'investigation']);
     assert.deepStrictEqual(readManifest(dir, '.').work_units[QF], { work_type: 'bugfix' });
+    assert.deepStrictEqual(ok(dir, ['ledger', 'record', QF, QF]).questions.map((q) => q.phase), ['investigation', 'investigation']);
+    assert.deepStrictEqual(earlierReads(okSections(dir, ['enter', 'investigation', QF], { env: env() }).sections), [
+      `earlier record: \`${ENGINE} ledger record ${QF} ${QF}\``,
+      `earlier build log: ${statePath(dir, EARLIER(QF, 'build/log.md'))}`,
+      `kept branch: ${KEPT}`,
+    ]);
   });
 
   it('refuses while the checkout holds changes not committed, naming each, nothing moved — the fix still in progress, the checkout on its branch', () => {
@@ -287,23 +343,40 @@ describe('the yes: a quick-fix moved (19.S24, 19.5.16)', () => {
     assert.strictEqual(ok(dir, ['task', 'list', SHIPPED, '1']).tasks[0].status, 'in-progress');
   });
 
-  it('a quick-fix whose fixes have not begun moves leaving the checkout where it is, on another unit\'s branch, and closes nothing', () => {
+  it('a quick-fix whose fixes have not begun moves leaving the checkout where it is, on another unit\'s branch, closing nothing and carrying nothing, so its topic\'s first opening reads nothing earlier', () => {
     dir = world();
     const res = moved('small', 'feature');
 
     assert.deepStrictEqual([res.fixes_closed, res.branches, res.checkout, branchOut()], [[], [], null, BRANCH]);
     assert.deepStrictEqual(readManifest(dir, 'small').phases, { discussion: { items: { small: { status: 'unstarted' } } } });
+    assert.deepStrictEqual(earlierReads(okSections(dir, ['enter', 'discussion', 'small'], { env: env() }).sections), []);
   });
 
-  it('deletes a fix\'s branch holding nothing the branch the fixes land on lacks, keeping none, and leaves the checkout on another unit\'s branch', () => {
+  it('closes only the fix not yet ended, keeps a fix\'s branch with commits of its own, deletes the one laid from it with none of its own, and leaves the checkout on another unit\'s branch', () => {
     dir = world();
+    const trimmed = git(dir, ['rev-parse', taskBranch({ unit: BEGUN, phase: 1, n: 1 }, 'fix', 'Trim the flag')]).trim();
     const res = moved(BEGUN, 'feature');
+    const kept = `moved/${taskBranch({ unit: BEGUN, phase: 1, n: 1 }, 'fix', 'Trim the flag')}`;
 
-    assert.deepStrictEqual([res.fixes_closed, res.branches, res.checkout, branchOut()], [['1.1'], [], null, BRANCH]);
-    assert.deepStrictEqual([git(dir, ['branch', '--list', `*/${BEGUN}-*`]), git(dir, ['branch', '--list', `moved/*/${BEGUN}-*`])], ['', '']);
+    assert.deepStrictEqual([res.fixes_closed, res.branches, res.checkout, branchOut()], [['1.2'], [kept], null, BRANCH]);
+    assert.deepStrictEqual([git(dir, ['branch', '--list', `fix/${BEGUN}-*`]), git(dir, ['rev-parse', kept]).trim()], ['', trimmed]);
   });
 
-  it('a feature it became, absorbed into an epic, has its lines read at the epic\'s topic, the file they link where the absorb moved it — the later carry winning', () => {
+  it('its topic\'s first opening reads what the move carried — the record holding the question that moved it, still open, the build\'s log and the branch kept — and a second opening none of it', () => {
+    dir = world();
+    moved(QF, 'feature');
+    const first = okSections(dir, ['enter', 'discussion', QF], { env: env() }).sections;
+    const again = okSections(dir, ['enter', 'discussion', QF], { env: { ...env(), CLAUDE_CODE_SESSION_ID: 'sess-2' } }).sections;
+
+    assert.deepStrictEqual([earlierReads(first), earlierReads(again)], [[
+      `earlier record: \`${ENGINE} ledger record ${QF} ${QF}\``,
+      `earlier build log: ${statePath(dir, EARLIER(QF, 'build/log.md'))}`,
+      `kept branch: ${KEPT}`,
+    ], []]);
+    assert.deepStrictEqual(ok(dir, ['ledger', 'map', QF, QF]).questions.map((q) => [q.text, q.answers.length]), [['Should --color still work?', 0], ['Which spelling does the help use?', 1]]);
+  });
+
+  it('a feature it became, absorbed into an epic, has its lines read at the epic\'s topic at the discussion, each file they name where the absorb moved it — its build\'s log with the topic — the later carry winning', () => {
     dir = world();
     moved(QF, 'feature');
     ok(dir, ['enter', 'discussion', QF], { env: env() });
@@ -311,7 +384,16 @@ describe('the yes: a quick-fix moved (19.S24, 19.5.16)', () => {
     ok(dir, ['workunit', 'absorb', QF, '--into', EPIC, '--topic', 'colour'], { env: env() });
 
     const record = ok(dir, ['ledger', 'record', EPIC, 'colour']);
-    assert.deepStrictEqual(record.questions.map((q) => [q.text, q.unit, q.topic, q.assets.map((a) => a.path)]), [['Should --color still work?', EPIC, 'colour', [`${EPIC}/assets/shot.png`]]]);
+    const earlierLog = layout.unit(EPIC, 'topics', 'colour', 'earlier', 'build', 'log.md');
+    assert.deepStrictEqual([
+      record.questions.map((q) => [q.text, q.unit, q.topic, q.phase, q.assets.map((a) => a.path)]),
+      record.decisions.map((d) => d.cites.map((c) => c.path)),
+      fs.existsSync(statePath(dir, earlierLog)),
+    ], [
+      [['Should --color still work?', EPIC, 'colour', 'discussion', [`${EPIC}/assets/shot.png`]], ['Which spelling does the help use?', EPIC, 'colour', 'discussion', []]],
+      [[earlierLog]],
+      true,
+    ]);
   });
 });
 
@@ -347,9 +429,9 @@ describe('what the new type\'s build meets: nothing of the fixes (19.5.16)', () 
 });
 
 describe('the yes: a bugfix moved to a feature (19.S30, 19.4.22)', () => {
-  it('re-types it in place, its investigation item dropped and its brief rewritten, carrying nothing, and hands off into the discussion — whose first opening reads the investigation\'s log and the topic\'s record as the topic\'s earlier ones', () => {
+  it('re-types it in place, its investigation item dropped and its brief rewritten, its lines carried to the discussion and its log set aside, the finding citing it following, and hands off into the discussion — whose first opening reads the investigation\'s log and the topic\'s record as its earlier ones, keeping a log of its own', () => {
     dir = world();
-    const lines = readState(dir, layout.ledger);
+    const investigated = readState(dir, INVESTIGATION_LOG);
     const res = moved(BUG, 'feature');
 
     assert.deepStrictEqual([res.fixes_closed, res.branches, res.checkout, res.next], [[], [], null, { kind: 'handoff', skill: 'leeway-discussion-process', args: ['feature', BUG] }]);
@@ -357,11 +439,19 @@ describe('the yes: a bugfix moved to a feature (19.S30, 19.4.22)', () => {
     assert.deepStrictEqual([manifest.work_type, manifest.phases], ['feature', { discussion: { items: { [BUG]: { status: 'unstarted' } } } }]);
     assert.deepStrictEqual(readManifest(dir, '.').work_units[BUG], { work_type: 'feature' });
     assert.strictEqual(readState(dir, layout.brief(BUG, BUG)), '# hunt\n\nWhat the work showed.\n');
-    assert.strictEqual(readState(dir, layout.ledger), lines, 'its lines are its topic\'s already');
+    const { v: _v, id: _id, at: _at, ...carry } = ledgerLines().at(-1);
+    assert.deepStrictEqual(carry, {
+      event: 'rehomed', unit: BUG, topic: BUG, phase: 'discussion', session: 'sess-1',
+      lines: [ledgerLines().find((l) => l.id.startsWith(made.found)).id], files: [[INVESTIGATION_LOG, EARLIER(BUG, 'investigation-log.md')]],
+    });
+    assert.deepStrictEqual([fs.existsSync(statePath(dir, INVESTIGATION_LOG)), readState(dir, EARLIER(BUG, 'investigation-log.md'))], [false, investigated]);
 
     const { sections } = okSections(dir, ['enter', 'discussion', BUG], { env: env() });
-    assert.ok(sections.includes(`earlier record: \`${ENGINE} ledger record ${BUG} ${BUG}\`\nearlier log: ${statePath(dir, INVESTIGATION_LOG)}\n`), sections);
-    assert.deepStrictEqual(ok(dir, ['ledger', 'record', BUG, BUG]).findings.map((f) => f.text), ['Every save takes the session list as the whole truth.']);
+    assert.deepStrictEqual(earlierReads(sections), [`earlier record: \`${ENGINE} ledger record ${BUG} ${BUG}\``, `earlier log: ${statePath(dir, EARLIER(BUG, 'investigation-log.md'))}`]);
+    assert.deepStrictEqual(ok(dir, ['ledger', 'record', BUG, BUG]).findings.map((f) => [f.text, f.phase, f.cites.map((c) => c.path)]), [
+      ['Every save takes the session list as the whole truth.', 'discussion', [EARLIER(BUG, 'investigation-log.md')]],
+    ]);
+    assert.ok(sections.includes(`\nlog: ${statePath(dir, INVESTIGATION_LOG)}\n`), 'the discussion keeps a log of its own, where the investigation\'s was');
   });
 });
 
@@ -391,5 +481,50 @@ describe('what the move refuses (19.5.9, 19.4.22, P7)', () => {
       'a bugfix moves to a feature from its investigation, and fixed\'s has concluded — the work carries on in its spec',
       'a bugfix moves to a feature from its investigation, and fresh\'s has not begun',
     ]);
+  });
+
+  it('checks the move again at the yes, against the unit as it stands, nothing moved: a fix\'s pull request opened since the stage, the unit cancelled since, its spec written since, its investigation concluded since', () => {
+    /** The yes refused after `change`, made between the stage and it: its error. @param {string} unit @param {() => void} change */
+    function refusedYes(unit, change) {
+      cleanupFixture(dir);
+      dir = world();
+      staged(unit, 'feature');
+      change();
+      return refusedPristine(dir, ['start-this-work', 'yes'], { env: env() }).error;
+    }
+
+    assert.deepStrictEqual([
+      refusedYes(QF, () => ok(dir, ['land', 'open', QF, '1.1'])),
+      refusedYes(QF, () => ok(dir, ['workunit', 'cancel', QF])),
+      refusedYes(BUG, () => writeState(dir, layout.unit(BUG, 'spec.md'), '# Spec\n')),
+      refusedYes(BUG, () => ok(dir, ['manifest', 'set', `${BUG}.investigation.${BUG}`, 'status=completed'])),
+    ], [
+      `start-this-work yes: ${QF}'s fix 1.1 has its pull request opened — finish the quick-fix, then start the feature as work of its own`,
+      `start-this-work yes: ${QF} is cancelled — only work in progress moves`,
+      `start-this-work yes: ${BUG} has its spec — it carries on as work of its own`,
+      `start-this-work yes: a bugfix moves to a feature from its investigation, and ${BUG}'s has concluded — the work carries on in its spec`,
+    ]);
+  });
+});
+
+describe('the yes run again (19.5.16)', () => {
+  it('stopped before the manifests\' save, every step before it done, a second yes completes the move whole, its commit taking every path', () => {
+    dir = world();
+    staged(QF, 'feature');
+    killedAt({ method: 'renameSync', file: `${STATE_DIR_NAME}/manifest.json`, when: 'before' }, dir, ['start-this-work', 'yes'], { env: env() });
+    const stopped = [readManifest(dir, QF).work_type, git(dir, ['branch', '--list', BRANCH]), fs.existsSync(statePath(dir, QF, 'build')), ledgerLines().at(-1).event];
+    const res = ok(dir, ['start-this-work', 'yes'], { env: env() });
+
+    assert.deepStrictEqual(stopped, ['quick-fix', '', false, 'rehomed']);
+    const [first, again] = ledgerLines().filter((line) => line.event === 'rehomed');
+    assert.deepStrictEqual(again.lines, first.lines, 'the second carry lists the same lines, never the first carry');
+    assert.deepStrictEqual([res.work_type, res.fixes_closed, res.branches, readManifest(dir, '.').work_units[QF]], ['feature', [], [KEPT], { work_type: 'feature' }]);
+    assert.strictEqual(refuses(dir, ['task', 'list', QF, '1']).error, `phase 1 of ${QF} is not written`);
+    const record = ok(dir, ['ledger', 'record', QF, QF]);
+    assert.deepStrictEqual([record.questions.map((q) => [q.text, q.phase]), record.decisions.map((d) => d.cites.map((c) => c.path))], [
+      [['Should --color still work?', 'discussion'], ['Which spelling does the help use?', 'discussion']],
+      [[EARLIER(QF, 'build/log.md')]],
+    ]);
+    assert.deepStrictEqual([fs.existsSync(statePath(dir, STAGED)), stateGit(dir, ['status', '--porcelain'])], [false, '']);
   });
 });

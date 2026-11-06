@@ -16,52 +16,61 @@
 //   (start-this-work.cjs): one payload, one screen. Nothing moves before
 //   the yes.
 // - What the move carries (19.5.16): the unit itself, re-typed in place
-//   under its name, so its seeds, its discovery log and its assets stay
-//   where they are and are read as any unit's at its topic's first opening;
-//   the description given; its one topic, the new type's first phase's
-//   item, unstarted until its first entry starts it, and its brief at
-//   `topics/{unit}/brief.md`. A quick-fix's ledger lines, made at its own
-//   level, are carried to the new topic by one `rehomed` line
-//   (ledger-rehomed.cjs), so its calls are the topic's record and map, and
-//   an absorb of the feature it became carries them on. A bugfix's lines
-//   are made on the topic already, which the feature keeps, so nothing is
-//   carried; its investigation's log is the topic's log already, and the
-//   discussion's first opening reads it as the topic's earlier log, input
-//   it never changes, with the topic's record (enter.cjs).
+//   under its name, so its seeds, its discovery log, its assets and the
+//   lines discovery made at its own level stay where they are and are read
+//   as any unit's at its topic's first opening; the description given; its
+//   one topic, the new type's first phase's item, unstarted until its first
+//   entry starts it, and its brief at `topics/{unit}/brief.md`. The old
+//   type's work is the topic's earlier input, read at its first opening and
+//   never changed (enter.cjs): every other line made in the unit is carried
+//   to the topic at the new type's first phase by one `rehomed` line
+//   (ledger-rehomed.cjs), so no reader of the new type's later phases takes
+//   it as theirs, and an absorb of the feature it became carries it on; and
+//   the old type's own files are set aside under `topics/{unit}/earlier/`
+//   (`earlierFile`, derivations.cjs) — a quick-fix's `build/` whole and its
+//   `summary.md`, a bugfix's investigation log as `investigation-log.md`,
+//   so the discussion keeps a log of its own — each line naming one
+//   following it through the carry.
 // - It refuses, writing nothing: a unit not in progress; a unit of a type
 //   the reshape retires, as every door does (`retiredRefusal`,
-//   derivations.cjs); a type that does not move — an epic, a feature — or a move to a type its own does not
-//   take: a quick-fix moves to a feature or a bugfix, a bugfix to a feature
-//   alone; a quick-fix its old scoping made; a unit past its spec; a bugfix
-//   but from its investigation in progress; and a quick-fix with a fix whose
-//   pull request is opened or landed, as the landing driver reads it
-//   (`openedTasks`, landing.cjs), which is finished first.
+//   derivations.cjs); a type that does not move — an epic, a feature — or
+//   a move to a type its own does not take: a quick-fix moves to a feature
+//   or a bugfix, a bugfix to a feature alone; a quick-fix its old scoping
+//   made; a unit past its spec; a bugfix but from its investigation in
+//   progress; and a quick-fix with a fix whose pull request is opened or
+//   landed, as the landing driver reads it (`openedTasks`, landing.cjs),
+//   which is finished first.
 // - The yes (`start-this-work yes` over a staged move): the stage's checks
-//   again, against the unit as it stands, and, where a quick-fix's lines
-//   are carried, a conversation naming its session; then, under the writer
-//   lock, for a quick-fix, the project's checkout taken back to the branch
-//   the fixes land on where it has one of the unit's fixes' branches out —
-//   refused first, nothing moved, while it holds changes not committed —
-//   and each fix not yet ended closed. Then the move leaves nothing the new
-//   type's build, numbering its own phase 1 and tasks 1.n, can meet: the
-//   fixes' branches set aside, one holding unlanded commits kept under
+//   again, against the unit as it stands, and, where lines are carried, a
+//   conversation naming its session. Then, the writer lock held, each step
+//   one a second yes repeats or finds done: for a quick-fix, the project's
+//   checkout taken back to the branch the fixes land on where it has one of
+//   the unit's fixes' branches out — refused first, nothing moved, while it
+//   holds changes not committed — and each fix not yet ended closed, each
+//   close committing the tracker as the verb does; the carry appended, the
+//   lines read once the fixes have closed; then nothing left that the new
+//   type's build, numbering its own phase 1 and tasks 1.n, can meet — the
+//   fixes' branches set aside, one holding commits of its own kept under
 //   `moved/{branch}`, out of every landing's reading, the rest deleted
 //   (fix-branch.cjs), and the fixes' phase taken out of the tracker for
-//   good, its tasks with it (`removePhase`) — the fixes' record kept in the
-//   carried lines and the kept branches. Then the unit re-typed with its
-//   new description, a quick-fix's fixes' record and a bugfix's
-//   investigation item dropped, and its registration, in one save; the
-//   brief written; the carry appended, its lines read again once the fixes
-//   have closed. The knowledge base is re-indexed, its chunks carrying the
-//   type (warn-don't-block), and one commit takes the unit, the project
-//   manifest, the tracker's store where the phase was taken out, and the
-//   ledger where lines were carried. It answers the handoff into the new
-//   type's first phase (24.1.2).
-// - Known edge: a quick-fix named like a waiting roadmap idea moves beside
+//   good, its tasks with it (`removePhase`); the old type's files set
+//   aside; the brief written. Last, the unit re-typed with its new
+//   description, all a quick-fix's entry and build left on it (`build`,
+//   `fixes`) and a bugfix's investigation item dropped, so the new type
+//   starts as one before its spec, and its registration, in one save. The
+//   knowledge base is
+//   re-indexed, its chunks carrying the type (warn-don't-block), and one
+//   commit takes the unit, the project manifest, the tracker's store where
+//   the fixes began, and the ledger where lines were carried. It answers
+//   the handoff into the new type's first phase (24.1.2).
+// - Known edges: a failure between the save and the commit leaves the move
+//   made and uncommitted, the unit of the new type, so the yes refuses to
+//   run again; a quick-fix named like a waiting roadmap idea moves beside
 //   it, its name being kept.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
+const path = require('path');
 const {
   loadWorkUnitManifest,
   saveWorkUnitManifest,
@@ -77,15 +86,16 @@ const { handedSession } = require('../kernel/process.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { appendEntry, commitLedger } = require('./ledger.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
-const { retiredRefusal, legacyBuild, fixesBegun, FIXES_PHASE, itemOf, briefFile } = require('./derivations.cjs');
+const { retiredRefusal, legacyBuild, fixesBegun, FIXES_PHASE, itemOf, briefFile, EARLIER, earlierFile } = require('./derivations.cjs');
 const { assertBeforeSpec } = require('./spec-standing.cjs');
 const { draftIn, writeBrief } = require('./discovery-map.cjs');
 const { filled, shaped, readPayload, stage } = require('./staged-payload.cjs');
 const { trackedPhase, removePhase, runTaskVerb, ENDED } = require('./task-verbs.cjs');
 const { openedTasks } = require('./landing.cjs');
 const { keptFixes, setFixesAside, checkOutLanding } = require('./fix-branch.cjs');
-const { linesOf } = require('./workunit-absorb.cjs');
+const { linesOf, movedFiles } = require('./workunit-absorb.cjs');
 const { reindexWorkUnit } = require('./workunit-lifecycle.cjs');
+const { topicLog } = require('./topic-log.cjs');
 const { shownTask } = require('./task-id.cjs');
 const { stagedFile, nextAfter, OPENS_IN } = require('./start-this-work.cjs');
 const { startThisWorkScreen, aType } = require('./projections/discovery-gates.cjs');
@@ -101,6 +111,17 @@ const { startThisWorkScreen, aType } = require('./projections/discovery-gates.cj
 
 /** The types each type moves to (19.5.9, 19.4.22). @type {Readonly<Record<string, readonly string[]>>} */
 const MOVES = Object.freeze({ 'quick-fix': ['feature', 'bugfix'], bugfix: ['feature'] });
+
+/**
+ * What each type that moves sets aside of its own, state-relative, each
+ * `[from, to]`: where it was, and where in the topic's earlier material it
+ * goes (the header's).
+ * @type {Readonly<Record<string, (unit: string) => [string, string][]>>}
+ */
+const SET_ASIDE = Object.freeze({
+  'quick-fix': (unit) => [[`${unit}/build`, earlierFile(unit, unit, EARLIER.build)], [`${unit}/summary.md`, earlierFile(unit, unit, EARLIER.summary)]],
+  bugfix: (unit) => [[topicLog(unit, unit), earlierFile(unit, unit, EARLIER.investigationLog)]],
+});
 
 /** Whether what start this work staged is a move. @param {unknown} staged @returns {staged is StagedMove} */
 function isMove(staged) {
@@ -129,17 +150,17 @@ function assertInvestigating(manifest) {
 }
 
 /**
- * A quick-fix's fixes as the tracker holds them, null where their phase is
+ * A quick-fix's fixes as the tracker holds them, none where their phase is
  * not written: refused where any fix has its pull request opened or landed
  * — finished first, the new work started on its own.
  * @param {string} cwd @param {Record<string, any>} manifest @param {string} to
- * @returns {TaskRow[]|null}
+ * @returns {TaskRow[]}
  */
 function fixesOf(cwd, manifest, to) {
-  if (!fixesBegun(manifest)) return null;
+  if (!fixesBegun(manifest)) return [];
   const unit = manifest.name;
-  const fixes = trackedPhase(cwd, unit, FIXES_PHASE.number).tasks;
-  const opened = openedTasks(cwd, unit, (fixes ?? []).map(({ ref }) => ref));
+  const fixes = trackedPhase(cwd, unit, FIXES_PHASE.number).tasks ?? [];
+  const opened = openedTasks(cwd, unit, fixes.map(({ ref }) => ref));
   if (opened.length > 0) {
     const named = opened.length === 1 ? `fix ${opened[0]} has its pull request` : `fixes ${opened.join(', ')} have their pull requests`;
     throw new Error(`${unit}'s ${named} opened — finish the quick-fix, then start the ${to} as work of its own`);
@@ -149,9 +170,9 @@ function fixesOf(cwd, manifest, to) {
 
 /**
  * The unit's move to `to` checked as it stands: a quick-fix's fixes, as
- * `fixesOf` answers them; null for a bugfix.
+ * `fixesOf` answers them; none for a bugfix.
  * @param {string} cwd @param {Record<string, any>} manifest @param {string} to
- * @returns {TaskRow[]|null}
+ * @returns {TaskRow[]}
  */
 function checkMove(cwd, manifest, to) {
   const unit = manifest.name;
@@ -163,7 +184,7 @@ function checkMove(cwd, manifest, to) {
   if (from === 'quick-fix' && legacyBuild(manifest)) throw new Error(`${unit} was scoped under the old plan, and moves once the reshape's 29.17 migration has cut it`);
   assertBeforeSpec(cwd, manifest, 'ownWork');
   if (from === 'bugfix') assertInvestigating(manifest);
-  return from === 'quick-fix' ? fixesOf(cwd, manifest, to) : null;
+  return from === 'quick-fix' ? fixesOf(cwd, manifest, to) : [];
 }
 
 /**
@@ -200,16 +221,20 @@ function stageMove(cwd, unit, { to, file }) {
   return { response: { work_unit: unit, from, to }, sections: startThisWorkScreen(staged) };
 }
 
+/** What a quick-fix's entry and build leave on its manifest: its build's record and its fixes'. */
+const BUILT = Object.freeze(['build', 'fixes']);
+
 /**
- * The manifest re-typed in place, with its new description: a quick-fix's
- * fixes' record and a bugfix's investigation item dropped, and the new
+ * The manifest re-typed in place, with its new description: everything a
+ * quick-fix's entry and build left on it and a bugfix's investigation item
+ * dropped, so the new type starts as one before its spec, and the new
  * type's one topic added to its first phase, unstarted.
  * @param {Record<string, any>} manifest @param {string} to @param {string} description
  */
 function retype(manifest, to, description) {
   manifest.work_type = to;
   manifest.description = description;
-  delete manifest.fixes;
+  for (const key of BUILT) delete manifest[key];
   const phases = ensureContainer(manifest, 'phases', 'phases');
   delete phases.investigation;
   const opens = OPENS_IN[to];
@@ -235,50 +260,56 @@ function saveMoved(cwd, unit, to, description) {
 }
 
 /**
- * A quick-fix's lines, made at its own level, where the yes carries them —
- * refused where any is held and no conversation names the session the
- * carry is made in. None for a bugfix, whose lines are its topic's.
- * @param {string} root @param {string} unit @param {string} from @param {string[]} warnings
- * @returns {string[]}
+ * The unit's lines the yes carries to its topic, with the files they name:
+ * every line made in it but discovery's (the header's) — refused where any
+ * is held and no conversation names the session the carry is made in.
+ * @param {string} root @param {string} unit @param {string[]} warnings
+ * @returns {{ids: string[], files: Set<string>}}
  */
-function carriedLines(root, unit, from, warnings) {
-  if (from !== 'quick-fix') return [];
-  const { ids } = linesOf(root, unit, warnings);
-  if (ids.length > 0 && handedSession() === null) {
+function carriedLines(root, unit, warnings) {
+  const lines = linesOf(root, unit, warnings, ({ phase }) => phase !== 'discovery');
+  if (lines.ids.length > 0 && handedSession() === null) {
     throw new Error(`${unit} holds ledger entries, which the move carries to its topic in this conversation — Claude Code hands every command it runs a session id, and this one has none`);
   }
-  return ids;
+  return lines;
 }
 
 /**
- * What a quick-fix's move leaves of its fixes: the branch the checkout was
- * taken back to, null where it was not; the fixes it closed; the names
- * their branches are kept under; and the tracker's files its removed phase
- * changed, for the move's commit.
- * @typedef {{checkout: string|null, closed: string[], branches: string[], store: string[]}} LeftFixes
+ * What a quick-fix's move closes of its fixes: the branch the checkout was
+ * taken back to, null where it was not, and the fixes it closed.
+ * @typedef {{checkout: string|null, closed: string[]}} ClosedFixes
  */
 
-/** A bugfix's move, which leaves no fixes. @type {LeftFixes} */
-const NOTHING_LEFT = Object.freeze({ checkout: null, closed: [], branches: [], store: [] });
+/** A bugfix's move, which has no fixes. @type {ClosedFixes} */
+const NO_FIXES = Object.freeze({ checkout: null, closed: [] });
 
 /**
- * A quick-fix's fixes left for its move (the header's): the checkout taken
- * back to the branch they land on, each not yet ended closed, their
- * branches set aside, and their phase taken out of the tracker.
- * @param {string} cwd @param {string} unit @param {TaskRow[]|null} fixes the tracker's, null where their phase is not written
+ * A quick-fix's fixes closed for its move (the header's): the checkout
+ * taken back to the branch they land on, then each not yet ended closed.
+ * @param {string} cwd @param {string} unit @param {TaskRow[]} fixes the tracker's
  * @param {string} to @param {string[]} warnings
- * @returns {LeftFixes}
+ * @returns {ClosedFixes}
  */
-function leaveFixes(cwd, unit, fixes, to, warnings) {
+function closeFixes(cwd, unit, fixes, to, warnings) {
   const checkout = checkOutLanding(cwd, unit);
-  const closed = (fixes ?? []).filter(({ status }) => !ENDED.includes(status)).map(({ ref }) => {
+  const closed = fixes.filter(({ status }) => !ENDED.includes(status)).map(({ ref }) => {
     const { warnings: said = [] } = /** @type {{warnings?: string[]}} */ (runTaskVerb(cwd, 'close', [unit, shownTask(ref)], { reason: `${unit} moved to ${aType(to)}` }));
     warnings.push(...said);
     return shownTask(ref);
   });
-  const branches = setFixesAside(cwd, unit);
-  const store = fixes === null ? [] : removePhase(cwd, unit, FIXES_PHASE.number);
-  return { checkout, closed, branches, store };
+  return { checkout, closed };
+}
+
+/**
+ * The old type's files set aside in the topic's earlier material, each
+ * where it is still held. @param {string} cwd @param {[string, string][]} asides
+ */
+function setFilesAside(cwd, asides) {
+  for (const [from, to] of asides) {
+    if (!fs.existsSync(statePath(cwd, from))) continue;
+    fs.mkdirSync(path.dirname(statePath(cwd, to)), { recursive: true });
+    fs.renameSync(statePath(cwd, from), statePath(cwd, to));
+  }
 }
 
 /**
@@ -293,35 +324,41 @@ function moveYes(cwd, staged) {
   const manifest = loadWorkUnitManifest(cwd, unit);
   const fixes = checkMove(cwd, manifest, to);
   const from = manifest.work_type;
+  const quickFix = from === 'quick-fix';
+  const begun = quickFix && fixesBegun(manifest);
   const draft = draftIn(cwd, staged.brief, 'the brief');
+  const asides = SET_ASIDE[from](unit);
   /** @type {string[]} */
   const warnings = [];
-  carriedLines(root, unit, from, warnings);
+  carriedLines(root, unit, warnings);
 
   return withStateLock(root, () => {
-    const left = from === 'quick-fix' ? leaveFixes(cwd, unit, fixes, to, warnings) : NOTHING_LEFT;
-    const lines = carriedLines(root, unit, from, warnings);
-    saveMoved(cwd, unit, to, description);
-    writeBrief(cwd, unit, unit, draft.content);
-    if (lines.length > 0) {
-      appendEntry(root, { event: 'rehomed', unit, topic: unit, phase: OPENS_IN[to], session: handedSession(), lines, files: [] }, warnings);
+    const { checkout, closed } = quickFix ? closeFixes(cwd, unit, fixes, to, warnings) : NO_FIXES;
+    const lines = carriedLines(root, unit, warnings);
+    if (lines.ids.length > 0) {
+      appendEntry(root, { event: 'rehomed', unit, topic: unit, phase: OPENS_IN[to], session: handedSession(), lines: lines.ids, files: movedFiles(lines.files, asides) }, warnings);
     }
+    const branches = quickFix ? setFixesAside(cwd, unit) : [];
+    const store = begun ? removePhase(cwd, unit, FIXES_PHASE.number) : [];
+    setFilesAside(cwd, asides);
+    writeBrief(cwd, unit, unit, draft.content);
+    saveMoved(cwd, unit, to, description);
     fs.rmSync(draft.scratch, { force: true });
     fs.rmSync(stagedFile(cwd), { force: true });
 
     reindexWorkUnit(cwd, unit, warnings, { clearFirst: true });
-    const paths = [unit, PROJECT_MANIFEST_SPEC, ...left.store];
+    const paths = [unit, PROJECT_MANIFEST_SPEC, ...store];
     const message = `workflow(${unit}): move ${from} to ${to}`;
-    const outcome = lines.length > 0 ? commitLedger(cwd, message, warnings, paths) : commitStateTail(cwd, paths, message, warnings);
+    const outcome = lines.ids.length > 0 ? commitLedger(cwd, message, warnings, paths) : commitStateTail(cwd, paths, message, warnings);
     /** @type {Record<string, unknown>} */
     const result = {
       work_unit: unit,
       work_type: to,
       from,
       brief: statePath(cwd, briefFile(unit, unit)),
-      fixes_closed: left.closed,
-      branches: left.branches,
-      checkout: left.checkout,
+      fixes_closed: closed,
+      branches,
+      checkout,
       committed: outcome.committed,
       next: nextAfter(to, unit),
     };

@@ -541,15 +541,18 @@ function trackedPhase(cwd, unit, phase) {
 }
 
 /**
- * A phase written taken out of the tracker for good, its tasks with it, the
- * store left for the caller's own commit: the store's files, to stage there.
+ * A phase taken out of the tracker for good, its tasks with it — nothing
+ * done where it is not written — the store left for the caller's own
+ * commit, as a read leaves it: the store's files, to stage there.
  * @param {string} cwd @param {string} unit @param {number} phase
  * @returns {string[]}
  */
 function removePhase(cwd, unit, phase) {
-  const driver = /** @type {TaskDriver} */ (resolveDriver(cwd, 'task').driver);
-  driver.removePhase(stateRoot(cwd), unit, phase);
-  return driver.storeFiles();
+  requireUnit(cwd, unit);
+  return withTracker(cwd, unit, null, (driver, root) => {
+    if (driver.list(root, unit, phase) !== null) driver.removePhase(root, unit, phase);
+    return { files: driver.storeFiles() };
+  }).files;
 }
 
 /**

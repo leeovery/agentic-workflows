@@ -56,6 +56,8 @@ const DRAWN = Object.freeze({
   'pay/topics/auth/brief.md': 'engine {unit}/topics/{topic}/brief.md',
   'pay/topics/auth/log.md': 'log {unit}/topics/{topic}/log.md',
   'pay/topics/auth/mail/001-retry-policy.md': 'file {unit}/topics/{topic}/mail/{NNN}-{slug}.md',
+  'pay/topics/pay/earlier/build/log.md': 'free {unit}/topics/{topic}/earlier',
+  'pay/topics/pay/earlier/investigation-log.md': 'free {unit}/topics/{topic}/earlier',
   'pay/topics/auth/experiments/E1-token-cost/problem.md': 'file {unit}/topics/{topic}/experiments/E{n}-{slug}/{problem,design,report}.md',
   'pay/topics/auth/experiments/E1-token-cost/design.md': 'file {unit}/topics/{topic}/experiments/E{n}-{slug}/{problem,design,report}.md',
   'pay/topics/auth/experiments/E1-token-cost/report.md': 'file {unit}/topics/{topic}/experiments/E{n}-{slug}/{problem,design,report}.md',

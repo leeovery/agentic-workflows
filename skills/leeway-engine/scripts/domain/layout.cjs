@@ -14,7 +14,9 @@
 //   free    a folder whose contents are named by whoever fills it: the
 //           assets, a spike, the seeds, an experiment's data, the cache,
 //           and in it what the review's put backs set aside, a unit's,
-//           which no lifecycle verb removes (review-tree.cjs);
+//           which no lifecycle verb removes (review-tree.cjs), and what
+//           a move set aside of the type a unit was, in its topic's
+//           folder (workunit-move.cjs);
 //   engine  a file only the engine writes — the manifests, the ledger, a
 //           topic's brief, the record of the person's review of the spec,
 //           the record of the sweep taken, the notes for later, a task's
@@ -117,6 +119,7 @@ const LAYOUT = Object.freeze([
   engineFile('{unit}/topics/{topic}/brief.md', '4.11.5', 'a topic\'s brief', 'topic add|brief'),
   place('log', '{unit}/topics/{topic}/log.md', '4.11.5'),
   place('file', '{unit}/topics/{topic}/mail/{NNN}-{slug}.md', '4.11.5'),
+  place('free', '{unit}/topics/{topic}/earlier', '19.5.16'),
   place('file', '{unit}/topics/{topic}/experiments/E{n}-{slug}/{problem,design,report}.md', '4.11.15'),
   place('free', '{unit}/topics/{topic}/experiments/E{n}-{slug}/data', '4.11.15'),
   place('file', '{unit}/topics/{topic}/experiments/E{n}-{slug}/E{n}.{m}-{slug}/{problem,design,report}.md', '4.11.15'),

@@ -253,6 +253,18 @@ LATELY ────────────────────────�
     expect(lines.find(line => line.key === 'unit:lately:1')?.parts[0]).toEqual({ text: MARK.needs, color: COLOUR.needs })
   })
 
+  test('19.5.9 LATELY: a unit moved to another type says what it became, above how it started', () => {
+    const lately = [
+      { kind: 'moved', at: '2026-10-21T13:20:00', topic: null, detail: 'feature' },
+      { kind: 'created', at: '2026-10-21T13:00:00', topic: null, detail: 'quick-fix' },
+    ]
+
+    expect(drawn(UNIT, { ...MINT, lately } as View, { waiting: HELD, now: NOW }).text.slice(-2)).toEqual([
+      '✓ Became a feature                                     10m ago',
+      '✓ Started as a quick-fix                               30m ago',
+    ])
+  })
+
   test('20.3.7: a phase the session is in opens This session; a finished phase that reads in full opens its page; any other presses nothing', () => {
     const { lines } = drawn(UNIT, MINT, { waiting: HELD })
 

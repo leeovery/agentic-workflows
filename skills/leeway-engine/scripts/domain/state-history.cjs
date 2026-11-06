@@ -8,11 +8,12 @@
 // - What happened (`unitHistory`): the latest of the unit's commits whose
 //   subject says one of the moments the board shows (`MOMENTS`) — the unit
 //   made, the map approved, a phase or a topic started, a topic postponed,
-//   cancelled or back, a message sent to a topic or taken in by it, the
-//   spec landed, a review round recorded, the unit completed — newest
-//   first, each with when it was committed, its topic where it names one,
-//   and what it names besides: the type, what the map took in, the horizon,
-//   the message, the round, the phase started.
+//   cancelled or back, the unit moved to another type, a message sent to a
+//   topic or taken in by it, the spec landed, a review round recorded, the
+//   unit completed — newest first, each with when it was committed, its
+//   topic where it names one, and what it names besides: the type it was
+//   made as or moved to, what the map took in, the horizon, the message,
+//   the round, the phase started.
 // - What each topic took in (`takenIn`): every message a commit says a
 //   topic of the unit answered since the time given.
 // - Each read that reaches past the latest commits is bounded by a time
@@ -51,6 +52,7 @@ const MOMENTS = Object.freeze([
   { kind: 'postponed', scope: 'workflow', said: /^postpone (?<topic>\S+) → (?<detail>.+)$/ },
   { kind: 'cancelled', scope: 'workflow', said: /^cancel (?<topic>\S+) \(discovery\)$/ },
   { kind: 'reactivated', scope: 'workflow', said: /^reactivate (?<topic>\S+) \(discovery\)$/ },
+  { kind: 'moved', scope: 'workflow', said: /^move \S+ to (?<detail>\S+)$/ },
   { kind: 'sent', scope: 'mail', said: /^send (?<detail>\S+) to (?<topic>\S+)$/ },
   { kind: 'answered', scope: 'mail', said: /^(?<topic>\S+) answered (?<detail>\S+)$/ },
   { kind: 'spec-landed', scope: 'spec', said: /^landed$/ },

@@ -84,6 +84,7 @@ const MOMENTS: Readonly<Record<string, (moment: Moment) => [Part, string]>> = {
   postponed: ({ topic, detail }) => [mark(MARK.postponed, COLOUR.violet), `${topic} postponed to the roadmap${detail === null ? '' : ` · ${detail}`}`],
   cancelled: ({ topic }) => [mark(MARK.cancelled, COLOUR.notStarted), `${topic} cancelled`],
   reactivated: ({ topic }) => [mark(MARK.waiting, COLOUR.notStarted), `${topic} back on the map`],
+  moved: ({ detail }) => [mark(MARK.done, COLOUR.done), detail === null ? 'Moved' : `Became ${typed(detail)}`],
   sent: ({ topic, detail }) => [mark(MARK.message, COLOUR.gold), detail === null ? `A message sent to ${topic}` : `${detail} sent a message to ${topic}`],
   answered: moment => [mark(MARK.message, COLOUR.gold), tookIn(moment)],
   'spec-landed': ({ detail }) => [mark(MARK.done, COLOUR.done), `Specification written${detail === null ? '' : ` · ${detail}`}`],
