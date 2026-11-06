@@ -44,9 +44,10 @@
 // conclude, the one moment that knows it, never when the count is read
 // (bug-records.cjs, investigation-conclude.cjs). The bugs are counted by
 // area, each project's own, an area known folded for case and spacing by
-// its first spelling, then by the unit fixed. Left out, since no review ran
-// on it: a bug in code no unit built, and one concluded before its unit's
-// review ended, whatever that review did later. A cancelled bugfix counts,
+// its first spelling, then by the unit fixed. Left out: a bug in code no
+// unit built, since no review ran on it; and one concluded before its
+// unit's review ended, since no review had ended on it, whatever that
+// review did later. A cancelled bugfix counts,
 // one moved to another type does not, and a reopened investigation's record
 // stands until it concludes again (bug-records.cjs).
 // ---------------------------------------------------------------------------

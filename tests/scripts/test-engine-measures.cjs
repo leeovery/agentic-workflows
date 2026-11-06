@@ -131,7 +131,7 @@ describe('measures findings (17.1.5, 17.2.4)', () => {
 });
 
 describe('measures bugs (17.1.6, 17.3.1)', () => {
-  it('17.S4, 17.S6: counts each bugfix by the unit whose code it fixes where its conclude found that unit\'s review ended, grouped by area — folded for case and spacing, by its first spelling — each project\'s own, then by the unit, each in name order; beside the findings per phase over the same projects, in one call', () => {
+  it('17.S4, 17.S6: counts each bugfix by the unit whose code it fixes where its conclude found that unit\'s review ended, grouped by area — folded for case and spacing, by its first spelling, a record left out among them — each project\'s own, then by the unit, each in name order; beside the findings per phase over the same projects, in one call', () => {
     bugfix(dir, 'double-charge', 2, { fixes: 'cards', after_review: true, area: 'Checkout' });
     bugfix(dir, 'card-declined', 3, { fixes: 'cards', after_review: true, area: ' checkout ' });
     bugfix(dir, 'refund-twice', 4, { fixes: 'refunds', after_review: true, area: 'CHECKOUT' });
@@ -139,7 +139,7 @@ describe('measures bugs (17.1.6, 17.3.1)', () => {
     bugfix(dir, 'card-refund', 7, { fixes: 'cards', after_review: true, area: 'Card refunds' });
     bugfix(dir, 'odd-total', 6, { fixes: 'cards', after_review: true });
     bugfix(dir, 'early', 8, { fixes: 'draft', after_review: false, area: 'checkout' });
-    bugfix(dir, 'old-code', 9, { area: 'checkout' });
+    bugfix(dir, 'old-code', 1, { area: 'CheckOut' });
     ok(dir, ['manifest', 'set', 'card-refund', 'status', 'cancelled']);
     createManifest(dir, 'moved', { phases: { investigation: { items: { moved: { status: 'completed', fixes: 'cards', after_review: true, area: 'checkout' } } } } });
     const project = JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'manifest.json'), 'utf8'));
@@ -154,7 +154,7 @@ describe('measures bugs (17.1.6, 17.3.1)', () => {
         projects: [dir, elsewhere],
         bugs: [
           { project: dir, area: 'card  refunds', count: 2, fixed: [{ unit: 'cards', bugfixes: ['card-refund'] }, { unit: 'refunds', bugfixes: ['refund-rounding'] }] },
-          { project: dir, area: 'Checkout', count: 3, fixed: [{ unit: 'cards', bugfixes: ['card-declined', 'double-charge'] }, { unit: 'refunds', bugfixes: ['refund-twice'] }] },
+          { project: dir, area: 'CheckOut', count: 3, fixed: [{ unit: 'cards', bugfixes: ['card-declined', 'double-charge'] }, { unit: 'refunds', bugfixes: ['refund-twice'] }] },
           { project: dir, area: null, count: 1, fixed: [{ unit: 'cards', bugfixes: ['odd-total'] }] },
           { project: elsewhere, area: 'checkout', count: 1, fixed: [{ unit: 'shop', bugfixes: ['lost-basket'] }] },
         ],

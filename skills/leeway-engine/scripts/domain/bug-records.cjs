@@ -6,7 +6,7 @@
 // that records them (investigation-conclude.cjs), on each bugfix's
 // investigation item as its conclude kept it: `fixes`, the unit whose code
 // the bug is in; `after_review`, whether that unit's review phase had ended
-// when the bug was concluded; and `area`, the area of the verify setup's
+// when a conclude first named it; and `area`, the area of the verify setup's
 // feature map it sits in — each where named.
 //
 // - Only units typed bugfix are read (17.1.6): one moved to another type

@@ -897,10 +897,22 @@ describe('the conclude — a learned process gate, and its yes (19.4.23, 24.1.2)
     run(['topic', 'answered', RIPE, RIPE, '001-also-on-reboot', '--entry', asked]);
   }
 
-  /** The fixed unit's review phase ended: a round of its passed. */
-  const reviewPassed = () => writeState(dir, `${FEATURE}/review/round-1.json`, JSON.stringify({ reports: [], passed: true, can_now: [], findings: [], settled: null, scenarios: [] }));
+  /** `unit`'s review phase ended by Claude settling its failing round, none passing. @param {string} unit */
+  function reviewSettled(unit) {
+    const round = (/** @type {string|null} */ settled) => JSON.stringify({ reports: [], passed: false, can_now: [], findings: [], settled, scenarios: [] });
+    writeState(dir, `${unit}/review/round-1.json`, round(null));
+    writeState(dir, `${unit}/review/round-2.json`, round('The finding was a nit at heart.'));
+  }
 
-  it('17.1.9: what the bug is in is the recap\'s, on no line of the screen, and the yes keeps it on the investigation\'s item with whether the unit\'s review had ended then — judged then, never later; a second conclude judges again and keeps nothing of the first; the areas recorded named in the DATA (17.S4)', () => {
+  /** `ripe` concluded at its gate's yes, its recap naming `bug`: what its item keeps of the bug. @param {Record<string, string>} bug */
+  function closedWith(bug) {
+    conclude(RIPE, { ...RECAP, ...bug });
+    run(run(['gate', 'conclude gate', '--pick', 'y']).next.argv);
+    const { fixes, area, after_review: after } = readManifest(dir, RIPE).phases.investigation.items[RIPE];
+    return { fixes, area, after };
+  }
+
+  it('17.1.9: what the bug is in is the recap\'s, on no line of the screen, and the yes keeps it on the investigation\'s item with whether the unit\'s review had ended — judged at the first conclude naming it, kept by a later one naming it again, judged afresh for another unit or after none, dropped with none — counted only where it had (17.S4)', () => {
     const plain = conclude();
     verifySetUp();
     const named = conclude(RIPE, { ...RECAP, fixes: FEATURE, area: ' Session restore ' });
@@ -912,15 +924,34 @@ describe('the conclude — a learned process gate, and its yes (19.4.23, 24.1.2)
     assert.deepStrictEqual(readManifest(dir, RIPE).phases.investigation.items[RIPE], {
       status: 'completed', concluded_at: FROZEN_AT, fixes: FEATURE, area: 'Session restore', after_review: false,
     });
-    reviewPassed();
-    assert.deepStrictEqual(run(['measures', 'bugs']).bugs, [], 'a bug concluded while its unit was still building is not counted once that unit\'s review passes');
+    reviewSettled(FEATURE);
+    reviewSettled(BUG);
+    assert.deepStrictEqual(run(['measures', 'bugs']).bugs, [], 'a bug concluded while its unit was still building is not counted once that unit\'s review ends');
 
     reopened();
-    assert.ok(conclude(RIPE, { ...RECAP, fixes: FEATURE }).startsWith(data(['area: Session restore'])), 'the areas recorded, so Claude names one alike');
-    run(run(['gate', 'conclude gate', '--pick', 'y']).next.argv);
-    const { fixes, area, after_review: after } = readManifest(dir, RIPE).phases.investigation.items[RIPE];
-    assert.deepStrictEqual([fixes, area, after], [FEATURE, undefined, true], 'judged again, and nothing kept of the earlier close');
+    assert.deepStrictEqual(closedWith({ fixes: FEATURE }), { fixes: FEATURE, area: undefined, after: false }, 'the same unit named again keeps when the bug was found');
+    reopened();
+    assert.deepStrictEqual(closedWith({ fixes: BUG }), { fixes: BUG, area: undefined, after: true }, 'another unit judged afresh, its review settled');
+    reopened();
+    assert.deepStrictEqual(closedWith({}), { fixes: undefined, area: undefined, after: undefined }, 'none named drops it with the unit');
+    reopened();
+    assert.deepStrictEqual(closedWith({ fixes: FEATURE }), { fixes: FEATURE, area: undefined, after: true }, 'after none, judged afresh');
     assert.deepStrictEqual(run(['measures', 'bugs']).bugs, [{ project: dir, area: null, count: 1, fixed: [{ unit: FEATURE, bugfixes: [RIPE] }] }]);
+  });
+
+  it('the conclude\'s DATA names every area the project\'s bugfixes have recorded, with or without a unit, folded for case and spacing, each as first spelt, in name order — so Claude names an area alike', () => {
+    verifySetUp();
+    const recorded = (/** @type {string} */ unit, /** @type {string} */ day, /** @type {Record<string, string>} */ fields) => {
+      for (const [field, value] of Object.entries({ concluded_at: `2026-10-${day}T09:00:00.000Z`, ...fields })) run(['manifest', 'set', `${unit}.investigation.${unit}`, field, value]);
+    };
+    recorded('fixed', '01', { area: 'session  restore' });
+    createManifest(dir, 'later', { work_type: 'bugfix', phases: { investigation: { items: { later: { status: 'completed' } } } } });
+    recorded('later', '02', { fixes: FEATURE, area: 'Session Restore' });
+    createManifest(dir, 'boot', { work_type: 'bugfix', phases: { investigation: { items: { boot: { status: 'completed' } } } } });
+    recorded('boot', '03', { fixes: FEATURE, area: 'Boot' });
+
+    const sections = conclude();
+    assert.strictEqual(sections.slice(0, sections.indexOf('=== DISPLAY')), data(['area: Boot', 'area: session  restore']));
   });
 
   it('refuses what the bug is in, writing nothing — a unit the project lacks or this one, an area where no verify setup is recorded or past a line — at the gate, and at the yes once it no longer holds; an area with no unit is kept, a bug in code no unit built', () => {
@@ -941,7 +972,7 @@ describe('the conclude — a learned process gate, and its yes (19.4.23, 24.1.2)
 
     conclude(RIPE, { ...RECAP, area: 'session restore' });
     verifyGone();
-    assert.strictEqual(refused(['investigation', 'conclude', RIPE]), 'investigation conclude: no verify setup is recorded, so no feature map names an area — leave the area out');
+    assert.strictEqual(refused(['investigation', 'conclude', RIPE]), `investigation conclude: no verify setup is recorded, so no feature map names an area — leave the area out — engine render conclude ${RIPE} --file <recap.json> stages it again`);
     verifySetUp();
     run(['investigation', 'conclude', RIPE]);
     const { fixes, area, after_review: after } = readManifest(dir, RIPE).phases.investigation.items[RIPE];

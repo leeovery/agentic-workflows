@@ -48,8 +48,11 @@
 //   phase's is — with what the bug is in, as staged, none kept from an
 //   earlier close: `fixes` and `area` where named and, with `fixes`,
 //   `after_review`, whether that unit's review phase had ended — a round of
-//   its passed or settled (14.6.3) — judged now, the one moment that knows
-//   whether the bug got past the review. It commits it, the log riding
+//   its passed or settled (14.6.3) — judged at the first conclude naming
+//   that unit, the moment the bug was found: a later conclude naming the
+//   same unit keeps it, one naming another unit judges it afresh, and one
+//   naming none drops it with `fixes`. What the bug is in is checked again
+//   here, a refusal naming the restage. It commits it, the log riding
 //   along; the staged recap goes. It answers `next`, the handoff into the
 //   spec.
 // ---------------------------------------------------------------------------
@@ -58,6 +61,7 @@ const fs = require('fs');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, listWorkUnitManifests } = require('../kernel/manifest.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { carrying } = require('./ledger.cjs');
+const { messageOf } = require('../kernel/call.cjs');
 const { mapOf } = require('./ledger-fold.cjs');
 const { readShown } = require('./ledger-read.cjs');
 const { verdictAsked } = require('./ledger-verdicts.cjs');
@@ -231,11 +235,29 @@ function recapOf(cwd, unit, file) {
 const recordedAreas = (cwd) => [...areaSpellings(bugRecords(listWorkUnitManifests(cwd))).values()].sort(byName);
 
 /**
- * What the yes keeps of the bug: what the recap named, and with a unit,
- * whether its review phase has ended.
- * @param {string} cwd @param {BugIn} bug
+ * What the staged recap says the bug is in, as the yes checks it again,
+ * a refusal naming the restage.
+ * @param {string} cwd @param {string} unit @param {Staged} staged @returns {BugIn}
  */
-const kept = (cwd, bug) => (bug.fixes === undefined ? bug : { ...bug, after_review: recordedRounds(cwd, bug.fixes).some(endsReview) });
+function stagedBug(cwd, unit, staged) {
+  try {
+    return bugIn(cwd, unit, staged);
+  } catch (err) {
+    throw new Error(`${messageOf(err)} — engine render conclude ${unit} --file <recap.json> stages it again`);
+  }
+}
+
+/**
+ * What the yes keeps of the bug: what the recap named, and with a unit,
+ * whether its review phase had ended when the bug was found — kept from the
+ * earlier close where that named the same unit, else judged now.
+ * @param {string} cwd @param {BugIn} bug @param {Record<string, unknown>} earlier the item as the last close left it
+ */
+function kept(cwd, bug, earlier) {
+  if (bug.fixes === undefined) return bug;
+  const after = earlier.fixes === bug.fixes && typeof earlier.after_review === 'boolean' ? earlier.after_review : recordedRounds(cwd, bug.fixes).some(endsReview);
+  return { ...bug, after_review: after };
+}
 
 /**
  * `render conclude <bugfix> [--file <recap.json>]`: the conclude, Claude's
@@ -281,13 +303,14 @@ function concludeInvestigation(cwd, unit) {
   try {
     const { rootCause, fix } = closing(cwd, unit, 'investigation conclude', warnings);
     const staged = stagedFor(cwd, unit, rootCause, fix);
-    const bug = kept(cwd, bugIn(cwd, unit, staged));
+    const bug = stagedBug(cwd, unit, staged);
     if (verdictOf(cwd, unit, staged.at, warnings) !== null) throw new Error(`a verdict is still to ask — engine render conclude ${unit} asks each before the yes`);
     const manifest = withWorkUnitLock(cwd, unit, () => {
       const fresh = loadWorkUnitManifest(cwd, unit);
       const item = fresh.phases[PHASE].items[unit];
+      const record = kept(cwd, bug, item);
       for (const field of ['fixes', 'area', 'after_review']) delete item[field];
-      Object.assign(item, { status: 'completed', concluded_at: concludedAt, ...bug });
+      Object.assign(item, { status: 'completed', concluded_at: concludedAt, ...record });
       saveWorkUnitManifest(cwd, unit, fresh);
       return fresh;
     });
