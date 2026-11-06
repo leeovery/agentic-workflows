@@ -20,7 +20,8 @@
 // the unit and naming the start menu, its folder then holding `build/` and
 // `summary.md` alone of the work (4.S23), its record found once it is
 // closed (22.S22). A fix's record is test-engine-quick-fix-record.cjs's,
-// how a fix ends test-engine-quick-fix-end.cjs's; the set's landing as a
+// how a fix opens and is done test-engine-quick-fix-end.cjs's, a fix given
+// up test-engine-quick-fix-given-up.cjs's; the set's landing as a
 // chain, on every driver, GitHub's among them (19.S32),
 // test-engine-landing-conformance-quick-fix.cjs's.
 //

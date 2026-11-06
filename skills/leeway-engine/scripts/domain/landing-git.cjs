@@ -279,6 +279,16 @@ function messagesPast(root, from, to) {
 }
 
 /**
+ * The values of the trailer `key` on every commit the local `branch` holds
+ * that the local `other` does not.
+ * @param {string} root @param {string} branch @param {string} other @param {string} key @returns {Set<string>}
+ */
+function trailersPast(root, branch, other, key) {
+  const values = git(root, ['log', `--format=%(trailers:key=${key},valueonly)`, `${HEADS}${branch}`, '--not', `${HEADS}${other}`, '--']);
+  return new Set(values.split('\n').map((value) => value.trim()).filter(Boolean));
+}
+
+/**
  * The message of every commit the revisions `revs` hold whose message holds
  * `text`, committed at or after the time `since` names where it names one.
  * @param {string} root @param {string[]} revs @param {string} text @param {string|null} [since] @returns {string[]}
@@ -1234,7 +1244,7 @@ function landsOn(cwd, repo) {
 }
 
 module.exports = {
-  short, readOnce, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranches, holdingBranch, refsUnder, updateRefs, isAncestor, latestOf, mergeBase, treesOf, firstParentLine, messagesPast, messagesNaming, commitsNamed, messageOf, commitWithTree, treesPast,
+  short, readOnce, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranches, holdingBranch, refsUnder, updateRefs, isAncestor, latestOf, mergeBase, treesOf, firstParentLine, messagesPast, trailersPast, messagesNaming, commitsNamed, messageOf, commitWithTree, treesPast,
   pointersAt, treeWithPointers, pointedLike, holdsCommit, pointerAhead, stackMoves, commitsPast, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, remedy, moveTo, movedSinceOpened, rewrite, scratchBlock, rebaseBlock, checkoutBlock, pathsChanged, dirtBlock, moveBranch,
   defaultBranch, landsOn, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, nothingPast,
   worktrees, taskWorktree, mainCheckoutOf, projectCheckout, holderOf, samePlace, removing, branchInPlace, addWorktree, switchTo, removeWorktree, detach, scratchRoot, scratchTree,

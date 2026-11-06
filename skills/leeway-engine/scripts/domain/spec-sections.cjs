@@ -200,20 +200,34 @@ function citedSections(reference) {
   return cites;
 }
 
-/** Whether each line is in a fenced block, its fences among them. @param {string[]} lines @returns {boolean[]} */
-function fencedLines(lines) {
-  /** @type {{mark: string, length: number}|null} */
+/**
+ * The lines' fenced blocks: whether each line is in one, its fences among
+ * them, and the line a block left open at their end opens on, null for none.
+ * @param {string[]} lines @returns {{fenced: boolean[], open: number|null}}
+ */
+function fences(lines) {
+  /** @type {{mark: string, length: number, at: number}|null} */
   let fence = null;
-  return lines.map((line) => {
+  /** @type {boolean[]} */
+  const fenced = [];
+  for (const [at, line] of lines.entries()) {
     const opens = /^ {0,3}(`{3,}|~{3,})/.exec(line);
-    if (fence !== null) {
+    if (fence === null) {
+      if (opens !== null) fence = { mark: opens[1][0], length: opens[1].length, at };
+      fenced.push(opens !== null);
+    } else {
       if (opens !== null && opens[1][0] === fence.mark && opens[1].length >= fence.length && line.trim() === opens[1]) fence = null;
-      return true;
+      fenced.push(true);
     }
-    if (opens !== null) fence = { mark: opens[1][0], length: opens[1].length };
-    return opens !== null;
-  });
+  }
+  return { fenced, open: fence === null ? null : fence.at };
 }
+
+/** Whether each line is in a fenced block, its fences among them. @param {string[]} lines @returns {boolean[]} */
+const fencedLines = (lines) => fences(lines).fenced;
+
+/** The line a fenced block the lines leave open opens on, null for none. @param {string[]} lines @returns {number|null} */
+const unclosedFence = (lines) => fences(lines).open;
 
 /**
  * Whether each line of a spec is in a fenced block as the spec's page reads
@@ -693,5 +707,5 @@ function readCitedSections(cwd, unit, reference) {
 
 module.exports = {
   SPEC_FILE, specPath, readSpec, headingLevels, citedSections, specSections, scenarioBlocks, specReading, specStatements, specScenarios, sectionsCited, readCitedSections,
-  specIntroduction, fencedLines, DRAWS_ON,
+  specIntroduction, fencedLines, unclosedFence, DRAWS_ON,
 };

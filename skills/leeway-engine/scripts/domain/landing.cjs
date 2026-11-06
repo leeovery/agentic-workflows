@@ -8,9 +8,10 @@
 // phases, after every other (7.2.6). `open` and `chain` refuse a task with
 // no account taken of its review as it stands (task-account.cjs, 12.14),
 // `open` taking a quick-fix's, which no pair reviews and which owes none
-// (19.5.3), and refusing a quick-fix's fix laid on one not opened, every
-// driver alike (fix-end.cjs); `open` a bugfix's reproducing task until its
-// test's series proves the bug at its tip (bug-proven.cjs, 15.5.3), and a
+// (19.5.3), and refusing a quick-fix's fix closed, or laid on one not
+// opened, every driver alike (fix-end.cjs); `open` a bugfix's reproducing
+// task until its test's series proves the bug at its tip (bug-proven.cjs,
+// 15.5.3), and a
 // task of a fix phase whose branch does not descend from the unit's work
 // not landed below it, which a fix phase is built on (review-change.cjs,
 // 7.2.6); `chain` a task its pair has not passed, read off its rounds'
@@ -568,7 +569,8 @@ function refuseUnproven(cwd, ref) {
  * wherever it touches, so a rerun reads finished work as done. A task the
  * tracker lacks is refused as the read finds it; a bugfix's reproducing
  * task while its bug is not proven, a fix phase's off the work below it,
- * and a quick-fix's fix laid on one not opened, before anything opens.
+ * and a quick-fix's fix closed or laid on one not opened, before anything
+ * opens.
  * @param {string} cwd @param {string} unit @param {string} task shown, `{phase}.{n}`
  */
 function landOpen(cwd, unit, task) {
@@ -577,11 +579,11 @@ function landOpen(cwd, unit, task) {
   const project = projectOf(cwd, unit);
   const lacking = `land: task ${shown} of ${unit} is not in the tracker — open a task it holds, as \`task list ${unit} ${ref.phase}\` lists them`;
   const { committed, warnings, ...held } = trackedTask(cwd, ref, lacking);
+  carrying(warnings ?? [], () => fixEnd().refuseOpening(cwd, ref));
   const { task: landing, holding } = carrying(warnings ?? [], () => landingOf(project, ref, held));
   carrying(warnings ?? [], () => account().refuseUnaccounted(cwd, ref, 'land'));
   carrying(warnings ?? [], () => refuseUnproven(cwd, ref));
   carrying(warnings ?? [], () => refuseOffBase(cwd, project, landing));
-  carrying(warnings ?? [], () => fixEnd().refuseOpenedBefore(cwd, ref));
   return withDriver(cwd, (driver) => {
     const steps = touching(project, driver, landing, holding).map(({ ctx, tip }) => ({ ctx, act: () => driver.open(ctx, landing, tip) }));
     const already = steps.length === 0 ? { already: true } : {};

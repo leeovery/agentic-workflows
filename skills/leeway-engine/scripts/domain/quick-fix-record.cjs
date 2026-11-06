@@ -7,14 +7,14 @@
 //
 // The record's file is markdown under three level-two headings, in this
 // order, and no other heading at level one or two: `## What changed`,
-// `## Why` and `## Leaves out`, none empty. The verb writes it into the
-// unit's `summary.md`, a file only the engine writes (layout.cjs), at its
-// fix's place in the set's order — after the record of every fix numbered
-// before it, as the fixes land bottom to top — under the fix's title as
-// the tracker holds it, a heading of its own, each section an item, its
-// lines after the first beneath it — a section whose text opens on a fenced
-// block written wholly beneath its item, so the fence opens and closes as
-// written:
+// `## Why` and `## Leaves out`, none empty, each closing every fenced block
+// it opens. The verb writes it into the unit's `summary.md`, a file only the
+// engine writes (layout.cjs), at its fix's place in the set's order — after
+// the record of every fix numbered before it, as the fixes land bottom to
+// top — under the fix's title as the tracker holds it, a heading of its own,
+// each section an item, its lines after the first beneath it — a section
+// whose text opens on a fenced block written wholly beneath its item, so the
+// fence opens and closes as written:
 //
 //   ## {fix title}
 //
@@ -22,21 +22,21 @@
 //   - Why: …
 //   - Leaves out: …
 //
-// A record is the fix's, by its task: the fixes recorded are kept beside
-// the fixes on the unit's manifest, by task id in the set's order
+// A record is the fix's, by its task: the fixes recorded are kept beside the
+// fixes on the unit's manifest, by task id in the set's order
 // (`fixes.recorded`), written with `summary.md` under the unit's lock and
 // committed with it, so the two never part. It then indexes `summary.md`
-// where this checkout's knowledge base is set up, each fix's record a
-// chunk of its own (knowledge/artifacts.cjs), an index that fails a
-// warning. It takes a fix holding a commit of its own past the branch it is
-// laid on (fix-branch.cjs, `fixWork`), in flight or done. It refuses,
-// writing and committing nothing, every refusal opening `quick-fix record: `:
-// a unit the project lacks or holds not in progress; one that is no
-// quick-fix built by its own arm (`quickFixBuild`, derivations.cjs) — a
-// quick-fix today's scoping made among them; a task that is none of its
-// fixes, phase 1's, or one the tracker lacks; a fix closed; a fix recorded
-// already; a fix holding no commit of its own; and a file that does not
-// read as a record, every fault named.
+// where this checkout's knowledge base is set up, each fix's record a chunk
+// of its own (knowledge/artifacts.cjs), an index that fails a warning. It
+// takes a fix holding a commit of its own through the door (fix-branch.cjs,
+// `fixWork`), in flight or done. It refuses, writing and committing nothing,
+// every refusal opening `quick-fix record: `: a unit the project lacks or
+// holds not in progress; one that is no quick-fix built by its own arm
+// (`quickFixBuild`, derivations.cjs) — a quick-fix today's scoping made
+// among them; a task that is none of its fixes, phase 1's, or one the
+// tracker lacks; a fix closed; a fix recorded already; a fix holding no
+// commit of its own; and a file that does not read as a record, every fault
+// named.
 //
 // A fix closed has its record taken out of `summary.md` and the fixes
 // recorded, `summary.md` gone with the last, in its close's own commit
@@ -56,7 +56,7 @@ const { unitInProgress } = require('./topic-standing.cjs');
 const { quickFixBuild, buildRefusal, FIXES_PHASE } = require('./derivations.cjs');
 const { parseShownTask, parseTaskId, shownTask, taskId, taskName } = require('./task-id.cjs');
 const { trackedPhase, copiedTasks, givenText, ENDED, STATUS_WORDS } = require('./task-verbs.cjs');
-const { headingLevels, fencedLines } = require('./spec-sections.cjs');
+const { headingLevels, fencedLines, unclosedFence } = require('./spec-sections.cjs');
 const { committed } = require('./task-account.cjs');
 const { refusing } = require('./staged-payload.cjs');
 const { summaryFile, SUMMARY_PHASE } = require('./knowledge/artifacts.cjs');
@@ -78,6 +78,19 @@ function levelTwo(lines) {
 }
 
 /**
+ * Where a record's text leaves a fenced block open, the fault: the section it
+ * opens in named, where it opens in one.
+ * @param {string[]} lines @param {Map<number, string>} headings
+ * @returns {string[]}
+ */
+function unclosedFault(lines, headings) {
+  const open = unclosedFence(lines);
+  if (open === null) return [];
+  const section = [...headings.keys()].filter((at) => at < open).pop();
+  return [`${section === undefined ? 'it' : `\`## ${headings.get(section)}\``} opens a fenced block it never closes`];
+}
+
+/**
  * A record's file read by its grammar (the header's): each section's text by
  * its heading, trimmed. Refused where it does not read, every fault named.
  * @param {string} text @returns {Record<string, string>}
@@ -90,6 +103,7 @@ function readRecord(text) {
   const faults = [];
   if (headingLevels(lines).includes(1)) faults.push('it holds a level-one heading — the fix\'s title heads its record in summary.md');
   if (lines.slice(0, starts[0] ?? lines.length).some((line) => line.trim() !== '')) faults.push(`it opens with \`## ${RECORD_SECTIONS[0]}\``);
+  faults.push(...unclosedFault(lines, headings));
   if ([...headings.values()].join('\n') !== RECORD_SECTIONS.join('\n')) {
     faults.push(`its sections are ${RECORD_SECTIONS.map((title) => `\`## ${title}\``).join(', ')}, in that order, and no other at level two`);
     throw new Error(faults.join('; '));
@@ -180,7 +194,7 @@ function recordableFix(cwd, manifest, given) {
   if (fix === undefined) throw new Error(`${taskName(ref)} is not in the tracker — its fixes are listed by task list ${unit} ${FIXES_PHASE.number}`);
   if (fix.status === 'closed') throw new Error(`${taskName(ref)} is closed — a fix closed lands nothing, so it keeps no record`);
   if (recordedIds(manifest).includes(taskId(ref))) throw new Error(`${taskName(ref)}'s record is written already — ${summaryFile(unit)} holds it, under \`## ${fix.title}\``);
-  if (!fixWork(cwd, ref, fixes)?.own) throw new Error(`${taskName(ref)} holds no commit of its own — a fix's record is written once its change is committed through the door`);
+  if (!fixWork(cwd, ref)?.own) throw new Error(`${taskName(ref)} holds no commit of its own — a fix's record is written once its change is committed through the door`);
   return { ref, fix, warnings };
 }
 

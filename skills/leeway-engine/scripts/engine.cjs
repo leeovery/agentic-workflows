@@ -2061,7 +2061,8 @@ function assertCommitsHere(repo, paths) {
     const left = unmergedPast(repo.path, paths);
     if (left.length > 0) throw new Error(`commit --paths: the merge in progress in ${repoName(repo)} still conflicts in ${left.join(', ')} — resolve each and name it, then run the commit again`);
   } else if (open !== null) {
-    throw new Error(`commit --paths: ${open.operation} is in progress in ${repoName(repo)} (${open.marker}) — finish or abort it there, then run the commit again`);
+    const ending = open.marker === 'REVERT_HEAD' ? 'end it there with `git revert --quit`, which keeps its change' : 'finish or abort it there';
+    throw new Error(`commit --paths: ${open.operation} is in progress in ${repoName(repo)} (${open.marker}) — ${ending}, then run the commit again`);
   }
   if (!onBranch(repo.path)) {
     throw new Error(`commit --paths: ${repoName(repo)} is on a detached HEAD — check out a branch there, then run the commit again`);

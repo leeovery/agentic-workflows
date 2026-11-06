@@ -8,8 +8,10 @@
 // default branch here lacks it — the close refused, naming the landing of
 // the fixes' phase, the driver's own way to bring the default branch here
 // to a merge; and, once landed so, the close drawn, its yes saying the
-// fixes have landed, and made, completing the unit (19.5.15). The close
-// itself is test-engine-quick-fix-close.cjs's.
+// fixes have landed, and made, completing the unit (19.5.15); and a fix's
+// pull request closed by hand there, its done and its close refused in the
+// landing's words, each opening on its own verb. The close itself is
+// test-engine-quick-fix-close.cjs's.
 // Git layer: quick-fix-world.cjs's two fixes built on a fake GitHub
 // (world.cjs), built once and copied for each test.
 // ---------------------------------------------------------------------------
@@ -21,9 +23,9 @@ const assert = require('node:assert');
 
 const harness = require('../../scripts/engine-harness.cjs');
 const { useTempFolder } = require('../../scripts/discovery-test-utils.cjs');
-const { UNIT, RECORDS, recordFile, twoFixesBuilt, checklistClosed } = require('../../scripts/quick-fix-world.cjs');
+const { UNIT, RECORDS, recordFile, fixChanged, twoFixesBuilt, checklistClosed } = require('../../scripts/quick-fix-world.cjs');
 const side = require('./landing.cjs');
-const { GH_ENV, mergeByHand } = require('./world.cjs');
+const { GH_ENV, mergeByHand, closeByHand } = require('./world.cjs');
 
 const { ok, git, refuses, output, sectionOf, readManifest, fixtureFrom, cleanupFixture } = harness;
 
@@ -54,5 +56,19 @@ describe('a quick-fix\'s close on GitHub', () => {
     assert.strictEqual(refusal, `render finish: ${UNIT}'s fixes are merged where they land, and main here lacks them — land phase ${UNIT} 1 brings main to them`);
     assert.match(menu, /\*\*`y\/yes`\*\* {4}→ Close it — its fixes have landed, so mark it complete\n/);
     assert.deepStrictEqual([readManifest(dir, UNIT).status, git(dir, ['ls-tree', '--name-only', 'main', 'src/']).trim().split('\n')], ['completed', ['src/flag.js', 'src/help.js']]);
+  });
+});
+
+describe('a quick-fix\'s fix on GitHub', () => {
+  it('its pull request closed by hand there: its done and its close refused in the landing\'s words, each opening on its own verb', () => {
+    dir = world();
+    fixChanged(dir, 3, 'Spell the docs --colour', 'docs/flags.md', '--colour\n', as());
+    ok(dir, ['land', 'open', UNIT, '1.3'], as());
+    closeByHand(dir, 3);
+    const words = 'task 1.3\'s pull request #3 was closed on GitHub without being merged — reopen it there, as `gh pr reopen 3` does, and land again';
+
+    assert.deepStrictEqual([refuses(dir, ['task', 'done', UNIT, '1.3'], as()).error, refuses(dir, ['task', 'close', UNIT, '1.3', '--reason', 'Not wanted.'], as()).error], [
+      `task done: ${words}`, `task close: ${words}`,
+    ]);
   });
 });

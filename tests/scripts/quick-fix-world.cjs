@@ -3,7 +3,8 @@
 // ---------------------------------------------------------------------------
 // What the quick-fix suites share (test-engine-quick-fix.cjs,
 // test-engine-quick-fix-record.cjs, test-engine-quick-fix-end.cjs,
-// test-engine-quick-fix-close.cjs, test-engine-landing-conformance-quick-fix*.cjs,
+// test-engine-quick-fix-given-up.cjs, test-engine-quick-fix-close.cjs,
+// test-engine-landing-conformance-quick-fix*.cjs,
 // tests/drivers/github/test-landing-quick-fix.cjs): the quick-fix, made through
 // `workunit create` from an inbox note, its code and the build's skill
 // committed, and a feature beside it (`quickFix`); a fix's task file, fix
