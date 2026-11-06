@@ -55,18 +55,21 @@
 //   (fix-branch.cjs), and the fixes' phase taken out of the tracker for
 //   good, its tasks with it (`removePhase`); the old type's files set
 //   aside; the brief written. Last, the unit re-typed with its new
-//   description, all a quick-fix's entry and build left on it (`build`,
-//   `fixes`) and a bugfix's investigation item dropped, so the new type
-//   starts as one before its spec, and its registration, in one save. The
-//   knowledge base is
-//   re-indexed, its chunks carrying the type (warn-don't-block), and one
-//   commit takes the unit, the project manifest, the tracker's store where
-//   the fixes began, and the ledger where lines were carried. It answers
-//   the handoff into the new type's first phase (24.1.2).
+//   description, a quick-fix's `fixes` and a bugfix's investigation item
+//   dropped, so the new type starts as one before its spec, and its
+//   registration, in one save. The knowledge base is re-indexed, its
+//   chunks carrying the type (warn-don't-block), and one commit takes the
+//   unit, the project manifest, the tracker's store where the fixes began,
+//   and the ledger where lines were carried. It answers what this call
+//   did — the fixes it closed, the branches it kept, where it took the
+//   checkout — and the handoff into the new type's first phase (24.1.2).
 // - Known edges: a failure between the save and the commit leaves the move
 //   made and uncommitted, the unit of the new type, so the yes refuses to
 //   run again; a quick-fix named like a waiting roadmap idea moves beside
-//   it, its name being kept.
+//   it, its name being kept; and a line another clone writes at the
+//   quick-fix's implementation after the move is no line the carry lists:
+//   merged in, it stands at the phase it was made at, read as the new
+//   type's own.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -221,20 +224,17 @@ function stageMove(cwd, unit, { to, file }) {
   return { response: { work_unit: unit, from, to }, sections: startThisWorkScreen(staged) };
 }
 
-/** What a quick-fix's entry and build leave on its manifest: its build's record and its fixes'. */
-const BUILT = Object.freeze(['build', 'fixes']);
-
 /**
- * The manifest re-typed in place, with its new description: everything a
- * quick-fix's entry and build left on it and a bugfix's investigation item
- * dropped, so the new type starts as one before its spec, and the new
- * type's one topic added to its first phase, unstarted.
+ * The manifest re-typed in place, with its new description: a quick-fix's
+ * fixes and a bugfix's investigation item dropped, so the new type starts
+ * as one before its spec, and the new type's one topic added to its first
+ * phase, unstarted.
  * @param {Record<string, any>} manifest @param {string} to @param {string} description
  */
 function retype(manifest, to, description) {
   manifest.work_type = to;
   manifest.description = description;
-  for (const key of BUILT) delete manifest[key];
+  delete manifest.fixes;
   const phases = ensureContainer(manifest, 'phases', 'phases');
   delete phases.investigation;
   const opens = OPENS_IN[to];

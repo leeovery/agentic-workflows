@@ -216,7 +216,7 @@ function carriedBefore({ cwd, unit, topic = '', notes }) {
     ...(carriedTo(stateRoot(cwd), unit, topic, notes) ? [as('earlier record')(`\`${recordCall(unit, topic)}\``)] : []),
     ...earlier(EARLIER.investigationLog).map(as('earlier log')),
     ...earlier(`${EARLIER.build}/log.md`).map(as('earlier build log')),
-    ...(topic === unit ? keptBranches(cwd, unit) : []).map(as('kept branch')),
+    ...keptBranches(cwd, unit).map(as('kept branch')),
   ];
 }
 
@@ -291,8 +291,8 @@ function discussionReads(at) {
  * What an investigation reads before its opening (8.7.7): what a topic
  * reads first, and the product record; at a first opening, what a move
  * carried to the topic from the quick-fix the unit was (`carriedBefore`);
- * resuming adds its record and its map; then the agents it was left with. The log, the investigation itself
- * (19.4.3), comes with every entry's.
+ * resuming adds its record and its map; then the agents it was left with.
+ * The log, the investigation itself (19.4.3), comes with every entry's.
  * @param {Entering} at @returns {Line[]}
  */
 function investigationReads(at) {

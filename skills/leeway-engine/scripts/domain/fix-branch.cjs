@@ -160,14 +160,16 @@ function keptFixes(cwd, unit) {
  * The unit's fixes' branches set aside for its move (the header's): each
  * holding commits of its own renamed to the name it is kept under, the
  * rest deleted — none left to set aside where a move set them aside
- * before. Answers the kept names, in the order of their fixes.
+ * before. Answers the names this call kept, in the order of their fixes.
  * @param {string} cwd @param {string} unit
  * @returns {string[]}
  */
 function setFixesAside(cwd, unit) {
   const root = codeRoot(cwd);
-  for (const { branch, holds } of fixBranches(root, cwd, unit)) git(root, holds ? ['branch', '-m', branch, movedBranch(branch)] : ['branch', '-D', branch]);
-  return keptBranches(cwd, unit);
+  return fixBranches(root, cwd, unit).flatMap(({ branch, holds }) => {
+    git(root, holds ? ['branch', '-m', branch, movedBranch(branch)] : ['branch', '-D', branch]);
+    return holds ? [movedBranch(branch)] : [];
+  });
 }
 
 /**

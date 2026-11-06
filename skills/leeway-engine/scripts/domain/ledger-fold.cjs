@@ -34,9 +34,9 @@
 // live while it is (5.8.18, 18.3.5), and a unit made later under the
 // feature's name holds none of them; a moved unit's are its new topic's at
 // the new type's first phase (19.5.9), and a line carried twice is read
-// where the latest carry took it. A unit gives up places holding one topic at most, so a
-// move among the lines it carries went to the roadmap, never to a topic its
-// `to` would name in the unit given up.
+// where the latest carry took it. A unit gives up places holding one topic
+// at most, so a move among the lines it carries went to the roadmap, never
+// to a topic its `to` would name in the unit given up.
 //
 // Read against liveness, the state answers:
 // - Whether an event is live: the unit and topic it was made on are

@@ -337,13 +337,14 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
 
 /**
  * A moment of the unit lately: its kind, when, its topic, and what it names
- * besides — from the state's history the unit made, the map approved with
- * what it took in, a phase or topic started, a topic postponed, cancelled
- * or back, a message sent with its sender, messages taken in, counted, with
- * the sender of one, the spec landed with its sections and phases cut, a
- * review round, the unit completed; from its spec's review each pass
- * reported, its number and what it found; from its build a question raised,
- * a task started, failed or finished.
+ * besides — from the state's history the unit made, the unit moved with
+ * the type it moved to, the map approved with what it took in, a phase or
+ * topic started, a topic postponed, cancelled or back, a message sent with
+ * its sender, messages taken in, counted, with the sender of one, the spec
+ * landed with its sections and phases cut, a review round, the unit
+ * completed; from its spec's review each pass reported, its number and
+ * what it found; from its build a question raised, a task started, failed
+ * or finished.
  * @typedef {{kind: string, at: string, topic: string|null, detail: string|null, count?: number}} Moment
  */
 /** Where a unit has come to: the phase it is in, complete, or — a migrated unit of a retired type — the `cut` it waits on, and the day it began, null where its records keep none. @typedef {{phase: string, since: string|null}} UnitNow */

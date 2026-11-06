@@ -15,14 +15,16 @@
 // earlier material with each line citing one following it, the knowledge
 // base re-indexed, the move in the board's history — and handing off into
 // the new type's first phase (19.S24, 19.S30, 24.1.2); the yes's checks
-// made again, and the yes stopped before its save run again whole; the
-// new type's build meeting nothing of the fixes — a feature's phase 1
-// written and task 1.1's branch laid, a bugfix's reproducing task 1.1
-// created, on the local landing driver, and no call of its build the
+// made again, and the yes stopped before its save run again whole,
+// answering what the second call did; the new type's build meeting
+// nothing of the fixes — a feature's phase 1 written and task 1.1's branch
+// laid, a bugfix's reproducing task 1.1 created, on the local landing
+// driver, and no call of a bugfix's build or its task writer's brief the
 // quick-fix's; the topic's first opening reading what the move carried,
-// and a second none of it (enter.cjs); a moved quick-fix's lines read at
-// the epic's topic once the feature it became is absorbed
-// (ledger-rehomed.cjs); and every refusal, writing nothing: a fix's pull
+// and a second none of it, for a feature and a bugfix (enter.cjs); a moved
+// quick-fix's lines read at the epic's topic once the feature it became is
+// absorbed (ledger-rehomed.cjs), the epic's other topic reading none of
+// them; and every refusal, writing nothing: a fix's pull
 // request opened, a checkout holding changes, a unit past its spec, a type
 // that does not move, a bugfix away from its investigation.
 //
@@ -56,6 +58,7 @@ const store = require('../../skills/leeway-engine/scripts/kernel/knowledge/store
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { taskBranch, isUnitBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
 const { callsOf } = require(path.join(SCRIPTS, 'domain/build-screens.cjs'));
+const { RECORDS } = require(path.join(SCRIPTS, 'domain/brief-records.cjs'));
 const { unitHistory } = require(path.join(SCRIPTS, 'domain/state-history.cjs'));
 
 const QF = 'typo';
@@ -298,19 +301,23 @@ describe('the yes: a quick-fix moved (19.S24, 19.5.16)', () => {
       'what discovery found stays at the unit\'s own level, read as any unit\'s');
   });
 
-  it('to a bugfix, carries its lines to the investigation and hands off into it, whose first opening reads what the move carried', () => {
+  it('to a bugfix, carries its lines to the investigation and hands off into it, whose first opening reads what the move carried and a second none of it — no call of its build, nor of its task writer\'s brief, the quick-fix\'s', () => {
     dir = world();
     const res = moved(QF, 'bugfix');
+    const first = okSections(dir, ['enter', 'investigation', QF], { env: env() }).sections;
+    const again = okSections(dir, ['enter', 'investigation', QF], { env: { ...env(), CLAUDE_CODE_SESSION_ID: 'sess-2' } }).sections;
+    const buildCalls = RECORDS['build-calls'].draw({ cwd: dir, role: 'task-writer', ref: null, task: null, place: null, unit: QF, given: {}, session: 'sess-1' }, []);
 
     assert.deepStrictEqual([res.work_type, res.next], ['bugfix', { kind: 'handoff', skill: 'leeway-investigation-process', args: ['bugfix', QF] }]);
     assert.deepStrictEqual([ledgerLines().at(-1).event, ledgerLines().at(-1).phase], ['rehomed', 'investigation']);
     assert.deepStrictEqual(readManifest(dir, '.').work_units[QF], { work_type: 'bugfix' });
     assert.deepStrictEqual(ok(dir, ['ledger', 'record', QF, QF]).questions.map((q) => q.phase), ['investigation', 'investigation']);
-    assert.deepStrictEqual(earlierReads(okSections(dir, ['enter', 'investigation', QF], { env: env() }).sections), [
+    assert.deepStrictEqual([earlierReads(first), earlierReads(again)], [[
       `earlier record: \`${ENGINE} ledger record ${QF} ${QF}\``,
       `earlier build log: ${statePath(dir, EARLIER(QF, 'build/log.md'))}`,
       `kept branch: ${KEPT}`,
-    ]);
+    ], []]);
+    assert.deepStrictEqual([callsOf(dir, { unit: QF, phase: 1, n: 1 }), buildCalls], [[], 'None recorded.']);
   });
 
   it('refuses while the checkout holds changes not committed, naming each, nothing moved — the fix still in progress, the checkout on its branch', () => {
@@ -376,13 +383,15 @@ describe('the yes: a quick-fix moved (19.S24, 19.5.16)', () => {
     assert.deepStrictEqual(ok(dir, ['ledger', 'map', QF, QF]).questions.map((q) => [q.text, q.answers.length]), [['Should --color still work?', 0], ['Which spelling does the help use?', 1]]);
   });
 
-  it('a feature it became, absorbed into an epic, has its lines read at the epic\'s topic at the discussion, each file they name where the absorb moved it — its build\'s log with the topic — the later carry winning', () => {
+  it('a feature it became, absorbed into an epic, has its lines read at the epic\'s topic at the discussion, each file they name where the absorb moved it — its build\'s log with the topic — the later carry winning; the epic\'s other topic reading none of it at its first opening', () => {
     dir = world();
     moved(QF, 'feature');
     ok(dir, ['enter', 'discussion', QF], { env: env() });
     writeState(dir, layout.unit(QF, 'topics', QF, 'log.md'), '# Typo\n');
     ok(dir, ['workunit', 'absorb', QF, '--into', EPIC, '--topic', 'colour'], { env: env() });
+    const other = okSections(dir, ['enter', 'discussion', EPIC, 'fee-model'], { env: env() }).sections;
 
+    assert.deepStrictEqual(earlierReads(other), []);
     const record = ok(dir, ['ledger', 'record', EPIC, 'colour']);
     const earlierLog = layout.unit(EPIC, 'topics', 'colour', 'earlier', 'build', 'log.md');
     assert.deepStrictEqual([
@@ -508,7 +517,7 @@ describe('what the move refuses (19.5.9, 19.4.22, P7)', () => {
 });
 
 describe('the yes run again (19.5.16)', () => {
-  it('stopped before the manifests\' save, every step before it done, a second yes completes the move whole, its commit taking every path', () => {
+  it('stopped before the manifests\' save, every step before it done, a second yes completes the move whole, its commit taking every path, and answers what it did itself — no fix closed, no branch kept, the checkout where the first left it', () => {
     dir = world();
     staged(QF, 'feature');
     killedAt({ method: 'renameSync', file: `${STATE_DIR_NAME}/manifest.json`, when: 'before' }, dir, ['start-this-work', 'yes'], { env: env() });
@@ -518,7 +527,8 @@ describe('the yes run again (19.5.16)', () => {
     assert.deepStrictEqual(stopped, ['quick-fix', '', false, 'rehomed']);
     const [first, again] = ledgerLines().filter((line) => line.event === 'rehomed');
     assert.deepStrictEqual(again.lines, first.lines, 'the second carry lists the same lines, never the first carry');
-    assert.deepStrictEqual([res.work_type, res.fixes_closed, res.branches, readManifest(dir, '.').work_units[QF]], ['feature', [], [KEPT], { work_type: 'feature' }]);
+    assert.deepStrictEqual([res.work_type, res.fixes_closed, res.branches, res.checkout, readManifest(dir, '.').work_units[QF]], ['feature', [], [], null, { work_type: 'feature' }]);
+    assert.deepStrictEqual([git(dir, ['branch', '--list', KEPT]).trim(), branchOut()], [KEPT, 'main']);
     assert.strictEqual(refuses(dir, ['task', 'list', QF, '1']).error, `phase 1 of ${QF} is not written`);
     const record = ok(dir, ['ledger', 'record', QF, QF]);
     assert.deepStrictEqual([record.questions.map((q) => [q.text, q.phase]), record.decisions.map((d) => d.cites.map((c) => c.path))], [
