@@ -29,12 +29,14 @@
 //
 // Every fold, and every line a read shows, takes a line a carry lists
 // (`rehomed`) as made in the unit and on the topic the carry is made at,
-// its phase its own, each file it names where the move took it
-// (ledger-rehomed.cjs). An absorbed feature's lines are the epic topic's,
+// each file it names where the move took it (ledger-rehomed.cjs). An
+// absorbed feature's lines are the epic topic's, each at its own phase,
 // live while it is (5.8.18, 18.3.5), and a unit made later under the
-// feature's name holds none of them. A unit gives up places holding one
-// topic at most, so a move among the lines it carries went to the roadmap,
-// never to a topic its `to` would name in the unit given up.
+// feature's name holds none of them; a moved unit's are its new topic's at
+// the new type's first phase (19.5.9), and a line carried twice is read
+// where the latest carry took it. A unit gives up places holding one topic
+// at most, so a move among the lines it carries went to the roadmap, never
+// to a topic its `to` would name in the unit given up.
 //
 // Read against liveness, the state answers:
 // - Whether an event is live: the unit and topic it was made on are
@@ -349,6 +351,17 @@ function readFolded(root, fold, notes, answer) {
  */
 function foldLedger(root, fold, notes) {
   return readFolded(root, fold, notes, (state) => state);
+}
+
+/**
+ * Whether a carry took lines to `topic` of `unit` (ledger-rehomed.cjs), by
+ * a scan that reads the carries alone.
+ * @param {string} root @param {string} unit @param {string} topic
+ * @param {string[]} notes what a landing the read's check finished said, pushed to
+ * @returns {boolean}
+ */
+function carriedTo(root, unit, topic, notes) {
+  return withLedger(root, notes, (ledger) => [...ledger.named('rehomed')].some(({ event }) => event.unit === unit && event.topic === topic));
 }
 
 /**
@@ -1114,7 +1127,7 @@ function discoveredOf(folded, unit, topic) {
 }
 
 module.exports = {
-  ID_FACTS, readFolded, foldLedger, namesTopic, factsOf, madeOn, standingOf, inPlace, whyDead, isLive, mergeHolds, notCurrent, isCurrent, currentsOf, replacementsOf, holdsOf,
+  ID_FACTS, readFolded, foldLedger, carriedTo, namesTopic, factsOf, madeOn, standingOf, inPlace, whyDead, isLive, mergeHolds, notCurrent, isCurrent, currentsOf, replacementsOf, holdsOf,
   keptOf, assetsOf, foldedBeneath, wordingOf, answersOf, questionStands, laterOf, showsIn, mapOf, recordOf, placeRecords, productOf, discoveredOf,
   movedToBy,
 };

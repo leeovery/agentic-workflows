@@ -6,7 +6,8 @@
 // run against its real tool at or above the floor it declares — a phase;
 // links across phases; ready answering several; done unblocking; close, and
 // close unblocking; a task closed and replaced, and tasks and a phase made
-// after every task of the unit ended, closed or done; an addition to a task;
+// after every task of the unit ended, closed or done; a phase removed for
+// good and made again as new; an addition to a task;
 // a type replaced; list; show; a phase's tasks whole; when a task started;
 // every read the same from a copy of the store's files alone; list and ready
 // as the tracker itself answers them, a person's own child and link among
@@ -217,6 +218,16 @@ for (const driver of listDrivers('task')) {
         assert.deepStrictEqual(shown(driver.ready(root, UNIT, null)), ['1.4', '3.1']);
       });
     }
+
+    it('removePhase: a phase taken out for good with its tasks, a link to them dropped — read as never written, its number and its tasks\' names made again as new under the unit the tracker ended', () => {
+      for (const [phase, n] of [[1, 1], [1, 2], [1, 3], [2, 1]]) driver.close(root, ref(phase, n), 'Moved.');
+      driver.removePhase(root, UNIT, 1);
+      assert.deepStrictEqual([driver.list(root, UNIT, 1), driver.tasks(root, UNIT, 1), driver.show(root, ref(1, 2)), driver.show(root, ref(2, 1))?.after], [null, null, null, []]);
+      driver.createPhase(root, UNIT, 1, 'The ledger again');
+      driver.createTask(root, ref(1, 1), task('Write the ledger again'));
+      assert.deepStrictEqual(driver.list(root, UNIT, 1), [{ ref: ref(1, 1), title: 'Write the ledger again', status: 'open' }]);
+      assert.deepStrictEqual([driver.show(root, ref(1, 1))?.reason, shown(driver.ready(root, UNIT, null))], [null, ['1.1']]);
+    });
 
     /** @param {() => void} make @param {string[]} toReopen */
     const refusedFor = (make, toReopen) => assert.throws(make, (err) => err instanceof Error && err.message === endedInTracker(toReopen, UNIT));

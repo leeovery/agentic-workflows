@@ -25,7 +25,9 @@
 // names — is read here for the phase's close, the build's standing and a
 // bugfix's door, which reads the landings a commit being made holds too
 // (`landedTasks`, bug-proven.cjs); for the close in step, whether a
-// phase's tasks are each in its stack (`allChained`); and, for a task with
+// phase's tasks are each in its stack (`allChained`); for a quick-fix's
+// move, which of its fixes have a pull request opened or landed
+// (`openedTasks`, workunit-move.cjs); and, for a task with
 // nothing of its unit's below it, where it starts in each repository
 // (`landingTips`).
 //
@@ -739,6 +741,33 @@ function allChained(cwd, unit, tasks) {
 }
 
 /**
+ * Of the tasks given, those whose pull request is opened or landed, shown:
+ * those landed on a default branch (`landedTasks`), where any has; else
+ * those held by their phase's stack in the project's own repository or a
+ * nested one holding the unit's work, as the project's landing driver reads
+ * it (`holds`), a stack read only where nothing landed, since a merged
+ * phase is no stack — read off git and the host, writing and fetching
+ * nothing.
+ * @param {string} cwd @param {string} unit @param {TaskRef[]} refs
+ * @returns {string[]}
+ */
+function openedTasks(cwd, unit, refs) {
+  if (refs.length === 0) return [];
+  const project = { ...projectOf(cwd, unit), keepsReads: true };
+  const landed = landedTasks(cwd, unit, project.repos);
+  const landedOf = refs.filter((ref) => landed.has(shownTask(ref)));
+  if (landedOf.length > 0) return landedOf.map(shownTask);
+  const driver = /** @type {LandingDriver} */ (chosenDriver(cwd, 'landing').driver);
+  const holding = project.repos.filter((repo) => repo.dir === '' || lg.holdsWork(unit, repo, (branch) => names.isUnitBranch(unit, branch)))
+    .map((repo) => contextOf(project, repo));
+  const held = (/** @type {TaskRef} */ ref) => holding.some((ctx) => inRepo(ctx.repo, () => {
+    driver.assertServes?.(ctx);
+    return driver.holds(ctx, ref);
+  }));
+  return refs.filter(held).map(shownTask);
+}
+
+/**
  * The unit's tasks landed, shown: each a landing on the default branch of a
  * repository of the project names by its `Task:` line, as every driver
  * lands a task (landing-names.cjs), searched from the time `from` names
@@ -762,4 +791,4 @@ function landedTasks(cwd, unit, repos, from = null, on = (repo) => [`refs/heads/
   }));
 }
 
-module.exports = { LAND_USAGE, landOpen, landChain, landPhase, landFinish, landedTasks, allChained, landingTips, mutationRun };
+module.exports = { LAND_USAGE, landOpen, landChain, landPhase, landFinish, landedTasks, openedTasks, allChained, landingTips, mutationRun };

@@ -244,16 +244,19 @@ function rewriteLinks(file, home, renames) {
 }
 
 /**
- * Every line made at a place of `unit`, in the ledger's order: their ids,
- * and each file they name — a citation's, an asset link's — once.
+ * Every line made at a place of `unit` that `keeps` takes, in the
+ * ledger's order — a carry made there, which lists lines and is none,
+ * never: their ids, and each file they name — a citation's, an asset
+ * link's — once.
  * @param {string} root @param {string} unit @param {string[]} warnings
+ * @param {(event: Record<string, unknown>) => boolean} [keeps]
  * @returns {{ids: string[], files: Set<string>}}
  */
-function linesOf(root, unit, warnings) {
+function linesOf(root, unit, warnings, keeps = () => true) {
   return foldLedger(root, {
     start: () => ({ ids: /** @type {string[]} */ ([]), files: /** @type {Set<string>} */ (new Set()) }),
     step: (lines, event) => {
-      if (event.unit !== unit) return;
+      if (event.unit !== unit || event.event === 'rehomed' || !keeps(event)) return;
       lines.ids.push(/** @type {string} */ (event.id));
       if (Array.isArray(event.cites)) for (const cite of event.cites) lines.files.add(cite.path);
       if (event.event === 'asset') lines.files.add(/** @type {string} */ (event.path));
@@ -539,4 +542,4 @@ function absorbedMaterial(cwd, feature) {
   };
 }
 
-module.exports = { absorbWorkUnit, absorbedMaterial };
+module.exports = { absorbWorkUnit, absorbedMaterial, linesOf, movedFiles };

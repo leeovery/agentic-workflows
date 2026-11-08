@@ -43,7 +43,7 @@ const METHODS = Object.freeze({
     required: /** @type {const} */ ([
       'ensureStore', 'storeFiles', 'localFiles', 'mergeStore',
       'createUnit', 'createPhase', 'createTask', 'add', 'setType', 'link',
-      'ready', 'start', 'done', 'close', 'list', 'show', 'tasks', 'started',
+      'ready', 'start', 'done', 'close', 'removePhase', 'list', 'show', 'tasks', 'started',
     ]),
     optional: /** @type {const} */ ([]),
   },
@@ -131,7 +131,10 @@ const METHODS = Object.freeze({
  * `createUnit` makes the unit's parent where it is missing, answering
  * whether it did; a phase or a task is made under its parent whether or not
  * every task before it has ended, where it was the tracker that ended the
- * parent. `add` puts an addition onto a task, after any before it;
+ * parent. `removePhase` takes a phase written out of the tracker for good,
+ * every task under it with it and every link to them dropped, so it reads
+ * as never written and its number and its tasks' names are made again as
+ * new. `add` puts an addition onto a task, after any before it;
  * `setType` replaces its type. `ready` answers every task, of the phase or
  * of every written phase, waiting to be started with nothing it is linked
  * after still to finish: a task done or closed holds nothing up. `list`
@@ -174,6 +177,7 @@ const METHODS = Object.freeze({
  *   start: (root: string, ref: TaskRef) => void,
  *   done: (root: string, ref: TaskRef) => void,
  *   close: (root: string, ref: TaskRef, reason: string) => void,
+ *   removePhase: (root: string, unit: string, phase: number) => void,
  *   list: (root: string, unit: string, phase: number) => TaskRow[]|null,
  *   show: (root: string, ref: TaskRef) => TaskDetail|null,
  *   tasks: (root: string, unit: string, phase: number) => TaskDetail[]|null,

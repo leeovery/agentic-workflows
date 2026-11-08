@@ -49,6 +49,7 @@
 
 const fs = require('fs');
 const { statePath, stateRoot } = require('../kernel/state-root.cjs');
+const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { phaseNamed, buildStanding, builtUnit, ownInFlight } = require('./build-entry.cjs');
 const { reading, phaseLists, phaseLanded, reviewRefusalOf } = require('./phase-checks.cjs');
@@ -137,11 +138,17 @@ function stepOnly(manifest, what) {
   if (manifest.build.position !== 'step') throw new Error(`${manifest.name} builds in auto, where ${what} — the person meets only danger, the authority gates and the questions parked`);
 }
 
-/** The calls of Claude's the ledger holds made for a task (12.12.12), each by its short id and words. @param {string} cwd @param {TaskRef} ref */
+/**
+ * The calls of Claude's the ledger holds made in the build for a task
+ * (12.12.12), each by its short id and words — never one a moved unit's
+ * build made for its own task of that number, carried to its topic's
+ * first phase (ledger-rehomed.cjs).
+ * @param {string} cwd @param {TaskRef} ref
+ */
 function callsOf(cwd, ref) {
   const task = shownTask(ref);
   return [...unitEntries(cwd, ref.unit).values()]
-    .filter(({ kind, line }) => kind === 'decision' && line.by === 'claude' && line.task === task)
+    .filter(({ kind, line }) => kind === 'decision' && line.by === 'claude' && line.task === task && BUILD_PHASES.includes(String(line.phase)))
     .map(({ short, line }) => ({ id: short, text: String(line.text) }));
 }
 

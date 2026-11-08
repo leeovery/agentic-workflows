@@ -66,11 +66,13 @@ const fs = require('fs');
 const path = require('path');
 const { PRODUCT } = require('../kernel/manifest-schema.cjs');
 const { withWorkUnitLock, withProjectLock, readProjectManifest, loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manifest.cjs');
-const { statePath } = require('../kernel/state-root.cjs');
+const { statePath, stateRoot } = require('../kernel/state-root.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { liveTopics } = require('./ledger-units.cjs');
 const { seedFiles } = require('./reads.cjs');
-const { computeTopicLifecycle, itemOf, briefFile, topicTitle, topicKey, closedIntoSpec, voidDecidedClose } = require('./derivations.cjs');
+const { computeTopicLifecycle, itemOf, briefFile, topicTitle, topicKey, closedIntoSpec, voidDecidedClose, EARLIER, earlierFile } = require('./derivations.cjs');
+const { carriedTo } = require('./ledger-fold.cjs');
+const { keptBranches } = require('./fix-branch.cjs');
 const { unitInProgress, assertPhaseHeld, phaseStanding } = require('./topic-standing.cjs');
 const { startTopic } = require('./transitions.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
@@ -200,6 +202,25 @@ function earlierLines(cwd, manifest, unit, topic) {
 const as = (key) => (value) => [key, value];
 
 /**
+ * What a moved unit's topic holds from the type it was (workunit-move.cjs,
+ * 19.5.16), read at its first opening as input it never changes, each by
+ * what the move carried: the topic's record where lines were carried to
+ * it, a bugfix's investigation log and a quick-fix's build log where they
+ * were set aside, and the branches a quick-fix's fixes' commits were kept
+ * on — none where the move carried none of it.
+ * @param {Entering} at @returns {Line[]}
+ */
+function carriedBefore({ cwd, unit, topic = '', notes }) {
+  const earlier = (/** @type {string} */ name) => existing([statePath(cwd, earlierFile(unit, topic, name))]);
+  return [
+    ...(carriedTo(stateRoot(cwd), unit, topic, notes) ? [as('earlier record')(`\`${recordCall(unit, topic)}\``)] : []),
+    ...earlier(EARLIER.investigationLog).map(as('earlier log')),
+    ...earlier(`${EARLIER.build}/log.md`).map(as('earlier build log')),
+    ...keptBranches(cwd, unit).map(as('kept branch')),
+  ];
+}
+
+/**
  * What a topic reads first at its opening (9.3.2, 8.7.7): each message
  * waiting, its name the one `topic answered` takes; the topic's brief; and
  * for the unit's one topic, discovery's log and the unit's seeds.
@@ -243,7 +264,9 @@ function agentReads({ cwd, unit, phase, topic = '' }) {
  * its log; the product record, with what discovery found of the product and
  * of the unit, which no topic's record shows, and of the topic, which a
  * first opening reads no record for (9.3.6, 9.3.12); the unit's spikes; and,
- * at a first opening, the earlier record of a topic postponed elsewhere.
+ * at a first opening, the earlier record of a topic postponed elsewhere, and
+ * what a move carried to the topic from the type the unit was
+ * (`carriedBefore`).
  * Resuming adds the topic's own record (9.3.11), its map, and the entries a
  * replacement changed under it, each confirmed or replaced in the
  * conversation (9.3.6); then the agents the topic was left with. The log
@@ -258,7 +281,7 @@ function discussionReads(at) {
     ...decided.map((other) => as('decided')(`\`${recordCall(unit, other)}\``)),
     productRead(at),
     ...filesIn(statePath(cwd, unit, 'spikes')).map(as('spike')),
-    ...(started ? earlierLines(cwd, manifest, unit, topic) : []),
+    ...(started ? [...earlierLines(cwd, manifest, unit, topic), ...carriedBefore(at)] : []),
     ...resumedReads(at, ['record', 'map', 'affected']),
     ...agentReads(at),
   ];
@@ -266,13 +289,14 @@ function discussionReads(at) {
 
 /**
  * What an investigation reads before its opening (8.7.7): what a topic
- * reads first, and the product record; resuming adds its record and its
- * map; then the agents it was left with. The log, the investigation itself
- * (19.4.3), comes with every entry's.
+ * reads first, and the product record; at a first opening, what a move
+ * carried to the topic from the quick-fix the unit was (`carriedBefore`);
+ * resuming adds its record and its map; then the agents it was left with.
+ * The log, the investigation itself (19.4.3), comes with every entry's.
  * @param {Entering} at @returns {Line[]}
  */
 function investigationReads(at) {
-  return [...openingReads(at), productRead(at), ...resumedReads(at, ['record', 'map']), ...agentReads(at)];
+  return [...openingReads(at), productRead(at), ...(at.started ? carriedBefore(at) : []), ...resumedReads(at, ['record', 'map']), ...agentReads(at)];
 }
 
 /**

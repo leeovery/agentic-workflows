@@ -1115,6 +1115,24 @@ function briefFile(workUnit, topic) {
 }
 
 /**
+ * What a move sets aside in its one topic's folder, by what it was
+ * (19.5.16, workunit-move.cjs): a quick-fix's build folder and its summary,
+ * and a bugfix's investigation log.
+ */
+const EARLIER = Object.freeze({ build: 'build', summary: 'summary.md', investigationLog: 'investigation-log.md' });
+
+/**
+ * Where a moved unit's earlier material sits, state-relative: in its
+ * topic's own folder, read at the topic's first opening as input it never
+ * changes, and taken along with the topic by an absorb.
+ * @param {string} workUnit @param {string} topic @param {string} name one of EARLIER's, or a path beneath one
+ * @returns {string}
+ */
+function earlierFile(workUnit, topic, name) {
+  return `${topicDir(workUnit, topic)}/earlier/${name}`;
+}
+
+/**
  * The names struck from an epic's map — each topic removed, and each
  * candidate the person struck — which nothing proposes again (8.10.11).
  * @param {object} manifest
@@ -1412,6 +1430,8 @@ module.exports = {
   topicDir,
   mailboxDir,
   briefFile,
+  EARLIER,
+  earlierFile,
   dismissedNames,
   topicTitle,
   topicTitles,
