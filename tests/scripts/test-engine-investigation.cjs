@@ -758,6 +758,11 @@ describe('the conclude — a learned process gate, and its yes (19.4.23, 24.1.2)
     run(['enter', 'investigation', RIPE]);
     const held = () => run(['presence', 'scan', RIPE]).sessions.map(({ phase, topic }) => `${phase} ${topic}`);
     assert.deepStrictEqual(held(), [`investigation ${RIPE}`]);
+    // A permission for the hunt, asked at the investigation's own level, is
+    // never a rule the fix keeps (19.4.20).
+    const { write } = ledgerHelpers(() => dir);
+    const live = write('ask', `${RIPE}.investigation`, [], { ...CLAUDE, text: 'May I run the save against the live server?' }, env()).id;
+    write('decide', `${RIPE}.investigation`, ['--answers', live], { ...PERSON, text: 'Never run it against the live server.', why: 'Live data is the customers\'.' }, env());
     conclude();
     writeState(dir, layout.topic(RIPE, RIPE, 'log.md'), `${readState(dir, layout.topic(RIPE, RIPE, 'log.md'))}\nThe conversation's last words.\n`);
 
@@ -778,7 +783,6 @@ describe('the conclude — a learned process gate, and its yes (19.4.23, 24.1.2)
       `record: \`${ENGINE} ledger record ${RIPE}\``,
       `topic log: ${at(layout.topic(RIPE, RIPE, 'log.md'))}`,
     ], 'the spec reads the investigation\'s record and its log (19.4.15, 11.1.6)');
-    const { write } = ledgerHelpers(() => dir);
     const gap = write('ask', `${RIPE}.specification`, [], { ...CLAUDE, text: 'How many saves does restore keep?' }, env()).id;
     write('decide', `${RIPE}.specification`, ['--answers', gap], { ...PERSON, text: 'Three saves.', why: 'Enough to fall back on.' }, env());
 

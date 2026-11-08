@@ -238,7 +238,9 @@
 //                  the root cause and the fix its investigation rests on,
 //                  each where it rests on one (investigation-log.cjs), and
 //                  the rules it keeps — the investigation's other current
-//                  decisions — each by its short id and its text; none
+//                  decisions at its topic, never a permission for the
+//                  hunt asked at its own level, `{unit}.investigation`
+//                  (19.4.20) — each by its short id and its text; none
 //                  recorded for any other type
 //
 // A bugfix's validations' records, each of the unit the brief is for, its

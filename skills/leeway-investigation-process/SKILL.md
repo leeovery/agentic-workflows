@@ -6,12 +6,13 @@ allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *)
 
 # Investigation
 
-A bugfix's one topic: something that worked now fails, and this finds why — from the symptoms the person reports, through the code, to a root cause the evidence proves — and agrees what the fix should do. You lead the hunt as an expert debugger: you trace the code yourself, test each hypothesis against the evidence and rule causes in or out; the person steers it at its gates and owns what the product should do. The topic's log is the investigation, dead ends included; the root cause, the findings and the fix land on the ledger. Nothing here builds the fix: the spec is written from what this phase settles.
+A bugfix's one topic: the product does something wrong and its cause is not yet known. This finds the cause — from the symptoms the person reports, through the code, to a root cause the evidence proves — and agrees what the fix should do. You lead the hunt as an expert debugger: you trace the code yourself, test each hypothesis against the evidence and rule causes in or out; the person steers it at its gates and owns what the product should do. The topic's log is the investigation, dead ends included; the root cause, the findings and the fix land on the ledger. Nothing here builds the fix: the spec is written from what this phase settles.
 
 ## Arguments
 
 - `$0` — **work_type**: `bugfix`.
-- `$1` — **work_unit**. Its one topic is the unit.
+- `$1` — **work_unit**.
+- `$2` — **topic**. The bugfix's one topic is the unit: topic = `$2`, or `$1` where it is left off.
 
 ## Instructions
 
@@ -19,7 +20,7 @@ Load **[framework.md](../leeway-shared/references/framework.md)** and follow its
 
 ## Done When
 
-The person has said yes at the conclude gate and `investigation conclude` has closed the investigation: the engine then holds it concluded, with the unit whose code the bug is in where one is named, and its `next` hands the work into the spec.
+`investigation conclude` has answered: the engine holds the investigation concluded, with the unit whose code the bug is in where one is named, and its `next` hands the work into the spec.
 
 ## Entering
 
@@ -47,19 +48,17 @@ The brief, the seeds and discovery's log are the person's account: confirm what 
 
 Before tracing deep, a bounded recon: the symptoms, the code they implicate and what surrounds it, and whatever the knowledge base turned up. From it form the hypotheses, each with what points at it rather than proof, and log each (`investigation-log hypothesis`). A cause the seeds already pinpoint is a plan of one. Recon that starts confirming rather than forming has gone past the plan: draw it.
 
-Write `{"order": [{"hypothesis": "H{n}", "check": "{how it is checked}"}, …]}` — every hypothesis still open, in the order you'll check them — to `.leeway/.cache/{work_unit}/investigation/{work_unit}/plan.json`, then fetch the plan gate and emit its sections verbatim per their markers:
+Write `{"order": [{"hypothesis": "H{n}", "check": "{how it is checked}"}, …]}` — every hypothesis still open, in the order you'll check them — to `.leeway/.cache/{work_unit}/investigation/{work_unit}/plan.json`. A finding that invalidates the agreed plan — the cause clearly elsewhere, a new suspect dominant, the remaining checks moot — brings the revised plan back to the same gate before the analysis goes on: its payload says besides what the finding changed, `"changed"`, and the call adds `--revised`. The analysis never re-plans past it. Fetch the plan gate and emit its sections verbatim per their markers:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render investigation-plan {work_unit} --file .leeway/.cache/{work_unit}/investigation/{work_unit}/plan.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render investigation-plan {work_unit} --file .leeway/.cache/{work_unit}/investigation/{work_unit}/plan.json [--revised]
 ```
-
-A finding that invalidates the agreed plan — the cause clearly elsewhere, a new suspect dominant, the remaining checks moot — brings the revised plan back to the same gate before the analysis goes on, its payload saying besides what the finding changed, `"changed"`, and the call adding `--revised`. The analysis never re-plans past it.
 
 ### The Analysis
 
 Trace from where the person meets the bug back to its source: the data's path, the control flow and the state that reach it, what it depends on, and what changed lately — the history, blame, a bisect; in a repository nested inside the project, its history is read there (`git -C {folder} …`). As you read, check whether the area was fixed before and whether the cause sits in the design; none of this is shown to the person or counted.
 
-What the code or a run shows is a finding, saying how it is known: `read` in the code, `documented` with its source, or `exploratory` with the command and its result. A check run to test a hypothesis is the investigation's own experiment, logged with what it showed and resting on its finding (`investigation-log experiment`). A trace or a longer account goes beneath its entry as `--body`. A hypothesis's state follows the evidence — confirmed, or ruled out, a dead end kept and never deleted — and one the person rules intended behaviour is `intended`, `--by` their decision. A new suspect joins as a hypothesis of its own.
+What the code or a run shows is a finding, saying how it is known: `read` in the code, `documented` with its source, or `exploratory` with the command and its result. A check run to test a hypothesis is the investigation's own experiment, logged with what it showed and resting on its finding (`investigation-log experiment`). A trace or a longer account goes beneath its entry as `--body`. A hypothesis's state follows the evidence — confirmed, or ruled out, a dead end kept and never deleted — and one the person says is intended behaviour is `intended`, `--by` their answer. A new suspect joins as a hypothesis of its own.
 
 Whenever hypotheses resolve, before the trace moves on, write `{"resolved": ["H{n}", …], "next": "{what is checked next}"}`, those resolved since the last gate, to `.leeway/.cache/{work_unit}/investigation/{work_unit}/check-in.json`, then fetch the check-in gate and emit its sections verbatim per their markers:
 
@@ -69,21 +68,21 @@ node .claude/skills/leeway-engine/scripts/engine.cjs render investigation-check-
 
 Between gates, a line or two on what just flipped and why it matters keeps the person with the hunt, and never ends the turn.
 
-### The Person's Part
+### What Only the Person Can Say
 
-Some things only the person knows: what the product should do, the environment, a reproduction that fails here. Ask them in the conversation, saying what was tried and why it blocks the trace. A question the work rests on — what the product should do, whether a behaviour is intended — goes on the map, and their answer lands as their decision.
+Each is a question on the map, saying what was tried and why it blocks the trace:
+- a fact only the person holds — whether a behaviour is intended, the environment, a reproduction that fails here — goes to `raise --fact`;
+- what the product should do is a call, and goes to `raise`.
 
-Whether anything may run against a live server is the person's to say, every time and before it runs: ask it through `raise --fact`. The project's verify setup, where it has one, holds how to run the product safely.
+Whether anything may run against a live server is a call of the person's, every time and before it runs. It is a permission for the hunt, never a rule the fix keeps: ask it at the investigation's own level, `{work_unit}.investigation`, through `raise`. The project's verify setup, where it has one, holds how to run the product safely.
 
 ### The Root Cause
 
 Once the evidence settles it, the root cause is your decision on the findings: a question on the map, answered relying on the findings that prove it, its why the chain from the cause to every symptom; then log it (`investigation-log root-cause`). Set down in the log beside it what lets it happen, why nothing caught it, and what else shares the code or the pattern.
 
-A root cause that is really a design problem is the person's: say so in the conversation before any fix is set out, with reworking the area as a feature among the ways forward. The fix question is then put to them there, their answer landing as their decision, and the log's fix direction takes what the step back found as its `--body`, a line each.
-
 ### Validations
 
-Both always run, each against what it validates as it stands: the root cause's once the root cause is logged, the fix's once the fix direction is. A root cause or a fix replaced is validated again. Each is dispatched, briefed and called, `{kind}` `root-cause-validation` or `fix-validation` and `{id}` the one the dispatch answers; the Agent call's `subagent_type` is the agent `brief` answers, and its prompt the pointer alone:
+Both always run, each against what it validates as it stands: the root cause's once the root cause is logged, the fix's once the fix is decided. A root cause or a fix replaced is validated again. Each is dispatched, briefed and called, `{kind}` `root-cause-validation` or `fix-validation` and `{id}` the one the dispatch answers; the Agent call's `subagent_type` is the agent `brief` answers, and its prompt the pointer alone:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs agent dispatch {work_unit} investigation {work_unit} --kind {kind}
@@ -92,12 +91,12 @@ node .claude/skills/leeway-engine/scripts/engine.cjs brief {kind} {work_unit} --
 
 It runs in the background while the work goes on: the step back, while the root cause is checked.
 
-When a report lands, `agent scan {work_unit} investigation {work_unit}` lists it. Read it, then record its findings by the ids its headings carry — `agent ack {work_unit} investigation {work_unit} {id} --findings {F1,F2}`, or `--clean` where it found none. Act on each finding and mark it as you do, `agent surface {work_unit} investigation {work_unit} {id} {finding}`:
-- one that breaks the root cause is checked, then landed as your finding; the root cause is replaced for it and logged again;
-- one that changes what the fix does for the person reaches them as a product question: `raise` replacing the fix;
-- one that does not hold up is said in the log, with why.
+When a report lands, `agent scan {work_unit} investigation {work_unit}` lists it. Read it, then record its findings by the ids its headings carry — `agent ack {work_unit} investigation {work_unit} {id} --findings {F1,F2}`, or `--clean` where it found none. Check each against the code. One that holds lands as your finding, then is marked taken, `agent surface {work_unit} investigation {work_unit} {id} {finding}`:
+- one that breaks the root cause: the root cause is replaced for it, `--cause` the finding, and logged again;
+- one that changes what the fix does for the person reaches them as a product question: `raise` replacing the fix, `--cause` the finding;
+- any other stands as a finding of the hunt.
 
-Then close the report, `agent incorporate {work_unit} investigation {work_unit} {id}`, and log what it found and what you did with it (`investigation-log validation`).
+One that does not hold up is declined: say why in the log, and never surface it. Then close the report, `agent incorporate {work_unit} investigation {work_unit} {id}`, and log what it found and what you did with it (`investigation-log validation`).
 
 ### The Step Back
 
@@ -105,9 +104,9 @@ Before setting out fix options, step back from the bug. Was the implementation w
 
 ### The Fix Direction
 
-The fix is a question on the map, set out through `raise`, its call holding besides `"stepped_back"`, a line for each thing the step back found. Each row is a way to fix it, said as what the person would notice; where the cause sits in the design or the area keeps breaking, one row more: rework the area as a feature. The direction says what the fix does, never how it is written — that is the spec's.
+The fix is a question on the map, set out through `raise`, its call holding besides `"stepped_back"`, a line for each thing the step back found. Each row is a way to fix it, said as what the person would notice. Where the cause sits in the design or the area keeps breaking, it carries one row more: rework the area as a feature. The direction says what the fix does, never how it is written — that is the spec's.
 
-In the turn the person answers, log the fix direction (`investigation-log fix-direction`), which carries what the step back found from the raise; then dispatch the fix's validation. Reworking the area as a feature, picked, goes on from there to **Reworking It as a Feature**.
+Once the fix is decided, log the fix direction (`investigation-log fix-direction`), which carries what the step back found from the raise; then dispatch the fix's validation. Reworking the area as a feature, decided, dispatches no validation: go on to **Reworking It as a Feature**.
 
 ### Mail
 
@@ -121,14 +120,19 @@ The DATA's `log`, `topics/{work_unit}/log.md`, is the investigation: the hunt's 
 
 Content is one JSON object on stdin; `{place}` is `{work_unit}.investigation.{work_unit}`.
 
-- A symptom, a hypothesis, an experiment, the root cause, a validation, the fix direction → `investigation-log symptom|hypothesis|experiment|root-cause|validation|fix-direction {work_unit} …`, each `[--body {file}]`.
+- A symptom → `investigation-log symptom {work_unit} --text "{their words}"`.
+- A hypothesis → `investigation-log hypothesis {work_unit} --title "{title}"`; where it stands now → `investigation-log hypothesis {work_unit} H{n} --state {state:[suspected|confirmed|ruled-out|intended]} [--by {decision}]`.
+- An experiment → `investigation-log experiment {work_unit} --title "{title}" --showed "{what it showed}" --entry {finding}`.
+- The root cause → `investigation-log root-cause {work_unit} --entry {decision}`; the fix direction → `investigation-log fix-direction {work_unit} --question {question}`.
+- A validation → `investigation-log validation {work_unit} {which:[root-cause|fix]} --found "{what it found}" --did "{what you did with it}"`.
+- Any of these takes `--body {file}`, lines beneath its entry.
 - The plan → `render investigation-plan {work_unit} --file {plan} [--revised]`; a check-in → `render investigation-check-in {work_unit} --file {check-in}`.
 - A question → `ledger ask {place}`, `{"text", "by": "person|claude", "who_moved_whom": "none"}`.
 - A finding → `ledger find {place} [--relies-on {id} …]`, adding `"how"`, `"known"`, and `"command"` and `"result"` where exploratory.
 - A decision → `ledger decide {place} --answers {id} [--relies-on {id} …]`, `{"text", "why", "rules_out", "by", "who_moved_whom": "none"}`; a changed one → `ledger replace {place} --replaces {id} --reason {reason:[new-fact|changed-mind|was-wrong]} [--cause {id}]`, the content of the kind it replaces.
-- The fix direction → `raise {place} --answers {id}`; a fix a validation changes for the person → `raise {place} --replaces {id} --reason new-fact --cause {id}`; a fact only the person holds → `raise {place} --answers {id} --fact`.
+- A call → `raise {place} --answers {id}`; a fix a validation changes for the person → `raise {place} --replaces {id} --reason new-fact --cause {id}`; a fact only the person holds → `raise {place} --answers {id} --fact`; a run against a live server → `ledger ask {work_unit}.investigation`, then `raise {work_unit}.investigation --answers {id}`.
 - The topic as it stands → `ledger record|map {work_unit} {work_unit}`.
-- A validation → `agent dispatch`, then `brief root-cause-validation|fix-validation`, then the Agent call; its report → `agent scan|ack|surface|incorporate`.
+- A validation's agent → `agent dispatch`, then `brief root-cause-validation|fix-validation`, then the Agent call; its report → `agent scan|ack|surface|incorporate`.
 - Earlier work → `knowledge query "{term}" …`.
 - Mail → `topic mailbox`, `topic answered`.
 - A shared file → `asset import`, `render import-reprompt`, `asset add`.
@@ -175,23 +179,11 @@ node .claude/skills/leeway-engine/scripts/engine.cjs render workunit-receipt {wo
 
 ## A Shared File
 
-The person shares a file, a path or an image — a log, an export, a screenshot of the failure. Land every path in one call, each single-quoted, a `~` path written out in full and a single quote inside a path written `'\''`:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs asset import {work_unit} '{path}' ['{path}' …]
-```
-
-A refusal carrying `missing_imports` landed nothing. Write `{"missing": ["{path}", …]}`, the paths it names in its order, to `.leeway/.cache/{work_unit}/investigation/{work_unit}/import-reprompt.json`, then fetch the prompt and emit its sections verbatim per their markers:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render import-reprompt --file .leeway/.cache/{work_unit}/investigation/{work_unit}/import-reprompt.json
-```
-
-The answer goes to `gate`: corrected paths land with the ones the refusal did not name; `skip` lands only those. Read what landed — markdown as prose, an image by looking at it, anything else named to the person rather than opened. What it shows is evidence like any other: link each file from the finding it informs, `asset add {work_unit} {path} --entry {finding} --status reference`, or from the log.
+The person shares a file, a path or an image — a log, an export, a screenshot of the failure. Load **[importing-shared-files.md](../leeway-shared/references/importing-shared-files.md)** with home = `{work_unit}`, phase = `investigation`, and follow its instructions as written. What a file shows is evidence like any other: link each from the finding it informs, `asset add {work_unit} {path} --entry {finding} --status reference`, or from the log.
 
 ## Reworking It as a Feature
 
-The person takes reworking the area as a feature — the fix direction's row, or their word once a design problem is raised. Only their word moves the work. Bring the log up to date, then draft the feature's brief at `.leeway/.cache/{work_unit}/investigation/{work_unit}/brief.md`: the symptoms, the root cause and why it is the design's, the ways ruled out and why, and the open questions — nothing in it a decision.
+The person has decided the fix direction is to rework the area as a feature. Before anything moves, the root cause's validation is taken in (**Validations**), so the feature never starts from a cause its validator would have broken. Bring the log up to date, then draft the feature's brief at `.leeway/.cache/{work_unit}/investigation/{work_unit}/brief.md`: the symptoms, the root cause and why it is the design's, the ways ruled out and why, and the open questions — nothing in it a decision.
 
 Write `{"description": "{one line in the person's framing}", "reason": "{one line on why it is a feature}", "brief": ".leeway/.cache/{work_unit}/investigation/{work_unit}/brief.md"}` to `.leeway/.cache/{work_unit}/investigation/{work_unit}/move.json`, then stage the move and draw start this work's screen, emitting its sections verbatim per their markers:
 
@@ -200,3 +192,5 @@ node .claude/skills/leeway-engine/scripts/engine.cjs workunit move {work_unit} -
 ```
 
 A refusal names what to fix. The answer goes to `gate`; follow its `next`, and then the `next` of what it ran: the handoff into the feature's discussion, which reads this investigation as its earlier log.
+
+The person keeping shaping at start this work, the bugfix staying one, settles the fix afresh: replace the fix through `raise --replaces {fix} --reason changed-mind`, its call holding what the step back found again, then carry on as **The Fix Direction** says once it is decided.

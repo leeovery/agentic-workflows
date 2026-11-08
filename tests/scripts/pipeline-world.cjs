@@ -679,12 +679,14 @@ const investigationCache = (wu, name) => `${STATE_DIR_NAME}/.cache/${wu}/investi
 /**
  * The investigation entered and worked to its root cause (19.4.1–19.4.3):
  * the entry and its reads; the symptom in the person's words and the
- * hypotheses logged, the plan agreed at its gate; a trace's finding logged
- * as an experiment settling both, the check-in agreed; and the root cause
- * decided on that finding and logged. Answers the root cause's id.
- * @param {Sim} sim @param {string} wu
+ * hypotheses logged, the plan agreed at its gate; where `live`, the
+ * person's permission to run the save against the live server asked at the
+ * investigation's own level (19.4.20); a trace's finding logged as an
+ * experiment settling both, the check-in agreed; and the root cause decided
+ * on that finding and logged. Answers the root cause's id.
+ * @param {Sim} sim @param {string} wu @param {{live?: boolean}} [opts]
  */
-async function rootCaused(sim, wu) {
+async function rootCaused(sim, wu, { live = false } = {}) {
   const at = `${wu}.investigation.${wu}`;
   const log = (/** @type {string} */ kind, /** @type {string[]} */ args) => sim.run(['investigation-log', kind, wu, ...args]);
   const ledger = (/** @type {string} */ verb, /** @type {string[]} */ flags, /** @type {object} */ content) => sim.run(['ledger', verb, at, ...flags], null, JSON.stringify(content)).id;
@@ -696,6 +698,7 @@ async function rootCaused(sim, wu) {
   log('hypothesis', ['--title', 'The disk is full']);
   sim.render(['investigation-plan', wu, '--file', sim.write(investigationCache(wu, 'plan.json'), { order: [{ hypothesis: 'H1', check: 'Trace the save' }, { hypothesis: 'H2', check: 'Read the disk' }] })], { expect: 'content' });
   answerGate(sim, 'plan gate', '--pick', 'y');
+  if (live) await permitted(sim, wu);
   const finding = ledger('find', [], { ...CLAUDES, text: 'The save writes a null field on every crash.', how: 'Traced save() to write().', known: 'read' });
   log('experiment', ['--title', 'Trace the save', '--showed', 'a null on every crash', '--entry', finding]);
   log('hypothesis', ['H1', '--state', 'confirmed']);
@@ -706,6 +709,27 @@ async function rootCaused(sim, wu) {
   const cause = ledger('decide', ['--answers', asked, '--relies-on', finding], { ...CLAUDES, text: 'The save writes a null that nothing checks.', why: 'The trace showed it.' });
   log('root-cause', ['--entry', cause]);
   return cause;
+}
+
+/**
+ * Whether the save may run against the live server, raised as the person's
+ * call at the investigation's own level, `{wu}.investigation` — a
+ * permission for the hunt, never a rule its fix keeps — and answered no.
+ * @param {Sim} sim @param {string} wu
+ */
+async function permitted(sim, wu) {
+  const at = `${wu}.investigation`;
+  const question = 'May I run the save against the live server to reproduce it?';
+  const asked = sim.run(['ledger', 'ask', at], null, JSON.stringify({ ...CLAUDES, text: question })).id;
+  const { raise } = await sim.runAsync(['raise', at, '--answers', asked], null, JSON.stringify({
+    question,
+    rows: [
+      { key: 'yes', name: 'Live', text: 'Run the save against the live server', notice: 'a save lands on live data' },
+      { key: 'no', name: 'Local', text: 'Reproduce it on a local copy only', notice: 'nothing touches live data' },
+    ],
+    lean: 'no', why: 'A local copy shows the same crash.', sort: 'several', mechanism: 'The save writes to the database it is pointed at.', product_wide: false,
+  }));
+  sim.run(['raise', 'answer', raise, '--pick', 'no'], null, JSON.stringify({ why: 'Live data is the customers\'.' }));
 }
 
 /**
@@ -726,12 +750,13 @@ function validated(sim, wu, which) {
 
 /**
  * The fix direction as the investigation sets it out (19.4.13, 19.4.21): a
- * question on the map, raised with what the step back found, a row to
- * rework the area as a feature among its ways; the person's pick answered,
- * and the fix direction logged in the same turn. Answers the question's id.
- * @param {Sim} sim @param {string} wu @param {'1'|'2'|'rework'} pick
+ * question on the map, raised with what the step back found — where the
+ * cause sits in the design, with a row to rework the area as a feature —
+ * the person's pick answered, and the fix direction logged once it is
+ * decided. Answers the question's id.
+ * @param {Sim} sim @param {string} wu @param {{pick?: '1'|'2'|'rework', design?: boolean}} [opts]
  */
-async function fixDirected(sim, wu, pick) {
+async function fixDirected(sim, wu, { pick = '1', design = false } = {}) {
   const at = `${wu}.investigation.${wu}`;
   const fix = sim.run(['ledger', 'ask', at], null, JSON.stringify({ ...CLAUDES, text: 'How should the save stop crashing?' })).id;
   const { raise } = await sim.runAsync(['raise', at, '--answers', fix], null, JSON.stringify({
@@ -739,7 +764,7 @@ async function fixDirected(sim, wu, pick) {
     rows: [
       { key: '1', name: 'Check', text: 'Check the field before the save writes it', notice: 'a save never crashes' },
       { key: '2', name: 'Default', text: 'Write a default in place of the null', notice: 'a save keeps a placeholder' },
-      { key: 'rework', name: 'Rework', text: 'Rework saving as a feature', notice: 'nothing changes until saving is decided afresh' },
+      ...(design ? [{ key: 'rework', name: 'Rework', text: 'Rework saving as a feature', notice: 'nothing changes until saving is decided afresh' }] : []),
     ],
     lean: '1', why: 'The null is the cause.', sort: 'several', mechanism: 'The save checks the field.', product_wide: false,
     stepped_back: ['The save was right for the fields it knew; a null is a case it never met.'],
@@ -751,14 +776,14 @@ async function fixDirected(sim, wu, pick) {
 
 /**
  * The hunt as the investigation works it, from its entry: the root cause
- * found and validated, the fix direction raised and picked, then
- * validated.
- * @param {Sim} sim @param {string} wu
+ * found and validated — the live server's permission asked on the way
+ * where `live` — the fix direction raised and picked, then validated.
+ * @param {Sim} sim @param {string} wu @param {{live?: boolean}} [opts]
  */
-async function hunted(sim, wu) {
-  await rootCaused(sim, wu);
+async function hunted(sim, wu, opts = {}) {
+  await rootCaused(sim, wu, opts);
   validated(sim, wu, 'root-cause');
-  await fixDirected(sim, wu, '1');
+  await fixDirected(sim, wu);
   validated(sim, wu, 'fix');
 }
 

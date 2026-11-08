@@ -4,14 +4,18 @@
 // The pipeline simulation's bugfix scenarios, each replaying the calls the
 // investigation's skill makes, in its order, from start this work: the
 // investigation entered at its one topic, the hunt logged on its entries,
-// the plan and check-in gates, both validations briefed and taken in, the
-// fix direction raised and logged as it is picked, and the conclude gate's
-// yes handing off into the spec — reopened by a gap before the spec and
-// concluded again, its recap naming this time the unit whose code the bug
-// is in; then the specification, into the build. And a bugfix moved to a
-// feature from its investigation, reworking the area as a feature: start
-// this work's screen and its yes, the feature's discussion reading the
-// investigation as its earlier log at its first opening.
+// the plan and check-in gates, the live server's permission asked at the
+// investigation's own level, both validations briefed and taken in, the
+// fix direction raised and logged once decided, and the conclude gate's
+// yes handing off into the spec — reopened by a gap before the spec,
+// entered again with its resume's reads and concluded again, its recap
+// naming this time the unit whose code the bug is in; then the
+// specification, into the build. And a bugfix moved to a feature from its
+// investigation, its cause in the design: the root cause's validation taken
+// in, the fix direction reworking the area as a feature with no validation
+// of its own, start this work's screen and its yes, the feature's
+// discussion reading the investigation as its earlier log at its first
+// opening.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -33,7 +37,7 @@ const { workUnitStatus } = require(path.join(ROOT, 'skills/leeway-engine/scripts
 const { drawLabel } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
 const {
   Sim, startUnit, enterEntry, handoff, answerGate, linearMenu, linearPick, backToStart, startNew, specToBuild,
-  investigationCache, rootCaused, fixDirected, hunted, concluded,
+  investigationCache, rootCaused, validated, fixDirected, hunted, concluded,
 } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: bugfix', () => {
@@ -49,12 +53,12 @@ describe('pipeline simulation: bugfix', () => {
     assert.deepStrictEqual(started.next, { kind: 'handoff', skill: 'leeway-investigation-process', args: ['bugfix', wu] });
 
     handoff(sim, `/leeway-investigation-process bugfix ${wu}`);
-    await hunted(sim, wu);
+    await hunted(sim, wu, { live: true });
     const { decisions, findings } = JSON.parse(sim.read(['ledger', 'record', wu, wu]));
     assert.deepStrictEqual([findings.map((f) => f.text), decisions.map((d) => d.text)], [
       ['The save writes a null field on every crash.'],
       ['The save writes a null that nothing checks.', 'Check the field before the save writes it'],
-    ], 'the hunt\'s finding, its root cause and its fix stand on the topic\'s record (19.S8)');
+    ], 'the hunt\'s finding, its root cause and its fix stand on the topic\'s record (19.S8), and the live server\'s permission never does');
     concluded(sim, wu);
     // A session that stops here resumes from the bugfix's continue menu, which
     // hands off where the conclude does — or goes back to the start menu,
@@ -79,14 +83,15 @@ describe('pipeline simulation: bugfix', () => {
     assert.strictEqual(startRow(), 'Continue "Crash Fix" — *bugfix, investigation (in-progress)* · mail waiting');
     assert.deepStrictEqual(bugfixUnit().mail_phases, ['investigation']);
     assert.match(workUnitStatus('bugfix', bugfixUnit()), /◐ Investigation +\[in-progress · mail waiting\]/);
-    sim.refuses(['enter', 'specification', wu], /^crash-fix's spec waits until its investigation concludes/);
 
-    // The investigation entered again raises the message first; its question
-    // goes on the map and the message comes off the mailbox; the person's
-    // answer decides it, and the investigation concludes again.
+    // The investigation entered again raises the message first, and makes
+    // its resume's reads; the message's question goes on the map and the
+    // message comes off the mailbox; the person's answer decides it, and the
+    // investigation concludes again.
     enterEntry(sim, wu, 'investigation');
     assert.match(sim.sections, /^=== DISPLAY: waiting mail /m);
-    sim.refuses(['render', 'conclude', wu, '--file', investigationCache(wu, 'recap.json')], /message\(s\) wait in its mailbox/);
+    for (const view of ['product', 'record', 'map']) sim.read(['ledger', view, wu, wu]);
+    await query('save crash');
     const gapMailbox = sim.run(['topic', 'mailbox', wu, wu]);
     assert.deepStrictEqual(gapMailbox.files, [path.join(sim.dir, `.leeway/${wu}/topics/${wu}/mail/001-retry-semantics.md`)]);
     const gapQuestion = sim.run(['ledger', 'ask', `${wu}.investigation.${wu}`], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'What are the retry semantics?' }));
@@ -120,13 +125,15 @@ describe('pipeline simulation: bugfix', () => {
     startUnit(sim, 'bugfix', wu, 'Fix the crash');
     handoff(sim, `/leeway-investigation-process bugfix ${wu}`);
     await rootCaused(sim, wu);
-    await fixDirected(sim, wu, 'rework');
+    validated(sim, wu, 'root-cause');
+    await fixDirected(sim, wu, { pick: 'rework', design: true });
     const hunt = fs.readFileSync(path.join(sim.dir, `.leeway/${wu}/topics/${wu}/log.md`), 'utf8');
     assert.match(hunt, /^## Fix direction\n\n- How should the save stop crashing\? \[\w+\]\n {4}The save was right for the fields it knew/m,
-      'the fix direction is logged in the turn the person picks it, carrying what the step back found');
+      'the fix direction is logged once it is decided, carrying what the step back found');
 
-    // The move, as the skill stages it: the feature's brief drafted from the
-    // investigation, start this work's screen, the person's yes.
+    // The move, as the skill stages it once the root cause's validation is
+    // taken in and with none of the fix's: the feature's brief drafted from
+    // the investigation, start this work's screen, the person's yes.
     const brief = sim.write(investigationCache(wu, 'brief.md'), '# Saving\n\nThe save meets a null it was never built for.\n');
     sim.run(['workunit', 'move', wu, '--to', 'feature', '--file', sim.write(investigationCache(wu, 'move.json'), {
       description: 'Rework saving', reason: 'The crash is the design\'s: saving meets fields it was never built for.', brief,
