@@ -445,16 +445,19 @@ function handoffEntry(sim, wu, phase, topic) {
 // phase skill's first engine call is its entry — starting the topic where
 // unstarted, recording the place, and answering what to read in its sections
 // (`sim.sections`) — so a compaction there carries on in the phase's skill,
-// re-reading the topic's record.
+// re-reading the topic's record. A unit's one topic left unnamed is the unit,
+// as a bugfix's investigation enters it.
+/** @param {Sim} sim @param {string} wu @param {string} phase @param {string} [topic] */
 function enterEntry(sim, wu, phase, topic) {
   sim.handOver();
-  const res = sim.run(['enter', phase, wu, topic]);
+  const res = sim.run(['enter', phase, wu, ...(topic === undefined ? [] : [topic])]);
   assert.strictEqual(res.entered, true, `no other session holds the topic, so the entry asks nothing (${phase})`);
   const here = carryOn(sim);
-  assert.deepStrictEqual(here.position, { name: wu, phase, topic }, `the entry records its place (${phase})`);
+  const at = topic ?? wu;
+  assert.deepStrictEqual(here.position, { name: wu, phase, topic: at }, `the entry records its place (${phase})`);
   assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills', /** @type {string} */ (skillAt(wu, phase)), 'SKILL.md'),
     `a compaction there carries on in the phase's skill (${phase})`);
-  assert.ok(here.text.includes(`ledger record ${wu} ${topic}\``), `a compaction there re-reads the topic's record (${phase})`);
+  assert.ok(here.text.includes(`ledger record ${wu} ${at}\``), `a compaction there re-reads the topic's record (${phase})`);
   return res;
 }
 
@@ -661,6 +664,128 @@ function discussed(sim, wu, topic, { question = `What does ${topic} settle?`, an
  */
 function askedOn(sim, wu, topic, text) {
   return sim.run(['ledger', 'ask', `${wu}.discussion.${topic}`], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text })).id;
+}
+
+// ---------------------------------------------------------------------------
+// A bugfix's investigation as its skill works it (19.4), at its one topic,
+// the unit, each payload written where the skill writes it.
+// ---------------------------------------------------------------------------
+
+const CLAUDES = Object.freeze({ by: 'claude', who_moved_whom: 'none' });
+
+/** Where the investigation's skill writes a payload. @param {string} wu @param {string} name */
+const investigationCache = (wu, name) => `${STATE_DIR_NAME}/.cache/${wu}/investigation/${wu}/${name}`;
+
+/**
+ * The investigation entered and worked to its root cause (19.4.1–19.4.3):
+ * the entry and its reads; the symptom in the person's words and the
+ * hypotheses logged, the plan agreed at its gate; a trace's finding logged
+ * as an experiment settling both, the check-in agreed; and the root cause
+ * decided on that finding and logged. Answers the root cause's id.
+ * @param {Sim} sim @param {string} wu
+ */
+async function rootCaused(sim, wu) {
+  const at = `${wu}.investigation.${wu}`;
+  const log = (/** @type {string} */ kind, /** @type {string[]} */ args) => sim.run(['investigation-log', kind, wu, ...args]);
+  const ledger = (/** @type {string} */ verb, /** @type {string[]} */ flags, /** @type {object} */ content) => sim.run(['ledger', verb, at, ...flags], null, JSON.stringify(content)).id;
+  enterEntry(sim, wu, 'investigation');
+  sim.read(['ledger', 'product', wu, wu]);
+  await sim.engineAsync(['knowledge', 'query', 'save crash']);
+  log('symptom', ['--text', 'The app crashes when I save']);
+  log('hypothesis', ['--title', 'The save writes a null']);
+  log('hypothesis', ['--title', 'The disk is full']);
+  sim.render(['investigation-plan', wu, '--file', sim.write(investigationCache(wu, 'plan.json'), { order: [{ hypothesis: 'H1', check: 'Trace the save' }, { hypothesis: 'H2', check: 'Read the disk' }] })], { expect: 'content' });
+  answerGate(sim, 'plan gate', '--pick', 'y');
+  const finding = ledger('find', [], { ...CLAUDES, text: 'The save writes a null field on every crash.', how: 'Traced save() to write().', known: 'read' });
+  log('experiment', ['--title', 'Trace the save', '--showed', 'a null on every crash', '--entry', finding]);
+  log('hypothesis', ['H1', '--state', 'confirmed']);
+  log('hypothesis', ['H2', '--state', 'ruled-out']);
+  sim.render(['investigation-check-in', wu, '--file', sim.write(investigationCache(wu, 'check-in.json'), { resolved: ['H1', 'H2'], next: 'Name the root cause' })], { expect: 'content' });
+  answerGate(sim, 'check-in gate', '--pick', 'y');
+  const asked = ledger('ask', [], { ...CLAUDES, text: 'What crashes the save?' });
+  const cause = ledger('decide', ['--answers', asked, '--relies-on', finding], { ...CLAUDES, text: 'The save writes a null that nothing checks.', why: 'The trace showed it.' });
+  log('root-cause', ['--entry', cause]);
+  return cause;
+}
+
+/**
+ * A validation of `which` as the investigation runs it (19.4.7):
+ * dispatched, briefed, its report written where the brief says, scanned,
+ * acknowledged clean and closed, and what it found logged.
+ * @param {Sim} sim @param {string} wu @param {'root-cause'|'fix'} which
+ */
+function validated(sim, wu, which) {
+  const kind = `${which}-validation`;
+  const { id } = sim.run(['agent', 'dispatch', wu, 'investigation', wu, '--kind', kind]);
+  landed(placeIn(sim, sim.run(['brief', kind, wu, '--agent', id]), 'Your report'), `# Validation — ${id}\n\n## Summary\n\nIt holds.\n\n## Findings\n\nNone identified.\n`);
+  sim.run(['agent', 'scan', wu, 'investigation', wu]);
+  sim.run(['agent', 'ack', wu, 'investigation', wu, id, '--clean']);
+  sim.run(['agent', 'incorporate', wu, 'investigation', wu, id]);
+  sim.run(['investigation-log', 'validation', wu, which, '--found', 'It holds', '--did', 'Carried on']);
+}
+
+/**
+ * The fix direction as the investigation sets it out (19.4.13, 19.4.21): a
+ * question on the map, raised with what the step back found, a row to
+ * rework the area as a feature among its ways; the person's pick answered,
+ * and the fix direction logged in the same turn. Answers the question's id.
+ * @param {Sim} sim @param {string} wu @param {'1'|'2'|'rework'} pick
+ */
+async function fixDirected(sim, wu, pick) {
+  const at = `${wu}.investigation.${wu}`;
+  const fix = sim.run(['ledger', 'ask', at], null, JSON.stringify({ ...CLAUDES, text: 'How should the save stop crashing?' })).id;
+  const { raise } = await sim.runAsync(['raise', at, '--answers', fix], null, JSON.stringify({
+    question: 'How should the save stop crashing?',
+    rows: [
+      { key: '1', name: 'Check', text: 'Check the field before the save writes it', notice: 'a save never crashes' },
+      { key: '2', name: 'Default', text: 'Write a default in place of the null', notice: 'a save keeps a placeholder' },
+      { key: 'rework', name: 'Rework', text: 'Rework saving as a feature', notice: 'nothing changes until saving is decided afresh' },
+    ],
+    lean: '1', why: 'The null is the cause.', sort: 'several', mechanism: 'The save checks the field.', product_wide: false,
+    stepped_back: ['The save was right for the fields it knew; a null is a case it never met.'],
+  }));
+  sim.run(['raise', 'answer', raise, '--pick', pick], null, JSON.stringify({ why: 'It stops the crash at its cause.' }));
+  sim.run(['investigation-log', 'fix-direction', wu, '--question', fix]);
+  return fix;
+}
+
+/**
+ * The hunt as the investigation works it, from its entry: the root cause
+ * found and validated, the fix direction raised and picked, then
+ * validated.
+ * @param {Sim} sim @param {string} wu
+ */
+async function hunted(sim, wu) {
+  await rootCaused(sim, wu);
+  validated(sim, wu, 'root-cause');
+  await fixDirected(sim, wu, '1');
+  validated(sim, wu, 'fix');
+}
+
+/**
+ * The conclude as the investigation closes (19.4.23): the recap staged at
+ * its gate, naming what the bug is in where `bug` does, and the yes run,
+ * handing off into the spec (24.S17).
+ * @param {Sim} sim @param {string} wu @param {{fixes?: string}} [bug]
+ */
+function concluded(sim, wu, bug = {}) {
+  const recap = sim.write(investigationCache(wu, 'recap.json'), { hunt: 'Two hypotheses; the save wrote a null on every crash, and nothing checked it.', ...bug });
+  sim.render(['conclude', wu, '--file', recap], { expect: 'content' });
+  const { next } = sim.run(answerGate(sim, 'conclude gate', '--pick', 'y').next.argv);
+  const route = `/leeway-specification-process bugfix ${wu}`;
+  assert.strictEqual([`/${next.skill}`, ...next.args].join(' '), route, 'the conclude hands off into the spec');
+  handoff(sim, route);
+}
+
+// A bugfix started as discovery starts one and handed into its
+// investigation, worked to its conclude and handed into its spec.
+/** @param {Sim} sim @param {string} wu @param {string} description */
+async function investigated(sim, wu, description) {
+  startNew(sim, 'bugfix');
+  startUnit(sim, 'bugfix', wu, description);
+  handoff(sim, `/leeway-investigation-process bugfix ${wu}`);
+  await hunted(sim, wu);
+  concluded(sim, wu);
 }
 
 /** A linear unit's continue menu, picked into work. @param {Sim} sim @param {string} wu @param {string} action */
@@ -1363,6 +1488,7 @@ function finished(sim, wu, { closed = false } = {}) {
 }
 
 module.exports = {
-  Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, gatesAnswered, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicBuildPick, linearBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed,
+  Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, gatesAnswered, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn,
+  investigationCache, rootCaused, validated, fixDirected, hunted, concluded, investigated, linearMenu, linearPick, backToStart, startNew, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicBuildPick, linearBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed,
   DECIDED_ITEMS, specWritten, specBuilt, builders, taskBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finishClosed, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic,
 };

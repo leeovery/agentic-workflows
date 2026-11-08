@@ -1,6 +1,6 @@
 # Knowledge Usage
 
-*Shared reference. Loaded by the investigation and scoping processing skills; by `contextual-query.md` for **B**, **C** and **D**; and by `reading-the-mailbox.md` for **G**.*
+*Shared reference. Loaded by the scoping processing skill; by `contextual-query.md` for **B**, **C** and **D**; and by `reading-the-mailbox.md` for **G**.*
 
 ---
 

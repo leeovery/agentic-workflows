@@ -1462,7 +1462,7 @@ const CHECKS = [
 // ---------------------------------------------------------------------------
 
 // The skills rewritten to the new shape, whose backbones hold no steps.
-const NEW_SHAPE_SKILLS = new Set(['leeway-discussion-process', 'leeway-discovery', 'leeway-specification-process', 'leeway-implementation-process', 'leeway-review-process']);
+const NEW_SHAPE_SKILLS = new Set(['leeway-discussion-process', 'leeway-discovery', 'leeway-specification-process', 'leeway-implementation-process', 'leeway-review-process', 'leeway-investigation-process']);
 
 function checkFooterlessLoads(files) {
   const out = [];
@@ -1841,7 +1841,7 @@ test('check 20 (footerless loads) — catches a load that ends its step, permits
     const field = write(dir, 'skills/leeway-discussion-process/SKILL.md', sections);
     const discovery = write(dir, 'skills/leeway-discovery/SKILL.md', sections);
     assert.strictEqual(checkFooterlessLoads([field, discovery]).length, 0, 'a skill rewritten to the new shape has no steps to fall through');
-    const stepped = write(dir, 'skills/leeway-investigation-process/SKILL.md', sections);
+    const stepped = write(dir, 'skills/leeway-scoping-process/SKILL.md', sections);
     assert.strictEqual(checkFooterlessLoads([stepped]).length, 1, 'a skill still on the step model is held');
   });
 });

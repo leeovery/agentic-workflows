@@ -1,6 +1,6 @@
 # Cancelling the Topic
 
-*Shared reference. Loaded by the investigation and scoping processing skills when the work under way is called off.*
+*Shared reference. Loaded by the scoping processing skill when the work under way is called off.*
 
 ---
 

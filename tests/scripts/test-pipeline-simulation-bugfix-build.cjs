@@ -2,15 +2,16 @@
 
 // ---------------------------------------------------------------------------
 // The pipeline simulation's scenario of a bugfix's build, its bug proven
-// before it is fixed (15.5): a bugfix through its investigation and its
-// spec, cut into one phase, to ready to build's pick; the phase opening on
-// the test that reproduces the bug, task 1.1, its series run on the unfixed
-// code once its account is taken, before it lands, then the fix linked
-// after it, which the door takes; the phase merged, every landing squashing
-// it; and the review phase, whose round 1 is recorded once the test has run
-// on the unfixed code again, failing on a finding, its fix task, laid out on
-// the branch phase 1 landed on, committing through the door, built on task
-// 1.1's work by its landing. The investigation and the spec are
+// before it is fixed (15.5): a bugfix through its investigation, worked
+// and concluded as its skill does it, and its spec, cut into one phase, to
+// ready to build's pick; the phase opening on the test that reproduces the
+// bug, task 1.1, its series run on the unfixed code once its account is
+// taken, before it lands, then the fix linked after it, which the door
+// takes; the phase merged, every landing squashing it; and the review
+// phase, whose round 1 is recorded once the test has run on the unfixed
+// code again, failing on a finding, its fix task, laid out on the branch
+// phase 1 landed on, committing through the door, built on task 1.1's work
+// by its landing. What the investigation and the spec each prove is
 // test-pipeline-simulation-bugfix.cjs's; a later phase's task after phase 1
 // lands, and what each verb answers and refuses, the verbs' own suites'.
 //
@@ -25,7 +26,7 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const {
-  Sim, startUnit, handoffEntry, handoff, startNew, specEntry, specReviewed, cutTheSpec, readyToBuild, answerGate, intoTheBuild, buildEntry, writePhaseTasks, startPhase,
+  Sim, investigated, specEntry, specReviewed, cutTheSpec, readyToBuild, answerGate, intoTheBuild, buildEntry, writePhaseTasks, startPhase,
   builders, taskBuilt, landed, placeIn, linearBuildPick, reviewNext, areaRead, testsRead, PASSED_REPORT, VERIFY_FILES,
 } = require('./pipeline-world.cjs');
 
@@ -38,24 +39,9 @@ const TEST = 'sh test/crash.sh';
 
 const SECOND_BASKET = '## Findings\n\n- bug: the crash returns on a second basket\n  Scenario: a second basket\n\nVerdict: fail\n';
 
-/** A bugfix's investigation concluded on its root cause, the decision the spec cites written on its place (E9). @param {Sim} sim */
-function investigated(sim) {
-  startNew(sim, 'bugfix');
-  startUnit(sim, 'bugfix', WU, 'Fix the crash');
-  handoff(sim, `/leeway-investigation-process bugfix ${WU}`);
-  handoffEntry(sim, WU, 'investigation', WU);
-  sim.run(['topic', 'start', WU, 'investigation', WU]);
-  sim.write(`.leeway/${WU}/investigation/${WU}.md`, `# Investigation — ${WU}\n`);
-  const claude = { by: 'claude', who_moved_whom: 'none' };
-  const asked = sim.run(['ledger', 'ask', `${WU}.investigation.${WU}`], null, JSON.stringify({ ...claude, text: 'What crashes the checkout?' }));
-  sim.run(['ledger', 'decide', `${WU}.investigation.${WU}`, '--answers', asked.id], null, JSON.stringify({ ...claude, text: 'An empty basket crashes it.', why: 'The trace ends in its total.' }));
-  sim.run(['commit', WU, '-m', `investigation(${WU}): root cause`, '--topic', `investigation/${WU}`]);
-  sim.run(['topic', 'complete', WU, 'investigation', WU]);
-}
-
 /** The bugfix investigated, its spec of one area and one scenario landed and reviewed, cut into one phase, and ready to build's yes in auto taken into the build. @param {Sim} sim */
-function bugfixToBuild(sim) {
-  investigated(sim);
+async function bugfixToBuild(sim) {
+  await investigated(sim, WU, 'Fix the crash');
   specEntry(sim, WU, [WU]);
   sim.run(['brief', 'spec-writer', WU]);
   const [decision] = JSON.parse(sim.read(['ledger', 'record', WU, WU])).decisions;
@@ -86,8 +72,8 @@ describe('pipeline simulation: a bugfix\'s build', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('the bug proven, then fixed: task 1.1 the test that reproduces it, its series run on the unfixed code once its account is taken, the fix through the door; phase 1 merged by squash → round 1 of the review recorded once the test has run on the unfixed code again, failing on a finding, its fix task through the door, built on task 1.1\'s landing', () => {
-    bugfixToBuild(sim);
+  it('the bug proven, then fixed: task 1.1 the test that reproduces it, its series run on the unfixed code once its account is taken, the fix through the door; phase 1 merged by squash → round 1 of the review recorded once the test has run on the unfixed code again, failing on a finding, its fix task through the door, built on task 1.1\'s landing', async () => {
+    await bugfixToBuild(sim);
     buildEntry(sim, WU);
     sim.run(['brief', 'task-writer', WU, '1']);
     writePhaseTasks(sim, WU, 1, 'The work', [
