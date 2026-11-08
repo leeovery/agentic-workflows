@@ -4,394 +4,193 @@ user-invocable: false
 allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *)
 ---
 
-# Investigation Process
+# Investigation
 
-Act as **expert debugger** tracing through code, **documentation assistant** capturing findings, AND **collaborative advisor** involving the user from investigation plan to fix direction. These are equally important — the investigation drives understanding, the documentation preserves it, and the collaboration validates findings and aligns on approach. Dig deep: trace code paths, challenge assumptions, explore related areas. Then capture what you found.
+A bugfix's one topic: the product does something wrong and its cause is not yet known. This finds the cause — from the symptoms the person reports, through the code, to a root cause the evidence proves — and agrees what the fix should do. You lead the hunt as an expert debugger: you trace the code yourself, test each hypothesis against the evidence and rule causes in or out; the person steers it at its gates and owns what the product should do. The topic's log is the investigation, dead ends included; the root cause, the findings and the fix land on the ledger. Nothing here builds the fix: the spec is written from what this phase settles.
 
-## Purpose in the Workflow
+## Arguments
 
-Investigation combines:
-- **Symptom gathering**: What's broken, how it manifests, reproduction steps
-- **Code analysis**: Tracing paths, finding root cause, understanding blast radius
-- **Fix direction**: Agreeing what the fix should do, validated against the root cause
-
-The user collaborates throughout — the investigation plan, the findings, and the fix direction are each agreed, not announced. The output becomes source material for a specification focused on the fix approach.
-
-**Stay in your lane**: Investigate the bug — gather symptoms, trace code, find root cause. Don't jump to fixing or implementing. This is the time for deep analysis.
-
-### What This Skill Needs
-
-Positional arguments:
-- `$0` — **work_type**: always `bugfix`.
-- `$1` — **work_unit**: the work unit name.
-- `$2` — **topic**: the bug under investigation. A single-topic unit's topic is the work unit, so it may be left off: topic = `$2`, or `$1` where it is.
-
----
+- `$0` — **work_type**: `bugfix`.
+- `$1` — **work_unit**.
+- `$2` — **topic**. The bugfix's one topic is the unit: topic = `$2`, or `$1` where it is left off.
 
 ## Instructions
 
 Load **[framework.md](../leeway-shared/references/framework.md)** and follow its instructions as written.
 
----
+## Done When
 
-## Resuming After Context Refresh
+`investigation conclude` has answered: the engine holds the investigation concluded, with the unit whose code the bug is in where one is named, and its `next` hands the work into the spec.
 
-Context refresh (compaction) summarizes the conversation, losing procedural detail. When you detect a context refresh has occurred — the conversation feels abruptly shorter, you lack memory of recent steps, or a summary precedes this message — follow this recovery protocol:
+## Entering
 
-1. **Re-read this skill file completely, then re-load [framework.md](../leeway-shared/references/framework.md).** Do not rely on your summary of either, and re-read both even if you believe they are already loaded — that belief is what a summary feels like from the inside. The full process, steps, and rules must be reloaded.
-2. **Read the investigation file** at `.workflows/{work_unit}/investigation/{topic}.md` — this is your source of truth for what's been discovered. The hypothesis ledger in its Analysis section shows exactly where the analysis stands.
-3. **Check git state.** Run `git status` and `git log --oneline -10` to see recent commits. Commit messages follow a conventional pattern that reveals what was completed.
-4. **Carry on from where the conversation was**, as if the break never happened — no recap and no announcement. Where the person's message is waiting, take it at the step it arrived at, unless it only asks to carry on. Otherwise, where the conversation was at a gate, put the gate back, fetched fresh; elsewhere continue the step it was on.
+Every engine call is `node .claude/skills/leeway-engine/scripts/engine.cjs {verb} …`, each verb under **Doors**.
 
-Do not guess at progress or continue from memory. The files on disk and git history are authoritative — your recollection is not.
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs enter investigation {work_unit}
+```
 
----
+A refusal names the way on: say it in a line. Where another session holds the topic, the entry asks first: emit its MENU verbatim per its marker and follow the answer's `next`; carrying on from it ends the turn. Otherwise emit each section ahead of the DATA verbatim per its marker. Waiting mail is the conversation's first business (**Mail**).
 
-## Hard Rules
+Then read what the DATA names: the brief; discovery's logs and the seeds, the person's own account of the bug; the product record; at a first opening of a quick-fix moved here, its `earlier record`, `earlier build log` and each `kept branch`, read as input and never changed; and on resume the topic's record, its map and the `log`, the hunt so far. Take in each `landed` report as **Validations** says, and close each `lost` one with `agent incorporate`. Search earlier work units' entries in the bug's area with `knowledge query`.
 
-The investigation file is your memory. Context compaction is lossy — what's not on disk is lost.
+Then open the conversation; never stop in silence once you have read. On resume, say in your own words where the hunt stands and what comes next.
 
-**Write to the file at natural moments:**
+## The Hunt
 
-- Symptoms are gathered
-- The investigation plan is agreed
-- A hypothesis changes status
-- A code path is traced
-- Root cause is identified
-- Fix direction is agreed
-- Each significant finding
+The rigour holds — the symptoms, then the code, and the root cause settled before any fix is set out. Within it the work is yours to order.
 
-**After writing, commit** (`node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "investigation({work_unit}): {what changed}" --topic investigation/{topic}`). Commits let you track and recover after compaction. Don't batch — commit each time you write.
+### Symptoms
 
-**Draft decisions to cache.** Anything still under discussion — fix options, validation output — lives in `.workflows/.cache/{work_unit}/investigation/{topic}/` until agreed. The investigation file records only what is agreed; a crash mid-discussion loses nothing.
+The brief, the seeds and discovery's log are the person's account: confirm what they already answer rather than ask it again, and ask what they leave open — what should happen and what happens instead, the exact steps, how often, where, since when, and what they have tried. Start with what matters most and follow their answers down; never a barrage of questions. Log each symptom in their words as they give it (`investigation-log symptom`). What they don't know stays unknown, never guessed.
 
-**Create the file early.** After understanding the initial symptoms, create the investigation file with the symptoms section.
+### The Plan
 
-**On length**: Investigations can vary widely. Capture what's needed to fully understand the bug. Don't summarize prematurely — document the trail.
+Before tracing deep, a bounded recon: the symptoms, the code they implicate and what surrounds it, and whatever the knowledge base turned up. From it form the hypotheses, each with what points at it rather than proof, and log each (`investigation-log hypothesis`). A cause the seeds already pinpoint is a plan of one. Recon that starts confirming rather than forming has gone past the plan: draw it.
 
----
+Write `{"order": [{"hypothesis": "H{n}", "check": "{how it is checked}"}, …]}` — every hypothesis still open, in the order you'll check them — to `.leeway/.cache/{work_unit}/investigation/{work_unit}/plan.json`. A finding that invalidates the agreed plan — the cause clearly elsewhere, a new suspect dominant, the remaining checks moot — brings the revised plan back to the same gate before the analysis goes on: its payload says besides what the finding changed, `"changed"`, and the call adds `--revised`. The analysis never re-plans past it. Fetch the plan gate and emit its sections verbatim per their markers:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs render investigation-plan {work_unit} --file .leeway/.cache/{work_unit}/investigation/{work_unit}/plan.json [--revised]
+```
+
+### The Analysis
+
+Trace from where the person meets the bug back to its source: the data's path, the control flow and the state that reach it, what it depends on, and what changed lately — the history, blame, a bisect; in a repository nested inside the project, its history is read there (`git -C {folder} …`). As you read, check whether the area was fixed before and whether the cause sits in the design; none of this is shown to the person or counted.
+
+What the code or a run shows is a finding, saying how it is known: `read` in the code, `documented` with its source, or `exploratory` with the command and its result. A check run to test a hypothesis is the investigation's own experiment, logged with what it showed and resting on its finding (`investigation-log experiment`). A trace or a longer account goes beneath its entry as `--body`. A hypothesis's state follows the evidence — confirmed, or ruled out, a dead end kept and never deleted — and one the person says is intended behaviour is `intended`, `--by` their answer. A new suspect joins as a hypothesis of its own.
+
+Whenever hypotheses resolve, before the trace moves on, write `{"resolved": ["H{n}", …], "next": "{what is checked next}"}`, those resolved since the last gate, to `.leeway/.cache/{work_unit}/investigation/{work_unit}/check-in.json`, then fetch the check-in gate and emit its sections verbatim per their markers:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs render investigation-check-in {work_unit} --file .leeway/.cache/{work_unit}/investigation/{work_unit}/check-in.json
+```
+
+Between gates, a line or two on what just flipped and why it matters keeps the person with the hunt, and never ends the turn.
+
+### What Only the Person Can Say
+
+Each is a question on the map, saying what was tried and why it blocks the trace:
+- a fact only the person holds — whether a behaviour is intended, the environment, a reproduction that fails here — goes to `raise --fact`;
+- what the product should do is a call, and goes to `raise`.
+
+Whether anything may run against a live server is a call of the person's, every time and before it runs. It is a permission for the hunt, never a rule the fix keeps: ask it at the investigation's own level, `{work_unit}.investigation`, through `raise`. The project's verify setup, where it has one, holds how to run the product safely.
+
+### The Root Cause
+
+Once the evidence settles it, the root cause is your decision on the findings: a question on the map, answered relying on the findings that prove it, its why the chain from the cause to every symptom; then log it (`investigation-log root-cause`). Set down in the log beside it what lets it happen, why nothing caught it, and what else shares the code or the pattern.
+
+### Validations
+
+Both always run, each against what it validates as it stands: the root cause's once the root cause is logged, the fix's once the fix is decided. A root cause or a fix replaced is validated again. Each is dispatched, briefed and called, `{kind}` `root-cause-validation` or `fix-validation` and `{id}` the one the dispatch answers; the Agent call's `subagent_type` is the agent `brief` answers, and its prompt the pointer alone:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs agent dispatch {work_unit} investigation {work_unit} --kind {kind}
+node .claude/skills/leeway-engine/scripts/engine.cjs brief {kind} {work_unit} --agent {id}
+```
+
+It runs in the background while the work goes on: the step back, while the root cause is checked.
+
+When a report lands, `agent scan {work_unit} investigation {work_unit}` lists it. Read it, then record its findings by the ids its headings carry — `agent ack {work_unit} investigation {work_unit} {id} --findings {F1,F2}`, or `--clean` where it found none. Check each against the code. One that holds lands as your finding, then is marked taken, `agent surface {work_unit} investigation {work_unit} {id} {finding}`:
+- one that breaks the root cause: the root cause is replaced for it, `--cause` the finding, and logged again;
+- one that changes what the fix does for the person reaches them as a product question: `raise` replacing the fix, `--cause` the finding;
+- any other stands as a finding of the hunt.
+
+One that does not hold up is declined: say why in the log, and never surface it. Then close the report, `agent incorporate {work_unit} investigation {work_unit} {id}`, and log what it found and what you did with it (`investigation-log validation`).
+
+### The Step Back
+
+Before setting out fix options, step back from the bug. Was the implementation wrong, or was it right and an edge case has turned up? Is there another way to do it — a different abstraction or mechanism — that thinking higher up reveals? The options show what it found.
+
+### The Fix Direction
+
+The fix is a question on the map, set out through `raise`, its call holding besides `"stepped_back"`, a line for each thing the step back found. Each row is a way to fix it, said as what the person would notice. Where the cause sits in the design or the area keeps breaking, it carries one row more: rework the area as a feature. The direction says what the fix does, never how it is written — that is the spec's.
+
+Once the fix is decided, log the fix direction (`investigation-log fix-direction`), which carries what the step back found from the raise; then dispatch the fix's validation. Reworking the area as a feature, decided, dispatches no validation: go on to **Reworking It as a Feature**.
+
+### Mail
+
+At natural pauses, check `topic mailbox {work_unit} {work_unit}`: a message is what another phase needs settled here, such as a gap the spec sent back. Put the question it raises on the map, then remove the message: `topic answered {work_unit} {work_unit} {NNN-slug} --entry {question}`.
+
+### The Log
+
+The DATA's `log`, `topics/{work_unit}/log.md`, is the investigation: the hunt's lists under the headings `investigation-log` writes, and your account of it — the paths traced, the dead ends and why, what changed your mind — under headings of your own, never under the hunt's. Write it as you go, appended and never rewritten, enough for a fresh session to carry on alone, pointing at entries by short id rather than restating them. This conversation's first write opens with the DATA's `log header` line.
+
+## Doors
+
+Content is one JSON object on stdin; `{place}` is `{work_unit}.investigation.{work_unit}`.
+
+- A symptom → `investigation-log symptom {work_unit} --text "{their words}"`.
+- A hypothesis → `investigation-log hypothesis {work_unit} --title "{title}"`; where it stands now → `investigation-log hypothesis {work_unit} H{n} --state {state:[suspected|confirmed|ruled-out|intended]} [--by {decision}]`.
+- An experiment → `investigation-log experiment {work_unit} --title "{title}" --showed "{what it showed}" --entry {finding}`.
+- The root cause → `investigation-log root-cause {work_unit} --entry {decision}`; the fix direction → `investigation-log fix-direction {work_unit} --question {question}`.
+- A validation → `investigation-log validation {work_unit} {which:[root-cause|fix]} --found "{what it found}" --did "{what you did with it}"`.
+- Any of these takes `--body {file}`, lines beneath its entry.
+- The plan → `render investigation-plan {work_unit} --file {plan} [--revised]`; a check-in → `render investigation-check-in {work_unit} --file {check-in}`.
+- A question → `ledger ask {place}`, `{"text", "by": "person|claude", "who_moved_whom": "none"}`.
+- A finding → `ledger find {place} [--relies-on {id} …]`, adding `"how"`, `"known"`, and `"command"` and `"result"` where exploratory.
+- A decision → `ledger decide {place} --answers {id} [--relies-on {id} …]`, `{"text", "why", "rules_out", "by", "who_moved_whom": "none"}`; a changed one → `ledger replace {place} --replaces {id} --reason {reason:[new-fact|changed-mind|was-wrong]} [--cause {id}]`, the content of the kind it replaces.
+- A call → `raise {place} --answers {id}`; a fix a validation changes for the person → `raise {place} --replaces {id} --reason new-fact --cause {id}`; a fix settled afresh once the person keeps shaping → `raise {place} --replaces {id} --reason changed-mind`; a fact only the person holds → `raise {place} --answers {id} --fact`; a run against a live server → `ledger ask {work_unit}.investigation`, then `raise {work_unit}.investigation --answers {id}`.
+- The topic as it stands → `ledger record|map {work_unit} {work_unit}`.
+- A validation's agent → `agent dispatch`, then `brief root-cause-validation|fix-validation`, then the Agent call; its report → `agent scan|ack|surface|incorporate`.
+- Earlier work → `knowledge query "{term}" …`.
+- Mail → `topic mailbox`, `topic answered`.
+- A shared file → `asset import`, `render import-reprompt`, `asset add`.
+- The close → `render conclude {work_unit} [--file {recap}]`, whose yes runs `investigation conclude {work_unit}`.
+- The work as a feature → `workunit move {work_unit} --to feature --file {payload}`, whose yes runs `start-this-work yes`.
+- The work leaving → `render cancel-gate {work_unit}`, whose `next` runs `workunit cancel`; then `render workunit-receipt`.
+- A gate's answer → `gate "{name}" --pick {key}`, or `--typed {key}` for a typed row such as a Comment.
+
+## Closing
+
+The investigation closes once the root cause and the fix stand, both validated since, nothing of the person's open on the map and no mail waiting. It has no checklist.
+
+The recap names what the bug is in, for the bugs found after review:
+- `fixes` — the work unit whose code the bug is in, read from the code's history and the project's units; asked of the person where it isn't plain, and left out where no unit built that code.
+- `area` — where the project records a verify setup, the area of the feature map it names that the bug sits in, in the words the gate's DATA lists an area by where it is one already recorded; left out otherwise.
+
+Write `{"hunt": "{one paragraph}", "fixes": "{unit}", "area": "{area}"}` — the hunt told short in product terms, what was suspected and what ruled each out, what proved the cause; `fixes` and `area` only where named — to `.leeway/.cache/{work_unit}/investigation/{work_unit}/recap.json`, then stage it and fetch the conclude gate:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs render conclude {work_unit} --file .leeway/.cache/{work_unit}/investigation/{work_unit}/recap.json
+```
+
+Where its DATA lists the area you named under another spelling, stage the recap again with the DATA's before emitting anything. Then emit its sections verbatim per their markers. A refusal names the way on: work it — a validation, a question open, mail — then fetch the gate again; one refusing the recap is staged again as it says.
+
+The screen asks a verdict of each call the person changed, one at a time: each answer goes to `gate`, whose `next` gives the verdict; then draw `render conclude {work_unit}` again. At the conclude gate the answer goes to `gate`: the yes runs `investigation conclude`, whose `next` hands the work into the spec — follow it; keep going carries the hunt on. A Comment that changes what the screen says is worked, and the recap staged again.
 
 ## Backlogging
 
-The user says to put an idea, a bug or a fix aside — "roadmap it", "inbox it", "backlog that", "push it back" — and the words take this door whatever else is in flight. Never a topic: a topic takes the postponing door. Load **[backlogging.md](../leeway-shared/references/backlogging.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `investigation`, from any point in the phase.
+The person puts an idea, a bug or a fix aside — "roadmap it", "inbox it", "backlog that", "push it back". Load **[backlogging.md](../leeway-shared/references/backlogging.md)** with work_unit = `{work_unit}`, topic = `{work_unit}`, phase = `investigation`.
 
-→ On return, resume the interrupted flow — a gate that was pending was set aside; once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes put it back — never fall through to Step 0.
+## Postponing the Investigation
 
----
+The person pushes the bug back to the roadmap. The topic is the unit, so there is nothing to postpone, and its "not now" is a cancel: say so in a line.
 
-## Postponing the Topic
+## Cancelling the Investigation
 
-The user pushes a topic back to the roadmap — "postpone this", "move the loyalty topic to v2", "take this whole topic back to the roadmap" — this one, or one on the map by name; `{name}` is that topic. The request is taken as said — never argued, and never checked back with a question first: load **[postponing-the-topic.md](../leeway-shared/references/postponing-the-topic.md)** with work_unit = `{work_unit}`, name = `{name}`, topic = `{topic}`, phase = `investigation`, from any point in the phase.
+The person calls the bugfix off, or the conversation agrees it is not worth fixing. Bring the log up to date, then fetch the confirm, `render cancel-gate {work_unit}`, emit its MENU verbatim per its marker and follow the answer's `next`. A refusal names what holds the unit: say it in a line.
 
-→ On return, resume the interrupted flow — a gate that was pending was set aside; once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes put it back — never fall through to Step 0.
-
----
-
-## Cancelling the Topic
-
-The user calls the topic off — they say to cancel, or the conversation agrees it is not worth pursuing. Never is not yet: a topic wanted later takes the postponing door. The call-off is taken as said — never argued, and never checked back with a question first: load **[cancelling-the-topic.md](../leeway-shared/references/cancelling-the-topic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `investigation`, from any point in the phase.
-
-→ On return, resume the interrupted flow — a gate that was pending was set aside; once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes put it back — never fall through to Step 0.
-
----
-
-## Step 0: Resume Detection
-
-Record where this session is working — the call also labels the tmux session where the user opted in:
+The cancel takes the unit's cache, its agents' rows with it: stop every task you dispatched with the TaskStop tool. Fetch its receipt, adding `--warn` where the response carries warnings and `--inbox {n}` where its `inbox` lists the waiting messages the cancel moved, `{n}` their count, and emit its sections verbatim per their markers; the unit is closed, and the turn ends:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs session label {work_unit} investigation {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render workunit-receipt {work_unit} --verb cancel [--warn] [--inbox {n}]
 ```
 
-Read the phase status, storing it as `phase_status`:
+## A Shared File
+
+The person shares a file, a path or an image — a log, an export, a screenshot of the failure. Load **[importing-shared-files.md](../leeway-shared/references/importing-shared-files.md)** with home = `{work_unit}`, phase = `investigation`, and follow its instructions as written. What a file shows is evidence like any other: link each from the finding it informs, `asset add {work_unit} {path} --entry {finding} --status reference`, or from the log.
+
+## Reworking It as a Feature
+
+The person has decided the fix direction is to rework the area as a feature. Before anything moves, the root cause's validation is taken in (**Validations**), so the feature never starts from a cause its validator would have broken. Bring the log up to date, then draft the feature's brief at `.leeway/.cache/{work_unit}/investigation/{work_unit}/brief.md`: the symptoms, the root cause and why it is the design's, the ways ruled out and why, and the open questions — nothing in it a decision.
+
+Write `{"description": "{one line in the person's framing}", "reason": "{one line on why it is a feature}", "brief": ".leeway/.cache/{work_unit}/investigation/{work_unit}/brief.md"}` to `.leeway/.cache/{work_unit}/investigation/{work_unit}/move.json`, then stage the move and draw start this work's screen, emitting its sections verbatim per their markers:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.investigation.{topic} status
+node .claude/skills/leeway-engine/scripts/engine.cjs workunit move {work_unit} --to feature --file .leeway/.cache/{work_unit}/investigation/{work_unit}/move.json
 ```
 
-#### If `phase_status` is empty or `unstarted`
+A refusal names what to fix. The answer goes to `gate`; follow its `next`, and then the `next` of what it ran: the handoff into the feature's discussion, which reads this investigation as its earlier log.
 
-A first start — an `unstarted` stub's messages wait in the topic's mailbox, raised at symptom gathering. Render and emit the section verbatim per its marker:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render phase-note {work_unit}.investigation.{topic} --verb Starting
-```
-
-Set `resumed` = `false`.
-
-→ Proceed to **Step 1**.
-
-#### If `phase_status` is `in-progress` or `completed`
-
-Where `phase_status` is `completed`, reopen it — resuming is not starting:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs topic reopen {work_unit} investigation {topic}
-```
-
-Render the phase note — `Reopening` for an investigation just reopened, `Resuming` otherwise — and emit the section verbatim per its marker:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render phase-note {work_unit}.investigation.{topic} --verb {Reopening|Resuming}
-```
-
-**If no file exists at `.workflows/{work_unit}/investigation/{topic}.md`:**
-
-A restart that never reached initialization — the earlier session's file is already gone.
-
-Set `resumed` = `false`.
-
-→ Proceed to **Step 1**.
-
-**Otherwise:**
-
-Load **[resume-detection.md](../leeway-shared/references/resume-detection.md)** with artifact = `investigation`, file = `.workflows/{work_unit}/investigation/{topic}.md`, continue_step = `Step 2`, restart_targets = `the investigation file and the phase cache directory (rm -rf .workflows/.cache/{work_unit}/investigation/{topic}/ — content and agent state together)`, commit = `investigation({work_unit}): restart investigation`.
-
-Set `resumed` from where the reference returns: `true` for **Step 2**, the earlier session's symptoms still standing; `false` for **Step 1**, its file deleted and rebuilt.
-
-→ On return, proceed as the reference directed.
-
----
-
-## Step 1: Initialize Investigation
-
-Load **[initialize-investigation.md](references/initialize-investigation.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 2**.
-
----
-
-## Step 2: Knowledge Usage
-
-Load **[knowledge-usage.md](../leeway-shared/references/knowledge-usage.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 3**.
-
----
-
-## Step 3: Symptom Gathering
-
-Load **[landing-shared-files.md](../leeway-shared/references/landing-shared-files.md)** with work_unit = `{work_unit}`, origin = `investigation/{topic}` — a protocol, not a step: a path the user offers in this step enters its **A. Land It**; nothing runs at load time.
-
-#### If `resumed` is `true`
-
-An earlier session already interviewed the user — don't re-interview. Fold in anything new they have mentioned this session (commit if the file changed).
-
-Then read the mailbox — a gap a paused specification sent here arrives as a message; an empty mailbox is a no-op. Load **[reading-the-mailbox.md](../leeway-shared/references/reading-the-mailbox.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `investigation` — enter **A. Check**.
-
-→ On return, proceed to **Step 4**.
-
-#### Otherwise
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Symptom Gathering`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Gathering detailed symptoms — reproduction steps, error messages, affected areas, and environmental context.
-```
-
-Read what the Symptoms section already holds — initialisation seeded it from the carrier, and that is the user's own account. Ask what it does not answer, and confirm rather than re-ask where it is thin. Putting a question they have already answered back to them reads as not having listened.
-
-Load **[symptom-gathering.md](references/symptom-gathering.md)** and use its questions to gather symptoms from the user.
-
-Document symptoms in the investigation file as you gather them: what an answer gave goes into the file before the next question is asked. Commit after each significant addition. The Symptoms section's fields are prompts, not a form: it holds only what the carrier and the user said. What they don't know goes in as not known, in their words; a Symptoms field the interview never reached is dropped, never filled in. The other sections stay as the template left them.
-
-Then read the mailbox — an empty mailbox is a no-op. Load **[reading-the-mailbox.md](../leeway-shared/references/reading-the-mailbox.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `investigation` — enter **A. Check**.
-
-When symptoms are sufficiently understood to begin code analysis:
-
-→ On return, proceed to **Step 4**.
-
----
-
-## Step 4: Contextual Query
-
-Load **[contextual-query.md](../leeway-shared/references/contextual-query.md)** with work_unit = `{work_unit}` and follow its instructions as written.
-
-→ On return, proceed to **Step 5**.
-
----
-
-## Step 5: Investigation Plan
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Investigation Plan`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Forming hypotheses and agreeing where to look and how collaboratively to work — or re-confirming the existing plan when resuming — before deep tracing begins.
-```
-
-Load **[investigation-plan.md](references/investigation-plan.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 6**.
-
----
-
-## Step 6: Code Analysis
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Code Analysis`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Tracing the bug through the codebase — following code paths, checking state, and narrowing down the root cause.
-```
-
-Load **[analysis-patterns.md](references/analysis-patterns.md)** for tracing techniques, **[analysis-checkpoints.md](references/analysis-checkpoints.md)** for the collaboration protocol, and **[landing-shared-files.md](../leeway-shared/references/landing-shared-files.md)** with work_unit = `{work_unit}`, origin = `investigation/{topic}` for the files the user shares — all three govern this step.
-
-Trace the bug through the code along the agreed plan. Document findings in the investigation file as you analyze, keep the hypothesis ledger current, and commit after each significant finding.
-
-When the root cause is identified and every hypothesis is resolved:
-
-→ On return, proceed to **Step 7**.
-
----
-
-## Step 7: Root Cause Synthesis
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Root Cause Synthesis`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Synthesising findings into a clear root cause statement, contributing factors, and blast radius.
-```
-
-Synthesize findings into a clear root cause:
-
-1. **Root cause statement**: Clear, precise description of the bug's cause
-2. **Contributing factors**: What conditions enable the bug?
-3. **Why it wasn't caught**: Testing gaps, edge cases, etc.
-4. **Blast radius**: What's directly affected; what shares the code or pattern
-
-Do not draft fix direction here — it is explored with the user after the findings are signed off.
-
-Document in the investigation file and commit.
-
-*Knowledge-base nudge — if the root cause pattern feels familiar, query the knowledge base before moving on. A matching prior investigation can confirm the diagnosis or surface a related bug. See **[knowledge-usage.md](../leeway-shared/references/knowledge-usage.md)**.*
-
-→ Proceed to **Step 8**.
-
----
-
-## Step 8: Root Cause Validation
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Root Cause Validation`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Offering an independent validation pass on the root cause before the findings are presented.
-```
-
-Load **[root-cause-validation.md](references/root-cause-validation.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 9**.
-
----
-
-## Step 9: Findings Sign-off
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Findings Sign-off`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Presenting the investigation findings for your sign-off before we explore the fix.
-```
-
-Load **[findings-signoff.md](references/findings-signoff.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 10**.
-
----
-
-## Step 10: Fix Exploration & Discussion
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Fix Exploration`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Exploring fix approaches and agreeing the direction with you.
-```
-
-Load **[fix-exploration.md](references/fix-exploration.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 11**.
-
----
-
-## Step 11: Fix Validation
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Fix Validation`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> An independent agent now pressure-tests the agreed direction — confirming it resolves the root cause and hunting for side effects before the investigation concludes.
-```
-
-Load **[fix-validation.md](references/fix-validation.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 12**.
-
----
-
-## Step 12: Compliance Self-Check
-
-Load **[compliance-check.md](../leeway-shared/references/compliance-check.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 13**.
-
----
-
-## Step 13: Conclude Investigation
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Conclude Investigation`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Wrapping up. Final confirmation before marking the investigation as complete.
-```
-
-Load **[conclude-investigation.md](references/conclude-investigation.md)** and follow its instructions as written.
+The person keeping shaping at start this work, the bugfix staying one, settles the fix afresh: replace the fix through `raise --replaces {fix} --reason changed-mind`, its call holding what the step back found again, then carry on as **The Fix Direction** says once it is decided.

@@ -461,15 +461,14 @@ describe('conversation position', () => {
     });
   });
 
-  /** A topic's note, a discussion's or an investigation's: its log named where written, the documents beside it, the transcript found or not, the log's header line owed or not — again where the conversation wrote there before another. */
-  function topicNote(where, unit, topic, { log = false, transcript = null, header = null, again = false, phase = 'discussion', documents = [] } = {}) {
+  /** A topic's note, a discussion's or an investigation's: its log named where written, the transcript found or not, the log's header line owed or not — again where the conversation wrote there before another. */
+  function topicNote(where, unit, topic, { log = false, transcript = null, header = null, again = false, phase = 'discussion' } = {}) {
     const logFile = abs(`.leeway/${unit}/topics/${topic}/log.md`);
     return [
       `The conversation was just compacted. This conversation is working in ${where}. Before anything else, re-read these in full, running each engine call:`,
       `- ${abs(`.claude/skills/leeway-${phase}-process/SKILL.md`)} and its framework`,
       `- \`node .claude/skills/leeway-engine/scripts/engine.cjs ledger record ${unit} ${topic}\``,
       ...(log ? [`- ${logFile}`] : []),
-      ...documents.map((document) => `- ${abs(document)}`),
       transcript === null
         ? 'This conversation\'s transcript cannot be found: say so in one line, and carry on from the log.'
         : `Catch the log, ${logFile}, up from this conversation's transcript, ${transcript}, from the log's last write onward.`,
@@ -501,7 +500,7 @@ describe('conversation position', () => {
     assert.strictEqual(answer.text, topicNote('the discussion of "ledger" in the epic "pay"', 'pay', 'ledger', { log: true, transcript: file }));
   });
 
-  it('a bugfix\'s investigation carries its recovery whole, as a discussion does — the topic\'s record and its log caught up from the transcript — and beside them the document its skill writes today', () => {
+  it('a bugfix\'s investigation carries its recovery whole, as a discussion does — the topic\'s record and its log, the investigation itself, caught up from the transcript, and no document beside them (19.4.3)', () => {
     install('leeway-investigation-process');
     write('.leeway/pay/topics/ledger/log.md', '## 2026-01-01 · session sess-1\n\nThe hunt so far.\n');
     write('.leeway/pay/investigation/ledger.md');
@@ -509,10 +508,10 @@ describe('conversation position', () => {
     ok(['session', 'label', 'pay', 'investigation', 'ledger']);
     const answer = reads();
     assert.deepStrictEqual([answer.skill, answer.files], [
-      abs('.claude/skills/leeway-investigation-process/SKILL.md'), ['.leeway/pay/topics/ledger/log.md', '.leeway/pay/investigation/ledger.md'].map(abs),
+      abs('.claude/skills/leeway-investigation-process/SKILL.md'), [abs('.leeway/pay/topics/ledger/log.md')],
     ]);
     assert.strictEqual(answer.text, topicNote('the investigation of "ledger" in the epic "pay"', 'pay', 'ledger', {
-      phase: 'investigation', log: true, documents: ['.leeway/pay/investigation/ledger.md'], transcript: file,
+      phase: 'investigation', log: true, transcript: file,
     }));
   });
 
@@ -647,8 +646,6 @@ describe('conversation position', () => {
     assert.deepStrictEqual(reads().files, []);
     write('.leeway/pay/topics/ledger/log.md');
     assert.deepStrictEqual(reads().files, [abs('.leeway/pay/topics/ledger/log.md')]);
-    write('.leeway/pay/investigation/ledger.md');
-    assert.deepStrictEqual(reads().files, ['.leeway/pay/topics/ledger/log.md', '.leeway/pay/investigation/ledger.md'].map(abs));
   });
 
   it('a place whose skill this project lacks carries nothing on, whatever documents it has', () => {

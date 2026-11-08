@@ -67,7 +67,6 @@ const { latestSessionLog, productSession } = require('./discovery-session.cjs');
 const { PRODUCT_SESSIONS } = require('./layout.cjs');
 const { phaseSkill, HANDOFF_TARGETS } = require('./handoff.cjs');
 const { stepOfId, shownTask } = require('./task-id.cjs');
-const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 const { section, dataSection, GATE_MOD_INSTRUCTION } = require('./projections/surfaces.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
@@ -423,8 +422,7 @@ function dropPosition(sessionId) {
 // beside its documents and the log its conversation keeps, where it keeps
 // one, which is caught up from the conversation's transcript (8.14.9):
 // discussion's names the topic's record and its log (24.2.1–24.2.3), and a
-// bugfix investigation's the same, beside the document its skill writes
-// today, `investigation/{topic}.md` (19.4.3);
+// bugfix investigation's the same, its log the investigation (19.4.3);
 // discovery's, at an epic, the unit's map and the open log, and at the
 // product's conversation its open log (24.2.8, 8.14.6) — the latest on disk
 // where none is open; specification's, at the unit whatever topic its place
@@ -580,13 +578,10 @@ function workAt(cwd, position, manifest, sessionId) {
   switch (phase) {
     case 'discovery':
       return discoveryWork(skill, [mapCall(name)], sessionLog(path.join(wu, 'discovery'), phaseData(manifest, 'discovery').active_session));
-    case 'discussion': {
-      const log = statePath(cwd, topicLog(name, topic));
-      return { skill, documents: [log], whole: { calls: [recordCall(name, topic)], log } };
-    }
+    case 'discussion':
     case 'investigation': {
       const log = statePath(cwd, topicLog(name, topic));
-      return { skill, documents: [log, statePath(cwd, INDEXED_ARTIFACTS.investigation(name, topic))], whole: { calls: [recordCall(name, topic)], log } };
+      return { skill, documents: [log], whole: { calls: [recordCall(name, topic)], log } };
     }
     case 'specification': {
       // Required here, as the ledger read it makes requires this module; a
