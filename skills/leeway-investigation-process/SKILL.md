@@ -91,7 +91,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs brief {kind} {work_unit} --
 
 It runs in the background while the work goes on: the step back, while the root cause is checked.
 
-When a report lands, `agent scan {work_unit} investigation {work_unit}` lists it. Read it, then record its findings by the ids its headings carry — `agent ack {work_unit} investigation {work_unit} {id} --findings {F1,F2}`, or `--clean` where it found none. Check each against the code. One that holds lands as your finding, then is marked taken, `agent surface {work_unit} investigation {work_unit} {id} {finding}`, once what it reaches the person as is drawn:
+When a report lands, `agent scan {work_unit} investigation {work_unit}` lists it. Read it, then record its findings by the ids its headings carry — `agent ack {work_unit} investigation {work_unit} {id} --findings {F1,F2}`, or `--clean` where it found none. Check each against the code. One that holds lands as your finding, then is marked taken, `agent surface {work_unit} investigation {work_unit} {id} {finding}`:
 - one that breaks the root cause: the root cause is replaced for it, `--cause` the finding, and logged again;
 - one that changes what the fix does for the person reaches them as a product question: `raise` replacing the fix, `--cause` the finding, then surfaced as that replacement, `--replaces {fix} --reason new-fact`;
 - one that puts to the person what the product should do, before any fix stands: asked and raised as **What Only the Person Can Say** says, then surfaced as that question, `--question {question}`;

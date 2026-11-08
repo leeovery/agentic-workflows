@@ -5,8 +5,10 @@
 // a bugfix's investigation and the pages of its hunt — drawn from the hunt
 // its log holds (investigation-log.cjs), the ledger at its place, its
 // validations' rows (agent-state.cjs) and the raises this conversation
-// sealed there (raise.cjs). Nothing of the hunt is read for a unit that is
-// not a bugfix in its investigation.
+// sealed there (raise.cjs) — at its topic, and at its own level, where a
+// permission for the hunt is asked. Nothing of the hunt is read for a unit
+// that is not a bugfix in its investigation, and the ledger is folded once
+// a board call for every unit it draws.
 //
 // - The hunt is the log's: the symptoms, each hypothesis where it stands —
 //   intended where the person's ruling made it so — and each experiment
@@ -20,10 +22,14 @@
 //   dispatch until it is taken in — its report landed and its findings
 //   still being acted on among it — lost with the conversation that sent
 //   it, or taken in with what it found, as the conclude reads it
-//   (investigation-conclude.cjs, `validationSince`). Each carries the effort
+//   (investigation-conclude.cjs, `validationSince`) — but read still while a
+//   finding of it surfaced as a question or a replacement still waits on
+//   the person: its question open, or the decision it would replace current
+//   and kept by no answer since. Each carries the effort
 //   its agent's definition fixes (brief-names.cjs).
-// - What waits on the person is each raise this conversation sealed at the
-//   place that the person has not answered and whose question is still open,
+// - What waits on the person, while it is under way, is each raise this
+//   conversation sealed at its places that the person has not answered and
+//   whose question is still open,
 //   or whose decision a replacement proposes is still current — asked in
 //   the conversation, never queued (20.12.1). Each says what raised it: the
 //   validation one of whose findings was surfaced as it, whatever that
@@ -45,11 +51,11 @@
 //   read as `ledger since` reads them, never a look (5.8.14): each but the
 //   root cause and the fix, which have sections of their own.
 // - Where it stands: concluded once its item is completed; else validating
-//   the root cause while that validation runs; else the fix direction
-//   waiting on the person; else validating the fix while that validation
-//   runs; else investigating. How far it has come, as All work says it, is
-//   read from what it holds: the cause found, confirmed, the fix picked,
-//   confirmed.
+//   the root cause while that validation runs; else validating the fix
+//   while that one does; else the fix direction waiting on the person; else
+//   investigating. How far it has come, as All work says it, is
+//   read from what it holds: the cause found, confirmed, the fix picked —
+//   as the fix direction reads its pick — confirmed.
 // - Nothing of earlier fixes to the area is shown or counted (20.12.3):
 //   they are Claude's analysis, in the log's prose, never its lists.
 // ---------------------------------------------------------------------------
@@ -58,7 +64,7 @@ const { fact, placeFact } = require('../board-model.cjs');
 const { readShown, answerMap } = require('../ledger-read.cjs');
 const { answerSince } = require('../ledger-since.cjs');
 const { factsOf, questionStands, notCurrent } = require('../ledger-fold.cjs');
-const { withUnitEntries } = require('../unit-entries.cjs');
+const { everyUnitEntries } = require('../unit-entries.cjs');
 const { shortId } = require('../ledger-ids.cjs');
 const { rowStanding, answersOn } = require('../topic-map.cjs');
 const { agentRows, surfacedAs } = require('../agent-state.cjs');
@@ -67,6 +73,7 @@ const { sealsAt, downChain } = require('../raise.cjs');
 const { drawnRows } = require('./raise.cjs');
 const { huntOf, huntEntries, rootCauseNow } = require('../investigation-log.cjs');
 const { VALIDATIONS, validationSince } = require('../investigation-conclude.cjs');
+const { gapsIn } = require('../spec-passes.cjs');
 const { itemOf } = require('../derivations.cjs');
 const { projectName } = require('../state-checks.cjs');
 
@@ -83,8 +90,8 @@ const { projectName } = require('../state-checks.cjs');
 
 const PHASE = 'investigation';
 
-/** The investigation's place, as a raise there seals it. @param {BoardAt} at */
-const placeOf = (at) => ({ unit: at.unit, phase: PHASE, topic: at.unit });
+/** The places the investigation's raises are sealed at: its topic, and its own level. @param {BoardAt} at */
+const placesOf = (at) => [at.unit, null].map((topic) => ({ unit: at.unit, phase: PHASE, topic }));
 
 /** Whether the unit's investigation is under way. @param {BoardAt} at */
 const investigating = ({ manifest, unit }) => manifest.work_type === 'bugfix' && itemOf(manifest, PHASE, unit)?.status === 'in-progress';
@@ -95,12 +102,14 @@ const huntAt = (at) => at.once('hunt', () => huntOf(at.cwd, at.unit, at.warnings
 /**
  * What the hunt reads of the ledger, in one read: the unit's entries, the
  * root cause as it stands and the fix it rests on, whether a raise is down
- * the fix direction's question's chain, and the raises sealed at its place
- * in this conversation; read once a call.
+ * the fix direction's question's chain, and the raises sealed at its places
+ * in this conversation, oldest first; read once a call, the ledger folded
+ * once for every unit the call draws.
  * @param {BoardAt} at
  * @returns {{folded: Entries['folded'], rootCause: Rested|null, fix: (Rested & {question: Rested})|null, onFix: (seal: Seal) => boolean, seals: Seal[]}}
  */
-const ledgerAt = (at) => at.once('hunt-ledger', () => withUnitEntries(at.cwd, at.unit, at.warnings, (view) => {
+const ledgerAt = (at) => at.once('hunt-ledger', () => {
+  const view = at.shared('unit-entries', () => everyUnitEntries(at.cwd, at.warnings))(at.unit);
   const hunt = huntAt(at);
   const { fix } = huntEntries(at.unit, view, hunt);
   const asked = hunt.fixDirection?.entry;
@@ -109,9 +118,9 @@ const ledgerAt = (at) => at.once('hunt-ledger', () => withUnitEntries(at.cwd, at
     rootCause: rootCauseNow(view, hunt),
     fix: 'fault' in fix ? null : fix,
     onFix: asked === undefined ? () => false : downChain(view.folded, asked),
-    seals: sealsAt(at.session, placeOf(at)),
+    seals: placesOf(at).flatMap((place) => sealsAt(at.session, place)).sort((a, b) => a.at.localeCompare(b.at)),
   };
-}));
+});
 
 /** Whether a seal is the fix direction's: down its question's chain, or carrying a step back. @param {BoardAt} at @param {Seal} seal */
 const fixSeal = (at, seal) => (!seal.fact && seal.call.stepped_back !== undefined) || ledgerAt(at).onFix(seal);
@@ -197,11 +206,23 @@ const validationsOf = (at) => at.once('hunt-validations', () => {
     const standing = validationSince(at.cwd, at.unit, folded, validation, rests);
     if (standing === null) return { ...line, state: /** @type {const} */ ('not-started') };
     const row = rows.get(standing.id);
-    if (standing.stands === 'taken-in') return { ...line, state: /** @type {const} */ ('done'), found: row?.findings.length ?? 0 };
+    if (standing.stands === 'taken-in' && !stillAsking(at, folded, standing.id)) return { ...line, state: /** @type {const} */ ('done'), found: row?.findings.length ?? 0 };
     if (standing.stands === 'lost') return { ...line, state: /** @type {const} */ ('lost') };
     return { ...line, state: /** @type {const} */ ('running'), since: row?.created ?? null };
   });
 });
+
+/**
+ * Whether a finding of a validation's row, surfaced as a question or a
+ * replacement, still waits on the person: its question open, or the
+ * decision it would replace current and kept by no answer since.
+ * @param {BoardAt} at @param {Entries['folded']} folded @param {string} id
+ */
+function stillAsking(at, folded, id) {
+  const row = surfacedAs(at.cwd, at.unit, PHASE, at.unit).find((held) => held.id === id);
+  if (row === undefined) return false;
+  return row.asked.some(({ entry }) => questionStands(folded, entry) === 'open') || gapsIn(folded, at.unit, [], row.raised.map((raise) => ({ ...raise, pass: id }))).raised.length > 0;
+}
 
 /** Where a validation stands. @param {BoardAt} at @param {'root-cause'|'fix'} which */
 const validationAt = (at, which) => validationsOf(at).find(({ validation }) => validation === which)?.state;
@@ -210,8 +231,8 @@ const validationAt = (at, which) => validationsOf(at).find(({ validation }) => v
 function standingOf(at) {
   if (itemOf(at.manifest, PHASE, at.unit)?.status === 'completed') return 'concluded';
   if (validationAt(at, 'root-cause') === 'running') return 'validating-root-cause';
-  if (waitingSeals(at).some((seal) => fixSeal(at, seal))) return 'fix-waits';
   if (validationAt(at, 'fix') === 'running') return 'validating-fix';
+  if (waitingSeals(at).some((seal) => fixSeal(at, seal))) return 'fix-waits';
   return 'investigating';
 }
 
@@ -227,7 +248,7 @@ function investigationHowFar(at) {
   const { rootCause, fix } = ledgerAt(at);
   if (rootCause === null) return 'finding the cause';
   if (validationAt(at, 'root-cause') !== 'done') return 'cause found, not yet confirmed';
-  if (fix === null) return 'cause confirmed, the fix not yet picked';
+  if (fix === null && fixDirectionOf(at).state !== 'picked') return 'cause confirmed, the fix not yet picked';
   return validationAt(at, 'fix') === 'done' ? 'fix confirmed' : 'fix picked, not yet confirmed';
 }
 
@@ -296,12 +317,12 @@ function decidedOf(at) {
 }
 
 /**
- * The investigation's This session (the header's), what waits on the
- * person read from the unit's one list, which holds its raises with what
- * raised each.
- * @param {BoardAt} at @param {WaitingLine[]} waiting @returns {{view: InvestigationView}}
+ * The investigation's This session (the header's): what waits on the
+ * person its own raises alone, never what waits on the unit in a later
+ * phase.
+ * @param {BoardAt} at @returns {{view: InvestigationView}}
  */
-function investigationView(at, waiting) {
+function investigationView(at) {
   const hunt = huntAt(at);
   const { rootCause } = ledgerAt(at);
   const own = ownSection(at);
@@ -314,7 +335,7 @@ function investigationView(at, waiting) {
       project: projectName(at.cwd),
       started: typeof at.manifest.created === 'string' ? at.manifest.created : null,
       standing: standingOf(at),
-      waiting: waiting.map((line) => ({ raised_by: null, why: null, options: null, lean_first: null, ...line })),
+      waiting: investigationWaits(at),
       decided: decidedOf(at),
       symptoms: hunt.symptoms.map(({ text }) => text),
       hypotheses: hunt.hypotheses.map(({ name, title, state }) => ({ name, title, state })),

@@ -118,11 +118,12 @@ const BOARD_USAGE = 'board <session-id> [--tab this|unit|all] [--unit <work-unit
  * in the unit and the briefs it issued for it, oldest first; the unit's
  * tracker, read once — refused where its build has not begun; the
  * project's repositories, read once a call for every unit; one read of
- * anything a call reads twice; and the warnings gathered.
+ * anything a call reads twice, for the unit or, `shared`, for every unit;
+ * and the warnings gathered.
  * @typedef {{
  *   cwd: string, root: string, session: string, place: Place, unit: string, manifest: Record<string, any>, title: string,
  *   inFlight: InFlight[], issued: Issued[], tracker: () => TrackedUnit, repos: () => import('../kernel/repos.cjs').Repo[],
- *   once: <T>(key: string, read: () => T) => T, warnings: string[],
+ *   once: <T>(key: string, read: () => T) => T, shared: <T>(key: string, read: () => T) => T, warnings: string[],
  * }} BoardAt
  */
 /** What a view's read answers: the view, and the questions a press can queue where it reads them. @typedef {{view: View, questions?: Question[]}} Read */
@@ -168,10 +169,10 @@ function placeOf(root, position) {
  * lacks it; its tracker read once, with the task a page names, and the
  * call's one read of the project's repositories.
  * @param {string} cwd @param {string} session @param {Place} place @param {string} unit @param {InFlight[]} inFlight @param {string[]} warnings @param {TaskRef|null} task
- * @param {BoardAt['repos']} repos
+ * @param {BoardAt['repos']} repos @param {BoardAt['shared']} shared
  * @returns {BoardAt}
  */
-function unitAt(cwd, session, place, unit, inFlight, warnings, task, repos) {
+function unitAt(cwd, session, place, unit, inFlight, warnings, task, repos, shared) {
   const root = stateRoot(cwd);
   const manifest = manifestOf(root, unit);
   if (manifest === null) throw new Error(`there is no work unit "${unit}"`);
@@ -198,6 +199,7 @@ function unitAt(cwd, session, place, unit, inFlight, warnings, task, repos) {
     }),
     repos,
     once,
+    shared,
     warnings,
   };
 }
@@ -215,7 +217,7 @@ const PHASE_VIEWS = Object.freeze({
   specification: { read: (at) => specView(at, waitingOn(at)), banner: (at) => specBanner(at, waitingOn(at)) },
   discovery: { read: (at) => discoveryView(at, waitingOn(at)), banner: (_, view) => discoveryBanner(view), of: (type) => type === 'epic' },
   experiment: { read: experimentView, banner: (_, view) => experimentBanner(view) },
-  investigation: { read: (at) => investigationView(at, waitingOn(at)), banner: (_, view) => investigationBanner(view) },
+  investigation: { read: investigationView, banner: (_, view) => investigationBanner(view) },
 });
 
 /** A phase's view for the unit, null where the unit's page stands for it. @param {BoardAt} at @param {string|null} phase */
@@ -366,8 +368,15 @@ function boardRead(cwd, positional, opts) {
   /** @type {import('../kernel/repos.cjs').Repo[]|undefined} */
   let repos;
   const reposRead = () => (repos ??= projectRepos(codeRoot(cwd)));
+  /** @type {Map<string, unknown>} */
+  const callReads = new Map();
+  /** @type {BoardAt['shared']} */
+  const shared = (key, read) => {
+    if (!callReads.has(key)) callReads.set(key, read());
+    return /** @type {any} */ (callReads.get(key));
+  };
   const at = (/** @type {string} */ unit) => {
-    if (!units.has(unit)) units.set(unit, unitAt(cwd, session, place, unit, position?.tasks ?? [], warnings, unit === pageUnit ? pageTask : null, reposRead));
+    if (!units.has(unit)) units.set(unit, unitAt(cwd, session, place, unit, position?.tasks ?? [], warnings, unit === pageUnit ? pageTask : null, reposRead, shared));
     return /** @type {BoardAt} */ (units.get(unit));
   };
   const tabAt = tabUnit === null ? null : at(tabUnit);

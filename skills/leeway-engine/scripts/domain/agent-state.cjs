@@ -1043,7 +1043,7 @@ function reportedPasses(cwd, workUnit) {
  * its findings were raised replacing and the questions they were asked
  * as. Read as a derivation reads, tolerant of the store.
  * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
- * @returns {{id: string, kind: string, raised: {finding: string, replaces: string}[], asked: {finding: string, entry: string}[]}[]}
+ * @returns {{id: string, kind: string, raised: {finding: string, replaces: string, reason: string, mark: string|null}[], asked: {finding: string, entry: string}[]}[]}
  */
 function surfacedAs(cwd, workUnit, phase, topic) {
   return derivationRows(agentDir(cwd, workUnit, phase, topic)).sort(byDispatch).map((row) => ({

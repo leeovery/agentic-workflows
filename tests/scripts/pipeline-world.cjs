@@ -788,12 +788,12 @@ async function fixDirected(sim, wu, { pick = '1', design = false } = {}) {
 
 /**
  * The hunt as the investigation works it, from its entry: the root cause
- * found and validated — the live server's permission asked on the way
- * where `live` — the fix direction raised and picked, then validated.
- * @param {Sim} sim @param {string} wu @param {{live?: boolean}} [opts]
+ * found and validated, the fix direction raised and picked, then
+ * validated.
+ * @param {Sim} sim @param {string} wu
  */
-async function hunted(sim, wu, opts = {}) {
-  await rootCaused(sim, wu, opts);
+async function hunted(sim, wu) {
+  await rootCaused(sim, wu);
   validated(sim, wu, 'root-cause');
   await fixDirected(sim, wu);
   validated(sim, wu, 'fix');
@@ -1526,6 +1526,6 @@ function finished(sim, wu, { closed = false } = {}) {
 
 module.exports = {
   Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, gatesAnswered, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn,
-  investigationCache, rootCaused, reported, validated, fixDirected, hunted, concluded, investigated, linearMenu, linearPick, backToStart, startNew, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicBuildPick, linearBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed,
+  investigationCache, rootCaused, reported, validated, fixDirected, concluded, investigated, linearMenu, linearPick, backToStart, startNew, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicBuildPick, linearBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed,
   DECIDED_ITEMS, specWritten, specBuilt, builders, taskBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finishClosed, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic,
 };

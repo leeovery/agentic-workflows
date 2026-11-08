@@ -401,7 +401,7 @@ const sectionsPage = (at, phase, sections) => ({ kind: 'phase', unit: at.unit, t
 const PHASE_PAGES = Object.freeze({
   discovery: (at) => sectionsPage(at, 'discovery', seedSections(at)),
   discussion: (at) => sectionsPage(at, 'discussion', decisionSections(at)),
-  investigation: (at) => investigationView(at, waitingOn(at)).view,
+  investigation: (at) => investigationView(at).view,
 });
 
 /**
