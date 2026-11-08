@@ -205,9 +205,10 @@ const as = (key) => (value) => [key, value];
  * What a moved unit's topic holds from the type it was (workunit-move.cjs,
  * 19.5.16), read at its first opening as input it never changes, each by
  * what the move carried: the topic's record where lines were carried to
- * it, a bugfix's investigation log and a quick-fix's build log where they
- * were set aside, and the branches a quick-fix's fixes' commits were kept
- * on — none where the move carried none of it.
+ * it, a bugfix's investigation log, and a quick-fix's build log and its
+ * fixes' short records, `summary.md`, where they were set aside, and the
+ * quick-fix's branch kept in each repository whose commits on it stand
+ * unlanded — none where the move carried none of it.
  * @param {Entering} at @returns {Line[]}
  */
 function carriedBefore({ cwd, unit, topic = '', notes }) {
@@ -216,6 +217,7 @@ function carriedBefore({ cwd, unit, topic = '', notes }) {
     ...(carriedTo(stateRoot(cwd), unit, topic, notes) ? [as('earlier record')(`\`${recordCall(unit, topic)}\``)] : []),
     ...earlier(EARLIER.investigationLog).map(as('earlier log')),
     ...earlier(`${EARLIER.build}/log.md`).map(as('earlier build log')),
+    ...earlier(EARLIER.summary).map(as('earlier summary')),
     ...keptBranches(cwd, unit).map(as('kept branch')),
   ];
 }

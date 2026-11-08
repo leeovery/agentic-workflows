@@ -188,6 +188,7 @@ const METHODS = Object.freeze({
 /** @typedef {import('./landing.cjs').LandingTask} LandingTask */
 /** @typedef {import('./landing.cjs').ChainTip} ChainTip */
 /** @typedef {import('./landing.cjs').QuickFixTask} QuickFixTask */
+/** @typedef {import('./landing.cjs').QuickFixPull} QuickFixPull */
 /**
  * A landing driver's methods, and the least each answers — what the landing
  * conformance suite reads. Each verb acts in one repository of the
@@ -213,16 +214,20 @@ const METHODS = Object.freeze({
  * phase is merged; the seam makes each in turn, and
  * `finished` lets go, once finish has merged them all, what the driver
  * keeps of the unit there.
- * A quick-fix lands as one pull request, its branch's, in the project's own
- * repository (landing.cjs): `quickFixPull` answers its heads — the one
+ * A quick-fix lands as one pull request, its branch's, in each repository
+ * it touches (landing.cjs): `quickFixPull` answers its heads — the one
  * open's, null where none is, and those of the ones merged, each a commit
- * the repository holds — writing nothing but a merged head fetched;
- * `openQuickFix` opens it at the branch as it stands, under the landing's
- * message, `already` where it is; `mergeQuickFix` merges it, the branch
- * squashed onto the branch it lands on as one commit under that message,
- * or, for a landing of no task, brings that branch here to the host's,
- * answering `already`; and `closeQuickFix` closes the one open unmerged,
- * as a move closes it, answering whether it did. Where the host can, run
+ * the repository holds — the host's copy of the branch, held here, null
+ * where the host has none, and the driver's words for a pull request closed
+ * by hand, null where the latest was not — writing nothing but heads
+ * fetched; `openQuickFix` opens it at the branch as it stands, under the
+ * landing's message, a push replacing the host's copy only while it stands
+ * where the landing read it, `already` where it is; `mergeQuickFix` merges
+ * it, the branch squashed onto the branch it lands on as one commit under
+ * that message, each submodule the landing names pointed as it names it,
+ * or, given no landing, brings that branch here to the host's, answering
+ * `already`; and `closeQuickFix` closes the one open unmerged, as a move
+ * closes it, answering whether it did. Where the host can, run
  * from a repository's checkout against its remote's repository:
  * `protectBranch` sets a rule refusing a branch's deletion and any push to
  * it that is not a fast-forward (4.4.6), and `setSquashDefault` makes a
@@ -242,9 +247,9 @@ const METHODS = Object.freeze({
  *   chain: (ctx: LandingContext, ref: TaskRef) => {stack: string[]}|null,
  *   mergePhase: (ctx: LandingContext, phase: number) => {into: string, merged: string[], warnings?: string[]}|{into: string, already: true, warnings?: string[]}|null,
  *   nextMerge: (ctx: LandingContext) => {phase: number, merge: () => {into: string, merged: string[], warnings?: string[]}}|null,
- *   quickFixPull: (ctx: LandingContext, branch: string) => {open: string|null, merged: string[]},
+ *   quickFixPull: (ctx: LandingContext, branch: string) => QuickFixPull,
  *   openQuickFix: (ctx: LandingContext, landing: QuickFixTask) => {already?: true, warnings?: string[]},
- *   mergeQuickFix: (ctx: LandingContext, landing: QuickFixTask) => {into: string, merged: string[], warnings?: string[]}|{into: string, already: true, warnings?: string[]},
+ *   mergeQuickFix: (ctx: LandingContext, landing: QuickFixTask|null) => {into: string, merged: string[], warnings?: string[]}|{into: string, already: true, warnings?: string[]},
  *   closeQuickFix: (ctx: LandingContext, branch: string) => {closed: boolean},
  *   finished?: (ctx: LandingContext) => void,
  * }} LandingMethods

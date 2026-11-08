@@ -16,8 +16,9 @@
 // as Claude writes them (`RECORDS`); three fixes' titles, files and texts
 // (`SET`); the quick-fix entered by a conversation gone since, the set's
 // first two fixes built (`twoFixesBuilt`); what a quick-fix conformance
-// suite reads a landing driver by (`quickFixConformance`); the knowledge
-// base's chunks of `summary.md` (`summaryChunks`); a git command run as
+// suite reads a landing driver by (`quickFixConformance`), and one across
+// nested repositories (`quickFixNestedConformance`); the knowledge base's
+// chunks of `summary.md` (`summaryChunks`); a git command run as
 // Claude runs one in the conversation, the shell guard asked first
 // (`guardedGit`); finish's checklist worked and closed (`checklistClosed`),
 // the fixes recorded before it (`fixesRecorded`), and the close's yes as its
@@ -33,8 +34,11 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { afterEach } = require('node:test');
-const { call, ok, okSections, output, sectionOf, writeState, createFile, commitAll, git, statePath, layout, fixtureFrom, cleanupFixture, GIT_TIMEOUT_MS } = require('./engine-harness.cjs');
+const {
+  call, ok, okSections, output, sectionOf, writeState, createFile, commitAll, commitCode, git, statePath, layout, fixtureFrom, folderFrom, setupFixtureAt, initRepo, addSubmodule, cleanupFixture, GIT_TIMEOUT_MS,
+} = require('./engine-harness.cjs');
 const { createManifest, useTempFolder } = require('./discovery-test-utils.cjs');
+const { NESTED } = require('./landing-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const store = require(path.join(SCRIPTS, 'kernel/knowledge/store.cjs'));
@@ -186,6 +190,88 @@ function quickFixConformance(name, prefix) {
   };
 }
 
+/** A copy of the quick-fix nesting repositories: the project, and its submodule's and clone's checkouts. @typedef {{dir: string, ext: string, lib: string}} NestedQuickFix */
+
+/**
+ * What a quick-fix suite across nested repositories reads a landing driver
+ * by (7.2.24): its side; the calls' options in the suite's conversation; a
+ * copy at each call of the quick-fix in a project nesting a submodule and a
+ * clone (landing-world.cjs's `NESTED`), each repository's code tagged
+ * `landing-base` and readied for the driver, built once per process,
+ * entered — every copy removed after its test; fix `n` built through the
+ * door from the files it writes, each by its path in the project —
+ * started, committed, opened, done and recorded, the opening's answer;
+ * the close made, its answer; and what each repository's default branch
+ * gained, each landing by its task and the paths it changed.
+ * @param {string} name the driver's @param {string} prefix the copies' temp-directory prefix
+ */
+function quickFixNestedConformance(name, prefix) {
+  /** @type {import('./landing-world.cjs').DriverSide} */
+  const side = require(path.join(__dirname, '..', 'drivers', name, 'landing.cjs'));
+  const config = useTempFolder(`${prefix}config-`);
+  const world = folderFrom(prefix, (folder) => {
+    const dir = setupFixtureAt(path.join(folder, 'project'));
+    const upstream = initRepo(path.join(folder, NESTED.ext.folder));
+    createFile(upstream, 'ext.txt', 'ext\n');
+    commitCode(upstream, 'the ext');
+    const ext = addSubmodule(dir, NESTED.ext.folder, upstream);
+    git(ext, ['remote', 'remove', 'origin']);
+    const lib = initRepo(path.join(dir, NESTED.lib.folder));
+    git(lib, ['symbolic-ref', 'HEAD', `refs/heads/${NESTED.lib.into}`]);
+    git(lib, ['config', 'init.defaultBranch', NESTED.lib.into]);
+    createFile(lib, 'lib.txt', 'lib\n');
+    commitCode(lib, 'the lib');
+    fs.mkdirSync(path.join(dir, '.git', 'info'), { recursive: true });
+    fs.appendFileSync(path.join(dir, '.git', 'info', 'exclude'), `/${NESTED.lib.folder}/\n`);
+    quickFix(dir);
+    for (const repo of [dir, ext, lib]) git(repo, ['tag', 'landing-base']);
+    side.prepare(dir);
+    for (const { folder: at, into } of Object.values(NESTED)) side.nest(path.join(dir, at), into);
+  });
+  /** @type {string[]} */
+  let made = [];
+  afterEach(() => {
+    made.forEach(cleanupFixture);
+    made = [];
+  });
+  /** @returns {As} */
+  const as = () => ({ env: { ...side.env, LEEWAY_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: 'sess-1', TMUX: undefined, TMUX_PANE: undefined } });
+  return {
+    side,
+    as,
+    /** A copy of the world, the quick-fix entered by the suite's conversation. @returns {NestedQuickFix} */
+    project: () => {
+      const folder = world(fs.mkdtempSync(path.join(os.tmpdir(), prefix)));
+      made.push(folder);
+      const dir = path.join(folder, 'project');
+      entered(dir, as());
+      return { dir, ext: path.join(dir, NESTED.ext.folder), lib: path.join(dir, NESTED.lib.folder) };
+    },
+    /**
+     * Fix `n` built from `files`, by their paths in the project, its record written: the opening's answer.
+     * @param {NestedQuickFix} at @param {number} n @param {Record<string, string>} files
+     */
+    built: (at, n, files) => {
+      createFix(at.dir, n, SET[n - 1].title, as());
+      ok(at.dir, ['task', 'start', UNIT, `1.${n}`], as());
+      for (const [file, text] of Object.entries(files)) createFile(at.dir, file, text);
+      ok(at.dir, ['commit', '--paths', ...Object.keys(files), '--task', UNIT, `1.${n}`, '-m', `fix(${UNIT}): ${SET[n - 1].title.toLowerCase()}`], as());
+      const opened = ok(at.dir, ['land', 'open', UNIT, `1.${n}`], as());
+      ok(at.dir, ['task', 'done', UNIT, `1.${n}`], as());
+      ok(at.dir, ['quick-fix', 'record', UNIT, `1.${n}`, '--file', recordFile(at.dir, n, { changed: `${SET[n - 1].title}.`, why: 'It was spelt the American way.', leaves: 'Nothing.' })], as());
+      return opened;
+    },
+    /** The close made, its answer. @param {NestedQuickFix} at */
+    closed: (at) => {
+      checklistClosed(at.dir, as());
+      return ok(at.dir, ['finish', 'yes', UNIT], as());
+    },
+    /** What each repository's default branch gained, each landing by its task and the paths it changed. @param {NestedQuickFix} at */
+    landed: (at) => Object.fromEntries([['.', at.dir, 'main'], ['ext', at.ext, NESTED.ext.into], ['lib', at.lib, NESTED.lib.into]]
+      .map(([repo, dir, into]) => [repo, side.landed(dir, into).map(({ task, paths }) => [task, paths])])),
+  };
+}
+
 /** The knowledge base's chunks of the unit's `summary.md`, each by the heading it sits under. @param {string} dir */
 const summaryChunks = (dir) => store.allChunks(store.loadStore(knowledgeFiles(statePath(dir)).store))
   .filter((chunk) => chunk.source_file === layout.unit(UNIT, 'summary.md'))
@@ -265,6 +351,6 @@ function entered(dir, as) {
 }
 
 module.exports = {
-  UNIT, PLACE, DESCRIPTION, NOTE, FLAG, HELP, BRANCH, RECORDS, SET, fixFile, quickFix, createFix, fixChanged, fixBuilt, recordFile, twoFixesBuilt, quickFixConformance, summaryChunks,
+  UNIT, PLACE, DESCRIPTION, NOTE, FLAG, HELP, BRANCH, RECORDS, SET, fixFile, quickFix, createFix, fixChanged, fixBuilt, recordFile, twoFixesBuilt, quickFixConformance, quickFixNestedConformance, summaryChunks,
   guardedGit, checklistClosed, fixesRecorded, closeYes, asGone, entered,
 };

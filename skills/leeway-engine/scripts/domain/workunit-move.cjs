@@ -44,23 +44,24 @@
 // - The yes (`start-this-work yes` over a staged move): the stage's checks
 //   again, against the unit as it stands, and, where lines are carried, a
 //   conversation naming its session. Then, the writer lock held, each step
-//   one a second yes repeats or finds done: for a quick-fix, the project's
-//   checkout taken back to the branch the project lands on where it has the
-//   quick-fix's one branch out — refused first, nothing moved, while it
+//   one a second yes repeats or finds done: for a quick-fix, each checkout
+//   taken back to the branch its repository lands on where it has the
+//   quick-fix's one branch out — refused first, nothing moved, while one
 //   holds changes not committed — and each fix not yet ended closed, as the
 //   verb closes it but for the refusal of a fix holding work, which the
 //   move lands nothing of (`closeForMove`, task-verbs.cjs), each close
 //   committing the tracker as the verb does; the carry appended, the lines
 //   read once the fixes have closed; then nothing left that the new type's
 //   build, numbering its own phase 1 and tasks 1.n, can meet — the
-//   quick-fix's branch set aside, kept under `moved/fix/{unit}` where it
-//   holds commits of its own, out of every landing's reading, else deleted
-//   (fix-branch.cjs), the fixes' phase taken out of the tracker for good,
-//   its tasks with it (`removePhase`), and its pull request, where one is
-//   open, closed unmerged (`quickFixClose`, landing.cjs) — after the phase,
-//   so a yes run again reads no landing of it; the old type's files set
-//   aside; the brief written. Last, the unit re-typed with its new
-//   description, a quick-fix's `fixes` and a bugfix's investigation item
+//   quick-fix's branch in each repository set aside, kept under
+//   `moved/fix/{unit}` where it holds commits of its own, out of every
+//   landing's reading, else deleted (fix-branch.cjs), the fixes' phase
+//   taken out of the tracker for good, its tasks with it (`removePhase`),
+//   and each of its pull requests, where one is open, closed unmerged
+//   (`quickFixClose`, landing.cjs), one the person closed by hand read as
+//   none open — after the phase, so a yes run again reads no landing of
+//   it; the old type's files set aside; the brief written. Last, the unit
+//   re-typed with its new description, a quick-fix's `fixes` and a bugfix's investigation item
 //   dropped, so the new type starts as one before its spec, and its
 //   registration, in one save. The knowledge base is re-indexed, its
 //   chunks carrying the type (warn-don't-block), and one commit takes the
@@ -172,7 +173,7 @@ function fixesOf(cwd, manifest, to) {
   const fixes = trackedPhase(cwd, unit, FIXES_PHASE.number).tasks ?? [];
   if (fixes.length === 0) return fixes;
   const read = quickFixLanding(cwd, unit);
-  const landed = fixes.find(({ ref }) => read.task(ref).landed);
+  const landed = fixes.find(({ ref }) => read.task(ref).landedAny);
   if (landed !== undefined) throw new Error(`${unit}'s fix ${shownTask(landed.ref)} has landed — finish the quick-fix, then start the ${to} as work of its own`);
   return fixes;
 }

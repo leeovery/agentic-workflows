@@ -30,25 +30,32 @@
 // nothing of its unit's below it, where it starts in each repository
 // (`landingTips`).
 //
-// A quick-fix lands as one pull request (19.5.15): every task of its build,
-// its fixes and the fix tasks of a review asked for at its close, commits
-// on its one branch (fix-branch.cjs), in the project's own repository
-// alone, and its pull request is that branch's, onto the default branch.
-// `open` of any of its tasks opens it, or pushes the branch to it where it
-// is open, its title and description its landing's message as the branch
-// stands (`quickFixMessage`, landing-names.cjs), refused for a task closed
-// or landed (fix-end.cjs); `phase` and `finish` each merge it, every task's
-// commit squashed into one, refused while a task is neither done nor closed
-// (fix-end.cjs) — `already` where no task holds work past the branch it
-// lands on not landed, that branch here brought up to the host's. Each
-// first cuts the branch again where a merge by hand left it holding work
-// landed (`cutAgain`, fix-branch.cjs). Its tasks' landing is read here
-// (`quickFixLanding`), each task by content against the default branch as
-// the host has it, whether or not the branch is left, as a person's merge
-// by hand, by any method, leaves it — for its tasks' opening, end and close
-// (fix-end.cjs), the branch cut again, its close (finish.cjs), its record
-// (quick-fix-record.cjs) and its move (workunit-move.cjs), which closes the
-// pull request open unmerged (`quickFixClose`).
+// A quick-fix lands as one pull request in each repository it touches
+// (19.5.15, 7.2.24): every task of its build, its fixes and the fix tasks
+// of a review asked for at its close, commits on its one branch in each
+// (fix-branch.cjs), and each pull request is that branch's, onto that
+// repository's default branch, landed children first, a submodule pointed
+// at its landing as a task's merge points it (7.2.21). The host's copy of
+// the branch is the truth for what each pull request holds: the read
+// fetches it and the open pull request's head, and every verb readies the
+// branches from it before anything moves (`readied`, fix-branch.cjs), a
+// push leased against the head it read. `open` of any of its tasks opens
+// each, or pushes the branch to the one open, its title and description its
+// landing's message as the branch stands (`quickFixMessage`,
+// landing-names.cjs), its tasks in the order they were done (`doneOrder`),
+// refused for a task closed or landed (fix-end.cjs); `phase` and `finish`
+// each merge them, every commit on the branch squashed into one — a
+// person's own among them — refused while a task is neither done nor
+// closed, or done and holding work neither landed nor on the branch
+// (fix-end.cjs) — `already` where no branch holds work past the branch it
+// lands on not landed, each brought up to the host's here. Its tasks'
+// landing is read here (`quickFixLanding`), each task by content against
+// each repository's default branch as the host has it, whether or not the
+// branch is left, as a person's merge by hand, by any method, leaves it —
+// for its tasks' opening, end and close (fix-end.cjs), the branches
+// readied, its close (finish.cjs), its record (quick-fix-record.cjs) and
+// its move (workunit-move.cjs), which closes each pull request open
+// unmerged (`quickFixClose`), one closed by hand read as none open.
 //
 // What every driver shares is settled here: the names (landing-names.cjs);
 // the default branch everything lands on in each repository, never the
@@ -118,7 +125,7 @@ const { resolveDriver, chosenDriver, needsRefusal } = require('./drivers.cjs');
 const { commitStateTail, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { remoteName, nestedRemoteName } = require('./remote.cjs');
 const { assertUnit, parsePhase, parseShownTask, parseTaskId, shownTask, taskId } = require('./task-id.cjs');
-const { trackedTask, trackedPhase, trackedBuild, ENDED } = require('./task-verbs.cjs');
+const { trackedTask, trackedPhase, trackedBuild, phaseWritten, ENDED } = require('./task-verbs.cjs');
 const { taskRounds, pairPassed, changedUnder, changedRefusal, phaseReviewBegun } = require('./round-report.cjs');
 const { verifySetup } = require('./environment.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
@@ -167,9 +174,21 @@ const stamp = () => require('./commit-task.cjs').TRAILER;
  */
 
 /**
- * A quick-fix to land: its one branch, the message it lands under, and the
- * tasks holding work on the branch past the default branch, shown, in order.
- * @typedef {{branch: string, message: string, tasks: string[]}} QuickFixTask
+ * A quick-fix to land in one repository: its one branch, the message it
+ * lands under, the tasks holding work on the branch past the default
+ * branch, shown, in order; the host's copy of the branch as the landing
+ * read it, null where the host has none, which a push replaces only while
+ * it stands there; and, for a merge, the pointers its submodules move to.
+ * @typedef {{branch: string, message: string, tasks: string[], head: string|null, pointers: Map<string, string|null>}} QuickFixTask
+ */
+
+/**
+ * A quick-fix's pull request as a driver reads it in one repository: the
+ * head of the one open, null where none is; the heads of those merged into
+ * the default branch, each held here; the host's copy of the branch, held
+ * here, null where the host has none; and, where the latest was closed by
+ * hand, the driver's words for it and its way on, else null.
+ * @typedef {{open: string|null, merged: string[], head: string|null, closed: string|null}} QuickFixPull
  */
 
 /**
@@ -534,6 +553,25 @@ function landingTips(cwd, unit, repos, wanted) {
 }
 
 /**
+ * Where a quick-fix's branch is made in a repository of the project that
+ * lacks it (fix-branch.cjs): at the host's copy of it, the truth for what
+ * its pull request there holds, else, where the host has none or cannot be
+ * read, at the tip of the branch it lands on (`landingTips`).
+ * @param {string} cwd @param {string} unit @param {Repo[]} repos the project's @param {Repo} repo
+ * @returns {string}
+ */
+function quickFixFrom(cwd, unit, repos, repo) {
+  const driver = /** @type {LandingDriver} */ (chosenDriver(cwd, 'landing').driver);
+  try {
+    const { head } = driver.quickFixPull(contextOf(projectOf(cwd, unit, repos), repo), names.quickFixBranch(unit));
+    if (head !== null) return head;
+  } catch {
+    // A host that cannot be read holds no copy to take, as landingTips falls back on the branch here.
+  }
+  return /** @type {string} */ (landingTips(cwd, unit, repos, [repo]).get(repo.dir));
+}
+
+/**
  * Each repository's part of a merge, children first, `act` run in each —
  * once no default branch points a submodule at a commit its own lacks.
  * @param {Project} project @param {LandingDriver} driver @param {Repo[]} walking @param {(ctx: LandingContext) => Record<string, any>|null} act
@@ -698,13 +736,17 @@ function landChain(cwd, unit, task) {
  * work as done, with every warning bringing the default branch here to it
  * gave — refused before anything moves, for a phase the cut holds, until
  * its phase review has passed and its fixes are done (7.2.4, 12.11.3). A
- * quick-fix's phase lands its one pull request (`quickFixLand`).
+ * quick-fix's phase lands its one pull request (`quickFixLand`), refused
+ * for a phase the tracker holds none of.
  * @param {string} cwd @param {string} unit @param {string} given
  */
 function landPhase(cwd, unit, given) {
   const phase = parsePhase(given);
   assertUnit(unit);
-  if (landsAsOne(cwd, unit)) return { phase, ...quickFixLand(cwd, unit) };
+  if (landsAsOne(cwd, unit)) {
+    if (!phaseWritten(cwd, unit, phase)) throw new Error(`land: ${unit} has no phase ${phase} — a quick-fix lands as one pull request, every phase it holds with it: land finish ${unit}`);
+    return { phase, ...quickFixLand(cwd, unit) };
+  }
   const unreviewed = phaseChecks().phaseReviewRefusal(cwd, unit, phase);
   if (unreviewed !== null) throw new Error(`land: ${unreviewed}`);
   const project = projectOf(cwd, unit);
@@ -825,55 +867,57 @@ function unitTask(unit, id) {
 }
 
 /**
- * A quick-fix's task as its landing reads it: its newest own commit on the
- * branch past the default branch as the host has it, null where it has
- * none there; its newest own commit the repository holds anywhere, null
- * for none; whether it holds work of its own; and whether it has landed.
+ * A quick-fix's task as its landing reads it in one repository: its newest
+ * own commit on the branch past the default branch as the host has it,
+ * null where it has none there; its newest own commit the repository holds
+ * anywhere, null for none; whether it holds work of its own there; and
+ * whether that work has landed.
  * @typedef {{own: string|null, found: string|null, held: boolean, landed: boolean}} QuickFixTaskRead
  */
 
+/** A commit the quick-fix's branch holds past the default branch as the host has it, and the unit's task it is stamped with, null for none. @typedef {{sha: string, message: string, id: string|null}} QuickFixCommit */
+
 /**
- * A quick-fix's landing, read in the project's own repository, where its
- * one branch is, each read made once (the header's): the context; the
- * branch, and its tip here, undefined where it is gone; the tip of the
- * branch it lands on as the host has it (`hostTip`); the pull request's
- * heads (`quickFixPull`); the commits the branch holds past that tip,
- * oldest first, merges aside, each with the task it is stamped with, null
- * for none of the unit's; whether a commit of a task's has landed — on that
- * tip already, in a pull request merged, its change there with the change
- * it is laid on (`holdsTaskChange`), or a copy of it there (`holdsCopy`);
- * each task's read
- * (`QuickFixTaskRead`): landed as its newest own commit has — the one on
- * the branch past the tip, else the newest the repository has on any ref or
- * reflog since the day before its unit was made, as a branch cut again or
- * deleted leaves it — or, holding none, as the tip names it, by its landing
- * or a commit of its own through the door; holding work of its own where it
- * has such a commit, or has landed; and whether the pull request open holds
- * a task's newest commit. Read off git and the host,
- * writing nothing but the host's branch fetched where the driver fetches
- * it; refused as the driver refuses its read.
- * @param {string} cwd @param {string} unit
+ * A quick-fix's landing in one repository it touches (the header's), each
+ * read of the host made once: the context; the branch; the tip of the
+ * branch it lands on as the host has it (`hostTip`); the branch's tip here,
+ * read as it stands, undefined where it is gone; the pull request as the
+ * driver reads it (`quickFixPull`), the host's copy of the branch among it;
+ * the commits the branch holds past that tip, oldest first, merges aside,
+ * each with its task; whether a commit has landed — on that tip already,
+ * in a pull request merged, a task's change there with the change it is
+ * laid on (`holdsTaskChange`), or a copy of it there (`holdsCopy`); each
+ * task's read (`QuickFixTaskRead`): landed as its newest own commit has —
+ * the one on the branch past the tip, else the newest the repository has
+ * on any ref or reflog since the day before its unit was made, as a branch
+ * cut again or deleted leaves it — or, holding none, as the tip names it;
+ * holding work where it has such a commit, or has landed; and whether the
+ * pull request open holds a task's newest commit, refused where the latest
+ * was closed by hand (`refuseClosed`).
+ * @param {string} cwd @param {Project} project @param {LandingDriver} driver @param {Repo} repo
  */
-function quickFixLanding(cwd, unit) {
-  const project = { ...projectOf(cwd, unit), keepsReads: true };
-  const driver = /** @type {LandingDriver} */ (chosenDriver(cwd, 'landing').driver);
-  const ctx = contextOf(project, project.repos[0]);
-  driver.assertServes?.(ctx);
-  const { root } = ctx;
+function repoLanding(cwd, project, driver, repo) {
+  const ctx = contextOf(project, repo);
+  const { root, unit } = ctx;
   const branch = names.quickFixBranch(unit);
-  const at = lg.branches(root).get(branch);
-  const tip = hostTip(driver, ctx);
+  const tip = inRepo(ctx.repo, () => {
+    driver.assertServes?.(ctx);
+    return hostTip(driver, ctx);
+  });
   const since = dayBefore(manifestOf(stateRoot(cwd), unit)?.created);
   const key = stamp();
-  const pull = () => lg.readOnce(ctx, 'quick-fix pull', () => driver.quickFixPull(ctx, branch));
-  const commits = () => lg.readOnce(ctx, 'quick-fix commits', () => (at === undefined ? [] : lg.stampedPast(root, branch, tip, key))
-    .map(({ sha, message, value }) => ({ sha, message, id: unitTask(unit, value) })));
-  const named = () => lg.readOnce(ctx, 'quick-fix named', () => lg.tasksNamedOn(root, tip, unit, key, since));
-  /** @param {string} sha @param {string} id */
-  const landedCommit = (sha, id) => {
-    const { merged } = pull();
-    return lg.isAncestor(root, sha, tip) || merged.some((head) => lg.isAncestor(root, sha, head)) || lg.holdsTaskChange(root, tip, sha, key, id) || lg.holdsCopy(root, tip, sha);
+  const at = () => lg.branches(root).get(branch);
+  const pull = () => lg.readOnce(ctx, 'quick-fix pull', () => inRepo(ctx.repo, () => driver.quickFixPull(ctx, branch)));
+  /** @returns {QuickFixCommit[]} */
+  const commits = () => {
+    const head = at();
+    if (head === undefined) return [];
+    return lg.readOnce(ctx, `quick-fix commits ${head}`, () => lg.stampedPast(root, branch, tip, key).map(({ sha, message, value }) => ({ sha, message, id: unitTask(unit, value) })));
   };
+  const named = () => lg.readOnce(ctx, 'quick-fix named', () => lg.tasksNamedOn(root, tip, unit, key, since));
+  /** @param {string} sha @param {string|null} id */
+  const landedCommit = (sha, id) => lg.isAncestor(root, sha, tip) || pull().merged.some((head) => lg.isAncestor(root, sha, head))
+    || (id !== null && lg.holdsTaskChange(root, tip, sha, key, id)) || lg.holdsCopy(root, tip, sha);
   /** @param {TaskRef} ref @returns {QuickFixTaskRead} */
   const task = (ref) => {
     const id = taskId(ref);
@@ -883,107 +927,233 @@ function quickFixLanding(cwd, unit) {
     const landed = found === null ? named().has(id) : landedCommit(found, id);
     return { own, found, held: landed || found !== null, landed };
   };
+  const refuseClosed = () => {
+    const { closed } = pull();
+    if (closed !== null) inRepo(ctx.repo, () => { throw new Error(`land: ${closed}`); });
+  };
   /** @param {QuickFixTaskRead} read */
   const inPull = (read) => {
+    refuseClosed();
     const { open } = pull();
     return read.own !== null && open !== null && lg.isAncestor(root, read.own, open);
   };
-  return { ctx, driver, branch, at, tip, pull, commits, landedCommit, task, inPull };
+  return { repo, ctx, branch, tip, at, pull, commits, landedCommit, task, refuseClosed, inPull };
+}
+
+/** A quick-fix's landing in one repository, as `repoLanding` reads it. @typedef {ReturnType<typeof repoLanding>} RepoLanding */
+
+/**
+ * A quick-fix's landing (the header's), read once per verb in every
+ * repository it touches, children first, the project's own last: its own,
+ * and each nested one whose quick-fix branch holds work (`lg.holdsWork`).
+ * A task's read gathers each repository's: where it holds work, whether
+ * that work has landed in every one of them, in any, and each
+ * repository's read of it. Read off git and the host, writing nothing but
+ * the host's branches fetched where the driver fetches them; refused as
+ * the driver refuses its reads.
+ * @param {string} cwd @param {string} unit
+ */
+function quickFixLanding(cwd, unit) {
+  const project = { ...projectOf(cwd, unit), keepsReads: true };
+  const driver = /** @type {LandingDriver} */ (chosenDriver(cwd, 'landing').driver);
+  const branch = names.quickFixBranch(unit);
+  const touched = childrenFirst(project.repos).filter((repo) => repo.dir === '' || lg.holdsWork(unit, repo, (held) => held === branch));
+  const repos = touched.map((repo) => repoLanding(cwd, project, driver, repo));
+  /** @param {TaskRef} ref */
+  const task = (ref) => {
+    const each = repos.map((read) => ({ read, task: read.task(ref) })).filter((held) => held.task.held);
+    return { held: each.length > 0, landed: each.length > 0 && each.every((held) => held.task.landed), landedAny: each.some((held) => held.task.landed), each };
+  };
+  return { project, driver, branch, repos, own: /** @type {RepoLanding} */ (repos.at(-1)), task, refuseClosed: () => repos.forEach((read) => read.refuseClosed()) };
 }
 
 /** A quick-fix's landing as `quickFixLanding` reads it. @typedef {ReturnType<typeof quickFixLanding>} QuickFixLanding */
 
 /**
- * A quick-fix as it lands: its branch's tasks holding work past the default
- * branch as the host has it, in order, each by the type and title the
- * tracker holds for it, and the message it lands under (`quickFixMessage`)
- * — refused where the branch is gone, holds nothing past that branch, or
- * carries the state.
- * @param {string} cwd @param {QuickFixLanding} read @param {string} shown the task a refusal names
- * @returns {QuickFixTask}
+ * The order a quick-fix's tasks land in (19.5.17): the fixes in the order
+ * they were done, as their records were written, then the rest in the
+ * order their commits stand on the branch.
+ * @param {Record<string, any>} manifest @param {string[]} ids in the branch's order
  */
-function quickFixTask(cwd, read, shown) {
-  const { ctx, branch, at, tip } = read;
-  const { unit } = ctx;
-  if (at === undefined) throw new Error(`land: ${unit}'s branch ${branch} is not here — a task's start cuts it: task start ${unit} ${shown}`);
-  if (lg.isAncestor(ctx.root, at, tip)) throw new Error(lg.nothingPast(shown, branch, ctx.into));
-  refuseState(ctx, shown, branch, 'quick-fix\'s');
-  const ids = new Set(read.commits().flatMap(({ id }) => (id === null ? [] : [id])));
-  const manifest = loadWorkUnitManifest(cwd, unit);
-  const tasks = trackedBuild(cwd, unit, buildLength(manifest)).tasks.filter((held) => ids.has(taskId(held.ref)) && held.type !== null);
-  const title = String(manifest.description ?? '').split('\n').map((line) => line.trim()).find(Boolean) ?? unit;
-  const message = names.quickFixMessage(unit, title, tasks.map((held) => ({ ref: held.ref, type: /** @type {string} */ (held.type), title: held.title })));
-  return { branch, message, tasks: tasks.map((held) => shownTask(held.ref)) };
+function doneOrder(manifest, ids) {
+  /** @type {string[]} */
+  const recorded = manifest.fixes?.recorded ?? [];
+  const place = (/** @type {string} */ id) => (recorded.includes(id) ? recorded.indexOf(id) : recorded.length + ids.indexOf(id));
+  return [...ids].sort((a, b) => place(a) - place(b));
 }
 
 /**
- * What cutting the quick-fix's branch again did, where it did, as an
- * answer carries it (`cutAgain`, fix-branch.cjs): the answer's part, and the
- * warnings it gave.
- * @param {{answer: Record<string, unknown>, warnings: string[]}|null} cut
+ * A quick-fix as it lands in one repository: its branch, the tasks its
+ * commits past the default branch as the host has it are stamped with, in
+ * the order they land (`doneOrder`), each by the type and title the
+ * tracker holds for it, the message it lands under (`quickFixMessage`), and
+ * the host's copy of the branch as it was read, null where the host has
+ * none — refused for a task with no type (7.2.18), and, in the project's
+ * own repository, where its change carries the state.
+ * @param {string} cwd @param {RepoLanding} read @param {string} shown the task a refusal names
+ * @returns {QuickFixTask}
  */
-const cutWords = (cut) => ({ cut: cut === null ? {} : { cut_again: cut.answer }, warnings: cut?.warnings ?? [] });
+function quickFixTask(cwd, read, shown) {
+  const { ctx, branch } = read;
+  const { unit } = ctx;
+  if (ctx.repo === '.') refuseState(ctx, shown, branch, 'quick-fix\'s');
+  const manifest = loadWorkUnitManifest(cwd, unit);
+  const ids = doneOrder(manifest, [...new Set(read.commits().flatMap(({ id }) => (id === null ? [] : [id])))]);
+  const held = new Map(trackedBuild(cwd, unit, buildLength(manifest)).tasks.map((tracked) => [taskId(tracked.ref), tracked]));
+  const tasks = ids.flatMap((id) => {
+    const tracked = held.get(id);
+    if (tracked === undefined) return [];
+    if (tracked.type === null) throw new Error(untyped(tracked.ref, tracked.status));
+    return [{ ref: tracked.ref, type: tracked.type, title: tracked.title }];
+  });
+  const title = String(manifest.description ?? '').split('\n').map((line) => line.trim()).find(Boolean) ?? unit;
+  return { branch, message: names.quickFixMessage(unit, title, tasks), tasks: tasks.map(({ ref }) => shownTask(ref)), head: read.pull().head, pointers: new Map() };
+}
 
 /**
- * `land open` of a quick-fix's task: its one pull request opened, or the
- * branch pushed to it where it is open (the header's) — refused for a task
- * closed or landed (fix-end.cjs), the branch first cut again where a merge
- * by hand left it holding work landed.
+ * Refuse a quick-fix's opening where its branch is not in the project's
+ * own repository, or no repository it touches holds anything past the
+ * branch it lands on as the host has it; else the repositories that do.
+ * @param {QuickFixLanding} read @param {string} shown
+ * @returns {RepoLanding[]}
+ */
+function owing(read, shown) {
+  const { own, branch } = read;
+  const { unit } = own.ctx;
+  if (own.at() === undefined) throw new Error(`land: ${unit}'s branch ${branch} is not here — a task's start cuts it: task start ${unit} ${shown}`);
+  const past = read.repos.filter((held) => held.commits().length > 0);
+  if (past.length === 0) throw new Error(lg.nothingPast(shown, branch, own.ctx.into));
+  return past;
+}
+
+/**
+ * What readying the quick-fix's branches did, as an answer carries it
+ * (`readied`, fix-branch.cjs): the answer's part — each repository cut
+ * again — the warning of each task left off, and the rest it gave.
+ * @param {{cut: Record<string, unknown>[], remakes: string[], warnings: string[]}} made
+ */
+const cutWords = ({ cut, remakes, warnings }) => ({ cut: cut.length === 0 ? {} : { cut_again: cut }, remakes, warnings });
+
+/**
+ * A walk's answers, each repository's where `happened`, with the warnings
+ * the verb gave before it — readying the branches — first.
+ * @param {string[]} warnings @param {Answer[]} answers @param {(answer: Answer) => boolean} [happened]
+ */
+function walkedWith(warnings, answers, happened) {
+  const { repos, warnings: said = [] } = answered(answers, happened);
+  const all = [...warnings, ...said];
+  return { repos, ...(all.length > 0 ? { warnings: all } : {}) };
+}
+
+/**
+ * `land open` of a quick-fix's task: its one pull request opened in every
+ * repository it touches whose branch holds anything past the branch it
+ * lands on, children first, or the branch pushed to it where it is open
+ * (the header's) — refused for a task closed or landed (fix-end.cjs), and
+ * before anything opens where a branch points a submodule at a commit the
+ * submodule here lacks (`refuseUnheldMoves`); each branch first readied
+ * (`readied`, fix-branch.cjs).
  * @param {string} cwd @param {Project} project @param {TaskRef} ref @param {{committed?: string|null, warnings?: string[]}} before what the tracker's read committed and warned of
  */
 function quickFixOpen(cwd, project, ref, before) {
   const shown = shownTask(ref);
-  carrying(before.warnings ?? [], () => fixEnd().refuseOpening(cwd, ref));
+  const read = carrying(before.warnings ?? [], () => quickFixLanding(cwd, project.unit));
+  carrying(before.warnings ?? [], () => {
+    read.refuseClosed();
+    fixEnd().refuseOpening(cwd, ref, read);
+  });
   return withDriver(cwd, (driver) => {
-    const { cut, warnings } = cutWords(fixBranch().cutAgain(cwd, project.unit));
-    const read = quickFixLanding(cwd, project.unit);
-    const opened = carrying(warnings, () => driver.openQuickFix(read.ctx, quickFixTask(cwd, read, shown)));
-    return { task: shown, branch: read.branch, ...(opened.already ? { already: true } : {}), ...answered([{ repo: '.', ...opened, warnings: [...warnings, ...(opened.warnings ?? [])] }]), ...cut };
+    const { cut, remakes, warnings: rest } = cutWords(fixBranch().readied(read));
+    const warnings = [...remakes, ...rest];
+    const opening = carrying(warnings, () => owing(read, shown).map((held) => ({ held, landing: quickFixTask(cwd, held, shown) })));
+    carrying(warnings, () => opening.forEach(({ held, landing }) => inRepo(held.ctx.repo, () => refuseUnheldMoves(read.project, held.repo, { ref, branch: landing.branch, message: landing.message }, held.tip))));
+    const steps = opening.map(({ held, landing }) => ({ ctx: held.ctx, act: () => driver.openQuickFix(held.ctx, landing) }));
+    const answers = carrying(warnings, () => walk(steps, () => `${project.unit}'s pull request opened`));
+    const already = answers.every((answer) => answer.already) ? { already: true } : {};
+    return { task: shown, branch: read.branch, ...already, ...walkedWith(warnings, answers), ...cut };
   }, before);
 }
 
 /**
+ * The pointers a repository's branch moves its submodules to as the
+ * quick-fix lands (7.2.21): each it moves, a submodule the walk lands in at
+ * its landing of the latest task that moved it, read off its default branch
+ * by its `Task:` line, every other at the branch's own pointer
+ * (`stackMoves`).
+ * @param {LandingDriver} driver @param {RepoLanding} held @param {LandingContext} ctx the repository's merge context
+ * @returns {Map<string, string|null>}
+ */
+function pointersOf(driver, held, ctx) {
+  if (ctx.gitlinks.length === 0) return new Map();
+  const ids = new Map(held.commits().map(({ sha, id }) => [sha, id]));
+  const commits = lg.commitsPast(ctx.root, /** @type {string} */ (held.at()), [held.tip]).map(({ sha, parents }) => {
+    const id = ids.get(sha) ?? null;
+    return { sha, parents, tasks: id === null ? [] : [shownTask(parseTaskId(id))] };
+  });
+  return new Map(lg.stackMoves(ctx, commits, held.tip, (sub) => landsOn(driver, sub)).flatMap((moves) => [...moves]));
+}
+
+/**
  * `land phase` and `land finish` of a quick-fix: its one pull request
- * merged, every task's commit squashed into one (the header's) — refused
- * before anything moves while a task is neither done nor closed
- * (fix-end.cjs), the branch first cut again where a merge by hand left it
- * holding work landed, so it holds none, and pushed to the pull request as
- * it then stands, opened again where none is open; `already` where the
- * branch holds no task's commit past the default branch as the host has
- * it, that branch here brought up to the host's.
+ * merged in every repository it touches, children first, every task's
+ * commit squashed into one (the header's), a repository holding submodules
+ * the walk lands in pointing them at their landings (`pointersOf`) —
+ * refused before anything moves while a task is neither done nor closed,
+ * and while a task done holds work that is neither landed nor on its
+ * branch (fix-end.cjs); each branch first readied (`readied`,
+ * fix-branch.cjs), so it holds no work landed, then pushed to its pull
+ * request as it stands, opened again where none is open. `already` where
+ * no branch holds anything past the branch it lands on as the host has it,
+ * each such branch here brought up to the host's.
  * @param {string} cwd @param {string} unit
  */
 function quickFixLand(cwd, unit) {
   fixEnd().refuseUnended(cwd, unit);
+  const read = quickFixLanding(cwd, unit);
+  read.refuseClosed();
   return withDriver(cwd, (driver) => {
-    const { cut, warnings } = cutWords(fixBranch().cutAgain(cwd, unit));
-    const read = quickFixLanding(cwd, unit);
-    const owed = read.commits().find(({ id }) => id !== null);
-    if (owed === undefined) {
-      const settled = driver.mergeQuickFix(read.ctx, { branch: read.branch, message: '', tasks: [] });
-      return { already: true, ...answered([{ repo: '.', ...settled, warnings: [...warnings, ...(settled.warnings ?? [])] }], () => false), ...cut };
+    const { cut, remakes, warnings: rest } = cutWords(fixBranch().readied(read));
+    carrying(rest, () => fixEnd().refuseLeftOff(cwd, read));
+    const warnings = [...remakes, ...rest];
+    const past = read.repos.filter((held) => held.commits().length > 0);
+    if (past.length === 0) {
+      const settled = read.repos.map((held) => ({ repo: held.ctx.repo, ...driver.mergeQuickFix(held.ctx, null) }));
+      return { already: true, ...walkedWith(warnings, settled, () => false), ...cut };
     }
-    const merged = carrying(warnings, () => {
-      const landing = quickFixTask(cwd, read, shownTask(parseTaskId(/** @type {string} */ (owed.id))));
-      driver.openQuickFix(read.ctx, landing);
-      return driver.mergeQuickFix(read.ctx, landing);
+    const first = past.flatMap((held) => held.commits()).find(({ id }) => id !== null)?.id ?? null;
+    const shown = first === null ? `${unit}'s first fix` : shownTask(parseTaskId(first));
+    const answers = carrying(warnings, () => {
+      const steps = mergeSteps(read.project, driver, past.map((held) => held.repo), (ctx) => {
+        const held = /** @type {RepoLanding} */ (past.find((each) => each.ctx.repo === ctx.repo));
+        const landing = { ...quickFixTask(cwd, held, shown), pointers: pointersOf(driver, held, ctx) };
+        driver.openQuickFix(held.ctx, landing);
+        return driver.mergeQuickFix(ctx, landing);
+      });
+      return walk(steps, () => `${unit}'s pull request merged`);
     });
-    return { ...answered([{ repo: '.', ...merged, warnings: [...warnings, ...(merged.warnings ?? [])] }]), ...cut };
+    return { ...walkedWith(warnings, answers), ...cut };
   });
 }
 
 /**
- * A quick-fix's pull request closed unmerged, where one is open, as its move
- * closes it (workunit-move.cjs), through the driver the project names, its
- * setting left as it stands: whether this call closed one.
+ * A quick-fix's pull request closed unmerged in each repository it holds
+ * its branch in, kept under a move's name or not, where one is open — as
+ * its move closes it (workunit-move.cjs) — through the driver the project
+ * names, its setting left as it stands: whether this call closed one.
  * @param {string} cwd @param {string} unit @returns {{closed: boolean}}
  */
 function quickFixClose(cwd, unit) {
   const project = projectOf(cwd, unit);
   const driver = /** @type {LandingDriver} */ (chosenDriver(cwd, 'landing').driver);
-  const ctx = contextOf(project, project.repos[0]);
-  driver.assertServes?.(ctx);
-  return driver.closeQuickFix(ctx, names.quickFixBranch(unit));
+  const kept = [names.quickFixBranch(unit), fixBranch().movedBranch(unit)];
+  const closed = project.repos.filter((repo) => repo.dir === '' || kept.some((branch) => lg.branches(repo.path).has(branch))).map((repo) => {
+    const ctx = contextOf(project, repo);
+    return inRepo(ctx.repo, () => {
+      driver.assertServes?.(ctx);
+      return driver.closeQuickFix(ctx, names.quickFixBranch(unit)).closed;
+    });
+  });
+  return { closed: closed.some(Boolean) };
 }
 
 /**
@@ -1010,4 +1180,4 @@ function landedTasks(cwd, unit, repos, from = null, on = (repo) => [`refs/heads/
   }));
 }
 
-module.exports = { LAND_USAGE, landOpen, landChain, landPhase, landFinish, landedTasks, allChained, landingTips, mutationRun, quickFixLanding, quickFixClose };
+module.exports = { LAND_USAGE, landOpen, landChain, landPhase, landFinish, landedTasks, allChained, landingTips, mutationRun, quickFixLanding, quickFixFrom, quickFixClose };

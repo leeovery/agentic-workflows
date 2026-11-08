@@ -38,7 +38,7 @@ const path = require('path');
 const { signpost, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/render.cjs');
 const { resetDisplayWidth } = require('./kernel/terminal.cjs');
 const { commitPathspecScoped, commitAcrossRepos, commitStagedScoped, commitStateScoped, discoveryScope, PRODUCT_SCOPE, onStateBranch, STATE_BRANCH_HELD, OWNED_PATHS } = require('./domain/commit.cjs');
-const { inFlightTask, checksFor, runChecks, workMessage } = require('./domain/commit-task.cjs');
+const { inFlightTask, onWorkBranch, checksFor, runChecks, workMessage } = require('./domain/commit-task.cjs');
 const { taskId } = require('./domain/task-id.cjs');
 const {
   stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, operationInProgress, addRefused, unmergedPast,
@@ -2078,13 +2078,15 @@ function assertCommitsHere(repo, paths) {
 /**
  * The project's repos and the code commit's share of the declared paths in
  * each, every path and every repo checked before any repo commits, a merge
- * in progress among them (`assertCommitsHere`).
- * @param {string} cwd @param {string[]} paths
+ * in progress among them (`assertCommitsHere`) — once `ready` has readied
+ * the repos the commit commits in.
+ * @param {string} cwd @param {string[]} paths @param {(repos: import('./kernel/repos.cjs').Repo[]) => void} [ready]
  */
-function checkedGroups(cwd, paths) {
+function checkedGroups(cwd, paths, ready = () => {}) {
   const read = projectRepos(cwd);
   const { repos, links } = linksHeldOut(read);
   const groups = commitGroups(repos, paths.map((p) => codePathSpec(cwd, repos, p)));
+  ready(groups.map(({ repo }) => repo));
   groups.forEach(({ repo, paths: own }) => {
     const linked = own.filter((p) => links.get(repo.dir)?.includes(p));
     if (linked.length > 0) {
@@ -2137,7 +2139,7 @@ function codeCommitted(repos, committed, more = {}) {
  */
 function commitTaskPaths(cwd, paths, message, unit, given) {
   const { ref, manifest } = inFlightTask(cwd, unit, given);
-  const { repos, groups } = checkedGroups(cwd, paths);
+  const { repos, groups } = checkedGroups(cwd, paths, (committing) => onWorkBranch(cwd, ref, manifest, committing));
   const checks = runChecks(cwd, checksFor(cwd, manifest, ref));
   const committed = commitAcrossRepos(groups, workMessage(message, ref));
   return codeCommitted(repos, committed, { task: taskId(ref), checks });

@@ -295,13 +295,14 @@ function trailersPast(root, branch, other, key) {
 
 /**
  * The commits the local `branch` holds that the revision `other` does not,
- * oldest first, merges aside — each with its message and the value of the
- * trailer `key` it carries, null where it carries none.
+ * oldest first, each after its parents, merges aside — each with its
+ * message and the value of the trailer `key` it carries, null where it
+ * carries none.
  * @param {string} root @param {string} branch @param {string} other @param {string} key
  * @returns {{sha: string, message: string, value: string|null}[]}
  */
 function stampedPast(root, branch, other, key) {
-  const read = git(root, ['log', '-z', '--reverse', '--no-merges', `--format=%H%x1f%(trailers:key=${key},valueonly)%x1f%B`, `${HEADS}${branch}`, '--not', revOf(root, other), '--']);
+  const read = git(root, ['log', '-z', '--reverse', '--topo-order', '--no-merges', `--format=%H%x1f%(trailers:key=${key},valueonly)%x1f%B`, `${HEADS}${branch}`, '--not', revOf(root, other), '--']);
   return read.split('\0').filter(Boolean).map((entry) => {
     const [sha, values, message] = entry.split('\x1f');
     return { sha, message, value: values.split('\n').map((value) => value.trim()).find(Boolean) ?? null };

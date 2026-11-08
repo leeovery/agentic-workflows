@@ -120,7 +120,7 @@ function closeWords({ fixes, landing }) {
 function closeGate(view) {
   return section('MENU: finish', MENU_INSTRUCTION, menu('', [
     cmdOption('y', 'yes', closeWords(view), { next: { kind: 'engine', argv: ['finish', 'yes', view.unit] } }),
-    cmdOption('r', 'review', 'Have it reviewed before it closes'),
+    cmdOption('r', 'review', 'Have the whole change reviewed before it closes'),
     promptOption('Ask', 'Ask about the change before it closes'),
   ], { question: 'Close it?' }));
 }

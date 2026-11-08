@@ -26,9 +26,11 @@
 // once the feature it became is absorbed (ledger-rehomed.cjs), the epic's
 // other topic reading none of them; a quick-fix whose pull request is open
 // moving, the yes closing it unmerged and keeping its commits on its branch
-// under moved/; and every refusal, writing nothing: a fix of a quick-fix
-// landed, a checkout holding changes, a unit past its spec, a type that does
-// not move, a bugfix away from its investigation.
+// under moved/; one holding a fix done and recorded moving, its summary.md
+// set aside, which the first opening names; and every refusal, writing
+// nothing: a fix of a quick-fix landed, a checkout holding changes, a unit
+// past its spec, a type that does not move, a bugfix away from its
+// investigation.
 //
 // Layer: git. World: one project built once through the verbs and copied —
 // the quick-fix typo, entered, its fix 1.1 started, committed on its branch
@@ -360,9 +362,20 @@ describe('the yes: a quick-fix moved (19.S24, 19.5.16)', () => {
     const at = git(dir, ['rev-parse', quickFixBranch(SHIPPED)]).trim();
     const res = moved(SHIPPED, 'feature');
 
-    assert.deepStrictEqual([res.fixes_closed, res.pull_request_closed, res.branches, git(dir, ['rev-parse', `moved/${quickFixBranch(SHIPPED)}`]).trim(), quickFixLanding(dir, SHIPPED).pull().open], [
+    assert.deepStrictEqual([res.fixes_closed, res.pull_request_closed, res.branches, git(dir, ['rev-parse', `moved/${quickFixBranch(SHIPPED)}`]).trim(), quickFixLanding(dir, SHIPPED).own.pull().open], [
       ['1.1'], true, [`moved/${quickFixBranch(SHIPPED)}`], at, null,
     ]);
+  });
+
+  it('a quick-fix holding a fix done and recorded moves, closing none, its summary.md set aside under its topic\'s earlier material, which the first opening names', () => {
+    dir = world();
+    ok(dir, ['task', 'done', SHIPPED, '1.1'], { env: env() });
+    ok(dir, ['quick-fix', 'record', SHIPPED, '1.1', '--file', recordFile(dir, 1, RECORD)], { env: env() });
+    const res = moved(SHIPPED, 'feature');
+    const first = okSections(dir, ['enter', 'discussion', SHIPPED], { env: env() }).sections;
+
+    assert.deepStrictEqual([res.fixes_closed, fs.existsSync(statePath(dir, layout.unit(SHIPPED, 'summary.md'))), readState(dir, EARLIER(SHIPPED, 'summary.md')).split('\n')[0]], [[], false, '## Ship the flag']);
+    assert.deepStrictEqual(earlierReads(first), [`earlier summary: ${statePath(dir, EARLIER(SHIPPED, 'summary.md'))}`, `kept branch: moved/${quickFixBranch(SHIPPED)}`]);
   });
 
   it('a quick-fix whose fixes have not begun moves leaving the checkout where it is, on another unit\'s branch, closing nothing and carrying nothing, so its topic\'s first opening reads nothing earlier', () => {

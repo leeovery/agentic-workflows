@@ -12,10 +12,14 @@
 // the message's last line is the task's internal id as a `Task:` trailer,
 // which is how a task is read back off git: every such line names a task
 // the commit lands, so landings squashed together, their messages joined,
-// land each. A quick-fix lands as one pull request, its title and its one
-// commit's subject `fix({unit}): {title}`, the rest of its message each of
-// its tasks' landings in turn (`quickFixMessage`). The type is the task's
-// own, from its template (12.4.1): a lowercase word, as feat or fix.
+// land each. A quick-fix lands as one pull request in each repository it
+// touches, its title and its one commit's subject `{type}({unit}): {title}`
+// — its type `feat` where any of its tasks is one, else `fix` where any is,
+// else the first task's, `fix` where it holds none, the person's own
+// commits alone — the rest of its message each of its tasks' landings in
+// turn, `{type}({unit}): {its title}` in the task's own type then its
+// `Task:` line (`quickFixMessage`). The type is the task's own,
+// from its template (12.4.1): a lowercase word, as feat or fix.
 // ---------------------------------------------------------------------------
 
 const { KEBAB_SLUG } = require('../kernel/manifest-schema.cjs');
@@ -114,6 +118,9 @@ function landedMessage(ref, type, title) {
   return `${type}(${ref.unit}): ${titleOf(title)}\n\nTask: ${taskId(ref)}\n`;
 }
 
+/** The type a quick-fix's subject takes from its tasks' (the header's). @param {string[]} types in order */
+const quickFixType = (types) => ['feat', 'fix'].find((type) => types.includes(type)) ?? types[0] ?? 'fix';
+
 /**
  * The message a quick-fix lands under: its subject, then each of its tasks'
  * landings in turn, so its one commit names each.
@@ -122,7 +129,7 @@ function landedMessage(ref, type, title) {
  */
 function quickFixMessage(unit, title, tasks) {
   const landings = tasks.map((task) => landedMessage(task.ref, task.type, task.title).trimEnd());
-  return `${[`fix(${unit}): ${titleOf(title)}`, ...landings].join('\n\n')}\n`;
+  return `${[`${quickFixType(tasks.map((task) => task.type))}(${unit}): ${titleOf(title)}`, ...landings].join('\n\n')}\n`;
 }
 
 /** The task a line naming one by `key` names, or null. @param {string} line @param {string} key @returns {TaskRef|null} */

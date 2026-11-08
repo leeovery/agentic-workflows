@@ -24,7 +24,15 @@
 //   branch. A task with none recorded commits from where its branch is out
 //   — a quick-fix's task from the project's own checkout, on the
 //   quick-fix's one branch, a commit on any other naming that branch and
-//   the start that puts the checkout there (fix-branch.cjs).
+//   the start that puts the checkout there (fix-branch.cjs). A quick-fix's
+//   task done whose work is neither landed nor on the quick-fix's branch, as
+//   a branch cut again leaves a commit that did not apply there, takes its
+//   change made again though it has ended and is in flight nowhere
+//   (fix-end.cjs, `remakesDone`), from the project's own checkout on the
+//   branch alone. Each repository nested in the project that a quick-fix's
+//   task commits in is put on the quick-fix's branch there first, made
+//   where it lacks one (`onWorkBranch`, fix-branch.cjs), so its share of the
+//   fix lands with the quick-fix's pull request there (7.2.24).
 // - The project's checks run before the commit (15.8.3): its tests,
 //   `environment.run.tests`, then each of its linters, `environment.linters`
 //   (environment.cjs), in that order, each by `sh -c` in the code root of the
@@ -58,8 +66,9 @@ const { manifestOf } = require('./ledger-units.cjs');
 const { tasksInFlight, taskAt } = require('./conversation.cjs');
 const { taskOfBranch, quickFixBranch } = require('./landing-names.cjs');
 const { taskWorktree } = require('./landing-git.cjs');
-const { branchWayOn } = require('./fix-branch.cjs');
 const { quickFixBuild, FIXES_PHASE } = require('./derivations.cjs');
+const fixEnd = () => require('./fix-end.cjs');
+const fixBranch = () => require('./fix-branch.cjs');
 const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { parseShownTask, sameTask, shownTask, taskId, taskName } = require('./task-id.cjs');
 const { isBugfix, doorGate } = require('./bug-proven.cjs');
@@ -96,6 +105,10 @@ function inFlightTask(cwd, unit, given) {
   const inFlight = tasksInFlight(session);
   const named = inFlight.find((task) => task.unit === unit && task.task === shownTask(ref));
   if (named !== undefined) return { ref: fromItsWorktree(session, cwd, ref, named.worktree), manifest };
+  if (fixEnd().remakesDone(cwd, ref)) {
+    refuseOtherBranch(cwd, ref);
+    return { ref, manifest };
+  }
   refuseEnded(cwd, ref, manifest);
   if (inFlight.length === 0) {
     throw new Error(`commit --task: no task is in flight in this conversation — start ${taskName(ref)} with ${startCall(unit, given)}, then commit again; a /clear begins another conversation, so a task started before one is started again after it`);
@@ -158,7 +171,7 @@ function refuseOtherBranch(cwd, ref) {
   const own = taskOfBranch(ref.unit, branch);
   if (quickFix ? branch === quickFixBranch(ref.unit) : own !== null && sameTask(own, ref)) return;
   const whose = quickFix ? `${ref.unit}'s branch` : `${taskName(ref)}'s branch`;
-  throw new Error(`commit --task: this checkout has ${branch} out, not ${whose}, so its commit would land on another branch — ${quickFix ? branchWayOn(ref) : wayOn(root, ref)}`);
+  throw new Error(`commit --task: this checkout has ${branch} out, not ${whose}, so its commit would land on another branch — ${quickFix ? fixBranch().branchWayOn(ref) : wayOn(root, ref)}`);
 }
 
 /** Where the task's commit is made instead (`refuseOtherBranch`). @param {string} root @param {TaskRef} ref */
@@ -236,6 +249,16 @@ function runChecks(cwd, checks) {
   return ran;
 }
 
+/**
+ * Each nested repository a quick-fix's task commits in put on the
+ * quick-fix's branch (`putOnBranch`, fix-branch.cjs); nothing for a task of
+ * any other unit.
+ * @param {string} cwd @param {TaskRef} ref @param {Record<string, any>} manifest the unit's @param {import('../kernel/repos.cjs').Repo[]} repos those the commit commits in
+ */
+function onWorkBranch(cwd, ref, manifest, repos) {
+  if (quickFixBuild(manifest)) fixBranch().putOnBranch(cwd, ref.unit, repos);
+}
+
 /** A work commit's message: Claude's, and the trailer naming its task. @param {string} message @param {TaskRef} ref */
 function workMessage(message, ref) {
   const text = message.trimEnd();
@@ -244,4 +267,4 @@ function workMessage(message, ref) {
   return `${text}${trailers ? '\n' : '\n\n'}${TRAILER}: ${taskId(ref)}`;
 }
 
-module.exports = { TRAILER, inFlightTask, checksFor, runChecks, workMessage };
+module.exports = { TRAILER, inFlightTask, onWorkBranch, checksFor, runChecks, workMessage };

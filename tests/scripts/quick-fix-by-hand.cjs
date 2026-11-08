@@ -82,7 +82,8 @@ function mergedMidSet(conf, merge) {
   const close = closed(at);
 
   assert.strictEqual(opening, `land: task 1.1 of ${UNIT} has landed, and is done — nothing of it is left to open`);
-  assert.deepStrictEqual([past, reached ? opened.cut_again : { from: opened.cut_again.from, replayed: opened.cut_again.replayed }], [[`${UNIT}-1-2`], reached ? undefined : { from: left, replayed: ['1.2'] }]);
+  const cut = opened.cut_again?.map((/** @type {any} */ { repo, from, replayed }) => ({ repo, from, replayed }));
+  assert.deepStrictEqual([past, cut], [[`${UNIT}-1-2`], reached ? undefined : [{ repo: '.', from: left, replayed: ['1.2'] }]]);
   assert.deepStrictEqual([close.landed.map((/** @type {any} */ { merged }) => merged), landed(at).at(-1)], [[['1.2']], [`fix(${UNIT}): ${DESCRIPTION}`, [HELP.file]]]);
 }
 

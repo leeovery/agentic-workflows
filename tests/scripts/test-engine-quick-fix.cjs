@@ -18,8 +18,9 @@
 // takes (19.S20): the commit door, refusing a commit on another branch,
 // naming the quick-fix's (12.9.9), `land open` opening the quick-fix's one
 // pull request and `task done` owing no account, no pair reviewing it
-// (19.5.3, 19.5.15), and the last fix closed naming no mutation run, there
-// being no phase review (15.6.3). A raise at its place drawn in the conversation,
+// (19.5.3, 19.5.15) — refused for a fix with no type (7.2.18), as `land
+// phase` is for a phase it lacks — and the last fix closed naming no
+// mutation run, there being no phase review (15.6.3). A raise at its place drawn in the conversation,
 // `--parks` refused (19.5.3, E5); the review's fix phases numbered past the
 // fixes (P14); and the cut's screens refusing it. The task file's rules are
 // test-engine-task-verbs.cjs's, its verify run test-engine-verify.cjs's, the
@@ -43,13 +44,14 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  ok, okSections, okSectionsAsync, refusesAsync, refusedPristine, output, git, stateGit, statePath, layout, writeState, readState, createFile, fixtureFrom, cleanupFixture,
+  ok, okSections, okSectionsAsync, refuses, refusesAsync, refusedPristine, output, git, stateGit, statePath, layout, writeState, readState, createFile, fixtureFrom, cleanupFixture,
   head, readManifest,
 } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const { MADE, ledgerHelpers } = require('./ledger-world.cjs');
 const { raiseHelpers } = require('./raise-world.cjs');
 const { UNIT, PLACE, DESCRIPTION, quickFix, createFix, asGone, entered: enteredBy } = require('./quick-fix-world.cjs');
+const { TRACKER } = require('./landing-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { isFixPhase } = require(path.join(SCRIPTS, 'domain/derivations.cjs'));
@@ -57,6 +59,8 @@ const { quickFixBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'
 const { fixPhase } = require(path.join(SCRIPTS, 'domain/review-phase.cjs'));
 
 const ENGINE = 'node .claude/skills/leeway-engine/scripts/engine.cjs';
+/** The default task driver's side of the suites, what a person might do in its tool. */
+const SIDE = require(path.join(__dirname, '..', 'drivers', TRACKER.name, 'task.cjs'));
 const TITLE = 'Spell the flag --colour';
 const SECOND = 'Spell the help --colour';
 const BRANCH = quickFixBranch(UNIT);
@@ -269,6 +273,25 @@ describe('the quick-fix\'s fix, built in the project\'s own checkout (12.7.8, 19
 
     assert.deepStrictEqual([opened.task, opened.branch, opened.already, opened.repos.map(({ repo }) => repo)], ['1.1', BRANCH, undefined, ['.']]);
     assert.deepStrictEqual(fixes(), [{ task: '1.1', title: TITLE, status: 'done' }]);
+  });
+
+  it('land open refuses a fix the tracker holds with no type, naming the verb that gives it one, and opens it once given (7.2.18); land phase refuses a phase the quick-fix does not hold, naming land finish', () => {
+    dir = entered();
+    commitFix();
+    createFix(dir, 2, SECOND);
+    SIDE.typeCleared(statePath(dir), SECOND);
+    ok(dir, ['task', 'start', UNIT, '1.2'], { env: env() });
+    createFile(dir, 'src/help.js', 'const help = \'--colour\';\n');
+    ok(dir, ['commit', '--paths', 'src/help.js', '--task', UNIT, '1.2', '-m', `fix(${UNIT}): spell the help --colour`], { env: env() });
+    const untyped = refuses(dir, ['land', 'open', UNIT, '1.2']).error;
+    ok(dir, ['task', 'type', UNIT, '1.2', 'fix']);
+    const opened = ok(dir, ['land', 'open', UNIT, '1.2']);
+
+    assert.deepStrictEqual([untyped, opened.task, refuses(dir, ['land', 'phase', UNIT, '7']).error], [
+      `land: task 1.2 has no type in the tracker, and its branch and landing are named from it — give it one with \`task type ${UNIT} 1.2 <type>\` and open it again`,
+      '1.2',
+      `land: ${UNIT} has no phase 7 — a quick-fix lands as one pull request, every phase it holds with it: land finish ${UNIT}`,
+    ]);
   });
 
   it('the last of the fixes closed, another done, names no mutation run, there being no phase review (15.6.3)', () => {

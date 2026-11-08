@@ -9,9 +9,9 @@
 // order, and no other heading at level one or two: `## What changed`,
 // `## Why` and `## Leaves out`, none empty, each closing every fenced block
 // it opens. The verb writes it into the unit's `summary.md`, a file only the
-// engine writes (layout.cjs), at its fix's place in the set's order — after
-// the record of every fix numbered before it, as the fixes stand on the
-// quick-fix's one branch and land in its one commit — under the fix's title
+// engine writes (layout.cjs), after every record written before it, so the
+// records stand in the order the fixes were done (19.5.17), as the fixes
+// land in its one commit (landing.cjs, `doneOrder`) — under the fix's title
 // as the tracker holds it, a heading of its own, each section an item, its
 // lines after the first beneath it — a section whose text opens on a
 // fenced block written wholly beneath its item, so the fence opens and
@@ -24,7 +24,7 @@
 //   - Leaves out: …
 //
 // A record is the fix's, by its task: the fixes recorded are kept beside the
-// fixes on the unit's manifest, by task id in the set's order
+// fixes on the unit's manifest, by task id in the order written
 // (`fixes.recorded`), written with `summary.md` under the unit's lock and
 // committed with it, so the two never part. It then indexes `summary.md`
 // where this checkout's knowledge base is set up, each fix's record a chunk
@@ -57,7 +57,7 @@ const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { unitInProgress } = require('./topic-standing.cjs');
 const { quickFixBuild, buildRefusal, FIXES_PHASE } = require('./derivations.cjs');
-const { parseShownTask, parseTaskId, shownTask, taskId, taskName } = require('./task-id.cjs');
+const { parseShownTask, shownTask, taskId, taskName } = require('./task-id.cjs');
 const { trackedPhase, copiedTasks, givenText, ENDED, STATUS_WORDS } = require('./task-verbs.cjs');
 const { headingLevels, fencedLines, unclosedFence } = require('./spec-sections.cjs');
 const { committed } = require('./task-account.cjs');
@@ -142,11 +142,8 @@ function summaryText(cwd, unit) {
   return fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
 }
 
-/** The fixes whose records `summary.md` holds, by task id, in the set's order (`fixes.recorded`) — none before the fixes begin. @param {Record<string, any>} manifest @returns {string[]} */
+/** The fixes whose records `summary.md` holds, by task id, in the order written (`fixes.recorded`) — none before the fixes begin. @param {Record<string, any>} manifest @returns {string[]} */
 const recordedIds = (manifest) => manifest.fixes?.recorded ?? [];
-
-/** The set's order: by each fix's number. @param {string} a @param {string} b */
-const bySetOrder = (a, b) => parseTaskId(a).n - parseTaskId(b).n;
 
 /** `summary.md`'s records, in its order, each its own run of lines from its heading. @param {string} text */
 function recordBlocks(text) {
@@ -158,18 +155,8 @@ function recordBlocks(text) {
 /** `summary.md` holding the records given, in their order. @param {string[]} blocks */
 const summaryOf = (blocks) => `${blocks.join('\n\n')}\n`;
 
-/**
- * `summary.md` with a fix's record written at its fix's place in the set's
- * order — after the record of every fix numbered before it, before the
- * rest.
- * @param {string} text the file as it stands @param {string[]} recorded the fixes it holds, in the set's order
- * @param {TaskRef} ref the fix's @param {string} block its record
- */
-function placed(text, recorded, ref, block) {
-  const blocks = recordBlocks(text);
-  blocks.splice(recorded.filter((id) => parseTaskId(id).n < ref.n).length, 0, block);
-  return summaryOf(blocks);
-}
+/** `summary.md` with a fix's record written after every record it holds. @param {string} text the file as it stands @param {string} block the record */
+const placed = (text, block) => summaryOf([...recordBlocks(text), block]);
 
 /**
  * The unit's manifest, refused where it is no quick-fix built by its own
@@ -229,8 +216,8 @@ function indexSummary(cwd, unit, warnings) {
 }
 
 /**
- * `quick-fix record`: the fix's record written into `summary.md` at its
- * place in the set's order, the fix recorded beside the fixes on the
+ * `quick-fix record`: the fix's record written into `summary.md` after
+ * every record it holds, the fix recorded beside the fixes on the
  * manifest, both committed together, then `summary.md` indexed.
  * @param {string} cwd @param {string} unit @param {string} given @param {string} file
  */
@@ -244,8 +231,8 @@ function recordFix(cwd, unit, given, file) {
     const recorded = recordedIds(manifest);
     const at = statePath(cwd, summaryFile(unit));
     fs.mkdirSync(path.dirname(at), { recursive: true });
-    writeTextAtomic(at, placed(summaryText(cwd, unit), recorded, ref, recordBlock(fix.title, record)));
-    manifest.fixes = { ...manifest.fixes, recorded: [...recorded, taskId(ref)].sort(bySetOrder) };
+    writeTextAtomic(at, placed(summaryText(cwd, unit), recordBlock(fix.title, record)));
+    manifest.fixes = { ...manifest.fixes, recorded: [...recorded, taskId(ref)] };
     saveWorkUnitManifest(cwd, unit, manifest);
     warnings.push(...read);
     return committed(cwd, [summaryFile(unit), `${unit}/manifest.json`], `quick-fix(${unit}): record ${shownTask(ref)}`, warnings, { unit, task: shownTask(ref), id: taskId(ref), summary: at });

@@ -17,7 +17,8 @@
 // same branch and landing in the same pull request (19.5.14, R14); and
 // `engine finish yes <qf>` — refused while the checkout holds changes not
 // committed, landing nothing — landing the pull request through the local
-// landing driver as one commit, putting the checkout back on the branch it
+// landing driver as one commit, its fixes in the order they were done
+// (19.5.17), putting the checkout back on the branch it
 // lands on, completing the unit and naming the start menu, its folder then
 // holding `build/` and `summary.md` alone of the work (4.S23), its record
 // found once it is closed (22.S22). A fix's record is
@@ -204,7 +205,7 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
       '**`◆ Close it?`**',
       '',
       '**`y/yes`**    → Close it — merge its pull request and mark it complete',
-      '**`r/review`** → Have it reviewed before it closes',
+      '**`r/review`** → Have the whole change reviewed before it closes',
       '**Ask**      → Ask about the change before it closes',
       '',
     ].join('\n'));
@@ -261,6 +262,18 @@ describe('finish yes <quick-fix> (19.5.15, 24.1.2)', () => {
       'main', `fix(${UNIT}): ${DESCRIPTION}`, 'const help = \'--colour\';\n',
     ]);
     assert.deepStrictEqual([readManifest(dir, UNIT).status, fs.readdirSync(statePath(dir, UNIT)).sort()], ['completed', ['build', 'discovery', 'manifest.json', 'seeds', 'summary.md']]);
+  });
+
+  it('19.5.17: squashes the fixes in the order they were done, as their records were written, never by their numbers', () => {
+    dir = world();
+    record(2);
+    record(1);
+    checklistClosed(dir, as());
+    const landed = run(['land', 'finish', UNIT]);
+
+    assert.deepStrictEqual([landed.repos.map((/** @type {any} */ { merged }) => merged), git(dir, ['log', '-1', '--format=%B', 'main']).match(/^Task: .*$/gm)], [
+      [['1.2', '1.1']], [`Task: ${UNIT}-1-2`, `Task: ${UNIT}-1-1`],
+    ]);
   });
 
   it('draws the close and completes the unit where its fixes landed already, as a yes stopped after its landing leaves them, its yes saying they have landed', () => {

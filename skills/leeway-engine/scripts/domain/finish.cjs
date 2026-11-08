@@ -14,10 +14,12 @@
 //   refuses: a unit built under the old plan, a build by its cut not begun
 //   (build-entry.cjs). A quick-fix's close stands besides on each of its
 //   fixes ended and each done with its record written (quick-fix-record.cjs,
-//   `recordedFixes`), and reads whether its one pull request still holds a
-//   fix done not landed, as a merge of it by hand on the host, by any
-//   method, leaves it (landing.cjs, `quickFixLanding`) — the yes then
-//   merging it, else saying its fixes have landed.
+//   `recordedFixes`) — read off the unit's records alone, so the board
+//   asking whether it draws never reaches the host — and the screen reads
+//   whether its pull requests still hold a fix done not landed, as a merge
+//   by hand on the host, by any method, leaves them (landing.cjs,
+//   `quickFixLanding`) — the yes then merging them, else saying its fixes
+//   have landed.
 // - It shows every checklist item skipped on the way, with its reason,
 //   read from the unit's manifest (6.4.5, 6.4.12); then asks, one at a
 //   time, the verdict of each departure this machine logged in the build
@@ -84,41 +86,44 @@ const FINISH_USAGE = 'finish yes <work-unit>';
 /**
  * The close the screen stands on, refused where finish cannot show: the
  * unit's own refusals, a quick-fix's fixes not ended or not recorded, then
- * its checklist's close (`finishClose`) — with a quick-fix's fixes done and
- * whether its pull request still holds one not landed, null and false for
- * any other unit.
+ * its checklist's close (`finishClose`) — read off the unit's records
+ * alone — with a quick-fix's fixes done, null for any other unit.
  * @param {string} cwd @param {string} unit
  */
 function finishStanding(cwd, unit) {
   const manifest = unitInProgress(cwd, unit);
   const refused = buildRefusal(manifest);
   if (refused !== null) throw new Error(refused);
-  if (!quickFixBuild(manifest)) return { manifest, fixes: null, landing: false, ...finishClose(cwd, unit) };
+  if (!quickFixBuild(manifest)) return { manifest, fixes: null, ...finishClose(cwd, unit) };
   const fixes = recordedFixes(cwd, manifest);
-  const close = finishClose(cwd, unit);
-  const read = fixes.length === 0 ? null : quickFixLanding(cwd, unit);
-  return { manifest, fixes, landing: read !== null && fixes.some(({ ref }) => !read.task(ref).landed), ...close };
+  return { manifest, fixes, ...finishClose(cwd, unit) };
 }
 
-/** Whether finish's screen draws, as `render finish` stands on it: what the board lists waiting on the person. @param {string} cwd @param {string} unit */
+/** Whether finish's screen draws, as `render finish` stands on it: what the board lists waiting on the person, never reaching the host. @param {string} cwd @param {string} unit */
 const finishDraws = (cwd, unit) => stands(() => finishStanding(cwd, unit));
 
 /**
+ * Whether a quick-fix's pull requests still hold a fix done not landed, as
+ * its close's screen says it (`quickFixLanding`); false for any other unit.
+ * @param {string} cwd @param {string} unit @param {TaskDetail[]|null} fixes
+ */
+function stillToLand(cwd, unit, fixes) {
+  if (fixes === null || fixes.length === 0) return false;
+  const read = quickFixLanding(cwd, unit);
+  return fixes.some(({ ref }) => !read.task(ref).landed);
+}
+
+/**
  * What the screen and the yes stand on, refused where finish cannot show:
- * the unit's manifest, a quick-fix's fixes done and whether one is still to
- * land, the skips its close shows, and the verdict asked of the first
- * departure in the build still owed one.
+ * the unit's manifest, a quick-fix's fixes done, the skips its close shows,
+ * and the verdict asked of the first departure in the build still owed one.
  * @param {string} cwd @param {string} unit
  */
 function standing(cwd, unit) {
-  const { manifest, fixes, landing, closed, skips, warnings } = finishStanding(cwd, unit);
+  const { manifest, fixes, closed, skips, warnings } = finishStanding(cwd, unit);
   const root = stateRoot(cwd);
-  try {
-    const verdict = readShown(root, warnings, (shower) => verdictAsked(shower, root, (facts) => (facts.unit === unit && BUILD_PHASES.includes(facts.phase) ? closed : null)));
-    return { manifest, fixes, landing, skips, warnings, verdict };
-  } catch (err) {
-    throw carrying(err, warnings);
-  }
+  const verdict = carryingAll(warnings, () => readShown(root, warnings, (shower) => verdictAsked(shower, root, (facts) => (facts.unit === unit && BUILD_PHASES.includes(facts.phase) ? closed : null))));
+  return { manifest, fixes, skips, warnings, verdict };
 }
 
 /**
@@ -133,6 +138,15 @@ function provenOf(cwd, manifest, fixes) {
   return fixes.flatMap((fix) => ranOf(cwd, manifest, fix.ref, fix, criteriaTexts(fix.text)).ran ?? []);
 }
 
+/** `read`, a refusal it throws carrying what finish's standing warned. @template T @param {string[]} warnings @param {() => T} read @returns {T} */
+function carryingAll(warnings, read) {
+  try {
+    return read();
+  } catch (err) {
+    throw carrying(err, warnings);
+  }
+}
+
 /**
  * `render finish <unit>`: the screen — a quick-fix's, its close.
  * @param {string} cwd @param {{dotpath?: string}} args
@@ -140,7 +154,7 @@ function provenOf(cwd, manifest, fixes) {
  */
 function finishSurface(cwd, { dotpath: unit = '' }) {
   return refusing('render finish', () => {
-    const { manifest, fixes, landing, skips, verdict, warnings } = standing(cwd, unit);
+    const { manifest, fixes, skips, verdict, warnings } = standing(cwd, unit);
     const view = {
       unit,
       title: itemTitle(topicTitles(manifest), 'review', unit),
@@ -150,7 +164,7 @@ function finishSurface(cwd, { dotpath: unit = '' }) {
       aside: setAsideHeld(cwd, unit),
     };
     if (fixes === null) return finishScreen(view);
-    return closeScreen({ ...view, product: projectName(cwd), proven: provenOf(cwd, manifest, fixes), fixes: fixes.length, landing });
+    return closeScreen({ ...view, product: projectName(cwd), proven: provenOf(cwd, manifest, fixes), fixes: fixes.length, landing: carryingAll(warnings, () => stillToLand(cwd, unit, fixes)) });
   });
 }
 
@@ -168,16 +182,14 @@ function nextAfterFinish(manifest) {
  * @returns {{repos: Record<string, any>[], warnings?: string[], checkout?: string}}
  */
 function landStanding(cwd, unit, { verdict, warnings, fixes }) {
-  try {
+  return carryingAll(warnings, () => {
     if (verdict !== null) throw new Error('a verdict is still to ask — render finish asks each before the yes');
     if (fixes === null) return landFinish(cwd, unit);
     refuseDirtyClose(cwd, unit);
     const landed = landFinish(cwd, unit);
     const checkout = checkOutLanding(cwd, unit);
     return checkout === null ? landed : { ...landed, checkout };
-  } catch (err) {
-    throw carrying(err, warnings);
-  }
+  });
 }
 
 /**

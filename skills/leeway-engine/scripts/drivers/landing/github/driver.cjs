@@ -80,22 +80,26 @@
 //   afresh before each, so one whose change a merge below landed is passed.
 // - Finish: the phase merged next, the lowest not landed that stacks on no
 //   phase not landed; the seam makes each merge in turn (landing.cjs).
-// - A quick-fix (landing.cjs): its one pull request is the latest whose
-//   head is its branch, onto the default branch — one closed by hand
-//   stopping each verb that reads it, naming its reopening — read as the
-//   head of the one open and the heads of those merged into the default
-//   branch, each fetched from the pull request's own ref where the
-//   repository here lacks it. Opening it pushes the branch over GitHub's
-//   copy of it while that stands where it was read, so a branch cut again
-//   from the default branch replaces the copy a merge by hand left, and
-//   opens the pull request onto the default branch where none is open, or
-//   makes its title and body the landing's where they are not — `already`
-//   where its head, title and body are the landing's. Its merge is a
-//   squash, under its title with GitHub's " (#N)" and its body, once
-//   GitHub has worked out that it can, refused as a lone pull request's
-//   merge is, the default branch here then brought to it; with nothing to
-//   merge, that branch is brought up alone. A move closes the one open
-//   unmerged, its branch on GitHub left as it stands.
+// - A quick-fix (landing.cjs): in each repository it touches, its one pull
+//   request is the latest whose head is its branch, onto the default branch
+//   — read as the head of the one open and the heads of those merged into
+//   the default branch, each fetched from the pull request's own ref where
+//   the repository here lacks it, and the branch on GitHub, fetched, which
+//   is the truth for what the pull request holds; and, where the latest was
+//   closed by hand, its reopening, which the seam's verbs refuse on.
+//   Opening it pushes the branch while GitHub's copy stands where the
+//   landing read it — the seam brings that copy in first, so a push never
+//   drops a commit of GitHub's, and replaces it only once a merge by hand
+//   cut the branch again — and opens the pull request onto the default
+//   branch where none is open, or makes its title and body the landing's
+//   where they are not — `already` where its head, title and body are the
+//   landing's. Its merge is a squash, under its title with GitHub's " (#N)"
+//   and its body, once GitHub has worked out that it can, refused as a lone
+//   pull request's merge is, the default branch here then brought to it;
+//   a submodule the branch moves is first pointed at its landing by one
+//   commit on the branch, pushed the same way, so it squashes in. With
+//   nothing to merge, that branch is brought up alone. A move closes the one
+//   open unmerged, its branch on GitHub left as it stands.
 // - Nested repositories: each repository a task touches lands on its own
 //   repository on GitHub, named by its own remote, with a stack of its own
 //   per phase; one whose remote is not on GitHub is refused before anything
@@ -879,6 +883,7 @@ function nextMerge(ctx) {
 }
 
 /** The quick-fix's landing as the seam gives it (landing.cjs). @typedef {import('../../../domain/landing.cjs').QuickFixTask} QuickFixTask */
+/** The quick-fix's pull request as the seam reads it (landing.cjs). @typedef {import('../../../domain/landing.cjs').QuickFixPull} QuickFixPull */
 
 /**
  * The pull requests whose head is the quick-fix's branch, onto the default
@@ -895,32 +900,27 @@ function listedPulls(ctx, host, branch) {
 }
 
 /**
- * The quick-fix's pull requests (`listedPulls`) — refused where the latest
- * was closed by hand, naming its reopening.
- * @param {LandingContext} ctx @param {Host} host @param {string} branch
- * @returns {BranchPull[]}
- */
-function branchPulls(ctx, host, branch) {
-  const pulls = listedPulls(ctx, host, branch);
-  const [latest] = pulls;
-  if (latest?.state === 'CLOSED') {
-    throw new Error(`land: ${ctx.unit}'s pull request #${latest.number} was closed on GitHub without being merged — reopen it there, as \`gh pr reopen ${latest.number}\` does, and land again`);
-  }
-  return pulls;
-}
-
-/**
- * The quick-fix's pull request's heads (see the header): the one open's,
- * null where none is, and those merged into the default branch, each held
- * here — fetched from the pull request's own ref where it is not.
+ * The quick-fix's pull request as GitHub holds it (see the header): the
+ * open one's head and those merged into the default branch, each fetched
+ * from the pull request's own ref where the repository here lacks it; the
+ * branch on GitHub, fetched, null where GitHub has none; and, where the
+ * latest was closed by hand, its reopening.
  * @param {LandingContext} ctx @param {string} branch
- * @returns {{open: string|null, merged: string[]}}
+ * @returns {QuickFixPull}
  */
 function quickFixPull(ctx, branch) {
   const host = hostOf(ctx);
-  const pulls = branchPulls(ctx, host, branch);
-  const merged = pulls.filter((pull) => pull.state === 'MERGED' && lg.fetchedCommit(ctx.root, host.remote, `refs/pull/${pull.number}/head`, pull.oid));
-  return { open: pulls.find((pull) => pull.state === 'OPEN')?.oid ?? null, merged: merged.map((pull) => pull.oid) };
+  const pulls = listedPulls(ctx, host, branch);
+  const [latest] = pulls;
+  const held = (/** @type {BranchPull} */ pull) => lg.fetchedCommit(ctx.root, host.remote, `refs/pull/${pull.number}/head`, pull.oid);
+  const open = pulls.find((pull) => pull.state === 'OPEN');
+  const fetched = lg.fetchBranch(ctx.root, host.remote, branch);
+  return {
+    open: open !== undefined && held(open) ? open.oid : null,
+    merged: pulls.filter((pull) => pull.state === 'MERGED' && held(pull)).map((pull) => pull.oid),
+    head: 'commit' in fetched ? fetched.commit : null,
+    closed: latest?.state === 'CLOSED' ? `${ctx.unit}'s pull request #${latest.number} was closed on GitHub without being merged — reopen it there, as \`gh pr reopen ${latest.number}\` does, and land again` : null,
+  };
 }
 
 /** The title and body a quick-fix's landing makes its pull request's. @param {QuickFixTask} landing */
@@ -931,23 +931,22 @@ function titled(landing) {
 
 /**
  * The quick-fix's pull request opened, or kept as its landing stands (see
- * the header): its branch pushed over GitHub's copy while that stands where
- * it was read, then the pull request opened onto the default branch, or its
- * title and body made the landing's — `already` where its head, title and
- * body are.
+ * the header): its branch pushed while GitHub's copy stands where the
+ * landing read it, then the pull request opened onto the default branch, or
+ * its title and body made the landing's — `already` where its head, title
+ * and body are.
  * @param {LandingContext} ctx @param {QuickFixTask} landing
  * @returns {{pull_request: number, already?: true}}
  */
 function openQuickFix(ctx, landing) {
   const host = hostOf(ctx);
-  const { branch } = landing;
+  const { branch, head } = landing;
   const { title, body } = titled(landing);
   const at = lg.branches(ctx.root).get(branch);
-  const open = branchPulls(ctx, host, branch).find((pull) => pull.state === 'OPEN');
+  const open = listedPulls(ctx, host, branch).find((pull) => pull.state === 'OPEN');
   if (open !== undefined && open.oid === at && open.title === title && open.body === body) return { pull_request: open.number, already: true };
-  const theirs = lg.fetchBranch(ctx.root, host.remote, branch);
-  if (!('commit' in theirs) || theirs.commit !== at) {
-    lg.pushBranches(ctx.root, host.remote, [{ branch, commit: `refs/heads/${branch}`, lease: 'commit' in theirs ? theirs.commit : '' }], `${ctx.unit}'s pull request was not opened — clear what git names, and open it again`);
+  if (head !== at) {
+    lg.pushBranches(ctx.root, host.remote, [{ branch, commit: `refs/heads/${branch}`, lease: head ?? '' }], `${ctx.unit}'s pull request was not opened — clear what git names, and open it again`);
   }
   if (open === undefined) {
     const url = ghAt(ctx, host, ['pr', 'create', '--base', ctx.into, '--head', branch, '--title', title, '--body', body], `open ${ctx.unit}'s pull request`);
@@ -972,22 +971,43 @@ function closeQuickFix(ctx, branch) {
 }
 
 /**
+ * The quick-fix's branch with its submodules pointed at their landings
+ * (see the header): one commit on it recording each pointer its tip does
+ * not hold already, pushed while GitHub's copy stands at that tip, then the
+ * branch here moved — its tip as it then stands.
+ * @param {LandingContext} ctx @param {Host} host @param {QuickFixTask} landing @param {string} at the branch's tip, as its opening pushed it
+ */
+function pointedBranch(ctx, host, landing, at) {
+  const [own] = landing.pointers.size === 0 ? [new Map()] : lg.pointersAt(ctx.root, [at], [...landing.pointers.keys()]);
+  const pointed = new Map([...landing.pointers].filter(([path, sha]) => sha !== (own.get(path) ?? null)));
+  if (pointed.size === 0) return at;
+  const listed = [...pointed.keys()].map(lg.plain).join(', ');
+  const message = `chore(${ctx.unit}): point ${listed} at ${pointed.size === 1 ? 'its' : 'their'} landing\n`;
+  const commit = lg.commitTree(ctx.root, { tree: lg.treeWithPointers(ctx.root, at, pointed), parent: at, message, signed: lg.signs(ctx.root) }, `${listed}'s pointer on ${landing.branch}`, 'land again');
+  lg.pushBranches(ctx.root, host.remote, [{ branch: landing.branch, commit, lease: at }], `${listed}'s pointer was not recorded and nothing merged — clear what git names, and land again`);
+  lg.moveBranch(ctx.root, landing.branch, at, commit);
+  return commit;
+}
+
+/**
  * The quick-fix's pull request merged (see the header), every commit of it
- * squashed into one under its title and body — refused where none is open;
- * with no task to land, the default branch here brought up alone.
- * @param {LandingContext} ctx @param {QuickFixTask} landing
+ * squashed into one under its title and body, its submodules first pointed
+ * at their landings (`pointedBranch`) — refused where none is open; with
+ * nothing to land, the default branch here brought up alone.
+ * @param {LandingContext} ctx @param {QuickFixTask|null} landing
  */
 function mergeQuickFix(ctx, landing) {
   const host = hostOf(ctx);
-  if (landing.tasks.length === 0) {
+  if (landing === null) {
     const warnings = bringDefaultUp(ctx, host);
     return { into: ctx.into, already: /** @type {const} */ (true), ...(warnings.length > 0 ? { warnings } : {}) };
   }
-  const pull = branchPulls(ctx, host, landing.branch).find((held) => held.state === 'OPEN');
-  if (pull === undefined) throw new Error(`land: ${ctx.unit}'s pull request is not open on GitHub — open it with \`land open ${ctx.unit} ${landing.tasks[0]}\`, and land again`);
-  refuseDirtyDefault(ctx, pull.oid, lg.fetchBranch(ctx.root, host.remote, ctx.into));
+  const pull = listedPulls(ctx, host, landing.branch).find((held) => held.state === 'OPEN');
+  if (pull === undefined) throw new Error(`land: ${ctx.unit}'s pull request is not open on GitHub — open it with \`land open ${ctx.unit} ${landing.tasks[0] ?? '1.1'}\`, and land again`);
+  const head = pointedBranch(ctx, host, landing, /** @type {string} */ (lg.branches(ctx.root).get(landing.branch)));
+  refuseDirtyDefault(ctx, head, lg.fetchBranch(ctx.root, host.remote, ctx.into));
   const merging = { what: `${ctx.unit}'s pull request`, named: () => `${ctx.unit}'s pull request #${pull.number}`, listed: () => `#${pull.number}`, then: '' };
-  awaitMergeable(ctx, host, merging, [pull], new Map([[pull.number, /** @type {string} */ (lg.branches(ctx.root).get(landing.branch))]]));
+  awaitMergeable(ctx, host, merging, [pull], new Map([[pull.number, head]]));
   const { title, body } = titled(landing);
   ghAt(ctx, host, ['pr', 'merge', String(pull.number), '--squash', '--subject', `${title} (#${pull.number})`, '--body', body], `merge ${ctx.unit}'s pull request`);
   const warnings = bringDefaultUp(ctx, host);

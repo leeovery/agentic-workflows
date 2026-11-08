@@ -4,8 +4,8 @@
 // A quick-fix's short record (leeway-engine/scripts/domain/
 // quick-fix-record.cjs; knowledge/artifacts.cjs): `engine quick-fix record
 // <qf> <task> --file <record.md>` — each fix's short record under its title
-// in `summary.md`, at its place in the order the fixes land, kept by its
-// task — two fixes of one title each recorded, the close counting both —
+// in `summary.md`, in the order the fixes were done, kept by its task —
+// two fixes of one title each recorded, the close counting both —
 // committed with the fix recorded on the manifest and indexed, a query for
 // one fix finding its own (19.5.6, 19.5.11, 19.5.17, 19.S38, 22.6.9); a
 // fix taken once it holds a commit of its own, in flight or done (R2); a
@@ -87,12 +87,12 @@ describe('quick-fix record (19.5.6, 19.5.17)', () => {
     ]);
   });
 
-  it('writes a record at its fix\'s place in the set\'s order, a fix recorded after the one landing above it', () => {
+  it('writes each record after those written before it, in the order the fixes were done, never by their numbers (19.5.17)', () => {
     dir = world();
     record(2);
     record(1);
 
-    assert.deepStrictEqual([headings(), readManifest(dir, UNIT).fixes.recorded], [[`## ${FLAG}`, `## ${HELP}`], [`${UNIT}-1-1`, `${UNIT}-1-2`]]);
+    assert.deepStrictEqual([headings(), readManifest(dir, UNIT).fixes.recorded], [[`## ${HELP}`, `## ${FLAG}`], [`${UNIT}-1-2`, `${UNIT}-1-1`]]);
   });
 
   it('R2: takes a fix in flight once it holds a commit of its own, as a done one', () => {
@@ -170,7 +170,7 @@ describe('summary.md in the knowledge base (19.S38, 22.6.9)', () => {
     ]);
   });
 
-  it('R6: writes a section opening on a fenced block beneath its item, the fence opening and closing as written, so each record after it keeps its heading, its place and a chunk of its own', () => {
+  it('R6: writes a section opening on a fenced block beneath its item, the fence opening and closing as written, so each record after it keeps its heading and a chunk of its own', () => {
     dir = world();
     keywordOnlyKnowledge(dir);
     fixChanged(dir, 3, DOCS, 'docs/flags.md', '--colour\n', as());
@@ -178,10 +178,10 @@ describe('summary.md in the knowledge base (19.S38, 22.6.9)', () => {
     record(3);
     record(2);
 
-    assert.strictEqual(summary().split(`## ${HELP}`)[0], [
+    assert.strictEqual(summary().split(`## ${DOCS}`)[0], [
       `## ${FLAG}`, '', '- What changed:', '  ```diff', '  - const flag = \'color\';', '  ## not a heading', '  + const flag = \'colour\';', '  ```', '  The parser follows.',
       '- Why: The flag was spelt the American way.', '- Leaves out: Old scripts passing --color.', '', '',
     ].join('\n'));
-    assert.deepStrictEqual([headings(), summaryChunks(dir)], [[`## ${FLAG}`, `## ${HELP}`, `## ${DOCS}`], [FLAG, HELP, DOCS]]);
+    assert.deepStrictEqual([headings(), summaryChunks(dir)], [[`## ${FLAG}`, `## ${DOCS}`, `## ${HELP}`], [FLAG, DOCS, HELP]]);
   });
 });

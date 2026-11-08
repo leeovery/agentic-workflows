@@ -8,7 +8,8 @@
 // site by each method the conformance suite's side does not, pulled or not —
 // each fix read as landed, its opening refused as done, and the close
 // landing nothing more, main here brought to main there (R12, R14); the
-// pull request's title and body kept its landing's as a fix joins it; a fix
+// pull request's title and body kept its landing's as a fix joins it,
+// retitled feat once a feat joins (19.S32); a fix
 // started after a squash on the site, main here behind, its branch cut
 // again from main as GitHub has it — the merged branch kept there, the
 // opening pushing over GitHub's copy, a pull request of its own; deleted,
@@ -71,15 +72,16 @@ describe('a quick-fix\'s pull request merged by hand on GitHub (R12, R14)', () =
 });
 
 describe('a quick-fix\'s one pull request on GitHub (R14)', () => {
-  it('keeps its title and body its landing\'s as a fix joins it, the fix\'s commit pushed to it', () => {
+  it('19.S32: keeps its title and body its landing\'s as a fix joins it, the fix\'s commit pushed to it — retitled feat once a feat joins, each fix in the body under its own type', () => {
     dir = world();
+    const [{ title: before }] = github(dir).pulls;
     third();
+    ok(dir, ['task', 'type', UNIT, '1.3', 'feat'], as());
     ok(dir, ['land', 'open', UNIT, '1.3'], as());
     const [{ number, title, body }] = github(dir).pulls;
 
-    assert.deepStrictEqual([number, title, body.split('\n').filter((line) => line.startsWith('Task: ')), tipOnGithub(dir, BRANCH)], [
-      1, `fix(${UNIT}): ${DESCRIPTION}`, [`Task: ${UNIT}-1-1`, `Task: ${UNIT}-1-2`, `Task: ${UNIT}-1-3`], git(dir, ['rev-parse', BRANCH]).trim(),
-    ]);
+    assert.deepStrictEqual([number, before, title, tipOnGithub(dir, BRANCH)], [1, `fix(${UNIT}): ${DESCRIPTION}`, `feat(${UNIT}): ${DESCRIPTION}`, git(dir, ['rev-parse', BRANCH]).trim()]);
+    assert.strictEqual(body, SET.map(({ title: fix }, at) => `${at === 2 ? 'feat' : 'fix'}(${UNIT}): ${fix}\n\nTask: ${UNIT}-1-${at + 1}`).join('\n\n'));
   });
 
   it('squashed by hand there, its branch kept, main here behind: a fix started after it has the branch cut again from main as GitHub has it, and its opening pushes it over GitHub\'s copy, a pull request of its own', () => {

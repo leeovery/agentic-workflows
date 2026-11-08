@@ -141,7 +141,7 @@ describe('pipeline simulation: quick-fix', () => {
     sim.render(['finish', wu], { expect: 'content' });
     const yes = sim.run(answerGate(sim, 'finish', '--pick', 'y').next.argv);
 
-    assert.deepStrictEqual([first.branch, third.branch, third.cut_again?.replayed], [branch, branch, []]);
+    assert.deepStrictEqual([first.branch, third.branch, third.cut_again?.map((/** @type {any} */ { replayed }) => replayed)], [branch, branch, [[]]]);
     assert.deepStrictEqual([yes.landed.map((/** @type {{merged: string[]}} */ { merged }) => merged), yes.next], [[['1.3']], { kind: 'handoff', skill: 'leeway', args: [] }]);
     assert.strictEqual(sim.manifest(wu).status, 'completed');
     assert.deepStrictEqual([git(sim.dir, ['log', '--format=%s', `${base}..main`]).trim().split('\n'), git(sim.dir, ['log', '-1', '--format=%B', 'main']).match(/^Task: .*$/gm)], [
