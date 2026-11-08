@@ -293,6 +293,21 @@ function trailersPast(root, branch, other, key) {
   return new Set(values.split('\n').map((value) => value.trim()).filter(Boolean));
 }
 
+/**
+ * The commits the local `branch` holds that the revision `other` does not,
+ * oldest first, merges aside — each with its message and the value of the
+ * trailer `key` it carries, null where it carries none.
+ * @param {string} root @param {string} branch @param {string} other @param {string} key
+ * @returns {{sha: string, message: string, value: string|null}[]}
+ */
+function stampedPast(root, branch, other, key) {
+  const read = git(root, ['log', '-z', '--reverse', '--no-merges', `--format=%H%x1f%(trailers:key=${key},valueonly)%x1f%B`, `${HEADS}${branch}`, '--not', revOf(root, other), '--']);
+  return read.split('\0').filter(Boolean).map((entry) => {
+    const [sha, values, message] = entry.split('\x1f');
+    return { sha, message, value: values.split('\n').map((value) => value.trim()).find(Boolean) ?? null };
+  });
+}
+
 /** A local branch's full name where `rev` names one, else `rev` as it is: a commit, or a remote's branch. @param {string} root @param {string} rev */
 const revOf = (root, rev) => (tryGit(root, ['show-ref', '--verify', '--quiet', `${HEADS}${rev}`]) === null ? rev : `${HEADS}${rev}`);
 
@@ -322,6 +337,16 @@ function holdsTaskChange(root, tip, own, key, value) {
   const line = git(root, ['log', '-z', '--first-parent', `--format=%H%n%(trailers:key=${key},valueonly)`, own, '--not', tip, '--']);
   const below = line.split('\0').filter(Boolean).map((entry) => entry.split('\n')).find(([, ...values]) => !values.some((held) => held.trim() === value));
   return below === undefined || holdsChange(root, tip, below[0]);
+}
+
+/**
+ * Whether `tip` holds a copy of `commit` — a commit past their merge base
+ * making the same change, as a cherry-pick or a rebase makes one, however
+ * the lines it changed moved there since.
+ * @param {string} root @param {string} tip @param {string} commit
+ */
+function holdsCopy(root, tip, commit) {
+  return git(root, ['cherry', tip, commit, `${commit}^`]).startsWith('-');
 }
 
 /**
@@ -1203,15 +1228,18 @@ function pushBranch(root, remote, branch, then) {
  * Branches pushed to the remote under their own names, each at its
  * `commit`, all or none: each refspec named, no tag following them, nothing
  * signed, and no nested repository pushed with them, so no `push.*` setting
- * changes what goes where. Refused in git's words, hints aside, where the
+ * changes what goes where — one with a `lease` replacing the remote's branch
+ * only while it stands at that commit, or, the lease empty, while the
+ * remote has no such branch. Refused in git's words, hints aside, where the
  * remote refuses them or cannot be reached, saying what `then` did not
  * happen.
- * @param {string} root @param {string} remote @param {{branch: string, commit: string}[]} pushed @param {string} then
+ * @param {string} root @param {string} remote @param {{branch: string, commit: string, lease?: string}[]} pushed @param {string} then
  */
 function pushBranches(root, remote, pushed, then) {
   const atomic = pushed.length > 1 ? ['--atomic'] : [];
+  const leases = pushed.flatMap(({ branch, lease }) => (lease === undefined ? [] : [`--force-with-lease=${HEADS}${branch}:${lease}`]));
   try {
-    networkGit(root, ['push', '--quiet', '--no-follow-tags', '--no-signed', '--recurse-submodules=no', ...atomic, remote, ...pushed.map(({ branch, commit }) => `${commit}:${HEADS}${branch}`)], PUSH_TIMEOUT_MS);
+    networkGit(root, ['push', '--quiet', '--no-follow-tags', '--no-signed', '--recurse-submodules=no', ...atomic, ...leases, remote, ...pushed.map(({ branch, commit }) => `${commit}:${HEADS}${branch}`)], PUSH_TIMEOUT_MS);
   } catch (err) {
     if (!(err instanceof GitError)) throw err;
     throw new Error(`land: ${pushed.map(({ branch }) => branch).join(', ')} could not be pushed to ${remote} (${gitSaid(err)}), so ${then}`);
@@ -1325,8 +1353,8 @@ function landsOn(cwd, repo) {
 }
 
 module.exports = {
-  short, readOnce, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranches, holdingBranch, refsUnder, updateRefs, isAncestor, latestOf, mergeBase, treesOf, firstParentLine, messagesPast, trailersPast, holdsChange, holdsTaskChange, lastStamped, messagesNaming, tasksNamedOn, commitsNamed, messageOf, commitWithTree, treesPast,
-  pointersAt, treeWithPointers, pointedLike, holdsCommit, pointerAhead, stackMoves, commitsPast, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, remedy, moveTo, movedSinceOpened, rewrite, scratchBlock, rebaseBlock, checkoutBlock, pathsChanged, dirtBlock, moveBranch,
+  short, readOnce, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranches, holdingBranch, refsUnder, updateRefs, isAncestor, latestOf, mergeBase, treesOf, firstParentLine, messagesPast, trailersPast, stampedPast, holdsChange, holdsTaskChange, holdsCopy, lastStamped, messagesNaming, tasksNamedOn, commitsNamed, messageOf, commitWithTree, treesPast,
+  pointersAt, treeWithPointers, pointedLike, holdsCommit, pointerAhead, stackMoves, commitsPast, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, remedy, moveTo, movedSinceOpened, rewrite, scratchBlock, rebaseBlock, checkoutBlock, changesAt, pathsChanged, dirtBlock, moveBranch,
   defaultBranch, landsOn, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, fetchedCommit, nothingPast,
   worktrees, taskWorktree, mainCheckoutOf, projectCheckout, holderOf, samePlace, removing, branchInPlace, addWorktree, switchTo, removeWorktree, detach, scratchRoot, scratchTree,
 };

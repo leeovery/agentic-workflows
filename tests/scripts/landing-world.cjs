@@ -323,19 +323,14 @@ function useNestedWorld(prefix, ready = () => {}) {
 
 /**
  * A landing driver's side of the conformance suites (tests/drivers/{name}/landing.cjs).
- * `byHand` names the ways a person merges a task opened outside the
- * engine, two of them, each by what it does — into its own base, as a pull
- * request merges, the default branch for a task laid on none, the default
- * branch here then brought to the merge — told the task and its branch;
- * `deleted`, a task's branch deleted, here and on any host; and
- * `back`, the name a merge back of the default branch takes — the host's
- * copy of it, fetched, else the branch itself.
+ * `byHand` names the ways a person merges a quick-fix's branch onto the
+ * default branch outside the engine, each by what it does, told the
+ * branch; and `deleted`, a branch deleted, here and on any host.
  * @typedef {{
  *   env: Record<string, string|undefined>, prepare: (dir: string) => void, nest: (dir: string, into: string) => void, on: (dir: string) => string,
  *   landed: (dir: string, into?: string) => {subject: string, task: string|null}[], holds: (dir: string, into?: string) => string[],
  *   defaultTip: (dir: string, into?: string) => string, opened: (dir: string) => string[], refuseMerge: (dir: string) => {env: Record<string, string>, undo: () => void},
- *   byHand: Record<string, (dir: string, ref: import('../../skills/leeway-engine/scripts/domain/task-id.cjs').TaskRef, branch: string) => void>,
- *   deleted: (dir: string, branch: string) => void, back: string,
+ *   byHand: Record<string, (dir: string, branch: string) => void>, deleted: (dir: string, branch: string) => void,
  * }} DriverSide
  */
 

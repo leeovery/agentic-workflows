@@ -11,38 +11,34 @@
 // fix taken once it holds a commit of its own, in flight or done (R2); a
 // section opening on a fenced block written beneath its item, so every
 // record after it keeps its heading and its own chunk (R6); a section
-// leaving a fenced block open refused, naming it; every refusal writing
-// nothing; and a recorded fix closed having its record taken out of
-// `summary.md` and the fixes recorded, in the close's own commit, the file
-// gone with its last record and the knowledge base brought in line (R3).
-// The close is test-engine-quick-fix-close.cjs's.
+// leaving a fenced block open refused, naming it; and every refusal writing
+// nothing. A fix holding work is never closed, so the one close that takes
+// a record out is a move's, test-engine-workunit-move.cjs's; the
+// quick-fix's close is test-engine-quick-fix-close.cjs's.
 //
 // Layer: git. World: quick-fix-world.cjs's `twoFixesBuilt` — fixes 1.1 and
-// 1.2, 1.2 laid on 1.1, each built through the local driver and done —
-// built once and copied. Each test's conversation keeps its records in a
-// config folder of its own.
+// 1.2 on the quick-fix's branch, each built through the local driver and
+// done — built once and copied. Each test's conversation keeps its records
+// in a config folder of its own.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
 
 const { describe, it, afterEach } = require('node:test');
 const assert = require('node:assert');
-const path = require('path');
 const {
-  ok, output, callAsync, refusedPristine, stateGit, statePath, layout, writeState, readState, readManifest, createFile, fixtureFrom, cleanupFixture, keywordOnlyKnowledge, touched,
+  ok, output, callAsync, refusedPristine, stateGit, statePath, layout, writeState, readState, readManifest, fixtureFrom, cleanupFixture, keywordOnlyKnowledge, touched,
 } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const {
   UNIT, FLAG, HELP, RECORDS: BUILT, createFix, fixChanged, fixBuilt, recordFile, twoFixesBuilt, summaryChunks, checklistClosed,
 } = require('./quick-fix-world.cjs');
 
-const { chosenDriver } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/drivers.cjs'));
-
 const DOCS = 'Spell the docs --colour';
 const MAN = 'Spell the man page --colour';
 
 const RECORDS = Object.freeze({
-  ...BUILT, 3: { changed: 'The docs name --colour.', why: 'The docs matched the old flag.', leaves: 'Nothing.' }, 4: { changed: 'The man page names --colour.', why: 'It matched the old flag.', leaves: 'Nothing.' },
+  ...BUILT, 3: { changed: 'The docs name --colour.', why: 'The docs matched the old flag.', leaves: 'Nothing.' },
 });
 
 const world = fixtureFrom('quick-fix-record-', twoFixesBuilt);
@@ -187,45 +183,5 @@ describe('summary.md in the knowledge base (19.S38, 22.6.9)', () => {
       '- Why: The flag was spelt the American way.', '- Leaves out: Old scripts passing --color.', '', '',
     ].join('\n'));
     assert.deepStrictEqual([headings(), summaryChunks(dir)], [[`## ${FLAG}`, `## ${HELP}`, `## ${DOCS}`], [FLAG, HELP, DOCS]]);
-  });
-});
-
-describe('a recorded fix closed (R3)', () => {
-  it('takes its record out of summary.md and the fixes recorded, where it stands among them, in the close\'s own commit, the knowledge base in line', () => {
-    dir = world();
-    keywordOnlyKnowledge(dir);
-    record(1);
-    createFix(dir, 3, DOCS, as());
-    createFix(dir, 4, MAN, as());
-    for (const [n, file] of /** @type {const} */ ([[4, 'docs/man.md'], [3, 'docs/flags.md']])) {
-      run(['task', 'start', UNIT, `1.${n}`]);
-      createFile(dir, file, '--colour\n');
-      run(['commit', '--paths', file, '--task', UNIT, `1.${n}`, '-m', `fix(${UNIT}): fix ${n}`]);
-      record(n);
-    }
-    const before = headings();
-    const res = run(['task', 'close', UNIT, '1.3', '--reason', 'Not wanted.']);
-
-    assert.deepStrictEqual([before, headings(), readManifest(dir, UNIT).fixes.recorded, summaryChunks(dir), res.warnings], [
-      [`## ${FLAG}`, `## ${DOCS}`, `## ${MAN}`], [`## ${FLAG}`, `## ${MAN}`], [`${UNIT}-1-1`, `${UNIT}-1-4`], [FLAG, MAN], undefined,
-    ]);
-    assert.deepStrictEqual([stateGit(dir, ['log', '-1', '--format=%s']).trim(), touched(statePath(dir), 'HEAD')], [
-      `task(${UNIT}): close 1.3`,
-      [...chosenDriver(dir, 'task').driver.storeFiles().map((file) => `M\t${file}`), `M\t${layout.manifest(UNIT)}`, `M\t${layout.unit(UNIT, 'summary.md')}`].sort(),
-    ]);
-  });
-
-  it('removes summary.md with its last record, a later fix laid on the fix closed first, the knowledge base left holding none of it', () => {
-    dir = world();
-    keywordOnlyKnowledge(dir);
-    fixChanged(dir, 3, DOCS, 'docs/flags.md', '--colour\n', as());
-    record(3);
-    fixChanged(dir, 4, MAN, 'docs/man.md', '--colour\n', as());
-    record(4);
-    run(['task', 'close', UNIT, '1.4', '--reason', 'Not wanted.']);
-    run(['task', 'close', UNIT, '1.3', '--reason', 'Not wanted.']);
-
-    assert.deepStrictEqual([readManifest(dir, UNIT).fixes.recorded, summaryChunks(dir)], [[], []]);
-    assert.ok(touched(statePath(dir), 'HEAD').includes(`D\t${layout.unit(UNIT, 'summary.md')}`), 'the close\'s commit removes summary.md');
   });
 });

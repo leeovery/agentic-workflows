@@ -15,8 +15,9 @@
 // the remote or force-pushed, by every spelling Claude writes, in a project
 // with a remote and one without (4.S7); during a build, a raw `git commit`
 // wherever it runs, and every other git command that commits past the door
-// onto a task's branch — a merge, a pull, a cherry-pick, a revert, an am or
-// a rebase but with the flags that make no commit — the tasks in flight
+// onto a task's branch, a quick-fix's one branch among them — a merge, a
+// pull, a cherry-pick, a revert, an am or a rebase but with the flags that
+// make no commit — the tasks in flight
 // read from the conversation stdin names, each with its door (6.S11, 6.S22,
 // 12.S21), the engine's own landing remedies passing on every other branch,
 // and a raw commit in the state
@@ -53,6 +54,7 @@ const { GUARD_VERBS } = require(path.join(SCRIPTS, 'guards.cjs'));
 const { positionPath } = require(path.join(SCRIPTS, 'domain', 'conversation.cjs'));
 const { ignoresCase } = require(path.join(SCRIPTS, 'kernel', 'state-root.cjs'));
 const lg = require(path.join(SCRIPTS, 'domain', 'landing-git.cjs'));
+const { quickFixBranch } = require(path.join(SCRIPTS, 'domain', 'landing-names.cjs'));
 
 // Whether the filesystem every folder of these tests is on ignores case.
 const IGNORES_CASE = ignoresCase(fs.realpathSync(os.tmpdir()));
@@ -373,6 +375,19 @@ describe('raw commits (6.3.7, 6.3.12, 12.9.8)', () => {
       assert.match(guard(dir, 'cd "$NOWHERE" && git merge --continue', { session: BUILDING }).stderr, /^git merge is refused while task 1\.1 of pay is in flight/, 'a folder the text cannot say');
     } finally {
       git(dir, ['worktree', 'remove', '--force', scratch]);
+    }
+  });
+
+  it('N1 (R14): a checkout with the unit\'s quick-fix branch out is on a task\'s branch, every task of a quick-fix committing there — a command making a commit past the door refused', () => {
+    const branch = quickFixBranch(UNIT);
+    const tree = path.join(fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'shell-guard-quick-fix-'))), 'fix');
+    scratch.push(path.dirname(tree));
+    git(dir, ['worktree', 'add', '-q', '-b', branch, tree]);
+    try {
+      assert.match(guard(tree, 'git merge --ff-only origin/main', { session: BUILDING }).stderr, new RegExp(`^git merge is refused while task 1\\.1 of ${UNIT} is in flight — it makes a commit past the commit door`));
+    } finally {
+      git(dir, ['worktree', 'remove', '--force', tree]);
+      git(dir, ['branch', '-q', '-D', branch]);
     }
   });
 

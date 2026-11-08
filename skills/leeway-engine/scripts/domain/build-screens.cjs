@@ -62,6 +62,7 @@ const { finishedUnits } = require('./ledger-units.cjs');
 const { accountPath, takenFigures, readAccount } = require('./task-account.cjs');
 const { taskRounds } = require('./round-report.cjs');
 const { heldStack, tipCommits } = require('./phase-stack.cjs');
+const { branchHead } = require('./fix-branch.cjs');
 const { runsOf } = require('./runs.cjs');
 const { reproducingHold } = require('./bug-proven.cjs');
 const { waitingQuestions } = require('./questions.cjs');
@@ -152,14 +153,21 @@ function callsOf(cwd, ref) {
     .map(({ short, line }) => ({ id: short, text: String(line.text) }));
 }
 
+/** The tips of the task's branch, as a run names the code it ran: null where it has none yet. @param {string} cwd @param {TaskRef} ref @param {TaskDetail} task */
+function stackHead(cwd, ref, task) {
+  const stack = heldStack(cwd, ref.unit, ref.phase, [task]);
+  return stack === null ? null : tipCommits(stack);
+}
+
 /** A scenario of a task with no branch yet: nothing run. */
 const NOT_RUN = Object.freeze({ standing: 'not proven', runs: [] });
 
 /**
  * What running the product proved of each of the task's scenarios — of the
  * cut, or a quick-fix's fix's own, which it names (F2) — at the tips of its
- * branch: null where it holds none, not run where the task has no branch
- * yet; and whether a run there counts, one skipped never.
+ * branch, a quick-fix's task's the quick-fix's one branch (fix-branch.cjs):
+ * null where it holds none, not run where the task has no branch yet; and
+ * whether a run there counts, one skipped never.
  * @param {string} cwd @param {Record<string, any>} manifest @param {TaskRef} ref @param {TaskDetail} task @param {string[]} criteria
  */
 function ranOf(cwd, manifest, ref, task, criteria) {
@@ -167,8 +175,7 @@ function ranOf(cwd, manifest, ref, task, criteria) {
     ? scenarioIds(task.text)
     : cutPhases(manifest).flatMap(({ scenarios: held }) => held).filter((scenario) => holdsScenario(task.text, scenario));
   if (scenarios.length === 0) return { ran: null, recorded: false };
-  const stack = heldStack(cwd, ref.unit, ref.phase, [task]);
-  const head = stack === null ? null : tipCommits(stack);
+  const head = quickFixBuild(manifest) ? branchHead(cwd, ref.unit) : stackHead(cwd, ref, task);
   const read = scenarios.map((scenario) => ({ scenario, ...(head === null ? NOT_RUN : runsOf(cwd, ref.unit, scenario, head)) }));
   return {
     ran: read.map(({ scenario, standing }) => ({ scenario, criterion: criterionWords(criteria.find((criterion) => namesScenario(criterion, scenario)) ?? scenario), standing })),

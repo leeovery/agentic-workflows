@@ -2,28 +2,28 @@
 
 // ---------------------------------------------------------------------------
 // What the quick-fix suites share (test-engine-quick-fix*.cjs,
-// test-engine-landing-conformance-quick-fix*.cjs, quick-fix-laid-on.cjs, and
-// a landing driver's own quick-fix suites): the quick-fix, made through
-// `workunit create` from an inbox note, its code and the build's skill
-// committed, and a feature beside it (`quickFix`); a fix's task file, fix
-// `n` naming its one scenario `{n}.S1` (`fixFile`), and its creation through
-// the tracker's verb (`createFix`); a fix's change made as Claude makes one
-// in the conversation — started, putting the checkout on its branch, its
-// change committed through the door (`fixChanged`) — and the fix built, its
-// pull request then opened and the fix done (`fixBuilt`); its short record's
-// file (`recordFile`), fixes 1.1 and 1.2's as Claude writes them
-// (`RECORDS`); three fixes' titles, files and texts, a chain (`CHAIN`); the
-// quick-fix entered by a conversation gone since, the chain's first two
-// fixes built, 1.2 laid on 1.1 (`twoFixesBuilt`); what a quick-fix
-// conformance suite reads a landing driver by (`quickFixConformance`); the
-// knowledge base's chunks of `summary.md` (`summaryChunks`); a git command
-// run as Claude runs one in the conversation, the shell guard asked first
-// (`guardedGit`), and a merge back begun so, any conflict settled to the
-// fix's own text (`mergedBack`); finish's checklist worked and closed
-// (`checklistClosed`), the fixes recorded before it (`fixesRecorded`), and
-// the close's yes as its menu words it (`closeYes`); and a world built by a
-// conversation gone since, its records in a config folder of its own,
-// removed once the world is built (`asGone`).
+// test-engine-landing-conformance-quick-fix*.cjs, and a landing driver's own
+// quick-fix suites): the quick-fix, made through `workunit create` from an
+// inbox note, its code and the build's skill committed, and a feature beside
+// it (`quickFix`); its one branch (`BRANCH`), which every fix of it commits
+// on; a fix's task file, fix `n` naming its one scenario `{n}.S1`
+// (`fixFile`), and its creation through the tracker's verb (`createFix`); a
+// fix's change made as Claude makes one in the conversation — started,
+// putting the checkout on the quick-fix's branch, its change committed
+// through the door (`fixChanged`) — and the fix built, the quick-fix's pull
+// request then opened, or its commit pushed to it, and the fix done
+// (`fixBuilt`); its short record's file (`recordFile`), fixes 1.1 and 1.2's
+// as Claude writes them (`RECORDS`); three fixes' titles, files and texts
+// (`SET`); the quick-fix entered by a conversation gone since, the set's
+// first two fixes built (`twoFixesBuilt`); what a quick-fix conformance
+// suite reads a landing driver by (`quickFixConformance`); the knowledge
+// base's chunks of `summary.md` (`summaryChunks`); a git command run as
+// Claude runs one in the conversation, the shell guard asked first
+// (`guardedGit`); finish's checklist worked and closed (`checklistClosed`),
+// the fixes recorded before it (`fixesRecorded`), and the close's yes as its
+// menu words it (`closeYes`); and a world built by a conversation gone
+// since, its records in a config folder of its own, removed once the world
+// is built (`asGone`).
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -39,6 +39,7 @@ const { createManifest, useTempFolder } = require('./discovery-test-utils.cjs');
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const store = require(path.join(SCRIPTS, 'kernel/knowledge/store.cjs'));
 const { knowledgeFiles } = require(path.join(SCRIPTS, 'kernel/knowledge/files.cjs'));
+const { quickFixBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
 
 const UNIT = 'typo';
 const PLACE = `${UNIT}.implementation`;
@@ -46,9 +47,10 @@ const DESCRIPTION = 'The --color flag is spelt --colour';
 const NOTE = layout.inbox('quickfixes', '2026-06-03--colour-flag.md');
 const FLAG = 'Spell the flag --colour';
 const HELP = 'Spell the help --colour';
+const BRANCH = quickFixBranch(UNIT);
 
-/** Three fixes' titles, the file each changes and its text there, built one on another. */
-const CHAIN = Object.freeze([
+/** Three fixes' titles, the file each changes and its text there, built one after another. */
+const SET = Object.freeze([
   { title: FLAG, file: 'src/flag.js', text: 'const flag = \'colour\';\n' },
   { title: HELP, file: 'src/help.js', text: 'const help = \'--colour\';\n' },
   { title: 'Spell the docs --colour', file: 'docs/flags.md', text: '# Flags\n\n--colour\n' },
@@ -84,8 +86,8 @@ const createFix = (dir, n, title, as) => ok(dir, ['task', 'create', UNIT, '1', '
 
 /**
  * Fix `n`'s change made in the conversation `as` names: the fix made,
- * started — the checkout put on its branch — and `file` written with
- * `text` and committed through the door.
+ * started — the checkout put on the quick-fix's branch — and `file` written
+ * with `text` and committed through the door.
  * @param {string} dir @param {number} n @param {string} title @param {string} file @param {string} text @param {As} as
  */
 function fixChanged(dir, n, title, file, text, as) {
@@ -97,7 +99,8 @@ function fixChanged(dir, n, title, file, text, as) {
 
 /**
  * Fix `n` built as Claude builds one in the conversation `as` names: its
- * change made (`fixChanged`), its pull request opened, and done.
+ * change made (`fixChanged`), the quick-fix's pull request opened, or the
+ * commit pushed to it, and done.
  * @param {string} dir @param {number} n @param {string} title @param {string} file @param {string} text @param {As} as
  */
 function fixBuilt(dir, n, title, file, text, as) {
@@ -111,10 +114,10 @@ function fixBuilt(dir, n, title, file, text, as) {
 const recordFile = (dir, n, { changed, why, leaves }) => writeState(dir, layout.cache(`record-${n}.md`), ['## What changed', changed, '', '## Why', why, '', '## Leaves out', leaves, ''].join('\n'));
 
 /**
- * The quick-fix entered by a conversation gone since, the chain's fixes 1.1
- * and 1.2 — 1.2 laid on 1.1 — each built (`fixBuilt`): `ready` run on the
- * project once the quick-fix is made, as a driver's side readies it, and
- * every call made with `env` beside the conversation's.
+ * The quick-fix entered by a conversation gone since, the set's fixes 1.1
+ * and 1.2 each built (`fixBuilt`): `ready` run on the project once the
+ * quick-fix is made, as a driver's side readies it, and every call made
+ * with `env` beside the conversation's.
  * @param {string} dir @param {{ready?: (dir: string) => void, env?: Record<string, string|undefined>}} [options]
  */
 function twoFixesBuilt(dir, { ready = () => {}, env = {} } = {}) {
@@ -122,7 +125,7 @@ function twoFixesBuilt(dir, { ready = () => {}, env = {} } = {}) {
   ready(dir);
   asGone((as) => {
     entered(dir, as);
-    CHAIN.slice(0, 2).forEach(({ title, file, text }, at) => fixBuilt(dir, at + 1, title, file, text, as));
+    SET.slice(0, 2).forEach(({ title, file, text }, at) => fixBuilt(dir, at + 1, title, file, text, as));
   }, env);
 }
 
@@ -132,7 +135,7 @@ function twoFixesBuilt(dir, { ready = () => {}, env = {} } = {}) {
  * environment, in the suite's conversation; a copy at each call of the
  * quick-fix readied for the driver, its code tagged `landing-base`, built
  * once per process, entered — every copy removed after its test; fix `n`
- * of `CHAIN` changed (`fixChanged`) and recorded; what the default branch
+ * of `SET` changed (`fixChanged`) and recorded; what the default branch
  * gained, each landing by its subject and the paths it changed; and fixes
  * 1.1 and 1.2 recorded and the close made, landing them.
  * @param {string} name the driver's @param {string} prefix the copies' temp-directory prefix
@@ -155,7 +158,7 @@ function quickFixConformance(name, prefix) {
   /** @returns {As} */
   const as = () => ({ env: { ...side.env, LEEWAY_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: 'sess-1', TMUX: undefined, TMUX_PANE: undefined } });
   /** @param {string} at @param {number} n */
-  const record = (at, n) => ok(at, ['quick-fix', 'record', UNIT, `1.${n}`, '--file', recordFile(at, n, { changed: `${CHAIN[n - 1].title}.`, why: 'It was spelt the American way.', leaves: 'Nothing.' })], as());
+  const record = (at, n) => ok(at, ['quick-fix', 'record', UNIT, `1.${n}`, '--file', recordFile(at, n, { changed: `${SET[n - 1].title}.`, why: 'It was spelt the American way.', leaves: 'Nothing.' })], as());
   return {
     side,
     as,
@@ -167,8 +170,10 @@ function quickFixConformance(name, prefix) {
       entered(dir, as());
       return dir;
     },
-    /** Fix `n` of the chain changed in the suite's conversation. @param {string} at @param {number} n */
-    changed: (at, n) => fixChanged(at, n, CHAIN[n - 1].title, CHAIN[n - 1].file, CHAIN[n - 1].text, as()),
+    /** Fix `n` of the set changed in the suite's conversation. @param {string} at @param {number} n */
+    changed: (at, n) => fixChanged(at, n, SET[n - 1].title, SET[n - 1].file, SET[n - 1].text, as()),
+    /** Fix `n` of the set built in the suite's conversation (`fixBuilt`). @param {string} at @param {number} n */
+    built: (at, n) => fixBuilt(at, n, SET[n - 1].title, SET[n - 1].file, SET[n - 1].text, as()),
     /** What the default branch gained, each landing by its subject and the paths it changed. @param {string} at */
     landed: (at) => side.landed(at).map((/** @type {any} */ { subject, paths }) => [subject, paths]),
     /** Fixes 1.1 and 1.2 recorded and the close made, landing them. @param {string} at */
@@ -213,25 +218,6 @@ function guardedGit(dir, args, as) {
   const ran = spawnSync('git', args, { cwd: dir, encoding: 'utf8', timeout: GIT_TIMEOUT_MS });
   if (ran.status !== 0) throw new Error(`\`${['git', ...args].join(' ')}\` failed: ${ran.stderr.trim()}`);
   return ran.stdout;
-}
-
-/**
- * A merge back of `from` into the branch the checkout has out, as Claude
- * makes one in the conversation `as` names: begun through the shell guard
- * (`askGuard`), `git merge --no-ff --no-commit`, each file it conflicts in
- * settled to `settled`'s text for it, then committed through the door under
- * fix `n`, which finishes it, naming every file the merge changed — or,
- * where it changed none, those `settled` names.
- * @param {string} dir @param {string} from @param {number} n @param {As} as @param {Record<string, string>} settled by file
- */
-function mergedBack(dir, from, n, as, settled) {
-  const args = ['merge', '--no-ff', '--no-commit', from];
-  askGuard(dir, args, as);
-  spawnSync('git', args, { cwd: dir, encoding: 'utf8', timeout: GIT_TIMEOUT_MS });
-  const conflicted = git(dir, ['diff', '--name-only', '--diff-filter=U']).split('\n').filter(Boolean);
-  for (const file of conflicted) createFile(dir, file, settled[file] ?? '');
-  const changed = git(dir, ['diff', '--name-only', 'HEAD']).split('\n').filter(Boolean);
-  return ok(dir, ['commit', '--paths', ...(changed.length > 0 ? changed : Object.keys(settled)), '--task', UNIT, `1.${n}`, '-m', `merge ${from} back`], as);
 }
 
 /** Finish's checklist worked and closed in the conversation `as` names, the build's log written. @param {string} dir @param {As} as */
@@ -279,6 +265,6 @@ function entered(dir, as) {
 }
 
 module.exports = {
-  UNIT, PLACE, DESCRIPTION, NOTE, FLAG, HELP, RECORDS, CHAIN, fixFile, quickFix, createFix, fixChanged, fixBuilt, recordFile, twoFixesBuilt, quickFixConformance, summaryChunks,
-  guardedGit, mergedBack, checklistClosed, fixesRecorded, closeYes, asGone, entered,
+  UNIT, PLACE, DESCRIPTION, NOTE, FLAG, HELP, BRANCH, RECORDS, SET, fixFile, quickFix, createFix, fixChanged, fixBuilt, recordFile, twoFixesBuilt, quickFixConformance, summaryChunks,
+  guardedGit, checklistClosed, fixesRecorded, closeYes, asGone, entered,
 };

@@ -5,13 +5,17 @@
 // landing driver. A task's branch is `{type}/{unit}-{phase}.{n}-{slug}`, its
 // slug made from the task's title, or `task` where the title has no letter
 // or digit to make one of — the id before it already makes the branch the
-// task's alone; a phase's branch is `feat/{unit}-phase-{phase}`. A task's
-// pull request title, and the subject of the commit it squashes to, is
-// `{type}({unit}): {title}`, and the message's last line is the task's
-// internal id as a `Task:` trailer, which is how a task is read back off
-// git: every such line names a task the commit lands, so landings squashed
-// together, their messages joined, land each. The type is the task's own,
-// from its template (12.4.1): a lowercase word, as feat or fix.
+// task's alone; a phase's branch is `feat/{unit}-phase-{phase}`; and a
+// quick-fix's one branch, which every task of its build commits on, is
+// `fix/{unit}` (fix-branch.cjs). A task's pull request title, and the
+// subject of the commit it squashes to, is `{type}({unit}): {title}`, and
+// the message's last line is the task's internal id as a `Task:` trailer,
+// which is how a task is read back off git: every such line names a task
+// the commit lands, so landings squashed together, their messages joined,
+// land each. A quick-fix lands as one pull request, its title and its one
+// commit's subject `fix({unit}): {title}`, the rest of its message each of
+// its tasks' landings in turn (`quickFixMessage`). The type is the task's
+// own, from its template (12.4.1): a lowercase word, as feat or fix.
 // ---------------------------------------------------------------------------
 
 const { KEBAB_SLUG } = require('../kernel/manifest-schema.cjs');
@@ -84,9 +88,20 @@ function taskOfBranch(unit, branch) {
   return named === null ? null : { unit, phase: Number(named[1]), n: Number(named[2]) };
 }
 
-/** Whether a branch is one of the unit's: a task's or a phase's. @param {string} unit @param {string} branch @returns {boolean} */
+/** A quick-fix's one branch. @param {string} unit @returns {string} */
+function quickFixBranch(unit) {
+  assertUnit(unit);
+  return `fix/${unit}`;
+}
+
+/** Whether a branch is one a task of the unit's commits on: a task's own, or a quick-fix's one branch. @param {string} unit @param {string} branch @returns {boolean} */
+function isWorkBranch(unit, branch) {
+  return taskOfBranch(unit, branch) !== null || branch === quickFixBranch(unit);
+}
+
+/** Whether a branch is one of the unit's: a task's, a quick-fix's or a phase's. @param {string} unit @param {string} branch @returns {boolean} */
 function isUnitBranch(unit, branch) {
-  return taskOfBranch(unit, branch) !== null || phaseOfBranch(unit, branch) !== null;
+  return isWorkBranch(unit, branch) || phaseOfBranch(unit, branch) !== null;
 }
 
 /**
@@ -97,6 +112,17 @@ function isUnitBranch(unit, branch) {
 function landedMessage(ref, type, title) {
   assertType(type);
   return `${type}(${ref.unit}): ${titleOf(title)}\n\nTask: ${taskId(ref)}\n`;
+}
+
+/**
+ * The message a quick-fix lands under: its subject, then each of its tasks'
+ * landings in turn, so its one commit names each.
+ * @param {string} unit @param {string} title @param {{ref: TaskRef, type: string, title: string}[]} tasks in order
+ * @returns {string}
+ */
+function quickFixMessage(unit, title, tasks) {
+  const landings = tasks.map((task) => landedMessage(task.ref, task.type, task.title).trimEnd());
+  return `${[`fix(${unit}): ${titleOf(title)}`, ...landings].join('\n\n')}\n`;
 }
 
 /** The task a line naming one by `key` names, or null. @param {string} line @param {string} key @returns {TaskRef|null} */
@@ -155,4 +181,4 @@ function landingOf(ref, message) {
   return null;
 }
 
-module.exports = { slugOf, taskBranch, phaseBranch, phaseOfBranch, taskOfBranch, isUnitBranch, landedMessage, landingOf, tasksOfMessage, landingsByTask };
+module.exports = { slugOf, taskBranch, phaseBranch, quickFixBranch, phaseOfBranch, taskOfBranch, isWorkBranch, isUnitBranch, landedMessage, quickFixMessage, landingOf, tasksOfMessage, landingsByTask };

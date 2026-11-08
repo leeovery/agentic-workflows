@@ -1,96 +1,70 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: where a quick-fix's fix is built — the project's own
+// Domain ring: where a quick-fix's tasks are built — its fixes, and the fix
+// tasks of a review asked for at its close — on the quick-fix's one branch,
+// `fix/{unit}` (landing-names.cjs): each task its own commits through the
+// door, stamped with its task (commit-task.cjs), and the quick-fix landing
+// as that branch's one pull request (landing.cjs). The project's own
 // checkout, which a build, the review phase and a quick-fix's work take
-// turns in (12.7.8, 19.5.18), Claude doing the work there with no builder in
-// a worktree of its own (19.5.3). Starting a fix puts the checkout on the
-// fix's branch (`taskBranch`, landing-names.cjs): the branch where the
-// repository holds it already; else made, the first fix's from the branch
-// the repository lands on (`landsOn`, landing-git.cjs), a later fix's on the
-// tip of the nearest fix before it not closed, so a set's fixes stack as
-// their pull requests chain (7.2.3) and a closed fix's work never lands
-// (`fixBase`). A fix's own work is its own commits — those the commit door
-// stamped with its task (commit-task.cjs) — that its branch holds past the
-// branch the repository lands on, so a merge back, a later fix laid on it or
-// a fix below it moving on neither hides it nor lends it; and, once it has
-// landed, that branch's commits naming it, its landing or its own, as a
-// merge by hand by any method leaves them (`ownWork`, `landedHere`); its
-// branch gone, any of its own commits the repository holds on a ref or a
-// reflog. Another fix not closed is laid on it where that fix's branch holds
-// one of its own commits past that branch — a later fix on an earlier one's
-// (`laidOn`, `laidBeneath`). These are what a fix's opening and end read
-// (fix-end.cjs), and its record (quick-fix-record.cjs). The commit door
-// takes a fix's commit on its branch alone (commit-task.cjs), and a fix's
-// done one where it finishes a merge back of the branch the fixes land on,
-// as the host has it or here (`mergingLanding`). The close, once its fixes
-// have landed, puts the checkout back on the branch the repository lands on
-// (finish.cjs), as a move that leaves the fixes does (workunit-move.cjs)
-// where the checkout has one of the unit's fixes' branches out: refused,
-// nothing moved, while it holds changes not committed outside the state,
-// naming each. The move then sets the fixes' branches aside
-// (`setFixesAside`): one holding commits of its own past its base — the
-// branch the fixes land on, or the fix before it it was laid from — is kept,
-// its commits unlanded, renamed to `moved/{branch}`, a name no landing reads
-// as the unit's (`taskOfBranch`, `phaseOfBranch`, landing-names.cjs), so the
-// new type's build, numbering its own tasks from 1.1, never meets it; one
-// holding none is deleted. The kept names are what the topic's first opening
-// names (`keptBranches`). Each move refuses first a checkout holding changes
-// not committed outside the state, naming each (`codeStatus`, code.cjs): a
-// fix's start before the tracker moves, the close before anything lands.
-// Only the project's own repository moves; a repository nested in it keeps
-// its branch.
+// turns in (12.7.8, 19.5.18), has the branch out while a task is built
+// there. Only the project's own repository moves; a repository nested in it
+// keeps its branch.
+//
+// - A task's start puts the checkout on the branch (`checkOutBranch`), held
+//   already, else cut at the first task's start from the branch the project
+//   lands on as the host has it (`landingTips`, landing.cjs) — refused
+//   first, before the tracker moves, while the checkout holds changes not
+//   committed outside the state, naming each (`codeStatus`, code.cjs).
+// - A person's merge of the pull request by hand, by any method, can leave
+//   the branch holding commits that have landed past the branch the project
+//   lands on as the host has it (`quickFixLanding`, landing.cjs). Where it
+//   does, the branch is cut again from that branch's tip (`cutAgain`) — at
+//   a task's start, its opening and the quick-fix's landing — and every
+//   commit of a task's past it not landed, committed after the merge or
+//   never in the pull request, replayed onto it in order under its own
+//   message, its stamp kept, merges and commits stamped with none of the
+//   unit's tasks left. A commit that does not apply there is left off, with
+//   every later commit of its task's, the answer warning of each task left
+//   off and the way on: its change made again on the branch through the
+//   door. Where a checkout has the branch out it moves there, refused first,
+//   nothing moved, while that checkout holds changes not committed, naming
+//   each. Nothing else rewrites the branch.
+// - The door takes a commit of a quick-fix's task on the branch alone
+//   (commit-task.cjs), a commit on any other naming it and the start that
+//   puts the checkout there (`branchWayOn`).
+// - The close, once the quick-fix has landed, puts the checkout back on the
+//   branch the project lands on (finish.cjs), as a move that leaves the
+//   quick-fix does (workunit-move.cjs), where it has the branch out —
+//   refused, nothing moved, while it holds changes not committed outside the
+//   state, naming each (`checkOutLanding`). The move then sets the branch
+//   aside (`setBranchAside`): holding commits past the branch the project
+//   lands on, it is kept, its commits unlanded, renamed to
+//   `moved/fix/{unit}`, a name no landing reads as the unit's
+//   (landing-names.cjs), so the new type's build never meets it; holding
+//   none, it is deleted. The kept name is what the topic's first opening
+//   names (`keptBranches`).
 // ---------------------------------------------------------------------------
 
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { tryGit, git } = require('../kernel/git.cjs');
-const { projectRepos } = require('../kernel/repos.cjs');
-const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
+const { projectRepos, repoName } = require('../kernel/repos.cjs');
 const { codeStatus } = require('./code.cjs');
-const { dayBefore } = require('./dates.cjs');
-const { branches, holdsBeyond, landsOn, switchTo, trailersPast, tasksNamedOn, lastStamped, isAncestor } = require('./landing-git.cjs');
-const { remoteName } = require('./remote.cjs');
-const { taskBranch, taskOfBranch } = require('./landing-names.cjs');
-const { shownTask, taskName, taskId } = require('./task-id.cjs');
+const lg = require('./landing-git.cjs');
+const { quickFixBranch } = require('./landing-names.cjs');
+const { parseTaskId, shownTask, taskName } = require('./task-id.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** @typedef {import('../kernel/repos.cjs').Repo} Repo */
-/** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
 
-/** The trailer the door stamps a task's commit with, read when asked: commit-task.cjs requires this module. */
-const stamp = () => require('./commit-task.cjs').TRAILER;
+/** The landing, read when asked: it reads the task verbs, which read this module. */
+const landing = () => require('./landing.cjs');
 
 /** The branch the checkout has out, or null where it is detached. @param {string} root */
 const branchOut = (root) => tryGit(root, ['symbolic-ref', '-q', '--short', 'HEAD'])?.trim() ?? null;
 
-/**
- * The branches of the unit's fixes `phase` holds that the repository holds,
- * of the fix numbers `wanted`, each with its fix's number.
- * @param {string} root @param {TaskRef} ref @param {(n: number) => boolean} wanted
- * @returns {{branch: string, n: number}[]}
- */
-function phaseFixes(root, ref, wanted) {
-  return [...branches(root).keys()].flatMap((branch) => {
-    const of = taskOfBranch(ref.unit, branch);
-    return of !== null && of.phase === ref.phase && wanted(of.n) ? [{ branch, n: of.n }] : [];
-  });
-}
-
-/**
- * The branch of the highest-numbered fix of those `wanted` the repository
- * holds, of the unit's fixes `phase` holds; null for none.
- * @param {string} root @param {TaskRef} ref @param {(n: number) => boolean} wanted the fix numbers looked for
- * @returns {string|null}
- */
-function nearestFix(root, ref, wanted) {
-  return phaseFixes(root, ref, wanted).sort((a, b) => b.n - a.n)[0]?.branch ?? null;
-}
-
-/** The fix's branch, where the repository holds it. @param {string} root @param {TaskRef} ref */
-const fixBranchOf = (root, ref) => nearestFix(root, ref, (n) => n === ref.n);
-
-/** The branch the fixes land on, in the project's own repository at `root`. @param {string} cwd @param {string} root */
-const fixesLandOn = (cwd, root) => landsOn(cwd, /** @type {Repo} */ (projectRepos(root).find((repo) => repo.dir === '')));
+/** The branch the project lands on, in its own repository at `root`. @param {string} cwd @param {string} root */
+const landsHere = (cwd, root) => lg.landsOn(cwd, /** @type {Repo} */ (projectRepos(root).find((repo) => repo.dir === '')));
 
 /** The changes the project's checkout holds not committed outside the state. @param {string} cwd */
 const dirtOf = (cwd) => codeStatus(cwd).files.map(({ path }) => path);
@@ -105,248 +79,227 @@ function refuseDirt(cwd, refusal) {
   if (dirty.length > 0) throw new Error(refusal(dirty.join(', ')));
 }
 
-/** Refuse to start a fix while the project's checkout holds changes not committed. @param {string} cwd @param {TaskRef} ref */
+/** Refuse to start a quick-fix's task while the project's checkout holds changes not committed. @param {string} cwd @param {TaskRef} ref */
 function refuseDirty(cwd, ref) {
-  refuseDirt(cwd, (dirty) => `${taskName(ref)} is built in the project's own checkout, which holds changes not committed — ${dirty} — so it was not put on the fix's branch: commit them or set them aside, then start the fix again`);
+  refuseDirt(cwd, (dirty) => `${taskName(ref)} is built in the project's own checkout, which holds changes not committed — ${dirty} — so it was not put on ${ref.unit}'s branch: commit them or set them aside, then start the task again`);
 }
 
 /** Refuse a quick-fix's close while the project's checkout holds changes not committed. @param {string} cwd @param {string} unit */
 function refuseDirtyClose(cwd, unit) {
-  refuseDirt(cwd, (dirty) => `${unit}'s fixes were built in the project's own checkout, which holds changes not committed — ${dirty} — so nothing was landed: commit them or set them aside, then close it again`);
+  refuseDirt(cwd, (dirty) => `${unit}'s tasks were built in the project's own checkout, which holds changes not committed — ${dirty} — so nothing was landed: commit them or set them aside, then close it again`);
 }
 
-/** The numbers of the fixes closed, of the set's tasks as the tracker holds them. @param {TaskDetail[]} fixes */
-const closedFixes = (fixes) => fixes.filter(({ status }) => status === 'closed').map(({ ref }) => ref.n);
-
 /**
- * The branch a fix is laid on: the nearest fix before it not closed, else
- * the branch the repository lands on.
- * @param {string} cwd @param {TaskRef} ref @param {number[]} closed the set's fixes closed, by number
+ * The project's checkout put on the quick-fix's branch (the header's): cut
+ * again where a merge by hand left it holding work landed, or cut from the
+ * branch the project lands on as the host has it where the repository
+ * lacks it. Answers the branch, and what cutting it again did and warned
+ * of, where it did.
+ * @param {string} cwd @param {string} unit
+ * @returns {{branch: string, cut_again?: Record<string, unknown>, warnings?: string[]}}
  */
-function fixBase(cwd, ref, closed) {
+function checkOutBranch(cwd, unit) {
   const root = codeRoot(cwd);
-  return nearestFix(root, ref, (n) => n < ref.n && !closed.includes(n)) ?? fixesLandOn(cwd, root);
+  const branch = quickFixBranch(unit);
+  const cut = lg.branches(root).has(branch) ? cutAgain(cwd, unit) : cutFresh(cwd, unit, root, branch);
+  if (branchOut(root) !== branch) lg.switchTo(root, branch);
+  if (cut === null) return { branch };
+  return { branch, cut_again: cut.answer, ...(cut.warnings.length > 0 ? { warnings: cut.warnings } : {}) };
+}
+
+/** The quick-fix's branch cut from the branch the project lands on as the host has it: nothing cut again. @param {string} cwd @param {string} unit @param {string} root @param {string} branch @returns {null} */
+function cutFresh(cwd, unit, root, branch) {
+  const repos = projectRepos(root);
+  git(root, ['branch', '--no-track', branch, /** @type {string} */ (landing().landingTips(cwd, unit, repos, [repos[0]]).get(''))]);
+  return null;
+}
+
+/** A commit replayed, or left off, and the task it is stamped with. @typedef {{sha: string, message: string, id: string|null}} Commit */
+
+/**
+ * The commits replayed onto `onto`, in order, each under its own message: a
+ * commit that conflicts there left off, with every later commit of its
+ * task's. The tip they make, and each task left off, with the commit that
+ * did not apply and the paths it conflicts at.
+ * @param {string} root @param {Commit[]} commits @param {string} onto
+ * @returns {{tip: string, off: Map<string, {sha: string, paths: string[]}>}}
+ */
+function replayed(root, commits, onto) {
+  let tip = onto;
+  /** @type {Map<string, {sha: string, paths: string[]}>} */
+  const off = new Map();
+  const signed = lg.signs(root);
+  for (const { sha, message, id } of commits) {
+    const task = /** @type {string} */ (id);
+    if (off.has(task)) continue;
+    const merged = lg.mergeTree(root, `${sha}^`, tip, sha);
+    if ('conflicts' in merged) {
+      off.set(task, { sha, paths: merged.conflicts });
+      continue;
+    }
+    tip = lg.commitTree(root, { tree: merged.tree, parent: tip, message, signed }, `${lg.short(sha)}'s replay`, 'try again');
+  }
+  return { tip, off };
 }
 
 /**
- * The project's checkout put on the fix's branch, made where the repository
- * lacks it (the header's): the branch it has out.
- * @param {string} cwd @param {TaskRef} ref @param {string} type @param {string} title the fix's, as the tracker holds them
- * @param {number[]} closed the set's fixes closed, by number
- * @returns {string}
+ * The quick-fix's branch moved from `from` to `to` — in the checkout that
+ * has it out, refused first, nothing moved, while that checkout holds
+ * changes not committed, naming them.
+ * @param {string} root @param {string} branch @param {string} from @param {string} to @param {string} onto the branch it is cut from, as the refusal names it
  */
-function checkOutFix(cwd, ref, type, title, closed) {
+function moveBranch(root, branch, from, to, onto) {
+  const holder = lg.holderOf(root, branch);
+  if (holder === undefined) {
+    git(root, ['update-ref', '-m', `cut again from ${onto}`, `refs/heads/${branch}`, to, from]);
+    return;
+  }
+  const dirty = lg.changesAt(holder.path);
+  if (dirty.length > 0) {
+    throw new Error(`${branch} holds work landed on ${onto} by hand, so it is cut again from there, and it is checked out at ${holder.path} with changes not committed — ${dirty.map(lg.plain).join(', ')} — so nothing moved: commit them or set them aside, then try again`);
+  }
+  git(holder.path, ['reset', '-q', '--keep', to]);
+}
+
+/**
+ * A task's change made again on the quick-fix's branch through the door,
+ * from its commit `sha`, as a task left off it takes it (the header's).
+ * @param {TaskRef} ref @param {string} sha
+ */
+function remade(ref, sha) {
+  return `\`git cherry-pick --no-commit ${lg.short(sha)}\`, settling any conflict and ending the pick with \`git cherry-pick --quit\`, which keeps its change, then \`engine commit --paths <file>… --task ${ref.unit} ${shownTask(ref)} -m "<message>"\``;
+}
+
+/**
+ * The warning of a task left off the branch cut again (the header's): its
+ * change made again there through the door.
+ * @param {string} branch @param {string} onto @param {string} id @param {{sha: string, paths: string[]}} left
+ */
+function leftOff(branch, onto, id, { sha, paths }) {
+  const ref = parseTaskId(id);
+  return `task ${shownTask(ref)}'s commit ${lg.short(sha)} does not apply on ${onto} as it stands, at ${paths.map(lg.plain).join(', ')}, so ${branch} was cut again without it and its commits after it — make its change again there through the door: ${remade(ref, sha)}`;
+}
+
+/**
+ * The quick-fix's branch cut again (the header's), where it holds commits
+ * past the branch the project lands on as the host has it that have
+ * landed: what that did — where it moved from and to, the tasks replayed,
+ * those left off — and a warning for each task left off; null where it
+ * holds none, or the repository lacks it.
+ * @param {string} cwd @param {string} unit
+ * @returns {{answer: Record<string, unknown>, warnings: string[]}|null}
+ */
+function cutAgain(cwd, unit) {
+  const read = landing().quickFixLanding(cwd, unit);
+  const { ctx, branch, at, tip } = read;
+  if (at === undefined) return null;
+  const past = read.commits().filter((commit) => commit.id !== null);
+  const left = past.filter(({ sha, id }) => !read.landedCommit(sha, /** @type {string} */ (id)));
+  if (left.length === past.length) return null;
+  const { tip: cut, off } = replayed(ctx.root, left, tip);
+  moveBranch(ctx.root, branch, at, cut, ctx.into);
+  const tasks = (/** @type {Commit[]} */ commits) => [...new Set(commits.map(({ id }) => shownTask(parseTaskId(/** @type {string} */ (id)))))];
+  const answer = {
+    from: lg.short(at),
+    to: lg.short(cut),
+    replayed: tasks(left.filter(({ id }) => !off.has(/** @type {string} */ (id)))),
+    ...(off.size > 0 ? { left_off: tasks(left.filter(({ id }) => off.has(/** @type {string} */ (id)))) } : {}),
+  };
+  return { answer, warnings: [...off].map(([id, missed]) => leftOff(branch, ctx.into, id, missed)) };
+}
+
+/**
+ * The way on for a quick-fix's task's commit made on another branch: the
+ * quick-fix's own, and the start that puts the checkout there.
+ * @param {TaskRef} ref
+ */
+function branchWayOn(ref) {
+  return `a quick-fix's task is built in the project's own checkout, on ${quickFixBranch(ref.unit)} — \`engine task start ${ref.unit} ${shownTask(ref)}\` puts the checkout on it`;
+}
+
+/**
+ * The quick-fix's branch's tip, as a run names the code it ran (runs.cjs):
+ * null where the repository lacks it.
+ * @param {string} cwd @param {string} unit
+ * @returns {{repo: string, commit: string}[]|null}
+ */
+function branchHead(cwd, unit) {
   const root = codeRoot(cwd);
-  const held = fixBranchOf(root, ref);
-  const branch = held ?? taskBranch(ref, type, title);
-  if (held === null) git(root, ['branch', '--no-track', branch, fixBase(cwd, ref, closed)]);
-  if (branchOut(root) !== branch) switchTo(root, branch);
-  return branch;
-}
-
-/**
- * The tasks, by internal id, whose commits through the door the branch holds
- * past the branch the repository lands on.
- * @param {string} cwd @param {string} branch @returns {Set<string>}
- */
-function stampedOn(cwd, branch) {
-  const root = codeRoot(cwd);
-  return trailersPast(root, branch, fixesLandOn(cwd, root), stamp());
-}
-
-/** The fix's branch, where the repository holds it, else null. @param {string} cwd @param {TaskRef} ref */
-const fixBranch = (cwd, ref) => fixBranchOf(codeRoot(cwd), ref);
-
-/** The day before the unit was made, before which none of its work was. @param {string} cwd @param {string} unit */
-const unitSince = (cwd, unit) => dayBefore(loadWorkUnitManifest(cwd, unit).created);
-
-/**
- * The fixes, by internal id, the branch the repository lands on holds a
- * commit naming — a fix's landing, or one of its commits through the door,
- * as a merge by hand that keeps them leaves them — since the day before the
- * unit was made.
- * @param {string} cwd @param {string} unit @returns {Set<string>}
- */
-function landedHere(cwd, unit) {
-  const root = codeRoot(cwd);
-  return tasksNamedOn(root, fixesLandOn(cwd, root), unit, stamp(), unitSince(cwd, unit));
-}
-
-/**
- * Whether the fix holds work of its own: a commit of its own its branch
- * holds past the branch the repository lands on, or one that branch holds
- * once the fix has landed (`landedHere`); with its branch gone, any commit
- * of its own the repository holds, on a ref or a reflog (`lastStamped`), as
- * a branch deleted after a merge by hand leaves it.
- * @param {string} cwd @param {TaskRef} ref
- */
-function ownWork(cwd, ref) {
-  const id = taskId(ref);
-  if (landedHere(cwd, ref.unit).has(id)) return true;
-  const branch = fixBranch(cwd, ref);
-  if (branch !== null) return stampedOn(cwd, branch).has(id);
-  return lastStamped(codeRoot(cwd), stamp(), id, unitSince(cwd, ref.unit)) !== null;
-}
-
-/**
- * Whether the project's checkout is in the middle of merging the branch its
- * fixes land on — as the host has it, fetched, or here — back into the
- * branch it has out: the merge back the landing asks of a fix (landing.cjs).
- * @param {string} cwd
- */
-function mergingLanding(cwd) {
-  const root = codeRoot(cwd);
-  const head = tryGit(root, ['rev-parse', '-q', '--verify', 'MERGE_HEAD'])?.trim() ?? '';
-  if (head === '') return false;
-  const lands = fixesLandOn(cwd, root);
-  const remote = remoteName(cwd);
-  const tips = [`refs/heads/${lands}`, ...(remote === null ? [] : [`refs/remotes/${remote}/${lands}`])];
-  return tips.some((tip) => isAncestor(root, head, tip));
-}
-
-/** Fixes' numbers, lowest first. @param {{n: number}[]} fixes */
-const lowestFirst = (fixes) => fixes.map(({ n }) => n).sort((a, b) => a - b);
-
-/**
- * The later fixes not closed laid on a fix's own work — each whose branch
- * holds a commit of it — by number, lowest first.
- * @param {string} cwd @param {TaskRef} ref @param {TaskDetail[]} fixes the set's, as the tracker holds them
- * @returns {number[]}
- */
-function laidOn(cwd, ref, fixes) {
-  const closed = closedFixes(fixes);
-  const later = phaseFixes(codeRoot(cwd), ref, (n) => n > ref.n && !closed.includes(n));
-  return lowestFirst(later.filter(({ branch }) => stampedOn(cwd, branch).has(taskId(ref))));
-}
-
-/**
- * The earlier fixes not closed a fix is laid on — each with a commit of its
- * own the fix's branch holds — by number, lowest first; none where the
- * repository holds no branch of it.
- * @param {string} cwd @param {TaskRef} ref @param {TaskDetail[]} fixes the set's, as the tracker holds them
- * @returns {number[]}
- */
-function laidBeneath(cwd, ref, fixes) {
-  const branch = fixBranchOf(codeRoot(cwd), ref);
-  if (branch === null) return [];
-  const stamped = stampedOn(cwd, branch);
-  const closed = closedFixes(fixes);
-  return lowestFirst(fixes.map((fix) => fix.ref).filter((held) => held.n < ref.n && !closed.includes(held.n) && stamped.has(taskId(held))));
-}
-
-/**
- * The way on for a fix's commit made on another branch: the fix's own,
- * where the repository holds it, and its start, which puts the checkout
- * there.
- * @param {string} root @param {TaskRef} ref
- */
-function fixWayOn(root, ref) {
-  const held = fixBranchOf(root, ref);
-  const start = `\`engine task start ${ref.unit} ${shownTask(ref)}\``;
-  return `a quick-fix's fix is built in the project's own checkout, on its branch${held === null ? '' : `, ${held}`} — ${start} puts the checkout on it`;
+  const tip = lg.branches(root).get(quickFixBranch(unit));
+  if (tip === undefined) return null;
+  return [{ repo: repoName(/** @type {Repo} */ (projectRepos(root).find((repo) => repo.dir === ''))), commit: tip }];
 }
 
 const MOVED = 'moved/';
 
-/** The name a move keeps a fix's branch under (the header's). @param {string} branch */
-const movedBranch = (branch) => `${MOVED}${branch}`;
-
-/** @typedef {{branch: string, of: TaskRef}} FixBranch */
-
-/** Branches in the order of their fixes. @template {FixBranch} B @param {B[]} held @returns {B[]} */
-const inFixOrder = (held) => held.sort((a, b) => a.of.phase - b.of.phase || a.of.n - b.of.n);
+/** The name a move keeps the quick-fix's branch under (the header's). @param {string} unit */
+const movedBranch = (unit) => `${MOVED}${quickFixBranch(unit)}`;
 
 /**
- * The unit's fixes' branches, in the order of their fixes, each with
- * whether it holds commits of its own past its base: the branch the fixes
- * land on, and each fix's before it, the one it was laid from among them.
- * @param {string} root @param {string} cwd @param {string} unit
- * @returns {(FixBranch & {holds: boolean})[]}
+ * Whether the quick-fix's branch holds commits past the branch the project
+ * lands on — false where the repository lacks it.
+ * @param {string} cwd @param {string} root @param {string} unit
  */
-function fixBranches(root, cwd, unit) {
-  const lands = fixesLandOn(cwd, root);
-  const fixes = inFixOrder([...branches(root).keys()].flatMap((branch) => {
-    const of = taskOfBranch(unit, branch);
-    return of === null ? [] : [{ branch, of }];
-  }));
-  return fixes.map((fix, at) => {
-    const before = fixes.slice(0, at).filter(({ of }) => of.phase === fix.of.phase).map(({ branch }) => branch);
-    return { ...fix, holds: holdsBeyond(root, [fix.branch], [lands, ...before]) };
-  });
+function branchHolds(cwd, root, unit) {
+  return lg.branches(root).has(quickFixBranch(unit)) && lg.holdsBeyond(root, [quickFixBranch(unit)], [landsHere(cwd, root)]);
 }
 
 /**
- * The unit's fixes' branches a move has kept (the header's), in the order
- * of their fixes.
- * @param {string} root @param {string} unit
- * @returns {FixBranch[]}
- */
-function movedFixes(root, unit) {
-  return inFixOrder([...branches(root).keys()].flatMap((branch) => {
-    const of = branch.startsWith(MOVED) ? taskOfBranch(unit, branch.slice(MOVED.length)) : null;
-    return of === null ? [] : [{ branch, of }];
-  }));
-}
-
-/**
- * The names the unit's fixes' branches holding commits of their own are
- * kept under, in the order of their fixes: those a move has kept already,
- * and those it keeps.
+ * The names the quick-fix's branch holding commits past the branch the
+ * project lands on is kept under: the one a move has kept already, and the
+ * one it keeps.
  * @param {string} cwd @param {string} unit
  * @returns {string[]}
  */
-function keptFixes(cwd, unit) {
+function keptUnder(cwd, unit) {
   const root = codeRoot(cwd);
-  const keeps = fixBranches(root, cwd, unit).flatMap(({ branch, of, holds }) => (holds ? [{ branch: movedBranch(branch), of }] : []));
-  return inFixOrder([...movedFixes(root, unit), ...keeps]).map(({ branch }) => branch);
+  return lg.branches(root).has(movedBranch(unit)) || branchHolds(cwd, root, unit) ? [movedBranch(unit)] : [];
 }
 
 /**
- * The unit's fixes' branches set aside for its move (the header's): each
- * holding commits of its own renamed to the name it is kept under, the
- * rest deleted — none left to set aside where a move set them aside
- * before. Answers the names this call kept, in the order of their fixes.
+ * The quick-fix's branch set aside for its move (the header's): renamed to
+ * the name it is kept under where it holds commits past the branch the
+ * project lands on, else deleted — nothing to set aside where the
+ * repository lacks it. Answers the name this call kept it under, where it
+ * did.
  * @param {string} cwd @param {string} unit
  * @returns {string[]}
  */
-function setFixesAside(cwd, unit) {
+function setBranchAside(cwd, unit) {
   const root = codeRoot(cwd);
-  return fixBranches(root, cwd, unit).flatMap(({ branch, holds }) => {
-    git(root, holds ? ['branch', '-m', branch, movedBranch(branch)] : ['branch', '-D', branch]);
-    return holds ? [movedBranch(branch)] : [];
-  });
+  const branch = quickFixBranch(unit);
+  if (!lg.branches(root).has(branch)) return [];
+  const holds = branchHolds(cwd, root, unit);
+  git(root, holds ? ['branch', '-m', branch, movedBranch(unit)] : ['branch', '-D', branch]);
+  return holds ? [movedBranch(unit)] : [];
 }
 
 /**
- * The names of the unit's fixes' branches a move has kept, in the order of
- * their fixes: what its topic's first opening names (enter.cjs).
+ * The name the quick-fix's branch a move kept is under, where it kept it:
+ * what its topic's first opening names (enter.cjs).
  * @param {string} cwd @param {string} unit
  * @returns {string[]}
  */
 function keptBranches(cwd, unit) {
-  return movedFixes(codeRoot(cwd), unit).map(({ branch }) => branch);
+  return lg.branches(codeRoot(cwd)).has(movedBranch(unit)) ? [movedBranch(unit)] : [];
 }
 
 /**
- * The project's checkout taken back to the branch the fixes land on, where
- * it has one of the unit's fixes' branches out — refused first, nothing
- * moved, while it holds changes not committed outside the state, naming
- * each. Answers the branch it took the checkout to, or null where it had
- * none of the unit's out.
+ * The project's checkout taken back to the branch the project lands on,
+ * where it has the quick-fix's branch out — refused first, nothing moved,
+ * while it holds changes not committed outside the state, naming each.
+ * Answers the branch it took the checkout to, or null where it had another
+ * out.
  * @param {string} cwd @param {string} unit
  * @returns {string|null}
  */
 function checkOutLanding(cwd, unit) {
   const root = codeRoot(cwd);
-  const out = branchOut(root);
-  if (out === null || taskOfBranch(unit, out) === null) return null;
-  const lands = fixesLandOn(cwd, root);
-  const dirty = dirtOf(cwd);
-  if (dirty.length > 0) {
-    throw new Error(`${unit}'s fixes leave the project's checkout, which holds changes not committed — ${dirty.join(', ')} — so it was not taken back to ${lands}: commit them on the fix's branch or set them aside, then say yes again`);
-  }
-  switchTo(root, lands);
+  if (branchOut(root) !== quickFixBranch(unit)) return null;
+  const lands = landsHere(cwd, root);
+  refuseDirt(cwd, (dirty) => `${unit}'s tasks leave the project's checkout, which holds changes not committed — ${dirty} — so it was not taken back to ${lands}: commit them on ${quickFixBranch(unit)} or set them aside, then say yes again`);
+  lg.switchTo(root, lands);
   return lands;
 }
 
-module.exports = { refuseDirty, refuseDirtyClose, checkOutFix, checkOutLanding, fixWayOn, closedFixes, fixBranch, ownWork, mergingLanding, laidOn, laidBeneath, keptFixes, setFixesAside, keptBranches };
+module.exports = { refuseDirty, refuseDirtyClose, checkOutBranch, cutAgain, remade, checkOutLanding, branchWayOn, branchHead, keptUnder, setBranchAside, keptBranches };

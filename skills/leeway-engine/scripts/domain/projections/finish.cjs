@@ -20,9 +20,9 @@
 // under its title — PROVEN BY RUNNING {PRODUCT}, each fix's scenario a line,
 // ✓ where proven, else its standing — or one line saying the project has
 // no way to run it (P9); each departure asked its verdict at the verdict
-// point `close` (16.10.4); and its gate, `Close it?`: the yes, merging the
-// pull requests of its fixes still to land, or saying they have landed, a
-// review asked for, and questions about the change. Its rows and words are
+// point `close` (16.10.4); and its gate, `Close it?`: the yes, merging its
+// pull request where a fix done is still to land, or saying its fixes have
+// landed, a review asked for, and questions about the change. Its rows and words are
 // Claude's in the spec (18.10.8).
 // ---------------------------------------------------------------------------
 
@@ -87,9 +87,9 @@ function finishScreen(view) {
 /**
  * A quick-fix's close as it is drawn: finish's, with the product's name,
  * what running it proved of each fix's scenarios — null where the project
- * has no way to run it — how many fixes are done, and how many of them are
- * still to land.
- * @typedef {FinishView & {product: string, proven: import('./build.cjs').Ran[]|null, fixes: number, landing: number}} CloseView
+ * has no way to run it — how many fixes are done, and whether its pull
+ * request still holds one to land.
+ * @typedef {FinishView & {product: string, proven: import('./build.cjs').Ran[]|null, fixes: number, landing: boolean}} CloseView
  */
 
 /** A scenario's line under what was proven: its glyph, and its standing where short of proven. @param {import('./build.cjs').Ran} ran */
@@ -106,12 +106,12 @@ function provenBlock({ product, proven }) {
 const closeDisplay = (view) => [`${view.title} — ready to close`, provenBlock(view), ...finishBlocks(view)].join('\n\n');
 
 /**
- * What the yes does: merge the pull request of each fix done still to land,
- * or, where every one has landed, say so — and mark it complete.
+ * What the yes does: merge its pull request, where a fix done is still to
+ * land, or, where every one has landed, say so — and mark it complete.
  * @param {CloseView} view
  */
 function closeWords({ fixes, landing }) {
-  if (landing > 0) return `Close it — merge its ${landing === 1 ? 'pull request' : 'pull requests'} and mark it complete`;
+  if (landing) return 'Close it — merge its pull request and mark it complete';
   if (fixes === 0) return 'Close it — mark it complete';
   return `Close it — ${fixes === 1 ? 'its fix has' : 'its fixes have'} landed, so mark it complete`;
 }

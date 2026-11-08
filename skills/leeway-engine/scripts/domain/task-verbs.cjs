@@ -38,16 +38,18 @@
 // another conversation, no question parking it, and ahead of any other going
 // on (12.7.9) — puts the task in flight on the conversation's position,
 // beside any others in flight there — a task already in flight kept as it
-// stands, its builder and reviewers with it; a quick-fix's fix, built in the
-// project's own checkout, puts that checkout on the fix's branch
-// (fix-branch.cjs) — and done and close take it off, each first taking the
-// task's worktree apart (6.3.3, 24.2.4); done refuses a task a question
-// waiting parks, and a bugfix's reproducing task until its test's series
-// proves the bug (bug-proven.cjs, 15.5.3); close ends a task without it being
-// done, with a reason — a bugfix's reproducing task never (15.5.5) — takes it
-// off every question parking it (task-parks.cjs), and frees what waits on it
-// as done does (7.1.12) — a quick-fix's fix ending as fix-end.cjs says, its
-// close committing beside the tracker's store the record it takes out;
+// stands, its builder and reviewers with it; a quick-fix's task, built in
+// the project's own checkout, puts that checkout on the quick-fix's one
+// branch (fix-branch.cjs) — and done and close take it off, each first
+// taking the task's worktree apart (6.3.3, 24.2.4); done refuses a task a
+// question waiting parks, and a bugfix's reproducing task until its test's
+// series proves the bug (bug-proven.cjs, 15.5.3); close ends a task without
+// it being done, with a reason — a bugfix's reproducing task never (15.5.5)
+// — takes it off every question parking it (task-parks.cjs), and frees what
+// waits on it as done does (7.1.12) — a quick-fix's task ending as
+// fix-end.cjs says, a fix's close committing beside the tracker's store the
+// record it takes out, and a quick-fix's move closing its tasks with no end
+// refused (`closeForMove`);
 // worktree lays the task's worktree out for its builder, reading the task
 // as show does (task-worktree.cjs); stopped records, against the task in
 // flight in the calling conversation, that its builder stopped, unable to
@@ -522,6 +524,27 @@ function trackedPhases(cwd, unit, last) {
 }
 
 /**
+ * Every task of each phase the unit has written, whole, in order, read as
+ * any read is: from phase 1 on — the build's own `length`, a phase of them
+ * not written holding none, and the review's fixes numbered on past them
+ * (P14).
+ * @param {string} cwd @param {string} unit @param {number} length
+ * @returns {{tasks: TaskDetail[], committed?: string|null, warnings?: string[]}}
+ */
+function trackedBuild(cwd, unit, length) {
+  requireUnit(cwd, unit);
+  return withTracker(cwd, unit, null, (driver, root) => {
+    /** @type {TaskDetail[]} */
+    const tasks = [];
+    for (let phase = 1; ; phase += 1) {
+      const held = driver.tasks(root, unit, phase);
+      if (held === null && phase > length) return { tasks };
+      tasks.push(...(held ?? []));
+    }
+  });
+}
+
+/**
  * The unit's phases `numbers` names as the tracker holds them, read as any
  * read is: each written as the list of its tasks, in order, null for one
  * not written.
@@ -813,14 +836,11 @@ const startTask = moving('start', (_cwd, driver, root, ref) => {
   const manifest = loadWorkUnitManifest(cwd, ref.unit);
   refuseUnstarted(ref, manifest);
   refuseSecondInStep(cwd, ref, manifest);
-  const fix = quickFixBuild(manifest) && ref.phase === FIXES_PHASE.number;
-  if (fix) fixBranch().refuseDirty(cwd, ref);
+  const quickFix = quickFixBuild(manifest);
+  if (quickFix) fixBranch().refuseDirty(cwd, ref);
   return () => {
     recordTask(cwd, ref.unit, taskId(ref));
-    if (!fix) return {};
-    const fixes = trackedPhase(cwd, ref.unit, ref.phase).tasks ?? [];
-    const { type, title } = /** @type {TaskDetail} */ (fixes.find(({ ref: held }) => held.n === ref.n));
-    return { branch: fixBranch().checkOutFix(cwd, ref, /** @type {string} */ (type), title, fixBranch().closedFixes(fixes)) };
+    return quickFix ? fixBranch().checkOutBranch(cwd, ref.unit) : {};
   };
 });
 
@@ -832,7 +852,7 @@ const CLOSE_RULE = 'only a task not yet ended is closed';
  * is not taken of its review as it stands (task-account.cjs) — a
  * quick-fix's owing none — for a bugfix's reproducing task while its
  * test's series on the unfixed code does not prove the bug (bug-proven.cjs),
- * and for a quick-fix's fix as its end refuses it (fix-end.cjs); else its
+ * and for a quick-fix's task as its end refuses it (fix-end.cjs); else its
  * worktree taken apart, then done, and off the position.
  */
 const doneTask = moving('done', (_cwd, driver, root, ref) => {
@@ -848,8 +868,26 @@ const doneTask = moving('done', (_cwd, driver, root, ref) => {
 });
 
 /**
+ * A task closed, its end refused first as `refuseHeld` refuses it (the
+ * header's `task close`).
+ * @param {(cwd: string, ref: TaskRef, said: string) => void} refuseHeld
+ */
+const closing = (refuseHeld) => moving('close', (cwd, driver, root, ref, reason) => {
+  refuseEnded(driver, root, ref, CLOSE_RULE);
+  driver.close(root, ref, reason);
+  return fixEnd().closedRecord(cwd, ref);
+}, (cwd, ref, verb) => {
+  const kept = reproducingClose(loadWorkUnitManifest(cwd, ref.unit), ref);
+  if (kept !== null) throw new Error(`task ${verb}: ${kept}`);
+  refuseHeld(cwd, ref, `task ${verb}`);
+  const parking = parks().parkingOf(cwd, ref, `task ${verb}`);
+  const settle = ending(CLOSE_RULE, () => parks().takeOff(cwd, ref, `task ${verb}`, parking))(cwd, ref, verb);
+  return (written) => ({ ...settle(), ...landing().mutationRun(cwd, ref, false), ...fixEnd().recordReindexed(cwd, ref, written) });
+});
+
+/**
  * `task close`: refused for a bugfix's reproducing task (bug-proven.cjs),
- * and for a quick-fix's fix as its end refuses it (fix-end.cjs); where a
+ * and for a quick-fix's task as its end refuses it (fix-end.cjs); where a
  * question parks it, refused with no session before anything moves; its
  * worktree taken apart, then off every question parking it, then closed
  * without being done, its reason kept — a quick-fix's fix's record taken
@@ -857,18 +895,14 @@ const doneTask = moving('done', (_cwd, driver, root, ref) => {
  * off the position — the last of its phase's to end, another done, naming
  * the phase's mutation run (landing.cjs, `mutationRun`).
  */
-const closeTask = moving('close', (cwd, driver, root, ref, reason) => {
-  refuseEnded(driver, root, ref, CLOSE_RULE);
-  driver.close(root, ref, reason);
-  return fixEnd().closedRecord(cwd, ref);
-}, (cwd, ref, verb) => {
-  const kept = reproducingClose(loadWorkUnitManifest(cwd, ref.unit), ref);
-  if (kept !== null) throw new Error(`task ${verb}: ${kept}`);
-  fixEnd().refuseHeld(cwd, ref, `task ${verb}`);
-  const parking = parks().parkingOf(cwd, ref, `task ${verb}`);
-  const settle = ending(CLOSE_RULE, () => parks().takeOff(cwd, ref, `task ${verb}`, parking))(cwd, ref, verb);
-  return (written) => ({ ...settle(), ...landing().mutationRun(cwd, ref, false), ...fixEnd().recordReindexed(cwd, ref, written) });
-});
+const closeTask = closing((cwd, ref, said) => fixEnd().refuseHeld(cwd, ref, said));
+
+/**
+ * A quick-fix's task closed by its move (workunit-move.cjs), as `task
+ * close` closes it but for its end's refusal: the move lands nothing, its
+ * branch set aside.
+ */
+const closeForMove = closing(() => {});
 
 /**
  * `task worktree`: the task's worktree laid out where the call is made
@@ -959,4 +993,4 @@ function runTaskVerb(cwd, verb, positional, opts) {
   return run(cwd, positional, ...values, .../** @type {string[]} */ (given));
 }
 
-module.exports = { TASK_VERBS, ENDED, STATUS_WORDS, runTaskVerb, writePhase, trackedTask, trackedPhases, trackedLists, trackedPhase, removePhase, trackedUnit, goingOn, goesOn, phaseOpen, stepTurn, turnOf, turnRefusal, phaseWritten, givenText, trackedStart, copiedTasks };
+module.exports = { TASK_VERBS, ENDED, STATUS_WORDS, runTaskVerb, closeForMove, writePhase, trackedTask, trackedPhases, trackedLists, trackedPhase, trackedBuild, removePhase, trackedUnit, goingOn, goesOn, phaseOpen, stepTurn, turnOf, turnRefusal, phaseWritten, givenText, trackedStart, copiedTasks };

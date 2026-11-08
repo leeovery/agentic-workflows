@@ -14,15 +14,10 @@
 //   refuses: a unit built under the old plan, a build by its cut not begun
 //   (build-entry.cjs). A quick-fix's close stands besides on each of its
 //   fixes ended and each done with its record written (quick-fix-record.cjs,
-//   `recordedFixes`), and on each fix done landed or opened to land, read
-//   fix by fix, never through its phase's merge state, as a merge by hand
-//   on the host, by any method and into any branch, leaves it — landed once
-//   its change is on the branch it lands on (landing.cjs, `taskLandings`) —
-//   refused naming each neither, the lowest's opening the way on; and where
-//   every one has landed but the branch here lacks one, naming `land
-//   phase`, which brings that branch to the merge, as the driver's own
-//   remedy does. A stack merged in part by hand the yes's landing finishes,
-//   as `land phase` does.
+//   `recordedFixes`), and reads whether its one pull request still holds a
+//   fix done not landed, as a merge of it by hand on the host, by any
+//   method, leaves it (landing.cjs, `quickFixLanding`) — the yes then
+//   merging it, else saying its fixes have landed.
 // - It shows every checklist item skipped on the way, with its reason,
 //   read from the unit's manifest (6.4.5, 6.4.12); then asks, one at a
 //   time, the verdict of each departure this machine logged in the build
@@ -35,11 +30,11 @@
 //   aside, where they set aside anything, said to stay until the person
 //   removes it. A quick-fix's close says, under its title, what running the
 //   product proved of each fix done, each scenario it names from its runs
-//   at its branch's tips (build-screens.cjs, `ranOf`), or in one line that
-//   the project has no way to run it, no verify setup recorded (P9); then
-//   its gate, the yes — saying it merges the pull requests of the fixes not
-//   yet landed, where any is — a review asked for, and questions about the
-//   change.
+//   at the quick-fix's branch's tip (build-screens.cjs, `ranOf`), or in one
+//   line that the project has no way to run it, no verify setup recorded
+//   (P9); then its gate, the yes — saying it merges its pull request, where
+//   a fix done is still to land — a review asked for, and questions about
+//   the change.
 //   What its reads warned of — a knowledge base set up that does not read
 //   among it (finish-checks.cjs) — is said on the screen, and on the yes's
 //   answer.
@@ -48,10 +43,12 @@
 //   holding changes not committed outside the state, naming each, its fixes
 //   having been built there (fix-branch.cjs). It lands every phase still
 //   standing (`land finish`, landing.cjs) — the review phase's fix phases,
-//   numbered past the cut, after every other (7.2.6); a quick-fix's fixes,
-//   its one phase, each on the fix before it, bottom to top (7.2.3) — a
-//   refusal there leaving the unit as it was, with its way on; a quick-fix's
-//   then puts the project's checkout back on the branch it lands on; then
+//   numbered past the cut, after every other (7.2.6); a quick-fix's one pull
+//   request, every task's commit squashed into one, or, where a merge by
+//   hand landed it, the branch it lands on here brought up to the host's —
+//   a refusal there leaving the unit as it was, with its way on; a
+//   quick-fix's then puts the project's checkout back on the branch it
+//   lands on; then
 //   completes the unit (workunit-lifecycle.cjs). It answers where the work
 //   goes (24.1.2), a handoff each: an epic's menu, its review completed;
 //   the start menu, `/leeway`, for every other type.
@@ -59,16 +56,13 @@
 
 const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
-const { codeRoot } = require('../kernel/code-root.cjs');
-const { projectRepos } = require('../kernel/repos.cjs');
 const { carrying } = require('./ledger.cjs');
 const { readShown } = require('./ledger-read.cjs');
 const { verdictAsked } = require('./ledger-verdicts.cjs');
-const { itemTitle, topicTitles, buildRefusal, quickFixBuild, FIXES_PHASE } = require('./derivations.cjs');
+const { itemTitle, topicTitles, buildRefusal, quickFixBuild } = require('./derivations.cjs');
 const { unitInProgress } = require('./topic-standing.cjs');
 const { finishClose } = require('./checklist.cjs');
-const { landFinish, taskLandings } = require('./landing.cjs');
-const { landsOn } = require('./landing-git.cjs');
+const { landFinish, quickFixLanding } = require('./landing.cjs');
 const { completeWorkUnit } = require('./workunit-lifecycle.cjs');
 const { refusing, stands } = require('./staged-payload.cjs');
 const { READERS, readersDone } = require('./scratch.cjs');
@@ -80,11 +74,9 @@ const { ranOf } = require('./build-screens.cjs');
 const { verifySetup } = require('./environment.cjs');
 const { projectName } = require('./state-checks.cjs');
 const { criteriaTexts } = require('./task-file.cjs');
-const { shownTask } = require('./task-id.cjs');
 
 /** @typedef {import('./projections/surfaces.cjs').Next} Next */
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
-/** @typedef {import('../kernel/repos.cjs').Repo} Repo */
 /** @typedef {import('./projections/build.cjs').Ran} Ran */
 
 const FINISH_USAGE = 'finish yes <work-unit>';
@@ -92,40 +84,20 @@ const FINISH_USAGE = 'finish yes <work-unit>';
 /**
  * The close the screen stands on, refused where finish cannot show: the
  * unit's own refusals, a quick-fix's fixes not ended or not recorded, then
- * its checklist's close (`finishClose`), then a quick-fix's fixes done not
- * landed nor chained to land — with a quick-fix's fixes done and how many
- * of them are still to land, null for any other unit.
+ * its checklist's close (`finishClose`) — with a quick-fix's fixes done and
+ * whether its pull request still holds one not landed, null and false for
+ * any other unit.
  * @param {string} cwd @param {string} unit
  */
 function finishStanding(cwd, unit) {
   const manifest = unitInProgress(cwd, unit);
   const refused = buildRefusal(manifest);
   if (refused !== null) throw new Error(refused);
-  if (!quickFixBuild(manifest)) return { manifest, fixes: null, landing: 0, ...finishClose(cwd, unit) };
+  if (!quickFixBuild(manifest)) return { manifest, fixes: null, landing: false, ...finishClose(cwd, unit) };
   const fixes = recordedFixes(cwd, manifest);
   const close = finishClose(cwd, unit);
-  return { manifest, fixes, landing: unlandedFixes(cwd, manifest, fixes).length, ...close };
-}
-
-/**
- * The fixes done not yet landed — each opened to land — read fix by fix
- * (`taskLandings`, landing.cjs): refused while one is neither landed nor
- * opened, naming each and the lowest's opening; and where every one has
- * landed but the branch here lacks one, as a merge by hand on a host leaves
- * it, naming `land phase`, which brings that branch to the merge.
- * @param {string} cwd @param {Record<string, any>} manifest @param {TaskDetail[]} fixes the fixes done
- * @returns {TaskDetail[]}
- */
-function unlandedFixes(cwd, manifest, fixes) {
-  const unit = manifest.name;
-  const landing = taskLandings(cwd, unit);
-  const read = fixes.map((fix) => ({ fix, ...landing(fix) }));
-  const owed = read.filter(({ state }) => state === null).map(({ fix }) => shownTask(fix.ref));
-  if (owed.length > 0) throw new Error(`${unit} closes once each fix done is opened to land — ${owed.join(', ')} ${owed.length === 1 ? 'is' : 'are'} not: land open ${unit} ${owed[0]}`);
-  const unlanded = read.filter(({ state }) => state === 'opened').map(({ fix }) => fix);
-  if (unlanded.length > 0 || read.every(({ here }) => here)) return unlanded;
-  const into = landsOn(cwd, /** @type {Repo} */ (projectRepos(codeRoot(cwd)).find((repo) => repo.dir === '')));
-  throw new Error(`${unit}'s fixes are merged where they land, and ${into} here lacks them — land phase ${unit} ${FIXES_PHASE.number} brings ${into} to them`);
+  const read = fixes.length === 0 ? null : quickFixLanding(cwd, unit);
+  return { manifest, fixes, landing: read !== null && fixes.some(({ ref }) => !read.task(ref).landed), ...close };
 }
 
 /** Whether finish's screen draws, as `render finish` stands on it: what the board lists waiting on the person. @param {string} cwd @param {string} unit */
@@ -133,7 +105,7 @@ const finishDraws = (cwd, unit) => stands(() => finishStanding(cwd, unit));
 
 /**
  * What the screen and the yes stand on, refused where finish cannot show:
- * the unit's manifest, a quick-fix's fixes done and how many are still to
+ * the unit's manifest, a quick-fix's fixes done and whether one is still to
  * land, the skips its close shows, and the verdict asked of the first
  * departure in the build still owed one.
  * @param {string} cwd @param {string} unit

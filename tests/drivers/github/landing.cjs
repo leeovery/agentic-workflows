@@ -10,44 +10,38 @@
 // default branch there gained, each subject read past the " (#N)" GitHub
 // ends it with, what it holds is its tree there, and what the driver opened
 // is a pull request there. A merge there is refused while GitHub refuses
-// it, as for a required check. A person merges a task by hand on GitHub's
-// site, its pull request into its own base, as the site's button does —
-// main, or the branch of the task it is laid on — with a merge commit or
-// squashed, then pulls main; and deletes a task's branch, on GitHub, where
-// the site retargets each pull request open on it, and here.
+// it, as for a required check. A person merges a quick-fix's pull request
+// by hand on GitHub's site, as the site's button does — squashed, with a
+// merge commit or rebased — pulling main here after it or not; and deletes
+// a branch, on GitHub and here.
 
 const path = require('path');
 const { git } = require('../../scripts/engine-harness.cjs');
 const { UNIT, setLandingDriver, landedOn, pathsOn } = require('../../scripts/landing-world.cjs');
 const names = require('../../../skills/leeway-engine/scripts/domain/landing-names.cjs');
 const { taskId } = require('../../../skills/leeway-engine/scripts/domain/task-id.cjs');
-const { GH_ENV, githubWorld, github, bareOf, squashFromPullRequests, mergeByHand, headDeleted } = require('./world.cjs');
-
-/** @typedef {import('../../../skills/leeway-engine/scripts/domain/task-id.cjs').TaskRef} TaskRef */
+const { GH_ENV, githubWorld, github, bareOf, squashFromPullRequests, mergeByHand } = require('./world.cjs');
 
 /**
- * The open pull request of a task's branch merged by hand on GitHub by
- * `method` into its own base, as the site's button merges it, and main
- * here then brought to main there, as a person's pull does.
- * @param {string} dir @param {string} branch @param {'merge'|'squash'} method
+ * The open pull request of a branch merged by hand on GitHub by `method`,
+ * as the site's button merges it, and main here then brought to main
+ * there, as a person's pull does, where `pulled`.
+ * @param {string} dir @param {string} branch @param {'merge'|'squash'|'rebase'} method @param {boolean} pulled
  */
-function mergedAndPulled(dir, branch, method) {
+function mergedOnGithub(dir, branch, method, pulled) {
   const pull = github(dir).pulls.find((held) => held.head === branch && held.state === 'OPEN');
   if (pull === undefined) throw new Error(`no pull request of ${branch} is open`);
   mergeByHand(dir, pull.number, undefined, method);
-  git(dir, ['fetch', '-q', 'origin', 'main:main']);
+  if (pulled) git(dir, ['fetch', '-q', 'origin', 'main:main']);
 }
 
 /**
- * A task's branch deleted on GitHub, where its pull request is merged — the
- * site retargeting each one open on it — and here, the checkout first put
- * on main where it has the branch out, as `gh pr merge --delete-branch`
- * leaves it.
+ * A branch deleted on GitHub, as `gh pr merge --delete-branch` leaves it,
+ * and here, the checkout first put on main where it has the branch out.
  * @param {string} dir @param {string} branch
  */
 function deleted(dir, branch) {
-  const merged = github(dir).pulls.find((held) => held.head === branch && held.state === 'MERGED');
-  if (merged !== undefined) headDeleted(dir, merged.number);
+  git(bareOf(dir), ['update-ref', '-d', `refs/heads/${branch}`]);
   if (git(dir, ['symbolic-ref', '-q', '--short', 'HEAD']).trim() === branch) git(dir, ['switch', '-q', 'main']);
   git(dir, ['branch', '-q', '-D', branch]);
 }
@@ -81,14 +75,15 @@ module.exports = {
   }))].sort(),
   /** A merge in the repository at `dir` refused by GitHub while its environment is the call's. @param {string} dir */
   refuseMerge: (dir) => ({ env: { GH_STUB_FAULT: 'unmergeable@pr merge', GH_STUB_FAULT_REPO: github(dir).repo }, undo: () => {} }),
-  /** The ways a person merges an opened task's pull request into its own base on GitHub's site, then pulls main here, the checkout on another branch. */
+  /** The ways a person merges a quick-fix's pull request on GitHub's site, main here pulled after it or not. */
   byHand: {
-    /** Merged with a merge commit, the site's default button. @param {string} dir @param {TaskRef} _ref @param {string} branch */
-    'a merge commit on GitHub': (dir, _ref, branch) => mergedAndPulled(dir, branch, 'merge'),
-    /** Squashed. @param {string} dir @param {TaskRef} _ref @param {string} branch */
-    'a squash on GitHub': (dir, _ref, branch) => mergedAndPulled(dir, branch, 'squash'),
+    /** Squashed, main pulled. @param {string} dir @param {string} branch */
+    'a squash on GitHub, pulled': (dir, branch) => mergedOnGithub(dir, branch, 'squash', true),
+    /** With a merge commit, the site's default button, main not pulled. @param {string} dir @param {string} branch */
+    'a merge commit on GitHub, not pulled': (dir, branch) => mergedOnGithub(dir, branch, 'merge', false),
+    /** Rebased, main pulled. @param {string} dir @param {string} branch */
+    'a rebase on GitHub, pulled': (dir, branch) => mergedOnGithub(dir, branch, 'rebase', true),
   },
   deleted,
-  /** What a merge back of main takes: main on GitHub, fetched. */
-  back: 'origin/main',
+  mergedOnGithub,
 };

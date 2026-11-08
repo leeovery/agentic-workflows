@@ -3,7 +3,8 @@
 // ---------------------------------------------------------------------------
 // The driver seam (leeway-engine/scripts/domain/drivers.cjs, with the task
 // id's shape in domain/task-id.cjs): the loader reading a drivers' folder and
-// refusing a driver whose folder or declaration is amiss; each kind's
+// refusing a driver whose folder or declaration is amiss, a landing driver
+// lacking a quick-fix's methods among them; each kind's
 // default among its drivers, landing's turning on the remote a driver
 // serves; the project manifest's `drivers` setting, honoured, refused where
 // it names no shipped driver, and written where absent; why a driver cannot
@@ -34,6 +35,8 @@ const FAULTY = path.join(FIXTURES, 'faulty');
 const names = (drivers) => drivers.map((driver) => driver.name);
 
 describe('loadDriver and listDrivers', () => {
+  const landingRoot = useTempFolder('engine-drivers-landing-');
+
   it('lists a kind\'s drivers by name, each with what it declares and every method of its kind', () => {
     const tasks = listDrivers('task', SHIPPED);
     assert.deepStrictEqual(names(tasks), ['alpha', 'beta']);
@@ -62,6 +65,16 @@ describe('loadDriver and listDrivers', () => {
     for (const [name, fault] of Object.entries(faults)) {
       assert.throws(() => loadDriver('task', name, FAULTY), { message: `drivers: the task driver in task/${name}/ ${fault}` }, name);
     }
+  });
+
+  it('refuses a landing driver lacking the methods a quick-fix\'s one pull request is read, opened, merged and closed through', () => {
+    const root = landingRoot();
+    const lacking = ['quickFixPull', 'openQuickFix', 'mergeQuickFix', 'closeQuickFix'];
+    fs.mkdirSync(path.join(root, 'landing', 'lacking'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'landing', 'lacking', 'driver.cjs'),
+      `module.exports = require(${JSON.stringify(path.join(FIXTURES, 'fixture-driver.cjs'))})({ kind: 'landing', name: 'lacking', isDefault: false }, { lacking: ${JSON.stringify(lacking)} });\n`);
+
+    assert.throws(() => loadDriver('landing', 'lacking', root), { message: `drivers: the landing driver in landing/lacking/ lacks ${lacking.join(', ')}` });
   });
 
   it('refuses a name no driver ships, naming those that do', () => {

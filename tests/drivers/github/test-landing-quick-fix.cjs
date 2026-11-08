@@ -1,25 +1,24 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// GitHub's landing driver and a quick-fix's set (leeway-engine/scripts/
-// domain/finish.cjs, over drivers/landing/github/), past what every driver
-// gives (the landing conformance suite's quick-fix): the set's stack merged
-// by hand on GitHub's site one pull request at a time, squashed or by a
-// merge commit, each into its own base as the site's button merges it — each
-// fix's landing read by its change on main there (R12), so a fix opened over
-// one merged is done, and a pull request merged into the branch of the one
-// below, never reaching main, is no landing: the close counts it still to
-// land, and its yes opens it again onto main from its branch there and
-// merges it — what was merged into that branch since landing with it —
-// completing the unit (`follow-base`, `follow-site`). A fix's pull request
-// closed by hand there, its done and its close refused in the landing's
-// words, each opening on its own verb. The stack collapsed by hand, and the
-// site deleting each merged branch, are test-landing-quick-fix-site.cjs's; a
-// fix in flight when its stack lands, and a conflict on GitHub's merge,
-// test-landing-quick-fix-merge-back.cjs's; the close itself,
+// GitHub's landing driver and a quick-fix's one pull request (leeway-engine/
+// scripts/domain/landing.cjs, finish.cjs, fix-branch.cjs, over
+// drivers/landing/github/), past what every driver gives (the landing
+// conformance suites' quick-fix): the pull request merged by hand on the
+// site by each method the conformance suite's side does not, pulled or not —
+// each fix read as landed, its opening refused as done, and the close
+// landing nothing more, main here brought to main there (R12, R14); the
+// pull request's title and body kept its landing's as a fix joins it; a fix
+// started after a squash on the site, main here behind, its branch cut
+// again from main as GitHub has it — the merged branch kept there, the
+// opening pushing over GitHub's copy, a pull request of its own; deleted,
+// cut afresh — and the pull
+// request closed by hand there, a fix's done and close refused in the
+// landing's words, each opening on its own verb; and a move closing it
+// unmerged, a second close closing nothing. The close itself is
 // test-engine-quick-fix-close.cjs's. Git layer: quick-fix-world.cjs's two
-// fixes built on a fake GitHub (world.cjs), built once and copied for each
-// test.
+// fixes built on a fake GitHub (world.cjs), their pull request #1, built
+// once and copied for each test.
 // ---------------------------------------------------------------------------
 
 require('../../scripts/hermetic-env.cjs');
@@ -29,11 +28,12 @@ const assert = require('node:assert');
 
 const harness = require('../../scripts/engine-harness.cjs');
 const { useTempFolder } = require('../../scripts/discovery-test-utils.cjs');
-const { UNIT, CHAIN, fixChanged, twoFixesBuilt, fixesRecorded, closeYes } = require('../../scripts/quick-fix-world.cjs');
+const { UNIT, DESCRIPTION, BRANCH, SET, fixChanged, twoFixesBuilt, fixesRecorded } = require('../../scripts/quick-fix-world.cjs');
 const side = require('./landing.cjs');
-const { GH_ENV, mergeByHand, closeByHand, pulls } = require('./world.cjs');
+const { GH_ENV, github, bareOf, closeByHand, pulls, tipOnGithub } = require('./world.cjs');
 
-const { ok, refuses, readManifest, fixtureFrom, cleanupFixture } = harness;
+const { ok, refuses, git, readManifest, withEnv, fixtureFrom, cleanupFixture } = harness;
+const { quickFixClose } = require('../../../skills/leeway-engine/scripts/domain/landing.cjs');
 
 const world = fixtureFrom('github-landing-quick-fix-', (dir) => twoFixesBuilt(dir, { ready: side.prepare, env: GH_ENV }));
 const config = useTempFolder('github-landing-quick-fix-config-');
@@ -47,42 +47,102 @@ afterEach(() => {
 /** This test's conversation, as a call's options, under the stand-in gh. */
 const as = () => ({ env: { ...GH_ENV, LEEWAY_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: 'sess-1', TMUX: undefined, TMUX_PANE: undefined } });
 
-/** Fix 1.3 opened over 1.2, #1 merged by hand by `method` on the site meanwhile, then done, and the three recorded with finish's checklist closed. @param {'squash'|'merge'} method */
-function thirdOverFirstMerged(method) {
-  dir = world();
-  fixChanged(dir, 3, CHAIN[2].title, CHAIN[2].file, CHAIN[2].text, as());
-  ok(dir, ['land', 'open', UNIT, '1.3'], as());
-  mergeByHand(dir, 1, undefined, method);
-  ok(dir, ['task', 'done', UNIT, '1.3'], as());
-  fixesRecorded(dir, 3, as());
-}
+/** Fix 1.3 made through the door, as `fixChanged` makes it. */
+const third = () => fixChanged(dir, 3, SET[2].title, SET[2].file, SET[2].text, as());
 
-/** The fixes' files main on GitHub holds. */
-const onMain = () => side.holds(dir).filter((file) => CHAIN.some((fix) => fix.file === file)).sort();
+/** Whether main as GitHub has it is under the quick-fix's branch here. */
+const cutFromGithub = () => git(dir, ['merge-base', tipOnGithub(dir, 'main'), BRANCH]).trim() === tipOnGithub(dir, 'main');
 
-describe('a quick-fix\'s close on GitHub (R12)', () => {
-  for (const method of /** @type {const} */ (['squash', 'merge'])) {
-    it(`its fixes merged by hand there one at a time, by ${method}, each into its own base as the site's button merges it: a fix opened over the first done meanwhile; the close counting the two merged into the branch below still to land, its yes opening 1.2's again onto main from its branch there and merging it, 1.3's merged into that branch landing with it`, () => {
-      thirdOverFirstMerged(method);
-      for (const n of [2, 3]) mergeByHand(dir, n, undefined, method);
-      const yes = closeYes(dir, as());
+describe('a quick-fix\'s pull request merged by hand on GitHub (R12, R14)', () => {
+  for (const [method, pulled] of /** @type {const} */ ([['squash', false], ['merge', true], ['rebase', false]])) {
+    it(`by ${method}, ${pulled ? 'pulled' : 'not pulled'}: each fix read as landed, its opening refused as done, and the close landing nothing more, main here brought to main there`, () => {
+      dir = world();
+      side.mergedOnGithub(dir, BRANCH, method, pulled);
+      const opening = refuses(dir, ['land', 'open', UNIT, '1.2'], as()).error;
+      fixesRecorded(dir, 2, as());
       ok(dir, ['finish', 'yes', UNIT], as());
 
-      assert.deepStrictEqual([yes, readManifest(dir, UNIT).status, onMain(), pulls(dir).slice(3)], [
-        'Close it — merge its pull requests and mark it complete', 'completed', [CHAIN[2].file, CHAIN[1].file, CHAIN[0].file].sort(),
-        [{ number: 4, state: 'MERGED', base: 'main' }],
+      assert.strictEqual(opening, `land: task 1.2 of ${UNIT} has landed, and is done — nothing of it is left to open`);
+      assert.deepStrictEqual([readManifest(dir, UNIT).status, git(dir, ['rev-parse', 'main']).trim(), pulls(dir)], [
+        'completed', tipOnGithub(dir, 'main'), [{ number: 1, state: 'MERGED', base: 'main' }],
       ]);
     });
   }
 });
 
-describe('a quick-fix\'s fix on GitHub', () => {
-  it('its pull request closed by hand there: its done and its close refused in the landing\'s words, each opening on its own verb', () => {
+describe('a quick-fix\'s one pull request on GitHub (R14)', () => {
+  it('keeps its title and body its landing\'s as a fix joins it, the fix\'s commit pushed to it', () => {
     dir = world();
-    fixChanged(dir, 3, 'Spell the docs --colour', 'docs/flags.md', '--colour\n', as());
+    third();
     ok(dir, ['land', 'open', UNIT, '1.3'], as());
-    closeByHand(dir, 3);
-    const words = 'task 1.3\'s pull request #3 was closed on GitHub without being merged — reopen it there, as `gh pr reopen 3` does, and land again';
+    const [{ number, title, body }] = github(dir).pulls;
+
+    assert.deepStrictEqual([number, title, body.split('\n').filter((line) => line.startsWith('Task: ')), tipOnGithub(dir, BRANCH)], [
+      1, `fix(${UNIT}): ${DESCRIPTION}`, [`Task: ${UNIT}-1-1`, `Task: ${UNIT}-1-2`, `Task: ${UNIT}-1-3`], git(dir, ['rev-parse', BRANCH]).trim(),
+    ]);
+  });
+
+  it('squashed by hand there, its branch kept, main here behind: a fix started after it has the branch cut again from main as GitHub has it, and its opening pushes it over GitHub\'s copy, a pull request of its own', () => {
+    dir = world();
+    side.mergedOnGithub(dir, BRANCH, 'squash', false);
+    third();
+    ok(dir, ['land', 'open', UNIT, '1.3'], as());
+
+    assert.deepStrictEqual([cutFromGithub(), git(dir, ['rev-list', '--count', `${tipOnGithub(dir, 'main')}..${BRANCH}`]).trim(), tipOnGithub(dir, BRANCH), pulls(dir)], [
+      true, '1', git(dir, ['rev-parse', BRANCH]).trim(), [{ number: 1, state: 'MERGED', base: 'main' }, { number: 2, state: 'OPEN', base: 'main' }],
+    ]);
+    assert.notStrictEqual(git(dir, ['rev-parse', 'main']).trim(), tipOnGithub(dir, 'main'), 'main here is left behind');
+  });
+
+  it('squashed by hand there and its branch deleted, main here behind: a fix started after it has its branch cut afresh from main as GitHub has it', () => {
+    dir = world();
+    side.mergedOnGithub(dir, BRANCH, 'squash', false);
+    side.deleted(dir, BRANCH);
+    third();
+
+    assert.deepStrictEqual([cutFromGithub(), git(dir, ['rev-list', '--count', `${tipOnGithub(dir, 'main')}..${BRANCH}`]).trim()], [true, '1']);
+  });
+
+  it('squashed by hand there, read where the repository holds none of a fix\'s own commits — its branch gone here and there, the reflog expired: a fix in flight read as landed by the squash naming it, its close refused naming its done, and done', () => {
+    dir = world();
+    third();
+    ok(dir, ['land', 'open', UNIT, '1.3'], as());
+    side.mergedOnGithub(dir, BRANCH, 'squash', true);
+    side.deleted(dir, BRANCH);
+    git(dir, ['update-ref', '-d', `refs/remotes/origin/${BRANCH}`]);
+    git(dir, ['reflog', 'expire', '--expire=now', '--all']);
+    git(dir, ['gc', '-q', '--prune=now']);
+    const closing = refuses(dir, ['task', 'close', UNIT, '1.3', '--reason', 'Not wanted.'], as()).error;
+    ok(dir, ['task', 'done', UNIT, '1.3'], as());
+
+    assert.strictEqual(closing, `task close: task 1.3 of ${UNIT} holds work of its own — it has landed, so it is done, and its change is given up as a landed change is, by a fix of its own whose commit through the door reverts it: task create ${UNIT} 1 --file <task.md>`);
+  });
+
+  it('a copy of a fix\'s commit put on main there by hand after the last opening, the rest still to land: the close cuts the branch again and squashes the pull request naming what is left alone', () => {
+    dir = world();
+    const bare = bareOf(dir);
+    const copy = git(bare, ['commit-tree', `${BRANCH}~1^{tree}`, '-p', 'main', '-m', 'Spell the flag the British way']).trim();
+    git(bare, ['update-ref', 'refs/heads/main', copy]);
+    fixesRecorded(dir, 2, as());
+    ok(dir, ['finish', 'yes', UNIT], as());
+    const squash = (/** @type {string} */ format) => git(bare, ['log', '-1', `--format=${format}`, 'main']).trim();
+
+    assert.deepStrictEqual([squash('%P'), squash('%B').match(/^Task: .*$/gm), pulls(dir)], [copy, [`Task: ${UNIT}-1-2`], [{ number: 1, state: 'MERGED', base: 'main' }]]);
+  });
+
+  it('closed by a move: the one open closed unmerged, and closed again, as a yes run again closes it, closing nothing', () => {
+    dir = world();
+    const [first, again] = withEnv(as().env, () => [quickFixClose(dir, UNIT), quickFixClose(dir, UNIT)]);
+
+    assert.deepStrictEqual([first, again, pulls(dir)], [{ closed: true }, { closed: false }, [{ number: 1, state: 'CLOSED', base: 'main' }]]);
+  });
+
+  it('closed by hand there: a fix\'s done and its close refused in the landing\'s words, each opening on its own verb', () => {
+    dir = world();
+    third();
+    ok(dir, ['land', 'open', UNIT, '1.3'], as());
+    closeByHand(dir, 1);
+    const words = `${UNIT}'s pull request #1 was closed on GitHub without being merged — reopen it there, as \`gh pr reopen 1\` does, and land again`;
 
     assert.deepStrictEqual([refuses(dir, ['task', 'done', UNIT, '1.3'], as()).error, refuses(dir, ['task', 'close', UNIT, '1.3', '--reason', 'Not wanted.'], as()).error], [
       `task done: ${words}`, `task close: ${words}`,

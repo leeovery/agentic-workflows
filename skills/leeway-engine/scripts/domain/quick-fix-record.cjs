@@ -10,11 +10,12 @@
 // `## Why` and `## Leaves out`, none empty, each closing every fenced block
 // it opens. The verb writes it into the unit's `summary.md`, a file only the
 // engine writes (layout.cjs), at its fix's place in the set's order — after
-// the record of every fix numbered before it, as the fixes land bottom to
-// top — under the fix's title as the tracker holds it, a heading of its own,
-// each section an item, its lines after the first beneath it — a section
-// whose text opens on a fenced block written wholly beneath its item, so the
-// fence opens and closes as written:
+// the record of every fix numbered before it, as the fixes stand on the
+// quick-fix's one branch and land in its one commit — under the fix's title
+// as the tracker holds it, a heading of its own, each section an item, its
+// lines after the first beneath it — a section whose text opens on a
+// fenced block written wholly beneath its item, so the fence opens and
+// closes as written:
 //
 //   ## {fix title}
 //
@@ -28,9 +29,9 @@
 // committed with it, so the two never part. It then indexes `summary.md`
 // where this checkout's knowledge base is set up, each fix's record a chunk
 // of its own (knowledge/artifacts.cjs), an index that fails a warning. It
-// takes a fix holding a commit of its own through the door, landed by hand
-// or not (fix-branch.cjs, `ownWork`), in flight or done. It refuses,
-// writing and committing nothing,
+// takes a fix holding work of its own — a commit through the door, landed
+// by hand or not (landing.cjs, `quickFixLanding`) — in flight or done. It
+// refuses, writing and committing nothing,
 // every refusal opening `quick-fix record: `: a unit the project lacks or
 // holds not in progress; one that is no quick-fix built by its own arm
 // (`quickFixBuild`, derivations.cjs) — a quick-fix today's scoping made
@@ -41,7 +42,8 @@
 //
 // A fix closed has its record taken out of `summary.md` and the fixes
 // recorded, `summary.md` gone with the last, in its close's own commit
-// (`takeOutRecord`, fix-end.cjs), and the knowledge base brought in line.
+// (`takeOutRecord`, fix-end.cjs), and the knowledge base brought in line —
+// a move's close alone, since a fix holding work never closes.
 // The close stands on every fix ended, done or closed, and each fix done
 // recorded (`recordedFixes`).
 // ---------------------------------------------------------------------------
@@ -62,7 +64,8 @@ const { committed } = require('./task-account.cjs');
 const { refusing } = require('./staged-payload.cjs');
 const { summaryFile, SUMMARY_PHASE } = require('./knowledge/artifacts.cjs');
 const { syncKnowledge } = require('./knowledge/sync.cjs');
-const { ownWork } = require('./fix-branch.cjs');
+/** The landing, read when asked: it reads the task verbs, which read this module. */
+const landing = () => require('./landing.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
@@ -182,7 +185,7 @@ function quickFixOf(cwd, unit) {
 /**
  * The fix the record is for, as the tracker holds it, with what its read
  * warned of — refused where it is none of the unit's fixes, closed,
- * recorded already, or holds no commit of its own (`fixWork`).
+ * recorded already, or holds no work of its own (`quickFixLanding`, landing.cjs).
  * @param {string} cwd @param {Record<string, any>} manifest the unit's @param {string} given
  */
 function recordableFix(cwd, manifest, given) {
@@ -195,7 +198,7 @@ function recordableFix(cwd, manifest, given) {
   if (fix === undefined) throw new Error(`${taskName(ref)} is not in the tracker — its fixes are listed by task list ${unit} ${FIXES_PHASE.number}`);
   if (fix.status === 'closed') throw new Error(`${taskName(ref)} is closed — a fix closed lands nothing, so it keeps no record`);
   if (recordedIds(manifest).includes(taskId(ref))) throw new Error(`${taskName(ref)}'s record is written already — ${summaryFile(unit)} holds it, under \`## ${fix.title}\``);
-  if (!ownWork(cwd, ref)) throw new Error(`${taskName(ref)} holds no commit of its own — a fix's record is written once its change is committed through the door`);
+  if (!landing().quickFixLanding(cwd, unit).task(ref).held) throw new Error(`${taskName(ref)} holds no commit of its own — a fix's record is written once its change is committed through the door`);
   return { ref, fix, warnings };
 }
 
@@ -289,7 +292,7 @@ function recordedFixes(cwd, manifest) {
   const open = fixes.filter(({ status }) => !ENDED.includes(status));
   if (open.length > 0) {
     const standing = open.map(({ ref, status }) => `${shownTask(ref)} is ${STATUS_WORDS[status]}`).join(', ');
-    throw new Error(`${unit} closes once each of its fixes has ended — ${standing}: each is done once it lands, or closed with its reason`);
+    throw new Error(`${unit} closes once each of its fixes has ended — ${standing}: each is done once it is committed and in ${unit}'s pull request, or closed with its reason`);
   }
   const done = fixes.filter(({ status }) => status === 'done');
   const recorded = recordedIds(manifest);

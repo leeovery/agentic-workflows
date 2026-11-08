@@ -6,30 +6,32 @@
 // checklist holding the review passed only once the person asked for one
 // (6.4.10, 6.S14), and the records indexed open while the store lacks
 // summary.md as it stands; `engine render finish <qf>`, the close — refused
-// while a fix has not ended or one done has no record, and while a fix
-// done is not opened to land as the set's stack stands, naming the lowest
-// such fix's opening; what running the product proved of each fix, its
-// runs made through `verify setup` and `verify run`, or the one line
-// saying the project has no way to run it (19.5.13, 19.S21, P9), its yes
-// merging the fixes still to land, saying so where they have landed, and
-// merging nothing where no fix is done; each call the person changed asked
-// its verdict first, at the point `close` (16.S36, 19.S22); and `engine
-// finish yes <qf>` — refused while the checkout holds changes not
-// committed, landing nothing — landing the fixes through the local landing
-// driver, putting the checkout back on the branch it lands on, completing
-// the unit and naming the start menu, its folder then holding `build/` and
-// `summary.md` alone of the work (4.S23), its record found once it is
-// closed (22.S22). A fix's record is test-engine-quick-fix-record.cjs's,
-// how a fix opens and is done test-engine-quick-fix-end.cjs's, a fix given
-// up test-engine-quick-fix-given-up.cjs's; the set's landing as a
-// chain, on every driver, GitHub's among them (19.S32),
+// while a fix has not ended or one done has no record; what running the
+// product proved of each fix, its runs made through `verify setup` and
+// `verify run` on the quick-fix's one branch, or the one line saying the
+// project has no way to run it (19.5.13, 19.S21, P9), its yes merging the
+// quick-fix's one pull request where a fix done is still to land, saying so
+// where they have landed, and merging nothing where no fix is done; each
+// call the person changed asked its verdict first, at the point `close`
+// (16.S36, 19.S22); a review asked for there, its fix tasks built on the
+// same branch and landing in the same pull request (19.5.14, R14); and
+// `engine finish yes <qf>` — refused while the checkout holds changes not
+// committed, landing nothing — landing the pull request through the local
+// landing driver as one commit, putting the checkout back on the branch it
+// lands on, completing the unit and naming the start menu, its folder then
+// holding `build/` and `summary.md` alone of the work (4.S23), its record
+// found once it is closed (22.S22). A fix's record is
+// test-engine-quick-fix-record.cjs's, how a fix opens and is done
+// test-engine-quick-fix-end.cjs's, a fix given up
+// test-engine-quick-fix-given-up.cjs's; the landing as one pull request, on
+// every driver, GitHub's among them (19.S38),
 // test-engine-landing-conformance-quick-fix.cjs's.
 //
 // Layer: git. World: quick-fix-world.cjs's `twoFixesBuilt` — fixes 1.1 and
-// 1.2, 1.2 laid on 1.1, each built through the local driver and done —
-// built once and copied; and that world with the project's verify setup
-// made in fix 1.1, its scenario run there (`provenWorld`). Each test's
-// conversation keeps its records in a config folder of its own.
+// 1.2 on the quick-fix's branch, each built through the local driver and
+// done — built once and copied; and that world with the project's verify
+// setup made in fix 1.1, its scenario run there (`provenWorld`). Each
+// test's conversation keeps its records in a config folder of its own.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -44,13 +46,11 @@ const {
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const { ledgerReadHelpers } = require('./ledger-world.cjs');
 const {
-  UNIT, PLACE, FLAG, HELP, RECORDS, quickFix, createFix, fixBuilt, recordFile, twoFixesBuilt, guardedGit, checklistClosed, asGone, entered,
+  UNIT, PLACE, DESCRIPTION, BRANCH, FLAG, HELP, RECORDS, quickFix, createFix, fixFile, fixBuilt, recordFile, twoFixesBuilt, checklistClosed, asGone, entered,
 } = require('./quick-fix-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
-const { phaseBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
 const { projectName } = require(path.join(SCRIPTS, 'domain/state-checks.cjs'));
-const { NBSP } = require(path.join(SCRIPTS, 'domain/projections/surfaces.cjs'));
 const { closeScreen } = require(path.join(SCRIPTS, 'domain/projections/finish.cjs'));
 
 const CRITERION = 'Given the help, when it is read, then it names --colour.';
@@ -159,24 +159,29 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
 
     assert.deepStrictEqual([unrecorded, refused(['render', 'finish', UNIT]), refused(['finish', 'yes', UNIT])], [
       `render finish: ${UNIT} closes once each fix done has its record — 1.1, 1.2 have none: quick-fix record ${UNIT} 1.1 --file <record.md>`,
-      `render finish: ${UNIT} closes once each of its fixes has ended — 1.3 is not started: each is done once it lands, or closed with its reason`,
-      `finish yes: ${UNIT} closes once each of its fixes has ended — 1.3 is not started: each is done once it lands, or closed with its reason`,
+      `render finish: ${UNIT} closes once each of its fixes has ended — 1.3 is not started: each is done once it is committed and in ${UNIT}'s pull request, or closed with its reason`,
+      `finish yes: ${UNIT} closes once each of its fixes has ended — 1.3 is not started: each is done once it is committed and in ${UNIT}'s pull request, or closed with its reason`,
     ]);
   });
 
-  it('refuses while a fix done is not opened to land as the set\'s stack stands, naming each and the lowest one\'s opening; each opened again, it closes', () => {
+  it('19.5.14, R14: a review asked for at the close has its fix tasks built on the quick-fix\'s one branch, through the door, and landed in its one pull request with the fixes', () => {
     dir = world();
     closeable();
-    guardedGit(dir, ['branch', '-D', phaseBranch(UNIT, 1)], as());
-    const both = refused(['render', 'finish', UNIT]);
-    run(['land', 'open', UNIT, '1.1']);
-    const upper = refused(['render', 'finish', UNIT]);
-    run(['land', 'open', UNIT, '1.2']);
+    const manifest = readManifest(dir, UNIT);
+    writeState(dir, layout.manifest(UNIT), JSON.stringify({ ...manifest, fixes: { ...manifest.fixes, review_asked: '2026-06-03T10:00:00Z' } }, null, 2));
+    run(['task', 'phase', UNIT, '2', '--title', 'The review\'s fixes']);
+    run(['task', 'create', UNIT, '2', '--file', writeState(dir, layout.cache('review-fix.md'), fixFile(1, 'Name the flag in the docs'))]);
+    const started = run(['task', 'start', UNIT, '2.1']);
+    createFile(dir, 'docs/flag.md', '--colour\n');
+    run(['commit', '--paths', 'docs/flag.md', '--task', UNIT, '2.1', '-m', `fix(${UNIT}): name the flag in the docs`]);
+    const opened = run(['land', 'open', UNIT, '2.1']);
+    run(['task', 'done', UNIT, '2.1']);
+    const main = git(dir, ['rev-parse', 'main']).trim();
+    const landed = run(['land', 'finish', UNIT]);
 
-    assert.deepStrictEqual([both, upper, yesRow()], [
-      `render finish: ${UNIT} closes once each fix done is opened to land — 1.1, 1.2 are not: land open ${UNIT} 1.1`,
-      `render finish: ${UNIT} closes once each fix done is opened to land — 1.2 is not: land open ${UNIT} 1.2`,
-      '**`y/yes`**    → Close it — merge its pull requests and mark it',
+    assert.deepStrictEqual([started.branch, opened.branch, landed.repos.map((/** @type {any} */ { merged }) => merged)], [BRANCH, BRANCH, [['1.1', '1.2', '2.1']]]);
+    assert.deepStrictEqual([git(dir, ['log', '--format=%s', `${main}..main`]).trim(), git(dir, ['log', '-1', '--format=%B', 'main']).match(/^Task: .*$/gm)], [
+      `fix(${UNIT}): ${DESCRIPTION}`, [`Task: ${UNIT}-1-1`, `Task: ${UNIT}-1-2`, `Task: ${UNIT}-2-1`],
     ]);
   });
 
@@ -198,8 +203,7 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
       '· · · · · · · · · · · ·',
       '**`◆ Close it?`**',
       '',
-      '**`y/yes`**    → Close it — merge its pull requests and mark it',
-      `${NBSP.repeat(11)}complete`,
+      '**`y/yes`**    → Close it — merge its pull request and mark it complete',
       '**`r/review`** → Have it reviewed before it closes',
       '**Ask**      → Ask about the change before it closes',
       '',
@@ -248,13 +252,13 @@ describe('finish yes <quick-fix> (19.5.15, 24.1.2)', () => {
     fs.rmSync(path.join(dir, 'src', 'stray.js'));
     const done = run(['finish', 'yes', UNIT]);
 
-    assert.strictEqual(dirty, `finish yes: ${UNIT}'s fixes were built in the project's own checkout, which holds changes not committed — src/stray.js — so nothing was landed: commit them or set them aside, then close it again`);
-    assert.deepStrictEqual({ ...done, landed: done.landed.map((/** @type {any} */ { repo, into, phases }) => ({ repo, into, phases: phases.map((/** @type {any} */ { phase }) => phase) })) }, {
-      ok: true, unit: UNIT, landed: [{ repo: '.', into: 'main', phases: [1] }], checkout: 'main', completed_at: readManifest(dir, UNIT).completed_at,
+    assert.strictEqual(dirty, `finish yes: ${UNIT}'s tasks were built in the project's own checkout, which holds changes not committed — src/stray.js — so nothing was landed: commit them or set them aside, then close it again`);
+    assert.deepStrictEqual({ ...done, landed: done.landed.map((/** @type {any} */ { repo, into, merged }) => ({ repo, into, merged })) }, {
+      ok: true, unit: UNIT, landed: [{ repo: '.', into: 'main', merged: ['1.1', '1.2'] }], checkout: 'main', completed_at: readManifest(dir, UNIT).completed_at,
       committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(), next: { kind: 'handoff', skill: 'leeway', args: [] },
     });
-    assert.deepStrictEqual([branchOut(), git(dir, ['log', '--format=%s', `${main}..main`]).trim().split('\n'), fs.readFileSync(path.join(dir, 'src', 'help.js'), 'utf8')], [
-      'main', [`fix(${UNIT}): ${HELP}`, `fix(${UNIT}): ${FLAG}`], 'const help = \'--colour\';\n',
+    assert.deepStrictEqual([branchOut(), git(dir, ['log', '--format=%s', `${main}..main`]).trim(), fs.readFileSync(path.join(dir, 'src', 'help.js'), 'utf8')], [
+      'main', `fix(${UNIT}): ${DESCRIPTION}`, 'const help = \'--colour\';\n',
     ]);
     assert.deepStrictEqual([readManifest(dir, UNIT).status, fs.readdirSync(statePath(dir, UNIT)).sort()], ['completed', ['build', 'discovery', 'manifest.json', 'seeds', 'summary.md']]);
   });

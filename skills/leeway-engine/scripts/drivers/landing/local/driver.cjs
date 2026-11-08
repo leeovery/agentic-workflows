@@ -23,20 +23,15 @@
 // - The chain's tip: the last task opened in the phase; for its first, the
 //   last task of the latest unmerged phase the task was built on, which the
 //   phase then stacks on, as a fix phase does on the one before (7.2.6) —
-//   else the default branch. A task that lands alone, a quick-fix's fix
-//   (landing.cjs), takes its phase merged for no stack, its stack beginning
-//   again; any other task is refused there. A task is built on another it
-//   holds the branch of, or, that branch deleted, a commit of with the tree
-//   its stack landed; a branch at the task's own tip counts for nothing but
-//   where its task's stack landed it, so a task cut from it with nothing of
-//   its own lands nothing. That the task descends from the tip is the
-//   seam's to check (landing.cjs); putting a parallel task there is
-//   Claude's merge-back (12.7.1), so the driver never rebases.
+//   else the default branch. A task is built on another it holds the branch
+//   of, or, that branch deleted, a commit of with the tree its stack landed;
+//   a branch at the task's own tip counts for nothing but where its task's
+//   stack landed it, so a task cut from it with nothing of its own lands
+//   nothing. That the task descends from the tip is the seam's to check
+//   (landing.cjs); putting a parallel task there is Claude's merge-back
+//   (12.7.1), so the driver never rebases.
 // - Holds: whether the task's phase's stack landed it, as the close in step
-//   reads it (7.2.4); opened at, where its branch stood when it opened, as
-//   its ref records it; its landing, read off its phase's stack alone, never
-//   its phase's merge: opened where that stack, not merged, lands it — what
-//   the default branch holds being the seam's to read (landing.cjs).
+//   reads it (7.2.4).
 // - Open: the squash commits the task's tree onto the phase's branch, which
 //   is exactly the task's own change while that branch's tree is the chain
 //   tip's, and the task holds no other task's work the tip does not and the
@@ -69,6 +64,19 @@
 // - Finish: the phase merged next, the lowest not merged that stacks on no
 //   phase not merged; the seam makes each merge in turn (landing.cjs), and
 //   then every opened ref the unit has is dropped.
+// - A quick-fix (landing.cjs): its one pull request is a ref of the unit's
+//   (`refs/leeway/quick-fix/{unit}/open`) at the commit its branch was
+//   opened at, opening it again moving the ref to the branch as it stands —
+//   `already` where it stands there. Its merge squashes the branch onto the
+//   default branch as one commit under its landing's message, as GitHub
+//   squashes a pull request, and moves the default branch to it, refused,
+//   nothing moved, where the squash conflicts, naming the way on, or the
+//   default branch is out with changes in the way; the opening is then
+//   dropped, as it is alone where there is nothing to merge, and the head
+//   merged kept under `merged/{landing}`, as GitHub keeps a merged pull
+//   request's, so a fix reverted after it landed still reads as landed. A
+//   merge by hand is the seam's to read off the default branch. A move
+//   closes it, its opening dropped.
 //
 // Every refusal says the way on, its commands fitted to the repository as
 // it stands (landing-git.cjs).
@@ -114,6 +122,7 @@ const { messageOf } = require('../../../kernel/call.cjs');
  */
 
 const OPENED = 'refs/leeway/opened/';
+const QUICK_FIX = 'refs/leeway/quick-fix/';
 
 /** A commit as a refusal names it. @param {Commit} commit */
 const named = (commit) => `${lg.short(commit.sha)} "${lg.plain(commit.message.split('\n')[0])}"`;
@@ -332,52 +341,26 @@ function heldBy(ctx, task, refs, stacks) {
 }
 
 /**
- * The branches here and the stacks they hold, read once on a context that
- * keeps its reads (landing-git.cjs, `readOnce`).
- * @param {LandingContext} ctx
- */
-const stacksRead = (ctx) => lg.readOnce(ctx, 'stacks', () => {
-  const read = lg.branches(ctx.root);
-  return { refs: read, stacks: stacksOf(ctx, read) };
-});
-
-/**
  * The branches here, the stacks they hold, and the task's phase's own —
- * refused where something stops it, or it is merged, but for a task that
- * lands alone, for which a phase merged is no stack, left out of those
- * answered.
- * @param {LandingContext} ctx @param {TaskRef} ref @param {boolean} [alone]
+ * refused where it is merged, or something stops it — read once on a
+ * context that keeps its reads (landing-git.cjs, `readOnce`).
+ * @param {LandingContext} ctx @param {TaskRef} ref
  */
-function stacksFor(ctx, ref, alone = false) {
-  const { refs, stacks } = stacksRead(ctx);
+function stacksFor(ctx, ref) {
+  const { refs, stacks } = lg.readOnce(ctx, 'stacks', () => {
+    const read = lg.branches(ctx.root);
+    return { refs: read, stacks: stacksOf(ctx, read) };
+  });
   const own = stacks.get(ref.phase);
-  if (own === undefined) return { refs, stacks, own };
-  if (!own.merged) {
-    refuseFaulty(ctx, refs, own);
-    return { refs, stacks, own };
+  if (own?.merged) {
+    throw new Error(`land: phase ${ref.phase} is merged into ${ctx.into} — task ${shownTask(ref)} lands in a phase not yet merged, so number it in one`);
   }
-  if (alone) return { refs, stacks: new Map([...stacks].filter(([phase]) => phase !== ref.phase)), own: undefined };
-  throw new Error(`land: phase ${ref.phase} is merged into ${ctx.into} — task ${shownTask(ref)} lands in a phase not yet merged, so number it in one`);
+  if (own !== undefined) refuseFaulty(ctx, refs, own);
+  return { refs, stacks, own };
 }
 
 /** Whether its phase's stack holds the task, refused as `stacksFor` refuses it. @param {LandingContext} ctx @param {TaskRef} ref */
 const holds = (ctx, ref) => lands(stacksFor(ctx, ref).own, ref);
-
-/**
- * The task's landing, read off its phase's stack alone: `opened` where that
- * stack, not merged, lands it, else null — refused where something stops
- * the stack. Never `landed`: what lands here is what the default branch
- * holds, which the seam reads (landing.cjs).
- * @param {LandingContext} ctx @param {TaskRef} ref
- * @returns {'opened'|null}
- */
-function taskLanding(ctx, ref) {
-  const { refs, stacks } = stacksRead(ctx);
-  const own = stacks.get(ref.phase);
-  if (own === undefined || own.merged) return null;
-  refuseFaulty(ctx, refs, own);
-  return lands(own, ref) ? 'opened' : null;
-}
 
 /**
  * The chain's tip a task lands on, and what opening it takes (see the
@@ -389,7 +372,7 @@ function taskLanding(ctx, ref) {
  */
 function chainTip(ctx, task) {
   const { phase } = task.ref;
-  const { refs, stacks, own } = stacksFor(ctx, task.ref, task.alone);
+  const { refs, stacks, own } = stacksFor(ctx, task.ref);
   if (lands(own, task.ref)) return null;
   const held = heldBy(ctx, task, refs, stacks);
   const reached = [...stacks.values()].filter((stack) => stack !== own && held.some(({ ref }) => lands(stack, ref))).sort((a, b) => b.phase - a.phase);
@@ -672,6 +655,78 @@ function nextMerge(ctx) {
   return next === undefined ? null : { phase: next.phase, merge: () => mergeStack(ctx, refs, stacks, next) };
 }
 
+/** The quick-fix's landing as the seam gives it (landing.cjs). @typedef {import('../../../domain/landing.cjs').QuickFixTask} QuickFixTask */
+
+/** Where the unit's quick-fix refs live: `open`, and `merged/{landing}` for each merge (the header's). @param {string} unit */
+const quickFixUnder = (unit) => `${QUICK_FIX}${unit}/`;
+
+/**
+ * The quick-fix's pull request's heads (the header's): where its branch was
+ * opened, null where it is not, and where it was at each merge.
+ * @param {LandingContext} ctx @returns {{open: string|null, merged: string[]}}
+ */
+function quickFixPull(ctx) {
+  const held = lg.refsUnder(ctx.root, quickFixUnder(ctx.unit));
+  return { open: held.get('open') ?? null, merged: [...held].filter(([name]) => name.startsWith('merged/')).map(([, head]) => head) };
+}
+
+/**
+ * The quick-fix opened at its branch as it stands — `already` where it is.
+ * @param {LandingContext} ctx @param {QuickFixTask} landing
+ * @returns {{already?: true}}
+ */
+function openQuickFix(ctx, landing) {
+  const at = /** @type {string} */ (lg.branches(ctx.root).get(landing.branch));
+  if (quickFixPull(ctx).open === at) return { already: true };
+  lg.updateRefs(ctx.root, { set: [[`${quickFixUnder(ctx.unit)}open`, at]] });
+  return {};
+}
+
+/**
+ * The quick-fix closed for its move (the header's), its opening dropped
+ * where it is open: whether this call closed it.
+ * @param {LandingContext} ctx @returns {{closed: boolean}}
+ */
+function closeQuickFix(ctx) {
+  if (quickFixPull(ctx).open === null) return { closed: false };
+  lg.updateRefs(ctx.root, { drop: [`${quickFixUnder(ctx.unit)}open`] });
+  return { closed: true };
+}
+
+/**
+ * The quick-fix merged (the header's): its branch squashed onto the default
+ * branch as one commit under its landing's message, the default branch
+ * moved to it, then its opening dropped and the head it merged kept —
+ * refused, nothing moved, where the squash conflicts or the default branch
+ * cannot move; with no task to land, its opening dropped alone.
+ * @param {LandingContext} ctx @param {QuickFixTask} landing
+ */
+function mergeQuickFix(ctx, landing) {
+  const { root, into } = ctx;
+  const opening = `${quickFixUnder(ctx.unit)}open`;
+  const forget = (/** @type {[string, string][]} */ set = []) => lg.updateRefs(root, { set, drop: quickFixPull(ctx).open === null ? [] : [opening] });
+  if (landing.tasks.length === 0) {
+    forget();
+    return { into, already: /** @type {const} */ (true) };
+  }
+  const refs = lg.branches(root);
+  const intoTip = /** @type {string} */ (refs.get(into));
+  const at = /** @type {string} */ (refs.get(landing.branch));
+  const merged = lg.mergeTree(root, lg.mergeBase(root, intoTip, at), intoTip, at);
+  if ('conflicts' in merged) {
+    throw new Error(`land: ${landing.branch} conflicts with ${into} at ${merged.conflicts.map(lg.plain).join(', ')}, so nothing moved — merge ${into} into ${landing.branch}, settling the conflict, and land again`);
+  }
+  const commit = lg.commitTree(root, { tree: merged.tree, parent: intoTip, message: landing.message, signed: lg.signs(root) }, `${ctx.unit}'s squash onto ${into}`, 'land again');
+  try {
+    lg.moveBranch(root, into, intoTip, commit);
+  } catch (err) {
+    if (!(err instanceof GitError)) throw err;
+    throw new Error(`land: ${into} could not move (${errorSaid(err)}), so nothing moved — clear what git names and land again`);
+  }
+  forget([[`${quickFixUnder(ctx.unit)}merged/${commit}`, at]]);
+  return { into, merged: landing.tasks, commit };
+}
+
 module.exports = {
   kind: 'landing',
   name: 'local',
@@ -680,11 +735,13 @@ module.exports = {
   serves: () => false,
   chainTip,
   holds,
-  openedAt,
-  taskLanding,
   open,
   chain,
   mergePhase,
   nextMerge,
+  quickFixPull,
+  openQuickFix,
+  mergeQuickFix,
+  closeQuickFix,
   finished: (/** @type {LandingContext} */ ctx) => forgetOpened(ctx, () => true),
 };

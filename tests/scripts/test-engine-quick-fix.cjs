@@ -10,15 +10,16 @@
 // tracker where it is missing, their beginning recorded on the manifest and
 // committed — and the tasks in progress put in flight (E4); what it reads,
 // its recovery note re-reading the same: the change, the fixes, the record
-// once written, the unit's record, the build's log and the engine. Its fix
+// once written, the unit's record, the build's log and the engine. Its fixes
 // built in the project's own checkout: `task start` putting the checkout on
-// the fix's branch — the first laid from the branch it lands on, a later
-// one on the fix before it — refused while the checkout holds changes not
-// committed; and through the doors any task takes (19.S20): the commit door,
-// refusing a commit on another branch, naming the fix's (12.9.9), `land
-// open` and `task done` owing no account, no pair reviewing it (19.5.3,
-// 19.5.15), and the last fix closed naming no mutation run, there being no
-// phase review (15.6.3). A raise at its place drawn in the conversation,
+// the quick-fix's one branch — cut at the first fix's start from the branch
+// it lands on, every later fix's start keeping it — refused while the
+// checkout holds changes not committed; and through the doors any task
+// takes (19.S20): the commit door, refusing a commit on another branch,
+// naming the quick-fix's (12.9.9), `land open` opening the quick-fix's one
+// pull request and `task done` owing no account, no pair reviewing it
+// (19.5.3, 19.5.15), and the last fix closed naming no mutation run, there
+// being no phase review (15.6.3). A raise at its place drawn in the conversation,
 // `--parks` refused (19.5.3, E5); the review's fix phases numbered past the
 // fixes (P14); and the cut's screens refusing it. The task file's rules are
 // test-engine-task-verbs.cjs's, its verify run test-engine-verify.cjs's, the
@@ -28,8 +29,8 @@
 // Layer: git. World: a quick-fix made through `workunit create` from an
 // inbox note, its code and the build's skill committed, and a feature beside
 // it whose code a peer may hold (quick-fix-world.cjs); and the same entered by a conversation gone
-// since, its fix 1.1 created and started there, putting the checkout on its
-// branch, and a question asked at its place — each built once and copied.
+// since, its fix 1.1 created and started there, putting the checkout on the
+// quick-fix's branch, and a question asked at its place — each built once and copied.
 // Each test's conversations keep their records in a config folder of their
 // own. The separate call is the stub binary, unarmed, so a raise's rows are
 // drawn unjudged.
@@ -52,13 +53,13 @@ const { UNIT, PLACE, DESCRIPTION, quickFix, createFix, asGone, entered: enteredB
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { isFixPhase } = require(path.join(SCRIPTS, 'domain/derivations.cjs'));
-const { taskBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
+const { quickFixBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
 const { fixPhase } = require(path.join(SCRIPTS, 'domain/review-phase.cjs'));
 
 const ENGINE = 'node .claude/skills/leeway-engine/scripts/engine.cjs';
 const TITLE = 'Spell the flag --colour';
 const SECOND = 'Spell the help --colour';
-const BRANCH = taskBranch({ unit: UNIT, phase: 1, n: 1 }, 'fix', TITLE);
+const BRANCH = quickFixBranch(UNIT);
 const MESSAGE = 'fix(typo): spell the flag --colour';
 const AT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
 // A process that runs and is not this suite's.
@@ -230,24 +231,25 @@ describe('the quick-fix\'s fix, built in the project\'s own checkout (12.7.8, 19
     return ok(dir, ['commit', '--paths', 'src/flag.js', '--task', UNIT, '1.1', '-m', MESSAGE], { env: env() });
   }
 
-  it('the first fix\'s start put the checkout on its branch, laid from the branch it lands on; a later fix of the set is laid on the fix before it, a checkout holding changes not committed refused first, naming them, nothing moved', () => {
+  it('the first fix\'s start put the checkout on the quick-fix\'s one branch, cut from the branch it lands on; a later fix\'s start keeps it, where the first fix\'s commit stands, a checkout holding changes not committed refused first, naming them, nothing moved', () => {
     dir = entered();
-    const laid = [branchOut(), sha(BRANCH) === sha('main')];
+    const cut = [branchOut(), sha(BRANCH) === sha('main')];
     commitFix();
+    const built = sha(BRANCH);
     createFix(dir, 2, SECOND);
     createFile(dir, 'src/help.js', 'const help = 1;\n');
     const refused = refusedPristine(dir, ['task', 'start', UNIT, '1.2'], { env: env() }).error;
     const unmoved = [branchOut(), fixes()[1].status];
     fs.rmSync(path.join(dir, 'src/help.js'));
-    const second = ok(dir, ['task', 'start', UNIT, '1.2'], { env: env() }).branch;
+    const second = ok(dir, ['task', 'start', UNIT, '1.2'], { env: env() });
 
-    assert.deepStrictEqual(laid, [BRANCH, true]);
-    assert.strictEqual(refused, `task 1.2 of ${UNIT} is built in the project's own checkout, which holds changes not committed — src/help.js — so it was not put on the fix's branch: commit them or set them aside, then start the fix again`);
+    assert.deepStrictEqual(cut, [BRANCH, true]);
+    assert.strictEqual(refused, `task 1.2 of ${UNIT} is built in the project's own checkout, which holds changes not committed — src/help.js — so it was not put on ${UNIT}'s branch: commit them or set them aside, then start the task again`);
     assert.deepStrictEqual(unmoved, [BRANCH, 'open']);
-    assert.deepStrictEqual([second, branchOut(), sha(second) === sha(BRANCH)], [taskBranch({ unit: UNIT, phase: 1, n: 2 }, 'fix', SECOND), second, true]);
+    assert.deepStrictEqual([second.branch, second.cut_again, branchOut(), sha(BRANCH)], [BRANCH, undefined, BRANCH, built]);
   });
 
-  it('19.S20: the commit door takes the fix in flight with no plan, the tests and the linters run, the commit naming its task; one on another branch is refused, naming the fix\'s and the start that puts the checkout there (12.9.9)', () => {
+  it('19.S20: the commit door takes the fix in flight with no plan, the tests and the linters run, the commit naming its task; one on another branch is refused, naming the quick-fix\'s and the start that puts the checkout there (12.9.9)', () => {
     dir = entered();
     environment({ run: { tests: 'true' }, linters: [{ name: 'eslint', command: 'true' }] });
     const res = commitFix();
@@ -256,16 +258,16 @@ describe('the quick-fix\'s fix, built in the project\'s own checkout (12.7.8, 19
     const { error } = refusedPristine(dir, ['commit', '--paths', 'src/flag.js', '--task', UNIT, '1.1', '-m', MESSAGE], { env: env() });
 
     assert.deepStrictEqual([res.task, res.checks.map(({ name }) => name).sort(), git(dir, ['log', '-1', '--format=%B', BRANCH]).trim()], [`${UNIT}-1-1`, ['eslint', 'tests'], `${MESSAGE}\n\nLeeway-Task: ${UNIT}-1-1`]);
-    assert.strictEqual(error, `commit --task: this checkout has main out, not task 1.1 of ${UNIT}'s branch, so its commit would land on another branch — a quick-fix's fix is built in the project's own checkout, on its branch, ${BRANCH} — \`engine task start ${UNIT} 1.1\` puts the checkout on it`);
+    assert.strictEqual(error, `commit --task: this checkout has main out, not ${UNIT}'s branch, so its commit would land on another branch — a quick-fix's task is built in the project's own checkout, on ${BRANCH} — \`engine task start ${UNIT} 1.1\` puts the checkout on it`);
   });
 
-  it('land open opens the fix\'s pull request with no account, no pair having reviewed it, and task done ends it, owing none (19.5.3, 19.5.7)', () => {
+  it('land open opens the quick-fix\'s one pull request with no account, no pair having reviewed it, and task done ends it, owing none (19.5.3, 19.5.7)', () => {
     dir = entered();
     commitFix();
     const opened = ok(dir, ['land', 'open', UNIT, '1.1']);
     ok(dir, ['task', 'done', UNIT, '1.1'], { env: env() });
 
-    assert.deepStrictEqual([opened.task, opened.branch, opened.repos.map(({ repo, base }) => ({ repo, base }))], ['1.1', BRANCH, [{ repo: '.', base: 'main' }]]);
+    assert.deepStrictEqual([opened.task, opened.branch, opened.already, opened.repos.map(({ repo }) => repo)], ['1.1', BRANCH, undefined, ['.']]);
     assert.deepStrictEqual(fixes(), [{ task: '1.1', title: TITLE, status: 'done' }]);
   });
 

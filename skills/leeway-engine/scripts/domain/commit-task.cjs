@@ -13,12 +13,8 @@
 //   conversation, a unit the project lacks, a task id that does not read
 //   `{phase}.{n}`, a task the tracker holds ended, which takes no start —
 //   naming, for a quick-fix's fix, the start of the next fix not ended, and
-//   a task of its own made — but for a quick-fix's fix done and not yet
-//   landed, whose commit finishes a merge back of the branch it lands on,
-//   as the host has it or here, which the landing asks for and the door
-//   takes from the fix's branch (fix-end.cjs, `takesMergeBack`); no task in
-//   flight — `task start` puts it there, again
-//   after a `/clear`, which begins another conversation — and only other
+//   a task of its own made; no task in flight — `task start` puts it there,
+//   again after a `/clear`, which begins another conversation — and only other
 //   tasks in flight, each named; from a worktree `task worktree` laid out
 //   for another task in flight (task-worktree.cjs, conversation.cjs's
 //   `taskAt`), any task but that one, naming it; a task with a worktree
@@ -26,9 +22,9 @@
 //   checkout on a branch other than the task's, any task, naming the
 //   worktree that has its branch out, so no task's commit lands on another
 //   branch. A task with none recorded commits from where its branch is out
-//   — a quick-fix's fix from the project's own checkout, on its branch, a
-//   commit on any other naming that branch and the start that puts the
-//   checkout there (fix-branch.cjs).
+//   — a quick-fix's task from the project's own checkout, on the
+//   quick-fix's one branch, a commit on any other naming that branch and
+//   the start that puts the checkout there (fix-branch.cjs).
 // - The project's checks run before the commit (15.8.3): its tests,
 //   `environment.run.tests`, then each of its linters, `environment.linters`
 //   (environment.cjs), in that order, each by `sh -c` in the code root of the
@@ -60,18 +56,15 @@ const { runShellCommand, tailText } = require('../kernel/shell-command.cjs');
 const { tryGit } = require('../kernel/git.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { tasksInFlight, taskAt } = require('./conversation.cjs');
-const { taskOfBranch } = require('./landing-names.cjs');
+const { taskOfBranch, quickFixBranch } = require('./landing-names.cjs');
 const { taskWorktree } = require('./landing-git.cjs');
-const { fixWayOn } = require('./fix-branch.cjs');
+const { branchWayOn } = require('./fix-branch.cjs');
 const { quickFixBuild, FIXES_PHASE } = require('./derivations.cjs');
 const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
-const { parseShownTask, shownTask, taskId, taskName } = require('./task-id.cjs');
+const { parseShownTask, sameTask, shownTask, taskId, taskName } = require('./task-id.cjs');
 const { isBugfix, doorGate } = require('./bug-proven.cjs');
 const environment = require('./environment.cjs');
 const { trackedPhase, ENDED } = require('./task-verbs.cjs');
-
-/** How a quick-fix's fix ends, read when asked: it reads the landing, which reads this module. */
-const fixEnd = () => require('./fix-end.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** A check the door runs: its name and command, why it may fail where it may, and the way on where it fails and may not. @typedef {{name: string, command: string, allowed?: string, way?: string}} Check */
@@ -103,10 +96,6 @@ function inFlightTask(cwd, unit, given) {
   const inFlight = tasksInFlight(session);
   const named = inFlight.find((task) => task.unit === unit && task.task === shownTask(ref));
   if (named !== undefined) return { ref: fromItsWorktree(session, cwd, ref, named.worktree), manifest };
-  if (fixEnd().takesMergeBack(cwd, ref)) {
-    refuseOtherBranch(cwd, ref);
-    return { ref, manifest };
-  }
   refuseEnded(cwd, ref, manifest);
   if (inFlight.length === 0) {
     throw new Error(`commit --task: no task is in flight in this conversation — start ${taskName(ref)} with ${startCall(unit, given)}, then commit again; a /clear begins another conversation, so a task started before one is started again after it`);
@@ -155,23 +144,25 @@ function fromItsWorktree(session, cwd, ref, worktree) {
 /**
  * Refuse a commit of the task from a checkout on a branch other than the
  * task's, naming the worktree that has the task's branch out — or, where
- * none has, the verb that lays one out; a quick-fix's fix, built in the
- * project's own checkout, naming its branch and the start that puts the
- * checkout there (fix-branch.cjs). A detached HEAD and the state branch are
- * the door's own to refuse (engine.cjs).
+ * none has, the verb that lays one out; a quick-fix's task, built in the
+ * project's own checkout on the quick-fix's one branch, naming that branch
+ * and the start that puts the checkout there (fix-branch.cjs). A detached
+ * HEAD and the state branch are the door's own to refuse (engine.cjs).
  * @param {string} cwd @param {TaskRef} ref
  */
 function refuseOtherBranch(cwd, ref) {
   const root = codeRoot(cwd);
   const branch = tryGit(root, ['symbolic-ref', '-q', '--short', 'HEAD'])?.trim();
-  const own = branch === undefined ? null : taskOfBranch(ref.unit, branch);
-  if (branch === undefined || branch === STATE_BRANCH || (own !== null && own.phase === ref.phase && own.n === ref.n)) return;
-  throw new Error(`commit --task: this checkout has ${branch} out, not ${taskName(ref)}'s branch, so its commit would land on another branch — ${wayOn(cwd, root, ref)}`);
+  if (branch === undefined || branch === STATE_BRANCH) return;
+  const quickFix = quickFixBuild(loadWorkUnitManifest(cwd, ref.unit));
+  const own = taskOfBranch(ref.unit, branch);
+  if (quickFix ? branch === quickFixBranch(ref.unit) : own !== null && sameTask(own, ref)) return;
+  const whose = quickFix ? `${ref.unit}'s branch` : `${taskName(ref)}'s branch`;
+  throw new Error(`commit --task: this checkout has ${branch} out, not ${whose}, so its commit would land on another branch — ${quickFix ? branchWayOn(ref) : wayOn(root, ref)}`);
 }
 
-/** Where the task's commit is made instead (`refuseOtherBranch`). @param {string} cwd @param {string} root @param {TaskRef} ref */
-function wayOn(cwd, root, ref) {
-  if (quickFixBuild(loadWorkUnitManifest(cwd, ref.unit)) && ref.phase === FIXES_PHASE.number) return fixWayOn(root, ref);
+/** Where the task's commit is made instead (`refuseOtherBranch`). @param {string} root @param {TaskRef} ref */
+function wayOn(root, ref) {
   const holder = taskWorktree(root, ref);
   return holder === undefined
     ? `no worktree has it out — \`engine task worktree ${ref.unit} ${shownTask(ref)}\` lays one out, from a worktree of Claude Code's isolation`
