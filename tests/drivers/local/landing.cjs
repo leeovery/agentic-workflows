@@ -9,7 +9,7 @@
 // land. A merge there is refused while its default branch's checkout is in
 // the middle of a merge. A person merges a task by hand in their own
 // terminal: its branch, with a merge commit, or its phase's branch, the
-// default branch fast-forwarded to it.
+// default branch fast-forwarded to it; and deletes a task's branch.
 
 const fs = require('fs');
 const path = require('path');
@@ -60,4 +60,11 @@ module.exports = {
     /** The default branch fast-forwarded to the task's phase's branch. @param {string} dir @param {TaskRef} ref */
     'its phase\'s branch fast-forwarded': (dir, ref) => onMain(dir, ['merge', '-q', '--ff-only', phaseBranch(ref.unit, ref.phase)]),
   },
+  /** A task's branch deleted, the checkout first put on main where it has the branch out. @param {string} dir @param {string} branch */
+  deleted: (dir, branch) => {
+    if (git(dir, ['symbolic-ref', '-q', '--short', 'HEAD']).trim() === branch) git(dir, ['switch', '-q', 'main']);
+    git(dir, ['branch', '-q', '-D', branch]);
+  },
+  /** What a merge back of the default branch takes: the branch itself. */
+  back: 'main',
 };

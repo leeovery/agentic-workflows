@@ -1,29 +1,29 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// What the quick-fix suites share (test-engine-quick-fix.cjs,
-// test-engine-quick-fix-record.cjs, test-engine-quick-fix-end.cjs,
-// test-engine-quick-fix-given-up.cjs, test-engine-quick-fix-close.cjs,
-// test-engine-landing-conformance-quick-fix*.cjs,
-// tests/drivers/github/test-landing-quick-fix.cjs): the quick-fix, made through
+// What the quick-fix suites share (test-engine-quick-fix*.cjs,
+// test-engine-landing-conformance-quick-fix*.cjs, quick-fix-laid-on.cjs, and
+// a landing driver's own quick-fix suites): the quick-fix, made through
 // `workunit create` from an inbox note, its code and the build's skill
 // committed, and a feature beside it (`quickFix`); a fix's task file, fix
-// `n` naming its one scenario `{n}.S1` (`fixFile`), and its creation
-// through the tracker's verb (`createFix`); a fix's change made as Claude
-// makes one in the conversation — started, putting the checkout on its
-// branch, its change committed through the door (`fixChanged`) — and the
-// fix built, its pull request then opened and the fix done (`fixBuilt`);
-// its short record's file (`recordFile`), fixes 1.1 and 1.2's as Claude
-// writes them (`RECORDS`); three fixes' titles, files and texts, a chain
-// (`CHAIN`); the quick-fix entered by a conversation gone since, the
-// chain's first two fixes built, 1.2 laid on 1.1 (`twoFixesBuilt`); what a
-// quick-fix conformance suite reads a landing driver by
-// (`quickFixConformance`); the
+// `n` naming its one scenario `{n}.S1` (`fixFile`), and its creation through
+// the tracker's verb (`createFix`); a fix's change made as Claude makes one
+// in the conversation — started, putting the checkout on its branch, its
+// change committed through the door (`fixChanged`) — and the fix built, its
+// pull request then opened and the fix done (`fixBuilt`); its short record's
+// file (`recordFile`), fixes 1.1 and 1.2's as Claude writes them
+// (`RECORDS`); three fixes' titles, files and texts, a chain (`CHAIN`); the
+// quick-fix entered by a conversation gone since, the chain's first two
+// fixes built, 1.2 laid on 1.1 (`twoFixesBuilt`); what a quick-fix
+// conformance suite reads a landing driver by (`quickFixConformance`); the
 // knowledge base's chunks of `summary.md` (`summaryChunks`); a git command
 // run as Claude runs one in the conversation, the shell guard asked first
-// (`guardedGit`); finish's checklist worked and closed (`checklistClosed`);
-// and a world built by a conversation gone since, its records in a config
-// folder of its own, removed once the world is built (`asGone`).
+// (`guardedGit`), and a merge back begun so, any conflict settled to the
+// fix's own text (`mergedBack`); finish's checklist worked and closed
+// (`checklistClosed`), the fixes recorded before it (`fixesRecorded`), and
+// the close's yes as its menu words it (`closeYes`); and a world built by a
+// conversation gone since, its records in a config folder of its own,
+// removed once the world is built (`asGone`).
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -33,7 +33,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { afterEach } = require('node:test');
-const { call, ok, okSections, writeState, createFile, commitAll, git, statePath, layout, fixtureFrom, cleanupFixture, GIT_TIMEOUT_MS } = require('./engine-harness.cjs');
+const { call, ok, okSections, output, sectionOf, writeState, createFile, commitAll, git, statePath, layout, fixtureFrom, cleanupFixture, GIT_TIMEOUT_MS } = require('./engine-harness.cjs');
 const { createManifest, useTempFolder } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
@@ -187,23 +187,51 @@ const summaryChunks = (dir) => store.allChunks(store.loadStore(knowledgeFiles(st
   .map((chunk) => chunk.heading_path);
 
 /**
- * A git command run in the project as Claude runs one in the conversation
- * `as` names: the shell guard asked first, as Claude Code asks it before the
- * command, and the command run once it passes, its output taken as Claude
- * Code takes it — a refusal, or the command failing, failing the test in
- * the guard's words or git's. Its output.
- * @param {string} dir @param {string[]} args git's, none holding a space @param {As} as
+ * Refuse a git command Claude would run in the conversation `as` names that
+ * the shell guard refuses, as Claude Code asks it before the command,
+ * failing the test in the guard's words.
+ * @param {string} dir @param {string[]} args git's @param {As} as
  */
-function guardedGit(dir, args, as) {
+function askGuard(dir, args, as) {
   const command = ['git', ...args].join(' ');
   const asked = call(dir, ['shell', 'guard'], {
     env: as.env,
     stdin: JSON.stringify({ hook_event_name: 'PreToolUse', cwd: dir, session_id: as.env.CLAUDE_CODE_SESSION_ID, tool_name: 'Bash', tool_input: { command } }),
   });
   if (asked.code !== 0) throw new Error(`the shell guard refuses \`${command}\`: ${asked.stderr.trim()}`);
+}
+
+/**
+ * A git command run in the project as Claude runs one in the conversation
+ * `as` names: the shell guard asked first (`askGuard`), and the command run
+ * once it passes, its output taken as Claude Code takes it — the command
+ * failing, failing the test in git's words. Its output.
+ * @param {string} dir @param {string[]} args git's, none holding a space @param {As} as
+ */
+function guardedGit(dir, args, as) {
+  askGuard(dir, args, as);
   const ran = spawnSync('git', args, { cwd: dir, encoding: 'utf8', timeout: GIT_TIMEOUT_MS });
-  if (ran.status !== 0) throw new Error(`\`${command}\` failed: ${ran.stderr.trim()}`);
+  if (ran.status !== 0) throw new Error(`\`${['git', ...args].join(' ')}\` failed: ${ran.stderr.trim()}`);
   return ran.stdout;
+}
+
+/**
+ * A merge back of `from` into the branch the checkout has out, as Claude
+ * makes one in the conversation `as` names: begun through the shell guard
+ * (`askGuard`), `git merge --no-ff --no-commit`, each file it conflicts in
+ * settled to `settled`'s text for it, then committed through the door under
+ * fix `n`, which finishes it, naming every file the merge changed — or,
+ * where it changed none, those `settled` names.
+ * @param {string} dir @param {string} from @param {number} n @param {As} as @param {Record<string, string>} settled by file
+ */
+function mergedBack(dir, from, n, as, settled) {
+  const args = ['merge', '--no-ff', '--no-commit', from];
+  askGuard(dir, args, as);
+  spawnSync('git', args, { cwd: dir, encoding: 'utf8', timeout: GIT_TIMEOUT_MS });
+  const conflicted = git(dir, ['diff', '--name-only', '--diff-filter=U']).split('\n').filter(Boolean);
+  for (const file of conflicted) createFile(dir, file, settled[file] ?? '');
+  const changed = git(dir, ['diff', '--name-only', 'HEAD']).split('\n').filter(Boolean);
+  return ok(dir, ['commit', '--paths', ...(changed.length > 0 ? changed : Object.keys(settled)), '--task', UNIT, `1.${n}`, '-m', `merge ${from} back`], as);
 }
 
 /** Finish's checklist worked and closed in the conversation `as` names, the build's log written. @param {string} dir @param {As} as */
@@ -212,6 +240,23 @@ function checklistClosed(dir, as) {
   for (const key of ['inbox-closed', 'build-log-closed']) ok(dir, ['checklist', 'done', 'finish', UNIT, key], as);
   ok(dir, ['checklist', 'close', 'finish', UNIT], as);
 }
+
+/**
+ * Fixes 1.1 to `last` recorded in the conversation `as` names — each past
+ * the two `RECORDS` holds under a record of its own — and finish's
+ * checklist closed.
+ * @param {string} dir @param {number} last @param {As} as
+ */
+function fixesRecorded(dir, last, as) {
+  for (let n = 1; n <= last; n += 1) {
+    const record = RECORDS[n] ?? { changed: `Fix ${n}'s change.`, why: 'It was spelt the American way.', leaves: 'Nothing.' };
+    ok(dir, ['quick-fix', 'record', UNIT, `1.${n}`, '--file', recordFile(dir, n, record)], as);
+  }
+  checklistClosed(dir, as);
+}
+
+/** The close's yes, as finish's menu words it in the conversation `as` names, its lines joined. @param {string} dir @param {As} as */
+const closeYes = (dir, as) => /\*\*`y\/yes`\*\* {4}→ ([^*]*?)\s*\*\*/.exec(sectionOf(output(dir, ['render', 'finish', UNIT], as), 'MENU: finish'))?.[1].replace(/\s+/g, ' ');
 
 /**
  * `build` run as a conversation gone since: its options, its records in a
@@ -235,5 +280,5 @@ function entered(dir, as) {
 
 module.exports = {
   UNIT, PLACE, DESCRIPTION, NOTE, FLAG, HELP, RECORDS, CHAIN, fixFile, quickFix, createFix, fixChanged, fixBuilt, recordFile, twoFixesBuilt, quickFixConformance, summaryChunks,
-  guardedGit, checklistClosed, asGone, entered,
+  guardedGit, mergedBack, checklistClosed, fixesRecorded, closeYes, asGone, entered,
 };

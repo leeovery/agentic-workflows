@@ -12,8 +12,12 @@
 //   from its worktree finds its task. Refused, each with the way on: no
 //   conversation, a unit the project lacks, a task id that does not read
 //   `{phase}.{n}`, a task the tracker holds ended, which takes no start —
-//   naming the start of the next of its phase's not ended, and a task of
-//   its own made — no task in flight — `task start` puts it there, again
+//   naming, for a quick-fix's fix, the start of the next fix not ended, and
+//   a task of its own made — but for a quick-fix's fix done and not yet
+//   landed, whose commit finishes a merge back of the branch it lands on,
+//   as the host has it or here, which the landing asks for and the door
+//   takes from the fix's branch (fix-end.cjs, `takesMergeBack`); no task in
+//   flight — `task start` puts it there, again
 //   after a `/clear`, which begins another conversation — and only other
 //   tasks in flight, each named; from a worktree `task worktree` laid out
 //   for another task in flight (task-worktree.cjs, conversation.cjs's
@@ -66,6 +70,9 @@ const { isBugfix, doorGate } = require('./bug-proven.cjs');
 const environment = require('./environment.cjs');
 const { trackedPhase, ENDED } = require('./task-verbs.cjs');
 
+/** How a quick-fix's fix ends, read when asked: it reads the landing, which reads this module. */
+const fixEnd = () => require('./fix-end.cjs');
+
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** A check the door runs: its name and command, why it may fail where it may, and the way on where it fails and may not. @typedef {{name: string, command: string, allowed?: string, way?: string}} Check */
 /** A check run: its name and exit code, and where it failed and may, why, with its output's last lines. @typedef {{name: string, exit: number, allowed?: string, tail?: string[]}} CheckRun */
@@ -96,7 +103,11 @@ function inFlightTask(cwd, unit, given) {
   const inFlight = tasksInFlight(session);
   const named = inFlight.find((task) => task.unit === unit && task.task === shownTask(ref));
   if (named !== undefined) return { ref: fromItsWorktree(session, cwd, ref, named.worktree), manifest };
-  refuseEnded(cwd, ref);
+  if (fixEnd().takesMergeBack(cwd, ref)) {
+    refuseOtherBranch(cwd, ref);
+    return { ref, manifest };
+  }
+  refuseEnded(cwd, ref, manifest);
   if (inFlight.length === 0) {
     throw new Error(`commit --task: no task is in flight in this conversation — start ${taskName(ref)} with ${startCall(unit, given)}, then commit again; a /clear begins another conversation, so a task started before one is started again after it`);
   }
@@ -106,20 +117,20 @@ function inFlightTask(cwd, unit, given) {
 
 /**
  * Refuse a commit under a task the tracker holds ended, which takes no more
- * work and no start: naming the start of the next of its phase's tasks not
- * ended, where one is, and the making of a task of its own.
- * @param {string} cwd @param {TaskRef} ref
+ * work and no start: naming, for a quick-fix's fix, the start of the next
+ * fix not ended, where one is — the same kind of work — and the making of a
+ * task of its own.
+ * @param {string} cwd @param {TaskRef} ref @param {Record<string, any>} manifest the unit's
  */
-function refuseEnded(cwd, ref) {
+function refuseEnded(cwd, ref, manifest) {
   const tasks = trackedPhase(cwd, ref.unit, ref.phase).tasks ?? [];
   const task = tasks.find((held) => held.ref.n === ref.n);
   if (task === undefined || !ENDED.includes(task.status)) return;
-  const next = tasks.find((held) => held.ref.n > ref.n && !ENDED.includes(held.status));
-  const start = next === undefined ? '' : `start the next with ${startCall(ref.unit, shownTask(next.ref))}, `;
-  throw new Error(
-    `commit --task: ${taskName(ref)} is ${task.status}, and a task ended takes no more work — commit it under the task it is for: `
-    + `${start}or make it a task of its own with \`engine task create ${ref.unit} ${ref.phase} --file <task.md>\``,
-  );
+  const fix = quickFixBuild(manifest) && ref.phase === FIXES_PHASE.number;
+  const next = fix ? tasks.find((held) => held.ref.n > ref.n && !ENDED.includes(held.status)) : undefined;
+  const own = `make it a task of its own with \`engine task create ${ref.unit} ${ref.phase} --file <task.md>\``;
+  const way = next === undefined ? own : `commit it under the fix it is for — start the next with ${startCall(ref.unit, shownTask(next.ref))} — or ${own}`;
+  throw new Error(`commit --task: ${taskName(ref)} is ${task.status}, and a task ended takes no more work — ${way}`);
 }
 
 /**

@@ -63,8 +63,10 @@ const GITHUB_SQUASH = Object.freeze({ squash_merge_commit_title: 'COMMIT_OR_PR_T
 /**
  * A pull request, with where GitHub last saw it stand (`seen`), where it
  * stood before (`was`), and how many more reads it is unknown since it
- * moved (`unknown`).
- * @typedef {{number: number, state: 'OPEN'|'CLOSED'|'MERGED', head: string, base: string, title: string, body: string, seen?: string, was?: string, unknown?: number}} Pull
+ * moved (`unknown`); and, once merged, its head as it merged, which GitHub
+ * keeps however its branch then moves, deleted among them (`merged`), and
+ * holds as the pull request's own ref, `refs/pull/{number}/head`, to fetch.
+ * @typedef {{number: number, state: 'OPEN'|'CLOSED'|'MERGED', head: string, base: string, title: string, body: string, seen?: string, was?: string, unknown?: number, merged?: string}} Pull
  */
 /** @typedef {{number: number, base: string, pulls: number[]}} Stack */
 /** @typedef {{repo: string, default: string, next: number, method: string, squash: Record<string, string>, rulesets: object[], pulls: Pull[], stacks: Stack[], lag?: number, stale?: boolean}} Github */
@@ -196,7 +198,11 @@ function mergePulls(at, state, pulls, method, opts) {
   if (from === null) throw new Refused(`Pull request #${pulls[0]?.number} has no branch to merge`);
   const merged = pulls.reduce((onto, pull) => mergeOf(bare, state, pull, method, onto, opts), from);
   inBare(bare, ['update-ref', `refs/heads/${opts.into}`, merged, from]);
-  for (const pull of pulls) pull.state = 'MERGED';
+  for (const pull of pulls) {
+    const head = /** @type {string} */ (tipOf(bare, pull.head));
+    Object.assign(pull, { state: 'MERGED', merged: head });
+    inBare(bare, ['update-ref', `refs/pull/${pull.number}/head`, head]);
+  }
 }
 
 /** The value of a flag, and the arguments without it. @param {string[]} args @param {string} flag */
@@ -218,7 +224,7 @@ function prList(at, state, args) {
   const tips = new Map(inBare(bareOf(at, state), ['for-each-ref', '--format=%(refname:lstrip=2) %(objectname)', 'refs/heads/']).split('\n').map((line) => line.split(' ')));
   const rows = [...state.pulls].sort((a, b) => b.number - a.number).map((pull) => {
     /** @type {Record<string, unknown>} */
-    const all = { number: pull.number, state: pull.state, headRefName: pull.head, baseRefName: pull.base, headRefOid: tips.get(pull.head) ?? null, title: pull.title, body: pull.body };
+    const all = { number: pull.number, state: pull.state, headRefName: pull.head, baseRefName: pull.base, headRefOid: pull.merged ?? tips.get(pull.head) ?? null, title: pull.title, body: pull.body };
     return Object.fromEntries(fields.map((field) => [field, all[field]]));
   });
   return `${JSON.stringify(rows)}\n`;

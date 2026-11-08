@@ -200,19 +200,24 @@ const METHODS = Object.freeze({
  * `chainTip` answers the branch a task's branch must descend from, at a
  * commit the repository has locally, which the seam checks before `open` —
  * null where the task's phase's stack holds it already; for a task that
- * lands alone, a phase merged is no stack, and any other is refused there;
+ * lands alone, a phase merged is no stack, its tip then the branch it
+ * lands on as the host has it, fetched, and what a merge back of it names
+ * (`back`), and any other task is refused there;
  * `holds`, whether it does, fetching and writing nothing, as the close in
  * step asks it of every task of a phase, the stacks read once on a context
  * that keeps its reads (landing-git.cjs, `readOnce`); `openedAt`, the
  * commit its pull request holds of its branch — fetching and writing
  * nothing, null where nothing records one, as a task landed by hand leaves
  * it — which the seam reads the branch as it stands against;
- * `taskLanding`, the task's landing read alone, never through its phase's
- * merge — `landed` where its host reports it merged, `opened` where its
- * phase's stack holds it, else null — fetching and writing nothing, the
- * reads made once as `holds` makes them; `chain`, null where the task is
- * not open there; `mergePhase`, null where no task of the phase is open
- * there, and `already` where it is merged; a merge, what it was warned of.
+ * `taskLanding`, whether the task's pull request is opened — `opened`
+ * where it has one its host holds, merged into any branch or not, else
+ * null — never whether it landed, which the seam reads by content off the
+ * branch it lands on (landing.cjs, `taskLandings`); fetching and writing
+ * nothing, the reads made once as `holds` makes them; `chain`, null where
+ * the task is not open there; `mergePhase`, null where no task of the
+ * phase is open there, and `already` where each of its tasks' changes is on
+ * the branch it lands on — a stack merged in part, by hand, finished; a
+ * merge, what it was warned of.
  * `nextMerge` answers the merge finish makes next there — its phase, and
  * the merge, made from what the driver read to pick it — null where every
  * phase is merged; the seam makes each in turn, and
@@ -234,7 +239,7 @@ const METHODS = Object.freeze({
  *   chainTip: (ctx: LandingContext, task: LandingTask) => ChainTip|null,
  *   holds: (ctx: LandingContext, ref: TaskRef) => boolean,
  *   openedAt: (ctx: LandingContext, ref: TaskRef) => string|null,
- *   taskLanding: (ctx: LandingContext, ref: TaskRef) => 'landed'|'opened'|null,
+ *   taskLanding: (ctx: LandingContext, ref: TaskRef) => 'opened'|null,
  *   open: (ctx: LandingContext, task: LandingTask, tip: ChainTip) => {base: string},
  *   chain: (ctx: LandingContext, ref: TaskRef) => {stack: string[]}|null,
  *   mergePhase: (ctx: LandingContext, phase: number) => {into: string, merged: string[], warnings?: string[]}|{into: string, already: true, warnings?: string[]}|null,

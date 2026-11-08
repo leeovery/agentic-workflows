@@ -13,7 +13,8 @@
 // cut to nothing; the hermetic environment keeps their login out
 // (hermetic-env.cjs).
 // What a person might do by hand on GitHub — close a pull request, merge
-// one, change GitHub's default branch or its squash default — is done to
+// one, delete a merged one's branch, change GitHub's default branch or its
+// squash default — is done to
 // the fake's state here, as is how many reads GitHub takes to work out
 // whether a pull request can merge once it moves. The fake starts with
 // GitHub's own squash default, and works it out at once.
@@ -108,6 +109,21 @@ function mergeByHand(dir, number, into, method = 'squash') {
   });
 }
 
+/**
+ * A merged pull request's head branch deleted on GitHub, as its button or
+ * auto-delete does: each pull request open on that branch retargeted onto
+ * the merged one's base, as GitHub retargets them.
+ * @param {string} dir @param {number} number
+ */
+function headDeleted(dir, number) {
+  onGithub(dir, (state) => {
+    const merged = state.pulls.find((held) => held.number === number);
+    if (merged === undefined) throw new Error(`no pull request #${number}`);
+    for (const pull of state.pulls) if (pull.state === 'OPEN' && pull.base === merged.head) pull.base = merged.base;
+    execFileSync('git', ['update-ref', '-d', `refs/heads/${merged.head}`], { cwd: bareOf(dir) });
+  });
+}
+
 /** GitHub's own default branch moved to `branch`, made from main there, as a person might change it after cloning. @param {string} dir @param {string} branch */
 function defaultOnGithub(dir, branch) {
   execFileSync('git', ['branch', branch, 'main'], { cwd: bareOf(dir) });
@@ -157,6 +173,6 @@ function stackOfTwo(dir) {
 }
 
 module.exports = {
-  REPOSITORY, GH_ENV, ghEnv, githubWorld, github, onGithub, bareOf, calls, closeByHand, mergeByHand, defaultOnGithub, squashFromPullRequests, lagOnGithub,
+  REPOSITORY, GH_ENV, ghEnv, githubWorld, github, onGithub, bareOf, calls, closeByHand, mergeByHand, headDeleted, defaultOnGithub, squashFromPullRequests, lagOnGithub,
   tipOnGithub, pulls, ok, refused, stackOfTwo,
 };

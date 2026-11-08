@@ -152,6 +152,15 @@ describe('commit --task: the task in flight (6.S8)', () => {
     ]);
   });
 
+  it('refuses, nothing committed, a commit under a task ended, naming a task of its own made — never the next task\'s start, other work for a feature', () => {
+    ok(dir, ['task', 'close', UNIT, '1.1', '--reason', 'Not needed.']);
+
+    assert.strictEqual(
+      refusedUncommitted(dir, commitArgs(), as(ELSEWHERE)),
+      'commit --task: task 1.1 of pay is closed, and a task ended takes no more work — make it a task of its own with `engine task create pay 1 --file <task.md>`',
+    );
+  });
+
   it('6.S8: refused, nothing committed — a code commit naming no task, T in flight in another conversation and none in this one, another task in flight in this one, another unit\'s task of the same number', () => {
     assert.match(refusedUncommitted(dir, ['commit', '--paths', 'src/card.js', '-m', MESSAGE], as(BUILDING)), /^Usage: engine commit /);
     assert.deepStrictEqual([CLEARED, ELSEWHERE, REFUNDING].map((session) => refusedUncommitted(dir, commitArgs(), as(session))), [

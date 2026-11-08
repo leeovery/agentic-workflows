@@ -7,12 +7,17 @@
 // shapes of fix: one done, holding work of its own, opened or landed, and
 // recorded; and one closed, holding nothing that lands (finish.cjs).
 //
-// A fix's landing is read alone, never through its phase's merge state, as
-// a person's merge by hand on the host, by any method, leaves it: landed,
-// opened or neither (`taskLandings`, landing.cjs). Its reads go in order:
-// closed, then landed, then opened, then in flight. A fix's own work is its
-// commits through the door, on its branch past the branch the repository
-// lands on, or on that branch once landed (`ownWork`, fix-branch.cjs).
+// A fix's landing is read alone, never through its phase's merge state nor
+// its pull request's, as a person's merge by hand on the host, by any
+// method and into any branch, leaves it: landed where the branch it lands
+// on, as the host has it, holds its change — named there, or its own work
+// merging there changing nothing — whether or not its branch is left;
+// opened where its pull request is, merged elsewhere or not; or neither
+// (`taskLandings`, landing.cjs). Its reads go in order: closed, then
+// landed, then opened, then in flight. A fix's own work is its commits
+// through the door, on its branch past the branch the repository lands on,
+// on that branch once landed, or, its branch gone, wherever the repository
+// holds them (`ownWork`, fix-branch.cjs).
 //
 // - Open is refused, on every driver alike, for a fix closed, which lands
 //   nothing, as `land open` is the one verb that puts a fix in its stack —
@@ -22,18 +27,26 @@
 //   lowest such fix's opening, so no pull request carries a fix below it,
 //   which could then never open, end or close. A fix opens alone
 //   (landing.cjs, `LandingTask`): one laid on a fix landed, or left once its
-//   stack was merged by hand, opens onto the branch the repository lands on.
+//   stack was merged by hand, opens onto the branch the repository lands on
+//   as the host has it, any merge back it then asks for made through the
+//   door under the fix.
 // - Done takes a fix holding work of its own — one holding none, met
 //   already or with nothing to change, is closed as met, the refusal naming
-//   `task close` — landed or opened, else refused naming `land open`; and,
-//   where its pull request records what it holds, its branch as it stands:
-//   one moved past it is refused with the driver's way back, the branch
-//   kept, put back where it opened and its change past that a task of its
-//   own (`movedSinceOpening`, landing.cjs). So each fix is done once it
-//   lands, as its branch stands.
-// - Close takes a fix neither landed nor opened, where it has a branch, as
-//   one landed or opened stands in what lands, nor holding work a later fix
-//   not closed is laid on (`laidOn`, fix-branch.cjs) — refused otherwise,
+//   `task close` — landed, whether or not its branch is left, or opened,
+//   else refused naming `land open`; and, for one opened, where its pull
+//   request records what it holds, its branch as it stands: one moved past
+//   it is refused with the driver's way back, the branch kept, put back
+//   where it opened and its change past that a task of its own
+//   (`movedSinceOpening`, landing.cjs). A fix landed is never asked whether
+//   its branch moved: what landed is what the branch it lands on holds. So
+//   each fix is done once it lands.
+// - The door takes a fix done, not yet landed, a commit that finishes a
+//   merge back of the branch the fixes land on, as the host has it or here
+//   (`takesMergeBack`) — the merge back the landing asks for, which changes
+//   none of the fix's own work.
+// - Close takes a fix neither landed nor opened, whether or not its branch
+//   is left, as one landed or opened stands in what lands, nor holding work
+//   a later fix not closed is laid on (`laidOn`, fix-branch.cjs) — refused otherwise,
 //   naming the reversal: a change landed, opened to land, or built on lands
 //   as it is, and is given up as any landed change is, by a fix of its own
 //   whose commit through the door reverts it. A fix closed that was
@@ -56,7 +69,7 @@ const { quickFixBuild, FIXES_PHASE } = require('./derivations.cjs');
 const { shownTask, taskName } = require('./task-id.cjs');
 const { trackedPhase, ENDED } = require('./task-verbs.cjs');
 const { taskLandings, movedSinceOpening } = require('./landing.cjs');
-const { fixBranch, ownWork, laidOn, laidBeneath, closedFixes } = require('./fix-branch.cjs');
+const { ownWork, mergingLanding, laidOn, laidBeneath, closedFixes } = require('./fix-branch.cjs');
 const { takeOutRecord, indexSummary } = require('./quick-fix-record.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
@@ -131,7 +144,9 @@ function refuseUndone(cwd, ref, said) {
   if (!ownWork(cwd, ref)) {
     throw new Error(`${said}: ${taskName(ref)} holds no commit of its own — a fix met already, or with nothing to change, is closed as met: task close ${ref.unit} ${shown} --reason <why>`);
   }
-  if (landingOf(cwd, fix, said) === null) throw new Error(`${said}: ${taskName(ref)} is not opened to land as its branch stands — a fix is done once it lands: land open ${ref.unit} ${shown}`);
+  const state = landingOf(cwd, fix, said);
+  if (state === null) throw new Error(`${said}: ${taskName(ref)} is not opened to land as its branch stands — a fix is done once it lands: land open ${ref.unit} ${shown}`);
+  if (state === 'landed') return;
   const moved = asLanding(said, () => movedSinceOpening(cwd, ref.unit, fix, { said, then: 'mark it done again' }));
   if (moved !== null) throw new Error(moved);
 }
@@ -156,7 +171,7 @@ function refuseHeld(cwd, ref, said) {
   if (standing === null) return;
   const { fixes, fix } = standing;
   const later = laidOn(cwd, ref, fixes);
-  const state = fixBranch(cwd, ref) === null ? null : landingOf(cwd, fix, said);
+  const state = landingOf(cwd, fix, said);
   const why = [...(state === null ? [] : [HELD_AS[state]]), ...(later.length > 0 ? [laidWords(later, ref)] : [])];
   if (why.length === 0) return;
   const lands = state === 'landed' ? 'so it is done' : 'so it lands as it is, done once it lands';
@@ -178,6 +193,19 @@ function refuseUnended(cwd, unit, phase = FIXES_PHASE.number) {
   if (open.length === 0) return;
   const [named, are] = open.length === 1 ? [`task ${open[0]}`, 'is'] : [`tasks ${open.join(', ')}`, 'are'];
   throw new Error(`land: ${unit} lands once each of its fixes is done or closed — ${named} ${are} neither: task done ${unit} ${open[0]}, or task close ${unit} ${open[0]} --reason <why>`);
+}
+
+/**
+ * Whether the door takes a commit under a quick-fix's fix done: one that
+ * finishes a merge back of the branch the fixes land on, as the host has it
+ * or here (`mergingLanding`), which the landing asks for, while the fix has
+ * not landed.
+ * @param {string} cwd @param {TaskRef} ref
+ */
+function takesMergeBack(cwd, ref) {
+  if (!isFix(cwd, ref) || !mergingLanding(cwd)) return false;
+  const fix = (trackedPhase(cwd, ref.unit, ref.phase).tasks ?? []).find((held) => held.ref.n === ref.n);
+  return fix?.status === 'done' && taskLandings(cwd, ref.unit)(fix).state !== 'landed';
 }
 
 /**
@@ -205,4 +233,4 @@ function recordReindexed(cwd, ref, written) {
   return warnings.length > 0 ? { warnings } : {};
 }
 
-module.exports = { isFix, refuseOpening, refuseUndone, refuseHeld, refuseUnended, closedRecord, recordReindexed };
+module.exports = { isFix, refuseOpening, refuseUndone, refuseHeld, refuseUnended, takesMergeBack, closedRecord, recordReindexed };

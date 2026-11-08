@@ -16,13 +16,13 @@
 //   fixes ended and each done with its record written (quick-fix-record.cjs,
 //   `recordedFixes`), and on each fix done landed or opened to land, read
 //   fix by fix, never through its phase's merge state, as a merge by hand
-//   on the host, by any method, leaves it (landing.cjs, `taskLandings`) —
+//   on the host, by any method and into any branch, leaves it — landed once
+//   its change is on the branch it lands on (landing.cjs, `taskLandings`) —
 //   refused naming each neither, the lowest's opening the way on; and where
 //   every one has landed but the branch here lacks one, naming `land
 //   phase`, which brings that branch to the merge, as the driver's own
-//   remedy does. A stack merged in part
-//   by hand is the yes's to refuse, as its landing refuses it, naming the
-//   rest merged there too.
+//   remedy does. A stack merged in part by hand the yes's landing finishes,
+//   as `land phase` does.
 // - It shows every checklist item skipped on the way, with its reason,
 //   read from the unit's manifest (6.4.5, 6.4.12); then asks, one at a
 //   time, the verdict of each departure this machine logged in the build

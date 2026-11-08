@@ -15,12 +15,15 @@
 // branch the repository lands on, so a merge back, a later fix laid on it or
 // a fix below it moving on neither hides it nor lends it; and, once it has
 // landed, that branch's commits naming it, its landing or its own, as a
-// merge by hand by any method leaves them (`ownWork`, `landedHere`). Another
-// fix not closed is laid on it where that fix's branch holds one of its own
-// commits past that branch — a later fix on an earlier one's (`laidOn`,
-// `laidBeneath`). These are what a fix's opening and end read (fix-end.cjs),
-// and its record (quick-fix-record.cjs). The commit door takes a fix's
-// commit on its branch alone (commit-task.cjs). The close, once its fixes
+// merge by hand by any method leaves them (`ownWork`, `landedHere`); its
+// branch gone, any of its own commits the repository holds on a ref or a
+// reflog. Another fix not closed is laid on it where that fix's branch holds
+// one of its own commits past that branch — a later fix on an earlier one's
+// (`laidOn`, `laidBeneath`). These are what a fix's opening and end read
+// (fix-end.cjs), and its record (quick-fix-record.cjs). The commit door
+// takes a fix's commit on its branch alone (commit-task.cjs), and a fix's
+// done one where it finishes a merge back of the branch the fixes land on,
+// as the host has it or here (`mergingLanding`). The close, once its fixes
 // have landed, puts the checkout back on the branch the repository lands on
 // (finish.cjs), as a move that leaves the fixes does (workunit-move.cjs)
 // where the checkout has one of the unit's fixes' branches out: refused,
@@ -45,7 +48,8 @@ const { projectRepos } = require('../kernel/repos.cjs');
 const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { codeStatus } = require('./code.cjs');
 const { dayBefore } = require('./dates.cjs');
-const { branches, holdsBeyond, landsOn, switchTo, trailersPast, tasksNamedOn } = require('./landing-git.cjs');
+const { branches, holdsBeyond, landsOn, switchTo, trailersPast, tasksNamedOn, lastStamped, isAncestor } = require('./landing-git.cjs');
+const { remoteName } = require('./remote.cjs');
 const { taskBranch, taskOfBranch } = require('./landing-names.cjs');
 const { shownTask, taskName, taskId } = require('./task-id.cjs');
 
@@ -58,9 +62,6 @@ const stamp = () => require('./commit-task.cjs').TRAILER;
 
 /** The branch the checkout has out, or null where it is detached. @param {string} root */
 const branchOut = (root) => tryGit(root, ['symbolic-ref', '-q', '--short', 'HEAD'])?.trim() ?? null;
-
-/** The project's own repository, from its code root. @param {string} root */
-const ownRepo = (root) => /** @type {Repo} */ (projectRepos(root).find((repo) => repo.dir === ''));
 
 /**
  * The branches of the unit's fixes `phase` holds that the repository holds,
@@ -89,7 +90,7 @@ function nearestFix(root, ref, wanted) {
 const fixBranchOf = (root, ref) => nearestFix(root, ref, (n) => n === ref.n);
 
 /** The branch the fixes land on, in the project's own repository at `root`. @param {string} cwd @param {string} root */
-const fixesLandOn = (cwd, root) => landsOn(cwd, /** @type {import('../kernel/repos.cjs').Repo} */ (projectRepos(root).find((repo) => repo.dir === '')));
+const fixesLandOn = (cwd, root) => landsOn(cwd, /** @type {Repo} */ (projectRepos(root).find((repo) => repo.dir === '')));
 
 /** The changes the project's checkout holds not committed outside the state. @param {string} cwd */
 const dirtOf = (cwd) => codeStatus(cwd).files.map(({ path }) => path);
@@ -124,7 +125,7 @@ const closedFixes = (fixes) => fixes.filter(({ status }) => status === 'closed')
  */
 function fixBase(cwd, ref, closed) {
   const root = codeRoot(cwd);
-  return nearestFix(root, ref, (n) => n < ref.n && !closed.includes(n)) ?? landsOn(cwd, ownRepo(root));
+  return nearestFix(root, ref, (n) => n < ref.n && !closed.includes(n)) ?? fixesLandOn(cwd, root);
 }
 
 /**
@@ -150,11 +151,14 @@ function checkOutFix(cwd, ref, type, title, closed) {
  */
 function stampedOn(cwd, branch) {
   const root = codeRoot(cwd);
-  return trailersPast(root, branch, landsOn(cwd, ownRepo(root)), stamp());
+  return trailersPast(root, branch, fixesLandOn(cwd, root), stamp());
 }
 
 /** The fix's branch, where the repository holds it, else null. @param {string} cwd @param {TaskRef} ref */
 const fixBranch = (cwd, ref) => fixBranchOf(codeRoot(cwd), ref);
+
+/** The day before the unit was made, before which none of its work was. @param {string} cwd @param {string} unit */
+const unitSince = (cwd, unit) => dayBefore(loadWorkUnitManifest(cwd, unit).created);
 
 /**
  * The fixes, by internal id, the branch the repository lands on holds a
@@ -165,20 +169,39 @@ const fixBranch = (cwd, ref) => fixBranchOf(codeRoot(cwd), ref);
  */
 function landedHere(cwd, unit) {
   const root = codeRoot(cwd);
-  return tasksNamedOn(root, landsOn(cwd, ownRepo(root)), unit, stamp(), dayBefore(loadWorkUnitManifest(cwd, unit).created));
+  return tasksNamedOn(root, fixesLandOn(cwd, root), unit, stamp(), unitSince(cwd, unit));
 }
 
 /**
  * Whether the fix holds work of its own: a commit of its own its branch
  * holds past the branch the repository lands on, or one that branch holds
- * once the fix has landed (`landedHere`).
+ * once the fix has landed (`landedHere`); with its branch gone, any commit
+ * of its own the repository holds, on a ref or a reflog (`lastStamped`), as
+ * a branch deleted after a merge by hand leaves it.
  * @param {string} cwd @param {TaskRef} ref
  */
 function ownWork(cwd, ref) {
   const id = taskId(ref);
   if (landedHere(cwd, ref.unit).has(id)) return true;
   const branch = fixBranch(cwd, ref);
-  return branch !== null && stampedOn(cwd, branch).has(id);
+  if (branch !== null) return stampedOn(cwd, branch).has(id);
+  return lastStamped(codeRoot(cwd), stamp(), id, unitSince(cwd, ref.unit)) !== null;
+}
+
+/**
+ * Whether the project's checkout is in the middle of merging the branch its
+ * fixes land on — as the host has it, fetched, or here — back into the
+ * branch it has out: the merge back the landing asks of a fix (landing.cjs).
+ * @param {string} cwd
+ */
+function mergingLanding(cwd) {
+  const root = codeRoot(cwd);
+  const head = tryGit(root, ['rev-parse', '-q', '--verify', 'MERGE_HEAD'])?.trim() ?? '';
+  if (head === '') return false;
+  const lands = fixesLandOn(cwd, root);
+  const remote = remoteName(cwd);
+  const tips = [`refs/heads/${lands}`, ...(remote === null ? [] : [`refs/remotes/${remote}/${lands}`])];
+  return tips.some((tip) => isAncestor(root, head, tip));
 }
 
 /** Fixes' numbers, lowest first. @param {{n: number}[]} fixes */
@@ -326,4 +349,4 @@ function checkOutLanding(cwd, unit) {
   return lands;
 }
 
-module.exports = { refuseDirty, refuseDirtyClose, checkOutFix, checkOutLanding, fixWayOn, closedFixes, fixBranch, ownWork, laidOn, laidBeneath, keptFixes, setFixesAside, keptBranches };
+module.exports = { refuseDirty, refuseDirtyClose, checkOutFix, checkOutLanding, fixWayOn, closedFixes, fixBranch, ownWork, mergingLanding, laidOn, laidBeneath, keptFixes, setFixesAside, keptBranches };

@@ -29,6 +29,7 @@ require('./hermetic-env.cjs');
 
 const { describe, it, afterEach } = require('node:test');
 const assert = require('node:assert');
+const fs = require('fs');
 const path = require('path');
 const { ok, output, refusedPristine, git, createFile, commitAll, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
@@ -82,8 +83,11 @@ const held = (n, why) => `task close: task 1.${n} of ${UNIT} ${why} — so it la
   + `by a fix of its own whose commit through the door reverts it: task create ${UNIT} 1 --file <task.md>`;
 
 describe('task close <quick-fix> <fix> (R3, R4, R9)', () => {
-  it('R4: closes a fix holding no work of its own though a later fix is laid on it, that fix then opening onto the fix below it; the door then refuses a commit under it, naming the next fix\'s start and a fix of its own', () => {
+  it('R4: closes a fix holding no work of its own though a later fix is laid on it, that fix then opening onto the fix below it; the door then refuses a commit under it, naming the next fix\'s start and a fix of its own — a fix of its own alone where no later fix is unended', () => {
     dir = world();
+    createFile(dir, 'docs/late.md', '--colour\n');
+    const last = refusedPristine(dir, ['commit', '--paths', 'docs/late.md', '--task', UNIT, '1.2', '-m', `fix(${UNIT}): spell the docs late`], as()).error;
+    fs.rmSync(path.join(dir, 'docs/late.md'));
     createFix(dir, 3, DOCS, as());
     run(['task', 'start', UNIT, '1.3']);
     changed(4, MAN, 'docs/man.md');
@@ -92,10 +96,11 @@ describe('task close <quick-fix> <fix> (R3, R4, R9)', () => {
     createFile(dir, 'docs/late.md', '--colour\n');
     const late = refusedPristine(dir, ['commit', '--paths', 'docs/late.md', '--task', UNIT, '1.3', '-m', `fix(${UNIT}): spell the docs late`], as()).error;
 
-    assert.deepStrictEqual([status(3), opened.repos.map((/** @type {any} */ { base }) => base), late], [
+    assert.deepStrictEqual([status(3), opened.repos.map((/** @type {any} */ { base }) => base), late, last], [
       'closed', [branchOf(2, HELP)],
-      `commit --task: task 1.3 of ${UNIT} is closed, and a task ended takes no more work — commit it under the task it is for: start the next with \`engine task start ${UNIT} 1.4\`, `
+      `commit --task: task 1.3 of ${UNIT} is closed, and a task ended takes no more work — commit it under the fix it is for — start the next with \`engine task start ${UNIT} 1.4\` — `
       + `or make it a task of its own with \`engine task create ${UNIT} 1 --file <task.md>\``,
+      `commit --task: task 1.2 of ${UNIT} is done, and a task ended takes no more work — make it a task of its own with \`engine task create ${UNIT} 1 --file <task.md>\``,
     ]);
   });
 

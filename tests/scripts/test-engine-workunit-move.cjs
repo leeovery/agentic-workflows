@@ -340,11 +340,11 @@ describe('the yes: a quick-fix moved (19.S24, 19.5.16)', () => {
     assert.deepStrictEqual([fixes(), branchOut()], [[{ task: '1.1', status: 'in-progress' }], BRANCH]);
   });
 
-  it('refuses a quick-fix whose fix has its pull request opened, or landed, as the landing driver reads it — however the tracker holds the fix: it is finished first', () => {
+  it('refuses a quick-fix whose fix has its pull request opened, or landed — merged by hand onto main — as the landing reads it, however the tracker holds the fix: it is finished first', () => {
     dir = world();
     const refusal = `${SHIPPED}'s fix 1.1 has its pull request opened — finish the quick-fix, then start the feature as work of its own`;
     const opened = refusedStage(SHIPPED, 'feature');
-    ok(dir, ['land', 'phase', SHIPPED, '1']);
+    git(dir, ['branch', '-f', 'main', taskBranch({ unit: SHIPPED, phase: 1, n: 1 }, 'fix', 'Ship the flag')]);
 
     assert.deepStrictEqual([opened, refusedStage(SHIPPED, 'feature')], [refusal, refusal]);
     assert.strictEqual(ok(dir, ['task', 'list', SHIPPED, '1']).tasks[0].status, 'in-progress');

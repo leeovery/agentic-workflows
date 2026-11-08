@@ -11,13 +11,18 @@
 // refused otherwise, naming its opening, or its close as met where it holds
 // none (R1, R8) — and one whose own commits that branch holds, moved to
 // them by hand, read as landed: done, its opening refused naming its done,
-// its close naming the reversal, and its done refused, as an opened fix's
-// is, once its branch has moved past what its pull request holds (R11). A
-// closed fix's opening, the order
-// fixes open in, a fix whose branch moved past its pull request and a fix
-// merged by hand, on every driver, are the quick-fix landing conformance
-// suites'; a fix given up, test-engine-quick-fix-given-up.cjs's. Every
-// refusal writes nothing.
+// its close naming the reversal, and its done never asked whether its
+// branch moved past what its pull request holds, what landed being what
+// that branch holds (R11, R12 (b)); and one merged by hand before it ever
+// opened, by a squash under the person's own message, its branch then
+// deleted, read by its change on that branch, its own commits found where a
+// deleted branch leaves them: done (R12 (a), (b)); and one whose own commit
+// was cherry-picked onto that branch, its line changed there since, read as
+// landed by that commit, which names it: done (R12 (a)). A closed fix's
+// opening, the order fixes open in, a fix whose branch moved past its pull
+// request and a fix merged by hand, on every driver, are the quick-fix
+// landing conformance suites'; a fix given up,
+// test-engine-quick-fix-given-up.cjs's. Every refusal writes nothing.
 //
 // Layer: git. World: quick-fix-world.cjs's `twoFixesBuilt` — fixes 1.1 and
 // 1.2, 1.2 laid on 1.1, each built through the local driver and done —
@@ -121,15 +126,40 @@ describe('task done <quick-fix> <fix> (R1)', () => {
     ]);
   });
 
-  it('R11: refuses a fix landed by hand done once its branch has moved past what its pull request holds, naming the way back', () => {
+  it('R12: takes a fix landed by hand done though its branch has moved past what its pull request holds — what landed is what the branch it lands on holds', () => {
     dir = world();
     changed(3, DOCS, 'docs/flags.md');
     run(['land', 'open', UNIT, '1.3']);
-    const branch = taskBranch({ unit: UNIT, phase: 1, n: 3 }, 'fix', DOCS);
-    git(dir, ['branch', '-f', 'main', branch]);
+    git(dir, ['branch', '-f', 'main', taskBranch({ unit: UNIT, phase: 1, n: 3 }, 'fix', DOCS)]);
     createFile(dir, 'docs/more.md', '--colour\n');
     run(['commit', '--paths', 'docs/more.md', '--task', UNIT, '1.3', '-m', `fix(${UNIT}): spell more docs`]);
+    run(['task', 'done', UNIT, '1.3']);
 
-    assert.ok(refused(['task', 'done', UNIT, '1.3']).startsWith(`task done: task 1.3's branch ${branch} has moved since it was opened at `));
+    assert.strictEqual(status(3), 'done');
+  });
+
+  it('R12: takes a fix merged by hand before it ever opened, by a squash under the person\'s own message, its branch then deleted, done — read by its change on the branch it lands on, its own commits found where the deleted branch leaves them', () => {
+    dir = world();
+    changed(3, DOCS, 'docs/flags.md');
+    const branch = taskBranch({ unit: UNIT, phase: 1, n: 3 }, 'fix', DOCS);
+    git(dir, ['switch', '-q', 'main']);
+    git(dir, ['merge', '-q', '--squash', branch]);
+    git(dir, ['commit', '-q', '-m', 'Spell the docs the British way']);
+    git(dir, ['branch', '-q', '-D', branch]);
+    run(['task', 'done', UNIT, '1.3']);
+
+    assert.strictEqual(status(3), 'done');
+  });
+
+  it('R12: takes a fix whose own commit was put on the branch it lands on by a cherry-pick, its line changed there since, done — read as landed by that commit, which names it', () => {
+    dir = world();
+    changed(3, DOCS, 'docs/flags.md');
+    git(dir, ['switch', '-q', 'main']);
+    git(dir, ['cherry-pick', taskBranch({ unit: UNIT, phase: 1, n: 3 }, 'fix', DOCS)]);
+    createFile(dir, 'docs/flags.md', '--color\n');
+    git(dir, ['commit', '-q', '-am', 'Spell the docs the American way']);
+    run(['task', 'done', UNIT, '1.3']);
+
+    assert.strictEqual(status(3), 'done');
   });
 });

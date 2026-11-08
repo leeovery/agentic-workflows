@@ -12,26 +12,33 @@
 // task's pull request is the one whose head is the task's branch (its name
 // is the task's, landing-names.cjs), the latest of them, one closed only
 // where it has no other; a phase's stack is its tasks' pull requests, bottom
-// first by their bases, each based on the one before — where any is not
-// merged, one merged that none not merged is built on is no part of it,
-// landed before it. A stack is merged once every pull request of it is; one
-// merged in part, or closed, by hand on GitHub stops every verb that
-// reaches its phase, saying what happened and the way on.
+// first by their bases, each based on the one before, those merged by hand
+// among them. A pull request has landed once merged into the default
+// branch, or into another branch whose change has reached it, as GitHub
+// holds it (`landedPull`) — its merged state never read alone, since
+// GitHub's button merges a pull request into its own base, the branch of
+// the one below it while that branch is kept; its head, where the
+// repository here lacks it, fetched from the pull request's own ref, which
+// GitHub keeps once its branch is deleted. A stack merged in part by
+// hand is a stack still; one closed by hand stops every verb that reaches
+// its phase, saying what happened and the way on.
 //
 // - The chain's tip: the top of the task's phase's stack; for its first
 //   task, the top of the latest unmerged phase whose pull request the task's
 //   branch holds, which the phase then stacks on, as a fix phase does on the
-//   one before (7.2.6) — else the default branch. A task that lands alone,
-//   a quick-fix's fix (landing.cjs), takes a phase merged for no stack, so it
-//   opens onto the default branch; any other task is refused there. That
-//   the task's branch descends from the tip, with something past it, is the
-//   seam's to check (landing.cjs).
+//   one before (7.2.6) — else the default branch. A task that lands alone, a
+//   quick-fix's fix (landing.cjs), takes a phase merged for no stack, so it
+//   opens onto the default branch as GitHub holds it, fetched, its pull
+//   request then holding its own change alone, any merge back named by
+//   GitHub's copy; any other task is refused there. That the task's branch
+//   descends from the tip, with something past it, is the seam's to check
+//   (landing.cjs).
 // - Holds: whether the task's pull request is in its phase's stack, read
 //   off GitHub and fetching nothing, as the close in step reads it (7.2.4);
 //   opened at, its pull request's head as GitHub holds it, open or merged;
-//   its landing, read off that pull request alone, never its phase's: landed
-//   where it is merged, opened where it is open — refused where it was
-//   closed by hand.
+//   its landing, whether that pull request is opened, merged into any
+//   branch or open — refused where it was closed by hand — never whether it
+//   landed, which the seam reads off the default branch.
 // - Open: the task's branch pushed under its own name (7.2.14), then its
 //   pull request opened onto the chain's tip, titled with its landing's
 //   subject, its body the rest of that message, with the task's id. Refused,
@@ -39,10 +46,10 @@
 //   holds commits GitHub's does not, naming them: a branch cut from it would
 //   land them under the task's subject, and pushing them is the person's
 //   call.
-// - Chain: the phase's pull requests linked into one stack, bottom to top,
-//   always with the default branch as the stack's base — without it, the
-//   extension retargets the bottom pull request onto GitHub's own default.
-//   A stack of one pull request is no stack to link.
+// - Chain: the phase's open pull requests linked into one stack, bottom to
+//   top, always with the default branch as the stack's base — without it,
+//   the extension retargets the bottom pull request onto GitHub's own
+//   default. A stack of one open pull request is no stack to link.
 // - Phase: the stack merged whole, every pull request squashed, once the
 //   phase it stacks on has merged. GitHub makes each squash commit as the
 //   repository's squash default says, so a stack merges only where that is
@@ -58,7 +65,9 @@
 //   anything moves one: a push to its head, its base changed or moved, a
 //   retarget — read again after each pause, half a minute in all: one
 //   conflicting is refused before anything merges, naming it, and one
-//   still not worked out is refused, to land again. A task's branch here
+//   still not worked out is refused, to land again — its way on, for a
+//   quick-fix's fix, the merge back through the door the seam names
+//   (`mergeBack`, landing.cjs). A task's branch here
 //   behind its pull request's head — a push of the driver's that went before
 //   the branch here moved — is brought to it first, refused where it is
 //   checked out and cannot move; one anywhere else stops the phase, with the
@@ -68,12 +77,19 @@
 //   merged, the default branch is fetched and moved here to the merge, as
 //   the local driver leaves it, where git would fast-forward it, changes not
 //   committed to any other file carried across; where it cannot be, the
-//   answer warns why, and the merge stands. A phase found merged already is
-//   answered so, the default branch here brought to it all the same, so
-//   landing again recovers one a merge left behind, or one merged on GitHub
-//   by hand.
-// - Finish: the phase merged next, the lowest not merged that stacks on no
-//   phase not merged; the seam makes each merge in turn (landing.cjs).
+//   answer warns why, and the merge stands. A phase whose every pull request
+//   has landed is answered `already`, the default branch here brought to it
+//   all the same, so landing again recovers one a merge left behind, or one
+//   merged on GitHub by hand. A stack merged in part by hand is finished,
+//   for every work type: each pull request not landed, bottom first, merged
+//   alone as a lone one merges — one open on another's branch retargeted
+//   onto the default branch first, one merged into a branch that never
+//   reached it opened again onto the default branch from its branch as
+//   GitHub holds it, anything merged into that since landing with it, or,
+//   GitHub holding it no more, pushed from here — the default branch read
+//   afresh before each, so one whose change a merge below landed is passed.
+// - Finish: the phase merged next, the lowest not landed that stacks on no
+//   phase not landed; the seam makes each merge in turn (landing.cjs).
 // - Nested repositories: each repository a task touches lands on its own
 //   repository on GitHub, named by its own remote, with a stack of its own
 //   per phase; one whose remote is not on GitHub is refused before anything
@@ -225,35 +241,47 @@ function chained(pulls) {
 }
 
 /**
- * A phase's pull requests, bottom first, as its stack stands: where any is
- * not merged, those merged that no pull request not merged is built on
- * left out, landed before it; else every one.
- * @param {Pull[]} pulls
- * @returns {Pull[]}
- */
-function standingOf(pulls) {
-  const below = (/** @type {Pull} */ pull) => pulls.find(({ head }) => head === pull.base);
-  /** @type {Set<number>} */
-  const under = new Set();
-  for (const pull of pulls.filter(({ state }) => state !== 'MERGED')) {
-    for (let held = below(pull); held !== undefined && !under.has(held.number); held = below(held)) under.add(held.number);
-  }
-  const standing = pulls.filter((pull) => pull.state !== 'MERGED' || under.has(pull.number));
-  return standing.length > 0 ? standing : pulls;
-}
-
-/**
- * The unit's stacks, by phase (`standingOf`).
+ * The unit's stacks, by phase.
  * @param {Pull[]} pulls
  * @returns {Map<number, Stack>}
  */
 function stacksOf(pulls) {
   const phases = [...new Set(pulls.map((pull) => pull.ref.phase))];
-  return new Map(phases.map((phase) => [phase, { phase, pulls: standingOf(chained(pulls.filter((pull) => pull.ref.phase === phase))) }]));
+  return new Map(phases.map((phase) => [phase, { phase, pulls: chained(pulls.filter((pull) => pull.ref.phase === phase)) }]));
 }
 
-/** Whether every pull request of a stack is merged. @param {Stack} stack */
+/** Whether every pull request of a stack is merged, into whatever branch. @param {Stack} stack */
 const isMerged = (stack) => stack.pulls.every((pull) => pull.state === 'MERGED');
+
+/**
+ * Whether a pull request has landed on the default branch, at the commit
+ * `tip` reads, read only where it is asked: merged into it, or merged into
+ * another branch whose change has reached it — merging its head there would
+ * change nothing (`holdsChange`), however it got there. Its head is read
+ * where the repository holds it; through `host`, where given, it is fetched
+ * where it is not, from GitHub's own ref of the pull request, which outlives
+ * its branch. A stack's are read bottom first, each below read before it.
+ * @param {LandingContext} ctx @param {Pull} pull @param {() => string} tip @param {Host} [host]
+ */
+function landedPull(ctx, pull, tip, host) {
+  if (pull.state !== 'MERGED') return false;
+  if (pull.base === ctx.into) return true;
+  const held = host === undefined ? lg.holdsCommit(ctx.root, pull.oid) : lg.fetchedCommit(ctx.root, host.remote, `refs/pull/${pull.number}/head`, pull.oid);
+  return held && lg.holdsChange(ctx.root, tip(), pull.oid);
+}
+
+/** Whether each pull request of a stack has landed (`landedPull`). @param {LandingContext} ctx @param {Stack} stack @param {() => string} tip @param {Host} [host] */
+const stackLanded = (ctx, stack, tip, host) => stack.pulls.every((pull) => landedPull(ctx, pull, tip, host));
+
+/** `read`'s answer, read at its first call and kept. @param {() => string} read @returns {() => string} */
+function lazily(read) {
+  /** @type {string|undefined} */
+  let held;
+  return () => (held ??= read());
+}
+
+/** The default branch here, for the reads that fetch nothing. @param {LandingContext} ctx */
+const defaultHere = (ctx) => /** @type {string} */ (lg.branches(ctx.root).get(ctx.into));
 
 /** The stack's pull request of a task, if any. @param {Stack|undefined} stack @param {TaskRef} ref */
 const pullOf = (stack, ref) => stack?.pulls.find((pull) => sameTask(pull.ref, ref));
@@ -267,21 +295,13 @@ const closedRefusal = (closed) => new Error(
 );
 
 /**
- * Refuse a stack something done by hand on GitHub stops: a pull request
- * closed without being merged, or the stack merged in part.
+ * Refuse a stack a pull request closed by hand on GitHub without being
+ * merged stops.
  * @param {Stack} stack
  */
-function refuseHandled(stack) {
+function refuseClosed(stack) {
   const closed = stack.pulls.find((pull) => pull.state === 'CLOSED');
   if (closed !== undefined) throw closedRefusal(closed);
-  const merged = stack.pulls.filter((pull) => pull.state === 'MERGED');
-  if (merged.length === 0 || merged.length === stack.pulls.length) return;
-  const rest = stack.pulls.filter((pull) => pull.state !== 'MERGED');
-  const is = (/** @type {Pull[]} */ pulls) => (pulls.length === 1 ? 'is' : 'are');
-  throw new Error(
-    `land: phase ${stack.phase}'s stack was merged in part by hand on GitHub — ${pullsNamed(merged)} ${is(merged)} merged, and ${pullsNamed(rest)} ${is(rest)} not; `
-    + 'merge the rest there too, and the phase is landed',
-  );
 }
 
 /**
@@ -295,7 +315,7 @@ function builtOn(ctx, stacks, phase, commit) {
   const reached = [...stacks.values()]
     .filter((stack) => stack.phase !== phase && stack.pulls.some((pull) => pull.state === 'OPEN' && lg.isAncestor(ctx.root, pull.oid, commit)))
     .sort((a, b) => b.phase - a.phase);
-  reached.forEach(refuseHandled);
+  reached.forEach(refuseClosed);
   return reached[0];
 }
 
@@ -303,18 +323,21 @@ function builtOn(ctx, stacks, phase, commit) {
 const pullsRead = (ctx, host) => lg.readOnce(ctx, 'pulls', () => pullsOf(ctx, host));
 
 /**
- * The stacks on GitHub and the task's phase's own — refused where something
- * done by hand stops it, or it is merged, but for a task that lands alone,
- * for which a phase merged is no stack.
+ * The stacks on GitHub and the task's phase's own — refused where a pull
+ * request of it was closed by hand, or every one has landed (`landedPull`),
+ * but for a task that lands alone, for which a phase with none open is no
+ * stack. A stack merged in part by hand is a stack still, its merged pull
+ * requests held in it.
  * @param {LandingContext} ctx @param {Host} host @param {TaskRef} ref @param {boolean} [alone]
  */
 function stacksFor(ctx, host, ref, alone = false) {
   const stacks = stacksOf(pullsRead(ctx, host));
   const own = stacks.get(ref.phase);
   if (own === undefined) return { stacks, own };
-  refuseHandled(own);
+  refuseClosed(own);
   if (!isMerged(own)) return { stacks, own };
   if (alone) return { stacks, own: undefined };
+  if (!stackLanded(ctx, own, () => defaultHere(ctx))) return { stacks, own };
   throw new Error(`land: phase ${ref.phase} is merged into ${ctx.into} — task ${shownTask(ref)} lands in a phase not yet merged, so number it in one`);
 }
 
@@ -331,17 +354,18 @@ function openedAt(ctx, ref) {
 }
 
 /**
- * The task's landing, read off its pull request alone: `landed` where it is
- * merged, `opened` where it is open, null where it has none — refused where
- * it was closed by hand.
+ * Whether the task's pull request is opened, read off GitHub: `opened`
+ * where it has one, merged into any branch or open, null where it has none
+ * — refused where it was closed by hand. Never whether it landed, which the
+ * seam reads off the default branch (landing.cjs).
  * @param {LandingContext} ctx @param {TaskRef} ref
- * @returns {'landed'|'opened'|null}
+ * @returns {'opened'|null}
  */
 function taskLanding(ctx, ref) {
   const pull = pullOfTask(ctx, ref);
   if (pull === undefined) return null;
   if (pull.state === 'CLOSED') throw closedRefusal(pull);
-  return pull.state === 'MERGED' ? 'landed' : 'opened';
+  return 'opened';
 }
 
 /**
@@ -357,8 +381,9 @@ function chainTip(ctx, task) {
   const { phase } = task.ref;
   const { stacks, own } = stacksFor(ctx, host, task.ref, task.alone);
   if (pullOf(own, task.ref) !== undefined) return null;
-  refuseUnpushed(ctx, host, shownTask(task.ref));
+  const theirs = refuseUnpushed(ctx, host, shownTask(task.ref));
   const top = own ?? builtOn(ctx, stacks, phase, task.branch);
+  if (top === undefined && task.alone) return { name: ctx.into, commit: theirs, back: `${host.remote}/${ctx.into}`, host };
   if (top === undefined) return { name: ctx.into, commit: /** @type {string} */ (lg.branches(ctx.root).get(ctx.into)), host };
   const last = top.pulls[top.pulls.length - 1];
   return { name: last.head, commit: last.oid, host };
@@ -368,15 +393,16 @@ function chainTip(ctx, task) {
  * Refuse a task's open while the default branch here holds commits GitHub's
  * does not — a task's branch cut from it would carry them, and they would
  * land under the task's subject — naming them, and the way on: pushing them
- * is the person's call.
+ * is the person's call. Answers GitHub's default branch, fetched.
  * @param {LandingContext} ctx @param {Host} host @param {string} shown
+ * @returns {string}
  */
 function refuseUnpushed(ctx, host, shown) {
   const theirs = `${host.remote}/${ctx.into}`;
   const fetched = lg.fetchBranch(ctx.root, host.remote, ctx.into);
   if ('failed' in fetched) throw new Error(`land: ${theirs} could not be fetched (${fetched.failed}), so task ${shown} was not opened — open it again once it can be`);
   const ahead = lg.commitsNamed(ctx.root, fetched.commit, ctx.into);
-  if (ahead.length === 0) return;
+  if (ahead.length === 0) return fetched.commit;
   const [held, them, belong] = ahead.length === 1 ? ['a commit', 'it', 'it belongs'] : [`${ahead.length} commits`, 'them', 'they belong'];
   throw new Error(
     `land: ${ctx.into} here holds ${held} ${theirs} does not — ${ahead.join(', ')} — which a task's branch cut from it would land under the task's own subject, so task ${shown} was not opened; `
@@ -398,13 +424,15 @@ function open(ctx, task, tip) {
 }
 
 /**
- * The stack's pull requests linked into one on GitHub, bottom to top, its
- * base the default branch — where it holds more than one.
+ * The stack's open pull requests linked into one on GitHub, bottom to top,
+ * its base the default branch — where it holds more than one; one merged
+ * by hand is linked no more.
  * @param {LandingContext} ctx @param {Host} host @param {Stack} stack
  */
 function link(ctx, host, stack) {
-  if (stack.pulls.length < 2) return;
-  const numbers = stack.pulls.map((pull) => String(pull.number));
+  const open = stack.pulls.filter((pull) => pull.state === 'OPEN');
+  if (open.length < 2) return;
+  const numbers = open.map((pull) => String(pull.number));
   ghAt(ctx, host, ['stack', 'link', '--base', ctx.into, '--remote', host.remote, ...numbers], `link phase ${stack.phase}'s pull requests into its stack`);
 }
 
@@ -420,8 +448,8 @@ function chain(ctx, ref) {
   const host = hostOf(ctx);
   const { phase } = ref;
   const stack = stacksOf(pullsOf(ctx, host)).get(phase);
-  if (stack !== undefined) refuseHandled(stack);
-  if (stack !== undefined && isMerged(stack)) throw new Error(`land: phase ${phase} is merged into ${ctx.into} — its stack is landed`);
+  if (stack !== undefined) refuseClosed(stack);
+  if (stack !== undefined && stackLanded(ctx, stack, () => defaultHere(ctx))) throw new Error(`land: phase ${phase} is merged into ${ctx.into} — its stack is landed`);
   if (stack === undefined || pullOf(stack, ref) === undefined) return null;
   link(ctx, host, stack);
   return answered(stack);
@@ -693,8 +721,9 @@ function canMerge(ctx, host, stack, pull, head) {
   if (read.mergeable === 'MERGEABLE') return true;
   if (read.mergeable !== 'CONFLICTING') return false;
   const theirs = `${host.remote}/${read.baseRefName}`;
+  const way = ctx.mergeBack?.(pull.ref, pull.head, theirs) ?? `merge ${theirs} into ${pull.head}, settling the conflict`;
   throw new Error(`land: task ${shownTask(pull.ref)}'s pull request #${pull.number} conflicts with ${read.baseRefName} on GitHub, so phase ${stack.phase}'s stack was not merged — `
-    + `merge ${theirs} into ${pull.head}, settling the conflict, push it, and land again`);
+    + `${way}, push it, and land again`);
 }
 
 /**
@@ -724,7 +753,7 @@ function awaitMergeable(ctx, host, stack, heads) {
  * @param {LandingContext} ctx @param {Host} host @param {Map<number, Stack>} stacks @param {Stack} stack
  */
 function mergeStack(ctx, host, stacks, stack) {
-  refuseHandled(stack);
+  refuseClosed(stack);
   const below = builtOn(ctx, stacks, stack.phase, stack.pulls[0].oid);
   if (below !== undefined) {
     throw new Error(`land: phase ${stack.phase} stacks on phase ${below.phase}, which has not merged — merge it first with \`land phase ${ctx.unit} ${below.phase}\`, then land again`);
@@ -750,9 +779,90 @@ function mergeStack(ctx, host, stacks, stack) {
 }
 
 /**
+ * The tip of the default branch on GitHub, fetched — else here, where it
+ * cannot be fetched, the merge then GitHub's to refuse.
+ * @param {LandingContext} ctx @param {Host} host
+ */
+function tipOnGithub(ctx, host) {
+  const fetched = lg.fetchBranch(ctx.root, host.remote, ctx.into);
+  return 'failed' in fetched ? /** @type {string} */ (lg.branches(ctx.root).get(ctx.into)) : fetched.commit;
+}
+
+/**
+ * A task's pull request opened again onto the default branch: one merged
+ * by hand into a branch whose change never reached it. It opens from its
+ * branch as GitHub holds it, under the same title and body — where GitHub
+ * has none, deleted once merged, its branch here pushed first, as `open`
+ * pushes it; GitHub's holding whatever was merged into it since, which
+ * then lands with it.
+ * @param {LandingContext} ctx @param {Host} host @param {Pull} merged
+ * @returns {Pull}
+ */
+function openedAgain(ctx, host, merged) {
+  const shown = shownTask(merged.ref);
+  const fetched = lg.fetchBranch(ctx.root, host.remote, merged.head);
+  const head = 'failed' in fetched ? pushedAgain(ctx, host, merged) : fetched.commit;
+  const url = ghAt(ctx, host, ['pr', 'create', '--base', ctx.into, '--head', merged.head, '--title', merged.title, '--body', merged.body], `open task ${shown}'s pull request again`);
+  return { ...merged, number: Number(/\/pull\/(\d+)\s*$/.exec(url)?.[1]), state: 'OPEN', base: ctx.into, oid: head };
+}
+
+/**
+ * A merged task's branch pushed again from here, GitHub holding it no
+ * more: its commit — refused where it is gone here too, naming the commit
+ * its pull request merged, to make it again at.
+ * @param {LandingContext} ctx @param {Host} host @param {Pull} merged
+ * @returns {string}
+ */
+function pushedAgain(ctx, host, merged) {
+  const shown = shownTask(merged.ref);
+  const here = lg.branches(ctx.root).get(merged.head);
+  if (here === undefined) {
+    throw new Error(`land: task ${shown}'s pull request #${merged.number} was merged into ${merged.base}, whose change never reached ${ctx.into}, and its branch ${merged.head} is gone here and on GitHub — `
+      + `make it again at ${lg.short(merged.oid)} with \`git branch ${merged.head} ${lg.short(merged.oid)}\`, and land again`);
+  }
+  lg.pushBranch(ctx.root, host.remote, merged.head, `task ${shown}'s pull request was not opened again — clear what git names, and land again`);
+  return here;
+}
+
+/**
+ * Finish a stack merged in part by hand (the header's): each of its pull
+ * requests not landed, bottom first, merged alone into the default branch —
+ * one open based on another's branch retargeted onto it first, one merged
+ * into a branch that never reached it opened again (`openedAgain`) — as a
+ * lone pull request merges (`mergeStack`), the default branch read afresh
+ * before each.
+ * @param {LandingContext} ctx @param {Host} host @param {Map<number, Stack>} stacks @param {Stack} stack
+ */
+function finishStack(ctx, host, stacks, stack) {
+  refuseClosed(stack);
+  /** @type {Record<string, any>[]} */
+  const merges = [];
+  for (const pull of stack.pulls) {
+    if (landedPull(ctx, pull, () => tipOnGithub(ctx, host), host)) continue;
+    const lone = { phase: stack.phase, pulls: [pull.state === 'OPEN' ? pull : openedAgain(ctx, host, pull)] };
+    merges.push(mergeStack(ctx, host, new Map([...stacks, [stack.phase, lone]]), lone));
+  }
+  const warnings = [...new Set(merges.flatMap((merged) => merged.warnings ?? []))];
+  return {
+    into: ctx.into,
+    merged: merges.flatMap((merged) => merged.merged),
+    pull_requests: merges.flatMap((merged) => merged.pull_requests),
+    ...(warnings.length > 0 ? { warnings } : {}),
+  };
+}
+
+/**
+ * A stack's merge: whole where no pull request of it is merged yet, else
+ * finished (`finishStack`).
+ * @param {LandingContext} ctx @param {Host} host @param {Map<number, Stack>} stacks @param {Stack} stack
+ */
+const landStack = (ctx, host, stacks, stack) => (stack.pulls.some((pull) => pull.state === 'MERGED') ? finishStack : mergeStack)(ctx, host, stacks, stack);
+
+/**
  * Merge a phase whole into the default branch — null where no task of it
- * is open here, and `already` where it is merged, the default branch here
- * brought to it all the same.
+ * is open here, and `already` where each of its pull requests has landed
+ * (`landedPull`), the default branch here brought to it all the same; one
+ * merged in part by hand finished.
  * @param {LandingContext} ctx @param {number} phase
  */
 function mergePhase(ctx, phase) {
@@ -760,25 +870,27 @@ function mergePhase(ctx, phase) {
   const stacks = stacksOf(pullsOf(ctx, host));
   const stack = stacks.get(phase);
   if (stack === undefined) return null;
-  if (isMerged(stack)) {
+  refuseClosed(stack);
+  if (stackLanded(ctx, stack, lazily(() => tipOnGithub(ctx, host)), host)) {
     const warnings = bringDefaultUp(ctx, host);
     return { into: ctx.into, already: true, ...(warnings.length > 0 ? { warnings } : {}) };
   }
-  return mergeStack(ctx, host, stacks, stack);
+  return landStack(ctx, host, stacks, stack);
 }
 
 /**
- * The merge finish makes next: the lowest phase not merged that stacks on
- * no phase not merged, else the lowest not merged — null where every one
+ * The merge finish makes next: the lowest phase not landed that stacks on
+ * no phase not landed, else the lowest not landed — null where every one
  * is.
  * @param {LandingContext} ctx
  */
 function nextMerge(ctx) {
   const host = hostOf(ctx);
   const stacks = stacksOf(pullsOf(ctx, host));
-  const unmerged = [...stacks.values()].filter((stack) => !isMerged(stack)).sort((a, b) => a.phase - b.phase);
+  const tip = lazily(() => tipOnGithub(ctx, host));
+  const unmerged = [...stacks.values()].filter((stack) => !stackLanded(ctx, stack, tip, host)).sort((a, b) => a.phase - b.phase);
   const next = unmerged.find((stack) => builtOn(ctx, stacks, stack.phase, stack.pulls[0].oid) === undefined) ?? unmerged[0];
-  return next === undefined ? null : { phase: next.phase, merge: () => mergeStack(ctx, host, stacks, next) };
+  return next === undefined ? null : { phase: next.phase, merge: () => landStack(ctx, host, stacks, next) };
 }
 
 /**

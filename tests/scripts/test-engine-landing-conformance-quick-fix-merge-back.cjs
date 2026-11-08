@@ -52,7 +52,8 @@ for (const { name } of listDrivers('landing')) {
       checklistClosed(at, as());
       ok(at, ['finish', 'yes', UNIT], as());
 
-      assert.strictEqual(behind.split(' — ')[1], `merge it back onto ${branchOf(2)} first`);
+      assert.strictEqual(behind.slice(behind.indexOf(' — ') + 3), `merge ${branchOf(2)} back into ${branchOf(1)} through the door, under the fix — with it out, `
+        + `\`git merge --no-ff --no-commit ${branchOf(2)}\`, settling any conflict, then \`engine commit --paths <file>… --task ${UNIT} 1.1 -m "<message>"\`, and open it again`);
       assert.deepStrictEqual([landed(at), readManifest(at, UNIT).fixes.recorded], [
         [CHAIN[1], CHAIN[0]].map(({ title, file }) => [`fix(${UNIT}): ${title}`, [file]]), [`${UNIT}-1-1`, `${UNIT}-1-2`],
       ]);

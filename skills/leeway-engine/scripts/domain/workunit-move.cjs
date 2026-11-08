@@ -163,7 +163,7 @@ function fixesOf(cwd, manifest, to) {
   if (!fixesBegun(manifest)) return [];
   const unit = manifest.name;
   const fixes = trackedPhase(cwd, unit, FIXES_PHASE.number).tasks ?? [];
-  const opened = openedTasks(cwd, unit, fixes.map(({ ref }) => ref));
+  const opened = openedTasks(cwd, unit, fixes);
   if (opened.length > 0) {
     const named = opened.length === 1 ? `fix ${opened[0]} has its pull request` : `fixes ${opened.join(', ')} have their pull requests`;
     throw new Error(`${unit}'s ${named} opened — finish the quick-fix, then start the ${to} as work of its own`);
