@@ -781,17 +781,19 @@ function requireReportFindings(row, findings) {
 }
 
 /**
- * The question a spec review's finding was asked as, by its full id:
- * refused for an id no entry, or several, begin, and for an entry that is
- * no question asked at the unit's spec.
- * @param {string} cwd @param {string} workUnit @param {string} question
+ * The question a finding was asked as, by its full id: refused for an id no
+ * entry, or several, begin, and for an entry that is no question asked
+ * where the row's agent ran — the unit's spec for the spec's store, which
+ * is the unit's, else the store's own place.
+ * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic @param {string} question
  */
-function askedAs(cwd, workUnit, question) {
+function askedAs(cwd, workUnit, phase, topic, question) {
   const facts = ledgerFacts(cwd);
   const entry = resolveId(question, facts.keys());
   const made = /** @type {Record<string, any>} */ (facts.get(entry));
-  if (made.kind !== 'question' || made.unit !== workUnit || made.topic !== null || made.phase !== UNIT_PHASE) {
-    throw new Error(`--question names a question asked at ${workUnit}.specification, and ${question} is none`);
+  const at = phase === UNIT_PHASE ? { topic: null, said: `${workUnit}.${UNIT_PHASE}` } : { topic, said: `${workUnit}.${phase}.${topic}` };
+  if (made.kind !== 'question' || made.unit !== workUnit || made.topic !== at.topic || made.phase !== phase) {
+    throw new Error(`--question names a question asked at ${at.said}, and ${question} is none`);
   }
   return entry;
 }
@@ -825,7 +827,7 @@ function surfaceFinding(cwd, workUnit, phase, topic, id, finding, replacing, que
   if (replacing !== undefined && batch.length > 1) throw new Error('--replaces surfaces one finding, raised as the replacement of that decision');
   if (question !== undefined && batch.length > 1) throw new Error('--question surfaces one finding, asked as that question');
   const raised = replacing === undefined ? null : raisedAs(cwd, replacing);
-  const asked = question === undefined ? null : askedAs(cwd, workUnit, question);
+  const asked = question === undefined ? null : askedAs(cwd, workUnit, phase, topic, question);
   return io.withWorkUnitLock(stateRoot(cwd), workUnit, () => {
     const state = loadState(cwd, workUnit, phase, topic);
     const row = requireRow(state, phase, topic, id);
@@ -1036,6 +1038,23 @@ function reportedPasses(cwd, workUnit) {
 }
 
 /**
+ * Each row at a place by what its findings were surfaced as, whatever its
+ * status, in the order they were dispatched: its kind, and the decisions
+ * its findings were raised replacing and the questions they were asked
+ * as. Read as a derivation reads, tolerant of the store.
+ * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
+ * @returns {{id: string, kind: string, raised: {finding: string, replaces: string, reason: string, mark: string|null}[], asked: {finding: string, entry: string}[]}[]}
+ */
+function surfacedAs(cwd, workUnit, phase, topic) {
+  return derivationRows(agentDir(cwd, workUnit, phase, topic)).sort(byDispatch).map((row) => ({
+    id: row.id,
+    kind: String(row.kind),
+    raised: Array.isArray(row.raised) ? row.raised : [],
+    asked: Array.isArray(row.asked) ? row.asked : [],
+  }));
+}
+
+/**
  * The unit's review passes still in flight, bound to a land, in the order
  * they were dispatched: each with the digest of the land it reviews, and
  * its report on disk for a scan to take in, its agent running, or lost with
@@ -1088,6 +1107,7 @@ module.exports = {
   bindSpec,
   closeUnbriefed,
   reportedPasses,
+  surfacedAs,
   passesInFlight,
   refusedReports,
 };

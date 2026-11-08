@@ -1,0 +1,60 @@
+// Portal's kill-all investigation as engine board answers it, the root cause validated and the fix direction waiting on the person — §20.12's second drawing — held to its shape by tests/scripts/test-engine-board-investigation.cjs.
+export default {
+  kind: 'investigation',
+  unit: 'killing-all-sessions-wipes-restore-state',
+  title: 'Killing All Sessions Wipes Restore State',
+  type: 'bugfix',
+  project: 'Portal',
+  started: '2026-08-16T09:00:00.000Z',
+  standing: 'fix-waits',
+  waiting: [{ kind: 'raise', id: 'k7Qm2x', text: 'How should a save stop losing sessions?', page: null, raised_by: 'fix-direction', why: 'Every call comes to you for now: the counts that would let me decide aren\'t built yet.', options: 3, lean_first: true }],
+  decided: [{ id: 'r4Tn8w', text: 'A session you kill never comes back; a session you detach from does, and so do sessions ended by kill-server or a reboot' }],
+  symptoms: [
+    'sessions.json overwritten with an empty (or shrunken) index.',
+    'Every saved scrollback .bin file removed by the housekeeping pass.',
+    'No confirmation, no warning — the next restore simply has nothing to restore.',
+  ],
+  hypotheses: [
+    { name: 'H1', title: 'Killing every session empties the state', state: 'intended' },
+    { name: 'H2', title: 'kill-server saves an empty state', state: 'ruled-out' },
+    { name: 'H3', title: 'The daemon\'s last save catches a dying server', state: 'confirmed' },
+    { name: 'H4', title: 'A real reboot finds the server already gone', state: 'ruled-out' },
+    { name: 'H5', title: 'At reboot, sessions die before tmux does', state: 'confirmed' },
+    { name: 'H6', title: 'A dying tmux reads as zero sessions', state: 'confirmed' },
+  ],
+  experiments: [
+    { name: 'E1', title: 'Kill every session, hook on', showed: 'each kill shrank it · 3 → 0' },
+    { name: 'E2', title: 'Kill every session, no hook', showed: 'next tick saved 0' },
+    { name: 'E3', title: 'kill-server, the runtime live', showed: '5 of 5 kept' },
+    { name: 'E4', title: 'One SIGTERM to everything', showed: '5 of 5 kept' },
+    { name: 'E5', title: 'Panes, then daemon, then server', showed: '3 sessions lost' },
+    { name: 'E6', title: 'Panes and daemon, server after', showed: '10 ms gap: all wiped' },
+    { name: 'E7', title: 'list-sessions racing a SIGTERM', showed: '2 empty answers' },
+    { name: 'E8', title: 'E6, every tmux call logged', showed: 'every wipe a failed read' },
+    { name: 'E9', title: 'list-panes racing a SIGTERM', showed: '2 empty answers' },
+    { name: 'E10', title: 'Kill every session, hooks set', showed: 'hooks reaped in 7 s' },
+  ],
+  root_cause: {
+    text: 'Every Portal save treats the session list tmux gives it at that instant as the complete, authoritative truth, and acts on it irreversibly in the same step: whatever sessions the capture does not see are dropped from sessions.json, and the housekeeping pass that runs inside every commit (gcOrphanScrollback, internal/state/commit.go:39) deletes every scrollback file the new index no longer names. The same trust extends to the scrollback read.',
+    validated: true,
+  },
+  validations: [
+    { validation: 'root-cause', effort: 'xhigh', state: 'done', since: null, found: 2 },
+    { validation: 'fix', effort: 'medium', state: 'after', since: null, found: 0 },
+  ],
+  since: [
+    { id: 'c1Vb6z', text: 'Restore keeps reading "no tmux" as "no sessions"; only saving stops trusting it' },
+    { id: 'c2Hd3y', text: 'Measuring a real reboot waits for your next one: the fix logs every session a save drops' },
+  ],
+  fix_direction: {
+    state: 'asking',
+    stepped_back: ['other tools that save tmux state take a snapshot every 15 minutes and never promise a kill is final.'],
+    options: [
+      { key: '1', name: 'Harden the reads, outlast the shutdown, log every drop', lean: true },
+      { key: '2', name: 'Read hardening alone', lean: false },
+      { key: '3', name: 'Read hardening plus hold every removal until tmux outlives it', lean: false },
+    ],
+    pick: null,
+    fix: null,
+  },
+}

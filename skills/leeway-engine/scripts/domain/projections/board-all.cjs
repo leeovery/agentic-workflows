@@ -10,10 +10,11 @@
 //   and the project's total sums them.
 // - How far a unit has come, by the phase it is in: finish waiting on the
 //   person; an epic's discovery its topics on the map, its discussion its
-//   topics decided of all; the specification where it stands, as its
-//   banner says it; the build its tasks done of all, the review its round,
-//   as its banner says it, each stopped where nothing can go on; nothing
-//   for a linear unit's discussion or investigation, nor a build or review
+//   topics decided of all; a bug's investigation how far its hunt has
+//   come; the specification where it stands, as its banner says it; the
+//   build its tasks done of all, the review its round, as its banner says
+//   it, each stopped where nothing can go on; nothing for a linear unit's
+//   discussion, nor a build or review
 //   not run by its cut — under the old plan, its tracker not the cut's
 //   until 29.17. A unit's tracker is read once its build runs by its cut,
 //   one copy of its store a call.
@@ -39,6 +40,7 @@ const { specDoing } = require('./board-spec.cjs');
 const { epicWords } = require('./board-unit.cjs');
 const { nowOf, waitingOn, standingOf } = require('./board-standing.cjs');
 const { mapCount } = require('./board-discovery.cjs');
+const { investigationHowFar } = require('./board-investigation.cjs');
 const { counted } = require('./map.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
@@ -52,6 +54,7 @@ const stoppedWords = (at) => (standingOf(at) === 'stopped' ? 'stopped · ' : '')
 const HOW_FAR = Object.freeze({
   discovery: (at) => (at.manifest.work_type === 'epic' ? `${counted(mapCount(at.cwd, at.manifest), 'topic')} on the map` : ''),
   discussion: (at) => (at.manifest.work_type === 'epic' ? epicWords(at.manifest) : ''),
+  investigation: investigationHowFar,
   specification: (at) => specDoing(at, waitingOn(at)),
   build: (at) => (buildByCut(at.manifest) ? `${stoppedWords(at)}${buildWords(buildView(at).view)}` : ''),
   review: (at) => {

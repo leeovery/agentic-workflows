@@ -617,23 +617,42 @@ function questionChain(folded, question) {
 }
 
 /**
+ * Whether a raise is down the question's chain: one answering the question,
+ * any wording of it, or one replacing a decision of its chain.
+ * @param {Folded} folded @param {string} question @returns {(seal: Seal) => boolean}
+ */
+function downChain(folded, question) {
+  const { root, decisions } = questionChain(folded, question);
+  return (seal) => (seal.answers !== null && folded.facts.get(seal.answers)?.root === root)
+    || (seal.replaces !== null && decisions.has(seal.replaces.entry));
+}
+
+/**
  * What the step back found, as the calling conversation's latest raise down
- * the question's chain sealed it — one answering the question, or one
- * replacing a decision of its chain; null where the conversation sealed none
+ * the question's chain sealed it; null where the conversation sealed none
  * holding it, or no conversation is handed.
  * @param {Folded} folded @param {string} question @returns {string[]|null}
  */
 function steppedBackSealed(folded, question) {
   const session = handedSession();
   if (session === null) return null;
-  const { root, decisions } = questionChain(folded, question);
-  const down = (/** @type {Seal} */ seal) => (seal.answers !== null && folded.facts.get(seal.answers)?.root === root)
-    || (seal.replaces !== null && decisions.has(seal.replaces.entry));
+  const down = downChain(folded, question);
   const sealed = Object.values(readSeals(session))
     .filter((seal) => isSeal(seal) && !seal.fact && seal.call.stepped_back !== undefined && down(seal))
     .sort((a, b) => /** @type {Seal} */ (a).at.localeCompare(/** @type {Seal} */ (b).at));
   const latest = /** @type {CallSeal|undefined} */ (sealed.at(-1));
   return latest?.call.stepped_back ?? null;
+}
+
+/**
+ * Every raise the conversation sealed at `place`, oldest first, read
+ * without the seals' lock, as the board reads them: a seal of another
+ * version passed over.
+ * @param {string} session @param {Place} place @returns {Seal[]}
+ */
+function sealsAt(session, { unit, phase, topic }) {
+  return /** @type {Seal[]} */ (Object.values(readSeals(session)).filter((seal) => isSeal(seal) && seal.place.unit === unit && seal.place.phase === phase && seal.place.topic === topic))
+    .sort((a, b) => a.at.localeCompare(b.at));
 }
 
 /**
@@ -1438,4 +1457,4 @@ function raiseScreenOf(cwd, seal, { technical = false } = {}) {
   return raiseScreen(seal, { technical, titles: topicTitles(manifest ?? {}) });
 }
 
-module.exports = { RAISE_USAGE, drawRaise, drawParked, showRaise, answerRaise, raiseWaits, unraised, raiseScreenOf, steppedBackSealed };
+module.exports = { RAISE_USAGE, drawRaise, drawParked, showRaise, answerRaise, raiseWaits, unraised, raiseScreenOf, steppedBackSealed, downChain, sealsAt };

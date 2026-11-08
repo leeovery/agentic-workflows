@@ -16,7 +16,8 @@
 //   (spec-standing.cjs). A phase complete carries the day it closed, as its
 //   records keep it: a linear unit's discovery the day the unit was made,
 //   an epic's the map last approved, the discussion its last topic decided,
-//   the specification ready to build's yes, the build its last phase
+//   the investigation its conclude (`concluded_at`, P2), the specification
+//   ready to build's yes, the build its last phase
 //   closed, the review the unit completed.
 // - Where it has come to (`now`): the first phase not complete — an epic
 //   past its discovery by its stages, the specification once the topics are
@@ -26,12 +27,15 @@
 // - How the phase it is in stands: stopped where nothing of its build, the
 //   review's round and fix tasks among it, can go on without an answer
 //   (board-build.cjs); waiting on the person where something asked in the
-//   conversation waits — the map, a gap, ready to build's yes, finish; else
+//   conversation waits — the map, an investigation's raise, a gap, ready
+//   to build's yes, finish; else
 //   under way.
 // - What waits on the person is the unit's one list, in order, each wait
 //   with its words and the page a press on it opens, where it opens one:
 //   approve the map while a map is staged, the sweep's candidates among it
-//   after the sweep (8.10.9); the spec's gaps (spec-passes.cjs), each
+//   after the sweep (8.10.9); each raise its investigation asks in this
+//   conversation, with what raised it (board-investigation.cjs); the spec's
+//   gaps (spec-passes.cjs), each
 //   opening the finding that raised it, and then ready to build's yes once
 //   its screen draws (ready-to-build.cjs, `readyDraws`), while the build has
 //   not begun; the questions the build and the review wait on
@@ -52,6 +56,7 @@ const { counted } = require('./map.cjs');
 const { finishDraws } = require('../finish.cjs');
 const { buildView } = require('./board-build.cjs');
 const { specWaits } = require('./board-spec.cjs');
+const { investigationWaits } = require('./board-investigation.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
 /** @typedef {import('../board-model.cjs').UnitNow} UnitNow */
@@ -88,6 +93,7 @@ const pastDiscovery = (manifest) => manifest.work_type === 'epic' && approvedOn(
 const CLOSED = Object.freeze({
   discovery: (at) => (at.manifest.work_type === 'epic' ? approvedOn(at.manifest) : startedOf(at)),
   discussion: ({ manifest }) => latest(Object.values(manifest.checklists?.decided ?? {}).map((record) => record?.closed)),
+  investigation: ({ manifest, unit }) => latest([manifest.phases?.investigation?.items?.[unit]?.concluded_at]),
   specification: ({ manifest }) => latest([manifest.checklists?.['ready-to-build']?.closed]),
   implementation: ({ manifest }) => latest(Object.entries(manifest.checklists ?? {}).filter(([key]) => /^phase-\d+-close$/.test(key)).map(([, record]) => record?.closed)),
   review: ({ manifest }) => latest([manifest.completed_at]),
@@ -190,6 +196,7 @@ const waitingOn = (at) => at.once('waiting-on', () => {
   const questions = questionWaits(at);
   return [
     ...mapWaits(at),
+    ...investigationWaits(at),
     ...(buildBegun(at.manifest) || !specBegun(at) ? [] : specWaits(at)),
     ...questions,
     ...(questions.length === 0 && finishWaits(at) ? [FINISH] : []),

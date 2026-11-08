@@ -31,19 +31,22 @@
 //   its map is first approved with what each after it waits on (20.15.2). A
 //   phase complete or under way says what its records hold: discovery the
 //   note it began from, an epic's the topics on its map, the discussion its
-//   decisions, the specification its sections with the build phases cut
+//   decisions, an investigation its hypotheses, the specification its
+//   sections with the build phases cut
 //   once complete and its passes reported until then, the build its cut's
 //   tasks done — of them while it runs — the review its round and, once
 //   recorded, where it stands as the banner says it; a phase under way says
-//   what it is doing, the specification where it stands as its banner says
-//   it; a phase, or a stage, says whether a session is in it, this one or
+//   what it is doing, an investigation validating while either validation
+//   runs, the specification where it stands as its banner says it; a phase,
+//   or a stage, says whether a session is in it, this one or
 //   another.
 // - A unit started the day its manifest was made, as the manifest stamps it
 //   (20.15.1). The tab says whether it is the unit this session is in,
 //   whose questions the board holds (`here`).
 // - A finished phase opens in full (20.15.3): a linear unit's discovery on
 //   the note it began from — the inbox's or the roadmap's, else its brief —
-//   and the discussion on its decisions.
+//   the discussion on its decisions, and a bug's investigation on its own
+//   view, concluded (board-investigation.cjs).
 // - Lately is the unit's moments, newest first, the latest `LATELY_SHOWN`:
 //   from the state's history (state-history.cjs), its spec's review passes
 //   (board-spec.cjs) and, once its build has begun, from its build
@@ -73,6 +76,7 @@ const { passMoments, reportedOf, specDoing } = require('./board-spec.cjs');
 const { sentBy } = require('./board-discussion.cjs');
 const { mapCount, textOf } = require('./board-discovery.cjs');
 const { phasesAt, nowOf, waitingOn, standingOf, holds, closedOn, startedOf, pastDiscovery } = require('./board-standing.cjs');
+const { investigationView, investigationDoing, hypothesesCount } = require('./board-investigation.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
 /** @typedef {import('../board-model.cjs').EpicView} EpicView */
@@ -81,6 +85,7 @@ const { phasesAt, nowOf, waitingOn, standingOf, holds, closedOn, startedOf, past
 /** @typedef {import('../board-model.cjs').TopicLine} TopicLine */
 /** @typedef {import('../board-model.cjs').Moment} Moment */
 /** @typedef {import('../board-model.cjs').PhasePage} PhasePage */
+/** @typedef {import('../board-model.cjs').InvestigationView} InvestigationView */
 /** @typedef {import('../topic-map.cjs').Row} Row */
 /** @typedef {'this'|'other'|null} SessionIn */
 
@@ -330,10 +335,17 @@ function seedWords(at) {
   return fromRoadmap(seed) ? 'from the roadmap' : 'from your inbox note';
 }
 
+/** The hypotheses an investigation's log holds, as the tab says them, empty while it holds none. @param {BoardAt} at */
+function hypothesesWords(at) {
+  const count = hypothesesCount(at);
+  return count === 0 ? '' : counted(count, 'hypothesis', 'hypotheses');
+}
+
 /** What each phase's records hold, as the tab says it, by the phase it reads. @type {Readonly<Record<string, (at: BoardAt) => string>>} */
 const PHASE_WORDS = Object.freeze({
   discovery: seedWords,
   discussion: (at) => counted(mapsOf(at, [at.unit]).get(at.unit)?.decisions ?? 0, 'decision'),
+  investigation: hypothesesWords,
   specification: specWords,
   implementation: (at) => (buildBegun(at.manifest) ? buildTasks(at) : ''),
   review: (at) => {
@@ -349,7 +361,7 @@ const wordsOf = (at, reads) => /** @type {Record<string, (at: BoardAt) => string
 const DOING = Object.freeze({
   discovery: () => 'shaping',
   discussion: () => 'discussing',
-  investigation: () => 'investigating',
+  investigation: investigationDoing,
   specification: (at) => specDoing(at, waitingOn(at)),
   implementation: (at) => (at.manifest.work_type === 'quick-fix' ? 'working' : 'building'),
   review: () => 'reviewing',
@@ -373,8 +385,24 @@ function decisionSections(at) {
   return [{ heading: 'Decisions', text: decided.map((row) => `${said(row.text)}: ${answersOn(row).map(({ text }) => said(text)).join(' ')}`).join('\n\n') }];
 }
 
-/** The finished phases of a linear unit that open in full, each with what its page shows. @type {Readonly<Record<string, (at: BoardAt) => PhasePage['sections']>>} */
-const PHASE_PAGES = Object.freeze({ discovery: seedSections, discussion: decisionSections });
+/**
+ * A finished phase of a linear unit read in full on the page of its
+ * sections: the day it closed, what it produced, and the sections.
+ * @param {BoardAt} at @param {string} phase @param {PhasePage['sections']} sections @returns {PhasePage}
+ */
+const sectionsPage = (at, phase, sections) => ({ kind: 'phase', unit: at.unit, title: at.title, phase, on: closedOn(at, phase), words: wordsOf(at, phase), sections });
+
+/**
+ * The finished phases of a linear unit that open in full, each its page: a
+ * discovery and a discussion their sections, an investigation its view,
+ * concluded.
+ * @type {Readonly<Record<string, (at: BoardAt) => PhasePage|InvestigationView>>}
+ */
+const PHASE_PAGES = Object.freeze({
+  discovery: (at) => sectionsPage(at, 'discovery', seedSections(at)),
+  discussion: (at) => sectionsPage(at, 'discussion', decisionSections(at)),
+  investigation: (at) => investigationView(at).view,
+});
 
 /**
  * A phase on the unit's tab: where it stands — the phase the unit is in as
@@ -434,16 +462,15 @@ function unitPage(at, atMenu) {
 }
 
 /**
- * A finished phase of a linear unit read in full (20.15.3), by its name:
- * the day it closed, what it produced, and its sections; refused for a
- * phase that opens on no page of its own, or is not finished.
- * @param {BoardAt} at @param {string} phase @returns {PhasePage}
+ * A finished phase of a linear unit read in full (20.15.3), by its name;
+ * refused for a phase that opens on no page of its own, or is not finished.
+ * @param {BoardAt} at @param {string} phase @returns {PhasePage|InvestigationView}
  */
 function phasePage(at, phase) {
-  const sections = /** @type {Record<string, (at: BoardAt) => PhasePage['sections']>} */ (PHASE_PAGES)[phase];
-  const finished = sections !== undefined && at.manifest.work_type !== 'epic' && phasesAt(at).some(({ reads, status }) => reads === phase && status === 'complete');
-  if (!finished) throw new Error(`${at.unit} has no finished ${phase} that opens in full — a linear unit's discovery and discussion do, once complete`);
-  return { kind: 'phase', unit: at.unit, title: at.title, phase, on: closedOn(at, phase), words: wordsOf(at, phase), sections: sections(at) };
+  const page = /** @type {Record<string, (at: BoardAt) => PhasePage|InvestigationView>} */ (PHASE_PAGES)[phase];
+  const finished = page !== undefined && at.manifest.work_type !== 'epic' && phasesAt(at).some(({ reads, status }) => reads === phase && status === 'complete');
+  if (!finished) throw new Error(`${at.unit} has no finished ${phase} that opens in full — a linear unit's discovery, discussion and investigation do, once complete`);
+  return page(at);
 }
 
 /** The banner at the session's place, from the place alone: its type and the phase, or the menu; what waits on the person is the board's (board.cjs). @param {BoardAt} at @returns {{state: 'running'|'idle', facts: {text: string, needs: boolean}[]}} */

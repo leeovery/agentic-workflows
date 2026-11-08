@@ -27,14 +27,15 @@
 //   `check:{round}:{scenario}`, `section:{n}`, `pass:{k}`,
 //   `pass:{k}:{finding}`, `topic:{topic}`, `message:{topic}:{file}`,
 //   `review:{topic}:{id}`, `spike:{folder}`, `report:{topic}:{id}`,
-//   `phase:{phase}`; and from All work `unit:{unit}`. The way back is
+//   `phase:{phase}`, `hunt:{item}`, `option:{key}`; and from All work
+//   `unit:{unit}`. The way back is
 //   the mod's, which names the page it was opened over, else `beneath`.
 // - Each tab is answered on its own: a view or page that cannot be drawn
 //   is `unavailable`, saying why, and the banner and questions still stand.
 // ---------------------------------------------------------------------------
 
 /** The view model's version (the header's). */
-const BOARD_VERSION = 3;
+const BOARD_VERSION = 4;
 
 /** The board's tabs (20.3.1). */
 const TABS = Object.freeze(['this', 'unit', 'all']);
@@ -400,9 +401,11 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * What waits on the person in a unit, the unit's one list every view reads
  * (board-standing.cjs): approve the map, with the topics it holds and what
  * it parks, or the sweep's candidates; a gap of its spec, or ready to
- * build's yes; a question of its build; or finish — by its number or entry,
- * its words, and the page a press on it opens, null where none.
- * @typedef {{kind: 'map'|'gap'|'ready'|'question'|'finish', id: string, text: string, page: string|null}} WaitingLine
+ * build's yes; a question of its build; finish; or a raise its investigation
+ * asks in this conversation, held with what raised it as its view holds it
+ * (HuntWait) — by its number or entry, its words, and the page a press on
+ * it opens, null where none.
+ * @typedef {{kind: 'map'|'gap'|'ready'|'question'|'finish'|'raise', id: string, text: string, page: string|null}} WaitingLine
  */
 /**
  * A unit's tab (20.15.1), and an epic's while discovery runs before any
@@ -443,12 +446,65 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * }} AllView
  */
 
+/**
+ * What waits on the person in an investigation (20.12.1), as the unit's one
+ * list holds it (WaitingLine), with what raised it — the validation whose
+ * finding it was surfaced as, by the entry it validates, else the fix
+ * direction, else null — why it reached them, and for the fix direction's
+ * how many options it sets out and whether Claude's lean is the first;
+ * every other wait with none.
+ * @typedef {WaitingLine & {raised_by: 'root-cause'|'fix'|'fix-direction'|null, why: string|null, options: number|null, lean_first: boolean|null}} HuntWait
+ */
+/**
+ * A validation of the investigation (20.12.1): which, the effort its agent
+ * runs at, null where none is named; where it stands — after what it
+ * validates is logged, not started, running since its dispatch, lost with
+ * the conversation that sent it, or done — since when it runs, else null,
+ * and what it found once done.
+ * @typedef {{validation: 'root-cause'|'fix', effort: string|null, state: 'after'|'not-started'|'running'|'lost'|'done', since: string|null, found: number}} ValidationLine
+ */
+/**
+ * A bug's investigation's This session (20.12.1): the unit, its title and
+ * type, the project, the day it started, null where its manifest holds
+ * none; where it stands; what waits on the person; what the person decided
+ * there, each by its answer; the symptoms in the person's words; each
+ * hypothesis by its name, title and state — suspected, confirmed, ruled-out
+ * or intended; each experiment with what it showed; the root cause, its
+ * words and whether it is validated, null before one is logged; both
+ * validations; Claude's calls since the person last looked; and the fix
+ * direction — after the root cause, being set out, its options waiting on
+ * the person, or picked — with what stepping back found, its options by
+ * key and name with Claude's lean marked, the person's pick by its key,
+ * null for their own words, and the fix in its words once set.
+ * @typedef {{
+ *   kind: 'investigation', unit: string, title: string, type: string, project: string, started: string|null,
+ *   standing: 'investigating'|'validating-root-cause'|'fix-waits'|'validating-fix'|'concluded', waiting: HuntWait[],
+ *   decided: {id: string, text: string}[], symptoms: string[], hypotheses: {name: string, title: string, state: string}[],
+ *   experiments: {name: string, title: string, showed: string}[], root_cause: {text: string, validated: boolean}|null,
+ *   validations: ValidationLine[], since: {id: string, text: string}[],
+ *   fix_direction: {state: 'after'|'next'|'asking'|'picked', stepped_back: string[], options: {key: string, name: string, lean: boolean}[], pick: string|null, fix: string|null},
+ * }} InvestigationView
+ */
+/**
+ * A page of the hunt read in full (20.12.2): which item — a hypothesis, an
+ * experiment, the root cause, what stepping back found, or an option of the
+ * fix direction — its name, null for the root cause and the step back, its
+ * title, where it stands — a hypothesis's state, what an experiment showed,
+ * the root cause validated or being validated, an option Claude's lean, the
+ * person's pick or neither, null for the step back — and its text.
+ * @typedef {{
+ *   kind: 'hunt', unit: string, item: 'hypothesis'|'experiment'|'root-cause'|'stepped-back'|'option', name: string|null, title: string,
+ *   state: string|null, text: string,
+ * }} HuntPage
+ */
+
 /** A view or page that cannot be drawn, and why. @typedef {{kind: 'unavailable', reason: string}} Unavailable */
 
 /**
  * A view or page the board shows.
  * @typedef {BuildView|TaskPage|ScenarioPage|EvidencePage|WrittenPage|RoundPage|EntryPage|ReviewView|FindingPage|CheckPage|DiscussionView|MessagePage|ReviewReportPage
- *   |SpecView|SectionPage|PassPage|SpecFindingPage|DiscoveryView|BriefPage|SpikePage|ExperimentView|ReportPage|EpicView|UnitView|PhasePage|AllView|Unavailable} View
+ *   |SpecView|SectionPage|PassPage|SpecFindingPage|DiscoveryView|BriefPage|SpikePage|ExperimentView|ReportPage|InvestigationView|HuntPage
+ *   |EpicView|UnitView|PhasePage|AllView|Unavailable} View
  */
 
 /**

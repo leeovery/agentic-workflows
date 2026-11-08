@@ -5,12 +5,16 @@
 // investigation's skill makes, in its order, from start this work: the
 // investigation entered at its one topic, the hunt logged on its entries,
 // the plan and check-in gates, the live server's permission asked at the
-// investigation's own level, both validations briefed and taken in, the
-// fix direction raised and logged once decided, and the conclude gate's
-// yes handing off into the spec — reopened by a gap before the spec,
-// entered again with its resume's reads and concluded again, its recap
-// naming this time the unit whose code the bug is in; then the
-// specification, into the build. And a bugfix moved to a feature from its
+// investigation's own level, both validations briefed and taken in — the
+// root cause's finding asked of the person as what the product should do,
+// the fix's raised replacing the fix, each surfaced as what it was raised
+// as and its report closed, the board saying which validation raised it,
+// the fix validated again — the fix direction raised and logged once
+// decided, and the conclude gate's yes handing off into the spec —
+// reopened by a gap before the spec, entered again with its resume's reads
+// and concluded again, its recap naming this time the unit whose code the
+// bug is in; then the specification, into the build. And a bugfix moved to
+// a feature from its
 // investigation, its cause in the design: the root cause's validation taken
 // in, the fix direction reworking the area as a feature with no validation
 // of its own, start this work's screen and its yes, the feature's
@@ -37,8 +41,58 @@ const { workUnitStatus } = require(path.join(ROOT, 'skills/leeway-engine/scripts
 const { drawLabel } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
 const {
   Sim, startUnit, enterEntry, handoff, answerGate, linearMenu, linearPick, backToStart, startNew, specToBuild,
-  investigationCache, rootCaused, validated, fixDirected, hunted, concluded,
+  investigationCache, rootCaused, reported, validated, fixDirected, concluded,
 } = require('./pipeline-world.cjs');
+
+const CLAUDES = Object.freeze({ by: 'claude', who_moved_whom: 'none' });
+
+/** A call raised to the person, a row for each key, the first its lean. @param {string} question @param {string[]} keys */
+const callOf = (question, keys) => JSON.stringify({
+  question,
+  rows: keys.map((key) => ({ key, name: `Option ${key}`, text: `The save does ${key}`, notice: `a save does ${key}` })),
+  lean: keys[0], why: 'It stops the crash at its cause.', sort: 'one', mechanism: 'The save checks the field.', product_wide: false,
+});
+
+/** What raised each wait on the conversation's board. @param {Sim} sim */
+const raisersOn = (sim) => sim.run(['board', sim.env.CLAUDE_CODE_SESSION_ID]).view.waiting.map((/** @type {{raised_by: string|null}} */ { raised_by: by }) => by);
+
+/**
+ * The hunt with each validation finding what reaches the person (19.4.7,
+ * 19.4.10, 20.S18): the root cause's finding landed, asked as a question
+ * of what the product should do and surfaced as it, its report closed; the
+ * fix direction; the fix's finding landed, raised replacing the fix and
+ * surfaced as that replacement, its report closed; the fix validated
+ * again. Each answered with Claude's lean. Answers what the board said
+ * raised each, while it waited.
+ * @param {Sim} sim @param {string} wu
+ */
+async function huntedAsking(sim, wu) {
+  const at = `${wu}.investigation.${wu}`;
+  const landed = (/** @type {string} */ text) => sim.run(['ledger', 'find', at], null, JSON.stringify({ ...CLAUDES, text, how: 'Read the save path.', known: 'read' })).id;
+  await rootCaused(sim, wu, { live: true });
+  const rootCheck = reported(sim, wu, 'root-cause', ['F1']);
+  landed('A crash mid-save leaves a half-written file.');
+  const asked = sim.run(['ledger', 'ask', at], null, JSON.stringify({ ...CLAUDES, text: 'Should a crashed save keep the half-written file?' })).id;
+  const kept = (await sim.runAsync(['raise', at, '--answers', asked], null, callOf('Should a crashed save keep the half-written file?', ['hold', 'drop']))).raise;
+  sim.run(['agent', 'surface', wu, 'investigation', wu, rootCheck, 'F1', '--question', asked]);
+  sim.run(['agent', 'incorporate', wu, 'investigation', wu, rootCheck]);
+  const byRoot = raisersOn(sim);
+  sim.run(['raise', 'answer', kept, '--pick', 'hold'], null, JSON.stringify({ why: 'A half file shows what was lost.' }));
+  sim.run(['investigation-log', 'validation', wu, 'root-cause', '--found', 'A crash mid-save leaves a half file', '--did', 'Asked you']);
+
+  await fixDirected(sim, wu);
+  const fix = JSON.parse(sim.read(['ledger', 'record', wu, wu])).decisions.find((/** @type {{text: string}} */ d) => d.text === 'Check the field before the save writes it').id;
+  const fixCheck = reported(sim, wu, 'fix', ['F1']);
+  const cause = landed('Checking the field leaves the half-written file a crash makes.');
+  const replaced = (await sim.runAsync(['raise', at, '--replaces', fix, '--reason', 'new-fact', '--cause', cause], null, callOf('Should the fix also write the save atomically?', ['atomic', 'check']))).raise;
+  sim.run(['agent', 'surface', wu, 'investigation', wu, fixCheck, 'F1', '--replaces', fix, '--reason', 'new-fact']);
+  sim.run(['agent', 'incorporate', wu, 'investigation', wu, fixCheck]);
+  const byFix = raisersOn(sim);
+  sim.run(['raise', 'answer', replaced, '--pick', 'atomic'], null, JSON.stringify({ why: 'No half file at all.' }));
+  sim.run(['investigation-log', 'validation', wu, 'fix', '--found', 'Checking alone leaves a half file', '--did', 'Asked you']);
+  validated(sim, wu, 'fix');
+  return [byRoot, byFix];
+}
 
 describe('pipeline simulation: bugfix', () => {
   let sim;
@@ -53,12 +107,12 @@ describe('pipeline simulation: bugfix', () => {
     assert.deepStrictEqual(started.next, { kind: 'handoff', skill: 'leeway-investigation-process', args: ['bugfix', wu] });
 
     handoff(sim, `/leeway-investigation-process bugfix ${wu}`);
-    await hunted(sim, wu, { live: true });
+    assert.deepStrictEqual(await huntedAsking(sim, wu), [['root-cause'], ['fix']], 'the board says which validation raised each');
     const { decisions, findings } = JSON.parse(sim.read(['ledger', 'record', wu, wu]));
     assert.deepStrictEqual([findings.map((f) => f.text), decisions.map((d) => d.text)], [
-      ['The save writes a null field on every crash.'],
-      ['The save writes a null that nothing checks.', 'Check the field before the save writes it'],
-    ], 'the hunt\'s finding, its root cause and its fix stand on the topic\'s record (19.S8), and the live server\'s permission never does');
+      ['The save writes a null field on every crash.', 'A crash mid-save leaves a half-written file.', 'Checking the field leaves the half-written file a crash makes.'],
+      ['The save writes a null that nothing checks.', 'The save does hold', 'The save does atomic'],
+    ], 'the hunt\'s findings, its root cause, the person\'s answer and the fix as replaced stand on the topic\'s record (19.S8), and the live server\'s permission never does');
     concluded(sim, wu);
     // A session that stops here resumes from the bugfix's continue menu, which
     // hands off where the conclude does — or goes back to the start menu,

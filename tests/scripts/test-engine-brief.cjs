@@ -693,13 +693,15 @@ describe('the templates and the store', () => {
     for (const [role, { agent }] of Object.entries(ROLES)) assert.ok(agent.startsWith(OURS) && agent.length > OURS.length, `${role}: ${agent}`);
   });
 
-  it('26.S10: every role\'s agent is a definition on the roster fixing Opus at medium, the root cause\'s validator at extra-high (26.4.1, 26.4.7–26.4.10, 26.5.3)', () => {
-    for (const [role, { agent }] of Object.entries(ROLES)) {
+  it('26.S10: every role\'s agent is a definition on the roster fixing Opus at medium, the root cause\'s validator at extra-high, as a role naming its effort for the board names it (26.4.1, 26.4.7–26.4.10, 26.5.3, 20.12.1)', () => {
+    for (const [role, { agent, effort: named }] of Object.entries(ROLES)) {
       assert.ok(fs.existsSync(path.join(AGENTS, `${agent}.md`)), `${role}: ${agent}`);
       const frontmatter = /^---\n([\s\S]*?)\n---\n/.exec(fs.readFileSync(path.join(AGENTS, `${agent}.md`), 'utf8'))?.[1] ?? '';
       const effort = role === 'root-cause-validation' ? 'xhigh' : 'medium';
       assert.deepStrictEqual(['name', 'model', 'effort'].map((key) => new RegExp(`^${key}: (.*)$`, 'm').exec(frontmatter)?.[1]), [agent, 'opus', effort], role);
+      if (named !== undefined) assert.strictEqual(named, effort, `${role}: the effort the board draws is its definition's`);
     }
+    assert.deepStrictEqual(['root-cause-validation', 'fix-validation'].map((role) => ROLES[role].effort), ['xhigh', 'medium'], 'each validation names its effort');
   });
 
   it('the agents the skills dispatch are the roster, exactly: no second pass over a phase\'s tasks and no gap checker among them (12.S10, 26.S12)', () => {

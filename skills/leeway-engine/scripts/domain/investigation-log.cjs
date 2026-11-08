@@ -63,7 +63,10 @@
 // - What the hunt rests on (`huntEntries`), read by its conclude and its
 //   validations' briefs: the root cause, the current entry its line points
 //   at, and the fix, the current answer of the question the fix direction
-//   points at — each, where it rests on none, why, with the way on.
+//   points at — each, where it rests on none, why, with the way on. The
+//   board reads the root cause as it stands (`rootCauseNow`): the current
+//   entry the logged one's chain leads to, so a replacement shows before it
+//   is logged again.
 //
 // Known edge, not built: an investigation the reshape's migration moved
 // mid-hunt holds its hunt in its old document, so its lists read empty
@@ -75,7 +78,7 @@ const path = require('path');
 const { messageOf } = require('../kernel/call.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { resolveId } = require('./ledger-ids.cjs');
-const { notCurrent, factsOf, standingOf, answersOf } = require('./ledger-fold.cjs');
+const { notCurrent, factsOf, standingOf, answersOf, currentsOf } = require('./ledger-fold.cjs');
 const { claudesCall } = require('./ledger-events.cjs');
 const { withUnitEntries } = require('./unit-entries.cjs');
 const { itemOf } = require('./derivations.cjs');
@@ -279,6 +282,22 @@ function assertRootCause(said, unit, view, hunt) {
  * @typedef {{id: string, short: string, text: string}} Rested
  */
 
+/** An entry the hunt rests on, by its full id. @param {UnitView} view @param {string} id @returns {Rested} */
+const restedOn = (view, id) => ({ id, short: view.short(id), text: wordsOf(view, id) });
+
+/**
+ * The root cause as it stands, for the board to show between a
+ * replacement and the root cause logged again: the current entry the
+ * logged one's chain leads to, the latest where several; null where none is
+ * logged or it leads nowhere current.
+ * @param {UnitView} view @param {Hunt} hunt @returns {Rested|null}
+ */
+function rootCauseNow(view, hunt) {
+  if (hunt.rootCause === null) return null;
+  const now = currentsOf(view.folded, hunt.rootCause.entry).filter((id) => view.entries.has(id)).at(-1);
+  return now === undefined ? null : restedOn(view, now);
+}
+
 /**
  * The root cause and the fix the hunt rests on, each one of the unit's
  * current entries — the fix the current answer of the fix direction's
@@ -288,7 +307,7 @@ function assertRootCause(said, unit, view, hunt) {
  * @returns {{rootCause: Rested|{fault: string}, fix: (Rested & {question: Rested})|{fault: string}}}
  */
 function huntEntries(unit, view, hunt) {
-  const rested = (/** @type {string} */ id) => ({ id, short: view.short(id), text: wordsOf(view, id) });
+  const rested = (/** @type {string} */ id) => restedOn(view, id);
   const rootFault = rootCauseFault(view, hunt);
   const rootCause = rootFault === null
     ? rested(/** @type {Pointed} */ (hunt.rootCause).entry)
@@ -513,4 +532,4 @@ function logHunt(cwd, kind, positional, opts) {
   return { log: huntLog(unit), heading: entry.heading, line: `- ${line}`, ...(warnings.length > 0 ? { warnings } : {}) };
 }
 
-module.exports = { HUNT_USAGE, HUNT_HEADINGS, huntIn, huntOf, huntLog, openInvestigation, assertRootCauseAt, huntEntries, logHunt };
+module.exports = { HUNT_USAGE, HUNT_HEADINGS, huntIn, huntOf, huntLog, openInvestigation, assertRootCauseAt, huntEntries, rootCauseNow, logHunt };

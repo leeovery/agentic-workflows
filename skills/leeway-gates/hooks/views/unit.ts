@@ -18,6 +18,7 @@ import { BAR_CELLS, COLOUR, INDENT, MARK, blank, counted, dayOf, heading, progre
 import type { View } from '../model.ts'
 import { pageKey, tabKey } from '../pane.ts'
 import type { ViewDrawing } from './index.ts'
+import { raiseLines, type RaiseWait } from './investigation.ts'
 import { STILL, latelyLines, phaseName, pointsSection, section, type Moment } from './words.ts'
 
 type Session = 'this' | 'other' | null
@@ -35,7 +36,7 @@ type TopicLine = {
 }
 
 type Stage<State> = { state: State; session: Session }
-type Waiting = { kind: 'map' | 'gap' | 'ready' | 'question' | 'finish'; id: string; text: string; page: string | null }
+type Waiting = { kind: 'map' | 'gap' | 'ready' | 'question' | 'finish'; id: string; text: string; page: string | null } | (RaiseWait & { kind: 'raise' })
 
 type Epic = {
   unit: string
@@ -327,11 +328,30 @@ function phaseLine(phase: Phase, before: Phase | undefined, kit: Kit): Line {
 /** WAITING ON YOU's count: a build's questions wait on the board, a spec's gaps and its yes are asked in the conversation. */
 const waitingCount = (waiting: readonly Waiting[]) => (waiting.every(({ kind }) => kind === 'question') ? `${waiting.length}` : `${waiting.length} · asked in the conversation`)
 
+/** A wait by its words, opening its page where it has one; an investigation's raise as its own view draws it. */
+function waitingLine(waiting: Waiting): Line[] {
+  const key = `unit:waiting:${waiting.id}`
+
+  if (waiting.kind === 'raise') {
+    return raiseLines(waiting, key)
+  }
+
+  return [
+    {
+      key,
+      mark: { text: `${MARK.needs} `, color: COLOUR.needs },
+      wraps: true,
+      parts: [{ text: waiting.text, color: COLOUR.body }],
+      ...(waiting.page === null ? {} : { press: pageKey(waiting.page) }),
+    },
+  ]
+}
+
 /**
  * WAITING ON YOU on the epic's page and the unit's tab: on the unit the
  * session is in, its build's questions as every view lists them, the board
- * holding them; else each by its words, opening its page where it has one —
- * a build's waiting on the board, the rest asked in the conversation.
+ * holding them; else each by its words — a build's waiting on the board,
+ * the rest asked in the conversation.
  */
 function waitingLines(view: { here: boolean; waiting: readonly Waiting[] }, kit: Kit): Line[] {
   if (view.waiting.length === 0) {
@@ -346,13 +366,7 @@ function waitingLines(view: { here: boolean; waiting: readonly Waiting[] }, kit:
 
   return section(
     heading('unit:waiting', { text: 'WAITING ON YOU', bold: true, color: COLOUR.needs }, [{ text: waitingCount(view.waiting), color: COLOUR.secondary }], kit.width),
-    view.waiting.map(waiting => ({
-      key: `unit:waiting:${waiting.id}`,
-      mark: { text: `${MARK.needs} `, color: COLOUR.needs },
-      wraps: true,
-      parts: [{ text: waiting.text, color: COLOUR.body }],
-      ...(waiting.page === null ? {} : { press: pageKey(waiting.page) }),
-    })),
+    view.waiting.flatMap(waitingLine),
   )
 }
 

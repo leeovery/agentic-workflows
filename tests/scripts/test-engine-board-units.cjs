@@ -238,7 +238,7 @@ describe('other units\' pages (20.15)', () => {
     ]]);
     assert.deepStrictEqual([phase('discussion'), phase('specification')], [
       { kind: 'phase', unit: SOLO, title: 'Solo', phase: 'discussion', on: closed, words: '1 decision', sections: [{ heading: 'Decisions', text: 'Does a tally reset daily?: At midnight.' }] },
-      { kind: 'unavailable', reason: 'solo has no finished specification that opens in full — a linear unit\'s discovery and discussion do, once complete' },
+      { kind: 'unavailable', reason: 'solo has no finished specification that opens in full — a linear unit\'s discovery, discussion and investigation do, once complete' },
     ]);
   });
 
