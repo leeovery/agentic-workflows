@@ -131,18 +131,29 @@ function rested(entry) {
 }
 
 /**
+ * Where a validation stands since the entries it rests on were made, as
+ * `validationFor` reads it (agent-state.cjs); the board reads it alike.
+ * @param {string} cwd @param {string} unit @param {UnitView['folded']} folded
+ * @param {(typeof VALIDATIONS)[number]} validation @param {Partial<Record<'rootCause'|'fix', Rested>>} rests each entry it rests on
+ */
+function validationSince(cwd, unit, folded, { kind, since }, rests) {
+  const line = Math.max(...since.map((at) => folded.facts.get(/** @type {Rested} */ (rests[at]).id)?.place.number ?? Infinity));
+  return validationFor(cwd, unit, kind, folded.facts, line);
+}
+
+/**
  * The validation not yet taken in since the entries it rests on were made,
  * refused with the way on: the one dispatched since, by where it stands,
  * or, where none was, its dispatch, its brief and its report taken in.
  * @param {string} cwd @param {string} unit @param {UnitView} view
  * @param {(typeof VALIDATIONS)[number]} validation @param {{rootCause: Rested, fix: Rested}} rests
  */
-function assertValidated(cwd, unit, { folded }, { kind, of, since, what, logged }, rests) {
-  const line = Math.max(...since.map((at) => folded.facts.get(rests[at].id)?.place.number ?? Infinity));
-  const validation = validationFor(cwd, unit, kind, folded.facts, line);
-  if (validation?.stands === 'taken-in') return;
+function assertValidated(cwd, unit, { folded }, validation, rests) {
+  const { kind, of, what, logged } = validation;
+  const standing = validationSince(cwd, unit, folded, validation, rests);
+  if (standing?.stands === 'taken-in') return;
   const named = `the ${what} ${rests[of].short}`;
-  if (validation !== null) throw new Error(`${named} is being validated — ${WAITING[validation.stands](unit, validation.id)}`);
+  if (standing !== null) throw new Error(`${named} is being validated — ${WAITING[standing.stands](unit, standing.id)}`);
   throw new Error(`${named} has not been validated since ${logged} — both validations always run: engine agent dispatch ${unit} ${PHASE} ${unit} --kind ${kind}, its brief engine brief ${kind} ${unit} --agent <id>, and its report taken in`);
 }
 
@@ -339,4 +350,4 @@ function runInvestigationVerb(cwd, [verb, ...args], opts) {
   return refusing('investigation conclude', () => concludeInvestigation(cwd, args[0]));
 }
 
-module.exports = { CONCLUDE_USAGE, concludeSurface, runInvestigationVerb };
+module.exports = { CONCLUDE_USAGE, VALIDATIONS, validationSince, concludeSurface, runInvestigationVerb };

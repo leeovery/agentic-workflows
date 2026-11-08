@@ -13,6 +13,7 @@ import { ALL } from './all.ts'
 import { BRIEF, DISCOVERY, SPIKE } from './discovery.ts'
 import { DISCUSSION, ENTRY, MESSAGE, REVIEW_REPORT } from './discussion.ts'
 import { EXPERIMENT, EXPERIMENT_REPORT } from './experiment.ts'
+import { HUNT, INVESTIGATION } from './investigation.ts'
 import { PASS, SECTION, SPEC, SPEC_FINDING } from './spec.ts'
 import { EPIC, PHASE, UNIT } from './unit.ts'
 
@@ -46,6 +47,8 @@ export const VIEWS: Views = {
   spike: SPIKE,
   experiment: EXPERIMENT,
   'experiment-report': EXPERIMENT_REPORT,
+  investigation: INVESTIGATION,
+  hunt: HUNT,
   epic: EPIC,
   unit: UNIT,
   phase: PHASE,

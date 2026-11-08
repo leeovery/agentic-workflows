@@ -50,8 +50,9 @@ const BUILDING_ROLES = Object.freeze(['builder', 'fix']);
  * — its topic's, or for a unit's role the unit's — the kind of dispatch it
  * is briefed for (agent-state.cjs), and for a unit's role whose store is
  * not at the unit's spec, the phase it is at: a bugfix's validations write
- * into its investigation's.
- * @type {Readonly<Record<string, {agent: string, whose: string, records: readonly string[], kind?: string, phase?: string}>>}
+ * into its investigation's, each naming the effort its agent's definition
+ * fixes, which the board draws beside it (20.12.1).
+ * @type {Readonly<Record<string, {agent: string, whose: string, records: readonly string[], kind?: string, phase?: string, effort?: string}>>}
  */
 const ROLES = Object.freeze({
   builder: { agent: 'leeway-builder', whose: 'the builder\'s', records: ['engine', 'task', 'spec-sections', 'decided-calls', 'linters', 'chain', 'account-to', 'setup-to'] },
@@ -114,6 +115,7 @@ const ROLES = Object.freeze({
     whose: 'the root-cause validation\'s',
     kind: 'root-cause-validation',
     phase: 'investigation',
+    effort: 'xhigh',
     records: ['hunt-log', 'hunt-record', 'hunt-root-cause', 'code', 'unit-report-to'],
   },
   'fix-validation': {
@@ -121,6 +123,7 @@ const ROLES = Object.freeze({
     whose: 'the fix validation\'s',
     kind: 'fix-validation',
     phase: 'investigation',
+    effort: 'medium',
     records: ['hunt-log', 'hunt-record', 'hunt-root-cause', 'hunt-fix', 'code', 'unit-report-to'],
   },
 });

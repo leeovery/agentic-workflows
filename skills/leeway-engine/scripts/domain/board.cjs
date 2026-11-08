@@ -15,7 +15,8 @@
 //
 // - This session follows the conversation's position (20.3.3, 20.3.4): a
 //   phase's view while it is in one — the build, the review phase, a
-//   discussion, the specification, an epic's discovery, an experiment —
+//   discussion, the specification, an epic's discovery, an experiment, a
+//   bug's investigation —
 //   the unit's page at its menu and in a phase whose view comes later
 //   (29.14.2), a quick-fix's implementation among them, and All work at the
 //   start menu or a project-level place — and once a unit's finish completes
@@ -90,6 +91,7 @@ const { specView, specBanner, sectionPage, passPage, specFindingPage } = require
 const { waitingOn, holds, waitsFacts } = require('./projections/board-standing.cjs');
 const { discoveryView, discoveryBanner, briefPage, topicStarted, spikePage } = require('./projections/board-discovery.cjs');
 const { experimentView, experimentBanner, reportPage } = require('./projections/board-experiment.cjs');
+const { investigationView, investigationBanner, huntPage, optionPage } = require('./projections/board-investigation.cjs');
 const { unitPage, phasePage, unitBanner, placeBanner } = require('./projections/board-unit.cjs');
 const { allView, allBanner } = require('./projections/board-all.cjs');
 
@@ -213,6 +215,7 @@ const PHASE_VIEWS = Object.freeze({
   specification: { read: (at) => specView(at, waitingOn(at)), banner: (at) => specBanner(at, waitingOn(at)) },
   discovery: { read: (at) => discoveryView(at, waitingOn(at)), banner: (_, view) => discoveryBanner(view), of: (type) => type === 'epic' },
   experiment: { read: experimentView, banner: (_, view) => experimentBanner(view) },
+  investigation: { read: (at) => investigationView(at, waitingOn(at)), banner: (_, view) => investigationBanner(view) },
 });
 
 /** A phase's view for the unit, null where the unit's page stands for it. @param {BoardAt} at @param {string|null} phase */
@@ -277,6 +280,8 @@ const PAGES = Object.freeze([
   { ref: 'spike:{folder}', shape: /^spike:([^:]+)$/, draw: spikePage },
   { ref: 'report:{topic}:{id}', shape: /^report:([^:]+):([^:]+)$/, draw: reportPage },
   { ref: 'phase:{phase}', shape: /^phase:([^:]+)$/, draw: phasePage },
+  { ref: 'hunt:{item}', shape: /^hunt:([^:]+)$/, draw: huntPage },
+  { ref: 'option:{key}', shape: /^option:([^:]+)$/, draw: optionPage },
 ]);
 
 /** A unit's own page, opened from All work, which names its unit. */

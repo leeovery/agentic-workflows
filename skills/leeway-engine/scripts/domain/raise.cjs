@@ -637,6 +637,17 @@ function steppedBackSealed(folded, question) {
 }
 
 /**
+ * Every raise the conversation sealed at `place`, oldest first, read
+ * without the seals' lock, as the board reads them: a seal of another
+ * version passed over.
+ * @param {string} session @param {Place} place @returns {Seal[]}
+ */
+function sealsAt(session, { unit, phase, topic }) {
+  return /** @type {Seal[]} */ (Object.values(readSeals(session)).filter((seal) => isSeal(seal) && seal.place.unit === unit && seal.place.phase === phase && seal.place.topic === topic))
+    .sort((a, b) => a.at.localeCompare(b.at));
+}
+
+/**
  * The open seal of the question, or of the replacement of the decision,
  * `target` names: drawn for the question waiting in the build whose first
  * park is `park`, or, where it is null, raised at `place` for no question
@@ -1438,4 +1449,4 @@ function raiseScreenOf(cwd, seal, { technical = false } = {}) {
   return raiseScreen(seal, { technical, titles: topicTitles(manifest ?? {}) });
 }
 
-module.exports = { RAISE_USAGE, drawRaise, drawParked, showRaise, answerRaise, raiseWaits, unraised, raiseScreenOf, steppedBackSealed };
+module.exports = { RAISE_USAGE, drawRaise, drawParked, showRaise, answerRaise, raiseWaits, unraised, raiseScreenOf, steppedBackSealed, sealsAt };

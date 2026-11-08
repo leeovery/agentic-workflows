@@ -31,12 +31,14 @@
 //   its map is first approved with what each after it waits on (20.15.2). A
 //   phase complete or under way says what its records hold: discovery the
 //   note it began from, an epic's the topics on its map, the discussion its
-//   decisions, the specification its sections with the build phases cut
+//   decisions, an investigation its hypotheses, the specification its
+//   sections with the build phases cut
 //   once complete and its passes reported until then, the build its cut's
 //   tasks done — of them while it runs — the review its round and, once
 //   recorded, where it stands as the banner says it; a phase under way says
-//   what it is doing, the specification where it stands as its banner says
-//   it; a phase, or a stage, says whether a session is in it, this one or
+//   what it is doing, an investigation validating while either validation
+//   runs, the specification where it stands as its banner says it; a phase,
+//   or a stage, says whether a session is in it, this one or
 //   another.
 // - A unit started the day its manifest was made, as the manifest stamps it
 //   (20.15.1). The tab says whether it is the unit this session is in,
@@ -73,6 +75,7 @@ const { passMoments, reportedOf, specDoing } = require('./board-spec.cjs');
 const { sentBy } = require('./board-discussion.cjs');
 const { mapCount, textOf } = require('./board-discovery.cjs');
 const { phasesAt, nowOf, waitingOn, standingOf, holds, closedOn, startedOf, pastDiscovery } = require('./board-standing.cjs');
+const { investigationDoing, hypothesesCount } = require('./board-investigation.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
 /** @typedef {import('../board-model.cjs').EpicView} EpicView */
@@ -330,10 +333,17 @@ function seedWords(at) {
   return fromRoadmap(seed) ? 'from the roadmap' : 'from your inbox note';
 }
 
+/** The hypotheses an investigation's log holds, as the tab says them, empty while it holds none. @param {BoardAt} at */
+function hypothesesWords(at) {
+  const count = hypothesesCount(at);
+  return count === 0 ? '' : counted(count, 'hypothesis', 'hypotheses');
+}
+
 /** What each phase's records hold, as the tab says it, by the phase it reads. @type {Readonly<Record<string, (at: BoardAt) => string>>} */
 const PHASE_WORDS = Object.freeze({
   discovery: seedWords,
   discussion: (at) => counted(mapsOf(at, [at.unit]).get(at.unit)?.decisions ?? 0, 'decision'),
+  investigation: hypothesesWords,
   specification: specWords,
   implementation: (at) => (buildBegun(at.manifest) ? buildTasks(at) : ''),
   review: (at) => {
@@ -349,7 +359,7 @@ const wordsOf = (at, reads) => /** @type {Record<string, (at: BoardAt) => string
 const DOING = Object.freeze({
   discovery: () => 'shaping',
   discussion: () => 'discussing',
-  investigation: () => 'investigating',
+  investigation: investigationDoing,
   specification: (at) => specDoing(at, waitingOn(at)),
   implementation: (at) => (at.manifest.work_type === 'quick-fix' ? 'working' : 'building'),
   review: () => 'reviewing',

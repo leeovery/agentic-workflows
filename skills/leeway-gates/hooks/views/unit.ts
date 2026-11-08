@@ -35,7 +35,7 @@ type TopicLine = {
 }
 
 type Stage<State> = { state: State; session: Session }
-type Waiting = { kind: 'map' | 'gap' | 'ready' | 'question' | 'finish'; id: string; text: string; page: string | null }
+type Waiting = { kind: 'map' | 'gap' | 'ready' | 'question' | 'finish' | 'raise'; id: string; text: string; page: string | null }
 
 type Epic = {
   unit: string
