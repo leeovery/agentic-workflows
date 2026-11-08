@@ -2,9 +2,11 @@ import { describe, expect, test, tier } from 'claude-code/testing'
 
 import type { View } from '../hooks/model.ts'
 import { HUNT, INVESTIGATION } from '../hooks/views/investigation.ts'
+import { UNIT } from '../hooks/views/unit.ts'
 import { NOW, block, drawn, pressOf, sectionOf } from './drawing.ts'
 import H6 from './fixtures/board-hunt.mjs'
 import KILL_ALL from './fixtures/board-investigation.mjs'
+import MINT, { phase } from './fixtures/board-unit.mjs'
 
 tier('user')
 
@@ -20,7 +22,7 @@ const fixture = KILL_ALL as View & Record<string, any>
 const VALIDATING = {
   ...fixture,
   standing: 'validating-root-cause',
-  waiting: [{ kind: 'raise', id: 'q9Zp1c', text: ASKED, page: null, raised_by: 'root-cause', why: 'deleted scrollback cannot be got back', options: null }],
+  waiting: [{ kind: 'raise', id: 'q9Zp1c', text: ASKED, page: null, raised_by: 'root-cause', why: 'deleted scrollback cannot be got back', options: null, lean_first: null }],
   decided: [],
   hypotheses: fixture.hypotheses.map((each: { name: string }) => (each.name === 'H1' ? { ...each, state: 'confirmed' } : each)),
   root_cause: { ...fixture.root_cause, validated: false },
@@ -142,6 +144,31 @@ FIX DIRECTION ──────────────────────
     const rows = sectionOf(drawn(INVESTIGATION, view).text, 'WAITING ON YOU')
 
     expect(rows.slice(-1)).toEqual(['     it is yours to say'])
+  })
+
+  test('the fix direction\'s wait says Claude\'s lean is first only where it is the first row, else marked; one the fix validation raised replacing the fix says so, and why', () => {
+    const wait = fixture.waiting[0]
+    const lines = (waiting: object) => sectionOf(drawn(INVESTIGATION, { ...fixture, waiting: [{ ...wait, ...waiting }] } as View).text, 'WAITING ON YOU').slice(1)
+
+    expect([lines({ lean_first: false }), lines({ raised_by: 'fix', options: 3, why: 'panes still die first' })]).toEqual([
+      ["⚑ Which fix: 3 options, Claude's lean marked"],
+      ["⚑ Which fix: 3 options, Claude's lean first", '     raised by the fix validation · panes still die first'],
+    ])
+  })
+
+  test('20.15: the unit\'s tab draws a raise as the investigation does, with what raised it and why', () => {
+    const tab = { ...MINT, type: 'bugfix', here: false, waiting: VALIDATING.waiting, phases: [phase('discovery', 'complete', 'from your inbox note'), phase('investigation', 'waits', '6 hypotheses')] } as View
+
+    expect(sectionOf(drawn(UNIT, tab).text, 'WAITING ON YOU')).toEqual(sectionOf(drawn(INVESTIGATION, VALIDATING).text, 'WAITING ON YOU'))
+  })
+
+  test('being set out, the fix direction says so once', () => {
+    const next = { ...VALIDATING, fix_direction: { state: 'next', stepped_back: [], options: [], pick: null, fix: null } } as View
+
+    expect(sectionOf(drawn(INVESTIGATION, next).text, 'FIX DIRECTION ')).toEqual([
+      'FIX DIRECTION ───────────────────────────────────────────────',
+      '○ being set out',
+    ])
   })
 
   test('picked: the person\'s pick marked and the rest set aside, the heading theirs; in their own words, the fix as they said it', () => {

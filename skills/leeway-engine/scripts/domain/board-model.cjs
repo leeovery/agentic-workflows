@@ -402,8 +402,9 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * (board-standing.cjs): approve the map, with the topics it holds and what
  * it parks, or the sweep's candidates; a gap of its spec, or ready to
  * build's yes; a question of its build; finish; or a raise its investigation
- * asks in this conversation — by its number or entry, its words, and the
- * page a press on it opens, null where none.
+ * asks in this conversation, held with what raised it as its view holds it
+ * (HuntWait) — by its number or entry, its words, and the page a press on
+ * it opens, null where none.
  * @typedef {{kind: 'map'|'gap'|'ready'|'question'|'finish'|'raise', id: string, text: string, page: string|null}} WaitingLine
  */
 /**
@@ -447,11 +448,12 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
 
 /**
  * What waits on the person in an investigation (20.12.1), as the unit's one
- * list holds it (WaitingLine), with what raised it — a validation, by the
- * entry it validates, or the fix direction, else null — why it reached
- * them, and for the fix direction's how many options it sets out; every
- * other wait with none.
- * @typedef {WaitingLine & {raised_by: 'root-cause'|'fix'|'fix-direction'|null, why: string|null, options: number|null}} HuntWait
+ * list holds it (WaitingLine), with what raised it — the validation whose
+ * finding it was surfaced as, by the entry it validates, else the fix
+ * direction, else null — why it reached them, and for the fix direction's
+ * how many options it sets out and whether Claude's lean is the first;
+ * every other wait with none.
+ * @typedef {WaitingLine & {raised_by: 'root-cause'|'fix'|'fix-direction'|null, why: string|null, options: number|null, lean_first: boolean|null}} HuntWait
  */
 /**
  * A validation of the investigation (20.12.1): which, the effort its agent

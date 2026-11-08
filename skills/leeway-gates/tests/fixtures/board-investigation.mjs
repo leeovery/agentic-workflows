@@ -7,7 +7,7 @@ export default {
   project: 'Portal',
   started: '2026-08-16T09:00:00.000Z',
   standing: 'fix-waits',
-  waiting: [{ kind: 'raise', id: 'k7Qm2x', text: 'How should a save stop losing sessions?', page: null, raised_by: 'fix-direction', why: 'Every call comes to you for now: the counts that would let me decide aren\'t built yet.', options: 3 }],
+  waiting: [{ kind: 'raise', id: 'k7Qm2x', text: 'How should a save stop losing sessions?', page: null, raised_by: 'fix-direction', why: 'Every call comes to you for now: the counts that would let me decide aren\'t built yet.', options: 3, lean_first: true }],
   decided: [{ id: 'r4Tn8w', text: 'A session you kill never comes back; a session you detach from does, and so do sessions ended by kill-server or a reboot' }],
   symptoms: [
     'sessions.json overwritten with an empty (or shrunken) index.',

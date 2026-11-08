@@ -4,13 +4,15 @@
 // `engine board` in a bug's investigation (leeway-engine/scripts/domain/
 // projections/board-investigation.cjs; 20.12): This session drawn from the
 // hunt's log, the ledger at its place, its validations' rows and the raises
-// this conversation sealed there — what waits on the person with what
-// raised it, the validation being read with its clock (20.S18); the
-// person's ruling theirs, a hypothesis it made intended, and the fix
-// direction's step back and options, Claude's lean marked (20.S19); nothing
-// of earlier fixes (20.S20); the investigation dated by its close on the
-// unit's tab, and the hunt's pages (20.12.2). The mod's fixtures are held to
-// the engine's answers here.
+// this conversation sealed there — what waits on the person with the
+// validation whose finding it was surfaced as, the validation being read
+// with its clock (20.S18); the person's ruling theirs, a hypothesis it made
+// intended, and the fix direction's step back and options, Claude's lean
+// marked (20.S19); nothing of earlier fixes (20.S20); each decision read
+// where its chain stands now; the investigation dated by its close on the
+// unit's tab, opened there once concluded, and how far it has come on All
+// work; the hunt's pages (20.12.2). The mod's fixtures are held to the
+// engine's answers here.
 //
 // Layer: verb. World, built once and copied: a bugfix, `kill-all`, its
 // investigation entered, two symptoms, three hypotheses, an experiment on
@@ -27,7 +29,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { ok, okSectionsAsync, readManifest, writeState, commitAll, fixtureFrom, cleanupFixture, layout } = require('./engine-harness.cjs');
+const { ok, okSectionsAsync, refuses, readManifest, writeState, commitAll, fixtureFrom, cleanupFixture, layout } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { ledgerHelpers } = require('./ledger-world.cjs');
 const { fixture, misfits, emptyLists, place, standingOn } = require('./board-world.cjs');
@@ -39,6 +41,7 @@ const STARTED = '2026-08-16T09:00:00.000Z';
 const CLAUDE = Object.freeze({ by: 'claude', who_moved_whom: 'none' });
 const PERSON = Object.freeze({ by: 'person', who_moved_whom: 'none' });
 const EVERY_CALL_ASKS = 'Every call comes to you for now: the counts that would let me decide aren\'t built yet.';
+const ROOT_CAUSE = 'Every save takes the session list as the whole truth. Whatever it does not see is dropped.';
 
 /** The ledger entries the hunt rests on, by short id. */
 const made = { cause: '', rootCause: '', kill: '', keep: '', fix: '', call: '' };
@@ -63,7 +66,7 @@ const world = fixtureFrom('engine-board-investigation-', (dir) => {
   fs.writeFileSync(body, '3 sessions saved, each kill shrank the save.\n');
   hunted('experiment', ['--title', 'Kill every session, hook on', '--showed', 'each kill shrank it', '--entry', made.kill, '--body', body]);
   made.cause = write('ask', AT, [], { ...CLAUDE, text: 'What empties the saved state?' }).id;
-  made.rootCause = write('decide', AT, ['--answers', made.cause], { ...CLAUDE, text: 'Every save takes the session list as the whole truth. Whatever it does not see is dropped.', why: 'The capture is all it reads.' }).id;
+  made.rootCause = write('decide', AT, ['--answers', made.cause], { ...CLAUDE, text: ROOT_CAUSE, why: 'The capture is all it reads.' }).id;
   fs.writeFileSync(body, 'The housekeeping pass deletes every file the index no longer names.\n');
   hunted('root-cause', ['--entry', made.rootCause, '--body', body]);
   fs.rmSync(body);
@@ -74,20 +77,20 @@ const world = fixtureFrom('engine-board-investigation-', (dir) => {
 let dir; // the project
 let config; // the system config: the conversation's folder
 
-/** The engine as the conversation runs it. */
-const env = () => ({ LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'sess-1', CLAUDE_PID: String(process.pid), TMUX: undefined, TMUX_PANE: undefined });
+/** The engine as the conversation runs it, `session` its id. @param {string} [session] */
+const env = (session = 'sess-1') => ({ LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: session, CLAUDE_PID: String(process.pid), TMUX: undefined, TMUX_PANE: undefined });
 
 /** A call that must succeed: its response. @param {string[]} args */
 const run = (args) => ok(dir, args, { env: env() });
 
-/** The board's answer for the conversation, its `ok` dropped. @param {string[]} [args] */
-function board(args = []) {
-  const { ok: _ok, ...answer } = run(['board', 'sess-1', ...args]);
+/** The board's answer for a conversation, its `ok` dropped. @param {string[]} [args] @param {string} [session] */
+function board(args = [], session = 'sess-1') {
+  const { ok: _ok, ...answer } = ok(dir, ['board', session, ...args], { env: env(session) });
   return answer;
 }
 
-/** The conversation at the investigation, as its labelling records it. */
-const atTheHunt = () => run(['session', 'label', BUG, 'investigation', BUG]);
+/** A conversation at the investigation, as its labelling records it. @param {string} [session] */
+const atTheHunt = (session = 'sess-1') => ok(dir, ['session', 'label', BUG, 'investigation', BUG], { env: env(session) });
 
 const { write: wrote } = ledgerHelpers(() => dir);
 
@@ -98,8 +101,9 @@ const write = (verb, flags, content) => wrote(verb, AT, flags, content);
 const full = (short) => ledgerHelpers(() => dir).full(short);
 
 /**
- * A validation of `kind` dispatched by this conversation, its report in and
- * acknowledged with the findings given: its row, being acted on.
+ * A validation of `kind` dispatched by this conversation — by the process
+ * `pid` names — its report in and acknowledged with the findings given:
+ * its row, being acted on.
  * @param {string} kind @param {string[]} findings
  */
 function dispatched(kind, findings) {
@@ -112,6 +116,12 @@ function dispatched(kind, findings) {
 
 /** A validation taken in, acted on. @param {string} id */
 const takenIn = (id) => run(['agent', 'incorporate', BUG, 'investigation', BUG, id]);
+
+/** A validation's finding marked taken, surfaced as what it was raised as. @param {string} id @param {string} finding @param {string[]} [as] */
+const surfaced = (id, finding, as = []) => run(['agent', 'surface', BUG, 'investigation', BUG, id, finding, ...as]);
+
+/** A finding of a validation's, landed as Claude's: its short id. @param {string} text */
+const found = (text) => write('find', [], { ...CLAUDE, text, how: 'Read the shutdown path.', known: 'read' }).id;
 
 /** The validator's question, as Claude raises it: two rows, the first its lean. */
 const KEEP_CALL = Object.freeze({
@@ -134,15 +144,45 @@ const FIX_CALL = Object.freeze({
   stepped_back: ['Other tools that save tmux state snapshot every 15 minutes.', 'None promises a kill is final.'],
 });
 
-/** A raise drawn at the investigation in this conversation: its id. @param {Record<string, unknown>} call @param {string} question */
-async function raised(call, question) {
-  return (await okSectionsAsync(dir, ['raise', AT, '--answers', question], { env: env(), stdin: JSON.stringify(call) })).res.raise;
+/** The fix as the fix validation changes it, raised replacing the person's pick: two proposals, the first its lean. */
+const REPLACE_CALL = Object.freeze({
+  question: 'Hardening the reads alone leaves pane programs exposed: should the fix also outlast the shutdown?',
+  rows: [
+    { key: 'both', name: 'Harden and outlast', text: 'Harden the reads and make panes outlast the shutdown', notice: 'panes survive a reboot' },
+    { key: 'reads', name: 'Reads only, logged', text: 'Harden the reads and log every drop', notice: 'drops are logged' },
+  ],
+  lean: 'both', why: 'It closes the second route too.', sort: 'one', mechanism: 'Panes trap SIGTERM.', product_wide: false,
+});
+
+/** A raise drawn at the investigation in this conversation: its id. @param {Record<string, unknown>} call @param {string[]} target */
+async function raisedOn(call, target) {
+  return (await okSectionsAsync(dir, ['raise', AT, ...target], { env: env(), stdin: JSON.stringify(call) })).res.raise;
 }
 
-/** The person's pick of a raise: the decision it landed, by its full id. @param {string} raise @param {string} key */
+/** A raise answering `question`: its id. @param {Record<string, unknown>} call @param {string} question */
+const raised = (call, question) => raisedOn(call, ['--answers', question]);
+
+/** The person's pick of a raise: the last entry of the ledger, by its full id. @param {string} raise @param {string} key */
 function picked(raise, key) {
   ok(dir, ['raise', 'answer', raise, '--pick', key], { env: env(), stdin: JSON.stringify({ why: 'Killing it is the person saying so.' }) });
   return ledgerHelpers(() => dir).entries().at(-1).id;
+}
+
+/**
+ * The root cause validated, the fix picked and logged, and the fix
+ * validation's finding changing it raised replacing the pick and surfaced
+ * so: the decision it would replace and the replacement's raise.
+ */
+async function fixReplaced() {
+  takenIn(dispatched('root-cause-validation', []).id);
+  const fix = picked(await raised(FIX_CALL, made.fix), '1');
+  run(['investigation-log', 'fix-direction', BUG, '--question', made.fix]);
+  const validation = dispatched('fix-validation', ['F1']);
+  const finding = found('Hardening the reads alone leaves pane programs exposed.');
+  const raise = await raisedOn(REPLACE_CALL, ['--replaces', fix, '--reason', 'new-fact', '--cause', finding]);
+  surfaced(validation.id, 'F1', ['--replaces', fix, '--reason', 'new-fact']);
+  atTheHunt();
+  return { fix, raise };
 }
 
 /** A wait by its words, its id the raise's short form. @param {{id: string}} wait @param {string} raise */
@@ -157,6 +197,15 @@ const listsOf = (view) => ({
   validations: view.validations.map((/** @type {{validation: string, state: string}} */ { validation, state }) => `${validation} ${state}`),
 });
 
+/** What raised each wait on the view. @param {any} view */
+const raisedBy = (view) => view.waiting.map((/** @type {{raised_by: string|null}} */ { raised_by: by }) => by);
+
+/** The investigation's row on the unit's tab. */
+const tabRow = () => board(['--tab', 'unit']).view.phases.find((/** @type {{phase: string}} */ held) => held.phase === 'investigation');
+
+/** How far the investigation has come, as All work says it. */
+const howFar = () => board(['--tab', 'all']).view.units.find((/** @type {{unit: string}} */ { unit }) => unit === BUG).standing;
+
 beforeEach(() => {
   dir = world();
   config = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-board-investigation-config-'));
@@ -168,9 +217,11 @@ afterEach(() => {
 });
 
 describe('This session in an investigation (20.12.1)', () => {
-  it('20.S18: a question the root-cause validation raised waits on the person, asked in the conversation, with what raised it and why it reached them; the validation reads with its clock from its dispatch; the banner flags it', async () => {
+  it('20.S18: a question a finding of the root-cause validation was surfaced as waits on the person, asked in the conversation, with what raised it and why it reached them; the validation reads with its clock from its dispatch; the banner flags it', async () => {
     const validation = dispatched('root-cause-validation', ['F1', 'F2']);
+    found('A session you kill never comes back, by design or not.');
     const raise = await raised(KEEP_CALL, made.keep);
+    surfaced(validation.id, 'F1', ['--question', made.keep]);
     atTheHunt();
     const { view, banner } = board();
 
@@ -182,7 +233,7 @@ describe('This session in an investigation (20.12.1)', () => {
       project: view.project,
       started: STARTED,
       standing: 'validating-root-cause',
-      waiting: [{ kind: 'raise', id: raise, text: KEEP_CALL.question, page: null, raised_by: 'root-cause', why: EVERY_CALL_ASKS, options: null }],
+      waiting: [{ kind: 'raise', id: raise, text: KEEP_CALL.question, page: null, raised_by: 'root-cause', why: EVERY_CALL_ASKS, options: null, lean_first: null }],
       decided: [],
       symptoms: ['sessions.json is overwritten with an empty index', 'Every saved scrollback file is removed'],
       hypotheses: [
@@ -191,7 +242,7 @@ describe('This session in an investigation (20.12.1)', () => {
         { name: 'H3', title: 'A dying tmux reads as zero sessions', state: 'suspected' },
       ],
       experiments: [{ name: 'E1', title: 'Kill every session, hook on', showed: 'each kill shrank it' }],
-      root_cause: { text: 'Every save takes the session list as the whole truth. Whatever it does not see is dropped.', validated: false },
+      root_cause: { text: ROOT_CAUSE, validated: false },
       validations: [
         { validation: 'root-cause', effort: 'xhigh', state: 'running', since: validation.created, found: 0 },
         { validation: 'fix', effort: 'medium', state: 'after', since: null, found: 0 },
@@ -203,13 +254,22 @@ describe('This session in an investigation (20.12.1)', () => {
     assert.deepStrictEqual(banner, { name: 'Kill All', state: 'needs', facts: [place('bugfix'), place('investigation'), { text: 'validating the root cause', needs: false }, { text: '1 waiting on you', needs: true }] });
   });
 
-  it('a raise at the place drawn while no validation runs says nothing of what raised it; one answered waits no longer', async () => {
-    const raise = await raised(KEEP_CALL, made.keep);
+  it('what raised a question is the record\'s: one Claude raises while a validation runs, surfaced as none of its findings, says nothing of it; one surfaced as the validation\'s last finding says it still once its row is taken in; one answered waits no longer', async () => {
+    const validation = dispatched('root-cause-validation', ['F1']);
+    const own = await raised(KEEP_CALL, made.keep);
     atTheHunt();
+    const before = raisedBy(board().view);
+    picked(own, 'gone');
+    const asked = write('ask', [], { ...CLAUDE, text: 'Does it also happen when you detach?' }).id;
+    found('Detaching may drop sessions too.');
+    await raised({ ...KEEP_CALL, question: 'Does it also happen when you detach?' }, asked);
+    const atItsLevel = wrote('ask', `${BUG}.investigation`, [], { ...CLAUDE, text: 'May I run it against the live server?' }).id;
+    const refused = refuses(dir, ['agent', 'surface', BUG, 'investigation', BUG, validation.id, 'F1', '--question', atItsLevel], { env: env() });
+    surfaced(validation.id, 'F1', ['--question', asked]);
+    const { view } = board();
 
-    assert.deepStrictEqual(board().view.waiting.map((/** @type {{raised_by: string|null}} */ { raised_by: by }) => by), [null]);
-    picked(raise, 'gone');
-    assert.deepStrictEqual(board().view.waiting, []);
+    assert.deepStrictEqual(refused.error, `--question names a question asked at ${AT}, and ${atItsLevel} is none`, 'a validation\'s finding is asked as a question at its own place');
+    assert.deepStrictEqual([before, raisedBy(view), view.validations[0].state], [[null], ['root-cause'], 'done']);
   });
 
   it('20.S19: the person\'s answer is DECIDED, theirs; the hypothesis their ruling made intended reads so; once the root cause is validated the fix direction sets out what stepping back found and its options, Claude\'s lean marked, and waits on them', async () => {
@@ -233,7 +293,7 @@ describe('This session in an investigation (20.12.1)', () => {
       lists: { hypotheses: ['H1 intended', 'H2 ruled-out', 'H3 suspected'], validations: ['root-cause done', 'fix after'] },
       root: true,
       standing: 'fix-waits',
-      waiting: [{ kind: 'raise', id: fix, text: FIX_CALL.question, page: null, raised_by: 'fix-direction', why: EVERY_CALL_ASKS, options: 2 }],
+      waiting: [{ kind: 'raise', id: fix, text: FIX_CALL.question, page: null, raised_by: 'fix-direction', why: EVERY_CALL_ASKS, options: 2, lean_first: true }],
       fix: {
         state: 'asking',
         stepped_back: FIX_CALL.stepped_back,
@@ -246,31 +306,65 @@ describe('This session in an investigation (20.12.1)', () => {
     assert.deepStrictEqual(banner.facts.map((/** @type {{text: string}} */ { text }) => text), ['bugfix', 'investigation', 'fix direction', '1 waiting on you']);
   });
 
-  it('once picked, the fix direction holds the person\'s pick and the fix in its words, and the fix validation runs; the fix logged, its validation is what it waits on', async () => {
+  it('Claude\'s lean set out on any row but the first is said not to be first', async () => {
     takenIn(dispatched('root-cause-validation', []).id);
-    const decision = picked(await raised(FIX_CALL, made.fix), '2');
-    run(['investigation-log', 'fix-direction', BUG, '--question', made.fix]);
+    await raised({ ...FIX_CALL, lean: '2' }, made.fix);
     atTheHunt();
+    const { view } = board();
+
+    assert.deepStrictEqual([view.waiting[0].lean_first, view.fix_direction.options.map((/** @type {{lean: boolean}} */ { lean }) => lean)], [false, [false, true]]);
+  });
+
+  it('once picked, the fix is the fix direction\'s and never DECIDED, its question logged or not; the fix validation not yet sent, nothing validates; sent, it is what the investigation does', async () => {
+    takenIn(dispatched('root-cause-validation', []).id);
+    picked(await raised(FIX_CALL, made.fix), '2');
+    atTheHunt();
+    const unlogged = board().view;
+    run(['investigation-log', 'fix-direction', BUG, '--question', made.fix]);
     const before = board().view;
     const validation = dispatched('fix-validation', ['F1']);
     const after = board().view;
 
-    assert.deepStrictEqual([before.fix_direction, before.standing, before.validations[1].state], [
+    assert.deepStrictEqual([unlogged.decided, before.fix_direction, before.standing, before.validations[1].state], [
+      [],
       { state: 'picked', stepped_back: FIX_CALL.stepped_back, options: [{ key: '1', name: 'Harden the reads, outlast the shutdown', lean: true }, { key: '2', name: 'Read hardening alone', lean: false }], pick: '2', fix: 'Only stop reading a dying tmux as no sessions' },
-      'validating-fix',
+      'investigating',
       'not-started',
     ]);
-    assert.deepStrictEqual([after.validations[1], after.decided], [{ validation: 'fix', effort: 'medium', state: 'running', since: validation.created, found: 0 }, []], `the fix ${decision} is the fix direction's, never DECIDED`);
+    assert.deepStrictEqual([after.standing, after.validations[1], after.decided], ['validating-fix', { validation: 'fix', effort: 'medium', state: 'running', since: validation.created, found: 0 }, []]);
   });
 
-  it('Claude\'s calls since the calls list was last drawn, read without looking (5.8.14); the root cause, Claude\'s too, is its own section, never among them', () => {
+  it('after a /clear, a second conversation reads the pick in the fix\'s words and what stepping back found from the log, the options unknown', async () => {
+    takenIn(dispatched('root-cause-validation', []).id);
+    picked(await raised(FIX_CALL, made.fix), '2');
+    run(['investigation-log', 'fix-direction', BUG, '--question', made.fix]);
+    atTheHunt('sess-2');
+
+    assert.deepStrictEqual(board([], 'sess-2').view.fix_direction, { state: 'picked', stepped_back: FIX_CALL.stepped_back, options: [], pick: null, fix: 'Only stop reading a dying tmux as no sessions' });
+  });
+
+  it('a validation lost with its conversation is lost, and nothing validates', () => {
+    ok(dir, ['agent', 'dispatch', BUG, 'investigation', BUG, '--kind', 'root-cause-validation'], { env: { ...env(), CLAUDE_PID: '999999' } });
+    atTheHunt();
+    const { view } = board();
+
+    assert.deepStrictEqual([view.validations[0].state, view.standing, tabRow().doing], ['lost', 'investigating', 'investigating']);
+  });
+
+  it('Claude\'s calls since the calls list was last drawn, read without looking (5.8.14), gone once it is drawn; the root cause, Claude\'s too, is its own section, never among them', () => {
     const asked = write('ask', [], { ...CLAUDE, text: 'Does restore keep reading no tmux as no sessions?' }).id;
     const call = write('decide', ['--answers', asked], { ...CLAUDE, text: 'Restore keeps reading it so; only saving stops trusting it', why: 'One failure at start would skip every session.' }).id;
     atTheHunt();
     const since = () => board().view.since.map((/** @type {{id: string, text: string}} */ { id, text }) => [full(id), text]);
+    const unread = since();
+    const again = since();
+    run(['ledger', 'shown', BUG, BUG]);
 
-    assert.deepStrictEqual(since(), [[full(call), 'Restore keeps reading it so; only saving stops trusting it']]);
-    assert.deepStrictEqual(since(), [[full(call), 'Restore keeps reading it so; only saving stops trusting it']], 'the board never looks');
+    assert.deepStrictEqual([unread, again, since()], [
+      [[full(call), 'Restore keeps reading it so; only saving stops trusting it']],
+      [[full(call), 'Restore keeps reading it so; only saving stops trusting it']],
+      [],
+    ]);
   });
 
   it('20.S20: an area fixed before shows nothing of the earlier fix and counts none — the earlier bugfix stands on All work, the log\'s prose on it is Claude\'s alone', () => {
@@ -284,33 +378,112 @@ describe('This session in an investigation (20.12.1)', () => {
   });
 });
 
-describe('the investigation concluded, and the unit\'s tab (20.12.4, 20.15)', () => {
-  it('concluded: This session says the specification is next, the banner done; the tab dates the investigation by its close and its row counts the hypotheses', () => {
+describe('each decision where its chain stands now', () => {
+  it('S1: the fix the fix validation changes waits as the fix direction, raised by it, its rows as its screen draws them, the keep row among them; picked, the pick and the fix are the replacement\'s, the first pick only an option, and the fix is validated again', async () => {
+    const { raise } = await fixReplaced();
+    const waiting = board().view;
+    picked(raise, 'both');
+    const { view } = board();
+    const page = (/** @type {string} */ key) => board(['--page', `option:${key}`]).view.state;
+
+    assert.deepStrictEqual([waiting.standing, waiting.waiting.map((/** @type {{id: string}} */ wait) => byRaise(wait, raise)), waiting.fix_direction], [
+      'fix-waits',
+      [{ kind: 'raise', id: raise, text: REPLACE_CALL.question, page: null, raised_by: 'fix', why: EVERY_CALL_ASKS, options: 3, lean_first: true }],
+      {
+        state: 'asking',
+        stepped_back: FIX_CALL.stepped_back,
+        options: [{ key: 'both', name: 'Harden and outlast', lean: true }, { key: 'reads', name: 'Reads only, logged', lean: false }, { key: 'keep', name: 'Keep it as it stands', lean: false }],
+        pick: null,
+        fix: null,
+      },
+    ]);
+    assert.deepStrictEqual([view.fix_direction.state, view.fix_direction.pick, view.fix_direction.fix, view.decided, view.validations[1].state, ['both', 'keep'].map(page)], [
+      'picked', 'both', 'Harden the reads and make panes outlast the shutdown', [], 'not-started', ['picked', 'option'],
+    ]);
+    assert.deepStrictEqual(board(['--page', 'option:1']).view.kind, 'unavailable', 'the first raise\'s options no longer stand');
+  });
+
+  it('the replacement kept, the first pick stands as the pick', async () => {
+    const { raise } = await fixReplaced();
+    picked(raise, 'keep');
+    const { fix_direction: fix } = board().view;
+
+    assert.deepStrictEqual([fix.state, fix.pick, fix.fix, fix.options.map((/** @type {{key: string}} */ { key }) => key)], ['picked', '1', FIX_CALL.rows[0].text, ['1', '2']]);
+  });
+
+  it('the root cause replaced shows the replacement before it is logged again, being validated again, the old body not beneath it; the hypothesis a replaced ruling made intended stays so, DECIDED the ruling as it stands', async () => {
+    takenIn(dispatched('root-cause-validation', []).id);
+    const ruling = picked(await raised(KEEP_CALL, made.keep), 'gone');
+    run(['investigation-log', 'hypothesis', BUG, 'H1', '--state', 'intended', '--by', ruling]);
+    const finding = found('The capture also drops sessions whose server is still starting.');
+    write('replace', ['--replaces', made.rootCause, '--reason', 'was-wrong', '--cause', finding], { ...CLAUDE, drops: ['only a dying server'], text: 'Every save trusts a session list taken mid-change.', why: 'A starting server reads empty too.' });
+    const ruled = write('replace', ['--replaces', ruling, '--reason', 'changed-mind'], { ...PERSON, who_moved_whom: 'person-moved-claude', drops: ['never'], text: 'A session you kill comes back only if you ask', why: 'Undo is cheap.' }).id;
+    atTheHunt();
+    const { view } = board();
+
+    assert.deepStrictEqual([view.root_cause, view.validations[0].state, listsOf(view).hypotheses[0], view.decided.map((/** @type {{id: string, text: string}} */ { id, text }) => [full(id), text])], [
+      { text: 'Every save trusts a session list taken mid-change.', validated: false },
+      'not-started',
+      'H1 intended',
+      [[full(ruled), 'A session you kill comes back only if you ask']],
+    ]);
+    assert.strictEqual(board(['--page', 'hunt:root-cause']).view.text, 'Every save trusts a session list taken mid-change.', 'the body logged beneath the old root cause is not the new one\'s');
+  });
+});
+
+describe('the investigation concluded, the unit\'s tab and All work (20.12.4, 20.15, 20.16)', () => {
+  it('concluded: This session says the specification is next, the banner done; the tab dates the investigation by its close, its row counts the hypotheses and opens the investigation, concluded', () => {
     const manifest = readManifest(dir, BUG);
     manifest.phases.investigation.items[BUG] = { status: 'completed', concluded_at: '2026-08-20T15:00:00.000Z' };
     writeState(dir, layout.manifest(BUG), JSON.stringify(manifest, null, 2));
     atTheHunt();
     const { view, banner } = board();
-    const tab = board(['--tab', 'unit']).view;
+    const opened = board(['--tab', 'unit', '--page', 'phase:investigation']).view;
 
     assert.deepStrictEqual([view.standing, view.waiting, banner.state, banner.facts.at(-1).text], ['concluded', [], 'done', 'concluded · the specification next']);
-    assert.deepStrictEqual(tab.phases.find((/** @type {{phase: string}} */ held) => held.phase === 'investigation'), {
-      phase: 'investigation', state: 'complete', words: '3 hypotheses', doing: '', on: '2026-08-20T15:00:00.000Z', session: 'this', page: false,
-    });
+    assert.deepStrictEqual(tabRow(), { phase: 'investigation', state: 'complete', words: '3 hypotheses', doing: '', on: '2026-08-20T15:00:00.000Z', session: 'this', page: true });
+    assert.deepStrictEqual([opened.kind, opened.standing], ['investigation', 'concluded']);
   });
 
-  it('under way, the tab says it validates while a validation runs and waits on the person while a raise does, the raise on its one list', async () => {
+  it('under way, the tab says it investigates until a validation runs, validates while one does, and holds the raise on its one list with what raised it', async () => {
     atTheHunt();
-    const row = () => board(['--tab', 'unit']).view.phases.find((/** @type {{phase: string}} */ held) => held.phase === 'investigation');
-    const investigating = row();
-    dispatched('root-cause-validation', ['F1']);
-    const validating = row();
+    const investigating = tabRow();
+    const validation = dispatched('root-cause-validation', ['F1', 'F2']);
+    const validating = tabRow();
     const raise = await raised(KEEP_CALL, made.keep);
-
-    assert.deepStrictEqual([investigating.state, investigating.doing, validating.state, validating.doing], ['running', 'validating', 'running', 'validating']);
+    surfaced(validation.id, 'F1', ['--question', made.keep]);
     const { tab } = standingOn(board, BUG);
+    const listed = board(['--tab', 'unit']).view.waiting;
+
+    assert.deepStrictEqual([investigating.state, investigating.doing, validating.state, validating.doing], ['running', 'investigating', 'running', 'validating']);
     assert.deepStrictEqual({ ...tab, waiting: tab.waiting.map((/** @type {string} */ line) => line.split(' ')[0]) }, { now: 'investigation', state: 'waits', words: '3 hypotheses', waiting: ['raise'] });
-    assert.ok(raise.startsWith(tab.waiting[0].split(' ')[1]), 'the raise by its short id, opening no page');
+    assert.deepStrictEqual(listed.map((/** @type {{id: string}} */ wait) => byRaise(wait, raise)), [{ kind: 'raise', id: raise, text: KEEP_CALL.question, page: null, raised_by: 'root-cause', why: EVERY_CALL_ASKS, options: null, lean_first: null }]);
+  });
+
+  it('All work says how far the hunt has come: the cause found, then confirmed, the fix picked, then confirmed; finding the cause while none is logged', async () => {
+    atTheHunt();
+    const found = howFar();
+    takenIn(dispatched('root-cause-validation', []).id);
+    const confirmed = howFar();
+    picked(await raised(FIX_CALL, made.fix), '1');
+    run(['investigation-log', 'fix-direction', BUG, '--question', made.fix]);
+    const fixed = howFar();
+    takenIn(dispatched('fix-validation', []).id);
+    const fixConfirmed = howFar();
+    writeState(dir, layout.topic(BUG, BUG, 'log.md'), '# Kill All\n');
+
+    assert.deepStrictEqual([found, confirmed, fixed, fixConfirmed, howFar()], [
+      'cause found, not yet confirmed', 'cause confirmed, the fix not yet picked', 'fix picked, not yet confirmed', 'fix confirmed', 'finding the cause',
+    ]);
+  });
+
+  it('a unit that is not a bugfix in its investigation has none of the hunt read, its log\'s headings like the hunt\'s never read as it', () => {
+    createManifest(dir, 'notes', { work_type: 'feature' });
+    writeState(dir, layout.topic('notes', 'notes', 'log.md'), '# Notes\n\n## Experiments\n\n- not one of the hunt\'s lines\n');
+    commitAll(dir, 'a feature');
+    atTheHunt();
+
+    assert.deepStrictEqual(board(['--tab', 'all']).warnings.filter((/** @type {string} */ line) => line.includes('notes')), []);
   });
 });
 
@@ -324,10 +497,7 @@ describe('the hunt\'s pages (20.12.2)', () => {
     assert.deepStrictEqual(['hunt:H3', 'hunt:E1', 'hunt:root-cause', 'hunt:stepped-back', 'option:1', 'option:2'].map(page), [
       { kind: 'hunt', unit: BUG, item: 'hypothesis', name: 'H3', title: 'A dying tmux reads as zero sessions', state: 'suspected', text: '' },
       { kind: 'hunt', unit: BUG, item: 'experiment', name: 'E1', title: 'Kill every session, hook on', state: 'each kill shrank it', text: '3 sessions saved, each kill shrank the save.' },
-      {
-        kind: 'hunt', unit: BUG, item: 'root-cause', name: null, title: '', state: 'validated',
-        text: 'Every save takes the session list as the whole truth. Whatever it does not see is dropped.\n\nThe housekeeping pass deletes every file the index no longer names.',
-      },
+      { kind: 'hunt', unit: BUG, item: 'root-cause', name: null, title: '', state: 'validated', text: `${ROOT_CAUSE}\n\nThe housekeeping pass deletes every file the index no longer names.` },
       { kind: 'hunt', unit: BUG, item: 'stepped-back', name: null, title: '', state: null, text: FIX_CALL.stepped_back.join('\n\n') },
       { kind: 'hunt', unit: BUG, item: 'option', name: '1', title: FIX_CALL.rows[0].name, state: 'lean', text: `${FIX_CALL.rows[0].text}\n\n${FIX_CALL.rows[0].notice}` },
       { kind: 'hunt', unit: BUG, item: 'option', name: '2', title: FIX_CALL.rows[1].name, state: 'option', text: `${FIX_CALL.rows[1].text}\n\n${FIX_CALL.rows[1].notice}` },
@@ -341,8 +511,9 @@ describe('the hunt\'s pages (20.12.2)', () => {
 
 describe('the views the mod draws, shaped as the engine answers them (N8)', () => {
   it('the investigation and a page of its hunt fit the mod\'s fixtures', async () => {
-    dispatched('root-cause-validation', ['F1']);
+    const validation = dispatched('root-cause-validation', ['F1', 'F2']);
     await raised(KEEP_CALL, made.keep);
+    surfaced(validation.id, 'F1', ['--question', made.keep]);
     const rule = write('ask', [], { ...PERSON, text: 'Should a detached session come back?' }).id;
     write('decide', ['--answers', rule], { ...PERSON, text: 'A session you detach from comes back.', why: 'Detaching is not ending it.' });
     const call = write('ask', [], { ...CLAUDE, text: 'Does restore keep reading no tmux as no sessions?' }).id;

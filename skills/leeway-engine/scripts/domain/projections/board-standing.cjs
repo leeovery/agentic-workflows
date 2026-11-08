@@ -34,7 +34,8 @@
 //   with its words and the page a press on it opens, where it opens one:
 //   approve the map while a map is staged, the sweep's candidates among it
 //   after the sweep (8.10.9); each raise its investigation asks in this
-//   conversation (board-investigation.cjs); the spec's gaps (spec-passes.cjs), each
+//   conversation, with what raised it (board-investigation.cjs); the spec's
+//   gaps (spec-passes.cjs), each
 //   opening the finding that raised it, and then ready to build's yes once
 //   its screen draws (ready-to-build.cjs, `readyDraws`), while the build has
 //   not begun; the questions the build and the review wait on

@@ -5,15 +5,16 @@
 // a bugfix's investigation and the pages of its hunt — drawn from the hunt
 // its log holds (investigation-log.cjs), the ledger at its place, its
 // validations' rows (agent-state.cjs) and the raises this conversation
-// sealed there (raise.cjs).
+// sealed there (raise.cjs). Nothing of the hunt is read for a unit that is
+// not a bugfix in its investigation.
 //
 // - The hunt is the log's: the symptoms, each hypothesis where it stands —
 //   intended where the person's ruling made it so — and each experiment
 //   with what it showed (19.4.3).
-// - The root cause is the log's, while its entry is current, validated once
-//   the root-cause validation was taken in since it was logged, else being
-//   validated; the fix is the current answer of the fix direction's
-//   question (`huntEntries`).
+// - Each decision is read where its chain stands now: the root cause the
+//   current entry the logged one leads to, so a replacement shows before it
+//   is logged again (`rootCauseNow`); the fix the current answer of the fix
+//   direction's question (`huntEntries`).
 // - Both validations always run (19.4.7): each after what it validates is
 //   logged, not started until it is dispatched since, running from its
 //   dispatch until it is taken in — its report landed and its findings
@@ -25,25 +26,30 @@
 //   place that the person has not answered and whose question is still open,
 //   or whose decision a replacement proposes is still current — asked in
 //   the conversation, never queued (20.12.1). Each says what raised it: the
-//   fix direction where it is the fix direction's; else the validation
-//   running when it was drawn — dispatched before it and not yet taken in,
-//   its findings still being acted on, the latest where both are; else
-//   nothing. And why it reached the person, the decision point's reason as
-//   sealed.
-// - A raise at the place carrying a step back is the fix direction's
-//   (raise.cjs), and so is one down the fix direction's question: its
-//   latest seal gives what stepping back found, the options, Claude's lean
-//   and once answered the person's pick; with none sealed here, after a
-//   /clear, what stepping back found is the log's and the pick is the fix
-//   in its words, the options unknown.
+//   validation one of whose findings was surfaced as it, whatever that
+//   validation's row now stands at — asked as its question, or raised
+//   replacing its decision (`agent surface`); else the fix direction where
+//   it is the fix direction's; else nothing. And why it reached the
+//   person, the decision point's reason as sealed.
+// - The fix direction's raises are those down its question's chain — one
+//   answering it, or replacing a decision of its chain (`downChain`) — and,
+//   before its question is logged, one carrying a step back. The latest
+//   gives the options as its screen draws them, the keep row among them,
+//   Claude's lean, what stepping back found, and once answered the
+//   person's pick; one the person answered by keeping the decision leaves
+//   the raise before it standing. With none sealed here, after a /clear,
+//   what stepping back found is the log's and the pick is the fix in its
+//   words, the options unknown.
 // - DECIDED is what the person decided at the place, and CLAUDE'S CALLS
 //   Claude's calls since the calls list was last drawn in the conversation,
 //   read as `ledger since` reads them, never a look (5.8.14): each but the
 //   root cause and the fix, which have sections of their own.
 // - Where it stands: concluded once its item is completed; else validating
-//   the root cause while it is logged and not validated; else the fix
-//   direction waiting on the person; else validating the fix while it is
-//   set and not validated; else investigating.
+//   the root cause while that validation runs; else the fix direction
+//   waiting on the person; else validating the fix while that validation
+//   runs; else investigating. How far it has come, as All work says it, is
+//   read from what it holds: the cause found, confirmed, the fix picked,
+//   confirmed.
 // - Nothing of earlier fixes to the area is shown or counted (20.12.3):
 //   they are Claude's analysis, in the log's prose, never its lists.
 // ---------------------------------------------------------------------------
@@ -55,10 +61,11 @@ const { factsOf, questionStands, notCurrent } = require('../ledger-fold.cjs');
 const { withUnitEntries } = require('../unit-entries.cjs');
 const { shortId } = require('../ledger-ids.cjs');
 const { rowStanding, answersOn } = require('../topic-map.cjs');
-const { agentRows } = require('../agent-state.cjs');
+const { agentRows, surfacedAs } = require('../agent-state.cjs');
 const { ROLES } = require('../brief-names.cjs');
-const { sealsAt } = require('../raise.cjs');
-const { huntOf, huntEntries } = require('../investigation-log.cjs');
+const { sealsAt, downChain } = require('../raise.cjs');
+const { drawnRows } = require('./raise.cjs');
+const { huntOf, huntEntries, rootCauseNow } = require('../investigation-log.cjs');
 const { VALIDATIONS, validationSince } = require('../investigation-conclude.cjs');
 const { itemOf } = require('../derivations.cjs');
 const { projectName } = require('../state-checks.cjs');
@@ -87,25 +94,27 @@ const huntAt = (at) => at.once('hunt', () => huntOf(at.cwd, at.unit, at.warnings
 
 /**
  * What the hunt reads of the ledger, in one read: the unit's entries, the
- * root cause and the fix it rests on, and the raises sealed at its place
+ * root cause as it stands and the fix it rests on, whether a raise is down
+ * the fix direction's question's chain, and the raises sealed at its place
  * in this conversation; read once a call.
  * @param {BoardAt} at
- * @returns {{folded: Entries['folded'], rootCause: Rested|null, fix: (Rested & {question: Rested})|null, seals: Seal[]}}
+ * @returns {{folded: Entries['folded'], rootCause: Rested|null, fix: (Rested & {question: Rested})|null, onFix: (seal: Seal) => boolean, seals: Seal[]}}
  */
 const ledgerAt = (at) => at.once('hunt-ledger', () => withUnitEntries(at.cwd, at.unit, at.warnings, (view) => {
-  const { rootCause, fix } = huntEntries(at.unit, view, huntAt(at));
-  return { folded: view.folded, rootCause: 'fault' in rootCause ? null : rootCause, fix: 'fault' in fix ? null : fix, seals: sealsAt(at.session, placeOf(at)) };
+  const hunt = huntAt(at);
+  const { fix } = huntEntries(at.unit, view, hunt);
+  const asked = hunt.fixDirection?.entry;
+  return {
+    folded: view.folded,
+    rootCause: rootCauseNow(view, hunt),
+    fix: 'fault' in fix ? null : fix,
+    onFix: asked === undefined ? () => false : downChain(view.folded, asked),
+    seals: sealsAt(at.session, placeOf(at)),
+  };
 }));
 
-/** Whether a question is one asked down the chain of `question`, its rewordings among it. @param {Entries['folded']} folded @param {string} question @param {string|null} asked */
-const sameQuestion = (folded, question, asked) => asked !== null && factsOf(folded, asked).root === factsOf(folded, question).root;
-
-/** Whether a seal is the fix direction's: carrying a step back, or raised on the fix direction's question. @param {BoardAt} at @param {Seal} seal */
-function fixSeal(at, seal) {
-  const { folded } = ledgerAt(at);
-  const asked = huntAt(at).fixDirection?.entry ?? null;
-  return (!seal.fact && seal.call.stepped_back !== undefined) || (seal.answers !== null && asked !== null && sameQuestion(folded, seal.answers, asked));
-}
+/** Whether a seal is the fix direction's: down its question's chain, or carrying a step back. @param {BoardAt} at @param {Seal} seal */
+const fixSeal = (at, seal) => (!seal.fact && seal.call.stepped_back !== undefined) || ledgerAt(at).onFix(seal);
 
 /** Whether a seal still waits on the person: unanswered, its question open or the decision it would replace current. @param {Entries['folded']} folded @param {Seal} seal */
 function waits(folded, seal) {
@@ -113,38 +122,62 @@ function waits(folded, seal) {
   return seal.answers !== null ? questionStands(folded, seal.answers) === 'open' : notCurrent(folded, /** @type {NonNullable<Seal['replaces']>} */ (seal.replaces).entry) === null;
 }
 
+/** The validation each kind of row is, as a wait says what raised it. @type {Readonly<Record<string, 'root-cause'|'fix'>>} */
+const VALIDATED = Object.freeze({ 'root-cause-validation': 'root-cause', 'fix-validation': 'fix' });
+
 /**
- * What raised a seal (the header's): the fix direction, else the
- * validation running when it was drawn.
+ * Whether one of a row's findings was surfaced as the seal's raise: asked
+ * as its question, any wording of it, or raised replacing its decision.
+ * @param {Entries['folded']} folded @param {ReturnType<typeof surfacedAs>[number]} row @param {Seal} seal
+ */
+function surfacedHere(folded, { asked, raised }, seal) {
+  if (seal.answers !== null) {
+    const root = factsOf(folded, seal.answers).root;
+    return asked.some(({ entry }) => factsOf(folded, entry).root === root);
+  }
+  return raised.some(({ replaces }) => replaces === seal.replaces?.entry);
+}
+
+/**
+ * What raised a seal (the header's): the validation a finding of which was
+ * surfaced as it, else the fix direction, else nothing.
  * @param {BoardAt} at @param {Seal} seal @returns {HuntWait['raised_by']}
  */
 function raisedBy(at, seal) {
-  if (fixSeal(at, seal)) return 'fix-direction';
-  const running = validationsOf(at).filter(({ state, since }) => state === 'running' && since !== null && since <= seal.at);
-  return running.sort((a, b) => /** @type {string} */ (a.since).localeCompare(/** @type {string} */ (b.since))).at(-1)?.validation ?? null;
+  const { folded } = ledgerAt(at);
+  const row = surfacedAs(at.cwd, at.unit, PHASE, at.unit).find((held) => Object.hasOwn(VALIDATED, held.kind) && surfacedHere(folded, held, seal));
+  if (row !== undefined) return VALIDATED[row.kind];
+  return fixSeal(at, seal) ? 'fix-direction' : null;
 }
 
-/** The raises waiting on the person, none once the investigation is no longer under way. @param {BoardAt} at @returns {Seal[]} */
-const waitingSeals = (at) => (investigating(at) ? ledgerAt(at).seals.filter((seal) => waits(ledgerAt(at).folded, seal)) : []);
+/** The raises waiting on the person, read once a call. @param {BoardAt} at @returns {Seal[]} */
+const waitingSeals = (at) => at.once('hunt-waiting', () => ledgerAt(at).seals.filter((seal) => waits(ledgerAt(at).folded, seal)));
 
 /**
- * What waits on the person in the investigation (the header's), each raise
- * by its id, short among the ledger's, its question, what raised it, why it
- * reached them, and, for the fix direction's, how many options it sets out.
+ * What waits on the person in the investigation (the header's), none once
+ * it is no longer under way: each raise by its id, short among the
+ * ledger's, its question, what raised it, why it reached them, and, for the
+ * fix direction's, how many options it sets out and whether Claude's lean
+ * is the first.
  * @param {BoardAt} at @returns {HuntWait[]}
  */
-const huntWaits = (at) => at.once('hunt-waits', () => {
+const investigationWaits = (at) => at.once('hunt-waits', () => {
+  if (!investigating(at)) return [];
   const ids = [...ledgerAt(at).folded.facts.keys()];
   return waitingSeals(at).map((seal) => {
-    const by = raisedBy(at, seal);
+    const rows = fixSeal(at, seal) && !seal.fact ? drawnRows(seal) : null;
     return {
-      kind: /** @type {const} */ ('raise'), id: shortId(seal.id, ids), text: seal.call.question, page: null, raised_by: by, why: seal.reason, options: by === 'fix-direction' ? seal.call.rows.length : null,
+      kind: /** @type {const} */ ('raise'),
+      id: shortId(seal.id, ids),
+      text: seal.call.question,
+      page: null,
+      raised_by: raisedBy(at, seal),
+      why: seal.reason,
+      options: rows === null ? null : rows.length,
+      lean_first: rows === null || seal.fact ? null : rows[0]?.key === seal.call.lean,
     };
   });
 });
-
-/** What waits on the person in the investigation, as the unit's one list holds it (board-standing.cjs). @param {BoardAt} at @returns {WaitingLine[]} */
-const investigationWaits = (at) => huntWaits(at).map(({ kind, id, text, page }) => ({ kind, id, text, page }));
 
 /**
  * Each validation of the hunt (the header's): after what it validates is
@@ -157,7 +190,7 @@ const validationsOf = (at) => at.once('hunt-validations', () => {
   const rests = { ...(rootCause === null ? {} : { rootCause }), ...(fix === null ? {} : { fix }) };
   const rows = new Map(agentRows(at.cwd, at.unit, PHASE, at.unit).map((row) => [row.id, row]));
   return VALIDATIONS.map((validation) => {
-    const of = /** @type {'root-cause'|'fix'} */ (validation.kind.replace(/-validation$/, ''));
+    const of = VALIDATED[validation.kind];
     const effort = ROLES[validation.kind]?.effort ?? null;
     const line = { validation: of, effort, since: null, found: 0 };
     if (validation.since.some((entry) => !(entry in rests))) return { ...line, state: /** @type {const} */ ('after') };
@@ -165,31 +198,50 @@ const validationsOf = (at) => at.once('hunt-validations', () => {
     if (standing === null) return { ...line, state: /** @type {const} */ ('not-started') };
     const row = rows.get(standing.id);
     if (standing.stands === 'taken-in') return { ...line, state: /** @type {const} */ ('done'), found: row?.findings.length ?? 0 };
-    return { ...line, state: standing.stands === 'lost' ? /** @type {const} */ ('lost') : /** @type {const} */ ('running'), since: row?.created ?? null };
+    if (standing.stands === 'lost') return { ...line, state: /** @type {const} */ ('lost') };
+    return { ...line, state: /** @type {const} */ ('running'), since: row?.created ?? null };
   });
 });
 
-/** Whether a validation is done. @param {BoardAt} at @param {'root-cause'|'fix'} which */
-const validated = (at, which) => validationsOf(at).find(({ validation }) => validation === which)?.state === 'done';
+/** Where a validation stands. @param {BoardAt} at @param {'root-cause'|'fix'} which */
+const validationAt = (at, which) => validationsOf(at).find(({ validation }) => validation === which)?.state;
 
 /** Where the investigation stands (the header's). @param {BoardAt} at @returns {InvestigationView['standing']} */
 function standingOf(at) {
   if (itemOf(at.manifest, PHASE, at.unit)?.status === 'completed') return 'concluded';
-  const { rootCause, fix } = ledgerAt(at);
-  if (rootCause !== null && !validated(at, 'root-cause')) return 'validating-root-cause';
-  if (huntWaits(at).some(({ raised_by: by }) => by === 'fix-direction')) return 'fix-waits';
-  if (fix !== null && !validated(at, 'fix')) return 'validating-fix';
+  if (validationAt(at, 'root-cause') === 'running') return 'validating-root-cause';
+  if (waitingSeals(at).some((seal) => fixSeal(at, seal))) return 'fix-waits';
+  if (validationAt(at, 'fix') === 'running') return 'validating-fix';
   return 'investigating';
 }
 
 /** What the investigation is doing, as the unit's tab says it under way: validating while either validation runs, else investigating. @param {BoardAt} at */
 const investigationDoing = (at) => (standingOf(at).startsWith('validating') ? 'validating' : 'investigating');
 
+/**
+ * How far the investigation has come, as All work says it (20.16.1), from
+ * what it holds whoever works it.
+ * @param {BoardAt} at
+ */
+function investigationHowFar(at) {
+  const { rootCause, fix } = ledgerAt(at);
+  if (rootCause === null) return 'finding the cause';
+  if (validationAt(at, 'root-cause') !== 'done') return 'cause found, not yet confirmed';
+  if (fix === null) return 'cause confirmed, the fix not yet picked';
+  return validationAt(at, 'fix') === 'done' ? 'fix confirmed' : 'fix picked, not yet confirmed';
+}
+
 /** How many hypotheses the unit's log holds. @param {BoardAt} at */
 const hypothesesCount = (at) => huntAt(at).hypotheses.length;
 
-/** The fix direction's latest seal in this conversation, null where none is sealed here. @param {BoardAt} at @returns {Seal|null} */
-const fixSealOf = (at) => ledgerAt(at).seals.filter((seal) => fixSeal(at, seal)).at(-1) ?? null;
+/** Whether the person answered a raise keeping the decision it would replace. @param {Seal} seal */
+const kept = (seal) => seal.replaces !== null && seal.answered?.answer === seal.replaces.keep.key;
+
+/** The fix direction's raises in this conversation, oldest first. @param {BoardAt} at @returns {Seal[]} */
+const fixSeals = (at) => at.once('hunt-fix-seals', () => ledgerAt(at).seals.filter((seal) => fixSeal(at, seal)));
+
+/** The fix direction's raise that stands in this conversation — the latest but one the person kept the decision on — null where none is sealed here. @param {BoardAt} at @returns {Seal|null} */
+const fixSealOf = (at) => fixSeals(at).filter((seal) => !kept(seal)).at(-1) ?? null;
 
 /**
  * The fix direction (the header's): after the root cause until it is
@@ -199,15 +251,15 @@ const fixSealOf = (at) => ledgerAt(at).seals.filter((seal) => fixSeal(at, seal))
  * @param {BoardAt} at @returns {InvestigationView['fix_direction']}
  */
 function fixDirectionOf(at) {
-  const { fix, rootCause } = ledgerAt(at);
+  const { fix } = ledgerAt(at);
   const seal = fixSealOf(at);
-  const asking = seal !== null && waitingSeals(at).includes(seal);
-  const options = seal === null || seal.fact ? [] : seal.call.rows.map(({ key, name }) => ({ key, name, lean: !seal.fact && seal.call.lean === key }));
-  const steppedBack = seal !== null && !seal.fact && seal.call.stepped_back !== undefined ? seal.call.stepped_back : huntAt(at).fixDirection?.body ?? [];
-  if (asking) return { state: 'asking', stepped_back: steppedBack, options, pick: null, fix: null };
+  const call = seal === null || seal.fact ? null : seal.call;
+  const options = call === null ? [] : drawnRows(/** @type {Seal} */ (seal)).map(({ key, name }) => ({ key, name, lean: call.lean === key }));
+  const steppedBack = call?.stepped_back ?? huntAt(at).fixDirection?.body ?? [];
+  if (seal !== null && waitingSeals(at).includes(seal)) return { state: 'asking', stepped_back: steppedBack, options, pick: null, fix: null };
   const answered = seal?.answered ?? null;
   if (fix !== null || answered !== null) return { state: 'picked', stepped_back: steppedBack, options, pick: answered?.answer ?? null, fix: fix?.text ?? null };
-  return { state: rootCause !== null && validated(at, 'root-cause') ? 'next' : 'after', stepped_back: [], options: [], pick: null, fix: null };
+  return { state: validationAt(at, 'root-cause') === 'done' ? 'next' : 'after', stepped_back: [], options: [], pick: null, fix: null };
 }
 
 /**
@@ -222,12 +274,13 @@ const mapAt = (at) => at.once('hunt-map', () => readShown(at.root, at.warnings, 
 
 /**
  * Whether an entry, by its full id or a short one, is the root cause, the
- * fix or the fix's question, each with a section of its own.
+ * fix or the question a raise of the fix direction answers, each with a
+ * section of its own.
  * @param {BoardAt} at @returns {(id: string) => boolean}
  */
 function ownSection(at) {
   const { rootCause, fix } = ledgerAt(at);
-  const own = [rootCause?.id, fix?.id, fix?.question.id].filter((id) => id !== undefined);
+  const own = [rootCause?.id, fix?.id, fix?.question.id, ...fixSeals(at).map(({ answers }) => answers)].filter((id) => typeof id === 'string');
   return (id) => own.some((whole) => whole.startsWith(id));
 }
 
@@ -244,13 +297,14 @@ function decidedOf(at) {
 
 /**
  * The investigation's This session (the header's), what waits on the
- * person read from the unit's one list with what raised each.
+ * person read from the unit's one list, which holds its raises with what
+ * raised each.
  * @param {BoardAt} at @param {WaitingLine[]} waiting @returns {{view: InvestigationView}}
  */
 function investigationView(at, waiting) {
   const hunt = huntAt(at);
   const { rootCause } = ledgerAt(at);
-  const raised = new Map(huntWaits(at).map((line) => [line.id, line]));
+  const own = ownSection(at);
   return {
     view: {
       kind: 'investigation',
@@ -260,14 +314,14 @@ function investigationView(at, waiting) {
       project: projectName(at.cwd),
       started: typeof at.manifest.created === 'string' ? at.manifest.created : null,
       standing: standingOf(at),
-      waiting: waiting.map((line) => raised.get(line.id) ?? { ...line, raised_by: null, why: null, options: null }),
+      waiting: waiting.map((line) => ({ raised_by: null, why: null, options: null, lean_first: null, ...line })),
       decided: decidedOf(at),
       symptoms: hunt.symptoms.map(({ text }) => text),
       hypotheses: hunt.hypotheses.map(({ name, title, state }) => ({ name, title, state })),
       experiments: hunt.experiments.map(({ name, title, showed }) => ({ name, title, showed })),
-      root_cause: rootCause === null ? null : { text: rootCause.text, validated: validated(at, 'root-cause') },
+      root_cause: rootCause === null ? null : { text: rootCause.text, validated: validationAt(at, 'root-cause') === 'done' },
       validations: validationsOf(at),
-      since: mapAt(at).since.filter(({ id }) => !ownSection(at)(id)).map(({ id, text }) => ({ id, text })),
+      since: mapAt(at).since.filter(({ id }) => !own(id)).map(({ id, text }) => ({ id, text })),
       fix_direction: fixDirectionOf(at),
     },
   };
@@ -308,8 +362,10 @@ function huntItem(at, part) {
   const experiment = hunt.experiments.find(({ name }) => name === part);
   if (experiment !== undefined) return { item: 'experiment', name: experiment.name, title: experiment.title, state: experiment.showed, text: bodyText(experiment.body) };
   const { rootCause } = ledgerAt(at);
-  if (part === 'root-cause' && rootCause !== null && hunt.rootCause !== null) {
-    return { item: 'root-cause', name: null, title: '', state: validated(at, 'root-cause') ? 'validated' : 'being-validated', text: bodyText([rootCause.text, ...hunt.rootCause.body]) };
+  if (part === 'root-cause' && rootCause !== null) {
+    const validated = validationAt(at, 'root-cause') === 'done';
+    const body = hunt.rootCause?.entry === rootCause.id ? hunt.rootCause.body : [];
+    return { item: 'root-cause', name: null, title: '', state: validated ? 'validated' : 'being-validated', text: bodyText([rootCause.text, ...body]) };
   }
   const steppedBack = fixDirectionOf(at).stepped_back;
   if (part === 'stepped-back' && steppedBack.length > 0) return { item: 'stepped-back', name: null, title: '', state: null, text: bodyText(steppedBack) };
@@ -336,11 +392,11 @@ function huntPage(at, part) {
  */
 function optionPage(at, key) {
   const seal = fixSealOf(at);
-  const row = seal === null ? undefined : seal.call.rows.find((held) => held.key === key);
-  if (seal === null || row === undefined) throw new Error(`${at.unit}'s fix direction holds no option ${key} in this conversation`);
+  const row = seal === null || seal.fact ? undefined : drawnRows(seal).find((held) => held.key === key);
+  if (seal === null || seal.fact || row === undefined) throw new Error(`${at.unit}'s fix direction holds no option ${key} in this conversation`);
   const { state, pick } = fixDirectionOf(at);
-  const standing = state === 'picked' && pick === key ? 'picked' : state === 'asking' && !seal.fact && seal.call.lean === key ? 'lean' : 'option';
+  const standing = state === 'picked' && pick === key ? 'picked' : state === 'asking' && seal.call.lean === key ? 'lean' : 'option';
   return { kind: 'hunt', unit: at.unit, item: 'option', name: key, title: row.name, state: standing, text: bodyText([row.text, row.notice]) };
 }
 
-module.exports = { investigationView, investigationBanner, investigationWaits, investigationDoing, hypothesesCount, huntPage, optionPage };
+module.exports = { investigationView, investigationBanner, investigationWaits, investigationDoing, investigationHowFar, hypothesesCount, huntPage, optionPage };

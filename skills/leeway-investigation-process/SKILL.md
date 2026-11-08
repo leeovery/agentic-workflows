@@ -91,9 +91,10 @@ node .claude/skills/leeway-engine/scripts/engine.cjs brief {kind} {work_unit} --
 
 It runs in the background while the work goes on: the step back, while the root cause is checked.
 
-When a report lands, `agent scan {work_unit} investigation {work_unit}` lists it. Read it, then record its findings by the ids its headings carry — `agent ack {work_unit} investigation {work_unit} {id} --findings {F1,F2}`, or `--clean` where it found none. Check each against the code. One that holds lands as your finding, then is marked taken, `agent surface {work_unit} investigation {work_unit} {id} {finding}`:
+When a report lands, `agent scan {work_unit} investigation {work_unit}` lists it. Read it, then record its findings by the ids its headings carry — `agent ack {work_unit} investigation {work_unit} {id} --findings {F1,F2}`, or `--clean` where it found none. Check each against the code. One that holds lands as your finding, then is marked taken, `agent surface {work_unit} investigation {work_unit} {id} {finding}`, once what it reaches the person as is drawn:
 - one that breaks the root cause: the root cause is replaced for it, `--cause` the finding, and logged again;
-- one that changes what the fix does for the person reaches them as a product question: `raise` replacing the fix, `--cause` the finding;
+- one that changes what the fix does for the person reaches them as a product question: `raise` replacing the fix, `--cause` the finding, then surfaced as that replacement, `--replaces {fix} --reason new-fact`;
+- one that puts to the person what the product should do, before any fix stands: asked and raised as **What Only the Person Can Say** says, then surfaced as that question, `--question {question}`;
 - any other stands as a finding of the hunt.
 
 One that does not hold up is declined: say why in the log, and never surface it. Then close the report, `agent incorporate {work_unit} investigation {work_unit} {id}`, and log what it found and what you did with it (`investigation-log validation`).
@@ -132,7 +133,7 @@ Content is one JSON object on stdin; `{place}` is `{work_unit}.investigation.{wo
 - A decision → `ledger decide {place} --answers {id} [--relies-on {id} …]`, `{"text", "why", "rules_out", "by", "who_moved_whom": "none"}`; a changed one → `ledger replace {place} --replaces {id} --reason {reason:[new-fact|changed-mind|was-wrong]} [--cause {id}]`, the content of the kind it replaces.
 - A call → `raise {place} --answers {id}`; a fix a validation changes for the person → `raise {place} --replaces {id} --reason new-fact --cause {id}`; a fix settled afresh once the person keeps shaping → `raise {place} --replaces {id} --reason changed-mind`; a fact only the person holds → `raise {place} --answers {id} --fact`; a run against a live server → `ledger ask {work_unit}.investigation`, then `raise {work_unit}.investigation --answers {id}`.
 - The topic as it stands → `ledger record|map {work_unit} {work_unit}`.
-- A validation's agent → `agent dispatch`, then `brief root-cause-validation|fix-validation`, then the Agent call; its report → `agent scan|ack|surface|incorporate`.
+- A validation's agent → `agent dispatch`, then `brief root-cause-validation|fix-validation`, then the Agent call; its report → `agent scan|ack|surface|incorporate`; a finding that reached the person → `agent surface {work_unit} investigation {work_unit} {id} {finding} --replaces {fix} --reason new-fact`, or `--question {question}`.
 - Earlier work → `knowledge query "{term}" …`.
 - Mail → `topic mailbox`, `topic answered`.
 - A shared file → `asset import`, `render import-reprompt`, `asset add`.
