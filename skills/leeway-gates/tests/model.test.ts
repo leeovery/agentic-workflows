@@ -19,7 +19,7 @@ describe('the engine\'s answer', () => {
   })
 
   test('another version is refused, by the version it is', () => {
-    expect(answerIn(said({ ok: true, ...BUILD, version: 5 }))).toEqual({ kind: 'refused', version: 5 })
+    expect(answerIn(said({ ok: true, ...BUILD, version: 6 }))).toEqual({ kind: 'refused', version: 6 })
   })
 
   test('a refusal, words that read as no answer, and a board missing what the frame draws from, or with something beneath a page that is no view, give nothing to draw', () => {

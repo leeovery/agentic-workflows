@@ -656,6 +656,16 @@ function sealsAt(session, { unit, phase, topic }) {
 }
 
 /**
+ * Whether a raise the conversation sealed still waits on the person:
+ * unanswered, its question open, or the decision it would replace current.
+ * @param {import('./ledger-fold.cjs').Folded} folded @param {Seal} seal
+ */
+function sealWaits(folded, seal) {
+  if (seal.answered !== null) return false;
+  return seal.answers !== null ? questionStands(folded, seal.answers) === 'open' : notCurrent(folded, /** @type {NonNullable<Seal['replaces']>} */ (seal.replaces).entry) === null;
+}
+
+/**
  * The open seal of the question, or of the replacement of the decision,
  * `target` names: drawn for the question waiting in the build whose first
  * park is `park`, or, where it is null, raised at `place` for no question
@@ -1457,4 +1467,4 @@ function raiseScreenOf(cwd, seal, { technical = false } = {}) {
   return raiseScreen(seal, { technical, titles: topicTitles(manifest ?? {}) });
 }
 
-module.exports = { RAISE_USAGE, drawRaise, drawParked, showRaise, answerRaise, raiseWaits, unraised, raiseScreenOf, steppedBackSealed, downChain, sealsAt };
+module.exports = { RAISE_USAGE, drawRaise, drawParked, showRaise, answerRaise, raiseWaits, unraised, raiseScreenOf, steppedBackSealed, downChain, sealsAt, sealWaits };

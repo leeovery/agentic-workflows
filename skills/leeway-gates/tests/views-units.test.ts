@@ -404,7 +404,7 @@ PHASES ────────────────────────�
     expect(drawn(UNIT, bugfix).text).toContain('✓ Discovery · from your inbox note             complete 16 Aug')
   })
 
-  test('20.15.2: a quick-fix\'s discovery and implementation, its one session', () => {
+  test('20.15.2, 20.15.3: a quick-fix\'s discovery and implementation, its one session, counting its fixes and building', () => {
     const quickfix = {
       ...MINT,
       title: 'm-marks-highlighted-on-entry',
@@ -414,7 +414,7 @@ PHASES ────────────────────────�
       now: { phase: 'implementation', since: '2026-07-15T09:00:00' },
       progress: { complete: 1, total: 2 },
       waiting: [],
-      phases: [phase('discovery', 'complete', 'your note, confirmed', { on: '2026-07-15T09:00:00', page: true }), phase('implementation', 'running', '4 of 6 done', { doing: 'working', session: 'this' })],
+      phases: [phase('discovery', 'complete', 'your note, confirmed', { on: '2026-07-15T09:00:00', page: true }), phase('implementation', 'running', '0 of 1 done', { doing: 'building', session: 'this' })],
       lately: [],
     } as View
 
@@ -426,7 +426,7 @@ started 15 Jul · one session
 
 PHASES ──────────────────────────────────────────────────────
 ✓ Discovery · your note, confirmed             complete 15 Jul
-◐ Implementation · 4 of 6 done                         working
+◐ Implementation · 0 of 1 done                        building
 `),
     )
   })

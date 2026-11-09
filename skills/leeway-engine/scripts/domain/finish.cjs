@@ -60,7 +60,7 @@ const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { carrying } = require('./ledger.cjs');
 const { readShown } = require('./ledger-read.cjs');
-const { verdictAsked } = require('./ledger-verdicts.cjs');
+const { verdictAsked, closeDepartures } = require('./ledger-verdicts.cjs');
 const { itemTitle, topicTitles, buildRefusal, quickFixBuild } = require('./derivations.cjs');
 const { unitInProgress } = require('./topic-standing.cjs');
 const { finishClose } = require('./checklist.cjs');
@@ -122,8 +122,29 @@ function stillToLand(cwd, unit, fixes) {
 function standing(cwd, unit) {
   const { manifest, fixes, closed, skips, warnings } = finishStanding(cwd, unit);
   const root = stateRoot(cwd);
-  const verdict = carryingAll(warnings, () => readShown(root, warnings, (shower) => verdictAsked(shower, root, (facts) => (facts.unit === unit && BUILD_PHASES.includes(facts.phase) ? closed : null))));
+  const verdict = carryingAll(warnings, () => readShown(root, warnings, (shower) => verdictAsked(shower, root, closesIn(unit, closed))));
   return { manifest, fixes, skips, warnings, verdict };
+}
+
+/** What finish closes of a departure: the unit's work in the build's places, closed when its checklist did. @param {string} unit @param {string} closed */
+const closesIn = (unit, closed) => (/** @type {import('./ledger-fold.cjs').IdFacts} */ facts) => (facts.unit === unit && BUILD_PHASES.includes(facts.phase) ? closed : null);
+
+/**
+ * The calls the person changed in the work finish closes, and the verdicts
+ * on them still owed, as its screen asks them, the board reading the close
+ * it waits on; null where the screen does not draw.
+ * @param {string} cwd @param {string} unit @param {string[]} warnings
+ * @returns {{changed: number, owed: number}|null}
+ */
+function closeVerdicts(cwd, unit, warnings) {
+  /** @type {string|null} */
+  let closed = null;
+  if (!stands(() => ({ closed } = finishStanding(cwd, unit)))) return null;
+  const root = stateRoot(cwd);
+  return readShown(root, warnings, (shower) => {
+    const { departures, waiting } = closeDepartures(shower.folded, root, closesIn(unit, /** @type {string} */ (closed)));
+    return { changed: departures.length, owed: waiting.length };
+  });
 }
 
 /**
@@ -222,4 +243,4 @@ function runFinishVerb(cwd, [verb, ...args], opts) {
   return refusing('finish yes', () => finishYes(cwd, args[0]));
 }
 
-module.exports = { FINISH_USAGE, finishSurface, finishDraws, runFinishVerb };
+module.exports = { FINISH_USAGE, finishSurface, finishDraws, runFinishVerb, closeVerdicts };

@@ -135,6 +135,15 @@ function fixesBegun(manifest) {
 }
 
 /**
+ * Whether the tracker holds the unit's tasks: its build by the cut begun,
+ * or a quick-fix's fixes begun.
+ * @param {Record<string, any>} manifest
+ */
+function tasksBegun(manifest) {
+  return buildBegun(manifest) || (quickFixBuild(manifest) && fixesBegun(manifest));
+}
+
+/**
  * How many phases the unit's build holds of its own, the review phase's fix
  * phases numbered on past them (P14): its cut's, or a quick-fix's one.
  * @param {Record<string, any>} manifest
@@ -1402,6 +1411,7 @@ module.exports = {
   FIXES_PHASE,
   quickFixBuild,
   fixesBegun,
+  tasksBegun,
   reviewAsked,
   quickFixReviewRefusal,
   buildLength,

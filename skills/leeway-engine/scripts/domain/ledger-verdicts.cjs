@@ -227,6 +227,23 @@ function departureRow(shower, id) {
  */
 
 /**
+ * The departures a verdict point asks of (`verdictAsked`'s): each this
+ * machine logged in the work the point closes, given no verdict before its
+ * close; and of them, those still waiting on one.
+ * @param {Folded} folded @param {string} root @param {(facts: IdFacts) => string|null} closeOf
+ * @returns {{departures: string[], waiting: string[]}}
+ */
+function closeDepartures(folded, root, closeOf) {
+  const evidence = evidenceOf(root);
+  const askedBefore = (/** @type {string} */ id, /** @type {string} */ closed) => (evidence.asked.get(id) ?? Infinity) < Date.parse(closed);
+  const departures = [...folded.facts.keys()].filter((id) => {
+    const closed = evidence.departures.has(id) ? closeOf(factsOf(folded, id)) : null;
+    return closed !== null && !askedBefore(id, closed);
+  });
+  return { departures, waiting: departures.filter((id) => !evidence.asked.has(id)) };
+}
+
+/**
  * The departure a verdict point asks its verdict of: the first this machine
  * logged in the work the point closes — each departure `closeOf` gives the
  * close it is asked under, when that work's checklist closed — never given
@@ -238,13 +255,7 @@ function departureRow(shower, id) {
  */
 function verdictAsked(shower, root, closeOf) {
   const { folded } = shower;
-  const evidence = evidenceOf(root);
-  const askedBefore = (/** @type {string} */ id, /** @type {string} */ closed) => (evidence.asked.get(id) ?? Infinity) < Date.parse(closed);
-  const departures = [...folded.facts.keys()].filter((id) => {
-    const closed = evidence.departures.has(id) ? closeOf(factsOf(folded, id)) : null;
-    return closed !== null && !askedBefore(id, closed);
-  });
-  const waiting = departures.filter((id) => !evidence.asked.has(id));
+  const { departures, waiting } = closeDepartures(folded, root, closeOf);
   if (waiting.length === 0) return null;
   const [entry] = waiting;
   const row = departureRow(shower, entry);
@@ -268,4 +279,4 @@ function answerQueue(shower, root) {
   return { departures: queueOf(shower.folded, evidenceOf(root)).map((id) => departureRow(shower, id)) };
 }
 
-module.exports = { OVER_THE_LEAN, BACK_TO_THE_LEAN, derivedMove, movedRefusal, reverses, isDeparture, departureRow, verdictAsked, answerQueue };
+module.exports = { OVER_THE_LEAN, BACK_TO_THE_LEAN, derivedMove, movedRefusal, reverses, isDeparture, departureRow, verdictAsked, answerQueue, closeDepartures };

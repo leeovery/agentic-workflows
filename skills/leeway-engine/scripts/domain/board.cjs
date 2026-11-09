@@ -16,14 +16,14 @@
 // - This session follows the conversation's position (20.3.3, 20.3.4): a
 //   phase's view while it is in one — the build, the review phase, a
 //   discussion, the specification, an epic's discovery, an experiment, a
-//   bug's investigation —
-//   the unit's page at its menu and in a phase whose view comes later
-//   (29.14.2), a quick-fix's implementation among them, and All work at the
-//   start menu or a project-level place — and once a unit's finish completes
-//   it from its review phase (20.10.4), All work too, the banner the
-//   unit's close (D38) — while its position still names that review, and at
-//   the start menu boot hands it to, until the session records a position
-//   again (position.cjs); an epic's finish goes to its menu.
+//   bug's investigation, a quick-fix's one session — the unit's page at its
+//   menu and in a phase whose view comes later (29.14.2), and All work at
+//   the start menu or a project-level place — and once a unit's finish
+//   completes it from its review phase (20.10.4), or a quick-fix's close
+//   from its one session (20.14.2), All work too, the banner the unit's
+//   close (D38) — while its position still names that place, and at the
+//   start menu boot hands it to, until the session records a position again
+//   (position.cjs); an epic's finish goes to its menu.
 // - The unit's tab shows the unit `--unit` names, else the session's: an
 //   epic's page for an epic (20.15.2), the unit's page for any other.
 //   All work shows the project (20.16), and `--page unit:{unit}` another
@@ -48,8 +48,8 @@
 //   read without moving the mark. The ledger is checked once a call, at its
 //   first read (ledger.cjs).
 // - Each unit is read once a call, whichever tabs and pages draw it, and its
-//   tracker in one read, once its build has begun, of a copy of its store
-//   (task-verbs.cjs) — its phases, the fix phases past the cut, the tasks
+//   tracker in one read, once its build or a quick-fix's fixes have begun,
+//   of a copy of its store (task-verbs.cjs) — its phases, the fix phases past the cut, the tasks
 //   ready, and the task a page names — which its build's checks read too,
 //   the stop's asked of a phase's start among them; the review's change
 //   reads the tasks of its phases all ended from another copy, only where
@@ -81,7 +81,7 @@ const { manifestOf } = require('./ledger-units.cjs');
 const { withOneCheck } = require('./ledger.cjs');
 const { trackedUnit } = require('./task-verbs.cjs');
 const { parseShownTask } = require('./task-id.cjs');
-const { buildBegun } = require('./derivations.cjs');
+const { tasksBegun, quickFixBuild } = require('./derivations.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { BOARD_VERSION, TABS } = require('./board-model.cjs');
 const { buildView, buildBanner, taskPage, writtenPage, roundPage, scenarioPage, evidencePage } = require('./projections/board-build.cjs');
@@ -92,6 +92,7 @@ const { waitingOn, holds, waitsFacts } = require('./projections/board-standing.c
 const { discoveryView, discoveryBanner, briefPage, topicStarted, spikePage } = require('./projections/board-discovery.cjs');
 const { experimentView, experimentBanner, reportPage } = require('./projections/board-experiment.cjs');
 const { investigationView, investigationBanner, huntPage, optionPage } = require('./projections/board-investigation.cjs');
+const { quickFixView, quickFixBanner } = require('./projections/board-quick-fix.cjs');
 const { unitPage, phasePage, unitBanner, placeBanner } = require('./projections/board-unit.cjs');
 const { allView, allBanner } = require('./projections/board-all.cjs');
 
@@ -194,7 +195,7 @@ function unitAt(cwd, session, place, unit, inFlight, warnings, task, repos, shar
     inFlight: place.unit === unit ? inFlight : [],
     issued: place.unit === unit ? issuedFor(session, unit) : [],
     tracker: () => once('tracker', () => {
-      if (!buildBegun(manifest)) throw new Error(`${unit}'s build has not begun`);
+      if (!tasksBegun(manifest)) throw new Error(`${unit}'s build has not begun`);
       return trackedUnit(cwd, unit, manifest, task);
     }),
     repos,
@@ -204,28 +205,35 @@ function unitAt(cwd, session, place, unit, inFlight, warnings, task, repos, shar
   };
 }
 
+/** A phase's view: its read and its banner, and the types it stands for where not every type's. @typedef {{read: (at: BoardAt) => Read, banner: (at: BoardAt, view: any) => Banned, of?: (type: string) => boolean}} PhaseView */
+
 /**
- * The phases with a view of their own, each its read and its banner, and
- * the types it stands for where not every type's: an epic's discovery
- * alone has a view, and a quick-fix's one session is no build.
- * @type {Readonly<Record<string, {read: (at: BoardAt) => Read, banner: (at: BoardAt, view: any) => Banned, of?: (type: string) => boolean}>>}
+ * The phases with a view of their own, each by its views, the first
+ * standing for the unit's type its own: an epic's discovery alone has a
+ * view, and a quick-fix's one session has its own, which is no build's.
+ * @type {Readonly<Record<string, readonly PhaseView[]>>}
  */
 const PHASE_VIEWS = Object.freeze({
-  implementation: { read: buildView, banner: (_, view) => buildBanner(view), of: (type) => type !== 'quick-fix' },
-  review: { read: (at) => reviewView(at, waitingOn(at)), banner: (at, view) => reviewBanner(view, roundWords(at), waitingOn(at)) },
-  discussion: { read: discussionView, banner: (_, view) => discussionBanner(view) },
-  specification: { read: (at) => specView(at, waitingOn(at)), banner: (at) => specBanner(at, waitingOn(at)) },
-  discovery: { read: (at) => discoveryView(at, waitingOn(at)), banner: (_, view) => discoveryBanner(view), of: (type) => type === 'epic' },
-  experiment: { read: experimentView, banner: (_, view) => experimentBanner(view) },
-  investigation: { read: investigationView, banner: (_, view) => investigationBanner(view) },
+  implementation: [
+    { read: buildView, banner: (_, view) => buildBanner(view), of: (type) => type !== 'quick-fix' },
+    { read: (at) => quickFixView(at, waitingOn(at)), banner: (_, view) => quickFixBanner(view) },
+  ],
+  review: [{ read: (at) => reviewView(at, waitingOn(at)), banner: (at, view) => reviewBanner(view, roundWords(at), waitingOn(at)) }],
+  discussion: [{ read: discussionView, banner: (_, view) => discussionBanner(view) }],
+  specification: [{ read: (at) => specView(at, waitingOn(at)), banner: (at) => specBanner(at, waitingOn(at)) }],
+  discovery: [{ read: (at) => discoveryView(at, waitingOn(at)), banner: (_, view) => discoveryBanner(view), of: (type) => type === 'epic' }],
+  experiment: [{ read: experimentView, banner: (_, view) => experimentBanner(view) }],
+  investigation: [{ read: investigationView, banner: (_, view) => investigationBanner(view) }],
 });
 
-/** A phase's view for the unit, null where the unit's page stands for it. @param {BoardAt} at @param {string|null} phase */
-function phaseView(at, phase) {
+/** The view a phase draws for a type, null where the unit's page stands for it. @param {string} type @param {string|null} phase @returns {PhaseView|null} */
+function phaseViewOf(type, phase) {
   if (phase === null || !Object.hasOwn(PHASE_VIEWS, phase)) return null;
-  const view = PHASE_VIEWS[phase];
-  return view.of === undefined || view.of(at.manifest.work_type) ? view : null;
+  return PHASE_VIEWS[phase].find(({ of }) => of === undefined || of(type)) ?? null;
 }
+
+/** A phase's view for the unit, null where the unit's page stands for it. @param {BoardAt} at @param {string|null} phase */
+const phaseView = (at, phase) => phaseViewOf(at.manifest.work_type, phase);
 
 /**
  * This session's view, with the banner it gives: a phase's view, else the
@@ -310,11 +318,15 @@ function pageOf(tab, ref, pageUnit) {
 }
 
 /**
- * Whether a unit was finished from its review phase, the start menu next
- * (the header's), at the phase the session's place names.
+ * Whether a unit was finished from its review phase, or a quick-fix closed
+ * from its one session, the start menu next (the header's), at the phase
+ * the session's place names.
  * @param {BoardAt|null} at @param {string|null|undefined} phase
  */
-const finishedFrom = (at, phase) => at !== null && phase === 'review' && at.manifest.status === 'completed' && at.manifest.work_type !== 'epic';
+function finishedFrom(at, phase) {
+  if (at === null || at.manifest.status !== 'completed') return false;
+  return phase === 'review' ? at.manifest.work_type !== 'epic' : phase === 'implementation' && quickFixBuild(at.manifest);
+}
 
 /** A view drawn, or why it cannot be. @param {() => View} draw @returns {View} */
 function drawn(draw) {
@@ -413,4 +425,4 @@ function boardRead(cwd, positional, opts) {
   };
 }
 
-module.exports = { BOARD_USAGE, boardOf };
+module.exports = { BOARD_USAGE, boardOf, phaseViewOf };

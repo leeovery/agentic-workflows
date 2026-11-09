@@ -438,5 +438,5 @@ function buildMoments(at) {
 const buildWords = ({ progress }) => `${progress.done} of ${counted(progress.total, 'task')} done`;
 
 module.exports = {
-  buildView, buildBanner, taskLine, taskPage, writtenPage, roundPage, scenarioPage, evidencePage, scenarioWording, buildWords, buildMoments, standingAt, readingAt, reviewStandingAt,
+  buildView, buildBanner, taskLine, taskPage, writtenPage, roundPage, scenarioPage, evidencePage, scenarioWording, buildWords, buildMoments, standingAt, readingAt, reviewStandingAt, questionsOf,
 };

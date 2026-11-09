@@ -9,7 +9,8 @@
 // hand mid-set and the branch cut again for the fix after it, whose share in
 // the project's nested clone the door records on the unit's manifest before
 // it commits there, and the unit closed, landing it there too (19.5.6,
-// 19.5.15, R14, R18); and a quick-fix moved mid-fix to a feature
+// 19.5.15, R14, R18), the board drawing its close waiting and then
+// following the session to All work (20.14); and a quick-fix moved mid-fix to a feature
 // through start this work's screen, its pipeline carrying on to the build —
 // ready to build showing the call its fix made among Claude's, the build's
 // task writer's brief and task 1.1 meeting none of the quick-fix's calls —
@@ -142,7 +143,9 @@ describe('pipeline simulation: quick-fix', () => {
     sim.write(`.leeway/${wu}/build/log.md`, '# The fixes\n');
     finishClosed(sim, wu);
     sim.render(['finish', wu], { expect: 'content' });
+    const closing = sim.run(['board', sim.env.CLAUDE_CODE_SESSION_ID]).view;
     const yes = sim.run(answerGate(sim, 'finish', '--pick', 'y').next.argv);
+    const closed = sim.run(['board', sim.env.CLAUDE_CODE_SESSION_ID]);
 
     assert.deepStrictEqual([first.branch, third.branch, third.cut_again?.map((/** @type {any} */ { replayed }) => replayed)], [branch, branch, [[]]]);
     assert.deepStrictEqual([recorded, yes.landed.map((/** @type {{repo: string, merged: string[]}} */ { repo, merged }) => [repo, merged]), yes.next], [
@@ -150,6 +153,9 @@ describe('pipeline simulation: quick-fix', () => {
     ]);
     assert.deepStrictEqual(git(sim.api, ['log', '-1', '--format=%B', 'main']).match(/^Task: .*$/gm), [`Task: ${wu}-1-3`]);
     assert.strictEqual(sim.manifest(wu).status, 'completed');
+    assert.deepStrictEqual([closing.kind, closing.standing, closing.progress, closing.record.map((/** @type {{title: string}} */ { title }) => title), closed.view.kind, closed.banner.state], [
+      'quick-fix', 'close', { done: 3, total: 3, written: true }, ['Spell the flag --colour', 'Spell the help --colour', 'Spell the docs --colour'], 'all', 'done',
+    ], 'the board draws the close waiting, then follows the session to All work');
     assert.deepStrictEqual([git(sim.dir, ['log', '--format=%s', `${base}..main`]).trim().split('\n'), git(sim.dir, ['log', '-1', '--format=%B', 'main']).match(/^Task: .*$/gm)], [
       [`fix(${wu}): The --color flag is spelt --colour`, 'Spell it the British way'], [`Task: ${wu}-1-3`],
     ]);
