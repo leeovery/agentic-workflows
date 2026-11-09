@@ -32,9 +32,10 @@ const { counted } = require('./map.cjs');
 
 /**
  * The work as start this work draws it: its name, type, description and
- * reason, and for a move, the type it moves from and the branch it leaves a
- * quick-fix's commits unlanded on, where it keeps one.
- * @typedef {{name: string, type: string, description: string, reason: string, moves?: {from: string, branches: string[]}}} StartView
+ * reason, and for a move, the type it moves from, the branch it leaves a
+ * quick-fix's commits unlanded on, where it keeps one, and the words for
+ * each fix's work it keeps set aside.
+ * @typedef {{name: string, type: string, description: string, reason: string, moves?: {from: string, branches: string[], aside: string[]}}} StartView
  */
 
 /**
@@ -70,13 +71,16 @@ const aType = (type) => `${/^[aeiou]/.test(type) ? 'an' : 'a'} ${type}`;
 /** The line naming the branch a move leaves a quick-fix's commits unlanded on, or none. @param {string[]} branches */
 function keptLine(branches) {
   if (branches.length === 0) return [];
-  return wrapWithPrefix(`⚑ Its commits stay unlanded on ${branches.join(', ')}`, { width: TREE_WIDTH, hang: 2 });
+  return flagged(`Its commits stay unlanded on ${branches.join(', ')}`);
 }
+
+/** An advisory line, wrapped. @param {string} text */
+const flagged = (text) => wrapWithPrefix(`⚑ ${text}`, { width: TREE_WIDTH, hang: 2 });
 
 /**
  * The work as start this work shows it: its title and type, its
  * description, the reason for the type, and a move's branches left
- * unlanded.
+ * unlanded and each fix's work it keeps set aside.
  * @param {StartView} view
  */
 function startDisplay({ name, type, description, reason, moves }) {
@@ -85,6 +89,7 @@ function startDisplay({ name, type, description, reason, moves }) {
     ...wrapWithPrefix(description, { width: TREE_WIDTH }),
     ...wrapWithPrefix(`↳ ${reason}`, { width: TREE_WIDTH, hang: 2 }),
     ...keptLine(moves?.branches ?? []),
+    ...(moves?.aside ?? []).flatMap(flagged),
   ].join('\n');
 }
 

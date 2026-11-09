@@ -12,11 +12,14 @@
 // there.
 //
 // - A task's start puts the project's checkout on the branch
-//   (`checkOutBranch`) — refused first, before the tracker moves, while the
-//   checkout holds changes not committed outside the state, naming each
-//   (`codeStatus`, code.cjs) — once the branches are readied (`readied`),
-//   and each nested checkout whose branch the readying made, as a branch
-//   gone here or a second clone leaves it, on it too.
+//   (`checkOutBranch`) — a start making the fix the checkout's holder
+//   refused first, before the tracker moves, while the checkout holds
+//   changes not committed outside the state, the person's, naming each
+//   (`codeStatus`, code.cjs; R27, task-verbs.cjs) — once the branches are
+//   readied (`readied`), and each nested checkout whose branch the readying
+//   made, as a branch gone here or a second clone leaves it, on it too. The
+//   holder's done and close are refused alike while the checkout holds
+//   any, a fix leaving it clean (`refuseDirtyEnd`).
 // - A repository nested in the project gets its branch at the first commit
 //   of a task's there: the door puts it on the branch, where it lacks one
 //   cut from the branch that repository lands on as the host has it
@@ -121,6 +124,16 @@ function refuseDirt(cwd, refusal) {
 /** Refuse to start a quick-fix's task while the project's checkout holds changes not committed. @param {string} cwd @param {TaskRef} ref */
 function refuseDirty(cwd, ref) {
   refuseDirt(cwd, (dirty) => `task start: ${taskName(ref)} is built in the project's own checkout, which holds changes not committed — ${dirty} — so it was not put on ${ref.unit}'s branch: commit them or set them aside, then start the task again`);
+}
+
+/**
+ * Refuse, in the words of `said`, ending the fix that holds a quick-fix's
+ * checkout while the checkout holds changes not committed: it leaves the
+ * checkout clean as it stops holding it (R27).
+ * @param {string} cwd @param {TaskRef} ref @param {string} said
+ */
+function refuseDirtyEnd(cwd, ref, said) {
+  refuseDirt(cwd, (dirty) => `${said}: ${taskName(ref)} holds ${ref.unit}'s one checkout, which holds changes not committed — ${dirty} — and a fix leaves it clean as it stops holding it: commit what is the fix's through the door, remove what is not, as a scenario's run leaves, then run it again`);
 }
 
 /** Refuse a quick-fix's close while the project's checkout holds changes not committed. @param {string} cwd @param {string} unit */
@@ -534,4 +547,4 @@ function checkOutLanding(cwd, unit) {
   return own;
 }
 
-module.exports = { refuseDirty, refuseDirtyClose, checkOutBranch, readied, remade, checkOutLanding, branchWayOn, putOnBranch, recordedRepos, recordRepos, branchHead, movedBranch, keptUnder, setBranchAside, keptBranches };
+module.exports = { refuseDirty, refuseDirtyEnd, refuseDirtyClose, checkOutBranch, readied, remade, checkOutLanding, branchWayOn, putOnBranch, recordedRepos, recordRepos, branchHead, movedBranch, keptUnder, setBranchAside, keptBranches };

@@ -46,7 +46,10 @@
 // shape, a unit, a task or a topic the project lacks, a unit set aside
 // where its role takes the unit alone, a phase or a topic, a task done or
 // closed, in step a task behind another in flight, until that one is done
-// (task-verbs.cjs), a topic set aside (5.8.17), a phase for a unit whose
+// (task-verbs.cjs), a quick-fix's builder's or fix round's brief for any
+// fix but the one holding its checkout, or for that one before its start
+// puts back what its park set aside (R27, `holdRefusal`; its pair's never),
+// a topic set aside (5.8.17), a phase for a unit whose
 // build has not begun or one its cut lacks, and a record it cannot read.
 // A phase's brief reads the list of each of the unit's phases to it from
 // the tracker, once, and its own phase's tasks whole (task-verbs.cjs). Once
@@ -63,7 +66,8 @@ const path = require('path');
 const { handedSession } = require('../kernel/process.cjs');
 const { newId } = require('./ledger-ids.cjs');
 const { carrying } = require('./ledger.cjs');
-const { trackedTask, trackedPhases, turnRefusal, ENDED } = require('./task-verbs.cjs');
+const { trackedTask, trackedPhases, turnRefusal, turnWords, checkoutHold, ENDED } = require('./task-verbs.cjs');
+const { parkedWords } = require('./task-parks.cjs');
 const { parseShownTask, parsePhase, shownTask, taskName } = require('./task-id.cjs');
 const { buildBegun, cutLength, quickFixBuild } = require('./derivations.cjs');
 const { asideRefusal } = require('./fix-aside.cjs');
@@ -289,20 +293,37 @@ function forWhat(ref, phase, place, unit) {
 
 /**
  * The task as the tracker holds it, and what its read committed, refused
- * where it is done or closed; in step or in a quick-fix where it waits
- * behind another in flight (`turnRefusal`); and a quick-fix's whose work
- * its park set aside, not yet put back by its start (fix-aside.cjs); what
- * the read warned of pushed to `warnings`.
- * @param {string} cwd @param {TaskRef} ref @param {string[]} warnings
+ * where it is done or closed; in step where it waits behind another in
+ * flight (`turnRefusal`); and a quick-fix's as `holdRefusal` refuses it for
+ * `role`; what the read warned of pushed to `warnings`.
+ * @param {string} cwd @param {TaskRef} ref @param {string} role @param {string[]} warnings
  */
-function unendedTask(cwd, ref, warnings) {
+function unendedTask(cwd, ref, role, warnings) {
   const { committed, warnings: read = [], ...task } = trackedTask(cwd, ref);
   warnings.push(...read);
   if (ENDED.includes(task.status)) throw new Error(`brief: ${taskName(ref)} is ${task.status} — a brief is issued for a task not yet ended`);
   const manifest = /** @type {Record<string, any>} */ (manifestOf(stateRoot(cwd), ref.unit));
-  const behind = turnRefusal(cwd, ref, manifest) ?? (quickFixBuild(manifest) ? asideRefusal(cwd, ref) : null);
+  const behind = quickFixBuild(manifest) ? holdRefusal(cwd, ref, manifest, role) : turnRefusal(cwd, ref, manifest);
   if (behind !== null) throw new Error(`brief: ${behind}`);
   return { task, committed };
+}
+
+/**
+ * Why a quick-fix's task's brief for `role` waits, or null (R27): a
+ * building role's goes to the fix holding the checkout alone, once its
+ * start has put back what its park set aside — never one a question parks,
+ * one behind the holder, or one not started; its pair reads commits, not
+ * the checkout, and waits on neither.
+ * @param {string} cwd @param {TaskRef} ref @param {Record<string, any>} manifest the unit's @param {string} role
+ * @returns {string|null}
+ */
+function holdRefusal(cwd, ref, manifest, role) {
+  if (!BUILDING_ROLES.includes(role)) return null;
+  const { turn, holds, parkedOn } = checkoutHold(cwd, ref, manifest);
+  if (parkedOn.length > 0) return parkedWords(ref, parkedOn);
+  if (holds) return asideRefusal(cwd, ref);
+  if (turn !== null) return turnWords(ref, turn);
+  return `${taskName(ref)} holds no part of ${ref.unit}'s one checkout — start it first, engine task start ${ref.unit} ${shownTask(ref)}, which puts the checkout on it`;
 }
 
 /**
@@ -357,7 +378,7 @@ function issueBrief(cwd, [role, ...rest]) {
     if (place !== null) liveTopic(cwd, place);
     else if (phase !== null) cutPhase(cwd, /** @type {string} */ (unit), phase);
     else if (ref === null && unit !== null) knownUnit(stateRoot(cwd), unit);
-    const { task, committed: taskCommitted } = ref === null ? { task: null, committed: undefined } : unendedTask(cwd, ref, warnings);
+    const { task, committed: taskCommitted } = ref === null ? { task: null, committed: undefined } : unendedTask(cwd, ref, role, warnings);
     const { phases, written, committed } = phase === null
       ? { phases: null, written: null, committed: taskCommitted }
       : trackedTo(cwd, /** @type {string} */ (unit), phase, warnings);

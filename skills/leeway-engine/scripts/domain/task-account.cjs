@@ -224,18 +224,47 @@ function readAccount(text, rounds, settled = []) {
   };
 }
 
+/** A file a diff changes, by its path after it and, renamed, the one before; its lines added and removed. @typedef {{path: string, from: string|null, added: number, removed: number}} Changed */
+
 /**
- * A diff's change in one repository, renames found: the files changed and
- * the lines added and removed, its submodules' pointers left out.
- * @param {Repo} repo @param {string[]} range the diff's revisions @returns {Change}
+ * Each file a diff changes in one repository, renames found, its
+ * submodules' pointers left out.
+ * @param {Repo} repo @param {string[]} range the diff's revisions @returns {Changed[]}
  */
-function changeOver(repo, range) {
-  const rows = git(repo.path, ['diff', '--numstat', '--find-renames', ...range, '--', ':(top)', ...excluding(repo.submodules)]).split('\n').filter((row) => row !== '');
-  return rows.reduce((sum, row) => {
-    const [added, removed] = row.split('\t').map(Number);
-    return { files: sum.files + 1, added: sum.added + (added || 0), removed: sum.removed + (removed || 0) };
-  }, { files: 0, added: 0, removed: 0 });
+function changedOver(repo, range) {
+  const fields = git(repo.path, ['diff', '--numstat', '-z', '--find-renames', ...range, '--', ':(top)', ...excluding(repo.submodules)]).split('\0');
+  /** @type {Changed[]} */
+  const rows = [];
+  for (let at = 0; fields[at]; at += 1) {
+    const [added, removed, path] = fields[at].split('\t');
+    const renamed = path === '';
+    rows.push({ path: renamed ? fields[at + 2] : path, from: renamed ? fields[at + 1] : null, added: Number(added) || 0, removed: Number(removed) || 0 });
+    if (renamed) at += 2;
+  }
+  return rows;
 }
+
+/**
+ * Files changed, in order, as one change: each file once, under the path
+ * it ends at — one renamed after it changed counted as itself — and every
+ * line added and removed.
+ * @param {Changed[]} rows @returns {Change}
+ */
+function tallied(rows) {
+  const files = new Set();
+  let added = 0;
+  let removed = 0;
+  for (const row of rows) {
+    if (row.from !== null) files.delete(row.from);
+    files.add(row.path);
+    added += row.added;
+    removed += row.removed;
+  }
+  return { files: files.size, added, removed };
+}
+
+/** A diff's change in one repository (`changedOver`). @param {Repo} repo @param {string[]} range the diff's revisions @returns {Change} */
+const changeOver = (repo, range) => tallied(changedOver(repo, range));
 
 /**
  * The task's own change in one repository holding its branch: from where
@@ -254,7 +283,8 @@ const summed = (a, b) => ({ files: a.files + b.files, added: a.added + b.added, 
  * one before made from the first one's parent, so the other fixes'
  * commits between them stay out and a line changed twice counts once; a
  * commit that does not apply there, a line of it another fix changed in
- * between, leaves each commit counted as it was made.
+ * between, leaves each commit's lines counted as it was made, each file
+ * once (`tallied`).
  * @param {Repo} repo @param {string[]} shas @returns {Change}
  */
 function commitsChange(repo, shas) {
@@ -262,7 +292,7 @@ function commitsChange(repo, shas) {
   let tip = base;
   for (const sha of shas) {
     const merged = mergeTree(repo.path, `${sha}^`, tip, sha);
-    if ('conflicts' in merged) return shas.map((own) => changeOver(repo, [`${own}^`, own])).reduce(summed);
+    if ('conflicts' in merged) return tallied(shas.flatMap((own) => changedOver(repo, [`${own}^`, own])));
     tip = git(repo.path, ['commit-tree', merged.tree, '-p', tip, '-m', 'the task\'s own change']).trim();
   }
   return changeOver(repo, [base, tip]);

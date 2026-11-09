@@ -9,13 +9,14 @@
 // fix freed while another holds the checkout waiting on it — its answer's
 // receipt, `task ready`, its start, its briefs and the commit door each
 // naming the fix in flight, the door refusing it while parked as well
-// (commit-task.cjs, `refuseOutOfTurn`); the entry naming its start, refused
-// while the checkout holds changes not its own, which puts what it set
-// aside back onto the tip as it stands, a second start
+// (commit-task.cjs, `refuseOutOfTurn`); the entry naming its start, its
+// builder's brief waiting on it, which puts what it set aside back onto the
+// tip as it stands, a second start
 // taking that work as its own; and its pair reading its own commits alone,
 // the other fix's between them left out (task-base.cjs, `ownWork`); a put
 // back that conflicts refused, nothing moved, and its way on taken, in
-// either order, to the commit; a raise parking a fix that waits behind
+// either order, to the commit, its figures then counting each file once,
+// renamed or not, where its commits do not replay (task-account.cjs); a raise parking a fix that waits behind
 // another setting nothing aside; and a fix closed dropping what it set
 // aside. The set-aside in a project that is a folder of a larger
 // repository, and one that fails undone: test-engine-quick-fix-aside.cjs;
@@ -41,27 +42,15 @@ const {
 } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const { MADE, ledgerHelpers } = require('./ledger-world.cjs');
-const { UNIT, PLACE, FLAG, HELP, BRANCH, quickFix, createFix, fixDone, asGone, entered: enteredBy } = require('./quick-fix-world.cjs');
+const {
+  UNIT, PLACE, FLAG, HELP, BRANCH, CALL, quickFix, createFix, fixDone, accountFigures, asGone, entered: enteredBy,
+} = require('./quick-fix-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { briefPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 
 /** Where fix 1.1's work is set aside. */
 const ASIDE = `refs/leeway/aside/${UNIT}/${UNIT}-1-1`;
-
-/** The builder's question, as a raise puts it. */
-const CALL = Object.freeze({
-  question: 'Should --color still work?',
-  rows: [
-    { key: '1', name: 'Alias', text: 'Keep --color as an alias', notice: 'old scripts keep working' },
-    { key: '2', name: 'Gone', text: 'Drop --color', notice: 'old scripts fail on the flag' },
-  ],
-  lean: '1',
-  why: 'Scripts in the wild pass --color.',
-  sort: 'several',
-  mechanism: 'The flag parser maps --color onto --colour.',
-  product_wide: false,
-});
 
 /** The questions the world asks at the quick-fix's place: their short ids. */
 const asked = { first: '', second: '' };
@@ -137,7 +126,7 @@ async function parkedHolding() {
 }
 
 describe('a quick-fix\'s one checkout, held by one fix at a time (19.5.23)', () => {
-  it('a builder\'s question parking the fix in flight sets aside what it had not committed, its untracked files among it, at a ref of the unit\'s own, never the stash, the checkout left clean at the branch\'s tip; its brief refused until its start puts it back', async () => {
+  it('a builder\'s question parking the fix in flight sets aside what it had not committed, its untracked files among it, at a ref of the unit\'s own, never the stash, the checkout left clean at the branch\'s tip', async () => {
     dir = world();
     run(['task', 'start', UNIT, '1.1']);
     const { raised } = await parkedHolding();
@@ -145,10 +134,9 @@ describe('a quick-fix\'s one checkout, held by one fix at a time (19.5.23)', () 
     assert.deepStrictEqual([raised.parked, raised.set_aside], ['Q1', ['src/alias.js', 'src/flag.js']]);
     assert.deepStrictEqual([status(), git(dir, ['rev-parse', 'HEAD']).trim(), git(dir, ['stash', 'list']).trim()], ['', git(dir, ['rev-parse', BRANCH]).trim(), '']);
     assert.strictEqual(git(dir, ['show', `${ASIDE}:src/alias.js`]), 'module.exports = \'color\';\n');
-    assert.strictEqual(refused(['brief', 'builder', UNIT, '1.1']), `brief: task 1.1 of ${UNIT}'s work, set aside when a question parked it, is not back in the checkout — start it again first, engine task start ${UNIT} 1.1, which puts it back`);
   });
 
-  it('a fix freed while another holds the checkout waits on it — the receipt, task ready, its start, its briefs and the door each naming that one, the door refusing it parked as well; once that one is done, task ready names it back, the entry names its start, refused while the checkout holds changes not its own, which puts its work back onto the tip as it stands, a second start taking that work as its own; its pair then reads its own commits alone, the other fix\'s between them left out', async () => {
+  it('a fix freed while another holds the checkout waits on it — the receipt, task ready, its start, its briefs and the door each naming that one, the door refusing it parked as well; once that one is done, task ready names it back, the entry names its start and its builder\'s brief waits on it, which puts its work back onto the tip as it stands, a second start taking that work as its own; its pair then reads its own commits alone, the other fix\'s between them left out', async () => {
     dir = world();
     run(['task', 'start', UNIT, '1.1']);
     const { own } = await parkedHolding();
@@ -164,9 +152,7 @@ describe('a quick-fix\'s one checkout, held by one fix at a time (19.5.23)', () 
     fixDone(dir, '1.2', { env: env() });
     const back = run(['task', 'ready', UNIT, '1']).back;
     const line = sectionOf(okSections(dir, ['enter', 'implementation', UNIT], { env: env() }).sections, 'DATA').split('\n').find((held) => held.startsWith('in flight: task 1.1'));
-    written('src/stray.js', 'const stray = true;\n');
-    const stray = refused(['task', 'start', UNIT, '1.1']);
-    fs.rmSync(path.join(dir, 'src/stray.js'));
+    const unstarted = refused(['brief', 'builder', UNIT, '1.1']);
     const started = run(['task', 'start', UNIT, '1.1']);
     const again = run(['task', 'start', UNIT, '1.1']);
     const last = committed('1.1', ['src/flag.js', 'src/alias.js'], 'keep --color as an alias');
@@ -182,16 +168,18 @@ describe('a quick-fix\'s one checkout, held by one fix at a time (19.5.23)', () 
       undefined,
     ]);
     assert.strictEqual(line, `in flight: task 1.1, no builder dispatched here — its work, set aside when a question parked it, is not back in the checkout — start it again, engine task start ${UNIT} 1.1, which puts it back, then its builder and pair go afresh on its branch`);
-    assert.strictEqual(stray, `task start: task 1.1 of ${UNIT} is built in the project's own checkout, which holds changes not committed — src/stray.js — so it was not put on ${UNIT}'s branch: commit them or set them aside, then start the task again`);
+    assert.strictEqual(unstarted, `brief: task 1.1 of ${UNIT}'s work, set aside when a question parked it, is not back in the checkout — start it again first, engine task start ${UNIT} 1.1, which puts it back`);
     assert.deepStrictEqual([back, started.put_back, again.put_back, at(ASIDE)], ['1.1', ['src/alias.js', 'src/flag.js'], undefined, null]);
     assert.ok(range.includes(`- \`${own}\` fix(${UNIT}): spell the flag --colour\n- \`${last}\` fix(${UNIT}): keep --color as an alias\n`), range);
     assert.ok(!range.includes('help'), range);
   });
 
-  it('its start refuses a put back that conflicts with what the tip now holds, naming each path, the ref and the way on, nothing moved and its work kept; the way on taken — its change made again before the start, even — the start takes the work as its own and the door commits it', async () => {
+  it('its start refuses a put back that conflicts with what the tip now holds, naming each path, the ref and the way on, nothing moved and its work kept; the way on taken — its change made again before the start, even — the start takes the work as its own and the door commits it; its figures, its own commits not replaying past the other fix\'s, count each file once, a rename of it among them, and every line each commit changed', async () => {
     dir = world();
     run(['task', 'start', UNIT, '1.1']);
     written('src/flag.js', 'const flag = \'colour\';\n');
+    committed('1.1', ['src/flag.js'], 'spell the flag --colour');
+    written('src/flag.js', 'const flag = \'colour\';\nconst alias = \'color\';\n');
     await parked(asked.first, '1.1');
     createFix(dir, 2, HELP);
     run(['task', 'start', UNIT, '1.2']);
@@ -208,9 +196,13 @@ describe('a quick-fix\'s one checkout, held by one fix at a time (19.5.23)', () 
     git(dir, ['update-ref', '-d', ASIDE]);
     run(['task', 'start', UNIT, '1.1']);
     committed('1.1', ['src/flag.js'], 'keep --color as an alias');
+    fs.renameSync(path.join(dir, 'src/flag.js'), path.join(dir, 'src/flags.js'));
+    committed('1.1', ['src/flag.js', 'src/flags.js'], 'name the flags file');
+    const figures = accountFigures(dir, '1.1', { env: env() });
 
     assert.strictEqual(conflict, `task start: task 1.1 of ${UNIT}'s work, set aside when a question parked it, does not go back onto ${BRANCH} as it stands — it conflicts at src/flag.js — so nothing moved: it is kept at ${ASIDE}; see it, \`git diff ${ASIDE}^ ${ASIDE}\`, drop it, \`git update-ref -d ${ASIDE}\`, start the task again, engine task start ${UNIT} 1.1, then make its change again by hand and commit it through the door`);
     assert.deepStrictEqual([held, kept === null, status()], ['', false, '']);
+    assert.deepStrictEqual(figures, { files: 1, added: 2, removed: 1 }, 'flag.js once, renamed flags.js: color to colour, then the alias line on 1.2\'s colours, then the rename');
   });
 
   it('a raise parking a fix that waits behind the one in flight sets nothing aside, the checkout left to that one', async () => {

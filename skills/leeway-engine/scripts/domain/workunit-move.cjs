@@ -111,7 +111,7 @@ const { filled, shaped, readPayload, stage } = require('./staged-payload.cjs');
 const { trackedBuild, removeBuild, closeForMove, ENDED } = require('./task-verbs.cjs');
 const { quickFixLanding, quickFixClose } = require('./landing.cjs');
 const { keptUnder, setBranchAside, checkOutLanding } = require('./fix-branch.cjs');
-const { keptAside } = require('./fix-aside.cjs');
+const { keptAside, keptWords } = require('./fix-aside.cjs');
 const { linesOf, movedFiles } = require('./workunit-absorb.cjs');
 const { reindexWorkUnit } = require('./workunit-lifecycle.cjs');
 const { topicLog } = require('./topic-log.cjs');
@@ -125,7 +125,7 @@ const { startThisWorkScreen, aType } = require('./projections/discovery-gates.cj
  * A move as staged: the unit by its name, the type it moves to, Claude's
  * description, reason and brief draft, and the type it moves from with the
  * name a quick-fix's branch holding commits of its own is kept under.
- * @typedef {{type: string, name: string, description: string, reason: string, brief: string, moves: {from: string, branches: string[]}}} StagedMove
+ * @typedef {{type: string, name: string, description: string, reason: string, brief: string, moves: {from: string, branches: string[], aside: string[]}}} StagedMove
  */
 
 /** The types each type moves to (19.5.9, 19.4.22). @type {Readonly<Record<string, readonly string[]>>} */
@@ -240,7 +240,7 @@ function stageMove(cwd, unit, { to, file }) {
     type: to,
     name: unit,
     ...movePayload(cwd, readPayload(cwd, file)),
-    moves: { from, branches: from === 'quick-fix' ? keptUnder(cwd, unit) : [] },
+    moves: { from, branches: from === 'quick-fix' ? keptUnder(cwd, unit) : [], aside: from === 'quick-fix' ? keptAside(cwd, unit).map(keptWords) : [] },
   });
   return { response: { work_unit: unit, from, to }, sections: startThisWorkScreen(staged) };
 }

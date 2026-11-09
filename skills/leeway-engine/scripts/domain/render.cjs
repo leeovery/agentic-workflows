@@ -25,6 +25,7 @@ const { displayWidth } = require('../kernel/terminal.cjs');
 const { titlecase, tag } = require('./conventions.cjs');
 const { section, dataSection, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, timedInstruction, menu, cmdOption, promptOption, callout, indentedBody, bulletRow, emitAs, STOP_CLAUSE, MENU_INSTRUCTION, AUTO_GATE_CLAUSE } = require('./projections/surfaces.cjs');
 const { worklist } = require('./projections/worklist.cjs');
+const { keptAside, keptWords } = require('./fix-aside.cjs');
 const { workunitReceipt, topicReceipt, absorbSummary, ABSORB_MOVED, absorbReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, inboxRestoreReceipt, inboxDeleteReceipt } = require('./projections/transactions.cjs');
 const { absorbTargetMenu, absorbConfirmGate, archivedActions, archivedDeleteGate, inboxContent, completedActions } = require('./projections/start.cjs');
 const { archivedItem, inboxItems, liveItem, deletedItemTitle } = require('./inbox-set.cjs');
@@ -1715,6 +1716,7 @@ function workunitReceiptSurface(cwd, args) {
     skippedReview: args['skipped-review'] === '1',
     warn: args.warn === '1',
     inbox,
+    kept: verb === 'cancel' ? keptAside(cwd, workUnit).map(keptWords) : [],
   });
 }
 

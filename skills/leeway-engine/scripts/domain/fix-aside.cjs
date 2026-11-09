@@ -22,15 +22,21 @@
 // - The fix's next start (task-verbs.cjs), once the checkout is on the
 //   branch, puts it back onto the tip as it then stands — git's own merge
 //   of it from the tip it was set aside on, its change left uncommitted as
-//   it was and its ref dropped — refused, nothing moved, where in any
+//   it was, nothing else of the index touched, and its ref dropped —
+//   answering its paths as the set-aside did, a rename's both — refused,
+//   nothing moved, where in any
 //   repository it conflicts with what the tip now holds, naming each path,
 //   the ref and the way on, in the order that works: the work seen, its
 //   refs dropped, the task started, its change made again and committed.
-// - A brief for a fix whose work is set aside is refused, naming the start
-//   that puts it back (brief.cjs); a fix closed drops what it set aside, its
+// - A builder's or fix round's brief for the fix holding the checkout whose
+//   work is set aside is refused, naming the start that puts it back
+//   (brief.cjs, R27); a fix closed drops what it set aside, its
 //   work given up with it (task-verbs.cjs); a move keeps it, as it keeps the
-//   fixes' commits under moved/, its answer naming each (`keptAside`,
-//   workunit-move.cjs, R26).
+//   fixes' commits under moved/, and a cancel keeps it too, each piece named
+//   with the calls that show it and bring it into the checkout where it
+//   stands — on start this work's screen before the move's yes, in its
+//   answer, at the topic's first opening (enter.cjs) and on the cancel's
+//   receipt (`keptAside`, `keptWords`, R26).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -170,17 +176,19 @@ function setAside(cwd, ref, said) {
  */
 function putBack(cwd, ref, said) {
   const held = heldAside(cwd, ref).map((aside) => ({ ...aside, merged: mergeTree(aside.repo.path, `${aside.sha}^`, 'HEAD', aside.sha) }));
-  const conflicts = held.flatMap(({ repo, merged }) => ('conflicts' in merged ? merged.conflicts.map((at) => projectPath(repo.dir, folderPath(repo, at) ?? at)) : []));
+  const conflicts = held.flatMap(({ repo, merged }) => ('conflicts' in merged ? merged.conflicts.map((at) => projectPath(repo.dir, at)) : []));
   if (conflicts.length > 0) {
     const ways = held.map(({ repo }) => `\`${gitIn(repo)} diff ${asideRef(ref)}^ ${asideRef(ref)}\``).join(', ');
     const drops = held.map(({ repo }) => `\`${gitIn(repo)} update-ref -d ${asideRef(ref)}\``).join(', ');
     throw new Error(`${said}: ${taskName(ref)}'s work, set aside when a question parked it, does not go back onto ${quickFixBranch(ref.unit)} as it stands — it conflicts at ${conflicts.join(', ')} — so nothing moved: it is kept at ${asideRef(ref)}; see it, ${ways}, drop it, ${drops}, start the task again, ${startCall(ref)}, then make its change again by hand and commit it through the door`);
   }
   return held.flatMap(({ repo, sha, merged }) => {
+    const top = checkoutTop(repo, repo.path);
+    const paths = git(top, ['diff', '--name-only', '--no-renames', '-z', `${sha}^`, sha]).split('\0').filter(Boolean);
     git(repo.path, ['read-tree', '-m', '-u', 'HEAD', /** @type {{tree: string}} */ (merged).tree]);
-    git(repo.path, ['reset', '-q']);
+    git(top, ['--literal-pathspecs', 'reset', '-q', ...FROM_INPUT], undefined, paths.join('\0'));
     git(repo.path, ['update-ref', '-d', asideRef(ref), sha]);
-    return git(repo.path, ['diff', '--name-only', '--relative', '-z', `${sha}^`, sha]).split('\0').filter(Boolean).map((at) => projectPath(repo.dir, at));
+    return paths.map((at) => projectPath(repo.dir, folderPath(repo, at) ?? at));
   });
 }
 
@@ -201,15 +209,24 @@ function asideRefusal(cwd, ref) {
 
 /**
  * Every fix of `unit` whose work is set aside, a line for each repository
- * holding it, in the tracker's order — what a move keeps (R26): its task,
- * the repository by its folder, the ref and the call that shows the work.
- * @param {string} cwd @param {string} unit @returns {{task: string, repo: string, ref: string, see: string}[]}
+ * holding it, in the tracker's order — what a move and a cancel keep
+ * (R26): its task, the repository by its folder, the ref, the call that
+ * shows the work, and the call that brings it into the checkout as it now
+ * stands, whatever branch it has out.
+ * @param {string} cwd @param {string} unit @returns {Kept[]}
  */
 function keptAside(cwd, unit) {
   return projectRepos(codeRoot(cwd)).flatMap((repo) => git(repo.path, ['for-each-ref', '--format=%(refname)', `refs/leeway/aside/${unit}/`]).split('\n').filter(Boolean)
     .map((ref) => ({ ref: parseTaskId(ref.slice(ref.lastIndexOf('/') + 1)), repo, name: ref })))
     .sort((a, b) => a.ref.phase - b.ref.phase || a.ref.n - b.ref.n)
-    .map(({ ref, repo, name }) => ({ task: shownTask(ref), repo: repoName(repo), ref: name, see: `${gitIn(repo)} diff ${name}^ ${name}` }));
+    .map(({ ref, repo, name }) => ({
+      task: shownTask(ref), repo: repoName(repo), ref: name, see: `${gitIn(repo)} diff ${name}^ ${name}`, recover: `${gitIn(repo)} cherry-pick --no-commit ${name}`,
+    }));
 }
 
-module.exports = { asideRef, heldAside, setAside, putBack, dropAside, asideRefusal, keptAside };
+/** @typedef {{task: string, repo: string, ref: string, see: string, recover: string}} Kept */
+
+/** A fix's kept work as the person reads it, wherever it is named (`keptAside`). @param {Kept} kept */
+const keptWords = ({ task, repo, ref, see, recover }) => `Task ${task}'s work, set aside when a question parked it, is kept ${repo === '.' ? 'in the project\'s repository' : `in ${repo}`} at ${ref} — see it with ${see}; bring it into the checkout with ${recover}, settling any conflict`;
+
+module.exports = { asideRef, heldAside, setAside, putBack, dropAside, asideRefusal, keptAside, keptWords };

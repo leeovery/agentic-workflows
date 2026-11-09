@@ -87,7 +87,7 @@ describe('workunit move, the stage (19.5.9, P7)', () => {
       '**Keep shaping** → Tell me what I\'m missing',
       '',
     ].join('\n'));
-    assert.deepStrictEqual([head(dir), readState(dir, layout.manifest(QF)), JSON.parse(readState(dir, STAGED)).moves], [before.head, before.manifest, { from: 'quick-fix', branches: [KEPT] }]);
+    assert.deepStrictEqual([head(dir), readState(dir, layout.manifest(QF)), JSON.parse(readState(dir, STAGED)).moves], [before.head, before.manifest, { from: 'quick-fix', branches: [KEPT], aside: [] }]);
     assert.deepStrictEqual(ok(dir, ['gate', 'start this work', '--pick', 'y'], { env: env() }).next, { kind: 'engine', argv: ['start-this-work', 'yes'] });
     assert.match(sectionOf(output(dir, ['render', 'start-this-work'], { env: env() }), 'MENU: start this work'), /Move it — the quick-fix becomes a feature/, 'read again, the screen draws the staged move');
   });

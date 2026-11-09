@@ -13,7 +13,9 @@
 // door (`fixChanged`) — and the fix built, the quick-fix's pull request
 // then opened, or its commit pushed to it, its pair's pass and its account
 // taken, and the fix done (`fixBuilt`), or any task of it so ended
-// (`fixDone`); its short record's file (`recordFile`), fixes 1.1 and 1.2's
+// (`fixDone`); a task's account taken through the engine, its figures
+// counted from its commits (`accountFigures`); a builder's question,
+// asked and raised parking its fix (`CALL`, `parkedOn`); its short record's file (`recordFile`), fixes 1.1 and 1.2's
 // as Claude writes them (`RECORDS`); three fixes' titles, files and texts
 // (`SET`); the quick-fix entered by a conversation gone since, the set's
 // first two fixes built (`twoFixesBuilt`); what a quick-fix conformance
@@ -37,15 +39,19 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const { afterEach } = require('node:test');
 const {
-  call, ok, okSections, output, sectionOf, writeState, createFile, commitAll, commitCode, git, statePath, layout, fixtureFrom, folderFrom, setupFixtureAt, initRepo, addSubmodule, cleanupFixture, accountTaken, GIT_TIMEOUT_MS,
+  call, ok, okSections, okSectionsAsync, output, sectionOf, writeState, readState, createFile, commitAll, commitCode, git, statePath, layout, fixtureFrom, folderFrom, setupFixtureAt, initRepo, addSubmodule, cleanupFixture, accountTaken, GIT_TIMEOUT_MS,
 } = require('./engine-harness.cjs');
 const { createManifest, useTempFolder } = require('./discovery-test-utils.cjs');
 const { NESTED } = require('./landing-world.cjs');
+const { MADE, ledgerHelpers } = require('./ledger-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const store = require(path.join(SCRIPTS, 'kernel/knowledge/store.cjs'));
 const { knowledgeFiles } = require(path.join(SCRIPTS, 'kernel/knowledge/files.cjs'));
 const { quickFixBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
+const { roundReportPath } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
+const { accountPath, figuresPath } = require(path.join(SCRIPTS, 'domain/task-account.cjs'));
+const { REVIEWER_LETTERS } = require(path.join(SCRIPTS, 'kernel/reviewers.cjs'));
 
 const UNIT = 'typo';
 const PLACE = `${UNIT}.implementation`;
@@ -120,6 +126,46 @@ function fixBuilt(dir, n, title, file, text, as) {
 function fixDone(dir, task, as) {
   accountTaken(dir, UNIT, task);
   return ok(dir, ['task', 'done', UNIT, task], as);
+}
+
+/**
+ * The quick-fix's task, shown, its round's reports both passing and its
+ * account written, the account taken through the engine: the files changed
+ * and the lines added and removed its figures counted.
+ * @param {string} dir @param {string} task @param {As} as
+ */
+function accountFigures(dir, task, as) {
+  const [phase, n] = task.split('.').map(Number);
+  const ref = { unit: UNIT, phase, n };
+  for (const letter of REVIEWER_LETTERS) writeState(dir, roundReportPath(ref, 1, letter), '## Findings\n\nNone.\n\nVerdict: pass\n');
+  writeState(dir, accountPath(ref), ['## What was done', 'Built.', '## Where in the code', '- The fix\'s files.', '## What the tests prove', '- Read by its pair.', '## Differs from the task', 'None.', '## Reviews', '### Round 1', 'Passed.', ''].join('\n\n'));
+  ok(dir, ['task', 'account', UNIT, task], as);
+  const { files, added, removed } = JSON.parse(readState(dir, figuresPath(ref)));
+  return { files, added, removed };
+}
+
+/** A builder's question, as a raise puts it. */
+const CALL = Object.freeze({
+  question: 'Should --color still work?',
+  rows: [
+    { key: '1', name: 'Alias', text: 'Keep --color as an alias', notice: 'old scripts keep working' },
+    { key: '2', name: 'Gone', text: 'Drop --color', notice: 'old scripts fail on the flag' },
+  ],
+  lean: '1',
+  why: 'Scripts in the wild pass --color.',
+  sort: 'several',
+  mechanism: 'The flag parser maps --color onto --colour.',
+  product_wide: false,
+});
+
+/**
+ * A builder's question asked at the quick-fix's place and raised, parking
+ * `task`: the raise's answer.
+ * @param {string} dir @param {string} task @param {As} as
+ */
+async function parkedOn(dir, task, as) {
+  const asked = ledgerHelpers(() => dir).write('ask', PLACE, [], { ...MADE, text: 'Does --color still work?' }).id;
+  return (await okSectionsAsync(dir, ['raise', PLACE, '--answers', asked, '--parks', task], { ...as, stdin: JSON.stringify(CALL) })).res;
 }
 
 /** A fix's short record, as Claude writes it: its file, absolute. @param {string} dir @param {number} n @param {{changed: string, why: string, leaves: string}} record */
@@ -404,6 +450,6 @@ function entered(dir, as) {
 }
 
 module.exports = {
-  UNIT, PLACE, DESCRIPTION, NOTE, FLAG, HELP, BRANCH, RECORDS, SET, fixFile, quickFix, createFix, fixChanged, fixBuilt, fixDone, recordFile, twoFixesBuilt, quickFixConformance, quickFixNestedConformance, summaryChunks,
+  UNIT, PLACE, DESCRIPTION, NOTE, FLAG, HELP, BRANCH, RECORDS, SET, CALL, fixFile, parkedOn, quickFix, createFix, fixChanged, fixBuilt, fixDone, accountFigures, recordFile, twoFixesBuilt, quickFixConformance, quickFixNestedConformance, summaryChunks,
   guardedGit, ownCommit, ownBranchCommit, checklistClosed, fixesRecorded, closeYes, asGone, entered,
 };

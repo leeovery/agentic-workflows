@@ -678,7 +678,8 @@ class Conflict extends Error {}
 
 /**
  * The tree `theirs` merged into `ours` makes over `base`, as git's own merge
- * makes it — or the paths it conflicts at.
+ * makes it — or the paths it conflicts at, named from `root`, as git names
+ * them from where it runs.
  * @param {string} root @param {string} base @param {string} ours @param {string} theirs
  * @returns {{tree: string}|{conflicts: string[]}}
  */
