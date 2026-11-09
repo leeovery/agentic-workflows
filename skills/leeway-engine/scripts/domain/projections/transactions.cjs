@@ -11,7 +11,8 @@
 // `topic` verbs print their one line themselves, after their JSON.
 // ---------------------------------------------------------------------------
 
-const { titlecase } = require('../conventions.cjs');
+const { titlecase, TREE_WIDTH } = require('../conventions.cjs');
+const { wrapWithPrefix } = require('../../kernel/render.cjs');
 const { section, CONTINUE_INSTRUCTION, callout, menu, cmdOption, promptOption, bulletRow, indentedBody, emitAs, timedInstruction, MENU_INSTRUCTION } = require('./surfaces.cjs');
 
 /**
@@ -63,10 +64,10 @@ const TYPE_LABELS = {
  * caller's menu step.
  * @param {'complete'|'cancel'|'reactivate'|'pivot'} verb
  * @param {string} workUnit @param {string|undefined} workType
- * @param {{pipeline?: boolean, skippedReview?: boolean, warn?: boolean, inbox?: number}} [opts]  `inbox`: cancel — how many waiting messages it moved to the inbox
+ * @param {{pipeline?: boolean, skippedReview?: boolean, warn?: boolean, inbox?: number, kept?: string[]}} [opts]  `inbox`: cancel — how many waiting messages it moved to the inbox; `kept`: cancel — the words for each fix's work it kept set aside
  * @returns {string}
  */
-function workunitReceipt(verb, workUnit, workType, { pipeline = false, skippedReview = false, warn = false, inbox = 0 } = {}) {
+function workunitReceipt(verb, workUnit, workType, { pipeline = false, skippedReview = false, warn = false, inbox = 0, kept = [] } = {}) {
   const name = titlecase(workUnit);
   if (verb === 'complete') {
     if (!pipeline) return confirmation(`"${name}" marked as completed.`);
@@ -81,7 +82,7 @@ function workunitReceipt(verb, workUnit, workType, { pipeline = false, skippedRe
   if (verb === 'cancel') {
     return joined([
       warn ? warningBlock('Knowledge removal warning', 'The work unit is cancelled. The next start removes its chunks from the knowledge base.') : null,
-      confirmation([`"${name}" marked as cancelled.`, ...inboxLine(inbox)].join(' ')),
+      confirmation([[`"${name}" marked as cancelled.`, ...inboxLine(inbox)].join(' '), ...kept.flatMap((words) => wrapWithPrefix(`⚑ ${words}`, { width: TREE_WIDTH, hang: 2 }))].join('\n')),
     ]);
   }
   if (verb === 'reactivate') {

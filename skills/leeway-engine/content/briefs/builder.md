@@ -32,13 +32,13 @@
 
 # Where you work
 
-Before anything else, lay the task out in the worktree you were started in: from its root, run the engine's `task worktree {unit} {task}`, the unit and the task this brief is for. It puts the worktree, and every repository nested in it, on the task's branch. Build, run and commit only there.
+{{workplace}}
 
 # Proving it
 
-Once the work is committed through the door, run each acceptance scenario of the task from your task's worktree, one at a time: the engine's `verify run {unit} {scenario}`. A drive can run for minutes: give the Bash call a timeout to match.
+Once the work is committed through the door, run each acceptance scenario of the task from where you work, one at a time: the engine's `verify run {unit} {scenario}`. A drive can run for minutes: give the Bash call a timeout to match.
 
-Where your task builds the verify setup or changes any part of it, record it again once it is committed, from your task's worktree, before running: write the setup to the file under "Where the verify setup goes", starting from the setup recorded there where there is one, then run the engine's `verify setup {unit} --file {that file} --scenario {scenario}`.
+Where your task builds the verify setup or changes any part of it, record it again once it is committed, from where you work, before running: write the setup to the file under "Where the verify setup goes", starting from the setup recorded there where there is one, then run the engine's `verify setup {unit} --file {that file} --scenario {scenario}`.
 
 In your account, under `## What the tests prove`, name each scenario you ran through `verify` and what its drive does. What the runs prove is the engine's to say, never the account's. Where the project has no verify setup recorded yet and your task does not build it, say so there instead of running.
 

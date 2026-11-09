@@ -59,9 +59,10 @@
 //   the unit's type (24.1.2).
 // - A switch of position is stated intent (3.3.7): `workunit position`
 //   writes the build's new position and logs a `position-switch` event in
-//   the trust log, and commits the manifest. It refuses a unit whose build
-//   has not begun — its position is chosen at ready to build — and a switch
-//   to the position the build is in.
+//   the trust log, and commits the manifest. It refuses a quick-fix, which
+//   has no position (19.5.23); a unit whose build has not begun — its
+//   position is chosen at ready to build — and a switch to the position the
+//   build is in.
 // ---------------------------------------------------------------------------
 
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock } = require('../kernel/manifest.cjs');
@@ -73,7 +74,7 @@ const { isCurrent, factsOf } = require('./ledger-fold.cjs');
 /** @typedef {import('./ledger-fold.cjs').IdFacts} IdFacts */
 const { readShown } = require('./ledger-read.cjs');
 const { verdictAsked } = require('./ledger-verdicts.cjs');
-const { buildBegun, itemTitle, phaseItems, topicTitles, cutPhases } = require('./derivations.cjs');
+const { buildBegun, itemTitle, phaseItems, topicTitles, cutPhases, quickFixBuild } = require('./derivations.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { knownUnit, noUnit, unitClosure } = require('./topic-standing.cjs');
 const { specEntryRefusal } = require('./spec-entry.cjs');
@@ -289,6 +290,7 @@ function switchPosition(cwd, unit, to) {
   if (known === null) throw new Error(noUnit(unit));
   const closure = unitClosure(known);
   if (closure !== null) throw new Error(closure);
+  if (quickFixBuild(known)) throw new Error(`${unit} is a quick-fix, which has no position: its fixes and its review's fix tasks run as in auto, its close its one gate (19.5.23)`);
   if (!buildBegun(known)) throw new Error(`${unit}'s build has not begun — its position is chosen at ready to build`);
   if (known.build.position === to) throw new Error(`${unit}'s build is in ${to} already`);
   withWorkUnitLock(cwd, unit, () => {

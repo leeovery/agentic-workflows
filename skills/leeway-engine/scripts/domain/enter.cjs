@@ -73,6 +73,7 @@ const { seedFiles } = require('./reads.cjs');
 const { computeTopicLifecycle, itemOf, briefFile, topicTitle, topicKey, closedIntoSpec, voidDecidedClose, EARLIER, earlierFile } = require('./derivations.cjs');
 const { carriedTo } = require('./ledger-fold.cjs');
 const { keptBranches } = require('./fix-branch.cjs');
+const { keptAside, keptWords } = require('./fix-aside.cjs');
 const { unitInProgress, assertPhaseHeld, phaseStanding } = require('./topic-standing.cjs');
 const { startTopic } = require('./transitions.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
@@ -207,9 +208,10 @@ const as = (key) => (value) => [key, value];
  * what the move carried: the topic's record where lines were carried to
  * it, a bugfix's investigation log, and a quick-fix's build log, its
  * fixes' short records, `summary.md`, and each round's report of its
- * review, in order, where they were set aside, and the quick-fix's branch
- * kept in each repository whose commits on it stand unlanded — none where
- * the move carried none of it.
+ * review, in order, where they were set aside, the quick-fix's branch
+ * kept in each repository whose commits on it stand unlanded, and each
+ * fix's work it kept set aside (fix-aside.cjs) — none where the move
+ * carried none of it.
  * @param {Entering} at @returns {Line[]}
  */
 function carriedBefore({ cwd, unit, topic = '', notes }) {
@@ -228,6 +230,7 @@ function carriedBefore({ cwd, unit, topic = '', notes }) {
     ...earlier(EARLIER.summary).map(as('earlier summary')),
     ...rounds.map(as('earlier review round')),
     ...keptBranches(cwd, unit).map(as('kept branch')),
+    ...keptAside(cwd, unit).map(keptWords).map(as('kept work')),
   ];
 }
 

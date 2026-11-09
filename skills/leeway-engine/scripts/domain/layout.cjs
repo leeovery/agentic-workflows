@@ -133,6 +133,7 @@ const LAYOUT = Object.freeze([
   engineFile('{unit}/summary.md', '4.11.6', 'a quick-fix\'s short record after the work', 'quick-fix record'),
   place('log', '{unit}/build/log.md', '4.11.5'),
   engineFile('{unit}/build/notes.md', '4.11.5', 'a unit\'s notes for later', 'task note'),
+  engineFile('{unit}/build/notes-answered.json', 'R24', 'a quick-fix\'s notes for later answered at its close', 'quick-fix notes'),
   place('file', '{unit}/build/tasks/{task}.md', '4.11.5'),
   place('file', '{unit}/build/tasks/{task}/round-{N}-{letter}.md', '4.11.5'),
   engineFile('{unit}/build/tasks/{task}/figures.json', '4.11.5', 'a task\'s figures, as its account was taken', 'task account'),

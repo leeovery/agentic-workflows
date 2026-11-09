@@ -43,18 +43,15 @@ describe('leeway-continue-linear discovery', () => {
     assert.strictEqual(activeWorkUnit(dir, 'ghost'), null);
   });
 
-  it('surfaces a finished pipeline still in-progress as finalising — a quick-fix\'s, never one built under the old plan (P12)', () => {
-    for (const [type, phases, finalising] of /** @type {[string, string[], boolean][]} */ ([
-      ['feature', ['discussion', 'specification', 'planning', 'implementation', 'review'], false],
-      ['bugfix', ['investigation', 'specification', 'planning', 'implementation', 'review'], false],
-      ['quick-fix', ['scoping', 'implementation', 'review'], true],
+  it('surfaces no finished pipeline as finalising: one built under the old plan waits on the cut (P12), and a quick-fix\'s close completes it (19.5.14)', () => {
+    for (const [type, phases] of /** @type {[string, string[]][]} */ ([
+      ['feature', ['discussion', 'specification', 'planning', 'implementation', 'review']],
+      ['bugfix', ['investigation', 'specification', 'planning', 'implementation', 'review']],
+      ['quick-fix', ['scoping', 'implementation', 'review']],
     ])) {
       const name = `done-${type}`;
       createManifest(dir, name, { work_type: type, phases: items(name, phases, 'completed') });
-      const { unit } = activeWorkUnit(dir, name);
-      assert.strictEqual(unit.next_phase, 'done', type);
-      assert.strictEqual(unit.finalising, finalising, type);
-      assert.strictEqual(unit.phase_label, 'pipeline complete', type);
+      assert.strictEqual(activeWorkUnit(dir, name).unit.finalising, false, type);
     }
   });
 
@@ -97,7 +94,6 @@ describe('leeway-continue-linear discovery', () => {
       for (const [type, phases] of /** @type {[string, string[]][]} */ ([
         ['feature', ['discussion', 'specification', 'implementation']],
         ['bugfix', ['investigation', 'specification', 'implementation']],
-        ['quick-fix', ['scoping', 'implementation']],
       ])) {
         const name = `live-${type}`;
         createManifest(dir, name, { work_type: type, phases: { ...items(name, phases, 'completed'), review: { items: { [name]: { status: 'in-progress' } } } } });
@@ -105,6 +101,11 @@ describe('leeway-continue-linear discovery', () => {
         assert.strictEqual(unit.next_phase, 'review', type);
         assert.deepStrictEqual(unit.completed_phases, phases, type);
       }
+    });
+
+    it('a quick-fix whose review the person asked for is found in it, never filtered as done (19.5.14)', () => {
+      createManifest(dir, 'qf', { work_type: 'quick-fix', fixes: { began: '2026-06-03T09:00:00Z', review_asked: '2026-06-03T10:00:00Z' } });
+      assert.strictEqual(activeWorkUnit(dir, 'qf').unit.next_phase, 'review');
     });
 
     it('counts only the type\'s own pipeline — discussion is no bugfix phase, nor a quick-fix one', () => {
@@ -230,18 +231,21 @@ describe('leeway-continue-linear view', () => {
     assert.ok(out.includes('  y  yes  continue  crash  → /leeway-investigation-process bugfix crash'));
   });
 
-  it('routes each type by the work_type its manifest names', () => {
-    for (const [name, type, done, next] of [
-      ['crash', 'bugfix', 'investigation', 'specification'],
-      ['typo', 'quick-fix', 'scoping', 'implementation'],
-    ]) {
-      createManifest(dir, name, { work_type: type, phases: { [done]: { items: { [name]: { status: 'completed' } } } } });
-      const out = view(dir, name);
-      assert.ok(out.includes(`work_type: ${type}\n`), out);
-      assert.ok(out.includes(`  y  yes  continue  ${name}  → /leeway-${next}-process ${type} ${name}\n`), out);
-      assert.ok(out.includes(`  1  —  revisit_phase  ${name}  → /leeway-${done}-process ${type} ${name}\n`), out);
-      assert.ok(out.includes('**`b/back`**    → Return to the start menu'), out);
-    }
+  it('routes a bugfix by the work_type its manifest names, its investigation revisitable', () => {
+    createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { items: { crash: { status: 'completed' } } } } });
+    const out = view(dir, 'crash');
+    assert.ok(out.includes('work_type: bugfix\n'), out);
+    assert.ok(out.includes('  y  yes  continue  crash  → /leeway-specification-process bugfix crash\n'), out);
+    assert.ok(out.includes('  1  —  revisit_phase  crash  → /leeway-investigation-process bugfix crash\n'), out);
+    assert.ok(out.includes('**`b/back`**    → Return to the start menu'), out);
+  });
+
+  it('routes a quick-fix into its own skill, straight on: its fixes its one phase, nothing to revisit (19.5.14, 24.1.2)', () => {
+    createManifest(dir, 'typo', { work_type: 'quick-fix', fixes: { began: '2026-06-03T09:00:00Z' } });
+    const out = view(dir, 'typo');
+    assert.deepStrictEqual(out.split('\n').filter((line) => /^(work_type: |  [a-z0-9]  )/.test(line)),
+      ['work_type: quick-fix', '  y  yes  continue  typo  → /leeway-quick-fix-process quick-fix typo']);
+    assert.doesNotMatch(out, /^=== MENU/m);
   });
 
   it('routes a feature or a bugfix built by its cut into the build, then into its review phase, handing straight on — its build never revisited, its review never skipped (24.1.6, 14.6.1)', () => {
@@ -260,12 +264,12 @@ describe('leeway-continue-linear view', () => {
     }
   });
 
-  it('a finalising unit gates on finalise beside the revisit and the way back', () => {
-    createManifest(dir, 'typo', { work_type: 'quick-fix', phases: items('typo', ['scoping', 'implementation', 'review'], 'completed') });
+  it('P12: a quick-fix today\'s scoping left, nothing of its pipeline begun, draws no pipeline: its menu the migration\'s line and the way back', () => {
+    createManifest(dir, 'typo', { work_type: 'quick-fix', phases: items('typo', ['scoping'], 'completed') });
     const out = view(dir, 'typo');
-    assert.ok(out.includes('finalising: true\n'), out);
-    assert.ok(out.includes('  y  yes  finalise  typo  → (internal)\n'), out);
-    assert.match(out, /\*\*`y\/yes`\*\* +→ Mark the work unit completed\n\*\*`r\/revisit`\*\* → Revisit an earlier phase\n\*\*`b\/back`\*\* +→ Return to the start menu/);
+    assert.doesNotMatch(out, /^=== DISPLAY/m);
+    assert.ok(out.includes('typo was built under the old plan, and its build is entered once the reshape\'s 29.17 migration has cut it\n'), out);
+    assert.deepStrictEqual(out.split('\n').filter((line) => /^  [a-z0-9]  /.test(line)), ['  b  back  back  typo  → (internal)']);
   });
 
   for (const [label, seed] of /** @type {[string, (dir: string) => void][]} */ ([

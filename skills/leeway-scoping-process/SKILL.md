@@ -23,12 +23,6 @@ The output format is asked for where none is set.
 
 ---
 
-## Instructions
-
-Load **[framework.md](../leeway-shared/references/framework.md)** and follow its instructions as written.
-
----
-
 ## Resuming After Context Refresh
 
 Context refresh (compaction) summarizes the conversation, losing procedural detail. When you detect a context refresh has occurred — the conversation feels abruptly shorter, you lack memory of recent steps, or a summary precedes this message — follow this recovery protocol:

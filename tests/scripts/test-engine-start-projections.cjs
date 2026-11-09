@@ -33,9 +33,6 @@ const renderSurface = auditingRender(require('../../skills/leeway-engine/scripts
 // rule) — goldens spell them explicitly.
 const NB = (n) => '\u00a0'.repeat(n);
 
-/** A quick-fix's phases, each completed: its pipeline finished. */
-const FINISHED_QUICK_FIX = Object.fromEntries(['scoping', 'implementation', 'review'].map((phase) => [phase, { items: { 'rename-api': { status: 'completed' } } }]));
-
 // Golden tests: byte-exact expected strings for the leeway overview
 // and menu projections. Fixtures go through real manifests and inbox files in
 // temp dirs (the same shapes the discovery tests produce).
@@ -59,10 +56,7 @@ function fullFixture(dir) {
     phases: { discussion: { items: { 'auth-flow': { status: 'completed' } } } },
   });
   createManifest(dir, 'login-crash', { work_type: 'bugfix' });
-  createManifest(dir, 'rename-api', {
-    work_type: 'quick-fix',
-    phases: { scoping: { items: { 'rename-api': { status: 'in-progress' } } } },
-  });
+  createManifest(dir, 'rename-api', { work_type: 'quick-fix', fixes: { began: '2026-06-03T09:00:00Z' } });
   createManifest(dir, 'quiz-competition-v1', {
     work_type: 'epic',
     phases: {
@@ -149,14 +143,6 @@ describe('start projections: overview', () => {
     ].join('\n'));
   });
 
-  it('finalising unit renders a plain row (finalising state lives in the menu tail)', () => {
-    createManifest(dir, 'rename-api', { work_type: 'quick-fix', phases: FINISHED_QUICK_FIX });
-    assert.strictEqual(startOverview(startDetail(dir)), [
-      'Quick Fixes',
-      '  └─ 1. Rename Api',
-      '',
-    ].join('\n'));
-  });
 });
 
 describe('start projections: menu', () => {
@@ -188,7 +174,7 @@ describe('start projections: menu', () => {
       `${NB(14)}*(in-progress)*`,
       '**`3`**           → Continue "Login Crash" — *bugfix, ready for*',
       `${NB(14)}*investigation*`,
-      '**`4`**           → Continue "Rename Api" — *quick-fix, scoping*',
+      '**`4`**           → Continue "Rename Api" — *quick-fix, implementation*',
       `${NB(14)}*(in-progress)*`,
       '**`5`**           → Continue "Quiz Competition V1" — *epic*',
       '**`p/product`**   → Talk about the product',
@@ -222,15 +208,6 @@ describe('start projections: menu', () => {
       '**`m/manage`**    → Manage a work unit\'s lifecycle',
       '**`h/help`**      → How the workflows work',
     ].join('\n'));
-  });
-
-  it('finalising unit gets a Finalise entry that still routes to the linear continue menu', () => {
-    createManifest(dir, 'rename-api', { work_type: 'quick-fix', phases: FINISHED_QUICK_FIX });
-    const menu = startMenu(startDetail(dir));
-    assert.ok(/\*\*`1`\*\* +→ Finalise "Rename Api" — \*quick-fix, pipeline\*\n\u00a0+\*complete\*/.test(menu.rendered), menu.rendered);
-    const entry = menu.keys.find((k) => k.key === '1');
-    assert.strictEqual(entry.action, 'continue_work_unit');
-    assert.strictEqual(entry.route, '/leeway-continue-linear rename-api');
   });
 
   it('shows v with cancelled-only work units', () => {
@@ -296,7 +273,8 @@ describe('start projections: empty state', () => {
       '**`e/epic`**      → Multiple topics, multi-session: each discussed,',
       `${NB(14)}then one spec → build → review`,
       '**`b/bugfix`**    → Investigation → spec → build → review',
-      '**`q/quick-fix`** → Scoping → implement → review (no formal planning)',
+      '**`q/quick-fix`** → One sitting: each fix built and reviewed, then',
+      `${NB(14)}closed`,
       '**`h/help`**      → How the workflows work',
     ].join('\n'));
     assert.deepStrictEqual(
@@ -864,34 +842,15 @@ describe('start projections: manage unit', () => {
     ].join('\n'));
   });
 
-  it('completed implementation offers done; a plan offers no view of itself', () => {
-    createManifest(dir, 'hotfix', {
-      work_type: 'quick-fix',
-      phases: {
-        scoping: { items: { hotfix: { status: 'completed' } } },
-        planning: { items: { hotfix: { status: 'completed' } } },
-        implementation: { items: { hotfix: { status: 'completed' } } },
-      },
-    });
+  it('a quick-fix offers no done: its close completes it (19.5.14)', () => {
+    createManifest(dir, 'hotfix', { work_type: 'quick-fix', fixes: { began: '2026-06-03T09:00:00Z' } });
     const v = manageUnitView(manageDetail(dir, 'hotfix'));
-    assert.strictEqual(v.menu, [
-      '· · · · · · · · · · · ·',
-      '**Hotfix** (quick-fix)',
-      '',
-      '**`◆ What would you like to do?`**',
-      '',
-      '**`d/done`**   → Mark as completed',
-      '**`c/cancel`** → Mark as cancelled',
-      '**`b/back`**   → Return',
-      '**Ask**      → Ask a question about this work unit',
-    ].join('\n'));
     assert.ok(v.data.endsWith([
       'ACTIONS (key  word  action):',
-      '  d  done  mark_completed',
       '  c  cancel  cancel',
       '  b  back  back',
-    ].join('\n')), 'every row the menu offers resolves by its key or its word');
-    assert.ok(!v.menu.includes('pivot'));
+    ].join('\n')), v.data);
+    assert.ok(!v.menu.includes('d/done'), v.menu);
     assert.strictEqual(v.sections, undefined, 'the manage snapshot carries no deferred sections');
   });
 

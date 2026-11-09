@@ -15,16 +15,19 @@
 // hands paths out; a path answered is absolute.
 //
 // `inbox file <unit> --file <item.json>` files an out-of-scope finding of
-// the unit's review phase to the inbox (6.1.15, 14.3.5): Claude's item,
+// the unit's review phase to the inbox (6.1.15, 14.3.5) — or a note for
+// later a quick-fix's close answers, where no review was asked for (R24,
+// `quick-fix notes`): Claude's item,
 // `{kind, text, call}` — its kind, `idea`, `bug` or `quick-fix`; its text,
 // markdown opening on its title, `# Title`; and the ledger's file-or-drop
 // call that filed it, a current decision of Claude's own at `{unit}.review`
-// (14.3.7, review-phase.cjs), so every filing is one engine call away.
+// — the close's at `{unit}.implementation` — (14.3.7, review-phase.cjs), so
+// every filing is one engine call away.
 // It is written at `.inbox/{folder}/{YYYY-MM-DD}--{slug}.md`, today's date
 // and its title's slug, and committed. It refuses, writing nothing, a unit
-// whose review phase cannot be entered (review-entry.cjs), a payload of
-// another shape, a text with no title, a call that is none of those, and
-// an item already there.
+// whose review phase cannot be entered (review-entry.cjs) but such a
+// quick-fix, a payload of another shape, a text with no title, a call that
+// is none of those, and an item already there.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -299,8 +302,11 @@ function fileItem(cwd, unit, file) {
   const { readShown } = require('./ledger-read.cjs');
   const { unitInProgress } = require('./topic-standing.cjs');
   const { reading } = require('./phase-checks.cjs');
+  const { quickFixBuild, reviewAsked } = require('./derivations.cjs');
   const said = 'inbox file';
-  const refused = refusing(said, () => reviewRefusal(reading(cwd, unit, unitInProgress(cwd, unit))));
+  const manifest = refusing(said, () => unitInProgress(cwd, unit));
+  const atClose = quickFixBuild(manifest) && !reviewAsked(manifest);
+  const refused = atClose ? null : refusing(said, () => reviewRefusal(reading(cwd, unit, manifest)));
   if (refused !== null) throw new Error(`${said}: ${refused}`);
   const item = refusing(said, () => shaped(readPayload(cwd, file), 'the item', ['kind', 'text', 'call']));
   const { kind, text, call } = item;
@@ -311,14 +317,14 @@ function fileItem(cwd, unit, file) {
   if (title === null) faults.push('its text holds its title, `# Title`');
   /** @type {string[]} */
   const warnings = [];
-  const fault = filled(call) ? readShown(stateRoot(cwd), warnings, (shower) => reviewCallFault(shower, unit, call)) : 'its call names the ledger\'s file-or-drop call';
+  const fault = filled(call) ? readShown(stateRoot(cwd), warnings, (shower) => reviewCallFault(shower, unit, call, atClose ? 'implementation' : 'review')) : 'its call names the ledger\'s file-or-drop call';
   if (fault !== null) faults.push(fault);
   if (faults.length > 0) throw new Error(`${said}: ${faults.join('; ')}`);
   const rel = `${INBOX}/${KIND_FOLDER[/** @type {string} */ (kind)]}/${todayStamp()}--${slugOf(/** @type {string} */ (title))}.md`;
   if (fs.existsSync(statePath(cwd, rel))) throw new Error(`${said}: ${statePath(cwd, rel)} is filed already — group this finding with it, or title it apart`);
   fs.mkdirSync(path.dirname(statePath(cwd, rel)), { recursive: true });
   fs.writeFileSync(statePath(cwd, rel), `${String(text).replace(/\n*$/, '')}\n`);
-  const outcome = commitStateTail(cwd, [rel], `workflow(inbox): file ${path.posix.basename(rel, '.md').replace(/^\d{4}-\d{2}-\d{2}--/, '')} from ${unit}'s review`, warnings);
+  const outcome = commitStateTail(cwd, [rel], `workflow(inbox): file ${path.posix.basename(rel, '.md').replace(/^\d{4}-\d{2}-\d{2}--/, '')} from ${unit}'s ${atClose ? 'close' : 'review'}`, warnings);
   return committedResult({ filed: statePath(cwd, rel), committed: outcome.committed }, outcome, warnings);
 }
 

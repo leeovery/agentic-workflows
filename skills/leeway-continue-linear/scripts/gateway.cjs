@@ -25,8 +25,8 @@ const GATES = Object.freeze({
 
 /**
  * One snapshot of the unit: reasoning DATA (flow flags + the ACTIONS table),
- * the TITLE, the rendered status block (DISPLAY), and the proceed/revisit
- * menu (MENU).
+ * the TITLE, the rendered status block (DISPLAY) where it draws anything,
+ * and the proceed/revisit menu (MENU).
  * @param {string} cwd @param {string} workUnit @returns {string}
  */
 function view(cwd, workUnit) {
@@ -37,10 +37,11 @@ function view(cwd, workUnit) {
   }
   const { type, unit } = found;
   const menu = engine.project.workUnitMenu(type, unit);
+  const status = engine.project.workUnitStatus(type, unit);
   return [
     engine.gateway.dataBlock(engine.project.workUnitData(type, unit, menu)),
     engine.gateway.titleBlock(engine.project.workUnitTitle(unit)),
-    engine.gateway.displayBlock(engine.project.workUnitStatus(type, unit)),
+    status !== '' && engine.gateway.displayBlock(status),
     engine.gateway.menuBlock(GATES.view, menu.rendered),
   ].filter(Boolean).join('\n');
 }

@@ -68,6 +68,13 @@
 //   tasks each question waiting parks, so a task parked never shows as
 //   ready, is never done nor its account taken while a question parks it,
 //   and is taken off them as it closes.
+// - A quick-fix's questions asked in its conversation (19.5.25): each
+//   question at its places, its implementation or its review, open in its
+//   ledger that no question waiting parks — one Claude raised there,
+//   which parks nothing, whether or not the conversation still holds its
+//   seal, so it outlives a /clear. Its close never lands over one
+//   (finish.cjs), and the board draws each waiting
+//   (projections/board-quick-fix.cjs): the one read of both.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -75,10 +82,11 @@ const path = require('path');
 const { messageOf } = require('../kernel/call.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
 const { handedSession } = require('../kernel/process.cjs');
-const { findStateRoot } = require('../kernel/state-root.cjs');
+const { findStateRoot, stateRoot } = require('../kernel/state-root.cjs');
 const { conversationDir } = require('./conversation.cjs');
 const { shortId, resolveId } = require('./ledger-ids.cjs');
-const { ID_FACTS, readFolded, factsOf, whyDead, questionStands, notCurrent, keptOf, wordingOf } = require('./ledger-fold.cjs');
+const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
+const { ID_FACTS, readFolded, factsOf, whyDead, questionStands, notCurrent, keptOf, wordingOf, isCurrent, standingOf } = require('./ledger-fold.cjs');
 const { liveness, manifestOf } = require('./ledger-units.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
@@ -115,6 +123,7 @@ const { liveness, manifestOf } = require('./ledger-units.cjs');
  * @typedef {{name: string, id: string, tasks: string[], line: Record<string, any>, asks: string}} WaitingOn
  */
 /** A park's call as sealed: Claude's call, the rows judged, and why it asks. @typedef {{call: Record<string, any>, rows_judged: string[], why_asking: string}} Sealed */
+/** A question asked in a quick-fix's conversation still open: its short id, the place it is at, and what it asks. @typedef {{id: string, place: string, asks: string}} AskedOpen */
 /** A seal's question: its first park's full id, its number and the tasks it parks (raise.cjs). @typedef {{park: string, number: number, tasks: string[]}} Parks */
 
 const DISCUSSING = 'discussing.json';
@@ -441,6 +450,34 @@ function waitingIn(read, entryAt, unit, now) {
 }
 
 /**
+ * The questions asked at the quick-fix `unit`'s places still open that no
+ * question waiting parks, in the ledger's order (the header's), each by its
+ * full id.
+ * @param {Folded} read @param {string} unit @returns {string[]}
+ */
+function askedOpenIds(read, unit) {
+  const parked = new Set(waitingOf(read, unit).flatMap(({ park }) => {
+    const { question } = factsOf(read, park);
+    return question === null ? [] : [factsOf(read, question).root];
+  }));
+  return [...read.facts].filter(([id, { kind, phase, root }]) => kind === 'question' && BUILD_PHASES.includes(phase) && !parked.has(root)
+    && isCurrent(read, id) && standingOf(read, id).unit === unit && questionStands(read, id) === 'open').map(([id]) => id);
+}
+
+/**
+ * The questions asked in the quick-fix `unit`'s conversation still open
+ * (`askedOpenIds`), each by its short id, its place and its words, on one
+ * line; what the read said pushed to `warnings`.
+ * @param {string} cwd @param {string} unit @param {string[]} warnings @returns {AskedOpen[]}
+ */
+function askedOpen(cwd, unit, warnings) {
+  return readQuestions(stateRoot(cwd), warnings, (read, entryAt) => askedOpenIds(read, unit).map((id) => {
+    const { phase, place } = factsOf(read, id);
+    return { id: shortId(id, read.facts.keys()), place: `${unit}.${phase}`, asks: String(entryAt(place).text).replace(/\s+/g, ' ').trim() };
+  }));
+}
+
+/**
  * The next question to raise: the first of the conversation's discussion
  * queue still waiting and not among those `recorded`; null with no queue,
  * none such, or no conversation. A queue that cannot be read names none,
@@ -506,7 +543,7 @@ function answerMeans(read, unit, parks, before) {
  */
 function freedWords(freed, turn, read) {
   const reading = freed.length === 1 ? read(freed[0]) : null;
-  const behind = turn !== null && !freed.includes(turn.inFlight) ? `task ${turn.inFlight} is done` : null;
+  const behind = turn !== null && !freed.includes(turn.inFlight) ? require('./task-verbs.cjs').turnEnds(turn) : null;
   const waits = [...(reading === null ? [] : [`its pair has read round ${reading}`]), ...(behind === null ? [] : [behind])];
   const again = `${freed.length === 1 ? `task ${freed[0]} builds` : 'their tasks build'} again${waits.length === 0 ? '' : ` once ${waits.join(' and ')}`}`;
   return turn !== null && behind === null && freed.length > 1 ? `${again}, task ${turn.inFlight} first` : again;
@@ -669,5 +706,5 @@ function parkingTask(root, unit, task, warnings) {
 
 module.exports = {
   DISCUSSING, WAITING_USAGE, ASIDE_USAGE, numbered, parkedTasks, waitingOn, parkedUnder, parkedQuestion, checkUnparked, waitingQuestions, readQuestions, waitingOf, asideQuestions, foundPark, answeredReceipt,
-  explainedReceipt, checkAnswerable, answerable, parkedTasksOf, freedAtOf, waitingAndFreed, parkingTask,
+  explainedReceipt, checkAnswerable, answerable, parkedTasksOf, freedAtOf, waitingAndFreed, parkingTask, askedOpenIds, askedOpen,
 };

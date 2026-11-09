@@ -22,7 +22,7 @@ const assert = require('node:assert');
 
 const harness = require('../../scripts/engine-harness.cjs');
 const { useTempFolder } = require('../../scripts/discovery-test-utils.cjs');
-const { UNIT, BRANCH, SET, fixChanged, twoFixesBuilt, fixesRecorded } = require('../../scripts/quick-fix-world.cjs');
+const { UNIT, BRANCH, SET, fixChanged, fixDone, twoFixesBuilt, fixesRecorded } = require('../../scripts/quick-fix-world.cjs');
 const side = require('./landing.cjs');
 const { GH_ENV, bareOf, madeOnGithub } = require('./world.cjs');
 const lg = require('../../../skills/leeway-engine/scripts/domain/landing-git.cjs');
@@ -56,7 +56,7 @@ const holdsOnGithub = (commit, branch) => lg.isAncestor(bareOf(dir), commit, bra
 function closedWithThird(opened) {
   ok(dir, ['land', 'open', UNIT, '1.3'], as());
   const read = opened();
-  ok(dir, ['task', 'done', UNIT, '1.3'], as());
+  fixDone(dir, '1.3', as());
   fixesRecorded(dir, 3, as());
   ok(dir, ['finish', 'yes', UNIT], as());
   return read;

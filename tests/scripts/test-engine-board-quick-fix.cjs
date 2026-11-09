@@ -73,21 +73,21 @@ describe('a quick-fix\'s fixes on the board (20.14)', () => {
     assert.deepStrictEqual([answer.version, answer.place.phase, answer.questions], [BOARD_VERSION, 'implementation', []]);
   });
 
-  it('20.S23: a fix\'s builder parks its task on a question while another goes on — WAITING ON YOU holds it, a press queueing it, the parked fix waits on Q1, and the banner keeps running, counting it; once every fix left is parked it has stopped, flagged (19.5.25, 20.2.4)', async () => {
+  it('20.S23: a fix\'s builder parks its task on a question while the next goes on — WAITING ON YOU holds it, a press queueing it, the parked fix waits on Q1, and the banner keeps running, counting it; once every fix left is parked it has stopped, flagged (19.5.25, 20.2.4)', async () => {
     dir = working();
     atTheFixes();
-    run(['task', 'start', UNIT, '1.2']);
-    await parkedOn('1.2', 'Should the help name both spellings?');
-    const goingOn = board();
     await parkedOn('1.1', 'Should the flag keep --color?');
+    run(['task', 'start', UNIT, '1.2']);
+    const goingOn = board();
+    await parkedOn('1.2', 'Should the help name both spellings?');
     const stopped = board();
     const { row, line } = rows();
 
     assert.deepStrictEqual([goingOn.view.waiting, goingOn.questions.map(({ question, parks }) => [question, parks])], [
-      [{ kind: 'question', id: 'Q1', text: 'Q1 Should the help name both spellings?', page: 'task:1.2' }],
-      [['Q1', [{ task: '1.2', title: HELP }]]],
+      [{ kind: 'question', id: 'Q1', text: 'Q1 Should the flag keep --color?', page: 'task:1.1' }],
+      [['Q1', [{ task: '1.1', title: FLAG }]]],
     ]);
-    assert.deepStrictEqual(goingOn.view.fixes[1], fix('1.2', HELP, 'waits', { on: ['Q1'] }));
+    assert.deepStrictEqual(goingOn.view.fixes[0], fix('1.1', FLAG, 'waits', { on: ['Q1'] }));
     assert.deepStrictEqual(goingOn.banner, { name: 'Typo', state: 'running', facts: [place('quick-fix'), { text: '0 of 2 done', needs: false }, { text: '1 waiting on you', needs: true }] });
     assert.deepStrictEqual([stopped.banner, row.state, line.standing], [{ name: 'Typo', state: 'needs', facts: [place('quick-fix'), place('stopped'), { text: '0 of 2 done', needs: false }, { text: '2 waiting on you', needs: true }] }, 'stopped', 'stopped · 0 of 2 done']);
   });

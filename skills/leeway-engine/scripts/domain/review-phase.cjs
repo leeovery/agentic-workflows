@@ -54,8 +54,10 @@
 //   among the items of the next round recorded, or, where the round that
 //   ended the phase made the fix task, answered on its own (`review
 //   notes`), its findings joining that round's record. A note held for no
-//   phase that no phase's report took and no round answered stands, and the
-//   phase is not over while one does (14.3.5).
+//   phase that no phase's report took, no round answered and no quick-fix's
+//   close answered (notes.cjs, `answeredAtClose`) stands, and the phase is
+//   not over while one does (14.3.5) — a quick-fix's close waits on one
+//   too (`notesStanding`, finish-checks.cjs).
 // - What put back changes is set aside first (review-tree.cjs) at
 //   `.cache/.set-aside/{unit}/round-{N}/put-{k}/{path}`, beside the units'
 //   caches and never in one, so no lifecycle verb that takes a unit's cache
@@ -107,7 +109,7 @@ const { phaseLists, mergeWaiting } = require('./phase-checks.cjs');
 const { shownTask } = require('./task-id.cjs');
 const { buildLength, quickFixBuild } = require('./derivations.cjs');
 const { STATUS_WORDS } = require('./task-verbs.cjs');
-const { notesUntaken } = require('./notes.cjs');
+const { notesUntaken, answeredAtClose } = require('./notes.cjs');
 const { reviewReportFaults } = require('./review-report.cjs');
 
 /** @typedef {import('./ledger-read.cjs').Shower} Shower */
@@ -297,9 +299,9 @@ function fixesWaiting(at, rounds) {
   return { waiting, merging: waiting.length > 0 ? null : mergeWaiting(at, phase) };
 }
 
-/** The builders' notes standing (the header's), each `notes#{k}`, in order. @param {string} cwd @param {string} unit @param {RoundRecord[]} rounds */
+/** The builders' notes standing (the header's), each `notes#{k}`, in order — none a round answered, nor a quick-fix's close. @param {string} cwd @param {string} unit @param {RoundRecord[]} rounds */
 function notesStanding(cwd, unit, rounds) {
-  const answered = new Set(rounds.flatMap(({ findings }) => findings.flatMap(({ from }) => from)));
+  const answered = new Set([...rounds.flatMap(({ findings }) => findings), ...answeredAtClose(cwd, unit)].flatMap(({ from }) => from));
   return notesUntaken(cwd, unit).map(({ note }) => `${NOTES}#${note}`).filter((item) => !answered.has(item));
 }
 
@@ -548,12 +550,13 @@ function unitCalls(shower, unit) {
 
 /**
  * Why `given` names no file-or-drop call of the review phase's — a current
- * decision of Claude's own at `{unit}.review` (14.3.7) — or null where it
- * does.
- * @param {Shower} shower @param {string} unit @param {string} given
+ * decision of Claude's own at `{unit}.review` (14.3.7), or at the place
+ * `phase` names, a quick-fix's close at its implementation — or null where
+ * it does.
+ * @param {Shower} shower @param {string} unit @param {string} given @param {string} [phase]
  * @returns {string|null}
  */
-function reviewCallFault({ folded }, unit, given) {
+function reviewCallFault({ folded }, unit, given, phase = 'review') {
   let id;
   try {
     id = resolveId(given, folded.facts.keys());
@@ -561,7 +564,7 @@ function reviewCallFault({ folded }, unit, given) {
     return messageOf(err);
   }
   const facts = factsOf(folded, id);
-  if (facts.kind !== 'decision' || facts.unit !== unit || facts.phase !== 'review') return `${given} is no decision made at ${unit}.review — a file-or-drop call is Claude's, written there: ledger decide ${unit}.review`;
+  if (facts.kind !== 'decision' || facts.unit !== unit || facts.phase !== phase) return `${given} is no decision made at ${unit}.${phase} — a file-or-drop call is Claude's, written there: ledger decide ${unit}.${phase}`;
   if (!claudesCall(facts)) return `${given} is the person's decision — a file-or-drop call is Claude's own, never offered (14.3.5)`;
   return isCurrent(folded, id) ? null : `${given} is no longer current`;
 }
@@ -573,7 +576,7 @@ const forThePerson = ({ by, given }) => claudesCall({ by, given });
 const inTheBuild = ({ phase }) => BUILD_PHASES.includes(phase);
 
 module.exports = {
-  TESTS, TESTS_LETTER, NOTES, isBuilderNote, SET_ASIDE, setAsideFolder, setAsideHeld, filesUnder, EMPTY_PRINT, reportNames, recordedRounds, fixesOf, endsReview, fixPhase, reviewStanding, reportsIn, reviewGoesOn, everyRead,
+  TESTS, TESTS_LETTER, NOTES, isBuilderNote, SET_ASIDE, setAsideFolder, setAsideHeld, filesUnder, EMPTY_PRINT, reportNames, recordedRounds, fixesOf, endsReview, fixPhase, notesStanding, reviewStanding, reportsIn, reviewGoesOn, everyRead,
   endedWords, endedRefusal, openRefusal, roundRefusal, readsWords, mergingWords,
   roundRecordPath, roundReportFile, roundChecksFile, roundReadsPath, roundFolder, areaReportPath,
   takeSnapshot, openSnapshot, snapshotRound, dropSnapshot, treeDrift, movedWords, treeChanges, unitCalls, reviewCallFault, forThePerson, inTheBuild,

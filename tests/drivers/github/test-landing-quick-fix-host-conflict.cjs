@@ -22,7 +22,7 @@ const assert = require('node:assert');
 
 const harness = require('../../scripts/engine-harness.cjs');
 const { useTempFolder } = require('../../scripts/discovery-test-utils.cjs');
-const { UNIT, BRANCH, SET, fixChanged, twoFixesBuilt, fixesRecorded, guardedGit } = require('../../scripts/quick-fix-world.cjs');
+const { UNIT, BRANCH, SET, fixChanged, fixDone, twoFixesBuilt, fixesRecorded, guardedGit } = require('../../scripts/quick-fix-world.cjs');
 const side = require('./landing.cjs');
 const { GH_ENV, bareOf, madeOnGithub } = require('./world.cjs');
 const lg = require('../../../skills/leeway-engine/scripts/domain/landing-git.cjs');
@@ -57,7 +57,7 @@ describe('a quick-fix\'s branch conflicting with GitHub\'s copy (R15, N1)', () =
     createFile(dir, SET[0].file, SETTLED);
     ok(dir, ['commit', '--paths', SET[0].file, '--task', UNIT, '1.3', '-m', `fix(${UNIT}): take the suggestion`], as());
     ok(dir, ['land', 'open', UNIT, '1.3'], as());
-    ok(dir, ['task', 'done', UNIT, '1.3'], as());
+    fixDone(dir, '1.3', as());
     fixesRecorded(dir, 3, as());
     ok(dir, ['finish', 'yes', UNIT], as());
 

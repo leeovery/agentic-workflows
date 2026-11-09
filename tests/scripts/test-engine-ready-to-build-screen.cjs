@@ -183,6 +183,6 @@ describe('what never comes to ready to build (11.8.1)', () => {
     commitAll(dir(), 'a quick-fix');
 
     assert.match(refused(['render', 'ready-to-build', 'nowhere']), /^render ready-to-build: there is no work unit "nowhere"/);
-    assert.strictEqual(refused(['ready-to-build', 'yes', 'tidy', '--position', 'auto']), 'ready-to-build yes: a quick-fix has no specification — its phases are scoping, implementation, review');
+    assert.strictEqual(refused(['ready-to-build', 'yes', 'tidy', '--position', 'auto']), 'ready-to-build yes: a quick-fix has no specification — its phases are implementation, review');
   });
 });

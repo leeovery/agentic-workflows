@@ -1,6 +1,6 @@
 # Outside the Plan
 
-*Reference for **[leeway-implementation-process](../SKILL.md)***
+*Reference for **[leeway-implementation-process](../SKILL.md)**, **[leeway-quick-fix-process](../../leeway-quick-fix-process/SKILL.md)** and **[leeway-review-process](../../leeway-review-process/SKILL.md)***
 
 ---
 
@@ -16,8 +16,8 @@ Something the plan never held has turned up: a bug the person reports, a gap or 
   ```
 
 - **A phase not yet written** — held for its task writer, `task note {work_unit} --file {note} --phase {N}`.
-- **A note for later** — what lies outside the task, an improvement or an edge beyond its boundary, for the phase's consolidation: `task note {work_unit} --file {note}`. A wrong result in what a task does is never a note: it is a finding, or a fix task.
-- **A call, or a question for the person** — `ledger ask {work_unit}.{place}`, then `raise {work_unit}.{place} --answers {question_id}`; where it was met in a task, the ask with `--task {task}` and the raise with `--parks {task}`. Whether it reaches the person is the engine's to decide. One met in no task parks nothing, so hold what it touches yourself: raise it again with `--parks {task}` for each written task it bears on, and where a danger rides on its answer — work that would be lost or wrong if built first — start nothing that depends on it until it is answered.
+- **A note for later** — what lies outside the task, an improvement or an edge beyond its boundary, for the phase's consolidation — a quick-fix's for its close, or its review where the person asks for one: `task note {work_unit} --file {note}`. A wrong result in what a task does is never a note: it is a finding, or a fix task.
+- **A call, or a question for the person** — `ledger ask {work_unit}.{place}`, then `raise {work_unit}.{place} --answers {question_id}`; where it was met in a task, the ask with `--task {task}` and the raise with `--parks {task}`. Whether it reaches the person is the engine's to decide. One met in no task parks nothing, so hold what it touches yourself: raise it again with `--parks {task}` for each written task it bears on, and where a danger rides on its answer — work that would be lost or wrong if built first — start nothing that depends on it until it is answered. At a quick-fix, one met in no task is yours, raised once with no `--parks`, drawn in the conversation for the person to answer there; start no fix it bears on until it is answered.
 - **A decision in the unit's own record that must change** — replaced where it is found, never sent as a message: `raise {work_unit}.{place} --replaces {decision_id} --reason {reason}`, with `--parks {task}` where a task waits on it. Then `ledger affected {work_unit}` lists what relied on it: confirm each entry that still holds, `ledger hold {work_unit}.{place} --entry {id} --after {replacement_id}`, or replace it; whatever was built on the old answer is reworked by tasks.
 - **A message to another unit's topic still in discussion** — what this build found, and what that topic is asked to decide, its first line the title, written to `.leeway/.cache/{work_unit}/build/message-{slug}.md`, sent from this unit's topic it bears on — a single-topic unit's its own — then its report emitted per its marker:
 

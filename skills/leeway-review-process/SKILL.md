@@ -6,7 +6,7 @@ allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *)
 
 # Review
 
-The third review, once every phase of the build has closed: the whole change held against the spec's intent by independent agents — a pair for each of the spec's areas, reading its area, where it meets the others and the unit's calls whole, and running what touches it; and one reader over every test file of the change. You orchestrate the rounds. Every finding lands somewhere — a fix task, the inbox, or dropped — the fixes are built through the build's own task loop, and the areas they changed are read again, until a round passes. Each round's report is shown to the person, and finish is theirs.
+The third review, once every phase of the build has closed: the whole change held against the spec's intent by independent agents — a pair for each of the spec's areas, reading its area, where it meets the others and the unit's calls whole, and running what touches it; and one reader over every test file of the change. You orchestrate the rounds. Every finding lands somewhere — a fix task, the inbox, or dropped — the fixes are built through the build's own task loop, and the areas they changed are read again, until a round passes. Each round's report is shown to the person, and finish is theirs. A quick-fix's review, asked for at its close, has no spec to hold the change against: **A Quick-Fix's Review** says how it differs.
 
 ## Arguments
 
@@ -23,7 +23,7 @@ The person has said yes at finish: the engine then holds every phase of the buil
 
 ## Entering
 
-The build runs straight into this phase, invoking it in place once the cut's last phase has closed; after a break, a menu moves into it. Every engine call is `node .claude/skills/leeway-engine/scripts/engine.cjs {verb} …`, each verb under **Doors**.
+The build runs straight into this phase, invoking it in place once the cut's last phase has closed, and a quick-fix's close does when the person asks for its review; after a break, a menu moves into it. Every engine call is `node .claude/skills/leeway-engine/scripts/engine.cjs {verb} …`, each verb under **Doors**.
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs enter review {work_unit}
@@ -52,7 +52,7 @@ Each move once the one before it holds:
    - Each `builder note` the entry names is an item of the round too, `notes#{k}`, note {k} of the `notes` file — a note a fix task's builder left — answered as a report's note is; a finding answering those alone is of the area `notes`.
 
    Each file-or-drop call out of scope, and each serious finding or bug dropped in scope, is your call on the ledger with its reason. A finding filed goes to the inbox once its call is in.
-3. **The fix tasks.** A round's fix tasks are one more phase of the build, its own: phase {N}, as the entry's `fix phase` line names it. Write the phase, then each fix as a task, findings one change fixes sharing it: its type `fix`, its acceptance scenario the finding's user scenario, its spec reference the area.
+3. **The fix tasks.** A round's fix tasks are one more phase of the build, its own: phase {N}, as the entry's `fix phase` line names it. Write the phase, then each fix as a task, findings one change fixes sharing it: its type `fix`, its acceptance scenario the finding's user scenario, its spec reference the area — a quick-fix's, `none`.
 4. **The record.** Write the round to `.leeway/.cache/{work_unit}/review/round.json` and record it, `review round {work_unit} --file .leeway/.cache/{work_unit}/review/round.json`. A refusal names every fault. A report missing or not reading goes back to its reader: brief it again, the fresh brief naming the report it replaces, and never edit a reader's report. A tree changed is **The Working Tree**. Put every other fault right, and record the round again.
 5. **The report.** Draw it, emitting its sections verbatim per their markers:
 
@@ -75,6 +75,10 @@ node .claude/skills/leeway-engine/scripts/engine.cjs render review-tree {work_un
 ```
 
 The answer goes to `gate`: follow its `next`, then record the round again; where something stays changed, the round refuses again and the gate returns with what remains. Where putting it back answers a `set_aside`, say in a line where what it changed is kept until the person removes it: its `folder`, and each of its `paths`. Where the person puts back by hand what the gate could not, record the round again.
+
+## A Quick-Fix's Review
+
+A quick-fix has no spec. Its review holds the whole change against its fixes' acceptance, in their own words, and its short records, the `summary` the entry reads in the spec's place. Its one area is the change, `--area 1`, read by its pair beside the test surface's reader. Its fix tasks are tasks of the quick-fix, landing in its one pull request, and the task loop builds them as a quick-fix's. Where `review round`, `review notes`, or the last fix task's `task done` or `task close` answers a `next`, the review is over: once the round's report is drawn, follow it back to the quick-fix's close, answered as **Closing** says.
 
 ## The Fixes
 
@@ -151,15 +155,15 @@ The person says they are ready to talk about a waiting question, or all of them 
 
 ## A Task's Account
 
-The person asks for a task's account, a fix task's or any of the build's. Fetch `render task-account {work_unit} {task}` and emit its sections verbatim per their markers.
+The person asks for a task's account: a fix task's, any of the build's, or one of a quick-fix's fixes. Fetch `render task-account {work_unit} {task}` and emit its sections verbatim per their markers.
 
 ## The Phases and Tasks
 
-The person asks for the build's phases and tasks, the fix phases among them. Fetch `render build-progress {work_unit}` and emit its sections verbatim per their markers.
+The person asks for the build's phases and tasks, the fix phases among them — a quick-fix's, its fixes then its review's fix tasks. Fetch `render build-progress {work_unit}` and emit its sections verbatim per their markers.
 
 ## A Switch of Position
 
-The person asks to run the fix tasks in auto, or in step. Record it, `workunit position {work_unit} {position:[auto|step]}`, and say in a line that it is switched.
+The person asks to run the fix tasks in auto, or in step. A quick-fix's run as in auto, with no position to switch: say so in a line. Any other unit's: record it, `workunit position {work_unit} {position:[auto|step]}`, and say in a line that it is switched.
 
 ## Backlogging
 

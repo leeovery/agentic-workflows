@@ -2,10 +2,10 @@
 
 // ---------------------------------------------------------------------------
 // The pipeline simulation's quick-fix review: the close's review row asking
-// for the review in the same conversation, its one area the change, a
-// round's fix task built on the quick-fix's one branch, and the round
-// passing handing back to the close, whose yes lands it all in one commit
-// (19.S23).
+// for the review, its skill invoked in the same conversation, its one area
+// the change, a round's fix task built on the quick-fix's one branch and
+// passed by its pair, and the round passing handing back to the close,
+// whose yes lands it all in one commit (19.S23).
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -18,7 +18,7 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const {
-  Sim, answerGate, startUnit, writeTasks, writePhaseTasks, finishClosed, reviewNext, areaRead, testsRead,
+  Sim, answerGate, startUnit, writeTasks, writePhaseTasks, finishClosed, fixBuilt, reviewNext, areaRead, testsRead,
 } = require('./pipeline-world.cjs');
 const { git } = require('./engine-harness.cjs');
 
@@ -27,31 +27,21 @@ describe('pipeline simulation: quick-fix review', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('quick-fix: the close\'s review row asks for the review in the same conversation — its one area the change; a round\'s fix task built on the quick-fix\'s branch; the round passing hands back to the close, whose yes lands the fixes and the fix task in one commit (19.S23)', () => {
+  it('quick-fix: the close\'s review row asks for the review, its skill invoked in the same conversation — its one area the change; a round\'s fix task built on the quick-fix\'s branch; the round passing hands back to the close, whose yes lands the fixes and the fix task in one commit (19.S23), no handoff on the way (24.S8)', () => {
     const wu = 'typo';
     startUnit(sim, 'quick-fix', wu, 'The --color flag is spelt --colour');
+    const handedOff = sim.handoffs.length;
     sim.run(['enter', 'implementation', wu]);
     const base = git(sim.dir, ['rev-parse', 'main']).trim();
-    /** A task `fix` started, `file` committed through the door, pushed to the pull request and done. @param {string} fix @param {string} file */
-    const built = (fix, file) => {
-      sim.run(['task', 'start', wu, fix]);
-      sim.write(file, '--colour\n');
-      sim.run(['commit', '--paths', file, '--task', wu, fix, '-m', `fix(${wu}): spell ${file} --colour`]);
-      sim.run(['land', 'open', wu, fix]);
-      sim.run(['task', 'done', wu, fix]);
-    };
     const [flag] = writeTasks(sim, wu, 1, [{ title: 'Spell the flag --colour', type: 'fix', reference: 'none', scenarios: ['1.S1 Given the flag, when it is passed, then it reads --colour.'] }]);
     sim.run(['task', 'start', wu, flag]);
-    sim.write('src/flag.js', '--colour\n');
-    sim.run(['commit', '--paths', 'src/flag.js', '--task', wu, flag, '-m', `fix(${wu}): spell the flag --colour`]);
-    sim.run(['quick-fix', 'record', wu, flag, '--file', sim.write(`.leeway/.cache/${wu}/build/record.md`, '## What changed\nThe flag.\n\n## Why\nIt was spelt the American way.\n\n## Leaves out\nOld scripts.\n')]);
-    sim.run(['land', 'open', wu, flag]);
-    sim.run(['task', 'done', wu, flag]);
+    fixBuilt(sim, wu, flag, ['src/flag.js'], { record: 'The flag.' });
     sim.write(`.leeway/${wu}/build/log.md`, '# The fixes\n');
     finishClosed(sim, wu);
     sim.render(['finish', wu], { expect: 'content' });
     const asked = sim.run(answerGate(sim, 'finish', '--pick', 'r').next.argv);
-    assert.deepStrictEqual(asked.next, { kind: 'engine', argv: ['enter', 'review', wu] });
+    assert.deepStrictEqual(asked.next, { kind: 'invoke', skill: 'leeway-review-process', args: ['quick-fix', wu] });
+    sim.run(['enter', 'review', wu]);
 
     const first = reviewNext(sim, wu);
     areaRead(sim, wu, '## Findings\n\n- bug: the help still says --color\n  Scenario: the help read\n\nVerdict: fail\n');
@@ -61,7 +51,8 @@ describe('pipeline simulation: quick-fix review', () => {
       can_now: ['Pass --colour.'], findings: [{ area: '1-the-change', scope: 'in', call: 'bug', text: 'The help still says --color.', from: ['1-the-change-a#1'], fix }],
     })]);
     assert.strictEqual(reviewNext(sim, wu).move, 'fixes');
-    built(fix, 'src/help.js');
+    sim.run(['task', 'start', wu, fix]);
+    fixBuilt(sim, wu, fix, ['src/help.js']);
     sim.refuses(['render', 'finish', wu], /^render finish: typo finishes once its review phase is over — typo's review phase is in round 2 — enter review typo$/);
     assert.strictEqual(reviewNext(sim, wu).move, 'reads');
     sim.run(['review', 'reads', wu, '1-the-change', 'tests']);
@@ -70,6 +61,7 @@ describe('pipeline simulation: quick-fix review', () => {
     testsRead(sim, wu);
     const passed = sim.run(['review', 'round', wu, '--file', sim.write(`.leeway/.cache/${wu}/review/round.json`, { can_now: ['Pass --colour, and read it in the help.'], findings: [] })]);
     sim.render(passed.next.argv.slice(1), { expect: 'content' });
+    const unclosed = sim.handoffs.slice(handedOff);
     const yes = sim.run(answerGate(sim, 'finish', '--pick', 'y').next.argv);
 
     assert.deepStrictEqual([first.data.area, first.fixPhase, fix, failed.fix_phase, passed.next], [
@@ -79,5 +71,6 @@ describe('pipeline simulation: quick-fix review', () => {
       [['1.1', '2.1']], [`fix(${wu}): The --color flag is spelt --colour`],
     ]);
     assert.strictEqual(sim.manifest(wu).status, 'completed');
+    assert.deepStrictEqual(unclosed, [], 'no handoff from the opener, through the review, to the close (24.S8)');
   });
 });

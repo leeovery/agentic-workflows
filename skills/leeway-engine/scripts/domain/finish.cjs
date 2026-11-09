@@ -15,13 +15,20 @@
 //   progress, and one the build's entry refuses: a unit built under the old
 //   plan, a build by its cut not begun (build-entry.cjs). A quick-fix's close stands besides on each of its
 //   fixes ended and each done with its record written (quick-fix-record.cjs,
-//   `recordedFixes`) — read off the unit's records alone, so the board
+//   `recordedFixes`); no question asked in its conversation still open in
+//   its ledger, whether or not the conversation still holds its raise,
+//   naming each and the raise that asks it again (questions.cjs,
+//   `askedOpen`), as the build never concludes over a question waiting
+//   (12.13.22); and, where no review was asked for, no note for later
+//   standing, naming each and `quick-fix notes`, which answers them (R24)
+//   — read off the unit's records alone, so the board
 //   asking whether it draws never reaches the host — and the screen reads
 //   whether its pull requests still hold a task done not landed, as a merge
 //   by hand on the host, by any method, leaves them (landing.cjs,
 //   `quickFixLanding`) — a fix task of a review asked for at the close
 //   among them — the yes then merging them, else saying its fixes have
-//   landed.
+//   landed; and each fix done with its pair's verdict, the round its pair
+//   passed it in or the orchestrator settled it (`pairVerdict`).
 // - It shows every checklist item skipped on the way, with its reason,
 //   read from the unit's manifest (6.4.5, 6.4.12); then asks, one at a
 //   time, the verdict of each departure this machine logged in the build
@@ -36,16 +43,18 @@
 //   product proved of each fix done, each scenario it names from its runs
 //   at the quick-fix's branch's tip (build-screens.cjs, `ranOf`), or in one
 //   line that the project has no way to run it, no verify setup recorded
-//   (P9); then its gate, the yes — saying it merges its pull request, where
+//   (P9); each fix's work a question's park set aside and none put back,
+//   kept, with the calls that show it and bring it into the checkout
+//   (fix-aside.cjs, `keptAside`, R26); then its gate, the yes — saying it merges its pull request, where
 //   a fix done is still to land — a review asked for, and questions about
 //   the change.
 //   What its reads warned of — a knowledge base set up that does not read
 //   among it (finish-checks.cjs) — is said on the screen, and on the yes's
 //   answer.
 // - The yes stands on the screen as drawn: the close it shows and no
-//   verdict still to ask. A quick-fix's refuses first a project's checkout
-//   holding changes not committed outside the state, naming each, its fixes
-//   having been built there (fix-branch.cjs). It lands every phase still
+//   verdict still to ask; a quick-fix's refuses besides a project's
+//   checkout holding changes not committed outside the state, naming each,
+//   its fixes having been built there (fix-branch.cjs). It lands every phase still
 //   standing (`land finish`, landing.cjs) — the review phase's fix phases,
 //   numbered past the cut, after every other (7.2.6); a quick-fix's one pull
 //   request, every task's commit squashed into one, or, where a merge by
@@ -80,11 +89,14 @@ const { completeWorkUnit } = require('./workunit-lifecycle.cjs');
 const { refusing, stands } = require('./staged-payload.cjs');
 const { READERS, readersDone } = require('./scratch.cjs');
 const { finishScreen, closeScreen } = require('./projections/finish.cjs');
-const { setAsideHeld } = require('./review-phase.cjs');
+const { setAsideHeld, notesStanding, recordedRounds } = require('./review-phase.cjs');
 const { reviewOverRefusal } = require('./finish-checks.cjs');
 const { messageOf } = require('../kernel/call.cjs');
-const { recordedFixes } = require('./quick-fix-record.cjs');
+const { recordedFixes, pairVerdict } = require('./quick-fix-record.cjs');
+const { shownTask } = require('./task-id.cjs');
 const { refuseDirtyClose, checkOutLanding } = require('./fix-branch.cjs');
+const { keptAside, keptWords } = require('./fix-aside.cjs');
+const { askedOpen } = require('./questions.cjs');
 const { ranOf } = require('./build-screens.cjs');
 const { verifySetup } = require('./environment.cjs');
 const { projectName } = require('./state-checks.cjs');
@@ -112,7 +124,22 @@ function finishStanding(cwd, unit, reviewOver = true) {
   if (refused !== null) throw new Error(refused);
   if (!quickFixBuild(manifest)) return { manifest, fixes: null, ...finishClose(cwd, unit) };
   const fixes = recordedFixes(cwd, manifest);
-  return { manifest, fixes, ...finishClose(cwd, unit) };
+  /** @type {string[]} */
+  const warnings = [];
+  refuseAskedOpen(cwd, unit, warnings);
+  if (!reviewAsked(manifest)) refuseNotesStanding(cwd, unit);
+  const close = finishClose(cwd, unit);
+  return { manifest, fixes, ...close, warnings: [...warnings, ...close.warnings] };
+}
+
+/**
+ * Refuse a quick-fix's close over a note for later standing, naming each
+ * and the verb that answers them (R24).
+ * @param {string} cwd @param {string} unit
+ */
+function refuseNotesStanding(cwd, unit) {
+  const notes = notesStanding(cwd, unit, recordedRounds(cwd, unit));
+  if (notes.length > 0) throw new Error(`${unit} closes once each note for later is filed to the inbox or dropped — ${notes.join(', ')}: quick-fix notes ${unit} --file <notes.json>`);
 }
 
 /** Whether finish's screen draws, as `render finish` stands on it: what the board lists waiting on the person, never reaching the host. @param {string} cwd @param {string} unit */
@@ -206,7 +233,14 @@ function finishSurface(cwd, { dotpath: unit = '' }) {
     };
     if (fixes === null) return finishScreen(view);
     return closeScreen({
-      ...view, product: projectName(cwd), proven: provenOf(cwd, manifest, fixes), fixes: fixes.length, landing: carryingAll(warnings, () => stillToLand(cwd, unit, manifest)), reviewed: reviewAsked(manifest),
+      ...view,
+      pair: fixes.map((fix) => ({ task: shownTask(fix.ref), title: fix.title, ...(/** @type {{round: number, settled: boolean}} */ (pairVerdict(cwd, fix.ref))) })),
+      product: projectName(cwd),
+      proven: provenOf(cwd, manifest, fixes),
+      fixes: fixes.length,
+      landing: carryingAll(warnings, () => stillToLand(cwd, unit, manifest)),
+      reviewed: reviewAsked(manifest),
+      kept: keptAside(cwd, unit).map(keptWords),
     });
   });
 }
@@ -220,14 +254,27 @@ function nextAfterFinish(manifest) {
 const VERDICT_OWED = 'a verdict is still to ask — render finish asks each before the yes';
 
 /**
- * Refuse a finish that stands from landing: a verdict still to ask, or, for
- * a quick-fix, the project's checkout holding changes not committed
+ * Refuse a finish that stands from landing: a verdict still to ask; or,
+ * for a quick-fix, the project's checkout holding changes not committed
  * (fix-branch.cjs).
  * @param {string} cwd @param {string} unit @param {{verdict: unknown, fixes: TaskDetail[]|null}} standing
  */
 function refuseLanding(cwd, unit, { verdict, fixes }) {
   if (verdict !== null) throw new Error(VERDICT_OWED);
   if (fixes !== null) refuseDirtyClose(cwd, unit);
+}
+
+/**
+ * Refuse a quick-fix's close over a question asked in its conversation
+ * still open, naming each and the raise that asks it again.
+ * @param {string} cwd @param {string} unit @param {string[]} warnings
+ */
+function refuseAskedOpen(cwd, unit, warnings) {
+  const open = askedOpen(cwd, unit, warnings);
+  if (open.length === 0) return;
+  const named = open.map(({ id, asks }) => `${id} ${asks}`).join('; ');
+  const ways = open.map(({ id, place }) => `raise ${place} --answers ${id}`).join(', ');
+  throw new Error(`${unit} closes once each question asked in it is answered — ${named}: raise ${open.length === 1 ? 'it' : 'each'} again for the person to answer, ${ways}`);
 }
 
 /**

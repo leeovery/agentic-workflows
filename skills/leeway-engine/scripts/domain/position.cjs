@@ -434,26 +434,29 @@ function dropPosition(sessionId) {
 // to carry it on — the entries affected and the unit's record by their
 // calls, the build's log, and where the build stands, its tasks in flight
 // and its questions waiting (build-entry.cjs, 12.1.6, 24.2.2), a
-// quick-fix's what its arm reads, its change and its fixes; and the
+// quick-fix's, in the quick-fix's own skill, what its arm reads, its change
+// and its fixes; and the
 // review phase's, of a unit whose build runs by its cut, what its entry
 // reads, its fix tasks in flight among it (review-entry.cjs). Every other
 // phase's note sends Claude to its skill's own steps, with its documents.
 // ---------------------------------------------------------------------------
 
 /**
- * The skill that runs the work at a place — a phase's own, discovery's,
- * which the product's conversation is too, or a project place's; null at a
- * work unit's menu, and at a phase no conversation works in: planning,
- * whose items are scoping's.
- * @param {string} name @param {string} [phase] @returns {string|null}
+ * The skill that runs the work at a place — a phase's own for the unit's
+ * work type, a quick-fix's implementation its own skill; discovery's, which
+ * the product's conversation is too; or a project place's — null at a work
+ * unit's menu, and at a phase no conversation works in: a phase no type's
+ * pipeline holds.
+ * @param {string} name @param {string} [phase] @param {string} [type] the unit's work type
+ * @returns {string|null}
  */
-function skillAt(name, phase) {
+function skillAt(name, phase, type) {
   if (phase === undefined) {
     if (!PROJECT_IDENTITIES.includes(name)) return null;
     return name === PRODUCT ? 'leeway-discovery' : `leeway-${name}`;
   }
   if (phase === 'discovery') return 'leeway-discovery';
-  const skill = phaseSkill(phase);
+  const skill = phaseSkill(phase, type);
   return HANDOFF_TARGETS.includes(skill) ? skill : null;
 }
 
@@ -565,7 +568,7 @@ function reviewWork(cwd, unit, manifest, inFlight, sessionId) {
  */
 function workAt(cwd, position, manifest, sessionId) {
   const { name, phase } = position;
-  const skill = skillAt(name, phase);
+  const skill = skillAt(name, phase, typeof manifest?.work_type === 'string' ? manifest.work_type : undefined);
   if (skill === null) return { skill: null, documents: [] };
   if (phase === undefined) {
     if (name === PRODUCT) return discoveryWork(skill, [], sessionLog(statePath(cwd, PRODUCT_SESSIONS), productActive(cwd)));
@@ -574,7 +577,6 @@ function workAt(cwd, position, manifest, sessionId) {
   if (manifest === null) return { skill: null, documents: [] };
   const wu = statePath(cwd, name);
   const topic = /** @type {string} */ (position.topic);
-  const plan = path.join(wu, 'planning', topic);
   switch (phase) {
     case 'discovery':
       return discoveryWork(skill, [mapCall(name)], sessionLog(path.join(wu, 'discovery'), phaseData(manifest, 'discovery').active_session));
@@ -593,8 +595,6 @@ function workAt(cwd, position, manifest, sessionId) {
     }
     case 'experiment':
       return { skill, documents: experimentFiles(cwd, name, topic, manifest) };
-    case 'scoping':
-      return { skill, documents: [path.join(wu, 'specification', topic, 'specification.md'), path.join(plan, 'planning.md')] };
     case 'implementation':
       return { skill, ...buildWork(cwd, name, position.tasks ?? [], sessionId) };
     case 'review':

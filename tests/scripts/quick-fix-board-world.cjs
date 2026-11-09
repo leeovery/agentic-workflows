@@ -18,7 +18,7 @@ require('./hermetic-env.cjs');
 
 const fs = require('fs');
 const path = require('path');
-const { ok, okSectionsAsync, writeState, statePath, fixtureFrom } = require('./engine-harness.cjs');
+const { ok, okSectionsAsync, writeState, fixtureFrom } = require('./engine-harness.cjs');
 const { createManifest, useTempFolder, withEnv } = require('./discovery-test-utils.cjs');
 const { ledgerReadHelpers } = require('./ledger-world.cjs');
 const { UNIT, PLACE, FLAG, HELP, SET, RECORDS, quickFix, createFix, fixBuilt, recordFile, twoFixesBuilt, fixesRecorded, asGone, entered } = require('./quick-fix-world.cjs');
@@ -96,25 +96,25 @@ const fix = (task, title, state, { since = null, on = [], rounds = {} } = {}) =>
 
 /**
  * The board as a suite's conversation reads it, in the project `dir`
- * names: the engine as it runs it, a verb run there, the board's answer,
+ * names, the conversation `session`: the engine as it runs it, a verb run there, the board's answer,
  * the conversation put at the quick-fix's one session; a brief it issued
  * for a fix, a round reported, a round briefed, a question a fix's builder
  * parks its task on; its row in the unit's tab and its line in All work;
  * and a decision replacing another at the quick-fix.
- * @param {() => string} dir
+ * @param {() => string} dir @param {string} [session]
  */
-function quickFixBoard(dir) {
+function quickFixBoard(dir, session = SESSION) {
   const config = useTempFolder('engine-board-quick-fix-config-');
 
   /** The engine as this test's conversation runs it. */
-  const env = () => ({ LEEWAY_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: SESSION, CLAUDE_PID: String(process.pid), TMUX: undefined, TMUX_PANE: undefined });
+  const env = () => ({ LEEWAY_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: session, CLAUDE_PID: String(process.pid), TMUX: undefined, TMUX_PANE: undefined });
 
   /** A verb run in the conversation. @param {string[]} args */
   const run = (args) => ok(dir(), args, { env: env() });
 
   /** The board's answer, its `ok` dropped. @param {string[]} [args] */
   function board(args = []) {
-    const { ok: _ok, ...answer } = run(['board', SESSION, ...args]);
+    const { ok: _ok, ...answer } = run(['board', session, ...args]);
     return answer;
   }
 
@@ -145,22 +145,10 @@ function quickFixBoard(dir) {
     briefedRound(task, round) {
       for (const letter of ['a', 'b']) recordReviewer(dir(), refOf(task), round, letter, SESSION);
     },
-    /**
-     * A question a fix's builder parks its task on (19.5.25). `raise` refuses
-     * `--parks` at a quick-fix today (15.6's E5), so the park is made as the
-     * build makes one, the unit read as a build for the raise alone.
-     * @param {string} task @param {string} question
-     */
+    /** A question a fix's builder parks its task on, raised for it (19.5.25). @param {string} task @param {string} question */
     async parkedOn(task, question) {
-      const file = statePath(dir(), UNIT, 'manifest.json');
-      const held = fs.readFileSync(file, 'utf8');
-      fs.writeFileSync(file, JSON.stringify({ ...JSON.parse(held), work_type: 'feature', build: { position: 'auto' } }));
-      try {
-        const asked = ledgerReadHelpers(dir).ask(PLACE, question);
-        await okSectionsAsync(dir(), ['raise', PLACE, '--answers', asked, '--parks', task], { env: env(), stdin: JSON.stringify({ ...CALL, question }) });
-      } finally {
-        fs.writeFileSync(file, held);
-      }
+      const asked = ledgerReadHelpers(dir).ask(PLACE, question);
+      await okSectionsAsync(dir(), ['raise', PLACE, '--answers', asked, '--parks', task], { env: env(), stdin: JSON.stringify({ ...CALL, question }) });
     },
     /** Its row in the unit's tab and its line in All work. */
     rows() {

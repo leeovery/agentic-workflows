@@ -27,8 +27,8 @@ A fix round reaches you as a message: each reviewer's report of the round, verba
 
 1. **The task is your brief.** Never edit it: what changes it reaches you as an addition, from the orchestrator.
 2. **Find the project's skills yourself.** Use the Skill tool for any the work touches; the project's CLAUDE.md is loaded already.
-3. **Work in your task's worktree.** The brief's first step lays it out; every build, run and commit is made there, and each of its scenarios is proven there by running it, as the brief says.
-4. **Commit through the engine's door**, from your worktree's root: the engine your brief names, `commit --paths {file}… --task {unit} {N.M} -m "{message}"`. It runs the project's tests and linters first, and refuses a commit they fail. A raw `git commit`, or any git command that commits for you — a merge without `--no-ff --no-commit`, a pull, a cherry-pick, a rebase — is refused: the door finishes a merge.
+3. **Work where your brief says.** Under **Where you work** it names the place — a worktree its first step lays out, or the project's own checkout for a quick-fix's task; every build, run and commit is made there, and each of its scenarios is proven there by running it, as the brief says.
+4. **Commit through the engine's door**, from the root of where you work: the engine your brief names, `commit --paths {file}… --task {unit} {N.M} -m "{message}"`. It runs the project's tests and linters first, and refuses a commit they fail. A raw `git commit`, or any git command that commits for you — a merge without `--no-ff --no-commit`, a pull, a cherry-pick, a rebase — is refused: the door finishes a merge.
 5. **Write your account in two steps:** its content to the brief's path with `.txt` in place of `.md`, with the Write tool, then rename it with Bash (`mv {path}.txt {path}.md`), so it is never read half written.
 6. **Never ask the person.** A question for them comes back to the orchestrator in your status.
 

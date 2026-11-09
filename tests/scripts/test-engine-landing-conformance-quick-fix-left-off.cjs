@@ -24,7 +24,7 @@ const os = require('os');
 const path = require('path');
 
 const { ok, refuses, git, createFile } = require('./engine-harness.cjs');
-const { UNIT, DESCRIPTION, BRANCH, guardedGit, quickFixConformance } = require('./quick-fix-world.cjs');
+const { UNIT, DESCRIPTION, BRANCH, guardedGit, fixDone, quickFixConformance } = require('./quick-fix-world.cjs');
 const { HELP, steps } = require('./quick-fix-by-hand.cjs');
 const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
 
@@ -60,7 +60,7 @@ for (const { name } of listDrivers('landing')) {
       guardedGit(at, ['cherry-pick', '--quit'], as());
       ok(at, ['commit', '--paths', HELP.file, '--task', UNIT, '1.2', '-m', `fix(${UNIT}): spell the help --colour again`], as());
       ok(at, ['land', 'open', UNIT, '1.2'], as());
-      ok(at, ['task', 'done', UNIT, '1.2'], as());
+      fixDone(at, '1.2', as());
       closed(at);
 
       const remade = `\`git cherry-pick --no-commit ${own}\`, settling any conflict and ending the pick with \`git cherry-pick --quit\`, which keeps its change, then \`engine commit --paths <file>… --task ${UNIT} 1.2 -m "<message>"\``;

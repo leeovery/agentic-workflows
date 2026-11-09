@@ -21,7 +21,9 @@
 //   is taken — a bugfix's reproducing task's once its bug is proven too
 //   (bug-proven.cjs), as it lands.
 // - `task-account <unit> <task>`: any task's account, printed when asked —
-//   one not yet taken drawn without it.
+//   one not yet taken drawn without it — a quick-fix's fix's and its
+//   review's fix tasks' among them, each built through the task loop and
+//   accounted as any task is (19.5.3).
 // - `step-gate <unit> <task>`: the gate after a task, in step alone, once
 //   its account is taken and before it is done — a bugfix's reproducing
 //   task's once its bug is proven too — and for a task an answer freed
@@ -41,20 +43,28 @@
 //   closed the next one's writing; and once the cut is through, the
 //   review's round with nothing to go on with, its reads named and every
 //   report of it in (review-phase.cjs, `reviewGoesOn`) (12.12.9, 12.13.22).
-// - `build-progress <unit>`: the build's phases and tasks.
+//   A quick-fix's stops as a build's does, its fixes its one phase, with no
+//   phase's step and no position: no fix, or fix task of its review, that
+//   no question parks in progress or ready, and once its review was asked
+//   for at its close, the review's round with nothing to go on with.
+// - `build-progress <unit>`: the build's phases and tasks — a quick-fix's
+//   fixes, and its review's fix phases after them.
 //
 // Each refuses, opening on its command: a unit the project lacks or whose
-// build has not begun; a task the tracker lacks; and as each says above.
+// build has not begun — a quick-fix, but for `task-account`, `build-stop`
+// and `build-progress`, which serve one whose fixes have begun, the rest
+// none, its tasks having no headline, no landing summary, no gate and no
+// stack; a task the tracker lacks; and as each says above.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const { statePath, stateRoot } = require('../kernel/state-root.cjs');
 const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
-const { phaseNamed, buildStanding, builtUnit, ownInFlight } = require('./build-entry.cjs');
+const { phaseNamed, buildStanding, builtUnit, standingUnit, ownInFlight } = require('./build-entry.cjs');
 const { reading, phaseLists, phaseLanded, reviewRefusalOf } = require('./phase-checks.cjs');
 const { reviewStanding, reviewGoesOn } = require('./review-phase.cjs');
-const { cutPhases, cutLength, quickFixBuild } = require('./derivations.cjs');
+const { cutPhases, cutLength, quickFixBuild, reviewAsked } = require('./derivations.cjs');
 const { trackedTask, trackedLists, goingOn, phaseOpen, turnRefusal, ENDED, STATUS_WORDS } = require('./task-verbs.cjs');
 const { engineItemsHold } = require('./checklist.cjs');
 const { fieldOf, criteriaTexts, criterionWords, holdsScenario, namesScenario, scenarioIds } = require('./task-file.cjs');
@@ -89,10 +99,14 @@ const taskOf = (cwd, ref) => withStateLock(stateRoot(cwd), () => trackedTask(cwd
 /** A task as screens name it. @param {Record<string, any>} manifest @param {TaskRef} ref @param {TaskDetail} task @returns {TaskHead} */
 const headOf = (manifest, ref, task) => ({ task: shownTask(ref), title: task.title, phase: ref.phase, phase_name: phaseNamed(manifest, ref.phase) });
 
-/** The unit a screen is for, its build begun, and the task it names. @param {string} cwd @param {Args} args @param {string} surface */
-function namedTask(cwd, { dotpath: unit = '', item }, surface) {
+/**
+ * The unit a screen is for, its build begun — a quick-fix's, its fixes
+ * begun, where `quickFix` lets one — and the task it names.
+ * @param {string} cwd @param {Args} args @param {string} surface @param {{quickFix?: boolean}} [opts]
+ */
+function namedTask(cwd, { dotpath: unit = '', item }, surface, { quickFix = false } = {}) {
   if (item === undefined) throw new Error(`Usage: engine render ${surface} <work-unit> <task>`);
-  const manifest = builtUnit(cwd, unit);
+  const manifest = quickFix ? standingUnit(cwd, unit) : builtUnit(cwd, unit);
   const ref = parseShownTask(unit, item);
   return { manifest, ref, task: taskOf(cwd, ref) };
 }
@@ -223,7 +237,7 @@ function taskLandedSurface(cwd, args) {
 /** `render task-account <unit> <task>`. @param {string} cwd @param {Args} args */
 function taskAccountSurface(cwd, args) {
   return refusing('render task-account', () => {
-    const { manifest, ref, task } = namedTask(cwd, args, 'task-account');
+    const { manifest, ref, task } = namedTask(cwd, args, 'task-account', { quickFix: true });
     return accountScreen(accountView(cwd, manifest, ref, task, takenAccount(cwd, ref)));
   });
 }
@@ -349,24 +363,39 @@ function buildGoesOn(standing, cut, { tasks, review }) {
   return round === null ? null : `review goes on: ${round}`;
 }
 
+/**
+ * Where the unit's build stands as its screens draw it, and whether it is a
+ * quick-fix's: one's build is through once its review was asked for at its
+ * close, its fixes all ended.
+ * @param {string} cwd @param {string} unit
+ */
+function screenStanding(cwd, unit) {
+  const standing = buildStanding(cwd, unit, ownInFlight(unit));
+  const manifest = standingUnit(cwd, unit);
+  const quickFix = quickFixBuild(manifest);
+  return { manifest, quickFix, standing: quickFix ? { ...standing, finished: reviewAsked(manifest) } : standing };
+}
+
 /** `render build-stop <unit>`. @param {string} cwd @param {Args} args */
 function buildStopSurface(cwd, { dotpath: unit = '' }) {
   return refusing('render build-stop', () => {
-    const standing = buildStanding(cwd, unit, ownInFlight(unit));
+    const { manifest, quickFix, standing } = screenStanding(cwd, unit);
     if (standing.waiting.length === 0) throw new Error(`no question waits on the person in ${unit}'s build — it stops only where nothing can go on without their answer (12.13.22)`);
-    const manifest = builtUnit(cwd, unit);
     const on = buildGoesOn(standing, cutLength(manifest), {
       tasks: () => withStateLock(stateRoot(cwd), () => goingOn(cwd, unit, manifest, { ready: phaseLets(cwd, unit, manifest) })).tasks,
       review: () => reviewGoesOn(cwd, unit, reviewStanding(reading(cwd, unit, manifest))),
     });
     if (on !== null) throw new Error(`${unit}'s ${on} — it stops only where nothing can go on without the person's answer (12.13.22)`);
-    return stopScreen(standing, finishedUnits(stateRoot(cwd)));
+    return stopScreen(standing, finishedUnits(stateRoot(cwd)), quickFix);
   });
 }
 
 /** `render build-progress <unit>`. @param {string} cwd @param {Args} args */
 function buildProgressSurface(cwd, { dotpath: unit = '' }) {
-  return refusing('render build-progress', () => progressScreen(buildStanding(cwd, unit, ownInFlight(unit)), finishedUnits(stateRoot(cwd))));
+  return refusing('render build-progress', () => {
+    const { quickFix, standing } = screenStanding(cwd, unit);
+    return progressScreen(standing, finishedUnits(stateRoot(cwd)), quickFix);
+  });
 }
 
 module.exports = {

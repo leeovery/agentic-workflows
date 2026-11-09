@@ -67,7 +67,7 @@ const {
 } = require('./derivations.cjs');
 const { reading, reposOf, mergeWaiting } = require('./phase-checks.cjs');
 const {
-  codeHeld, buildLogOf, standingOf, ownInFlight, inFlightLines, waitingLines, takeInFlight, readingOf,
+  codeHeld, buildLogOf, standingOf, ownInFlight, inFlightLines, waitingLines, askedLines, takeInFlight, readingOf,
 } = require('./build-entry.cjs');
 const { projectLandsOn } = require('./task-base.cjs');
 const { waitingAndFreed } = require('./questions.cjs');
@@ -193,12 +193,13 @@ function standingLines(cwd, unit, manifest, standing) {
 /**
  * The conversation `session`'s fix tasks in flight, a line each, as the
  * build's entry gives them, its standing read only where one is; and the
- * questions waiting on the person, read from the ledger alone.
+ * questions waiting on the person, read from the ledger alone — a
+ * quick-fix's asked in its conversation and still open among them.
  * @param {Reading} at @param {InFlight[]} inFlight @param {string|null} session @returns {Line[]}
  */
 function buildLines(at, inFlight, session) {
   const inFlightPart = inFlight.length === 0 ? [] : inFlightLines(at.cwd, session, standingOf(at, inFlight));
-  return [...inFlightPart, ...waitingLines(waitingAndFreed(at.cwd, at.unit, at.warnings))];
+  return [...inFlightPart, ...waitingLines(waitingAndFreed(at.cwd, at.unit, at.warnings)), ...askedLines(at)];
 }
 
 /** The commits a series ran at, as a line names them. @param {import('./runs.cjs').RepoCommit[]} commits */

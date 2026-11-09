@@ -37,7 +37,9 @@
 // taken, to its taking; else the orchestrator's to read for its notes for
 // later and the nits the task's commits do not yet fix, fixed in the
 // worktree that has its branch out, then the new builder's for the account
-// (task-account.cjs, `reviewOverWay`); anything else its new builder's. A task a question parks is
+// (task-account.cjs, `reviewOverWay`); anything else its new builder's —
+// a quick-fix's fix whose work its park set aside its start's first, which
+// puts it back (fix-aside.cjs), then that way. A task a question parks is
 // put in flight as well, but no builder goes to it until the person answers
 // (12.13.2); one at its step gate waits on the person's go there, the gate
 // drawn again, its builder never sent afresh (12.7.9, 12.14.3); and one
@@ -101,10 +103,15 @@
 // flight as the row puts them. It answers, as the tracker held its fixes on
 // arrival: the change, the unit's description, then each of its seeds; each
 // fix by its id and title and where it stands, none yet before the first;
-// its short record, `summary.md`, once written (19.5.6); the unit's record,
-// by its call; the build's log; and the engine. Its recovery note re-reads
-// the same, the record by its call, the build's log, then the change and
-// the fixes a line each (`fixesRecovery`).
+// its short record, `summary.md`, once written (19.5.6); each fix in flight
+// with its builder and its pair, or the question its builder parked it on,
+// and each question waiting on the person, as the build's lines say them
+// (19.5.3, 19.5.25) — each asked in its conversation and still open among
+// them, a conversation after a /clear holding no raise of it, with the
+// raise that asks it again (`askedLines`); the unit's record, by its call; the build's log; and
+// the engine. Its recovery note re-reads the same, the record by its call,
+// the build's log, then the change, the fixes, those in flight and the
+// questions waiting a line each (`fixesRecovery`).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -120,14 +127,16 @@ const { isoNow } = require('./dates.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { seedFiles } = require('./reads.cjs');
 const { summaryFile } = require('./knowledge/artifacts.cjs');
-const { STATUS_WORDS, goesOn, turnOf, writePhase, trackedPhase } = require('./task-verbs.cjs');
+const { STATUS_WORDS, goesOn, takesTurns, turnOf, turnEnds, writePhase, trackedPhase } = require('./task-verbs.cjs');
 const { heldCodeSessions } = require('./presence.cjs');
 const { codeGate } = require('./projections/enter.cjs');
 const { tasksInFlight } = require('./conversation.cjs');
 const { recordTasksAt } = require('./position.cjs');
-const { waitingAndFreed, parkedTasks } = require('./questions.cjs');
+const { waitingAndFreed, parkedTasks, askedOpen } = require('./questions.cjs');
 const { reading, phaseLists, phaseTasks, phaseLanded, mergeWaiting, fixesOwed, passed } = require('./phase-checks.cjs');
 const { takenFigures, reviewOverWay } = require('./task-account.cjs');
+const { ofQuickFix } = require('./task-base.cjs');
+const { heldAside } = require('./fix-aside.cjs');
 const { recordedRounds, mergingWords } = require('./review-phase.cjs');
 const { shownTask, parseShownTask } = require('./task-id.cjs');
 const { roundStanding, taskRounds, pairPassed } = require('./round-report.cjs');
@@ -264,16 +273,16 @@ function atGate(at, { ref, status }, parked) {
 }
 
 /**
- * In step, the task in flight and those held behind it, which go on once it
- * is done (the header's, `stepTurn`'s), from the phases' lists, the parks
- * and when an answer last freed each task, as the standing read them; null
- * in auto, and where none goes on.
+ * In step or in a quick-fix, the task in flight and those held behind it,
+ * which go on once it is done (the header's, `stepTurn`'s), from the
+ * phases' lists, the parks and when an answer last freed each task, as the
+ * standing read them; null in auto, and where none goes on.
  * @param {Reading} at @param {(TaskRow[]|null)[]} lists @param {Map<string, string[]>} parked @param {Map<string, number>} freed
  * @returns {StepTurn|null}
  */
 function turnIn(at, lists, parked, freed) {
-  if (at.manifest.build?.position !== 'step') return null;
-  return turnOf(goesOn(parked, { phases: lists, ready: [] }, () => false), () => freed);
+  if (!takesTurns(at.manifest)) return null;
+  return turnOf(goesOn(parked, { phases: lists, ready: [] }, () => false), () => freed, quickFixBuild(at.manifest));
 }
 
 /**
@@ -363,20 +372,31 @@ function standingOf(at, inFlight) {
 /**
  * Where the unit's build stands (the header's), for the conversation whose
  * tasks in flight there are given, what its reads said pushed to
- * `warnings`; refused where the project has no such unit, or its build has
- * not begun.
+ * `warnings` — a quick-fix's, its fixes begun, among them (`standingUnit`);
+ * refused where the project has no such unit, or its build has not begun.
  * @param {string} cwd @param {string} unit @param {InFlight[]} inFlight @param {string[]} [warnings]
  * @returns {BuildStanding}
  */
 function buildStanding(cwd, unit, inFlight, warnings = []) {
-  return standingOf(reading(cwd, unit, builtUnit(cwd, unit), warnings), inFlight);
+  return standingOf(reading(cwd, unit, standingUnit(cwd, unit), warnings), inFlight);
+}
+
+/**
+ * The manifest of a unit whose build a screen of where it stands reads: a
+ * quick-fix whose fixes have begun, its fixes its one phase and its
+ * review's fix tasks after it, or else one whose build has begun
+ * (`builtUnit`), refused as it refuses.
+ * @param {string} cwd @param {string} unit @returns {Record<string, any>}
+ */
+function standingUnit(cwd, unit) {
+  const manifest = workUnitNameRefusal(unit) === null ? manifestOf(stateRoot(cwd), unit) : null;
+  return manifest !== null && quickFixBuild(manifest) && fixesBegun(manifest) ? manifest : builtUnit(cwd, unit);
 }
 
 /**
  * The manifest of a unit whose build has begun, refused where the project
- * has no such unit, it is a quick-fix, whose fixes have no cut to build by
- * and no stop, its raises drawn in the conversation, or its build has not
- * begun.
+ * has no such unit, it is a quick-fix, whose fixes have no cut to build by,
+ * or its build has not begun.
  * @param {string} cwd @param {string} unit @returns {Record<string, any>}
  */
 function builtUnit(cwd, unit) {
@@ -398,16 +418,16 @@ const taskWords = ({ task, status, parked }) => (parked.length > 0 ? `${task} pa
  * question parking it, its builder's stop, the task in flight it waits
  * behind, a bugfix's reproducing task's bug not yet proven, or its gate;
  * null where nothing does.
- * @param {string} unit @param {InFlight} inFlight @param {StandingTask|undefined} standing the task as the standing gives it
+ * @param {string} unit @param {InFlight} inFlight @param {StandingTask|undefined} standing the task as the standing gives it @param {StepTurn|null} turn the standing's
  * @returns {{holds: string, then: string}|null}
  */
-function heldBy(unit, { task, stopped }, standing) {
+function heldBy(unit, { task, stopped }, standing, turn) {
   const parked = standing?.parked ?? [];
   if (parked.length > 0) return { holds: `parked on ${parked.join(', ')}`, then: 'it waits on the person\'s answer, and no builder goes to it until then' };
   if (stopped !== undefined) {
     return { holds: 'its builder stopped, unable to build past a problem', then: `send its builder back in with brief builder ${unit} ${task}, or raise what stopped it to the person` };
   }
-  if (standing?.status === 'behind') return { holds: STATUS_WORDS.behind, then: 'it goes on once that task is done, and no builder goes to it until then' };
+  if (standing?.status === 'behind') return { holds: STATUS_WORDS.behind, then: `it goes on once ${turn?.checkout ? turnEnds(turn) : 'that task is done'}, and no builder goes to it until then` };
   if (standing?.unproven !== undefined) return { holds: 'its account taken, its bug not yet proven', then: standing.unproven };
   if (standing?.status === 'at-gate') {
     return { holds: STATUS_WORDS['at-gate'], then: `it waits on the person's go there, the gate drawn again with render step-gate ${unit} ${task}, and its builder is never sent afresh` };
@@ -429,6 +449,19 @@ const READER_WORDS = Object.freeze({
  */
 function afreshWords(cwd, session, unit, task) {
   const ref = parseShownTask(unit, task);
+  const goes = roundWords(cwd, session, ref);
+  if (!ofQuickFix(cwd, unit) || heldAside(cwd, ref).length === 0) return goes;
+  return `its work, set aside when a question parked it, is not back in the checkout — start it again, engine task start ${unit} ${task}, which puts it back, then ${goes}`;
+}
+
+/**
+ * Where a task this conversation dispatched no builder for goes, by its
+ * review's rounds (the header's).
+ * @param {string} cwd @param {string|null} session @param {TaskRef} ref
+ */
+function roundWords(cwd, session, ref) {
+  const { unit } = ref;
+  const task = shownTask(ref);
   const standing = roundStanding(cwd, ref, session);
   if (standing !== null) {
     const open = standing.readers.filter(({ state }) => state !== 'reported');
@@ -459,15 +492,15 @@ function afreshWords(cwd, session, unit, task) {
  * its gate, on the person's go there, its gate drawn again and its builder
  * never sent afresh (12.7.9); one with no builder dispatched here, where it
  * goes (the header's).
- * @param {string} cwd @param {string|null} session @param {string} unit @param {InFlight} inFlight @param {StandingTask|undefined} standing the task as the standing gives it
+ * @param {string} cwd @param {string|null} session @param {string} unit @param {InFlight} inFlight @param {StandingTask|undefined} standing the task as the standing gives it @param {StepTurn|null} turn the standing's
  */
-function inFlightWords(cwd, session, unit, inFlight, standing) {
+function inFlightWords(cwd, session, unit, inFlight, standing, turn) {
   const { task, builder, reviewers } = inFlight;
   const agents = [
     ...(builder === null ? [] : [`its builder agent \`${builder}\``]),
     ...(reviewers.length === 0 ? [] : [`its reviewer agent${reviewers.length === 1 ? '' : 's'} ${reviewers.map((id) => `\`${id}\``).join(' and ')}`]),
   ];
-  const held = heldBy(unit, inFlight, standing);
+  const held = heldBy(unit, inFlight, standing, turn);
   if (held !== null) return `task ${task}, ${[...agents, held.holds].join(', ')} — ${held.then}`;
   if (builder !== null) return `task ${task}, ${agents.join(', ')}`;
   return `task ${task}, ${[...agents, 'no builder dispatched here'].join(', ')} — ${afreshWords(cwd, session, unit, task)}`;
@@ -480,7 +513,7 @@ function inFlightWords(cwd, session, unit, inFlight, standing) {
  */
 function inFlightLines(cwd, session, standing) {
   const tasks = new Map(standing.phases.flatMap(({ tasks: held }) => held.map((task) => [task.task, task])));
-  return standing.in_flight.map((task) => ['in flight', inFlightWords(cwd, session, standing.unit, task, tasks.get(task.task))]);
+  return standing.in_flight.map((task) => ['in flight', inFlightWords(cwd, session, standing.unit, task, tasks.get(task.task), standing.turn)]);
 }
 
 /** A phase's line: one of the cut's by its place in it, a fix phase by its number alone. @param {StandingPhase} phase @param {number} of the cut's phases */
@@ -519,6 +552,18 @@ function standingLines(cwd, session, standing) {
 /** The questions waiting on the person, a line each, as the entries and the notes give them. @param {{waiting: Waiting[]}} standing @returns {Line[]} */
 const waitingLines = ({ waiting }) => waiting.map(({ question, asks, parks }) => /** @type {Line} */ (['waiting', `${question} — ${asks} — parks ${parkedTasks(parks)}`]));
 
+/**
+ * A quick-fix's questions asked in its conversation still open, a line
+ * each with the raise that asks it again (questions.cjs, `askedOpen`) — a
+ * conversation after a /clear holds no raise of them, and its close waits
+ * on each (19.5.25); none for any other unit.
+ * @param {Reading} at @returns {Line[]}
+ */
+function askedLines(at) {
+  if (!quickFixBuild(at.manifest)) return [];
+  return askedOpen(at.cwd, at.unit, at.warnings).map(({ id, place, asks }) => ['waiting', `${id} — ${asks} — asked in the conversation and still open: raise it again for the person to answer, raise ${place} --answers ${id}`]);
+}
+
 /** The ledger's calls the build reads beside its log: the entries affected since the spec concluded, and the unit's record. @param {string} unit */
 const ledgerCalls = (unit) => [`${ENGINE_COMMAND} ledger affected ${unit}`, `${ENGINE_COMMAND} ledger record ${unit}`];
 
@@ -534,7 +579,7 @@ const ledgerCalls = (unit) => [`${ENGINE_COMMAND} ledger affected ${unit}`, `${E
  */
 function buildRecovery(cwd, unit, inFlight, session) {
   const manifest = manifestOf(stateRoot(cwd), unit);
-  if (manifest !== null && quickFixBuild(manifest)) return fixesRecovery({ cwd, phase: 'implementation', unit, manifest });
+  if (manifest !== null && quickFixBuild(manifest)) return fixesRecovery({ cwd, phase: 'implementation', unit, manifest }, inFlight, session);
   /** @type {string[]} */
   let lines;
   try {
@@ -593,23 +638,37 @@ function fixesLines(at) {
   ];
 }
 
+/**
+ * A quick-fix's change and its fixes, then each fix in flight with its
+ * builder and its pair, or the question parking it, and each question
+ * waiting on the person, for the conversation `session`, whose fixes in
+ * flight are given.
+ * @param {Standing} at @param {string|null} session @param {InFlight[]} inFlight @returns {Line[]}
+ */
+function fixesStanding(at, session, inFlight) {
+  const standing = standingOf(readingOf(at), inFlight);
+  return [...fixesLines(at), ...inFlightLines(at.cwd, session, standing), ...waitingLines(standing), ...askedLines(readingOf(at))];
+}
+
 /** What a quick-fix's entry reads (the header's). @param {Entering} at @returns {Line[]} */
 function fixesReads(at) {
+  const lines = fixesStanding(at, handedSession(), ownInFlight(at.unit));
   at.notes.push(...readingOf(at).warnings);
-  return [...fixesLines(at), ['record', `\`${ledgerCalls(at.unit)[1]}\``], ['build log', statePath(at.cwd, buildLogOf(at.unit))], ENGINE_LINE];
+  return [...lines, ['record', `\`${ledgerCalls(at.unit)[1]}\``], ['build log', statePath(at.cwd, buildLogOf(at.unit))], ENGINE_LINE];
 }
 
 /**
  * What a quick-fix's recovery note re-reads beside its skill, as its entry
- * reads it: the record's call, the build's log, and its change and fixes, a
- * line each — or why they cannot be read, in their place.
- * @param {Standing} at @returns {Recovery}
+ * reads it: the record's call, the build's log, and where its fixes stand,
+ * a line each, its fixes in flight those of the conversation the note is
+ * for, `session` — or why they cannot be read, in their place.
+ * @param {Standing} at @param {InFlight[]} inFlight @param {string} session @returns {Recovery}
  */
-function fixesRecovery(at) {
+function fixesRecovery(at, inFlight, session) {
   /** @type {string[]} */
   let lines;
   try {
-    lines = fixesLines(at).map(([key, value]) => `${key}: ${value}`);
+    lines = fixesStanding(at, session, inFlight).map(([key, value]) => `${key}: ${value}`);
   } catch (err) {
     lines = [`Where the fixes stand could not be read: ${messageOf(err)}`];
   }
@@ -672,5 +731,5 @@ const IMPLEMENTATION = Object.freeze({
 });
 
 module.exports = {
-  IMPLEMENTATION, phaseNamed, buildStanding, standingOf, buildPhases, builtUnit, cutCount, buildRecovery, ownInFlight, inFlightLines, waitingLines, takeInFlight, readingOf, codeHeld, buildLogOf,
+  IMPLEMENTATION, phaseNamed, buildStanding, standingOf, buildPhases, builtUnit, standingUnit, cutCount, buildRecovery, ownInFlight, inFlightLines, waitingLines, askedLines, takeInFlight, readingOf, codeHeld, buildLogOf,
 };

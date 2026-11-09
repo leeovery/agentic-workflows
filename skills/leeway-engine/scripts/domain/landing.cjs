@@ -7,12 +7,15 @@
 // `finish`, which merges every phase still standing — the review phase's fix
 // phases, after every other (7.2.6). `open` and `chain` refuse a task with
 // no account taken of its review as it stands (task-account.cjs, 12.14),
-// `open` taking a quick-fix's, which no pair reviews and which owes none
-// (19.5.3); `open` a bugfix's reproducing task until its test's series
+// `open` taking a quick-fix's before its pair has read it, its one pull
+// request opening at its first commit and each later one pushed to it
+// (19.5.20) — its `task done` holding it to its account; `open` a bugfix's
+// reproducing task until its test's series
 // proves the bug at its tip (bug-proven.cjs, 15.5.3), and a task of a fix
 // phase whose branch does not descend from the unit's work not landed below
 // it, which a fix phase is built on (review-change.cjs, 7.2.6); `chain` a
-// task its pair has not passed, read off its rounds' reports, or one
+// quick-fix's task, which has no stack to chain into, and a task its pair
+// has not passed, read off its rounds' reports, or one
 // changed under its last round since (round-report.cjs, 12.1.4); and
 // `phase` a phase the cut holds until its phase review has passed and its
 // fixes are done, as the phase's close reads it (phase-checks.cjs, 7.2.4),
@@ -817,11 +820,13 @@ function mutationRun(cwd, ref, chained = true) {
 /**
  * The task chained into its phase's stack in every repository it is open
  * in, each answered in the order its tasks were merged back there — refused
- * before anything moves where its pair has not passed it.
+ * before anything moves for a quick-fix's, which has no stack, and where its
+ * pair has not passed it.
  * @param {string} cwd @param {string} unit @param {string} task shown, `{phase}.{n}`
  */
 function landChain(cwd, unit, task) {
   const ref = parseShownTask(unit, task);
+  if (landsAsOne(cwd, unit)) throw new Error(`land: ${unit} is a quick-fix, whose tasks land in its one pull request — land open ${unit} ${shownTask(ref)} takes each, with no stack to chain it into`);
   refuseUnpassed(cwd, ref);
   const project = projectOf(cwd, unit);
   const ofTask = (/** @type {string} */ branch) => {

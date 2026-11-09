@@ -12,7 +12,9 @@
 // its unit and name alone, as `/leeway {unit} {topic}` names it (10.3.1),
 // is handed off into its discussion, as picking it from the menus does —
 // refused, before anything travels, where the entry would refuse it
-// (topic-standing.cjs).
+// (topic-standing.cjs). A phase lands on its own skill, but a quick-fix's
+// implementation, which lands on the quick-fix's skill, the one that runs
+// it from its opener to its close (19.5.1).
 //
 // The epic's menu takes an epic in progress, and one completed alone where
 // finish hands it there, `review completed`. The start, `leeway`, takes
@@ -43,12 +45,31 @@ const START = 'start';
 
 const OUTCOMES = ['completed', 'cancelled', 'postponed'];
 
-// Every phase some work type's pipeline holds is entered by a handoff.
-const PIPELINE_PHASES = [...new Set(Object.values(WORK_TYPE_PIPELINES).flat())];
+/** The skill a quick-fix's work runs in, from its opener to its close (19.5.1). */
+const QUICK_FIX_SKILL = 'leeway-quick-fix-process';
 
-/** The skill a phase runs in — the one a handoff into the phase lands on. @param {string} phase */
-function phaseSkill(phase) {
-  return `leeway-${phase}-process`;
+/**
+ * The skill a phase runs in for a work type — the one a handoff into the
+ * phase lands on: a quick-fix's implementation its own skill, every other
+ * phase its own.
+ * @param {string} phase @param {string} [type]
+ */
+function phaseSkill(phase, type) {
+  return type === 'quick-fix' && phase === 'implementation' ? QUICK_FIX_SKILL : `leeway-${phase}-process`;
+}
+
+/**
+ * Each skill some work type's pipeline enters by a handoff, with its phase
+ * and the types it serves, in the pipelines' order.
+ * @type {Map<string, {phase: string, served: string[]}>}
+ */
+const PHASE_SKILLS = new Map();
+for (const type of VALID_WORK_TYPES) {
+  for (const phase of WORK_TYPE_PIPELINES[/** @type {keyof typeof WORK_TYPE_PIPELINES} */ (type)]) {
+    const skill = phaseSkill(phase, type);
+    const held = PHASE_SKILLS.get(skill) ?? { phase, served: [] };
+    PHASE_SKILLS.set(skill, { phase, served: [...held.served, type] });
+  }
 }
 
 /**
@@ -150,14 +171,13 @@ function enteredAtUnit(phase) {
 }
 
 /**
- * A phase's skill: the work type it serves, a work unit of that type, and,
+ * A phase's skill: a work type it serves, a work unit of that type, and,
  * where the phase is entered at a topic, the topic — a legal name, which need
  * not exist. An epic names its topic there; a single-topic unit's topic is
  * the unit itself. A unit entered at the unit names no topic.
- * @param {string} phase @returns {Target}
+ * @param {string} phase @param {string[]} served @returns {Target}
  */
-function phaseTarget(phase) {
-  const served = VALID_WORK_TYPES.filter((type) => WORK_TYPE_PIPELINES[type].includes(phase));
+function phaseTarget(phase, served) {
   return {
     get usage() { return `<${served.join('|')}> <work-unit>${enteredAtUnit(phase) ? '' : ' [<topic>]'}`; },
     get counts() { return enteredAtUnit(phase) ? [2] : [2, 3]; },
@@ -218,7 +238,7 @@ const TARGETS = {
     },
     where: (_cwd, [unit]) => at('Epic', unit),
   },
-  ...Object.fromEntries(PIPELINE_PHASES.map((phase) => [phaseSkill(phase), phaseTarget(phase)])),
+  ...Object.fromEntries([...PHASE_SKILLS].map(([skill, { phase, served }]) => [skill, phaseTarget(phase, served)])),
 };
 
 const HANDOFF_TARGETS = Object.keys(TARGETS);
@@ -275,7 +295,7 @@ function topicHandoff(cwd, args) {
   if (phase === null) throw new Error(`${unit} is a ${manifest.work_type}, with no topics to open by name — it carries on from the start menu`);
   const topic = topicKey(manifest, said);
   assertEnterable(cwd, phase, manifest, topic);
-  return resolveHandoff(cwd, phaseSkill(phase), [manifest.work_type, unit, topic]);
+  return resolveHandoff(cwd, phaseSkill(phase, manifest.work_type), [manifest.work_type, unit, topic]);
 }
 
 /**
@@ -303,4 +323,4 @@ function handoffSections(handoff) {
   ].join('');
 }
 
-module.exports = { resolveHandoff, handoffSections, phaseSkill, enteredAtUnit, HANDOFF_TARGETS, TOPIC_HANDOFF_USAGE, topicHandoff };
+module.exports = { resolveHandoff, handoffSections, phaseSkill, QUICK_FIX_SKILL, enteredAtUnit, HANDOFF_TARGETS, TOPIC_HANDOFF_USAGE, topicHandoff };

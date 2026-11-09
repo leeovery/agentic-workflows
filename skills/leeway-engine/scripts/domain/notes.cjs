@@ -48,7 +48,10 @@
 //
 // A fix phase of the review's has no consolidation, so a note its builders
 // bank is one no phase's report takes: the review phase answers it
-// (review-phase.cjs, `notesUntaken`).
+// (review-phase.cjs, `notesUntaken`). Nor has a quick-fix: where no review
+// was asked for, its close answers them (`quick-fix notes`,
+// review-round.cjs), kept at `build/notes-answered.json`, `{findings}`, a
+// review round's findings of the area `notes` (`answeredAtClose`).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -86,6 +89,21 @@ function refuse(reason) {
 /** A unit's notes for later, state-relative. @param {string} unit */
 function notesPath(unit) {
   return `${unit}/build/notes.md`;
+}
+
+/** A quick-fix's notes for later answered at its close, state-relative. @param {string} unit */
+function closeNotesPath(unit) {
+  return `${unit}/build/notes-answered.json`;
+}
+
+/**
+ * The findings a quick-fix's close answered its notes for later with, in
+ * the order answered; none where it answered none.
+ * @param {string} cwd @param {string} unit @returns {import('./review-phase.cjs').RoundFinding[]}
+ */
+function answeredAtClose(cwd, unit) {
+  const file = statePath(cwd, closeNotesPath(unit));
+  return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')).findings : [];
 }
 
 /** A phase's consolidation report, state-relative. @param {string} unit @param {number} phase */
@@ -313,5 +331,5 @@ function consolidationFaults(cwd, unit, phase) {
 }
 
 module.exports = {
-  notesPath, consolidationPath, notesOf, readNotes, notesAppended, depositNote, readConsolidation, renumberedReport, notesToTake, notesUntaken, notesHeldFor, consolidationFaults,
+  notesPath, closeNotesPath, answeredAtClose, consolidationPath, notesOf, readNotes, notesAppended, depositNote, readConsolidation, renumberedReport, notesToTake, notesUntaken, notesHeldFor, consolidationFaults,
 };

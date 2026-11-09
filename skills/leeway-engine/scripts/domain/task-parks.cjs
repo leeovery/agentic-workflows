@@ -64,9 +64,13 @@ function freedAt(cwd, unit) {
  */
 function refuseParked(cwd, ref, said) {
   const names = parkedOf(cwd, ref.unit).get(shownTask(ref));
-  if (names === undefined) return;
+  if (names !== undefined) throw new Error(`${said}: ${parkedWords(ref, names)}`);
+}
+
+/** Why a task the questions `names` park waits, naming each question's raise. @param {TaskRef} ref @param {string[]} names */
+function parkedWords(ref, names) {
   const draws = names.map((name) => `raise draw ${ref.unit} ${name}`).join(', ');
-  throw new Error(`${said}: ${taskName(ref)} waits on ${names.join(', ')}, parked for the person — they answer ${names.length === 1 ? 'it' : 'each'} through its raise: ${draws}`);
+  return `${taskName(ref)} waits on ${names.join(', ')}, parked for the person — they answer ${names.length === 1 ? 'it' : 'each'} through its raise: ${draws}`;
 }
 
 /** @typedef {{names: string[], parks: string[], phase: string|null}} Parking */
@@ -103,4 +107,4 @@ function takeOff(cwd, ref, said, { names, parks, phase }) {
   return { unparked: names, ...(warnings.length > 0 ? { warnings } : {}) };
 }
 
-module.exports = { checkParkable, refuseParked, parkingOf, takeOff, parkedOf, freedAt };
+module.exports = { checkParkable, refuseParked, parkedWords, parkingOf, takeOff, parkedOf, freedAt };

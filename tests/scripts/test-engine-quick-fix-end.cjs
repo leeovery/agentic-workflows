@@ -33,7 +33,7 @@ const { describe, it, afterEach } = require('node:test');
 const assert = require('node:assert');
 const { ok, refusedPristine, git, createFile, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
-const { UNIT, BRANCH, createFix, fixChanged, twoFixesBuilt } = require('./quick-fix-world.cjs');
+const { UNIT, BRANCH, createFix, fixChanged, fixDone, twoFixesBuilt } = require('./quick-fix-world.cjs');
 
 const DOCS = 'Spell the docs --colour';
 const MAN = 'Spell the man page --colour';
@@ -90,7 +90,7 @@ describe('task done <quick-fix> <fix> (R1, R14)', () => {
     again(3, 'docs/more.md');
     const moved = refused(['task', 'done', UNIT, '1.3']);
     run(['land', 'open', UNIT, '1.3']);
-    run(['task', 'done', UNIT, '1.3']);
+    fixDone(dir, '1.3', as());
     createFix(dir, 4, MAN, as());
     run(['task', 'start', UNIT, '1.4']);
     const empty = refused(['task', 'done', UNIT, '1.4']);
@@ -109,7 +109,7 @@ describe('task done <quick-fix> <fix> (R1, R14)', () => {
     git(dir, ['branch', '-f', 'main', BRANCH]);
     const opening = refused(['land', 'open', UNIT, '1.3']);
     const closing = refused(['task', 'close', UNIT, '1.3', '--reason', 'Not wanted.']);
-    run(['task', 'done', UNIT, '1.3']);
+    fixDone(dir, '1.3', as());
 
     assert.deepStrictEqual([opening, closing, status(3)], [
       `land: task 1.3 of ${UNIT} has landed — a fix is done once it lands: task done ${UNIT} 1.3`,
@@ -126,7 +126,7 @@ describe('task done <quick-fix> <fix> (R1, R14)', () => {
     again(3, 'docs/more.md');
     const moved = refused(['task', 'done', UNIT, '1.3']);
     run(['land', 'open', UNIT, '1.3']);
-    run(['task', 'done', UNIT, '1.3']);
+    fixDone(dir, '1.3', as());
 
     assert.deepStrictEqual([moved, status(3)], [unpushed(3), 'done']);
   });
@@ -138,7 +138,7 @@ describe('task done <quick-fix> <fix> (R1, R14)', () => {
     git(dir, ['merge', '-q', '--squash', BRANCH]);
     git(dir, ['commit', '-q', '-m', 'Spell the docs the British way']);
     git(dir, ['branch', '-q', '-D', BRANCH]);
-    run(['task', 'done', UNIT, '1.3']);
+    fixDone(dir, '1.3', as());
 
     assert.strictEqual(status(3), 'done');
   });
@@ -150,7 +150,7 @@ describe('task done <quick-fix> <fix> (R1, R14)', () => {
     git(dir, ['cherry-pick', BRANCH]);
     createFile(dir, 'docs/flags.md', '--color\n');
     git(dir, ['commit', '-q', '-am', 'Spell the docs the American way']);
-    run(['task', 'done', UNIT, '1.3']);
+    fixDone(dir, '1.3', as());
 
     assert.strictEqual(status(3), 'done');
   });

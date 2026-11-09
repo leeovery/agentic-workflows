@@ -137,12 +137,12 @@ describe('start this work, the yes (8.8.1, 8.14.3, 8.14.11)', () => {
     assert.match(hand(SESSION), /^handoff: inline$/m);
   });
 
-  it('hands a bugfix into its investigation and a quick-fix, which takes no brief, into its scoping (24.1.2)', () => {
+  it('hands a bugfix into its investigation, and a quick-fix, which takes no brief, carries on into its fixes in this conversation (24.1.2, 24.1.3)', () => {
     assert.deepStrictEqual(started(oneTopic('bugfix', 'login-loop')).next, { kind: 'handoff', skill: 'leeway-investigation-process', args: ['bugfix', 'login-loop'] });
     const { brief, ...quick } = oneTopic('quick-fix', 'typo-fix');
     const res = started({ ...quick, seeds: [statePath(dir(), BUG)] });
     assert.deepStrictEqual([res.next, res.brief, fs.existsSync(statePath(dir(), layout.topic('typo-fix', 'typo-fix')))],
-      [{ kind: 'handoff', skill: 'leeway-scoping-process', args: ['quick-fix', 'typo-fix'] }, undefined, false]);
+      [{ kind: 'invoke', skill: 'leeway-quick-fix-process', args: ['quick-fix', 'typo-fix'] }, undefined, false]);
   });
 
   it('lands an inbox item and a roadmap item\'s note as seeds, the manifest recording each source; a cancel puts the item back on its horizon (4.S35)', () => {

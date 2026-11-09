@@ -168,13 +168,12 @@ function retiredRefusal(manifest) {
 
 /**
  * Whether the unit waits on the migration's cut: of a type the reshape
- * retires, or built under the old plan, of a type the build serves — never
- * a quick-fix, whose scoping keeps its own spec and plan items. Its menus
- * show it waiting, with no route into its work (P12).
+ * retires, or built under the old plan — a quick-fix today's scoping made
+ * among them. Its menus show it waiting, with no route into its work (P12).
  * @param {Record<string, any>} manifest
  */
 function awaitsCut(manifest) {
-  return retiredRefusal(manifest) !== null || (['epic', 'feature', 'bugfix'].includes(manifest.work_type) && legacyBuild(manifest));
+  return retiredRefusal(manifest) !== null || legacyBuild(manifest);
 }
 
 /**
@@ -758,6 +757,16 @@ function computeNextPhase(manifest, specWritten = false) {
 
   const ps = (/** @type {string} */ phase) => phaseStatus(manifest, phase, specWritten);
 
+  // A quick-fix's fixes, then its review only once the person asked for one
+  // at its close (19.5.14); one built under the old plan waits on the cut.
+  if (wt === 'quick-fix') {
+    if (legacyBuild(manifest)) return { next_phase: 'done', phase_label: 'waiting on the migration\'s cut' };
+    if (manifest.status === 'completed') return { next_phase: 'done', phase_label: 'pipeline complete' };
+    if (reviewAsked(manifest)) return { next_phase: 'review', phase_label: 'review (in-progress)' };
+    if (ps('implementation') === 'in-progress') return { next_phase: 'implementation', phase_label: 'implementation (in-progress)' };
+    return { next_phase: 'implementation', phase_label: 'ready for implementation' };
+  }
+
   // A completed phase whose item carries a reconcile flag routes BACK to that
   // phase for the linear types — routing forward past known-stale input is
   // the bug this override closes, and it keeps the bridge off its terminal
@@ -793,17 +802,6 @@ function computeNextPhase(manifest, specWritten = false) {
         return { next_phase: phase, phase_label: `${phase} (input moved — reconcile)` };
       }
     }
-  }
-
-  // Quick-fix has its own short pipeline: scoping → implementation → review
-  if (wt === 'quick-fix') {
-    if (ps('review') === 'completed') return { next_phase: 'done', phase_label: 'pipeline complete' };
-    if (ps('review') === 'in-progress') return { next_phase: 'review', phase_label: 'review (in-progress)' };
-    if (ps('implementation') === 'completed') return { next_phase: 'review', phase_label: 'ready for review' };
-    if (ps('implementation') === 'in-progress') return { next_phase: 'implementation', phase_label: 'implementation (in-progress)' };
-    if (ps('scoping') === 'completed') return { next_phase: 'implementation', phase_label: 'ready for implementation' };
-    if (ps('scoping') === 'in-progress') return { next_phase: 'scoping', phase_label: 'scoping (in-progress)' };
-    return { next_phase: 'scoping', phase_label: 'ready for scoping' };
   }
 
   if (legacyBuild(manifest)) {

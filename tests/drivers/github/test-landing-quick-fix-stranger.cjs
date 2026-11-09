@@ -22,7 +22,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
 const { ok, refuses, createFile } = require('../../scripts/engine-harness.cjs');
-const { UNIT, DESCRIPTION, BRANCH, SET, createFix, quickFixConformance, fixesRecorded } = require('../../scripts/quick-fix-world.cjs');
+const { UNIT, DESCRIPTION, BRANCH, SET, createFix, fixDone, quickFixConformance, fixesRecorded } = require('../../scripts/quick-fix-world.cjs');
 const { github, strangerPull, branchDeleted } = require('./world.cjs');
 
 const { as, project, built, landed } = quickFixConformance('github', 'github-landing-quick-fix-stranger-');
@@ -58,7 +58,7 @@ describe('what on GitHub is a quick-fix\'s, in the project\'s own repository (R1
     createFile(dir, SET[0].file, SET[0].text);
     ok(dir, ['commit', '--paths', SET[0].file, '--task', UNIT, '1.1', '-m', `fix(${UNIT}): ${SET[0].title.toLowerCase()}`], as());
     ok(dir, ['land', 'open', UNIT, '1.1'], as());
-    ok(dir, ['task', 'done', UNIT, '1.1'], as());
+    fixDone(dir, '1.1', as());
     closedOnFirst(dir);
 
     assert.strictEqual(refusal, `land: the project's host holds a branch ${BRANCH} that is not ${UNIT}'s — none of its commits is a fix of ${UNIT}'s or was made since ${UNIT} was — and nothing moved: delete it there, or rename it, then try again`);

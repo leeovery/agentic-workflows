@@ -48,10 +48,30 @@
 // answer — from Claude's account, `{findings}`, each finding as a round's,
 // of the area `notes`, every note standing answered by exactly one; their
 // findings join that round's record, its report written again with them,
-// and both are committed. It refuses, opening `review notes: ` and writing
+// and both are committed — a quick-fix's review handing back to its close
+// where that ends it, as `review round` does, and as the last of its fix
+// tasks done or closed does (`handBack`, task-verbs.cjs). It refuses,
+// opening `review notes: ` and writing
 // nothing: a unit whose review phase cannot be entered; a round under
 // review, which answers them; the round's fix tasks waiting; no note
 // standing; and a payload of another shape, every fault named.
+//
+// `quick-fix notes <unit> --file <notes.json>` answers, at a quick-fix's
+// close where no review was asked for, the notes for later its fixes'
+// builders and pairs banked (`task note`, notes.cjs), which no phase's
+// consolidation takes: from Claude's account, `{findings}`, each finding as
+// a round's, of the area `notes`, out of scope, every note standing
+// (review-phase.cjs, `notesStanding`) answered by exactly one, filed to the
+// inbox or dropped, its `ledger` Claude's call at
+// `{unit}.implementation`. They are kept after those answered before at
+// `build/notes-answered.json` (notes.cjs, `answeredAtClose`) and committed
+// (`quick-fix({unit}): notes for later answered`), so none stands at the
+// close, nor in a review asked for after it (R24). It refuses, opening
+// `quick-fix notes: ` and writing nothing: a unit the project lacks or
+// holds not in progress; one that is no quick-fix built as one; a
+// quick-fix whose review was asked for, which answers them (`review
+// notes`); no note standing; and a payload of another shape, every fault
+// named.
 //
 // It refuses, opening `review round: ` and writing nothing: a unit whose
 // review phase cannot be entered; a round that cannot be read — one ended
@@ -79,6 +99,7 @@
 const fs = require('fs');
 const { statePath, stateRoot } = require('../kernel/state-root.cjs');
 const { writeJsonAtomic } = require('../kernel/manifest-io.cjs');
+const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { trackedLists } = require('./task-verbs.cjs');
@@ -91,7 +112,8 @@ const { readShown } = require('./ledger-read.cjs');
 const { parseInboxPath, FOLDER_KIND } = require('./inbox.cjs');
 const { titleOf } = require('./start.cjs');
 const { unitInProgress } = require('./topic-standing.cjs');
-const { itemTitle, topicTitles, quickFixBuild } = require('./derivations.cjs');
+const { itemTitle, topicTitles, quickFixBuild, reviewAsked, buildRefusal } = require('./derivations.cjs');
+const { closeNotesPath, answeredAtClose } = require('./notes.cjs');
 const { reading, reposOf } = require('./phase-checks.cjs');
 const { readSpec, specStatements } = require('./spec-sections.cjs');
 const { changeOf, cutStandings } = require('./review-change.cjs');
@@ -101,7 +123,7 @@ const {
   UNFIXED_ITEM, isBugfix, bugRuns, rerunRefusal, rerunPassed,
 } = require('./bug-proven.cjs');
 const {
-  NOTES, isBuilderNote, reportNames, reviewStanding, roundRefusal, endedWords, recordedRounds, fixesOf, endsReview, fixPhase, roundRecordPath, roundReportFile, roundChecksFile, roundFolder,
+  NOTES, isBuilderNote, reportNames, notesStanding, reviewStanding, roundRefusal, endedWords, recordedRounds, fixesOf, endsReview, fixPhase, roundRecordPath, roundReportFile, roundChecksFile, roundFolder,
   snapshotRound, dropSnapshot, treeChanges, setAsideHeld, unitCalls, reviewCallFault, forThePerson, inTheBuild,
 } = require('./review-phase.cjs');
 const {
@@ -453,6 +475,20 @@ function closeNext(cwd, unit, manifest, ends) {
   return { next: { kind: 'engine', argv: ['render', 'finish', unit] } };
 }
 
+/**
+ * The same hand-back made by what ends the review after the round that
+ * ended it — the last of its fix tasks done or closed (task-verbs.cjs), or
+ * its builders' notes answered: the close, where a quick-fix's review asked
+ * for at its close has ended and is now over (`closeNext`).
+ * @param {string} cwd @param {string} unit
+ * @returns {{next?: {kind: 'engine', argv: string[]}}}
+ */
+function handBack(cwd, unit) {
+  const manifest = loadWorkUnitManifest(cwd, unit);
+  if (!quickFixBuild(manifest) || !reviewAsked(manifest)) return {};
+  return closeNext(cwd, unit, manifest, reviewStanding(reading(cwd, unit, manifest)).ended);
+}
+
 /** Why the builders' notes cannot be answered on their own, or null: a round under review answers them, the round that ended the phase waits on its fix tasks, or none stands. @param {string} unit @param {import('./review-phase.cjs').ReviewStanding} standing */
 function notesRefusal(unit, standing) {
   if (!standing.ended) return roundRefusal(unit, standing) ?? `round ${standing.round} is under review, and answers the builders' notes standing among its items — review round ${unit} --file <round.json>`;
@@ -488,7 +524,48 @@ function answerNotes(cwd, unit, file) {
   const rels = [roundRecordPath(unit, round), roundReportFile(unit, round)];
   writeJsonAtomic(statePath(cwd, rels[0]), recorded.at(-1));
   fs.writeFileSync(statePath(cwd, rels[1]), `${reportText(cwd, unit, manifest, recorded, null, warnings)}\n`);
-  return committed(cwd, rels, `review(${unit}): round ${round}'s builders' notes`, warnings, { round, answered: notes });
+  return committed(cwd, rels, `review(${unit}): round ${round}'s builders' notes`, warnings, { round, answered: notes, ...closeNext(cwd, unit, manifest, true) });
+}
+
+/**
+ * Why a unit's notes for later are not answered at its close, or null: it
+ * is no quick-fix built as one, or its review was asked for, which answers
+ * them.
+ * @param {string} unit @param {Record<string, any>} manifest @returns {string|null}
+ */
+function closeNotesRefusal(unit, manifest) {
+  if (!quickFixBuild(manifest)) return buildRefusal(manifest) ?? `${unit} is no quick-fix built as one — its notes for later are taken by its phases' consolidation and its review`;
+  return reviewAsked(manifest) ? `${unit}'s review was asked for at its close, and answers its notes for later — review notes ${unit} --file <notes.json>` : null;
+}
+
+/**
+ * `quick-fix notes`: a quick-fix's notes for later answered at its close,
+ * kept after those answered before (the header's).
+ * @param {string} cwd @param {string} unit @param {string} file
+ */
+function answerCloseNotes(cwd, unit, file) {
+  const said = 'quick-fix notes';
+  const refuse = refuserFor(said);
+  const manifest = refusing(said, () => unitInProgress(cwd, unit));
+  const refused = closeNotesRefusal(unit, manifest);
+  if (refused !== null) refuse(refused);
+  const notes = notesStanding(cwd, unit, recordedRounds(cwd, unit));
+  if (notes.length === 0) refuse(`no note for later stands unanswered in ${unit}`);
+  /** @type {string[]} */
+  const warnings = [];
+  const findings = refusing(said, () => readShown(stateRoot(cwd), warnings, (shower) => {
+    const given = shaped(readPayload(cwd, file), 'the notes\' answers', ['findings'], []);
+    /** @type {string[]} */
+    const faults = [];
+    const answered = findingsOf({
+      unit, phase: 0, cwd, statuses: new Map(), call: (id) => reviewCallFault(shower, unit, id, 'implementation'),
+    }, given.findings, [], new Map(noteItems(notes)), faults);
+    if (faults.length > 0) throw new Error(faults.join('; '));
+    return answered;
+  }));
+  const rel = closeNotesPath(unit);
+  writeJsonAtomic(statePath(cwd, rel), { findings: [...answeredAtClose(cwd, unit), ...findings] });
+  return committed(cwd, [rel], `quick-fix(${unit}): notes for later answered`, warnings, { answered: notes });
 }
 
 /** An inbox item as a report names it: its title and kind; its file's name where it is gone or has no title. @param {string} cwd @param {string} rel */
@@ -597,5 +674,5 @@ function reviewCallsSurface(cwd, { dotpath: unit = '' }) {
 }
 
 module.exports = {
-  recordRound, answerNotes, reviewReportSurface, reviewCallsSurface,
+  recordRound, answerNotes, answerCloseNotes, handBack, reviewReportSurface, reviewCallsSurface,
 };
