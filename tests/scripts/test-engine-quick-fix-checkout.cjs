@@ -14,11 +14,14 @@
 // tip as it stands, a second start
 // taking that work as its own; and its pair reading its own commits alone,
 // the other fix's between them left out (task-base.cjs, `ownWork`); a put
-// back that conflicts refused, nothing moved, and its way on taken, in
-// either order, to the commit, its figures then counting each file once,
-// renamed or not, where its commits do not replay (task-account.cjs); a raise parking a fix that waits behind
-// another setting nothing aside; and a fix closed dropping what it set
-// aside. The set-aside in a project that is a folder of a larger
+// back that conflicts refused, nothing moved, and its way on taken, in its
+// order, to the commit, its figures then counting each file once,
+// renamed or not, where its commits do not replay (task-account.cjs); a
+// raise parking a fix that waits behind another setting nothing aside; and,
+// after a /clear, the entry naming a freed fix's start before the way its
+// review's last round sends it, a passed round or a failed one
+// (build-entry.cjs). A close keeping what was set aside:
+// test-engine-landing-conformance-quick-fix-holder-clean.cjs. The set-aside in a project that is a folder of a larger
 // repository, and one that fails undone: test-engine-quick-fix-aside.cjs;
 // in nested repositories, and a move keeping it, on every driver:
 // test-engine-landing-conformance-quick-fix-nested-aside.cjs. Its figures
@@ -38,7 +41,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  ok, okSections, okSectionsAsync, refusedPristine, sectionOf, git, createFile, fixtureFrom, cleanupFixture, withEnv,
+  ok, okSections, okSectionsAsync, refusedPristine, sectionOf, git, createFile, writeState, statePath, fixtureFrom, cleanupFixture, withEnv,
 } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const { MADE, ledgerHelpers } = require('./ledger-world.cjs');
@@ -48,6 +51,8 @@ const {
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { briefPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
+const { roundReportPath } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
+const { REVIEWER_LETTERS } = require(path.join(SCRIPTS, 'kernel/reviewers.cjs'));
 
 /** Where fix 1.1's work is set aside. */
 const ASIDE = `refs/leeway/aside/${UNIT}/${UNIT}-1-1`;
@@ -113,6 +118,27 @@ function briefText(args) {
   return withEnv({ LEEWAY_CONFIG_DIR: config() }, () => fs.readFileSync(briefPath('sess-1', id), 'utf8'));
 }
 
+/** The entry's line for fix 1.1 after a /clear, its work set aside, up to what its review's rounds say. */
+const AFTER_START = `in flight: task 1.1, no builder dispatched here — its work, set aside when a question parked it, is not back in the checkout — start it again, engine task start ${UNIT} 1.1, which puts it back, then `;
+
+/**
+ * Fix 1.1 started, its change committed and opened, its pair's reports of
+ * round 1 each `report`, then parked on Q1 holding work not committed and
+ * freed: the entry's line for it.
+ * @param {string} report
+ */
+async function freedAfterRound(report) {
+  run(['task', 'start', UNIT, '1.1']);
+  written('src/flag.js', 'const flag = \'colour\';\n');
+  committed('1.1', ['src/flag.js'], 'spell the flag --colour');
+  run(['land', 'open', UNIT, '1.1']);
+  for (const letter of REVIEWER_LETTERS) writeState(dir, roundReportPath({ unit: UNIT, phase: 1, n: 1 }, 1, letter), report);
+  written('src/alias.js', 'module.exports = \'color\';\n');
+  await parked(asked.first, '1.1');
+  answered('Q1');
+  return sectionOf(okSections(dir, ['enter', 'implementation', UNIT], { env: env() }).sections, 'DATA').split('\n').find((held) => held.startsWith('in flight: task 1.1'));
+}
+
 /** Fix 1.1 parked on Q1 holding a commit of its own and work not committed — a change and a new file — and fix 1.2 started: 1.1's commit. */
 async function parkedHolding() {
   written('src/flag.js', 'const flag = \'colour\';\n');
@@ -174,7 +200,7 @@ describe('a quick-fix\'s one checkout, held by one fix at a time (19.5.23)', () 
     assert.ok(!range.includes('help'), range);
   });
 
-  it('its start refuses a put back that conflicts with what the tip now holds, naming each path, the ref and the way on, nothing moved and its work kept; the way on taken — its change made again before the start, even — the start takes the work as its own and the door commits it; its figures, its own commits not replaying past the other fix\'s, count each file once, a rename of it among them, and every line each commit changed', async () => {
+  it('its start refuses a put back that conflicts with what the tip now holds, naming each path, the ref and the way on, nothing moved and its work kept; the way on taken in its order — the ref dropped, the task started, its change made again — the door commits it; its figures, its own commits not replaying past the other fix\'s, count each file once, a rename of it among them, and every line each commit changed', async () => {
     dir = world();
     run(['task', 'start', UNIT, '1.1']);
     written('src/flag.js', 'const flag = \'colour\';\n');
@@ -192,9 +218,9 @@ describe('a quick-fix\'s one checkout, held by one fix at a time (19.5.23)', () 
 
     const conflict = refused(['task', 'start', UNIT, '1.1']);
     const held = status();
-    written('src/flag.js', 'const flag = \'colours\';\nconst alias = \'color\';\n');
     git(dir, ['update-ref', '-d', ASIDE]);
     run(['task', 'start', UNIT, '1.1']);
+    written('src/flag.js', 'const flag = \'colours\';\nconst alias = \'color\';\n');
     committed('1.1', ['src/flag.js'], 'keep --color as an alias');
     fs.renameSync(path.join(dir, 'src/flag.js'), path.join(dir, 'src/flags.js'));
     committed('1.1', ['src/flag.js', 'src/flags.js'], 'name the flags file');
@@ -218,14 +244,18 @@ describe('a quick-fix\'s one checkout, held by one fix at a time (19.5.23)', () 
     assert.deepStrictEqual([again.parked, again.set_aside, status()], ['Q2', undefined, '?? src/help.js']);
   });
 
-  it('a fix closed drops what its park set aside, its work given up with it', async () => {
+  it('a fix whose pair passed its round before a question parked it and an answer freed it: the entry names its start, which puts its work back, then the passed round\'s way', async () => {
     dir = world();
-    run(['task', 'start', UNIT, '1.1']);
-    written('src/flag.js', 'const flag = \'colour\';\n');
-    await parked(asked.first, '1.1');
-    const held = at(ASIDE);
-    run(['task', 'close', UNIT, '1.1', '--reason', 'The flag stays as it is.']);
+    const line = await freedAfterRound('## Findings\n\nNone.\n\nVerdict: pass\n');
 
-    assert.deepStrictEqual([held === null, at(ASIDE)], [false, null]);
+    const reports = REVIEWER_LETTERS.map((letter) => `\`${statePath(dir, roundReportPath({ unit: UNIT, phase: 1, n: 1 }, 1, letter))}\``).join(' and ');
+    assert.strictEqual(line, `${AFTER_START}round 1 of its review passed, its account not taken — read its reports, ${reports}, for their notes for later and the nits the task's commits do not yet fix, and fix those in the project's checkout, on ${BRANCH}, through the door; then send its builder its brief for its account, engine brief builder ${UNIT} 1.1`);
+  });
+
+  it('a fix whose pair failed its round before a question parked it and an answer freed it: the entry names its start, which puts its work back, then the failed round\'s fix brief', async () => {
+    dir = world();
+    const line = await freedAfterRound('## Findings\n\n- bug: the flag still reads --color in the parser\n  Scenario: a script passes --colour\n\nVerdict: fail\n');
+
+    assert.strictEqual(line, `${AFTER_START}round 1 of its review failed — a new builder goes with its brief, then its fix brief, engine brief fix ${UNIT} 1.1`);
   });
 });

@@ -51,7 +51,8 @@
 // flight whose turn it is, never one a
 // question parks. Start refuses a parked fix, as done does, and any fix
 // but the holder while one holds it; the holder's start takes what the
-// checkout holds as its own, and a start that makes a fix the holder
+// checkout holds as its own, and a start that makes a fix the holder, or
+// one of a fix an answer freed since its last start (`freedSinceStart`),
 // refuses what it holds, the person's. The holder leaves the checkout
 // clean as it stops holding it — a park sets its work aside, and done and
 // close refuse while the checkout holds changes not committed — so any
@@ -64,9 +65,9 @@
 // — takes it off every question parking it (task-parks.cjs), and frees what
 // waits on it as done does (7.1.12) — a quick-fix's task ending as
 // fix-end.cjs says, a fix's close committing beside the tracker's store the
-// record it takes out and dropping what its park set aside, and a
-// quick-fix's move closing its tasks with no end refused and what their
-// parks set aside kept (`closeForMove`, R26),
+// record it takes out and keeping what its park set aside, naming it, and
+// a quick-fix's move closing its tasks with no end refused, what their
+// parks set aside kept too (`closeForMove`, R26),
 // and either, ending the last of what held a
 // quick-fix's ended review open, handing back to its close
 // (review-round.cjs, `handBack`);
@@ -111,7 +112,7 @@ const os = require('os');
 const path = require('path');
 const { isolatedGit } = require('../kernel/isolated-git.cjs');
 const { handedSession } = require('../kernel/process.cjs');
-const { isObject, jsonText } = require('../kernel/manifest-io.cjs');
+const { isObject, jsonText, writeJsonAtomic } = require('../kernel/manifest-io.cjs');
 const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
@@ -124,7 +125,7 @@ const { recordTask, clearTask, recordStop } = require('./position.cjs');
 const { phaseStarted, cutLength, quickFixBuild, FIXES_PHASE } = require('./derivations.cjs');
 const { reproducingHold, reproducingClose } = require('./bug-proven.cjs');
 const { layOutTask, takeWorktreeApart } = require('./task-worktree.cjs');
-const { markChanged, briefedOf, beingRead } = require('./round-report.cjs');
+const { markChanged, briefedOf, beingRead, taskFolder } = require('./round-report.cjs');
 
 // The questions parking a task, and the landing naming a phase's mutation
 // run, loaded at their call: each reads the task through this module.
@@ -888,13 +889,13 @@ function checkoutHold(cwd, ref, manifest) {
 
 /**
  * Refuse, in the words of `said`, ending the fix that holds a quick-fix's
- * checkout while the checkout holds changes not committed (R27): it leaves
- * the checkout clean as it stops holding it.
- * @param {string} cwd @param {TaskRef} ref @param {string} said
+ * checkout by `end` while the checkout holds changes not committed (R27):
+ * it leaves the checkout clean as it stops holding it.
+ * @param {string} cwd @param {TaskRef} ref @param {'done'|'close'} end @param {string} said
  */
-function refuseLeftDirty(cwd, ref, said) {
+function refuseLeftDirty(cwd, ref, end, said) {
   const manifest = loadWorkUnitManifest(cwd, ref.unit);
-  if (quickFixBuild(manifest) && checkoutHold(cwd, ref, manifest).holds) fixBranch().refuseDirtyEnd(cwd, ref, said);
+  if (quickFixBuild(manifest) && checkoutHold(cwd, ref, manifest).holds) fixBranch().refuseDirtyEnd(cwd, ref, end, said);
 }
 
 /**
@@ -909,7 +910,30 @@ function refuseNotHolding(ref, { turn, holds, parkedOn }, said) {
   throw new Error(`${said}: ${ref.unit} builds one task at a time, in the project's one checkout on its one branch — task ${turn.inFlight} is in flight, and task ${shownTask(ref)} starts once it is done or closed, or a question parks it`);
 }
 
-/** `task start`: refused before its phase has started, and in step beside the task in flight, or in a quick-fix where the task may not take its checkout; else in progress — where it is not already — and in flight on the position beside any others, a quick-fix's in its one checkout, what the checkout holds taken as the holder's own or, for a fix it makes the holder, refused as the person's, then what its park set aside put back. */
+/** Where a quick-fix's start records the freeing it was made past, in the cache, state-relative. @param {TaskRef} ref */
+const startedPath = (ref) => `.cache/${taskFolder(ref)}/started.json`;
+
+/**
+ * Whether an answer freed a quick-fix's fix since its last start (the
+ * ledger's line `parks().freedAt` reads, past the one its start recorded):
+ * what the checkout holds then is the person's, made while the fix held
+ * none of it.
+ * @param {string} cwd @param {TaskRef} ref
+ */
+function freedSinceStart(cwd, ref) {
+  const file = statePath(cwd, startedPath(ref));
+  const past = fs.existsSync(file) ? Number(JSON.parse(fs.readFileSync(file, 'utf8')).freed ?? 0) : 0;
+  return (parks().freedAt(cwd, ref.unit).get(shownTask(ref)) ?? 0) > past;
+}
+
+/** A quick-fix's start recorded past the last freeing of its fix. @param {string} cwd @param {TaskRef} ref */
+function recordStarted(cwd, ref) {
+  const file = statePath(cwd, startedPath(ref));
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  writeJsonAtomic(file, { freed: parks().freedAt(cwd, ref.unit).get(shownTask(ref)) ?? 0 });
+}
+
+/** `task start`: refused before its phase has started, and in step beside the task in flight, or in a quick-fix where the task may not take its checkout; else in progress — where it is not already — and in flight on the position beside any others, a quick-fix's in its one checkout, what the checkout holds taken as the holder's own or, for a fix it makes the holder or one an answer freed since its last start, refused as the person's, then what its park set aside put back. */
 const startTask = moving('start', (_cwd, driver, root, ref) => {
   if (refuseEnded(driver, root, ref, 'only a task not yet ended is started').status !== 'in-progress') driver.start(root, ref);
 }, (cwd, ref) => {
@@ -919,7 +943,7 @@ const startTask = moving('start', (_cwd, driver, root, ref) => {
   if (quickFix) {
     const hold = checkoutHold(cwd, ref, manifest);
     refuseNotHolding(ref, hold, 'task start');
-    if (!hold.holds) fixBranch().refuseDirty(cwd, ref);
+    if (!hold.holds || freedSinceStart(cwd, ref)) fixBranch().refuseDirty(cwd, ref);
   } else {
     refuseSecondInStep(cwd, ref, manifest);
   }
@@ -928,6 +952,7 @@ const startTask = moving('start', (_cwd, driver, root, ref) => {
     if (!quickFix) return {};
     const out = fixBranch().checkOutBranch(cwd, ref.unit);
     const back = fixAside().putBack(cwd, ref, 'task start');
+    recordStarted(cwd, ref);
     return { ...out, ...(back.length === 0 ? {} : { put_back: back }) };
   };
 });
@@ -955,7 +980,7 @@ const doneTask = moving('done', (_cwd, driver, root, ref) => {
   withTracker(cwd, ref.unit, null, (driver, root) => refuseEnded(driver, root, ref, DONE_RULE));
   fixEnd().refuseUndone(cwd, ref, `task ${verb}`);
   account().refuseUnaccounted(cwd, ref, `task ${verb}`);
-  refuseLeftDirty(cwd, ref, `task ${verb}`);
+  refuseLeftDirty(cwd, ref, 'done', `task ${verb}`);
   const unproven = reproducingHold(cwd, loadWorkUnitManifest(cwd, ref.unit), ref, 'is done');
   if (unproven !== null) throw new Error(`task ${verb}: ${unproven}`);
   const settle = ending(DONE_RULE)(cwd, ref, verb);
@@ -994,20 +1019,22 @@ const closing = (refuseHeld, then = () => ({})) => moving('close', (cwd, driver,
  * off the position — the last of its phase's to end, another done, naming
  * the phase's mutation run (landing.cjs, `mutationRun`), and the last of
  * what held a quick-fix's ended review open handing back to its close
- * (review-round.cjs, `handBack`).
+ * (review-round.cjs, `handBack`); a quick-fix's fix's work its park set
+ * aside kept, never dropped, and named with the calls that show it and
+ * bring it into the checkout (fix-aside.cjs, `keptAside`, R26).
  */
 const closeTask = closing((cwd, ref, said) => {
   fixEnd().refuseHeld(cwd, ref, said);
-  refuseLeftDirty(cwd, ref, said);
+  refuseLeftDirty(cwd, ref, 'close', said);
 }, (cwd, ref) => {
-  if (quickFixBuild(loadWorkUnitManifest(cwd, ref.unit))) fixAside().dropAside(cwd, ref);
-  return reviewRound().handBack(cwd, ref.unit);
+  const kept = fixAside().keptAside(cwd, ref.unit).filter(({ task }) => task === shownTask(ref));
+  return { ...(kept.length === 0 ? {} : { kept_aside: kept }), ...reviewRound().handBack(cwd, ref.unit) };
 });
 
 /**
  * A quick-fix's task closed by its move (workunit-move.cjs), as `task
- * close` closes it but for its end's refusal and the drop of its work set
- * aside: the move lands nothing, its branch and that work kept (R26).
+ * close` closes it but for its end's refusal: the move lands nothing, its
+ * branch and its fixes' work set aside kept and named by the move (R26).
  */
 const closeForMove = closing(() => {});
 

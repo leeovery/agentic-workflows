@@ -126,14 +126,20 @@ function refuseDirty(cwd, ref) {
   refuseDirt(cwd, (dirty) => `task start: ${taskName(ref)} is built in the project's own checkout, which holds changes not committed — ${dirty} — so it was not put on ${ref.unit}'s branch: commit them or set them aside, then start the task again`);
 }
 
+/** The way on from each end of a fix that left the checkout holding changes: done commits the fix's own, a close gives them up. */
+const LEFT = Object.freeze({
+  done: 'commit what is the fix\'s through the door, remove what is not, as a scenario\'s run leaves, then run it again',
+  close: 'a fix closed gives its work up with it, so remove them, then run it again',
+});
+
 /**
  * Refuse, in the words of `said`, ending the fix that holds a quick-fix's
- * checkout while the checkout holds changes not committed: it leaves the
- * checkout clean as it stops holding it (R27).
- * @param {string} cwd @param {TaskRef} ref @param {string} said
+ * checkout by `end` while the checkout holds changes not committed: it
+ * leaves the checkout clean as it stops holding it (R27).
+ * @param {string} cwd @param {TaskRef} ref @param {'done'|'close'} end @param {string} said
  */
-function refuseDirtyEnd(cwd, ref, said) {
-  refuseDirt(cwd, (dirty) => `${said}: ${taskName(ref)} holds ${ref.unit}'s one checkout, which holds changes not committed — ${dirty} — and a fix leaves it clean as it stops holding it: commit what is the fix's through the door, remove what is not, as a scenario's run leaves, then run it again`);
+function refuseDirtyEnd(cwd, ref, end, said) {
+  refuseDirt(cwd, (dirty) => `${said}: ${taskName(ref)} holds ${ref.unit}'s one checkout, which holds changes not committed — ${dirty} — and a fix leaves it clean as it stops holding it: ${LEFT[end]}`);
 }
 
 /** Refuse a quick-fix's close while the project's checkout holds changes not committed. @param {string} cwd @param {string} unit */

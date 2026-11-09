@@ -925,14 +925,16 @@ function parking(place, target, sealed, task) {
 
 /**
  * The line Claude says as a task parks on the question `name`, which asks
- * `asks`, or, for a raise naming no task, as the question waits parking the
- * tasks it does, `tasks` — the build or the review carrying on, as its
- * place `phase` is the one or the other (12.13.3).
- * @param {string|null} task @param {string} name @param {string} asks @param {string[]} tasks @param {string} phase
+ * `asks` — naming each path a quick-fix's park set aside, `aside` — or, for
+ * a raise naming no task, as the question waits parking the tasks it does,
+ * `tasks` — the build or the review carrying on, as its place `phase` is
+ * the one or the other (12.13.3).
+ * @param {string|null} task @param {string} name @param {string} asks @param {string[]} tasks @param {string} phase @param {string[]} aside
  */
-function parkedLine(task, name, asks, tasks, phase) {
+function parkedLine(task, name, asks, tasks, phase, aside) {
   if (task === null) return `${name} waits for you, parking ${questions.parkedTasks(tasks)}: ${asks} The ${phase === 'review' ? 'review' : 'build'} carries on.`;
-  return `Task ${task} parks on ${name}, waiting for you: ${asks} The other tasks carry on.`;
+  const kept = aside.length === 0 ? '' : ` What the checkout held not committed is set aside until it starts again: ${aside.join(', ')}.`;
+  return `Task ${task} parks on ${name}, waiting for you: ${asks}${kept} The other tasks carry on.`;
 }
 
 /** A fact as its park seals it: as a call, with no lean, why or sort. @param {Fact} fact */
@@ -954,7 +956,7 @@ function parkLanded(cwd, park, reason, warnings) {
   if (task !== null) clearStop(sessionOf(SAID), park.place.unit, task);
   const { name, asks, tasks } = questions.parkedQuestion(cwd, park.place.unit, /** @type {string} */ (/** @type {Record<string, unknown>} */ (line).id), warnings);
   const { id, committed, ...rest } = landed;
-  return { decision: 'ask', reason, parked: name, task, id, committed, line: parkedLine(task, name, asks, tasks, park.place.phase), ...rest, ...(aside.length === 0 ? {} : { set_aside: aside }) };
+  return { decision: 'ask', reason, parked: name, task, id, committed, line: parkedLine(task, name, asks, tasks, park.place.phase, aside), ...rest, ...(aside.length === 0 ? {} : { set_aside: aside }) };
 }
 
 /**
@@ -988,7 +990,7 @@ async function parkedRaise(cwd, place, target, given, task, warnings) {
   const waiting = questions.waitingOn(cwd, place.unit, subjectOf(target), warnings);
   if (waiting !== null) {
     const { name, id, tasks, asks, line: { call: sealed, rows_judged: judged, why_asking: whyAsking } } = waiting;
-    if (task === null || tasks.includes(task)) return { decision: 'ask', reason: whyAsking, parked: name, task, id, committed: null, line: parkedLine(task, name, asks, tasks, place.phase), already: true, ...(warnings.length > 0 ? { warnings } : {}) };
+    if (task === null || tasks.includes(task)) return { decision: 'ask', reason: whyAsking, parked: name, task, id, committed: null, line: parkedLine(task, name, asks, tasks, place.phase, []), already: true, ...(warnings.length > 0 ? { warnings } : {}) };
     return parkLanded(cwd, parking(place, target, { call: sealed, rows_judged: judged, why_asking: whyAsking }, task), whyAsking, warnings);
   }
   if (given.fact) return parkLanded(cwd, parking(place, target, { call: parkedFact(given.call), rows_judged: [], why_asking: ONLY_YOU_KNOW }, task), ONLY_YOU_KNOW, warnings);

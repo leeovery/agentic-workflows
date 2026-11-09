@@ -75,6 +75,7 @@ for (const { name } of listDrivers('landing')) {
       const next = run(at, ['task', 'start', UNIT, '1.2']);
 
       assert.deepStrictEqual([raised.set_aside, typeof pair.id, status(at)], [['src/flag.test.js'], 'string', '']);
+      assert.match(raised.line, / What the checkout held not committed is set aside until it starts again: src\/flag\.test\.js\. The other tasks carry on\.$/);
       assert.deepStrictEqual(waits, [
         `task start: ${PARKED}`,
         `brief: ${PARKED}`,
@@ -84,7 +85,7 @@ for (const { name } of listDrivers('landing')) {
       assert.strictEqual(next.task, '1.2');
     });
 
-    it('a parked fix with nothing set aside, while the next fix holds the checkout: its builder\'s and fix round\'s briefs refused, naming its question, and its close, holding no part of the checkout, never refused over the holder\'s change there', async () => {
+    it('a parked fix with nothing set aside, while the next fix holds the checkout: its start, its builder\'s and fix round\'s briefs refused, naming its question before the fix holding the checkout, and its close, holding no part of the checkout, never refused over the holder\'s change there', async () => {
       const at = project();
       createFix(at, 1, FLAG, as());
       run(at, ['task', 'start', UNIT, '1.1']);
@@ -92,10 +93,10 @@ for (const { name } of listDrivers('landing')) {
       createFix(at, 2, HELP, as());
       run(at, ['task', 'start', UNIT, '1.2']);
       createFile(at, 'src/help.js', 'const help = \'--colour\';\n');
-      const builders = [refused(at, ['brief', 'builder', UNIT, '1.1']), refused(at, ['brief', 'fix', UNIT, '1.1'])];
+      const builders = [refused(at, ['task', 'start', UNIT, '1.1']), refused(at, ['brief', 'builder', UNIT, '1.1']), refused(at, ['brief', 'fix', UNIT, '1.1'])];
       const closed = run(at, ['task', 'close', UNIT, '1.1', '--reason', 'The flag stays as it is.']);
 
-      assert.deepStrictEqual([raised.set_aside, builders], [undefined, [`brief: ${PARKED}`, `brief: ${PARKED}`]]);
+      assert.deepStrictEqual([raised.set_aside, builders], [undefined, [`task start: ${PARKED}`, `brief: ${PARKED}`, `brief: ${PARKED}`]]);
       assert.deepStrictEqual([closed.task, status(at)], ['1.1', '?? src/help.js']);
     });
   });

@@ -30,11 +30,11 @@
 //   refs dropped, the task started, its change made again and committed.
 // - A builder's or fix round's brief for the fix holding the checkout whose
 //   work is set aside is refused, naming the start that puts it back
-//   (brief.cjs, R27); a fix closed drops what it set aside, its
-//   work given up with it (task-verbs.cjs); a move keeps it, as it keeps the
-//   fixes' commits under moved/, and a cancel keeps it too, each piece named
-//   with the calls that show it and bring it into the checkout where it
-//   stands — on start this work's screen before the move's yes, in its
+//   (brief.cjs, R27). Nothing set aside is lost: a fix closed keeps it,
+//   naming it in its answer (task-verbs.cjs); a move keeps it, as it keeps
+//   the fixes' commits under moved/, and a cancel keeps it too, each piece
+//   named with the calls that show it and bring it into the checkout where
+//   it stands — on start this work's screen before the move's yes, in its
 //   answer, at the topic's first opening (enter.cjs) and on the cancel's
 //   receipt (`keptAside`, `keptWords`, R26).
 // ---------------------------------------------------------------------------
@@ -192,11 +192,6 @@ function putBack(cwd, ref, said) {
   });
 }
 
-/** The fix's work set aside dropped, in each repository holding any. @param {string} cwd @param {TaskRef} ref */
-function dropAside(cwd, ref) {
-  for (const { repo, sha } of heldAside(cwd, ref)) git(repo.path, ['update-ref', '-d', asideRef(ref), sha]);
-}
-
 /**
  * Why a brief for the fix waits, or null: its work is set aside, and its
  * start puts it back.
@@ -229,4 +224,4 @@ function keptAside(cwd, unit) {
 /** A fix's kept work as the person reads it, wherever it is named (`keptAside`). @param {Kept} kept */
 const keptWords = ({ task, repo, ref, see, recover }) => `Task ${task}'s work, set aside when a question parked it, is kept ${repo === '.' ? 'in the project\'s repository' : `in ${repo}`} at ${ref} — see it with ${see}; bring it into the checkout with ${recover}, settling any conflict`;
 
-module.exports = { asideRef, heldAside, setAside, putBack, dropAside, asideRefusal, keptAside, keptWords };
+module.exports = { asideRef, heldAside, setAside, putBack, asideRefusal, keptAside, keptWords };
