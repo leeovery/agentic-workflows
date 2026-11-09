@@ -176,7 +176,7 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
   });
 
   it('offers a yes that merges nothing, where no fix is done', () => {
-    const view = { unit: UNIT, title: 'Typo', skips: [], verdict: null, warnings: [], aside: null, product: 'app', proven: null, fixes: 0, pair: [] };
+    const view = { unit: UNIT, title: 'Typo', skips: [], verdict: null, warnings: [], aside: null, product: 'app', proven: null, fixes: 0, pair: [], kept: [] };
     const out = closeScreen(view);
 
     assert.match(sectionOf(out, 'MENU: finish'), /\*\*`y\/yes`\*\* {4}→ Close it — mark it complete\n/);

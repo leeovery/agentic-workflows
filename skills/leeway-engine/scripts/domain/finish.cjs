@@ -43,7 +43,9 @@
 //   product proved of each fix done, each scenario it names from its runs
 //   at the quick-fix's branch's tip (build-screens.cjs, `ranOf`), or in one
 //   line that the project has no way to run it, no verify setup recorded
-//   (P9); then its gate, the yes — saying it merges its pull request, where
+//   (P9); each fix's work a question's park set aside and none put back,
+//   kept, with the calls that show it and bring it into the checkout
+//   (fix-aside.cjs, `keptAside`, R26); then its gate, the yes — saying it merges its pull request, where
 //   a fix done is still to land — a review asked for, and questions about
 //   the change.
 //   What its reads warned of — a knowledge base set up that does not read
@@ -93,6 +95,7 @@ const { messageOf } = require('../kernel/call.cjs');
 const { recordedFixes, pairVerdict } = require('./quick-fix-record.cjs');
 const { shownTask } = require('./task-id.cjs');
 const { refuseDirtyClose, checkOutLanding } = require('./fix-branch.cjs');
+const { keptAside, keptWords } = require('./fix-aside.cjs');
 const { askedOpen } = require('./questions.cjs');
 const { ranOf } = require('./build-screens.cjs');
 const { verifySetup } = require('./environment.cjs');
@@ -237,6 +240,7 @@ function finishSurface(cwd, { dotpath: unit = '' }) {
       fixes: fixes.length,
       landing: carryingAll(warnings, () => stillToLand(cwd, unit, manifest)),
       reviewed: reviewAsked(manifest),
+      kept: keptAside(cwd, unit).map(keptWords),
     });
   });
 }

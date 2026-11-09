@@ -21,7 +21,9 @@
 // the orchestrator settled it; what running the product proved,
 // under its title — PROVEN BY RUNNING {PRODUCT}, each fix's scenario a line,
 // ✓ where proven, else its standing — or one line saying the project has
-// no way to run it (P9); each departure asked its verdict at the verdict
+// no way to run it (P9); each fix's work a question's park set aside and
+// none put back, a ⚑ line naming where it is kept and the calls that show
+// it and bring it into the checkout (R26); each departure asked its verdict at the verdict
 // point `close` (16.10.4); and its gate, `Close it?`: the yes, merging its
 // pull request where a fix done is still to land, or saying its fixes have
 // landed; a review asked for, `review ask`, until one has been; and
@@ -97,9 +99,9 @@ function finishScreen(view) {
  * A quick-fix's close as it is drawn: finish's, with each fix done and its
  * pair's verdict, the product's name, what running it proved of each fix's
  * scenarios — null where the project has no way to run it — how many fixes
- * are done, whether its pull request still holds one to land, and whether
- * its review was asked for.
- * @typedef {FinishView & {pair: PairVerdict[], product: string, proven: import('./build.cjs').Ran[]|null, fixes: number, landing: boolean, reviewed: boolean}} CloseView
+ * are done, whether its pull request still holds one to land, whether
+ * its review was asked for, and each fix's work kept set aside, in its words.
+ * @typedef {FinishView & {pair: PairVerdict[], product: string, proven: import('./build.cjs').Ran[]|null, fixes: number, landing: boolean, reviewed: boolean, kept: string[]}} CloseView
  */
 
 /** A fix's line under its pair's verdicts. @param {PairVerdict} verdict */
@@ -121,8 +123,11 @@ function provenBlock({ product, proven }) {
   return block(`PROVEN BY RUNNING ${product.toUpperCase()}`, lines);
 }
 
-/** The close's display: its title, the pair's verdicts and what was proven, then each block of finish's that has something to show. @param {CloseView} view */
-const closeDisplay = (view) => [`${view.title} — ready to close`, pairBlock(view), provenBlock(view), ...finishBlocks(view)].join('\n\n');
+/** Each fix's work kept set aside, a ⚑ line each, where any is (R26). @param {CloseView} view */
+const keptBlock = ({ kept }) => (kept.length === 0 ? [] : [kept.map((words) => callout(words, { width: TREE_WIDTH })).join('\n')]);
+
+/** The close's display: its title, the pair's verdicts, what was proven and the work kept set aside, then each block of finish's that has something to show. @param {CloseView} view */
+const closeDisplay = (view) => [`${view.title} — ready to close`, pairBlock(view), provenBlock(view), ...keptBlock(view), ...finishBlocks(view)].join('\n\n');
 
 /**
  * What the yes does: merge its pull request, where a fix done is still to

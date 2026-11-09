@@ -12,8 +12,8 @@
 // start makes it the holder; and the person's own changes never taken or
 // lost — a start of a fix an answer freed since its last start refusing
 // them, the park's line naming what it set aside, and a close keeping
-// that, naming it with the calls that show it and bring it into the
-// checkout (R26), and only its own. A start that makes a fix the holder refusing the
+// that, naming it on its answer and on the close's screen with the calls
+// that show it and bring it into the checkout (R26), and only its own. A start that makes a fix the holder refusing the
 // person's changes: test-engine-quick-fix.cjs. Who holds the checkout:
 // test-engine-landing-conformance-quick-fix-holder.cjs. A driver's side
 // (tests/drivers/{name}/landing.cjs) readies the world; this file names no
@@ -29,10 +29,10 @@ const fs = require('fs');
 const path = require('path');
 
 const {
-  ok, okSections, refusedPristine, createFile, git, accountTaken,
+  ok, okSections, output, sectionOf, refusedPristine, createFile, git, accountTaken,
 } = require('./engine-harness.cjs');
 const {
-  UNIT, FLAG, HELP, CALL, createFix, parkedOn, quickFixConformance,
+  UNIT, FLAG, HELP, CALL, createFix, parkedOn, checklistClosed, quickFixConformance,
 } = require('./quick-fix-world.cjs');
 const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
 
@@ -79,7 +79,7 @@ for (const { name } of listDrivers('landing')) {
       assert.strictEqual(unstarted, `brief: task 1.3 of ${UNIT} holds no part of ${UNIT}'s one checkout — start it first, engine task start ${UNIT} 1.3, which puts the checkout on it`);
     });
 
-    it('a fix an answer freed since its last start refuses the person\'s change in the checkout at its start, made while it held none, its work set aside left there; closed, it keeps that work, never dropped, naming it with the calls that show it and bring it into the checkout, and another fix closed names none of it', async () => {
+    it('a fix an answer freed since its last start refuses the person\'s change in the checkout at its start, made while it held none, its work set aside left there; closed, it keeps that work, never dropped, naming it with the calls that show it and bring it into the checkout — on its answer and on the close\'s screen, whose call brings it back — and another fix closed names none of it', async () => {
       const at = project();
       createFix(at, 1, FLAG, as());
       run(at, ['task', 'start', UNIT, '1.1']);
@@ -93,12 +93,17 @@ for (const { name } of listDrivers('landing')) {
       createFix(at, 2, HELP, as());
       const other = run(at, ['task', 'close', UNIT, '1.2', '--reason', 'Met already.']);
       const closed = run(at, ['task', 'close', UNIT, '1.1', '--reason', 'The flag stays as it is.']);
+      checklistClosed(at, as());
+      const screen = sectionOf(output(at, ['render', 'finish', UNIT], as()), 'DISPLAY: finish').replace(/\n +/g, ' ');
+      const recover = /bring it into the checkout with (git [^,]+), settling/.exec(screen)?.[1] ?? '';
+      git(at, recover.split(' ').slice(1));
 
       assert.strictEqual(raised.line, `Task 1.1 parks on Q1, waiting for you: ${CALL.question} What the checkout held not committed is set aside until it starts again: src/alias.js. The other tasks carry on.`);
       assert.strictEqual(start, `task start: task 1.1 of ${UNIT} is built in the project's own checkout, which holds changes not committed — notes/mine.md — so it was not put on ${UNIT}'s branch: commit them or set them aside, then start the task again`);
       assert.strictEqual(other.kept_aside, undefined);
       assert.deepStrictEqual(closed.kept_aside, [{ task: '1.1', repo: '.', ref: ASIDE, see: `git diff ${ASIDE}^ ${ASIDE}`, recover: `git cherry-pick --no-commit ${ASIDE}` }]);
-      assert.strictEqual(git(at, ['show', `${ASIDE}:src/alias.js`]), 'module.exports = \'color\';\n');
+      assert.ok(screen.includes(`⚑ Task 1.1's work, set aside when a question parked it, is kept in the project's repository at ${ASIDE} — see it with git diff ${ASIDE}^ ${ASIDE}; bring it into the checkout with git cherry-pick --no-commit ${ASIDE}, settling any conflict`), screen);
+      assert.strictEqual(fs.readFileSync(path.join(at, 'src/alias.js'), 'utf8'), 'module.exports = \'color\';\n');
     });
   });
 }
