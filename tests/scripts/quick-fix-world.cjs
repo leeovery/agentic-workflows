@@ -4,7 +4,7 @@
 // What the quick-fix suites share (test-engine-quick-fix*.cjs,
 // test-engine-landing-conformance-quick-fix*.cjs, and a landing driver's own
 // quick-fix suites): the quick-fix, made through `workunit create` from an
-// inbox note, its code and the build's skill committed, and a feature beside
+// inbox note, or from none, its code and the build's skill committed, and a feature beside
 // it (`quickFix`); its one branch (`BRANCH`), which every fix of it commits
 // on; a fix's task file, fix `n` naming its one scenario `{n}.S1`
 // (`fixFile`), and its creation through the tracker's verb (`createFix`); a
@@ -75,15 +75,15 @@ const fixFile = (n, title) => [
   '## Outcome', 'The flag reads --colour.', '', '## Acceptance scenarios', `- ${n}.S1 Given the help, when it is read, then it names --colour.`, '', '## Spec reference', 'none',
 ].join('\n');
 
-/** The quick-fix made from its inbox note, beside a feature, the code committed. @param {string} dir */
-function quickFix(dir) {
+/** The quick-fix made from its inbox note, or where `seeded` is false from none, beside a feature, the code committed. @param {string} dir @param {{seeded?: boolean}} [options] */
+function quickFix(dir, { seeded = true } = {}) {
   createFile(dir, 'src/flag.js', 'const flag = \'color\';\n');
   createFile(dir, '.claude/skills/leeway-implementation-process/SKILL.md', '# The build\n');
   writeState(dir, NOTE, '# The colour flag\n');
   createManifest(dir, 'other', {});
   commitAll(dir, 'init');
   const log = writeState(dir, layout.cache(UNIT, 'session-001.md'), '# Discovery Session 001\n');
-  ok(dir, ['workunit', 'create', UNIT, 'quick-fix', '--description', DESCRIPTION, '--session-log-file', log, '--seed', `.leeway/${NOTE}`]);
+  ok(dir, ['workunit', 'create', UNIT, 'quick-fix', '--description', DESCRIPTION, '--session-log-file', log, ...(seeded ? ['--seed', `.leeway/${NOTE}`] : [])]);
 }
 
 /** Fix `n` made through the tracker's verb. @param {string} dir @param {number} n @param {string} title @param {As} [as] */

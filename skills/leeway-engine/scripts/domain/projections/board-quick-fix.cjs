@@ -11,9 +11,11 @@
 // - Each fix is drawn as the build draws a task (20.5.2): its line the
 //   build's own (`taskLine`), its state read from the tracker, the
 //   questions parking it and the briefs this conversation issued for it;
-//   and beneath it its pair's rounds — those sent back, the one being read
-//   in this conversation, and the round it passed in. A round report that
-//   does not read leaves the fix's rounds untold, said among the warnings.
+//   and beneath it its pair's rounds reported whole — those sent back, the
+//   one being read in this conversation, and the round its review ended in,
+//   passed or settled; a round still waiting on a report is the one being
+//   read. An earlier round's report that does not read leaves the fix's
+//   rounds untold, said among the warnings.
 // - Where it stands: the close waiting on the person once its screen draws
 //   (finish.cjs, `closeVerdicts`); else working — stopped where every fix
 //   not ended waits on a question, never while the close waits. Once it
@@ -26,9 +28,10 @@
 // - The change is the unit's description, pinned by the note it began
 //   from — the inbox's or the roadmap's, else none.
 // - CLAUDE'S CALLS are every current call of Claude's made in the
-//   quick-fix; REPLACES each current decision made there replacing one
-//   made in another unit, with that decision's words, whose it was and the
-//   unit; both read in one read of the ledger.
+//   quick-fix; REPLACES, for each current decision made there, the decision
+//   made in another unit its chain of replacements goes back to, past those
+//   made in the quick-fix, with its words, whose it was and the unit; both
+//   read in one read of the ledger.
 // - THE RECORD is `summary.md`'s, each fix's under its title, once every
 //   fix has ended and one at least is done.
 // ---------------------------------------------------------------------------
@@ -39,7 +42,7 @@ const { readShown } = require('../ledger-read.cjs');
 const { factsOf, madeOn, isCurrent } = require('../ledger-fold.cjs');
 const { shortId } = require('../ledger-ids.cjs');
 const { sealsAt, sealWaits } = require('../raise.cjs');
-const { taskRounds, pairPassed, beingRead } = require('../round-report.cjs');
+const { wholeRounds, pairPassed, beingRead } = require('../round-report.cjs');
 const { parseShownTask } = require('../task-id.cjs');
 const { quickFixBuild, fixesBegun, FIXES_PHASE } = require('../derivations.cjs');
 const { closeVerdicts } = require('../finish.cjs');
@@ -69,20 +72,21 @@ function seedOrigin(manifest) {
 }
 
 /** A fix's rounds when none is told. @type {FixLine['rounds']} */
-const NO_ROUNDS = Object.freeze({ sent_back: 0, reading: null, passed: null });
+const NO_ROUNDS = Object.freeze({ sent_back: 0, reading: null, passed: null, settled: false });
 
 /**
  * A fix's pair's rounds (the header's): those sent back, the one being read
- * in this conversation, and the round it passed in, null for each where
- * none is.
+ * in this conversation, and the round its review ended in, null for each
+ * where none is, and whether that round was settled.
  * @param {BoardAt} at @param {string} task @returns {FixLine['rounds']}
  */
 function roundsOf(at, task) {
   const ref = parseShownTask(at.unit, task);
   try {
-    const rounds = taskRounds(at.cwd, ref);
+    const rounds = wholeRounds(at.cwd, ref);
     const last = rounds.at(-1);
-    return { sent_back: rounds.filter((round) => !pairPassed(round)).length, reading: beingRead(at.cwd, ref, at.session), passed: last !== undefined && pairPassed(last) ? last.round : null };
+    const ended = last !== undefined && pairPassed(last) ? last : null;
+    return { sent_back: rounds.filter((round) => !pairPassed(round)).length, reading: beingRead(at.cwd, ref, at.session), passed: ended?.round ?? null, settled: ended !== null && !ended.passes };
   } catch (err) {
     at.warnings.push(`${task}'s rounds cannot be read — ${messageOf(err)}`);
     return NO_ROUNDS;
@@ -98,10 +102,10 @@ const fixesAt = (at) => at.once('quick-fix-fixes', () => {
   });
 });
 
-/** The fixes done of all, a fix closed without being done in neither. @param {FixLine[]} fixes @returns {QuickFixView['progress']} */
+/** The fixes done of all, a fix closed without being done in neither, and whether any is written. @param {FixLine[]} fixes @returns {QuickFixView['progress']} */
 function progressOf(fixes) {
   const live = fixes.filter(({ state }) => state !== 'closed');
-  return { done: live.filter(({ state }) => state === 'done').length, total: live.length };
+  return { done: live.filter(({ state }) => state === 'done').length, total: live.length, written: fixes.length > 0 };
 }
 
 /** Whether a fix has ended: done, or closed without being done. @param {FixLine} fix */
@@ -123,10 +127,11 @@ function everyLeftParked(fixes) {
  */
 const ledgerAt = (at) => at.once('quick-fix-ledger', () => readShown(at.root, at.warnings, ({ folded, show, short }) => {
   const made = [...folded.facts.keys()].filter((id) => factsOf(folded, id).kind === 'decision' && isCurrent(folded, id) && madeOn(folded, id).unit === at.unit);
-  /** @param {string} id */
+  /** The decision made in another unit that `id`'s chain of replacements goes back to, past those made in the quick-fix; null where none is. @param {string} id @returns {string|null} */
   const replacing = (id) => {
-    const replaced = factsOf(folded, id).replaces;
-    return replaced !== null && madeOn(folded, replaced).unit !== at.unit ? replaced : null;
+    let replaced = factsOf(folded, id).replaces;
+    while (replaced !== null && madeOn(folded, replaced).unit === at.unit) replaced = factsOf(folded, replaced).replaces;
+    return replaced;
   };
   const ids = [...folded.facts.keys()];
   return {
@@ -209,8 +214,8 @@ function quickFixView(at, waiting) {
   };
 }
 
-/** Its fixes done of all, in words. @param {QuickFixView['progress']} progress */
-const fixesWords = ({ done, total }) => `${done} of ${total} done`;
+/** Its fixes done of all, in words; that none is written, before the first. @param {QuickFixView['progress']} progress */
+const fixesWords = ({ done, total, written }) => (written ? `${done} of ${total} done` : 'no fix written yet');
 
 /**
  * The banner's facts in a quick-fix (20.2.4): the type, stopped where every

@@ -422,8 +422,24 @@ function readRound(cwd, ref, round, held, letters) {
  */
 function taskRounds(cwd, ref, letters = REVIEWER_LETTERS) {
   const held = heldFiles(cwd, ref);
-  const last = lastReported(held);
+  return roundsTo(cwd, ref, held, lastReported(held), letters);
+}
+
+/** A task's rounds 1 to `last`, the last read by the count's letters, each before it by those it holds. @param {string} cwd @param {TaskRef} ref @param {Set<string>} held @param {number} last @param {readonly string[]} letters @returns {Round[]} */
+function roundsTo(cwd, ref, held, last, letters) {
   return Array.from({ length: last }, (_, at) => readRound(cwd, ref, at + 1, held, at + 1 === last ? letters : lettersHeld(held, at + 1)));
+}
+
+/**
+ * Every review round of a task reported whole, in order: `taskRounds`, a
+ * last round still waiting on a reviewer's report, or holding one that does
+ * not read, left out (the header's).
+ * @param {string} cwd @param {TaskRef} ref @param {readonly string[]} [letters] the count's
+ * @returns {Round[]}
+ */
+function wholeRounds(cwd, ref, letters = REVIEWER_LETTERS) {
+  const held = heldFiles(cwd, ref);
+  return roundsTo(cwd, ref, held, lastWhole(cwd, ref, held, letters), letters);
 }
 
 /** Whether a round ends the task's review: every reviewer of it passed the task, or the orchestrator settled it (13.4.6). @param {Round} round */
@@ -614,6 +630,6 @@ function roundUnderReview(cwd, ref, letters = REVIEWER_LETTERS) {
 module.exports = {
   passes, readReport, reportFaults, taskFolder, roundReportPath, settlementPath, changedPath, briefedPath, briefedOf, recordReviewer, recordBuilder, laidOutPath, laidOutOf, recordLaidOut,
   roundStanding, beingRead, readRefusal, pendingChange,
-  taskRounds, pairPassed, taskPassed, markChanged, changedIn, changedUnder, changedRefusal, roundUnderReview, phaseReviewPath,
+  taskRounds, wholeRounds, pairPassed, taskPassed, markChanged, changedIn, changedUnder, changedRefusal, roundUnderReview, phaseReviewPath,
   phaseFolder, phaseReviewBegun, phaseReports, phaseRecords,
 };

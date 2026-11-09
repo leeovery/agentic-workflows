@@ -7,14 +7,17 @@
 // rounds, Claude's calls and the earlier decision the change replaces;
 // what waits on the person — a fix's builder's question, Claude's raise and
 // the close — on the view and the banner; the record once the fixes are
-// done; the session followed to All work once it closes; and every phase a
-// session can be in drawing a view of its own (27.S8).
+// done; before the first fix is written; the session followed to All work
+// once it closes; and every phase a session can be in drawing a view of its
+// own (27.S8).
 //
-// Layer: verb. Worlds (quick-fix-world.cjs), each copied for each test:
-// `typo` made from its inbox note, entered by a conversation gone since,
+// Layer: verb. Worlds (quick-fix-world.cjs), each copied for each test,
+// `typo` entered by a conversation gone since: made from its inbox note,
 // fixes 1.1 and 1.2 written and 1.1 started, a call of Claude's made in it
-// and a person's decision of the completed `restore` replaced there; and
-// `typo` with fix 1.1 built, recorded and finish's checklist closed. The
+// and a person's decision of the completed `restore` replaced there by
+// Claude; fix 1.1 built, recorded and finish's checklist closed; fix 1.1
+// built and recorded, 1.2 written; fixes 1.1 and 1.2 built, recorded and
+// the checklist closed; and made from no note, no fix written. The
 // conversation's records sit in a config folder of each test's own.
 // ---------------------------------------------------------------------------
 
@@ -24,10 +27,10 @@ const { describe, it, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { ok, okSectionsAsync, writeState, statePath, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
+const { ok, output, okSectionsAsync, writeState, statePath, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest, useTempFolder, withEnv } = require('./discovery-test-utils.cjs');
 const { ledgerReadHelpers } = require('./ledger-world.cjs');
-const { UNIT, PLACE, DESCRIPTION, FLAG, HELP, SET, quickFix, createFix, fixBuilt, fixesRecorded, asGone, entered } = require('./quick-fix-world.cjs');
+const { UNIT, PLACE, DESCRIPTION, FLAG, HELP, SET, RECORDS, quickFix, createFix, fixBuilt, recordFile, twoFixesBuilt, fixesRecorded, asGone, entered } = require('./quick-fix-world.cjs');
 const { fixture, misfits, emptyLists, place } = require('./board-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
@@ -35,7 +38,8 @@ const { BOARD_VERSION } = require(path.join(SCRIPTS, 'domain/board-model.cjs'));
 const { phaseViewOf } = require(path.join(SCRIPTS, 'domain/board.cjs'));
 const { storeBrief } = require(path.join(SCRIPTS, 'domain/brief.cjs'));
 const { issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
-const { roundReportPath, recordReviewer } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
+const { roundReportPath, settlementPath, recordReviewer } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
+const { ROADMAP_SEED } = require(path.join(SCRIPTS, 'domain/inbox.cjs'));
 const { WORK_TYPE_PIPELINES, EPIC_PHASES } = require(path.join(SCRIPTS, 'kernel/manifest-schema.cjs'));
 
 const SESSION = 'sess-qf';
@@ -58,8 +62,8 @@ const CALL = Object.freeze({
   product_wide: false,
 });
 
-/** The entries the world made, by short id. */
-const made = { call: '', ruled: '' };
+/** The entries the world made, by short id: Claude's call, the earlier unit's decision, and Claude's replacing it. */
+const made = { call: '', ruled: '', replacing: '' };
 
 const working = fixtureFrom('engine-board-quick-fix-', (dir) => {
   quickFix(dir);
@@ -74,9 +78,9 @@ const working = fixtureFrom('engine-board-quick-fix-', (dir) => {
     createFix(dir, 2, HELP, as);
     ok(dir, ['task', 'start', UNIT, '1.1'], as);
     made.call = decide(PLACE, ask(PLACE, 'What does the README say entering does?'), CALL_TEXT);
-    ok(dir, ['ledger', 'replace', PLACE, '--replaces', made.ruled, '--reason', 'changed-mind'], {
+    made.replacing = ok(dir, ['ledger', 'replace', PLACE, '--replaces', made.ruled, '--reason', 'changed-mind'], {
       ...as, stdin: JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'Pressing m marks the highlighted row.', why: 'The note pins it.', drops: ['the empty set'] }),
-    });
+    }).id;
   });
 });
 
@@ -87,6 +91,26 @@ const closable = fixtureFrom('engine-board-quick-fix-close-', (dir) => {
     fixBuilt(dir, 1, SET[0].title, SET[0].file, SET[0].text, as);
     fixesRecorded(dir, 1, as);
   });
+});
+
+const oneBuilt = fixtureFrom('engine-board-quick-fix-one-', (dir) => {
+  quickFix(dir);
+  asGone((as) => {
+    entered(dir, as);
+    fixBuilt(dir, 1, SET[0].title, SET[0].file, SET[0].text, as);
+    ok(dir, ['quick-fix', 'record', UNIT, '1.1', '--file', recordFile(dir, 1, RECORDS[1])], as);
+    createFix(dir, 2, HELP, as);
+  });
+});
+
+const bothRecorded = fixtureFrom('engine-board-quick-fix-both-', (dir) => {
+  twoFixesBuilt(dir);
+  asGone((as) => fixesRecorded(dir, 2, as));
+});
+
+const unwritten = fixtureFrom('engine-board-quick-fix-unwritten-', (dir) => {
+  quickFix(dir, { seeded: false });
+  asGone((as) => entered(dir, as));
 });
 
 let dir = ''; // the project
@@ -152,7 +176,17 @@ async function parkedOn(task, question) {
 }
 
 /** A fix's line as the view holds it. @param {string} task @param {string} title @param {string} state @param {{since?: string|null, on?: string[], rounds?: object}} [more] */
-const fix = (task, title, state, { since = null, on = [], rounds = { sent_back: 0, reading: null, passed: null } } = {}) => ({ task, title, state, since, on, rounds });
+const fix = (task, title, state, { since = null, on = [], rounds = {} } = {}) => ({ task, title, state, since, on, rounds: { sent_back: 0, reading: null, passed: null, settled: false, ...rounds } });
+
+/** Its row in the unit's tab and its line in All work. */
+function rows() {
+  const row = board(['--tab', 'unit']).view.phases.find((/** @type {{phase: string}} */ held) => held.phase === 'implementation');
+  const line = board(['--tab', 'all']).view.units.find((/** @type {{unit: string}} */ held) => held.unit === UNIT);
+  return { row, line };
+}
+
+/** A decision `by` makes at the quick-fix replacing `old`: its short id. @param {string} old @param {'person'|'claude'} by @param {string} text */
+const replaced = (old, by, text) => ledgerReadHelpers(() => dir).write('replace', PLACE, ['--replaces', old, '--reason', 'changed-mind'], { by, ...(by === 'claude' ? { who_moved_whom: 'none' } : {}), text, why: `Why: ${text}`, drops: ['the old wording'] }, env()).id;
 
 describe('a quick-fix on the board (20.14)', () => {
   it('20.S23: This session shows the change its note pins, each fix as the build draws a task — the one under way in review with its clock and its pair\'s rounds — Claude\'s calls and the earlier decision it replaces; the banner counts the fixes done (20.2.4)', () => {
@@ -175,10 +209,10 @@ describe('a quick-fix on the board (20.14)', () => {
       change: DESCRIPTION,
       standing: 'working',
       stopped: false,
-      progress: { done: 0, total: 2 },
+      progress: { done: 0, total: 2, written: true },
       waiting: [],
       fixes: [
-        fix('1.1', FLAG, 'in-review', { since: '2026-07-15T10:20:00.000Z', rounds: { sent_back: 1, reading: 2, passed: null } }),
+        fix('1.1', FLAG, 'in-review', { since: '2026-07-15T10:20:00.000Z', rounds: { sent_back: 1, reading: 2 } }),
         fix('1.2', HELP, 'not-started'),
       ],
       calls: [{ id: made.call, text: CALL_TEXT }],
@@ -196,6 +230,7 @@ describe('a quick-fix on the board (20.14)', () => {
     const goingOn = board();
     await parkedOn('1.1', 'Should the flag keep --color?');
     const stopped = board();
+    const { line } = rows();
 
     assert.deepStrictEqual([goingOn.view.waiting, goingOn.questions.map(({ question, parks }) => [question, parks])], [
       [{ kind: 'question', id: 'Q1', text: 'Q1 Should the help name both spellings?', page: 'task:1.2' }],
@@ -203,7 +238,7 @@ describe('a quick-fix on the board (20.14)', () => {
     ]);
     assert.deepStrictEqual([goingOn.view.fixes[1], goingOn.view.stopped], [fix('1.2', HELP, 'waits', { on: ['Q1'] }), false]);
     assert.deepStrictEqual(goingOn.banner, { name: 'Typo', state: 'running', facts: [place('quick-fix'), { text: '0 of 2 done', needs: false }, { text: '1 waiting on you', needs: true }] });
-    assert.deepStrictEqual([stopped.view.stopped, stopped.banner], [true, { name: 'Typo', state: 'needs', facts: [place('quick-fix'), place('stopped'), { text: '0 of 2 done', needs: false }, { text: '2 waiting on you', needs: true }] }]);
+    assert.deepStrictEqual([stopped.view.stopped, stopped.banner, line.standing], [true, { name: 'Typo', state: 'needs', facts: [place('quick-fix'), place('stopped'), { text: '0 of 2 done', needs: false }, { text: '2 waiting on you', needs: true }] }, 'stopped · 0 of 2 done']);
   });
 
   it('a question Claude raised in the quick-fix\'s conversation waits asked there, parking nothing — counted on the banner, which keeps running (19.5.25)', async () => {
@@ -212,16 +247,18 @@ describe('a quick-fix on the board (20.14)', () => {
     const asked = ledgerReadHelpers(() => dir).ask(PLACE, CALL.question);
     await okSectionsAsync(dir, ['raise', PLACE, '--answers', asked], { env: env(), stdin: JSON.stringify(CALL) });
     const { view, banner, questions } = board();
+    ledgerReadHelpers(() => dir).decide(PLACE, asked, 'Keep --color as an alias');
+    const answered = board();
 
     assert.deepStrictEqual([view.waiting.map(({ kind, text, page }) => ({ kind, text, page })), questions, view.stopped], [[{ kind: 'raised', text: CALL.question, page: null }], [], false]);
     assert.deepStrictEqual(banner, { name: 'Typo', state: 'running', facts: [place('quick-fix'), { text: '0 of 2 done', needs: false }, { text: '1 waiting on you', needs: true }] });
+    assert.deepStrictEqual([answered.view.waiting, answered.banner.facts], [[], [place('quick-fix'), { text: '0 of 2 done', needs: false }]]);
   });
 
   it('its tab\'s row runs once its fixes have begun, counting them done of all and reading building, and All work says how far it has come (20.15.2, 20.15.3, 20.16.1)', () => {
     dir = working();
     atTheFixes();
-    const row = board(['--tab', 'unit']).view.phases.find((/** @type {{phase: string}} */ held) => held.phase === 'implementation');
-    const line = board(['--tab', 'all']).view.units.find((/** @type {{unit: string}} */ held) => held.unit === UNIT);
+    const { row, line } = rows();
 
     assert.deepStrictEqual([row.state, row.words, row.doing, line.standing], ['running', '0 of 2 done', 'building', '0 of 2 done']);
   });
@@ -234,23 +271,108 @@ describe('a quick-fix on the board (20.14)', () => {
     const { view, banner } = board();
     const line = board(['--tab', 'all']).view.units.find((/** @type {{unit: string}} */ held) => held.unit === UNIT);
 
-    assert.deepStrictEqual([view.standing, view.stopped, view.progress, view.waiting], ['close', false, { done: 1, total: 1 }, [{ kind: 'finish', id: 'close', text: NONE_CHANGED, page: null }]]);
-    assert.deepStrictEqual(view.fixes, [fix('1.1', FLAG, 'done', { rounds: { sent_back: 1, reading: null, passed: 2 } })]);
+    assert.deepStrictEqual([view.standing, view.stopped, view.progress, view.waiting], ['close', false, { done: 1, total: 1, written: true }, [{ kind: 'finish', id: 'close', text: NONE_CHANGED, page: null }]]);
+    assert.deepStrictEqual(view.fixes, [fix('1.1', FLAG, 'done', { rounds: { sent_back: 1, passed: 2 } })]);
     assert.deepStrictEqual(view.record, [{ title: FLAG, changed: 'The flag parser reads --colour.', why: 'The flag was spelt the American way.', leaves: 'Old scripts passing --color.' }]);
     assert.deepStrictEqual(banner, { name: 'Typo', state: 'needs', facts: [place('quick-fix'), { text: '1 of 1 done', needs: false }, { text: '1 waiting on you', needs: true }] });
     assert.strictEqual(line.standing, 'close waits on you');
   });
 
-  it('16.10.4: the close says a verdict is owed on a call the person changed in it', () => {
+  it('16.10.4: the close says a verdict is owed on a call the person changed in it, and once given, that each is', () => {
     dir = closable();
     atTheFixes();
     const { ask, decide } = ledgerReadHelpers(() => dir);
-    const call = decide(PLACE, ask(PLACE, 'Does --color still work?'), 'It stays as an alias.');
-    ok(dir, ['ledger', 'replace', PLACE, '--replaces', call, '--reason', 'changed-mind'], {
-      env: env(), stdin: JSON.stringify({ by: 'person', text: 'It is dropped.', why: 'The person wants it so.', drops: ['the alias'] }),
-    });
+    replaced(decide(PLACE, ask(PLACE, 'Does --color still work?'), 'It stays as an alias.'), 'person', 'It is dropped.');
+    const owed = board().view.waiting;
+    output(dir, ['render', 'finish', UNIT], { env: env() });
+    run(run(['gate', 'verdict', '--pick', 'n']).next.argv);
 
-    assert.deepStrictEqual(board().view.waiting, [{ kind: 'finish', id: 'close', text: 'Close: what was proven; you changed 1 call of Claude\'s, so there is a verdict to give', page: null }]);
+    assert.deepStrictEqual([owed, board().view.waiting.map(({ text }) => text)], [
+      [{ kind: 'finish', id: 'close', text: 'Close: what was proven; you changed 1 call of Claude\'s, so there is a verdict to give', page: null }],
+      ['Close: what was proven; you changed 1 call of Claude\'s and gave each its verdict'],
+    ]);
+  });
+
+  it('a fix\'s rounds are those reported whole — a round with one report in is the one being read — and a review the orchestrator settled says so', () => {
+    dir = working();
+    atTheFixes();
+    reported('1.1', 1, false);
+    briefedRound('1.1', 2);
+    writeState(dir, roundReportPath({ unit: UNIT, phase: 1, n: 1 }, 2, 'a'), '## Findings\n\nNone.\n\nVerdict: pass\n');
+    const half = board();
+    cleanupFixture(dir);
+    dir = closable();
+    atTheFixes();
+    reported('1.1', 1, false);
+    writeState(dir, settlementPath({ unit: UNIT, phase: 1, n: 1 }, 1), '# Settled\n');
+
+    assert.deepStrictEqual([half.view.fixes[0].rounds, half.warnings], [{ sent_back: 1, reading: 2, passed: null, settled: false }, []]);
+    assert.deepStrictEqual(board().view.fixes[0].rounds, { sent_back: 0, reading: null, passed: 1, settled: true });
+  });
+
+  it('REPLACES reaches past the quick-fix\'s own replacements to the decision of another unit its chain goes back to, whose it was read from that decision — the person replacing Claude\'s call there, Claude replacing its own; the person\'s decisions never among Claude\'s calls', () => {
+    dir = working();
+    atTheFixes();
+    const { ask, decide } = ledgerReadHelpers(() => dir);
+    createManifest(dir, 'palette', { phases: { discussion: { items: { palette: { status: 'in-progress' } } } } });
+    const at = 'palette.discussion.palette';
+    const claudes = decide(at, ask(at, 'Which palette?'), 'The palette is warm.');
+    replaced(replaced(claudes, 'claude', 'The palette is cool.'), 'claude', 'The palette is grey.');
+    decide(PLACE, ask(PLACE, 'Is --colour the only spelling?'), 'It is the only one.', [], { by: 'person' });
+    replaced(made.replacing, 'person', 'Pressing m marks the row and selects it.');
+    const { calls, replaces } = board().view;
+
+    assert.deepStrictEqual([calls, replaces], [
+      [{ id: made.call, text: CALL_TEXT }],
+      [
+        { id: claudes, text: 'The palette is warm.', by: 'claude', unit: 'palette', unit_title: 'Palette' },
+        { id: made.ruled, text: RULED, by: 'person', unit: EARLIER, unit_title: 'Restore' },
+      ],
+    ]);
+  });
+
+  it('the fix\'s page names its phase the fixes', () => {
+    dir = working();
+    atTheFixes();
+
+    assert.strictEqual(board(['--page', 'task:1.1']).view.phase_name, 'the fixes');
+  });
+
+  it('its record waits until every fix has ended; a fix closed without being done counts in neither its done nor its total, and with no fix left nothing has stopped (20.14.1, 20.2.4)', () => {
+    dir = oneBuilt();
+    atTheFixes();
+    const open = board().view;
+    run(['task', 'close', UNIT, '1.2', '--reason', 'Folded into 1.1.']);
+    const { view, banner } = board();
+
+    assert.deepStrictEqual([open.record, open.progress], [null, { done: 1, total: 2, written: true }]);
+    assert.deepStrictEqual([view.standing, view.stopped, view.progress, view.record], ['working', false, { done: 1, total: 1, written: true }, [{ title: FLAG, ...RECORDS[1] }]]);
+    assert.deepStrictEqual(banner, { name: 'Typo', state: 'running', facts: [place('quick-fix'), { text: '1 of 1 done', needs: false }] });
+  });
+
+  it('its record holds each fix\'s by its title, every line of an item kept (19.5.17)', () => {
+    dir = bothRecorded();
+    atTheFixes();
+
+    assert.deepStrictEqual(board().view.record, [{ title: FLAG, ...RECORDS[1] }, { title: HELP, ...RECORDS[2] }]);
+  });
+
+  it('a quick-fix made from no note says nothing of where it came from, one from the roadmap says so; before its first fix is written its banner, tab and All work say so', () => {
+    dir = unwritten();
+    atTheFixes();
+    const { view, banner } = board();
+    const { row, line } = rows();
+    cleanupFixture(dir);
+    dir = working();
+    atTheFixes();
+    const file = statePath(dir, UNIT, 'manifest.json');
+    const manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
+    // As start this work seeds a unit from a roadmap item's note (workunit-create.cjs).
+    fs.writeFileSync(file, JSON.stringify({ ...manifest, seeds: manifest.seeds.map((/** @type {object} */ seed) => ({ ...seed, source: `${ROADMAP_SEED}colour-flag` })) }));
+
+    assert.deepStrictEqual([view.from, view.progress, view.fixes], [null, { done: 0, total: 0, written: false }, []]);
+    assert.deepStrictEqual([banner.facts, row.words, line.standing], [[place('quick-fix'), { text: 'no fix written yet', needs: false }], 'no fix written yet', 'no fix written yet']);
+    assert.strictEqual(board().view.from, 'roadmap');
   });
 
   it('20.14.2: once closed, This session follows the session to All work at the start menu, the banner its close', () => {

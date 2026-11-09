@@ -502,9 +502,11 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
 
 /**
  * A fix of a quick-fix (20.14.1): its line as the build draws a task, and
- * its pair's rounds — how many were sent back, the one being read in this
- * conversation and the round it passed in, each null where none is.
- * @typedef {TaskLine & {rounds: {sent_back: number, reading: number|null, passed: number|null}}} FixLine
+ * its pair's rounds reported whole — how many were sent back, the one being
+ * read in this conversation, the round its review ended in, each null where
+ * none is, and whether the orchestrator settled that round rather than the
+ * pair passing it.
+ * @typedef {TaskLine & {rounds: {sent_back: number, reading: number|null, passed: number|null, settled: boolean}}} FixLine
  */
 /**
  * A quick-fix's This session (20.14.1): the unit, its title and type, the
@@ -513,14 +515,14 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * the change it makes; where it stands — working, or its close waiting on
  * the person — and whether it has stopped, every fix left waiting
  * on a question; its fixes done of all, one closed without being done in
- * neither; what waits on the person, the unit's one list; each fix in
+ * neither, and whether any fix is written yet; what waits on the person, the unit's one list; each fix in
  * order; every call of Claude's made in it, by its entry and words; each
  * earlier decision a decision made in it replaces, by its entry, its words,
  * whose it was and the unit it was made in; and once every fix has ended,
  * one done, each fix's record by its title, else null.
  * @typedef {{
  *   kind: 'quick-fix', unit: string, title: string, type: string, project: string, started: string|null, from: 'inbox'|'roadmap'|null,
- *   change: string, standing: 'working'|'close', stopped: boolean, progress: {done: number, total: number},
+ *   change: string, standing: 'working'|'close', stopped: boolean, progress: {done: number, total: number, written: boolean},
  *   waiting: WaitingLine[], fixes: FixLine[], calls: {id: string, text: string}[],
  *   replaces: {id: string, text: string, by: 'person'|'claude', unit: string, unit_title: string}[],
  *   record: {title: string, changed: string, why: string, leaves: string}[]|null,

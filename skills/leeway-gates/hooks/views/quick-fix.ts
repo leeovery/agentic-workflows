@@ -17,7 +17,7 @@ import { taskLineOf, taskState, type TaskLine } from './build.ts'
 import type { ViewDrawing } from './index.ts'
 import { header, section } from './words.ts'
 
-type Rounds = { sent_back: number; reading: number | null; passed: number | null }
+type Rounds = { sent_back: number; reading: number | null; passed: number | null; settled: boolean }
 type Fix = TaskLine & { rounds: Rounds }
 type Waiting = { kind: string; id: string; text: string; page: string | null }
 type Replaced = { id: string; text: string; by: 'person' | 'claude'; unit: string; unit_title: string }
@@ -32,7 +32,7 @@ type QuickFix = {
   change: string
   standing: 'working' | 'close'
   stopped: boolean
-  progress: { done: number; total: number }
+  progress: { done: number; total: number; written: boolean }
   waiting: Waiting[]
   fixes: Fix[]
   calls: { id: string; text: string }[]
@@ -66,9 +66,12 @@ function underWay(view: QuickFix, kit: Kit): Part[] {
 const standingParts = (view: QuickFix, kit: Kit): Part[] =>
   view.standing === 'close' ? [{ text: `${MARK.needs} close waits on you`, color: COLOUR.needs }] : underWay(view, kit)
 
+/** Its fixes done of all; that none is written, before the first. */
+const doneOf = ({ done, total, written }: QuickFix['progress'], unit = ' done') => (written ? `${done} of ${total}${unit}` : 'no fix written yet')
+
 function factsLine(view: QuickFix, kit: Kit): Line {
   const standing = standingParts(view, kit)
-  const count = `${view.progress.done} of ${view.progress.total} done`
+  const count = doneOf(view.progress)
 
   return { key: 'qf:facts', wraps: true, parts: [{ text: standing.length === 0 ? count : `${count} · `, color: COLOUR.secondary }, ...standing] }
 }
@@ -101,11 +104,17 @@ const changeLines = (view: QuickFix, width: number): Line[] => [
 /** Rounds 1 to `last`, as their words say them. */
 const roundsUpTo = (last: number) => (last === 1 ? 'round 1' : `rounds 1 to ${last}`)
 
-/** A fix's pair's rounds, as the line beneath it says them: the round it passed in once done, else those sent back and the one being read. */
+/** The round a done fix's review ended in, as the build says it: settled by the orchestrator, or passed after the rounds of fixes before it; nothing where none did. */
+function endedWords({ passed, settled, sent_back }: Rounds): string {
+  if (passed === null) return ''
+  if (settled) return `settled by the orchestrator in round ${passed}`
+
+  return `passed its review in round ${passed}${sent_back === 0 ? '' : `, after ${counted(sent_back, 'round')} of fixes`}`
+}
+
+/** A fix's pair's rounds, as the line beneath it says them: how its review ended once done, else those sent back and the one being read. */
 function roundsWords({ state, rounds }: Fix): string {
-  if (state === 'done' && rounds.passed !== null) {
-    return `passed its review in round ${rounds.passed}${rounds.sent_back === 0 ? '' : `, after ${counted(rounds.sent_back, 'round')} of fixes`}`
-  }
+  if (state === 'done') return endedWords(rounds)
 
   return [...(rounds.sent_back === 0 ? [] : [`${roundsUpTo(rounds.sent_back)} sent back`]), ...(rounds.reading === null ? [] : [`round ${rounds.reading} being read`])].join(' · ')
 }
@@ -117,11 +126,12 @@ function fixLines(fix: Fix, kit: Kit): Line[] {
   return [taskLineOf(fix, kit), ...(said === '' ? [] : [{ key: `qf:rounds:${fix.task}`, mark: { text: INDENT }, wraps: true, parts: [{ text: said, color: COLOUR.notStarted }] }])]
 }
 
-const fixesLines = (view: QuickFix, kit: Kit): Line[] =>
-  section(
-    heading('qf:fixes', { text: 'THE FIXES', bold: true, color: COLOUR.sky }, [{ text: `${view.progress.done} of ${view.progress.total}`, color: COLOUR.secondary }], kit.width),
-    view.fixes.flatMap(fix => fixLines(fix, kit)),
-  )
+/** THE FIXES, each under its count; before the first is written, its heading saying so, as the build's phase does. */
+function fixesLines(view: QuickFix, kit: Kit): Line[] {
+  const head = (said: string) => heading('qf:fixes', { text: 'THE FIXES', bold: true, color: COLOUR.sky }, [{ text: said, color: COLOUR.secondary }], kit.width)
+
+  return view.progress.written ? section(head(doneOf(view.progress, '')), view.fixes.flatMap(fix => fixLines(fix, kit))) : [head('not yet written'), blank('qf:fixes')]
+}
 
 const callLines = (view: QuickFix, width: number): Line[] =>
   section(
@@ -147,28 +157,43 @@ const replacesLine = ({ id, text, unit_title: unit }: Replaced): Line => ({
 const replacesLines = (view: QuickFix, width: number): Line[] =>
   section(heading('qf:replaces', { text: 'REPLACES', bold: true, color: COLOUR.violet }, [{ text: whoseEarlier(view.replaces), color: COLOUR.secondary }], width), view.replaces.map(replacesLine))
 
-/** A record's three items under their mark, each wrapping under it. */
-function itemLines(key: string, record: FixRecord): Line[] {
-  const item = (name: string, text: string): Line => ({
-    key: `${key}:${name}`,
-    mark: { text: '· ', color: COLOUR.sky },
-    wraps: true,
-    parts: [{ text: `${name}: `, color: COLOUR.secondary }, { text: text.replace(/\s+/g, ' '), color: COLOUR.body }],
-  })
+/** Beneath a record's item, its mark's width. */
+const HUNG = '  '
 
-  return [item('What changed', record.changed), item('Why', record.why), item('Leaves out', record.leaves)]
+/**
+ * A record's item under its mark, its text drawn as the board draws prose:
+ * a paragraph opening it follows its name, wrapping under the mark; every
+ * line after it — another paragraph, a list's items, a fenced block — hung
+ * beneath, keeping its shape.
+ */
+function itemLines(key: string, name: string, text: string): Line[] {
+  const label: Part = { text: `${name}: `, color: COLOUR.secondary }
+  const mark: Part = { text: '· ', color: COLOUR.sky }
+  const lines = prose(key, text)
+  const [first] = lines
+  const opens = first !== undefined && first.mark === undefined && first.wraps === true
+  const hung = (opens ? lines.slice(1) : lines).map(line => ({ ...line, mark: { ...line.mark, text: `${HUNG}${line.mark?.text ?? ''}` } }))
+
+  return [opens ? { ...first, mark, parts: [label, ...first.parts] } : { key: `${key}:name`, mark, parts: [label] }, ...hung]
 }
 
-/** THE RECORD: one fix's three items; several fixes each under its title. */
+/** A record's three items. */
+const recordItems = (key: string, record: FixRecord): Line[] => [
+  ...itemLines(`${key}:changed`, 'What changed', record.changed),
+  ...itemLines(`${key}:why`, 'Why', record.why),
+  ...itemLines(`${key}:leaves`, 'Leaves out', record.leaves),
+]
+
+/** THE RECORD: one fix's three items; where several fixes are done, each fix's under its title. */
 function recordLines(view: QuickFix, width: number): Line[] {
   const records = view.record ?? []
-  const titled = records.length > 1
+  const titled = view.progress.done > 1
 
   return section(
     heading('qf:record', { text: 'THE RECORD', bold: true, color: COLOUR.sky }, [{ text: 'what changed, why, what it leaves out', color: COLOUR.secondary }], width),
     records.flatMap((record, at) => [
       ...(titled ? [{ key: `qf:record:${at}`, wraps: true, parts: [{ text: record.title, bold: true }] }] : []),
-      ...itemLines(`qf:record:${at}`, record),
+      ...recordItems(`qf:record:${at}`, record),
     ]),
   )
 }

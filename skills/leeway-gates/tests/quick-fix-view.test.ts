@@ -1,9 +1,10 @@
 import { describe, expect, test, tier } from 'claude-code/testing'
 
 import type { Line } from '../hooks/draw.ts'
-import type { View } from '../hooks/model.ts'
+import type { Answer, Board, View } from '../hooks/model.ts'
 import { QUICK_FIX } from '../hooks/views/quick-fix.ts'
-import { NOW, block, drawn, pressOf, sectionOf } from './drawing.ts'
+import { NOW, block, drawn, paneDrawn, pressOf, sectionOf } from './drawing.ts'
+import BUILD from './fixtures/board-build.mjs'
 import M_MARKS from './fixtures/board-quick-fix.mjs'
 
 tier('user')
@@ -15,14 +16,14 @@ const fixture = M_MARKS as View & Record<string, any>
 const IN_REVIEW = {
   ...fixture,
   standing: 'working',
-  progress: { done: 0, total: 1 },
+  progress: { done: 0, total: 1, written: true },
   waiting: [],
-  fixes: [{ ...fixture.fixes[0], state: 'in-review', since: new Date(NOW - 41_000).toISOString(), rounds: { sent_back: 1, reading: 2, passed: null } }],
+  fixes: [{ ...fixture.fixes[0], state: 'in-review', since: new Date(NOW - 41_000).toISOString(), rounds: { sent_back: 1, reading: 2, passed: null, settled: false } }],
   record: null,
 } as View
 
 /** A fix as the view holds it. */
-const fixOf = (task: string, title: string, state: string, on: string[] = []) => ({ task, title, state, since: null, on, rounds: { sent_back: 0, reading: null, passed: null } })
+const fixOf = (task: string, title: string, state: string, on: string[] = []) => ({ task, title, state, since: null, on, rounds: { sent_back: 0, reading: null, passed: null, settled: false } })
 
 /** What the kit draws for the build's questions, standing in for the pane's. */
 const PARKED: Line[] = [{ key: 'waiting', parts: [{ text: 'WAITING ON YOU · the build\'s questions' }] }, { key: 'blank:waiting', parts: [{ text: ' ' }] }]
@@ -107,7 +108,7 @@ THE RECORD ───────────── what changed, why, what it le
   test('20.S23: a fix parked while another goes on — the build\'s WAITING ON YOU drawn by the kit, the parked fix waiting on Q1, the facts line naming each fix under way; Claude\'s raise asked in the conversation beneath it (19.5.25)', () => {
     const view = {
       ...IN_REVIEW,
-      progress: { done: 0, total: 2 },
+      progress: { done: 0, total: 2, written: true },
       waiting: [
         { kind: 'question', id: 'Q1', text: 'Q1 Should the help name both spellings?', page: 'task:1.2' },
         { kind: 'raised', id: 'Kp2wQx', text: 'Should --color still work?', page: null },
@@ -146,7 +147,8 @@ WAITING ON YOU ───────────────── 1 · asked in
     const several = {
       ...fixture,
       from: 'roadmap',
-      fixes: [{ ...fixture.fixes[0], state: 'in-review', rounds: { sent_back: 2, reading: null, passed: null } }],
+      progress: { done: 2, total: 3, written: true },
+      fixes: [{ ...fixture.fixes[0], state: 'in-review', rounds: { sent_back: 2, reading: null, passed: null, settled: false } }],
       record: [record, { ...record, title: 'Mark none on a group header' }],
       replaces: [{ ...fixture.replaces[0], by: 'claude' }],
     } as View
@@ -162,4 +164,58 @@ WAITING ON YOU ───────────────── 1 · asked in
     expect(drawn(QUICK_FIX, { ...fixture, from: null } as View).text.slice(1, 5)).toEqual(['Portal · one session · started 15 Jul', '1 of 1 done · ⚑ close waits on you', '', 'WAITING ON YOU ───────────────── 1 · asked in the conversation'])
     expect(sectionOf(drawn(QUICK_FIX, { ...fixture, from: null } as View).text, 'THE CHANGE ')[0]).toBe('THE CHANGE ──────────────────────────────────────────────────')
   })
+
+  test('27.S8: the pane draws a quick-fix\'s one session by its own view', () => {
+    const answer: Answer = { kind: 'board', board: { ...BUILD, place: { ...BUILD.place, type: 'quick-fix' }, questions: [], view: M_MARKS } as Board }
+
+    expect(paneDrawn(answer, { now: NOW }).slice(3, 6)).toEqual(block(`
+M Marks Highlighted On Entry · quick-fix
+Portal · from your inbox note · one session · started 15 Jul
+1 of 1 done · ⚑ close waits on you
+`))
+  })
+
+  test('20.4.5: the header\'s facts wrap at the edge rather than lose when it started', () => {
+    expect(drawn(QUICK_FIX, { ...fixture, project: 'Restore Host Terminal Windows' } as View).text.slice(1, 3)).toEqual(block(`
+Restore Host Terminal Windows · from your inbox note · one
+session · started 15 Jul
+`))
+  })
+
+  test('a done fix says how its review ended, as the build does — settled by the orchestrator, or nothing where no round ended it, never the rounds sent back', () => {
+    const ended = (rounds: Record<string, unknown>) => sectionOf(drawn(QUICK_FIX, { ...fixture, fixes: [{ ...fixture.fixes[0], rounds: { ...fixture.fixes[0].rounds, ...rounds } }] } as View).text, 'THE FIXES ').slice(1)
+
+    expect([ended({ settled: true }), ended({ sent_back: 2, passed: null })]).toEqual([
+      block(`
+✓ 1.1 Mark the highlighted session on entry               done
+     settled by the orchestrator in round 2
+`),
+      ['✓ 1.1 Mark the highlighted session on entry               done'],
+    ])
+  })
+
+  test('THE RECORD draws its items as prose, a list and a second paragraph keeping their shape; where several fixes are done, a record stands under its title though only one is recorded', () => {
+    const record = { ...fixture.record[0], changed: 'The flag reads --colour.\n\nIts help says so.', leaves: '- the man page\n- old scripts' }
+    const { text } = drawn(QUICK_FIX, { ...fixture, progress: { done: 2, total: 2, written: true }, record: [record] } as View)
+
+    expect(sectionOf(text, 'THE RECORD ').slice(1)).toEqual(block(`
+Mark the highlighted session on entry
+· What changed: The flag reads --colour.
+  Its help says so.
+· Why: Entering multi-select mode by pressing m on a
+  highlighted session should immediately select that session
+  as the first marked item — rather than entering the mode
+  with nothing selected.
+· Leaves out:
+  · the man page
+  · old scripts
+`))
+  })
+
+  test('before its first fix is written, the facts line says so, and THE FIXES says it is not yet written, as the build\'s phase does', () => {
+    const { text } = drawn(QUICK_FIX, { ...IN_REVIEW, progress: { done: 0, total: 0, written: false }, fixes: [], calls: [], replaces: [] } as View)
+
+    expect([text[2], sectionOf(text, 'THE FIXES ')]).toEqual(['no fix written yet', ['THE FIXES ──────────────────────────────────── not yet written']])
+  })
 })
+

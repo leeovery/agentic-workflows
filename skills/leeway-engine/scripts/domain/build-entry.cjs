@@ -306,15 +306,16 @@ function standingTasks(at, phase, rows, parked, statuses, behind) {
 }
 
 /**
- * A phase of the build as the standing gives it: one of the cut's, or past
- * it one of the review's fixes (the header's).
+ * A phase of the build as the standing gives it: one of the cut's, a
+ * quick-fix's fixes, which stand by their tasks as a fix phase does, or
+ * past its own one of the review's fixes (the header's).
  * @param {Reading} at @param {number} phase @param {TaskRow[]|null} rows @param {StandingTask[]} tasks
  * @returns {StandingPhase}
  */
 function standingPhase(at, phase, rows, tasks) {
   const name = phaseNamed(at.manifest, phase);
-  const cut = cutLength(at.manifest);
-  if (phase > cut) return { phase, name, round: phase - cut, relies_on: [], state: fixState(at, phase, rows ?? []), tasks, fixes_owed: [] };
+  const own = buildLength(at.manifest);
+  if (phase > own || quickFixBuild(at.manifest)) return { phase, name, round: phase > own ? phase - own : null, relies_on: [], state: fixState(at, phase, rows ?? []), tasks, fixes_owed: [] };
   return { phase, name, round: null, relies_on: cutPhases(at.manifest)[phase - 1].relies_on, state: phaseState(at, phase, rows), tasks, fixes_owed: fixesOwed(at, phase) };
 }
 

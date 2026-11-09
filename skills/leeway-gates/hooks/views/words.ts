@@ -11,10 +11,10 @@
 import { COLOUR, INDENT, MARK, RUNNING_FRAMES, blank, heading, prose, spread, titledLine, whenOf, wrappedRows, type Kit, type Line, type Part } from '../draw.ts'
 import { pageKey } from '../pane.ts'
 
-/** A view's two header lines, `width` cells across: its title in bold, giving way with "…", with what it is whole, then its facts. */
+/** A view's header, `width` cells across: its title in bold, giving way with "…", with what it is whole, then its facts, wrapping rather than lose any at the edge (20.4.5). */
 export const header = (key: string, title: string, rest: readonly Part[], facts: string, width: number): Line[] => [
   titledLine(`${key}:head`, { text: title, bold: true }, rest, width),
-  { key: `${key}:where`, parts: [{ text: facts, color: COLOUR.secondary }] },
+  { key: `${key}:where`, wraps: true, parts: [{ text: facts, color: COLOUR.secondary }] },
 ]
 
 /** A page's title, wrapping, its standing beneath, and the rule under them. */
