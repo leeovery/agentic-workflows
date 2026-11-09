@@ -152,6 +152,31 @@ function recordBlocks(text) {
   return starts.map((at, i) => lines.slice(at, starts[i + 1] ?? lines.length).join('\n').trimEnd());
 }
 
+/** A record's item in `summary.md`: its section, and its text on the item's line. */
+const ITEM = new RegExp(`^- (${RECORD_SECTIONS.join('|')}):[ \\t]?(.*)$`);
+
+/**
+ * Each fix's record `summary.md` holds, in its order, as the board shows
+ * it: the fix's title, and each section's text by its heading, the lines
+ * beneath its item taken back to the margin.
+ * @param {string} cwd @param {string} unit @returns {{title: string, sections: Record<string, string>}[]}
+ */
+function summaryRecords(cwd, unit) {
+  return recordBlocks(summaryText(cwd, unit)).filter((block) => block !== '').map((block) => {
+    const [heading, ...lines] = block.split('\n');
+    /** @type {Record<string, string[]>} */
+    const sections = {};
+    /** @type {string[]|null} */
+    let open = null;
+    for (const line of lines) {
+      const item = ITEM.exec(line);
+      if (item !== null) sections[item[1]] = open = item[2] === '' ? [] : [item[2]];
+      else open?.push(line.replace(/^ {2}/, ''));
+    }
+    return { title: heading.replace(/^##[ \t]*/, ''), sections: Object.fromEntries(RECORD_SECTIONS.map((title) => [title, (sections[title] ?? []).join('\n').trim()])) };
+  });
+}
+
 /** `summary.md` holding the records given, in their order. @param {string[]} blocks */
 const summaryOf = (blocks) => `${blocks.join('\n\n')}\n`;
 
@@ -302,4 +327,4 @@ function runQuickFixVerb(cwd, [verb, ...args], opts) {
   return refusing('quick-fix record', () => recordFix(cwd, args[0], args[1], file));
 }
 
-module.exports = { QUICK_FIX_USAGE, RECORD_SECTIONS, readRecord, recordedFixes, takeOutRecord, indexSummary, runQuickFixVerb };
+module.exports = { QUICK_FIX_USAGE, RECORD_SECTIONS, readRecord, recordedFixes, takeOutRecord, indexSummary, runQuickFixVerb, summaryRecords };

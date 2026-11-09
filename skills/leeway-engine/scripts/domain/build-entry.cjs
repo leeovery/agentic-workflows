@@ -166,7 +166,8 @@ const { reproducingHold } = require('./bug-proven.cjs');
  * @typedef {{phase: number, name: string, round: number|null, relies_on: Array<number|string>, state: PhaseState, tasks: StandingTask[], fixes_owed: string[]}} StandingPhase
  */
 /**
- * Where a build stands: its unit and position; each phase of its cut, then
+ * Where a build stands: its unit and position, auto for a quick-fix's, whose
+ * fixes run as in auto (19.5.23); each phase of its cut, then
  * each of the review's fix phases written; the tasks in flight there of the
  * conversation it is read for; the questions waiting on the person, as
  * `raise waiting` answers them; whether every phase of the cut has closed;
@@ -182,10 +183,11 @@ const { reproducingHold } = require('./bug-proven.cjs');
 /** The build's log, state-relative (12.2.3). @param {string} unit */
 const buildLogOf = (unit) => `${unit}/build/log.md`;
 
-/** A phase's name: the cut's, or for a phase past it, the review's fixes of its round (P14). @param {Record<string, any>} manifest @param {number} phase */
+/** A phase's name: the cut's, or a quick-fix's fixes, or for a phase past them, the review's fixes of its round (P14). @param {Record<string, any>} manifest @param {number} phase */
 function phaseNamed(manifest, phase) {
-  const cut = cutLength(manifest);
-  return phase > cut ? `the review's fixes, round ${phase - cut}` : cutPhases(manifest)[phase - 1].name ?? '';
+  const own = buildLength(manifest);
+  if (phase > own) return `the review's fixes, round ${phase - own}`;
+  return quickFixBuild(manifest) ? FIXES_PHASE.name : cutPhases(manifest)[phase - 1].name ?? '';
 }
 
 /** The readings of an entry, one each, shared by what it closes and what it reads. @type {WeakMap<Record<string, any>, Reading>} */
@@ -256,7 +258,7 @@ const additionsOf = (at, ref) => phaseTasks(at, ref.phase)?.find((task) => shown
  * @param {Reading} at @param {TaskRow} row @param {string[]} parked
  */
 function atGate(at, { ref, status }, parked) {
-  if (at.manifest.build.position !== 'step' || status !== 'in-progress' || parked.length > 0) return false;
+  if (at.manifest.build?.position !== 'step' || status !== 'in-progress' || parked.length > 0) return false;
   const figures = takenFigures(at.cwd, ref);
   return figures !== null && figures.additions === additionsOf(at, ref) && passed(at, ref);
 }
@@ -270,7 +272,7 @@ function atGate(at, { ref, status }, parked) {
  * @returns {StepTurn|null}
  */
 function turnIn(at, lists, parked, freed) {
-  if (at.manifest.build.position !== 'step') return null;
+  if (at.manifest.build?.position !== 'step') return null;
   return turnOf(goesOn(parked, { phases: lists, ready: [] }, () => false), () => freed);
 }
 
@@ -346,7 +348,7 @@ function standingOf(at, inFlight) {
   const behind = new Set(turn?.behind);
   return {
     unit: at.unit,
-    position: at.manifest.build.position,
+    position: at.manifest.build?.position ?? 'auto',
     phases: phases.filter((phase, i) => phase <= cut || lists[i] !== null)
       .map((phase) => standingPhase(at, phase, lists[phase - 1], standingTasks(at, phase, lists[phase - 1], parked, statuses, behind))),
     in_flight: inFlight,

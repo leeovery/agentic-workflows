@@ -14,6 +14,7 @@ import { BRIEF, DISCOVERY, SPIKE } from './discovery.ts'
 import { DISCUSSION, ENTRY, MESSAGE, REVIEW_REPORT } from './discussion.ts'
 import { EXPERIMENT, EXPERIMENT_REPORT } from './experiment.ts'
 import { HUNT, INVESTIGATION } from './investigation.ts'
+import { QUICK_FIX } from './quick-fix.ts'
 import { PASS, SECTION, SPEC, SPEC_FINDING } from './spec.ts'
 import { EPIC, PHASE, UNIT } from './unit.ts'
 
@@ -49,6 +50,7 @@ export const VIEWS: Views = {
   'experiment-report': EXPERIMENT_REPORT,
   investigation: INVESTIGATION,
   hunt: HUNT,
+  'quick-fix': QUICK_FIX,
   epic: EPIC,
   unit: UNIT,
   phase: PHASE,

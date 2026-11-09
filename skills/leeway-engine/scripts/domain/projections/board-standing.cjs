@@ -26,9 +26,10 @@
 //   of a type the reshape retires, the migration's cut it waits on (E6).
 // - How the phase it is in stands: stopped where nothing of its build, the
 //   review's round and fix tasks among it, can go on without an answer
-//   (board-build.cjs); waiting on the person where something asked in the
-//   conversation waits — the map, an investigation's raise, a gap, ready
-//   to build's yes, finish; else
+//   (board-build.cjs), or every fix a quick-fix has left waits on a question
+//   (board-quick-fix.cjs); waiting on the person where something asked in
+//   the conversation and holding it waits — the map, an investigation's
+//   raise, a gap, ready to build's yes, finish or a quick-fix's close; else
 //   under way.
 // - What waits on the person is the unit's one list, in order, each wait
 //   with its words and the page a press on it opens, where it opens one:
@@ -41,9 +42,12 @@
 //   not begun; the questions the build and the review wait on
 //   (questions.cjs), each opening the page of the first task it parks, one
 //   parking none its question's entry — a replacement's, the decision it
-//   would replace; and finish once its screen draws (finish.cjs,
-//   `finishDraws`) and no question waits (D18). Each gate's wait is read by
-//   that gate's own check, never a copy of it.
+//   would replace; a quick-fix's questions its builders parked its fixes on
+//   among them, then each raise this conversation sealed at its place still
+//   waiting, parking nothing (19.5.25); and finish once its screen draws
+//   (finish.cjs, `finishDraws`) and no question waits (D18), a quick-fix's
+//   its close. Each gate's wait is read by that gate's own check, never a
+//   copy of it.
 // - The banner counts that list, flagged — the map alone by its own words —
 //   and at a menu says it unflagged (D40).
 // ---------------------------------------------------------------------------
@@ -51,12 +55,13 @@
 const { stagedOrNone, candidatesStanding } = require('../approve-map.cjs');
 const { pastItsSpec, topicsSettled } = require('../spec-standing.cjs');
 const { waitingAndFreed } = require('../questions.cjs');
-const { phaseStatus, buildPlaceStatus, buildBegun, buildFinished, retiredRefusal, closedIntoSpec } = require('../derivations.cjs');
+const { phaseStatus, buildPlaceStatus, buildBegun, buildFinished, retiredRefusal, closedIntoSpec, quickFixBuild, tasksBegun } = require('../derivations.cjs');
 const { counted } = require('./map.cjs');
 const { finishDraws } = require('../finish.cjs');
 const { buildView } = require('./board-build.cjs');
 const { specWaits } = require('./board-spec.cjs');
 const { investigationWaits } = require('./board-investigation.cjs');
+const { raisedWaits, closeWait, fixesStopped } = require('./board-quick-fix.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
 /** @typedef {import('../board-model.cjs').UnitNow} UnitNow */
@@ -179,7 +184,7 @@ function mapWaits(at) {
  * @param {BoardAt} at @returns {WaitingLine[]}
  */
 function questionWaits(at) {
-  if (!buildBegun(at.manifest)) return [];
+  if (!tasksBegun(at.manifest)) return [];
   return waitingAndFreed(at.cwd, at.unit, at.warnings).waiting.map(({ question, asks, about, parks }) => ({
     kind: /** @type {const} */ ('question'), id: question, text: `${question} ${asks}`, page: parks.length === 0 ? `entry:${about}` : `task:${parks[0]}`,
   }));
@@ -191,6 +196,12 @@ const finishWaits = (at) => finishDraws(at.cwd, at.unit);
 /** Finish, as what waits on the person. @type {WaitingLine} */
 const FINISH = Object.freeze({ kind: 'finish', id: 'finish', text: 'Finish: the report of every round, and your verdict on each call you changed', page: null });
 
+/** Finish once its screen draws and no question waits (D18): a quick-fix's its close (board-quick-fix.cjs). @param {BoardAt} at @returns {WaitingLine[]} */
+function finishLine(at) {
+  if (quickFixBuild(at.manifest)) return [closeWait(at)].filter((line) => line !== null);
+  return finishWaits(at) ? [FINISH] : [];
+}
+
 /** What waits on the person in the unit (the header's), read once a call. @param {BoardAt} at @returns {WaitingLine[]} */
 const waitingOn = (at) => at.once('waiting-on', () => {
   const questions = questionWaits(at);
@@ -199,18 +210,25 @@ const waitingOn = (at) => at.once('waiting-on', () => {
     ...investigationWaits(at),
     ...(buildBegun(at.manifest) || !specBegun(at) ? [] : specWaits(at)),
     ...questions,
-    ...(questions.length === 0 && finishWaits(at) ? [FINISH] : []),
+    ...raisedWaits(at),
+    ...(questions.length === 0 ? finishLine(at) : []),
   ];
 });
 
-/** Whether a wait is asked in the conversation, holding the phase: all but a build's questions. @param {WaitingLine} line */
-const holds = ({ kind }) => kind !== 'question';
+/** Whether a wait is asked in the conversation, holding the phase: all but a build's questions and a quick-fix's raises, which park nothing. @param {WaitingLine} line */
+const holds = ({ kind }) => kind !== 'question' && kind !== 'raised';
+
+/** Whether nothing of the unit's tasks can go on without an answer: its build's (board-build.cjs), or a quick-fix's fixes (board-quick-fix.cjs). @param {BoardAt} at */
+function tasksStopped(at) {
+  if (quickFixBuild(at.manifest)) return tasksBegun(at.manifest) && fixesStopped(at);
+  return buildBegun(at.manifest) && buildView(at).view.progress.stopped;
+}
 
 /** How the phase the unit is in stands (the header's). @param {BoardAt} at @returns {PhaseStanding} */
 function standingOf(at) {
   if (nowOf(at).phase === 'complete') return 'complete';
   if (waitingOn(at).some(holds)) return 'waits';
-  return buildBegun(at.manifest) && buildView(at).view.progress.stopped ? 'stopped' : 'running';
+  return tasksStopped(at) ? 'stopped' : 'running';
 }
 
 /**

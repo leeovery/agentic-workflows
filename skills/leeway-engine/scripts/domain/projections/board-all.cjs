@@ -13,8 +13,9 @@
 //   topics decided of all; a bug's investigation how far its hunt has
 //   come; the specification where it stands, as its banner says it; the
 //   build its tasks done of all, the review its round, as its banner says
-//   it, each stopped where nothing can go on; nothing for a linear unit's
-//   discussion, nor a build or review
+//   it, a quick-fix its fixes done of all, its close waiting on the person
+//   as finish does, each stopped where nothing can go on; nothing for a
+//   linear unit's discussion, nor a build or review
 //   not run by its cut — under the old plan, its tracker not the cut's
 //   until 29.17. A unit's tracker is read once its build runs by its cut,
 //   one copy of its store a call.
@@ -33,7 +34,7 @@ const { scanProject } = require('../presence.cjs');
 const { discoverInbox } = require('../start.cjs');
 const { projectName } = require('../state-checks.cjs');
 const { titlecase } = require('../conventions.cjs');
-const { roadmapItems, itemJoin, itemPostponedFrom, topicTitle, buildByCut } = require('../derivations.cjs');
+const { roadmapItems, itemJoin, itemPostponedFrom, topicTitle, buildByCut, quickFixBuild, tasksBegun } = require('../derivations.cjs');
 const { buildView, buildWords } = require('./board-build.cjs');
 const { roundWords } = require('./board-review.cjs');
 const { specDoing } = require('./board-spec.cjs');
@@ -41,6 +42,7 @@ const { epicWords } = require('./board-unit.cjs');
 const { nowOf, waitingOn, standingOf } = require('./board-standing.cjs');
 const { mapCount } = require('./board-discovery.cjs');
 const { investigationHowFar } = require('./board-investigation.cjs');
+const { quickFixWords } = require('./board-quick-fix.cjs');
 const { counted } = require('./map.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
@@ -57,6 +59,7 @@ const HOW_FAR = Object.freeze({
   investigation: investigationHowFar,
   specification: (at) => specDoing(at, waitingOn(at)),
   build: (at) => (buildByCut(at.manifest) ? `${stoppedWords(at)}${buildWords(buildView(at).view)}` : ''),
+  implementation: (at) => (quickFixBuild(at.manifest) && tasksBegun(at.manifest) ? `${stoppedWords(at)}${quickFixWords(at)}` : ''),
   review: (at) => {
     if (!buildByCut(at.manifest)) return '';
     const { round, words } = roundWords(at);
@@ -67,7 +70,7 @@ const HOW_FAR = Object.freeze({
 
 /** How far a unit has come (the header's). @param {BoardAt} at @param {string} phase */
 function workStanding(at, phase) {
-  if (waitingOn(at).some(({ kind }) => kind === 'finish')) return 'finish waits on you';
+  if (waitingOn(at).some(({ kind }) => kind === 'finish')) return quickFixBuild(at.manifest) ? 'close waits on you' : 'finish waits on you';
   return /** @type {Record<string, (at: BoardAt) => string>} */ (HOW_FAR)[phase]?.(at) ?? '';
 }
 

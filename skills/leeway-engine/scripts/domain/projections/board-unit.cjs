@@ -34,8 +34,9 @@
 //   decisions, an investigation its hypotheses, the specification its
 //   sections with the build phases cut
 //   once complete and its passes reported until then, the build its cut's
-//   tasks done — of them while it runs — the review its round and, once
-//   recorded, where it stands as the banner says it; a phase under way says
+//   tasks done — of them while it runs — a quick-fix's implementation its
+//   fixes done of all, building while under way, the review its round and,
+//   once recorded, where it stands as the banner says it; a phase under way says
 //   what it is doing, an investigation validating while either validation
 //   runs, the specification where it stands as its banner says it; a phase,
 //   or a stage, says whether a session is in it, this one or
@@ -68,7 +69,7 @@ const { specPath, specReading } = require('../spec-sections.cjs');
 const { unitHistory, sentMail } = require('../state-history.cjs');
 const { ROADMAP_SEED } = require('../inbox.cjs');
 const { dayBefore } = require('../dates.cjs');
-const { computeTopicLifecycle, mailboxFiles, buildBegun, buildFinished, cutLength, roadmapItems, topicTitle, briefFile } = require('../derivations.cjs');
+const { computeTopicLifecycle, mailboxFiles, buildBegun, buildFinished, cutLength, roadmapItems, topicTitle, briefFile, quickFixBuild, tasksBegun } = require('../derivations.cjs');
 const { counted } = require('./map.cjs');
 const { buildView, buildMoments } = require('./board-build.cjs');
 const { roundWords } = require('./board-review.cjs');
@@ -77,6 +78,7 @@ const { sentBy } = require('./board-discussion.cjs');
 const { mapCount, textOf } = require('./board-discovery.cjs');
 const { phasesAt, nowOf, waitingOn, standingOf, holds, closedOn, startedOf, pastDiscovery } = require('./board-standing.cjs');
 const { investigationView, investigationDoing, hypothesesCount } = require('./board-investigation.cjs');
+const { quickFixWords } = require('./board-quick-fix.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
 /** @typedef {import('../board-model.cjs').EpicView} EpicView */
@@ -347,7 +349,10 @@ const PHASE_WORDS = Object.freeze({
   discussion: (at) => counted(mapsOf(at, [at.unit]).get(at.unit)?.decisions ?? 0, 'decision'),
   investigation: hypothesesWords,
   specification: specWords,
-  implementation: (at) => (buildBegun(at.manifest) ? buildTasks(at) : ''),
+  implementation: (at) => {
+    if (quickFixBuild(at.manifest)) return tasksBegun(at.manifest) ? quickFixWords(at) : '';
+    return buildBegun(at.manifest) ? buildTasks(at) : '';
+  },
   review: (at) => {
     const { round, words } = roundWords(at);
     return words ?? `round ${round}`;
@@ -363,7 +368,7 @@ const DOING = Object.freeze({
   discussion: () => 'discussing',
   investigation: investigationDoing,
   specification: (at) => specDoing(at, waitingOn(at)),
-  implementation: (at) => (at.manifest.work_type === 'quick-fix' ? 'working' : 'building'),
+  implementation: () => 'building',
   review: () => 'reviewing',
 });
 

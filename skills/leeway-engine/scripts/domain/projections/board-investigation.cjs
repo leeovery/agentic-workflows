@@ -63,13 +63,13 @@
 const { fact, placeFact } = require('../board-model.cjs');
 const { readShown, answerMap } = require('../ledger-read.cjs');
 const { answerSince } = require('../ledger-since.cjs');
-const { factsOf, questionStands, notCurrent } = require('../ledger-fold.cjs');
+const { factsOf, questionStands } = require('../ledger-fold.cjs');
 const { everyUnitEntries } = require('../unit-entries.cjs');
 const { shortId } = require('../ledger-ids.cjs');
 const { rowStanding, answersOn } = require('../topic-map.cjs');
 const { agentRows, surfacedAs } = require('../agent-state.cjs');
 const { ROLES } = require('../brief-names.cjs');
-const { sealsAt, downChain } = require('../raise.cjs');
+const { sealsAt, sealWaits, downChain } = require('../raise.cjs');
 const { drawnRows } = require('./raise.cjs');
 const { huntOf, huntEntries, rootCauseNow } = require('../investigation-log.cjs');
 const { VALIDATIONS, validationSince } = require('../investigation-conclude.cjs');
@@ -125,12 +125,6 @@ const ledgerAt = (at) => at.once('hunt-ledger', () => {
 /** Whether a seal is the fix direction's: down its question's chain, or carrying a step back. @param {BoardAt} at @param {Seal} seal */
 const fixSeal = (at, seal) => (!seal.fact && seal.call.stepped_back !== undefined) || ledgerAt(at).onFix(seal);
 
-/** Whether a seal still waits on the person: unanswered, its question open or the decision it would replace current. @param {Entries['folded']} folded @param {Seal} seal */
-function waits(folded, seal) {
-  if (seal.answered !== null) return false;
-  return seal.answers !== null ? questionStands(folded, seal.answers) === 'open' : notCurrent(folded, /** @type {NonNullable<Seal['replaces']>} */ (seal.replaces).entry) === null;
-}
-
 /** The validation each kind of row is, as a wait says what raised it. @type {Readonly<Record<string, 'root-cause'|'fix'>>} */
 const VALIDATED = Object.freeze({ 'root-cause-validation': 'root-cause', 'fix-validation': 'fix' });
 
@@ -160,7 +154,7 @@ function raisedBy(at, seal) {
 }
 
 /** The raises waiting on the person, read once a call. @param {BoardAt} at @returns {Seal[]} */
-const waitingSeals = (at) => at.once('hunt-waiting', () => ledgerAt(at).seals.filter((seal) => waits(ledgerAt(at).folded, seal)));
+const waitingSeals = (at) => at.once('hunt-waiting', () => ledgerAt(at).seals.filter((seal) => sealWaits(ledgerAt(at).folded, seal)));
 
 /**
  * What waits on the person in the investigation (the header's), none once

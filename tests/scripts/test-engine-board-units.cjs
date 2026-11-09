@@ -186,14 +186,11 @@ describe('other units\' pages (20.15)', () => {
     assert.deepStrictEqual([UNIT, 'atlas'].map(started), [['epic', null], ['unit', created]]);
   });
 
-  it('20.15.2: a quick-fix\'s one session is its implementation, which This session shows as the unit\'s page, its row running once its fixes have begun, as its entry records it', () => {
+  it('20.15.2: a quick-fix\'s one session is its implementation, its row on its tab later until its fixes begin, as its entry records them (test-engine-board-quick-fix.cjs reads it running)', () => {
     createManifest(dir(), 'tidy', { work_type: 'quick-fix' });
     at(['tidy', 'implementation', 'tidy']);
-    const rows = () => board().view.phases.map(({ phase, state }) => [phase, state]);
-    const before = rows();
-    createManifest(dir(), 'tidy', { work_type: 'quick-fix', fixes: { began: '2026-06-03T09:00:00Z' } });
 
-    assert.deepStrictEqual([board().view.kind, before, rows()], ['unit', [['discovery', 'complete'], ['implementation', 'later']], [['discovery', 'complete'], ['implementation', 'running']]]);
+    assert.deepStrictEqual(board(['--tab', 'unit']).view.phases.map(({ phase, state }) => [phase, state]), [['discovery', 'complete'], ['implementation', 'later']]);
   });
 
   it('20.15.1: a unit\'s tab, its spec written and its build not begun, lists each gap its spec\'s review waits on the person for, opening its entry where no pass raised it', () => {

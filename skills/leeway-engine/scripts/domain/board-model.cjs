@@ -35,7 +35,7 @@
 // ---------------------------------------------------------------------------
 
 /** The view model's version (the header's). */
-const BOARD_VERSION = 4;
+const BOARD_VERSION = 5;
 
 /** The board's tabs (20.3.1). */
 const TABS = Object.freeze(['this', 'unit', 'all']);
@@ -401,11 +401,13 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * What waits on the person in a unit, the unit's one list every view reads
  * (board-standing.cjs): approve the map, with the topics it holds and what
  * it parks, or the sweep's candidates; a gap of its spec, or ready to
- * build's yes; a question of its build; finish; or a raise its investigation
- * asks in this conversation, held with what raised it as its view holds it
- * (HuntWait) — by its number or entry, its words, and the page a press on
- * it opens, null where none.
- * @typedef {{kind: 'map'|'gap'|'ready'|'question'|'finish'|'raise', id: string, text: string, page: string|null}} WaitingLine
+ * build's yes; a question of its build, a quick-fix's fixes' among them;
+ * finish, a quick-fix's close among it; a raise its investigation asks in
+ * this conversation, held with what raised it as its view holds it
+ * (HuntWait); or a question Claude raised in a quick-fix's conversation,
+ * parking nothing (`raised`) — by its number or entry, its words, and the
+ * page a press on it opens, null where none.
+ * @typedef {{kind: 'map'|'gap'|'ready'|'question'|'finish'|'raise'|'raised', id: string, text: string, page: string|null}} WaitingLine
  */
 /**
  * A unit's tab (20.15.1), and an epic's while discovery runs before any
@@ -498,12 +500,39 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * }} HuntPage
  */
 
+/**
+ * A fix of a quick-fix (20.14.1): its line as the build draws a task, and
+ * its pair's rounds — how many were sent back, the one being read in this
+ * conversation and the round it passed in, each null where none is.
+ * @typedef {TaskLine & {rounds: {sent_back: number, reading: number|null, passed: number|null}}} FixLine
+ */
+/**
+ * A quick-fix's This session (20.14.1): the unit, its title and type, the
+ * project, the day it started, null where its manifest holds none, and
+ * where the note it began from came from — the inbox, the roadmap or none;
+ * the change it makes; where it stands — working, or its close waiting on
+ * the person — and whether it has stopped, every fix left waiting
+ * on a question; its fixes done of all, one closed without being done in
+ * neither; what waits on the person, the unit's one list; each fix in
+ * order; every call of Claude's made in it, by its entry and words; each
+ * earlier decision a decision made in it replaces, by its entry, its words,
+ * whose it was and the unit it was made in; and once every fix has ended,
+ * one done, each fix's record by its title, else null.
+ * @typedef {{
+ *   kind: 'quick-fix', unit: string, title: string, type: string, project: string, started: string|null, from: 'inbox'|'roadmap'|null,
+ *   change: string, standing: 'working'|'close', stopped: boolean, progress: {done: number, total: number},
+ *   waiting: WaitingLine[], fixes: FixLine[], calls: {id: string, text: string}[],
+ *   replaces: {id: string, text: string, by: 'person'|'claude', unit: string, unit_title: string}[],
+ *   record: {title: string, changed: string, why: string, leaves: string}[]|null,
+ * }} QuickFixView
+ */
+
 /** A view or page that cannot be drawn, and why. @typedef {{kind: 'unavailable', reason: string}} Unavailable */
 
 /**
  * A view or page the board shows.
  * @typedef {BuildView|TaskPage|ScenarioPage|EvidencePage|WrittenPage|RoundPage|EntryPage|ReviewView|FindingPage|CheckPage|DiscussionView|MessagePage|ReviewReportPage
- *   |SpecView|SectionPage|PassPage|SpecFindingPage|DiscoveryView|BriefPage|SpikePage|ExperimentView|ReportPage|InvestigationView|HuntPage
+ *   |SpecView|SectionPage|PassPage|SpecFindingPage|DiscoveryView|BriefPage|SpikePage|ExperimentView|ReportPage|InvestigationView|HuntPage|QuickFixView
  *   |EpicView|UnitView|PhasePage|AllView|Unavailable} View
  */
 
