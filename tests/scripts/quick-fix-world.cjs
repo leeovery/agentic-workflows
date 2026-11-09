@@ -198,11 +198,15 @@ function quickFixConformance(name, prefix) {
  * copy at each call of the quick-fix in a project nesting a submodule and a
  * clone (landing-world.cjs's `NESTED`), each repository's code tagged
  * `landing-base` and readied for the driver, built once per process,
- * entered — every copy removed after its test; fix `n` built through the
+ * entered — every copy removed after its test; fix `n` opened through the
  * door from the files it writes, each by its path in the project —
- * started, committed, opened, done and recorded, the opening's answer;
- * the close made, its answer; and what each repository's default branch
- * gained, each landing by its task and the paths it changed.
+ * started, committed and opened, the opening's answer; ended, done and
+ * recorded; and built, both, the opening's answer; the close made, its
+ * answer; what each repository's default branch gained, each landing by
+ * its task and the paths it changed; and a nested repository's branch gone
+ * here — its checkout put on the branch it lands on, the branch and its
+ * remote's copy here deleted — or, as a second clone of it has it, with
+ * no commit of the branch's left in a reflog either.
  * @param {string} name the driver's @param {string} prefix the copies' temp-directory prefix
  */
 function quickFixNestedConformance(name, prefix) {
@@ -247,19 +251,16 @@ function quickFixNestedConformance(name, prefix) {
       entered(dir, as());
       return { dir, ext: path.join(dir, NESTED.ext.folder), lib: path.join(dir, NESTED.lib.folder) };
     },
+    opened,
+    ended,
     /**
      * Fix `n` built from `files`, by their paths in the project, its record written: the opening's answer.
      * @param {NestedQuickFix} at @param {number} n @param {Record<string, string>} files
      */
     built: (at, n, files) => {
-      createFix(at.dir, n, SET[n - 1].title, as());
-      ok(at.dir, ['task', 'start', UNIT, `1.${n}`], as());
-      for (const [file, text] of Object.entries(files)) createFile(at.dir, file, text);
-      ok(at.dir, ['commit', '--paths', ...Object.keys(files), '--task', UNIT, `1.${n}`, '-m', `fix(${UNIT}): ${SET[n - 1].title.toLowerCase()}`], as());
-      const opened = ok(at.dir, ['land', 'open', UNIT, `1.${n}`], as());
-      ok(at.dir, ['task', 'done', UNIT, `1.${n}`], as());
-      ok(at.dir, ['quick-fix', 'record', UNIT, `1.${n}`, '--file', recordFile(at.dir, n, { changed: `${SET[n - 1].title}.`, why: 'It was spelt the American way.', leaves: 'Nothing.' })], as());
-      return opened;
+      const answer = opened(at, n, files);
+      ended(at, n);
+      return answer;
     },
     /** The close made, its answer. @param {NestedQuickFix} at */
     closed: (at) => {
@@ -269,7 +270,38 @@ function quickFixNestedConformance(name, prefix) {
     /** What each repository's default branch gained, each landing by its task and the paths it changed. @param {NestedQuickFix} at */
     landed: (at) => Object.fromEntries([['.', at.dir, 'main'], ['ext', at.ext, NESTED.ext.into], ['lib', at.lib, NESTED.lib.into]]
       .map(([repo, dir, into]) => [repo, side.landed(dir, into).map(({ task, paths }) => [task, paths])])),
+    gone,
+    /** The nested repository at `dir` as a second clone of it has it: its branch gone here, and in every reflog. @param {string} dir @param {string} into */
+    secondClone: (dir, into) => {
+      gone(dir, into);
+      git(dir, ['reflog', 'expire', '--expire=now', '--all']);
+    },
   };
+
+  /**
+   * Fix `n` started, committed from `files`, by their paths in the project, and opened: the opening's answer.
+   * @param {NestedQuickFix} at @param {number} n @param {Record<string, string>} files
+   */
+  function opened(at, n, files) {
+    createFix(at.dir, n, SET[n - 1].title, as());
+    ok(at.dir, ['task', 'start', UNIT, `1.${n}`], as());
+    for (const [file, text] of Object.entries(files)) createFile(at.dir, file, text);
+    ok(at.dir, ['commit', '--paths', ...Object.keys(files), '--task', UNIT, `1.${n}`, '-m', `fix(${UNIT}): ${SET[n - 1].title.toLowerCase()}`], as());
+    return ok(at.dir, ['land', 'open', UNIT, `1.${n}`], as());
+  }
+
+  /** Fix `n` done and its record written. @param {NestedQuickFix} at @param {number} n */
+  function ended(at, n) {
+    ok(at.dir, ['task', 'done', UNIT, `1.${n}`], as());
+    ok(at.dir, ['quick-fix', 'record', UNIT, `1.${n}`, '--file', recordFile(at.dir, n, { changed: `${SET[n - 1].title}.`, why: 'It was spelt the American way.', leaves: 'Nothing.' })], as());
+  }
+
+  /** The nested repository at `dir`'s branch gone here: its checkout put on `into`, the branch, where it is here, and its remote's copy here deleted. @param {string} dir @param {string} into */
+  function gone(dir, into) {
+    git(dir, ['switch', '-q', into]);
+    if (git(dir, ['branch', '--list', BRANCH]).trim() !== '') git(dir, ['branch', '-q', '-D', BRANCH]);
+    git(dir, ['update-ref', '-d', `refs/remotes/origin/${BRANCH}`]);
+  }
 }
 
 /** The knowledge base's chunks of the unit's `summary.md`, each by the heading it sits under. @param {string} dir */

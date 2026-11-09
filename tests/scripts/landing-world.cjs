@@ -325,12 +325,16 @@ function useNestedWorld(prefix, ready = () => {}) {
  * A landing driver's side of the conformance suites (tests/drivers/{name}/landing.cjs).
  * `byHand` names the ways a person merges a quick-fix's branch onto the
  * default branch outside the engine, each by what it does, told the
- * branch; and `deleted`, a branch deleted, here and on any host.
+ * branch and the default branch, `main` where it is not told;
+ * `byHandKeeping`, the ways that keep the branch's own commits on the
+ * default branch here; and `deleted`, a branch deleted, here and on any
+ * host, a checkout that has it out put on the default branch.
  * @typedef {{
  *   env: Record<string, string|undefined>, prepare: (dir: string) => void, nest: (dir: string, into: string) => void, on: (dir: string) => string,
  *   landed: (dir: string, into?: string) => {subject: string, task: string|null}[], holds: (dir: string, into?: string) => string[],
  *   defaultTip: (dir: string, into?: string) => string, opened: (dir: string) => string[], refuseMerge: (dir: string) => {env: Record<string, string>, undo: () => void},
- *   byHand: Record<string, (dir: string, branch: string) => void>, deleted: (dir: string, branch: string) => void,
+ *   byHand: Record<string, (dir: string, branch: string, into?: string) => void>, byHandKeeping: Record<string, (dir: string, branch: string, into?: string) => void>,
+ *   deleted: (dir: string, branch: string, into?: string) => void,
  * }} DriverSide
  */
 

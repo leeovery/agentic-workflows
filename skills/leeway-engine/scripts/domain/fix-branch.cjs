@@ -17,19 +17,23 @@
 //   (`codeStatus`, code.cjs) — once the branches are readied (`readied`).
 // - A repository nested in the project gets its branch at the first commit
 //   of a task's there: the door puts it on the branch, where it lacks one
-//   taken from the host's copy, else cut from the branch that repository
-//   lands on as the host has it (`putOnBranch`, `quickFixFrom`,
-//   landing.cjs).
+//   cut from the branch that repository lands on as the host has it
+//   (`putOnBranch`) — one the quick-fix touched already has it taken from
+//   the host's copy at the task's start.
 // - The host's copy of the branch is the truth for what the pull request
 //   holds (`quickFixPull`, landing.cjs). A task's start, its opening and
 //   the quick-fix's landing each first ready every repository's branch, in
 //   turn: taken from the host where the repository lacks it — at the first
 //   start, in the project's own, cut from the branch it lands on as the
 //   host has it where the host has none either, never otherwise; then the
-//   host's head brought in — fast-forwarded to where the branch is behind
-//   it, else merged with it where it holds a change the branch lacks,
-//   refused naming the way on where the two conflict — so no push drops a
-//   commit of the host's; then
+//   host's head brought in where it holds a commit not landed, so a pull
+//   request's head left after its merge by hand is never — fast-forwarded
+//   to where the branch is behind it, else merged with it where it holds a
+//   change the branch lacks, refused naming the way on where the two
+//   conflict, which, while a task of the unit's is in flight in the
+//   conversation, is the merge the hook before Bash passes, finished
+//   through the door (shell-guard.cjs) — so no push drops a commit of the
+//   host's; then
 //   cut again where a person's merge of the pull request by hand, by any
 //   method, left the branch holding commits that have landed past the
 //   branch it lands on as the host has it (`quickFixLanding`): cut from that
@@ -77,6 +81,8 @@ const { parseTaskId, shownTask, taskName } = require('./task-id.cjs');
 
 /** The landing, read when asked: it reads the task verbs, which read this module. */
 const landing = () => require('./landing.cjs');
+/** The build's entry, read when asked, for the calling conversation's tasks in flight: it reads the task verbs too. */
+const buildEntry = () => require('./build-entry.cjs');
 
 /** The branch the checkout has out, or null where it is detached. @param {string} root */
 const branchOut = (root) => tryGit(root, ['symbolic-ref', '-q', '--short', 'HEAD'])?.trim() ?? null;
@@ -174,16 +180,17 @@ function taken(held, fresh) {
 }
 
 /**
- * The host's copy of the branch brought in (the header's): the branch
- * fast-forwarded to it where it is behind, else, where it holds a change
- * the branch here lacks, a merge of it made on the branch — refused,
- * nothing moved, where the two conflict, naming the way on.
+ * The host's copy of the branch brought in (the header's), where it holds a
+ * commit not landed: the branch fast-forwarded to it where it is behind,
+ * else, where it holds a change the branch here lacks, a merge of it made
+ * on the branch — refused, nothing moved, where the two conflict, naming
+ * the way on (`mergeWayOn`).
  * @param {RepoLanding} held @param {string} at the branch's tip here
  */
 function broughtIn(held, at) {
   const { root, repo } = held.ctx;
   const head = held.pull().head;
-  if (head === null || lg.isAncestor(root, head, at)) return;
+  if (head === null || lg.isAncestor(root, head, at) || !held.holdsUnlanded(head)) return;
   const why = `takes the commits its pull request holds${inWords(repo)}`;
   if (lg.isAncestor(root, at, head)) {
     moveBranch(root, held.branch, at, head, why);
@@ -193,11 +200,27 @@ function broughtIn(held, at) {
   const merged = lg.mergeTree(root, lg.mergeBase(root, at, head), at, head);
   if ('conflicts' in merged) {
     throw new Error(`land: ${held.branch}${inWords(repo)} and its pull request's head, ${lg.short(head)}, each hold commits the other lacks, conflicting at ${merged.conflicts.map(lg.plain).join(', ')}, so nothing moved — `
-      + `merge ${lg.short(head)} into ${held.branch} there, settling the conflict, and try again`);
+      + `${mergeWayOn(held, head)}, and try again`);
   }
   const message = `Merge ${lg.short(head)}, ${held.ctx.unit}'s pull request's head, into ${held.branch}\n`;
   const commit = lg.commitTree(root, { tree: merged.tree, parent: [at, head], message, signed: lg.signs(root) }, `the merge of its pull request's head into ${held.branch}`, 'try again');
   moveBranch(root, held.branch, at, commit, why);
+}
+
+/**
+ * The way on for the host's head conflicting with the branch (the
+ * header's): merged into the branch there, settling the conflict — while a
+ * task of the unit's is in flight in the calling conversation, with the
+ * merge the hook before Bash passes, finished through the door under it.
+ * @param {RepoLanding} held @param {string} head
+ */
+function mergeWayOn(held, head) {
+  const { unit, repo } = held.ctx;
+  const [task] = buildEntry().ownInFlight(unit);
+  if (task === undefined) return `merge ${lg.short(head)} into ${held.branch} there, settling the conflict`;
+  const gitIn = repo === '.' ? 'git' : `git -C ${lg.quoted(repo)}`;
+  return `merge it into ${held.branch} there with \`${gitIn} merge --no-ff --no-commit ${lg.short(head)}\`, settle the conflict, then commit the merge through the door, naming each file you settled, which finishes it: `
+    + `\`engine commit --paths <file>… --task ${unit} ${task.task} -m "<message>"\``;
 }
 
 /** A commit replayed, or left off, and the task it is stamped with, null for none. @typedef {import('./landing.cjs').QuickFixCommit} Commit */
@@ -326,10 +349,10 @@ function branchWayOn(ref) {
 
 /**
  * Each nested repository a quick-fix's task commits in put on the
- * quick-fix's branch (the header's): made where it lacks one, at the host's
- * copy, else from the tip of the branch it lands on as the host has it
- * (`quickFixFrom`, landing.cjs), its changes not committed carried there —
- * refused where git cannot carry them, naming the repository.
+ * quick-fix's branch (the header's): made where it lacks one, from the tip
+ * of the branch it lands on as the host has it (`landingTips`,
+ * landing.cjs), its changes not committed carried there — refused where git
+ * cannot carry them, naming the repository.
  * @param {string} cwd @param {string} unit @param {Repo[]} repos those the commit commits in
  */
 function putOnBranch(cwd, unit, repos) {
@@ -338,7 +361,7 @@ function putOnBranch(cwd, unit, repos) {
   if (nested.length === 0) return;
   const all = projectRepos(codeRoot(cwd));
   for (const repo of nested) {
-    if (!lg.branches(repo.path).has(branch)) git(repo.path, ['branch', '--no-track', branch, landing().quickFixFrom(cwd, unit, all, repo)]);
+    if (!lg.branches(repo.path).has(branch)) git(repo.path, ['branch', '--no-track', branch, /** @type {string} */ (landing().landingTips(cwd, unit, all, [repo]).get(repo.dir))]);
     try {
       lg.switchTo(repo.path, branch);
     } catch (err) {

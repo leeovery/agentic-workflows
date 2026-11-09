@@ -13,8 +13,8 @@
 // cut to nothing; the hermetic environment keeps their login out
 // (hermetic-env.cjs).
 // What a person might do by hand on GitHub — close a pull request, merge
-// one, delete a merged one's branch, change GitHub's default branch or its
-// squash default — is done to
+// one, delete a merged one's branch, commit on the site, change GitHub's
+// default branch or its squash default — is done to
 // the fake's state here, as is how many reads GitHub takes to work out
 // whether a pull request can merge once it moves. The fake starts with
 // GitHub's own squash default, and works it out at once.
@@ -22,9 +22,10 @@
 // `refused`), and a phase of two is built the one way (`stackOfTwo`).
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
-const { git, bareRepo, githubOffline, ok: harnessOk, refuses } = require('../../scripts/engine-harness.cjs');
+const { git, bareRepo, githubOffline, createFile, ok: harnessOk, refuses } = require('../../scripts/engine-harness.cjs');
 const { TASKS, openArgs, mergeBack } = require('../../scripts/landing-world.cjs');
 const { STATE_BRANCH } = require('../../../skills/leeway-engine/scripts/domain/state-worktree.cjs');
 const stub = require('./gh-stub.cjs');
@@ -154,6 +155,24 @@ function lagOnGithub(dir, reads, { stale = false } = {}) {
 /** A branch's tip on GitHub, or '' where GitHub has none. @param {string} dir @param {string} branch */
 const tipOnGithub = (dir, branch) => git(bareOf(dir), ['for-each-ref', '--format=%(objectname)', `refs/heads/${branch}`]).trim();
 
+/**
+ * A commit made on GitHub on `branch`, as the site makes one — a review's
+ * suggestion, an edit on its page — `files` written in it: its sha.
+ * @param {string} dir @param {string} branch @param {Record<string, string>} files @param {string} subject
+ */
+function madeOnGithub(dir, branch, files, subject) {
+  const bare = bareOf(dir);
+  const tree = fs.mkdtempSync(path.join(os.tmpdir(), 'github-site-'));
+  git(bare, ['worktree', 'add', '-q', tree, branch]);
+  for (const [file, text] of Object.entries(files)) {
+    createFile(tree, file, text);
+    git(tree, ['add', file]);
+  }
+  git(tree, ['commit', '-q', '-m', subject]);
+  git(bare, ['worktree', 'remove', '--force', tree]);
+  return tipOnGithub(dir, branch);
+}
+
 /** The pull requests GitHub holds, each its number, state and base. @param {string} dir */
 const pulls = (dir) => github(dir).pulls.map(({ number, state, base }) => ({ number, state, base }));
 
@@ -174,5 +193,5 @@ function stackOfTwo(dir) {
 
 module.exports = {
   REPOSITORY, GH_ENV, ghEnv, githubWorld, github, onGithub, bareOf, calls, closeByHand, mergeByHand, headDeleted, defaultOnGithub, squashFromPullRequests, lagOnGithub,
-  tipOnGithub, pulls, ok, refused, stackOfTwo,
+  tipOnGithub, madeOnGithub, pulls, ok, refused, stackOfTwo,
 };
