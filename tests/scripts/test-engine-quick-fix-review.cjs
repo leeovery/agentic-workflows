@@ -20,10 +20,9 @@
 // review asked for has not passed; and a merge by hand of the fixes leaving
 // the review's fix task still to land, the close's yes saying it merges.
 //
-// Layer: git. World: quick-fix-world.cjs's `twoFixesBuilt`, the fixes then
-// recorded and finish's checklist closed — the close reached — built once
-// and copied. Each test's conversation keeps its records in a config
-// folder of its own.
+// Layer: git. World: quick-fix-review-world.cjs's `closeReached`, copied
+// for each test, and its review's steps. Each test's conversation keeps its
+// records in a config folder of its own.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -33,27 +32,15 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  ok, okSections, output, refusedPristine, sectionOf, holdLock, lockAttempts, git, statePath, layout, writeState, readManifest, fixtureFrom, cleanupFixture, createFile, head, lastMessage, FROZEN_AT,
+  ok, okSections, output, refusedPristine, sectionOf, holdLock, lockAttempts, git, statePath, layout, writeState, readManifest, cleanupFixture, createFile, head, lastMessage, FROZEN_AT,
 } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
-const {
-  UNIT, BRANCH, DESCRIPTION, twoFixesBuilt, fixesRecorded, createFix, fixFile, asGone,
-} = require('./quick-fix-world.cjs');
-const { reportText } = require('./review-world.cjs');
+const { UNIT, BRANCH, DESCRIPTION, createFix, fixFile } = require('./quick-fix-world.cjs');
+const { AREA, closeReached: world, reviewSteps } = require('./quick-fix-review-world.cjs');
 const { filledTemplate, scratchCalls, ENGINE_DRAWN } = require('./brief-build-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { briefPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
-
-/** The quick-fix's one area, by its name in the layout. */
-const AREA = '1-the-change';
-/** The finding round 1's first reader of the change makes, and the fix task 2.1 that fixes it. */
-const FOUND = Object.freeze({ area: AREA, scope: 'in', call: 'bug', text: 'The docs still say --color.', from: [`${AREA}-a#1`], fix: '2.1' });
-
-const world = fixtureFrom('quick-fix-review-', (dir) => {
-  twoFixesBuilt(dir);
-  asGone((as) => fixesRecorded(dir, 2, as));
-});
 
 let dir = ''; // the project
 const config = useTempFolder('quick-fix-review-config-');
@@ -71,54 +58,12 @@ const run = (args) => ok(dir, args, as());
 /** A call's refusal, nothing written or committed. @param {string[]} args */
 const refused = (args) => refusedPristine(dir, args, as()).error;
 
-/** A payload file beside the project, outside its working tree. @param {string} name @param {unknown} content */
-function payload(name, content) {
-  const file = path.join(path.dirname(dir), name);
-  fs.writeFileSync(file, JSON.stringify(content));
-  return file;
-}
-
-/** The DATA lines `enter review` answers, each by its key. */
-const entered = () => sectionOf(okSections(dir, ['enter', 'review', UNIT], as()).sections, 'DATA').split('\n').filter(Boolean);
-
-/** Every report a round's reads ask for written, each passing but those `found` gives findings. @param {number} round @param {string[]} reads @param {Record<string, string[]>} [found] */
-function reported(round, reads, found = {}) {
-  for (const name of reads.flatMap((read) => (read === 'tests' ? ['tests-a'] : [`${read}-a`, `${read}-b`]))) {
-    writeState(dir, layout.unit(UNIT, 'review', `round-${round}`, `${name}.md`), reportText(found[name] ?? []));
-  }
-}
+const { payload, entered, reported, firstRoundFailed, fixTaskBuilt, secondRoundPassed } = reviewSteps(() => dir, as);
 
 /** A brief issued in this conversation: its answer and its text. @param {string[]} args */
 function issued(args) {
   const res = run(['brief', ...args]);
   return { res, brief: fs.readFileSync(path.join(config(), 'conversations', 'sess-1', 'briefs', path.basename(briefPath('sess-1', res.id))), 'utf8') };
-}
-
-/** Round 1 recorded failing on the docs, its fix task 2.1 written in the review's first fix phase. */
-function firstRoundFailed() {
-  run(['review', 'ask', UNIT]);
-  entered();
-  reported(1, [AREA, 'tests'], { [`${AREA}-a`]: [`bug: ${FOUND.text}`] });
-  run(['task', 'phase', UNIT, '2', '--title', 'The review\'s fixes, round 1']);
-  run(['task', 'create', UNIT, '2', '--file', writeState(dir, layout.cache('review-fix.md'), fixFile(1, 'Name the flag in the docs').replace('- 1.S1 ', '- '))]);
-  run(['review', 'round', UNIT, '--file', payload('round-1.json', { can_now: ['Pass --colour.'], findings: [FOUND] })]);
-}
-
-/** Fix task 2.1 built as a fix is: started, its change committed through the door, pushed to the quick-fix's pull request and done. */
-function fixTaskBuilt() {
-  run(['task', 'start', UNIT, '2.1']);
-  createFile(dir, 'docs/flag.md', '--colour\n');
-  run(['commit', '--paths', 'docs/flag.md', '--task', UNIT, '2.1', '-m', `fix(${UNIT}): name the flag in the docs`]);
-  run(['land', 'open', UNIT, '2.1']);
-  run(['task', 'done', UNIT, '2.1']);
-}
-
-/** Round 2 entered, its reads named, every report passing, and recorded: its answer. */
-function secondRoundPassed() {
-  entered();
-  run(['review', 'reads', UNIT, AREA, 'tests']);
-  reported(2, [AREA, 'tests']);
-  return run(['review', 'round', UNIT, '--file', payload('round-2.json', { can_now: ['Pass --colour, and read it in the docs.'], findings: [] })]);
 }
 
 /** The close's gate as drawn. */

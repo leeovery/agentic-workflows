@@ -35,7 +35,7 @@
 // ---------------------------------------------------------------------------
 
 /** The view model's version (the header's). */
-const BOARD_VERSION = 6;
+const BOARD_VERSION = 7;
 
 /** The board's tabs (20.3.1). */
 const TABS = Object.freeze(['this', 'unit', 'all']);
@@ -405,10 +405,11 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * build's yes; a question of its build, a quick-fix's fixes' among them;
  * finish, a quick-fix's close among it; a raise its investigation asks in
  * this conversation, held with what raised it as its view holds it
- * (HuntWait); or a question Claude raised in a quick-fix's conversation,
- * parking nothing (`raised`) — by its number or entry, its words, and the
+ * (HuntWait), or its conclude; or a question Claude raised in a quick-fix's
+ * conversation, parking nothing (`raised`) — by its number or entry, a
+ * gate by its name (`finish`, `close`, `conclude`), its words, and the
  * page a press on it opens, null where none.
- * @typedef {{kind: 'map'|'gap'|'ready'|'question'|'finish'|'raise'|'raised', id: string, text: string, page: string|null}} WaitingLine
+ * @typedef {{kind: 'map'|'gap'|'ready'|'question'|'finish'|'raise'|'conclude'|'raised', id: string, text: string, page: string|null}} WaitingLine
  */
 /**
  * A unit's tab (20.15.1), and an epic's while discovery runs before any
@@ -454,8 +455,8 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * list holds it (WaitingLine), with what raised it — the validation whose
  * finding it was surfaced as, by the entry it validates, else the fix
  * direction, else null — and for the fix direction's how many options it
- * sets out and whether Claude's lean is the first; every other wait with
- * none.
+ * sets out and whether Claude's lean is the first; every other wait, the
+ * conclude among them, with none.
  * @typedef {WaitingLine & {raised_by: 'root-cause'|'fix'|'fix-direction'|null, options: number|null, lean_first: boolean|null}} HuntWait
  */
 /**
@@ -481,7 +482,7 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * null for their own words, and the fix in its words once set.
  * @typedef {{
  *   kind: 'investigation', unit: string, title: string, type: string, project: string, started: string|null,
- *   standing: 'investigating'|'validating-root-cause'|'fix-waits'|'validating-fix'|'concluded', waiting: HuntWait[],
+ *   standing: 'investigating'|'validating-root-cause'|'fix-waits'|'validating-fix'|'conclude-waits'|'concluded', waiting: HuntWait[],
  *   decided: {id: string, text: string}[], symptoms: string[], hypotheses: {name: string, title: string, state: string}[],
  *   experiments: {name: string, title: string, showed: string}[], root_cause: {text: string, validated: boolean}|null,
  *   validations: ValidationLine[], since: {id: string, text: string}[],
@@ -514,18 +515,18 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * project, the day it started, null where its manifest holds none, and
  * where the note it began from came from — the inbox, the roadmap or none;
  * the change it makes; where it stands — working, or its close waiting on
- * the person — and whether it has stopped, every fix left waiting
- * on a question; its fixes done of all, one closed without being done in
- * neither, and whether any fix is written yet; what waits on the person, the unit's one list; each fix in
- * order; every call of Claude's made in it, by its entry and words; each
- * earlier decision a decision made in it replaces, by its entry, its words,
- * whose it was and the unit it was made in; and once every fix has ended,
- * one done, each fix's record by its title, else null.
+ * the person; its fixes done of all, one closed without being done in
+ * neither, and whether any fix is written yet; what waits on the person,
+ * the unit's one list; each fix in order; every call of Claude's made in
+ * it, by its entry and words; each earlier decision a decision made in it
+ * replaces, by its entry, its words, whose it was and the title of the
+ * unit it was made in; and once every fix has ended, one done, each fix's
+ * record by its title, else null.
  * @typedef {{
  *   kind: 'quick-fix', unit: string, title: string, type: string, project: string, started: string|null, from: 'inbox'|'roadmap'|null,
- *   change: string, standing: 'working'|'close', stopped: boolean, progress: {done: number, total: number, written: boolean},
+ *   change: string, standing: 'working'|'close', progress: {done: number, total: number, written: boolean},
  *   waiting: WaitingLine[], fixes: FixLine[], calls: {id: string, text: string}[],
- *   replaces: {id: string, text: string, by: 'person'|'claude', unit: string, unit_title: string}[],
+ *   replaces: {id: string, text: string, by: 'person'|'claude', unit_title: string}[],
  *   record: {title: string, changed: string, why: string, leaves: string}[]|null,
  * }} QuickFixView
  */

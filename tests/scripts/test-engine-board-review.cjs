@@ -5,9 +5,10 @@
 // projections/board-review.cjs, 20.10): the round under way, each area by
 // its reports and the briefs this conversation issued for it in that round;
 // and the build past the cut in step, its fix phase with a task behind the
-// one in flight and the phase whose merge waits. A round recorded or
-// settled is test-engine-board-review-rounds.cjs; where the review stands
-// on every view, test-engine-board-review-standing.cjs.
+// one in flight and the phase whose merge waits. A round recorded failing
+// is test-engine-board-review-rounds.cjs, one that ends the phase
+// test-engine-board-review-rounds-end.cjs; where the review stands on
+// every view, test-engine-board-review-standing.cjs.
 //
 // Layer: verb. World: the review phase's (review-world.cjs) — `pay`, its
 // build finished, its spec of two areas — copied for each test.
@@ -22,13 +23,12 @@ const path = require('path');
 const {
   UNIT, SESSION_ID, EVERY, RECEIPT, FOUND, FAILING, useWorld, env, enter, inStep, reportText, reported, named, recorded, issued, fixPhaseWritten, cutUnmerged, fixBranch, fixBuilt, firstRoundFailed, commitFile, ok, writeState, statePath, git,
 } = require('./review-world.cjs');
-const { place } = require('./board-world.cjs');
+const { area, tests, facts, placed, reviewBoard } = require('./review-board-world.cjs');
 const { withEnv, holdLock, lockAttempts, layout, traced } = require('./engine-harness.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { runsRel } = require(path.join(SCRIPTS, 'domain/runs.cjs'));
-const { projectName } = require(path.join(SCRIPTS, 'domain/state-checks.cjs'));
 
 /** @type {string} */
 let dir;
@@ -36,29 +36,7 @@ useWorld((made) => {
   dir = made;
 });
 
-/** The board's view of the session's review phase, and its banner. */
-function board(args = []) {
-  const { view, banner } = ok(dir, ['board', SESSION_ID, ...args], { env: env() });
-  return { view, banner };
-}
-
-/** An area's line. @param {string} area @param {string} title @param {string} state @param {{ran?: number, found?: number, since?: string|null}} [more] */
-const area = (area, title, state, { ran = 0, found = 0, since = null } = {}) => ({ area, title, state, ran, found, since });
-
-/** The tests' reader's line. @param {string} state @param {{ran?: number, found?: number, since?: string|null}} [more] */
-const tests = (state, more) => area('tests', 'Tests held against the specification', state, more);
-
-/** Finish, waiting on the person, as the unit's one list holds it. */
-const FINISH = { kind: 'finish', id: 'finish', text: 'Finish: the report of every round, and your verdict on each call you changed', page: null };
-
-/** The view's head: the unit, the project and the tasks built, finish waiting where `finish` says, no question waiting. @param {number} round @param {boolean} [finish] */
-const head = (round, finish = false) => ({ kind: 'review', unit: UNIT, title: 'Pay', project: projectName(dir), type: 'feature', built: 3, round, waiting: finish ? [FINISH] : [], stopped: false });
-
-/** The banner's facts, each plain unless flagged. @param {...(string|[string])} facts */
-const facts = (...facts) => facts.map((fact) => (typeof fact === 'string' ? { text: fact, needs: false } : { text: fact[0], needs: true }));
-
-/** The banner's facts that say where the session is, then the rest as `facts` takes them. @param {string[]} where @param {...(string|[string])} rest */
-const placed = (where, ...rest) => [...where.map(place), ...facts(...rest)];
+const { board, head } = reviewBoard(() => dir);
 
 describe('the round under way (20.10.1)', () => {
   it('each area is waiting, being read since its brief was issued in this conversation (P15), or read with every finding its reports hold, as FOUND lists them (N5); FOUND each finding a landed report holds, by its call and report item, unnumbered; NOT PROVEN each scenario not proven at the change\'s tips — its work not landed among them, a later run on code since amended counting for nothing — as the round will judge it, and so its check\'s page, wherever the session has gone (N3); the banner says the round reads (N2)', () => {

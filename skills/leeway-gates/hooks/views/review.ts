@@ -7,7 +7,8 @@
  * until the person answers where nothing can go on, as the build's This
  * session says it (D6); WAITING ON YOU,
  * the unit's one list: the questions the review waits on, as the kit draws
- * them, or finish, asked in the conversation (D18) — never both, since
+ * them, or finish, asked in the conversation (D18) and named as the engine
+ * names it, a quick-fix's its close — never both, since
  * finish waits only once no question does; the latest fix tasks as the build's
  * phase past the cut, each opening its task's page (20.10.2, D17); FOUND,
  * each finding with its mark by its call and its area — in scope once the
@@ -77,16 +78,18 @@ const SEPARATOR: Part = { text: ' · ', color: COLOUR.secondary }
 /** The fix tasks of the round shown still to build. */
 const toBuild = ({ fixes }: ReviewView) => fixes?.tasks.filter(({ state }) => state !== 'done' && state !== 'closed').length ?? 0
 
-/** Whether finish waits on the person, as the unit's one list holds it. */
-const finishes = ({ waiting }: ReviewView) => waiting.some(({ kind }) => kind === 'finish')
+/** Finish waiting on the person, as the unit's one list holds it — a quick-fix's its close — undefined where it does not wait. */
+const finishOf = ({ waiting }: ReviewView) => waiting.find(({ kind }) => kind === 'finish')
 
 /** The stop, as the build's This session draws its own (D6). */
 const STOP: Part[] = [SEPARATOR, { text: `${MARK.needs} stopped until you answer`, color: COLOUR.needs }]
 
-/** Where the round stands, at the end of its facts line, the stop after it where nothing can go on. */
+/** Where the round stands, at the end of its facts line, the stop after it where nothing can go on; finish, by its name, while it waits. */
 function standingOf(view: ReviewView, kit: Kit): Part[] {
-  if (finishes(view)) {
-    return [SEPARATOR, { text: `${MARK.needs} finish waits on you`, color: COLOUR.needs }]
+  const finish = finishOf(view)
+
+  if (finish !== undefined) {
+    return [SEPARATOR, { text: `${MARK.needs} ${finish.id} waits on you`, color: COLOUR.needs }]
   }
 
   return view.stopped ? [...roundOf(view, kit), ...STOP] : roundOf(view, kit)
@@ -136,7 +139,7 @@ function headOf(view: ReviewView, kit: Kit): Line[] {
 
 /** WAITING ON YOU (the header's): finish, asked in the conversation, where it waits, else the questions as the kit draws them. */
 function waitingOf(view: ReviewView, kit: Kit): Line[] {
-  const finish = view.waiting.find(({ kind }) => kind === 'finish')
+  const finish = finishOf(view)
 
   if (finish === undefined) {
     return kit.waiting()

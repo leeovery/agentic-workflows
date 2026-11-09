@@ -20,7 +20,8 @@ const assert = require('node:assert');
 const {
   UNIT, SESSION_ID, EVERY, calls, useWorld, env, enter, reported, named, recorded, fixPhaseWritten, fixBuilt, fixClosed, fixParked, raisedAtReview, replacedAtReview, finishClosed, taskMade, firstRoundFailed, ok,
 } = require('./review-world.cjs');
-const { fixture, misfits, standingOn, place } = require('./board-world.cjs');
+const { fixture, misfits, standingOn } = require('./board-world.cjs');
+const { facts, placed, reviewBoard } = require('./review-board-world.cjs');
 
 /** @type {string} */
 let dir;
@@ -28,17 +29,7 @@ useWorld((made) => {
   dir = made;
 });
 
-/** The board's view of the session's review phase, and its banner. */
-function board(args = []) {
-  const { view, banner } = ok(dir, ['board', SESSION_ID, ...args], { env: env() });
-  return { view, banner };
-}
-
-/** The banner's facts, each plain unless flagged. @param {...(string|[string])} facts */
-const facts = (...facts) => facts.map((fact) => (typeof fact === 'string' ? { text: fact, needs: false } : { text: fact[0], needs: true }));
-
-/** The banner's facts that say where the session is, then the rest as `facts` takes them. @param {string[]} where @param {...(string|[string])} rest */
-const placed = (where, ...rest) => [...where.map(place), ...facts(...rest)];
+const { board } = reviewBoard(() => dir);
 
 describe('a question its fix tasks wait on (20.5.3, 20.2.4, S1)', () => {
   it('a question parking the only fix task stands in the review phase as in the build: among the questions a press queues, the view waiting on it and stopped, the banner stopped with the count flagged, its fix tasks not said to build; and the task\'s page holds the question whole, its shape the mod\'s fixture of a parked fix task\'s page, with what it fixes (N7)', async () => {

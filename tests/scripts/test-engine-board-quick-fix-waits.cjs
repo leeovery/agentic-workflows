@@ -5,8 +5,9 @@
 // board-quick-fix.cjs, 20.14), what waits on the person and the close: a
 // question Claude raised in the quick-fix's conversation, until answered;
 // the close once its screen draws, with whether a verdict is owed; the
-// session followed to All work once it closes; and the mod's fixture held
-// to the engine's shape. The fixes: test-engine-board-quick-fix.cjs.
+// session followed to All work once it closes, its tab dated by the close;
+// and the mod's fixture held to the engine's shape. The fixes:
+// test-engine-board-quick-fix.cjs.
 //
 // Layer: verb. The worlds `working` and `closable`
 // (quick-fix-board-world.cjs), each copied for each test.
@@ -16,7 +17,7 @@ require('./hermetic-env.cjs');
 
 const { describe, it, afterEach } = require('node:test');
 const assert = require('node:assert');
-const { output, okSectionsAsync, cleanupFixture } = require('./engine-harness.cjs');
+const { output, okSectionsAsync, readManifest, cleanupFixture } = require('./engine-harness.cjs');
 const { ledgerReadHelpers } = require('./ledger-world.cjs');
 const { UNIT, PLACE, FLAG } = require('./quick-fix-world.cjs');
 const { fixture, misfits, emptyLists, place } = require('./board-world.cjs');
@@ -41,7 +42,7 @@ describe('what waits on the person in a quick-fix, and its close (20.14)', () =>
     ledgerReadHelpers(() => dir).decide(PLACE, asked, 'Keep --color as an alias');
     const answered = board();
 
-    assert.deepStrictEqual([view.waiting.map(({ kind, text, page }) => ({ kind, text, page })), questions, view.stopped], [[{ kind: 'raised', text: CALL.question, page: null }], [], false]);
+    assert.deepStrictEqual([view.waiting.map(({ kind, text, page }) => ({ kind, text, page })), questions], [[{ kind: 'raised', text: CALL.question, page: null }], []]);
     assert.deepStrictEqual(banner, { name: 'Typo', state: 'running', facts: [place('quick-fix'), { text: '0 of 2 done', needs: false }, { text: '1 waiting on you', needs: true }] });
     assert.deepStrictEqual([answered.view.waiting, answered.banner.facts], [[], [place('quick-fix'), { text: '0 of 2 done', needs: false }]]);
   });
@@ -54,7 +55,7 @@ describe('what waits on the person in a quick-fix, and its close (20.14)', () =>
     const { view, banner } = board();
     const line = board(['--tab', 'all']).view.units.find((/** @type {{unit: string}} */ held) => held.unit === UNIT);
 
-    assert.deepStrictEqual([view.standing, view.stopped, view.progress, view.waiting], ['close', false, { done: 1, total: 1, written: true }, [{ kind: 'finish', id: 'close', text: NONE_CHANGED, page: null }]]);
+    assert.deepStrictEqual([view.standing, view.progress, view.waiting], ['close', { done: 1, total: 1, written: true }, [{ kind: 'finish', id: 'close', text: NONE_CHANGED, page: null }]]);
     assert.deepStrictEqual(view.fixes, [fix('1.1', FLAG, 'done', { rounds: { sent_back: 1, passed: 2 } })]);
     assert.deepStrictEqual(view.record, [{ title: FLAG, changed: 'The flag parser reads --colour.', why: 'The flag was spelt the American way.', leaves: 'Old scripts passing --color.' }]);
     assert.deepStrictEqual(banner, { name: 'Typo', state: 'needs', facts: [place('quick-fix'), { text: '1 of 1 done', needs: false }, { text: '1 waiting on you', needs: true }] });
@@ -76,13 +77,15 @@ describe('what waits on the person in a quick-fix, and its close (20.14)', () =>
     ]);
   });
 
-  it('20.14.2: once closed, This session follows the session to All work at the start menu, the banner its close', () => {
+  it('20.14.2: once closed, This session follows the session to All work at the start menu, the banner its close; with no review asked for, its tab dates its implementation by the close (20.15.1)', () => {
     dir = closable();
     atTheFixes();
     run(['finish', 'yes', UNIT]);
     const { view, banner } = board();
+    const rows = board(['--tab', 'unit', '--unit', UNIT]).view.phases.map((/** @type {{phase: string, state: string, on: string|null}} */ { phase, state, on }) => [phase, state, on]);
 
     assert.deepStrictEqual([view.kind, view.complete.map(({ unit }) => unit)], ['all', [UNIT]]);
+    assert.deepStrictEqual(rows.slice(1), [['implementation', 'complete', readManifest(dir, UNIT).completed_at]]);
     assert.deepStrictEqual(banner, { name: 'Typo', state: 'done', facts: [{ text: 'quick-fix', needs: false }, { text: 'complete', needs: false }, place('at the start menu')] });
   });
 

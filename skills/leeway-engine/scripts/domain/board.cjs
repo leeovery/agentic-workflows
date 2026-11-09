@@ -88,7 +88,7 @@ const { buildView, buildBanner, taskPage, writtenPage, roundPage, scenarioPage, 
 const { reviewView, reviewBanner, roundWords, findingPage, checkPage } = require('./projections/board-review.cjs');
 const { discussionView, discussionBanner, entryPage, messagePage, reviewReportPage } = require('./projections/board-discussion.cjs');
 const { specView, specBanner, sectionPage, passPage, specFindingPage } = require('./projections/board-spec.cjs');
-const { waitingOn, holds, waitsFacts } = require('./projections/board-standing.cjs');
+const { waitingOn, holds, waitsFacts, tasksStopped } = require('./projections/board-standing.cjs');
 const { discoveryView, discoveryBanner, briefPage, topicStarted, spikePage } = require('./projections/board-discovery.cjs');
 const { experimentView, experimentBanner, reportPage } = require('./projections/board-experiment.cjs');
 const { investigationView, investigationBanner, huntPage, optionPage } = require('./projections/board-investigation.cjs');
@@ -216,7 +216,7 @@ function unitAt(cwd, session, place, unit, inFlight, warnings, task, repos, shar
 const PHASE_VIEWS = Object.freeze({
   implementation: [
     { read: buildView, banner: (_, view) => buildBanner(view), of: (type) => type !== 'quick-fix' },
-    { read: (at) => quickFixView(at, waitingOn(at)), banner: (_, view) => quickFixBanner(view) },
+    { read: (at) => quickFixView(at, waitingOn(at)), banner: (at, view) => quickFixBanner(view, tasksStopped(at)) },
   ],
   review: [{ read: (at) => reviewView(at, waitingOn(at)), banner: (at, view) => reviewBanner(view, roundWords(at), waitingOn(at)) }],
   discussion: [{ read: discussionView, banner: (_, view) => discussionBanner(view) }],

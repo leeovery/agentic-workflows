@@ -6,9 +6,10 @@
 // its log holds (investigation-log.cjs), the ledger at its place, its
 // validations' rows (agent-state.cjs) and the raises this conversation
 // sealed there (raise.cjs) — at its topic, and at its own level, where a
-// permission for the hunt is asked. Nothing of the hunt is read for a unit
-// that is not a bugfix in its investigation, and the ledger is folded once
-// a board call for every unit it draws.
+// permission for the hunt is asked. The hunt is read for a bugfix alone —
+// its view while its investigation is under way or once concluded, its
+// moments in any phase — and the ledger is folded once a board call for
+// every unit it draws.
 //
 // - The hunt is the log's: the symptoms, each hypothesis where it stands —
 //   intended where the person's ruling made it so — and each experiment
@@ -35,7 +36,9 @@
 //   validation one of whose findings was surfaced as it, whatever that
 //   validation's row now stands at — asked as its question, or raised
 //   replacing its decision (`agent surface`); else the fix direction where
-//   it is the fix direction's; else nothing.
+//   it is the fix direction's; else nothing. Then the conclude, once its
+//   screen draws (investigation-conclude.cjs, `concludeDraws`): its yes
+//   waits on the person, as every gate that ends a phase does.
 // - The fix direction's raises are those down its question's chain — one
 //   answering it, or replacing a decision of its chain (`downChain`) — and,
 //   before its question is logged, one carrying a step back. The latest
@@ -49,7 +52,8 @@
 //   Claude's calls since the calls list was last drawn in the conversation,
 //   read as `ledger since` reads them, never a look (5.8.14): each but the
 //   root cause and the fix, which have sections of their own.
-// - Where it stands: concluded once its item is completed; else validating
+// - Where it stands: concluded once its item is completed; else the
+//   conclude waiting on the person while its yes does; else validating
 //   the root cause while that validation runs; else validating the fix
 //   while that one does; else the fix direction waiting on the person; else
 //   investigating. How far it has come, as All work says it, is
@@ -76,9 +80,9 @@ const { ROLES } = require('../brief-names.cjs');
 const { sealsAt, sealWaits, downChain } = require('../raise.cjs');
 const { drawnRows } = require('./raise.cjs');
 const { huntOf, huntEntries, rootCauseNow } = require('../investigation-log.cjs');
-const { VALIDATIONS, validationSince } = require('../investigation-conclude.cjs');
+const { VALIDATIONS, validationSince, concludeDraws } = require('../investigation-conclude.cjs');
 const { gapsIn } = require('../spec-passes.cjs');
-const { itemOf } = require('../derivations.cjs');
+const { itemOf, startedOn } = require('../derivations.cjs');
 const { projectName } = require('../state-checks.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
@@ -164,17 +168,24 @@ function raisedBy(at, seal) {
 /** The raises waiting on the person, read once a call. @param {BoardAt} at @returns {Seal[]} */
 const waitingSeals = (at) => at.once('hunt-waiting', () => ledgerAt(at).seals.filter((seal) => sealWaits(ledgerAt(at).folded, seal)));
 
+/** The conclude's yes, as what waits on the person. @type {HuntWait} */
+const CONCLUDE = Object.freeze({ kind: 'conclude', id: 'conclude', text: 'Conclude: the hunt\'s recap, the root cause and the fix, for your yes', page: null, raised_by: null, options: null, lean_first: null });
+
+/** Whether the conclude's yes waits on the person, read once a call. @param {BoardAt} at */
+const concludeWaits = (at) => at.once('hunt-conclude', () => concludeDraws(at.cwd, at.unit));
+
 /**
  * What waits on the person in the investigation (the header's), none once
  * it is no longer under way: each raise by its id, short among the
  * ledger's, its question, what raised it, and, for the fix direction's,
- * how many options it sets out and whether Claude's lean is the first.
+ * how many options it sets out and whether Claude's lean is the first;
+ * then the conclude while its yes waits.
  * @param {BoardAt} at @returns {HuntWait[]}
  */
 const investigationWaits = (at) => at.once('hunt-waits', () => {
   if (!investigating(at)) return [];
   const ids = [...ledgerAt(at).folded.facts.keys()];
-  return waitingSeals(at).map((seal) => {
+  const raises = waitingSeals(at).map((seal) => {
     const rows = fixSeal(at, seal) && !seal.fact ? drawnRows(seal) : null;
     return {
       kind: /** @type {const} */ ('raise'),
@@ -186,6 +197,7 @@ const investigationWaits = (at) => at.once('hunt-waits', () => {
       lean_first: rows === null || seal.fact ? null : rows[0]?.key === seal.call.lean,
     };
   });
+  return concludeWaits(at) ? [...raises, CONCLUDE] : raises;
 });
 
 /**
@@ -230,6 +242,7 @@ const validationAt = (at, which) => validationsOf(at).find(({ validation }) => v
 /** Where the investigation stands (the header's). @param {BoardAt} at @returns {InvestigationView['standing']} */
 function standingOf(at) {
   if (itemOf(at.manifest, PHASE, at.unit)?.status === 'completed') return 'concluded';
+  if (concludeWaits(at)) return 'conclude-waits';
   if (validationAt(at, 'root-cause') === 'running') return 'validating-root-cause';
   if (validationAt(at, 'fix') === 'running') return 'validating-fix';
   if (waitingSeals(at).some((seal) => fixSeal(at, seal))) return 'fix-waits';
@@ -357,7 +370,7 @@ function investigationView(at) {
       title: at.title,
       type: at.manifest.work_type,
       project: projectName(at.cwd),
-      started: typeof at.manifest.created === 'string' ? at.manifest.created : null,
+      started: startedOn(at.manifest),
       standing: standingOf(at),
       waiting: investigationWaits(at),
       decided: decidedOf(at),
@@ -378,13 +391,15 @@ const BANNER_WORDS = Object.freeze({
   'validating-root-cause': 'validating the root cause',
   'fix-waits': 'fix direction',
   'validating-fix': 'validating the fix',
+  'conclude-waits': 'conclude waits on you',
   concluded: 'concluded · the specification next',
 });
 
 /**
  * The banner's facts in an investigation (20.2.4): the type, the phase and
- * where it stands, done once concluded; what waits on the person is the
- * board's, from the unit's one list (board.cjs).
+ * where it stands, done once concluded; what waits on the person, its
+ * conclude among it, is the board's, from the unit's one list, which
+ * flags the banner (board.cjs).
  * @param {InvestigationView} view @returns {{state: 'running'|'done', facts: import('../board-model.cjs').Fact[]}}
  */
 function investigationBanner({ type, standing }) {

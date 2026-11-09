@@ -8,8 +8,9 @@
  * Its facts line, which ends in where it stands, wraps rather than lose
  * those words at the edge, as each question, decision and symptom does
  * under its mark. What runs turns: a validation being read, with its
- * clock, and the facts line while it validates. A validation's effort is
- * named only where it is above the medium every other agent runs at.
+ * clock, and the facts line while it investigates or validates. A
+ * validation's effort is named only where it is above the medium every
+ * other agent runs at.
  */
 import { COLOUR, INDENT, MARK, blank, counted, dayOf, heading, prose, spread, type Kit, type Line, type Part } from '../draw.ts'
 import type { View } from '../model.ts'
@@ -17,7 +18,7 @@ import { pageKey } from '../pane.ts'
 import type { ViewDrawing } from './index.ts'
 import { header, section, titled } from './words.ts'
 
-type Standing = 'investigating' | 'validating-root-cause' | 'fix-waits' | 'validating-fix' | 'concluded'
+type Standing = 'investigating' | 'validating-root-cause' | 'fix-waits' | 'validating-fix' | 'conclude-waits' | 'concluded'
 export type RaiseWait = {
   kind: string
   id: string
@@ -55,6 +56,8 @@ function standingPart(standing: Standing, kit: Kit): Part[] {
   switch (standing) {
     case 'concluded':
       return [{ text: `${MARK.done} concluded · the specification next`, color: COLOUR.done }]
+    case 'conclude-waits':
+      return [{ text: `${MARK.needs} conclude waits on you`, color: COLOUR.needs }]
     case 'fix-waits':
       return [{ text: `${MARK.needs} the fix direction waits on you`, color: COLOUR.needs }]
     case 'validating-root-cause':
@@ -75,10 +78,20 @@ function factsLine(view: Investigation, kit: Kit): Line {
 }
 
 /** What raised a question, as its second line says it. */
-const RAISED: Readonly<Record<'root-cause' | 'fix', string>> = { 'root-cause': 'raised by the root-cause validation', fix: 'raised by the fix validation' }
+const RAISED: Readonly<Record<'root-cause' | 'fix' | 'fix-direction', string>> = {
+  'root-cause': 'raised by the root-cause validation',
+  fix: 'raised by the fix validation',
+  'fix-direction': 'raised by the fix direction',
+}
 
-/** What a validation raised, as a wait's second line says it; nothing for any other raise. */
-const saidOf = (wait: RaiseWait): string => (wait.raised_by === 'root-cause' || wait.raised_by === 'fix' ? RAISED[wait.raised_by] : '')
+/** What raised a wait, as its second line says it: a validation, or the fix direction where the wait is no setting out of its options, which says so itself; nothing for any other. */
+function saidOf(wait: RaiseWait): string {
+  if (wait.raised_by === null || (wait.raised_by === 'fix-direction' && wait.options !== null)) {
+    return ''
+  }
+
+  return RAISED[wait.raised_by]
+}
 
 /** The fix direction's wait by its options: Claude's lean first where it is the first row, else marked. */
 const whichFix = (options: number, leanFirst: boolean | null) => `Which fix: ${counted(options, 'option')}, Claude's lean ${leanFirst === false ? 'marked' : 'first'}`

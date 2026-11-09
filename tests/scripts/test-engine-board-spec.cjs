@@ -5,12 +5,11 @@
 // projections/board-spec.cjs, 20.9): the spec's sections, each with the
 // passes that changed it and whether a pass running reads it; the review's
 // passes newest first, each with its calls and the person's as its findings
-// stand, a running one with its clock and what it reads; each gap waiting on
-// the person by its entry, its words, the pass and finding that raised it
-// and its sections; Claude's calls since the list was last drawn — read
-// without looking (5.8.14) — each with its question, pass and sections; the
-// cut, and whose ready to build waits on, counted wherever what waits is
-// (20.16, 20.15.1); a section's page, a pass's and a finding's (D23).
+// stand, a running one with its clock and what it reads, and the banner
+// between passes; Claude's calls since the list was last drawn — read
+// without looking (5.8.14); LATELY (20.15.1); a section's page, a pass's and
+// a finding's (D23); and the mod's fixtures held to the engine's shape. What
+// waits on the person: test-engine-board-spec-waits.cjs.
 //
 // Layer: verb. World: spec-review-world.cjs's — the epic `payments`, its two
 // topics decided — copied for each test.
@@ -22,13 +21,14 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const fs = require('fs');
-const { ok, output, readState, writeState, layout } = require('./engine-harness.cjs');
+const { ok } = require('./engine-harness.cjs');
 const { datedAt } = require('./discovery-test-utils.cjs');
-const { fixture, misfits, emptyLists, standingOn, place } = require('./board-world.cjs');
+const { fixture, misfits, emptyLists, place } = require('./board-world.cjs');
 const { ledgerHelpers } = require('./ledger-world.cjs');
 const {
-  UNIT, SESSION_ID, SESSION, MADE, PERSON, AT_SPEC, LANED, OWNER, STORE, made, useSpecReviewWorld, specReviewHelpers,
+  UNIT, SESSION, MADE, PERSON, AT_SPEC, LANED, OWNER, made, useSpecReviewWorld, specReviewHelpers,
 } = require('./spec-review-world.cjs');
+const { fact, gap, RADIUS, specBoard } = require('./spec-board-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { passesInFlight } = require(path.join(SCRIPTS, 'domain/agent-state.cjs'));
@@ -39,94 +39,7 @@ const { write, entries } = ledgerHelpers(dir);
 const {
   spec, writeSpec, land, issued, dispatchReview, reportIn, acked, cleanPass,
 } = specReviewHelpers(dir);
-
-/** The board's view and banner for the world's conversation, at the unit's specification. @param {string[]} [args] */
-function board(args = []) {
-  ok(dir(), ['session', 'label', UNIT, 'specification', UNIT], { env: SESSION });
-  const { view, banner } = ok(dir(), ['board', SESSION_ID, ...args], { env: SESSION });
-  return { view, banner };
-}
-
-/** A banner fact. @param {string} text @param {boolean} [needs] */
-const fact = (text, needs = false) => ({ text, needs });
-
-/**
- * A gap waiting on the person as the specification lists it: by its entry
- * and words, the finding of pass 1 that raised it, where one did, opening
- * that finding's page, else its entry's, and the sections it touches.
- * @param {string} id @param {string} text @param {string|null} [finding] @param {string[]} [sections]
- */
-const gap = (id, text, finding = null, sections = []) => ({ kind: 'gap', id, text, page: finding === null ? `entry:${id}` : `pass:1:${finding}`, pass: finding === null ? null : 1, finding, sections });
-
-/** Ready to build's yes, waiting on the person, as the unit's one list holds it. */
-const READY = { kind: 'ready', id: 'ready-to-build', text: 'Ready to build: the outline and the phase cut, for your yes', page: null };
-
-/** Claude's call the world made on a topic of the unit, which no look has shown: no pass asked its question. */
-const RADIUS = () => ({ id: made.radius, text: 'Ten points.', question: 'What radius are the corners?', pass: null, finding: null, sections: [] });
-
-/**
- * The ledger's last entry's time, to the second, moved on by `ms`, and a
- * pass's dispatch put then in the agent store.
- */
-const lastAt = (ms = 0) => new Date(Date.parse(entries().at(-1).at) + ms).toISOString();
-/** @param {{id: string}} pass @param {string} created */
-function dispatchedAt({ id }, created) {
-  const store = JSON.parse(readState(dir(), STORE));
-  store.agents[id].created = created;
-  writeState(dir(), STORE, JSON.stringify(store));
-}
-
-/** The spec written and landed. */
-function landed() {
-  writeSpec(spec());
-  land();
-}
-
-/** The spec written with every statement traced, and landed. */
-function tracedLanded() {
-  writeSpec(spec({ instant: `2.1.2 Refunds are instant. [${made.where}]` }));
-  land();
-}
-
-/** The spec cut into one phase of every section, and ready to build's checklist worked and closed: its screen draws. */
-function readyClosed() {
-  ok(dir(), ['cut', UNIT, '--file', writeState(dir(), layout.cache(UNIT, 'specification', 'cut.json'), JSON.stringify({ phases: [{ name: 'All', goal: 'A card is charged and refunded.', scenarios: ['1.S1'], sections: ['1', '2'], relies_on: [] }] }))]);
-  for (const item of ['replacements-checked', 'invariants-checked']) ok(dir(), ['checklist', 'done', 'ready-to-build', UNIT, item]);
-  ok(dir(), ['checklist', 'close', 'ready-to-build', UNIT]);
-}
-
-/** A pass reported with LANED's two findings and acknowledged with them, the spec written and landed. */
-function lanedPass() {
-  landed();
-  const pass = dispatchReview();
-  issued(['spec-reviewer', UNIT, '--agent', pass.id]);
-  reportIn(pass, LANED);
-  acked(pass, ['F1', 'F2']);
-  return pass;
-}
-
-/** A question asked at the spec citing Refunds, and the pass's finding F1 surfaced as it. @param {{id: string}} pass @param {string} text */
-function askedAs(pass, text) {
-  const asked = write('ask', AT_SPEC, [], { ...MADE, by: 'review', text, cites: [{ path: `${UNIT}/spec.md`, section: '2. Refunds' }] }).id;
-  ok(dir(), ['agent', 'surface', UNIT, 'specification', UNIT, pass.id, 'F1', '--question', asked]);
-  return asked;
-}
-
-/**
- * A question asked at the spec before it was written, and a replacement the
- * first pass, dispatched after it, raised. @returns {string} the question's id
- */
-function bothWaiting() {
-  const asked = write('ask', AT_SPEC, [], { ...MADE, text: 'Is a refund ever split?' }).id;
-  landed();
-  const pass = dispatchReview();
-  issued(['spec-reviewer', UNIT, '--agent', pass.id]);
-  reportIn(pass, LANED);
-  acked(pass, ['F1', 'F2']);
-  ok(dir(), ['agent', 'surface', UNIT, 'specification', UNIT, pass.id, 'F1', '--replaces', made.where, '--reason', 'changed-mind']);
-  dispatchedAt(pass, lastAt(1000));
-  return asked;
-}
+const { board, lastAt, dispatchedAt, landed, lanedPass, askedAs } = specBoard(dir);
 
 describe('a specification on the board (20.9)', () => {
   it('before the spec is written: no section, no pass, nothing waiting; the banner says it is being written; the view names the project, as the drawing does', () => {
@@ -175,70 +88,6 @@ describe('a specification on the board (20.9)', () => {
     assert.deepStrictEqual(board().view.sections.map(({ changed_by: by }) => by), [[2], [1]]);
   });
 
-  it('20.9.1: a question asked at the spec and a replacement the review raised each wait on the person by its entry and words, the pass that raised it and the sections citing what it is about; the pass\'s finds split into Claude\'s calls and the person\'s; the banner says the next pass waits on them, plain, the count waiting flagged (20.2.4)', () => {
-    const asked = bothWaiting();
-    const { view, banner } = board();
-
-    assert.deepStrictEqual({ passes: view.passes, waiting: view.waiting, banner }, {
-      passes: [{ pass: 1, found: 2, calls: 1, yours: 1, state: 'read', since: null, reads: null }],
-      waiting: [gap(asked, 'Is a refund ever split?'), gap(made.where, 'Back to the card.', 'F1', ['2'])],
-      banner: { name: 'Payments', state: 'needs', facts: [place('epic'), place('specification'), fact('pass 2 waits on you'), fact('2 waiting on you', true)] },
-    });
-  });
-
-  it('All work counts what waits in the unit as its banner does — the question asked at the spec and the replacement raised — the project\'s total summing each unit\'s (20.16, 20.2.4)', () => {
-    bothWaiting();
-    const { view } = board(['--tab', 'all']);
-
-    assert.deepStrictEqual({ units: view.units.map(({ unit, waiting }) => [unit, waiting]), total: view.waiting }, { units: [['billing', 0], [UNIT, 2]], total: 2 });
-  });
-
-  it('D23: a question a pass\'s finding was asked as is that pass\'s and that finding\'s, with the sections it cites, and stays theirs once reworded; one no finding was asked as is no pass\'s, however soon after a pass it was asked', () => {
-    const pass = lanedPass();
-    const asked = askedAs(pass, 'Is a refund ever split?');
-    const loose = write('ask', AT_SPEC, [], { ...MADE, text: 'Is a refund ever late?' }).id;
-    dispatchedAt(pass, lastAt(-1000));
-    const linked = board().view.waiting;
-    const reworded = write('replace', AT_SPEC, ['--replaces', asked, '--reason', 'was-wrong'], { ...MADE, drops: [], text: 'Is a refund ever split in two?', cites: [{ path: `${UNIT}/spec.md`, section: '2. Refunds' }] }).id;
-
-    assert.deepStrictEqual([linked, board().view.waiting], [
-      [gap(asked, 'Is a refund ever split?', 'F1', ['2']), gap(loose, 'Is a refund ever late?')],
-      [gap(loose, 'Is a refund ever late?'), gap(reworded, 'Is a refund ever split in two?', 'F1', ['2'])],
-    ]);
-  });
-
-  it('D23: a finding asked as a question waits on the person while it is open, is theirs once they answer it and Claude\'s once Claude does; any other finding is Claude\'s — the pass\'s count of the person\'s and of Claude\'s calls as they stand, and Claude\'s answer since the person last looked carries its pass, finding and sections (20.9.1)', () => {
-    const pass = lanedPass();
-    const asked = askedAs(pass, 'Is a refund ever split?');
-    const waits = board();
-    const call = write('decide', AT_SPEC, ['--answers', asked], { ...MADE, given: 'own', text: 'Never split.', why: 'A refund returns the whole charge.', cites: [{ path: `${UNIT}/spec.md`, section: '2. Refunds' }] }).id;
-    const claudes = board();
-    write('decide', AT_SPEC, ['--answers', asked], { ...PERSON, given: 'own', text: 'Split when asked.', why: 'A shop may refund part.' });
-    const yours = board();
-    const found = (/** @type {{view: any}} */ { view }) => view.passes.map(({ found: all, calls, yours: theirs }) => [all, calls, theirs]);
-    const standings = () => board(['--page', 'pass:1']).view.found.map(({ standing }) => standing);
-    const page = board(['--page', 'pass:1']).view;
-
-    assert.deepStrictEqual([found(waits), found(claudes), found(yours)], [[[2, 1, 1]], [[2, 2, 0]], [[2, 1, 1]]]);
-    assert.deepStrictEqual(claudes.view.since.at(-1), { id: call, text: 'Never split.', question: 'Is a refund ever split?', pass: 1, finding: 'F1', sections: ['2'] });
-    assert.deepStrictEqual([standings(), page.reads, page.changed], [['yours', 'claude'], null, []]);
-  });
-
-  it('D23: a finding asked as a question stands with whoever answered the question it grew into — waiting while it is open once reworded, Claude\'s once Claude answers it, the person\'s once it is merged into their decision', () => {
-    const pass = lanedPass();
-    const asked = askedAs(pass, 'Is a refund ever split?');
-    const reworded = write('replace', AT_SPEC, ['--replaces', asked, '--reason', 'was-wrong'], { ...MADE, drops: [], text: 'Is a refund ever split in two?' }).id;
-    const standing = () => board(['--page', 'pass:1']).view.found[0].standing;
-    const open = standing();
-    const other = write('ask', AT_SPEC, [], { ...MADE, text: 'Is a refund ever partial?' }).id;
-    const into = write('decide', AT_SPEC, ['--answers', other], { ...PERSON, given: 'own', text: 'Only when asked.', why: 'A shop may refund part.' }).id;
-    const duplicate = write('decide', AT_SPEC, ['--answers', reworded], { ...MADE, given: 'own', text: 'Never split.', why: 'A refund returns the whole charge.' }).id;
-    const claudes = standing();
-    write('merge', AT_SPEC, ['--question', reworded, '--into', into, '--duplicate', duplicate], MADE);
-
-    assert.deepStrictEqual([open, claudes, standing()], ['waits', 'claude', 'yours']);
-  });
-
   it('20.15.1 LATELY: each reported pass, when it was dispatched, with what it found as its findings stand — the first reading the whole spec — each question a pass asked the person, when it was asked, and the spec landed with its sections', () => {
     const first = lanedPass();
     const asked = askedAs(first, 'Is a refund ever split?');
@@ -264,14 +113,6 @@ describe('a specification on the board (20.9)', () => {
     ]);
   });
 
-  it('20.2.4: while a pass runs with a question waiting, the banner says where the review stands, then the count waiting flagged — never the next pass waiting on the person', () => {
-    write('ask', AT_SPEC, [], { ...MADE, text: 'Is a refund ever split?' });
-    landed();
-    issued(['spec-reviewer', UNIT, '--agent', dispatchReview(OWNER.running).id]);
-
-    assert.deepStrictEqual(board().banner.facts.slice(2), [fact('pass 1 reading'), fact('1 waiting on you', true)]);
-  });
-
   it('a pass out is shown by where the agent store stands it — lost once the conversation that sent it is gone, its report in once written, not yet taken — and the banner says so (20.9.1, 20.2.4)', () => {
     landed();
     const pass = dispatchReview();
@@ -293,28 +134,6 @@ describe('a specification on the board (20.9)', () => {
     const { view, banner } = board();
 
     assert.deepStrictEqual([view.passes.map(({ state, found }) => [state, found]), view.waiting, banner.facts], [[['read', 2]], [], [place('epic'), place('specification'), fact('being written')]]);
-  });
-
-  it('D39: ready to build waits on the person once its screen draws — the review settled, the spec cut and its checklist closed — the banner counting its yes as waiting on them; never before, while its render refuses (20.2.4)', () => {
-    tracedLanded();
-    cleanPass();
-    const settled = board();
-    readyClosed();
-    const { view, banner } = board();
-
-    assert.deepStrictEqual([settled.view.waiting, settled.banner.facts.map(({ text }) => text)], [[], ['epic', 'specification', 'being written']]);
-    assert.deepStrictEqual([view.waiting, banner], [[{ ...READY, pass: null, finding: null, sections: [] }], { name: 'Payments', state: 'needs', facts: [place('epic'), place('specification'), fact('ready to build'), fact('1 waiting on you', true)] }]);
-  });
-
-  it('the yes given at ready to build, before the session moves into the build: the view reads it as given and the banner says so, nothing waiting on the person', () => {
-    tracedLanded();
-    cleanPass();
-    readyClosed();
-    output(dir(), ['render', 'ready-to-build', UNIT], { env: SESSION });
-    ok(dir(), ['ready-to-build', 'yes', UNIT, '--position', 'auto'], { env: SESSION });
-    const { view, banner } = board();
-
-    assert.deepStrictEqual([view.given, view.waiting, banner.facts.map(({ text }) => text)], [true, [], ['epic', 'specification', 'ready to build, your yes given']]);
   });
 
   it('5.8.14: Claude\'s calls on the unit since the list was last drawn stay listed however often the board is drawn, and none once it is', () => {
@@ -368,31 +187,6 @@ describe('a specification on the board (20.9)', () => {
       { kind: 'spec-finding', unit: UNIT, title: 'Payments', pass: 1, finding: 'F1', label: 'is a refund split?', lane: 'gap', standing: 'waits', sections: ['2'], text: 'No entry decides it.' },
       [],
       { kind: 'unavailable', reason: 'payments\'s pass 1 holds no finding F3' },
-    ]);
-  });
-
-  it('S1: a gap waiting stands on every view that reads the unit — the epic\'s DEFINITION waiting on the person\'s answer, its page listing it opening the finding that raised it, All work\'s row, count and total — as the banner has it (20.16, 20.8.2, 20.2.4)', () => {
-    const asked = askedAs(lanedPass(), 'Is a refund ever split?');
-
-    assert.deepStrictEqual(standingOn(board, UNIT), {
-      tab: { now: 'specification', spec: 'asking', build: 'waits', waiting: [`gap ${asked} → pass:1:F1`] },
-      all: { phase: 'specification', standing: 'pass 2 waits on you', waiting: 1, total: 1 },
-      banner: { state: 'needs', waits: ['⚑ 1 waiting on you'] },
-    });
-  });
-
-  it('S1, N1: ready to build\'s yes stands on every view that reads the unit — the epic\'s DEFINITION waiting on it, All work\'s count and total, no other unit counted — as the banner has it (20.16, 20.8.2, 20.2.4)', () => {
-    tracedLanded();
-    cleanPass();
-    readyClosed();
-
-    assert.deepStrictEqual([standingOn(board, UNIT), board(['--tab', 'all']).view.units.map(({ unit, waiting }) => [unit, waiting])], [
-      {
-        tab: { now: 'specification', spec: 'ready', build: 'waits', waiting: ['ready ready-to-build'] },
-        all: { phase: 'specification', standing: 'ready to build', waiting: 1, total: 1 },
-        banner: { state: 'needs', waits: ['⚑ 1 waiting on you'] },
-      },
-      [['billing', 0], [UNIT, 1]],
     ]);
   });
 });

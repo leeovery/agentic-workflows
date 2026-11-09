@@ -529,11 +529,11 @@ describe('the pane', () => {
   })
 
   test('a version this board does not know is refused: no banner, and the pane says so in a line', async ($, on) => {
-    const { clock } = world(on, { replies: () => boardReply({ ...BUILD_BOARD, version: 7 }) })
+    const { clock } = world(on, { replies: () => boardReply({ ...BUILD_BOARD, version: 8 }) })
 
     expect(await drawnOf(await mounted($, clock))).toEqual(BENEATH)
     expect(await paneLines(await mounted($, clock, PANE_MOUNT))).toEqual([
-      "This board draws version 6 of the engine's board, and the engine answers version 7: nothing is drawn until they match.",
+      "This board draws version 7 of the engine's board, and the engine answers version 8: nothing is drawn until they match.",
     ])
   })
 

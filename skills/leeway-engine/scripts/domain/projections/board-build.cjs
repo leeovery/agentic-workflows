@@ -37,10 +37,14 @@
 //   scenarios (15.2.14), and a fix task's what it fixes: each finding of the
 //   review's rounds that went to it (20.10.3); and each question parking
 //   it, whole, as the unit's build has it, so the page holds them wherever
-//   the session goes while it is open (20.3.5). A scenario opens on the run
-//   that decides its standing (runs.cjs) — the scenario's words split at
-//   their "then" into what the run drives and what it checks — and each of
-//   that run's text evidence opens whole.
+//   the session goes while it is open (20.3.5). Its reviews are its
+//   account's summaries, or, with no account, its rounds reported whole,
+//   each by what it found and how it ended (20.5.6). A scenario opens on
+//   the run that decides its standing at the task's tips (runs.cjs,
+//   build-screens.cjs `taskHead`) — a quick-fix's task's the quick-fix's
+//   one branch, not run where the task has no branch yet — the scenario's
+//   words split at their "then" into what the run drives and what it
+//   checks — and each of that run's text evidence opens whole.
 // - Where the build stands is read from the unit's one read of the tracker
 //   (board.cjs), as the build's one reader of it reads it (build-entry.cjs);
 //   a task's page takes its task from that read.
@@ -54,13 +58,12 @@ const { reviewStanding, reviewGoesOn, recordedRounds } = require('../review-phas
 const { cutLength } = require('../derivations.cjs');
 const { reading } = require('../phase-checks.cjs');
 const { goesOn } = require('../task-verbs.cjs');
-const { phaseNamed, phaseLets, buildGoesOn, takenAccount, callsOf, ranOf } = require('../build-screens.cjs');
+const { phaseNamed, phaseLets, buildGoesOn, takenAccount, callsOf, ranOf, taskHead, runsAt } = require('../build-screens.cjs');
 const { fieldOf, criteriaTexts, criterionWords, holdsScenario, namesScenario, FIELDS } = require('../task-file.cjs');
 const { specPath, specReading, DRAWS_ON } = require('../spec-sections.cjs');
-const { phaseStack, tipCommits } = require('../phase-stack.cjs');
-const { runsOf } = require('../runs.cjs');
 const { figuresPath, takenFigures } = require('../task-account.cjs');
-const { roundReportPath } = require('../round-report.cjs');
+const { roundReportPath, wholeRounds } = require('../round-report.cjs');
+const { messageOf } = require('../../kernel/call.cjs');
 const { REVIEWER_LETTERS } = require('../../kernel/reviewers.cjs');
 const { parseShownTask, taskName } = require('../task-id.cjs');
 const { counted } = require('./map.cjs');
@@ -273,6 +276,33 @@ function pageTask(at, ref) {
 }
 
 /**
+ * A task's rounds reported whole (round-report.cjs), null where a report of
+ * them does not read, said among the warnings.
+ * @param {BoardAt} at @param {import('../task-id.cjs').TaskRef} ref @returns {import('../round-report.cjs').Round[]|null}
+ */
+function roundsRead(at, ref) {
+  try {
+    return wholeRounds(at.cwd, ref);
+  } catch (err) {
+    at.warnings.push(`${taskName(ref)}'s rounds cannot be read — ${messageOf(err)}`);
+    return null;
+  }
+}
+
+/** How a round ended, as a task's page says it with no account: passed, settled, or sent back with what its reports found. @param {import('../round-report.cjs').Round} round */
+function roundSummary({ reports, passes, settled }) {
+  if (passes) return 'passed';
+  if (settled) return 'settled by the orchestrator';
+  return `${counted(reports.reduce((sum, { findings }) => sum + findings.length, 0), 'finding')}, sent back`;
+}
+
+/** A task's reviews: its account's summaries, or with none its rounds reported whole (20.5.6). @param {BoardAt} at @param {import('../task-id.cjs').TaskRef} ref @param {ReturnType<typeof takenAccount>} account */
+function reviewsOf(at, ref, account) {
+  if (account !== null) return account.reviews.map(({ heading, summary }) => ({ round: heading, summary }));
+  return (roundsRead(at, ref) ?? []).map((round) => ({ round: `Round ${round.round}`, summary: roundSummary(round) }));
+}
+
+/**
  * A task's page (20.5.4–20.5.6): a task of the cut by its line, one past it
  * — a fix task of the review's — by the tracker alone; refused where the
  * tracker lacks it.
@@ -301,7 +331,7 @@ function taskPage(at, given) {
       differences: account.differences,
       figures: { files: account.figures.files, added: account.figures.added, removed: account.figures.removed, criteria: account.figures.criteria },
     },
-    reviews: account?.reviews.map(({ heading, summary }) => ({ round: heading, summary })) ?? [],
+    reviews: reviewsOf(at, ref, account),
     calls: callsOf(at.cwd, ref),
     ran: ranOf(at.cwd, at.manifest, ref, task, criteria).ran,
     questions: buildView(at).questions.filter(({ parks }) => parks.some(({ task: parked }) => parked === given)),
@@ -334,15 +364,15 @@ function drivenAndChecked(words) {
 
 /**
  * A scenario of a task, with the run that decides what running the product
- * proved of it at the tips of the task's branch (`ranOf`'s); refused where
- * the task holds no such scenario.
+ * proved of it at the tips of the task's branch (`ranOf`'s), none run where
+ * it has none yet; refused where the task holds no such scenario.
  * @param {BoardAt} at @param {string} given @param {string} scenario
  */
 function taskScenario(at, given, scenario) {
   const ref = parseShownTask(at.unit, given);
   const task = pageTask(at, ref);
   if (!holdsScenario(task.text, scenario)) throw new Error(`${taskName(ref)} holds no scenario ${scenario}`);
-  return { task, ...runsOf(at.cwd, at.unit, scenario, tipCommits(phaseStack(at.cwd, at.unit, ref.phase, [task]))) };
+  return { task, ...runsAt(at.cwd, at.unit, scenario, taskHead(at.cwd, at.manifest, ref, task)) };
 }
 
 /** The lines a text evidence holds. @param {string} text */
@@ -438,5 +468,5 @@ function buildMoments(at) {
 const buildWords = ({ progress }) => `${progress.done} of ${counted(progress.total, 'task')} done`;
 
 module.exports = {
-  buildView, buildBanner, taskLine, taskPage, writtenPage, roundPage, scenarioPage, evidencePage, scenarioWording, buildWords, buildMoments, standingAt, readingAt, reviewStandingAt, questionsOf,
+  buildView, buildBanner, taskLine, taskPage, writtenPage, roundPage, scenarioPage, evidencePage, scenarioWording, buildWords, buildMoments, standingAt, readingAt, reviewStandingAt, questionsOf, roundsRead,
 };

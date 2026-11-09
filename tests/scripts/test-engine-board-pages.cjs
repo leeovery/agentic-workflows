@@ -140,11 +140,13 @@ describe('a task\'s pages (20.5.4–20.5.7)', () => {
     );
   });
 
-  it('a task not yet started that holds a scenario of the cut opens its page, its scenario not run: it has no branch to run at (20.5.4)', () => {
+  it('a task not yet started that holds a scenario of the cut opens its page, its scenario not run: it has no branch to run at — and so does the scenario\'s own page (20.5.4)', () => {
     enterBuild();
     const { view } = board(['--page', 'task:2.1']);
+    const scenario = board(['--page', 'task:2.1:scenario:2.S1']).view;
 
     assert.deepStrictEqual([view.kind, view.started, view.ran], ['task', null, [{ scenario: '2.S1', criterion: 'A refund reaches the card.', standing: 'not proven' }]]);
+    assert.deepStrictEqual([scenario.kind, scenario.standing, scenario.at, scenario.evidence], ['scenario', 'not proven', null, []]);
   });
 
   it('the task as written, each section by its heading; a round of its review, each reviewer\'s report whole', () => {

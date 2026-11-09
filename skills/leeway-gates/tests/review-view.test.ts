@@ -278,6 +278,19 @@ describe('the review phase\'s This session (20.10)', () => {
     ])
   })
 
+  test('a quick-fix\'s review names its gate the close: the facts line flags the close waiting, and WAITING ON YOU asks for it in the conversation', () => {
+    const close = { kind: 'finish', id: 'close', text: 'Close: what was proven; you changed none of Claude\'s calls, so there is no verdict to give', page: null }
+    const rows = drawnRows(reviewLines(review({ type: 'quick-fix', waiting: [close] }), kitAt(NOW)))
+
+    expect(rows.slice(2, 7)).toEqual([
+      'round 2 · 19 of 19 areas read · ⚑ close waits on you',
+      '',
+      'WAITING ON YOU ───────────────── 1 · asked in the conversation',
+      '⚑ Close: what was proven; you changed none of Claude\'s calls,',
+      '  so there is no verdict to give',
+    ])
+  })
+
   test('20.10.3, D17: each fix task opens its task\'s page, each finding recorded its own, each check recorded its own, and what went to the inbox its finding', () => {
     const lines = reviewLines(FAILED, kitAt(NOW))
     const opens = (prefix: string) => lines.filter(line => line.key.startsWith(prefix)).map(line => line.press)

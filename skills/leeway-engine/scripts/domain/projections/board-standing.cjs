@@ -13,33 +13,40 @@
 //   approve-map.cjs), each phase after it later until then. A feature's
 //   discussion is complete once it has closed into its spec (11.2.1). The
 //   specification is under way from its entry, once the topics are settled
-//   (spec-standing.cjs). A phase complete carries the day it closed, as its
-//   records keep it: a linear unit's discovery the day the unit was made,
-//   an epic's the map last approved, the discussion its last topic decided,
-//   the investigation its conclude (`concluded_at`, P2), the specification
-//   ready to build's yes, the build its last phase
-//   closed, the review the unit completed.
+//   (spec-standing.cjs). A quick-fix's phases are discovery and its
+//   implementation, its one session, and its review once the person asks
+//   for one at its close (`fixes.review_asked`, 19.5.13): its
+//   implementation under way from its fixes' beginning until then, its
+//   review from then, each complete once it closes. A phase complete
+//   carries the day it closed, as its records keep it: a linear unit's
+//   discovery the day the unit was made, an epic's the map last approved,
+//   the discussion its last topic decided, the investigation its conclude
+//   (`concluded_at`, P2), the specification ready to build's yes, the
+//   build its last phase closed, a quick-fix's implementation its review
+//   asked for, else its close, and the review the unit completed.
 // - Where it has come to (`now`): the first phase not complete — an epic
 //   past its discovery by its stages, the specification once the topics are
 //   settled, the build once begun, the review once the build has finished —
 //   or complete, since the day the phase before it closed; a migrated unit
 //   of a type the reshape retires, the migration's cut it waits on (E6).
-// - How the phase it is in stands: stopped where nothing of its build, the
-//   review's round and fix tasks among it, can go on without an answer
-//   (board-build.cjs), or every fix a quick-fix has left waits on a question
-//   (board-quick-fix.cjs); waiting on the person where something asked in
-//   the conversation and holding it waits — the map, an investigation's
-//   raise, a gap, ready to build's yes, finish or a quick-fix's close; else
-//   under way.
+// - How the phase it is in stands: stopped where nothing of its tasks can
+//   go on without an answer — its build's, the review's round and fix tasks
+//   among it, a quick-fix's review's alike (board-build.cjs), or, before a
+//   quick-fix's review, every fix it has left waiting on a question
+//   (board-quick-fix.cjs) — worked out once, which every view reads
+//   (`tasksStopped`); waiting on the person where something asked in the
+//   conversation and holding it waits — the map, an investigation's raise
+//   or its conclude, a gap, ready to build's yes, finish or a quick-fix's
+//   close; else under way.
 // - What waits on the person is the unit's one list, in order, each wait
 //   with its words and the page a press on it opens, where it opens one:
 //   approve the map while a map is staged, the sweep's candidates among it
 //   after the sweep (8.10.9); each raise its investigation asks in this
-//   conversation, with what raised it (board-investigation.cjs); the spec's
-//   gaps (spec-passes.cjs), each
-//   opening the finding that raised it, and then ready to build's yes once
-//   its screen draws (ready-to-build.cjs, `readyDraws`), while the build has
-//   not begun; the questions the build and the review wait on
+//   conversation, with what raised it, then its conclude once its screen
+//   draws (board-investigation.cjs); the spec's gaps (spec-passes.cjs),
+//   each opening the finding that raised it, and then ready to build's yes
+//   once its screen draws (ready-to-build.cjs, `readyDraws`), while the
+//   build has not begun; the questions the build and the review wait on
 //   (questions.cjs), each opening the page of the first task it parks, one
 //   parking none its question's entry — a replacement's, the decision it
 //   would replace; a quick-fix's questions its builders parked its fixes on
@@ -55,7 +62,9 @@
 const { stagedOrNone, candidatesStanding } = require('../approve-map.cjs');
 const { pastItsSpec, topicsSettled } = require('../spec-standing.cjs');
 const { waitingAndFreed } = require('../questions.cjs');
-const { phaseStatus, buildPlaceStatus, buildBegun, buildFinished, retiredRefusal, closedIntoSpec, quickFixBuild, tasksBegun } = require('../derivations.cjs');
+const {
+  phaseStatus, buildPlaceStatus, buildBegun, buildFinished, retiredRefusal, closedIntoSpec, quickFixBuild, tasksBegun, fixesBegun, reviewAsked, startedOn,
+} = require('../derivations.cjs');
 const { counted } = require('./map.cjs');
 const { finishDraws } = require('../finish.cjs');
 const { buildView } = require('./board-build.cjs');
@@ -71,16 +80,19 @@ const { raisedWaits, closeWait, fixesStopped } = require('./board-quick-fix.cjs'
 /** A phase of a unit, by its tab's name and the phase whose status it reads, where it stands and the day it closed. @typedef {{phase: string, reads: string, status: Status, on: string|null}} PhaseAt */
 /** How the phase a unit is in stands (the header's). @typedef {'running'|'stopped'|'waits'|'complete'} PhaseStanding */
 
-/** Each type's phases after discovery, as its tab names them, each with the phase whose status it reads. @type {Readonly<Record<string, [string, string][]>>} */
+/** Each type's phases after discovery, as its tab names them, each with the phase whose status it reads: a quick-fix's review once it is asked for (`phasesAfter`). @type {Readonly<Record<string, [string, string][]>>} */
 const LINEAR_PHASES = Object.freeze({
   epic: [['discussion', 'discussion'], ['specification', 'specification'], ['build', 'implementation'], ['review', 'review']],
   feature: [['discussion', 'discussion'], ['specification', 'specification'], ['build', 'implementation'], ['review', 'review']],
   bugfix: [['investigation', 'investigation'], ['specification', 'specification'], ['build', 'implementation'], ['review', 'review']],
-  'quick-fix': [['implementation', 'implementation']],
+  'quick-fix': [['implementation', 'implementation'], ['review', 'review']],
 });
 
-/** The day the unit started, null where its manifest holds none. @param {BoardAt} at */
-const startedOf = ({ manifest }) => (typeof manifest.created === 'string' ? manifest.created : null);
+/** The unit's phases after discovery (the header's): a quick-fix's review only once the person asked for it. @param {Record<string, any>} manifest */
+function phasesAfter(manifest) {
+  const after = LINEAR_PHASES[manifest.work_type] ?? [];
+  return manifest.work_type === 'quick-fix' && !reviewAsked(manifest) ? after.filter(([, reads]) => reads !== 'review') : after;
+}
 
 /** The latest of the days given, null where none is one. @param {unknown[]} days @returns {string|null} */
 const latest = (days) => /** @type {string[]} */ (days.filter((day) => typeof day === 'string')).sort().at(-1) ?? null;
@@ -94,13 +106,19 @@ function approvedOn(manifest) {
 /** Whether an epic is past its discovery: its map approved at least once. @param {Record<string, any>} manifest */
 const pastDiscovery = (manifest) => manifest.work_type === 'epic' && approvedOn(manifest) !== null;
 
+/** The day a build's last phase closed, or a quick-fix's implementation: its review asked for, else its close (the header's). @param {Record<string, any>} manifest */
+function builtOn(manifest) {
+  if (quickFixBuild(manifest)) return latest([reviewAsked(manifest) ? manifest.fixes.review_asked : manifest.completed_at]);
+  return latest(Object.entries(manifest.checklists ?? {}).filter(([key]) => /^phase-\d+-close$/.test(key)).map(([, record]) => record?.closed));
+}
+
 /** The day each phase closed, by the phase it reads (the header's). @type {Readonly<Record<string, (at: BoardAt) => string|null>>} */
 const CLOSED = Object.freeze({
-  discovery: (at) => (at.manifest.work_type === 'epic' ? approvedOn(at.manifest) : startedOf(at)),
+  discovery: ({ manifest }) => (manifest.work_type === 'epic' ? approvedOn(manifest) : startedOn(manifest)),
   discussion: ({ manifest }) => latest(Object.values(manifest.checklists?.decided ?? {}).map((record) => record?.closed)),
   investigation: ({ manifest, unit }) => latest([manifest.phases?.investigation?.items?.[unit]?.concluded_at]),
   specification: ({ manifest }) => latest([manifest.checklists?.['ready-to-build']?.closed]),
-  implementation: ({ manifest }) => latest(Object.entries(manifest.checklists ?? {}).filter(([key]) => /^phase-\d+-close$/.test(key)).map(([, record]) => record?.closed)),
+  implementation: ({ manifest }) => builtOn(manifest),
   review: ({ manifest }) => latest([manifest.completed_at]),
 });
 
@@ -110,9 +128,23 @@ const closedOn = (at, reads) => /** @type {Record<string, (at: BoardAt) => strin
 /** Whether the unit's specification is under way or done: from its entry, once the topics are settled, or once written. @param {BoardAt} at */
 const specBegun = (at) => topicsSettled(at.manifest) || pastItsSpec(at.cwd, at.manifest);
 
+/**
+ * Where a quick-fix's phase stands (the header's): its implementation from
+ * its fixes' beginning until its review is asked for, its review from
+ * then, each complete once it closes.
+ * @param {Record<string, any>} manifest @param {string} reads @returns {Status}
+ */
+function quickFixStatus(manifest, reads) {
+  if (manifest.status === 'completed') return 'complete';
+  if (reads === 'review') return reviewAsked(manifest) ? 'running' : 'later';
+  if (reviewAsked(manifest)) return 'complete';
+  return fixesBegun(manifest) ? 'running' : 'later';
+}
+
 /** Where a phase stands, by the status of the phase it reads. @param {BoardAt} at @param {string} reads @returns {Status} */
 function statusOf(at, reads) {
   if (reads === 'discovery' || (reads === 'discussion' && closedIntoSpec(at.manifest))) return 'complete';
+  if (quickFixBuild(at.manifest)) return quickFixStatus(at.manifest, reads);
   const status = reads === 'review' ? buildPlaceStatus(at.manifest, reads) : phaseStatus(at.manifest, reads, reads === 'specification' && specBegun(at));
   if (status === 'completed') return 'complete';
   return status === 'in-progress' ? 'running' : 'later';
@@ -120,7 +152,7 @@ function statusOf(at, reads) {
 
 /** The unit's phases from discovery (the header's), read once a call. @param {BoardAt} at @returns {PhaseAt[]} */
 const phasesAt = (at) => at.once('phases', () => {
-  const after = LINEAR_PHASES[at.manifest.work_type] ?? [];
+  const after = phasesAfter(at.manifest);
   const shaping = at.manifest.work_type === 'epic' && !pastDiscovery(at.manifest);
   /** @param {string} phase @param {string} reads @returns {PhaseAt} */
   const of = (phase, reads) => {
@@ -215,14 +247,21 @@ const waitingOn = (at) => at.once('waiting-on', () => {
   ];
 });
 
-/** Whether a wait is asked in the conversation, holding the phase: all but a build's questions and a quick-fix's raises, which park nothing. @param {WaitingLine} line */
+/** Whether a wait holds the phase: all but a build's questions, which wait on the board, and a quick-fix's raises, asked in the conversation and holding nothing. @param {WaitingLine} line */
 const holds = ({ kind }) => kind !== 'question' && kind !== 'raised';
 
-/** Whether nothing of the unit's tasks can go on without an answer: its build's (board-build.cjs), or a quick-fix's fixes (board-quick-fix.cjs). @param {BoardAt} at */
-function tasksStopped(at) {
-  if (quickFixBuild(at.manifest)) return tasksBegun(at.manifest) && fixesStopped(at);
-  return buildBegun(at.manifest) && buildView(at).view.progress.stopped;
-}
+/**
+ * Whether nothing of the unit's tasks can go on without an answer (the
+ * header's): its build's, the review's round and fix tasks among it, a
+ * quick-fix's review's alike (board-build.cjs), or a quick-fix's fixes
+ * before its review (board-quick-fix.cjs); read once a call.
+ * @param {BoardAt} at @returns {boolean}
+ */
+const tasksStopped = (at) => at.once('stopped', () => {
+  if (!tasksBegun(at.manifest)) return false;
+  if (quickFixBuild(at.manifest) && !reviewAsked(at.manifest)) return fixesStopped(at);
+  return buildView(at).view.progress.stopped;
+});
 
 /** How the phase the unit is in stands (the header's). @param {BoardAt} at @returns {PhaseStanding} */
 function standingOf(at) {
@@ -243,4 +282,4 @@ function waitsFacts(waiting, atMenu) {
   return [atMenu ? { text, needs: false, waits: true } : { text, needs: true }];
 }
 
-module.exports = { phasesAt, nowOf, waitingOn, standingOf, holds, waitsFacts, closedOn, startedOf, pastDiscovery };
+module.exports = { phasesAt, nowOf, waitingOn, standingOf, tasksStopped, holds, waitsFacts, closedOn, pastDiscovery };

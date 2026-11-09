@@ -31,7 +31,9 @@
 //   … --at conclusion` — none asked where none was made (16.10.5,
 //   16.10.11); then the conclude gate: yes, keep going, and a comment. Its
 //   DATA names the areas this project's bugfixes have recorded, each as
-//   first spelt (bug-records.cjs), so Claude names an area alike.
+//   first spelt (bug-records.cjs), so Claude names an area alike. While
+//   the screen stands on what is staged, its yes waits on the person, as
+//   the board lists it (`concludeDraws`).
 // - What the bug is in, for the bugs found after review (17.1.6, 17.1.9),
 //   is the recap's, drawn on no line of the screen (17.2.2): `fixes`, the
 //   unit whose code it fixes — a unit of the project but this one — left
@@ -76,7 +78,7 @@ const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 const { huntOf, huntEntries, openInvestigation } = require('./investigation-log.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { phaseSkill } = require('./handoff.cjs');
-const { filled, shaped, readPayload, stage, stagedAt, refusing } = require('./staged-payload.cjs');
+const { filled, shaped, readPayload, stage, stagedAt, refusing, stands } = require('./staged-payload.cjs');
 const { concludeScreen } = require('./projections/investigation.cjs');
 
 /** @typedef {import('./investigation-log.cjs').Rested} Rested */
@@ -204,6 +206,21 @@ function stagedFor(cwd, unit, rootCause, fix) {
   const staged = /** @type {Staged} */ (stagedAt(stagedFile(cwd, unit), `nothing is staged for ${unit}'s conclude — engine render conclude ${unit} --file <recap.json> stages Claude's recap`));
   if (staged.root_cause !== rootCause.id || staged.fix !== fix.id) throw new Error(`the conclude was drawn before the root cause or the fix changed — it is staged again with engine render conclude ${unit} --file <recap.json>`);
   return staged;
+}
+
+/**
+ * Whether the conclude's yes waits on the person, as `render conclude`
+ * stands on it: its recap staged against the root cause and the fix as
+ * they stand, the investigation able to close — what the board lists
+ * waiting on the person.
+ * @param {string} cwd @param {string} unit
+ */
+function concludeDraws(cwd, unit) {
+  if (!fs.existsSync(stagedFile(cwd, unit))) return false;
+  return stands(() => {
+    const { rootCause, fix } = closing(cwd, unit, 'render conclude', []);
+    stagedFor(cwd, unit, rootCause, fix);
+  });
 }
 
 /** Whether a value is one line of words. @param {unknown} value @returns {value is string} */
@@ -350,4 +367,4 @@ function runInvestigationVerb(cwd, [verb, ...args], opts) {
   return refusing('investigation conclude', () => concludeInvestigation(cwd, args[0]));
 }
 
-module.exports = { CONCLUDE_USAGE, VALIDATIONS, validationSince, concludeSurface, runInvestigationVerb };
+module.exports = { CONCLUDE_USAGE, VALIDATIONS, validationSince, concludeSurface, concludeDraws, runInvestigationVerb };
