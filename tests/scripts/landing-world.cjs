@@ -191,9 +191,9 @@ function trackUnit(dir, tasks) {
 /**
  * The unit readied for finish's landing, as `land finish` asks it: its
  * build begun, in auto, through a cut of a phase for each the tracker
- * holds, each closed, its spec of one area, and its review phase passed in
- * round 1 with no fix task — committed on the state branch, so no landing
- * verb reads it as a change of the test's.
+ * holds, each closed, its spec of one area, its review phase passed in
+ * round 1 with no fix task, and finish's checklist closed — committed on
+ * the state branch, so no landing verb reads it as a change of the test's.
  * @param {string} dir
  */
 function finishReady(dir) {
@@ -202,7 +202,10 @@ function finishReady(dir) {
     ...readManifest(dir, UNIT),
     build: { position: 'auto' },
     cut: { phases: numbers.map((phase) => ({ name: `Phase ${phase}`, scenarios: [], sections: ['1'], relies_on: [] })) },
-    checklists: Object.fromEntries(numbers.flatMap((phase) => ['start', 'close'].map((end) => [`phase-${phase}-${end}`, { items: {}, closed: FROZEN_AT }]))),
+    checklists: {
+      ...Object.fromEntries(numbers.flatMap((phase) => ['start', 'close'].map((end) => [`phase-${phase}-${end}`, { items: {}, closed: FROZEN_AT }]))),
+      finish: { items: {}, closed: FROZEN_AT },
+    },
   };
   commitOnState(statePath(dir), {
     [layout.manifest(UNIT)]: `${JSON.stringify(manifest, null, 2)}\n`,

@@ -147,14 +147,14 @@ describe('land finish: refused as finish\'s yes refuses before it lands anything
   it('refuses a build not begun and one whose cut has a phase not closed, each naming its way on', () => {
     assert.deepStrictEqual([refusedFinish('fresh'), refusedFinish('half')], [
       'land: fresh\'s build has not begun — ready to build\'s yes begins it: render ready-to-build fresh',
-      'land: half lands at finish once its review phase is over — half\'s review phase starts once every phase of its cut has closed — phase 2 of 2 has not: enter implementation half',
+      'land: half finishes once its review phase is over — half\'s review phase starts once every phase of its cut has closed — phase 2 of 2 has not: enter implementation half',
     ]);
   });
 
   it('refuses, in step, while a phase of the cut waits at its merge gate, naming the gate', () => {
     inStep();
     cutUnmerged();
-    assert.strictEqual(refusedFinish(), `land: ${UNIT} lands at finish once its review phase is over — ${UNIT} builds in step, and its review phase is entered once every phase of its cut has merged — phase 2 waits at its gate: render phase-merge-gate ${UNIT} 2`);
+    assert.strictEqual(refusedFinish(), `land: ${UNIT} finishes once its review phase is over — ${UNIT} builds in step, and its review phase is entered once every phase of its cut has merged — phase 2 waits at its gate: render phase-merge-gate ${UNIT} 2`);
   });
 
   it('refuses while the review phase goes on, and while the round that ended it has a fix task unended, naming each', () => {
@@ -165,8 +165,8 @@ describe('land finish: refused as finish\'s yes refuses before it lands anything
     recorded({ can_now: ['Pay by card.'], findings: [{ area: '1-cards', scope: 'in', call: 'nit', text: 'The receipt says "reciept".', from: ['1-cards-a#1'], fix: '3.1' }] });
 
     assert.deepStrictEqual([reviewing, refusedFinish()], [
-      `land: ${UNIT} lands at finish once its review phase is over — ${UNIT}'s review phase is in round 1 — enter review ${UNIT}`,
-      `land: ${UNIT} lands at finish once its review phase is over — ${UNIT}'s review phase passed in round 1 — its fix tasks are built, then finish: task 3.1 not started`,
+      `land: ${UNIT} finishes once its review phase is over — ${UNIT}'s review phase is in round 1 — enter review ${UNIT}`,
+      `land: ${UNIT} finishes once its review phase is over — ${UNIT}'s review phase passed in round 1 — its fix tasks are built, then finish: task 3.1 not started`,
     ]);
   });
 });

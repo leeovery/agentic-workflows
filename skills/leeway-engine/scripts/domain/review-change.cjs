@@ -55,7 +55,9 @@
 // stand where their runs at or behind the change's tips put them
 // (`cutStandings`), as a round records them and the board shows
 // round 1's while it is read, the board reading the change from its read
-// of the tracker, no writer lock taken (`trackedChange`).
+// of the tracker, no writer lock taken (`trackedChange`), and a
+// quick-fix's off git alone, its host's branches as last fetched: no
+// fetch, and no pull request read.
 // ---------------------------------------------------------------------------
 
 const { git } = require('../kernel/git.cjs');
@@ -83,6 +85,7 @@ const stampKey = () => require('./commit-task.cjs').TRAILER;
 /** @typedef {import('./runs.cjs').RepoCommit} RepoCommit */
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** @typedef {import('./landing.cjs').RepoLanding} RepoLanding */
+/** @typedef {import('./fix-acceptance.cjs').FixAcceptance} FixAcceptance */
 
 /**
  * One part of the change in a repository, read `from..to`: a landing, by
@@ -226,7 +229,7 @@ function fixBase(cwd, unit, phase, repos) {
 function changeOf(cwd, unit, phases, given, repos) {
   const pending = () => unlandedTasks(cwd, unit, phasesTo(phases), repos);
   const tasks = () => tasksIn(withStateLock(stateRoot(cwd), () => trackedLists(cwd, unit, phasesTo(phases)).phases));
-  return changeFrom(cwd, unit, { pending, tasks }, given, repos);
+  return changeFrom(cwd, unit, { pending, tasks }, given, repos, false);
 }
 
 /**
@@ -234,7 +237,8 @@ function changeOf(cwd, unit, phases, given, repos) {
  * read from the unit's phases to `phases` as the caller read them, for a
  * reader that never takes the writer lock: each phase's list, the tasks
  * landed, and the tasks whole of the phases holding one done and not
- * landed, read only where any is.
+ * landed, read only where any is — a quick-fix's off git alone, its host's
+ * branches as last fetched, no host asked (`quickFixLanding`).
  * @param {string} cwd @param {string} unit @param {number} phases
  * @param {{lists: (TaskRow[]|null)[], landed: Set<string>, wholeOf: (phases: number[]) => TaskDetail[][]}} read @param {Repo[]} repos the project's
  * @returns {Change}
@@ -242,7 +246,7 @@ function changeOf(cwd, unit, phases, given, repos) {
 function trackedChange(cwd, unit, phases, { lists, landed, wholeOf }, repos) {
   const numbers = phasesTo(phases);
   const listed = numbers.map((phase) => lists[phase - 1]);
-  return changeFrom(cwd, unit, { pending: () => notLanded(numbers, listed, () => landed, wholeOf), tasks: () => tasksIn(listed) }, null, repos);
+  return changeFrom(cwd, unit, { pending: () => notLanded(numbers, listed, () => landed, wholeOf), tasks: () => tasksIn(listed) }, null, repos, true);
 }
 
 /** Every task among phases' lists. @param {(TaskRow[]|null|undefined)[]} lists @returns {TaskRef[]} */
@@ -253,10 +257,11 @@ const tasksIn = (lists) => lists.flatMap((list) => (list ?? []).map(({ ref }) =>
  * tasks (`quickFixChange`), any other unit's from its work not landed
  * (`changeOn`), each read only where asked.
  * @param {string} cwd @param {string} unit @param {{pending: () => TaskDetail[], tasks: () => TaskRef[]}} read @param {string|null} given @param {Repo[]} repos
+ * @param {boolean} asFetched whether a quick-fix's is read with no host asked (`quickFixLanding`)
  * @returns {Change}
  */
-function changeFrom(cwd, unit, { pending, tasks }, given, repos) {
-  return isQuickFix(cwd, unit) ? quickFixChange(cwd, unit, tasks(), given, repos) : changeOn(cwd, unit, pending(), given, repos);
+function changeFrom(cwd, unit, { pending, tasks }, given, repos, asFetched) {
+  return isQuickFix(cwd, unit) ? quickFixChange(cwd, unit, tasks(), given, repos, asFetched) : changeOn(cwd, unit, pending(), given, repos);
 }
 
 /** Whether the unit is built as a quick-fix (`quickFixBuild`). @param {string} cwd @param {string} unit */
@@ -305,11 +310,12 @@ function changeOn(cwd, unit, pending, given, repos) {
  * branch it lands on as the host has it, then its branch where that holds
  * a commit not landed past it.
  * @param {string} cwd @param {string} unit @param {TaskRef[]} tasks @param {string|null} given the base named, or null for each repository's own @param {Repo[]} repos the project's
+ * @param {boolean} asFetched whether the landing is read with no host asked
  * @returns {Change}
  */
-function quickFixChange(cwd, unit, tasks, given, repos) {
+function quickFixChange(cwd, unit, tasks, given, repos, asFetched) {
   refuseBase(given, repos);
-  const read = quickFixLanding(cwd, unit);
+  const read = quickFixLanding(cwd, unit, { asFetched });
   const holding = repos.flatMap((repo) => {
     const held = read.repos.find((each) => each.repo.path === repo.path);
     if (held === undefined) return [];
@@ -357,23 +363,27 @@ const changeTips = ({ holding }) => holding.map(({ repo, commit }) => ({ repo: r
 
 /**
  * The scenarios the unit's review holds the change to, in order: its
- * cut's, or a quick-fix's, its fixes' (fix-acceptance.cjs).
- * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @returns {string[]}
+ * cut's, or a quick-fix's, its fixes' as `acceptance` reads them
+ * (fix-acceptance.cjs).
+ * @param {Record<string, any>} manifest @param {() => FixAcceptance[]} acceptance @returns {string[]}
  */
-function reviewScenarios(cwd, unit, manifest) {
-  if (quickFixBuild(manifest)) return fixScenarios(fixAcceptance(cwd, unit)).map(({ scenario }) => scenario);
+function reviewScenarios(manifest, acceptance) {
+  if (quickFixBuild(manifest)) return fixScenarios(acceptance()).map(({ scenario }) => scenario);
   return cutPhases(manifest).flatMap(({ scenarios }) => scenarios);
 }
 
 /**
  * What each scenario of the cut — a quick-fix's, of its fixes — stands at,
- * at a change's tips: the code a round reads (runs.cjs, 15.3.3).
+ * at a change's tips: the code a round reads (runs.cjs, 15.3.3). A
+ * quick-fix's fixes are read from the tracker under the state's lock, but
+ * where `acceptance` reads them, as the board does from its own read.
  * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {Change} change
+ * @param {() => FixAcceptance[]} [acceptance]
  * @returns {{scenario: string, standing: string}[]}
  */
-function cutStandings(cwd, unit, manifest, change) {
+function cutStandings(cwd, unit, manifest, change, acceptance = () => fixAcceptance(cwd, unit)) {
   const tips = changeTips(change);
-  return reviewScenarios(cwd, unit, manifest).map((scenario) => ({ scenario, standing: runsOf(cwd, unit, scenario, tips).standing }));
+  return reviewScenarios(manifest, acceptance).map((scenario) => ({ scenario, standing: runsOf(cwd, unit, scenario, tips).standing }));
 }
 
 module.exports = { changeOf, trackedChange, changeTips, cutStandings, fixBase, workBelow, belowTips };

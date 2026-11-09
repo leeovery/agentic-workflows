@@ -27,8 +27,9 @@
 //   (ledger-rehomed.cjs), so no reader of the new type's later phases takes
 //   it as theirs, and an absorb of the feature it became carries it on; and
 //   the old type's own files are set aside under `topics/{unit}/earlier/`
-//   (`earlierFile`, derivations.cjs) — a quick-fix's `build/` whole and its
-//   `summary.md`, a bugfix's investigation log as `investigation-log.md`,
+//   (`earlierFile`, derivations.cjs) — a quick-fix's `build/` whole, its
+//   `summary.md` and its review's `review/` whole, a bugfix's
+//   investigation log as `investigation-log.md`,
 //   so the discussion keeps a log of its own — each line naming one
 //   following it through the carry.
 // - It refuses, writing nothing: a unit not in progress; a unit of a type
@@ -37,8 +38,9 @@
 //   a move to a type its own does not take: a quick-fix moves to a feature
 //   or a bugfix, a bugfix to a feature alone; a quick-fix its old scoping
 //   made; a unit past its spec; a bugfix but from its investigation in
-//   progress; and a quick-fix a fix of which has landed, a merge of its
-//   pull request by hand among them, as the landing reads it
+//   progress; and a quick-fix a task of which has landed — a fix, or a fix
+//   task of its review, which are its tasks as its fixes are (19.5.15) — a
+//   merge of its pull request by hand among them, as the landing reads it
 //   (`quickFixLanding`, landing.cjs), which is finished first — a pull
 //   request open and not merged is the yes's to close.
 // - The yes (`start-this-work yes` over a staged move): the stage's checks
@@ -47,7 +49,8 @@
 //   one a second yes repeats or finds done: for a quick-fix, each checkout
 //   taken back to the branch its repository lands on where it has the
 //   quick-fix's one branch out — refused first, nothing moved, while one
-//   holds changes not committed — and each fix not yet ended closed, as the
+//   holds changes not committed — and each of its tasks not yet ended, its
+//   fixes and its review's fix tasks, closed, as the
 //   verb closes it but for the refusal of a fix holding work, which the
 //   move lands nothing of (`closeForMove`, task-verbs.cjs), each close
 //   committing the tracker as the verb does; the carry appended, the lines
@@ -55,8 +58,9 @@
 //   build, numbering its own phase 1 and tasks 1.n, can meet — the
 //   quick-fix's branch in each repository set aside, kept under
 //   `moved/fix/{unit}` where it holds commits of its own, out of every
-//   landing's reading, else deleted (fix-branch.cjs), the fixes' phase
-//   taken out of the tracker for good, its tasks with it (`removePhase`),
+//   landing's reading, else deleted (fix-branch.cjs), every phase it wrote,
+//   its fixes' and its review's fix phases, taken out of the tracker for
+//   good, their tasks with them (`removeBuild`),
 //   and each of its pull requests, where one is open, closed unmerged
 //   (`quickFixClose`, landing.cjs), one the person closed by hand read as
 //   none open — after the phase, so a yes run again reads no landing of
@@ -100,7 +104,7 @@ const { retiredRefusal, legacyBuild, fixesBegun, FIXES_PHASE, itemOf, briefFile,
 const { assertBeforeSpec } = require('./spec-standing.cjs');
 const { draftIn, writeBrief } = require('./discovery-map.cjs');
 const { filled, shaped, readPayload, stage } = require('./staged-payload.cjs');
-const { trackedPhase, removePhase, closeForMove, ENDED } = require('./task-verbs.cjs');
+const { trackedBuild, removeBuild, closeForMove, ENDED } = require('./task-verbs.cjs');
 const { quickFixLanding, quickFixClose } = require('./landing.cjs');
 const { keptUnder, setBranchAside, checkOutLanding } = require('./fix-branch.cjs');
 const { linesOf, movedFiles } = require('./workunit-absorb.cjs');
@@ -129,7 +133,11 @@ const MOVES = Object.freeze({ 'quick-fix': ['feature', 'bugfix'], bugfix: ['feat
  * @type {Readonly<Record<string, (unit: string) => [string, string][]>>}
  */
 const SET_ASIDE = Object.freeze({
-  'quick-fix': (unit) => [[`${unit}/build`, earlierFile(unit, unit, EARLIER.build)], [`${unit}/summary.md`, earlierFile(unit, unit, EARLIER.summary)]],
+  'quick-fix': (unit) => [
+    [`${unit}/build`, earlierFile(unit, unit, EARLIER.build)],
+    [`${unit}/summary.md`, earlierFile(unit, unit, EARLIER.summary)],
+    [`${unit}/review`, earlierFile(unit, unit, EARLIER.review)],
+  ],
   bugfix: (unit) => [[topicLog(unit, unit), earlierFile(unit, unit, EARLIER.investigationLog)]],
 });
 
@@ -160,8 +168,9 @@ function assertInvestigating(manifest) {
 }
 
 /**
- * A quick-fix's fixes as the tracker holds them, none where their phase is
- * not written: refused where a fix of it has landed, its pull request
+ * A quick-fix's tasks as the tracker holds them — its fixes, then its
+ * review's fix tasks, in every phase it has written — none where it has
+ * written none: refused where one of them has landed, its pull request
  * merged by hand among them — finished first, the new work started on its
  * own, naming the lowest.
  * @param {string} cwd @param {Record<string, any>} manifest @param {string} to
@@ -170,7 +179,7 @@ function assertInvestigating(manifest) {
 function fixesOf(cwd, manifest, to) {
   if (!fixesBegun(manifest)) return [];
   const unit = manifest.name;
-  const fixes = trackedPhase(cwd, unit, FIXES_PHASE.number).tasks ?? [];
+  const fixes = trackedBuild(cwd, unit, FIXES_PHASE.number).tasks;
   if (fixes.length === 0) return fixes;
   const read = quickFixLanding(cwd, unit);
   const landed = fixes.find(({ ref }) => read.task(ref).landedAny);
@@ -346,7 +355,7 @@ function moveYes(cwd, staged) {
       appendEntry(root, { event: 'rehomed', unit, topic: unit, phase: OPENS_IN[to], session: handedSession(), lines: lines.ids, files: movedFiles(lines.files, asides) }, warnings);
     }
     const branches = quickFix ? setBranchAside(cwd, unit) : [];
-    const store = begun ? removePhase(cwd, unit, FIXES_PHASE.number) : [];
+    const store = begun ? removeBuild(cwd, unit, FIXES_PHASE.number) : [];
     const pullClosed = begun && quickFixClose(cwd, unit).closed;
     setFilesAside(cwd, asides);
     writeBrief(cwd, unit, unit, draft.content);

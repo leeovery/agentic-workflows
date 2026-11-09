@@ -669,6 +669,9 @@ const RANGE_TIP = 'the range\'s tip there';
 /** A repository laid out on a branch. @param {Repo} repo @param {string} branch @param {string} why @returns {Laid} */
 const onBranch = (repo, branch, why) => ({ named: branch, commit: git(repo.path, ['rev-parse', '--verify', `refs/heads/${branch}^{commit}`]).trim(), why });
 
+/** Each repository holding a range's work laid out at its tip branch. @param {Map<Repo, string>} tips @returns {Map<Repo, Laid>} */
+const rangeTips = (tips) => new Map([...tips].map(([repo, branch]) => [repo, onBranch(repo, branch, RANGE_TIP)]));
+
 /**
  * Where the reviewer's scratch worktree lays out every repository of the
  * project, each before those nested in it, as the builder's worktree held
@@ -677,14 +680,14 @@ const onBranch = (repo, branch, why) => ({ named: branch, commit: git(repo.path,
  * out, points it at; any other as `otherwise` lays it out. Then the calls
  * that lay the scratch worktree `name` out so, prepared, and take it apart
  * (scratch.cjs).
- * @param {Repo[]} repos @param {Map<Repo, string>} tips each repository holding work's tip branch @param {string} tipped why one is laid out at its tip
+ * @param {Repo[]} repos @param {Map<Repo, Laid>} tips where each repository holding work is laid out, at its tip
  * @param {(repo: Repo) => Laid} otherwise @param {string} name
  */
-function layoutOf(repos, tips, tipped, otherwise, name) {
+function layoutOf(repos, tips, otherwise, name) {
   /** @type {Map<string, string>} */
   const laid = new Map();
   const lines = repos.map((repo) => {
-    const place = laidOut(repos, repo, { tips, tipped }, laid, otherwise);
+    const place = laidOut(repos, repo, tips, laid, otherwise);
     laid.set(repo.dir, place.commit);
     return `- ${repoNamed(repo)}: \`${place.named}\` — ${place.why}`;
   });
@@ -702,13 +705,13 @@ function layoutOf(repos, tips, tipped, otherwise, name) {
 }
 
 /**
- * @param {Repo[]} repos @param {Repo} repo @param {{tips: Map<Repo, string>, tipped: string}} held @param {Map<string, string>} laid each laid out before it, its commit by folder
+ * @param {Repo[]} repos @param {Repo} repo @param {Map<Repo, Laid>} tips @param {Map<string, string>} laid each laid out before it, its commit by folder
  * @param {(repo: Repo) => Laid} otherwise
  * @returns {Laid}
  */
-function laidOut(repos, repo, { tips, tipped }, laid, otherwise) {
+function laidOut(repos, repo, tips, laid, otherwise) {
   const tip = tips.get(repo);
-  if (tip !== undefined) return onBranch(repo, tip, tipped);
+  if (tip !== undefined) return tip;
   if (repo.dir === '' || !heldIn(repos, repo).submodule) return otherwise(repo);
   const { holder } = heldIn(repos, repo);
   const commit = pointedAt(repos, repo, /** @type {string} */ (laid.get(holder.dir)));
@@ -744,7 +747,7 @@ function drawDiffRange(filling) {
 function drawScratchLayout(filling) {
   const { ref } = taskOf(filling);
   const { repos, branch, holding } = taskHolding(filling);
-  return layoutOf(repos, new Map(holding.map((repo) => [repo, branch])), RANGE_TIP, (repo) => (
+  return layoutOf(repos, rangeTips(new Map(holding.map((repo) => [repo, branch]))), (repo) => (
     branches(repo.path).has(branch) ? onBranch(repo, branch, 'the task\'s branch') : onBranch(repo, landsOn(filling.cwd, repo), 'the branch it lands on, the task\'s branch not made there')
   ), scratchName.task(ref.unit, shownTask(ref), letterOf(filling)));
 }
@@ -1733,7 +1736,7 @@ function drawPhaseDiffRange(filling, warnings) {
 function drawPhaseScratchLayout(filling, warnings) {
   const { repos, tips } = phaseHolding(filling, warnings);
   const { unit, phase } = phaseOf(filling);
-  return layoutOf(repos, tips, RANGE_TIP, (repo) => onBranch(repo, landsOn(filling.cwd, repo), 'the branch it lands on'), scratchName.phase(unit, phase, letterOf(filling)));
+  return layoutOf(repos, rangeTips(tips), (repo) => onBranch(repo, landsOn(filling.cwd, repo), 'the branch it lands on'), scratchName.phase(unit, phase, letterOf(filling)));
 }
 
 /**
@@ -1982,6 +1985,19 @@ function drawAreaSections(filling, warnings) {
   return [`\`${file}\``, /** @type {Section} */ (sections.get(number)).text].join('\n\n');
 }
 
+/**
+ * What the area's reader holds the change against, as its review opens: the
+ * spec's intent for the area, never a task's criteria — a quick-fix's, which
+ * has no spec, its fixes' acceptance in their own words, read as one.
+ * @param {Filling} filling
+ */
+function drawAreaAuthority(filling) {
+  if (ofQuickFix(filling)) {
+    return 'Every fix of the change has passed its own review. Hold the whole change against what was asked of it, as one piece. Its fixes\' acceptance, in their own words and read as one, and the product they describe, are your authority:';
+  }
+  return 'Every task and every phase of the build has passed its own review. Hold the whole change against this area of the spec, as one piece. The spec\'s intent for the area, and the product it describes, are your authority, never a task\'s criteria:';
+}
+
 /** @param {Filling} filling @param {string[]} warnings */
 function drawAreaMeets(filling, warnings) {
   const { number } = areaNamed(filling, warnings);
@@ -2025,7 +2041,19 @@ function drawChangeScratchLayout(filling, warnings) {
   const { repos, holding } = changeHeld(filling, warnings);
   const unit = unitOf(filling);
   const named = filling.given.area === undefined ? scratchName.tests(unit) : scratchName.area(unit, filling.given.area, letterOf(filling));
-  return layoutOf(repos, new Map(holding.map(({ repo, tip }) => [repo, tip])), 'the change\'s tip there', (repo) => onBranch(repo, landsOn(filling.cwd, repo), 'the branch it lands on'), named);
+  return layoutOf(repos, new Map(holding.map((held) => [held.repo, changeLaid(held)])), (repo) => onBranch(repo, landsOn(filling.cwd, repo), 'the branch it lands on'), named);
+}
+
+/**
+ * A repository holding the change laid out at its tip's commit: by its
+ * branch where that is there, else by the commit, its branch as the host
+ * has it and not yet pulled here.
+ * @param {import('./review-change.cjs').ChangeIn} held @returns {Laid}
+ */
+function changeLaid({ repo, tip, commit }) {
+  const why = 'the change\'s tip there';
+  if (branches(repo.path).get(tip) === commit) return { named: tip, commit, why };
+  return { named: commit.slice(0, 12), commit, why: `${why}, ${tip} as its host has it, not yet pulled here` };
 }
 
 /** @param {Filling} filling @param {string[]} warnings */
@@ -2148,6 +2176,7 @@ const RECORDS = Object.freeze({
   'change-scratch-layout': { of: 'unit', flags: [BASE], draw: drawChangeScratchLayout },
   'area-runs': { of: 'unit', flags: [AREA, BASE], draw: drawAreaRuns },
   'area-report-to': { of: 'unit', flags: [AREA, LETTER], draw: drawAreaReportTo },
+  'area-authority': { of: 'unit', draw: drawAreaAuthority },
   'tests-report-to': { of: 'unit', draw: drawTestsReportTo },
   investigation: { of: 'unit', draw: drawInvestigation },
   'hunt-log': { of: 'unit', draw: drawHuntLog },

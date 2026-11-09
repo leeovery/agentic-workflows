@@ -7,12 +7,13 @@
 // which lands what stands and completes the unit. Its screens are drawn by
 // projections/finish.cjs.
 //
-// - The screen stands on finish's checklist closed, every engine item
-//   holding still — the review phase over among them, where the unit has
-//   one (checklist.cjs, `finishClose`; finish-checks.cjs). It refuses a unit
-//   the project lacks or holds not in progress, and one the build's entry
-//   refuses: a unit built under the old plan, a build by its cut not begun
-//   (build-entry.cjs). A quick-fix's close stands besides on each of its
+// - The screen stands on the review phase over, where the unit has one
+//   (finish-checks.cjs, `reviewOverRefusal`) — the board, which takes no
+//   writer lock, reading it as finish's `review-passed` item — then finish's checklist
+//   closed, every engine item holding still (checklist.cjs, `finishClose`;
+//   finish-checks.cjs). It refuses a unit the project lacks or holds not in
+//   progress, and one the build's entry refuses: a unit built under the old
+//   plan, a build by its cut not begun (build-entry.cjs). A quick-fix's close stands besides on each of its
 //   fixes ended and each done with its record written (quick-fix-record.cjs,
 //   `recordedFixes`) — read off the unit's records alone, so the board
 //   asking whether it draws never reaches the host — and the screen reads
@@ -55,6 +56,11 @@
 //   completes the unit (workunit-lifecycle.cjs). It answers where the work
 //   goes (24.1.2), a handoff each: an epic's menu, its review completed;
 //   the start menu, `/leeway`, for every other type.
+// - What the yes stands on before it lands anything is `land finish`'s
+//   refusal too, and a quick-fix's `land phase`'s, which lands its one pull
+//   request whole (landing.cjs): one read, the screen's standing and no
+//   verdict still to ask (`finishLandRefusal`), so neither lands what the
+//   other would refuse.
 // ---------------------------------------------------------------------------
 
 const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
@@ -74,6 +80,8 @@ const { refusing, stands } = require('./staged-payload.cjs');
 const { READERS, readersDone } = require('./scratch.cjs');
 const { finishScreen, closeScreen } = require('./projections/finish.cjs');
 const { setAsideHeld } = require('./review-phase.cjs');
+const { reviewOverRefusal } = require('./finish-checks.cjs');
+const { messageOf } = require('../kernel/call.cjs');
 const { recordedFixes } = require('./quick-fix-record.cjs');
 const { refuseDirtyClose, checkOutLanding } = require('./fix-branch.cjs');
 const { ranOf } = require('./build-screens.cjs');
@@ -91,12 +99,15 @@ const FINISH_USAGE = 'finish yes <work-unit>';
  * The close the screen stands on, refused where finish cannot show: the
  * unit's own refusals, a quick-fix's fixes not ended or not recorded, then
  * its checklist's close (`finishClose`) — read off the unit's records
- * alone — with a quick-fix's fixes done, null for any other unit.
- * @param {string} cwd @param {string} unit
+ * alone — with a quick-fix's fixes done, null for any other unit. The
+ * review phase over is read first where `reviewOver`, as the verbs read
+ * it; the board, which takes no writer lock, leaves it to finish's
+ * `review-passed` item.
+ * @param {string} cwd @param {string} unit @param {boolean} [reviewOver]
  */
-function finishStanding(cwd, unit) {
+function finishStanding(cwd, unit, reviewOver = true) {
   const manifest = unitInProgress(cwd, unit);
-  const refused = buildRefusal(manifest);
+  const refused = buildRefusal(manifest) ?? (reviewOver ? reviewOverRefusal(cwd, unit, manifest) : null);
   if (refused !== null) throw new Error(refused);
   if (!quickFixBuild(manifest)) return { manifest, fixes: null, ...finishClose(cwd, unit) };
   const fixes = recordedFixes(cwd, manifest);
@@ -104,7 +115,7 @@ function finishStanding(cwd, unit) {
 }
 
 /** Whether finish's screen draws, as `render finish` stands on it: what the board lists waiting on the person, never reaching the host. @param {string} cwd @param {string} unit */
-const finishDraws = (cwd, unit) => stands(() => finishStanding(cwd, unit));
+const finishDraws = (cwd, unit) => stands(() => finishStanding(cwd, unit, false));
 
 /**
  * Whether a quick-fix's pull requests still hold a task done not landed,
@@ -147,7 +158,7 @@ const closesIn = (unit, closed) => (/** @type {import('./ledger-fold.cjs').IdFac
 function closeVerdicts(cwd, unit, warnings) {
   /** @type {string|null} */
   let closed = null;
-  if (!stands(() => ({ closed } = finishStanding(cwd, unit)))) return null;
+  if (!stands(() => ({ closed } = finishStanding(cwd, unit, false)))) return null;
   const root = stateRoot(cwd);
   return readShown(root, warnings, (shower) => {
     const { departures, waiting } = closeDepartures(shower.folded, root, closesIn(unit, /** @type {string} */ (closed)));
@@ -204,6 +215,23 @@ function nextAfterFinish(manifest) {
   return manifest.work_type === 'epic' ? { kind: 'handoff', skill: 'leeway-continue-epic', args: [manifest.name, 'review', 'completed'] } : { kind: 'handoff', skill: 'leeway', args: [] };
 }
 
+/** The yes's refusal while the screen still has a verdict to ask. */
+const VERDICT_OWED = 'a verdict is still to ask — render finish asks each before the yes';
+
+/**
+ * Why the unit's finish cannot land yet, as the yes refuses before it lands
+ * anything (the header's): what its screen stands on refused, or a verdict
+ * still to ask — null where it can.
+ * @param {string} cwd @param {string} unit @returns {string|null}
+ */
+function finishLandRefusal(cwd, unit) {
+  try {
+    return standing(cwd, unit).verdict === null ? null : VERDICT_OWED;
+  } catch (err) {
+    return messageOf(err);
+  }
+}
+
 /**
  * Every phase still standing landed, refused while a verdict waits — for a
  * quick-fix, while the project's checkout holds changes not committed, and
@@ -214,7 +242,7 @@ function nextAfterFinish(manifest) {
  */
 function landStanding(cwd, unit, { verdict, warnings, fixes }) {
   return carryingAll(warnings, () => {
-    if (verdict !== null) throw new Error('a verdict is still to ask — render finish asks each before the yes');
+    if (verdict !== null) throw new Error(VERDICT_OWED);
     if (fixes === null) return landFinish(cwd, unit);
     refuseDirtyClose(cwd, unit);
     const landed = landFinish(cwd, unit);
@@ -253,4 +281,4 @@ function runFinishVerb(cwd, [verb, ...args], opts) {
   return refusing('finish yes', () => finishYes(cwd, args[0]));
 }
 
-module.exports = { FINISH_USAGE, finishStanding, finishSurface, finishDraws, runFinishVerb, closeVerdicts };
+module.exports = { FINISH_USAGE, finishStanding, finishSurface, finishDraws, finishLandRefusal, runFinishVerb, closeVerdicts };

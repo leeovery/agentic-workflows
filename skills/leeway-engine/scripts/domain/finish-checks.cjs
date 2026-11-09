@@ -30,20 +30,18 @@
 //
 // A call reads each once for all its items (phase-checks.cjs, `once`).
 //
-// What finish's yes stands on before it lands anything is `land finish`'s
-// own refusal too (landing.cjs), read through the same checks, so neither
-// lands what the other would not (`finishLandRefusal`): the build's
-// refusals (derivations.cjs), and the review phase not over where the unit
-// has one — a phase of the cut not closed, in step one not merged, a fix
-// task neither done nor closed, a quick-fix's review asked for not passed.
+// Finish waits on the review phase over where the unit has one — a phase
+// of the cut not closed, in step one not merged, a fix task neither done
+// nor closed, a quick-fix's review asked for not passed — refused before
+// its close is read, so its screen and its landing say so
+// (`reviewOverRefusal`, finish.cjs).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { once, reading } = require('./phase-checks.cjs');
-const { reviewAsked, buildRefusal } = require('./derivations.cjs');
-const { manifestOf } = require('./ledger-units.cjs');
+const { reviewAsked } = require('./derivations.cjs');
 const { reviewRefusal } = require('./review-entry.cjs');
 const { reviewStanding, endedRefusal } = require('./review-phase.cjs');
 const { readiness, unindexedRecords } = require('./knowledge/status.cjs');
@@ -117,21 +115,16 @@ function recordsWay(at) {
 }
 
 /**
- * Why the unit's finish cannot land yet, as finish's yes refuses before it
- * lands anything (the header's), with the way on — null where it can, and
- * for a unit the project lacks, which the landing's own read refuses.
- * @param {string} cwd @param {string} unit @returns {string|null}
+ * Why the unit's finish waits on its review phase, with the way on (the
+ * header's) — null where it has none, or it is over.
+ * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @returns {string|null}
  */
-function finishLandRefusal(cwd, unit) {
-  const manifest = manifestOf(stateRoot(cwd), unit);
-  if (manifest === null) return null;
-  const refused = buildRefusal(manifest);
-  if (refused !== null) return refused;
+function reviewOverRefusal(cwd, unit, manifest) {
   const at = reading(cwd, unit, manifest);
-  return hasReviewPhase(at) && !reviewPassed(at) ? `${unit} lands at finish once its review phase is over — ${reviewWay(at)}` : null;
+  return hasReviewPhase(at) && !reviewPassed(at) ? `${unit} finishes once its review phase is over — ${reviewWay(at)}` : null;
 }
 
 module.exports = {
-  finishLandRefusal,
+  reviewOverRefusal,
   hasReviewPhase, reviewPassed, reviewWay, questionsAnswered, questionsWay, knowledgeSetUp, recordsIndexed, recordsWay,
 };

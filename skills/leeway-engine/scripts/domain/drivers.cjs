@@ -49,7 +49,7 @@ const METHODS = Object.freeze({
   },
   landing: {
     required: /** @type {const} */ (['serves', 'chainTip', 'holds', 'open', 'chain', 'mergePhase', 'nextMerge', 'quickFixPull', 'openQuickFix', 'mergeQuickFix', 'closeQuickFix', 'repoint']),
-    optional: /** @type {const} */ (['assertServes', 'landsOn', 'finished', 'protectBranch', 'setSquashDefault']),
+    optional: /** @type {const} */ (['assertServes', 'landsOn', 'landsOnAsFetched', 'finished', 'protectBranch', 'setSquashDefault']),
   },
 });
 
@@ -197,8 +197,9 @@ const METHODS = Object.freeze({
  * refuses a repository whose remote it does not serve (`assertServes`),
  * which the seam asks of every repository it walks before any acts; and a
  * driver whose default branch is not the local one answers the commit a
- * merge lands onto (`landsOn`), fetched — the seam reads the local branch's
- * tip where it does not.
+ * merge lands onto (`landsOn`), fetched, and that commit as last fetched,
+ * fetching nothing (`landsOnAsFetched`), as a read asking no host takes
+ * it — the seam reads the local branch's tip where it does not.
  * `chainTip` answers the branch a task's branch must descend from, at a
  * commit the repository has locally, which the seam checks before `open` —
  * null where the task's phase's stack holds it already; `holds`, whether it
@@ -246,6 +247,7 @@ const METHODS = Object.freeze({
  *   serves: (url: string) => boolean,
  *   assertServes?: (ctx: LandingContext) => void,
  *   landsOn?: (ctx: LandingContext) => string,
+ *   landsOnAsFetched?: (ctx: LandingContext) => string,
  *   protectBranch?: (root: string, url: string, branch: string) => {repository: string, unset: string|null},
  *   setSquashDefault?: HostSetting,
  *   chainTip: (ctx: LandingContext, task: LandingTask) => ChainTip|null,

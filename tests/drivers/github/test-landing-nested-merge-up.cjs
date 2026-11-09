@@ -21,8 +21,9 @@
 // submodule's is brought up to it; one left pointing it at a task's own
 // commit, the task's pull requests squashed by hand, the project's first,
 // pointed at the submodule's landing of it through a pull request of its
-// own, squashed, before the phase lands. The rest of the driver across nested
-// repositories is test-landing-nested.cjs's.
+// own, squashed, once the phase's merge, which leaves it there, is made.
+// The rest of the driver across nested repositories is
+// test-landing-nested.cjs's.
 // Git layer: the nested world (landing-world.cjs), each repository on a
 // fake GitHub of its own (world.cjs), built once and copied for each test.
 // ---------------------------------------------------------------------------
@@ -132,7 +133,7 @@ describe('GitHub\'s landing driver bringing a stack up to date across nested rep
     assert.deepStrictEqual([pointer, git(bareOf(at.ext), ['rev-parse', `${pointer}^`]).trim()], [tipOnGithub(at.ext, NESTED.ext.into), aside]);
   });
 
-  it('points a default branch on GitHub left pointing the submodule at a task\'s own commit — its pull request in the project squashed by hand, then the submodule\'s — at the submodule\'s landing of it, by one commit on a branch of its own landed through a pull request of its own, squashed, before the phase lands', () => {
+  it('points a default branch on GitHub left pointing the submodule at a task\'s own commit — its pull request in the project squashed by hand, then the submodule\'s — at the submodule\'s landing of it, by one commit on a branch of its own landed through a pull request of its own, squashed, once the phase\'s merge leaves it there', () => {
     const at = project();
     ok(at.dir, openArgs(rates));
     side.mergedOnGithub(at.dir, rates.branch, 'squash', true);

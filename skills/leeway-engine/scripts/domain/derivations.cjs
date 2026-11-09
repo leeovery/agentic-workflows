@@ -1156,10 +1156,10 @@ function briefFile(workUnit, topic) {
 
 /**
  * What a move sets aside in its one topic's folder, by what it was
- * (19.5.16, workunit-move.cjs): a quick-fix's build folder and its summary,
- * and a bugfix's investigation log.
+ * (19.5.16, workunit-move.cjs): a quick-fix's build folder, its summary and
+ * its review's folder, and a bugfix's investigation log.
  */
-const EARLIER = Object.freeze({ build: 'build', summary: 'summary.md', investigationLog: 'investigation-log.md' });
+const EARLIER = Object.freeze({ build: 'build', summary: 'summary.md', review: 'review', investigationLog: 'investigation-log.md' });
 
 /**
  * Where a moved unit's earlier material sits, state-relative: in its

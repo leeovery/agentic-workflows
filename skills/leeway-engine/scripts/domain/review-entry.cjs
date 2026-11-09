@@ -67,7 +67,7 @@ const {
 } = require('./derivations.cjs');
 const { reading, reposOf, mergeWaiting } = require('./phase-checks.cjs');
 const {
-  codeHeld, buildLogOf, buildStanding, ownInFlight, inFlightLines, waitingLines, takeInFlight, readingOf,
+  codeHeld, buildLogOf, standingOf, ownInFlight, inFlightLines, waitingLines, takeInFlight, readingOf,
 } = require('./build-entry.cjs');
 const { projectLandsOn } = require('./task-base.cjs');
 const { waitingAndFreed } = require('./questions.cjs');
@@ -197,7 +197,7 @@ function standingLines(cwd, unit, manifest, standing) {
  * @param {Reading} at @param {InFlight[]} inFlight @param {string|null} session @returns {Line[]}
  */
 function buildLines(at, inFlight, session) {
-  const inFlightPart = inFlight.length === 0 ? [] : inFlightLines(at.cwd, session, buildStanding(at.cwd, at.unit, inFlight));
+  const inFlightPart = inFlight.length === 0 ? [] : inFlightLines(at.cwd, session, standingOf(at, inFlight));
   return [...inFlightPart, ...waitingLines(waitingAndFreed(at.cwd, at.unit, at.warnings))];
 }
 

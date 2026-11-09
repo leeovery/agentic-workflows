@@ -8,7 +8,8 @@
 // refused for a unit that is no quick-fix and while the close does not
 // stand; `engine enter review <qf>` (domain/review-entry.cjs), refused
 // until it is asked for, then one area, the change, its record and its
-// change-set from the base (domain/review-phase.cjs, domain/review-change.cjs);
+// change-set from the base (domain/review-phase.cjs, domain/review-change.cjs),
+// drawn on the board as any unit's review (domain/projections/board-review.cjs);
 // the area pair's and the test surface's briefs held against the quick-fix's
 // record and its fixes' acceptance in their own words, never a spec
 // (domain/brief-records.cjs, domain/fix-acceptance.cjs, 19.5.24); the review
@@ -32,7 +33,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  ok, okSections, output, refusedPristine, sectionOf, git, statePath, layout, writeState, readManifest, fixtureFrom, cleanupFixture, createFile, head, lastMessage,
+  ok, okSections, output, refusedPristine, sectionOf, git, statePath, layout, writeState, readManifest, fixtureFrom, cleanupFixture, createFile, head, lastMessage, FROZEN_AT,
 } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const {
@@ -165,6 +166,24 @@ describe('enter review <quick-fix>: one area, the change (19.5.14, F3)', () => {
       `record: \`node .claude/skills/leeway-engine/scripts/engine.cjs ledger record ${UNIT}\``,
     ]);
   });
+
+  it('draws on the board as any unit\'s review: its one area and the tests held against its fixes\' acceptance, each check not proven at the change\'s tip worded as its fix words it, and so its page (20.10)', () => {
+    dir = world();
+    run(['review', 'ask', UNIT]);
+    entered();
+    writeState(dir, layout.unit(UNIT, 'build', 'runs', '1.S1', 'run-001.json'), JSON.stringify({
+      verdict: 'pass', unfixed: false, at: FROZEN_AT, checkout: dir, commits: [{ repo: '.', commit: git(dir, ['rev-parse', BRANCH]).trim() }], task: null, evidence: [], recordings: [],
+    }));
+    const { view } = run(['board', 'sess-1']);
+    const words = 'Given the help, when it is read, then it names --colour.';
+
+    assert.deepStrictEqual({ kind: view.kind, areas: view.areas.map(({ area, title, state }) => ({ area, title, state })), notProven: view.not_proven, page: run(['board', 'sess-1', '--page', 'check:1:2.S1', '--page-unit', UNIT]).view.text }, {
+      kind: 'review',
+      areas: [{ area: '1', title: 'The change', state: 'waiting' }, { area: 'tests', title: 'Tests held against the fixes\' acceptance', state: 'waiting' }],
+      notProven: [{ round: 1, scenario: '2.S1', standing: 'not proven', text: words }],
+      page: words,
+    });
+  });
 });
 
 describe('the review\'s briefs for a quick-fix: its record and its fixes\' acceptance, never a spec (19.5.14, 19.5.24)', () => {
@@ -199,6 +218,7 @@ describe('the review\'s briefs for a quick-fix: its record and its fixes\' accep
       'area-runs': ['- 1.S1: not proven', '  Given the help, when it is read, then it names --colour.', '- 2.S1: not proven', '  Given the help, when it is read, then it names --colour.'].join('\n'),
       linters: 'None recorded.',
       'area-report-to': `\`${statePath(dir, layout.unit(UNIT, 'review', 'round-1', `${AREA}-a.md`))}\``,
+      'area-authority': 'Every fix of the change has passed its own review. Hold the whole change against what was asked of it, as one piece. Its fixes\' acceptance, in their own words and read as one, and the product they describe, are your authority:',
     })}`);
   });
 
@@ -220,11 +240,23 @@ describe('the review\'s briefs for a quick-fix: its record and its fixes\' accep
 });
 
 describe('19.S23: the review asked for runs over the quick-fix\'s record and its change-set, and the close is still its finish gate', () => {
-  it('a round\'s fix task built on the quick-fix\'s branch through the door; the round that passes hands back to the close, its checklist carrying the review passed, its yes landing the fixes and the fix task in one commit', () => {
+  it('asked for and not yet entered, the close\'s yes, land phase and land finish each refused until the review phase is over, nothing landed', () => {
+    dir = world();
+    run(['review', 'ask', UNIT]);
+    const main = git(dir, ['rev-parse', 'main']).trim();
+    const over = `${UNIT} finishes once its review phase is over — ${UNIT}'s review phase is in round 1 — enter review ${UNIT}`;
+
+    assert.deepStrictEqual([refused(['finish', 'yes', UNIT]), refused(['land', 'phase', UNIT, '1']), refused(['land', 'finish', UNIT]), git(dir, ['rev-parse', 'main']).trim()], [
+      `finish yes: ${over}`, `land: ${over}`, `land: ${over}`, main,
+    ]);
+  });
+
+  it('a round\'s fix task built on the quick-fix\'s branch through the door; the round that passes hands back to the close, its checklist carrying the review passed, its yes landing the fixes and the fix task in one commit, land phase refused as land finish is while it goes on', () => {
     dir = world();
     firstRoundFailed();
     const reviewing = refused(['render', 'finish', UNIT]);
     const landing = refused(['land', 'finish', UNIT]);
+    const phaseLanding = refused(['land', 'phase', UNIT, '1']);
     fixTaskBuilt();
     const passed = secondRoundPassed();
     const review = run(['checklist', 'show', 'finish', UNIT]).items.find((/** @type {{key: string}} */ { key }) => key === 'review-passed');
@@ -232,9 +264,10 @@ describe('19.S23: the review asked for runs over the quick-fix\'s record and its
     const main = git(dir, ['rev-parse', 'main']).trim();
     const closed = run(['finish', 'yes', UNIT]);
 
-    assert.deepStrictEqual([reviewing, landing], [
-      `render finish: finish has items open since its close: review-passed — they are worked, and it is closed again`,
-      `land: ${UNIT} lands at finish once its review phase is over — ${UNIT}'s review phase is in round 2 — enter review ${UNIT}`,
+    assert.deepStrictEqual([reviewing, landing, phaseLanding], [
+      `render finish: ${UNIT} finishes once its review phase is over — ${UNIT}'s review phase is in round 2 — enter review ${UNIT}`,
+      `land: ${UNIT} finishes once its review phase is over — ${UNIT}'s review phase is in round 2 — enter review ${UNIT}`,
+      `land: ${UNIT} finishes once its review phase is over — ${UNIT}'s review phase is in round 2 — enter review ${UNIT}`,
     ]);
     assert.deepStrictEqual([passed.ends, passed.next, review.state], [true, { kind: 'engine', argv: ['render', 'finish', UNIT] }, 'done']);
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(statePath(dir, layout.unit(UNIT, 'review', 'round-1.json')), 'utf8')).scenarios.map((/** @type {{scenario: string}} */ { scenario }) => scenario), ['1.S1', '2.S1']);
@@ -245,6 +278,21 @@ describe('19.S23: the review asked for runs over the quick-fix\'s record and its
     assert.deepStrictEqual([closed.landed.map((/** @type {{merged: string[]}} */ { merged }) => merged), git(dir, ['log', '-1', '--format=%B', 'main']).match(/^Task: .*$/gm), git(dir, ['rev-list', '--count', `${main}..main`]).trim()], [
       [['1.1', '1.2', '2.1']], [`Task: ${UNIT}-1-1`, `Task: ${UNIT}-1-2`, `Task: ${UNIT}-2-1`], '1',
     ]);
+  });
+
+  it('with a fix task in flight, enters the review again in the same conversation, in a new one and through the recovery note, the task in flight in each, the note re-reading its record', () => {
+    dir = world();
+    firstRoundFailed();
+    run(['task', 'start', UNIT, '2.1']);
+    const again = entered();
+    createFile(dir, '.claude/skills/leeway-review-process/SKILL.md', '# The review\n');
+    const note = output(dir, ['conversation', 'position', 'sess-1'], as());
+    const fresh = sectionOf(okSections(dir, ['enter', 'review', UNIT], { env: { ...as().env, CLAUDE_CODE_SESSION_ID: 'sess-2' } }).sections, 'DATA').split('\n');
+
+    const inFlight = 'in flight: task 2.1, no builder dispatched here — its builder and pair go afresh on its branch';
+    assert.deepStrictEqual([again.includes(inFlight), note.split('\n').includes(inFlight), fresh.includes(inFlight)], [true, true, true]);
+    assert.doesNotMatch(note, /could not be read/);
+    assert.ok(note.split('\n').includes(`- ${statePath(dir, layout.unit(UNIT, 'summary.md'))}`), 'the quick-fix\'s record re-read in full, as the spec is');
   });
 
   it('a round that passes with a nit to fix hands back to nothing while its fix task waits', () => {

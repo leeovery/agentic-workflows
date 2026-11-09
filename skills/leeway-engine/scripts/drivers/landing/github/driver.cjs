@@ -107,7 +107,8 @@
 //   per phase; one whose remote is not on GitHub is refused before anything
 //   moves (`assertServes`). A merge lands onto the default branch on GitHub,
 //   fetched (`landsOn`), which the seam reads to check each submodule's
-//   there descends from what the repository holding it points it at. A
+//   there descends from what the repository holding it points it at; a
+//   read asking no host takes it as last fetched (`landsOnAsFetched`). A
 //   repository's submodules' pointers are settled before its stack merges,
 //   each submodule's stack merged first
 //   (landing.cjs merges children first), squashed into new commits the
@@ -555,6 +556,16 @@ function bringDefaultUp(ctx, host) {
  */
 function fetchedDefault(ctx) {
   return defaultOn(ctx, lg.fetchBranch(ctx.root, hostOf(ctx).remote, ctx.into));
+}
+
+/**
+ * The tip of a repository's default branch on GitHub as last fetched,
+ * fetching nothing — the branch here where it never has been.
+ * @param {LandingContext} ctx
+ * @returns {string}
+ */
+function lastFetchedDefault(ctx) {
+  return lg.trackedTip(ctx.root, hostOf(ctx).remote, ctx.into) ?? /** @type {string} */ (lg.branches(ctx.root).get(ctx.into));
 }
 
 /**
@@ -1116,6 +1127,7 @@ module.exports = {
     hostOf(ctx);
   },
   landsOn: fetchedDefault,
+  landsOnAsFetched: lastFetchedDefault,
   chainTip,
   holds,
   open,

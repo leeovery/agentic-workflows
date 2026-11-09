@@ -151,15 +151,17 @@ describe('finish\'s checklist for a quick-fix (6.4.10, 6.S14)', () => {
 });
 
 describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
-  it('refuses while a fix has not ended, and while a fix done has no record, naming each, writing nothing', () => {
+  it('refuses while a fix has not ended, and while a fix done has no record, naming each, writing nothing — land finish as the close refuses', () => {
     dir = world();
     checklistClosed(dir, as());
     const unrecorded = refused(['render', 'finish', UNIT]);
+    const landing = refused(['land', 'finish', UNIT]);
     record(1);
     createFix(dir, 3, 'Spell the docs --colour', as());
 
-    assert.deepStrictEqual([unrecorded, refused(['render', 'finish', UNIT]), refused(['finish', 'yes', UNIT])], [
+    assert.deepStrictEqual([unrecorded, landing, refused(['render', 'finish', UNIT]), refused(['finish', 'yes', UNIT])], [
       `render finish: ${UNIT} closes once each fix done has its record — 1.1, 1.2 have none: quick-fix record ${UNIT} 1.1 --file <record.md>`,
+      `land: ${UNIT} closes once each fix done has its record — 1.1, 1.2 have none: quick-fix record ${UNIT} 1.1 --file <record.md>`,
       `render finish: ${UNIT} closes once each of its fixes has ended — 1.3 is not started: each is done once it is committed and in ${UNIT}'s pull request, or closed with its reason`,
       `finish yes: ${UNIT} closes once each of its fixes has ended — 1.3 is not started: each is done once it is committed and in ${UNIT}'s pull request, or closed with its reason`,
     ]);

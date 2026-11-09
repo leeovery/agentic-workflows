@@ -78,7 +78,7 @@ const { git: personGit, tryGit: personTryGit, operationInProgress, dirtyEntries,
 const { placeOf, folderUnder } = require('../kernel/repos.cjs');
 const { STATE_BRANCH, NETWORK_ENV, PUSH_TIMEOUT_MS, FETCH_TIMEOUT_MS } = require('./state-worktree.cjs');
 const names = require('./landing-names.cjs');
-const { taskId } = require('./task-id.cjs');
+const { taskId, shownTask } = require('./task-id.cjs');
 const { remoteName, nestedRemoteName } = require('./remote.cjs');
 
 /**
@@ -582,8 +582,11 @@ function lastPointing(root, tip, folder) {
  * (`tipOf`, read when first needed), of the commit's own pointer's change,
  * by the commit's tasks (`landingOfChange`); else the commit's own pointer.
  * One taken out stays out. Refused, never in git's words, where the
- * submodule's tip does not descend from the commit `since` points it at
- * (`pointerAhead`).
+ * submodule's tip neither descends from the commit `since` points it at
+ * nor holds that commit's change, by the tasks of the commit that last
+ * moved the pointer there (`repointing`) — as a merge of the submodule by
+ * hand after the repository holding it leaves it, the pointer the stack
+ * sets then on the submodule's tip.
  * @template {{root: string, unit: string, into: string}} Sub
  * @param {{root: string, into: string, gitlinks: string[], submodules: {path: string, ctx: Sub}[]}} repo the repository's merge context (landing.cjs)
  * @param {{sha: string, parents: string[], tasks: string[]}[]} commits @param {string} since the default branch's tip @param {(sub: Sub) => string} tipOf
@@ -604,8 +607,8 @@ function stackMoves(repo, commits, since, tipOf) {
     if (sub === undefined || start === null) return undefined;
     if (!landings.has(at)) {
       const tip = tipOf(sub);
-      const ahead = pointerAhead(repo.into, at, sub, start, tip);
-      if (ahead !== null) throw new Error(ahead);
+      const held = repointing(repo.into, at, sub, start, tip, () => names.tasksOfMessage(sub.unit, lastPointing(root, since, at)).map(shownTask));
+      if (held !== null && 'refused' in held) throw new Error(held.refused);
       landings.set(at, landingsFrom(sub, start, tip));
     }
     return landingOfChange(sub, /** @type {SubmoduleLandings} */ (landings.get(at)), tasks, pointer);
@@ -1356,6 +1359,9 @@ function fetchBranch(root, remote, branch) {
   return { commit: git(root, ['rev-parse', tracking]).trim() };
 }
 
+/** A remote's branch's commit as last fetched, fetching nothing; null where it never has been. @param {string} root @param {string} remote @param {string} branch @returns {string|null} */
+const trackedTip = (root, remote, branch) => tryGit(root, ['rev-parse', '--verify', '--quiet', `refs/remotes/${remote}/${branch}^{commit}`])?.trim() ?? null;
+
 /**
  * Whether the repository holds `commit`, fetched where it does not from the
  * remote's ref `ref` that holds it, writing no ref here — false where the
@@ -1442,6 +1448,6 @@ function landsOn(cwd, repo) {
 module.exports = {
   short, readOnce, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranches, holdingBranch, refsUnder, updateRefs, isAncestor, latestOf, mergeBase, treesOf, firstParentLine, firstParentSince, messagesPast, trailersPast, stampedPast, committerTime, holdsChange, holdsTaskChange, holdsCopy, lastStamped, stampsUnit, messagesNaming, tasksNamedOn, commitsNamed, messageOf, commitWithTree, treesPast,
   pointersAt, treeWithPointers, pointedLike, holdsCommit, pointerAhead, repointing, lastPointing, stackMoves, commitsPast, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, remedy, moveTo, movedSinceOpened, rewrite, scratchBlock, rebaseBlock, checkoutBlock, changesAt, pathsChanged, dirtBlock, moveBranch,
-  defaultBranch, landsOn, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, fetchedCommit, nothingPast,
+  defaultBranch, landsOn, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, trackedTip, fetchedCommit, nothingPast,
   worktrees, taskWorktree, mainCheckoutOf, projectCheckout, holderOf, samePlace, removing, branchInPlace, addWorktree, switchTo, removeWorktree, detach, scratchRoot, scratchTree,
 };

@@ -6,7 +6,8 @@
 // review holds it against its spec (19.5.14, 19.5.24, 14.2.4): the area
 // pair's and the test surface's briefs (brief-records.cjs), and the
 // scenarios a round records and its report words (review-round.cjs,
-// review-change.cjs). The fixes are its phase 1's tasks the tracker holds
+// review-change.cjs), and the checks the board words from the fixes as it
+// read them (`acceptanceOf`, board-review.cjs). The fixes are its phase 1's tasks the tracker holds
 // not closed, a fix closed landing nothing; each criterion of a fix's
 // acceptance scenarios stands as its task file words it (task-file.cjs),
 // its scenario the id it opens with, `{n}.S{k}`, where it opens with one.
@@ -33,15 +34,15 @@ const { shownTask } = require('./task-id.cjs');
 /** A criterion as its fix's acceptance words it. @param {string} text @returns {Criterion} */
 const criterionOf = (text) => ({ scenario: criterionScenario(text), words: criterionWords(text) });
 
+/** Each of `fixes` not closed, in order, with its acceptance. @param {TaskDetail[]} fixes @returns {FixAcceptance[]} */
+const acceptanceOf = (fixes) => fixes.filter(({ status }) => status !== 'closed').map((fix) => ({ fix, criteria: criteriaTexts(fix.text).map(criterionOf) }));
+
 /**
  * Each of the quick-fix's fixes not closed, in order, with its acceptance,
  * read from the tracker under the state's lock.
  * @param {string} cwd @param {string} unit @returns {FixAcceptance[]}
  */
-function fixAcceptance(cwd, unit) {
-  const fixes = withStateLock(stateRoot(cwd), () => trackedPhase(cwd, unit, FIXES_PHASE.number).tasks ?? []);
-  return fixes.filter(({ status }) => status !== 'closed').map((fix) => ({ fix, criteria: criteriaTexts(fix.text).map(criterionOf) }));
-}
+const fixAcceptance = (cwd, unit) => acceptanceOf(withStateLock(stateRoot(cwd), () => trackedPhase(cwd, unit, FIXES_PHASE.number).tasks ?? []));
 
 /** A fix as a line names it: its id and title. @param {TaskDetail} fix */
 const fixNamed = (fix) => `fix ${shownTask(fix.ref)} ${fix.title}`;
@@ -55,4 +56,4 @@ function fixScenarios(acceptance) {
   return acceptance.flatMap(({ fix, criteria }) => criteria.flatMap(({ scenario, words }) => (scenario === null ? [] : [{ scenario, wording: words, fix }])));
 }
 
-module.exports = { fixAcceptance, fixScenarios, fixNamed };
+module.exports = { fixAcceptance, acceptanceOf, fixScenarios, fixNamed };
