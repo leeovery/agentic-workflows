@@ -17,7 +17,12 @@
 //   again after a `/clear`, which begins another conversation — and only other
 //   tasks in flight, each named; from a worktree `task worktree` laid out
 //   for another task in flight (task-worktree.cjs, conversation.cjs's
-//   `taskAt`), any task but that one, naming it; a task with a worktree
+//   `taskAt`), any task but that one, naming it; a quick-fix's task that
+//   does not hold its one checkout — parked on a question, or freed and
+//   waiting behind the fix that holds it — so no commit carries another
+//   fix's work under its stamp, naming the fix holding the checkout and the
+//   start that takes it back (`refuseOutOfTurn`, task-verbs.cjs's
+//   `stepTurn`, 19.5.23); a task with a worktree
 //   laid out for it from anywhere else, naming the worktree; from a
 //   checkout on a branch other than the task's, any task, naming the
 //   worktree that has its branch out, so no task's commit lands on another
@@ -80,7 +85,7 @@ const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { parseShownTask, sameTask, shownTask, taskId, taskName } = require('./task-id.cjs');
 const { isBugfix, doorGate } = require('./bug-proven.cjs');
 const environment = require('./environment.cjs');
-const { trackedPhase, ENDED } = require('./task-verbs.cjs');
+const { trackedPhase, ENDED, stepTurn, turnEnds } = require('./task-verbs.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** A check the door runs: its name and command, why it may fail where it may, and the way on where it fails and may not. @typedef {{name: string, command: string, allowed?: string, way?: string}} Check */
@@ -111,7 +116,10 @@ function inFlightTask(cwd, unit, given) {
   const ref = shownRef(unit, given);
   const inFlight = tasksInFlight(session);
   const named = inFlight.find((task) => task.unit === unit && task.task === shownTask(ref));
-  if (named !== undefined) return { ref: fromItsWorktree(session, cwd, ref, named.worktree), manifest };
+  if (named !== undefined) {
+    if (quickFixBuild(manifest)) refuseOutOfTurn(cwd, ref, manifest);
+    return { ref: fromItsWorktree(session, cwd, ref, named.worktree), manifest };
+  }
   if (fixEnd().remakesDone(cwd, ref)) {
     refuseOtherBranch(cwd, ref);
     return { ref, manifest };
@@ -122,6 +130,24 @@ function inFlightTask(cwd, unit, given) {
   }
   const others = inFlight.map((task) => `task ${task.task} of ${task.unit}`).join(', ');
   throw new Error(`commit --task: ${taskName(ref)} is not in flight in this conversation, ${others} ${inFlight.length === 1 ? 'is' : 'are'} — commit under the task the work is for, or start ${taskName(ref)} with ${startCall(unit, given)}`);
+}
+
+/**
+ * Refuse a commit under a quick-fix's task that does not hold its one
+ * checkout (the header's): one in progress that is not the turn's in
+ * flight is behind it, or parked.
+ * @param {string} cwd @param {TaskRef} ref @param {Record<string, any>} manifest the unit's
+ */
+function refuseOutOfTurn(cwd, ref, manifest) {
+  const turn = stepTurn(cwd, ref.unit, manifest);
+  const shown = shownTask(ref);
+  if (turn?.inFlight === shown) return;
+  const back = `${taskName(ref)}'s change is committed once it holds the checkout again, started again with ${startCall(ref.unit, shown)}`;
+  if (turn !== null && turn.behind.includes(shown)) {
+    throw new Error(`commit --task: task ${turn.inFlight} holds ${ref.unit}'s one checkout, and ${taskName(ref)} waits behind it, so a commit now would carry task ${turn.inFlight}'s work under ${taskName(ref)}'s stamp — ${back}, once ${turnEnds(turn)}`);
+  }
+  const holder = turn === null ? 'no fix holds it now' : `task ${turn.inFlight} holds it, and a commit now would carry its work under ${taskName(ref)}'s stamp`;
+  throw new Error(`commit --task: a question parks ${taskName(ref)}, so it holds no part of ${ref.unit}'s one checkout — ${holder}; ${back}, once the answer frees it`);
 }
 
 /**

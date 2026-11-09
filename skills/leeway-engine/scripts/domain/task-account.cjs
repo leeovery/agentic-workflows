@@ -35,10 +35,10 @@
 // and removed across every repository holding the task's branch — a
 // quick-fix's task's, its one branch (landing-git.cjs) — from where the
 // task's own work starts there (task-base.cjs) to its tip, so neither the
-// tasks a stack holds below it, the chain it merged back nor a quick-fix's
-// fixes before it count — and a submodule's pointer is never a
-// file of it, as `verify
-// mutants` leaves it out; the acceptance criteria the task holds
+// tasks a stack holds below it nor the chain it merged back count; a
+// quick-fix's task's the net change of its own commits, the other fixes'
+// left out — renames found, and a submodule's pointer never a file of it, as
+// `verify mutants` leaves it out; the acceptance criteria the task holds
 // (task-file.cjs); how many additions the task holds, whoever made them
 // (13.11.3) — one made after the account means the task changed under it,
 // so it stands at its step gate only while the count holds
@@ -83,7 +83,7 @@ const { headingLevels } = require('./spec-sections.cjs');
 const { BULLET, listItems, saysNone, saysNoneIn } = require('./list-items.cjs');
 const { criteriaOf } = require('./task-file.cjs');
 const { parseShownTask, shownTask, taskId, taskName } = require('./task-id.cjs');
-const { holdingBranch, taskWorktree } = require('./landing-git.cjs');
+const { holdingBranch, taskWorktree, mergeTree } = require('./landing-git.cjs');
 const { trackedTask, trackedStart, givenText, ENDED } = require('./task-verbs.cjs');
 const { refuseParked, parkedOf } = require('./task-parks.cjs');
 const { baseRev, ofQuickFix, workBranch, builtOnBases, ownWork } = require('./task-base.cjs');
@@ -225,14 +225,12 @@ function readAccount(text, rounds, settled = []) {
 }
 
 /**
- * The task's own change in one repository holding its branch: from where
- * its own work starts there, `base`, to its tip, its submodules' pointers
- * left out.
- * @param {Repo} repo @param {string} base @param {string} branch @returns {Change}
+ * A diff's change in one repository, renames found: the files changed and
+ * the lines added and removed, its submodules' pointers left out.
+ * @param {Repo} repo @param {string[]} range the diff's revisions @returns {Change}
  */
-function changeIn(repo, base, branch) {
-  const changed = ['diff', '--numstat', '--find-renames', `${baseRev(base)}...refs/heads/${branch}`, '--', ':(top)', ...excluding(repo.submodules)];
-  const rows = git(repo.path, changed).split('\n').filter((row) => row !== '');
+function changeOver(repo, range) {
+  const rows = git(repo.path, ['diff', '--numstat', '--find-renames', ...range, '--', ':(top)', ...excluding(repo.submodules)]).split('\n').filter((row) => row !== '');
   return rows.reduce((sum, row) => {
     const [added, removed] = row.split('\t').map(Number);
     return { files: sum.files + 1, added: sum.added + (added || 0), removed: sum.removed + (removed || 0) };
@@ -240,18 +238,34 @@ function changeIn(repo, base, branch) {
 }
 
 /**
- * A quick-fix's task's own change in one repository: its own commits'
- * (task-base.cjs, `ownWork`), each file they touched counted once, their
- * lines summed, its submodules' pointers left out.
+ * The task's own change in one repository holding its branch: from where
+ * its own work starts there, `base`, to its tip.
+ * @param {Repo} repo @param {string} base @param {string} branch @returns {Change}
+ */
+const changeIn = (repo, base, branch) => changeOver(repo, [`${baseRev(base)}...refs/heads/${branch}`]);
+
+/** Two changes as one. @param {Change} a @param {Change} b @returns {Change} */
+const summed = (a, b) => ({ files: a.files + b.files, added: a.added + b.added, removed: a.removed + b.removed });
+
+/**
+ * A quick-fix's task's own change in one repository: the net change of its
+ * own commits (task-base.cjs, `ownWork`), oldest first, as a task's branch
+ * counts its own — each applied in turn, by git's own merge, onto what the
+ * one before made from the first one's parent, so the other fixes'
+ * commits between them stay out and a line changed twice counts once; a
+ * commit that does not apply there, a line of it another fix changed in
+ * between, leaves each commit counted as it was made.
  * @param {Repo} repo @param {string[]} shas @returns {Change}
  */
 function commitsChange(repo, shas) {
-  const rows = git(repo.path, ['show', '--numstat', '--format=', '--find-renames', ...shas, '--', ':(top)', ...excluding(repo.submodules)]).split('\n').filter((row) => row !== '');
-  const files = new Set(rows.map((row) => row.split('\t').slice(2).join('\t')));
-  return rows.reduce((sum, row) => {
-    const [added, removed] = row.split('\t').map(Number);
-    return { ...sum, added: sum.added + (added || 0), removed: sum.removed + (removed || 0) };
-  }, { files: files.size, added: 0, removed: 0 });
+  const base = git(repo.path, ['rev-parse', `${shas[0]}^`]).trim();
+  let tip = base;
+  for (const sha of shas) {
+    const merged = mergeTree(repo.path, `${sha}^`, tip, sha);
+    if ('conflicts' in merged) return shas.map((own) => changeOver(repo, [`${own}^`, own])).reduce(summed);
+    tip = git(repo.path, ['commit-tree', merged.tree, '-p', tip, '-m', 'the task\'s own change']).trim();
+  }
+  return changeOver(repo, [base, tip]);
 }
 
 /**
@@ -277,10 +291,7 @@ function figuresOf(cwd, ref, task, rounds, refuse) {
   const branch = workBranch(cwd, ref, task);
   const { holding } = holdingBranch(ref.unit, projectRepos(codeRoot(cwd)), branch);
   if (holding.length === 0) refuse(`no repository of the project holds work on ${taskName(ref)}'s branch, ${branch}`);
-  const change = changesOf(cwd, ref, holding, branch).reduce(
-    (sum, part) => ({ files: sum.files + part.files, added: sum.added + part.added, removed: sum.removed + part.removed }),
-    { files: 0, added: 0, removed: 0 },
-  );
+  const change = changesOf(cwd, ref, holding, branch).reduce(summed, { files: 0, added: 0, removed: 0 });
   return {
     rounds, ...change, criteria: criteriaOf(task.text), additions: task.additions.length, started: trackedStart(cwd, ref), finished: new Date().toISOString(),
   };

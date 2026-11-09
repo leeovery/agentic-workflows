@@ -52,7 +52,8 @@
 //   holds changes not committed — and each of its tasks not yet ended, its
 //   fixes and its review's fix tasks, closed, as the
 //   verb closes it but for the refusal of a fix holding work, which the
-//   move lands nothing of (`closeForMove`, task-verbs.cjs), each close
+//   move lands nothing of, and the drop of what a fix's park set aside,
+//   which it keeps (`closeForMove`, task-verbs.cjs; R26), each close
 //   committing the tracker as the verb does; the carry appended, the lines
 //   read once the fixes have closed; then nothing left that the new type's
 //   build, numbering its own phase 1 and tasks 1.n, can meet — the
@@ -72,8 +73,10 @@
 //   chunks carrying the type (warn-don't-block), and one commit takes the
 //   unit, the project manifest, the tracker's store where the fixes began,
 //   and the ledger where lines were carried. It answers what this call
-//   did — the fixes it closed, the branch it kept, whether it closed the
-//   pull request, where it took the checkout — and the handoff into the
+//   did — the fixes it closed, the branch it kept, each fix's work set
+//   aside it kept, by its ref and the call that shows it (fix-aside.cjs,
+//   `keptAside`), whether it closed the pull request, where it took the
+//   checkout — and the handoff into the
 //   new type's first phase (24.1.2).
 // - Known edges: a failure between the save and the commit leaves the move
 //   made and uncommitted, the unit of the new type, so the yes refuses to
@@ -108,6 +111,7 @@ const { filled, shaped, readPayload, stage } = require('./staged-payload.cjs');
 const { trackedBuild, removeBuild, closeForMove, ENDED } = require('./task-verbs.cjs');
 const { quickFixLanding, quickFixClose } = require('./landing.cjs');
 const { keptUnder, setBranchAside, checkOutLanding } = require('./fix-branch.cjs');
+const { keptAside } = require('./fix-aside.cjs');
 const { linesOf, movedFiles } = require('./workunit-absorb.cjs');
 const { reindexWorkUnit } = require('./workunit-lifecycle.cjs');
 const { topicLog } = require('./topic-log.cjs');
@@ -386,6 +390,8 @@ function moveYes(cwd, staged) {
       committed: outcome.committed,
       next: nextAfter(to, unit),
     };
+    const aside = quickFix ? keptAside(cwd, unit) : [];
+    if (aside.length > 0) result.kept_aside = aside;
     if (warnings.length > 0) result.warnings = warnings;
     noteCommitOutcome(result, outcome);
     return result;

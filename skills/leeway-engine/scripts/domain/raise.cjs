@@ -968,7 +968,7 @@ function parkLanded(cwd, park, reason, warnings) {
 function setAsideFor(cwd, unit, task) {
   const turn = turnNow(cwd, unit);
   if (turn === null || !turn.checkout || turn.inFlight !== task) return [];
-  return require('./fix-aside.cjs').setAside(cwd, parseShownTask(unit, task));
+  return require('./fix-aside.cjs').setAside(cwd, parseShownTask(unit, task), SAID);
 }
 
 /**

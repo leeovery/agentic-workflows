@@ -37,7 +37,9 @@
 // taken, to its taking; else the orchestrator's to read for its notes for
 // later and the nits the task's commits do not yet fix, fixed in the
 // worktree that has its branch out, then the new builder's for the account
-// (task-account.cjs, `reviewOverWay`); anything else its new builder's. A task a question parks is
+// (task-account.cjs, `reviewOverWay`); a quick-fix's fix whose work its
+// park set aside, its start's, which puts it back (fix-aside.cjs);
+// anything else its new builder's. A task a question parks is
 // put in flight as well, but no builder goes to it until the person answers
 // (12.13.2); one at its step gate waits on the person's go there, the gate
 // drawn again, its builder never sent afresh (12.7.9, 12.14.3); and one
@@ -133,6 +135,8 @@ const { recordTasksAt } = require('./position.cjs');
 const { waitingAndFreed, parkedTasks, askedOpen } = require('./questions.cjs');
 const { reading, phaseLists, phaseTasks, phaseLanded, mergeWaiting, fixesOwed, passed } = require('./phase-checks.cjs');
 const { takenFigures, reviewOverWay } = require('./task-account.cjs');
+const { ofQuickFix } = require('./task-base.cjs');
+const { heldAside } = require('./fix-aside.cjs');
 const { recordedRounds, mergingWords } = require('./review-phase.cjs');
 const { shownTask, parseShownTask } = require('./task-id.cjs');
 const { roundStanding, taskRounds, pairPassed } = require('./round-report.cjs');
@@ -445,6 +449,9 @@ const READER_WORDS = Object.freeze({
  */
 function afreshWords(cwd, session, unit, task) {
   const ref = parseShownTask(unit, task);
+  if (ofQuickFix(cwd, unit) && heldAside(cwd, ref).length > 0) {
+    return `its work, set aside when a question parked it, is not back in the checkout — start it again, engine task start ${unit} ${task}, which puts it back, then its builder and pair go afresh on its branch`;
+  }
   const standing = roundStanding(cwd, ref, session);
   if (standing !== null) {
     const open = standing.readers.filter(({ state }) => state !== 'reported');

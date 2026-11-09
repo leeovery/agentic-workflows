@@ -278,7 +278,7 @@ describe('the quick-fix\'s fix, built in the project\'s own checkout (12.7.8, 19
     const second = ok(dir, ['task', 'start', UNIT, '1.2'], { env: env() });
 
     assert.deepStrictEqual(cut, [BRANCH, true]);
-    assert.strictEqual(refused, `task 1.2 of ${UNIT} is built in the project's own checkout, which holds changes not committed — src/help.js — so it was not put on ${UNIT}'s branch: commit them or set them aside, then start the task again`);
+    assert.strictEqual(refused, `task start: task 1.2 of ${UNIT} is built in the project's own checkout, which holds changes not committed — src/help.js — so it was not put on ${UNIT}'s branch: commit them or set them aside, then start the task again`);
     assert.deepStrictEqual(unmoved, [BRANCH, 'open']);
     assert.deepStrictEqual([second.branch, second.cut_again, branchOut(), sha(BRANCH)], [BRANCH, undefined, BRANCH, built]);
   });
@@ -472,7 +472,7 @@ describe('a raise at the quick-fix\'s place (19.5.25, E5)', () => {
     assert.match(stop, /Phase 1 of 1 · the fixes[^\n]*\n.*⚑ 1\.1 [^\n]*\[waits on Q1\]/);
   });
 
-  it('a fix\'s builder\'s question parks its fix, drawing nothing in the conversation; the entry reads the fix parked and the question waiting', async () => {
+  it('a fix\'s builder\'s question parks its fix, drawing nothing in the conversation; the entry reads the fix parked and the question waiting, once — never again as one asked and still open', async () => {
     dir = entered();
     const before = entries().length;
     const { res } = await okSectionsAsync(dir, ['raise', PLACE, '--answers', asked.alias, '--parks', '1.1'], { env: conversation(), stdin: JSON.stringify(CALL) });
@@ -483,5 +483,6 @@ describe('a raise at the quick-fix\'s place (19.5.25, E5)', () => {
     assert.deepStrictEqual(waiting.map(({ question, parks }) => [question, parks]), [['Q1', ['1.1']]]);
     assert.match(sections, /\nin flight: task 1\.1, parked on Q1\b/);
     assert.match(sections, /\nwaiting: Q1 /);
+    assert.doesNotMatch(sections, /asked in the conversation and still open/, 'a question a park holds is named waiting once, as the park\'s');
   });
 });

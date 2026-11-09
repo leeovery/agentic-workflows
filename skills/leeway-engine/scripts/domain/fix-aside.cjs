@@ -14,30 +14,41 @@
 //   out, at a ref of the unit's own, `refs/leeway/aside/{unit}/{task id}` —
 //   never on the stash list, which every checkout shares — then each of its
 //   paths back as that tip holds it, so the checkout is left clean at the
-//   branch's tip for the next fix to start on.
+//   branch's tip for the next fix to start on. Its paths are read from each
+//   checkout's top, a project that is a folder of a larger repository among
+//   them. All or nothing: a step that fails undoes every part — each path
+//   back in the checkout as it was, not staged, each ref it wrote dropped —
+//   and the park is refused, saying so.
 // - The fix's next start (task-verbs.cjs), once the checkout is on the
 //   branch, puts it back onto the tip as it then stands — git's own merge
 //   of it from the tip it was set aside on, its change left uncommitted as
 //   it was and its ref dropped — refused, nothing moved, where in any
 //   repository it conflicts with what the tip now holds, naming each path,
-//   the ref and the way on: its change made again by hand, the ref dropped.
+//   the ref and the way on, in the order that works: the work seen, its
+//   refs dropped, the task started, its change made again and committed.
 // - A brief for a fix whose work is set aside is refused, naming the start
 //   that puts it back (brief.cjs); a fix closed drops what it set aside, its
-//   work given up with it (task-verbs.cjs).
+//   work given up with it (task-verbs.cjs); a move keeps it, as it keeps the
+//   fixes' commits under moved/, its answer naming each (`keptAside`,
+//   workunit-move.cjs, R26).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { git, tryGit, gitPath } = require('../kernel/git.cjs');
-const { projectRepos, repoOf, repoPath, projectPath } = require('../kernel/repos.cjs');
+const { projectRepos, repoOf, repoPath, repoName, projectPath, topPath, folderPath, checkoutTop } = require('../kernel/repos.cjs');
+const { messageOf } = require('../kernel/call.cjs');
 const { codeChanges } = require('./worktree-prep.cjs');
 const { mergeTree, plain } = require('./landing-git.cjs');
 const { quickFixBranch } = require('./landing-names.cjs');
-const { taskId, taskName, shownTask } = require('./task-id.cjs');
+const { taskId, parseTaskId, taskName, shownTask } = require('./task-id.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** @typedef {import('../kernel/repos.cjs').Repo} Repo */
+
+/** The start that puts a fix's work back. @param {TaskRef} ref */
+const startCall = (ref) => `engine task start ${ref.unit} ${shownTask(ref)}`;
 
 /** Where a fix's work is set aside, in each repository holding any. @param {TaskRef} ref */
 const asideRef = (ref) => `refs/leeway/aside/${ref.unit}/${taskId(ref)}`;
@@ -54,9 +65,11 @@ function heldAside(cwd, ref) {
 }
 
 /**
- * What the project's checkout holds not committed, by the repository
- * holding each path, each as that repository names it.
- * @param {Repo[]} repos @returns {Map<Repo, string[]>}
+ * What the project's checkout holds not committed, a part for each
+ * repository holding any: its checkout's top, and each path as that top
+ * names it — a project that is a folder of a larger repository reads its
+ * paths from there — and as the project names it.
+ * @param {Repo[]} repos @returns {Held[]}
  */
 function dirtByRepo(repos) {
   /** @type {Map<Repo, string[]>} */
@@ -65,70 +78,109 @@ function dirtByRepo(repos) {
     const repo = repoOf(repos, at);
     by.set(repo, [...(by.get(repo) ?? []), repoPath(repo, at)]);
   }
-  return by;
+  return [...by].map(([repo, paths]) => ({
+    repo, top: checkoutTop(repo, repo.path), paths: paths.map((at) => topPath(repo, at)), shown: paths.map((at) => projectPath(repo.dir, at)),
+  }));
 }
 
 /**
- * The repository's paths committed on its HEAD, at the fix's ref, its
- * untracked files among them, through an index of its own.
- * @param {Repo} repo @param {string[]} paths @param {TaskRef} ref
+ * A part of the checkout held not committed (`dirtByRepo`), and the commit
+ * keeping it once made.
+ * @typedef {{repo: Repo, top: string, paths: string[], shown: string[], sha?: string}} Held
  */
-function commitAside(repo, paths, ref) {
-  const env = { GIT_INDEX_FILE: gitPath(repo.path, `leeway-aside-${process.pid}.index`) };
+
+/** The flags a git call takes its paths on its input by, NUL-separated. */
+const FROM_INPUT = Object.freeze(['--pathspec-from-file=-', '--pathspec-file-nul']);
+
+/**
+ * The part's paths committed on its HEAD, its untracked files among them,
+ * through an index of its own, touching neither the checkout nor its index:
+ * the commit.
+ * @param {Held} held @param {TaskRef} ref @returns {string}
+ */
+function asideCommit({ top, paths }, ref) {
+  const env = { GIT_INDEX_FILE: gitPath(top, `leeway-aside-${process.pid}.index`) };
   try {
-    git(repo.path, ['read-tree', 'HEAD'], env);
-    git(repo.path, ['--literal-pathspecs', 'add', '--all', '--pathspec-from-file=-', '--pathspec-file-nul'], env, paths.join('\0'));
-    const tree = git(repo.path, ['write-tree'], env).trim();
-    const sha = git(repo.path, ['commit-tree', tree, '-p', 'HEAD', '-m', `${taskName(ref)}'s work, set aside when a question parked it`]).trim();
-    git(repo.path, ['update-ref', asideRef(ref), sha, '']);
+    git(top, ['read-tree', 'HEAD'], env);
+    git(top, ['--literal-pathspecs', 'add', '--all', ...FROM_INPUT], env, paths.join('\0'));
+    const tree = git(top, ['write-tree'], env).trim();
+    return git(top, ['commit-tree', tree, '-p', 'HEAD', '-m', `${taskName(ref)}'s work, set aside when a question parked it`]).trim();
   } finally {
     fs.rmSync(env.GIT_INDEX_FILE, { force: true });
   }
 }
 
-/** Each path back as the repository's HEAD holds it, one HEAD lacks removed. @param {Repo} repo @param {string[]} paths */
-function cleaned(repo, paths) {
-  const tracked = paths.filter((at) => tryGit(repo.path, ['cat-file', '-e', `HEAD:${at}`]) !== null);
-  if (tracked.length > 0) git(repo.path, ['--literal-pathspecs', 'restore', '--source=HEAD', '--staged', '--worktree', '--pathspec-from-file=-', '--pathspec-file-nul'], undefined, tracked.join('\0'));
+/** Each of the part's paths back as its HEAD holds it, one HEAD lacks removed. @param {Held} held */
+function cleaned({ top, paths }) {
+  const tracked = paths.filter((at) => tryGit(top, ['cat-file', '-e', `HEAD:${at}`]) !== null);
+  if (tracked.length > 0) git(top, ['--literal-pathspecs', 'restore', '--source=HEAD', '--staged', '--worktree', ...FROM_INPUT], undefined, tracked.join('\0'));
   const added = paths.filter((at) => !tracked.includes(at));
-  if (added.length > 0) git(repo.path, ['--literal-pathspecs', 'rm', '-r', '-q', '--cached', '--ignore-unmatch', '--pathspec-from-file=-', '--pathspec-file-nul'], undefined, added.join('\0'));
-  for (const at of added) fs.rmSync(path.join(repo.path, at), { recursive: true, force: true });
+  if (added.length > 0) git(top, ['--literal-pathspecs', 'rm', '-r', '-q', '--cached', '--ignore-unmatch', ...FROM_INPUT], undefined, added.join('\0'));
+  for (const at of added) fs.rmSync(path.join(top, at), { recursive: true, force: true });
+}
+
+/**
+ * A set-aside that failed undone, part by part, as far as it went: each
+ * path back in the checkout as the part's commit holds it — not staged —
+ * and the ref it wrote dropped. Each step is tried alone, so a part the
+ * set-aside never reached is passed over.
+ * @param {Held} held @param {TaskRef} ref
+ */
+function undone({ top, paths, sha }, ref) {
+  if (sha === undefined) return;
+  try {
+    git(top, ['--literal-pathspecs', 'restore', `--source=${sha}`, '--worktree', ...FROM_INPUT], undefined, paths.join('\0'));
+  } catch {
+    // a part whose paths were never cleaned holds them as they were
+  }
+  tryGit(top, ['update-ref', '-d', asideRef(ref), sha]);
 }
 
 /**
  * What the checkout holds not committed set aside for the fix parked (the
  * header's), and the checkout left clean at its tip: answers each path set
- * aside, from the project, in order, none where it held nothing.
- * @param {string} cwd @param {TaskRef} ref @returns {string[]}
+ * aside, from the project, in order, none where it held nothing. All or
+ * nothing: where any step fails, every part is undone (`undone`) and the
+ * set-aside refused in the words of `said`, saying so.
+ * @param {string} cwd @param {TaskRef} ref @param {string} said @returns {string[]}
  */
-function setAside(cwd, ref) {
-  const repos = projectRepos(codeRoot(cwd));
-  const dirt = dirtByRepo(repos);
-  for (const [repo, paths] of dirt) commitAside(repo, paths, ref);
-  for (const [repo, paths] of dirt) cleaned(repo, paths);
-  return [...dirt].flatMap(([repo, paths]) => paths.map((at) => projectPath(repo.dir, at))).sort();
+function setAside(cwd, ref, said) {
+  const dirt = dirtByRepo(projectRepos(codeRoot(cwd)));
+  try {
+    for (const held of dirt) {
+      const sha = asideCommit(held, ref);
+      git(held.top, ['update-ref', asideRef(ref), sha, '']);
+      held.sha = sha;
+    }
+    dirt.forEach(cleaned);
+  } catch (err) {
+    for (const held of dirt) undone(held, ref);
+    throw new Error(`${said}: ${taskName(ref)}'s work could not be set aside, so nothing was: the checkout holds it as before, none of it staged, and no question parked the fix — ${messageOf(err)}`);
+  }
+  return dirt.flatMap(({ shown }) => shown).sort();
 }
 
 /**
  * The fix's work set aside put back onto the branch's tip as it stands
  * (the header's), its ref dropped: answers each path put back, from the
  * project — refused in the words of `said`, nothing moved, where it
- * conflicts in any repository.
+ * conflicts in any repository, its way on in the order that works: the
+ * work seen, its refs dropped, the task started, its change made again.
  * @param {string} cwd @param {TaskRef} ref @param {string} said @returns {string[]}
  */
 function putBack(cwd, ref, said) {
   const held = heldAside(cwd, ref).map((aside) => ({ ...aside, merged: mergeTree(aside.repo.path, `${aside.sha}^`, 'HEAD', aside.sha) }));
-  const conflicts = held.flatMap(({ repo, merged }) => ('conflicts' in merged ? merged.conflicts.map((at) => projectPath(repo.dir, at)) : []));
+  const conflicts = held.flatMap(({ repo, merged }) => ('conflicts' in merged ? merged.conflicts.map((at) => projectPath(repo.dir, folderPath(repo, at) ?? at)) : []));
   if (conflicts.length > 0) {
     const ways = held.map(({ repo }) => `\`${gitIn(repo)} diff ${asideRef(ref)}^ ${asideRef(ref)}\``).join(', ');
     const drops = held.map(({ repo }) => `\`${gitIn(repo)} update-ref -d ${asideRef(ref)}\``).join(', ');
-    throw new Error(`${said}: ${taskName(ref)}'s work, set aside when a question parked it, does not go back onto ${quickFixBranch(ref.unit)} as it stands — it conflicts at ${conflicts.join(', ')} — so nothing moved: it is kept at ${asideRef(ref)}; make its change again by hand, ${ways} showing it, then drop it, ${drops}, and start the task again`);
+    throw new Error(`${said}: ${taskName(ref)}'s work, set aside when a question parked it, does not go back onto ${quickFixBranch(ref.unit)} as it stands — it conflicts at ${conflicts.join(', ')} — so nothing moved: it is kept at ${asideRef(ref)}; see it, ${ways}, drop it, ${drops}, start the task again, ${startCall(ref)}, then make its change again by hand and commit it through the door`);
   }
   return held.flatMap(({ repo, sha, merged }) => {
     git(repo.path, ['read-tree', '-m', '-u', 'HEAD', /** @type {{tree: string}} */ (merged).tree]);
     git(repo.path, ['reset', '-q']);
     git(repo.path, ['update-ref', '-d', asideRef(ref), sha]);
-    return git(repo.path, ['diff', '--name-only', '-z', `${sha}^`, sha]).split('\0').filter(Boolean).map((at) => projectPath(repo.dir, at));
+    return git(repo.path, ['diff', '--name-only', '--relative', '-z', `${sha}^`, sha]).split('\0').filter(Boolean).map((at) => projectPath(repo.dir, at));
   });
 }
 
@@ -144,7 +196,20 @@ function dropAside(cwd, ref) {
  */
 function asideRefusal(cwd, ref) {
   if (heldAside(cwd, ref).length === 0) return null;
-  return `${taskName(ref)}'s work, set aside when a question parked it, is not back in the checkout — start it again first, engine task start ${ref.unit} ${shownTask(ref)}, which puts it back`;
+  return `${taskName(ref)}'s work, set aside when a question parked it, is not back in the checkout — start it again first, ${startCall(ref)}, which puts it back`;
 }
 
-module.exports = { asideRef, heldAside, setAside, putBack, dropAside, asideRefusal };
+/**
+ * Every fix of `unit` whose work is set aside, a line for each repository
+ * holding it, in the tracker's order — what a move keeps (R26): its task,
+ * the repository by its folder, the ref and the call that shows the work.
+ * @param {string} cwd @param {string} unit @returns {{task: string, repo: string, ref: string, see: string}[]}
+ */
+function keptAside(cwd, unit) {
+  return projectRepos(codeRoot(cwd)).flatMap((repo) => git(repo.path, ['for-each-ref', '--format=%(refname)', `refs/leeway/aside/${unit}/`]).split('\n').filter(Boolean)
+    .map((ref) => ({ ref: parseTaskId(ref.slice(ref.lastIndexOf('/') + 1)), repo, name: ref })))
+    .sort((a, b) => a.ref.phase - b.ref.phase || a.ref.n - b.ref.n)
+    .map(({ ref, repo, name }) => ({ task: shownTask(ref), repo: repoName(repo), ref: name, see: `${gitIn(repo)} diff ${name}^ ${name}` }));
+}
+
+module.exports = { asideRef, heldAside, setAside, putBack, dropAside, asideRefusal, keptAside };

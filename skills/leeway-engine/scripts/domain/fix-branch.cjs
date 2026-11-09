@@ -120,7 +120,7 @@ function refuseDirt(cwd, refusal) {
 
 /** Refuse to start a quick-fix's task while the project's checkout holds changes not committed. @param {string} cwd @param {TaskRef} ref */
 function refuseDirty(cwd, ref) {
-  refuseDirt(cwd, (dirty) => `${taskName(ref)} is built in the project's own checkout, which holds changes not committed — ${dirty} — so it was not put on ${ref.unit}'s branch: commit them or set them aside, then start the task again`);
+  refuseDirt(cwd, (dirty) => `task start: ${taskName(ref)} is built in the project's own checkout, which holds changes not committed — ${dirty} — so it was not put on ${ref.unit}'s branch: commit them or set them aside, then start the task again`);
 }
 
 /** Refuse a quick-fix's close while the project's checkout holds changes not committed. @param {string} cwd @param {string} unit */

@@ -44,7 +44,9 @@
 // flight there — a task already in flight kept as it stands, its builder
 // and reviewers with it; a quick-fix's task, built in the project's own
 // checkout, puts that checkout on the quick-fix's one branch
-// (fix-branch.cjs) and puts back what its park set aside (fix-aside.cjs) —
+// (fix-branch.cjs) — refusing what that checkout holds not committed but
+// where the fix holds it already, with nothing set aside, the work being
+// its own — and puts back what its park set aside (fix-aside.cjs) —
 // and done and close take it off, each first
 // taking the task's worktree apart (6.3.3, 24.2.4); done refuses a task a
 // question waiting parks, and a bugfix's reproducing task until its test's
@@ -54,7 +56,8 @@
 // waits on it as done does (7.1.12) — a quick-fix's task ending as
 // fix-end.cjs says, a fix's close committing beside the tracker's store the
 // record it takes out and dropping what its park set aside, and a
-// quick-fix's move closing its tasks with no end refused (`closeForMove`),
+// quick-fix's move closing its tasks with no end refused and what their
+// parks set aside kept (`closeForMove`, R26),
 // and either, ending the last of what held a
 // quick-fix's ended review open, handing back to its close
 // (review-round.cjs, `handBack`);
@@ -859,6 +862,17 @@ function refuseSecondInTurn(cwd, ref, manifest) {
   throw new Error(`task start: ${ref.unit} builds in step, one task at a time — task ${turn.inFlight} is in flight or at its gate, and the next starts once the person's go there is given and it is done`);
 }
 
+/**
+ * Whether what a quick-fix's checkout holds not committed is the fix's own:
+ * the fix holds the checkout already — in progress, its turn — with no
+ * work set aside to put back, which needs a clean checkout. A start that
+ * moves the checkout to the fix refuses what it holds (fix-branch.cjs).
+ * @param {string} cwd @param {TaskRef} ref @param {Record<string, any>} manifest
+ */
+function holdsItsWork(cwd, ref, manifest) {
+  return stepTurn(cwd, ref.unit, manifest)?.inFlight === shownTask(ref) && fixAside().heldAside(cwd, ref).length === 0;
+}
+
 /** `task start`: refused before its phase has started, and in step or in a quick-fix beside the task in flight; else in progress — where it is not already — and in flight on the position beside any others, a quick-fix's in its one checkout, what its park set aside put back. */
 const startTask = moving('start', (_cwd, driver, root, ref) => {
   if (refuseEnded(driver, root, ref, 'only a task not yet ended is started').status !== 'in-progress') driver.start(root, ref);
@@ -867,7 +881,7 @@ const startTask = moving('start', (_cwd, driver, root, ref) => {
   refuseUnstarted(ref, manifest);
   refuseSecondInTurn(cwd, ref, manifest);
   const quickFix = quickFixBuild(manifest);
-  if (quickFix) fixBranch().refuseDirty(cwd, ref);
+  if (quickFix && !holdsItsWork(cwd, ref, manifest)) fixBranch().refuseDirty(cwd, ref);
   return () => {
     recordTask(cwd, ref.unit, taskId(ref));
     if (!quickFix) return {};
@@ -915,7 +929,6 @@ const doneTask = moving('done', (_cwd, driver, root, ref) => {
 const closing = (refuseHeld, then = () => ({})) => moving('close', (cwd, driver, root, ref, reason) => {
   refuseEnded(driver, root, ref, CLOSE_RULE);
   driver.close(root, ref, reason);
-  if (quickFixBuild(loadWorkUnitManifest(cwd, ref.unit))) fixAside().dropAside(cwd, ref);
   return fixEnd().closedRecord(cwd, ref);
 }, (cwd, ref, verb) => {
   const kept = reproducingClose(loadWorkUnitManifest(cwd, ref.unit), ref);
@@ -938,12 +951,15 @@ const closing = (refuseHeld, then = () => ({})) => moving('close', (cwd, driver,
  * what held a quick-fix's ended review open handing back to its close
  * (review-round.cjs, `handBack`).
  */
-const closeTask = closing((cwd, ref, said) => fixEnd().refuseHeld(cwd, ref, said), (cwd, ref) => reviewRound().handBack(cwd, ref.unit));
+const closeTask = closing((cwd, ref, said) => fixEnd().refuseHeld(cwd, ref, said), (cwd, ref) => {
+  if (quickFixBuild(loadWorkUnitManifest(cwd, ref.unit))) fixAside().dropAside(cwd, ref);
+  return reviewRound().handBack(cwd, ref.unit);
+});
 
 /**
  * A quick-fix's task closed by its move (workunit-move.cjs), as `task
- * close` closes it but for its end's refusal: the move lands nothing, its
- * branch set aside.
+ * close` closes it but for its end's refusal and the drop of its work set
+ * aside: the move lands nothing, its branch and that work kept (R26).
  */
 const closeForMove = closing(() => {});
 

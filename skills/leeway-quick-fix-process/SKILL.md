@@ -81,7 +81,7 @@ Append to the build's log, `.leeway/{work_unit}/build/log.md`, as the work goes:
 - What the fix was not told → `task add {work_unit} {task} --file {addition} --by {by:[orchestrator|person]}`; a builder that stops → `task stopped {work_unit} {task}`; a stuck fix → `task settle {work_unit} {task} --file {why}`.
 - A fix landing → `land open {work_unit} {task}`, `task account {work_unit} {task}`, `task done {work_unit} {task}`; a fix given up → `task close {work_unit} {task} --reason "{reason}"`.
 - A fix's short record → `quick-fix record {work_unit} {task} --file {record}`.
-- A note for later → `task note {work_unit} --file {note}`; the notes answered at the close → `quick-fix notes {work_unit} --file {path}`, its file `{findings}`, each finding `{"area": "notes", "scope": "out", "call", "text", "from"}`, `from` the notes it answers as `notes#{k}`, then `inbox` the item filed or `drop` why, and `ledger`, your call's id.
+- A note for later → `task note {work_unit} --file {note}`; the notes answered at the close → `quick-fix notes {work_unit} --file {path}` (**Closing**).
 - Your call on a note → `ledger ask {work_unit}.implementation`, `{"text", "by": "claude", "who_moved_whom": "none"}`; then `ledger decide {work_unit}.implementation --answers {question_id}`, `{"text", "why", "by": "claude", "who_moved_whom": "none"}`; a note filed → `inbox file {work_unit} --file {item}`, `{"kind", "text", "call"}`: its kind `idea`, `bug` or `quick-fix`, its text opening on its `# Title`, its call your decision's id.
 - A call or a question → `ledger ask {work_unit}.implementation [--task {task}]`, then `raise {work_unit}.implementation --answers {question_id} [--parks {task}]`; a decision that must change → `raise {work_unit}.implementation --replaces {decision_id} --reason {reason} [--parks {task}]`; what relied on it → `ledger affected {work_unit}`, `ledger hold`.
 - A question waiting → `raise waiting|draw|aside {work_unit} …`, its answer `raise answer {id} …`.
@@ -97,7 +97,7 @@ The quick-fix closes once every fix is done or closed, each done fix recorded. F
 - `inbox-closed` — the build's log names each live inbox item this work resolved, by its path, and the item stays in the inbox.
 - `build-log-closed` — the build's log ends on what the fixes came to, nothing left in flight.
 
-Where `notes-answered` stays open, the notes for later its fixes' builders and pairs left stand: each is answered by a finding out of scope, of the area `notes`, from `notes#{k}`, note {k} of `.leeway/{work_unit}/build/notes.md`, filed to the inbox or dropped by your call. Write them, `{findings}`, to `.leeway/.cache/{work_unit}/build/notes.json` and record them:
+Where `notes-answered` stays open, the notes for later its fixes' builders and pairs left stand. Answer each by one finding, filed to the inbox or dropped: `{"area": "notes", "scope": "out", "call", "text", "from": ["notes#{k}"], "inbox": "{path}", "ledger": "{id}"}`, or `"drop": "{why}"` in place of `inbox`. `notes#{k}` is note {k} of `.leeway/{work_unit}/build/notes.md`; `call` is the finding's weight, `serious`, `bug` or `nit`; `inbox` is the path `inbox file` answered; `ledger` is the id of your decision to file or drop it (**Doors**). Write them as `{"findings": […]}` to `.leeway/.cache/{work_unit}/build/notes.json` and record them:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs quick-fix notes {work_unit} --file .leeway/.cache/{work_unit}/build/notes.json
