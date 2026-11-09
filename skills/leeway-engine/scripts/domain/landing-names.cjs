@@ -170,6 +170,18 @@ function tasksOfMessage(unit, message, key = 'Task') {
 }
 
 /**
+ * The unit's tasks a commit's message names by either mark a quick-fix's
+ * landing reads (7.2.22): its `Task:` lines, then its lines naming a task
+ * by `key`, the door's stamp — a task named by both once.
+ * @param {string} unit @param {string} message @param {string} key
+ * @returns {TaskRef[]}
+ */
+function tasksNamedIn(unit, message, key) {
+  const ids = new Set([...tasksOfMessage(unit, message), ...tasksOfMessage(unit, message, key)].map(taskId));
+  return [...ids].map(parseTaskId);
+}
+
+/**
  * The unit's landings among commits, newest first, by the task each lands:
  * the newest of each task's.
  * @param {string} unit @param {{sha: string, message: string}[]} commits
@@ -202,4 +214,4 @@ function landingOf(ref, message) {
   return null;
 }
 
-module.exports = { slugOf, taskBranch, phaseBranch, quickFixBranch, pointerBranch, pointedMessage, phaseOfBranch, taskOfBranch, isWorkBranch, isUnitBranch, landedMessage, quickFixMessage, landingOf, tasksOfMessage, landingsByTask };
+module.exports = { slugOf, taskBranch, phaseBranch, quickFixBranch, pointerBranch, pointedMessage, phaseOfBranch, taskOfBranch, isWorkBranch, isUnitBranch, landedMessage, quickFixMessage, landingOf, tasksOfMessage, tasksNamedIn, landingsByTask };

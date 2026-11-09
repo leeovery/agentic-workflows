@@ -279,6 +279,21 @@ function firstParentLine(root, from, to) {
   });
 }
 
+/**
+ * The commits on `tip`'s first-parent line committed at or after the time
+ * `since` names, every one where it names none, newest first, each with
+ * its parents, space-separated, and its message.
+ * @param {string} root @param {string} tip @param {string|null} since
+ * @returns {{sha: string, parents: string, message: string}[]}
+ */
+function firstParentSince(root, tip, since) {
+  const bound = since === null ? [] : [`--since=${since}`];
+  return git(root, ['log', '--first-parent', '-z', '--format=%H%n%P%n%B', ...bound, tip, '--']).split('\0').filter(Boolean).map((entry) => {
+    const [sha, parents, ...message] = entry.split('\n');
+    return { sha, parents, message: message.join('\n') };
+  });
+}
+
 /** The message of every commit `to` holds past `from`, whatever its parent. @param {string} root @param {string} from @param {string} to @returns {string[]} */
 function messagesPast(root, from, to) {
   return git(root, ['log', '-z', '--format=%B', `${from}..${to}`]).split('\0').filter(Boolean);
@@ -401,7 +416,7 @@ function messagesNaming(root, revs, text, since = null) {
 function tasksNamedOn(root, on, unit, key, since) {
   const bound = since === null ? [] : [`--since=${since}`];
   const messages = git(root, ['log', '-z', '--format=%B', '--fixed-strings', `--grep=Task: ${unit}-`, `--grep=${key}: ${unit}-`, ...bound, revOf(root, on), '--']).split('\0').filter(Boolean);
-  return new Set(messages.flatMap((message) => [...names.tasksOfMessage(unit, message), ...names.tasksOfMessage(unit, message, key)].map(taskId)));
+  return new Set(messages.flatMap((message) => names.tasksNamedIn(unit, message, key).map(taskId)));
 }
 
 /** Every commit `to` holds past `from`, oldest first, as a refusal names it: short, then its subject. @param {string} root @param {string} from @param {string} to @returns {string[]} */
@@ -1425,7 +1440,7 @@ function landsOn(cwd, repo) {
 }
 
 module.exports = {
-  short, readOnce, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranches, holdingBranch, refsUnder, updateRefs, isAncestor, latestOf, mergeBase, treesOf, firstParentLine, messagesPast, trailersPast, stampedPast, committerTime, holdsChange, holdsTaskChange, holdsCopy, lastStamped, stampsUnit, messagesNaming, tasksNamedOn, commitsNamed, messageOf, commitWithTree, treesPast,
+  short, readOnce, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranches, holdingBranch, refsUnder, updateRefs, isAncestor, latestOf, mergeBase, treesOf, firstParentLine, firstParentSince, messagesPast, trailersPast, stampedPast, committerTime, holdsChange, holdsTaskChange, holdsCopy, lastStamped, stampsUnit, messagesNaming, tasksNamedOn, commitsNamed, messageOf, commitWithTree, treesPast,
   pointersAt, treeWithPointers, pointedLike, holdsCommit, pointerAhead, repointing, lastPointing, stackMoves, commitsPast, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, remedy, moveTo, movedSinceOpened, rewrite, scratchBlock, rebaseBlock, checkoutBlock, changesAt, pathsChanged, dirtBlock, moveBranch,
   defaultBranch, landsOn, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, fetchedCommit, nothingPast,
   worktrees, taskWorktree, mainCheckoutOf, projectCheckout, holderOf, samePlace, removing, branchInPlace, addWorktree, switchTo, removeWorktree, detach, scratchRoot, scratchTree,
