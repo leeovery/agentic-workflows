@@ -39,12 +39,12 @@ for (const { name } of listDrivers('landing')) {
       const at = project();
       built(at, 1);
       changed(at, 2);
-      changed(at, 3);
+      createFix(at, 3, SET[2].title, as());
       const phase = refuses(at, ['land', 'phase', UNIT, '1'], as()).error;
-      ok(at, ['land', 'open', UNIT, '1.3'], as());
+      ok(at, ['land', 'open', UNIT, '1.2'], as());
       const finish = refuses(at, ['land', 'finish', UNIT], as()).error;
 
-      const unended = `land: ${UNIT} closes once each of its fixes has ended — 1.2 is in progress, 1.3 is in progress: each is done once it is committed, in ${UNIT}'s pull request and passed by its pair, or closed with its reason`;
+      const unended = `land: ${UNIT} closes once each of its fixes has ended — 1.2 is in progress, 1.3 is not started: each is done once it is committed, in ${UNIT}'s pull request and passed by its pair, or closed with its reason`;
       assert.deepStrictEqual([phase, finish, landed(at)], [unended, unended, []]);
     });
 

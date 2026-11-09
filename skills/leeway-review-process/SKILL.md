@@ -155,15 +155,15 @@ The person says they are ready to talk about a waiting question, or all of them 
 
 ## A Task's Account
 
-The person asks for a task's account, a fix task's or any of the build's. Fetch `render task-account {work_unit} {task}` and emit its sections verbatim per their markers.
+The person asks for a task's account: a fix task's, any of the build's, or one of a quick-fix's fixes. Fetch `render task-account {work_unit} {task}` and emit its sections verbatim per their markers.
 
 ## The Phases and Tasks
 
-The person asks for the build's phases and tasks, the fix phases among them. Fetch `render build-progress {work_unit}` and emit its sections verbatim per their markers.
+The person asks for the build's phases and tasks, the fix phases among them — a quick-fix's, its fixes then its review's fix tasks. Fetch `render build-progress {work_unit}` and emit its sections verbatim per their markers.
 
 ## A Switch of Position
 
-The person asks to run the fix tasks in auto, or in step. Record it, `workunit position {work_unit} {position:[auto|step]}`, and say in a line that it is switched.
+The person asks to run the fix tasks in auto, or in step. Record it, `workunit position {work_unit} {position:[auto|step]}`, and say in a line that it is switched. A refusal says why it cannot switch — a quick-fix has no position: say it in a line.
 
 ## Backlogging
 

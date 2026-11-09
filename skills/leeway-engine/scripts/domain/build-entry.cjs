@@ -366,13 +366,25 @@ function standingOf(at, inFlight) {
 /**
  * Where the unit's build stands (the header's), for the conversation whose
  * tasks in flight there are given, what its reads said pushed to
- * `warnings`; refused where the project has no such unit, or its build has
- * not begun.
+ * `warnings` — a quick-fix's, its fixes begun, among them (`standingUnit`);
+ * refused where the project has no such unit, or its build has not begun.
  * @param {string} cwd @param {string} unit @param {InFlight[]} inFlight @param {string[]} [warnings]
  * @returns {BuildStanding}
  */
 function buildStanding(cwd, unit, inFlight, warnings = []) {
-  return standingOf(reading(cwd, unit, builtUnit(cwd, unit), warnings), inFlight);
+  return standingOf(reading(cwd, unit, standingUnit(cwd, unit), warnings), inFlight);
+}
+
+/**
+ * The manifest of a unit whose build a screen of where it stands reads: a
+ * quick-fix whose fixes have begun, its fixes its one phase and its
+ * review's fix tasks after it, or else one whose build has begun
+ * (`builtUnit`), refused as it refuses.
+ * @param {string} cwd @param {string} unit @returns {Record<string, any>}
+ */
+function standingUnit(cwd, unit) {
+  const manifest = workUnitNameRefusal(unit) === null ? manifestOf(stateRoot(cwd), unit) : null;
+  return manifest !== null && quickFixBuild(manifest) && fixesBegun(manifest) ? manifest : builtUnit(cwd, unit);
 }
 
 /**
@@ -688,5 +700,5 @@ const IMPLEMENTATION = Object.freeze({
 });
 
 module.exports = {
-  IMPLEMENTATION, phaseNamed, buildStanding, standingOf, buildPhases, builtUnit, cutCount, buildRecovery, ownInFlight, inFlightLines, waitingLines, takeInFlight, readingOf, codeHeld, buildLogOf,
+  IMPLEMENTATION, phaseNamed, buildStanding, standingOf, buildPhases, builtUnit, standingUnit, cutCount, buildRecovery, ownInFlight, inFlightLines, waitingLines, takeInFlight, readingOf, codeHeld, buildLogOf,
 };

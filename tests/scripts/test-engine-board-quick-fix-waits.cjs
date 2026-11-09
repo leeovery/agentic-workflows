@@ -122,8 +122,8 @@ describe('what waits on the person in a quick-fix, and its close (20.14)', () =>
   it('the mod\'s quick-fix fixture holds the shape the engine answers, its parked and its closing states between them holding every list', async () => {
     dir = working();
     atTheFixes();
+    await parkedOn('1.1', 'Should the help name both spellings?');
     run(['task', 'start', UNIT, '1.2']);
-    await parkedOn('1.2', 'Should the help name both spellings?');
     const parked = board().view;
     cleanupFixture(dir);
     dir = closable();

@@ -81,8 +81,8 @@ describe('task close <quick-fix> <fix> (R3, R14)', () => {
     fs.rmSync(path.join(dir, 'docs/late.md'));
     createFix(dir, 3, DOCS, as());
     run(['task', 'start', UNIT, '1.3']);
-    changed(4, MAN, 'docs/man.md');
     close(3);
+    createFix(dir, 4, MAN, as());
     createFile(dir, 'docs/late.md', '--colour\n');
     const late = refusedPristine(dir, ['commit', '--paths', 'docs/late.md', '--task', UNIT, '1.3', '-m', `fix(${UNIT}): spell the docs late`], as()).error;
 

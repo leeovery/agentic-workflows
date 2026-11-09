@@ -262,6 +262,8 @@ describe('the quick-fix\'s fix, built in the project\'s own checkout (12.7.8, 19
     dir = entered();
     const cut = [branchOut(), sha(BRANCH) === sha('main')];
     commitFix();
+    ok(dir, ['land', 'open', UNIT, '1.1']);
+    fixDone(dir, '1.1', { env: env() });
     const built = sha(BRANCH);
     createFix(dir, 2, SECOND);
     createFile(dir, 'src/help.js', 'const help = 1;\n');
@@ -356,6 +358,8 @@ describe('the quick-fix\'s fix, built in the project\'s own checkout (12.7.8, 19
   it('land open refuses a fix the tracker holds with no type, naming the verb that gives it one, and opens it once given (7.2.18); land phase refuses a phase the quick-fix does not hold, naming land finish', () => {
     dir = entered();
     commitFix();
+    ok(dir, ['land', 'open', UNIT, '1.1']);
+    fixDone(dir, '1.1', { env: env() });
     createFix(dir, 2, SECOND);
     SIDE.typeCleared(statePath(dir), SECOND);
     ok(dir, ['task', 'start', UNIT, '1.2'], { env: env() });
@@ -370,6 +374,13 @@ describe('the quick-fix\'s fix, built in the project\'s own checkout (12.7.8, 19
       '1.2',
       `land: ${UNIT} has no phase 7 — a quick-fix lands as one pull request, every phase it holds with it: land finish ${UNIT}`,
     ]);
+  });
+
+  it('19.5.23: has no position to switch, its fixes running as in auto', () => {
+    dir = entered();
+
+    assert.strictEqual(refusedPristine(dir, ['workunit', 'position', UNIT, 'step']).error,
+      `workunit position: ${UNIT} is a quick-fix, which has no position: its fixes and its review's fix tasks run as in auto, its close its one gate (19.5.23)`);
   });
 
   it('the last of the fixes closed, another done, names no mutation run, there being no phase review (15.6.3)', () => {
@@ -399,6 +410,33 @@ describe('a raise at the quick-fix\'s place (19.5.25, E5)', () => {
 
     assert.deepStrictEqual([res.decision, res.redrawn, Object.keys(seals() ?? {}).length > 0, entries().length], ['ask', false, true, before]);
     assert.match(sections, new RegExp(`=== MENU: raise — ${res.raise} `));
+  });
+
+  it('19.5.23: one task at a time in the one checkout — a fix\'s start refused while another is in flight, naming it, and taken once that one is parked on a question', async () => {
+    dir = entered();
+    createFix(dir, 2, SECOND);
+    const refused = refusedPristine(dir, ['task', 'start', UNIT, '1.2'], { env: env() }).error;
+    await okSectionsAsync(dir, ['raise', PLACE, '--answers', asked.alias, '--parks', '1.1'], { env: conversation(), stdin: JSON.stringify(CALL) });
+    const started = ok(dir, ['task', 'start', UNIT, '1.2'], { env: env() });
+
+    assert.deepStrictEqual([refused, started.task], [
+      `task start: ${UNIT} builds one task at a time, in the project's one checkout on its one branch — task 1.1 is in flight, and task 1.2 starts once it is done or closed, or a question parks it`, '1.2',
+    ]);
+  });
+
+  it('12.13.22: the stop report serves a quick-fix — refused while a fix no question parks can go on, naming it; once every fix left waits, the fixes stopped, the questions first, its marker the quick-fix\'s with no position', async () => {
+    dir = entered();
+    createFix(dir, 2, SECOND);
+    await okSectionsAsync(dir, ['raise', PLACE, '--answers', asked.alias, '--parks', '1.1'], { env: conversation(), stdin: JSON.stringify(CALL) });
+    const goesOn = refusedPristine(dir, ['render', 'build-stop', UNIT], { env: env() }).error;
+    ok(dir, ['task', 'close', UNIT, '1.2', '--reason', 'The help spells it right already.'], { env: env() });
+    const stop = output(dir, ['render', 'build-stop', UNIT], { env: env() });
+
+    assert.strictEqual(goesOn, `render build-stop: ${UNIT}'s build goes on with task 1.2, which no question parks — it stops only where nothing can go on without the person's answer (12.13.22)`);
+    assert.ok(stop.includes('**`□ Quick-fix`**\n'), stop);
+    assert.ok(stop.includes('⚑ The fixes have stopped: nothing more can be built until you answer\n'), stop);
+    assert.match(stop, /⚑ Q1 Should --color still work\? · parks 1\.1\n/);
+    assert.match(stop, /Phase 1 of 1 · the fixes[^\n]*\n.*⚑ 1\.1 [^\n]*\[waits on Q1\]/);
   });
 
   it('a fix\'s builder\'s question parks its fix, drawing nothing in the conversation; the entry reads the fix parked and the question waiting', async () => {

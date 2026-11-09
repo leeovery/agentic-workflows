@@ -36,7 +36,10 @@
 // step for any task but the one in flight or at its gate — in progress in any
 // phase written, the review's fixes past the cut among them, here or in
 // another conversation, no question parking it, and ahead of any other going
-// on (12.7.9) — puts the task in flight on the conversation's position,
+// on (12.7.9) — and for a quick-fix, whose fixes and its review's fix tasks
+// are all built in the project's one checkout on its one branch, beside any
+// other of its tasks in flight, in progress with no question parking it
+// (19.5.23) — puts the task in flight on the conversation's position,
 // beside any others in flight there — a task already in flight kept as it
 // stands, its builder and reviewers with it; a quick-fix's task, built in
 // the project's own checkout, puts that checkout on the quick-fix's one
@@ -839,13 +842,29 @@ function refuseSecondInStep(cwd, ref, manifest) {
   throw new Error(`task start: ${ref.unit} builds in step, one task at a time — task ${turn.inFlight} is in flight or at its gate, and the next starts once the person's go there is given and it is done`);
 }
 
-/** `task start`: refused before its phase has started, and in step beside another task; else in progress — where it is not already — and in flight on the position beside any others. */
+/**
+ * For a quick-fix, refuse a task beside another of its tasks in flight —
+ * in progress, with no question waiting parking it, in any phase it has
+ * written: its fixes and its review's fix tasks are all built in the
+ * project's one checkout, on its one branch, one at a time (19.5.23).
+ * @param {string} cwd @param {TaskRef} ref @param {Record<string, any>} manifest
+ */
+function refuseSecondInQuickFix(cwd, ref, manifest) {
+  if (!quickFixBuild(manifest)) return;
+  const shown = shownTask(ref);
+  const other = goingOn(cwd, ref.unit, manifest).tasks.find((task) => task !== shown);
+  if (other === undefined) return;
+  throw new Error(`task start: ${ref.unit} builds one task at a time, in the project's one checkout on its one branch — task ${other} is in flight, and task ${shown} starts once it is done or closed, or a question parks it`);
+}
+
+/** `task start`: refused before its phase has started, in step beside another task, and in a quick-fix beside another of its tasks; else in progress — where it is not already — and in flight on the position beside any others. */
 const startTask = moving('start', (_cwd, driver, root, ref) => {
   if (refuseEnded(driver, root, ref, 'only a task not yet ended is started').status !== 'in-progress') driver.start(root, ref);
 }, (cwd, ref) => {
   const manifest = loadWorkUnitManifest(cwd, ref.unit);
   refuseUnstarted(ref, manifest);
   refuseSecondInStep(cwd, ref, manifest);
+  refuseSecondInQuickFix(cwd, ref, manifest);
   const quickFix = quickFixBuild(manifest);
   if (quickFix) fixBranch().refuseDirty(cwd, ref);
   return () => {

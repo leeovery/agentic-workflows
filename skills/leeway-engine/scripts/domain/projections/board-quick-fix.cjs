@@ -129,7 +129,7 @@ const ledgerAt = (at) => at.once('quick-fix-ledger', () => readShown(at.root, at
       const replaced = replacing(id);
       if (replaced === null) return [];
       const { unit } = madeOn(folded, replaced);
-      return [{ id: short(replaced), text: String(show(replaced).text), by: factsOf(folded, replaced).by === 'person' ? /** @type {const} */ ('person') : /** @type {const} */ ('claude'), unit, unit_title: titlecase(unit) }];
+      return [{ id: short(replaced), text: String(show(replaced).text), by: factsOf(folded, replaced).by === 'person' ? /** @type {const} */ ('person') : /** @type {const} */ ('claude'), unit_title: titlecase(unit) }];
     }),
     raised: [
       ...askedOpenIds(folded, at.unit).map((id) => ({ kind: /** @type {const} */ ('raised'), id: short(id), text: String(show(id).text).replace(/\s+/g, ' ').trim(), page: null })),
@@ -195,7 +195,7 @@ function quickFixView(at, waiting) {
       waiting,
       fixes,
       calls,
-      replaces: replaces.map(({ id, text, by, unit_title: title }) => ({ id, text, by, unit_title: title })),
+      replaces,
       record: recordOf(at, fixes),
     },
     questions: questionsOf(standingAt(at)),

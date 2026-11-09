@@ -20,8 +20,7 @@ require('./hermetic-env.cjs');
 
 const { describe, it, afterEach } = require('node:test');
 const assert = require('node:assert');
-const fs = require('fs');
-const { ok, okSectionsAsync, statePath, readManifest, cleanupFixture } = require('./engine-harness.cjs');
+const { ok, okSectionsAsync, readManifest, cleanupFixture } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const { ledgerReadHelpers } = require('./ledger-world.cjs');
 const { UNIT } = require('./quick-fix-world.cjs');
@@ -148,21 +147,9 @@ describe('a quick-fix in its review stands in review on every view (20.2.4, 20.1
   });
 });
 
-/**
- * A question the review's fix task `task` parks on, raised at the review.
- * `raise` refuses `--parks` at a quick-fix today (15.6's E5), so the park is
- * made as the build makes one, the unit read as a build for the raise alone.
- * @param {string} task @param {string} question
- */
+/** A question the review's fix task `task` parks on, its builder's, raised at the review. @param {string} task @param {string} question */
 async function parkedAtReview(task, question) {
-  const file = statePath(dir, UNIT, 'manifest.json');
-  const held = fs.readFileSync(file, 'utf8');
-  fs.writeFileSync(file, JSON.stringify({ ...JSON.parse(held), work_type: 'feature', build: { position: 'auto' } }));
-  try {
-    const at = `${UNIT}.review`;
-    const asked = ledgerReadHelpers(() => dir).ask(at, question);
-    await okSectionsAsync(dir, ['raise', at, '--answers', asked, '--parks', task], { env: env(), stdin: JSON.stringify({ ...CALL, question }) });
-  } finally {
-    fs.writeFileSync(file, held);
-  }
+  const at = `${UNIT}.review`;
+  const asked = ledgerReadHelpers(() => dir).ask(at, question);
+  await okSectionsAsync(dir, ['raise', at, '--answers', asked, '--parks', task], { env: env(), stdin: JSON.stringify({ ...CALL, question }) });
 }

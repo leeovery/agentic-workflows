@@ -7,7 +7,9 @@
 // - the step marker, `□ Build (phase N of M) · {position}`, the phase the
 //   first of the build's not yet closed — once the cut is through, the
 //   review's, `□ Review[ (the review's fixes, round k)] · {position}`, the
-//   first of its fix phases not closed named while one is open (3.3.10);
+//   first of its fix phases not closed named while one is open (3.3.10); a
+//   quick-fix's, which has no position, `□ Quick-fix`, and once its review
+//   was asked for, `□ Quick-fix review[ (the review's fixes, round k)]`;
 // - the headline as work starts: the tasks started together in one block,
 //   each with its number, title and phase, what it is about to change and
 //   what to watch when it lands, those two Claude's (12.12.4);
@@ -88,11 +90,16 @@ function currentPhase({ phases }) {
 /** A phase's number as the marker and the tree give it: one of the cut's with the cut's count, a fix phase's alone. @param {StandingPhase} phase @param {number} of */
 const numbered = ({ phase, round }, of) => (round === null ? `${phase} of ${of}` : `${phase}`);
 
-/** The step marker, naming the build's phase — a fix phase by its round — and position (3.3.10). @param {BuildStanding} standing */
-function markerSection(standing) {
+/**
+ * The step marker, naming the build's phase — a fix phase by its round —
+ * and position (3.3.10); a quick-fix's, which has no position, naming it.
+ * @param {BuildStanding} standing @param {boolean} quickFix
+ */
+function markerSection(standing, quickFix) {
   const current = currentPhase(standing);
+  const at = current.round !== null && !closedPhase(current) ? ` (${current.name})` : '';
+  if (quickFix) return section('DISPLAY: build marker', CONTINUE_MARKDOWN_INSTRUCTION, `**\`□ Quick-fix${standing.finished ? ` review${at}` : ''}\`**`);
   if (standing.finished) {
-    const at = current.round !== null && !closedPhase(current) ? ` (${current.name})` : '';
     return section('DISPLAY: build marker', CONTINUE_MARKDOWN_INSTRUCTION, `**\`□ Review${at} · ${standing.position}\`**`);
   }
   return section('DISPLAY: build marker', CONTINUE_MARKDOWN_INSTRUCTION, `**\`□ Build (phase ${numbered(current, cutCount(standing))}) · ${standing.position}\`**`);
@@ -291,7 +298,7 @@ function headlineScreen(standing, started) {
     title: `${task} ${title}`,
     body: [`Phase ${phase} · ${name}`, { text: `About to change: ${changes}`, hang: 2 }, { text: `Watch when it lands: ${watch}`, hang: 2 }],
   })), { width: WIDTH, gap: true, wrapTitles: true });
-  return markerSection(standing) + section('DISPLAY: build headline', CONTINUE_INSTRUCTION, `▪ Starting ${counted(started.length, 'task')}\n\n${tree}`);
+  return markerSection(standing, false) + section('DISPLAY: build headline', CONTINUE_INSTRUCTION, `▪ Starting ${counted(started.length, 'task')}\n\n${tree}`);
 }
 
 /** What holds a task, or where it stands. @param {StandingTask} task */
@@ -332,9 +339,15 @@ function taskCounts({ phases }) {
   return `${tasks.filter(({ status }) => status === 'done').length} of ${counted(tasks.length, 'task')} done · ${running} running`;
 }
 
-/** The build's phases and tasks, each with its state and what holds it (12.12.11). @param {BuildStanding} standing @param {Finished} finished */
-function progressScreen(standing, finished) {
-  return markerSection(standing) + section('DISPLAY: build progress', CONTINUE_INSTRUCTION, `${taskCounts(standing)}\n\n${phaseTree(standing, finished)}`);
+/** The build's phases and tasks, each with its state and what holds it (12.12.11) — a quick-fix's where `quickFix` says. @param {BuildStanding} standing @param {Finished} finished @param {boolean} [quickFix] */
+function progressScreen(standing, finished, quickFix = false) {
+  return markerSection(standing, quickFix) + section('DISPLAY: build progress', CONTINUE_INSTRUCTION, `${taskCounts(standing)}\n\n${phaseTree(standing, finished)}`);
+}
+
+/** What has stopped: the review, a quick-fix's fixes, or the build. @param {boolean} reviewing @param {boolean} quickFix */
+function stoppedWords(reviewing, quickFix) {
+  if (reviewing) return '⚑ The review has stopped: nothing more can go on until you answer';
+  return quickFix ? '⚑ The fixes have stopped: nothing more can be built until you answer' : '⚑ The build has stopped: nothing more can be built until you answer';
 }
 
 /** Each question's tasks, and the tasks waiting after those, that its answer lets run. @param {BuildStanding} standing */
@@ -355,20 +368,20 @@ function afterAnswers(standing) {
 
 /**
  * The stop report, when nothing can go on without an answer (12.12.9): the
- * build stopped — the review, once every phase of the cut has closed — the
- * questions waiting first, what was built, and what each answer lets run.
- * @param {BuildStanding} standing @param {Finished} finished
+ * build stopped — a quick-fix's fixes, where `quickFix` says; the review,
+ * once every phase of the cut has closed or a quick-fix's review was asked
+ * for — the questions waiting first, what was built, and what each answer
+ * lets run.
+ * @param {BuildStanding} standing @param {Finished} finished @param {boolean} [quickFix]
  */
-function stopScreen(standing, finished) {
-  const stopped = section('DISPLAY: build stop', emitAs('properties'), standing.finished
-    ? '⚑ The review has stopped: nothing more can go on until you answer'
-    : '⚑ The build has stopped: nothing more can be built until you answer');
+function stopScreen(standing, finished, quickFix = false) {
+  const stopped = section('DISPLAY: build stop', emitAs('properties'), stoppedWords(standing.finished, quickFix));
   const report = [
     waitingBlock(standing.waiting),
     block('WHAT WAS BUILT', `  ${taskCounts(standing)}\n${phaseTree(standing, finished)}`),
     block('WHAT RUNS ONCE YOU ANSWER', afterAnswers(standing)),
   ].join('\n\n');
-  return markerSection(standing) + stopped + section('DISPLAY: build stop report', CONTINUE_INSTRUCTION, report);
+  return markerSection(standing, quickFix) + stopped + section('DISPLAY: build stop report', CONTINUE_INSTRUCTION, report);
 }
 
 module.exports = { landingScreen, accountScreen, stepGateScreen, phaseMergeGateScreen, headlineScreen, progressScreen, stopScreen, currentPhase };
