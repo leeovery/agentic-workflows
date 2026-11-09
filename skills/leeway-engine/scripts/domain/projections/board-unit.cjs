@@ -49,7 +49,8 @@
 //   the discussion on its decisions, and a bug's investigation on its own
 //   view, concluded (board-investigation.cjs).
 // - Lately is the unit's moments, newest first, the latest `LATELY_SHOWN`:
-//   from the state's history (state-history.cjs), its spec's review passes
+//   from the state's history (state-history.cjs), a bugfix's hunt
+//   (board-investigation.cjs), its spec's review passes
 //   (board-spec.cjs) and, once its build has begun, from its build
 //   (board-build.cjs), each topic by its title, the spec landed with its
 //   sections and phases cut, each
@@ -77,7 +78,7 @@ const { passMoments, reportedOf, specDoing } = require('./board-spec.cjs');
 const { sentBy } = require('./board-discussion.cjs');
 const { mapCount, textOf } = require('./board-discovery.cjs');
 const { phasesAt, nowOf, waitingOn, standingOf, holds, closedOn, startedOf, pastDiscovery } = require('./board-standing.cjs');
-const { investigationView, investigationDoing, hypothesesCount } = require('./board-investigation.cjs');
+const { investigationView, investigationDoing, hypothesesCount, huntMoments } = require('./board-investigation.cjs');
 const { quickFixWords } = require('./board-quick-fix.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
@@ -182,7 +183,7 @@ const sentSince = (at, oldest) => (oldest.kind === 'sent' ? oldest.at : dayBefor
 
 /** The unit's moments, newest first, the latest shown (the header's). @param {BoardAt} at @returns {Moment[]} */
 function latelyOf(at) {
-  const moments = [...unitHistory(at.cwd, at.unit), ...passMoments(at), ...(buildBegun(at.manifest) ? buildMoments(at) : [])].sort((a, b) => b.at.localeCompare(a.at));
+  const moments = [...unitHistory(at.cwd, at.unit), ...huntMoments(at), ...passMoments(at), ...(buildBegun(at.manifest) ? buildMoments(at) : [])].sort((a, b) => b.at.localeCompare(a.at));
   const mail = moments.filter(({ kind }) => kind === 'sent' || kind === 'answered');
   const oldest = mail.at(-1);
   const senders = oldest === undefined ? new Map() : sendersOf(at, sentSince(at, oldest));
