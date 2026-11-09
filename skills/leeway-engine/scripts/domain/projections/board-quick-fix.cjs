@@ -17,8 +17,8 @@
 //   read. An earlier round's report that does not read leaves the fix's
 //   rounds untold, said among the warnings.
 // - Where it stands: the close waiting on the person once its screen draws
-//   (finish.cjs, `closeVerdicts`); else working — stopped where every fix
-//   not ended waits on a question, never while the close waits, as the
+//   (finish.cjs, `closeVerdicts`); else working — stopped where nothing of
+//   its fixes can go on without an answer, by the build's rule, as the
 //   unit's standing reads it (board-standing.cjs, `tasksStopped`). Once a
 //   review is asked for at its close, it stands in the review as any unit
 //   does (board-review.cjs); once it closes, This session follows the
@@ -102,12 +102,6 @@ function progressOf(fixes) {
 /** Whether a fix has ended: done, or closed without being done. @param {FixLine} fix */
 const ended = ({ state }) => state === 'done' || state === 'closed';
 
-/** Whether every fix not ended waits on a question, one at least. @param {FixLine[]} fixes */
-function everyLeftParked(fixes) {
-  const left = fixes.filter((fix) => !ended(fix));
-  return left.length > 0 && left.every(({ state }) => state === 'waits');
-}
-
 /**
  * What the ledger holds of the quick-fix, in one read: every current call
  * of Claude's made in it, each decision made there replacing another
@@ -160,9 +154,6 @@ const closeWait = (at) => at.once('quick-fix-close', () => {
   return verdicts === null ? null : { kind: 'finish', id: 'close', text: `Close: what was proven; ${verdictWords(verdicts)}`, page: null };
 });
 
-/** Whether a quick-fix's fixes have stopped (the header's). @param {BoardAt} at */
-const fixesStopped = (at) => closeWait(at) === null && everyLeftParked(fixesAt(at));
-
 /** Where the quick-fix stands (the header's). @param {BoardAt} at @returns {QuickFixView['standing']} */
 const standingOf = (at) => (closeWait(at) === null ? 'working' : 'close');
 
@@ -208,8 +199,8 @@ function quickFixView(at, waiting) {
 const fixesWords = ({ done, total, written }) => (written ? `${done} of ${total} done` : 'no fix written yet');
 
 /**
- * The banner's facts in a quick-fix (20.2.4): the type, stopped where every
- * fix left waits on a question, as the unit's standing reads it, and its
+ * The banner's facts in a quick-fix (20.2.4): the type, stopped where
+ * nothing of its fixes can go on, as the unit's standing reads it, and its
  * fixes done of all; what waits on the person is counted by the board
  * (board.cjs).
  * @param {QuickFixView} view @param {boolean} stopped @returns {{state: 'running'|'needs', facts: import('../board-model.cjs').Fact[]}}
@@ -224,4 +215,4 @@ function quickFixBanner({ type, progress }, stopped) {
 /** How far a quick-fix's fixes have come, as its tab and All work say it. @param {BoardAt} at */
 const quickFixWords = (at) => fixesWords(progressOf(fixesAt(at)));
 
-module.exports = { quickFixView, quickFixBanner, raisedWaits, closeWait, fixesStopped, quickFixWords };
+module.exports = { quickFixView, quickFixBanner, raisedWaits, closeWait, quickFixWords };

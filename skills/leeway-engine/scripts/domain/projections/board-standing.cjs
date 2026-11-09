@@ -31,9 +31,8 @@
 //   of a type the reshape retires, the migration's cut it waits on (E6).
 // - How the phase it is in stands: stopped where nothing of its tasks can
 //   go on without an answer — its build's, the review's round and fix tasks
-//   among it, a quick-fix's review's alike (board-build.cjs), or, before a
-//   quick-fix's review, every fix it has left waiting on a question
-//   (board-quick-fix.cjs) — worked out once, which every view reads
+//   among it, a quick-fix's fixes and its review's alike, by the build's
+//   rule (board-build.cjs) — worked out once, which every view reads
 //   (`tasksStopped`); waiting on the person where something asked in the
 //   conversation and holding it waits — the map, an investigation's raise
 //   or its conclude, a gap, ready to build's yes, finish or a quick-fix's
@@ -70,7 +69,7 @@ const { finishDraws } = require('../finish.cjs');
 const { buildView } = require('./board-build.cjs');
 const { specWaits } = require('./board-spec.cjs');
 const { investigationWaits } = require('./board-investigation.cjs');
-const { raisedWaits, closeWait, fixesStopped } = require('./board-quick-fix.cjs');
+const { raisedWaits, closeWait } = require('./board-quick-fix.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
 /** @typedef {import('../board-model.cjs').UnitNow} UnitNow */
@@ -252,16 +251,11 @@ const holds = ({ kind }) => kind !== 'question' && kind !== 'raised';
 
 /**
  * Whether nothing of the unit's tasks can go on without an answer (the
- * header's): its build's, the review's round and fix tasks among it, a
- * quick-fix's review's alike (board-build.cjs), or a quick-fix's fixes
- * before its review (board-quick-fix.cjs); read once a call.
+ * header's), by the build's rule (board-build.cjs) whatever the type; read
+ * once a call.
  * @param {BoardAt} at @returns {boolean}
  */
-const tasksStopped = (at) => at.once('stopped', () => {
-  if (!tasksBegun(at.manifest)) return false;
-  if (quickFixBuild(at.manifest) && !reviewAsked(at.manifest)) return fixesStopped(at);
-  return buildView(at).view.progress.stopped;
-});
+const tasksStopped = (at) => at.once('stopped', () => tasksBegun(at.manifest) && buildView(at).view.progress.stopped);
 
 /** How the phase the unit is in stands (the header's). @param {BoardAt} at @returns {PhaseStanding} */
 function standingOf(at) {
