@@ -64,6 +64,23 @@
 // - Finish: the phase merged next, the lowest not merged that stacks on no
 //   phase not merged; the seam makes each merge in turn (landing.cjs), and
 //   then every opened ref the unit has is dropped.
+// - A quick-fix (landing.cjs): in each repository it touches, its one pull
+//   request is a ref of the unit's (`refs/leeway/quick-fix/{unit}/open`) at
+//   the commit its branch was opened at — the host's copy of the branch,
+//   which the seam takes where the branch here is gone — opening it again
+//   moving the ref to the branch as it stands, `already` where it stands
+//   there. Its merge squashes the branch onto the default branch as one
+//   commit under its landing's message, as GitHub squashes a pull request —
+//   each submodule the branch moves pointed at its landing, every other as
+//   the default branch points it, so git never merges two moves of one —
+//   and moves the default branch to it, refused,
+//   nothing moved, where the squash conflicts, naming the way on, or the
+//   default branch is out with changes in the way; the opening is then
+//   dropped, as it is alone where there is nothing to merge, and the head
+//   merged kept under `merged/{landing}`, as GitHub keeps a merged pull
+//   request's, so a fix reverted after it landed still reads as landed. A
+//   merge by hand is the seam's to read off the default branch. A move
+//   closes it, its opening dropped.
 //
 // Every refusal says the way on, its commands fitted to the repository as
 // it stands (landing-git.cjs).
@@ -109,6 +126,7 @@ const { messageOf } = require('../../../kernel/call.cjs');
  */
 
 const OPENED = 'refs/leeway/opened/';
+const QUICK_FIX = 'refs/leeway/quick-fix/';
 
 /** A commit as a refusal names it. @param {Commit} commit */
 const named = (commit) => `${lg.short(commit.sha)} "${lg.plain(commit.message.split('\n')[0])}"`;
@@ -641,6 +659,85 @@ function nextMerge(ctx) {
   return next === undefined ? null : { phase: next.phase, merge: () => mergeStack(ctx, refs, stacks, next) };
 }
 
+/** The quick-fix's landing as the seam gives it (landing.cjs). @typedef {import('../../../domain/landing.cjs').QuickFixTask} QuickFixTask */
+/** The quick-fix's pull request as the seam reads it (landing.cjs). @typedef {import('../../../domain/landing.cjs').QuickFixPull} QuickFixPull */
+
+/** Where the unit's quick-fix refs live: `open`, and `merged/{landing}` for each merge (the header's). @param {string} unit */
+const quickFixUnder = (unit) => `${QUICK_FIX}${unit}/`;
+
+/**
+ * The quick-fix's pull request (the header's): where its branch was opened,
+ * null where it is not, which is the host's copy of it, and where it was
+ * at each merge; never closed by hand.
+ * @param {LandingContext} ctx @returns {QuickFixPull}
+ */
+function quickFixPull(ctx) {
+  const held = lg.refsUnder(ctx.root, quickFixUnder(ctx.unit));
+  const open = held.get('open') ?? null;
+  return { open, merged: [...held].filter(([name]) => name.startsWith('merged/')).map(([, head]) => head), head: open, closed: null };
+}
+
+/**
+ * The quick-fix opened at its branch as it stands — `already` where it is.
+ * @param {LandingContext} ctx @param {QuickFixTask} landing
+ * @returns {{already?: true}}
+ */
+function openQuickFix(ctx, landing) {
+  const at = /** @type {string} */ (lg.branches(ctx.root).get(landing.branch));
+  if (quickFixPull(ctx).open === at) return { already: true };
+  lg.updateRefs(ctx.root, { set: [[`${quickFixUnder(ctx.unit)}open`, at]] });
+  return {};
+}
+
+/**
+ * The quick-fix closed for its move (the header's), its opening dropped
+ * where it is open: whether this call closed it.
+ * @param {LandingContext} ctx @returns {{closed: boolean}}
+ */
+function closeQuickFix(ctx) {
+  if (quickFixPull(ctx).open === null) return { closed: false };
+  lg.updateRefs(ctx.root, { drop: [`${quickFixUnder(ctx.unit)}open`] });
+  return { closed: true };
+}
+
+/**
+ * The quick-fix merged (the header's): its branch squashed onto the default
+ * branch as one commit under its landing's message — each submodule it
+ * moves pointed at its landing, every other as the default branch points
+ * it — the default branch moved to it, then its opening dropped and the
+ * head it merged kept; refused, nothing moved, where the squash conflicts
+ * or the default branch cannot move. With nothing to land, its opening is
+ * dropped alone.
+ * @param {LandingContext} ctx @param {QuickFixTask|null} landing
+ */
+function mergeQuickFix(ctx, landing) {
+  const { root, into } = ctx;
+  const opening = `${quickFixUnder(ctx.unit)}open`;
+  const forget = (/** @type {[string, string][]} */ set = []) => lg.updateRefs(root, { set, drop: quickFixPull(ctx).open === null ? [] : [opening] });
+  if (landing === null) {
+    forget();
+    return { into, already: /** @type {const} */ (true) };
+  }
+  const refs = lg.branches(root);
+  const intoTip = /** @type {string} */ (refs.get(into));
+  const at = /** @type {string} */ (refs.get(landing.branch));
+  const base = lg.mergeBase(root, intoTip, at);
+  const merged = lg.mergeTree(root, ctx.gitlinks.length === 0 ? base : lg.pointedLike(root, base, at, ctx.gitlinks), intoTip, at);
+  if ('conflicts' in merged) {
+    throw new Error(`land: ${landing.branch} conflicts with ${into} at ${merged.conflicts.map(lg.plain).join(', ')}, so nothing moved — merge ${into} into ${landing.branch}, settling the conflict, and land again`);
+  }
+  const tree = landing.pointers.size === 0 ? merged.tree : lg.treeWithPointers(root, merged.tree, landing.pointers);
+  const commit = lg.commitTree(root, { tree, parent: intoTip, message: landing.message, signed: lg.signs(root) }, `${ctx.unit}'s squash onto ${into}`, 'land again');
+  try {
+    lg.moveBranch(root, into, intoTip, commit);
+  } catch (err) {
+    if (!(err instanceof GitError)) throw err;
+    throw new Error(`land: ${into} could not move (${errorSaid(err)}), so nothing moved — clear what git names and land again`);
+  }
+  forget([[`${quickFixUnder(ctx.unit)}merged/${commit}`, at]]);
+  return { into, merged: landing.tasks, commit };
+}
+
 module.exports = {
   kind: 'landing',
   name: 'local',
@@ -653,5 +750,9 @@ module.exports = {
   chain,
   mergePhase,
   nextMerge,
+  quickFixPull,
+  openQuickFix,
+  mergeQuickFix,
+  closeQuickFix,
   finished: (/** @type {LandingContext} */ ctx) => forgetOpened(ctx, () => true),
 };

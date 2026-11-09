@@ -5,8 +5,9 @@
 // (pipeline-world.cjs) runs over the whole state after every mutation a
 // scenario makes —
 //   - every manifest parses and is schema-valid (statuses in vocabulary,
-//     discovery items status-less, no phase-named shadow roots), the
-//     project's keeping the project_id setup gave it,
+//     discovery items status-less, no phase-named shadow roots, a
+//     quick-fix's record naming each nested repository it touched once),
+//     the project's keeping the project_id setup gave it,
 //   - every derivation (lifecycle, phaseStatus, next-phase) computes without
 //     throwing for every item,
 //   - every navigation gateway (start, the continue menus, bridge) reads
@@ -167,6 +168,14 @@ function auditState(dir, label) {
     }
 
     auditImports(manifest.imports, wu);
+
+    // A quick-fix's record names each nested repository its fixes committed
+    // in once, by its folder, each a repository of the project's.
+    if (manifest.fixes?.repos !== undefined) {
+      const { repos } = manifest.fixes;
+      assert.ok(Array.isArray(repos) && new Set(repos).size === repos.length, ctx(`${wu}: fixes.repos ${JSON.stringify(repos)} is not a list naming each repository once`));
+      for (const repo of repos) assert.ok(fs.existsSync(path.join(dir, repo, '.git')), ctx(`${wu}: fixes.repos names ${repo}, no repository of the project's`));
+    }
 
     // No phase-named shadow roots beside `phases`.
     for (const key of Object.keys(manifest)) {

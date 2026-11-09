@@ -6,8 +6,9 @@
 // taking a unit whose build runs by its cut — and its recovery note
 // (position.cjs), which re-reads what the entry reads (24.2.2).
 //
-// It refuses what the build's entry refuses — a quick-fix, a unit built
-// under the old plan, a build not begun — and a build not finished: the
+// It refuses what the build's entry refuses — a unit built under the old
+// plan, a build not begun — a quick-fix, whose review runs only once the
+// person asks for one at its close (19.5.14), and a build not finished: the
 // review phase starts once every phase of the cut has closed
 // (`buildFinished`, 14.6.1), and the refusal names each phase not closed;
 // in step, once each has merged too, its stack merging at its gate first
@@ -58,7 +59,7 @@
 const { ENGINE_COMMAND, ENGINE_RUN, messageOf } = require('../kernel/call.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
-const { buildFinished, phaseClosed, buildRefusal, cutPhases, cutLength } = require('./derivations.cjs');
+const { buildFinished, phaseClosed, buildRefusal, quickFixReviewRefusal, cutPhases, cutLength } = require('./derivations.cjs');
 const { reading, reposOf, mergeWaiting } = require('./phase-checks.cjs');
 const {
   codeHeld, buildLogOf, buildStanding, ownInFlight, inFlightLines, waitingLines, takeInFlight, readingOf,
@@ -83,13 +84,13 @@ const {
 
 /**
  * Why the unit's review phase cannot be entered, with its way on, or null
- * where it can: the build's refusals, then a build not finished, then in
- * step a stack of the cut waiting at its merge gate.
+ * where it can: the build's refusals, a quick-fix's, then a build not
+ * finished, then in step a stack of the cut waiting at its merge gate.
  * @param {Reading} at @returns {string|null}
  */
 function reviewRefusal(at) {
   const { manifest } = at;
-  const refused = buildRefusal(manifest);
+  const refused = buildRefusal(manifest) ?? quickFixReviewRefusal(manifest);
   if (refused !== null) return refused;
   const { name } = manifest;
   if (buildFinished(manifest)) {

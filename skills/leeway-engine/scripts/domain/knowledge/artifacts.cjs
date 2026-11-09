@@ -14,6 +14,13 @@
 // ledger's render writes each record that holds something and removes the
 // rest.
 //
+// A quick-fix's short record after the work, its `{unit}/summary.md`
+// (22.6.9, 19.5.6), is indexed as its unit's own, its identity's topic
+// `.unit`, each fix's record under its own heading a chunk of its own, so a
+// query for one fix finds that fix's record (19.5.17). It is no phase's
+// item, so only its file gone, or its unit cancelled or unregistered,
+// retires it.
+//
 // The knowledge base's root is the state root, and an artifact is named by
 // its path from there — state-relative, so an identity never moves when the
 // checkout does, and never carries the state directory's name.
@@ -36,12 +43,19 @@ const { isIndexableImport, importArtifact } = require('../import-landing.cjs');
 
 const ANALYSIS_PATH = /^([^/]+)\/\.state\/(.+)$/;
 const PHASE_PATH = /^([^/]+)\/(investigation|imports|seeds)\/(.+)$/;
+const SUMMARY_PATH = /^([^/]+)\/summary\.md$/;
 
 /** The phase a record's chunks carry. */
 const RECORD_PHASE = 'record';
 
-/** The topic of the identity of a unit's own record. */
+/** The phase a quick-fix's short record's chunks carry. */
+const SUMMARY_PHASE = 'summary';
+
+/** The topic of the identity of a unit's own record, and of its short record. */
 const UNIT_RECORD = '.unit';
+
+/** A quick-fix's short record after the work, state-relative (4.11.6). @param {string} unit */
+const summaryFile = (unit) => `${unit}/summary.md`;
 
 /**
  * Phases whose completed artifact is indexed, with the artifact path per
@@ -54,7 +68,7 @@ const INDEXED_ARTIFACTS = {
 };
 
 /** Every phase a chunk can carry — each has a chunking config. */
-const INDEXED_PHASES = ['investigation', 'imports', 'seeds', 'analysis', RECORD_PHASE];
+const INDEXED_PHASES = ['investigation', 'imports', 'seeds', 'analysis', RECORD_PHASE, SUMMARY_PHASE];
 
 // The indexable files under `{wu}/.state/`, each basename mapped
 // to its topic — the directory also holds operational state that must never
@@ -225,6 +239,11 @@ function deriveIdentity(filePath) {
   if (norm.startsWith(`${RECORDS_DIR}/`)) return recordIdentity(norm.slice(RECORDS_DIR.length + 1));
   const stateMatch = ANALYSIS_PATH.exec(norm);
   if (stateMatch) return analysisIdentity(stateMatch[1], stateMatch[2]);
+  const summaryMatch = SUMMARY_PATH.exec(norm);
+  if (summaryMatch) {
+    assertSegment('work unit', summaryMatch[1]);
+    return { workUnit: summaryMatch[1], phase: SUMMARY_PHASE, topic: UNIT_RECORD };
+  }
 
   const match = PHASE_PATH.exec(norm);
   if (!match) {
@@ -392,7 +411,8 @@ function recordArtifacts(root, workUnit) {
 
 /**
  * A live work unit's artifacts: each completed per-topic item's file, its
- * imports and seeds, its analysis caches and its record copies.
+ * imports and seeds, its analysis caches, its record copies and its short
+ * record.
  * @param {string} root @param {Record<string, any>} unit
  * @returns {Artifact[]}
  */
@@ -414,6 +434,7 @@ function unitArtifacts(root, unit) {
     ...flatEntries(root, unit, 'seeds', (wu, dest) => path.posix.join(wu, 'seeds', dest)),
     ...recordArtifacts(root, workUnit),
   );
+  if (exists(summaryFile(workUnit))) items.push({ file: summaryFile(workUnit), workUnit, phase: SUMMARY_PHASE, topic: UNIT_RECORD });
   for (const [basename, topic] of Object.entries(ANALYSIS_CACHE_FILES)) {
     const file = path.posix.join(workUnit, '.state', `${basename}.md`);
     if (exists(file)) items.push({ file, workUnit, phase: 'analysis', topic });
@@ -481,6 +502,8 @@ module.exports = {
   INDEXED_ARTIFACTS,
   INDEXED_PHASES,
   RECORD_PHASE,
+  SUMMARY_PHASE,
+  summaryFile,
   recordFile,
   recordScope,
   identityKey,

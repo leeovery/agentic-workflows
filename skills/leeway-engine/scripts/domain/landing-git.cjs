@@ -29,7 +29,12 @@
 //   a reviewer's brief draws its ranges by.
 // - A change is read from the project's folder alone, named from it — a
 //   project inside a larger repository reads only its own folder (7.2.17) —
-//   but for what a caller asks of a folder at the repository's top.
+//   but for what a caller asks of a folder at the repository's top. A
+//   branch holds a commit's change where merging the commit there meets no
+//   conflict and changes nothing (`holdsChange`), however the change got
+//   there; and a task's commits through the door are found by their stamp
+//   on any ref or reflog, so a branch deleted loses none (`lastStamped`), as
+//   a branch holding one is told by its history (`stampsUnit`).
 // - A commit is made with no checkout: a tree committed onto a parent, or a
 //   commit replayed onto another, which stops on a conflict; signed where
 //   the person's config signs every commit, as `git commit` signs it. A
@@ -73,6 +78,7 @@ const { git: personGit, tryGit: personTryGit, operationInProgress, dirtyEntries,
 const { placeOf, folderUnder } = require('../kernel/repos.cjs');
 const { STATE_BRANCH, NETWORK_ENV, PUSH_TIMEOUT_MS, FETCH_TIMEOUT_MS } = require('./state-worktree.cjs');
 const names = require('./landing-names.cjs');
+const { taskId } = require('./task-id.cjs');
 const { remoteName, nestedRemoteName } = require('./remote.cjs');
 
 /**
@@ -279,6 +285,103 @@ function messagesPast(root, from, to) {
 }
 
 /**
+ * The values of the trailer `key` on every commit the local `branch` holds
+ * that the revision `other` does not — a local branch where it names one.
+ * @param {string} root @param {string} branch @param {string} other @param {string} key @returns {Set<string>}
+ */
+function trailersPast(root, branch, other, key) {
+  const values = git(root, ['log', `--format=%(trailers:key=${key},valueonly)`, `${HEADS}${branch}`, '--not', revOf(root, other), '--']);
+  return new Set(values.split('\n').map((value) => value.trim()).filter(Boolean));
+}
+
+/**
+ * The commits the commit `rev` holds that the revision `other` does not,
+ * oldest first, each after its parents, merges aside — each with its
+ * message, the time it was committed, in milliseconds, and the value of
+ * the trailer `key` it carries, null where it carries none.
+ * @param {string} root @param {string} rev @param {string} other @param {string} key
+ * @returns {{sha: string, message: string, committed: number, value: string|null}[]}
+ */
+function stampedPast(root, rev, other, key) {
+  const read = git(root, ['log', '-z', '--reverse', '--topo-order', '--no-merges', `--format=%H%x1f%ct%x1f%(trailers:key=${key},valueonly)%x1f%B`, rev, '--not', revOf(root, other), '--']);
+  return read.split('\0').filter(Boolean).map((entry) => {
+    const [sha, time, values, message] = entry.split('\x1f');
+    return { sha, message, committed: Number(time) * 1000, value: values.split('\n').map((value) => value.trim()).find(Boolean) ?? null };
+  });
+}
+
+/** The time git dates a commit made now in the repository at `root`, in milliseconds: its committer's, as the clock or `GIT_COMMITTER_DATE` gives it. @param {string} root */
+const committerTime = (root) => Number(git(root, ['var', 'GIT_COMMITTER_IDENT']).trim().split(' ').at(-2)) * 1000;
+
+/** A local branch's full name where `rev` names one, else `rev` as it is: a commit, or a remote's branch. @param {string} root @param {string} rev */
+const revOf = (root, rev) => (tryGit(root, ['show-ref', '--verify', '--quiet', `${HEADS}${rev}`]) === null ? rev : `${HEADS}${rev}`);
+
+/**
+ * Whether `tip` holds the change of `commit` already: merging it there
+ * meets no conflict and changes nothing.
+ * @param {string} root @param {string} tip @param {string} commit
+ */
+function holdsChange(root, tip, commit) {
+  if (isAncestor(root, commit, tip)) return true;
+  const base = tryGit(root, ['merge-base', tip, commit])?.trim() ?? '';
+  if (base === '') return false;
+  const merged = mergeTree(root, base, tip, commit);
+  return 'tree' in merged && merged.tree === treesOf(root, [tip])[0];
+}
+
+/**
+ * Whether `tip` holds a task's change whose own work ends at `own`
+ * (`holdsChange`), and the change it is laid on: on `own`'s first-parent
+ * line past `tip`, the newest commit the trailer `key: value` does not
+ * stamp — so a task undoing work not yet landed below it is not read as
+ * landed for the undoing.
+ * @param {string} root @param {string} tip @param {string} own @param {string} key @param {string} value
+ */
+function holdsTaskChange(root, tip, own, key, value) {
+  if (!holdsChange(root, tip, own)) return false;
+  const line = git(root, ['log', '-z', '--first-parent', `--format=%H%n%(trailers:key=${key},valueonly)`, own, '--not', tip, '--']);
+  const below = line.split('\0').filter(Boolean).map((entry) => entry.split('\n')).find(([, ...values]) => !values.some((held) => held.trim() === value));
+  return below === undefined || holdsChange(root, tip, below[0]);
+}
+
+/**
+ * Whether `tip` holds a copy of `commit` — a commit past their merge base
+ * making the same change, as a cherry-pick or a rebase makes one, however
+ * the lines it changed moved there since.
+ * @param {string} root @param {string} tip @param {string} commit
+ */
+function holdsCopy(root, tip, commit) {
+  return git(root, ['cherry', tip, commit, `${commit}^`]).startsWith('-');
+}
+
+/**
+ * The newest commit stamped with the trailer `key: value` the repository
+ * holds — on any ref, or one a reflog keeps, as a branch deleted leaves its
+ * commits — committed at or after the time `since` names where it names
+ * one; null for none.
+ * @param {string} root @param {string} key @param {string} value @param {string|null} since
+ * @returns {string|null}
+ */
+function lastStamped(root, key, value, since) {
+  const bound = since === null ? [] : [`--since=${since}`];
+  const found = git(root, ['log', '-z', `--format=%H%n%(trailers:key=${key},valueonly)`, '--all', '--reflog', '--fixed-strings', `--grep=${key}: ${value}`, ...bound, '--']);
+  const stamped = found.split('\0').filter(Boolean).map((entry) => entry.split('\n')).find(([, ...values]) => values.some((held) => held.trim() === value));
+  return stamped?.[0] ?? null;
+}
+
+/**
+ * Whether the revision `rev` holds a commit the trailer `key` stamps with a
+ * task of the unit's, committed at or after the time `since` names where it
+ * names one.
+ * @param {string} root @param {string} rev @param {string} key @param {string} unit @param {string|null} since
+ */
+function stampsUnit(root, rev, key, unit, since) {
+  const bound = since === null ? [] : [`--since=${since}`];
+  const found = git(root, ['log', '-z', '--format=%B', '--fixed-strings', `--grep=${key}: ${unit}-`, ...bound, rev, '--']);
+  return found.split('\0').some((message) => names.tasksOfMessage(unit, message, key).length > 0);
+}
+
+/**
  * The message of every commit the revisions `revs` hold whose message holds
  * `text`, committed at or after the time `since` names where it names one.
  * @param {string} root @param {string[]} revs @param {string} text @param {string|null} [since] @returns {string[]}
@@ -286,6 +389,19 @@ function messagesPast(root, from, to) {
 function messagesNaming(root, revs, text, since = null) {
   const bound = since === null ? [] : [`--since=${since}`];
   return git(root, ['log', '-z', '--format=%B', '--fixed-strings', `--grep=${text}`, ...bound, ...revs, '--']).split('\0').filter(Boolean);
+}
+
+/**
+ * The unit's tasks, by internal id, a commit the revision `on` holds names
+ * — a local branch where it names one — by its `Task:` line, as a landing
+ * does, or by the trailer `key`, committed at or after the time `since`
+ * names where it names one.
+ * @param {string} root @param {string} on @param {string} unit @param {string} key @param {string|null} since @returns {Set<string>}
+ */
+function tasksNamedOn(root, on, unit, key, since) {
+  const bound = since === null ? [] : [`--since=${since}`];
+  const messages = git(root, ['log', '-z', '--format=%B', '--fixed-strings', `--grep=Task: ${unit}-`, `--grep=${key}: ${unit}-`, ...bound, revOf(root, on), '--']).split('\0').filter(Boolean);
+  return new Set(messages.flatMap((message) => [...names.tasksOfMessage(unit, message), ...names.tasksOfMessage(unit, message, key)].map(taskId)));
 }
 
 /** Every commit `to` holds past `from`, oldest first, as a refusal names it: short, then its subject. @param {string} root @param {string} from @param {string} to @returns {string[]} */
@@ -387,17 +503,22 @@ function pointerAhead(into, folder, sub, sha, onto) {
   return `land: ${into} points ${named} at ${short(sha)}, a commit ${named}'s ${sub.into} does not hold — bring ${named}'s ${sub.into} up to it, as \`git -C ${quoted(folder)} pull\` does where its remote holds it, and land again`;
 }
 
+/** A submodule's landings as a stack's moves read them: its tip, its first-parent line past the pointer read from, newest first, and the landing of each task by its `Task:` line. @typedef {{tip: string, line: {sha: string}[], byTask: Map<string, string>}} SubmoduleLandings */
+
 /**
  * Each of a stack's own commits' moves of its repository's submodules'
  * pointers, in the commits' order: where a commit points a submodule other
  * than every parent of it does — so a merge taking one side's pointer moves
  * nothing, and a pointer the stack inherited from below it is no move of
- * its — the submodule's landing of the latest of the commit's tasks it
- * landed, read off its default branch's first-parent line from where
- * `since` points it to its tip (`tipOf`, read when first needed), for a
- * submodule the walk lands in; else the commit's own pointer. One taken
- * out stays out. Refused, never in git's words, where the submodule's tip
- * does not descend from the commit `since` points it at (`pointerAhead`).
+ * its — for a submodule the walk lands in, its landing read off its default
+ * branch's first-parent line from where `since` points it to its tip
+ * (`tipOf`, read when first needed): that of the latest of the commit's
+ * tasks it landed, by its `Task:` line, else, where the tip lacks the
+ * commit's own pointer, the oldest there holding that pointer's change
+ * (`holdsChange`), as a merge by hand under the person's own message lands
+ * it; else the commit's own pointer. One taken out stays out. Refused,
+ * never in git's words, where the submodule's tip does not descend from
+ * the commit `since` points it at (`pointerAhead`).
  * @template {{root: string, unit: string, into: string}} Sub
  * @param {{root: string, into: string, gitlinks: string[], submodules: {path: string, ctx: Sub}[]}} repo the repository's merge context (landing.cjs)
  * @param {{sha: string, parents: string[], tasks: string[]}[]} commits @param {string} since the default branch's tip @param {(sub: Sub) => string} tipOf
@@ -409,10 +530,13 @@ function stackMoves(repo, commits, since, tipOf) {
   const asked = [since, ...commits.flatMap(({ sha, parents }) => [sha, ...parents])];
   const read = new Map(pointersAt(root, asked, paths).map((pointers, i) => [asked[i], pointers]));
   const from = /** @type {Map<string, string|null>} */ (read.get(since));
-  /** @type {Map<string, Map<string, string>>} */
+  /** @type {Map<string, SubmoduleLandings>} */
   const landings = new Map();
-  /** The submodule's landing of the latest of `tasks` it landed, if any. @param {string} at @param {string[]} tasks */
-  const landing = (at, tasks) => {
+  /**
+   * The submodule's landing of the latest of `tasks` it landed, else of the change `pointer` holds, if any.
+   * @param {string} at @param {string[]} tasks @param {string} pointer
+   */
+  const landing = (at, tasks, pointer) => {
     const sub = repo.submodules.find((walked) => walked.path === at)?.ctx;
     const start = from.get(at) ?? null;
     if (sub === undefined || start === null) return undefined;
@@ -420,9 +544,13 @@ function stackMoves(repo, commits, since, tipOf) {
       const tip = tipOf(sub);
       const ahead = pointerAhead(repo.into, at, sub, start, tip);
       if (ahead !== null) throw new Error(ahead);
-      landings.set(at, names.landingsByTask(sub.unit, firstParentLine(sub.root, start, tip)));
+      const line = firstParentLine(sub.root, start, tip);
+      landings.set(at, { tip, line, byTask: names.landingsByTask(sub.unit, line) });
     }
-    return [...tasks].reverse().map((task) => landings.get(at)?.get(task)).find((sha) => sha !== undefined);
+    const { tip, line, byTask } = /** @type {SubmoduleLandings} */ (landings.get(at));
+    const named = [...tasks].reverse().map((task) => byTask.get(task)).find((sha) => sha !== undefined);
+    if (named !== undefined || isAncestor(sub.root, pointer, tip)) return named;
+    return [...line].reverse().find(({ sha }) => holdsChange(sub.root, sha, pointer))?.sha;
   };
   return commits.map(({ sha, parents, tasks }) => {
     const own = /** @type {Map<string, string|null>} */ (read.get(sha));
@@ -431,7 +559,7 @@ function stackMoves(repo, commits, since, tipOf) {
     for (const at of paths) {
       const pointer = own.get(at) ?? null;
       const before = parents.length === 0 ? [null] : parents.map((parent) => read.get(parent)?.get(at) ?? null);
-      if (!before.includes(pointer)) moves.set(at, pointer === null ? null : landing(at, tasks) ?? pointer);
+      if (!before.includes(pointer)) moves.set(at, pointer === null ? null : landing(at, tasks, pointer) ?? pointer);
     }
     return moves;
   });
@@ -936,16 +1064,19 @@ function moveTo(branch, to, how) {
 /**
  * The refusal of a task whose branch has moved since it was opened at
  * `was`, to `now` — moved on, or rewritten: the branch kept as it stands,
- * a task of its own, and put back.
+ * a task of its own, and put back — opening on `said`, and ending on `then`
+ * once it is (`remedy`).
  * @param {string} root @param {string} shown @param {string} branch @param {string} was @param {string} now
+ * @param {{said?: string, then?: string}} [opts]
  * @returns {string}
  */
-function movedSinceOpened(root, shown, branch, was, now) {
+function movedSinceOpened(root, shown, branch, was, now, { said = 'land', then } = {}) {
   const [from, to] = [short(was), short(now)];
   const way = remedy(root, branch, moveTo(branch, from, `put ${branch} back`), {
+    then,
     note: (kept) => `the change from ${from} to ${to}, on ${kept}, is a task of its own`,
   });
-  return `land: task ${shown}'s branch ${branch} has moved since it was opened at ${from}, to ${to} — ${way}`;
+  return `${said}: task ${shown}'s branch ${branch} has moved since it was opened at ${from}, to ${to} — ${way}`;
 }
 
 /**
@@ -1126,15 +1257,18 @@ function pushBranch(root, remote, branch, then) {
  * Branches pushed to the remote under their own names, each at its
  * `commit`, all or none: each refspec named, no tag following them, nothing
  * signed, and no nested repository pushed with them, so no `push.*` setting
- * changes what goes where. Refused in git's words, hints aside, where the
+ * changes what goes where — one with a `lease` replacing the remote's branch
+ * only while it stands at that commit, or, the lease empty, while the
+ * remote has no such branch. Refused in git's words, hints aside, where the
  * remote refuses them or cannot be reached, saying what `then` did not
  * happen.
- * @param {string} root @param {string} remote @param {{branch: string, commit: string}[]} pushed @param {string} then
+ * @param {string} root @param {string} remote @param {{branch: string, commit: string, lease?: string}[]} pushed @param {string} then
  */
 function pushBranches(root, remote, pushed, then) {
   const atomic = pushed.length > 1 ? ['--atomic'] : [];
+  const leases = pushed.flatMap(({ branch, lease }) => (lease === undefined ? [] : [`--force-with-lease=${HEADS}${branch}:${lease}`]));
   try {
-    networkGit(root, ['push', '--quiet', '--no-follow-tags', '--no-signed', '--recurse-submodules=no', ...atomic, remote, ...pushed.map(({ branch, commit }) => `${commit}:${HEADS}${branch}`)], PUSH_TIMEOUT_MS);
+    networkGit(root, ['push', '--quiet', '--no-follow-tags', '--no-signed', '--recurse-submodules=no', ...atomic, ...leases, remote, ...pushed.map(({ branch, commit }) => `${commit}:${HEADS}${branch}`)], PUSH_TIMEOUT_MS);
   } catch (err) {
     if (!(err instanceof GitError)) throw err;
     throw new Error(`land: ${pushed.map(({ branch }) => branch).join(', ')} could not be pushed to ${remote} (${gitSaid(err)}), so ${then}`);
@@ -1162,6 +1296,23 @@ function fetchBranch(root, remote, branch) {
     return { failed: gitSaid(err) };
   }
   return { commit: git(root, ['rev-parse', tracking]).trim() };
+}
+
+/**
+ * Whether the repository holds `commit`, fetched where it does not from the
+ * remote's ref `ref` that holds it, writing no ref here — false where the
+ * fetch fails or brings it not.
+ * @param {string} root @param {string} remote @param {string} ref @param {string} commit
+ */
+function fetchedCommit(root, remote, ref, commit) {
+  if (holdsCommit(root, commit)) return true;
+  try {
+    networkGit(root, ['fetch', '--quiet', '--no-tags', '--no-write-fetch-head', '--recurse-submodules=no', remote, ref], FETCH_TIMEOUT_MS);
+  } catch (err) {
+    if (!(err instanceof GitError)) throw err;
+    return false;
+  }
+  return holdsCommit(root, commit);
 }
 
 /**
@@ -1231,8 +1382,8 @@ function landsOn(cwd, repo) {
 }
 
 module.exports = {
-  short, readOnce, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranches, holdingBranch, refsUnder, updateRefs, isAncestor, latestOf, mergeBase, treesOf, firstParentLine, messagesPast, messagesNaming, commitsNamed, messageOf, commitWithTree, treesPast,
-  pointersAt, treeWithPointers, pointedLike, holdsCommit, pointerAhead, stackMoves, commitsPast, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, remedy, moveTo, movedSinceOpened, rewrite, scratchBlock, rebaseBlock, checkoutBlock, pathsChanged, dirtBlock, moveBranch,
-  defaultBranch, landsOn, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, nothingPast,
+  short, readOnce, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranches, holdingBranch, refsUnder, updateRefs, isAncestor, latestOf, mergeBase, treesOf, firstParentLine, messagesPast, trailersPast, stampedPast, committerTime, holdsChange, holdsTaskChange, holdsCopy, lastStamped, stampsUnit, messagesNaming, tasksNamedOn, commitsNamed, messageOf, commitWithTree, treesPast,
+  pointersAt, treeWithPointers, pointedLike, holdsCommit, pointerAhead, stackMoves, commitsPast, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, remedy, moveTo, movedSinceOpened, rewrite, scratchBlock, rebaseBlock, checkoutBlock, changesAt, pathsChanged, dirtBlock, moveBranch,
+  defaultBranch, landsOn, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, fetchedCommit, nothingPast,
   worktrees, taskWorktree, mainCheckoutOf, projectCheckout, holderOf, samePlace, removing, branchInPlace, addWorktree, switchTo, removeWorktree, detach, scratchRoot, scratchTree,
 };

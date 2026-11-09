@@ -38,7 +38,7 @@ const path = require('path');
 const { signpost, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/render.cjs');
 const { resetDisplayWidth } = require('./kernel/terminal.cjs');
 const { commitPathspecScoped, commitAcrossRepos, commitStagedScoped, commitStateScoped, discoveryScope, PRODUCT_SCOPE, onStateBranch, STATE_BRANCH_HELD, OWNED_PATHS } = require('./domain/commit.cjs');
-const { inFlightTask, checksFor, runChecks, workMessage } = require('./domain/commit-task.cjs');
+const { inFlightTask, refuseClockBehind, onWorkBranch, checksFor, runChecks, recordWork, workMessage } = require('./domain/commit-task.cjs');
 const { taskId } = require('./domain/task-id.cjs');
 const {
   stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, operationInProgress, addRefused, unmergedPast,
@@ -92,6 +92,7 @@ const { FINISH_USAGE, runFinishVerb } = require('./domain/finish.cjs');
 const { MEASURES_USAGE, runMeasuresVerb } = require('./domain/measures.cjs');
 const { BOARD_USAGE, boardOf } = require('./domain/board.cjs');
 const { SCRATCH_USAGE, runScratchVerb } = require('./domain/scratch.cjs');
+const { QUICK_FIX_USAGE, runQuickFixVerb } = require('./domain/quick-fix-record.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, clearOwnQuietly, scanPresence, scanProject, cleanupPresence, deferralSection } = require('./domain/presence.cjs');
 const { arriveAt, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
 const { markConversation, endConversation, isAgentId } = require('./domain/conversation.cjs');
@@ -319,6 +320,7 @@ ${REVIEW_USAGE.replace(/^/gm, '  ')}
   ${MEASURES_USAGE}
   ${BOARD_USAGE}
 ${SCRATCH_USAGE.replace(/^/gm, '  ')}
+  ${QUICK_FIX_USAGE}
   brownfield record <native|skipped|accepted|completed>
   walkthrough record <walked|skipped>
   handoff <skill|/skill> [args …]
@@ -1444,6 +1446,21 @@ function runFinish(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
+// quick-fix — a quick-fix's short record of a fix, written into its
+// summary.md, committed and indexed (domain/quick-fix-record.cjs).
+// ---------------------------------------------------------------------------
+
+/** @param {Call} call @param {string[]} argv */
+function runQuickFix(call, argv) {
+  const { opts, positional } = parseArgs(argv);
+  try {
+    respond(call, runQuickFixVerb(call.cwd, positional, opts));
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // scratch — a reviewer's scratch worktree laid out and taken apart
 // (domain/scratch.cjs). It writes no state.
 // ---------------------------------------------------------------------------
@@ -2044,7 +2061,8 @@ function assertCommitsHere(repo, paths) {
     const left = unmergedPast(repo.path, paths);
     if (left.length > 0) throw new Error(`commit --paths: the merge in progress in ${repoName(repo)} still conflicts in ${left.join(', ')} — resolve each and name it, then run the commit again`);
   } else if (open !== null) {
-    throw new Error(`commit --paths: ${open.operation} is in progress in ${repoName(repo)} (${open.marker}) — finish or abort it there, then run the commit again`);
+    const ending = open.marker === 'REVERT_HEAD' ? 'end it there with `git revert --quit`, which keeps its change' : 'finish or abort it there';
+    throw new Error(`commit --paths: ${open.operation} is in progress in ${repoName(repo)} (${open.marker}) — ${ending}, then run the commit again`);
   }
   if (!onBranch(repo.path)) {
     throw new Error(`commit --paths: ${repoName(repo)} is on a detached HEAD — check out a branch there, then run the commit again`);
@@ -2053,20 +2071,22 @@ function assertCommitsHere(repo, paths) {
 }
 
 /**
- * @typedef {{task?: string, checks?: import('./domain/commit-task.cjs').CheckRun[]}} CodeCommitTask
+ * @typedef {{task?: string, checks?: import('./domain/commit-task.cjs').CheckRun[], warnings?: string[]}} CodeCommitTask
  * @typedef {{committed: {repo: string, sha: string}[], left_dirty: string[], note?: string} & CodeCommitTask} CodeCommitted
  */
 
 /**
  * The project's repos and the code commit's share of the declared paths in
  * each, every path and every repo checked before any repo commits, a merge
- * in progress among them (`assertCommitsHere`).
- * @param {string} cwd @param {string[]} paths
+ * in progress among them (`assertCommitsHere`) — once `ready` has readied
+ * the repos the commit commits in.
+ * @param {string} cwd @param {string[]} paths @param {(repos: import('./kernel/repos.cjs').Repo[]) => void} [ready]
  */
-function checkedGroups(cwd, paths) {
+function checkedGroups(cwd, paths, ready = () => {}) {
   const read = projectRepos(cwd);
   const { repos, links } = linksHeldOut(read);
   const groups = commitGroups(repos, paths.map((p) => codePathSpec(cwd, repos, p)));
+  ready(groups.map(({ repo }) => repo));
   groups.forEach(({ repo, paths: own }) => {
     const linked = own.filter((p) => links.get(repo.dir)?.includes(p));
     if (linked.length > 0) {
@@ -2109,20 +2129,25 @@ function codeCommitted(repos, committed, more = {}) {
 /**
  * The code commit for a task in flight in the calling conversation
  * (domain/commit-task.cjs): the task and the paths checked, then the
- * project's checks run — before any lock is taken — then the paths, each
+ * project's checks run — before any lock is taken — then, for a
+ * quick-fix's task, each nested repo it commits in recorded in the unit's
+ * state (domain/commit-task.cjs, `recordWork`), then the paths, each
  * committed confined in the repo that owns it under that repo's commit
  * lock, under a message naming the
  * task — a merge in progress in a repo, the chain's tip merged back onto the
  * task's branch, finished there with them its resolution, every conflict
- * named. Answers the task's id and each check run.
+ * named. Answers the task's id, each check run, and what the record's
+ * state commit warned of.
  * @param {string} cwd @param {string[]} paths @param {string} message @param {string} unit @param {string} given
  */
 function commitTaskPaths(cwd, paths, message, unit, given) {
   const { ref, manifest } = inFlightTask(cwd, unit, given);
-  const { repos, groups } = checkedGroups(cwd, paths);
+  refuseClockBehind(cwd, ref, manifest);
+  const { repos, groups } = checkedGroups(cwd, paths, (committing) => onWorkBranch(cwd, ref, manifest, committing));
   const checks = runChecks(cwd, checksFor(cwd, manifest, ref));
+  const warnings = recordWork(cwd, ref, manifest, groups.map(({ repo }) => repo));
   const committed = commitAcrossRepos(groups, workMessage(message, ref));
-  return codeCommitted(repos, committed, { task: taskId(ref), checks });
+  return codeCommitted(repos, committed, { task: taskId(ref), checks, ...(warnings.length > 0 ? { warnings } : {}) });
 }
 
 const COMMIT_USAGE = 'Usage: engine commit <work-unit> -m <message> [--plan <topic> | --discovery | --imports | --state | --topic <phase>/<topic> [--sweep]] | engine commit --paths <file> … -m <message> --task <work-unit> <N.M> | engine commit --state -m <message> | engine commit --inbox -m <message> | engine commit --product -m <message> | engine commit --workflows -m <message> | engine commit --migrations -m <message>';
@@ -2501,6 +2526,7 @@ const COMMANDS = Object.freeze({
   scratch: runScratch,
   'investigation-log': runInvestigationLog,
   investigation: runInvestigation,
+  'quick-fix': runQuickFix,
 });
 
 // Every command dispatched runs whole under the writer lock, its writes and

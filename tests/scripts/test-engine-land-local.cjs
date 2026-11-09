@@ -9,7 +9,8 @@
 // work the default branch has counting for nothing; how a phase stacks on
 // another and replays onto a default branch that moved on, naming every
 // path a replay conflicts at, however long git's answer; and what finish
-// says where it stops. What it records, and the shapes of landing it reads,
+// says where it stops, a phase it merged offered again among them, so it
+// never loops. What it records, and the shapes of landing it reads,
 // are test-engine-land-reads.cjs's. Each refusal's way on is the remedy
 // table's (landing-remedies.cjs, followed by the
 // test-engine-land-remedies-* suites); the person's checkouts,
@@ -25,6 +26,8 @@ const assert = require('node:assert');
 
 const { ok, refuses, git, tip } = require('./engine-harness.cjs');
 const { TASKS, openArgs, own, cutTask, commitFiles, mergeBack, landedOn, useLandingWorld, refusedMoving, alreadyMoving, way, rebaseSteps } = require('./landing-world.cjs');
+
+const localDriver = require('../../skills/leeway-engine/scripts/drivers/landing/local/driver.cjs');
 
 const { card, rounding, currency } = TASKS;
 const project = useLandingWorld('engine-land-local-');
@@ -91,6 +94,15 @@ describe('land: what the local driver reads off its stacks', () => {
     assert.strictEqual(refuses(dir, ['land', 'finish', 'pay']).error, `${conflict} (finish merged phase 1 before it)`);
     assert.deepStrictEqual([tip(dir, 'main'), tip(dir, 'feat/pay-phase-4')], [tip(dir, 'feat/pay-phase-1'), phase]);
     assert.strictEqual(refusedMoving(dir, ['land', 'finish', 'pay']), conflict);
+  });
+
+  it('finish: a phase it merged offered again, what merged never reaching the default branch, stops it rather than merging it again, naming what is left to land', (t) => {
+    const dir = project();
+    ok(dir, openArgs(card));
+    t.mock.method(localDriver, 'nextMerge', () => ({ phase: 1, merge: () => ({ merged: [card.shown] }) }));
+
+    assert.strictEqual(refuses(dir, ['land', 'finish', 'pay']).error,
+      `land: phase 1 merged, and still has ${card.shown} to land on main — what merged never reached it, so land it by hand there and finish again (finish merged phase 1 before it)`);
   });
 });
 

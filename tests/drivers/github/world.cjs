@@ -13,7 +13,9 @@
 // cut to nothing; the hermetic environment keeps their login out
 // (hermetic-env.cjs).
 // What a person might do by hand on GitHub — close a pull request, merge
-// one, change GitHub's default branch or its squash default — is done to
+// one, delete a merged one's branch, or a branch with its pull request,
+// commit on the site, open a pull request no unit opened, from a fork or
+// not, change GitHub's default branch or its squash default — is done to
 // the fake's state here, as is how many reads GitHub takes to work out
 // whether a pull request can merge once it moves. The fake starts with
 // GitHub's own squash default, and works it out at once.
@@ -21,9 +23,10 @@
 // `refused`), and a phase of two is built the one way (`stackOfTwo`).
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
-const { git, bareRepo, githubOffline, ok: harnessOk, refuses } = require('../../scripts/engine-harness.cjs');
+const { git, bareRepo, githubOffline, createFile, ok: harnessOk, refuses } = require('../../scripts/engine-harness.cjs');
 const { TASKS, openArgs, mergeBack } = require('../../scripts/landing-world.cjs');
 const { STATE_BRANCH } = require('../../../skills/leeway-engine/scripts/domain/state-worktree.cjs');
 const stub = require('./gh-stub.cjs');
@@ -94,12 +97,75 @@ function closeByHand(dir, number) {
   });
 }
 
-/** A pull request squash-merged by hand on GitHub, into `into`, else its base. @param {string} dir @param {number} number @param {string} [into] */
-function mergeByHand(dir, number, into) {
+/**
+ * A pull request merged by hand on GitHub, into `into`, else its base, by
+ * `method` — squashed, else a merge commit, the site's default button, or
+ * its own commits put on the branch.
+ * @param {string} dir @param {number} number @param {string} [into] @param {'squash'|'merge'|'rebase'} [method]
+ */
+function mergeByHand(dir, number, into, method = 'squash') {
   onGithub(dir, (state) => {
     const pull = state.pulls.find((held) => held.number === number);
     if (pull === undefined) throw new Error(`no pull request #${number}`);
-    stub.mergePulls(githubOf(dir), state, [pull], 'squash', { into: into ?? pull.base, subject: pull.title });
+    stub.mergePulls(githubOf(dir), state, [pull], method, { into: into ?? pull.base, subject: pull.title });
+  });
+}
+
+/**
+ * A pull request on GitHub no unit opened, of `head` onto `base`, left in
+ * `state` — the person's own, made by hand, its branch there `kept` or
+ * deleted, or a fork's of `fork`, its head held as its own ref alone, as
+ * GitHub holds a fork's: its head one commit on `base` writing `files`
+ * under `message`, opened, and committed, at `created`, where given, else
+ * long before any unit (gh-stub.cjs). Its number.
+ * @param {string} dir
+ * @param {{head: string, base?: string, state?: 'OPEN'|'CLOSED', kept?: boolean, fork?: string, files: Record<string, string>, message: string, created?: string}} pull
+ */
+function strangerPull(dir, { head, base = 'main', state = 'OPEN', kept = true, fork, files, message, created }) {
+  const bare = bareOf(dir);
+  const tree = fs.mkdtempSync(path.join(os.tmpdir(), 'github-stranger-'));
+  git(bare, ['worktree', 'add', '-q', '--detach', tree, base]);
+  for (const [file, text] of Object.entries(files)) {
+    createFile(tree, file, text);
+    git(tree, ['add', file]);
+  }
+  const at = created ?? stub.LONG_AGO;
+  execFileSync('git', ['commit', '-q', '-m', message], { cwd: tree, env: { ...process.env, GIT_AUTHOR_DATE: at, GIT_COMMITTER_DATE: at } });
+  const sha = git(tree, ['rev-parse', 'HEAD']).trim();
+  git(bare, ['worktree', 'remove', '--force', tree]);
+  let number = 0;
+  onGithub(dir, (held) => {
+    number = held.next;
+    held.next += 1;
+    git(bare, ['update-ref', `refs/pull/${number}/head`, sha]);
+    if (fork === undefined && kept) git(bare, ['update-ref', `refs/heads/${head}`, sha]);
+    held.pulls.push({ number, state, head, base, title: message.split('\n')[0], body: '', ...(created === undefined ? {} : { created }), ...(fork === undefined ? {} : { fork, oid: sha }) });
+  });
+  return number;
+}
+
+/** A pull request's branch deleted on GitHub, its pull request closed with it, as GitHub closes one whose head is gone. @param {string} dir @param {number} number */
+function branchDeleted(dir, number) {
+  onGithub(dir, (state) => {
+    const pull = state.pulls.find((held) => held.number === number);
+    if (pull === undefined) throw new Error(`no pull request #${number}`);
+    pull.state = 'CLOSED';
+    execFileSync('git', ['update-ref', '-d', `refs/heads/${pull.head}`], { cwd: bareOf(dir) });
+  });
+}
+
+/**
+ * A merged pull request's head branch deleted on GitHub, as its button or
+ * auto-delete does: each pull request open on that branch retargeted onto
+ * the merged one's base, as GitHub retargets them.
+ * @param {string} dir @param {number} number
+ */
+function headDeleted(dir, number) {
+  onGithub(dir, (state) => {
+    const merged = state.pulls.find((held) => held.number === number);
+    if (merged === undefined) throw new Error(`no pull request #${number}`);
+    for (const pull of state.pulls) if (pull.state === 'OPEN' && pull.base === merged.head) pull.base = merged.base;
+    execFileSync('git', ['update-ref', '-d', `refs/heads/${merged.head}`], { cwd: bareOf(dir) });
   });
 }
 
@@ -133,6 +199,24 @@ function lagOnGithub(dir, reads, { stale = false } = {}) {
 /** A branch's tip on GitHub, or '' where GitHub has none. @param {string} dir @param {string} branch */
 const tipOnGithub = (dir, branch) => git(bareOf(dir), ['for-each-ref', '--format=%(objectname)', `refs/heads/${branch}`]).trim();
 
+/**
+ * A commit made on GitHub on `branch`, as the site makes one — a review's
+ * suggestion, an edit on its page — `files` written in it: its sha.
+ * @param {string} dir @param {string} branch @param {Record<string, string>} files @param {string} subject
+ */
+function madeOnGithub(dir, branch, files, subject) {
+  const bare = bareOf(dir);
+  const tree = fs.mkdtempSync(path.join(os.tmpdir(), 'github-site-'));
+  git(bare, ['worktree', 'add', '-q', tree, branch]);
+  for (const [file, text] of Object.entries(files)) {
+    createFile(tree, file, text);
+    git(tree, ['add', file]);
+  }
+  git(tree, ['commit', '-q', '-m', subject]);
+  git(bare, ['worktree', 'remove', '--force', tree]);
+  return tipOnGithub(dir, branch);
+}
+
 /** The pull requests GitHub holds, each its number, state and base. @param {string} dir */
 const pulls = (dir) => github(dir).pulls.map(({ number, state, base }) => ({ number, state, base }));
 
@@ -152,6 +236,6 @@ function stackOfTwo(dir) {
 }
 
 module.exports = {
-  REPOSITORY, GH_ENV, ghEnv, githubWorld, github, onGithub, bareOf, calls, closeByHand, mergeByHand, defaultOnGithub, squashFromPullRequests, lagOnGithub,
-  tipOnGithub, pulls, ok, refused, stackOfTwo,
+  REPOSITORY, GH_ENV, ghEnv, githubWorld, github, onGithub, bareOf, calls, closeByHand, mergeByHand, strangerPull, branchDeleted, headDeleted, defaultOnGithub, squashFromPullRequests, lagOnGithub,
+  tipOnGithub, madeOnGithub, pulls, ok, refused, stackOfTwo,
 };

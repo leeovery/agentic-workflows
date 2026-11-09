@@ -2,9 +2,10 @@
 
 // ---------------------------------------------------------------------------
 // The names a landing takes (leeway-engine/scripts/domain/landing-names.cjs,
-// 7.2.18): a task's branch and a phase's, the message a task lands under,
-// the title that may not forge its trailer, and each read back — the unit's
-// own alone. Unit layer: values in, values out; no git.
+// 7.2.18): a task's branch and a phase's, the message a task lands under
+// and a quick-fix's, titled by its tasks' types, the title that may not
+// forge its trailer, and each read back — the unit's own alone. Unit layer:
+// values in, values out; no git.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -79,5 +80,16 @@ describe('the landing\'s names (7.2.18)', () => {
       [names.landingOf({ unit: 'pay', phase: 1, n: 1 }, joined), names.landingOf(TASK, joined), names.landingOf(TASK, 'tidy\n\nTask: pay-2-7\n')],
       [{ type: 'feat', title: 'Add card' }, { type: 'fix', title: 'Round' }, null],
     );
+  });
+
+  it('titles a quick-fix feat where any of its tasks is one, else fix where any is, else by its first task\'s type, and fix where it holds none; each task under its own type then its Task: line', () => {
+    const task = (/** @type {number} */ n, /** @type {string} */ type) => ({ ref: { unit: 'typo', phase: 1, n }, type, title: `Fix ${n}` });
+    const subject = (/** @type {{ref: any, type: string, title: string}[]} */ tasks) => names.quickFixMessage('typo', 'The flag', tasks).split('\n')[0];
+
+    assert.deepStrictEqual(
+      [[task(1, 'fix'), task(2, 'feat')], [task(1, 'refactor'), task(2, 'fix')], [task(1, 'refactor'), task(2, 'docs')], []].map(subject),
+      ['feat(typo): The flag', 'fix(typo): The flag', 'refactor(typo): The flag', 'fix(typo): The flag'],
+    );
+    assert.strictEqual(names.quickFixMessage('typo', 'The flag', [task(1, 'fix'), task(2, 'feat')]), 'feat(typo): The flag\n\nfix(typo): Fix 1\n\nTask: typo-1-1\n\nfeat(typo): Fix 2\n\nTask: typo-1-2\n');
   });
 });

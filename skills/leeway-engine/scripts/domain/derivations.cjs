@@ -175,11 +175,11 @@ function buildByCut(manifest) {
 }
 
 /**
- * Why the unit's build by its cut cannot be entered, nor its review phase
- * or its finish reached, with its way on, or null where it can: a unit of a
- * retired type, a unit built under the old plan, a quick-fix — its fixes
- * built at its own arm of the build's entry (`quickFixBuild`), its close and
- * its review on request not yet — and a build not begun.
+ * Why the unit's build cannot be entered, nor its review phase or its
+ * finish reached, with its way on, or null where it can: a unit of a
+ * retired type, a unit built under the old plan, and a build by its cut not
+ * begun — never a quick-fix, whose fixes are built at its own arm of the
+ * build's entry and closed at finish (`quickFixBuild`).
  * @param {Record<string, any>} manifest @returns {string|null}
  */
 function buildRefusal(manifest) {
@@ -187,8 +187,28 @@ function buildRefusal(manifest) {
   const retired = retiredRefusal(manifest);
   if (retired !== null) return retired;
   if (legacyBuild(manifest)) return `${unit} was built under the old plan, and its build is entered once the reshape's 29.17 migration has cut it`;
-  if (quickFixBuild(manifest)) return `${unit} is a quick-fix, whose close and review are built with the reshape's 29.15 — until then its fixes are built at enter implementation ${unit}`;
-  return buildBegun(manifest) ? null : `${unit}'s build has not begun — ready to build's yes begins it: render ready-to-build ${unit}`;
+  if (quickFixBuild(manifest) || buildBegun(manifest)) return null;
+  return `${unit}'s build has not begun — ready to build's yes begins it: render ready-to-build ${unit}`;
+}
+
+/**
+ * Whether the person asked for a quick-fix's review at its close (19.5.13):
+ * the request recorded beside its fixes' beginning, `fixes.review_asked`.
+ * @param {Record<string, any>} manifest
+ */
+function reviewAsked(manifest) {
+  return fixesBegun(manifest) && typeof manifest.fixes.review_asked === 'string';
+}
+
+/**
+ * Why a quick-fix's review phase cannot be entered, with its way on, or
+ * null for any other unit: its review runs only once the person asks for
+ * one at its close (19.5.14).
+ * @param {Record<string, any>} manifest @returns {string|null}
+ */
+function quickFixReviewRefusal(manifest) {
+  if (!quickFixBuild(manifest)) return null;
+  return `${manifest.name} is a quick-fix, whose review runs only once the person asks for one at its close — the review on request is built with the reshape's 29.15`;
 }
 
 /**
@@ -1382,6 +1402,8 @@ module.exports = {
   FIXES_PHASE,
   quickFixBuild,
   fixesBegun,
+  reviewAsked,
+  quickFixReviewRefusal,
   buildLength,
   buildPlaceStatus,
   phaseStatus,

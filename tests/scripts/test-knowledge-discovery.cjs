@@ -4,7 +4,9 @@
 // yields exactly the completed artifacts below, every path state-relative —
 // and never a log, discovery's or the product's, nor a file the product's
 // conversation keeps (8.14.7, 9.2.2), nor a spec (11.1.2), nor anything of a
-// unit's build (22.6.3).
+// unit's build (22.6.3) — a quick-fix's short record among them, at its
+// unit's own identity, retired only by its file gone or its unit cancelled
+// (22.6.9).
 
 require('./hermetic-env.cjs');
 
@@ -13,7 +15,7 @@ const path = require('path');
 const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert');
 
-const { discoverArtifacts, readManifests, deriveIdentity } = require('../../skills/leeway-engine/scripts/domain/knowledge/artifacts.cjs');
+const { discoverArtifacts, readManifests, deriveIdentity, retirements } = require('../../skills/leeway-engine/scripts/domain/knowledge/artifacts.cjs');
 const { UserError } = require('../../skills/leeway-engine/scripts/kernel/knowledge/retry.cjs');
 const { setupGitFixture: setupFixture, cleanupFixture, statePath, output } = require('./engine-harness.cjs');
 
@@ -107,6 +109,14 @@ function buildFixture(root) {
   writeFile(path.join(wf, 'auth-flow', 'imports', 'prior-art.md'), '# PA\n');
   writeFile(path.join(wf, 'auth-flow', 'discovery', 'session-001.md'), '# a log, never indexed\n');
 
+  // Quick-fix, completed: its short record, no phase's item, beside its build's log.
+  proj.work_units['typo'] = { work_type: 'quick-fix' };
+  writeJson(path.join(wf, 'typo', 'manifest.json'), {
+    name: 'typo', work_type: 'quick-fix', status: 'completed', created: '2026-01-05', phases: {}, fixes: { began: '2026-01-05T09:00:00Z' },
+  });
+  writeFile(path.join(wf, 'typo', 'summary.md'), '## Spell the flag\n\n- What changed: The flag.\n');
+  writeFile(path.join(wf, 'typo', 'build', 'log.md'), '# the build\'s — never indexed\n');
+
   // Bugfix: investigation flat file.
   proj.work_units['login-timeout'] = { work_type: 'bugfix' };
   writeJson(path.join(wf, 'login-timeout', 'manifest.json'), {
@@ -155,6 +165,7 @@ const EXPECTED = [
   { workUnit: 'payments', phase: 'record', topic: 'ledger', file: '.knowledge/records/payments/ledger.md' },
   { workUnit: 'payments', phase: 'record', topic: 'refunds', file: '.knowledge/records/payments/refunds.md' },
   { workUnit: 'payments', phase: 'seeds', topic: 'original-idea', file: 'payments/seeds/original-idea.md' },
+  { workUnit: 'typo', phase: 'summary', topic: '.unit', file: 'typo/summary.md' },
 ];
 
 function normalise(items) {
@@ -205,6 +216,26 @@ describe('knowledge bulk discovery — artifact-set equivalence', () => {
   it('yields the identical set over the manifests however they were read', () => {
     const workUnits = JSON.parse(output(root, ['manifest', 'list']));
     assert.deepStrictEqual(normalise(discoverArtifacts(statePath(root), { workUnits, registry: null })), EXPECTED);
+  });
+
+  it('22.6.9: retires a quick-fix\'s short record, no phase\'s item, only once its file is gone or its unit cancelled', () => {
+    const state = statePath(root);
+    const indexed = { workUnit: 'typo', phase: 'summary', topic: '.unit', file: 'typo/summary.md' };
+    const standing = retirements(state, [indexed], readManifests(state), null);
+    fs.rmSync(path.join(state, 'typo', 'summary.md'));
+    const gone = retirements(state, [indexed], readManifests(state), null).map(({ reason }) => reason);
+    writeFile(path.join(state, 'typo', 'summary.md'), '## Spell the flag\n');
+    const manifests = readManifests(state);
+    const cancelled = { ...manifests, workUnits: manifests.workUnits.map((unit) => (unit.name === 'typo' ? { ...unit, status: 'cancelled' } : unit)) };
+
+    assert.deepStrictEqual([standing, gone, retirements(state, [indexed], cancelled, null).map(({ reason }) => reason)], [[], ['source deleted'], ['work unit cancelled']]);
+  });
+});
+
+describe('deriveIdentity: a quick-fix\'s short record (22.6.9)', () => {
+  it('is named at its unit\'s own identity, a dotted unit refused', () => {
+    assert.deepStrictEqual(deriveIdentity('typo/summary.md'), { workUnit: 'typo', phase: 'summary', topic: '.unit' });
+    assert.throws(() => deriveIdentity('ty.po/summary.md'), (err) => err instanceof UserError && /Invalid work unit name/.test(err.message));
   });
 });
 

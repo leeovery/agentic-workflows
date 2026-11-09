@@ -45,9 +45,10 @@
 // conversation's — a raw `git commit` wherever it runs (6.3.7); and every
 // other git command that would land a commit on a task's branch past the
 // commit door, through which a build commits, and which finishes a merge in
-// progress — one run where the checkout of its folder has a branch of a
-// unit with a task in flight out, a rebase's own among them
-// (landing-names.cjs), or where the text cannot say which folder it runs
+// progress — one run where the checkout of its folder has out a branch a
+// task of a unit with a task in flight commits on, a task's own or a
+// quick-fix's one branch, a rebase's own among them (landing-names.cjs,
+// `isWorkBranch`), or where the text cannot say which folder it runs
 // in; anywhere else — the engine's own landing remedies, on a phase's branch
 // or the branch the project lands on — it passes. They are a `git merge` but
 // with both `--no-ff` and `--no-commit` — a merge that can fast-forward
@@ -128,7 +129,7 @@ const COMMITTING = Object.freeze({
   merge: { passes: [['--no-ff', '--no-commit'], ['--abort'], ['--quit']], way: MERGED, continued: 'name each file you resolved, and commit the merge through the door, which finishes it' },
   pull: { passes: [], way: `fetch, then ${MERGED}` },
   'cherry-pick': { passes: [['--no-commit'], ['-n'], ['--abort'], ['--quit']], way: 'pick with --no-commit, then commit through the door' },
-  revert: { passes: [['--no-commit'], ['-n'], ['--abort'], ['--quit']], way: 'revert with --no-commit, then commit through the door' },
+  revert: { passes: [['--no-commit'], ['-n'], ['--abort'], ['--quit']], way: 'revert with --no-commit, end the revert with --quit, which keeps its change, then commit through the door' },
   am: { passes: [['--abort'], ['--quit']], way: 'apply the patch with git apply, then commit through the door' },
   rebase: { passes: [['--abort'], ['--quit']], way: `rather than rebase, ${MERGED}` },
 });
@@ -310,15 +311,15 @@ function branchOut(folder) {
 
 /**
  * Whether a commit a git command but `commit` makes would land on a task's
- * branch (the header's): its checkout has out a branch of a unit with a task
- * in flight, or the text cannot say where it runs.
+ * branch (the header's): its checkout has out a branch a task commits on of
+ * a unit with a task in flight, or the text cannot say where it runs.
  * @param {GitCommand} git @param {InFlight[]} tasks
  */
 function onTaskBranch({ folder }, tasks) {
   if (folder === null) return true;
   const branch = branchOut(folder);
-  const { taskOfBranch } = require('./landing-names.cjs');
-  return branch !== null && tasks.some(({ unit }) => taskOfBranch(unit, branch) !== null);
+  const { isWorkBranch } = require('./landing-names.cjs');
+  return branch !== null && tasks.some(({ unit }) => isWorkBranch(unit, branch));
 }
 
 /** @param {GitCommand} git @param {() => InFlight[]} inFlight */

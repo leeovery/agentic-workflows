@@ -48,7 +48,7 @@ const METHODS = Object.freeze({
     optional: /** @type {const} */ ([]),
   },
   landing: {
-    required: /** @type {const} */ (['serves', 'chainTip', 'holds', 'open', 'chain', 'mergePhase', 'nextMerge']),
+    required: /** @type {const} */ (['serves', 'chainTip', 'holds', 'open', 'chain', 'mergePhase', 'nextMerge', 'quickFixPull', 'openQuickFix', 'mergeQuickFix', 'closeQuickFix']),
     optional: /** @type {const} */ (['assertServes', 'landsOn', 'finished', 'protectBranch', 'setSquashDefault']),
   },
 });
@@ -187,6 +187,8 @@ const METHODS = Object.freeze({
 /** @typedef {import('./landing.cjs').LandingContext} LandingContext */
 /** @typedef {import('./landing.cjs').LandingTask} LandingTask */
 /** @typedef {import('./landing.cjs').ChainTip} ChainTip */
+/** @typedef {import('./landing.cjs').QuickFixTask} QuickFixTask */
+/** @typedef {import('./landing.cjs').QuickFixPull} QuickFixPull */
 /**
  * A landing driver's methods, and the least each answers — what the landing
  * conformance suite reads. Each verb acts in one repository of the
@@ -204,17 +206,36 @@ const METHODS = Object.freeze({
  * task of a phase, the stacks read once on a context that keeps its reads
  * (landing-git.cjs, `readOnce`); `chain`, null where the task is not open
  * there; `mergePhase`, null where no task of the phase is open there, and
- * `already` where it is merged; a merge, what it was warned of.
+ * `already` where each of its tasks' changes is on the branch it lands on —
+ * a stack merged in part, by hand, finished; a merge, what it was warned
+ * of.
  * `nextMerge` answers the merge finish makes next there — its phase, and
  * the merge, made from what the driver read to pick it — null where every
  * phase is merged; the seam makes each in turn, and
  * `finished` lets go, once finish has merged them all, what the driver
- * keeps of the unit there. Where the host can, run from a repository's
- * checkout against its remote's repository: `protectBranch` sets a rule
- * refusing a branch's deletion and any push to it that is not a
- * fast-forward (4.4.6), and `setSquashDefault` makes a squash merge's
- * commit the pull request's title and description (7.2.18), left as it is
- * where it does — each answering the repository as its host names it, and
+ * keeps of the unit there.
+ * A quick-fix lands as one pull request, its branch's, in each repository
+ * it touches (landing.cjs): `quickFixPull` answers its heads, of the pull
+ * requests opened from the repository itself, never a fork, since the time
+ * the seam names — the one open's, null where none is, and those of the
+ * ones merged, each a commit the repository holds — the host's copy of the
+ * branch, held here, null where the host has none, and the driver's words
+ * for a pull request closed by hand, null where the latest was not —
+ * writing nothing but heads fetched; `openQuickFix` opens it at the branch
+ * as it stands, under the
+ * landing's message, a push replacing the host's copy only while it stands
+ * where the landing read it, `already` where it is; `mergeQuickFix` merges
+ * it, the branch squashed onto the branch it lands on as one commit under
+ * that message, each submodule the landing names pointed as it names it,
+ * or, given no landing, brings that branch here to the host's, answering
+ * `already`; and `closeQuickFix` closes the one open unmerged, as a move
+ * closes it, answering whether it did — the last three reading the pull
+ * requests as `quickFixPull` does. Where the host can, run
+ * from a repository's checkout against its remote's repository:
+ * `protectBranch` sets a rule refusing a branch's deletion and any push to
+ * it that is not a fast-forward (4.4.6), and `setSquashDefault` makes a
+ * squash merge's commit the pull request's title and description (7.2.18),
+ * left as it is where it does — each answering the repository as its host names it, and
  * why the setting is not made, null where it is.
  * @typedef {(root: string, url: string) => {repository: string, unset: string|null}} HostSetting
  * @typedef {{
@@ -229,6 +250,10 @@ const METHODS = Object.freeze({
  *   chain: (ctx: LandingContext, ref: TaskRef) => {stack: string[]}|null,
  *   mergePhase: (ctx: LandingContext, phase: number) => {into: string, merged: string[], warnings?: string[]}|{into: string, already: true, warnings?: string[]}|null,
  *   nextMerge: (ctx: LandingContext) => {phase: number, merge: () => {into: string, merged: string[], warnings?: string[]}}|null,
+ *   quickFixPull: (ctx: LandingContext, branch: string, since: string|null) => QuickFixPull,
+ *   openQuickFix: (ctx: LandingContext, landing: QuickFixTask) => {already?: true, warnings?: string[]},
+ *   mergeQuickFix: (ctx: LandingContext, landing: QuickFixTask|null) => {into: string, merged: string[], warnings?: string[]}|{into: string, already: true, warnings?: string[]},
+ *   closeQuickFix: (ctx: LandingContext, branch: string, since: string|null) => {closed: boolean},
  *   finished?: (ctx: LandingContext) => void,
  * }} LandingMethods
  */

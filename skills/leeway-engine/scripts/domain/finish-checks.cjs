@@ -7,8 +7,9 @@
 // closed stay Claude's marks.
 //
 // - The review phase passed and its report written: where the unit has a
-//   review phase — every type the build takes but a quick-fix, whose review
-//   runs only when the person asks (19.5.14) — the review phase over, as
+//   review phase — every type the build takes, and a quick-fix only once
+//   the person asked for its review at its close (`reviewAsked`,
+//   derivations.cjs; 19.5.13, 19.5.14) — the review phase over, as
 //   its rounds' records say (review-phase.cjs): a round passed or settled,
 //   its report written by `review round` as it recorded it, and every task
 //   of that round's fix phase done or closed, its findings' fixes and any
@@ -22,8 +23,9 @@
 //   the person (build-screens.cjs).
 // - The records indexed: where this checkout's knowledge base is set up —
 //   setting it up is the person's choice (knowledge/sync.cjs) — every
-//   record of the unit's (22.6.2) held by the store as it stands now
-//   (knowledge/status.cjs); its way on is the unit's index. A base set up
+//   record of the unit's (22.6.2), a quick-fix's short record among them
+//   (22.6.9), held by the store as it stands now (knowledge/status.cjs);
+//   its way on is the unit's index. A base set up
 //   that does not read takes the item off, said as a warning.
 //
 // A call reads each once for all its items (phase-checks.cjs, `once`).
@@ -33,6 +35,7 @@ const fs = require('fs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { once } = require('./phase-checks.cjs');
+const { reviewAsked } = require('./derivations.cjs');
 const { reviewRefusal } = require('./review-entry.cjs');
 const { reviewStanding, endedRefusal } = require('./review-phase.cjs');
 const { readiness, unindexedRecords } = require('./knowledge/status.cjs');
@@ -41,8 +44,8 @@ const { waitingAndFreed } = require('./questions.cjs');
 /** @typedef {import('./phase-checks.cjs').Reading} Reading */
 /** @typedef {import('./review-phase.cjs').ReviewStanding} ReviewStanding */
 
-/** Whether the unit has a review phase: every type the build takes but a quick-fix (19.5.14). @param {Reading} at */
-const hasReviewPhase = ({ manifest }) => manifest.work_type !== 'quick-fix';
+/** Whether the unit has a review phase: every type the build takes, and a quick-fix once the person asked for one (19.5.13, 19.5.14). @param {Reading} at */
+const hasReviewPhase = ({ manifest }) => manifest.work_type !== 'quick-fix' || reviewAsked(manifest);
 
 /**
  * Why the unit's review phase cannot be entered, or where it stands: read

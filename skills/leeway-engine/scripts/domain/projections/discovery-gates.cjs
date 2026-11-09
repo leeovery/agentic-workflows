@@ -9,8 +9,8 @@
 //   the unit and says what comes next — for an epic, shaping its topics and
 //   approving the map; for the others, the phase it opens in. A unit moved
 //   to a feature or a bugfix (workunit-move.cjs) is drawn the same, its yes
-//   making the unit of the new type, and a quick-fix's fixes' branches its
-//   move leaves unlanded named in one line beneath the reason;
+//   making the unit of the new type, and the quick-fix's branch its move
+//   keeps unlanded named in one line beneath the reason;
 // - approve the map: THE MAP, the topics numbered in their order, a re-shape
 //   marking each topic that is new and each that moved (8.8.21); TO THE
 //   ROADMAP, each park with the horizon the person gave it; then the gate,
@@ -32,8 +32,8 @@ const { counted } = require('./map.cjs');
 
 /**
  * The work as start this work draws it: its name, type, description and
- * reason, and for a move, the type it moves from and the branches it leaves
- * a fix's commits unlanded on.
+ * reason, and for a move, the type it moves from and the branch it leaves a
+ * quick-fix's commits unlanded on, where it keeps one.
  * @typedef {{name: string, type: string, description: string, reason: string, moves?: {from: string, branches: string[]}}} StartView
  */
 
@@ -67,11 +67,10 @@ const OPENS = Object.freeze({
 /** A type with its article. @param {string} type */
 const aType = (type) => `${/^[aeiou]/.test(type) ? 'an' : 'a'} ${type}`;
 
-/** The line naming the branches a move leaves a fix's commits unlanded on, or none. @param {string[]} branches */
+/** The line naming the branch a move leaves a quick-fix's commits unlanded on, or none. @param {string[]} branches */
 function keptLine(branches) {
   if (branches.length === 0) return [];
-  const whose = branches.length === 1 ? 'Its fix\'s commits stay' : 'Its fixes\' commits stay';
-  return wrapWithPrefix(`⚑ ${whose} unlanded on ${branches.join(', ')}`, { width: TREE_WIDTH, hang: 2 });
+  return wrapWithPrefix(`⚑ Its commits stay unlanded on ${branches.join(', ')}`, { width: TREE_WIDTH, hang: 2 });
 }
 
 /**

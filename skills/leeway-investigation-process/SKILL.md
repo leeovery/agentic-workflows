@@ -32,7 +32,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs enter investigation {work_u
 
 A refusal names the way on: say it in a line. Where another session holds the topic, the entry asks first: emit its MENU verbatim per its marker and follow the answer's `next`; carrying on from it ends the turn. Otherwise emit each section ahead of the DATA verbatim per its marker. Waiting mail is the conversation's first business (**Mail**).
 
-Then read what the DATA names: the brief; discovery's logs and the seeds, the person's own account of the bug; the product record; at a first opening of a quick-fix moved here, its `earlier record`, `earlier build log` and each `kept branch`, read as input and never changed; and on resume the topic's record, its map and the `log`, the hunt so far. Take in each `landed` report as **Validations** says, and close each `lost` one with `agent incorporate`. Search earlier work units' entries in the bug's area with `knowledge query`.
+Then read what the DATA names: the brief; discovery's logs and the seeds, the person's own account of the bug; the product record; at a first opening of a quick-fix moved here, its `earlier record`, `earlier build log`, `earlier summary` and each `kept branch`, read as input and never changed; and on resume the topic's record, its map and the `log`, the hunt so far. Take in each `landed` report as **Validations** says, and close each `lost` one with `agent incorporate`. Search earlier work units' entries in the bug's area with `knowledge query`.
 
 Then open the conversation; never stop in silence once you have read. On resume, say in your own words where the hunt stands and what comes next.
 

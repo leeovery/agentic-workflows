@@ -16,8 +16,11 @@
 //
 // What it answers, as gh and the stack extension do: its versions; `auth
 // status`; `api` reading the repository, changing its squash default, and
-// adding a ruleset; `pr list`, `view`, `create` — refused where the head
-// holds no commit past the base — `edit --base`, `merge` and `reopen`; `stack
+// adding a ruleset; `pr list`, with when each pull request was opened and
+// whether it is a fork's, `view`, `create` — refused where the head holds
+// no commit past the base, or one of the repository's own is open from that
+// head onto that base — `edit` of its base, title and body,
+// `merge`, `close` and `reopen`; `stack
 // link`, bottom to top, the bottom based on `--base` or else GitHub's
 // default branch, each other on the one before, a stack's members only ever
 // added; and `stack merge`, every unmerged pull request up to the one named,
@@ -27,7 +30,9 @@
 // — onto the branch it merges into, as one commit under the subject and
 // body given, else as the repository's squash default makes them — GitHub's
 // own, unless changed: a lone commit's message, or the title over the
-// commits' — the subject ending " (#N)". Whether a pull request can merge
+// commits' — the subject ending " (#N)"; a rebase puts each of the pull
+// request's own commits, merges aside, onto that branch under its own
+// message, made anew by GitHub. Whether a pull request can merge
 // is whether its head merges with its base — but once either's tip moves,
 // by a push, a merge into its base, `edit --base` or a stack's link, it is
 // unknown for as many of `view`'s reads as the state's `lag` (none unless
@@ -57,14 +62,21 @@ const FAULTS = Object.freeze({
   unmergeable: { code: 1, said: 'GraphQL: Required status check "test" is expected. (mergePullRequest)' },
 });
 const SIGNED_OUT_STATUS = 'You are not logged into any GitHub hosts. To log in, run: gh auth login';
+/** When a pull request a test made with no time of its own was opened: long before any unit. */
+const LONG_AGO = '2020-01-01T00:00:00Z';
 /** GitHub's own squash default. */
 const GITHUB_SQUASH = Object.freeze({ squash_merge_commit_title: 'COMMIT_OR_PR_TITLE', squash_merge_commit_message: 'COMMIT_MESSAGES' });
 
 /**
  * A pull request, with where GitHub last saw it stand (`seen`), where it
  * stood before (`was`), and how many more reads it is unknown since it
- * moved (`unknown`).
- * @typedef {{number: number, state: 'OPEN'|'CLOSED'|'MERGED', head: string, base: string, title: string, body: string, seen?: string, was?: string, unknown?: number}} Pull
+ * moved (`unknown`); and, once merged, its head as it merged, which GitHub
+ * keeps however its branch then moves, deleted among them (`merged`), and
+ * holds as the pull request's own ref, `refs/pull/{number}/head`, to fetch;
+ * when it was opened (`created`, none for one a test made long ago); and,
+ * for a fork's, the fork's owner and its head there, which GitHub holds as
+ * the pull request's own ref too (`fork`, `oid`).
+ * @typedef {{number: number, state: 'OPEN'|'CLOSED'|'MERGED', head: string, base: string, title: string, body: string, seen?: string, was?: string, unknown?: number, merged?: string, created?: string, fork?: string, oid?: string}} Pull
  */
 /** @typedef {{number: number, base: string, pulls: number[]}} Stack */
 /** @typedef {{repo: string, default: string, next: number, method: string, squash: Record<string, string>, rulesets: object[], pulls: Pull[], stacks: Stack[], lag?: number, stale?: boolean}} Github */
@@ -162,10 +174,28 @@ function squashed(bare, state, pull, from, head) {
 }
 
 /**
+ * The pull request's own commits, merges aside, put onto `onto` one by one
+ * under their own messages, as GitHub's rebase merges them: the last.
+ * Nothing moves.
+ * @param {string} bare @param {Pull} pull @param {string} onto @param {string} head
+ * @returns {string}
+ */
+function rebased(bare, pull, onto, head) {
+  const commits = inBare(bare, ['rev-list', '--reverse', '--no-merges', head, '--not', onto]).split('\n').filter(Boolean);
+  return commits.reduce((at, sha) => {
+    const merged = spawnSync('git', ['merge-tree', '--write-tree', `--merge-base=${sha}^`, at, sha], { cwd: bare, encoding: 'utf8' });
+    if (merged.status !== 0) throw new Refused(`Pull request #${pull.number} is not mergeable: the merge commit cannot be cleanly created.`);
+    const message = inBare(bare, ['log', '-1', '--format=%B', sha]);
+    return inBare(bare, ['commit-tree', merged.stdout.split('\n')[0], '-p', at, '-F', '-'], { env: IDENTITY, input: `${message}\n` });
+  }, onto);
+}
+
+/**
  * The commit GitHub makes merging a pull request onto `onto`, a commit of
  * the branch `into` it merges into, by a method: squashed into one commit,
- * its own change onto that branch, or a merge commit; under `subject` and
- * `body` where given, else as the squash default makes them. Nothing moves.
+ * its own change onto that branch, its own commits rebased onto it
+ * (`rebased`), or a merge commit; under `subject` and `body` where given,
+ * else as the squash default makes them. Nothing moves.
  * @param {string} bare @param {Github} state @param {Pull} pull @param {string} method @param {string} onto
  * @param {{into: string, subject?: string, body?: string}} opts
  * @returns {string}
@@ -174,6 +204,7 @@ function mergeOf(bare, state, pull, method, onto, { into, subject, body }) {
   if (pull.state !== 'OPEN') throw new Refused(`Pull request #${pull.number} is not open`);
   const head = tipOf(bare, pull.head);
   if (head === null) throw new Refused(`Pull request #${pull.number} has no branch to merge`);
+  if (method === 'rebase') return rebased(bare, pull, onto, head);
   const squash = method === 'squash';
   const below = squash && pull.base !== into ? tipOf(bare, pull.base) : null;
   const merged = spawnSync('git', ['merge-tree', '--write-tree', ...(below === null ? [] : [`--merge-base=${below}`]), onto, head], { cwd: bare, encoding: 'utf8' });
@@ -196,7 +227,11 @@ function mergePulls(at, state, pulls, method, opts) {
   if (from === null) throw new Refused(`Pull request #${pulls[0]?.number} has no branch to merge`);
   const merged = pulls.reduce((onto, pull) => mergeOf(bare, state, pull, method, onto, opts), from);
   inBare(bare, ['update-ref', `refs/heads/${opts.into}`, merged, from]);
-  for (const pull of pulls) pull.state = 'MERGED';
+  for (const pull of pulls) {
+    const head = /** @type {string} */ (tipOf(bare, pull.head));
+    Object.assign(pull, { state: 'MERGED', merged: head });
+    inBare(bare, ['update-ref', `refs/pull/${pull.number}/head`, head]);
+  }
 }
 
 /** The value of a flag, and the arguments without it. @param {string[]} args @param {string} flag */
@@ -218,7 +253,11 @@ function prList(at, state, args) {
   const tips = new Map(inBare(bareOf(at, state), ['for-each-ref', '--format=%(refname:lstrip=2) %(objectname)', 'refs/heads/']).split('\n').map((line) => line.split(' ')));
   const rows = [...state.pulls].sort((a, b) => b.number - a.number).map((pull) => {
     /** @type {Record<string, unknown>} */
-    const all = { number: pull.number, state: pull.state, headRefName: pull.head, baseRefName: pull.base, headRefOid: tips.get(pull.head) ?? null, title: pull.title, body: pull.body };
+    const head = pull.fork === undefined ? tips.get(pull.head) : pull.oid;
+    const all = {
+      number: pull.number, state: pull.state, headRefName: pull.head, baseRefName: pull.base, headRefOid: pull.merged ?? head ?? null, title: pull.title, body: pull.body,
+      isCrossRepository: pull.fork !== undefined, createdAt: pull.created ?? LONG_AGO,
+    };
     return Object.fromEntries(fields.map((field) => [field, all[field]]));
   });
   return `${JSON.stringify(rows)}\n`;
@@ -244,12 +283,12 @@ function prCreate(at, state, args) {
   if (spawnSync('git', ['merge-base', '--is-ancestor', head, base], { cwd: bare }).status === 0) {
     throw new Refused(`pull request create failed: GraphQL: No commits between ${base} and ${head} (createPullRequest)`);
   }
-  const twin = state.pulls.find((pull) => pull.state === 'OPEN' && pull.head === head && pull.base === base);
+  const twin = state.pulls.find((pull) => pull.state === 'OPEN' && pull.fork === undefined && pull.head === head && pull.base === base);
   if (twin !== undefined) throw new Refused(`a pull request for branch "${head}" into branch "${base}" already exists:\nhttps://github.com/${state.repo}/pull/${twin.number}`);
   const number = state.next;
   state.next += 1;
   /** @type {Pull} */
-  const pull = { number, state: 'OPEN', head, base, title, body: body ?? '' };
+  const pull = { number, state: 'OPEN', head, base, title, body: body ?? '', created: new Date().toISOString() };
   state.pulls.push({ ...pull, seen: standing(bare, pull), unknown: 0 });
   return `https://github.com/${state.repo}/pull/${number}\n`;
 }
@@ -257,8 +296,10 @@ function prCreate(at, state, args) {
 /** @param {string} at @param {Github} state @param {string[]} args @returns {string} */
 function prEdit(at, state, args) {
   const pull = pullOf(state, args[0]);
-  const base = take(args, '--base').value;
+  const [base, title, body] = ['--base', '--title', '--body'].map((flag) => take(args, flag).value);
   if (base !== undefined) pull.base = base;
+  if (title !== undefined) pull.title = title;
+  if (body !== undefined) pull.body = body;
   return `https://github.com/${state.repo}/pull/${pull.number}\n`;
 }
 
@@ -269,6 +310,14 @@ function prMerge(at, state, args) {
   const pull = pullOf(state, args[0]);
   if (unknown(bareOf(at, state), state, pull)) throw new Refused('GraphQL: Pull Request is not mergeable (mergePullRequest)');
   mergePulls(at, state, [pull], method, { into: pull.base, subject: take(args, '--subject').value, body: take(args, '--body').value });
+  return '';
+}
+
+/** @param {string} at @param {Github} state @param {string[]} args @returns {string} */
+function prClose(at, state, args) {
+  const pull = pullOf(state, args[0]);
+  if (pull.state !== 'OPEN') throw new Refused(`Pull request #${pull.number} can't be closed because it was already ${pull.state.toLowerCase()}`);
+  pull.state = 'CLOSED';
   return '';
 }
 
@@ -357,7 +406,7 @@ const authStatus = () => `github.com\n  ✓ Logged in to github.com account stub
 
 const COMMANDS = Object.freeze({
   'auth status': authStatus,
-  'pr list': prList, 'pr view': prView, 'pr create': prCreate, 'pr edit': prEdit, 'pr merge': prMerge, 'pr reopen': prReopen,
+  'pr list': prList, 'pr view': prView, 'pr create': prCreate, 'pr edit': prEdit, 'pr merge': prMerge, 'pr close': prClose, 'pr reopen': prReopen,
   'stack link': stackLink, 'stack merge': stackMerge, api,
 });
 
@@ -407,4 +456,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { GITHUB_SQUASH, githubAt, readState, writeState, bareOf, mergePulls };
+module.exports = { GITHUB_SQUASH, LONG_AGO, githubAt, readState, writeState, bareOf, mergePulls };

@@ -350,7 +350,7 @@ describe('engine commit --paths: code in repos of its own', () => {
     assert.deepStrictEqual(codeHeadFiles(dir).sort(), ['sdk', 'src/app.js']);
   });
 
-  it('refuses a call that would commit in a repo mid-operation — a rebase in a submodule, a cherry-pick in the root — before any repo commits', () => {
+  it('refuses a call that would commit in a repo mid-operation — a rebase in a submodule, a cherry-pick in the root — before any repo commits; a revert, naming its end by --quit, which keeps its change', () => {
     const sdk = harness.addSubmodule(dir, 'sdk', api);
     createFile(sdk, 'src/handler.js', 'const h = 2;\n');
     commitAll(sdk, 'the submodule moves on');
@@ -378,6 +378,13 @@ describe('engine commit --paths: code in repos of its own', () => {
     assert.strictEqual(refuses(dir, ['commit', '--paths', 'src/app.js', 'api/src/handler.js', '-m', 'feat(topic-a): the task', ...FOR_TASK], building).error,
       'commit --paths: a cherry-pick is in progress in . (CHERRY_PICK_HEAD) — finish or abort it there, then run the commit again');
     assert.deepStrictEqual([head(dir), head(api)], [rootPicking, apiBefore], 'the clone, whose commit would come first, made none');
+
+    git(dir, ['cherry-pick', '--abort']);
+    git(dir, ['revert', '--no-commit', 'HEAD']);
+
+    assert.strictEqual(refuses(dir, ['commit', '--paths', 'src/app.js', '-m', 'feat(topic-a): the task', ...FOR_TASK], building).error,
+      'commit --paths: a revert is in progress in . (REVERT_HEAD) — end it there with `git revert --quit`, which keeps its change, then run the commit again',
+      'never naming the revert\'s own end by --continue, which the shell guard refuses, nor its abort, which throws the change away');
   });
 
   it('never checks a repo the call does not commit in — a detached clone blocks nothing elsewhere', () => {

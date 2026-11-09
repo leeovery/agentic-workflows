@@ -19,7 +19,8 @@
 //           folder (workunit-move.cjs);
 //   engine  a file only the engine writes — the manifests, the ledger, a
 //           topic's brief, the record of the person's review of the spec,
-//           the record of the sweep taken, the notes for later, a task's
+//           the record of the sweep taken, a quick-fix's short record after
+//           the work, the notes for later, a task's
 //           figures and the settlement of its failed round, a
 //           verification run, a review round's record, its report and its
 //           checks — with what it is and the verb that writes it, where
@@ -129,7 +130,7 @@ const LAYOUT = Object.freeze([
   place('file', SPEC_PLACE, '4.11.5'),
   engineFile('{unit}/spec-review.json', '4.11.5', 'a unit\'s record of the person\'s review of its spec'),
   engineFile('{unit}/sweep-taken.json', '8.10.3', 'a unit\'s record of the sweep taken before its spec', 'sweep take'),
-  place('file', '{unit}/summary.md', '4.11.6'),
+  engineFile('{unit}/summary.md', '4.11.6', 'a quick-fix\'s short record after the work', 'quick-fix record'),
   place('log', '{unit}/build/log.md', '4.11.5'),
   engineFile('{unit}/build/notes.md', '4.11.5', 'a unit\'s notes for later', 'task note'),
   place('file', '{unit}/build/tasks/{task}.md', '4.11.5'),

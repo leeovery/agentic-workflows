@@ -61,7 +61,7 @@ const { handedSession } = require('../kernel/process.cjs');
 const { positionPath, leftPath, readPosition, isMarked, markConversation, runningTranscript } = require('./conversation.cjs');
 const { ROLES, issuedOf } = require('./brief-names.cjs');
 const { loadManifest, loadProjectManifest } = require('./reads.cjs');
-const { buildBegun, buildRefusal, quickFixBuild, isFixPhase, computeTopicLifecycle, itemOf, openRecords, phaseData, UNIT_PHASES } = require('./derivations.cjs');
+const { buildBegun, buildRefusal, quickFixReviewRefusal, isFixPhase, computeTopicLifecycle, itemOf, openRecords, phaseData, UNIT_PHASES } = require('./derivations.cjs');
 const { recordDir } = require('./experiment-paths.cjs');
 const { latestSessionLog, productSession } = require('./discovery-session.cjs');
 const { PRODUCT_SESSIONS } = require('./layout.cjs');
@@ -651,9 +651,9 @@ function placeLine({ name, phase, topic }, separator) {
  * Why a work unit's place is no longer open to carry on from, or null where
  * it is: the work unit gone from this project or closed, its spec concluded
  * at the spec's place, its build not to be entered at the build's places
- * (P12) — a quick-fix's implementation entered by its own arm, its review
- * not yet — the place's item closed, or — in a phase a topic on the map
- * holds — the topic cancelled or postponed.
+ * (P12) — a quick-fix's review not until the person asks for one — the
+ * place's item closed, or — in a phase a topic on the map holds — the topic
+ * cancelled or postponed.
  * @param {Position} position @param {Manifest} manifest
  * @returns {string|null}
  */
@@ -663,8 +663,8 @@ function closedReason(position, manifest) {
   if (manifest === null) return `this project has no work unit "${name}"`;
   if (manifest.status !== 'in-progress') return `"${name}" is ${typeof manifest.status === 'string' ? manifest.status : 'not in progress'}`;
   if (phase === 'specification' && buildBegun(manifest)) return 'its spec is concluded';
-  if (phase !== undefined && BUILD_PLACES.includes(phase) && !(phase === 'implementation' && quickFixBuild(manifest))) {
-    const refused = buildRefusal(manifest);
+  if (phase !== undefined && BUILD_PLACES.includes(phase)) {
+    const refused = buildRefusal(manifest) ?? (phase === 'review' ? quickFixReviewRefusal(manifest) : null);
     if (refused !== null) return refused;
   }
   if (phase === undefined || typeof topic !== 'string') return null;

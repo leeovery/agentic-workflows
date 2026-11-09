@@ -3,28 +3,28 @@
 // ---------------------------------------------------------------------------
 // What stops GitHub's landing driver (leeway-engine/scripts/drivers/
 // landing/github/), and where it leaves the default branch here, past what
-// every driver does (the landing conformance suite's): the refusals a
-// person meets, each saying what is missing or what happened and the way
-// on, never an install command (22.4.7) — gh not installed or not signed
-// in, the extension missing, GitHub's rate limit, no network, a merge
-// GitHub refuses, a pull request GitHub finds conflicting with its base,
-// GitHub's answer for a pull request's head before a push never taken, a
-// stack merged in part by hand on GitHub, a task with
+// every driver does (the landing conformance suite's): the refusals a person
+// meets, each saying what is missing or what happened and the way on, never
+// an install command (22.4.7) — gh not installed or not signed in, the
+// extension missing, GitHub's rate limit, no network, a merge GitHub
+// refuses, a pull request GitHub finds conflicting with its base, GitHub's
+// answer for a pull request's head before a push never taken, a task with
 // nothing to land or opened into a merged phase, a default branch here
 // holding commits GitHub's lacks at the open, naming them, and a push
 // refused; a task opened already, and a phase merged, answered as done
 // already; the push naming its branch, with no tag and no prompt; the
 // default branch here checked out with changes to files the merge changes
-// refused before anything merges, other changes carried across; the
-// default branch here left where the person's work, a failed fetch or git
-// itself stops it, warned once with the way to bring it up, the merge
-// standing; the stand-in gh at the driver's floors, failing closed,
-// merging a stack all or none, and slow, where a test arms it, to work out
-// whether a pull request pushed to can merge; and the live run refusing
-// without the person's word (7.3.7, 7.S15). GitHub still working it out
-// when the driver's wait ends is test-landing-nested-merge-up.cjs's. The
-// driver's calls and stacks are test-landing.cjs's. Git layer: the landing
-// world on a fake GitHub (world.cjs), built once and copied for each test.
+// refused before anything merges, other changes carried across; the default
+// branch here left where the person's work, a failed fetch or git itself
+// stops it, warned once with the way to bring it up, the merge standing; the
+// stand-in gh at the driver's floors, failing closed, merging a stack all or
+// none, and slow, where a test arms it, to work out whether a pull request
+// pushed to can merge; and the live run refusing without the person's word
+// (7.3.7, 7.S15). GitHub still working it out when the driver's wait ends is
+// test-landing-nested-merge-up.cjs's; a stack merged by hand on GitHub's
+// site, test-landing-by-hand.cjs's. The driver's calls and stacks are
+// test-landing.cjs's. Git layer: the landing world on a fake GitHub
+// (world.cjs), built once and copied for each test.
 // ---------------------------------------------------------------------------
 
 require('../../scripts/hermetic-env.cjs');
@@ -40,7 +40,7 @@ const harness = require('../../scripts/engine-harness.cjs');
 const { TASKS, openArgs, own, cutTask, commitFiles, mergeBack, landedOn, useLandingWorld } = require('../../scripts/landing-world.cjs');
 const { loadDriver } = require('../../../skills/leeway-engine/scripts/domain/drivers.cjs');
 const side = require('./landing.cjs');
-const { GH_ENV, ghEnv, github, onGithub, bareOf, calls, closeByHand, mergeByHand, lagOnGithub, tipOnGithub, pulls, ok, refused, stackOfTwo } = require('./world.cjs');
+const { GH_ENV, ghEnv, github, onGithub, bareOf, calls, closeByHand, lagOnGithub, tipOnGithub, pulls, ok, refused, stackOfTwo } = require('./world.cjs');
 
 const { git, tip } = harness;
 const { card, total, rounding } = TASKS;
@@ -229,20 +229,6 @@ describe('what stops a verb, and the way on (22.4.7)', () => {
     execFileSync('sh', ['-c', /** @type {string} */ (/`([^`]+)`/.exec(error)?.[1])], { cwd: dir, env: ghEnv() });
     ok(dir, ['land', 'phase', 'pay', '1']);
     assert.deepStrictEqual(landedOn(bareOf(dir), 'main').map(({ task }) => task), ['pay-1-1']);
-  });
-
-  it('a stack merged in part by hand on GitHub: its phase refused, and a task opened into it, naming what merged and what did not — and landed once the rest is merged there', () => {
-    const dir = project();
-    stackOfTwo(dir);
-    mergeByHand(dir, 1);
-    const tax = cutTask(dir, '1.4', 'feat', 'Add tax', total.branch, { 'tax.txt': 'tax\n' });
-
-    const partly = 'land: phase 1\'s stack was merged in part by hand on GitHub — #1 (task 1.1) is merged, and #2 (task 1.2) is not; merge the rest there too, and the phase is landed';
-    assert.strictEqual(refused(dir, ['land', 'phase', 'pay', '1']), partly);
-    assert.strictEqual(refused(dir, openArgs(tax)), partly);
-    assert.deepStrictEqual(pulls(dir).map(({ state }) => state), ['MERGED', 'OPEN']);
-    mergeByHand(dir, 2, 'main');
-    assert.deepStrictEqual(ok(dir, ['land', 'phase', 'pay', '1']), { ok: true, phase: 1, already: true, repos: [], driver: 'github' });
   });
 
   it('the default branch here holding a commit GitHub\'s does not, as first boot leaves it: the open refused before anything is pushed or opened, naming it — and, once it is pushed, the task landed alone under its subject', () => {

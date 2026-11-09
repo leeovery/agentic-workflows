@@ -4,9 +4,10 @@
 // own store in its code tree, as a project tracking its own work with Tick
 // keeps one at its root — the store a walk up from the state would find; what
 // a person might do to the state's store in Tick itself — make a task, or one
-// under another, give one refs, start a child under its parent left open,
-// link one after another, or a phase after a task, reopen or remove one,
-// cancel, mark done or reopen a unit or a phase, delete the store's file,
+// under another, give one refs, leave one with no type, start a child under
+// its parent left open, link one after another, or a phase after a task,
+// reopen or remove one, cancel, mark done or reopen a unit or a phase,
+// delete the store's file,
 // take away its folder's write, write a line into it that is not JSON or
 // link a task after one it does not hold; what Tick itself answers as a
 // phase's list and the tasks ready in it, for the driver's reads to be held
@@ -70,6 +71,11 @@ function addRef(root, title, task) {
  */
 function makeTask(root, title, task) {
   tick(root, ['create', ...(task === undefined ? [] : ['--refs', `task:${taskId(task)}`]), '--', title]);
+}
+
+/** The task titled `title` left with no type, as a person might in Tick: the driver keeps its type as its one tag. @param {string} root @param {string} title */
+function typeCleared(root, title) {
+  tick(root, ['update', idOf(root, title), '--clear-tags']);
 }
 
 /** The task titled `title` linked after the one titled `after`, as a person might in Tick. @param {string} root @param {string} title @param {string} after */
@@ -193,5 +199,5 @@ const LOOKALIKE_FOLDER = path.join('tick-cafe', 'x+tick-cafe-old');
 const REFUSED_TITLE = 'x'.repeat(501);
 
 module.exports = {
-  projectStore, addRef, makeTask, linkBy, reopenTask, removeTask, breakStore, garbleStore, setStoreWritable, byHand, childOf, startUnderOpen, phaseAfter, linkAfterGone, toolAnswers, REFUSED_TITLE, LOOKALIKE_FOLDER,
+  projectStore, addRef, makeTask, typeCleared, linkBy, reopenTask, removeTask, breakStore, garbleStore, setStoreWritable, byHand, childOf, startUnderOpen, phaseAfter, linkAfterGone, toolAnswers, REFUSED_TITLE, LOOKALIKE_FOLDER,
 };
