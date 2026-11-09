@@ -65,7 +65,8 @@ const { newId } = require('./ledger-ids.cjs');
 const { carrying } = require('./ledger.cjs');
 const { trackedTask, trackedPhases, turnRefusal, ENDED } = require('./task-verbs.cjs');
 const { parseShownTask, parsePhase, shownTask, taskName } = require('./task-id.cjs');
-const { buildBegun, cutLength } = require('./derivations.cjs');
+const { buildBegun, cutLength, quickFixBuild } = require('./derivations.cjs');
+const { asideRefusal } = require('./fix-aside.cjs');
 const { RECORDS, readFacts } = require('./brief-records.cjs');
 const { ROLES, BUILDING_ROLES, briefPath, issuedPath, pointerOf } = require('./brief-names.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
@@ -288,16 +289,18 @@ function forWhat(ref, phase, place, unit) {
 
 /**
  * The task as the tracker holds it, and what its read committed, refused
- * where it is done or closed, and in step where it waits behind another in
- * flight (`turnRefusal`); what the read warned of pushed to
- * `warnings`.
+ * where it is done or closed; in step or in a quick-fix where it waits
+ * behind another in flight (`turnRefusal`); and a quick-fix's whose work
+ * its park set aside, not yet put back by its start (fix-aside.cjs); what
+ * the read warned of pushed to `warnings`.
  * @param {string} cwd @param {TaskRef} ref @param {string[]} warnings
  */
 function unendedTask(cwd, ref, warnings) {
   const { committed, warnings: read = [], ...task } = trackedTask(cwd, ref);
   warnings.push(...read);
   if (ENDED.includes(task.status)) throw new Error(`brief: ${taskName(ref)} is ${task.status} — a brief is issued for a task not yet ended`);
-  const behind = turnRefusal(cwd, ref, /** @type {Record<string, any>} */ (manifestOf(stateRoot(cwd), ref.unit)));
+  const manifest = /** @type {Record<string, any>} */ (manifestOf(stateRoot(cwd), ref.unit));
+  const behind = turnRefusal(cwd, ref, manifest) ?? (quickFixBuild(manifest) ? asideRefusal(cwd, ref) : null);
   if (behind !== null) throw new Error(`brief: ${behind}`);
   return { task, committed };
 }

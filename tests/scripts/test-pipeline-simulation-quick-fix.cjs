@@ -33,12 +33,13 @@ describe('pipeline simulation: quick-fix', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('quick-fix: the opener carries on into its skill in the same conversation; each fix passed by its pair; a builder\'s question parks its fix while the next goes on, then it is built; Claude\'s own question outlives a /clear, the close refused until it is answered again; and the close landing the one pull request', async () => {
+  it('quick-fix: the opener carries on into its skill in the same conversation; each fix passed by its pair; a builder\'s question parks its fix while the next goes on, then it is built; Claude\'s own question outlives a /clear, named by the entry and holding the close\'s checklist until it is answered again; and the close landing the one pull request, no handoff from the opener to the close (24.S8)', async () => {
     const wu = 'typo';
     const place = `${wu}.implementation`;
     const started = startUnit(sim, 'quick-fix', wu, 'The --color flag is spelt --colour');
     assert.deepStrictEqual(started.next, { kind: 'invoke', skill: 'leeway-quick-fix-process', args: ['quick-fix', wu] });
     const conversation = sim.env.CLAUDE_CODE_SESSION_ID;
+    const handedOff = sim.handoffs.length;
 
     // Invoked in place: the skill's entry, in this conversation, records the
     // place, so a compaction carries on in the quick-fix's skill.
@@ -74,21 +75,23 @@ describe('pipeline simulation: quick-fix', () => {
     await sim.runAsync(['raise', place, '--answers', own], null, JSON.stringify({ ...leaningCall('Yes.', 'No.'), question: 'Does the changelog name the rename?' }));
     sim.handOver();
     sim.run(['enter', 'implementation', wu]);
+    const named = sim.read(['enter', 'implementation', wu]);
     sim.write(`.leeway/${wu}/build/log.md`, '# The fixes\n');
-    finishClosed(sim, wu);
-    sim.render(['finish', wu], { expect: 'content' });
-    const closing = answerGate(sim, 'finish', '--pick', 'y').next.argv;
-    sim.refuses(closing, /closes once each question asked in it is answered — \S+ Does the changelog name the rename\?: raise it again for the person to answer/);
+    sim.refuses(['checklist', 'close', 'finish', wu], /finish has items open: questions-answered/);
     const waiting = sim.run(['board', sim.env.CLAUDE_CODE_SESSION_ID]).view.waiting;
     const again = await sim.runAsync(['raise', place, '--answers', own], null, JSON.stringify({ ...leaningCall('Yes.', 'No.'), question: 'Does the changelog name the rename?' }));
     sim.run(['raise', 'answer', again.raise, '--pick', '1'], null, JSON.stringify({ why: 'A rename is news.' }));
+    finishClosed(sim, wu);
     sim.render(['finish', wu], { expect: 'content' });
+    const unclosed = sim.handoffs.slice(handedOff);
     const yes = sim.run(answerGate(sim, 'finish', '--pick', 'y').next.argv);
 
     assert.deepStrictEqual([first.task, parked.parked, parked.task, receipt], ['1.1', 'Q1', '1.2', 'Q1 answered · task 1.2 builds again · nothing waiting on you']);
     assert.notStrictEqual(sim.env.CLAUDE_CODE_SESSION_ID, conversation);
     assert.match(account, /▪ Spell the flag --colour \(task 1\.1\)\n\n✓ Passed its review in round 1\n\n- Phase: 1 — the fixes\n[\s\S]*WHAT WAS DONE\n  Built\.\n  · src\/flag\.js\n/, 'a fix\'s account, asked for, is its builder\'s');
+    assert.match(named, /\nwaiting: \S+ — Does the changelog name the rename\? — asked in the conversation and still open: raise it again for the person to answer, raise typo\.implementation --answers \S+\n/, 'the entry after the /clear names it');
     assert.deepStrictEqual(waiting.filter(({ kind }) => kind === 'raised').map(({ text }) => text), ['Does the changelog name the rename?'], 'the board draws it waiting after the /clear');
+    assert.deepStrictEqual(unclosed, [], 'no handoff from the opener to the close (24.S8)');
     assert.deepStrictEqual([yes.landed.map((/** @type {{merged: string[]}} */ { merged }) => merged), sim.manifest(wu).status], [[['1.1', '1.3', '1.2']], 'completed']);
   });
 });

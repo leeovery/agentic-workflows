@@ -543,7 +543,7 @@ function answerMeans(read, unit, parks, before) {
  */
 function freedWords(freed, turn, read) {
   const reading = freed.length === 1 ? read(freed[0]) : null;
-  const behind = turn !== null && !freed.includes(turn.inFlight) ? `task ${turn.inFlight} is done` : null;
+  const behind = turn !== null && !freed.includes(turn.inFlight) ? require('./task-verbs.cjs').turnEnds(turn) : null;
   const waits = [...(reading === null ? [] : [`its pair has read round ${reading}`]), ...(behind === null ? [] : [behind])];
   const again = `${freed.length === 1 ? `task ${freed[0]} builds` : 'their tasks build'} again${waits.length === 0 ? '' : ` once ${waits.join(' and ')}`}`;
   return turn !== null && behind === null && freed.length > 1 ? `${again}, task ${turn.inFlight} first` : again;

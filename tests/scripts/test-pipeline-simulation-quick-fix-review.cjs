@@ -27,9 +27,10 @@ describe('pipeline simulation: quick-fix review', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('quick-fix: the close\'s review row asks for the review, its skill invoked in the same conversation — its one area the change; a round\'s fix task built on the quick-fix\'s branch; the round passing hands back to the close, whose yes lands the fixes and the fix task in one commit (19.S23)', () => {
+  it('quick-fix: the close\'s review row asks for the review, its skill invoked in the same conversation — its one area the change; a round\'s fix task built on the quick-fix\'s branch; the round passing hands back to the close, whose yes lands the fixes and the fix task in one commit (19.S23), no handoff on the way (24.S8)', () => {
     const wu = 'typo';
     startUnit(sim, 'quick-fix', wu, 'The --color flag is spelt --colour');
+    const handedOff = sim.handoffs.length;
     sim.run(['enter', 'implementation', wu]);
     const base = git(sim.dir, ['rev-parse', 'main']).trim();
     const [flag] = writeTasks(sim, wu, 1, [{ title: 'Spell the flag --colour', type: 'fix', reference: 'none', scenarios: ['1.S1 Given the flag, when it is passed, then it reads --colour.'] }]);
@@ -60,6 +61,7 @@ describe('pipeline simulation: quick-fix review', () => {
     testsRead(sim, wu);
     const passed = sim.run(['review', 'round', wu, '--file', sim.write(`.leeway/.cache/${wu}/review/round.json`, { can_now: ['Pass --colour, and read it in the help.'], findings: [] })]);
     sim.render(passed.next.argv.slice(1), { expect: 'content' });
+    const unclosed = sim.handoffs.slice(handedOff);
     const yes = sim.run(answerGate(sim, 'finish', '--pick', 'y').next.argv);
 
     assert.deepStrictEqual([first.data.area, first.fixPhase, fix, failed.fix_phase, passed.next], [
@@ -69,5 +71,6 @@ describe('pipeline simulation: quick-fix review', () => {
       [['1.1', '2.1']], [`fix(${wu}): The --color flag is spelt --colour`],
     ]);
     assert.strictEqual(sim.manifest(wu).status, 'completed');
+    assert.deepStrictEqual(unclosed, [], 'no handoff from the opener, through the review, to the close (24.S8)');
   });
 });

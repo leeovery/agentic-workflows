@@ -56,6 +56,23 @@
 // review, which answers them; the round's fix tasks waiting; no note
 // standing; and a payload of another shape, every fault named.
 //
+// `quick-fix notes <unit> --file <notes.json>` answers, at a quick-fix's
+// close where no review was asked for, the notes for later its fixes'
+// builders and pairs banked (`task note`, notes.cjs), which no phase's
+// consolidation takes: from Claude's account, `{findings}`, each finding as
+// a round's, of the area `notes`, out of scope, every note standing
+// (review-phase.cjs, `notesStanding`) answered by exactly one, filed to the
+// inbox or dropped, its `ledger` Claude's call at
+// `{unit}.implementation`. They are kept after those answered before at
+// `build/notes-answered.json` (notes.cjs, `answeredAtClose`) and committed
+// (`quick-fix({unit}): notes for later answered`), so none stands at the
+// close, nor in a review asked for after it (R24). It refuses, opening
+// `quick-fix notes: ` and writing nothing: a unit the project lacks or
+// holds not in progress; one that is no quick-fix built as one; a
+// quick-fix whose review was asked for, which answers them (`review
+// notes`); no note standing; and a payload of another shape, every fault
+// named.
+//
 // It refuses, opening `review round: ` and writing nothing: a unit whose
 // review phase cannot be entered; a round that cannot be read — one ended
 // the phase, fix tasks of the round before wait, a later round's areas are
@@ -95,7 +112,8 @@ const { readShown } = require('./ledger-read.cjs');
 const { parseInboxPath, FOLDER_KIND } = require('./inbox.cjs');
 const { titleOf } = require('./start.cjs');
 const { unitInProgress } = require('./topic-standing.cjs');
-const { itemTitle, topicTitles, quickFixBuild, reviewAsked } = require('./derivations.cjs');
+const { itemTitle, topicTitles, quickFixBuild, reviewAsked, buildRefusal } = require('./derivations.cjs');
+const { closeNotesPath, answeredAtClose } = require('./notes.cjs');
 const { reading, reposOf } = require('./phase-checks.cjs');
 const { readSpec, specStatements } = require('./spec-sections.cjs');
 const { changeOf, cutStandings } = require('./review-change.cjs');
@@ -105,7 +123,7 @@ const {
   UNFIXED_ITEM, isBugfix, bugRuns, rerunRefusal, rerunPassed,
 } = require('./bug-proven.cjs');
 const {
-  NOTES, isBuilderNote, reportNames, reviewStanding, roundRefusal, endedWords, recordedRounds, fixesOf, endsReview, fixPhase, roundRecordPath, roundReportFile, roundChecksFile, roundFolder,
+  NOTES, isBuilderNote, reportNames, notesStanding, reviewStanding, roundRefusal, endedWords, recordedRounds, fixesOf, endsReview, fixPhase, roundRecordPath, roundReportFile, roundChecksFile, roundFolder,
   snapshotRound, dropSnapshot, treeChanges, setAsideHeld, unitCalls, reviewCallFault, forThePerson, inTheBuild,
 } = require('./review-phase.cjs');
 const {
@@ -509,6 +527,47 @@ function answerNotes(cwd, unit, file) {
   return committed(cwd, rels, `review(${unit}): round ${round}'s builders' notes`, warnings, { round, answered: notes, ...closeNext(cwd, unit, manifest, true) });
 }
 
+/**
+ * Why a unit's notes for later are not answered at its close, or null: it
+ * is no quick-fix built as one, or its review was asked for, which answers
+ * them.
+ * @param {string} unit @param {Record<string, any>} manifest @returns {string|null}
+ */
+function closeNotesRefusal(unit, manifest) {
+  if (!quickFixBuild(manifest)) return buildRefusal(manifest) ?? `${unit} is no quick-fix built as one — its notes for later are taken by its phases' consolidation and its review`;
+  return reviewAsked(manifest) ? `${unit}'s review was asked for at its close, and answers its notes for later — review notes ${unit} --file <notes.json>` : null;
+}
+
+/**
+ * `quick-fix notes`: a quick-fix's notes for later answered at its close,
+ * kept after those answered before (the header's).
+ * @param {string} cwd @param {string} unit @param {string} file
+ */
+function answerCloseNotes(cwd, unit, file) {
+  const said = 'quick-fix notes';
+  const refuse = refuserFor(said);
+  const manifest = refusing(said, () => unitInProgress(cwd, unit));
+  const refused = closeNotesRefusal(unit, manifest);
+  if (refused !== null) refuse(refused);
+  const notes = notesStanding(cwd, unit, recordedRounds(cwd, unit));
+  if (notes.length === 0) refuse(`no note for later stands unanswered in ${unit}`);
+  /** @type {string[]} */
+  const warnings = [];
+  const findings = refusing(said, () => readShown(stateRoot(cwd), warnings, (shower) => {
+    const given = shaped(readPayload(cwd, file), 'the notes\' answers', ['findings'], []);
+    /** @type {string[]} */
+    const faults = [];
+    const answered = findingsOf({
+      unit, phase: 0, cwd, statuses: new Map(), call: (id) => reviewCallFault(shower, unit, id, 'implementation'),
+    }, given.findings, [], new Map(noteItems(notes)), faults);
+    if (faults.length > 0) throw new Error(faults.join('; '));
+    return answered;
+  }));
+  const rel = closeNotesPath(unit);
+  writeJsonAtomic(statePath(cwd, rel), { findings: [...answeredAtClose(cwd, unit), ...findings] });
+  return committed(cwd, [rel], `quick-fix(${unit}): notes for later answered`, warnings, { answered: notes });
+}
+
 /** An inbox item as a report names it: its title and kind; its file's name where it is gone or has no title. @param {string} cwd @param {string} rel */
 function filedItem(cwd, rel) {
   const { folder, slug } = parseInboxPath(cwd, statePath(cwd, rel), { archived: false });
@@ -615,5 +674,5 @@ function reviewCallsSurface(cwd, { dotpath: unit = '' }) {
 }
 
 module.exports = {
-  recordRound, answerNotes, handBack, reviewReportSurface, reviewCallsSurface,
+  recordRound, answerNotes, answerCloseNotes, handBack, reviewReportSurface, reviewCallsSurface,
 };

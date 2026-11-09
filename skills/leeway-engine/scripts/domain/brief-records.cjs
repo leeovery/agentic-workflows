@@ -24,18 +24,20 @@
 //                  environment.cjs); a quick-fix's, where the project has
 //                  no environment setup, the line sending the agent to
 //                  the tests and linters it finds (22.5.10)
-//   diff-range     in each repository holding the task's branch — a
-//                  quick-fix's task's, the quick-fix's one branch
-//                  (task-base.cjs) — by the
+//   diff-range     in each repository holding the task's branch, by the
 //                  landing's rule (landing-git.cjs), under a heading naming
 //                  the repository, the range from its base to the branch,
 //                  `{base}...{branch}`, and its `git diff --stat` — never
 //                  the diff's text, which can run to thousands of lines and
-//                  is read in the range. The base is the engine's: where
+//                  is read in the range. A quick-fix's task's is its own
+//                  commits alone (task-base.cjs, `ownWork`), under a heading
+//                  naming the repository and the quick-fix's one branch,
+//                  each by its short sha and subject, oldest first, with
+//                  each one's `git show --stat`, the other fixes' between
+//                  them never its — refused where it has none yet. The
+//                  base is the engine's: where
 //                  the task was laid out, the commit `task worktree`
-//                  recorded there (task-worktree.cjs) — a quick-fix's
-//                  task's, its branch's tip at the task's first start
-//                  (fix-branch.cjs) — or the tip of the
+//                  recorded there (task-worktree.cjs), or the tip of the
 //                  work below it that its branch holds since, its own
 //                  phase's chain for a task of the cut, whichever is
 //                  later — else the branch the repository lands on; or,
@@ -514,7 +516,7 @@ const { specReferenceOf, scenariosOf } = require('./task-file.cjs');
 const {
   taskFolder, taskRounds, roundReportPath, roundUnderReview, phaseReviewPath, reportFaults, roundStanding, readRefusal, recordReviewer, recordBuilder, pendingChange, briefedOf,
 } = require('./round-report.cjs');
-const { workBranch, builtOnBases } = require('./task-base.cjs');
+const { workBranch, builtOnBases, ownWork } = require('./task-base.cjs');
 const { freedAt } = require('./task-parks.cjs');
 const { reviewReportFaults } = require('./review-report.cjs');
 const { REVIEWER_LETTERS } = require('../kernel/reviewers.cjs');
@@ -759,11 +761,35 @@ function taskHolding(filling) {
   return { repos, branch, holding, what };
 }
 
+/**
+ * A quick-fix's task's own commits in one repository, each by its short
+ * sha and subject, with each one's stat.
+ * @param {Repo} repo @param {{sha: string, subject: string}[]} commits @param {string} branch
+ */
+function commitsIn(repo, commits, branch) {
+  const listed = commits.map(({ sha, subject }) => `- \`${sha.slice(0, 7)}\` ${subject}`).join('\n');
+  const stat = git(repo.path, ['show', '--no-color', ...STAT, '--format=%h %s', ...commits.map(({ sha }) => sha), '--']);
+  return `## In ${repoNamed(repo)}: its commits on \`${branch}\`\n\n${listed}\n\n\`\`\`\n${stat.trim()}\n\`\`\``;
+}
+
+/**
+ * A quick-fix's task's change, its own commits alone in each repository
+ * holding any (the header's); refused where it has none.
+ * @param {Filling} filling @param {TaskRef} ref @param {Repo[]} holding @param {string} branch
+ */
+function ownRange(filling, ref, holding, branch) {
+  const own = ownWork(filling.cwd, ref, holding);
+  if (own.length === 0) throw new Error(`${taskName(ref)} has no commit of its own on ${branch} — its builder commits its change through the door first`);
+  const lead = `The task's change is its own commits alone, each stamped with it — ${branch} holds the other fixes' among them, which are not its: read each, \`git show <sha>\`, in its repository.`;
+  return [lead, ...own.map(({ repo, commits }) => commitsIn(repo, commits, branch))].join('\n\n');
+}
+
 /** @param {Filling} filling */
 function drawDiffRange(filling) {
   const { ref } = taskOf(filling);
   const { branch, holding, what } = taskHolding(filling);
   const { base } = filling.given;
+  if (base === undefined && ofQuickFixTask(filling)) return ownRange(filling, ref, holding, branch);
   const bases = base === undefined ? builtOnBases(filling.cwd, ref, holding, branch) : basesOf(filling.cwd, holding, base, what);
   return holding.map((repo, at) => rangeIn(repo, bases[at], branch)).join('\n\n');
 }

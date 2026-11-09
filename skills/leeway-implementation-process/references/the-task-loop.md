@@ -1,6 +1,6 @@
 # The Task Loop
 
-*Reference for **[leeway-implementation-process](../SKILL.md)***
+*Reference for **[leeway-implementation-process](../SKILL.md)**, **[leeway-quick-fix-process](../../leeway-quick-fix-process/SKILL.md)** and **[leeway-review-process](../../leeway-review-process/SKILL.md)***
 
 ---
 
@@ -20,7 +20,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs render build-headline {work
 
 ## A Quick-Fix's Tasks
 
-A quick-fix's tasks — its fixes, and its review's fix tasks — are built in the project's own checkout, on its one branch, one at a time: start the next once the one before is done or closed, or parked with nothing of it left uncommitted. Its builder's Agent call takes no worktree, and your nit fixes are made and committed in the checkout. It has no headline, no landing summary, no gate and no stack: its pull request takes every commit as it is made, so run `land open {work_unit} {task}` each time its builder reports it built or fixed and once your nit fixes are committed. Once its account is taken, it lands with `land open` again, then `task done`.
+A quick-fix's tasks — its fixes, and its review's fix tasks — are built in the project's own checkout, on its one branch, one at a time: the task in flight holds the checkout until it is done or closed, or a question parks it, and the engine refuses another's start and briefs until then. A question parking it sets aside what it had not committed and leaves the checkout clean for the next. Once an answer frees it and `task ready` answers it as `back`, start it again, `task start {work_unit} {task}`, which puts that work back, then send its builder its brief again; a start refused names the way on. Its builder's Agent call takes no worktree, and your nit fixes are made and committed in the checkout. Its pair reads its own commits alone. It has no headline, no landing summary, no gate and no stack: its pull request takes every commit as it is made, so run `land open {work_unit} {task}` each time its builder reports it built or fixed and once your nit fixes are committed. Once its account is taken, it lands with `land open` again, then `task done`, which refuses it until then. Its notes for later, its builders' and its pairs', go into the notes as any task's do, and its close answers them, or its review where the person asks for one.
 
 ## The Builder
 
@@ -101,7 +101,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs land open {work_unit} {task
 node .claude/skills/leeway-engine/scripts/engine.cjs land chain {work_unit} {task}
 ```
 
-`land open`, `land chain` and `task done` refuse a task with no account taken: send the builder its brief again, by SendMessage, and go on by its status. Where `land open` refuses a branch that does not descend from its chain's tip — a task built beside another that chained first — the brief again says to merge the tip back. Then end it:
+`land open`, `land chain` and `task done` refuse such a task with no account taken: send the builder its brief again, by SendMessage, and go on by its status. Where `land open` refuses a branch that does not descend from its chain's tip — a task built beside another that chained first — the brief again says to merge the tip back. Then end it:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs task done {work_unit} {task}

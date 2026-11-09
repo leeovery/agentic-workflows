@@ -163,7 +163,7 @@ The person asks for the build's phases and tasks, the fix phases among them — 
 
 ## A Switch of Position
 
-The person asks to run the fix tasks in auto, or in step. Record it, `workunit position {work_unit} {position:[auto|step]}`, and say in a line that it is switched. A refusal says why it cannot switch — a quick-fix has no position: say it in a line.
+The person asks to run the fix tasks in auto, or in step. A quick-fix's run as in auto, with no position to switch: say so in a line. Any other unit's: record it, `workunit position {work_unit} {position:[auto|step]}`, and say in a line that it is switched.
 
 ## Backlogging
 

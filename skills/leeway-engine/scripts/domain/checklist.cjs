@@ -406,6 +406,13 @@ const POINTS = Object.freeze({
       {
         key: 'questions-answered', text: 'no question waiting on the person', check: ofUnit(finishChecks.questionsAnswered), way: ofUnit(finishChecks.questionsWay),
       },
+      {
+        key: 'notes-answered',
+        text: 'every note for later filed or dropped, where a quick-fix\'s close answers them',
+        check: ofUnit(finishChecks.notesAnswered),
+        way: ofUnit(finishChecks.notesWay),
+        applies: ofUnit(finishChecks.answersNotes),
+      },
       { key: 'inbox-closed', text: 'resolved inbox items closed' },
       { key: 'build-log-closed', text: 'the build log closed' },
       {

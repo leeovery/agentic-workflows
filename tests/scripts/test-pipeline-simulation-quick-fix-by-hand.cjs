@@ -31,10 +31,11 @@ describe('pipeline simulation: quick-fix merged by hand', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('quick-fix: three fixes built in the project\'s checkout on its one branch, each passed by its pair, recorded, pushed to its one pull request and done; the pull request merged by hand mid-set, the fix after it on the branch cut again, its share in the nested clone recorded; and the close landing what is left in one commit naming the fix it holds in each, then naming the start menu', () => {
+  it('quick-fix: three fixes built in the project\'s checkout on its one branch, each passed by its pair, recorded, pushed to its one pull request and done; the pull request merged by hand mid-set, the fix after it on the branch cut again, its share in the nested clone recorded; and the close landing what is left in one commit naming the fix it holds in each, then naming the start menu, no handoff before it (24.S8)', () => {
     const wu = 'typo';
     const branch = `fix/${wu}`;
     startUnit(sim, 'quick-fix', wu, 'The --color flag is spelt --colour');
+    const handedOff = sim.handoffs.length;
     assert.strictEqual(sim.run(['enter', 'implementation', wu]).entered, true);
     const base = git(sim.dir, ['rev-parse', 'main']).trim();
     /** Fix `n` written, started and built: its start's answer. @param {number} n @param {string} title @param {string[]} files */
@@ -57,6 +58,7 @@ describe('pipeline simulation: quick-fix merged by hand', () => {
     finishClosed(sim, wu);
     sim.render(['finish', wu], { expect: 'content' });
     const closing = sim.run(['board', sim.env.CLAUDE_CODE_SESSION_ID]).view;
+    const unclosed = sim.handoffs.slice(handedOff);
     const yes = sim.run(answerGate(sim, 'finish', '--pick', 'y').next.argv);
     const closed = sim.run(['board', sim.env.CLAUDE_CODE_SESSION_ID]);
 
@@ -66,6 +68,7 @@ describe('pipeline simulation: quick-fix merged by hand', () => {
     ]);
     assert.deepStrictEqual(git(sim.api, ['log', '-1', '--format=%B', 'main']).match(/^Task: .*$/gm), [`Task: ${wu}-1-3`]);
     assert.strictEqual(sim.manifest(wu).status, 'completed');
+    assert.deepStrictEqual(unclosed, [], 'no handoff from the opener to the close (24.S8)');
     assert.deepStrictEqual([closing.kind, closing.standing, closing.progress, closing.record.map((/** @type {{title: string}} */ { title }) => title), closed.view.kind, closed.banner.state], [
       'quick-fix', 'close', { done: 3, total: 3, written: true }, ['Spell the flag --colour', 'Spell the help --colour', 'Spell the docs --colour'], 'all', 'done',
     ], 'the board draws the close waiting, then follows the session to All work');

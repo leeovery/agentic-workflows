@@ -54,7 +54,7 @@ const fs = require('fs');
 const path = require('path');
 const {
   ok, okSections, okSectionsAsync, refuses, refusedPristine, output, git, stateGit, statePath, layout, writeState, readState, createFile, fixtureFrom, cleanupFixture,
-  head, readManifest, withEnv,
+  head, readManifest, withEnv, sectionOf, accountTaken,
 } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const { MADE, ledgerHelpers } = require('./ledger-world.cjs');
@@ -67,6 +67,8 @@ const { isFixPhase } = require(path.join(SCRIPTS, 'domain/derivations.cjs'));
 const { quickFixBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
 const { fixPhase } = require(path.join(SCRIPTS, 'domain/review-phase.cjs'));
 const { briefPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
+const { roundReportPath } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
+const { REVIEWER_LETTERS } = require(path.join(SCRIPTS, 'kernel/reviewers.cjs'));
 
 const ENGINE = 'node .claude/skills/leeway-engine/scripts/engine.cjs';
 /** The default task driver's side of the suites, what a person might do in its tool. */
@@ -97,6 +99,9 @@ const CALL = Object.freeze({
 
 /** The question the world asks at the quick-fix's place: its short id. */
 const asked = { alias: '' };
+
+/** The world's question, asked at the quick-fix's place and still open, as the entry and the note name it. */
+const askedOpenLine = () => `waiting: ${asked.alias} — Does --color still work? — asked in the conversation and still open: raise it again for the person to answer, raise ${PLACE} --answers ${asked.alias}`;
 
 const fresh = fixtureFrom('quick-fix-', quickFix);
 
@@ -207,7 +212,7 @@ describe('enter implementation <quick-fix>: its fixes, with no cut, no ready to 
     assert.deepStrictEqual([recorded, subjects(2)], [true, [`implementation(${UNIT}): start`, `task(${UNIT}): write phase 1`]]);
   });
 
-  it('puts in flight the fix another conversation left in progress, reading each fix by its id, title and where it stands, and its record once written; its recovery note re-reads the same', () => {
+  it('puts in flight the fix another conversation left in progress, reading each fix by its id, title and where it stands, its record once written, and a question asked in the quick-fix still open with the raise that asks it again (19.5.25); its recovery note re-reads the same', () => {
     dir = entered();
     writeState(dir, layout.unit(UNIT, 'summary.md'), `## ${TITLE}\n`);
     const { res, sections } = enter();
@@ -215,10 +220,10 @@ describe('enter implementation <quick-fix>: its fixes, with no cut, no ready to 
     const note = output(dir, ['conversation', 'position'], { env: env() });
 
     assert.deepStrictEqual(res, { ok: true, phase: 'implementation', unit: UNIT, entered: true, started: false });
-    assert.strictEqual(sections, quickFixData(`1.1 "${TITLE}" in progress`, true, [IN_FLIGHT]));
+    assert.strictEqual(sections, quickFixData(`1.1 "${TITLE}" in progress`, true, [IN_FLIGHT, askedOpenLine()]));
     assert.deepStrictEqual(position(), { name: UNIT, phase: 'implementation', topic: UNIT, tasks: [{ task: '1.1', builder: null, reviewers: [] }] });
     for (const line of [
-      path.join(dir, '.claude/skills/leeway-quick-fix-process/SKILL.md'), `\`${ENGINE} ledger record ${UNIT}\``, statePath(dir, `${UNIT}/build/log.md`), ...fixesLines(`1.1 "${TITLE}" in progress`, true), IN_FLIGHT,
+      path.join(dir, '.claude/skills/leeway-quick-fix-process/SKILL.md'), `\`${ENGINE} ledger record ${UNIT}\``, statePath(dir, `${UNIT}/build/log.md`), ...fixesLines(`1.1 "${TITLE}" in progress`, true), IN_FLIGHT, askedOpenLine(),
     ]) {
       assert.ok(note.includes(line), `the note names ${line}\n${note}`);
     }
@@ -339,20 +344,48 @@ describe('the quick-fix\'s fix, built in the project\'s own checkout (12.7.8, 19
     assert.ok(set.includes('# The linters\n\n- eslint: npx eslint .\n\n#'), set);
   });
 
-  it('19.5.24: a fix\'s pair reads its range alone — from where the quick-fix\'s branch stood at the fix\'s first start, a start again never moving it, the fixes before it left out', () => {
+  it('19.5.24: a fix\'s pair reads its own commits alone, each stamped with it, the fixes before it left out; with none yet, refused naming the door', () => {
     dir = entered();
     commitFix();
     ok(dir, ['land', 'open', UNIT, '1.1']);
     fixDone(dir, '1.1', { env: env() });
     createFix(dir, 2, SECOND);
     ok(dir, ['task', 'start', UNIT, '1.2'], { env: env() });
-    const start = sha(BRANCH).slice(0, 7);
+    const none = refusedPristine(dir, ['brief', 'reviewer', UNIT, '1.2', '--letter', 'a'], { env: env() }).error;
     createFile(dir, 'src/help.js', 'const help = \'--colour\';\n');
     ok(dir, ['commit', '--paths', 'src/help.js', '--task', UNIT, '1.2', '-m', `fix(${UNIT}): spell the help --colour`], { env: env() });
-    ok(dir, ['task', 'start', UNIT, '1.2'], { env: env() });
+    const own = sha(BRANCH).slice(0, 7);
     const brief = briefText(['reviewer', UNIT, '1.2', '--letter', 'a']);
 
-    assert.ok(brief.includes(`# The diff's range\n\n## In the project's repository: \`${start}...${BRANCH}\`\n\n\`\`\`\n src/help.js | 1 +\n 1 file changed, 1 insertion(+)\n\`\`\`\n`), brief);
+    assert.match(none, /task 1\.2 of typo has no commit of its own on fix\/typo — its builder commits its change through the door first$/);
+    assert.ok(brief.includes([
+      '# The diff\'s range', '',
+      `The task's change is its own commits alone, each stamped with it — ${BRANCH} holds the other fixes' among them, which are not its: read each, \`git show <sha>\`, in its repository.`, '',
+      `## In the project's repository: its commits on \`${BRANCH}\``, '',
+      `- \`${own}\` fix(${UNIT}): spell the help --colour`, '',
+      '```', `${own} fix(${UNIT}): spell the help --colour`, '', ' src/help.js | 1 +', ' 1 file changed, 1 insertion(+)', '```', '',
+    ].join('\n')), brief);
+  });
+
+  it('a fix its pair passed is named on its way to its end in the project\'s checkout, at an entry after a /clear and at its pair\'s brief: its account not taken, its reports\' nits fixed there on the quick-fix\'s branch through the door; taken, pushed to its pull request and ended — no worktree, nor the task-landed screen a quick-fix refuses', () => {
+    dir = entered();
+    commitFix();
+    const reports = REVIEWER_LETTERS.map((letter) => writeState(dir, roundReportPath({ unit: UNIT, phase: 1, n: 1 }, 1, letter), '# Review\n\n## Findings\n\nNone.\n\nVerdict: pass\n'));
+    /** Where the fix stands as an entry after a /clear and its pair's brief say it. */
+    const said = () => [
+      sectionOf(okSections(dir, ['enter', 'implementation', UNIT], { env: { ...env(), CLAUDE_CODE_SESSION_ID: 'sess-2' } }).sections, 'DATA').split('\n').find((line) => line.startsWith('in flight: task 1.1')),
+      refusedPristine(dir, ['brief', 'reviewer', UNIT, '1.1', '--letter', 'a'], { env: env() }).error,
+    ];
+    const notTaken = said();
+    accountTaken(dir, UNIT, '1.1');
+    const taken = said();
+
+    const unaccounted = `read its reports, ${reports.map((file) => `\`${file}\``).join(' and ')}, for their notes for later and the nits the task's commits do not yet fix, and fix those in the project's checkout, on ${BRANCH}, through the door; then send its builder its brief for its account, engine brief builder ${UNIT} 1.1`;
+    const landing = `push it to ${UNIT}'s pull request, engine land open ${UNIT} 1.1, then end it, engine task done ${UNIT} 1.1`;
+    assert.deepStrictEqual([notTaken, taken], [
+      [`in flight: task 1.1, no builder dispatched here — round 1 of its review passed, its account not taken — ${unaccounted}`, `round 1 of task 1.1 of ${UNIT} passed — its review is over: ${unaccounted}`],
+      [`in flight: task 1.1, no builder dispatched here — round 1 of its review passed, its account taken — ${landing}`, `round 1 of task 1.1 of ${UNIT} passed — its review is over: ${landing}`],
+    ]);
   });
 
   it('land open refuses a fix the tracker holds with no type, naming the verb that gives it one, and opens it once given (7.2.18); land phase refuses a phase the quick-fix does not hold, naming land finish', () => {

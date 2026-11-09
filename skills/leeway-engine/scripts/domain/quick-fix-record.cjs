@@ -72,7 +72,7 @@ const landing = () => require('./landing.cjs');
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 
-const QUICK_FIX_USAGE = 'quick-fix record <work-unit> <task> --file <record.md>';
+const QUICK_FIX_USAGE = 'quick-fix record <work-unit> <task> --file <record.md> | quick-fix notes <work-unit> --file <notes.json>';
 
 /** A record's sections, as their headings read, in order. */
 const RECORD_SECTIONS = Object.freeze(['What changed', 'Why', 'Leaves out']);
@@ -338,14 +338,17 @@ function recordedFixes(cwd, manifest) {
 }
 
 /**
- * `quick-fix record <unit> <task> --file <record.md>`: the verb's answer,
- * its refusal opening on its command.
+ * `quick-fix record <unit> <task> --file <record.md>`, and `quick-fix notes
+ * <unit> --file <notes.json>`, its notes for later answered at its close
+ * (review-round.cjs): the verb's answer, its refusal opening on its command.
  * @param {string} cwd @param {string[]} positional @param {Record<string, string>} opts
  * @returns {Record<string, unknown>}
  */
 function runQuickFixVerb(cwd, [verb, ...args], opts) {
   const { file, ...rest } = opts;
-  if (verb !== 'record' || args.length !== 2 || typeof file !== 'string' || Object.keys(rest).length > 0) throw new Error(`Usage: engine ${QUICK_FIX_USAGE}`);
+  const arity = { record: 2, notes: 1 }[verb];
+  if (arity === undefined || args.length !== arity || typeof file !== 'string' || Object.keys(rest).length > 0) throw new Error(`Usage: engine ${QUICK_FIX_USAGE}`);
+  if (verb === 'notes') return require('./review-round.cjs').answerCloseNotes(cwd, args[0], file);
   return refusing('quick-fix record', () => recordFix(cwd, args[0], args[1], file));
 }
 

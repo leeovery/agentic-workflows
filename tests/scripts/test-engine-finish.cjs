@@ -117,10 +117,10 @@ describe('finish\'s checklist (6.4.10, 2.S2)', () => {
     ]);
   });
 
-  it('names the review\'s entry refusal as the way on where the review cannot be entered yet, and holds no review item for a quick-fix', () => {
+  it('names the review\'s entry refusal as the way on where the review cannot be entered yet, and holds no review item for a quick-fix, but its notes answered', () => {
     assert.deepStrictEqual([items('half')[0], items('tweak')], [
       'review-passed engine open — half\'s review phase starts once every phase of its cut has closed — phase 2 of 2 has not: enter implementation half',
-      ['questions-answered engine done', 'inbox-closed claude open', 'build-log-closed claude open'],
+      ['questions-answered engine done', 'notes-answered engine done', 'inbox-closed claude open', 'build-log-closed claude open'],
     ]);
   });
 

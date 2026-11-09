@@ -7,7 +7,8 @@
 // a commit under it, which takes no more work, naming the next fix's start
 // and a fix of its own (commit-task.cjs); refused, naming the reversal, for
 // a fix holding work of its own — given up after its commit — whether or not
-// that commit is in the quick-fix's pull request (R3, R14); the reversal
+// that commit is in the quick-fix's pull request (R3, R14), one its pair
+// failed naming its settling first, `task settle`; the reversal
 // landing as a fix of its own whose commit through the door reverts the
 // change, every git command asked of the shell guard first, the change gone
 // from the branch the fixes land on once the pull request merges. Every
@@ -28,16 +29,21 @@ const { describe, it, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { ok, output, refusedPristine, git, createFile, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
+const { ok, output, refusedPristine, git, createFile, writeState, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const {
   UNIT, DESCRIPTION, BRANCH, RECORDS, createFix, fixChanged, fixDone, recordFile, twoFixesBuilt, guardedGit, checklistClosed,
 } = require('./quick-fix-world.cjs');
 
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const { roundReportPath } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
+const { REVIEWER_LETTERS } = require(path.join(SCRIPTS, 'kernel/reviewers.cjs'));
+
 const DOCS = 'Spell the docs --colour';
 const MAN = 'Spell the man page --colour';
 const BACK = 'Put the docs back';
 const RECORD = Object.freeze({ changed: 'A change.', why: 'A reason.', leaves: 'Nothing.' });
+const FAILED = '# Review\n\n## Findings\n\n- bug: the docs still say --color\n  Scenario: the docs read\n\nVerdict: fail\n';
 
 const world = fixtureFrom('quick-fix-given-up-', twoFixesBuilt);
 
@@ -94,13 +100,17 @@ describe('task close <quick-fix> <fix> (R3, R14)', () => {
     ]);
   });
 
-  it('refuses a fix given up after its commit, naming the reversal — whether or not the commit is in the pull request — writing nothing', () => {
+  it('refuses a fix given up after its commit, naming the reversal — whether or not the commit is in the pull request, and one its pair failed naming its settling first — writing nothing', () => {
     dir = world();
     changed(3, DOCS, 'docs/flags.md');
     const committed = closeRefused(3);
     run(['land', 'open', UNIT, '1.3']);
+    const opened = closeRefused(3);
+    for (const letter of REVIEWER_LETTERS) writeState(dir, roundReportPath({ unit: UNIT, phase: 1, n: 3 }, 1, letter), FAILED);
 
-    assert.deepStrictEqual([committed, closeRefused(3)], [held(3), held(3)]);
+    assert.deepStrictEqual([committed, opened, closeRefused(3)], [held(3), held(3),
+      `task close: task 1.3 of ${UNIT} holds work of its own — its pair failed it in round 1, so it lands once its review is settled, task settle ${UNIT} 1.3 --file <why.md>, then done once it is in ${UNIT}'s pull request, `
+      + `and its change is given up as a landed change is, by a fix of its own whose commit through the door reverts it: task create ${UNIT} 1 --file <task.md>`]);
   });
 
   it('lands the reversal of a fix as a fix of its own, its revert asked of the shell guard and committed through the door on the one branch, the change gone from the branch the fixes land on once the pull request merges', () => {

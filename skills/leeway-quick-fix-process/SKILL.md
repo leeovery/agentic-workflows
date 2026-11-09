@@ -6,7 +6,7 @@ allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *)
 
 # Quick-Fix
 
-A small, known change, made in one sitting: from its first fix to its close, all in this conversation, with no document and no plan before the work. You orchestrate and delegate: each fix is a task, built by a builder and passed by a pair of reviewers through the build's own task loop, each from a brief the engine issues. You write the fixes, land what the agents find through the doors, fix the nits a review leaves, write each fix's short record, and keep the person out of it except where a raise or the close stops for them. Nothing here decides the product afresh: a call goes to the ledger or the person, and work that needs more than a quick call becomes a feature or a bugfix.
+A small, known change, made in one sitting: from its first fix to its close, all in this conversation, with no document and no plan before the work. You orchestrate and delegate: each fix is a task, built by a builder and passed by a pair of reviewers through the build's own task loop, each from a brief the engine issues. You write the fixes as tasks, their builders build them; you land what the agents find through the doors, fix the nits a review leaves, write each fix's short record, and keep the person out of it except where a raise or the close stops for them. Nothing here decides the product afresh: a call goes to the ledger or the person, and work that needs more than a quick call becomes a feature or a bugfix.
 
 ## Arguments
 
@@ -40,7 +40,7 @@ On resume, say in your own words, in a line, where the fixes stand and what come
 
 ## The Fixes
 
-The change was settled with the person before this conversation: carry it out. Split it into fixes, each a change that stands on its own and lands as its own commit — one for each item where the quick-fix was started from several. A fix the work turns up later is one more.
+The change was settled with the person when this work was started: carry it out. Split it into fixes, each a change that stands on its own and lands as its own commit — one for each item where the quick-fix was started from several. A fix the work turns up later is one more.
 
 ### Writing a Fix
 
@@ -81,6 +81,8 @@ Append to the build's log, `.leeway/{work_unit}/build/log.md`, as the work goes:
 - What the fix was not told → `task add {work_unit} {task} --file {addition} --by {by:[orchestrator|person]}`; a builder that stops → `task stopped {work_unit} {task}`; a stuck fix → `task settle {work_unit} {task} --file {why}`.
 - A fix landing → `land open {work_unit} {task}`, `task account {work_unit} {task}`, `task done {work_unit} {task}`; a fix given up → `task close {work_unit} {task} --reason "{reason}"`.
 - A fix's short record → `quick-fix record {work_unit} {task} --file {record}`.
+- A note for later → `task note {work_unit} --file {note}`; the notes answered at the close → `quick-fix notes {work_unit} --file {path}`, its file `{findings}`, each finding `{"area": "notes", "scope": "out", "call", "text", "from"}`, `from` the notes it answers as `notes#{k}`, then `inbox` the item filed or `drop` why, and `ledger`, your call's id.
+- Your call on a note → `ledger ask {work_unit}.implementation`, `{"text", "by": "claude", "who_moved_whom": "none"}`; then `ledger decide {work_unit}.implementation --answers {question_id}`, `{"text", "why", "by": "claude", "who_moved_whom": "none"}`; a note filed → `inbox file {work_unit} --file {item}`, `{"kind", "text", "call"}`: its kind `idea`, `bug` or `quick-fix`, its text opening on its `# Title`, its call your decision's id.
 - A call or a question → `ledger ask {work_unit}.implementation [--task {task}]`, then `raise {work_unit}.implementation --answers {question_id} [--parks {task}]`; a decision that must change → `raise {work_unit}.implementation --replaces {decision_id} --reason {reason} [--parks {task}]`; what relied on it → `ledger affected {work_unit}`, `ledger hold`.
 - A question waiting → `raise waiting|draw|aside {work_unit} …`, its answer `raise answer {id} …`.
 - Earlier work → `knowledge query "{term}" …`.
@@ -94,6 +96,14 @@ Append to the build's log, `.leeway/{work_unit}/build/log.md`, as the work goes:
 The quick-fix closes once every fix is done or closed, each done fix recorded. Finish closes on its checklist; `checklist show finish {work_unit}` lists its items, and the engine checks most of them, an open one naming its way on. Yours:
 - `inbox-closed` — the build's log names each live inbox item this work resolved, by its path, and the item stays in the inbox.
 - `build-log-closed` — the build's log ends on what the fixes came to, nothing left in flight.
+
+Where `notes-answered` stays open, the notes for later its fixes' builders and pairs left stand: each is answered by a finding out of scope, of the area `notes`, from `notes#{k}`, note {k} of `.leeway/{work_unit}/build/notes.md`, filed to the inbox or dropped by your call. Write them, `{findings}`, to `.leeway/.cache/{work_unit}/build/notes.json` and record them:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs quick-fix notes {work_unit} --file .leeway/.cache/{work_unit}/build/notes.json
+```
+
+A refusal names every fault: put each right and record them again.
 
 Mark each as it holds, `checklist done finish {work_unit} {item}`, or skip it with its reason, `checklist skip finish {work_unit} {item} --reason "{reason}"`. Close it, `checklist close finish {work_unit}`, then draw the close, emitting its sections verbatim per their markers:
 

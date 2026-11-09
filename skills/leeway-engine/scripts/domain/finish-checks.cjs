@@ -19,8 +19,14 @@
 // - No question waiting on the person: the unit's questions waiting, as
 //   `raise waiting` reads them (questions.cjs) — the build never concludes
 //   over one (12.13.22), wherever it was raised, the review phase's among
-//   them. Its way on names each, and the build's stop that puts them to
-//   the person (build-screens.cjs).
+//   them — and a quick-fix's questions asked in its conversation still open
+//   (`askedOpen`), which park nothing (19.5.25). Its way on names each, and
+//   the build's stop that puts them to the person (build-screens.cjs), or
+//   the raise that asks each again.
+// - A quick-fix's notes for later answered, where no review was asked for:
+//   none standing (review-phase.cjs, `notesStanding`), each filed or
+//   dropped at the close (`quick-fix notes`, R24); its way on names each.
+//   With a review asked for, the review answers them, and its item holds.
 // - The records indexed: where this checkout's knowledge base is set up —
 //   setting it up is the person's choice (knowledge/sync.cjs) — every
 //   record of the unit's (22.6.2), a quick-fix's short record among them
@@ -41,11 +47,11 @@ const fs = require('fs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { once, reading } = require('./phase-checks.cjs');
-const { reviewAsked } = require('./derivations.cjs');
+const { reviewAsked, quickFixBuild } = require('./derivations.cjs');
 const { reviewRefusal } = require('./review-entry.cjs');
-const { reviewStanding, endedRefusal } = require('./review-phase.cjs');
+const { reviewStanding, endedRefusal, notesStanding, recordedRounds } = require('./review-phase.cjs');
 const { readiness, unindexedRecords } = require('./knowledge/status.cjs');
-const { waitingAndFreed } = require('./questions.cjs');
+const { waitingAndFreed, askedOpen } = require('./questions.cjs');
 
 /** @typedef {import('./phase-checks.cjs').Reading} Reading */
 /** @typedef {import('./review-phase.cjs').ReviewStanding} ReviewStanding */
@@ -76,14 +82,33 @@ function reviewWay(at) {
 /** The unit's questions waiting on the person: read once a call. @param {Reading} at */
 const waiting = (at) => once(at, 'questions', () => waitingAndFreed(at.cwd, at.unit, at.warnings).waiting);
 
-/** No question of the unit waits on the person. @param {Reading} at */
-const questionsAnswered = (at) => waiting(at).length === 0;
+/** A quick-fix's questions asked in its conversation still open: read once a call; none for any other unit. @param {Reading} at */
+const stillOpen = (at) => once(at, 'asked', () => (quickFixBuild(at.manifest) ? askedOpen(at.cwd, at.unit, at.warnings) : []));
 
-/** The questions waiting, with the way on. @param {Reading} at */
+/** No question of the unit waits on the person, nor stands open in a quick-fix's conversation. @param {Reading} at */
+const questionsAnswered = (at) => waiting(at).length === 0 && stillOpen(at).length === 0;
+
+/** The questions waiting, and those still open, each with the way on. @param {Reading} at */
 function questionsWay(at) {
   const asked = waiting(at).map(({ question, asks }) => `${question}, ${asks}`).join('; ');
-  return `${asked} — the unit never finishes over a question waiting on the person: stop for them, render build-stop ${at.unit}, and take each once they are ready to discuss it`;
+  const parked = asked === '' ? [] : [`${asked} — the unit never finishes over a question waiting on the person: stop for them, render build-stop ${at.unit}, and take each once they are ready to discuss it`];
+  return [...parked, ...stillOpen(at).map(askedWay)].join('; ');
 }
+
+/** A question still open in a quick-fix's conversation, with the raise that asks it again. @param {import('./questions.cjs').AskedOpen} open */
+const askedWay = ({ id, place, asks }) => `${id}, ${asks}, asked in the conversation and still open — raise it again for the person to answer: raise ${place} --answers ${id}`;
+
+/** Whether a quick-fix's close answers its notes for later: no review was asked for, which answers them. @param {Reading} at */
+const answersNotes = ({ manifest }) => quickFixBuild(manifest) && !reviewAsked(manifest);
+
+/** A quick-fix's notes for later standing, each `notes#{k}`: read once a call. @param {Reading} at */
+const notesLeft = (at) => once(at, 'notes', () => notesStanding(at.cwd, at.unit, recordedRounds(at.cwd, at.unit)));
+
+/** No note for later stands unanswered. @param {Reading} at */
+const notesAnswered = (at) => notesLeft(at).length === 0;
+
+/** The notes for later standing, with the way on. @param {Reading} at */
+const notesWay = (at) => `${notesLeft(at).join(', ')} — each note for later is filed to the inbox or dropped before the close: quick-fix notes ${at.unit} --file <notes.json>`;
 
 /**
  * Whether this checkout's knowledge base is set up and reads: read once a
@@ -126,5 +151,5 @@ function reviewOverRefusal(cwd, unit, manifest) {
 
 module.exports = {
   reviewOverRefusal,
-  hasReviewPhase, reviewPassed, reviewWay, questionsAnswered, questionsWay, knowledgeSetUp, recordsIndexed, recordsWay,
+  hasReviewPhase, reviewPassed, reviewWay, questionsAnswered, questionsWay, answersNotes, notesAnswered, notesWay, askedWay, knowledgeSetUp, recordsIndexed, recordsWay,
 };

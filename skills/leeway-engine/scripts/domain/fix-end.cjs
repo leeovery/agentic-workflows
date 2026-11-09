@@ -35,7 +35,9 @@
 //   before its commit; one holding any, landed or not, in any repository,
 //   is refused, naming the reversal: its change lands as it is, given up as
 //   a landed change is, by a fix of its own whose commit through the door
-//   reverts it. A fix closed that was recorded — by a move's close
+//   reverts it — one its pair failed in its last round landing only once
+//   its review is settled (`task settle`, task-account.cjs), which the
+//   refusal names first. A fix closed that was recorded — by a move's close
 //   (`closeForMove`, task-verbs.cjs), which refuses none — has its record
 //   taken out of `summary.md` and the fixes recorded, written for the
 //   close's own commit (quick-fix-record.cjs, `takeOutRecord`), and the
@@ -58,6 +60,7 @@ const { shownTask, taskName } = require('./task-id.cjs');
 const { trackedPhase, trackedBuild, ENDED } = require('./task-verbs.cjs');
 const { quickFixLanding } = require('./landing.cjs');
 const { short: shortSha } = require('./landing-git.cjs');
+const { taskRounds, pairPassed } = require('./round-report.cjs');
 const { remade } = require('./fix-branch.cjs');
 const { takeOutRecord, indexSummary } = require('./quick-fix-record.cjs');
 
@@ -181,7 +184,10 @@ function refuseHeld(cwd, ref, said) {
     return landing.task(ref);
   });
   if (!read.held) return;
-  const lands = read.landed ? 'it has landed, so it is done' : `it lands as it is with ${ref.unit}'s pull request, done once it is in it`;
+  const failed = read.landed ? undefined : taskRounds(cwd, ref).at(-1);
+  const lands = read.landed ? 'it has landed, so it is done'
+    : failed !== undefined && !pairPassed(failed) ? `its pair failed it in round ${failed.round}, so it lands once its review is settled, task settle ${ref.unit} ${shownTask(ref)} --file <why.md>, then done once it is in ${ref.unit}'s pull request`
+      : `it lands as it is with ${ref.unit}'s pull request, done once it is in it`;
   throw new Error(
     `${said}: ${taskName(ref)} holds work of its own — ${lands}, and its change is given up as a landed change is, `
     + `by a fix of its own whose commit through the door reverts it: task create ${ref.unit} ${ref.phase} --file <task.md>`,

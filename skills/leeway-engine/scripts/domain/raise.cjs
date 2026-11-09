@@ -949,11 +949,26 @@ function parkedFact({ question, rows, mechanism, product_wide: productWide }) {
  */
 function parkLanded(cwd, park, reason, warnings) {
   const task = /** @type {string|null} */ (park.linked.task);
+  const aside = task === null ? [] : setAsideFor(cwd, park.place.unit, task);
   const { landed, line } = landRaised(cwd, park, warnings);
   if (task !== null) clearStop(sessionOf(SAID), park.place.unit, task);
   const { name, asks, tasks } = questions.parkedQuestion(cwd, park.place.unit, /** @type {string} */ (/** @type {Record<string, unknown>} */ (line).id), warnings);
   const { id, committed, ...rest } = landed;
-  return { decision: 'ask', reason, parked: name, task, id, committed, line: parkedLine(task, name, asks, tasks, park.place.phase), ...rest };
+  return { decision: 'ask', reason, parked: name, task, id, committed, line: parkedLine(task, name, asks, tasks, park.place.phase), ...rest, ...(aside.length === 0 ? {} : { set_aside: aside }) };
+}
+
+/**
+ * What a quick-fix's fix had not committed, set aside as a question parks
+ * it while it holds the checkout, so the next fix starts on a clean one
+ * (fix-aside.cjs): each path, from the project — none where the task holds
+ * no checkout, a parked or freed fix waiting behind another, or any task
+ * of a unit that is no quick-fix.
+ * @param {string} cwd @param {string} unit @param {string} task @returns {string[]}
+ */
+function setAsideFor(cwd, unit, task) {
+  const turn = turnNow(cwd, unit);
+  if (turn === null || !turn.checkout || turn.inFlight !== task) return [];
+  return require('./fix-aside.cjs').setAside(cwd, parseShownTask(unit, task));
 }
 
 /**
@@ -1332,8 +1347,9 @@ function keeping(session, seal, { entry, reason, cause }, stdin) {
 }
 
 /**
- * In step, the task in flight and those waiting behind it, read as
- * any read of the tracker is (task-verbs.cjs, `stepTurn`); null in auto.
+ * In step or in a quick-fix, the task in flight and those waiting behind
+ * it, read as any read of the tracker is (task-verbs.cjs, `stepTurn`); null
+ * in auto.
  * @param {string} cwd @param {string} unit
  */
 function turnNow(cwd, unit) {

@@ -86,7 +86,8 @@ const { parseShownTask, shownTask, taskId, taskName } = require('./task-id.cjs')
 const { holdingBranch, taskWorktree } = require('./landing-git.cjs');
 const { trackedTask, trackedStart, givenText, ENDED } = require('./task-verbs.cjs');
 const { refuseParked, parkedOf } = require('./task-parks.cjs');
-const { baseRev, workBranch, builtOnBases } = require('./task-base.cjs');
+const { baseRev, ofQuickFix, workBranch, builtOnBases, ownWork } = require('./task-base.cjs');
+const { quickFixBranch } = require('./landing-names.cjs');
 const { refusing } = require('./staged-payload.cjs');
 const { READERS, readersDone } = require('./scratch.cjs');
 const {
@@ -239,6 +240,33 @@ function changeIn(repo, base, branch) {
 }
 
 /**
+ * A quick-fix's task's own change in one repository: its own commits'
+ * (task-base.cjs, `ownWork`), each file they touched counted once, their
+ * lines summed, its submodules' pointers left out.
+ * @param {Repo} repo @param {string[]} shas @returns {Change}
+ */
+function commitsChange(repo, shas) {
+  const rows = git(repo.path, ['show', '--numstat', '--format=', '--find-renames', ...shas, '--', ':(top)', ...excluding(repo.submodules)]).split('\n').filter((row) => row !== '');
+  const files = new Set(rows.map((row) => row.split('\t').slice(2).join('\t')));
+  return rows.reduce((sum, row) => {
+    const [added, removed] = row.split('\t').map(Number);
+    return { ...sum, added: sum.added + (added || 0), removed: sum.removed + (removed || 0) };
+  }, { files: files.size, added: 0, removed: 0 });
+}
+
+/**
+ * The task's own change in each repository holding its branch: a
+ * quick-fix's task's its own commits', any other's from where its own work
+ * starts there (task-base.cjs).
+ * @param {string} cwd @param {TaskRef} ref @param {Repo[]} holding @param {string} branch @returns {Change[]}
+ */
+function changesOf(cwd, ref, holding, branch) {
+  if (ofQuickFix(cwd, ref.unit)) return ownWork(cwd, ref, holding).map(({ repo, commits }) => commitsChange(repo, commits.map(({ sha }) => sha)));
+  const bases = builtOnBases(cwd, ref, holding, branch);
+  return holding.map((repo, at) => changeIn(repo, bases[at], branch));
+}
+
+/**
  * The task's figures (the header's), finished now, the account covering
  * `rounds`; refused where no repository of the project holds work on its
  * branch.
@@ -249,8 +277,7 @@ function figuresOf(cwd, ref, task, rounds, refuse) {
   const branch = workBranch(cwd, ref, task);
   const { holding } = holdingBranch(ref.unit, projectRepos(codeRoot(cwd)), branch);
   if (holding.length === 0) refuse(`no repository of the project holds work on ${taskName(ref)}'s branch, ${branch}`);
-  const bases = builtOnBases(cwd, ref, holding, branch);
-  const change = holding.map((repo, at) => changeIn(repo, bases[at], branch)).reduce(
+  const change = changesOf(cwd, ref, holding, branch).reduce(
     (sum, part) => ({ files: sum.files + part.files, added: sum.added + part.added, removed: sum.removed + part.removed }),
     { files: 0, added: 0, removed: 0 },
   );
@@ -421,11 +448,15 @@ function landingStage(cwd, ref) {
 /**
  * Where a task whose last round passed goes, by how far it stands towards
  * landing (`landingStage`; 12.14, 13.4.5): its account taken, to its
- * landing, its summary drawn and then `land open`; one written there that reads, to its taking, `task
+ * landing, its summary drawn and then `land open` — a quick-fix's, which
+ * has no landing summary, pushed to its pull request by `land open`, then
+ * done; one written there that reads, to its taking, `task
  * account`; none, to its builder's brief for it, that round's reports read
  * for their notes for later and the nits the task's commits do not yet
  * fix, fixed in the worktree that has its branch checked out — or, where
- * none has, in the one its builder lays out from that brief. Null where its
+ * none has, in the one its builder lays out from that brief; a quick-fix's,
+ * in the project's checkout on its one branch, where its builder lays out
+ * none. Null where its
  * review is not over, its last round was settled rather than passed, or a
  * question parks it.
  * @param {string} cwd @param {TaskRef} ref
@@ -436,10 +467,17 @@ function reviewOverWay(cwd, ref) {
   if (stage === 'building' || last === undefined || !last.passes || parkedOf(cwd, ref.unit).has(shownTask(ref))) return null;
   const task = `${ref.unit} ${shownTask(ref)}`;
   const passed = `round ${last.round} of its review passed`;
-  if (stage === 'taken') return { round: last.round, said: `${passed}, its account taken`, way: `show its landing, render task-landed ${task}, then land it, engine land open ${task}` };
+  const quickFix = ofQuickFix(cwd, ref.unit);
+  if (stage === 'taken') {
+    const land = quickFix ? `push it to ${ref.unit}'s pull request, engine land open ${task}, then end it, engine task done ${task}` : `show its landing, render task-landed ${task}, then land it, engine land open ${task}`;
+    return { round: last.round, said: `${passed}, its account taken`, way: land };
+  }
   if (accountOwed(cwd, ref).owed === null) return { round: last.round, said: `${passed}, its account written and not taken`, way: `take it, engine task account ${task}` };
   const builder = `engine brief builder ${task}`;
   const read = `read its reports, ${last.reports.map(({ file }) => `\`${statePath(cwd, file)}\``).join(' and ')}, for their notes for later and the nits the task's commits do not yet fix`;
+  if (quickFix) {
+    return { round: last.round, said: `${passed}, its account not taken`, way: `${read}, and fix those in the project's checkout, on ${quickFixBranch(ref.unit)}, through the door; then send its builder its brief for its account, ${builder}` };
+  }
   const tree = taskWorktree(codeRoot(cwd), ref);
   return {
     round: last.round,

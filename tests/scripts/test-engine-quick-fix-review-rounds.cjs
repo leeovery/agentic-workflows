@@ -79,17 +79,23 @@ describe('19.S23: the review asked for runs over the quick-fix\'s record and its
     ]);
   });
 
-  it('a question asked in its review still open holds the close\'s yes, land finish and land phase, naming it and its raise again at the review\'s place; answered, the yes lands (19.5.25)', () => {
+  it('a question asked in its review still open is named waiting at its entry after a /clear and in its recovery note, and holds the close — its screen, its yes, land finish and land phase — naming it and its raise again at the review\'s place; answered, the yes lands (19.5.25)', () => {
     dir = world();
     firstRoundFailed();
     const { ask, decide } = ledgerReadHelpers(() => dir);
     const asked = ask(`${UNIT}.review`, 'Does the man page spell it --colour?');
+    createFile(dir, '.claude/skills/leeway-review-process/SKILL.md', '# The review\n');
+    const cleared = sectionOf(okSections(dir, ['enter', 'review', UNIT], { env: { ...as().env, CLAUDE_CODE_SESSION_ID: 'sess-2' } }).sections, 'DATA').split('\n');
+    const note = output(dir, ['conversation', 'position', 'sess-2'], { env: { ...as().env, CLAUDE_CODE_SESSION_ID: 'sess-2' } }).split('\n');
+    fs.rmSync(`${dir}/.claude/skills/leeway-review-process`, { recursive: true });
     fixTaskBuilt();
     secondRoundPassed();
-    closeMenu();
-    const held = [refused(['finish', 'yes', UNIT]), refused(['land', 'finish', UNIT]), refused(['land', 'phase', UNIT, '1'])];
+    const held = [refused(['render', 'finish', UNIT]), refused(['finish', 'yes', UNIT]), refused(['land', 'finish', UNIT]), refused(['land', 'phase', UNIT, '1'])];
     decide(`${UNIT}.review`, asked, 'The man page is generated from the help.');
+    closeMenu();
 
+    const waiting = `waiting: ${asked} — Does the man page spell it --colour? — asked in the conversation and still open: raise it again for the person to answer, raise ${UNIT}.review --answers ${asked}`;
+    assert.deepStrictEqual([cleared.includes(waiting), note.includes(waiting)], [true, true], `${cleared.join('\n')}\n---\n${note.join('\n')}`);
     for (const error of held) assert.match(error, new RegExp(`${UNIT} closes once each question asked in it is answered — \\S+ Does the man page spell it --colour\\?: raise it again for the person to answer, raise ${UNIT}\\.review --answers \\S+$`));
     assert.deepStrictEqual(run(['finish', 'yes', UNIT]).landed.map((/** @type {{merged: string[]}} */ { merged }) => merged), [['1.1', '1.2', '2.1']]);
   });

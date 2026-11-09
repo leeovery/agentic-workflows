@@ -16,10 +16,7 @@
 //   checkout holds changes not committed outside the state, naming each
 //   (`codeStatus`, code.cjs) — once the branches are readied (`readied`),
 //   and each nested checkout whose branch the readying made, as a branch
-//   gone here or a second clone leaves it, on it too; then records, at the
-//   task's first start, where it starts on the branch in each repository
-//   holding it (`recordStart`), what its pair's range and its figures read
-//   from (task-base.cjs).
+//   gone here or a second clone leaves it, on it too.
 // - A repository nested in the project gets its branch at the first commit
 //   of a task's there: the door puts it on the branch, where it lacks one
 //   cut from the branch that repository lands on as the host has it
@@ -88,7 +85,6 @@ const { commitStateTail } = require('./commit.cjs');
 const lg = require('./landing-git.cjs');
 const { quickFixBranch } = require('./landing-names.cjs');
 const { parseTaskId, shownTask, taskName } = require('./task-id.cjs');
-const { laidOutOf, recordLaidOut } = require('./round-report.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** @typedef {import('../kernel/repos.cjs').Repo} Repo */
@@ -150,22 +146,6 @@ function checkOutBranch(cwd, unit) {
   if (branchOut(root) !== branch) lg.switchTo(root, branch);
   const said = [...remakes, ...warnings];
   return { branch, ...(cut.length > 0 ? { cut_again: cut } : {}), ...(said.length > 0 ? { warnings: said } : {}) };
-}
-
-/**
- * Where a quick-fix's task starts on its one branch, recorded at its first
- * start, for its pair's range and its figures to read from (task-base.cjs):
- * the branch's tip then in each repository holding it, one recorded
- * already kept, so a start again never moves it.
- * @param {string} cwd @param {TaskRef} ref
- */
-function recordStart(cwd, ref) {
-  const branch = quickFixBranch(ref.unit);
-  const held = laidOutOf(cwd, ref);
-  recordLaidOut(cwd, ref, Object.fromEntries(projectRepos(codeRoot(cwd)).filter(({ dir }) => !Object.hasOwn(held, dir)).flatMap(({ dir, path: at }) => {
-    const tip = lg.branches(at).get(branch);
-    return tip === undefined ? [] : [[dir, tip]];
-  })));
 }
 
 /**
@@ -554,4 +534,4 @@ function checkOutLanding(cwd, unit) {
   return own;
 }
 
-module.exports = { refuseDirty, refuseDirtyClose, checkOutBranch, recordStart, readied, remade, checkOutLanding, branchWayOn, putOnBranch, recordedRepos, recordRepos, branchHead, movedBranch, keptUnder, setBranchAside, keptBranches };
+module.exports = { refuseDirty, refuseDirtyClose, checkOutBranch, readied, remade, checkOutLanding, branchWayOn, putOnBranch, recordedRepos, recordRepos, branchHead, movedBranch, keptUnder, setBranchAside, keptBranches };

@@ -149,7 +149,7 @@ describe('quick-fix record (19.5.6, 19.5.17)', () => {
       `quick-fix record: ${bad} does not read as a fix's record — it holds a level-one heading — the fix's title heads its record in summary.md; it opens with \`## What changed\`; ## Why is empty`,
       `quick-fix record: ${shuffled} does not read as a fix's record — its sections are \`## What changed\`, \`## Why\`, \`## Leaves out\`, in that order, and no other at level two`,
       `quick-fix record: ${unfenced} does not read as a fix's record — \`## Leaves out\` opens a fenced block it never closes`,
-      'Usage: engine quick-fix record <work-unit> <task> --file <record.md>',
+      'Usage: engine quick-fix record <work-unit> <task> --file <record.md> | quick-fix notes <work-unit> --file <notes.json>',
     ]);
   });
 });
