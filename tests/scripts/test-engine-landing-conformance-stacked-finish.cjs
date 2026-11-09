@@ -24,7 +24,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
 const { tip } = require('./engine-harness.cjs');
-const { NESTED, NESTED_TASKS, openArgs, track, cutTask, commitFiles, nestedConformance } = require('./landing-world.cjs');
+const { NESTED, NESTED_TASKS, openArgs, track, cutTask, commitFiles, nestedConformance, finishReady } = require('./landing-world.cjs');
 const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
 
 const { rates, show } = NESTED_TASKS;
@@ -61,6 +61,7 @@ for (const { name } of listDrivers('landing')) {
 
       ok(at.dir, ['land', 'phase', 'pay', '1']);
       assert.ok(pointsAtSubmodule(at), 'phase 1 left the submodule\'s pointer off its default branch');
+      finishReady(at.dir);
       const finished = ok(at.dir, ['land', 'finish', 'pay']);
       assert.deepStrictEqual(finished.repos.map((/** @type {{repo: string, phases: {phase: number}[]}} */ { repo, phases }) => [repo, phases.map(({ phase }) => phase)]), [['ext', [4]], ['.', [4, 5]]]);
       assert.ok(pointsAtSubmodule(at), 'finish left the submodule\'s pointer off its default branch');

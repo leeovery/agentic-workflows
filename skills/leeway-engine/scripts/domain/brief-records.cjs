@@ -147,7 +147,11 @@
 //   spec-outline   the spec's path, then its areas, each with its parts, by
 //                  address and title, in the spec's order
 //   spec-scenarios each scenario by id, with the area it proves and its
-//                  wording, the statements it draws on closing it
+//                  wording, the statements it draws on closing it; for a
+//                  quick-fix, which has no spec, the line saying so, then
+//                  each criterion of its fixes' acceptance in its own
+//                  words, by its scenario where it opens with one, and
+//                  the fix it is of (fix-acceptance.cjs, 19.5.24)
 //   relies-on-graph each pair of the spec's parts where one relies on the
 //                  other (11.5.6): a statement or a screen of part A cites
 //                  an entry relying on one — in its current form, or
@@ -343,13 +347,19 @@
 //
 // The review phase's records, each of the unit the brief is for, in the
 // round under review (review-phase.cjs): an area's, the area `--area`
-// names by its number, never merged with another (14.2.3); the change's,
-// the whole change across every repository (review-change.cjs):
+// names by its number, never merged with another (14.2.3) — a quick-fix's
+// one, the change (review-phase.cjs); the change's, the whole change across
+// every repository (review-change.cjs):
 //
-//   area-sections  the spec's path, then the area verbatim, its parts in it
+//   area-sections  the spec's path, then the area verbatim, its parts in it;
+//                  a quick-fix's change, the line saying it has no spec,
+//                  the change asked for, its record, `summary.md`, whole,
+//                  and its fixes' acceptance as spec-scenarios draws it
+//                  (19.5.14)
 //   area-meets     the spec's other areas, by number and title; then each
 //                  pair of parts, one in the area and one outside it, where
-//                  one relies on the other, as relies-on-graph draws them
+//                  one relies on the other, as relies-on-graph draws them;
+//                  a quick-fix's change, the line saying it meets none
 //   unit-calls     every current decision of the unit's, at any of its
 //                  places, in the ledger's order, each with whose it is,
 //                  how the person handed it over where they did, where it
@@ -368,7 +378,8 @@
 //                  scratch-layout lays it out, one holding the change at
 //                  its tip there, a clone holding none at the branch it
 //                  lands on
-//   area-runs      each scenario of the area, by id with what its runs
+//   area-runs      each scenario of the area — a quick-fix's change, each
+//                  its fixes' acceptance names — by id with what its runs
 //                  prove at the change's tips, and its wording; then each
 //                  run counted, as recorded-runs draws it (15.3.3)
 //   area-report-to where the reviewer `--letter` names writes its report
@@ -463,7 +474,7 @@ const {
 const { resolveId } = require('./ledger-ids.cjs');
 const { manifestOf, liveTopics } = require('./ledger-units.cjs');
 const { topicLog } = require('./topic-log.cjs');
-const { dismissedNames, topicTitle, cutPhases } = require('./derivations.cjs');
+const { dismissedNames, topicTitle, cutPhases, quickFixBuild } = require('./derivations.cjs');
 const {
   UNIT_PHASE, dispatchedRows, gapReviewSince, bindQuestion, bindSpec, closeUnbriefed, refusedReports,
 } = require('./agent-state.cjs');
@@ -516,6 +527,8 @@ const {
 const { reviewHeld } = require('./review-entry.cjs');
 const { reading, reposOf } = require('./phase-checks.cjs');
 const { changeOf, changeTips, workBelow } = require('./review-change.cjs');
+const { fixAcceptance, fixScenarios, fixNamed } = require('./fix-acceptance.cjs');
+const { summaryFile } = require('./knowledge/artifacts.cjs');
 const { topicPlace, recordsRules, composedPath, findingsPath, refusedPath } = require('./ledger-carry.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
@@ -1116,8 +1129,20 @@ function drawSpecOutline(filling) {
   return [`\`${file}\``, '', ...outline].join('\n');
 }
 
+/** Whether the brief is a quick-fix's, whose review is held against its own record and its fixes' acceptance, it having no spec (19.5.14, 19.5.24). @param {Filling} filling */
+const ofQuickFix = (filling) => quickFixBuild(unitManifest(filling));
+
+/** What stands for a quick-fix's spec in its review's briefs, a line. @param {Filling} filling */
+const noSpecLine = (filling) => `${unitOf(filling)} is a quick-fix, which has no spec: its fixes' acceptance, in their own words, stands for one.`;
+
+/** Each criterion of the quick-fix's fixes' acceptance, a line each: its scenario where it opens with one, the fix it is of and its words. @param {Filling} filling */
+function fixCriteria(filling) {
+  return fixAcceptance(filling.cwd, unitOf(filling)).flatMap(({ fix, criteria }) => criteria.map(({ scenario, words }) => `- ${scenario === null ? '' : `${scenario}, `}of ${fixNamed(fix)}: ${indented(words)}`));
+}
+
 /** @param {Filling} filling */
 function drawSpecScenarios(filling) {
+  if (ofQuickFix(filling)) return [noSpecLine(filling), listed(fixCriteria(filling))].join('\n\n');
   const { sections, lines } = unitSpec(filling);
   return listed(lines.filter(({ kind }) => kind === 'scenario').map(({ number, wording }) => {
     const area = /** @type {Section} */ (sections.get(number.split('.')[0]));
@@ -1921,7 +1946,7 @@ const reviewOf = oncePerFill(/** @param {Filling} filling @param {string[]} warn
 function areaNamed(filling, warnings) {
   const { areas } = reviewOf(filling, warnings);
   const area = areas.find(({ number }) => number === filling.given.area);
-  if (area === undefined) throw new Error(`the spec has no area ${filling.given.area} — its areas are ${areas.map(({ number }) => `§${number}`).join(', ')}`);
+  if (area === undefined) throw new Error(`${ofQuickFix(filling) ? `${unitOf(filling)}'s review` : 'the spec'} has no area ${filling.given.area} — its areas are ${areas.map(({ number }) => `§${number}`).join(', ')}`);
   return area;
 }
 
@@ -1931,9 +1956,28 @@ const changeHeld = oncePerFill(/** @param {Filling} filling @param {string[]} wa
   return changeOf(filling.cwd, unitOf(filling), fixPhase(unitManifest(filling), rounds.length), filling.given.base ?? null, reposOf(reviewReading(filling, warnings)));
 });
 
+/**
+ * A quick-fix's one area, the change (19.5.14): what was asked, its record,
+ * `summary.md`, and its fixes' acceptance in their own words.
+ * @param {Filling} filling
+ */
+function drawChangeArea(filling) {
+  const unit = unitOf(filling);
+  const file = statePath(filling.cwd, summaryFile(unit));
+  return [
+    noSpecLine(filling),
+    `The change asked for: ${unitManifest(filling).description}`,
+    `Its record, \`${file}\`:`,
+    fs.existsSync(file) ? fs.readFileSync(file, 'utf8').trimEnd() : NONE,
+    'Its fixes\' acceptance:',
+    listed(fixCriteria(filling)),
+  ].join('\n\n');
+}
+
 /** @param {Filling} filling @param {string[]} warnings */
 function drawAreaSections(filling, warnings) {
   const { number } = areaNamed(filling, warnings);
+  if (ofQuickFix(filling)) return drawChangeArea(filling);
   const { file, sections } = unitSpec(filling);
   return [`\`${file}\``, /** @type {Section} */ (sections.get(number)).text].join('\n\n');
 }
@@ -1941,6 +1985,7 @@ function drawAreaSections(filling, warnings) {
 /** @param {Filling} filling @param {string[]} warnings */
 function drawAreaMeets(filling, warnings) {
   const { number } = areaNamed(filling, warnings);
+  if (ofQuickFix(filling)) return `The change is ${unitOf(filling)}'s one area: there is no other for it to meet.`;
   const others = reviewOf(filling, warnings).areas.filter((area) => area.number !== number);
   const spec = unitSpec(filling);
   const edges = withUnitEntries(filling.cwd, unitOf(filling), warnings, (view) => reliesOnEdges(view, spec))
@@ -1987,7 +2032,9 @@ function drawChangeScratchLayout(filling, warnings) {
 function drawAreaRuns(filling, warnings) {
   const { number } = areaNamed(filling, warnings);
   const tips = changeTips(changeHeld(filling, warnings));
-  const scenarios = unitSpec(filling).lines.filter(({ kind, number: id }) => kind === 'scenario' && id.startsWith(`${number}.S`));
+  const scenarios = ofQuickFix(filling)
+    ? fixScenarios(fixAcceptance(filling.cwd, unitOf(filling))).map(({ scenario, wording }) => ({ number: scenario, wording }))
+    : unitSpec(filling).lines.filter(({ kind, number: id }) => kind === 'scenario' && id.startsWith(`${number}.S`));
   return listed(scenarios.map(({ number: scenario, wording }) => {
     const { standing, runs } = runsOf(filling.cwd, unitOf(filling), scenario, tips);
     return [`- ${scenario}: ${standing}`, `  ${indented(wording)}`, ...runs.map((run) => `  - ${run.verdict}, recorded ${run.at}: \`${statePath(filling.cwd, run.file)}\``)].join('\n');

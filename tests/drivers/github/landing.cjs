@@ -34,7 +34,9 @@ function mergedOnGithub(dir, branch, method, pulled, into = 'main') {
   const pull = github(dir).pulls.find((held) => held.head === branch && held.state === 'OPEN');
   if (pull === undefined) throw new Error(`no pull request of ${branch} is open`);
   mergeByHand(dir, pull.number, undefined, method);
-  if (pulled) git(dir, ['fetch', '-q', 'origin', `${into}:${into}`]);
+  if (!pulled) return;
+  if (git(dir, ['branch', '--show-current']).trim() === into) git(dir, ['pull', '-q', '--ff-only', '--no-recurse-submodules', 'origin', into]);
+  else git(dir, ['fetch', '-q', 'origin', `${into}:${into}`]);
 }
 
 /**

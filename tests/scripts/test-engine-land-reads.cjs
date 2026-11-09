@@ -28,7 +28,7 @@ const path = require('path');
 
 const { ok, git, tip, initRepo } = require('./engine-harness.cjs');
 const {
-  TASKS, openArgs, own, track, cutTask, commitFiles, mergeBack, landedOn, useLandingWorld, refusedMoving, alreadyMoving, followRemedy, commandsOf, short,
+  TASKS, openArgs, own, track, cutTask, commitFiles, mergeBack, landedOn, useLandingWorld, refusedMoving, alreadyMoving, followRemedy, commandsOf, short, finishReady,
 } = require('./landing-world.cjs');
 const { workMessage } = require('../../skills/leeway-engine/scripts/domain/commit-task.cjs');
 const { parseShownTask } = require('../../skills/leeway-engine/scripts/domain/task-id.cjs');
@@ -61,6 +61,7 @@ describe('land: what the local driver records, and the shapes of landing it read
     assert.deepStrictEqual(opened(), []);
     ok(dir, openArgs(cutTask(dir, '5.1', 'fix', 'Five', 'main', { 'five.txt': 'five\n' })));
     git(dir, ['branch', '-D', 'feat/pay-phase-5']);
+    finishReady(dir);
     assert.deepStrictEqual(ok(dir, ['land', 'finish', 'pay']).repos, []);
     assert.deepStrictEqual(opened(), []);
   });

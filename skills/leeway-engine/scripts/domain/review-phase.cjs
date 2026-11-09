@@ -8,7 +8,9 @@
 // - Its areas are the spec's: each `## N. Title`, in the spec's order, never
 //   merged (14.2.1, 14.2.3), known in the layout by its number and its
 //   title's slug, `{n}-{slug}` (landing-names.cjs) — so a one-area spec has
-//   one pair. Each area is read by the pair (kernel/reviewers.cjs), each
+//   one pair. A quick-fix, which has no spec, has one area, the change —
+//   its record and its change-set from the base (19.5.14), `1-the-change`
+//   in the layout. Each area is read by the pair (kernel/reviewers.cjs), each
 //   reviewer's report at `review/round-{N}/{area}-{letter}.md`, and the
 //   change's tests by one reader, `tests` beside the areas, its report at
 //   `review/round-{N}/tests-a.md` (14.2.2, 14.2.4).
@@ -103,7 +105,7 @@ const { resolveId } = require('./ledger-ids.cjs');
 const { handedTag } = require('./topic-map.cjs');
 const { phaseLists, mergeWaiting } = require('./phase-checks.cjs');
 const { shownTask } = require('./task-id.cjs');
-const { buildLength } = require('./derivations.cjs');
+const { buildLength, quickFixBuild } = require('./derivations.cjs');
 const { STATUS_WORDS } = require('./task-verbs.cjs');
 const { notesUntaken } = require('./notes.cjs');
 const { reviewReportFaults } = require('./review-report.cjs');
@@ -176,15 +178,23 @@ const roundFolder = (unit, round) => `${reviewFolder(unit)}/round-${round}`;
 /** A reviewer's report of an area, or the test surface's, in a round. @param {string} unit @param {number} round @param {string} area @param {string} letter */
 const areaReportPath = (unit, round, area, letter) => `${roundFolder(unit, round)}/${area}-${letter}.md`;
 
+/** An area by its number and title, with its name in the layout. @param {string} number @param {string} title @returns {Area} */
+const areaOf = (number, title) => ({ number, title, name: `${number}-${slugOf(title)}` });
+
+/** A quick-fix's one area: the change, its record and its change-set from the base (19.5.14). */
+const CHANGE_AREA = Object.freeze(areaOf('1', 'The change'));
+
 /**
- * The spec's areas, in its order, each with its name in the layout.
- * Refused where the unit has no spec.
- * @param {string} cwd @param {string} unit @returns {Area[]}
+ * The areas the unit's review reads, in order, each with its name in the
+ * layout: the spec's, refused where the unit has no spec — a quick-fix's
+ * one, the change, it having none.
+ * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @returns {Area[]}
  */
-function specAreas(cwd, unit) {
+function reviewAreas(cwd, unit, manifest) {
+  if (quickFixBuild(manifest)) return [CHANGE_AREA];
   return specReading(readSpec(cwd, unit)).headings
     .filter(({ kind }) => kind === 'area')
-    .map(({ number, title }) => ({ number: /** @type {string} */ (number), title, name: `${number}-${slugOf(title)}` }));
+    .map(({ number, title }) => areaOf(/** @type {string} */ (number), title));
 }
 
 /** The report files a round's reads are read from, by name in its folder: each area's pair, and the test surface's one. @param {string[]} reads */
@@ -294,7 +304,7 @@ function notesStanding(cwd, unit, rounds) {
 }
 
 /**
- * Where the review phase stands: the spec's areas; the rounds recorded; the
+ * Where the review phase stands: its areas; the rounds recorded; the
  * round under review, or the last recorded once a round ended the phase;
  * whether one did, and whether the phase is over; the last round's fix
  * tasks waiting; in step, the fix phase whose merge the round under review
@@ -310,7 +320,7 @@ function notesStanding(cwd, unit, rounds) {
 /** Where the unit's review phase stands, its tracker read through `at`. @param {Reading} at @returns {ReviewStanding} */
 function reviewStanding(at) {
   const { cwd, unit } = at;
-  const areas = specAreas(cwd, unit);
+  const areas = reviewAreas(cwd, unit, at.manifest);
   const rounds = recordedRounds(cwd, unit);
   const { waiting, merging } = fixesWaiting(at, rounds);
   const notes = notesStanding(cwd, unit, rounds);
@@ -563,7 +573,7 @@ const forThePerson = ({ by, given }) => claudesCall({ by, given });
 const inTheBuild = ({ phase }) => BUILD_PHASES.includes(phase);
 
 module.exports = {
-  TESTS, TESTS_LETTER, NOTES, isBuilderNote, SET_ASIDE, setAsideFolder, setAsideHeld, filesUnder, EMPTY_PRINT, reportNames, recordedRounds, fixesOf, endsReview, fixPhase, reviewStanding, reportsIn, reviewGoesOn, everyRead,
+  TESTS, TESTS_LETTER, NOTES, CHANGE_AREA, isBuilderNote, SET_ASIDE, setAsideFolder, setAsideHeld, filesUnder, EMPTY_PRINT, reportNames, recordedRounds, fixesOf, endsReview, fixPhase, reviewStanding, reportsIn, reviewGoesOn, everyRead,
   endedWords, endedRefusal, openRefusal, roundRefusal, readsWords, mergingWords,
   roundRecordPath, roundReportFile, roundChecksFile, roundReadsPath, roundFolder, areaReportPath,
   takeSnapshot, openSnapshot, snapshotRound, dropSnapshot, treeDrift, movedWords, treeChanges, unitCalls, reviewCallFault, forThePerson, inTheBuild,

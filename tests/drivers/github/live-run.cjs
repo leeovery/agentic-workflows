@@ -47,7 +47,7 @@ if (named === undefined || extra.length > 0 || ![named, sub ?? named].every((rep
 const LOGIN = ['GH_CONFIG_DIR', 'GH_TOKEN', 'GITHUB_TOKEN', 'GH_ENTERPRISE_TOKEN', 'GITHUB_ENTERPRISE_TOKEN', 'GH_HOST'];
 const login = new Map(LOGIN.map((name) => [name, process.env[name]]));
 const harness = require('../../scripts/engine-harness.cjs');
-const { BASE, TASKS, openArgs, track, cutTask, commitFiles, mergeBack, buildLanding, setLandingDriver } = require('../../scripts/landing-world.cjs');
+const { BASE, TASKS, openArgs, track, cutTask, commitFiles, mergeBack, buildLanding, setLandingDriver, finishReady } = require('../../scripts/landing-world.cjs');
 
 for (const [name, value] of login) {
   if (value === undefined) delete process.env[name];
@@ -206,6 +206,7 @@ land(dir, ['land', 'chain', 'pay', '1.4']);
 land(dir, openArgs(rounding));
 land(dir, openArgs(currency));
 land(dir, ['land', 'phase', 'pay', '1']);
+finishReady(dir);
 land(dir, ['land', 'finish', 'pay']);
 
 const faults = faultsIn(dir, named, BASE, [

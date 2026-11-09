@@ -39,7 +39,7 @@ describe('review round: what it refuses, writing nothing', () => {
   it('a call of another shape, as inbox file\'s is: a verb it lacks, no unit, no payload or reads, an extra word, a flag it takes none of', () => {
     const file = payload('round.json', { can_now: [], findings: [] });
     const usage = (/** @type {string[]} */ args) => refusedPristine(dir, args, { env: env() }).error;
-    const reviewUsage = 'Usage: engine review round <work-unit> --file <round.json> | engine review notes <work-unit> --file <notes.json> | engine review reads <work-unit> <area|tests> [<area|tests> …] | engine review accept-tree <work-unit> | engine review restore-tree <work-unit> --listed <print>';
+    const reviewUsage = 'Usage: engine review ask <work-unit> | engine review round <work-unit> --file <round.json> | engine review notes <work-unit> --file <notes.json> | engine review reads <work-unit> <area|tests> [<area|tests> …] | engine review accept-tree <work-unit> | engine review restore-tree <work-unit> --listed <print>';
 
     for (const args of [
       ['review', 'record', UNIT, '--file', file], ['review', 'round', '--file', file], ['review', 'round', UNIT], ['review', 'round', UNIT, 'more', '--file', file], ['review', 'round', UNIT, '--file', file, '--force', 'x'],

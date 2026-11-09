@@ -16,10 +16,11 @@
 //   fixes ended and each done with its record written (quick-fix-record.cjs,
 //   `recordedFixes`) — read off the unit's records alone, so the board
 //   asking whether it draws never reaches the host — and the screen reads
-//   whether its pull requests still hold a fix done not landed, as a merge
+//   whether its pull requests still hold a task done not landed, as a merge
 //   by hand on the host, by any method, leaves them (landing.cjs,
-//   `quickFixLanding`) — the yes then merging them, else saying its fixes
-//   have landed.
+//   `quickFixLanding`) — a fix task of a review asked for at the close
+//   among them — the yes then merging them, else saying its fixes have
+//   landed.
 // - It shows every checklist item skipped on the way, with its reason,
 //   read from the unit's manifest (6.4.5, 6.4.12); then asks, one at a
 //   time, the verdict of each departure this machine logged in the build
@@ -61,7 +62,10 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 const { carrying } = require('./ledger.cjs');
 const { readShown } = require('./ledger-read.cjs');
 const { verdictAsked, closeDepartures } = require('./ledger-verdicts.cjs');
-const { itemTitle, topicTitles, buildRefusal, quickFixBuild } = require('./derivations.cjs');
+const {
+  itemTitle, topicTitles, buildRefusal, quickFixBuild, reviewAsked, buildLength,
+} = require('./derivations.cjs');
+const { trackedBuild } = require('./task-verbs.cjs');
 const { unitInProgress } = require('./topic-standing.cjs');
 const { finishClose } = require('./checklist.cjs');
 const { landFinish, quickFixLanding } = require('./landing.cjs');
@@ -103,14 +107,18 @@ function finishStanding(cwd, unit) {
 const finishDraws = (cwd, unit) => stands(() => finishStanding(cwd, unit));
 
 /**
- * Whether a quick-fix's pull requests still hold a fix done not landed, as
- * its close's screen says it (`quickFixLanding`); false for any other unit.
- * @param {string} cwd @param {string} unit @param {TaskDetail[]|null} fixes
+ * Whether a quick-fix's pull requests still hold a task done not landed,
+ * as its close's screen says it (`quickFixLanding`): a fix, or a fix task
+ * of the review asked for at its close, which lands with them in its one
+ * pull request (19.5.15) — so a merge by hand of the fixes alone leaves
+ * the yes merging that pull request still; false for any other unit.
+ * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest
  */
-function stillToLand(cwd, unit, fixes) {
-  if (fixes === null || fixes.length === 0) return false;
+function stillToLand(cwd, unit, manifest) {
+  const done = trackedBuild(cwd, unit, buildLength(manifest)).tasks.filter(({ status }) => status === 'done');
+  if (done.length === 0) return false;
   const read = quickFixLanding(cwd, unit);
-  return fixes.some(({ ref }) => !read.task(ref).landed);
+  return done.some(({ ref }) => !read.task(ref).landed);
 }
 
 /**
@@ -185,7 +193,9 @@ function finishSurface(cwd, { dotpath: unit = '' }) {
       aside: setAsideHeld(cwd, unit),
     };
     if (fixes === null) return finishScreen(view);
-    return closeScreen({ ...view, product: projectName(cwd), proven: provenOf(cwd, manifest, fixes), fixes: fixes.length, landing: carryingAll(warnings, () => stillToLand(cwd, unit, fixes)) });
+    return closeScreen({
+      ...view, product: projectName(cwd), proven: provenOf(cwd, manifest, fixes), fixes: fixes.length, landing: carryingAll(warnings, () => stillToLand(cwd, unit, manifest)), reviewed: reviewAsked(manifest),
+    });
   });
 }
 
@@ -243,4 +253,4 @@ function runFinishVerb(cwd, [verb, ...args], opts) {
   return refusing('finish yes', () => finishYes(cwd, args[0]));
 }
 
-module.exports = { FINISH_USAGE, finishSurface, finishDraws, runFinishVerb, closeVerdicts };
+module.exports = { FINISH_USAGE, finishStanding, finishSurface, finishDraws, runFinishVerb, closeVerdicts };

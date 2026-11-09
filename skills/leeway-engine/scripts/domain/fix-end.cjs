@@ -58,7 +58,7 @@ const { manifestOf } = require('./ledger-units.cjs');
 const { quickFixBuild, buildLength, FIXES_PHASE } = require('./derivations.cjs');
 const { shownTask, taskName } = require('./task-id.cjs');
 const { trackedPhase, trackedBuild, ENDED } = require('./task-verbs.cjs');
-const { quickFixLanding } = require('./landing.cjs');
+const { quickFixLanding, unendedRefusal } = require('./landing.cjs');
 const { short: shortSha } = require('./landing-git.cjs');
 const { remade } = require('./fix-branch.cjs');
 const { takeOutRecord, indexSummary } = require('./quick-fix-record.cjs');
@@ -232,9 +232,7 @@ function refuseUnended(cwd, unit) {
   const manifest = manifestOf(stateRoot(cwd), unit);
   if (manifest === null || !quickFixBuild(manifest)) return;
   const open = trackedBuild(cwd, unit, buildLength(manifest)).tasks.filter(({ status }) => !ENDED.includes(status)).map(({ ref }) => shownTask(ref));
-  if (open.length === 0) return;
-  const [named, are] = open.length === 1 ? [`task ${open[0]}`, 'is'] : [`tasks ${open.join(', ')}`, 'are'];
-  throw new Error(`land: ${unit} lands once each of its tasks is done or closed — ${named} ${are} neither: task done ${unit} ${open[0]}, or task close ${unit} ${open[0]} --reason <why>`);
+  if (open.length > 0) throw new Error(`land: ${unendedRefusal(unit, open, `${unit} lands`)}`);
 }
 
 /**

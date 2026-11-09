@@ -18,7 +18,10 @@
 // default branch on GitHub pointing the submodule at a commit the
 // submodule's own there does not hold — one on a branch of its own — refused
 // before anything merges, naming it, and landed past it once the
-// submodule's is brought up to it. The rest of the driver across nested
+// submodule's is brought up to it; one left pointing it at a task's own
+// commit, the task's pull requests squashed by hand, the project's first,
+// pointed at the submodule's landing of it through a pull request of its
+// own, squashed, before the phase lands. The rest of the driver across nested
 // repositories is test-landing-nested.cjs's.
 // Git layer: the nested world (landing-world.cjs), each repository on a
 // fake GitHub of its own (world.cjs), built once and copied for each test.
@@ -127,5 +130,22 @@ describe('GitHub\'s landing driver bringing a stack up to date across nested rep
     ok(at.dir, ['land', 'phase', 'pay', '2']);
     const pointer = git(bareOf(at.dir), ['rev-parse', `main:${NESTED.ext.folder}`]).trim();
     assert.deepStrictEqual([pointer, git(bareOf(at.ext), ['rev-parse', `${pointer}^`]).trim()], [tipOnGithub(at.ext, NESTED.ext.into), aside]);
+  });
+
+  it('points a default branch on GitHub left pointing the submodule at a task\'s own commit — its pull request in the project squashed by hand, then the submodule\'s — at the submodule\'s landing of it, by one commit on a branch of its own landed through a pull request of its own, squashed, before the phase lands', () => {
+    const at = project();
+    ok(at.dir, openArgs(rates));
+    side.mergedOnGithub(at.dir, rates.branch, 'squash', true);
+    side.mergedOnGithub(at.ext, rates.branch, 'squash', true, NESTED.ext.into);
+    const landing = tipOnGithub(at.ext, NESTED.ext.into);
+
+    const answer = ok(at.dir, ['land', 'phase', 'pay', '1']);
+
+    const pull = github(at.dir).pulls.find(({ head }) => head === 'chore/pay-point-submodules');
+    assert.deepStrictEqual([pull?.state, pull?.base, pull?.title], ['MERGED', 'main', 'chore(pay): point ext at its landing']);
+    assert.deepStrictEqual(answer.repos.at(-1).repointed, { pointers: { [NESTED.ext.folder]: landing }, pull_request: pull?.number });
+    assert.ok(calls(at.dir).includes(`pr merge ${pull?.number} --squash --subject chore(pay): point ext at its landing (#${pull?.number}) --body `), 'the re-point merged other than squashed under its own subject');
+    assert.strictEqual(git(bareOf(at.dir), ['rev-parse', `main:${NESTED.ext.folder}`]).trim(), landing);
+    assert.strictEqual(tip(at.dir, 'main'), tipOnGithub(at.dir, 'main'));
   });
 });

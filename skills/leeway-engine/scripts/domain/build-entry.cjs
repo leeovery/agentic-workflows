@@ -113,7 +113,7 @@ const { statePath, stateRoot } = require('../kernel/state-root.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 const {
-  buildBegun, buildFinished, phaseStarted, phaseClosed, buildRefusal, cutPhases, cutLength, buildLength, quickFixBuild, fixesBegun, FIXES_PHASE,
+  buildBegun, buildFinished, phaseStarted, phaseClosed, buildRefusal, cutPhases, cutLength, buildLength, quickFixBuild, fixesBegun, reviewBegun, FIXES_PHASE,
 } = require('./derivations.cjs');
 const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { isoNow } = require('./dates.cjs');
@@ -208,13 +208,13 @@ function ownInFlight(unit) {
 
 /**
  * The phases the build may have written, in order: each of its own — its
- * cut's, or a quick-fix's fixes — then, once the cut is through, the
- * review's fix phases to one past the rounds recorded — a round's fix phase
- * is written before it is recorded (the header's).
+ * cut's, or a quick-fix's fixes — then, once the review phase has begun
+ * (`reviewBegun`), the review's fix phases to one past the rounds recorded
+ * — a round's fix phase is written before it is recorded (the header's).
  * @param {Reading} at @returns {number[]}
  */
 function buildPhases(at) {
-  const fixes = buildFinished(at.manifest) ? recordedRounds(at.cwd, at.unit).length + 1 : 0;
+  const fixes = reviewBegun(at.manifest) ? recordedRounds(at.cwd, at.unit).length + 1 : 0;
   return Array.from({ length: buildLength(at.manifest) + fixes }, (_, i) => i + 1);
 }
 

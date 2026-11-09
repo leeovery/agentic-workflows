@@ -167,9 +167,17 @@ function holdsScenario(text, scenario) {
   return namesScenario(scenariosOf(text), scenario);
 }
 
-/** A criterion in its own words, the scenario id it opens with taken off, as the task writer writes it (`{id} {wording}`). @param {string} criterion */
+/** The scenario id a criterion opens with, as the task writer writes it (`{id} {wording}`). */
+const OPENING_ID = /^(\d+\.S\d+)\s+/;
+
+/** A criterion in its own words, the scenario id it opens with taken off (`OPENING_ID`). @param {string} criterion */
 function criterionWords(criterion) {
-  return criterion.replace(/^\d+\.S\d+\s+/, '') || criterion;
+  return criterion.replace(OPENING_ID, '') || criterion;
 }
 
-module.exports = { FIELDS, TASK_TYPES, NO_SPEC, breaksLine, readTaskText, fieldOf, specReferenceOf, scenariosOf, scenarioIds, criteriaTexts, criteriaOf, namesScenario, holdsScenario, criterionWords };
+/** The scenario id a criterion opens with (`OPENING_ID`), null where it opens with none. @param {string} criterion @returns {string|null} */
+function criterionScenario(criterion) {
+  return OPENING_ID.exec(criterion)?.[1] ?? null;
+}
+
+module.exports = { FIELDS, TASK_TYPES, NO_SPEC, breaksLine, readTaskText, fieldOf, specReferenceOf, scenariosOf, scenarioIds, criteriaTexts, criteriaOf, namesScenario, holdsScenario, criterionWords, criterionScenario };

@@ -32,7 +32,7 @@ const path = require('path');
 
 const { ok, refuses, git, tip, initRepo, addSubmodule } = require('./engine-harness.cjs');
 const {
-  BASE, NESTED, NESTED_TASKS, openArgs, track, cutTask, commitFiles, landedOn, setLandingDriver, useNestedWorld, refusedMoving,
+  BASE, NESTED, NESTED_TASKS, openArgs, track, cutTask, commitFiles, landedOn, setLandingDriver, useNestedWorld, refusedMoving, finishReady,
 } = require('./landing-world.cjs');
 
 const { rates, show } = NESTED_TASKS;
@@ -113,6 +113,7 @@ describe('land phase: the local driver\'s submodule pointer', () => {
     assert.deepStrictEqual(repos(ok(at.dir, openArgs(show))), ['.']);
     assert.deepStrictEqual(repos(ok(at.dir, ['land', 'chain', 'pay', '1.2'])), ['.']);
     assert.deepStrictEqual(repos(ok(at.dir, ['land', 'phase', 'pay', '1'])), ['ext', 'lib', '.']);
+    finishReady(at.dir);
     assert.deepStrictEqual(repos(ok(at.dir, ['land', 'finish', 'pay'])), []);
   });
 

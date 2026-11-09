@@ -13,15 +13,15 @@
 // quick-fix's one pull request where a fix done is still to land, saying so
 // where they have landed, and merging nothing where no fix is done; each
 // call the person changed asked its verdict first, at the point `close`
-// (16.S36, 19.S22); a review asked for there, its fix tasks built on the
-// same branch and landing in the same pull request (19.5.14, R14); and
+// (16.S36, 19.S22); and
 // `engine finish yes <qf>` — refused while the checkout holds changes not
 // committed, landing nothing — landing the pull request through the local
 // landing driver as one commit, its fixes in the order they were done
 // (19.5.17), putting the checkout back on the branch it
 // lands on, completing the unit and naming the start menu, its folder then
 // holding `build/` and `summary.md` alone of the work (4.S23), its record
-// found once it is closed (22.S22). A fix's record is
+// found once it is closed (22.S22). A review asked for at the close is
+// test-engine-quick-fix-review.cjs's; a fix's record is
 // test-engine-quick-fix-record.cjs's, how a fix opens and is done
 // test-engine-quick-fix-end.cjs's, a fix given up
 // test-engine-quick-fix-given-up.cjs's; the landing as one pull request, on
@@ -47,7 +47,7 @@ const {
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const { ledgerReadHelpers } = require('./ledger-world.cjs');
 const {
-  UNIT, PLACE, DESCRIPTION, BRANCH, FLAG, HELP, RECORDS, quickFix, createFix, fixFile, fixBuilt, recordFile, twoFixesBuilt, checklistClosed, asGone, entered,
+  UNIT, PLACE, DESCRIPTION, FLAG, HELP, RECORDS, quickFix, createFix, fixBuilt, recordFile, twoFixesBuilt, checklistClosed, asGone, entered,
 } = require('./quick-fix-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
@@ -124,7 +124,7 @@ const branchOut = () => git(dir, ['symbolic-ref', '--short', 'HEAD']).trim();
 const items = () => run(['checklist', 'show', 'finish', UNIT]).items.map((/** @type {any} */ { key, by, state, way }) => `${key} ${by} ${state}${way === undefined ? '' : ` — ${way}`}`);
 
 describe('finish\'s checklist for a quick-fix (6.4.10, 6.S14)', () => {
-  it('holds no review item until the person asks for a review; asked, the review passed applies, open while the review cannot be entered', () => {
+  it('holds no review item until the person asks for a review; asked, the review passed applies, open while the review goes on', () => {
     dir = world();
     const unasked = items();
     const manifest = readManifest(dir, UNIT);
@@ -132,7 +132,7 @@ describe('finish\'s checklist for a quick-fix (6.4.10, 6.S14)', () => {
 
     assert.deepStrictEqual([unasked, items()[0]], [
       ['questions-answered engine done', 'inbox-closed claude open', 'build-log-closed claude open'],
-      `review-passed engine open — ${UNIT} is a quick-fix, whose review runs only once the person asks for one at its close — the review on request is built with the reshape's 29.15`,
+      `review-passed engine open — ${UNIT}'s review phase is in round 1 — enter review ${UNIT}`,
     ]);
   });
 
@@ -162,27 +162,6 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
       `render finish: ${UNIT} closes once each fix done has its record — 1.1, 1.2 have none: quick-fix record ${UNIT} 1.1 --file <record.md>`,
       `render finish: ${UNIT} closes once each of its fixes has ended — 1.3 is not started: each is done once it is committed and in ${UNIT}'s pull request, or closed with its reason`,
       `finish yes: ${UNIT} closes once each of its fixes has ended — 1.3 is not started: each is done once it is committed and in ${UNIT}'s pull request, or closed with its reason`,
-    ]);
-  });
-
-  it('19.5.14, R14: a review asked for at the close has its fix tasks built on the quick-fix\'s one branch, through the door, and landed in its one pull request with the fixes', () => {
-    dir = world();
-    closeable();
-    const manifest = readManifest(dir, UNIT);
-    writeState(dir, layout.manifest(UNIT), JSON.stringify({ ...manifest, fixes: { ...manifest.fixes, review_asked: '2026-06-03T10:00:00Z' } }, null, 2));
-    run(['task', 'phase', UNIT, '2', '--title', 'The review\'s fixes']);
-    run(['task', 'create', UNIT, '2', '--file', writeState(dir, layout.cache('review-fix.md'), fixFile(1, 'Name the flag in the docs'))]);
-    const started = run(['task', 'start', UNIT, '2.1']);
-    createFile(dir, 'docs/flag.md', '--colour\n');
-    run(['commit', '--paths', 'docs/flag.md', '--task', UNIT, '2.1', '-m', `fix(${UNIT}): name the flag in the docs`]);
-    const opened = run(['land', 'open', UNIT, '2.1']);
-    run(['task', 'done', UNIT, '2.1']);
-    const main = git(dir, ['rev-parse', 'main']).trim();
-    const landed = run(['land', 'finish', UNIT]);
-
-    assert.deepStrictEqual([started.branch, opened.branch, landed.repos.map((/** @type {any} */ { merged }) => merged)], [BRANCH, BRANCH, [['1.1', '1.2', '2.1']]]);
-    assert.deepStrictEqual([git(dir, ['log', '--format=%s', `${main}..main`]).trim(), git(dir, ['log', '-1', '--format=%B', 'main']).match(/^Task: .*$/gm)], [
-      `fix(${UNIT}): ${DESCRIPTION}`, [`Task: ${UNIT}-1-1`, `Task: ${UNIT}-1-2`, `Task: ${UNIT}-2-1`],
     ]);
   });
 

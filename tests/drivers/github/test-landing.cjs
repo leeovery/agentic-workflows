@@ -28,7 +28,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
 const harness = require('../../scripts/engine-harness.cjs');
-const { TASKS, openArgs, own, cutTask, mergeBack, landedOn, useLandingWorld } = require('../../scripts/landing-world.cjs');
+const { TASKS, openArgs, own, cutTask, mergeBack, landedOn, useLandingWorld, finishReady } = require('../../scripts/landing-world.cjs');
 const { loadDriver } = require('../../../skills/leeway-engine/scripts/domain/drivers.cjs');
 const side = require('./landing.cjs');
 const { GITHUB_SQUASH } = require('./gh-stub.cjs');
@@ -150,6 +150,7 @@ describe('phases and their pull requests', () => {
     assert.deepStrictEqual(landedOn(bareOf(dir), 'main'), []);
 
     lagOnGithub(dir, 2);
+    finishReady(dir);
     assert.deepStrictEqual(own(ok(dir, ['land', 'finish', 'pay'])).phases.map((/** @type {{phase: number}} */ phase) => phase.phase), [4, 3]);
     assert.deepStrictEqual(landedOn(bareOf(dir), 'main'), [
       { subject: 'feat(pay): Add four (#1)', task: 'pay-4-1', paths: ['four.txt'] },
@@ -204,6 +205,7 @@ describe('phases and their pull requests', () => {
     const two = cutTask(dir, '2.5', 'fix', 'Fix two', again.branch, { 'two.txt': 'two\n' });
     for (const task of [card, three, again, two]) ok(dir, openArgs(task));
     closeByHand(dir, 3);
+    finishReady(dir);
 
     assert.strictEqual(
       refused(dir, ['land', 'finish', 'pay']),

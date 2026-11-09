@@ -211,13 +211,24 @@ function reviewAsked(manifest) {
 
 /**
  * Why a quick-fix's review phase cannot be entered, with its way on, or
- * null for any other unit: its review runs only once the person asks for
- * one at its close (19.5.14).
+ * null where it can and for any other unit: its review runs only once the
+ * person asks for one at its close (19.5.14), its row there `review ask`.
  * @param {Record<string, any>} manifest @returns {string|null}
  */
 function quickFixReviewRefusal(manifest) {
-  if (!quickFixBuild(manifest)) return null;
-  return `${manifest.name} is a quick-fix, whose review runs only once the person asks for one at its close — the review on request is built with the reshape's 29.15`;
+  if (!quickFixBuild(manifest) || reviewAsked(manifest)) return null;
+  return `${manifest.name} is a quick-fix, whose review runs only once the person asks for one at its close — render finish ${manifest.name} draws it`;
+}
+
+/**
+ * Whether the unit's review phase has begun: its build through every phase
+ * of its cut (14.6.1), or a quick-fix whose review the person asked for at
+ * its close (19.5.13) — where the review's fix phases are numbered on past
+ * the build's own (P14).
+ * @param {Record<string, any>} manifest
+ */
+function reviewBegun(manifest) {
+  return buildFinished(manifest) || (quickFixBuild(manifest) && reviewAsked(manifest));
 }
 
 /**
@@ -1414,6 +1425,7 @@ module.exports = {
   tasksBegun,
   reviewAsked,
   quickFixReviewRefusal,
+  reviewBegun,
   buildLength,
   buildPlaceStatus,
   phaseStatus,

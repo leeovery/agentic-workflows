@@ -19,7 +19,9 @@
 // clone — and tasks touching one, some or all of them (`NESTED`). A suite
 // takes a copy of a world per call (`useLandingWorld`, `useNestedWorld`) —
 // a nested conformance suite through its driver's side (`nestedConformance`)
-// — reads a verb's answer for the project's own repository (`own`), checks a
+// — readies the unit for finish's landing, its build through a cut of every
+// phase the tracker holds and its review phase passed, as `land finish`
+// asks (`finishReady`), reads a verb's answer for the project's own repository (`own`), checks a
 // refusal moved nothing in the repository (`refusedMoving`), as an answer
 // finding its work done already does (`alreadyMoving`), and follows the
 // remedy it names (`followRemedy`); the
@@ -38,7 +40,7 @@ const os = require('os');
 const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 const {
-  ok, git, statePath, layout, readState, writeState, commitAll, refuses, fixtureFrom, folderFrom, setupFixtureAt, cleanupFixture, initRepo, addSubmodule, accountFiles,
+  ok, git, statePath, layout, readState, writeState, commitAll, commitOnState, refuses, fixtureFrom, folderFrom, setupFixtureAt, cleanupFixture, initRepo, addSubmodule, accountFiles, readManifest, FROZEN_AT,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
@@ -184,6 +186,29 @@ function trackUnit(dir, tasks) {
   for (let phase = 2; phase <= PHASES; phase += 1) TRACKER.createPhase(statePath(dir), UNIT, phase, `Phase ${phase}`);
   for (const task of tasks) track(dir, task.shown, task.type, task.title);
   commitAll(dir, 'the unit\'s tasks');
+}
+
+/**
+ * The unit readied for finish's landing, as `land finish` asks it: its
+ * build begun, in auto, through a cut of a phase for each the tracker
+ * holds, each closed, its spec of one area, and its review phase passed in
+ * round 1 with no fix task — committed on the state branch, so no landing
+ * verb reads it as a change of the test's.
+ * @param {string} dir
+ */
+function finishReady(dir) {
+  const numbers = Array.from({ length: PHASES }, (_, at) => at + 1);
+  const manifest = {
+    ...readManifest(dir, UNIT),
+    build: { position: 'auto' },
+    cut: { phases: numbers.map((phase) => ({ name: `Phase ${phase}`, scenarios: [], sections: ['1'], relies_on: [] })) },
+    checklists: Object.fromEntries(numbers.flatMap((phase) => ['start', 'close'].map((end) => [`phase-${phase}-${end}`, { items: {}, closed: FROZEN_AT }]))),
+  };
+  commitOnState(statePath(dir), {
+    [layout.manifest(UNIT)]: `${JSON.stringify(manifest, null, 2)}\n`,
+    [layout.unit(UNIT, 'spec.md')]: '# Pay\n\n## 1. Paying\n\n### 1.1 The card\n\n1.1.1 A card is taken.\n',
+    [layout.unit(UNIT, 'review', 'round-1.json')]: `${JSON.stringify({ reports: [], passed: true, can_now: [], findings: [], settled: null, scenarios: [] })}\n`,
+  }, 'the review passed');
 }
 
 /** A repository's first commit: `file`, holding its name, committed in its checkout. @param {string} repo @param {string} file */
@@ -850,7 +875,7 @@ function pathsOn(dir, branch) {
 }
 
 module.exports = {
-  UNIT, BASE, TASKS, NESTED, NESTED_TASKS, TRACKER, openArgs, own, track, cutTask, commitFiles, mergeBack, buildLanding, buildNested, setLandingDriver, landedOn, pathsOn, useLandingWorld, useNestedWorld, nestedConformance,
+  UNIT, BASE, TASKS, NESTED, NESTED_TASKS, TRACKER, openArgs, own, track, cutTask, commitFiles, mergeBack, buildLanding, buildNested, setLandingDriver, landedOn, pathsOn, useLandingWorld, useNestedWorld, nestedConformance, finishReady,
   refusedMoving, alreadyMoving, commandsOf, followRemedy,
   personState, followed, signatures, short, shellWord, scratchOf, way, moveStep, rebasingIn, rebaseSteps, checkoutOf, heldRefusal, strayRefusal, rebasingRefusal, stops, stoppedRebase,
 };

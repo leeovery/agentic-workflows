@@ -28,7 +28,7 @@ const assert = require('node:assert');
 
 const { tip } = require('./engine-harness.cjs');
 const { createManifest, readManifest } = require('./discovery-test-utils.cjs');
-const { NESTED_TASKS, openArgs, nestedConformance } = require('./landing-world.cjs');
+const { NESTED_TASKS, openArgs, nestedConformance, finishReady } = require('./landing-world.cjs');
 const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
 
 const { rates, show, cache } = NESTED_TASKS;
@@ -49,6 +49,7 @@ for (const { name } of listDrivers('landing')) {
       const merged = ok(at.dir, ['land', 'phase', 'pay', '1']);
       assert.deepStrictEqual(merged.repos.map((/** @type {{repo: string, merged: string[]}} */ { repo, merged: tasks }) => [repo, tasks]), [['ext', ['1.1']], ['lib', ['1.1']], ['.', ['1.1', '1.2']]]);
       assert.ok(pointsAtSubmodule(at), 'phase 1 left the submodule\'s pointer off its default branch');
+      finishReady(at.dir);
       const finished = ok(at.dir, ['land', 'finish', 'pay']);
       assert.deepStrictEqual(finished.repos.map((/** @type {{repo: string, phases: {phase: number}[]}} */ { repo, phases }) => [repo, phases.map(({ phase }) => phase)]), [['lib', [2]]]);
 
