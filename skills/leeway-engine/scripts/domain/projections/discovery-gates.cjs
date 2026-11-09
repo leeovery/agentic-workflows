@@ -61,7 +61,7 @@ const OPENS = Object.freeze({
   epic: 'We shape its topics next, and you approve the map.',
   feature: 'Its discussion opens next.',
   bugfix: 'Its investigation opens next.',
-  'quick-fix': 'Its scoping opens next.',
+  'quick-fix': 'Its fixes start next, here in this conversation.',
 });
 
 /** A type with its article. @param {string} type */

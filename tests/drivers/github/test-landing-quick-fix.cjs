@@ -26,7 +26,7 @@ const assert = require('node:assert');
 
 const harness = require('../../scripts/engine-harness.cjs');
 const { useTempFolder } = require('../../scripts/discovery-test-utils.cjs');
-const { UNIT, BRANCH, SET, fixChanged, twoFixesBuilt, fixesRecorded } = require('../../scripts/quick-fix-world.cjs');
+const { UNIT, BRANCH, SET, fixChanged, fixDone, twoFixesBuilt, fixesRecorded } = require('../../scripts/quick-fix-world.cjs');
 const side = require('./landing.cjs');
 const { GH_ENV, pulls, tipOnGithub } = require('./world.cjs');
 
@@ -99,7 +99,7 @@ describe('a quick-fix\'s one pull request on GitHub, squashed by hand there (R14
     git(dir, ['reflog', 'expire', '--expire=now', '--all']);
     git(dir, ['gc', '-q', '--prune=now']);
     const closing = refuses(dir, ['task', 'close', UNIT, '1.3', '--reason', 'Not wanted.'], as()).error;
-    ok(dir, ['task', 'done', UNIT, '1.3'], as());
+    fixDone(dir, '1.3', as());
 
     assert.strictEqual(closing, `task close: task 1.3 of ${UNIT} holds work of its own — it has landed, so it is done, and its change is given up as a landed change is, by a fix of its own whose commit through the door reverts it: task create ${UNIT} 1 --file <task.md>`);
   });

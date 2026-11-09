@@ -19,6 +19,9 @@ const { workUnitStatus, workUnitMenu, workUnitData, revisitPhasesSection } = req
 /** A feature's build begun by its cut, its one phase in flight. */
 const BUILDING = { build: { position: 'auto' }, cut: { phases: [{ name: 'One', scenarios: [], sections: ['1'], relies_on: [] }] } };
 
+/** A quick-fix's fixes begun: its entry's record of their phase written. */
+const BEGUN = { began: '2026-06-03T09:00:00Z' };
+
 function unitOf(dir, type, name) {
   const found = activeWorkUnit(dir, name);
   assert.strictEqual(found.type, type);
@@ -128,30 +131,6 @@ describe('workunit projections: status display', () => {
       [['y', 'continue', '/leeway-specification-process feature pay']]);
   });
 
-  it('quick-fix: a flagged completed phase carries the cue, the ⚑ line, and takes next_phase', () => {
-    createManifest(dir, 'rename-api', {
-      work_type: 'quick-fix',
-      phases: {
-        scoping: { items: { 'rename-api': { status: 'completed' } } },
-        implementation: { items: { 'rename-api': { status: 'completed', reconcile_needed: 'scoping' } } },
-      },
-    });
-    const unit = unitOf(dir, 'quick-fix', 'rename-api');
-    assert.strictEqual(workUnitStatus('quick-fix', unit), [
-      'PIPELINE (quick-fix)',
-      '  ├─ ✓ Scoping           [completed]',
-      '  └─ ✓ Implementation    [completed · input moved]',
-      '',
-      '  ⚑ Implementation input moved — scoping revised since it completed.',
-      '',
-    ].join('\n'));
-    assert.strictEqual(unit.next_phase, 'implementation');
-    assert.strictEqual(unit.phase_label, 'implementation (input moved — reconcile)');
-    const menu = workUnitMenu('quick-fix', unit);
-    assert.strictEqual(menu.keys[0].route, '/leeway-implementation-process quick-fix rename-api');
-    assert.match(workUnitData('quick-fix', unit, menu), /^reconcile_pending: implementation \(scoping\)$/m);
-  });
-
   it('bugfix: completed investigation and a ready next phase', () => {
     createManifest(dir, 'login-crash', {
       work_type: 'bugfix',
@@ -165,36 +144,17 @@ describe('workunit projections: status display', () => {
     ].join('\n'));
   });
 
-  it('quick-fix: in-progress scoping renders a single in-flight row', () => {
-    createManifest(dir, 'rename-api', {
-      work_type: 'quick-fix',
-      phases: { scoping: { items: { 'rename-api': { status: 'in-progress' } } } },
-    });
-    assert.strictEqual(workUnitStatus('quick-fix', unitOf(dir, 'quick-fix', 'rename-api')), [
-      'PIPELINE (quick-fix)',
-      '  └─ ◐ Scoping    [in-progress]',
-      '',
-    ].join('\n'));
-  });
+  it('19.5.14: a quick-fix\'s pipeline is its fixes, ready before they begin and in flight once begun, and its review once asked for', () => {
+    const statusOf = (/** @type {object} */ data) => {
+      createManifest(dir, 'rename-api', { work_type: 'quick-fix', ...data });
+      return workUnitStatus('quick-fix', unitOf(dir, 'quick-fix', 'rename-api'));
+    };
 
-  it('quick-fix: finalising unit renders all-completed rows and the finalise callout', () => {
-    createManifest(dir, 'rename-api', {
-      work_type: 'quick-fix',
-      phases: {
-        scoping: { items: { 'rename-api': { status: 'completed' } } },
-        implementation: { items: { 'rename-api': { status: 'completed' } } },
-        review: { items: { 'rename-api': { status: 'completed' } } },
-      },
-    });
-    assert.strictEqual(workUnitStatus('quick-fix', unitOf(dir, 'quick-fix', 'rename-api')), [
-      'PIPELINE (quick-fix)',
-      '  ├─ ✓ Scoping           [completed]',
-      '  ├─ ✓ Implementation    [completed]',
-      '  └─ ✓ Review            [completed]',
-      '',
-      '  ⚑ All phases complete — ready to finalise.',
-      '',
-    ].join('\n'));
+    assert.deepStrictEqual([statusOf({}), statusOf({ fixes: BEGUN }), statusOf({ fixes: { ...BEGUN, review_asked: '2026-06-03T10:00:00Z' } })], [
+      ['PIPELINE (quick-fix)', '  └─ → Implementation    [ready]', ''].join('\n'),
+      ['PIPELINE (quick-fix)', '  └─ ◐ Implementation    [in-progress]', ''].join('\n'),
+      ['PIPELINE (quick-fix)', '  ├─ ◐ Implementation    [in-progress]', '  └─ ◐ Review            [in-progress]', ''].join('\n'),
+    ]);
   });
 
   it('feature: a reopened discussion with messages waiting cues the pipeline row and DATA', () => {
@@ -215,30 +175,6 @@ describe('workunit projections: status display', () => {
     const drained = unitOf(dir, 'feature', 'auth-flow');
     assert.strictEqual(drained.mail_phases, undefined);
     assert.match(workUnitStatus('feature', drained), /◐ Discussion +\[in-progress\]/);
-  });
-
-  it('quick-fix: a reopened phase behind the completed last one is in-progress, never finalising — its continue resumes it', () => {
-    createManifest(dir, 'rename-api', {
-      work_type: 'quick-fix',
-      phases: {
-        scoping: { items: { 'rename-api': { status: 'in-progress' } } },
-        implementation: { items: { 'rename-api': { status: 'completed' } } },
-        review: { items: { 'rename-api': { status: 'completed' } } },
-      },
-    });
-    const unit = unitOf(dir, 'quick-fix', 'rename-api');
-    assert.strictEqual(unit.finalising, false);
-    assert.strictEqual(unit.next_phase, 'scoping');
-    assert.strictEqual(unit.phase_label, 'scoping (in-progress)');
-    assert.strictEqual(workUnitStatus('quick-fix', unit), [
-      'PIPELINE (quick-fix)',
-      '  ├─ ◐ Scoping           [in-progress]',
-      '  ├─ ✓ Implementation    [completed]',
-      '  └─ ✓ Review            [completed]',
-      '',
-    ].join('\n'));
-    assert.deepStrictEqual(workUnitMenu('quick-fix', unit).keys.map((k) => [k.key, k.action, k.route]),
-      [['y', 'continue', '/leeway-scoping-process quick-fix rename-api']], 'no finalise entry mid-revisit');
   });
 
   it('feature: every in-flight phase row renders, even beside the next one', () => {
@@ -305,7 +241,22 @@ describe('workunit projections: menu', () => {
     );
   });
 
-  it('quick-fix: routes carry the hyphenated quick-fix work_type argument', () => {
+  it('quick-fix: its continue carries on in the quick-fix\'s skill, ready or begun, and in the review\'s once asked for, with no revisit', () => {
+    const keysOf = (/** @type {object} */ data) => {
+      createManifest(dir, 'hotfix-logs', { work_type: 'quick-fix', ...data });
+      const menu = workUnitMenu('quick-fix', unitOf(dir, 'quick-fix', 'hotfix-logs'));
+      assert.strictEqual(menu.rendered, '');
+      return menu.keys.map((k) => [k.key, k.action, k.route]);
+    };
+
+    assert.deepStrictEqual([keysOf({}), keysOf({ fixes: BEGUN }), keysOf({ fixes: { ...BEGUN, review_asked: '2026-06-03T10:00:00Z' } })], [
+      [['y', 'continue', '/leeway-quick-fix-process quick-fix hotfix-logs']],
+      [['y', 'continue', '/leeway-quick-fix-process quick-fix hotfix-logs']],
+      [['y', 'continue', '/leeway-review-process quick-fix hotfix-logs']],
+    ]);
+  });
+
+  it('P12: a quick-fix today\'s scoping made waits on the migration\'s cut, with no route into its work', () => {
     createManifest(dir, 'hotfix-logs', {
       work_type: 'quick-fix',
       phases: {
@@ -314,71 +265,11 @@ describe('workunit projections: menu', () => {
       },
     });
     const menu = workUnitMenu('quick-fix', unitOf(dir, 'quick-fix', 'hotfix-logs'));
-    assert.strictEqual(menu.rendered, [
-      '· · · · · · · · · · · ·',
-      'Continuing "Hotfix Logs" — *implementation (in-progress)*.',
-      '',
-      '**`◆ Proceed?`**',
-      '',
-      '**`y/yes`**     → Proceed to implementation',
-      '**`r/revisit`** → Revisit an earlier phase',
-      '**`b/back`**    → Return to the start menu',
-    ].join('\n'));
-    assert.deepStrictEqual(
-      menu.keys.map((k) => [k.key, k.action, k.phase || null, k.route]),
-      [
-        ['y', 'continue', null, '/leeway-implementation-process quick-fix hotfix-logs'],
-        ['r', 'revisit', null, null],
-        ['b', 'back', null, null],
-        ['1', 'revisit_phase', 'scoping', '/leeway-scoping-process quick-fix hotfix-logs'],
-      ]
-    );
-  });
 
-  it('quick-fix: no revisit keys while the first phase is still in flight', () => {
-    createManifest(dir, 'rename-api', {
-      work_type: 'quick-fix',
-      phases: { scoping: { items: { 'rename-api': { status: 'in-progress' } } } },
-    });
-    const menu = workUnitMenu('quick-fix', unitOf(dir, 'quick-fix', 'rename-api'));
-    assert.strictEqual(menu.rendered, '');
-    assert.deepStrictEqual(
-      menu.keys.map((k) => [k.key, k.action, k.route]),
-      [['y', 'continue', '/leeway-scoping-process quick-fix rename-api']]
-    );
-  });
-
-  it('quick-fix: finalising unit gates on finalise, with every completed phase revisitable', () => {
-    createManifest(dir, 'hotfix-logs', {
-      work_type: 'quick-fix',
-      phases: {
-        scoping: { items: { 'hotfix-logs': { status: 'completed' } } },
-        implementation: { items: { 'hotfix-logs': { status: 'completed' } } },
-        review: { items: { 'hotfix-logs': { status: 'completed' } } },
-      },
-    });
-    const menu = workUnitMenu('quick-fix', unitOf(dir, 'quick-fix', 'hotfix-logs'));
-    assert.strictEqual(menu.rendered, [
-      '· · · · · · · · · · · ·',
-      'Finalising "Hotfix Logs" — *pipeline complete*.',
-      '',
-      '**`◆ Proceed?`**',
-      '',
-      '**`y/yes`**     → Mark the work unit completed',
-      '**`r/revisit`** → Revisit an earlier phase',
-      '**`b/back`**    → Return to the start menu',
-    ].join('\n'));
-    assert.deepStrictEqual(
-      menu.keys.map((k) => [k.key, k.action, k.phase || null, k.route]),
-      [
-        ['y', 'finalise', null, null],
-        ['r', 'revisit', null, null],
-        ['b', 'back', null, null],
-        ['1', 'revisit_phase', 'scoping', '/leeway-scoping-process quick-fix hotfix-logs'],
-        ['2', 'revisit_phase', 'implementation', '/leeway-implementation-process quick-fix hotfix-logs'],
-        ['3', 'revisit_phase', 'review', '/leeway-review-process quick-fix hotfix-logs'],
-      ]
-    );
+    assert.deepStrictEqual([menu.rendered.split('\n')[1], menu.keys.map((k) => [k.key, k.action])], [
+      'hotfix-logs was built under the old plan, and its build is entered once the reshape\'s 29.17 migration has cut it',
+      [['b', 'back']],
+    ]);
   });
 
 });
@@ -432,34 +323,22 @@ describe('workunit projections: data body', () => {
     ].join('\n'));
   });
 
-  it('quick-fix: finalising unit flags true and the finalise entry is internal', () => {
-    createManifest(dir, 'hotfix-logs', {
-      work_type: 'quick-fix',
-      phases: {
-        scoping: { items: { 'hotfix-logs': { status: 'completed' } } },
-        implementation: { items: { 'hotfix-logs': { status: 'completed' } } },
-        review: { items: { 'hotfix-logs': { status: 'completed' } } },
-      },
-    });
+  it('quick-fix: its fixes begun, in flight, its continue into the quick-fix\'s skill', () => {
+    createManifest(dir, 'hotfix-logs', { work_type: 'quick-fix', fixes: BEGUN });
     const unit = unitOf(dir, 'quick-fix', 'hotfix-logs');
     const menu = workUnitMenu('quick-fix', unit);
     assert.strictEqual(workUnitData('quick-fix', unit, menu), [
       'work_unit: hotfix-logs',
       'work_type: quick-fix',
-      'next_phase: done',
-      'phase_label: pipeline complete',
-      'finalising: true',
-      'completed_phases: scoping, implementation, review',
+      'next_phase: implementation',
+      'phase_label: implementation (in-progress)',
+      'finalising: false',
+      'completed_phases: (none)',
       'reconcile_pending: (none)',
       'mail_waiting: (none)',
-      'revisit_available: true',
+      'revisit_available: false',
       'ACTIONS (key  word  action  topic  → route):',
-      '  y  yes  finalise  hotfix-logs  → (internal)',
-      '  r  revisit  revisit  hotfix-logs  → (internal)',
-      '  b  back  back  hotfix-logs  → (internal)',
-      '  1  —  revisit_phase  hotfix-logs  → /leeway-scoping-process quick-fix hotfix-logs',
-      '  2  —  revisit_phase  hotfix-logs  → /leeway-implementation-process quick-fix hotfix-logs',
-      '  3  —  revisit_phase  hotfix-logs  → /leeway-review-process quick-fix hotfix-logs',
+      '  y  yes  continue  hotfix-logs  → /leeway-quick-fix-process quick-fix hotfix-logs',
     ].join('\n'));
   });
 });
@@ -492,19 +371,5 @@ describe('workunit projections: revisit phases section', () => {
     assert.strictEqual(revisitPhasesSection([]), '');
     createManifest(dir, 'fresh', {});
     assert.deepStrictEqual(unitOf(dir, 'feature', 'fresh').revisit, []);
-  });
-
-  it('filters quick-fix candidates to the quick-fix pipeline', () => {
-    createManifest(dir, 'hotfix', {
-      work_type: 'quick-fix',
-      phases: {
-        scoping: { items: { hotfix: { status: 'completed' } } },
-        specification: { items: { hotfix: { status: 'completed' } } },
-        planning: { items: { hotfix: { status: 'completed' } } },
-        implementation: { items: { hotfix: { status: 'completed' } } },
-      },
-    });
-    const unit = unitOf(dir, 'quick-fix', 'hotfix');
-    assert.deepStrictEqual(unit.revisit, ['scoping', 'implementation']);
   });
 });

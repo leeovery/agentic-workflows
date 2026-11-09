@@ -45,6 +45,7 @@
 // (`takeOutRecord`, fix-end.cjs), and the knowledge base brought in line —
 // a move's close alone, since a fix holding work never closes.
 // The close stands on every fix ended, done or closed, and each fix done
+// passed by its pair, as its rounds' reports say (`pairVerdict`), and
 // recorded (`recordedFixes`).
 // ---------------------------------------------------------------------------
 
@@ -61,6 +62,7 @@ const { parseShownTask, shownTask, taskId, taskName } = require('./task-id.cjs')
 const { trackedPhase, copiedTasks, givenText, ENDED, STATUS_WORDS } = require('./task-verbs.cjs');
 const { headingLevels, fencedLines, unclosedFence } = require('./spec-sections.cjs');
 const { committed } = require('./task-account.cjs');
+const { taskRounds, pairPassed, changedUnder } = require('./round-report.cjs');
 const { refusing } = require('./staged-payload.cjs');
 const { summaryFile, SUMMARY_PHASE } = require('./knowledge/artifacts.cjs');
 const { syncKnowledge } = require('./knowledge/sync.cjs');
@@ -292,10 +294,26 @@ function takeOutRecord(cwd, ref) {
 }
 
 /**
+ * The round a fix's pair ended its review in, every reviewer passing it or
+ * the orchestrator settling it, and whether it was settled; null where its
+ * review has not ended so, or the fix changed under that round since
+ * (round-report.cjs).
+ * @param {string} cwd @param {TaskRef} ref @returns {{round: number, settled: boolean}|null}
+ */
+function pairVerdict(cwd, ref) {
+  const rounds = taskRounds(cwd, ref);
+  const last = rounds.at(-1);
+  if (last === undefined || !pairPassed(last) || changedUnder(cwd, ref, rounds) !== null) return null;
+  return { round: last.round, settled: !last.passes };
+}
+
+/**
  * The quick-fix's fixes done, each with its record written, read from a
  * copy of the tracker's store, so the board asking whether the close draws
- * never waits on a writer — refused while a fix is not ended, or one done
- * has no record, naming each and the way on.
+ * never waits on a writer — refused while a fix is not ended, one done has
+ * no round its pair passed, as a fix marked done in the tracker by hand
+ * leaves it (19.5.22), or one done has no record, naming each and the way
+ * on.
  * @param {string} cwd @param {Record<string, any>} manifest the unit's @returns {TaskDetail[]}
  */
 function recordedFixes(cwd, manifest) {
@@ -304,9 +322,13 @@ function recordedFixes(cwd, manifest) {
   const open = fixes.filter(({ status }) => !ENDED.includes(status));
   if (open.length > 0) {
     const standing = open.map(({ ref, status }) => `${shownTask(ref)} is ${STATUS_WORDS[status]}`).join(', ');
-    throw new Error(`${unit} closes once each of its fixes has ended — ${standing}: each is done once it is committed and in ${unit}'s pull request, or closed with its reason`);
+    throw new Error(`${unit} closes once each of its fixes has ended — ${standing}: each is done once it is committed, in ${unit}'s pull request and passed by its pair, or closed with its reason`);
   }
   const done = fixes.filter(({ status }) => status === 'done');
+  const unpassed = done.filter(({ ref }) => pairVerdict(cwd, ref) === null).map(({ ref }) => shownTask(ref));
+  if (unpassed.length > 0) {
+    throw new Error(`${unit} closes once its pair has passed each fix done — ${unpassed.join(', ')} ${unpassed.length === 1 ? 'has' : 'have'} no round its pair passed: its pair reads it, engine brief reviewer ${unit} ${unpassed[0]} --letter a, and b`);
+  }
   const recorded = recordedIds(manifest);
   const owed = done.filter(({ ref }) => !recorded.includes(taskId(ref))).map(({ ref }) => shownTask(ref));
   if (owed.length > 0) {
@@ -327,4 +349,4 @@ function runQuickFixVerb(cwd, [verb, ...args], opts) {
   return refusing('quick-fix record', () => recordFix(cwd, args[0], args[1], file));
 }
 
-module.exports = { QUICK_FIX_USAGE, RECORD_SECTIONS, readRecord, recordedFixes, takeOutRecord, indexSummary, runQuickFixVerb, summaryRecords };
+module.exports = { QUICK_FIX_USAGE, RECORD_SECTIONS, readRecord, recordedFixes, pairVerdict, takeOutRecord, indexSummary, runQuickFixVerb, summaryRecords };

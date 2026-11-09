@@ -26,7 +26,7 @@ const START_GATEWAY = require(path.join(ROOT, 'skills/leeway/scripts/gateway.cjs
 const LIB = require(path.join(ROOT, 'skills/leeway-engine/scripts/lib.cjs'));
 const { stateGit } = require('./engine-harness.cjs');
 const {
-  Sim, sessionLog, carryOn, arrive, handoff, handoffEntry, enterEntry, discussed, pickRoute, startKeys, specEntry, literal,
+  Sim, sessionLog, carryOn, arrive, handoff, enterEntry, discussed, pickRoute, startKeys, specEntry, literal,
   shapedInTheProduct, briefDraft, startThisWork, approveTheMap, pullFromRoadmap,
 } = require('./pipeline-world.cjs');
 
@@ -452,7 +452,7 @@ describe('pipeline simulation: roadmap', () => {
     assert.strictEqual(row('cart-drops-items').state, 'waiting');
   });
 
-  it('roadmap: quick-fixes pulled alone pre-seed a quick-fix, which start this work hands to its scoping', () => {
+  it('roadmap: quick-fixes pulled alone pre-seed a quick-fix, which start this work carries on into in the same conversation (19.S19, 24.1.3)', () => {
     sim.run(['roadmap', 'add', 'footer-typo', '--horizon', 'polish', '--summary', 'the footer misspells the product', '--kind', 'quick-fix']);
     sim.run(['roadmap', 'add', 'stale-copyright', '--horizon', 'polish', '--summary', 'the copyright year is stale', '--kind', 'quick-fix']);
     sim.run(['roadmap', 'add', 'dark-mode', '--horizon', 'polish', '--summary', 'a dark theme']);
@@ -463,10 +463,9 @@ describe('pipeline simulation: roadmap', () => {
       type: 'quick-fix', name: 'footer-fixes', description: 'The footer\'s copy fixes', reason: 'Two known, mechanical changes.',
       shaped_by: [shapedInTheProduct(sim, 'footer-fixes')], roadmap: ['footer-typo', 'stale-copyright'],
     });
-    assert.deepStrictEqual(started.next, { kind: 'handoff', skill: 'leeway-scoping-process', args: ['quick-fix', 'footer-fixes'] });
+    assert.deepStrictEqual(started.next, { kind: 'invoke', skill: 'leeway-quick-fix-process', args: ['quick-fix', 'footer-fixes'] });
     assert.strictEqual(sim.manifest('footer-fixes').work_type, 'quick-fix');
-    handoff(sim, '/leeway-scoping-process quick-fix footer-fixes');
-    handoffEntry(sim, 'footer-fixes', 'scoping', 'footer-fixes');
+    assert.strictEqual(sim.run(['enter', 'implementation', 'footer-fixes']).entered, true);
     assert.strictEqual(sim.run(['roadmap', 'state']).items.find((i) => i.name === 'dark-mode').state, 'waiting', 'the idea stays waiting');
     const state = sim.run(['roadmap', 'state']);
     assert.deepStrictEqual(state.items.filter((i) => i.state === 'in-flight').map((i) => [i.name, i.kind, i.work_unit]),

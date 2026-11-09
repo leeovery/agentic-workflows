@@ -4,7 +4,7 @@
 
 ---
 
-Each task goes from ready to done: started, built by its builder in a worktree of its own, reviewed whole by its pair until a round passes, its nits fixed by you, its account taken, then landed into its phase's stack. The loop takes on as many tasks as can run, and runs until every task of phase {N} is done or closed. Its calls and questions land at `{work_unit}.{place}`, the place the caller names: the build's, `implementation`, or the review phase's for its fix tasks.
+Each task goes from ready to done: started, built by its builder in a worktree of its own, reviewed whole by its pair until a round passes, its nits fixed by you, its account taken, then landed into its phase's stack. The loop takes on as many tasks as can run, and runs until every task of phase {N} is done or closed. A quick-fix's tasks differ where **A Quick-Fix's Tasks** says. Its calls and questions land at `{work_unit}.{place}`, the place the caller names: the build's, `implementation`, or the review phase's for its fix tasks.
 
 ## Taking Tasks
 
@@ -12,15 +12,19 @@ Each task goes from ready to done: started, built by its builder in a worktree o
 
 Where it answers `back`, that task is in progress already, an answer having freed it, and its turn has come: send its builder its brief again, `brief builder {work_unit} {task}`, by SendMessage to the builder's id. Where this conversation holds no builder for it, after a `/clear`, it goes through **The Builder** afresh, its new builder carrying on from where the work stands.
 
-Tasks started together share one headline. Write, for each, what it is about to change and what to watch when it lands, in the product's terms, to `.leeway/.cache/{work_unit}/build/headline.json` — `{"tasks": [{"task", "changes", "watch"}, …]}` — then fetch it and emit its sections verbatim per their markers:
+Tasks of the build started together share one headline. Write, for each, what it is about to change and what to watch when it lands, in the product's terms, to `.leeway/.cache/{work_unit}/build/headline.json` — `{"tasks": [{"task", "changes", "watch"}, …]}` — then fetch it and emit its sections verbatim per their markers:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs render build-headline {work_unit} --file .leeway/.cache/{work_unit}/build/headline.json
 ```
 
+## A Quick-Fix's Tasks
+
+A quick-fix's tasks — its fixes, and its review's fix tasks — are built in the project's own checkout, on its one branch, one at a time: start the next once the one before is done or closed, or parked with nothing of it left uncommitted. Its builder's Agent call takes no worktree, and your nit fixes are made and committed in the checkout. It has no headline, no landing summary, no gate and no stack: its pull request takes every commit as it is made, so run `land open {work_unit} {task}` each time its builder reports it built or fixed and once your nit fixes are committed. Once its account is taken, it lands with `land open` again, then `task done`.
+
 ## The Builder
 
-Brief the task's builder, then make the Agent call — its `subagent_type` the agent `brief` answers, its prompt the pointer alone — in a worktree of its own, `isolation: "worktree"`, whatever the build's position:
+Brief the task's builder, then make the Agent call — its `subagent_type` the agent `brief` answers, its prompt the pointer alone — in a worktree of its own, `isolation: "worktree"`, whatever the build's position — a quick-fix's builder in none:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs brief builder {work_unit} {task}
@@ -71,7 +75,7 @@ A refusal of the account goes back to the builder: its brief again, by SendMessa
 
 A bugfix's task 1.1, the test that reproduces the bug, lands once that test has failed five times on the unfixed code at its tip: once its account is taken, run that series with the scenario and the command the task names, `verify run {work_unit} {scenario} --unfixed --test "{command}"`. A run that passes sends the test back to its builder: put the run that passed and its output onto the task, written to `.leeway/.cache/{work_unit}/build/addition.md`, `task add {work_unit} 1.1 --file .leeway/.cache/{work_unit}/build/addition.md --by orchestrator`, and send the builder back in, `brief builder {work_unit} 1.1` by SendMessage.
 
-Then fetch the task's landing summary and emit its sections verbatim per their markers:
+A quick-fix's task lands as **A Quick-Fix's Tasks** says. Any other: fetch the task's landing summary and emit its sections verbatim per their markers:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs render task-landed {work_unit} {task}
@@ -103,6 +107,6 @@ node .claude/skills/leeway-engine/scripts/engine.cjs land chain {work_unit} {tas
 node .claude/skills/leeway-engine/scripts/engine.cjs task done {work_unit} {task}
 ```
 
-Where `land chain`, or `task close` for a task given up, answers a `next`, run it.
+Where `land chain`, `task done`, or `task close` for a task given up, answers a `next`, run it.
 
 The loop ends once every task of phase {N} is done or closed, and hands back to where it was loaded from.

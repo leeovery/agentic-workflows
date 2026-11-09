@@ -14,8 +14,10 @@
 // where they have landed, and merging nothing where no fix is done; each
 // call the person changed asked its verdict first, at the point `close`
 // (16.S36, 19.S22); and
-// `engine finish yes <qf>` — refused while the checkout holds changes not
-// committed, landing nothing — landing the pull request through the local
+// `engine finish yes <qf>` — refused while a question Claude raised in its
+// conversation stands open in its ledger, after a /clear as before it
+// (19.5.25), and while the checkout holds changes not committed, landing
+// nothing — landing the pull request through the local
 // landing driver as one commit, its fixes in the order they were done
 // (19.5.17), putting the checkout back on the branch it
 // lands on, completing the unit and naming the start menu, its folder then
@@ -42,19 +44,35 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  ok, output, callAsync, refusedPristine, sectionOf, git, stateGit, statePath, layout, writeState, readManifest, fixtureFrom, cleanupFixture, keywordOnlyKnowledge, createFile,
+  ok, output, callAsync, okSectionsAsync, refusedPristine, sectionOf, git, stateGit, statePath, layout, writeState, readManifest, fixtureFrom, cleanupFixture, keywordOnlyKnowledge, createFile,
 } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const { ledgerReadHelpers } = require('./ledger-world.cjs');
 const {
-  UNIT, PLACE, DESCRIPTION, FLAG, HELP, RECORDS, quickFix, createFix, fixBuilt, recordFile, twoFixesBuilt, checklistClosed, asGone, entered,
+  UNIT, PLACE, DESCRIPTION, FLAG, HELP, RECORDS, quickFix, createFix, fixBuilt, fixDone, recordFile, twoFixesBuilt, checklistClosed, asGone, entered,
 } = require('./quick-fix-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { projectName } = require(path.join(SCRIPTS, 'domain/state-checks.cjs'));
 const { closeScreen } = require(path.join(SCRIPTS, 'domain/projections/finish.cjs'));
+const { roundReportPath } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
+const { REVIEWER_LETTERS } = require(path.join(SCRIPTS, 'kernel/reviewers.cjs'));
 
 const CRITERION = 'Given the help, when it is read, then it names --colour.';
+
+/** Claude's call raised in the quick-fix's conversation, as the raise suites make one. */
+const RAISED = Object.freeze({
+  question: 'Should --color still work?',
+  rows: [
+    { key: '1', name: 'Alias', text: 'Keep --color as an alias', notice: 'old scripts keep working' },
+    { key: '2', name: 'Gone', text: 'Drop --color', notice: 'old scripts fail on the flag' },
+  ],
+  lean: '1',
+  why: 'Scripts in the wild pass --color.',
+  sort: 'several',
+  mechanism: 'The flag parser maps --color onto --colour.',
+  product_wide: false,
+});
 
 const world = fixtureFrom('quick-fix-close-', twoFixesBuilt);
 
@@ -80,7 +98,7 @@ const provenWorld = fixtureFrom('quick-fix-close-proven-', (dir) => {
     ok(dir, ['verify', 'setup', UNIT, '--file', setup, '--scenario', '1.S1'], as);
     ok(dir, ['verify', 'run', UNIT, '1.S1'], as);
     ok(dir, ['land', 'open', UNIT, '1.1'], as);
-    ok(dir, ['task', 'done', UNIT, '1.1'], as);
+    fixDone(dir, '1.1', as);
     fixBuilt(dir, 2, HELP, 'src/help.js', 'const help = \'--colour\';\n', as);
   });
 });
@@ -162,9 +180,18 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
     assert.deepStrictEqual([unrecorded, landing, refused(['render', 'finish', UNIT]), refused(['finish', 'yes', UNIT])], [
       `render finish: ${UNIT} closes once each fix done has its record — 1.1, 1.2 have none: quick-fix record ${UNIT} 1.1 --file <record.md>`,
       `land: ${UNIT} closes once each fix done has its record — 1.1, 1.2 have none: quick-fix record ${UNIT} 1.1 --file <record.md>`,
-      `render finish: ${UNIT} closes once each of its fixes has ended — 1.3 is not started: each is done once it is committed and in ${UNIT}'s pull request, or closed with its reason`,
-      `finish yes: ${UNIT} closes once each of its fixes has ended — 1.3 is not started: each is done once it is committed and in ${UNIT}'s pull request, or closed with its reason`,
+      `render finish: ${UNIT} closes once each of its fixes has ended — 1.3 is not started: each is done once it is committed, in ${UNIT}'s pull request and passed by its pair, or closed with its reason`,
+      `finish yes: ${UNIT} closes once each of its fixes has ended — 1.3 is not started: each is done once it is committed, in ${UNIT}'s pull request and passed by its pair, or closed with its reason`,
     ]);
+  });
+
+  it('19.5.22: refuses a fix done whose pair has passed no round of it, as one marked done in the tracker by hand leaves it, naming its pair — land finish as the close refuses', () => {
+    dir = world();
+    closeable();
+    for (const letter of REVIEWER_LETTERS) writeState(dir, roundReportPath({ unit: UNIT, phase: 1, n: 2 }, 2, letter), '# Review\n\n## Findings\n\n- bug: the help still says --color\n  Scenario: the help read\n\nVerdict: fail\n');
+    const said = `${UNIT} closes once its pair has passed each fix done — 1.2 has no round its pair passed: its pair reads it, engine brief reviewer ${UNIT} 1.2 --letter a, and b`;
+
+    assert.deepStrictEqual([refused(['render', 'finish', UNIT]), refused(['land', 'finish', UNIT])], [`render finish: ${said}`, `land: ${said}`]);
   });
 
   it('19.S21: says what running the product proved of each fix, no review step on its checklist, and nothing changed by the person, no verdict — then the yes, a review asked for, and questions about the change', () => {
@@ -174,6 +201,10 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
 
     assert.strictEqual(sectionOf(out, 'DISPLAY: finish'), [
       'Typo — ready to close',
+      '',
+      'REVIEWED BY THE PAIR',
+      `  ├─ ✓ 1.1 ${FLAG} · passed in round 1`,
+      `  └─ ✓ 1.2 ${HELP} · passed in round 1`,
       '',
       `PROVEN BY RUNNING ${projectName(dir).toUpperCase()}`,
       `  ├─ ✓ ${CRITERION}`,
@@ -194,14 +225,26 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
   });
 
   it('offers a yes that merges nothing, where no fix is done', () => {
-    const view = { unit: UNIT, title: 'Typo', skips: [], verdict: null, warnings: [], aside: null, product: 'app', proven: null, fixes: 0 };
-    assert.match(sectionOf(closeScreen(view), 'MENU: finish'), /\*\*`y\/yes`\*\* {4}→ Close it — mark it complete\n/);
+    const view = { unit: UNIT, title: 'Typo', skips: [], verdict: null, warnings: [], aside: null, product: 'app', proven: null, fixes: 0, pair: [] };
+    const out = closeScreen(view);
+
+    assert.match(sectionOf(out, 'MENU: finish'), /\*\*`y\/yes`\*\* {4}→ Close it — mark it complete\n/);
+    assert.match(sectionOf(out, 'DISPLAY: finish'), /^Typo — ready to close\n\nREVIEWED BY THE PAIR\n {2}No fix was done\.\n\n/);
+  });
+
+  it('19.5.13: draws each fix\'s verdict from its pair, a round the orchestrator settled said as settled', () => {
+    const view = { unit: UNIT, title: 'Typo', skips: [], verdict: null, warnings: [], aside: null, product: 'app', proven: null, fixes: 2, pair: [{ task: '1.1', title: FLAG, round: 1, settled: false }, { task: '1.2', title: HELP, round: 3, settled: true }] };
+
+    assert.match(sectionOf(closeScreen(view), 'DISPLAY: finish'), new RegExp(`^Typo — ready to close\\n\\nREVIEWED BY THE PAIR\\n {2}├─ ✓ 1\\.1 ${FLAG} · passed in round 1\\n {2}└─ ✓ 1\\.2 ${HELP} · settled in round 3\\n\\n`));
   });
 
   it('P9: says in one line that the project has no way to run the product, where no verify setup is recorded', () => {
     dir = world();
     closeable();
-    assert.strictEqual(sectionOf(screen(), 'DISPLAY: finish'), `Typo — ready to close\n\nNothing was proven by running ${projectName(dir)} — the project has no way to run it\n`);
+    assert.strictEqual(sectionOf(screen(), 'DISPLAY: finish'), [
+      'Typo — ready to close', '', 'REVIEWED BY THE PAIR', `  ├─ ✓ 1.1 ${FLAG} · passed in round 1`, `  └─ ✓ 1.2 ${HELP} · passed in round 1`, '',
+      `Nothing was proven by running ${projectName(dir)} — the project has no way to run it`, '',
+    ].join('\n'));
   });
 
   it('16.S36, 19.S22: asks a verdict on the call the person changed in it, at the close, before its gate — the yes refused until it is given', () => {
@@ -244,6 +287,26 @@ describe('finish yes <quick-fix> (19.5.15, 24.1.2)', () => {
       'main', `fix(${UNIT}): ${DESCRIPTION}`, 'const help = \'--colour\';\n',
     ]);
     assert.deepStrictEqual([readManifest(dir, UNIT).status, fs.readdirSync(statePath(dir, UNIT)).sort()], ['completed', ['build', 'discovery', 'manifest.json', 'seeds', 'summary.md']]);
+  });
+
+  it('19.5.25: never lands over a question Claude raised in its conversation still open in its ledger, after a /clear as before it — land finish and land phase as it does — naming it and the raise that asks it again; raised again and answered, it lands', async () => {
+    dir = world();
+    closeable();
+    const asked = ledgerReadHelpers(() => dir).ask(PLACE, RAISED.question);
+    await okSectionsAsync(dir, ['raise', PLACE, '--answers', asked], { env: as().env, stdin: JSON.stringify(RAISED) });
+    const fresh = { env: { ...as().env, CLAUDE_CODE_SESSION_ID: 'sess-cleared' } };
+    const main = git(dir, ['rev-parse', 'main']).trim();
+    const open = [
+      refusedPristine(dir, ['finish', 'yes', UNIT], fresh).error, refusedPristine(dir, ['land', 'finish', UNIT], fresh).error,
+      refusedPristine(dir, ['land', 'phase', UNIT, '1'], fresh).error, git(dir, ['rev-parse', 'main']).trim(),
+    ];
+    const { res } = await okSectionsAsync(dir, ['raise', PLACE, '--answers', asked], { env: fresh.env, stdin: JSON.stringify(RAISED) });
+    ok(dir, ['raise', 'answer', res.raise, '--pick', '1'], { ...fresh, stdin: JSON.stringify({ why: 'Old scripts keep working.' }) });
+    const done = ok(dir, ['finish', 'yes', UNIT], fresh);
+
+    const said = `${UNIT} closes once each question asked in it is answered — ${asked} ${RAISED.question}: raise it again for the person to answer, raise ${PLACE} --answers ${asked}`;
+    assert.deepStrictEqual(open, [`finish yes: ${said}`, `land: ${said}`, `land: ${said}`, main]);
+    assert.deepStrictEqual([done.landed.map(({ merged }) => merged), readManifest(dir, UNIT).status], [[['1.1', '1.2']], 'completed']);
   });
 
   it('19.5.17: squashes the fixes in the order they were done, as their records were written, never by their numbers', () => {

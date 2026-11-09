@@ -29,12 +29,13 @@ const VALID_PHASES = [
 // after discovery (the universal first phase; a map, not a pipeline phase, so
 // it never appears here). The one home for pipeline order: detail builders,
 // dashboards, gateways, and the simulation all read these arrays, never a
-// local copy.
+// local copy. A quick-fix's review runs only once the person asks for one at
+// its close (19.5.14).
 const WORK_TYPE_PIPELINES = {
   epic:            ['experiment', 'discussion', 'specification', 'implementation', 'review'],
   feature:         ['experiment', 'discussion', 'specification', 'implementation', 'review'],
   bugfix:          ['investigation', 'specification', 'implementation', 'review'],
-  'quick-fix':     ['scoping', 'implementation', 'review'],
+  'quick-fix':     ['implementation', 'review'],
 };
 
 /** Every phase an epic holds: discovery, its map, then its pipeline. */

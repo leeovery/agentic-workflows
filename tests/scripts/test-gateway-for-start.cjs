@@ -59,22 +59,6 @@ describe('leeway discovery', () => {
     assert.strictEqual(r.bugfixes.work_units[0].phase_label, 'investigation (in-progress)');
   });
 
-  it('surfaces a finished pipeline still in-progress as finalising work', () => {
-    createManifest(dir, 'done-fix', {
-      work_type: 'quick-fix',
-      phases: {
-        scoping: { items: { 'done-fix': { status: 'completed' } } },
-        implementation: { items: { 'done-fix': { status: 'completed' } } },
-        review: { items: { 'done-fix': { status: 'completed' } } },
-      },
-    });
-    const r = discover(dir);
-    assert.strictEqual(r.state.has_any_work, true);
-    assert.strictEqual(r.quick_fixes.count, 1);
-    assert.strictEqual(r.quick_fixes.work_units[0].next_phase, 'done');
-    assert.strictEqual(r.quick_fixes.work_units[0].finalising, true);
-  });
-
   it('epic stays active when one topic completes review with others mid-pipeline', () => {
     createManifest(dir, 'mint', {
       work_type: 'epic',
@@ -154,40 +138,11 @@ describe('leeway discovery', () => {
     assert.strictEqual(r.bugfixes.work_units[0].phase_label, 'ready for specification');
   });
 
-  it('mixed active and finalising in same type lists both', () => {
-    createManifest(dir, 'active-fix', {
-      work_type: 'quick-fix',
-      phases: { scoping: { items: { 'active-fix': { status: 'in-progress' } } } },
-    });
-    createManifest(dir, 'done-fix', {
-      work_type: 'quick-fix',
-      phases: {
-        scoping: { items: { 'done-fix': { status: 'completed' } } },
-        implementation: { items: { 'done-fix': { status: 'completed' } } },
-        review: { items: { 'done-fix': { status: 'completed' } } },
-      },
-    });
-    const r = discover(dir);
-    assert.strictEqual(r.quick_fixes.count, 2);
-    assert.deepStrictEqual(r.quick_fixes.work_units.map((u) => [u.name, u.finalising]), [
-      ['active-fix', false],
-      ['done-fix', true],
-    ]);
-  });
-
-  it('has_any_work counts a finalising unit — only closed units leave it false', () => {
+  it('has_any_work counts a unit in progress — only closed units leave it false', () => {
     createManifest(dir, 'archived', { work_type: 'feature', status: 'completed' });
-    createManifest(dir, 'done', {
-      work_type: 'quick-fix',
-      phases: {
-        scoping: { items: { 'done': { status: 'completed' } } },
-        implementation: { items: { 'done': { status: 'completed' } } },
-        review: { items: { 'done': { status: 'completed' } } },
-      },
-    });
-    const r = discover(dir);
-    assert.strictEqual(r.state.has_any_work, true);
-    assert.strictEqual(r.quick_fixes.work_units[0].finalising, true);
+    assert.strictEqual(discover(dir).state.has_any_work, false);
+    createManifest(dir, 'tidy', { work_type: 'quick-fix', fixes: { began: '2026-06-03T09:00:00Z' } });
+    assert.strictEqual(discover(dir).state.has_any_work, true);
   });
 
   it('groups quick-fix work units separately', () => {
@@ -200,16 +155,13 @@ describe('leeway discovery', () => {
     assert.strictEqual(r.state.has_any_work, true);
   });
 
-  it('quick-fix includes phase_label', () => {
-    createManifest(dir, 'rename-api', {
-      work_type: 'quick-fix',
-      phases: { scoping: { items: { 'rename-api': { status: 'in-progress' } } } },
-    });
+  it('quick-fix includes phase_label: its fixes in flight once begun (19.5.14)', () => {
+    createManifest(dir, 'rename-api', { work_type: 'quick-fix', fixes: { began: '2026-06-03T09:00:00Z' } });
     const r = discover(dir);
-    assert.strictEqual(r.quick_fixes.work_units[0].phase_label, 'scoping (in-progress)');
+    assert.strictEqual(r.quick_fixes.work_units[0].phase_label, 'implementation (in-progress)');
   });
 
-  it('quick-fix done is surfaced as finalising', () => {
+  it('P12: a quick-fix today\'s scoping made, every phase of it completed, waits on the cut, never finalising: its close is what completes a quick-fix', () => {
     createManifest(dir, 'done-qf', {
       work_type: 'quick-fix',
       phases: {
@@ -218,9 +170,8 @@ describe('leeway discovery', () => {
         review: { items: { 'done-qf': { status: 'completed' } } },
       },
     });
-    const r = discover(dir);
-    assert.strictEqual(r.quick_fixes.count, 1);
-    assert.strictEqual(r.quick_fixes.work_units[0].finalising, true);
+    const [unit] = discover(dir).quick_fixes.work_units;
+    assert.deepStrictEqual([unit.finalising, unit.phase_label], [false, 'waiting on the migration\'s cut']);
   });
 
   it('discovers inbox quickfixes', () => {

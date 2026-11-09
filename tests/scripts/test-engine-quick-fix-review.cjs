@@ -4,7 +4,8 @@
 // A quick-fix's review, asked for at its close (19.5.7, 19.5.13, 19.5.14,
 // 19.S23): `engine review ask <qf>` (leeway-engine/scripts/domain/
 // review-verbs.cjs), the close's `r/review` row — the request recorded and
-// committed, the review phase's entry its `next`, asked again `already` —
+// committed, the review phase's skill invoked in place its `next`, asked
+// again `already` —
 // refused for a unit that is no quick-fix and while the close does not
 // stand; `engine enter review <qf>` (domain/review-entry.cjs), refused
 // until it is asked for, then one area, the change, its record and its
@@ -16,13 +17,16 @@
 // run — a fix task of its round built on the quick-fix's one branch through
 // the door, a later round passing and handing back to the close, whose
 // checklist then carries the review passed and whose yes lands the fixes
-// and the fix task in one commit (19.5.15); `land finish` refused while the
-// review asked for has not passed; and a merge by hand of the fixes leaving
-// the review's fix task still to land, the close's yes saying it merges.
+// and the fix task in one commit (19.5.15); a round passing with a nit
+// handing back once its fix task is done or closed, or once the note its
+// builder left is answered; `land finish` refused while the review asked
+// for has not passed; and a merge by hand of the fixes leaving the review's
+// fix task still to land, the close's yes saying it merges.
 //
-// Layer: git. World: quick-fix-review-world.cjs's `closeReached`, copied
-// for each test, and its review's steps. Each test's conversation keeps its
-// records in a config folder of its own.
+// Layer: git. World: quick-fix-world.cjs's `twoFixesBuilt`, the fixes then
+// recorded and finish's checklist closed — the close reached — built once
+// and copied. Each test's conversation keeps its records in a config
+// folder of its own.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -32,15 +36,28 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  ok, okSections, output, refusedPristine, sectionOf, holdLock, lockAttempts, git, statePath, layout, writeState, readManifest, cleanupFixture, createFile, head, lastMessage, FROZEN_AT,
+  ok, okSections, output, refusedPristine, sectionOf, holdLock, lockAttempts, git, statePath, layout, writeState, readManifest, fixtureFrom, cleanupFixture, createFile, head, lastMessage, FROZEN_AT,
 } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
-const { UNIT, BRANCH, DESCRIPTION, createFix, fixFile } = require('./quick-fix-world.cjs');
-const { AREA, closeReached: world, reviewSteps } = require('./quick-fix-review-world.cjs');
+const {
+  UNIT, BRANCH, DESCRIPTION, twoFixesBuilt, fixesRecorded, createFix, fixDone, fixFile, asGone,
+} = require('./quick-fix-world.cjs');
+const { reportText } = require('./review-world.cjs');
+const { ledgerReadHelpers } = require('./ledger-world.cjs');
 const { filledTemplate, scratchCalls, ENGINE_DRAWN } = require('./brief-build-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { briefPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
+
+/** The quick-fix's one area, by its name in the layout. */
+const AREA = '1-the-change';
+/** The finding round 1's first reader of the change makes, and the fix task 2.1 that fixes it. */
+const FOUND = Object.freeze({ area: AREA, scope: 'in', call: 'bug', text: 'The docs still say --color.', from: [`${AREA}-a#1`], fix: '2.1' });
+
+const world = fixtureFrom('quick-fix-review-', (dir) => {
+  twoFixesBuilt(dir);
+  asGone((as) => fixesRecorded(dir, 2, as));
+});
 
 let dir = ''; // the project
 const config = useTempFolder('quick-fix-review-config-');
@@ -58,7 +75,22 @@ const run = (args) => ok(dir, args, as());
 /** A call's refusal, nothing written or committed. @param {string[]} args */
 const refused = (args) => refusedPristine(dir, args, as()).error;
 
-const { payload, entered, reported, firstRoundFailed, fixTaskBuilt, secondRoundPassed } = reviewSteps(() => dir, as);
+/** A payload file beside the project, outside its working tree. @param {string} name @param {unknown} content */
+function payload(name, content) {
+  const file = path.join(path.dirname(dir), name);
+  fs.writeFileSync(file, JSON.stringify(content));
+  return file;
+}
+
+/** The DATA lines `enter review` answers, each by its key. */
+const entered = () => sectionOf(okSections(dir, ['enter', 'review', UNIT], as()).sections, 'DATA').split('\n').filter(Boolean);
+
+/** Every report a round's reads ask for written, each passing but those `found` gives findings. @param {number} round @param {string[]} reads @param {Record<string, string[]>} [found] */
+function reported(round, reads, found = {}) {
+  for (const name of reads.flatMap((read) => (read === 'tests' ? ['tests-a'] : [`${read}-a`, `${read}-b`]))) {
+    writeState(dir, layout.unit(UNIT, 'review', `round-${round}`, `${name}.md`), reportText(found[name] ?? []));
+  }
+}
 
 /** A brief issued in this conversation: its answer and its text. @param {string[]} args */
 function issued(args) {
@@ -66,18 +98,70 @@ function issued(args) {
   return { res, brief: fs.readFileSync(path.join(config(), 'conversations', 'sess-1', 'briefs', path.basename(briefPath('sess-1', res.id))), 'utf8') };
 }
 
+/** Round 1 recorded failing on the docs, its fix task 2.1 written in the review's first fix phase. */
+function firstRoundFailed() {
+  run(['review', 'ask', UNIT]);
+  entered();
+  reported(1, [AREA, 'tests'], { [`${AREA}-a`]: [`bug: ${FOUND.text}`] });
+  run(['task', 'phase', UNIT, '2', '--title', 'The review\'s fixes, round 1']);
+  run(['task', 'create', UNIT, '2', '--file', writeState(dir, layout.cache('review-fix.md'), fixFile(1, 'Name the flag in the docs').replace('- 1.S1 ', '- '))]);
+  run(['review', 'round', UNIT, '--file', payload('round-1.json', { can_now: ['Pass --colour.'], findings: [FOUND] })]);
+}
+
+/** Fix task 2.1 built as a fix is: started, its change committed through the door, pushed to the quick-fix's pull request, passed by its pair and done; its answer. */
+function fixTaskBuilt() {
+  run(['task', 'start', UNIT, '2.1']);
+  createFile(dir, 'docs/flag.md', '--colour\n');
+  run(['commit', '--paths', 'docs/flag.md', '--task', UNIT, '2.1', '-m', `fix(${UNIT}): name the flag in the docs`]);
+  run(['land', 'open', UNIT, '2.1']);
+  return fixDone(dir, '2.1', as());
+}
+
+/** Where a quick-fix's review hands back once it is over: its close. */
+const CLOSE = Object.freeze({ kind: 'engine', argv: ['render', 'finish', UNIT] });
+
+/** Round 1's fix task built, round 2 passing with a nit, its fix task 3.1 written: the round's answer. */
+function nitRoundPassed() {
+  firstRoundFailed();
+  fixTaskBuilt();
+  entered();
+  run(['review', 'reads', UNIT, AREA, 'tests']);
+  reported(2, [AREA, 'tests'], { [`${AREA}-a`]: ['nit: The help could name the flag twice.'] });
+  run(['task', 'phase', UNIT, '3', '--title', 'The review\'s fixes, round 2']);
+  run(['task', 'create', UNIT, '3', '--file', writeState(dir, layout.cache('review-nit.md'), fixFile(1, 'Name the flag twice').replace('- 1.S1 ', '- '))]);
+  const nit = { area: AREA, scope: 'in', call: 'nit', text: 'The help could name the flag twice.', from: [`${AREA}-a#1`], fix: '3.1' };
+  return run(['review', 'round', UNIT, '--file', payload('round-2.json', { can_now: ['Pass --colour.'], findings: [nit] })]);
+}
+
+/** The nit's fix task 3.1 built as a fix is, and done: its answer. */
+function nitTaskBuilt() {
+  run(['task', 'start', UNIT, '3.1']);
+  createFile(dir, 'src/help.js', 'const help = \'--colour, --colour\';\n');
+  run(['commit', '--paths', 'src/help.js', '--task', UNIT, '3.1', '-m', `fix(${UNIT}): name the flag twice`]);
+  run(['land', 'open', UNIT, '3.1']);
+  return fixDone(dir, '3.1', as());
+}
+
+/** Round 2 entered, its reads named, every report passing, and recorded: its answer. */
+function secondRoundPassed() {
+  entered();
+  run(['review', 'reads', UNIT, AREA, 'tests']);
+  reported(2, [AREA, 'tests']);
+  return run(['review', 'round', UNIT, '--file', payload('round-2.json', { can_now: ['Pass --colour, and read it in the docs.'], findings: [] })]);
+}
+
 /** The close's gate as drawn. */
 const closeMenu = () => sectionOf(output(dir, ['render', 'finish', UNIT], as()), 'MENU: finish');
 
 describe('review ask <quick-fix>: a review asked for at its close (19.5.13)', () => {
-  it('is the close\'s r/review row: the request recorded on the manifest and committed, the review phase\'s entry next; asked again, already, writing nothing', () => {
+  it('is the close\'s r/review row: the request recorded on the manifest and committed, the review phase\'s skill next, invoked in this conversation (24.1.3); asked again, already, writing nothing', () => {
     dir = world();
     closeMenu();
     const row = run(['gate', 'finish', '--pick', 'r']).next;
     const asked = run(['review', 'ask', UNIT]);
     const [state, message] = [head(dir), lastMessage(dir)];
     const again = run(['review', 'ask', UNIT]);
-    const next = { kind: 'engine', argv: ['enter', 'review', UNIT] };
+    const next = { kind: 'invoke', skill: 'leeway-review-process', args: ['quick-fix', UNIT] };
 
     assert.deepStrictEqual(row, { kind: 'engine', argv: ['review', 'ask', UNIT] });
     assert.deepStrictEqual(asked, { ok: true, unit: UNIT, review_asked: readManifest(dir, UNIT).fixes.review_asked, next, committed: asked.committed });
@@ -91,7 +175,7 @@ describe('review ask <quick-fix>: a review asked for at its close (19.5.13)', ()
 
     assert.deepStrictEqual([refused(['review', 'ask', 'other']), refused(['review', 'ask', UNIT])], [
       'review ask: other is no quick-fix built as one — a review is asked for at a quick-fix\'s close; any other unit\'s review phase follows its build',
-      `review ask: ${UNIT} closes once each of its fixes has ended — 1.3 is not started: each is done once it is committed and in ${UNIT}'s pull request, or closed with its reason`,
+      `review ask: ${UNIT} closes once each of its fixes has ended — 1.3 is not started: each is done once it is committed, in ${UNIT}'s pull request and passed by its pair, or closed with its reason`,
     ]);
   });
 });
@@ -137,6 +221,8 @@ describe('enter review <quick-fix>: one area, the change (19.5.14, F3)', () => {
 
 describe('the review\'s briefs for a quick-fix: its record and its fixes\' acceptance, never a spec (19.5.14, 19.5.24)', () => {
   const noSpec = `${UNIT} is a quick-fix, which has no spec: its fixes' acceptance, in their own words, stands for one.`;
+  /** The linters, the project having no environment setup (22.5.10). */
+  const NO_SETUP = 'None recorded: the project has no environment setup, so run the tests and linters you find in the repository, asking nothing.';
   const criteria = [
     '- 1.S1, of fix 1.1 Spell the flag --colour: Given the help, when it is read, then it names --colour.',
     '- 2.S1, of fix 1.2 Spell the help --colour: Given the help, when it is read, then it names --colour.',
@@ -165,7 +251,7 @@ describe('the review\'s briefs for a quick-fix: its record and its fixes\' accep
       'change-commits': commits(),
       'change-scratch-layout': layoutOf(`${UNIT}-area-1-a`),
       'area-runs': ['- 1.S1: not proven', '  Given the help, when it is read, then it names --colour.', '- 2.S1: not proven', '  Given the help, when it is read, then it names --colour.'].join('\n'),
-      linters: 'None recorded.',
+      linters: NO_SETUP,
       'area-report-to': `\`${statePath(dir, layout.unit(UNIT, 'review', 'round-1', `${AREA}-a.md`))}\``,
       'area-authority': 'Every fix of the change has passed its own review. Hold the whole change against what was asked of it, as one piece. Its fixes\' acceptance, in their own words and read as one, and the product they describe, are your authority:',
     })}`);
@@ -182,7 +268,7 @@ describe('the review\'s briefs for a quick-fix: its record and its fixes\' accep
       'spec-scenarios': `${noSpec}\n\n${criteria}`,
       'change-commits': commits(),
       'change-scratch-layout': layoutOf(`${UNIT}-tests`),
-      linters: 'None recorded.',
+      linters: NO_SETUP,
       'tests-report-to': `\`${statePath(dir, layout.unit(UNIT, 'review', 'round-1', 'tests-a.md'))}\``,
     })}`);
   });
@@ -229,6 +315,21 @@ describe('19.S23: the review asked for runs over the quick-fix\'s record and its
     ]);
   });
 
+  it('a question asked in its review still open holds the close\'s yes, land finish and land phase, naming it and its raise again at the review\'s place; answered, the yes lands (19.5.25)', () => {
+    dir = world();
+    firstRoundFailed();
+    const { ask, decide } = ledgerReadHelpers(() => dir);
+    const asked = ask(`${UNIT}.review`, 'Does the man page spell it --colour?');
+    fixTaskBuilt();
+    secondRoundPassed();
+    closeMenu();
+    const held = [refused(['finish', 'yes', UNIT]), refused(['land', 'finish', UNIT]), refused(['land', 'phase', UNIT, '1'])];
+    decide(`${UNIT}.review`, asked, 'The man page is generated from the help.');
+
+    for (const error of held) assert.match(error, new RegExp(`${UNIT} closes once each question asked in it is answered — \\S+ Does the man page spell it --colour\\?: raise it again for the person to answer, raise ${UNIT}\\.review --answers \\S+$`));
+    assert.deepStrictEqual(run(['finish', 'yes', UNIT]).landed.map((/** @type {{merged: string[]}} */ { merged }) => merged), [['1.1', '1.2', '2.1']]);
+  });
+
   it('with a fix task in flight, enters the review again in the same conversation, in a new one and through the recovery note, the task in flight in each, the note re-reading its record', () => {
     dir = world();
     firstRoundFailed();
@@ -244,19 +345,35 @@ describe('19.S23: the review asked for runs over the quick-fix\'s record and its
     assert.ok(note.split('\n').includes(`- ${statePath(dir, layout.unit(UNIT, 'summary.md'))}`), 'the quick-fix\'s record re-read in full, as the spec is');
   });
 
-  it('a round that passes with a nit to fix hands back to nothing while its fix task waits', () => {
+  it('a round that passes with a nit to fix hands back to nothing while its fix task waits; its fix task done hands back to the close', () => {
     dir = world();
-    firstRoundFailed();
-    fixTaskBuilt();
-    entered();
-    run(['review', 'reads', UNIT, AREA, 'tests']);
-    reported(2, [AREA, 'tests'], { [`${AREA}-a`]: ['nit: The help could name the flag twice.'] });
-    run(['task', 'phase', UNIT, '3', '--title', 'The review\'s fixes, round 2']);
-    run(['task', 'create', UNIT, '3', '--file', writeState(dir, layout.cache('review-nit.md'), fixFile(1, 'Name the flag twice').replace('- 1.S1 ', '- '))]);
-    const nit = { area: AREA, scope: 'in', call: 'nit', text: 'The help could name the flag twice.', from: [`${AREA}-a#1`], fix: '3.1' };
-    const passed = run(['review', 'round', UNIT, '--file', payload('round-2.json', { can_now: ['Pass --colour.'], findings: [nit] })]);
+    const passed = nitRoundPassed();
+    const done = nitTaskBuilt();
 
     assert.deepStrictEqual([passed.passed, passed.ends, passed.next], [true, true, undefined]);
+    assert.deepStrictEqual(done.next, CLOSE);
+  });
+
+  it('its nit\'s fix task closed hands back to the close, as one done does', () => {
+    dir = world();
+    nitRoundPassed();
+    run(['task', 'start', UNIT, '3.1']);
+
+    assert.deepStrictEqual(run(['task', 'close', UNIT, '3.1', '--reason', 'The help names it once, as the docs do.']).next, CLOSE);
+  });
+
+  it('its nit\'s fix task\'s builder leaving a note, the task done hands back to nothing, and review notes, answering the note, to the close', () => {
+    dir = world();
+    nitRoundPassed();
+    const note = run(['task', 'note', UNIT, '--file', writeState(dir, layout.cache('note.md'), 'The man page spells it --color too.')]).number;
+    const done = nitTaskBuilt();
+    const { ask, decide } = ledgerReadHelpers(() => dir);
+    const call = decide(`${UNIT}.review`, ask(`${UNIT}.review`, 'Is the man page this change\'s?'), 'Dropped: the man page is generated.');
+    const answered = run(['review', 'notes', UNIT, '--file', payload('notes.json', {
+      findings: [{ area: 'notes', scope: 'out', call: 'nit', text: 'The man page spells it --color.', from: [`notes#${note}`], drop: 'The man page is generated.', ledger: call }],
+    })]);
+
+    assert.deepStrictEqual([done.next, answered.next], [undefined, CLOSE]);
   });
 
   it('a merge by hand of the fixes before the review\'s fix task lands leaves the close\'s yes merging its pull request, the fix task still to land', () => {

@@ -21,7 +21,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { ok, okSections, createFile, writeState, layout } = require('./engine-harness.cjs');
-const { UNIT, BRANCH, SET, fixFile, checklistClosed, quickFixConformance } = require('./quick-fix-world.cjs');
+const { UNIT, BRANCH, SET, fixFile, fixDone, checklistClosed, quickFixConformance } = require('./quick-fix-world.cjs');
 const { reportText } = require('./review-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
@@ -121,7 +121,7 @@ function fixTaskRead(conf, at) {
   createFile(at, DOCS, '--colour\n');
   run(['commit', '--paths', DOCS, '--task', UNIT, '2.1', '-m', `fix(${UNIT}): name the flag in the docs`]);
   run(['land', 'open', UNIT, '2.1']);
-  run(['task', 'done', UNIT, '2.1']);
+  fixDone(at, '2.1', conf.as());
   okSections(at, ['enter', 'review', UNIT], conf.as());
   run(['review', 'reads', UNIT, AREA, 'tests']);
   return changeRead(conf, at);

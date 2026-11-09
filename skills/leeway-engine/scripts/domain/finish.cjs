@@ -21,7 +21,8 @@
 //   by hand on the host, by any method, leaves them (landing.cjs,
 //   `quickFixLanding`) — a fix task of a review asked for at the close
 //   among them — the yes then merging them, else saying its fixes have
-//   landed.
+//   landed; and each fix done with its pair's verdict, the round its pair
+//   passed it in or the orchestrator settled it (`pairVerdict`).
 // - It shows every checklist item skipped on the way, with its reason,
 //   read from the unit's manifest (6.4.5, 6.4.12); then asks, one at a
 //   time, the verdict of each departure this machine logged in the build
@@ -43,7 +44,11 @@
 //   among it (finish-checks.cjs) — is said on the screen, and on the yes's
 //   answer.
 // - The yes stands on the screen as drawn: the close it shows and no
-//   verdict still to ask. A quick-fix's refuses first a project's checkout
+//   verdict still to ask. A quick-fix's refuses first a question asked in
+//   its conversation still open in its ledger, whether or not the
+//   conversation still holds its raise, naming each and the raise that
+//   asks it again (questions.cjs, `askedOpen`), as the build never
+//   concludes over a question waiting (12.13.22); and a project's checkout
 //   holding changes not committed outside the state, naming each, its fixes
 //   having been built there (fix-branch.cjs). It lands every phase still
 //   standing (`land finish`, landing.cjs) — the review phase's fix phases,
@@ -83,8 +88,10 @@ const { finishScreen, closeScreen } = require('./projections/finish.cjs');
 const { setAsideHeld } = require('./review-phase.cjs');
 const { reviewOverRefusal } = require('./finish-checks.cjs');
 const { messageOf } = require('../kernel/call.cjs');
-const { recordedFixes } = require('./quick-fix-record.cjs');
+const { recordedFixes, pairVerdict } = require('./quick-fix-record.cjs');
+const { shownTask } = require('./task-id.cjs');
 const { refuseDirtyClose, checkOutLanding } = require('./fix-branch.cjs');
+const { askedOpen } = require('./questions.cjs');
 const { ranOf } = require('./build-screens.cjs');
 const { verifySetup } = require('./environment.cjs');
 const { projectName } = require('./state-checks.cjs');
@@ -206,7 +213,13 @@ function finishSurface(cwd, { dotpath: unit = '' }) {
     };
     if (fixes === null) return finishScreen(view);
     return closeScreen({
-      ...view, product: projectName(cwd), proven: provenOf(cwd, manifest, fixes), fixes: fixes.length, landing: carryingAll(warnings, () => stillToLand(cwd, unit, manifest)), reviewed: reviewAsked(manifest),
+      ...view,
+      pair: fixes.map((fix) => ({ task: shownTask(fix.ref), title: fix.title, ...(/** @type {{round: number, settled: boolean}} */ (pairVerdict(cwd, fix.ref))) })),
+      product: projectName(cwd),
+      proven: provenOf(cwd, manifest, fixes),
+      fixes: fixes.length,
+      landing: carryingAll(warnings, () => stillToLand(cwd, unit, manifest)),
+      reviewed: reviewAsked(manifest),
     });
   });
 }
@@ -220,14 +233,29 @@ function nextAfterFinish(manifest) {
 const VERDICT_OWED = 'a verdict is still to ask — render finish asks each before the yes';
 
 /**
- * Refuse a finish that stands from landing: a verdict still to ask, or, for
- * a quick-fix, the project's checkout holding changes not committed
- * (fix-branch.cjs).
- * @param {string} cwd @param {string} unit @param {{verdict: unknown, fixes: TaskDetail[]|null}} standing
+ * Refuse a finish that stands from landing: for a quick-fix, a question
+ * asked in its conversation still open (questions.cjs, `askedOpen`); a
+ * verdict still to ask; or, for a quick-fix, the project's checkout
+ * holding changes not committed (fix-branch.cjs).
+ * @param {string} cwd @param {string} unit @param {{verdict: unknown, fixes: TaskDetail[]|null, warnings: string[]}} standing
  */
-function refuseLanding(cwd, unit, { verdict, fixes }) {
+function refuseLanding(cwd, unit, { verdict, fixes, warnings }) {
+  if (fixes !== null) refuseAskedOpen(cwd, unit, warnings);
   if (verdict !== null) throw new Error(VERDICT_OWED);
   if (fixes !== null) refuseDirtyClose(cwd, unit);
+}
+
+/**
+ * Refuse a quick-fix's close over a question asked in its conversation
+ * still open, naming each and the raise that asks it again.
+ * @param {string} cwd @param {string} unit @param {string[]} warnings
+ */
+function refuseAskedOpen(cwd, unit, warnings) {
+  const open = askedOpen(cwd, unit, warnings);
+  if (open.length === 0) return;
+  const named = open.map(({ id, asks }) => `${id} ${asks}`).join('; ');
+  const ways = open.map(({ id, place }) => `raise ${place} --answers ${id}`).join(', ');
+  throw new Error(`${unit} closes once each question asked in it is answered — ${named}: raise ${open.length === 1 ? 'it' : 'each'} again for the person to answer, ${ways}`);
 }
 
 /**

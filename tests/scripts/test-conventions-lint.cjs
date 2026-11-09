@@ -1462,7 +1462,7 @@ const CHECKS = [
 // ---------------------------------------------------------------------------
 
 // The skills rewritten to the new shape, whose backbones hold no steps.
-const NEW_SHAPE_SKILLS = new Set(['leeway-discussion-process', 'leeway-discovery', 'leeway-specification-process', 'leeway-implementation-process', 'leeway-review-process', 'leeway-investigation-process']);
+const NEW_SHAPE_SKILLS = new Set(['leeway-discussion-process', 'leeway-discovery', 'leeway-specification-process', 'leeway-implementation-process', 'leeway-review-process', 'leeway-investigation-process', 'leeway-quick-fix-process']);
 
 function checkFooterlessLoads(files) {
   const out = [];

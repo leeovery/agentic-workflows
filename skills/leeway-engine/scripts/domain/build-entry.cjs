@@ -101,10 +101,13 @@
 // flight as the row puts them. It answers, as the tracker held its fixes on
 // arrival: the change, the unit's description, then each of its seeds; each
 // fix by its id and title and where it stands, none yet before the first;
-// its short record, `summary.md`, once written (19.5.6); the unit's record,
-// by its call; the build's log; and the engine. Its recovery note re-reads
-// the same, the record by its call, the build's log, then the change and
-// the fixes a line each (`fixesRecovery`).
+// its short record, `summary.md`, once written (19.5.6); each fix in flight
+// with its builder and its pair, or the question its builder parked it on,
+// and each question waiting on the person, as the build's lines say them
+// (19.5.3, 19.5.25); the unit's record, by its call; the build's log; and
+// the engine. Its recovery note re-reads the same, the record by its call,
+// the build's log, then the change, the fixes, those in flight and the
+// questions waiting a line each (`fixesRecovery`).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -374,9 +377,8 @@ function buildStanding(cwd, unit, inFlight, warnings = []) {
 
 /**
  * The manifest of a unit whose build has begun, refused where the project
- * has no such unit, it is a quick-fix, whose fixes have no cut to build by
- * and no stop, its raises drawn in the conversation, or its build has not
- * begun.
+ * has no such unit, it is a quick-fix, whose fixes have no cut to build by,
+ * or its build has not begun.
  * @param {string} cwd @param {string} unit @returns {Record<string, any>}
  */
 function builtUnit(cwd, unit) {
@@ -534,7 +536,7 @@ const ledgerCalls = (unit) => [`${ENGINE_COMMAND} ledger affected ${unit}`, `${E
  */
 function buildRecovery(cwd, unit, inFlight, session) {
   const manifest = manifestOf(stateRoot(cwd), unit);
-  if (manifest !== null && quickFixBuild(manifest)) return fixesRecovery({ cwd, phase: 'implementation', unit, manifest });
+  if (manifest !== null && quickFixBuild(manifest)) return fixesRecovery({ cwd, phase: 'implementation', unit, manifest }, inFlight, session);
   /** @type {string[]} */
   let lines;
   try {
@@ -593,23 +595,37 @@ function fixesLines(at) {
   ];
 }
 
+/**
+ * A quick-fix's change and its fixes, then each fix in flight with its
+ * builder and its pair, or the question parking it, and each question
+ * waiting on the person, for the conversation `session`, whose fixes in
+ * flight are given.
+ * @param {Standing} at @param {string|null} session @param {InFlight[]} inFlight @returns {Line[]}
+ */
+function fixesStanding(at, session, inFlight) {
+  const standing = standingOf(readingOf(at), inFlight);
+  return [...fixesLines(at), ...inFlightLines(at.cwd, session, standing), ...waitingLines(standing)];
+}
+
 /** What a quick-fix's entry reads (the header's). @param {Entering} at @returns {Line[]} */
 function fixesReads(at) {
+  const lines = fixesStanding(at, handedSession(), ownInFlight(at.unit));
   at.notes.push(...readingOf(at).warnings);
-  return [...fixesLines(at), ['record', `\`${ledgerCalls(at.unit)[1]}\``], ['build log', statePath(at.cwd, buildLogOf(at.unit))], ENGINE_LINE];
+  return [...lines, ['record', `\`${ledgerCalls(at.unit)[1]}\``], ['build log', statePath(at.cwd, buildLogOf(at.unit))], ENGINE_LINE];
 }
 
 /**
  * What a quick-fix's recovery note re-reads beside its skill, as its entry
- * reads it: the record's call, the build's log, and its change and fixes, a
- * line each — or why they cannot be read, in their place.
- * @param {Standing} at @returns {Recovery}
+ * reads it: the record's call, the build's log, and where its fixes stand,
+ * a line each, its fixes in flight those of the conversation the note is
+ * for, `session` — or why they cannot be read, in their place.
+ * @param {Standing} at @param {InFlight[]} inFlight @param {string} session @returns {Recovery}
  */
-function fixesRecovery(at) {
+function fixesRecovery(at, inFlight, session) {
   /** @type {string[]} */
   let lines;
   try {
-    lines = fixesLines(at).map(([key, value]) => `${key}: ${value}`);
+    lines = fixesStanding(at, session, inFlight).map(([key, value]) => `${key}: ${value}`);
   } catch (err) {
     lines = [`Where the fixes stand could not be read: ${messageOf(err)}`];
   }

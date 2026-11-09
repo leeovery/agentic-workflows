@@ -238,9 +238,11 @@ function drawLabel(label) {
 /**
  * What answering a row leads to, as the menu's composer declares it — an
  * engine command to run, by its argv after `engine`; a handoff into a skill,
- * as `engine handoff` takes it; or carrying on in the flow — for `gate` to
- * answer with (gate.cjs), never to act on.
- * @typedef {{kind: 'engine', argv: string[]} | {kind: 'handoff', skill: string, args: string[]} | {kind: 'continue'}} Next
+ * as `engine handoff` takes it; a skill invoked in this conversation, with
+ * nothing cleared and no handoff for the gate mod to carry (24.1.2); or
+ * carrying on in the flow — for `gate` to answer with (gate.cjs), never to
+ * act on.
+ * @typedef {{kind: 'engine', argv: string[]} | {kind: 'handoff', skill: string, args: string[]} | {kind: 'invoke', skill: string, args: string[]} | {kind: 'continue'}} Next
  */
 
 /** @typedef {{prose: GateProse|null, rows: Map<string, GateRow>, continuations: Set<string>, options: GateOption[], typed: GateTyped[], next: Map<GateRow, Next>}} GateCollection */

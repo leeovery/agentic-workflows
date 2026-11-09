@@ -19,18 +19,30 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const {
-  Sim, sessionLog, handoff, answerGate, discussed, briefDraft, specWritten, specReviewed, cutTheSpec, readyToBuild, intoTheBuild,
-  linearBuildPick, buildEntry, briefOf, writePhaseTasks, startPhase, writeTasks, finishClosed, reviewNext,
+  Sim, startUnit, handoff, answerGate, discussed, specWritten, specReviewed, cutTheSpec, readyToBuild, intoTheBuild,
+  linearBuildPick, buildEntry, briefOf, writePhaseTasks, startPhase, writeTasks, finishClosed, fixBuilt, reviewNext,
 } = require('./pipeline-world.cjs');
 
 /**
- * The unit moved to `to` as the prose moves it (19.5.9): Claude's payload
- * staged on start this work's screen, the person's yes at its gate, and the
- * yes it leads to run. Answers the yes's answer.
+ * The quick-fix started through the opener and carried on into its skill,
+ * whose entry it makes (24.1.3).
+ * @param {Sim} sim @param {string} wu
+ */
+function opened(sim, wu) {
+  startUnit(sim, 'quick-fix', wu, 'Looked small');
+  sim.run(['enter', 'implementation', wu]);
+}
+
+/**
+ * The unit moved to `to` as the quick-fix's skill moves it (19.5.9): the new
+ * type's brief drafted and Claude's payload staged on start this work's
+ * screen, the person's yes at its gate, and the yes it leads to run. Answers
+ * the yes's answer.
  * @param {Sim} sim @param {string} wu @param {string} to
  */
 function movedTo(sim, wu, to) {
-  const file = sim.write(`.leeway/.cache/scratch/${wu}-move.json`, { description: `The ${wu} work, as ${to} work.`, reason: 'It needs a decision beyond a quick call.', brief: briefDraft(sim, wu, wu) });
+  const brief = sim.write(`.leeway/.cache/${wu}/build/brief.md`, `# ${wu}\n\nWhat the fixes showed.\n`);
+  const file = sim.write(`.leeway/.cache/${wu}/build/move.json`, { description: `The ${wu} work, as ${to} work.`, reason: 'It needs a decision beyond a quick call.', brief });
   sim.run(['workunit', 'move', wu, '--to', to, '--file', file]);
   const { next } = answerGate(sim, 'start this work', '--pick', 'y');
   return sim.run(next.argv);
@@ -43,11 +55,9 @@ describe('pipeline simulation: quick-fix moves', () => {
 
   it('quick-fix moved to a feature: start this work\'s screen, its yes re-typing the unit, and the pipeline carrying on — the call its fix made read on the topic\'s record and shown at ready to build among Claude\'s, and none of the feature\'s build\'s', () => {
     const wu = 'grows';
-    const log = sessionLog(sim, wu);
-    sim.run(['workunit', 'create', wu, 'quick-fix', '--description', 'Looked small', '--session-log-file', log]);
+    opened(sim, wu);
 
     // Its fix 1.1 begun, and a call of Claude's made for it.
-    sim.run(['enter', 'implementation', wu]);
     sim.run(['task', 'create', wu, '1', '--file', sim.write(`.leeway/.cache/${wu}-fix.md`, [
       '# Spell the flag', '', '## Type', 'fix', '', '## Problem', 'p', '', '## Solution', 's', '', '## Outcome', 'o', '',
       '## Acceptance scenarios', '- 1.S1 Given the help, when read, then spelt right.', '', '## Spec reference', 'none',
@@ -57,16 +67,10 @@ describe('pipeline simulation: quick-fix moves', () => {
     const asked = sim.run(['ledger', 'ask', `${wu}.implementation`], null, JSON.stringify({ ...made, text: 'Which spelling does the help use?' })).id;
     sim.run(['ledger', 'decide', `${wu}.implementation`, '--answers', asked, '--task', '1.1'], null, JSON.stringify({ ...made, text: 'QUICK-FIX CALL: the help says colour.', why: 'The flag is colour.' }));
 
-    // Complexity check (complexity-check B): which criteria the change fails
-    // is the session's read, so the messages ride a payload; the type is the
-    // surface's to check. The move re-types the unit at start this work's yes.
-    const concerns = sim.write(`.leeway/.cache/${wu}/scoping/${wu}/complexity.json`,
-      { concerns: ['Requires design decisions about the new API surface'] });
-    assert.match(sim.render(['complexity-gate', wu, '--file', concerns], { expect: 'content' }),
-      /• Requires design decisions about the new API surface/);
+    // The work needs a decision beyond a quick call: the move re-types the
+    // unit at start this work's yes.
     const { next } = movedTo(sim, wu, 'feature');
-    sim.refuses(['render', 'complexity-gate', wu, '--file', concerns],
-      /"grows" is a feature — the complexity check is the quick-fix's own/);
+    assert.strictEqual(sim.manifest(wu).work_type, 'feature');
 
     // The move hands straight to the new type's first phase — a feature's
     // discussion, which it runs normally to its yes: moved mid-fix, it asks,
@@ -98,19 +102,15 @@ describe('pipeline simulation: quick-fix moves', () => {
 
   it('quick-fix moved to a feature mid-review: its closed finish checklist dropped with its fixes, the feature handed to its discussion with a finish of its own to work', () => {
     const wu = 'reviewed';
-    sim.run(['workunit', 'create', wu, 'quick-fix', '--description', 'Looked small', '--session-log-file', sessionLog(sim, wu)]);
-    sim.run(['enter', 'implementation', wu]);
+    opened(sim, wu);
     const [fix] = writeTasks(sim, wu, 1, [{ title: 'Spell the flag --colour', type: 'fix', reference: 'none', scenarios: ['1.S1 Given the flag, when it is passed, then it reads --colour.'] }]);
     sim.run(['task', 'start', wu, fix]);
-    sim.write('src/flag.js', '--colour\n');
-    sim.run(['commit', '--paths', 'src/flag.js', '--task', wu, fix, '-m', `fix(${wu}): spell the flag --colour`]);
-    sim.run(['quick-fix', 'record', wu, fix, '--file', sim.write(`.leeway/.cache/${wu}/build/record.md`, '## What changed\nThe flag.\n\n## Why\nIt was spelt the American way.\n\n## Leaves out\nOld scripts.\n')]);
-    sim.run(['land', 'open', wu, fix]);
-    sim.run(['task', 'done', wu, fix]);
+    fixBuilt(sim, wu, fix, ['src/flag.js'], { record: 'The flag.' });
     sim.write(`.leeway/${wu}/build/log.md`, '# The fixes\n');
     finishClosed(sim, wu);
     sim.render(['finish', wu], { expect: 'content' });
     sim.run(answerGate(sim, 'finish', '--pick', 'r').next.argv);
+    sim.run(['enter', 'review', wu]);
     reviewNext(sim, wu);
 
     const { next } = movedTo(sim, wu, 'feature');
@@ -119,7 +119,7 @@ describe('pipeline simulation: quick-fix moves', () => {
 
   it('quick-fix moved to a bugfix hands straight to its investigation', () => {
     const wu = 'deeper';
-    sim.run(['workunit', 'create', wu, 'quick-fix', '--description', 'Looked small', '--session-log-file', sessionLog(sim, wu)]);
+    opened(sim, wu);
     const { next } = movedTo(sim, wu, 'bugfix');
     assert.strictEqual(handoff(sim, `/${next.skill} ${next.args.join(' ')}`).text, `Invoke \`/leeway-investigation-process bugfix ${wu}\`.`);
   });

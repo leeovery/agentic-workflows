@@ -4,8 +4,8 @@
 // Domain ring: a quick-fix on the board (20.14) — This session in its one
 // session, drawn from its fixes as the build reads its tasks
 // (board-build.cjs), their review rounds (round-report.cjs), the ledger
-// placed in it, the raises this conversation sealed at its place
-// (raise.cjs), its short record (`summary.md`, quick-fix-record.cjs) and
+// placed in it, the questions open at its places and the replacements
+// this conversation raised there (raise.cjs), its short record (`summary.md`, quick-fix-record.cjs) and
 // its close (finish.cjs).
 //
 // - Each fix is drawn as the build draws a task (20.5.2): its line the
@@ -25,9 +25,12 @@
 //   session to All work (board.cjs).
 // - What waits on the person is the unit's one list (board-standing.cjs):
 //   the questions a fix's builder parked its task on, as the build's; each
-//   raise this conversation sealed at the quick-fix's place still waiting,
-//   asked in the conversation and parking nothing (19.5.25); and the close,
-//   with whether a verdict is owed on a call the person changed (16.10.4).
+//   question asked at the quick-fix's places still open in its ledger that
+//   no park holds, asked in the conversation and parking nothing (19.5.25),
+//   whether or not this conversation holds its raise (questions.cjs,
+//   `askedOpenIds`), and each replacement this conversation raised at
+//   either place, its fixes' or its review's, still waiting; and the close, with whether a verdict is owed on a call
+//   the person changed (16.10.4).
 // - The change is the unit's description, pinned by the note it began
 //   from — the inbox's or the roadmap's, else none.
 // - CLAUDE'S CALLS are every current call of Claude's made in the
@@ -44,6 +47,8 @@ const { readShown } = require('../ledger-read.cjs');
 const { factsOf, madeOn, isCurrent } = require('../ledger-fold.cjs');
 const { shortId } = require('../ledger-ids.cjs');
 const { sealsAt, sealWaits } = require('../raise.cjs');
+const { askedOpenIds } = require('../questions.cjs');
+const { BUILD_PHASES } = require('../../kernel/manifest-schema.cjs');
 const { pairPassed, beingRead } = require('../round-report.cjs');
 const { parseShownTask } = require('../task-id.cjs');
 const { quickFixBuild, fixesBegun, startedOn, FIXES_PHASE } = require('../derivations.cjs');
@@ -60,8 +65,6 @@ const { taskLine, standingAt, questionsOf, roundsRead } = require('./board-build
 /** @typedef {import('../board-model.cjs').FixLine} FixLine */
 /** @typedef {import('../board-model.cjs').WaitingLine} WaitingLine */
 /** @typedef {import('../board-model.cjs').Question} Question */
-
-const PHASE = 'implementation';
 
 /** Whether the unit is a quick-fix whose fixes are under way. @param {BoardAt} at */
 const fixing = ({ manifest }) => quickFixBuild(manifest) && fixesBegun(manifest) && manifest.status === 'in-progress';
@@ -105,8 +108,9 @@ const ended = ({ state }) => state === 'done' || state === 'closed';
 /**
  * What the ledger holds of the quick-fix, in one read: every current call
  * of Claude's made in it, each decision made there replacing another
- * unit's, and the raises sealed at its place in this conversation still
- * waiting on the person; read once a call.
+ * unit's, and what waits on the person asked in its conversation — each
+ * question open at its places no park holds, then each replacement raised
+ * at its places in this conversation still waiting; read once a call.
  * @param {BoardAt} at
  * @returns {{calls: QuickFixView['calls'], replaces: QuickFixView['replaces'], raised: WaitingLine[]}}
  */
@@ -127,12 +131,15 @@ const ledgerAt = (at) => at.once('quick-fix-ledger', () => readShown(at.root, at
       const { unit } = madeOn(folded, replaced);
       return [{ id: short(replaced), text: String(show(replaced).text), by: factsOf(folded, replaced).by === 'person' ? /** @type {const} */ ('person') : /** @type {const} */ ('claude'), unit, unit_title: titlecase(unit) }];
     }),
-    raised: sealsAt(at.session, { unit: at.unit, phase: PHASE, topic: null }).filter((seal) => sealWaits(folded, seal))
-      .map((seal) => ({ kind: /** @type {const} */ ('raised'), id: shortId(seal.id, ids), text: seal.call.question, page: null })),
+    raised: [
+      ...askedOpenIds(folded, at.unit).map((id) => ({ kind: /** @type {const} */ ('raised'), id: short(id), text: String(show(id).text).replace(/\s+/g, ' ').trim(), page: null })),
+      ...BUILD_PHASES.flatMap((phase) => sealsAt(at.session, { unit: at.unit, phase, topic: null })).filter((seal) => seal.answers === null && sealWaits(folded, seal))
+        .map((seal) => ({ kind: /** @type {const} */ ('raised'), id: shortId(seal.id, ids), text: seal.call.question, page: null })),
+    ],
   };
 }));
 
-/** The questions Claude raised in the quick-fix's conversation still waiting, parking nothing (19.5.25); none once its fixes are not under way. @param {BoardAt} at @returns {WaitingLine[]} */
+/** What Claude asked in the quick-fix's conversation still waiting, parking nothing (19.5.25); none once its fixes are not under way. @param {BoardAt} at @returns {WaitingLine[]} */
 const raisedWaits = (at) => (fixing(at) ? ledgerAt(at).raised : []);
 
 /** The close's verdict words: none to give, each given, or how many are owed. @param {{changed: number, owed: number}} verdicts */

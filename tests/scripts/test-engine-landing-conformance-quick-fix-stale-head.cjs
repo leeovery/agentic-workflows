@@ -26,7 +26,7 @@ const os = require('os');
 const path = require('path');
 
 const { ok, git, createFile } = require('./engine-harness.cjs');
-const { UNIT, DESCRIPTION, BRANCH, SET, quickFixConformance } = require('./quick-fix-world.cjs');
+const { UNIT, DESCRIPTION, BRANCH, SET, fixDone, quickFixConformance } = require('./quick-fix-world.cjs');
 const { HELP, steps } = require('./quick-fix-by-hand.cjs');
 const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
 
@@ -51,7 +51,7 @@ for (const { name } of listDrivers('landing')) {
       committed(at, HELP.text);
       ok(at, ['land', 'open', UNIT, '1.2'], as());
       const holds = git(at, ['merge-base', head, BRANCH]).trim() === head;
-      ok(at, ['task', 'done', UNIT, '1.2'], as());
+      fixDone(at, '1.2', as());
       closed(at);
 
       assert.deepStrictEqual([holds, landed(at).at(-1)], [false, [`fix(${UNIT}): ${DESCRIPTION}`, [HELP.file]]]);

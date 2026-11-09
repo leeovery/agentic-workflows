@@ -26,17 +26,21 @@ const DATA_MARKER = '=== DATA (reason from this — never display or parse the s
 const DISPLAY_MARKER = '=== DISPLAY: handoff (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===';
 const HANDOFF_MARKER = '=== HANDOFF (json for the gate mod — never display) ===';
 
-// The skill each phase runs in — the one a handoff into the phase lands on.
+// The skill each phase runs in — the one a handoff into the phase lands on —
+// but a quick-fix's implementation, which runs in the quick-fix's own skill.
 /** @type {Record<string, string>} */
 const PHASE_SKILLS = {
   experiment: 'leeway-experiment-process',
   discussion: 'leeway-discussion-process',
   investigation: 'leeway-investigation-process',
-  scoping: 'leeway-scoping-process',
   specification: 'leeway-specification-process',
   implementation: 'leeway-implementation-process',
   review: 'leeway-review-process',
 };
+const QUICK_FIX_SKILL = 'leeway-quick-fix-process';
+
+/** The skill a unit of `type` is handed into `phase` through. @param {string} phase @param {string} type */
+const skillOf = (phase, type) => (type === 'quick-fix' && phase === 'implementation' ? QUICK_FIX_SKILL : PHASE_SKILLS[phase]);
 
 // The phases entered at the work unit: the spec, and the build's two places.
 const AT_UNIT = ['specification', 'implementation', 'review'];
@@ -171,7 +175,7 @@ describe('engine handoff — the composed answer for every target', () => {
       const unit = `${type}-unit`;
       createManifest(dir, unit, { work_type: type });
       for (const phase of WORK_TYPE_PIPELINES[type]) {
-        const skill = PHASE_SKILLS[phase];
+        const skill = skillOf(phase, type);
         const name = phase.charAt(0).toUpperCase() + phase.slice(1);
         const atUnit = AT_UNIT.includes(phase);
         if (type !== 'epic' || atUnit) {
@@ -210,7 +214,7 @@ describe('engine handoff — the composed answer for every target', () => {
   it('the table holds the targets a move into work lands on — and the skill each phase is entered through', () => {
     assert.deepStrictEqual(Object.keys(PHASE_SKILLS).sort(), [...new Set(Object.values(WORK_TYPE_PIPELINES).flat())].sort());
     assert.deepStrictEqual([...HANDOFF_TARGETS].sort(),
-      ['leeway', 'leeway-continue-epic', 'leeway-discovery', 'leeway-roadmap', ...Object.values(PHASE_SKILLS)].sort());
+      ['leeway', 'leeway-continue-epic', 'leeway-discovery', 'leeway-roadmap', ...Object.values(PHASE_SKILLS), QUICK_FIX_SKILL].sort());
   });
 
   it('every target is a skill on disk — a handoff never names one that is not there', () => {
@@ -353,8 +357,8 @@ describe('engine handoff — refusals', () => {
     refused(dir, [], /^Usage: engine handoff <skill\|\/skill> \[args …\], or engine handoff topic <work-unit> <topic>$/);
   });
 
-  it('a skill no move into work lands on refuses, naming the targets', () => {
-    for (const skill of ['leeway-help', 'leeway-bridge', 'leeway-continue-linear', 'leeway-research-process', 'leeway-log-idea', 'leeway-nonsense']) {
+  it('a skill no move into work lands on refuses, naming the targets — scoping among them, no pipeline holding it (19.5.5)', () => {
+    for (const skill of ['leeway-help', 'leeway-bridge', 'leeway-continue-linear', 'leeway-research-process', 'leeway-scoping-process', 'leeway-log-idea', 'leeway-nonsense']) {
       refused(dir, [skill], new RegExp(`^"${skill}" is not a handoff target — a handoff moves into work: leeway-discovery, `));
     }
   });
@@ -370,7 +374,8 @@ describe('engine handoff — refusals', () => {
       [['leeway-continue-epic', 'fumi', 'discussion'], /^Usage: engine handoff leeway-continue-epic /],
       [['leeway-continue-epic', 'fumi', 'discussion', 'completed', 'extra'], /^Usage: engine handoff leeway-continue-epic /],
       [['leeway-discussion-process', 'feature'], /^Usage: engine handoff leeway-discussion-process <epic\|feature> <work-unit> \[<topic>\]$/],
-      [['leeway-scoping-process', 'quick-fix', 'a', 'b', 'c'], /^Usage: engine handoff leeway-scoping-process <quick-fix> <work-unit> \[<topic>\]$/],
+      [['leeway-quick-fix-process', 'quick-fix', 'a', 'b'], /^Usage: engine handoff leeway-quick-fix-process <quick-fix> <work-unit>$/],
+      [['leeway-implementation-process', 'epic'], /^Usage: engine handoff leeway-implementation-process <epic\|feature\|bugfix> <work-unit>$/],
     ];
     for (const [args, pattern] of cases) refused(dir, args, pattern);
   });
@@ -443,11 +448,12 @@ describe('engine handoff — refusals', () => {
     }
   });
 
-  it('a phase\'s skill refuses a work type its pipeline does not hold', () => {
+  it('a phase\'s skill refuses a work type its pipeline does not hold — the build\'s a quick-fix, whose implementation runs in its own skill', () => {
     for (const type of VALID_WORK_TYPES) {
       createManifest(dir, `${type}-unit`, { work_type: type });
-      for (const [phase, skill] of Object.entries(PHASE_SKILLS)) {
-        if (WORK_TYPE_PIPELINES[type].includes(phase)) continue;
+      const served = new Set(WORK_TYPE_PIPELINES[type].map((phase) => skillOf(phase, type)));
+      for (const skill of [...Object.values(PHASE_SKILLS), QUICK_FIX_SKILL]) {
+        if (served.has(skill)) continue;
         refused(dir, [skill, type, `${type}-unit`], new RegExp(`^the work type must be .* — got "${type}"$`));
       }
     }

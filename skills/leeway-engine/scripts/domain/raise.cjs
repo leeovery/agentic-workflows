@@ -98,9 +98,10 @@
 //   stood; either logged as a call carrying the sort. A blind ask is
 //   refused until it is built.
 // - A raise is no gate (gate.cjs): drawing it clears the gate shown.
-// - In the build (12.13) — a quick-fix's aside, whose fixes Claude builds in
-//   the conversation with no builder to park, so a raise there is drawn as
-//   anywhere else and takes no `--parks` (19.5.3, E5): a raise at a build
+// - In the build (12.13) — and at a quick-fix's places for a question its
+//   task's builder asks, `--parks` naming the task; one Claude raises in the
+//   quick-fix's conversation, naming none, is drawn as anywhere else,
+//   parking nothing (19.5.25, E5) — a raise at a build
 //   place, `<unit>.implementation` or `<unit>.review`, names the task it is
 //   for, `--parks <phase>.<n>`, where it is made in one — the tracker
 //   holding it, not yet ended (task-parks.cjs) — and takes it nowhere else;
@@ -496,28 +497,30 @@ function parksFlag(args) {
 /**
  * Why a raise at the place parks nothing, drawn in the conversation as
  * anywhere else, or null where it is made in the build, which parks: a
- * place outside the build; and a quick-fix's, whose fixes Claude builds in
- * the conversation, with no builder to park (19.5.3, E5).
- * @param {string} cwd @param {Place} place @returns {string|null}
+ * place outside the build.
+ * @param {Place} place @returns {string|null}
  */
-function unparkedAt(cwd, { unit, phase }) {
-  if (!BUILD_PHASES.includes(phase)) return `${phase} is none of its phases — ${BUILD_PHASES.join(' or ')}`;
-  const manifest = /** @type {Record<string, any>} */ (manifestOf(/** @type {string} */ (findStateRoot(cwd)), unit));
-  return quickFixBuild(manifest) ? `${unit} is a quick-fix, whose fixes Claude builds in the conversation with no builder to park — raised without ${PARKS}, it is drawn here (19.5.3)` : null;
+function unparkedAt({ phase }) {
+  return BUILD_PHASES.includes(phase) ? null : `${phase} is none of its phases — ${BUILD_PHASES.join(' or ')}`;
 }
 
 /**
- * Whether a raise is made in the build, which parks (`unparkedAt`), refused
- * where it names a task it parks elsewhere, and where the task it parks is
- * one the tracker lacks or that has ended.
+ * Whether a raise parks, as one made in the build does (`unparkedAt`):
+ * at a quick-fix's places, only one naming the task it parks, its builder's
+ * question — one Claude raises in the quick-fix's conversation is drawn
+ * there, parking nothing (19.5.25). Refused where it names a task it parks
+ * outside the build, and where the task it parks is one the tracker lacks
+ * or that has ended.
  * @param {string} cwd @param {Place} place @param {string|null} parks
  * @returns {boolean}
  */
 function checkBuildPlace(cwd, place, parks) {
-  const unparked = unparkedAt(cwd, place);
+  const unparked = unparkedAt(place);
   if (unparked !== null && parks !== null) throw new Error(`raise ${PARKS} parks a task in the build, and ${unparked}`);
   if (parks !== null) require('./task-parks.cjs').checkParkable(cwd, place.unit, parks, SAID);
-  return unparked === null;
+  if (unparked !== null) return false;
+  const manifest = /** @type {Record<string, any>} */ (manifestOf(/** @type {string} */ (findStateRoot(cwd)), place.unit));
+  return parks !== null || !quickFixBuild(manifest);
 }
 
 /**

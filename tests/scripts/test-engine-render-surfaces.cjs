@@ -693,15 +693,12 @@ describe('pipeline continuation surfaces', () => {
       work_type: 'feature',
       phases: { discussion: { items: { pay: { status: 'completed' } } } },
     });
-    // A quick-fix with everything before review completed — the
+    // A bugfix with its investigation completed and no cut — the
     // implementation → review hop, every way forward on offer: its skip-review
-    // row is a unit's not built by its cut, which a quick-fix never is.
+    // row is a unit's not built by its cut.
     writeManifest(dir, 'fix', {
-      work_type: 'quick-fix',
-      phases: {
-        scoping: { items: { fix: { status: 'completed' } } },
-        implementation: { items: { fix: { status: 'completed' } } },
-      },
+      work_type: 'bugfix',
+      phases: { investigation: { items: { fix: { status: 'completed' } } } },
     });
   });
   afterEach(() => teardown(dir));
@@ -722,19 +719,16 @@ describe('pipeline continuation surfaces', () => {
   });
 
   it('next-phase-gate: a non-review hop carries no d/done — proceed or revisit', () => {
-    const out = renderSurface(dir, 'next-phase-gate', { dotpath: 'fix', prev: 'scoping', next: 'implementation' });
-    assert.ok(out.includes('Scoping completed for "Fix".'), out);
-    assert.match(out, /`◆ Proceed to implementation\?`/);
-    assert.match(out, /\*\*`y\/yes`\*\* +→ Proceed to implementation/);
+    const out = renderSurface(dir, 'next-phase-gate', { dotpath: 'fix', prev: 'investigation', next: 'specification' });
+    assert.ok(out.includes('Investigation completed for "Fix".'), out);
+    assert.match(out, /`◆ Proceed to specification\?`/);
+    assert.match(out, /\*\*`y\/yes`\*\* +→ Proceed to specification/);
     assert.match(out, /\*\*`r\/revisit`\*\* → Revisit an earlier phase/);
     assert.ok(!out.includes('d/done'), 'skip-review belongs to the review hop alone');
   });
 
   it('next-phase-gate: no r/revisit while no earlier phase is completed — the review hop still offers d/done', () => {
-    writeManifest(dir, 'fresh', {
-      work_type: 'quick-fix',
-      phases: { implementation: { items: { fresh: { status: 'in-progress' } } } },
-    });
+    writeManifest(dir, 'fresh', { work_type: 'bugfix' });
     const out = renderSurface(dir, 'next-phase-gate', { dotpath: 'fresh', prev: 'implementation', next: 'review' });
     assert.match(out, /\*\*`y\/yes`\*\*  → Proceed to review/);
     assert.match(out, /\*\*`d\/done`\*\* → Complete without review/);
@@ -751,18 +745,17 @@ describe('pipeline continuation surfaces', () => {
 
   it('next-phase-gate: the review hop names a live reconcile flag — skipping review is an informed choice', () => {
     writeManifest(dir, 'moved', {
-      work_type: 'quick-fix',
+      work_type: 'bugfix',
       phases: {
-        scoping: { items: { moved: { status: 'completed' } } },
-        implementation: { items: { moved: { status: 'completed' } } },
+        investigation: { items: { moved: { status: 'completed' } } },
         review: { items: { moved: { status: 'completed', reconcile_needed: 'implementation' } } },
       },
     });
     const out = renderSurface(dir, 'next-phase-gate', { dotpath: 'moved', prev: 'implementation', next: 'review' });
     assert.ok(out.includes('Implementation completed for "Moved". ⚑ Input moved beneath review/moved (implementation) — completing without review carries the pending reconcile unresolved.'), out);
     // The cue informs the skip — a hop with no d/done carries none, flag or not.
-    const implementation = renderSurface(dir, 'next-phase-gate', { dotpath: 'moved', prev: 'scoping', next: 'implementation' });
-    assert.ok(implementation.includes('Scoping completed for "Moved".') && !implementation.includes('⚑'), implementation);
+    const specification = renderSurface(dir, 'next-phase-gate', { dotpath: 'moved', prev: 'investigation', next: 'specification' });
+    assert.ok(specification.includes('Investigation completed for "Moved".') && !specification.includes('⚑'), specification);
     // No flag, no cue.
     assert.ok(!renderSurface(dir, 'next-phase-gate', { dotpath: 'fix', prev: 'implementation', next: 'review' }).includes('⚑'));
   });
@@ -808,15 +801,14 @@ describe('pipeline continuation surfaces', () => {
 
   it('next-phase-gate: several live reconcile flags join into one cue', () => {
     writeManifest(dir, 'moved2', {
-      work_type: 'quick-fix',
+      work_type: 'bugfix',
       phases: {
-        scoping: { items: { moved2: { status: 'completed', reconcile_needed: 'discussion' } } },
-        implementation: { items: { moved2: { status: 'completed' } } },
+        investigation: { items: { moved2: { status: 'completed', reconcile_needed: 'discussion' } } },
         review: { items: { moved2: { status: 'completed', reconcile_needed: 'implementation' } } },
       },
     });
     const out = renderSurface(dir, 'next-phase-gate', { dotpath: 'moved2', prev: 'implementation', next: 'review' });
-    assert.ok(out.includes('⚑ Input moved beneath scoping/moved2 (discussion), review/moved2 (implementation) — completing without review carries the pending reconcile unresolved.'), out);
+    assert.ok(out.includes('⚑ Input moved beneath investigation/moved2 (discussion), review/moved2 (implementation) — completing without review carries the pending reconcile unresolved.'), out);
   });
 });
 

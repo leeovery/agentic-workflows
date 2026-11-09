@@ -53,7 +53,7 @@ const os = require('os');
 const path = require('path');
 const {
   ok, okSections, output, refuses, refusedPristine, git, stateGit, statePath, layout, writeState, readState, readManifest, createFile, commitAll, fixtureFrom, cleanupFixture,
-  head, sectionOf, keywordOnlyKnowledge, killedAt, STATE_DIR_NAME,
+  head, sectionOf, keywordOnlyKnowledge, killedAt, accountTaken, STATE_DIR_NAME,
 } = require('./engine-harness.cjs');
 const { createManifest, useTempFolder } = require('./discovery-test-utils.cjs');
 const { MADE, ledgerHelpers } = require('./ledger-world.cjs');
@@ -369,6 +369,7 @@ describe('the yes: a quick-fix moved (19.S24, 19.5.16)', () => {
 
   it('a quick-fix holding a fix done and recorded moves, closing none, its summary.md set aside under its topic\'s earlier material, which the first opening names', () => {
     dir = world();
+    accountTaken(dir, SHIPPED, '1.1');
     ok(dir, ['task', 'done', SHIPPED, '1.1'], { env: env() });
     ok(dir, ['quick-fix', 'record', SHIPPED, '1.1', '--file', recordFile(dir, 1, RECORD)], { env: env() });
     const res = moved(SHIPPED, 'feature');

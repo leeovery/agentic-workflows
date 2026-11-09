@@ -36,13 +36,14 @@ const { phaseSkill, enteredAtUnit } = require('../handoff.cjs');
  * The route a phase of a single-topic unit is entered by — `$0` = the type's
  * work_type value, `$1` = work_unit, `$2` = the item it names where it names
  * one and the phase is entered at a topic — the route the menu's continue
- * and revisit rows carry.
+ * and revisit rows carry, into the skill the phase runs in for the type.
  * @param {string} type  a WORK_UNIT_TYPES key
  * @param {string} phase @param {string} workUnit @param {string|null} [topic]
  * @returns {string}
  */
 function phaseRoute(type, phase, workUnit, topic = null) {
-  return [`/${phaseSkill(phase)}`, typeConfig(type).workType, workUnit, ...(topic === null || enteredAtUnit(phase) ? [] : [topic])].join(' ');
+  const { workType } = typeConfig(type);
+  return [`/${phaseSkill(phase, workType)}`, workType, workUnit, ...(topic === null || enteredAtUnit(phase) ? [] : [topic])].join(' ');
 }
 
 // computeNextPhase's label vocabulary discriminates the next phase's state:
@@ -80,7 +81,9 @@ function pipelineNodes(cfg, unit) {
 
 /**
  * Section A — the work-unit status display. One code-block string: the
- * MATERIAL block (types that surface seeds/imports), and the pipeline tree.
+ * MATERIAL block (types that surface seeds/imports), and the pipeline tree
+ * where any phase of today's pipeline has a row — none for a quick-fix
+ * today's scoping left, which waits on the cut — empty where neither is.
  * The view's heading is the adapter's TITLE section, never drawn here.
  * @param {string} type  a WORK_UNIT_TYPES key
  * @param {WorkUnitEntry} unit
@@ -91,8 +94,8 @@ function workUnitStatus(type, unit) {
   let out = '';
   const material = materialBlock({ seeds: unit.seeds_count || 0, imports: unit.imports_count || 0 });
   if (material) out += material + '\n\n';
-  out += `PIPELINE (${cfg.workType})\n`;
-  out += renderTree(pipelineNodes(cfg, unit), { width: TREE_WIDTH });
+  const nodes = pipelineNodes(cfg, unit);
+  if (nodes.length > 0) out += `PIPELINE (${cfg.workType})\n${renderTree(nodes, { width: TREE_WIDTH })}`;
   for (const r of unit.reconcile_phases || []) {
     out += typeof r.from === 'string'
       ? `\n  ⚑ ${titlecase(r.phase)} input moved — ${r.from} revised since it completed.\n`

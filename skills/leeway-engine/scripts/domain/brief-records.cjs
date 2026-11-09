@@ -10,7 +10,9 @@
 //                  each addition, in order, under a heading of its own saying
 //                  whether the orchestrator or the person added it (13.11.3)
 //   spec-sections  each section the task's spec reference cites, verbatim
-//                  from the unit's spec (spec-sections.cjs)
+//                  from the unit's spec (spec-sections.cjs); for a
+//                  quick-fix's task, which has no spec, the line saying its
+//                  acceptance in its own words stands for them (19.5.24)
 //   decided-calls  the unit's current decisions at its own level, the
 //                  person's and Claude's alike — the builder's own calls
 //                  among them (13.11.10) — in the ledger's order, each one
@@ -19,15 +21,21 @@
 //                  drawn for a task's brief and a phase's alike
 //   linters        the project's linters, each its name and its command,
 //                  from the environment on the project manifest (22.5.12,
-//                  environment.cjs)
-//   diff-range     in each repository holding the task's branch, by the
+//                  environment.cjs); a quick-fix's, where the project has
+//                  no environment setup, the line sending the agent to
+//                  the tests and linters it finds (22.5.10)
+//   diff-range     in each repository holding the task's branch — a
+//                  quick-fix's task's, the quick-fix's one branch
+//                  (task-base.cjs) — by the
 //                  landing's rule (landing-git.cjs), under a heading naming
 //                  the repository, the range from its base to the branch,
 //                  `{base}...{branch}`, and its `git diff --stat` — never
 //                  the diff's text, which can run to thousands of lines and
 //                  is read in the range. The base is the engine's: where
 //                  the task was laid out, the commit `task worktree`
-//                  recorded there (task-worktree.cjs), or the tip of the
+//                  recorded there (task-worktree.cjs) — a quick-fix's
+//                  task's, its branch's tip at the task's first start
+//                  (fix-branch.cjs) — or the tip of the
 //                  work below it that its branch holds since, its own
 //                  phase's chain for a task of the cut, whichever is
 //                  later — else the branch the repository lands on; or,
@@ -81,7 +89,12 @@
 //                  each committed through the door before the next, a
 //                  child's pointer staged at its merged tip; then the
 //                  account where one is owed, reported accounted, else
-//                  reported merged
+//                  reported merged; a quick-fix's task's, that its branch
+//                  is the quick-fix's one, with no chain
+//   workplace      where the builder builds, runs and commits: the worktree
+//                  it was started in, laid out by `task worktree` for the
+//                  task; a quick-fix's task, the project's own checkout,
+//                  on the quick-fix's one branch (fix-branch.cjs)
 //   setup-to       where the builder writes the verify setup its task
 //                  builds or changes, for `verify setup --file`: the
 //                  unit's `.cache/{unit}/build/verify-setup.json`, outside
@@ -466,7 +479,7 @@ const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { git } = require('../kernel/git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { projectRepos } = require('../kernel/repos.cjs');
-const { linters, verifySetup } = require('./environment.cjs');
+const { linters, tests, verifySetup } = require('./environment.cjs');
 const { readShown, readLedgerVerb } = require('./ledger-read.cjs');
 const {
   recordOf, standingOf, factsOf, wordingOf, inPlace, questionStands, currentsOf,
@@ -501,12 +514,12 @@ const { specReferenceOf, scenariosOf } = require('./task-file.cjs');
 const {
   taskFolder, taskRounds, roundReportPath, roundUnderReview, phaseReviewPath, reportFaults, roundStanding, readRefusal, recordReviewer, recordBuilder, pendingChange, briefedOf,
 } = require('./round-report.cjs');
-const { builtOnBases } = require('./task-base.cjs');
+const { workBranch, builtOnBases } = require('./task-base.cjs');
 const { freedAt } = require('./task-parks.cjs');
 const { reviewReportFaults } = require('./review-report.cjs');
 const { REVIEWER_LETTERS } = require('../kernel/reviewers.cjs');
 const { taskName, shownTask, phaseName } = require('./task-id.cjs');
-const { taskBranch } = require('./landing-names.cjs');
+const { taskBranch, quickFixBranch } = require('./landing-names.cjs');
 const { branches, branchesHeldBy, holdingBranch, landsOn, latestOf, quoted } = require('./landing-git.cjs');
 const { childrenFirst } = require('../kernel/repos.cjs');
 const { heldIn, pointedAt } = require('./project-layout.cjs');
@@ -606,9 +619,14 @@ function drawTask(filling) {
   return [headingsDown(task.text), ...task.additions.map(({ by, text }) => `## Added by the ${by}\n\n${text}`)].join('\n\n');
 }
 
-/** @param {Filling} filling */
+/**
+ * Each section the task's spec reference cites; for a quick-fix's task, the
+ * line saying its acceptance, in its own words, stands for them (19.5.24).
+ * @param {Filling} filling
+ */
 function drawSpecSections(filling) {
   const { ref, task } = taskOf(filling);
+  if (ofQuickFixTask(filling)) return `${ref.unit} is a quick-fix, which has no spec: the task's acceptance scenarios, in their own words, stand for its sections.`;
   const reference = specReferenceOf(task.text);
   if (reference === null) throw new Error(`${taskName(ref)} holds no spec reference`);
   return readCitedSections(filling.cwd, ref.unit, reference).map((section) => section.text).join('\n\n');
@@ -627,9 +645,17 @@ function drawDecidedCalls(filling, warnings) {
   ));
 }
 
-/** @param {Filling} filling */
-function drawLinters({ cwd }) {
-  return listed(linters(cwd).map(({ name, command }) => `- ${name}: ${command}`));
+/**
+ * The project's linters; a quick-fix's in a project with no environment
+ * setup, no tests nor linters recorded, the line sending its agent to
+ * those it finds (22.5.10).
+ * @param {Filling} filling
+ */
+function drawLinters(filling) {
+  const recorded = linters(filling.cwd);
+  const unset = recorded.length === 0 && tests(filling.cwd) === null;
+  if (unset && filling.unit !== null && quickFixBuild(unitManifest(filling))) return 'None recorded: the project has no environment setup, so run the tests and linters you find in the repository, asking nothing.';
+  return listed(recorded.map(({ name, command }) => `- ${name}: ${command}`));
 }
 
 // Named from the repo's folder, a root inside a larger repository reading
@@ -725,8 +751,7 @@ function laidOut(repos, repo, tips, laid, otherwise) {
  */
 function taskHolding(filling) {
   const { ref, task } = taskOf(filling);
-  if (task.type === null) throw new Error(`${taskName(ref)} has no type in the tracker, and its branch is named from it`);
-  const branch = taskBranch(ref, task.type, task.title);
+  const branch = workBranch(filling.cwd, ref, task);
   const what = `${taskName(ref)}'s branch, ${branch}`;
   const repos = projectRepos(codeRoot(filling.cwd));
   const { holding } = holdingBranch(ref.unit, repos, branch);
@@ -1843,6 +1868,24 @@ function bindReviewer(filling) {
   recordReviewer(filling.cwd, ref, roundUnderReview(filling.cwd, ref), letterOf(filling), filling.session);
 }
 
+/**
+ * Where the builder builds the task, runs it and commits it: a worktree of
+ * its own, laid out on the task's branch by `task worktree`; a quick-fix's
+ * task, the project's own checkout, which the task's start put on the
+ * quick-fix's one branch (fix-branch.cjs, 19.5.15).
+ * @param {Filling} filling
+ */
+function drawWorkplace(filling) {
+  const { ref } = taskOf(filling);
+  if (ofQuickFixTask(filling)) {
+    return `Build in the project's own checkout, \`${codeRoot(filling.cwd)}\`, which the task's start put on ${ref.unit}'s one branch, \`${quickFixBranch(ref.unit)}\` — never in a worktree of your own, and run every command from there. Build, run and commit only there.`;
+  }
+  return `Before anything else, lay the task out in the worktree you were started in: from its root, run the engine's \`task worktree ${ref.unit} ${shownTask(ref)}\`. It puts the worktree, and every repository nested in it, on the task's branch. Build, run and commit only there.`;
+}
+
+/** Whether the task's brief is a quick-fix's, its task built on the quick-fix's one branch in the project's own checkout. @param {Filling} filling */
+const ofQuickFixTask = (filling) => quickFixBuild(/** @type {Record<string, any>} */ (manifestOf(stateRoot(filling.cwd), taskOf(filling).ref.unit)));
+
 /** @returns {string} */
 function drawEngine() {
   return `\`${ENGINE_RUN}\` — the engine of the checkout the orchestrator runs in. Run every engine command this brief and your instructions name as that, from wherever you run it.`;
@@ -1887,6 +1930,7 @@ const CHAIN_THEN = Object.freeze({
  */
 function drawChain(filling) {
   const { ref } = taskOf(filling);
+  if (ofQuickFixTask(filling)) return `Your branch is ${ref.unit}'s one branch, \`${quickFixBranch(ref.unit)}\`, every task of the quick-fix before yours on it: it has no chain to merge back.`;
   const repos = projectRepos(codeRoot(filling.cwd));
   const past = chainPast(filling, repos);
   if (past.length === 0) return 'Your branch holds its phase\'s chain as it stands.';
@@ -2106,6 +2150,7 @@ const RECORDS = Object.freeze({
   'account-to': { of: 'task', draw: drawAccountTo, bind: bindBuilder },
   engine: { of: null, draw: drawEngine },
   chain: { of: 'task', draw: drawChain },
+  workplace: { of: 'task', draw: drawWorkplace },
   'setup-to': { of: 'task', draw: drawSetupTo },
   'topic-record': { of: 'topic', draw: drawTopicRecord },
   'topic-log': { of: 'topic', draw: drawTopicLog },

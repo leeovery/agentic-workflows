@@ -16,7 +16,9 @@
 // yes and a comment. No measure adds a line to it (17.2.2).
 //
 // A quick-fix's close, its finish gate (19.5.13), is drawn the same but for
-// its title, `{Title} — ready to close`; what running the product proved,
+// its title, `{Title} — ready to close`; each fix done with its pair's
+// verdict, under REVIEWED BY THE PAIR, the round its pair passed it in or
+// the orchestrator settled it; what running the product proved,
 // under its title — PROVEN BY RUNNING {PRODUCT}, each fix's scenario a line,
 // ✓ where proven, else its standing — or one line saying the project has
 // no way to run it (P9); each departure asked its verdict at the verdict
@@ -86,12 +88,28 @@ function finishScreen(view) {
 }
 
 /**
- * A quick-fix's close as it is drawn: finish's, with the product's name,
- * what running it proved of each fix's scenarios — null where the project
- * has no way to run it — how many fixes are done, whether its pull
- * request still holds one to land, and whether its review was asked for.
- * @typedef {FinishView & {product: string, proven: import('./build.cjs').Ran[]|null, fixes: number, landing: boolean, reviewed: boolean}} CloseView
+ * A fix done as the close shows its pair's verdict: its task and title, the
+ * round its review ended in, and whether the orchestrator settled it.
+ * @typedef {{task: string, title: string, round: number, settled: boolean}} PairVerdict
  */
+
+/**
+ * A quick-fix's close as it is drawn: finish's, with each fix done and its
+ * pair's verdict, the product's name, what running it proved of each fix's
+ * scenarios — null where the project has no way to run it — how many fixes
+ * are done, whether its pull request still holds one to land, and whether
+ * its review was asked for.
+ * @typedef {FinishView & {pair: PairVerdict[], product: string, proven: import('./build.cjs').Ran[]|null, fixes: number, landing: boolean, reviewed: boolean}} CloseView
+ */
+
+/** A fix's line under its pair's verdicts. @param {PairVerdict} verdict */
+const pairLine = ({ task, title, round, settled }) => `✓ ${task} ${title} · ${settled ? 'settled' : 'passed'} in round ${round}`;
+
+/** Each fix done with its pair's verdict (19.5.13). @param {CloseView} view */
+function pairBlock({ pair }) {
+  const lines = pair.length === 0 ? '  No fix was done.' : treeList(pair.map(pairLine), { indent: '  ', width: TREE_WIDTH });
+  return block('REVIEWED BY THE PAIR', lines);
+}
 
 /** A scenario's line under what was proven: its glyph, and its standing where short of proven. @param {import('./build.cjs').Ran} ran */
 const provenLine = ({ criterion, standing }) => (standing === 'proven' ? `✓ ${criterion}` : `△ ${standing === 'not proven' ? 'Not proven' : 'Named, not run'}: ${criterion}`);
@@ -103,8 +121,8 @@ function provenBlock({ product, proven }) {
   return block(`PROVEN BY RUNNING ${product.toUpperCase()}`, lines);
 }
 
-/** The close's display: its title and what was proven, then each block of finish's that has something to show. @param {CloseView} view */
-const closeDisplay = (view) => [`${view.title} — ready to close`, provenBlock(view), ...finishBlocks(view)].join('\n\n');
+/** The close's display: its title, the pair's verdicts and what was proven, then each block of finish's that has something to show. @param {CloseView} view */
+const closeDisplay = (view) => [`${view.title} — ready to close`, pairBlock(view), provenBlock(view), ...finishBlocks(view)].join('\n\n');
 
 /**
  * What the yes does: merge its pull request, where a fix done is still to

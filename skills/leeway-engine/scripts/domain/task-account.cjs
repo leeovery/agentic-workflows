@@ -32,10 +32,11 @@
 //
 // The figures, `figures.json` beside the reports, the engine's alone: the
 // review rounds the account covers; the files changed and the lines added
-// and removed across every repository holding the task's branch
-// (landing-git.cjs), from where the task's own work starts there
-// (task-base.cjs) to its tip, so neither the tasks a stack holds below it
-// nor the chain it merged back count — and a submodule's pointer is never a
+// and removed across every repository holding the task's branch — a
+// quick-fix's task's, its one branch (landing-git.cjs) — from where the
+// task's own work starts there (task-base.cjs) to its tip, so neither the
+// tasks a stack holds below it, the chain it merged back nor a quick-fix's
+// fixes before it count — and a submodule's pointer is never a
 // file of it, as `verify
 // mutants` leaves it out; the acceptance criteria the task holds
 // (task-file.cjs); how many additions the task holds, whoever made them
@@ -72,7 +73,6 @@
 const fs = require('fs');
 const path = require('path');
 const { statePath } = require('../kernel/state-root.cjs');
-const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { git, excluding } = require('../kernel/git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { projectRepos } = require('../kernel/repos.cjs');
@@ -82,13 +82,11 @@ const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { headingLevels } = require('./spec-sections.cjs');
 const { BULLET, listItems, saysNone, saysNoneIn } = require('./list-items.cjs');
 const { criteriaOf } = require('./task-file.cjs');
-const { quickFixBuild } = require('./derivations.cjs');
 const { parseShownTask, shownTask, taskId, taskName } = require('./task-id.cjs');
-const { taskBranch } = require('./landing-names.cjs');
 const { holdingBranch, taskWorktree } = require('./landing-git.cjs');
 const { trackedTask, trackedStart, givenText, ENDED } = require('./task-verbs.cjs');
 const { refuseParked, parkedOf } = require('./task-parks.cjs');
-const { baseRev, builtOnBases } = require('./task-base.cjs');
+const { baseRev, workBranch, builtOnBases } = require('./task-base.cjs');
 const { refusing } = require('./staged-payload.cjs');
 const { READERS, readersDone } = require('./scratch.cjs');
 const {
@@ -248,7 +246,7 @@ function changeIn(repo, base, branch) {
  * @returns {Figures}
  */
 function figuresOf(cwd, ref, task, rounds, refuse) {
-  const branch = taskBranch(ref, /** @type {string} */ (task.type), task.title);
+  const branch = workBranch(cwd, ref, task);
   const { holding } = holdingBranch(ref.unit, projectRepos(codeRoot(cwd)), branch);
   if (holding.length === 0) refuse(`no repository of the project holds work on ${taskName(ref)}'s branch, ${branch}`);
   const bases = builtOnBases(cwd, ref, holding, branch);
@@ -454,16 +452,15 @@ function reviewOverWay(cwd, ref) {
 
 /**
  * Refuse, in the words of `said`, a task that lands with no account taken
- * of its review as it stands (12.14): one a question parks, which waits on
- * the answer and owes none yet; one changed under its last round; one whose
- * account was never taken, or was taken over fewer rounds than its review
- * now holds — each naming its way on. A quick-fix's task owes none: Claude
- * builds it in the conversation, and no pair reviews it (19.5.3, 19.5.7).
+ * of its review as it stands (12.14) — a quick-fix's among them, each of
+ * its tasks passed by its pair as any task is (19.5.3, 19.5.22): one a
+ * question parks, which waits on the answer and owes none yet; one changed
+ * under its last round; one whose account was never taken, or was taken
+ * over fewer rounds than its review now holds — each naming its way on.
  * @param {string} cwd @param {TaskRef} ref @param {string} said
  */
 function refuseUnaccounted(cwd, ref, said) {
   refuseParked(cwd, ref, said);
-  if (quickFixBuild(loadWorkUnitManifest(cwd, ref.unit))) return;
   const rounds = refusing(said, () => taskRounds(cwd, ref));
   const changed = changedUnder(cwd, ref, rounds);
   if (changed !== null) throw new Error(`${said}: ${changedRefusal(ref, changed)}`);

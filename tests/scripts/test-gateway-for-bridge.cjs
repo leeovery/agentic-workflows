@@ -301,38 +301,17 @@ describe('leeway-bridge format', () => {
     ].join('\n'));
   });
 
-  it('quick-fix filters specification and planning out of the revisit candidates', () => {
-    createManifest(dir, 'rename-api', {
-      work_type: 'quick-fix',
-      phases: {
-        scoping: { items: { 'rename-api': { status: 'completed' } } },
-        specification: { items: { 'rename-api': { status: 'completed' } } },
-        planning: { items: { 'rename-api': { status: 'completed' } } },
-        implementation: { items: { 'rename-api': { status: 'completed' } } },
-      },
-    });
-    const out = format(discover(dir, 'rename-api'));
-    assert.strictEqual(out, [
-      '=== rename-api (quick-fix) ===',
-      'next_phase: review',
-      'completed_phases: scoping, specification, planning, implementation',
-      'reconcile_pending: (none)',
-      'revisitable_phases: scoping, implementation',
-      'next_route: /leeway-review-process quick-fix rename-api',
-      'revisit_routes: /leeway-scoping-process quick-fix rename-api, /leeway-implementation-process quick-fix rename-api',
-      '',
-    ].join('\n'));
-    // The menu itself is the revisit-phases render surface, filtered the same way.
-    assert.strictEqual(renderSurface(dir, 'revisit-phases', { dotpath: 'rename-api' }), [
-      "=== MENU: revisit phases (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      '· · · · · · · · · · · ·',
-      '**`◆ Which phase would you like to revisit?`**',
-      '',
-      '**`1`**      → Scoping — *completed*',
-      '**`2`**      → Implementation — *completed*',
-      '**`b/back`** → Return to the previous menu',
-      '',
-    ].join('\n'));
+  it('a quick-fix routes into its own skill, and into its review once the person asked for it at its close, revisiting nothing (19.5.14)', () => {
+    const dumpOf = (/** @type {object} */ fixes) => {
+      createManifest(dir, 'rename-api', { work_type: 'quick-fix', fixes });
+      return format(discover(dir, 'rename-api')).split('\n').filter((line) => /^(next_phase|revisitable_phases|next_route): /.test(line));
+    };
+    const began = '2026-06-03T09:00:00Z';
+
+    assert.deepStrictEqual([dumpOf({ began }), dumpOf({ began, review_asked: '2026-06-03T10:00:00Z' })], [
+      ['next_phase: implementation', 'revisitable_phases: (none)', 'next_route: /leeway-quick-fix-process quick-fix rename-api'],
+      ['next_phase: review', 'revisitable_phases: (none)', 'next_route: /leeway-review-process quick-fix rename-api'],
+    ]);
   });
 
   it('a flagged phase surfaces in the dump and takes next_phase', () => {

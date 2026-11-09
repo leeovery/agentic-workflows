@@ -417,10 +417,11 @@ describe('conversation position', () => {
   }
 
   it('names only skills that open a conversation — a phase\'s own, discovery\'s, a project place\'s; none at a work unit\'s menu — each its note sends Claude to carrying the recovery steps', () => {
-    const skills = [...VALID_PHASES.filter((phase) => phase !== 'planning').map((phase) => skillAt('pay', phase)), ...PROJECT_IDENTITIES.map((name) => skillAt(name))];
+    const quickFix = skillAt('fix', 'implementation', 'quick-fix');
+    const skills = [...VALID_PHASES.filter((phase) => !['scoping', 'planning'].includes(phase)).map((phase) => skillAt('pay', phase)), quickFix, ...PROJECT_IDENTITIES.map((name) => skillAt(name))];
     assert.strictEqual(skills.length, 10);
     for (const skill of skills) assert.ok(skill !== null && HANDOFF_TARGETS.includes(skill), `${skill} is a skill a conversation opens on`);
-    const whole = WHOLE.map((phase) => skillAt('pay', phase));
+    const whole = [...WHOLE.map((phase) => skillAt('pay', phase)), quickFix];
     for (const skill of skills.filter((named) => !whole.includes(named))) {
       const file = path.join(__dirname, '../../skills', skill, 'SKILL.md');
       assert.ok(fs.existsSync(file), `${skill} exists`);
@@ -434,7 +435,8 @@ describe('conversation position', () => {
       assert.doesNotMatch(recovery, /announce your position|wait for confirmation|position is confirmed/i, `${skill}'s recovery waits on nobody`);
       assert.match(recovery, /\nDo not guess at progress or continue from memory\./, `${skill}'s recovery reads state from disk`);
     }
-    assert.deepStrictEqual([skillAt('pay'), skillAt('pay', 'planning')], [null, null], 'a unit\'s menu, and planning, whose items are scoping\'s');
+    assert.strictEqual(quickFix, 'leeway-quick-fix-process', 'a quick-fix\'s implementation runs in its own skill');
+    assert.deepStrictEqual([skillAt('pay'), skillAt('pay', 'scoping'), skillAt('pay', 'planning')], [null, null, null], 'a unit\'s menu, and scoping and planning, which no pipeline holds');
   });
 
   it('a conversation with no position has nothing to carry on from', () => {
@@ -630,13 +632,14 @@ describe('conversation position', () => {
     ]);
   });
 
-  it('a quick-fix\'s implementation, which its own arm enters, carries on as its entry reads it: the unit\'s record by its call, then its change and its fixes', () => {
+  it('a quick-fix\'s implementation, which its own arm enters, carries on in its own skill as its entry reads it: the unit\'s record by its call, then its change and its fixes', () => {
     install('leeway-implementation-process');
+    install('leeway-quick-fix-process');
     workUnit('fix', 'quick-fix', {}, { description: 'Spell the flag --colour' });
     writePosition({ name: 'fix', phase: 'implementation', topic: 'fix' });
     const { skill, text } = reads();
 
-    assert.strictEqual(skill, abs('.claude/skills/leeway-implementation-process/SKILL.md'));
+    assert.strictEqual(skill, abs('.claude/skills/leeway-quick-fix-process/SKILL.md'));
     for (const line of ['ledger record fix`', 'change: Spell the flag --colour', 'tasks: none yet']) assert.ok(text.includes(line), `the note names ${line}\n${text}`);
   });
 
@@ -659,19 +662,6 @@ describe('conversation position', () => {
       files: [],
       text: 'This conversation was working in the investigation of "ledger" in the epic "pay", but this project has no leeway-investigation-process skill, so there is nothing to carry on from.',
     });
-  });
-
-  it('a scoping names its own documents, its skill\'s own steps carrying it on', () => {
-    workUnit('fix', 'quick-fix');
-    install('leeway-scoping-process');
-    write('.leeway/fix/specification/fix/specification.md');
-    write('.leeway/fix/planning/fix/planning.md');
-    ok(['session', 'label', 'fix', 'scoping', 'fix']);
-    const scoping = reads();
-    assert.deepStrictEqual(scoping.files, ['.leeway/fix/specification/fix/specification.md', '.leeway/fix/planning/fix/planning.md'].map(abs));
-    assert.strictEqual(scoping.text, note('the scoping of the quick-fix "fix"', 'leeway-scoping-process', [
-      '.leeway/fix/specification/fix/specification.md', '.leeway/fix/planning/fix/planning.md',
-    ]));
   });
 
   /** A discovery home's note: its calls, then its log caught up from the transcript, found or not. */

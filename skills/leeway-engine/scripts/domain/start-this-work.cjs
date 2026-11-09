@@ -28,9 +28,10 @@
 //   it starts from joined to it, and the product's open session closed
 //   (8.14.11). A failure part-way leaves no unit. One commit takes it all.
 // - What comes next: a feature into its discussion, a bugfix into its
-//   investigation, a quick-fix into its scoping, each a handoff (24.1.2); an
-//   epic carries the conversation on into its own discovery, with no handoff,
-//   to shape its topics (8.8.13, 24.S15).
+//   investigation, each a handoff (24.1.2); a quick-fix into its work, its
+//   skill invoked in this same conversation, nothing cleared (19.5.1,
+//   24.1.5); an epic carries the conversation on into its own discovery,
+//   with no handoff, to shape its topics (8.8.13, 24.S15).
 // - A unit moved to a feature or a bugfix meets the same gate (19.4.22,
 //   19.5.9): `workunit move` stages its payload where a start's is staged
 //   and draws the same screen, and the yes moves the unit rather than
@@ -57,6 +58,7 @@ const {
 } = require('./workunit-create.cjs');
 const { filled, shaped, listed, readPayload, stage, stagedAt, refusing } = require('./staged-payload.cjs');
 const { startThisWorkScreen } = require('./projections/discovery-gates.cjs');
+const { phaseSkill } = require('./handoff.cjs');
 
 // The move's yes, loaded at its call: the move stages through this module.
 const move = () => require('./workunit-move.cjs');
@@ -80,7 +82,7 @@ const ONE_TOPIC = ['feature', 'bugfix'];
 const UNBRIEFED = Object.freeze({ epic: 'an epic\'s topics get their briefs as the map is approved', 'quick-fix': 'a quick-fix has no topic to brief' });
 
 /** The phase each type but an epic opens in after its yes. @type {Readonly<Record<string, string>>} */
-const OPENS_IN = Object.freeze({ feature: 'discussion', bugfix: 'investigation', 'quick-fix': 'scoping' });
+const OPENS_IN = Object.freeze({ feature: 'discussion', bugfix: 'investigation', 'quick-fix': 'implementation' });
 
 /** A place in the product's sessions: a log, and a section of it where an anchor names one. */
 const SHAPING = new RegExp(`^${PRODUCT_SESSIONS.replace(/\./g, '\\.')}/session-\\d+\\.md(#[^\\s()]+)?$`);
@@ -224,11 +226,16 @@ function noteSeedsOf(cwd, roadmap) {
   });
 }
 
-/** What comes after the yes. @param {string} type @param {string} unit @returns {Next} */
+/**
+ * What comes after the yes: an epic's own discovery; a quick-fix's skill,
+ * invoked in this conversation (19.5.1); any other type's first phase, by a
+ * handoff.
+ * @param {string} type @param {string} unit @returns {Next}
+ */
 function nextAfter(type, unit) {
-  return type === 'epic'
-    ? { kind: 'engine', argv: ['enter', 'discovery', unit, '--move'] }
-    : { kind: 'handoff', skill: `leeway-${OPENS_IN[type]}-process`, args: [type, unit] };
+  if (type === 'epic') return { kind: 'engine', argv: ['enter', 'discovery', unit, '--move'] };
+  const skill = phaseSkill(OPENS_IN[type], type);
+  return { kind: type === 'quick-fix' ? 'invoke' : 'handoff', skill, args: [type, unit] };
 }
 
 /**

@@ -279,6 +279,7 @@ function drawnForTakeACard() {
   return {
     engine: `\`node ${path.join(__dirname, '../../skills/leeway-engine/scripts/engine.cjs')}\` — the engine of the checkout the orchestrator runs in. Run every engine command this brief and your instructions name as that, from wherever you run it.`,
     chain: 'Your branch holds its phase\'s chain as it stands.',
+    workplace: 'Before anything else, lay the task out in the worktree you were started in: from its root, run the engine\'s `task worktree pay 1.1`. It puts the worktree, and every repository nested in it, on the task\'s branch. Build, run and commit only there.',
     task, 'spec-sections': `${REFUNDS}\n\n${FORM}`, 'decided-calls': decisions, linters: '- eslint: npx eslint .\n- tsc: npx tsc --noEmit', 'account-to': `\`${statePath(dir, 'pay/build/tasks/1.1.md')}\``, 'setup-to': `\`${statePath(dir, '.cache/pay/build/verify-setup.json')}\`\n\nNo verify setup is recorded yet.`,
   };
 }
@@ -722,7 +723,7 @@ describe('the templates and the store', () => {
   });
 
   it('a template is refused for a slot not alone on its line, one no record answers, one its role does not draw on, and a record\'s slot missing or twice', () => {
-    const builder = '{{engine}}\n{{task}}\n{{spec-sections}}\n{{decided-calls}}\n{{linters}}\n{{chain}}\n{{account-to}}\n{{setup-to}}\n';
+    const builder = '{{engine}}\n{{task}}\n{{spec-sections}}\n{{decided-calls}}\n{{linters}}\n{{chain}}\n{{account-to}}\n{{setup-to}}\n{{workplace}}\n';
     assert.strictEqual(templateOf('builder', builder), builder);
     assert.throws(() => templateOf('builder', `${builder}See {{task}} above.\n`), /"See \{\{task\}\} above\." holds a slot that is not alone on its line; task's slot is there 2 times$/);
     assert.throws(() => templateOf('builder', `${builder}{{diff}}\n`), /the builder's template is refused — \{\{diff\}\} is no record$/);

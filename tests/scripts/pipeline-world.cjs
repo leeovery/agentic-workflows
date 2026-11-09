@@ -34,6 +34,7 @@ const LIB = require(path.join(ROOT, 'skills/leeway-engine/scripts/lib.cjs'));
 const { epicMenu } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
 const { startMenu } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/start.cjs'));
 const { skillAt } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/position.cjs'));
+const { HANDOFF_TARGETS } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/handoff.cjs'));
 const { initRepo, fixtureFrom, cleanupFixture, git, stateGit, withEnv } = require('./engine-harness.cjs');
 const { briefPath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/brief-names.cjs'));
 const { copyWorld, templateFolder } = require('./discovery-test-utils.cjs');
@@ -55,10 +56,9 @@ const simWorld = fixtureFrom('pipeline-sim-', (dir) => {
   fs.writeFileSync(statePath(dir, KNOWLEDGE_DIR, 'config.json'), '{ "knowledge": { "provider": null } }\n');
   // The skills a conversation carries on in after a compaction, installed
   // as a project installs them — kept out of git's sight, so no commit or
-  // dirt check ever meets them. Planning has none: its items are scoping's.
-  const phases = schema.VALID_PHASES.filter((phase) => phase !== 'planning');
-  const skills = [...phases.map((phase) => skillAt('unit', phase)), ...schema.PROJECT_IDENTITIES.map((name) => skillAt(name))];
-  for (const skill of /** @type {string[]} */ (skills)) {
+  // dirt check ever meets them.
+  const skills = new Set([...HANDOFF_TARGETS, ...schema.PROJECT_IDENTITIES.map((name) => skillAt(name))]);
+  for (const skill of /** @type {Set<string>} */ (skills)) {
     fs.mkdirSync(path.join(dir, '.claude/skills', skill), { recursive: true });
     fs.copyFileSync(path.join(ROOT, 'skills', skill, 'SKILL.md'), path.join(dir, '.claude/skills', skill, 'SKILL.md'));
   }
@@ -437,7 +437,7 @@ function handoffEntry(sim, wu, phase, topic) {
   assert.strictEqual(res.labelled, false, `the sim labels no tmux session (${phase})`);
   const here = carryOn(sim);
   assert.deepStrictEqual(here.position, { name: wu, phase, topic }, `the phase skill records its place (${phase})`);
-  assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills', /** @type {string} */ (skillAt(wu, phase)), 'SKILL.md'),
+  assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills', /** @type {string} */ (skillAt(wu, phase, sim.manifest(wu).work_type)), 'SKILL.md'),
     `a compaction there carries on in the phase's skill (${phase})`);
 }
 
@@ -455,7 +455,7 @@ function enterEntry(sim, wu, phase, topic) {
   const here = carryOn(sim);
   const at = topic ?? wu;
   assert.deepStrictEqual(here.position, { name: wu, phase, topic: at }, `the entry records its place (${phase})`);
-  assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills', /** @type {string} */ (skillAt(wu, phase)), 'SKILL.md'),
+  assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills', /** @type {string} */ (skillAt(wu, phase, sim.manifest(wu).work_type)), 'SKILL.md'),
     `a compaction there carries on in the phase's skill (${phase})`);
   assert.ok(here.text.includes(`ledger record ${wu} ${at}\``), `a compaction there re-reads the topic's record (${phase})`);
   return res;
@@ -566,7 +566,7 @@ function epicBuildPick(sim, wu, action) {
 function linearBuildPick(sim, wu, phase) {
   menuEntry(sim, wu);
   const { keys } = linearMenu(sim, wu);
-  assert.strictEqual(keys.find((k) => k.action === 'continue')?.route, `/${skillAt(wu, phase)} ${sim.manifest(wu).work_type} ${wu}`,
+  assert.strictEqual(keys.find((k) => k.action === 'continue')?.route, `/${skillAt(wu, phase, sim.manifest(wu).work_type)} ${sim.manifest(wu).work_type} ${wu}`,
     `the menu continues the unit into its ${phase}`);
   pickRoute(sim, keys, 'continue');
   sim.handOver();
@@ -1082,7 +1082,7 @@ function buildEntry(sim, wu) {
   const lines = sim.sections.split('\n').filter((line) => /^[a-z ]+: /.test(line));
   const here = carryOn(sim);
   assert.deepStrictEqual(here.position, { name: wu, phase: 'implementation', topic: wu }, 'the entry records the unit as its place');
-  assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills', /** @type {string} */ (skillAt(wu, 'implementation')), 'SKILL.md'),
+  assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills', /** @type {string} */ (skillAt(wu, 'implementation', sim.manifest(wu).work_type)), 'SKILL.md'),
     'a compaction there carries on in the build\'s skill');
   for (const call of [`ledger affected ${wu}`, `ledger record ${wu}`]) assert.ok(here.text.includes(`${call}\``), `a compaction there re-reads ${call}`);
   assert.ok(lines.filter((line) => line.startsWith('phase: ')).every((line) => here.text.includes(line)), 'a compaction there says where each phase stands, as the entry does');
@@ -1250,6 +1250,37 @@ function taskBuilt(sim, wu, task, tree, files, setup, { gated = false, note, acc
   sim.run(['task', 'done', wu, task]);
   if (next !== undefined) sim.run(next.argv);
   return banked;
+}
+
+// A quick-fix's task, started, as its skill builds it through the task loop
+// (19.5.4, 19.5.20, 19.5.22): its builder briefed, `files` committed through
+// the door in the project's own checkout and pushed to the quick-fix's one
+// pull request, its pair passing it, its short record written where `record`
+// says what changed, its account written once its builder's brief again says
+// it landed, and taken, pushed again and done. Answers the done.
+/**
+ * @param {Sim} sim @param {string} wu @param {string} task @param {string[]} files
+ * @param {{record?: string}} [opts]
+ * @returns {Record<string, any>}
+ */
+function fixBuilt(sim, wu, task, files, { record } = {}) {
+  sim.run(['brief', 'builder', wu, task]);
+  for (const file of files) sim.write(file, '--colour\n');
+  sim.run(['commit', '--paths', ...files, '--task', wu, task, '-m', `fix(${wu}): task ${task}`]);
+  sim.run(['land', 'open', wu, task]);
+  for (const letter of ['a', 'b']) landed(placeIn(sim, sim.run(['brief', 'reviewer', wu, task, '--letter', letter]), 'Where your report goes'), PASSED_REPORT);
+  if (record !== undefined) {
+    sim.run(['quick-fix', 'record', wu, task, '--file', sim.write(`.leeway/.cache/${wu}/build/record.md`, `## What changed\n${record}\n\n## Why\nIt was spelt the American way.\n\n## Leaves out\nOld scripts.\n`)]);
+  }
+  const back = sim.run(['brief', 'builder', wu, task]);
+  assert.match(briefOf(sim, back), /Your reviewers passed the task in round 1: it has landed, so write its account now\./);
+  landed(placeIn(sim, back, 'Where your account goes'), [
+    '## What was done', 'Built.', '## Where in the code', ...files.map((file) => `- ${file}`), '## What the tests prove', '- Read by its pair.',
+    '## Differs from the task', 'None.', '## Reviews', '### Round 1', 'Passed.',
+  ].join('\n\n'));
+  sim.run(['task', 'account', wu, task]);
+  sim.run(['land', 'open', wu, task]);
+  return sim.run(['task', 'done', wu, task]);
 }
 
 // A unit's first phase, entered once ready to build's yes began its build,
@@ -1527,5 +1558,5 @@ function finished(sim, wu, { closed = false } = {}) {
 module.exports = {
   Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, gatesAnswered, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn,
   investigationCache, rootCaused, reported, validated, fixDirected, concluded, investigated, linearMenu, linearPick, backToStart, startNew, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicBuildPick, linearBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed,
-  DECIDED_ITEMS, specWritten, specBuilt, builders, taskBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finishClosed, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic,
+  DECIDED_ITEMS, specWritten, specBuilt, builders, taskBuilt, fixBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finishClosed, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic,
 };

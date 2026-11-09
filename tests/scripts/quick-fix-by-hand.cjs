@@ -13,7 +13,7 @@
 const assert = require('node:assert');
 
 const { ok, refuses, git, createFile } = require('./engine-harness.cjs');
-const { UNIT, DESCRIPTION, BRANCH, SET, createFix, checklistClosed } = require('./quick-fix-world.cjs');
+const { UNIT, DESCRIPTION, BRANCH, SET, createFix, fixDone, checklistClosed } = require('./quick-fix-world.cjs');
 
 const HELP = SET[1];
 
@@ -78,7 +78,7 @@ function mergedMidSet(conf, merge) {
   const host = side.defaultTip(at);
   const reached = git(at, ['merge-base', first, host]).trim() === first;
   const past = git(at, ['log', '--format=%(trailers:key=Leeway-Task,valueonly)', `${host}..${BRANCH}`]).split('\n').filter(Boolean);
-  ok(at, ['task', 'done', UNIT, '1.2'], as());
+  fixDone(at, '1.2', as());
   const close = closed(at);
 
   assert.strictEqual(opening, `land: task 1.1 of ${UNIT} has landed, and is done — nothing of it is left to open`);

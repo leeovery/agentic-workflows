@@ -38,7 +38,7 @@ A gate is answered by its command rows: a pressed row, a typed key or word, or p
 node .claude/skills/leeway-engine/scripts/engine.cjs gate "{name}" --pick {key}
 ```
 
-`gate` logs the answer and returns `next`: an engine call to run, a handoff to make, or carry on. Do what `next` says, and branch on nothing else. A rewritten phase's rows declare their `next`; a null `next` is an old-shape gate's, until its phase is rewritten, and the skill's own words for that row say what follows.
+`gate` logs the answer and returns `next`: an engine call to run, a handoff to make, a skill to invoke in this conversation, or carry on. Do what `next` says, and branch on nothing else. A rewritten phase's rows declare their `next`; a null `next` is an old-shape gate's, until its phase is rewritten, and the skill's own words for that row say what follows.
 
 A row that picks items — a numbered range, `1–4` — is an answer too. The pick goes to `gate` as typed, under the row's key (its label's words, lowercase, joined by hyphens: `1-4`), and the skill's words act on the items picked:
 

@@ -15,7 +15,7 @@ require('./hermetic-env.cjs');
 const fs = require('fs');
 const path = require('path');
 const { ok, okSections, sectionOf, writeState, createFile, layout, fixtureFrom } = require('./engine-harness.cjs');
-const { UNIT, twoFixesBuilt, fixesRecorded, fixFile, asGone } = require('./quick-fix-world.cjs');
+const { UNIT, twoFixesBuilt, fixesRecorded, fixDone, fixFile, asGone } = require('./quick-fix-world.cjs');
 const { reportText } = require('./review-world.cjs');
 
 /** The quick-fix's one area, by its name in the layout. */
@@ -80,7 +80,7 @@ function reviewSteps(dir, as) {
     createFile(dir(), 'docs/flag.md', '--colour\n');
     run(['commit', '--paths', 'docs/flag.md', '--task', UNIT, '2.1', '-m', `fix(${UNIT}): name the flag in the docs`]);
     run(['land', 'open', UNIT, '2.1']);
-    run(['task', 'done', UNIT, '2.1']);
+    fixDone(dir(), '2.1', as());
   }
 
   function fixTaskBuilt() {

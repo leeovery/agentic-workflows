@@ -22,6 +22,8 @@ A pattern or principle for the whole project is never a type here: it is the pro
 
 ## The Read
 
+For a quick-fix, search earlier work in the area it touches first, one `knowledge query`, and fold what it finds into the read.
+
 Once the signals agree and have held, and the next question would only go deeper, say the read in plain terms with the type's name folded in, and the signals that drove it, concretely enough that the person can challenge one. Re-read the log against the conversation first.
 
 Then write the payload to `.leeway/.cache/product/discovery/product/start-this-work-payload.json`:
@@ -37,4 +39,4 @@ Stage it and draw the screen, emitting its sections verbatim per their markers:
 node .claude/skills/leeway-engine/scripts/engine.cjs render start-this-work --file .leeway/.cache/product/discovery/product/start-this-work-payload.json
 ```
 
-A refusal names what to fix: fix the payload and stage it again. The answer goes to `gate`; follow its `next`, and then the `next` of what it ran. For an epic that carries the conversation into the epic's own discovery: read its DATA as on entering — `{home}` is now the epic — and shape its topics there. Keep shaping takes the person's word back into the conversation.
+A refusal names what to fix: fix the payload and stage it again. The answer goes to `gate`; follow its `next`, and then the `next` of what it ran. For an epic that carries the conversation into the epic's own discovery: read its DATA as on entering — `{home}` is now the epic — and shape its topics there. For a quick-fix it invokes the quick-fix's skill in this conversation, and its fixes start there. Keep shaping takes the person's word back into the conversation.

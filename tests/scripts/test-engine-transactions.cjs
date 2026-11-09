@@ -532,35 +532,6 @@ describe('engine topic reopen', () => {
     assert.match(stateGit(dir, ['status', '--porcelain']), /^ M payments\/manifest\.json/m);
   });
 
-  /** A quick-fix whose scoping concluded, its implementation item as given. @param {Record<string, any>} implementation */
-  function scoped(implementation) {
-    writeFile(dir, '.leeway/typo/manifest.json', JSON.stringify({
-      name: 'typo', work_type: 'quick-fix', status: 'in-progress',
-      phases: {
-        scoping: { items: { typo: { status: 'completed' } } },
-        implementation: { items: { typo: implementation } },
-      },
-    }, null, 2) + '\n');
-  }
-
-  it('every hop flags completed items only — a scoping reopen leaves an in-progress implementation alone', () => {
-    scoped({ status: 'in-progress' });
-
-    const res = engine(dir, ['topic', 'reopen', 'typo', 'scoping', 'typo']);
-
-    assert.strictEqual(res.reconcile_flagged, undefined);
-    assert.strictEqual(readManifest(dir, 'typo').phases.implementation.items.typo.reconcile_needed, undefined);
-  });
-
-  it('never clobbers an existing downstream flag', () => {
-    scoped({ status: 'completed', reconcile_needed: 'review' });
-
-    const res = engine(dir, ['topic', 'reopen', 'typo', 'scoping', 'typo']);
-
-    assert.strictEqual(res.reconcile_flagged, undefined);
-    assert.strictEqual(readManifest(dir, 'typo').phases.implementation.items.typo.reconcile_needed, 'review', 'the earlier flag preserved');
-  });
-
   it('refuses a discussion, whatever it stands at — a decided one reopens through a message sent to it', () => {
     const before = fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8');
     for (const topic of ['session-model', 'refund-policy']) {
@@ -568,15 +539,6 @@ describe('engine topic reopen', () => {
         'a discussion decided, or closed into its spec, reopens through a message sent to it (topic send), never topic reopen');
     }
     assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'), before);
-  });
-
-  it('quick-fix scoping reopen flags the completed implementation — the pipeline hop', () => {
-    scoped({ status: 'completed' });
-
-    const res = engine(dir, ['topic', 'reopen', 'typo', 'scoping', 'typo']);
-
-    assert.deepStrictEqual(res.reconcile_flagged, [{ phase: 'implementation', topic: 'typo' }]);
-    assert.strictEqual(readManifest(dir, 'typo').phases.implementation.items.typo.reconcile_needed, 'scoping');
   });
 
   it('refuses an in-progress item — nothing touched', () => {

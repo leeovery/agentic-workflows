@@ -26,7 +26,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
 const { ok, refuses, git, output, sectionOf, readManifest } = require('./engine-harness.cjs');
-const { UNIT, BRANCH, SET, createFix, guardedGit, checklistClosed, quickFixConformance } = require('./quick-fix-world.cjs');
+const { UNIT, BRANCH, SET, createFix, fixDone, guardedGit, checklistClosed, quickFixConformance } = require('./quick-fix-world.cjs');
 const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
 
 const BACK = 'Put the flag back';
@@ -44,7 +44,7 @@ for (const { name } of listDrivers('landing')) {
       ok(at, ['land', 'open', UNIT, '1.3'], as());
       const finish = refuses(at, ['land', 'finish', UNIT], as()).error;
 
-      const unended = `land: ${UNIT} closes once each of its fixes has ended — 1.2 is in progress, 1.3 is in progress: each is done once it is committed and in ${UNIT}'s pull request, or closed with its reason`;
+      const unended = `land: ${UNIT} closes once each of its fixes has ended — 1.2 is in progress, 1.3 is in progress: each is done once it is committed, in ${UNIT}'s pull request and passed by its pair, or closed with its reason`;
       assert.deepStrictEqual([phase, finish, landed(at)], [unended, unended, []]);
     });
 
@@ -58,7 +58,7 @@ for (const { name } of listDrivers('landing')) {
       guardedGit(at, ['revert', '--quit'], as());
       ok(at, ['commit', '--paths', SET[0].file, '--task', UNIT, '1.2', '-m', `fix(${UNIT}): put the flag back`], as());
       ok(at, ['land', 'open', UNIT, '1.2'], as());
-      ok(at, ['task', 'done', UNIT, '1.2'], as());
+      fixDone(at, '1.2', as());
       record(at, 1);
       record(at, 2);
       checklistClosed(at, as());

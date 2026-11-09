@@ -31,7 +31,7 @@ const path = require('path');
 const { ok, output, refusedPristine, git, createFile, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const {
-  UNIT, DESCRIPTION, BRANCH, RECORDS, createFix, fixChanged, recordFile, twoFixesBuilt, guardedGit, checklistClosed,
+  UNIT, DESCRIPTION, BRANCH, RECORDS, createFix, fixChanged, fixDone, recordFile, twoFixesBuilt, guardedGit, checklistClosed,
 } = require('./quick-fix-world.cjs');
 
 const DOCS = 'Spell the docs --colour';
@@ -109,14 +109,14 @@ describe('task close <quick-fix> <fix> (R3, R14)', () => {
     const given = git(dir, ['rev-parse', BRANCH]).trim();
     run(['land', 'open', UNIT, '1.3']);
     const refusal = closeRefused(3);
-    run(['task', 'done', UNIT, '1.3']);
+    fixDone(dir, '1.3', as());
     createFix(dir, 4, BACK, as());
     run(['task', 'start', UNIT, '1.4']);
     guardedGit(dir, ['revert', '--no-commit', given], as());
     guardedGit(dir, ['revert', '--quit'], as());
     run(['commit', '--paths', 'docs/flags.md', '--task', UNIT, '1.4', '-m', `fix(${UNIT}): put the docs back`]);
     run(['land', 'open', UNIT, '1.4']);
-    run(['task', 'done', UNIT, '1.4']);
+    fixDone(dir, '1.4', as());
     for (const n of [1, 2, 3, 4]) record(n);
     checklistClosed(dir, as());
     output(dir, ['render', 'finish', UNIT], as());

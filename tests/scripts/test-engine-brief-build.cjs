@@ -18,8 +18,8 @@
 // agent's brief — the notes the phase takes, its tasks whole, its range
 // across repositories to its stack's tip, and where its report goes — its
 // template's rules, report and task examples reading by their grammars
-// (12.S23, 13.S12, 15.8.5). The builder's template: its task laid out with
-// `task worktree` first and committed only there (12.7.10), each scenario
+// (12.S23, 13.S12, 15.8.5). The builder's template: where it works first,
+// drawn for its task (12.7.10), each scenario
 // proven by running it (15.2.14), its account written where its brief says,
 // its ask rule and its answer to reviewers who disagree (13.S7); the
 // reviewer's report placed, its notes for later a section before its
@@ -256,12 +256,11 @@ describe('the build\'s templates', () => {
     }
   });
 
-  it('12.7.10: the builder lays its task out with task worktree before anything else, and builds, runs and commits only there', () => {
+  it('12.7.10: the builder is told where it works, drawn for its task, before anything of the work', () => {
     const words = template('builder');
 
-    assert.ok(words.includes('Before anything else, lay the task out in the worktree you were started in: from its root, run the engine\'s `task worktree {unit} {task}`'), words);
-    assert.ok(words.includes('Build, run and commit only there.'), words);
-    assert.ok(words.indexOf('# Where you work') < words.indexOf('# Where the task leaves a call open'), 'laying the task out comes before the work');
+    assert.ok(words.includes('# Where you work\n\n{{workplace}}\n'), words);
+    assert.ok(words.indexOf('# Where you work') < words.indexOf('# Where the task leaves a call open'), 'where it works comes before the work');
   });
 
   it('15.S15: no builder\'s or reviewer\'s template names a project skill\'s path — the engine\'s alone, as installed', () => {
@@ -285,12 +284,12 @@ describe('the build\'s templates', () => {
     assert.ok(loop.includes('commit the fixes from there through the door, the entry\'s `engine` running `commit --paths {file}… --task {work_unit} {task} -m "{message}"`'), loop);
   });
 
-  it('15.2.14, 15.S18, 22.5.1, 15.4.2: once its work is committed the builder records again the verify setup its task builds or changes, from the file its brief names, starting from the setup that stands, and runs each of its task\'s scenarios through verify from its worktree, a timeout to match; its account names what it ran and never what the runs prove', () => {
+  it('15.2.14, 15.S18, 22.5.1, 15.4.2: once its work is committed the builder records again the verify setup its task builds or changes, from the file its brief names, starting from the setup that stands, and runs each of its task\'s scenarios through verify from where it works, a timeout to match; its account names what it ran and never what the runs prove', () => {
     const words = template('builder');
 
     for (const rule of [
-      'Once the work is committed through the door, run each acceptance scenario of the task from your task\'s worktree, one at a time: the engine\'s `verify run {unit} {scenario}`. A drive can run for minutes: give the Bash call a timeout to match.',
-      'Where your task builds the verify setup or changes any part of it, record it again once it is committed, from your task\'s worktree, before running: write the setup to the file under "Where the verify setup goes", starting from the setup recorded there where there is one, then run the engine\'s `verify setup {unit} --file {that file} --scenario {scenario}`.',
+      'Once the work is committed through the door, run each acceptance scenario of the task from where you work, one at a time: the engine\'s `verify run {unit} {scenario}`. A drive can run for minutes: give the Bash call a timeout to match.',
+      'Where your task builds the verify setup or changes any part of it, record it again once it is committed, from where you work, before running: write the setup to the file under "Where the verify setup goes", starting from the setup recorded there where there is one, then run the engine\'s `verify setup {unit} --file {that file} --scenario {scenario}`.',
       '## What the tests prove\n\n{each scenario you ran through `verify`, and what its drive does}\n',
       'In your account, under `## What the tests prove`, name each scenario you ran through `verify` and what its drive does. What the runs prove is the engine\'s to say, never the account\'s.',
       'Where the project has no verify setup recorded yet and your task does not build it, say so there instead of running.',

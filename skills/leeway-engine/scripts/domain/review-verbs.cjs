@@ -8,8 +8,8 @@
 //   `fixes.review_asked`, the instant it was asked, and committed, so its
 //   review phase can be entered (derivations.cjs) and its finish's
 //   checklist carries the review passed (finish-checks.cjs); it answers
-//   `next`, the review phase's entry, in the same conversation (19.5.14,
-//   24.1.3). Asked again, it answers `already` with the same `next`,
+//   `next`, the review phase's skill invoked in the same conversation,
+//   which enters it (19.5.14, 24.1.3). Asked again, it answers `already` with the same `next`,
 //   writing nothing. It refuses, writing nothing: a unit that is no
 //   quick-fix built by its own arm, and one whose close does not stand,
 //   as its screen refuses it (finish.cjs) — the row being the close's.
@@ -44,6 +44,7 @@ const { statePath } = require('../kernel/state-root.cjs');
 const { refusing } = require('./staged-payload.cjs');
 const { refuserFor, committed } = require('./task-account.cjs');
 const { unitInProgress } = require('./topic-standing.cjs');
+const { phaseSkill } = require('./handoff.cjs');
 const { reviewHeld } = require('./review-entry.cjs');
 const { reading, reposOf } = require('./phase-checks.cjs');
 const { recordRound, answerNotes } = require('./review-round.cjs');
@@ -103,12 +104,12 @@ function acceptTree(cwd, unit) {
 
 /**
  * `review ask`: a quick-fix's review asked for at its close, recorded, and
- * its review phase's entry next (the header's).
+ * its review phase's skill next, in place (the header's).
  * @param {string} cwd @param {string} unit
  */
 function askReview(cwd, unit) {
   const said = 'review ask';
-  const next = { kind: 'engine', argv: ['enter', 'review', unit] };
+  const next = { kind: 'invoke', skill: phaseSkill('review', 'quick-fix'), args: ['quick-fix', unit] };
   return refusing(said, () => withWorkUnitLock(cwd, unit, () => {
     const manifest = unitInProgress(cwd, unit);
     if (!quickFixBuild(manifest)) throw new Error(`${unit} is no quick-fix built as one — a review is asked for at a quick-fix's close; any other unit's review phase follows its build`);

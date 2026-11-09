@@ -26,7 +26,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
 const { ok, refuses, git, readManifest } = require('./engine-harness.cjs');
-const { UNIT, DESCRIPTION, BRANCH, SET, checklistClosed, quickFixConformance } = require('./quick-fix-world.cjs');
+const { UNIT, DESCRIPTION, BRANCH, SET, checklistClosed, fixDone, quickFixConformance } = require('./quick-fix-world.cjs');
 const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
 
 for (const { name } of listDrivers('landing')) {
@@ -42,7 +42,7 @@ for (const { name } of listDrivers('landing')) {
       side.deleted(at, BRANCH);
       const opening = refuses(at, ['land', 'open', UNIT, '1.1'], as()).error;
       const closing = refuses(at, ['task', 'close', UNIT, '1.1', '--reason', 'Merged by hand.'], as()).error;
-      ok(at, ['task', 'done', UNIT, '1.1'], as());
+      fixDone(at, '1.1', as());
       const reopening = refuses(at, ['land', 'open', UNIT, '1.1'], as()).error;
       const host = side.defaultTip(at);
       built(at, 2);

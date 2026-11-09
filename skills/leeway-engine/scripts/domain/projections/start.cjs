@@ -295,7 +295,7 @@ function emptyMenu(detail) {
     { key: 'f', word: 'feature', action: 'start_new', pre_seed: 'feature', route: null, label: 'Single topic: discussion → spec → build → review' },
     { key: 'e', word: 'epic', action: 'start_new', pre_seed: 'epic', route: null, label: 'Multiple topics, multi-session: each discussed, then one spec → build → review' },
     { key: 'b', word: 'bugfix', action: 'start_new', pre_seed: 'bugfix', route: null, label: 'Investigation → spec → build → review' },
-    { key: 'q', word: 'quick-fix', action: 'start_new', pre_seed: 'quick-fix', route: null, label: 'Scoping → implement → review (no formal planning)' },
+    { key: 'q', word: 'quick-fix', action: 'start_new', pre_seed: 'quick-fix', route: null, label: 'One sitting: each fix built and reviewed, then closed' },
   );
   if (detail.state.has_inbox) {
     const n = detail.state.inbox_count;

@@ -22,7 +22,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
 const { ok, git } = require('./engine-harness.cjs');
-const { UNIT, DESCRIPTION, BRANCH, createFix, ownCommit, quickFixConformance } = require('./quick-fix-world.cjs');
+const { UNIT, DESCRIPTION, BRANCH, createFix, fixDone, ownCommit, quickFixConformance } = require('./quick-fix-world.cjs');
 const { HELP, steps } = require('./quick-fix-by-hand.cjs');
 const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
 
@@ -46,7 +46,7 @@ for (const { name } of listDrivers('landing')) {
       const kept = git(at, ['log', '--format=%s', `${side.defaultTip(at)}..${BRANCH}`]).trim();
       committed(at, HELP.text);
       ok(at, ['land', 'open', UNIT, '1.2'], as());
-      ok(at, ['task', 'done', UNIT, '1.2'], as());
+      fixDone(at, '1.2', as());
       closed(at);
 
       assert.deepStrictEqual([start.cut_again.map((/** @type {any} */ { repo, from, replayed }) => ({ repo, from, replayed })), kept], [[{ repo: '.', from: before, replayed: [] }], MINE]);

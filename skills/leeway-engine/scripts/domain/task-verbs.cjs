@@ -40,7 +40,8 @@
 // beside any others in flight there — a task already in flight kept as it
 // stands, its builder and reviewers with it; a quick-fix's task, built in
 // the project's own checkout, puts that checkout on the quick-fix's one
-// branch (fix-branch.cjs) — and done and close take it off, each first
+// branch, recording at its first start where it starts there
+// (fix-branch.cjs) — and done and close take it off, each first
 // taking the task's worktree apart (6.3.3, 24.2.4); done refuses a task a
 // question waiting parks, and a bugfix's reproducing task until its test's
 // series proves the bug (bug-proven.cjs, 15.5.3); close ends a task without
@@ -49,7 +50,9 @@
 // waits on it as done does (7.1.12) — a quick-fix's task ending as
 // fix-end.cjs says, a fix's close committing beside the tracker's store the
 // record it takes out, and a quick-fix's move closing its tasks with no end
-// refused (`closeForMove`);
+// refused (`closeForMove`), and either, ending the last of what held a
+// quick-fix's ended review open, handing back to its close
+// (review-round.cjs, `handBack`);
 // worktree lays the task's worktree out for its builder, reading the task
 // as show does (task-worktree.cjs); stopped records, against the task in
 // flight in the calling conversation, that its builder stopped, unable to
@@ -847,7 +850,10 @@ const startTask = moving('start', (_cwd, driver, root, ref) => {
   if (quickFix) fixBranch().refuseDirty(cwd, ref);
   return () => {
     recordTask(cwd, ref.unit, taskId(ref));
-    return quickFix ? fixBranch().checkOutBranch(cwd, ref.unit) : {};
+    if (!quickFix) return {};
+    const out = fixBranch().checkOutBranch(cwd, ref.unit);
+    fixBranch().recordStart(cwd, ref);
+    return out;
   };
 });
 
@@ -855,31 +861,38 @@ const DONE_RULE = 'only a task not yet ended is done';
 const CLOSE_RULE = 'only a task not yet ended is closed';
 
 /**
- * `task done`: refused while a question waiting parks it, where its account
- * is not taken of its review as it stands (task-account.cjs) — a
- * quick-fix's owing none — for a bugfix's reproducing task while its
- * test's series on the unfixed code does not prove the bug (bug-proven.cjs),
- * and for a quick-fix's task as its end refuses it (fix-end.cjs); else its
- * worktree taken apart, then done, and off the position.
+ * `task done`: refused while a question waiting parks it; for a
+ * quick-fix's task as its end refuses it (fix-end.cjs) — no commit of its
+ * own, or its newest not in the pull request — before its account; where
+ * its account is not taken of its review as it stands (task-account.cjs) —
+ * a quick-fix's as any task's; and for a bugfix's reproducing task while
+ * its test's series on the unfixed code does not prove the bug
+ * (bug-proven.cjs); else its
+ * worktree taken apart, then done, and off the position — the last of
+ * what held a quick-fix's ended review open handing back to its close
+ * (review-round.cjs, `handBack`).
  */
 const doneTask = moving('done', (_cwd, driver, root, ref) => {
   refuseEnded(driver, root, ref, DONE_RULE);
   driver.done(root, ref);
 }, (cwd, ref, verb) => {
   withTracker(cwd, ref.unit, null, (driver, root) => refuseEnded(driver, root, ref, DONE_RULE));
+  fixEnd().refuseUndone(cwd, ref, `task ${verb}`);
   account().refuseUnaccounted(cwd, ref, `task ${verb}`);
   const unproven = reproducingHold(cwd, loadWorkUnitManifest(cwd, ref.unit), ref, 'is done');
   if (unproven !== null) throw new Error(`task ${verb}: ${unproven}`);
-  fixEnd().refuseUndone(cwd, ref, `task ${verb}`);
-  return ending(DONE_RULE)(cwd, ref, verb);
+  const settle = ending(DONE_RULE)(cwd, ref, verb);
+  return () => ({ ...settle(), ...reviewRound().handBack(cwd, ref.unit) });
 });
 
 /**
- * A task closed, its end refused first as `refuseHeld` refuses it (the
- * header's `task close`).
+ * A task closed, its end refused first as `refuseHeld` refuses it, and
+ * what follows it once closed answered by `then` (the header's `task
+ * close`).
  * @param {(cwd: string, ref: TaskRef, said: string) => void} refuseHeld
+ * @param {(cwd: string, ref: TaskRef) => object} [then]
  */
-const closing = (refuseHeld) => moving('close', (cwd, driver, root, ref, reason) => {
+const closing = (refuseHeld, then = () => ({})) => moving('close', (cwd, driver, root, ref, reason) => {
   refuseEnded(driver, root, ref, CLOSE_RULE);
   driver.close(root, ref, reason);
   return fixEnd().closedRecord(cwd, ref);
@@ -889,7 +902,7 @@ const closing = (refuseHeld) => moving('close', (cwd, driver, root, ref, reason)
   refuseHeld(cwd, ref, `task ${verb}`);
   const parking = parks().parkingOf(cwd, ref, `task ${verb}`);
   const settle = ending(CLOSE_RULE, () => parks().takeOff(cwd, ref, `task ${verb}`, parking))(cwd, ref, verb);
-  return (written) => ({ ...settle(), ...landing().mutationRun(cwd, ref, false), ...fixEnd().recordReindexed(cwd, ref, written) });
+  return (written) => ({ ...settle(), ...landing().mutationRun(cwd, ref, false), ...fixEnd().recordReindexed(cwd, ref, written), ...then(cwd, ref) });
 });
 
 /**
@@ -900,9 +913,11 @@ const closing = (refuseHeld) => moving('close', (cwd, driver, root, ref, reason)
  * without being done, its reason kept — a quick-fix's fix's record taken
  * out in the same commit, the knowledge base brought in line after — and
  * off the position — the last of its phase's to end, another done, naming
- * the phase's mutation run (landing.cjs, `mutationRun`).
+ * the phase's mutation run (landing.cjs, `mutationRun`), and the last of
+ * what held a quick-fix's ended review open handing back to its close
+ * (review-round.cjs, `handBack`).
  */
-const closeTask = closing((cwd, ref, said) => fixEnd().refuseHeld(cwd, ref, said));
+const closeTask = closing((cwd, ref, said) => fixEnd().refuseHeld(cwd, ref, said), (cwd, ref) => reviewRound().handBack(cwd, ref.unit));
 
 /**
  * A quick-fix's task closed by its move (workunit-move.cjs), as `task
@@ -942,6 +957,7 @@ function stoppedTask(cwd, unit, given) {
 // The build's records, loaded at their call: each reads its task, or the
 // tracker's phases, through this module.
 const account = () => require('./task-account.cjs');
+const reviewRound = () => require('./review-round.cjs');
 const settlement = () => require('./phase-settlement.cjs');
 const notes = () => require('./notes.cjs');
 
