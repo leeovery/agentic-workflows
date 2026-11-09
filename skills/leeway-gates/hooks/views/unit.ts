@@ -36,7 +36,7 @@ type TopicLine = {
 }
 
 type Stage<State> = { state: State; session: Session }
-type Waiting = { kind: 'map' | 'gap' | 'ready' | 'question' | 'finish'; id: string; text: string; page: string | null } | (RaiseWait & { kind: 'raise' })
+type Waiting = { kind: 'map' | 'gap' | 'ready' | 'question' | 'finish' | 'conclude' | 'raised'; id: string; text: string; page: string | null } | (RaiseWait & { kind: 'raise' })
 
 type Epic = {
   unit: string
@@ -350,24 +350,25 @@ function waitingLine(waiting: Waiting): Line[] {
 /**
  * WAITING ON YOU on the epic's page and the unit's tab: on the unit the
  * session is in, its build's questions as every view lists them, the board
- * holding them; else each by its words — a build's waiting on the board,
- * the rest asked in the conversation.
+ * holding them, then what is asked in the conversation beneath them; else
+ * each by its words — a build's waiting on the board, the rest asked in the
+ * conversation.
  */
 function waitingLines(view: { here: boolean; waiting: readonly Waiting[] }, kit: Kit): Line[] {
   if (view.waiting.length === 0) {
     return []
   }
 
-  const held = kit.waiting()
+  const held = view.here && view.waiting.some(({ kind }) => kind === 'question') ? kit.waiting() : []
+  const listed = held.length === 0 ? view.waiting : view.waiting.filter(({ kind }) => kind !== 'question')
 
-  if (view.here && view.waiting.every(({ kind }) => kind === 'question') && held.length > 0) {
-    return held
-  }
-
-  return section(
-    heading('unit:waiting', { text: 'WAITING ON YOU', bold: true, color: COLOUR.needs }, [{ text: waitingCount(view.waiting), color: COLOUR.secondary }], kit.width),
-    view.waiting.flatMap(waitingLine),
-  )
+  return [
+    ...held,
+    ...section(
+      heading('unit:waiting', { text: 'WAITING ON YOU', bold: true, color: COLOUR.needs }, [{ text: waitingCount(listed), color: COLOUR.secondary }], kit.width),
+      listed.flatMap(waitingLine),
+    ),
+  ]
 }
 
 function unitLines(view: Unit, kit: Kit): Line[] {

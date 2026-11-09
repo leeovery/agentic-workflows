@@ -158,6 +158,34 @@ FIX DIRECTION ──────────────────────
     ])
   })
 
+  test('a question the fix direction raised, not its options, says so; its options say nothing of what raised them', () => {
+    const wait = fixture.waiting[0]
+    const lines = (waiting: object) => sectionOf(drawn(INVESTIGATION, { ...fixture, waiting: [{ ...wait, ...waiting }] } as View).text, 'WAITING ON YOU').slice(1)
+
+    expect([lines({ text: 'Should a save keep the sessions it dropped?', options: null, lean_first: null }), lines({})]).toEqual([
+      ['⚑ Should a save keep the sessions it dropped?', '     raised by the fix direction'],
+      ["⚑ Which fix: 3 options, Claude's lean first"],
+    ])
+  })
+
+  test('its conclude drawn, the facts line flags it waiting and WAITING ON YOU asks for its yes in the conversation, as the unit\'s tab does', () => {
+    const conclude = { kind: 'conclude', id: 'conclude', text: "Conclude: the hunt's recap, the root cause and the fix, for your yes", page: null, raised_by: null, options: null, lean_first: null }
+    const waits = { ...fixture, standing: 'conclude-waits', waiting: [conclude], fix_direction: { ...fixture.fix_direction, state: 'picked', pick: '1', fix: 'Harden the reads.' } } as View
+    const tab = { ...MINT, type: 'bugfix', here: false, waiting: [conclude], phases: [phase('discovery', 'complete', 'from your inbox note'), phase('investigation', 'waits', '6 hypotheses')] } as View
+    const { text, holds } = drawn(INVESTIGATION, waits)
+
+    expect(text.slice(2, 8)).toEqual(block(`
+6 hypotheses · 3 confirmed · 10 experiments · ⚑ conclude waits
+on you
+
+WAITING ON YOU ───────────────── 1 · asked in the conversation
+⚑ Conclude: the hunt's recap, the root cause and the fix, for
+  your yes
+`))
+    expect(holds.turns).toBe(false)
+    expect(sectionOf(drawn(UNIT, tab).text, 'WAITING ON YOU')).toEqual(sectionOf(text, 'WAITING ON YOU'))
+  })
+
   test('20.15: the unit\'s tab draws a raise as the investigation does, with what raised it', () => {
     const tab = { ...MINT, type: 'bugfix', here: false, waiting: VALIDATING.waiting, phases: [phase('discovery', 'complete', 'from your inbox note'), phase('investigation', 'waits', '6 hypotheses')] } as View
 

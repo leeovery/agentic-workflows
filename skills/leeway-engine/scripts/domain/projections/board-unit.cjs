@@ -36,10 +36,11 @@
 //   once complete and its passes reported until then, the build its cut's
 //   tasks done — of them while it runs — a quick-fix's implementation its
 //   fixes done of all, building while under way, the review its round and,
-//   once recorded, where it stands as the banner says it; a phase under way says
-//   what it is doing, an investigation validating while either validation
-//   runs, the specification where it stands as its banner says it; a phase,
-//   or a stage, says whether a session is in it, this one or
+//   once recorded, where it stands as the banner says it, a quick-fix's
+//   review once asked for among them (board-standing.cjs); a phase under
+//   way says what it is doing, an investigation validating while either
+//   validation runs, the specification where it stands as its banner says
+//   it; a phase, or a stage, says whether a session is in it, this one or
 //   another.
 // - A unit started the day its manifest was made, as the manifest stamps it
 //   (20.15.1). The tab says whether it is the unit this session is in,
@@ -68,16 +69,16 @@ const { scanProject } = require('../presence.cjs');
 const { liveInOrder } = require('../approve-map.cjs');
 const { specPath, specReading } = require('../spec-sections.cjs');
 const { unitHistory, sentMail } = require('../state-history.cjs');
-const { ROADMAP_SEED } = require('../inbox.cjs');
+const { seedsOf, fromRoadmap, seedOrigin } = require('../inbox.cjs');
 const { dayBefore } = require('../dates.cjs');
-const { computeTopicLifecycle, mailboxFiles, buildBegun, buildFinished, cutLength, roadmapItems, topicTitle, briefFile, quickFixBuild, tasksBegun } = require('../derivations.cjs');
+const { computeTopicLifecycle, mailboxFiles, buildBegun, buildFinished, cutLength, roadmapItems, topicTitle, briefFile, quickFixBuild, tasksBegun, startedOn } = require('../derivations.cjs');
 const { counted } = require('./map.cjs');
 const { buildView, buildMoments } = require('./board-build.cjs');
 const { roundWords } = require('./board-review.cjs');
 const { passMoments, reportedOf, specDoing } = require('./board-spec.cjs');
 const { sentBy } = require('./board-discussion.cjs');
 const { mapCount, textOf } = require('./board-discovery.cjs');
-const { phasesAt, nowOf, waitingOn, standingOf, holds, closedOn, startedOf, pastDiscovery } = require('./board-standing.cjs');
+const { phasesAt, nowOf, waitingOn, standingOf, holds, closedOn, pastDiscovery } = require('./board-standing.cjs');
 const { investigationView, investigationDoing, hypothesesCount, huntMoments } = require('./board-investigation.cjs');
 const { quickFixWords } = require('./board-quick-fix.cjs');
 
@@ -270,7 +271,7 @@ function epicView(at, atMenu) {
     unit: at.unit,
     title: at.title,
     about: String(at.manifest.description ?? ''),
-    started: startedOf(at),
+    started: startedOn(at.manifest),
     now: nowOf(at),
     at_menu: atMenu,
     here: at.place.unit === at.unit,
@@ -325,17 +326,13 @@ function buildTasks(at) {
   return buildFinished(at.manifest) ? `${counted(done, 'task')} done` : `${done} of ${counted(cut.reduce((sum, phase) => sum + phase.total, 0), 'task')} done`;
 }
 
-/** The notes the unit was started from, as its manifest lists them. @param {BoardAt} at @returns {{path: string, source: string}[]} */
-const seedsOf = ({ manifest }) => (Array.isArray(manifest.seeds) ? manifest.seeds : []);
-
-/** Whether a note the unit was started from is the roadmap's. @param {{source: string}} seed */
-const fromRoadmap = ({ source }) => String(source).startsWith(ROADMAP_SEED);
+/** Where a linear unit's discovery began, as the tab says it, by where its note came from. @type {Readonly<Record<'inbox'|'roadmap', string>>} */
+const SEED_WORDS = Object.freeze({ inbox: 'from your inbox note', roadmap: 'from the roadmap' });
 
 /** Where a linear unit's discovery began, as the tab says it: an inbox note, the roadmap's, or the seed. @param {BoardAt} at */
-function seedWords(at) {
-  const [seed] = seedsOf(at);
-  if (seed === undefined) return 'the seed';
-  return fromRoadmap(seed) ? 'from the roadmap' : 'from your inbox note';
+function seedWords({ manifest }) {
+  const origin = seedOrigin(manifest);
+  return origin === null ? 'the seed' : SEED_WORDS[origin];
 }
 
 /** The hypotheses an investigation's log holds, as the tab says them, empty while it holds none. @param {BoardAt} at */
@@ -378,7 +375,7 @@ const doingOf = (at, reads) => /** @type {Record<string, (at: BoardAt) => string
 
 /** A linear unit's discovery in full: each note it was started from, else its brief. @param {BoardAt} at @returns {PhasePage['sections']} */
 function seedSections(at) {
-  const seeds = seedsOf(at);
+  const seeds = seedsOf(at.manifest);
   if (seeds.length === 0) return [{ heading: 'The seed', text: textOf(statePath(at.cwd, briefFile(at.unit, at.unit))) }];
   return seeds.map((seed) => ({ heading: fromRoadmap(seed) ? 'The roadmap\'s note' : 'Your note', text: textOf(statePath(at.cwd, at.unit, seed.path)) }));
 }
@@ -451,7 +448,7 @@ function linearView(at, atMenu) {
     title: at.title,
     type: at.manifest.work_type,
     about: String(at.manifest.description ?? ''),
-    started: startedOf(at),
+    started: startedOn(at.manifest),
     now: nowOf(at),
     at_menu: atMenu,
     here: at.place.unit === at.unit,

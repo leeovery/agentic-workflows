@@ -50,6 +50,9 @@ function voidDecidedClose(manifest, topic, at) {
   return true;
 }
 
+/** The day the unit started, its manifest's `created`, null where it holds none (20.15.4). @param {Record<string, any>} manifest @returns {string|null} */
+const startedOn = (manifest) => (typeof manifest.created === 'string' ? manifest.created : null);
+
 /**
  * Whether a feature's one topic has closed into its spec, with no gate
  * (11.2.1): its decided close standing. The one screen, decided and ready to
@@ -1406,6 +1409,7 @@ module.exports = {
   closedIntoSpec,
   phaseData,
   phaseItems,
+  startedOn,
   buildBegun,
   phaseKey,
   phaseStarted,

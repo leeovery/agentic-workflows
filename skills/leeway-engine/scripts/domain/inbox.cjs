@@ -56,6 +56,19 @@ const SEED_SOURCES = /** @type {Record<string, string>} */ ({ ideas: 'inbox:idea
 /** The `source` tag of a seed copied from a roadmap item's note, before the item's name. */
 const ROADMAP_SEED = 'roadmap:';
 
+/** The notes a unit was started from, as its manifest lists them. @param {Record<string, any>} manifest @returns {{path: string, source: string}[]} */
+const seedsOf = (manifest) => (Array.isArray(manifest.seeds) ? manifest.seeds : []);
+
+/** Whether a note a unit was started from is a roadmap item's. @param {{source: string}} seed */
+const fromRoadmap = ({ source }) => String(source).startsWith(ROADMAP_SEED);
+
+/** Where the note a unit began from came from: the inbox, the roadmap, or none. @param {Record<string, any>} manifest @returns {'inbox'|'roadmap'|null} */
+function seedOrigin(manifest) {
+  const [seed] = seedsOf(manifest);
+  if (seed === undefined) return null;
+  return fromRoadmap(seed) ? 'roadmap' : 'inbox';
+}
+
 /**
  * @typedef {object} InboxItem
  * @property {string} rel     the path in the state, state-relative
@@ -325,4 +338,7 @@ module.exports = {
   FOLDER_KIND,
   SEED_SOURCES,
   ROADMAP_SEED,
+  seedsOf,
+  fromRoadmap,
+  seedOrigin,
 };

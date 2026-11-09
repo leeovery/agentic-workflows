@@ -6,9 +6,10 @@
 // the change its note pins, each fix as the build draws a task with its
 // pair's rounds, Claude's calls and the earlier decision the change
 // replaces; a fix's builder's question parking it, and the fixes stopped;
-// its tab's row and All work; a fix's page; and every phase a session can
-// be in drawing a view of its own (27.S8). What waits on the person and the
-// close: -waits.cjs; the record and where it came from: -record.cjs.
+// its tab's row and All work; a fix's page, its reviews and its scenarios'
+// pages; and every phase a session can be in drawing a view of its own
+// (27.S8). What waits on the person and the close: -waits.cjs; the record
+// and where it came from: -record.cjs; its review: -review.cjs.
 //
 // Layer: verb. The world `working` (quick-fix-board-world.cjs), copied for
 // each test.
@@ -19,12 +20,12 @@ require('./hermetic-env.cjs');
 const { describe, it, afterEach } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
-const { writeState, cleanupFixture } = require('./engine-harness.cjs');
+const { writeState, cleanupFixture, layout, git, FROZEN_AT } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { ledgerReadHelpers } = require('./ledger-world.cjs');
-const { UNIT, PLACE, DESCRIPTION, FLAG, HELP } = require('./quick-fix-world.cjs');
+const { UNIT, PLACE, DESCRIPTION, FLAG, HELP, BRANCH } = require('./quick-fix-world.cjs');
 const { place } = require('./board-world.cjs');
-const { EARLIER, RULED, CALL_TEXT, made, working, fix, quickFixBoard } = require('./quick-fix-board-world.cjs');
+const { RULED, CALL_TEXT, made, working, fix, quickFixBoard } = require('./quick-fix-board-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { BOARD_VERSION } = require(path.join(SCRIPTS, 'domain/board-model.cjs'));
@@ -59,7 +60,6 @@ describe('a quick-fix\'s fixes on the board (20.14)', () => {
       from: 'inbox',
       change: DESCRIPTION,
       standing: 'working',
-      stopped: false,
       progress: { done: 0, total: 2, written: true },
       waiting: [],
       fixes: [
@@ -67,7 +67,7 @@ describe('a quick-fix\'s fixes on the board (20.14)', () => {
         fix('1.2', HELP, 'not-started'),
       ],
       calls: [{ id: made.call, text: CALL_TEXT }],
-      replaces: [{ id: made.ruled, text: RULED, by: 'person', unit: EARLIER, unit_title: 'Restore' }],
+      replaces: [{ id: made.ruled, text: RULED, by: 'person', unit_title: 'Restore' }],
       record: null,
     });
     assert.deepStrictEqual([answer.version, answer.place.phase, answer.questions], [BOARD_VERSION, 'implementation', []]);
@@ -81,15 +81,15 @@ describe('a quick-fix\'s fixes on the board (20.14)', () => {
     const goingOn = board();
     await parkedOn('1.1', 'Should the flag keep --color?');
     const stopped = board();
-    const { line } = rows();
+    const { row, line } = rows();
 
     assert.deepStrictEqual([goingOn.view.waiting, goingOn.questions.map(({ question, parks }) => [question, parks])], [
       [{ kind: 'question', id: 'Q1', text: 'Q1 Should the help name both spellings?', page: 'task:1.2' }],
       [['Q1', [{ task: '1.2', title: HELP }]]],
     ]);
-    assert.deepStrictEqual([goingOn.view.fixes[1], goingOn.view.stopped], [fix('1.2', HELP, 'waits', { on: ['Q1'] }), false]);
+    assert.deepStrictEqual(goingOn.view.fixes[1], fix('1.2', HELP, 'waits', { on: ['Q1'] }));
     assert.deepStrictEqual(goingOn.banner, { name: 'Typo', state: 'running', facts: [place('quick-fix'), { text: '0 of 2 done', needs: false }, { text: '1 waiting on you', needs: true }] });
-    assert.deepStrictEqual([stopped.view.stopped, stopped.banner, line.standing], [true, { name: 'Typo', state: 'needs', facts: [place('quick-fix'), place('stopped'), { text: '0 of 2 done', needs: false }, { text: '2 waiting on you', needs: true }] }, 'stopped · 0 of 2 done']);
+    assert.deepStrictEqual([stopped.banner, row.state, line.standing], [{ name: 'Typo', state: 'needs', facts: [place('quick-fix'), place('stopped'), { text: '0 of 2 done', needs: false }, { text: '2 waiting on you', needs: true }] }, 'stopped', 'stopped · 0 of 2 done']);
   });
 
   it('its tab\'s row runs once its fixes have begun, counting them done of all and reading building, and All work says how far it has come (20.15.2, 20.15.3, 20.16.1)', () => {
@@ -120,7 +120,7 @@ describe('a quick-fix\'s fixes on the board (20.14)', () => {
     createManifest(dir, 'palette', { phases: { discussion: { items: { palette: { status: 'in-progress' } } } } });
     const at = 'palette.discussion.palette';
     const claudes = decide(at, ask(at, 'Which palette?'), 'The palette is warm.');
-    replaced(replaced(claudes, 'claude', 'The palette is cool.'), 'claude', 'The palette is grey.');
+    replaced(replaced(replaced(claudes, 'claude', 'The palette is cool.'), 'claude', 'The palette is grey.'), 'claude', 'The palette is slate.');
     decide(PLACE, ask(PLACE, 'Is --colour the only spelling?'), 'It is the only one.', [], { by: 'person' });
     replaced(made.replacing, 'person', 'Pressing m marks the row and selects it.');
     const { calls, replaces } = board().view;
@@ -128,17 +128,25 @@ describe('a quick-fix\'s fixes on the board (20.14)', () => {
     assert.deepStrictEqual([calls, replaces], [
       [{ id: made.call, text: CALL_TEXT }],
       [
-        { id: claudes, text: 'The palette is warm.', by: 'claude', unit: 'palette', unit_title: 'Palette' },
-        { id: made.ruled, text: RULED, by: 'person', unit: EARLIER, unit_title: 'Restore' },
+        { id: claudes, text: 'The palette is warm.', by: 'claude', unit_title: 'Palette' },
+        { id: made.ruled, text: RULED, by: 'person', unit_title: 'Restore' },
       ],
     ]);
   });
 
-  it('the fix\'s page names its phase the fixes', () => {
+  it('a fix\'s page names its phase the fixes and, with no account, shows its rounds reported whole as its reviews (20.5.6); a scenario of it opens at the quick-fix\'s one branch, as running the product proved it there, and one of a fix not yet started opens not proven', () => {
     dir = working();
     atTheFixes();
+    reported('1.1', 1, false);
+    reported('1.1', 2, true);
+    writeState(dir, layout.unit(UNIT, 'build', 'runs', '1.S1', 'run-001.json'), JSON.stringify({
+      verdict: 'pass', unfixed: false, at: FROZEN_AT, checkout: dir, commits: [{ repo: '.', commit: git(dir, ['rev-parse', BRANCH]).trim() }], task: null, evidence: [], recordings: [],
+    }));
+    const page = board(['--page', 'task:1.1']).view;
+    const scenario = (/** @type {string} */ ref) => (({ kind, standing, at }) => ({ kind, standing, at }))(board(['--page', ref]).view);
 
-    assert.strictEqual(board(['--page', 'task:1.1']).view.phase_name, 'the fixes');
+    assert.deepStrictEqual([page.phase_name, page.account, page.reviews], ['the fixes', null, [{ round: 'Round 1', summary: '2 findings, sent back' }, { round: 'Round 2', summary: 'passed' }]]);
+    assert.deepStrictEqual([scenario('task:1.1:scenario:1.S1'), scenario('task:1.2:scenario:2.S1')], [{ kind: 'scenario', standing: 'proven', at: FROZEN_AT }, { kind: 'scenario', standing: 'not proven', at: null }]);
   });
 });
 

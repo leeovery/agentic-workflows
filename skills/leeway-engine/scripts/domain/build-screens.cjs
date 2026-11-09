@@ -159,8 +159,19 @@ function stackHead(cwd, ref, task) {
   return stack === null ? null : tipCommits(stack);
 }
 
+/**
+ * The tips of the task's branch, as a run names the code it ran — a
+ * quick-fix's task's the quick-fix's one branch (fix-branch.cjs) — null
+ * where it has none yet.
+ * @param {string} cwd @param {Record<string, any>} manifest @param {TaskRef} ref @param {TaskDetail} task
+ */
+const taskHead = (cwd, manifest, ref, task) => (quickFixBuild(manifest) ? branchHead(cwd, ref.unit) : stackHead(cwd, ref, task));
+
 /** A scenario of a task with no branch yet: nothing run. */
-const NOT_RUN = Object.freeze({ standing: 'not proven', runs: [] });
+const NOT_RUN = Object.freeze({ standing: /** @type {const} */ ('not proven'), runs: [], decided: null });
+
+/** What a scenario's runs prove at a task's tips (`taskHead`, runs.cjs): nothing run where it has none yet. @param {string} cwd @param {string} unit @param {string} scenario @param {ReturnType<typeof taskHead>} head */
+const runsAt = (cwd, unit, scenario, head) => (head === null ? NOT_RUN : runsOf(cwd, unit, scenario, head));
 
 /**
  * What running the product proved of each of the task's scenarios — of the
@@ -175,8 +186,8 @@ function ranOf(cwd, manifest, ref, task, criteria) {
     ? scenarioIds(task.text)
     : cutPhases(manifest).flatMap(({ scenarios: held }) => held).filter((scenario) => holdsScenario(task.text, scenario));
   if (scenarios.length === 0) return { ran: null, recorded: false };
-  const head = quickFixBuild(manifest) ? branchHead(cwd, ref.unit) : stackHead(cwd, ref, task);
-  const read = scenarios.map((scenario) => ({ scenario, ...(head === null ? NOT_RUN : runsOf(cwd, ref.unit, scenario, head)) }));
+  const head = taskHead(cwd, manifest, ref, task);
+  const read = scenarios.map((scenario) => ({ scenario, ...runsAt(cwd, ref.unit, scenario, head) }));
   return {
     ran: read.map(({ scenario, standing }) => ({ scenario, criterion: criterionWords(criteria.find((criterion) => namesScenario(criterion, scenario)) ?? scenario), standing })),
     recorded: read.some(({ runs }) => runs.some(({ verdict }) => verdict !== 'skipped')),
@@ -359,6 +370,6 @@ function buildProgressSurface(cwd, { dotpath: unit = '' }) {
 }
 
 module.exports = {
-  phaseNamed, phaseLets, buildGoesOn, taskOf, takenAccount, takenFigures, callsOf, ranOf,
+  phaseNamed, phaseLets, buildGoesOn, taskOf, takenAccount, takenFigures, callsOf, ranOf, taskHead, runsAt,
   buildHeadlineSurface, taskLandedSurface, taskAccountSurface, stepGateSurface, phaseMergeGateSurface, buildStopSurface, buildProgressSurface,
 };

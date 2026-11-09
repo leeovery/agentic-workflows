@@ -29,7 +29,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { ok, okSectionsAsync, refuses, readManifest, writeState, commitAll, fixtureFrom, cleanupFixture, layout } = require('./engine-harness.cjs');
+const { ok, okSectionsAsync, refuses, output, readManifest, writeState, commitAll, fixtureFrom, cleanupFixture, layout } = require('./engine-harness.cjs');
 const { createManifest, withEnv } = require('./discovery-test-utils.cjs');
 const { boardOf } = require('../../skills/leeway-engine/scripts/domain/board.cjs');
 const { ledgerHelpers } = require('./ledger-world.cjs');
@@ -499,6 +499,36 @@ describe('the investigation concluded, the unit\'s tab and All work (20.12.4, 20
     assert.deepStrictEqual([view.standing, view.waiting, banner.state, banner.facts.at(-2).text], ['concluded', [], 'needs', 'concluded · the specification next']);
     assert.deepStrictEqual(tabRow(), { phase: 'investigation', state: 'complete', words: '3 hypotheses', doing: '', on: '2026-08-20T15:00:00.000Z', session: 'this', page: true });
     assert.deepStrictEqual([opened.kind, opened.standing], ['investigation', 'concluded']);
+  });
+
+  it('its conclude drawn, its yes waits on the person: This session, the banner, the tab and All work each say the conclude waits, flagged first and counted; the root cause replaced, logged and both validated again since, the recap drawn before it, it waits no longer', async () => {
+    takenIn(dispatched('root-cause-validation', []).id);
+    picked(await raised(FIX_CALL, made.fix), '1');
+    run(['investigation-log', 'fix-direction', BUG, '--question', made.fix]);
+    takenIn(dispatched('fix-validation', []).id);
+    write('decide', ['--answers', made.keep], { ...PERSON, text: 'A session you kill never comes back.', why: 'Killing it is the person saying so.' });
+    const recap = path.join(config, 'recap.json');
+    fs.writeFileSync(recap, JSON.stringify({ hunt: 'Three hypotheses; killing every session emptied the save.' }));
+    output(dir, ['render', 'conclude', BUG, '--file', recap], { env: env() });
+    atTheHunt();
+    const { view, banner } = board();
+    const standing = standingOn(board, BUG);
+    const replaced = write('replace', ['--replaces', made.rootCause, '--reason', 'was-wrong'], { ...CLAUDE, drops: ['the whole truth'], text: 'A save trusts a capture taken mid-shutdown.', why: 'E6 showed it.' }).id;
+    const body = path.join(config, 'body.md');
+    fs.writeFileSync(body, 'A capture mid-shutdown reads as no sessions.\n');
+    run(['investigation-log', 'root-cause', BUG, '--entry', replaced, '--body', body]);
+    takenIn(dispatched('root-cause-validation', []).id);
+    takenIn(dispatched('fix-validation', []).id);
+    const stale = board().view;
+
+    assert.deepStrictEqual([view.standing, view.waiting.map(({ kind, id, text }) => [kind, id, text])], ['conclude-waits', [['conclude', 'conclude', 'Conclude: the hunt\'s recap, the root cause and the fix, for your yes']]]);
+    assert.deepStrictEqual([banner.state, banner.facts.slice(2).map(({ text, needs }) => [text, needs])], ['needs', [['conclude waits on you', false], ['1 waiting on you', true]]]);
+    assert.deepStrictEqual(standing, {
+      tab: { now: 'investigation', state: 'waits', words: '3 hypotheses', waiting: ['conclude conclude'] },
+      all: { phase: 'investigation', standing: 'conclude waits on you', waiting: 1, total: 1 },
+      banner: { state: 'needs', waits: ['⚑ 1 waiting on you'] },
+    });
+    assert.deepStrictEqual([stale.standing, stale.waiting], ['investigating', []]);
   });
 
   it('under way, the tab says it investigates until a validation runs, validates while one does, and holds the raise on its one list with what raised it', async () => {

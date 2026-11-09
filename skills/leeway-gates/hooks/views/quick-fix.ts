@@ -20,7 +20,7 @@ import { header, section } from './words.ts'
 type Rounds = { sent_back: number; reading: number | null; passed: number | null; settled: boolean }
 type Fix = TaskLine & { rounds: Rounds }
 type Waiting = { kind: string; id: string; text: string; page: string | null }
-type Replaced = { id: string; text: string; by: 'person' | 'claude'; unit: string; unit_title: string }
+type Replaced = { id: string; text: string; by: 'person' | 'claude'; unit_title: string }
 type FixRecord = { title: string; changed: string; why: string; leaves: string }
 
 type QuickFix = {
@@ -31,7 +31,6 @@ type QuickFix = {
   from: 'inbox' | 'roadmap' | null
   change: string
   standing: 'working' | 'close'
-  stopped: boolean
   progress: { done: number; total: number; written: boolean }
   waiting: Waiting[]
   fixes: Fix[]

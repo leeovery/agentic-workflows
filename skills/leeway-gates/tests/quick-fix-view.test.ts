@@ -136,6 +136,19 @@ WAITING ON YOU ───────────────── 1 · asked in
     )
   })
 
+  test('a facts line naming more fixes under way than the pane is wide wraps at the edge, losing none', () => {
+    const view = {
+      ...IN_REVIEW,
+      progress: { done: 0, total: 4, written: true },
+      fixes: [fixOf('1.1', 'Spell the flag --colour', 'building'), fixOf('1.2', 'Spell the help --colour', 'waits', ['Q1']), fixOf('1.3', 'Spell the man page --colour', 'waits', ['Q2']), fixOf('1.4', 'Spell the README --colour', 'in-review')],
+    } as View
+
+    expect(drawn(QUICK_FIX, view).text.slice(2, 4)).toEqual(block(`
+0 of 4 done · ◐ 1.1 building · ⚑ 1.2 waits on Q1 · ⚑ 1.3 waits
+on Q2 · ◐ 1.4 in review
+`))
+  })
+
   test('a fix opens its task page, the change the note it began from, a call its entry', () => {
     const { lines } = drawn(QUICK_FIX, M_MARKS)
 

@@ -17,9 +17,12 @@
 //   read. An earlier round's report that does not read leaves the fix's
 //   rounds untold, said among the warnings.
 // - Where it stands: the close waiting on the person once its screen draws
-//   (finish.cjs, `closeVerdicts`); else working — stopped where every fix
-//   not ended waits on a question, never while the close waits. Once it
-//   closes, This session follows the session to All work (board.cjs).
+//   (finish.cjs, `closeVerdicts`); else working — stopped where nothing of
+//   its fixes can go on without an answer, by the build's rule, as the
+//   unit's standing reads it (board-standing.cjs, `tasksStopped`). Once a
+//   review is asked for at its close, it stands in the review as any unit
+//   does (board-review.cjs); once it closes, This session follows the
+//   session to All work (board.cjs).
 // - What waits on the person is the unit's one list (board-standing.cjs):
 //   the questions a fix's builder parked its task on, as the build's; each
 //   raise this conversation sealed at the quick-fix's place still waiting,
@@ -30,28 +33,27 @@
 // - CLAUDE'S CALLS are every current call of Claude's made in the
 //   quick-fix; REPLACES, for each current decision made there, the decision
 //   made in another unit its chain of replacements goes back to, past those
-//   made in the quick-fix, with its words, whose it was and the unit; both
-//   read in one read of the ledger.
+//   made in the quick-fix, with its words, whose it was and the unit's
+//   title; both read in one read of the ledger.
 // - THE RECORD is `summary.md`'s, each fix's under its title, once every
 //   fix has ended and one at least is done.
 // ---------------------------------------------------------------------------
 
 const { fact, placeFact } = require('../board-model.cjs');
-const { messageOf } = require('../../kernel/call.cjs');
 const { readShown } = require('../ledger-read.cjs');
 const { factsOf, madeOn, isCurrent } = require('../ledger-fold.cjs');
 const { shortId } = require('../ledger-ids.cjs');
 const { sealsAt, sealWaits } = require('../raise.cjs');
-const { wholeRounds, pairPassed, beingRead } = require('../round-report.cjs');
+const { pairPassed, beingRead } = require('../round-report.cjs');
 const { parseShownTask } = require('../task-id.cjs');
-const { quickFixBuild, fixesBegun, FIXES_PHASE } = require('../derivations.cjs');
+const { quickFixBuild, fixesBegun, startedOn, FIXES_PHASE } = require('../derivations.cjs');
 const { closeVerdicts } = require('../finish.cjs');
 const { summaryRecords, RECORD_SECTIONS } = require('../quick-fix-record.cjs');
-const { ROADMAP_SEED } = require('../inbox.cjs');
+const { seedOrigin } = require('../inbox.cjs');
 const { titlecase } = require('../conventions.cjs');
 const { projectName } = require('../state-checks.cjs');
 const { counted } = require('./map.cjs');
-const { taskLine, standingAt, questionsOf } = require('./board-build.cjs');
+const { taskLine, standingAt, questionsOf, roundsRead } = require('./board-build.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
 /** @typedef {import('../board-model.cjs').QuickFixView} QuickFixView */
@@ -64,13 +66,6 @@ const PHASE = 'implementation';
 /** Whether the unit is a quick-fix whose fixes are under way. @param {BoardAt} at */
 const fixing = ({ manifest }) => quickFixBuild(manifest) && fixesBegun(manifest) && manifest.status === 'in-progress';
 
-/** Where the note a unit began from came from: the inbox, the roadmap, or none. @param {Record<string, any>} manifest @returns {'inbox'|'roadmap'|null} */
-function seedOrigin(manifest) {
-  const [seed] = Array.isArray(manifest.seeds) ? manifest.seeds : [];
-  if (seed === undefined) return null;
-  return String(seed.source).startsWith(ROADMAP_SEED) ? 'roadmap' : 'inbox';
-}
-
 /** A fix's rounds when none is told. @type {FixLine['rounds']} */
 const NO_ROUNDS = Object.freeze({ sent_back: 0, reading: null, passed: null, settled: false });
 
@@ -82,15 +77,11 @@ const NO_ROUNDS = Object.freeze({ sent_back: 0, reading: null, passed: null, set
  */
 function roundsOf(at, task) {
   const ref = parseShownTask(at.unit, task);
-  try {
-    const rounds = wholeRounds(at.cwd, ref);
-    const last = rounds.at(-1);
-    const ended = last !== undefined && pairPassed(last) ? last : null;
-    return { sent_back: rounds.filter((round) => !pairPassed(round)).length, reading: beingRead(at.cwd, ref, at.session), passed: ended?.round ?? null, settled: ended !== null && !ended.passes };
-  } catch (err) {
-    at.warnings.push(`${task}'s rounds cannot be read — ${messageOf(err)}`);
-    return NO_ROUNDS;
-  }
+  const rounds = roundsRead(at, ref);
+  if (rounds === null) return NO_ROUNDS;
+  const last = rounds.at(-1);
+  const ended = last !== undefined && pairPassed(last) ? last : null;
+  return { sent_back: rounds.filter((round) => !pairPassed(round)).length, reading: beingRead(at.cwd, ref, at.session), passed: ended?.round ?? null, settled: ended !== null && !ended.passes };
 }
 
 /** The quick-fix's fixes, each as the build draws a task with its rounds, read once a call. @param {BoardAt} at @returns {FixLine[]} */
@@ -110,12 +101,6 @@ function progressOf(fixes) {
 
 /** Whether a fix has ended: done, or closed without being done. @param {FixLine} fix */
 const ended = ({ state }) => state === 'done' || state === 'closed';
-
-/** Whether every fix not ended waits on a question, one at least. @param {FixLine[]} fixes */
-function everyLeftParked(fixes) {
-  const left = fixes.filter((fix) => !ended(fix));
-  return left.length > 0 && left.every(({ state }) => state === 'waits');
-}
 
 /**
  * What the ledger holds of the quick-fix, in one read: every current call
@@ -169,9 +154,6 @@ const closeWait = (at) => at.once('quick-fix-close', () => {
   return verdicts === null ? null : { kind: 'finish', id: 'close', text: `Close: what was proven; ${verdictWords(verdicts)}`, page: null };
 });
 
-/** Whether a quick-fix's fixes have stopped (the header's). @param {BoardAt} at */
-const fixesStopped = (at) => closeWait(at) === null && everyLeftParked(fixesAt(at));
-
 /** Where the quick-fix stands (the header's). @param {BoardAt} at @returns {QuickFixView['standing']} */
 const standingOf = (at) => (closeWait(at) === null ? 'working' : 'close');
 
@@ -198,16 +180,15 @@ function quickFixView(at, waiting) {
       title: at.title,
       type: at.manifest.work_type,
       project: projectName(at.cwd),
-      started: typeof at.manifest.created === 'string' ? at.manifest.created : null,
+      started: startedOn(at.manifest),
       from: seedOrigin(at.manifest),
       change: String(at.manifest.description ?? ''),
       standing: standingOf(at),
-      stopped: fixesStopped(at),
       progress: progressOf(fixes),
       waiting,
       fixes,
       calls,
-      replaces,
+      replaces: replaces.map(({ id, text, by, unit_title: title }) => ({ id, text, by, unit_title: title })),
       record: recordOf(at, fixes),
     },
     questions: questionsOf(standingAt(at)),
@@ -218,12 +199,13 @@ function quickFixView(at, waiting) {
 const fixesWords = ({ done, total, written }) => (written ? `${done} of ${total} done` : 'no fix written yet');
 
 /**
- * The banner's facts in a quick-fix (20.2.4): the type, stopped where every
- * fix left waits on a question, and its fixes done of all; what waits on
- * the person is counted by the board (board.cjs).
- * @param {QuickFixView} view @returns {{state: 'running'|'needs', facts: import('../board-model.cjs').Fact[]}}
+ * The banner's facts in a quick-fix (20.2.4): the type, stopped where
+ * nothing of its fixes can go on, as the unit's standing reads it, and its
+ * fixes done of all; what waits on the person is counted by the board
+ * (board.cjs).
+ * @param {QuickFixView} view @param {boolean} stopped @returns {{state: 'running'|'needs', facts: import('../board-model.cjs').Fact[]}}
  */
-function quickFixBanner({ type, stopped, progress }) {
+function quickFixBanner({ type, progress }, stopped) {
   return {
     state: stopped ? 'needs' : 'running',
     facts: [placeFact(type), ...(stopped ? [placeFact('stopped')] : []), fact(fixesWords(progress))],
@@ -233,4 +215,4 @@ function quickFixBanner({ type, stopped, progress }) {
 /** How far a quick-fix's fixes have come, as its tab and All work say it. @param {BoardAt} at */
 const quickFixWords = (at) => fixesWords(progressOf(fixesAt(at)));
 
-module.exports = { quickFixView, quickFixBanner, raisedWaits, closeWait, fixesStopped, quickFixWords };
+module.exports = { quickFixView, quickFixBanner, raisedWaits, closeWait, quickFixWords };

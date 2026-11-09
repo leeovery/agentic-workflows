@@ -45,7 +45,7 @@ describe('a quick-fix\'s record, and where it came from, on the board (20.14)', 
     const { view, banner } = board();
 
     assert.deepStrictEqual([open.record, open.progress], [null, { done: 2, total: 3, written: true }]);
-    assert.deepStrictEqual([view.standing, view.stopped, view.progress], ['working', false, { done: 2, total: 2, written: true }]);
+    assert.deepStrictEqual([view.standing, view.progress], ['working', { done: 2, total: 2, written: true }]);
     assert.deepStrictEqual(banner, { name: 'Typo', state: 'running', facts: [place('quick-fix'), { text: '2 of 2 done', needs: false }] });
   });
 

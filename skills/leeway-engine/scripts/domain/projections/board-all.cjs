@@ -8,17 +8,18 @@
 // - Each unit's phase, and what waits on the person in it, counted, are its
 //   standing's (board-standing.cjs), as its tab and its banner have them,
 //   and the project's total sums them.
-// - How far a unit has come, by the phase it is in: finish waiting on the
-//   person; an epic's discovery its topics on the map, its discussion its
-//   topics decided of all; a bug's investigation how far its hunt has
-//   come; the specification where it stands, as its banner says it; the
-//   build its tasks done of all, the review its round, as its banner says
-//   it, a quick-fix its fixes done of all, its close waiting on the person
-//   as finish does, each stopped where nothing can go on; nothing for a
-//   linear unit's discussion, nor a build or review
-//   not run by its cut — under the old plan, its tracker not the cut's
-//   until 29.17. A unit's tracker is read once its build runs by its cut,
-//   one copy of its store a call.
+// - How far a unit has come, by the phase it is in: the gate ending it
+//   waiting on the person, by its name — finish, a quick-fix's close, or an
+//   investigation's conclude; an epic's discovery its topics on the map,
+//   its discussion its topics decided of all; a bug's investigation how far
+//   its hunt has come; the specification where it stands, as its banner
+//   says it; the build its tasks done of all, a quick-fix its fixes done of
+//   all, the review its round, as its banner says it — a quick-fix's too —
+//   each stopped where nothing can go on; nothing for a linear unit's
+//   discussion, nor a build or review not run by its cut — under the old
+//   plan, its tracker not the cut's until 29.17. A unit's tracker is read
+//   once its build runs by its cut, or a quick-fix's fixes have begun, one
+//   copy of its store a call.
 // - A session is in a unit where this one is, or another holds a presence
 //   in it.
 // - The roadmap is its waiting items, those no unit has pulled, under their
@@ -52,6 +53,12 @@ const { counted } = require('./map.cjs');
 /** Where a unit's build or review has stopped, as its row leads with it. @param {BoardAt} at */
 const stoppedWords = (at) => (standingOf(at) === 'stopped' ? 'stopped · ' : '');
 
+/** Whether a unit's tasks are its own, read by the cut or a quick-fix's: none under the old plan. @param {Record<string, any>} manifest */
+const ownTasks = (manifest) => buildByCut(manifest) || quickFixBuild(manifest);
+
+/** The gates that end a phase, each waiting on the person by its name: finish, a quick-fix's close, an investigation's conclude. */
+const GATES = Object.freeze(['finish', 'conclude']);
+
 /** How far a unit has come, by the phase it is in (the header's). @type {Readonly<Record<string, (at: BoardAt) => string>>} */
 const HOW_FAR = Object.freeze({
   discovery: (at) => (at.manifest.work_type === 'epic' ? `${counted(mapCount(at.cwd, at.manifest), 'topic')} on the map` : ''),
@@ -61,7 +68,7 @@ const HOW_FAR = Object.freeze({
   build: (at) => (buildByCut(at.manifest) ? `${stoppedWords(at)}${buildWords(buildView(at).view)}` : ''),
   implementation: (at) => (quickFixBuild(at.manifest) && tasksBegun(at.manifest) ? `${stoppedWords(at)}${quickFixWords(at)}` : ''),
   review: (at) => {
-    if (!buildByCut(at.manifest)) return '';
+    if (!ownTasks(at.manifest)) return '';
     const { round, words } = roundWords(at);
     return `${stoppedWords(at)}${words ?? `round ${round} reading`}`;
   },
@@ -70,7 +77,8 @@ const HOW_FAR = Object.freeze({
 
 /** How far a unit has come (the header's). @param {BoardAt} at @param {string} phase */
 function workStanding(at, phase) {
-  if (waitingOn(at).some(({ kind }) => kind === 'finish')) return quickFixBuild(at.manifest) ? 'close waits on you' : 'finish waits on you';
+  const gate = waitingOn(at).find(({ kind }) => GATES.includes(kind));
+  if (gate !== undefined) return `${gate.id} waits on you`;
   return /** @type {Record<string, (at: BoardAt) => string>} */ (HOW_FAR)[phase]?.(at) ?? '';
 }
 

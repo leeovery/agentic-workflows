@@ -304,6 +304,26 @@ LATELY ────────────────────────�
     expect(text.join('\n')).not.toContain('held')
   })
 
+  test('on the session\'s own unit, the questions the board holds stand first, and what is asked in the conversation beside them is listed under its own heading, counted alone', () => {
+    const both = {
+      ...MINT,
+      waiting: [
+        { kind: 'question', id: 'Q1', text: 'Q1 Should the diff keep its header?', page: 'task:2.1' },
+        { kind: 'raised', id: 'Kp2wQx', text: 'Should an oversized diff still be sent?', page: null },
+      ],
+    } as View
+
+    expect(drawn(UNIT, both, { waiting: HELD }).text.slice(6, 11)).toEqual(
+      block(`
+WAITING ON YOU · held
+⚑ Q1 held
+⚑ Q2 held
+WAITING ON YOU ───────────────── 1 · asked in the conversation
+⚑ Should an oversized diff still be sent?
+`),
+    )
+  })
+
   test('in its specification, a gap is asked in the conversation and the phase waits on the person; the phase after waits on it', () => {
     const specifying = {
       ...MINT,

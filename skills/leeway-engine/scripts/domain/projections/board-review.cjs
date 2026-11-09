@@ -36,9 +36,10 @@
 //   the tracker (board.cjs).
 // - What waits on the person is the unit's one list (board-standing.cjs):
 //   the questions the review waits on, each a press can queue, or finish
-//   once the phase is over and no question waits (D18). The review has
-//   stopped where nothing of it can go on without an answer, as the stop
-//   has it (board-build.cjs).
+//   once the phase is over and no question waits (D18), a quick-fix's its
+//   close. The review has stopped where nothing of it can go on without an
+//   answer, as the unit's standing works it out once (board-standing.cjs,
+//   `tasksStopped`).
 // - A check opens on its page (20.10.3): where it stands in the round that
 //   recorded it, or round 1's at the change's tips while it is read, with
 //   its scenario's words from the spec — a quick-fix's as its fixes'
@@ -48,10 +49,11 @@
 //   recorded — one opened by its report item while the round was read, as
 //   the round's finding answering that item — else as its reviewer's report
 //   holds it.
-// - The banner (D36, D37): finish waiting on the person; else stopped
-//   where nothing can go on, the round reading or, once recorded, a failing
-//   round's fix tasks building while any task of its fix phase is not done
-//   and it has not stopped, a round that ended the phase passed or settled;
+// - The banner (D36, D37): finish waiting on the person, a quick-fix's
+//   close named so; else stopped where nothing can go on, the round
+//   reading or, once recorded, a failing round's fix tasks building while
+//   any task of its fix phase is not done and it has not stopped, a round
+//   that ended the phase passed or settled;
 //   what waits on the person counted from the unit's one list, flagged
 //   (board-standing.cjs).
 // ---------------------------------------------------------------------------
@@ -68,6 +70,7 @@ const { copiedTasks } = require('../task-verbs.cjs');
 const { quickFixBuild, FIXES_PHASE } = require('../derivations.cjs');
 const { acceptanceOf, fixScenarios } = require('../fix-acceptance.cjs');
 const { buildView, taskLine, standingAt, reviewStandingAt, readingAt, scenarioWording } = require('./board-build.cjs');
+const { tasksStopped } = require('./board-standing.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
 /** @typedef {import('../board-model.cjs').ReviewView} ReviewView */
@@ -276,7 +279,7 @@ function reviewView(at, waiting) {
       built,
       round,
       waiting,
-      stopped: build.view.progress.stopped,
+      stopped: tasksStopped(at),
       ...(record === undefined ? roundUnderWay(at, standing, round) : roundRecorded(at, standing, record, round)),
     },
     questions: build.questions,
@@ -297,22 +300,23 @@ function roundWords(at) {
   if (record === undefined) return { round, words: null };
   if (record.passed) return { round, words: `round ${round} passes` };
   if (record.settled !== null) return { round, words: `round ${round} settled` };
-  const building = standing.waiting.length > 0 && !buildView(at).view.progress.stopped;
+  const building = standing.waiting.length > 0 && !tasksStopped(at);
   return { round, words: `round ${round} fails${building ? ' · fix tasks building' : ''}` };
 }
 
 /**
  * The banner's facts in the review phase (the header's): the type and the
- * phase, then finish waiting on the person, from the unit's one list; else
- * stopped where nothing can go on, and the round reading or where it stands
- * once recorded. What waits on the person is counted by the board
- * (board.cjs).
+ * phase, then finish waiting on the person, from the unit's one list, by
+ * its name — a quick-fix's its close; else stopped where nothing can go
+ * on, and the round reading or where it stands once recorded. What waits
+ * on the person is counted by the board (board.cjs).
  * @param {ReviewView} view @param {ReturnType<typeof roundWords>} shown @param {import('../board-model.cjs').WaitingLine[]} waiting
  * @returns {{state: 'running'|'needs', facts: {text: string, needs: boolean}[]}}
  */
 function reviewBanner(view, { round, words }, waiting) {
   const where = [placeFact(view.type), placeFact('review')];
-  if (waiting.some(({ kind }) => kind === 'finish')) return { state: 'needs', facts: [...where, fact('finish waits on you')] };
+  const finish = waiting.find(({ kind }) => kind === 'finish');
+  if (finish !== undefined) return { state: 'needs', facts: [...where, fact(`${finish.id} waits on you`)] };
   return { state: view.stopped ? 'needs' : 'running', facts: [...where, ...(view.stopped ? [placeFact('stopped')] : []), fact(words ?? `round ${round} reading`)] };
 }
 
