@@ -4,7 +4,8 @@
 // The landing conformance suite's quick-fix moved to a feature mid-review
 // (19.5.9, 19.5.15, 19.5.16): its review's fix tasks are its tasks, so the
 // move treats them as its fixes — round 1 failed, its fix task 2.1 open,
-// the yes closes 2.1, takes every phase the quick-fix wrote out of the
+// the yes closes 2.1, drops the quick-fix's closed finish checklist so the
+// feature works its own, takes every phase the quick-fix wrote out of the
 // tracker, phase 2 among them, and sets its review's folder aside in the
 // topic's earlier material, whose round report the topic's first opening
 // reads; the feature then writes its own phases 1 and 2, and holds no
@@ -21,7 +22,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 
-const { ok, okSections, refuses, writeState, layout, statePath } = require('./engine-harness.cjs');
+const { ok, okSections, refuses, writeState, readManifest, layout, statePath } = require('./engine-harness.cjs');
 const { UNIT, quickFixConformance, checklistClosed } = require('./quick-fix-world.cjs');
 const { firstRoundFailed } = require('./quick-fix-review-by-hand.cjs');
 const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
@@ -46,12 +47,13 @@ for (const { name } of listDrivers('landing')) {
       okSections(at, ['workunit', 'move', UNIT, '--to', 'feature', '--file', writeState(at, layout.cache('scratch', 'move.json'), JSON.stringify({ description: `The ${UNIT} work, as feature work.`, reason: 'It needs a decision.', brief }))], as());
       const { next } = run(['gate', 'start this work', '--pick', 'y']);
       const moved = run(next.argv);
+      const { checklists } = readManifest(at, UNIT);
       const unwritten = [1, 2].map((phase) => refuses(at, ['task', 'list', UNIT, String(phase)], as()).error);
       const earlier = statePath(at, layout.unit(UNIT, 'topics', UNIT, 'earlier', 'review', 'round-1.md'));
       const opening = okSections(at, ['enter', 'discussion', UNIT], as()).sections.split('\n').filter((line) => line.startsWith('earlier review round: '));
       const written = [1, 2].map((phase) => run(['task', 'phase', UNIT, String(phase), '--title', `The feature's phase ${phase}`]).phase);
 
-      assert.deepStrictEqual([moved.work_type, moved.fixes_closed], ['feature', ['2.1']]);
+      assert.deepStrictEqual([moved.work_type, moved.fixes_closed, checklists?.finish], ['feature', ['2.1'], undefined]);
       assert.deepStrictEqual(unwritten, [`phase 1 of ${UNIT} is not written`, `phase 2 of ${UNIT} is not written`]);
       assert.deepStrictEqual([fs.existsSync(statePath(at, layout.unit(UNIT, 'review'))), fs.existsSync(earlier), opening], [false, true, [`earlier review round: ${earlier}`]]);
       assert.deepStrictEqual([written, run(['task', 'list', UNIT, '2']).tasks], [[1, 2], []]);

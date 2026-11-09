@@ -225,16 +225,17 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
 });
 
 describe('finish yes <quick-fix> (19.5.15, 24.1.2)', () => {
-  it('refuses while the checkout holds changes not committed, landing nothing; then lands the fixes, puts the checkout back on the branch it lands on, completes the unit and names the start menu — its folder holding build/ and summary.md, no topics/ and no spec.md (4.S23)', () => {
+  it('refuses while the checkout holds changes not committed, landing nothing — land finish and land phase as it does; then lands the fixes, puts the checkout back on the branch it lands on, completes the unit and names the start menu — its folder holding build/ and summary.md, no topics/ and no spec.md (4.S23)', () => {
     dir = world();
     closeable();
     fs.writeFileSync(path.join(dir, 'src', 'stray.js'), 'stray\n');
-    const dirty = refused(['finish', 'yes', UNIT]);
     const main = git(dir, ['rev-parse', 'main']).trim();
+    const dirty = [refused(['finish', 'yes', UNIT]), refused(['land', 'finish', UNIT]), refused(['land', 'phase', UNIT, '1']), git(dir, ['rev-parse', 'main']).trim()];
     fs.rmSync(path.join(dir, 'src', 'stray.js'));
     const done = run(['finish', 'yes', UNIT]);
 
-    assert.strictEqual(dirty, `finish yes: ${UNIT}'s tasks were built in the project's own checkout, which holds changes not committed — src/stray.js — so nothing was landed: commit them or set them aside, then close it again`);
+    const stray = `${UNIT}'s tasks were built in the project's own checkout, which holds changes not committed — src/stray.js — so nothing was landed: commit them or set them aside, then close it again`;
+    assert.deepStrictEqual(dirty, [`finish yes: ${stray}`, `land: ${stray}`, `land: ${stray}`, main]);
     assert.deepStrictEqual({ ...done, landed: done.landed.map((/** @type {any} */ { repo, into, merged }) => ({ repo, into, merged })) }, {
       ok: true, unit: UNIT, landed: [{ repo: '.', into: 'main', merged: ['1.1', '1.2'] }], checkout: 'main', completed_at: readManifest(dir, UNIT).completed_at,
       committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(), next: { kind: 'handoff', skill: 'leeway', args: [] },

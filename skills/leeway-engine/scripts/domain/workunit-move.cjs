@@ -65,8 +65,9 @@
 //   (`quickFixClose`, landing.cjs), one the person closed by hand read as
 //   none open — after the phase, so a yes run again reads no landing of
 //   it; the old type's files set aside; the brief written. Last, the unit
-//   re-typed with its new description, a quick-fix's `fixes` and a bugfix's investigation item
-//   dropped, so the new type starts as one before its spec, and its
+//   re-typed with its new description, a quick-fix's `fixes` and its
+//   finish checklist and a bugfix's investigation item dropped, so the new
+//   type starts as one before its spec and works its own finish, and its
 //   registration, in one save. The knowledge base is re-indexed, its
 //   chunks carrying the type (warn-don't-block), and one commit takes the
 //   unit, the project manifest, the tracker's store where the fixes began,
@@ -242,15 +243,20 @@ function stageMove(cwd, unit, { to, file }) {
 
 /**
  * The manifest re-typed in place, with its new description: a quick-fix's
- * fixes and a bugfix's investigation item dropped, so the new type starts
- * as one before its spec, and the new type's one topic added to its first
- * phase, unstarted.
+ * fixes and its finish checklist — its close's, closed where a review was
+ * asked — and a bugfix's investigation item dropped, so the new type starts
+ * as one before its spec and works its own finish, and the new type's one
+ * topic added to its first phase, unstarted.
  * @param {Record<string, any>} manifest @param {string} to @param {string} description
  */
 function retype(manifest, to, description) {
   manifest.work_type = to;
   manifest.description = description;
   delete manifest.fixes;
+  if (manifest.checklists !== undefined) {
+    delete manifest.checklists.finish;
+    if (Object.keys(manifest.checklists).length === 0) delete manifest.checklists;
+  }
   const phases = ensureContainer(manifest, 'phases', 'phases');
   delete phases.investigation;
   const opens = OPENS_IN[to];

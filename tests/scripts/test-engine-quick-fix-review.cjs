@@ -33,7 +33,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  ok, okSections, output, refusedPristine, sectionOf, git, statePath, layout, writeState, readManifest, fixtureFrom, cleanupFixture, createFile, head, lastMessage, FROZEN_AT,
+  ok, okSections, output, refusedPristine, sectionOf, holdLock, lockAttempts, git, statePath, layout, writeState, readManifest, fixtureFrom, cleanupFixture, createFile, head, lastMessage, FROZEN_AT,
 } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const {
@@ -167,21 +167,25 @@ describe('enter review <quick-fix>: one area, the change (19.5.14, F3)', () => {
     ]);
   });
 
-  it('draws on the board as any unit\'s review: its one area and the tests held against its fixes\' acceptance, each check not proven at the change\'s tip worded as its fix words it, and so its page (20.10)', () => {
+  it('draws on the board as any unit\'s review: its one area and the tests held against its fixes\' acceptance, each check not proven at the change\'s tip worded as its fix words it, and so its page (20.10) — drawn while a peer holds the writer lock, never trying it', (t) => {
     dir = world();
     run(['review', 'ask', UNIT]);
     entered();
     writeState(dir, layout.unit(UNIT, 'build', 'runs', '1.S1', 'run-001.json'), JSON.stringify({
       verdict: 'pass', unfixed: false, at: FROZEN_AT, checkout: dir, commits: [{ repo: '.', commit: git(dir, ['rev-parse', BRANCH]).trim() }], task: null, evidence: [], recordings: [],
     }));
+    const lock = holdLock(statePath(dir, layout.lock));
+    const attempts = lockAttempts(t, lock, () => { throw new Error('the board waited on the writer lock'); });
     const { view } = run(['board', 'sess-1']);
+    const page = run(['board', 'sess-1', '--page', 'check:1:2.S1', '--page-unit', UNIT]).view.text;
     const words = 'Given the help, when it is read, then it names --colour.';
 
-    assert.deepStrictEqual({ kind: view.kind, areas: view.areas.map(({ area, title, state }) => ({ area, title, state })), notProven: view.not_proven, page: run(['board', 'sess-1', '--page', 'check:1:2.S1', '--page-unit', UNIT]).view.text }, {
+    assert.deepStrictEqual({ kind: view.kind, areas: view.areas.map(({ area, title, state }) => ({ area, title, state })), notProven: view.not_proven, page, attempts }, {
       kind: 'review',
       areas: [{ area: '1', title: 'The change', state: 'waiting' }, { area: 'tests', title: 'Tests held against the fixes\' acceptance', state: 'waiting' }],
       notProven: [{ round: 1, scenario: '2.S1', standing: 'not proven', text: words }],
       page: words,
+      attempts: [],
     });
   });
 });

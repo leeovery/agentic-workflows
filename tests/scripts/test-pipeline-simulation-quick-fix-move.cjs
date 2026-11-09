@@ -5,7 +5,8 @@
 // feature through start this work's screen, its pipeline carrying on to the
 // build — ready to build showing the call its fix made among Claude's, the
 // build's task writer's brief and task 1.1 meeting none of the quick-fix's
-// calls — or to a bugfix, handed to its investigation (19.5.9).
+// calls — or to a bugfix, handed to its investigation (19.5.9); and one
+// moved mid-review, its closed finish checklist dropped with its fixes.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -19,7 +20,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const {
   Sim, sessionLog, handoff, answerGate, discussed, briefDraft, specWritten, specReviewed, cutTheSpec, readyToBuild, intoTheBuild,
-  linearBuildPick, buildEntry, briefOf, writePhaseTasks, startPhase,
+  linearBuildPick, buildEntry, briefOf, writePhaseTasks, startPhase, writeTasks, finishClosed, reviewNext,
 } = require('./pipeline-world.cjs');
 
 /**
@@ -93,6 +94,27 @@ describe('pipeline simulation: quick-fix moves', () => {
     sim.run(['task', 'start', wu, '1.1']);
     const page = JSON.parse(sim.read(['board', sim.env.CLAUDE_CODE_SESSION_ID, '--tab', 'unit', '--page', 'task:1.1'])).view;
     assert.deepStrictEqual([page.kind, page.calls], ['task', []]);
+  });
+
+  it('quick-fix moved to a feature mid-review: its closed finish checklist dropped with its fixes, the feature handed to its discussion with a finish of its own to work', () => {
+    const wu = 'reviewed';
+    sim.run(['workunit', 'create', wu, 'quick-fix', '--description', 'Looked small', '--session-log-file', sessionLog(sim, wu)]);
+    sim.run(['enter', 'implementation', wu]);
+    const [fix] = writeTasks(sim, wu, 1, [{ title: 'Spell the flag --colour', type: 'fix', reference: 'none', scenarios: ['1.S1 Given the flag, when it is passed, then it reads --colour.'] }]);
+    sim.run(['task', 'start', wu, fix]);
+    sim.write('src/flag.js', '--colour\n');
+    sim.run(['commit', '--paths', 'src/flag.js', '--task', wu, fix, '-m', `fix(${wu}): spell the flag --colour`]);
+    sim.run(['quick-fix', 'record', wu, fix, '--file', sim.write(`.leeway/.cache/${wu}/build/record.md`, '## What changed\nThe flag.\n\n## Why\nIt was spelt the American way.\n\n## Leaves out\nOld scripts.\n')]);
+    sim.run(['land', 'open', wu, fix]);
+    sim.run(['task', 'done', wu, fix]);
+    sim.write(`.leeway/${wu}/build/log.md`, '# The fixes\n');
+    finishClosed(sim, wu);
+    sim.render(['finish', wu], { expect: 'content' });
+    sim.run(answerGate(sim, 'finish', '--pick', 'r').next.argv);
+    reviewNext(sim, wu);
+
+    const { next } = movedTo(sim, wu, 'feature');
+    assert.strictEqual(handoff(sim, `/${next.skill} ${next.args.join(' ')}`).text, `Invoke \`/leeway-discussion-process feature ${wu}\`.`);
   });
 
   it('quick-fix moved to a bugfix hands straight to its investigation', () => {

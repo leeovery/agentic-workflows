@@ -59,7 +59,8 @@
 // - What the yes stands on before it lands anything is `land finish`'s
 //   refusal too, and a quick-fix's `land phase`'s, which lands its one pull
 //   request whole (landing.cjs): one read, the screen's standing and no
-//   verdict still to ask (`finishLandRefusal`), so neither lands what the
+//   verdict still to ask, a quick-fix's checkout clean among it
+//   (`finishLandRefusal`, `refuseLanding`), so neither lands what the
 //   other would refuse.
 // ---------------------------------------------------------------------------
 
@@ -219,32 +220,44 @@ function nextAfterFinish(manifest) {
 const VERDICT_OWED = 'a verdict is still to ask — render finish asks each before the yes';
 
 /**
+ * Refuse a finish that stands from landing: a verdict still to ask, or, for
+ * a quick-fix, the project's checkout holding changes not committed
+ * (fix-branch.cjs).
+ * @param {string} cwd @param {string} unit @param {{verdict: unknown, fixes: TaskDetail[]|null}} standing
+ */
+function refuseLanding(cwd, unit, { verdict, fixes }) {
+  if (verdict !== null) throw new Error(VERDICT_OWED);
+  if (fixes !== null) refuseDirtyClose(cwd, unit);
+}
+
+/**
  * Why the unit's finish cannot land yet, as the yes refuses before it lands
- * anything (the header's): what its screen stands on refused, or a verdict
- * still to ask — null where it can.
+ * anything (the header's): what its screen stands on refused, a verdict
+ * still to ask, or a quick-fix's checkout holding changes not committed —
+ * null where it can.
  * @param {string} cwd @param {string} unit @returns {string|null}
  */
 function finishLandRefusal(cwd, unit) {
   try {
-    return standing(cwd, unit).verdict === null ? null : VERDICT_OWED;
+    refuseLanding(cwd, unit, standing(cwd, unit));
+    return null;
   } catch (err) {
     return messageOf(err);
   }
 }
 
 /**
- * Every phase still standing landed, refused while a verdict waits — for a
- * quick-fix, while the project's checkout holds changes not committed, and
- * the checkout then put back on the branch it lands on — a refusal carrying
- * what finish's standing warned.
+ * Every phase still standing landed, refused as `refuseLanding` refuses,
+ * and for a quick-fix the checkout then put back on the branch it lands
+ * on — a refusal carrying what finish's standing warned.
  * @param {string} cwd @param {string} unit @param {{verdict: unknown, warnings: string[], fixes: TaskDetail[]|null}} standing
  * @returns {{repos: Record<string, any>[], warnings?: string[], checkout?: string}}
  */
-function landStanding(cwd, unit, { verdict, warnings, fixes }) {
+function landStanding(cwd, unit, standing) {
+  const { warnings, fixes } = standing;
   return carryingAll(warnings, () => {
-    if (verdict !== null) throw new Error(VERDICT_OWED);
+    refuseLanding(cwd, unit, standing);
     if (fixes === null) return landFinish(cwd, unit);
-    refuseDirtyClose(cwd, unit);
     const landed = landFinish(cwd, unit);
     const checkout = checkOutLanding(cwd, unit);
     return checkout === null ? landed : { ...landed, checkout };
