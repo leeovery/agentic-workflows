@@ -1,4 +1,4 @@
-// Portal's m-marks quick-fix as engine board answers it, its one fix done and its close waiting on the person — §20.14's second drawing — held to its shape by tests/scripts/test-engine-board-quick-fix.cjs.
+// Portal's m-marks quick-fix as engine board answers it, its one fix done and its close waiting on the person — §20.14's second drawing — held to its shape by tests/scripts/test-engine-board-quick-fix-waits.cjs.
 export default {
   kind: 'quick-fix',
   unit: 'm-marks-highlighted-on-entry',
