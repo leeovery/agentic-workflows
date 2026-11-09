@@ -321,6 +321,7 @@ describe('every screen names a topic through one helper', () => {
     ],
     'a work unit, or the project': [
       'board.cjs › unitAt › unit',
+      'projections/board-quick-fix.cjs › ledgerAt › unit',
       'leeway-continue-epic/scripts/gateway.cjs › view › workUnit',
       'mail.cjs › sendReportOf › unit',
       'mail.cjs › topicSender › unit',
