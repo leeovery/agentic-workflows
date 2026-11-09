@@ -5,14 +5,14 @@
 // task of its round built on the quick-fix's one branch through the door, a
 // later round passing and handing back to the close, whose checklist then
 // carries the review passed and whose yes lands the fixes and the fix task
-// in one commit (19.5.15); a question asked in it still open holding the
-// close (19.5.25); a round passing with a nit handing back once its fix
-// task is done or closed, or once the note its builder left is answered;
-// `land finish` refused while the review asked for has not passed; a merge
-// by hand of the fixes leaving the review's fix task still to land, the
-// close's yes saying it merges; and its phases and tasks drawn as a
-// quick-fix's (build-screens.cjs). Its ask, entry and briefs:
-// test-engine-quick-fix-review.cjs.
+// in one commit (19.5.15); a question asked in it still open named waiting
+// at its entry after a /clear and in its recovery note, and holding the
+// close (19.5.25); `land finish` refused while the review asked for has not
+// passed; a merge by hand of the fixes leaving the review's fix task still
+// to land, the close's yes saying it merges; and its phases and tasks drawn
+// as a quick-fix's (build-screens.cjs). Its ask, entry and briefs:
+// test-engine-quick-fix-review.cjs; a round passing with a nit:
+// test-engine-quick-fix-review-nits.cjs.
 //
 // Layer: git. World: quick-fix-review-world.cjs, the close reached, built
 // once and copied. Each test's conversation keeps its records in a config
@@ -24,14 +24,14 @@ require('./hermetic-env.cjs');
 const { describe, it, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
-const { ok, okSections, output, sectionOf, git, statePath, layout, writeState, createFile, cleanupFixture } = require('./engine-harness.cjs');
+const { okSections, output, sectionOf, git, statePath, layout, createFile, cleanupFixture } = require('./engine-harness.cjs');
 const { UNIT, BRANCH } = require('./quick-fix-world.cjs');
 const { ledgerReadHelpers } = require('./ledger-world.cjs');
-const { CLOSE, closeReached: world, quickFixReview } = require('./quick-fix-review-world.cjs');
+const { closeReached: world, quickFixReview } = require('./quick-fix-review-world.cjs');
 
 let dir = ''; // the project
 const {
-  as, run, refused, payload, entered, firstRoundFailed, fixTaskBuilt, nitRoundPassed, nitTaskBuilt, secondRoundPassed, closeMenu,
+  as, run, refused, entered, firstRoundFailed, fixTaskBuilt, secondRoundPassed, closeMenu,
 } = quickFixReview(() => dir);
 
 afterEach(() => {
@@ -113,37 +113,6 @@ describe('19.S23: the review asked for runs over the quick-fix\'s record and its
     assert.deepStrictEqual([again.includes(inFlight), note.split('\n').includes(inFlight), fresh.includes(inFlight)], [true, true, true]);
     assert.doesNotMatch(note, /could not be read/);
     assert.ok(note.split('\n').includes(`- ${statePath(dir, layout.unit(UNIT, 'summary.md'))}`), 'the quick-fix\'s record re-read in full, as the spec is');
-  });
-
-  it('a round that passes with a nit to fix hands back to nothing while its fix task waits; its fix task done hands back to the close', () => {
-    dir = world();
-    const passed = nitRoundPassed();
-    const done = nitTaskBuilt();
-
-    assert.deepStrictEqual([passed.passed, passed.ends, passed.next], [true, true, undefined]);
-    assert.deepStrictEqual(done.next, CLOSE);
-  });
-
-  it('its nit\'s fix task closed hands back to the close, as one done does', () => {
-    dir = world();
-    nitRoundPassed();
-    run(['task', 'start', UNIT, '3.1']);
-
-    assert.deepStrictEqual(run(['task', 'close', UNIT, '3.1', '--reason', 'The help names it once, as the docs do.']).next, CLOSE);
-  });
-
-  it('its nit\'s fix task\'s builder leaving a note, the task done hands back to nothing, and review notes, answering the note, to the close', () => {
-    dir = world();
-    nitRoundPassed();
-    const note = run(['task', 'note', UNIT, '--file', writeState(dir, layout.cache('note.md'), 'The man page spells it --color too.')]).number;
-    const done = nitTaskBuilt();
-    const { ask, decide } = ledgerReadHelpers(() => dir);
-    const call = decide(`${UNIT}.review`, ask(`${UNIT}.review`, 'Is the man page this change\'s?'), 'Dropped: the man page is generated.');
-    const answered = run(['review', 'notes', UNIT, '--file', payload('notes.json', {
-      findings: [{ area: 'notes', scope: 'out', call: 'nit', text: 'The man page spells it --color.', from: [`notes#${note}`], drop: 'The man page is generated.', ledger: call }],
-    })]);
-
-    assert.deepStrictEqual([done.next, answered.next], [undefined, CLOSE]);
   });
 
   it('its phases and tasks are a quick-fix\'s: its fixes, then its review\'s fix phase, the marker naming its review\'s round and no position', () => {

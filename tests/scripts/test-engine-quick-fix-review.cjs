@@ -13,7 +13,8 @@
 // and the area pair's and the test surface's briefs held against the
 // quick-fix's record and its fixes' acceptance in their own words, never a
 // spec (domain/brief-records.cjs, domain/fix-acceptance.cjs, 19.5.24). Its
-// rounds and its close: test-engine-quick-fix-review-rounds.cjs.
+// rounds and its close: test-engine-quick-fix-review-rounds.cjs and
+// -review-nits.cjs.
 //
 // Layer: git. World: quick-fix-review-world.cjs, the close reached, built
 // once and copied. Each test's conversation keeps its records in a config

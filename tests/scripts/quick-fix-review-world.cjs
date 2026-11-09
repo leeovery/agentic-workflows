@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // What the suites of a quick-fix's review share
-// (test-engine-quick-fix-review.cjs, -review-rounds.cjs and
+// (test-engine-quick-fix-review.cjs, -review-rounds.cjs, -review-nits.cjs and
 // test-engine-board-quick-fix-review.cjs): its one area (`AREA`), the
 // finding round 1's first reader of the change makes, which fix task 2.1
 // fixes (`FOUND`), and where the review hands back once it is over, its
