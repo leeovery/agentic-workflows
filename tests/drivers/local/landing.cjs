@@ -9,7 +9,8 @@
 // land. A merge there is refused while its default branch's checkout is in
 // the middle of a merge. A person merges a quick-fix's branch by hand in
 // their own terminal, squashed, with a merge commit or fast-forwarded — the
-// last two keeping its own commits; and deletes a branch.
+// last two keeping its own commits; and deletes a branch. A quick-fix is
+// open in a repository while its opening's ref is there.
 
 const fs = require('fs');
 const path = require('path');
@@ -47,6 +48,8 @@ module.exports = {
     const phases = git(dir, ['for-each-ref', '--format=%(refname:lstrip=2)', `refs/heads/feat/${UNIT}-phase-*`]).split('\n').filter(Boolean);
     return [...new Set(phases.flatMap((branch) => landedOn(dir, branch).map(({ task }) => task)))].sort();
   },
+  /** Whether the quick-fix `unit` is open in the repository at `dir`: its opening's ref there. @param {string} dir @param {string} unit */
+  quickFixOpen: (dir, unit) => git(dir, ['for-each-ref', '--format=%(refname)', `refs/leeway/quick-fix/${unit}/open`]).trim() !== '',
   /** A merge in the repository at `dir` refused until `undo`: its checkout in the middle of a merge, as a merge stopped there leaves it. @param {string} dir */
   refuseMerge: (dir) => {
     const marker = path.resolve(dir, git(dir, ['rev-parse', '--git-path', 'MERGE_HEAD']).trim());

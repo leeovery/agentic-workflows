@@ -32,7 +32,9 @@
 //   branch alone. Each repository nested in the project that a quick-fix's
 //   task commits in is put on the quick-fix's branch there first, made
 //   where it lacks one (`onWorkBranch`, fix-branch.cjs), so its share of the
-//   fix lands with the quick-fix's pull request there (7.2.24).
+//   fix lands with the quick-fix's pull request there (7.2.24), and, once
+//   the checks pass, recorded in the unit's state before the commit
+//   (`recordWork`), its state commit's warnings the answer's.
 // - The project's checks run before the commit (15.8.3): its tests,
 //   `environment.run.tests`, then each of its linters, `environment.linters`
 //   (environment.cjs), in that order, each by `sh -c` in the code root of the
@@ -259,6 +261,17 @@ function onWorkBranch(cwd, ref, manifest, repos) {
   if (quickFixBuild(manifest)) fixBranch().putOnBranch(cwd, ref.unit, repos);
 }
 
+/**
+ * Each nested repository a quick-fix's task commits in recorded in the
+ * unit's state, before the commit (`recordRepos`, fix-branch.cjs): what
+ * that warned of; nothing for a task of any other unit.
+ * @param {string} cwd @param {TaskRef} ref @param {Record<string, any>} manifest the unit's @param {import('../kernel/repos.cjs').Repo[]} repos those the commit commits in
+ * @returns {string[]}
+ */
+function recordWork(cwd, ref, manifest, repos) {
+  return quickFixBuild(manifest) ? fixBranch().recordRepos(cwd, ref.unit, repos) : [];
+}
+
 /** A work commit's message: Claude's, and the trailer naming its task. @param {string} message @param {TaskRef} ref */
 function workMessage(message, ref) {
   const text = message.trimEnd();
@@ -267,4 +280,4 @@ function workMessage(message, ref) {
   return `${text}${trailers ? '\n' : '\n\n'}${TRAILER}: ${taskId(ref)}`;
 }
 
-module.exports = { TRAILER, inFlightTask, onWorkBranch, checksFor, runChecks, workMessage };
+module.exports = { TRAILER, inFlightTask, onWorkBranch, checksFor, runChecks, recordWork, workMessage };

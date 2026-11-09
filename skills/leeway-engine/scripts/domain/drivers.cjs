@@ -215,19 +215,22 @@ const METHODS = Object.freeze({
  * `finished` lets go, once finish has merged them all, what the driver
  * keeps of the unit there.
  * A quick-fix lands as one pull request, its branch's, in each repository
- * it touches (landing.cjs): `quickFixPull` answers its heads — the one
- * open's, null where none is, and those of the ones merged, each a commit
- * the repository holds — the host's copy of the branch, held here, null
- * where the host has none, and the driver's words for a pull request closed
- * by hand, null where the latest was not — writing nothing but heads
- * fetched; `openQuickFix` opens it at the branch as it stands, under the
+ * it touches (landing.cjs): `quickFixPull` answers its heads, of the pull
+ * requests opened from the repository itself, never a fork, since the time
+ * the seam names — the one open's, null where none is, and those of the
+ * ones merged, each a commit the repository holds — the host's copy of the
+ * branch, held here, null where the host has none, and the driver's words
+ * for a pull request closed by hand, null where the latest was not —
+ * writing nothing but heads fetched; `openQuickFix` opens it at the branch
+ * as it stands, under the
  * landing's message, a push replacing the host's copy only while it stands
  * where the landing read it, `already` where it is; `mergeQuickFix` merges
  * it, the branch squashed onto the branch it lands on as one commit under
  * that message, each submodule the landing names pointed as it names it,
  * or, given no landing, brings that branch here to the host's, answering
  * `already`; and `closeQuickFix` closes the one open unmerged, as a move
- * closes it, answering whether it did. Where the host can, run
+ * closes it, answering whether it did — the last three reading the pull
+ * requests as `quickFixPull` does. Where the host can, run
  * from a repository's checkout against its remote's repository:
  * `protectBranch` sets a rule refusing a branch's deletion and any push to
  * it that is not a fast-forward (4.4.6), and `setSquashDefault` makes a
@@ -247,10 +250,10 @@ const METHODS = Object.freeze({
  *   chain: (ctx: LandingContext, ref: TaskRef) => {stack: string[]}|null,
  *   mergePhase: (ctx: LandingContext, phase: number) => {into: string, merged: string[], warnings?: string[]}|{into: string, already: true, warnings?: string[]}|null,
  *   nextMerge: (ctx: LandingContext) => {phase: number, merge: () => {into: string, merged: string[], warnings?: string[]}}|null,
- *   quickFixPull: (ctx: LandingContext, branch: string) => QuickFixPull,
+ *   quickFixPull: (ctx: LandingContext, branch: string, since: string|null) => QuickFixPull,
  *   openQuickFix: (ctx: LandingContext, landing: QuickFixTask) => {already?: true, warnings?: string[]},
  *   mergeQuickFix: (ctx: LandingContext, landing: QuickFixTask|null) => {into: string, merged: string[], warnings?: string[]}|{into: string, already: true, warnings?: string[]},
- *   closeQuickFix: (ctx: LandingContext, branch: string) => {closed: boolean},
+ *   closeQuickFix: (ctx: LandingContext, branch: string, since: string|null) => {closed: boolean},
  *   finished?: (ctx: LandingContext) => void,
  * }} LandingMethods
  */

@@ -6,8 +6,10 @@
 // the old plan until the reshape's 29.17 cuts it (P12); a quick-fix built
 // by the build's own arm, three fixes on its one branch through its one
 // pull request, each fix's short record written, the pull request merged by
-// hand mid-set and the branch cut again for the fix after it, and the unit
-// closed (19.5.6, 19.5.15, R14); and a quick-fix moved mid-fix to a feature
+// hand mid-set and the branch cut again for the fix after it, whose share in
+// the project's nested clone the door records on the unit's manifest before
+// it commits there, and the unit closed, landing it there too (19.5.6,
+// 19.5.15, R14, R18); and a quick-fix moved mid-fix to a feature
 // through start this work's screen, its pipeline carrying on to the build —
 // ready to build showing the call its fix made among Claude's, the build's
 // task writer's brief and task 1.1 meeting none of the quick-fix's calls —
@@ -110,39 +112,43 @@ describe('pipeline simulation: quick-fix', () => {
     sim.refuses(['enter', 'implementation', wu], /^typo was built under the old plan, and its build is entered once the reshape's 29\.17 migration has cut it$/);
   });
 
-  it('quick-fix: its build entered, three fixes built in the project\'s checkout on its one branch, each recorded, pushed to its one pull request and done; the pull request merged by hand mid-set, the fix after it on the branch cut again; and the close landing what is left in one commit naming the fix it holds, then naming the start menu', () => {
+  it('quick-fix: its build entered, three fixes built in the project\'s checkout on its one branch, each recorded, pushed to its one pull request and done; the pull request merged by hand mid-set, the fix after it on the branch cut again, its share in the nested clone recorded; and the close landing what is left in one commit naming the fix it holds in each, then naming the start menu', () => {
     const wu = 'typo';
     const branch = `fix/${wu}`;
     startUnit(sim, 'quick-fix', wu, 'The --color flag is spelt --colour');
     assert.strictEqual(sim.run(['enter', 'implementation', wu]).entered, true);
     const base = git(sim.dir, ['rev-parse', 'main']).trim();
-    /** Fix `n` written, started, committed through the door, recorded, pushed to the pull request and done: its start's answer. @param {number} n @param {string} title @param {string} file */
-    const built = (n, title, file) => {
+    /** Fix `n` written, started, committed through the door, recorded, pushed to the pull request and done: its start's answer. @param {number} n @param {string} title @param {string[]} files */
+    const built = (n, title, files) => {
       const [fix] = writeTasks(sim, wu, 1, [{ title, type: 'fix', reference: 'none', scenarios: [`${n}.S1 Given the help, when it is read, then it names --colour.`] }]);
       const started = sim.run(['task', 'start', wu, fix]);
-      sim.write(file, '--colour\n');
-      sim.run(['commit', '--paths', file, '--task', wu, fix, '-m', `fix(${wu}): ${title.toLowerCase()}`]);
+      for (const file of files) sim.write(file, '--colour\n');
+      sim.run(['commit', '--paths', ...files, '--task', wu, fix, '-m', `fix(${wu}): ${title.toLowerCase()}`]);
       const record = sim.write(`.leeway/.cache/${wu}/build/record.md`, `## What changed\n${title}.\n\n## Why\nIt was spelt the American way.\n\n## Leaves out\nOld scripts.\n`);
       sim.run(['quick-fix', 'record', wu, fix, '--file', record]);
       sim.run(['land', 'open', wu, fix]);
       sim.run(['task', 'done', wu, fix]);
       return started;
     };
-    const first = built(1, 'Spell the flag --colour', 'src/flag.js');
-    built(2, 'Spell the help --colour', 'src/help.js');
+    const first = built(1, 'Spell the flag --colour', ['src/flag.js']);
+    built(2, 'Spell the help --colour', ['src/help.js']);
     // The person merges the pull request by hand mid-set, a squash on main.
     git(sim.dir, ['switch', '-q', 'main']);
     git(sim.dir, ['merge', '-q', '--squash', branch]);
     git(sim.dir, ['commit', '-q', '-m', 'Spell it the British way']);
     git(sim.dir, ['switch', '-q', branch]);
-    const third = built(3, 'Spell the docs --colour', 'docs/flags.md');
+    const third = built(3, 'Spell the docs --colour', ['docs/flags.md', 'api/flags.md']);
+    const recorded = sim.manifest(wu).fixes.repos;
     sim.write(`.leeway/${wu}/build/log.md`, '# The fixes\n');
     finishClosed(sim, wu);
     sim.render(['finish', wu], { expect: 'content' });
     const yes = sim.run(answerGate(sim, 'finish', '--pick', 'y').next.argv);
 
     assert.deepStrictEqual([first.branch, third.branch, third.cut_again?.map((/** @type {any} */ { replayed }) => replayed)], [branch, branch, [[]]]);
-    assert.deepStrictEqual([yes.landed.map((/** @type {{merged: string[]}} */ { merged }) => merged), yes.next], [[['1.3']], { kind: 'handoff', skill: 'leeway', args: [] }]);
+    assert.deepStrictEqual([recorded, yes.landed.map((/** @type {{repo: string, merged: string[]}} */ { repo, merged }) => [repo, merged]), yes.next], [
+      ['api'], [['api', ['1.3']], ['.', ['1.3']]], { kind: 'handoff', skill: 'leeway', args: [] },
+    ]);
+    assert.deepStrictEqual(git(sim.api, ['log', '-1', '--format=%B', 'main']).match(/^Task: .*$/gm), [`Task: ${wu}-1-3`]);
     assert.strictEqual(sim.manifest(wu).status, 'completed');
     assert.deepStrictEqual([git(sim.dir, ['log', '--format=%s', `${base}..main`]).trim().split('\n'), git(sim.dir, ['log', '-1', '--format=%B', 'main']).match(/^Task: .*$/gm)], [
       [`fix(${wu}): The --color flag is spelt --colour`, 'Spell it the British way'], [`Task: ${wu}-1-3`],

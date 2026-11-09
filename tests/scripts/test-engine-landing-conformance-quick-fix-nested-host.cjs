@@ -6,9 +6,10 @@
 // landing driver meets, run through the engine's verbs against each shipped
 // driver in turn. The clone, as a second clone of it does, takes the host's
 // branch at the start of the next fix there, never cutting one at its first
-// commit, and the close lands both fixes there. The next fix in the project
-// alone is test-engine-landing-conformance-quick-fix-nested-second-clone.cjs's;
-// a fix across the project and the clone,
+// commit, and the close lands both fixes there. The next fix in the same
+// file there is test-engine-landing-conformance-quick-fix-nested-same-file*.cjs's;
+// the next fix in the project alone, -nested-second-clone's; a fix across
+// the project and the clone,
 // test-engine-landing-conformance-quick-fix-nested.cjs's. A driver's side
 // (tests/drivers/{name}/landing.cjs) readies each repository and reads what
 // landed where; this file names no driver and no tool.

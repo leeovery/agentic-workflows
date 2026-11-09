@@ -33,8 +33,8 @@
 //   branch holds a commit's change where merging the commit there meets no
 //   conflict and changes nothing (`holdsChange`), however the change got
 //   there; and a task's commits through the door are found by their stamp
-//   on any ref or reflog, so a branch deleted loses none (`lastStamped`,
-//   `stampsUnit`).
+//   on any ref or reflog, so a branch deleted loses none (`lastStamped`), as
+//   a branch holding one is told by its history (`stampsUnit`).
 // - A commit is made with no checkout: a tree committed onto a parent, or a
 //   commit replayed onto another, which stops on a conflict; signed where
 //   the person's config signs every commit, as `git commit` signs it. A
@@ -367,14 +367,14 @@ function lastStamped(root, key, value, since) {
 }
 
 /**
- * Whether the repository holds a commit the trailer `key` stamps with a
- * task of the unit's — on any ref, or one a reflog keeps — committed at or
- * after the time `since` names where it names one.
- * @param {string} root @param {string} key @param {string} unit @param {string|null} since
+ * Whether the revision `rev` holds a commit the trailer `key` stamps with a
+ * task of the unit's, committed at or after the time `since` names where it
+ * names one.
+ * @param {string} root @param {string} rev @param {string} key @param {string} unit @param {string|null} since
  */
-function stampsUnit(root, key, unit, since) {
+function stampsUnit(root, rev, key, unit, since) {
   const bound = since === null ? [] : [`--since=${since}`];
-  const found = git(root, ['log', '-z', '--format=%B', '--all', '--reflog', '--fixed-strings', `--grep=${key}: ${unit}-`, ...bound, '--']);
+  const found = git(root, ['log', '-z', '--format=%B', '--fixed-strings', `--grep=${key}: ${unit}-`, ...bound, rev, '--']);
   return found.split('\0').some((message) => names.tasksOfMessage(unit, message, key).length > 0);
 }
 

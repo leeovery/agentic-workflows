@@ -14,7 +14,8 @@
 // by hand on GitHub's site, as the site's button does — squashed, with a
 // merge commit or rebased — pulling main here after it or not, a merge
 // commit pulled keeping its own commits here; and deletes a branch, on
-// GitHub and here.
+// GitHub and here. A quick-fix is open in a repository while a pull
+// request of its branch is open there.
 
 const path = require('path');
 const { git } = require('../../scripts/engine-harness.cjs');
@@ -75,6 +76,8 @@ module.exports = {
     const ref = names.taskOfBranch(UNIT, pull.head);
     return ref === null ? [] : [taskId(ref)];
   }))].sort(),
+  /** Whether the quick-fix `unit` is open in the repository at `dir`: a pull request of its branch open on GitHub. @param {string} dir @param {string} unit */
+  quickFixOpen: (dir, unit) => github(dir).pulls.some((pull) => pull.state === 'OPEN' && pull.head === names.quickFixBranch(unit)),
   /** A merge in the repository at `dir` refused by GitHub while its environment is the call's. @param {string} dir */
   refuseMerge: (dir) => ({ env: { GH_STUB_FAULT: 'unmergeable@pr merge', GH_STUB_FAULT_REPO: github(dir).repo }, undo: () => {} }),
   /** The ways a person merges a quick-fix's pull request on GitHub's site, the default branch `into` here pulled after it or not. */

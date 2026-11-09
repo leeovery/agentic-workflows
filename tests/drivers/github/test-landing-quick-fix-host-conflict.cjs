@@ -7,8 +7,9 @@
 // conflicts with the branch here: a review's suggestion conflicting with a
 // commit through the door refuses the opening while a fix is in flight,
 // naming the merge the shell guard passes and the door that finishes it,
-// which, followed, lands both as settled. The commits GitHub's copy holds
-// brought in without a conflict are test-landing-quick-fix-host.cjs's.
+// which, followed, lands both as settled. In a nested clone,
+// test-landing-quick-fix-host-conflict-nested.cjs's; the commits GitHub's
+// copy holds brought in without a conflict, test-landing-quick-fix-host.cjs's.
 // Git layer: quick-fix-world.cjs's two fixes built on a fake GitHub
 // (world.cjs), their pull request #1 open, built once and copied for each
 // test.

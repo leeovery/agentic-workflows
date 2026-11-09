@@ -13,8 +13,9 @@
 // cut to nothing; the hermetic environment keeps their login out
 // (hermetic-env.cjs).
 // What a person might do by hand on GitHub — close a pull request, merge
-// one, delete a merged one's branch, commit on the site, change GitHub's
-// default branch or its squash default — is done to
+// one, delete a merged one's branch, or a branch with its pull request,
+// commit on the site, open a pull request no unit opened, from a fork or
+// not, change GitHub's default branch or its squash default — is done to
 // the fake's state here, as is how many reads GitHub takes to work out
 // whether a pull request can merge once it moves. The fake starts with
 // GitHub's own squash default, and works it out at once.
@@ -111,6 +112,49 @@ function mergeByHand(dir, number, into, method = 'squash') {
 }
 
 /**
+ * A pull request on GitHub no unit opened, of `head` onto `base`, left in
+ * `state` — the person's own, made by hand, its branch there `kept` or
+ * deleted, or a fork's of `fork`, its head held as its own ref alone, as
+ * GitHub holds a fork's: its head one commit on `base` writing `files`
+ * under `message`, committed at `date` where given; opened at `created`,
+ * where given, else long before any unit (gh-stub.cjs). Its number.
+ * @param {string} dir
+ * @param {{head: string, base?: string, state?: 'OPEN'|'CLOSED', kept?: boolean, fork?: string, files: Record<string, string>, message: string, date?: string, created?: string}} pull
+ */
+function strangerPull(dir, { head, base = 'main', state = 'OPEN', kept = true, fork, files, message, date, created }) {
+  const bare = bareOf(dir);
+  const tree = fs.mkdtempSync(path.join(os.tmpdir(), 'github-stranger-'));
+  git(bare, ['worktree', 'add', '-q', '--detach', tree, base]);
+  for (const [file, text] of Object.entries(files)) {
+    createFile(tree, file, text);
+    git(tree, ['add', file]);
+  }
+  const at = date === undefined ? {} : { GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date };
+  execFileSync('git', ['commit', '-q', '-m', message], { cwd: tree, env: { ...process.env, ...at } });
+  const sha = git(tree, ['rev-parse', 'HEAD']).trim();
+  git(bare, ['worktree', 'remove', '--force', tree]);
+  let number = 0;
+  onGithub(dir, (held) => {
+    number = held.next;
+    held.next += 1;
+    git(bare, ['update-ref', `refs/pull/${number}/head`, sha]);
+    if (fork === undefined && kept) git(bare, ['update-ref', `refs/heads/${head}`, sha]);
+    held.pulls.push({ number, state, head, base, title: message.split('\n')[0], body: '', ...(created === undefined ? {} : { created }), ...(fork === undefined ? {} : { fork, oid: sha }) });
+  });
+  return number;
+}
+
+/** A pull request's branch deleted on GitHub, its pull request closed with it, as GitHub closes one whose head is gone. @param {string} dir @param {number} number */
+function branchDeleted(dir, number) {
+  onGithub(dir, (state) => {
+    const pull = state.pulls.find((held) => held.number === number);
+    if (pull === undefined) throw new Error(`no pull request #${number}`);
+    pull.state = 'CLOSED';
+    execFileSync('git', ['update-ref', '-d', `refs/heads/${pull.head}`], { cwd: bareOf(dir) });
+  });
+}
+
+/**
  * A merged pull request's head branch deleted on GitHub, as its button or
  * auto-delete does: each pull request open on that branch retargeted onto
  * the merged one's base, as GitHub retargets them.
@@ -192,6 +236,6 @@ function stackOfTwo(dir) {
 }
 
 module.exports = {
-  REPOSITORY, GH_ENV, ghEnv, githubWorld, github, onGithub, bareOf, calls, closeByHand, mergeByHand, headDeleted, defaultOnGithub, squashFromPullRequests, lagOnGithub,
+  REPOSITORY, GH_ENV, ghEnv, githubWorld, github, onGithub, bareOf, calls, closeByHand, mergeByHand, strangerPull, branchDeleted, headDeleted, defaultOnGithub, squashFromPullRequests, lagOnGithub,
   tipOnGithub, madeOnGithub, pulls, ok, refused, stackOfTwo,
 };

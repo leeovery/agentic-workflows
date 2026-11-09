@@ -38,7 +38,7 @@ const path = require('path');
 const { signpost, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/render.cjs');
 const { resetDisplayWidth } = require('./kernel/terminal.cjs');
 const { commitPathspecScoped, commitAcrossRepos, commitStagedScoped, commitStateScoped, discoveryScope, PRODUCT_SCOPE, onStateBranch, STATE_BRANCH_HELD, OWNED_PATHS } = require('./domain/commit.cjs');
-const { inFlightTask, onWorkBranch, checksFor, runChecks, workMessage } = require('./domain/commit-task.cjs');
+const { inFlightTask, onWorkBranch, checksFor, runChecks, recordWork, workMessage } = require('./domain/commit-task.cjs');
 const { taskId } = require('./domain/task-id.cjs');
 const {
   stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, operationInProgress, addRefused, unmergedPast,
@@ -2071,7 +2071,7 @@ function assertCommitsHere(repo, paths) {
 }
 
 /**
- * @typedef {{task?: string, checks?: import('./domain/commit-task.cjs').CheckRun[]}} CodeCommitTask
+ * @typedef {{task?: string, checks?: import('./domain/commit-task.cjs').CheckRun[], warnings?: string[]}} CodeCommitTask
  * @typedef {{committed: {repo: string, sha: string}[], left_dirty: string[], note?: string} & CodeCommitTask} CodeCommitted
  */
 
@@ -2129,20 +2129,24 @@ function codeCommitted(repos, committed, more = {}) {
 /**
  * The code commit for a task in flight in the calling conversation
  * (domain/commit-task.cjs): the task and the paths checked, then the
- * project's checks run — before any lock is taken — then the paths, each
+ * project's checks run — before any lock is taken — then, for a
+ * quick-fix's task, each nested repo it commits in recorded in the unit's
+ * state (domain/commit-task.cjs, `recordWork`), then the paths, each
  * committed confined in the repo that owns it under that repo's commit
  * lock, under a message naming the
  * task — a merge in progress in a repo, the chain's tip merged back onto the
  * task's branch, finished there with them its resolution, every conflict
- * named. Answers the task's id and each check run.
+ * named. Answers the task's id, each check run, and what the record's
+ * state commit warned of.
  * @param {string} cwd @param {string[]} paths @param {string} message @param {string} unit @param {string} given
  */
 function commitTaskPaths(cwd, paths, message, unit, given) {
   const { ref, manifest } = inFlightTask(cwd, unit, given);
   const { repos, groups } = checkedGroups(cwd, paths, (committing) => onWorkBranch(cwd, ref, manifest, committing));
   const checks = runChecks(cwd, checksFor(cwd, manifest, ref));
+  const warnings = recordWork(cwd, ref, manifest, groups.map(({ repo }) => repo));
   const committed = commitAcrossRepos(groups, workMessage(message, ref));
-  return codeCommitted(repos, committed, { task: taskId(ref), checks });
+  return codeCommitted(repos, committed, { task: taskId(ref), checks, ...(warnings.length > 0 ? { warnings } : {}) });
 }
 
 const COMMIT_USAGE = 'Usage: engine commit <work-unit> -m <message> [--plan <topic> | --discovery | --imports | --state | --topic <phase>/<topic> [--sweep]] | engine commit --paths <file> … -m <message> --task <work-unit> <N.M> | engine commit --state -m <message> | engine commit --inbox -m <message> | engine commit --product -m <message> | engine commit --workflows -m <message> | engine commit --migrations -m <message>';

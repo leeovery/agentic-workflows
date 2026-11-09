@@ -81,8 +81,10 @@
 // - Finish: the phase merged next, the lowest not landed that stacks on no
 //   phase not landed; the seam makes each merge in turn (landing.cjs).
 // - A quick-fix (landing.cjs): in each repository it touches, its one pull
-//   request is the latest whose head is its branch, onto the default branch
-//   — read as the head of the one open and the heads of those merged into
+//   request is the latest whose head is its branch, onto the default branch,
+//   of those opened from the repository itself, never a fork, since the
+//   time the seam names — so another's by that name is never its — read as
+//   the head of the one open and the heads of those merged into
 //   the default branch, each fetched from the pull request's own ref where
 //   the repository here lacks it, and the branch on GitHub, fetched, which
 //   is the truth for what the pull request holds; and, where the latest was
@@ -885,16 +887,22 @@ function nextMerge(ctx) {
 /** The quick-fix's landing as the seam gives it (landing.cjs). @typedef {import('../../../domain/landing.cjs').QuickFixTask} QuickFixTask */
 /** The quick-fix's pull request as the seam reads it (landing.cjs). @typedef {import('../../../domain/landing.cjs').QuickFixPull} QuickFixPull */
 
+/** What a quick-fix's pull requests are read with beside a phase's: whether each is a fork's, and when it was opened. */
+const QUICK_FIX_FIELDS = `${PULL_FIELDS},isCrossRepository,createdAt`;
+
 /**
  * The pull requests whose head is the quick-fix's branch, onto the default
- * branch, as GitHub holds them, latest first.
- * @param {LandingContext} ctx @param {Host} host @param {string} branch
+ * branch, as GitHub holds them, latest first: those opened from the
+ * repository itself, never a fork, at or after the time `since` names,
+ * where it names one.
+ * @param {LandingContext} ctx @param {Host} host @param {string} branch @param {string|null} since
  * @returns {BranchPull[]}
  */
-function listedPulls(ctx, host, branch) {
-  /** @type {{number: number, state: Pull['state'], headRefName: string, baseRefName: string, headRefOid: string, title: string, body: string}[]} */
-  const listed = JSON.parse(ghAt(ctx, host, ['pr', 'list', '--state', 'all', '--head', branch, '--limit', PULL_LIMIT, '--json', PULL_FIELDS], `read ${branch}'s pull requests`));
-  return listed.filter((pr) => pr.headRefName === branch && pr.baseRefName === ctx.into)
+function listedPulls(ctx, host, branch, since) {
+  /** @type {{number: number, state: Pull['state'], headRefName: string, baseRefName: string, headRefOid: string, title: string, body: string, isCrossRepository: boolean, createdAt: string}[]} */
+  const listed = JSON.parse(ghAt(ctx, host, ['pr', 'list', '--state', 'all', '--head', branch, '--limit', PULL_LIMIT, '--json', QUICK_FIX_FIELDS], `read ${branch}'s pull requests`));
+  const from = since === null ? -Infinity : Date.parse(since);
+  return listed.filter((pr) => pr.headRefName === branch && pr.baseRefName === ctx.into && !pr.isCrossRepository && Date.parse(pr.createdAt) >= from)
     .map((pr) => ({ number: pr.number, state: pr.state, head: pr.headRefName, base: pr.baseRefName, oid: pr.headRefOid, title: pr.title, body: pr.body }))
     .sort((a, b) => b.number - a.number);
 }
@@ -904,13 +912,14 @@ function listedPulls(ctx, host, branch) {
  * open one's head and those merged into the default branch, each fetched
  * from the pull request's own ref where the repository here lacks it; the
  * branch on GitHub, fetched, null where GitHub has none; and, where the
- * latest was closed by hand, its reopening.
- * @param {LandingContext} ctx @param {string} branch
+ * latest was closed by hand, its reopening — of those `listedPulls`
+ * reads since `since`.
+ * @param {LandingContext} ctx @param {string} branch @param {string|null} since
  * @returns {QuickFixPull}
  */
-function quickFixPull(ctx, branch) {
+function quickFixPull(ctx, branch, since) {
   const host = hostOf(ctx);
-  const pulls = listedPulls(ctx, host, branch);
+  const pulls = listedPulls(ctx, host, branch, since);
   const [latest] = pulls;
   const held = (/** @type {BranchPull} */ pull) => lg.fetchedCommit(ctx.root, host.remote, `refs/pull/${pull.number}/head`, pull.oid);
   const open = pulls.find((pull) => pull.state === 'OPEN');
@@ -943,7 +952,7 @@ function openQuickFix(ctx, landing) {
   const { branch, head } = landing;
   const { title, body } = titled(landing);
   const at = lg.branches(ctx.root).get(branch);
-  const open = listedPulls(ctx, host, branch).find((pull) => pull.state === 'OPEN');
+  const open = listedPulls(ctx, host, branch, landing.since).find((pull) => pull.state === 'OPEN');
   if (open !== undefined && open.oid === at && open.title === title && open.body === body) return { pull_request: open.number, already: true };
   if (head !== at) {
     lg.pushBranches(ctx.root, host.remote, [{ branch, commit: `refs/heads/${branch}`, lease: head ?? '' }], `${ctx.unit}'s pull request was not opened — clear what git names, and open it again`);
@@ -958,13 +967,13 @@ function openQuickFix(ctx, landing) {
 
 /**
  * The quick-fix's pull request closed unmerged for its move (see the
- * header), where one is open: whether this call closed one.
- * @param {LandingContext} ctx @param {string} branch
+ * header), where one is open since `since`: whether this call closed one.
+ * @param {LandingContext} ctx @param {string} branch @param {string|null} since
  * @returns {{closed: boolean}}
  */
-function closeQuickFix(ctx, branch) {
+function closeQuickFix(ctx, branch, since) {
   const host = hostOf(ctx);
-  const open = listedPulls(ctx, host, branch).find((pull) => pull.state === 'OPEN');
+  const open = listedPulls(ctx, host, branch, since).find((pull) => pull.state === 'OPEN');
   if (open === undefined) return { closed: false };
   ghAt(ctx, host, ['pr', 'close', String(open.number)], `close ${ctx.unit}'s pull request`);
   return { closed: true };
@@ -1002,7 +1011,7 @@ function mergeQuickFix(ctx, landing) {
     const warnings = bringDefaultUp(ctx, host);
     return { into: ctx.into, already: /** @type {const} */ (true), ...(warnings.length > 0 ? { warnings } : {}) };
   }
-  const pull = listedPulls(ctx, host, landing.branch).find((held) => held.state === 'OPEN');
+  const pull = listedPulls(ctx, host, landing.branch, landing.since).find((held) => held.state === 'OPEN');
   if (pull === undefined) throw new Error(`land: ${ctx.unit}'s pull request is not open on GitHub — open it with \`land open ${ctx.unit} ${landing.tasks[0] ?? '1.1'}\`, and land again`);
   const head = pointedBranch(ctx, host, landing, /** @type {string} */ (lg.branches(ctx.root).get(landing.branch)));
   refuseDirtyDefault(ctx, head, lg.fetchBranch(ctx.root, host.remote, ctx.into));

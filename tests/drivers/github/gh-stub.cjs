@@ -16,8 +16,10 @@
 //
 // What it answers, as gh and the stack extension do: its versions; `auth
 // status`; `api` reading the repository, changing its squash default, and
-// adding a ruleset; `pr list`, `view`, `create` — refused where the head
-// holds no commit past the base — `edit` of its base, title and body,
+// adding a ruleset; `pr list`, with when each pull request was opened and
+// whether it is a fork's, `view`, `create` — refused where the head holds
+// no commit past the base, or one of the repository's own is open from that
+// head onto that base — `edit` of its base, title and body,
 // `merge`, `close` and `reopen`; `stack
 // link`, bottom to top, the bottom based on `--base` or else GitHub's
 // default branch, each other on the one before, a stack's members only ever
@@ -60,6 +62,8 @@ const FAULTS = Object.freeze({
   unmergeable: { code: 1, said: 'GraphQL: Required status check "test" is expected. (mergePullRequest)' },
 });
 const SIGNED_OUT_STATUS = 'You are not logged into any GitHub hosts. To log in, run: gh auth login';
+/** When a pull request a test made with no time of its own was opened: long before any unit. */
+const LONG_AGO = '2020-01-01T00:00:00Z';
 /** GitHub's own squash default. */
 const GITHUB_SQUASH = Object.freeze({ squash_merge_commit_title: 'COMMIT_OR_PR_TITLE', squash_merge_commit_message: 'COMMIT_MESSAGES' });
 
@@ -68,8 +72,11 @@ const GITHUB_SQUASH = Object.freeze({ squash_merge_commit_title: 'COMMIT_OR_PR_T
  * stood before (`was`), and how many more reads it is unknown since it
  * moved (`unknown`); and, once merged, its head as it merged, which GitHub
  * keeps however its branch then moves, deleted among them (`merged`), and
- * holds as the pull request's own ref, `refs/pull/{number}/head`, to fetch.
- * @typedef {{number: number, state: 'OPEN'|'CLOSED'|'MERGED', head: string, base: string, title: string, body: string, seen?: string, was?: string, unknown?: number, merged?: string}} Pull
+ * holds as the pull request's own ref, `refs/pull/{number}/head`, to fetch;
+ * when it was opened (`created`, none for one a test made long ago); and,
+ * for a fork's, the fork's owner and its head there, which GitHub holds as
+ * the pull request's own ref too (`fork`, `oid`).
+ * @typedef {{number: number, state: 'OPEN'|'CLOSED'|'MERGED', head: string, base: string, title: string, body: string, seen?: string, was?: string, unknown?: number, merged?: string, created?: string, fork?: string, oid?: string}} Pull
  */
 /** @typedef {{number: number, base: string, pulls: number[]}} Stack */
 /** @typedef {{repo: string, default: string, next: number, method: string, squash: Record<string, string>, rulesets: object[], pulls: Pull[], stacks: Stack[], lag?: number, stale?: boolean}} Github */
@@ -246,7 +253,11 @@ function prList(at, state, args) {
   const tips = new Map(inBare(bareOf(at, state), ['for-each-ref', '--format=%(refname:lstrip=2) %(objectname)', 'refs/heads/']).split('\n').map((line) => line.split(' ')));
   const rows = [...state.pulls].sort((a, b) => b.number - a.number).map((pull) => {
     /** @type {Record<string, unknown>} */
-    const all = { number: pull.number, state: pull.state, headRefName: pull.head, baseRefName: pull.base, headRefOid: pull.merged ?? tips.get(pull.head) ?? null, title: pull.title, body: pull.body };
+    const head = pull.fork === undefined ? tips.get(pull.head) : pull.oid;
+    const all = {
+      number: pull.number, state: pull.state, headRefName: pull.head, baseRefName: pull.base, headRefOid: pull.merged ?? head ?? null, title: pull.title, body: pull.body,
+      isCrossRepository: pull.fork !== undefined, createdAt: pull.created ?? LONG_AGO,
+    };
     return Object.fromEntries(fields.map((field) => [field, all[field]]));
   });
   return `${JSON.stringify(rows)}\n`;
@@ -272,12 +283,12 @@ function prCreate(at, state, args) {
   if (spawnSync('git', ['merge-base', '--is-ancestor', head, base], { cwd: bare }).status === 0) {
     throw new Refused(`pull request create failed: GraphQL: No commits between ${base} and ${head} (createPullRequest)`);
   }
-  const twin = state.pulls.find((pull) => pull.state === 'OPEN' && pull.head === head && pull.base === base);
+  const twin = state.pulls.find((pull) => pull.state === 'OPEN' && pull.fork === undefined && pull.head === head && pull.base === base);
   if (twin !== undefined) throw new Refused(`a pull request for branch "${head}" into branch "${base}" already exists:\nhttps://github.com/${state.repo}/pull/${twin.number}`);
   const number = state.next;
   state.next += 1;
   /** @type {Pull} */
-  const pull = { number, state: 'OPEN', head, base, title, body: body ?? '' };
+  const pull = { number, state: 'OPEN', head, base, title, body: body ?? '', created: new Date().toISOString() };
   state.pulls.push({ ...pull, seen: standing(bare, pull), unknown: 0 });
   return `https://github.com/${state.repo}/pull/${number}\n`;
 }

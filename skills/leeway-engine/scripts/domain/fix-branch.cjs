@@ -14,26 +14,35 @@
 // - A task's start puts the project's checkout on the branch
 //   (`checkOutBranch`) — refused first, before the tracker moves, while the
 //   checkout holds changes not committed outside the state, naming each
-//   (`codeStatus`, code.cjs) — once the branches are readied (`readied`).
+//   (`codeStatus`, code.cjs) — once the branches are readied (`readied`),
+//   and each nested checkout whose branch the readying made, as a branch
+//   gone here or a second clone leaves it, on it too.
 // - A repository nested in the project gets its branch at the first commit
 //   of a task's there: the door puts it on the branch, where it lacks one
 //   cut from the branch that repository lands on as the host has it
 //   (`putOnBranch`) — one the quick-fix touched already has it taken from
-//   the host's copy at the task's start.
+//   the host's copy at the task's start — and, once the checks pass and
+//   before it commits, records it in the unit's state, `fixes.repos` on the
+//   manifest, committed to the state branch (`recordRepos`), so every
+//   clone reads it as a repository the quick-fix touched (landing.cjs).
 // - The host's copy of the branch is the truth for what the pull request
 //   holds (`quickFixPull`, landing.cjs). A task's start, its opening and
-//   the quick-fix's landing each first ready every repository's branch, in
-//   turn: taken from the host where the repository lacks it — at the first
-//   start, in the project's own, cut from the branch it lands on as the
-//   host has it where the host has none either, never otherwise; then the
-//   host's head brought in where it holds a commit not landed, so a pull
-//   request's head left after its merge by hand is never — fast-forwarded
-//   to where the branch is behind it, else merged with it where it holds a
-//   change the branch lacks, refused naming the way on where the two
-//   conflict, which, while a task of the unit's is in flight in the
-//   conversation, is the merge the hook before Bash passes, finished
-//   through the door (shell-guard.cjs) — so no push drops a commit of the
-//   host's; then
+//   the quick-fix's landing each first ready every repository's branch,
+//   refused before anything moves where a repository's host holds a branch
+//   by its name holding no commit of a fix of the unit's — another's, made
+//   by hand or before the unit was — naming it, its repository and the way
+//   on, its deletion or renaming there (`refuseForeign`), so it is never
+//   taken, brought in or pushed over. Then, in turn: taken from the host
+//   where the repository lacks it — at the first start, in the project's
+//   own, cut from the branch it lands on as the host has it where the host
+//   has none either, never otherwise; then the host's head brought in where
+//   it holds a commit not landed — a pull request's head left after its
+//   merge by hand is never brought in — fast-forwarded to where the branch
+//   is behind it, else merged with it where it holds a change the branch
+//   lacks, refused naming the way on where the two conflict, which, while a
+//   task of the unit's is in flight in the conversation, is the merge the
+//   hook before Bash passes, finished through the door (shell-guard.cjs) —
+//   so no push drops a commit of the host's; then
 //   cut again where a person's merge of the pull request by hand, by any
 //   method, left the branch holding commits that have landed past the
 //   branch it lands on as the host has it (`quickFixLanding`): cut from that
@@ -69,7 +78,9 @@
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { tryGit, git } = require('../kernel/git.cjs');
 const { projectRepos, repoName, childrenFirst } = require('../kernel/repos.cjs');
+const { withWorkUnitLock, loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { codeStatus } = require('./code.cjs');
+const { commitStateTail } = require('./commit.cjs');
 const lg = require('./landing-git.cjs');
 const { quickFixBranch } = require('./landing-names.cjs');
 const { parseTaskId, shownTask, taskName } = require('./task-id.cjs');
@@ -119,42 +130,51 @@ function refuseDirtyClose(cwd, unit) {
 /**
  * The project's checkout put on the quick-fix's branch once every
  * repository's is readied (the header's), the project's own cut at the
- * first start where neither it nor the host has one. Answers the branch,
- * and each repository the readying cut again, with its warnings, where it
- * did.
+ * first start where neither it nor the host has one, and each nested
+ * checkout whose branch the readying made put on it too. Answers the
+ * branch, and each repository the readying cut again, with its warnings,
+ * where it did.
  * @param {string} cwd @param {string} unit
  * @returns {{branch: string, cut_again?: Record<string, unknown>[], warnings?: string[]}}
  */
 function checkOutBranch(cwd, unit) {
   const root = codeRoot(cwd);
   const branch = quickFixBranch(unit);
-  const { cut, remakes, warnings } = readied(landing().quickFixLanding(cwd, unit), true);
+  const { cut, remakes, warnings, made } = readied(landing().quickFixLanding(cwd, unit), true);
+  for (const nested of made.filter((ctx) => ctx.repo !== '.')) lg.switchTo(nested.root, branch);
   if (branchOut(root) !== branch) lg.switchTo(root, branch);
   const said = [...remakes, ...warnings];
   return { branch, ...(cut.length > 0 ? { cut_again: cut } : {}), ...(said.length > 0 ? { warnings: said } : {}) };
 }
 
 /**
- * Every repository's branch readied (the header's): taken from the host
- * where the repository lacks it — `fresh`, at the first start, cut in the
- * project's own from the branch it lands on as the host has it where the
- * host has none — the host's head brought in, then cut again where it holds
- * work landed. Answers each repository cut again, the warning of each task
- * left off — its change to make again through the door — and every other
- * warning that gave.
+ * Every repository's branch readied (the header's), refused first, nothing
+ * moved, where the host's copy is another's (`refuseForeign`): taken from
+ * the host where the repository lacks it — `fresh`, at the first start, cut
+ * in the project's own from the branch it lands on as the host has it
+ * where the host has none — the host's head brought in, then cut again
+ * where it holds work landed. Answers each repository cut again, the
+ * warning of each task left off — its change to make again through the
+ * door — every other warning that gave, and the context of each repository
+ * whose branch it made.
  * @param {QuickFixLanding} read @param {boolean} [fresh]
- * @returns {{cut: Record<string, unknown>[], remakes: string[], warnings: string[]}}
+ * @returns {{cut: Record<string, unknown>[], remakes: string[], warnings: string[], made: RepoLanding['ctx'][]}}
  */
 function readied(read, fresh = false) {
+  read.repos.forEach(refuseForeign);
   /** @type {Record<string, unknown>[]} */
   const cut = [];
   /** @type {string[]} */
   const remakes = [];
   /** @type {string[]} */
   const warnings = [];
+  /** @type {RepoLanding['ctx'][]} */
+  const made = [];
   for (const held of read.repos) {
-    const at = held.at() ?? taken(held, fresh && held.ctx.repo === '.');
+    const here = held.at();
+    const at = here ?? taken(held, fresh && held.ctx.repo === '.');
     if (at === null) continue;
+    if (here === undefined) made.push(held.ctx);
     broughtIn(held, at);
     const again = cutAgain(held);
     if (again === null) continue;
@@ -162,7 +182,20 @@ function readied(read, fresh = false) {
     remakes.push(...again.remakes.map((warning) => saidIn(held.ctx.repo, warning)));
     warnings.push(...again.theirs.map((warning) => saidIn(held.ctx.repo, warning)));
   }
-  return { cut, remakes, warnings };
+  return { cut, remakes, warnings, made };
+}
+
+/**
+ * Refuse, nothing moved, where a repository's host holds a branch by the
+ * quick-fix's name that is another's (the header's), naming it, its
+ * repository, and the way on.
+ * @param {RepoLanding} held
+ */
+function refuseForeign(held) {
+  if (!held.foreign()) return;
+  const { unit, repo } = held.ctx;
+  const host = repo === '.' ? 'the project\'s host' : `${lg.plain(repo)}'s host`;
+  throw new Error(`land: ${host} holds a branch ${held.branch} that is not ${unit}'s — it holds no commit of a fix of ${unit}'s, so it was made by hand or before ${unit} was — and nothing moved: delete it there, or rename it, then try again`);
 }
 
 /**
@@ -370,6 +403,39 @@ function putOnBranch(cwd, unit, repos) {
   }
 }
 
+/**
+ * The nested repositories the quick-fix's record names (the header's),
+ * each by its folder in the project: those its tasks committed in.
+ * @param {Record<string, any>|null} manifest the unit's
+ * @returns {string[]}
+ */
+const recordedRepos = (manifest) => manifest?.fixes?.repos ?? [];
+
+/**
+ * Each nested repository a quick-fix's task is about to commit in recorded
+ * in the unit's state (the header's), where the record does not name it
+ * already, the manifest committed to the state branch: what that commit
+ * warned of.
+ * @param {string} cwd @param {string} unit @param {Repo[]} repos those the commit commits in
+ * @returns {string[]}
+ */
+function recordRepos(cwd, unit, repos) {
+  const nested = repos.filter((repo) => repo.dir !== '').map((repo) => repo.dir);
+  if (nested.length === 0) return [];
+  return withWorkUnitLock(cwd, unit, () => {
+    const manifest = loadWorkUnitManifest(cwd, unit);
+    const held = recordedRepos(manifest);
+    const added = nested.filter((dir) => !held.includes(dir));
+    if (added.length === 0) return [];
+    manifest.fixes = { ...manifest.fixes, repos: [...held, ...added] };
+    saveWorkUnitManifest(cwd, unit, manifest);
+    /** @type {string[]} */
+    const warnings = [];
+    commitStateTail(cwd, [`${unit}/manifest.json`], `quick-fix(${unit}): record its work in ${added.map(lg.plain).join(', ')}`, warnings);
+    return warnings;
+  });
+}
+
 /** The project's repositories holding the quick-fix's branch, or `name`, children first. @param {string} cwd @param {string} name */
 const holding = (cwd, name) => childrenFirst(projectRepos(codeRoot(cwd))).filter((repo) => lg.branches(repo.path).has(name));
 
@@ -467,4 +533,4 @@ function checkOutLanding(cwd, unit) {
   return own;
 }
 
-module.exports = { refuseDirty, refuseDirtyClose, checkOutBranch, readied, remade, checkOutLanding, branchWayOn, putOnBranch, branchHead, movedBranch, keptUnder, setBranchAside, keptBranches };
+module.exports = { refuseDirty, refuseDirtyClose, checkOutBranch, readied, remade, checkOutLanding, branchWayOn, putOnBranch, recordedRepos, recordRepos, branchHead, movedBranch, keptUnder, setBranchAside, keptBranches };
