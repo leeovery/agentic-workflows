@@ -16,7 +16,8 @@
 // it lands on, every later fix's start keeping it — refused while the
 // checkout holds changes not committed; and through the doors any task
 // takes (19.S20): the commit door, refusing a commit on another branch,
-// naming the quick-fix's (12.9.9), `land open` opening the quick-fix's one
+// naming the quick-fix's (12.9.9), and one git would date before the unit
+// was made, naming the clock (R19), `land open` opening the quick-fix's one
 // pull request and `task done` owing no account, no pair reviewing it
 // (19.5.3, 19.5.15) — refused for a fix with no type (7.2.18), as `land
 // phase` is for a phase it lacks — and the last fix closed naming no
@@ -263,6 +264,22 @@ describe('the quick-fix\'s fix, built in the project\'s own checkout (12.7.8, 19
 
     assert.deepStrictEqual([res.task, res.checks.map(({ name }) => name).sort(), git(dir, ['log', '-1', '--format=%B', BRANCH]).trim()], [`${UNIT}-1-1`, ['eslint', 'tests'], `${MESSAGE}\n\nLeeway-Task: ${UNIT}-1-1`]);
     assert.strictEqual(error, `commit --task: this checkout has main out, not ${UNIT}'s branch, so its commit would land on another branch — a quick-fix's task is built in the project's own checkout, on ${BRANCH} — \`engine task start ${UNIT} 1.1\` puts the checkout on it`);
+  });
+
+  it('a commit git would date before the unit was made, as a clock behind dates it, is refused naming the clock, nothing moved, and made again with it right (R19)', () => {
+    dir = entered();
+    ok(dir, ['task', 'start', UNIT, '1.1'], { env: env() });
+    createFile(dir, 'src/flag.js', 'const flag = \'colour\';\n');
+    const args = ['commit', '--paths', 'src/flag.js', '--task', UNIT, '1.1', '-m', MESSAGE];
+    const tip = sha(BRANCH);
+    const { error } = refusedPristine(dir, args, { env: { ...env(), GIT_COMMITTER_DATE: '2020-01-01T00:00:00Z' } });
+    const unmoved = sha(BRANCH) === tip;
+    const committed = ok(dir, args, { env: env() });
+
+    assert.deepStrictEqual([error, unmoved, committed.task], [
+      `commit --task: git would date this commit 2020-01-01, before ${UNIT} was made on ${readManifest(dir, UNIT).created}, so no landing would read it as ${UNIT}'s work, and nothing moved — set this machine's clock right, then commit again`,
+      true, `${UNIT}-1-1`,
+    ]);
   });
 
   it('land open opens the quick-fix\'s one pull request with no account, no pair having reviewed it, and task done ends it, owing none (19.5.3, 19.5.7)', () => {

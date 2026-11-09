@@ -44,14 +44,15 @@
 // hold, so a branch gone here, a second clone, or a merge by hand that
 // keeps the branch's commits leaves no repository out, and no host of any
 // other is asked anything. A commit past the branch it lands on is the
-// quick-fix's work where it is stamped with one of its tasks, or was
-// committed since the day before the unit was made — a person's own made
-// during the quick-fix among them (R19): a repository's work is the
-// quick-fix's to open and land where its branch holds such a commit, and
-// the host's branch is the unit's where it holds a commit stamped with one
-// of its tasks since then, or a commit past the branch it lands on
-// committed since then, so whatever is pushed is the unit's — one that
-// holds neither, made long before, is another's, never taken, brought in,
+// quick-fix's work where it was committed since the day before the unit
+// was made — a fix's through the door, which refuses a commit git would
+// date before then (commit-task.cjs), or a person's own made during the
+// quick-fix (R19) — its stamp naming the task it is: a repository's work is
+// the quick-fix's to open and land where its branch holds such a commit,
+// and the host's branch is the unit's where it holds one, or a commit
+// stamped with one of its tasks since then, as one merged by hand and kept
+// there holds, so whatever is pushed is the unit's — one that holds
+// neither, made long before, is another's, never taken, brought in,
 // retitled or landed (fix-branch.cjs); a pull request is the unit's where
 // opened from the repository itself, never a fork, since that day. The
 // host's copy of the branch is the truth for what each pull request
@@ -889,6 +890,12 @@ function quickFixRepos(project, driver, manifest) {
 /** The time a quick-fix's work is read from: the day before its unit was made (`dayBefore`). @param {Record<string, any>|null} manifest the unit's */
 const workSince = (manifest) => dayBefore(manifest?.created);
 
+/** That time in milliseconds, none before it where the unit names no date. @param {string|null} since */
+const sinceTime = (since) => (since === null ? -Infinity : Date.parse(since));
+
+/** The time a quick-fix's work is read from, in milliseconds (`workSince`): a commit made before it none of the unit's work. @param {Record<string, any>|null} manifest the unit's */
+const workFrom = (manifest) => sinceTime(workSince(manifest));
+
 /** Whether a unit's tasks land as a quick-fix's one pull request: a unit built as a quick-fix (`quickFixBuild`). @param {string} cwd @param {string} unit */
 function landsAsOne(cwd, unit) {
   assertUnit(unit);
@@ -926,12 +933,13 @@ function unitTask(unit, id) {
  * host's copy of the branch among it; the commits a commit holds past that
  * tip, oldest first, merges aside, each with its time and task — the
  * branch's, none where it is gone — and whether the branch's hold the
- * quick-fix's work: a commit stamped with one of the unit's tasks, or
- * committed since `since`, a person's own made during the quick-fix among
- * them (R19); whether the host's copy is another's, holding no commit
- * stamped with one of the unit's tasks since `since` (`lg.stampsUnit`) and
- * none past the tip committed since, as a branch of that name made long
- * before holds none; whether a commit has
+ * quick-fix's work: a commit committed since `since`, a fix's through the
+ * door or a person's own made during the quick-fix (R19); whether the
+ * host's copy is another's, holding none of the quick-fix's work past the
+ * tip and no commit stamped with one of the unit's tasks since `since`
+ * (`lg.stampsUnit`), as a branch of that name made long before holds
+ * neither and one merged by hand and kept there holds the stamped;
+ * whether a commit has
  * landed — on that tip already, in a pull request merged, a task's change
  * there with the change it is laid on (`holdsTaskChange`), or a copy of it
  * there (`holdsCopy`) — and whether a commit holds one past the tip that
@@ -952,7 +960,7 @@ function repoLanding(project, driver, repo, since) {
   const key = stamp();
   const at = () => lg.branches(root).get(branch);
   const pull = () => pullOf(driver, ctx, branch, since);
-  const from = since === null ? -Infinity : Date.parse(since);
+  const from = sinceTime(since);
   /** @param {string} rev @returns {QuickFixCommit[]} */
   const commitsOn = (rev) => lg.readOnce(ctx, `quick-fix commits ${rev}`, () => lg.stampedPast(root, rev, tip, key).map(({ sha, message, committed, value }) => ({ sha, message, committed, id: unitTask(unit, value) })));
   /** @returns {QuickFixCommit[]} */
@@ -961,11 +969,11 @@ function repoLanding(project, driver, repo, since) {
     return head === undefined ? [] : commitsOn(head);
   };
   /** @param {QuickFixCommit} commit */
-  const isWork = ({ id, committed }) => id !== null || committed >= from;
+  const isWork = ({ committed }) => committed >= from;
   const holdsQuickFixWork = () => commits().some(isWork);
   const foreign = () => {
     const { head } = pull();
-    return head !== null && !lg.stampsUnit(root, head, key, unit, since) && !commitsOn(head).some(({ committed }) => committed >= from);
+    return head !== null && !commitsOn(head).some(isWork) && !lg.stampsUnit(root, head, key, unit, since);
   };
   const named = () => lg.readOnce(ctx, 'quick-fix named', () => lg.tasksNamedOn(root, tip, unit, key, since));
   /** @param {string} sha @param {string|null} id */
@@ -1239,4 +1247,4 @@ function landedTasks(cwd, unit, repos, from = null, on = (repo) => [`refs/heads/
   }));
 }
 
-module.exports = { LAND_USAGE, landOpen, landChain, landPhase, landFinish, landedTasks, allChained, landingTips, mutationRun, quickFixLanding, quickFixClose };
+module.exports = { LAND_USAGE, landOpen, landChain, landPhase, landFinish, landedTasks, allChained, landingTips, mutationRun, quickFixLanding, quickFixClose, workFrom };

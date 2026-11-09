@@ -18,13 +18,17 @@
 //   tasks in flight, each named; from a worktree `task worktree` laid out
 //   for another task in flight (task-worktree.cjs, conversation.cjs's
 //   `taskAt`), any task but that one, naming it; a task with a worktree
-//   laid out for it from anywhere else, naming the worktree; and, from a
+//   laid out for it from anywhere else, naming the worktree; from a
 //   checkout on a branch other than the task's, any task, naming the
 //   worktree that has its branch out, so no task's commit lands on another
-//   branch. A task with none recorded commits from where its branch is out
-//   — a quick-fix's task from the project's own checkout, on the
-//   quick-fix's one branch, a commit on any other naming that branch and
-//   the start that puts the checkout there (fix-branch.cjs). A quick-fix's
+//   branch; and a quick-fix's commit git would date before the day before
+//   its unit was made, as a clock behind dates it, which no landing would
+//   read as the unit's work (landing.cjs), naming the clock and the commit
+//   made again (`refuseClockBehind`). A task with none recorded commits
+//   from where its branch is out — a quick-fix's task from the project's
+//   own checkout, on the quick-fix's one branch, a commit on any other
+//   naming that branch and the start that puts the checkout there
+//   (fix-branch.cjs). A quick-fix's
 //   task done whose work is neither landed nor on the quick-fix's branch, as
 //   a branch cut again leaves a commit that did not apply there, takes its
 //   change made again though it has ended and is in flight nowhere
@@ -67,10 +71,11 @@ const { tryGit } = require('../kernel/git.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { tasksInFlight, taskAt } = require('./conversation.cjs');
 const { taskOfBranch, quickFixBranch } = require('./landing-names.cjs');
-const { taskWorktree } = require('./landing-git.cjs');
+const { taskWorktree, committerTime } = require('./landing-git.cjs');
 const { quickFixBuild, FIXES_PHASE } = require('./derivations.cjs');
 const fixEnd = () => require('./fix-end.cjs');
 const fixBranch = () => require('./fix-branch.cjs');
+const landing = () => require('./landing.cjs');
 const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { parseShownTask, sameTask, shownTask, taskId, taskName } = require('./task-id.cjs');
 const { isBugfix, doorGate } = require('./bug-proven.cjs');
@@ -262,6 +267,20 @@ function onWorkBranch(cwd, ref, manifest, repos) {
 }
 
 /**
+ * Refuse a quick-fix's commit, nothing moved, where git would date it
+ * before the unit's work is read from (`workFrom`, landing.cjs), as a clock
+ * behind dates it, so no landing would read it as the unit's work, naming
+ * the way on; nothing for a task of any other unit.
+ * @param {string} cwd @param {TaskRef} ref @param {Record<string, any>} manifest the unit's
+ */
+function refuseClockBehind(cwd, ref, manifest) {
+  if (!quickFixBuild(manifest)) return;
+  const at = committerTime(codeRoot(cwd));
+  if (at >= landing().workFrom(manifest)) return;
+  throw new Error(`commit --task: git would date this commit ${new Date(at).toISOString().slice(0, 10)}, before ${ref.unit} was made on ${manifest.created}, so no landing would read it as ${ref.unit}'s work, and nothing moved — set this machine's clock right, then commit again`);
+}
+
+/**
  * Each nested repository a quick-fix's task commits in recorded in the
  * unit's state, before the commit (`recordRepos`, fix-branch.cjs): what
  * that warned of; nothing for a task of any other unit.
@@ -280,4 +299,4 @@ function workMessage(message, ref) {
   return `${text}${trailers ? '\n' : '\n\n'}${TRAILER}: ${taskId(ref)}`;
 }
 
-module.exports = { TRAILER, inFlightTask, onWorkBranch, checksFor, runChecks, recordWork, workMessage };
+module.exports = { TRAILER, inFlightTask, refuseClockBehind, onWorkBranch, checksFor, runChecks, recordWork, workMessage };
