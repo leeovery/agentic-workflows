@@ -626,7 +626,7 @@ describe('conversation position', () => {
     assert.deepStrictEqual(notes, [
       [null, [], 'This conversation was working in the implementation of the epic "pay", but pay was built under the old plan, and its build is entered once the reshape\'s 29.17 migration has cut it, so there is nothing to carry on from.'],
       [null, [], 'This conversation was working in the review of the epic "pay", but pay was built under the old plan, and its build is entered once the reshape\'s 29.17 migration has cut it, so there is nothing to carry on from.'],
-      [null, [], 'This conversation was working in the review of the quick-fix "fix", but fix is a quick-fix, whose review runs only once the person asks for one at its close — the review on request is built with the reshape\'s 29.15, so there is nothing to carry on from.'],
+      [null, [], 'This conversation was working in the review of the quick-fix "fix", but fix is a quick-fix, whose review runs only once the person asks for one at its close — render finish fix draws it, so there is nothing to carry on from.'],
     ]);
   });
 

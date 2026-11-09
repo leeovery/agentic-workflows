@@ -118,6 +118,7 @@ describe('the area review\'s brief, the reviewer\'s third template (14.1, 14.2)'
       ].join('\n'),
       linters: '- eslint: npx eslint .',
       'area-report-to': pathDrawn(`${UNIT}/review/round-1/1-cards-b.md`),
+      'area-authority': 'Every task and every phase of the build has passed its own review. Hold the whole change against this area of the spec, as one piece. The spec\'s intent for the area, and the product it describes, are your authority, never a task\'s criteria:',
     })}`);
   });
 

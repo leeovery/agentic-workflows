@@ -36,7 +36,7 @@
 
 # Your review
 
-Every task and every phase of the build has passed its own review. Hold the whole change against this area of the spec, as one piece. The spec's intent for the area, and the product it describes, are your authority, never a task's criteria:
+{{area-authority}}
 
 - what the area asks of the product, met by the change as it stands: a requirement no task carried, a behaviour two tasks built halves of, an edge the area names that nothing delivered;
 - where the area meets the others, so a fault between them is found;

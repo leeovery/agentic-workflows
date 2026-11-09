@@ -36,12 +36,28 @@
 //   leaves the base — a task not done holds nothing yet to review;
 // - the change's tip, where its scratch worktree and its runs stand, is
 //   that stack's tip where the repository holds such work, else its base.
+// A quick-fix's review, asked for at its close, reads its change through
+// its landing's one read by content (`quickFixLanding`, landing.cjs, 7.2.22)
+// in each repository it touches — every task of it, the review's fix tasks
+// among them, committing on its one branch, `fix/{unit}` (19.5.15,
+// fix-branch.cjs) — so a merge by hand by any method still gives it its
+// change, never refused for having landed: its landings, each the oldest
+// commit on the first-parent line of the branch it lands on, as the host
+// has it, since its work began, holding a task's change — its own commit
+// by a fast-forward, a merge commit, a squash under any message or a
+// rebase's copy — or, holding no commit of it here, naming it; then its
+// branch, where that holds a commit not landed, read from where it leaves
+// that branch, as the landing cuts it again; its tip the branch there,
+// else the landing's.
 // A repository with neither landings nor work not landed holds none of the
 // change. Refused where no repository holds any.
-// The cut's scenarios stand where their runs at or behind the change's tips
-// put them (`cutStandings`), as a round records them and the board shows
+// The cut's scenarios — a quick-fix's, its fixes' (fix-acceptance.cjs) —
+// stand where their runs at or behind the change's tips put them
+// (`cutStandings`), as a round records them and the board shows
 // round 1's while it is read, the board reading the change from its read
-// of the tracker, no writer lock taken (`trackedChange`).
+// of the tracker, no writer lock taken (`trackedChange`), and a
+// quick-fix's off git alone, its host's branches as last fetched: no
+// fetch, and no pull request read.
 // ---------------------------------------------------------------------------
 
 const { git } = require('../kernel/git.cjs');
@@ -50,19 +66,26 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 const { projectRepos, repoName } = require('../kernel/repos.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
-const { isFixPhase, cutPhases } = require('./derivations.cjs');
+const { isFixPhase, cutPhases, quickFixBuild } = require('./derivations.cjs');
 const { runsOf } = require('./runs.cjs');
 const { trackedLists, trackedPhase } = require('./task-verbs.cjs');
-const { landedTasks } = require('./landing.cjs');
-const { tasksOfMessage } = require('./landing-names.cjs');
-const { branches, landsOn, mergeBase } = require('./landing-git.cjs');
+const { landedTasks, quickFixLanding } = require('./landing.cjs');
+const { tasksOfMessage, tasksNamedIn } = require('./landing-names.cjs');
+const { branches, landsOn, mergeBase, holdsChange, firstParentSince } = require('./landing-git.cjs');
+const { fixAcceptance, fixScenarios } = require('./fix-acceptance.cjs');
 const { stackOf } = require('./phase-stack.cjs');
-const { shownTask } = require('./task-id.cjs');
+const { shownTask, sameTask } = require('./task-id.cjs');
+
+/** The trailer the door stamps a task's commit with, read when asked: commit-task.cjs reads the landing. */
+const stampKey = () => require('./commit-task.cjs').TRAILER;
 
 /** @typedef {import('../kernel/repos.cjs').Repo} Repo */
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
 /** @typedef {import('./drivers.cjs').TaskRow} TaskRow */
 /** @typedef {import('./runs.cjs').RepoCommit} RepoCommit */
+/** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
+/** @typedef {import('./landing.cjs').RepoLanding} RepoLanding */
+/** @typedef {import('./fix-acceptance.cjs').FixAcceptance} FixAcceptance */
 
 /**
  * One part of the change in a repository, read `from..to`: a landing, by
@@ -203,22 +226,57 @@ function fixBase(cwd, unit, phase, repos) {
  * @param {string} cwd @param {string} unit @param {number} phases @param {string|null} given the base named, or null for each repository's own @param {Repo[]} repos the project's
  * @returns {Change}
  */
-const changeOf = (cwd, unit, phases, given, repos) => changeOn(cwd, unit, unlandedTasks(cwd, unit, phasesTo(phases), repos), given, repos);
+function changeOf(cwd, unit, phases, given, repos) {
+  const pending = () => unlandedTasks(cwd, unit, phasesTo(phases), repos);
+  const tasks = () => tasksIn(withStateLock(stateRoot(cwd), () => trackedLists(cwd, unit, phasesTo(phases)).phases));
+  return changeFrom(cwd, unit, { pending, tasks }, given, repos, false);
+}
 
 /**
  * The whole change, each repository at its own base, its work not landed
  * read from the unit's phases to `phases` as the caller read them, for a
  * reader that never takes the writer lock: each phase's list, the tasks
  * landed, and the tasks whole of the phases holding one done and not
- * landed, read only where any is.
+ * landed, read only where any is — a quick-fix's off git alone, its host's
+ * branches as last fetched, no host asked (`quickFixLanding`).
  * @param {string} cwd @param {string} unit @param {number} phases
  * @param {{lists: (TaskRow[]|null)[], landed: Set<string>, wholeOf: (phases: number[]) => TaskDetail[][]}} read @param {Repo[]} repos the project's
  * @returns {Change}
  */
 function trackedChange(cwd, unit, phases, { lists, landed, wholeOf }, repos) {
   const numbers = phasesTo(phases);
-  return changeOn(cwd, unit, notLanded(numbers, numbers.map((phase) => lists[phase - 1]), () => landed, wholeOf), null, repos);
+  const listed = numbers.map((phase) => lists[phase - 1]);
+  return changeFrom(cwd, unit, { pending: () => notLanded(numbers, listed, () => landed, wholeOf), tasks: () => tasksIn(listed) }, null, repos, true);
 }
+
+/** Every task among phases' lists. @param {(TaskRow[]|null|undefined)[]} lists @returns {TaskRef[]} */
+const tasksIn = (lists) => lists.flatMap((list) => (list ?? []).map(({ ref }) => ref));
+
+/**
+ * The whole change (the header's): a quick-fix's read by content from its
+ * tasks (`quickFixChange`), any other unit's from its work not landed
+ * (`changeOn`), each read only where asked.
+ * @param {string} cwd @param {string} unit @param {{pending: () => TaskDetail[], tasks: () => TaskRef[]}} read @param {string|null} given @param {Repo[]} repos
+ * @param {boolean} asFetched whether a quick-fix's is read with no host asked (`quickFixLanding`)
+ * @returns {Change}
+ */
+function changeFrom(cwd, unit, { pending, tasks }, given, repos, asFetched) {
+  return isQuickFix(cwd, unit) ? quickFixChange(cwd, unit, tasks(), given, repos, asFetched) : changeOn(cwd, unit, pending(), given, repos);
+}
+
+/** Whether the unit is built as a quick-fix (`quickFixBuild`). @param {string} cwd @param {string} unit */
+function isQuickFix(cwd, unit) {
+  const manifest = manifestOf(stateRoot(cwd), unit);
+  return manifest !== null && quickFixBuild(manifest);
+}
+
+/** Refuse a base named that no repository of the project has as a local branch. @param {string|null} given @param {Repo[]} repos */
+function refuseBase(given, repos) {
+  if (given !== null && !repos.some((repo) => branches(repo.path).has(given))) throw new Error(`the base ${given} is no local branch in any repository of the project`);
+}
+
+/** The refusal of a change no repository holds. @param {string} unit */
+const noChange = (unit) => new Error(`no repository of the project holds ${unit}'s change — nothing of it has landed, and no task of it is done`);
 
 /**
  * The whole change (the header's), its work not landed `pending`.
@@ -226,7 +284,7 @@ function trackedChange(cwd, unit, phases, { lists, landed, wholeOf }, repos) {
  * @returns {Change}
  */
 function changeOn(cwd, unit, pending, given, repos) {
-  if (given !== null && !repos.some((repo) => branches(repo.path).has(given))) throw new Error(`the base ${given} is no local branch in any repository of the project`);
+  refuseBase(given, repos);
   const stack = new Map([...stackTips(cwd, unit, pending, `${unit}'s build`, repos)].map(([repo, tip]) => [repo.path, tip]));
   const holding = repos.flatMap((repo) => {
     const base = given !== null && branches(repo.path).has(given) ? given : landsOnOrNone(cwd, repo);
@@ -241,22 +299,91 @@ function changeOn(cwd, unit, pending, given, repos) {
     const tip = branch ?? base;
     return [{ repo, base, parts, tip, commit: git(repo.path, ['rev-parse', `refs/heads/${tip}`]).trim() }];
   });
-  if (holding.length === 0) throw new Error(`no repository of the project holds ${unit}'s change — nothing of it has landed, and no task of it is done`);
+  if (holding.length === 0) throw noChange(unit);
   return { repos, holding };
+}
+
+/**
+ * A quick-fix's whole change (the header's), read through its landing's
+ * one read by content (`quickFixLanding`, landing.cjs, 7.2.22), `tasks`
+ * its tasks: in each repository it touches, each landing of one on the
+ * branch it lands on as the host has it, then its branch where that holds
+ * a commit not landed past it.
+ * @param {string} cwd @param {string} unit @param {TaskRef[]} tasks @param {string|null} given the base named, or null for each repository's own @param {Repo[]} repos the project's
+ * @param {boolean} asFetched whether the landing is read with no host asked
+ * @returns {Change}
+ */
+function quickFixChange(cwd, unit, tasks, given, repos, asFetched) {
+  refuseBase(given, repos);
+  const read = quickFixLanding(cwd, unit, { asFetched });
+  const holding = repos.flatMap((repo) => {
+    const held = read.repos.find((each) => each.repo.path === repo.path);
+    if (held === undefined) return [];
+    const parts = quickFixLandings(held, tasks);
+    const at = held.at();
+    const working = at !== undefined && held.holdsUnlanded(at);
+    if (working) parts.push({ from: mergeBase(repo.path, held.tip, at), to: at, landed: null, branch: held.branch });
+    if (parts.length === 0) return [];
+    const base = given !== null && branches(repo.path).has(given) ? given : held.ctx.into;
+    return [{ repo, base, parts, tip: working ? held.branch : base, commit: working ? at : held.tip }];
+  });
+  if (holding.length === 0) throw noChange(unit);
+  return { repos, holding };
+}
+
+/**
+ * A quick-fix's landings in one repository, oldest first, each a part read
+ * against its first parent: of each of `tasks` that has landed there, the
+ * oldest commit on the first-parent line of the branch it lands on, as the
+ * host has it, since the unit's work began, that holds its newest own
+ * commit's change (`holdsChange`) — or, holding none here, names it — as a
+ * merge by hand by any method leaves it: a fast-forward its own commit, a
+ * merge commit, a squash or a rebase's copy.
+ * @param {RepoLanding} held @param {TaskRef[]} tasks
+ * @returns {ChangePart[]}
+ */
+function quickFixLandings(held, tasks) {
+  const { root, unit } = held.ctx;
+  const line = [...firstParentSince(root, held.tip, held.since)].reverse();
+  const landedAt = (/** @type {TaskRef} */ ref) => {
+    const task = held.task(ref);
+    if (!task.landed) return undefined;
+    const { found } = task;
+    if (found !== null) return line.find(({ sha }) => holdsChange(root, sha, found));
+    return line.find(({ message }) => tasksNamedIn(unit, message, stampKey()).some((named) => sameTask(named, ref)));
+  };
+  const landedOn = new Set(tasks.map(landedAt).flatMap((commit) => (commit === undefined ? [] : [commit.sha])));
+  return line.filter(({ sha }) => landedOn.has(sha)).map(({ sha, parents, message }) => ({
+    from: before(held.repo, parents), to: sha, landed: { commit: sha, subject: message.split('\n')[0] }, branch: null,
+  }));
 }
 
 /** The change's tips, each repository by its name at its tip's commit, as a run names its commits. @param {Change} change @returns {RepoCommit[]} */
 const changeTips = ({ holding }) => holding.map(({ repo, commit }) => ({ repo: repoName(repo), commit }));
 
 /**
- * What each scenario of the cut stands at, at a change's tips: the code a
- * round reads (runs.cjs, 15.3.3).
+ * The scenarios the unit's review holds the change to, in order: its
+ * cut's, or a quick-fix's, its fixes' as `acceptance` reads them
+ * (fix-acceptance.cjs).
+ * @param {Record<string, any>} manifest @param {() => FixAcceptance[]} acceptance @returns {string[]}
+ */
+function reviewScenarios(manifest, acceptance) {
+  if (quickFixBuild(manifest)) return fixScenarios(acceptance()).map(({ scenario }) => scenario);
+  return cutPhases(manifest).flatMap(({ scenarios }) => scenarios);
+}
+
+/**
+ * What each scenario of the cut — a quick-fix's, of its fixes — stands at,
+ * at a change's tips: the code a round reads (runs.cjs, 15.3.3). A
+ * quick-fix's fixes are read from the tracker under the state's lock, but
+ * where `acceptance` reads them, as the board does from its own read.
  * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {Change} change
+ * @param {() => FixAcceptance[]} [acceptance]
  * @returns {{scenario: string, standing: string}[]}
  */
-function cutStandings(cwd, unit, manifest, change) {
+function cutStandings(cwd, unit, manifest, change, acceptance = () => fixAcceptance(cwd, unit)) {
   const tips = changeTips(change);
-  return cutPhases(manifest).flatMap(({ scenarios }) => scenarios).map((/** @type {string} */ scenario) => ({ scenario, standing: runsOf(cwd, unit, scenario, tips).standing }));
+  return reviewScenarios(manifest, acceptance).map((scenario) => ({ scenario, standing: runsOf(cwd, unit, scenario, tips).standing }));
 }
 
 module.exports = { changeOf, trackedChange, changeTips, cutStandings, fixBase, workBelow, belowTips };

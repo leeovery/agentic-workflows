@@ -91,10 +91,11 @@ const { readShown } = require('./ledger-read.cjs');
 const { parseInboxPath, FOLDER_KIND } = require('./inbox.cjs');
 const { titleOf } = require('./start.cjs');
 const { unitInProgress } = require('./topic-standing.cjs');
-const { itemTitle, topicTitles } = require('./derivations.cjs');
+const { itemTitle, topicTitles, quickFixBuild } = require('./derivations.cjs');
 const { reading, reposOf } = require('./phase-checks.cjs');
 const { readSpec, specStatements } = require('./spec-sections.cjs');
 const { changeOf, cutStandings } = require('./review-change.cjs');
+const { fixAcceptance, fixScenarios } = require('./fix-acceptance.cjs');
 const { reviewHeld } = require('./review-entry.cjs');
 const {
   UNFIXED_ITEM, isBugfix, bugRuns, rerunRefusal, rerunPassed,
@@ -435,7 +436,21 @@ function recordRound(cwd, unit, file) {
     ...(fixes.length === 0 ? {} : { fix_phase: phase }),
     ...(ends ? {} : { reads_at_least: reviewStanding(reading(cwd, unit, manifest)).required }),
     areas: areas.map(({ name }) => name),
+    ...closeNext(cwd, unit, manifest, ends),
   });
+}
+
+/**
+ * Where a quick-fix's review hands back once a round ends it and it is
+ * over: its close, in the same conversation (19.5.14, 24.1.3), whose
+ * checklist then carries the review passed — nothing for any other unit,
+ * nor while the round's fix tasks or its builders' notes hold it open.
+ * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {boolean} ends
+ * @returns {{next?: {kind: 'engine', argv: string[]}}}
+ */
+function closeNext(cwd, unit, manifest, ends) {
+  if (!ends || !quickFixBuild(manifest) || !reviewStanding(reading(cwd, unit, manifest)).over) return {};
+  return { next: { kind: 'engine', argv: ['render', 'finish', unit] } };
 }
 
 /** Why the builders' notes cannot be answered on their own, or null: a round under review answers them, the round that ended the phase waits on its fix tasks, or none stands. @param {string} unit @param {import('./review-phase.cjs').ReviewStanding} standing */
@@ -521,8 +536,9 @@ function roundView(cwd, manifest, record, round, wordings, statuses) {
   };
 }
 
-/** Each scenario's wording, by its id, the statements it draws on left to the spec. @param {string} cwd @param {string} unit */
-function scenarioWordings(cwd, unit) {
+/** Each scenario's wording, by its id, the statements it draws on left to the spec — a quick-fix's as its fixes' acceptance words them (fix-acceptance.cjs). @param {string} cwd @param {string} unit @param {Record<string, any>} manifest */
+function scenarioWordings(cwd, unit, manifest) {
+  if (quickFixBuild(manifest)) return new Map(fixScenarios(fixAcceptance(cwd, unit)).map(({ scenario, wording }) => [scenario, wording]));
   return new Map(specStatements(readSpec(cwd, unit)).filter(({ kind }) => kind === 'scenario').map(({ number, wording }) => [number, wording.replace(/\s*\([^()]*\)$/, '')]));
 }
 
@@ -543,7 +559,7 @@ function callsCount(cwd, unit, warnings) {
  * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {RoundRecord[]} rounds @param {Map<string, string>|null} statuses @param {string[]} warnings
  */
 function reportText(cwd, unit, manifest, rounds, statuses, warnings) {
-  const wordings = scenarioWordings(cwd, unit);
+  const wordings = scenarioWordings(cwd, unit, manifest);
   const title = itemTitle(topicTitles(manifest), 'review', unit);
   const last = /** @type {RoundRecord} */ (rounds.at(-1));
   const view = (/** @type {number} */ round) => roundView(cwd, manifest, rounds[round - 1], round, wordings, statuses);

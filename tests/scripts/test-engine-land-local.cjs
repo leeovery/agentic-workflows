@@ -25,7 +25,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
 const { ok, refuses, git, tip } = require('./engine-harness.cjs');
-const { TASKS, openArgs, own, cutTask, commitFiles, mergeBack, landedOn, useLandingWorld, refusedMoving, alreadyMoving, way, rebaseSteps } = require('./landing-world.cjs');
+const { TASKS, openArgs, own, cutTask, commitFiles, mergeBack, landedOn, useLandingWorld, refusedMoving, alreadyMoving, way, rebaseSteps, finishReady } = require('./landing-world.cjs');
 
 const localDriver = require('../../skills/leeway-engine/scripts/drivers/landing/local/driver.cjs');
 
@@ -91,6 +91,7 @@ describe('land: what the local driver reads off its stacks', () => {
     const phase = tip(dir, 'feat/pay-phase-4');
     const conflict = 'land: task 4.1 conflicts with main at card.txt, so nothing moved — '
       + way(dir, null, 'feat/pay-phase-4', rebaseSteps(dir, 'feat/pay-phase-4', 'main', 'bring feat/pay-phase-4 up to date with main'));
+    finishReady(dir);
     assert.strictEqual(refuses(dir, ['land', 'finish', 'pay']).error, `${conflict} (finish merged phase 1 before it)`);
     assert.deepStrictEqual([tip(dir, 'main'), tip(dir, 'feat/pay-phase-4')], [tip(dir, 'feat/pay-phase-1'), phase]);
     assert.strictEqual(refusedMoving(dir, ['land', 'finish', 'pay']), conflict);
@@ -101,6 +102,7 @@ describe('land: what the local driver reads off its stacks', () => {
     ok(dir, openArgs(card));
     t.mock.method(localDriver, 'nextMerge', () => ({ phase: 1, merge: () => ({ merged: [card.shown] }) }));
 
+    finishReady(dir);
     assert.strictEqual(refuses(dir, ['land', 'finish', 'pay']).error,
       `land: phase 1 merged, and still has ${card.shown} to land on main — what merged never reached it, so land it by hand there and finish again (finish merged phase 1 before it)`);
   });
@@ -113,6 +115,7 @@ describe('land: how the local driver stacks and replays', () => {
     ok(dir, openArgs(currency));
     const lower = cutTask(dir, '1.4', 'feat', 'Lower', currency.branch, { 'lower.txt': 'lower\n' });
     assert.strictEqual(own(ok(dir, openArgs(lower))).base, currency.branch);
+    finishReady(dir);
     assert.deepStrictEqual(own(ok(dir, ['land', 'finish', 'pay'])).phases.map((/** @type {{phase: number}} */ merged) => merged.phase), [2, 3, 1]);
     assert.deepStrictEqual(landedOn(dir, 'main').map(({ paths }) => paths), [['round.txt'], ['currency.txt'], ['lower.txt']]);
   });

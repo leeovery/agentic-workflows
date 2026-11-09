@@ -3,6 +3,16 @@
 // ---------------------------------------------------------------------------
 // Domain ring: the review phase's verbs (§14) — `review round` and `review
 // notes` (review-round.cjs), and here:
+// - `review ask <unit>`: a quick-fix's review asked for at its close, its
+//   row there (19.5.13) — the request recorded on its manifest,
+//   `fixes.review_asked`, the instant it was asked, and committed, so its
+//   review phase can be entered (derivations.cjs) and its finish's
+//   checklist carries the review passed (finish-checks.cjs); it answers
+//   `next`, the review phase's entry, in the same conversation (19.5.14,
+//   24.1.3). Asked again, it answers `already` with the same `next`,
+//   writing nothing. It refuses, writing nothing: a unit that is no
+//   quick-fix built by its own arm, and one whose close does not stand,
+//   as its screen refuses it (finish.cjs) — the row being the close's.
 // - `review reads <unit> <area|tests> …`: the areas a later round reads, as
 //   Claude names them once the round before's fix tasks are done, from what
 //   they changed (14.3.3) — written at `review/round-{N}-reads.json` in the
@@ -26,6 +36,10 @@
 // ---------------------------------------------------------------------------
 
 const { writeJsonAtomic } = require('../kernel/manifest-io.cjs');
+const { withWorkUnitLock, saveWorkUnitManifest } = require('../kernel/manifest.cjs');
+const { quickFixBuild, reviewAsked } = require('./derivations.cjs');
+const { isoNow } = require('./dates.cjs');
+const { finishStanding } = require('./finish.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { refusing } = require('./staged-payload.cjs');
 const { refuserFor, committed } = require('./task-account.cjs');
@@ -39,6 +53,7 @@ const {
 } = require('./review-phase.cjs');
 
 const REVIEW_USAGE = [
+  'review ask <work-unit>',
   'review round <work-unit> --file <round.json>',
   'review notes <work-unit> --file <notes.json>',
   'review reads <work-unit> <area|tests> [<area|tests> …]',
@@ -87,6 +102,26 @@ function acceptTree(cwd, unit) {
 }
 
 /**
+ * `review ask`: a quick-fix's review asked for at its close, recorded, and
+ * its review phase's entry next (the header's).
+ * @param {string} cwd @param {string} unit
+ */
+function askReview(cwd, unit) {
+  const said = 'review ask';
+  const next = { kind: 'engine', argv: ['enter', 'review', unit] };
+  return refusing(said, () => withWorkUnitLock(cwd, unit, () => {
+    const manifest = unitInProgress(cwd, unit);
+    if (!quickFixBuild(manifest)) throw new Error(`${unit} is no quick-fix built as one — a review is asked for at a quick-fix's close; any other unit's review phase follows its build`);
+    if (reviewAsked(manifest)) return { unit, review_asked: manifest.fixes.review_asked, already: true, next };
+    const { warnings } = finishStanding(cwd, unit);
+    const asked = isoNow();
+    manifest.fixes = { ...manifest.fixes, review_asked: asked };
+    saveWorkUnitManifest(cwd, unit, manifest);
+    return committed(cwd, [`${unit}/manifest.json`], `review(${unit}): asked for at its close`, [...warnings], { unit, review_asked: asked, next });
+  }));
+}
+
+/**
  * `review <verb>`, its words and flags as the engine parsed them.
  * @param {string} cwd @param {string[]} argv @param {Record<string, string>} opts
  */
@@ -94,6 +129,7 @@ function runReviewVerb(cwd, argv, opts) {
   const [verb, unit, ...rest] = argv;
   const named = Object.keys(opts).sort().join();
   if (unit !== undefined) {
+    if (verb === 'ask' && rest.length === 0 && named === '') return askReview(cwd, unit);
     if (verb === 'round' && rest.length === 0 && named === 'file' && opts.file) return recordRound(cwd, unit, opts.file);
     if (verb === 'notes' && rest.length === 0 && named === 'file' && opts.file) return answerNotes(cwd, unit, opts.file);
     if (verb === 'reads' && rest.length > 0 && named === '') return nameReads(cwd, unit, rest);

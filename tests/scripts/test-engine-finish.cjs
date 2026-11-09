@@ -54,9 +54,14 @@ function reviewPassed() {
   recorded({ can_now: ['Pay by card.'], findings: [] });
 }
 
-/** The review passed, a phase's start skipping its design, and finish's checklist worked and closed, its inbox item skipped. */
+/** The review passed, then finish's checklist worked and closed (`finishWorked`). */
 function finishClosed() {
   reviewPassed();
+  finishWorked();
+}
+
+/** A phase's start skipping its design, and finish's checklist worked and closed, its inbox item skipped. */
+function finishWorked() {
   checklist(['skip', 'phase-start', UNIT, '1', 'design-settled', '--reason', 'One task alone.']);
   checklist(['skip', 'finish', UNIT, 'inbox-closed', '--reason', 'No inbox item was resolved.']);
   checklist(['done', 'finish', UNIT, 'build-log-closed']);
@@ -104,10 +109,11 @@ describe('finish\'s checklist (6.4.10, 2.S2)', () => {
     assert.strictEqual(raised.code, 0, raised.stderr);
     const { parked } = JSON.parse(raised.stdout.split('\n')[0]);
 
-    assert.deepStrictEqual([items()[1], refused(['render', 'finish', UNIT]), refused(['finish', 'yes', UNIT])], [
+    assert.deepStrictEqual([items()[1], refused(['render', 'finish', UNIT]), refused(['finish', 'yes', UNIT]), refused(['land', 'finish', UNIT])], [
       `questions-answered engine open — ${parked}, ${asks} — the unit never finishes over a question waiting on the person: stop for them, render build-stop ${UNIT}, and take each once they are ready to discuss it`,
       'render finish: finish has items open since its close: questions-answered — they are worked, and it is closed again',
       'finish yes: finish has items open since its close: questions-answered — they are worked, and it is closed again',
+      'land: finish has items open since its close: questions-answered — they are worked, and it is closed again',
     ]);
   });
 
@@ -182,6 +188,7 @@ describe('render finish (14.5.1)', () => {
     const dropped = overruled(`${UNIT}.review`, reviewCall('The expiry finding is filed.', 'It is out of the change.'), 'The expiry finding is dropped.');
     const first = screen();
     const yes = refused(['finish', 'yes', UNIT]);
+    const landing = refused(['land', 'finish', UNIT]);
     const { argv } = ok(dir, ['gate', 'verdict', '--pick', 'n'], { env: env() }).next;
     ok(dir, ['verdict', 'give', retry, 'nothing', '--at', 'finish'], { env: env() });
     const second = screen();
@@ -190,41 +197,48 @@ describe('render finish (14.5.1)', () => {
     assert.match(sectionOf(first, 'DISPLAY: finish'), /\n\nYOUR VERDICT \(1 of 2 calls you changed\)\n {2}└─ How often is a charge retried\?\n {8}My answer: A charge is retried twice\.\n {8}Yours: A charge is retried once\.\n$/);
     assert.match(sectionOf(second, 'DISPLAY: finish'), /\n\nYOUR VERDICT \(2 of 2 calls you changed\)\n {2}└─ Is this finding filed or dropped\?\n {8}My answer: The expiry finding is filed\.\n {8}Yours: The expiry finding is dropped\.\n$/);
     assert.ok(![first, second].some((shown) => shown.includes('MENU: finish')), 'the gate waits on the verdicts');
-    assert.deepStrictEqual([yes, argv[2].startsWith(retry), argv.filter((_, at) => at !== 2)], [
-      'finish yes: a verdict is still to ask — render finish asks each before the yes', true, ['verdict', 'give', 'nothing', '--at', 'finish'],
+    assert.deepStrictEqual([yes, landing, argv[2].startsWith(retry), argv.filter((_, at) => at !== 2)], [
+      'finish yes: a verdict is still to ask — render finish asks each before the yes', 'land: a verdict is still to ask — render finish asks each before the yes', true, ['verdict', 'give', 'nothing', '--at', 'finish'],
     ]);
     assert.match(screen(), /=== MENU: finish /);
   });
 
-  it('refuses a unit the project lacks, one not in progress, one built under the old plan, a build not begun, a checklist open, and an engine item failing since its close, writing nothing', () => {
-    const open = refused(['render', 'finish', UNIT]);
-    finishClosed();
+  it('refuses a unit the project lacks, one not in progress, one built under the old plan, a build not begun, its review phase not over, a checklist open, and an engine item failing since its close, writing nothing — land finish refusing each as it does', () => {
+    /** Its refusal of the unit, and land finish's. @param {string} unit */
+    const both = (unit) => [refused(['render', 'finish', unit]), refused(['land', 'finish', unit])];
+    const reviewing = both(UNIT);
+    reviewPassed();
+    const open = both(UNIT);
+    finishWorked();
     keywordOnlyKnowledge(dir);
-    const stale = refused(['render', 'finish', UNIT]);
+    const stale = both(UNIT);
     writeState(dir, layout.manifest('half'), JSON.stringify({ ...readManifest(dir, 'half'), status: 'completed' }, null, 2));
     commitAll(dir, 'half completed');
 
-    assert.deepStrictEqual([
-      refused(['render', 'finish', 'nope']), refused(['render', 'finish', 'half']),
-      refused(['render', 'finish', 'old']), refused(['render', 'finish', 'fresh']), open, stale,
-    ], [
-      'render finish: there is no work unit "nope" — the start menu lists the work in progress',
-      'render finish: half is completed — new work starts from the start menu',
-      'render finish: old was built under the old plan, and its build is entered once the reshape\'s 29.17 migration has cut it',
-      'render finish: fresh\'s build has not begun — ready to build\'s yes begins it: render ready-to-build fresh',
-      `render finish: finish is open — its items are worked, then it is closed: checklist close finish ${UNIT}`,
-      'render finish: finish has items open since its close: records-indexed — they are worked, and it is closed again',
-    ]);
+    assert.deepStrictEqual([both('nope'), both('half'), both('old'), both('fresh'), reviewing, open, stale], [
+      'there is no work unit "nope" — the start menu lists the work in progress',
+      'half is completed — new work starts from the start menu',
+      'old was built under the old plan, and its build is entered once the reshape\'s 29.17 migration has cut it',
+      'fresh\'s build has not begun — ready to build\'s yes begins it: render ready-to-build fresh',
+      `${UNIT} finishes once its review phase is over — ${UNIT}'s review phase is in round 1 — enter review ${UNIT}`,
+      `finish is open — its items are worked, then it is closed: checklist close finish ${UNIT}`,
+      'finish has items open since its close: records-indexed — they are worked, and it is closed again',
+    ].map((said) => [`render finish: ${said}`, `land: ${said}`]));
   });
 });
 
 describe('finish yes (14.5.1, 24.1.2)', () => {
-  it('lands every phase still standing and completes the unit, committed, a feature handed to the start menu — refused while finish\'s checklist is open', () => {
+  it('lands every phase still standing and completes the unit, committed, a feature handed to the start menu — refused while its review phase goes on, and while finish\'s checklist is open', () => {
+    const reviewing = refused(['finish', 'yes', UNIT]);
+    reviewPassed();
     const open = refused(['finish', 'yes', UNIT]);
-    finishClosed();
+    finishWorked();
     const done = ok(dir, ['finish', 'yes', UNIT], { env: env() });
 
-    assert.strictEqual(open, `finish yes: finish is open — its items are worked, then it is closed: checklist close finish ${UNIT}`);
+    assert.deepStrictEqual([reviewing, open], [
+      `finish yes: ${UNIT} finishes once its review phase is over — ${UNIT}'s review phase is in round 1 — enter review ${UNIT}`,
+      `finish yes: finish is open — its items are worked, then it is closed: checklist close finish ${UNIT}`,
+    ]);
     assert.deepStrictEqual(done, {
       ok: true, unit: UNIT, landed: [], completed_at: readManifest(dir, UNIT).completed_at, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(), next: { kind: 'handoff', skill: 'leeway', args: [] },
     });

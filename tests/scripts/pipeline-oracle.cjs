@@ -177,6 +177,22 @@ function auditState(dir, label) {
       for (const repo of repos) assert.ok(fs.existsSync(path.join(dir, repo, '.git')), ctx(`${wu}: fixes.repos names ${repo}, no repository of the project's`));
     }
 
+    // A review asked for at a quick-fix's close is recorded on its fixes as
+    // the instant it was asked, a quick-fix's alone.
+    if (manifest.fixes?.review_asked !== undefined) {
+      const asked = manifest.fixes.review_asked;
+      assert.ok(typeof asked === 'string' && !Number.isNaN(Date.parse(asked)), ctx(`${wu}: fixes.review_asked ${JSON.stringify(asked)} is not an instant`));
+      assert.strictEqual(manifest.work_type, 'quick-fix', ctx(`${wu}: fixes.review_asked on a ${manifest.work_type}`));
+    }
+
+    // Finish's checklist is worked only once there is something to finish:
+    // a quick-fix's fixes begun, any other unit's build — never one a move
+    // carried over from the type it was.
+    if (manifest.checklists?.finish !== undefined) {
+      const begun = manifest.work_type === 'quick-fix' ? derivations.fixesBegun(manifest) : derivations.buildBegun(manifest);
+      assert.ok(begun, ctx(`${wu}: a finish checklist on a ${manifest.work_type} whose ${manifest.work_type === 'quick-fix' ? 'fixes' : 'build'} has not begun`));
+    }
+
     // No phase-named shadow roots beside `phases`.
     for (const key of Object.keys(manifest)) {
       assert.ok(!schema.VALID_PHASES.includes(key),

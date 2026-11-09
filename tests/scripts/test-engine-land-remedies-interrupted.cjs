@@ -23,7 +23,7 @@ const path = require('path');
 
 const { ok, git, tip } = require('./engine-harness.cjs');
 const {
-  TASKS, openArgs, own, commitFiles, mergeBack, useLandingWorld, refusedMoving, commandsOf, followRemedy, short, shellWord, scratchOf, way, moveStep, rebasingIn, rebaseSteps,
+  TASKS, openArgs, own, commitFiles, mergeBack, useLandingWorld, refusedMoving, commandsOf, followRemedy, short, shellWord, scratchOf, way, moveStep, rebasingIn, rebaseSteps, finishReady,
   strayRefusal: stray,
 } = require('./landing-world.cjs');
 
@@ -130,9 +130,11 @@ describe('land: a remedy taken again, or meeting what an earlier one left', () =
     const stopped = `land: ${PHASE_ONE} is being rebased at ${scratch}, a worktree a remedy made, so nothing moved — `
       + `settle each conflict there and go on with \`${rebasingIn(scratch)} rebase --continue\`, or end it with \`${there} rebase --abort\`, `
       + `then remove it with \`git worktree remove ${shellWord(scratch)}\`, and land again`;
-    const verbs = [openArgs(total), CHAIN_ONE, ['land', 'phase', 'pay', '1'], ['land', 'finish', 'pay']];
+    const verbs = [openArgs(total), CHAIN_ONE, ['land', 'phase', 'pay', '1']];
     cutShort(dir, refusedMoving(dir, CHAIN_ONE), 3);
     assert.deepStrictEqual(verbs.map((args) => refusedMoving(dir, args)), verbs.map(() => stopped));
+    finishReady(dir);
+    assert.strictEqual(refusedMoving(dir, ['land', 'finish', 'pay']), stopped);
     const [goOn, end, remove] = commandsOf(stopped);
     followRemedy(dir, `\`${end}\` \`${remove}\``);
     const again = refusedMoving(dir, CHAIN_ONE);

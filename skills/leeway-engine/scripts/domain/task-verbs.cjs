@@ -61,8 +61,9 @@
 // settle, the orchestrator's settlement of a failed round (task-account.cjs)
 // or, with `--phase`, of a phase review that failed (phase-settlement.cjs);
 // and note, a note for later (notes.cjs). No verb removes a phase: a moved
-// quick-fix's fixes' phase is taken out by the move (`removePhase`,
-// workunit-move.cjs), its store staged in the move's own commit.
+// quick-fix's phases, its fixes' and its review's, are taken out by the
+// move (`removeBuild`, workunit-move.cjs), its store staged in the move's
+// own commit.
 //
 // Every verb runs under the writer lock (engine.cjs), the tool's own lock
 // inside it. Before anything else reaches the driver, the project's setting
@@ -568,17 +569,23 @@ function trackedPhase(cwd, unit, phase) {
 }
 
 /**
- * A phase taken out of the tracker for good, its tasks with it — nothing
- * done where it is not written — the store left for the caller's own
- * commit, as a read leaves it: the store's files, to stage there.
- * @param {string} cwd @param {string} unit @param {number} phase
+ * Every phase the unit has written taken out of the tracker for good, its
+ * tasks with it, from phase 1 on — the build's own `length`, a phase of
+ * them not written passed over, and the review's fixes numbered on past
+ * them (P14), as `trackedBuild` reads them — the store left for the
+ * caller's own commit, as a read leaves it: the store's files, to stage
+ * there.
+ * @param {string} cwd @param {string} unit @param {number} length
  * @returns {string[]}
  */
-function removePhase(cwd, unit, phase) {
+function removeBuild(cwd, unit, length) {
   requireUnit(cwd, unit);
   return withTracker(cwd, unit, null, (driver, root) => {
-    if (driver.list(root, unit, phase) !== null) driver.removePhase(root, unit, phase);
-    return { files: driver.storeFiles() };
+    for (let phase = 1; ; phase += 1) {
+      const written = driver.list(root, unit, phase) !== null;
+      if (!written && phase > length) return { files: driver.storeFiles() };
+      if (written) driver.removePhase(root, unit, phase);
+    }
   }).files;
 }
 
@@ -993,4 +1000,4 @@ function runTaskVerb(cwd, verb, positional, opts) {
   return run(cwd, positional, ...values, .../** @type {string[]} */ (given));
 }
 
-module.exports = { TASK_VERBS, ENDED, STATUS_WORDS, runTaskVerb, closeForMove, writePhase, trackedTask, trackedPhases, trackedLists, trackedPhase, trackedBuild, removePhase, trackedUnit, goingOn, goesOn, phaseOpen, stepTurn, turnOf, turnRefusal, phaseWritten, givenText, trackedStart, copiedTasks };
+module.exports = { TASK_VERBS, ENDED, STATUS_WORDS, runTaskVerb, closeForMove, writePhase, trackedTask, trackedPhases, trackedLists, trackedPhase, trackedBuild, removeBuild, trackedUnit, goingOn, goesOn, phaseOpen, stepTurn, turnOf, turnRefusal, phaseWritten, givenText, trackedStart, copiedTasks };

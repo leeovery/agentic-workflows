@@ -53,8 +53,6 @@
 // ---------------------------------------------------------------------------
 
 const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
-const { stateRoot } = require('../kernel/state-root.cjs');
-const { manifestOf } = require('./ledger-units.cjs');
 const { quickFixBuild, buildLength, FIXES_PHASE } = require('./derivations.cjs');
 const { shownTask, taskName } = require('./task-id.cjs');
 const { trackedPhase, trackedBuild, ENDED } = require('./task-verbs.cjs');
@@ -224,20 +222,6 @@ function remakesDone(cwd, ref) {
 }
 
 /**
- * Refuse a quick-fix landed — `land phase` or `land finish` — while a task
- * of its build is neither done nor closed, naming each.
- * @param {string} cwd @param {string} unit
- */
-function refuseUnended(cwd, unit) {
-  const manifest = manifestOf(stateRoot(cwd), unit);
-  if (manifest === null || !quickFixBuild(manifest)) return;
-  const open = trackedBuild(cwd, unit, buildLength(manifest)).tasks.filter(({ status }) => !ENDED.includes(status)).map(({ ref }) => shownTask(ref));
-  if (open.length === 0) return;
-  const [named, are] = open.length === 1 ? [`task ${open[0]}`, 'is'] : [`tasks ${open.join(', ')}`, 'are'];
-  throw new Error(`land: ${unit} lands once each of its tasks is done or closed — ${named} ${are} neither: task done ${unit} ${open[0]}, or task close ${unit} ${open[0]} --reason <why>`);
-}
-
-/**
  * A quick-fix's fix's record taken out as it closes, where it holds one
  * (`takeOutRecord`): the state files written, for the close's own commit;
  * none for any other task.
@@ -262,4 +246,4 @@ function recordReindexed(cwd, ref, written) {
   return warnings.length > 0 ? { warnings } : {};
 }
 
-module.exports = { refuseOpening, refuseUndone, refuseHeld, refuseUnended, refuseLeftOff, remakesDone, closedRecord, recordReindexed };
+module.exports = { refuseOpening, refuseUndone, refuseHeld, refuseLeftOff, remakesDone, closedRecord, recordReindexed };

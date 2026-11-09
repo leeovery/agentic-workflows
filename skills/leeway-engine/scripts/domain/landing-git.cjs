@@ -78,7 +78,7 @@ const { git: personGit, tryGit: personTryGit, operationInProgress, dirtyEntries,
 const { placeOf, folderUnder } = require('../kernel/repos.cjs');
 const { STATE_BRANCH, NETWORK_ENV, PUSH_TIMEOUT_MS, FETCH_TIMEOUT_MS } = require('./state-worktree.cjs');
 const names = require('./landing-names.cjs');
-const { taskId } = require('./task-id.cjs');
+const { taskId, shownTask } = require('./task-id.cjs');
 const { remoteName, nestedRemoteName } = require('./remote.cjs');
 
 /**
@@ -279,6 +279,21 @@ function firstParentLine(root, from, to) {
   });
 }
 
+/**
+ * The commits on `tip`'s first-parent line committed at or after the time
+ * `since` names, every one where it names none, newest first, each with
+ * its parents, space-separated, and its message.
+ * @param {string} root @param {string} tip @param {string|null} since
+ * @returns {{sha: string, parents: string, message: string}[]}
+ */
+function firstParentSince(root, tip, since) {
+  const bound = since === null ? [] : [`--since=${since}`];
+  return git(root, ['log', '--first-parent', '-z', '--format=%H%n%P%n%B', ...bound, tip, '--']).split('\0').filter(Boolean).map((entry) => {
+    const [sha, parents, ...message] = entry.split('\n');
+    return { sha, parents, message: message.join('\n') };
+  });
+}
+
 /** The message of every commit `to` holds past `from`, whatever its parent. @param {string} root @param {string} from @param {string} to @returns {string[]} */
 function messagesPast(root, from, to) {
   return git(root, ['log', '-z', '--format=%B', `${from}..${to}`]).split('\0').filter(Boolean);
@@ -401,7 +416,7 @@ function messagesNaming(root, revs, text, since = null) {
 function tasksNamedOn(root, on, unit, key, since) {
   const bound = since === null ? [] : [`--since=${since}`];
   const messages = git(root, ['log', '-z', '--format=%B', '--fixed-strings', `--grep=Task: ${unit}-`, `--grep=${key}: ${unit}-`, ...bound, revOf(root, on), '--']).split('\0').filter(Boolean);
-  return new Set(messages.flatMap((message) => [...names.tasksOfMessage(unit, message), ...names.tasksOfMessage(unit, message, key)].map(taskId)));
+  return new Set(messages.flatMap((message) => names.tasksNamedIn(unit, message, key).map(taskId)));
 }
 
 /** Every commit `to` holds past `from`, oldest first, as a refusal names it: short, then its subject. @param {string} root @param {string} from @param {string} to @returns {string[]} */
@@ -506,19 +521,72 @@ function pointerAhead(into, folder, sub, sha, onto) {
 /** A submodule's landings as a stack's moves read them: its tip, its first-parent line past the pointer read from, newest first, and the landing of each task by its `Task:` line. @typedef {{tip: string, line: {sha: string}[], byTask: Map<string, string>}} SubmoduleLandings */
 
 /**
+ * A submodule's landings from the commit `start` to its tip.
+ * @param {{root: string, unit: string}} sub @param {string} start @param {string} tip
+ * @returns {SubmoduleLandings}
+ */
+function landingsFrom(sub, start, tip) {
+  const line = firstParentLine(sub.root, start, tip);
+  return { tip, line, byTask: names.landingsByTask(sub.unit, line) };
+}
+
+/**
+ * A submodule's landing of a pointer's change: that of the latest of
+ * `tasks` it landed, by its `Task:` line, else, where its tip lacks
+ * `pointer`, the oldest commit on its line holding that pointer's change
+ * (`holdsChange`), as a merge by hand under the person's own message lands
+ * it; undefined where neither finds one.
+ * @param {{root: string}} sub @param {SubmoduleLandings} landings @param {string[]} tasks shown @param {string} pointer
+ * @returns {string|undefined}
+ */
+function landingOfChange(sub, { tip, line, byTask }, tasks, pointer) {
+  const named = [...tasks].reverse().map((task) => byTask.get(task)).find((sha) => sha !== undefined);
+  if (named !== undefined || isAncestor(sub.root, pointer, tip)) return named;
+  return [...line].reverse().find(({ sha }) => holdsChange(sub.root, sha, pointer))?.sha;
+}
+
+/**
+ * Where a default branch, `into`, pointing a submodule at `sha` that what
+ * the submodule lands onto, `onto`, does not descend from, points it
+ * instead: the submodule's landing there of that pointer's change, found
+ * as a stack's moves find it (`landingOfChange`), by the tasks `tasksOf`
+ * reads, when first needed — refused where none is found, or the submodule
+ * lacks the commit (`pointerAhead`); null where `onto` descends from it.
+ * @param {string} into @param {string} folder the submodule's @param {{root: string, unit: string, into: string}} sub @param {string} sha @param {string} onto @param {() => string[]} tasksOf shown
+ * @returns {{to: string}|{refused: string}|null}
+ */
+function repointing(into, folder, sub, sha, onto, tasksOf) {
+  const ahead = pointerAhead(into, folder, sub, sha, onto);
+  if (ahead === null) return null;
+  const to = holdsCommit(sub.root, sha) ? landingOfChange(sub, landingsFrom(sub, sha, onto), tasksOf(), sha) : undefined;
+  return to === undefined ? { refused: ahead } : { to };
+}
+
+/**
+ * The message of the latest commit on `tip`'s first-parent line that moved
+ * the submodule at `folder`, from the repository's top — empty where none
+ * did.
+ * @param {string} root @param {string} tip @param {string} folder
+ */
+function lastPointing(root, tip, folder) {
+  return git(root, ['log', '--first-parent', '-1', '--format=%B', tip, '--', `:(top,literal)${folder}`]);
+}
+
+/**
  * Each of a stack's own commits' moves of its repository's submodules'
  * pointers, in the commits' order: where a commit points a submodule other
  * than every parent of it does — so a merge taking one side's pointer moves
  * nothing, and a pointer the stack inherited from below it is no move of
  * its — for a submodule the walk lands in, its landing read off its default
  * branch's first-parent line from where `since` points it to its tip
- * (`tipOf`, read when first needed): that of the latest of the commit's
- * tasks it landed, by its `Task:` line, else, where the tip lacks the
- * commit's own pointer, the oldest there holding that pointer's change
- * (`holdsChange`), as a merge by hand under the person's own message lands
- * it; else the commit's own pointer. One taken out stays out. Refused,
- * never in git's words, where the submodule's tip does not descend from
- * the commit `since` points it at (`pointerAhead`).
+ * (`tipOf`, read when first needed), of the commit's own pointer's change,
+ * by the commit's tasks (`landingOfChange`); else the commit's own pointer.
+ * One taken out stays out. Refused, never in git's words, where the
+ * submodule's tip neither descends from the commit `since` points it at
+ * nor holds that commit's change, by the tasks of the commit that last
+ * moved the pointer there (`repointing`) — as a merge of the submodule by
+ * hand after the repository holding it leaves it, the pointer the stack
+ * sets then on the submodule's tip.
  * @template {{root: string, unit: string, into: string}} Sub
  * @param {{root: string, into: string, gitlinks: string[], submodules: {path: string, ctx: Sub}[]}} repo the repository's merge context (landing.cjs)
  * @param {{sha: string, parents: string[], tasks: string[]}[]} commits @param {string} since the default branch's tip @param {(sub: Sub) => string} tipOf
@@ -532,25 +600,18 @@ function stackMoves(repo, commits, since, tipOf) {
   const from = /** @type {Map<string, string|null>} */ (read.get(since));
   /** @type {Map<string, SubmoduleLandings>} */
   const landings = new Map();
-  /**
-   * The submodule's landing of the latest of `tasks` it landed, else of the change `pointer` holds, if any.
-   * @param {string} at @param {string[]} tasks @param {string} pointer
-   */
+  /** The submodule's landing of the change `pointer` holds, if any. @param {string} at @param {string[]} tasks @param {string} pointer */
   const landing = (at, tasks, pointer) => {
     const sub = repo.submodules.find((walked) => walked.path === at)?.ctx;
     const start = from.get(at) ?? null;
     if (sub === undefined || start === null) return undefined;
     if (!landings.has(at)) {
       const tip = tipOf(sub);
-      const ahead = pointerAhead(repo.into, at, sub, start, tip);
-      if (ahead !== null) throw new Error(ahead);
-      const line = firstParentLine(sub.root, start, tip);
-      landings.set(at, { tip, line, byTask: names.landingsByTask(sub.unit, line) });
+      const held = repointing(repo.into, at, sub, start, tip, () => names.tasksOfMessage(sub.unit, lastPointing(root, since, at)).map(shownTask));
+      if (held !== null && 'refused' in held) throw new Error(held.refused);
+      landings.set(at, landingsFrom(sub, start, tip));
     }
-    const { tip, line, byTask } = /** @type {SubmoduleLandings} */ (landings.get(at));
-    const named = [...tasks].reverse().map((task) => byTask.get(task)).find((sha) => sha !== undefined);
-    if (named !== undefined || isAncestor(sub.root, pointer, tip)) return named;
-    return [...line].reverse().find(({ sha }) => holdsChange(sub.root, sha, pointer))?.sha;
+    return landingOfChange(sub, /** @type {SubmoduleLandings} */ (landings.get(at)), tasks, pointer);
   };
   return commits.map(({ sha, parents, tasks }) => {
     const own = /** @type {Map<string, string|null>} */ (read.get(sha));
@@ -1298,6 +1359,9 @@ function fetchBranch(root, remote, branch) {
   return { commit: git(root, ['rev-parse', tracking]).trim() };
 }
 
+/** A remote's branch's commit as last fetched, fetching nothing; null where it never has been. @param {string} root @param {string} remote @param {string} branch @returns {string|null} */
+const trackedTip = (root, remote, branch) => tryGit(root, ['rev-parse', '--verify', '--quiet', `refs/remotes/${remote}/${branch}^{commit}`])?.trim() ?? null;
+
 /**
  * Whether the repository holds `commit`, fetched where it does not from the
  * remote's ref `ref` that holds it, writing no ref here — false where the
@@ -1382,8 +1446,8 @@ function landsOn(cwd, repo) {
 }
 
 module.exports = {
-  short, readOnce, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranches, holdingBranch, refsUnder, updateRefs, isAncestor, latestOf, mergeBase, treesOf, firstParentLine, messagesPast, trailersPast, stampedPast, committerTime, holdsChange, holdsTaskChange, holdsCopy, lastStamped, stampsUnit, messagesNaming, tasksNamedOn, commitsNamed, messageOf, commitWithTree, treesPast,
-  pointersAt, treeWithPointers, pointedLike, holdsCommit, pointerAhead, stackMoves, commitsPast, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, remedy, moveTo, movedSinceOpened, rewrite, scratchBlock, rebaseBlock, checkoutBlock, changesAt, pathsChanged, dirtBlock, moveBranch,
-  defaultBranch, landsOn, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, fetchedCommit, nothingPast,
+  short, readOnce, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranches, holdingBranch, refsUnder, updateRefs, isAncestor, latestOf, mergeBase, treesOf, firstParentLine, firstParentSince, messagesPast, trailersPast, stampedPast, committerTime, holdsChange, holdsTaskChange, holdsCopy, lastStamped, stampsUnit, messagesNaming, tasksNamedOn, commitsNamed, messageOf, commitWithTree, treesPast,
+  pointersAt, treeWithPointers, pointedLike, holdsCommit, pointerAhead, repointing, lastPointing, stackMoves, commitsPast, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, remedy, moveTo, movedSinceOpened, rewrite, scratchBlock, rebaseBlock, checkoutBlock, changesAt, pathsChanged, dirtBlock, moveBranch,
+  defaultBranch, landsOn, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, trackedTip, fetchedCommit, nothingPast,
   worktrees, taskWorktree, mainCheckoutOf, projectCheckout, holderOf, samePlace, removing, branchInPlace, addWorktree, switchTo, removeWorktree, detach, scratchRoot, scratchTree,
 };

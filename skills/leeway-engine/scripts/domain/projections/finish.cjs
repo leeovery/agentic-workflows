@@ -22,8 +22,9 @@
 // no way to run it (P9); each departure asked its verdict at the verdict
 // point `close` (16.10.4); and its gate, `Close it?`: the yes, merging its
 // pull request where a fix done is still to land, or saying its fixes have
-// landed, a review asked for, and questions about the change. Its rows and words are
-// Claude's in the spec (18.10.8).
+// landed; a review asked for, `review ask`, until one has been; and
+// questions about the change. Its rows and words are Claude's in the spec
+// (18.10.8).
 // ---------------------------------------------------------------------------
 
 const { section, menu, cmdOption, promptOption, callout, treeList, MENU_INSTRUCTION, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
@@ -87,9 +88,9 @@ function finishScreen(view) {
 /**
  * A quick-fix's close as it is drawn: finish's, with the product's name,
  * what running it proved of each fix's scenarios — null where the project
- * has no way to run it — how many fixes are done, and whether its pull
- * request still holds one to land.
- * @typedef {FinishView & {product: string, proven: import('./build.cjs').Ran[]|null, fixes: number, landing: boolean}} CloseView
+ * has no way to run it — how many fixes are done, whether its pull
+ * request still holds one to land, and whether its review was asked for.
+ * @typedef {FinishView & {product: string, proven: import('./build.cjs').Ran[]|null, fixes: number, landing: boolean, reviewed: boolean}} CloseView
  */
 
 /** A scenario's line under what was proven: its glyph, and its standing where short of proven. @param {import('./build.cjs').Ran} ran */
@@ -116,11 +117,11 @@ function closeWords({ fixes, landing }) {
   return `Close it — ${fixes === 1 ? 'its fix has' : 'its fixes have'} landed, so mark it complete`;
 }
 
-/** The close's gate: the yes, a review asked for, and questions about the change. @param {CloseView} view */
+/** The close's gate: the yes, a review asked for until one has been (19.5.13), and questions about the change. @param {CloseView} view */
 function closeGate(view) {
   return section('MENU: finish', MENU_INSTRUCTION, menu('', [
     cmdOption('y', 'yes', closeWords(view), { next: { kind: 'engine', argv: ['finish', 'yes', view.unit] } }),
-    cmdOption('r', 'review', 'Have the whole change reviewed before it closes'),
+    ...(view.reviewed ? [] : [cmdOption('r', 'review', 'Have the whole change reviewed before it closes', { next: { kind: 'engine', argv: ['review', 'ask', view.unit] } })]),
     promptOption('Ask', 'Ask about the change before it closes'),
   ], { question: 'Close it?' }));
 }

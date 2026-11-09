@@ -7,8 +7,9 @@
 // (position.cjs), which re-reads what the entry reads (24.2.2).
 //
 // It refuses what the build's entry refuses — a unit built under the old
-// plan, a build not begun — a quick-fix, whose review runs only once the
-// person asks for one at its close (19.5.14), and a build not finished: the
+// plan, a build not begun — a quick-fix whose review the person has not
+// asked for at its close (19.5.14) — a quick-fix asked for having no cut
+// to finish, its fixes ended at its close — and a build not finished: the
 // review phase starts once every phase of the cut has closed
 // (`buildFinished`, 14.6.1), and the refusal names each phase not closed;
 // in step, once each has merged too, its stack merging at its gate first
@@ -30,7 +31,8 @@
 //
 // It answers, in its DATA: the round under review, or how the round that
 // ended the phase did, and what is next; the spec's areas, each by its name
-// in the layout and its title; the areas the round reads, the test surface
+// in the layout and its title — a quick-fix's one, the change, its record
+// and its change-set from the base (19.5.14); the areas the round reads, the test surface
 // among them, or that a later round's are not yet named, with those it must
 // take (14.3.3); each report of the round under review already in, reading
 // as a reviewer's, so a return to the round briefs only the readers whose
@@ -51,7 +53,8 @@
 // (bug-proven.cjs, 15.5.6); the branch the unit's work lands on, each
 // reader's base (task-base.cjs); each of the conversation's fix
 // tasks in flight, and each question waiting on the person, as the build's
-// entry gives them (12.13.7); each round's report; the spec; the unit's
+// entry gives them (12.13.7); each round's report; the spec — a
+// quick-fix's record, `summary.md`, in its place; the unit's
 // record, by its call; and the build's log. Its recovery note re-reads the
 // same, the fix tasks in flight those of the conversation the note is for.
 // ---------------------------------------------------------------------------
@@ -59,14 +62,17 @@
 const { ENGINE_COMMAND, ENGINE_RUN, messageOf } = require('../kernel/call.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
-const { buildFinished, phaseClosed, buildRefusal, quickFixReviewRefusal, cutPhases, cutLength } = require('./derivations.cjs');
+const {
+  buildFinished, phaseClosed, buildRefusal, quickFixReviewRefusal, quickFixBuild, cutPhases, cutLength,
+} = require('./derivations.cjs');
 const { reading, reposOf, mergeWaiting } = require('./phase-checks.cjs');
 const {
-  codeHeld, buildLogOf, buildStanding, ownInFlight, inFlightLines, waitingLines, takeInFlight, readingOf,
+  codeHeld, buildLogOf, standingOf, ownInFlight, inFlightLines, waitingLines, takeInFlight, readingOf,
 } = require('./build-entry.cjs');
 const { projectLandsOn } = require('./task-base.cjs');
 const { waitingAndFreed } = require('./questions.cjs');
 const { specPath } = require('./spec-sections.cjs');
+const { summaryFile } = require('./knowledge/artifacts.cjs');
 const { notesPath } = require('./notes.cjs');
 const {
   reviewStanding, reportsIn, endedWords, readsWords, mergingWords, roundReportFile, openSnapshot, fixPhase, setAsideHeld,
@@ -84,14 +90,15 @@ const {
 
 /**
  * Why the unit's review phase cannot be entered, with its way on, or null
- * where it can: the build's refusals, a quick-fix's, then a build not
- * finished, then in step a stack of the cut waiting at its merge gate.
+ * where it can: the build's refusals, a quick-fix's — one asked for
+ * entered — then a build not finished, then in step a stack of the cut
+ * waiting at its merge gate.
  * @param {Reading} at @returns {string|null}
  */
 function reviewRefusal(at) {
   const { manifest } = at;
   const refused = buildRefusal(manifest) ?? quickFixReviewRefusal(manifest);
-  if (refused !== null) return refused;
+  if (refused !== null || quickFixBuild(manifest)) return refused;
   const { name } = manifest;
   if (buildFinished(manifest)) {
     const merging = mergeWaiting(at, cutLength(manifest));
@@ -162,13 +169,18 @@ function fixPhaseWords(manifest, { rounds, round, ended, waiting, reads }) {
   return `phase ${fixPhase(manifest, round)}, where round ${round}'s fix tasks are written`;
 }
 
+/** An area as its line says it: the spec's by its section, a quick-fix's change by what it reads. @param {string} unit @param {Record<string, any>} manifest @param {import('./review-phase.cjs').Area} area */
+function areaWords(unit, manifest, { name, number, title }) {
+  return quickFixBuild(manifest) ? `${name} — ${title.toLowerCase()}: ${unit}'s record and its change-set from the base` : `${name} — §${number} ${title}`;
+}
+
 /** Where the review phase stands, a line each: the round, the areas, the reads, the reports in, the fix phase, the fix tasks waiting and, in step, their phase's merge. @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {ReviewStanding} standing @returns {Line[]} */
 function standingLines(cwd, unit, manifest, standing) {
   const fixes = fixPhaseWords(manifest, standing);
   return [
     ['round', roundWords(unit, standing)],
-    ...standing.areas.map(({ name, number, title }) => /** @type {Line} */ (['area', `${name} — §${number} ${title}`])),
-    ...(standing.ended ? [] : [/** @type {Line} */ (['reads', readsLine(unit, standing, manifest.build.position === 'step')])]),
+    ...standing.areas.map((area) => /** @type {Line} */ (['area', areaWords(unit, manifest, area)])),
+    ...(standing.ended ? [] : [/** @type {Line} */ (['reads', readsLine(unit, standing, manifest.build?.position === 'step')])]),
     ...reportsIn(cwd, unit, standing).map((file) => /** @type {Line} */ (['report in', file])),
     ...(fixes === null ? [] : [/** @type {Line} */ (['fix phase', fixes])]),
     ...standing.waiting.map((fix) => /** @type {Line} */ (['fix task waiting', fix])),
@@ -185,7 +197,7 @@ function standingLines(cwd, unit, manifest, standing) {
  * @param {Reading} at @param {InFlight[]} inFlight @param {string|null} session @returns {Line[]}
  */
 function buildLines(at, inFlight, session) {
-  const inFlightPart = inFlight.length === 0 ? [] : inFlightLines(at.cwd, session, buildStanding(at.cwd, at.unit, inFlight));
+  const inFlightPart = inFlight.length === 0 ? [] : inFlightLines(at.cwd, session, standingOf(at, inFlight));
   return [...inFlightPart, ...waitingLines(waitingAndFreed(at.cwd, at.unit, at.warnings))];
 }
 
@@ -226,6 +238,9 @@ const roundReports = (cwd, unit, { rounds }) => rounds.map((_, at) => statePath(
 /** The record's call. @param {string} unit */
 const recordCall = (unit) => `${ENGINE_COMMAND} ledger record ${unit}`;
 
+/** What the review holds the change against: the spec, or a quick-fix's own record, `summary.md`, it having none (19.5.14). @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @returns {Line} */
+const heldAgainst = (cwd, unit, manifest) => (quickFixBuild(manifest) ? ['summary', statePath(cwd, summaryFile(unit))] : ['spec', specPath(cwd, unit)]);
+
 /**
  * What the review phase reads at its entry (the header's), its fix tasks
  * in flight the conversation `session`'s.
@@ -240,7 +255,7 @@ function reviewReads(at, inFlight, session) {
     baseLine(at),
     ...buildLines(at, inFlight, session),
     ...roundReports(cwd, unit, standing).map((report) => /** @type {Line} */ (['round report', report])),
-    ['spec', specPath(cwd, unit)],
+    heldAgainst(cwd, unit, manifest),
     ['record', `\`${recordCall(unit)}\``],
     ['build log', statePath(cwd, buildLogOf(unit))],
     ['engine', `\`${ENGINE_RUN}\` — the engine by its absolute path, for a call made from a task's worktree`],
@@ -248,12 +263,12 @@ function reviewReads(at, inFlight, session) {
 }
 
 /** The entry's reads the recovery note re-reads as documents; the record it re-reads by its call. */
-const DOCUMENTS = new Set(['round report', 'notes', 'spec', 'build log']);
+const DOCUMENTS = new Set(['round report', 'notes', 'spec', 'summary', 'build log']);
 
 /**
  * What the review phase's recovery note re-reads beside its skill: what the
  * entry reads — the record by its call; each round's report, the builders'
- * notes where any stands, the spec and the build's log; where the phase
+ * notes where any stands, the spec or a quick-fix's record, and the build's log; where the phase
  * stands, a line each, its fix tasks in flight those of the conversation
  * the note is for, `session` — or why that cannot be read, in its place.
  * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {InFlight[]} inFlight @param {string} session
@@ -269,7 +284,7 @@ function reviewRecovery(cwd, unit, manifest, inFlight, session) {
       lines: read.filter(([key]) => key !== 'record' && !DOCUMENTS.has(key)).map(([key, value]) => `${key}: ${value}`),
     };
   } catch (err) {
-    return { calls, documents: [specPath(cwd, unit), statePath(cwd, buildLogOf(unit))], lines: [`Where the review phase stands could not be read: ${messageOf(err)}`] };
+    return { calls, documents: [heldAgainst(cwd, unit, manifest)[1], statePath(cwd, buildLogOf(unit))], lines: [`Where the review phase stands could not be read: ${messageOf(err)}`] };
   }
 }
 

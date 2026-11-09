@@ -48,8 +48,8 @@ const METHODS = Object.freeze({
     optional: /** @type {const} */ ([]),
   },
   landing: {
-    required: /** @type {const} */ (['serves', 'chainTip', 'holds', 'open', 'chain', 'mergePhase', 'nextMerge', 'quickFixPull', 'openQuickFix', 'mergeQuickFix', 'closeQuickFix']),
-    optional: /** @type {const} */ (['assertServes', 'landsOn', 'finished', 'protectBranch', 'setSquashDefault']),
+    required: /** @type {const} */ (['serves', 'chainTip', 'holds', 'open', 'chain', 'mergePhase', 'nextMerge', 'quickFixPull', 'openQuickFix', 'mergeQuickFix', 'closeQuickFix', 'repoint']),
+    optional: /** @type {const} */ (['assertServes', 'landsOn', 'landsOnAsFetched', 'finished', 'protectBranch', 'setSquashDefault']),
   },
 });
 
@@ -197,8 +197,9 @@ const METHODS = Object.freeze({
  * refuses a repository whose remote it does not serve (`assertServes`),
  * which the seam asks of every repository it walks before any acts; and a
  * driver whose default branch is not the local one answers the commit a
- * merge lands onto (`landsOn`), fetched — the seam reads the local branch's
- * tip where it does not.
+ * merge lands onto (`landsOn`), fetched, and that commit as last fetched,
+ * fetching nothing (`landsOnAsFetched`), as a read asking no host takes
+ * it — the seam reads the local branch's tip where it does not.
  * `chainTip` answers the branch a task's branch must descend from, at a
  * commit the repository has locally, which the seam checks before `open` —
  * null where the task's phase's stack holds it already; `holds`, whether it
@@ -230,7 +231,11 @@ const METHODS = Object.freeze({
  * or, given no landing, brings that branch here to the host's, answering
  * `already`; and `closeQuickFix` closes the one open unmerged, as a move
  * closes it, answering whether it did — the last three reading the pull
- * requests as `quickFixPull` does. Where the host can, run
+ * requests as `quickFixPull` does. `repoint` points the default branch's
+ * submodules, by their paths from the repository's top, at the commits
+ * given — one commit onto the branch it lands on, landed as the driver
+ * lands a change, a host's through a pull request of its own — answering
+ * what it was warned of. Where the host can, run
  * from a repository's checkout against its remote's repository:
  * `protectBranch` sets a rule refusing a branch's deletion and any push to
  * it that is not a fast-forward (4.4.6), and `setSquashDefault` makes a
@@ -242,6 +247,7 @@ const METHODS = Object.freeze({
  *   serves: (url: string) => boolean,
  *   assertServes?: (ctx: LandingContext) => void,
  *   landsOn?: (ctx: LandingContext) => string,
+ *   landsOnAsFetched?: (ctx: LandingContext) => string,
  *   protectBranch?: (root: string, url: string, branch: string) => {repository: string, unset: string|null},
  *   setSquashDefault?: HostSetting,
  *   chainTip: (ctx: LandingContext, task: LandingTask) => ChainTip|null,
@@ -254,6 +260,7 @@ const METHODS = Object.freeze({
  *   openQuickFix: (ctx: LandingContext, landing: QuickFixTask) => {already?: true, warnings?: string[]},
  *   mergeQuickFix: (ctx: LandingContext, landing: QuickFixTask|null) => {into: string, merged: string[], warnings?: string[]}|{into: string, already: true, warnings?: string[]},
  *   closeQuickFix: (ctx: LandingContext, branch: string, since: string|null) => {closed: boolean},
+ *   repoint: (ctx: LandingContext, pointers: Map<string, string>) => {commit?: string, pull_request?: number, warnings?: string[]},
  *   finished?: (ctx: LandingContext) => void,
  * }} LandingMethods
  */

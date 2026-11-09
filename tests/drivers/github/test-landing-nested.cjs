@@ -30,7 +30,7 @@ const fs = require('fs');
 const path = require('path');
 
 const harness = require('../../scripts/engine-harness.cjs');
-const { NESTED, NESTED_TASKS, openArgs, cutTask, commitFiles, mergeBack, useNestedWorld } = require('../../scripts/landing-world.cjs');
+const { NESTED, NESTED_TASKS, openArgs, cutTask, commitFiles, mergeBack, useNestedWorld, finishReady } = require('../../scripts/landing-world.cjs');
 const side = require('./landing.cjs');
 const { GITHUB_SQUASH } = require('./gh-stub.cjs');
 const { github, onGithub, bareOf, calls, tipOnGithub, ok, refused } = require('./world.cjs');
@@ -94,6 +94,7 @@ describe('GitHub\'s landing driver across nested repositories (7.2.17)', () => {
     assert.strictEqual(tip(at.dir, show.branch), tipOnGithub(at.dir, show.branch), 'the branch here is not at the commit pushed');
     assert.deepStrictEqual(side.landed(at.dir).map(({ subject }) => subject), ['feat(pay): Add rates', 'feat(pay): Show rates']);
     assert.strictEqual(git(top, ['rev-parse', `main:${NESTED.ext.folder}`]).trim(), merged);
+    finishReady(at.dir);
     assert.deepStrictEqual(repos(ok(at.dir, ['land', 'finish', 'pay'])), []);
   });
 

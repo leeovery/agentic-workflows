@@ -29,7 +29,7 @@ const path = require('path');
 const harness = require('./engine-harness.cjs');
 
 const { git, tip, fixtureFrom, cleanupFixture } = harness;
-const { TASKS, openArgs, own, cutTask, commitFiles, mergeBack, buildLanding, followRemedy } = require('./landing-world.cjs');
+const { TASKS, openArgs, own, cutTask, commitFiles, mergeBack, buildLanding, followRemedy, finishReady } = require('./landing-world.cjs');
 const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
 
 const { card, total, notes, loudNotes, rounding, currency } = TASKS;
@@ -124,6 +124,7 @@ for (const { name } of listDrivers('landing')) {
       const first = cutTask(at, '4.1', 'fix', 'Fix it', 'main', { 'fixed.txt': 'fixed\n' });
       for (const task of [again, first, rounding, currency, card]) ok(at, openArgs(task));
       ok(at, ['land', 'phase', 'pay', '1']);
+      finishReady(at);
       assert.deepStrictEqual(own(ok(at, ['land', 'finish', 'pay'])).phases.map((/** @type {{phase: number}} */ merged) => merged.phase), [2, 3, 4, 5]);
       assert.deepStrictEqual(side.landed(at), [
         { subject: 'feat(pay): Add card', task: 'pay-1-1', paths: ['card.txt'] },
@@ -153,6 +154,7 @@ for (const { name } of listDrivers('landing')) {
       const at = project();
       assert.strictEqual(refuses(at, openArgs(notes)).error, 'land: task 1.3\'s change carries .leeway/notes.md — the workflows\' state never lands on a code branch, so take it off the task\'s branch and open the task again');
       assert.strictEqual(refuses(at, openArgs(loudNotes)).error, 'land: task 1.9\'s change carries .LEEWAY/notes.md — the workflows\' state never lands on a code branch, so take it off the task\'s branch and open the task again');
+      finishReady(at);
       assert.deepStrictEqual(ok(at, ['land', 'finish', 'pay']).repos, []);
       assert.deepStrictEqual(side.landed(at), []);
     });

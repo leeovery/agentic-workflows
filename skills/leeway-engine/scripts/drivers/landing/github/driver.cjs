@@ -107,7 +107,8 @@
 //   per phase; one whose remote is not on GitHub is refused before anything
 //   moves (`assertServes`). A merge lands onto the default branch on GitHub,
 //   fetched (`landsOn`), which the seam reads to check each submodule's
-//   there descends from what the repository holding it points it at. A
+//   there descends from what the repository holding it points it at; a
+//   read asking no host takes it as last fetched (`landsOnAsFetched`). A
 //   repository's submodules' pointers are settled before its stack merges,
 //   each submodule's stack merged first
 //   (landing.cjs merges children first), squashed into new commits the
@@ -133,7 +134,12 @@
 //   commit on the top branch records them, pushed the same way, so it
 //   squashes into the top task's landing under its subject; the landings
 //   below the top then name the submodule's commits from before its squash,
-//   which GitHub keeps under each of its pull requests' own refs.
+//   which GitHub keeps under each of its pull requests' own refs. A default
+//   branch the seam re-points (landing.cjs) gains one commit onto it as
+//   GitHub holds it, pushed to its own branch (landing-names.cjs) and landed
+//   through a pull request of its own from it — the one open there, where a
+//   landing before opened one — squashed under its subject as a lone pull
+//   request merges, the default branch here then brought to it.
 // - Known edges: GitHub answering for a pull request on its old base in the
 //   moment after the default branch moves under it — its answer names no
 //   base the driver can check — leaves the merge GitHub's to refuse, in
@@ -553,6 +559,16 @@ function fetchedDefault(ctx) {
 }
 
 /**
+ * The tip of a repository's default branch on GitHub as last fetched,
+ * fetching nothing — the branch here where it never has been.
+ * @param {LandingContext} ctx
+ * @returns {string}
+ */
+function lastFetchedDefault(ctx) {
+  return lg.trackedTip(ctx.root, hostOf(ctx).remote, ctx.into) ?? /** @type {string} */ (lg.branches(ctx.root).get(ctx.into));
+}
+
+/**
  * The tip of a repository's default branch on GitHub as a fetch of it
  * answered — refused where the fetch failed, no pointer then recorded.
  * @param {LandingContext} ctx @param {{commit: string}|{failed: string}} fetched
@@ -634,7 +650,7 @@ function settlePointers(ctx, host, stacks, stack, fetched) {
   if (meetsMove(ctx.gitlinks, base, onto, [...held.slice(0, -1), new Map([...own, ...pointed])])) return bringUp(ctx, host, stack, into, moves);
   if (pointed.size === 0) return [];
   const listed = [...pointed.keys()].map(lg.plain).join(', ');
-  const message = `chore(${ctx.unit}): point ${listed} at ${pointed.size === 1 ? 'its' : 'their'} landing\n`;
+  const message = names.pointedMessage(ctx.unit, [...pointed.keys()].map(lg.plain));
   const tree = lg.treeWithPointers(ctx.root, top.oid, pointed);
   const commit = lg.commitTree(ctx.root, { tree, parent: top.oid, message, signed: lg.signs(ctx.root) }, `${listed}'s pointer on ${top.head}`, 'land again');
   return pushUp(ctx, host, [{ pull: top, commit }], `${listed}'s pointer was not recorded`);
@@ -991,7 +1007,7 @@ function pointedBranch(ctx, host, landing, at) {
   const pointed = new Map([...landing.pointers].filter(([path, sha]) => sha !== (own.get(path) ?? null)));
   if (pointed.size === 0) return at;
   const listed = [...pointed.keys()].map(lg.plain).join(', ');
-  const message = `chore(${ctx.unit}): point ${listed} at ${pointed.size === 1 ? 'its' : 'their'} landing\n`;
+  const message = names.pointedMessage(ctx.unit, [...pointed.keys()].map(lg.plain));
   const commit = lg.commitTree(ctx.root, { tree: lg.treeWithPointers(ctx.root, at, pointed), parent: at, message, signed: lg.signs(ctx.root) }, `${listed}'s pointer on ${landing.branch}`, 'land again');
   lg.pushBranches(ctx.root, host.remote, [{ branch: landing.branch, commit, lease: at }], `${listed}'s pointer was not recorded and nothing merged — clear what git names, and land again`);
   lg.moveBranch(ctx.root, landing.branch, at, commit);
@@ -1021,6 +1037,37 @@ function mergeQuickFix(ctx, landing) {
   ghAt(ctx, host, ['pr', 'merge', String(pull.number), '--squash', '--subject', `${title} (#${pull.number})`, '--body', body], `merge ${ctx.unit}'s pull request`);
   const warnings = bringDefaultUp(ctx, host);
   return { into: ctx.into, merged: landing.tasks, pull_requests: [pull.number], ...(warnings.length > 0 ? { warnings } : {}) };
+}
+
+/**
+ * The default branch's submodules pointed at their landings (see the
+ * header): one commit onto the default branch on GitHub, pushed to a
+ * branch of its own and landed through a pull request of its own — the one
+ * open from that branch, else one opened — merged as a lone pull request
+ * merges, the default branch here then brought to it.
+ * @param {LandingContext} ctx @param {Map<string, string>} pointers by path from the repository's top
+ */
+function repoint(ctx, pointers) {
+  const host = hostOf(ctx);
+  const branch = names.pointerBranch(ctx.unit);
+  const fetched = lg.fetchBranch(ctx.root, host.remote, ctx.into);
+  const base = defaultOn(ctx, fetched);
+  const listed = [...pointers.keys()].map(lg.plain).join(', ');
+  const message = names.pointedMessage(ctx.unit, [...pointers.keys()].map(lg.plain));
+  const commit = lg.commitTree(ctx.root, { tree: lg.treeWithPointers(ctx.root, base, pointers), parent: base, message, signed: lg.signs(ctx.root) }, `${listed}'s pointer on ${ctx.into}`, 'land again');
+  refuseDirtyDefault(ctx, commit, fetched);
+  const held = lg.fetchBranch(ctx.root, host.remote, branch);
+  lg.pushBranches(ctx.root, host.remote, [{ branch, commit, lease: 'commit' in held ? held.commit : '' }], `${listed}'s pointer was not recorded and nothing merged — clear what git names, and land again`);
+  const title = message.trimEnd();
+  const what = `the pull request pointing ${listed} at ${pointers.size === 1 ? 'its' : 'their'} landing`;
+  const open = listedPulls(ctx, host, branch, null).find((pull) => pull.state === 'OPEN');
+  const number = open?.number ?? Number(/\/pull\/(\d+)\s*$/.exec(ghAt(ctx, host, ['pr', 'create', '--base', ctx.into, '--head', branch, '--title', title, '--body', ''], `open ${what}`))?.[1]);
+  const pull = { number, state: /** @type {const} */ ('OPEN'), head: branch, base: ctx.into, oid: commit, title, body: '' };
+  const merging = { what, named: () => `${what}, #${number},`, listed: () => `#${number}`, then: '' };
+  awaitMergeable(ctx, host, merging, [pull], new Map([[number, commit]]));
+  ghAt(ctx, host, ['pr', 'merge', String(number), '--squash', '--subject', `${title} (#${number})`, '--body', ''], `merge ${what}`);
+  const warnings = bringDefaultUp(ctx, host);
+  return { pull_request: number, ...(warnings.length > 0 ? { warnings } : {}) };
 }
 
 /**
@@ -1080,6 +1127,7 @@ module.exports = {
     hostOf(ctx);
   },
   landsOn: fetchedDefault,
+  landsOnAsFetched: lastFetchedDefault,
   chainTip,
   holds,
   open,
@@ -1090,6 +1138,7 @@ module.exports = {
   openQuickFix,
   mergeQuickFix,
   closeQuickFix,
+  repoint,
   protectBranch,
   setSquashDefault,
   repositoryOf,

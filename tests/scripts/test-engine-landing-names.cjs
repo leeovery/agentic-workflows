@@ -74,6 +74,14 @@ describe('the landing\'s names (7.2.18)', () => {
     );
   });
 
+  it('reads a quick-fix\'s tasks off a message by its Task: lines and by its lines naming one by the stamp\'s key, a task named by both once (7.2.22)', () => {
+    assert.deepStrictEqual(
+      ['fix(pay): Round\n\nTask: pay-2-7\n', 'Round\n\nStamp: pay-2-7\n', 'feat(pay): Add card\n\nTask: pay-1-1\nStamp: pay-1-1\n\nRound\n\nStamp: pay-2-7\nStamp: pay-v2-1-1\n']
+        .map((message) => names.tasksNamedIn('pay', message, 'Stamp')),
+      [[TASK], [TASK], [{ unit: 'pay', phase: 1, n: 1 }, TASK]],
+    );
+  });
+
   it('reads a task\'s type and title off the subject above its id, in a message joining several landings', () => {
     const joined = 'feat(pay): Add card\n\nTask: pay-1-1\n\nfix(pay): Round\n\nTask: pay-2-7\n';
     assert.deepStrictEqual(

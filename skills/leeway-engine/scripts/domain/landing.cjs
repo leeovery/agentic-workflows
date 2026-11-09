@@ -15,7 +15,18 @@
 // task its pair has not passed, read off its rounds' reports, or one
 // changed under its last round since (round-report.cjs, 12.1.4); and
 // `phase` a phase the cut holds until its phase review has passed and its
-// fixes are done, as the phase's close reads it (phase-checks.cjs, 7.2.4).
+// fixes are done, as the phase's close reads it (phase-checks.cjs, 7.2.4),
+// and one of the review's fix phases, past the cut, while a task of it is
+// neither done nor closed — in flight among them (`unendedRefusal`); and
+// `finish`, for every work type, and a quick-fix's `phase`, which lands its
+// one pull request whole, as finish's yes refuses before it lands anything
+// (finish.cjs, `finishLandRefusal`): the build's own refusals, the review
+// phase not over where the unit has one — a fix task unended, in step a
+// phase not merged, and a quick-fix's review asked for and not passed
+// among them — a question waiting, a record not indexed, finish's
+// checklist not closed, a quick-fix's fix unended or done and not
+// recorded, a verdict still to ask, and a quick-fix's checkout holding
+// changes not committed.
 // `chain` answers, where the task chained is the last of a phase of the cut
 // not yet ended, the phase's notes consolidated (notes.cjs), its phase
 // review not begun and the verify setup naming a mutation tool, the phase's
@@ -115,7 +126,17 @@
 // in. A merge is refused before anything merges where a default branch
 // points a submodule the walk lands in at a commit the submodule's own
 // default branch does not descend from — each as it lands, what its driver
-// lands onto (`landsOn`) — so no landing moves a pointer off it. A
+// lands onto (`landsOn`) — so no landing moves a pointer off it; but where
+// that branch holds the commit's change, as merging the submodule's pull
+// request by hand after its holder's leaves it, for every work type, the
+// merge goes on (`repointsOf`): a stack moving that submodule lands its
+// pointer at the submodule's landing of the moving commit's change, as
+// every merge does (`stackMoves`); one the repository's merge leaves where
+// it was is then pointed at the submodule's landing of its change, found
+// as a merge finds a submodule's landing, by one commit of its own the
+// driver lands (`repoint`) — a re-point made only for a submodule no merge
+// of the walk moves, and read by every read after it. A verb answers each
+// repository it re-pointed, and a refusal after a merge names it. A
 // driver that lands through a host refuses, before anything moves, a
 // repository it walks whose remote it does not serve (`assertServes`). A
 // refusal in a nested repository names it, and one after a repository moved
@@ -150,7 +171,7 @@ const { trackedTask, trackedPhase, trackedBuild, phaseWritten, ENDED } = require
 const { taskRounds, pairPassed, changedUnder, changedRefusal, phaseReviewBegun } = require('./round-report.cjs');
 const { verifySetup } = require('./environment.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
-const { cutLength, buildLength, quickFixBuild } = require('./derivations.cjs');
+const { cutLength, buildLength, quickFixBuild, isFixPhase } = require('./derivations.cjs');
 const { dayBefore } = require('./dates.cjs');
 const { reproducingHold } = require('./bug-proven.cjs');
 const names = require('./landing-names.cjs');
@@ -170,6 +191,7 @@ const account = () => require('./task-account.cjs');
 const fixEnd = () => require('./fix-end.cjs');
 const fixBranch = () => require('./fix-branch.cjs');
 const notes = () => require('./notes.cjs');
+const finish = () => require('./finish.cjs');
 /** The trailer the door stamps a task's commit with, read when asked: commit-task.cjs reads the landing. */
 const stamp = () => require('./commit-task.cjs').TRAILER;
 
@@ -332,7 +354,7 @@ function walked(project, driver, touches) {
  */
 const holdingWork = (project, picks) => (repo) => lg.holdsWork(project.unit, repo, picks);
 
-/** A refusal after repositories moved: the warnings their landings gave. @typedef {Error & {landed?: string[]}} Partial */
+/** A refusal after repositories moved: the warnings their landings gave, and what the repository refusing merged before its re-point refused (`mergedThenRepointed`). @typedef {Error & {landed?: string[], merged?: Record<string, any>}} Partial */
 
 /**
  * Each step's answer, in turn, with its repository, those with nothing to
@@ -350,27 +372,30 @@ function walk(steps, did) {
       const answer = inRepo(ctx.repo, act);
       if (answer !== null) done.push({ repo: ctx.repo, ...answer });
     } catch (err) {
-      throw movedBefore(err, done, did);
+      throw movedBefore(err, done, did, ctx.repo);
     }
   }
   return done;
 }
 
 /**
- * A refusal carrying what moved, and where, before it, and the warnings
- * those landings gave (`Partial`).
- * @param {unknown} err @param {Answer[]} done @param {(answer: Answer) => string|null} did
+ * A refusal carrying what moved, and where, before it — what the refusing
+ * repository, `repo`, merged before its re-point refused among it — and
+ * the warnings those landings gave (`Partial`).
+ * @param {unknown} err @param {Answer[]} done @param {(answer: Answer) => string|null} did @param {string} repo
  */
-function movedBefore(err, done, did) {
+function movedBefore(err, done, did, repo) {
   if (!(err instanceof Error)) return err;
+  const { merged } = /** @type {Partial} */ (err);
+  const all = merged === undefined ? done : [...done, { repo, ...merged }];
   /** @type {Map<string, string[]>} */
   const moved = new Map();
-  for (const answer of done) {
+  for (const answer of all) {
     const what = did(answer);
-    if (what !== null) moved.set(what, [...(moved.get(what) ?? []), lg.plain(answer.repo)]);
+    if (what !== null) moved.set(what, [...(moved.get(what) ?? []), answer.repo === '.' ? 'the project' : lg.plain(answer.repo)]);
   }
   if (moved.size > 0) err.message = `${err.message} (${[...moved].map(([what, repos]) => `${what} in ${repos.join(', ')}`).join('; ')} before it)`;
-  const { warnings } = answered(done, () => false);
+  const { warnings } = answered(all, () => false);
   if (warnings !== undefined) /** @type {Partial} */ (err).landed = warnings;
   return err;
 }
@@ -534,22 +559,39 @@ function refuseUnheldMoves(project, repo, task, from) {
 }
 
 /**
- * Refuse, before anything merges, a repository whose default branch points
- * a submodule the walk lands in at a commit the submodule's own default
- * branch does not descend from, each as it lands (`pointerAhead`).
+ * Each repository whose default branch points a submodule the walk lands
+ * in at a commit the submodule's own default branch does not descend from,
+ * each as it lands, with the commit each such submodule is pointed at
+ * instead: the submodule's landing there of that pointer's change, as a
+ * merge by hand of the submodule after the repository holding it leaves
+ * it, by the tasks the commit that last moved the pointer names
+ * (`repointing`), each by the commit it points at now and that landing —
+ * refused, before anything merges, where there is none.
  * @param {LandingDriver} driver @param {LandingContext[]} merging
+ * @returns {Map<string, Map<string, {from: string, to: string}>>} by the repository, as answers name it
  */
-function refuseDefaultsAhead(driver, merging) {
+function repointsOf(driver, merging) {
+  /** @type {Map<string, Map<string, {from: string, to: string}>>} */
+  const repoints = new Map();
   for (const ctx of merging.filter(({ submodules }) => submodules.length > 0)) {
     inRepo(ctx.repo, () => {
-      const [pointers] = lg.pointersAt(ctx.root, [landsOn(driver, ctx)], ctx.submodules.map(({ path }) => path));
+      const tip = landsOn(driver, ctx);
+      const [pointers] = lg.pointersAt(ctx.root, [tip], ctx.submodules.map(({ path }) => path));
+      /** @type {Map<string, {from: string, to: string}>} */
+      const pointed = new Map();
       for (const { path, ctx: sub } of ctx.submodules) {
         const sha = pointers.get(path) ?? null;
-        const ahead = sha === null ? null : lg.pointerAhead(ctx.into, path, sub, sha, landsOn(driver, sub));
-        if (ahead !== null) throw new Error(ahead);
+        if (sha === null) continue;
+        const tasks = () => names.tasksOfMessage(ctx.unit, lg.lastPointing(ctx.root, tip, path)).map(shownTask);
+        const found = lg.repointing(ctx.into, path, sub, sha, landsOn(driver, sub), tasks);
+        if (found === null) continue;
+        if ('refused' in found) throw new Error(found.refused);
+        pointed.set(path, { from: sha, to: found.to });
       }
+      if (pointed.size > 0) repoints.set(ctx.repo, pointed);
     });
   }
+  return repoints;
 }
 
 /**
@@ -587,15 +629,68 @@ function landingTips(cwd, unit, repos, wanted) {
 
 /**
  * Each repository's part of a merge, children first, `act` run in each —
- * once no default branch points a submodule at a commit its own lacks.
+ * once no default branch points a submodule at a commit its own lacks,
+ * found before anything merges (`repointsOf`); then, in a repository whose
+ * default branch pointed one at a commit whose change the submodule
+ * landed, each such submodule its merge left where it was pointed at that
+ * landing through the driver (`mergedThenRepointed`).
  * @param {Project} project @param {LandingDriver} driver @param {Repo[]} walking @param {(ctx: LandingContext) => Record<string, any>|null} act
  * @returns {Step[]}
  */
 function mergeSteps(project, driver, walking, act) {
   const merging = walking.map((repo) => mergingIn(project, repo, walking));
-  refuseDefaultsAhead(driver, merging);
-  return merging.map((ctx) => ({ ctx, act: () => act(ctx) }));
+  const repoints = repointsOf(driver, merging);
+  return merging.map((ctx) => {
+    const found = repoints.get(ctx.repo);
+    return { ctx, act: () => (found === undefined ? act(ctx) : mergedThenRepointed(driver, ctx, found, act)) };
+  });
 }
+
+/** What a re-point did, as an answer or a refusal says it. @param {Iterable<string>} paths @returns {string} */
+function pointedWords(paths) {
+  const listed = [...paths].map(lg.plain);
+  return `${listed.join(', ')} pointed at ${listed.length === 1 ? 'its landing' : 'their landings'}`;
+}
+
+/**
+ * A repository's part of a merge, `act` first, then each submodule `found`
+ * that the merge left pointing where it did, as the default branch it
+ * lands onto now points it, re-pointed through the driver at its landing
+ * (`mergeSteps`): what `act` answered — `already` where it merged nothing —
+ * with `repointed` where a re-point was made, and the warnings of both; a
+ * refusal of the re-point carrying what `act` merged before it
+ * (`Partial`), for the walk to name.
+ * @param {LandingDriver} driver @param {LandingContext} ctx @param {Map<string, {from: string, to: string}>} found @param {(ctx: LandingContext) => Record<string, any>|null} act
+ */
+function mergedThenRepointed(driver, ctx, found, act) {
+  const { warnings = [], ...answer } = act(ctx) ?? { into: ctx.into, already: true };
+  const [now] = lg.pointersAt(ctx.root, [landsOn(driver, ctx)], [...found.keys()]);
+  const pointers = new Map([...found].filter(([path, { from }]) => (now.get(path) ?? null) === from).map(([path, { to }]) => [path, to]));
+  if (pointers.size === 0) return { ...answer, ...(warnings.length > 0 ? { warnings } : {}) };
+  let repointed;
+  try {
+    repointed = driver.repoint(ctx, pointers);
+  } catch (err) {
+    if (err instanceof Error) /** @type {Partial} */ (err).merged = { ...answer, warnings };
+    throw err;
+  }
+  const { warnings: said = [], ...made } = repointed;
+  const all = [...warnings, ...said];
+  return { ...answer, repointed: { pointers: Object.fromEntries(pointers), ...made }, ...(all.length > 0 ? { warnings: all } : {}) };
+}
+
+/** Whether a repository's part of a walk moved anything: merged, or re-pointed (`mergedThenRepointed`). @param {Answer} answer */
+const moved = (answer) => !answer.already || 'repointed' in answer;
+
+/**
+ * What a repository's part of a walk did, as a refusal after it names it:
+ * what `did` says it merged, then its re-point.
+ * @param {(answer: Answer) => string|null} did @returns {(answer: Answer) => string|null}
+ */
+const didWith = (did) => (answer) => {
+  const words = [did(answer), ...('repointed' in answer ? [pointedWords(Object.keys(answer.repointed.pointers))] : [])].filter((said) => said !== null);
+  return words.length === 0 ? null : words.join(', then ');
+};
 
 /**
  * Where a task's branch stands in one repository holding it: past the
@@ -749,9 +844,11 @@ function landChain(cwd, unit, task) {
  * `already` where it is merged wherever it lands, so a rerun reads finished
  * work as done, with every warning bringing the default branch here to it
  * gave — refused before anything moves, for a phase the cut holds, until
- * its phase review has passed and its fixes are done (7.2.4, 12.11.3). A
+ * its phase review has passed and its fixes are done (7.2.4, 12.11.3), and
+ * for one of the review's fix phases while a task of it is unended. A
  * quick-fix's phase lands its one pull request (`quickFixLand`), refused
- * for a phase the tracker holds none of.
+ * for a phase the tracker holds none of, and as its finish's landing is
+ * (`refuseUnfinished`).
  * @param {string} cwd @param {string} unit @param {string} given
  */
 function landPhase(cwd, unit, given) {
@@ -759,20 +856,45 @@ function landPhase(cwd, unit, given) {
   assertUnit(unit);
   if (landsAsOne(cwd, unit)) {
     if (!phaseWritten(cwd, unit, phase)) throw new Error(`land: ${unit} has no phase ${phase} — a quick-fix lands as one pull request, every phase it holds with it: land finish ${unit}`);
+    refuseUnfinished(cwd, unit);
     return { phase, ...quickFixLand(cwd, unit) };
   }
-  const unreviewed = phaseChecks().phaseReviewRefusal(cwd, unit, phase);
+  const unreviewed = phaseChecks().phaseReviewRefusal(cwd, unit, phase) ?? fixPhaseRefusal(cwd, unit, phase);
   if (unreviewed !== null) throw new Error(`land: ${unreviewed}`);
   const project = projectOf(cwd, unit);
   const ofPhase = (/** @type {string} */ branch) => (names.taskOfBranch(unit, branch)?.phase ?? names.phaseOfBranch(unit, branch)) === phase;
   return withDriver(cwd, (driver) => {
     const steps = mergeSteps(project, driver, walked(project, driver, holdingWork(project, ofPhase)), (ctx) => driver.mergePhase(ctx, phase));
-    const answers = walk(steps, (answer) => (answer.already ? null : `phase ${phase} merged`));
+    const answers = walk(steps, didWith((answer) => (answer.already ? null : `phase ${phase} merged`)));
     if (answers.length === 0) throw new Error(`land: phase ${phase} of ${unit} has no task opened — open its tasks first`);
     scratch().readersDone(cwd, scratch().READERS.phase(unit, phase));
-    const already = answers.every((answer) => answer.already) ? { already: true } : {};
-    return { phase, ...already, ...answered(answers, (answer) => !answer.already) };
+    const already = answers.some(moved) ? {} : { already: true };
+    return { phase, ...already, ...answered(answers, moved) };
   });
+}
+
+/**
+ * Why a landing waits on tasks neither done nor closed, the first of them
+ * named in its way on: `{lands} once each of its tasks is done or closed`,
+ * where `lands` says what waits.
+ * @param {string} unit @param {string[]} open shown, in order @param {string} lands
+ */
+function unendedRefusal(unit, open, lands) {
+  const [named, are] = open.length === 1 ? [`task ${open[0]}`, 'is'] : [`tasks ${open.join(', ')}`, 'are'];
+  return `${lands} once each of its tasks is done or closed — ${named} ${are} neither: task done ${unit} ${open[0]}, or task close ${unit} ${open[0]} --reason <why>`;
+}
+
+/**
+ * Why one of the review's fix phases, past the cut (P14), cannot merge yet:
+ * a task of it neither done nor closed, in flight among them — null for any
+ * other phase, and where none is.
+ * @param {string} cwd @param {string} unit @param {number} phase @returns {string|null}
+ */
+function fixPhaseRefusal(cwd, unit, phase) {
+  const manifest = manifestOf(stateRoot(cwd), unit);
+  if (manifest === null || !isFixPhase(manifest, phase)) return null;
+  const open = (trackedPhase(cwd, unit, phase).tasks ?? []).filter(({ status }) => !ENDED.includes(status)).map(({ ref }) => shownTask(ref));
+  return open.length === 0 ? null : unendedRefusal(unit, open, `phase ${phase} of ${unit} merges`);
 }
 
 /**
@@ -806,19 +928,30 @@ function finishing(driver, ctx) {
   return { into: ctx.into, phases, ...(warned.size > 0 ? { warnings: [...warned] } : {}) };
 }
 
+/** Refuse, before anything moves, a landing of the unit's finish as finish's yes refuses before it lands (`finishLandRefusal`, finish.cjs). @param {string} cwd @param {string} unit */
+function refuseUnfinished(cwd, unit) {
+  const unfinished = finish().finishLandRefusal(cwd, unit);
+  if (unfinished !== null) throw new Error(`land: ${unfinished}`);
+}
+
 /**
  * Every phase still standing merged, after every other (7.2.6), in every
  * repository of the unit's, children first — answering those where a phase
- * merged; a quick-fix's one pull request merged (`quickFixLand`).
+ * merged; a quick-fix's one pull request merged (`quickFixLand`). Refused
+ * before anything moves as finish's yes refuses before it lands
+ * (`refuseUnfinished`).
  * @param {string} cwd @param {string} unit
  */
 function landFinish(cwd, unit) {
+  assertUnit(unit);
+  refuseUnfinished(cwd, unit);
   if (landsAsOne(cwd, unit)) return quickFixLand(cwd, unit);
   const project = projectOf(cwd, unit);
   return withDriver(cwd, (driver) => {
     const steps = mergeSteps(project, driver, walked(project, driver, holdingWork(project, (branch) => names.isUnitBranch(unit, branch))), (ctx) => finishing(driver, ctx));
-    const did = (/** @type {Answer} */ answer) => (answer.phases.length === 0 ? null : `phase ${answer.phases.map((/** @type {{phase: number}} */ merged) => merged.phase).join(', ')} merged`);
-    return answered(walk(steps, did), (answer) => answer.phases.length > 0);
+    const merged = (/** @type {Answer} */ answer) => (answer.phases ?? []).length > 0;
+    const did = (/** @type {Answer} */ answer) => (merged(answer) ? `phase ${answer.phases.map((/** @type {{phase: number}} */ phase) => phase.phase).join(', ')} merged` : null);
+    return answered(walk(steps, didWith(did)), (answer) => merged(answer) || 'repointed' in answer);
   });
 }
 
@@ -871,6 +1004,18 @@ function hostTip(driver, ctx) {
  * @returns {QuickFixPull}
  */
 const pullOf = (driver, ctx, branch, since) => lg.readOnce(ctx, 'quick-fix pull', () => inRepo(ctx.repo, () => driver.quickFixPull(ctx, branch, since)));
+
+/**
+ * The commit a landing is read against with no host asked: the branch it
+ * lands on as last fetched (`landsOnAsFetched`), fetching nothing, else that
+ * branch here.
+ * @param {LandingDriver} driver @param {LandingContext} ctx
+ * @returns {string}
+ */
+const fetchedTip = (driver, ctx) => driver.landsOnAsFetched?.(ctx) ?? /** @type {string} */ (lg.branches(ctx.root).get(ctx.into));
+
+/** A quick-fix's pull request as a read asking no host takes it: none open, none merged, no copy on the host, none closed. @returns {QuickFixPull} */
+const unreadPull = () => ({ open: null, merged: [], head: null, closed: null });
 
 /**
  * The repositories a quick-fix's verbs walk (`walked`), children first (the
@@ -949,17 +1094,19 @@ function unitTask(unit, id) {
  * or deleted leaves it — or, holding none, as the tip names it; holding
  * work where it has such a commit, or has landed; and whether the pull
  * request open holds a task's newest commit, refused where the latest was
- * closed by hand (`refuseClosed`).
- * @param {Project} project @param {LandingDriver} driver @param {Repo} repo @param {string|null} since
+ * closed by hand (`refuseClosed`). `asFetched`, no host is asked: the tip
+ * is the branch it lands on as last fetched (`fetchedTip`), and no pull
+ * request is read (`unreadPull`).
+ * @param {Project} project @param {LandingDriver} driver @param {Repo} repo @param {string|null} since @param {boolean} asFetched
  */
-function repoLanding(project, driver, repo, since) {
+function repoLanding(project, driver, repo, since, asFetched) {
   const ctx = contextOf(project, repo);
   const { root, unit } = ctx;
   const branch = names.quickFixBranch(unit);
-  const tip = hostTip(driver, ctx);
+  const tip = asFetched ? fetchedTip(driver, ctx) : hostTip(driver, ctx);
   const key = stamp();
   const at = () => lg.branches(root).get(branch);
-  const pull = () => pullOf(driver, ctx, branch, since);
+  const pull = asFetched ? unreadPull : () => pullOf(driver, ctx, branch, since);
   const from = sinceTime(since);
   /** @param {string} rev @returns {QuickFixCommit[]} */
   const commitsOn = (rev) => lg.readOnce(ctx, `quick-fix commits ${rev}`, () => lg.stampedPast(root, rev, tip, key).map(({ sha, message, committed, value }) => ({ sha, message, committed, id: unitTask(unit, value) })));
@@ -1012,16 +1159,18 @@ function repoLanding(project, driver, repo, since) {
  * where it holds work, whether that work has landed in every one of them,
  * in any, and each repository's read of it. Read off git and the host,
  * writing nothing but the host's branches fetched where the driver fetches
- * them; refused as the driver refuses its reads.
- * @param {string} cwd @param {string} unit
+ * them; refused as the driver refuses its reads — or, `asFetched`, as the
+ * board reads it, off git alone, the host's branches as last fetched and
+ * no pull request read, writing nothing (`repoLanding`).
+ * @param {string} cwd @param {string} unit @param {{asFetched?: boolean}} [how]
  */
-function quickFixLanding(cwd, unit) {
+function quickFixLanding(cwd, unit, { asFetched = false } = {}) {
   const project = { ...projectOf(cwd, unit), keepsReads: true };
   const driver = /** @type {LandingDriver} */ (chosenDriver(cwd, 'landing').driver);
   const branch = names.quickFixBranch(unit);
   const manifest = manifestOf(stateRoot(cwd), unit);
   const since = workSince(manifest);
-  const repos = quickFixRepos(project, driver, manifest).map((repo) => repoLanding(project, driver, repo, since));
+  const repos = quickFixRepos(project, driver, manifest).map((repo) => repoLanding(project, driver, repo, since, asFetched));
   /** @param {TaskRef} ref */
   const task = (ref) => {
     const each = repos.map((read) => ({ read, task: read.task(ref) })).filter((held) => held.task.held);
@@ -1147,18 +1296,19 @@ function quickFixOpen(cwd, project, ref, before) {
  * at the oldest commit there holding the pointer's change, as a merge by
  * hand under the person's own message lands it — and any found by neither,
  * or in a submodule the walk passes, at the branch's own pointer
- * (`stackMoves`).
+ * (`stackMoves`) — read against the branch it lands onto as it stands now.
  * @param {LandingDriver} driver @param {RepoLanding} held @param {LandingContext} ctx the repository's merge context
  * @returns {Map<string, string|null>}
  */
 function pointersOf(driver, held, ctx) {
   if (ctx.gitlinks.length === 0) return new Map();
+  const tip = landsOn(driver, ctx);
   const ids = new Map(held.commits().map(({ sha, id }) => [sha, id]));
-  const commits = lg.commitsPast(ctx.root, /** @type {string} */ (held.at()), [held.tip]).map(({ sha, parents }) => {
+  const commits = lg.commitsPast(ctx.root, /** @type {string} */ (held.at()), [tip]).map(({ sha, parents }) => {
     const id = ids.get(sha) ?? null;
     return { sha, parents, tasks: id === null ? [] : [shownTask(parseTaskId(id))] };
   });
-  return new Map(lg.stackMoves(ctx, commits, held.tip, (sub) => landsOn(driver, sub)).flatMap((moves) => [...moves]));
+  return new Map(lg.stackMoves(ctx, commits, tip, (sub) => landsOn(driver, sub)).flatMap((moves) => [...moves]));
 }
 
 /**
@@ -1168,16 +1318,18 @@ function pointersOf(driver, held, ctx) {
  * commit squashed into one (the header's), a repository holding submodules
  * the walk lands in pointing them at their landings (`pointersOf`), each
  * other repository's default branch here brought up to the host's —
- * refused before anything moves while a task is neither done nor closed,
- * and while a task done holds work that is neither landed nor on its
+ * reached only past the refusals finish's yes makes before it lands
+ * (`refuseUnfinished`), a task unended among them; refused before anything
+ * moves while a task done holds work that is neither landed nor on its
  * branch (fix-end.cjs); each branch first readied (`readied`,
  * fix-branch.cjs), so it holds no work landed, then pushed to its pull
  * request as it stands, opened again where none is open. `already` where
- * no branch holds anything past it.
+ * no branch holds anything past it and nothing was re-pointed — the walk
+ * made all the same, so a repository whose submodule's pull request was
+ * merged by hand after its own is pointed at that landing.
  * @param {string} cwd @param {string} unit
  */
 function quickFixLand(cwd, unit) {
-  fixEnd().refuseUnended(cwd, unit);
   const read = quickFixLanding(cwd, unit);
   read.refuseClosed();
   return withDriver(cwd, (driver) => {
@@ -1185,10 +1337,6 @@ function quickFixLand(cwd, unit) {
     carrying(rest, () => fixEnd().refuseLeftOff(cwd, read));
     const warnings = [...remakes, ...rest];
     const past = read.repos.filter((held) => held.holdsQuickFixWork());
-    if (past.length === 0) {
-      const settled = read.repos.map((held) => ({ repo: held.ctx.repo, ...driver.mergeQuickFix(held.ctx, null) }));
-      return { already: true, ...walkedWith(warnings, settled, () => false), ...cut };
-    }
     const first = past.flatMap((held) => held.commits()).find(({ id }) => id !== null)?.id ?? null;
     const shown = first === null ? `${unit}'s first fix` : shownTask(parseTaskId(first));
     const answers = carrying(warnings, () => {
@@ -1199,9 +1347,10 @@ function quickFixLand(cwd, unit) {
         driver.openQuickFix(held.ctx, landing);
         return driver.mergeQuickFix(ctx, landing);
       });
-      return walk(steps, (answer) => (answer.already ? null : `${unit}'s pull request merged`));
+      return walk(steps, didWith((answer) => (answer.already ? null : `${unit}'s pull request merged`)));
     });
-    return { ...walkedWith(warnings, answers, (answer) => !answer.already), ...cut };
+    const already = answers.some(moved) ? {} : { already: true };
+    return { ...already, ...walkedWith(warnings, answers, moved), ...cut };
   });
 }
 
@@ -1247,4 +1396,6 @@ function landedTasks(cwd, unit, repos, from = null, on = (repo) => [`refs/heads/
   }));
 }
 
-module.exports = { LAND_USAGE, landOpen, landChain, landPhase, landFinish, landedTasks, allChained, landingTips, mutationRun, quickFixLanding, quickFixClose, workFrom };
+module.exports = {
+  LAND_USAGE, landOpen, landChain, landPhase, landFinish, landedTasks, allChained, landingTips, mutationRun, quickFixLanding, quickFixClose, workFrom, unendedRefusal,
+};

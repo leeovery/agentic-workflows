@@ -37,7 +37,7 @@ const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 
 const harness = require('../../scripts/engine-harness.cjs');
-const { TASKS, openArgs, own, cutTask, commitFiles, mergeBack, landedOn, useLandingWorld } = require('../../scripts/landing-world.cjs');
+const { TASKS, openArgs, own, cutTask, commitFiles, mergeBack, landedOn, useLandingWorld, finishReady } = require('../../scripts/landing-world.cjs');
 const { loadDriver } = require('../../../skills/leeway-engine/scripts/domain/drivers.cjs');
 const side = require('./landing.cjs');
 const { GH_ENV, ghEnv, github, onGithub, bareOf, calls, closeByHand, lagOnGithub, tipOnGithub, pulls, ok, refused, stackOfTwo } = require('./world.cjs');
@@ -55,6 +55,7 @@ describe('the default branch here, once a phase merges', () => {
     git(dir, ['add', 'local.txt']);
     git(dir, ['commit', '-q', '-m', 'local work']);
     const ours = tip(dir, 'main');
+    finishReady(dir);
 
     const finished = ok(dir, ['land', 'finish', 'pay']);
     assert.deepStrictEqual([own(finished).phases.length, finished.warnings], [2, ['main here holds commits origin/main does not, so it was not moved to the merge — bring it up to date with origin/main yourself']]);

@@ -11,8 +11,10 @@
 // the oldest commit there holding the change, as a squash under the
 // person's own message lands it, whatever its default branch gained after
 // — never at a commit its default branch lacks, which would refuse every
-// landing after. A fix in the submodule landed by the
-// close is test-engine-landing-conformance-quick-fix-submodule.cjs's. A
+// landing after. Its pull request in the project merged by hand first is
+// test-engine-landing-conformance-quick-fix-submodule-repoint.cjs's; a fix
+// in the submodule landed by the close,
+// test-engine-landing-conformance-quick-fix-submodule.cjs's. A
 // driver's side (tests/drivers/{name}/landing.cjs) readies each
 // repository, merges by hand and reads what landed where; this file names
 // no driver and no tool. Conformance layer: quick-fix-world.cjs's
