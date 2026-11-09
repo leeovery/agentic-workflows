@@ -253,6 +253,24 @@ LATELY ────────────────────────�
     expect(lines.find(line => line.key === 'unit:lately:1')?.parts[0]).toEqual({ text: MARK.needs, color: COLOUR.needs })
   })
 
+  test('20.15.1 LATELY, a bugfix\'s: the investigation concluded, the fix direction picked, the root cause written and each experiment by its name and title, each done', () => {
+    const lately = [
+      { kind: 'concluded', at: '2026-10-21T13:25:00', topic: null, detail: null },
+      { kind: 'fix-picked', at: '2026-10-21T13:20:00', topic: null, detail: null },
+      { kind: 'root-cause', at: '2026-10-21T13:10:00', topic: null, detail: null },
+      { kind: 'experiment', at: '2026-10-21T13:00:00', topic: null, detail: 'E10 Kill every session, hook on' },
+    ]
+    const { text, lines } = drawn(UNIT, { ...MINT, lately } as View, { waiting: HELD, now: NOW })
+
+    expect(text.slice(-4)).toEqual([
+      '✓ Investigation concluded                               5m ago',
+      '✓ Fix direction picked                                 10m ago',
+      '✓ Root cause written                                   20m ago',
+      '✓ E10 Kill every session, hook on                      30m ago',
+    ])
+    expect(lines.filter(line => line.key.startsWith('unit:lately:')).map(line => line.parts[0])).toEqual(Array(4).fill({ text: MARK.done, color: COLOUR.done }))
+  })
+
   test('19.5.9 LATELY: a unit moved to another type says what it became, above how it started', () => {
     const lately = [
       { kind: 'moved', at: '2026-10-21T13:20:00', topic: null, detail: 'feature' },

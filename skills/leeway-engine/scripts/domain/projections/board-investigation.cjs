@@ -35,8 +35,7 @@
 //   validation one of whose findings was surfaced as it, whatever that
 //   validation's row now stands at — asked as its question, or raised
 //   replacing its decision (`agent surface`); else the fix direction where
-//   it is the fix direction's; else nothing. And why it reached the
-//   person, the decision point's reason as sealed.
+//   it is the fix direction's; else nothing.
 // - The fix direction's raises are those down its question's chain — one
 //   answering it, or replacing a decision of its chain (`downChain`) — and,
 //   before its question is logged, one carrying a step back. The latest
@@ -58,6 +57,11 @@
 //   as the fix direction reads its pick — confirmed.
 // - Nothing of earlier fixes to the area is shown or counted (20.12.3):
 //   they are Claude's analysis, in the log's prose, never its lists.
+// - The hunt's moments, for a bugfix's LATELY whatever phase it is in, are
+//   those its records date: each experiment, the root cause and the fix by
+//   the ledger entry each rests on, the conclude by its stamp. A
+//   hypothesis's line rests on no entry and no commit writes it, so its
+//   being confirmed or ruled out has no time and is not a moment.
 // ---------------------------------------------------------------------------
 
 const { fact, placeFact } = require('../board-model.cjs');
@@ -82,6 +86,7 @@ const { projectName } = require('../state-checks.cjs');
 /** @typedef {import('../board-model.cjs').HuntWait} HuntWait */
 /** @typedef {import('../board-model.cjs').WaitingLine} WaitingLine */
 /** @typedef {import('../board-model.cjs').HuntPage} HuntPage */
+/** @typedef {import('../board-model.cjs').Moment} Moment */
 /** @typedef {import('../investigation-log.cjs').Hunt} Hunt */
 /** @typedef {import('../investigation-log.cjs').Rested} Rested */
 /** @typedef {import('../unit-entries.cjs').UnitView} Entries */
@@ -96,6 +101,9 @@ const placesOf = (at) => [at.unit, null].map((topic) => ({ unit: at.unit, phase:
 /** Whether the unit's investigation is under way. @param {BoardAt} at */
 const investigating = ({ manifest, unit }) => manifest.work_type === 'bugfix' && itemOf(manifest, PHASE, unit)?.status === 'in-progress';
 
+/** The unit's entries, from the one fold of the ledger a board call shares. @param {BoardAt} at @returns {Entries} */
+const entriesAt = (at) => at.shared('unit-entries', () => everyUnitEntries(at.cwd, at.warnings))(at.unit);
+
 /** The hunt the unit's log holds, read once a call. @param {BoardAt} at @returns {Hunt} */
 const huntAt = (at) => at.once('hunt', () => huntOf(at.cwd, at.unit, at.warnings));
 
@@ -109,7 +117,7 @@ const huntAt = (at) => at.once('hunt', () => huntOf(at.cwd, at.unit, at.warnings
  * @returns {{folded: Entries['folded'], rootCause: Rested|null, fix: (Rested & {question: Rested})|null, onFix: (seal: Seal) => boolean, seals: Seal[]}}
  */
 const ledgerAt = (at) => at.once('hunt-ledger', () => {
-  const view = at.shared('unit-entries', () => everyUnitEntries(at.cwd, at.warnings))(at.unit);
+  const view = entriesAt(at);
   const hunt = huntAt(at);
   const { fix } = huntEntries(at.unit, view, hunt);
   const asked = hunt.fixDirection?.entry;
@@ -159,9 +167,8 @@ const waitingSeals = (at) => at.once('hunt-waiting', () => ledgerAt(at).seals.fi
 /**
  * What waits on the person in the investigation (the header's), none once
  * it is no longer under way: each raise by its id, short among the
- * ledger's, its question, what raised it, why it reached them, and, for the
- * fix direction's, how many options it sets out and whether Claude's lean
- * is the first.
+ * ledger's, its question, what raised it, and, for the fix direction's,
+ * how many options it sets out and whether Claude's lean is the first.
  * @param {BoardAt} at @returns {HuntWait[]}
  */
 const investigationWaits = (at) => at.once('hunt-waits', () => {
@@ -175,7 +182,6 @@ const investigationWaits = (at) => at.once('hunt-waits', () => {
       text: seal.call.question,
       page: null,
       raised_by: raisedBy(at, seal),
-      why: seal.reason,
       options: rows === null ? null : rows.length,
       lean_first: rows === null || seal.fact ? null : rows[0]?.key === seal.call.lean,
     };
@@ -248,6 +254,30 @@ function investigationHowFar(at) {
 
 /** How many hypotheses the unit's log holds. @param {BoardAt} at */
 const hypothesesCount = (at) => huntAt(at).hypotheses.length;
+
+/**
+ * The hunt's moments for the unit's LATELY, a bugfix's alone: each
+ * experiment, the root cause written and the fix picked, each when the
+ * entry it rests on was made, left out once that entry is no longer
+ * current; and the conclude, when it was stamped.
+ * @param {BoardAt} at @returns {Moment[]}
+ */
+function huntMoments(at) {
+  if (at.manifest.work_type !== 'bugfix') return [];
+  const { entries } = entriesAt(at);
+  const { experiments, rootCause } = huntAt(at);
+  const { fix } = ledgerAt(at);
+  /** @type {(kind: string, when: unknown, detail: string|null) => Moment[]} */
+  const moment = (kind, when, detail) => (typeof when === 'string' ? [{ kind, at: new Date(when).toISOString(), topic: null, detail }] : []);
+  /** @type {(kind: string, id: string, detail: string|null) => Moment[]} */
+  const rested = (kind, id, detail) => moment(kind, entries.get(id)?.line.at, detail);
+  return [
+    ...experiments.flatMap(({ name, title, entry }) => rested('experiment', entry, `${name} ${title}`)),
+    ...(rootCause === null ? [] : rested('root-cause', rootCause.entry, null)),
+    ...(fix === null ? [] : rested('fix-picked', fix.id, null)),
+    ...moment('concluded', itemOf(at.manifest, PHASE, at.unit)?.concluded_at, null),
+  ];
+}
 
 /** Whether the person answered a raise keeping the decision it would replace. @param {Seal} seal */
 const kept = (seal) => seal.replaces !== null && seal.answered?.answer === seal.replaces.keep.key;
@@ -414,4 +444,4 @@ function optionPage(at, key) {
   return { kind: 'hunt', unit: at.unit, item: 'option', name: key, title: row.name, state: standing, text: bodyText([row.text, row.notice]) };
 }
 
-module.exports = { investigationView, investigationBanner, investigationWaits, investigationDoing, investigationHowFar, hypothesesCount, huntPage, optionPage };
+module.exports = { investigationView, investigationBanner, investigationWaits, investigationDoing, investigationHowFar, hypothesesCount, huntMoments, huntPage, optionPage };

@@ -35,7 +35,7 @@
 // ---------------------------------------------------------------------------
 
 /** The view model's version (the header's). */
-const BOARD_VERSION = 5;
+const BOARD_VERSION = 6;
 
 /** The board's tabs (20.3.1). */
 const TABS = Object.freeze(['this', 'unit', 'all']);
@@ -343,9 +343,10 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * topic started, a topic postponed, cancelled or back, a message sent with
  * its sender, messages taken in, counted, with the sender of one, the spec
  * landed with its sections and phases cut, a review round, the unit
- * completed; from its spec's review each pass reported, its number and
- * what it found; from its build a question raised, a task started, failed
- * or finished.
+ * completed; from a bugfix's hunt each experiment by its name and title,
+ * the root cause written, the fix picked and the investigation concluded;
+ * from its spec's review each pass reported, its number and what it found;
+ * from its build a question raised, a task started, failed or finished.
  * @typedef {{kind: string, at: string, topic: string|null, detail: string|null, count?: number}} Moment
  */
 /** Where a unit has come to: the phase it is in, complete, or — a migrated unit of a retired type — the `cut` it waits on, and the day it began, null where its records keep none. @typedef {{phase: string, since: string|null}} UnitNow */
@@ -452,10 +453,10 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * What waits on the person in an investigation (20.12.1), as the unit's one
  * list holds it (WaitingLine), with what raised it — the validation whose
  * finding it was surfaced as, by the entry it validates, else the fix
- * direction, else null — why it reached them, and for the fix direction's
- * how many options it sets out and whether Claude's lean is the first;
- * every other wait with none.
- * @typedef {WaitingLine & {raised_by: 'root-cause'|'fix'|'fix-direction'|null, why: string|null, options: number|null, lean_first: boolean|null}} HuntWait
+ * direction, else null — and for the fix direction's how many options it
+ * sets out and whether Claude's lean is the first; every other wait with
+ * none.
+ * @typedef {WaitingLine & {raised_by: 'root-cause'|'fix'|'fix-direction'|null, options: number|null, lean_first: boolean|null}} HuntWait
  */
 /**
  * A validation of the investigation (20.12.1): which, the effort its agent

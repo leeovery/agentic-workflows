@@ -24,7 +24,6 @@ export type RaiseWait = {
   text: string
   page: string | null
   raised_by: 'root-cause' | 'fix' | 'fix-direction' | null
-  why: string | null
   options: number | null
   lean_first: boolean | null
 }
@@ -78,12 +77,8 @@ function factsLine(view: Investigation, kit: Kit): Line {
 /** What raised a question, as its second line says it. */
 const RAISED: Readonly<Record<'root-cause' | 'fix', string>> = { 'root-cause': 'raised by the root-cause validation', fix: 'raised by the fix validation' }
 
-/** What a validation raised, as a wait's second line says it, with why it reached the person; nothing for the fix direction's own raise. */
-function saidOf(wait: RaiseWait): string {
-  const by = wait.raised_by === 'root-cause' || wait.raised_by === 'fix' ? [RAISED[wait.raised_by]] : []
-
-  return wait.options !== null && by.length === 0 ? '' : [...by, ...(wait.why === null ? [] : [wait.why])].join(' · ')
-}
+/** What a validation raised, as a wait's second line says it; nothing for any other raise. */
+const saidOf = (wait: RaiseWait): string => (wait.raised_by === 'root-cause' || wait.raised_by === 'fix' ? RAISED[wait.raised_by] : '')
 
 /** The fix direction's wait by its options: Claude's lean first where it is the first row, else marked. */
 const whichFix = (options: number, leanFirst: boolean | null) => `Which fix: ${counted(options, 'option')}, Claude's lean ${leanFirst === false ? 'marked' : 'first'}`
@@ -91,7 +86,7 @@ const whichFix = (options: number, leanFirst: boolean | null) => `Which fix: ${c
 /**
  * A raise waiting in the investigation, on its view and on the unit's tab:
  * the fix direction's by its options, any other by its question; then what
- * raised it and why it reached the person.
+ * raised it.
  */
 export function raiseLines(wait: RaiseWait, key: string): Line[] {
   const said = saidOf(wait)
