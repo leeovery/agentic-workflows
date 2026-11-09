@@ -68,7 +68,7 @@ function mergedMidSet(conf, merge) {
   const { started, committed, closed } = steps(conf);
   const at = project();
   built(at, 1);
-  const first =git(at, ['rev-parse', BRANCH]).trim();
+  const first = git(at, ['rev-parse', BRANCH]).trim();
   started(at);
   merge(at, BRANCH);
   committed(at, HELP.text);

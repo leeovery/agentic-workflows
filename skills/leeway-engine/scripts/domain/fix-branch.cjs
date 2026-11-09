@@ -29,16 +29,17 @@
 //   holds (`quickFixPull`, landing.cjs). A task's start, its opening and
 //   the quick-fix's landing each first ready every repository's branch,
 //   refused before anything moves where a repository's host holds a branch
-//   by its name holding no commit of a fix of the unit's — another's, made
-//   by hand or before the unit was — naming it, its repository and the way
-//   on, its deletion or renaming there (`refuseForeign`), so it is never
-//   taken, brought in or pushed over. Then, in turn: taken from the host
-//   where the repository lacks it — at the first start, in the project's
-//   own, cut from the branch it lands on as the host has it where the host
-//   has none either, never otherwise; then the host's head brought in where
-//   it holds a commit not landed — a pull request's head left after its
-//   merge by hand is never brought in — fast-forwarded to where the branch
-//   is behind it, else merged with it where it holds a change the branch
+//   by its name holding no commit of a fix of the unit's and none made since
+//   the unit was — another's, made before it (landing.cjs) — naming it, its
+//   repository and the way on, its deletion or renaming there
+//   (`refuseForeign`), so it is never taken, brought in or pushed over.
+//   Then, in turn: taken from the host where the repository lacks it — at
+//   the first start, in the project's own, cut from the branch it lands on
+//   as the host has it where the host has none either, never otherwise;
+//   then the host's head brought in where it holds a commit not landed — a
+//   pull request's head left after its merge by hand is never brought in —
+//   fast-forwarded to where the branch is behind it, else merged with it
+//   where it holds a change the branch
 //   lacks, refused naming the way on where the two conflict, which, while a
 //   task of the unit's is in flight in the conversation, is the merge the
 //   hook before Bash passes, finished through the door (shell-guard.cjs) —
@@ -195,7 +196,7 @@ function refuseForeign(held) {
   if (!held.foreign()) return;
   const { unit, repo } = held.ctx;
   const host = repo === '.' ? 'the project\'s host' : `${lg.plain(repo)}'s host`;
-  throw new Error(`land: ${host} holds a branch ${held.branch} that is not ${unit}'s — it holds no commit of a fix of ${unit}'s, so it was made by hand or before ${unit} was — and nothing moved: delete it there, or rename it, then try again`);
+  throw new Error(`land: ${host} holds a branch ${held.branch} that is not ${unit}'s — none of its commits is a fix of ${unit}'s or was made since ${unit} was — and nothing moved: delete it there, or rename it, then try again`);
 }
 
 /**

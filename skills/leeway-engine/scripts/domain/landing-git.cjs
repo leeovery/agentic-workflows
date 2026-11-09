@@ -297,16 +297,16 @@ function trailersPast(root, branch, other, key) {
 /**
  * The commits the commit `rev` holds that the revision `other` does not,
  * oldest first, each after its parents, merges aside — each with its
- * message and the value of the trailer `key` it carries, null where it
- * carries none.
+ * message, the time it was committed, in milliseconds, and the value of
+ * the trailer `key` it carries, null where it carries none.
  * @param {string} root @param {string} rev @param {string} other @param {string} key
- * @returns {{sha: string, message: string, value: string|null}[]}
+ * @returns {{sha: string, message: string, committed: number, value: string|null}[]}
  */
 function stampedPast(root, rev, other, key) {
-  const read = git(root, ['log', '-z', '--reverse', '--topo-order', '--no-merges', `--format=%H%x1f%(trailers:key=${key},valueonly)%x1f%B`, rev, '--not', revOf(root, other), '--']);
+  const read = git(root, ['log', '-z', '--reverse', '--topo-order', '--no-merges', `--format=%H%x1f%ct%x1f%(trailers:key=${key},valueonly)%x1f%B`, rev, '--not', revOf(root, other), '--']);
   return read.split('\0').filter(Boolean).map((entry) => {
-    const [sha, values, message] = entry.split('\x1f');
-    return { sha, message, value: values.split('\n').map((value) => value.trim()).find(Boolean) ?? null };
+    const [sha, time, values, message] = entry.split('\x1f');
+    return { sha, message, committed: Number(time) * 1000, value: values.split('\n').map((value) => value.trim()).find(Boolean) ?? null };
   });
 }
 

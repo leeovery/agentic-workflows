@@ -10,9 +10,11 @@
 // branch here nor the host holds it, is read by the record alone: its done
 // refused naming its commit to make again through the door, and its close
 // refused, as a fix holding work — never taken for a fix with no work,
-// closed as met. A branch of the quick-fix's name holding no fix's work is
-// test-engine-landing-conformance-quick-fix-nested-read-own.cjs's; a second
-// clone of the project, -project-clone's. A driver's side
+// closed as met. A branch of the quick-fix's name holding the person's own
+// commit alone is
+// test-engine-landing-conformance-quick-fix-nested-read-own.cjs's and
+// -nested-read-old's; a second clone of the project, -project-clone's. A
+// driver's side
 // (tests/drivers/{name}/landing.cjs) readies each repository and reads what
 // landed where; this file names no driver and no tool. Conformance layer:
 // quick-fix-world.cjs's `quickFixNestedConformance`, built once per driver

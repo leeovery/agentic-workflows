@@ -46,7 +46,7 @@ describe('what on GitHub is a quick-fix\'s, in a nested clone it touches (R18)',
 
   it('a branch an earlier quick-fix of the same name left there, stamped long before the unit, its pull request open: the opening refuses naming it; deleted there, the fix lands, the other never retitled', () => {
     const at = project();
-    const number = strangerPull(at.lib, { ...OLD, message: `Fix an old typo\n\nLeeway-Task: ${ID}`, date: '2020-01-01T00:00:00Z' });
+    const number = strangerPull(at.lib, { ...OLD, message: `Fix an old typo\n\nLeeway-Task: ${ID}` });
     createFix(at.dir, 1, SET[0].title, as());
     ok(at.dir, ['task', 'start', UNIT, '1.1'], as());
     createFile(at.dir, 'lib/lib.txt', LIB['lib/lib.txt']);
@@ -57,7 +57,7 @@ describe('what on GitHub is a quick-fix\'s, in a nested clone it touches (R18)',
     ended(at, 1);
     closed(at);
 
-    assert.strictEqual(refusal, `land: lib's host holds a branch ${BRANCH} that is not ${UNIT}'s — it holds no commit of a fix of ${UNIT}'s, so it was made by hand or before ${UNIT} was — and nothing moved: delete it there, or rename it, then try again`);
+    assert.strictEqual(refusal, `land: lib's host holds a branch ${BRANCH} that is not ${UNIT}'s — none of its commits is a fix of ${UNIT}'s or was made since ${UNIT} was — and nothing moved: delete it there, or rename it, then try again`);
     assert.deepStrictEqual([landed(at).lib, pullOn(at.lib, number)], [[[ID, ['lib.txt']]], [{ number, state: 'CLOSED', title: 'Fix an old typo' }]]);
   });
 });

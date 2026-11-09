@@ -1,14 +1,14 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// GitHub's landing driver and what on GitHub is a quick-fix's (R18;
+// GitHub's landing driver and what on GitHub is a quick-fix's (R18, R19;
 // leeway-engine/scripts/domain/landing.cjs, fix-branch.cjs, over
 // drivers/landing/github/), in the project's own repository: a pull request
 // of a branch by its name opened long before the unit, closed and its
 // branch deleted, is none of its — never "reopen it there" — and the
 // quick-fix lands; one opened then and left open, its branch there made by
-// hand, refuses the first start, naming it and the way on, and once it is
-// deleted the quick-fix lands, the other never retitled; and a fork's pull
+// hand then, refuses the first start, naming it and the way on, and once it
+// is deleted the quick-fix lands, the other never retitled; and a fork's pull
 // request of the same name, opened since, is none of its either, the
 // quick-fix opening and landing its own beside it. In a nested clone the
 // quick-fix touched, test-landing-quick-fix-stranger-nested.cjs's.
@@ -38,7 +38,7 @@ function closedOnFirst(dir) {
 /** A pull request GitHub holds, as its number, state and title. @param {string} dir @param {number} number */
 const pullOn = (dir, number) => github(dir).pulls.filter((pull) => pull.number === number).map(({ state, title }) => ({ number, state, title }));
 
-describe('what on GitHub is a quick-fix\'s, in the project\'s own repository (R18)', () => {
+describe('what on GitHub is a quick-fix\'s, in the project\'s own repository (R18, R19)', () => {
   it('a pull request of its branch\'s name opened long before the unit, closed and its branch deleted, is none of its: the quick-fix lands', () => {
     const dir = project();
     const number = strangerPull(dir, { ...OLD, state: 'CLOSED', kept: false });
@@ -48,7 +48,7 @@ describe('what on GitHub is a quick-fix\'s, in the project\'s own repository (R1
     assert.deepStrictEqual([landed(dir), pullOn(dir, number)], [[[`fix(${UNIT}): ${DESCRIPTION}`, [SET[0].file]]], [{ number, state: 'CLOSED', title: OLD.message }]]);
   });
 
-  it('one opened then and left open, its branch there made by hand, refuses the first start naming it and the way on; deleted there, the quick-fix lands, the other never retitled', () => {
+  it('one opened then and left open, its branch there made by hand then, refuses the first start naming it and the way on; deleted there, the quick-fix lands, the other never retitled', () => {
     const dir = project();
     const number = strangerPull(dir, OLD);
     createFix(dir, 1, SET[0].title, as());
@@ -61,7 +61,7 @@ describe('what on GitHub is a quick-fix\'s, in the project\'s own repository (R1
     ok(dir, ['task', 'done', UNIT, '1.1'], as());
     closedOnFirst(dir);
 
-    assert.strictEqual(refusal, `land: the project's host holds a branch ${BRANCH} that is not ${UNIT}'s — it holds no commit of a fix of ${UNIT}'s, so it was made by hand or before ${UNIT} was — and nothing moved: delete it there, or rename it, then try again`);
+    assert.strictEqual(refusal, `land: the project's host holds a branch ${BRANCH} that is not ${UNIT}'s — none of its commits is a fix of ${UNIT}'s or was made since ${UNIT} was — and nothing moved: delete it there, or rename it, then try again`);
     assert.deepStrictEqual([landed(dir), pullOn(dir, number)], [[[`fix(${UNIT}): ${DESCRIPTION}`, [SET[0].file]]], [{ number, state: 'CLOSED', title: OLD.message }]]);
   });
 

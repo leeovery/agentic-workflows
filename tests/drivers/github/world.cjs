@@ -116,12 +116,12 @@ function mergeByHand(dir, number, into, method = 'squash') {
  * `state` — the person's own, made by hand, its branch there `kept` or
  * deleted, or a fork's of `fork`, its head held as its own ref alone, as
  * GitHub holds a fork's: its head one commit on `base` writing `files`
- * under `message`, committed at `date` where given; opened at `created`,
- * where given, else long before any unit (gh-stub.cjs). Its number.
+ * under `message`, opened, and committed, at `created`, where given, else
+ * long before any unit (gh-stub.cjs). Its number.
  * @param {string} dir
- * @param {{head: string, base?: string, state?: 'OPEN'|'CLOSED', kept?: boolean, fork?: string, files: Record<string, string>, message: string, date?: string, created?: string}} pull
+ * @param {{head: string, base?: string, state?: 'OPEN'|'CLOSED', kept?: boolean, fork?: string, files: Record<string, string>, message: string, created?: string}} pull
  */
-function strangerPull(dir, { head, base = 'main', state = 'OPEN', kept = true, fork, files, message, date, created }) {
+function strangerPull(dir, { head, base = 'main', state = 'OPEN', kept = true, fork, files, message, created }) {
   const bare = bareOf(dir);
   const tree = fs.mkdtempSync(path.join(os.tmpdir(), 'github-stranger-'));
   git(bare, ['worktree', 'add', '-q', '--detach', tree, base]);
@@ -129,8 +129,8 @@ function strangerPull(dir, { head, base = 'main', state = 'OPEN', kept = true, f
     createFile(tree, file, text);
     git(tree, ['add', file]);
   }
-  const at = date === undefined ? {} : { GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date };
-  execFileSync('git', ['commit', '-q', '-m', message], { cwd: tree, env: { ...process.env, ...at } });
+  const at = created ?? stub.LONG_AGO;
+  execFileSync('git', ['commit', '-q', '-m', message], { cwd: tree, env: { ...process.env, GIT_AUTHOR_DATE: at, GIT_COMMITTER_DATE: at } });
   const sha = git(tree, ['rev-parse', 'HEAD']).trim();
   git(bare, ['worktree', 'remove', '--force', tree]);
   let number = 0;

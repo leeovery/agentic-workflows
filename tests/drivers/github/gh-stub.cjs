@@ -456,4 +456,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { GITHUB_SQUASH, githubAt, readState, writeState, bareOf, mergePulls };
+module.exports = { GITHUB_SQUASH, LONG_AGO, githubAt, readState, writeState, bareOf, mergePulls };

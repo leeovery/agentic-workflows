@@ -20,11 +20,12 @@
 // nested repositories (`quickFixNestedConformance`); the knowledge base's
 // chunks of `summary.md` (`summaryChunks`); a git command run as
 // Claude runs one in the conversation, the shell guard asked first
-// (`guardedGit`); finish's checklist worked and closed (`checklistClosed`),
-// the fixes recorded before it (`fixesRecorded`), and the close's yes as its
-// menu words it (`closeYes`); and a world built by a conversation gone
-// since, its records in a config folder of its own, removed once the world
-// is built (`asGone`).
+// (`guardedGit`); a commit of the person's own (`ownCommit`), on a branch
+// of the quick-fix's name they made (`ownBranchCommit`); finish's checklist
+// worked and closed (`checklistClosed`), the fixes recorded before it
+// (`fixesRecorded`), and the close's yes as its menu words it (`closeYes`);
+// and a world built by a conversation gone since, its records in a config
+// folder of its own, removed once the world is built (`asGone`).
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -338,6 +339,19 @@ function guardedGit(dir, args, as) {
   return ran.stdout;
 }
 
+/** A commit of the person's own in the repository at `dir`, writing `mine.txt` on the branch its checkout has out, made in their terminal. @param {string} dir @param {string} subject */
+function ownCommit(dir, subject) {
+  createFile(dir, 'mine.txt', 'mine\n');
+  git(dir, ['add', 'mine.txt']);
+  git(dir, ['commit', '-q', '-m', subject]);
+}
+
+/** A commit of the person's own (`ownCommit`) on a branch of the quick-fix's name made in the repository at `dir`. @param {string} dir @param {string} subject */
+function ownBranchCommit(dir, subject) {
+  git(dir, ['switch', '-q', '-c', BRANCH]);
+  ownCommit(dir, subject);
+}
+
 /** Finish's checklist worked and closed in the conversation `as` names, the build's log written. @param {string} dir @param {As} as */
 function checklistClosed(dir, as) {
   writeState(dir, layout.unit(UNIT, 'build', 'log.md'), '# The fixes\n');
@@ -384,5 +398,5 @@ function entered(dir, as) {
 
 module.exports = {
   UNIT, PLACE, DESCRIPTION, NOTE, FLAG, HELP, BRANCH, RECORDS, SET, fixFile, quickFix, createFix, fixChanged, fixBuilt, recordFile, twoFixesBuilt, quickFixConformance, quickFixNestedConformance, summaryChunks,
-  guardedGit, checklistClosed, fixesRecorded, closeYes, asGone, entered,
+  guardedGit, ownCommit, ownBranchCommit, checklistClosed, fixesRecorded, closeYes, asGone, entered,
 };
