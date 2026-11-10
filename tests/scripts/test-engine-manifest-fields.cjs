@@ -366,7 +366,7 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
     writeWorkUnit(dir, 'payments', 'epic', {
       phases: {
         specification: { items: {
-          'stale-group': { status: 'proposed', sources: { alpha: { status: 'pending' } } },
+          'stale-group': { status: 'in-progress', sources: { alpha: { status: 'pending' } } },
           anchor: { status: 'in-progress', sources: { alpha: { status: 'incorporated' } } },
         } },
         implementation: { items: { portal: { status: 'in-progress', external_dependencies: { billing: { state: 'unresolved', description: 'invoice ids' } } } } },

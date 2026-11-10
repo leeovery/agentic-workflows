@@ -4,8 +4,7 @@
 // The merged phase (9.S41): with the release installed, research is no skill
 // and no phase, the research-thread and subtopic-map verbs are gone, neither
 // map draws a subtopic state, and the screens name the one conversational
-// phase discussion — which closes at its decided gate, never through
-// `topic complete`.
+// phase discussion — which closes at its decided gate.
 //
 // Layer: verb. World, built once and only read: an epic, `orbit`, its topic
 // `alpha` under discussion with a question decided on the ledger.
@@ -99,8 +98,4 @@ describe('the screens name the merged phase discussion', () => {
     assert.doesNotMatch(card, /research/i);
   });
 
-  it('a discussion closes on its decided checklist, never through topic complete', () => {
-    assert.match(refuses(dir, ['topic', 'complete', EPIC, 'discussion', 'alpha']).error,
-      /^a discussion closes on its decided checklist, `checklist close decided` — an epic's then at its decided gate, `render decided` and the yes, which runs `decided yes`; a feature's into its spec, `decided stage`, its close taken at ready to build$/);
-  });
 });

@@ -1,48 +1,18 @@
 'use strict';
 
-const path = require('path');
 const engine = require('../../leeway-engine/scripts/lib.cjs');
-const { loadManifest, fileExists, listDirs } = engine.reads;
-const { stateRoot } = engine.state;
-const { phaseStatus, computeNextPhase } = engine.derivations;
-const { seriesDir } = require('../../leeway-engine/scripts/domain/experiment-paths.cjs');
-const { specPath } = require('../../leeway-engine/scripts/domain/spec-sections.cjs');
-
-const ALL_PHASES = engine.schema.VALID_PHASES.filter((p) => p !== 'discovery');
-
-/** Whether any of the unit's topics passes `holds`, given the topic's name. @param {string} cwd @param {string} workUnit @param {(topic: string) => boolean} holds */
-function anyTopic(cwd, workUnit, holds) {
-  return listDirs(path.join(stateRoot(cwd), workUnit, 'topics')).some(holds);
-}
-
-function phaseFileExists(cwd, workUnit, phase, manifest) {
-  switch (phase) {
-    case 'experiment':     return anyTopic(cwd, workUnit, (topic) => listDirs(path.join(stateRoot(cwd), seriesDir(workUnit, topic))).length > 0);
-    case 'discussion':
-    case 'investigation':  return anyTopic(cwd, workUnit, (topic) => fileExists(path.join(stateRoot(cwd), workUnit, 'topics', topic, 'log.md')));
-    case 'specification':  return fileExists(specPath(cwd, workUnit));
-    case 'implementation': return phaseStatus(manifest, phase) !== null;
-    default: return false;
-  }
-}
+const { loadManifest } = engine.reads;
+const { computeNextPhase } = engine.derivations;
 
 function discover(cwd, workUnit) {
   const manifest = loadManifest(cwd, workUnit);
   if (!manifest) return { error: `Could not read manifest for "${workUnit}"` };
 
-  const phases = {};
-  for (const phase of ALL_PHASES) {
-    phases[phase] = {
-      exists: phaseFileExists(cwd, workUnit, phase, manifest),
-      status: phaseStatus(manifest, phase) || 'none',
-    };
-  }
-
   const workType = manifest.work_type;
   const next_phase = computeNextPhase(manifest).next_phase;
 
-  // Where a linear type's routes enter: the next phase and the revisit
-  // candidates — none past the pipeline's end, which completes the unit.
+  // Where a linear type's next route enters — none past the pipeline's end,
+  // which completes the unit.
   const targets = engine.detail.WORK_UNIT_TYPES[workType] && next_phase !== 'done'
     ? engine.detail.phaseTargets(cwd, manifest, next_phase)
     : null;
@@ -51,35 +21,23 @@ function discover(cwd, workUnit) {
     work_unit: workUnit,
     work_type: workType,
     status: manifest.status,
-    phases,
     next_phase,
-    targets,
+    next: targets ? targets.next : null,
   };
 }
 
-// The thin scoped dump: the fields the continuation references branch on —
-// the derived next phase, the completed set (in pipeline order), the revisit
-// candidates (completed phases before next_phase, filtered to the type's
-// pipeline), and
-// the route each move is entered by.
+// The thin scoped dump the continuation reads: the derived next phase and,
+// for a linear type, the route it is entered by.
 function format(result) {
   if (result.error) return `Error: ${result.error}\n`;
-
-  const completed = Object.entries(result.phases)
-    .filter(([, data]) => data.status === 'completed')
-    .map(([phase]) => phase);
 
   const lines = [];
   lines.push(`=== ${result.work_unit} (${result.work_type}) ===`);
   lines.push(`next_phase: ${result.next_phase}`);
-  lines.push(`completed_phases: ${completed.join(', ') || '(none)'}`);
 
   if (engine.detail.WORK_UNIT_TYPES[result.work_type]) {
-    const { next, revisit } = result.targets || { next: null, revisit: [] };
-    const route = (/** @type {string} */ phase, /** @type {string|null} */ topic = null) => engine.project.phaseRoute(result.work_type, phase, result.work_unit, topic);
-    lines.push(`revisitable_phases: ${revisit.join(', ') || '(none)'}`);
-    lines.push(`next_route: ${next ? route(next.phase, next.topic) : '(none)'}`);
-    lines.push(`revisit_routes: ${revisit.map((/** @type {string} */ phase) => route(phase)).join(', ') || '(none)'}`);
+    const { next } = result;
+    lines.push(`next_route: ${next ? engine.project.phaseRoute(result.work_type, next.phase, result.work_unit, next.topic) : '(none)'}`);
   }
 
   return lines.join('\n') + '\n';

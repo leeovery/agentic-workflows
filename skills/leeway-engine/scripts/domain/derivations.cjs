@@ -717,6 +717,7 @@ function buildNext(manifest) {
  */
 function legacyNext(manifest) {
   const ps = (/** @type {string} */ phase) => phaseStatus(manifest, phase);
+  const [planning] = LEGACY_PHASES;
   if (ps('review') === 'completed') {
     return manifest.work_type === 'epic'
       ? { next_phase: 'review', phase_label: 'review completed for current topics' }
@@ -725,10 +726,10 @@ function legacyNext(manifest) {
   if (ps('review') === 'in-progress') return { next_phase: 'review', phase_label: 'review (in-progress)' };
   if (ps('implementation') === 'completed') return { next_phase: 'review', phase_label: 'ready for review' };
   if (ps('implementation') === 'in-progress') return { next_phase: 'implementation', phase_label: 'implementation (in-progress)' };
-  if (ps('planning') === 'completed') return { next_phase: 'implementation', phase_label: 'ready for implementation' };
-  if (ps('planning') === 'in-progress') return { next_phase: 'planning', phase_label: 'planning (in-progress)' };
+  if (ps(planning) === 'completed') return { next_phase: 'implementation', phase_label: 'ready for implementation' };
+  if (ps(planning) === 'in-progress') return { next_phase: planning, phase_label: `${planning} (in-progress)` };
   if (ps('specification') !== 'completed') return null;
-  return { next_phase: 'planning', phase_label: 'ready for planning' };
+  return { next_phase: planning, phase_label: `ready for ${planning}` };
 }
 
 /**

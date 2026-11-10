@@ -21,9 +21,6 @@ require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
-const path = require('path');
-const ROOT = path.join(__dirname, '../..');
-const BRIDGE = require(path.join(ROOT, 'skills/leeway-bridge/scripts/gateway.cjs'));
 const { stateGit, layout } = require('./engine-harness.cjs');
 const { Sim, startUnit, discussed, arrive, send, sendArgv, specEntry, specWritten, specBuilt, enterEntry } = require('./pipeline-world.cjs');
 
@@ -38,11 +35,8 @@ describe('pipeline simulation: backwards', () => {
     discussed(sim, wu, wu);
 
     // The bridge offers no way back into the closed discussion: no revisit
-    // row, no revisit menu, and topic reopen does not take it.
+    // menu, and topic reopen does not take it.
     arrive(sim, wu);
-    const dump = BRIDGE.format(BRIDGE.discover(sim.dir, wu));
-    assert.match(dump, /^revisitable_phases: \(none\)$/m);
-    assert.match(dump, /^revisit_routes: \(none\)$/m);
     sim.refuses(['render', 'revisit-phases', wu], /has no completed earlier phase to revisit/);
     sim.refuses(['topic', 'reopen', wu, 'discussion', wu], /^a discussion decided, or closed into its spec, reopens through a message sent to it/);
 

@@ -124,7 +124,7 @@ describe('engine.run — the invocation is the caller\'s', () => {
 
   it('a refusal answers {ok:false} on stderr with exit 1, and writes nothing', () => {
     const before = manifestOf(dir);
-    const res = engine.run(['topic', 'complete', 'payments', 'investigation', 'absent'], { cwd: dir });
+    const res = engine.run(['topic', 'reopen', 'payments', 'investigation', 'absent'], { cwd: dir });
     assert.strictEqual(res.code, 1);
     assert.strictEqual(res.stdout, '', 'a refusal says nothing on stdout');
     assert.strictEqual(JSON.parse(res.stderr).ok, false);
@@ -389,17 +389,18 @@ describe('the two doors answer alike', () => {
 
   // The in-process entry is only worth having if it is the CLI. Each case is
   // run both ways against the same state and compared byte for byte.
-  for (const [what, args] of Object.entries({
-    'a read': ['manifest', 'get', 'payments.investigation.payments', 'status'],
-    'an expected miss': ['manifest', 'key-of', 'payments.investigation', 'items', 'absent'],
-    'a mutation': ['manifest', 'set', 'payments.investigation.payments', 'brief_incorporated=true'],
-    'a refusal': ['topic', 'complete', 'payments', 'investigation', 'absent'],
-    'a usage': ['workunit'],
-    'a render surface': ['render', 'resume-gate', 'payments.investigation.payments'],
+  for (const [what, [args, code]] of Object.entries({
+    'a read': [['manifest', 'get', 'payments.investigation.payments', 'status'], 0],
+    'an expected miss': [['manifest', 'key-of', 'payments.investigation', 'items', 'absent'], 2],
+    'a mutation': [['manifest', 'set', 'payments.investigation.payments', 'brief_incorporated=true'], 0],
+    'a refusal': [['topic', 'reopen', 'payments', 'investigation', 'absent'], 1],
+    'a usage': [['workunit'], 1],
+    'a render surface': [['render', 'cancel-gate', 'payments'], 0],
   })) {
     it(what, () => {
       const spawned = spawnSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8' });
       const inProcess = engine.run(args, { cwd: dir });
+      assert.strictEqual(spawned.status, code, `${what} answers as one: ${spawned.stderr}`);
       assert.deepStrictEqual(
         { stdout: inProcess.stdout, stderr: inProcess.stderr, code: inProcess.code },
         { stdout: spawned.stdout, stderr: spawned.stderr, code: spawned.status });

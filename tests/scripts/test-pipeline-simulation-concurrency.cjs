@@ -97,18 +97,20 @@ describe('pipeline simulation: concurrency', () => {
         assert.ok(!paths.includes(f), `[${label}] swept a peer's path: ${f}`);
       }
     };
-    const docScope = [DOC_FILE, `.leeway/${bug}/topics/${bug}/mail`, `.leeway/${bug}/manifest.json`];
+    const docScope = [DOC_FILE, `${STATE_DIR_NAME}/.ledger.jsonl`, `.leeway/${bug}/topics/${bug}/mail`, `.leeway/${bug}/manifest.json`];
     const talkScope = [TALK_FILE, `${STATE_DIR_NAME}/.ledger.jsonl`, `.leeway/${wu}/topics/ranking/mail`, `.leeway/${wu}/manifest.json`];
     const claudes = { by: 'claude', who_moved_whom: 'none' };
     /** A question the discussion session asks, its commit the ledger's own. @param {string} text */
     const talkAsks = (text) => talkSession.run(['ledger', 'ask', `${wu}.discussion.ranking`], JSON.stringify({ ...claudes, text })).id;
+    /** A finding the investigation session records, its commit the ledger's own. @param {string} text */
+    const docFinds = (text) => docSession.run(['ledger', 'find', `${bug}.investigation.${bug}`], JSON.stringify({ ...claudes, text, how: 'Read the intake loop.', known: 'read' }));
 
     // --- B1 · A1 · A2 · B2: two topic sessions, alternating
     // A: an investigation session on a bugfix. B: a discussion session on
-    // ranking, whose writes are the ledger's, each committing itself. Neither
+    // ranking. Both sessions' writes are the ledger's, each committing itself. Neither
     // knows the other exists; neither commit takes the other's files but its
     // log, which rides along with every state commit.
-    docSession.run(['topic', 'start', bug, 'investigation', bug]);
+    docSession.run(['enter', 'investigation', bug]);
     talkSession.run(['enter', 'discussion', wu, 'ranking']);
 
     docSession.write(DOC_FILE, '# Investigation — Replay Crash\n\n## Symptoms\n\n- Batch intake stalls.\n');
@@ -121,14 +123,14 @@ describe('pipeline simulation: concurrency', () => {
 
     // A commits next, and both logs are already landed — so A's confinement is
     // proven by what its commit does NOT reach for, not by what is dirty.
-    docSession.run(['commit', bug, '-m', `investigation(${bug}): symptoms`, '--topic', `investigation/${bug}`]);
+    docFinds('Batch intake stalls on replay.');
     confined('A1', docScope, [TALK_FILE]);
 
     // Round two, both sessions still live, both amending their own log: A's
     // commit carries B's changed log along, and nothing else of B's.
     docSession.write(DOC_FILE, '# Investigation — Replay Crash\n\n## Symptoms\n\n- Batch intake stalls.\n- Replay is not idempotent.\n');
     talkSession.write(TALK_FILE, '# Discussion — Ranking\n\n## Context\n\nOrdering under replay.\n\n## Decisions\n\n- Order by sequence number.\n');
-    docSession.run(['commit', bug, '-m', `investigation(${bug}): replay`, '--topic', `investigation/${bug}`]);
+    docFinds('Replay is not idempotent.');
     confined('A2', [...docScope, TALK_FILE], []);
     assert.ok(committedPaths(true).includes(TALK_FILE), "every changed log rides along with a state commit, the peer's among them");
     talkSession.run(['ledger', 'decide', `${wu}.discussion.ranking`, '--answers', replayOrder],
@@ -184,7 +186,7 @@ describe('pipeline simulation: concurrency', () => {
     confined('B3', talkScope, [CODE_FILE]);
     assert.ok(dirty().includes(CODE_FILE), "the code session's dirt survives a doc session's commit");
     docSession.write(DOC_FILE, '# Investigation — Replay Crash\n\n## Symptoms\n\n- Batch intake stalls.\n- Replay is not idempotent.\n- Ties break on arrival.\n');
-    docSession.run(['commit', bug, '-m', `investigation(${bug}): tie-break`, '--topic', `investigation/${bug}`]);
+    docFinds('Ties break on arrival.');
     confined('A3', docScope, [CODE_FILE, TALK_FILE]);
 
     // Three sessions hold, one of them code; the source count is unmoved.

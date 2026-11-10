@@ -48,7 +48,7 @@ const { codeChanges, linksHeldOut, stagedHeldOut } = require('./domain/worktree-
 const { quoted } = require('./domain/landing-git.cjs');
 const { TERMINAL_STATUSES, isParentExperimentId } = require('./kernel/manifest-schema.cjs');
 const { sequenceMap, addTopic, addTopics, editTopic, renameTopic, removeTopic, rewriteBrief } = require('./domain/discovery-map.cjs');
-const { startTopic, completeTopic, reopenTopic, cancelTopic, reactivateTopic, postponeTopic } = require('./domain/transitions.cjs');
+const { startTopic, reopenTopic, cancelTopic, reactivateTopic, postponeTopic } = require('./domain/transitions.cjs');
 const { mailboxDir, mailPhase } = require('./domain/derivations.cjs');
 const { SEND_USAGE, MAILBOX_USAGE, ANSWERED_USAGE, sendMessage, mailboxOf, answerMessage } = require('./domain/mail.cjs');
 const { loadWorkUnitManifest } = require('./kernel/manifest.cjs');
@@ -101,7 +101,7 @@ const { recordBuilder, positionReads, positionSections } = require('./domain/pos
 const { isBriefId } = require('./domain/brief-names.cjs');
 const { ENTER_USAGE, enter } = require('./domain/enter.cjs');
 const { createWorkUnit } = require('./domain/workunit-create.cjs');
-const { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
+const { cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
 const { absorbWorkUnit } = require('./domain/workunit-absorb.cjs');
 const { stageMove } = require('./domain/workunit-move.cjs');
 const { closeDiscoverySession } = require('./domain/discovery-session.cjs');
@@ -233,7 +233,6 @@ ${ASSET_USAGE.replace(/^/gm, '  ')}
 ${VERDICT_USAGE.replace(/^/gm, '  ')}
   workunit create <work-unit> <work-type> --description <text> --session-log-file <path>
                   [--seed <path> …]
-  workunit complete <work-unit> -m <message>
   workunit cancel <work-unit>
   workunit reactivate <work-unit>
   workunit pivot <work-unit>
@@ -264,7 +263,6 @@ ${Object.values(MAP_USAGE).map((usage) => `  ${usage}`).join('\n')}
   ${ENTER_USAGE}
   layout guard                       (hook before Write, Edit and NotebookEdit; its JSON on stdin)
   shell guard                        (hook before Bash; its JSON on stdin)
-  topic complete <work-unit> <phase> <topic>
   topic reopen <work-unit> <phase> <topic>
   topic cancel <work-unit> discovery <topic>
   topic reactivate <work-unit> discovery <topic>
@@ -353,9 +351,6 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   code log    --subject <prefix>
   code diff   [--subject <prefix>]
   code status
-  render mail-announce    <wu.phase.topic>
-  render mail-offer       <wu.phase.topic> --file <payload.json>
-  render mail-block       <wu.phase.topic>
   render backlog-gate     <wu.phase.topic> --file <payload.json>
   render candidate-gate   <wu> --file <payload.json> | <wu> --variant announce
   render send-closed-target <wu.discovery.target>
@@ -369,7 +364,7 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render phase-note        <wu.phase.topic> --verb <Word> [--noun <word>]
   render cancel-gate       <wu.discovery.name>
   render postpone-gate     <wu.discovery.topic> --horizon "<horizon>"
-  render workunit-receipt  <wu> --verb complete|cancel|reactivate|pivot [--warn] [--inbox <n>]
+  render workunit-receipt  <wu> --verb cancel|reactivate|pivot [--warn] [--inbox <n>]
   render topic-receipt     <wu.discovery.name> --verb cancel|reactivate [--warn] [--inbox <n>]
   render topic-receipt     <wu.discovery.topic> --verb postpone|restore [--warn]
   render absorb-summary    <feature> --into <epic> --topic <name>
@@ -548,10 +543,9 @@ function runVerdict(call, argv) {
 // transaction covering the manifest, seeds, the model-authored session log
 // (installed verbatim — the engine never writes prose), and the scoped
 // commit.
-// complete/cancel/reactivate are the lifecycle transactions: manifest write,
-// knowledge-base sync (warn-don't-block), scoped git commit. complete takes
-// -m because its message varies by caller (manual vs pipeline-terminal vs
-// review-skipped); cancel/reactivate messages are engine-owned. pivot flips
+// cancel/reactivate are the lifecycle transactions: manifest write,
+// knowledge-base sync (warn-don't-block), scoped git commit, with an
+// engine-owned message; a unit completes at finish's yes. pivot flips
 // a feature to an epic — both manifests, the map registration, the
 // re-index — as one transaction with an engine-owned message. absorb merges
 // a feature into an epic as a new topic and deletes the feature — validated
@@ -575,19 +569,6 @@ function runWorkunit(call, argv) {
         sessionLogFile: opts['session-log-file'],
         seeds: lists.seed || [],
       }));
-    } else if (command === 'complete') {
-      /** @type {string|null} */ let workUnit = null;
-      /** @type {string|null} */ let message = null;
-      for (let i = 0; i < rest.length; i++) {
-        const a = rest[i];
-        if (a === '-m' || a === '--message') message = rest[++i];
-        else if (workUnit === null) workUnit = a;
-        else throw new Error(`unexpected argument "${a}"`);
-      }
-      if (!workUnit || !message) {
-        throw new Error('Usage: engine workunit complete <work-unit> -m <message>');
-      }
-      respond(call, completeWorkUnit(call.cwd, workUnit, { message }));
     } else if (command === 'cancel' || command === 'reactivate' || command === 'pivot') {
       const [workUnit, ...extra] = rest;
       if (!workUnit || extra.length > 0) {
@@ -614,7 +595,7 @@ function runWorkunit(call, argv) {
     } else if (command === 'position') {
       respond(call, runPositionVerb(call.cwd, rest));
     } else {
-      throw new Error('Usage: engine workunit <create|complete|cancel|reactivate|pivot|absorb|move|position> …');
+      throw new Error('Usage: engine workunit <create|cancel|reactivate|pivot|absorb|move|position> …');
     }
   } catch (err) {
     failJson(call, err);
@@ -796,27 +777,24 @@ function runInvestigation(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
-// topic — phase-item transitions. start/send/complete/reopen are
-// manifest-side lifecycle bookkeeping (KB sync where the phase is indexed:
-// index on complete; reopen syncs nothing — warn-don't-block) with no git
-// commit — the calling session's commit cadence picks the change up.
+// topic — phase-item transitions. start/reopen are manifest-side lifecycle
+// bookkeeping with no commit — the calling session's commit cadence picks the
+// change up; send commits its own delivery.
 // cancel/reactivate act on a topic's unit, `discovery` (the map row with its
-// discussion and experiments) — one transaction per call: manifest write,
-// knowledge-base sync (warn-don't-block), scoped git commit.
+// discussion and experiments) — one transaction per call: the manifest write
+// and a scoped commit.
 // The JSON response reports what happened — no follow-up read needed.
 //
 // Heartbeats ride the self-referential verbs — the session acting on its own
 // topic: `start` (opening it), `answered` (taking a message out of its own
 // mailbox), and `mailbox` (the loop checks it every turn, so a turn with no
-// writes still registers). `complete` is the release: the topic is closed,
-// so the slot it held opens at that moment rather than at some later commit.
-// `send` never beats — delivery acts on the TARGET topic from the origin's
-// session, and a beat there would stamp the origin process onto a topic it
-// does not hold. Nor do `cancel`, `reactivate` or `reopen`:
-// those are analysis and navigation actors reaching across topics.
+// writes still registers). `send` never beats — delivery acts on the TARGET
+// topic from the origin's session, and a beat there would stamp the origin
+// process onto a topic it does not hold. Nor do `cancel`, `reactivate` or
+// `reopen`: those are analysis and navigation actors reaching across topics.
 // ---------------------------------------------------------------------------
 
-const TOPIC_COMMANDS = { start: startTopic, complete: completeTopic, reopen: reopenTopic, cancel: cancelTopic, reactivate: reactivateTopic };
+const TOPIC_COMMANDS = { start: startTopic, reopen: reopenTopic, cancel: cancelTopic, reactivate: reactivateTopic };
 
 // The self-referential verbs among those dispatched through TOPIC_COMMANDS;
 // `mailbox` and `answered` beat at their own branches.
@@ -1044,7 +1022,7 @@ function runTopic(call, argv) {
       return;
     }
     if (!Object.prototype.hasOwnProperty.call(TOPIC_COMMANDS, command)) {
-      throw new Error(`Usage: engine topic <start|send|complete|reopen|cancel|reactivate|postpone|mailbox|answered|${Object.keys(MAP_VERBS).join('|')}> <work-unit> …`);
+      throw new Error(`Usage: engine topic <start|send|reopen|cancel|reactivate|postpone|mailbox|answered|${Object.keys(MAP_VERBS).join('|')}> <work-unit> …`);
     }
     const fn = TOPIC_COMMANDS[/** @type {keyof typeof TOPIC_COMMANDS} */ (command)];
     const [workUnit, phase, topic] = rest;
@@ -1059,10 +1037,6 @@ function runTopic(call, argv) {
     }
     const result = fn(call.cwd, workUnit, phase, topic);
     if (TOPIC_BEATS.includes(command)) beatQuietly(call.cwd, workUnit, phase, topic);
-    // The close releases the slot. Everything after it — the conclusion
-    // commit — is a session tidying a topic it has finished, and none of it
-    // should re-take the hold.
-    if (command === 'complete') clearQuietly(call.cwd, workUnit, phase, topic);
     respond(call, result);
   } catch (err) {
     failJson(call, err);

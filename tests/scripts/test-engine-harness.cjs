@@ -71,8 +71,8 @@ describe('engine harness — the shapes', () => {
   });
 
   it('ok fails loudly when the engine refuses', () => {
-    assert.throws(() => ok(dir, ['topic', 'complete', 'pay', 'investigation', 'absent']),
-      /engine topic complete pay investigation absent failed/);
+    assert.throws(() => ok(dir, ['topic', 'reopen', 'pay', 'investigation', 'absent']),
+      /engine topic reopen pay investigation absent failed/);
   });
 
   it('okSections answers the response and everything after it', () => {

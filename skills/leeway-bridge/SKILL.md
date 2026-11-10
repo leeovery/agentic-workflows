@@ -14,8 +14,7 @@ A phase invokes this skill as it ends. A feature's next phase is derived from st
 
 This skill receives positional arguments:
 - `$0` — **work_unit**: the work unit name (directory under `.leeway/`). Held downstream as `{work_unit}`.
-- `$1` — **completed_phase**: the phase the work is leaving — the one that concluded, or the one whose topic left. Held downstream as `{completed_phase}`.
-- `$2` — **outcome** (optional): the literal `cancelled` when the phase's topic was cancelled from inside its session and its receipt is already rendered, or `postponed` when it left for the roadmap the same way. Held downstream as `{outcome}`. Absent means the phase completed.
+- `$1` — **completed_phase**: the phase that concluded. Held downstream as `{completed_phase}`.
 
 Record where this session is working — the call also labels the tmux session where the user opted in:
 
@@ -43,7 +42,7 @@ Run the discovery script with the work unit:
 node .claude/skills/leeway-bridge/scripts/gateway.cjs {work_unit}
 ```
 
-The output contains `next_phase`, `completed_phases` (in pipeline order), and `revisitable_phases` — the completed phases before `next_phase` that a revisit can enter, filtered to the work type's pipeline — with `next_route` and `revisit_routes`, the routes `next_phase` and each revisitable phase are entered by, in that order.
+The output contains `next_phase` and `next_route`, the route it is entered by.
 
 → Proceed to **Step 2**.
 

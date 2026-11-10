@@ -49,17 +49,16 @@ function inboxLine(n) {
 }
 
 /**
- * workunit complete / cancel / reactivate / pivot receipts. `pivot` is
+ * workunit cancel / reactivate / pivot receipts. `pivot` is
  * advisory-only — its user-facing continuation is the pivot-continuation
  * menu, owned by the caller's menu step.
- * @param {'complete'|'cancel'|'reactivate'|'pivot'} verb
+ * @param {'cancel'|'reactivate'|'pivot'} verb
  * @param {string} workUnit
  * @param {{warn?: boolean, inbox?: number, kept?: string[]}} [opts]  `inbox`: cancel — how many waiting messages it moved to the inbox; `kept`: cancel — the words for each fix's work it kept set aside
  * @returns {string}
  */
 function workunitReceipt(verb, workUnit, { warn = false, inbox = 0, kept = [] } = {}) {
   const name = titlecase(workUnit);
-  if (verb === 'complete') return confirmation(`"${name}" marked as completed.`);
   if (verb === 'cancel') {
     return joined([
       warn ? warningBlock('Knowledge removal warning', 'The work unit is cancelled. The next start removes its chunks from the knowledge base.') : null,

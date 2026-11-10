@@ -355,33 +355,32 @@ function epicDashboard(workUnit, detail, opts = {}) {
 // Key
 // ---------------------------------------------------------------------------
 
-const KEY_STATUS =
-  '  Status:\n'
-  + '    proposed    — analyzed grouping, not yet started\n'
-  + '    unstarted   — mail waiting, topic not started\n'
-  + '    in-progress — work is ongoing\n'
-  + '    completed   — phase or implementation done\n'
-  + '    cancelled   — topic removed from active work\n'
-  + '    promoted    — moved to its own cross-cutting work unit';
+/** Each status tag a phase item's row can carry, with its words, in the key's order. */
+const KEY_LINES = {
+  proposed: 'analyzed grouping, not yet started',
+  unstarted: 'mail waiting, topic not started',
+  'in-progress': 'work is ongoing',
+  completed: 'phase or implementation done',
+  cancelled: 'topic removed from active work',
+  promoted: 'moved to its own cross-cutting work unit',
+};
 
 /**
- * Section B — the Key block, showing only categories present in the display
- * whose vocabulary the rows don't spell out themselves: phase-item status
- * tags. Map-row lifecycle and session state need no legend — their `↳`
- * state lines carry the words.
+ * Section B — the Key block: a line for each phase-item status tag the
+ * dashboard's rows carry, and no other. Map-row lifecycle and session state
+ * need no legend — their `↳` state lines carry the words.
  * Empty string when nothing on screen earns a legend.
  * @param {EpicDetail} detail
  * @returns {string}
  */
 function epicKey(detail) {
   const hasMap = detail.discovery_map.length > 0;
-  const phaseNames = Object.keys(detail.phases);
-  if (!hasMap && phaseNames.length === 0) return '';
-
-  // With a map only build phases render item rows; without a map every
-  // phase renders.
-  if (hasMap && !BUILD_PHASES.some((p) => (detail.phases[p] || []).length > 0)) return '';
-  return 'Key:\n' + KEY_STATUS;
+  // With a map the map is the Discovery stage, and its phases draw no item rows.
+  const drawn = STAGES.filter((stage) => !(hasMap && stage.name === 'DISCOVERY')).flatMap((stage) => stage.phases);
+  const shown = new Set(drawn.flatMap((phase) => (detail.phases[phase] || []).map((item) => item.status)));
+  const lines = Object.entries(KEY_LINES).filter(([status]) => shown.has(status));
+  if (lines.length === 0) return '';
+  return ['Key:', '  Status:', ...lines.map(([status, words]) => `    ${status.padEnd(11)} — ${words}`)].join('\n');
 }
 
 // ---------------------------------------------------------------------------

@@ -71,7 +71,7 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - **Discovery** (`leeway-discovery`) — the product's conversation, where new work starts, and an epic's discovery, where its map is shaped and changed.
 - **Navigation** (`leeway-continue-epic`, `leeway-continue-linear`) — a work unit's continue menu.
 - **Phase skills** (`leeway-{phase}-process`) — one per phase after discovery; what each holds is in CONVENTIONS.md (The Phase Skill).
-- **Bridge** (`leeway-bridge`) — where the work goes after a phase concludes, pauses, or leaves its topic.
+- **Bridge** (`leeway-bridge`) — where the work goes after a phase concludes or pauses.
 - **Capture** (`leeway-log-idea`, `leeway-log-bug`, `leeway-log-quickfix`) — write to the inbox; no steps, no gates.
 - **Project-level** — `leeway-roadmap` (the product roadmap, and starting work from it through discovery), `leeway-help` (the walkthrough and reference cards).
 - **Shared references** (`skills/leeway-shared/references/`) — protocols several skills load; `framework.md` is loaded once per conversation (CONVENTIONS.md, The Framework Load).
@@ -88,11 +88,14 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - `.workflows/manifest.json` — project manifest: work-unit registry, defaults, roadmap, the brownfield offer's answer
 - `.workflows/{work_unit}/manifest.json` — work-unit manifest
 - `.workflows/{work_unit}/discovery/session-NNN.md` — discovery session logs
-- `.workflows/{work_unit}/topics/{topic}/` — a topic's own place: `brief.md` its brief, `log.md` its conversation's log, `experiments/{id}-{slug}/` one experiment record, `mail/` the messages waiting for it
+- `.workflows/{work_unit}/topics/{topic}/` — a topic's own place: `brief.md` its brief, `log.md` its conversation's log, `experiments/{id}-{slug}/` one experiment record, `mail/` the messages waiting for it, `earlier/` the files a unit moved to another type set aside from before
 - `.workflows/{work_unit}/spec.md` — the unit's one spec
+- `.workflows/{work_unit}/summary.md` — a quick-fix's short record after the work
 - `.workflows/{work_unit}/build/` — the build's `log.md` and `notes.md`; `notes-answered.json`, the notes for later a quick-fix's close answered; `tasks/{task}.md` with each task's round reports, `figures.json` and settlements; `phases/phase-{N}/` with the phase review's reports, the consolidation and `settlement.json`; `runs/{scenario}/run-NNN.json`, the verification runs
 - `.workflows/{work_unit}/review/` — the review phase's rounds: `round-{N}.json`, `round-{N}.md`, `round-{N}-checks.md`, `round-{N}-reads.json`, and `round-{N}/` holding the readers' reports
 - `.workflows/{work_unit}/seeds/` — the inbox items the unit was started from
+- `.workflows/{work_unit}/assets/` — the files the user shared
+- `.workflows/{work_unit}/spikes/{NNN}-{slug}/` — the unit's spikes
 - `.workflows/{work_unit}/.state/` — per-unit analysis files
 - `.workflows/.state/` — the migrations ledger, `environment-setup.md`
 - `.workflows/.cache/{work_unit}/{phase}/{topic}/` — gitignored session state, scratch and presence; `.cache/.session-labels/` the tmux label store
@@ -112,7 +115,8 @@ Workflow state is engine-owned (CONVENTIONS.md, What the Engine Owns). Never han
 **NEVER name a tool a driver wraps (tick, linear, etc.) anywhere except:**
 - `skills/leeway-engine/scripts/drivers/**` - the drivers, the only engine code that names a tool
 - `tests/drivers/**` - a driver's test fixtures, which find and pin its real tool; a new suite generic over drivers names none
-- `README.md` - user-facing documentation where the tool options are presented
+- `README.md` and `docs/` - user-facing documentation where the tool options are presented
+- `design/` - the design notes
 
 Everything else reaches a tool through the driver the project manifest's `drivers` setting picks.
 

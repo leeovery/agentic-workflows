@@ -23,8 +23,7 @@ const path = require('path');
 const { loadManifest, loadProjectManifest } = require('./reads.cjs');
 const { displayWidth } = require('../kernel/terminal.cjs');
 const { titlecase, tag } = require('./conventions.cjs');
-const { section, dataSection, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, timedInstruction, menu, cmdOption, promptOption, callout, indentedBody, emitAs, MENU_INSTRUCTION, AUTO_GATE_CLAUSE } = require('./projections/surfaces.cjs');
-const { worklist } = require('./projections/worklist.cjs');
+const { section, dataSection, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, timedInstruction, menu, cmdOption, promptOption, indentedBody, emitAs, MENU_INSTRUCTION, AUTO_GATE_CLAUSE } = require('./projections/surfaces.cjs');
 const { keptAside, keptWords } = require('./fix-aside.cjs');
 const { workunitReceipt, topicReceipt, absorbSummary, ABSORB_MOVED, absorbReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, inboxRestoreReceipt, inboxDeleteReceipt } = require('./projections/transactions.cjs');
 const { absorbTargetMenu, absorbConfirmGate, archivedActions, archivedDeleteGate, inboxContent, completedActions } = require('./projections/start.cjs');
@@ -54,7 +53,7 @@ const { WORK_UNIT_TYPES, phaseTargets } = require('./workunit-detail.cjs');
 const {
   computeNextPhase, computeTopicLifecycle, awaitedExperiments, itemOf,
   UNIT_PHASES, liveUnitItems, discoveryUnitExists, cancelPlan,
-  postponePlan, postponeTarget, postponedItem, openExperiments, mailboxFiles,
+  postponePlan, postponeTarget, postponedItem, openExperiments,
   topicTitle, topicTitles, titled, itemTitle, goesBy, dismissedNames, topicKey, noTopicRefusal, briefFile,
 } = require('./derivations.cjs');
 const { sendReportOf } = require('./mail.cjs');
@@ -518,116 +517,6 @@ function unsourcedGate(cwd, file, titles) {
 }
 
 // ---------------------------------------------------------------------------
-// Mailbox surfaces — the mailbox is engine-owned layout, so these
-// surfaces read it from disk; entry content never populates a render from a
-// parse — per-entry agenda values arrive as a judgment payload.
-// ---------------------------------------------------------------------------
-
-// mail-offer — the offer gate over a non-empty mailbox: the agenda (count
-// and order from the live mailbox, per-entry lines from the caller's payload,
-// keyed by message file so payload and mailbox stay in exact correspondence)
-// plus the yes/later menu.
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, file?: string}} args
- * @returns {string}
- */
-function mailOffer(cwd, { dotpath, file }) {
-  const { workUnit, topic } = resolveAddress(cwd, dotpath, 'mail-offer');
-  if (!file) throw new Error('render mail-offer: --file <payload.json> is required');
-  const p = readJsonPayload(cwd, file, 'mail-offer');
-  const files = mailboxFiles(stateRoot(cwd), workUnit, topic);
-  if (!files.length) throw new Error(`render mail-offer: ${topic}'s mailbox is empty — nothing to offer`);
-  if (!Array.isArray(p.items) || p.items.length === 0) throw new Error('render mail-offer: "items" must be a non-empty array');
-  /** @type {Map<string, {file: string, title: string, from: string}>} */
-  const byFile = new Map();
-  p.items.forEach((it, i) => {
-    for (const field of ['file', 'title', 'from']) {
-      if (!isFilled(it[field])) throw new Error(`render mail-offer: item ${i + 1} is missing "${field}"`);
-    }
-    if (byFile.has(it.file)) throw new Error(`render mail-offer: duplicate item for "${it.file}"`);
-    byFile.set(it.file, it);
-  });
-  if (byFile.size !== files.length || files.some((f) => !byFile.has(f))) {
-    throw new Error(`render mail-offer: payload items must cover the mailbox exactly (mailbox: ${files.join(', ')})`);
-  }
-  // The mailbox is a flat set of messages from any number of topics, so
-  // provenance belongs per row — the `↳` note — rather than folded into the
-  // header. Every row is pending by definition: a handled message's file
-  // leaves the mailbox.
-  const agenda = worklist({
-    heading: { label: 'Mailbox', noun: 'message' },
-    items: files.map((f) => {
-      const it = /** @type {NonNullable<ReturnType<typeof byFile.get>>} */ (byFile.get(f));
-      return { title: it.title, note: it.from };
-    }),
-    walked: true,
-  });
-  return [
-    section('DISPLAY: mail agenda', emitAs('markdown'), agenda),
-    section(
-      'MENU: mail offer',
-      MENU_INSTRUCTION,
-      menu('Work through them now?', [
-        cmdOption('y', 'yes', 'Surface and discuss them one at a time'),
-        cmdOption('l', 'later', "Carry on with the session; I'll offer again at the next pause. The mailbox must be empty before this topic can conclude"),
-      ]),
-    ),
-  ].join('\n');
-}
-
-// mail-announce — the fresh-sitting notice over a non-empty mailbox: one
-// count-only line, no agenda — the session opens on its own material and
-// the mailbox is offered at its first genuine break.
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string}} args
- * @returns {string}
- */
-function mailAnnounce(cwd, { dotpath }) {
-  const { workUnit, topic } = resolveAddress(cwd, dotpath, 'mail-announce');
-  const files = mailboxFiles(stateRoot(cwd), workUnit, topic);
-  if (!files.length) throw new Error(`render mail-announce: ${topic}'s mailbox is empty — nothing to announce`);
-  const line = files.length === 1
-    ? "1 message from another topic waits in this topic's mailbox — I'll raise it once the session finds its footing."
-    : `${files.length} messages from other topics wait in this topic's mailbox — I'll raise them once the session finds its footing.`;
-  return section('DISPLAY: mail announce', CONTINUE_INSTRUCTION, callout(line));
-}
-
-// mail-block — the conclusion blocker over a non-empty mailbox. Count comes
-// from the live mailbox; the awaiting-word follows the phase.
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string}} args
- * @returns {string}
- */
-function mailBlock(cwd, { dotpath }) {
-  const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'mail-block');
-  const files = mailboxFiles(stateRoot(cwd), workUnit, topic);
-  if (!files.length) throw new Error(`render mail-block: ${topic}'s mailbox is empty — nothing blocks conclusion`);
-  const doing = phase === 'investigation' ? 'investigation' : 'discussion';
-  // A true blocker renders red: a `properties` fence colours the ⚑ turquoise
-  // and the rest of its one logical line red, the one highlighter that never
-  // tokenises English. Its guidance rides a markdown section of its own, so
-  // it reflows and stays calm.
-  return [
-    section(
-      'DISPLAY: mail block',
-      emitAs('properties'),
-      `⚑ Mailbox not empty — ${files.length} message${files.length === 1 ? '' : 's'} awaiting ${doing}`,
-    ),
-    section(
-      'DISPLAY: mail block guidance',
-      emitAs('markdown'),
-      '> Returning to the session to surface them before concluding.',
-    ),
-  ].join('\n');
-}
-
-// ---------------------------------------------------------------------------
 // Work-unit surfaces — the completion banner, the cancel and postpone gates.
 // Address-backed (work_type from the manifest); phases ride as flags.
 // ---------------------------------------------------------------------------
@@ -859,7 +748,7 @@ function phaseNote(cwd, { dotpath, verb, noun }) {
 // carried `warnings`.
 // ---------------------------------------------------------------------------
 
-const WORKUNIT_RECEIPT_STATUS = { complete: 'completed', cancel: 'cancelled', reactivate: 'in-progress' };
+const WORKUNIT_RECEIPT_STATUS = { cancel: 'cancelled', reactivate: 'in-progress' };
 
 /**
  * How many waiting messages a cancel moved to the inbox, as `--inbox <n>`
@@ -879,8 +768,8 @@ function inboxCount(surface, verb, inbox) {
 function workunitReceiptSurface(cwd, args) {
   const { manifest, workUnit } = resolveWorkUnit(cwd, args.dotpath, 'workunit-receipt');
   const verb = args.verb;
-  if (verb !== 'complete' && verb !== 'cancel' && verb !== 'reactivate' && verb !== 'pivot') {
-    throw new Error(`render workunit-receipt: --verb must be complete, cancel, reactivate, or pivot, got "${verb}"`);
+  if (verb !== 'cancel' && verb !== 'reactivate' && verb !== 'pivot') {
+    throw new Error(`render workunit-receipt: --verb must be cancel, reactivate, or pivot, got "${verb}"`);
   }
   const inbox = inboxCount('workunit-receipt', verb, args.inbox);
   if (verb === 'pivot') {
@@ -1567,9 +1456,6 @@ function knowledgeReadySurface(cwd) {
 
 /** The catalogue: surface name → handler. @type {Record<string, (cwd: string, args: {dotpath: string} & Record<string, string|undefined>) => string>} */
 const SURFACES = {
-  'mail-announce': mailAnnounce,
-  'mail-offer': mailOffer,
-  'mail-block': mailBlock,
   'backlog-gate': backlogGate,
   'candidate-gate': candidateGate,
   'send-closed-target': sendClosedTarget,

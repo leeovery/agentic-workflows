@@ -23,7 +23,7 @@ const path = require('path');
 const { execFileSync, spawn } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
-const { ENGINE, ok, refuses, git, stateGit, commitAll, cleanupFixture, fixtureFrom, setupGitFixture, STATE_DIR_NAME, statePath, layout, createFile, writeState, readState } = harness;
+const { ENGINE, ok, refuses, git, stateGit, commitAll, cleanupFixture, fixtureFrom, setupGitFixture, STATE_DIR_NAME, statePath, layout, createFile, writeState, readState, readManifest } = harness;
 const { headFiles, statusLines, codeHeadFiles, codeStatusLines, holdStateRef, epicManifest, implementing, setupTwoTopicFixture, building, FOR_TASK, startBuilding } = require('./commit-door-world.cjs');
 const { withCommitLock, commitAcrossRepos, commitPathspecScoped } = require('../../skills/leeway-engine/scripts/domain/commit.cjs');
 
@@ -34,16 +34,22 @@ describe('mechanical heartbeats: the self-referential rule', () => {
 
   const beatFile = (phase, topic) => statePath(dir, layout.cache('payments', phase, topic, 'presence'));
   const beaten = (phase, topic) => fs.existsSync(beatFile(phase, topic));
+  /** The investigation item as its own close leaves it, completed. @param {string} topic */
+  const closed = (topic) => {
+    const manifest = readManifest(dir, 'payments');
+    manifest.phases.investigation.items[topic] = { ...manifest.phases.investigation.items[topic], status: 'completed' };
+    writeState(dir, layout.manifest('payments'), JSON.stringify(manifest, null, 2) + '\n');
+  };
 
   it('the session-cadence commit beats; the conclusion commit clears; --sweep suppresses', () => {
     writeState(dir, layout.doc('payments', 'investigation', 'topic-a'), '# Topic A\nprogress\n');
     ok(dir, ['commit', 'payments', '-m', 'investigation(payments/topic-a): progress', '--topic', 'investigation/topic-a']);
     assert.ok(beaten('investigation', 'topic-a'), 'the cadence commit is the heartbeat');
 
-    // The conclusion: `topic complete` then its commit. The completed item
+    // The conclusion: the item closed, then its commit. The completed item
     // makes that commit a release, so a concluded topic never reads held.
     writeState(dir, layout.doc('payments', 'investigation', 'topic-a'), '# Topic A\nconcluded\n');
-    ok(dir, ['topic', 'complete', 'payments', 'investigation', 'topic-a']);
+    closed('topic-a');
     ok(dir, ['commit', 'payments', '-m', 'investigation(payments): complete topic-a', '--topic', 'investigation/topic-a']);
     assert.ok(!beaten('investigation', 'topic-a'), 'the conclusion commit clears instead of beating');
 
@@ -76,7 +82,7 @@ describe('mechanical heartbeats: the self-referential rule', () => {
     // this session holds; it must never release one this session is only
     // visiting.
     ok(dir, ['topic', 'start', 'payments', 'investigation', 'topic-b']);
-    ok(dir, ['topic', 'complete', 'payments', 'investigation', 'topic-b']);
+    closed('topic-b');
     const peer = beatFile('investigation', 'topic-b');
     fs.mkdirSync(path.dirname(peer), { recursive: true });
     fs.writeFileSync(peer, JSON.stringify({ pid: 1, pid_start: null, session_id: 'peer' }) + '\n');
@@ -142,23 +148,24 @@ describe('mechanical heartbeats: the self-referential rule', () => {
     assert.ok(!beaten('discussion', 'topic-b'), 'apply writes across topics — the analysis session holds none of them');
   });
 
-  it('the close releases the slot, and every commit after it keeps it released', () => {
+  it('a commit on a closed item releases the slot, and every commit after it keeps it released', () => {
     ok(dir, ['topic', 'start', 'payments', 'investigation', 'topic-a']);
     assert.ok(beaten('investigation', 'topic-a'), 'start opens the topic');
 
-    ok(dir, ['topic', 'complete', 'payments', 'investigation', 'topic-a']);
-    assert.ok(!beaten('investigation', 'topic-a'), 'complete is the release');
-
-    // The conclusion commit that follows must not re-take what the close let
-    // go — a terminal item is finished, whatever the session does next.
-    writeState(dir, layout.doc('payments', 'investigation', 'topic-a'), '# Topic A\nconcluded\n');
-    ok(dir, ['commit', 'payments', '-m', 'investigation(payments): conclude topic-a', '--topic', 'investigation/topic-a']);
-    assert.ok(!beaten('investigation', 'topic-a'), 'a post-completion cadence commit stays released');
+    // A terminal item is finished, whatever the session does next: no commit
+    // after its close re-takes the slot.
+    closed('topic-a');
+    for (const step of ['conclude', 'tidy']) {
+      writeState(dir, layout.doc('payments', 'investigation', 'topic-a'), `# Topic A\n${step}\n`);
+      ok(dir, ['commit', 'payments', '-m', `investigation(payments): ${step} topic-a`, '--topic', 'investigation/topic-a']);
+      assert.ok(!beaten('investigation', 'topic-a'), `the ${step} commit leaves it released`);
+    }
   });
 
   it('a reopened item beats again', () => {
     ok(dir, ['topic', 'start', 'payments', 'investigation', 'topic-a']);
-    ok(dir, ['topic', 'complete', 'payments', 'investigation', 'topic-a']);
+    closed('topic-a');
+    ok(dir, ['commit', 'payments', '-m', 'investigation(payments): conclude topic-a', '--topic', 'investigation/topic-a']);
     assert.ok(!beaten('investigation', 'topic-a'), 'closed and released');
 
     ok(dir, ['topic', 'reopen', 'payments', 'investigation', 'topic-a']);

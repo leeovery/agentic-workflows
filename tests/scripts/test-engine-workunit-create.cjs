@@ -161,7 +161,7 @@ describe('workunit create, refused', () => {
     assert.match(refusedPristine(dir(), ['workunit', 'create', 'payments', 'epic', '--description', 'd', '--session-log-file', '.leeway/.cache/ghost.md']).error, /session log file not found/);
     const usage = /Usage: engine workunit create .* --session-log-file <path>/;
     for (const args of [[], ['payments'], ['payments', 'epic'], ['payments', 'feature', '--description', 'd']]) assert.match(refuses(dir(), ['workunit', 'create', ...args]).error, usage);
-    assert.match(refuses(dir(), ['workunit', 'destroy', 'payments']).error, /Usage: engine workunit <create\|complete\|cancel\|reactivate\|pivot\|absorb\|move\|position>/);
+    assert.match(refuses(dir(), ['workunit', 'destroy', 'payments']).error, /Usage: engine workunit <create\|cancel\|reactivate\|pivot\|absorb\|move\|position>/);
   });
 
   it('validates work types through the shared schema module, never a local literal', () => {

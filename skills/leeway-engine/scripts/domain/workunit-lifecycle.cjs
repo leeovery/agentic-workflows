@@ -1,9 +1,9 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: work-unit lifecycle transitions — complete, cancel,
-// reactivate, and pivot, each a single transaction from the caller's
-// perspective: manifest write, knowledge-base sync, scoped git commit.
+// Domain ring: work-unit lifecycle transitions — complete (finish's, run in
+// process), cancel, reactivate, and pivot, each a single transaction from the
+// caller's perspective: manifest write, knowledge-base sync, scoped commit.
 //
 // The status vocabulary comes from the shared schema
 // (kernel/manifest-schema.cjs) — the same table the manifest
@@ -72,8 +72,7 @@ function assertLegalStatus(status) {
  * (warn-don't-block).
  * @param {string} cwd project root
  * @param {string} workUnit
- * @param {{message: string}} opts  commit message — varies by caller (manual
- *   completion vs pipeline-terminal vs review-skipped), so it arrives via -m
+ * @param {{message: string}} opts  the commit message, finish's
  * @returns {WorkUnitLifecycleResult}
  */
 function completeWorkUnit(cwd, workUnit, { message }) {

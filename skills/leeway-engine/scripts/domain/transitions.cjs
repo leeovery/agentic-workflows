@@ -95,7 +95,7 @@ function postponedRefusal(phase, topic) {
  * @property {string[]} closed_agents  the agents still running on the items taken, closed
  * @property {string|null} committed  short commit sha, or null when nothing was staged
  * @property {string} [note]     set when committed is null
- * @property {string[]} warnings non-blocking failures (knowledge-base sync)
+ * @property {string[]} warnings non-blocking failures (closing the agents, the commit)
  */
 
 /**
@@ -112,7 +112,7 @@ function postponedRefusal(phase, topic) {
  * @property {RestoredItem[]} restored  the phase items the reactivate restored — empty for a never-started topic
  * @property {string|null} committed  short commit sha, or null when nothing was staged
  * @property {string} [note]     set when committed is null
- * @property {string[]} warnings non-blocking failures (knowledge-base sync)
+ * @property {string[]} warnings non-blocking failures (the commit)
  */
 
 /**
@@ -141,13 +141,6 @@ function phaseItem(manifest, phase, topic) {
  * @property {string} phase
  * @property {string} status   always `in-progress`
  * @property {boolean} created true when the phase item was created, false when resumed
- */
-
-/**
- * @typedef {object} TopicCompleteResult
- * @property {string} topic
- * @property {string} phase
- * @property {string} status   always `completed`
  */
 
 // The one spec keeps no items (P7), and a concluded spec is never corrected
@@ -326,62 +319,6 @@ function parkMessageItem(items, phase, topic) {
     return { status: 'unstarted', created: false, status_before: null, dirty: true };
   }
   return { status: before, created: false, status_before: before, dirty: false };
-}
-
-/**
- * The completion refusal's clause over the evidence the item awaits.
- * @param {import('./derivations.cjs').Wait[]} blocking
- * @returns {string}
- */
-function waitClause(blocking) {
-  return `awaits experiment evidence (${blocking.map((w) => w.id).join(', ')}) — the wait releases when the experiment concludes or is abandoned`;
-}
-
-/**
- * Complete a phase item: set `status: completed`. The item must exist; a
- * cancelled item must go through reactivate first; an item holding a live
- * wait — evidence it awaits — refuses naming it. A discussion never
- * completes here: it closes on its decided checklist. No git commit.
- * @param {string} cwd project root
- * @param {string} workUnit
- * @param {string} phase
- * @param {string} topic
- * @returns {TopicCompleteResult}
- */
-function completeTopic(cwd, workUnit, phase, topic) {
-  assertLegalWrite(phase, 'completed');
-  assertNotBuildPlace(phase);
-  assertNotDerived(phase, 'the experiment item is derived bookkeeping — each experiment concludes or is abandoned (experiment conclude/abandon), and the item closes itself when the last record ends');
-  if (phase === 'discussion') {
-    throw new Error('a discussion closes on its decided checklist, `checklist close decided` — an epic\'s then at its decided gate, `render decided` and the yes, which runs `decided yes`; a feature\'s into its spec, `decided stage`, its close taken at ready to build');
-  }
-  withWorkUnitLock(cwd, workUnit, () => {
-    const manifest = loadWorkUnitManifest(cwd, workUnit);
-    assertNoSpecItem(manifest, phase);
-    const item = phaseItem(manifest, phase, topic);
-    if (item.status === 'unstarted') {
-      throw new Error(`${phase} item "${topic}" is unstarted — its messages have never been worked; start the topic first`);
-    }
-    if (item.status === 'cancelled') {
-      throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
-    }
-    if (item.status === 'postponed') {
-      throw new Error(postponedRefusal(phase, topic));
-    }
-    if (item.status === 'promoted') {
-      throw new Error(promotedRefusal(phase, topic, item));
-    }
-    // A wait holds the conclusion shut engine-side: the phase raised a
-    // question it needs evidence for.
-    const blocking = waits(manifest, phase, topic);
-    if (blocking.length > 0) {
-      throw new Error(`${phase} "${topic}" ${waitClause(blocking)}`);
-    }
-    item.status = 'completed';
-
-    saveWorkUnitManifest(cwd, workUnit, manifest);
-  });
-  return { topic, phase, status: 'completed' };
 }
 
 /**
@@ -759,7 +696,7 @@ function reactivateTopic(cwd, workUnit, phase, said) {
  * @property {string[]} closed_agents  the agents still running on the items stashed, closed
  * @property {string|null} committed  short commit sha, or null when nothing was staged
  * @property {string} [note]     set when committed is null
- * @property {string[]} warnings non-blocking failures (knowledge-base sync)
+ * @property {string[]} warnings non-blocking failures (closing the agents, the commit)
  */
 
 /**
@@ -893,4 +830,4 @@ function cancelPostponedUnit(cwd, workUnit, topic, item) {
   });
 }
 
-module.exports = { startTopic, parkMessageItem, completeTopic, reopenTopic, cancelTopic, reactivateTopic, postponeTopic, restorePostponedUnit, cancelPostponedUnit, releaseExperimentWaits, assertLegalTopicName };
+module.exports = { startTopic, parkMessageItem, reopenTopic, cancelTopic, reactivateTopic, postponeTopic, restorePostponedUnit, cancelPostponedUnit, releaseExperimentWaits, assertLegalTopicName };

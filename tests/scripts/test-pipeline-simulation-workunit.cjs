@@ -21,7 +21,7 @@ const path = require('path');
 const ROOT = path.join(__dirname, '../..');
 const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
 const { epicDashboard } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
-const { stateGit, sectionOf } = require('./engine-harness.cjs');
+const { stateGit, sectionOf, completeUnit } = require('./engine-harness.cjs');
 const { Sim, sessionLog, menuEntry, enterEntry, discussed, askedOn } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: workunit', () => {
@@ -35,9 +35,9 @@ describe('pipeline simulation: workunit', () => {
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Lifecycle', '--session-log-file', log]);
     discussed(sim, wu, wu);
 
-    sim.run(['workunit', 'complete', wu, '-m', 'workflow(flip): done']);
+    completeUnit(sim.dir, wu);
     assert.ok(sim.manifest(wu).completed_at, 'complete stamps completed_at');
-    sim.refuses(['workunit', 'complete', wu, '-m', 'again'], /./);
+    assert.throws(() => completeUnit(sim.dir, wu), /already completed/);
     // The completed & cancelled view's route back in: a number resolves to
     // the unit, its action menu renders over it, r/reactivate runs.
     assert.match(sim.render(['completed-actions', wu], { expect: 'content' }),

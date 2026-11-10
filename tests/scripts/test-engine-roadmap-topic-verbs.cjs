@@ -21,7 +21,7 @@ const path = require('path');
 
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { postponeToRoadmap } = require('../../skills/leeway-engine/scripts/domain/roadmap.cjs');
-const { stateGit, commitAll, cleanupFixture: cleanup, ok, output, refuses } = require('./engine-harness.cjs');
+const { stateGit, commitAll, cleanupFixture: cleanup, ok, output, refuses, completeUnit } = require('./engine-harness.cjs');
 const { roadmapWorld, inState, runOk, runFail, readProject, projectManifestText, writeSource, joinedTo, boundTo } = require('./roadmap-world.cjs');
 
 describe('engine CLI: the postpone — a topic leaves the epic for the roadmap and comes back by the pull', () => {
@@ -199,7 +199,6 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
       /"ordering" is postponed, not cancelled — pull it forward from the roadmap instead/);
     for (const args of [
       ['topic', 'start', 'mvp', 'discussion', 'ordering'],
-      ['topic', 'complete', 'mvp', 'discussion', 'ordering'],
       ['topic', 'supersede', 'mvp', 'discussion', 'ordering', '--by', 'menus'],
     ]) {
       engineFails(args, /discussion item "ordering" is postponed — the topic waits on the roadmap; pull it forward from there instead/);
@@ -386,7 +385,7 @@ describe('engine CLI: the cancel-revert hop', () => {
   });
 
   it('work-unit complete leaves joins in place — shipped by derivation, no revert', () => {
-    const res = engineOk(['workunit', 'complete', 'mvp', '-m', 'done']);
+    const res = completeUnit(dir, 'mvp');
     assert.strictEqual('roadmap_reverted' in res, false);
     const state = runOk(dir, ['state']);
     assert.strictEqual(state.totals.shipped, 2);

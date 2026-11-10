@@ -74,6 +74,13 @@ const made = { cause: '', rootCause: '', kill: '', keep: '', ruling: '', fix: ''
 /** The ledger entries `ripe`'s hunt rests on, by short id. */
 const ripe = { cause: '', rootCause: '', asked: '', fix: '', keep: '', ruling: '' };
 
+/** The investigation item as its conclude leaves it, completed. @param {string} dir @param {string} unit */
+function concludedItem(dir, unit) {
+  const manifest = readManifest(dir, unit);
+  manifest.phases.investigation.items[unit].status = 'completed';
+  writeState(dir, layout.manifest(unit), JSON.stringify(manifest, null, 2) + '\n');
+}
+
 /**
  * A validation of `kind` dispatched at the bugfix's investigation, its report
  * written clean, and taken in: its id.
@@ -702,7 +709,7 @@ describe('the validations\' briefs — both always run (19.4.7)', () => {
     write('replace', AT, ['--replaces', made.rootCause, '--reason', 'was-wrong'], { ...CLAUDE, drops: ['the whole truth'], text: 'A save trusts a capture taken mid-shutdown.', why: 'E6 showed it.' });
     assert.strictEqual(refused(['brief', 'root-cause-validation', HUNT, '--agent', hunting.rootCause]),
       `brief: the root cause logged points at no current entry — log it: engine investigation-log root-cause ${HUNT} --entry <decision>`);
-    ok(dir, ['topic', 'complete', RIPE, 'investigation', RIPE]);
+    concludedItem(dir, RIPE);
     assert.strictEqual(refused(['brief', 'root-cause-validation', RIPE, '--agent', rootCause]),
       'brief: the topic "ripe" is concluded — its work goes on in specification, from the start menu, and a message sent to it reopens it');
   });

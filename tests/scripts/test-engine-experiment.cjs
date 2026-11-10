@@ -698,12 +698,10 @@ describe('the experiment item is derived bookkeeping — no hand lifecycle', () 
   beforeEach(() => { dir = labWorld(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('topic start / complete / reopen refuse the experiment phase', () => {
+  it('topic start and reopen refuse the experiment phase', () => {
     assert.match(engineFails(dir, ['topic', 'start', 'lab', 'experiment', 'timing']).error,
       /the spawn creates and reopens it \(experiment create\)/);
     spawn(dir, 'discussion', 'first');
-    assert.match(engineFails(dir, ['topic', 'complete', 'lab', 'experiment', 'timing']).error,
-      /the item closes itself when the last record ends/);
     walkTo(dir, 'E1', 'concluded');
     assert.match(engineFails(dir, ['topic', 'reopen', 'lab', 'experiment', 'timing']).error,
       /a new spawn reopens the series/);

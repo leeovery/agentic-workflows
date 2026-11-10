@@ -31,7 +31,7 @@ const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 // The seams go in before the engine loads, so the copies' render binds them.
 const { seams, clearSeams } = require('./ledger-copies-seams.cjs');
 const { UNIT, SESSION_ID, SESSION, MADE, NOTE, SPACE, NOTE_COPY, SPACE_COPY, copiesHelpers, ledgerHelpers, useCopiesWorld } = require('./ledger-world.cjs');
-const { ok, callAsync, indexedFiles, statePath, stateGit, layout } = require('./engine-harness.cjs');
+const { ok, callAsync, indexedFiles, statePath, stateGit, layout, completeUnit } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const store = require(path.join(SCRIPTS, 'kernel/knowledge/store.cjs'));
 const { knowledgeFiles } = require(path.join(SCRIPTS, 'kernel/knowledge/files.cjs'));
@@ -388,7 +388,7 @@ describe('a place set aside (5.8.17)', () => {
     ok(dir(), ['workunit', 'cancel', 'mint']);
     assert.strictEqual(copy(MINT_COPY), null);
     assert.deepStrictEqual(indexedFiles(dir()), []);
-    ok(dir(), ['workunit', 'complete', 'mint', '-m', 'workflow(mint): complete']);
+    completeUnit(dir(), 'mint');
     assert.match(/** @type {string} */ (copy(MINT_COPY)), /^## Does Mint float its notes\?$/m);
     assert.deepStrictEqual(indexedFiles(dir()), [MINT_COPY]);
   });

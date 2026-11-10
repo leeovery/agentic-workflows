@@ -371,14 +371,14 @@ describe('the transactions\' knowledge changes — a real store, its other chunk
 
   it('a work-unit complete leaves the store as it stands', () => {
     const before = fs.readFileSync(path.join(dir, '.leeway/.knowledge/store.bin'));
-    assert.deepStrictEqual(engine(dir, ['workunit', 'complete', 'payments', '-m', 'workflow(payments): complete']).warnings, []);
+    assert.deepStrictEqual(harness.completeUnit(dir, 'payments').warnings, []);
     assert.deepStrictEqual(fs.readFileSync(path.join(dir, '.leeway/.knowledge/store.bin')), before);
   });
 
   it('a work-unit complete over a cancelled, finished unit re-indexes it — another unit\'s untouched', () => {
     engine(dir, ['workunit', 'cancel', 'billing']);
     assert.deepStrictEqual(indexed(), [SEED]);
-    assert.deepStrictEqual(engine(dir, ['workunit', 'complete', 'billing', '-m', 'workflow(billing): complete']).warnings, []);
+    assert.deepStrictEqual(harness.completeUnit(dir, 'billing').warnings, []);
     assert.deepStrictEqual(indexed(), [OTHER_UNIT, SEED]);
   });
 });

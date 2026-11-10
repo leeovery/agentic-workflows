@@ -16,6 +16,7 @@ const {
   epicDashboard, epicKey, epicMenu, epicInSessionGate, epicCompletedMenu, epicCancelMenu, epicReactivateMenu, epicPostponeMenu, epicPullForwardMenu,
 } = require('../../skills/leeway-engine/scripts/domain/projections/epic.cjs');
 const { TREE_WIDTH } = require('../../skills/leeway-engine/scripts/domain/conventions.cjs');
+const { VALID_PHASE_STATUSES } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
 const { drawLabel } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
 
 const ADAPTER = path.join(__dirname, '../../skills/leeway-continue-epic/scripts/gateway.cjs');
@@ -340,16 +341,6 @@ describe('epic projections: key', () => {
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  const STATUS = [
-    '  Status:',
-    '    proposed    — analyzed grouping, not yet started',
-    '    unstarted   — mail waiting, topic not started',
-    '    in-progress — work is ongoing',
-    '    completed   — phase or implementation done',
-    '    cancelled   — topic removed from active work',
-    '    promoted    — moved to its own cross-cutting work unit',
-  ].join('\n');
-
   it('map with no build items produces no key (the ↳ state lines carry the words)', () => {
     const d = detailFor(dir, 'v1', {
       work_type: 'epic',
@@ -358,12 +349,44 @@ describe('epic projections: key', () => {
     assert.strictEqual(epicKey(d), '');
   });
 
-  it('no-map branch shows the Status block', () => {
+  it('no-map branch keys the statuses its rows carry, and no other', () => {
     const d = detailFor(dir, 'v1', {
       work_type: 'epic',
-      phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
+      phases: { discussion: { items: { auth: { status: 'in-progress' }, billing: { status: 'cancelled' } } } },
     });
-    assert.strictEqual(epicKey(d), 'Key:\n' + STATUS);
+    assert.strictEqual(epicKey(d), [
+      'Key:',
+      '  Status:',
+      '    in-progress — work is ongoing',
+      '    cancelled   — topic removed from active work',
+    ].join('\n'));
+  });
+
+  it('1.S9: an epic in build keys only statuses some phase vocabulary holds — no grouping line', () => {
+    const d = detailFor(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: { auth: { source: 'discovery', order: 1 } } },
+        discussion: { items: { auth: { status: 'completed' } } },
+        implementation: { items: { v1: { status: 'in-progress' } } },
+      },
+    });
+    const key = epicKey(d);
+    const named = [...key.matchAll(/^ {4}(\S+)/gm)].map((m) => m[1]);
+    assert.deepStrictEqual(named, ['in-progress'], 'the map draws the discussion, so only the build row is keyed');
+    const vocabulary = new Set(Object.values(VALID_PHASE_STATUSES).flat());
+    assert.deepStrictEqual(named.filter((status) => !vocabulary.has(status)), [], `a key line names a status no phase holds: ${key}`);
+  });
+
+  it('a legacy grouping item still in a spec is keyed while it shows', () => {
+    const d = detailFor(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: { auth: { source: 'discovery', order: 1 } } },
+        specification: { items: { core: { status: 'proposed' } } },
+      },
+    });
+    assert.match(epicKey(d), /^ {4}proposed {4}— analyzed grouping, not yet started$/m);
   });
 
   it('brand-new epic produces no key (section B is skipped on that branch)', () => {
