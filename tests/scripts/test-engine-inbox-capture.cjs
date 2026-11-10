@@ -8,10 +8,12 @@
 // inbox or its archive holds the name; committed under the writer lock of
 // the project it lands in, alone, and pushed, a refused push a warning; its
 // one line drawn. It lands in the one state copy from a linked worktree
-// (18.S23), and in another project's inbox from a folder of no project
-// (18.S47), naming that project; it marks no conversation as running the
-// workflows. Refused, nothing written: a folder holding no state, a kind it
-// does not know, a text with no title, and a call of another shape.
+// (18.S23), and in another project's inbox from a session in a project of
+// its own (18.S47), naming that project, a failed commit's retry run from
+// that project's folder; it marks no conversation as running the
+// workflows. Refused, nothing written: a --project folder holding no state,
+// a kind it does not know, a text with no title, and a call of another
+// shape.
 //
 // Layer: git. World: a project with its state on a bare remote, and a
 // second project, each `codeProject`'s, in a temp folder per test.
@@ -24,7 +26,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  call, okSections, refusedPristine, sectionOf, codeProject, git, tip, remoteTip, touched, treeSnapshot, lockAttempts, layout, withFrozenClock, FROZEN_AT, initRepo,
+  ok, okSections, refusedPristine, sectionOf, codeProject, git, tip, remoteTip, touched, treeSnapshot, lockAttempts, layout, withFrozenClock, FROZEN_AT, initRepo,
 } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 
@@ -95,27 +97,34 @@ describe('inbox capture from elsewhere (18.6.3, 18.6.8)', () => {
     assert.deepStrictEqual([fs.existsSync(path.join(linked, '.leeway')), git(linked, ['status', '--porcelain'])], [false, '']);
   });
 
-  it('18.S47: from a folder of no project, --project lands it in the named project\'s inbox under that project\'s writer lock, the line naming the project', (t) => {
-    const { root } = codeProject(world(), { name: 'shop', state: true });
-    const elsewhere = initRepo(path.join(world(), 'notes'));
-    const attempts = lockAttempts(t, path.join(root, layout.lock));
-    const { res, sections } = captured(elsewhere, ['idea', '--project', '../shop'], '# Gift Cards\n');
-
-    assert.deepStrictEqual([res.captured, attempts.includes('made')], [path.join(root, layout.inbox('ideas', `${TODAY}--gift-cards.md`)), true]);
-    assert.strictEqual(line(sections), 'Logged idea in Shop: "Gift Cards"\n');
-  });
-
-  it('from another project, takes only the project it lands in\'s lock, and leaves its own state as it was', (t) => {
+  it('18.S47: from another project, --project lands it in the named project\'s inbox under that project\'s writer lock alone, its own state as it was, the line naming the project', (t) => {
     const { main: here, root: ours } = codeProject(world(), { name: 'here', state: true });
-    const { main: there } = codeProject(world(), { name: 'there', state: true });
+    const { root: theirs } = codeProject(world(), { name: 'there', state: true });
     const before = treeSnapshot(here);
-    const attempts = lockAttempts(t, path.join(ours, layout.lock));
-    const { sections } = captured(here, ['bug', '--project', there], BUG);
+    const [own, landing] = [ours, theirs].map((root) => lockAttempts(t, path.join(root, layout.lock)));
+    const { res, sections } = captured(here, ['bug', '--project', '../there'], BUG);
 
-    assert.deepStrictEqual([attempts, treeSnapshot(here), line(sections)], [[], before, 'Logged bug in There: "The Login Loops"\n']);
+    assert.deepStrictEqual(
+      [res.captured, landing.includes('made'), own, treeSnapshot(here), line(sections)],
+      [path.join(theirs, layout.inbox('bugs', `${TODAY}--the-login-loops.md`)), true, [], before, 'Logged bug in There: "The Login Loops"\n'],
+    );
   });
 
-  it('refuses, writing nothing, a folder holding no state, a kind it does not know, a text with no title, and a call of another shape', () => {
+  it('a commit that fails in another project names the retry run from that project\'s folder, which commits its inbox — in its own, the retry alone', () => {
+    const { main: here } = codeProject(world(), { name: 'here', state: true });
+    const { main: there, root: theirs } = codeProject(world(), { name: 'there', state: true });
+    const locks = [here, there].map((main) => path.join(main, '.git', 'refs', 'heads', 'leeway-state.lock'));
+    for (const lock of locks) fs.writeFileSync(lock, '');
+    const [own, another] = [[], ['--project', there]].map((project) => captured(here, ['bug', ...project], BUG).res.note);
+    for (const lock of locks) fs.unlinkSync(lock);
+    const [, retry, from] = /^commit pending — state saved; retry with: engine commit (--inbox) -m "<message>", run from (.+)$/.exec(another) ?? [];
+    const retried = ok(from, ['commit', retry, '-m', 'workflow(inbox): capture the-login-loops']);
+
+    assert.strictEqual(own, 'commit pending — state saved; retry with: engine commit --inbox -m "<message>"');
+    assert.deepStrictEqual([from, retried.committed, touched(theirs, 'HEAD')], [there, git(theirs, ['rev-parse', '--short', 'HEAD']).trim(), [`A\t${layout.inbox('bugs', `${TODAY}--the-login-loops.md`)}`]]);
+  });
+
+  it('refuses, writing nothing, a --project folder holding no state, a kind it does not know, a text with no title, and a call of another shape', () => {
     const { main } = codeProject(world(), { state: true });
     const bare = initRepo(path.join(world(), 'plain'));
     const refused = (/** @type {string[]} */ args, /** @type {string} */ text = BUG) => refusedPristine(main, ['inbox', 'capture', ...args], { stdin: text }).error;
@@ -130,7 +139,5 @@ describe('inbox capture from elsewhere (18.6.3, 18.6.8)', () => {
       'inbox capture: its text, on stdin, holds its title, `# Title`',
       usage, usage, usage,
     ]);
-    const answer = call(bare, ['inbox', 'capture', 'bug'], { stdin: BUG });
-    assert.deepStrictEqual([answer.code, JSON.parse(answer.stderr).error], [1, `inbox capture: ${bare} holds no Leeway state — name the folder of a project that has it: --project <folder>`]);
   });
 });

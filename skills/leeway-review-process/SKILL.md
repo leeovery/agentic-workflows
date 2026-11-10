@@ -126,7 +126,7 @@ The review runs without the person but for its reports and finish. Every questio
 
 ## Closing
 
-Once a round has passed, or been settled, and its fix tasks are done, finish closes on its checklist; `checklist show finish {work_unit}` lists its items, and the engine checks most of them, an open one naming its way on. `inbox-closed` reads the build's log: check the live inbox against what was built, name in the log each item the work resolved, by its path, and close them, `inbox close {work_unit} {path} …`. Yours is `build-log-closed` — the build's log ends on what the build and its review came to, nothing left in flight.
+Once a round has passed, or been settled, and its fix tasks are done, finish closes on its checklist; `checklist show finish {work_unit}` lists its items, and the engine checks most of them, an open one naming its way on. `inbox-closed` reads the build's log for its claims, each a line of its own, `Resolved: {path}`: check the live inbox against what was built, claim in the log each item the work resolved, by its inbox path, and close them, `inbox close {work_unit} {path} …`. Yours is `build-log-closed` — the build's log ends on what the build and its review came to, nothing left in flight.
 
 Mark it as it holds, `checklist done finish {work_unit} {item}`, or skip it with its reason, `checklist skip finish {work_unit} {item} --reason "{reason}"`. Close it, `checklist close finish {work_unit}`, then draw finish, emitting its sections verbatim per their markers:
 

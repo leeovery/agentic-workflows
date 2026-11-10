@@ -36,7 +36,8 @@
 // and the record one commit. `restore` and `delete` drop an item's record:
 // a restored item is live again, and a deleted one is gone. Finish reads
 // the record for the closures its screen lists (`closedBy`), and the
-// build's log for the live items it names (`liveItemsNamed`, 6.4.10).
+// build's log for the items its `Resolved: {path}` lines claim the work
+// resolved, still live (`liveResolved`, 6.4.10).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -391,19 +392,23 @@ function closedBy(cwd, unit) {
   });
 }
 
-// A live item's path wherever a text names it — absolute, from the project
-// or from the state — read from `.inbox/` on; an archived item's runs on
+// A claim that the work resolved an item: a line of its own, `Resolved: {path}`.
+const RESOLVED_LINE = /^Resolved:(.*)$/gm;
+
+// A live item's path within the claim — absolute, from the project or from
+// the state — read from `.inbox/` on; an archived item's runs on
 // `.inbox/.archived/`, and never matches.
 const NAMED_ITEM = new RegExp(`(?<![\\w.-])\\.inbox/(${FOLDERS.join('|')})/([\\w.-]+\\.md)`, 'g');
 
 /**
- * The live items `text` names, each once, absolute, in the order named.
+ * The items `text`'s `Resolved:` lines claim, still live: each once,
+ * absolute, in the order claimed.
  * @param {string} cwd @param {string} text
  * @returns {string[]}
  */
-function liveItemsNamed(cwd, text) {
-  const named = [...text.matchAll(NAMED_ITEM)].map(([, folder, file]) => statePath(cwd, INBOX, folder, file));
-  return [...new Set(named)].filter((file) => fs.existsSync(file));
+function liveResolved(cwd, text) {
+  const claimed = [...text.matchAll(RESOLVED_LINE)].flatMap(([, claim]) => [...claim.matchAll(NAMED_ITEM)]);
+  return [...new Set(claimed.map(([, folder, file]) => statePath(cwd, INBOX, folder, file)))].filter((file) => fs.existsSync(file));
 }
 
 /**
@@ -456,8 +461,7 @@ function fileItem(cwd, unit, file) {
   const fault = filled(call) ? readShown(stateRoot(cwd), warnings, (shower) => reviewCallFault(shower, unit, call, atClose ? 'implementation' : 'review')) : 'its call names the ledger\'s file-or-drop call';
   if (fault !== null) faults.push(fault);
   if (faults.length > 0) throw new Error(`${said}: ${faults.join('; ')}`);
-  const rel = `${INBOX}/${KIND_FOLDER[/** @type {string} */ (kind)]}/${todayStamp()}--${slugOf(/** @type {string} */ (title))}.md`;
-  if (fs.existsSync(statePath(cwd, rel))) throw new Error(`${said}: ${statePath(cwd, rel)} is filed already — group this finding with it, or title it apart`);
+  const rel = freeItemPath(cwd, KIND_FOLDER[/** @type {string} */ (kind)], slugOf(/** @type {string} */ (title)));
   fs.mkdirSync(path.dirname(statePath(cwd, rel)), { recursive: true });
   fs.writeFileSync(statePath(cwd, rel), `${String(text).replace(/\n*$/, '')}\n`);
   const outcome = commitStateTail(cwd, [rel], `workflow(inbox): file ${path.posix.basename(rel, '.md').replace(/^\d{4}-\d{2}-\d{2}--/, '')} from ${unit}'s ${atClose ? 'close' : 'review'}`, warnings);
@@ -471,7 +475,7 @@ module.exports = {
   restoreItems,
   deleteItems,
   closedBy,
-  liveItemsNamed,
+  liveResolved,
   freeItemPath,
   KIND_FOLDER,
   parseInboxPath,

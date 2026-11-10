@@ -43,13 +43,12 @@
 // relies on done, its tasks passed, its phase review passed with its fixes
 // landed, its scenarios proven or reported, its notes consolidated and its
 // stack merged; finish's, the review phase over, no question waiting on
-// the person, no live inbox item the build's log names left and the
-// unit's records indexed (finish-checks.cjs); and a
-// directive's check passing
-// (directives.cjs). What a
-// call reads for them is read once (`reads`). Whether every engine item of
-// a checklist holds is read beside the verbs too, as the build's stop
-// asks it of a phase's start (`engineItemsHold`). An open engine item may name
+// the person, no item the build's log claims resolved left live in the
+// inbox, and the unit's records indexed (finish-checks.cjs); and a
+// directive's check passing (directives.cjs). What a call reads for them
+// is read once (`reads`). Whether every engine item of a checklist holds
+// is read beside the verbs too, as the build's stop asks it of a phase's
+// start (`engineItemsHold`). An open engine item may name
 // its way on: the phase review's, what stands in the way of it, its
 // settlement among them (phase-settlement.cjs). Phase 1's close is refused
 // beyond its items until the verify setup is recorded (12.3.3). A phase's

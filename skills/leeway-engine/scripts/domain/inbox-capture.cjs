@@ -9,13 +9,15 @@
 // `# Title`. It is written at `.inbox/{folder}/{YYYY-MM-DD}--{slug}.md`, the
 // slug its title's, a name the inbox holds already today, its archive
 // included, taking the next free `-{n}` (inbox.cjs, `freeItemPath`); and
-// committed and pushed, a push that fails a warning. Its state is found as
-// every verb finds it, from any checkout or worktree of the project
-// (kernel/state-root) — `--project`'s, read from the caller's folder, where
-// the item concerns another project — and it holds that state's writer
-// lock itself across its name, its write and its commit, the dispatch's
-// lock being the caller's project's. It refuses a folder that holds no
-// state, a kind it does not know and a text with no title, writing nothing.
+// committed and pushed, a push that fails a warning, a commit that fails the
+// retry noted, from the named project's folder where it is another's. Its
+// state is found as every verb finds it, from any checkout or worktree of
+// the project (kernel/state-root) — `--project`'s, read from the caller's
+// folder, where the item concerns another project — and it holds that
+// state's writer lock itself across its name, its write and its commit, the
+// dispatch's lock being the caller's project's. It refuses a folder that
+// holds no state, a kind it does not know and a text with no title, writing
+// nothing.
 //
 // It answers its JSON line, then one line drawn for the person:
 // `Logged {kind}: "{title}"`, naming the project where it is not the one
@@ -65,7 +67,9 @@ function captureItem(cwd, kind, text, project) {
     const response = { captured: path.join(root, rel), committed: outcome.committed };
     if (warnings.length > 0) response.warnings = warnings;
     noteCommitOutcome(response, outcome, '--inbox');
-    return { response, receipt: captureReceipt(kind, title, findStateRoot(cwd) === root ? null : projectName(at)) };
+    const another = findStateRoot(cwd) !== root;
+    if (another && outcome.failed) response.note = `${response.note}, run from ${at}`;
+    return { response, receipt: captureReceipt(kind, title, another ? projectName(at) : null) };
   });
 }
 

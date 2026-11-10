@@ -7,7 +7,8 @@
 // with `task note`, holding the close — its checklist's `notes-answered`
 // open, naming each and the verb, and its screen refused — until each is
 // filed to the inbox or dropped by Claude's call at its implementation, kept
-// at `build/notes-answered.json` and committed; then the close standing.
+// at `build/notes-answered.json` and committed; then the close standing,
+// a filed note the build's log mentions holding no inbox item open.
 // Refused: no note standing, a note left unanswered or answered in scope, a
 // call made at another place, a unit that is no quick-fix, and a quick-fix
 // whose review was asked for, which answers its notes instead — its
@@ -83,24 +84,17 @@ function notesBanked() {
 }
 
 describe('a quick-fix\'s notes for later, answered at its close (R24)', () => {
-  it('6.4.10: a note filed to the inbox is no closure — the build\'s log naming it holds no inbox item open', () => {
-    dir = world();
-    notesBanked();
-    const note = filedNote('notes#1', 'Warn on --color');
-    run(['quick-fix', 'notes', UNIT, '--file', payload('notes.json', { findings: [note, droppedNote('notes#2')] })]);
-    writeState(dir, layout.unit(UNIT, 'build', 'log.md'), `# The fixes\n\nnotes#1 filed to the inbox, ${note.inbox}.\n`);
-
-    assert.deepStrictEqual([fs.existsSync(note.inbox), items().find((line) => line.startsWith('inbox-closed'))], [true, 'inbox-closed engine done']);
-  });
-
-  it('holds the close while a note stands — its checklist\'s notes-answered open, naming each and the verb, and its screen refused — until each is filed to the inbox or dropped, kept and committed; then the close stands', () => {
+  it('holds the close while a note stands — its checklist\'s notes-answered open, naming each and the verb, and its screen refused — until each is filed to the inbox or dropped, kept and committed; then the close stands, the filed note the log mentions holding no inbox item open (6.4.10)', () => {
     dir = world();
     notesBanked();
     const open = [notesItem(), refused(['checklist', 'close', 'finish', UNIT]), refused(['render', 'finish', UNIT])];
-    const answered = run(['quick-fix', 'notes', UNIT, '--file', payload('notes.json', { findings: [filedNote('notes#1', 'Warn on --color'), droppedNote('notes#2')] })]);
+    const filed = filedNote('notes#1', 'Warn on --color');
+    const answered = run(['quick-fix', 'notes', UNIT, '--file', payload('notes.json', { findings: [filed, droppedNote('notes#2')] })]);
     const committed = stateGit(dir, ['log', '-1', '--format=%s']).trim();
     const kept = JSON.parse(fs.readFileSync(statePath(dir, layout.unit(UNIT, 'build/notes-answered.json')), 'utf8'));
     const way = `notes#1, notes#2 — each note for later is filed to the inbox or dropped before the close: quick-fix notes ${UNIT} --file <notes.json>`;
+    writeState(dir, layout.unit(UNIT, 'build', 'log.md'), `# The fixes\n\nnotes#1 filed to the inbox, ${filed.inbox}.\n`);
+    const inboxItem = items().find((line) => line.startsWith('inbox-closed'));
     checklistClosed(dir, as());
 
     assert.deepStrictEqual(open, [
@@ -112,7 +106,7 @@ describe('a quick-fix\'s notes for later, answered at its close (R24)', () => {
     assert.deepStrictEqual(kept.findings.map((/** @type {any} */ { from, inbox, drop }) => [from, inbox === undefined ? 'dropped' : 'filed', drop ?? null]), [
       [['notes#1'], 'filed', null], [['notes#2'], 'dropped', 'The man page is generated from the help.'],
     ]);
-    assert.deepStrictEqual([notesItem(), screen().includes('=== MENU: finish ')], ['notes-answered engine done', true]);
+    assert.deepStrictEqual([notesItem(), inboxItem, fs.existsSync(filed.inbox), screen().includes('=== MENU: finish ')], ['notes-answered engine done', 'inbox-closed engine done', true, true]);
   });
 
   it('a note banked after the others were answered stands alone, answered on its own after them', () => {

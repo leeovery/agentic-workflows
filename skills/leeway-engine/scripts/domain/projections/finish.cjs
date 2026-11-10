@@ -4,18 +4,19 @@
 // Domain ring: finish as the person sees it (14.5.1), drawn from the unit's
 // checklists and the ledger (finish.cjs): the title; every inbox item the
 // unit closed, under CLOSED IN THE INBOX, each with its kind, and how one
-// closed wrongly comes back (18.6.7); what its reads warned
-// of, each a callout, so nothing they took off the checklist goes unsaid;
-// every checklist item skipped on the way — each phase's start and close,
-// then finish's own — with where it was skipped and its reason (6.4.5);
-// what the review's put backs set aside, where they set aside anything,
-// which stays until the person removes it (review-tree.cjs); then the first
-// departure the person made in the build and the review phase still to be
-// asked its verdict, under the verdict gate at the point `finish` — one at
-// a time, as ready to build asks its own (16.10.3, closing.cjs); and once
-// none is, finish's gate, an authority gate that always stops: an
-// invitation to ask about what was built, answered before finishing, then
-// yes and a comment. No measure adds a line to it (17.2.2).
+// closed wrongly comes back, its claim taken out of the build's log
+// (18.6.7); what its reads warned of, each a callout, so nothing they took
+// off the checklist goes unsaid; every checklist item skipped on the way —
+// each phase's start and close, then finish's own — with where it was
+// skipped and its reason (6.4.5); what the review's put backs set aside,
+// where they set aside anything, which stays until the person removes it
+// (review-tree.cjs); then the first departure the person made in the build
+// and the review phase still to be asked its verdict, under the verdict gate
+// at the point `finish` — one at a time, as ready to build asks its own
+// (16.10.3, closing.cjs); and once none is, finish's gate, an authority gate
+// that always stops: an invitation to ask about what was built, answered
+// before finishing, then yes and a comment. No measure adds a line to it
+// (17.2.2).
 //
 // A quick-fix's close, its finish gate (19.5.13), is drawn the same but for
 // its title, `{Title} — ready to close`; each fix done with its pair's
@@ -65,8 +66,8 @@ function closedBlock({ title, closed }) {
   if (closed.length === 0) return [];
   const items = renderTree(closed.map((item) => ({ title: item.title, tag: item.kind })), { width: TREE_WIDTH }).replace(/\n$/, '');
   const note = closed.length === 1
-    ? `It is archived as closed by ${title}. Closed wrongly, it comes back from the archived items in triage, or ask me to bring it back.`
-    : `Each is archived as closed by ${title}. One closed wrongly comes back from the archived items in triage, or ask me to bring it back.`;
+    ? `It is archived as closed by ${title}. Closed wrongly, it comes back from the archived items in triage, or ask me to bring it back — its Resolved: line taken out of the build's log with it.`
+    : `Each is archived as closed by ${title}. One closed wrongly comes back from the archived items in triage, or ask me to bring it back — its Resolved: line taken out of the build's log with it.`;
   return [block(`CLOSED IN THE INBOX (${closed.length})`, [items, ...wrapWithPrefix(`↳ ${note}`, { width: TREE_WIDTH, prefix: '  ', hang: 2 })].join('\n'))];
 }
 

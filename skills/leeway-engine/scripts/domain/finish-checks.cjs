@@ -26,12 +26,12 @@
 //   none standing (review-phase.cjs, `notesStanding`), each filed or
 //   dropped at the close (`quick-fix notes`, R24); its way on names each.
 //   With a review asked for, the review answers them, and its item holds.
-// - The resolved inbox items closed (E9): no live inbox item the build's log
-//   names, by its path, is left in the inbox — each the work resolved
-//   closed through `inbox close`, or archived in triage meanwhile — but one
-//   the unit filed there itself, a finding of its review phase's rounds or
-//   a note for later its close answered, which no work resolves. A unit
-//   whose log names none owes nothing. Its way on names each and the close.
+// - The resolved inbox items closed (E9): no item a `Resolved: {path}` line
+//   of the build's log claims is left live in the inbox — each closed
+//   through `inbox close`, or archived in triage meanwhile. A mention
+//   elsewhere in the log is no claim. A unit whose log claims none owes
+//   nothing. Its way on names each, the close, and the claim taken out
+//   where the work did not resolve the item after all.
 // - The records indexed: where this checkout's knowledge base is set up —
 //   setting it up is the person's choice (knowledge/sync.cjs) — every
 //   record of the unit's (22.6.2), a quick-fix's short record among them
@@ -59,9 +59,8 @@ const { reviewRefusal } = require('./review-entry.cjs');
 const { reviewStanding, endedRefusal, notesStanding, recordedRounds } = require('./review-phase.cjs');
 const { readiness, unindexedRecords } = require('./knowledge/status.cjs');
 const { waitingAndFreed, askedOpen } = require('./questions.cjs');
-const { liveItemsNamed } = require('./inbox.cjs');
+const { liveResolved } = require('./inbox.cjs');
 const { buildLogOf } = require('./build-entry.cjs');
-const { answeredAtClose } = require('./notes.cjs');
 
 /** @typedef {import('./phase-checks.cjs').Reading} Reading */
 /** @typedef {import('./review-phase.cjs').ReviewStanding} ReviewStanding */
@@ -120,25 +119,17 @@ const notesAnswered = (at) => notesLeft(at).length === 0;
 /** The notes for later standing, with the way on. @param {Reading} at */
 const notesWay = (at) => `${notesLeft(at).join(', ')} — each note for later is filed to the inbox or dropped before the close: quick-fix notes ${at.unit} --file <notes.json>`;
 
-/** The inbox items the unit filed itself, absolute: its review rounds' and its close's. @param {Reading} at */
-function filedByUnit(at) {
-  const findings = [...recordedRounds(at.cwd, at.unit).flatMap(({ findings: found }) => found), ...answeredAtClose(at.cwd, at.unit)];
-  return new Set(findings.flatMap(({ inbox }) => (inbox === undefined ? [] : [statePath(at.cwd, inbox)])));
-}
-
-/** The live inbox items the build's log names, but those the unit filed: read once a call. @param {Reading} at @returns {string[]} */
-const namedLive = (at) => once(at, 'inbox', () => {
+/** The live inbox items the build's log claims resolved: read once a call. @param {Reading} at @returns {string[]} */
+const claimedLive = (at) => once(at, 'inbox', () => {
   const log = statePath(at.cwd, buildLogOf(at.unit));
-  if (!fs.existsSync(log)) return [];
-  const filed = filedByUnit(at);
-  return liveItemsNamed(at.cwd, fs.readFileSync(log, 'utf8')).filter((item) => !filed.has(item));
+  return fs.existsSync(log) ? liveResolved(at.cwd, fs.readFileSync(log, 'utf8')) : [];
 });
 
-/** No live inbox item the build's log names is left. @param {Reading} at */
-const inboxClosed = (at) => namedLive(at).length === 0;
+/** No item the build's log claims resolved is left live. @param {Reading} at */
+const inboxClosed = (at) => claimedLive(at).length === 0;
 
-/** The live items the log names, with the close. @param {Reading} at */
-const inboxWay = (at) => `the build's log names ${namedLive(at).join(', ')}, still in the inbox — close each the work resolved: inbox close ${at.unit} <path> …`;
+/** The claimed items still live, with the close and the claim taken back. @param {Reading} at */
+const inboxWay = (at) => `the build's log claims ${claimedLive(at).join(', ')} resolved, still in the inbox — close each the work resolved: inbox close ${at.unit} <path> …; where the work did not resolve one after all, take its Resolved: line out of the log`;
 
 /**
  * Whether this checkout's knowledge base is set up and reads: read once a

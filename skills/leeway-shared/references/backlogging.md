@@ -1,6 +1,6 @@
 # Backlogging
 
-*Shared reference. Loaded by the `## Backlogging` section on the investigation, specification, implementation, quick-fix and review processing skills, and by the build's `outside-the-plan.md`.*
+*Shared reference. Loaded by the `## Backlogging` section on the investigation, specification, implementation, quick-fix and review processing skills, by the build's `outside-the-plan.md`, and at **D. Capture** by discovery's Putting Something Aside.*
 
 ---
 
@@ -117,6 +117,6 @@ node .claude/skills/leeway-engine/scripts/engine.cjs inbox capture {kind:[idea|b
 ITEM
 ```
 
-Then note it where the phase keeps a running record — the log an investigation session is writing; the other phases keep none.
+Then note it where the phase keeps a running record — the log an investigation or a discovery session is writing; the other phases keep none.
 
 → Return to caller.

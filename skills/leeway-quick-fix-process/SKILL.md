@@ -70,7 +70,7 @@ Every question for the person goes through `raise`: one asked in plain prose is 
 
 ### The Build Log
 
-Append to the build's log, `.leeway/{work_unit}/build/log.md`, as the work goes: what is in flight, what was tried and dropped, and what each fix came to. It is read after a compaction and when the quick-fix resumes, so write it for a reader who has only it and the ledger.
+Append to the build's log, `.leeway/{work_unit}/build/log.md`, as the work goes: what is in flight, what was tried and dropped, and what each fix came to. An inbox item the work resolved is claimed on a line of its own, `Resolved: {path}`, its inbox path. It is read after a compaction and when the quick-fix resumes, so write it for a reader who has only it and the ledger.
 
 ## Doors
 
@@ -94,7 +94,7 @@ Append to the build's log, `.leeway/{work_unit}/build/log.md`, as the work goes:
 
 ## Closing
 
-The quick-fix closes once every fix is done or closed, each done fix recorded. Finish closes on its checklist; `checklist show finish {work_unit}` lists its items, and the engine checks most of them, an open one naming its way on. `inbox-closed` reads the build's log: check the live inbox against what was built, name in the log each item the work resolved, by its path, and close them, `inbox close {work_unit} {path} …`. Yours is `build-log-closed` — the build's log ends on what the fixes came to, nothing left in flight.
+The quick-fix closes once every fix is done or closed, each done fix recorded. Finish closes on its checklist; `checklist show finish {work_unit}` lists its items, and the engine checks most of them, an open one naming its way on. `inbox-closed` reads the build's log for its `Resolved:` lines: check the live inbox against what was built, claim in the log each item the work resolved, and close them, `inbox close {work_unit} {path} …`. Yours is `build-log-closed` — the build's log ends on what the fixes came to, nothing left in flight.
 
 Where `notes-answered` stays open, the notes for later its fixes' builders and pairs left stand. Answer each by one finding, filed to the inbox or dropped: `{"area": "notes", "scope": "out", "call", "text", "from": ["notes#{k}"], "inbox": "{path}", "ledger": "{id}"}`, or `"drop": "{why}"` in place of `inbox`. `notes#{k}` is note {k} of `.leeway/{work_unit}/build/notes.md`; `call` is the finding's weight, `serious`, `bug` or `nit`; `inbox` is the path `inbox file` answered; `ledger` is the id of your decision to file or drop it (**Doors**). Write them as `{"findings": […]}` to `.leeway/.cache/{work_unit}/build/notes.json` and record them:
 

@@ -3,21 +3,21 @@
 // ---------------------------------------------------------------------------
 // Finish (leeway-engine/scripts/domain/finish.cjs, its screen
 // domain/projections/finish.cjs, its engine items domain/finish-checks.cjs):
-// finish's checklist (6.4.10) — the review phase over, read from its
-// rounds' records, only where the unit has a review phase, no question
-// waiting on the person, no live inbox item the build's log names left
+// finish's checklist (6.4.10) — the review phase over, read from its rounds'
+// records, only where the unit has a review phase, no question waiting on
+// the person, no item a Resolved: line of the build's log claims left live
 // (18.S24), and the unit's records indexed, only where the checkout's
 // knowledge base is set up, each the engine's; Claude's item skipped, and
 // the close (2.S2); `engine render finish <unit>`, standing on that close —
-// the inbox items the unit closed (18.6.7), every checklist item
-// skipped on the way, with its reason, read from the manifest by a later
-// conversation (6.S23, 6.S32), no measure (17.S2), each call the person
-// changed in the build and the review phase asked its verdict before the
-// gate (14.S9, 16.S35) and nothing added where they changed none (16.10.5),
-// questions about what was built invited, then yes and a comment; and the
-// units it refuses, `land finish` refusing each as it does. Every refusal
-// writes and commits nothing. The yes is test-engine-finish-yes.cjs's, and
-// a quick-fix's close test-engine-quick-fix-close.cjs's.
+// the inbox items the unit closed (18.6.7), every checklist item skipped on
+// the way, with its reason, read from the manifest by a later conversation
+// (6.S23, 6.S32), no measure (17.S2), each call the person changed in the
+// build and the review phase asked its verdict before the gate (14.S9,
+// 16.S35) and nothing added where they changed none (16.10.5), questions
+// about what was built invited, then yes and a comment; and the units it
+// refuses, `land finish` refusing each as it does. Every refusal writes and
+// commits nothing. The yes is test-engine-finish-yes.cjs's, and a
+// quick-fix's close test-engine-quick-fix-close.cjs's.
 //
 // Layer: verb. World: review-world.cjs's, copied for each test.
 // ---------------------------------------------------------------------------
@@ -121,32 +121,46 @@ describe('finish\'s checklist (6.4.10, 2.S2)', () => {
 });
 
 describe('the resolved inbox items closed (6.4.10, 18.6.4, 18.6.7)', () => {
-  /** An inbox item written and committed: its path, absolute. @param {string} kind @param {string} name @param {string} title */
-  const item = (kind, name, title) => {
-    writeState(dir, layout.inbox(kind, name), `# ${title}\n\nSeen while paying.\n`);
-    commitAll(dir, `inbox: ${name}`);
-    return statePath(dir, layout.inbox(kind, name));
+  /** Inbox items written and committed in one commit, each `[folder, file, title]`: their paths, absolute. @param {string[][]} specs */
+  const inbox = (...specs) => {
+    for (const [folder, file, title] of specs) writeState(dir, layout.inbox(folder, file), `# ${title}\n\nSeen while paying.\n`);
+    commitAll(dir, 'inbox');
+    return specs.map(([folder, file]) => statePath(dir, layout.inbox(folder, file)));
   };
 
-  it('18.S24: holds finish open while an item the build\'s log names is live, naming each and the close; the two the work resolved closed for the unit, one triage archived meanwhile, and the third, never named, left live — the screen then lists the unit\'s two closures, and none another unit or none closed', () => {
-    const declined = item('bugs', '2026-06-01--a-card-is-charged-twice.md', 'A Card Is Charged Twice');
-    const resolved = [item('bugs', '2026-06-02--a-refund-names-no-card.md', 'A Refund Names No Card'), item('ideas', '2026-06-03--receipts-by-mail.md', 'Receipts By Mail')];
-    const unnamed = item('ideas', '2026-06-04--pay-by-phone.md', 'Pay By Phone');
-    const elsewhere = [item('quickfixes', '2026-06-05--rename-the-pay-button.md', 'Rename The Pay Button'), item('bugs', '2026-06-06--the-totals-drift.md', 'The Totals Drift')];
-    reviewPassed();
-    writeState(dir, layout.unit(UNIT, 'build', 'log.md'), `# The build\n\nResolved ${resolved[0]} and .leeway/.inbox/ideas/2026-06-03--receipts-by-mail.md, and ${declined}.\n`);
+  /** The build's log written and committed. @param {string[]} lines */
+  const logged = (...lines) => {
+    writeState(dir, layout.unit(UNIT, 'build', 'log.md'), `# The build\n\n${lines.join('\n')}\n`);
     commitAll(dir, 'the build\'s log');
+  };
+
+  /** Finish's inbox item, as `items` draws it. */
+  const inboxItem = () => items()[2];
+
+  /** The way on over the claimed items still live. @param {string[]} live */
+  const claimed = (live) => `inbox-closed engine open — the build's log claims ${live.join(', ')} resolved, still in the inbox — close each the work resolved: inbox close ${UNIT} <path> …; where the work did not resolve one after all, take its Resolved: line out of the log`;
+
+  it('18.S24: holds finish open while an item a Resolved: line of the build\'s log claims is live, naming each and the close; the two the work resolved closed for the unit, one triage archived meanwhile, and one the log mentions without a claim left live — the screen then lists the unit\'s two closures, and none another unit or none closed', () => {
+    const [declined, ...rest] = inbox(
+      ['bugs', '2026-06-01--a-card-is-charged-twice.md', 'A Card Is Charged Twice'],
+      ['bugs', '2026-06-02--a-refund-names-no-card.md', 'A Refund Names No Card'],
+      ['ideas', '2026-06-03--receipts-by-mail.md', 'Receipts By Mail'],
+      ['ideas', '2026-06-04--pay-by-phone.md', 'Pay By Phone'],
+      ['quickfixes', '2026-06-05--rename-the-pay-button.md', 'Rename The Pay Button'],
+      ['bugs', '2026-06-06--the-totals-drift.md', 'The Totals Drift'],
+    );
+    const [resolved, mentioned, elsewhere] = [rest.slice(0, 2), rest[2], rest.slice(3)];
+    reviewPassed();
+    logged(`Resolved: ${resolved[0]}`, 'Resolved: .leeway/.inbox/ideas/2026-06-03--receipts-by-mail.md', `Resolved: ${declined}`, '', `Paying by phone, ${mentioned}, was captured for later.`);
     ok(dir, ['inbox', 'archive', declined], { env: env() });
-    const open = items()[2];
+    const open = inboxItem();
     const closed = ok(dir, ['inbox', 'close', UNIT, ...resolved], { env: env() });
     ok(dir, ['inbox', 'close', 'none', elsewhere[0]], { env: env() });
     ok(dir, ['inbox', 'close', 'half', elsewhere[1]], { env: env() });
-    const done = items()[2];
+    const done = inboxItem();
     finishClosed();
 
-    assert.deepStrictEqual([open, closed.unit, done, fs.existsSync(unnamed)], [
-      `inbox-closed engine open — the build's log names ${resolved.join(', ')}, still in the inbox — close each the work resolved: inbox close ${UNIT} <path> …`, UNIT, 'inbox-closed engine done', true,
-    ]);
+    assert.deepStrictEqual([open, closed.unit, done, fs.existsSync(mentioned)], [claimed(resolved), UNIT, 'inbox-closed engine done', true]);
     assert.strictEqual(sectionOf(screen(), 'DISPLAY: finish'), [
       'Pay — finish',
       '',
@@ -155,12 +169,46 @@ describe('the resolved inbox items closed (6.4.10, 18.6.4, 18.6.7)', () => {
       '  └─ Receipts By Mail          [idea]',
       '  ↳ Each is archived as closed by Pay. One closed wrongly comes',
       '    back from the archived items in triage, or ask me to bring it',
-      '    back.',
+      '    back — its Resolved: line taken out of the build\'s log with',
+      '    it.',
       '',
       '  ⚑ Skipped at phase 1\'s start: shared design settled — One task',
       '    alone.',
       '',
     ].join('\n'));
+  });
+
+  it('reads a claim only on a line of its own, opening Resolved:, its path in any form read from .inbox/ on — absolute, from the project, backticked, a link, punctuation after it — once each; a mention anywhere else claims nothing', () => {
+    const paths = inbox(
+      ['bugs', '2026-06-01--a.md', 'A'], ['ideas', '2026-06-02--b.md', 'B'], ['bugs', '2026-06-03--c.md', 'C'],
+      ['quickfixes', '2026-06-04--d.md', 'D'], ['ideas', '2026-06-05--e.md', 'E'], ['bugs', '2026-06-06--f.md', 'F'], ['ideas', '2026-06-07--g.md', 'G'],
+    );
+    logged(
+      `Resolved: ${paths[0]}`,
+      'Resolved: .leeway/.inbox/ideas/2026-06-02--b.md',
+      'Resolved: `.inbox/bugs/2026-06-03--c.md`',
+      'Resolved: [D](.leeway/.inbox/quickfixes/2026-06-04--d.md)',
+      'Resolved: .inbox/ideas/2026-06-05--e.md.',
+      `Resolved: ${paths[0]}`,
+      `Phase 1 left ${paths[5]} for the next.`,
+      '- Resolved: .inbox/ideas/2026-06-07--g.md',
+    );
+
+    assert.strictEqual(inboxItem(), claimed(paths.slice(0, 5)));
+  });
+
+  it('an item brought back after its close holds finish again, the way on taking its claim out of the log where the work did not resolve it after all, and finish stands once the claim is out', () => {
+    const [wrong] = inbox(['bugs', '2026-06-01--a-card-is-charged-twice.md', 'A Card Is Charged Twice']);
+    reviewPassed();
+    logged(`Resolved: ${wrong}`);
+    const [archived] = ok(dir, ['inbox', 'close', UNIT, wrong], { env: env() }).closed;
+    finishClosed();
+    ok(dir, ['inbox', 'restore', archived], { env: env() });
+    const held = [inboxItem(), refused(['render', 'finish', UNIT])];
+    logged('The charge was a gateway retry, not this bug.');
+
+    assert.deepStrictEqual(held, [claimed([wrong]), 'render finish: finish has items open since its close: inbox-closed — they are worked, and it is closed again']);
+    assert.match(sectionOf(screen(), 'DISPLAY: finish'), /^Pay — finish\n/);
   });
 });
 

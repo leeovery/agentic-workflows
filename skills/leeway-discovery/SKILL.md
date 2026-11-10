@@ -97,6 +97,7 @@ The DATA's `log` is the record everything here comes back to, and nothing talked
 - The map approved → `render approve-map {home} --file`, then `gate`; a park's horizon → `render horizon-pick --park {name}`.
 - A message to a topic → `topic send`, `render send-report`.
 - Something put on the roadmap → `roadmap add`; into the inbox → `inbox capture {kind}`, its text on stdin.
+- An inbox item the person has had fixed outside any unit → `inbox close none {path}`.
 - A move to another level → `enter discovery {home} --move`.
 - The session ended → `discovery-session close {home}`; at the product's, the roadmap items first → `gateway.cjs proposal`, `render roadmap-harvest-gate`, `roadmap add-batch`.
 - Earlier work → `knowledge query "{term}" …`.
@@ -144,13 +145,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs roadmap add {name} --horizo
 
 A name already on the roadmap takes another; say it in a line and carry on.
 
-For the inbox, write it from the conversation as an H1 title over a short prose body; its kind is `bug` for something broken, `quick-fix` for a small mechanical change, and `idea` for anything else. Capture it with the text on stdin, emit its section verbatim per its marker, and carry on:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs inbox capture {kind:[idea|bug|quick-fix]} <<'ITEM'
-{text}
-ITEM
-```
+For the inbox, capture it per **[backlogging.md](../leeway-shared/references/backlogging.md)** at **D. Capture**, and carry on.
 
 ## Moving Levels
 
