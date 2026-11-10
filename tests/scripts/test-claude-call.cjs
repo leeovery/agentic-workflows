@@ -10,7 +10,9 @@
 // answered, and each way it cannot run
 // — no login, a rate limit, a timeout, an answer that does not fit, a
 // binary that will not start. The form answering later puts the same call,
-// gives the same answers, and runs beside the calls put with it.
+// gives the same answers, and runs beside the calls put with it; the started
+// form puts it too, runs while its caller waits on another call, and at its
+// limit has its process group killed, the call it ran gone.
 //
 // Driven through the suite's stub binary (claude-stub.cjs), which records
 // what each call handed it.
@@ -24,7 +26,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { askClaude, askClaudeAsync } = require('../../skills/leeway-engine/scripts/kernel/claude-call.cjs');
+const { askClaude, askClaudeAsync, startClaude } = require('../../skills/leeway-engine/scripts/kernel/claude-call.cjs');
 
 const STUB = path.join(__dirname, 'claude-stub.cjs');
 const SYSTEM = 'Answer whether the row is about the session.\n\nOne line.';
@@ -330,6 +332,90 @@ describe('the call answering later', () => {
     arm({ '': ANSWER });
 
     await assert.rejects(askClaudeAsync({ ...ASK, schema: { ...SCHEMA, pattern: '^r' } }), /the call's schema uses pattern, which the engine cannot check an answer against/);
+    assert.deepStrictEqual(calls(), []);
+  });
+});
+
+/** Whether the process `pid` names still runs. @param {number} pid */
+function running(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+describe('the call started, waited on later', () => {
+  it('puts the call the waiting form puts — its command line, the question on stdin alone, a fresh empty folder — gives the answer it gives, and leaves nothing of it in the temp folder once waited on', () => {
+    arm({ '': ANSWER });
+    const temp = path.join(scratch, 'temp');
+    fs.mkdirSync(temp);
+    setEnv({ TMPDIR: temp });
+
+    const started = startClaude(ASK).wait();
+    const now = askClaude(ASK);
+
+    const [putStarted, putNow] = calls();
+    assert.deepStrictEqual([started, putStarted.argv, putStarted.input, putStarted.held], [now, putNow.argv, putNow.input, []]);
+    assert.strictEqual(path.dirname(putStarted.cwd), fs.realpathSync(temp));
+    assert.deepStrictEqual(fs.readdirSync(temp), [], 'the call left its folders behind');
+  });
+
+  it('runs while its caller waits on a call of its own: the two meet before either answers', () => {
+    const meet = path.join(scratch, 'meet');
+    fs.mkdirSync(meet);
+    arm({ '': ANSWER });
+    setEnv({ CLAUDE_STUB_MEET: `2:${meet}` });
+
+    const started = startClaude(ASK);
+    const now = askClaude({ ...ASK, model: 'opus' });
+
+    assert.deepStrictEqual([now, started.wait()], [{ answer: ANSWER, cost: 0.01, model: 'claude-opus-stub' }, { answer: ANSWER, cost: 0.01, model: 'claude-sonnet-stub' }]);
+  });
+
+  it('answers once: a second wait gives the first answer, and puts no call', () => {
+    arm({ '': ANSWER });
+
+    const started = startClaude(ASK);
+
+    assert.deepStrictEqual(started.wait(), started.wait());
+    assert.strictEqual(calls().length, 1);
+  });
+
+  it('cannot run past its time: the wait ends at its limit, the call\'s process group killed outright — one deaf to SIGTERM too — and the call it ran gone', { timeout: KILLED_WITHIN_MS }, async () => {
+    const meet = path.join(scratch, 'meet');
+    fs.mkdirSync(meet);
+    arm({ '': 'timeout' });
+    setEnv({ CLAUDE_STUB_MEET: `1:${meet}` });
+    const begun = Date.now();
+
+    assert.deepStrictEqual(startClaude({ ...ASK, timeoutMs: 400 }).wait(), { cannot: 'timeout', detail: 'no answer within 0.4 s' });
+    assert.ok(Date.now() - begun < 5000, 'the wait outlived the call\'s time');
+    const [pid] = fs.readdirSync(meet).map(Number);
+    for (const gone = Date.now() + 5000; running(pid) && Date.now() < gone;) await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.ok(!running(pid), 'the call outlived its time');
+  });
+
+  it('cannot run where the call cannot, as the waiting form cannot — its failed exit read from its files', () => {
+    arm({ '': 'rate-limit' });
+
+    assert.deepStrictEqual(startClaude(ASK).wait(), { cannot: 'rate-limit', detail: 'API Error: Request rejected (429) · rate limited' });
+  });
+
+  it('cannot run where the binary will not start, saying so — never a throw', () => {
+    setEnv({ LEEWAY_CLAUDE: path.join(scratch, 'no-such-claude') });
+
+    const answer = startClaude(ASK).wait();
+
+    assert.strictEqual('cannot' in answer && answer.cannot, 'failed');
+    assert.match(/** @type {{detail: string}} */ (answer).detail, /no-such-claude/);
+  });
+
+  it('refuses a schema an answer cannot be checked against, before any call', () => {
+    arm({ '': ANSWER });
+
+    assert.throws(() => startClaude({ ...ASK, schema: { ...SCHEMA, pattern: '^r' } }), /the call's schema uses pattern, which the engine cannot check an answer against/);
     assert.deepStrictEqual(calls(), []);
   });
 });

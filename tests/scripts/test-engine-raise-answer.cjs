@@ -34,12 +34,14 @@ const {
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const { UNIT, MADE, NOTE, PHASES, askedWorld, ledgerHelpers } = require('./ledger-world.cjs');
 const { SESSION, WHY, raiseHelpers } = require('./raise-world.cjs');
+const { labelAnswers } = require('./labels.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { PENDING } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 const { RAISE_SHOWN, PRESSED } = require(path.join(SCRIPTS, 'domain/gate.cjs'));
 const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
 const { LEDGER } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
+const { ORDER } = require(path.join(SCRIPTS, 'domain/labeller.cjs'));
 
 const CURSOR = Object.freeze({ key: '1', name: 'Cursor', text: 'On the screen the cursor is on', notice: 'the note opens where you are looking' });
 const MAIN = Object.freeze({ key: '2', name: 'Main', text: 'On the main screen', notice: 'every note opens on the same screen' });
@@ -88,12 +90,18 @@ function conversationState() {
 
 /**
  * A raise of `call` drawn on `question`: its id.
- * @param {string} [question] @param {{call?: Record<string, unknown>, flags?: string[]}} [opts]
+ * @param {string} [question] @param {{call?: Record<string, unknown>, flags?: string[], env?: Record<string, string>}} [opts]
  */
-async function draw(question = asked.where, { call = CALL, flags = [] } = {}) {
-  const { res } = await okSectionsAsync(dir, ['raise', NOTE, '--answers', question, ...flags], { env: conversation(), stdin: JSON.stringify(call) });
+async function draw(question = asked.where, { call = CALL, flags = [], env = {} } = {}) {
+  const { res } = await okSectionsAsync(dir, ['raise', NOTE, '--answers', question, ...flags], { env: conversation(env), stdin: JSON.stringify(call) });
   return /** @type {string} */ (res.raise);
 }
+
+/** The stub labelling the call `scope`, hard to undo, and judging nothing. */
+const LABELLED = Object.freeze({ CLAUDE_STUB_ANSWERS: JSON.stringify({ 'The answer: ': 'no-login', '': labelAnswers('scope', { hardToUndo: true }) }) });
+
+/** The label `LABELLED` gives. */
+const LABEL = Object.freeze({ labeller: 'claude-sonnet-stub', answers: ORDER.map((key) => key === 'scope' || key === 'hard_to_undo') });
 
 /**
  * An answer refused, leaving the state, the conversation's folder and the
@@ -116,7 +124,7 @@ function entryOf(id, question, own = {}) {
   return {
     v: 1, id, event: 'decided', unit: UNIT, topic: 'note-window', phase: 'discussion', session: SESSION,
     by: 'person', who_moved_whom: 'none', answers: full(question), text: CURSOR.text, why: WHY, rules_out: [MAIN.text, LAST.text],
-    relies_on: [], product_wide: false, sealed: CURSOR.text, alternatives: [], evidence: [], kind: null, unchecked: true, given: 'own', cites: [], task: null, ...own,
+    relies_on: [], product_wide: false, sealed: CURSOR.text, alternatives: [], evidence: [], kind: null, hard_to_undo: null, unchecked: true, given: 'own', cites: [], task: null, ...own,
   };
 }
 
@@ -197,6 +205,27 @@ describe('the answer recorded (16.S44, 6.1.5)', () => {
     assert.match(output(dir, ['raise', 'show', id], { env: conversation() }), new RegExp(`^\\{"ok":true,"raise":"${id}"\\}\\n=== MENU: raise — ${id} `));
     answer(id, ['--pick', '2']);
     assert.deepStrictEqual(logged().map((event) => [event.entry, event.didnt_follow]), [[null, true], [id, false]]);
+  });
+});
+
+describe('the kind (5.S27, 16.11.5)', () => {
+  it('5.S27: the person\'s answer to a call Claude raised holds Claude\'s sealed answer beside theirs, who moved whom, and the kind and hard-to-undo mark of the label its draw sealed; its raise event the kind and the label — no call made at the answer', async () => {
+    const id = await draw(asked.where, { env: LABELLED });
+    const log = path.join(config(), 'answer-calls.jsonl');
+
+    answer(id, ['--pick', '2'], { why: WHY }, { CLAUDE_STUB_LOG: log });
+
+    assert.deepStrictEqual(lastEntry(), entryOf(id, asked.where, { who_moved_whom: 'person-moved-claude', text: MAIN.text, rules_out: [CURSOR.text, LAST.text], kind: 'scope', hard_to_undo: true }));
+    assert.deepStrictEqual(logged(), [raiseEvent(id, { answer: '2', kind: 'scope', label: LABEL })]);
+    assert.ok(!fs.existsSync(log), 'the answer put a call');
+  });
+
+  it('"I don\'t follow" logs the sealed label and its kind', async () => {
+    const id = await draw(asked.where, { env: LABELLED });
+
+    answer(id, ['--didnt-follow'], null);
+
+    assert.deepStrictEqual(logged(), [raiseEvent(null, { answer: null, didnt_follow: true, kind: 'scope', label: LABEL })]);
   });
 });
 
@@ -403,6 +432,16 @@ describe('proceed (E7, 16.3.7)', () => {
     assert.deepStrictEqual(lastEntry(), entryOf(id, asked.where, { by: 'claude', why: CALL.why, sealed: null }));
     assert.deepStrictEqual(logged(), [{ v: 1, type: 'call', project: project(), model: null, session: SESSION, entry: id, kind: null, label: null, sort: 'several' }]);
     assert.ok(!fs.existsSync(inFolder(RAISE_SHOWN)), 'a call that proceeds was sealed');
+  });
+
+  it('lands Claude\'s call with the kind and hard-to-undo mark of the label its draw gave, its call event the kind and the label', async (t) => {
+    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'proceed', reason: 'Your calls on this kind land.' }));
+
+    const { res } = await okSectionsAsync(dir, ['raise', NOTE, '--answers', asked.where], { env: conversation(LABELLED), stdin: JSON.stringify(CALL) });
+
+    const id = full(res.id);
+    assert.deepStrictEqual([lastEntry().kind, lastEntry().hard_to_undo], ['scope', true]);
+    assert.deepStrictEqual(logged(), [{ v: 1, type: 'call', project: project(), model: null, session: SESSION, entry: id, kind: 'scope', label: LABEL, sort: 'several' }]);
   });
 });
 

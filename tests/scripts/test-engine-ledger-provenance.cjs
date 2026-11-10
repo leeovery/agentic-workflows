@@ -27,7 +27,8 @@ const { ok, stateGit, statePath, layout, cleanupFixture } = require('./engine-ha
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 
-const { UNIT, SESSION_ID, MADE, NOTE, ids, ledgerHelpers, ledgerReadHelpers, ledgerWriteHelpers, ledgerWorld } = require('./ledger-world.cjs');
+const { UNIT, SESSION, SESSION_ID, MADE, NOTE, ids, ledgerHelpers, ledgerReadHelpers, ledgerWriteHelpers, ledgerWorld } = require('./ledger-world.cjs');
+const { labelling } = require('./labels.cjs');
 
 const PERSON = Object.freeze({ by: 'person', who_moved_whom: 'none' });
 const CITES = Object.freeze([{ path: `${UNIT}/discussion/note-window.md`, section: 'Session 1 — 2026-10-30' }]);
@@ -56,7 +57,7 @@ describe('who decided (9.2.14–9.2.16, 21.6.5)', () => {
   it('9.S4, 9.S44: lands the person\'s decision — the scope call agreed after the opening among them — through the verb as their own, and the record shows it by its short id, decided by the person', () => {
     const scope = ask(NOTE, 'What does the note window cover?');
 
-    const decided = write('decide', NOTE, ['--answers', scope], { ...PERSON, text: 'The window and its frame.', why: 'Where it opens is space homing\'s.', kind: 'scope' }).id;
+    const decided = write('decide', NOTE, ['--answers', scope], { ...PERSON, text: 'The window and its frame.', why: 'Where it opens is space homing\'s.' }, { ...SESSION, ...labelling('What does the note window cover?', 'scope') }).id;
 
     assert.ok(full(decided).startsWith(decided) && decided.length < full(decided).length, `${decided} is no short id`);
     const [shown] = read('record', UNIT, 'note-window').decisions;

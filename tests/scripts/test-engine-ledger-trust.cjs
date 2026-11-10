@@ -12,7 +12,11 @@
 // person's "your call" and "don't care" among them and none carried over, the
 // person's replacement the departure rule holds standing over a lean the
 // replaced entry held a reversal naming the entry it reverses, wherever that
-// entry stands, and no other write anything; the person's entry carrying
+// entry stands, and no other write anything; each decision labelled beside
+// its one-decision check, Claude's own from the question with its answer
+// and what it rules out, the person's from the question alone, its entry
+// taking the kind and the hard-to-undo mark and a call the label; the
+// person's entry carrying
 // Claude's sealed answer refused, their answer to the lean a raise's (P4,
 // test-engine-raise-answer.cjs); an append that fails a
 // warning, the event waiting in the conversation for its next record, which
@@ -43,6 +47,8 @@ const { WRITER_LOCK } = require(path.join(SCRIPTS, 'kernel/manifest-io.cjs'));
 
 const { SESSION_ID, SESSION, MADE, NOTE, WRITE_PHASES, ledgerHelpers, ledgerWriteHelpers, ledgerWorld, answeredRaise } = require('./ledger-world.cjs');
 const { trustLogHelpers } = require('./trust-world.cjs');
+const { labelAnswers } = require('./labels.cjs');
+const { ORDER } = require(path.join(SCRIPTS, 'domain/labeller.cjs'));
 
 const config = useTempFolder('ledger-trust-config-');
 
@@ -246,6 +252,97 @@ describe('calls and reversals (16.13.3, 16.13.4, 16.12.1)', () => {
 
     assert.deepStrictEqual(logged(), [callOf(call.id), reversalOf(reversal.id, call.id), callOf(next)]);
     assert.ok(!fs.existsSync(waitingFile), 'the events landed, yet wait on to land again');
+  });
+});
+
+describe('the label (16.11, 16.13.4, 16.19.8)', () => {
+  const QUESTION = 'What is a note, at its most basic?';
+
+  /**
+   * The environment that answers the one-decision check one rule and the
+   * labeller `kind`, hard to undo, every call logged to `log`.
+   * @param {string} log @param {Record<string, string>} [more]
+   */
+  function labelled(log, more = {}) {
+    return { ...SESSION, CLAUDE_STUB_LOG: log, CLAUDE_STUB_ANSWERS: JSON.stringify({ 'The answer: ': { rules: ['One rule.'] }, '': labelAnswers('contract', { hardToUndo: true }) }), ...more };
+  }
+
+  /** The labeller's calls the stub logged, by the model asked. @param {string} log @returns {{input: string}[]} */
+  function labellersCalls(log) {
+    return fs.readFileSync(log, 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line)).filter(({ argv }) => argv[argv.indexOf('--model') + 1] === 'sonnet');
+  }
+
+  const LABEL = { labeller: 'claude-sonnet-stub', answers: ORDER.map((key) => key === 'contract' || key === 'hard_to_undo') };
+
+  it('16.S38: labels Claude\'s call from the question\'s wording with its answer and what it rules out, its entry taking the kind the twelve answers compose and the hard-to-undo mark, its call in the trust log the kind and all twelve answers beside the labeller', () => {
+    const log = path.join(config(), 'calls.jsonl');
+    const question = ask().id;
+
+    const call = write('decide', NOTE, ['--answers', question], { ...MADE, text: 'A floating note.', why: 'Furniture.', rules_out: ['a window'] }, labelled(log)).id;
+
+    assert.deepStrictEqual(labellersCalls(log).map(({ input }) => input), [`${QUESTION}\n\nThe answers offered:\n- A floating note.\n- a window`]);
+    const line = entries().find((e) => e.id === full(call));
+    assert.deepStrictEqual([line.kind, line.hard_to_undo, line.unchecked], ['contract', true, false]);
+    assert.deepStrictEqual(logged(), [{ ...callOf(call), kind: 'contract', label: LABEL }]);
+  });
+
+  it('labels the person\'s own decision from the question\'s wording alone, never their answer, and logs no call', () => {
+    const log = path.join(config(), 'calls.jsonl');
+    const question = ask().id;
+
+    const persons = write('decide', NOTE, ['--answers', question], { by: 'person', who_moved_whom: 'none', text: 'A document window.', why: 'Notes are documents.' }, labelled(log)).id;
+
+    assert.deepStrictEqual(labellersCalls(log).map(({ input }) => input), [QUESTION]);
+    const line = entries().find((e) => e.id === full(persons));
+    assert.deepStrictEqual([line.kind, line.hard_to_undo], ['contract', true]);
+    assert.deepStrictEqual(logged(), []);
+  });
+
+  it('labels a replacement of a decision from the question the decision answers, in its wording now', () => {
+    const log = path.join(config(), 'calls.jsonl');
+    const old = decide(ask().id).id;
+
+    const own = write('replace', NOTE, ['--replaces', old, '--reason', 'changed-mind'], { ...MADE, drops: ['near-frameless'], text: 'A frameless surface.', why: 'Lighter.' }, labelled(log)).id;
+
+    assert.deepStrictEqual(labellersCalls(log).map(({ input }) => input), [`${QUESTION}\n\nThe answers offered:\n- A frameless surface.`]);
+    assert.deepStrictEqual(logged(), [callOf(old), { ...callOf(own), kind: 'contract', label: LABEL }]);
+  });
+
+  it('runs the label beside the one-decision check, the two meeting before either answers', () => {
+    const meet = path.join(config(), 'meet');
+    fs.mkdirSync(meet);
+    const question = ask().id;
+
+    const call = write('decide', NOTE, ['--answers', question], { ...MADE, text: 'A floating note.', why: 'Furniture.' }, labelled(path.join(config(), 'calls.jsonl'), { CLAUDE_STUB_MEET: `2:${meet}` })).id;
+
+    const line = entries().find((e) => e.id === full(call));
+    assert.deepStrictEqual([line.kind, line.unchecked], ['contract', false], 'the check or the label met nothing running beside it');
+  });
+
+  it('where the one-decision check refuses the write, appends and logs nothing, the label it asked for waited on and set aside', () => {
+    const log = path.join(config(), 'calls.jsonl');
+    const question = ask().id;
+    const before = ledgerText();
+
+    refused('decide', NOTE, ['--answers', question], { ...MADE, text: 'Two things.', why: 'Both.' }, /holds 2 rules/, {
+      ...labelled(log), CLAUDE_STUB_ANSWERS: JSON.stringify({ 'The answer: ': { rules: ['One.', 'Two.'] }, '': labelAnswers('look') }),
+    });
+
+    assert.strictEqual(ledgerText(), before);
+    assert.deepStrictEqual(logged(), []);
+    assert.strictEqual(labellersCalls(log).length, 1);
+  });
+
+  it('leaves the kind and the mark null where the label\'s call fails, its call carrying no label', () => {
+    const question = ask().id;
+
+    const call = write('decide', NOTE, ['--answers', question], { ...MADE, text: 'A floating note.', why: 'Furniture.' }, {
+      ...SESSION, CLAUDE_STUB_ANSWERS: JSON.stringify({ 'The answer: ': { rules: ['One rule.'] }, '': 'rate-limit' }),
+    }).id;
+
+    const line = entries().find((e) => e.id === full(call));
+    assert.deepStrictEqual([line.kind, line.hard_to_undo, line.unchecked], [null, null, false]);
+    assert.deepStrictEqual(logged(), [callOf(call)]);
   });
 });
 

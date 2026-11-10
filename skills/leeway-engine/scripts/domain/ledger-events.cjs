@@ -27,7 +27,9 @@
 // - decided: an answer to the question it closes (5.5.1): who, why, what it
 //   rules out and relies on, whether it is product-wide; beside a person's
 //   answer Claude's sealed one, beside Claude's own call its alternatives
-//   and evidence (5.1.1), the kind of question (16.11), and whether it
+//   and evidence (5.1.1), the kind of question and whether it is hard to
+//   undo, each the engine's from the labeller's label (16.11.3, 16.11.7;
+//   labeller.cjs), null where no label was given, and whether it
 //   landed unchecked by the one-decision check (16.19.8); and how the
 //   answer was given, `given` (9.2.14, 9.2.16, 21.6.5): its
 //   maker's own; "your call", the person handing it to Claude; "don't
@@ -77,12 +79,13 @@
 //   waiting, that question's (questions.cjs); and the call sealed, so it is
 //   raised as it was put whenever the person is ready, in whatever
 //   conversation: Claude's call as the raise took it, the rows the
-//   one-decision check judged one rule, and why it asks, the decision point's
-//   reason. A fact only the person holds (16.3.8) parks in the same shape, as
-//   the ledger holds a fact's answer, with no lean: its call's lean, why and
-//   sort null, its rows any number. It names no maker, is no entry and is
-//   never replaced: it waits while what it is about stands open
-//   (questions.cjs).
+//   one-decision check judged one rule, why it asks, the decision point's
+//   reason, and the labeller's label of the call (16.11.5), null where it
+//   gave none. A fact only the person holds (16.3.8) parks in the same shape,
+//   as the ledger holds a fact's answer, with no lean: its call's lean, why
+//   and sort null, its rows any number, and never labelled. It names no
+//   maker, is no entry and is never replaced: it waits while what it is
+//   about stands open (questions.cjs).
 // - unparked: a task closed in the build, taken off the questions of its
 //   unit that parked it (task-parks.cjs, questions.cjs): the task, as
 //   screens show it, and the parks naming it that it is taken off, by id —
@@ -124,7 +127,7 @@
 
 const { isObject } = require('../kernel/manifest-io.cjs');
 const { PRODUCT } = require('../kernel/manifest-schema.cjs');
-const { type, TEXT, ID, FLAG, TIME, VERSION, COUNT, LINE, KEY, KINDS, oneOf, nullable, listOf, shaped, field, event, readFields } = require('./event-fields.cjs');
+const { type, TEXT, ID, FLAG, TIME, VERSION, COUNT, LINE, KEY, KINDS, LABEL, oneOf, nullable, listOf, shaped, field, event, readFields } = require('./event-fields.cjs');
 const { isShownTask } = require('./task-id.cjs');
 
 const LEDGER = '.ledger.jsonl';
@@ -232,6 +235,7 @@ const CONTENT = {
     field('alternatives', listOf(TEXT)),
     field('evidence', listOf(TEXT)),
     field('kind', nullable(oneOf(...KINDS))),
+    field('hard_to_undo', nullable(FLAG)),
     field('unchecked', FLAG),
     field('given', oneOf(...GIVEN)),
     CITES,
@@ -318,6 +322,7 @@ const SCHEMA = {
       field('call', shaped(`a call, {${Object.keys(PARKED_CALL_FIELDS).join(', ')}}`, PARKED_CALL_FIELDS)),
       field('rows_judged', listOf(KEY)),
       field('why_asking', LINE),
+      field('label', nullable(LABEL)),
     ], 1, parkHolds),
     unparked: event([field('task', TASK), field('parks', listOf(ID))], 1, unparkHolds),
     rehomed: event([field('lines', listOf(ID)), field('files', listOf(MOVED_FILE))], 1, rehomeHolds),

@@ -59,6 +59,7 @@ const { ledgerEntries, stateGit } = require('./engine-harness.cjs');
 const { statePath, BRANCH_REF } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
 const { SHOWN, RAISE_SHOWN } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/gate.cjs'));
 const { TRUST_LOG, PENDING } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/trust-log.cjs'));
+const { kindOf, hardToUndo } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/labeller.cjs'));
 
 // The same per-type pipeline the start dashboard derives from (start.cjs
 // pipelineOf): the schema's one home for pipeline order.
@@ -799,6 +800,10 @@ function auditCopies(root, events, shownAt, placed, full, ctx) {
 // or a reversal — that the ledger holds as a decision whose answer stood
 // over the lean, or a keep (16.13.6), and none follows one that is no skip
 // (16.10.1); the verdict a command that `ran` gave has its line, the latest.
+// Every call and raise carries the kind its label composes (16.11.3), and
+// the decision it names the kind and hard-to-undo mark that label gives; a
+// raise drawn from a park holds the label the park sealed, so the question
+// is labelled once; and a fact, sealed or parked, holds none (16.3.8).
 /** @param {Sim} sim @param {string} label @param {string[]} [ran] the command, where it succeeded */
 function auditTrust(sim, label, ran = []) {
   const ctx = (/** @type {string} */ msg) => `[${label}] ${msg}`;
@@ -874,6 +879,17 @@ function auditTrust(sim, label, ran = []) {
     const judged = verdicts.slice(0, -1).filter((v) => v.verdict !== 'skip');
     assert.deepStrictEqual(judged, [], ctx(`${entry} was given a verdict after one that was no skip`));
   }
+  for (const e of [...ofType('call'), ...ofType('raise')]) {
+    assert.strictEqual(e.kind, kindOf(e.label), ctx(`the ${e.type} ${e.id} carries the kind ${e.kind}, which its label does not compose`));
+    const decision = byId.get(e.entry);
+    if (decision === undefined || !isDecision(decision)) continue;
+    assert.deepStrictEqual([decision.kind, decision.hard_to_undo], [kindOf(e.label), hardToUndo(e.label)], ctx(`${e.entry} holds a kind or a hard-to-undo mark its label does not give`));
+  }
+  for (const seal of sealed.filter((s) => s.parks !== null)) {
+    assert.deepStrictEqual(seal.label, byId.get(seal.parks.park)?.label, ctx(`the raise ${seal.id} drawn from ${seal.parks.park} holds a label the park did not seal`));
+  }
+  assert.deepStrictEqual([...sealed.filter((s) => s.fact), ...entries.filter((e) => e.event === 'parked' && e.call.lean === null)].filter((s) => s.label !== null).map((s) => s.id), [],
+    ctx('a fact holds a label'));
   if (ran[0] === 'verdict' && ran[1] === 'give') {
     const [, , prefix, verdict, , point] = ran;
     const latest = ofType('verdict').at(-1);

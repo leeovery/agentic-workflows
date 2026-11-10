@@ -128,17 +128,16 @@ describe('content and links', () => {
     refused('decide', NOTE, flags, { ...decision, answers: question }, /^ledger decide: the content carries answers, a link — a link is given as a flag \(--answers\), never in the content$/);
     refused('decide', NOTE, flags, { ...decision, relies_on: [] }, /the content carries relies_on, a link — a link is given as a flag \(--relies-on\)/);
     refused('ask', NOTE, [], { ...MADE, text: 'Q?', replaces: question }, /^ledger ask: the content carries replaces, a link — a link is given as a flag, never in the content$/);
-    for (const assigned of ['v', 'id', 'event', 'unit', 'topic', 'phase', 'session', 'at', 'of', 'unchecked']) {
+    for (const assigned of ['v', 'id', 'event', 'unit', 'topic', 'phase', 'session', 'at', 'of', 'unchecked', 'kind', 'hard_to_undo']) {
       refused('decide', NOTE, flags, { ...decision, [assigned]: 'mine' }, new RegExp(`^ledger decide: the content carries ${assigned}, which the engine gives$`));
     }
-    refused('decide', NOTE, flags, { ...decision, how: 'documented' }, /^ledger decide: the content has no field how — it holds by, who_moved_whom, text, why, rules_out, product_wide, sealed, alternatives, evidence, kind, given, cites$/);
+    refused('decide', NOTE, flags, { ...decision, how: 'documented' }, /^ledger decide: the content has no field how — it holds by, who_moved_whom, text, why, rules_out, product_wide, sealed, alternatives, evidence, given, cites$/);
     refused('decide', NOTE, flags, { by: 'claude', who_moved_whom: 'none', text: 'Floating.' }, /^ledger decide: the content needs why$/);
     refused('decide', NOTE, flags, { who_moved_whom: 'none', text: 'Floating.', why: 'Furniture.' }, /^ledger decide: the content needs by$/);
     refused('find', NOTE, [], { ...MADE, text: 'A fact.' }, /^ledger find: the content needs how$/);
     refused('replace', NOTE, ['--replaces', question, '--reason', 'changed-mind'], { ...MADE, text: 'Q?' }, /^ledger replace: the content needs drops$/);
     refused('decide', NOTE, flags, { ...decision, rules_out: 'a title bar' }, /^ledger decide: the content's rules_out is not a list of non-empty text$/);
     refused('decide', NOTE, flags, { ...decision, by: 'review' }, /^ledger decide: the content's by is not one of person, claude$/);
-    refused('decide', NOTE, flags, { ...decision, kind: 'mood' }, /the content's kind is not one of process, danger, contract, scope, look, words, behaviour, internals, or null$/);
     refused('replace', NOTE, ['--replaces', question, '--reason', 'changed-mind'], { ...MADE, drops: [], text: 'Q?', why: 'A question has no why.' }, /^ledger replace: the content has no field why — it holds by, who_moved_whom, drops, text, cites$/);
   });
 
@@ -204,7 +203,7 @@ describe('scenarios', () => {
     assert.deepStrictEqual([entries().at(-1).replaces, entries().at(-1).reason, entries().at(-1).of], [full(finding), 'was-wrong', 'finding']);
 
     const question = ask().id;
-    const persons = decide(question, { by: 'person', kind: 'look' }).id;
+    const persons = decide(question, { by: 'person' }).id;
     write('replace', NOTE, ['--replaces', persons, '--reason', 'was-wrong'], { ...MADE, drops: ['near-frameless'], text: 'A plain window after all.', why: 'Frameless notes got lost.' });
     assert.deepStrictEqual([entries().at(-1).replaces, entries().at(-1).reason, entries().find((e) => e.id === full(persons)).by], [full(persons), 'was-wrong', 'person']);
   });

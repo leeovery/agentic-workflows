@@ -42,7 +42,7 @@ describe('the screen (11.8.8, 3.S18)', () => {
       'Payments — ready to build',
       '',
       'CLAUDE\'S CALLS (2)',
-      '  1 behaviour · 1 unlabelled — the labeller gives each its kind',
+      '  1 behaviour · 1 unlabelled',
       '',
       'THE OUTLINE (2 sections)',
       '  ├─ 1 Cards',
@@ -86,7 +86,7 @@ describe('the screen (11.8.8, 3.S18)', () => {
   it('lists Claude\'s calls at the spec with --calls, each under its question with its kind — never a call made in a topic — and draws no calls row', () => {
     const out = screen(['--calls', '--page']);
 
-    assert.match(sectionOf(out, 'DISPLAY: ready to build'), /^CLAUDE'S CALLS \(2\)\n {2}1 behaviour · 1 unlabelled — the labeller gives each its kind\n {2}├─ ◇ What of an unknown brand\? +\[behaviour\]\n {2}│ {5}Refused\.\n {2}└─ ◇ How soon is a refund sent\? +\[unlabelled\]\n {8}Within a day\.\n$/m);
+    assert.match(sectionOf(out, 'DISPLAY: ready to build'), /^CLAUDE'S CALLS \(2\)\n {2}1 behaviour · 1 unlabelled\n {2}├─ ◇ What of an unknown brand\? +\[behaviour\]\n {2}│ {5}Refused\.\n {2}└─ ◇ How soon is a refund sent\? +\[unlabelled\]\n {8}Within a day\.\n$/m);
     assert.deepStrictEqual(rowKeys(out), ['a/auto', 's/step', 'r/review', 'Comment']);
   });
 

@@ -49,7 +49,12 @@
 //   same. The why is not judged with them, so every decision a raise lands
 //   lands unchecked, for the late check to judge whole at the next start
 //   (ledger-late-check.cjs): the seal's rows judged are the record of what
-//   the draw judged, and no call is made at the answer.
+//   the draw judged, and no call is made at the answer. Beside the checks
+//   the labeller labels the call (labeller.cjs) from its question and its
+//   rows, each its answer and what the person would notice, null where its
+//   call fails: the label is sealed with the call, in the conversation or on
+//   its park, so a raise is labelled once — never at `raise show`, a
+//   `raise draw` or the answer, and never a fact (16.3.8).
 // - A fact (16.3.8): `raise <unit>.<phase>[.<topic>] --answers <question>
 //   [--relies-on <id> …] --fact`, a fact Claude cannot check and only the
 //   person holds. The call on stdin is the question, its rows, the
@@ -72,8 +77,9 @@
 //   keeping the decision as it stands, so the answer needs nothing more;
 //   whether it is a fact; the id, minted at the draw, which is the id its line
 //   lands as; the menu it is declared as, `raise — <id>`; the rows whose
-//   answer and what it rules out the check judged one rule; the decision
-//   point's reason; when it was shown; its answer once given — when, and the
+//   answer and what it rules out the check judged one rule; the label, null
+//   for a fact; the decision point's reason; when it was shown; its answer
+//   once given — when, and the
 //   row's key, null for the person's own words — null until then; and how many
 //   times the person did not follow it. It is written before the command
 //   answers, and one that cannot be written refuses the raise. Every write to
@@ -100,8 +106,8 @@
 //   the lock `ledger decide` lands through, the question checked open under
 //   it; on a replacement, Claude's replacement of the decision, through the
 //   write `ledger replace` takes, dropping the decision's answer as it
-//   stood; either logged as a call carrying the sort. A blind ask is
-//   refused until it is built.
+//   stood; either logged as a call carrying the sort, and the label and
+//   kind its decision takes. A blind ask is refused until it is built.
 // - A raise is no gate (gate.cjs): drawing it clears the gate shown.
 // - In the build (12.13) — and at a quick-fix's places for a question its
 //   task's builder asks, `--parks` naming the task; one Claude raises in the
@@ -119,19 +125,19 @@
 //   waits in the build's queue parking none (12.8.4) — one `parked` line in
 //   the ledger holding the question's subject and links, the task or null,
 //   its number minted under the writer lock (questions.cjs), and the call
-//   sealed with the rows the check judged and the decision point's reason
-//   (12.13.4, 16.1.2) — and answers the one line Claude says (12.13.3). The
-//   task stays in progress, held; what depends on it is what the tracker's
-//   links hold back. A task parked is raised to the person, so a stop its
+//   sealed with the rows the check judged, the decision point's reason and
+//   the label (12.13.4, 16.1.2) — and answers the one line Claude says
+//   (12.13.3). The task stays in progress, held; what depends on it is what
+//   the tracker's links hold back. A task parked is raised to the person, so a stop its
 //   builder made comes off it (position.cjs). Raised while a question
 //   already waits on its subject, it judges no row and asks nothing: where
 //   that question parks its task,
 //   or it names none — a rerun after a kill among them — it parks nothing
 //   and answers that question; else its task joins the question, parked
-//   under its number with its first park's call as sealed, copied under the
-//   writer lock. Its line, and the one an `already` answers, say the
-//   question as it is worded now, and, where it names no task, the tasks
-//   the question parks. While a question waits, any raise on its
+//   under its number with its first park's call as sealed and its label,
+//   copied under the writer lock. Its line, and the one an `already`
+//   answers, say the question as it is worded now, and, where it names no
+//   task, the tasks the question parks. While a question waits, any raise on its
 //   subject outside the build — one asking as one proceeding — is refused,
 //   naming its raise: before a row is judged, under the lock as a proceed
 //   or an answer lands, and at "I don't follow", for a park that came after
@@ -169,7 +175,7 @@
 //   none else, since their words may blend rows. Claude's account of the
 //   person's reason, the why, comes on stdin with either. The sealed answer
 //   is the lean row's text; whether it is product-wide is the call's; its
-//   kind is null until the labeller's (29.19).
+//   kind and whether it is hard to undo are the sealed label's.
 // - `keep`, picked on a replacement, takes the why on stdin as a pick
 //   does: the person's keep of the decision as it stands lands at the id
 //   the draw minted, where the raise was drawn — the decision, the reason
@@ -190,8 +196,8 @@
 //   ledger-write.cjs): the line it landed — an entry, or a keep — the sort,
 //   the lean's key and the answer's — null for the person's own words, free
 //   text, typed, its reading null until the separate call reads it
-//   (16.19.1) — how it came, whether the person didn't follow, no kind or
-//   label until the labeller's, and no blocked build outside one (16.4.7);
+//   (16.19.1) — how it came, whether the person didn't follow, the sealed
+//   label and its kind, and no blocked build outside one (16.4.7);
 //   never a word of the question, the rows or the why. An answer was
 //   pressed where the gate mod announced itself and its last press sent
 //   that row from this raise's menu after the raise was drawn (gate.cjs);
@@ -238,6 +244,7 @@ const { topicTitles, quickFixBuild, investigationUnderWay, fixesUnderWay } = req
 const { verbUsage, writePlaced, landRaised, callLogged, staleness } = require('./ledger-write.cjs');
 const { OVER_THE_LEAN, BACK_TO_THE_LEAN, derivedMove } = require('./ledger-verdicts.cjs');
 const { judgeDecisionAsync } = require('./ledger-one-decision.cjs');
+const { labelledBeside, questionText, kindOf } = require('./labeller.cjs');
 const { type, TEXT, KEY, LINE, listOf } = require('./event-fields.cjs');
 const { isShownTask, parseShownTask } = require('./task-id.cjs');
 const { markChanged, beingRead } = require('./round-report.cjs');
@@ -255,6 +262,7 @@ const { assertRootCauseAt } = require('./investigation-log.cjs');
 /** @typedef {import('./decision-point.cjs').Decision} Decision */
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
 /** @typedef {import('./ledger-write.cjs').Landed} Landed */
+/** @typedef {import('./labeller.cjs').Label} Label */
 /** @typedef {{key: string, name: string, text: string, notice: string}} Row */
 /**
  * Claude's call, as the draw takes it on stdin.
@@ -293,6 +301,7 @@ const { assertRootCauseAt } = require('./investigation-log.cjs');
  * @property {string[]} relies_on
  * @property {Replacing|null} replaces
  * @property {string[]} rows_judged the rows whose answer and what it rules out the one-decision check judged one rule
+ * @property {Label|null} label the labeller's, null where it gave none — a fact's always
  * @property {string} reason
  * @property {string} at when it was shown
  * @property {Answered|null} answered
@@ -584,6 +593,23 @@ async function checkedRows(call, run) {
   return call.rows.filter((_, i) => 'rules' in judged[i]).map((row) => row.key);
 }
 
+/** What the labeller reads of a call: its question, and its rows, each its answer and what the person would notice. @param {Call} call */
+function labelledText({ question, rows }) {
+  return questionText(question, rows.map((row) => `${row.text} — ${row.notice}`));
+}
+
+/**
+ * Every row judged by the one-decision check (`checkedRows`), and the call
+ * labelled beside them: the keys of the rows judged one rule, and the
+ * label, null where the labeller gave none.
+ * @param {Call} call @param {import('./ledger-one-decision.cjs').Run} run
+ * @returns {Promise<{judged: string[], label: Label|null}>}
+ */
+async function judgedAndLabelled(call, run) {
+  const { done: judged, label } = await labelledBeside(checkedRows(call, run), labelledText(call));
+  return { judged, label };
+}
+
 /** The conversation's seals file. @param {string} session */
 function sealFile(session) {
   return path.join(conversationDir(session), RAISE_SHOWN);
@@ -837,12 +863,12 @@ function landsAs({ answers, relies_on: reliesOn, replaces }, stands, task) {
  * Claude's call landed where the decision point lets it proceed: Claude's
  * decision answering the question, or its replacement of the decision —
  * the lean row's answer, the other rows what it rules out, and Claude's
- * why — made for `task` in the build, else null, logged as a call carrying
- * its sort.
- * @param {string} cwd @param {Place} place @param {Target} target @param {Call} call @param {string|null} task @param {string[]} warnings
+ * why, its kind the label's — made for `task` in the build, else null,
+ * logged as a call carrying its sort and label.
+ * @param {string} cwd @param {Place} place @param {Target} target @param {Call} call @param {Label|null} label @param {string|null} task @param {string[]} warnings
  * @returns {Landed}
  */
-function proceeded(cwd, place, target, call, task, warnings) {
+function proceeded(cwd, place, target, call, label, task, warnings) {
   const lean = leanRow(call);
   const { lands, linked, content, checkRead } = landsAs(target, AT_THE_DRAW, task);
   const { landed } = landRaised(cwd, {
@@ -851,6 +877,7 @@ function proceeded(cwd, place, target, call, task, warnings) {
     lands,
     linked,
     content: { by: 'claude', who_moved_whom: 'none', ...content, text: lean.text, why: call.why, rules_out: othersOf(call, lean), product_wide: call.product_wide },
+    label,
     id: null,
     logs: callLogged(call.sort),
     checkRead: (read) => {
@@ -900,15 +927,15 @@ function placedRaise(cwd, args, warnings, fact) {
  * question or replacement, sealed while the draw waited, drawn again.
  * @param {string} session @param {Place} place @param {Target} target
  * @param {{call: Call, fact: false} | {call: Fact, fact: true}} what what is asked, and whether it is a fact
- * @param {string[]} judged @param {string} reason @param {string[]} warnings
+ * @param {string[]} judged @param {Label|null} label @param {string} reason @param {string[]} warnings
  * @returns {Drawn}
  */
-function askedRaise(session, place, target, what, judged, reason, warnings) {
+function askedRaise(session, place, target, what, judged, label, reason, warnings) {
   const id = newId();
   /** @type {Seal} */
   const seal = {
     v: SEAL_VERSION, id, menu: raiseMenu(id), place, ...target,
-    ...what, rows_judged: judged, reason, at: new Date().toISOString(), answered: null, didnt_follow: 0, parks: null,
+    ...what, rows_judged: judged, label, reason, at: new Date().toISOString(), answered: null, didnt_follow: 0, parks: null,
   };
   const drawn = sealDrawn(session, place, target, seal);
   clearGateShown(session);
@@ -1006,17 +1033,17 @@ function setAsideFor(cwd, unit, task) {
 async function parkedRaise(cwd, place, target, given, task, warnings) {
   const waiting = questions.waitingOn(cwd, place.unit, subjectOf(target), warnings);
   if (waiting !== null) {
-    const { name, id, tasks, asks, line: { call: sealed, rows_judged: judged, why_asking: whyAsking } } = waiting;
+    const { name, id, tasks, asks, line: { call: sealed, rows_judged: judged, why_asking: whyAsking, label } } = waiting;
     if (task === null || tasks.includes(task)) return { decision: 'ask', reason: whyAsking, parked: name, task, id, committed: null, line: parkedLine(task, name, asks, tasks, place.phase, []), already: true, ...(warnings.length > 0 ? { warnings } : {}) };
-    return parkLanded(cwd, parking(place, target, { call: sealed, rows_judged: judged, why_asking: whyAsking }, task), whyAsking, warnings);
+    return parkLanded(cwd, parking(place, target, { call: sealed, rows_judged: judged, why_asking: whyAsking, label }, task), whyAsking, warnings);
   }
-  if (given.fact) return parkLanded(cwd, parking(place, target, { call: parkedFact(given.call), rows_judged: [], why_asking: ONLY_YOU_KNOW }, task), ONLY_YOU_KNOW, warnings);
+  if (given.fact) return parkLanded(cwd, parking(place, target, { call: parkedFact(given.call), rows_judged: [], why_asking: ONLY_YOU_KNOW, label: null }, task), ONLY_YOU_KNOW, warnings);
   const { call } = given;
-  const judged = await checkedRows(call, { cwd, unit: place.unit, verb: 'raise', warnings });
+  const { judged, label } = await judgedAndLabelled(call, { cwd, unit: place.unit, verb: 'raise', warnings });
   const { decision, reason } = decisionPoint.decide(call);
-  if (decision === 'proceed') return { decision, reason, landed: proceeded(cwd, place, target, call, task, warnings) };
+  if (decision === 'proceed') return { decision, reason, landed: proceeded(cwd, place, target, call, label, task, warnings) };
   if (decision === 'blind') throw new Error('raise: the decision point answered blind, and asking blind is 29.19\'s, not built yet — nothing parked');
-  return parkLanded(cwd, parking(place, target, { call, rows_judged: judged, why_asking: reason }, task), reason, warnings);
+  return parkLanded(cwd, parking(place, target, { call, rows_judged: judged, why_asking: reason, label }, task), reason, warnings);
 }
 
 /**
@@ -1050,13 +1077,13 @@ async function drawRaise(cwd, args, stdin) {
     clearGateShown(session);
     return { decision: 'ask', reason: open.reason, seal: open, redrawn: true, warnings };
   }
-  if (fact) return askedRaise(session, place, target, { call: /** @type {Fact} */ (given), fact: true }, [], ONLY_YOU_KNOW, warnings);
+  if (fact) return askedRaise(session, place, target, { call: /** @type {Fact} */ (given), fact: true }, [], null, ONLY_YOU_KNOW, warnings);
   const call = /** @type {Call} */ (given);
-  const judged = await checkedRows(call, { cwd, unit: place.unit, verb: 'raise', warnings });
+  const { judged, label } = await judgedAndLabelled(call, { cwd, unit: place.unit, verb: 'raise', warnings });
   const { decision, reason } = decisionPoint.decide(call);
-  if (decision === 'proceed') return { decision, reason, landed: proceeded(cwd, place, target, call, null, warnings) };
+  if (decision === 'proceed') return { decision, reason, landed: proceeded(cwd, place, target, call, label, null, warnings) };
   if (decision === 'blind') throw new Error('raise: the decision point answered blind, and asking blind is 29.19\'s, not built yet — nothing drawn');
-  return askedRaise(session, place, target, { call, fact: false }, judged, reason, warnings);
+  return askedRaise(session, place, target, { call, fact: false }, judged, label, reason, warnings);
 }
 
 /**
@@ -1088,7 +1115,7 @@ function drawParked(cwd, args) {
   const seal = {
     v: SEAL_VERSION, id, menu: raiseMenu(id), place, ...target,
     ...(lean === null ? { call: { ...fact, question: asks }, fact: true } : { call: { ...line.call, question: asks }, fact: false }),
-    rows_judged: line.rows_judged, reason: line.why_asking, at: new Date().toISOString(), answered: null, didnt_follow: 0,
+    rows_judged: line.rows_judged, label: line.label, reason: line.why_asking, at: new Date().toISOString(), answered: null, didnt_follow: 0,
     parks: { park: question.park, number: question.number, tasks: question.tasks },
   };
   const drawn = sealDrawn(session, place, target, seal);
@@ -1235,14 +1262,14 @@ function ownWords(stdin) {
 
 /**
  * The raise's event in the trust log: its entry, or null where the person
- * didn't follow; its sort; the lean's key and the answer's; how it came;
- * no kind or label until the labeller's; and blocking the build where its
- * question waited in one, else null (16.4.7).
+ * didn't follow; the kind of its sealed label, and the label; its sort; the
+ * lean's key and the answer's; how it came; and blocking the build where
+ * its question waited in one, else null (16.4.7).
  * @param {CallSeal} seal @param {{entry: unknown, answer: string|null, via: Via, with_text: boolean, didnt_follow: boolean}} answer
  */
-function raiseEvent({ call, parks }, { entry, answer, via, with_text: withText, didnt_follow: didntFollow }) {
+function raiseEvent({ call, parks, label }, { entry, answer, via, with_text: withText, didnt_follow: didntFollow }) {
   return {
-    entry, kind: null, label: null, sort: call.sort, sealed: call.lean, answer,
+    entry, kind: kindOf(label), label, sort: call.sort, sealed: call.lean, answer,
     via, with_text: withText, reading: null, didnt_follow: didntFollow, blocked_build: parks === null ? null : true,
   };
 }
@@ -1400,6 +1427,7 @@ function recordAnswer(cwd, session, seal, { lands, linked, content, checkRead, a
     lands,
     linked,
     content,
+    label: seal.label,
     id: seal.id,
     logs,
     checkRead: (read) => {

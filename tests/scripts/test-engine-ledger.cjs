@@ -84,7 +84,7 @@ function finding(fields = {}) {
 function decision(answers, fields = {}) {
   return {
     event: 'decided', ...TAGS, ...MADE, answers, text: 'A near-frameless floating note.', why: 'Notes are furniture on the desk.',
-    rules_out: ['a title bar'], relies_on: [], product_wide: false, sealed: null, alternatives: [], evidence: [], kind: null, unchecked: false,
+    rules_out: ['a title bar'], relies_on: [], product_wide: false, sealed: null, alternatives: [], evidence: [], kind: null, hard_to_undo: null, unchecked: false,
     given: 'own', cites: [], task: null, ...fields,
   };
 }
@@ -98,7 +98,7 @@ function parked(question, fields = {}) {
       rows: [{ key: '1', name: 'Cursor', text: 'On the cursor\'s screen', notice: 'it opens where you look' }, { key: '2', name: 'Main', text: 'On the main screen', notice: 'it always opens there' }],
       lean: '1', why: 'A note follows the person.', sort: 'several', mechanism: 'The pointer\'s screen.', product_wide: false,
     },
-    rows_judged: [], why_asking: 'Every call comes to you for now.', ...fields,
+    rows_judged: [], why_asking: 'Every call comes to you for now.', label: null, ...fields,
   };
 }
 
@@ -148,7 +148,7 @@ describe('the events and their schemas', () => {
   const BY = ['by', 'who_moved_whom'];
   const QUESTION = ['text', 'part_of', 'relies_on', 'cites', 'task'];
   const FINDING = ['text', 'how', 'relies_on', 'product_wide', 'known', 'command', 'result', 'cites', 'task'];
-  const DECISION = ['answers', 'text', 'why', 'rules_out', 'relies_on', 'product_wide', 'sealed', 'alternatives', 'evidence', 'kind', 'unchecked', 'given', 'cites', 'task'];
+  const DECISION = ['answers', 'text', 'why', 'rules_out', 'relies_on', 'product_wide', 'sealed', 'alternatives', 'evidence', 'kind', 'hard_to_undo', 'unchecked', 'given', 'cites', 'task'];
 
   it('writes every event §5 names, and merged, checked, kept, asset, parked, unparked and rehomed, each with its fields in its schema\'s order on a line of its own, ended by LF alone', () => {
     const { root } = codeProject(world, FUMI);
@@ -182,7 +182,7 @@ describe('the events and their schemas', () => {
       [...HEADER, 'entry', 'rules'],
       [...HEADER, ...BY, 'entry', 'reason', 'cause', 'why', 'sealed'],
       [...HEADER, 'entry', 'path', 'status', 'into'],
-      [...HEADER, 'question', 'replaces', 'reason', 'cause', 'relies_on', 'task', 'number', 'call', 'rows_judged', 'why_asking'],
+      [...HEADER, 'question', 'replaces', 'reason', 'cause', 'relies_on', 'task', 'number', 'call', 'rows_judged', 'why_asking', 'label'],
       [...HEADER, 'task', 'parks'],
       [...HEADER, 'lines', 'files'],
     ]);
@@ -200,7 +200,7 @@ describe('the events and their schemas', () => {
     assert.throws(() => validEvent(unexplained), { message: 'the kept event needs why' });
   });
 
-  it('holds a park to its shape: a question answered or a replacement proposed, one and not both, the reason and cause a replacement\'s alone; a task as screens show it, or none, a number from 1, and the call sealed whole, leaning to a row it holds — or a fact\'s, answering a question, with no lean, why or sort; a task taken off its questions names the task and the parks', () => {
+  it('holds a park to its shape: a question answered or a replacement proposed, one and not both, the reason and cause a replacement\'s alone; a task as screens show it, or none, a number from 1, and the call sealed whole, leaning to a row it holds — or a fact\'s, answering a question, with no lean, why or sort — and its label a model\'s id and twelve answers, or none; a task taken off its questions names the task and the parks', () => {
     const park = { v: LEDGER_VERSION, id: newId(), at: AT, ...parked(newId()) };
     const fact = { ...park, call: { ...park.call, rows: [], lean: null, why: null, sort: null } };
     const unparked = { v: LEDGER_VERSION, id: newId(), event: 'unparked', ...TAGS, topic: null, phase: 'implementation', at: AT, task: '2.3', parks: [newId()] };
@@ -210,6 +210,8 @@ describe('the events and their schemas', () => {
     assert.deepStrictEqual(validEvent(park), park);
     assert.deepStrictEqual(validEvent(replacing), replacing);
     assert.deepStrictEqual(validEvent({ ...park, task: null }), { ...park, task: null });
+    const labelled = { ...park, label: { labeller: 'claude-sonnet-5-5', answers: Array(12).fill(false) } };
+    assert.deepStrictEqual(validEvent(labelled), labelled);
     const cases = [
       [{ ...park, replaces: newId(), reason: 'was-wrong' }, /a parked question answers a question or proposes a replacement, one and not both/],
       [{ ...park, question: null }, /a parked question answers a question or proposes a replacement, one and not both/],
@@ -221,6 +223,8 @@ describe('the events and their schemas', () => {
       [{ ...park, call: { ...park.call, said: 'more' } }, /its call is not a call/],
       [{ ...park, task: '2' }, /its task is not a task, as screens show it: \{phase\}\.\{n\}/],
       [{ ...park, number: 0 }, /its number is not a whole number from 1/],
+      [{ ...labelled, label: { ...labelled.label, labeller: 'sonnet' } }, /its label is not a label: the labeller's model id, and its 12 answers, true or false, or null/],
+      [{ ...labelled, label: { ...labelled.label, answers: Array(11).fill(false) } }, /its label is not a label/],
       [{ ...fact, call: { ...fact.call, why: 'A note follows the person.' } }, /its call has a lean, a why and a sort, or, a fact, none of them/],
       [{ ...fact, question: null, replaces: newId(), reason: 'was-wrong' }, /a fact parked answers a question, never proposes a replacement/],
       [{ ...unparked, task: null }, /its task is not a task, as screens show it: \{phase\}\.\{n\}/],
@@ -281,6 +285,7 @@ describe('the events and their schemas', () => {
       [Object.fromEntries(Object.entries(base).filter(([key]) => key !== 'text')), /the asked event needs text/],
       [{ ...decision(newId()), v: LEDGER_VERSION, id: newId(), at: AT, by: 'review' }, /its by is not one of person, claude/],
       [{ ...decision(newId()), v: LEDGER_VERSION, id: newId(), at: AT, kind: 'taste' }, /its kind is not one of process, danger, contract, scope, look, words, behaviour, internals, or null/],
+      [{ ...decision(newId()), v: LEDGER_VERSION, id: newId(), at: AT, hard_to_undo: 'yes' }, /its hard_to_undo is not true or false, or null/],
       [{ ...decision(newId()), v: LEDGER_VERSION, id: newId(), at: AT, answers: null }, /its answers is not an entry id/],
     ];
     for (const [value, message] of cases) assert.throws(() => validEvent(value), (err) => err instanceof LedgerLineError && message.test(err.message), `${JSON.stringify(value)} was not refused as ${message}`);

@@ -7,8 +7,9 @@
 // for a refusal, and the test of it; a field a release after a stream's
 // first added names that version and the default a line written before it
 // takes. An event's line is read against the fields its version holds, in
-// their order, and nothing else. The kinds of question (16.11.3) and a
-// row's key are named here too, since both streams carry them.
+// their order, and nothing else. The kinds of question (16.11.3), a row's
+// key, a model's id and the labeller's label (16.11.5) are named here too,
+// since both streams carry them.
 // ---------------------------------------------------------------------------
 
 const { isObject } = require('../kernel/manifest-io.cjs');
@@ -99,6 +100,21 @@ function event(fields, since = 1, holds = undefined) {
 // 16.11.3's composed kinds.
 const KINDS = Object.freeze(['process', 'danger', 'contract', 'scope', 'look', 'words', 'behaviour', 'internals']);
 
+/** A kind of question (16.11.3). @typedef {'process'|'danger'|'contract'|'scope'|'look'|'words'|'behaviour'|'internals'} Kind */
+
+// A Claude model's id, as the API names it — never an alias, never words.
+const MODEL = type('a model id', (v) => typeof v === 'string' && v.length <= 64 && /^claude-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(v));
+
+// The labeller's twelve questions (16.11.2).
+const QUESTIONS = 12;
+
+// A label (16.11.5): the labeller's model id, and its twelve answers, true or false.
+const LABEL = type(
+  `a label: the labeller's model id, and its ${QUESTIONS} answers, true or false`,
+  (v) => isObject(v) && Object.keys(v).length === 2 && MODEL.test(v.labeller)
+    && Array.isArray(v.answers) && v.answers.length === QUESTIONS && v.answers.every((a) => typeof a === 'boolean'),
+);
+
 /** The version that added a field. @param {Field} f */
 function addedIn(f) {
   return f.added?.version ?? 1;
@@ -131,4 +147,4 @@ function readFields(value, fields, v, name) {
   return { event };
 }
 
-module.exports = { type, TEXT, ID, FLAG, TIME, VERSION, COUNT, LINE, KEY, KINDS, oneOf, nullable, listOf, shaped, field, event, addedIn, readFields };
+module.exports = { type, TEXT, ID, FLAG, TIME, VERSION, COUNT, LINE, KEY, KINDS, MODEL, LABEL, oneOf, nullable, listOf, shaped, field, event, addedIn, readFields };

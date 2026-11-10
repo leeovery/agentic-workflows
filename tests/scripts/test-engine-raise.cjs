@@ -5,8 +5,9 @@
 // domain/projections/raise.cjs, the decision point domain/decision-point.cjs):
 // `engine raise <place> --answers <question>`, Claude's call on stdin, put
 // through the decision point, every row judged by the one-decision check at
-// once, each run logged, sealed in the conversation's folder and drawn as
-// one MENU (16.S30), what Claude's step back found above its lean (19.S13);
+// once, each run logged, the call labelled beside them (16.11), sealed in
+// the conversation's folder and drawn as one MENU (16.S30), what Claude's
+// step back found above its lean (19.S13);
 // `raise show`, drawing it again from the seal alone, the mechanism behind
 // its toggle; every refusal drawing and sealing nothing; a second raise of
 // the question keeping the first seal (P6); and a raise that is no gate,
@@ -35,12 +36,14 @@ const { useTempFolder, createManifest } = require('./discovery-test-utils.cjs');
 const { SESSION: WRITER, MADE, NOTE, SPACE, ledgerWorld, ledgerHelpers } = require('./ledger-world.cjs');
 const { SESSION, raiseHelpers } = require('./raise-world.cjs');
 const { auditGate, auditMarkers } = require('./gate-audit.cjs');
+const { labelAnswers } = require('./labels.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { isId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
 const { gateShown } = require(path.join(SCRIPTS, 'domain/projections/surfaces.cjs'));
 const { DECISION_CHECKS } = require(path.join(SCRIPTS, 'domain/user-files.cjs'));
+const { ORDER } = require(path.join(SCRIPTS, 'domain/labeller.cjs'));
 
 const EVERY_CALL_ASKS = 'Every call comes to you for now: the counts that would let me decide aren\'t built yet.';
 const NO_GATE = 'gate: no gate has been shown in this conversation — render the gate, then answer it';
@@ -254,7 +257,7 @@ describe('the draw (16.S30, 16.9.2)', () => {
 });
 
 describe('the seal (P1, P6)', () => {
-  it('is kept in the conversation\'s folder by the raise\'s id: the call as given, where it was raised, the question and what it relies on by full id, the menu, that it is no fact, the rows the check judged — none, with no login — the reason, when it was shown, no answer, no "I don\'t follow"', async () => {
+  it('is kept in the conversation\'s folder by the raise\'s id: the call as given, where it was raised, the question and what it relies on by full id, the menu, that it is no fact, the rows the check judged — none, with no login — its label — none, with no login — the reason, when it was shown, no answer, no "I don\'t follow"', async () => {
     const { full } = ledgerHelpers(() => dir);
     const { res } = await draw(CALL, { flags: ['--relies-on', asked.size] });
 
@@ -272,6 +275,7 @@ describe('the seal (P1, P6)', () => {
       call: CALL,
       fact: false,
       rows_judged: [],
+      label: null,
       reason: EVERY_CALL_ASKS,
       at: sealed.at,
       answered: null,
@@ -352,21 +356,22 @@ describe('the seal (P1, P6)', () => {
 });
 
 describe('the one-decision check at the draw (5.5.2, E10)', () => {
-  it('judges every row at once — its answer, the other rows what it rules out, no why yet — the seal naming each row judged one rule', async () => {
+  it('judges every row at once, the call\'s label beside them — its answer, the other rows what it rules out, no why yet — the seal naming each row judged one rule', async () => {
     const meet = path.join(config(), 'meet');
     const log = path.join(config(), 'calls.jsonl');
     fs.mkdirSync(meet);
     const call = { ...CALL, rows: [CURSOR, MAIN, LAST] };
 
-    const { res } = await draw(call, { env: { CLAUDE_STUB_ANSWERS: JSON.stringify({ '': { rules: ['One rule.'] } }), CLAUDE_STUB_LOG: log, CLAUDE_STUB_MEET: `3:${meet}` } });
+    const { res } = await draw(call, { env: { CLAUDE_STUB_ANSWERS: JSON.stringify({ 'The answer: ': { rules: ['One rule.'] }, '': labelAnswers('behaviour') }), CLAUDE_STUB_LOG: log, CLAUDE_STUB_MEET: `4:${meet}` } });
 
     assert.deepStrictEqual(seals()[res.raise].rows_judged, ['1', '2', '3'], 'a row went unjudged: its call did not meet the others at the barrier');
+    assert.notStrictEqual(seals()[res.raise].label, null, 'the label\'s call did not meet the checks at the barrier');
     const entry = (/** @type {{text: string}} */ row) => [
       `The answer: ${row.text}`,
       'Why: not given',
       `What it rules out:\n${call.rows.filter((other) => other !== row).map((other) => `- ${other.text}`).join('\n')}`,
     ].join('\n\n');
-    const inputs = fs.readFileSync(log, 'utf8').trim().split('\n').map((line) => JSON.parse(line).input);
+    const inputs = fs.readFileSync(log, 'utf8').trim().split('\n').map((line) => JSON.parse(line).input).filter((input) => input.startsWith('The answer: '));
     assert.deepStrictEqual(inputs.sort(), call.rows.map(entry).sort());
   });
 
@@ -396,6 +401,38 @@ describe('the one-decision check at the draw (5.5.2, E10)', () => {
     });
     const { warnings } = await refusesAsync(dir, ['raise', NOTE, '--answers', asked.where], { env: conversation(env), stdin: JSON.stringify(call) });
     assert.deepStrictEqual(warnings, Array(3).fill(`the one-decision check's run was not logged (${DECISION_CHECKS}): ENOSPC: no space left on device, write`));
+  });
+});
+
+describe('the label at the draw (16.11, 16.S38)', () => {
+  const LABELLED = { CLAUDE_STUB_ANSWERS: JSON.stringify({ 'The answer: ': 'no-login', '': labelAnswers('look', { hardToUndo: true }) }) };
+
+  it('labels the call from its question and its rows, each its answer and what the person would notice, on Sonnet — the seal keeping the labeller and all twelve answers', async () => {
+    const log = path.join(config(), 'calls.jsonl');
+
+    const { res } = await draw(CALL, { env: { ...LABELLED, CLAUDE_STUB_LOG: log } });
+
+    const labelled = fs.readFileSync(log, 'utf8').trim().split('\n').map((line) => JSON.parse(line)).filter(({ argv }) => argv[argv.indexOf('--model') + 1] === 'sonnet');
+    assert.deepStrictEqual(labelled.map(({ input }) => input), [
+      `${CALL.question}\n\nThe answers offered:\n- ${CURSOR.text} — ${CURSOR.notice}\n- ${MAIN.text} — ${MAIN.notice}`,
+    ]);
+    assert.deepStrictEqual(seals()[res.raise].label, { labeller: 'claude-sonnet-stub', answers: ORDER.map((key) => ['user_sees', 'looks', 'hard_to_undo'].includes(key)) });
+  });
+
+  it('labels once: raise show and a second raise of the question draw the seal, asking no call', async () => {
+    const log = path.join(config(), 'calls.jsonl');
+    const { res } = await draw(CALL, { env: LABELLED });
+
+    show([res.raise], { env: { ...LABELLED, CLAUDE_STUB_LOG: log } });
+    await draw(CALL, { env: { ...LABELLED, CLAUDE_STUB_LOG: log } });
+
+    assert.ok(!fs.existsSync(log), 'a call was put after the draw labelled it');
+  });
+
+  it('seals a null label where the labeller\'s call fails, and draws the raise all the same', async () => {
+    const { res } = await draw(CALL, { env: { CLAUDE_STUB_ANSWERS: JSON.stringify({ '': 'rate-limit' }) } });
+
+    assert.strictEqual(seals()[res.raise].label, null);
   });
 });
 

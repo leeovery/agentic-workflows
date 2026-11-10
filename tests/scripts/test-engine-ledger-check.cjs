@@ -107,9 +107,14 @@ function eventOf(short) {
   return /** @type {Record<string, any>} */ (entries().find((e) => e.id === full(short)));
 }
 
-/** What each call handed the stub. @returns {{argv: string[], input: string}[]} */
+/**
+ * What each call of the check handed the stub, on Opus: the labeller's
+ * beside it, on Sonnet, is test-engine-ledger-trust.cjs's.
+ * @returns {{argv: string[], input: string}[]}
+ */
 function calls() {
-  return fs.existsSync(log) ? fs.readFileSync(log, 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line)) : [];
+  const all = fs.existsSync(log) ? fs.readFileSync(log, 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line)) : [];
+  return all.filter((/** @type {{argv: string[]}} */ { argv }) => flagValue(argv, '--model') === 'opus');
 }
 
 /** `ledger late-check`, the stub armed with `answers`, run by `session`. @param {Record<string, unknown>} [answers] @param {string} [session] */

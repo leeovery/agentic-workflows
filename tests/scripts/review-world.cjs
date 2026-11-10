@@ -12,8 +12,9 @@
 // of that unit's after them, the unit named `pay-shop` so its trailers open
 // as this unit's do; runs of its scenarios at main, 1.S1 passing, 1.S2
 // failing, 2.S1 only skipped; its calls across the unit —
-// Claude's two at the spec, each labelled, and two in the build, one
-// labelled, which the person handed over as "your call", one unlabelled;
+// Claude's two at the spec, each labelled by the stub armed for it
+// (labels.cjs), and two in the build, one labelled, which the person handed
+// over as "your call", one unlabelled;
 // the person's at the spec, one replaced and so no longer current, one
 // relying on Claude's call on the receipt; and the project's linters.
 // Beside it a quick-fix, a unit built under the old plan, a unit whose
@@ -33,6 +34,7 @@ const {
   accountTaken,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
+const { labelling } = require('./labels.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { SPEC_FILE } = require(path.join(SCRIPTS, 'domain/spec-sections.cjs'));
@@ -124,19 +126,23 @@ function commitFile(dir, file, trailer) {
 /** The scenarios' runs at main: `[scenario, verdict]`. */
 const RUNS = Object.freeze([['1.S1', 'pass'], ['1.S2', 'fail'], ['2.S1', 'skipped']]);
 
-/** A ledger write that must succeed: its short id. @param {string} dir @param {string} verb @param {string} address @param {string[]} flags @param {object} content */
-const write = (dir, verb, address, flags, content) => ok(dir, ['ledger', verb, address, ...flags], { env: { CLAUDE_CODE_SESSION_ID: SESSION_ID }, stdin: JSON.stringify({ ...MADE, ...content }) }).id;
+/**
+ * A ledger write that must succeed: its short id.
+ * @param {string} dir @param {string} verb @param {string} address @param {string[]} flags @param {object} content @param {Record<string, string>} [env]
+ */
+const write = (dir, verb, address, flags, content, env = {}) => ok(dir, ['ledger', verb, address, ...flags], { env: { CLAUDE_CODE_SESSION_ID: SESSION_ID, ...env }, stdin: JSON.stringify({ ...MADE, ...content }) }).id;
 
 /**
  * A decision answering a question asked at `address`, both made for `task`
- * where one is named: its short id.
- * @param {string} dir @param {string} address @param {string} question @param {object} decision
+ * where one is named, its question labelled `kind` where it gives one: its
+ * short id.
+ * @param {string} dir @param {string} address @param {string} question @param {Record<string, unknown> & {kind?: import('./labels.cjs').Kind}} decision
  * @param {{flags?: string[], task?: string}} [made]
  */
-function decided(dir, address, question, decision, { flags = [], task } = {}) {
+function decided(dir, address, question, { kind, ...decision }, { flags = [], task } = {}) {
   const forTask = task === undefined ? [] : ['--task', task];
   const asked = write(dir, 'ask', address, forTask, { by: 'claude', text: question });
-  return write(dir, 'decide', address, ['--answers', asked, ...forTask, ...flags], decision);
+  return write(dir, 'decide', address, ['--answers', asked, ...forTask, ...flags], decision, kind === undefined ? {} : labelling(question, kind));
 }
 
 /** The world's entries, by name, as their short ids. @type {Record<string, string>} */

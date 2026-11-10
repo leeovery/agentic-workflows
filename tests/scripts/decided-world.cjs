@@ -6,8 +6,9 @@
 // board's over it, test-engine-board-views.cjs and
 // test-engine-board-units.cjs): an epic, `fumi`, its two topics under
 // discussion, the note window's map written through the ledger's verbs —
-// the person's own answer, Claude's calls of two kinds and one unlabelled,
-// a call handed over — and its decided checklist marked but for the closing
+// the person's own answer, Claude's calls of two kinds, each labelled by the
+// stub armed for it (labels.cjs), and one unlabelled, a call handed over —
+// and its decided checklist marked but for the closing
 // pass; and a feature, `solo`, whose one question the person answered, its
 // checklist marked but for the closing pass and its log written. Built once per process and
 // copied for each test, its trust log in a config folder of the test's own.
@@ -21,6 +22,7 @@ const assert = require('node:assert');
 const { ok, output, readManifest, statePath, writeState, layout, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest, useTempFolder } = require('./discovery-test-utils.cjs');
 const { UNIT, SESSION, SESSION_ID, MADE, NOTE, row } = require('./ledger-world.cjs');
+const { labelling } = require('./labels.cjs');
 
 const SOLO = 'solo';
 const SOLO_AT = `${SOLO}.discussion.${SOLO}`;
@@ -38,15 +40,19 @@ function markedItems(at) {
   return Object.fromEntries(MARKED.map((item) => [item, { state: 'done', at }]));
 }
 
-/** One ledger write in `dir`: its short id. @param {string} dir @param {string} verb @param {string} at @param {string[]} flags @param {Record<string, unknown>} content */
-function writeIn(dir, verb, at, flags, content) {
-  return ok(dir, ['ledger', verb, at, ...flags], { env: SESSION, stdin: JSON.stringify(content) }).id;
+/** One ledger write in `dir`: its short id. @param {string} dir @param {string} verb @param {string} at @param {string[]} flags @param {Record<string, unknown>} content @param {Record<string, string>} [env] */
+function writeIn(dir, verb, at, flags, content, env = {}) {
+  return ok(dir, ['ledger', verb, at, ...flags], { env: { ...SESSION, ...env }, stdin: JSON.stringify(content) }).id;
 }
 
-/** A question asked at `at` and answered as `answer` says: both short ids. @param {string} dir @param {string} at @param {string} text @param {Record<string, unknown>} answer */
-function answeredIn(dir, at, text, answer) {
+/**
+ * A question asked at `at` and answered as `answer` says, its question
+ * labelled `kind` where it gives one: both short ids.
+ * @param {string} dir @param {string} at @param {string} text @param {Record<string, unknown> & {kind?: import('./labels.cjs').Kind}} answer
+ */
+function answeredIn(dir, at, text, { kind, ...answer }) {
   const question = writeIn(dir, 'ask', at, [], { ...MADE, text });
-  return { question, answer: writeIn(dir, 'decide', at, ['--answers', question], { why: 'Because.', ...answer }) };
+  return { question, answer: writeIn(dir, 'decide', at, ['--answers', question], { why: 'Because.', ...answer }, kind === undefined ? {} : labelling(text, kind)) };
 }
 
 /**

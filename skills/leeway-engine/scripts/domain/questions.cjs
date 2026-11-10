@@ -9,8 +9,8 @@
 // - A question: a park, and every park after it holding its number about
 //   the same thing — the question, in any of its wordings, or the decision a
 //   replacement would replace — each a task that met it while it waited and
-//   joined it, its line holding the first park's sealed call, copied under
-//   the writer lock. It goes by its first park, which it is drawn from, and
+//   joined it, its line holding the first park's sealed call and its label,
+//   copied under the writer lock, so a question is labelled once. It goes by its first park, which it is drawn from, and
 //   parks every task its parks name but where a close has taken the task off
 //   that park, an `unparked` line naming it: a park made outside any task —
 //   the task writer's, the consolidation agent's or the phase review's
@@ -122,7 +122,7 @@ const { liveness, manifestOf } = require('./ledger-units.cjs');
  * asks now.
  * @typedef {{name: string, id: string, tasks: string[], line: Record<string, any>, asks: string}} WaitingOn
  */
-/** A park's call as sealed: Claude's call, the rows judged, and why it asks. @typedef {{call: Record<string, any>, rows_judged: string[], why_asking: string}} Sealed */
+/** A park's call as sealed: Claude's call, the rows judged, why it asks, and its label (labeller.cjs). @typedef {{call: Record<string, any>, rows_judged: string[], why_asking: string, label: import('./labeller.cjs').Label|null}} Sealed */
 /** A question asked in a quick-fix's conversation still open: its short id, the place it is at, and what it asks. @typedef {{id: string, place: string, asks: string}} AskedOpen */
 /** A seal's question: its first park's full id, its number and the tasks it parks (raise.cjs). @typedef {{park: string, number: number, tasks: string[]}} Parks */
 
@@ -368,8 +368,8 @@ function parkedUnder(read, entryAt, unit, subject, sealed) {
   const joined = waitingParks(read, unit).find((id) => isAbout(read, id, subject));
   if (joined === undefined) return { number: nextNumber(read, unit), ...sealed };
   const { number, place } = factsOf(read, joined);
-  const { call, rows_judged: judged, why_asking: whyAsking } = entryAt(place);
-  return { number: /** @type {number} */ (number), call, rows_judged: judged, why_asking: whyAsking };
+  const { call, rows_judged: judged, why_asking: whyAsking, label } = entryAt(place);
+  return { number: /** @type {number} */ (number), call, rows_judged: judged, why_asking: whyAsking, label };
 }
 
 /**

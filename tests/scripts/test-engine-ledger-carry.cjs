@@ -89,7 +89,7 @@ describe('a topic\'s record carried (21.6, 21.10.9)', () => {
       { ...tags, event: 'asked', by: 'person', who_moved_whom: 'none', text: QUESTION.text, part_of: null, relies_on: [], cites: QUESTION.cites, task: null },
       {
         ...tags, event: 'decided', by: 'claude', who_moved_whom: 'none', answers: q.id, text: 'Fourteen days.', why: 'The person set it.', rules_out: [], relies_on: [], product_wide: false,
-        sealed: null, alternatives: [], evidence: [], kind: null, unchecked: true, given: 'carried', cites: DECISION.cites, task: null,
+        sealed: null, alternatives: [], evidence: [], kind: null, hard_to_undo: null, unchecked: true, given: 'carried', cites: DECISION.cites, task: null,
       },
       { ...tags, event: 'asset', entry: d.id, path: 'fumi/assets/pricing.md', status: 'reference', into: null },
       {

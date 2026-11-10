@@ -208,4 +208,4 @@ function checkOneDecision(cwd, request, named, warnings) {
   return { ...request, unchecked: false };
 }
 
-module.exports = { PROMPT, SCHEMA, judgeDecision, judgeDecisionAsync, checkOneDecision };
+module.exports = { PROMPT, SCHEMA, TIMEOUT_MS, judgeDecision, judgeDecisionAsync, checkOneDecision };

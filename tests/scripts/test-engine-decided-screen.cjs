@@ -35,7 +35,7 @@ const { carriedOver } = ledgerHelpers(dir);
 const stagedCandidates = () => JSON.parse(fs.readFileSync(statePath(dir(), '.cache', UNIT, 'discussion', 'note-window', 'decided.json'), 'utf8')).candidates;
 
 describe('the decided screen (9.7.3, 9.S21)', () => {
-  it('shows what the person decided, Claude\'s calls by kind with those unlabelled said so, the lines, the candidates and the skip, then the decided gate; and with --calls lists each call under its kind, one handed over marked so, drawing the gate without the calls row', () => {
+  it('9.S21: shows what the person decided, Claude\'s calls by kind with those unlabelled said so, the lines, the candidates and the skip, then the decided gate; and with --calls lists each call under its kind, one handed over marked so, drawing the gate without the calls row', () => {
     ok(dir(), ['checklist', 'skip', 'decided', UNIT, 'note-window', 'closing-pass', '--reason', 'its third re-read reworded one line, and nothing else moved'], { env: SESSION });
     ok(dir(), ['checklist', 'close', 'decided', UNIT, 'note-window'], { env: SESSION });
     const out = staged({
@@ -49,7 +49,7 @@ describe('the decided screen (9.7.3, 9.S21)', () => {
       '  └─ How does first run open?',
       '',
       'CLAUDE\'S CALLS (5)',
-      '  2 behaviour · 1 words · 2 unlabelled — the labeller gives each its kind',
+      '  2 behaviour · 1 words · 2 unlabelled',
       '',
       'FOR THE PRODUCT RECORD (1 line)',
       '  · First run shows the product before it asks for anything.',
@@ -70,7 +70,7 @@ describe('the decided screen (9.7.3, 9.S21)', () => {
     assert.deepStrictEqual([...gate.matchAll(/^\*\*`?([a-z/]+|Comment)`?\*\*/gm)].map((m) => m[1]), ['y/yes', 'c/calls', 's/strike', 'Comment']);
 
     const listed = screen(['--calls']);
-    assert.match(sectionOf(listed, 'DISPLAY: decided'), /CLAUDE'S CALLS \(5\)\n {2}2 behaviour · 1 words · 2 unlabelled — the labeller gives each its kind\n {2}├─ ◇ What is the screen titled\? +\[words\]\n {2}│ {5}Welcome\.\n/);
+    assert.match(sectionOf(listed, 'DISPLAY: decided'), /CLAUDE'S CALLS \(5\)\n {2}2 behaviour · 1 words · 2 unlabelled\n {2}├─ ◇ What is the screen titled\? +\[words\]\n {2}│ {5}Welcome\.\n/);
     assert.match(listed, /◇ Which corner does a note open in\? +\[unlabelled · your call\]/, 'a call handed over is Claude\'s, marked handed over');
     assert.ok(!sectionOf(listed, 'MENU: decided').includes('c/calls'), 'the calls listed, the gate draws no calls row');
   });

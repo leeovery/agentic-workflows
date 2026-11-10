@@ -31,9 +31,19 @@
 //   the caller's mistake — is refused, before any call.
 // - Generic: the prompt, the schema, the model, the effort, the input and the
 //   time it may take are the caller's.
-// - Two forms, one call: `askClaude` waits on it, and `askClaudeAsync`
+// - Three forms, one call: `askClaude` waits on it; `askClaudeAsync`
 //   answers later, so a caller with several questions puts them at once and
-//   waits about one call's time (raise.cjs, a raise's rows).
+//   waits about one call's time (raise.cjs, a raise's rows); and
+//   `startClaude` starts it and lets its caller block on something else
+//   meanwhile — another call made with `askClaude` — then waits on it
+//   (ledger-write.cjs, a decision labelled beside its one-decision check).
+//   The started call runs detached, in a process group of its own through
+//   one shell, its input, its answer and its exit status in files of its
+//   own, beside its empty folder, so nothing of it needs the event loop the
+//   blocked caller holds: a verb that waits on two calls stays synchronous,
+//   and its synchronous callers — over a thousand tests calling `ledger
+//   decide` or `ledger replace` in process — stay as they are. Its wait
+//   polls for the status, and once its time passes kills the group outright.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -65,6 +75,16 @@ const CLEARED = Object.freeze([
 
 /** Leeway's own variables. */
 const CLEARED_PREFIXES = Object.freeze(['LEEWAY_']);
+
+/**
+ * How a started call runs, in a shell of its own: its input from its file,
+ * its answer and what it said to theirs, then its exit status, a line, which
+ * a wait reads as written once it ends.
+ */
+const STARTED = 'in=$1 out=$2 err=$3 st=$4; shift 4; "$@" < "$in" > "$out" 2> "$err"; echo $? > "$st"';
+
+/** How often a wait on a started call looks for its status. */
+const POLL_MS = 5;
 
 /** Hooks and auto-memory off, whatever any settings file says. */
 const SETTINGS = JSON.stringify({ disableAllHooks: true, autoMemoryEnabled: false });
@@ -384,4 +404,95 @@ async function askClaudeAsync(ask) {
   }
 }
 
-module.exports = { askClaude, askClaudeAsync };
+/**
+ * A call started: `wait()` blocks until it answers — once, the answer kept —
+ * and answers as `askClaude` does.
+ * @typedef {{wait: () => Answer}} Started
+ */
+
+/** A started call that cannot run, `answer` its why. @param {Answer} answer @returns {Started} */
+function startedAs(answer) {
+  return { wait: () => answer };
+}
+
+/** Block for `ms`, holding the event loop. @param {number} ms */
+function pause(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+/** A file's text, '' where it holds none. @param {string} file */
+function textOf(file) {
+  try {
+    return fs.readFileSync(file, 'utf8');
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * The run a started call's files hold once its status is written, or, its
+ * time passed first, its process group killed and the run that ended it.
+ * @param {number} group @param {{out: string, err: string, status: string}} files @param {number} deadline
+ * @returns {Run}
+ */
+function awaited(group, { out, err, status }, deadline) {
+  let exited = textOf(status);
+  while (!exited.endsWith('\n')) {
+    if (Date.now() >= deadline) {
+      try {
+        process.kill(-group, 'SIGKILL');
+      } catch { /* a group gone already has nothing left to kill */ }
+      return { error: Object.assign(new Error(`${binary()} ETIMEDOUT`), { code: 'ETIMEDOUT' }), stdout: '', stderr: '', status: null, signal: 'SIGKILL' };
+    }
+    pause(POLL_MS);
+    exited = textOf(status);
+  }
+  return { stdout: textOf(out), stderr: textOf(err), status: Number(exited), signal: null };
+}
+
+/**
+ * Start a call without waiting on it, so its caller can block on another
+ * meanwhile (the header's): detached, from a fresh empty folder, its input,
+ * answer and status in files of their own. Its wait answers as `askClaude`
+ * does, killing it outright once its time passes, then removes both
+ * folders. Refuses a schema an answer cannot be checked against, before any
+ * call.
+ * @param {Ask} ask
+ * @returns {Started}
+ */
+function startClaude(ask) {
+  const folder = freshFolder(ask);
+  if (typeof folder !== 'string') return startedAs(folder);
+  /** @type {string} */
+  let io;
+  try {
+    io = fs.mkdtempSync(path.join(os.tmpdir(), 'leeway-call-io-'));
+    fs.writeFileSync(path.join(io, 'in'), ask.input);
+  } catch (err) {
+    removeFolder(folder);
+    return startedAs(cannot('failed', `no folder to keep the call's answer in: ${messageOf(err)}`));
+  }
+  const files = { out: path.join(io, 'out'), err: path.join(io, 'err'), status: path.join(io, 'status') };
+  const child = spawn('/bin/sh', ['-c', STARTED, 'sh', path.join(io, 'in'), files.out, files.err, files.status, binary(), ...argsOf(ask)], {
+    cwd: folder, env: envOf(), stdio: 'ignore', detached: true,
+  });
+  child.on('error', () => { /* a shell that never started leaves no status, and the wait answers why */ });
+  child.unref();
+  const deadline = Date.now() + ask.timeoutMs;
+  /** @type {Answer|null} */
+  let answered = null;
+  return {
+    wait() {
+      if (answered !== null) return answered;
+      try {
+        answered = child.pid === undefined ? cannot('failed', 'the shell a started call runs in did not start') : answerOf(awaited(child.pid, files, deadline), ask);
+      } finally {
+        removeFolder(folder);
+        removeFolder(io);
+      }
+      return answered;
+    },
+  };
+}
+
+module.exports = { askClaude, askClaudeAsync, startClaude };

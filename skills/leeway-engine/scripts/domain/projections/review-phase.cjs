@@ -13,10 +13,9 @@
 //   dropped (14.3.6); how Claude settled a failing round, where it did
 //   (14.6.3); what put back set aside, where it holds anything, kept until
 //   the person removes it (review-tree.cjs); and one line counting the calls
-//   decided for the person,
-//   without kinds until the labeller (P11, 29.19). Its detailed checks are
-//   in a file, never shown (14.4.2). `review round` writes it as
-//   `round-{N}.md`, what the round decided — its fix tasks as filed, no
+//   decided for the person, by the kind each carries, the unlabelled last.
+//   Its detailed checks are in a file, never shown (14.4.2). `review round`
+//   writes it as `round-{N}.md`, what the round decided — its fix tasks as filed, no
 //   standing claimed, the calls as the round was recorded, and no
 //   set-aside; the screen draws each fix's standing, the calls and the
 //   set-aside as they are.
@@ -28,7 +27,7 @@
 // - The calls, when the person asks (14.4.4): every one decided for them,
 //   grouped by the kind each carries, in the ledger's order of kinds
 //   (16.11.3), those that change what the product does first, then process
-//   and internals, those the labeller has not reached last, as unlabelled
+//   and internals, those the labeller gave no label last, as unlabelled
 //   (P11).
 // - The working tree changed under a round (14.1.5, 14.S13, review-tree.cjs):
 //   each change outside `.leeway/` since the round began, one the engine
@@ -43,7 +42,7 @@ const {
 const { renderTree } = require('../../kernel/render.cjs');
 const { TREE_WIDTH } = require('../conventions.cjs');
 const { counted, ROW_MAX } = require('./map.cjs');
-const { block } = require('./closing.cjs');
+const { block, kindCounts } = require('./closing.cjs');
 const { KINDS } = require('../event-fields.cjs');
 
 /** @typedef {import('../review-phase.cjs').UnitCall} UnitCall */
@@ -63,10 +62,11 @@ const { KINDS } = require('../event-fields.cjs');
  */
 /** A fix task of a round's, with the finding it answers and where it stands. @typedef {{task: string, text: string, standing: 'fixed'|'unbuilt'|'fixing'|null}} Fix */
 /**
- * The calls decided for the person across the unit, how many of them were
- * made in the build, and the round whose record they were counted at, null
- * where they were counted as the screen is drawn.
- * @typedef {{count: number, build: number, recorded: number|null}} CallsCount
+ * The calls decided for the person across the unit, by the kind each
+ * carries, null where it has none; how many of them were made in the build;
+ * and the round whose record they were counted at, null where they were
+ * counted as the screen is drawn.
+ * @typedef {{kinds: (string|null)[], build: number, recorded: number|null}} CallsCount
  */
 
 /** Items drawn as a list beneath a block's heading. @param {string[]} items */
@@ -109,11 +109,12 @@ function roundBlocks(view) {
   ];
 }
 
-/** The line counting the calls decided for the person, and how to see them. @param {string} unit @param {CallsCount} calls @param {boolean} share whether to say the build's share */
-function callsLine(unit, { count, build, recorded }, share) {
-  const of = share ? `${counted(count, 'call')} across the work unit, ${build} of them in the build` : counted(count, 'call');
+/** The line counting the calls decided for the person, by kind, and how to see them. @param {string} unit @param {CallsCount} calls @param {boolean} share whether to say the build's share */
+function callsLine(unit, { kinds, build, recorded }, share) {
+  const of = share ? `${counted(kinds.length, 'call')} across the work unit, ${build} of them in the build` : counted(kinds.length, 'call');
   const when = recorded === null ? '' : `, when round ${recorded} was recorded`;
-  return block('CALLS DECIDED FOR YOU', `  ${of}${when} — render review-calls ${unit} lists them`);
+  const byKind = kinds.length === 0 ? '' : `: ${kindCounts(kinds)}`;
+  return block('CALLS DECIDED FOR YOU', `  ${of}${when}${byKind} — render review-calls ${unit} lists them`);
 }
 
 /** @typedef {import('../review-phase.cjs').SetAside} SetAside */
